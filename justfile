@@ -14,9 +14,13 @@ default:
 # Space-separated list; add new game subrepos here.
 games := "tempest"
 
-# Install dependencies in every game
+# Every servable subrepo (the lobby shell + all games), in launch order.
+# `serve` and the install recipe below iterate this; game-only recipes use {{games}}.
+subrepos := "lobby tempest"
+
+# Install dependencies in every subrepo (lobby + games)
 install-all:
-    @for g in {{games}}; do echo "==> $g"; (cd {{root}}/$g && npm install); done
+    @for g in {{subrepos}}; do echo "==> $g"; (cd {{root}}/$g && npm install); done
 
 # Run tests in every game
 test-all:
@@ -31,9 +35,34 @@ status:
     @echo "=== arcade (orchestrator) ===" && git -C {{root}} status --short
     @for g in {{games}}; do echo "=== $g ==="; git -C {{root}}/$g status --short; done
 
-# Full CI sweep across all games
-ci: test-all build-all
+# Run the orchestrator's own checks (canonical-serve contract regression guard)
+test-orchestrator:
+    @node --test 'tests/**/*.test.mjs'
+
+# Full CI sweep: orchestrator checks + every game
+ci: test-orchestrator test-all build-all
     @echo "CI passed!"
+
+# ============================================
+# SERVE THE ARCADE (canonical)
+# ============================================
+# `just serve` is the ONE authoritative way to serve the arcade in dev. It runs
+# the whole cabinet — the lobby shell plus every game — from THIS checkout on
+# their pinned ports. The Cloudflare tunnel (arcade.slabgorb.com) is wired to the
+# single canonical checkout that runs this; never serve the live arcade from a
+# duplicate clone. Run `just install-all` once on a fresh checkout first.
+#
+# Serve the whole arcade (lobby :5270 + games) from this canonical checkout — Ctrl-C stops all
+serve:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Serving the arcade from {{root}} (the canonical checkout)"
+    echo "  lobby   → http://localhost:5270/lobby/"
+    echo "  tempest → http://localhost:5273/tempest/"
+    trap 'kill 0' EXIT
+    (cd {{root}}/lobby && npm run dev) &
+    (cd {{root}}/tempest && npm run dev) &
+    wait
 
 # ============================================
 # tempest
@@ -50,3 +79,15 @@ test-tempest:
 # Build tempest
 build-tempest:
     cd {{root}}/tempest && npm run build
+
+# ============================================
+# lobby
+# ============================================
+
+# Start the lobby dev server (http://localhost:5270/lobby/)
+dev-lobby:
+    cd {{root}}/lobby && npm run dev
+
+# Build the lobby
+build-lobby:
+    cd {{root}}/lobby && npm run build
