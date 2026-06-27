@@ -29,7 +29,8 @@ stories:
     description: "Holding auto-fire while spinning only lands a shot every ~2-3 frames, so spin-and-hold skips enemies. AUTHENTIC ROM CONSTANTS (rev-3): there is NO fire cooldown — firing is gated only by (a) the fire button held and (b) a free shot slot; max 8 concurrent player shots (n_player_bullets=8); ONE new shot spawned per frame while held; shots travel +9 along-units/frame and free their slot at 0xf0 (~25 frames / ~0.42s lifetime from the rim). The ~1-per-3-frames steady state is authentic (8 slots / ~25-frame lifetime); the full-sweep feel comes from up to 8 shots in flight spread down the tube. FIX = remove any artificial cooldown, gate on an 8-shot concurrent cap, verify bullet speed so the pool recycles at the arcade rate. This answers the open cooldown-vs-cap question: it is the CAP, not a cooldown. Area: fire/cooldown logic in src/core/sim.ts; auto-fire input wiring in shell."
     points: 1
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-27'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -38,7 +39,10 @@ stories:
       - 'Root cause identified and documented: cooldown tuning vs. on-screen bullet cap (and the chosen lever justified).'
       - Cadence is deterministic (dt-driven) and covered by a seeded core unit test.
       - No artificial fire cooldown; auto-fire gated by an 8-shot concurrent cap + free slot; one shot per sim tick while held; bullet speed verified so the 8-shot pool recycles at ~arcade rate.
+    completed: '2026-06-27'
     type: bug
+    review_findings: 'HIGH: held-fire (every-frame) reaches stepHighScore as repeated letter-confirm -> auto-AAA on mouse restart; fix = edge-trigger fire confirm in core + regression test'
+    review_verdict: approved
   - id: 6-3
     title: Safe respawn after death (no chain-death on death lanes)
     description: 'On death the next ship respawns instantly at the death spot, so you chain-die on a blocked/crowded lane. DESIGN DECISION RESOLVED from the ROM (rev-3): the arcade does NOT use invulnerability — it RESETS THE BOARD. On death player_status goes negative; the death animation waits for all bullets to clear, then pushes surviving enemies back down the tube and zooms the claw down (along 0x10 -> 0xf0, +0x0f/frame ~= 15 frames / ~0.25s) — the enemies-vanish/claw-freezes/warp-to-blank the playtest observed. Then a life is deducted (40-frame / ~0.67s GAME OVER pause if it was the last); with lives remaining the board is FULLY RESET (remove_all_enemies_from_tube + setup_level + reset_pending_enemy_timers + clear_shots) and the player respawns at a FIXED lane (arcade segment 14), near rim, on the SAME level. NO invulnerability frames — the cleared board + spawn delay IS the grace, which is why the arcade never chain-deaths. Implement that model. Area: death/lives -> respawn transition in src/core/sim.ts.'

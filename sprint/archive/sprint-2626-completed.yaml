@@ -261,3 +261,8 @@ completed_stories:
     title: Slow→fast warp ramp on level-clear (no instant warp-death)
     points: 2
     completed: '2026-06-27'
+  - id: 6-2
+    epic: '6'
+    title: Consistent, faster auto-fire cadence for spin-and-hold
+    points: 1
+    completed: '2026-06-27'
