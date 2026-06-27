@@ -266,3 +266,8 @@ completed_stories:
     title: Consistent, faster auto-fire cadence for spin-and-hold
     points: 1
     completed: '2026-06-27'
+  - id: 7-7
+    epic: '7'
+    title: 'Canonical arcade server: one authoritative way to serve the games (dev + production)'
+    points: 3
+    completed: '2026-06-27'
