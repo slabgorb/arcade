@@ -281,3 +281,8 @@ completed_stories:
     title: 'Wave 1 — space combat: cockpit crosshair, TIE fighters, fireballs, firing, 3D collisions, lives, score'
     points: 5
     completed: '2026-06-27'
+  - id: 7-8
+    epic: '7'
+    title: Complete & harden canonical arcade serving (7-7 follow-up)
+    points: 2
+    completed: '2026-06-27'
