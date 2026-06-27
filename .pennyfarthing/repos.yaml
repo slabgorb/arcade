@@ -48,8 +48,8 @@ repos:
     framework: vite
     notes: |
       Second subrepo in the arcade series. Gitignored, with its own git history.
-      Pure game code — sprint/epics managed at the orchestrator (epic 1). Project
-      scaffold is story 1-1; dev/build/test commands land once that story is done.
+      Pure game code — sprint/epics managed at the orchestrator (epic 7). Project
+      scaffold is story 7-1; dev/build/test commands land once that story is done.
 
 # Architecture notes:
 # - Orchestrator pattern: arcade coordinates, each game is an independent subrepo.
