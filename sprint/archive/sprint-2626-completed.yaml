@@ -256,3 +256,8 @@ completed_stories:
     title: Lobby project scaffold (Vite + TS + Canvas 2D)
     points: 2
     completed: '2026-06-27'
+  - id: 6-1
+    epic: '6'
+    title: Slow→fast warp ramp on level-clear (no instant warp-death)
+    points: 2
+    completed: '2026-06-27'
