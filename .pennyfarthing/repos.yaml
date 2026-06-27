@@ -51,6 +51,27 @@ repos:
       Pure game code — sprint/epics managed at the orchestrator (epic 7). Project
       scaffold is story 7-1; dev/build/test commands land once that story is done.
 
+  star-wars:
+    path: star-wars
+    type: ui
+    description: |
+      Faithful browser-based vector clone of Atari's 1983 Star Wars.
+      First-person 3D cockpit shooter (TIE fighters → Death Star surface →
+      trench run). Canvas 2D glowing vectors, no backend, no 3D engine.
+      src/core holds the deterministic sim + the "Math Box" (math3d); src/shell
+      holds render/input/loop.
+    language: typescript
+    languages: [typescript]
+    framework: vite
+    dev_command: npm run dev      # vite dev server on http://localhost:5274
+    build_command: npm run build  # tsc --noEmit && vite build
+    test_command: npm test        # vitest run --passWithNoTests
+    notes: |
+      Third subrepo in the arcade series. Gitignored, with its own git history
+      (origin github.com/slabgorb/star-wars, default branch develop). Pure game
+      code — sprint/epics managed at the orchestrator. Authentic model/audio data
+      is ported from the cabinet disassembly under reference/ (gitignored).
+
 # Architecture notes:
 # - Orchestrator pattern: arcade coordinates, each game is an independent subrepo.
 # - Games share a visual language (glowing vector lines on black) but no code yet;

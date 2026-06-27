@@ -276,3 +276,8 @@ completed_stories:
     title: Port authentic 3D vector models (Object_3D_Data → core/models)
     points: 3
     completed: '2026-06-27'
+  - id: 8-3
+    epic: '8'
+    title: 'Wave 1 — space combat: cockpit crosshair, TIE fighters, fireballs, firing, 3D collisions, lives, score'
+    points: 5
+    completed: '2026-06-27'
