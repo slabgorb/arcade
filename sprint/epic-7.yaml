@@ -1,4 +1,4 @@
-id: '1'
+id: '7'
 type: epic
 title: Arcade lobby v1
 description: "The arcade's front door: a vector-style lobby on black that lists the games as glowing tiles, launches them, runs an attract-mode demo loop when idle, and shows per-game high scores. Matches the arcade visual language (glowing vector lines on black, Canvas 2D, no backend). Foundation for adding future games to the cabinet."
@@ -6,7 +6,7 @@ priority: p1
 status: backlog
 repos: lobby
 stories:
-  - id: 1-1
+  - id: 7-1
     title: Lobby project scaffold (Vite + TS + Canvas 2D)
     points: 2
     priority: p1
@@ -14,35 +14,35 @@ stories:
     repos: lobby
     workflow: trivial
     type: chore
-  - id: 1-2
+  - id: 7-2
     title: Vector glow rendering primitives
     points: 2
     priority: p1
     status: backlog
     repos: lobby
     workflow: trivial
-  - id: 1-3
+  - id: 7-3
     title: Game registry and tile grid
     points: 3
     priority: p1
     status: backlog
     repos: lobby
     workflow: tdd
-  - id: 1-4
+  - id: 7-4
     title: Tile selection and game launch
     points: 2
     priority: p1
     status: backlog
     repos: lobby
     workflow: trivial
-  - id: 1-5
+  - id: 7-5
     title: Per-game high scores on tiles
     points: 2
     priority: p2
     status: backlog
     repos: lobby
     workflow: trivial
-  - id: 1-6
+  - id: 7-6
     title: Attract mode (idle demo loop)
     points: 3
     priority: p2
