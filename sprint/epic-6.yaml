@@ -48,7 +48,8 @@ stories:
     description: 'On death the next ship respawns instantly at the death spot, so you chain-die on a blocked/crowded lane. DESIGN DECISION RESOLVED from the ROM (rev-3): the arcade does NOT use invulnerability — it RESETS THE BOARD. On death player_status goes negative; the death animation waits for all bullets to clear, then pushes surviving enemies back down the tube and zooms the claw down (along 0x10 -> 0xf0, +0x0f/frame ~= 15 frames / ~0.25s) — the enemies-vanish/claw-freezes/warp-to-blank the playtest observed. Then a life is deducted (40-frame / ~0.67s GAME OVER pause if it was the last); with lives remaining the board is FULLY RESET (remove_all_enemies_from_tube + setup_level + reset_pending_enemy_timers + clear_shots) and the player respawns at a FIXED lane (arcade segment 14), near rim, on the SAME level. NO invulnerability frames — the cleared board + spawn delay IS the grace, which is why the arcade never chain-deaths. Implement that model. Area: death/lives -> respawn transition in src/core/sim.ts.'
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-06-27'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -57,7 +58,9 @@ stories:
       - The player gets a recovery beat on respawn (e.g. brief invulnerability and/or board reset and/or safe spawn relocation, per the chosen model).
       - Respawn behavior is deterministic (seeded RNG + dt) and covered by a core unit test reproducing the chain-death scenario.
       - 'On respawn (lives remain): all enemies removed + spawn timers reset, same level restarts, claw at a fixed lane near rim; brief ~0.25s death-zoom animation first; NO invulnerability frames (cleared board + spawn delay is the grace).'
+    completed: '2026-06-27'
     type: bug
+    review_verdict: approved
   - id: 6-4
     title: Adopt Vector Battle vector font for HUD & framing text
     description: "Adopt the 'Vector Battle' arcade vector font (VectorBattle-e9XO.ttf — ck!/freakyfonts, 1999; Freeware Non-Commercial) for HUD and framing-screen text, replacing the current default-font rendering, to match the glowing-vector aesthetic. SHELL/RENDER-ONLY — no src/core/ impact. Load via the FontFace API / @font-face and ship the 29KB TTF as a static asset honoring Vite base:'/tempest/'. The face is CAPS-ONLY, so render text uppercase. Thin strokes get fragile at small sizes — render HUD at >=18-20px and/or reduce glow blur. License cleared for this non-commercial project; a commercial license must be purchased from the designer if the project ever becomes commercial. Full UX spec: docs/ux/2026-06-27-tempest-arcade-feel-reference.md (Typography section)."
