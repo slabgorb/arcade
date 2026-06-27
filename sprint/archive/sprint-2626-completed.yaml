@@ -271,3 +271,8 @@ completed_stories:
     title: 'Canonical arcade server: one authoritative way to serve the games (dev + production)'
     points: 3
     completed: '2026-06-27'
+  - id: 8-2
+    epic: '8'
+    title: Port authentic 3D vector models (Object_3D_Data → core/models)
+    points: 3
+    completed: '2026-06-27'
