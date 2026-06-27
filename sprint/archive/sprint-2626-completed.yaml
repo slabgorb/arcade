@@ -4,6 +4,9 @@ sprint:
   jira_sprint_id: 1
   jira_sprint_name: "TO Sprint 2626"
   goal: Tempest playable slice (Waves 0-1) plus full roadmap epics
+  start_date: '2026-06-24'
+  end_date: '2026-07-08'
+  status: active
 
 completed_epics:
   - '0'
@@ -247,4 +250,9 @@ completed_stories:
     epic: '6'
     title: Adopt Vector Battle vector font for HUD & framing text
     points: 1
+    completed: '2026-06-27'
+  - id: 7-1
+    epic: '7'
+    title: Lobby project scaffold (Vite + TS + Canvas 2D)
+    points: 2
     completed: '2026-06-27'

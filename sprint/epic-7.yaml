@@ -10,10 +10,13 @@ stories:
     title: Lobby project scaffold (Vite + TS + Canvas 2D)
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-06-27'
     repos: lobby
     workflow: trivial
+    completed: '2026-06-27'
     type: chore
+    review_verdict: approved
   - id: 7-2
     title: Vector glow rendering primitives
     points: 2
