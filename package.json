@@ -1,0 +1,10 @@
+{
+  "name": "arcade-orchestrator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Orchestrator-level checks for the arcade (e.g. the canonical serve contract). Games live in their own subrepos.",
+  "scripts": {
+    "test": "node --test tests/"
+  }
+}
