@@ -271,7 +271,6 @@ completed_stories:
     title: 'Canonical arcade server: one authoritative way to serve the games (dev + production)'
     points: 3
     completed: '2026-06-27'
-<<<<<<< HEAD
   - id: 8-2
     epic: '8'
     title: Port authentic 3D vector models (Object_3D_Data → core/models)
@@ -290,5 +289,10 @@ completed_stories:
   - id: 6-3
     epic: '6'
     title: Safe respawn after death (no chain-death on death lanes)
+    points: 2
+    completed: '2026-06-27'
+  - id: 6-5
+    epic: '6'
+    title: Enemies fire energy bolts at the player
     points: 2
     completed: '2026-06-27'
