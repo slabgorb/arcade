@@ -52,8 +52,9 @@ just serve           # serve the cabinet: lobby on :5270, tempest on :5273
 
 `just serve` is the one authoritative launch command. The live arcade
 ([arcade.slabgorb.com](https://arcade.slabgorb.com), via a Cloudflare tunnel) is
-served from a single canonical checkout running exactly this — **never** start an
-ad-hoc server from a duplicate / non-authoritative clone. See `CLAUDE.md` →
+simply whichever checkout currently has `just serve` bound to the pinned ports —
+`strictPort` means only one server can hold `:5273` / `:5270` at a time, so the
+directory name a checkout lives in doesn't matter. See `CLAUDE.md` →
 _Serving the arcade (canonical)_ for the full workflow.
 
 ## Working on a game

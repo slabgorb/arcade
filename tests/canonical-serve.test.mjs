@@ -1,13 +1,15 @@
-// Story 7-7 — Canonical arcade server.
+// Story 7-7 — Canonical arcade server (hardened by 7-8).
 //
 // These tests guard the *in-repo* contract for a single authoritative way to
 // serve the arcade: a canonical `serve` recipe at the orchestrator + docs that
-// name the canonical serve workflow, checkout, and pinned ports. They cannot
-// test the operator-only acceptance criteria (wiring the live Cloudflare tunnel,
-// deleting/renaming stale clones on disk) — those are verified manually and are
-// recorded as Delivery Findings in the session file.
+// name the `just serve` workflow, the pinned ports, and the rule that
+// "canonical" is the repo (`arcade`) rather than any one checkout directory —
+// the live site is whatever checkout is bound to the tunnel's ports.
 //
-// Run from the orchestrator root: `npm test` (→ `node --test tests/`).
+// They do not touch the operator's live infrastructure (the Cloudflare tunnel,
+// which checkout is currently running); that is a runtime fact, not an in-repo one.
+//
+// Run from the orchestrator root: `npm test` (→ `node --test 'tests/**/*.test.mjs'`).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,10 +26,17 @@ const LOBBY_PORT = '5270';
 
 // Extract a `just` recipe body by name. A recipe header sits at column 0
 // (`name:`, `name args:`, or `name: deps`); its body lines are indented.
+//
+// A variable assignment (`name := "value"`) also starts at column 0 and begins
+// with the same token, so the `name `-space alternative would otherwise match it.
+// `:=` is `just`'s assignment operator and never appears in a recipe header, so
+// excluding any line containing `:=` keeps `serve :=` from masquerading as the
+// `serve` recipe.
 function recipeBody(justfile, name) {
   const lines = justfile.split('\n');
   const header = new RegExp(`^${name}(\\s|:)`);
-  const start = lines.findIndex((line) => header.test(line));
+  const isAssignment = /:=/;
+  const start = lines.findIndex((line) => header.test(line) && !isAssignment.test(line));
   if (start === -1) return null;
   const body = [];
   for (let i = start + 1; i < lines.length; i++) {
@@ -63,9 +72,22 @@ test('AC2: canonical `serve` recipe launches the lobby and the game subrepos', (
   );
 });
 
-// --- AC1 + AC5: docs name the canonical workflow, checkout, and ports -------
+test('AC2: the canonical serve set (`subrepos` / install-all) includes the lobby', () => {
+  // `serve` and `install-all` iterate the `subrepos` list; the lobby shell must
+  // be part of the canonical cabinet, not just the games.
+  const justfile = read('justfile');
+  const subrepos = justfile.match(/^subrepos\s*:=\s*"([^"]*)"/m);
+  assert.notEqual(subrepos, null, 'justfile must define a `subrepos` list for the canonical serve/install set');
+  assert.match(
+    subrepos[1],
+    /\blobby\b/,
+    'the canonical serve/install set (`subrepos`) must include the lobby',
+  );
+});
 
-test('AC1/AC5: CLAUDE.md documents the canonical serve workflow (`just serve`)', () => {
+// --- docs name the canonical command, the repo-not-directory rule, and ports
+
+test('CLAUDE.md documents the canonical serve workflow (`just serve`)', () => {
   const claude = read('CLAUDE.md');
   assert.match(claude, /just serve/, 'CLAUDE.md must document the `just serve` command');
   assert.match(
@@ -75,12 +97,20 @@ test('AC1/AC5: CLAUDE.md documents the canonical serve workflow (`just serve`)',
   );
 });
 
-test('AC1: docs identify a single canonical checkout/location as the source of truth', () => {
+test('CLAUDE.md defines "canonical" by the repo + tunnel binding, not the directory name', () => {
   const claude = read('CLAUDE.md');
+  // The orchestrator repo is `arcade`; the checkout directory carries no authority.
   assert.match(
     claude,
-    /source of truth|authoritative/i,
-    'CLAUDE.md must name a single canonical checkout/location as the authoritative source of truth for serving',
+    /directory name/i,
+    'CLAUDE.md must address the directory name explicitly — it carries no authority; every checkout is equally `arcade`',
+  );
+  // "Live" is a runtime fact: whatever checkout is bound to the tunnel ports.
+  // Tolerate markdown line-wrapping between "bound to the" and "ports".
+  assert.match(
+    claude,
+    /bound to the[\s\S]*?ports/i,
+    'CLAUDE.md must define the live arcade as whatever checkout is bound to the tunnel ports',
   );
 });
 
@@ -92,19 +122,28 @@ test('AC5: README documents the canonical serve command (`just serve`)', () => {
   );
 });
 
-test('AC2: canonical serve docs reference both pinned ports (5273 tempest, 5270 lobby)', () => {
-  const docs = read('CLAUDE.md') + '\n' + read('README.md');
-  assert.match(docs, new RegExp(TEMPEST_PORT), `docs must reference the pinned tempest port ${TEMPEST_PORT}`);
-  assert.match(docs, new RegExp(LOBBY_PORT), `docs must reference the pinned lobby port ${LOBBY_PORT}`);
+test('AC2: each canonical serve doc references both pinned ports (5273 tempest, 5270 lobby)', () => {
+  // Assert per-file, not against the concatenation: a port present in only one
+  // doc must not let the other doc pass on its sibling's text.
+  for (const file of ['CLAUDE.md', 'README.md']) {
+    const doc = read(file);
+    assert.match(doc, new RegExp(TEMPEST_PORT), `${file} must reference the pinned tempest port ${TEMPEST_PORT}`);
+    assert.match(doc, new RegExp(LOBBY_PORT), `${file} must reference the pinned lobby port ${LOBBY_PORT}`);
+  }
 });
 
-// --- AC4 (in-repo doc footprint): warn against ad-hoc / duplicate servers ---
+// --- docs: strictPort gives exactly one owner per pinned port ---------------
 
-test('AC4/AC5: docs warn against serving from a random / non-authoritative clone', () => {
+test('docs explain that strictPort lets only one server own each pinned port', () => {
   const docs = read('CLAUDE.md') + '\n' + read('README.md');
   assert.match(
     docs,
-    /ad-hoc|non-authoritative|random clone|duplicate clone|stale clone/i,
-    'docs must warn against starting an ad-hoc server from a duplicate/non-authoritative clone',
+    /strictPort/,
+    'docs must reference strictPort, which pins the ports so only one server can hold each',
+  );
+  assert.match(
+    docs,
+    /fails? loudly|errors? out|only one server/i,
+    'docs must explain a port collision fails loudly — no silent rival copy on a pinned port',
   );
 });

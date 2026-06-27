@@ -61,8 +61,8 @@ npm test         # vitest run --passWithNoTests
 
 ## Serving the arcade (canonical)
 
-There is **one** authoritative way to serve the arcade, and exactly **one
-canonical checkout** that serves it. From the orchestrator root:
+There is **one** authoritative way to serve the arcade: `just serve`, from the
+orchestrator root.
 
 ```bash
 just install-all   # once per fresh checkout — installs lobby + every game
@@ -70,7 +70,7 @@ just serve         # serve the whole cabinet (lobby + games) on pinned ports
 ```
 
 `just serve` is the single source of truth for running the arcade in dev. It
-launches every servable subrepo from **this** checkout on its pinned port
+launches every servable subrepo from the current checkout on its pinned port
 (Ctrl-C stops them all):
 
 | Subrepo | URL                              | Port |
@@ -79,28 +79,28 @@ launches every servable subrepo from **this** checkout on its pinned port
 | tempest | `http://localhost:5273/tempest/` | 5273 |
 
 Ports are pinned with `strictPort` in each subrepo's `vite.config.ts`, so a
-collision fails loudly instead of silently wandering to another port.
+collision fails loudly instead of silently wandering to another port. The first
+server to bind a pinned port owns it; a second `just serve` on the same port
+errors out rather than quietly starting a rival copy.
 
-### One canonical checkout — never serve from a duplicate
+### "Canonical" is the repo, not the directory
 
-The arcade has been cloned several times under `~/Projects` (e.g. `a-1`,
-`arcade`, a standalone `tempest`). Only **one** of these is canonical: the
-checkout the **Cloudflare tunnel** (`arcade.slabgorb.com`) is wired to. That
-checkout is the **authoritative source of truth** for both dev and production.
+The orchestrator repo is **arcade**. It can be checked out in any directory
+(`~/Projects/arcade`, `a-1`, `a-2`, …) — the directory name is just a location
+and carries no authority. Every checkout is equally `arcade`; there is no
+blessed folder.
 
-- Serve the live arcade **only** from the canonical checkout, **only** via
-  `just serve`. The tunnel forwards `:5273` (tempest) and `:5270` (lobby) from
-  that one checkout — nothing else.
-- Do **not** start an ad-hoc Vite server from a random / non-authoritative
-  clone. That is exactly how shipped work went missing from the live site: a
-  stale standalone clone was pinned to `:5273` while real work happened in a
-  different copy.
-- Non-canonical clones must be removed or clearly marked non-authoritative so no
-  one accidentally serves the arcade from them.
+The live arcade ([arcade.slabgorb.com](https://arcade.slabgorb.com), via a
+Cloudflare tunnel) is whatever checkout currently has `just serve` bound to the
+tunnel's pinned ports (`:5273` tempest, `:5270` lobby). Which checkout is "live"
+is a **runtime fact — which process owns the ports — not a property of the
+directory name.** To make a checkout live, run `just serve` from it; `strictPort`
+guarantees only one server can hold each pinned port at a time, so two checkouts
+never silently fight over `:5273`.
 
 ## Git Workflow
 
-- **Orchestrator (arcade):** no remote yet; commit only when asked.
+- **Orchestrator (arcade):** remote `origin` → [github.com/slabgorb/arcade](https://github.com/slabgorb/arcade); default branch `main` (trunk-based — commit straight to `main`). Commit only when asked.
 - **Game subrepos:** each has its own remote and history.
   - **Default branch:** `develop`
   - **PRs target:** `develop`

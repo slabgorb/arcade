@@ -75,7 +75,8 @@ stories:
     description: "Follow-up to 7-7. Story 7-7 landed the IN-REPO half of canonical serving: a single 'just serve' recipe that runs lobby (:5270) + tempest (:5273) from one checkout, plus CLAUDE.md/README docs naming the canonical workflow. Two things were deliberately left out because code in this repo cannot do them, and the 7-7 review surfaced a few non-blocking nits. This story finishes the job: (A) the OPERATOR actions that actually stop the live site from drifting — repoint the Cloudflare tunnel at the one canonical checkout and retire the stale duplicate clones under ~/Projects; and (B) small in-repo polish from the 7-7 review (engines pin, a stale test comment, and test-quality tightening). Until (A) is done, the original 6-2/6-4 drift bug that motivated 7-7 is not actually fixed — the docs describe the rule but nothing enforces it."
     points: 2
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-06-27'
     repos: orchestrator
     workflow: trivial
     acceptance_criteria:
