@@ -75,6 +75,46 @@ per the orchestrator CLAUDE.md).
 - WebAudio SFX + POKEY bake tooling: `tempest/src/shell/audio.ts`, `tempest/tools/` → reuse approach for 8-7
 - Game-level conventions: `star-wars/CLAUDE.md` (roadmap, boundary rule, ports)
 
+## Geometry connectivity (read before 8-4/8-5)
+> Architect note, recorded during the 8-3 follow-up after the TIE fighters
+> rendered as tangled wireframes in-game.
+
+**The model EDGES in `src/core/models.ts` are reconstructed, not authentic.**
+`reference/disasm/Object_3D_Data.asm` holds **vertex tables only** — the
+line-segment connectivity lived in the AVG vector-draw routines and is **not
+recoverable** by object from the disassembly we have (confirmed: no draw-list
+refs in `StarWars.asm` either). The 8-2 port therefore auto-generated edges with
+a **nearest-neighbour heuristic**, which is well-formed (valid indices, no
+orphans) but **visually tangled** — polygon rims never close, spokes jump to
+arbitrary vertices.
+
+**Fixed for the TIEs (8-3 follow-up), still owed for the rest.** `TIE_FIGHTER`
+and `DARTH_TIE` edges were rebuilt from the vertices' own ring structure and are
+now guarded by a topology test. **`DEATH_STAR_SURFACE`, `SURFACE_TOWER`, and
+`TRENCH` still carry the heuristic edges and WILL render tangled** when 8-4/8-5
+draw them in anger. Treat this as inherited rendering debt, not new work.
+
+**The reconstruction pattern (apply per model in 8-4/8-5):**
+1. **Group vertices into rings** — coplanar / equal-radius vertex sets are the
+   real structure (hex panels, octagonal pods, square trench tiles).
+2. **Close each ring into a loop**, ordered around its centroid (no self-cross).
+3. **Add radial spokes** (rim→hub) and **struts** between stacked rings.
+4. **Guard with a topology test** — reuse `inducedSingleCycle(edges, ringIndices)`
+   in `tests/core/models.test.ts`; assert each rim/ring closes. Derive the ring
+   indices from the geometry, never hardcode specific edges (mirrors the 8-2
+   "assert well-formedness, never specific edges" contract).
+5. **Eyeball on first render.** Structural tests catch tangles but **not
+   orientation or scale** — every model must be viewed in-game once.
+
+**Display orientation is a render concern, kept out of core.** Authentic
+object-space axes do **not** match the in-game view: the TIE's solar panels
+stack along the model's Y axis, so `shell/render.ts` applies a fixed
+`TIE_ORIENT` (a `rotationX`/`rotationZ` from the Math Box) to face them at the
+player. The authentic vertex data in `core/models.ts` stays untouched. Expect
+the surface/trench models to need their own display orientation (floor in y=0,
+towers on +y). Per-enemy facing (turrets tracking, etc.) is sim state and stays
+in `core`.
+
 ## Cross-Story Constraints & Guardrails
 1. **Determinism is non-negotiable.** Any new core module obeys the boundary
    above. If a test needs randomness, seed the RNG; if it needs time, pass `dt`.
