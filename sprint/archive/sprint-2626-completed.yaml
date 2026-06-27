@@ -243,3 +243,8 @@ completed_stories:
     title: Render particles, screen-shake, and glow tuning
     points: 2
     completed: '2026-06-25'
+  - id: 6-4
+    epic: '6'
+    title: Adopt Vector Battle vector font for HUD & framing text
+    points: 1
+    completed: '2026-06-27'
