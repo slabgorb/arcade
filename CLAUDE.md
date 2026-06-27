@@ -20,20 +20,23 @@ arcade/                      # Orchestrator (this repo)
 ├── .pennyfarthing/          # Pennyfarthing framework (pf 13.3.0)
 │   └── repos.yaml           # Registry of orchestrated game subrepos
 ├── .session/                # Active work sessions
+├── sprint/                  # Combined sprint + epics for ALL games
 ├── justfile                 # Task runner (imports .pennyfarthing/justfile.pf)
 ├── start-session            # tmux multi-pane session launcher
 ├── tmux.conf.*              # tmux layouts (left / right / vert)
-└── tempest/                 # Game subrepo (gitignored, clone separately)
-    ├── src/core/            # Deterministic simulation
-    ├── src/shell/           # Render / audio / input / storage
-    └── sprint/              # tempest's own sprint tracking
+├── tempest/                 # Game subrepo (gitignored) — pure game code
+│   ├── src/core/            # Deterministic simulation
+│   └── src/shell/           # Render / audio / input / storage
+└── lobby/                   # Arcade lobby subrepo (gitignored) — scaffold pending
 ```
 
 New games are added as sibling subrepos and registered in `repos.yaml`.
 
 ## Subrepos & Commands
 
-Commands run **inside the game subrepo**, not at the orchestrator root.
+Build and test commands run **inside the game subrepo**. Sprint and workflow
+commands (`/pf-sprint`, `/sm`, …) run at the **orchestrator root**, where the
+combined sprint lives.
 
 ### tempest (TypeScript · Vite 8 · Vitest 4 · ES modules)
 
@@ -82,8 +85,9 @@ npm run test:watch
 
 ## Important Notes
 
-- **Sprint tracking lives in each subrepo** (e.g. `tempest/sprint/`), not at the
-  orchestrator root. Work on a game from inside that game's directory.
+- **Sprint tracking lives at the orchestrator root** (`arcade/sprint/`) — one
+  combined sprint with an epic per game. Run sprint/workflow commands from the
+  orchestrator; run a game's build/test commands from inside that game's directory.
 - **No shared code yet.** Games share a visual language (glowing vector lines on
   black, Canvas 2D, no backend) but not implementation. Extract a shared library
   only once a second game proves the duplication is real.

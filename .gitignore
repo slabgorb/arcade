@@ -16,3 +16,4 @@ tui-pid
 # Local tmux config (copied from sample)
 tmux.conf
 tempest
+lobby
