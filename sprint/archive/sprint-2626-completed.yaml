@@ -371,3 +371,8 @@ completed_stories:
     title: Authentic per-level flipper flip patterns + multi-tick flip animation (6-9 follow-up)
     points: 5
     completed: '2026-06-28'
+  - id: 8-7
+    epic: '8'
+    title: 'Wave 5 — audio: POKEY SFX + TMS5220 speech (''Use the Force, Luke'')'
+    points: 3
+    completed: '2026-06-28'

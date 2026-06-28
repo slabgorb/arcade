@@ -82,9 +82,21 @@ stories:
     title: 'Wave 5 — audio: POKEY SFX + TMS5220 speech (''Use the Force, Luke'')'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    assigned_to: Keith Avery
+    started: '2026-06-28'
     repos: star-wars
     workflow: tdd
+    acceptance_criteria:
+      - 'Core emits audio events: GameState.events carries fire/enemy-fire/enemy-death/player-death/level-clear/player-spawn for Wave-1 gameplay; unit tests verify the event stream under a fixed RNG seed.'
+      - POKEY bake tooling ported to star-wars/tools/pokey-bake/ (bake-sfx.mjs, sfx-data.mjs, vendored pokey); running bake-sfx.mjs renders at least 3 SFX to .wav without errors.
+      - shell/audio.ts implements createAudioEngine() with resume(), play(name), ready(); loads a SOUNDS manifest and degrades gracefully when an asset fetch or WebAudio is unavailable.
+      - 'Audio events wired in the shell loop: state.events is drained each frame, dispatched to audioEngine.play() by type, and cleared.'
+      - npm run dev boots with no audio/console errors; gameplay triggers SFX or degrades silently.
+      - 'Speech/TMS5220 decision logged in the session: chosen approach (LPC decode vs pre-baked .wav) with a source reference; live synthesis may be deferred.'
+      - No debug code; npm test passes; core tests assert audio-event emission.
+    completed: '2026-06-28'
+    review_verdict: approved
   - id: 8-8
     title: 'Wave/phase progression: space->surface->trench (make Waves 2-3 playable)'
     description: |-
