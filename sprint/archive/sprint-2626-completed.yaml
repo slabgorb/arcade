@@ -366,3 +366,8 @@ completed_stories:
     title: Decide & reconcile authentic ROM spawn schedule vs the playtest-tuned curve (6-9 follow-up)
     points: 3
     completed: '2026-06-28'
+  - id: 6-14
+    epic: '6'
+    title: Authentic per-level flipper flip patterns + multi-tick flip animation (6-9 follow-up)
+    points: 5
+    completed: '2026-06-28'

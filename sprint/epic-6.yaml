@@ -223,9 +223,12 @@ stories:
     title: Authentic per-level flipper flip patterns + multi-tick flip animation (6-9 follow-up)
     points: 5
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: tempest
     workflow: tdd
+    completed: '2026-06-28'
+    review_verdict: approved
   - id: 6-15
     title: 'Remaining enemy motion fidelity: spiker 0x20 turnaround, fuseball steering+hit_tol, pulsar far/near speed (6-9 follow-up)'
     points: 3
