@@ -21,9 +21,13 @@ stories:
     title: Vector glow rendering primitives
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: lobby
     workflow: trivial
+    completed: '2026-06-28'
+    review_findings: "Green rework (no logic defects): (1) tests/render.test.ts:83 'as unknown as CanvasRenderingContext2D' double-cast — narrow to a Pick<> stub or add rule-required comment; (2) render.ts Readonly<GlowStyle> missing on all 5 fns. Recommended: glowText default-blur test + glowFill geometry assertions."
+    review_verdict: approved
   - id: 7-3
     title: Game registry and tile grid
     points: 3

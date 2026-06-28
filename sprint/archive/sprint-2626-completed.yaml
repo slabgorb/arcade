@@ -306,3 +306,8 @@ completed_stories:
     title: 'Wave 2 — Death Star surface: towers, laser turrets, terrain skim'
     points: 5
     completed: '2026-06-28'
+  - id: 7-2
+    epic: '7'
+    title: Vector glow rendering primitives
+    points: 2
+    completed: '2026-06-28'
