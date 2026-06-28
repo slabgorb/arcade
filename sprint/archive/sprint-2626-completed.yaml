@@ -386,3 +386,8 @@ completed_stories:
     title: Firing does not kill enemies; wave clears via collision/ramming not kills — fix hit-detection + wave-clear condition (Wave 1)
     points: 3
     completed: '2026-06-28'
+  - id: 8-11
+    epic: '8'
+    title: Fix Wave 2 Death Star surface geometry not visible during gameplay
+    points: 3
+    completed: '2026-06-28'
