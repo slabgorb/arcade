@@ -316,3 +316,8 @@ completed_stories:
     title: Game registry and tile grid
     points: 3
     completed: '2026-06-28'
+  - id: 6-6
+    epic: '6'
+    title: Bake & wire authentic POKEY SFX from ROM (incl. enemy-fire)
+    points: 3
+    completed: '2026-06-28'
