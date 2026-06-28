@@ -1,7 +1,7 @@
 id: '7'
 type: epic
 title: Arcade lobby v1
-description: "The arcade's front door: a vector-style lobby on black that lists the games as glowing tiles, launches them, runs an attract-mode demo loop when idle, and shows per-game high scores. Matches the arcade visual language (glowing vector lines on black, Canvas 2D, no backend). Foundation for adding future games to the cabinet."
+description: 'The arcade''s front door: a vector-style lobby on black that lists the games as glowing tiles, launches them, runs an attract-mode demo loop when idle, and shows per-game high scores. Matches the arcade visual language (glowing vector lines on black, Canvas 2D, no backend). Foundation for adding future games to the cabinet.'
 priority: p1
 status: backlog
 repos: lobby
@@ -26,15 +26,22 @@ stories:
     repos: lobby
     workflow: trivial
     completed: '2026-06-28'
-    review_findings: "Green rework (no logic defects): (1) tests/render.test.ts:83 'as unknown as CanvasRenderingContext2D' double-cast — narrow to a Pick<> stub or add rule-required comment; (2) render.ts Readonly<GlowStyle> missing on all 5 fns. Recommended: glowText default-blur test + glowFill geometry assertions."
+    review_findings: 'Green rework (no logic defects): (1) tests/render.test.ts:83 ''as unknown as CanvasRenderingContext2D'' double-cast — narrow to a Pick<> stub or add rule-required comment; (2) render.ts Readonly<GlowStyle> missing on all 5 fns. Recommended: glowText default-blur test + glowFill geometry assertions.'
     review_verdict: approved
   - id: 7-3
     title: Game registry and tile grid
     points: 3
     priority: p1
-    status: backlog
+    status: done
     repos: lobby
     workflow: tdd
+    acceptance_criteria:
+      - 'Game registry structure: array/map of games with {id, title, launchUrl, color}'
+      - 'Grid layout algorithm: centred, row-major, with configurable columns (default ceil(sqrt(count))), gaps, and padding'
+      - Tile rendering using 7-2 glow primitives (glowRect outline + centred glowText label)
+      - Integration with mock games list (tempest registered with /tempest/ launch target)
+    completed: '2026-06-28'
+    review_verdict: approved
   - id: 7-4
     title: Tile selection and game launch
     points: 2
@@ -58,7 +65,7 @@ stories:
     workflow: tdd
   - id: 7-7
     title: 'Canonical arcade server: one authoritative way to serve the games (dev + production)'
-    description: "The arcade orchestrator pattern has been cloned ~4 times under ~/Projects (a-2, a-1, arcade, plus a standalone tempest), and every copy can launch its own Vite dev server. Result: the 'production' server on port 5273 (arcade.slabgorb.com via the Cloudflare tunnel) was pinned to a standalone ~/Projects/tempest checkout that sat 5 commits behind, while active work happened in a different copy — so shipped work (6-2, 6-4) never appeared on the live server. There is no single source of truth for serving the games. Establish ONE canonical way to serve the arcade (lobby + game subrepos): a single authoritative checkout + launch command at the orchestrator, pinned ports, the tunnel wired to that checkout only, and the duplicate clones identified and marked non-authoritative or removed. Goal: starting work or viewing the live arcade never depends on guessing which of N copies is current. Known copies (2026-06-27): ~/Projects/a-2/tempest (current), ~/Projects/tempest (standalone, served 5273, stale), ~/Projects/arcade/tempest, ~/Projects/a-1/tempest."
+    description: 'The arcade orchestrator pattern has been cloned ~4 times under ~/Projects (a-2, a-1, arcade, plus a standalone tempest), and every copy can launch its own Vite dev server. Result: the ''production'' server on port 5273 (arcade.slabgorb.com via the Cloudflare tunnel) was pinned to a standalone ~/Projects/tempest checkout that sat 5 commits behind, while active work happened in a different copy — so shipped work (6-2, 6-4) never appeared on the live server. There is no single source of truth for serving the games. Establish ONE canonical way to serve the arcade (lobby + game subrepos): a single authoritative checkout + launch command at the orchestrator, pinned ports, the tunnel wired to that checkout only, and the duplicate clones identified and marked non-authoritative or removed. Goal: starting work or viewing the live arcade never depends on guessing which of N copies is current. Known copies (2026-06-27): ~/Projects/a-2/tempest (current), ~/Projects/tempest (standalone, served 5273, stale), ~/Projects/arcade/tempest, ~/Projects/a-1/tempest.'
     points: 3
     priority: p1
     status: done
@@ -76,7 +83,7 @@ stories:
     review_verdict: approved
   - id: 7-8
     title: Complete & harden canonical arcade serving (7-7 follow-up)
-    description: "Follow-up to 7-7. Story 7-7 landed the IN-REPO half of canonical serving: a single 'just serve' recipe that runs lobby (:5270) + tempest (:5273) from one checkout, plus CLAUDE.md/README docs naming the canonical workflow. Two things were deliberately left out because code in this repo cannot do them, and the 7-7 review surfaced a few non-blocking nits. This story finishes the job: (A) the OPERATOR actions that actually stop the live site from drifting — repoint the Cloudflare tunnel at the one canonical checkout and retire the stale duplicate clones under ~/Projects; and (B) small in-repo polish from the 7-7 review (engines pin, a stale test comment, and test-quality tightening). Until (A) is done, the original 6-2/6-4 drift bug that motivated 7-7 is not actually fixed — the docs describe the rule but nothing enforces it."
+    description: 'Follow-up to 7-7. Story 7-7 landed the IN-REPO half of canonical serving: a single ''just serve'' recipe that runs lobby (:5270) + tempest (:5273) from one checkout, plus CLAUDE.md/README docs naming the canonical workflow. Two things were deliberately left out because code in this repo cannot do them, and the 7-7 review surfaced a few non-blocking nits. This story finishes the job: (A) the OPERATOR actions that actually stop the live site from drifting — repoint the Cloudflare tunnel at the one canonical checkout and retire the stale duplicate clones under ~/Projects; and (B) small in-repo polish from the 7-7 review (engines pin, a stale test comment, and test-quality tightening). Until (A) is done, the original 6-2/6-4 drift bug that motivated 7-7 is not actually fixed — the docs describe the rule but nothing enforces it.'
     points: 2
     priority: p1
     status: done
@@ -84,10 +91,10 @@ stories:
     repos: orchestrator
     workflow: trivial
     acceptance_criteria:
-      - "OPERATOR: The Cloudflare tunnel (arcade.slabgorb.com, ports 5273 tempest + 5270 lobby) is repointed at the single canonical orchestrator checkout that runs 'just serve', and verified live — the latest committed lobby + tempest appear on arcade.slabgorb.com."
+      - 'OPERATOR: The Cloudflare tunnel (arcade.slabgorb.com, ports 5273 tempest + 5270 lobby) is repointed at the single canonical orchestrator checkout that runs ''just serve'', and verified live — the latest committed lobby + tempest appear on arcade.slabgorb.com.'
       - 'OPERATOR: The stale/duplicate clones under ~/Projects (~/Projects/tempest, ~/Projects/arcade/tempest, ~/Projects/a-1/tempest) are removed, or clearly marked non-authoritative (e.g. a NONCANONICAL marker file), so no one can accidentally serve the arcade from them.'
       - package.json declares an 'engines' field (node >=20) so 'npm test' fails with a clear version error on unsupported Node instead of a cryptic one.
       - The stale header comment in tests/canonical-serve.test.mjs (line ~10) is corrected from 'node --test tests/' to the working 'node --test "tests/**/*.test.mjs"' invocation.
-      - "Test-quality polish in tests/canonical-serve.test.mjs: the recipeBody parser no longer false-matches a 'serve :=' variable line; the pinned-port checks assert both CLAUDE.md AND README.md per-file (not the concatenation); and a test verifies the canonical serve set (subrepos / install-all) includes lobby. Suite stays green."
+      - 'Test-quality polish in tests/canonical-serve.test.mjs: the recipeBody parser no longer false-matches a ''serve :='' variable line; the pinned-port checks assert both CLAUDE.md AND README.md per-file (not the concatenation); and a test verifies the canonical serve set (subrepos / install-all) includes lobby. Suite stays green.'
     completed: '2026-06-27'
     type: chore

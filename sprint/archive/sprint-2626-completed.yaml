@@ -311,3 +311,8 @@ completed_stories:
     title: Vector glow rendering primitives
     points: 2
     completed: '2026-06-28'
+  - id: 7-3
+    epic: '7'
+    title: Game registry and tile grid
+    points: 3
+    completed: '2026-06-28'
