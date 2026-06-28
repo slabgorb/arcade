@@ -401,3 +401,8 @@ completed_stories:
     title: Extract, bake & host the remaining 7 authentic POKEY SFX
     points: 3
     completed: '2026-06-28'
+  - id: 6-15
+    epic: '6'
+    title: 'Remaining enemy motion fidelity: spiker 0x20 turnaround, fuseball steering+hit_tol, pulsar far/near speed (6-9 follow-up)'
+    points: 3
+    completed: '2026-06-28'

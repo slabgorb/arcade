@@ -235,9 +235,12 @@ stories:
     title: 'Remaining enemy motion fidelity: spiker 0x20 turnaround, fuseball steering+hit_tol, pulsar far/near speed (6-9 follow-up)'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: tempest
     workflow: tdd
+    completed: '2026-06-28'
+    review_verdict: approved
   - id: 6-16
     title: Harden 6-9 enemy-motion tests (fuseball toggle, spiker self-hop/open-tube) + resolve spiker relocation tuning (6-9 review follow-ups)
     points: 2
