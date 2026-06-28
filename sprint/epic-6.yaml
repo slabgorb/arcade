@@ -153,7 +153,8 @@ stories:
     description: "Tune enemy motion/behavior to authentic constants from the rev-3 ROM (enemy-recon). CORE/sim - deterministic (dt + seeded RNG). GLOBAL: along 0x10=near rim/player .. 0xf0=far; enemies spawn 0xf0 and climb toward low along; 0x20 = near-rim trigger (split / spiker-reverse / grab). Speed bytes are signed, sign-extended x8; net ~ (byte)/32 along/frame, x60 -> per second. FLIPPER: climb spd_flipper L1 -1.375/fr (-82.5/s, ~2.7s up the tube), L33+ -3.375/fr; a flip sets 0x80+target angle then steps +/-1 per tick into the adjacent lane; per-level flip patterns (m_l0b 8-moves-then-flip, m_l19 constant flip, m_l24 2-then-3 alternating, m_l87 flip-away-then-4-moves); rim grab kills if same seg as player; flip_top_accel 2 (L1-32) / 3 (L33+). TANKER: straight up at flipper speed; SPLITS on reaching 0x20 OR on death into 2 children of cargo type into adjacent lanes (seg-1, seg+1); split-type 1 -> 2 flippers / 2 -> 2 pulsars / 3 -> 2 fuzzballs. SPIKER: spike grows only toward the rim (spike_ht=along when along<spike_ht), growth rate = climb speed; oscillates ~0x20 <-> far; at the far end hops to a random lane (prefers the tallest-spike lane), converts to flipper/tanker if none pending; speed flipper-relative (L21+ faster). FUSEBALL: spd_fuzzball = 2x spd_flipper (fastest; L1 -2.75/fr, -165/s); rolls along the rim + slides lanes toward the player gated by fuzz_move probability (pokey2_rand); KILLABLE ONLY on a lane in its vulnerable phase (L02cc bit7), NOT while rolling the rim; hit_tol 6 (wider); score 250/500/750 random. PULSAR: appears L17+; flipper speed when far, pulsar speed near (spd_pulsar const -82.5/s); pulse integrated by pulse_beat (4/6/8); pulsar_fliprate 40fr@L17 -> 10-20fr@L40+; LETHAL LANE: when pulsing is active and the player is in the pulsar's lane -> player death (standing in a pulsing pulsar's lane kills you). SPAWN/MIX (verify vs our difficulty): flippers-only L1-4; tankers L5+; spikers L5-16; fuseballs L11+; pulsars L17+; steady L33+ (5F/3P/3T/1S/3Fz); wave_enemies released via 64 staggered ~16fr/0.27s countdowns while in-tube < max_enm=6. SCORES (verify): Flipper 150, Pulsar 200, Tanker 100, Spiker 50, Fuseball 250/500/750. May split per-enemy. Full notes in design ref (Enemy roster)."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -161,6 +162,8 @@ stories:
       - Fuseball killable only in its on-lane vulnerable phase (not on the rim); Tanker splits into 2 cargo-type children on 0x20/death; Spiker spike grows toward rim and hops at the far end; Pulsar lethal-lane kills a player standing in a pulsing lane.
       - Spawn mix by level and scoring verified vs the ROM (Flipper150 / Pulsar200 / Tanker100 / Spiker50 / Fuseball250-500-750).
       - 'Pure-core boundary preserved: no DOM / time / Math.random; deterministic and frame-rate independent.'
+    completed: '2026-06-28'
+    review_verdict: approved
   - id: 6-10
     title: Wire authentic segment-tick + countdown-beep SFX — add their game triggers
     description: "Two authentic POKEY SFX were extracted from the ROM and baked in story 6-6 but have no game trigger yet: segment_tick (ROM $cc39 — cursor/claw line-cross tick) and countdown_beep (ROM $cc69 — the loud level-select timeout warning). The WAVs already exist, baked AND hosted on R2 by 6-6 (arcade/tempest/sfx/segment_tick.wav + countdown_beep.wav). This story only adds the missing game triggers and wires the sounds, mirroring the shell wiring done in 6-6 (audio.ts SOUNDS + main.ts event switch). segment_tick needs a core event when the Claw rotates to a new lane; countdown_beep needs a level-select timeout-warning trigger — confirm the clone has a level-select timer, and if not, scope/defer that half. NOTE: the 6th authentic sound, enemy_fire, wires via story 6-5's enemy-fire event (6-5 now done)."
@@ -204,4 +207,34 @@ stories:
       - main.ts event->sound dispatch extracted to a pure importable function and covered by a real behavioral test (replacing the ?raw text-match).
       - Bake-test audibility threshold derived/justified or replaced with the bake script's reported peak value.
       - node:vm sandbox limitation documented in tools/pokey-bake (README or inline comment).
+    type: chore
+  - id: 6-13
+    title: Decide & reconcile authentic ROM spawn schedule vs the playtest-tuned curve (6-9 follow-up)
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    type: chore
+  - id: 6-14
+    title: Authentic per-level flipper flip patterns + multi-tick flip animation (6-9 follow-up)
+    points: 5
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+  - id: 6-15
+    title: 'Remaining enemy motion fidelity: spiker 0x20 turnaround, fuseball steering+hit_tol, pulsar far/near speed (6-9 follow-up)'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+  - id: 6-16
+    title: Harden 6-9 enemy-motion tests (fuseball toggle, spiker self-hop/open-tube) + resolve spiker relocation tuning (6-9 review follow-ups)
+    points: 2
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
     type: chore

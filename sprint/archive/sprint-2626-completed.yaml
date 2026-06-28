@@ -351,3 +351,8 @@ completed_stories:
     title: 'Wave 4 — framing: HUD, difficulty ramp, attract/title, local high scores'
     points: 3
     completed: '2026-06-28'
+  - id: 6-9
+    epic: '6'
+    title: Authentic enemy motion & behavior constants (core fidelity)
+    points: 5
+    completed: '2026-06-28'
