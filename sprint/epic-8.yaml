@@ -185,3 +185,11 @@ stories:
     status: backlog
     repos: star-wars
     workflow: tdd
+  - id: 8-15
+    title: TIE fighters should render green, not red (match cabinet color) — Wave 1
+    points: 1
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: trivial
+    type: bug
