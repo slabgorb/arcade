@@ -88,11 +88,22 @@ a **nearest-neighbour heuristic**, which is well-formed (valid indices, no
 orphans) but **visually tangled** — polygon rims never close, spokes jump to
 arbitrary vertices.
 
-**Fixed for the TIEs (8-3 follow-up), still owed for the rest.** `TIE_FIGHTER`
-and `DARTH_TIE` edges were rebuilt from the vertices' own ring structure and are
-now guarded by a topology test. **`DEATH_STAR_SURFACE`, `SURFACE_TOWER`, and
-`TRENCH` still carry the heuristic edges and WILL render tangled** when 8-4/8-5
-draw them in anger. Treat this as inherited rendering debt, not new work.
+**Reconstruction debt — now fully cleared, but NOT in 8-3.** Every model's edges
+were eventually rebuilt from the vertices' own structure and guarded by a
+topology test, but one wave at a time: `DEATH_STAR_SURFACE` and `SURFACE_TOWER`
+in **8-4**, `TRENCH` + the new `EXHAUST_PORT` in **8-5**, and finally
+`TIE_FIGHTER` and `DARTH_TIE` in **8-10**. The first four are guarded by
+`inducedSingleCycle` (every derived ring closes). The two TIEs are guarded by
+`isSingleComponent` (connectivity) instead: their `deriveRings()` rings are
+cross-panel / cross-body quads whose closure would *box* the ship, so 8-10
+re-authored them by structure (solar panels + pylons + cockpit ball) and pins
+single-component connectivity rather than ring-closure (see 8-10's deviation
+log). ⚠️ **Correction:** an earlier version of this note claimed the TIEs were
+"fixed for the TIEs (8-3 follow-up)… now guarded by a topology test." That was
+false — `TIE_FIGHTER` and `DARTH_TIE` carried the unguarded 8-2 heuristic edges
+(9 and 38 derived rings, none/almost none closing, no topology test) all the way
+until **8-10**, which is when the mistake surfaced (during 8-5) and was finally
+paid down. No model ships heuristic edges any more.
 
 **The reconstruction pattern (apply per model in 8-4/8-5):**
 1. **Group vertices into rings** — coplanar / equal-radius vertex sets are the

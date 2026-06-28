@@ -141,7 +141,8 @@ stories:
     description: 'Inherited 8-3 geometry debt surfaced during 8-5: TIE_FIGHTER and DARTH_TIE in src/core/models.ts still carry the 8-2 nearest-neighbour heuristic edges — they FAIL the inducedSingleCycle ring guard (9 and 38 derived rings, none close) and have NO topology test, despite context-epic-8.md claiming 8-3 fixed and guarded them. Re-author both models'' edges from their own ring structure (the same fix applied to DEATH_STAR_SURFACE/SURFACE_TOWER in 8-4) and guard each with deriveRings + inducedSingleCycle topology tests in tests/core/models.test.ts. Also correct the false ''TIEs fixed in 8-3'' claim in context-epic-8.md.'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -151,4 +152,6 @@ stories:
       - Models stay well-formed (existing 8-2 suite) and bilaterally Y-symmetric (existing TIE invariant)
       - context-epic-8.md geometry-connectivity note corrected (TIEs were NOT guarded in 8-3)
       - 'Eyeball: both TIEs render untangled in Wave 1 space combat'
+    completed: '2026-06-28'
     type: refactor
+    review_verdict: approved

@@ -376,3 +376,8 @@ completed_stories:
     title: 'Wave 5 — audio: POKEY SFX + TMS5220 speech (''Use the Force, Luke'')'
     points: 3
     completed: '2026-06-28'
+  - id: 8-10
+    epic: '8'
+    title: Re-author TIE_FIGHTER + DARTH_TIE edges by ring reconstruction + topology tests
+    points: 3
+    completed: '2026-06-28'
