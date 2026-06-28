@@ -346,3 +346,8 @@ completed_stories:
     title: Tile selection and game launch
     points: 2
     completed: '2026-06-28'
+  - id: 8-6
+    epic: '8'
+    title: 'Wave 4 — framing: HUD, difficulty ramp, attract/title, local high scores'
+    points: 3
+    completed: '2026-06-28'

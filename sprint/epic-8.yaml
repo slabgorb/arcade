@@ -1,7 +1,7 @@
 id: '8'
 type: epic
 title: 'Star Wars: vector cockpit shooter (Waves 0-5)'
-description: "Faithful browser clone of Atari's 1983 vector Star Wars — first-person cockpit shooter escalating through three phases per wave: space (TIE fighters + fireballs) -> Death Star surface (towers, turrets) -> trench run (exhaust port). Glowing 3D vectors on Canvas 2D, no engine, no backend. Deterministic pure core with a software 'Math Box' (math3d) wrapped by a thin render/input/audio shell, mirroring tempest. Authentic vector models and speech ported from the cabinet disassembly under star-wars/reference (gitignored)."
+description: 'Faithful browser clone of Atari''s 1983 vector Star Wars — first-person cockpit shooter escalating through three phases per wave: space (TIE fighters + fireballs) -> Death Star surface (towers, turrets) -> trench run (exhaust port). Glowing 3D vectors on Canvas 2D, no engine, no backend. Deterministic pure core with a software ''Math Box'' (math3d) wrapped by a thin render/input/audio shell, mirroring tempest. Authentic vector models and speech ported from the cabinet disassembly under star-wars/reference (gitignored).'
 priority: p2
 status: backlog
 repos: star-wars
@@ -40,7 +40,7 @@ stories:
     review_verdict: approved
   - id: 8-4
     title: 'Wave 2 — Death Star surface: towers, laser turrets, terrain skim'
-    description: "Renders DEATH_STAR_SURFACE + SURFACE_TOWER from core/models.ts. GEOMETRY DEBT (architect, 8-3 follow-up): those models still carry the nearest-neighbour heuristic EDGES from the 8-2 port and WILL render as tangled wireframes — the exact bug fixed for the TIEs. In scope here: re-author both models' edges by ring reconstruction (close each coplanar ring into a loop + radial spokes/struts), guard with an inducedSingleCycle topology test (see tests/core/models.test.ts), and give each model a fixed display orientation like TIE_ORIENT in shell/render.ts (authentic object-space axes ≠ in-game view; the trench/surface lie in y=0, towers stand on +y). Eyeball every model the first time it renders — structural tests don't catch orientation/scale. Detail in context-epic-8.md → 'Geometry connectivity (read before 8-4/8-5)'. Points may need revisiting to cover the re-authoring."
+    description: 'Renders DEATH_STAR_SURFACE + SURFACE_TOWER from core/models.ts. GEOMETRY DEBT (architect, 8-3 follow-up): those models still carry the nearest-neighbour heuristic EDGES from the 8-2 port and WILL render as tangled wireframes — the exact bug fixed for the TIEs. In scope here: re-author both models'' edges by ring reconstruction (close each coplanar ring into a loop + radial spokes/struts), guard with an inducedSingleCycle topology test (see tests/core/models.test.ts), and give each model a fixed display orientation like TIE_ORIENT in shell/render.ts (authentic object-space axes ≠ in-game view; the trench/surface lie in y=0, towers stand on +y). Eyeball every model the first time it renders — structural tests don''t catch orientation/scale. Detail in context-epic-8.md → ''Geometry connectivity (read before 8-4/8-5)''. Points may need revisiting to cover the re-authoring.'
     points: 5
     priority: p3
     status: done
@@ -52,7 +52,7 @@ stories:
     review_verdict: approved
   - id: 8-5
     title: 'Wave 3 — trench run: trench, catwalks, exhaust port, bonus'
-    description: "Renders TRENCH (and any new catwalk/exhaust-port geometry) from core/models.ts. GEOMETRY DEBT (architect, 8-3 follow-up): TRENCH still carries the nearest-neighbour heuristic EDGES from the 8-2 port and will render tangled — same bug fixed for the TIEs in 8-3. In scope: re-author TRENCH edges by ring reconstruction (its floor is explicit square loops; close them + connect catwalk rails), guard with the inducedSingleCycle topology test, and give it a fixed display orientation if needed (the floor lies flat in y=0; the camera skims it). Any NEW model authored here must ship correct ring-based edges + a topology test from the start, not heuristic edges. Eyeball on first render. See context-epic-8.md → 'Geometry connectivity (read before 8-4/8-5)'."
+    description: 'Renders TRENCH (and any new catwalk/exhaust-port geometry) from core/models.ts. GEOMETRY DEBT (architect, 8-3 follow-up): TRENCH still carries the nearest-neighbour heuristic EDGES from the 8-2 port and will render tangled — same bug fixed for the TIEs in 8-3. In scope: re-author TRENCH edges by ring reconstruction (its floor is explicit square loops; close them + connect catwalk rails), guard with the inducedSingleCycle topology test, and give it a fixed display orientation if needed (the floor lies flat in y=0; the camera skims it). Any NEW model authored here must ship correct ring-based edges + a topology test from the start, not heuristic edges. Eyeball on first render. See context-epic-8.md → ''Geometry connectivity (read before 8-4/8-5)''.'
     points: 5
     priority: p3
     status: done
@@ -71,12 +71,15 @@ stories:
       Depends on a playable game to frame — Wave 1 (8-3) plus wave/phase progression (8-8). The difficulty-ramp / wave-structure logic consumes the phase-transition machinery built in 8-8; do not duplicate it here.
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: star-wars
     workflow: tdd
     acceptance_criteria: []
+    completed: '2026-06-28'
+    review_verdict: approved
   - id: 8-7
-    title: "Wave 5 — audio: POKEY SFX + TMS5220 speech ('Use the Force, Luke')"
+    title: 'Wave 5 — audio: POKEY SFX + TMS5220 speech (''Use the Force, Luke'')'
     points: 3
     priority: p3
     status: backlog
@@ -121,7 +124,7 @@ stories:
       - 'Eyeball: the trench run reads correctly on first render (port sits in the channel, not floating)'
   - id: 8-10
     title: Re-author TIE_FIGHTER + DARTH_TIE edges by ring reconstruction + topology tests
-    description: "Inherited 8-3 geometry debt surfaced during 8-5: TIE_FIGHTER and DARTH_TIE in src/core/models.ts still carry the 8-2 nearest-neighbour heuristic edges — they FAIL the inducedSingleCycle ring guard (9 and 38 derived rings, none close) and have NO topology test, despite context-epic-8.md claiming 8-3 fixed and guarded them. Re-author both models' edges from their own ring structure (the same fix applied to DEATH_STAR_SURFACE/SURFACE_TOWER in 8-4) and guard each with deriveRings + inducedSingleCycle topology tests in tests/core/models.test.ts. Also correct the false 'TIEs fixed in 8-3' claim in context-epic-8.md."
+    description: 'Inherited 8-3 geometry debt surfaced during 8-5: TIE_FIGHTER and DARTH_TIE in src/core/models.ts still carry the 8-2 nearest-neighbour heuristic edges — they FAIL the inducedSingleCycle ring guard (9 and 38 derived rings, none close) and have NO topology test, despite context-epic-8.md claiming 8-3 fixed and guarded them. Re-author both models'' edges from their own ring structure (the same fix applied to DEATH_STAR_SURFACE/SURFACE_TOWER in 8-4) and guard each with deriveRings + inducedSingleCycle topology tests in tests/core/models.test.ts. Also correct the false ''TIEs fixed in 8-3'' claim in context-epic-8.md.'
     points: 3
     priority: p3
     status: backlog
