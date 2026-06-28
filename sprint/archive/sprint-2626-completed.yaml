@@ -326,3 +326,8 @@ completed_stories:
     title: 'Wave/phase progression: space->surface->trench (make Waves 2-3 playable)'
     points: 3
     completed: '2026-06-28'
+  - id: 8-5
+    epic: '8'
+    title: 'Wave 3 — trench run: trench, catwalks, exhaust port, bonus'
+    points: 5
+    completed: '2026-06-28'
