@@ -155,3 +155,18 @@ stories:
     completed: '2026-06-28'
     type: refactor
     review_verdict: approved
+  - id: 8-11
+    title: Fix Wave 2 Death Star surface geometry not visible during gameplay
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: 8-12
+    title: Render player shots as expanding fireballs (Wave 1) — replace '+' placeholder with cabinet-style vector fireball
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
