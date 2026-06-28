@@ -66,6 +66,8 @@ repos:
   star-wars:
     path: star-wars
     type: ui
+    default_branch: develop
+    branch_strategy: gitflow
     description: 'Faithful browser-based vector clone of Atari''s 1983 Star Wars.
 
       First-person 3D cockpit shooter (TIE fighters → Death Star surface →
