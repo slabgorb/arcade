@@ -201,3 +201,10 @@ stories:
     repos: star-wars
     workflow: tdd
     type: bug
+  - id: 8-17
+    title: Add cabinet HUD header — SCORE + score/lives, center SHIELD meter graphic + level, WAVE number — rendered in the vector font
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
