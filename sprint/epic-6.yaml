@@ -112,6 +112,8 @@ stories:
       - Enemy-fire bolt sound produced and wired to the enemy-fire event (pairs with 6-5).
       - Existing R2 SFX set audited vs the catalog; gaps filled (priority enemy-fire; secondary segment-tick, spike-shot, pulsar hum/active).
       - 'Shell/asset-only: src/core/ pure simulation untouched; web-pokey MIT attribution retained.'
+    review_findings: 'Code quality APPROVED (rule-checker clean, tests green, tsc 0, core boundary intact). NOT merge-ready: [HIGH] authentic SFX assets are gitignored + not on R2, so merging silences fire/enemy-death/level-clear (previously worked) + enemy-fire in any clean build/deploy. Plus AC#1 (6 of 13), AC#2/#4 (R2 hosting) incomplete — user/ops decisions, not Dev/TEA rework.'
+    review_verdict: rejected
   - id: 6-7
     title: Survey authentic level geometries from ROM & reconcile our parametric set
     description: "Arcade footage shows dramatic authentic well shapes our current set may flatten. Our clone builds its 16 geometries in src/core/geometry.ts from three PARAMETRIC primitives — makeCircleTube, makePolygonTube, makeOpenTube — using named strip profiles (FLAT, SHALLOW_V, DEEP_V, BOWL, W, STEP, RAMP, HUMP). These are STYLIZED approximations (8 closed, 8 open), NOT the authentic per-lane coordinate data from the ROM. SURVEY (primary deliverable): enumerate the authentic Tempest level well shapes from the rev-3 source (tempest.a65 and/or the vector ROMs at ~/Downloads/tempest/136002-136.lm1 + 138.np3) — the per-lane near/far endpoint tables and each well's open/closed topology — with source labels + file:line, into a geometry reference doc. AUDIT: compare each authentic shape vs src/core/geometry.ts and produce a gap list (missing, simplified, or wrong open/closed — especially the dramatic geometries). RECONCILE: bring geometry.ts to the authentic coordinate data (faithful reproduction), preserving the closed-vs-open wrap-vs-clamp semantics per level (pure core; geometry is unit-tested per CLAUDE.md). If the gap list is large, reconciliation may split into follow-up stories informed by the survey. Keep the level -> geometry cycle order matching the arcade."
@@ -157,3 +159,15 @@ stories:
       - Fuseball killable only in its on-lane vulnerable phase (not on the rim); Tanker splits into 2 cargo-type children on 0x20/death; Spiker spike grows toward rim and hops at the far end; Pulsar lethal-lane kills a player standing in a pulsing lane.
       - Spawn mix by level and scoring verified vs the ROM (Flipper150 / Pulsar200 / Tanker100 / Spiker50 / Fuseball250-500-750).
       - 'Pure-core boundary preserved: no DOM / time / Math.random; deterministic and frame-rate independent.'
+  - id: 6-10
+    title: Wire authentic segment-tick + countdown-beep SFX — add their game triggers
+    description: "Two authentic POKEY SFX were extracted from the ROM and baked in story 6-6 but have no game trigger yet: segment_tick (ROM $cc39 — cursor/claw line-cross tick) and countdown_beep (ROM $cc69 — the loud level-select timeout warning). The WAVs already exist (tools/pokey-bake bakes them from sfx-data.mjs; staged in public/sfx). This story adds the missing triggers and wires the sounds, mirroring the shell wiring done in 6-6 (audio.ts SOUNDS + main.ts event switch). segment_tick needs a core event when the Claw rotates to a new lane; countdown_beep needs a level-select timeout-warning trigger — confirm the clone has a level-select timer, and if not, scope/defer that half. NOTE: the 6th authentic sound, enemy_fire, wires via story 6-5's enemy-fire event (6-5 now done)."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - Core sim emits a deterministic event when the Claw rotates to a new lane/segment (covered by a seeded unit test); the authentic segment_tick SFX plays on that event.
+      - countdown_beep wired to the level-select timeout warning; if the clone has no level-select timer, that half is explicitly scoped or deferred with a documented reason.
+      - Reuses the authentic baked WAVs from 6-6 (no new invented audio); any src/core change is limited to the new event emission; existing tests stay green.
