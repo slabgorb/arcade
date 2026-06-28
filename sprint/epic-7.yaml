@@ -102,7 +102,10 @@ stories:
     title: Arcade root lands on lobby, not /tempest/ (fix tunnel routing)
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: orchestrator
     workflow: trivial
+    completed: '2026-06-28'
     type: bug
+    review_verdict: approved
