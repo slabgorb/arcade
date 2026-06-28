@@ -185,7 +185,8 @@ stories:
     description: "The 7 of the 13 catalogued POKEY SFX NOT delivered by story 6-6 (which baked 6: player_fire, enemy_fire, enemy_explosion, warp, countdown_beep, segment_tick). Extract the ALSOUN envelope data from the rev-3 ROM (136002-136.lm1, sound table $cc2d) with the same method as 6-6 (see tools/pokey-bake/sfx-data.mjs + docs/ux/2026-06-27-tempest-arcade-feel-reference.md Sound section), bake via tools/pokey-bake/bake-sfx.mjs, upload to R2 (`wrangler r2 object put arcade/tempest/sfx/<name>.wav --remote`), add to SOUNDS in src/shell/audio.ts, and wire to the matching game event where one exists. THE 7: spike-shot, player-explosion (wire to the existing player-death event; currently the community rip shipexplosion.wav), pulsar-hum, pulsar-active, zoom-start, extra-life, slam. Some lack a confirmed sound->ROM address and/or a game trigger — confirm by ear (as in 6-6) and scope/defer any without a trigger. AC#4 of 6-6 named spike-shot + pulsar-hum/active as priority secondary gaps. Completes the '13 catalogued SFX' target AC#1 of 6-6 was descoped from (6-6 delivered 6; 6-10 wires segment-tick + countdown-beep)."
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -193,6 +194,7 @@ stories:
       - Baked to WAV (no SILENT warnings) and hosted on R2 alongside the existing tempest/sfx set.
       - Each sound with an existing game event wired in src/shell/audio.ts + main.ts (e.g. player-explosion -> player-death); any without a trigger explicitly scoped or deferred with a documented reason.
       - 'Shell/asset-only: src/core/ untouched; web-pokey MIT attribution retained.'
+    completed: '2026-06-28'
     type: feature
   - id: 6-12
     title: Audio test & POKEY bake-tool hardening (6-6 review follow-ups)

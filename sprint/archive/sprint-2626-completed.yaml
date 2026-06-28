@@ -396,3 +396,8 @@ completed_stories:
     title: TIE fighters fly at a fixed orientation — bank/rotate toward the player like the cabinet (Wave 1)
     points: 3
     completed: '2026-06-28'
+  - id: 6-11
+    epic: '6'
+    title: Extract, bake & host the remaining 7 authentic POKEY SFX
+    points: 3
+    completed: '2026-06-28'
