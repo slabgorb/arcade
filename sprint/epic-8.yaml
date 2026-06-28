@@ -170,3 +170,11 @@ stories:
     status: backlog
     repos: star-wars
     workflow: tdd
+  - id: 8-13
+    title: TIE fighters fly at a fixed orientation — bank/rotate toward the player like the cabinet (Wave 1)
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
