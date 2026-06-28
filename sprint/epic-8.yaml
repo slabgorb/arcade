@@ -113,7 +113,8 @@ stories:
     description: 'Builds the PLAYABLE trench run on top of the 8-5 geometry foundation (TRENCH catwalk rails + EXHAUST_PORT already exist). Replaces the stepTrench safe terminal hold (src/core/sim.ts) with real gameplay, and replaces the static render placement in src/shell/render.ts (TRENCH_SKIM/TRENCH_FLOOR_Z/TRENCH_PORT_Z) with sim-driven positioning — fixing the ~244-unit gap where the exhaust port floats beyond the trench floor (Reviewer finding, 8-5). Keep the core/shell boundary: scroll/targeting/scoring are deterministic sim; render only consumes positions.'
     points: 5
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -122,6 +123,7 @@ stories:
       - Player collision/death is handled during the trench run
       - render.ts positions the trench + exhaust port from sim state (no static-placeholder gap)
       - 'Eyeball: the trench run reads correctly on first render (port sits in the channel, not floating)'
+    completed: '2026-06-28'
   - id: 8-10
     title: Re-author TIE_FIGHTER + DARTH_TIE edges by ring reconstruction + topology tests
     description: 'Inherited 8-3 geometry debt surfaced during 8-5: TIE_FIGHTER and DARTH_TIE in src/core/models.ts still carry the 8-2 nearest-neighbour heuristic edges — they FAIL the inducedSingleCycle ring guard (9 and 38 derived rings, none close) and have NO topology test, despite context-epic-8.md claiming 8-3 fixed and guarded them. Re-author both models'' edges from their own ring structure (the same fix applied to DEATH_STAR_SURFACE/SURFACE_TOWER in 8-4) and guard each with deriveRings + inducedSingleCycle topology tests in tests/core/models.test.ts. Also correct the false ''TIEs fixed in 8-3'' claim in context-epic-8.md.'

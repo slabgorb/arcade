@@ -356,3 +356,8 @@ completed_stories:
     title: Authentic enemy motion & behavior constants (core fidelity)
     points: 5
     completed: '2026-06-28'
+  - id: 8-9
+    epic: '8'
+    title: 'Wave 3 trench run gameplay: scroll, exhaust-port targeting, bonus'
+    points: 5
+    completed: '2026-06-28'
