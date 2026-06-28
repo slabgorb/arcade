@@ -296,3 +296,8 @@ completed_stories:
     title: Enemies fire energy bolts at the player
     points: 2
     completed: '2026-06-27'
+  - id: 6-8
+    epic: '6'
+    title: Authentic enemy + bolt shapes (render fidelity)
+    points: 3
+    completed: '2026-06-28'
