@@ -178,3 +178,10 @@ stories:
     repos: star-wars
     workflow: tdd
     type: bug
+  - id: 8-14
+    title: Cabinet-style targeting reticle — converging cyan crosshair chevrons + green lock-on circle on target (Wave 1)
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
