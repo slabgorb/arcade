@@ -336,3 +336,8 @@ completed_stories:
     title: Arcade root lands on lobby, not /tempest/ (fix tunnel routing)
     points: 2
     completed: '2026-06-28'
+  - id: 6-10
+    epic: '6'
+    title: Wire authentic segment-tick + countdown-beep SFX — add their game triggers
+    points: 3
+    completed: '2026-06-28'
