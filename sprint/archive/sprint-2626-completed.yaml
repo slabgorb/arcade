@@ -321,3 +321,8 @@ completed_stories:
     title: Bake & wire authentic POKEY SFX from ROM (incl. enemy-fire)
     points: 3
     completed: '2026-06-28'
+  - id: 8-8
+    epic: '8'
+    title: 'Wave/phase progression: space->surface->trench (make Waves 2-3 playable)'
+    points: 3
+    completed: '2026-06-28'

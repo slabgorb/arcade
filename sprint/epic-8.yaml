@@ -90,7 +90,8 @@ stories:
       Depends on 8-4 (surface phase); the full chain also needs 8-5 (trench). Coordinate with 8-6 framing (difficulty ramp) — this story owns the phase-transition machinery, 8-6 consumes it.
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: star-wars
     workflow: tdd
     depends_on: 8-4
@@ -98,3 +99,5 @@ stories:
       - stepGame advances GameState.phase space->surface->trench in order with a defined per-phase advance condition; transitions are deterministic (seeded RNG, dt-driven) and carry score/lives forward.
       - The surface (8-4) and trench (8-5) phases are reachable and playable in the live game — not only via constructed test states.
       - 'Surface phase verified live: eyeball the surface + turrets in the running game; turret/floor altitude framing reconciled (no floating turrets) and surface scale/tiling reads as a skimmable Death Star surface.'
+    completed: '2026-06-28'
+    review_verdict: approved
