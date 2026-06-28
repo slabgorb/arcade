@@ -167,12 +167,16 @@ stories:
     type: bug
     review_verdict: approved
   - id: 8-12
-    title: Render player shots as expanding fireballs (Wave 1) — replace '+' placeholder with cabinet-style vector fireball
+    title: Render player shots as cyan laser beams (pew pew) — replace '+' placeholder with cabinet-style converging laser lines (Wave 1)
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    assigned_to: Keith Avery
+    started: '2026-06-28'
     repos: star-wars
     workflow: tdd
+    completed: '2026-06-28'
+    review_verdict: approved
   - id: 8-13
     title: TIE fighters fly at a fixed orientation — bank/rotate toward the player like the cabinet (Wave 1)
     points: 3
@@ -214,6 +218,13 @@ stories:
     review_verdict: approved
   - id: 8-17
     title: Add cabinet HUD header — SCORE + score/lives, center SHIELD meter graphic + level, WAVE number — rendered in the vector font
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: 8-18
+    title: Shootable enemy fireballs (Wave 1) — destroy an incoming TIE fireball by hitting it with a player laser before it reaches the cockpit
     points: 3
     priority: p2
     status: backlog

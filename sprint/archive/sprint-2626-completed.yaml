@@ -406,3 +406,8 @@ completed_stories:
     title: 'Remaining enemy motion fidelity: spiker 0x20 turnaround, fuseball steering+hit_tol, pulsar far/near speed (6-9 follow-up)'
     points: 3
     completed: '2026-06-28'
+  - id: 8-12
+    epic: '8'
+    title: Render player shots as cyan laser beams (pew pew) — replace '+' placeholder with cabinet-style converging laser lines (Wave 1)
+    points: 3
+    completed: '2026-06-28'
