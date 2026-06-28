@@ -98,3 +98,11 @@ stories:
       - 'Test-quality polish in tests/canonical-serve.test.mjs: the recipeBody parser no longer false-matches a ''serve :='' variable line; the pinned-port checks assert both CLAUDE.md AND README.md per-file (not the concatenation); and a test verifies the canonical serve set (subrepos / install-all) includes lobby. Suite stays green.'
     completed: '2026-06-27'
     type: chore
+  - id: 7-9
+    title: Arcade root lands on lobby, not /tempest/ (fix tunnel routing)
+    points: 2
+    priority: p1
+    status: backlog
+    repos: orchestrator
+    workflow: trivial
+    type: bug

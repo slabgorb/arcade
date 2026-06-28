@@ -1,0 +1,39 @@
+# Canonical Cloudflare tunnel ingress for the arcade (arcade.slabgorb.com).
+#
+# This is a CHECKED-IN REFERENCE, not the file cloudflared reads at runtime.
+# The live file is ~/.cloudflared/config.yml, and that file is SHARED with
+# other, non-arcade tunnels on this host (e.g. sidequest.slabgorb.com). Do NOT
+# blindly copy this over the live file — you would delete the other projects'
+# routes. Instead splice the arcade ingress rules below into the live file's
+# `ingress:` list, keeping them ahead of the final `- service: http_status:404`.
+# See cloudflared/README.md for the apply + restart procedure.
+#
+# tunnel / credentials-file are host-specific (the credential .json is a secret
+# and is intentionally NOT checked in). Shown here so the reference is complete.
+tunnel: 53ab1bc5-37af-415c-afa9-52f85aa059bb
+credentials-file: /Users/slabgorb/.cloudflared/53ab1bc5-37af-415c-afa9-52f85aa059bb.json
+
+ingress:
+  # Arcade path-based routing across the cabinet's separate Vite dev servers.
+  # The front door is the LOBBY, not a game:
+  #   /tempest/*  -> Tempest server  (:5273, Vite base /tempest/)
+  #   everything else (/, /lobby/*)  -> lobby server (:5270, Vite base /lobby/)
+  # The bare root lands on the lobby because Vite (base: /lobby/) 302-redirects
+  # "/" -> "/lobby/", which then matches the catch-all lobby rule below.
+  # Rules are first-match, top-to-bottom, so the /tempest/ rule MUST precede the
+  # lobby catch-all. Each game's Vite `allowedHosts` must include
+  # arcade.slabgorb.com or it rejects the tunnelled Host header. SFX
+  # (/tempest/sfx/*) are served from R2 at the edge, not through this origin.
+  - hostname: arcade.slabgorb.com
+    path: ^/tempest
+    service: http://localhost:5273
+    originRequest:
+      connectTimeout: 30s
+      noHappyEyeballs: true
+  - hostname: arcade.slabgorb.com
+    service: http://localhost:5270
+    originRequest:
+      connectTimeout: 30s
+      noHappyEyeballs: true
+  # Required terminal catch-all for any unmatched hostname.
+  - service: http_status:404

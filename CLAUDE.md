@@ -83,6 +83,16 @@ collision fails loudly instead of silently wandering to another port. The first
 server to bind a pinned port owns it; a second `just serve` on the same port
 errors out rather than quietly starting a rival copy.
 
+### Tunnel routing: the front door is the lobby
+
+On the live host the Cloudflare tunnel routes `arcade.slabgorb.com` **path-based**
+so the root lands on the **lobby**, not a game: `/tempest/*` → `:5273`, and
+everything else (`/`, `/lobby/*`) → the lobby on `:5270` (Vite 302-redirects `/`
+→ `/lobby/`). The runtime config (`~/.cloudflared/config.yml`) lives outside the
+repo and is shared with other tunnels, so the canonical arcade ingress is
+checked in at [`cloudflared/`](./cloudflared/) — see `cloudflared/README.md` for
+the apply + restart procedure.
+
 ### "Canonical" is the repo, not the directory
 
 The orchestrator repo is **arcade**. It can be checked out in any directory
