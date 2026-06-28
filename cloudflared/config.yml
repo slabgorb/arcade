@@ -16,17 +16,24 @@ credentials-file: /Users/slabgorb/.cloudflared/53ab1bc5-37af-415c-afa9-52f85aa05
 ingress:
   # Arcade path-based routing across the cabinet's separate Vite dev servers.
   # The front door is the LOBBY, not a game:
-  #   /tempest/*  -> Tempest server  (:5273, Vite base /tempest/)
+  #   /tempest/*    -> Tempest server   (:5273, Vite base /tempest/)
+  #   /star-wars/*  -> Star Wars server (:5274, Vite base /star-wars/)
   #   everything else (/, /lobby/*)  -> lobby server (:5270, Vite base /lobby/)
   # The bare root lands on the lobby because Vite (base: /lobby/) 302-redirects
   # "/" -> "/lobby/", which then matches the catch-all lobby rule below.
-  # Rules are first-match, top-to-bottom, so the /tempest/ rule MUST precede the
+  # Rules are first-match, top-to-bottom, so the per-game rules MUST precede the
   # lobby catch-all. Each game's Vite `allowedHosts` must include
   # arcade.slabgorb.com or it rejects the tunnelled Host header. SFX
   # (/tempest/sfx/*) are served from R2 at the edge, not through this origin.
   - hostname: arcade.slabgorb.com
     path: ^/tempest
     service: http://localhost:5273
+    originRequest:
+      connectTimeout: 30s
+      noHappyEyeballs: true
+  - hostname: arcade.slabgorb.com
+    path: ^/star-wars
+    service: http://localhost:5274
     originRequest:
       connectTimeout: 30s
       noHappyEyeballs: true

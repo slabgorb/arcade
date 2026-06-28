@@ -64,7 +64,7 @@ stories:
     title: Attract mode (idle demo loop)
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: lobby
     workflow: tdd
   - id: 7-7
@@ -118,7 +118,7 @@ stories:
     description: "arcade.slabgorb.com has no /star-wars/ ingress: cloudflared/config.yml routes only ^/tempest -> :5273 and a catch-all -> lobby :5270, so /star-wars/ falls through to the lobby instead of the game. Add a path: ^/star-wars -> http://localhost:5274 ingress rule AHEAD of the lobby catch-all (rules are first-match top-to-bottom, mirroring the /tempest rule), ensure star-wars Vite allowedHosts includes arcade.slabgorb.com, confirm star-wars is in the canonical 'just serve' set so a live checkout binds :5274, and restart the tunnel per cloudflared/README.md. Sibling of the 7-9 root-routing fix."
     points: 2
     priority: p2
-    status: backlog
+    status: done
     repos: orchestrator
     workflow: trivial
     acceptance_criteria:
@@ -127,4 +127,5 @@ stories:
       - star-wars is served by the canonical 'just serve' on :5274 (in the serve set)
       - arcade.slabgorb.com/star-wars/ reaches the game (verified live or documented restart step)
       - cloudflared/README.md reflects the /star-wars route + apply/restart procedure
+    completed: '2026-06-28'
     type: chore

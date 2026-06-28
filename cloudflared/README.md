@@ -15,12 +15,14 @@ separate Vite dev servers:
 | Request | Origin | Why |
 |---|---|---|
 | `/tempest/*` | `http://localhost:5273` | Tempest dev server (Vite base `/tempest/`) |
+| `/star-wars/*` | `http://localhost:5274` | Star Wars dev server (Vite base `/star-wars/`) |
 | `/lobby/*` | `http://localhost:5270` | Lobby dev server (Vite base `/lobby/`) |
 | `/` (root) | `http://localhost:5270` | Lobby; Vite 302-redirects `/` → `/lobby/` |
 | everything else | `http://localhost:5270` | Lobby catch-all |
 
-Rules are evaluated **first-match, top-to-bottom**, so the `/tempest/` rule must
-come before the lobby catch-all (see [`config.yml`](./config.yml)).
+Rules are evaluated **first-match, top-to-bottom**, so the per-game rules
+(`/tempest/`, `/star-wars/`) must come before the lobby catch-all (see
+[`config.yml`](./config.yml)).
 
 > **Regression guarded against:** previously the arcade host pointed straight at
 > `:5273`, and Tempest's Vite base (`/tempest/`) 302-redirected the root into

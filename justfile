@@ -57,11 +57,13 @@ serve:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Serving the arcade from {{root}} (the canonical checkout)"
-    echo "  lobby   → http://localhost:5270/lobby/"
-    echo "  tempest → http://localhost:5273/tempest/"
+    echo "  lobby     → http://localhost:5270/lobby/"
+    echo "  tempest   → http://localhost:5273/tempest/"
+    echo "  star-wars → http://localhost:5274/star-wars/"
     trap 'kill 0' EXIT
     (cd {{root}}/lobby && npm run dev) &
     (cd {{root}}/tempest && npm run dev) &
+    (cd {{root}}/star-wars && npm run dev) &
     wait
 
 # ============================================
