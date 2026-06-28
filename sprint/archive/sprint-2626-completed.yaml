@@ -341,3 +341,8 @@ completed_stories:
     title: Wire authentic segment-tick + countdown-beep SFX — add their game triggers
     points: 3
     completed: '2026-06-28'
+  - id: 7-4
+    epic: '7'
+    title: Tile selection and game launch
+    points: 2
+    completed: '2026-06-28'

@@ -46,9 +46,13 @@ stories:
     title: Tile selection and game launch
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: lobby
     workflow: trivial
+    completed: '2026-06-28'
+    review_findings: 'Quality rework (no High/Critical): (1) tests/selection.test.ts missing partial-row up/left wrap cases on the core moveSelection fn; (2) tests/tiles.test.ts:132 degenerate highlight assertion — pin SELECTED_BLUR/WIDTH; (3) input.ts:35 launchGame missing Readonly<Game>. Impl verified correct.'
+    review_verdict: approved
   - id: 7-5
     title: Per-game high scores on tiles
     points: 2
