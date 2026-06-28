@@ -361,3 +361,8 @@ completed_stories:
     title: 'Wave 3 trench run gameplay: scroll, exhaust-port targeting, bonus'
     points: 5
     completed: '2026-06-28'
+  - id: 6-13
+    epic: '6'
+    title: Decide & reconcile authentic ROM spawn schedule vs the playtest-tuned curve (6-9 follow-up)
+    points: 3
+    completed: '2026-06-28'

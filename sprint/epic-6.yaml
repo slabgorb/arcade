@@ -212,10 +212,13 @@ stories:
     title: Decide & reconcile authentic ROM spawn schedule vs the playtest-tuned curve (6-9 follow-up)
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: tempest
     workflow: tdd
+    completed: '2026-06-28'
     type: chore
+    review_verdict: approved
   - id: 6-14
     title: Authentic per-level flipper flip patterns + multi-tick flip animation (6-9 follow-up)
     points: 5
