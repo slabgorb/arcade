@@ -62,19 +62,15 @@ stories:
   - id: 8-6
     title: 'Wave 4 — framing: HUD, difficulty ramp, attract/title, local high scores'
     description: |-
-      Wave 4 — framing layer over the playable waves: HUD (shields/score/wave), difficulty ramp, attract/title screen, and local high scores (localStorage), reusing tempest's patterns (highscore.ts, storage.ts, fx.ts).
+      Wave 4 — framing layer over the playable waves: HUD (shields/score/wave indicator), difficulty ramp across waves, attract/title screen, and local high scores (localStorage). Reuses tempest's patterns (highscore.ts, storage.ts, fx.ts, render/title framing).
 
-      INHERITED FROM 8-4 (deferred here; affects 8-5 too): WAVE/PHASE PROGRESSION is not built. stepGame starts in phase 'space' and never transitions, so the Death Star surface phase (8-4) and the trench phase (8-5) — their full gameplay AND rendering — are dark code, unreachable in live play. This story must wire space->surface->trench progression (each wave runs the three phases in order per the epic phase model) so those waves become playable; this is the natural home for the 'difficulty ramp / wave structure' framing. Define a clear per-phase advance condition (clear the wave / survive a timer — derive from StarWars.asm where possible).
-
-      SURFACE RENDER TUNING (once the surface phase is reachable): the 8-4 render placement is provisional and was only eyeballed in isolation. Live, fix: turrets render at y=0 while the floor is drawn at y=-altitude (they float — reconcile the cockpit/altitude frame); DEATH_STAR_SURFACE is sparse (5 cross-sections) and likely needs tiling/scrolling instances or added relief for a convincing skim; eyeball every surface/turret model in-phase. Detail in the archived 8-4 session (sprint/archive/8-4-session.md) Delivery Findings. Points may need revisiting to cover progression.
+      Depends on a playable game to frame — Wave 1 (8-3) plus wave/phase progression (8-8). The difficulty-ramp / wave-structure logic consumes the phase-transition machinery built in 8-8; do not duplicate it here.
     points: 3
     priority: p3
     status: backlog
     repos: star-wars
     workflow: tdd
-    acceptance_criteria:
-      - 'Wave/phase progression: stepGame transitions space->surface->trench in order with a defined per-phase advance condition; the surface (8-4) and trench (8-5) phases are reachable and playable in the live game, not only via constructed test states.'
-      - 'Surface phase verified live: eyeball the surface + turrets in the running game; turret/floor altitude framing reconciled (no floating turrets) and surface scale/tiling reads as a skimmable Death Star surface.'
+    acceptance_criteria: []
   - id: 8-7
     title: "Wave 5 — audio: POKEY SFX + TMS5220 speech ('Use the Force, Luke')"
     points: 3
@@ -82,3 +78,23 @@ stories:
     status: backlog
     repos: star-wars
     workflow: tdd
+  - id: 8-8
+    title: 'Wave/phase progression: space->surface->trench (make Waves 2-3 playable)'
+    description: |-
+      Wire wave/phase progression so the built-but-unreachable waves become playable. Today stepGame starts in phase 'space' and never transitions, so the Death Star surface phase (8-4) and the trench phase (8-5) — full gameplay AND rendering — are dark code, reachable only via constructed test states.
+
+      Scope: in src/core/sim.ts (pure/deterministic — dt + seeded RNG only), advance GameState.phase space->surface->trench in order, each wave running the three phases (the epic phase model). Define a per-phase advance condition (clear the wave / survive a timer — derive from StarWars.asm where possible) and carry score/lives across phases. The space->surface leg can be wired now against the completed 8-4 surface phase; the trench leg fully lands once 8-5 exists.
+
+      Also reconcile the surface render placement 8-4 left provisional (only eyeballed in isolation): in src/shell/render.ts turrets render at y=0 while the floor draws at y=-altitude (they float — reconcile the cockpit/altitude frame); DEATH_STAR_SURFACE is sparse (5 cross-sections) and likely needs tiling/scrolling instances or added relief for a convincing skim. Eyeball every surface/turret model in-phase. Detail in sprint/archive/8-4-session.md Delivery Findings.
+
+      Depends on 8-4 (surface phase); the full chain also needs 8-5 (trench). Coordinate with 8-6 framing (difficulty ramp) — this story owns the phase-transition machinery, 8-6 consumes it.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: 8-4
+    acceptance_criteria:
+      - stepGame advances GameState.phase space->surface->trench in order with a defined per-phase advance condition; transitions are deterministic (seeded RNG, dt-driven) and carry score/lives forward.
+      - The surface (8-4) and trench (8-5) phases are reachable and playable in the live game — not only via constructed test states.
+      - 'Surface phase verified live: eyeball the surface + turrets in the running game; turret/floor altitude framing reconciled (no floating turrets) and surface scale/tiling reads as a skimmable Death Star surface.'
