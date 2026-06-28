@@ -391,3 +391,8 @@ completed_stories:
     title: Fix Wave 2 Death Star surface geometry not visible during gameplay
     points: 3
     completed: '2026-06-28'
+  - id: 8-13
+    epic: '8'
+    title: TIE fighters fly at a fixed orientation — bank/rotate toward the player like the cabinet (Wave 1)
+    points: 3
+    completed: '2026-06-28'
