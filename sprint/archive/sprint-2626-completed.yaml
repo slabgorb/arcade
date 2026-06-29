@@ -519,3 +519,8 @@ completed_stories:
     title: 'Fix authentic colors: spikes green, tankers purple, banner colors'
     points: 1
     completed: '2026-06-29'
+  - id: 9-4
+    epic: '9'
+    title: "Strafe-and-fire: TIE fireball cadence/source driven by the pass, per the RE'd timing"
+    points: 2
+    completed: '2026-06-29'

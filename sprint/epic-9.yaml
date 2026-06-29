@@ -63,7 +63,8 @@ stories:
     description: Drive enemy fireball cadence and origin from the TIE's pass per the 9-1 timing (a TIE fires during its strafe window aimed at the cockpit) instead of the current whole-formation fixed-interval lob. STRETCH.
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -71,6 +72,8 @@ stories:
       - Fire timing/cadence matches the RE'd values (or documented fallback), still respecting the 6-fireball slot cap
       - Player can still shoot fireballs down (story 8-18 intact)
       - Deterministic and unit-tested; existing tests pass
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 9-5
     title: Wave/difficulty ramp of the TIE AI per the RE'd table (faster, more aggressive, later waves)
     description: Apply the RE'd (or fallback) per-wave difficulty table to the TIE AI so later waves are faster / more aggressive / send more attackers, via gameRules.waveParams. STRETCH.
