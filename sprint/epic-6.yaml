@@ -275,7 +275,8 @@ stories:
     description: "Flippers do not visually FLIP — they read as a naive center-spin, so the bowtie looks like it's crawling/walking UP the tube instead of tumbling across it. PROBLEM: the player should see a flipper go END-OVER-END across the web as it moves between lanes — pivoting/cartwheeling over the shared radial spoke (the web line between two adjacent lanes), the way the authentic rev-3 Tempest flipper hand-over-hands around the rim. Instead it (a) idle-spins continuously about its OWN CENTER even when settled, and (b) during a flip it LINEARLY SLIDES from source lane to target lane while adding a half-turn about its own center. ROOT CAUSE — render WIRING, not the sim: the core flip state machine (src/core/enemies/flipper.ts) is correct (multi-tick flipProgress, integer lane settles on completion; motion work 6-9/6-14 is in). The bug is in src/shell/render.ts drawEnemy() 'flipper' case: settled flippers use `spin = renderTime*4 + e.lane` (a constant idle rotation that does not exist in the ROM), and mid-flip it lerps position p->to and adds `t*PI` spin about the GLYPH CENTER instead of rotating the glyph about the boundary pivot. WHY MISSED: 6-9/6-14 reconciled the CORE state machine and the slide handoff; the end-over-end PIVOT is a render-space transform that no story owned. FIX DIRECTION (reuse-first, no new system): drive the flipper's screen transform from flipProgress as a rotation ABOUT THE SHARED SPOKE between e.lane and e.lane+flipDir (the projected web edge point at e.depth), so the bowtie swings over that pivot through ~half a turn and lands settled on the target lane; remove the idle center-spin so a settled flipper is a still bowtie. A pure helper returning the pivot point / cartwheel transform belongs in src/core/geometry.ts (unit-testable); the render swap is verified by eye. Do NOT change the core state machine (flipper.ts) or other enemy kinds. AREA: src/shell/render.ts drawEnemy() flipper case (+ optional pure geometry helper in src/core/geometry.ts)."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -284,4 +285,7 @@ stories:
       - Any geometry added (e.g. the boundary pivot point at a given depth) is a PURE helper in src/core/geometry.ts with a deterministic unit test and no DOM/canvas/time/Math.random.
       - The core flip state machine (src/core/enemies/flipper.ts) and every other enemy kind's rendering are unchanged.
       - 'Verified by eye in the running game: flippers hand-over-hand around the rim like the authentic rev-3 reference, not a crawling center-spin.'
+    completed: '2026-06-29'
+    branch: fix/6-18-flipper-flip-wiring
     type: bug
+    review_verdict: approved

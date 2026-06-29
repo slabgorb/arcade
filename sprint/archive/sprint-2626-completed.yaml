@@ -463,3 +463,8 @@ completed_stories:
     title: Route /star-wars/ through the arcade tunnel (production access for star-wars)
     points: 2
     completed: '2026-06-28'
+  - id: 6-18
+    epic: '6'
+    title: Flippers cartwheel end-over-end across the web (pivot on the lane spoke), not a naive center-spin
+    points: 3
+    completed: '2026-06-29'
