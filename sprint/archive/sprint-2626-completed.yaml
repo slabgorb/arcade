@@ -421,3 +421,8 @@ completed_stories:
     title: Shootable enemy fireballs (Wave 1) — destroy an incoming TIE fireball by hitting it with a player laser before it reaches the cockpit
     points: 3
     completed: '2026-06-28'
+  - id: 8-14
+    epic: '8'
+    title: Cabinet-style targeting reticle — converging cyan crosshair chevrons + green lock-on circle on target (Wave 1)
+    points: 3
+    completed: '2026-06-28'

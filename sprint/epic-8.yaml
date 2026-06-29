@@ -192,9 +192,12 @@ stories:
     title: Cabinet-style targeting reticle — converging cyan crosshair chevrons + green lock-on circle on target (Wave 1)
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: star-wars
     workflow: tdd
+    completed: '2026-06-28'
+    review_verdict: approved
   - id: 8-15
     title: TIE fighters should render green, not red (match cabinet color) — Wave 1
     points: 1
