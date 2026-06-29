@@ -1,0 +1,53 @@
+id: '11'
+type: epic
+title: star-wars 3D-vector render pipeline (clipping + camera/MVP + debug overlay)
+description: 'Fix the star-wars 3D vector renderer so geometry positions, sizes, and reads correctly — WITHOUT a 3D engine. Root causes (see star-wars/docs/adr/0001-3d-vector-render-pipeline.md): (1) no near-plane line clipping in wireframe.ts drawWireframe (edges straddling the camera plane are dropped, so the Death Star surface and trench render as triangles); (2) no camera/view transform or scale — placement is faked with ad-hoc world constants, so positioning/sizing is guesswork; (3) no visual debug feedback loop. Decision: a small dependency-free 3D-vector layer on the existing Math Box — near-plane clipping (shell), a camera + MVP pipeline (pure matrix builders in core/math3d, composition in shell), and a dev debug overlay. Determinism and the core/shell boundary preserved; zero new deps. Sequence 11-1 -> 11-2 -> 11-3.'
+priority: p2
+status: backlog
+repos: star-wars
+stories:
+  - id: 11-1
+    title: Near-plane line clipping in the wireframe renderer
+    description: Fix wireframe.ts drawWireframe so edges crossing the near plane are CLIPPED, not dropped. Today 'if (!pa || !pb) continue' discards any edge with an endpoint at/behind z=-NEAR (project() returns null), so the Death Star surface and trench collapse into triangles. Clip the edge to z=-NEAR (parametric crossing t=(-NEAR-za)/(zb-za), lerp to the cut point) BEFORE projecting. wireframe.ts is shared with the model contact sheet (tools/contactSheet.ts) — verify both. See star-wars/docs/adr/0001-3d-vector-render-pipeline.md (part A).
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - An edge with one endpoint in front of and one behind the near plane is clipped to z=-NEAR and drawn to the crossing point (not dropped)
+      - Edges fully behind the near plane draw nothing; edges fully in front are unchanged (no regression)
+      - The crossing point uses the correct parametric intersection; unit tests cover both-behind, both-in-front, straddling, and endpoint-exactly-on-plane cases
+      - The Death Star surface and trench render as receding surfaces (no longer triangles), eyeballed in the dev server (:5274) and the model contact sheet
+      - Determinism preserved; npm run build clean and tests green
+    type: bug
+  - id: 11-2
+    title: Camera + MVP transform pipeline (model/view/projection + scale)
+    description: Introduce a real model->view->projection chain. Add pure scaling() matrix and viewMatrix(camPos, orientation) builders to core/math3d.ts; build a per-entity model matrix = translation o rotation o scale; compose MVP = projection x view x model in the shell and transform vertices through it. Rewire render.ts to place models via {pos,rot,scale} through the camera, retiring the ad-hoc placement glue (SKIM_OFFSET, Z_SURFACE_PLACEMENT, surfacePlacement/trenchPlacement). The camera derives from sim state (the cockpit IS the camera); core stays pure. See star-wars/docs/adr/0001-3d-vector-render-pipeline.md (part B). Depends on 11-1.
+    points: 5
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - core/math3d.ts gains pure, unit-tested scaling() and viewMatrix() builders (matrix invariants / inverse-camera identity covered)
+      - A per-entity model matrix composes translation, rotation, and scale; vertices render through MVP = projection x view x model
+      - render.ts places the surface, trench, and TIEs via the camera/model-matrix path; the prior ad-hoc world-offset constants are removed or reduced to camera state
+      - The camera is derived from GameState only; core/math3d remains pure (no DOM/shell imports) and determinism is preserved
+      - Surface/trench/TIE placement matches or improves current visuals — eyeballed in dev (:5274) and the contact sheet; build clean, tests green
+    type: refactor
+  - id: 11-3
+    title: 'Dev debug overlay: axes, grid, frustum, model bounds'
+    description: "Add a dev-only, toggle-key debug overlay to the shell renderer: world axes at the origin, a ground grid in y=0, the camera frustum, and each on-screen model's bounding sphere + name label (reuse modelView.modelBounds). Pure Canvas 2D, no core changes, no determinism impact — the feedback loop for placing 3D geometry that today 'MUST be eyeballed' blind. See star-wars/docs/adr/0001-3d-vector-render-pipeline.md (part C). Builds on 11-2's camera."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - A keyboard toggle shows/hides the overlay; it is off by default and never affects gameplay or the sim
+      - Overlay draws world axes (X/Y/Z) at the origin and a ground grid in the y=0 plane
+      - Overlay draws the camera frustum and each on-screen model's bounding sphere + name label
+      - Any pure geometry helpers added (frustum corners, bounds projection) are unit-tested; drawing output is eyeballed in dev
+      - No core/shell boundary violation, no new runtime deps, build clean, tests green
+    type: chore
