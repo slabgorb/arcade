@@ -442,3 +442,8 @@ completed_stories:
     title: Enemies scale to lane width (depth projection), not a fixed pixel ramp
     points: 3
     completed: '2026-06-29'
+  - id: 6-12
+    epic: '6'
+    title: Audio test & POKEY bake-tool hardening (6-6 review follow-ups)
+    points: 1
+    completed: '2026-06-29'

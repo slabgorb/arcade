@@ -201,7 +201,8 @@ stories:
     description: "Non-blocking follow-ups from the story 6-6 code review, captured so they aren't lost — all in the audio shell + POKEY bake tool. (1) Export expandAlsoun from tools/pokey-bake/bake-sfx.mjs and unit-test that the merged pokey1 stream is non-decreasing in timestamp; the merge-sort SILENT invariant is currently only guarded by the integration bake test, which would still pass for future single-event (count=1) data even if the sort were removed. (2) Extract the shell event->sound dispatch loop from src/main.ts into a pure importable function so enemy-fire (and other) wiring can be unit-tested behaviorally instead of via the current brittle `?raw` regex text-match on main.ts. (3) Derive a meaningful audibility threshold for the bake test (peak>200 of 32767 is analytically weak) or assert the bake script's own reported peak. (4) Document that node:vm in bake-sfx.mjs is NOT a security sandbox (acceptable for the committed/trusted vendor file)."
     points: 1
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -209,7 +210,9 @@ stories:
       - main.ts event->sound dispatch extracted to a pure importable function and covered by a real behavioral test (replacing the ?raw text-match).
       - Bake-test audibility threshold derived/justified or replaced with the bake script's reported peak value.
       - node:vm sandbox limitation documented in tools/pokey-bake (README or inline comment).
+    completed: '2026-06-29'
     type: chore
+    review_verdict: approved
   - id: 6-13
     title: Decide & reconcile authentic ROM spawn schedule vs the playtest-tuned curve (6-9 follow-up)
     points: 3
