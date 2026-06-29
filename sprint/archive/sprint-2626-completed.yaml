@@ -437,3 +437,8 @@ completed_stories:
     title: Wave 0 — scaffold, Math Box & glowing wireframe skeleton
     points: 2
     completed: '2026-06-27'
+  - id: 6-17
+    epic: '6'
+    title: Enemies scale to lane width (depth projection), not a fixed pixel ramp
+    points: 3
+    completed: '2026-06-29'
