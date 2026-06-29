@@ -11,7 +11,8 @@ stories:
     description: 'Authentic first Superzapper press wipes all enemies AND in-flight enemy bolts EXCEPT tankers (carriers survive the first zap). Today stepZap kills every enemy including tankers (sim.ts:455-460) and never clears s.enemyBullets (sim.ts:453-462), so in-flight bolts still threaten the player and tankers are wrongly destroyed. Ref: context-epic-10.md Superzapper; book ch. superzap.'
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -20,7 +21,9 @@ stories:
       - Second press still kills exactly one enemy (no regression)
       - Tanker cargo is never released by a zap kill (existing declaw preserved)
       - Deterministic; covered in tests/core/sim.superzapper.test.ts
+    completed: '2026-06-29'
     type: bug
+    review_verdict: approved
   - id: 10-2
     title: Superzapper timing window (TIMAX 13/5 frames) + web color flash
     description: 'Model the multi-frame Superzapper. ROM TIMAX runs the first zap active ~13 frames and the second ~5, killing on a per-frame cadence (KILENE), and flashes the well color (QFRAME AND 7) each active frame. Today stepZap (sim.ts:444-475) resolves instantly with no timer or flash. Ref: context-epic-10.md Superzapper; book ch. superzap.'

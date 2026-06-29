@@ -473,3 +473,8 @@ completed_stories:
     title: 'RE spike (bounded): decode the TIE flight-AI routine from the 6809 disassembly'
     points: 3
     completed: '2026-06-29'
+  - id: 10-1
+    epic: '10'
+    title: 'Superzapper first-press correctness: spare tankers, clear in-flight enemy bolts'
+    points: 2
+    completed: '2026-06-29'
