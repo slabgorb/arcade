@@ -534,3 +534,8 @@ completed_stories:
     title: Voice-stealing audio playback (per-channel cut-in)
     points: 3
     completed: '2026-06-29'
+  - id: 9-5
+    epic: '9'
+    title: Wave/difficulty ramp of the TIE AI per the RE'd table (faster, more aggressive, later waves)
+    points: 2
+    completed: '2026-06-29'

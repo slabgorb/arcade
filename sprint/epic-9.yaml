@@ -79,7 +79,8 @@ stories:
     description: Apply the RE'd (or fallback) per-wave difficulty table to the TIE AI so later waves are faster / more aggressive / send more attackers, via gameRules.waveParams. STRETCH.
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -87,6 +88,7 @@ stories:
       - Later waves are measurably harder along those axes; covered by unit tests on waveParams + sim
       - Wave 1 behavior matches the 9-2/9-3 baseline (no regression)
       - Deterministic and unit-tested; existing tests pass
+    completed: '2026-06-29'
     review_verdict: approved
   - id: 9-6
     title: Visible starburst flash when a TIE fires (enemy-fire muzzle effect)
