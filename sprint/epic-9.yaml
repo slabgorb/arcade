@@ -94,9 +94,12 @@ stories:
     title: Visible starburst flash when a TIE fires (enemy-fire muzzle effect)
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: star-wars
     workflow: trivial
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 9-7
     title: TIE fighters scale with distance (perspective size grows on approach, not fixed)
     points: 2

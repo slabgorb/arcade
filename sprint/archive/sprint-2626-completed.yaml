@@ -564,3 +564,8 @@ completed_stories:
     title: Sustained/looping sounds + wire unwired bakes + warp-audio duration
     points: 3
     completed: '2026-06-29'
+  - id: 9-6
+    epic: '9'
+    title: Visible starburst flash when a TIE fires (enemy-fire muzzle effect)
+    points: 2
+    completed: '2026-06-29'
