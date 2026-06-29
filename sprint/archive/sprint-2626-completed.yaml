@@ -524,3 +524,8 @@ completed_stories:
     title: "Strafe-and-fire: TIE fireball cadence/source driven by the pass, per the RE'd timing"
     points: 2
     completed: '2026-06-29'
+  - id: 10-6
+    epic: '10'
+    title: Title-logo approaching rainbow (19-pass depth + color cycle)
+    points: 3
+    completed: '2026-06-29'

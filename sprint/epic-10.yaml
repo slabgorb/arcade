@@ -94,7 +94,8 @@ stories:
     description: 'Attract title draws TEMPEST as the approaching rainbow (book ch. approaching logo process): ~19 passes from far to near, each a different color cycling white/yellow/magenta/red/cyan/green, advancing toward the viewer each frame (SCARNG/LOGPRO). Today drawAttract draws a single static glow title (render.ts:515-535). Shell-only. Ref: context-epic-10.md Title logo.'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -102,6 +103,8 @@ stories:
       - Color cycles through the documented 6-color palette by depth
       - The rainbow advances toward the viewer over time
       - Pure shell; attract input/flow unchanged
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 10-7
     title: 'Fix authentic colors: spikes green, tankers purple, banner colors'
     description: 'Correct swapped/incorrect colors from the comparison. Spikes render purple (render.ts:183-184) but the ROM draws them GREEN; tankers render green (glyphs.ts:90) but GENTNK is PURPLE — the two appear swapped. Banners mismatch: GAME OVER should be green (render.ts:661), AVOID SPIKES white (render.ts:827), HIGH SCORES red (render.ts:472), PRESS START red (render.ts:529). Render-layer only. Ref: context-epic-10.md Colors.'
