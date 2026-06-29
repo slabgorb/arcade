@@ -246,9 +246,10 @@ stories:
     review_verdict: approved
   - id: 6-16
     title: Harden 6-9 enemy-motion tests (fuseball toggle, spiker self-hop/open-tube) + resolve spiker relocation tuning (6-9 review follow-ups)
+    description: 'Canceled 2026-06-29: superseded by epic 10 (ROM-accurate fidelity gaps) — the 6-9 enemy-motion hardening + spiker relocation tuning will be covered differently there.'
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: tempest
     workflow: tdd
     type: chore
