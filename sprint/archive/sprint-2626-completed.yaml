@@ -16,6 +16,7 @@ completed_epics:
   - '3'
   - '5'
   - '8'
+  - '7'
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -447,3 +448,18 @@ completed_stories:
     title: Audio test & POKEY bake-tool hardening (6-6 review follow-ups)
     points: 1
     completed: '2026-06-29'
+  - id: 7-5
+    epic: '7'
+    title: Per-game high scores on tiles
+    points: 2
+    completed: '2026-06-29'
+  - id: 7-6
+    epic: '7'
+    title: Attract mode (idle demo loop)
+    points: 3
+    completed: '2026-06-29'
+  - id: 7-10
+    epic: '7'
+    title: Route /star-wars/ through the arcade tunnel (production access for star-wars)
+    points: 2
+    completed: '2026-06-28'

@@ -3,7 +3,7 @@ type: epic
 title: Arcade lobby v1
 description: 'The arcade''s front door: a vector-style lobby on black that lists the games as glowing tiles, launches them, runs an attract-mode demo loop when idle, and shows per-game high scores. Matches the arcade visual language (glowing vector lines on black, Canvas 2D, no backend). Foundation for adding future games to the cabinet.'
 priority: p1
-status: backlog
+status: done
 repos: lobby
 stories:
   - id: 7-1
@@ -57,9 +57,13 @@ stories:
     title: Per-game high scores on tiles
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    assigned_to: Keith Avery
+    started: '2026-06-29'
     repos: lobby
     workflow: trivial
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 7-6
     title: Attract mode (idle demo loop)
     points: 3
@@ -129,3 +133,4 @@ stories:
       - cloudflared/README.md reflects the /star-wars route + apply/restart procedure
     completed: '2026-06-28'
     type: chore
+completed: '2026-06-29'
