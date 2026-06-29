@@ -3,7 +3,7 @@ type: epic
 title: ROM-accurate TIE fighter flight AI
 description: 'Make Wave-1 TIE fighters move, attack, and present like the 1983 cabinet instead of the current straight-line ram-the-cockpit model. Today TIEs spawn at z=-1200 and fly dead-straight at the origin until they ram or are shot, ballooning to fill the screen with no swoop, weave, formation spread, or peel-away (see the side-by-side: ours is a wall of overlapping wireframe; the cabinet shows distinct ships swooping in on banking arcs). Source of truth is the 6809 main-program disassembly in the gitignored reference/disasm/ quarry (StarWars.asm, SW_M_Hi.asm), which holds the real flight logic but is uncommented (IDA auto-labels) so recovery is genuine reverse engineering. Sequenced spike-first: a bounded RE spike (9-1) decodes the flight model and gates the rest; if RE stalls at the timebox, fall back to a feel-faithful approximation informed by what was learned. NOTE: the AVG vector-RAM dumps (swspace.bin etc.) + DAVGAD disassembler the user also provided unblock the SEPARATE authentic-vector-edges work (docs/HANDOFF-authentic-vector-edges.md) - not this epic.'
 priority: p2
-status: backlog
+status: done
 repos: star-wars
 stories:
   - id: 9-1
@@ -104,7 +104,11 @@ stories:
     title: TIE fighters scale with distance (perspective size grows on approach, not fixed)
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: star-wars
     workflow: tdd
+    completed: '2026-06-29'
     type: bug
+    review_verdict: approved
+completed: '2026-06-29'
