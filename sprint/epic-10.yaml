@@ -190,7 +190,8 @@ stories:
     description: 'STRETCH. Replace the affine/linear depth interpolation in geometry.project (geometry.ts:55-59, fixed FAR_RATIO 0.2) with a true perspective divide (screen-scale proportional to 1/(eye minus z)) driven by the ROM vanishing point, so objects accelerate toward the rim like the cabinet (book ch. spikes, WORSCR). Affects all depth rendering and apparent enemy speed; collision is lane+depth so pure-sim is unaffected, but feel and tests change. Sequence after the visible-win stories. Ref: context-epic-10.md Geometry.'
     points: 5
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -198,6 +199,8 @@ stories:
       - Vanishing-point/eye parameters sourced from the ROM or a documented approximation
       - Apparent motion accelerates toward the near rim; geometry tests updated
       - Collision/gameplay unchanged (lane+depth); existing core tests pass
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 10-13
     title: Authentic VGMSGA stroke-vector font (replace TTF webfont) [stretch]
     description: 'STRETCH. Replace the TTF webfont (font.ts:16-26) with an authentic stroke-vector alphabet: a per-letter glyph table (CHAR.x style, ~16x24 cell) stroked like the existing enemy/claw glyphs in glyphs.ts, per book ch. macro language fun (VGMSGA). True vector text instead of a font approximation. Larger UI surface; sequence late. Ref: context-epic-10.md Font.'

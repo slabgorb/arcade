@@ -580,3 +580,8 @@ completed_stories:
     title: TIE fighters scale with distance (perspective size grows on approach, not fixed)
     points: 2
     completed: '2026-06-29'
+  - id: 10-12
+    epic: '10'
+    title: True perspective projection (replace linear depth lerp) [stretch]
+    points: 5
+    completed: '2026-06-29'

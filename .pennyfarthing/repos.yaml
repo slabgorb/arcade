@@ -19,6 +19,8 @@ repos:
   tempest:
     path: tempest
     type: ui
+    default_branch: develop
+    branch_strategy: gitflow
     description: 'Faithful browser-based vector clone of Atari''s 1981 Tempest.
 
       Canvas 2D rendering, no backend, no game/physics engine.
