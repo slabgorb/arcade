@@ -504,3 +504,8 @@ completed_stories:
     title: Harden 6-9 enemy-motion tests (fuseball toggle, spiker self-hop/open-tube) + resolve spiker relocation tuning (6-9 review follow-ups)
     points: 2
     completed: '2026-06-29'
+  - id: 10-2
+    epic: '10'
+    title: Superzapper timing window (TIMAX 13/5 frames) + web color flash
+    points: 3
+    completed: '2026-06-29'

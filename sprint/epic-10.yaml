@@ -29,7 +29,8 @@ stories:
     description: 'Model the multi-frame Superzapper. ROM TIMAX runs the first zap active ~13 frames and the second ~5, killing on a per-frame cadence (KILENE), and flashes the well color (QFRAME AND 7) each active frame. Today stepZap (sim.ts:444-475) resolves instantly with no timer or flash. Ref: context-epic-10.md Superzapper; book ch. superzap.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -38,6 +39,8 @@ stories:
       - Well/web color flashes per-frame deterministically while a zap is active, reverting after
       - dt-independent and deterministic; tests cover window duration and cadence
       - Net kills match the documented outcome (first clears non-tankers; second equals 1)
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 10-3
     title: Attract-mode self-play demo AI (auto-move + anticipatory fire)
     description: 'Add the authentic attract demo: when idle the game plays itself. Per book ch. attract mode admin: 1 life, level chosen randomly from the first 8 (RANDOM AND 7), cursor auto-moves toward the most-advanced enemy (smallest non-zero depth) and fires when any enemy or bolt lane is within 2 of the player. Today the attract case only waits for start (sim.ts:552-559). Pure-core, deterministic via seeded RNG; exits to title on any input or death. Also unblocks the lobby attract loop. Ref: context-epic-10.md Attract AI.'
