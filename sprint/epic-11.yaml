@@ -11,7 +11,8 @@ stories:
     description: Fix wireframe.ts drawWireframe so edges crossing the near plane are CLIPPED, not dropped. Today 'if (!pa || !pb) continue' discards any edge with an endpoint at/behind z=-NEAR (project() returns null), so the Death Star surface and trench collapse into triangles. Clip the edge to z=-NEAR (parametric crossing t=(-NEAR-za)/(zb-za), lerp to the cut point) BEFORE projecting. wireframe.ts is shared with the model contact sheet (tools/contactSheet.ts) — verify both. See star-wars/docs/adr/0001-3d-vector-render-pipeline.md (part A).
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -20,7 +21,9 @@ stories:
       - The crossing point uses the correct parametric intersection; unit tests cover both-behind, both-in-front, straddling, and endpoint-exactly-on-plane cases
       - The Death Star surface and trench render as receding surfaces (no longer triangles), eyeballed in the dev server (:5274) and the model contact sheet
       - Determinism preserved; npm run build clean and tests green
+    completed: '2026-06-29'
     type: bug
+    review_verdict: approved
   - id: 11-2
     title: Camera + MVP transform pipeline (model/view/projection + scale)
     description: Introduce a real model->view->projection chain. Add pure scaling() matrix and viewMatrix(camPos, orientation) builders to core/math3d.ts; build a per-entity model matrix = translation o rotation o scale; compose MVP = projection x view x model in the shell and transform vertices through it. Rewire render.ts to place models via {pos,rot,scale} through the camera, retiring the ad-hoc placement glue (SKIM_OFFSET, Z_SURFACE_PLACEMENT, surfacePlacement/trenchPlacement). The camera derives from sim state (the cockpit IS the camera); core stays pure. See star-wars/docs/adr/0001-3d-vector-render-pipeline.md (part B). Depends on 11-1.

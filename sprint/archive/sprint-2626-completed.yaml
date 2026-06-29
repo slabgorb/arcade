@@ -539,3 +539,8 @@ completed_stories:
     title: Wave/difficulty ramp of the TIE AI per the RE'd table (faster, more aggressive, later waves)
     points: 2
     completed: '2026-06-29'
+  - id: 11-1
+    epic: '11'
+    title: Near-plane line clipping in the wireframe renderer
+    points: 3
+    completed: '2026-06-29'
