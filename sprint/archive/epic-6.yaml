@@ -3,7 +3,7 @@ type: epic
 title: Wave 6 — Playtest feel & balance
 description: Gameplay feel and fairness fixes surfaced during hands-on playtest (post Waves 0-5). Warp instant-death, auto-fire cadence, and respawn chain-death.
 priority: p1
-status: ready
+status: done
 repos: tempest
 stories:
   - id: 6-1
@@ -290,3 +290,4 @@ stories:
     branch: fix/6-18-flipper-flip-wiring
     type: bug
     review_verdict: approved
+completed: '2026-06-29'

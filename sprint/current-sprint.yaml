@@ -8,6 +8,5 @@ sprint:
   status: active
   number: 2626
 epics:
-  - '6'
   - '9'
   - '10'

@@ -17,6 +17,7 @@ completed_epics:
   - '5'
   - '8'
   - '7'
+  - '6'
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -487,4 +488,19 @@ completed_stories:
     epic: '9'
     title: Port the RE'd TIE flight model to core/sim.ts (swoop/weave/bank approach)
     points: 3
+    completed: '2026-06-29'
+  - id: 10-5
+    epic: '10'
+    title: 'Authentic explosions: 16-spoke enemy burst + color-cycling death splat'
+    points: 3
+    completed: '2026-06-29'
+  - id: 6-7
+    epic: '6'
+    title: Survey authentic level geometries from ROM & reconcile our parametric set
+    points: 3
+    completed: '2026-06-27'
+  - id: 6-16
+    epic: '6'
+    title: Harden 6-9 enemy-motion tests (fuseball toggle, spiker self-hop/open-tube) + resolve spiker relocation tuning (6-9 review follow-ups)
+    points: 2
     completed: '2026-06-29'
