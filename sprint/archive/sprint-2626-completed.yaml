@@ -15,6 +15,7 @@ completed_epics:
   - '4'
   - '3'
   - '5'
+  - '8'
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -426,3 +427,13 @@ completed_stories:
     title: Cabinet-style targeting reticle — converging cyan crosshair chevrons + green lock-on circle on target (Wave 1)
     points: 3
     completed: '2026-06-28'
+  - id: 8-17
+    epic: '8'
+    title: Add cabinet HUD header — SCORE + score/lives, center SHIELD meter graphic + level, WAVE number — rendered in the vector font
+    points: 3
+    completed: '2026-06-29'
+  - id: 8-1
+    epic: '8'
+    title: Wave 0 — scaffold, Math Box & glowing wireframe skeleton
+    points: 2
+    completed: '2026-06-27'

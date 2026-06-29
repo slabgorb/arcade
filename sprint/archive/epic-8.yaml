@@ -3,7 +3,7 @@ type: epic
 title: 'Star Wars: vector cockpit shooter (Waves 0-5)'
 description: 'Faithful browser clone of Atari''s 1983 vector Star Wars — first-person cockpit shooter escalating through three phases per wave: space (TIE fighters + fireballs) -> Death Star surface (towers, turrets) -> trench run (exhaust port). Glowing 3D vectors on Canvas 2D, no engine, no backend. Deterministic pure core with a software ''Math Box'' (math3d) wrapped by a thin render/input/audio shell, mirroring tempest. Authentic vector models and speech ported from the cabinet disassembly under star-wars/reference (gitignored).'
 priority: p2
-status: backlog
+status: done
 repos: star-wars
 stories:
   - id: 8-1
@@ -225,9 +225,12 @@ stories:
     title: Add cabinet HUD header — SCORE + score/lives, center SHIELD meter graphic + level, WAVE number — rendered in the vector font
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: star-wars
     workflow: tdd
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 8-18
     title: Shootable enemy fireballs (Wave 1) — destroy an incoming TIE fireball by hitting it with a player laser before it reaches the cockpit
     points: 3
@@ -241,3 +244,4 @@ stories:
     branch: feat/8-18-shootable-enemy-fireballs
     review_findings: 'Code logic correct, but: (1) HIGH — interception-before-cockpit invariant untested (suite passes for trivial far-downrange geometry); (2) MEDIUM — main.ts:68 event switch non-exhaustive, silently drops fireball-destroyed, no assertNever guard; (3) MEDIUM — test line 109 never verifies event pos + type-escape cast. Red rework.'
     review_verdict: approved
+completed: '2026-06-29'
