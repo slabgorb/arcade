@@ -468,3 +468,8 @@ completed_stories:
     title: Flippers cartwheel end-over-end across the web (pivot on the lane spoke), not a naive center-spin
     points: 3
     completed: '2026-06-29'
+  - id: 9-1
+    epic: '9'
+    title: 'RE spike (bounded): decode the TIE flight-AI routine from the 6809 disassembly'
+    points: 3
+    completed: '2026-06-29'

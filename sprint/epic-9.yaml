@@ -11,7 +11,8 @@ stories:
     description: Bounded reverse-engineering spike. Trace the 6809 main-program disassembly (docs/references/SW/StarWars.asm + SW_M_Hi.asm) to locate the per-frame TIE object update and decode the flight model. Deliverable is a WRITTEN MODEL committed as markdown under star-wars/docs/ (e.g. tie-flight-ai-model.md) — NOT production code. Bounded to one focused session; this story GATES 9-2..9-5.
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: star-wars
     workflow: trivial
     acceptance_criteria:
@@ -21,7 +22,9 @@ stories:
       - Documented per-wave difficulty knobs the AI reads (speed/aggression/count), or an explicit note that they were not recoverable
       - 'DECISION GATE recorded: (a) model recoverable -> 9-2..9-5 port it faithfully, or (b) RE stalled at the timebox -> fall back to feel-faithful approximation using whatever partial findings were captured'
       - No production code changes in this story; output is the committed markdown model doc
+    completed: '2026-06-29'
     type: chore
+    review_verdict: approved
   - id: 9-2
     title: Port the RE'd TIE flight model to core/sim.ts (swoop/weave/bank approach)
     description: 'Replace the straight-line moveEnemy/spawnTie in core/sim.ts with the flight model from 9-1: curved swoop/weave approach with banking, deterministic via the seeded RNG carried in GameState. Pure-core, unit-tested. Honors the core/shell boundary (no DOM, no wall-clock time, no Math.random).'
