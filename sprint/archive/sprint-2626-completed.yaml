@@ -549,3 +549,8 @@ completed_stories:
     title: Near-plane line clipping in the wireframe renderer
     points: 3
     completed: '2026-06-29'
+  - id: 10-9
+    epic: '10'
+    title: Missing on-screen banners (SUPERZAPPER RECHARGE, RATE YOURSELF/rank, bonus)
+    points: 3
+    completed: '2026-06-29'

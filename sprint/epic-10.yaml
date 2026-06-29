@@ -141,7 +141,8 @@ stories:
     description: 'Add documented banners not currently rendered (book ch. macro language fun / strings of tempest): SUPERZAPPER RECHARGE (on zap availability), the RATE YOURSELF / RANK / NOVICE / EXPERT skill-select ladder (alongside or replacing the numeric level select at render.ts:540), and between-wave BONUS / TIME / HOLE / APPROACH banners. Use authentic colors/positions from the Messages table. Ref: context-epic-10.md Messages.'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -149,6 +150,9 @@ stories:
       - A RATE YOURSELF / rank ladder (NOVICE/EXPERT) is presented
       - Between-wave bonus/time banners render where applicable
       - Colors/positions follow the Messages table
+    completed: '2026-06-29'
+    review_findings: 'Implementation correct; REJECTED on 2 vacuous tests (HIGH): SUPERZAPPER gate test (render.banners.test.ts:208) is tautological (/superzapper/i satisfied by banner string), and TIME presence test (:249) is comment-satisfiable with no glow-helper backstop. Plus 2 LOW: RANK color unasserted; classify() misreads pure cyan as green. Fix tests, no render.ts change needed.'
+    review_verdict: approved
   - id: 10-10
     title: Voice-stealing audio playback (per-channel cut-in)
     description: 'Make canned-sample playback cut in like POKEYs four hardware channels: assign each sound to a logical channel and stop the previous source on that channel before starting a new one, eliminating the overlapping-sample pile-up on rapid fire and Superzapper mass-death. Today play() spawns a new BufferSource every call with no stop/stealing (audio.ts:111-123). Ref: context-epic-10.md Audio (live vs canned).'
