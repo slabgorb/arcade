@@ -174,7 +174,8 @@ stories:
     description: 'Add sustain/loop support and connect baked-but-unwired SFX. Loop the authentic pulsar_hum while a pulsar is alive and stop on death; wire spike_shot (baked, ROM cc51) to spike hits and extra_life to bonus-life awards; match the warp/zoom sound duration to the actual dive length (today a single one-shot warp.wav on entry). Requires new GameEvents (events.ts) + audio-dispatch wiring + core emit points. Ref: context-epic-10.md Audio + Warp.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -182,6 +183,8 @@ stories:
       - spike_shot and extra_life bakes are wired to their events and play
       - The warp sound spans the dive (no early silence, no bleed into the next level)
       - New events are pure data emitted by core; deterministic; dispatch tests updated
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 10-12
     title: True perspective projection (replace linear depth lerp) [stretch]
     description: 'STRETCH. Replace the affine/linear depth interpolation in geometry.project (geometry.ts:55-59, fixed FAR_RATIO 0.2) with a true perspective divide (screen-scale proportional to 1/(eye minus z)) driven by the ROM vanishing point, so objects accelerate toward the rim like the cabinet (book ch. spikes, WORSCR). Affects all depth rendering and apparent enemy speed; collision is lane+depth so pure-sim is unaffected, but feel and tests change. Sequence after the visible-win stories. Ref: context-epic-10.md Geometry.'

@@ -559,3 +559,8 @@ completed_stories:
     title: Camera + MVP transform pipeline (model/view/projection + scale)
     points: 5
     completed: '2026-06-29'
+  - id: 10-11
+    epic: '10'
+    title: Sustained/looping sounds + wire unwired bakes + warp-audio duration
+    points: 3
+    completed: '2026-06-29'
