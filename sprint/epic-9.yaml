@@ -46,7 +46,8 @@ stories:
     description: Un-killed TIEs complete their attack pass and exit (peel away / fly past) instead of flying all the way into the cockpit and ballooning to fill the frame (the Image-1 defect). Bounds on-screen scale and matches the cabinet's 'they pass and leave' feel.
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: "2026-06-29"
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -54,6 +55,9 @@ stories:
       - 'On-screen TIE scale is bounded: no TIE renders as a full-frame wall (cabinet-equivalent near-bound)'
       - Cockpit damage still occurs for genuine collision/strafe hits per the model (peel-away does not make TIEs harmless)
       - Deterministic and unit-tested; existing tests pass
+    completed: '2026-06-29'
+    branch: feat/9-3-peel-away-flypast-lifecycle
+    review_verdict: approved
   - id: 9-4
     title: "Strafe-and-fire: TIE fireball cadence/source driven by the pass, per the RE'd timing"
     description: Drive enemy fireball cadence and origin from the TIE's pass per the 9-1 timing (a TIE fires during its strafe window aimed at the cockpit) instead of the current whole-formation fixed-interval lob. STRETCH.

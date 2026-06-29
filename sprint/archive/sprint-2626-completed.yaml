@@ -494,6 +494,11 @@ completed_stories:
     title: 'Authentic explosions: 16-spoke enemy burst + color-cycling death splat'
     points: 3
     completed: '2026-06-29'
+  - id: 9-3
+    epic: '9'
+    title: 'Peel-away / fly-past lifecycle: un-killed TIEs complete their pass and exit instead of ballooning into the cockpit'
+    points: 2
+    completed: '2026-06-29'
   - id: 6-7
     epic: '6'
     title: Survey authentic level geometries from ROM & reconcile our parametric set
