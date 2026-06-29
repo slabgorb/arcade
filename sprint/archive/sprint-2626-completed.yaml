@@ -416,3 +416,8 @@ completed_stories:
     title: TIE fighters should render green, not red (match cabinet color) — Wave 1
     points: 1
     completed: '2026-06-28'
+  - id: 8-18
+    epic: '8'
+    title: Shootable enemy fireballs (Wave 1) — destroy an incoming TIE fireball by hitting it with a player laser before it reaches the cockpit
+    points: 3
+    completed: '2026-06-28'
