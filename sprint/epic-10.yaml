@@ -151,7 +151,8 @@ stories:
     description: 'Make canned-sample playback cut in like POKEYs four hardware channels: assign each sound to a logical channel and stop the previous source on that channel before starting a new one, eliminating the overlapping-sample pile-up on rapid fire and Superzapper mass-death. Today play() spawns a new BufferSource every call with no stop/stealing (audio.ts:111-123). Ref: context-epic-10.md Audio (live vs canned).'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -159,6 +160,8 @@ stories:
       - Rapid retriggers (held fire, superzap burst) no longer stack into a layered pile-up
       - One-shot SFX otherwise unchanged; engine still degrades silently on failure
       - Covered by tests in tests/shell/audio.test.ts
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 10-11
     title: Sustained/looping sounds + wire unwired bakes + warp-audio duration
     description: 'Add sustain/loop support and connect baked-but-unwired SFX. Loop the authentic pulsar_hum while a pulsar is alive and stop on death; wire spike_shot (baked, ROM cc51) to spike hits and extra_life to bonus-life awards; match the warp/zoom sound duration to the actual dive length (today a single one-shot warp.wav on entry). Requires new GameEvents (events.ts) + audio-dispatch wiring + core emit points. Ref: context-epic-10.md Audio + Warp.'
