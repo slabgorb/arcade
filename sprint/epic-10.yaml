@@ -215,10 +215,13 @@ stories:
     title: 'Superzapper empty-board behavior: restore Story-5-1/4-1 semantics (no activate event on empty press; weak shot with no target is wasted-but-not-spent) OR pin the new windowed behavior with tests + a deviation. Regression surfaced in 10-2 review (stepZap dropped the enemies.length===0 early-return).'
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
+    completed: '2026-06-29'
     type: bug
+    review_verdict: approved
   - id: 10-15
     title: 'Render the Superzapper well-color flash: shell consumes the superzapper-flash event (color 0..7, QFRAME AND 7) and tints the well/web each active zap frame, reverting after. Core signal already emitted + tested in 10-2; this is the deferred visible render (verify by running the game).'
     points: 2

@@ -569,3 +569,8 @@ completed_stories:
     title: Visible starburst flash when a TIE fires (enemy-fire muzzle effect)
     points: 2
     completed: '2026-06-29'
+  - id: 10-14
+    epic: '10'
+    title: 'Superzapper empty-board behavior: restore Story-5-1/4-1 semantics (no activate event on empty press; weak shot with no target is wasted-but-not-spent) OR pin the new windowed behavior with tests + a deviation. Regression surfaced in 10-2 review (stepZap dropped the enemies.length===0 early-return).'
+    points: 2
+    completed: '2026-06-29'
