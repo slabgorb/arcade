@@ -1,0 +1,76 @@
+id: '9'
+type: epic
+title: ROM-accurate TIE fighter flight AI
+description: 'Make Wave-1 TIE fighters move, attack, and present like the 1983 cabinet instead of the current straight-line ram-the-cockpit model. Today TIEs spawn at z=-1200 and fly dead-straight at the origin until they ram or are shot, ballooning to fill the screen with no swoop, weave, formation spread, or peel-away (see the side-by-side: ours is a wall of overlapping wireframe; the cabinet shows distinct ships swooping in on banking arcs). Source of truth is the 6809 main-program disassembly in the gitignored reference/disasm/ quarry (StarWars.asm, SW_M_Hi.asm), which holds the real flight logic but is uncommented (IDA auto-labels) so recovery is genuine reverse engineering. Sequenced spike-first: a bounded RE spike (9-1) decodes the flight model and gates the rest; if RE stalls at the timebox, fall back to a feel-faithful approximation informed by what was learned. NOTE: the AVG vector-RAM dumps (swspace.bin etc.) + DAVGAD disassembler the user also provided unblock the SEPARATE authentic-vector-edges work (docs/HANDOFF-authentic-vector-edges.md) - not this epic.'
+priority: p2
+status: backlog
+repos: star-wars
+stories:
+  - id: 9-1
+    title: 'RE spike (bounded): decode the TIE flight-AI routine from the 6809 disassembly'
+    description: Bounded reverse-engineering spike. Trace the 6809 main-program disassembly (docs/references/SW/StarWars.asm + SW_M_Hi.asm) to locate the per-frame TIE object update and decode the flight model. Deliverable is a WRITTEN MODEL committed as markdown under star-wars/docs/ (e.g. tie-flight-ai-model.md) — NOT production code. Bounded to one focused session; this story GATES 9-2..9-5.
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: trivial
+    acceptance_criteria:
+      - 'Located in the disassembly: the routine(s) that update TIE object world coordinates each frame, plus where spawn/initial state is set'
+      - 'Documented flight model: spawn position/distribution, per-frame position/velocity update (incl. any curve/swoop/weave/banking) and the math used (Math Box calls if any)'
+      - 'Documented attack lifecycle: fire timing/trigger and the peel-away / fly-past / exit condition (when a TIE stops approaching)'
+      - Documented per-wave difficulty knobs the AI reads (speed/aggression/count), or an explicit note that they were not recoverable
+      - 'DECISION GATE recorded: (a) model recoverable -> 9-2..9-5 port it faithfully, or (b) RE stalled at the timebox -> fall back to feel-faithful approximation using whatever partial findings were captured'
+      - No production code changes in this story; output is the committed markdown model doc
+    type: chore
+  - id: 9-2
+    title: Port the RE'd TIE flight model to core/sim.ts (swoop/weave/bank approach)
+    description: 'Replace the straight-line moveEnemy/spawnTie in core/sim.ts with the flight model from 9-1: curved swoop/weave approach with banking, deterministic via the seeded RNG carried in GameState. Pure-core, unit-tested. Honors the core/shell boundary (no DOM, no wall-clock time, no Math.random).'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - 'spawnTie / moveEnemy (or successors) implement the 9-1 approach model: TIEs follow curved/weaving paths, not a straight line to the origin'
+      - 'Motion is deterministic: identical (state, input, dt, seed) -> identical trajectories; covered by unit tests in tests/'
+      - Banking/orientation follows the path per the model, not just a static look-at (extends story 8-13)
+      - Existing Wave-1 tests still pass; collisions/hit-tests unaffected; core stays pure
+  - id: 9-3
+    title: 'Peel-away / fly-past lifecycle: un-killed TIEs complete their pass and exit instead of ballooning into the cockpit'
+    description: Un-killed TIEs complete their attack pass and exit (peel away / fly past) instead of flying all the way into the cockpit and ballooning to fill the frame (the Image-1 defect). Bounds on-screen scale and matches the cabinet's 'they pass and leave' feel.
+    points: 2
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - A TIE that is neither killed nor lands a hit transitions to a peel-away/exit phase per the 9-1 model and leaves the play volume (freeing its slot) rather than ramming
+      - 'On-screen TIE scale is bounded: no TIE renders as a full-frame wall (cabinet-equivalent near-bound)'
+      - Cockpit damage still occurs for genuine collision/strafe hits per the model (peel-away does not make TIEs harmless)
+      - Deterministic and unit-tested; existing tests pass
+  - id: 9-4
+    title: "Strafe-and-fire: TIE fireball cadence/source driven by the pass, per the RE'd timing"
+    description: Drive enemy fireball cadence and origin from the TIE's pass per the 9-1 timing (a TIE fires during its strafe window aimed at the cockpit) instead of the current whole-formation fixed-interval lob. STRETCH.
+    points: 2
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - Fireballs originate from a TIE during its strafe/pass window per the 9-1 timing, not on a single formation-wide fixed timer
+      - Fire timing/cadence matches the RE'd values (or documented fallback), still respecting the 6-fireball slot cap
+      - Player can still shoot fireballs down (story 8-18 intact)
+      - Deterministic and unit-tested; existing tests pass
+  - id: 9-5
+    title: Wave/difficulty ramp of the TIE AI per the RE'd table (faster, more aggressive, later waves)
+    description: Apply the RE'd (or fallback) per-wave difficulty table to the TIE AI so later waves are faster / more aggressive / send more attackers, via gameRules.waveParams. STRETCH.
+    points: 2
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - waveParams drives the 9-2..9-4 AI knobs (approach speed, aggression, simultaneous attackers, fire rate) per the RE'd table or documented fallback
+      - Later waves are measurably harder along those axes; covered by unit tests on waveParams + sim
+      - Wave 1 behavior matches the 9-2/9-3 baseline (no regression)
+      - Deterministic and unit-tested; existing tests pass
