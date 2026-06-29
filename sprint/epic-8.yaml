@@ -199,9 +199,11 @@ stories:
     title: TIE fighters should render green, not red (match cabinet color) — Wave 1
     points: 1
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-28'
     repos: star-wars
     workflow: trivial
+    completed: '2026-06-28'
     type: bug
   - id: 8-16
     title: Firing does not kill enemies; wave clears via collision/ramming not kills — fix hit-detection + wave-clear condition (Wave 1)

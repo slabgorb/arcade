@@ -411,3 +411,8 @@ completed_stories:
     title: Render player shots as cyan laser beams (pew pew) — replace '+' placeholder with cabinet-style converging laser lines (Wave 1)
     points: 3
     completed: '2026-06-28'
+  - id: 8-15
+    epic: '8'
+    title: TIE fighters should render green, not red (match cabinet color) — Wave 1
+    points: 1
+    completed: '2026-06-28'
