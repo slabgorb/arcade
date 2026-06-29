@@ -478,3 +478,8 @@ completed_stories:
     title: 'Superzapper first-press correctness: spare tankers, clear in-flight enemy bolts'
     points: 2
     completed: '2026-06-29'
+  - id: 10-4
+    epic: '10'
+    title: 'Realize the warp dive spectacle: 8-plane starfield + entry FX + render test'
+    points: 3
+    completed: '2026-06-29'

@@ -58,7 +58,8 @@ stories:
     description: 'Make the warp read as the authentic dive. The warp MECHANIC is already realized end-to-end (sim.ts:483 and 538-547, render.ts:793-795); this story adds the SPECTACLE. Add the 8-plane starfield (book ch. star planes: 8 planes, screen-center origin, spawn Z 0xF0, step -7/frame, spawn-next 0xD5, retire 0x10, blue dots, 4 reused star pictures) shown during warp; add an entering-warp FX cue on warp entry (consume the level-clear event in fx.detect rather than the arrival level-diff at fx.ts:108); add the render-dispatch test asserting drawWarp fires when mode is warp. Warp-sound duration is handled in 10-11. Ref: context-epic-10.md Warp + Starfield.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -66,6 +67,8 @@ stories:
       - An FX cue fires on warp ENTRY (level-clear event), not only on arrival
       - A render test asserts render() takes the drawWarp branch when mode is warp, with spikes still drawn
       - Existing warp core tests pass; core stays pure (starfield is shell-only)
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 10-5
     title: 'Authentic explosions: 16-spoke enemy burst + color-cycling death splat'
     description: 'Replace generic particle puffs with authentic vector explosions. Enemy death (book ch. explosions one to four): a 4-frame 16-spoke star doubling in size (scale 1,2,4,8) with brightness 7 then 14 — today 12 random particles (fx.ts:46-77). Player death (book ch. splat control): a concentric jagged star that grows then shrinks with white/red/yellow color-cycling (ROTCOL) — today two fixed-color bursts, no cycling (fx.ts:80-89). Shell-only FX. Ref: context-epic-10.md Explosions.'
