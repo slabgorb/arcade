@@ -529,6 +529,11 @@ completed_stories:
     title: Title-logo approaching rainbow (19-pass depth + color cycle)
     points: 3
     completed: '2026-06-29'
+  - id: 10-8
+    epic: '10'
+    title: Ammo-count bullet color (yellow/blue/red by charges in flight)
+    points: 2
+    completed: '2026-06-29'
   - id: 10-10
     epic: '10'
     title: Voice-stealing audio playback (per-channel cut-in)
