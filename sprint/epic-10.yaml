@@ -1,0 +1,181 @@
+id: '10'
+type: epic
+title: ROM-accurate fidelity gaps (Tempest vs Tempest source study)
+description: "Captures the gaps between our clone and the authentic 1981 arcade Tempest, surfaced by comparing docs/tempest-1981-source-findings.md (extracted from the 'Tempest vs Tempest' book) against src/core and src/shell. Goal: a faithful port. Stories grouped: P1 gameplay (superzapper, attract AI); authentic visuals (warp spectacle, explosions, title rainbow, colors, banners, ammo); audio cut-in & sustain; deep-fidelity stretch (perspective, vector font). Deliberate prior deviations (flipper-carrier fire, flip-direction 6-14, spike-max-height 6-15, held-fire autofire) excluded. Full per-subsystem comparison in sprint/context/context-epic-10.md."
+priority: p2
+status: backlog
+repos: tempest
+stories:
+  - id: 10-1
+    title: 'Superzapper first-press correctness: spare tankers, clear in-flight enemy bolts'
+    description: 'Authentic first Superzapper press wipes all enemies AND in-flight enemy bolts EXCEPT tankers (carriers survive the first zap). Today stepZap kills every enemy including tankers (sim.ts:455-460) and never clears s.enemyBullets (sim.ts:453-462), so in-flight bolts still threaten the player and tankers are wrongly destroyed. Ref: context-epic-10.md Superzapper; book ch. superzap.'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - First Superzapper press destroys all non-tanker enemies but leaves tankers alive
+      - First press clears all in-flight enemy bolts (s.enemyBullets emptied)
+      - Second press still kills exactly one enemy (no regression)
+      - Tanker cargo is never released by a zap kill (existing declaw preserved)
+      - Deterministic; covered in tests/core/sim.superzapper.test.ts
+    type: bug
+  - id: 10-2
+    title: Superzapper timing window (TIMAX 13/5 frames) + web color flash
+    description: 'Model the multi-frame Superzapper. ROM TIMAX runs the first zap active ~13 frames and the second ~5, killing on a per-frame cadence (KILENE), and flashes the well color (QFRAME AND 7) each active frame. Today stepZap (sim.ts:444-475) resolves instantly with no timer or flash. Ref: context-epic-10.md Superzapper; book ch. superzap.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - Player state carries a superzapper active-timer; first activation runs the longer window, second the shorter
+      - Enemies are removed on a per-frame cadence across the window, not all in one frame
+      - Well/web color flashes per-frame deterministically while a zap is active, reverting after
+      - dt-independent and deterministic; tests cover window duration and cadence
+      - Net kills match the documented outcome (first clears non-tankers; second equals 1)
+  - id: 10-3
+    title: Attract-mode self-play demo AI (auto-move + anticipatory fire)
+    description: 'Add the authentic attract demo: when idle the game plays itself. Per book ch. attract mode admin: 1 life, level chosen randomly from the first 8 (RANDOM AND 7), cursor auto-moves toward the most-advanced enemy (smallest non-zero depth) and fires when any enemy or bolt lane is within 2 of the player. Today the attract case only waits for start (sim.ts:552-559). Pure-core, deterministic via seeded RNG; exits to title on any input or death. Also unblocks the lobby attract loop. Ref: context-epic-10.md Attract AI.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - Attract runs the normal playing pipeline driven by synthetic input, deterministic via GameState RNG (no DOM)
+      - Demo seeds 1 life and a random level from 1-8
+      - Auto-movement steers toward the lowest-depth enemy via shortest wrapped lane distance
+      - Auto-fire triggers when an enemy or enemy bolt is within 2 lanes of the player
+      - Any real input or demo death returns to the title screen; start-to-play path intact
+      - Deterministic and unit-tested
+  - id: 10-4
+    title: 'Realize the warp dive spectacle: 8-plane starfield + entry FX + render test'
+    description: 'Make the warp read as the authentic dive. The warp MECHANIC is already realized end-to-end (sim.ts:483 and 538-547, render.ts:793-795); this story adds the SPECTACLE. Add the 8-plane starfield (book ch. star planes: 8 planes, screen-center origin, spawn Z 0xF0, step -7/frame, spawn-next 0xD5, retire 0x10, blue dots, 4 reused star pictures) shown during warp; add an entering-warp FX cue on warp entry (consume the level-clear event in fx.detect rather than the arrival level-diff at fx.ts:108); add the render-dispatch test asserting drawWarp fires when mode is warp. Warp-sound duration is handled in 10-11. Ref: context-epic-10.md Warp + Starfield.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - A layered starfield (8 planes, documented constants) renders during the warp dive
+      - An FX cue fires on warp ENTRY (level-clear event), not only on arrival
+      - A render test asserts render() takes the drawWarp branch when mode is warp, with spikes still drawn
+      - Existing warp core tests pass; core stays pure (starfield is shell-only)
+  - id: 10-5
+    title: 'Authentic explosions: 16-spoke enemy burst + color-cycling death splat'
+    description: 'Replace generic particle puffs with authentic vector explosions. Enemy death (book ch. explosions one to four): a 4-frame 16-spoke star doubling in size (scale 1,2,4,8) with brightness 7 then 14 — today 12 random particles (fx.ts:46-77). Player death (book ch. splat control): a concentric jagged star that grows then shrinks with white/red/yellow color-cycling (ROTCOL) — today two fixed-color bursts, no cycling (fx.ts:80-89). Shell-only FX. Ref: context-epic-10.md Explosions.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - Enemy-death explosion is a 16-spoke star expanding over ~4 frames with the documented two-tier brightness
+      - Player-death splat is a concentric jagged star that grows then shrinks
+      - The splat color-cycles through white/red/yellow each frame
+      - Keyed to existing enemy-death / player-death events; existing fx tests pass
+  - id: 10-6
+    title: Title-logo approaching rainbow (19-pass depth + color cycle)
+    description: 'Attract title draws TEMPEST as the approaching rainbow (book ch. approaching logo process): ~19 passes from far to near, each a different color cycling white/yellow/magenta/red/cyan/green, advancing toward the viewer each frame (SCARNG/LOGPRO). Today drawAttract draws a single static glow title (render.ts:515-535). Shell-only. Ref: context-epic-10.md Title logo.'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - Attract title renders the word at multiple increasing depths with per-pass scale
+      - Color cycles through the documented 6-color palette by depth
+      - The rainbow advances toward the viewer over time
+      - Pure shell; attract input/flow unchanged
+  - id: 10-7
+    title: 'Fix authentic colors: spikes green, tankers purple, banner colors'
+    description: 'Correct swapped/incorrect colors from the comparison. Spikes render purple (render.ts:183-184) but the ROM draws them GREEN; tankers render green (glyphs.ts:90) but GENTNK is PURPLE — the two appear swapped. Banners mismatch: GAME OVER should be green (render.ts:661), AVOID SPIKES white (render.ts:827), HIGH SCORES red (render.ts:472), PRESS START red (render.ts:529). Render-layer only. Ref: context-epic-10.md Colors.'
+    points: 1
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: trivial
+    acceptance_criteria:
+      - Spikes render green; tankers render purple (un-swap)
+      - GAME OVER green, AVOID SPIKES white, HIGH SCORES red, PRESS START red
+      - No behavior/logic change; render-layer colors only
+    type: bug
+  - id: 10-8
+    title: Ammo-count bullet color (yellow/blue/red by charges in flight)
+    description: 'Tint the player bullet center by charges currently in flight (book ch. player charges, CHACOU): fewer than 6 in flight = yellow, 6-7 = blue, 8 = red. Today bullets are always white (render.ts:204-215, glyphs.ts:262-267). Ref: context-epic-10.md Player charges.'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - 'Player bullet color reflects live bullet count: under 6 yellow, 6-7 blue, 8 red'
+      - Color derives from bullet count at render time (no core change required)
+      - Existing bullet render/tests unaffected
+  - id: 10-9
+    title: Missing on-screen banners (SUPERZAPPER RECHARGE, RATE YOURSELF/rank, bonus)
+    description: 'Add documented banners not currently rendered (book ch. macro language fun / strings of tempest): SUPERZAPPER RECHARGE (on zap availability), the RATE YOURSELF / RANK / NOVICE / EXPERT skill-select ladder (alongside or replacing the numeric level select at render.ts:540), and between-wave BONUS / TIME / HOLE / APPROACH banners. Use authentic colors/positions from the Messages table. Ref: context-epic-10.md Messages.'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - SUPERZAPPER RECHARGE banner shows at the documented moment with the documented color
+      - A RATE YOURSELF / rank ladder (NOVICE/EXPERT) is presented
+      - Between-wave bonus/time banners render where applicable
+      - Colors/positions follow the Messages table
+  - id: 10-10
+    title: Voice-stealing audio playback (per-channel cut-in)
+    description: 'Make canned-sample playback cut in like POKEYs four hardware channels: assign each sound to a logical channel and stop the previous source on that channel before starting a new one, eliminating the overlapping-sample pile-up on rapid fire and Superzapper mass-death. Today play() spawns a new BufferSource every call with no stop/stealing (audio.ts:111-123). Ref: context-epic-10.md Audio (live vs canned).'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - Sounds are grouped into logical channels; a new trigger stops the prior source on its channel
+      - Rapid retriggers (held fire, superzap burst) no longer stack into a layered pile-up
+      - One-shot SFX otherwise unchanged; engine still degrades silently on failure
+      - Covered by tests in tests/shell/audio.test.ts
+  - id: 10-11
+    title: Sustained/looping sounds + wire unwired bakes + warp-audio duration
+    description: 'Add sustain/loop support and connect baked-but-unwired SFX. Loop the authentic pulsar_hum while a pulsar is alive and stop on death; wire spike_shot (baked, ROM cc51) to spike hits and extra_life to bonus-life awards; match the warp/zoom sound duration to the actual dive length (today a single one-shot warp.wav on entry). Requires new GameEvents (events.ts) + audio-dispatch wiring + core emit points. Ref: context-epic-10.md Audio + Warp.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - A looping sound plays while a pulsar is present and stops when none remain
+      - spike_shot and extra_life bakes are wired to their events and play
+      - The warp sound spans the dive (no early silence, no bleed into the next level)
+      - New events are pure data emitted by core; deterministic; dispatch tests updated
+  - id: 10-12
+    title: True perspective projection (replace linear depth lerp) [stretch]
+    description: 'STRETCH. Replace the affine/linear depth interpolation in geometry.project (geometry.ts:55-59, fixed FAR_RATIO 0.2) with a true perspective divide (screen-scale proportional to 1/(eye minus z)) driven by the ROM vanishing point, so objects accelerate toward the rim like the cabinet (book ch. spikes, WORSCR). Affects all depth rendering and apparent enemy speed; collision is lane+depth so pure-sim is unaffected, but feel and tests change. Sequence after the visible-win stories. Ref: context-epic-10.md Geometry.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - Depth-to-screen mapping uses a perspective divide, not a linear lerp
+      - Vanishing-point/eye parameters sourced from the ROM or a documented approximation
+      - Apparent motion accelerates toward the near rim; geometry tests updated
+      - Collision/gameplay unchanged (lane+depth); existing core tests pass
+  - id: 10-13
+    title: Authentic VGMSGA stroke-vector font (replace TTF webfont) [stretch]
+    description: 'STRETCH. Replace the TTF webfont (font.ts:16-26) with an authentic stroke-vector alphabet: a per-letter glyph table (CHAR.x style, ~16x24 cell) stroked like the existing enemy/claw glyphs in glyphs.ts, per book ch. macro language fun (VGMSGA). True vector text instead of a font approximation. Larger UI surface; sequence late. Ref: context-epic-10.md Font.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - A stroke-vector glyph table renders the alphabet/digits used in-game on a consistent cell
+      - All current on-screen gameplay text uses the vector font (no TTF dependency)
+      - Glyphs stroked via the existing vector/glow path; legible at HUD and banner scales
+      - Render tests / visual check confirm parity with prior text
