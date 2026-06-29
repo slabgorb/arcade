@@ -483,3 +483,8 @@ completed_stories:
     title: 'Realize the warp dive spectacle: 8-plane starfield + entry FX + render test'
     points: 3
     completed: '2026-06-29'
+  - id: 9-2
+    epic: '9'
+    title: Port the RE'd TIE flight model to core/sim.ts (swoop/weave/bank approach)
+    points: 3
+    completed: '2026-06-29'

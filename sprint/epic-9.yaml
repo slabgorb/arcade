@@ -30,7 +30,8 @@ stories:
     description: 'Replace the straight-line moveEnemy/spawnTie in core/sim.ts with the flight model from 9-1: curved swoop/weave approach with banking, deterministic via the seeded RNG carried in GameState. Pure-core, unit-tested. Honors the core/shell boundary (no DOM, no wall-clock time, no Math.random).'
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -38,6 +39,8 @@ stories:
       - 'Motion is deterministic: identical (state, input, dt, seed) -> identical trajectories; covered by unit tests in tests/'
       - Banking/orientation follows the path per the model, not just a static look-at (extends story 8-13)
       - Existing Wave-1 tests still pass; collisions/hit-tests unaffected; core stays pure
+    completed: '2026-06-29'
+    review_verdict: approved
   - id: 9-3
     title: 'Peel-away / fly-past lifecycle: un-killed TIEs complete their pass and exit instead of ballooning into the cockpit'
     description: Un-killed TIEs complete their attack pass and exit (peel away / fly past) instead of flying all the way into the cockpit and ballooning to fill the frame (the Image-1 defect). Bounds on-screen scale and matches the cabinet's 'they pass and leave' feel.
