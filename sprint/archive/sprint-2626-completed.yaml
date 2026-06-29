@@ -509,3 +509,8 @@ completed_stories:
     title: Superzapper timing window (TIMAX 13/5 frames) + web color flash
     points: 3
     completed: '2026-06-29'
+  - id: 10-7
+    epic: '10'
+    title: 'Fix authentic colors: spikes green, tankers purple, banner colors'
+    points: 1
+    completed: '2026-06-29'

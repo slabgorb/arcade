@@ -107,14 +107,17 @@ stories:
     description: 'Correct swapped/incorrect colors from the comparison. Spikes render purple (render.ts:183-184) but the ROM draws them GREEN; tankers render green (glyphs.ts:90) but GENTNK is PURPLE — the two appear swapped. Banners mismatch: GAME OVER should be green (render.ts:661), AVOID SPIKES white (render.ts:827), HIGH SCORES red (render.ts:472), PRESS START red (render.ts:529). Render-layer only. Ref: context-epic-10.md Colors.'
     points: 1
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: tempest
     workflow: trivial
     acceptance_criteria:
       - Spikes render green; tankers render purple (un-swap)
       - GAME OVER green, AVOID SPIKES white, HIGH SCORES red, PRESS START red
       - No behavior/logic change; render-layer colors only
+    completed: '2026-06-29'
     type: bug
+    review_verdict: approved
   - id: 10-8
     title: Ammo-count bullet color (yellow/blue/red by charges in flight)
     description: 'Tint the player bullet center by charges currently in flight (book ch. player charges, CHACOU): fewer than 6 in flight = yellow, 6-7 = blue, 8 = red. Today bullets are always white (render.ts:204-215, glyphs.ts:262-267). Ref: context-epic-10.md Player charges.'
