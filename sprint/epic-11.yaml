@@ -29,7 +29,8 @@ stories:
     description: Introduce a real model->view->projection chain. Add pure scaling() matrix and viewMatrix(camPos, orientation) builders to core/math3d.ts; build a per-entity model matrix = translation o rotation o scale; compose MVP = projection x view x model in the shell and transform vertices through it. Rewire render.ts to place models via {pos,rot,scale} through the camera, retiring the ad-hoc placement glue (SKIM_OFFSET, Z_SURFACE_PLACEMENT, surfacePlacement/trenchPlacement). The camera derives from sim state (the cockpit IS the camera); core stays pure. See star-wars/docs/adr/0001-3d-vector-render-pipeline.md (part B). Depends on 11-1.
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-29'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -38,7 +39,9 @@ stories:
       - render.ts places the surface, trench, and TIEs via the camera/model-matrix path; the prior ad-hoc world-offset constants are removed or reduced to camera state
       - The camera is derived from GameState only; core/math3d remains pure (no DOM/shell imports) and determinism is preserved
       - Surface/trench/TIE placement matches or improves current visuals — eyeballed in dev (:5274) and the contact sheet; build clean, tests green
+    completed: '2026-06-29'
     type: refactor
+    review_verdict: approved
   - id: 11-3
     title: 'Dev debug overlay: axes, grid, frustum, model bounds'
     description: "Add a dev-only, toggle-key debug overlay to the shell renderer: world axes at the origin, a ground grid in y=0, the camera frustum, and each on-screen model's bounding sphere + name label (reuse modelView.modelBounds). Pure Canvas 2D, no core changes, no determinism impact — the feedback loop for placing 3D geometry that today 'MUST be eyeballed' blind. See star-wars/docs/adr/0001-3d-vector-render-pipeline.md (part C). Builds on 11-2's camera."

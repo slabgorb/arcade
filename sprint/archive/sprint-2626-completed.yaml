@@ -554,3 +554,8 @@ completed_stories:
     title: Missing on-screen banners (SUPERZAPPER RECHARGE, RATE YOURSELF/rank, bonus)
     points: 3
     completed: '2026-06-29'
+  - id: 11-2
+    epic: '11'
+    title: Camera + MVP transform pipeline (model/view/projection + scale)
+    points: 5
+    completed: '2026-06-29'
