@@ -56,6 +56,7 @@ stories:
       - Auto-fire triggers when an enemy or enemy bolt is within 2 lanes of the player
       - Any real input or demo death returns to the title screen; start-to-play path intact
       - Deterministic and unit-tested
+    review_verdict: approved
   - id: 10-4
     title: 'Realize the warp dive spectacle: 8-plane starfield + entry FX + render test'
     description: 'Make the warp read as the authentic dive. The warp MECHANIC is already realized end-to-end (sim.ts:483 and 538-547, render.ts:793-795); this story adds the SPECTACLE. Add the 8-plane starfield (book ch. star planes: 8 planes, screen-center origin, spawn Z 0xF0, step -7/frame, spawn-next 0xD5, retire 0x10, blue dots, 4 reused star pictures) shown during warp; add an entering-warp FX cue on warp entry (consume the level-clear event in fx.detect rather than the arrival level-diff at fx.ts:108); add the render-dispatch test asserting drawWarp fires when mode is warp. Warp-sound duration is handled in 10-11. Ref: context-epic-10.md Warp + Starfield.'
