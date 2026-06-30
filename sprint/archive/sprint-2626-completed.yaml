@@ -600,3 +600,8 @@ completed_stories:
     title: Procedural Death Star surface — receding ground grid + horizon
     points: 5
     completed: '2026-06-30'
+  - id: 11-7
+    epic: '11'
+    title: 'Death Star body: distant wireframe sphere in the space phase (optional)'
+    points: 3
+    completed: '2026-06-30'

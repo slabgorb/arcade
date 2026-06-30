@@ -114,11 +114,15 @@ stories:
     description: "Optional / deferrable. Add a wireframe Death Star body so the space phase shows what you are attacking — today there is no Death Star model anywhere in the registry. A PURE core sphere builder (lat/long rings + the equatorial trench line + the superlaser dish) seated far in -Z during the 'space' phase, growing as phaseKills rises (you are approaching), drawn behind the TIEs so it never interferes with TIE hit-tests. See star-wars/docs/adr/0002-scene-geometry-surface-and-trench.md part C. Lower priority than 11-5/11-6; does not block them."
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-30'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
       - core gains a pure, deterministic Death Star sphere builder (no DOM/time/random); unit tests cover vertex/edge counts and symmetry
       - The body is seated far in -Z in the space phase and grows on approach from sim state; it draws behind the TIEs and does not affect enemy hit-tests or determinism
       - render.ts draws it only in the space phase; build clean, tests green, no new runtime deps, core/shell boundary intact
+    completed: '2026-06-30'
     type: feature
+    review_findings: "REJECTED for test hardening (production code clean & fully rule-compliant incl. purity boundary; 439/439 green). Test-file defects: (1) determinism test tautological — re-reads DEATH_STAR singleton instead of building twice (export buildDeathStar + call 2x); (2) shell-test mock omits the new 'Death Star' GLOW_FOR key; (3) vacuous scale?? 1>0 assertion; (4) as-unknown-as mock cast -> vi.mocked; (5) length||1 -> explicit; (6) annotate probe casts; (7) add above-quota clamp test + tighten sphere threshold."
+    review_verdict: approved
