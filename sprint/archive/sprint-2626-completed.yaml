@@ -585,3 +585,8 @@ completed_stories:
     title: True perspective projection (replace linear depth lerp) [stretch]
     points: 5
     completed: '2026-06-29'
+  - id: 11-4
+    epic: '11'
+    title: Dev phase-jump keys to reach the surface/trench scenes for verification
+    points: 2
+    completed: '2026-06-30'
