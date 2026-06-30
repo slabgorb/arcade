@@ -81,7 +81,8 @@ stories:
     description: "Replace the DEATH_STAR_SURFACE (Object_8) spike with a wide, procedurally-generated ground grid on the y=0 plane that recedes to a horizon and scrolls toward the cockpit — the Wave-2 surface skim. Object_8 is a narrow 3-fin structure (~960 wide, ~10,560 deep) seated 600 units from the eye, so it balloons off all screen edges and collapses to a point (verified by reprojection; see star-wars/docs/adr/0002-scene-geometry-surface-and-trench.md part A). Add a PURE core generator surfaceGrid(scroll) -> Model3D: longitudinal lines parallel to -Z wide enough to run off-screen at the horizon, lateral lines every GRID_Z scrolling toward the camera and recycling by scroll mod GRID_Z. The existing SURFACE_TOWER turrets keep their sim positions and sit on the grid. Retire Object_8 from the surface render (re-classify, don't delete). Add a surfaceScrollZ accumulator to GameState advanced by TURRET_SCROLL_SPEED and reset on phase entry. Depends on 11-4 for verification."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-30'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -90,7 +91,9 @@ stories:
       - The grid scrolls toward the cockpit attached to the turret flow via a surfaceScrollZ accumulator (added to GameState + initialState + reset on phase entry)
       - The surface reads as a wide receding ground with a horizon — NOT a triangle — eyeballed via the 11-4 phase-jump in dev (:5274)
       - Object_8/DEATH_STAR_SURFACE is removed from the surface scene (re-classified, not deleted); determinism preserved; build clean, tests green
+    completed: '2026-06-30'
     type: feature
+    review_verdict: approved
   - id: 11-6
     title: Walled trench channel — floor + ribbed side walls, receding
     description: "Replace the flat 512x384 TRENCH floor tile with a long walled channel that reads as a corridor you fly down. The current tile projects to a ~224px-wide, ~4px-tall sliver — no walls, no length (verified by reprojection; see star-wars/docs/adr/0002-scene-geometry-surface-and-trench.md part B). Add a PURE core generator trenchChannel(scroll) -> Model3D: floor rails at x=+/-TRENCH_HALF_W plus lateral floor ribs every RIB_Z, two vertical side walls from y=0 to y=TRENCH_WALL_H with a vertical rib at each RIB_Z, and top rails — running from ~z=0 to a far cutoff and scrolling toward the camera (recycling by scroll mod RIB_Z). The exhaust port keeps its own sim scroll and is seated in the floor at channel center. Add a trenchScrollZ accumulator to GameState advanced by TRENCH_SCROLL_SPEED and reset on phase entry. Camera unchanged (skims y=TRENCH_SKIM, centered). Depends on 11-4 for verification."

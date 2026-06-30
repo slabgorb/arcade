@@ -595,3 +595,8 @@ completed_stories:
     title: 'Dev debug overlay: axes, grid, frustum, model bounds'
     points: 3
     completed: '2026-06-30'
+  - id: 11-5
+    epic: '11'
+    title: Procedural Death Star surface — receding ground grid + horizon
+    points: 5
+    completed: '2026-06-30'
