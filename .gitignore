@@ -1,5 +1,7 @@
 # macOS
 .DS_Store
+# Playwright MCP debug artifacts
+.playwright-mcp/
 
 # Dependencies
 node_modules/
