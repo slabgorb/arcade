@@ -19,6 +19,7 @@ completed_epics:
   - '7'
   - '6'
   - '9'
+  - '11'
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -604,4 +605,9 @@ completed_stories:
     epic: '11'
     title: 'Death Star body: distant wireframe sphere in the space phase (optional)'
     points: 3
+    completed: '2026-06-30'
+  - id: 11-6
+    epic: '11'
+    title: Walled trench channel — floor + ribbed side walls, receding
+    points: 5
     completed: '2026-06-30'

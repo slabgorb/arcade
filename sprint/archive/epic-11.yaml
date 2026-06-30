@@ -3,7 +3,7 @@ type: epic
 title: star-wars 3D-vector render pipeline (clipping + camera/MVP + debug overlay)
 description: 'Fix the star-wars 3D vector renderer so geometry positions, sizes, and reads correctly — WITHOUT a 3D engine. Root causes (see star-wars/docs/adr/0001-3d-vector-render-pipeline.md): (1) no near-plane line clipping in wireframe.ts drawWireframe (edges straddling the camera plane are dropped, so the Death Star surface and trench render as triangles); (2) no camera/view transform or scale — placement is faked with ad-hoc world constants, so positioning/sizing is guesswork; (3) no visual debug feedback loop. Decision: a small dependency-free 3D-vector layer on the existing Math Box — near-plane clipping (shell), a camera + MVP pipeline (pure matrix builders in core/math3d, composition in shell), and a dev debug overlay. Determinism and the core/shell boundary preserved; zero new deps. SCENE-GEOMETRY FOLLOW-ON (see star-wars/docs/adr/0002-scene-geometry-surface-and-trench.md): after 11-1/11-2 the surface still renders as a triangle and the trench as a flat sliver — NOT a clipping/MVP bug (that plumbing is correct) but because the surface and trench were never built as a surface and a trench (a narrow Object_8 spike and a single flat floor tile). 11-4 adds a dev phase-jump so those scenes are reachable for verification (the gap that let the defect ship through two approved stories), 11-5 builds a procedural receding ground grid, 11-6 a walled receding trench channel, and 11-7 (optional) a Death Star body. Sequence 11-1 -> 11-2 -> 11-3 -> 11-4 -> 11-5/11-6 -> 11-7.'
 priority: p2
-status: backlog
+status: done
 repos: star-wars
 stories:
   - id: 11-1
@@ -99,7 +99,8 @@ stories:
     description: "Replace the flat 512x384 TRENCH floor tile with a long walled channel that reads as a corridor you fly down. The current tile projects to a ~224px-wide, ~4px-tall sliver — no walls, no length (verified by reprojection; see star-wars/docs/adr/0002-scene-geometry-surface-and-trench.md part B). Add a PURE core generator trenchChannel(scroll) -> Model3D: floor rails at x=+/-TRENCH_HALF_W plus lateral floor ribs every RIB_Z, two vertical side walls from y=0 to y=TRENCH_WALL_H with a vertical rib at each RIB_Z, and top rails — running from ~z=0 to a far cutoff and scrolling toward the camera (recycling by scroll mod RIB_Z). The exhaust port keeps its own sim scroll and is seated in the floor at channel center. Add a trenchScrollZ accumulator to GameState advanced by TRENCH_SCROLL_SPEED and reset on phase entry. Camera unchanged (skims y=TRENCH_SKIM, centered). Depends on 11-4 for verification."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-30'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -108,7 +109,9 @@ stories:
       - The channel scrolls toward the cockpit via a trenchScrollZ accumulator (added to GameState + initialState + reset on phase entry)
       - The trench reads as a long walled corridor receding to a vanishing point — NOT a flat sliver — eyeballed via the 11-4 phase-jump in dev (:5274)
       - Determinism preserved; core/shell boundary intact; no new runtime deps; build clean, tests green
+    completed: '2026-06-30'
     type: feature
+    review_verdict: approved
   - id: 11-7
     title: 'Death Star body: distant wireframe sphere in the space phase (optional)'
     description: "Optional / deferrable. Add a wireframe Death Star body so the space phase shows what you are attacking — today there is no Death Star model anywhere in the registry. A PURE core sphere builder (lat/long rings + the equatorial trench line + the superlaser dish) seated far in -Z during the 'space' phase, growing as phaseKills rises (you are approaching), drawn behind the TIEs so it never interferes with TIE hit-tests. See star-wars/docs/adr/0002-scene-geometry-surface-and-trench.md part C. Lower priority than 11-5/11-6; does not block them."
@@ -126,3 +129,4 @@ stories:
     type: feature
     review_findings: "REJECTED for test hardening (production code clean & fully rule-compliant incl. purity boundary; 439/439 green). Test-file defects: (1) determinism test tautological — re-reads DEATH_STAR singleton instead of building twice (export buildDeathStar + call 2x); (2) shell-test mock omits the new 'Death Star' GLOW_FOR key; (3) vacuous scale?? 1>0 assertion; (4) as-unknown-as mock cast -> vi.mocked; (5) length||1 -> explicit; (6) annotate probe casts; (7) add above-quota clamp test + tighten sphere threshold."
     review_verdict: approved
+completed: '2026-06-30'
