@@ -46,7 +46,8 @@ stories:
     description: 'Add the authentic attract demo: when idle the game plays itself. Per book ch. attract mode admin: 1 life, level chosen randomly from the first 8 (RANDOM AND 7), cursor auto-moves toward the most-advanced enemy (smallest non-zero depth) and fires when any enemy or bolt lane is within 2 of the player. Today the attract case only waits for start (sim.ts:552-559). Pure-core, deterministic via seeded RNG; exits to title on any input or death. Also unblocks the lobby attract loop. Ref: context-epic-10.md Attract AI.'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-30'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -56,6 +57,7 @@ stories:
       - Auto-fire triggers when an enemy or enemy bolt is within 2 lanes of the player
       - Any real input or demo death returns to the title screen; start-to-play path intact
       - Deterministic and unit-tested
+    completed: '2026-06-30'
     review_verdict: approved
   - id: 10-4
     title: 'Realize the warp dive spectacle: 8-plane starfield + entry FX + render test'

@@ -616,3 +616,8 @@ completed_stories:
     title: Authentic VGMSGA stroke-vector font (replace TTF webfont) [stretch]
     points: 5
     completed: '2026-06-30'
+  - id: 10-3
+    epic: '10'
+    title: Attract-mode self-play demo AI (auto-move + anticipatory fire)
+    points: 5
+    completed: '2026-06-30'
