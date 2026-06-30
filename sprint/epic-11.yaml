@@ -47,7 +47,8 @@ stories:
     description: "Add a dev-only, toggle-key debug overlay to the shell renderer: world axes at the origin, a ground grid in y=0, the camera frustum, and each on-screen model's bounding sphere + name label (reuse modelView.modelBounds). Pure Canvas 2D, no core changes, no determinism impact — the feedback loop for placing 3D geometry that today 'MUST be eyeballed' blind. See star-wars/docs/adr/0001-3d-vector-render-pipeline.md (part C). Builds on 11-2's camera."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-06-30'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -56,7 +57,9 @@ stories:
       - Overlay draws the camera frustum and each on-screen model's bounding sphere + name label
       - Any pure geometry helpers added (frustum corners, bounds projection) are unit-tested; drawing output is eyeballed in dev
       - No core/shell boundary violation, no new runtime deps, build clean, tests green
+    completed: '2026-06-30'
     type: chore
+    review_verdict: approved
   - id: 11-4
     title: Dev phase-jump keys to reach the surface/trench scenes for verification
     description: "Add dev-only keys to jump the run straight to the 'surface' and 'trench' phases (and back to 'space') without clearing 6 TIE + 4 turret kills first. The triangle/sliver bug in those scenes shipped through stories 11-1 and 11-2 because their 'eyeball in the dev server' ACs were unverifiable — the phases were unreachable in casual play and the contact sheet shows models centered-in-isolation where the defects hide (see star-wars/docs/adr/0002-scene-geometry-surface-and-trench.md). This makes the surface/trench actually reachable so 11-5/11-6 can be signed off honestly. Dev-only, off by default, no effect on the sim contract or a real run."
