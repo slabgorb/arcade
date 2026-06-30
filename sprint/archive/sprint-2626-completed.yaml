@@ -611,3 +611,8 @@ completed_stories:
     title: Walled trench channel — floor + ribbed side walls, receding
     points: 5
     completed: '2026-06-30'
+  - id: 10-13
+    epic: '10'
+    title: Authentic VGMSGA stroke-vector font (replace TTF webfont) [stretch]
+    points: 5
+    completed: '2026-06-30'

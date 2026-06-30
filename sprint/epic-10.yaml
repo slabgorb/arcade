@@ -206,7 +206,8 @@ stories:
     description: 'STRETCH. Replace the TTF webfont (font.ts:16-26) with an authentic stroke-vector alphabet: a per-letter glyph table (CHAR.x style, ~16x24 cell) stroked like the existing enemy/claw glyphs in glyphs.ts, per book ch. macro language fun (VGMSGA). True vector text instead of a font approximation. Larger UI surface; sequence late. Ref: context-epic-10.md Font.'
     points: 5
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-06-30'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -214,6 +215,8 @@ stories:
       - All current on-screen gameplay text uses the vector font (no TTF dependency)
       - Glyphs stroked via the existing vector/glow path; legible at HUD and banner scales
       - Render tests / visual check confirm parity with prior text
+    completed: '2026-06-30'
+    review_verdict: approved
   - id: 10-14
     title: 'Superzapper empty-board behavior: restore Story-5-1/4-1 semantics (no activate event on empty press; weak shot with no target is wasted-but-not-spent) OR pin the new windowed behavior with tests + a deviation. Regression surfaced in 10-2 review (stepZap dropped the enemies.length===0 early-return).'
     points: 2
