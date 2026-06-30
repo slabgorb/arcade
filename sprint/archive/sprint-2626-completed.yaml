@@ -20,6 +20,7 @@ completed_epics:
   - '6'
   - '9'
   - '11'
+  - '10'
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -620,4 +621,9 @@ completed_stories:
     epic: '10'
     title: Attract-mode self-play demo AI (auto-move + anticipatory fire)
     points: 5
+    completed: '2026-06-30'
+  - id: 10-15
+    epic: '10'
+    title: 'Render the Superzapper well-color flash: shell consumes the superzapper-flash event (color 0..7, QFRAME AND 7) and tints the well/web each active zap frame, reverting after. Core signal already emitted + tested in 10-2; this is the deferred visible render (verify by running the game).'
+    points: 2
     completed: '2026-06-30'
