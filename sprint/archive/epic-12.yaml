@@ -1,0 +1,19 @@
+id: '12'
+type: epic
+title: Tempest fidelity - round 2
+description: "Post-completion fidelity polish for the Tempest clone, continuing epic 10's authentic-1981 goal with items surfaced after the roadmap epics closed. First item: the player claw (ROM CURSOR) drifted from fidelity after the 10-12 true-perspective projection landed. The gameplay claw is depth-anchored (apex 0.74 / muzzle 0.90) and, under the new perspective divide, stretches ~2.5x deeper into the tube instead of hugging the near rim; it also renders an invented articulated 'walker' rather than the compact ROM cursor. Ref: Architect proposal (Option B, rim-anchored fixed-size glyph); docs/tempest-1981-source-findings.md §8; glyphs.ts playerClawGlyph (dead code to be wired in)."
+priority: p2
+status: done
+repos: tempest
+stories:
+  - id: 12-1
+    title: Rim-anchored ROM CURSOR claw (replace depth-projected walker)
+    points: 5
+    priority: p2
+    status: done
+    started: '2026-07-01'
+    repos: tempest
+    workflow: tdd
+    completed: '2026-07-01'
+    type: bug
+completed: '2026-07-01'
