@@ -13,7 +13,6 @@ stories:
     priority: p1
     status: done
     started: '2026-07-02'
-    completed: '2026-07-02'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -22,6 +21,7 @@ stories:
       - Composed frames are pixel-faithful to play -- camera, geometry, glow, and HUD all draw correctly; confirmed by eyeball in dev (localhost:5274/star-wars/scenes.html)
       - Zero new runtime deps; core/shell boundary intact -- scenePresets.ts is pure core, sceneSheet.ts is shell-only and never imported by core
       - npm run build clean (tsc --noEmit + vite build emits scenes.html); full test suite green
+    completed: '2026-07-02'
     review_findings: 'Per-task spec+quality review clean on first pass (2 subagent reviews, no fix rounds needed). Final whole-branch review (opus, cb0a299..0ff86ab): Ready to merge = Yes, no Critical/Important findings; Minor items are plan-mandated or mirror the existing tools/contactSheet.ts idiom (see plan doc self-review + epic 13 notes). MERGED as PR #36 (squash, 8d3ec81) on 2026-07-02; post-merge verify on develop: build clean, 512/512 tests green.'
     review_verdict: approved
   - id: 13-2

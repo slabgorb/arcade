@@ -1,0 +1,56 @@
+id: '14'
+type: epic
+title: Star Wars 1983 source findings + trench-run fidelity
+description: "Distill the 1983 arcade ROM disassembly into a committed findings doc (tempest playbook), then rebuild the trench run to arcade fidelity: wall detail, targetable turrets/squares, catwalk obstacles, exhaust-port/force-bonus gameplay, faithful HUD. Spec: star-wars/docs/superpowers/specs/2026-07-02-sw-1983-source-findings-and-trench-fidelity-design.md (merged PR #37). Plan: star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md. Story 14-6 absorbs canceled 13-3's ACs. Render acceptance surface: the 13-1 scene sheet (/scenes.html); capstone is a live playtest."
+priority: p1
+status: backlog
+repos: star-wars
+stories:
+  - id: 14-1
+    title: Reference quarry + whole-game source findings doc
+    points: 3
+    priority: p1
+    plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-1
+    status: backlog
+    repos: star-wars
+    workflow: superpowers
+  - id: 14-2
+    title: Trench wall detail — panels/windows generator + envelope true-up
+    points: 3
+    priority: p1
+    plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-2
+    status: backlog
+    repos: star-wars
+    workflow: superpowers
+  - id: 14-3
+    title: Trench turrets, wall squares & catwalks — targetable scored entities
+    points: 5
+    priority: p1
+    plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-3
+    status: backlog
+    repos: star-wars
+    workflow: superpowers
+  - id: 14-4
+    title: Exhaust-port fidelity + the force bonus + trench banners
+    points: 3
+    priority: p1
+    plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-4
+    status: backlog
+    repos: star-wars
+    workflow: superpowers
+  - id: 14-5
+    title: HUD/framing fidelity — wireframe shield gauge + arcade palette
+    points: 3
+    priority: p1
+    plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-5
+    status: backlog
+    repos: star-wars
+    workflow: superpowers
+  - id: 14-6
+    title: Live playtest capstone (absorbs canceled story 13-3's ACs)
+    points: 2
+    priority: p1
+    plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-6
+    status: backlog
+    repos: star-wars
+    workflow: superpowers
