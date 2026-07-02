@@ -1,0 +1,59 @@
+id: '13'
+type: epic
+title: Star Wars trench-run render-eval workflow + corridor rebuild
+description: "Build a way to render and judge the Death Star trench-run scene WITHOUT a live play test (story 13-1, delivered) and evaluate it with a live playtest (story 13-3). Full design: star-wars/docs/superpowers/specs/2026-07-01-trench-run-render-eval-and-rebuild-design.md. Full implementation plan: star-wars/docs/superpowers/plans/2026-07-01-trench-scene-sheet-and-corridor.md. RESOLVED epic-11/13 discrepancy: this epic originally also carried a trench-corridor-rebuild story (13-2, ADR 0002 part B) built independently in this checkout because grep found no trenchChannel code here. A 'git pull' during this epic's work brought origin/develop forward to commit 9d643f3 -- the already-merged story 11-6 (PR #35), which ships the exact same corridor scope from a sibling checkout. Rebasing onto the new develop tip confirmed it via a genuine 'both added' file conflict; story 13-2 is now CANCELED/superseded (see its review-findings) and its 3 commits were dropped from feat/trench-scene-sheet rather than hand-merged with 11-6's already-reviewed version. The corridor players see is 11-6's; this epic's remaining scope is purely the eval harness (13-1) and its live-play verification (13-3)."
+priority: p2
+status: done
+repos: star-wars
+stories:
+  - id: 13-1
+    title: Scene contact sheet — render composed trench-run frames without a play test
+    description: 'Design: star-wars/docs/superpowers/specs/2026-07-01-trench-run-render-eval-and-rebuild-design.md (Deliverable A). Plan (Tasks 1-2): star-wars/docs/superpowers/plans/2026-07-01-trench-scene-sheet-and-corridor.md. A pure-core preset registry (core/scenePresets.ts) supplies canonical trench-run GameStates (trench-entry, mid-run, port-in-sight), built via the SAME initialState()+enterPhase() play uses. A shell dev tool (tools/sceneSheet.ts, served at /scenes.html) renders each preset through the REAL render(ctx,state,w,h) pipeline into a clipped/translated grid cell -- mirroring the existing tools/contactSheet.ts idiom -- so a cell is pixel-faithful to the real screen at that moment. Static stills, no animation loop. This is the eval workflow: judge the trench-run scene without a live play test.'
+    points: 3
+    priority: p1
+    status: done
+    started: '2026-07-02'
+    completed: '2026-07-02'
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - core/scenePresets.ts exports a pure, deterministic SCENE_PRESETS registry built via initialState()+enterPhase() (not hand-rolled GameState literals); unit-tested for uniqueness, live-trench-frame shape, and far-to-near ordering
+      - tools/sceneSheet.ts renders each preset through the real render() pipeline into a clip+translate grid cell (mirrors tools/contactSheet.ts); served at /scenes.html via a third Vite multipage input alongside main/models
+      - Composed frames are pixel-faithful to play -- camera, geometry, glow, and HUD all draw correctly; confirmed by eyeball in dev (localhost:5274/star-wars/scenes.html)
+      - Zero new runtime deps; core/shell boundary intact -- scenePresets.ts is pure core, sceneSheet.ts is shell-only and never imported by core
+      - npm run build clean (tsc --noEmit + vite build emits scenes.html); full test suite green
+    review_findings: 'Per-task spec+quality review clean on first pass (2 subagent reviews, no fix rounds needed). Final whole-branch review (opus, cb0a299..0ff86ab): Ready to merge = Yes, no Critical/Important findings; Minor items are plan-mandated or mirror the existing tools/contactSheet.ts idiom (see plan doc self-review + epic 13 notes). MERGED as PR #36 (squash, 8d3ec81) on 2026-07-02; post-merge verify on develop: build clean, 512/512 tests green.'
+    review_verdict: approved
+  - id: 13-2
+    title: Trench walled corridor — replace flat tile with procedural channel (ADR 0002 part B)
+    description: "CANCELED -- superseded by story 11-6 (epic 11), already merged to develop as commit 9d643f3 / PR #35 before this story could be merged. See review-findings for the full reconciliation. No corridor code from this story remains on feat/trench-scene-sheet; the corridor players see is 11-6's."
+    points: 5
+    priority: p1
+    status: canceled
+    started: '2026-07-02'
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - core/trench-channel.ts exports a pure, deterministic trenchChannel(scroll) generator (no DOM/time/random) mirroring core/surface-grid.ts's idiom; unit tests cover wall envelope (y=0 to TRENCH_WALL_H), +/-X symmetry, cockpit-to-far-cutoff length, and scroll recycling (trenchChannel(s) === trenchChannel(s+RIB_Z))
+      - 'GameState gains trenchScrollZ: number, seeded 0 in initialState, reset to 0 on every enterPhase, advanced by TRENCH_SCROLL_SPEED*dt in stepTrench ONLY while a port is active (the exhaustPort===null safe-hold leaves it untouched); unit tests cover seed/advance/safe-hold/reset-on-every-phase/determinism'
+      - render.ts draws trenchChannel(state.trenchScrollZ) in the trench phase instead of the flat TRENCH tile; the exhaust port still rides inside it at its true sim position; the dead TRENCH import is removed (noUnusedLocals-clean)
+      - The trench reads as a long walled corridor receding to a vanishing point -- NOT a flat sliver -- confirmed on /scenes.html (story 13-1) before and after screenshots
+      - Determinism preserved; core/shell boundary intact; zero new runtime deps; npm run build clean, full suite green (496/496 at completion)
+    review_findings: "SUPERSEDED, not implemented redundantly. While this story was in_review, a 'git pull' brought origin/develop's tip forward to commit 9d643f3 -- the squashed merge of story 11-6 ('walled trench channel', PR #35), which independently implements the exact same scope (trenchChannel generator, trenchScrollZ accumulator, render.ts swap) with equivalent design (mirrors surface-grid.ts, same rails+ribs+walls approach) but different constants (TRENCH_WALL_H=320/RIB_Z=400 vs this story's 400/500). This confirms the epic-13 description's discrepancy note: 11-6 shipped in a sibling checkout and only now reached this one. Rebasing feat/trench-scene-sheet onto the new develop tip hit a genuine 'both added' conflict on trench-channel.ts; resolved by dropping this story's 3 commits entirely (af84a41, a8e9281, 0ff86ab) rather than hand-merging two independently-authored implementations of the same geometry -- develop's already-merged, already-reviewed version wins. Verified: the story 13-1 scene sheet, rebased cleanly with zero conflicts (it never imported trench-channel.ts), now correctly renders develop's real corridor -- confirming the eval harness is properly decoupled from which implementation ships the geometry."
+    review_verdict: rejected
+  - id: 13-3
+    title: Trench-run scene playtest — verify the corridor + HUD in a live run
+    description: "SUPERSEDED by the live-playtest capstone story of the trench-fidelity epic (design: star-wars/docs/superpowers/specs/2026-07-02-sw-1983-source-findings-and-trench-fidelity-design.md, approved 2026-07-02). Its depends_on (13-2) was canceled, and the 13-1 contact sheet revealed the corridor needs a full fidelity rebuild (walls, catwalks/turrets, port, HUD) before a live playtest proves anything durable -- playtesting the current thin corridor and re-playtesting after fidelity lands would verify throwaway state twice. The capstone absorbs this story's ACs verbatim (recycle-seam check, port hit-test, HUD compositing, console-clean run). Original scope: live-play verification pass closing the static-vs-live gap ADR 0002 identifies (trenchScrollZ advancing per tick, scroll-mod-RIB_Z seam, port hit-test against real wall geometry)."
+    points: 2
+    priority: p1
+    status: canceled
+    repos: star-wars
+    workflow: trivial
+    depends_on: 13-2
+    acceptance_criteria:
+      - Reach the trench phase in a live run (normal play or the existing dev phase-jump, key 9) and confirm the corridor renders identically to /scenes.html's static presets across real, continuously-advancing frames -- no popping, tearing, or visible seam at the RIB_Z scroll-recycle boundary
+      - "Confirm the exhaust port's collision hit-test still fires correctly inside the new corridor: a player bolt on the port clears the run and awards TRENCH_BONUS; the port reaching the cockpit un-destroyed still costs a shield"
+      - Confirm the HUD, crosshair, and lock-on overlay compose correctly over the corridor in the real game loop (not just a single static render() call)
+      - No console errors/warnings during a full trench run; frame pacing looks smooth (informal check, not benchmarked)
+      - Sign off with pass/fail notes in the story; if the corridor reveals an issue the static scene sheet could not catch, file it as a follow-up bug story
+    type: chore
