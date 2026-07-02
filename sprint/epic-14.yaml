@@ -11,46 +11,61 @@ stories:
     points: 3
     priority: p1
     plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-1
-    status: backlog
+    status: done
     repos: star-wars
     workflow: superpowers
+    completed: '2026-07-02'
   - id: 14-2
     title: Trench wall detail — panels/windows generator + envelope true-up
     points: 3
     priority: p1
     plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-2
-    status: backlog
+    status: done
     repos: star-wars
     workflow: superpowers
+    completed: '2026-07-02'
   - id: 14-3
     title: Trench turrets, wall squares & catwalks — targetable scored entities
     points: 5
     priority: p1
     plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-3
-    status: backlog
+    status: done
     repos: star-wars
     workflow: superpowers
+    completed: '2026-07-02'
   - id: 14-4
     title: Exhaust-port fidelity + the force bonus + trench banners
     points: 3
     priority: p1
     plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-4
-    status: backlog
+    status: done
     repos: star-wars
     workflow: superpowers
+    completed: '2026-07-02'
   - id: 14-5
     title: HUD/framing fidelity — wireframe shield gauge + arcade palette
     points: 3
     priority: p1
     plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-5
-    status: backlog
+    status: done
     repos: star-wars
     workflow: superpowers
+    completed: '2026-07-02'
   - id: 14-6
     title: Live playtest capstone (absorbs canceled story 13-3's ACs)
     points: 2
     priority: p1
     plan_ref: plan:star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md#task-6
-    status: backlog
+    status: done
     repos: star-wars
     workflow: superpowers
+    completed: '2026-07-02'
+  - id: 14-7
+    title: Trench catwalk hazard never costs a shield (COCKPIT_HIT_RADIUS < catwalk y-offset)
+    description: "Found during 14-6's live playtest (13-3 AC2). The catwalk obstacle spawns at station (0, 200, -2100) — src/core/trench-obstacles.ts TRENCH_OBSTACLE_STATIONS — and as it scrolls toward the cockpit only its z advances (src/core/sim.ts stepTrench); x/y stay fixed. Its hazard check is `collides(pos, COCKPIT, COCKPIT_HIT_RADIUS)` with COCKPIT=[0,0,0] and COCKPIT_HIT_RADIUS=80 (src/core/state.ts). The closest the catwalk can ever get to the cockpit is at z=0, giving distance sqrt(200^2+0^2)=200 — always > 80, so the crash branch (crashedCatwalk=true, terrain-crash event, -1 life) can never fire; the hazard is geometrically unreachable. Repro (live, confirmed 2026-07-02): press 9 to jump to a fresh trench (6/6 shields), do not fire, wait until t=4.5s (after the catwalk's own ~4.2s crossing of z=0, before the port's ~4.8s crash) — the isolation screenshot showed shields at 5 (one port-crash cycle had elapsed by capture time); the catwalk contributes zero shield loss, confirming the geometric proof. The static /scenes.html contact sheet cannot catch this (it's a single-frame render, not a collision-over-time bug). Fix options: raise COCKPIT_HIT_RADIUS for this check, lower the catwalk's spawn y, or give the catwalk its own (larger) hazard radius separate from COCKPIT_HIT_RADIUS."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
