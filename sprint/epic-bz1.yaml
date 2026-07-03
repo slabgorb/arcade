@@ -1,0 +1,94 @@
+id: bz1
+type: epic
+title: Battlezone (1980) — full faithful vector clone
+description: "Faithful browser-based vector clone of Atari's 1980 Battlezone — first-person 3D wireframe tank combat on a flat plain. Full game in one epic: dual-tread steering, green radar scanner, all 21 ROM-positioned obstacles, full enemy roster (slow tank 1000 / missile 2000 / super tank 3000 / saucer 5000), 'always one hostile' spawn, score-threshold intro, difficulty ratchet up-to-ROM, extra-tank award, POKEY-style SFX, cracked-glass viewport + gunsight. New gitignored subrepo battlezone/ (TS/Vite/Vitest, pinned port 5276 — 5275 taken by asteroids/epic A), math3d PORTED from star-wars (shared-lib extraction deferred). Canonical source: https://6502disassembly.com/va-battlezone/. Design brief: docs/superpowers/specs/2026-07-03-battlezone-bz1-epic-design.md. Sequenced AFTER epic A (Asteroids, p1); tagged p2. Descopes: no coin-op mechanics, difficulty capped at ROM, spawn-in-obstacle ROM bug not replicated. First of an expected bz1/bz2/bz3 Battlezone epic line."
+priority: p2
+status: backlog
+repos: battlezone
+stories:
+  - id: bz1-1
+    title: 'Subrepo bootstrap: Vite/TS/Vitest scaffold, pinned port 5276, math3d port, repos.yaml + lobby tile'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+    type: chore
+  - id: bz1-2
+    title: Source findings doc — distill disassembly (entities, scoring, obstacle table, 3D vertex specs, difficulty)
+    points: 3
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+    type: chore
+  - id: bz1-3
+    title: 3D render foundation — camera/projection, horizon/mountains/volcano/moon, wireframe 21-obstacle field
+    points: 5
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+  - id: bz1-4
+    title: Tank movement — dual-tread steering, heading/position, obstacle collision, viewport framing
+    points: 3
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+  - id: bz1-5
+    title: Player firing — shell projectile, gunsight, line-of-sight shot blocking
+    points: 3
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+  - id: bz1-6
+    title: Radar scanner — green overlay arc, enemy blips within cone, sweep
+    points: 2
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+  - id: bz1-7
+    title: Enemy tanks — spawn (always one hostile), approach/aim/fire AI, hit + explosion, 1000 pts
+    points: 5
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+  - id: bz1-8
+    title: Missiles + super tanks — guided missile (2000), super tank (3000), score-threshold intro
+    points: 3
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+  - id: bz1-9
+    title: Saucer bonus — drifts in at 2000 pts, random path, 5000 pts, radar-invisible
+    points: 2
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+  - id: bz1-10
+    title: Difficulty ratchet + scoring/lives + game-over/attract (up to ROM ceiling)
+    points: 3
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+  - id: bz1-11
+    title: Audio — engine hum, cannon, explosion, enemy motion, saucer
+    points: 2
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
+  - id: bz1-12
+    title: HUD/framing fidelity + live playtest capstone
+    points: 3
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: superpowers
