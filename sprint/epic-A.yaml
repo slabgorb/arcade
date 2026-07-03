@@ -39,9 +39,12 @@ stories:
     title: Firing — bullet spawn/velocity/lifetime, max-4-shots cap
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-03'
+    review_verdict: approved
   - id: A-5
     title: Vector render foundation + ship silhouette + thrust flame
     points: 3

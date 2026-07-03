@@ -710,3 +710,8 @@ completed_stories:
     title: Source findings doc — distill disassembly (entities, scoring, obstacle table, 3D vertex specs, difficulty)
     points: 3
     completed: '2026-07-03'
+  - id: A-4
+    epic: A
+    title: Firing — bullet spawn/velocity/lifetime, max-4-shots cap
+    points: 2
+    completed: '2026-07-03'
