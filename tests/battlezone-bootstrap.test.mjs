@@ -96,8 +96,8 @@ test('AC: orchestrator .gitignore ignores the battlezone/ subrepo', () => {
   const gitignore = read('.gitignore');
   assert.match(
     gitignore,
-    /^battlezone\s*$/m,
-    'battlezone/ must be gitignored at the orchestrator, alongside tempest/lobby/star-wars',
+    /^\/battlezone\/\s*$/m,
+    'battlezone/ must be gitignored at the orchestrator, root-anchored and directory-only (alongside tempest/lobby/star-wars)',
   );
 });
 
