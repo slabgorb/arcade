@@ -29,9 +29,12 @@ stories:
     title: Ship flight model (rotate/thrust/inertia/drag/screen-wrap), ROM-tuned
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-03'
+    review_verdict: approved
   - id: A-4
     title: Firing — bullet spawn/velocity/lifetime, max-4-shots cap
     points: 2

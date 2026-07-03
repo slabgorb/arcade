@@ -695,3 +695,8 @@ completed_stories:
     title: Deterministic core tick + RNG + entity model
     points: 3
     completed: '2026-07-03'
+  - id: A-3
+    epic: A
+    title: Ship flight model (rotate/thrust/inertia/drag/screen-wrap), ROM-tuned
+    points: 5
+    completed: '2026-07-03'
