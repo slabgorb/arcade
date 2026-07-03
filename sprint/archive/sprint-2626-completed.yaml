@@ -765,3 +765,8 @@ completed_stories:
     title: Wave spawner — 4 + 2/wave, cap 11, 27 on-screen, ship-safe placement
     points: 3
     completed: '2026-07-03'
+  - id: bz1-7
+    epic: bz1
+    title: Enemy tanks — spawn (always one hostile), approach/aim/fire AI, hit + explosion, 1000 pts
+    points: 5
+    completed: '2026-07-03'
