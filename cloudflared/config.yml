@@ -18,6 +18,7 @@ ingress:
   # The front door is the LOBBY, not a game:
   #   /tempest/*    -> Tempest server   (:5273, Vite base /tempest/)
   #   /star-wars/*  -> Star Wars server (:5274, Vite base /star-wars/)
+  #   /asteroids/*  -> Asteroids server (:5275, Vite base /asteroids/)
   #   everything else (/, /lobby/*)  -> lobby server (:5270, Vite base /lobby/)
   # The bare root lands on the lobby because Vite (base: /lobby/) 302-redirects
   # "/" -> "/lobby/", which then matches the catch-all lobby rule below.
@@ -34,6 +35,12 @@ ingress:
   - hostname: arcade.slabgorb.com
     path: ^/star-wars
     service: http://localhost:5274
+    originRequest:
+      connectTimeout: 30s
+      noHappyEyeballs: true
+  - hostname: arcade.slabgorb.com
+    path: ^/asteroids
+    service: http://localhost:5275
     originRequest:
       connectTimeout: 30s
       noHappyEyeballs: true

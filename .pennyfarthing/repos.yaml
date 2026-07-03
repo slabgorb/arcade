@@ -97,3 +97,33 @@ repos:
       is ported from the cabinet disassembly under reference/ (gitignored).
 
       '
+  asteroids:
+    path: asteroids
+    type: ui
+    default_branch: develop
+    branch_strategy: gitflow
+    description: 'Faithful browser-based vector clone of Atari''s 1979 Asteroids.
+
+      Top-down inertial shooter (thrust/rotate ship, splitting rocks, saucers).
+
+      Canvas 2D glowing vectors, no backend, no game/physics engine.
+
+      src/core holds the deterministic sim; src/shell holds render/audio/io.
+
+      '
+    language: typescript
+    languages:
+    - typescript
+    framework: vite
+    dev_command: npm run dev
+    build_command: npm run build
+    test_command: npm test
+    notes: 'Fourth subrepo in the arcade series. Gitignored, with its own git history
+
+      (origin github.com/slabgorb/asteroids once the GitHub repo exists; default
+
+      branch develop). Pure game code — sprint/epics managed at the orchestrator.
+
+      Served under /asteroids/ on port 5275.
+
+      '
