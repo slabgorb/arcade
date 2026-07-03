@@ -22,6 +22,8 @@ completed_epics:
   - '11'
   - '10'
   - '12'
+  - '13'
+  - '14'
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -633,3 +635,53 @@ completed_stories:
     title: Rim-anchored ROM CURSOR claw (replace depth-projected walker)
     points: 5
     completed: '2026-07-01'
+  - id: 14-7
+    epic: '14'
+    title: Trench catwalk hazard never costs a shield (COCKPIT_HIT_RADIUS < catwalk y-offset)
+    points: 2
+    completed: '2026-07-03'
+  - id: 13-1
+    epic: '13'
+    title: Scene contact sheet — render composed trench-run frames without a play test
+    points: 3
+    completed: '2026-07-02'
+  - id: 13-2
+    epic: '13'
+    title: Trench walled corridor — replace flat tile with procedural channel (ADR 0002 part B)
+    points: 5
+    completed: '2026-07-03'
+  - id: 13-3
+    epic: '13'
+    title: Trench-run scene playtest — verify the corridor + HUD in a live run
+    points: 2
+    completed: '2026-07-03'
+  - id: 14-1
+    epic: '14'
+    title: Reference quarry + whole-game source findings doc
+    points: 3
+    completed: '2026-07-02'
+  - id: 14-2
+    epic: '14'
+    title: Trench wall detail — panels/windows generator + envelope true-up
+    points: 3
+    completed: '2026-07-02'
+  - id: 14-3
+    epic: '14'
+    title: Trench turrets, wall squares & catwalks — targetable scored entities
+    points: 5
+    completed: '2026-07-02'
+  - id: 14-4
+    epic: '14'
+    title: Exhaust-port fidelity + the force bonus + trench banners
+    points: 3
+    completed: '2026-07-02'
+  - id: 14-5
+    epic: '14'
+    title: HUD/framing fidelity — wireframe shield gauge + arcade palette
+    points: 3
+    completed: '2026-07-02'
+  - id: 14-6
+    epic: '14'
+    title: Live playtest capstone (absorbs canceled story 13-3's ACs)
+    points: 2
+    completed: '2026-07-02'

@@ -57,3 +57,4 @@ stories:
       - No console errors/warnings during a full trench run; frame pacing looks smooth (informal check, not benchmarked)
       - Sign off with pass/fail notes in the story; if the corridor reveals an issue the static scene sheet could not catch, file it as a follow-up bug story
     type: chore
+completed: '2026-07-03'

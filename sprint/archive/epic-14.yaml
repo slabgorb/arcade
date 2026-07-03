@@ -3,7 +3,7 @@ type: epic
 title: Star Wars 1983 source findings + trench-run fidelity
 description: "Distill the 1983 arcade ROM disassembly into a committed findings doc (tempest playbook), then rebuild the trench run to arcade fidelity: wall detail, targetable turrets/squares, catwalk obstacles, exhaust-port/force-bonus gameplay, faithful HUD. Spec: star-wars/docs/superpowers/specs/2026-07-02-sw-1983-source-findings-and-trench-fidelity-design.md (merged PR #37). Plan: star-wars/docs/superpowers/plans/2026-07-02-sw-1983-findings-and-trench-fidelity.md. Story 14-6 absorbs canceled 13-3's ACs. Render acceptance surface: the 13-1 scene sheet (/scenes.html); capstone is a live playtest."
 priority: p1
-status: backlog
+status: done
 repos: star-wars
 stories:
   - id: 14-1
@@ -65,7 +65,11 @@ stories:
     description: "Found during 14-6's live playtest (13-3 AC2). The catwalk obstacle spawns at station (0, 200, -2100) — src/core/trench-obstacles.ts TRENCH_OBSTACLE_STATIONS — and as it scrolls toward the cockpit only its z advances (src/core/sim.ts stepTrench); x/y stay fixed. Its hazard check is `collides(pos, COCKPIT, COCKPIT_HIT_RADIUS)` with COCKPIT=[0,0,0] and COCKPIT_HIT_RADIUS=80 (src/core/state.ts). The closest the catwalk can ever get to the cockpit is at z=0, giving distance sqrt(200^2+0^2)=200 — always > 80, so the crash branch (crashedCatwalk=true, terrain-crash event, -1 life) can never fire; the hazard is geometrically unreachable. Repro (live, confirmed 2026-07-02): press 9 to jump to a fresh trench (6/6 shields), do not fire, wait until t=4.5s (after the catwalk's own ~4.2s crossing of z=0, before the port's ~4.8s crash) — the isolation screenshot showed shields at 5 (one port-crash cycle had elapsed by capture time); the catwalk contributes zero shield loss, confirming the geometric proof. The static /scenes.html contact sheet cannot catch this (it's a single-frame render, not a collision-over-time bug). Fix options: raise COCKPIT_HIT_RADIUS for this check, lower the catwalk's spawn y, or give the catwalk its own (larger) hazard radius separate from COCKPIT_HIT_RADIUS."
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-03'
     type: bug
+    review_verdict: approved
+completed: '2026-07-03'

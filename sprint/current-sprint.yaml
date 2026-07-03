@@ -7,6 +7,4 @@ sprint:
   end_date: '2026-07-08'
   status: active
   number: 2626
-epics:
-  - '13'
-  - '14'
+epics: []
