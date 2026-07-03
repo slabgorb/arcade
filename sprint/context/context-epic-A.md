@@ -99,9 +99,23 @@ the quarry when porting):
 - **Waves:** start 4 large, +2 per wave, **cap 11** starting rocks; engine
   tolerates 27 total objects on screen
 - **Saucers:** large fires randomly (200 pts); small aims, accuracy ramps
-  after **35,000 pts** (1,000 pts)
+  after **35,000 pts** (corroborated: `CMP #$35` gate on the aim-error
+  mask). Small-saucer value is **disputed**: commonly cited as 1,000, but
+  three independent reads (two disassembly fetches + corroborating search)
+  derive **990** (`$99` BCD × 10 — a single BCD byte cannot award 1,000).
+  A-9 owns the constant (`SAUCER_POINTS.small`, provisionally 990), A-13
+  sources it from A-9, and A-17 settles it against the quarry bytes. Saucer mix shifts toward
+  small-only as score climbs (~30k→40k ramp; endpoints sourced, shape
+  provisional — see A-12).
 - **Hyperspace:** random reposition avoiding edges; ~**25%** self-destruct
-  chance; waits for clear spawn zone
+  chance — sources disagree on the *mechanism* (flat roll vs. a
+  position/rock-count-dependent formula), so A-14 ships a flat roll behind
+  a swappable `rollHyperspaceSurvival(rng, rockCount)` seam and A-17
+  settles it. Note (A-14 research): the "self-destruct roll" and
+  "wait-for-clear" are **one ROM check, not two mechanisms** — reappearance
+  is a fixed timer, not a poll-until-clear loop. Post-respawn hit-immunity
+  *does* exist (shared `$02FA` spawn timer — see A-15), contrary to common
+  belief.
 - **Sound:** NOT in the disassembly notes — the accelerating heartbeat,
   thrust, fire, explosions, and saucer siren (A-18) are sourced from analyses
   and recordings; document sources in `reference/README.md`

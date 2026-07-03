@@ -43,7 +43,7 @@ stories:
     repos: asteroids
     workflow: tdd
   - id: A-6
-    title: Asteroid entities — 3 sizes, authentic shape tables, rotation, drift
+    title: Asteroid entities — 3 sizes, authentic shape tables, drift (no rotation — ROM-confirmed)
     points: 3
     priority: p1
     status: backlog
