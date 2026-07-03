@@ -705,3 +705,8 @@ completed_stories:
     title: 'Subrepo bootstrap: Vite/TS/Vitest scaffold, pinned port 5276, math3d port, repos.yaml + lobby tile'
     points: 2
     completed: '2026-07-03'
+  - id: bz1-2
+    epic: bz1
+    title: Source findings doc — distill disassembly (entities, scoring, obstacle table, 3D vertex specs, difficulty)
+    points: 3
+    completed: '2026-07-03'

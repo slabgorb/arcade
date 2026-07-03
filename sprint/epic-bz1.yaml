@@ -21,10 +21,13 @@ stories:
     title: Source findings doc — distill disassembly (entities, scoring, obstacle table, 3D vertex specs, difficulty)
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-03'
     type: chore
+    review_verdict: approved
   - id: bz1-3
     title: 3D render foundation — camera/projection, horizon/mountains/volcano/moon, wireframe 21-obstacle field
     points: 5
