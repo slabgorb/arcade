@@ -127,3 +127,37 @@ repos:
       Served under /asteroids/ on port 5275.
 
       '
+  battlezone:
+    path: battlezone
+    type: ui
+    default_branch: develop
+    branch_strategy: gitflow
+    description: 'Faithful browser-based vector clone of Atari''s 1980 Battlezone.
+
+      First-person 3D wireframe tank duel on a flat plain (dual-tread steering,
+
+      green radar scanner, ROM-positioned obstacles). Canvas 2D glowing green
+
+      vectors, no backend, no 3D engine. src/core holds the deterministic planar
+
+      sim + the ported "Math Box" (math3d); src/shell holds render/input/loop/audio.
+
+      '
+    language: typescript
+    languages:
+    - typescript
+    framework: vite
+    dev_command: npm run dev
+    build_command: npm run build
+    test_command: npm test
+    notes: 'Fifth subrepo in the arcade series. Gitignored, with its own git history
+
+      (default branch develop, gitflow; remote github.com/slabgorb/battlezone when
+
+      created). Pure game code — sprint/epics managed at the orchestrator (epic bz1).
+
+      math3d is PORTED verbatim from star-wars (shared-lib extraction deferred);
+
+      authentic ROM data is quarried under reference/ (gitignored) from bz1-2 on.
+
+      '

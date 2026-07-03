@@ -12,11 +12,11 @@ default:
 # GAMES (subrepos registered in repos.yaml)
 # ============================================
 # Space-separated list; add new game subrepos here.
-games := "tempest asteroids"
+games := "tempest star-wars asteroids battlezone"
 
 # Every servable subrepo (the lobby shell + all games), in launch order.
 # `serve` and the install recipe below iterate this; game-only recipes use {{games}}.
-subrepos := "lobby tempest asteroids"
+subrepos := "lobby tempest star-wars asteroids battlezone"
 
 # Install dependencies in every subrepo (lobby + games)
 install-all:
@@ -57,15 +57,17 @@ serve:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Serving the arcade from {{root}} (the canonical checkout)"
-    echo "  lobby     → http://localhost:5270/lobby/"
-    echo "  tempest   → http://localhost:5273/tempest/"
-    echo "  star-wars → http://localhost:5274/star-wars/"
-    echo "  asteroids → http://localhost:5275/asteroids/"
+    echo "  lobby      → http://localhost:5270/lobby/"
+    echo "  tempest    → http://localhost:5273/tempest/"
+    echo "  star-wars  → http://localhost:5274/star-wars/"
+    echo "  asteroids  → http://localhost:5275/asteroids/"
+    echo "  battlezone → http://localhost:5276/battlezone/"
     trap 'kill 0' EXIT
     (cd {{root}}/lobby && npm run dev) &
     (cd {{root}}/tempest && npm run dev) &
     (cd {{root}}/star-wars && npm run dev) &
     (cd {{root}}/asteroids && npm run dev) &
+    (cd {{root}}/battlezone && npm run dev) &
     wait
 
 # ============================================
