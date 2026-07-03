@@ -59,9 +59,12 @@ stories:
     title: Asteroid entities — 3 sizes, authentic shape tables, drift (no rotation — ROM-confirmed)
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-03'
+    review_verdict: approved
   - id: A-7
     title: Splitting — large to 2 med to 2 small, velocity inheritance + spread
     points: 3

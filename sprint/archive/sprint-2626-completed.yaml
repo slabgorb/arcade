@@ -730,3 +730,8 @@ completed_stories:
     title: Tank movement — dual-tread steering, heading/position, obstacle collision, viewport framing
     points: 3
     completed: '2026-07-03'
+  - id: A-6
+    epic: A
+    title: Asteroid entities — 3 sizes, authentic shape tables, drift (no rotation — ROM-confirmed)
+    points: 3
+    completed: '2026-07-03'
