@@ -1,0 +1,50 @@
+; Math Box definitions for Atari Battlezone / Red Baron.
+;
+; Tempest moves things around, putting the outputs at $6040/6060/6070
+; and inputs at $6080+.
+
+*SYNOPSIS Atari Math Box symbols
+
+;
+; Outputs.
+;
+MB_STATUS       < $1800     ;R bool 00/80(?): busy
+MB_RESULT_LO    < $1810     ;R low byte of result
+MB_RESULT_HI    < $1818     ;R high byte of result
+
+;
+; Inputs.  Writing a byte initiates the corresponding function.
+; MB_STATUS will be >= $80 while math box is working.
+;
+MB_SET_R0L      > $1860     ;W set R0 low; return R0
+MB_SET_R0H      > $1861     ;W set R0 high; return R0
+MB_SET_R1L      > $1862     ;W set R1 low; return R1
+MB_SET_R1H      > $1863     ;W set R1 high; return R1
+MB_SET_R2L      > $1864     ;W set R2 low; return R2
+MB_SET_R2H      > $1865     ;W set R2 high; return R2
+MB_SET_R3L      > $1866     ;W set R3 low; return R3
+MB_SET_R3H      > $1867     ;W set R3 high; return R3
+MB_SET_R4L      > $1868     ;W set R4 low; return R4
+MB_SET_R4H      > $1869     ;W set R4 high; return R4
+MB_SET_R5L      > $186a     ;W set R5 low; return R5
+MB_ROT_Z        > $186b     ;W set R5 high; compute Z rot
+MB_SET_R6       > $186c     ;W set R6; return R6
+MB_SET_RAL      > $186d     ;W set RA low; return RA
+MB_SET_RAH      > $186e     ;W set RA high; return RA
+MB_SET_RBL      > $186f     ;W set RB low; return RB
+MB_SET_RBH      > $1870     ;W set RB high; return RB
+MB_SCREEN_X     > $1871     ;W set R5 high; compute screen X
+MB_ROT_X        > $1872     ;W data ignored; compute X rot
+MB_DIVIDE_87    > $1873     ;W data ignored; return R8/R7
+MB_DIVIDE_B7    > $1874     ;W data ignored; return RB/R7
+MB_SET_R7L      > $1875     ;W set R7 low; return R7
+MB_SET_R7H      > $1876     ;W set R7 high; return R7
+MB_GET_R7       > $1877     ;W data ignored; return R7
+MB_GET_R9       > $1878     ;W data ignored; return R9
+MB_GET_R8       > $1879     ;W data ignored; return R8
+MB_SET_R8L      > $187a     ;W set R8 low; return R8
+MB_SET_R8H      > $187b     ;W set R8 high; return R8
+MB_CLIP         > $187c     ;W set R5 high; compute midpoint sub
+MB_CALC_DIST    > $187d     ;W set R3 high and calc ~distance
+MB_CALC_HYPOT   > $187e     ;W data ignored; calc ~sqrt(a^2 + b^2)
+MB_UNKNOWN      > $187f     ;W unknown
