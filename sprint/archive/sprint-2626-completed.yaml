@@ -740,3 +740,8 @@ completed_stories:
     title: Splitting — large to 2 med to 2 small, velocity inheritance + spread
     points: 3
     completed: '2026-07-03'
+  - id: bz1-5
+    epic: bz1
+    title: Player firing — shell projectile, gunsight, line-of-sight shot blocking
+    points: 3
+    completed: '2026-07-03'

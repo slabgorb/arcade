@@ -54,9 +54,13 @@ stories:
     title: Player firing — shell projectile, gunsight, line-of-sight shot blocking
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-03'
+    branch: feat/bz1-5-player-firing
+    review_verdict: approved
   - id: bz1-6
     title: Radar scanner — green overlay arc, enemy blips within cone, sweep
     points: 2
