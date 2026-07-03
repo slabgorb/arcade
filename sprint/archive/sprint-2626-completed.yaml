@@ -715,6 +715,11 @@ completed_stories:
     title: Firing — bullet spawn/velocity/lifetime, max-4-shots cap
     points: 2
     completed: '2026-07-03'
+  - id: bz1-3
+    epic: bz1
+    title: 3D render foundation — camera/projection, horizon/mountains/volcano/moon, wireframe 21-obstacle field
+    points: 5
+    completed: '2026-07-03'
   - id: A-5
     epic: A
     title: Vector render foundation + ship silhouette + thrust flame
