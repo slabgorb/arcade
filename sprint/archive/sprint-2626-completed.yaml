@@ -750,3 +750,8 @@ completed_stories:
     title: Collisions (bullet/ship vs rock) + screen-wrap
     points: 3
     completed: '2026-07-03'
+  - id: bz1-6
+    epic: bz1
+    title: Radar scanner — green overlay arc, enemy blips within cone, sweep
+    points: 2
+    completed: '2026-07-03'
