@@ -690,3 +690,8 @@ completed_stories:
     title: Subrepo scaffold + arcade wiring (repos.yaml, just serve, lobby tile, cloudflared, port 5275, /asteroids/ base)
     points: 3
     completed: '2026-07-03'
+  - id: A-2
+    epic: A
+    title: Deterministic core tick + RNG + entity model
+    points: 3
+    completed: '2026-07-03'
