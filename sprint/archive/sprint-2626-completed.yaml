@@ -700,3 +700,8 @@ completed_stories:
     title: Ship flight model (rotate/thrust/inertia/drag/screen-wrap), ROM-tuned
     points: 5
     completed: '2026-07-03'
+  - id: bz1-1
+    epic: bz1
+    title: 'Subrepo bootstrap: Vite/TS/Vitest scaffold, pinned port 5276, math3d port, repos.yaml + lobby tile'
+    points: 2
+    completed: '2026-07-03'

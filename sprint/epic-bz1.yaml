@@ -10,17 +10,20 @@ stories:
     title: 'Subrepo bootstrap: Vite/TS/Vitest scaffold, pinned port 5276, math3d port, repos.yaml + lobby tile'
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
+    completed: '2026-07-03'
     type: chore
+    review_verdict: approved
   - id: bz1-2
     title: Source findings doc — distill disassembly (entities, scoring, obstacle table, 3D vertex specs, difficulty)
     points: 3
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
     type: chore
   - id: bz1-3
     title: 3D render foundation — camera/projection, horizon/mountains/volcano/moon, wireframe 21-obstacle field
@@ -28,67 +31,67 @@ stories:
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
   - id: bz1-4
     title: Tank movement — dual-tread steering, heading/position, obstacle collision, viewport framing
     points: 3
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
   - id: bz1-5
     title: Player firing — shell projectile, gunsight, line-of-sight shot blocking
     points: 3
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
   - id: bz1-6
     title: Radar scanner — green overlay arc, enemy blips within cone, sweep
     points: 2
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
   - id: bz1-7
     title: Enemy tanks — spawn (always one hostile), approach/aim/fire AI, hit + explosion, 1000 pts
     points: 5
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
   - id: bz1-8
     title: Missiles + super tanks — guided missile (2000), super tank (3000), score-threshold intro
     points: 3
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
   - id: bz1-9
     title: Saucer bonus — drifts in at 2000 pts, random path, 5000 pts, radar-invisible
     points: 2
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
   - id: bz1-10
     title: Difficulty ratchet + scoring/lives + game-over/attract (up to ROM ceiling)
     points: 3
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
   - id: bz1-11
     title: Audio — engine hum, cannon, explosion, enemy motion, saucer
     points: 2
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
   - id: bz1-12
     title: HUD/framing fidelity + live playtest capstone
     points: 3
     priority: p2
     status: backlog
     repos: battlezone
-    workflow: superpowers
+    workflow: tdd
