@@ -120,9 +120,9 @@ repos:
     test_command: npm test
     notes: 'Fourth subrepo in the arcade series. Gitignored, with its own git history
 
-      (origin github.com/slabgorb/asteroids once the GitHub repo exists; default
+      (origin github.com/slabgorb/asteroids, default branch develop). Pure game
 
-      branch develop). Pure game code — sprint/epics managed at the orchestrator.
+      code — sprint/epics managed at the orchestrator.
 
       Served under /asteroids/ on port 5275.
 
@@ -152,9 +152,9 @@ repos:
     test_command: npm test
     notes: 'Fifth subrepo in the arcade series. Gitignored, with its own git history
 
-      (default branch develop, gitflow; remote github.com/slabgorb/battlezone when
+      (origin github.com/slabgorb/battlezone, default branch develop). Pure game
 
-      created). Pure game code — sprint/epics managed at the orchestrator (epic bz1).
+      code — sprint/epics managed at the orchestrator (epic bz1).
 
       math3d is PORTED verbatim from star-wars (shared-lib extraction deferred);
 
