@@ -1,0 +1,142 @@
+id: A
+type: epic
+title: Asteroids — faithful 1979 vector clone
+description: Full-fidelity browser vector clone of Atari's 1979 Asteroids. New gitignored subrepo (gitflow, port 5275, /asteroids/ base). ROM-accurate flight, splitting, waves, saucers, hyperspace; reference/ quarry from 6502disassembly.com/va-asteroids.
+priority: p1
+status: backlog
+repos: asteroids
+stories:
+  - id: A-1
+    title: Subrepo scaffold + arcade wiring (repos.yaml, just serve, lobby tile, cloudflared, port 5275, /asteroids/ base)
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: trivial
+    type: chore
+  - id: A-2
+    title: Deterministic core tick + RNG + entity model
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-3
+    title: Ship flight model (rotate/thrust/inertia/drag/screen-wrap), ROM-tuned
+    points: 5
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-4
+    title: Firing — bullet spawn/velocity/lifetime, max-4-shots cap
+    points: 2
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-5
+    title: Vector render foundation + ship silhouette + thrust flame
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-6
+    title: Asteroid entities — 3 sizes, authentic shape tables, rotation, drift
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-7
+    title: Splitting — large to 2 med to 2 small, velocity inheritance + spread
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-8
+    title: Collisions (bullet/ship vs rock) + screen-wrap
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-9
+    title: Scoring 20/50/100 BCD, rollover 99990 + extra life at 10000
+    points: 2
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-10
+    title: Wave spawner — 4 + 2/wave, cap 11, 27 on-screen, ship-safe placement
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-11
+    title: Large saucer — spawn cadence, random fire, cross patterns
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-12
+    title: Small saucer — aimed fire + accuracy ramp after 35000 pts
+    points: 5
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-13
+    title: Saucer scoring (200/1000) + collisions + siren cadence
+    points: 2
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-14
+    title: Hyperspace — random reposition, 25% self-destruct, edge-avoid, wait-for-clear
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-15
+    title: Lives / safe-respawn (clear-center) / invulnerability
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-16
+    title: Attract mode + start/game-over/high-score + lobby high-score wiring
+    points: 5
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-17
+    title: ROM-exact shape + velocity tables ported under reference/
+    points: 5
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-18
+    title: Sound — accelerating heartbeat, thrust, fire, explosions, saucer siren
+    points: 5
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A-19
+    title: DVG-authentic glow/brightness + feel calibration vs footage
+    points: 3
+    priority: p1
+    status: backlog
+    repos: asteroids
+    workflow: tdd
