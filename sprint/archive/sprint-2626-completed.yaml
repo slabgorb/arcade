@@ -755,3 +755,8 @@ completed_stories:
     title: Radar scanner — green overlay arc, enemy blips within cone, sweep
     points: 2
     completed: '2026-07-03'
+  - id: A-9
+    epic: A
+    title: Scoring 20/50/100 BCD, rollover 99990 + extra life at 10000
+    points: 2
+    completed: '2026-07-03'

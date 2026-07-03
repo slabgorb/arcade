@@ -89,9 +89,12 @@ stories:
     title: Scoring 20/50/100 BCD, rollover 99990 + extra life at 10000
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-03'
+    review_verdict: approved
   - id: A-10
     title: Wave spawner — 4 + 2/wave, cap 11, 27 on-screen, ship-safe placement
     points: 3
