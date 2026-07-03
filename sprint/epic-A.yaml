@@ -10,9 +10,11 @@ stories:
     title: Subrepo scaffold + arcade wiring (repos.yaml, just serve, lobby tile, cloudflared, port 5275, /asteroids/ base)
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: asteroids
     workflow: trivial
+    completed: '2026-07-03'
     type: chore
   - id: A-2
     title: Deterministic core tick + RNG + entity model

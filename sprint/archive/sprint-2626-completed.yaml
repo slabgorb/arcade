@@ -685,3 +685,8 @@ completed_stories:
     title: Live playtest capstone (absorbs canceled story 13-3's ACs)
     points: 2
     completed: '2026-07-02'
+  - id: A-1
+    epic: A
+    title: Subrepo scaffold + arcade wiring (repos.yaml, just serve, lobby tile, cloudflared, port 5275, /asteroids/ base)
+    points: 3
+    completed: '2026-07-03'
