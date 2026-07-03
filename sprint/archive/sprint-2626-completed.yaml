@@ -760,3 +760,8 @@ completed_stories:
     title: Scoring 20/50/100 BCD, rollover 99990 + extra life at 10000
     points: 2
     completed: '2026-07-03'
+  - id: A-10
+    epic: A
+    title: Wave spawner — 4 + 2/wave, cap 11, 27 on-screen, ship-safe placement
+    points: 3
+    completed: '2026-07-03'

@@ -99,9 +99,12 @@ stories:
     title: Wave spawner — 4 + 2/wave, cap 11, 27 on-screen, ship-safe placement
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-03'
+    review_verdict: approved
   - id: A-11
     title: Large saucer — spawn cadence, random fire, cross patterns
     points: 3
