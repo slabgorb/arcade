@@ -8,7 +8,7 @@ Tank movement — dual-tread steering, heading/position, obstacle collision, vie
 - **Type:** story
 - **Points:** 3
 - **Priority:** p2
-- **Workflow:** superpowers
+- **Workflow:** tdd
 - **Repo:** battlezone
 - **Epic:** Battlezone (1980) — full faithful vector clone
 
@@ -69,6 +69,37 @@ collision-radius constants — not yet landed as of this writing), and bz1-3
 - Out of scope: firing / shell projectiles (bz1-5); independent turret aim;
   enemy tanks and AI (bz1-7); radar (bz1-6); HUD/gunsight/cracked-glass
   framing polish (bz1-12); audio (bz1-11).
+
+## Forward Findings from bz1-3 (Render Foundation)
+
+These delivery findings from bz1-3 surface here as bz1-4 is the natural home to resolve them:
+
+### Type-Safety: OBSTACLE_MODEL Readonly (non-blocking)
+**Source:** bz1-3, scene.ts:48  
+**Issue:** `OBSTACLE_MODEL` should be `Readonly<Record<...>>` instead of mutable Record.  
+**Fix:** One-line type annotation update in scene.ts.  
+**Urgency:** non-blocking — doesn't affect correctness, improves type safety.
+
+### Near-Plane Clipping (non-blocking, may be needed later)
+**Source:** bz1-3  
+**Issue:** Once the player can drive up to obstacles, may need per-edge near-plane clipping to avoid Z-fighting or popping.  
+**Solution:** Port `star-wars/src/shell/wireframe.ts::clipToNear` into the core projector in `scene.ts`.  
+**Urgency:** non-blocking — defer to dev phase if projection errors actually surface when tank approaches obstacles.
+
+### Test-Coverage Gaps to Fold into RED Phase
+**Source:** bz1-3  
+Three assertions should be added to the test suite in this story's RED phase:
+
+1. **Full-pipeline ground-convergence** — Drive tank in a circle, verify horizon/mountain/volcano/moon bases stay on ground plane.
+2. **Portrait aspect ratio** — Resize viewport to aspect < 1 (tall/narrow), run steering cycle, verify no projection NaN or clipping errors.
+3. **Negative-heading wheel/wrap** — Rotate tank so heading wraps from 2π → 0, verify no discontinuity in subsequent frames.
+
+### GROUND_Y Contract Reminder
+**Source:** bz1-3  
+**Contract:** GROUND_Y = −640; all ground-sitting entities (tank, obstacles) place with model y-translation 0 (not lifted to a ground plane). Camera eye is at world y = 0.  
+**Implication:** When tank drives, position update is purely in the (x, z) plane at y = 0.
+
+---
 
 ## Acceptance Criteria
 - Unit test: both treads forward at equal magnitude drives straight along the

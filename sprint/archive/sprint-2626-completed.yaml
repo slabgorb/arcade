@@ -725,3 +725,8 @@ completed_stories:
     title: Vector render foundation + ship silhouette + thrust flame
     points: 3
     completed: '2026-07-03'
+  - id: bz1-4
+    epic: bz1
+    title: Tank movement — dual-tread steering, heading/position, obstacle collision, viewport framing
+    points: 3
+    completed: '2026-07-03'
