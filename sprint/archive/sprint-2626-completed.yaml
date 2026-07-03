@@ -735,3 +735,8 @@ completed_stories:
     title: Asteroid entities — 3 sizes, authentic shape tables, drift (no rotation — ROM-confirmed)
     points: 3
     completed: '2026-07-03'
+  - id: A-7
+    epic: A
+    title: Splitting — large to 2 med to 2 small, velocity inheritance + spread
+    points: 3
+    completed: '2026-07-03'
