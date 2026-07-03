@@ -745,3 +745,8 @@ completed_stories:
     title: Player firing — shell projectile, gunsight, line-of-sight shot blocking
     points: 3
     completed: '2026-07-03'
+  - id: A-8
+    epic: A
+    title: Collisions (bullet/ship vs rock) + screen-wrap
+    points: 3
+    completed: '2026-07-03'
