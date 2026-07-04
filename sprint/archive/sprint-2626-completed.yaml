@@ -816,3 +816,8 @@ completed_stories:
     title: HUD/framing fidelity + live playtest capstone
     points: 3
     completed: '2026-07-04'
+  - id: A-13
+    epic: A
+    title: Saucer scoring (200/1000) + collisions + siren cadence
+    points: 2
+    completed: '2026-07-04'

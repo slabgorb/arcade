@@ -133,9 +133,12 @@ stories:
     title: Saucer scoring (200/1000) + collisions + siren cadence
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-04'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-04'
+    review_verdict: approved
   - id: A-14
     title: Hyperspace — random reposition, 25% self-destruct, edge-avoid, wait-for-clear
     points: 3
