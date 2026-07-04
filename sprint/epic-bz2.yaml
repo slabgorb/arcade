@@ -53,3 +53,18 @@ stories:
     repos: battlezone
     workflow: tdd
     type: chore
+  - id: bz2-7
+    title: Wire reserved ROM message strings to display surfaces — in-game HIGH SCORE label, GREAT SCORE, BONUS TANK AT award banner, ENEMY TO/LEFT/RIGHT/REAR direction callout (transcribed verbatim in core/text.ts by bz1-12, not yet rendered)
+    points: 3
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: tdd
+  - id: bz2-8
+    title: Harden bz1-12 alert/text tests — pin aim-cone boundary (just-inside/outside AIM_COS) alongside the range boundary, use toBeNull for the moved-so-no-alert case, and add a producer-driven gameOverLines(nonzeroScore) SCORE-label assertion
+    points: 1
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: tdd
+    type: chore

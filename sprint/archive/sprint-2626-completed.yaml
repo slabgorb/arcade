@@ -24,6 +24,7 @@ completed_epics:
   - '12'
   - '13'
   - '14'
+  - bz1
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -809,4 +810,9 @@ completed_stories:
     epic: A
     title: Small saucer — aimed fire + accuracy ramp after 35000 pts
     points: 5
+    completed: '2026-07-04'
+  - id: bz1-12
+    epic: bz1
+    title: HUD/framing fidelity + live playtest capstone
+    points: 3
     completed: '2026-07-04'
