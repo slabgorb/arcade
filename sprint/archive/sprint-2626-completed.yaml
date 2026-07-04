@@ -805,3 +805,8 @@ completed_stories:
     title: Audio — engine hum, cannon, explosion, enemy motion, saucer
     points: 2
     completed: '2026-07-04'
+  - id: A-12
+    epic: A
+    title: Small saucer — aimed fire + accuracy ramp after 35000 pts
+    points: 5
+    completed: '2026-07-04'

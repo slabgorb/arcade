@@ -121,9 +121,14 @@ stories:
     title: Small saucer — aimed fire + accuracy ramp after 35000 pts
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-04'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-04'
+    branch: feat/A-12-small-saucer-aimed-fire
+    review_findings: "REJECTED (1 HIGH test-quality, #8). saucer-small.test.ts:256 'selects size deterministically' is mutation-proven vacuous — probes at a probability-1 score (105000, smallProbability=1) so it passes even with a Math.random rng source; move to a mid-ramp score (~20000) where the seeded draw decides the outcome. Also :239 size-stability only exercises the large branch (director at score 0). Production code correct; RED-hardening rework."
+    review_verdict: approved
   - id: A-13
     title: Saucer scoring (200/1000) + collisions + siren cadence
     points: 2
