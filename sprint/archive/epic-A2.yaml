@@ -3,7 +3,7 @@ type: epic
 title: Asteroids — playtest followup
 description: 'Follow-up epic from the first live playtest of the Asteroids slice (epic A). Captures polish and clarity fixes surfaced by playing the game in the browser. Sequenced after epic A; tagged p2.'
 priority: p2
-status: backlog
+status: done
 repos: asteroids
 stories:
   - id: A2-1
@@ -11,16 +11,18 @@ stories:
     points: 2
     priority: p2
     status: done
-    started: '2026-07-04'
     repos: asteroids
     workflow: tdd
     completed: '2026-07-04'
-    review_verdict: approved
   - id: A2-2
     title: Adjust letter spacing for the vector font
     points: 1
     priority: p2
-    status: backlog
+    status: done
     repos: asteroids
     workflow: trivial
+    completed: '2026-07-04'
     type: chore
+    branch: chore/A2-2-adjust-letter-spacing
+    review_verdict: approved
+completed: '2026-07-04'

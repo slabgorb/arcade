@@ -25,6 +25,7 @@ completed_epics:
   - '13'
   - '14'
   - bz1
+  - A2
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -830,6 +831,11 @@ completed_stories:
     epic: bz2
     title: Arcade vector font — swap sans-serif HUD/text for the shared vector font pattern (tempest/star-wars font.ts)
     points: 3
+    completed: '2026-07-04'
+  - id: A2-2
+    epic: A2
+    title: Adjust letter spacing for the vector font
+    points: 1
     completed: '2026-07-04'
   - id: A2-1
     epic: A2
