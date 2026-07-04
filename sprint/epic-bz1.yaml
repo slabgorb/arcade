@@ -117,9 +117,14 @@ stories:
     title: Audio — engine hum, cannon, explosion, enemy motion, saucer
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-04'
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-04'
+    branch: feat/bz1-11-audio-sfx
+    review_findings: "2 HIGH audio-lifecycle bugs: (1) saucer warble loop leaks across run/attract mode resets — saucer-gone never emitted at startRun/returnToAttract; (2) 'silence outside playing' is audibly false — setEngine(0) maps to the deliberate 0.12-gain idle, so attract/game-over screens drone post-unlock. Plus 3 MEDIUM test gaps (saucer depart path, mutual-kill tick, audio-fake fidelity) and 2 LOW (object type in fake per lang-review #2, untested ctor branches). Testable → red rework via TEA."
+    review_verdict: approved
   - id: bz1-12
     title: HUD/framing fidelity + live playtest capstone
     points: 3

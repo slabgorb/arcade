@@ -800,3 +800,8 @@ completed_stories:
     title: Lives / safe-respawn (clear-center) / invulnerability
     points: 3
     completed: '2026-07-04'
+  - id: bz1-11
+    epic: bz1
+    title: Audio — engine hum, cannon, explosion, enemy motion, saucer
+    points: 2
+    completed: '2026-07-04'
