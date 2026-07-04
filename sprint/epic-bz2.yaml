@@ -1,13 +1,13 @@
 id: bz2
 type: epic
-title: Battlezone — playtest followup
+title: "Battlezone — playtest followup"
 description: 'Follow-up epic from the first live playtest of the bz1 slice (through bz1-8). Fixes: canvas stretches to full browser width instead of holding a fixed aspect ratio; HUD/text uses a default sans-serif font instead of the shared arcade vector font used in tempest and star-wars; camera/scale reads too close (objects loom larger/nearer than intended); tank turret/aim control granularity is too coarse to aim precisely; no on-screen control indicator and no pause feature (Escape should pause and show keybinds). Closes with an explicit live playtest pass to verify all fixes together. Sequenced after bz1; tagged p2.'
 priority: p2
 status: backlog
 repos: battlezone
 stories:
   - id: bz2-1
-    title: Fixed aspect ratio — stop full-width canvas stretch, letterbox to a pinned ratio
+    title: "Fixed aspect ratio — stop full-width canvas stretch, letterbox to a pinned ratio"
     points: 2
     priority: p2
     status: done
@@ -18,7 +18,7 @@ stories:
     type: bug
     review_verdict: approved
   - id: bz2-2
-    title: Arcade vector font — swap sans-serif HUD/text for the shared vector font pattern (tempest/star-wars font.ts)
+    title: "Arcade vector font — swap sans-serif HUD/text for the shared vector font pattern (tempest/star-wars font.ts)"
     points: 3
     priority: p2
     status: done
@@ -29,7 +29,7 @@ stories:
     branch: feat/bz2-2-arcade-vector-font
     review_verdict: approved
   - id: bz2-3
-    title: Camera/scale calibration — fix FOV/near-plane so obstacles and enemies read at correct distance
+    title: "Camera/scale calibration — fix FOV/near-plane so obstacles and enemies read at correct distance"
     points: 3
     priority: p2
     status: done
@@ -41,7 +41,7 @@ stories:
     review_findings: "Behavioral fix ACCEPTED (389/389 green, all lang rules clean, AC met). Returned for doc-only green rework: 2 stale/contradictory comments — horizon.ts:114-116 ('backdrop and scene share one vertical geometry' now false; scene uses DISPLAY_FOV) and scene.test.ts:16,28-29 (header still says '45deg horizontal FOV', contradicts rewritten block). No code/test change required."
     review_verdict: approved
   - id: bz2-4
-    title: Finer control sensitivity — improve turret/aim granularity for precise targeting
+    title: "Finer control sensitivity — improve turret/aim granularity for precise targeting"
     points: 3
     priority: p2
     status: backlog
@@ -49,14 +49,17 @@ stories:
     workflow: tdd
     type: bug
   - id: bz2-5
-    title: Pause overlay + control indicator — Escape pauses and shows keybinds
+    title: "Pause overlay + control indicator — Escape pauses and shows keybinds"
     points: 3
     priority: p2
-    status: backlog
+    status: done
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-04'
+    branch: feat/bz2-5-pause-overlay-control-indicator
+    review_verdict: approved
   - id: bz2-6
-    title: Live playtest pass — verify aspect ratio, font, scale, controls, and pause fixes end-to-end
+    title: "Live playtest pass — verify aspect ratio, font, scale, controls, and pause fixes end-to-end"
     points: 2
     priority: p2
     status: backlog
@@ -64,14 +67,14 @@ stories:
     workflow: tdd
     type: chore
   - id: bz2-7
-    title: Wire reserved ROM message strings to display surfaces — in-game HIGH SCORE label, GREAT SCORE, BONUS TANK AT award banner, ENEMY TO/LEFT/RIGHT/REAR direction callout (transcribed verbatim in core/text.ts by bz1-12, not yet rendered)
+    title: "Wire reserved ROM message strings to display surfaces — in-game HIGH SCORE label, GREAT SCORE, BONUS TANK AT award banner, ENEMY TO/LEFT/RIGHT/REAR direction callout (transcribed verbatim in core/text.ts by bz1-12, not yet rendered)"
     points: 3
     priority: p2
     status: backlog
     repos: battlezone
     workflow: tdd
   - id: bz2-8
-    title: Harden bz1-12 alert/text tests — pin aim-cone boundary (just-inside/outside AIM_COS) alongside the range boundary, use toBeNull for the moved-so-no-alert case, and add a producer-driven gameOverLines(nonzeroScore) SCORE-label assertion
+    title: "Harden bz1-12 alert/text tests — pin aim-cone boundary (just-inside/outside AIM_COS) alongside the range boundary, use toBeNull for the moved-so-no-alert case, and add a producer-driven gameOverLines(nonzeroScore) SCORE-label assertion"
     points: 1
     priority: p2
     status: backlog
@@ -79,7 +82,7 @@ stories:
     workflow: tdd
     type: chore
   - id: bz2-9
-    title: 'Unfair enemy spawns: enemies appear behind/out-of-view and fire instantly, killing the player within ~2s — fix spawn geometry + add a post-spawn fire grace so the opening is survivable'
+    title: "Unfair enemy spawns: enemies appear behind/out-of-view and fire instantly, killing the player within ~2s — fix spawn geometry + add a post-spawn fire grace so the opening is survivable"
     description: "Playtest: the opening isn't hard, it's UNFAIR. Enemies spawn behind the player (outside the forward view cone), immediately open fire, and kill the player within ~2s of spawn — no time to turn or react. Not fun / not playable. This is spawn GEOMETRY + instant-fire, not a difficulty-ratchet volume problem. Fix: bias initial/respawn placement toward the forward view cone (or at least a reactable bearing) instead of the rear blind spot, and/or add a brief post-spawn grace before a newly spawned enemy can fire. Keep authentic ROM difficulty as the ceiling for later levels — this is about fair engagement geometry, not softening the ratchet."
     points: 3
     priority: p1
@@ -87,8 +90,9 @@ stories:
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
-      - Newly spawned enemies do not materialize directly behind / on top of the player and fire before the player can react — no sub-2s unavoidable deaths from spawn.
+      - "Newly spawned enemies do not materialize directly behind / on top of the player and fire before the player can react — no sub-2s unavoidable deaths from spawn."
       - Spawn placement biases toward the player's forward view cone (or a reactable bearing), not the rear blind spot.
       - A brief post-spawn grace prevents a just-spawned enemy from firing on the same frame/instant it appears.
-      - Authentic ROM difficulty remains the ceiling for later levels — this fixes fairness, not the ratchet.
+      - "Authentic ROM difficulty remains the ceiling for later levels — this fixes fairness, not the ratchet."
     type: bug
+    review_verdict: approved

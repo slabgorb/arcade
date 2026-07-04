@@ -856,3 +856,8 @@ completed_stories:
     title: Hyperspace — random reposition, 25% self-destruct, edge-avoid, wait-for-clear
     points: 3
     completed: '2026-07-04'
+  - id: bz2-5
+    epic: bz2
+    title: "Pause overlay + control indicator — Escape pauses and shows keybinds"
+    points: 3
+    completed: '2026-07-04'
