@@ -785,3 +785,8 @@ completed_stories:
     title: Saucer bonus — drifts in at 2000 pts, random path, 5000 pts, radar-invisible
     points: 2
     completed: '2026-07-03'
+  - id: A-16
+    epic: A
+    title: Attract mode + start/game-over/high-score + lobby high-score wiring
+    points: 5
+    completed: '2026-07-03'

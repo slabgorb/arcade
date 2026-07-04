@@ -149,9 +149,13 @@ stories:
     title: Attract mode + start/game-over/high-score + lobby high-score wiring
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-03'
+    review_findings: '[HIGH] sim.ts:194 death with bonus-ship reserves never ends the run (no respawn until A-15, no gameover) — high-score capture unreachable for runs >=10k; fix: terminal-death stub. [MEDIUM] attract-cycle render test short-circuits via empty table; qualifying-gameover frozen-timer contract unpinned; qualify/insert params not readonly (lang-review #2). Plus 6 LOW (Infinity/NaN storage guard, echo substring, post-GREEN type shims, LIFE_ICON marker, multi-char pin, test double-casts noted).'
+    review_verdict: approved
   - id: A-17
     title: ROM-exact shape + velocity tables ported under reference/
     points: 5
