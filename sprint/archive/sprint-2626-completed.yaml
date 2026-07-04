@@ -790,3 +790,8 @@ completed_stories:
     title: Attract mode + start/game-over/high-score + lobby high-score wiring
     points: 5
     completed: '2026-07-03'
+  - id: bz1-10
+    epic: bz1
+    title: Difficulty ratchet + scoring/lives + game-over/attract (up to ROM ceiling)
+    points: 3
+    completed: '2026-07-03'

@@ -107,9 +107,12 @@ stories:
     title: Difficulty ratchet + scoring/lives + game-over/attract (up to ROM ceiling)
     points: 3
     priority: p2
-    status: backlog
+    status: done
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-03'
+    review_findings: 'REJECTED for one hardening loop (0 critical/high; ACs met, 500/500 green): [MEDIUM] aggro wiring into stepEnemies untested incl. default-1 regression guarantee; [MEDIUM] storage read path unbounded (no MAX_HIGH_SCORES cap on load) ; [MEDIUM] isHighScoreEntry admits NaN/Infinity scores + unbounded names; [MEDIUM] rule#2 readonly cluster in core/highscore.ts (aliasing hazard) + screens.ts param; [LOW] stale as-unknown-as casts x2, GAME_OVER boundary + dt=0 + storage-getter/primitive-row tests missing, coin-op audit join+sweep hardening, empty-board test vacuous.'
+    review_verdict: approved
   - id: bz1-11
     title: Audio — engine hum, cannon, explosion, enemy motion, saucer
     points: 2
