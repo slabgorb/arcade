@@ -847,3 +847,8 @@ completed_stories:
     title: Camera/scale calibration — fix FOV/near-plane so obstacles and enemies read at correct distance
     points: 3
     completed: '2026-07-04'
+  - id: bz2-1
+    epic: bz2
+    title: Fixed aspect ratio — stop full-width canvas stretch, letterbox to a pinned ratio
+    points: 2
+    completed: '2026-07-04'

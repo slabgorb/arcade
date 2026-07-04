@@ -10,10 +10,13 @@ stories:
     title: Fixed aspect ratio — stop full-width canvas stretch, letterbox to a pinned ratio
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-04'
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-04'
     type: bug
+    review_verdict: approved
   - id: bz2-2
     title: Arcade vector font — swap sans-serif HUD/text for the shared vector font pattern (tempest/star-wars font.ts)
     points: 3
