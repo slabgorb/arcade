@@ -770,3 +770,8 @@ completed_stories:
     title: Enemy tanks — spawn (always one hostile), approach/aim/fire AI, hit + explosion, 1000 pts
     points: 5
     completed: '2026-07-03'
+  - id: bz1-8
+    epic: bz1
+    title: Missiles + super tanks — guided missile (2000), super tank (3000), score-threshold intro
+    points: 3
+    completed: '2026-07-03'

@@ -85,9 +85,12 @@ stories:
     title: Missiles + super tanks — guided missile (2000), super tank (3000), score-threshold intro
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-03'
+    review_verdict: approved
   - id: bz1-9
     title: Saucer bonus — drifts in at 2000 pts, random path, 5000 pts, radar-invisible
     points: 2

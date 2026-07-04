@@ -8,93 +8,31 @@ Missiles + super tanks — guided missile (2000), super tank (3000), score-thres
 - **Type:** story
 - **Points:** 3
 - **Priority:** p2
-- **Workflow:** superpowers
+- **Workflow:** tdd
 - **Repo:** battlezone
 - **Epic:** Battlezone (1980) — full faithful vector clone
 
 ## Problem
-bz1-8 extends bz1-7's single-hostile lifecycle with two new hostile types
-drawn from the same roster: the **missile** (2000 pts) — a fast, homing
-hostile with its own approach behavior (flight profile, hop/weave pattern,
-whether obstacles block its path — extracted from the bz1-2 findings/quarry,
-not invented here) — and the **super tank** (3000 pts) — a faster, more
-aggressive tank variant with its own model and AI constants (also from
-bz1-2). Missiles must not enter the roster until the score crosses the
-DIP-default threshold bz1-2 pins from the 5K–30K range (no coin-op DIP menu —
-epic descope); below it, only the slow tank bz1-7 already implements can
-spawn. Once eligible, roster selection — which hostile kind spawns next, at
-the current score — follows the ROM's score-dependent mix and is drawn
-deterministically from the seeded RNG already carried in `GameState`. Both
-new kinds are data + behavior variants layered on bz1-7's existing lifecycle,
-line-of-sight, explosion, and scoring machinery — no new spawn/hit/death
-architecture, per the epic's "nothing here is a new invention" rule.
+_No description in the sprint YAML — see the story title above and the epic context for scope._
 
 ## Technical Approach
-- Extend the hostile roster bz1-7 established (spawn, approach, aim/fire,
-  hit, explosion, scoring) with two new entity kinds — missile and super
-  tank — reusing bz1-7's lifecycle state machine, LOS/shot-blocking,
-  explosion, and scoring hooks unchanged; only per-type data and behavior
-  parameters vary.
-- Pull the missile's flight profile (speed, homing/hop-weave pattern,
-  obstacle interaction) and the super tank's AI constants (speed,
-  aggression/fire-rate deltas vs. the base slow tank) from the bz1-2 findings
-  doc / typed `core/` data — do not invent values here. If a needed constant
-  isn't yet present in bz1-2's output, add it to the existing `src/core/`
-  data modules, citing the same quarry provenance bz1-2 established, rather
-  than hardcoding an undocumented number.
-- Wire each new kind's wireframe model (the `missile`/`super tank` tables
-  bz1-2 ported into `models.ts`) into whatever render/model-selection path
-  bz1-7 introduced, so each hostile kind draws its own distinct model.
-- Gate missile eligibility on bz1-2's pinned DIP-default threshold constant:
-  below it, roster selection only ever produces the slow tank; at/above it,
-  missile becomes eligible for selection alongside it.
-- Implement roster selection as a pure function of `(score, rng)` → hostile
-  kind, following the ROM's score-dependent mix documented by bz1-2. If the
-  findings doc doesn't resolve the exact mix weighting, take the most
-  literal reading available and flag the residual ambiguity rather than
-  guessing a distribution. Selection consumes the seeded RNG already carried
-  in `GameState` — no new randomness source.
-- Preserve the "always exactly one hostile" invariant across all three
-  kinds: a replacement spawns via the same roster-selection function
-  whenever the current hostile dies, regardless of which kind it was.
-- Wire missile kill → 2000 pts and super tank kill → 3000 pts through
-  bz1-7's existing scoring hook, using the scoring constants bz1-2 already
-  committed to `src/core/` — no new scoring path.
-- Cover with Vitest, fixed seed + fixed dt throughout: below-threshold runs
-  spawn slow-tank-only; at/above-threshold runs include missiles per the
-  documented mix; kill scoring is correct for each new kind; the
-  one-hostile invariant holds across type transitions; roster selection is
-  reproducible run-to-run given the same seed and score history.
+_Approach hints to be refined by TEA/Dev. The story title above defines the
+intended behavior._
 
 ## Scope
-- In scope: missile and super tank as new hostile kinds layered on bz1-7's
-  lifecycle; score-threshold gating for missile eligibility; deterministic
-  roster-selection function; per-type model wiring; scoring for the two new
-  kill types; tests proving threshold gating, roster-mix determinism, and
-  the one-hostile invariant across all three kinds.
-- Out of scope: the saucer (bz1-9); difficulty/aggression ratchet tuning
-  (bz1-10); any change to bz1-7's core lifecycle/LOS/explosion/scoring
-  architecture beyond the data/behavior variation two new kinds require;
-  audio (bz1-11); HUD/framing fidelity (bz1-12).
+- In scope: the behavior described by the story title.
+- Out of scope: unrelated changes.
 
 ## Acceptance Criteria
-- With score below the bz1-2-pinned DIP-default threshold, a deterministic
-  fixed-seed run never spawns a missile — only the slow tank appears.
-- With score at or above that threshold, missiles enter the roster-selection
-  rotation per the ROM's documented mix, verified by a deterministic
-  fixed-seed run.
-- Missile kill awards exactly 2000 pts; super tank kill awards exactly
-  3000 pts, both via bz1-7's existing scoring hook.
-- The "always exactly one hostile on the field" invariant holds across all
-  three hostile kinds (slow tank, missile, super tank) through repeated
-  spawn/death cycles in a deterministic test run.
-- Each hostile kind renders its own distinct wireframe model (from bz1-2's
-  `models.ts` tables), not a shared/generic placeholder.
-- Roster selection is a pure deterministic function of score + seeded RNG —
-  the same seed and score history reproduce the same sequence of hostile
-  kinds across runs.
-- `npm run build` and `npm test` are clean in `battlezone/`.
+_Defined by TEA during the RED phase from the quarried ROM (dis65 inline comments; citations in tests/core/enemies-roster.test.ts). "ROM is canonical" — exact pins where the byte is decoded, provisional bands where it is not._
+
+- **AC-1 Roster widening:** `Hostile.kind` widens to `'tank' | 'super-tank' | 'missile'` (spellings match `radar.ts`'s `RadarContactKind`); the blast keeps the dead unit's kind; kill awards are ROM-exact — missile 2000 (`SCORES.missile`), super tank 3000 (`SCORES.superTank`).
+- **AC-2 Score-threshold intro (CreateNewEnemyUnit, dis65 6590-6617):** below `MISSILE_INTRO_THRESHOLD` (10000, pinned bz1-2) a replacement spawn is NEVER a missile; at/above it (≥) missiles join a seeded-random rotation that still mixes in tanks. `stepEnemies` gains a 5th param `score = 0`.
+- **AC-3 GetTankType (dis65 6581-6587):** `EnemyState.missilesLaunched` counts missile SPAWNS (increment on spawn, dis65 6690); tank spawns are slow tanks while launches < 5, super tanks at ≥ 5 (`SUPER_TANK_AFTER_MISSILES = 5`, ROM-exact).
+- **AC-4 Guided missile:** contact-kill only (never fires a shell); out-closes both tank kinds (relative band — absolute speed undecoded); first missile ever flies straight in ("be nice", dis65 5753-5756); later ones weave across both sides of the bearing line (~0.5 s alternation) until `MISSILE_CLOSE_RANGE = 0x0800` (ROM-exact, dis65 5787), then home; a missile past `MISSILE_ABANDON_RANGE` (band: ≥ FAR_CULL) is scrapped and replaced same-step with no score (dis65 7076) — a tank at the same distance keeps going.
+- **AC-5 Super tank:** same duel AI and shared shell system as the slow tank, strictly faster closure (relative band).
+- **AC-6 Radar (findings §7):** alive missile paints a `'missile'` contact, super tank a `'super-tank'` contact; the exploding slot paints nothing; the bz1-6 filter is untouched.
+- **AC-7 Invariants + carried debts:** always-one-hostile through mixed-kind respawns; byte-identical replay from the same seed; inputs never mutated; dt=0 is a spatial no-op that never expires a blast (fire-on-dt-0 stays house-legal); the mutual-kill frame lands kill + playerHit in ONE result. Whole-of-`src/core` purity sweep (new file: `core-purity-sweep.test.ts`) enforces the epic rule on any new core module.
 
 ---
 _Generated by `pf context create story bz1-8` from the sprint YAML._
-_Enriched by Architect (Maude) via story-context subagent._
