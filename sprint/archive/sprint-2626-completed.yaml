@@ -826,3 +826,8 @@ completed_stories:
     title: Sound — accelerating heartbeat, thrust, fire, explosions, saucer siren
     points: 5
     completed: '2026-07-04'
+  - id: bz2-2
+    epic: bz2
+    title: Arcade vector font — swap sans-serif HUD/text for the shared vector font pattern (tempest/star-wars font.ts)
+    points: 3
+    completed: '2026-07-04'
