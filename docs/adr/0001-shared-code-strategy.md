@@ -1,6 +1,6 @@
 # ADR-0001: Shared-code strategy for the vector-arcade subrepos
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-07-04
 **Author:** Architect (Emmanuel Goldstein)
 **Story:** N/A — arises from the 2026-07-04 cross-repo extraction survey

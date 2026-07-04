@@ -161,3 +161,36 @@ repos:
       authentic ROM data is quarried under reference/ (gitignored) from bz1-2 on.
 
       '
+  arcade-shared:
+    path: arcade-shared
+    type: library
+    default_branch: develop
+    branch_strategy: gitflow
+    description: 'Shared library for the arcade vector games, published as @arcade/shared
+
+      and consumed by each game + the lobby as a version-pinned git-URL dependency.
+
+      Planned subpath exports: /math3d (the ported Atari Math Box), /rng (seeded PRNG),
+
+      /highscore (the lobby/games high-score contract), /loop. Pure shared logic —
+
+      no backend, no rendering.
+
+      '
+    language: typescript
+    languages:
+    - typescript
+    framework: vite
+    build_command: npm run build
+    test_command: npm test
+    notes: 'Sixth subrepo in the arcade series. Gitignored, with its own git history
+
+      (origin github.com/slabgorb/arcade-shared, default branch develop, gitflow).
+
+      Established by ADR-0001; package scaffold (exports map, prepare -> ESM + .d.ts
+
+      build, build/test commands) lands in story SH-1. Eligibility bar: only code
+
+      byte/algorithm-identical across >=2 games belongs here.
+
+      '
