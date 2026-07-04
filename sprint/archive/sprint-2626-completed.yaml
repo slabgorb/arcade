@@ -795,3 +795,8 @@ completed_stories:
     title: Difficulty ratchet + scoring/lives + game-over/attract (up to ROM ceiling)
     points: 3
     completed: '2026-07-03'
+  - id: A-15
+    epic: A
+    title: Lives / safe-respawn (clear-center) / invulnerability
+    points: 3
+    completed: '2026-07-04'

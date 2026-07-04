@@ -142,9 +142,13 @@ stories:
     title: Lives / safe-respawn (clear-center) / invulnerability
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-03'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-04'
+    branch: feat/A-15-lives-respawn-invuln
+    review_verdict: approved
   - id: A-16
     title: Attract mode + start/game-over/high-score + lobby high-score wiring
     points: 5
