@@ -851,4 +851,8 @@ completed_stories:
     epic: bz2
     title: Fixed aspect ratio — stop full-width canvas stretch, letterbox to a pinned ratio
     points: 2
+  - id: A-14
+    epic: A
+    title: Hyperspace — random reposition, 25% self-destruct, edge-avoid, wait-for-clear
+    points: 3
     completed: '2026-07-04'

@@ -143,9 +143,14 @@ stories:
     title: Hyperspace — random reposition, 25% self-destruct, edge-avoid, wait-for-clear
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-04'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-04'
+    branch: feat/A-14-hyperspace
+    review_findings: '3 HIGH: (1) failed hyperspace jump emits no explosion event (silent death, sim.ts:378 edge re-reads post-jump state); (2) thrusting hyperspace death skips thrust-stop (engine hums into gameover); (3) no edge debounce — held hyperspace auto-repeats jumps every ~48 frames (needs hyperspacePrev). Death-path has zero stepGame integration coverage. Rework: edge-trigger + emit death events + add integration tests.'
+    review_verdict: approved
   - id: A-15
     title: Lives / safe-respawn (clear-center) / invulnerability
     points: 3
