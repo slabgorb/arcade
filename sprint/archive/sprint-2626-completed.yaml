@@ -821,3 +821,8 @@ completed_stories:
     title: Saucer scoring (200/1000) + collisions + siren cadence
     points: 2
     completed: '2026-07-04'
+  - id: A-18
+    epic: A
+    title: Sound — accelerating heartbeat, thrust, fire, explosions, saucer siren
+    points: 5
+    completed: '2026-07-04'

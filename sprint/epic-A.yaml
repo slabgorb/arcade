@@ -179,9 +179,14 @@ stories:
     title: Sound — accelerating heartbeat, thrust, fire, explosions, saucer siren
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-04'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-04'
+    branch: feat/A-18-sound-heartbeat-thrust-siren
+    review_findings: 'H-1 (High): thrust-stop never emitted when ship dies mid-thrust; engine-hum loop leaks through death->gameover->attract (confirmed repro: 0 stops/300 frames). Fix: emit thrust-stop on ship-death edge (sim.ts:319) when state.thrustPrev; TEA add die-while-thrusting test. Sibling siren-on-run-end gap filed as non-blocking Delivery Finding.'
+    review_verdict: approved
   - id: A-19
     title: DVG-authentic glow/brightness + feel calibration vs footage
     points: 3
