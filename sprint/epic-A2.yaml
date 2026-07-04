@@ -1,0 +1,23 @@
+id: A2
+type: epic
+title: Asteroids — playtest followup
+description: 'Follow-up epic from the first live playtest of the Asteroids slice (epic A). Captures polish and clarity fixes surfaced by playing the game in the browser. Sequenced after epic A; tagged p2.'
+priority: p2
+status: backlog
+repos: asteroids
+stories:
+  - id: A2-1
+    title: Make playfield clear — overlay the non-playable margin with a light mask so the play area reads as clearly bounded
+    points: 2
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A2-2
+    title: Adjust letter spacing for the vector font
+    points: 1
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: trivial
+    type: chore
