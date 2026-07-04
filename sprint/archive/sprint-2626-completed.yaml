@@ -780,3 +780,8 @@ completed_stories:
     title: Large saucer — spawn cadence, random fire, cross patterns
     points: 3
     completed: '2026-07-03'
+  - id: bz1-9
+    epic: bz1
+    title: Saucer bonus — drifts in at 2000 pts, random path, 5000 pts, radar-invisible
+    points: 2
+    completed: '2026-07-03'

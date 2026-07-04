@@ -95,9 +95,14 @@ stories:
     title: Saucer bonus — drifts in at 2000 pts, random path, 5000 pts, radar-invisible
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-04'
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-03'
+    branch: feat/bz1-9-saucer-bonus
+    review_findings: "Test-suite-only fixes: (1) HIGH tautological test at saucer.test.ts:557-567 (local enemies never enters any call — assertion cannot fail; lang-review #8) — delete or rewrite interleaving stepEnemies with the saucer kill vs a control run; (2) MEDIUM AC-5 gap — add a scripted-kill two-run determinism trace across kill→blast→despawn (rng carry through the exploding phase); (3) MEDIUM unreachable else branch at :329-333 — drop or make it compare traces; (4) LOW optional: surface the caught import error in loadSaucer's CONTRACT message. Implementation (src/) stands as-is — do not touch it."
+    review_verdict: approved
   - id: bz1-10
     title: Difficulty ratchet + scoring/lives + game-over/attract (up to ROM ceiling)
     points: 3
