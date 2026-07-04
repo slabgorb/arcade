@@ -10,9 +10,12 @@ stories:
     title: Make playfield clear — overlay the non-playable margin with a light mask so the play area reads as clearly bounded
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-04'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-04'
+    review_verdict: approved
   - id: A2-2
     title: Adjust letter spacing for the vector font
     points: 1

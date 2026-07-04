@@ -831,3 +831,8 @@ completed_stories:
     title: Arcade vector font — swap sans-serif HUD/text for the shared vector font pattern (tempest/star-wars font.ts)
     points: 3
     completed: '2026-07-04'
+  - id: A2-1
+    epic: A2
+    title: Make playfield clear — overlay the non-playable margin with a light mask so the play area reads as clearly bounded
+    points: 2
+    completed: '2026-07-04'
