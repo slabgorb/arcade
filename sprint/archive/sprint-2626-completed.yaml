@@ -842,3 +842,8 @@ completed_stories:
     title: Make playfield clear — overlay the non-playable margin with a light mask so the play area reads as clearly bounded
     points: 2
     completed: '2026-07-04'
+  - id: bz2-3
+    epic: bz2
+    title: Camera/scale calibration — fix FOV/near-plane so obstacles and enemies read at correct distance
+    points: 3
+    completed: '2026-07-04'

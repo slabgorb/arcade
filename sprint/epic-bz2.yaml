@@ -29,10 +29,14 @@ stories:
     title: Camera/scale calibration — fix FOV/near-plane so obstacles and enemies read at correct distance
     points: 3
     priority: p2
-    status: backlog
+    status: done
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-04'
     type: bug
+    branch: fix/bz2-3-camera-scale-calibration
+    review_findings: "Behavioral fix ACCEPTED (389/389 green, all lang rules clean, AC met). Returned for doc-only green rework: 2 stale/contradictory comments — horizon.ts:114-116 ('backdrop and scene share one vertical geometry' now false; scene uses DISPLAY_FOV) and scene.test.ts:16,28-29 (header still says '45deg horizontal FOV', contradicts rewritten block). No code/test change required."
+    review_verdict: approved
   - id: bz2-4
     title: Finer control sensitivity — improve turret/aim granularity for precise targeting
     points: 3
