@@ -886,3 +886,8 @@ completed_stories:
     title: One shot destroys only one rock — bullet consumed on first hit, never both overlapping rocks
     points: 2
     completed: '2026-07-05'
+  - id: A2-5
+    epic: A2
+    title: Ship death breakup animation — ship fractures into drifting, fading line segments
+    points: 3
+    completed: '2026-07-05'
