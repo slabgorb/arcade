@@ -177,9 +177,12 @@ stories:
     title: ROM-exact shape + velocity tables ported under reference/
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-05'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-05'
+    review_verdict: approved
   - id: A-18
     title: Sound — accelerating heartbeat, thrust, fire, explosions, saucer siren
     points: 5

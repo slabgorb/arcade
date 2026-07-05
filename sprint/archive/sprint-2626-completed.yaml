@@ -861,3 +861,8 @@ completed_stories:
     title: "Pause overlay + control indicator — Escape pauses and shows keybinds"
     points: 3
     completed: '2026-07-04'
+  - id: A-17
+    epic: A
+    title: ROM-exact shape + velocity tables ported under reference/
+    points: 5
+    completed: '2026-07-05'
