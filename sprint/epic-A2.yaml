@@ -81,7 +81,10 @@ stories:
     title: Bullet range too short — retune bullet lifetime/travel distance against ROM reference
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-05'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-05'
     type: bug
+    review_verdict: approved

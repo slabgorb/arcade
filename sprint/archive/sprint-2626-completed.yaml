@@ -876,3 +876,8 @@ completed_stories:
     title: Mouse controls — left button fires, right button triggers hyperspace (suppress right-click context menu)
     points: 2
     completed: '2026-07-05'
+  - id: A2-9
+    epic: A2
+    title: Bullet range too short — retune bullet lifetime/travel distance against ROM reference
+    points: 2
+    completed: '2026-07-05'
