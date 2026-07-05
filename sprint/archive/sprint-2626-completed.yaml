@@ -866,3 +866,8 @@ completed_stories:
     title: ROM-exact shape + velocity tables ported under reference/
     points: 5
     completed: '2026-07-05'
+  - id: A2-3
+    epic: A2
+    title: Saucer siren keeps playing after game over — stop siren and any looping SFX on run end
+    points: 2
+    completed: '2026-07-05'

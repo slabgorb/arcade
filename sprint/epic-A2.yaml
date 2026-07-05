@@ -29,10 +29,14 @@ stories:
     title: Saucer siren keeps playing after game over — stop siren and any looping SFX on run end
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-05'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-05'
     type: bug
+    review_findings: 'H-1 [HIGH]: failed-hyperspace last-life death with live saucer still emits no saucer-siren-stop (sim.ts:447 reads post-rebind saucer; capture incomingSaucer pre-jump like wasDeadBefore). Plus M-1: pin exactly-once for same-frame mutual-ram run end; 2 LOW optional path pins.'
+    review_verdict: approved
   - id: A2-4
     title: Mouse controls — left button fires, right button triggers hyperspace (suppress right-click context menu)
     points: 2
