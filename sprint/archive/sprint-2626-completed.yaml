@@ -871,3 +871,8 @@ completed_stories:
     title: Saucer siren keeps playing after game over — stop siren and any looping SFX on run end
     points: 2
     completed: '2026-07-05'
+  - id: A2-4
+    epic: A2
+    title: Mouse controls — left button fires, right button triggers hyperspace (suppress right-click context menu)
+    points: 2
+    completed: '2026-07-05'

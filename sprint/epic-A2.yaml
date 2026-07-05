@@ -41,9 +41,12 @@ stories:
     title: Mouse controls — left button fires, right button triggers hyperspace (suppress right-click context menu)
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-05'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-05'
+    review_verdict: approved
   - id: A2-5
     title: Ship death breakup animation — ship fractures into drifting, fading line segments
     points: 3
