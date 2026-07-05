@@ -1,0 +1,80 @@
+id: A2
+type: epic
+title: Asteroids — playtest followup
+description: 'Follow-up epic from the first live playtest of the Asteroids slice (epic A). Captures polish and clarity fixes surfaced by playing the game in the browser. Sequenced after epic A; tagged p2.'
+priority: p2
+status: backlog
+repos: asteroids
+stories:
+  - id: A2-1
+    title: Make playfield clear — overlay the non-playable margin with a light mask so the play area reads as clearly bounded
+    points: 2
+    priority: p2
+    status: done
+    repos: asteroids
+    workflow: tdd
+    completed: '2026-07-04'
+  - id: A2-2
+    title: Adjust letter spacing for the vector font
+    points: 1
+    priority: p2
+    status: done
+    repos: asteroids
+    workflow: trivial
+    completed: '2026-07-04'
+    type: chore
+    branch: chore/A2-2-adjust-letter-spacing
+    review_verdict: approved
+  - id: A2-3
+    title: Saucer siren keeps playing after game over — stop siren and any looping SFX on run end
+    points: 2
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+    type: bug
+  - id: A2-4
+    title: Mouse controls — left button fires, right button triggers hyperspace (suppress right-click context menu)
+    points: 2
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A2-5
+    title: Ship death breakup animation — ship fractures into drifting, fading line segments
+    points: 3
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A2-6
+    title: Rock split vectors — fragments overlap after break (momentum over-conserved); retune split spread against ROM reference
+    points: 3
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+    type: bug
+  - id: A2-7
+    title: One shot destroys only one rock — bullet consumed on first hit, never both overlapping rocks
+    points: 2
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+    type: bug
+  - id: A2-8
+    title: Subtle debris particles on every rock break — dim, short-lived scatter per reference footage
+    points: 2
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: A2-9
+    title: Bullet range too short — retune bullet lifetime/travel distance against ROM reference
+    points: 2
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+    type: bug
