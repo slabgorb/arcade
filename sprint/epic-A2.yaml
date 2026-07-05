@@ -62,10 +62,13 @@ stories:
     title: Rock split vectors — fragments overlap after break (momentum over-conserved); retune split spread against ROM reference
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-05'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-05'
     type: bug
+    review_verdict: approved
   - id: A2-7
     title: One shot destroys only one rock — bullet consumed on first hit, never both overlapping rocks
     points: 2

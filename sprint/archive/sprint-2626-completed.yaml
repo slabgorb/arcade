@@ -891,3 +891,8 @@ completed_stories:
     title: Ship death breakup animation — ship fractures into drifting, fading line segments
     points: 3
     completed: '2026-07-05'
+  - id: A2-6
+    epic: A2
+    title: Rock split vectors — fragments overlap after break (momentum over-conserved); retune split spread against ROM reference
+    points: 3
+    completed: '2026-07-05'
