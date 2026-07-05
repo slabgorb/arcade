@@ -66,10 +66,14 @@ stories:
     title: One shot destroys only one rock — bullet consumed on first hit, never both overlapping rocks
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-05'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-05'
     type: bug
+    branch: fix/A2-7-one-shot-one-rock
+    review_verdict: approved
   - id: A2-8
     title: Subtle debris particles on every rock break — dim, short-lived scatter per reference footage
     points: 2

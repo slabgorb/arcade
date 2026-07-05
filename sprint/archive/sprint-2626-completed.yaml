@@ -881,3 +881,8 @@ completed_stories:
     title: Bullet range too short — retune bullet lifetime/travel distance against ROM reference
     points: 2
     completed: '2026-07-05'
+  - id: A2-7
+    epic: A2
+    title: One shot destroys only one rock — bullet consumed on first hit, never both overlapping rocks
+    points: 2
+    completed: '2026-07-05'
