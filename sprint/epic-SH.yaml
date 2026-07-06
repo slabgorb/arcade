@@ -19,7 +19,7 @@ stories:
       - arcade-shared repo exists with package @arcade/shared, an exports subpath map, and a prepare build producing ESM + .d.ts.
       - Registered in .pennyfarthing/repos.yaml (default_branch develop, gitflow) as a gitignored sibling subrepo.
       - One consumer game installs the package via a pinned git-URL ref (github:slabgorb/arcade-shared#vX.Y.Z) and imports a real export; its vite build and vitest both pass.
-      - The dev inner-loop path (npm link or a #branch ref) is documented in the shared repo README.
+      - The dev inner-loop path (npm link or a
     completed: '2026-07-06'
     type: chore
     review_verdict: approved
@@ -28,13 +28,16 @@ stories:
     description: "math3d.ts is byte-identical between star-wars and battlezone (battlezone's header explicitly flags it as evidence for this extraction). Move it verbatim into @arcade/shared/math3d, port its tests, and re-point both games to consume the pinned dep. This is the near-zero-risk first payload that proves the extraction pattern."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-06'
     repos: arcade-shared
     workflow: tdd
     acceptance_criteria:
       - math3d + its tests live in @arcade/shared/math3d; extraction is a no-op diff (behavior-identical).
       - star-wars and battlezone both import @arcade/shared/math3d at a pinned ref; their local core/math3d.ts is deleted.
       - Each consumer's full vitest suite (including the ported math3d + camera-mvp tests) passes against the dep.
+    completed: '2026-07-06'
+    review_verdict: approved
   - id: SH-3
     title: Extract RNG into @arcade/shared/rng — settle the single Rng contract (mutable vs immutable) and migrate all sims
     description: "rng.ts is logic-identical (mulberry32) across star-wars/asteroids/battlezone (mutable) and tempest (immutable, rngNext -> {value, rng}). Pick ONE contract, extract to @arcade/shared/rng, and migrate consumers — tempest's call sites are the real work if the mutable form wins (or vice-versa). Determinism/replay behavior must be preserved exactly for already-shipped games; pin them by tag."

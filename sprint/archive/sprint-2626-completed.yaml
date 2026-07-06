@@ -916,3 +916,8 @@ completed_stories:
     title: Authentic tank maneuvering AI — port the ROM goal-heading state machine (flank/wander/charge modes, ~22deg/s turn, standoff distance, reverse-on-collision) so enemy tanks jockey for a shot instead of spawn-aim-firing like a turret; the real fix for bz2-9's unsurvivable opening
     points: 5
     completed: '2026-07-06'
+  - id: SH-2
+    epic: SH
+    title: Extract Math Box (math3d) into @arcade/shared/math3d and re-point star-wars + battlezone to the pinned dep
+    points: 3
+    completed: '2026-07-06'
