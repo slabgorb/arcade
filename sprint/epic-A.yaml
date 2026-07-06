@@ -211,3 +211,13 @@ stories:
     workflow: tdd
     completed: '2026-07-06'
     type: bug
+  - id: A-21
+    title: Saucer death breakup — flying saucer fractures into drifting, fading line segments (mirrors A2-5 ship breakup)
+    points: 3
+    priority: p1
+    status: done
+    started: '2026-07-06'
+    repos: asteroids
+    workflow: tdd
+    completed: '2026-07-06'
+    review_verdict: approved

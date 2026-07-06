@@ -926,3 +926,8 @@ completed_stories:
     title: Turn rate too coarse for fine aim — hard to line up an accurate shot; verify ship rotation speed/model against ROM reference and retune
     points: 5
     completed: '2026-07-06'
+  - id: A-21
+    epic: A
+    title: Saucer death breakup — flying saucer fractures into drifting, fading line segments (mirrors A2-5 ship breakup)
+    points: 3
+    completed: '2026-07-06'
