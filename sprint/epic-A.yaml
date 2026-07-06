@@ -202,3 +202,11 @@ stories:
     status: backlog
     repos: asteroids
     workflow: tdd
+  - id: A-20
+    title: Turn rate too coarse for fine aim — hard to line up an accurate shot; verify ship rotation speed/model against ROM reference and retune
+    points: 2
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+    type: bug
