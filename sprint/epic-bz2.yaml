@@ -86,7 +86,8 @@ stories:
     description: "Playtest: the opening isn't hard, it's UNFAIR. Enemies spawn behind the player (outside the forward view cone), immediately open fire, and kill the player within ~2s of spawn — no time to turn or react. Not fun / not playable. This is spawn GEOMETRY + instant-fire, not a difficulty-ratchet volume problem. Fix: bias initial/respawn placement toward the forward view cone (or at least a reactable bearing) instead of the rear blind spot, and/or add a brief post-spawn grace before a newly spawned enemy can fire. Keep authentic ROM difficulty as the ceiling for later levels — this is about fair engagement geometry, not softening the ratchet."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-06'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
@@ -94,5 +95,17 @@ stories:
       - Spawn placement biases toward the player's forward view cone (or a reactable bearing), not the rear blind spot.
       - A brief post-spawn grace prevents a just-spawned enemy from firing on the same frame/instant it appears.
       - "Authentic ROM difficulty remains the ceiling for later levels — this fixes fairness, not the ratchet."
+    completed: '2026-07-06'
     type: bug
     review_verdict: approved
+  - id: bz2-10
+    title: Authentic tank maneuvering AI — port the ROM goal-heading state machine (flank/wander/charge modes, ~22deg/s turn, standoff distance, reverse-on-collision) so enemy tanks jockey for a shot instead of spawn-aim-firing like a turret; the real fix for bz2-9's unsurvivable opening
+    points: 5
+    priority: p1
+    status: done
+    started: '2026-07-06'
+    repos: battlezone
+    workflow: tdd
+    completed: '2026-07-06'
+    type: bug
+    branch: feat/bz2-10-tank-maneuvering-ai

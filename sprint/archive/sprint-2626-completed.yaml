@@ -906,3 +906,13 @@ completed_stories:
     title: Scaffold arcade-shared repo + @arcade/shared package (subpath exports, prepare->ESM+d.ts build) and prove the git-URL dependency pipe end-to-end
     points: 3
     completed: '2026-07-06'
+  - id: bz2-9
+    epic: bz2
+    title: "Unfair enemy spawns: enemies appear behind/out-of-view and fire instantly, killing the player within ~2s — fix spawn geometry + add a post-spawn fire grace so the opening is survivable"
+    points: 3
+    completed: '2026-07-06'
+  - id: bz2-10
+    epic: bz2
+    title: Authentic tank maneuvering AI — port the ROM goal-heading state machine (flank/wander/charge modes, ~22deg/s turn, standoff distance, reverse-on-collision) so enemy tanks jockey for a shot instead of spawn-aim-firing like a turret; the real fix for bz2-9's unsurvivable opening
+    points: 5
+    completed: '2026-07-06'
