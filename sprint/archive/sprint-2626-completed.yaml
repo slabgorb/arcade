@@ -921,3 +921,8 @@ completed_stories:
     title: Extract Math Box (math3d) into @arcade/shared/math3d and re-point star-wars + battlezone to the pinned dep
     points: 3
     completed: '2026-07-06'
+  - id: A-20
+    epic: A
+    title: Turn rate too coarse for fine aim — hard to line up an accurate shot; verify ship rotation speed/model against ROM reference and retune
+    points: 5
+    completed: '2026-07-06'
