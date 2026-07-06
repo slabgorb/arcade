@@ -896,3 +896,8 @@ completed_stories:
     title: Rock split vectors — fragments overlap after break (momentum over-conserved); retune split spread against ROM reference
     points: 3
     completed: '2026-07-05'
+  - id: A2-8
+    epic: A2
+    title: Subtle debris particles on every rock break — dim, short-lived scatter per reference footage
+    points: 2
+    completed: '2026-07-06'

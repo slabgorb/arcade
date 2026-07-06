@@ -3,7 +3,7 @@ type: epic
 title: Asteroids — playtest followup
 description: 'Follow-up epic from the first live playtest of the Asteroids slice (epic A). Captures polish and clarity fixes surfaced by playing the game in the browser. Sequenced after epic A; tagged p2.'
 priority: p2
-status: backlog
+status: done
 repos: asteroids
 stories:
   - id: A2-1
@@ -85,9 +85,12 @@ stories:
     title: Subtle debris particles on every rock break — dim, short-lived scatter per reference footage
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-06'
     repos: asteroids
     workflow: tdd
+    completed: '2026-07-06'
+    review_verdict: approved
   - id: A2-9
     title: Bullet range too short — retune bullet lifetime/travel distance against ROM reference
     points: 2
@@ -99,3 +102,4 @@ stories:
     completed: '2026-07-05'
     type: bug
     review_verdict: approved
+completed: '2026-07-06'
