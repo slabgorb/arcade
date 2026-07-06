@@ -11,15 +11,18 @@ stories:
     description: "Stand up the shared-code home decided in ADR-0001. New independent repo `arcade-shared` (origin github.com/slabgorb/arcade-shared), package `@arcade/shared` with an `exports` subpath map and a `prepare` step that builds ESM + .d.ts via tsc. Register it in .pennyfarthing/repos.yaml as a sibling subrepo. Prove consumption: one game (battlezone) declares a pinned git-URL dep and imports a trivial shared export, with `vite build` + vitest green — validating that Vite consumes the dep before any real extraction lands."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-06'
     repos: arcade-shared
     workflow: trivial
-    type: chore
     acceptance_criteria:
       - arcade-shared repo exists with package @arcade/shared, an exports subpath map, and a prepare build producing ESM + .d.ts.
       - Registered in .pennyfarthing/repos.yaml (default_branch develop, gitflow) as a gitignored sibling subrepo.
       - One consumer game installs the package via a pinned git-URL ref (github:slabgorb/arcade-shared#vX.Y.Z) and imports a real export; its vite build and vitest both pass.
       - The dev inner-loop path (npm link or a #branch ref) is documented in the shared repo README.
+    completed: '2026-07-06'
+    type: chore
+    review_verdict: approved
   - id: SH-2
     title: Extract Math Box (math3d) into @arcade/shared/math3d and re-point star-wars + battlezone to the pinned dep
     description: "math3d.ts is byte-identical between star-wars and battlezone (battlezone's header explicitly flags it as evidence for this extraction). Move it verbatim into @arcade/shared/math3d, port its tests, and re-point both games to consume the pinned dep. This is the near-zero-risk first payload that proves the extraction pattern."
@@ -77,8 +80,8 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - Battlezone captures and persists high scores via @arcade/shared/highscore (no hand-copied fourth variant).
       - The lobby's battlezone tile shows a real top score after a qualifying run (NO SCORE gap closed).
       - A test asserts battlezone's persisted shape satisfies the shared row validator.
+    type: bug

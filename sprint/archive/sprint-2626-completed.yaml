@@ -901,3 +901,8 @@ completed_stories:
     title: Subtle debris particles on every rock break — dim, short-lived scatter per reference footage
     points: 2
     completed: '2026-07-06'
+  - id: SH-1
+    epic: SH
+    title: Scaffold arcade-shared repo + @arcade/shared package (subpath exports, prepare->ESM+d.ts build) and prove the git-URL dependency pipe end-to-end
+    points: 3
+    completed: '2026-07-06'
