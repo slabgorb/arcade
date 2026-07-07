@@ -931,3 +931,8 @@ completed_stories:
     title: Saucer death breakup — flying saucer fractures into drifting, fading line segments (mirrors A2-5 ship breakup)
     points: 3
     completed: '2026-07-06'
+  - id: sw2-1
+    epic: sw2
+    title: TIE fighters hittable on approach — register shots during the inbound run, not only after they turn back
+    points: 3
+    completed: '2026-07-07'

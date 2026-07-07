@@ -10,10 +10,13 @@ stories:
     title: TIE fighters hittable on approach — register shots during the inbound run, not only after they turn back
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-07'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-07'
     type: bug
+    review_verdict: approved
   - id: sw2-2
     title: Enemy fireballs — render/behave as large shootable fireballs, not + glyphs (core mechanic)
     points: 5
