@@ -941,3 +941,8 @@ completed_stories:
     title: Extract RNG into @arcade/shared/rng — settle the single Rng contract (mutable vs immutable) and migrate all sims
     points: 5
     completed: '2026-07-07'
+  - id: sw2-2
+    epic: sw2
+    title: Enemy fireballs — render/behave as large shootable fireballs, not + glyphs (core mechanic)
+    points: 5
+    completed: '2026-07-07'

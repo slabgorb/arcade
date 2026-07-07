@@ -21,10 +21,14 @@ stories:
     title: Enemy fireballs — render/behave as large shootable fireballs, not + glyphs (core mechanic)
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-07'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-07'
     type: bug
+    branch: fix/sw2-2-enemy-fireballs
+    review_verdict: approved
   - id: sw2-3
     title: Surface-assault phase — tall towers with yellow-cube tops firing fireballs, not grounded trench turrets; gate round-1 firing
     points: 5
