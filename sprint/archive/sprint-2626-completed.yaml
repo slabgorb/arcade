@@ -946,3 +946,8 @@ completed_stories:
     title: Enemy fireballs — render/behave as large shootable fireballs, not + glyphs (core mechanic)
     points: 5
     completed: '2026-07-07'
+  - id: SH-4
+    epic: SH
+    title: Extract high-score + storage into @arcade/shared/highscore and make the lobby import the same contract (compile-time)
+    points: 5
+    completed: '2026-07-07'

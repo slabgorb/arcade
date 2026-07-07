@@ -58,7 +58,8 @@ stories:
     description: "highscore.ts + storage.ts are algorithm-identical across tempest/star-wars/asteroids, and the lobby reads their {gameId}-high-scores localStorage entries by convention only. Extract a module with the table logic generic over the domain field (level vs wave) plus a makeHighScoreStorage(gameId, validator) factory and a shared key-builder. Wire the lobby to import the SAME key-builder + row guard the games write — turning today's convention into a compile-time contract."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-07T19:30:43Z'
     repos: arcade-shared
     workflow: tdd
     acceptance_criteria:
@@ -66,6 +67,8 @@ stories:
       - tempest/star-wars/asteroids write high scores via the shared module at a pinned ref; local highscore.ts + storage.ts duplication removed.
       - The lobby imports the shared key-builder + row guard rather than re-deriving the key/shape by hand.
       - The single MAX_HIGH_SCORES source-of-truth lives in the shared module (no per-repo redeclaration).
+    completed: '2026-07-07'
+    review_verdict: approved
   - id: SH-5
     title: Extract the fixed-timestep game-loop accumulator into @arcade/shared/loop (carrying asteroids' last===0 fix)
     description: "star-wars and asteroids share a near-identical createLoop accumulator; asteroids fixed a `last === 0` sentinel bug that was never backported. Extract the corrected primitive to @arcade/shared/loop; star-wars + asteroids consume it; tempest keeps its richer event-draining wrapper as a local layer on top; battlezone (loop inlined in main.ts) adopts the primitive."
