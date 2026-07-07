@@ -86,11 +86,14 @@ stories:
     description: "Battlezone has a live lobby tile but no highscore.ts/storage.ts, so its tile reads NO SCORE forever. This is the concrete payoff/proof of SH-4: battlezone adopts the shared highscore module, writing conforming {gameId}-high-scores entries the lobby already knows how to read — with the contract now enforced at compile time rather than by hand-copy."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-07'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - Battlezone captures and persists high scores via @arcade/shared/highscore (no hand-copied fourth variant).
       - The lobby's battlezone tile shows a real top score after a qualifying run (NO SCORE gap closed).
       - A test asserts battlezone's persisted shape satisfies the shared row validator.
+    completed: '2026-07-07'
     type: bug
+    review_verdict: approved

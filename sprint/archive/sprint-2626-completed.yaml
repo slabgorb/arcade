@@ -951,3 +951,8 @@ completed_stories:
     title: Extract high-score + storage into @arcade/shared/highscore and make the lobby import the same contract (compile-time)
     points: 5
     completed: '2026-07-07'
+  - id: SH-6
+    epic: SH
+    title: Battlezone — add high-score capture + persistence via @arcade/shared/highscore, closing the lobby NO SCORE gap
+    points: 3
+    completed: '2026-07-07'
