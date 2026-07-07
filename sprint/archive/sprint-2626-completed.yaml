@@ -936,3 +936,8 @@ completed_stories:
     title: TIE fighters hittable on approach — register shots during the inbound run, not only after they turn back
     points: 3
     completed: '2026-07-07'
+  - id: SH-3
+    epic: SH
+    title: Extract RNG into @arcade/shared/rng — settle the single Rng contract (mutable vs immutable) and migrate all sims
+    points: 5
+    completed: '2026-07-07'

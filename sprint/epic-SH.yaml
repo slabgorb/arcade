@@ -19,7 +19,7 @@ stories:
       - arcade-shared repo exists with package @arcade/shared, an exports subpath map, and a prepare build producing ESM + .d.ts.
       - Registered in .pennyfarthing/repos.yaml (default_branch develop, gitflow) as a gitignored sibling subrepo.
       - One consumer game installs the package via a pinned git-URL ref (github:slabgorb/arcade-shared#vX.Y.Z) and imports a real export; its vite build and vitest both pass.
-      - The dev inner-loop path (npm link or a
+      - 'The dev inner-loop path (npm link or a #branch ref) is documented in the shared repo README.'
     completed: '2026-07-06'
     type: chore
     review_verdict: approved
@@ -43,13 +43,16 @@ stories:
     description: "rng.ts is logic-identical (mulberry32) across star-wars/asteroids/battlezone (mutable) and tempest (immutable, rngNext -> {value, rng}). Pick ONE contract, extract to @arcade/shared/rng, and migrate consumers — tempest's call sites are the real work if the mutable form wins (or vice-versa). Determinism/replay behavior must be preserved exactly for already-shipped games; pin them by tag."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-07'
     repos: arcade-shared
     workflow: tdd
     acceptance_criteria:
       - A single Rng contract is chosen and documented in the extraction; the decision + rationale is recorded (deviation log or ADR note).
       - '@arcade/shared/rng exports the PRNG; star-wars/asteroids/battlezone/tempest all consume it at a pinned ref; local core/rng.ts removed.'
       - Seeded-sequence tests prove byte-identical output to each game's pre-extraction RNG (no determinism regression).
+    completed: '2026-07-07'
+    review_verdict: approved
   - id: SH-4
     title: Extract high-score + storage into @arcade/shared/highscore and make the lobby import the same contract (compile-time)
     description: "highscore.ts + storage.ts are algorithm-identical across tempest/star-wars/asteroids, and the lobby reads their {gameId}-high-scores localStorage entries by convention only. Extract a module with the table logic generic over the domain field (level vs wave) plus a makeHighScoreStorage(gameId, validator) factory and a shared key-builder. Wire the lobby to import the SAME key-builder + row guard the games write — turning today's convention into a compile-time contract."
