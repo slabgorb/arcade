@@ -44,9 +44,11 @@ stories:
     title: "Finer control sensitivity — improve turret/aim granularity for precise targeting"
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-07'
     repos: battlezone
     workflow: tdd
+    completed: '2026-07-07'
     type: bug
   - id: bz2-5
     title: "Pause overlay + control indicator — Escape pauses and shows keybinds"

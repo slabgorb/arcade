@@ -956,3 +956,8 @@ completed_stories:
     title: Battlezone — add high-score capture + persistence via @arcade/shared/highscore, closing the lobby NO SCORE gap
     points: 3
     completed: '2026-07-07'
+  - id: bz2-4
+    epic: bz2
+    title: "Finer control sensitivity — improve turret/aim granularity for precise targeting"
+    points: 3
+    completed: '2026-07-07'
