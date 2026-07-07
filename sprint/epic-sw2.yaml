@@ -1,0 +1,63 @@
+id: sw2
+type: epic
+title: Star Wars — playtest followup
+description: 'Follow-up epic from the live playtest of the Star Wars slice (epics 8/9/11). Fixes: TIE fighters only register hits after their attack run (unhittable inbound); enemy fireballs render as small + glyphs instead of large shootable fireballs (core mechanic); the pre-trench surface-assault phase spawns grounded trench turrets instead of tall towers tipped with yellow cubes firing fireballs, with unclear round-1 firing; no outcome feedback on the exhaust-port shot (no Death Star explosion, no miss indication); voice lines silent except "Use the Force, Luke." Includes a disassembly fidelity-audit spike that files concrete follow-on stories. Closes with a live playtest verification pass. Sequenced after the star-wars slice; core-mechanic bugs tagged p1.'
+priority: p1
+status: backlog
+repos: star-wars
+stories:
+  - id: sw2-1
+    title: TIE fighters hittable on approach — register shots during the inbound run, not only after they turn back
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw2-2
+    title: Enemy fireballs — render/behave as large shootable fireballs, not + glyphs (core mechanic)
+    points: 5
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw2-3
+    title: Surface-assault phase — tall towers with yellow-cube tops firing fireballs, not grounded trench turrets; gate round-1 firing
+    points: 5
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw2-4
+    title: Exhaust-port outcome feedback — Death Star explosion on hit, clear miss indication
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw2-5
+    title: Wire remaining voice lines — only 'Use the Force, Luke' currently fires
+    points: 2
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw2-6
+    title: Disassembly fidelity audit (spike) — findings doc + file follow-on stories, no behavior change
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: trivial
+    type: chore
+  - id: sw2-7
+    title: Live playtest verification pass — verify items 1-5 together (mirrors bz2-6)
+    points: 2
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: chore
