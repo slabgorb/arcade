@@ -961,3 +961,8 @@ completed_stories:
     title: "Finer control sensitivity — improve turret/aim granularity for precise targeting"
     points: 3
     completed: '2026-07-07'
+  - id: sw2-5
+    epic: sw2
+    title: Wire remaining voice lines — only 'Use the Force, Luke' currently fires
+    points: 2
+    completed: '2026-07-07'
