@@ -1,0 +1,173 @@
+
+                   Programming the Atari XY Vector Generator
+                   
+ -------------------------------------------------------------------
+
+  The information in this document is not guaranteed to be accurate,
+use at your own risk.
+
+  The Atari Analogue Vector Generator (or AVG) is the circuitry used to
+draw lines on the special XY monitors of some games from the late seventies 
+and
+early eighties. These include Asteroids, Battlezone, Tempest, Gravitar and 
+Star
+Wars, all of which used a slightly different AVG as the games evolved.
+
+  The AVG is a small computer in its own right, it has its own ROM, RAM,
+instruction set and stack for subroutines. There are only a few 
+instructions,
+which makes it quite easy to decode, and different games use similar ones 
+even
+if they have different hardware (any takers for an AVG assembler / 
+disassembler,
+maybe with GUI shape editing? ).
+
+  The following information is for the Star Wars game, but is very similar
+to other games.
+
+  The basic AVG instructions are as follows:
+
+  1. Draw vector relative X, Y.    This instruction draws a vector from
+                                   the last position to a new relative 
+offset.
+
+  2. Centre.                       Returns beam to centre of display.
+
+  3. Set colour / intensity.       Sets new colour and intensity for
+                                   subsequent vectors.
+
+  4. Jump to new address.          Jumps to specified address in vector 
+ROM/RAM.
+
+  5. Jump to subroutine.           Pushes current position to stack and 
+jumps
+                                   to specified subroutine in vector 
+ROM/RAM.
+
+  6. Return from subroutine.       Pops previous pushed address from stack.
+
+  7. Halt.                         Stops AVG until VGGO signal from main 
+game
+                                   processor.
+
+  The main game processor fills the vector RAM with a list of instructions
+telling the AVG where to draw vectors on the display, and then writes to the
+VGGO address port which starts the AVG executing.  The main processor can 
+also
+reset the AVG by writing to the VGRST address. The AVG always starts 
+executing
+instructions from address 0x0000 in the vector RAM after a reset or HALT
+instruction. The vector ROM probably holds the shapes and character set for
+the game as subroutines (I've never looked!) to be called from RAM when
+required. The character set is comprised of short vectors, so a special
+'Draw Short Vector' instruction is implemented which uses less bytes per
+instruction.
+
+  All vector instructions are two or four bytes long. The operand is packed
+with the opcode as the upper 3 bits. The instruction is stored in low 
+byte-high
+byte format, as seen from the main processor. When calculating a vector jump
+address, note that the AVG sees the vector memory as 8K x 16 words, while 
+the
+main processor sees 16K x 8 bytes.
+
+  The draw instruction always draws relative to the end of the last vector
+with a negative number represented by the upper bit being set.
+
+  There are 8 basic colors from the RGB bits and 256 intensity levels of
+these 8 colors. Further to this each vector draw instruction holds 8 levels 
+of
+intensity which controls the overall intensity. I believe that this may have
+something to do with the fact that a long vector drawn in the same time 
+period
+as a short vector will need to have more intensity to give the same apparent
+intensity on the screen.
+
+  The scale instruction determines the size of subsequent vectors, so a
+shape can be magnified or shrunk by simply changing the scale factor without
+having to re-calculate all the vector points. The lower 8 bits of the scale
+instruction control a DAC which alters the analogue output swing of the X
+and Y DAC's. The upper 3 bits of the scale instruction are a digital scaling
+which I believe may shift the X and Y position data to achieve a binary
+multiplying effect on the vectors. I think a scale of 0x0FF gives a
+magnification of one.
+
+  For subroutines there is a stack for holding return addresses. On earlier
+games the stack and instruction counter was built from discrete logic, but 
+with
+Gravitar and Star Wars an 'Address Controller' gate array was introduced to
+replace this logic. With the discrete versions the stack was 4 deep, but 
+with
+the gate array it could possibly be more.
+
+  The last instruction after drawing all the required vectors must be a halt
+instruction, so that the main processor can poll the VGHALT bit and then
+update the new positions.
+
+ Bit Key:
+
+          X - X coordinate bits
+          Y - Y coordinate bits
+          I - Vector intensity(brightness) bits
+          A - Vector address bits
+          R - Red color bit
+          G - Green color bit
+          B - Blue color bit
+          S - Scale (size)
+          U - Unused bit
+
+  For Star Wars the codes are as follows:
+
+    Opcode                     Hex      Binary
+
+    Draw relative vector.      0x00     000YYYYY YYYYYYYY IIIXXXXX XXXXXXXX
+
+    Halt                       0x20     00100000 00000000
+
+    Draw short relative vector 0x40     010YYYYY IIIXXXXX
+
+    New color/intensity        0x60     0110URGB IIIIIIII
+
+    New scale                  0x70     0111USSS SSSSSSSS
+
+    Center                     0x80     10000000 00000000
+
+    Jump to subroutine         0xA0     101AAAAA AAAAAAAA
+
+    Return from subroutine     0xC0     11000000 00000000
+
+    Jump to new address        0xE0     111AAAAA AAAAAAAA
+
+  I think that the instructions for Battle Zone, Gravitar and Tempest are
+the same as Star Wars, but older games are different.
+
+  For Asteroids (and probably Asteroids deluxe and Lunar Lander):
+
+    Draw relative vector       0x80     1000YYYY YYYYYYYY IIIIXXXX XXXXXXXX
+
+    Draw relative vector
+    and load scale             0x90      1001YYYY YYYYYYYY SSSSXXXX XXXXXXXX
+
+    Beam to absolute
+    screen position            0xA0      1010YYYY YYYYYYYY UUUUXXXX XXXXXXXX
+
+    Halt                       0xB0      1011UUUU UUUUUUUU
+
+    Jump to subroutine         0xC0      1100AAAA AAAAAAAA
+
+    Return from subroutine     0xD0      1101UUUU UUUUUUUU
+
+    Jump to new address        0xE0      1110AAAA AAAAAAAA
+
+    Short vector draw          0xF0      1111YYYY IIIIXXXX
+
+
+  If you wish to see a constant image on the screen, remember that the main
+processor will have to poll the VGHALT until all the vector instructions 
+have
+been executed, then write to VGGO to start again.
+
+  Also make sure that you return the beam to the centre of the screen
+before halting the AVG, because if the beam were fully deflected and left 
+there
+the monitor deflection power transistors may not like it!
