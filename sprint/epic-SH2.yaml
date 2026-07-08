@@ -11,13 +11,17 @@ stories:
     description: "Governance gate for the epic. ADR-0002 records the reserved font decision: the cabinet converges on the ROM stroke-vector font (VGMSGA), the Vector Battle TTF is retired, and the shared-visual-language-over-per-cabinet-fidelity trade is documented; it unblocks/​supersedes the TTF intent of done stories bz2-2/A2-2. ADR-0003 amends ADR-0001's scope guard: the glow primitive is no longer deferred (it meets the verb-identical bar — the state-set + shadowBlur=0 reset boilerplate is identical across the games, constants are parameters); view meets the bar; font and compositor/phosphor are admitted as deliberate convergence-driven exceptions to the >=2-consumers rule, with rationale. No code — docs only."
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-08'
     repos: .
     workflow: trivial
     acceptance_criteria:
       - docs/adr/0002-font-strategy.md exists (Accepted) recording the ROM-stroke convergence, TTF retirement, and the fidelity trade; it references the design spec and notes it supersedes the TTF approach of bz2-2/A2-2.
       - docs/adr/0003-render-surface-extraction.md exists (Accepted) amending ADR-0001's scope guard — glow un-deferred (meets verb-identical bar), view eligible, font + compositor/phosphor recorded as convergence exceptions with rationale.
       - Both ADRs cross-link the design spec and ADR-0001; ADR-0001 is left intact (amendment is additive, recorded in ADR-0003).
+    completed: '2026-07-08'
+    review_findings: '[DOC-1] resolved in commit 2f50477: SH2-N story-ID references corrected (SH2-5=star-wars, SH2-6=battlezone, SH2-7=lobby), re-verified against sprint/epic-SH2.yaml.'
+    review_verdict: approved
   - id: SH2-2
     title: Stand up pure @arcade/shared/font (promote tempest's VGMSGA stroke font) + purity guard; re-point tempest to the shared module
     description: "Move tempest's vecfont.ts (glyph table + layoutText + CELL_W/CELL_H) verbatim into a new PURE subpath @arcade/shared/font — it returns stroke geometry, touches no DOM, so it lives among the pure core and is protected BY the purity guard. Add the purity-guard test that reads built dist/ as source text and fails if any pure subpath (math3d/rng/highscore/loop/font) references document/window/canvas/FontFace/requestAnimationFrame. Re-point tempest at the pinned dep, delete its local vecfont.ts, and remove tempest's vestigial public/fonts/*.ttf + the stale 'Vector Battle' reference in src/tools/contactSheet.ts. Behaviour-preserving for tempest (its text already strokes layoutText output)."

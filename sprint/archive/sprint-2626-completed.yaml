@@ -26,6 +26,7 @@ completed_epics:
   - '14'
   - bz1
   - A2
+  - SH
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -980,4 +981,9 @@ completed_stories:
     epic: SH
     title: Extract the fixed-timestep game-loop accumulator into @arcade/shared/loop (carrying asteroids' last===0 fix)
     points: 3
+    completed: '2026-07-08'
+  - id: SH2-1
+    epic: SH2
+    title: Author ADR-0002 (font strategy) and ADR-0003 (render-surface extraction) — record the decisions and amend ADR-0001's scope guard
+    points: 2
     completed: '2026-07-08'
