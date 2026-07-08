@@ -74,13 +74,16 @@ stories:
     description: "star-wars and asteroids share a near-identical createLoop accumulator; asteroids fixed a `last === 0` sentinel bug that was never backported. Extract the corrected primitive to @arcade/shared/loop; star-wars + asteroids consume it; tempest keeps its richer event-draining wrapper as a local layer on top; battlezone (loop inlined in main.ts) adopts the primitive."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-08'
     repos: arcade-shared
     workflow: tdd
     acceptance_criteria:
       - '@arcade/shared/loop exports the fixed-timestep accumulator with asteroids'' started-boolean fix (no last===0 ambiguity).'
       - star-wars and asteroids consume it at a pinned ref; battlezone's inlined loop is replaced by it.
       - tempest's richer wrapper composes over the shared primitive rather than duplicating the accumulator.
+    completed: '2026-07-08'
+    review_verdict: approved
   - id: SH-6
     title: Battlezone — add high-score capture + persistence via @arcade/shared/highscore, closing the lobby NO SCORE gap
     description: "Battlezone has a live lobby tile but no highscore.ts/storage.ts, so its tile reads NO SCORE forever. This is the concrete payoff/proof of SH-4: battlezone adopts the shared highscore module, writing conforming {gameId}-high-scores entries the lobby already knows how to read — with the contract now enforced at compile time rather than by hand-copy."

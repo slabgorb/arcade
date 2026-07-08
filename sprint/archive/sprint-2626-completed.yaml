@@ -976,3 +976,8 @@ completed_stories:
     title: Exhaust-port outcome feedback — Death Star explosion on hit, clear miss indication
     points: 3
     completed: '2026-07-08'
+  - id: SH-5
+    epic: SH
+    title: Extract the fixed-timestep game-loop accumulator into @arcade/shared/loop (carrying asteroids' last===0 fix)
+    points: 3
+    completed: '2026-07-08'
