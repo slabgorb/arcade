@@ -20,6 +20,7 @@ ingress:
   #   /star-wars/*  -> Star Wars server  (:5274, Vite base /star-wars/)
   #   /asteroids/*  -> Asteroids server  (:5275, Vite base /asteroids/)
   #   /battlezone/* -> Battlezone server (:5276, Vite base /battlezone/)
+  #   /red-baron/*  -> Red Baron server  (:5277, Vite base /red-baron/)
   #   everything else (/, /lobby/*)  -> lobby server (:5270, Vite base /lobby/)
   # The bare root lands on the lobby because Vite (base: /lobby/) 302-redirects
   # "/" -> "/lobby/", which then matches the catch-all lobby rule below.
@@ -48,6 +49,12 @@ ingress:
   - hostname: arcade.slabgorb.com
     path: ^/battlezone
     service: http://localhost:5276
+    originRequest:
+      connectTimeout: 30s
+      noHappyEyeballs: true
+  - hostname: arcade.slabgorb.com
+    path: ^/red-baron
+    service: http://localhost:5277
     originRequest:
       connectTimeout: 30s
       noHappyEyeballs: true

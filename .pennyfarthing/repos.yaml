@@ -161,6 +161,20 @@ repos:
       authentic ROM data is quarried under reference/ (gitignored) from bz1-2 on.
 
       '
+  red-baron:
+    path: red-baron
+    type: ui
+    default_branch: develop
+    branch_strategy: gitflow
+    description: 'Faithful browser-based vector clone of Atari''s 1980 Red Baron. First-person WWI biplane dogfight over a vector landscape (banking flight, tilting horizon, mountains, balloons, ground targets). Battlezone''s Math Box/AVG hardware twin. Canvas 2D glowing vectors, no backend, no 3D engine. src/core holds the deterministic flight sim; src/shell holds render/input/loop/audio.'
+    language: typescript
+    languages:
+    - typescript
+    framework: vite
+    dev_command: npm run dev
+    build_command: npm run build
+    test_command: npm test
+    notes: 'Seventh subrepo in the arcade series. Gitignored, with its own git history (local git init -b develop; no GitHub remote yet). Pure game code — sprint/epics managed at the orchestrator (epics rb1-rb5). First arcade game built as a native @arcade/shared consumer (math3d/rng/highscore/loop at v0.5.0) rather than porting the Math Box. Served under /red-baron/ on port 5277.'
   arcade-shared:
     path: arcade-shared
     type: library
