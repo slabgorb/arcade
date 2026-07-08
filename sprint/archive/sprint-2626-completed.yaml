@@ -966,3 +966,8 @@ completed_stories:
     title: Wire remaining voice lines — only 'Use the Force, Luke' currently fires
     points: 2
     completed: '2026-07-07'
+  - id: sw2-3
+    epic: sw2
+    title: Surface-assault phase — tall towers with yellow-cube tops firing fireballs, not grounded trench turrets; gate round-1 firing
+    points: 5
+    completed: '2026-07-08'
