@@ -1,0 +1,8 @@
+id: rb3
+type: epic
+title: 'Red Baron — PLAY: ground sequence'
+description: 'PLAY / ground-sequence sub-mode (GRMODE D7=GROUND). Dive-and-strafe: ground objects/shells, ground collision, mountain-pass run. Built on rb1/rb2.'
+priority: p2
+status: backlog
+repos: red-baron
+stories: []

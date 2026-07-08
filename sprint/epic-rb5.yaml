@@ -1,0 +1,8 @@
+id: rb5
+type: epic
+title: Red Baron — HIGH-SCORE (consume @arcade/shared)
+description: HIGH-SCORE game states (GAMODE 3 display / 7 entry). Consume @arcade/shared/highscore (generic domain field, {gameId}-high-scores key-builder, row validator); entry + table display; lobby reads red-baron-high-scores. Battlezone SH-6 is the template — thin wiring.
+priority: p2
+status: backlog
+repos: red-baron
+stories: []
