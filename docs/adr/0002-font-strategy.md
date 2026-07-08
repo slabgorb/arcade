@@ -113,7 +113,7 @@ CLAUDE.md's shared-visual-language goal and the lobby's one-face-for-all-tiles n
 of each cabinet's historically exact HUD face. We accept that trade knowingly.
 
 This decision **resolves the item ADR-0001 reserved** and unblocks the SH2 font-migration
-stories (SH2-4 asteroids, SH2-5 battlezone, and the star-wars/lobby equivalents).
+stories (SH2-4 asteroids, SH2-5 star-wars, SH2-6 battlezone, SH2-7 lobby).
 
 ## Consequences
 
@@ -136,7 +136,7 @@ stories (SH2-4 asteroids, SH2-5 battlezone, and the star-wars/lobby equivalents)
 
 This supersedes the **TTF approach that done stories bz2-2 and A2-2 established:**
 
-- **bz2-2** ("arcade vector font") adopted the Vector Battle TTF in battlezone. **SH2-5** evolves
+- **bz2-2** ("arcade vector font") adopted the Vector Battle TTF in battlezone. **SH2-6** evolves
   battlezone onto the stroke-vector font.
 - **A2-2** ("adjust letter spacing for the vector font") tuned the TTF's spacing in asteroids
   under an explicit *"ADR-0002 bypass"* — treating bz2-2's TTF as the de-facto settled strategy.
