@@ -1,0 +1,142 @@
+id: SH2
+type: epic
+title: Shared render surface — extract font/glow/view/compositor into @arcade/shared and converge the cabinet on one vector treatment
+description: "Render-surface extraction epic arising from the 2026-07-08 cross-repo render survey (four games + lobby) and specified in docs/superpowers/specs/2026-07-08-shared-render-extraction-design.md. Follows the SH epic (math3d/rng/highscore/loop, all done) and resolves the font strategy the SH epic explicitly deferred to ADR-0002. The cabinet converges on ONE render treatment: choose best-of-show at each seam and apply it everywhere; tempest joins the shared code path like every other game but is never flattened (the shared glow primitive is a superset that carries tempest's tube gradient + multi-pass depth). Guiding rule: share the VERB (the identical mechanism), not the NUMBERS (per-cabinet constants stay in the games). Charter amendment (ADR-0003): @arcade/shared gains explicitly-flagged BROWSER subpaths (glow/view/compositor/phosphor) fenced from the pure core (math3d/rng/highscore/loop/font) by a source-regex purity guard; font is PURE (glyph geometry + layout, no DOM) so it joins the pure core. Font decision (ADR-0002): retire the non-commercial Vector Battle TTF cabinet-wide in favour of tempest's ROM stroke-vector font (VGMSGA) — a deliberate shared-visual-language choice over per-cabinet HUD-font fidelity; this supersedes the TTF approach that done stories bz2-2/A2-2 established. Afterglow PORTING to the other three cabinets is OUT OF SCOPE (deferred): the compositor makes phosphor a registered pass, and tempest's existing phosphor+shake is the sole first consumer, proving the extension point with working code and zero new behaviour. arcade-shared tests are untyped and run in a node env — pin contracts at runtime or via source-text regex, never compile-only annotations."
+priority: p2
+status: backlog
+repos: arcade-shared
+stories:
+  - id: SH2-1
+    title: Author ADR-0002 (font strategy) and ADR-0003 (render-surface extraction) — record the decisions and amend ADR-0001's scope guard
+    description: "Governance gate for the epic. ADR-0002 records the reserved font decision: the cabinet converges on the ROM stroke-vector font (VGMSGA), the Vector Battle TTF is retired, and the shared-visual-language-over-per-cabinet-fidelity trade is documented; it unblocks/​supersedes the TTF intent of done stories bz2-2/A2-2. ADR-0003 amends ADR-0001's scope guard: the glow primitive is no longer deferred (it meets the verb-identical bar — the state-set + shadowBlur=0 reset boilerplate is identical across the games, constants are parameters); view meets the bar; font and compositor/phosphor are admitted as deliberate convergence-driven exceptions to the >=2-consumers rule, with rationale. No code — docs only."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: trivial
+    acceptance_criteria:
+      - docs/adr/0002-font-strategy.md exists (Accepted) recording the ROM-stroke convergence, TTF retirement, and the fidelity trade; it references the design spec and notes it supersedes the TTF approach of bz2-2/A2-2.
+      - docs/adr/0003-render-surface-extraction.md exists (Accepted) amending ADR-0001's scope guard — glow un-deferred (meets verb-identical bar), view eligible, font + compositor/phosphor recorded as convergence exceptions with rationale.
+      - Both ADRs cross-link the design spec and ADR-0001; ADR-0001 is left intact (amendment is additive, recorded in ADR-0003).
+  - id: SH2-2
+    title: Stand up pure @arcade/shared/font (promote tempest's VGMSGA stroke font) + purity guard; re-point tempest to the shared module
+    description: "Move tempest's vecfont.ts (glyph table + layoutText + CELL_W/CELL_H) verbatim into a new PURE subpath @arcade/shared/font — it returns stroke geometry, touches no DOM, so it lives among the pure core and is protected BY the purity guard. Add the purity-guard test that reads built dist/ as source text and fails if any pure subpath (math3d/rng/highscore/loop/font) references document/window/canvas/FontFace/requestAnimationFrame. Re-point tempest at the pinned dep, delete its local vecfont.ts, and remove tempest's vestigial public/fonts/*.ttf + the stale 'Vector Battle' reference in src/tools/contactSheet.ts. Behaviour-preserving for tempest (its text already strokes layoutText output)."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared, tempest
+    workflow: tdd
+    acceptance_criteria:
+      - "@arcade/shared/font exports the VGMSGA glyph table, layoutText(text, opts?) -> {strokes, width}, and CELL_W/CELL_H; it is pure (no DOM references) and added to the exports subpath map + prepare build."
+      - tests/purity.test.ts fails if any pure subpath (math3d/rng/highscore/loop/font) references a DOM global; it passes for the current pure core.
+      - "tempest imports @arcade/shared/font at a pinned git-URL ref; its local src/shell/vecfont.ts is deleted and font.ts re-exports the shared module; tempest vitest + vite build are green with no visual change."
+      - tempest's vestigial VectorBattle-e9XO.ttf and the contactSheet.ts 'Vector Battle' font-family reference are removed.
+  - id: SH2-3
+    title: Glyph audit across the three canvas games + extend the shared stroke table to cover every rendered character
+    description: "The VGMSGA alphabet covers what Tempest needed; the other games' HUDs will need glyphs it lacks. Enumerate every character asteroids, star-wars, and battlezone actually render (score digits, framing copy, punctuation, (c), radar/HUD labels, etc.), diff against the shared glyph table, and add any missing glyphs drawn in the same monoline VGMSGA style. This discovery gates the per-game migrations (SH2-4/5/6). Record the per-game glyph inventory in the story context."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade-shared
+    workflow: tdd
+    acceptance_criteria:
+      - A per-game glyph inventory (asteroids/star-wars/battlezone) is documented and diffed against the shared table; the gap list is explicit.
+      - Missing glyphs are added to @arcade/shared/font in the VGMSGA monoline style; layoutText unit tests cover each newly added glyph (strokes + advance width).
+      - layoutText can represent the full text set of all three canvas games with no missing/placeholder characters.
+  - id: SH2-4
+    title: asteroids — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors
+    description: "Replace asteroids' loadVectorFont + ctx.fillText text rendering with layoutText(...) from @arcade/shared/font, stroking the returned glyphs with asteroids' existing local glow/stroke code (the shared glow primitive lands later in SH2-8). Delete public/fonts/*.ttf and the src/shell/font.ts TTF loader. Honour asteroids' letter-spacing (the A2-2 concern) via layoutText's opts. Behaviour-preserving except the intended visual change from TTF face to glowing stroke-vectors."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+    acceptance_criteria:
+      - asteroids renders all HUD/framing text via @arcade/shared/font layoutText + a canvas stroke; loadVectorFont and every ctx.fillText/ctx.font text path are removed.
+      - public/fonts/*.ttf and the TTF loader in src/shell/font.ts are deleted; no remaining reference to 'Vector Battle' or FontFace.
+      - asteroids' letter spacing is preserved via layoutText opts; vitest + vite build green; a manual run confirms the HUD reads correctly.
+  - id: SH2-5
+    title: star-wars — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors
+    description: "As SH2-4, for star-wars: swap loadVectorFont + ctx.fillText for layoutText + a local stroke draw, delete public/fonts/*.ttf + the font.ts loader. star-wars already strokes 3D vectors, so a stroke-text path fits its render.ts. Behaviour-preserving except the intended TTF -> stroke-vector visual change."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    acceptance_criteria:
+      - star-wars renders all HUD/framing text via @arcade/shared/font layoutText + a canvas stroke; loadVectorFont and every ctx.fillText/ctx.font text path are removed.
+      - public/fonts/*.ttf and the TTF loader in src/shell/font.ts are deleted; no remaining reference to 'Vector Battle' or FontFace.
+      - vitest + vite build green; a manual run confirms the cockpit HUD/text reads correctly.
+  - id: SH2-6
+    title: battlezone — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors (evolves bz2-2)
+    description: "As SH2-4, for battlezone: swap loadVectorFont + ctx.fillText for layoutText + a local stroke draw, delete public/fonts/*.ttf + the font.ts loader. This evolves done story bz2-2 (which adopted the TTF) to the ROM-stroke convergence. Behaviour-preserving except the intended TTF -> stroke-vector visual change."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: tdd
+    acceptance_criteria:
+      - battlezone renders all HUD/framing text via @arcade/shared/font layoutText + a canvas stroke; loadVectorFont and every ctx.fillText/ctx.font text path are removed.
+      - public/fonts/*.ttf and the TTF loader in src/shell/font.ts are deleted; no remaining reference to 'Vector Battle' or FontFace.
+      - vitest + vite build green; a manual run confirms the green-vector HUD reads correctly.
+  - id: SH2-7
+    title: lobby font — DECIDE and implement (canvas stroke-vector labels vs a self-hosted licensed webfont) to drop the non-commercial TTF
+    description: "The lobby is the odd one out: it renders its title + tile labels as DOM/CSS text (index.html font-family 'Vector Battle','Orbitron',monospace), not canvas — so stroke-vectors do not apply mechanically. DECISION required, recorded in ADR-0002 or the story context: (a) re-render the lobby's title/labels as CANVAS stroke-vectors via @arcade/shared/font (most on-brand — the lobby IS a vector menu — but reworks the menu's text rendering), or (b) keep DOM text on a SELF-HOSTED, commercially-licensed face and drop both the Google-Fonts dependency and the non-commercial Vector Battle TTF. Either way the non-commercial TTF and its loader leave the lobby."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: lobby
+    workflow: tdd
+    acceptance_criteria:
+      - The lobby font approach is decided (canvas stroke-vectors vs self-hosted licensed webfont) and the decision + rationale is recorded (ADR-0002 or story context).
+      - The non-commercial Vector Battle TTF and loadVectorFont are removed from the lobby; if option (b), the Google-Fonts external link is replaced by a self-hosted licensed face.
+      - The lobby title + tile labels render correctly (manual run) and any high-score tile still reads via @arcade/shared/highscore; vitest + vite build green.
+  - id: SH2-8
+    title: Extract @arcade/shared/glow (browser subpath) — withGlow + glowPolyline superset — and migrate the three flat games
+    description: "First BROWSER subpath. Build the neon-glow primitive: withGlow(ctx, style, draw) sets strokeStyle/lineWidth/shadowColor/shadowBlur, runs the draw, then resets shadowBlur to 0 (the footgun every game hand-writes); glowPolyline(ctx, pts, style, close?) is the one-liner built on it. GlowStyle.stroke accepts string | CanvasGradient so richer looks are expressible. Deliberately no ctx.save/restore (mirrors the existing per-frame code). Migrate asteroids/star-wars/battlezone's single-pass polygon + text strokes onto glowPolyline/withGlow; per-cabinet blur/width constants stay in the games. Extend the purity guard so glow is a recognised browser subpath (exempt) while the pure core stays DOM-free."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared, asteroids, star-wars, battlezone
+    workflow: tdd
+    acceptance_criteria:
+      - "@arcade/shared/glow exports GlowStyle, withGlow(ctx, style, draw), and glowPolyline(ctx, pts, style, close?); a fake-ctx test asserts the state-set sequence AND that shadowBlur is reset to 0 after each call."
+      - asteroids, star-wars, and battlezone stroke their polygons (and stroke-text from SH2-4/5/6) via the shared primitive at a pinned ref; per-cabinet constants remain in each game.
+      - The purity guard recognises glow as a browser subpath (exempt) and still fails the pure core on DOM references; each game's vitest + vite build are green.
+  - id: SH2-9
+    title: tempest conforms to @arcade/shared/glow without regressing tube depth
+    description: "Bring tempest onto the shared glow path like every other game, WITHOUT flattening its look. Collapse tempest's bare strokePoly + hand-set glow onto withGlow: the far->near tube gradient becomes GlowStyle.stroke (CanvasGradient), and the ring core+halo becomes two withGlow calls; the per-element blur ramp (6/8/18) stays as tempest's constants. This is the regression-sensitive migration — a reviewer could approve the flat games (SH2-8) yet reject tempest — so it is its own story with an explicit visual-parity gate."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - tempest's render.ts strokes via @arcade/shared/glow (withGlow for gradient + multi-pass, glowPolyline where a plain glow stroke suffices); no local duplicate of the state-set/reset boilerplate remains.
+      - The tube's far->near gradient and the ring blur ramp are preserved as tempest constants; existing tempest render tests stay green.
+      - A manual run confirms the tube still reads with depth (no flattening); vite build green.
+  - id: SH2-10
+    title: Extract @arcade/shared/view (browser) — resizeToDisplay + pure letterbox — and fold asteroids margin.ts + battlezone viewport.ts
+    description: "Extract the DPR-resize + letterbox concern all four games hand-roll in main.ts. resizeToDisplay(canvas, cssW, cssH, dpr) sizes the backing store to DPR, sets the CSS size, returns the resolved ViewportSize (DOM). letterbox(canvasW, canvasH, aspect) is PURE math returning the aspect-preserving rect + scale. First reconcile asteroids' margin.ts (55 lines) and battlezone's viewport.ts (97 lines) to confirm they reduce to one letterbox contract (or add explicit modes); then migrate all four games. Pure letterbox math gets node unit tests; resizeToDisplay is shell-verified."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared, tempest, asteroids, star-wars, battlezone
+    workflow: tdd
+    acceptance_criteria:
+      - "@arcade/shared/view exports resizeToDisplay(canvas, cssW, cssH, dpr) -> ViewportSize and a pure letterbox(canvasW, canvasH, aspect) -> {x,y,width,height,scale}; letterbox has node unit tests for the aspect math."
+      - asteroids' margin.ts and battlezone's viewport.ts are folded into the shared module (reconciled to one letterbox contract, or documented distinct modes); all four games consume @arcade/shared/view at a pinned ref.
+      - Each game's resize/letterbox behaviour is unchanged (manual run at multiple window sizes); vitest + vite build green.
+  - id: SH2-11
+    title: Extract the "additional pass" compositor + phosphor pass; migrate tempest's phosphor+shake through it (tempest sole consumer)
+    description: "Build the post-processing hook the design reserves. @arcade/shared/compositor exports RenderPass {name, render(src,dst,frame), resize?, clear?}, FrameInfo {dt,dpr,width,height,shake}, and createCompositor(passes) -> {beginScene(w,h,dpr), present(main, frame), clear()}: the game draws its scene into beginScene's offscreen ctx, and present runs the pass chain to the screen (empty passes = a plain blit with shake). @arcade/shared/phosphor exports phosphorPass({decay}) -> RenderPass (holding the EMA accumulator + twin buffers) and the pure phosphorAlpha(decay, dt). Migrate tempest's existing beginScene/composite phosphor + screen-shake onto createCompositor([phosphorPass({decay})]) — behaviour-identical, tempest is the ONLY consumer. Porting afterglow to the other cabinets stays deferred; they may adopt createCompositor([]) as a no-op seam."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared, tempest
+    workflow: tdd
+    acceptance_criteria:
+      - "@arcade/shared/compositor exports RenderPass, FrameInfo, and createCompositor(passes); an empty-pass compositor blits the scene with shake and changes nothing."
+      - "@arcade/shared/phosphor exports phosphorPass({decay}): RenderPass and pure phosphorAlpha(decay, dt) with node unit tests for the frame-rate-corrected fade."
+      - tempest renders through createCompositor([phosphorPass({decay})]) with its phosphor + shake behaviour-identical to today (manual run); its local phosphor.ts accumulator is gone; vitest + vite build green.
+      - The purity guard recognises compositor + phosphor as browser subpaths; the other three games are not forced to adopt a pass (afterglow port remains out of scope).
