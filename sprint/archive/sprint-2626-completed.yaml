@@ -971,3 +971,8 @@ completed_stories:
     title: Surface-assault phase — tall towers with yellow-cube tops firing fireballs, not grounded trench turrets; gate round-1 firing
     points: 5
     completed: '2026-07-08'
+  - id: sw2-4
+    epic: sw2
+    title: Exhaust-port outcome feedback — Death Star explosion on hit, clear miss indication
+    points: 3
+    completed: '2026-07-08'

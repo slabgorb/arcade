@@ -44,9 +44,13 @@ stories:
     title: Exhaust-port outcome feedback — Death Star explosion on hit, clear miss indication
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-08'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-08'
+    review_findings: "Code correct & clean; REJECTED on test quality — R2 (HIGH): the two new outcome timestamps (deathStarDestroyedAt/exhaustPortMissedAt), the story's visible-payoff mechanism, have zero coverage (silent-regression risk vs the tested forceBonusAwardedAt precedent); R1 (rule #8): tautological miss-vs-terrain-crash assertion; R4-R6: unpinned same-frame hit/cockpit race, hardcoded geometry not tied to PORT_HIT_RADIUS, inert-bolt test. Route: TEA red rework."
+    review_verdict: approved
   - id: sw2-5
     title: Wire remaining voice lines — only 'Use the Force, Luke' currently fires
     points: 2
