@@ -1011,3 +1011,8 @@ completed_stories:
     title: Flight-camera foundation — roll/pitch/yaw camera on shared math3d, tilting horizon, vector terrain/horizon render substrate, runnable empty cockpit
     points: 5
     completed: '2026-07-09'
+  - id: SH2-4
+    epic: SH2
+    title: asteroids — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors
+    points: 3
+    completed: '2026-07-09'

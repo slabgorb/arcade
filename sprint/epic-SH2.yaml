@@ -58,13 +58,16 @@ stories:
     description: "Replace asteroids' loadVectorFont + ctx.fillText text rendering with layoutText(...) from @arcade/shared/font, stroking the returned glyphs with asteroids' existing local glow/stroke code (the shared glow primitive lands later in SH2-8). Delete public/fonts/*.ttf and the src/shell/font.ts TTF loader. Honour asteroids' letter-spacing (the A2-2 concern) via layoutText's opts. Behaviour-preserving except the intended visual change from TTF face to glowing stroke-vectors."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-09'
     repos: asteroids
     workflow: tdd
     acceptance_criteria:
       - asteroids renders all HUD/framing text via @arcade/shared/font layoutText + a canvas stroke; loadVectorFont and every ctx.fillText/ctx.font text path are removed.
       - public/fonts/*.ttf and the TTF loader in src/shell/font.ts are deleted; no remaining reference to 'Vector Battle' or FontFace.
       - asteroids' letter spacing is preserved via layoutText opts; vitest + vite build green; a manual run confirms the HUD reads correctly.
+    completed: '2026-07-09'
+    review_verdict: approved
   - id: SH2-5
     title: star-wars — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors
     description: "As SH2-4, for star-wars: swap loadVectorFont + ctx.fillText for layoutText + a local stroke draw, delete public/fonts/*.ttf + the font.ts loader. star-wars already strokes 3D vectors, so a stroke-text path fits its render.ts. Behaviour-preserving except the intended TTF -> stroke-vector visual change."
