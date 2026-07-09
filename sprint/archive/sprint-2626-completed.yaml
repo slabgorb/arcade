@@ -1016,3 +1016,8 @@ completed_stories:
     title: asteroids — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors
     points: 3
     completed: '2026-07-09'
+  - id: rb2-1
+    epic: rb2
+    title: Flight model — pot-yoke turn-rate (PLDELX) with inertia + hysteresis, 11-step pitch table (PLDELY, dive faster than climb), PFROTN = PLDELX x8 bank coupling clamped, I4YPOS altitude clamp, DISCHK distance-scaled feel; input map drives the rb1 flightView camera
+    points: 5
+    completed: '2026-07-09'

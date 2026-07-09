@@ -10,9 +10,14 @@ stories:
     title: Flight model — pot-yoke turn-rate (PLDELX) with inertia + hysteresis, 11-step pitch table (PLDELY, dive faster than climb), PFROTN = PLDELX x8 bank coupling clamped, I4YPOS altitude clamp, DISCHK distance-scaled feel; input map drives the rb1 flightView camera
     points: 5
     priority: p2
-    status: backlog
+    status: done
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-09'
+    branch: feat/rb2-1-flight-model-turn-pitch
+    assignee: Keith Avery
+    review_findings: "Re-review RT1: hysteresis blocker + 3 mediums GENUINELY fixed (mutation-verified). Two remain mutation-proven ineffective: (1) the divide-N-trap cockpit-boot guard only checks a while(SIM_TIMESTEP_S) exists somewhere, not that step() is inside it — moving step() outside a vestigial loop (the exact regression) passes all tests; (2) the eye-maps-to-origin test is tautological (holds for any rotate-translate matrix; wrong ALT_TO_Y scale and negated roll both pass). Both match lang-review #8. Fixes: strengthen the regex to require step( inside the while-block; remove/replace the tautological camera test. Code is correct; test-net hardening only."
+    review_verdict: approved
   - id: rb2-2
     title: 'Transcribe biplane connect-lists (DB.MAP/DB.MAR/DB.LNS + BLANKV/VSBLEV opcode semantics) and prop/explosion/blimp picture-lists from 037007.XXX into a TS topology module; correct fidelity-doc gap #1 (picture-ROM source is PRESENT, misnamed .XXX, not absent)'
     points: 2
