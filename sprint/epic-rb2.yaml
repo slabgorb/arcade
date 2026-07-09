@@ -1,7 +1,7 @@
 id: rb2
 type: epic
 title: 'Red Baron — PLAY: aerial combat'
-description: PLAY / aerial-combat game state (GAMODE). Flight model (bank-to-turn, pitch, throttle), tilting-horizon world, enemy biplanes + dogfight AI, machine-gun fire, hit/collision, explosions, scoring, waves, lives. First-playable milestone. Built on rb1 foundation + fidelity spec.
+description: PLAY / aerial-combat game state (GAMODE). Flight model (bank-to-turn, pitch, altitude — no throttle; forward motion is constant), tilting-horizon world, enemy biplanes + dogfight AI, machine-gun fire, hit/collision, explosions, scoring, waves, lives. First-playable milestone. Built on rb1 foundation + fidelity spec.
 priority: p2
 status: backlog
 repos: red-baron

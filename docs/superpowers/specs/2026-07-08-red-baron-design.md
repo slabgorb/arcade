@@ -39,7 +39,8 @@ subrepo — mirroring how `bz1-2` produced Battlezone's source-findings doc.
 - First-person 3D vector world: **horizon that tilts with bank**, mountains, a
   fly-through mountain pass, ground plane/terrain, balloons, ground objects.
 - Flight model: **bank-to-turn** (roll induces yaw), pitch (climb/dive),
-  throttle, altitude.
+  altitude. (Forward motion is implicit/constant — the ROM has **no throttle**;
+  corrected per the rb1-2 fidelity spec.)
 - Aerial combat: enemy biplanes (including the Red Baron), dogfight AI,
   machine-gun fire, hit/collision, explosions, scoring, waves, lives.
 - Ground sequence (`GRMODE`, `D7=GROUND`): dive to strafe ground objects (5

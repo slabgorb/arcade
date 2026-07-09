@@ -4,7 +4,7 @@
 Red Baron — PLAY: aerial combat
 
 ## Overview
-PLAY / aerial-combat game state (GAMODE). Flight model (bank-to-turn, pitch, throttle), tilting-horizon world, enemy biplanes + dogfight AI, machine-gun fire, hit/collision, explosions, scoring, waves, lives. First-playable milestone. Built on rb1 foundation + fidelity spec.
+PLAY / aerial-combat game state (GAMODE). Flight model (bank-to-turn, pitch, altitude — no throttle; forward motion is constant), tilting-horizon world, enemy biplanes + dogfight AI, machine-gun fire, hit/collision, explosions, scoring, waves, lives. First-playable milestone. Built on rb1 foundation + fidelity spec.
 
 ## Metadata
 - **Epic ID:** rb2
@@ -50,7 +50,7 @@ the rb1 foundation (`timing.ts`, `camera.ts`, `horizon.ts`, `scene.ts`).
    pitching into the ground in a dogfight**; terrain only bites in the rb3 ground
    wave); and `DISCHK` distance-scaled control feel. **Forward motion is implicit
    and constant — the pilot commands only turn and pitch. There is no throttle**
-   in the ROM (despite the epic blurb's "throttle").
+   in the ROM (the epic blurb and the rb1 design brief said "throttle" — corrected).
 
 4. **Enemy AI is a weaving window-follower, NOT a beeline seeker (findings §3).**
    Planes accelerate ΔX toward window limits (`P.OLIM`/`P.ILIM`, `GMLEVL`-indexed)
