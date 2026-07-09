@@ -73,6 +73,30 @@ serve:
     wait
 
 # ============================================
+# DEPLOY (R2 static hosting)
+# ============================================
+# Build every servable subrepo and push its dist/ to its R2 bucket
+# (arcade-<name>) with correct content-types. Requires `wrangler` logged in.
+# This is how the live arcade is updated — no local server, no tunnel.
+deploy:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for s in {{subrepos}}; do
+      echo "==> building $s"
+      (cd {{root}}/$s && npm run build)
+      echo "==> deploying $s -> arcade-$s"
+      node {{root}}/scripts/deploy-r2.mjs {{root}}/$s/dist "arcade-$s"
+    done
+    echo "Deploy complete."
+
+# Deploy a single subrepo (e.g. `just deploy-one tempest`)
+deploy-one name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    (cd {{root}}/{{name}} && npm run build)
+    node {{root}}/scripts/deploy-r2.mjs {{root}}/{{name}}/dist "arcade-{{name}}"
+
+# ============================================
 # tempest
 # ============================================
 
