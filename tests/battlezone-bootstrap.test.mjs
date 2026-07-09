@@ -159,7 +159,7 @@ test('reconcile (SM decision #1): justfile `games`/`subrepos` also backfill star
 
 // --- AC: lobby tile --------------------------------------------------------
 
-test('AC: lobby registry lists a battlezone tile launching /battlezone/', () => {
+test('AC: lobby registry lists a battlezone tile launching its subdomain', () => {
   const registry = read('lobby/src/core/registry.ts');
   const tile = lobbyTile(registry, 'battlezone');
   assert.notEqual(tile, null, "lobby GAMES must contain a { id: 'battlezone', ... } tile");

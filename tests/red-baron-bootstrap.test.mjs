@@ -160,7 +160,7 @@ test('AC: canonical `serve` recipe launches red-baron', () => {
 
 // --- AC: lobby tile --------------------------------------------------------
 
-test('AC: lobby registry lists a red-baron tile launching /red-baron/', () => {
+test('AC: lobby registry lists a red-baron tile launching its subdomain', () => {
   const registry = read('lobby/src/core/registry.ts');
   const tile = lobbyTile(registry, 'red-baron');
   assert.notEqual(tile, null, "lobby GAMES must contain a { id: 'red-baron', ... } tile");
