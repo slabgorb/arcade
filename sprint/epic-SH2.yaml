@@ -27,7 +27,8 @@ stories:
     description: "Move tempest's vecfont.ts (glyph table + layoutText + CELL_W/CELL_H) verbatim into a new PURE subpath @arcade/shared/font — it returns stroke geometry, touches no DOM, so it lives among the pure core and is protected BY the purity guard. Add the purity-guard test that reads built dist/ as source text and fails if any pure subpath (math3d/rng/highscore/loop/font) references document/window/canvas/FontFace/requestAnimationFrame. Re-point tempest at the pinned dep, delete its local vecfont.ts, and remove tempest's vestigial public/fonts/*.ttf + the stale 'Vector Battle' reference in src/tools/contactSheet.ts. Behaviour-preserving for tempest (its text already strokes layoutText output)."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-09'
     repos: arcade-shared, tempest
     workflow: tdd
     acceptance_criteria:
@@ -35,6 +36,8 @@ stories:
       - tests/purity.test.ts fails if any pure subpath (math3d/rng/highscore/loop/font) references a DOM global; it passes for the current pure core.
       - "tempest imports @arcade/shared/font at a pinned git-URL ref; its local src/shell/vecfont.ts is deleted and font.ts re-exports the shared module; tempest vitest + vite build are green with no visual change."
       - tempest's vestigial VectorBattle-e9XO.ttf and the contactSheet.ts 'Vector Battle' font-family reference are removed.
+    completed: '2026-07-09'
+    review_verdict: approved
   - id: SH2-3
     title: Glyph audit across the three canvas games + extend the shared stroke table to cover every rendered character
     description: "The VGMSGA alphabet covers what Tempest needed; the other games' HUDs will need glyphs it lacks. Enumerate every character asteroids, star-wars, and battlezone actually render (score digits, framing copy, punctuation, (c), radar/HUD labels, etc.), diff against the shared glyph table, and add any missing glyphs drawn in the same monoline VGMSGA style. This discovery gates the per-game migrations (SH2-4/5/6). Record the per-game glyph inventory in the story context."

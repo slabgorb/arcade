@@ -990,3 +990,8 @@ completed_stories:
     title: Subrepo bootstrap — Vite/TS/Vitest scaffold, pinned port 5277, base /red-baron/, wire @arcade/shared@v0.5.0 (math3d/rng/loop), register (repos.yaml + justfile serve + cloudflared ^/red-baron→:5277 + lobby tile)
     points: 2
     completed: '2026-07-08'
+  - id: SH2-2
+    epic: SH2
+    title: Stand up pure @arcade/shared/font (promote tempest's VGMSGA stroke font) + purity guard; re-point tempest to the shared module
+    points: 5
+    completed: '2026-07-09'
