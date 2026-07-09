@@ -3,7 +3,7 @@ type: epic
 title: Red Baron — Quarry & Foundation
 description: "Foundation epic for Red Baron (Atari 1980, first-person WWI vector dogfight — Battlezone's Math Box/AVG hardware twin). Quarries the historicalsource/red-baron disassembly into reference/ and extracts mechanics/timing/sound/object data into a fidelity spec; scaffolds the red-baron subrepo (Vite/TS/Vitest, pinned port 5277, base /red-baron/); consumes @arcade/shared@v0.5.0 (math3d/rng/loop) as the first native shared-lib consumer; builds the roll/pitch flight camera + tilting horizon on shared math3d. Exit: runnable banking cockpit over vector terrain + fidelity spec seeding rb2-rb5. See docs/superpowers/specs/2026-07-08-red-baron-design.md."
 priority: p1
-status: ready
+status: done
 repos: red-baron
 stories:
   - id: rb1-1
@@ -40,6 +40,10 @@ stories:
     title: Flight-camera foundation — roll/pitch/yaw camera on shared math3d, tilting horizon, vector terrain/horizon render substrate, runnable empty cockpit
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-09'
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-09'
+    review_verdict: approved
+completed: '2026-07-09'

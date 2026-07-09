@@ -27,6 +27,7 @@ completed_epics:
   - bz1
   - A2
   - SH
+  - rb1
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -1004,4 +1005,9 @@ completed_stories:
     epic: rb1
     title: Source findings / fidelity spec — quarry historicalsource/red-baron into reference/; distill mechanics (flight, enemy behavior, ground seq), timing (frame cadence — watch ÷N ROM tick), sound (RBSOUN.MAC POKEY tables), object data (PLANE POINTS DB, 036xxx/037xxx picture ROMs, RBGRND.MAC)
     points: 3
+    completed: '2026-07-09'
+  - id: rb1-3
+    epic: rb1
+    title: Flight-camera foundation — roll/pitch/yaw camera on shared math3d, tilting horizon, vector terrain/horizon render substrate, runnable empty cockpit
+    points: 5
     completed: '2026-07-09'

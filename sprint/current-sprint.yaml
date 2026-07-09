@@ -12,7 +12,6 @@ epics:
   - bz2
   - sw2
   - SH2
-  - rb1
   - rb2
   - rb3
   - rb4
