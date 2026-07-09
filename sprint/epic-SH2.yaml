@@ -43,13 +43,16 @@ stories:
     description: "The VGMSGA alphabet covers what Tempest needed; the other games' HUDs will need glyphs it lacks. Enumerate every character asteroids, star-wars, and battlezone actually render (score digits, framing copy, punctuation, (c), radar/HUD labels, etc.), diff against the shared glyph table, and add any missing glyphs drawn in the same monoline VGMSGA style. This discovery gates the per-game migrations (SH2-4/5/6). Record the per-game glyph inventory in the story context."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-09'
     repos: arcade-shared
     workflow: tdd
     acceptance_criteria:
       - A per-game glyph inventory (asteroids/star-wars/battlezone) is documented and diffed against the shared table; the gap list is explicit.
       - Missing glyphs are added to @arcade/shared/font in the VGMSGA monoline style; layoutText unit tests cover each newly added glyph (strokes + advance width).
       - layoutText can represent the full text set of all three canvas games with no missing/placeholder characters.
+    completed: '2026-07-09'
+    review_verdict: approved
   - id: SH2-4
     title: asteroids — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors
     description: "Replace asteroids' loadVectorFont + ctx.fillText text rendering with layoutText(...) from @arcade/shared/font, stroking the returned glyphs with asteroids' existing local glow/stroke code (the shared glow primitive lands later in SH2-8). Delete public/fonts/*.ttf and the src/shell/font.ts TTF loader. Honour asteroids' letter-spacing (the A2-2 concern) via layoutText's opts. Behaviour-preserving except the intended visual change from TTF face to glowing stroke-vectors."

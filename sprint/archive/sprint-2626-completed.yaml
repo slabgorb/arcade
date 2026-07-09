@@ -995,3 +995,8 @@ completed_stories:
     title: Stand up pure @arcade/shared/font (promote tempest's VGMSGA stroke font) + purity guard; re-point tempest to the shared module
     points: 5
     completed: '2026-07-09'
+  - id: SH2-3
+    epic: SH2
+    title: Glyph audit across the three canvas games + extend the shared stroke table to cover every rendered character
+    points: 3
+    completed: '2026-07-09'
