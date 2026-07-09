@@ -5,4 +5,90 @@ description: PLAY / aerial-combat game state (GAMODE). Flight model (bank-to-tur
 priority: p2
 status: backlog
 repos: red-baron
-stories: []
+stories:
+  - id: rb2-1
+    title: Flight model — pot-yoke turn-rate (PLDELX) with inertia + hysteresis, 11-step pitch table (PLDELY, dive faster than climb), PFROTN = PLDELX x8 bank coupling clamped, I4YPOS altitude clamp, DISCHK distance-scaled feel; input map drives the rb1 flightView camera
+    points: 5
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-2
+    title: 'Transcribe biplane connect-lists (DB.MAP/DB.MAR/DB.LNS + BLANKV/VSBLEV opcode semantics) and prop/explosion/blimp picture-lists from 037007.XXX into a TS topology module; correct fidelity-doc gap #1 (picture-ROM source is PRESENT, misnamed .XXX, not absent)'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: trivial
+    type: chore
+  - id: rb2-3
+    title: Enemy biplane render + LOD — draw the 42-vertex model via the transcribed connect-lists, built-in LOD split (42-pt near .PLPNT / 29-pt drone .DRPNT far), bank proportional to turn-rate, through the rb1 scene substrate
+    points: 3
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-4
+    title: Single-enemy dogfight AI + spawn — weaving window-follower steering (accelerate toward P.OLIM/P.ILIM window, reverse at bounds), spawn from a screen side banked 90 deg at depth P.INDP; the 25-percent lone-plane case first
+    points: 5
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-5
+    title: Machine-gun fire + hit detection — alternating L/R guns, gun-overheat model (GUN.ST), 13 shell slots expiring at S.MAXZ, 4x shell sub-step per calc-frame, CDSSET/SHCDCK rotated collision windows
+    points: 5
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-6
+    title: Kill to explosion + scoring — UPPLEX falling/spinning wreck (EX.ACY gravity, EXPL1/EXPL2 debris via PIECE0-3), score PLVALU = depth x VALFRC (closer worth more), OBJKLD to GMLEVL level ramp
+    points: 3
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-7
+    title: Multi-plane waves + drones + level ramp — score-scaled spawn counts (300 to 2, 1000 to 3 planes), drone formation offsets, MODECT plane-wave alternation + MCOUNT inter-wave counts, PLNLVL level-gated firing (level under 4 never / 4 = 50pct / 5 = always) gated /2
+    points: 5
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-8
+    title: The returning ace — BEHIND YOU pass + evade-death — P.UPD0 fly-by then return-from-six; EOLSEQ evade check (bank to correct side + hard-enough turn; first pass free, then 50/50). The signature bank-hard-to-shake-him mechanic
+    points: 5
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-9
+    title: Lives + death sequence + respawn grace — ENDLFE DEC LIVES to INITIAL respawn, bullet-hole windshield + spiral horizon-scroll + starfield, WO.CNT 5-frame enemy-disable spawn grace, INITLF initial lives
+    points: 3
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-10
+    title: 'Blimp / Zeppelin — 25-percent spawn, drifts across, fires at the player, worth 200 pts; authentic BLIMP/DBLIMP geometry (descope candidate: may fold into rb2-7)'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-11
+    title: POKEY + analog sound — 5 envelope tables (corrected 8-byte format), engine hum, machine-gun rat-a-tat (D2, INTCNT&8 strobe), explosion ramp, enemy-approach whine, score/bonus/announce jingles
+    points: 5
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-12
+    title: Live playtest pass — verify the aerial slice end-to-end (fly, dogfight, waves, ace, lives, sound); mirrors bz2-6 / sw2-7
+    points: 2
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: chore
