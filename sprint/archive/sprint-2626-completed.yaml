@@ -1000,3 +1000,8 @@ completed_stories:
     title: Glyph audit across the three canvas games + extend the shared stroke table to cover every rendered character
     points: 3
     completed: '2026-07-09'
+  - id: rb1-2
+    epic: rb1
+    title: Source findings / fidelity spec — quarry historicalsource/red-baron into reference/; distill mechanics (flight, enemy behavior, ground seq), timing (frame cadence — watch ÷N ROM tick), sound (RBSOUN.MAC POKEY tables), object data (PLANE POINTS DB, 036xxx/037xxx picture ROMs, RBGRND.MAC)
+    points: 3
+    completed: '2026-07-09'

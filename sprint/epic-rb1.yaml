@@ -29,10 +29,13 @@ stories:
     title: Source findings / fidelity spec — quarry historicalsource/red-baron into reference/; distill mechanics (flight, enemy behavior, ground seq), timing (frame cadence — watch ÷N ROM tick), sound (RBSOUN.MAC POKEY tables), object data (PLANE POINTS DB, 036xxx/037xxx picture ROMs, RBGRND.MAC)
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-09'
     repos: red-baron
     workflow: trivial
+    completed: '2026-07-09'
     type: chore
+    review_verdict: approved
   - id: rb1-3
     title: Flight-camera foundation — roll/pitch/yaw camera on shared math3d, tilting horizon, vector terrain/horizon render substrate, runnable empty cockpit
     points: 5
