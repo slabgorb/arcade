@@ -79,7 +79,7 @@ stories:
       - vitest + vite build green; a manual run confirms the cockpit HUD/text reads correctly.
   - id: SH2-6
     title: battlezone — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors (evolves bz2-2)
-    description: "As SH2-4, for battlezone: swap loadVectorFont + ctx.fillText for layoutText + a local stroke draw, delete public/fonts/*.ttf + the font.ts loader. This evolves done story bz2-2 (which adopted the TTF) to the ROM-stroke convergence. Behaviour-preserving except the intended TTF -> stroke-vector visual change."
+    description: "As SH2-4, for battlezone: swap loadVectorFont + ctx.fillText for layoutText + a local stroke draw, delete public/fonts/*.ttf + the font.ts loader. This evolves done story bz2-2 (which adopted the TTF) to the ROM-stroke convergence. Behaviour-preserving except the intended TTF -> stroke-vector visual change. NOTE (SH2-3 blocking finding): the lives counter's triangle glyph U+25B2, drawn today by drawLives via ctx.fillText('<triangle>'.repeat(lives)) at src/shell/render.ts ~218, is NOT a shared-font glyph — the SH2-3 audit deliberately omits it as an icon, not typography. It must be rendered as a bespoke vector shape (a stroked triangle), NOT via layoutText, or the lives row renders blank once the TTF is removed. See sprint/archive/SH2-3-session.md Delivery Findings."
     points: 3
     priority: p2
     status: backlog
@@ -87,6 +87,7 @@ stories:
     workflow: tdd
     acceptance_criteria:
       - battlezone renders all HUD/framing text via @arcade/shared/font layoutText + a canvas stroke; loadVectorFont and every ctx.fillText/ctx.font text path are removed.
+      - "The lives counter's up-triangle icon (U+25B2), currently drawn by drawLives via ctx.fillText at src/shell/render.ts ~218, is rendered as a bespoke vector shape (a stroked triangle), NOT via @arcade/shared/font layoutText — the shared font intentionally omits it (SH2-3 audit: it is an icon, not a typographic glyph). The lives row must not render a blank/placeholder after the TTF is removed."
       - public/fonts/*.ttf and the TTF loader in src/shell/font.ts are deleted; no remaining reference to 'Vector Battle' or FontFace.
       - vitest + vite build green; a manual run confirms the green-vector HUD reads correctly.
   - id: SH2-7
