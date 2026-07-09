@@ -4,7 +4,7 @@
 // object is put with an explicit --content-type derived from its extension.
 //
 // Usage: node scripts/deploy-r2.mjs <distDir> <bucket>
-import { readdirSync, statSync } from 'node:fs';
+import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -42,20 +42,30 @@ function walk(dir) {
   return out;
 }
 
-export function uploadDir(distDir, bucket) {
+// Pure: walks distDir and computes the upload set. No wrangler, no side effects.
+export function collectUploads(distDir) {
+  if (!existsSync(distDir)) {
+    throw new Error(`no files found under ${distDir} — did the build run?`);
+  }
   const files = walk(distDir);
   if (files.length === 0) throw new Error(`no files found under ${distDir} — did the build run?`);
-  for (const file of files) {
+  return files.map((file) => {
     const key = relative(distDir, file).split('\\').join('/'); // POSIX keys on any OS
-    const ct = contentTypeFor(key);
-    console.log(`  ${bucket}/${key}  (${ct})`);
+    return { key, file, contentType: contentTypeFor(key) };
+  });
+}
+
+export function uploadDir(distDir, bucket) {
+  const uploads = collectUploads(distDir);
+  for (const { key, file, contentType } of uploads) {
+    console.log(`  ${bucket}/${key}  (${contentType})`);
     execFileSync(
       'wrangler',
-      ['r2', 'object', 'put', `${bucket}/${key}`, '--file', file, '--remote', '--content-type', ct],
+      ['r2', 'object', 'put', `${bucket}/${key}`, '--file', file, '--remote', '--content-type', contentType],
       { stdio: ['ignore', 'ignore', 'inherit'] },
     );
   }
-  console.log(`Uploaded ${files.length} objects to ${bucket}.`);
+  console.log(`Uploaded ${uploads.length} objects to ${bucket}.`);
 }
 
 // CLI entry (only when run directly, not when imported by the test).
