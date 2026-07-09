@@ -165,7 +165,7 @@ test('AC: lobby registry lists a red-baron tile launching /red-baron/', () => {
   const tile = lobbyTile(registry, 'red-baron');
   assert.notEqual(tile, null, "lobby GAMES must contain a { id: 'red-baron', ... } tile");
   assert.match(tile, /title:\s*['"]RED BARON['"]/, "red-baron tile needs title: 'RED BARON'");
-  assert.match(tile, /launchUrl:\s*['"]\/red-baron\/['"]/, "red-baron tile must launch '/red-baron/'");
+  assert.match(tile, /launchUrl:\s*['"]https:\/\/red-baron\.slabgorb\.com\/['"]/, "red-baron tile must launch its subdomain");
 });
 
 test('AC: the red-baron tile is a red-family colour, distinct from the sibling tiles', () => {

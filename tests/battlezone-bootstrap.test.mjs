@@ -164,7 +164,7 @@ test('AC: lobby registry lists a battlezone tile launching /battlezone/', () => 
   const tile = lobbyTile(registry, 'battlezone');
   assert.notEqual(tile, null, "lobby GAMES must contain a { id: 'battlezone', ... } tile");
   assert.match(tile, /title:\s*['"]BATTLEZONE['"]/, "battlezone tile needs title: 'BATTLEZONE'");
-  assert.match(tile, /launchUrl:\s*['"]\/battlezone\/['"]/, "battlezone tile must launch '/battlezone/'");
+  assert.match(tile, /launchUrl:\s*['"]https:\/\/battlezone\.slabgorb\.com\/['"]/, "battlezone tile must launch its subdomain");
 });
 
 test('AC: the battlezone tile is a green-family colour, distinct from the cyan/yellow tiles', () => {
