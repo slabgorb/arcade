@@ -11,10 +11,13 @@ stories:
     description: 'Carryforward from rb2-2 (topology.ts): the picture-ROM plane/explosion/blimp connect-lists are transcribed, but topology.ts explicitly scoped OUT the ground-wave SCAPE lists (see its SEGSTR comment). THIS story closes that gap — the rb3 analogue of rb2-2. Source: RBGRND.MAC SCAPE0..3 (findings §7, R2GRND.MAC:725-798) each a PFPNTS x,height,intensity 2-D list (Z discarded, X/2, Y*2); the 24 PFCOL collision boxes (PFOCOL); constants HORZ=1000, HORIZN=$40, PFPLOW=80*4 (min altitude). Reuse the existing ConnectOp/decodeOp machinery + OP_SEGMENT (=SEGSTR, already exported). Pure data + decode, RNG-free, no render. UNBLOCKS rb3-3 (landscape render) and rb3-4 (ground targets).'
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-10'
     repos: red-baron
     workflow: trivial
+    completed: '2026-07-10'
     type: chore
+    review_verdict: approved
   - id: rb3-2
     title: 'Ground-wave mode entry + forced-slow control — INITGR sets GRMODE=0C0 (D7 ground + D6 plane-disable) so the main loop skips new-plane generation; DISCHK forced to the slow-air band in ground mode; extend waves.ts so the MODECT LSB selects INITGR (ground) vs STPLNE (plane), MCOUNT 4,2,3,2,1,3,4,2 inter-wave counts already present from rb2-7'
     description: 'Carryforward from rb2-7 (waves.ts): MODECT/NEWCT wave alternation + the MCOUNT: 4,2,3,2,1,3,4,2 table already landed, but always produce PLANE waves. THIS story wires the MODECT LSB to actually branch INITGR (ground) vs STPLNE (plane) (findings §4, R2BRON.MAC:2254-2269) and introduces GRMODE state (=0C0: D7 GROUND + D6 plane-disable) so plane-generation is skipped while a ground wave runs. Also flips DISCHK: ground mode forces the slow control band (findings §2, "ground mode is forced to" slow) — reuse flight.ts ProximityBand plumbing (FlightInput.proximity) rather than a new path; ground mode pins it to the slow feel regardless of nearest-object distance. .LEVLS=5 is the difficulty ceiling (§3), not a stage count. Foundation for rb3-3..rb3-6.'

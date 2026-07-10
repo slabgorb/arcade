@@ -1086,3 +1086,8 @@ completed_stories:
     title: tempest conforms to @arcade/shared/glow without regressing tube depth
     points: 3
     completed: '2026-07-10'
+  - id: rb3-1
+    epic: rb3
+    title: 'Transcribe ground/landscape data (the rb2-2 analogue) — mountain silhouettes SCAPE0..3 (21/16/18/15 pts, PFPNTS 2-D format via the SEGSTR = pointIndex*6+4 opcode already stubbed in topology.ts), the 24 PFCOL ground-object collision boxes (PFOCOL), and horizon/altitude constants HORZ=1000, HORIZN=$40, PFPLOW=80*4 — into src/core/topology.ts from RBGRND.MAC'
+    points: 2
+    completed: '2026-07-10'
