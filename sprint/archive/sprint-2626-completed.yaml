@@ -1041,3 +1041,8 @@ completed_stories:
     title: Enemy biplane render + LOD — draw the 42-vertex model via the transcribed connect-lists, built-in LOD split (42-pt near .PLPNT / 29-pt drone .DRPNT far), bank proportional to turn-rate, through the rb1 scene substrate
     points: 3
     completed: '2026-07-10'
+  - id: SH2-12
+    epic: SH2
+    title: Extract the @arcade/shared pause gate + browser esc-overlay from battlezone (pure /pause + browser /esc-overlay subpaths)
+    points: 3
+    completed: '2026-07-10'
