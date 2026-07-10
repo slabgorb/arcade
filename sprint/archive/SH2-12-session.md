@@ -44,9 +44,9 @@ Each finding is one list item. Use "No upstream findings" if none.
 - **Question** (non-blocking): The shared frozen-frame gate is specified as `stepUnlessPaused(step: () => S, prev, paused)` (thunk form) so it imports no game sim. battlezone's existing 4-arg `stepUnlessPaused(game,input,dt,paused)` (pinned by the surviving bz2-5 `pause-gate.test.ts`) should become a thin delegate to the shared thunk gate, preserving its signature + behaviour. Confirm Architect/Dev keep that local signature rather than rewriting bz2-5 callers. Affects `battlezone/src/shell/pause.ts`. *Found by TEA during test design.*
 
 ### Dev (implementation)
-- **Improvement** (blocking for SH2-13): SH2-12's FINISH must RELEASE arcade-shared v0.8.0 so `github:slabgorb/arcade-shared#v0.8.0` exists — from the arcade-shared repo on `develop` after this branch merges, run `just release arcade-shared minor` (bumps 0.7.0→0.8.0... already bumped in package.json, so verify the release script's `npm version` step lands on 0.8.0 / adjust level; a library release has no R2 deploy). SH2-13 (game adoption) is blocked until the tag exists. Affects the SH2-12 finish flow + `arcade-shared` release. *Found by Dev during implementation.*
-- **Gap** (non-blocking): SH2-12 was re-scoped and SH2-13 created — both are UNCOMMITTED edits in the orchestrator working tree (`sprint/epic-SH2.yaml`: SH2-12 repos→arcade-shared / points 5→3 / narrowed ACs; new SH2-13 5pts depends_on SH2-12). Commit these with the SH2-12 sprint tracking at finish. Affects `sprint/epic-SH2.yaml`. *Found by Dev during implementation.*
-- **Improvement** (non-blocking): The five game repos' `feat/SH2-12-shared-esc-overlay` branches were reset to origin/develop (now 0 commits ahead, never pushed) — safe to delete; SH2-13 creates fresh branches. Affects the game repos' local branches only. *Found by Dev during implementation.*
+- **Improvement** (blocking for SH2-14): SH2-12's FINISH must RELEASE arcade-shared v0.8.0 so `github:slabgorb/arcade-shared#v0.8.0` exists — from the arcade-shared repo on `develop` after this branch merges, run `just release arcade-shared minor` (bumps 0.7.0→0.8.0... already bumped in package.json, so verify the release script's `npm version` step lands on 0.8.0 / adjust level; a library release has no R2 deploy). SH2-14 (game adoption) is blocked until the tag exists. Affects the SH2-12 finish flow + `arcade-shared` release. *Found by Dev during implementation.*
+- **Gap** (non-blocking): SH2-12 was re-scoped and SH2-14 created — both are UNCOMMITTED edits in the orchestrator working tree (`sprint/epic-SH2.yaml`: SH2-12 repos→arcade-shared / points 5→3 / narrowed ACs; new SH2-14 5pts depends_on SH2-12). Commit these with the SH2-12 sprint tracking at finish. Affects `sprint/epic-SH2.yaml`. *Found by Dev during implementation.*
+- **Improvement** (non-blocking): The five game repos' `feat/SH2-12-shared-esc-overlay` branches were reset to origin/develop (now 0 commits ahead, never pushed) — safe to delete; SH2-14 creates fresh branches. Affects the game repos' local branches only. *Found by Dev during implementation.*
 - No new upstream findings during rework round 1. *Found by Dev during implementation.*
 
 ### Reviewer (code review)
@@ -77,19 +77,19 @@ Each entry: what was changed, what the spec said, and why.
   - Forward impact: none — same pattern already merged for /font.
 
 ### Dev (implementation)
-- **Story SPLIT — SH2-12 narrowed to the arcade-shared extraction; per-game adoption moved to new story SH2-13**
+- **Story SPLIT — SH2-12 narrowed to the arcade-shared extraction; per-game adoption moved to new story SH2-14**
   - Spec source: session scope (SH2-12 title/ACs) + context-story-SH2-12.md, AC-3/AC-4/AC-5
   - Spec text: "adopt across all five canvas games ... All five canvas games pause on Escape via the shared module ... a manual run of each of the five games confirms..."
-  - Implementation: Delivered ONLY the PURE `@arcade/shared/pause` + BROWSER `@arcade/shared/esc-overlay` subpaths (bumped to v0.8.0). The five game repos' RED adoption/re-point tests were removed from their SH2-12 branches (branches soft-reset to origin/develop, files preserved) and re-homed to SH2-13 (created, `depends_on: SH2-12`). SH2-12's epic entry re-scoped: repos → arcade-shared, points 5→3, ACs narrowed to the extraction (adoption ACs moved to SH2-13).
+  - Implementation: Delivered ONLY the PURE `@arcade/shared/pause` + BROWSER `@arcade/shared/esc-overlay` subpaths (bumped to v0.8.0). The five game repos' RED adoption/re-point tests were removed from their SH2-12 branches (branches soft-reset to origin/develop, files preserved) and re-homed to SH2-14 (created, `depends_on: SH2-12`). SH2-12's epic entry re-scoped: repos → arcade-shared, points 5→3, ACs narrowed to the extraction (adoption ACs moved to SH2-14).
   - Rationale: user-approved decision ("Split per precedent"). A game cannot `import('@arcade/shared/<newsub>')` until v0.8.0 is PUBLISHED as a git-URL tag, and publishing is a release action done at finish — so per-game adoption cannot go green in the same pre-merge dev pass that CREATES the subpath. Mirrors the cabinet's established publish→consume ordering (SH2-2 created /font; SH2-4/5/6 consumed it in separate stories).
   - Severity: major
-  - Forward impact: SH2-13 is BLOCKED until SH2-12's finish/release cuts v0.8.0. Its RED tests are preserved (each game's dangling RED commit — battlezone 4d00ad6, tempest 445381f, asteroids 96f13af, star-wars 0a741a9, red-baron 51e5747 — plus scratchpad copies). SM must reconcile sprint points (SH2-12 5→3, +SH2-13 5).
+  - Forward impact: SH2-14 is BLOCKED until SH2-12's finish/release cuts v0.8.0. Its RED tests are preserved (each game's dangling RED commit — battlezone 4d00ad6, tempest 445381f, asteroids 96f13af, star-wars 0a741a9, red-baron 51e5747 — plus scratchpad copies). SM must reconcile sprint points (SH2-12 5→3, +SH2-14 5).
 - Rework round 1: no new deviations — Reviewer's findings (.js extension, tracking test, SHARED_VERSION) were fixed exactly as specified, no divergence from spec.
 
 ### Reviewer (audit)
-- **TEA — Per-game pause BEHAVIOUR verified by manual run, not automated tests** → ✓ ACCEPTED by Reviewer: sound; the keydown+rAF wiring has no unit seam and AC-5 is explicitly a manual run. Now moot for SH2-12 (per-game work moved to SH2-13) but carries forward correctly.
+- **TEA — Per-game pause BEHAVIOUR verified by manual run, not automated tests** → ✓ ACCEPTED by Reviewer: sound; the keydown+rAF wiring has no unit seam and AC-5 is explicitly a manual run. Now moot for SH2-12 (per-game work moved to SH2-14) but carries forward correctly.
 - **TEA — Per-game adoption uses source-text + dep-pin resolution (SH2-6 pattern)** → ✓ ACCEPTED by Reviewer: matches the merged SH2-4/5/6 `font-shared-resolution` precedent exactly.
-- **Dev — Story SPLIT (SH2-12 = extraction; SH2-13 = adoption)** → ✓ ACCEPTED by Reviewer: forced by the real publish→consume ordering (a game cannot import an unpublished subpath) and consistent with how /font shipped (SH2-2 created, SH2-4/5/6 consumed). Well-documented, tests preserved, follow-up story created with correct `depends_on`.
+- **Dev — Story SPLIT (SH2-12 = extraction; SH2-14 = adoption)** → ✓ ACCEPTED by Reviewer: forced by the real publish→consume ordering (a game cannot import an unpublished subpath) and consistent with how /font shipped (SH2-2 created, SH2-4/5/6 consumed). Well-documented, tests preserved, follow-up story created with correct `depends_on`.
 - **UNDOCUMENTED (Reviewer audit): shipped artifact resolution** — no deviation was logged for the extensionless `./font` import, which produces an ESM artifact that only resolves under bundler (Vite) resolution, not native Node ESM. Spec/convention (lang-review rule #5) says relative imports carry `.js`. Code omits it. Severity: HIGH (see Reviewer Assessment). Not a design choice — an oversight; the first intra-package import in the package. → **RESOLVED (round 2, commit f7a0b6a):** `./font.js`; native Node ESM import of the built artifact now succeeds.
 
 ## Sm Assessment
@@ -148,20 +148,20 @@ Each entry: what was changed, what the spec said, and why.
 
 **Implementation Complete:** Yes — for SH2-12's (re-scoped) deliverable: the arcade-shared extraction.
 
-**Scope decision:** Mid-GREEN, the publish→consume ordering surfaced (a game can't `import('@arcade/shared/<newsub>')` until v0.8.0 is a published tag; publishing is a finish/release action). User chose **Split per precedent**: SH2-12 = arcade-shared extraction (this); SH2-13 = per-game adoption (created, blocked on v0.8.0). See the major deviation logged above.
+**Scope decision:** Mid-GREEN, the publish→consume ordering surfaced (a game can't `import('@arcade/shared/<newsub>')` until v0.8.0 is a published tag; publishing is a finish/release action). User chose **Split per precedent**: SH2-12 = arcade-shared extraction (this); SH2-14 = per-game adoption (created, blocked on v0.8.0). See the major deviation logged above.
 
 **Files Changed (arcade-shared only):**
 - `src/pause.ts` (NEW) — PURE gate: `INITIAL_PAUSED`, `isPauseKey`, `togglePaused`, generic `stepUnlessPaused<S>(step, prev, paused)` thunk gate (no game-sim import).
 - `src/esc-overlay.ts` (NEW) — BROWSER `drawEscOverlay(ctx,w,h,{lines,color,opacity})`: full-viewport dim (shadowBlur 0), centered keybind card via `@arcade/shared/font` `layoutText`, per-cabinet params, no baked-in battlezone constants.
 - `package.json` — added `./pause` + `./esc-overlay` exports; version `0.7.0 → 0.8.0`.
 
-**Tests:** arcade-shared **191/191 passing (GREEN)** — includes the 22 new tests (pause 9, esc-overlay 8, purity extensions 5). Game repos reset to origin/develop (their adoption tests moved to SH2-13); no game repo is modified by this story.
+**Tests:** arcade-shared **191/191 passing (GREEN)** — includes the 22 new tests (pause 9, esc-overlay 8, purity extensions 5). Game repos reset to origin/develop (their adoption tests moved to SH2-14); no game repo is modified by this story.
 
 **Branch:** `feat/SH2-12-shared-esc-overlay` (arcade-shared) — committed (`e7d8d02`) and pushed. Working tree clean.
 
-**AC status (re-scoped SH2-12):** AC1 (pause pure) ✓, AC2 (esc-overlay browser) ✓, AC3 (exports + version + suite green) ✓, AC4 (per-game out of scope → SH2-13) ✓.
+**AC status (re-scoped SH2-12):** AC1 (pause pure) ✓, AC2 (esc-overlay browser) ✓, AC3 (exports + version + suite green) ✓, AC4 (per-game out of scope → SH2-14) ✓.
 
-**Handoff:** To Reviewer (Obi-Wan) — review the arcade-shared diff only (pure `/pause` + browser `/esc-overlay` + exports + purity-guard extension). Per-game adoption is SH2-13.
+**Handoff:** To Reviewer (Obi-Wan) — review the arcade-shared diff only (pure `/pause` + browser `/esc-overlay` + exports + purity-guard extension). Per-game adoption is SH2-14.
 
 ### Rework Round 1 (addressing Reviewer findings)
 
@@ -225,7 +225,7 @@ Good: `drawEscOverlay` faithfully mirrors battlezone's `drawScreenLines`/`drawTe
 
 ### Devil's Advocate
 
-Argue this code is broken. Start with the confirmed defect: this is a *published library* whose entire reason to exist is being imported by other packages. Its browser entry point ships an import specifier (`./font`) that a standards-compliant ESM loader rejects. The only reason CI is green is that every current consumer happens to run through Vite, whose non-standard bundler resolution papers over the missing extension. That is luck, not correctness — the day someone runs a plain `node` script, a Bun loader, a Deno import, or a vitest config with `deps.moduleDirectories`/native resolution, `@arcade/shared/esc-overlay` throws at import time and every game that adopted it (SH2-13) goes dark simultaneously. Worse, this is the *first* relative import in the whole package: whatever ships here is the copy-paste template for SH2-8 (glow), SH2-10 (view), and SH2-11 (compositor), each of which will import siblings. One missing `.js` becomes four. Next, the testing: the suite asserts the card text is *routed* to `layoutText`, but the mock silently discards the layout options, so the ~0.1em tracking — the one thing that makes the caps legible instead of cramped — could be dropped in a future refactor and every test would stay green. A confused maintainer reading `SHARED_VERSION='0.6.0'` next to `"version":"0.8.0"` cannot trust either. What would a malicious user do? Little here — inputs are first-party. But a *stressed* consumer (strict loader) and a *confused* maintainer (stale version marker, untested tracking) are both left worse off. The extraction's logic is sound; its packaging is not. Fix the artifact before it becomes canon.
+Argue this code is broken. Start with the confirmed defect: this is a *published library* whose entire reason to exist is being imported by other packages. Its browser entry point ships an import specifier (`./font`) that a standards-compliant ESM loader rejects. The only reason CI is green is that every current consumer happens to run through Vite, whose non-standard bundler resolution papers over the missing extension. That is luck, not correctness — the day someone runs a plain `node` script, a Bun loader, a Deno import, or a vitest config with `deps.moduleDirectories`/native resolution, `@arcade/shared/esc-overlay` throws at import time and every game that adopted it (SH2-14) goes dark simultaneously. Worse, this is the *first* relative import in the whole package: whatever ships here is the copy-paste template for SH2-8 (glow), SH2-10 (view), and SH2-11 (compositor), each of which will import siblings. One missing `.js` becomes four. Next, the testing: the suite asserts the card text is *routed* to `layoutText`, but the mock silently discards the layout options, so the ~0.1em tracking — the one thing that makes the caps legible instead of cramped — could be dropped in a future refactor and every test would stay green. A confused maintainer reading `SHARED_VERSION='0.6.0'` next to `"version":"0.8.0"` cannot trust either. What would a malicious user do? Little here — inputs are first-party. But a *stressed* consumer (strict loader) and a *confused* maintainer (stale version marker, untested tracking) are both left worse off. The extraction's logic is sound; its packaging is not. Fix the artifact before it becomes canon.
 
 **Handoff:** Back to TEA (Han Solo) for rework — both blocking/primary findings are testable: (1) a test pinning the `.js`-extensioned specifier / Node-ESM resolvability of `dist/esc-overlay.js` (RED until Dev adds `.js`), and (2) a mock that captures `layoutText`'s `opts` and asserts `letterSpacing` forwarding. Then Dev makes them green.
 
@@ -248,6 +248,6 @@ Round 1 rejected on a HIGH `[RULE]` #5 finding (extensionless sibling import →
 
 **Deviations:** all audited in Round 1 (TEA ×2 ACCEPTED, Dev split ACCEPTED, the undocumented `.js` oversight now RESOLVED).
 
-**Note carried to SM (not blocking this approval — SH2-12 ships the arcade-shared extraction only):** at finish, RELEASE `arcade-shared` v0.8.0 (tag the merge commit `v0.8.0`, matching how `v0.6.0` was tagged at its feat commit — do NOT let `just release … minor` double-bump past 0.8.0), and commit the orchestrator's `sprint/epic-SH2.yaml` re-scope (SH2-12 → arcade-shared / SH2-13 created). SH2-13 (per-game adoption) is blocked until `#v0.8.0` is published.
+**Note carried to SM (not blocking this approval — SH2-12 ships the arcade-shared extraction only):** at finish, RELEASE `arcade-shared` v0.8.0 (tag the merge commit `v0.8.0`, matching how `v0.6.0` was tagged at its feat commit — do NOT let `just release … minor` double-bump past 0.8.0), and commit the orchestrator's `sprint/epic-SH2.yaml` re-scope (SH2-12 → arcade-shared / SH2-14 created). SH2-14 (per-game adoption) is blocked until `#v0.8.0` is published.
 
 **Handoff:** To SM (Grand Admiral Thrawn) for finish-story.
