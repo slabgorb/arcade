@@ -84,9 +84,12 @@ the rb1 foundation (`timing.ts`, `camera.ts`, `horizon.ts`, `scene.ts`).
 - **Consume `@arcade/shared`, don't port** — rb2 builds on rb1's shared-`math3d`
   camera; the flight sim, enemy AI, collision, and POKEY sound stay **local**
   (game-specific code is never shared).
-- **red-baron has NO GitHub remote** — stories land via a **local merge to
-  `develop`** (no push, no PR). Orchestrator commits sprint tracking only, when
-  asked.
+- **red-baron ships via PRs to `develop`** — the repo HAS a GitHub remote
+  (`github.com/slabgorb/red-baron`). Dev pushes the feature branch; SM finishes
+  via a **PR into `develop`** (rb2-4 = PR #3, rb2-5 = PR #4). `main` is
+  production via release. Orchestrator commits sprint tracking to `main`, when
+  asked. *(Corrected during rb2-5: the earlier "no remote / local merge" note was
+  stale.)*
 
 ### Sequencing — first-playable at story 6
 

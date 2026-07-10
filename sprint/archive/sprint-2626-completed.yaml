@@ -1056,3 +1056,8 @@ completed_stories:
     title: Single-enemy dogfight AI + spawn — weaving window-follower steering (accelerate toward P.OLIM/P.ILIM window, reverse at bounds), spawn from a screen side banked 90 deg at depth P.INDP; the 25-percent lone-plane case first
     points: 5
     completed: '2026-07-10'
+  - id: rb2-5
+    epic: rb2
+    title: Machine-gun fire + hit detection — alternating L/R guns, gun-overheat model (GUN.ST), 13 shell slots expiring at S.MAXZ, 4x shell sub-step per calc-frame, CDSSET/SHCDCK rotated collision windows
+    points: 5
+    completed: '2026-07-10'
