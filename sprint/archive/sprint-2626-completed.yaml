@@ -1066,3 +1066,8 @@ completed_stories:
     title: Kill to explosion + scoring — UPPLEX falling/spinning wreck (EX.ACY gravity, EXPL1/EXPL2 debris via PIECE0-3), score PLVALU = depth x VALFRC (closer worth more), OBJKLD to GMLEVL level ramp
     points: 3
     completed: '2026-07-10'
+  - id: sw2-6
+    epic: sw2
+    title: Disassembly fidelity audit (spike) — findings doc + file follow-on stories, no behavior change
+    points: 3
+    completed: '2026-07-10'

@@ -66,10 +66,14 @@ stories:
     title: Disassembly fidelity audit (spike) — findings doc + file follow-on stories, no behavior change
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-10'
     repos: star-wars
     workflow: trivial
+    completed: '2026-07-10'
     type: chore
+    branch: chore/sw2-6-disassembly-fidelity-audit
+    review_verdict: approved
   - id: sw2-7
     title: Live playtest verification pass — verify items 1-5 together (mirrors bz2-6)
     points: 2

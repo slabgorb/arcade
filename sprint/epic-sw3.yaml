@@ -1,0 +1,65 @@
+id: sw3
+type: epic
+title: Star Wars — ROM fidelity pass (post-audit follow-ons)
+description: 'Concrete ROM-fidelity divergences surfaced by the sw2-6 disassembly fidelity audit (docs/sw2-6-disassembly-fidelity-audit.md): the ported star-wars sim faithfully reproduces vertex data, aim/lock, and several scores, but diverges from the 1983 cabinet on score VALUES (TIE 100 vs ROM 1,000; exhaust port 1,000 vs 25,000), the surface phase (flat 4-kill quota vs 22-50 towers + missing 50k all-towers bonus), the trench (no pilotable viewpoint -> unavoidable catwalk shield loss; identical every run; turrets never fire), audio (no music; only 4 of 23 speech lines wired), and HUD scoring (no extra lives, no bonus row). Each story ports a specific ROM behavior. Sequenced after epic sw2.'
+priority: p2
+status: backlog
+repos: star-wars
+stories:
+  - id: sw3-1
+    title: Bake resolved ROM score values — TIE 1,000 (from 100), Darth Vader 2,000, exhaust port 25,000 (from 1,000), fireball 33 (from 50)
+    points: 2
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: chore
+  - id: sw3-2
+    title: Trench pilotable viewpoint (sub_703B ±511 lateral / −257..−3583 vertical band) — makes catwalks dodgeable instead of a guaranteed shield loss every run
+    points: 5
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw3-3
+    title: 'Surface phase: wave-scaled towers-remaining (byte_98CB 22/22/32..) + 50,000 cleared-all-towers bonus, replacing the flat 4-kill quota'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw3-4
+    title: Trench voice-line timer — Luke trust me @16 / Yahoo you're all clear @24 / Force is strong @22 (Sound_18/1A/16), reachable now without new mechanics
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw3-5
+    title: Phase music engine — looping music channel driven off phase edges (space/towers/trench themes + Imperial March); needs music assets sourced
+    points: 5
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw3-6
+    title: Extra-life thresholds (400k/800k) + flashing bonus/extra-life HUD row (byte_4B2C) under the score
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw3-7
+    title: Trench per-run variation — PRNG fixed-head + picked-tail obstacle/section chain (sub_83A4) so runs differ instead of being byte-identical
+    points: 3
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw3-8
+    title: Port TIE wing-fragment death models (Obj_Tie_Wing_Frag_1/2/3) and wire to the TIE-destroyed animation
+    points: 2
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: tdd
