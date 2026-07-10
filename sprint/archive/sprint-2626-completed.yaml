@@ -1061,3 +1061,8 @@ completed_stories:
     title: Machine-gun fire + hit detection — alternating L/R guns, gun-overheat model (GUN.ST), 13 shell slots expiring at S.MAXZ, 4x shell sub-step per calc-frame, CDSSET/SHCDCK rotated collision windows
     points: 5
     completed: '2026-07-10'
+  - id: rb2-6
+    epic: rb2
+    title: Kill to explosion + scoring — UPPLEX falling/spinning wreck (EX.ACY gravity, EXPL1/EXPL2 debris via PIECE0-3), score PLVALU = depth x VALFRC (closer worth more), OBJKLD to GMLEVL level ramp
+    points: 3
+    completed: '2026-07-10'

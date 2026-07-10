@@ -69,9 +69,12 @@ stories:
     title: Kill to explosion + scoring — UPPLEX falling/spinning wreck (EX.ACY gravity, EXPL1/EXPL2 debris via PIECE0-3), score PLVALU = depth x VALFRC (closer worth more), OBJKLD to GMLEVL level ramp
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-10'
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-10'
+    review_verdict: approved
   - id: rb2-7
     title: Multi-plane waves + drones + level ramp — score-scaled spawn counts (300 to 2, 1000 to 3 planes), drone formation offsets, MODECT plane-wave alternation + MCOUNT inter-wave counts, PLNLVL level-gated firing (level under 4 never / 4 = 50pct / 5 = always) gated /2
     points: 5
