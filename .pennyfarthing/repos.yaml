@@ -174,7 +174,7 @@ repos:
     dev_command: npm run dev
     build_command: npm run build
     test_command: npm test
-    notes: 'Seventh subrepo in the arcade series. Gitignored, with its own git history (local git init -b develop; no GitHub remote yet). Pure game code — sprint/epics managed at the orchestrator (epics rb1-rb5). First arcade game built as a native @arcade/shared consumer (math3d/rng/highscore/loop at v0.5.0) rather than porting the Math Box. Served under /red-baron/ on port 5277.'
+    notes: 'Seventh subrepo in the arcade series. Gitignored, with its own git history (origin github.com/slabgorb/red-baron, default branch develop). Pure game code — sprint/epics managed at the orchestrator (epics rb1-rb5). First arcade game built as a native @arcade/shared consumer (math3d/rng/highscore/loop at v0.5.0) rather than porting the Math Box. Served under /red-baron/ on port 5277.'
   arcade-shared:
     path: arcade-shared
     type: library
