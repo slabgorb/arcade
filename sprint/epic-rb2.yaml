@@ -34,9 +34,13 @@ stories:
     description: 'Carryforward from rb2-1 (flight model). Enemy render inherits the flight-model → camera scale factors in red-baron/src/core/flight.ts: toAttitude/toEye map ROM units → radians/world via ROLL_SCALE=π/1024 (0x200 quadrant → 0x100=45° max bank), PITCH_SCALE=π/512, YAW_SCALE=π/1024, ALT_TO_Y=1/4 (I4YPOS x4 → world eye Y) — draw enemies in the SAME world frame these produce. Enemy bank proportional to turn-rate (this title) should reuse the PFROTN=PLDELX×8 coupling from flight.ts. OPEN (TEA/Reviewer finding, rb2-1): the PFROTN bit-format angle (XXX XQQA AAAA AA.FF, findings §2) is only a scalar in flight.ts; if exact projection is needed, add an explicit ROM-angle→radian converter rather than the scalar.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-10'
+    branch: feat/rb2-3-biplane-render-lod
+    assignee: Keith Avery
+    review_verdict: approved
   - id: rb2-4
     title: Single-enemy dogfight AI + spawn — weaving window-follower steering (accelerate toward P.OLIM/P.ILIM window, reverse at bounds), spawn from a screen side banked 90 deg at depth P.INDP; the 25-percent lone-plane case first
     description: 'Carryforward from rb2-1 (flight model). DISCHK proximity is a CALLER-supplied input in red-baron/src/core/flight.ts (FlightInput.proximity: near|mid|far, scale near 1.0 / mid 0.625 / far 0.375); rb2-1 hardcodes far in main.ts because there are no enemies yet. THIS story introduces the first enemy — wire the live nearest-enemy distance → ProximityBand and feed it into FlightInput.proximity so the player control feel sharpens as the enemy closes (authentic DISCHK, findings §2). Ground-mode forced-slow band is rb3, not here.'
