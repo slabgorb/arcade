@@ -89,7 +89,8 @@ stories:
     description: "As SH2-4, for battlezone: swap loadVectorFont + ctx.fillText for layoutText + a local stroke draw, delete public/fonts/*.ttf + the font.ts loader. This evolves done story bz2-2 (which adopted the TTF) to the ROM-stroke convergence. Behaviour-preserving except the intended TTF -> stroke-vector visual change. NOTE (SH2-3 blocking finding): the lives counter's triangle glyph U+25B2, drawn today by drawLives via ctx.fillText('<triangle>'.repeat(lives)) at src/shell/render.ts ~218, is NOT a shared-font glyph — the SH2-3 audit deliberately omits it as an icon, not typography. It must be rendered as a bespoke vector shape (a stroked triangle), NOT via layoutText, or the lives row renders blank once the TTF is removed. See sprint/archive/SH2-3-session.md Delivery Findings."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-10'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
@@ -97,6 +98,8 @@ stories:
       - "The lives counter's up-triangle icon (U+25B2), currently drawn by drawLives via ctx.fillText at src/shell/render.ts ~218, is rendered as a bespoke vector shape (a stroked triangle), NOT via @arcade/shared/font layoutText — the shared font intentionally omits it (SH2-3 audit: it is an icon, not a typographic glyph). The lives row must not render a blank/placeholder after the TTF is removed."
       - public/fonts/*.ttf and the TTF loader in src/shell/font.ts are deleted; no remaining reference to 'Vector Battle' or FontFace.
       - vitest + vite build green; a manual run confirms the green-vector HUD reads correctly.
+    completed: '2026-07-10'
+    review_verdict: approved
   - id: SH2-7
     title: lobby font — DECIDE and implement (canvas stroke-vector labels vs a self-hosted licensed webfont) to drop the non-commercial TTF
     description: "The lobby is the odd one out: it renders its title + tile labels as DOM/CSS text (index.html font-family 'Vector Battle','Orbitron',monospace), not canvas — so stroke-vectors do not apply mechanically. DECISION required, recorded in ADR-0002 or the story context: (a) re-render the lobby's title/labels as CANVAS stroke-vectors via @arcade/shared/font (most on-brand — the lobby IS a vector menu — but reworks the menu's text rendering), or (b) keep DOM text on a SELF-HOSTED, commercially-licensed face and drop both the Google-Fonts dependency and the non-commercial Vector Battle TTF. Either way the non-commercial TTF and its loader leave the lobby."
