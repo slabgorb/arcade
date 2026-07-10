@@ -1081,3 +1081,8 @@ completed_stories:
     title: Multi-plane waves + drones + level ramp — score-scaled spawn counts (300 to 2, 1000 to 3 planes), drone formation offsets, MODECT plane-wave alternation + MCOUNT inter-wave counts, PLNLVL level-gated firing (level under 4 never / 4 = 50pct / 5 = always) gated /2
     points: 5
     completed: '2026-07-10'
+  - id: SH2-9
+    epic: SH2
+    title: tempest conforms to @arcade/shared/glow without regressing tube depth
+    points: 3
+    completed: '2026-07-10'
