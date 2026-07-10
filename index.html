@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <title>Arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #000;
+        --fg: #00eaff;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: 'Vector Battle', 'Orbitron', monospace;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(2rem, 8vh, 6rem);
+        padding: 6vh 5vw;
+        min-height: 100vh;
+      }
+      .title {
+        margin: 0;
+        font-weight: 900;
+        font-size: clamp(2.5rem, 12vw, 9rem);
+        letter-spacing: 0.12em;
+        color: var(--fg);
+        text-shadow: 0 0 0.08em var(--fg), 0 0 0.3em var(--fg);
+      }
+      .games {
+        display: flex;
+        flex-wrap: wrap;
+        gap: clamp(1.5rem, 5vw, 4rem);
+        justify-content: center;
+        width: 100%;
+        max-width: 70rem;
+      }
+      /* Each tile is a real link. The per-game glow colour comes from --glow,
+         set inline from the registry entry. Title and score stack as a centred
+         column; colour and text-shadow are inherited, so both lines glow. */
+      .tile {
+        --glow: var(--fg);
+        flex: 0 1 18rem;
+        min-height: 9rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        padding: 1.5rem;
+        font-weight: 700;
+        text-align: center;
+        text-decoration: none;
+        text-transform: uppercase;
+        color: var(--glow);
+        background: color-mix(in srgb, var(--glow) 6%, #000);
+        border: 0.12em solid var(--glow);
+        border-radius: 0.4em;
+        box-shadow: 0 0 0.4em var(--glow), inset 0 0 0.5em color-mix(in srgb, var(--glow) 30%, transparent);
+        text-shadow: 0 0 0.25em var(--glow);
+        transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+      }
+      /* Primary line: the game name, in the big vector face. */
+      .tile-title {
+        font-size: clamp(1.25rem, 3.5vw, 2.25rem);
+        letter-spacing: 0.15em;
+      }
+      /* Secondary line: the per-game best score, smaller and a touch dimmer so it
+         reads as a subtitle without losing the inherited glow. */
+      .tile-score {
+        font-size: clamp(0.7rem, 1.6vw, 1rem);
+        letter-spacing: 0.2em;
+        opacity: 0.8;
+      }
+      .tile:hover,
+      .tile:focus-visible {
+        transform: scale(1.04);
+        background: color-mix(in srgb, var(--glow) 16%, #000);
+        box-shadow: 0 0 0.9em var(--glow), inset 0 0 1em color-mix(in srgb, var(--glow) 45%, transparent);
+        outline: none;
+      }
+      .tile:active { transform: scale(0.98); }
+    </style>
+    <script type="module" crossorigin src="/assets/index-Cvn1BT6J.js"></script>
+  </head>
+  <body>
+    <h1 class="title">ARCADE</h1>
+    <nav id="games" class="games" aria-label="Games"></nav>
+  </body>
+</html>
