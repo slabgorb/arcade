@@ -73,7 +73,7 @@ stories:
     description: "As SH2-4, for star-wars: swap loadVectorFont + ctx.fillText for layoutText + a local stroke draw, delete public/fonts/*.ttf + the font.ts loader. star-wars already strokes 3D vectors, so a stroke-text path fits its render.ts. Behaviour-preserving except the intended TTF -> stroke-vector visual change."
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-07-10'
     repos: star-wars
     workflow: tdd
@@ -81,6 +81,7 @@ stories:
       - star-wars renders all HUD/framing text via @arcade/shared/font layoutText + a canvas stroke; loadVectorFont and every ctx.fillText/ctx.font text path are removed.
       - public/fonts/*.ttf and the TTF loader in src/shell/font.ts are deleted; no remaining reference to 'Vector Battle' or FontFace.
       - vitest + vite build green; a manual run confirms the cockpit HUD/text reads correctly.
+    completed: '2026-07-10'
     review_findings: "[HIGH] wave numeral renders inside the WAVE label (waveLabelGap 56 vs measured 79.2px stroke-face label width) — drawHudHeader must derive the gap from layoutText('WAVE').width; two LOW eyeball notes (shield label air, trench banner overlap in contrived state)"
     review_verdict: approved
   - id: SH2-6
