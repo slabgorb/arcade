@@ -5,10 +5,13 @@
 
 # Dependencies
 node_modules/
+# Cloudflare Wrangler local state/cache
+.wrangler/
 # Pennyfarthing runtime
 .session/
 .claude/settings.local.json
 .pennyfarthing/config.local.yaml
+.pennyfarthing/.runtime/
 # Frame server runtime files
 .frame-port
 frame-pid
