@@ -102,10 +102,13 @@ stories:
     review_verdict: approved
   - id: SH2-7
     title: lobby font — DECIDE and implement (canvas stroke-vector labels vs a self-hosted licensed webfont) to drop the non-commercial TTF
-    description: "The lobby is the odd one out: it renders its title + tile labels as DOM/CSS text (index.html font-family 'Vector Battle','Orbitron',monospace), not canvas — so stroke-vectors do not apply mechanically. DECISION required, recorded in ADR-0002 or the story context: (a) re-render the lobby's title/labels as CANVAS stroke-vectors via @arcade/shared/font (most on-brand — the lobby IS a vector menu — but reworks the menu's text rendering), or (b) keep DOM text on a SELF-HOSTED, commercially-licensed face and drop both the Google-Fonts dependency and the non-commercial Vector Battle TTF. Either way the non-commercial TTF and its loader leave the lobby."
+    description: |-
+      CANCELED (2026-07-10): Decision made — the lobby keeps its existing TTF font as-is; neither the canvas stroke-vector rework nor the self-hosted licensed-webfont swap will be done. RATIONALE: the arcade is not a commercial product, so the Vector Battle TTF's non-commercial license is not a problem — the whole driver for this story (retiring a non-commercially-licensed font from a public site) does not apply. No work required. Original story below.
+
+      The lobby is the odd one out: it renders its title + tile labels as DOM/CSS text (index.html font-family 'Vector Battle','Orbitron',monospace), not canvas — so stroke-vectors do not apply mechanically. DECISION required, recorded in ADR-0002 or the story context: (a) re-render the lobby's title/labels as CANVAS stroke-vectors via @arcade/shared/font (most on-brand — the lobby IS a vector menu — but reworks the menu's text rendering), or (b) keep DOM text on a SELF-HOSTED, commercially-licensed face and drop both the Google-Fonts dependency and the non-commercial Vector Battle TTF. Either way the non-commercial TTF and its loader leave the lobby.
     points: 5
     priority: p2
-    status: backlog
+    status: canceled
     repos: lobby
     workflow: tdd
     acceptance_criteria:
