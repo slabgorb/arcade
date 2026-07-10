@@ -1046,3 +1046,8 @@ completed_stories:
     title: Extract the @arcade/shared pause gate + browser esc-overlay from battlezone (pure /pause + browser /esc-overlay subpaths)
     points: 3
     completed: '2026-07-10'
+  - id: SH2-13
+    epic: SH2
+    title: Consistent keyboard high-score entry across the cabinet — type initials + Backspace (tempest mousewheel and star-wars/battlezone auto-tag retired; asteroids typing is the reference)
+    points: 13
+    completed: '2026-07-10'
