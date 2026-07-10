@@ -1,10 +1,13 @@
-# Cloudflare tunnel — arcade routing
+# Cloudflare tunnel — arcade routing (RETIRED)
 
-The live arcade ([arcade.slabgorb.com](https://arcade.slabgorb.com)) is served
-through a Cloudflare tunnel. This directory is the **canonical, checked-in
-reference** for how that tunnel routes the arcade host. It exists because the
-runtime config lives outside the repo and would otherwise be lost on a fresh
-machine.
+> **Retired 2026-07-10.** The tunnel no longer serves the arcade. Production is
+> Cloudflare **R2 static hosting** — see [`docs/ops/hosting.md`](../docs/ops/hosting.md).
+> This directory is kept as history of the tunnel-era routing; do not apply it.
+
+The live arcade ([arcade.slabgorb.com](https://arcade.slabgorb.com)) *was* served
+through a Cloudflare tunnel. This directory was the checked-in reference for how
+that tunnel routed the arcade host, because the runtime config lives outside the
+repo and would otherwise be lost on a fresh machine.
 
 ## The front door is the lobby
 

@@ -44,13 +44,13 @@ ci: test-orchestrator test-all build-all
     @echo "CI passed!"
 
 # ============================================
-# SERVE THE ARCADE (canonical)
+# SERVE THE ARCADE (canonical dev loop)
 # ============================================
 # `just serve` is the ONE authoritative way to serve the arcade in dev. It runs
 # the whole cabinet — the lobby shell plus every game — from THIS checkout on
-# their pinned ports. The Cloudflare tunnel (arcade.slabgorb.com) is wired to the
-# single canonical checkout that runs this; never serve the live arcade from a
-# duplicate clone. Run `just install-all` once on a fresh checkout first.
+# their pinned ports. Dev-only: the live arcade is R2 static hosting, updated by
+# `just release <name>` (CI deploys on merge to main) or `just deploy` (manual
+# fallback). Run `just install-all` once on a fresh checkout first.
 #
 # Serve the whole arcade (lobby :5270 + games) from this canonical checkout — Ctrl-C stops all
 serve:

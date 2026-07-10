@@ -1,13 +1,14 @@
-// Story 7-7 — Canonical arcade server (hardened by 7-8).
+// Story 7-7 — Canonical arcade server (hardened by 7-8; reframed for R2 hosting).
 //
 // These tests guard the *in-repo* contract for a single authoritative way to
-// serve the arcade: a canonical `serve` recipe at the orchestrator + docs that
-// name the `just serve` workflow, the pinned ports, and the rule that
-// "canonical" is the repo (`arcade`) rather than any one checkout directory —
-// the live site is whatever checkout is bound to the tunnel's ports.
+// run the arcade in dev: a canonical `serve` recipe at the orchestrator + docs
+// that name the `just serve` workflow, the pinned ports, and the rule that
+// "canonical" is the repo (`arcade`) rather than any one checkout directory.
+// Production is Cloudflare R2 (deployed via `just deploy` / `just release`);
+// the docs must say so.
 //
-// They do not touch the operator's live infrastructure (the Cloudflare tunnel,
-// which checkout is currently running); that is a runtime fact, not an in-repo one.
+// They do not touch the operator's live infrastructure (R2 buckets, CI runs);
+// that is a runtime fact, not an in-repo one.
 //
 // Run from the orchestrator root: `npm test` (→ `node --test 'tests/**/*.test.mjs'`).
 
@@ -97,7 +98,7 @@ test('CLAUDE.md documents the canonical serve workflow (`just serve`)', () => {
   );
 });
 
-test('CLAUDE.md defines "canonical" by the repo + tunnel binding, not the directory name', () => {
+test('CLAUDE.md defines production as R2, with `just serve` as the dev loop', () => {
   const claude = read('CLAUDE.md');
   // The orchestrator repo is `arcade`; the checkout directory carries no authority.
   assert.match(
@@ -105,13 +106,10 @@ test('CLAUDE.md defines "canonical" by the repo + tunnel binding, not the direct
     /directory name/i,
     'CLAUDE.md must address the directory name explicitly — it carries no authority; every checkout is equally `arcade`',
   );
-  // "Live" is a runtime fact: whatever checkout is bound to the tunnel ports.
-  // Tolerate markdown line-wrapping between "bound to the" and "ports".
-  assert.match(
-    claude,
-    /bound to the[\s\S]*?ports/i,
-    'CLAUDE.md must define the live arcade as whatever checkout is bound to the tunnel ports',
-  );
+  assert.match(claude, /R2/, 'CLAUDE.md must describe production as served from Cloudflare R2');
+  assert.match(claude, /just serve/, 'CLAUDE.md must still document `just serve` as the local dev loop');
+  assert.match(claude, /just deploy/, 'CLAUDE.md must document `just deploy` as the way to update the live arcade');
+  assert.match(claude, /just release/, 'CLAUDE.md must document `just release` as the normal path to production');
 });
 
 test('AC5: README documents the canonical serve command (`just serve`)', () => {

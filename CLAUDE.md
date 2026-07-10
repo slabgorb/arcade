@@ -59,39 +59,76 @@ npm run build    # tsc --noEmit && vite build
 npm test         # vitest run --passWithNoTests
 ```
 
-## Serving the arcade (canonical)
+## Serving the arcade (dev)
 
-There is **one** authoritative way to serve the arcade: `just serve`, from the
-orchestrator root.
+There is **one** canonical way to run the arcade locally: `just serve`, from the
+orchestrator root. It serves **this checkout's working tree** for development —
+it has nothing to do with what the public sees (see Production below).
 
 ```bash
 just install-all   # once per fresh checkout — installs lobby + every game
 just serve         # serve the whole cabinet (lobby + games) on pinned ports
 ```
 
-`just serve` is the single source of truth for running the arcade in dev. It
-launches every servable subrepo from the current checkout on its pinned port
-(Ctrl-C stops them all):
+`just serve` launches every servable subrepo from the current checkout on its
+pinned port (Ctrl-C stops them all):
 
-| Subrepo | URL                              | Port |
-|---------|----------------------------------|------|
-| lobby   | `http://localhost:5270/lobby/`   | 5270 |
-| tempest | `http://localhost:5273/tempest/` | 5273 |
+| Subrepo    | URL                                    | Port |
+|------------|----------------------------------------|------|
+| lobby      | `http://localhost:5270/lobby/`         | 5270 |
+| tempest    | `http://localhost:5273/tempest/`       | 5273 |
+| star-wars  | `http://localhost:5274/star-wars/`     | 5274 |
+| asteroids  | `http://localhost:5275/asteroids/`     | 5275 |
+| battlezone | `http://localhost:5276/battlezone/`    | 5276 |
+| red-baron  | `http://localhost:5277/red-baron/`     | 5277 |
 
 Ports are pinned with `strictPort` in each subrepo's `vite.config.ts`, so a
 collision fails loudly instead of silently wandering to another port. The first
 server to bind a pinned port owns it; a second `just serve` on the same port
 errors out rather than quietly starting a rival copy.
 
-### Tunnel routing: the front door is the lobby
+### Production: R2 static hosting — the front door is the lobby
 
-On the live host the Cloudflare tunnel routes `arcade.slabgorb.com` **path-based**
-so the root lands on the **lobby**, not a game: `/tempest/*` → `:5273`, and
-everything else (`/`, `/lobby/*`) → the lobby on `:5270` (Vite 302-redirects `/`
-→ `/lobby/`). The runtime config (`~/.cloudflared/config.yml`) lives outside the
-repo and is shared with other tunnels, so the canonical arcade ingress is
-checked in at [`cloudflared/`](./cloudflared/) — see `cloudflared/README.md` for
-the apply + restart procedure.
+The live arcade is **not** a dev server. Each subrepo builds to a self-contained
+`dist/` that is uploaded to its own public Cloudflare R2 bucket, fronted by a
+custom domain. The front door, `arcade.slabgorb.com`, **is** the lobby bucket;
+its tiles launch each game's subdomain.
+
+| App        | Live URL                                                       | Bucket            |
+|------------|----------------------------------------------------------------|-------------------|
+| lobby      | [arcade.slabgorb.com](https://arcade.slabgorb.com)             | arcade-lobby      |
+| tempest    | [tempest.slabgorb.com](https://tempest.slabgorb.com)           | arcade-tempest    |
+| star-wars  | [star-wars.slabgorb.com](https://star-wars.slabgorb.com)       | arcade-star-wars  |
+| asteroids  | [asteroids.slabgorb.com](https://asteroids.slabgorb.com)       | arcade-asteroids  |
+| battlezone | [battlezone.slabgorb.com](https://battlezone.slabgorb.com)     | arcade-battlezone |
+| red-baron  | [red-baron.slabgorb.com](https://red-baron.slabgorb.com)       | arcade-red-baron  |
+
+The Cloudflare-tunnel routing that used to serve the arcade is retired;
+[`cloudflared/`](./cloudflared/) is kept as history. Architecture and runbook:
+[`docs/ops/hosting.md`](./docs/ops/hosting.md).
+
+### Releasing: main is production
+
+Game repos ship by release, never by hand-editing `main`:
+
+```bash
+just release <name> [patch|minor|major]   # default patch
+just release-all [level]                  # whole fleet; stops at first failure
+```
+
+`scripts/release.mjs` gates on the game's own tests + build, bumps the version
+on `develop`, merges `--no-ff` into `main`, tags `vX.Y.Z`, and pushes. The push
+to `main` triggers that repo's GitHub Actions deploy (a ten-line caller of the
+reusable `slabgorb/arcade/.github/workflows/deploy-r2.yml@main`): build → test →
+upload `dist/` to the R2 bucket. A red CI run uploads nothing — the bucket keeps
+serving the last good build.
+
+- `just deploy` / `just deploy-one <name>` still exist as the manual fallback;
+  they upload the local checkout's build directly and are the only way
+  production can diverge from `main`. Prefer releases.
+- First release of a repo: watch CI. Tests that pass locally can exceed
+  vitest's 5s default timeout on GitHub's slower runners (tempest needed a
+  scoped 30s timeout on one CPU-bound test).
 
 ### "Canonical" is the repo, not the directory
 
@@ -100,13 +137,10 @@ The orchestrator repo is **arcade**. It can be checked out in any directory
 and carries no authority. Every checkout is equally `arcade`; there is no
 blessed folder.
 
-The live arcade ([arcade.slabgorb.com](https://arcade.slabgorb.com), via a
-Cloudflare tunnel) is whatever checkout currently has `just serve` bound to the
-tunnel's pinned ports (`:5273` tempest, `:5270` lobby). Which checkout is "live"
-is a **runtime fact — which process owns the ports — not a property of the
-directory name.** To make a checkout live, run `just serve` from it; `strictPort`
-guarantees only one server can hold each pinned port at a time, so two checkouts
-never silently fight over `:5273`.
+What's live is defined by **what's on each repo's `main` branch** — CI deploys
+it to R2 — not by any checkout or dev server. `just serve` in any checkout is
+local-only and cannot affect production; only a release (or an explicit
+`just deploy`) can.
 
 ## Git Workflow
 
@@ -114,6 +148,9 @@ never silently fight over `:5273`.
 - **Game subrepos:** each has its own remote and history.
   - **Default branch:** `develop`
   - **PRs target:** `develop`
+  - **`main` = production:** never commit or push to a game's `main` directly —
+    it only receives release merges (`just release <name>`), and every push to
+    it auto-deploys to R2.
   - **Naming:** `feat/{story}-{description}`, `fix/{issue}-{description}`,
     `chore/{story}-{description}`
 
