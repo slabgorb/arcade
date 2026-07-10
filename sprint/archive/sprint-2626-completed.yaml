@@ -1071,3 +1071,8 @@ completed_stories:
     title: Disassembly fidelity audit (spike) — findings doc + file follow-on stories, no behavior change
     points: 3
     completed: '2026-07-10'
+  - id: SH2-8
+    epic: SH2
+    title: Extract @arcade/shared/glow (browser subpath) — withGlow + glowPolyline superset — and migrate the three flat games
+    points: 5
+    completed: '2026-07-10'

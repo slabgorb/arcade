@@ -117,13 +117,17 @@ stories:
     description: "First BROWSER subpath. Build the neon-glow primitive: withGlow(ctx, style, draw) sets strokeStyle/lineWidth/shadowColor/shadowBlur, runs the draw, then resets shadowBlur to 0 (the footgun every game hand-writes); glowPolyline(ctx, pts, style, close?) is the one-liner built on it. GlowStyle.stroke accepts string | CanvasGradient so richer looks are expressible. Deliberately no ctx.save/restore (mirrors the existing per-frame code). Migrate asteroids/star-wars/battlezone's single-pass polygon + text strokes onto glowPolyline/withGlow; per-cabinet blur/width constants stay in the games. Extend the purity guard so glow is a recognised browser subpath (exempt) while the pure core stays DOM-free."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-10'
     repos: arcade-shared, asteroids, star-wars, battlezone
     workflow: tdd
     acceptance_criteria:
       - "@arcade/shared/glow exports GlowStyle, withGlow(ctx, style, draw), and glowPolyline(ctx, pts, style, close?); a fake-ctx test asserts the state-set sequence AND that shadowBlur is reset to 0 after each call."
       - asteroids, star-wars, and battlezone stroke their polygons (and stroke-text from SH2-4/5/6) via the shared primitive at a pinned ref; per-cabinet constants remain in each game.
       - The purity guard recognises glow as a browser subpath (exempt) and still fails the pure core on DOM references; each game's vitest + vite build are green.
+    completed: '2026-07-10'
+    branch: feat/SH2-8-glow-browser-subpath
+    review_verdict: approved
   - id: SH2-9
     title: tempest conforms to @arcade/shared/glow without regressing tube depth
     description: "Bring tempest onto the shared glow path like every other game, WITHOUT flattening its look. Collapse tempest's bare strokePoly + hand-set glow onto withGlow: the far->near tube gradient becomes GlowStyle.stroke (CanvasGradient), and the ring core+halo becomes two withGlow calls; the per-element blur ramp (6/8/18) stays as tempest's constants. This is the regression-sensitive migration — a reviewer could approve the flat games (SH2-8) yet reject tempest — so it is its own story with an explicit visual-parity gate."
