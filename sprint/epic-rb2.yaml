@@ -22,10 +22,13 @@ stories:
     title: 'Transcribe biplane connect-lists (DB.MAP/DB.MAR/DB.LNS + BLANKV/VSBLEV opcode semantics) and prop/explosion/blimp picture-lists from 037007.XXX into a TS topology module; correct fidelity-doc gap #1 (picture-ROM source is PRESENT, misnamed .XXX, not absent)'
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-10'
     repos: red-baron
     workflow: trivial
+    completed: '2026-07-10'
     type: chore
+    review_verdict: approved
   - id: rb2-3
     title: Enemy biplane render + LOD — draw the 42-vertex model via the transcribed connect-lists, built-in LOD split (42-pt near .PLPNT / 29-pt drone .DRPNT far), bank proportional to turn-rate, through the rb1 scene substrate
     description: 'Carryforward from rb2-1 (flight model). Enemy render inherits the flight-model → camera scale factors in red-baron/src/core/flight.ts: toAttitude/toEye map ROM units → radians/world via ROLL_SCALE=π/1024 (0x200 quadrant → 0x100=45° max bank), PITCH_SCALE=π/512, YAW_SCALE=π/1024, ALT_TO_Y=1/4 (I4YPOS x4 → world eye Y) — draw enemies in the SAME world frame these produce. Enemy bank proportional to turn-rate (this title) should reuse the PFROTN=PLDELX×8 coupling from flight.ts. OPEN (TEA/Reviewer finding, rb2-1): the PFROTN bit-format angle (XXX XQQA AAAA AA.FF, findings §2) is only a scalar in flight.ts; if exact projection is needed, add an explicit ROM-angle→radian converter rather than the scalar.'

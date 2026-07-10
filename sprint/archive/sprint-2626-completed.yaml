@@ -1026,3 +1026,8 @@ completed_stories:
     title: star-wars — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors
     points: 3
     completed: '2026-07-10'
+  - id: rb2-2
+    epic: rb2
+    title: 'Transcribe biplane connect-lists (DB.MAP/DB.MAR/DB.LNS + BLANKV/VSBLEV opcode semantics) and prop/explosion/blimp picture-lists from 037007.XXX into a TS topology module; correct fidelity-doc gap #1 (picture-ROM source is PRESENT, misnamed .XXX, not absent)'
+    points: 2
+    completed: '2026-07-10'
