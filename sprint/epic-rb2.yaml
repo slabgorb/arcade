@@ -49,9 +49,13 @@ stories:
       Carryforward from rb2-3 (biplane render + LOD, src/core/biplane.ts — APPROVED, on develop). rb2-3 shipped the enemy biplane as PURE core building blocks but deliberately did NOT wire them into the runnable cockpit — that is THIS story's job. To render the spawned enemy: compose the model matrix translation(enemyWorldPos) then rotationZ(biplaneBank(enemy.turnRate)) (optionally rotationY for heading), form MVP = projection·view·model, select the model with biplaneLOD(depth) where depth = camera->enemy distance, call renderModel(model, mvp), and stroke the returned NDC SceneSegments as glowing vectors. Update the now-stale src/main.ts comment ("Still an EMPTY cockpit... no enemy/biplane geometry... blocked... a later rb2 story"). The weaving window-follower's ΔX toward P.OLIM/P.ILIM IS the turn-rate to feed biplaneBank, so the enemy banks into its weave with the same ±45° pfrotn coupling as the player horizon. GOTCHAS (rb2-3 reviewer findings): (1) build biplane models ONLY via biplaneLOD — renderModel trusts op.point to be in-bounds with no runtime guard, so a hand-built BiplaneModel with a mismatched points/connect pairing crashes in scene.ts toClip; (2) LOD_DISTANCE=1500 is an inferred tunable, not a ROM constant — retune against the real enemy world-scale during playtest; (3) renderModel/scene.ts projectSegment only cull edges with BOTH endpoints behind the eye — a biplane flown very close can flash a perspective-mirrored stray edge (near-plane clipping is unimplemented; candidate follow-up).
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-10'
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-10'
+    review_findings: 'Test-quality REJECT: 2 vacuous cockpit-boot wiring guards (renderModel/proximityBand anyMatch matches src declarations), untested depth-closing/MIN_DEPTH mechanic, tautological zero-bank test, missing edge coverage. Implementation clean (rule-checker + security 0 findings). Route to TEA red rework.'
+    review_verdict: approved
   - id: rb2-5
     title: Machine-gun fire + hit detection — alternating L/R guns, gun-overheat model (GUN.ST), 13 shell slots expiring at S.MAXZ, 4x shell sub-step per calc-frame, CDSSET/SHCDCK rotated collision windows
     points: 5

@@ -1051,3 +1051,8 @@ completed_stories:
     title: Consistent keyboard high-score entry across the cabinet — type initials + Backspace (tempest mousewheel and star-wars/battlezone auto-tag retired; asteroids typing is the reference)
     points: 13
     completed: '2026-07-10'
+  - id: rb2-4
+    epic: rb2
+    title: Single-enemy dogfight AI + spawn — weaving window-follower steering (accelerate toward P.OLIM/P.ILIM window, reverse at bounds), spawn from a screen side banked 90 deg at depth P.INDP; the 25-percent lone-plane case first
+    points: 5
+    completed: '2026-07-10'
