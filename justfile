@@ -97,6 +97,25 @@ deploy-one name:
     node {{root}}/scripts/deploy-r2.mjs {{root}}/{{name}}/dist "arcade-{{name}}"
 
 # ============================================
+# RELEASE (develop → main + tag → CI deploys to R2)
+# ============================================
+# Cut a semver release of one subrepo: gate on tests+build, bump version on
+# develop, merge to main, tag vX.Y.Z, push. The push to main triggers the
+# repo's GitHub Actions deploy workflow (R2 upload).
+# e.g. `just release tempest` (patch) or `just release tempest minor`
+release name level="patch":
+    node {{root}}/scripts/release.mjs {{root}}/{{name}} {{level}}
+
+# Release every servable subrepo (lobby + games) at the same bump level
+release-all level="patch":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for s in {{subrepos}}; do
+      echo "==> releasing $s"
+      node {{root}}/scripts/release.mjs {{root}}/$s {{level}}
+    done
+
+# ============================================
 # tempest
 # ============================================
 
