@@ -1126,3 +1126,8 @@ completed_stories:
     title: 'Scrolling landscape — up to 4 PFOBJ mountain slots scroll toward the player and "fall" from the horizon (PFOBMN); render the SCAPE silhouettes via the SEGSTR-decoded 2-D lists through the rb1 scene.ts/camera.ts/horizon.ts substrate; the low-altitude mountain-pass run'
     points: 5
     completed: '2026-07-11'
+  - id: SH2-16
+    epic: SH2
+    title: Stand up @arcade/shared/audio (browser subpath) — extract the SFX voice-stealing engine + purity guard; re-point tempest
+    points: 5
+    completed: '2026-07-11'
