@@ -33,9 +33,13 @@ stories:
     title: 'Surface phase: wave-scaled towers-remaining (byte_98CB 22/22/32..) + 50,000 cleared-all-towers bonus, replacing the flat 4-kill quota'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-11'
+    branch: feat/sw3-3-wave-scaled-towers
+    review_verdict: approved
   - id: sw3-4
     title: Trench voice-line timer — Luke trust me @16 / Yahoo you're all clear @24 / Force is strong @22 (Sound_18/1A/16), reachable now without new mechanics
     points: 3

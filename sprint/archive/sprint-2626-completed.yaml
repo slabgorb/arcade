@@ -1151,3 +1151,8 @@ completed_stories:
     title: Migrate star-wars, asteroids onto @arcade/shared/audio (consumes SH2-16) [battlezone descoped 2026-07-11 — synthesis engine, not a sample-engine consumer]
     points: 5
     completed: '2026-07-11'
+  - id: sw3-3
+    epic: sw3
+    title: 'Surface phase: wave-scaled towers-remaining (byte_98CB 22/22/32..) + 50,000 cleared-all-towers bonus, replacing the flat 4-kill quota'
+    points: 5
+    completed: '2026-07-11'
