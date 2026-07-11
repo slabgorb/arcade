@@ -67,3 +67,11 @@ stories:
     repos: red-baron
     workflow: tdd
     type: chore
+  - id: rb3-8
+    title: 'Fix flight.ts altitude-clamp radix — ALT_MIN/ALT_MAX read the RBARON.MAC .RADIX 16 (hex) equate block as DECIMAL: PLYMAX=180*4 is 0x180*4=1536 not 720 (ALT_MIN=8*4=32 is coincidentally right since 0x8=8). Re-verify PLYMIN/PLYMAX (and PFPLOW/PFPHI) against the hex block — proof .STAR0=1B, P.MAXZ=1001=HORZ+1, cross-check topology.ts HORZ/HORIZN/PFPLOW landed by rb3-1 — and correct flight.ts:50-53 before rb3-2 (ground-mode altitude) and rb3-3 (HORIZN render) rely on it'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: trivial
+    type: bug
