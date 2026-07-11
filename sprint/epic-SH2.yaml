@@ -220,3 +220,11 @@ stories:
       - "battlezone is behaviour-identical: shell/pause.ts consumes @arcade/shared/pause, the overlay routes through drawEscOverlay, and its dual-tread card + #33ff66 are preserved verbatim; the surviving bz2-5 pause-gate/pause-overlay tests stay green."
       - "red-baron's keybind card renders correctly via drawEscOverlay's transitive shared font (no separate red-baron HUD-font migration); the choice is documented in the story context."
       - "Each repo's vitest + vite build are green; a manual run of each of the five games confirms Escape pauses, dims, and resumes, and the card reads in that cabinet's style."
+  - id: SH2-15
+    title: red-baron adopts @arcade/shared/loop — replace main.ts's duplicated hand-rolled fixed-step accumulator (the accumulator/SIM_TIMESTEP_S while-loop, main.ts:237-288) with the canonical advanceFixedSteps/createLoop; behaviour-preserving (same calc-frame cadence, findings §1 ÷6 trap), /loop already published (star-wars+asteroids consume it) and red-baron already pins @arcade/shared (math3d+rng)
+    points: 2
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: trivial
+    type: refactor
