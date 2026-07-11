@@ -250,16 +250,18 @@ stories:
     branch: feat/SH2-16-shared-audio-engine
     review_verdict: approved
   - id: SH2-17
-    title: Migrate star-wars, asteroids, battlezone onto @arcade/shared/audio (consumes SH2-16)
+    title: Migrate star-wars, asteroids onto @arcade/shared/audio (consumes SH2-16) [battlezone descoped 2026-07-11 — synthesis engine, not a sample-engine consumer]
     description: "Consumption half of the audio extraction, split from SH2-16 per the cabinet's publish->consume pattern (SH2-2 created /font; SH2-4/5/6 consumed it). Design: docs/superpowers/specs/2026-07-11-shared-audio-extraction-design.md. Migrate the other three cabinets' hand-rolled SFX engines onto createAudioEngine from @arcade/shared/audio (SH2-16), keeping each game's SOUNDS/CHANNELS/baseUrl/masterGain as local NUMBERS and its audio-dispatch.ts event wiring untouched. Per game: asteroids DROPS its bespoke SampleId/file-keyed indirection — the shared engine's filename-keyed buffer store already handles its several-names-one-file case, so no asteroids-specific branch enters shared code. battlezone mirrors tempest (behaviour-identical). star-wars migrates its SFX onto the shared engine but KEEPS its TMS5220 LPC speech subsystem (speak() + 23-line catalogue + lazy speech loader) game-side; if speech needs the same gesture-unlocked AudioContext, add a MINIMAL read-only context(): AudioContext | null accessor to AudioEngine (star-wars proves the extension point, the way tempest proved glow's gradient superset) — otherwise speech runs unchanged. Behaviour-preserving throughout: same sounds, same channels, same voice-stealing. red-baron is OUT OF SCOPE (no audio yet — POKEY sound is unbuilt rb2 work)."
     points: 5
     priority: p2
-    status: backlog
-    repos: star-wars, asteroids, battlezone, arcade-shared
+    status: done
+    repos: star-wars, asteroids, arcade-shared
     workflow: tdd
     depends_on: SH2-16
     acceptance_criteria:
       - "star-wars, asteroids, and battlezone each construct their SFX engine via createAudioEngine(manifest) at a pinned @arcade/shared ref; each game's local engine body (getAudioContextCtor, createBufferSource, channel-stealing, load loop) is deleted, leaving only its manifest + audio-dispatch.ts."
       - "asteroids' SampleId / file-keyed indirection is removed — its multiple-names-per-file sounds resolve through the shared filename-keyed buffer store; asteroids vitest + vite build are green with SFX audibly unchanged."
       - "star-wars keeps its speech working (speak() + LPC catalogue still fires): either it shares the shared engine's AudioContext via a newly added read-only context() accessor on AudioEngine (documented in the story context), or its speech runs on its own context unchanged; star-wars vitest + vite build are green."
-      - "battlezone is behaviour-identical (same sounds/channels/loops); each of the three games' SFX, loops, and channel voice-stealing are unchanged on a manual run, and no local duplicate of the engine boilerplate remains in any of them."
+      - "battlezone DESCOPED (2026-07-11, user-approved): its audio is a runtime synthesis engine (oscillators/noise/LFOs + setEngine/stopEngine hum, zero .wav samples), not the sample player the design survey assumed, so it cannot migrate onto the sample-based shared engine behaviour-preservingly. Left unchanged on its synthesis engine. star-wars + asteroids only. A separate future story may evaluate a battlezone audio path (non-behaviour-preserving)."
+    completed: '2026-07-11'
+    review_verdict: approved
