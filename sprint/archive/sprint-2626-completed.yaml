@@ -1166,3 +1166,8 @@ completed_stories:
     title: Phase music engine — looping music channel driven off phase edges (space/towers/trench themes + Imperial March); needs music assets sourced
     points: 5
     completed: '2026-07-11'
+  - id: sw3-10
+    epic: sw3
+    title: Death Star renders inside-out / anomalous — fix the buildDeathStar wireframe (models.ts) winding/geometry so the hull reads as a solid sphere, not turned-through
+    points: 3
+    completed: '2026-07-11'
