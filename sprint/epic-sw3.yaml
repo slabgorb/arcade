@@ -80,9 +80,12 @@ stories:
     title: Port TIE wing-fragment death models (Obj_Tie_Wing_Frag_1/2/3) and wire to the TIE-destroyed animation
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-11'
+    review_verdict: approved
   - id: sw3-9
     title: Authentic enemy fireball render — replace the hollow concentric amber rings (drawFireball, render.ts) with the ROM fireball vector/shape from the disassembly (sub_A849/sub_AAE4, Object_3D_Data.asm)
     points: 3

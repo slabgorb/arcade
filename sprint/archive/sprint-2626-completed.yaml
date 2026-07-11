@@ -1181,3 +1181,8 @@ completed_stories:
     title: "Blimp cabinet integration — wire the tested blimp core (src/core/blimp.ts, rb2-10) into main.ts: spawn on the ~25% BLMOTN roll, drift-step each calc-frame, render BLIMP_PICTURE BROADSIDE (add a yaw — the ROM geometry is authored nose-on along local z), fire at the player on the ÷2 cadence via a real enemy-shell→player-damage path, collide/score(flat 200)/explode through the shared guns/scoring/explosion seams, and DESPAWN when it drifts off-screen (step is unbounded by design). Resolve the Enemy-vs-Blimp 'kind' plumbing (widen the union or adapt in main.ts). NB: the blimp DRIFTS across (non-weaving) — this corrects rb2-10 AC-3's stale 'weaving motion' wording."
     points: 3
     completed: '2026-07-11'
+  - id: sw3-8
+    epic: sw3
+    title: Port TIE wing-fragment death models (Obj_Tie_Wing_Frag_1/2/3) and wire to the TIE-destroyed animation
+    points: 2
+    completed: '2026-07-11'
