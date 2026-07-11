@@ -18,9 +18,17 @@ stories:
     title: Trench pilotable viewpoint (sub_703B ±511 lateral / −257..−3583 vertical band) — makes catwalks dodgeable instead of a guaranteed shield loss every run
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: star-wars
     workflow: tdd
+    acceptance_criteria:
+      - Player viewpoint in the trench phase is pilotable — lateral and vertical position update from input each tick within the ROM clamp band (lateral ±511, vertical −257..−3583).
+      - Position is clamped to the band edges (no wrap, no overshoot).
+      - 'Catwalks/obstacles become dodgeable: a run where the player steers clear does NOT incur the previously-guaranteed shield loss.'
+      - Deterministic core sim (src/core) owns the position update; src/shell only reads it for render/input. Follows existing star-wars core/shell split.
+    completed: '2026-07-11'
+    review_verdict: approved
   - id: sw3-3
     title: 'Surface phase: wave-scaled towers-remaining (byte_98CB 22/22/32..) + 50,000 cleared-all-towers bonus, replacing the flat 4-kill quota'
     points: 5

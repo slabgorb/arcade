@@ -1131,3 +1131,8 @@ completed_stories:
     title: Stand up @arcade/shared/audio (browser subpath) — extract the SFX voice-stealing engine + purity guard; re-point tempest
     points: 5
     completed: '2026-07-11'
+  - id: sw3-2
+    epic: sw3
+    title: Trench pilotable viewpoint (sub_703B ±511 lateral / −257..−3583 vertical band) — makes catwalks dodgeable instead of a guaranteed shield loss every run
+    points: 5
+    completed: '2026-07-11'
