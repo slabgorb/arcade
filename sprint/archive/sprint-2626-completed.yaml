@@ -1161,3 +1161,8 @@ completed_stories:
     title: 'Surface phase geometry fidelity: re-author SURFACE_TOWER as the authentic tall waisted yellow column with white cap (+ red ground bunkers) from WSVROM.MAC — current model is a squat wide 512x96 box that reads as a red ship-hull, nothing like the cabinet'
     points: 5
     completed: '2026-07-11'
+  - id: sw3-5
+    epic: sw3
+    title: Phase music engine — looping music channel driven off phase edges (space/towers/trench themes + Imperial March); needs music assets sourced
+    points: 5
+    completed: '2026-07-11'

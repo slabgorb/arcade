@@ -55,9 +55,13 @@ stories:
     title: Phase music engine — looping music channel driven off phase edges (space/towers/trench themes + Imperial March); needs music assets sourced
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-11'
+    review_findings: AC1 single-channel (one-loop-at-a-time) invariant unpinned — MUSIC_CHANNELS untested, mutation-proven a channel-map typo breaks AC1 green [HIGH]; music-base decoupling from custom SFX base unpinned, mutation-proven [MEDIUM]. Add both test guards; 2 low tautological-test cleanups.
+    review_verdict: approved
   - id: sw3-6
     title: Extra-life thresholds (400k/800k) + flashing bonus/extra-life HUD row (byte_4B2C) under the score
     points: 3
