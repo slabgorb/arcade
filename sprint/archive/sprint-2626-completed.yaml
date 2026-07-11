@@ -1121,3 +1121,8 @@ completed_stories:
     title: 'Blimp / Zeppelin — 25-percent spawn, drifts across, fires at the player, worth 200 pts; authentic BLIMP/DBLIMP geometry (descope candidate: may fold into rb2-7)'
     points: 2
     completed: '2026-07-11'
+  - id: rb3-3
+    epic: rb3
+    title: 'Scrolling landscape — up to 4 PFOBJ mountain slots scroll toward the player and "fall" from the horizon (PFOBMN); render the SCAPE silhouettes via the SEGSTR-decoded 2-D lists through the rb1 scene.ts/camera.ts/horizon.ts substrate; the low-altitude mountain-pass run'
+    points: 5
+    completed: '2026-07-11'
