@@ -98,3 +98,11 @@ stories:
     repos: star-wars
     workflow: tdd
     type: bug
+  - id: sw3-11
+    title: 'Surface phase geometry fidelity: re-author SURFACE_TOWER as the authentic tall waisted yellow column with white cap (+ red ground bunkers) from WSVROM.MAC — current model is a squat wide 512x96 box that reads as a red ship-hull, nothing like the cabinet'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
