@@ -1191,3 +1191,8 @@ completed_stories:
     title: Bake resolved ROM score values — TIE 1,000 (from 100), Darth Vader 2,000, exhaust port 25,000 (from 1,000), fireball 33 (from 50)
     points: 2
     completed: '2026-07-11'
+  - id: sw3-15
+    epic: sw3
+    title: "Trench exhaust-port finish is unmissable (never fails in 20+ runs) — port always spawns dead-center (spawnPort → [0,0,-DIST], no lateral variation) and PORT_HIT_RADIUS=120 is ~2x the visible octagon (~64), so any centered bolt down the full trench lands. Restore a real hit challenge: tighten the hit sphere toward the octagon span, require aim alignment, and gate the hit/miss test to the ROM's narrow approach window (findings ## Exhaust port & run outcome, the $800 window)"
+    points: 3
+    completed: '2026-07-11'

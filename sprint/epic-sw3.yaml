@@ -145,7 +145,10 @@ stories:
     title: "Trench exhaust-port finish is unmissable (never fails in 20+ runs) — port always spawns dead-center (spawnPort → [0,0,-DIST], no lateral variation) and PORT_HIT_RADIUS=120 is ~2x the visible octagon (~64), so any centered bolt down the full trench lands. Restore a real hit challenge: tighten the hit sphere toward the octagon span, require aim alignment, and gate the hit/miss test to the ROM's narrow approach window (findings ## Exhaust port & run outcome, the $800 window)"
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-11'
     type: bug
+    review_verdict: approved
