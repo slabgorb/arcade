@@ -1106,3 +1106,8 @@ completed_stories:
     title: Extract @arcade/shared/view (browser) — resizeToDisplay + pure letterbox — and fold asteroids margin.ts + battlezone viewport.ts
     points: 5
     completed: '2026-07-11'
+  - id: rb3-2
+    epic: rb3
+    title: 'Ground-wave mode entry + forced-slow control — INITGR sets GRMODE=0C0 (D7 ground + D6 plane-disable) so the main loop skips new-plane generation; DISCHK forced to the slow-air band in ground mode; extend waves.ts so the MODECT LSB selects INITGR (ground) vs STPLNE (plane), MCOUNT 4,2,3,2,1,3,4,2 inter-wave counts already present from rb2-7'
+    points: 3
+    completed: '2026-07-11'

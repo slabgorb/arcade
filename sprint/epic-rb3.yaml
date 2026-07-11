@@ -23,9 +23,12 @@ stories:
     description: 'Carryforward from rb2-7 (waves.ts): MODECT/NEWCT wave alternation + the MCOUNT: 4,2,3,2,1,3,4,2 table already landed, but always produce PLANE waves. THIS story wires the MODECT LSB to actually branch INITGR (ground) vs STPLNE (plane) (findings §4, R2BRON.MAC:2254-2269) and introduces GRMODE state (=0C0: D7 GROUND + D6 plane-disable) so plane-generation is skipped while a ground wave runs. Also flips DISCHK: ground mode forces the slow control band (findings §2, "ground mode is forced to" slow) — reuse flight.ts ProximityBand plumbing (FlightInput.proximity) rather than a new path; ground mode pins it to the slow feel regardless of nearest-object distance. .LEVLS=5 is the difficulty ceiling (§3), not a stage count. Foundation for rb3-3..rb3-6.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-11'
+    review_verdict: approved
   - id: rb3-3
     title: 'Scrolling landscape — up to 4 PFOBJ mountain slots scroll toward the player and "fall" from the horizon (PFOBMN); render the SCAPE silhouettes via the SEGSTR-decoded 2-D lists through the rb1 scene.ts/camera.ts/horizon.ts substrate; the low-altitude mountain-pass run'
     description: 'Depends rb3-1 (SCAPE data) + rb3-2 (ground mode). Findings §4 (INITGR, R2BRON.MAC:1401-1407; PFOBMN): landscape = the four SCAPE silhouettes fed through up to 4 PFOBJ mountain slots that scroll toward the player and fall from the horizon line (HORIZN=$40). Reuse the rb1 render substrate (scene.ts projectSegment, camera.ts flightView, horizon.ts) — do NOT add a new renderer. The mountains are 2-D playfield objects given depth by the same divide-by-depth projection as the biplanes (findings §8); stroke the decoded SCAPE segments as glowing vectors. GOTCHA (carryforward from rb2-4 reviewer finding): scene.ts only culls edges with BOTH endpoints behind the eye — a mountain crossing min depth can flash a stray near-plane edge; note as candidate follow-up, do not gold-plate.'
