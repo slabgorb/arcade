@@ -1136,3 +1136,8 @@ completed_stories:
     title: Trench pilotable viewpoint (sub_703B ±511 lateral / −257..−3583 vertical band) — makes catwalks dodgeable instead of a guaranteed shield loss every run
     points: 5
     completed: '2026-07-11'
+  - id: sw3-4
+    epic: sw3
+    title: Trench voice-line timer — Luke trust me @16 / Yahoo you're all clear @24 / Force is strong @22 (Sound_18/1A/16), reachable now without new mechanics
+    points: 3
+    completed: '2026-07-11'

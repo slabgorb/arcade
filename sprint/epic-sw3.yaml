@@ -40,9 +40,13 @@ stories:
     title: Trench voice-line timer — Luke trust me @16 / Yahoo you're all clear @24 / Force is strong @22 (Sound_18/1A/16), reachable now without new mechanics
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-11'
+    review_findings: 'HIGH: AC6 reset test is vacuous (passes even if the enterPhase reset is deleted; misses an observable silent-second-trench-run regression). MEDIUM: no test for a cue coinciding with a crash/port-hit/miss frame. Production src/ is correct + rule-clean; test-only rework.'
+    review_verdict: approved
   - id: sw3-5
     title: Phase music engine — looping music channel driven off phase edges (space/towers/trench themes + Imperial March); needs music assets sourced
     points: 5
