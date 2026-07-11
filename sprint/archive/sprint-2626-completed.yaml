@@ -1171,3 +1171,8 @@ completed_stories:
     title: Death Star renders inside-out / anomalous — fix the buildDeathStar wireframe (models.ts) winding/geometry so the hull reads as a solid sphere, not turned-through
     points: 3
     completed: '2026-07-11'
+  - id: sw3-13
+    epic: sw3
+    title: Animate the enemy fireball sparkle — cycle the ROM's 4 gunshot frames (GNB0-3) + fuse-ball tips (WSVROM.MAC "GUN SHOTS -- SPARKLES WITH FUSE BALLS"); today only the single static GNB0 frame renders (drawFireball, render.ts)
+    points: 3
+    completed: '2026-07-11'

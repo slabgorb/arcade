@@ -116,3 +116,14 @@ stories:
     completed: '2026-07-11'
     type: bug
     review_verdict: approved
+  - id: sw3-13
+    title: Animate the enemy fireball sparkle — cycle the ROM's 4 gunshot frames (GNB0-3) + fuse-ball tips (WSVROM.MAC "GUN SHOTS -- SPARKLES WITH FUSE BALLS"); today only the single static GNB0 frame renders (drawFireball, render.ts)
+    points: 3
+    priority: p2
+    status: done
+    started: '2026-07-11'
+    repos: star-wars
+    workflow: tdd
+    completed: '2026-07-11'
+    type: bug
+    review_verdict: approved
