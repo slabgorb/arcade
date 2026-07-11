@@ -89,9 +89,12 @@ stories:
     title: The returning ace — BEHIND YOU pass + evade-death — P.UPD0 fly-by then return-from-six; EOLSEQ evade check (bank to correct side + hard-enough turn; first pass free, then 50/50). The signature bank-hard-to-shake-him mechanic
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-10'
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-10'
+    review_verdict: approved
   - id: rb2-9
     title: Lives + death sequence + respawn grace — ENDLFE DEC LIVES to INITIAL respawn, bullet-hole windshield + spiral horizon-scroll + starfield, WO.CNT 5-frame enemy-disable spawn grace, INITLF initial lives
     points: 3

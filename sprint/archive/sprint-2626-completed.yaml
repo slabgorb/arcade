@@ -1091,3 +1091,8 @@ completed_stories:
     title: 'Transcribe ground/landscape data (the rb2-2 analogue) — mountain silhouettes SCAPE0..3 (21/16/18/15 pts, PFPNTS 2-D format via the SEGSTR = pointIndex*6+4 opcode already stubbed in topology.ts), the 24 PFCOL ground-object collision boxes (PFOCOL), and horizon/altitude constants HORZ=1000, HORIZN=$40, PFPLOW=80*4 — into src/core/topology.ts from RBGRND.MAC'
     points: 2
     completed: '2026-07-10'
+  - id: rb2-8
+    epic: rb2
+    title: The returning ace — BEHIND YOU pass + evade-death — P.UPD0 fly-by then return-from-six; EOLSEQ evade check (bank to correct side + hard-enough turn; first pass free, then 50/50). The signature bank-hard-to-shake-him mechanic
+    points: 5
+    completed: '2026-07-10'
