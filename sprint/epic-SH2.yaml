@@ -151,13 +151,16 @@ stories:
     description: "Extract the DPR-resize + letterbox concern all four games hand-roll in main.ts. resizeToDisplay(canvas, cssW, cssH, dpr) sizes the backing store to DPR, sets the CSS size, returns the resolved ViewportSize (DOM). letterbox(canvasW, canvasH, aspect) is PURE math returning the aspect-preserving rect + scale. First reconcile asteroids' margin.ts (55 lines) and battlezone's viewport.ts (97 lines) to confirm they reduce to one letterbox contract (or add explicit modes); then migrate all four games. Pure letterbox math gets node unit tests; resizeToDisplay is shell-verified."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: arcade-shared, tempest, asteroids, star-wars, battlezone
     workflow: tdd
     acceptance_criteria:
       - "@arcade/shared/view exports resizeToDisplay(canvas, cssW, cssH, dpr) -> ViewportSize and a pure letterbox(canvasW, canvasH, aspect) -> {x,y,width,height,scale}; letterbox has node unit tests for the aspect math."
       - asteroids' margin.ts and battlezone's viewport.ts are folded into the shared module (reconciled to one letterbox contract, or documented distinct modes); all four games consume @arcade/shared/view at a pinned ref.
       - Each game's resize/letterbox behaviour is unchanged (manual run at multiple window sizes); vitest + vite build green.
+    completed: '2026-07-11'
+    review_verdict: approved
   - id: SH2-11
     title: Extract the "additional pass" compositor + phosphor pass; migrate tempest's phosphor+shake through it (tempest sole consumer)
     description: "Build the post-processing hook the design reserves. @arcade/shared/compositor exports RenderPass {name, render(src,dst,frame), resize?, clear?}, FrameInfo {dt,dpr,width,height,shake}, and createCompositor(passes) -> {beginScene(w,h,dpr), present(main, frame), clear()}: the game draws its scene into beginScene's offscreen ctx, and present runs the pass chain to the screen (empty passes = a plain blit with shake). @arcade/shared/phosphor exports phosphorPass({decay}) -> RenderPass (holding the EMA accumulator + twin buffers) and the pure phosphorAlpha(decay, dt). Migrate tempest's existing beginScene/composite phosphor + screen-shake onto createCompositor([phosphorPass({decay})]) — behaviour-identical, tempest is the ONLY consumer. Porting afterglow to the other cabinets stays deferred; they may adopt createCompositor([]) as a no-op seam."
