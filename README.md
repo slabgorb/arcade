@@ -14,6 +14,17 @@ lobby front door, with every game one tile away.
 
 ## Games
 
+<table>
+<tr>
+<td width="50%"><a href="https://tempest.slabgorb.com"><img width="100%" src="https://arcade-assets.slabgorb.com/tempest/thumb.png" alt="Tempest gameplay — the Claw riding a square tube as Flippers climb the lanes"></a></td>
+<td width="50%"><a href="https://star-wars.slabgorb.com"><img width="100%" src="https://arcade-assets.slabgorb.com/star-wars/thumb.png" alt="Star Wars gameplay — the Death Star trench run toward the exhaust port"></a></td>
+</tr>
+<tr>
+<td width="50%"><a href="https://asteroids.slabgorb.com"><img width="100%" src="https://arcade-assets.slabgorb.com/asteroids/thumb.png" alt="Asteroids gameplay — the vector ship among drifting rocks as a saucer crosses"></a></td>
+<td width="50%"><a href="https://battlezone.slabgorb.com"><img width="100%" src="https://arcade-assets.slabgorb.com/battlezone/thumb.png" alt="Battlezone gameplay — first-person wireframe tank duel under the radar scanner"></a></td>
+</tr>
+</table>
+
 | Game | Play | Description | Repo | Stack |
 |------|------|-------------|------|-------|
 | **Tempest** | [tempest.slabgorb.com](https://tempest.slabgorb.com) | Faithful clone of Atari's 1981 vector arcade game — ride the rim of a tube and blast enemies climbing the lanes. | [slabgorb/tempest](https://github.com/slabgorb/tempest) | TypeScript · Vite · Vitest |
