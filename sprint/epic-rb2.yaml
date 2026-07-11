@@ -109,9 +109,12 @@ stories:
     title: 'Blimp / Zeppelin — 25-percent spawn, drifts across, fires at the player, worth 200 pts; authentic BLIMP/DBLIMP geometry (descope candidate: may fold into rb2-7)'
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-11'
+    review_verdict: approved
   - id: rb2-11
     title: POKEY + analog sound — 5 envelope tables (corrected 8-byte format), engine hum, machine-gun rat-a-tat (D2, INTCNT&8 strobe), explosion ramp, enemy-approach whine, score/bonus/announce jingles
     points: 5

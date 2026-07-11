@@ -1116,3 +1116,8 @@ completed_stories:
     title: Lives + death sequence + respawn grace — ENDLFE DEC LIVES to INITIAL respawn, bullet-hole windshield + spiral horizon-scroll + starfield, WO.CNT 5-frame enemy-disable spawn grace, INITLF initial lives
     points: 3
     completed: '2026-07-11'
+  - id: rb2-10
+    epic: rb2
+    title: 'Blimp / Zeppelin — 25-percent spawn, drifts across, fires at the player, worth 200 pts; authentic BLIMP/DBLIMP geometry (descope candidate: may fold into rb2-7)'
+    points: 2
+    completed: '2026-07-11'
