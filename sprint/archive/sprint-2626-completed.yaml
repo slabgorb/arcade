@@ -1186,3 +1186,8 @@ completed_stories:
     title: Port TIE wing-fragment death models (Obj_Tie_Wing_Frag_1/2/3) and wire to the TIE-destroyed animation
     points: 2
     completed: '2026-07-11'
+  - id: sw3-1
+    epic: sw3
+    title: Bake resolved ROM score values — TIE 1,000 (from 100), Darth Vader 2,000, exhaust port 25,000 (from 1,000), fireball 33 (from 50)
+    points: 2
+    completed: '2026-07-11'
