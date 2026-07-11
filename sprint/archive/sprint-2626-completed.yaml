@@ -1156,3 +1156,8 @@ completed_stories:
     title: 'Surface phase: wave-scaled towers-remaining (byte_98CB 22/22/32..) + 50,000 cleared-all-towers bonus, replacing the flat 4-kill quota'
     points: 5
     completed: '2026-07-11'
+  - id: sw3-11
+    epic: sw3
+    title: 'Surface phase geometry fidelity: re-author SURFACE_TOWER as the authentic tall waisted yellow column with white cap (+ red ground bunkers) from WSVROM.MAC — current model is a squat wide 512x96 box that reads as a red ship-hull, nothing like the cabinet'
+    points: 5
+    completed: '2026-07-11'
