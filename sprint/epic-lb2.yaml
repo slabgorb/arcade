@@ -1,0 +1,142 @@
+id: lb2
+type: epic
+title: Lobby follow-ups — cross-origin high scores, plus front-end/design work
+description: "Catch-all follow-up epic for the lobby, opened 2026-07-12 after the original lobby epic (epic 7) closed. First payload is the high-score break reported from production: the lobby tiles do not show each game's real best score and never update. Root cause is architectural, not a typo — lobby/src/shell/storage.ts reads localStorage on the LOBBY's own origin (arcade.slabgorb.com), while every game persists its table on its own origin (tempest.slabgorb.com, star-wars.slabgorb.com, ...). localStorage is origin-scoped, so in production the lobby reads a store no game ever writes; the shared @arcade/shared/highscore key/shape contract (SH-4) is correct but is being applied to the wrong origin. Separately, main.ts reads each score once while building the tile, so even a readable score is frozen for the life of the page. Fixing the first half requires a cross-origin decision under the standing no-backend constraint, so this epic gates implementation behind an ADR. Additional front-end/design stories will be appended to this epic from an in-flight Claude design pass."
+priority: p2
+status: backlog
+repos: lobby
+stories:
+  - id: lb2-1
+    title: "Spike + ADR: how the lobby reads each game's high score across origins (no backend)"
+    description: "Gate story for the epic — decide, in writing, how the lobby can read each game's best score when the lobby and the games are separate origins in production (arcade.slabgorb.com vs <game>.slabgorb.com) and the cabinet has no backend. Spike the candidates far enough to know which ones actually survive a modern browser, then land an ADR: (a) a cookie on the shared parent domain .slabgorb.com, readable by every subdomain but size-capped and sent on every request; (b) a hidden-iframe + postMessage bridge to one shared storage origin — verify against third-party storage partitioning in Chrome and Safari ITP before betting on it; (c) collapse the cabinet onto a single origin using the path prefixes the vite configs already carry (arcade.slabgorb.com/tempest/ ...), which makes the whole problem disappear at the cost of the per-game R2 bucket/subdomain layout in docs/ops/hosting.md; (d) a Cloudflare KV/Worker score service, which breaks the standing no-backend constraint and therefore needs an explicit exception. No code — the deliverable is the decision and its blast radius, because whatever wins is implemented across @arcade/shared/highscore, the lobby, and potentially all five games."
+    points: 3
+    priority: p2
+    status: done
+    started: '2026-07-12'
+    repos: .
+    workflow: architecture
+    acceptance_criteria:
+      - docs/adr/ contains a new Accepted ADR that states the chosen cross-origin high-score mechanism and rejects the others with reasons, not vibes.
+      - 'Each candidate is spiked far enough to be falsifiable: the postMessage/iframe option is tested against (or cited against) third-party storage partitioning in current Chrome and Safari, and the parent-domain-cookie option is checked against a realistic five-game score payload.'
+      - "The ADR names the blast radius explicitly: which repos change (@arcade/shared/highscore, lobby, and which games), whether docs/ops/hosting.md's per-subdomain R2 layout is affected, and whether the no-backend constraint is being kept or knowingly excepted."
+      - The ADR records the migration story for scores already written to per-game origins (carried over, or knowingly abandoned).
+      - lb2-2's scope is unambiguous after reading the ADR — a Dev can start it without re-litigating the decision.
+    completed: '2026-07-12'
+    type: chore
+  - id: lb2-2
+    title: Implement the ADR's cross-origin high-score path so lobby tiles show each game's real best score
+    description: "Implement ADR-0004 (docs/adr/0004-cross-origin-high-scores.md). The decision is made — do not re-litigate it. Games publish their top score to a cookie on the shared parent domain; the lobby reads it. The game's own localStorage table stays the authoritative source of truth, untouched and unmigrated; the cookie is a DERIVED cache, republished on every game load, so it heals itself and can never lose scores. Put the publish/read pair INSIDE @arcade/shared/highscore behind a narrow interface, so the transport stays swappable (single-origin collapse was rejected on cost, not merit, and must stay one adapter swap away). Cookie shape: arcade-hi-<gameId>=<top score>, Domain=slabgorb.com, Path=/, SameSite=Lax, Secure when https; one cookie PER GAME so no game can clobber a sibling via read-modify-write. In dev (just serve, six localhost PORTS) omit the Domain attribute — cookies ignore port, so a host-only localhost cookie is already shared across all six. KEY STRUCTURAL FACT: every game calls makeHighScoreStorage(gameId, guard) exactly once in main.ts and that factory owns the only save() in the cabinet — install the publish there and tempest/star-wars/asteroids/battlezone need ZERO code changes, only a version bump. The real cost is the lobby's pin jumping v0.4.0 -> v0.13.x, which crosses the whole SH2 render epic. Keep the house fail-soft discipline: every failure mode degrades to NO SCORE, never throws, never blocks the page."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared, lobby
+    workflow: tdd
+    acceptance_criteria:
+      - On the production origin split, each tile shows that game's own real best score — verified per game, not just for one.
+      - tempest, star-wars, asteroids and battlezone are fixed by a VERSION BUMP ONLY, with no game-side code changes; if any game needs code, that is a signal the publish was not installed at the makeHighScoreStorage/save() choke point.
+      - The publish/read pair lives behind an interface in @arcade/shared/highscore — swapping the cookie for same-origin localStorage or a fetch would touch one adapter and nothing else.
+      - Tests model TWO SEPARATE STORES (a game store and a lobby store) plus a cookie jar. lobby/tests/storage.test.ts currently stubs ONE shared localStorage seeded with the games' keys — it encodes the bug as a fixture and cannot fail on it. That fixture must die.
+      - Scores work in local dev (just serve, six localhost ports) AND in production (six subdomains) — a fix that works in one and silently breaks the other is not a fix.
+      - 'Every failure mode degrades to NO SCORE without throwing: cookie absent, malformed, evicted, document.cookie unavailable, plus the pre-existing storage failures.'
+      - 'No migration is performed and none is needed: existing per-game localStorage tables are left in place and remain authoritative; a tile self-heals to the real score after one visit to that game.'
+    type: bug
+  - id: lb2-3
+    title: Lobby tiles re-read high scores on return from a game (kill the frozen-at-load read)
+    description: "The 'frozen' half of the original report, now downstream of ADR-0004. lobby/src/main.ts calls getTopScore(game.id) once while building each tile, so the value is fixed for the life of the page: play a game, beat your best, come back — the tile still shows the old number, and on a BFCache restore the page is not even rebuilt. Make the tiles re-read when the player returns: a pageshow handler covers BFCache back-navigation. Post-ADR-0004 the source is a cookie, so cross-tab 'storage' events do NOT apply (there is no storage event for cookies) — do not build around one. Re-read through a single entry point that re-uses the tile's existing render path. Small, self-contained, and shippable independently of lb2-2."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: lobby
+    workflow: tdd
+    acceptance_criteria:
+      - Returning to the lobby from a game shows the newly-set high score without a manual reload — verified across a BFCache back-navigation (pageshow with persisted=true), not just a cold load.
+      - Refresh goes through one re-read entry point re-using the tile's existing render path — no duplicated score formatting, no rebuilding the whole grid.
+      - A tile whose score is still unreadable stays at NO SCORE across refreshes and never flickers to a stale value or a 0.
+      - Tests drive the refresh path directly (simulated pageshow), asserting the tile text changes from the old score to the new one.
+    type: bug
+  - id: lb2-4
+    title: Safari ITP deletes the games' own high-score tables after 7 days without interaction
+    description: "Discovered while spiking lb2-1, and NOT caused by it. Safari's ITP deletes ALL script-writable storage — localStorage included, not just cookies — after 7 days of Safari use without genuine user interaction (tap/click/text entry; a script write does NOT count). This has been universal since Safari 13.1 (Mar 2020) and applies to ordinary first-party sites, not only ones classified as trackers. Consequence: a Safari player who does not return to tempest.slabgorb.com — with a real click — within 7 days can have their entire Tempest high-score table DELETED. This is a live production bug in every game, independent of the lobby and of ADR-0004. No local-storage mechanism escapes it (single-origin collapse would not have helped either); only a backend would, and cross-device was explicitly declined. Scope this story to what CAN be done locally: detect/soften the loss, and decide whether the arcade should tell the player their scores are ephemeral on Safari. Read docs/adr/0004-cross-origin-high-scores.md (Risks + Follow-ups) first. lb2-5 sizes how bad this actually is and should probably land first."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade-shared, lobby
+    workflow: tdd
+    acceptance_criteria:
+      - The exact behavior is confirmed in a real Safari, not just from docs — including whether the games' tables actually get purged in practice at the 7-day mark.
+      - 'The player is not silently lied to: a game whose table was purged does not present a blank board as though the player never scored.'
+      - Whatever mitigation is chosen (re-publish, warn, accept-and-document) is recorded, and the no-backend constraint is either kept or knowingly excepted with rationale.
+      - docs/adr/0004's Follow-up 1 is resolved or explicitly deferred with a reason.
+    type: bug
+  - id: lb2-5
+    title: "Spike: is Safari ITP's interaction clock per-hostname or per-registrable-domain?"
+    description: "Sizes lb2-4. ITP resets its 7-day purge clock on genuine user interaction — but no primary source establishes whether that bookkeeping is keyed per-HOSTNAME (tempest.slabgorb.com) or per-REGISTRABLE-DOMAIN (slabgorb.com). This single fact decides how severe lb2-4 is: if per-registrable-domain, then ANY click anywhere in the arcade (e.g. clicking a lobby tile) keeps every game's storage alive and the problem nearly evaporates. If per-hostname, each game needs its own click every 7 days or its scores die. WebKit's WRITTEN policy defines a website as a registrable domain including all subdomains — but WebKit's localStorage partitioning already contradicts that same policy (bugs 225297/247565), so the policy cannot be trusted here. This must be measured, not read. Empirical: real Safari, Storage inspector / Settings > Safari > Advanced > Website Data shows per-site last-access."
+    points: 1
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: trivial
+    acceptance_criteria:
+      - The answer is established EMPIRICALLY in a real Safari (not inferred from documentation), and the method is written down so it can be re-run when WebKit changes.
+      - The finding is recorded in docs/adr/0004 (Risks table, the row currently marked UNRESOLVED) and lb2-4 is re-sized against it.
+      - "Also settles the open sub-question: does keyboard-only input (the games are keyboard-driven) count as ITP 'user interaction', or only tap/click/text-entry?"
+    type: chore
+  - id: lb2-6
+    title: red-baron persists no high scores at all — its lobby tile reads NO SCORE forever
+    points: 3
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
+  - id: lb2-7
+    title: "Dress the lobby as a cabinet — implement the 'Arcade Lobby' Claude design (marquee, vector grid floor, bezel, CRT, tile redesign)"
+    description: "The front door is a bare centred column that says ARCADE; the design pass makes it a CABINET. Source of truth is the Claude design project 'Retro 80s lobby design' (claude.ai/design/p/f24e04ba-f4c1-40a4-8326-cebfca93c4e8, file 'Arcade Lobby.dc.html'). What it adds, all of it pure DOM + CSS on the existing tile-per-registry-entry structure: a receding cyan vector grid FLOOR with its mirrored CEILING (the Battlezone/Star-Wars horizon, plus its reflection through the half-silvered combiner — CSS perspective + repeating-linear-gradient, masked to fade at the horizon); four L-shaped cabinet BEZEL brackets framing the screen; a MARQUEE reading SLABGORB PRESENTS over a letter-spread VECTOR ARCADE wordmark over a blinking SELECT GAME; a per-tile MODEL SLOT (a bordered square carrying data-model-slot=<gameId>, which lb2-9 fills with a real vector model); the score line restyled to the design's HI-dot-SCORE typography; a screen-curvature vignette; a slow whole-page CRT flicker; and a footer with a blinking INSERT COIN plus the fan-tribute/not-affiliated disclaimer. The design's own prop defaults are authoritative for the CRT tweaks (curvature on, scanlines off). NOT in scope: the design's rotating top-five HIGH SCORES board (lb2-8 — it needs score data the cabinet cannot carry across origins yet) and real vector models in the slots (lb2-9). Keep the tiles real <a href> links so click, Tab+Enter, middle-click and open-in-new-tab all keep working for free, and keep the registry (src/core/registry.ts) the single source of truth for the games, their colours, their launch URLs and their control hints — the design hardcodes all four and must not be allowed to fork them."
+    points: 5
+    priority: p2
+    status: done
+    started: '2026-07-12'
+    repos: lobby
+    workflow: tdd
+    acceptance_criteria:
+      - The lobby renders the design's cabinet furniture — vector grid floor, mirrored ceiling, four corner bezel brackets, marquee, curvature vignette, CRT flicker and footer — and none of it intercepts clicks or focus (all decoration is pointer-events:none and out of the tab order).
+      - "Every game listed on the page still comes from GAMES in src/core/registry.ts: the design's hardcoded titles, launch URLs, glow colours and control hints are NOT copied into the markup, and adding a game to the registry alone puts a correct tile on the page."
+      - Each tile keeps its real <a href> semantics — click, Tab+Enter, middle-click and open-in-new-tab all still launch the game, and the focus ring survives the restyle.
+      - "Each tile carries an empty model slot marked data-model-slot=\"<gameId>\", positioned and sized per the design, ready for lb2-9 to draw into without touching layout."
+      - "The score line uses the design's typography but shows only data the lobby can actually prove: the real best score when readable (thousands-separated), NO SCORE when not. No fabricated name or score ships."
+      - "Layout holds across DESKTOP widths (~1024px and up) — the tile grid wraps, the marquee never overflows its line, and the floor/ceiling stay pinned to the viewport edges. Phone/mobile layout is explicitly OUT OF SCOPE (Jedi, 2026-07-12): the games are keyboard/mouse vector sims and are unplayable on a touch screen, so the lobby is not held to a phone bar. The footer disclaimer is unwrappable (non-breaking spaces, inherited from the design) and clips below ~470px — known, accepted, not a defect."
+      - npm run build (tsc --noEmit && vite build) and npm test both pass in lobby/.
+    completed: '2026-07-12'
+    type: feature
+    review_verdict: approved
+  - id: lb2-8
+    title: The rotating top-five HIGH SCORES board — and the cross-origin score payload it needs
+    description: "The centrepiece of the 'Arcade Lobby' design, split out of lb2-7 because it is BLOCKED ON DATA, not on markup. The design shows a bordered HIGH SCORES panel that cycles one game at a time on a ~4.5s timer: the game's name in its own glow colour, a TOP FIVE ladder of rank/name/score rows, and a row of pips (one per game, the active one lit in that game's colour). Building the panel is an afternoon. Feeding it is the problem: ADR-0004 decided the lobby reads scores across origins from a cookie carrying a SINGLE BARE NUMBER (arcade-hi-<gameId>=<top score>), so even once lb2-2 ships, the cabinet cannot deliver five rows or a single player NAME to the lobby — and the design needs both. This story must therefore FIRST amend ADR-0004 to widen the published summary from one number to a small top-N row list (name + score; note the 4096 B cookie cap is not the binding constraint — five 3-char names and five scores is well under 200 B), then implement the board on top of it. Depends on lb2-2 (the cookie transport must exist before it can be widened) and composes with lb2-3 (the board must re-read on return from a game, same pageshow entry point). Keep the house fail-soft rule: no readable rows must degrade to an explicit, honest empty state — never to invented names or a zero."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared, lobby
+    workflow: tdd
+    acceptance_criteria:
+      - "ADR-0004 is amended (or superseded) in writing before the board is built: the published cross-origin summary carries a top-N list of name+score rows rather than a single number, and the amendment states the new cookie shape, its size against the 4096 B cap, and why widening beats the alternatives."
+      - The board shows a real top-five ladder for the game currently on screen, sourced through the widened @arcade/shared/highscore read — verified per game, not just for one.
+      - The board rotates through every game in the registry on a timer, and the pip row shows one pip per game with the active pip lit in that game's own colour.
+      - "A game with no readable scores shows an explicit empty state (e.g. NO SCORES YET), never a fabricated name, a placeholder ladder, or a zero."
+      - The board re-reads on return from a game through lb2-3's single refresh entry point — beating your best and coming back updates the ladder without a manual reload.
+      - The rotation timer is cleaned up on teardown and does not keep firing against a detached DOM.
+    type: feature
+  - id: lb2-9
+    title: Draw a real vector model in each lobby tile's model slot
+    description: "lb2-7 leaves every tile carrying an empty data-model-slot=<gameId> box; this fills it with the game's hero object drawn as a live glowing vector model — Tempest's blaster, a TIE fighter, an asteroid, a Battlezone tank, Red Baron's biplane — so the grid reads as an arcade row rather than a list of coloured rectangles. This is the single strongest thing the lobby can do to speak the cabinet's visual language, because it IS the cabinet's visual language. Do not hand-roll the drawing stack: @arcade/shared already ships /glow (withGlow + glowPolyline) and /math3d (the ported Atari Math Box) for exactly this, and star-wars' models contact sheet (/models.html) already previews every MODELS entry through the real render pipeline — reuse it to eyeball shape and scale rather than guessing. NOTE the pin: the lobby is still on @arcade/shared v0.4.0, which predates /glow, /view and /font entirely — this story eats the version-bump cost across the SH2 render epic that lb2-2 also carries, so sequence the two so only one of them pays it. Decide explicitly where the model geometry LIVES: copied into the lobby, or promoted into a shared subpath the games and the lobby both consume (the second is the ADR-0001 answer, but it is a real extraction, not a free one). Static or slowly rotating is fine; this must not become a per-tile game loop that burns the visitor's battery on the front door."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: lobby, arcade-shared
+    workflow: tdd
+    acceptance_criteria:
+      - Every tile's model slot draws that game's own hero object as a glowing vector model, in that game's registry glow colour, and a game with no model degrades to the empty slot rather than a broken or blank canvas.
+      - "The drawing goes through @arcade/shared/glow rather than a re-implemented glow stack, and the geometry's home is a decision that is written down, not an accident: copied into the lobby, or promoted to a shared subpath."
+      - Animation (if any) is cheap and courteous — it pauses when the tab is hidden and does not run a full per-tile game loop.
+      - The slot's presence or absence never shifts the tile layout lb2-7 established.
+      - npm run build and npm test both pass in lobby/, and the version-bump cost of moving the lobby's @arcade/shared pin off v0.4.0 is paid exactly once across this story and lb2-2.
+    type: feature

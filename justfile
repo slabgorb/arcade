@@ -55,6 +55,10 @@ vendor-source repo ref="":
 vendor-source-all:
     @node {{root}}/scripts/vendor-source.mjs --all
 
+# Bake a game's ROM source into its committed contact-sheet artifact
+bake-models game="star-wars":
+    @node {{root}}/scripts/bake-models.mjs {{game}}
+
 # Audit one game's sounds against the original ROM, e.g. `just extract-audio battlezone`
 extract-audio game *FLAGS:
     @node {{root}}/scripts/extract-audio.mjs {{game}} {{FLAGS}}

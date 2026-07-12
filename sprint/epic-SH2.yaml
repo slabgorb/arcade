@@ -276,3 +276,22 @@ stories:
     repos: arcade-shared,battlezone,red-baron
     workflow: tdd
     type: refactor
+  - id: SH2-19
+    title: "Extract @arcade/shared/modelview — the contact-sheet layout math (cellRects / modelBounds / fitDistance) now that a THIRD consumer proves the duplication. tempest's own modelView.ts comment SET this threshold: 'Two tiny copies of a grid partitioner do not justify a cross-repo shared library; revisit extraction at a third consumer.' red-baron's ROM picture sheet is that third consumer. Today: cellRects x3 (star-wars src/core/modelView.ts, tempest src/core/modelView.ts, red-baron src/tools/sheetLayout.ts); modelBounds + fitDistance x2 (star-wars core, red-baron tools). NOT dev-tool-only — star-wars src/shell/debug-overlay.ts consumes modelBounds for a real game surface. Adopt in all three via the publish -> release -> repin dance."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade-shared, star-wars, tempest, red-baron
+    workflow: tdd
+    type: refactor
+    acceptance_criteria:
+      - "@arcade/shared/modelview exports cellRects(w, h, count, cols), modelBounds(model) and fitDistance(radius, fovY), with the behaviour of today's star-wars src/core/modelView.ts (the fullest copy). Pure math — no DOM, no time, no randomness."
+      - "PURITY-GUARD TRAP — SH2's tests/purity.test.ts scans the BUILT dist/ as SOURCE TEXT, comments included, against the fail-set document|window|canvas|FontFace. star-wars/src/tools/romCompare.ts:37 and :164 currently say 'Canvas' and 'canvas' IN COMMENTS. Any prose carried into arcade-shared must be reworded FIRST or the purity test fails on a comment. Do not name a forbidden global even while explaining that the code does not use one."
+      - "arcade-shared has NO root tsconfig/vitest config — its build compiles only src/, and vitest strips types, so test files get ZERO compile-time typechecking. Pin the type contracts (readonly arrays, the Vec3/Model3D shapes) at RUNTIME or via source-text regex (node:fs). A compile-only annotation in an arcade-shared test silently does nothing."
+      - "star-wars adopts: src/core/modelView.ts becomes a thin re-export of the shared module (the same re-export pattern as font.ts in SH2-5), so src/shell/debug-overlay.ts, src/tools/contactSheet.ts, src/tools/sceneSheet.ts and the existing core tests keep their import paths unchanged. star-wars vitest + vite build green."
+      - "tempest adopts: cellRects comes from the shared module. tempest's flatTube is TEMPEST-SPECIFIC (the neutral board its actors perform their motion on) and STAYS LOCAL — do not drag it into shared. tempest vitest + vite build green."
+      - "red-baron adopts: the three functions in src/tools/sheetLayout.ts come from the shared module. Note red-baron correctly placed this math in src/tools/ while star-wars and tempest keep theirs in src/core/; extraction makes that inconsistency moot. Do NOT silently relocate the star-wars/tempest files between core/ and tools/ as a drive-by — if you move them, do it deliberately and say so. red-baron vitest + vite build green."
+      - "JUDGEMENT CALL, decide it and record the reason: edgeKey + diffEdges are ALSO duplicated (star-wars/src/tools/romCompare.ts and red-baron/src/tools/romCompare.ts). They are ~20 lines total with only two consumers, both dev tools — extracting them is defensible, and so is leaving them (YAGNI). Pick one and write down why, so a third copy cannot appear later without a decision having been made."
+      - "EXPLICITLY OUT OF SCOPE: the orchestrator's scripts/rom-models/derive.mjs connectToEdges. The orchestrator is a build-time Node .mjs tool with no arcade-shared dependency — a different execution context from the browser bundles. Deduping across that boundary would mean adding arcade-shared as an orchestrator dep, which this story does NOT do. Record the decision so the surviving copy is deliberate, not an oversight."
+      - "The git-dep pin dance (SH-epic playbook): push the arcade-shared feat branch BEFORE the games can resolve it; npm git-dep locks go stale, so force the install by ref; provisional feat pins become a tag + version bump at release. All three games must resolve and build against the pinned ref."
+      - "NO behaviour change anywhere. The regression pins that prove it: the star-wars ROM contact sheet still reports the same punch-list (TIE 1/3, TI1 1/0, TI2 1/0, TI3 3/0, RTH 12/44), and the red-baron sheet still reports zero drift across all 13 pictures."

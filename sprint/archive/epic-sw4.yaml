@@ -3,7 +3,7 @@ type: epic
 title: Star Wars — world-metric & threat restoration (1983 source-true distances)
 description: "Playtest 'turkey shoot' root-caused by an architect distance audit against the original 1983 Atari source (historicalsource/star-wars, cloned locally): the TIE model is ported 1:1 in raw ROM units but the WORLD was compressed ~4-6x (spawn 8,000 vs $7C00=31,744; engagement floor 350 vs $800=2,048 -> TIEs fill 88 degrees of a 60-degree FOV) and the threat model inverted (fireballs 300 u/s straight-line with max reach 1,800 CANNOT arrive from most of the fight; ROM fireballs home 7/8-per-tick and ALWAYS arrive in ~1s as the space wave's only damage source). Surface turrets spawn randomly at 1,200 while WSGRND.MAC holds hand-authored per-wave tower mazes out to Y=$7C00. Design: docs/superpowers/specs/2026-07-11-world-metric-threat-restoration-design.md (star-wars repo). Restores ROM distances unscaled, ports the homing fireball law, and transcribes the authored mazes."
 priority: p1
-status: backlog
+status: done
 repos: star-wars
 stories:
   - id: sw4-1
@@ -57,3 +57,4 @@ stories:
     repos: star-wars
     workflow: tdd
     type: bug
+completed: '2026-07-12'
