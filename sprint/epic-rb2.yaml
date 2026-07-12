@@ -145,3 +145,17 @@ stories:
     branch: feat/rb2-13-blimp-cabinet-integration
     assignee: Keith Avery
     review_verdict: approved
+  - id: rb2-14
+    title: 'Sound producers for the score tick + bonus life — rb2-11 built all 5 POKEY tables (TK/TP/BN/WP/TH) and audio-dispatch wires all 5, but the sim EMITS only 3 of the events: score-tick (TK small SOUND 0 / TP large SOUND 4) has no producer because score is added in lumps with no digit-tick animation, and bonus-life (BN, SOUND 2) has no award threshold in core/lives.ts. Source the extra-plane threshold from the ROM (findings §6A lists BN as a real cabinet cue), add a score-accumulation tick, and emit both GameEvent kinds from main.ts. The tables and the cue map already exist — this only lights them up.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+  - id: rb2-15
+    title: 'Byte-exact POKEY envelopes for TP/BN/WP/TH — rb2-11 transcribed only TK byte-for-byte (the sole table the fidelity spec §6A prints: AUDF1=$30, AUDC1 $A4 decaying -1 per 7 frames). The other four are SYNTHESIZED to their documented channel+shape (fading / rising warble x6 / descending x3 / 6-note melody) because raw RBSOUN.MAC is not in this checkout — red-baron has no reference/ dir. Source RBSOUN.MAC from the Atari quarry (historicalsource, per the star-wars precedent) and replace the four synthesized envelopes with real bytes. WATCH THE OFF-BY-ONE: the ROM NUMBER byte is (# changes - 1), while EnvelopeStep.steps stores the count itself (steps = NUMBER + 1) — dropping a raw NUMBER straight in is short one step. The shape assertions in pokey.test.ts stay true, so no existing test should need to change.'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: red-baron
+    workflow: tdd

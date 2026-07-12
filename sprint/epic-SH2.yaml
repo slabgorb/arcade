@@ -268,3 +268,11 @@ stories:
       - "battlezone DESCOPED (2026-07-11, user-approved): its audio is a runtime synthesis engine (oscillators/noise/LFOs + setEngine/stopEngine hum, zero .wav samples), not the sample player the design survey assumed, so it cannot migrate onto the sample-based shared engine behaviour-preservingly. Left unchanged on its synthesis engine. star-wars + asteroids only. A separate future story may evaluate a battlezone audio path (non-behaviour-preserving)."
     completed: '2026-07-11'
     review_verdict: approved
+  - id: SH2-18
+    title: "Extract @arcade/shared/synth — the WebAudio SYNTHESIS engine skeleton (lazy gesture gate, no-throw contract, resolveContextCtor, noiseBuffer, voice bookkeeping) now that a SECOND synthesis cabinet proves the duplication: battlezone bz1-11 and red-baron rb2-11 hand-write byte-identical copies. DISTINCT from /audio (SH2-16), which is a SAMPLE/.wav buffer player and cannot host oscillator synthesis — the two are siblings, not replacements. Ship the VERB (context bootstrap + silent-degrade + closed-context guard), keep the NUMBERS (each cabinet's oscillators/filters/ROM seams) local. Adopt in battlezone + red-baron via the publish→release→repin dance."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared,battlezone,red-baron
+    workflow: tdd
+    type: refactor
