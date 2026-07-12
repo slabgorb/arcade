@@ -16,9 +16,33 @@
 //          .LEND ends a list.
 //
 // .WGD is NOT a .WL alias: it flags a "ground type" object (PORT, WPN, WFF,
-// GND, WGA, BNK, TWR, STB) whose lines are hand-coded PLOT/DRAWTO/BDRAWTO
-// assembly that bakes deltas into machine code at assemble time, not an
-// interpretable .LD/.BD point-index list. Those objects get no connect data.
+// WFG, GND, WGA, WGB, BNK, TWR, STB) drawn by a direct-executing routine the
+// dispatcher `JMP (U)`s into, rather than the interpretable .LD/.BD list. But
+// direct-executing is not unstructured — the bodies are NOTHING BUT macro calls
+// over point-table indices (PLOT / DRAWTO / BDRAWTO / ENDPLOT, plus MOVD for VG
+// state), and BDRAWTO/DRAWTO is the very same pen idiom as .BD/.LD. So they
+// parse into the SAME ConnectOp IR and all ten objects DO get connect data.
+// Their indices are DECIMAL (DRAWTO forces it with the same trailing-dot trick
+// .LD uses), so the .RADIX 16 hex trap does not bite here.
+//
+// ONE ROM ANOMALY SURVIVES: WFG's routine (WSOBJ.MAC:1844) is `DRAWTO 6,3`, but
+// WFG shares WFF's SIX-point table (0..5) — index 6 does not exist. At runtime
+// that reads a stale 7th slot of the transform scratch page: an out-of-bounds
+// read in the original 1983 ROM, not a parser error.
+//
+// WHY WE KNOW IT IS THE ROM'S BUG AND NOT OUR REBASE: across the other NINE
+// ground objects, the lowest index used is exactly 0 and the highest is exactly
+// `vertices.length - 1`. A rebase off by one in EITHER direction breaks that on
+// sight — too few and the minimum goes negative, too many and the maximum runs
+// past the end. (Note the indices are not DENSE: BNK touches only 6 of its 15
+// points and STB only 12. It is the two ENDPOINTS that pin the rebase, not
+// coverage — an earlier version of this comment claimed the objects "exactly
+// fill" their tables, which is false.) WFF in particular draws the very same
+// six-point table and tops out at 5; only WFG reaches 6.
+//
+// It is transcribed verbatim, not clamped — this parser reports ROM truth and
+// lets consumers filter, the same way the degenerate self-edge in RTH's .BD
+// list is kept and filtered downstream.
 //
 // ANCHOR: a leading `.P 0,0,0` is the object centre — metadata, not a drawn
 // point. It is CONDITIONAL: TIE has one, WFF does not. Draw lists index the
@@ -130,6 +154,8 @@ export function parseWsobj(text) {
   let list = null;      // object currently receiving .LD/.BD rows
   let lastList = null;  // for .WL2 aliasing
   let lastTable = null; // for .WPZ2 aliasing
+  let wgd = null;       // object currently receiving PLOT/DRAWTO/BDRAWTO ops
+  let lastWgd = null;   // for .WGD2 aliasing
   let inMacro = false; // inside a .MACRO ... .ENDM definition body
   const condStack = [];  // .IF / .ENDC nesting: true = keep, false = skip
   const conditionalActive = () => condStack.every(Boolean);
@@ -145,6 +171,41 @@ export function parseWsobj(text) {
       // stored vertex array.
       const point = obj.anchorDropped ? raw - 1 : raw;
       obj.connect.push({ point, draw: !(firstIsBlank && i === 0) });
+    });
+  };
+
+  // A `.WGD` body's ops, rebased onto the stored vertex array exactly as `.WL`'s
+  // are. `PLOT` and `BDRAWTO`'s FIRST argument lift the pen; everything else
+  // draws.
+  //
+  // THE ANCHOR. `PLOT 0` is commented "ASSUMES STARTING FROM CENTER" — index 0
+  // is the object anchor, which this parser drops from `vertices` (rebasing
+  // every draw index by -1). A pen-up move to the dropped anchor is therefore
+  // metadata in the beam path exactly as the anchor vertex is metadata in the
+  // point table: emit NOTHING, rather than a `point: -1` that would poison the
+  // IR the moment anything drew from it.
+  //
+  // Note the anchor test is `raw === 0`, NOT `!raw`, and it is DATA-DRIVEN off
+  // `anchorDropped` — never a hardcoded name list. SIX ground objects drop an
+  // anchor, not four: GND/TWR/BNK/STB (sharing GND's `.PGND 0,0,0` table) AND
+  // WGA/WGB, which have their own `.P 0,0,0` (WSOBJ.MAC:580, shared to WGB by
+  // `.WPZ2`). WPN/WFF/WFG/PORT have NO anchor, so for them point 0 is a REAL
+  // vertex the ROM both starts from and draws back to (WPN's `DRAWTO 1,2,3,0`
+  // closes its outer rectangle onto it). Hardcoding "the four GND objects" here
+  // would silently shift every WGA/WGB edge by one.
+  const pushWgd = (obj, kind, indices) => {
+    indices.forEach((raw, i) => {
+      const penUp = kind === 'PLOT' || (kind === 'BDRAWTO' && i === 0);
+      if (obj.anchorDropped && raw === 0) {
+        // The beam origin IS the dropped anchor — metadata, contributes no op.
+        if (kind === 'PLOT') return;
+        // Any OTHER reference to it cannot be expressed once the anchor is
+        // gone. Throw rather than silently emitting a negative index (or
+        // dropping a stroke, which would splice the beam path and fabricate an
+        // edge). No routine in WSOBJ.MAC does this — this is a guard.
+        throw new Error(`${obj.name}: ${kind} references the dropped anchor (index 0): cannot rebase`);
+      }
+      obj.connect.push({ point: obj.anchorDropped ? raw - 1 : raw, draw: !penUp });
     });
   };
 
@@ -252,14 +313,83 @@ export function parseWsobj(text) {
       continue;
     }
     // .WGD / .WGD2 flag a "ground type" object (WSOBJ.MAC:1313 emits a plain
-    // .BYTE 1 dispatch flag, vs. .WL's .BYTE 0) drawn by hand-coded PLOT/
-    // MOVD/DRAWTO/BDRAWTO/ENDPLOT assembly (WSOBJ.MAC:1619-1696) that bakes
-    // deltas straight into 6809 machine code at assemble time — NOT the
-    // interpretable .LD/.BD point-index list .WL produces. There is no
-    // connect data here for this parser to recover (PORT/WPN/WFF/GND/WGA/
-    // BNK/TWR/STB are all drawn this way), so just clear any open list.
-    if (/^\.WGD2?\s+[A-Z0-9_$]+$/i.test(code)) { list = null; lastList = null; continue; }
+    // .BYTE 1 dispatch flag, vs. .WL's .BYTE 0) drawn by a direct-executing
+    // routine the dispatcher `JMP (U)`s into, rather than the interpretable
+    // .LD/.BD point-index list .WL produces. But direct-executing is NOT
+    // unstructured: the bodies are nothing but macro calls over point-table
+    // indices (see the .WGD BODY block below), so the SAME ConnectOp IR comes
+    // out of them and `connectToEdges` needs no change.
+    //
+    // Both still close any open .WL list and clear `lastList`: a .WGD moves the
+    // location counter past the window a following `.WL2`'s `. - 1` would need.
+    if ((m = /^\.WGD\s+([A-Z0-9_$]+)$/i.exec(code))) {
+      wgd = get(m[1]); wgd.hasDrawList = true; lastWgd = wgd;
+      list = null; lastList = null;
+      continue;
+    }
+    // `.WGD2 NAME` aliases the .WGD routine it sits beside — and the body
+    // FOLLOWS both lines (`.WGD TWR` / `.WGD2 GND`, WSOBJ.MAC:1729-1730; `.WGD
+    // WGA` / `.WGD2 WGB`, :1780-1781). So it must share the connect array BY
+    // REFERENCE, exactly as .WL2 does: a snapshot copied at this line would
+    // capture an empty array and the alias would ship with zero edges.
+    if ((m = /^\.WGD2\s+([A-Z0-9_$]+)$/i.exec(code))) {
+      if (!lastWgd) throw new Error(`.WGD2 ${m[1]} has no preceding .WGD routine to alias: "${code}"`);
+      const alias = get(m[1]);
+      // The shared array is filled by ops REBASED against the ROUTINE's anchor
+      // state (`pushWgd` reads `wgd.anchorDropped`). If the alias's own vertex
+      // table had a different anchor state, those same indices would mean
+      // something different for it — one of the two objects would silently get a
+      // wireframe rebased by one. TWR/GND and WGA/WGB agree today (each alias
+      // takes its vertices from the other via `.WPZ2`, which copies
+      // `anchorDropped`), so this never fires; it is here so it CANNOT start to
+      // silently misfire if the source ever changes.
+      if (alias.anchorDropped !== lastWgd.anchorDropped) {
+        throw new Error(
+          `.WGD2 ${m[1]} aliases ${lastWgd.name}'s draw routine but their anchor states differ `
+          + `(${lastWgd.name}.anchorDropped=${lastWgd.anchorDropped}, ${m[1]}.anchorDropped=${alias.anchorDropped}) `
+          + '— the shared indices cannot be correct for both',
+        );
+      }
+      alias.connect = lastWgd.connect;
+      alias.hasDrawList = true;
+      list = null; lastList = null;
+      continue;
+    }
     if (/^\.LEND\b/i.test(code)) { list = null; lastList = null; continue; }
+
+    // --- .WGD BODY -----------------------------------------------------------
+    // The four macros (WSOBJ.MAC:1629-1696) and their exact semantics:
+    //
+    //   PLOT n        begin a stroke run; the beam starts at point n, pen UP
+    //   DRAWTO a,b,…  `.IRP` over the args — a VISIBLE line to each in turn
+    //   BDRAWTO a,b,… BLANK move to `a`, then delegates b,… to DRAWTO
+    //   ENDPLOT       end of routine
+    //   MOVD …        writes VG scale/colour — STATE, never geometry
+    //
+    // BDRAWTO/DRAWTO is structurally identical to the .BD/.LD pen idiom above:
+    // pen up on the first argument only, then draw the rest.
+    //
+    // RADIX: DRAWTO's body is `...NEW = ...1'.*10 + M.GDXS`. The `'.` appends a
+    // decimal point, so the INDEX is forced DECIMAL — the `.RADIX 16` trap that
+    // makes `.PH` vertices hex does NOT bite here. (The `*10` is the 16-byte
+    // point-record stride, an address computation, not part of the index.)
+    if (wgd) {
+      if ((m = /^(PLOT|DRAWTO|BDRAWTO)\s+(.+)$/i.exec(code))) {
+        const kind = m[1].toUpperCase();
+        const indices = m[2].split(/[,\s]+/).filter(Boolean).map((a) => parseNum(a, 10));
+        pushWgd(wgd, kind, indices);
+        continue;
+      }
+      if (/^ENDPLOT\b/i.test(code)) { wgd = null; continue; }
+      // MOVD is the ONLY non-geometry macro that occurs inside these bodies
+      // (verified across all eight routines). It is skipped EXPLICITLY, by name.
+      if (/^MOVD\b/i.test(code)) continue;
+      // Anything else inside an open routine is unenumerated. Throw — never
+      // widen this into silence, or a real geometry macro could vanish without
+      // a trace. (Scoped to an OPEN body: ENDPLOT closes it, and WSOBJ.MAC is
+      // full of ordinary 6809 assembly outside these routines.)
+      throw new Error(`unrecognized macro inside an open .WGD routine: "${code}"`);
+    }
 
     if (table && (m = /^\.(PH?)\s+(.+)$/i.exec(code))) {
       const hex = m[1].toUpperCase() === 'PH';       // .PH -> current radix (16); .P -> decimal
@@ -311,6 +441,14 @@ export function parseWsobj(text) {
 
   if (condStack.length !== 0) {
     throw new Error(`unterminated .IF: ${condStack.length} block(s) never closed by .ENDC`);
+  }
+
+  // Same contract as the unterminated `.IF` above. A `.WGD` routine still open
+  // at EOF means its ENDPLOT was lost — so the ops we collected are an
+  // arbitrary prefix of the real routine, and the object would ship a truncated
+  // wireframe that looks entirely plausible. Refuse it.
+  if (wgd) {
+    throw new Error(`unterminated .WGD ${wgd.name}: no ENDPLOT — the draw routine is truncated`);
   }
 
   // Partial conditional disable: an object that had SOME rows compiled out
