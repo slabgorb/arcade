@@ -69,9 +69,19 @@ stories:
     title: Extra-life thresholds (400k/800k) + flashing bonus/extra-life HUD row (byte_4B2C) under the score
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: star-wars
     workflow: tdd
+    acceptance_criteria:
+      - Crossing a cumulative score of 400,000 awards exactly one extra life the first time it is reached; it is never re-awarded on later score gains.
+      - Crossing 800,000 awards exactly one additional extra life, once. The 400k and 800k awards are independent and each fires exactly once (a single score delta that vaults past both grants both lives). Thresholds are exactly 400,000 / 800,000 per byte_9865 — NOT multiplied by 10.
+      - 'A bonus-row value (the byte_4B2C analog) is added to GameState: on a score-changing event it records the awarded amount, then decays/flashes out toward zero over subsequent ticks. Deterministic and tick-driven (no DOM/time/random).'
+      - The HUD renders a flashing yellow/amber bonus/extra-life row directly beneath the 6-digit score value, driven by the new state field; when the value has decayed to zero the row is absent.
+      - All extra-life and bonus-row logic lives in src/core (updated from ticks via stepGame); src/shell only reads state for render. The core purity boundary is preserved — no DOM, Date, performance.now, or Math.random added.
+      - Existing scoring values (TIE 1,000 / fireball 33 / turret 100 / etc.) are unchanged and all current tests stay green.
+    completed: '2026-07-11'
+    review_verdict: approved
   - id: sw3-7
     title: Trench per-run variation — PRNG fixed-head + picked-tail obstacle/section chain (sub_83A4) so runs differ instead of being byte-identical
     points: 3

@@ -1201,3 +1201,8 @@ completed_stories:
     title: Adopt @arcade/shared pause + esc-overlay across all five canvas games (consumes SH2-12's v0.9.0)
     points: 5
     completed: '2026-07-11'
+  - id: sw3-6
+    epic: sw3
+    title: Extra-life thresholds (400k/800k) + flashing bonus/extra-life HUD row (byte_4B2C) under the score
+    points: 3
+    completed: '2026-07-11'
