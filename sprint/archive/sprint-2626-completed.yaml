@@ -1237,3 +1237,8 @@ completed_stories:
     title: POKEY + analog sound — 5 envelope tables (corrected 8-byte format), engine hum, machine-gun rat-a-tat (D2, INTCNT&8 strobe), explosion ramp, enemy-approach whine, score/bonus/announce jingles
     points: 5
     completed: '2026-07-12'
+  - id: sw4-3
+    epic: sw4
+    title: Surface maze port — transcribe WSGRND.MAC TOWER MAZES into pure-data src/core/surfaceMazes.ts (per-wave TOWER/BUNKER/BISHOP hex coords, prefix structure base⊂T3, TTWRS counts, wave→maze map); replace random turret spawns with the fixed authored field scrolling in; reconcile TTWRS vs byte_98CB quota in-story (spec §C)
+    points: 5
+    completed: '2026-07-12'

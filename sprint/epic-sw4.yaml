@@ -30,9 +30,13 @@ stories:
     title: Surface maze port — transcribe WSGRND.MAC TOWER MAZES into pure-data src/core/surfaceMazes.ts (per-wave TOWER/BUNKER/BISHOP hex coords, prefix structure base⊂T3, TTWRS counts, wave→maze map); replace random turret spawns with the fixed authored field scrolling in; reconcile TTWRS vs byte_98CB quota in-story (spec §C)
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-12'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-12'
+    review_findings: 'HIGH: surface soft-locks — finite authored field + unchanged phaseKills>=towersForWave clear gate means a missed tower makes the quota unreachable (proven: 300s no-fire flight, field passed, phase stayed surface); needs a scroll-completion clear. HIGH: core contracts under-tested — tautological reconcile (towersForWave IS mazeForWave().towerCount), no wave->maze-name binding, subset-only placement (half-field & off-by-one injections stay green). MEDIUM: wave-2 BUNK insta-clears + banks 50k free (same root cause). LOWs: vacuous SURFACE_MAZES===, stale byte_98CB/22-tower/timed-schedule comments, mazeForWave(NaN) latent. Transcription (all 568 coords) + pure-core boundary VERIFIED sound.'
+    review_verdict: approved
   - id: sw4-4
     title: "Swept/substepped bolt-vs-port collision — PORT_HIT_RADIUS STAYS 70 (sw3-15's corrected octagon-tight value; do NOT restore 120). sw4-1's restored 12000 u/s bolt (200 u/frame) tunnels the 140-u-diameter port between frames; fix by decoupling anti-tunneling from the hit radius: add a segment-swept or substepped bolt-vs-target hit-test so a fast bolt registers on the small port without inflating it — keep sw3-15's octagon-tight accuracy AND sw4-1's far-plane reach. Unblocks sw4-1 (PR #69): must land first, then sw4-1 rebases and adopts PORT_HIT_RADIUS=70."
     points: 3
