@@ -55,3 +55,21 @@ test('musicvm: .ENDT at top level terminates — no runaway', () => {
   const { durationMs } = runVoice(Uint8Array.from([0x00, 0x00]), 0, [], { voice: 1, maxSeconds: 30 });
   assert.ok(durationMs < 100, 'an immediate .ENDT must not run for maxSeconds');
 });
+
+test('musicvm: .GOSUB reads its 16-bit target big-endian (6809 word order)', () => {
+  // .GOSUB -> target 0x0006 encoded big-endian (hi=0x00, lo=0x06).
+  // A little-endian reader would instead compute 0x0600 (1536), run off the
+  // end of `bytes`, and the loop would exit before the subroutine's note
+  // ever sounds — so this only passes if the target is decoded big-endian.
+  const bytes = Uint8Array.from([
+    0x90, 0x00, 0x06,   // 0: .GOSUB -> big-endian target 0x0006
+    0x00, 0x00,         // 3: .ENDT (top-level end, reached after .RETURN)
+    0x00,               // 5: filler, never executed
+    0x33, 0x20,         // 6: subroutine body — D4 eighth note
+    0x91, 0x00,         // 8: .RETURN (+ trailing pad byte for the arg read)
+  ]);
+  const { events } = runVoice(bytes, 0, [], { voice: 1, maxSeconds: 5 });
+  assert.ok(events.length >= 6, `expected the subroutine's D4 note to sound, got ${events.length} event values`);
+  assert.equal(events[0], 0);                  // voice 1 AUDF register
+  assert.equal(events[1], noteToAudf('D4'));   // the note the subroutine plays
+});

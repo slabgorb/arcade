@@ -115,7 +115,7 @@ export function runVoice(bytes, entryOffset, tuntab, { voice = 1, maxSeconds = 3
       }
       case OP.GOSUB:
         gosubRet = pc + 3;                       // .GOSUB is THREE bytes
-        pc = bytes[pc + 1] | (bytes[pc + 2] << 8);
+        pc = (bytes[pc + 1] << 8) | bytes[pc + 2]; // 6809 ROM words are big-endian
         break;
       case OP.RETURN:
         pc = gosubRet >= 0 ? gosubRet : -1;      // .RETURN is ONE byte
