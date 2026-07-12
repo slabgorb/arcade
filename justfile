@@ -55,6 +55,14 @@ vendor-source repo ref="":
 vendor-source-all:
     @node {{root}}/scripts/vendor-source.mjs --all
 
+# Audit one game's sounds against the original ROM, e.g. `just extract-audio battlezone`
+extract-audio game *FLAGS:
+    @node {{root}}/scripts/extract-audio.mjs {{game}} {{FLAGS}}
+
+# Audit the whole fleet; non-zero exit if any sound is MISMATCH or UNVERIFIED
+extract-audio-all:
+    @node {{root}}/scripts/extract-audio.mjs --all
+
 # Full CI sweep: orchestrator checks + every game
 ci: test-orchestrator test-all build-all
     @echo "CI passed!"
