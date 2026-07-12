@@ -89,3 +89,54 @@ stories:
     repos: red-baron
     workflow: tdd
     type: bug
+  - id: lb2-7
+    title: "Dress the lobby as a cabinet — implement the 'Arcade Lobby' Claude design (marquee, vector grid floor, bezel, CRT, tile redesign)"
+    description: "The front door is a bare centred column that says ARCADE; the design pass makes it a CABINET. Source of truth is the Claude design project 'Retro 80s lobby design' (claude.ai/design/p/f24e04ba-f4c1-40a4-8326-cebfca93c4e8, file 'Arcade Lobby.dc.html'). What it adds, all of it pure DOM + CSS on the existing tile-per-registry-entry structure: a receding cyan vector grid FLOOR with its mirrored CEILING (the Battlezone/Star-Wars horizon, plus its reflection through the half-silvered combiner — CSS perspective + repeating-linear-gradient, masked to fade at the horizon); four L-shaped cabinet BEZEL brackets framing the screen; a MARQUEE reading SLABGORB PRESENTS over a letter-spread VECTOR ARCADE wordmark over a blinking SELECT GAME; a per-tile MODEL SLOT (a bordered square carrying data-model-slot=<gameId>, which lb2-9 fills with a real vector model); the score line restyled to the design's HI-dot-SCORE typography; a screen-curvature vignette; a slow whole-page CRT flicker; and a footer with a blinking INSERT COIN plus the fan-tribute/not-affiliated disclaimer. The design's own prop defaults are authoritative for the CRT tweaks (curvature on, scanlines off). NOT in scope: the design's rotating top-five HIGH SCORES board (lb2-8 — it needs score data the cabinet cannot carry across origins yet) and real vector models in the slots (lb2-9). Keep the tiles real <a href> links so click, Tab+Enter, middle-click and open-in-new-tab all keep working for free, and keep the registry (src/core/registry.ts) the single source of truth for the games, their colours, their launch URLs and their control hints — the design hardcodes all four and must not be allowed to fork them."
+    points: 5
+    priority: p2
+    status: done
+    started: '2026-07-12'
+    repos: lobby
+    workflow: tdd
+    acceptance_criteria:
+      - The lobby renders the design's cabinet furniture — vector grid floor, mirrored ceiling, four corner bezel brackets, marquee, curvature vignette, CRT flicker and footer — and none of it intercepts clicks or focus (all decoration is pointer-events:none and out of the tab order).
+      - "Every game listed on the page still comes from GAMES in src/core/registry.ts: the design's hardcoded titles, launch URLs, glow colours and control hints are NOT copied into the markup, and adding a game to the registry alone puts a correct tile on the page."
+      - Each tile keeps its real <a href> semantics — click, Tab+Enter, middle-click and open-in-new-tab all still launch the game, and the focus ring survives the restyle.
+      - "Each tile carries an empty model slot marked data-model-slot=\"<gameId>\", positioned and sized per the design, ready for lb2-9 to draw into without touching layout."
+      - "The score line uses the design's typography but shows only data the lobby can actually prove: the real best score when readable (thousands-separated), NO SCORE when not. No fabricated name or score ships."
+      - "Layout holds across DESKTOP widths (~1024px and up) — the tile grid wraps, the marquee never overflows its line, and the floor/ceiling stay pinned to the viewport edges. Phone/mobile layout is explicitly OUT OF SCOPE (Jedi, 2026-07-12): the games are keyboard/mouse vector sims and are unplayable on a touch screen, so the lobby is not held to a phone bar. The footer disclaimer is unwrappable (non-breaking spaces, inherited from the design) and clips below ~470px — known, accepted, not a defect."
+      - npm run build (tsc --noEmit && vite build) and npm test both pass in lobby/.
+    completed: '2026-07-12'
+    type: feature
+    review_verdict: approved
+  - id: lb2-8
+    title: The rotating top-five HIGH SCORES board — and the cross-origin score payload it needs
+    description: "The centrepiece of the 'Arcade Lobby' design, split out of lb2-7 because it is BLOCKED ON DATA, not on markup. The design shows a bordered HIGH SCORES panel that cycles one game at a time on a ~4.5s timer: the game's name in its own glow colour, a TOP FIVE ladder of rank/name/score rows, and a row of pips (one per game, the active one lit in that game's colour). Building the panel is an afternoon. Feeding it is the problem: ADR-0004 decided the lobby reads scores across origins from a cookie carrying a SINGLE BARE NUMBER (arcade-hi-<gameId>=<top score>), so even once lb2-2 ships, the cabinet cannot deliver five rows or a single player NAME to the lobby — and the design needs both. This story must therefore FIRST amend ADR-0004 to widen the published summary from one number to a small top-N row list (name + score; note the 4096 B cookie cap is not the binding constraint — five 3-char names and five scores is well under 200 B), then implement the board on top of it. Depends on lb2-2 (the cookie transport must exist before it can be widened) and composes with lb2-3 (the board must re-read on return from a game, same pageshow entry point). Keep the house fail-soft rule: no readable rows must degrade to an explicit, honest empty state — never to invented names or a zero."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared, lobby
+    workflow: tdd
+    acceptance_criteria:
+      - "ADR-0004 is amended (or superseded) in writing before the board is built: the published cross-origin summary carries a top-N list of name+score rows rather than a single number, and the amendment states the new cookie shape, its size against the 4096 B cap, and why widening beats the alternatives."
+      - The board shows a real top-five ladder for the game currently on screen, sourced through the widened @arcade/shared/highscore read — verified per game, not just for one.
+      - The board rotates through every game in the registry on a timer, and the pip row shows one pip per game with the active pip lit in that game's own colour.
+      - "A game with no readable scores shows an explicit empty state (e.g. NO SCORES YET), never a fabricated name, a placeholder ladder, or a zero."
+      - The board re-reads on return from a game through lb2-3's single refresh entry point — beating your best and coming back updates the ladder without a manual reload.
+      - The rotation timer is cleaned up on teardown and does not keep firing against a detached DOM.
+    type: feature
+  - id: lb2-9
+    title: Draw a real vector model in each lobby tile's model slot
+    description: "lb2-7 leaves every tile carrying an empty data-model-slot=<gameId> box; this fills it with the game's hero object drawn as a live glowing vector model — Tempest's blaster, a TIE fighter, an asteroid, a Battlezone tank, Red Baron's biplane — so the grid reads as an arcade row rather than a list of coloured rectangles. This is the single strongest thing the lobby can do to speak the cabinet's visual language, because it IS the cabinet's visual language. Do not hand-roll the drawing stack: @arcade/shared already ships /glow (withGlow + glowPolyline) and /math3d (the ported Atari Math Box) for exactly this, and star-wars' models contact sheet (/models.html) already previews every MODELS entry through the real render pipeline — reuse it to eyeball shape and scale rather than guessing. NOTE the pin: the lobby is still on @arcade/shared v0.4.0, which predates /glow, /view and /font entirely — this story eats the version-bump cost across the SH2 render epic that lb2-2 also carries, so sequence the two so only one of them pays it. Decide explicitly where the model geometry LIVES: copied into the lobby, or promoted into a shared subpath the games and the lobby both consume (the second is the ADR-0001 answer, but it is a real extraction, not a free one). Static or slowly rotating is fine; this must not become a per-tile game loop that burns the visitor's battery on the front door."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: lobby, arcade-shared
+    workflow: tdd
+    acceptance_criteria:
+      - Every tile's model slot draws that game's own hero object as a glowing vector model, in that game's registry glow colour, and a game with no model degrades to the empty slot rather than a broken or blank canvas.
+      - "The drawing goes through @arcade/shared/glow rather than a re-implemented glow stack, and the geometry's home is a decision that is written down, not an accident: copied into the lobby, or promoted to a shared subpath."
+      - Animation (if any) is cheap and courteous — it pauses when the tab is hidden and does not run a full per-tile game loop.
+      - The slot's presence or absence never shifts the tile layout lb2-7 established.
+      - npm run build and npm test both pass in lobby/, and the version-bump cost of moving the lobby's @arcade/shared pin off v0.4.0 is paid exactly once across this story and lb2-2.
+    type: feature
