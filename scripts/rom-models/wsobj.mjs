@@ -41,13 +41,52 @@
 // (WPN/WGA/WFF/PORT/GND all do this) can still re-sync the OPEN table even
 // if a local macro (GND's `.PGND`) was defined in between.
 //
-// UNRECOGNIZED DIRECTIVES: inside an open `.WL` draw list, any `.`-directive
-// this parser doesn't recognize (e.g. `.D`, damage points) throws instead of
-// silently dropping a point.
+// UNRECOGNIZED DIRECTIVES: inside an open `.WL` draw list OR an open `.WP`
+// vertex table, any `.`-directive this parser doesn't recognize (e.g. `.D`,
+// damage points) throws instead of silently dropping a point/row.
+//
+// .PGND: GND (the ground laser tower, WSOBJ.MAC:524-554) defines and uses a
+// LOCAL vertex macro instead of `.P`/`.PH`:
+//     .MACRO .PGND .A,.B,.C
+//     .WORD .A'*.S,.B'*.S,.C'*.S-GD$MDT
+//     .ENDM
+// No arg carries a decimal-forcing dot (`.A'*.S`, not `.A'.*.S`) — same
+// `.PH`-class trap: all three args are read in the CURRENT RADIX (hex), not
+// decimal. The third coordinate also carries a left-to-right (MACRO-11 has
+// no operator precedence) offset: `(C*S) - GD$MDT`. GD$MDT==0F00
+// (WSOBJ.MAC:5, hex) = 3840; corroborated by WSMAIN.MAC:2599's independent
+// `GD$MDT==1C00-200/2+200`, which left-to-right is
+// `((0x1C00-0x200)/2)+0x200 = 0xF00` — same value. GND's leading
+// `.PGND 0,0,0` is the object anchor (like `.P 0,0,0`), but because of the
+// `-GD$MDT` offset its COMPUTED vertex is `[0,0,-3840]`, not `[0,0,0]` — so
+// the anchor test below must run on the raw pre-scale/pre-offset args, not
+// the computed vertex.
+//
+// PARTIAL CONDITIONAL DISABLE: an object that had SOME rows skipped by a
+// false `.IF` but still ends up with real (nonzero) content left over is a
+// state this data model cannot represent faithfully — reporting only the
+// survivors as "the object" would silently misrepresent ROM truth. That
+// throws. An object that ends up with NO content at all (XW/YW: their
+// entire bodies sit inside the false `.IF`) is still dropped silently, same
+// as before — the "compiled out entirely" case is unambiguous.
+//
+// .WL2 ALIAS SCOPE: `.WL2 NAME` aliases the IMMEDIATELY PRECEDING `.WL`
+// list, not merely "the last `.WL` ever seen" — its macro (`.W$ LN,\TD$'A1
+// ',.-1`, WSOBJ.MAC:1310) points at `. - 1`, valid only while the location
+// counter still sits just past that `.WL`'s own `.BYTE 0` terminator. A
+// `.LEND` (emits `.BYTE 0FF`) or a `.WGD` (switches to hand-coded ground-
+// object assembly, WSOBJ.MAC:1313-1317) moves `.` past that window, so
+// `lastList` is cleared on both — a `.WL2` after either has nothing valid
+// to alias and throws via the existing "no preceding .WL" guard.
 
 import { stripComment, parseNum } from './source.mjs';
 
 const WSCOMN_RADIX = 16; // WSCOMN.MAC:5, pulled in by WSOBJ.MAC:2
+// WSOBJ.MAC:5 `GD$MDT==0F00`, radix 16 -> 0xF00 = 3840. Independently
+// corroborated by WSMAIN.MAC:2599 `GD$MDT==1C00-200/2+200`, which MACRO-11's
+// strict left-to-right (no precedence) evaluation resolves to the same
+// value: ((0x1C00 - 0x200) / 2) + 0x200 = 0xF00 = 3840.
+const GD_MDT = 0xf00;
 
 const isZero = ([x, y, z]) => x === 0 && y === 0 && z === 0;
 
@@ -183,8 +222,8 @@ export function parseWsobj(text) {
     // interpretable .LD/.BD point-index list .WL produces. There is no
     // connect data here for this parser to recover (PORT/WPN/WFF/GND/WGA/
     // BNK/TWR/STB are all drawn this way), so just clear any open list.
-    if (/^\.WGD2?\s+[A-Z0-9_$]+$/i.test(code)) { list = null; continue; }
-    if (/^\.LEND\b/i.test(code)) { list = null; continue; }
+    if (/^\.WGD2?\s+[A-Z0-9_$]+$/i.test(code)) { list = null; lastList = null; continue; }
+    if (/^\.LEND\b/i.test(code)) { list = null; lastList = null; continue; }
 
     if (table && (m = /^\.(PH?)\s+(.+)$/i.exec(code))) {
       const hex = m[1].toUpperCase() === 'PH';       // .PH -> current radix (16); .P -> decimal
@@ -198,23 +237,62 @@ export function parseWsobj(text) {
       continue;
     }
 
+    // `.PGND` — GND's local vertex macro (WSOBJ.MAC:526-528). Like `.PH`,
+    // neither arg carries a decimal-forcing dot, so all three read in the
+    // CURRENT RADIX (hex), not decimal. The third coordinate then carries a
+    // left-to-right `(C*S) - GD$MDT` offset (MACRO-11 has no operator
+    // precedence). The anchor test below runs on the RAW args, not the
+    // computed vertex, because the `-GD_MDT` offset means `.PGND 0,0,0`
+    // computes to `[0,0,-GD_MDT]`, not `[0,0,0]`.
+    if (table && (m = /^\.PGND\s+(.+)$/i.exec(code))) {
+      const args = m[1].split(',').map((a) => parseNum(a.trim(), radix));
+      if (args.length !== 3) throw new Error(`.PGND needs 3 args: "${code}"`);
+      const [a, b, c] = args;
+      const v = [a * table.scale, b * table.scale, c * table.scale - GD_MDT];
+      if (table.vertices.length === 0 && isZero(args)) { table.anchorDropped = true; continue; }
+      table.vertices.push(v);
+      continue;
+    }
+
     if (list && (m = /^\.(LD|BD)\s+(.+)$/i.exec(code))) {
       const indices = m[2].split(/[,\s]+/).filter(Boolean).map((a) => parseNum(a, 10));
       push(list, indices, m[1].toUpperCase() === 'BD');
       continue;
     }
 
-    // While a draw list is open, any `.`-directive that fell through every
-    // recognized case above is unrecognized — e.g. `.D` (damage point,
-    // WSOBJ.MAC:1340), unused today but would silently drop a point if it
-    // ever appeared inside a `.WL` list. Throw instead of ignoring it.
-    if (list && /^\./.test(code)) {
-      throw new Error(`unrecognized directive inside an open .WL list: "${code}"`);
+    // While a draw list OR a vertex table is open, any `.`-directive that
+    // fell through every recognized case above is unrecognized — e.g. `.D`
+    // (damage point, WSOBJ.MAC:1340) inside a `.WL` list, unused today but
+    // would silently drop a point if it ever appeared. Throw instead of
+    // ignoring it; this is the same guarantee finding 1 needed for `.PGND`
+    // (which silently vanished before this directive existed) generalized
+    // so no future unhandled directive can recur.
+    if ((table || list) && /^\./.test(code)) {
+      const where = list ? '.WL list' : '.WP table';
+      throw new Error(`unrecognized directive inside an open ${where}: "${code}"`);
     }
   }
 
   if (condStack.length !== 0) {
     throw new Error(`unterminated .IF: ${condStack.length} block(s) never closed by .ENDC`);
+  }
+
+  // Partial conditional disable: an object that had SOME rows compiled out
+  // by a false `.IF` but still ends up with real (nonzero) vertices or
+  // connect data left over cannot be reported as authoritative — the
+  // survivors alone are not what the ROM actually contains, and there is no
+  // way to know what the skipped rows would have added. Throw rather than
+  // silently presenting a partially-disabled object as ROM truth. (This does
+  // not fire on XW/YW today — their `.IF NE,0` blocks enclose their ENTIRE
+  // bodies, so they end up wholly empty and fall through to the drop filter
+  // below instead.)
+  for (const o of disabledByConditional) {
+    if (o.vertices.length > 0 || o.connect.length > 0) {
+      throw new Error(
+        `${o.name}: partially compiled out by a false .IF — some rows survived `
+        + 'alongside skipped ones; cannot represent a partially-disabled object as ROM truth',
+      );
+    }
   }
 
   // XW/YW (finding 1): `.WP`/`.WL` headers and a dropped anchor point still

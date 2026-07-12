@@ -45,9 +45,13 @@ test('.LD draws; .BD lifts the pen on its FIRST arg only, then draws', () => {
 });
 
 test('.WL2 aliases the previous .WL draw list', () => {
+  // .WL2 must appear BEFORE the .LEND that closes the list it aliases —
+  // exactly like the real file's `.WL TW1` / `.WL2 TW3` / ... / `.BD ...` /
+  // `.LEND` (WSOBJ.MAC:1573-1584). Finding 3 makes a .WL2 AFTER .LEND throw
+  // (lastList is cleared), since ROM semantics never place it there.
   const src = ['\t.S=1', '\t.WP A', '\t.P 0,0,0', '\t.P 1,0,0', '\t.P 2,0,0',
                '\t.WP B', '\t.P 0,0,0', '\t.P 9,0,0', '\t.P 8,0,0',
-               '\t.WL A', '\t.BD 1,2', '\t.LEND', '\t.WL2 B'].join('\n');
+               '\t.WL A', '\t.WL2 B', '\t.BD 1,2', '\t.LEND'].join('\n');
   const objs = parseWsobj(src);
   assert.deepEqual(byName(objs, 'B').connect, byName(objs, 'A').connect);
   assert.notDeepEqual(byName(objs, 'B').vertices, byName(objs, 'A').vertices);
@@ -57,6 +61,53 @@ test('an object with no .WL draw list yields vertices and no connect', () => {
   const [o] = parseWsobj(['\t.S=8', '\t.WP PORT', '\t.PH 1,0,0', '\t.WPZ'].join('\n'));
   assert.equal(o.hasDrawList, false);
   assert.deepEqual(o.connect, []);
+});
+
+// GND's local `.PGND .A,.B,.C` macro (WSOBJ.MAC:526-528) is `.WORD
+// .A'*.S,.B'*.S,.C'*.S-GD$MDT` — no arg carries a decimal-forcing dot (same
+// `.PH`-class trap: current radix, i.e. hex), and the third coordinate
+// carries a left-to-right `(C*S) - GD$MDT` offset. A leading `.PGND 0,0,0`
+// is still the object anchor even though ITS computed vertex is
+// `[0,0,-GD$MDT]`, not `[0,0,0]` — the anchor test must run on the raw args.
+test('.PGND args are HEX and the Z coordinate carries a -GD$MDT offset', () => {
+  const src = ['\t.S=10.', '\t.WP GND',
+    '\t.MACRO .PGND .A,.B,.C', '\t.WORD .A\'*.S,.B\'*.S,.C\'*.S-GD$MDT', '\t.ENDM',
+    '\t.PGND 0,0,0', '\t.PGND -8,0,0', '\t.PGND 0,0,10'].join('\n');
+  const [o] = parseWsobj(src);
+  assert.equal(o.anchorDropped, true, 'raw-zero .PGND 0,0,0 is still the anchor');
+  assert.deepEqual(o.vertices[0], [-80, 0, -3840]);   // -8*10, 0, 0*10-3840
+  assert.deepEqual(o.vertices[1], [0, 0, -3680]);      // 0x10 hex = 16 decimal: 16*10-3840
+});
+
+test('an unrecognized directive inside an open .WP table throws', () => {
+  const src = ['\t.S=1', '\t.WP T', '\t.P 0,0,0', '\t.D 1', '\t.P 1,0,0'].join('\n');
+  assert.throws(() => parseWsobj(src), /unrecognized directive inside an open \.WP table/);
+});
+
+test('an object partially compiled out by a false .IF throws', () => {
+  const src = ['\t.S=1', '\t.WP O', '\t.P 0,0,0', '\t.P 1,0,0',
+    '\t.IF NE,0', '\t.P 2,0,0', '\t.ENDC', '\t.WPZ'].join('\n');
+  assert.throws(() => parseWsobj(src), /O: partially compiled out by a false \.IF/);
+});
+
+// Finding 3: .WL2's ROM macro points at `. - 1`, valid only immediately
+// after the preceding .WL's own terminator byte — a .LEND (emits .BYTE 0FF)
+// or a .WGD (switches to hand-coded assembly) moves `.` past that window.
+// Before the fix, `lastList` was never cleared, so a .WL2 after either would
+// silently alias a stale, closed list instead of throwing.
+test('.LEND clears lastList — a later .WL2 cannot alias a closed list', () => {
+  const src = ['\t.S=1', '\t.WP A', '\t.P 0,0,0', '\t.P 1,0,0',
+    '\t.WL A', '\t.BD 1', '\t.LEND',
+    '\t.WL2 C'].join('\n');
+  assert.throws(() => parseWsobj(src), /\.WL2 C has no preceding \.WL list to alias/);
+});
+
+test('.WGD clears lastList — a later .WL2 cannot alias a list before a ground-type object', () => {
+  const src = ['\t.S=1', '\t.WP A', '\t.P 0,0,0', '\t.P 1,0,0',
+    '\t.WL A', '\t.BD 1',
+    '\t.WGD A',
+    '\t.WL2 C'].join('\n');
+  assert.throws(() => parseWsobj(src), /\.WL2 C has no preceding \.WL list to alias/);
 });
 
 test('REAL WSOBJ.MAC: TIE matches the port, PORT is hex, XW/YW are compiled out', opts, () => {
@@ -85,7 +136,12 @@ test('REAL WSOBJ.MAC: TIE matches the port, PORT is hex, XW/YW are compiled out'
   // GND's scale is set with `.S=30.*4` (=120) AFTER `.WP GND` opens its
   // table and AFTER a local `.MACRO .PGND ... .ENDM` is defined in between
   // (WSOBJ.MAC:524-530) — the re-sync must survive that macro definition.
-  assert.equal(byName(objs, 'GND').scale, 120);
+  const gnd = byName(objs, 'GND');
+  assert.equal(gnd.scale, 120);
+  // 16 `.PGND` rows (WSOBJ.MAC:532-552) minus the `.PGND 0,0,0` anchor.
+  // Before finding 1 was fixed, `.PGND` was an unrecognized directive and
+  // GND silently shipped as `vertices: []`.
+  assert.equal(gnd.vertices.length, 15);
 
   // TW1's list is shared by TW3/BK1/BK2/BK3/WG1 via .WL2.
   assert.deepEqual(byName(objs, 'BK1').connect, byName(objs, 'TW1').connect);
