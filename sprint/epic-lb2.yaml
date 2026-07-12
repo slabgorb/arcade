@@ -1,0 +1,54 @@
+id: lb2
+type: epic
+title: Lobby follow-ups — cross-origin high scores, plus front-end/design work
+description: "Catch-all follow-up epic for the lobby, opened 2026-07-12 after the original lobby epic (epic 7) closed. First payload is the high-score break reported from production: the lobby tiles do not show each game's real best score and never update. Root cause is architectural, not a typo — lobby/src/shell/storage.ts reads localStorage on the LOBBY's own origin (arcade.slabgorb.com), while every game persists its table on its own origin (tempest.slabgorb.com, star-wars.slabgorb.com, ...). localStorage is origin-scoped, so in production the lobby reads a store no game ever writes; the shared @arcade/shared/highscore key/shape contract (SH-4) is correct but is being applied to the wrong origin. Separately, main.ts reads each score once while building the tile, so even a readable score is frozen for the life of the page. Fixing the first half requires a cross-origin decision under the standing no-backend constraint, so this epic gates implementation behind an ADR. Additional front-end/design stories will be appended to this epic from an in-flight Claude design pass."
+priority: p2
+status: backlog
+repos: lobby
+stories:
+  - id: lb2-1
+    title: "Spike + ADR: how the lobby reads each game's high score across origins (no backend)"
+    description: "Gate story for the epic — decide, in writing, how the lobby can read each game's best score when the lobby and the games are separate origins in production (arcade.slabgorb.com vs <game>.slabgorb.com) and the cabinet has no backend. Spike the candidates far enough to know which ones actually survive a modern browser, then land an ADR: (a) a cookie on the shared parent domain .slabgorb.com, readable by every subdomain but size-capped and sent on every request; (b) a hidden-iframe + postMessage bridge to one shared storage origin — verify against third-party storage partitioning in Chrome and Safari ITP before betting on it; (c) collapse the cabinet onto a single origin using the path prefixes the vite configs already carry (arcade.slabgorb.com/tempest/ ...), which makes the whole problem disappear at the cost of the per-game R2 bucket/subdomain layout in docs/ops/hosting.md; (d) a Cloudflare KV/Worker score service, which breaks the standing no-backend constraint and therefore needs an explicit exception. No code — the deliverable is the decision and its blast radius, because whatever wins is implemented across @arcade/shared/highscore, the lobby, and potentially all five games."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: trivial
+    acceptance_criteria:
+      - docs/adr/ contains a new Accepted ADR that states the chosen cross-origin high-score mechanism and rejects the others with reasons, not vibes.
+      - 'Each candidate is spiked far enough to be falsifiable: the postMessage/iframe option is tested against (or cited against) third-party storage partitioning in current Chrome and Safari, and the parent-domain-cookie option is checked against a realistic five-game score payload.'
+      - "The ADR names the blast radius explicitly: which repos change (@arcade/shared/highscore, lobby, and which games), whether docs/ops/hosting.md's per-subdomain R2 layout is affected, and whether the no-backend constraint is being kept or knowingly excepted."
+      - The ADR records the migration story for scores already written to per-game origins (carried over, or knowingly abandoned).
+      - lb2-2's scope is unambiguous after reading the ADR — a Dev can start it without re-litigating the decision.
+    type: chore
+  - id: lb2-2
+    title: Implement the ADR's cross-origin high-score path so lobby tiles show each game's real best score
+    description: "The production bug the Jedi reported: lobby tiles do not reflect each game's individual high score. Implement whatever lb2-1's ADR chose. Today lobby/src/shell/storage.ts:getTopScore() calls localStorage.getItem(highScoreKey(gameId)) on the LOBBY's origin, so on arcade.slabgorb.com it reads a store that tempest.slabgorb.com et al never write — every tile falls through to its null path and shows NO SCORE (or a stale value left on the lobby origin from same-origin dev, which is exactly the 'frozen wrong number' the Jedi is seeing). The SH-4 contract in @arcade/shared/highscore (highScoreKey + isHighScoreRow) is not wrong and should not be thrown away; it is being pointed at the wrong origin. Expect the write side to move too: if the ADR picks a shared-origin or shared-domain store, every game's persist path changes as well as the lobby's read path, so treat the games as in-scope repos even though they are not listed here until the ADR names them. Keep the existing degrade-to-null discipline — a score the lobby cannot read must still render NO SCORE and never throw or block the page."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared, lobby
+    workflow: tdd
+    acceptance_criteria:
+      - On the production origin split (lobby on arcade.slabgorb.com, games on their own subdomains), each tile shows that game's own real best score — verified per game, not just for one.
+      - 'The read and write sides share one contract: @arcade/shared/highscore remains the single definition of the key/shape, extended rather than bypassed, so the lobby cannot drift from what the games persist.'
+      - 'Every failure mode still degrades to null → NO SCORE without throwing: storage unavailable, key missing, corrupt JSON, malformed rows, and any new failure mode the chosen mechanism introduces (blocked cookie, partitioned/blocked bridge, fetch failure).'
+      - Scores stay correct in local dev via just serve, where lobby and games sit on different localhost PORTS (same origin only if the ADR collapsed them) — the mechanism must not work in prod and silently break the dev cabinet, or vice versa.
+      - Tests cover a game with scores, a game with none, and a game whose stored data is corrupt; the cross-origin path itself is covered rather than mocked into triviality.
+      - Whatever migration the ADR chose for pre-existing per-origin scores is implemented (carried over, or the abandonment is deliberate and documented).
+    type: bug
+  - id: lb2-3
+    title: Lobby tiles re-read high scores on return from a game (kill the frozen-at-load read)
+    description: "The second half of the Jedi's report: the score is FROZEN. Independent of the cross-origin bug, lobby/src/main.ts calls getTopScore(game.id) once while building each tile and writes the result into a span, so the value is fixed for the life of the page. Play a game, beat your best, come back to the lobby — the tile still shows the old number (and on a BFCache restore, the page is not even rebuilt). Make the tiles re-read their scores when the player returns: a pageshow handler covers the BFCache back-navigation, and a storage event listener covers a score written by another tab or by a same-origin game. Whether a cross-tab storage event is even reachable depends on what lb2-1/lb2-2 land, so build the refresh around a single re-read entry point rather than hardwiring it to localStorage. Small, self-contained, and the only story in this epic that is worth shipping even if the ADR stalls."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: lobby
+    workflow: tdd
+    acceptance_criteria:
+      - Returning to the lobby from a game shows the newly-set high score without a manual reload — verified across a BFCache back-navigation (pageshow with persisted true), not just a cold load.
+      - A score written while the lobby is open in another tab updates the tile, via a storage event or whatever equivalent signal the lb2-2 mechanism exposes.
+      - Refresh goes through one re-read entry point that re-uses the tile's existing render path; no duplicated score-formatting logic and no rebuilding the whole grid.
+      - A tile whose score is still unreadable stays at NO SCORE across refreshes and never flickers to a stale or empty value.
+      - Tests drive the refresh path directly (simulated pageshow and storage events), asserting the tile text changes from the old score to the new one.
+    type: bug
