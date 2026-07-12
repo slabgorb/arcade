@@ -55,6 +55,10 @@ vendor-source repo ref="":
 vendor-source-all:
     @node {{root}}/scripts/vendor-source.mjs --all
 
+# Bake a game's ROM source into its committed contact-sheet artifact
+bake-models game="star-wars":
+    @node {{root}}/scripts/bake-models.mjs {{game}}
+
 # Full CI sweep: orchestrator checks + every game
 ci: test-orchestrator test-all build-all
     @echo "CI passed!"
