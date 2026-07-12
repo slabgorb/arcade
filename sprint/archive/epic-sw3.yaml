@@ -3,7 +3,7 @@ type: epic
 title: Star Wars — ROM fidelity pass (post-audit follow-ons)
 description: 'Concrete ROM-fidelity divergences surfaced by the sw2-6 disassembly fidelity audit (docs/sw2-6-disassembly-fidelity-audit.md): the ported star-wars sim faithfully reproduces vertex data, aim/lock, and several scores, but diverges from the 1983 cabinet on score VALUES (TIE 100 vs ROM 1,000; exhaust port 1,000 vs 25,000), the surface phase (flat 4-kill quota vs 22-50 towers + missing 50k all-towers bonus), the trench (no pilotable viewpoint -> unavoidable catwalk shield loss; identical every run; turrets never fire), audio (no music; only 4 of 23 speech lines wired), and HUD scoring (no extra lives, no bonus row). Each story ports a specific ROM behavior. Sequenced after epic sw2.'
 priority: p2
-status: backlog
+status: done
 repos: star-wars
 stories:
   - id: sw3-1
@@ -150,7 +150,7 @@ stories:
     title: Trench voice-line parity gate not discriminating — all three cues (Luke @16 even / Yahoo @24 even / Force @22 odd) fire every trench run instead of only the current wave-parity's line(s); pin the gate with a non-vacuous per-parity regression test (fixes the vacuous AC6 test flagged in sw3-4 review)
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: star-wars
     workflow: tdd
     type: bug
@@ -165,3 +165,4 @@ stories:
     completed: '2026-07-11'
     type: bug
     review_verdict: approved
+completed: '2026-07-12'

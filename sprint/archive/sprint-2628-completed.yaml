@@ -1,0 +1,13 @@
+# Sprint TO Sprint 2628 - Completed Stories
+# Jira Sprint ID: 2
+# Archived: 2026-07-12
+
+sprint:
+  name: "TO Sprint 2628"
+  number: 2628
+  jira_sprint_id: 2
+  jira_sprint_name: "TO Sprint 2628"
+  goal: ROM fidelity
+
+completed:
+  # Completed stories will be appended here by pf sprint archive
