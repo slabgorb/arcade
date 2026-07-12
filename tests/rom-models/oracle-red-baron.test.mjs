@@ -100,3 +100,25 @@ test('ORACLE: extractPoint3 throws on a prefix match instead of returning the wr
   assert.throws(() => extractPoint3(ts, 'PIECE0'), /no export named PIECE0/);
   assert.throws(() => extractPoint3(ts, 'STAR0'), /no export named STAR0/);
 });
+
+test('ORACLE: extractConnect throws on a scalar, not an array literal', opts, () => {
+  // topology.ts exports POINT_STRIDE = 6 (a scalar constant), not an array.
+  // The unbounded forward search used to walk past it and silently return
+  // DB_MAP's data instead of throwing.
+  const ts = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
+  assert.throws(
+    () => extractConnect(ts, 'POINT_STRIDE'),
+    /not assigned an array literal/,
+  );
+});
+
+test('ORACLE: extractPoint3 throws on a slice assignment, not a literal', opts, () => {
+  // biplane.ts exports DRONE_POINTS = PLANE_POINTS.slice(0, 29), not a literal.
+  // The unbounded forward search used to walk past it and silently return
+  // a later array instead of throwing.
+  const ts = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'biplane.ts'), 'utf8');
+  assert.throws(
+    () => extractPoint3(ts, 'DRONE_POINTS'),
+    /not assigned an array literal/,
+  );
+});

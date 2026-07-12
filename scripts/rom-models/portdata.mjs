@@ -12,18 +12,20 @@ function escapeRegExp(s) {
 /** Body of the array literal assigned to `export const <name>`, comments removed. */
 function arrayBody(text, name) {
   const src = String(text).replace(/\/\/[^\n]*/g, ''); // drop line comments first
-  // Anchor on the FULL name followed by a type annotation (`:`) or assignment
-  // (`=`) — `indexOf('export const ' + name)` prefix-matches, so requesting
-  // name 'PIECE0' would silently return the data for 'PIECE0_POINTS' instead
-  // of throwing.
-  const head = new RegExp(`export const ${escapeRegExp(name)}\\s*[:=]`);
+  // First check: does the export exist at all?
+  const nameExists = new RegExp(`export const ${escapeRegExp(name)}\\s*(?::|=)`);
+  if (!nameExists.test(src)) throw new Error(`no export named ${name}`);
+
+  // Second check: is it assigned to an array literal on the same declaration line?
+  // Anchor the bracket to the declaration itself. This prevents an unbounded
+  // forward search that would silently grab a later export's array if the
+  // named export is not assigned a literal (e.g., POINT_STRIDE = 6 or
+  // DRONE_POINTS = PLANE_POINTS.slice(...)).
+  const head = new RegExp(`export const ${escapeRegExp(name)}\\s*(?::[^=\\n]*)?=\\s*\\[`);
   const headMatch = head.exec(src);
-  if (!headMatch) throw new Error(`no export named ${name}`);
-  const at = headMatch.index;
-  // Anchor on "= [" — `readonly Point3[] = [` has a '[' in the TYPE annotation.
-  const eq = /=\s*\[/.exec(src.slice(at));
-  if (!eq) throw new Error(`${name} is not assigned an array literal`);
-  const open = at + eq.index + eq[0].length - 1;
+  if (!headMatch) throw new Error(`${name} is not assigned an array literal`);
+
+  const open = headMatch.index + headMatch[0].length - 1; // '[' is at the end
   let depth = 0;
   for (let i = open; i < src.length; i++) {
     if (src[i] === '[') depth++;
