@@ -29,6 +29,7 @@ completed_epics:
   - SH
   - rb1
   - sw2
+  - sw4
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -1241,4 +1242,14 @@ completed_stories:
     epic: sw4
     title: Surface maze port — transcribe WSGRND.MAC TOWER MAZES into pure-data src/core/surfaceMazes.ts (per-wave TOWER/BUNKER/BISHOP hex coords, prefix structure base⊂T3, TTWRS counts, wave→maze map); replace random turret spawns with the fixed authored field scrolling in; reconcile TTWRS vs byte_98CB quota in-story (spec §C)
     points: 5
+    completed: '2026-07-12'
+  - id: lb2-1
+    epic: lb2
+    title: "Spike + ADR: how the lobby reads each game's high score across origins (no backend)"
+    points: 3
+    completed: '2026-07-12'
+  - id: sw4-5
+    epic: sw4
+    title: "Fix develop-red exhaust-port score tests — sw3-15's PORT_APPROACH_WINDOW gate (port z >= -800) regressed sw3-1's portKill helper: the bolt drops at the deep trench-z outside the near window, blocking same-frame detonation so the kill scores 0; rom-score-values exhaust-port-kill tests (25000/30000) fail on develop today. Reconcile the approach-window gate with the score-kill path so develop is green."
+    points: 2
     completed: '2026-07-12'
