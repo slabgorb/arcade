@@ -57,18 +57,35 @@ export function parsePointTable(text, label, initialRadix) {
 }
 
 /**
- * Collect the connect-list ops of the list labelled `label`. Lists end at
- * `ENDDB` where present, but not every list has one: DB.MAP in 037007.XXX
- * runs straight into `DB.MAR:` with no ENDDB between them. So a list is also
- * bounded by the next DIFFERENT table-start label — without that check the
- * OP regex's optional leading-label group happily swallows `DB.MAR: BLANKV 0`
- * as if it were one more DB.MAP row.
+ * Collect the connect-list ops of the list labelled `label`.
+ *
+ * In MACRO-11 a label is just an address — "where a list ends" is not always
+ * a ROM fact. Most lists terminate at their own `ENDDB` (the ROM's actual
+ * sentinel, `.BYTE $FF`), including ones that contain an interior label: a
+ * decoder entering at `SMP00` runs `VV 2`, `VV 1`, then falls through the
+ * `H.MAP:` label (just an alternate entry point, not a new table) to `VV 0`
+ * and stops at the `ENDDB` that follows — 3 ops, not 2. So this parser never
+ * guesses a boundary from "the next differently-labelled line": that rule
+ * can't distinguish an alternate entry-point label inside one list from the
+ * start of a genuinely different table.
+ *
+ * The one real exception is DB.MAP in 037007.XXX, which has NO `ENDDB` of its
+ * own — it deliberately falls straight through into `DB.MAR:` (red-baron's
+ * own topology.ts documents this). That fall-through is an EDITORIAL split,
+ * not something recoverable from the ROM text, so the caller must declare it
+ * via `stopAtLabel`.
+ *
+ * @param {{ stopAtLabel?: string }} [options]
+ *   `stopAtLabel`: also stop when this label is reached, for the one list
+ *   (DB.MAP) that has no `ENDDB` terminator of its own. Omit for every other
+ *   list — they terminate correctly at their own `ENDDB`.
  */
-export function parseConnectList(text, label) {
+export function parseConnectList(text, label, { stopAtLabel } = {}) {
   const begin = startsAt(label);
   const LABEL_HEAD = /^\s*([A-Z0-9_.$]+):/i;
   const OP = /^\s*(?:[A-Z0-9_.$]+:)?\s*(BLANKV|BV|VSBLEV|VV)\s+(\d+)\s*$/i;
   let started = false;
+  let terminated = false;
   const ops = [];
 
   for (const raw of String(text).split('\n')) {
@@ -76,11 +93,11 @@ export function parseConnectList(text, label) {
     if (!started) {
       if (begin.test(code)) started = true;
       else continue;
-    } else {
+    } else if (stopAtLabel) {
       const lm = LABEL_HEAD.exec(code);
-      if (lm && lm[1].toUpperCase() !== label.toUpperCase()) break; // a new table began
+      if (lm && lm[1].toUpperCase() === stopAtLabel.toUpperCase()) { terminated = true; break; }
     }
-    if (/^\s*ENDDB\s*$/i.test(code)) break;
+    if (/^\s*ENDDB\s*$/i.test(code)) { terminated = true; break; }
     const m = OP.exec(code);
     if (m) {
       const macro = m[1].toUpperCase();
@@ -88,5 +105,12 @@ export function parseConnectList(text, label) {
     }
   }
   if (!started) throw new Error(`no connect list labelled ${label}`);
+  if (!terminated) {
+    throw new Error(
+      `connect list ${label} never reached ENDDB` +
+        (stopAtLabel ? ` or ${stopAtLabel}` : '') +
+        ' — refusing to return a silently truncated list',
+    );
+  }
   return ops;
 }

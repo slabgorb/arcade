@@ -4,11 +4,22 @@
 // transpiler, so a test cannot import red-baron's .ts modules. These files are
 // pure data literals, so reading them as text is reliable.
 
+/** Escape a string for literal use inside a `RegExp`. */
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** Body of the array literal assigned to `export const <name>`, comments removed. */
 function arrayBody(text, name) {
   const src = String(text).replace(/\/\/[^\n]*/g, ''); // drop line comments first
-  const at = src.indexOf(`export const ${name}`);
-  if (at < 0) throw new Error(`no export named ${name}`);
+  // Anchor on the FULL name followed by a type annotation (`:`) or assignment
+  // (`=`) — `indexOf('export const ' + name)` prefix-matches, so requesting
+  // name 'PIECE0' would silently return the data for 'PIECE0_POINTS' instead
+  // of throwing.
+  const head = new RegExp(`export const ${escapeRegExp(name)}\\s*[:=]`);
+  const headMatch = head.exec(src);
+  if (!headMatch) throw new Error(`no export named ${name}`);
+  const at = headMatch.index;
   // Anchor on "= [" — `readonly Point3[] = [` has a '[' in the TYPE annotation.
   const eq = /=\s*\[/.exec(src.slice(at));
   if (!eq) throw new Error(`${name} is not assigned an array literal`);
