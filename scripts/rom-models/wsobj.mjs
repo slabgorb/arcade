@@ -78,6 +78,21 @@
 // object assembly, WSOBJ.MAC:1313-1317) moves `.` past that window, so
 // `lastList` is cleared on both — a `.WL2` after either has nothing valid
 // to alias and throws via the existing "no preceding .WL" guard.
+//
+// .WPZ vs .WPZ2: `.WPZ` (WSOBJ.MAC:113-116) takes no name and only closes
+// the open vertex TABLE ("GET START PC" / "CALC # OF POINTS" for the
+// current TD$EQ entry). `.WPZ2 NAME` (WSOBJ.MAC:126-133) does that SAME
+// close, but also allocates a brand-new shape ID for NAME and points its PC
+// field at `.W0` — the just-closed table's own start address — so NAME
+// shares that table's vertices, not a copy. `.W0` is a side effect of `.W$`
+// (WSOBJ.MAC:109-110: `.W0=TD'A2''A1`), so `.WPZ2`'s first line ("GET START
+// PC") re-reads whatever TD$EQ currently points at: if a `.WP` table is
+// still open, THAT table is what gets closed and aliased; if it was already
+// closed by a bare `.WPZ`, the alias chains to that same table instead —
+// which is how three straight `.WPZ2` lines (TWR/BNK/STB, WSOBJ.MAC:555-557)
+// all end up sharing GND's single vertex table. Real usage never leaves a
+// dangling `.WPZ2` with nothing behind it, but a `.WPZ2` with no table ever
+// closed (table and lastTable both null) throws rather than guessing.
 
 import { stripComment, parseNum } from './source.mjs';
 
@@ -111,9 +126,10 @@ export function parseWsobj(text) {
 
   let radix = WSCOMN_RADIX;
   let scale = 1;
-  let table = null;    // object currently receiving .P/.PH rows
-  let list = null;     // object currently receiving .LD/.BD rows
-  let lastList = null; // for .WL2 aliasing
+  let table = null;     // object currently receiving .P/.PH rows
+  let list = null;      // object currently receiving .LD/.BD rows
+  let lastList = null;  // for .WL2 aliasing
+  let lastTable = null; // for .WPZ2 aliasing
   let inMacro = false; // inside a .MACRO ... .ENDM definition body
   const condStack = [];  // .IF / .ENDC nesting: true = keep, false = skip
   const conditionalActive = () => condStack.every(Boolean);
@@ -195,7 +211,27 @@ export function parseWsobj(text) {
     if ((m = /^\.WP\s+([A-Z0-9_$]+)$/i.exec(code))) {
       table = get(m[1]); table.scale = scale; continue;
     }
-    if (/^\.WPZ2?\b/i.test(code)) { table = null; continue; }
+    // Plain end-of-table: no name, nothing aliased. Remember what closed so
+    // a following `.WPZ2` (or chain of them) has something to alias.
+    if (/^\.WPZ\b/i.test(code)) { lastTable = table; table = null; continue; }
+    if ((m = /^\.WPZ2\s+([A-Z0-9_$]+)$/i.exec(code))) {
+      // If a table is still open (no bare .WPZ closed it first), .WPZ2
+      // closes it right here — same as .WPZ — before aliasing.
+      if (table) { lastTable = table; table = null; }
+      if (!lastTable) {
+        throw new Error(`.WPZ2 ${m[1]} has no preceding table to alias: "${code}"`);
+      }
+      // Shares the closed table's vertices BY REFERENCE (mirrors .WL2):
+      // TWR/BNK/STB all point at GND's single point table, not a copy.
+      // hasDrawList/connect stay at get()'s defaults (false/[]) — these are
+      // .WGD ground objects with no draw list — unless a later .WL/.WL2
+      // gives the alias its own list, which the existing machinery handles.
+      const alias = get(m[1]);
+      alias.vertices = lastTable.vertices;
+      alias.scale = lastTable.scale;
+      alias.anchorDropped = lastTable.anchorDropped;
+      continue;
+    }
 
     if ((m = /^\.WL\s+([A-Z0-9_$]+)$/i.exec(code))) {
       list = get(m[1]); list.hasDrawList = true; lastList = list; continue;

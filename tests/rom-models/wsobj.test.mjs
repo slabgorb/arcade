@@ -79,6 +79,31 @@ test('.PGND args are HEX and the Z coordinate carries a -GD$MDT offset', () => {
   assert.deepEqual(o.vertices[1], [0, 0, -3680]);      // 0x10 hex = 16 decimal: 16*10-3840
 });
 
+// Finding: `.WPZ2 NAME` (WSOBJ.MAC:126-133) does NOT just discard the name —
+// it allocates a NEW shape ID that shares the just-closed table's vertices
+// BY REFERENCE. A chain of `.WPZ2` lines (as GND/TWR/BNK/STB really appear,
+// WSOBJ.MAC:555-557) must all alias the SAME original table, not just the
+// immediately preceding `.WPZ2`.
+test('.WPZ2 aliases the just-closed table\'s vertices by reference, and chains', () => {
+  const src = ['\t.S=10.', '\t.WP GND', '\t.P 0,0,0', '\t.P 1,0,0', '\t.P 2,0,0',
+    '\t.WPZ',
+    '\t.WPZ2 TWR', '\t.WPZ2 BNK', '\t.WPZ2 STB'].join('\n');
+  const objs = parseWsobj(src);
+  const gnd = byName(objs, 'GND');
+  for (const n of ['TWR', 'BNK', 'STB']) {
+    const o = byName(objs, n);
+    assert.equal(o.vertices, gnd.vertices, `${n}.vertices must be the SAME array as GND's, not a copy`);
+    assert.equal(o.scale, gnd.scale);
+    assert.equal(o.hasDrawList, false, `${n} is a .WGD ground object — no draw list`);
+    assert.deepEqual(o.connect, []);
+  }
+});
+
+test('.WPZ2 with no preceding table throws', () => {
+  const src = ['\t.S=1', '\t.WPZ2 X'].join('\n');
+  assert.throws(() => parseWsobj(src), /\.WPZ2 X has no preceding table to alias/);
+});
+
 test('an unrecognized directive inside an open .WP table throws', () => {
   const src = ['\t.S=1', '\t.WP T', '\t.P 0,0,0', '\t.D 1', '\t.P 1,0,0'].join('\n');
   assert.throws(() => parseWsobj(src), /unrecognized directive inside an open \.WP table/);
@@ -145,4 +170,36 @@ test('REAL WSOBJ.MAC: TIE matches the port, PORT is hex, XW/YW are compiled out'
 
   // TW1's list is shared by TW3/BK1/BK2/BK3/WG1 via .WL2.
   assert.deepEqual(byName(objs, 'BK1').connect, byName(objs, 'TW1').connect);
+
+  // Finding: `.WPZ2 NAME` (WSOBJ.MAC:555-557, 600, 617) declares a distinct
+  // ROM object sharing the just-closed table's vertices — TWR/BNK/STB alias
+  // GND, WGB aliases WGA, WFG aliases WFF. These must not be silently
+  // dropped: absent-from-output would falsely imply the ROM has no such
+  // object, when models.ts ships SURFACE_BUNKER/TOWER_CAP/TRENCH_TURRET.
+  for (const n of ['TWR', 'BNK', 'STB']) {
+    const o = byName(objs, n);
+    assert.ok(o, `${n} must be present (.WPZ2 alias of GND)`);
+    assert.deepEqual(o.vertices, gnd.vertices);
+    assert.equal(o.scale, 120);
+    assert.equal(o.hasDrawList, false, `${n} is a .WGD ground object — no draw list`);
+  }
+
+  const wga = byName(objs, 'WGA');
+  const wgb = byName(objs, 'WGB');
+  assert.ok(wgb, 'WGB must be present (.WPZ2 alias of WGA)');
+  assert.deepEqual(wgb.vertices, wga.vertices);
+  assert.equal(wgb.hasDrawList, false);
+
+  const wff = byName(objs, 'WFF');
+  const wfg = byName(objs, 'WFG');
+  assert.ok(wfg, 'WFG must be present (.WPZ2 alias of WFF)');
+  assert.deepEqual(wfg.vertices, wff.vertices);
+  assert.deepEqual(wfg.vertices[0], [-256, 0, 0]); // shares WFF's hex-decoded vertex 0
+  assert.equal(wfg.hasDrawList, false);
+
+  // 19 real `.WP` objects (21 minus compiled-out XW/YW) + 5 `.WPZ2` aliases
+  // (TWR/BNK/STB/WGB/WFG) = 24. XW/YW must still be absent.
+  assert.equal(objs.length, 24);
+  assert.equal(byName(objs, 'XW'), undefined);
+  assert.equal(byName(objs, 'YW'), undefined);
 });
