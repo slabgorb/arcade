@@ -10,9 +10,10 @@ stories:
     title: Space world-metric restoration — TIE spawn depth $7C00=31,744 with TBG lateral table {0,±1024,±2048} (replacing random ±350 at 8,000), peel floor 350→2,048 ($800 ROM fire floor), exit range ~8,000, ENEMY_SPEED ~10,000 PROVISIONAL ($200/tick, tick unpinned — target 2.5-4s transit), bolt reach ≥32,000 (spec §A)
     points: 5
     priority: p1
-    status: backlog
+    status: in_review
     repos: star-wars
     workflow: tdd
+    review_verdict: approved
   - id: sw4-2
     title: "Homing fireball threat — replace 300 u/s straight-line (max reach 1,800, provably can't arrive) with ROM homing law sub_A875: pos decays 7/8 per tick toward cockpit, frame-rate independent pow(7/8, dt×TICK_HZ), 64-tick lifetime, ALWAYS arrives ~1-2s; un-shot = shield hit (gunnery defense); stays shootable (spec §B)"
     points: 3
@@ -28,3 +29,19 @@ stories:
     status: backlog
     repos: star-wars
     workflow: tdd
+  - id: sw4-4
+    title: "Swept/substepped bolt-vs-port collision — PORT_HIT_RADIUS STAYS 70 (sw3-15's corrected octagon-tight value; do NOT restore 120). sw4-1's restored 12000 u/s bolt (200 u/frame) tunnels the 140-u-diameter port between frames; fix by decoupling anti-tunneling from the hit radius: add a segment-swept or substepped bolt-vs-target hit-test so a fast bolt registers on the small port without inflating it — keep sw3-15's octagon-tight accuracy AND sw4-1's far-plane reach. Unblocks sw4-1 (PR #69): must land first, then sw4-1 rebases and adopts PORT_HIT_RADIUS=70."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw4-5
+    title: "Fix develop-red exhaust-port score tests — sw3-15's PORT_APPROACH_WINDOW gate (port z >= -800) regressed sw3-1's portKill helper: the bolt drops at the deep trench-z outside the near window, blocking same-frame detonation so the kill scores 0; rom-score-values exhaust-port-kill tests (25000/30000) fail on develop today. Reconcile the approach-window gate with the score-kill path so develop is green."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
