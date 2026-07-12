@@ -1,7 +1,3 @@
-# Sprint TO Sprint 2628 - Completed Stories
-# Jira Sprint ID: 2
-# Archived: 2026-07-12
-
 sprint:
   name: "TO Sprint 2628"
   number: 2628
@@ -9,5 +5,10 @@ sprint:
   jira_sprint_name: "TO Sprint 2628"
   goal: ROM fidelity
 
-completed:
-  # Completed stories will be appended here by pf sprint archive
+completed_epics: []
+completed_stories:
+  - id: sw5-1
+    epic: sw5
+    title: Recover `.WGD` ground-object edges — parser extension (takes edge coverage from 14 of 24 ROM objects to all 24, and compared pairs from 5 to 8)
+    points: 5
+    completed: '2026-07-12'
