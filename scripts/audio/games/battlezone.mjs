@@ -17,6 +17,30 @@ import { expandEnvelope } from '../render/envelope.mjs';
 
 const MODULE_BASE = 0x7864;  // BZONE.MAP: T2SOUN
 
+// LINK 3 needs the table's real ROM address, and it is NOT `MODULE_BASE + the
+// offset parseMac reports for a label`. Two things make that naive sum wrong:
+//
+//   1. PNTRS is 8 sounds x `OFFSET <name>` macro calls, each expanding (via
+//      `.IRPC X,<1234>`) to 4 real `.BYTE` instructions = 0x20 bytes -- but
+//      that expansion happens at MACRO-11 assembly time. Our line-based
+//      parseMac (scripts/audio/parse/mac.mjs) only matches literal `.BYTE`/
+//      `.WORD` tokens actually WRITTEN in the source; a macro CALL site
+//      ("OFFSET BE") contributes zero bytes to its byte count.
+//   2. The `.MACRO OFFSET,LABEL` DEFINITION itself (BZSOUN.MAC:83-91) contains
+//      a literal fallback line `.BYTE 0` (BZSOUN.MAC:88) inside its body. That
+//      line is only ever real data when the macro is EXPANDED, but parseMac
+//      sees the macro's source text once and picks up that one `.BYTE 0`
+//      literally -- a phantom byte baked into every label offset it reports
+//      here (confirmed: parseMac reports SOUND: at offset 3, not the real 2).
+//
+// AUDCV/IDLEV ARE literal `.BYTE 0` (BZSOUN.MAC:124-125, correctly counted),
+// then 14 zero-offset alias labels, then SOUND: .BYTE 0 (BZSOUN.MAC:148).
+// Real table start = MODULE_BASE + PNTRS(0x20) + AUDCV/IDLEV/SOUND(3 bytes)
+// = $7887 -- confirmed EXACT byte-for-byte against 036409.01 (254 bytes,
+// WG3..SU2 inclusive). Do NOT rederive this as MODULE_BASE + a parseMac label
+// offset; re-verify against the ROM image if BZSOUN.MAC ever changes shape.
+const DATA_BASE = 0x7887;
+
 // TICK RATE IS GENUINELY AMBIGUOUS IN THE SOURCE — do not "resolve" it by ear:
 //   BZSOUN.MAC:17  "THE SECOND MUST BE CALLED ONCE EVERY 16 MSEC (OR 1 FRAME)"
 //   BZONE.MAC:21   ";* INTERRUPTS: NMI (4 US)"
@@ -53,22 +77,31 @@ export default {
     { name: 'engine_hum', reason: 'AUDF3/AUDC3/AUDF4/AUDC4 are poked directly by procedural code in BZONE.MAC (robot-tracking distance-to-volume); there is no envelope table for it.' },
   ],
 
-  sfx() {
+  // LINK 3 verifies the WHOLE CONTIGUOUS TABLE against the ROM in one
+  // comparison — see the DATA_BASE derivation above for why this can't just
+  // be "MODULE_BASE + a parseMac label offset."
+  table() {
     const text = readFileSync(join(homedir(), 'Projects', `${this.dirbase}-source-text`, this.sourceFile), 'utf8');
     const { bytes, labels } = parseMac(text);
+    const start = Math.min(...SOUNDS.map((s) => labels.get(s.audf)).filter((v) => v !== undefined));
+    return { bytes: bytes.slice(start), romAddr: DATA_BASE, labels, all: bytes, start };
+  },
+
+  sfx() {
+    const { all, labels, start } = this.table();
     const out = [];
     for (const s of SOUNDS) {
       const fOff = labels.get(s.audf);
       const aOff = labels.get(s.audc);
       if (fOff === undefined || aOff === undefined) continue;
-      const f = expandEnvelope(bytes, fOff, { reg: 0, tickHz: TICK_HZ, maxSeconds: 2.0 });
-      const a = expandEnvelope(bytes, aOff, { reg: 1, tickHz: TICK_HZ, maxSeconds: 2.0 });
+      const f = expandEnvelope(all, fOff, { reg: 0, tickHz: TICK_HZ, maxSeconds: 2.0 });
+      const a = expandEnvelope(all, aOff, { reg: 1, tickHz: TICK_HZ, maxSeconds: 2.0 });
       out.push({
         name: s.name,
         events: [8, 0x00, 0.0, ...f.events, ...a.events],
         durationMs: Math.max(f.durationMs, a.durationMs),
-        romAddr: MODULE_BASE + fOff,
-        provenance: `BZSOUN.MAC ${s.audf}/${s.audc} (bit 0x${s.bit.toString(16)}) — tick ${this.tickNote}`,
+        romAddr: DATA_BASE + fOff - start,
+        provenance: `BZSOUN.MAC ${s.audf}/${s.audc} (bit 0x${s.bit.toString(16)}) @ $${(DATA_BASE + fOff - start).toString(16)} — tick ${this.tickNote}`,
       });
     }
     return out;
