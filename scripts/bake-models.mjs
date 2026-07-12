@@ -87,18 +87,30 @@ export function emitTs(models) {
 // Re-generate with: just bake-models star-wars
 //
 // The authentic vertex geometry from the original 1983 Atari source
-// (WSOBJ.MAC): vertices from the .WP/.P/.PH tables. Where a \`.WL\` draw list
-// exists (hasDrawList: true), \`edges\` are walked from it — genuine ROM
-// connectivity, unlike src/core/models.ts, whose edges were reconstructed by
-// heuristic because the disassembly held no draw lists.
+// (WSOBJ.MAC): vertices from the .WP/.P/.PH tables. \`edges\` are walked from
+// the object's own ROM draw routine — genuine ROM connectivity, unlike
+// src/core/models.ts, whose edges were reconstructed by heuristic because the
+// disassembly held no draw lists.
 //
-// IMPORTANT — \`hasDrawList: false\` (10 of 24 objects: GND, TWR, BNK, STB,
-// WPN, WGA, WGB, WFF, WFG, PORT) does NOT mean the ROM draws these objects
-// with no connecting lines. It means this parser could not recover edge
-// connectivity for them from WSOBJ.MAC's .WL tables — they are drawn by
-// hand-coded PLOT/DRAWTO routines elsewhere in the assembly that this tool
-// does not parse. For these objects only VERTICES are authoritative; do not
-// treat edges: [] as evidence the shipped game rendered a blank object.
+// ALL 24 objects now carry real edges. Two kinds of draw routine exist and both
+// are parsed: the interpretable \`.WL\` point-index list, and the ten ground
+// objects' (GND, TWR, BNK, STB, WPN, WGA, WGB, WFF, WFG, PORT) direct-executing
+// \`.WGD\` PLOT/DRAWTO/BDRAWTO routines. An earlier version of this artifact
+// carried \`hasDrawList: false\` for those ten and warned that their edges were
+// unrecoverable; that was wrong — the routines are pure macro calls over the
+// same point tables, and they are read now.
+//
+// ⚠ THE ROM'S OWN OUT-OF-RANGE STROKE — WFG. WSOBJ.MAC:1844 draws \`DRAWTO 6,3\`,
+// but WFG shares WFF's SIX-point table (indices 0..5): point 6 does not exist.
+// On the real cabinet that reads a stale slot of the transform scratch page —
+// an out-of-bounds read in the 1983 ROM, not a transcription error. (What proves
+// that: the other nine ground objects' indices land EXACTLY filling
+// [0, vertices.length-1].) It is transcribed verbatim rather than clamped,
+// because this artifact is the audit record. So WFG's \`edges\` contain [5,6] and
+// [6,3], whose index 6 is NOT a valid subscript of its \`vertices\`.
+// ANY CONSUMER THAT WALKS \`edges\` INTO \`vertices[i]\` MUST SKIP EDGES WHOSE
+// INDEX IS >= vertices.length — exactly as it must skip degenerate self-edges
+// (below). Rendering one unfiltered strokes to \`undefined\`.
 //
 // NOTE — \`edges\` is a faithful transcription of the ROM's beam path and may
 // contain degenerate self-edges (\`[n, n]\`) where the draw list repeats an
