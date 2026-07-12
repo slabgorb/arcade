@@ -47,7 +47,8 @@ stories:
     description: "The 'frozen' half of the original report, now downstream of ADR-0004. lobby/src/main.ts calls getTopScore(game.id) once while building each tile, so the value is fixed for the life of the page: play a game, beat your best, come back — the tile still shows the old number, and on a BFCache restore the page is not even rebuilt. Make the tiles re-read when the player returns: a pageshow handler covers BFCache back-navigation. Post-ADR-0004 the source is a cookie, so cross-tab 'storage' events do NOT apply (there is no storage event for cookies) — do not build around one. Re-read through a single entry point that re-uses the tile's existing render path. Small, self-contained, and shippable independently of lb2-2."
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-12'
     repos: lobby
     workflow: tdd
     acceptance_criteria:
@@ -55,6 +56,7 @@ stories:
       - Refresh goes through one re-read entry point re-using the tile's existing render path — no duplicated score formatting, no rebuilding the whole grid.
       - A tile whose score is still unreadable stays at NO SCORE across refreshes and never flickers to a stale value or a 0.
       - Tests drive the refresh path directly (simulated pageshow), asserting the tile text changes from the old score to the new one.
+    completed: '2026-07-12'
     type: bug
   - id: lb2-4
     title: Safari ITP deletes the games' own high-score tables after 7 days without interaction
