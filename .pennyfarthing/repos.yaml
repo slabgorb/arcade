@@ -3,6 +3,8 @@ repos:
   orchestrator:
     path: .
     type: orchestrator
+    default_branch: main
+    branch_strategy: trunk
     description: 'Coordination repo for a series of browser-based vector arcade games.
 
       Holds shared context, sprint/session tooling, tmux session launcher,
@@ -43,6 +45,8 @@ repos:
   lobby:
     path: lobby
     type: ui
+    default_branch: develop
+    branch_strategy: gitflow
     description: 'Arcade lobby / front-end shell: a vector-style menu on black that
       lists
 

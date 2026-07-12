@@ -1258,3 +1258,8 @@ completed_stories:
     title: "Dress the lobby as a cabinet — implement the 'Arcade Lobby' Claude design (marquee, vector grid floor, bezel, CRT, tile redesign)"
     points: 5
     completed: '2026-07-12'
+  - id: lb2-2
+    epic: lb2
+    title: Implement the ADR's cross-origin high-score path so lobby tiles show each game's real best score
+    points: 5
+    completed: '2026-07-12'
