@@ -5,6 +5,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parsePointTable, parseConnectList } from '../../scripts/rom-models/redbaron.mjs';
 import { extractPoint3, extractConnect } from '../../scripts/rom-models/portdata.mjs';
+import { assembleRedBaronPictures } from '../../scripts/rom-models/redbaron-pictures.mjs';
 
 const RB_SRC = join(homedir(), 'Projects', 'red-baron-source-text');
 const REPO = join(import.meta.dirname, '..', '..');
@@ -121,4 +122,72 @@ test('ORACLE: extractPoint3 throws on a slice assignment, not a literal', opts, 
     () => extractPoint3(ts, 'DRONE_POINTS'),
     /not assigned an array literal/,
   );
+});
+
+// rom-picture-contact-sheet: the propeller, the four explosion pieces, the two
+// star-debris shapes, the blimp, and the collision points were all
+// hand-transcribed into topology.ts and NEVER checked against the ROM (unlike
+// DB.PLN/DB.MAP/DB.MAR/DB.LNS above, which already had oracle coverage). This
+// block closes that gap at the orchestrator level, ahead of (and
+// cross-checking) the browser contact sheet's own romCompare.ts.
+test('ORACLE: assembleRedBaronPictures — every baked picture deep-equals its topology.ts/biplane.ts port counterpart', opts, () => {
+  const program = readFileSync(join(RB_SRC, 'RBARON.MAC'), 'utf8');
+  const pics = readFileSync(join(RB_SRC, '037007.XXX'), 'utf8');
+  const topo = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
+  const biplane = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'biplane.ts'), 'utf8');
+
+  const rom = assembleRedBaronPictures(program, pics);
+  assert.equal(rom.length, 13, 'expected all 13 red-baron pictures (plane×2, prop×3, piece×4, star×2, blimp, colld)');
+
+  // name -> [pointsSourceText, portPointsName, connectSourceText | null, portConnectName | null]
+  // ('Plane (drone LOD)' is handled separately below: biplane.ts's own
+  // DRONE_POINTS = PLANE_POINTS.slice(0, 29) is a slice, not an array
+  // literal, and extractPoint3 deliberately throws on that — see the
+  // "extractPoint3 throws on a slice assignment" oracle test above.)
+  const cases = [
+    ['Plane (near)', biplane, 'PLANE_POINTS', null, null], // connect checked structurally below, not by a single export
+    ['Prop A', topo, 'DBPROP_POINTS', topo, 'PPROPA'],
+    ['Prop B', topo, 'DBPROP_POINTS', topo, 'PPROPB'],
+    ['Prop C', topo, 'DBPROP_POINTS', topo, 'PPROPC'],
+    ['Piece 0', topo, 'PIECE0_POINTS', topo, 'PCDEC0'],
+    ['Piece 1', topo, 'PIECE1_POINTS', topo, 'PCDEC1'],
+    ['Piece 2', topo, 'PIECE2_POINTS', topo, 'PCDEC2'],
+    ['Piece 3', topo, 'PIECE3_POINTS', topo, 'PCDEC2'], // deliberately reuses PCDEC2 (PLPCDE)
+    ['Star 0', topo, 'STAR0_POINTS', topo, 'DESTR0'],
+    ['Star 1', topo, 'STAR1_POINTS', topo, 'DESTR1'],
+    ['Blimp', topo, 'BLIMP_POINTS', topo, 'DBLIMP'],
+    ['Collision pts', topo, 'COLLD_POINTS', null, null],
+  ];
+
+  for (const [name, pointsSrc, pointsName, connectSrc, connectName] of cases) {
+    const picture = rom.find((p) => p.name === name);
+    assert.ok(picture, `assembleRedBaronPictures did not produce '${name}'`);
+    assert.deepEqual(picture.points, extractPoint3(pointsSrc, pointsName), `${name}: points`);
+    if (connectSrc) {
+      assert.deepEqual(picture.connect, extractConnect(connectSrc, connectName), `${name}: connect`);
+    }
+  }
+
+  // Plane (drone LOD): DRONE_POINTS is PLANE_POINTS.slice(0, 29) (a slice, not
+  // a literal — extractPoint3 can't read it directly), and its connect is
+  // DB_MAR alone (biplane.ts's FAR_MODEL).
+  const droneLod = rom.find((p) => p.name === 'Plane (drone LOD)');
+  assert.deepEqual(droneLod.points, extractPoint3(biplane, 'PLANE_POINTS').slice(0, 29), 'Plane (drone LOD): points');
+  assert.deepEqual(droneLod.connect, extractConnect(topo, 'DB_MAR'), 'Plane (drone LOD): connect');
+
+  // Plane (near)'s connect is the concatenation topology.ts's own doc comment
+  // names: [...DB_MAP, ...DB_MAR, ...DB_LNS] (biplane.ts's NEAR_MODEL).
+  const planeNear = rom.find((p) => p.name === 'Plane (near)');
+  const expectedNearConnect = [
+    ...extractConnect(topo, 'DB_MAP'),
+    ...extractConnect(topo, 'DB_MAR'),
+    ...extractConnect(topo, 'DB_LNS'),
+  ];
+  assert.deepEqual(planeNear.connect, expectedNearConnect, 'Plane (near): DB_MAP+DB_MAR+DB_LNS concatenation');
+
+  // Collision pts has no connect-list on the ROM side at all — 037007.XXX's
+  // COLLD table is points-only, and topology.ts's COLLD_POINTS has no
+  // companion connect export either.
+  const colld = rom.find((p) => p.name === 'Collision pts');
+  assert.deepEqual(colld.connect, [], 'Collision pts: no ROM connect-list');
 });
