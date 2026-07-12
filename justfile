@@ -39,6 +39,22 @@ status:
 test-orchestrator:
     @node --test 'tests/**/*.test.mjs'
 
+# ============================================
+# VENDOR ORIGINAL SOURCE (historicalsource/*)
+# ============================================
+# Clone a preserved original-source repo into ~/Projects as a pristine git clone
+# PLUS a greppable (LF-normalized ASCII) copy, and record it in
+# docs/reference-sources.md. Grep the `*-source-text` copy; the originals are
+# CR-terminated non-UTF8 (grep flags them binary).
+
+# Vendor one repo, e.g. `just vendor-source historicalsource/red-baron [5355b76]`
+vendor-source repo ref="":
+    @node {{root}}/scripts/vendor-source.mjs {{repo}} {{ if ref != "" { "--ref " + ref } else { "" } }}
+
+# Vendor every game's original source from the manifest in scripts/vendor-source.mjs
+vendor-source-all:
+    @node {{root}}/scripts/vendor-source.mjs --all
+
 # Full CI sweep: orchestrator checks + every game
 ci: test-orchestrator test-all build-all
     @echo "CI passed!"

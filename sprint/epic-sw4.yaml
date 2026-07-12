@@ -46,9 +46,10 @@ stories:
     review_verdict: approved
   - id: sw4-5
     title: "Fix develop-red exhaust-port score tests — sw3-15's PORT_APPROACH_WINDOW gate (port z >= -800) regressed sw3-1's portKill helper: the bolt drops at the deep trench-z outside the near window, blocking same-frame detonation so the kill scores 0; rom-score-values exhaust-port-kill tests (25000/30000) fail on develop today. Reconcile the approach-window gate with the score-kill path so develop is green."
+    description: "Obsolete / already-resolved. TEA RED verification (2026-07-12): the exhaust-port-kill score tests (25,000/30,000) this story claims are red PASS on develop; full star-wars suite 836/836 green. The PORT_APPROACH_WINDOW reconciliation it describes already shipped via sw3-6 (#73, trenchPortInWindow re-seat) + sw4-2 (#71, commit e1e475d) before this story's branch was cut. No failing state to fix. See sprint/archive/sw4-5-session.md."
     points: 2
     priority: p1
-    status: backlog
+    status: canceled
     repos: star-wars
     workflow: tdd
     type: bug
