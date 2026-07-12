@@ -3,8 +3,9 @@
 // parsers in ./redbaron.mjs. This is the "which labels compose which named
 // picture" domain-knowledge layer — the role star-wars/src/tools/romCompare.ts's
 // ROM_TO_PORT plays for object naming — but it also SHAPES each picture
-// (concatenating connect-lists, slicing a combined point run), because these
-// pictures ARE the raw ROM tables, not a lookup over an already-parsed list.
+// (concatenating connect-lists, bounding the PIECE0-3 point tables at their
+// ROM labels), because these pictures ARE the raw ROM tables, not a lookup
+// over an already-parsed list.
 //
 // Sources (see red-baron/src/core/topology.ts + biplane.ts for the port's own
 // citations of the same tables):
@@ -20,45 +21,29 @@
 // through PIECE3 (037007.XXX:613-670) run back-to-back with NO separating
 // equate: `PIECE1:` sits directly ON a POINTP line, exactly like RBARON.MAC's
 // `P.BACK:` mid-table label that redbaron.mjs's own header comment names.
-// parsePointTable(text, 'PIECE0', ...) therefore does not stop at 14 rows —
-// it keeps consuming through PIECE1/2/3 and returns all 55 as ONE combined
-// run (empirically confirmed against 037007.XXX and cross-checked
-// byte-for-byte against topology.ts's own PIECE0_POINTS/PIECE1_POINTS/
-// PIECE2_POINTS/PIECE3_POINTS — the concatenation of the four port arrays is
-// deep-equal to the single combined ROM parse). The four pieces are therefore
-// split by SLICING the combined run at their known, ROM-comment-cited lengths
-// (14, 23, 9, 9) — the same technique biplane.ts's own
-// `DRONE_POINTS = PLANE_POINTS.slice(0, 29)` uses for the analogous DB.PLN /
-// P.BACK split, not a guess. A length mismatch throws rather than silently
-// mis-slicing (see the assertion below).
+// parsePointTable(text, 'PIECE0', ...) with no `stopAtLabel` would therefore
+// not stop at 14 rows — it would keep consuming through PIECE1/2/3 as one
+// combined run. Each piece is instead parsed with its own explicit
+// `stopAtLabel`, bounding it at the *next* ROM label — the same
+// caller-declared-boundary technique parseConnectList's own `stopAtLabel`
+// uses for DB.MAP/DB.MAR. The resulting lengths (14, 23, 9, 9) are the ROM's
+// OWN claim, verified three independent ways:
+//   1. Labels in 037007.XXX: PIECE0: L613, PIECE1: L628, PIECE2: L652,
+//      PIECE3: L662, PCDEC0: L672.
+//   2. The ROM's own length table, 037007.XXX:765-768 (PLPCLN):
+//        .BYTE PIECE1-PIECE0-3   .BYTE PIECE2-PIECE1-3
+//        .BYTE PIECE3-PIECE2-3   .BYTE PCDEC0-PIECE3-3
+//   3. RBARON.MAC:411-414 (.RADIX 16) equates: PIECE1=PIECE0+2A,
+//      PIECE2=PIECE1+45, PIECE3=PIECE2+1B — at 3 bytes/POINTP that's
+//      0x2A=42->14, 0x45=69->23, 0x1B=27->9 points.
+// tests/rom-models/oracle-red-baron.test.mjs pins these lengths against the
+// PLPCLN/RBARON.MAC equates directly, so a future boundary error fails loudly
+// instead of silently re-cutting the ROM to fit the port.
 
 import { parsePointTable, parseConnectList } from './redbaron.mjs';
 
 const PROGRAM_RADIX = 16; // RBARON.MAC starts .RADIX 16 (flips to 10 at L6217 for DB.PLN)
 const PICTURES_RADIX = 16; // 037007.XXX starts .RADIX 16 (flips to 10 at L80)
-
-/** Per-piece point counts of the PIECE0-3 combined run — see the header note above. */
-const PIECE_LENGTHS = [14, 23, 9, 9];
-
-/** Split a combined point run into the four PIECE0-3 point-sets. Throws if the
- * combined run isn't exactly the expected total — a silent mis-slice would
- * hand every piece past the break wrong vertices without ever failing loud. */
-function splitPieces(combined) {
-  const total = PIECE_LENGTHS.reduce((a, b) => a + b, 0);
-  if (combined.length !== total) {
-    throw new Error(
-      `PIECE0-3 combined run is ${combined.length} points, expected ${total} ` +
-        `(${PIECE_LENGTHS.join('+')}) — the ROM source structure changed; re-derive the split`,
-    );
-  }
-  const pieces = [];
-  let offset = 0;
-  for (const len of PIECE_LENGTHS) {
-    pieces.push(combined.slice(offset, offset + len));
-    offset += len;
-  }
-  return pieces;
-}
 
 /**
  * Assemble red-baron's 13 pictures from the program-ROM and picture-ROM text.
@@ -82,8 +67,13 @@ export function assembleRedBaronPictures(programText, picturesText) {
   const pPropB = parseConnectList(picturesText, 'PPROPB');
   const pPropC = parseConnectList(picturesText, 'PPROPC');
 
-  const pieceCombined = parsePointTable(picturesText, 'PIECE0', PICTURES_RADIX);
-  const [piece0, piece1, piece2, piece3] = splitPieces(pieceCombined);
+  // Each piece stops at the next ROM label — see the PIECE0-3 QUIRK note
+  // above for why this must be an explicit, caller-declared boundary rather
+  // than an inferred one.
+  const piece0 = parsePointTable(picturesText, 'PIECE0', PICTURES_RADIX, { stopAtLabel: 'PIECE1' });
+  const piece1 = parsePointTable(picturesText, 'PIECE1', PICTURES_RADIX, { stopAtLabel: 'PIECE2' });
+  const piece2 = parsePointTable(picturesText, 'PIECE2', PICTURES_RADIX, { stopAtLabel: 'PIECE3' });
+  const piece3 = parsePointTable(picturesText, 'PIECE3', PICTURES_RADIX, { stopAtLabel: 'PCDEC0' });
   const pcDec0 = parseConnectList(picturesText, 'PCDEC0');
   const pcDec1 = parseConnectList(picturesText, 'PCDEC1');
   const pcDec2 = parseConnectList(picturesText, 'PCDEC2');

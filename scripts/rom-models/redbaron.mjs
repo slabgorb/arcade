@@ -17,12 +17,27 @@ const POINTP = new RegExp(String.raw`^\s*${LABEL}\s*POINTP\s+(.+)$`, 'i');
 const BARE_LABEL = /^\s*[A-Z0-9_.$]+:\s*$/i;
 const startsAt = (label) => new RegExp(String.raw`^\s*${label.replace(/[.$]/g, '\\$&')}:`, 'i');
 
+const POINT_LABEL_HEAD = /^\s*([A-Z0-9_.$]+):/i;
+
 /**
  * Collect the `POINTP` rows of the table labelled `label`, honouring `.RADIX`
  * changes as the scan proceeds. Stops at the first content line that is neither
  * a POINTP row nor a bare label (e.g. the `.PLPNT =.-DB.PLN` equate).
+ *
+ * Some ROM point tables run back-to-back with NO separating stop line — e.g.
+ * 037007.XXX's PIECE0-3, where `PIECE1:` sits directly ON a POINTP line, so
+ * the default "stop at the first non-POINTP/non-label line" rule would keep
+ * consuming straight through it. For those, the caller must explicitly
+ * declare where the table ends via `stopAtLabel`, exactly like
+ * `parseConnectList`'s own `stopAtLabel` (that function's header comment
+ * explains why this can never be inferred automatically: a label sitting
+ * mid-table, like `P.BACK:` inside `DB.PLN` or `H.MAP:` inside `SMP00`, is
+ * NOT necessarily a new table's start). Omit `stopAtLabel` for every other
+ * table — they already stop correctly on their own equate/blank line.
+ *
+ * @param {{ stopAtLabel?: string }} [options]
  */
-export function parsePointTable(text, label, initialRadix) {
+export function parsePointTable(text, label, initialRadix, { stopAtLabel } = {}) {
   const lines = String(text).split('\n');
   const begin = startsAt(label);
   let radix = initialRadix;
@@ -37,6 +52,10 @@ export function parsePointTable(text, label, initialRadix) {
     if (!started) {
       if (begin.test(code)) started = true;
       else continue;
+    } else if (stopAtLabel) {
+      const lm = POINT_LABEL_HEAD.exec(code);
+      if (lm && lm[1].toUpperCase() === stopAtLabel.toUpperCase()) break;
+      if (!code.trim()) continue;
     } else if (!code.trim()) {
       continue; // blank / comment-only line inside the table
     }

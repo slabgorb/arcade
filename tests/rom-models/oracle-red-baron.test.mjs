@@ -124,6 +124,62 @@ test('ORACLE: extractPoint3 throws on a slice assignment, not a literal', opts, 
   );
 });
 
+// Finding 1 (rom-picture-contact-sheet review): PIECE0-3's point counts used
+// to be a hardcoded PIECE_LENGTHS = [14, 23, 9, 9] slice constant, whose only
+// guard was that the four lengths SUMMED to the combined run's total (55) —
+// a wrong split like [15, 22, 9, 9] also sums to 55 and would have passed.
+// This test makes the boundaries falsifiable from two INDEPENDENT ROM
+// sources, neither of which is the port:
+//   1. Each piece is now parsed with its own explicit stopAtLabel (the next
+//      ROM label), so its length is READ off the label-bounded scan, not
+//      asserted.
+//   2. RBARON.MAC:411-414 (.RADIX 16, i.e. hex) independently states the same
+//      three boundaries as byte deltas: PIECE1=PIECE0+2A, PIECE2=PIECE1+45,
+//      PIECE3=PIECE2+1B. At 3 bytes/POINTP that is 0x2A=42->14, 0x45=69->23,
+//      0x1B=27->9 — the byte-lengths of PIECE0, PIECE1, and PIECE2
+//      respectively. (RBARON.MAC's own equate chain does not extend to
+//      PIECE3's length — PLPCDE=PIECE3+6E is the unrelated decode-pointer
+//      table that follows it — so PIECE3's length is cross-checked instead by
+//      037007.XXX's own PLPCLN table, `.BYTE PCDEC0-PIECE3-3` at L768, and by
+//      the 'assembleRedBaronPictures' oracle test below deep-equalling
+//      PIECE3_POINTS.)
+test('ORACLE: PIECE0-2 point-table lengths are parsed from ROM labels AND agree with the independent RBARON.MAC equates', opts, () => {
+  const program = readFileSync(join(RB_SRC, 'RBARON.MAC'), 'utf8');
+  const pics = readFileSync(join(RB_SRC, '037007.XXX'), 'utf8');
+
+  const piece0 = parsePointTable(pics, 'PIECE0', 16, { stopAtLabel: 'PIECE1' });
+  const piece1 = parsePointTable(pics, 'PIECE1', 16, { stopAtLabel: 'PIECE2' });
+  const piece2 = parsePointTable(pics, 'PIECE2', 16, { stopAtLabel: 'PIECE3' });
+  const piece3 = parsePointTable(pics, 'PIECE3', 16, { stopAtLabel: 'PCDEC0' });
+  assert.deepEqual(
+    [piece0.length, piece1.length, piece2.length, piece3.length],
+    [14, 23, 9, 9],
+    'PIECE0-3, each bounded at its own next ROM label',
+  );
+
+  // Independent source: RBARON.MAC's PIECE0-3 equates (.RADIX 16 — see the
+  // .RADIX directive scan above, this line range is well before L6217's
+  // flip to decimal). Extract the literal hex byte-delta each equate states,
+  // rather than re-asserting the interpreted result, so a corrupted equate
+  // in the vendored source would fail this test instead of being silently
+  // agreed with.
+  const byteDelta = (lhsLabel, rhsLabel) => {
+    const re = new RegExp(String.raw`^${lhsLabel}\s*=${rhsLabel}\+([0-9A-Fa-f]+)`, 'mi');
+    const m = re.exec(program);
+    if (!m) throw new Error(`could not find "${lhsLabel}=${rhsLabel}+..." equate in RBARON.MAC`);
+    return parseInt(m[1], 16);
+  };
+  const deltas = [byteDelta('PIECE1', 'PIECE0'), byteDelta('PIECE2', 'PIECE1'), byteDelta('PIECE3', 'PIECE2')];
+  assert.deepEqual(deltas, [0x2a, 0x45, 0x1b], 'RBARON.MAC:412-414 byte deltas');
+
+  const POINTP_STRIDE = 3; // POINTP .X,.Y,.Z — one point per 3 bytes (see redbaron.mjs header)
+  assert.deepEqual(
+    deltas.map((d) => d / POINTP_STRIDE),
+    [piece0.length, piece1.length, piece2.length],
+    'RBARON.MAC equate byte-deltas / 3 must match the label-bounded PIECE0-2 point counts',
+  );
+});
+
 // rom-picture-contact-sheet: the propeller, the four explosion pieces, the two
 // star-debris shapes, the blimp, and the collision points were all
 // hand-transcribed into topology.ts and NEVER checked against the ROM (unlike

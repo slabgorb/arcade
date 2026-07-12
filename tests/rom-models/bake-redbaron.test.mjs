@@ -49,14 +49,24 @@ test('emitPicturesTs output is byte-identical across repeated calls on the same 
 // assembleRedBaronPictures: the PIECE0-3 quirk (redbaron-pictures.mjs's own
 // header note) — a fabricated fixture standing in for 037007.XXX's
 // PIECE0..PIECE3 block, which runs back-to-back with NO separating equate
-// (PIECE1: sits directly ON a POINTP line). This pins the SLICE offsets
-// (14, 23, 9, 9) against a small, controllable text instead of depending on
-// the vendored ROM file (which the oracle test covers separately).
-/** A `LABEL:\tPOINTP i,0,0\n\tPOINTP i+1,0,0\n...` block of `n` rows. */
-function pointpTable(label, n) {
+// (PIECE1: sits directly ON a POINTP line). This pins the ROM-LABEL
+// boundaries (14, 23, 9, 9) against a small, controllable text instead of
+// depending on the vendored ROM file (which the oracle test covers
+// separately).
+/** A `LABEL:\tPOINTP start,0,0\n\tPOINTP start+1,0,0\n...` block of `n` rows.
+ * `start` lets callers lay a GLOBALLY sequential X value across several
+ * back-to-back tables (see fabricatedPieceFixture's PIECE0-3 block below),
+ * so a test can prove the exact cut points between them, not just totals.
+ * The X value carries a trailing `.` (MACRO-11 "always decimal" — see
+ * source.mjs's parseNum) so two-digit markers like 13 don't get misread as
+ * hex 0x13=19 under this fixture's `.RADIX 16` — the fixture's fabricated
+ * tables use hex for the OTHER two coords (0) only because 0 reads the same
+ * in every radix. */
+function pointpTable(label, n, start = 0) {
   let out = '';
   for (let i = 0; i < n; i++) {
-    out += i === 0 ? `${label}:\tPOINTP ${i},0,0\n` : `\tPOINTP ${i},0,0\n`;
+    const v = start + i;
+    out += i === 0 ? `${label}:\tPOINTP ${v}.,0,0\n` : `\tPOINTP ${v}.,0,0\n`;
   }
   return out;
 }
@@ -83,7 +93,7 @@ PPROPB:\tVSBLEV 1
 PPROPC:\tVSBLEV 1
 \tENDDB
 ${pointpTable('COLLD', 4)}.COLLD\t=.-COLLD
-${pointpTable('PIECE0', 14)}${pointpTable('PIECE1', 23)}${pointpTable('PIECE2', 9)}${pointpTable('PIECE3', 9)}PCDEC0:\tBLANKV 0
+${pointpTable('PIECE0', 14, 0)}${pointpTable('PIECE1', 23, 14)}${pointpTable('PIECE2', 9, 37)}${pointpTable('PIECE3', 9, 46)}PCDEC0:\tBLANKV 0
 \tENDDB
 PCDEC1:\tBLANKV 0
 \tENDDB
@@ -102,7 +112,7 @@ DBLIMP:\tBV 0
   return { program, pictures };
 }
 
-test('assembleRedBaronPictures: slices the PIECE0-3 combined run at (14, 23, 9, 9)', () => {
+test('assembleRedBaronPictures: bounds PIECE0-3 at their own ROM labels (14, 23, 9, 9), not a hardcoded slice', () => {
   const { program, pictures } = fabricatedPieceFixture();
   const pics = assembleRedBaronPictures(program, pictures);
   const byName = Object.fromEntries(pics.map((p) => [p.name, p]));
@@ -111,13 +121,21 @@ test('assembleRedBaronPictures: slices the PIECE0-3 combined run at (14, 23, 9, 
   assert.equal(byName['Piece 1'].points.length, 23);
   assert.equal(byName['Piece 2'].points.length, 9);
   assert.equal(byName['Piece 3'].points.length, 9);
-  // Piece 1's first point continues the combined run at offset 14 (index 0 in
-  // its own fixture-local numbering, i.e. `POINTP 0,0,0` — same synthetic
-  // shape repeats per piece in this fixture) — assert the SLICE boundary
-  // itself by checking piece lengths sum to the whole combined run.
-  const total = byName['Piece 0'].points.length + byName['Piece 1'].points.length +
-    byName['Piece 2'].points.length + byName['Piece 3'].points.length;
-  assert.equal(total, 55);
+
+  // The fixture's PIECE0-3 rows carry a GLOBALLY sequential X value (0..54)
+  // across the whole combined run (see pointpTable's `start` param above), so
+  // a wrong boundary — e.g. a [15, 22, 9, 9] split, which sums to the same 55
+  // total the old PIECE_LENGTHS guard only checked — would misalign these
+  // markers and fail here. Unlike a length-sum check, this proves the CUT
+  // POINTS themselves, not just the total (the bug Finding 1 called out).
+  assert.deepEqual(byName['Piece 0'].points[0], [0, 0, 0]);
+  assert.deepEqual(byName['Piece 0'].points.at(-1), [13, 0, 0]);
+  assert.deepEqual(byName['Piece 1'].points[0], [14, 0, 0]);
+  assert.deepEqual(byName['Piece 1'].points.at(-1), [36, 0, 0]);
+  assert.deepEqual(byName['Piece 2'].points[0], [37, 0, 0]);
+  assert.deepEqual(byName['Piece 2'].points.at(-1), [45, 0, 0]);
+  assert.deepEqual(byName['Piece 3'].points[0], [46, 0, 0]);
+  assert.deepEqual(byName['Piece 3'].points.at(-1), [54, 0, 0]);
 });
 
 test('assembleRedBaronPictures: Piece 3 reuses PCDEC2 (PLPCDE\'s documented [0,1,2,2] mapping)', () => {
@@ -146,9 +164,12 @@ test('assembleRedBaronPictures: Plane (near) concatenates DB.MAP+DB.MAR+DB.LNS; 
   assert.deepEqual(byName['Plane (drone LOD)'].connect, byName['Plane (near)'].connect.slice(2, 4)); // DB.MAR's own 2 ops
 });
 
-test('assembleRedBaronPictures throws (not silently mis-slices) when the PIECE0-3 combined run is the wrong length', () => {
+test('assembleRedBaronPictures throws (not silently mis-parses) when a PIECE boundary label is missing from the ROM source', () => {
   const { program } = fabricatedPieceFixture();
-  // Drop PIECE3's rows entirely — the combined run is short.
+  // Drop PIECE1/2/3's labels entirely — PIECE0 exists but PIECE1, its own
+  // stopAtLabel boundary, does not. With label-bounded parsing this must
+  // throw loudly (parsePointTable can't find a table to bound), never
+  // silently hand back a mis-sliced result.
   const brokenPictures = `.RADIX 16
 DB.MAP:\tBLANKV 0
 \tVSBLEV 1
@@ -190,6 +211,6 @@ DBLIMP:\tBV 0
 `;
   assert.throws(
     () => assembleRedBaronPictures(program, brokenPictures),
-    /PIECE0-3 combined run is 1 points, expected 55/,
+    /no table labelled PIECE1/,
   );
 });
