@@ -59,7 +59,7 @@ test('an object with no .WL draw list yields vertices and no connect', () => {
   assert.deepEqual(o.connect, []);
 });
 
-test('REAL WSOBJ.MAC: TIE matches the port, PORT is hex, XW/YW exist', opts, () => {
+test('REAL WSOBJ.MAC: TIE matches the port, PORT is hex, XW/YW are compiled out', opts, () => {
   const objs = parseWsobj(readFileSync(WSOBJ, 'utf8'));
 
   const tie = byName(objs, 'TIE');
@@ -74,9 +74,18 @@ test('REAL WSOBJ.MAC: TIE matches the port, PORT is hex, XW/YW exist', opts, () 
   assert.equal(port.hasDrawList, false);
   assert.equal(port.vertices.length, 12);
 
-  // The ROM ships these; the port has neither.
-  assert.equal(byName(objs, 'XW').vertices.length, 60); // 61 .P minus anchor
-  assert.equal(byName(objs, 'YW').vertices.length, 58); // 59 .P minus anchor
+  // X-Wing and Y-Wing are wrapped, body and draw-list alike, in
+  // `.IF NE,0` ... `.ENDC` (WSOBJ.MAC:366-442, 448-520, 1488-1528,
+  // 1533-1569) — MACRO-11's `#if 0` ("assemble if 0 != 0", i.e. never).
+  // They were compiled OUT of the shipped ROM: disabled drafts the arcade
+  // never drew. They must not appear in the parser's output at all.
+  assert.equal(byName(objs, 'XW'), undefined, 'XW is behind .IF NE,0 — compiled out');
+  assert.equal(byName(objs, 'YW'), undefined, 'YW is behind .IF NE,0 — compiled out');
+
+  // GND's scale is set with `.S=30.*4` (=120) AFTER `.WP GND` opens its
+  // table and AFTER a local `.MACRO .PGND ... .ENDM` is defined in between
+  // (WSOBJ.MAC:524-530) — the re-sync must survive that macro definition.
+  assert.equal(byName(objs, 'GND').scale, 120);
 
   // TW1's list is shared by TW3/BK1/BK2/BK3/WG1 via .WL2.
   assert.deepEqual(byName(objs, 'BK1').connect, byName(objs, 'TW1').connect);

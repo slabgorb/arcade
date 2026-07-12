@@ -23,6 +23,27 @@
 // ANCHOR: a leading `.P 0,0,0` is the object centre — metadata, not a drawn
 // point. It is CONDITIONAL: TIE has one, WFF does not. Draw lists index the
 // table INCLUDING the anchor, so dropping it rebases the indices by -1.
+//
+// CONDITIONAL ASSEMBLY: `.IF NE,0` / `.ENDC` is MACRO-11's `#if 0` — "assemble
+// if 0 != 0" is never true. WSOBJ.MAC wraps X-Wing's and Y-Wing's ENTIRE
+// vertex bodies and draw-list bodies (not their `.WP`/`.WL` header lines) in
+// `.IF NE,0`: they were compiled out of the shipped ROM. Skipped lines are
+// never read as data. The `.WP XW`/`.WL XW` headers and XW's dropped
+// `.P 0,0,0` anchor still execute (they sit BEFORE the `.IF`), so XW/YW would
+// otherwise linger as content-free stubs (0 vertices, 0 connect); an object
+// that had real data conditioned out from under it and ended up with
+// NEITHER is reported as absent rather than as a misleading empty entry.
+// Only `.IF NE,0` (always false) and `.IF EQ,0` (always true) are
+// statically resolvable; any other `.IF` form throws rather than guessing.
+//
+// MACRO DEFINITIONS: `.MACRO name ... .ENDM` bodies are never data, tracked
+// by a plain boolean so a `.S=` between a `.WP` and its first `.PH` row
+// (WPN/WGA/WFF/PORT/GND all do this) can still re-sync the OPEN table even
+// if a local macro (GND's `.PGND`) was defined in between.
+//
+// UNRECOGNIZED DIRECTIVES: inside an open `.WL` draw list, any `.`-directive
+// this parser doesn't recognize (e.g. `.D`, damage points) throws instead of
+// silently dropping a point.
 
 import { stripComment, parseNum } from './source.mjs';
 
@@ -54,6 +75,14 @@ export function parseWsobj(text) {
   let table = null;    // object currently receiving .P/.PH rows
   let list = null;     // object currently receiving .LD/.BD rows
   let lastList = null; // for .WL2 aliasing
+  let inMacro = false; // inside a .MACRO ... .ENDM definition body
+  const condStack = [];  // .IF / .ENDC nesting: true = keep, false = skip
+  const conditionalActive = () => condStack.every(Boolean);
+  // Objects that had real content (vertex or draw-list rows) conditioned
+  // out by a false .IF while they were the open table/list. If nothing else
+  // ever populated them, they're compiled-out drafts (XW/YW) — report them
+  // as absent, not as a misleading zero-vertex stub.
+  const disabledByConditional = new Set();
 
   const push = (obj, indices, firstIsBlank) => {
     indices.forEach((raw, i) => {
@@ -69,19 +98,60 @@ export function parseWsobj(text) {
     if (!code) continue;
 
     let m;
+
+    // A .MACRO definition body must never be read as data — checked first
+    // and unconditionally so a macro's OWN .IF/.IFF/.ENDC (MOVD/DRAWTO use
+    // these) never touches condStack. `table`/`list` are deliberately left
+    // untouched across the macro body: GND opens its table with `.WP GND`,
+    // defines `.PGND` inline, then re-syncs its scale with `.S=` AFTER the
+    // macro — nulling `table` here would strand that re-sync (finding 2).
+    if (/^\.MACRO\b/i.test(code)) { inMacro = true; continue; }
+    if (/^\.ENDM\b/i.test(code)) { inMacro = false; continue; }
+    if (inMacro) continue;
+
+    // Conditional assembly. Only the two literal forms this file actually
+    // uses at top level are statically resolvable; anything else throws
+    // rather than guessing which branch a real assembler would take.
+    if ((m = /^\.IF\s+(.+)$/i.exec(code))) {
+      const cond = m[1].trim();
+      if (!conditionalActive()) {
+        condStack.push(false); // nested inside an already-skipped block
+      } else if (/^NE\s*,\s*0$/i.test(cond)) {
+        condStack.push(false); // "assemble if 0 != 0" -> never
+      } else if (/^EQ\s*,\s*0$/i.test(cond)) {
+        condStack.push(true);  // "assemble if 0 == 0" -> always
+      } else {
+        throw new Error(`.IF ${cond}: cannot statically evaluate ("${code}")`);
+      }
+      continue;
+    }
+    if (/^\.ENDC\b/i.test(code)) {
+      if (condStack.length === 0) throw new Error(`.ENDC with no matching .IF: "${code}"`);
+      condStack.pop();
+      continue;
+    }
+    if (!conditionalActive()) {
+      // Skipped by a false .IF. If a table/list is open, remember it might
+      // end up entirely empty because ITS content — not just some unrelated
+      // later line — was compiled out.
+      if (table) disabledByConditional.add(table);
+      if (list) disabledByConditional.add(list);
+      continue;
+    }
+
     if ((m = /^\.RADIX\s+(\d+)$/i.exec(code))) { radix = parseInt(m[1], 10); continue; }
     if ((m = /^\.S\s*=\s*(.+)$/i.exec(code))) {
       scale = parseScale(m[1], radix);
       // .S= usually precedes .WP (TIE, XW, YW, ...) but for WPN/WGA/WFF/PORT
       // it comes AFTER .WP (WSOBJ.MAC:560-622) — always before their .P/.PH
       // rows, though. Re-sync the open table so its recorded scale isn't the
-      // previous object's stale value.
+      // previous object's stale value. GND additionally opens a local
+      // `.PGND` macro BETWEEN `.WP GND` and this `.S=` (WSOBJ.MAC:524-530);
+      // the inMacro guard above no longer nulls `table` for that, so this
+      // re-sync still lands on GND.
       if (table) table.scale = scale;
       continue;
     }
-
-    // A .MACRO definition body must never be read as data.
-    if (/^\.MACRO\b/i.test(code)) { table = null; list = null; continue; }
 
     if ((m = /^\.WP\s+([A-Z0-9_$]+)$/i.exec(code))) {
       table = get(m[1]); table.scale = scale; continue;
@@ -100,9 +170,10 @@ export function parseWsobj(text) {
       // pointer at the SAME address as the preceding `.WL`, i.e. one
       // physical list shared by every name. `list` is left untouched, so
       // .BD/.LD rows that follow keep landing in this same array.
+      if (!lastList) throw new Error(`.WL2 ${m[1]} has no preceding .WL list to alias: "${code}"`);
       const alias = get(m[1]);
-      alias.connect = lastList ? lastList.connect : [];
-      alias.hasDrawList = Boolean(lastList);
+      alias.connect = lastList.connect;
+      alias.hasDrawList = true;
       continue;
     }
     // .WGD / .WGD2 flag a "ground type" object (WSOBJ.MAC:1313 emits a plain
@@ -132,7 +203,27 @@ export function parseWsobj(text) {
       push(list, indices, m[1].toUpperCase() === 'BD');
       continue;
     }
+
+    // While a draw list is open, any `.`-directive that fell through every
+    // recognized case above is unrecognized — e.g. `.D` (damage point,
+    // WSOBJ.MAC:1340), unused today but would silently drop a point if it
+    // ever appeared inside a `.WL` list. Throw instead of ignoring it.
+    if (list && /^\./.test(code)) {
+      throw new Error(`unrecognized directive inside an open .WL list: "${code}"`);
+    }
   }
 
-  return order.map((n) => objects.get(n));
+  if (condStack.length !== 0) {
+    throw new Error(`unterminated .IF: ${condStack.length} block(s) never closed by .ENDC`);
+  }
+
+  // XW/YW (finding 1): `.WP`/`.WL` headers and a dropped anchor point still
+  // execute before their `.IF NE,0`, but every real vertex/draw row does
+  // not — leaving a content-free stub. An object whose data was compiled
+  // out and never replaced by anything real carries no ground-truth
+  // information, so report it as absent rather than as a misleading
+  // zero-vertex/zero-connect entry.
+  return order
+    .map((n) => objects.get(n))
+    .filter((o) => !(disabledByConditional.has(o) && o.vertices.length === 0 && o.connect.length === 0));
 }
