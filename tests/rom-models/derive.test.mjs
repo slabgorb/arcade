@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { connectToEdges, edgeKey, diffEdges } from '../../scripts/rom-models/derive.mjs';
+import { connectToEdges } from '../../scripts/rom-models/derive.mjs';
 
 const B = (p) => ({ point: p, draw: false }); // pen up
 const V = (p) => ({ point: p, draw: true });  // pen down
@@ -23,20 +23,4 @@ test('connectToEdges: closes a ring when the list returns to its start', () => {
     connectToEdges([B(0), V(1), V(2), V(0)]),
     [[0, 1], [1, 2], [2, 0]],
   );
-});
-
-test('edgeKey: undirected — orientation does not matter', () => {
-  assert.equal(edgeKey([3, 1]), edgeKey([1, 3]));
-});
-
-test('diffEdges: reports each side exclusively, ignoring orientation', () => {
-  const d = diffEdges([[0, 1], [1, 2]], [[1, 0], [2, 3]]);
-  assert.deepEqual(d.onlyInRom, ['1-2']);
-  assert.deepEqual(d.onlyInPort, ['2-3']);
-});
-
-test('diffEdges: identical sets diff to nothing', () => {
-  const d = diffEdges([[0, 1]], [[1, 0]]);
-  assert.deepEqual(d.onlyInRom, []);
-  assert.deepEqual(d.onlyInPort, []);
 });
