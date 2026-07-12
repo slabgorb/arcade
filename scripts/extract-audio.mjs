@@ -5,17 +5,22 @@
 //   PARSE the original source -> LOCATE via the .MAP -> VERIFY against the ROM bytes
 //   -> RENDER to PCM -> COMPARE with what we ship.
 //
-// NO FALLBACKS. A sound that cannot complete the chain is UNVERIFIED. It is never
-// satisfied from an existing hand-transcribed table or a shipped .wav — that would
-// convert "we could not prove this" into "this looks fine", which is the exact state
-// this tool exists to escape. (Enforced mechanically by tests/extract-audio.test.mjs's
-// walk of scripts/audio banning any import of a hand-written table.)
+// NO FALLBACKS, in the ADAPTERS/RENDERERS (scripts/audio/**): a sound that cannot
+// complete links 1-4 is UNVERIFIED there. It is never satisfied from an existing
+// hand-transcribed table or a shipped .wav — that would convert "we could not prove
+// this" into "this looks fine", which is the exact state this tool exists to escape.
+// (Enforced mechanically by tests/extract-audio.test.mjs's walk of scripts/audio
+// banning any import of a hand-written table.)
 //
-// This driver never itself compares a rendered sound against a game's shipped port
-// (that would require importing the very hand-tables the no-fallback rule bans), so
-// MISMATCH is not produced automatically here — it remains a verdict a human can
-// record once a mismatch has been established by reading the port's source directly
-// (as e.g. red-baron.mjs's header comment already has for three of its five sounds).
+// LINK 5 (COMPARE) is different, and lives here plus scripts/audio/compare/shipped.mjs:
+// this driver's whole job is to read each game's SHIPPED artifact — a hand-table, a
+// shipped bake engine, whatever it ships — and machine-compare it against the ROM
+// truth links 1-4 already established. Reading a shipped table in order to compare
+// and condemn it is the opposite of falling back to it. ROM-VERIFIED now means "the
+// ROM says X AND the game plays X" — not merely "we read the ROM correctly". A sound
+// whose shipped artifact cannot be machine-compared at all (missing, wrong shape, no
+// in-repo artifact to check) is UNVERIFIED, naming exactly why — never ROM-VERIFIED
+// just because link 5 couldn't run.
 //
 // Usage:
 //   node scripts/extract-audio.mjs <game> [--render] [--out DIR]
@@ -28,6 +33,7 @@ import { renderPokey } from './audio/render/pokey.mjs';
 import { synthesize, SAMPLE_RATE as SPEECH_RATE } from './audio/render/tms5220.mjs';
 import { writeWav } from './audio/wav.mjs';
 import { parseLda, loadRawRom, readImage } from './audio/parse/rom.mjs';
+import * as shipped from './audio/compare/shipped.mjs';
 
 import tempest from './audio/games/tempest.mjs';
 import battlezone from './audio/games/battlezone.mjs';
@@ -35,6 +41,8 @@ import redBaron from './audio/games/red-baron.mjs';
 import asteroids from './audio/games/asteroids.mjs';
 import swSpeech from './audio/games/star-wars-speech.mjs';
 import swMusic from './audio/games/star-wars-music.mjs';
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const VERDICT = {
   ROM_VERIFIED: 'ROM-VERIFIED',
@@ -61,6 +69,58 @@ function attempt(fn) {
   } catch (err) {
     return { ok: false, error: err };
   }
+}
+
+// Same contract as attempt(), but for LINK 5 comparators — several of which
+// dynamically import a sibling game repo's tools/ directory, which may be
+// missing or broken independently of anything this driver controls. A broken
+// comparator degrades to UNVERIFIED for that one sound, not a crashed run.
+async function attemptAsync(fn) {
+  try {
+    return { ok: true, value: await fn() };
+  } catch (err) {
+    return { ok: false, error: err };
+  }
+}
+
+// LINK 5 dispatch for SFX: which shipped artifact does this game's port carry,
+// and how do we machine-compare it? Each game ships audio in a genuinely
+// different shape (a bake engine + hand table for Tempest, a hand-authored
+// TS envelope table for Red Baron, nothing at all for Battlezone), so this is
+// necessarily per-game — see scripts/audio/compare/shipped.mjs for what each
+// comparison actually does.
+function compareSfxShipped(adapter, s) {
+  if (adapter.name === 'tempest') return shipped.compareTempestSfx(s.name, s.events);
+  if (adapter.name === 'battlezone') return shipped.compareBattlezoneShipped();
+  if (adapter.name === 'red-baron') {
+    return shipped.compareRedBaronShipped(
+      s.tone,
+      { audfSweeps: s.audfSweeps, audcSweeps: s.audcSweeps },
+      join(REPO_ROOT, 'red-baron', 'src', 'shell', 'pokey.ts'),
+    );
+  }
+  return { status: 'unverified', reason: 'no shipped-artifact comparator is wired for this game yet' };
+}
+
+// Turns a LINK 5 comparison result (or a thrown failure) into a verdict row.
+// `cmpResult` is an attemptAsync() envelope: { ok, value } or { ok: false, error }.
+function verdictFromComparison(game, sound, cmpResult, provenance) {
+  if (!cmpResult.ok) {
+    return {
+      game, sound, verdict: VERDICT.UNVERIFIED,
+      reason: `link 5 (compare): comparator threw: ${cmpResult.error.message}`, provenance,
+    };
+  }
+  const cmp = cmpResult.value;
+  if (cmp.status === 'match') {
+    const v = { game, sound, verdict: VERDICT.ROM_VERIFIED, provenance };
+    if (cmp.reason) v.reason = cmp.reason;
+    return v;
+  }
+  if (cmp.status === 'mismatch') {
+    return { game, sound, verdict: VERDICT.MISMATCH, reason: cmp.reason, provenance };
+  }
+  return { game, sound, verdict: VERDICT.UNVERIFIED, reason: `link 5 (compare): ${cmp.reason}`, provenance };
 }
 
 // LINK 3: is the table we parsed from source actually IN THE ROM, byte for byte?
@@ -105,7 +165,7 @@ function int16ToFloat(samples) {
   return Float32Array.from(samples, (v) => v / 32768);
 }
 
-export function audit(adapter, { render = false, outDir = null } = {}) {
+export async function audit(adapter, { render = false, outDir = null } = {}) {
   const verdicts = [];
 
   for (const s of adapter.noRomAudio ?? []) {
@@ -142,7 +202,9 @@ export function audit(adapter, { render = false, outDir = null } = {}) {
         mkdirSync(join(outDir, adapter.name, 'sfx'), { recursive: true });
         writeWav(join(outDir, adapter.name, 'sfx', `${s.name}.wav`), pcm, 48000);
       }
-      verdicts.push({ game: adapter.name, sound: s.name, verdict: VERDICT.ROM_VERIFIED, provenance: s.provenance });
+      // LINK 5: does the shipped artifact actually match?
+      const cmp = await attemptAsync(() => compareSfxShipped(adapter, s));
+      verdicts.push(verdictFromComparison(adapter.name, s.name, cmp, s.provenance));
     }
   }
 
@@ -170,10 +232,9 @@ export function audit(adapter, { render = false, outDir = null } = {}) {
         mkdirSync(join(outDir, adapter.name, 'speech'), { recursive: true });
         writeWav(join(outDir, adapter.name, 'speech', `${line.name}.wav`), int16ToFloat(samples), SPEECH_RATE);
       }
-      verdicts.push({
-        game: adapter.name, sound: `speech/${line.name}`,
-        verdict: VERDICT.ROM_VERIFIED, provenance: line.provenance,
-      });
+      // LINK 5: compare against star-wars/tools/speech-bake/speech-data.mjs.
+      const cmp = await attemptAsync(() => shipped.compareStarWarsSpeech(line.n, line.lpc));
+      verdicts.push(verdictFromComparison(adapter.name, `speech/${line.name}`, cmp, line.provenance));
     }
   }
 
@@ -206,10 +267,10 @@ export function audit(adapter, { render = false, outDir = null } = {}) {
         }
         writeWav(join(outDir, adapter.name, 'music', `${tune.name}.wav`), mix, 48000);
       }
-      verdicts.push({
-        game: adapter.name, sound: `music/${tune.name}`,
-        verdict: VERDICT.ROM_VERIFIED, provenance: tune.provenance,
-      });
+      // LINK 5: music ships as pre-rendered .wav on a CDN — no in-repo
+      // artifact exists to machine-compare against (see shipped.mjs).
+      const cmp = await attemptAsync(() => shipped.compareStarWarsMusic());
+      verdicts.push(verdictFromComparison(adapter.name, `music/${tune.name}`, cmp, tune.provenance));
     }
   }
 
@@ -240,7 +301,7 @@ export function parseArgs(argv) {
   return opts;
 }
 
-function main() {
+async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const games = opts.all ? Object.keys(ADAPTERS) : [opts.game];
   if (!games[0]) {
@@ -249,11 +310,11 @@ function main() {
     process.exit(2);
   }
 
-  const outDir = opts.out ?? join(resolve(dirname(fileURLToPath(import.meta.url)), '..'), 'out', 'audio');
+  const outDir = opts.out ?? join(REPO_ROOT, 'out', 'audio');
   const all = [];
   for (const g of games) {
     for (const adapter of ADAPTERS[g] ?? []) {
-      all.push(...audit(adapter, { render: opts.render, outDir }));
+      all.push(...(await audit(adapter, { render: opts.render, outDir })));
     }
   }
 
@@ -265,4 +326,9 @@ function main() {
   if (bad.length) process.exit(1);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

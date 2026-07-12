@@ -94,6 +94,18 @@ export default {
       const a = expandEnvelope(all, aOff, { reg: s.regs[1], tickHz: TICK_HZ, maxSeconds: 2.0 });
       out.push({
         name: s.name,
+        // The ROM's own structural classification for link 5 (COMPARE): does
+        // this register's record actually change value (CHANGE != 0), or is
+        // it held flat (CHANGE == 0, including the degenerate 2-byte "X,0"
+        // idle terminator, which is a single flat write)? Exposed here so the
+        // driver's comparator (scripts/audio/compare/shipped.mjs) can diff it
+        // against the shipped port WITHOUT re-deriving it from `events` — the
+        // envelope's universal terminal-zero write (see envelope.mjs) would
+        // otherwise pollute a naive "distinct value" count on a genuinely flat
+        // register.
+        tone: s.audf.replace(/\d+$/, ''),
+        audfSweeps: recordSweeps(all, fOff),
+        audcSweeps: recordSweeps(all, aOff),
         events: [8, 0x00, 0.0, ...f.events, ...a.events],
         durationMs: Math.max(f.durationMs, a.durationMs),
         romAddr: DATA_BASE + fOff - start,
@@ -103,3 +115,13 @@ export default {
     return out;
   },
 };
+
+// STVAL,FRCNT[,CHANGE,NUMBER] at `offset` in `bytes` (see the record format in
+// envelope.mjs's header comment). FRCNT==0 is the degenerate 2-byte "X,0" idle
+// terminator — a single flat write, never a sweep. Otherwise the record is a
+// real 4-byte envelope and CHANGE (byte offset+2) says whether it ramps.
+function recordSweeps(bytes, offset) {
+  const frcnt = bytes[offset + 1];
+  if (frcnt === 0) return false;
+  return (bytes[offset + 2] & 0xff) !== 0;
+}

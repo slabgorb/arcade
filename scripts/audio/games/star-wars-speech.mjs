@@ -89,6 +89,11 @@ export default {
       const phrase = PHRASES[i - 1];
       out.push({
         name: slug(phrase),
+        // Phrase NUMBER, matching star-wars/tools/speech-bake/speech-data.mjs's
+        // own `n` field — link 5 (COMPARE) matches by this, not by slug/name,
+        // since a few phrases' wording differs slightly from the shipped
+        // transcription's `phrase` text (e.g. "with" vs "in").
+        n: i,
         phrase,
         lpc: Array.from(vocab.slice(start, stop + 1)), // inclusive stop
         romAddr: VOCAB_BASE + start,
