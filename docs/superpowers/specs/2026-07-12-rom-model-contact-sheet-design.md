@@ -224,8 +224,23 @@ geometry, not framing. Edges present in only one side are highlighted.
 | `BK1`/`BK2`/`BK3` | `SURFACE_BUNKER` | |
 | `WG1`/`WG2`/`WG3` | `TRENCH_TURRET` | |
 | `WPN`, `WGA`, `WFF` | `TRENCH`/`TRENCH_SQUARE` | hex verts in `WPN`/`WFF` |
-| **`XW` (X-Wing, 61 verts)** | **— none —** | **ROM ships it; we don't** |
-| **`YW` (Y-Wing, 59 verts)** | **— none —** | **ROM ships it; we don't** |
+| ~~`XW` (X-Wing)~~ | — | **PHANTOM — see below** |
+| ~~`YW` (Y-Wing)~~ | — | **PHANTOM — see below** |
+
+> **CORRECTION (2026-07-12, found during implementation).** An earlier draft of
+> this spec claimed "the ROM ships `XW` and `YW`; we don't." **That is false.**
+> Both objects — vertices *and* draw lists — sit inside `.IF NE,0` blocks
+> (`WSOBJ.MAC` ~366-442, ~448-520, ~1488-1528, ~1533-1569). `.IF NE,0` means
+> "assemble if 0 ≠ 0" — never. It is MACRO-11's `#if 0`, and the 1983 authors
+> use the idiom explicitly elsewhere (`SWVOC3.MAC:498`:
+> `.IF NE,0 ;NO ROOM FOR THIS SUCKER EITHER`).
+>
+> **X-Wing and Y-Wing were compiled OUT of the shipped ROM.** They are disabled
+> drafts the arcade never drew. The parser MUST honor conditional assembly and
+> omit them; reporting them as "ROM objects the port is missing" would invite
+> someone to add models the cabinet never had. The tool's premise is unaffected —
+> `TIE` and `RTH`, the two models `models.ts` admits it guessed, are clean and
+> ROM-authoritative.
 
 `DEATH_STAR`, `DEATH_STAR_SURFACE` and `TRENCH_CATWALK` have no `WSOBJ.MAC`
 counterpart — they come from `WSBASE.MAC` / `WSPANL.MAC` and are out of scope for

@@ -629,9 +629,10 @@ test('REAL WSOBJ.MAC: TIE matches the port, PORT is hex, XW/YW exist', opts, () 
   assert.equal(port.hasDrawList, false);
   assert.equal(port.vertices.length, 12);
 
-  // The ROM ships these; the port has neither.
-  assert.equal(byName(objs, 'XW').vertices.length, 60); // 61 .P minus anchor
-  assert.equal(byName(objs, 'YW').vertices.length, 58); // 59 .P minus anchor
+  // XW/YW are PHANTOMS — compiled out via `.IF NE,0` (MACRO-11's `#if 0`).
+  // They must NOT appear in the output. See "Findings" above.
+  assert.equal(byName(objs, 'XW'), undefined);
+  assert.equal(byName(objs, 'YW'), undefined);
 
   // TW1's list is shared by TW3/BK1/BK2/BK3/WG1 via .WL2.
   assert.deepEqual(byName(objs, 'BK1').connect, byName(objs, 'TW1').connect);
@@ -1058,10 +1059,23 @@ describe('pairModels', () => {
     expect(tie.rom!.vertices[0]).toEqual(tie.port!.vertices[0])
   })
 
-  it('surfaces ROM objects the port does not ship (X-Wing, Y-Wing)', () => {
-    const xw = pairs.find((p) => p.romName === 'XW')!
-    expect(xw.port).toBeNull()
-    expect(xw.rom!.vertices.length).toBeGreaterThan(0)
+  // X-Wing and Y-Wing are NOT in the ROM — their vertices and draw lists sit
+  // inside `.IF NE,0` blocks (MACRO-11's `#if 0`), so they were compiled OUT of
+  // the shipped cabinet. The parser omits them; the sheet must never present
+  // them as "ROM objects the port is missing".
+  it('does not surface the phantom X-Wing / Y-Wing', () => {
+    expect(pairs.find((p) => p.romName === 'XW')).toBeUndefined()
+    expect(pairs.find((p) => p.romName === 'YW')).toBeUndefined()
+  })
+
+  it('declines to claim edges for objects the ROM draws procedurally', () => {
+    // PORT/WPN/WFF are `.WGD` ground-type objects — direct-executing
+    // PLOT/DRAWTO assembly, not an interpretable point list. Vertices are
+    // authoritative; edges are not ours to assert.
+    const port = pairs.find((p) => p.romName === 'PORT')!
+    expect(port.rom!.hasDrawList).toBe(false)
+    expect(port.onlyInRom).toEqual([])
+    expect(port.onlyInPort).toEqual([])
   })
 
   it('every ROM_TO_PORT target names a real port model', () => {
