@@ -1263,3 +1263,8 @@ completed_stories:
     title: Implement the ADR's cross-origin high-score path so lobby tiles show each game's real best score
     points: 5
     completed: '2026-07-12'
+  - id: lb2-3
+    epic: lb2
+    title: Lobby tiles re-read high scores on return from a game (kill the frozen-at-load read)
+    points: 2
+    completed: '2026-07-12'
