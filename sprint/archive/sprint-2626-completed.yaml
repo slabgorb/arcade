@@ -1232,3 +1232,8 @@ completed_stories:
     title: Trench per-run variation — PRNG fixed-head + picked-tail obstacle/section chain (sub_83A4) so runs differ instead of being byte-identical
     points: 3
     completed: '2026-07-12'
+  - id: rb2-11
+    epic: rb2
+    title: POKEY + analog sound — 5 envelope tables (corrected 8-byte format), engine hum, machine-gun rat-a-tat (D2, INTCNT&8 strobe), explosion ramp, enemy-approach whine, score/bonus/announce jingles
+    points: 5
+    completed: '2026-07-12'

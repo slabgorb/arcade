@@ -119,9 +119,11 @@ stories:
     title: POKEY + analog sound — 5 envelope tables (corrected 8-byte format), engine hum, machine-gun rat-a-tat (D2, INTCNT&8 strobe), explosion ramp, enemy-approach whine, score/bonus/announce jingles
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-12'
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-12'
   - id: rb2-12
     title: Live playtest pass — verify the aerial slice end-to-end (fly, dogfight, waves, ace, lives, sound); mirrors bz2-6 / sw2-7
     description: 'Carryforwards from rb2-1 (flight model). (1) The main.ts input→sim→camera loop (keyboard yoke → FlightInput → step() ticked at SIM_TIMESTEP_S → tilting horizon) has only a STRUCTURAL grep guard (cockpit-boot.test.ts) — main.ts cannot run under vitest node env. Playtest must verify end-to-end: horizon banks on left/right (A/D), climbs/dives on up/down (W/S), and the sim ticks at ~10.42 Hz (NOT per rAF frame — the ÷N trap). A jsdom test driving requestAnimationFrame and counting step() calls/sec is the durable follow-up. (2) Confirm DISCHK feel: rb2-1 hardcodes far (authentic slow-air, nothing near) for the empty cockpit — confirm far vs mid is the preferred pre-combat feel.'
