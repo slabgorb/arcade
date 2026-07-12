@@ -91,16 +91,6 @@ export default {
 
     const { image, tuntab } = resolveTuntab();
 
-    // NOTE (known limitation, out of scope for this file): scripts/audio/render/
-    // musicvm.mjs's `.GOSUB` reads its embedded absolute target LITTLE-endian
-    // (`bytes[pc+1] | bytes[pc+2]<<8`). Empirically the linked image stores that
-    // inline `.WORD` operand BIG-ENDIAN too -- consistent with every other `.WORD`
-    // on this 6809 board (TUNTAB itself, SPKVTB in star-wars-speech.mjs). Reading it
-    // little-endian sends the ~6 voices that use `.GOSUB` (all of CNTV1-4, plus
-    // TSTV1/TSTV2) to a garbage address, where they hit an immediate `.BYTE 0,0`
-    // and terminate with zero events. main_theme (TH5) and vader_theme (DAR) never
-    // use .GOSUB and are unaffected. Fixing this would mean editing musicvm.mjs,
-    // which is out of this task's file scope -- see task-12-report.md.
     return TUNES.map((t) => {
       const voices = [];
       for (let v = 0; v < 4; v++) {

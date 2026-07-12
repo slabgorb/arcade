@@ -36,14 +36,14 @@ quietly satisfied from a hand-transcribed table or a community rip.
 | tempest | three_second_warning | XX UNVERIFIED | link 5 (compare): no shipped entry named 'three_second_warning' in tempest/tools/pokey-bake/sfx-data.mjs (SFX or DEFERRED) — nothing to compare against |
 | tempest | pulsar_active | XX UNVERIFIED | link 5 (compare): tempest/tools/pokey-bake/sfx-data.mjs lists 'pulsar_active' in DEFERRED, not baked/shipped: Disassembly sound_pulsar (entry 12, sample_6d) is a single-tick per-pulse-beat blip with AUDC volume nibble 0 — it bakes SILENT as a one-shot and only makes sense retriggered each pulse beat in-engine, not as a standalone sample. Address known ($cca9). |
 | battlezone | engine_hum | -- NO ROM AUDIO | AUDF3/AUDC3/AUDF4/AUDC4 are poked directly by procedural code in BZONE.MAC (robot-tracking distance-to-volume); there is no envelope table for it. |
-| battlezone | radar_beep | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts asserts no ROM data exists, but BZSOUN.MAC has real envelope tables. |
-| battlezone | bump | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts asserts no ROM data exists, but BZSOUN.MAC has real envelope tables. |
-| battlezone | block | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts asserts no ROM data exists, but BZSOUN.MAC has real envelope tables. |
-| battlezone | bonus | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts asserts no ROM data exists, but BZSOUN.MAC has real envelope tables. |
-| battlezone | warning | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts asserts no ROM data exists, but BZSOUN.MAC has real envelope tables. |
-| battlezone | disintegration | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts asserts no ROM data exists, but BZSOUN.MAC has real envelope tables. |
-| battlezone | saucer | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts asserts no ROM data exists, but BZSOUN.MAC has real envelope tables. |
-| battlezone | super_bonus | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts asserts no ROM data exists, but BZSOUN.MAC has real envelope tables. |
+| battlezone | radar_beep | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts was scanned for ROM-derived POKEY envelope data (register mnemonics, a table() call, or hex byte-record literals) and contains NONE, but BZSOUN.MAC has real envelope tables. |
+| battlezone | bump | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts was scanned for ROM-derived POKEY envelope data (register mnemonics, a table() call, or hex byte-record literals) and contains NONE, but BZSOUN.MAC has real envelope tables. |
+| battlezone | block | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts was scanned for ROM-derived POKEY envelope data (register mnemonics, a table() call, or hex byte-record literals) and contains NONE, but BZSOUN.MAC has real envelope tables. |
+| battlezone | bonus | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts was scanned for ROM-derived POKEY envelope data (register mnemonics, a table() call, or hex byte-record literals) and contains NONE, but BZSOUN.MAC has real envelope tables. |
+| battlezone | warning | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts was scanned for ROM-derived POKEY envelope data (register mnemonics, a table() call, or hex byte-record literals) and contains NONE, but BZSOUN.MAC has real envelope tables. |
+| battlezone | disintegration | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts was scanned for ROM-derived POKEY envelope data (register mnemonics, a table() call, or hex byte-record literals) and contains NONE, but BZSOUN.MAC has real envelope tables. |
+| battlezone | saucer | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts was scanned for ROM-derived POKEY envelope data (register mnemonics, a table() call, or hex byte-record literals) and contains NONE, but BZSOUN.MAC has real envelope tables. |
+| battlezone | super_bonus | XX MISMATCH | shipped audio is invented; battlezone/src/shell/audio.ts was scanned for ROM-derived POKEY envelope data (register mnemonics, a table() call, or hex byte-record literals) and contains NONE, but BZSOUN.MAC has real envelope tables. |
 | red-baron | gun | -- NO ROM AUDIO | discrete analog board, not POKEY |
 | red-baron | explosion | -- NO ROM AUDIO | discrete analog board, not POKEY |
 | red-baron | engine_hum | -- NO ROM AUDIO | discrete analog board, not POKEY |
@@ -81,7 +81,7 @@ quietly satisfied from a hand-transcribed table or a community rip.
 | star-wars | speech/always | OK ROM-VERIFIED | content-identical prefix (119 bytes); ROM slice is 121 bytes, shipped blob is 119 bytes — differ only in trailing bytes past the decoder's STOP frame |
 | star-wars | speech/r2_no | OK ROM-VERIFIED | content-identical prefix (251 bytes); ROM slice is 253 bytes, shipped blob is 251 bytes — differ only in trailing bytes past the decoder's STOP frame |
 | star-wars | speech/elephant_sound_for_passby | OK ROM-VERIFIED | content-identical prefix (290 bytes); ROM slice is 292 bytes, shipped blob is 290 bytes — differ only in trailing bytes past the decoder's STOP frame |
-| star-wars | speech/i_m_hit_but_not_bad_r2_see_what_you_can_do_with_it | OK ROM-VERIFIED | content-identical prefix (513 bytes); ROM slice is 513 bytes, shipped blob is 515 bytes — differ only in trailing bytes past the decoder's STOP frame |
+| star-wars | speech/i_m_hit_but_not_bad_r2_see_what_you_can_do_with_it | XX MISMATCH | the shorter blob (ROM, 513 bytes) never reaches a STOP frame — it is truncated, not merely tail-padded |
 | star-wars | speech/i_ve_lost_r2 | OK ROM-VERIFIED | content-identical prefix (174 bytes); ROM slice is 176 bytes, shipped blob is 174 bytes — differ only in trailing bytes past the decoder's STOP frame |
 | star-wars | speech/great_shot_kid_that_was_2_in_a_million | OK ROM-VERIFIED | content-identical prefix (456 bytes); ROM slice is 458 bytes, shipped blob is 456 bytes — differ only in trailing bytes past the decoder's STOP frame |
 | star-wars | speech/i_can_t_shake_him | OK ROM-VERIFIED | content-identical prefix (199 bytes); ROM slice is 201 bytes, shipped blob is 199 bytes — differ only in trailing bytes past the decoder's STOP frame |
@@ -98,7 +98,7 @@ quietly satisfied from a hand-transcribed table or a community rip.
 | star-wars | music/vader_theme | XX UNVERIFIED | link 5 (compare): shipped as pre-rendered .wav; no in-repo artifact to compare |
 | star-wars | music/test_tones | XX UNVERIFIED | link 5 (compare): shipped as pre-rendered .wav; no in-repo artifact to compare |
 
-31 ROM-VERIFIED, 29 MISMATCH/UNVERIFIED, 15 NO ROM AUDIO.
+30 ROM-VERIFIED, 30 MISMATCH/UNVERIFIED, 15 NO ROM AUDIO.
 
 ## What this found
 
@@ -126,11 +126,21 @@ zero-write: the ROM's register-event stream always ends with an explicit
 short by one event and leaving the last real event ringing instead of being
 silenced.
 
-Elsewhere the picture is cleaner: Star Wars's speech samples are all
-ROM-VERIFIED (each shipped blob is a byte-identical prefix of the ROM slice,
-differing only in trailing bytes past the TMS5220 decoder's STOP frame), and
-Tempest's `pulsar_hum`, `extra_life`, `player_explosion`, `warp`,
-`enemy_explosion`, and `countdown_beep` all check out exactly against
+Elsewhere the picture is cleaner: 22 of Star Wars's 23 speech samples are
+ROM-VERIFIED (each shipped blob is a content-identical prefix of the ROM
+slice, differing only in trailing bytes past the TMS5220 decoder's STOP
+frame — verified by actually decoding the shorter side and checking it stops,
+not merely by comparing lengths). The one exception is `i_m_hit_but_not_bad
+_r2_see_what_you_can_do_with_it` (phrase 19): there our ROM slice is the
+SHORTER side (513 bytes vs. the shipped blob's 515), and it never reaches a
+STOP frame — the decoder runs off the end of the buffer and renders a
+spurious extra frame with corrupted state, so the two sides genuinely decode
+to different audio. That is a real MISMATCH, not a caveat. (Likely root
+cause: phrase 19's SPKVTB entry is the only one leaving a 4-byte gap —
+`stop=0x14c6`, next `start=0x14cb` — between it and the following phrase;
+worth investigating as a follow-up, not something to fix by nudging the
+offset here.) Tempest's `pulsar_hum`, `extra_life`, `player_explosion`,
+`warp`, `enemy_explosion`, and `countdown_beep` all check out exactly against
 `ALSOUN.MAC`. The `NO ROM AUDIO` verdicts (Asteroids, Red Baron's engine/gun/
 explosion sounds, Battlezone's `engine_hum`) are not gaps to fill — those
 games' original hardware generated those sounds with discrete analog circuits

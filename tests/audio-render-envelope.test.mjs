@@ -65,6 +65,21 @@ test('envelope: xTerminator "idle" (default) — X,0 writes X as the new idle va
   assert.equal(durationMs, 20);
 });
 
+test('envelope: xTerminator truly DEFAULTS to "idle" when the option is omitted entirely', () => {
+  // The test above always passes xTerminator: 'idle' explicitly, so it never
+  // actually exercises the default parameter — flipping expandEnvelope's
+  // default to 'loop' would still pass it. This one omits the option
+  // entirely: if the default were ever flipped to 'loop', X,0 would jump back
+  // to offset 2 (itself) and get caught by the seen-guard instead, emitting
+  // NO values and a 20ms duration from the guard, not from a single write —
+  // same duration, but zero written values, which is what actually
+  // distinguishes the two semantics here.
+  const bytes = Uint8Array.from([0x00, 0x00, 0x02, 0x00]);
+  const { events, durationMs } = expandEnvelope(bytes, 2, opts); // no xTerminator at all
+  assert.deepEqual(values(events), [0x02], 'default (no xTerminator passed) must behave as idle: X,0 writes X once, then stops');
+  assert.equal(durationMs, 20);
+});
+
 test('envelope: xTerminator "loop" — X,0 jumps back to offset X and keeps playing (Tempest ALSOUN)', () => {
   // A record at offset 2 plays (0x10, 0x11), then an X,0 terminator (X=2) jumps
   // back to it — the record replays (0x10, 0x11 again) before the `seen` guard

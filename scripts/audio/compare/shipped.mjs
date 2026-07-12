@@ -18,6 +18,7 @@
 //   { status: 'mismatch', reason }              -- MISMATCH — reason names what differs
 //   { status: 'unverified', reason }            -- cannot be machine-compared — reason says why
 import { readFileSync } from 'node:fs';
+import { synthesize } from '../render/tms5220.mjs';
 
 const match = (reason) => (reason ? { status: 'match', reason } : { status: 'match' });
 const mismatch = (reason) => ({ status: 'mismatch', reason });
@@ -33,14 +34,23 @@ const unverified = (reason) => ({ status: 'unverified', reason });
 // Sorting is required: our own adapters emit "all of AUDF, then all of AUDC"
 // unsorted, while the shipped bake tool merge-sorts by time before returning —
 // comparing unsorted-vs-sorted would report false mismatches on ordering alone.
-function sortedRegValuePairs(events) {
+//
+// `reg` is an explicit SECONDARY sort key, not just a time sort. Without it,
+// two events tied at the same timestamp (a real AUDF+AUDC write landing on
+// the same tick) fall back on Array.sort's stability, which just preserves
+// whatever order they arrived in — reg0-then-reg1 for our own adapters
+// (which always emit all of AUDF then all of AUDC), but whatever order the
+// shipped bake tool's own merge happened to produce for its side. The two
+// sides agreeing on tie order is then incidental, not guaranteed — exported
+// so this canonical ordering is independently testable.
+export function sortedRegValuePairs(events) {
   const triples = [];
   for (let i = 0; i < events.length; i += 3) {
     const reg = events[i];
     if (reg === 8) continue; // AUDCTL write, not a voice register
     triples.push([reg, events[i + 1], events[i + 2]]);
   }
-  triples.sort((a, b) => a[2] - b[2]);
+  triples.sort((a, b) => a[2] - b[2] || a[0] - b[0]);
   return triples.map(([reg, val]) => [reg, val]);
 }
 
@@ -206,13 +216,66 @@ export function compareRedBaronShipped(tone, romSweeps, pokeyTsPath) {
 }
 
 // ---------------------------------------------------------------------------
-// Battlezone — battlezone/src/shell/audio.ts contains NO ROM register data at
-// all (it synthesizes every cue at runtime). There is nothing to byte-compare
-// — and that absence IS the finding, for every table-driven cue alike.
+// Battlezone — battlezone/src/shell/audio.ts is BELIEVED to contain NO ROM
+// register data at all (it synthesizes every cue at runtime). That belief
+// must be a MEASUREMENT, not a standing assertion this comparator returns
+// unconditionally regardless of what the file actually says — otherwise
+// fixing the port properly could never turn this green; the tool would keep
+// saying "invented" forever on principle alone, which is exactly the kind of
+// unverified claim this whole audit exists to catch.
+//
+// So: actually scan the file, the way compareRedBaronShipped scans
+// pokey.ts's POKEY_SOUNDS table — for any of the shapes ROM-derived POKEY
+// envelope data would show up in: register mnemonics (AUDF/AUDC/AUDCTL), a
+// register `table(...)` call (this codebase's own convention, see
+// parseRedBaronPokeySounds above), or raw hex byte-record literals (the
+// STVAL,FRCNT,CHANGE,NUMBER shape ALSOUN/RBSOUN/BZSOUN records transcribe
+// to). Finding NONE of these is itself the finding — today's honest result —
+// but it is now something this function actually looked for.
 // ---------------------------------------------------------------------------
-export function compareBattlezoneShipped() {
+const ROM_ENVELOPE_SHAPES = [
+  { label: 'POKEY register mnemonics (AUDF/AUDC/AUDCTL)', re: /\bAUD[FC]\d?\b|\bAUDCTL\b/ },
+  { label: "a register table() call (this codebase's ROM-table convention)", re: /\btable\s*\(/ },
+  { label: 'hex byte envelope-record literals (0xNN groups)', re: /(?:0x[0-9a-fA-F]{2}\s*,\s*){3}0x[0-9a-fA-F]{2}/ },
+];
+
+// Exported so the scan itself is independently testable — proving this is a
+// real measurement and not a disguised constant.
+export function findRomEnvelopeShapes(tsSource) {
+  return ROM_ENVELOPE_SHAPES.filter((shape) => shape.re.test(tsSource)).map((shape) => shape.label);
+}
+
+// Display-only: a repo-relative-looking label for messages, so a checked-in
+// doc pasted from CLI output doesn't bake in one machine's absolute checkout
+// path (matches the convention every other comparator's mismatch text
+// already follows, e.g. compareRedBaronShipped's "red-baron/src/shell/pokey.ts").
+// Falls back to the raw path for anything outside that known layout (e.g. a
+// test fixture in a tmp dir).
+function displayPath(p) {
+  const idx = p.indexOf('battlezone/src/shell/');
+  return idx >= 0 ? p.slice(idx) : p;
+}
+
+export function compareBattlezoneShipped(audioTsPath) {
+  let src;
+  try {
+    src = readFileSync(audioTsPath, 'utf8');
+  } catch (err) {
+    return unverified(`could not read ${audioTsPath}: ${err.message}`);
+  }
+  const found = findRomEnvelopeShapes(src);
+  const label = displayPath(audioTsPath);
+  if (found.length) {
+    // The file DOES carry something ROM-table-shaped — this blanket "it's
+    // all invented" check can no longer speak for it. That needs a real
+    // per-sound comparator (like Red Baron's), not this presence scan.
+    return unverified(
+      `${label} contains ROM-shaped register data (${found.join('; ')}) — this structural presence scan can no longer classify it as wholly invented; a real per-sound comparator is needed`,
+    );
+  }
   return mismatch(
-    "shipped audio is invented; battlezone/src/shell/audio.ts asserts no ROM data exists, but BZSOUN.MAC has real envelope tables.",
+    `shipped audio is invented; ${label} was scanned for ROM-derived POKEY envelope data ` +
+      `(register mnemonics, a table() call, or hex byte-record literals) and contains NONE, but BZSOUN.MAC has real envelope tables.`,
   );
 }
 
@@ -254,8 +317,20 @@ export async function compareStarWarsSpeech(order, romLpc) {
   // only in bytes trailing that shared prefix. The TMS5220 frame format halts
   // decoding at a STOP energy frame — bytes past it are never read by the
   // decoder — so a pure trailing-length difference does not by itself imply
-  // an audible difference. We class this ROM-VERIFIED, but say precisely what
-  // was found rather than silently asserting a full byte-for-byte match.
+  // an audible difference, PROVIDED the shorter blob actually reaches a STOP
+  // frame on its own. If it doesn't, it isn't harmlessly tail-padded — it is
+  // TRUNCATED, and the decoder runs off the end of the buffer (reading zero
+  // bits past it) and can render a spurious extra frame with corrupted state.
+  // We must actually decode the shorter blob and check, not just infer from
+  // the length delta's sign — a shorter ROM slice and a shorter shipped blob
+  // both take this branch, but only decoding tells them apart.
+  const shorter = romLpc.length <= shipLpc.length ? romLpc : shipLpc;
+  const shorterSide = romLpc.length <= shipLpc.length ? 'ROM' : 'shipped';
+  if (!synthesize(shorter).stopped) {
+    return mismatch(
+      `the shorter blob (${shorterSide}, ${shorter.length} bytes) never reaches a STOP frame — it is truncated, not merely tail-padded`,
+    );
+  }
   return match(
     `content-identical prefix (${prefixLen} bytes); ROM slice is ${romLpc.length} bytes, shipped blob is ${shipLpc.length} bytes — ` +
       `differ only in trailing bytes past the decoder's STOP frame`,

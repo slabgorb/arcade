@@ -62,10 +62,19 @@ export default {
   sfx() {
     const { all, labels, start } = this.table();
     const out = [];
+    // A label that vanished from the source (renamed, typo'd) must NOT just
+    // silently drop the sound from the report — a missing row reads as "not
+    // looked at yet", not "known broken". Name it and let audit() turn it
+    // into an UNVERIFIED row instead.
+    const missing = [];
     for (const s of SOUNDS) {
       const fOff = labels.get(s.label);
       const aOff = labels.get(s.audc);
-      if (fOff === undefined || aOff === undefined) continue;
+      if (fOff === undefined || aOff === undefined) {
+        const bad = [fOff === undefined && s.label, aOff === undefined && s.audc].filter(Boolean);
+        missing.push({ name: s.name, reason: `label(s) ${bad.join(', ')} not found in ${this.sourceFile} — cannot locate this sound` });
+        continue;
+      }
       // AUDF1 = reg 0 (pitch), AUDC1 = reg 1 (distortion + volume).
       // ALSOUN masks the AUDC high nibble when ramping — volume moves, distortion holds.
       // ALSOUN's X,0 terminator means "loop back to offset X" (not T2SOUN's "idle at X").
@@ -83,6 +92,7 @@ export default {
         provenance: `ALSOUN.MAC ${s.label} @ $${(DATA_BASE + fOff - start).toString(16)}`,
       });
     }
+    out.missing = missing;
     return out;
   },
 };

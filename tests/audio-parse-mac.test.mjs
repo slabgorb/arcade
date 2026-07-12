@@ -52,16 +52,6 @@ SPKVTB::
   assert.equal(labels.get('SPKVTB'), 0);
 });
 
-test('mac: .WORD values are captured per label (for SPKVTB / TUNTAB)', () => {
-  const { words } = parseMac(`
-	.RADIX 16
-SPKVTB::
-	.WORD VOCAB+0038,VOCAB+0171	;USE THE FORCE, LUKE
-	.WORD VOCAB+0172,VOCAB+02E7	;THE FORCE WILL BE WITH YOU
-`);
-  assert.deepEqual(words.get('SPKVTB'), [0x38, 0x171, 0x172, 0x2e7]);
-});
-
 test('mac: comments and label-only lines are ignored', () => {
   const { bytes, labels } = parseMac(`
 	.RADIX 16

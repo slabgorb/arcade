@@ -91,7 +91,9 @@ async function attemptAsync(fn) {
 // comparison actually does.
 function compareSfxShipped(adapter, s) {
   if (adapter.name === 'tempest') return shipped.compareTempestSfx(s.name, s.events);
-  if (adapter.name === 'battlezone') return shipped.compareBattlezoneShipped();
+  if (adapter.name === 'battlezone') {
+    return shipped.compareBattlezoneShipped(join(REPO_ROOT, 'battlezone', 'src', 'shell', 'audio.ts'));
+  }
   if (adapter.name === 'red-baron') {
     return shipped.compareRedBaronShipped(
       s.tone,
@@ -206,6 +208,16 @@ export async function audit(adapter, { render = false, outDir = null } = {}) {
       const cmp = await attemptAsync(() => compareSfxShipped(adapter, s));
       verdicts.push(verdictFromComparison(adapter.name, s.name, cmp, s.provenance));
     }
+    // A sound whose labels went missing from source (renamed, typo'd) must
+    // still produce a row — a silent omission reads as "not looked at yet",
+    // not "known broken" (see adapters' `missing` list, attached to the sfx()
+    // array by tempest.mjs/red-baron.mjs/battlezone.mjs).
+    for (const m of sfx.missing ?? []) {
+      verdicts.push({
+        game: adapter.name, sound: m.name, verdict: VERDICT.UNVERIFIED,
+        reason: `link 1 (parse): ${m.reason}`,
+      });
+    }
   }
 
   // ── SPEECH: the LPC bytes are read straight out of the ROM image (see
@@ -235,6 +247,15 @@ export async function audit(adapter, { render = false, outDir = null } = {}) {
       // LINK 5: compare against star-wars/tools/speech-bake/speech-data.mjs.
       const cmp = await attemptAsync(() => shipped.compareStarWarsSpeech(line.n, line.lpc));
       verdicts.push(verdictFromComparison(adapter.name, `speech/${line.name}`, cmp, line.provenance));
+    }
+    // A phrase whose SPKVTB entry didn't resolve must still produce a row —
+    // see star-wars-speech.mjs's `missing` list, attached to the speech()
+    // array, and the same rationale as the sfx `missing` handling above.
+    for (const m of speechResult.value.missing ?? []) {
+      verdicts.push({
+        game: adapter.name, sound: `speech/${m.name}`, verdict: VERDICT.UNVERIFIED,
+        reason: `link 1 (parse): ${m.reason}`,
+      });
     }
   }
 
@@ -289,6 +310,13 @@ export function formatReport(verdicts) {
   return lines.join('\n');
 }
 
+// Games named on the command line (positional, or via --all) that are not a
+// key of ADAPTERS. A typo here must not silently audit ZERO sounds and exit
+// 0 — that is a green report for a game that was never actually checked.
+export function unknownGames(games) {
+  return games.filter((g) => !Object.prototype.hasOwnProperty.call(ADAPTERS, g));
+}
+
 export function parseArgs(argv) {
   const opts = { game: null, render: false, all: false, out: null };
   for (let i = 0; i < argv.length; i++) {
@@ -307,6 +335,15 @@ async function main() {
   if (!games[0]) {
     console.error('usage: extract-audio <game> [--render] [--out DIR]');
     console.error('       extract-audio --all');
+    process.exit(2);
+  }
+  const unknown = unknownGames(games);
+  if (unknown.length) {
+    // An unknown game name must NEVER report a clean (0 ROM-VERIFIED, 0
+    // MISMATCH) audit and exit 0 — that reads as "this game was checked and
+    // is fine," when it was never looked at. Fail loudly instead.
+    console.error(`unknown game: ${unknown.join(', ')}`);
+    console.error(`valid games: ${Object.keys(ADAPTERS).join(', ')}`);
     process.exit(2);
   }
 

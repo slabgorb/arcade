@@ -86,10 +86,18 @@ export default {
   sfx() {
     const { all, labels, start } = this.table();
     const out = [];
+    // A label that vanished from the source must not silently drop the sound
+    // from the report — that reads as "not looked at yet", not "known
+    // broken". Name it; audit() turns this into an UNVERIFIED row.
+    const missing = [];
     for (const s of SOUNDS) {
       const fOff = labels.get(s.audf);
       const aOff = labels.get(s.audc);
-      if (fOff === undefined || aOff === undefined) continue;
+      if (fOff === undefined || aOff === undefined) {
+        const bad = [fOff === undefined && s.audf, aOff === undefined && s.audc].filter(Boolean);
+        missing.push({ name: s.name, reason: `label(s) ${bad.join(', ')} not found in ${this.sourceFile} — cannot locate this sound` });
+        continue;
+      }
       const f = expandEnvelope(all, fOff, { reg: s.regs[0], tickHz: TICK_HZ, maxSeconds: 2.0 });
       const a = expandEnvelope(all, aOff, { reg: s.regs[1], tickHz: TICK_HZ, maxSeconds: 2.0 });
       out.push({
@@ -112,6 +120,7 @@ export default {
         provenance: `RBSOUN.MAC ${s.audf}/${s.audc} @ $${(DATA_BASE + fOff - start).toString(16)}`,
       });
     }
+    out.missing = missing;
     return out;
   },
 };

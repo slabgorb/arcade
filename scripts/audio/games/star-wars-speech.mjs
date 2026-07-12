@@ -81,12 +81,22 @@ export default {
     }
 
     const out = [];
+    // A phrase whose SPKVTB [start,stop) entry doesn't resolve must not
+    // silently drop it from the report — that reads as "not looked at yet",
+    // not "known broken". Name it; audit() turns this into an UNVERIFIED row.
+    const missing = [];
     // Entry 0 aliases entry 1 ("PLEASE START AT ZERO") — skip it; take 23 real ones.
     for (let i = 1; i <= PHRASES.length; i++) {
       const start = table[i * 2];
       const stop = table[i * 2 + 1];
-      if (start === undefined || stop === undefined || stop < start) continue;
       const phrase = PHRASES[i - 1];
+      if (start === undefined || stop === undefined || stop < start) {
+        missing.push({
+          name: slug(phrase),
+          reason: `SPKVTB entry ${i} (${phrase}) has no valid [start,stop) in SNDAUX.LDA's VOCABULARY table — cannot locate this phrase`,
+        });
+        continue;
+      }
       out.push({
         name: slug(phrase),
         // Phrase NUMBER, matching star-wars/tools/speech-bake/speech-data.mjs's
@@ -100,6 +110,7 @@ export default {
         provenance: `SNDAUX.LDA VOCABU[$4002] SPKVTB[${i}] @ $${(VOCAB_BASE + start).toString(16)}..$${(VOCAB_BASE + stop).toString(16)}`,
       });
     }
+    out.missing = missing;
     return out;
   },
 };
