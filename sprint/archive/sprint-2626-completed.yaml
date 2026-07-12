@@ -1206,3 +1206,8 @@ completed_stories:
     title: Extra-life thresholds (400k/800k) + flashing bonus/extra-life HUD row (byte_4B2C) under the score
     points: 3
     completed: '2026-07-11'
+  - id: sw4-2
+    epic: sw4
+    title: "Homing fireball threat — replace 300 u/s straight-line (max reach 1,800, provably can't arrive) with ROM homing law sub_A875: pos decays 7/8 per tick toward cockpit, frame-rate independent pow(7/8, dt×TICK_HZ), 64-tick lifetime, ALWAYS arrives ~1-2s; un-shot = shield hit (gunnery defense); stays shootable (spec §B)"
+    points: 3
+    completed: '2026-07-11'

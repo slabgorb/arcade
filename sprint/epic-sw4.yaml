@@ -18,10 +18,13 @@ stories:
     title: "Homing fireball threat — replace 300 u/s straight-line (max reach 1,800, provably can't arrive) with ROM homing law sub_A875: pos decays 7/8 per tick toward cockpit, frame-rate independent pow(7/8, dt×TICK_HZ), 64-tick lifetime, ALWAYS arrives ~1-2s; un-shot = shield hit (gunnery defense); stays shootable (spec §B)"
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: star-wars
     workflow: tdd
     depends_on: sw4-1
+    completed: '2026-07-11'
+    review_verdict: approved
   - id: sw4-3
     title: Surface maze port — transcribe WSGRND.MAC TOWER MAZES into pure-data src/core/surfaceMazes.ts (per-wave TOWER/BUNKER/BISHOP hex coords, prefix structure base⊂T3, TTWRS counts, wave→maze map); replace random turret spawns with the fixed authored field scrolling in; reconcile TTWRS vs byte_98CB quota in-story (spec §C)
     points: 5
