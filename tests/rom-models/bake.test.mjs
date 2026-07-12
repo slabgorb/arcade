@@ -30,3 +30,11 @@ test('emitTs: emits a DO-NOT-EDIT header and a typed ROM_MODELS export', () => {
   assert.match(ts, /name: 'TIE'/);
   assert.match(ts, /\[-130, -208, 234\]/);
 });
+
+test('emitTs: header explicitly negates "no draw list means no ROM lines" and names all ten objects', () => {
+  const ts = emitTs(toRomModels(OBJS));
+  assert.match(ts, /does NOT mean the ROM draws these objects/);
+  for (const name of ['GND', 'TWR', 'BNK', 'STB', 'WPN', 'WGA', 'WGB', 'WFF', 'WFG', 'PORT']) {
+    assert.match(ts, new RegExp(`\\b${name}\\b`));
+  }
+});
