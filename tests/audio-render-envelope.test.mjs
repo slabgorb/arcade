@@ -38,12 +38,28 @@ test('envelope: FRCNT sets the hold time between changes', () => {
   assert.ok(Math.abs(events[5] - 0.04) < 1e-6, `expected t=0.04, got ${events[5]}`);
 });
 
-test('envelope: a looping terminator (X,0) is capped by maxSeconds, never infinite', () => {
-  // X,0 loops back to offset X. Must terminate.
-  const bytes = Uint8Array.from([0x10, 0x01, 0x00, 0x02, 0x00, 0x00]);
-  const looping = Uint8Array.from([...bytes.slice(0, 4), 0x00, 0x00]);
-  const { durationMs } = expandEnvelope(looping, 0, { ...opts, maxSeconds: 0.5 });
-  assert.ok(durationMs <= 520, `must respect the cap, got ${durationMs}ms`);
+test('envelope: a genuinely self-referential X,0 loop-back terminates via the seen guard', () => {
+  // Start at offset 2. bytes[2..3] = 0x02,0x00 is a X,0 terminator whose target (2)
+  // is the SAME offset we are already sitting at. A terminator never advances `ticks`,
+  // so maxSeconds cannot bail this out — only the `seen` guard can. Without it:
+  // pos=2 -> stval=bytes[2]=2 -> pos=2 -> stval=bytes[2]=2 -> pos=2 -> ... forever.
+  const bytes = Uint8Array.from([0x00, 0x00, 0x02, 0x00]);
+  const { events, durationMs } = expandEnvelope(bytes, 2, { ...opts, maxSeconds: 2 });
+  assert.deepEqual(values(events), [], 'a pure terminator loop emits no data values');
+  assert.equal(durationMs, 20, 'must stop the instant the target repeats, not after burning the 2s cap');
+});
+
+test('envelope: a two-target alternating X,0 cycle (A -> B -> A) terminates via the seen guard', () => {
+  // Offset 4's terminator jumps to offset 8; offset 8's terminator jumps back to
+  // offset 4. Neither target repeats until the second visit, so this exercises the
+  // `seen` Set holding two distinct entries, not just a single repeated self-jump.
+  // Without the guard: pos=4 -> pos=8 -> pos=4 -> pos=8 -> ... forever.
+  const bytes = new Uint8Array(10);
+  bytes[4] = 8; bytes[5] = 0; // A (offset 4): X,0 -> jump to B (offset 8)
+  bytes[8] = 4; bytes[9] = 0; // B (offset 8): X,0 -> jump back to A (offset 4)
+  const { events, durationMs } = expandEnvelope(bytes, 4, { ...opts, maxSeconds: 2 });
+  assert.deepEqual(values(events), [], 'a pure terminator cycle emits no data values');
+  assert.equal(durationMs, 20, 'must stop once a target is revisited, not after burning the 2s cap');
 });
 
 test('envelope: maskHighNibble ramps ONLY the volume, preserving distortion bits', () => {
