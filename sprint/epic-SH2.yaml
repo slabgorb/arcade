@@ -213,7 +213,8 @@ stories:
     description: "Consumption half of the esc-overlay extraction, split from SH2-12 per the cabinet's established publish->consume pattern (SH2-2 created /font; SH2-4/5/6 consumed it in separate stories). SH2-12 landed the PURE @arcade/shared/pause + BROWSER @arcade/shared/esc-overlay subpaths (bumped to 0.8.0 in the PR, RELEASED as v0.9.0 by the SH2-12 finish — the minor bump landed on 0.9.0, not 0.8.0). UNBLOCKED: `github:slabgorb/arcade-shared#v0.9.0` now exists and contains /pause + /esc-overlay. Then, per the epic's verb/numbers rule (share the MECHANISM, keep per-cabinet NUMBERS): bump each game's @arcade/shared pin to #v0.9.0 (red-baron jumps from the pre-font #v0.5.0) and reinstall; wire each game's main.ts with the Escape keydown EDGE (guard e.repeat) -> togglePaused -> the frozen-frame gate (stepUnlessPaused(() => step(...), prev, paused)) -> drawEscOverlay drawn only while paused. battlezone re-points behaviour-identical: its shell/pause.ts consumes @arcade/shared/pause and its overlay routes through drawEscOverlay, with its dual-tread card ('E / D','I / K') + GLOW_GREEN #33ff66 preserved verbatim as per-cabinet params. tempest/asteroids/star-wars/red-baron GAIN a pause, each supplying its OWN keybind card + colour. red-baron's card renders in the shared face TRANSITIVELY through drawEscOverlay (which strokes via @arcade/shared/font internally) — no separate red-baron HUD-font migration needed (the clean AC-4 resolution). Lobby OUT OF SCOPE. NOTE: the RED adoption/re-point tests were authored during SH2-12's RED phase (Han Solo) and preserved — recover them from each game's dangling RED commit (battlezone 4d00ad6, tempest 445381f, asteroids 96f13af, star-wars 0a741a9, red-baron 51e5747) or re-author from the SH2-12 session; AC-5 (live pause/dim/resume per game) is a MANUAL run, not automated (keydown+rAF has no unit seam)."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-11'
     repos: tempest, asteroids, star-wars, battlezone, red-baron
     workflow: tdd
     depends_on: SH2-12
@@ -223,6 +224,8 @@ stories:
       - "battlezone is behaviour-identical: shell/pause.ts consumes @arcade/shared/pause, the overlay routes through drawEscOverlay, and its dual-tread card + #33ff66 are preserved verbatim; the surviving bz2-5 pause-gate/pause-overlay tests stay green."
       - "red-baron's keybind card renders correctly via drawEscOverlay's transitive shared font (no separate red-baron HUD-font migration); the choice is documented in the story context."
       - "Each repo's vitest + vite build are green; a manual run of each of the five games confirms Escape pauses, dims, and resumes, and the card reads in that cabinet's style."
+    completed: '2026-07-11'
+    review_verdict: approved
   - id: SH2-15
     title: red-baron adopts @arcade/shared/loop — replace main.ts's duplicated hand-rolled fixed-step accumulator (the accumulator/SIM_TIMESTEP_S while-loop, main.ts:237-288) with the canonical advanceFixedSteps/createLoop; behaviour-preserving (same calc-frame cadence, findings §1 ÷6 trap), /loop already published (star-wars+asteroids consume it) and red-baron already pins @arcade/shared (math3d+rng)
     points: 2

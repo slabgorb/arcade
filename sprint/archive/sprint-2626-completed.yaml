@@ -1196,3 +1196,8 @@ completed_stories:
     title: "Trench exhaust-port finish is unmissable (never fails in 20+ runs) — port always spawns dead-center (spawnPort → [0,0,-DIST], no lateral variation) and PORT_HIT_RADIUS=120 is ~2x the visible octagon (~64), so any centered bolt down the full trench lands. Restore a real hit challenge: tighten the hit sphere toward the octagon span, require aim alignment, and gate the hit/miss test to the ROM's narrow approach window (findings ## Exhaust port & run outcome, the $800 window)"
     points: 3
     completed: '2026-07-11'
+  - id: SH2-14
+    epic: SH2
+    title: Adopt @arcade/shared pause + esc-overlay across all five canvas games (consumes SH2-12's v0.9.0)
+    points: 5
+    completed: '2026-07-11'
