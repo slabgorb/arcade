@@ -1227,3 +1227,8 @@ completed_stories:
     title: Space world-metric restoration — TIE spawn depth $7C00=31,744 with TBG lateral table {0,±1024,±2048} (replacing random ±350 at 8,000), peel floor 350→2,048 ($800 ROM fire floor), exit range ~8,000, ENEMY_SPEED ~10,000 PROVISIONAL ($200/tick, tick unpinned — target 2.5-4s transit), bolt reach ≥32,000 (spec §A)
     points: 5
     completed: '2026-07-12'
+  - id: sw3-7
+    epic: sw3
+    title: Trench per-run variation — PRNG fixed-head + picked-tail obstacle/section chain (sub_83A4) so runs differ instead of being byte-identical
+    points: 3
+    completed: '2026-07-12'

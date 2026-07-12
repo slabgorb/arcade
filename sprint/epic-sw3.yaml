@@ -86,9 +86,12 @@ stories:
     title: Trench per-run variation — PRNG fixed-head + picked-tail obstacle/section chain (sub_83A4) so runs differ instead of being byte-identical
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-12'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-12'
+    review_verdict: approved
   - id: sw3-8
     title: Port TIE wing-fragment death models (Obj_Tie_Wing_Frag_1/2/3) and wire to the TIE-destroyed animation
     points: 2
