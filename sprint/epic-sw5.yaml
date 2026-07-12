@@ -1,0 +1,91 @@
+id: sw5
+type: epic
+title: Star Wars — ROM wireframe geometry (contact-sheet audit)
+description: 'The ROM|PORT model contact sheet (orchestrator `just bake-models star-wars`; star-wars PR 77) compares our shipped wireframes against the original 1983 MACRO-11 source. models.ts states plainly that its EDGES were reconstructed by heuristic — the disassembly held vertex tables but no draw lists. The original source (WSOBJ.MAC) ships BOTH halves, so the connectivity was recoverable all along. Audit findings: DARTH_TIE is largely fabricated (44 of its 104 edges appear nowhere in the ROM — models.ts admits authoring them — and 12 real ones are missing); the TIE family has small edge drift (TIE 1/3, TI1 1/0, TI2 1/0, TI3 3/0); and the ground objects (exhaust port, surface tower, surface bunker) cannot yet be compared at all, because their edges live in `.WGD` PLOT/DRAWTO routines the parser does not read. Vertices are NOT in question — they were ported correctly and match the ROM byte-for-byte; this epic is about edges (and, for the ground objects, vertices too). Design for the parser extension: docs/superpowers/specs/2026-07-12-wgd-ground-object-edges-design.md'
+priority: p2
+status: backlog
+repos: star-wars, orchestrator
+stories:
+  - id: sw5-1
+    title: Recover `.WGD` ground-object edges — parser extension (takes edge coverage from 14 of 24 ROM objects to all 24, and compared pairs from 5 to 8)
+    points: 5
+    priority: p1
+    status: backlog
+    repos: orchestrator
+    workflow: tdd
+    type: feature
+    acceptance_criteria:
+      - 'scripts/rom-models/wsobj.mjs parses `.WGD` routine bodies into the existing ConnectOp IR — PLOT n begins a run at point n (pen up), DRAWTO a,b,... draws a visible line to each point, BDRAWTO a,b,... is a blank move to `a` then delegates the rest to DRAWTO (same pen idiom as `.BD`/`.LD`), ENDPLOT ends the routine.'
+      - 'Draw indices are parsed as DECIMAL — the macro forces it via the trailing-dot trick (`...1''.*10`). The `.RADIX 16` hex trap does NOT apply to these indices; do not apply it.'
+      - '`.WGD2` aliases the preceding `.WGD` routine BY REFERENCE, mirroring the existing `.WL2` behaviour (`.WGD TWR` / `.WGD2 GND` are one object).'
+      - 'MOVD — and any other non-geometry state macro found inside a `.WGD` body — is recognised and skipped EXPLICITLY. It must never be handled by relaxing the throw-on-unknown-directive guard into silence; enumerate them.'
+      - 'ORACLE — the two stroke sequences models.ts already quotes from the cabinet reproduce exactly, pinned as tests: the bunker''s `BDRAWTO 14,15` and the tower''s `BDRAWTO 7,9` / `BDRAWTO 7,8`. A human read these off this source by hand; the parser must agree.'
+      - 'Every emitted edge index lands within [0, vertices.length-1] for all 24 objects. This is the guard on the anchor rebase — a uniform off-by-one would yield a plausible, wholly wrong wireframe.'
+      - 'If a `.WGD` routine turns out to be genuinely unparseable (raw assembly, not macros), that object keeps hasDrawList false HONESTLY. Never guess an edge list.'
+      - All 10 hasDrawList-false objects (GND, TWR, BNK, STB, WPN, WGA, WGB, WFF, WFG, PORT) flip to true after re-baking with `just bake-models star-wars`.
+      - 'The generated artifact''s "edges not recoverable" caveat is removed or narrowed to whatever actually remains — leaving it stale makes it actively misleading.'
+      - The contact sheet's punch-list regression pin covers 8 compared pairs (was 5), gaining PORT, STB and BNK.
+      - The red-baron oracle still passes (it guards the shared radix/number/pen core).
+  - id: sw5-2
+    title: Re-port DARTH_TIE edges from the ROM draw list — remove the 44 fabricated edges, restore the 12 real ones
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - DARTH_TIE.edges are derived from the ROM draw list `.WL RTH` in WSOBJ.MAC, not authored.
+      - 'The 44 edges that appear nowhere in the ROM are removed. models.ts admits authoring them ("RE-AUTHORED by structure... octagon rim + inner square hub + spokes + 4-strut pylon") — the port did not lose 44 real edges, it invented them.'
+      - 'The 12 ROM edges we never had are added — six bilateral cross-brace mirror pairs (2-7/3-6 and 15-18/14-19; 35-38/34-39 and 42-47/43-46) plus the four front-window chords (48-52, 49-53, 50-54, 51-55).'
+      - Vertices are UNCHANGED — they already match the ROM byte-for-byte (vertex 0 is [-180,-180,130], the `.P -18,-18,13` row scaled by `.S=10.`).
+      - 'The ROM''s degenerate self-edge (a literal `21,21` in `.BD 31,23,22,21,21,24,23`, i.e. edge [20,20]) is NOT copied into models.ts.'
+      - The contact sheet reports 0 in-ROM-not-in-port and 0 in-port-not-in-ROM for RTH to Darth Vader TIE.
+      - DARTH_TIE's doc comment no longer claims a re-authored ring structure; it cites `.WL RTH` as the source.
+      - 'Existing DARTH_TIE tests still pass. The induced-single-cycle topology guard assumed the AUTHORED ring structure — if it now fails, that is the guard being wrong about the ROM, not the ROM being wrong. Update it with rationale rather than reshaping the geometry to satisfy it.'
+  - id: sw5-3
+    title: Re-port the TIE family edges (TIE, TI1, TI2, TI3) — including the spider-ladder rung the port's own comment shows it omitted
+    points: 2
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - TIE_FIGHTER, TIE_WING_FRAG_1, TIE_WING_FRAG_2 and TIE_WING_FRAG_3 edges are derived from the ROM draw lists `.WL TIE`, `.WL TI1`, `.WL2 TI2` and `.WL TI3`.
+      - 'The fragments'' missing 6-to-12 rung is restored. The port''s own comment authors a spider ladder with rungs 7-13, 8-14, 9-15, 10-16, 11-17 — a six-rung ladder MISSING its 6-12 rung. The ROM has it. (This is the finding that most cleanly corroborates the whole audit.)'
+      - The 3 TIE_FIGHTER edges that appear nowhere in the ROM are removed.
+      - Vertices are unchanged (they already match byte-for-byte; TIE vertex 0 is [-130,-208,234]).
+      - Degenerate self-edges from the ROM are not copied.
+      - The contact sheet reports 0/0 drift for all four TIE-family pairs.
+  - id: sw5-4
+    title: Re-port EXHAUST_PORT from the ROM — it is 12 vertices in three concentric squares, not an 8-vertex octagon
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+    blocked_by: sw5-1
+    acceptance_criteria:
+      - EXHAUST_PORT vertices AND edges come from ROM `PORT` (WSOBJ.MAC `.WP PORT` for the points, `.WGD PORT` for the strokes). Blocked on sw5-1 for the edges.
+      - 'The topology is genuinely different, not a tweak — models.ts ships an 8-vertex octagon at radius ~70; the ROM is 12 vertices forming three concentric squares at plus/minus 96, 160 and 256. Note those are `.PH` rows, i.e. HEX under `.RADIX 16`; reading them as decimal yields geometry at ~60 percent of true size.'
+      - The PROVISIONAL marker on EXHAUST_PORT is removed from models.ts.
+      - 'GAMEPLAY IMPACT — the ROM target is roughly 3.6x wider than ours. Trench exhaust-port hit detection must be re-tuned against the ROM geometry rather than left assuming the octagon, and the resulting change in difficulty must be called out explicitly, not slipped in.'
+      - The contact sheet reports 0/0 drift for PORT to Exhaust Port.
+  - id: sw5-5
+    title: Re-port SURFACE_TOWER and SURFACE_BUNKER from the ROM — the tower is missing its cannon-top ring
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+    blocked_by: sw5-1
+    acceptance_criteria:
+      - 'SURFACE_TOWER vertices and edges come from ROM `STB` — the `.WGD STB` routine, "STUB OF TOWER WITHOUT BUNKER HAT ON TOP", which models.ts''s own doc comment already names. Blocked on sw5-1 for the edges.'
+      - The ROM tower has 5 rings / 15 vertices; ours has 4 rings / 12. The missing ring is the cannon top. Restore it.
+      - SURFACE_BUNKER vertices and edges come from ROM `BNK` (`.WGD BNK`).
+      - 'TOWER_CAP is reconciled and documented. In the ROM, `TWR` (which IS `GND` — `.WGD TWR` is immediately followed by `.WGD2 GND`, one object with one draw routine) strokes the column AND the cap together. Our split into two models exists only because Canvas strokes one colour per drawWireframe call. Either merge them or state that reason in the doc comment — do not leave the split unexplained, since it reads as a fidelity error.'
+      - Surface-phase collision still works with the corrected (taller) tower; any change in the collidable volume is called out.
+      - The contact sheet reports 0/0 drift for STB to Surface Tower and BNK to Surface Bunker.
