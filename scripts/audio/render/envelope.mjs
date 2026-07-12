@@ -11,10 +11,33 @@
 //   FRCNT  = frames to hold before any change
 //   CHANGE = amount added each step (mod 256)
 //   NUMBER = total changes in this sequence
-// A channel is N x 4-byte records + a 2-byte terminator: 0,0 = stop, X,0 = loop to X.
+// A channel is N x 4-byte records + a 2-byte terminator.
 //
 // NB the "6 BYTES PER SOUND NUMBER" comment in all three sources is STALE — a
 // copy-paste artifact of the shared template. The record is 4 bytes.
+//
+// TERMINAL ZERO WRITE (traced through MODSND's shared epilogue): on a 0,0
+// terminator, MODSND loads the terminator's STVAL (=0) into CURRENT, kills the
+// RAM pointer, and falls into the epilogue that writes CURRENT to the POKEY
+// hardware register. So a 0,0 stop is not silent — it is a genuine final
+// register write of 0, THEN the channel goes idle. Both drivers do this.
+//
+// X,0 TERMINATOR — the two drivers disagree on what it means (xTerminator):
+//   'loop' (Tempest ALSOUN):     "TO LOOP BACK, PUT IN X,0, WHERE X=<OFFSET
+//                                 FROM SOUND: OF RESTART LOC>/2" — jump back to
+//                                 byte offset X and keep playing (no write at
+//                                 the jump itself; the resumed record emits as
+//                                 normal). The `seen` Set guards against a
+//                                 target that never advances `ticks`.
+//   'idle' (Red Baron RBSOUN / Battlezone BZSOUN, i.e. shared T2SOUN): "TO STOP
+//                                 A CHANNEL & RETURN TO ITS IDLE STATE, PUT IN
+//                                 AS A 2 BYTE SEQUENCE X,0 WHERE X WILL BE USED
+//                                 AS THE NEW IDLE VALUE." — one register write
+//                                 of X, then stop. No loop-back.
+// Default is 'idle' (the shared T2SOUN base driver, used by 2 of the 3
+// cabinets); Tempest's ALSOUN is the variant and opts in to 'loop' explicitly
+// in scripts/audio/games/tempest.mjs, the same way it opts in to
+// maskHighNibble for its AUDC ramps below.
 //
 // OFF-BY-ONE (traced through MODSND's 6502 loop): COUNT is loaded with the raw
 // NUMBER byte when a record activates, which also emits STVAL as the first value.
@@ -28,7 +51,9 @@
 // and preserves the DISTORTION bits. Red Baron's MODSND does a plain CLC/ADC with no
 // mask. This is a real behavioural difference between the ALSOUN and T2SOUN variants,
 // not a knob: getting it wrong corrupts every Tempest volume ramp.
-export function expandEnvelope(bytes, offset, { reg, tickHz, maxSeconds = 2, maskHighNibble = false }) {
+export function expandEnvelope(bytes, offset, {
+  reg, tickHz, maxSeconds = 2, maskHighNibble = false, xTerminator = 'idle',
+}) {
   const events = [];
   const dt = 1 / tickHz;
   const maxTicks = Math.floor(maxSeconds * tickHz);
@@ -43,8 +68,16 @@ export function expandEnvelope(bytes, offset, { reg, tickHz, maxSeconds = 2, mas
     const frcnt = bytes[pos + 1];
 
     if (frcnt === 0) {                    // terminator
-      if (stval === 0) break;             // 0,0 = stop
-      if (seen.has(stval)) break;         // X,0 = loop — but never spin forever
+      if (stval === 0) {                  // 0,0 = stop — MODSND epilogue writes CURRENT=0
+        events.push(reg, 0, Number(t.toFixed(5)));
+        break;
+      }
+      if (xTerminator === 'idle') {       // X,0 = write X as the new idle value, then stop
+        events.push(reg, stval & 0xff, Number(t.toFixed(5)));
+        break;
+      }
+      // xTerminator === 'loop' (Tempest ALSOUN): X,0 = jump back to offset X.
+      if (seen.has(stval)) break;         // never spin forever
       seen.add(stval);
       pos = stval;                        // loop back to offset X
       continue;

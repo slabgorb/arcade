@@ -68,8 +68,13 @@ export default {
       if (fOff === undefined || aOff === undefined) continue;
       // AUDF1 = reg 0 (pitch), AUDC1 = reg 1 (distortion + volume).
       // ALSOUN masks the AUDC high nibble when ramping — volume moves, distortion holds.
-      const f = expandEnvelope(all, fOff, { reg: 0, tickHz: TICK_HZ, maxSeconds: 1.6 });
-      const a = expandEnvelope(all, aOff, { reg: 1, tickHz: TICK_HZ, maxSeconds: 1.6, maskHighNibble: true });
+      // ALSOUN's X,0 terminator means "loop back to offset X" (not T2SOUN's "idle at X").
+      const f = expandEnvelope(all, fOff, {
+        reg: 0, tickHz: TICK_HZ, maxSeconds: 1.6, xTerminator: 'loop',
+      });
+      const a = expandEnvelope(all, aOff, {
+        reg: 1, tickHz: TICK_HZ, maxSeconds: 1.6, maskHighNibble: true, xTerminator: 'loop',
+      });
       out.push({
         name: s.name,
         events: [8, 0x00, 0.0, ...f.events, ...a.events], // AUDCTL=0 first
