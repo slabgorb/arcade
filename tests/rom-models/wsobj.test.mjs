@@ -190,6 +190,28 @@ test('.WGD2 aliases the .WGD routine BY REFERENCE (the body follows both lines)'
   assert.equal(gnd.connect.length, 3, 'the body that FOLLOWS the .WGD2 must land in the shared array');
 });
 
+test('.WGD2 with no preceding .WGD routine throws', () => {
+  const src = ['\t.S=1', '\t.WP A', '\t.P 1,0,0', '\t.WPZ', '\t.WGD2 B'].join('\n');
+  assert.throws(() => parseWsobj(src), /\.WGD2 B has no preceding \.WGD routine to alias/);
+});
+
+// The shared connect array is filled by ops rebased against the ROUTINE's anchor
+// state. An alias whose own table has a DIFFERENT anchor state would read those
+// same indices as meaning different vertices — one of the two objects would ship
+// a wireframe silently rebased by one, which is precisely the class of bug this
+// story exists to eliminate. TWR/GND and WGA/WGB agree in the real ROM; this
+// pins that a divergence can never pass silently.
+test('.WGD2 refuses to alias a routine whose anchor state differs from the alias\'s own', () => {
+  const src = [
+    '\t.S=1',
+    '\t.WP ANCHORED', '\t.P 0,0,0', '\t.P 1,0,0', '\t.P 2,0,0', '\t.WPZ', // anchor dropped
+    '\t.WP BARE', '\t.P 1,0,0', '\t.P 2,0,0', '\t.WPZ',                    // no anchor
+    '\t.WGD ANCHORED', '\t.WGD2 BARE',
+    '\tPLOT 1', '\tDRAWTO 2', '\tENDPLOT',
+  ].join('\n');
+  assert.throws(() => parseWsobj(src), /anchor states differ/);
+});
+
 // AC-4. `MOVD` sets VG scale/colour — state, not geometry. It must be
 // recognized and skipped EXPLICITLY. The danger is "fixing" this by relaxing
 // the throw-on-unknown guard into silence, which would let a real geometry
@@ -209,6 +231,28 @@ test('.WGD: MOVD is skipped explicitly — it contributes no geometry', () => {
     { point: 1, draw: true },
     { point: 2, draw: true },
   ], 'MOVD must not emit, reorder, or swallow a draw');
+});
+
+// The dropped anchor can be the beam ORIGIN (PLOT — pen up, contributes nothing)
+// but never a DRAW target: once the anchor is out of `vertices` there is no index
+// that means it, so the op cannot be represented. Dropping it would splice the
+// beam path and fabricate an edge; emitting it would produce index -1. Throw.
+// (No WSOBJ.MAC routine does this — the guard was uncovered until adversarial
+// review showed it could be deleted with every test still green.)
+test('.WGD: DRAWING to the dropped anchor throws — it cannot be represented, and must not be guessed', () => {
+  const src = [
+    '\t.S=1', '\t.WP A', '\t.P 0,0,0', '\t.P 1,0,0', '\t.P 2,0,0', '\t.WPZ',
+    '\t.WGD A', '\tPLOT 1', '\tDRAWTO 0', '\tENDPLOT',
+  ].join('\n');
+  assert.throws(() => parseWsobj(src), /references the dropped anchor/);
+});
+
+test('.WGD: an unterminated routine (no ENDPLOT) throws rather than shipping a truncated wireframe', () => {
+  const src = [
+    '\t.S=1', '\t.WP A', '\t.P 1,0,0', '\t.P 2,0,0', '\t.WPZ',
+    '\t.WGD A', '\tPLOT 0', '\tDRAWTO 1',
+  ].join('\n');
+  assert.throws(() => parseWsobj(src), /unterminated \.WGD A: no ENDPLOT/);
 });
 
 test('.WGD: an UNKNOWN macro inside an open routine body throws — the guard is not relaxed into silence', () => {
@@ -406,6 +450,46 @@ test('REAL: BNK — the entire .WGD routine transcribes exactly', opts, () => {
   ]);
 });
 
+// PORT and STB are the two objects sw5-4 and sw5-5 consume, and both are MAPPED
+// punch-list pairs whose diff is currently pinned at {0,0} by the vertex-mismatch
+// guard — so a single mis-parsed stroke in either would propagate into the next
+// two stories completely undetected. Pin their beam paths EXACTLY, the way BNK's
+// is pinned. (Found by adversarial review: silently dropping PORT's and STB's
+// last stroke left every other test in this suite green.)
+test('REAL: PORT — the entire .WGD routine transcribes exactly', opts, () => {
+  const objs = parseWsobj(readFileSync(WSOBJ, 'utf8'));
+  const port = byName(objs, 'PORT');
+  assert.equal(port.anchorDropped, false, 'PORT has no anchor — index 0 is a real vertex');
+
+  // WSOBJ.MAC:1857-1874. PLOT 5 / DRAWTO 9,8,4 / BDRAWTO 6,10,11,7 / DRAWTO 6,2
+  // / BDRAWTO 6,4,0 / BDRAWTO 4,5,1 / BDRAWTO 5,7,3 / DRAWTO 2,0,1,3, with three
+  // MOVD colour changes interleaved.
+  assert.deepEqual(connectToEdges(port.connect), [
+    [5, 9], [9, 8], [8, 4],            // outer base
+    [6, 10], [10, 11], [11, 7],
+    [7, 6], [6, 2],                    // <- [7,6] STRADDLES a MOVD: the beam does
+                                       //    NOT break across a colour change.
+    [6, 4], [4, 0],                    // inner berm
+    [4, 5], [5, 1],
+    [5, 7], [7, 3],
+    [3, 2],                            // <- also straddles a MOVD
+    [2, 0], [0, 1], [1, 3],            // porthole
+  ]);
+});
+
+test('REAL: STB — the entire .WGD routine transcribes exactly', opts, () => {
+  const objs = parseWsobj(readFileSync(WSOBJ, 'utf8'));
+  const stb = byName(objs, 'STB');
+
+  // WSOBJ.MAC:1769-1773, anchor-rebased by -1:
+  //   BDRAWTO 1,3,15,12,9 / DRAWTO 7,10,13,1 / DRAWTO 2,14,11,8,7
+  assert.deepEqual(connectToEdges(stb.connect), [
+    [0, 2], [2, 14], [14, 11], [11, 8],          // up the right side
+    [8, 6], [6, 9], [9, 12], [12, 0],            // down the centre
+    [0, 1], [1, 13], [13, 10], [10, 7], [7, 6],  // up the left side
+  ]);
+});
+
 test('REAL: all ten hasDrawList:false ground objects now carry a recovered draw list', opts, () => {
   const objs = parseWsobj(readFileSync(WSOBJ, 'utf8'));
   for (const n of ['GND', 'TWR', 'BNK', 'STB', 'WPN', 'WGA', 'WGB', 'WFF', 'WFG', 'PORT']) {
@@ -479,6 +563,55 @@ test('REAL: every edge index lands inside its own vertex table — WFG the one e
   );
 });
 
+// THE ACTUAL PROOF OF THE REBASE, asserted rather than merely asserted-about.
+// The in-range test above only checks `0 <= i < len`, which a rebase could
+// satisfy by accident. What truly pins it is the two ENDPOINTS: every ground
+// object's lowest index is exactly 0 and its highest is exactly len-1. Rebase by
+// one too few and the minimum goes negative; one too many and the maximum runs
+// off the end. Either way this test fails on sight.
+//
+// The indices are NOT dense — BNK touches 6 of its 15 points, STB 12 of 15 — so
+// "the object uses every vertex" would be false. Do not strengthen this into a
+// coverage claim; it is the endpoints that carry the proof.
+test('REAL: the anchor rebase is pinned by the ENDPOINTS — min index 0, max index len-1', opts, () => {
+  const objs = parseWsobj(readFileSync(WSOBJ, 'utf8'));
+  // WFG excluded: its ROM overflow deliberately pushes max past len-1.
+  const GROUND = ['GND', 'TWR', 'BNK', 'STB', 'WPN', 'WGA', 'WGB', 'WFF', 'PORT'];
+
+  for (const n of GROUND) {
+    const o = byName(objs, n);
+    const used = o.connect.map((c) => c.point);
+    assert.equal(Math.min(...used), 0, `${n}: lowest index must be 0 (a -1 rebase would go negative)`);
+    assert.equal(
+      Math.max(...used), o.vertices.length - 1,
+      `${n}: highest index must be exactly vertices.length-1 (a +1 rebase would overrun)`,
+    );
+  }
+});
+
+// SIX objects drop an anchor, not four. GND/TWR/BNK/STB share GND's anchored
+// table, but WGA has its OWN `.P 0,0,0` (WSOBJ.MAC:580) and passes it to WGB via
+// `.WPZ2`. Pin every object's anchor state: an earlier comment in the parser
+// claimed "the four objects that share GND's table", and anyone acting on that
+// (e.g. hardcoding a name list in the rebase) would shift every WGA/WGB edge by
+// one while all the other tests stayed green. (Found by adversarial review.)
+test('REAL: anchor state is per-object and data-driven — WGA/WGB are anchored too', opts, () => {
+  const objs = parseWsobj(readFileSync(WSOBJ, 'utf8'));
+  const anchored = Object.fromEntries(
+    ['GND', 'TWR', 'BNK', 'STB', 'WGA', 'WGB', 'WPN', 'WFF', 'WFG', 'PORT']
+      .map((n) => [n, byName(objs, n).anchorDropped]),
+  );
+  assert.deepEqual(anchored, {
+    GND: true, TWR: true, BNK: true, STB: true,
+    WGA: true, WGB: true,          // <- their own `.P 0,0,0`, NOT GND's table
+    WPN: false, WFF: false, WFG: false, PORT: false,
+  });
+  // WGA's 15 `.P` rows minus its anchor; `PLOT 4` therefore bakes as index 3.
+  assert.equal(byName(objs, 'WGA').vertices.length, 14);
+  assert.deepEqual(byName(objs, 'WGA').vertices[0], [-256, 0, 192]); // .P -32,0,24 x8
+  assert.deepEqual(byName(objs, 'WGA').connect[0], { point: 3, draw: false }); // PLOT 4 -> 3
+});
+
 test('REAL: WFG\'s out-of-bounds ROM stroke is transcribed, not silently dropped or clamped', opts, () => {
   const objs = parseWsobj(readFileSync(WSOBJ, 'utf8'));
   const wfg = byName(objs, 'WFG');
@@ -515,12 +648,23 @@ test('REAL: WPN — point 0 is a real vertex (not an anchor); two closed rectang
   ]);
 });
 
-// AC-7, the honesty clause, as a standing invariant: the parser never invents
-// connectivity. Every object either has a draw list recovered from the source
-// or has none — an object may not carry edges it cannot justify.
-test('REAL: no object carries connect data without a draw list', opts, () => {
+// AC-7, the honesty clause. This was written as "if (!hasDrawList) expect no
+// connect data" — which, now that all 24 objects HAVE a draw list, executes zero
+// assertions and would pass on an empty parse. Adversarial review caught it.
+//
+// The biconditional has teeth in both directions: no object may carry edges it
+// cannot justify, AND no object may claim a draw list it has no ops for. The
+// second half closes a real hole — `.WGD` sets hasDrawList at the header line,
+// so a routine whose body were skipped (e.g. compiled out by a false `.IF`,
+// which `disabledByConditional` tracks for `table`/`list` but not for `wgd`)
+// would otherwise ship as "has a draw list" with zero edges.
+test('REAL: hasDrawList is true for EXACTLY the objects that have connect ops', opts, () => {
   const objs = parseWsobj(readFileSync(WSOBJ, 'utf8'));
+  assert.ok(objs.length > 0);
   for (const o of objs) {
-    if (!o.hasDrawList) assert.deepEqual(o.connect, [], `${o.name} claims no draw list but carries connect data`);
+    assert.equal(
+      o.connect.length > 0, o.hasDrawList,
+      `${o.name}: hasDrawList=${o.hasDrawList} but connect has ${o.connect.length} ops`,
+    );
   }
 });

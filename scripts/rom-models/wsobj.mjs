@@ -28,8 +28,18 @@
 // ONE ROM ANOMALY SURVIVES: WFG's routine (WSOBJ.MAC:1844) is `DRAWTO 6,3`, but
 // WFG shares WFF's SIX-point table (0..5) — index 6 does not exist. At runtime
 // that reads a stale 7th slot of the transform scratch page: an out-of-bounds
-// read in the original 1983 ROM, not a parser error. (Proof it is not our
-// off-by-one: the other nine ground objects land EXACTLY filling [0, len-1].)
+// read in the original 1983 ROM, not a parser error.
+//
+// WHY WE KNOW IT IS THE ROM'S BUG AND NOT OUR REBASE: across the other NINE
+// ground objects, the lowest index used is exactly 0 and the highest is exactly
+// `vertices.length - 1`. A rebase off by one in EITHER direction breaks that on
+// sight — too few and the minimum goes negative, too many and the maximum runs
+// past the end. (Note the indices are not DENSE: BNK touches only 6 of its 15
+// points and STB only 12. It is the two ENDPOINTS that pin the rebase, not
+// coverage — an earlier version of this comment claimed the objects "exactly
+// fill" their tables, which is false.) WFF in particular draws the very same
+// six-point table and tops out at 5; only WFG reaches 6.
+//
 // It is transcribed verbatim, not clamped — this parser reports ROM truth and
 // lets consumers filter, the same way the degenerate self-edge in RTH's .BD
 // list is kept and filtered downstream.
@@ -175,10 +185,14 @@ export function parseWsobj(text) {
   // point table: emit NOTHING, rather than a `point: -1` that would poison the
   // IR the moment anything drew from it.
   //
-  // Note the anchor test is `raw === 0`, NOT `!raw`: index 0 is the anchor only
-  // on the four objects that share GND's anchored table. On WPN/WFF/PORT there
-  // is no anchor, so point 0 is a REAL vertex that the ROM both starts from and
-  // draws back to (WPN's `DRAWTO 1,2,3,0` closes its outer rectangle onto it).
+  // Note the anchor test is `raw === 0`, NOT `!raw`, and it is DATA-DRIVEN off
+  // `anchorDropped` — never a hardcoded name list. SIX ground objects drop an
+  // anchor, not four: GND/TWR/BNK/STB (sharing GND's `.PGND 0,0,0` table) AND
+  // WGA/WGB, which have their own `.P 0,0,0` (WSOBJ.MAC:580, shared to WGB by
+  // `.WPZ2`). WPN/WFF/WFG/PORT have NO anchor, so for them point 0 is a REAL
+  // vertex the ROM both starts from and draws back to (WPN's `DRAWTO 1,2,3,0`
+  // closes its outer rectangle onto it). Hardcoding "the four GND objects" here
+  // would silently shift every WGA/WGB edge by one.
   const pushWgd = (obj, kind, indices) => {
     indices.forEach((raw, i) => {
       const penUp = kind === 'PLOT' || (kind === 'BDRAWTO' && i === 0);
@@ -321,6 +335,21 @@ export function parseWsobj(text) {
     if ((m = /^\.WGD2\s+([A-Z0-9_$]+)$/i.exec(code))) {
       if (!lastWgd) throw new Error(`.WGD2 ${m[1]} has no preceding .WGD routine to alias: "${code}"`);
       const alias = get(m[1]);
+      // The shared array is filled by ops REBASED against the ROUTINE's anchor
+      // state (`pushWgd` reads `wgd.anchorDropped`). If the alias's own vertex
+      // table had a different anchor state, those same indices would mean
+      // something different for it — one of the two objects would silently get a
+      // wireframe rebased by one. TWR/GND and WGA/WGB agree today (each alias
+      // takes its vertices from the other via `.WPZ2`, which copies
+      // `anchorDropped`), so this never fires; it is here so it CANNOT start to
+      // silently misfire if the source ever changes.
+      if (alias.anchorDropped !== lastWgd.anchorDropped) {
+        throw new Error(
+          `.WGD2 ${m[1]} aliases ${lastWgd.name}'s draw routine but their anchor states differ `
+          + `(${lastWgd.name}.anchorDropped=${lastWgd.anchorDropped}, ${m[1]}.anchorDropped=${alias.anchorDropped}) `
+          + '— the shared indices cannot be correct for both',
+        );
+      }
       alias.connect = lastWgd.connect;
       alias.hasDrawList = true;
       list = null; lastList = null;
@@ -412,6 +441,14 @@ export function parseWsobj(text) {
 
   if (condStack.length !== 0) {
     throw new Error(`unterminated .IF: ${condStack.length} block(s) never closed by .ENDC`);
+  }
+
+  // Same contract as the unterminated `.IF` above. A `.WGD` routine still open
+  // at EOF means its ENDPLOT was lost — so the ops we collected are an
+  // arbitrary prefix of the real routine, and the object would ship a truncated
+  // wireframe that looks entirely plausible. Refuse it.
+  if (wgd) {
+    throw new Error(`unterminated .WGD ${wgd.name}: no ENDPLOT — the draw routine is truncated`);
   }
 
   // Partial conditional disable: an object that had SOME rows compiled out
