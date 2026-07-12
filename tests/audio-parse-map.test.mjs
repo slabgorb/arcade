@@ -47,6 +47,43 @@ test('map: module table survives the ". ABS." embedded-space pseudo-name', () =>
   assert.ok(modules.some((m) => m.name === '. ABS.'), '". ABS." must not be shredded into tokens');
 });
 
+const WRAPPED_REFS = `
+ATARI LINKM V05.00 LOAD MAP   27-AUG-81   16:46:53
+BIN:ALEXEC.SAV
+
+Section Summary:
+ Name   Addr   Size   Attributes     References (Files):
+. ABS.  0000   A8B0   ABS,OVR      ALWELG  ALSCOR  ALDISP  ALEXEC  ALSOUN
+                                   ALVROM  ALCOIN  ALLANG  ALHARD  ALTEST
+                                   ALEARO  ALVGUT
+        A8B0   0906   REL,CON      ALSCOR
+
+Global Symbol Summary:
+CALCNT  0018   D.NMHL  186F   MATH    1860   PLNDB   709E   SNDON   7259
+Low limit = 4800   High limit = FFD7
+`;
+
+test('map: a wrapped "References (Files):" list is appended to the preceding module, not discarded', () => {
+  // Real ATARI LINKM .MAP files (e.g. ALEXEC.MAP) wrap a long reference list
+  // onto ~35-space-indented continuation lines holding ONLY more 8-char
+  // reference tokens (no name/base/size/attrs). The parser must accumulate
+  // those tokens into the preceding module's `refs`, not silently drop them.
+  const { modules } = parseMap(WRAPPED_REFS);
+  const abs = modules.find((m) => m.name === '. ABS.');
+  assert.deepEqual(abs.refs, [
+    'ALWELG', 'ALSCOR', 'ALDISP', 'ALEXEC', 'ALSOUN',
+    'ALVROM', 'ALCOIN', 'ALLANG', 'ALHARD', 'ALTEST',
+    'ALEARO', 'ALVGUT',
+  ]);
+  // base/size must be unaffected by the continuation lines, and the next
+  // genuine module row (a blank-name REL,CON section, which DOES carry its
+  // own base/size/attrs) must still be parsed as its own module, not folded
+  // into ". ABS."'s refs.
+  assert.deepEqual({ base: abs.base, size: abs.size }, { base: 0x0000, size: 0xa8b0 });
+  const cont = modules.find((m) => m.name === '' && m.base === 0xa8b0);
+  assert.deepEqual({ size: cont.size, refs: cont.refs }, { size: 0x0906, refs: ['ALSCOR'] });
+});
+
 const DIALECT_B = `
 ATARI LINKM V6.4 LOAD MAP   22-JAN-83
 BIN:SNDAUX.SAV

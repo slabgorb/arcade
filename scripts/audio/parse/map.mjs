@@ -39,7 +39,18 @@ export function parseMap(text) {
       const name = line.slice(0, 8).trim();
       const rest = line.slice(8);
       const m = rest.match(/^\s*([0-9A-F]{4})\s+([0-9A-F]{4})\s+([A-Z,]+)\s*(.*)$/);
-      if (!m) continue;                            // reference continuation line
+      if (!m) {
+        // Reference continuation line: a long "References (Files):" list wraps
+        // onto further lines holding ONLY more reference tokens (no name/base/
+        // size/attrs — that's what distinguishes it from a genuine module row
+        // with a blank name, which still has base/size/attrs and DOES match
+        // above). Append its tokens to the module row it continues.
+        if (t !== '' && modules.length > 0) {
+          const cont = t.split(/\s+/).filter(Boolean).map((r) => r.replace(/#$/, ''));
+          modules[modules.length - 1].refs.push(...cont);
+        }
+        continue;
+      }
       modules.push({
         name,
         base: parseInt(m[1], 16),
