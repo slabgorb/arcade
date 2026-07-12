@@ -10,7 +10,6 @@ sprint:
 epics:
   - A
   - bz2
-  - sw2
   - SH2
   - rb2
   - rb3

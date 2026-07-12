@@ -28,6 +28,7 @@ completed_epics:
   - A2
   - SH
   - rb1
+  - sw2
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -1210,4 +1211,14 @@ completed_stories:
     epic: sw4
     title: "Homing fireball threat — replace 300 u/s straight-line (max reach 1,800, provably can't arrive) with ROM homing law sub_A875: pos decays 7/8 per tick toward cockpit, frame-rate independent pow(7/8, dt×TICK_HZ), 64-tick lifetime, ALWAYS arrives ~1-2s; un-shot = shield hit (gunnery defense); stays shootable (spec §B)"
     points: 3
+    completed: '2026-07-11'
+  - id: sw4-4
+    epic: sw4
+    title: "Swept/substepped bolt-vs-port collision — PORT_HIT_RADIUS STAYS 70 (sw3-15's corrected octagon-tight value; do NOT restore 120). sw4-1's restored 12000 u/s bolt (200 u/frame) tunnels the 140-u-diameter port between frames; fix by decoupling anti-tunneling from the hit radius: add a segment-swept or substepped bolt-vs-target hit-test so a fast bolt registers on the small port without inflating it — keep sw3-15's octagon-tight accuracy AND sw4-1's far-plane reach. Unblocks sw4-1 (PR #69): must land first, then sw4-1 rebases and adopts PORT_HIT_RADIUS=70."
+    points: 3
+    completed: '2026-07-11'
+  - id: sw2-7
+    epic: sw2
+    title: Live playtest verification pass — verify items 1-5 together (mirrors bz2-6)
+    points: 2
     completed: '2026-07-11'
