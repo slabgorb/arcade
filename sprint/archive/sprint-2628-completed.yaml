@@ -17,3 +17,8 @@ completed_stories:
     title: Draw a real vector model in each lobby tile's model slot
     points: 5
     completed: '2026-07-13'
+  - id: SH2-18
+    epic: SH2
+    title: "Extract @arcade/shared/synth — the WebAudio SYNTHESIS engine skeleton (lazy gesture gate, no-throw contract, resolveContextCtor, noiseBuffer, voice bookkeeping) now that a SECOND synthesis cabinet proves the duplication: battlezone bz1-11 and red-baron rb2-11 hand-write byte-identical copies. DISTINCT from /audio (SH2-16), which is a SAMPLE/.wav buffer player and cannot host oscillator synthesis — the two are siblings, not replacements. Ship the VERB (context bootstrap + silent-degrade + closed-context guard), keep the NUMBERS (each cabinet's oscillators/filters/ROM seams) local. Adopt in battlezone + red-baron via the publish→release→repin dance."
+    points: 5
+    completed: '2026-07-13'

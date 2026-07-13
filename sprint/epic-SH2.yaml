@@ -272,10 +272,14 @@ stories:
     title: "Extract @arcade/shared/synth — the WebAudio SYNTHESIS engine skeleton (lazy gesture gate, no-throw contract, resolveContextCtor, noiseBuffer, voice bookkeeping) now that a SECOND synthesis cabinet proves the duplication: battlezone bz1-11 and red-baron rb2-11 hand-write byte-identical copies. DISTINCT from /audio (SH2-16), which is a SAMPLE/.wav buffer player and cannot host oscillator synthesis — the two are siblings, not replacements. Ship the VERB (context bootstrap + silent-degrade + closed-context guard), keep the NUMBERS (each cabinet's oscillators/filters/ROM seams) local. Adopt in battlezone + red-baron via the publish→release→repin dance."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-13'
     repos: arcade-shared,battlezone,red-baron
     workflow: tdd
+    completed: '2026-07-13'
     type: refactor
+    review_findings: "Production code correct and the real bug IS fixed, but the safety net does not hold. Mutation-proven: (1) bypassing the closed-context refusal in startVoice leaves all 33 shared tests green — the story's headline contract is untested for the voice registry; (2) renaming battlezone's returned stopEngine key (real runtime TypeError) leaves all 6 adoption tests green — AC-7/AC-8's only teeth scan the interface declaration, not the implementation. Plus: void building.close() discards a rejecting promise with no .catch() (lang-review #7), the engine can never recover from an externally-closed context and its voice registry goes stale, and two stale/overclaiming comments. Fix list is small and mechanical."
+    review_verdict: approved
   - id: SH2-19
     title: "Extract @arcade/shared/modelview — the contact-sheet layout math (cellRects / modelBounds / fitDistance) now that a THIRD consumer proves the duplication. tempest's own modelView.ts comment SET this threshold: 'Two tiny copies of a grid partitioner do not justify a cross-repo shared library; revisit extraction at a third consumer.' red-baron's ROM picture sheet is that third consumer. Today: cellRects x3 (star-wars src/core/modelView.ts, tempest src/core/modelView.ts, red-baron src/tools/sheetLayout.ts); modelBounds + fitDistance x2 (star-wars core, red-baron tools). NOT dev-tool-only — star-wars src/shell/debug-overlay.ts consumes modelBounds for a real game surface. Adopt in all three via the publish -> release -> repin dance."
     points: 5
