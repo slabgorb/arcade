@@ -11,7 +11,8 @@ stories:
     description: "Cluster C1. Subsumes EN-002, EN-003, EN-004, EN-014, CB-003, CB-011, CB-018, CB-019, MI-010, MI-011, MI-014, MI-015, MI-016, MI-017, MI-022, FL-016, FL-017, RD-003, RD-016 (~19 findings, ~30 constants — the same error filed nineteen ways). The single most important story in the epic and the gate on everything numeric. LAND THIS ALONE AND FIRST: every other numeric story is downstream, and any that lands first bakes the decimal reading into its own baseline and then 'confirms' itself against this document. RBARON.MAC is `.RADIX 16` from line 74; the ONLY decimal island is :6217-6280 (the vertex table — which we already read correctly). A trailing period forces decimal inside a hex region (`CMP I,250.` is 250, not 592). Expect the whole numeric test suite to re-baseline — that is the point, not a regression."
     points: 8
     priority: p1
-    status: backlog
+    status: in_progress
+    branch: fix/rb4-1-radix-sweep
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
