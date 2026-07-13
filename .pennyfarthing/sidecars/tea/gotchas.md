@@ -93,3 +93,40 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 **Example (sw3-15):** the `$800` window gate would have flipped `force-bonus.test.ts` (kill at `-2400`) and `exhaust-port-outcome.test.ts`'s real-speed detonation (`-1500`) to RED. Re-seated both to `-300` (in-window); the clean/dirty-bonus and no-tunnel intents are unchanged; the new suite's "torpedo fired at trench entry no longer wins" is the replacement far-miss coverage.
 
 ---
+### WSOBJ.MAC is `.RADIX 16` — and the file contains NO `.RADIX` line to warn you
+
+**Situation:** Transcribing any star-wars `.WP`/`.P`/`.PGND`/`.PH` vertex table from
+WSOBJ.MAC to pin an authentic model (sw3-11, sw5-5, and sw5-4 next).
+
+**Problem:** The integer literals are HEX, but `grep -n RADIX WSOBJ.MAC` returns
+**nothing** — the radix is set upstream of the file, so the source itself gives you
+no warning. Small values (`4`, `6`, `8`) read identically in both bases, so a decimal
+misreading *looks* right and passes eyeball review; only two-digit values diverge.
+sw3-11 read the `.PGND` height column as decimal and shipped a tower whose three
+upper rings were all at the wrong height — and then wrote the wrong numbers into
+models.ts's doc comment, this sidecar, and its own test header, where they sat as
+"ground truth" for two more stories.
+
+**Prevention:** NEVER transcribe a WSOBJ.MAC table by reading it. Verify every
+two-digit literal arithmetically against the baked artifact
+(`star-wars/src/tools/romModels.generated.ts`), which the sw5-1 parser produces and
+which is independently correct. The macro tells you the arithmetic — e.g.
+`.PGND` is `.WORD .A*.S,.B*.S,.C*.S-GD$MDT` with `.S=30.*4`=120, `GD$MDT`=0xF00:
+
+    h=0x58 -> 88*120 - 3840 = 6720   <- the baked z. hex is right.
+    h= 58. -> 58*120 - 3840 = 3120   <- appears nowhere. decimal is refuted.
+
+Write that refutation INTO the test (`expect(z).not.toBe(58 * S - GD$MDT)`), so the
+next person cannot quietly regress to decimal.
+
+**Also (sw5-5):** ground objects SHARE one point table — `.WPZ2 TWR/BNK/STB` alias
+`.WP GND`'s 15 points, and each `.WGD` routine strokes only a subset (BNK strokes 6,
+STB 12, leaving the cannon-top ring for the white cap). So a faithful port carries
+vertices its own edges never touch. That breaks the registry's "no orphan vertices"
+invariant — carve it out by name and re-assert the intent over the DRAWN subgraph;
+do NOT trim the table, or romCompare's `verticesEqual` (a DEEP equality) slams shut
+and the whole edge comparison is forfeited. And `GD$MDT` is not cosmetic: its comment
+is "OFFSET HITE TO MID OF PLAYERS HITE" — it IS the ROM's skim altitude.
+
+---
+

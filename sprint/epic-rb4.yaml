@@ -1,8 +1,0 @@
-id: rb4
-type: epic
-title: Red Baron — ATTRACT
-description: ATTRACT game state (GAMODE 0). Self-running demo flight, banner, cycling high-score-table display, RTP/timeout. Depends on PLAY existing to demo.
-priority: p2
-status: backlog
-repos: red-baron
-stories: []

@@ -47,7 +47,8 @@ stories:
     description: "The 'frozen' half of the original report, now downstream of ADR-0004. lobby/src/main.ts calls getTopScore(game.id) once while building each tile, so the value is fixed for the life of the page: play a game, beat your best, come back — the tile still shows the old number, and on a BFCache restore the page is not even rebuilt. Make the tiles re-read when the player returns: a pageshow handler covers BFCache back-navigation. Post-ADR-0004 the source is a cookie, so cross-tab 'storage' events do NOT apply (there is no storage event for cookies) — do not build around one. Re-read through a single entry point that re-uses the tile's existing render path. Small, self-contained, and shippable independently of lb2-2."
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-12'
     repos: lobby
     workflow: tdd
     acceptance_criteria:
@@ -55,6 +56,7 @@ stories:
       - Refresh goes through one re-read entry point re-using the tile's existing render path — no duplicated score formatting, no rebuilding the whole grid.
       - A tile whose score is still unreadable stays at NO SCORE across refreshes and never flickers to a stale value or a 0.
       - Tests drive the refresh path directly (simulated pageshow), asserting the tile text changes from the old score to the new one.
+    completed: '2026-07-12'
     type: bug
   - id: lb2-4
     title: Safari ITP deletes the games' own high-score tables after 7 days without interaction
@@ -129,16 +131,28 @@ stories:
     type: feature
   - id: lb2-9
     title: Draw a real vector model in each lobby tile's model slot
-    description: "lb2-7 leaves every tile carrying an empty data-model-slot=<gameId> box; this fills it with the game's hero object drawn as a live glowing vector model — Tempest's blaster, a TIE fighter, an asteroid, a Battlezone tank, Red Baron's biplane — so the grid reads as an arcade row rather than a list of coloured rectangles. This is the single strongest thing the lobby can do to speak the cabinet's visual language, because it IS the cabinet's visual language. Do not hand-roll the drawing stack: @arcade/shared already ships /glow (withGlow + glowPolyline) and /math3d (the ported Atari Math Box) for exactly this, and star-wars' models contact sheet (/models.html) already previews every MODELS entry through the real render pipeline — reuse it to eyeball shape and scale rather than guessing. NOTE the pin: the lobby is still on @arcade/shared v0.4.0, which predates /glow, /view and /font entirely — this story eats the version-bump cost across the SH2 render epic that lb2-2 also carries, so sequence the two so only one of them pays it. Decide explicitly where the model geometry LIVES: copied into the lobby, or promoted into a shared subpath the games and the lobby both consume (the second is the ADR-0001 answer, but it is a real extraction, not a free one). Static or slowly rotating is fine; this must not become a per-tile game loop that burns the visitor's battery on the front door."
+    description: |-
+      lb2-7 leaves every tile carrying an empty data-model-slot=<gameId> box; this fills it with the game's hero object drawn as a live glowing vector model — Tempest's blaster, a TIE fighter, an asteroid, a Battlezone tank, Red Baron's biplane — so the grid reads as an arcade row rather than a list of coloured rectangles. This is the single strongest thing the lobby can do to speak the cabinet's visual language, because it IS the cabinet's visual language.
+
+      DECIDED (SM, 2026-07-12): geometry is AUTHORED IN THE LOBBY, not extracted to shared. Hand-author tile-scale 2D vector silhouettes in the lobby (one per game) and draw them with @arcade/shared /glow (withGlow + glowPolyline). Rationale: ADR-0001 extracts on PROVEN duplication (its evidence is math3d.ts being byte-identical across two repos); tile art would be new geometry with exactly one consumer. The games' own model data is not reusable here anyway — it is 3D ROM geometry (star-wars models.ts is 743 lines, battlezone's 278), not tile-sized silhouettes. If a second consumer ever appears, extract then. Repos touched: lobby ONLY. No arcade-shared change, no release, no pin bump.
+
+      CORRECTION: the original 'lobby is still on @arcade/shared v0.4.0, so this story eats the version-bump cost' premise is STALE. lobby/package.json already pins v0.13.1, which exports /glow, /view, /font and /math3d. That cost was paid during lb2-2/lb2-3. There is no bump to sequence against.
+
+      star-wars' models contact sheet (/models.html) is still useful as a reference for eyeballing shape and scale. Static or slowly rotating is fine; this must not become a per-tile game loop that burns the visitor's battery on the front door.
     points: 5
     priority: p3
-    status: backlog
-    repos: lobby, arcade-shared
+    status: done
+    started: '2026-07-12'
+    repos: lobby
     workflow: tdd
     acceptance_criteria:
-      - Every tile's model slot draws that game's own hero object as a glowing vector model, in that game's registry glow colour, and a game with no model degrades to the empty slot rather than a broken or blank canvas.
-      - "The drawing goes through @arcade/shared/glow rather than a re-implemented glow stack, and the geometry's home is a decision that is written down, not an accident: copied into the lobby, or promoted to a shared subpath."
-      - Animation (if any) is cheap and courteous — it pauses when the tab is hidden and does not run a full per-tile game loop.
+      - Every tile's model slot draws that game's own hero object as a glowing vector model, in that game's registry glow colour. A game with no model degrades to the empty slot rather than a broken or blank canvas.
+      - The drawing goes through @arcade/shared/glow (withGlow + glowPolyline) rather than a re-implemented glow stack.
+      - 'The geometry is AUTHORED IN THE LOBBY as tile-scale 2D vector silhouettes (per the SM decision recorded in the description). arcade-shared is NOT modified: no new subpath, no release, no pin bump. lobby is already on @arcade/shared v0.13.1, which exports /glow.'
+      - Animation (if any) is cheap and courteous — it pauses when the tab is hidden and does not run a full per-tile rAF game loop.
       - The slot's presence or absence never shifts the tile layout lb2-7 established.
-      - npm run build and npm test both pass in lobby/, and the version-bump cost of moving the lobby's @arcade/shared pin off v0.4.0 is paid exactly once across this story and lb2-2.
+      - npm run build and npm test both pass in lobby/.
+    completed: '2026-07-13'
     type: feature
+    review_findings: "APPROVED on re-review (commit 74810d4, tests only — src untouched). All 3 blocking findings fixed and independently re-verified by mutation: the two attacks that previously passed 127/127 (scale dropped; empty point list = every bay blank) now both fail, as do 4 fresh attacks aimed at the new assertions (points reversed, points collapsed, scale x3 overflow, mountModels deleted from main.ts). Rule #2 readonly fixed. Residual accepted (LOW, filed as Delivery Finding): a constant translation offset is absorbed by the derived mapping — bounded by the in-bounds assertion to a few px off-centre, cosmetic not functional; two-line close is asserting offsetX/offsetY ~= size/2. Zero production-code findings across both passes. 132/132, tsc + build clean."
+    review_verdict: approved

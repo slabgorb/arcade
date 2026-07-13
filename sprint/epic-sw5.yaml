@@ -10,10 +10,10 @@ stories:
     title: Recover `.WGD` ground-object edges — parser extension (takes edge coverage from 14 of 24 ROM objects to all 24, and compared pairs from 5 to 8)
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-12'
     repos: orchestrator
     workflow: tdd
-    type: feature
     acceptance_criteria:
       - 'scripts/rom-models/wsobj.mjs parses `.WGD` routine bodies into the existing ConnectOp IR — PLOT n begins a run at point n (pen up), DRAWTO a,b,... draws a visible line to each point, BDRAWTO a,b,... is a blank move to `a` then delegates the rest to DRAWTO (same pen idiom as `.BD`/`.LD`), ENDPLOT ends the routine.'
       - 'Draw indices are parsed as DECIMAL — the macro forces it via the trailing-dot trick (`...1''.*10`). The `.RADIX 16` hex trap does NOT apply to these indices; do not apply it.'
@@ -26,6 +26,8 @@ stories:
       - 'The generated artifact''s "edges not recoverable" caveat is removed or narrowed to whatever actually remains — leaving it stale makes it actively misleading.'
       - The contact sheet's punch-list regression pin covers 8 compared pairs (was 5), gaining PORT, STB and BNK.
       - The red-baron oracle still passes (it guards the shared radix/number/pen core).
+    completed: '2026-07-12'
+    type: feature
   - id: sw5-2
     title: Re-port DARTH_TIE edges from the ROM draw list — remove the 44 fabricated edges, restore the 12 real ones
     points: 3
@@ -33,7 +35,6 @@ stories:
     status: backlog
     repos: star-wars
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - DARTH_TIE.edges are derived from the ROM draw list `.WL RTH` in WSOBJ.MAC, not authored.
       - 'The 44 edges that appear nowhere in the ROM are removed. models.ts admits authoring them ("RE-AUTHORED by structure... octagon rim + inner square hub + spokes + 4-strut pylon") — the port did not lose 44 real edges, it invented them.'
@@ -43,6 +44,7 @@ stories:
       - The contact sheet reports 0 in-ROM-not-in-port and 0 in-port-not-in-ROM for RTH to Darth Vader TIE.
       - DARTH_TIE's doc comment no longer claims a re-authored ring structure; it cites `.WL RTH` as the source.
       - 'Existing DARTH_TIE tests still pass. The induced-single-cycle topology guard assumed the AUTHORED ring structure — if it now fails, that is the guard being wrong about the ROM, not the ROM being wrong. Update it with rationale rather than reshaping the geometry to satisfy it.'
+    type: bug
   - id: sw5-3
     title: Re-port the TIE family edges (TIE, TI1, TI2, TI3) — including the spider-ladder rung the port's own comment shows it omitted
     points: 2
@@ -50,7 +52,6 @@ stories:
     status: backlog
     repos: star-wars
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - TIE_FIGHTER, TIE_WING_FRAG_1, TIE_WING_FRAG_2 and TIE_WING_FRAG_3 edges are derived from the ROM draw lists `.WL TIE`, `.WL TI1`, `.WL2 TI2` and `.WL TI3`.
       - 'The fragments'' missing 6-to-12 rung is restored. The port''s own comment authors a spider ladder with rungs 7-13, 8-14, 9-15, 10-16, 11-17 — a six-rung ladder MISSING its 6-12 rung. The ROM has it. (This is the finding that most cleanly corroborates the whole audit.)'
@@ -58,30 +59,33 @@ stories:
       - Vertices are unchanged (they already match byte-for-byte; TIE vertex 0 is [-130,-208,234]).
       - Degenerate self-edges from the ROM are not copied.
       - The contact sheet reports 0/0 drift for all four TIE-family pairs.
+    type: bug
   - id: sw5-4
     title: Re-port EXHAUST_PORT from the ROM — it is 12 vertices in three concentric squares, not an 8-vertex octagon
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-13'
     repos: star-wars
     workflow: tdd
-    type: bug
-    blocked_by: sw5-1
     acceptance_criteria:
       - EXHAUST_PORT vertices AND edges come from ROM `PORT` (WSOBJ.MAC `.WP PORT` for the points, `.WGD PORT` for the strokes). Blocked on sw5-1 for the edges.
       - 'The topology is genuinely different, not a tweak — models.ts ships an 8-vertex octagon at radius ~70; the ROM is 12 vertices forming three concentric squares at plus/minus 96, 160 and 256. Note those are `.PH` rows, i.e. HEX under `.RADIX 16`; reading them as decimal yields geometry at ~60 percent of true size.'
       - The PROVISIONAL marker on EXHAUST_PORT is removed from models.ts.
       - 'GAMEPLAY IMPACT — the ROM target is roughly 3.6x wider than ours. Trench exhaust-port hit detection must be re-tuned against the ROM geometry rather than left assuming the octagon, and the resulting change in difficulty must be called out explicitly, not slipped in.'
       - The contact sheet reports 0/0 drift for PORT to Exhaust Port.
+    completed: '2026-07-13'
+    type: bug
+    blocked_by: sw5-1
+    review_verdict: approved
   - id: sw5-5
     title: Re-port SURFACE_TOWER and SURFACE_BUNKER from the ROM — the tower is missing its cannon-top ring
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-12'
     repos: star-wars
     workflow: tdd
-    type: bug
-    blocked_by: sw5-1
     acceptance_criteria:
       - 'SURFACE_TOWER vertices and edges come from ROM `STB` — the `.WGD STB` routine, "STUB OF TOWER WITHOUT BUNKER HAT ON TOP", which models.ts''s own doc comment already names. Blocked on sw5-1 for the edges.'
       - The ROM tower has 5 rings / 15 vertices; ours has 4 rings / 12. The missing ring is the cannon top. Restore it.
@@ -89,3 +93,22 @@ stories:
       - 'TOWER_CAP is reconciled and documented. In the ROM, `TWR` (which IS `GND` — `.WGD TWR` is immediately followed by `.WGD2 GND`, one object with one draw routine) strokes the column AND the cap together. Our split into two models exists only because Canvas strokes one colour per drawWireframe call. Either merge them or state that reason in the doc comment — do not leave the split unexplained, since it reads as a fidelity error.'
       - Surface-phase collision still works with the corrected (taller) tower; any change in the collidable volume is called out.
       - The contact sheet reports 0/0 drift for STB to Surface Tower and BNK to Surface Bunker.
+    completed: '2026-07-13'
+    branch: feat/sw5-5-rom-port-surface-tower-bunker
+    type: bug
+    blocked_by: sw5-1
+    review_verdict: approved
+  - id: sw5-6
+    title: Pin TRENCH_WALL_H from the ROM and seat the exhaust port in the trench — the re-ported PORT plate hangs half below the floor
+    points: 3
+    priority: p1
+    status: backlog
+    repos: pennyfarthing
+    workflow: tdd
+    acceptance_criteria:
+      - "The defect: sw5-4 re-ported EXHAUST_PORT from ROM '.WP PORT' as a 512x512 plate flat in z=0, but sim.ts spawnPort still centres it at world y=0 (the floor) — correct for the old octagon, which was a hole IN the floor, wrong for a vertical plate. Half the target hangs below the trench floor. Reproduce it in the dev server before touching anything."
+      - 'The evidence says the TRENCH is wrong, not the port: the ROM base half-width is 256, EXACTLY TRENCH_HALF_W. The plate spans the trench width perfectly — strong independent corroboration that 256 is right and that the cross-section is 512x512. Meanwhile TRENCH_WALL_H = 320 is a guess whose own comment admits it (PROVISIONAL ... not pinned). Pin it from the ROM.'
+      - Raise spawnPort so the plate is seated in the channel. This MOVES THE AIM POINT (today the port centre is at y=0, where the octagon was, so aiming is unchanged from pre-sw5-4). The difficulty change must be tested and called out explicitly, not slipped in — same standard sw5-4 AC-4 was held to.
+      - "DO NOT scale the model to make it fit. models.ts must stay 1:1 with raw ROM units or two things break: romCompare's deep vertex compare (sw5-4 AC-5, the contact sheet's 0/0 drift) and the WYSIWYG bound tying PORT_HIT_RADIUS (108, world units) to the porthole's 96 (model units). The port needs no scale; the trench needs a height."
+      - Trench furniture (turrets, squares, catwalks) and TRENCH_SKIM are all scaled off the TRENCH_HALF_W/TRENCH_WALL_H anchors — re-check them against the new height rather than leaving them tuned to 320.
+    type: bug

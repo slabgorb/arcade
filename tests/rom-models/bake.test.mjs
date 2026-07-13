@@ -31,10 +31,24 @@ test('emitTs: emits a DO-NOT-EDIT header and a typed ROM_MODELS export', () => {
   assert.match(ts, /\[-130, -208, 234\]/);
 });
 
-test('emitTs: header explicitly negates "no draw list means no ROM lines" and names all ten objects', () => {
+// sw5-1 makes the old caveat FALSE. It said the ten ground objects' edges
+// "are drawn by hand-coded PLOT/DRAWTO routines elsewhere in the assembly that
+// this tool does not parse" — the tool parses them now. A stale caveat is worse
+// than none: it tells a reader the artifact is missing data it actually has.
+test('emitTs: the "edges not recoverable" caveat is GONE — the parser reads .WGD now', () => {
   const ts = emitTs(toRomModels(OBJS));
-  assert.match(ts, /does NOT mean the ROM draws these objects/);
-  for (const name of ['GND', 'TWR', 'BNK', 'STB', 'WPN', 'WGA', 'WGB', 'WFF', 'WFG', 'PORT']) {
-    assert.match(ts, new RegExp(`\\b${name}\\b`));
-  }
+  assert.doesNotMatch(ts, /does not parse/i);
+  assert.doesNotMatch(ts, /could not recover edge connectivity/i);
+  assert.doesNotMatch(ts, /only VERTICES are authoritative/i);
+});
+
+// The caveat it is REPLACED by. Two ROM anomalies now survive into the baked
+// edges, and a consumer that indexes `vertices[i]` blindly will read undefined
+// on the second one — so the artifact has to say so, the way it already warns
+// about degenerate self-edges.
+test('emitTs: header documents WFG\'s out-of-range ROM stroke and tells consumers to filter it', () => {
+  const ts = emitTs(toRomModels(OBJS));
+  assert.match(ts, /\bWFG\b/, 'the anomaly must name the object');
+  assert.match(ts, /vertices\.length/, '...and tell consumers the filter predicate');
+  assert.match(ts, /self-edge/i, 'the existing degenerate-self-edge caveat must survive');
 });

@@ -3,7 +3,7 @@ type: epic
 title: "Battlezone — playtest followup"
 description: 'Follow-up epic from the first live playtest of the bz1 slice (through bz1-8). Fixes: canvas stretches to full browser width instead of holding a fixed aspect ratio; HUD/text uses a default sans-serif font instead of the shared arcade vector font used in tempest and star-wars; camera/scale reads too close (objects loom larger/nearer than intended); tank turret/aim control granularity is too coarse to aim precisely; no on-screen control indicator and no pause feature (Escape should pause and show keybinds). Closes with an explicit live playtest pass to verify all fixes together. Sequenced after bz1; tagged p2.'
 priority: p2
-status: backlog
+status: done
 repos: battlezone
 stories:
   - id: bz2-1
@@ -64,7 +64,7 @@ stories:
     title: "Live playtest pass — verify aspect ratio, font, scale, controls, and pause fixes end-to-end"
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: battlezone
     workflow: tdd
     type: chore
@@ -72,14 +72,14 @@ stories:
     title: "Wire reserved ROM message strings to display surfaces — in-game HIGH SCORE label, GREAT SCORE, BONUS TANK AT award banner, ENEMY TO/LEFT/RIGHT/REAR direction callout (transcribed verbatim in core/text.ts by bz1-12, not yet rendered)"
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: battlezone
     workflow: tdd
   - id: bz2-8
     title: "Harden bz1-12 alert/text tests — pin aim-cone boundary (just-inside/outside AIM_COS) alongside the range boundary, use toBeNull for the moved-so-no-alert case, and add a producer-driven gameOverLines(nonzeroScore) SCORE-label assertion"
     points: 1
     priority: p2
-    status: backlog
+    status: canceled
     repos: battlezone
     workflow: tdd
     type: chore
@@ -111,3 +111,4 @@ stories:
     completed: '2026-07-06'
     type: bug
     branch: feat/bz2-10-tank-maneuvering-ai
+completed: '2026-07-12'
