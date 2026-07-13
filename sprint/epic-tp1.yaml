@@ -48,6 +48,7 @@ stories:
     repos: tempest
     workflow: tdd
     type: bug
+    branch: fix/tp1-3-cheap-wins
     acceptance_criteria:
       - "The spiker is GREEN, not orange — TRACOL=GREEN (ALCOMN.MAC:369). Orange is not in the ROM's eight-slot palette at all. (glyphs.ts:120, V-008)"
       - "The enemy death burst is WHITE, not yellow — EXPCOL=WHITE; all four EXPL1-4 open CSTAT WHITE. (render.ts:460 ENEMY_BURST_COLOR, V-012 = DA-005)"
