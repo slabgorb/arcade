@@ -32,9 +32,11 @@ stories:
     description: "Cluster C8. Subsumes S-008, S-009, S-010. The highest value-to-effort item in the audit and it depends on NOTHING — run it in parallel with the rebase. Every shot the player fires currently plays an explosion; every enemy that dies plays an engine. These are the two most-heard cues in the game. The correct launch-sound bytes are ALREADY IN OUR OWN BAKE DATA: twelve bytes at offset 24 of sfx-data.mjs's ALSOUN_STREAM blob (ROM $cbe9), which the POKEY map's authors flagged with a '?' and never resolved."
     points: 4
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-13'
     repos: tempest
     workflow: tdd
+    branch: fix/tp1-2-audio-cross-wiring
     acceptance_criteria:
       - "The player's fire cue is rebuilt from the twelve bytes at offset 24 of ALSOUN_STREAM (ROM $cbe9) — the sound is DERIVED from the bake data, not hand-authored to taste."
       - "The enemy-explosion cue plays the envelope currently shipping as player_fire.wav, and the thrust/launch cue plays the envelope currently shipping as enemy_explosion.wav. The swap is proved by a test on the bake mapping, not by ear alone."
