@@ -284,7 +284,8 @@ stories:
       NOT behaviour-preserving for battlezone, BY DESIGN — the epic's house rule departs here in one direction (hardening) for one consumer. Audibly identical in both games; battlezone GAINS the no-throw contract, the closed-context guard and the half-built-context close. Log as a deviation. red-baron is pure dedup (it already has every fix), so adopt it FIRST — it is the source of the hardened code, and its adoption proves the surface fits without a bug fix confounding it. Publish->release->repin dance: arcade-shared v0.12.0 -> v0.13.0; force re-resolution with `npm install @arcade/shared@github:...#<ref>` (a bare npm install keeps the old commit); do NOT delete the shared feature branch until the tag is cut and both pins are bumped. Follow-on SH2-19 kills the third copy in /audio.
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-13'
     repos: arcade-shared,battlezone,red-baron
     workflow: tdd
     acceptance_criteria:
@@ -294,7 +295,10 @@ stories:
       - "A battlezone test proves play() and setEngine() against a CLOSED context do not throw — it must FAIL on today's battlezone (the latent frame-loop freeze: main.ts:153-154 runs above the rAF re-schedule at arcade-shared/src/loop.ts:76) and pass after adoption. Write it first (RED). The behaviour change is logged as a deviation in the session file — this story is deliberately NOT behaviour-preserving for battlezone."
       - Both cabinets' existing tests/shell/audio.test.ts + audio-dispatch.test.ts pass UNCHANGED (the audible-behaviour-preservation proof); vitest + vite build green in arcade-shared, battlezone and red-baron; a manual playtest confirms every sound is audibly identical in both games.
       - arcade-shared ships v0.13.0 with the ./synth exports entry (types + import) and build entry; battlezone and red-baron pin the tag with the git dep genuinely re-resolved (not a stale lockfile); the shared feature branch survives until both pins are bumped.
+    completed: '2026-07-13'
     type: refactor
+    review_findings: "Production code correct and the real bug IS fixed, but the safety net does not hold. Mutation-proven: (1) bypassing the closed-context refusal in startVoice leaves all 33 shared tests green — the story's headline contract is untested for the voice registry; (2) renaming battlezone's returned stopEngine key (real runtime TypeError) leaves all 6 adoption tests green — AC-7/AC-8's only teeth scan the interface declaration, not the implementation. Plus: void building.close() discards a rejecting promise with no .catch() (lang-review #7), the engine can never recover from an externally-closed context and its voice registry goes stale, and two stale/overclaiming comments. Fix list is small and mechanical."
+    review_verdict: approved
   - id: SH2-19
     title: "Extract @arcade/shared/modelview — the contact-sheet layout math (cellRects / modelBounds / fitDistance) now that a THIRD consumer proves the duplication. tempest's own modelView.ts comment SET this threshold: 'Two tiny copies of a grid partitioner do not justify a cross-repo shared library; revisit extraction at a third consumer.' red-baron's ROM picture sheet is that third consumer. Today: cellRects x3 (star-wars src/core/modelView.ts, tempest src/core/modelView.ts, red-baron src/tools/sheetLayout.ts); modelBounds + fitDistance x2 (star-wars core, red-baron tools). NOT dev-tool-only — star-wars src/shell/debug-overlay.ts consumes modelBounds for a real game surface. Adopt in all three via the publish -> release -> repin dance."
     points: 5
@@ -335,4 +339,20 @@ stories:
       - 'A node test proves the half-built-context leak is gone: when createGain() throws during bootstrap, close() IS called on the orphaned context and a repeat resume() (as every gesture triggers) does not accumulate live AudioContexts.'
       - createAudioEngine(manifest)'s public API is unchanged — the filename-keyed buffer store, channel stealing, and the context() accessor star-wars' speech depends on (SH2-17) all behave identically; /audio's existing tests pass UNCHANGED.
       - "star-wars and asteroids are behaviour-identical: vitest + vite build green in both, and a manual playtest confirms SFX (and star-wars' TMS5220 speech) are audibly unchanged."
+    type: refactor
+  - id: SH2-21
+    title: "Extract the fake AudioContext test harness — it is now hand-written FOUR times (battlezone/tests/shell/audio.test.ts, red-baron/tests/shell/audio.test.ts, arcade-shared/tests/synth.test.ts, plus a fifth divergent one in arcade-shared/tests/audio.test.ts for the sample player). SH2-18 grew the duplication rather than shrinking it, and TEA/Reviewer both flagged it. The harness is load-bearing, not incidental: the whole SH2-18 bug was invisible until battlezone's fake was upgraded to model a CLOSED context faithfully (close() really closes; every factory throws InvalidStateError synchronously; resume() rejects) — a cabinet with a cosmetic fake CANNOT express the failure that matters. Ship one faithful fake (a testing subpath or tests/helpers export) so a new cabinet inherits the teeth instead of re-deriving them, and so a fake can never silently drift weaker than the contract it guards."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade-shared,battlezone,red-baron
+    workflow: tdd
+    type: chore
+  - id: SH2-22
+    title: "Close the @arcade/shared/synth onRebuild footgun — a cabinet that holds a WebAudio node OUTSIDE the shared voice registry (a free-running hum oscillator, an approach whine, anything built once behind an 'if (node === null)' gate) MUST register an onRebuild reset, or that node keeps referencing the context the browser closed, its build gate never re-fires, and the sound dies permanently while the registry voices recover. That HALF recovery is worse than none: it looks like it works. This is not hypothetical — SH2-18's own recovery fix shipped exactly this regression into BOTH cabinets and it took the reviewer's fix-regression sweep to catch it; a comment on the method is the only thing standing between the next cabinet and the same trap. Make it structural rather than advisory: either have the engine own persistent (non-stoppable, gain-switched) voices so no cabinet-held nodes exist at all, or fail loudly — the design call is the story."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade-shared,battlezone,red-baron
+    workflow: tdd
     type: refactor
