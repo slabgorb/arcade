@@ -22,6 +22,7 @@ stories:
       - "The starfield is driven by the sim, not by requestAnimationFrame (FR-017), and render.ts:905's `renderTime += 1/60` is rebased."
       - "warpAccel's 4.45x error resolves as a CONSEQUENCE of the rebase (it carries the base rate squared) — a test pins warp velocity against the ROM's value rather than against a hand-tuned number."
       - "The game is demonstrably playable at the new rate — this story is allowed to surface that other constants are wrong, but it must NOT compensate for them by re-tuning anything outside the frame-rate family. Those are other stories."
+      - "WD-010 (moved here from tp1-3, 2026-07-13, user-approved): warpAccel is fed a 0-based CURWAV, not a 1-based level (rules.ts:51). One character — but it was ordering-constrained behind this story (fixing it while the 60 is still baked in re-bakes the 60), and this story rewrites warpAccel anyway per the AC above. It lands here so it cannot be lost. tp1-3 no longer carries it."
       - "npm test -- citations stays green."
   - id: tp1-2
     title: "THE AUDIO CROSS-WIRING — player_fire.wav IS the enemy-explosion envelope; enemy_explosion.wav IS the thrust sound"
@@ -40,7 +41,7 @@ stories:
       - "npm test -- citations stays green."
   - id: tp1-3
     title: "THE CHEAP WINS — nine one-line fidelity fixes carved out of the clusters"
-    description: "Carve-out story: these items are removed from C6/C7/C11/C12/C13/C15's scope so they are not double-counted. Each is a one-line or one-constant change. Together they are the fastest visible fidelity gain in the audit. NOTE the ordering constraint on WD-010: it is one character but it must land AFTER tp1-1 or it re-bakes the 60."
+    description: "Carve-out story: these items are removed from C6/C7/C11/C12/C13/C15's scope so they are not double-counted. Each is a one-line or one-constant change. Together they are the fastest visible fidelity gain in the audit. SCOPE CHANGE (2026-07-13, user-approved at SM setup): WD-010 (warpAccel's 0-based CURWAV) has been MOVED OUT of this story and INTO tp1-1. It was ordering-constrained behind tp1-1 (touching rules.ts:51 while the 60 is still baked in re-bakes the 60), and tp1-1 rewrites warpAccel anyway. This story now carries NINE fixes — matching its title — and depends on nothing."
     points: 3
     priority: p1
     status: backlog
@@ -57,7 +58,7 @@ stories:
       - "The fuseball's vulnerability is INVERTED — the arcade's fuseball is killable ONLY while rolling between lanes, and is bulletproof on a lane and at the rim. Ours is the exact opposite. (sim.ts:316, fuseball.ts:41, W-022)"
       - "The invented pulsar strobe is dropped — the ROM's colour is a clean binary toggle for the whole pulse window. (render.ts:363, DA-020)"
       - "The lives icon is the claw silhouette (LIFE1, 8 vertices), not a hand-drawn chevron. It is NOT the same picture as NCRS1-8. (render.ts:538, V-016)"
-      - "warpAccel is fed a 0-based CURWAV, not a 1-based level — one character, and it MUST come after tp1-1. (rules.ts:51, WD-010)"
+      - "OUT OF SCOPE — WD-010 (warpAccel's 0-based CURWAV, rules.ts:51) is NOT part of this story: it moved to tp1-1 on 2026-07-13. Do not touch rules.ts:51 or warpAccel here. Nine fixes, not ten."
       - "npm test -- citations stays green."
   - id: tp1-4
     title: "THE CAM, part 1 — build the bytecode interpreter and the 11 enemy programs, selected per wave from CAMWAV"
