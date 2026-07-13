@@ -11,10 +11,10 @@ stories:
     description: "Cluster C1. Subsumes FR-001, FR-004, FR-006..FR-015, FR-017, WD-008, WD-009, W-028, W-045, B-005, DA-010 (19 findings — the same error filed nineteen ways). The single most important finding in the audit and the gate on the whole epic. LAND THIS ALONE AND FIRST: every other numeric story is downstream, and any of them that lands first bakes the 60 into its own baseline and then 'confirms' itself against this document. Every timing test re-baselines as part of this story — that is expected, not a regression."
     points: 8
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-13'
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "A single named constant ROM_FPS = 256/9 (28.444...) exists in core, is cited to the ROM, and is the only place that number is written."
       - "Every explicit `* 60` and `/ 60` in the sim is gone or rebased — rules.ts:46,52,120,154; sim.ts:113,223; flipper.ts:27,39; BULLET_SPEED. Grep proves zero remaining bare 60s used as a frame rate in src/core/."
@@ -24,6 +24,9 @@ stories:
       - "The game is demonstrably playable at the new rate — this story is allowed to surface that other constants are wrong, but it must NOT compensate for them by re-tuning anything outside the frame-rate family. Those are other stories."
       - "WD-010 (moved here from tp1-3, 2026-07-13, user-approved): warpAccel is fed a 0-based CURWAV, not a 1-based level (rules.ts:51). One character — but it was ordering-constrained behind this story (fixing it while the 60 is still baked in re-bakes the 60), and this story rewrites warpAccel anyway per the AC above. It lands here so it cannot be lost. tp1-3 no longer carries it."
       - "npm test -- citations stays green."
+    completed: '2026-07-13'
+    type: bug
+    review_verdict: approved
   - id: tp1-2
     title: "THE AUDIO CROSS-WIRING — player_fire.wav IS the enemy-explosion envelope; enemy_explosion.wav IS the thrust sound"
     description: "Cluster C8. Subsumes S-008, S-009, S-010. The highest value-to-effort item in the audit and it depends on NOTHING — run it in parallel with the rebase. Every shot the player fires currently plays an explosion; every enemy that dies plays an engine. These are the two most-heard cues in the game. The correct launch-sound bytes are ALREADY IN OUR OWN BAKE DATA: twelve bytes at offset 24 of sfx-data.mjs's ALSOUN_STREAM blob (ROM $cbe9), which the POKEY map's authors flagged with a '?' and never resolved."
@@ -32,13 +35,13 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The player's fire cue is rebuilt from the twelve bytes at offset 24 of ALSOUN_STREAM (ROM $cbe9) — the sound is DERIVED from the bake data, not hand-authored to taste."
       - "The enemy-explosion cue plays the envelope currently shipping as player_fire.wav, and the thrust/launch cue plays the envelope currently shipping as enemy_explosion.wav. The swap is proved by a test on the bake mapping, not by ear alone."
       - "The '?' annotation in the POKEY map is resolved and replaced with the ROM address it resolves to."
       - "No new .wav is invented. Every shipped sound traces to a slot in ALSOUN's 13-sound table."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-3
     title: "THE CHEAP WINS — nine one-line fidelity fixes carved out of the clusters"
     description: "Carve-out story: these items are removed from C6/C7/C11/C12/C13/C15's scope so they are not double-counted. Each is a one-line or one-constant change. Together they are the fastest visible fidelity gain in the audit. SCOPE CHANGE (2026-07-13, user-approved at SM setup): WD-010 (warpAccel's 0-based CURWAV) has been MOVED OUT of this story and INTO tp1-1. It was ordering-constrained behind tp1-1 (touching rules.ts:51 while the 60 is still baked in re-bakes the 60), and tp1-1 rewrites warpAccel anyway. This story now carries NINE fixes — matching its title — and depends on nothing."
@@ -61,6 +64,7 @@ stories:
       - "The lives icon is the claw silhouette (LIFE1, 8 vertices), not a hand-drawn chevron. It is NOT the same picture as NCRS1-8. (render.ts:538, V-016)"
       - "OUT OF SCOPE — WD-010 (warpAccel's 0-based CURWAV, rules.ts:51) is NOT part of this story: it moved to tp1-1 on 2026-07-13. Do not touch rules.ts:51 or warpAccel here. Nine fixes, not ten."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-4
     title: "THE CAM, part 1 — build the bytecode interpreter and the 11 enemy programs, selected per wave from CAMWAV"
     description: "Cluster C2, first half. Subsumes W-005, W-006, W-007, W-008, W-009. Enemies in the ROM are a bytecode VM, not state machines. Our five per-kind steppers cannot express, AT ANY CONSTANT SETTING: 'move N frames then flip' (MOVJMP), 'flip continuously while climbing' (SPIRAL), 'reverse direction every 2 jumps then every 3' (SPIRCH), 'flip only when not standing on a spike' (COWJMP), 'flip AWAY from the player' (AVOIDR), or 'crouch 4 frames at the rim then jump toward the player at double angular speed' (TOPPER). This is a rewrite of src/core/enemies/, not a constant tweak. The behavioural tell that the whole cluster is right: a level-1 flipper NEVER flips while climbing."
@@ -69,7 +73,6 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: refactor
     acceptance_criteria:
       - "A CAM interpreter exists in core with the ROM's 20 opcodes, each cited to the source, and is pure/deterministic (no Date, no Math.random — the hard architectural boundary in CLAUDE.md holds)."
       - "All 11 CAM programs are transcribed from the ROM, not paraphrased: MOVJMP, SPIRAL, SPIRCH, COWJMP, AVOIDR, TOPPER and the rest."
@@ -78,6 +81,7 @@ stories:
       - "The old per-kind steppers in src/core/enemies/ are deleted, not left dead alongside the interpreter."
       - "Determinism holds: stepGame(state, input, dt) still produces identical output for identical input, driven by the seeded RNG in GameState."
       - "npm test -- citations stays green."
+    type: refactor
   - id: tp1-5
     title: "THE CAM, part 2 — the CHASER rim state with its pincer rule, rule-driven flip direction, and the pulsar's program"
     description: "Cluster C2, second half. Subsumes W-023, W-025, W-026, W-027, W-032. Flip direction in the ROM is RULE-DRIVEN, not a coin flip — ours is random, which is why our enemies feel arbitrary rather than menacing. Adds the CHASER rim state (enemies that reach the rim and hunt along it, pincering the player) and brings the pulsar into the CAM. Depends on tp1-4."
@@ -86,13 +90,13 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: refactor
     acceptance_criteria:
       - "Flip direction is derived from the ROM's rule, not from the RNG. A test proves that two enemies in identical positions flip the same way."
       - "The CHASER rim state exists with the ROM's pincer rule — enemies at the rim converge on the player from both sides rather than milling."
       - "The pulsar runs a CAM program like every other enemy; its bespoke stepper is gone."
       - "Depends on tp1-4 (the interpreter). This story does not re-implement it."
       - "npm test -- citations stays green."
+    type: refactor
   - id: tp1-6
     title: "NYMPHS + THE 7-INVADER CAP — the arcade holds surplus enemies dormant; we have neither the cap nor the queue"
     description: "Cluster C3. Subsumes W-002, W-003, W-004, W-024, W-029, DA-012, DA-017. ONE OBJECT, NOT TWO CHANGES: the cap is not independently implementable. The ROM caps live invaders at 7 (NINVAD=7, WINVMX=6 for every wave 1-99) and regulates spawning by SLOT BACK-PRESSURE — nymphs simply stop advancing when the slots are booked. Without a nymph queue there is nowhere to hold the surplus, so adding the cap alone would silently drop spawns. Changes the difficulty of every wave. Also unblocks the fuseball turn-back (W-024) and the pulsar yo-yo (W-029), both keyed on NYMCOU."
@@ -101,7 +105,6 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: feature
     acceptance_criteria:
       - "A nymph queue exists: enemies not yet live are held dormant and advance only when a slot frees. NYMCOU is a real counter, cited to the ROM."
       - "Live invaders are capped at 7 (NINVAD=7). WINVMX=6 for every wave 1-99 — a test proves the cap does not vary by wave, because the ROM's does not."
@@ -109,6 +112,7 @@ stories:
       - "The fuseball turn-back (W-024) works, keyed on NYMCOU."
       - "The pulsar yo-yo (W-029) works, keyed on NYMCOU."
       - "npm test -- citations stays green."
+    type: feature
   - id: tp1-7
     title: "THE SKILL CONTOUR, part 1 — transcribe the ROM's eight per-wave difficulty tables and stop hand-tuning curves"
     description: "Cluster C4, cheap half. Subsumes W-011, W-012, W-014, W-019, W-020, W-033, W-035, W-037, DA-002. Eight table transcriptions from the ROM's CONTOUR/WTABLE machinery: enemy count, invader speed, spiker speed, bolt cap, bolt speed, tanker cargo, intro waves, pre-seeded spikes. Cheap TOGETHER — they are the same mechanism read eight times. Depends on tp1-1 (every one of these is a rate or a count) and tp1-6 (populations are capped by the slot machinery)."
@@ -117,13 +121,13 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The ROM's CONTOUR/WTABLE per-wave tables are transcribed verbatim and cited — enemy count, invader speed, spiker speed, enemy-bolt cap, bolt speed, tanker cargo, intro waves, pre-seeded spikes."
       - "Every hand-tuned difficulty curve in rules.ts that these tables replace is DELETED, not left as a fallback."
       - "Values are read through the tables at the wave index — no interpolation, no formula fitted to the table."
       - "Depends on tp1-1 (rates) and tp1-6 (populations)."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-8
     title: "THE SKILL CONTOUR, part 2 — NYMCHA, the per-type population solver (the audit's second-largest rewrite)"
     description: "Cluster C4, expensive half. Subsumes W-034. A per-type min/max population solver that RESERVES SLOTS for the cargo of tankers already on the board (so a board full of tankers cannot deadlock when they split) and BIASES SPIKERS TOWARD SHORT LANES. This is the second-largest rewrite in the audit. It needs tp1-6 (there are no slots to reserve without the nymph queue). Sized honestly at 8 — if it proves larger on contact, split it rather than absorbing the overrun silently."
@@ -132,13 +136,13 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: feature
     acceptance_criteria:
       - "NYMCHA is implemented as the ROM has it: a per-type min/max population solver, cited to the source."
       - "Slots are RESERVED for the cargo of tankers already live — a test proves a board of tankers can always split without exceeding the 7-cap or dropping a spawn."
       - "Spikers are biased toward short lanes, per the ROM's rule."
       - "Depends on tp1-6 (the nymph queue and the slot model)."
       - "npm test -- citations stays green."
+    type: feature
   - id: tp1-9
     title: "THE CAMERA — the far ring is built about the projected vanishing point, and FAR_RATIO is per-well, not a single 0.2"
     description: "Cluster C5. Subsumes DB-006, DB-007, DB-008, DB-009, DB-016. Our perspective CURVE is algebraically correct; the CONSTANT is not. FAR_RATIO is a single module-level 0.2 for every level; the arcade's is per-well, R = (16+H)/(240+H), ranging 0.104-0.164. project, boundaryRail, laneWidth and flipPivot all close over the current module constant, so this is an API change, not a constant swap. Blocks tp1-10."
@@ -147,7 +151,6 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "perspectiveDepth() takes the tube and derives R = (16+H)/(240+H) per well — the module-level FAR_RATIO = 0.2 is deleted. A test pins the range at 0.104-0.164 across the 16 geometries."
       - "The far ring is built about the PROJECTED VANISHING POINT, not the ring centroid."
@@ -156,6 +159,7 @@ stories:
       - "project, boundaryRail, laneWidth and flipPivot take the tube rather than closing over a module constant."
       - "The starfield reuses the same hyperbolic law."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-10
     title: "THE WARP DIVE — move the camera with the Claw, fly the eye into the new well, and replay the wave on a spike crash"
     description: "Cluster C6. Subsumes WD-010, WD-012, WD-013, WD-014, WD-015, WD-017, WD-018. Today the Claw changes size and screen position during the dive because the camera does not move with it. Needs tp1-1 (the velocities — warp accel carries the base rate SQUARED and is currently 4.45x too fast) and tp1-9 (the movable eye). Also the gate on tp1-11: restoring the ROM's spike depth is only fair once a spike crash replays the wave."
@@ -164,7 +168,6 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The camera moves with the Claw — the Claw's size and screen position stop changing during the dive."
       - "The second phase exists: the eye flies INTO the new well."
@@ -174,6 +177,7 @@ stories:
       - "The rumble starts on the first descending frame, not at level-clear."
       - "Depends on tp1-1 (velocities) and tp1-9 (movable eye)."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-11
     title: "Restore SPIKE_MAX_DEPTH to the ROM's 0.929 — the PM ruling, sequenced behind the warp dive"
     description: "Finding W-039, carved out of cluster C11 because it is a RULING, not a bug fix. rules.ts:110-115 documents 0.75 as a CONSCIOUS deviation made in story 6-15 on playability grounds — the ROM's spikes reach 0.929 and are near-lethal on the dive. PM ruling 2026-07-13: fidelity wins and the deviation is overturned, BUT the restore lands only AFTER tp1-10, because 0.929 is only fair once a spike crash replays the wave rather than costing a life outright. Do not land this early; do not land it without confirming the replay works."
@@ -182,12 +186,12 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "SPIKE_MAX_DEPTH is 0.929, cited to the ROM."
       - "The rules.ts:110-115 comment recording the 0.75 deviation is REPLACED with a note recording that the deviation was overturned by PM ruling on 2026-07-13 and why — not silently deleted."
       - "HARD GATE: tp1-10 is done and a spike crash demonstrably replays the wave. If it does not, this story stops and comes back to the PM."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-12
     title: "THE PALETTE — enemy colours come from a per-wave-group COLTAB bank, not a fixed hex (and this hands us the invisible wells for free)"
     description: "Cluster C7. Subsumes V-011, V-019, DA-005 (colour half), DB-010, DB-017. One indirection: replace `enemy -> fixed hex` with `enemy -> palette slot -> per-wave-group COLTAB bank`. Six banks, advancing every 16 waves. This is what makes the arcade's later waves look like different games, and it brings the INVISIBLE-WELL WAVES (65-80) — one of Tempest's best-known difficulty spikes, which we simply do not have — for free. The enemy-burst-white item is carved out to tp1-3."
@@ -196,7 +200,6 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: feature
     acceptance_criteria:
       - "Enemies resolve colour through a palette SLOT, not a hard-coded hex. The six COLTAB banks are transcribed from the ROM and cited."
       - "The bank advances every 16 waves."
@@ -204,6 +207,7 @@ stories:
       - "`blue` is added to GlyphColor."
       - "The ROM's palette is eight slots. Nothing outside those eight slots ships (notably: orange is not in it — see tp1-3's spiker)."
       - "npm test -- citations stays green."
+    type: feature
   - id: tp1-13
     title: "AUDIO WIRING GAPS — the missing warp phase, the bonus chime, the bolt-collision cue, and the invented kzap"
     description: "Cluster C9. Subsumes S-011, S-013, S-014, S-015. Depends on tp1-2, which produces the corrected T3 bytes this story reuses."
@@ -212,7 +216,6 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The warp dive's second phase has its sound, reusing tp1-2's corrected T3 bytes."
       - "The special-score chime fires on the end-of-wave bonus (the sample is already correct — only the trigger is missing)."
@@ -220,6 +223,7 @@ stories:
       - "kzap.wav is DELETED. It has no basis anywhere in ALSOUN's 13-sound table — it was invented."
       - "Depends on tp1-2."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-14
     title: "THE SUPERZAPPER — 19-frame window, kills every OTHER frame (8 kills, not 19), and takes tankers"
     description: "Cluster C10. Subsumes W-042, W-043, B-001, B-019, S-012. Note the refuter's correction to W-042: our SECOND zap press is already correct — only the sustained first-press cadence is wrong. Depends on tp1-1 (the window is a frame count)."
@@ -228,7 +232,6 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The first-press window is 19 frames, not 13."
       - "It kills every OTHER frame — 8 kills, not 19. A test counts the kills."
@@ -236,6 +239,7 @@ stories:
       - "The second zap press is NOT changed — the audit's refuter confirmed it is already correct. Changing it is a regression."
       - "Depends on tp1-1 (frame counts)."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-15
     title: "THE SPIKE MODEL — a charge burrows into a spike, cutting it to the bullet's own position over two hit-frames"
     description: "Cluster C11, minus W-039 (which is the ruling in tp1-11) and minus B-016/W-040 (carved out to tp1-3). Subsumes W-047, V-020, DB-014."
@@ -244,12 +248,12 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "A player charge BURROWS into a spike: it cuts the spike back to the bullet's own position over two hit-frames, scoring 1 point per frame."
       - "The shattered-spike visual matches the ROM."
       - "This story does NOT touch SPIKE_MAX_DEPTH (tp1-11) and does NOT touch the spiker's lane-hop polarity (tp1-3)."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-16
     title: "FIRE & COLLISION GEOMETRY — tick order, the invented far-end fire floor, and hit tolerances 2-3x too generous"
     description: "Cluster C12, minus W-022 (the fuseball vulnerability inversion, carved out to tp1-3). Subsumes W-001, W-021, W-030, W-046. ENEMY_FIRE_MIN_DEPTH is INVENTED — it silences every fresh spawn for the first 19% of its climb and the ROM has no such rule. Depends on tp1-4/tp1-5 for W-030's fairness valve."
@@ -258,13 +262,13 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The tick is reordered: all charges move after invaders; enemy charges fire AFTER the enemies move."
       - "ENEMY_FIRE_MIN_DEPTH is DELETED. The ROM has no far-end fire floor — a fresh spawn can fire immediately."
       - "Hit tolerance is derived from ENSIZE (7 units for a flipper, 6 for a fuseball) and from closing speed, not hard-coded. Ours are currently ~1.9x and ~3.3x too generous."
       - "W-030's fairness valve depends on the CAM (tp1-4/tp1-5)."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-17
     title: "SHAPES — the tanker, spiker, fuseball and player charge, drawn from the ROM's vertex data"
     description: "Cluster C13, part 1. Subsumes V-005..V-010, DA-004. The tanker's 17-vertex laced double diamond, the spiker's 21-point green spiral, the fuseball's 5-colour scribble, the player charge's 17 dots in two rings. Every item independently landable; blocks nothing. Depends on tp1-12 for the colours."
@@ -273,7 +277,6 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The tanker is the ROM's 17-vertex laced double diamond."
       - "The spiker is the ROM's 21-point spiral (and it is GREEN — see tp1-3)."
@@ -282,6 +285,7 @@ stories:
       - "Vertex data is TRANSCRIBED from the ROM and cited, never eyeballed."
       - "Depends on tp1-12 (palette slots)."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-18
     title: "SHAPES — the player-death splat, the burst effects, and the score pop-ups"
     description: "Cluster C13, part 2. Subsumes V-013, V-017, DA-007, DA-009, DA-018, DA-019. The splat is the ROM's 26-vertex tricolour outline with a SPATIAL colour cycle. NOTE the audit's own correction: the splat's DURATION (DA-010) is real but a quarter of its filed size once rebased, and its RADIUS CURVE (DA-011) was REFUTED — do not 'fix' the radius curve. Depends on tp1-1 (duration) and tp1-12 (colours)."
@@ -290,7 +294,6 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The player-death splat is the ROM's 26-vertex tricolour outline with its spatial colour cycle."
       - "The splat's duration is rebased through ROM_FPS (it is a quarter of the naively-filed size — see DA-010)."
@@ -298,6 +301,7 @@ stories:
       - "The score pop-ups and shattered-spike sparkle match the ROM."
       - "Depends on tp1-1 and tp1-12."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-19
     title: "SHAPES — the TEMPEST logo's own stair-stepped alphabet and the 22-dot star pictures"
     description: "Cluster C13, part 3. Subsumes V-014, V-015, V-022, DA-006 (shape half). The logo has its OWN alphabet — stair-stepped, not the game font. NOTE: the book's LOGO_PASSES=19 does not exist in the ROM at all (one of the nine things the book got wrong, §7) — do not restore it."
@@ -306,12 +310,12 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The TEMPEST logo uses its own stair-stepped alphabet, transcribed from the ROM — not the game's stroke font."
       - "The star pictures are the ROM's 22 dots."
       - "LOGO_PASSES is NOT reintroduced in any form. It is a book invention with no ROM basis (§7)."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-20
     title: "HUD & MESSAGES — fixed field colours and the ROM's actual strings; drop the three invented captions"
     description: "Cluster C14. Subsumes V-018, V-033, V-034, V-035, V-036. Depends on tp1-12 for the palette."
@@ -320,13 +324,13 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "HUD field colours are FIXED per field, per the ROM: green score, yellow lives, green hi-score, blue level."
       - "The three invented captions are removed."
       - "The ROM's actual strings ship, verbatim: 'ENTER YOUR INITIALS', 'RANKING FROM 1 TO n', 'SPIN KNOB TO CHANGE'."
       - "Depends on tp1-12 (palette)."
       - "npm test -- citations stays green."
+    type: bug
   - id: tp1-21
     title: "SCORING — the fuseball's score tier is a weighted random roll, not a depth band"
     description: "Cluster C15, minus B-009 (carved out to tp1-3) and minus SC-001, which is WON'T-FIX by PM ruling on 2026-07-13: Tempest's arcade high-score ladder is 8 deep and @arcade/shared ships 10 for the whole cabinet, but the cabinet-wide convention beats one game's fidelity and the four-game blast radius is not worth it. SC-001/004/009 are closed, not deferred — do not re-file them."
@@ -335,9 +339,25 @@ stories:
     status: backlog
     repos: tempest
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The fuseball's score tier is a WEIGHTED RANDOM ROLL (from the seeded RNG in GameState), not a function of depth."
       - "The roll's weights are transcribed from the ROM and cited."
       - "SC-001 is NOT implemented. The 10-deep ladder from @arcade/shared stands."
       - "npm test -- citations stays green."
+    type: bug
+  - id: tp1-22
+    title: THE CITATION GATE — freeze the audit's 'ours' side to the audit commit; stop re-pointing 82 citations by hand every story
+    description: "Obi-Wan's Ruling 2 from the tp1-1 review (2026-07-13), filed as its own story because the Reviewer fenced tp1-1 to the frame-rate family. THE PROBLEM: the citation gate cannot survive its own remediation. docs/audit/findings/*.json are an AUDIT RECORD — 'ours.verbatim' IS the defect text — so the moment any tp1 story fixes anything, tests/audit/citations.test.ts goes red. tp1-1 alone produced 98 failures: 82 were pure line drift (defect intact, only moved) and were re-pointed BY HAND; the other 16 were code actually fixed, and re-pointing those would have made the finding assert that the FIX is the defect. Dev's interim 'remediated_by' flag solved tp1-1 and MUST NOT BE REVERTED — but it does not scale: every one of the remaining 19 stories pays the same hand re-pointing tax. THE DURABLE FIX (Dev's own recommendation, adopted by the Reviewer): read the 'ours' side from the AUDIT COMMIT (git show 4232ed4:<file>) rather than from the working tree. The audit's record then becomes immutable, the gate becomes permanently stable, and the per-story re-pointing tax goes to zero. MUST LAND BEFORE tp1-4 (the CAM), which rewrites src/core/enemies/ and churns sim.ts heavily — it will drift citations far harder than tp1-1 did. The ROM 'source' side is byte-checked unconditionally today and must stay that way: that is where the audit's authority lives, and the 1981 source never changes."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - tools/audit/check-citations.mjs reads the 'ours' side from the audit commit (git show 4232ed4:<file>), not from the working tree. The audit record is immutable by construction.
+      - "The ROM 'source' side is still byte-checked unconditionally against ~/Projects/tempest-source-text (the LF copy — NEVER the CRLF sibling ~/Projects/tempest-source). This is non-negotiable: it is where the audit's authority lives."
+      - The 82 citations tp1-1 re-pointed by hand and the 'remediated_by' flag it introduced are NOT reverted. They are the interim record and they stand.
+      - 'A finding whose class is NO_COUNTERPART can never be marked remediated_by — today that combination hard-errors with a confusing message. Either make it a clear error or make it unnecessary, and comment the branch: tp1-4/tp1-6/tp1-8 all ADD systems we do not have, which is exactly the NO_COUNTERPART class.'
+      - "A test proves the gate survives a simulated code fix: mutate a cited 'ours' line in the working tree and citations stays green, while a mutated ROM source line still goes red."
+      - npm test -- citations stays green (currently 8/8).
+    type: chore

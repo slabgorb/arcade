@@ -32,3 +32,8 @@ completed_stories:
     title: Re-port EXHAUST_PORT from the ROM — it is 12 vertices in three concentric squares, not an 8-vertex octagon
     points: 3
     completed: '2026-07-13'
+  - id: tp1-1
+    epic: tp1
+    title: "THE REBASE — the ROM runs at 28.44 fps (256/9), not 60; our sim is 2.11x too fast"
+    points: 8
+    completed: '2026-07-13'
