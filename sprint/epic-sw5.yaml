@@ -79,7 +79,8 @@ stories:
     title: Re-port SURFACE_TOWER and SURFACE_BUNKER from the ROM — the tower is missing its cannon-top ring
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-12'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -89,5 +90,8 @@ stories:
       - 'TOWER_CAP is reconciled and documented. In the ROM, `TWR` (which IS `GND` — `.WGD TWR` is immediately followed by `.WGD2 GND`, one object with one draw routine) strokes the column AND the cap together. Our split into two models exists only because Canvas strokes one colour per drawWireframe call. Either merge them or state that reason in the doc comment — do not leave the split unexplained, since it reads as a fidelity error.'
       - Surface-phase collision still works with the corrected (taller) tower; any change in the collidable volume is called out.
       - The contact sheet reports 0/0 drift for STB to Surface Tower and BNK to Surface Bunker.
+    completed: '2026-07-13'
+    branch: feat/sw5-5-rom-port-surface-tower-bunker
     type: bug
     blocked_by: sw5-1
+    review_verdict: approved

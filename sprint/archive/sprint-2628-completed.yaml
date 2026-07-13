@@ -17,3 +17,8 @@ completed_stories:
     title: Draw a real vector model in each lobby tile's model slot
     points: 5
     completed: '2026-07-13'
+  - id: sw5-5
+    epic: sw5
+    title: Re-port SURFACE_TOWER and SURFACE_BUNKER from the ROM — the tower is missing its cannon-top ring
+    points: 3
+    completed: '2026-07-13'
