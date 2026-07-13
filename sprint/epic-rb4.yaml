@@ -1,0 +1,178 @@
+id: rb4
+type: epic
+title: Red Baron — ROM fidelity against the original 1980 Atari source
+description: "Remediation epic for red-baron/docs/2026-07-13-red-baron-primary-source-audit.md, the audit of our clone against the ORIGINAL 1980 Atari assembler source (primary source at ~/Projects/red-baron-source-text; the CRLF sibling ~/Projects/red-baron-source is NOT citable). 169 findings, every citation byte-verified on BOTH sides; 98 attacked by adversarial refuters (95 survived, 3 killed, 72 materially corrected); a Phase-3 coverage review killed one more finding and three FALSE CONFIRMEDs. THE HEADLINE: the clone's gameplay constants were transcribed from a `.RADIX 16` region AS IF DECIMAL. ACCEL=30 means 0x30=48; P.INDP=1080 means 0x1080=4224; P.MNDP=140 means 0x140=320; S.MAXZ=19 means 0x19=25; HORZ=1000 means 0x1000=4096. ~30 constants, nearly all wrong in the same direction, which is why the game 'seems way off'. THE RADIX SWEEP (rb4-1) BLOCKS EVERY OTHER NUMERIC STORY — anything numeric that lands first re-bakes the decimal reading and then confirms itself against this document. ROOT CAUSE: our OWN doc, red-baron/docs/red-baron-1980-source-findings.md, sourced its enemy constants to R2BRON.MAC — a build that NEVER SHIPPED, sitting beside the real one and differing in two lines (FRMECNT=5 vs 4) — and misread that build's hex as decimal. Production code cites the doc as authority, so rb4-2 must retract it or it re-infects the next story. Note what is NOT wrong: the timebase is already correct (NMI 250 Hz / display 62.5 Hz / calc frame 96 ms = 10.4167 Hz, RBGRND.MAC:102 + CALCNT=0x18), and topology.ts is byte-exact — the picture ROM is genuinely .RADIX 10, so reading it as decimal was RIGHT. The transcriber applied decimal everywhere: correct for the geometry, wrong for every constant. RULINGS (user, 2026-07-13): all eleven fix-clusters bought; C12 (PERCENT, the EAROM-backed adaptive difficulty that retunes every closing speed to hit an operator-set game duration) is a DELIBERATE DESCOPE — it is a coin-throughput device and this repo does not replicate quarter-extracting mechanics. It is recorded in the audit, filed nowhere. red-baron/tools/audit + tests/audit/citations.test.ts re-open every cited line byte-for-byte and must stay green; the checker REJECTS any citation to the decoy build."
+priority: p1
+status: backlog
+repos: red-baron
+stories:
+  - id: rb4-1
+    title: "THE RADIX SWEEP — the ROM's constants are HEX; we read them as decimal. ~30 of them."
+    description: "Cluster C1. Subsumes EN-002, EN-003, EN-004, EN-014, CB-003, CB-011, CB-018, CB-019, MI-010, MI-011, MI-014, MI-015, MI-016, MI-017, MI-022, FL-016, FL-017, RD-003, RD-016 (~19 findings, ~30 constants — the same error filed nineteen ways). The single most important story in the epic and the gate on everything numeric. LAND THIS ALONE AND FIRST: every other numeric story is downstream, and any that lands first bakes the decimal reading into its own baseline and then 'confirms' itself against this document. RBARON.MAC is `.RADIX 16` from line 74; the ONLY decimal island is :6217-6280 (the vertex table — which we already read correctly). A trailing period forces decimal inside a hex region (`CMP I,250.` is 250, not 592). Expect the whole numeric test suite to re-baseline — that is the point, not a regression."
+    points: 8
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "Every constant transcribed from a `.RADIX 16` region is corrected. At minimum: ACCEL 30→0x30=48 (enemy.ts:44); P.INDP 1080→0x1080=4224; MIN_DEPTH 140→0x140=320 (enemy.ts:63); S.MAXZ 19→0x19=25 (guns.ts); EX.ACY -20→-0x20=-32 (explosion.ts); wreck Z spin 0x180; PLANE1/PLANE2 drone offsets 100→0x100=256; HORZ 1000→0x1000=4096 and HORIZN=0x40=64 (scene.ts / camera); PFOBIZ mountain depths+X; P.OBDZ=0x180 and the 0x20 fallen delta; P.OBZI=0x7F00 recycle; the 16-bit recycle threshold 0x01C0=448 (NOT 0xC0)."
+      - "Each corrected constant carries a comment citing file:line AND the radix region that governs it — e.g. `// RBARON.MAC:465, .RADIX 16 region (set at :74) → 0x30 = 48`. A bare number with no radix note is a failure of this story."
+      - "PLPOSZ is corrected in ALL FOUR respects EN-014 names — sign (negative, added to depth so depth falls), magnitude (hex), length (nine entries), and the level ramp — not just the radix."
+      - "A test or script proves NO remaining gameplay constant in src/core/ was taken from a hex region and written as decimal. The transcription is auditable, not asserted."
+      - "The 42-vertex biplane, topology.ts and the picture-ROM data are NOT touched: 037007.XXX really is .RADIX 10 from line 80 and our decimal reading of it is CORRECT. Changing it would BREAK the geometry. Say so in the story's own notes."
+      - "npm test -- citations stays green."
+  - id: rb4-2
+    title: "RETRACT THE POISONED DOC — it cites the decoy build R2BRON.MAC and misreads hex as decimal"
+    description: "Cluster C2. Subsumes EN-001, CD-013, CD-014, OB-013, RD-016, FL-002, FL-003, SN-003, MI-010. Run ALONGSIDE rb4-1 — this doc is the CAUSE of rb4-1, it is cited as authority in code comments across src/, and until it is fixed it will re-infect every future Red Baron story. It sources its enemy facts to R2BRON.MAC, a build that never shipped; it states its own radix rule correctly and then breaks it; its watchdog claim is off by 21x (CALFLG>=3, not >=0x40); three of its §1 line citations are off by one AND one of them is copied verbatim into src/core/timing.ts:18. It also mislabels the LOD as a 'distance LOD' — which is where biplane.ts's invented LOD_DISTANCE=1500 came from."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "Every fact in docs/red-baron-1980-source-findings.md is re-sourced to the SHIPPED build (RBARON/RBGRND/RBSOUN/RBCOIN/RBINT/RBROM/VGUT + TCN65/VGMC + 037007/037006) or deleted. Zero references to R2BRON/R2GRND remain."
+      - "The doc carries a loud header naming the decoy trap: R2BRON.MAC is identical to RBARON.MAC but for 14 lines, R2GRND differs from RBGRND in TWO (FRMECNT=5 vs 4 → 50 Hz vs 62.5 Hz), and R2BRON's own load map identifies its object module as 'RBARON'."
+      - "The radix rule is stated ONCE, correctly, with the per-region table — and every constant in the doc is written with its radix explicit."
+      - "The off-by-one line citations are fixed, INCLUDING the one copied into src/core/timing.ts:18 (CALCNT is RBARON.MAC:621, not :620)."
+      - "The 'distance LOD' claim is retracted: the ROM selects the plane model on PLSTAT+6 bit 0x10 ('PLANE ROTATED'/'FACING AWAY'), not on distance. No distance test exists anywhere in the picture path."
+      - "Every code comment in src/ that cites the doc as authority is re-pointed at the ROM (file:line + radix) or at the audit."
+  - id: rb4-3
+    title: "DETERMINISM — the sim seeds its RNG from Date.now(); the ROM's RANDOM is an LFSR"
+    description: "Cluster C11 (GP-003). Small, cheap, and it UNBLOCKS regression-testing every other story in this epic — do it early. main.ts:467 calls createRng((Date.now() + kills)) to spawn every wave, INSIDE the sim-step path, and main.ts:349 seeds the blimp RNG from the wall clock too. The ROM's RANDOM (RBARON.MAC:6193) is a pure software LFSR with no clock input. Two consequences: the sim is non-deterministic (same-seed replay and same-seed regression tests are impossible — which is exactly what the rest of this epic needs), and it violates the core/shell boundary, which forbids the deterministic sim from reading wall-clock time."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "Zero calls to Date.now() / performance.now() / Math.random() remain anywhere in src/core/ or in the sim-step path of src/main.ts. A test greps for them."
+      - "One seeded Rng is threaded through the sim; the SHELL owns the seed and passes it in. The same seed + the same inputs reproduce the same game, pinned by a determinism test."
+      - "The determinism test fingerprints a full multi-wave run (enemy spawn sides, blimp rolls, wave composition) and asserts two same-seed runs are identical."
+  - id: rb4-4
+    title: "WIRE UP THE DEAD MECHANICS — the returning ace is never imported and the player CANNOT DIE"
+    description: "Cluster C3. Subsumes CD-010, CD-011, EN-019, MI-021, CB-004, SN-009. The story that turns the clone back into a game. FOUR mechanics are wired to nothing. (1) returning-ace.ts is NEVER IMPORTED by any source file — the signature Red Baron mechanic is dead code, and the refuter confirmed the evade logic inside it is actually CORRECT, it is simply unreachable. (2) main.ts declares `lives` (:342) and assigns it (:406) and NEVER READS IT — there is no death, no respawn, no game over. (3) There is NO ground collision at all: you cannot fly into a mountain, though the ROM checks GREND every frame BEFORE any motion (RBARON.MAC:783-784). (4) No extra lives (BONUSL). (5) score-tick and bonus-life events are declared in core/events.ts and consumed in audio-dispatch.ts but EMITTED BY NOTHING — so three of the five shipped POKEY sounds (TK, TP, BN) can never play."
+    points: 13
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "returning-ace.ts is imported and driven from the sim: the ROM calls EOLSEQ every calc frame (RBARON.MAC:825). The evade test already in the module (|PLDELX| >= 0x1C toward ENSIDE, first evasion free via BEFLAG, 50/50 thereafter) is REACHED — do not rewrite it, wire it."
+      - "`lives` is READ: reaching zero ends the game. The two death channels are distinct (shot down vs flew into the ground) and carry the ROM's own durations (.TIME1=16, .TIME2=28 calc frames = 1.536 s / 2.688 s at 96 ms)."
+      - "Ground collision exists: flying into a mountain kills you, via the ROM's GREND path (RBARON.MAC:4643-4645, D6=GROUND COLLISION), checked BEFORE motion each frame."
+      - "Extra lives are awarded (BONUSL, RBARON.MAC:1602), and the bonus-life event is EMITTED so the BN sound can fire."
+      - "The score COUNT-UP exists (SCOREM: the ROM ticks the score up over time and fires SOUND 0 / SOUND 4 on every tick) and EMITS score-tick, so TK and TP can fire. The audio layer is NOT at fault — pokey.ts and audio-dispatch.ts are already correct; the producers are missing."
+      - "A test proves every GameEvent variant declared in core/events.ts has at least one producer in src/. No event may be declared-and-consumed but never emitted."
+  - id: rb4-5
+    title: "THE CAMERA IS THE WRONG SHAPE — the arcade TRANSLATES the world; we ROTATE it"
+    description: "Cluster C4. Subsumes FL-013, FL-014, FL-015, FL-001, FL-004, FL-005. A genuine rewrite, not a constant tweak — say so honestly. The ROM has NO YAW ROTATION: turning adds the scaled PLDELX to UNIV4X, a linear universe-X, and objects are drawn at (their X - UNIV4X) (RBARON.MAC:3200-3213, :2910). It has NO PITCH ROTATION either: climb/dive subtracts the eye height I4YPOS from every object's Y before the single Z rotation and the divide-by-depth (RBGRND.MAC:277-283). We rotate the camera about Y and emit a transient pitch. Also FL-001: the `.4WORD` macro (RBARON.MAC:15-18) MULTIPLIES EVERY OPERAND BY 4, so POTDLY — the pitch table — is 4x what we transcribed. That is an undecoded macro, the classic way this method's findings go wrong, and here it went wrong in OUR code."
+    points: 13
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: refactor
+    acceptance_criteria:
+      - "The view pipeline is translation-based: world pan via a UNIV4X-equivalent, eye height via an I4YPOS-equivalent, then the ROM's single Z rotation and divide-by-depth. No yaw rotation matrix and no camera pitch remain."
+      - "PITCH_TABLE is re-derived through the `.4WORD` x4 expansion: [-128,-92,-68,-40,-20,0,16,32,52,72,100], not the raw operand list."
+      - "The DISCHK proximity bands are the right way round (the refuter confirmed ours are INVERTED: CLOSE is x0.375 and FAR is x1.0, on a x2 baseline), and ground mode forces the MIDDLE band (0x40 = D6 = x0.625), not the slowest."
+      - "The POT.X turn step is proportional to the error (an arithmetic >>3, bounded [-16,+15]), not a constant ramp; the invented MAX_TURN=40 cap is gone."
+      - "HORIZN = 0x40 = 64 is added to the projected Y of EVERY object (POSITH), and the horizon sits at the finite depth HORZ = 0x1000 = 4096 and moves with altitude."
+      - "This story depends on rb4-1 (its constants are hex) — do not land it first."
+  - id: rb4-6
+    title: "THE ENEMY IS THE WRONG MACHINE — the weave reverses at the INNER window, and runs on Y too"
+    description: "Cluster C5. Subsumes EN-016, EN-017, EN-018, EN-020, EN-021. A rewrite of the enemy stepper, not a constant tweak. (1) We reverse the weave at the OUTER window; the ROM reverses at the INNER one — P.INER is reached only when |position| < P.ILIM and does `EOR I,0FF ;REVERSE FLAG (HEAD AWAY FROM CENTER)` (RBARON.MAC:2794-2797). The plane turns around when it gets CLOSE TO CENTRE. This changes the shape of every engagement. (2) Enemy planes NEVER MOVE VERTICALLY in our clone; the ROM runs the SAME window/servo machine on the Y axis (PLNDEL enters with LDX I,2 for Y, then DEX/DEX to X=0 and re-runs the whole machine on X — RBARON.MAC:2747-2754, :2865-2873). (3) Planes FLY PAST you and are destroyed as objects when they cross P.MNDP; ours hover at a depth floor forever. (4) Drones have their own two-phase PARALLEL→FREE behaviour; ours weave exactly like leads. (5) The 90-degree entry bank is discarded on our first step()."
+    points: 13
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: refactor
+    acceptance_criteria:
+      - "The weave reverses at the INNER window limit (P.ILIM), heading away from centre, and accelerates toward the P.IIDL target by level."
+      - "The window/servo machine runs on BOTH axes — enemy planes move vertically as well as laterally, biased by HORIZN."
+      - "A plane that crosses P.MNDP (0x140 = 320) is DESTROYED as an object and arms the returning attack (GMEND0), with the WO.RTN re-entry delay — it does not hover at a floor."
+      - "Drones implement the PARALLEL→FREE two-phase behaviour and spawn at DRINZ = 0x1600, not at the lead's depth."
+      - "The blimp is an APPROACHING airship (Z from 0x1000, closing 0x80/frame), gated behind FOUR planes having appeared (N.PLNZ), firing 1-in-4 calc frames (2.604 shots/s) and only at GMLEVL >= 2 — NOT the constant-depth lateral drifter firing every 2nd frame at all levels that we ship. (CD-005 CERTIFIED our blimp as correct; the coverage review proved that CONFIRMED FALSE — it borrowed the plane's div-by-2. Do not trust it.)"
+      - "Depends on rb4-1."
+  - id: rb4-7
+    title: "THE MISSION CLOCK — difficulty ramps twice as fast, and waves come in RUNS not alternation"
+    description: "Cluster C6. Subsumes MI-003, MI-004, MI-005, MI-007, MI-008, MI-009, CB-001, CD-009. GMLEVL indexes PLNLVL by OBJKLD>>1 — the ROM HALVES the kill count before the table lookup (RBARON.MAC:2399-2408), so OUR DIFFICULTY RAMPS EXACTLY TWICE AS FAST as the arcade's. (Filed independently by two pairs — CB-001 and MI-009 — and both refuters decoded the LSR themselves.) MCOUNT is indexed by MODECT>>1 and a ground MODECT reloads NEWCT=1, so the ROM runs RUNS of plane waves, not the 1:1 air/ground alternation we implement; MODECT wraps modulo 16. NEWCT counts WAVES, not calc frames — our inter-wave gap is ~10x too short. Ground mode ends on a CONDITION (GRNDCT spent AND no live ground objects), not a countdown; ours lasts ~0.4 s. CD-009 CERTIFIED our wave clock as an exact match; the coverage review proved that CONFIRMED FALSE (NWPLNE has three gates before DEC NEWCT; it saw one)."
+    points: 8
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "GMLEVL = PLNLVL[min(OBJKLD >> 1, 0x10)] — the kill count is HALVED before the lookup, and the clamp is 0x10 = 16."
+      - "MCOUNT is indexed by MODECT>>1; a ground wave reloads NEWCT=1; MODECT wraps modulo 16 (AND I,0F)."
+      - "NEWCT counts WAVES, not frames — the inter-wave gap is 0.48-3.07 s, not 96-384 ms."
+      - "Ground mode ends when GRNDCT is spent AND no ground objects remain visible, not on a timer."
+      - "Depends on rb4-1."
+  - id: rb4-8
+    title: "THE MOUNTAINS — placement is AUTHORED, they scroll laterally, and 'on horizon' is a latched bit"
+    description: "Cluster C7. Subsumes MI-014, MI-015, MI-016, MI-018, MI-019. We GENERATE an even stagger with all four mountains at x=0; the ROM AUTHORS their placement in PFOBIZ (RBARON.MAC:1305-1306 — four initial depths and four initial X positions, all hex). The ROM runs TWO closing rates (P.OBDZ=0x180=384 while on the horizon, 0x20=32 once fallen); we have one. 'On horizon' is a LATCHED STATUS BIT with hysteresis (PFOBJ+6 D7), not a depth comparison. Mountains SCROLL LATERALLY with the player — the ROM subtracts PLYRDL from every free object's X each calc frame and wraps (RBARON.MAC:3298-3306); ours never do, which is a large part of why the world feels static. Mountains recycle to P.OBZI=0x7F00=32512, so they spend real time on the horizon; ours recycle to HORZ and never do."
+    points: 8
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "Mountain initial depths and X positions come from PFOBIZ, read as HEX."
+      - "Two distinct closing rates (on-horizon vs fallen), and the on-horizon state is a latched bit with hysteresis — not a depth test."
+      - "Mountains scroll laterally with the player's delta and wrap."
+      - "Mountains recycle to P.OBZI = 0x7F00 and the recycle threshold is the 16-bit 0x01C0 = 448 (NOT the 8-bit 0xC0 = 192)."
+      - "Depends on rb4-1."
+  - id: rb4-9
+    title: "THE SCREEN IS MISSING THINGS — the player's propeller is not drawn at all"
+    description: "Cluster C8. Subsumes RD-001, RD-002, RD-004, RD-005, RD-006, RD-007, RD-008, RD-009, RD-010, OB-014. The ROM's most prominent foreground element — the player's own propeller, three sweeping blade arcs repatched into the display list EVERY VG FRAME at 62.5 Hz from seven pictures PROP0..PROP6 — IS NOT DRAWN. Neither is the enemy plane's prop (it is transcribed in topology.ts and never rendered — the biplanes fly with a bare nose). There is no depth-cued INTENSITY: the AVG has a 3-bit per-vector intensity and the ROM drives it from depth, and draws objects in TWO tiers (the airframe at V.BRIT, then the wing struts 0x60 dimmer — `;ADD LIGHTER LINES`, RBARON.MAC:5030-5040); we stroke the whole world in one flat green. Lives are tracked and never drawn. The windscreen bullet holes that accumulate as the ace shoots you are absent. The PLVALU readout (the live worth of the plane in your sights) is absent. Shells are DOTS in the ROM (VGDOT), not the line streaks we stroke. NOTE: OB-011 claimed the prop is NOT a 3-frame animation — the coverage review REFUTED that; it IS one (.PROPS is a six-entry JMPL table, 3 pictures x 2 VG buffers, and PLPROP patches one per frame). topology.ts's docstring is CORRECT; do not 'fix' it."
+    points: 13
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: feature
+    acceptance_criteria:
+      - "The player's propeller is drawn and animated, cycling PROP.F over the three blade-pair pictures — on the DISPLAY clock (62.5 Hz), not the calc clock."
+      - "The enemy plane's propeller renders from the topology already transcribed."
+      - "SceneSegment carries an intensity channel; objects are depth-cued, and the plane draws in two tiers (airframe bright, wing struts 0x60 dimmer)."
+      - "Lives are DRAWN (DSPLIF), the windscreen bullet holes accumulate (WNDSHD), and the PLVALU readout appears beside the score."
+      - "Shells render as dots, not streaks. The invented second-colour 'GUNS HOT' banner is replaced by the ROM's monochrome vector message."
+      - "Depends on rb4-1 (HORIZN, HORZ) — do not land it first."
+  - id: rb4-10
+    title: "THE SOUND — the envelope rule is off by two and the driver runs at 250 Hz, not the calc frame"
+    description: "Cluster C9. Subsumes SN-003, SN-005, SN-006, SN-007, SN-008, SN-011, SN-012, SN-013, SN-014, SN-016, SN-017. THE CLOCK TRAP: MODSND is called from the NMI handler (RBGRND.MAC:237) at 250 Hz / 4 ms — NOT the 96 ms calc frame. Any envelope timed on the calc frame is 24x wrong. SN-003 is the subtlest finding in the audit and it argues the ROM's OWN COMMENTS are wrong: RBSOUN.MAC:89 and :152 both say NUMBER is '# of changes - 1', but the code renders exactly NUMBER distinct values — proven because under that reading all five sounds' AUDF and AUDC chains run out together (TK 28=28, TP 40=40, BN 288=288, WP 360=360, TH 256=256) and under the documented reading all five mismatch. Our pokey.ts enshrines a `steps = NUMBER + 1` rule in a loud warning comment; the correct rule is `steps = NUMBER - 1`. ANYONE WHO 'FIXES' THIS BACK TOWARD THE ASSEMBLER'S PROSE WILL RE-INTRODUCE THE BUG — record the arithmetic proof in the code. Also: the gun sound fires on EVERY shell including the ENEMY's; the engine hum's timbre is in the source (AUDC=0xA1) and we got it wrong; the explosion fires at the wrong moment and duration; the SPIRAL (shot-down dive whine) is missing."
+    points: 8
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "The envelope NUMBER rule is corrected to yield exactly NUMBER distinct values, and the 5-of-5 AUDF/AUDC chain-length proof is recorded in a comment beside it — explicitly noting that RBSOUN's own prose comments are WRONG and must not be trusted back."
+      - "Sound envelopes advance on the 250 Hz NMI clock, not the 96 ms calc frame."
+      - "The gun cue fires only on the PLAYER's shells; the enemy's shells do not play it."
+      - "The engine hum uses the ROM's AUDC=0xA1, the approach whine is a pitch ramp on the hum's own two channels, and the SPIRAL dive whine exists."
+      - "Sound priority / mutual exclusion follows the ROM (TK, TP and BN share POKEY channel 1; a new one kills the one playing)."
+      - "CAVEAT recorded in the story: the sound pair received the LEAST adversarial scrutiny in the audit (its refutation was run by the controller, not an independent agent) and RBSOUN.MAC's .INCLUDE of COND65 is ABSENT from the quarry. Re-derive every millisecond figure from the source before implementing it."
+  - id: rb4-11
+    title: "THE GROUND TARGETS — pyramid, house, tank and pill box are entirely absent"
+    description: "Cluster C10. Subsumes OB-017, MI-008, OB-016, OB-018. 037007.XXX:1132-1230 defines a complete, self-contained ground-object set that topology.ts does not contain AT ALL: the point-sets PFPYRM (4 points), PFHOME (7), PFTANK (10), PFPBOX (16); the decode-lists DEPFPY/DEPFHS/DEPFTK/DEPFPB; the PFODEC pointer table; the PFLOB point-set table; the .PFLOB length table; and the PFOFFS table of 12 screen offsets. A ground wave deploys exactly two mountain target-groups (GRNDCT=2, GTIMER). The blimp's 8-vertex collision box BLCOLL (RBARON.MAC:6270-6277) is the ONLY member of the PLNDB master table missing from topology.ts. REMEMBER: this region of 037007.XXX is `.RADIX 10` — transcribe it as DECIMAL, exactly as the existing (correct) topology.ts transcription does. Do NOT apply rb4-1's hex correction here; that would break it."
+    points: 8
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: feature
+    acceptance_criteria:
+      - "PFPYRM, PFHOME, PFTANK and PFPBOX and their four decode-lists are transcribed byte-for-byte from 037007.XXX, in the DECIMAL radix that governs that region."
+      - "The PFODEC / PFLOB / .PFLOB / PFOFFS tables are transcribed, and ground targets appear in ground waves."
+      - "A ground wave deploys two mountain target-groups (GRNDCT = 2)."
+      - "BLCOLL, the blimp's collision box, is transcribed and used for the blimp hit test."
+      - "npm test -- citations stays green."
