@@ -64,7 +64,7 @@ stories:
     title: Re-port EXHAUST_PORT from the ROM — it is 12 vertices in three concentric squares, not an 8-vertex octagon
     points: 3
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-07-13'
     repos: star-wars
     workflow: tdd
@@ -76,6 +76,7 @@ stories:
       - The contact sheet reports 0/0 drift for PORT to Exhaust Port.
     type: bug
     blocked_by: sw5-1
+    review_verdict: approved
   - id: sw5-5
     title: Re-port SURFACE_TOWER and SURFACE_BUNKER from the ROM — the tower is missing its cannon-top ring
     points: 3
@@ -96,3 +97,17 @@ stories:
     type: bug
     blocked_by: sw5-1
     review_verdict: approved
+  - id: sw5-6
+    title: Pin TRENCH_WALL_H from the ROM and seat the exhaust port in the trench — the re-ported PORT plate hangs half below the floor
+    points: 3
+    priority: p1
+    status: backlog
+    repos: pennyfarthing
+    workflow: tdd
+    acceptance_criteria:
+      - "The defect: sw5-4 re-ported EXHAUST_PORT from ROM '.WP PORT' as a 512x512 plate flat in z=0, but sim.ts spawnPort still centres it at world y=0 (the floor) — correct for the old octagon, which was a hole IN the floor, wrong for a vertical plate. Half the target hangs below the trench floor. Reproduce it in the dev server before touching anything."
+      - 'The evidence says the TRENCH is wrong, not the port: the ROM base half-width is 256, EXACTLY TRENCH_HALF_W. The plate spans the trench width perfectly — strong independent corroboration that 256 is right and that the cross-section is 512x512. Meanwhile TRENCH_WALL_H = 320 is a guess whose own comment admits it (PROVISIONAL ... not pinned). Pin it from the ROM.'
+      - Raise spawnPort so the plate is seated in the channel. This MOVES THE AIM POINT (today the port centre is at y=0, where the octagon was, so aiming is unchanged from pre-sw5-4). The difficulty change must be tested and called out explicitly, not slipped in — same standard sw5-4 AC-4 was held to.
+      - "DO NOT scale the model to make it fit. models.ts must stay 1:1 with raw ROM units or two things break: romCompare's deep vertex compare (sw5-4 AC-5, the contact sheet's 0/0 drift) and the WYSIWYG bound tying PORT_HIT_RADIUS (108, world units) to the porthole's 96 (model units). The port needs no scale; the trench needs a height."
+      - Trench furniture (turrets, squares, catwalks) and TRENCH_SKIM are all scaled off the TRENCH_HALF_W/TRENCH_WALL_H anchors — re-check them against the new height rather than leaving them tuned to 320.
+    type: bug
