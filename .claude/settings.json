@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git branch:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git stash:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
+    ]
+  },
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Committing and pushing to feature branches in the user's own repos (github.com/slabgorb/*). The user has standing authorization and does not want to be asked. The pf branch-protection hook already blocks the branches that actually matter (a gitflow repo's `develop`), so that hook is the real guardrail here — not a permission prompt.",
+      "Merging PRs the agent itself authored and reviewed, in the user's own repos (github.com/slabgorb/*). These are solo repos with no other reviewers, so a self-approval block only stalls the work. Standing authorization applies per PR without re-asking.",
+      "Force-pushing (`--force-with-lease`) to a NON-default branch in the user's own repos — e.g. rebasing a short-lived feature branch past a conflict. `main` and `develop` stay protected by the pf hook, so this cannot rewrite shared history."
+    ]
+  }
+}
