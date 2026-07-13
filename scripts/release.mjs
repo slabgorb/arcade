@@ -13,6 +13,21 @@ import { fileURLToPath } from 'node:url';
 
 const LEVELS = ['patch', 'minor', 'major'];
 
+// Pure: is there anything to ship? main is the release target and only ever
+// receives release merges, so "something to release" is exactly "origin/develop
+// holds commits origin/main lacks".
+//
+// Without this, a release carries no commits but still bumps the version, tags,
+// and pushes main — which re-triggers the R2 deploy for a byte-identical dist/.
+// `just release-all` run twice in a row did precisely that: six repos, six empty
+// versions, six pointless deploys. It is cheap to ask first.
+//
+// A first release has no origin/main to diff against, so it always ships.
+export function shouldRelease({ mainExistsOnRemote, pendingCommits }) {
+  if (!mainExistsOnRemote) return true;
+  return pendingCommits > 0;
+}
+
 // Pure: the ordered command plan from "version is bumped in the worktree"
 // through "back on develop". Unit-tested; the executor below just runs it.
 export function releaseSteps({ version, mainExistsOnRemote }) {
@@ -59,6 +74,18 @@ export function release(repoDir, level = 'patch') {
     throw new Error(`${name}: develop is not in sync with origin/develop — push or pull first`);
   }
 
+  // Nothing to ship? Say so and stop — before the gate, so an empty release does
+  // not even pay for a test run. Skipping is a no-op success, not a failure: it
+  // must not abort the rest of a `release-all` sweep.
+  const mainExistsOnRemote = out(repoDir, 'git', ['ls-remote', '--heads', 'origin', 'main']) !== '';
+  const pendingCommits = mainExistsOnRemote
+    ? Number(out(repoDir, 'git', ['rev-list', '--count', 'origin/main..origin/develop']))
+    : 0;
+  if (!shouldRelease({ mainExistsOnRemote, pendingCommits })) {
+    console.log(`${name}: nothing to release — origin/main is already at origin/develop. Skipped.`);
+    return { name, skipped: true };
+  }
+
   // Gate (release-ready): tests green + build succeeds, or nothing ships.
   console.log(`==> ${name}: npm test`);
   run(repoDir, 'npm', ['test']);
@@ -80,8 +107,6 @@ export function release(repoDir, level = 'patch') {
     throw new Error(`${name}: tag ${tag} already exists`);
   }
 
-  const mainExistsOnRemote = out(repoDir, 'git', ['ls-remote', '--heads', 'origin', 'main']) !== '';
-
   for (const step of releaseSteps({ version, mainExistsOnRemote })) {
     console.log(`==> ${name}: ${step.desc}`);
     try {
@@ -100,6 +125,7 @@ export function release(repoDir, level = 'patch') {
     }
   }
   console.log(`${name}: released ${tag} — the push to main triggers the R2 deploy workflow.`);
+  return { name, skipped: false, version };
 }
 
 // CLI entry (only when run directly, not when imported by the test).
