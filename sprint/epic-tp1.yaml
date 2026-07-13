@@ -22,7 +22,7 @@ stories:
       - "The starfield is driven by the sim, not by requestAnimationFrame (FR-017), and render.ts:905's `renderTime += 1/60` is rebased."
       - "warpAccel's 4.45x error resolves as a CONSEQUENCE of the rebase (it carries the base rate squared) — a test pins warp velocity against the ROM's value rather than against a hand-tuned number."
       - "The game is demonstrably playable at the new rate — this story is allowed to surface that other constants are wrong, but it must NOT compensate for them by re-tuning anything outside the frame-rate family. Those are other stories."
-      - "WD-010 (moved here from tp1-3, 2026-07-13, user-approved): warpAccel is fed a 0-based CURWAV, not a 1-based level (rules.ts:51). One character — but it was ordering-constrained behind this story (fixing it while the 60 is still baked in re-bakes the 60), and this story rewrites warpAccel anyway per the AC above. It lands here so it cannot be lost. tp1-3 no longer carries it."
+      - "WD-010 (moved here from tp1-3, 2026-07-13, user-approved): warpAccel is fed a 0-based CURWAV, not a 1-based level (rules.ts:51). One character — but it was ordering-constrained behind this story (fixing it while the 60 is still baked in re-bakes the 60), and this story rewrites warpAccel anyway per the AC above. It lands here so it cannot be lost. tp1-3 no longer carries it. >> NOT SHIPPED BY THIS STORY — it was lost exactly as this AC feared, and landed in tp1-23. The move arrived at 17:01 UTC, after this story's session file had snapshotted its other seven ACs at 16:35 and gone into green; tp1-1 merged (tempest#97, d75a4a2) satisfying those seven and never read this eighth. tp1-23 recovered it and fixed it at the CALL SITE (sim.ts, warpAccel(s.level - 1)), leaving this story's ROM_FPS rebase of warpAccel untouched. Deliberately left unticked, as the record of the gap."
       - "npm test -- citations stays green."
     completed: '2026-07-13'
     type: bug
@@ -61,7 +61,7 @@ stories:
       - "The fuseball's vulnerability is INVERTED — the arcade's fuseball is killable ONLY while rolling between lanes, and is bulletproof on a lane and at the rim. Ours is the exact opposite. (sim.ts:316, fuseball.ts:41, W-022)"
       - "The invented pulsar strobe is dropped — the ROM's colour is a clean binary toggle for the whole pulse window. (render.ts:363, DA-020)"
       - "The lives icon is the claw silhouette (LIFE1, 8 vertices), not a hand-drawn chevron. It is NOT the same picture as NCRS1-8. (render.ts:538, V-016)"
-      - "OUT OF SCOPE — WD-010 (warpAccel's 0-based CURWAV, rules.ts:51) is NOT part of this story: it moved to tp1-1 on 2026-07-13, and from there to tp1-23 (it shipped in neither). Do not touch rules.ts:51 or warpAccel here. Nine fixes, not ten."
+      - "OUT OF SCOPE — WD-010 (warpAccel's 0-based CURWAV, rules.ts:51) is NOT part of this story: it moved to tp1-1 on 2026-07-13, and from there to tp1-23. Do not touch rules.ts:51 or warpAccel here. Nine fixes, not ten. >> WHERE IT LANDED: tp1-23 SHIPPED it (2026-07-13) — the fix is at the call site (sim.ts, warpAccel(s.level - 1)), pinned by tests/core/tp1-23.warp-curwav.test.ts, and finding WD-010 is now marked remediated_by tp1-23. This note is no longer an open loop."
       - "npm test -- citations stays green."
     completed: '2026-07-13'
     type: bug
