@@ -7,6 +7,11 @@ sprint:
 
 completed_epics: []
 completed_stories:
+  - id: sw5-1
+    epic: sw5
+    title: Recover `.WGD` ground-object edges — parser extension (takes edge coverage from 14 of 24 ROM objects to all 24, and compared pairs from 5 to 8)
+    points: 5
+    completed: '2026-07-12'
   - id: lb2-9
     epic: lb2
     title: Draw a real vector model in each lobby tile's model slot
