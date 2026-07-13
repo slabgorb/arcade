@@ -37,3 +37,8 @@ completed_stories:
     title: "THE REBASE — the ROM runs at 28.44 fps (256/9), not 60; our sim is 2.11x too fast"
     points: 8
     completed: '2026-07-13'
+  - id: tp1-3
+    epic: tp1
+    title: "THE CHEAP WINS — nine one-line fidelity fixes carved out of the clusters"
+    points: 3
+    completed: '2026-07-13'

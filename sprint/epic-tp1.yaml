@@ -47,7 +47,8 @@ stories:
     description: "Carve-out story: these items are removed from C6/C7/C11/C12/C13/C15's scope so they are not double-counted. Each is a one-line or one-constant change. Together they are the fastest visible fidelity gain in the audit. SCOPE CHANGE (2026-07-13, user-approved at SM setup): WD-010 (warpAccel's 0-based CURWAV) has been MOVED OUT of this story and INTO tp1-1. It was ordering-constrained behind tp1-1 (touching rules.ts:51 while the 60 is still baked in re-bakes the 60), and tp1-1 rewrites warpAccel anyway. This story now carries NINE fixes — matching its title — and depends on nothing."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-13'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -62,6 +63,7 @@ stories:
       - "The lives icon is the claw silhouette (LIFE1, 8 vertices), not a hand-drawn chevron. It is NOT the same picture as NCRS1-8. (render.ts:538, V-016)"
       - "OUT OF SCOPE — WD-010 (warpAccel's 0-based CURWAV, rules.ts:51) is NOT part of this story: it moved to tp1-1 on 2026-07-13, and from there to tp1-23 (it shipped in neither). Do not touch rules.ts:51 or warpAccel here. Nine fixes, not ten."
       - "npm test -- citations stays green."
+    completed: '2026-07-13'
     type: bug
     branch: fix/tp1-3-cheap-wins
     review_verdict: approved
