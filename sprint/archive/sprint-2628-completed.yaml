@@ -42,3 +42,8 @@ completed_stories:
     title: "THE CHEAP WINS — nine one-line fidelity fixes carved out of the clusters"
     points: 3
     completed: '2026-07-13'
+  - id: tp1-2
+    epic: tp1
+    title: "THE AUDIO CROSS-WIRING — player_fire.wav IS the enemy-explosion envelope; enemy_explosion.wav IS the thrust sound"
+    points: 4
+    completed: '2026-07-13'
