@@ -64,7 +64,7 @@ stories:
     title: Re-port EXHAUST_PORT from the ROM — it is 12 vertices in three concentric squares, not an 8-vertex octagon
     points: 3
     priority: p1
-    status: in_review
+    status: done
     started: '2026-07-13'
     repos: star-wars
     workflow: tdd
@@ -74,6 +74,7 @@ stories:
       - The PROVISIONAL marker on EXHAUST_PORT is removed from models.ts.
       - 'GAMEPLAY IMPACT — the ROM target is roughly 3.6x wider than ours. Trench exhaust-port hit detection must be re-tuned against the ROM geometry rather than left assuming the octagon, and the resulting change in difficulty must be called out explicitly, not slipped in.'
       - The contact sheet reports 0/0 drift for PORT to Exhaust Port.
+    completed: '2026-07-13'
     type: bug
     blocked_by: sw5-1
     review_verdict: approved

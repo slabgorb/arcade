@@ -22,3 +22,8 @@ completed_stories:
     title: Re-port SURFACE_TOWER and SURFACE_BUNKER from the ROM — the tower is missing its cannon-top ring
     points: 3
     completed: '2026-07-13'
+  - id: sw5-4
+    epic: sw5
+    title: Re-port EXHAUST_PORT from the ROM — it is 12 vertices in three concentric squares, not an 8-vertex octagon
+    points: 3
+    completed: '2026-07-13'
