@@ -46,4 +46,8 @@ completed_stories:
     epic: tp1
     title: "THE AUDIO CROSS-WIRING — player_fire.wav IS the enemy-explosion envelope; enemy_explosion.wav IS the thrust sound"
     points: 4
+  - id: tp1-23
+    epic: tp1
+    title: WD-010 — warpAccel is fed a 1-based level, not the ROM's 0-based CURWAV (the one character that fell between tp1-1 and tp1-3)
+    points: 1
     completed: '2026-07-13'

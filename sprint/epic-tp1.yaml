@@ -371,7 +371,8 @@ stories:
     description: "Finding WD-010, and a story about how it nearly vanished. WHAT IT IS: rules.ts warpAccel() computes min(level*4, 0x30) + 0x20, but sim.ts:603 calls it as warpAccel(s.level) where s.level is 1-BASED (startGameAtLevel sets s.level = level, and levels run 1..16). The ROM feeds this expression CURWAV, which is 0-BASED. So every wave's warp dive accelerates one wave too hard: level 1 computes min(4,48)+32 = 36 where the ROM gives 32 — the level-1 dive is ~12.5% too fast, and every level is off by one wave's worth of acceleration. The fix is one character. HOW IT ESCAPED (worth reading, because the mechanism will recur): WD-010 was originally AC-10 of tp1-3. On 2026-07-13 it was moved into tp1-1, correctly — it was ordering-constrained (touching rules.ts:51 while the 60 was still baked into warpAccel would re-bake the 60) and tp1-1 rewrites warpAccel anyway. But the move landed at 17:01 UTC, while tp1-1 was ALREADY IN ITS GREEN/REVIEW PHASE: tp1-1's session file had been created at 16:35 UTC with seven acceptance criteria and never re-read the epic. tp1-1 merged (tempest#97, d75a4a2) satisfying those seven. Meanwhile tp1-3's criteria had been rewritten to say 'OUT OF SCOPE — do not touch rules.ts:51 or warpAccel here.' The finding was owned by a story that was done and disclaimed by the story that used to own it. It fell through the gap between them. THE ORDERING CONSTRAINT IS NOW SATISFIED: tp1-1 has merged, warpAccel is rebased onto ROM_FPS, and this one character can land safely on its own. THE LESSON, for the remaining 19 stories: a story's acceptance criteria are snapshotted into its session file at setup. Editing an epic's ACs while that story is in flight does NOT reach the story. Move scope BEFORE setup, or re-run setup."
     points: 1
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-13'
     repos: tempest
     workflow: trivial
     acceptance_criteria:
@@ -380,4 +381,6 @@ stories:
       - 'The rebase from tp1-1 is NOT disturbed: warpAccel still carries ROM_FPS squared, and warp velocity is still pinned against the ROM rather than a hand-tuned number.'
       - tp1-3's 'OUT OF SCOPE' note and tp1-1's now-orphaned AC-7 are both updated to point here, so the audit trail of where WD-010 actually landed is not left lying.
       - npm test -- citations stays green.
+    completed: '2026-07-13'
     type: bug
+    review_verdict: approved
