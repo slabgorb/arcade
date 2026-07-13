@@ -103,7 +103,7 @@ stories:
     points: 3
     priority: p1
     status: backlog
-    repos: pennyfarthing
+    repos: star-wars
     workflow: tdd
     acceptance_criteria:
       - "The defect: sw5-4 re-ported EXHAUST_PORT from ROM '.WP PORT' as a 512x512 plate flat in z=0, but sim.ts spawnPort still centres it at world y=0 (the floor) — correct for the old octagon, which was a hole IN the floor, wrong for a vertical plate. Half the target hangs below the trench floor. Reproduce it in the dev server before touching anything."
