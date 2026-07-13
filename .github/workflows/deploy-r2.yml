@@ -24,7 +24,16 @@ jobs:
       cancel-in-progress: false
     steps:
       # In a reusable workflow, checkout defaults to the CALLER repo (the game).
+      #
+      # fetch-depth: 0 — a game's test suite may need real git HISTORY, not just a
+      # snapshot. red-baron's ROM-fidelity audit gate (tools/audit/check-citations.mjs)
+      # verifies every finding's citation against the code AS IT WAS AUDITED, by reading
+      # blobs from the audit commit. Under checkout's default fetch-depth: 1 that commit
+      # is not in the clone at all, so the gate cannot run and `npm test` fails — which
+      # would block the deploy of a perfectly good build.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
