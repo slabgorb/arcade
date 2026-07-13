@@ -64,6 +64,7 @@ stories:
       - "npm test -- citations stays green."
     type: bug
     branch: fix/tp1-3-cheap-wins
+    review_verdict: approved
   - id: tp1-4
     title: "THE CAM, part 1 — build the bytecode interpreter and the 11 enemy programs, selected per wave from CAMWAV"
     description: "Cluster C2, first half. Subsumes W-005, W-006, W-007, W-008, W-009. Enemies in the ROM are a bytecode VM, not state machines. Our five per-kind steppers cannot express, AT ANY CONSTANT SETTING: 'move N frames then flip' (MOVJMP), 'flip continuously while climbing' (SPIRAL), 'reverse direction every 2 jumps then every 3' (SPIRCH), 'flip only when not standing on a spike' (COWJMP), 'flip AWAY from the player' (AVOIDR), or 'crouch 4 frames at the rim then jump toward the player at double angular speed' (TOPPER). This is a rewrite of src/core/enemies/, not a constant tweak. The behavioural tell that the whole cluster is right: a level-1 flipper NEVER flips while climbing."
