@@ -51,3 +51,8 @@ completed_stories:
     title: WD-010 — warpAccel is fed a 1-based level, not the ROM's 0-based CURWAV (the one character that fell between tp1-1 and tp1-3)
     points: 1
     completed: '2026-07-13'
+  - id: tp1-4
+    epic: tp1
+    title: "THE CAM, part 1 — build the bytecode interpreter and the 11 enemy programs, selected per wave from CAMWAV"
+    points: 8
+    completed: '2026-07-13'
