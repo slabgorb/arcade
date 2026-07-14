@@ -1,0 +1,118 @@
+STAR WARS ATTRACT MODE TEXT DOCUMENTATION
+
+	17-MAY-83
+
+----------------------------------------------------------------------------------------------------------------------------------
+BANNER PHASE
+
+	"STAR WARS" logo stays in place near bottom of screen, brightness goes from off to normal brightness.
+	Then it travels backwards, shrinking and dimming out as it goes. ( Typical "STAR WARS" effect )
+
+	As the logo starts traveling backwards, the STORYLINE ( see below for text ) starts.  Each line is centered
+	and a similar shrinking and dimming effect is used.  When all the text is visible the effect is stopped to
+	allow reading ( about 20 seconds ).  Then one line at a time quickly recedes into the distance.
+
+	STORYLINE text:
+			 OBI WAN KENOBI IS GONE BUT HIS
+			PRESENCE IS FELT WITHIN THE FORCE.
+			THE EMPIRE'S DEATH STAR UNDER THE
+			 COMMAND OF DARTH VADER NEARS THE
+			 REBEL PLANET.  YOU MUST JOIN THE
+			  REBELLION TO STOP THE EMPIRE.
+			   THE FORCE WILL BE WITH YOU.
+			            ALWAYS
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+FLIGHT INTRUCTION PHASE
+
+	The text ( see below ) is output to the screen 1 line at a time and left there for about 20 seconds,
+	then it fades out.
+
+	Text:
+
+	   FLIGHT INSTRUCTIONS TO RED FIVE
+	 1.  YOUR X WING IS EQUIPPED WITH AN
+	INVISIBLE DEFLECTOR SHIELD THAT
+	WILL PROTECT YOU FOR x COLLISIONS.         ( Replace x with "6","7","8", or "9" depending on option switch settings )
+	 2.  DEFLECTOR STRENGTH IS LOST WHEN
+	A FIREBALL IMPACTS YOUR SHIELD OR
+	WHEN YOU STRIKE A LASER TOWER OR
+	TRENCH CATWALK.
+	 3.  AIM YOUR LASERS WITH CURSOR TO
+	EXPLODE  EMPIRE TIE FIGHTERS, LASER
+	TOWER TOPS AND TRENCH TURRETS.
+	 4.  SHOOT FIREBALLS BEFORE THEY
+	IMPACT YOUR SHIELD.
+	 5.  THE REBEL FORCE IS DEPENDING ON
+	YOU TO STOP THE EMPIRE BY BLOWING
+	UP THE DEATH STAR.
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+SCORING PAGE PHASE
+
+	The text ( see below ) scrolls up from the bottom of the screen to its normal position,
+	stays in place for about 20 seconds, then fades out.
+
+	TEXT:
+
+			 SCORING
+	TIE FIGHTERS		     1,000
+	DARTH'S SHIP		     2,000
+	LASER BUNKERS		       200
+	LASER TOWERS		       200
+	TRENCH TURRETS		       100
+	FIREBALLS		        33
+	EXHAUST PORT		    25,000
+	DESTROYING ALL TOWER TOPS   50,000	
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+HIGH SCORE DISPLAY PHASE
+
+		PRINCESS LEIA'S REBEL FORCE
+		  1.  OBI     1285353		( These are the default high score table entries )
+		  2.  WAN     1110936
+		  3.  HAN     1024650
+		  4.  GJR      872551
+		  5.  MLH      813553
+		  6.  JED      704899
+		  7.  NLA      518000
+		  8.  EJD      492159
+		  9.  EAR      384766
+		 10.  RLM      380655
+
+		       STAR WARS
+	  @ 1983 LUCASFILM LTD. AND ATARI,INC.
+		  ALL RIGHTS RESERVED
+         LUCASFILM TRADEMARKS USED UNDER LICENSE.
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+ENTERING INITIALS FOR HIGH SCORE PHASE
+
+	 MESSAGE FROM REBEL COMMAND POST
+	   YOU ARE A TRUE REBEL PILOT
+	     THE FORCE IS WITH YOU
+	      SHOOT YOUR INITIALS
+
+A	   PRINCESS LEIA'S REBEL FORCE	       END
+
+B					       RUB
+
+C						_
+
+D						Z
+	       ( high score table )
+E						Y
+
+F						X
+
+G						W
+
+H						V
+
+I   J   K   L   M   N   O   P   Q   R   S   T   U
+
+----------------------------------------------------------------------------------------------------------------------------------

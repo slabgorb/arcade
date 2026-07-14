@@ -2,13 +2,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { sourceDir } from '../scripts/sources.mjs';
 import { join } from 'node:path';
 import { parseMac } from '../scripts/audio/parse/mac.mjs';
 import { parseMap } from '../scripts/audio/parse/map.mjs';
 import bz from '../scripts/audio/games/battlezone.mjs';
 
-const SRC = join(homedir(), 'Projects', 'battlezone-source-text');
+const SRC = sourceDir('battlezone');
 
 test('battlezone: BZONE.MAP links the T2SOUN sound module — "no ROM data" is FALSE', () => {
   const { modules } = parseMap(readFileSync(join(SRC, 'BZONE.MAP'), 'utf8'));

@@ -1,0 +1,14 @@
+	.TITLE PROG	;PROGRAM START
+	.INCLUDE WSCOMN	;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+PROG	==6000
+
+	.GLOBL RESET,IRQ
+
+	.ASECT
+
+	.=PROG			;START OF PROGRAM
+	JMP RESET		;HELP DEVELOPMENT SYSTEM WORK
+	.WORD IRQ
+
+	.END

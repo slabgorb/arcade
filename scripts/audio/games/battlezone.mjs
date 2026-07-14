@@ -10,7 +10,7 @@
 // 3-4 are poked directly by procedural code in BZONE.MAC for the enemy-tank engine
 // hum — genuinely synthesized, NOT table data, and reported as NO ROM AUDIO.
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { sourceDir } from '../../sources.mjs';
 import { join } from 'node:path';
 import { parseMac } from '../parse/mac.mjs';
 import { expandEnvelope } from '../render/envelope.mjs';
@@ -81,7 +81,7 @@ export default {
   // comparison — see the DATA_BASE derivation above for why this can't just
   // be "MODULE_BASE + a parseMac label offset."
   table() {
-    const text = readFileSync(join(homedir(), 'Projects', `${this.dirbase}-source-text`, this.sourceFile), 'utf8');
+    const text = readFileSync(join(sourceDir(this.dirbase), this.sourceFile), 'utf8');
     const { bytes, labels } = parseMac(text);
     const start = Math.min(...SOUNDS.map((s) => labels.get(s.audf)).filter((v) => v !== undefined));
     return { bytes: bytes.slice(start), romAddr: DATA_BASE, labels, all: bytes, start };

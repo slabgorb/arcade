@@ -1,0 +1,47 @@
+FILE SUMMARY FOR [MARGOLIN.SW] 
+
+
+
+The STAR WARS, Episode IV, A New Hope:
+_______________________________________________________________________________
+SWMAP.DOC	Memory Map for Star Wars
+SW5.DOC		Memory Map for Star Wars (traditional style for Game Manual)
+-------------------------------------------------------------------------------
+SWMP.MAC	Micro-Code for Star Wars Matrix Processor
+SWMP.DOC 	(Documentation)
+TCODE2.MAC	(Micro-code assembler)
+-------------------------------------------------------------------------------
+AVGROM		State PROM for Star Wars AVG (Different from previous projects)
+-------------------------------------------------------------------------------
+TEST.DOC	Testing Procedure Document (still in progress)
+SW2.DOC		RF End Board Component List
+SW3.DOC		PROM/EPROM Part Numbers
+SW4.DOC		Atari Part Numbers for New Parts
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+
+
+Miscelaneous files: 
+_______________________________________________________________________________
+SWVOC3.MAC	Star Wars Vocabulary #3
+-------------------------------------------------------------------------------
+		Test Routines for use with a Development System
+
+SWSTST.MAC	Test Program for Sound Board (tests speech and interface)
+
+DIVTST.MAC	Test Program for Divider
+
+MATEST.MAC	Test Program for Matrix Processor
+
+VGTST.MAC	Test Program for AVG
+
+LED.MAC		Test Program for LEDs
+
+RAMTST.MAC	RAM Test
+
+XYSIG.MAC	AVG Diagnostics and Signature Analysis from Gravitar
+
+
+
+

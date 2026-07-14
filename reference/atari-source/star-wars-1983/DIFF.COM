@@ -1,0 +1,7 @@
+$ LOOP:
+$ A := 'F$SEARCH("*.OBJ")
+$ IF A .EQS. "" THEN EXIT
+$ B = "[-.WARP.OBJ]" + F$PARSE(A,,,"NAME")+F$PARSE(A,,,"TYPE")
+$ WRITE SYS$OUTPUT "CHECKING ''A' AGAINST ''B'"
+$ DIFF /MODE=HEX 'A' 'B'
+$ GOTO LOOP

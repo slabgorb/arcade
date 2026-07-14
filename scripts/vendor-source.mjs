@@ -1,7 +1,14 @@
-// Vendors a preserved original-source repo (historicalsource/*) into two local
-// directories under ~/Projects: a PRISTINE git clone (byte-of-record, pinned
-// commit) and a GREPPABLE copy (same filenames, LF-normalized plain ASCII) that
-// tooling can actually grep/read. Records the result in docs/reference-sources.md.
+// Vendors a preserved original-source repo (historicalsource/*) INTO THIS REPO at
+// reference/atari-source/<name>/, and records the provenance (repo + pinned SHA)
+// in docs/reference-sources.md.
+//
+// The vendored tree is the greppable copy: same filenames, text LF-normalized to
+// plain ASCII, binaries (.lda/.sav/.prg/ROM dumps) passed through VERBATIM — so it
+// is ALSO the byte-of-record. The ROM images in it are byte-identical to the clone,
+// which is what lets the audit in scripts/extract-audio.mjs use them as its oracle.
+//
+// A PRISTINE git clone is still kept under ~/Projects/<name>-source as a local
+// cache to transcribe from and diff against; it is NOT what any tool reads.
 //
 // The original Atari source files are CR-terminated, non-UTF8 — grep flags them
 // binary and silently returns nothing. The greppable copy applies the canonical
@@ -87,7 +94,7 @@ export function vendorBytes(buf, name) {
   return isBinaryName(name) ? buf : transcribe(buf);
 }
 
-const COLUMNS = '| Name | Repo | Pinned SHA | Pristine clone | Greppable copy | Vendored |';
+const COLUMNS = '| Name | Repo | Pinned SHA | Clone cache | In-repo source | Vendored |';
 const DIVIDER = '|------|------|------------|----------------|----------------|----------|';
 
 export function formatRow(r) {
@@ -98,13 +105,18 @@ function freshIndex(row) {
   return [
     '# Reference sources — vendored original Atari source',
     '',
-    'Machine-local clones of the preserved original source for each game, produced',
-    'by `just vendor-source`. The clones live under `~/Projects` and are **not** in',
-    'any repo — this table is the durable record of what exists and where.',
+    'The preserved original Atari source for each game, vendored **into this repo** at',
+    '`reference/atari-source/<name>/` by `just vendor-source`. This table records where',
+    'each tree came from and the commit it is pinned to.',
     '',
-    '**Grep the greppable copy** (`*-source-text`, LF-normalized ASCII); the pristine',
-    'clone is CR-terminated non-UTF8 and grep flags it binary. Recreate any row with',
-    '`just vendor-source <org/repo>` (or the whole fleet with `just vendor-source-all`).',
+    'The vendored tree is LF-normalized ASCII (grep it directly — the upstream files are',
+    'CR-terminated non-UTF8 and grep flags them binary), but binaries — `.lda`, `.sav`,',
+    '`.prg`, numbered ROM dumps — are passed through VERBATIM, so the ROM images here are',
+    'byte-identical to the upstream clone. That is what `just extract-audio` audits against.',
+    '',
+    'Refresh a row with `just vendor-source <org/repo>` (or the fleet with',
+    '`just vendor-source-all`). A pristine clone is cached at `~/Projects/<name>-source`;',
+    'no tool reads it.',
     '',
     COLUMNS,
     DIVIDER,
@@ -170,13 +182,13 @@ function transcribeTree(srcDir, destDir) {
 
 function vendorOne({ repo, ref, name, force, indexOnly }) {
   const dirbase = name || basename(repo);
-  const pristine = join(PROJECTS, `${dirbase}-source`);
-  const greppable = join(PROJECTS, `${dirbase}-source-text`);
+  const pristine = join(PROJECTS, `${dirbase}-source`);   // local clone cache
+  const greppable = join(ROOT, 'reference', 'atari-source', dirbase); // IN-REPO reference
 
   // Index-only: the dirs already exist (hand-vendored); record, never clobber.
   if (indexOnly) {
     if (!existsSync(greppable)) {
-      throw new Error(`--index-only but greppable copy is missing at ${greppable}`);
+      throw new Error(`--index-only but the vendored tree is missing at ${greppable}`);
     }
     let sha = ref;
     if (!sha) sha = existsSync(join(pristine, '.git')) ? git(pristine, 'rev-parse', 'HEAD').slice(0, 7) : 'hand';

@@ -1,15 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { sourceDir } from '../scripts/sources.mjs';
 import { join } from 'node:path';
 import { parseMap } from '../scripts/audio/parse/map.mjs';
 import { parseLda } from '../scripts/audio/parse/rom.mjs';
 import swm, { crossCheck } from '../scripts/audio/games/star-wars-music.mjs';
 
-const P = join(homedir(), 'Projects');
-const TEXT = join(P, 'star-wars-1983-source-text');
-const PRISTINE = join(P, 'star-wars-1983-source');
+const SRC = sourceDir('star-wars-1983');
 
 // NB: the brief's original first test (`words.get('TUNTAB').length === 50` via
 // parseMac) does not hold -- SWMUS.MAC's `TUNTAB:: .WORD SWNUL,SF2V1,...` entries
@@ -19,10 +17,10 @@ const PRISTINE = join(P, 'star-wars-1983-source');
 // speech (star-wars-speech.mjs) -- and for the same reason: the sound board is a
 // 6809, and its .WORD tables are baked BIG-ENDIAN in the image.
 test('music: TUNTAB resolves to 50 entries from the ROM image (not from source .WORD literals)', () => {
-  const { symbols } = parseMap(readFileSync(join(TEXT, 'SNDAUX.MAP'), 'utf8'));
+  const { symbols } = parseMap(readFileSync(join(SRC, 'SNDAUX.MAP'), 'utf8'));
   assert.equal(symbols.get('TUNTAB'), 0x58e5);
 
-  const { image } = parseLda(readFileSync(join(PRISTINE, 'SNDAUX.LDA')));
+  const { image } = parseLda(readFileSync(join(SRC, 'SNDAUX.LDA')));
   // 51 big-endian words: index 0 is the SWNUL sentinel, 1..50 are the real entries.
   const words = [];
   for (let i = 0; i <= 50; i++) {

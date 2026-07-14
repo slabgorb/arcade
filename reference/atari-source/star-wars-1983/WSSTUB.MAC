@@ -1,0 +1,34 @@
+	.TITLE	WSSTUB	STUB ROUTINES ;ALL NONE CURRENT ROUTINES STUBB'D HERE
+	.INCLUDE	WSCOMN	;<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+				;===
+				;GLOBAL OFFSETS
+				;---
+				;D-PAGE RAM
+				;---
+				;RAM
+				;---
+				;OUTSIDE ROUTINES
+				;---
+				;MATH BOX
+				;---
+				;VECTOR GENERATOR
+				;---
+				;HARDWARE
+				;---
+				;SHIFT ROUTINES
+				;===
+
+	.MACRO .PAGG		;GLOBAL PAGE NUMBERS
+	.PAGEG Z		;STUB ENDS
+	.ENDM
+
+	.CSECT STUB
+
+	.PAGG
+	.SBTTL	ENTRY POINTS FOR STUBB'D ROUTINES
+
+				;===
+INTDIS::			;ALL INTS DISABLED FROM HERE ON
+
+				;===
+	.END

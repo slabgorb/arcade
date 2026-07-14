@@ -1,0 +1,183 @@
+	.TITLE WSMATH		;MATH AND COMMON ROUTINES FOR ROOT AND OVERLAY
+	.INCLUDE WSCOMN		;<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+				;===
+				;---
+M$AX	==-10+0
+M$AY	==-10+0+2
+M$AZ	==-10+0+0+4
+
+M$BX	==-10+0+8
+M$BY	==-10+0+8+2
+M$BZ	==-10+0+8+4
+
+M$CX	==-10+0+10
+M$CY	==-10+0+10+2
+M$CZ	==-10+0+10+4
+
+M$TX	==-10+18+0
+M$TY	==-10+18+2
+M$TZ	==-10+18+4
+
+M$VX	==-10+6
+M$VY	==-10+6+8
+M$VZ	==-10+6+10
+
+				;===
+				;GLOBAL OFFSETS
+				;---
+				;D-PAGE RAM
+	.GLOBB RND.S1,RND.S2
+				;---
+				;RAM
+	.GLOBL M.U1
+				;---
+				;OUTSIDE ROUTINES
+				;---
+				;MATH BOX
+	.GLOBL M.BIC,M.BICH,M.BICL
+	.GLOBL M$DLD1,M$DLD2
+	.GLOBL M$ROLL,M$PTCH,M$YAW
+	.GLOBL M$S1BC
+				;---
+				;VECTOR GENERATOR
+				;---
+				;HARDWARE
+	.GLOBL M.BUSY,M.PCGO
+	.GLOBL P.RND1
+				;---
+				;SHIFT ROUTINES
+				;===
+
+				;===
+	.MACRO .PAGG		;GLOBAL PAGE NUMBERS
+	.PAGEG Q		;MATH (QED)
+	.ENDM
+
+	.CSECT MATH
+
+	.PAGG
+	.SBTTL	SHIFT ROUTINES
+
+				;ASRD
+	.IRP .A <8,7,6,5,4,3,2,1>
+ASRD'.A'::
+	ASRA
+	RORB
+	.ENDR
+ASRD0::	RTS
+				;---
+				;LSLD
+	.IRP .A <8,7,6,5,4,3,2,1>
+LSLD'.A'::
+	LSLB
+	ROLA
+	.ENDR
+LSLD0::	RTS
+				;===
+
+	.SBTTL	MATH SUBROUTINES
+MGOWT::				;START THE MATH BOX, AND WAIT
+	STA M.PCGO
+				;---
+MWAIT::
+10$:				;---
+	TST M.BUSY		;SLOW BUT SAFE
+	BMI 10$
+				;---
+	RTS
+				;===
+UNITV::				;SETUP UNIT VECTORS
+	LDD #0
+				;---
+	STD M$VX(U)		;VELOCITY VECTORS
+	STD M$VY(U)
+	STD M$VZ(U)
+				;---
+	STD M$TX(U)		;TRANSLATION COORDS
+	STD M$TY(U)
+	STD M$TZ(U)
+				;---
+	;STD M$AX(U)		;IDENTITY MATRIX
+	STD M$AY(U)
+	STD M$AZ(U)
+	STD M$BX(U)
+	;STD M$BY(U)
+	STD M$BZ(U)
+	STD M$CX(U)
+	STD M$CY(U)
+	;STD M$CZ(U)
+	LDA #40			;IDENTITY VALUE FOR 1.
+	STD M$AX(U)
+	STD M$BY(U)
+	STD M$CZ(U)
+	RTS
+				;===
+
+TRANU1::			;TRANSPOSE U1 UNIT VECTORS
+	LDD M$AY+M.U1
+	LDU M$BX+M.U1
+	STD M$BX+M.U1
+	STU M$AY+M.U1
+				;---
+	LDD M$AZ+M.U1
+	LDU M$CX+M.U1
+	STD M$CX+M.U1
+	STU M$AZ+M.U1
+				;---
+	LDD M$BZ+M.U1
+	LDU M$CY+M.U1
+	STD M$CY+M.U1
+	STU M$BZ+M.U1
+				;---
+	RTS
+				;===
+
+IS1UV::
+	STA M.BICL
+	CLR M.BICH
+	LDA #M$DLD1
+	JSR MGOWT
+	RTS
+				;===
+
+IS2UV::
+	STA M.BICL
+	CLR M.BICH
+	LDA #M$DLD2
+	JSR MGOWT
+	RTS
+				;===
+
+S1RL::				;ROLL PLAYER SHIP
+	LDD #M$S1BC
+	STD M.BIC
+	LDA #M$ROLL
+	JMP MGOWT		;RTS
+				;===
+
+S1PT::				;PITCH PLAYER SHIP
+	LDD #M$S1BC
+	STD M.BIC
+	LDA #M$PTCH
+	JMP MGOWT		;RTS
+				;===
+
+S1YW::				;YAW PLAYER SHIP
+	LDD #M$S1BC
+	STD M.BIC
+	LDA #M$YAW
+	JMP MGOWT		;RTS
+				;===
+	.PAGG
+	.SBTTL	RANDOM NUMBER SET 
+RND8::				;GEN NON-VOLATILE SETS OF RANDOM NUMBERS
+	LDD RND.S1
+	STD RND.S2		;MOVE RND1,2 TO RND2,3
+	LDA P.RND1		;GET NEW RANDOM BYTE
+	STA RND.S1
+	RTS
+				;===
+
+	HLL69F
+
+	.END

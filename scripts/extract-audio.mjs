@@ -26,8 +26,8 @@
 //   node scripts/extract-audio.mjs <game> [--render] [--out DIR]
 //   node scripts/extract-audio.mjs --all
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
+import { sourceDir } from './sources.mjs';
 import { fileURLToPath } from 'node:url';
 import { renderPokey } from './audio/render/pokey.mjs';
 import { synthesize, SAMPLE_RATE as SPEECH_RATE } from './audio/render/tms5220.mjs';
@@ -136,9 +136,9 @@ function verifyTableAgainstRom(adapter) {
   if (!adapter.romFile || !adapter.table) {
     return { ok: false, why: `no ROM image is available for ${adapter.name}` };
   }
-  const romPath = join(homedir(), 'Projects', `${adapter.dirbase}-source`, adapter.romFile);
+  const romPath = join(sourceDir(adapter.dirbase), adapter.romFile);
   if (!existsSync(romPath)) {
-    return { ok: false, why: `ROM image missing at ${romPath} — run: just vendor-source` };
+    return { ok: false, why: `ROM image missing at ${romPath} — the vendored source tree is incomplete; run: just vendor-source ${adapter.dirbase}` };
   }
   const buf = readFileSync(romPath);
   const { image } = adapter.romFile.toUpperCase().endsWith('.LDA')

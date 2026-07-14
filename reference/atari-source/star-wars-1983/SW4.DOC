@@ -1,0 +1,69 @@
+STAR WARS NEW PARTS
+
+
+
+
+137182-001	IC, Two's Complement Serial Multiplier		TI	74LS384N
+      -002							TI	74LS384J
+      -001							AMD	25LS14PC
+      -002							AMD	25LS14DC
+
+137181-001	IC, Quad Serial Adder/Subtractor		TI	74LS385N
+      -002							TI	74LS385J
+      -001							AMD	25LS15PC
+      -002							AMD	25LS15DC
+
+137180-001	IC, 8 Bit Universal Shift Register		TI	74LS299N
+      -002							TI	74LS299J
+
+137243-001	IC, 8 Bit A/D with 8 Ch Mux			TI	ADC0809N
+								NSC	ADC0809CCN
+
+137308-001	IC, LPC Speech Synthesis 			TI	TMS-5220  (Sole Source)
+
+137310-001	IC, 512 Element Sampled Analog Delay Line	Reticon	R5106	  (Sole Source)
+
+137317-001	IC,Quad Bus Buffer				TI	74LS125N
+      -002							TI	74LS125J
+      -001							NSC	74LS125N
+      -002							NSC	74LS125J
+
+90-6018		IC, 6532A
+
+137309-001	IC, 74C04
+-----------------------------------------------------------------------------------------------------------------------------------
+179153-286	Connector,Card Edge, 86 ckt(2x43),0.1 center	AMP	4-530843-5
+								TRW	50-86C-20-1
+79-42C08	IC Socket, 8 pin DIP
+
+79-58331	Straight Post Header Assembly,Sq,4 circuits	Molex	09-67-1043
+								AMP	640383-4
+79-58255	Straight Post Header Assemble,Sq,2 circuits	Molex	09-67-1023
+								AMP	640383-2
+179165-004	Right Angle Post Header Assem,Sq,4 circuits	Molex	09-66-1041
+								AMP	640385-4
+179165-002	Right Angle Post Header Assem,Sq,2 circuits	Molex 	09-66-102
+								AMP	640385-2
+-----------------------------------------------------------------------------------------------------------------------------------
+119006-103	Potentiometer, Dual Tandem, 10K, Audio Taper	CTS	KF8812
+
+110003-622	Resistor,6.19K,1/4W,1%,MF			Mepco
+								TRW/IRC
+								Dale
+								Stackpole
+110003-132	Resistor, 1.30K,1/4W,1%,MF			TRW/IRC
+								Dale
+								Stackpole
+-----------------------------------------------------------------------------------------------------------------------------------
+122009-102	Cap.,Ceramic.,1000pF,20%,50V,Axial		AVX	GA105C102MAA
+								Uni	CGA102MDX
+122015-272	Cap.,Ceramic,0.0027uF,10%,50V,Axial		Uni	CGC272KDX
+								TY	UP12SV272K
+
+
+
+
+
+
+
+

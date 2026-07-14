@@ -1,0 +1,38 @@
+	.TITLE WSOVLY		;OVERLAY VERSION OF BANK SWITCHING VECTOR TABLE
+	.INCLUDE WSCOMN	;<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+				;---
+	.CSECT			;REVERT BACK
+				;
+				;===
+				;GLOBAL OFFSETS
+				;---
+				;D-PAGE RAM
+				;---
+				;RAM
+				;---
+				;OUTSIDE ROUTINES
+				;---
+				;MATH BOX
+				;---
+				;VECTOR GENERATOR
+				;---
+				;HARDWARE
+				;---
+				;SHIFT ROUTINES
+				;===
+
+				;===
+	.MACRO .PAGG		;GLOBAL PAGE NUMBERS
+	.PAGEG O		;OVERLAY
+	.ENDM
+
+	.CSECT OVLY
+
+	.PAGG
+
+	ROOT==0			;NOT THE ROOT, MUST BE OVERLAY
+	.INCLUDE WSVCTR		;<<<<<<<<<<<<<<<<<<<<<<<
+
+	HLL69F
+
+	.END
