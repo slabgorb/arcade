@@ -154,10 +154,12 @@ deploy-assets:
     set -euo pipefail
     staging="$(mktemp -d)"
     trap 'rm -rf "$staging"' EXIT
-    mkdir -p "$staging/star-wars/music"
+    mkdir -p "$staging/star-wars/music" "$staging/star-wars/sfx"
     echo "==> baking star-wars music"
     node {{root}}/star-wars/tools/music-bake/bake-music.mjs "$staging/star-wars/music"
-    echo "==> uploading -> {{assets_bucket}}/star-wars/music/  (served at arcade-assets.slabgorb.com)"
+    echo "==> baking star-wars sfx"
+    node {{root}}/star-wars/tools/pokey-bake/bake-sfx.mjs "$staging/star-wars/sfx"
+    echo "==> uploading -> {{assets_bucket}}/star-wars/{music,sfx}/  (served at arcade-assets.slabgorb.com)"
     node {{root}}/scripts/deploy-r2.mjs "$staging" {{assets_bucket}}
     echo "Done. Verify: curl -sI https://arcade-assets.slabgorb.com/star-wars/music/space_theme.wav"
 
