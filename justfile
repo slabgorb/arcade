@@ -127,19 +127,28 @@ deploy-one name:
 # ============================================
 # ASSETS (the arcade-assets bucket — sfx / speech / music)
 # ============================================
-# Bake star-wars's POKEY music from the 1983 source and upload it to
-# arcade-assets under star-wars/music/.
+# Bake star-wars's POKEY music from the 1983 source and upload it to the assets
+# bucket under star-wars/music/.
+#
+# ⚠ THE BUCKET IS CALLED `arcade`, NOT `arcade-assets`. The public hostname is
+# arcade-assets.slabgorb.com, but the R2 bucket behind it is plain `arcade` —
+# there is no bucket named arcade-assets, and asking for one fails with the
+# gloriously unhelpful "The specified bucket does not exist". Every other bucket
+# DOES match its domain (arcade-tempest, arcade-star-wars, …), so this one is the
+# exception that will burn you.
 #
 # This is NOT part of CI, and deliberately so. The deploy workflows ship each
-# app's dist/ and nothing else, so the arcade-assets bucket has always been
-# filled by hand — which is exactly how star-wars shipped a complete music path
-# pointing at four .wav files that did not exist, and stayed silent for an epic
-# without one error in the console.
+# app's dist/ and nothing else, so the assets bucket has always been filled by
+# hand — which is exactly how star-wars shipped a complete music path pointing at
+# four .wav files that did not exist, and stayed silent for an entire epic without
+# a single error in the console.
 #
 # The bake is deterministic: re-running it re-uploads byte-identical files. The
 # staging tree mirrors the bucket keys, so deploy-r2.mjs (which keys objects by
 # their path relative to the dir it is given, and already knows audio/wav) needs
 # no changes.
+assets_bucket := "arcade"
+
 deploy-assets:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -148,8 +157,8 @@ deploy-assets:
     mkdir -p "$staging/star-wars/music"
     echo "==> baking star-wars music"
     node {{root}}/star-wars/tools/music-bake/bake-music.mjs "$staging/star-wars/music"
-    echo "==> uploading -> arcade-assets/star-wars/music/"
-    node {{root}}/scripts/deploy-r2.mjs "$staging" arcade-assets
+    echo "==> uploading -> {{assets_bucket}}/star-wars/music/  (served at arcade-assets.slabgorb.com)"
+    node {{root}}/scripts/deploy-r2.mjs "$staging" {{assets_bucket}}
     echo "Done. Verify: curl -sI https://arcade-assets.slabgorb.com/star-wars/music/space_theme.wav"
 
 # ============================================

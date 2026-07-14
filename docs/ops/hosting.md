@@ -68,11 +68,17 @@ just deploy-one <name>   # one app
 | Site serves stale build after green run | Cloudflare cache | check `cf-cache-status` / `last-modified` headers; purge zone cache if truly stale |
 | Need to roll back | `main` has a bad release | check out the previous tag, `just deploy-one <name>` from it, then fix forward on `develop` and release |
 
-## Game assets: the `arcade-assets` bucket
+## Game assets: the `arcade` bucket (served at `arcade-assets.slabgorb.com`)
 
-Sound is **not** shipped in a game's `dist/`. The SFX, speech and music live in a
-separate public bucket, `arcade-assets`, fronted by
-`arcade-assets.slabgorb.com`, under a per-game prefix:
+> **⚠ The bucket is called `arcade`, not `arcade-assets`.** Every *other* bucket
+> matches its domain (`arcade-tempest` → tempest.slabgorb.com, …), so this one is
+> the exception — and `wrangler` answers a wrong guess with the gloriously
+> unhelpful *"The specified bucket does not exist."* There is no bucket named
+> `arcade-assets`; the hostname is a custom domain on plain `arcade`.
+
+Sound is **not** shipped in a game's `dist/`. The SFX, speech and music live in
+that separate public bucket, fronted by `arcade-assets.slabgorb.com`, under a
+per-game prefix:
 
 | Prefix | What | Baked by |
 |--------|------|----------|
@@ -81,10 +87,10 @@ separate public bucket, `arcade-assets`, fronted by
 | `star-wars/music/` | POKEY music (sw6-1) | `star-wars/tools/music-bake/bake-music.mjs` |
 
 **CI does not touch this bucket.** The reusable deploy workflow uploads each
-app's `dist/` and nothing else, so `arcade-assets` is populated by hand:
+app's `dist/` and nothing else, so it is populated by hand:
 
 ```bash
-just deploy-assets     # bake star-wars/music/ and upload to arcade-assets
+just deploy-assets     # bake star-wars/music/ and upload it
 ```
 
 > **This gap has already cost us a whole epic.** sw3-5 built the entire music
