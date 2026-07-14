@@ -4,6 +4,63 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 
 ---
 
+### A SEEDED RNG makes "it's deterministic" vacuous — to tell a CHASE from a COIN, move the PLAYER
+
+**Situation:** Pinning any enemy decision that is supposed to depend on the player — a chase, an
+aim, a steer — in a sim whose randomness comes from a seeded PRNG (tp1-25: does the fuseball
+chase, or does it flip the LEFRIT coin?).
+
+**Problem:** I wrote two tests that PASSED AGAINST THE UNFIXED CODE, for two different wrong
+reasons, and either one would have shipped a green suite over a bug:
+
+1. **"The same board gives the same answer every run."** Meant to prove the decision is not a
+   coin flip. Proves nothing: the coin is *seeded*, so it is deterministic too. Identical runs
+   give identical answers whether the enemy chases or flips. The assertion cannot fail.
+2. **"Player 2 lanes clockwise → the enemy steps counter-clockwise."** A single direction. The
+   seeded coin happened to roll that exact lane, so it passed — *on the unfixed code*, by luck.
+   Its mirror image failed, which is the only reason I caught it.
+
+**Prevention:** The property no coin can fake is that it **MIRRORS the player**. Hold the seed
+fixed and move the PLAYER to the other side; a chaser's direction must flip, a coin's must not.
+Assert both halves **in one test**, so neither can pass alone:
+
+    playerCW  → must step one way        │ coin: same lane both times  → the mirror assert fails
+    playerCCW → must step the other way  │ chase: flips                → passes
+
+Then the *side* it flips to separates a faithful reversal (`JCHPLA` + `JCHROT`, away) from a
+"helpfully corrected" chase (`JCHPLA` alone, toward). Vary the input the behaviour is supposed
+to depend on — never the seed.
+
+**Corollary — liveness, still.** A frozen enemy also "ignores the player" and also "responds
+identically". Every one of these tests needs the guard: it must actually have moved.
+
+---
+
+### `TR` in Tempest's skill tables ALTERNATES — it does not ramp, and wave 17 is the EVEN slot
+
+**Situation:** Reading any per-wave constant out of Tempest's `WTABLE` contour tables (`TWFUSC`,
+`TPUCHDE`, `WPULTIM`, `WPULPOT`, …) — i.e. every tp1 fidelity story that says "from wave N…".
+
+**Problem:** A record like `.BYTE TR,17.,32.,0,40` *reads* like a ramp from 0 to $40 across waves
+17-32, and tp1-25's own story description called it one. It is not. `CONTOUR`'s type table says
+so out loud — `TR=0C;ALTERNATE BETWEEN BYTES 3 & 4` (ALWELG.MAC:414) — and `DOTR` (858-865) is
+`JSR RANGER / AND I,1 / IFNE / INY`: it takes byte 4 on an **ODD** offset into the range and
+byte 3 on an **EVEN** one. `RANGER` (848-856) is `TEMP2 - startWave`, and `TEMP2` is the 1-based
+wave (`CONTOUR` loads `CURWAV` and `INC`s it, 415-423).
+
+So the first wave of a `TR` range draws **byte 3**, not byte 4:
+
+    wave 17 → offset 0 → EVEN → byte 3 = 0     ← does NOT chase
+    wave 18 → offset 1 → ODD  → byte 4 = $40   ← the chase starts HERE
+
+**Prevention:** A story that says "from wave 17 X happens" is asserting the *table's* start wave,
+not the wave the behaviour turns on — and for `TR` those differ by one. Derive the value from
+`DOTR`'s parity before you pin a boundary; a test written to the story's wording pins the wrong
+wave and goes green. Check the type byte (`T1` = flat, `TZ` = per-wave, `TA` = accumulate,
+`TR` = alternate) *before* reading the parameters.
+
+---
+
 ### Authentic vector SHAPE isn't in `star-wars/reference/disasm/` — get it from historicalsource
 
 **Situation:** Writing a RED test that pins an *authentic 1983 vector shape* (fireball, explosion, an object's picture) for the star-wars game.
