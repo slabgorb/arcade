@@ -165,7 +165,8 @@ stories:
     description: "Cluster C5. Subsumes DB-006, DB-007, DB-008, DB-009, DB-016. Our perspective CURVE is algebraically correct; the CONSTANT is not. FAR_RATIO is a single module-level 0.2 for every level; the arcade's is per-well, R = (16+H)/(240+H), ranging 0.104-0.164. project, boundaryRail, laneWidth and flipPivot all close over the current module constant, so this is an API change, not a constant swap. Blocks tp1-10."
     points: 6
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -176,7 +177,9 @@ stories:
       - "project, boundaryRail, laneWidth and flipPivot take the tube rather than closing over a module constant."
       - "The starfield reuses the same hyperbolic law."
       - "npm test -- citations stays green."
+    completed: '2026-07-14'
     type: bug
+    review_verdict: approved
   - id: tp1-10
     title: "THE WARP DIVE — move the camera with the Claw, fly the eye into the new well, and replay the wave on a spike crash"
     description: "Cluster C6. Subsumes WD-010, WD-012, WD-013, WD-014, WD-015, WD-017, WD-018. Today the Claw changes size and screen position during the dive because the camera does not move with it. Needs tp1-1 (the velocities — warp accel carries the base rate SQUARED and is currently 4.45x too fast) and tp1-9 (the movable eye). Also the gate on tp1-11: restoring the ROM's spike depth is only fair once a spike crash replays the wave."
