@@ -31,7 +31,7 @@ stories:
     description: "Cluster C2. Subsumes EN-001, CD-013, CD-014, OB-013, RD-016, FL-002, FL-003, SN-003, MI-010. Run ALONGSIDE rb4-1 — this doc is the CAUSE of rb4-1, it is cited as authority in code comments across src/, and until it is fixed it will re-infect every future Red Baron story. It sources its enemy facts to R2BRON.MAC, a build that never shipped; it states its own radix rule correctly and then breaks it; its watchdog claim is off by 21x (CALFLG>=3, not >=0x40); three of its §1 line citations are off by one AND one of them is copied verbatim into src/core/timing.ts:18. It also mislabels the LOD as a 'distance LOD' — which is where biplane.ts's invented LOD_DISTANCE=1500 came from."
     points: 3
     priority: p1
-    status: in_review
+    status: done
     started: '2026-07-14'
     repos: red-baron
     workflow: tdd
@@ -42,6 +42,7 @@ stories:
       - "The off-by-one line citations are fixed, INCLUDING the one copied into src/core/timing.ts:18 (CALCNT is RBARON.MAC:621, not :620)."
       - "The 'distance LOD' claim is retracted: the ROM selects the plane model on PLSTAT+6 bit 0x10 ('PLANE ROTATED'/'FACING AWAY'), not on distance. No distance test exists anywhere in the picture path."
       - "Every code comment in src/ that cites the doc as authority is re-pointed at the ROM (file:line + radix) or at the audit."
+    completed: '2026-07-14'
     type: bug
     review_findings: "APPROVED round 4. Full vacuity audit re-run from scratch: all 21 doc claims turn the suite red when deleted; zero vacuous assertions. 897/897, tsc clean, CI enforcement 5->20 tests. One bug appeared 3x (assertion matching a TOKEN not a CLAIM: toContain('7')<-037007.XXX; \\b2\\b<-(rb4-2); \\.MAP<-R2BRON.MAP) — all closed and mutation-proven. Independently verified against the ROM: no citation regressed (36/49->49/56 resolve), rb4-1's correct citations untouched, every ROM fact re-derived."
     review_verdict: approved
