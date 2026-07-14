@@ -31,7 +31,7 @@ stories:
     description: "Cluster C2. Subsumes EN-001, CD-013, CD-014, OB-013, RD-016, FL-002, FL-003, SN-003, MI-010. Run ALONGSIDE rb4-1 — this doc is the CAUSE of rb4-1, it is cited as authority in code comments across src/, and until it is fixed it will re-infect every future Red Baron story. It sources its enemy facts to R2BRON.MAC, a build that never shipped; it states its own radix rule correctly and then breaks it; its watchdog claim is off by 21x (CALFLG>=3, not >=0x40); three of its §1 line citations are off by one AND one of them is copied verbatim into src/core/timing.ts:18. It also mislabels the LOD as a 'distance LOD' — which is where biplane.ts's invented LOD_DISTANCE=1500 came from."
     points: 3
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-07-14'
     repos: red-baron
     workflow: tdd
@@ -43,6 +43,8 @@ stories:
       - "The 'distance LOD' claim is retracted: the ROM selects the plane model on PLSTAT+6 bit 0x10 ('PLANE ROTATED'/'FACING AWAY'), not on distance. No distance test exists anywhere in the picture path."
       - "Every code comment in src/ that cites the doc as authority is re-pointed at the ROM (file:line + radix) or at the audit."
     type: bug
+    review_findings: "2 blocking [TEST]: (1) the '7 lines' guard is vacuous — toContain(String(7)) is satisfied by 037007.XXX; proved by mutation, a doc claiming '9 lines' passes 25/25. (2) 20 of 25 tests skip without the quarry (the CI condition), and most of them never needed the source — pure doc/src greps were needlessly nested inside skipIf blocks, so CI enforces almost none of AC2-AC5. Non-blocking: AC5 bit-check matches §6's unrelated D4-D7; decoy regexes are uppercase-only; watchdog negative misses the $40 spelling. Doc content itself verified CORRECT against the ROM — no citation regressed (36/49 -> 49/56 resolve)."
+    review_verdict: rejected
   - id: rb4-3
     title: "DETERMINISM — the sim seeds its RNG from Date.now(); the ROM's RANDOM is an LFSR"
     description: "Cluster C11 (GP-003). Small, cheap, and it UNBLOCKS regression-testing every other story in this epic — do it early. main.ts:467 calls createRng((Date.now() + kills)) to spawn every wave, INSIDE the sim-step path, and main.ts:349 seeds the blimp RNG from the wall clock too. The ROM's RANDOM (RBARON.MAC:6193) is a pure software LFSR with no clock input. Two consequences: the sim is non-deterministic (same-seed replay and same-seed regression tests are impossible — which is exactly what the rest of this epic needs), and it violates the core/shell boundary, which forbids the deterministic sim from reading wall-clock time."
