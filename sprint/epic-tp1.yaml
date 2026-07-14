@@ -509,7 +509,8 @@ stories:
     description: "Follow-up to tp1-12 (THE PALETTE), which shipped the COLTAB mechanism + resolver + the well/accent + the invisible-well waves 65-80 + blue, but deferred the per-enemy and starfield recolouring (V-019 'the deepest change', DB-017). Depends on tp1-12's merged palette (COLTAB_BANKS/paletteBank/paletteColor in src/shell/glyphs.ts). CRITICAL first step: resolve the ROM-semantic question the mechanism assumes — does the pulsar read COLTAB slot 4, or is it always PULPIC turquoise/white (tp1-3/DA-020 established a PULPIC two-state toggle that may OVERRIDE slot 4)? And which tanker sub-stroke recolours (body only, keeping the cargo emblem that signals cargo type). This is NOT a blanket glyph override. Also lands the input guards on paletteColor/paletteBank (Number.isFinite level, slot bounds — flagged by 3 review specialists, unreachable until these callers exist) and extracts a pure resolveWellColor(level, zapFlash) so the well wiring is behaviourally testable (tp1-12's source-scan was mutation-proved gameable). Subsumes V-019 + DB-017; mark both remediated_by tp1-30 when done."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     depends_on: tp1-12
@@ -520,6 +521,9 @@ stories:
       - 'paletteColor/paletteBank guard their inputs: a non-finite level and an out-of-range slot no longer break the PaletteColor contract or crash the render loop.'
       - A pure resolveWellColor(level, zapFlash) is extracted and unit-tested behaviourally — replacing tp1-12's gameable well-wiring source-scan.
       - V-019 and DB-017 are marked remediated_by tp1-30, citations reanchored, and npm test -- citations stays green.
+    completed: '2026-07-14'
+    review_findings: "3 [TEST] findings: (HIGH) starfield wiring untested/mutation-gameable — the story's own DB-017 deliverable recreates the gameable-coverage hole the story exists to eliminate; (MEDIUM) AC4 NaN-survival test asserts only .not.toThrow() via ?. — assert the fallback value; (LOW) flipper WIRING test missing hi.length guard. Code correct + all mechanical gates green; rework is tests-only."
+    review_verdict: approved
   - id: tp1-31
     title: THE FRAMING — the per-well screen-Z vanishing point (ZADJL) translates the whole tube, and it slides in at level start (DB-008, deferred from tp1-9)
     description: "DB-008 (NO_COUNTERPART), deferred from tp1-9. The whole tube is translated on screen by a per-well signed-16-bit ZADJL, and on a NEW WAVE it eases in (target-current >>3 per step). Couples with tp1-9's DB-007 (far ring about the VP) — with DB-007 shipped, this completes the framing. ROM (ALDISP.MAC, .RADIX 16): ZADJL by wellID from HOLZAD low + HOLZDH high (1387-1388) = [-192,-224,-192,-128,-192,-192,-144,+96,+256,-224,+64,0,-352,+320,-192,+256]; X vanish is always 0 (2507); slide ease at 2494-2505 / ALWELG.MAC:80-84. Implement as a shell screen-translate of the whole Tube + a per-level tween; does not touch core projection. TEA recommended exposing the per-well offset as a pure constant to make it unit-testable. Full context in sprint/archive/tp1-9-session.md (Delivery Findings)."

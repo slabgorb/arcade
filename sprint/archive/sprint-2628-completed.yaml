@@ -124,3 +124,8 @@ completed_stories:
     title: THE FRAMING — the per-well screen-Z vanishing point (ZADJL) translates the whole tube, and it slides in at level start (DB-008, deferred from tp1-9)
     points: 3
     completed: '2026-07-14'
+  - id: tp1-30
+    epic: tp1
+    title: THE PALETTE, part 2 — enemies + starfield resolve colour through the COLTAB bank (V-019, DB-017)
+    points: 5
+    completed: '2026-07-14'
