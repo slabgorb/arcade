@@ -181,3 +181,45 @@ stories:
       - "BLCOLL, the blimp's collision box, is transcribed and used for the blimp hit test."
       - "npm test -- citations stays green."
     type: feature
+  - id: rb4-12
+    title: RE-POINT THE QUARRY — reference/red-baron/ is the CRLF sibling, the copy that poisoned the doc
+    description: "Root cause of rb4-2, still on disk. Three checkouts of the Atari source exist and two DISAGREE ABOUT LINE NUMBERS. The citable byte-of-record is ~/Projects/red-baron-source-text (LF-only, md5 497db93e0b5cf3a67581463d2bac5e8d, RBARON.MAC = 6294 lines). The CRLF sibling (md5 27cdfeae404655fe4e65ced2a3621f95, 6286 lines) glues each form-feed page break (0x0C) onto the following .SBTTL/.TITLE line, losing 8 lines in a STAIRCASE: +0 below :263, +1 through :724 (this is why CALCNT reads 620 instead of 621), rising to +8 past :5963. No constant offset repairs a citation taken from it. red-baron/reference/red-baron/ — the gitignored quarry the findings doc's own header names as its source — IS the CRLF sibling. Until it is re-pointed, the next author reads the wrong line numbers and rb4-2 happens again. The orchestrator has already vendored the correct LF copy at arcade/reference/atari-source/red-baron/ (branch feat/extract-audio). tests/audit/source-citations.test.ts (rb4-2) already carries a fingerprint that rejects a glued copy — this story wires that guard in front of everything that reads the quarry."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    acceptance_criteria:
+      - "red-baron/reference/red-baron/ is the LF byte-of-record: RBARON.MAC md5 497db93e0b5cf3a67581463d2bac5e8d, 6294 lines, :74 = '.RADIX 16', :621 = 'CALCNT =18'."
+      - "The CRLF sibling is unreachable by tooling: RED_BARON_SOURCE_DIR's default and every test that resolves a citation fingerprint the quarry FIRST, and fail loudly (naming the md5 and the line count) if handed a glued copy."
+      - tests/audit/citations.test.ts — which today takes RED_BARON_SOURCE_DIR on faith — is gated behind the same fingerprint, so the audit's source-side checks cannot silently 'confirm' against the wrong bytes.
+      - The findings doc's provenance line names WHICH copy it was written against, by md5 and line count — not just 'reference/red-baron/'.
+    type: chore
+  - id: rb4-13
+    title: THE LOD IS AN ORIENTATION BIT, NOT A DISTANCE — biplane.ts invented LOD_DISTANCE
+    description: "rb4-2 retracts the findings doc's 'built-in distance LOD' claim (which the doc itself only ever tagged '[LOD reading inferred]'). This story retires the BEHAVIOUR that grew out of it. The ROM does not test distance anywhere in the picture path. DRNPIC (RBARON.MAC:4961-4963, citable copy) reads 'LDA PLSTAT+6 ;PLANE ROTATED' then 'AND I,10' — and in a .RADIX 16 region that 10 is 0x10, bit D4, set/cleared at RBARON.MAC:2652 ';D4=0 (PLANE FACING AWAY)'. Bit clear takes the 20-branch: .DRPNT, the 29-point drone point-list, drawn with the DB.MAR front list. Bit set: scale-down plus DB.MAP with back faces. So the far/near model is chosen on ORIENTATION — is the plane turned away from you — not on how far away it is. src/core/biplane.ts instead carries LOD_DISTANCE, a depth threshold: first 1500 (invented outright), then re-derived by rb4-1's Reviewer as a projected-wingspan fraction — a better-argued version of a test the ROM never makes. src/core/enemy.ts:83 now cites it as precedent for another tunable. NOTE the trap rb4-1 already hit: biplane.ts's behavioural tests passed IDENTICALLY at 1500 and at 1584 — they only ever asked that the switch land somewhere inside the flight band. A test that stages the plane at a convenient depth CANNOT see this defect; pin the MODEL CHOICE against the orientation state."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    acceptance_criteria:
+      - The plane model is selected on a 'rotated / facing away' orientation state mirroring PLSTAT+6 bit 0x10 — not on camera-space depth. A plane at ANY distance draws the 29-point .DRPNT model when facing away, and the full model when not.
+      - LOD_DISTANCE is gone from src/core/biplane.ts, and enemy.ts:83 no longer cites it as precedent for a tunable.
+      - "A test proves the ROM's rule bites where a distance rule cannot: same depth, two orientations, two different models. A depth-threshold implementation must FAIL it — mutate the old rule back in and confirm it turns red."
+      - The near model draws the back-face list (DB.MAP) and the far model the front list (DB.MAR), per DRNPIC's two branches.
+    type: bug
+  - id: rb4-14
+    title: GIVE THE DOC VERBATIM — 199 prose citations nobody can mechanically check
+    description: "The reason rb4-2 could not ship a universal citation checker. docs/audit/findings/*.json carry source: {file, line, verbatim}, and tools/audit/check-citations.mjs re-opens each cited line and compares BYTE-FOR-BYTE — no heuristics, no oracle problem. The findings doc carries no such field: it cites 'CALCNT (RBARON.MAC:620)' in prose, and there is no sound way for a machine to know which symbol a prose citation MEANS. Measured during rb4-2's RED: 64% of the doc's 199 citations 'resolved' against the citable copy versus 57% against the wrong one — noise, not a signal. So rb4-2 could only check the citations §1 makes at a symbol's DEFINITION (derive the line from the source, demand the doc cite it), and had to leave every use-site range unguarded. Adopt the audit's discipline: every citation in the doc carries the verbatim text of the line it cites, and a checker re-opens all 199 and compares bytes. Then the doc cannot rot again — not by a copy swap, not by a decoy, not by a typo — and the guard is mechanical rather than a reviewer's diligence."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    acceptance_criteria:
+      - Every FILE.MAC:LINE citation in docs/red-baron-1980-source-findings.md carries the verbatim text of the cited line (or the first line of a cited range).
+      - A checker re-opens all 199 citations against the citable quarry and compares byte-for-byte, failing on any mismatch. It runs where tests/audit/citations.test.ts runs, and degrades gracefully when the copyrighted source is absent (CI).
+      - The checker rejects any citation to a module outside the shipped build, reusing rb4-2's SHIPPED allowlist rather than a second copy of it.
+      - 'Mutation-proven: corrupt one verbatim and one line number, and confirm the checker turns red for each. A checker nobody has tampered with is decoration.'
+    type: refactor
