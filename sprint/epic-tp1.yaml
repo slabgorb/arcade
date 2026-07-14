@@ -534,3 +534,21 @@ stories:
     repos: tempest
     workflow: tdd
     completed: '2026-07-14'
+  - id: tp1-32
+    title: THE FRAMING clips the tube off-screen — tp1-31's ZADJL screen-Z translate is over-scaled; keep the whole well inside the viewport for all 16 wells
+    description: |-
+      The shipped tp1-31 framing (#115, released v1.0.13) translates the whole tube by a per-well ZADJL screen-Z offset, but the ROM→canvas scale is too large: it pushes the near rim (and the Claw on it) partly OFF-SCREEN — CONFIRMED by play-test, and visible even at LEVEL 1 (bottom rim sits at the screen edge; worse for the deeper wells).
+
+      ROOT CAUSE (src/core/geometry.ts, develop): screenZ = -ROM_ZADJ[well] * (16+H) * RING_SCALE / ROM_SCREEN_FACTOR, with RING_SCALE=300/112 and ROM_SCREEN_FACTOR=256. The tube's near radius is ~300 world units and the phosphor scene box is 720 (±360 from centre), so the tube already nearly fills the frame. The computed shift is ~80 units at level 1 (well 0, ZADJ -192, H=24) and ~94-147 at the deepest wells (well 12: -352; well 13: +320), driving the near rim to ~380-450 from centre — past the ±360 half-box, so it clips off the bottom/top.
+
+      FIX (design choice for the implementer, stay within #115's shipped architecture — screenZ lives in core Tube/camera): keep the WHOLE tube (near + far rings, ALL 16 wells) inside the viewport. Options: raise ROM_SCREEN_FACTOR / reduce the effective scale so the max shift leaves headroom; and/or shrink the base tube (RING_SCALE) to make room; and/or clamp the translate to a viewport-safe band. Preserve the ROM intent (wells sit high/low in frame) at a magnitude that never clips the playfield. Re-confirm the sign reads as the ROM's 'MOVE UP' for the negative-ZADJL majority.
+
+      TESTABLE INVARIANT (tdd): for every one of the 16 wells, the near-ring extents (min/max x and y) after applying screenZ stay within the scene box (±360 in the 720-unit scene, with a small safety margin). Pure geometry over Tube.screenZ + the ring points — no canvas needed. The remaining 'feel' of the magnitude is a play-test tune.
+
+      PROVENANCE: surfaced when a parallel checkout duplicated tp1-31 (PR #116, closed unmerged) and its adversarial review predicted this clipping; the play-test confirmed it. This story fixes the SHIPPED #115 code — do NOT reintroduce #116's separate framing.ts approach.
+    points: 2
+    priority: p1
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    type: bug
