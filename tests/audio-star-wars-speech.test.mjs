@@ -1,17 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { sourceDir } from '../scripts/sources.mjs';
 import { join } from 'node:path';
 import { parseMap } from '../scripts/audio/parse/map.mjs';
 import { parseLda, readImage } from '../scripts/audio/parse/rom.mjs';
 import { synthesize, SAMPLE_RATE } from '../scripts/audio/render/tms5220.mjs';
 import sw from '../scripts/audio/games/star-wars-speech.mjs';
 
-const P = join(homedir(), 'Projects');
+const SRC = sourceDir('star-wars-1983');
 
 test('speech: SNDAUX.MAP proves SWVOC3 (not SWVOC2) is the linked vocabulary', () => {
-  const { modules } = parseMap(readFileSync(join(P, 'star-wars-1983-source-text', 'SNDAUX.MAP'), 'utf8'));
+  const { modules } = parseMap(readFileSync(join(SRC, 'SNDAUX.MAP'), 'utf8'));
   const v = modules.find((m) => m.name === 'VOCABU');
   assert.deepEqual({ base: v.base, size: v.size }, { base: 0x4002, size: 0x18e3 });
   assert.ok(v.refs.includes('SWVOC3'), 'the linker chose SWVOC3; SWVOC2 is a superseded revision');
@@ -20,7 +20,7 @@ test('speech: SNDAUX.MAP proves SWVOC3 (not SWVOC2) is the linked vocabulary', (
 test('speech: the vocabulary blob comes from the ROM IMAGE, not a source byte count', () => {
   // SWVOC3.MAC has duplicate P9S/P13S/P18S/P21S labels leaving dead LPC blocks, so
   // naive source concatenation overshoots. The linked image is the oracle.
-  const lda = readFileSync(join(P, 'star-wars-1983-source', 'SNDAUX.LDA'));
+  const lda = readFileSync(join(SRC, 'SNDAUX.LDA'));
   const { image } = parseLda(lda);
   const vocab = readImage(image, 0x4002, 0x18e3);
   assert.equal(vocab.length, 0x18e3);

@@ -12,7 +12,7 @@
 // are commented "THRUST" but are warp/enemy_explosion. Key on the ROM ADDRESS,
 // never on the comment.
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { sourceDir } from '../../sources.mjs';
 import { join } from 'node:path';
 import { parseMac } from '../parse/mac.mjs';
 import { expandEnvelope } from '../render/envelope.mjs';
@@ -53,7 +53,7 @@ export default {
   // not per-sound slices. Simpler, and strictly stronger: it is what catches the
   // 4-byte truncation in the shipped hand table (218 bytes where the ROM has 222).
   table() {
-    const text = readFileSync(join(homedir(), 'Projects', `${this.dirbase}-source-text`, this.sourceFile), 'utf8');
+    const text = readFileSync(join(sourceDir(this.dirbase), this.sourceFile), 'utf8');
     const { bytes, labels } = parseMac(text);
     const start = labels.get('T51F');
     return { bytes: bytes.slice(start), romAddr: DATA_BASE, labels, all: bytes, start };

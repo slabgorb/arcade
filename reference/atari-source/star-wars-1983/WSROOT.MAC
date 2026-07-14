@@ -1,0 +1,36 @@
+	.TITLE WSROOT	;ROOT VERSION OF BANK SWITCHING VECTOR TABLE
+	.INCLUDE WSCOMN	;<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+				;===
+				;GLOBAL OFFSETS
+				;---
+				;D-PAGE RAM
+				;---
+				;RAM
+				;---
+				;OUTSIDE ROUTINES
+				;---
+				;MATH BOX
+				;---
+				;VECTOR GENERATOR
+				;---
+				;HARDWARE
+				;---
+				;SHIFT ROUTINES
+				;===
+
+				;===
+	.MACRO .PAGG		;GLOBAL PAGE NUMBERS
+	.PAGEG R		;ROOT 
+	.ENDM
+
+	.CSECT ROOT
+
+	.PAGG
+
+	ROOT=1			;LARGE RESIDENT ROOT PORTION
+	.INCLUDE WSVCTR		;<<<<<<<<<<<<<<<<<<<<<<<
+
+	HLL69F
+
+	.END

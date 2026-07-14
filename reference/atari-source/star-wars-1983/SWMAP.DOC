@@ -1,0 +1,102 @@
+SWMAP.DOC	Memory Map for Star Wars Hardware (PCB Prototype REV A)
+
+Jed Margolin    4/4/83
+		4/22/83
+-------------------------------------------------------------------------------
+
+0000-2FFF	R/W	VMEM		VG RAM (12K)
+3000-3FFF	R	VMEM		VG ROM (4K)
+
+-------------------------------------------------------------------------------
+
+4300		R	IN0		Switch Input -  Active Low
+					D7 = Left Fire/ Start
+					D6 = Right Fire/Start
+					D5 = Spare 1
+					D4 = Self-Test
+					D3 = Slam
+					D2 = Coin Aux
+					D1 = Coin L
+					D0 = Coin R
+
+4320		R	IN1		Switch Input
+					D7 = Math Run    - Active High
+					D6 = VGHALT      - ?
+					D5 = Left Thumb  - Active Low
+					D4 = Right Thumb -   "
+					D3 = Spare 2	 -   "
+					D2 = Diagn.	 -   "
+					D1 = unused
+					D0 = unused
+
+4340		R	OPT0		Option Switch Input
+4360		R	OPT1		Option Switch Input
+4380		R	ADC		A/D Output
+
+4400		R	MAINREAD	Read Sound Register, reset SOUND flag
+		W	MAINWR		Write Main Register, set MAIN flag
+
+4401		R	FLAGREAD	Read Interface Status: 
+						D7=1 MAIN Register full
+						D6=1 SOUND Register full
+
+4500-45FF	R/W	NOVRAM		Non-volatile RAM, 256 Nybbles D0-D3
+
+4600		W	VGGO		Start Vector Generator
+
+4620		W	VGRES		Reset Vector Generator
+
+4640		W	WDCLR		Clear WATCHDOG Counter
+
+4660		W	IRQCLR		Clear IRQ
+
+4680		W	COIN CNTR 2	D7 latch, 1=active
+4681		W	COIN CNTR 1	D7 latch, 1=active
+4682		W	LED 3		D7 latch, 0=on
+4683		W	LED 2		D7 latch, 0=on
+4684		W	MPAGE		D7 latch, select 8K segment of ROM 0
+4685		W	PRNGCLR		D7 latch, Clear PRNG
+4686		W	LED 1		D7 latch, 0=on
+4687		W	RECALL		D7 latch, 1=recall NOVRAM array
+
+46A0		W	NSTORE		Store Novram array
+
+46C0		W	ADCSTART	Start ADC, Channel 0
+46C1		W	ADCSTART	Start ADC, Channel 1
+46C2		W	ADCSTART	Start ADC, Channel 2
+					(Only 1 channel can be used at a time,
+					 and use 2 write strobes.)
+
+46E0		W	SOUNDRST	Sound Board Reset
+
+4700		R	REH		Read Divider Quotient High
+		W	MW0		Load Matrix Processor PC and GO
+
+4701		R	REL		Read Divider Quotient Low
+		W	MW1		Load Matrix Processor BIC High
+
+4702		W	MW2		Load Matrix Processor BIC Low
+
+4703		R	PRNG		Read Pseudo Random Number Generator
+
+4704		W	DVSRH		Load Divisor High 
+
+4705		W	DVSRL		Load Divisor Low, and Start
+
+4706		W	DVDDH		Load Dividend High
+
+4707		W	DVDDL		Load Dividend Low
+
+-------------------------------------------------------------------------------
+
+4800-4FFF	R/W	RAM		Program RAM (2K)
+
+-------------------------------------------------------------------------------
+
+5000-5FFF	R/W	MBRAM		Matrix Processor RAM (4K)
+
+-------------------------------------------------------------------------------
+
+6000-FFFF	R	ROM		Program ROM (48K) [ROM 0 is segmented]
+
+-------------------------------------------------------------------------------

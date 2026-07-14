@@ -1,0 +1,265 @@
+	.SBTTL TCODE2.MAC  STAR WARS MICROCODE ASSEMBLER
+	.SBTTL FOR HARDWARE VERSION REV 4
+	.SBTTL ******************
+	.SBTTL *
+	.SBTTL * PROGRAMMER: ED ROTBERG
+	.SBTTL *    REVISED: GREG RIVERA
+	.SBTTL *
+	.SBTTL ******************
+	.REPT 0
+	
+DATE: 7/30/80
+      12/21/81
+      12/7/82
+      1/23/83
+	
+PROJECT: 27903
+	
+	
+DESCRIPTION:
+	MACROS TO IMPLEMENT MICRO-CODE
+	ASSEMBER FOR JED'S 3-D MATH BOX
+	.ENDR
+	.RAD=10
+	.RADIX 16
+;VARIABLES AND CONSTANTS
+	PARTSZ= 1024.	;Partition size, First part of low byte of microword
+			;                Second part of high byte of microword
+	XP=00
+	YP=01
+	ZP=02
+	AX=03
+	AY=04
+	AZ=05
+	BX=06
+	BY=07
+	BZ=08
+	CX=09
+	CY=0A
+	CZ=0B
+	XT=0C
+	YT=0D
+	ZT=0E
+	ZERO=0F
+	ONE=10
+	SIN=11
+	COS=12
+	HALF=13
+	AX1=14
+	AY1=15
+	AZ1=16
+	VX=17
+	BX1=18
+	BY1=19
+	BZ1=1A
+	VY=1B
+	CX1=1C
+	CY1=1D
+	CZ1=1E
+	VZ=1F
+	XT1=20
+	YT1=21
+	ZT1=22
+	FX=23
+	AX2=24
+	AY2=25
+	AZ2=26
+	FY=27
+	BX2=28
+	BY2=29
+	BZ2=2A
+	FZ=2B
+	CX2=2C
+	CY2=2D
+	CZ2=2E
+	THRUST=2F
+	XT2=30
+	YT2=31
+	ZT2=32
+	GRAV=33
+	C40=34
+	C80=35
+	SCALE =36
+	XSCALE=37
+	VSQ=37
+	XPS=38
+	PZ1=38
+	YPS=39
+	PY1=39
+	ZPS=3A
+	PZ2=3A
+	XCS=3B
+	PY2=3B
+	QW=3C
+	PX=3C
+	FW=3D
+	T =3D
+	QR=3E
+	TAX=3E
+	ASPD=3F
+	TBX=3F 
+	X=0
+	Y=1
+	Z=2
+	PDR=0
+	K1=1
+	XR=3
+	YR=0
+	ZR=1
+	XS=2
+	YS=3
+;
+;
+
+;HARDWARE PERFORMS    ACC = ACC + (A-B) * C
+;D15  LOAD REGISTER A FROM RAM			LDA addr
+;D14  LOAD REGISTER B FROM RAM			LDB addr
+;D13  LOAD REGISTER C FROM RAM, START MAC	LDC addr,MAC
+;D12  CLEAR ACCUMULATOR				CLA
+;
+;D11  INCREMENT BLOCK INDEX COUNTER		IBC
+;D10  HALT					HALT
+;D9   STORE ACCUMULATOR INTO RAM		SAC addr
+;D8   LOAD ACCUMMULATOR FROM RAM		LAC addr
+;
+;D7   DIRECT/INDEXED (0=INDEXED)		IND
+;D6	(DIRECT ADDRESS)
+;D5	(DIRECT ADDRESS)
+;D4 	(DIRECT ADDRESS)
+;
+;D3	(DIRECT ADDRESS)
+;D2	(DIRECT ADDRESS)
+;D1	(DIRECT/INDEXED ADDRESS)
+;D0	(DIRECT/INDEXED ADDRESS)
+;
+;
+;
+	.MACRO EVAL .A,.B,.C,.D
+	.IF B,.A
+	.BYTE ...1&^H0FF
+	.=.+PARTSZ-1
+	.BYTE <...1&^H0FF00>/^H100
+	.=.-PARTSZ
+	.IF NE,...1&^H400
+	ALIGN
+	.IFF
+	.IF EQ,<.&^H0FF>
+	.WARN		;CROSSING PAGE
+	.ENDC
+	.ENDC
+	...1=0
+	.IFF
+	.A .B .C .D
+	.ENDC
+	.ENDM
+
+;---
+;IND
+	.MACRO IND .A,.B,.C
+	...1=...1&^H0FF7F
+	EVAL .A .B .C
+	.ENDM
+;---
+;CLA
+	.MACRO CLA .A,.B,.C
+	...1=...1!^H1000
+	EVAL .A .B .C
+	.ENDM
+	
+;---
+;IBC
+	.MACRO IBC .A,.B,.C
+	...1=...1!^H800
+	EVAL .A .B .C
+	.ENDM
+
+;---
+;MAC
+	.MACRO MAC .A,.B,.C
+	...2=1
+	EVAL .A .B .C
+	.ENDM
+;---
+;HALT
+	.MACRO HALT .A,.B,.C
+	...1=...1!^H400
+	EVAL .A .B .C
+	.ENDM
+;---
+;LDA
+	.MACRO LDA .A,.B,.C,.D,.E
+	CHKADR .A
+	...1=^H8080!.A!...1
+	EVAL .B .C .D .E
+	.ENDM
+
+;---
+;LDB
+	.MACRO LDB .A,.B,.C,.D,.E
+	CHKADR .A
+	...1=^H4080!.A!...1
+	EVAL .B .C .D .E
+	.ENDM
+
+;---
+;LDC
+	.MACRO LDC .A,.B,.C,.D,.E
+	CHKADR .A
+	...2=0
+	...1=^H2080!.A!...1
+	EVAL .B .C .D .E
+	.IF EQ,...2
+	.WARN		;You Forget MAC!
+	.ENDC
+	.ENDM
+
+;---
+;STA
+	.MACRO SAC .A,.B,.C,.D,.E
+	CHKADR .A
+	...1=^H280!.A!...1
+	EVAL .B .C .D .E
+	.ENDM
+	
+;---
+;LAC
+	.MACRO LAC .A,.B,.C,.D,.E
+	CHKADR .A
+	...1=^H180!.A!...1
+	EVAL .B,.C,.D,.E
+	.ENDM
+
+;---
+;ALIGN		Forces quartile boundary for entry points
+;		Done automatically following a HALT (via EVAL)
+	.MACRO ALIGN
+	.REPT <4-<.-<./4*4>>>&3
+	.BYTE 0				;NOP
+	.=.+PARTSZ-1
+	.BYTE 0				;NOP - Space Being Wasted
+	.=.-PARTSZ
+	.ENDR
+	.ENDM
+;---
+;CHKADR					;CHECK FOR VALID ADDRESSES
+	.MACRO CHKADR .A
+	.IF NE,...1&^H0E37F		;RAM Instr or Addr
+	.IF NE,...1&^H7F-.A
+	.WARN RAM Addresses Don't Match
+	.ENDC
+	.ENDC
+	.ENDM
+	
+;---
+;NXTPAG
+	.MACRO NXTPAG
+	.=<.+^H0FF>&^H0FF00
+	.ENDM
+	.LIST MEB
+	.NLIST BYT
+	
+	.RADIX .RAD
+
+	;.END OF INCLUDED FILE
+;==============================================================================
+

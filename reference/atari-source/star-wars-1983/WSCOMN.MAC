@@ -1,0 +1,117 @@
+	.SBTTL COMN
+	.SBTTL	DOCUMENTATION
+	.ENABLE	AMA
+	.CSECT
+	.RADIX	16
+	.LIST	MEB
+	.NLIST	BYTE
+;========================= STAR WARS =========================
+;
+;	Copyright 1983 ATARI.  Unauthorized reproduction, adapta-
+;	tion, distribution, performance or display of this computer
+;	program or the associated audiovisual work is strictly pro-
+;	hibited.
+;
+;
+;DATE INITIATED:	APRIL, 81 (AS WARP SPEED)
+;			JAN, 82 (NEW PROJECT LEADER)
+;			OCT, 82 (AS STAR WARS)
+;PROJECT CHARGE:	279XX
+;
+;HARDWARE:		3-D MATH BOX
+;			ANALOG VECTOR GENERATOR
+;			6809 GAME PROCESSOR
+;			6809 AUXILIARY SOUND BOARD
+;
+;LINK COMMAND STRING:
+			.COPY WSMAIN.LNK		;<<<<<<<<<<<
+;
+;PROGRAM DESCRIPTION:	1ST PERSON SPACESHIP BATTLE.  LICENSED BATTLE
+;			AGAINST TIE FIGHTERS AND DEATH STAR.
+;
+;CONTROLS:		STAR WARS FLIGHT CONTROLLER
+;
+;============================================================
+	.PAGE
+				;---
+				;DATA BIT CONSTANTS
+BT0=1
+BT1=2
+BT2=4
+BT3=8
+BT4=10
+BT5=20
+BT6=40
+BT7=80
+				;---
+	.SBTTL	MACROS
+
+				;===
+	.MACRO .ARRAY	A1,A2,A3
+	.IF NB,<'A3'>
+	'A1''A2'=<'A3'>
+	.ENDC
+	.ARRAZ='A1''A2'
+	.ENDM
+
+	.MACRO .ARRAG	A1,A2,A3
+	.IF NB,<'A3'>
+	'A1''A2'==<'A3'>	;GLOBAL
+	.ENDC
+	.ARRAZ='A1''A2'
+	.ENDM
+
+	.MACRO .PAGEG A1
+	HLL69F			;CHECK FOR PROPER STRUCTURE
+	.PAGE
+	.PAGES=.PAGES+1
+	.ARRAG	.PG'A1',\.PAGES,.
+	.ENDM
+	.PAGES=2		;CURRENT PAGE NUMBER	
+				;===
+				;CHOREOGRAPHY
+	.MACRO CHSET A1
+	.IIF	NE,<'A1'>&0FF00,ORA #<<'A1'>&0FF00/100>
+	.IIF	NE,<'A1'>&0FF,ORB #<<'A1'>&0FF>
+	.ENDM
+				;===
+				;OVERLAY ENTRIES
+	.MACRO J LABEL
+	ROOT==ROOT		;ALL VERSIONS IN EACH LINK MUST AGREE
+	.IF	NE,ROOT
+LABEL::				;STANDARD LABEL IF IN RESIDENT ROOT
+	.IFF			;ELSE IF BANKED OVERLAY
+LABEL:				;ALLOW LOCAL USAGE ONLY
+J'LABEL::			;VECTORED ENTRY USES J LABELS
+	.ENDC
+	.ENDM
+				;===
+
+	DPRAM==4800
+	.DPAGE DPRAM/100
+				;TEMPORARY D-PAGE
+.MACRO	TEMP	.A,.B .C,.D .E,.F .G,.H,.I,.J,.K,.L,FIN
+	.IIF NB,FIN,.ERROR ;TOO MANY ARGS
+	TEMP0=1			;START OF TEMP ARRAY
+	.IIF NB,.A,TEMPDO .A,.B
+	.IIF NB,.C,TEMPDO .C,.D
+	.IIF NB,.E,TEMPDO .E,.F
+	.IIF NB,.G,TEMPDO .G,.H
+	.IIF NB,.I,TEMPDO .I,.J
+	.IIF NB,.K,TEMPDO .K,.L
+	.IIF GT,TEMP0-9.,.ERROR TEMP0 ;TEMP0 OVERFLOW, 8 BYTE MAX
+	.ENDM
+
+.MACRO	TEMPDO	.A,.B
+	TMP'.A=TEMP0+DPRAM
+	TEMP0=TEMP0+'.B
+	.ENDM
+				;===
+
+;>>>>>>	INCLUDE HLL69F,MOP69  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	.NLIST
+	.INCLUDE HLL69F	;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	.INCLUDE MOP69	;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	.LIST
+				;===
+	.PAGE

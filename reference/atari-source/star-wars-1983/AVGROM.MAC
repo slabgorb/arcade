@@ -1,0 +1,66 @@
+	.TITLE	AVGROM 	;AVG STATE PROM FOR STAR WARS AVG
+	.RADIX	16
+	.ASECT
+;
+; PROGRAMMER: DENNIS HALVERSON, MODIFIED BY JED MARGOLIN 1/14/83
+; REV 1.0
+	A=0A
+	B=0B
+	C=0C
+	D=0D
+	E=0E
+	F=0F
+	X=0
+
+	;USES A 256X4 BIPOLAR PROM TO GENERATE STATES
+	;A7=NOT HALT & NOT GO
+	;A6=OP2
+	;A5=OP1
+	;A4=OP0
+	;A3=ST3
+	;A2=ST2
+	;A1=ST1
+	;A0=ST0
+;
+;
+; STATES ST2,ST1,ST0	(ST3=0 does not generate any strobes or latches)
+;
+;		8	LATCH 0		load DVY0-DVY7
+;		9	LATCH 1		load DVY8-DVY15	(contains opcode)
+;		A	LATCH 2		load DVX0-DVX7
+;		B	LATCH 3		load DVX8-DVX15
+;		C	STROBE 0	do NORM/PUSH
+;		D	STROBE 1	do SCALE
+;		E	STROBE 2	load STAT (or SCALE)
+;		F	STROBE 3	do GO/HALT
+;
+;INSTRUCTIONS		Vector State Sequence
+; 0	VCTR 		9,8,B,A,C,D,F,0
+; 1	HALT 		9,8,F,0
+; 2	SVEC 		9,B,C,D,F,0
+; 3	STAT (old)	9,8,E,0
+; 3	STAT (new)	9,8,7,6,5,E,0  (because of X,Y,Z delay) 
+; 4	CNTR		9,8,C,F,0
+; 5	JSRL		9,8,C,D,E,9 (gate array address provides new opcode)
+; 6	RTSL		9,8,D,E,9   (gate array address provides new opcode)
+; 7	JMPL		9,8,E,9	    (gate array address provides new opcode)
+;
+
+	.REPT	80		;IF A7=0, ALWAYS STATE 0
+	.BYTE 0
+	.ENDR
+;
+;addresses    0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F
+;
+	.BYTE 9,X,X,X,X,X,X,X,B,8,C,A,D,F,X,0	;VCTR-000
+	.BYTE 9,X,X,X,X,X,X,X,F,8,X,X,X,X,X,0	;HALT-001
+	.BYTE 9,X,X,X,X,X,X,X,X,B,X,C,D,F,X,0	;SVEC-010
+;	.BYTE 9,X,X,X,X,X,X,X,E,8,X,X,X,X,0,X	;STAT-011 (old)
+	.BYTE 9,X,X,X,X,E,5,6,7,8,X,X,X,X,0,X   ;STAT-011 (new)
+	.BYTE 9,X,X,X,X,X,X,X,C,8,X,X,F,X,X,0	;CENTER-100
+	.BYTE 9,X,X,X,X,X,X,X,C,8,X,X,D,E,9,X	;JSR-101
+	.BYTE 9,X,X,X,X,X,X,X,D,8,X,X,X,E,9,X	;RTS-110
+	.BYTE 9,X,X,X,X,X,X,X,E,8,X,X,X,X,9,X	;JMP-111
+;
+;
+	.END

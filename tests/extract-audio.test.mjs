@@ -189,9 +189,10 @@ test('audit: a sound whose labels vanish from source becomes an UNVERIFIED row, 
 });
 
 // These exercise the real chain end-to-end (links 1-5) against the vendored
-// ROM images AND the real shipped artifacts (same machine-local
-// ~/Projects/*-source convention every other audio-*.test.mjs file already
-// relies on, plus the sibling game repos' checked-out working trees). If any
+// ROM images in reference/atari-source/ (in-repo, so links 1-4 run anywhere)
+// AND the real shipped artifacts, which live in the sibling game repos'
+// checked-out working trees — those are separate gitignored subrepos, so
+// LINK 5 still needs a full `just install-all` checkout to run. If any
 // of these ever change, that is real news about either the ROM data or the
 // shipped port — do not "fix" it by loosening the assertion; investigate.
 //

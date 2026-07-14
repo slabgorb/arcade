@@ -34,12 +34,12 @@
 // internal consistency (not a guess) is what confirms the big-endian, image-sourced
 // reading is correct.
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parseLda, readImage } from '../parse/rom.mjs';
+import { sourceDir } from '../../sources.mjs';
 
-const P = join(homedir(), 'Projects');
-const PRISTINE = join(P, 'star-wars-1983-source');
+// One vendored tree: SNDAUX.LDA is byte-identical to the pristine clone.
+const SRC = sourceDir('star-wars-1983');
 
 const VOCAB_BASE = 0x4002;   // SNDAUX.MAP: VOCABU / SPKVTB
 const VOCAB_SIZE = 0x18e3;
@@ -69,7 +69,7 @@ export default {
   romFile: 'SNDAUX.LDA',
 
   speech() {
-    const { image } = parseLda(readFileSync(join(PRISTINE, this.romFile)));
+    const { image } = parseLda(readFileSync(join(SRC, this.romFile)));
     const vocab = readImage(image, VOCAB_BASE, VOCAB_SIZE);
 
     // SPKVTB: 24 entries x (start,stop) as big-endian absolute u16 addresses,

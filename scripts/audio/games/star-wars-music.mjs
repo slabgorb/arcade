@@ -31,14 +31,14 @@
 // an address. Reading the same words little-endian gives nonsense addresses outside
 // the code's actual $59xx-$68xx footprint.
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parseMap } from '../parse/map.mjs';
 import { parseLda } from '../parse/rom.mjs';
 import { runVoice } from '../render/musicvm.mjs';
+import { sourceDir } from '../../sources.mjs';
 
-const TEXT = join(homedir(), 'Projects', 'star-wars-1983-source-text');
-const PRISTINE = join(homedir(), 'Projects', 'star-wars-1983-source');
+// One vendored tree: the .MAC/.MAP are transcribed ASCII, SNDAUX.LDA is verbatim.
+const SRC = sourceDir('star-wars-1983');
 
 const TUNTAB_ADDR = 0x58e5;   // SNDAUX.MAP: TUNTAB
 const TUNTAB_ENTRIES = 50;    // real tune-voice entries (SF2V1..TSTV4); +1 for the
@@ -65,7 +65,7 @@ const TUNES = [
 // sentinel, 1..50 = the real entries, matching TUNTAB's own 1-based numbering so
 // `tuntab[N]` lines up with musicvm's `.CALL N` lookups without any reindexing).
 function resolveTuntab() {
-  const { image } = parseLda(readFileSync(join(PRISTINE, 'SNDAUX.LDA')));
+  const { image } = parseLda(readFileSync(join(SRC, 'SNDAUX.LDA')));
   const tuntab = [];
   for (let i = 0; i <= TUNTAB_ENTRIES; i++) {
     const off = TUNTAB_ADDR + i * 2;
@@ -84,7 +84,7 @@ export default {
   music() {
     // Sanity-check the map still says what we hardcoded, the way star-wars-speech.mjs
     // treats SNDAUX.MAP's numbers as ground truth rather than baking them in blind.
-    const { symbols } = parseMap(readFileSync(join(TEXT, 'SNDAUX.MAP'), 'utf8'));
+    const { symbols } = parseMap(readFileSync(join(SRC, 'SNDAUX.MAP'), 'utf8'));
     if (symbols.get('TUNTAB') !== TUNTAB_ADDR) {
       throw new Error(`SNDAUX.MAP TUNTAB moved: expected 0x${TUNTAB_ADDR.toString(16)}, got 0x${symbols.get('TUNTAB')?.toString(16)}`);
     }
@@ -188,8 +188,8 @@ function extractOps(text, { gosubSet, labelNums }) {
 }
 
 export function crossCheck() {
-  const mac = readFileSync(join(TEXT, 'SWMUS.MAC'), 'utf8');
-  const snd = readFileSync(join(TEXT, 'SWMUS.SND'), 'utf8');
+  const mac = readFileSync(join(SRC, 'SWMUS.MAC'), 'utf8');
+  const snd = readFileSync(join(SRC, 'SWMUS.SND'), 'utf8');
 
   const gosubSet = gosubTargets(mac);
   const labelNums = localLabelNumbers(mac);

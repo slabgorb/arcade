@@ -1,13 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { sourceDir } from '../../scripts/sources.mjs';
 import { parseWsobj } from '../../scripts/rom-models/wsobj.mjs';
 import { connectToEdges } from '../../scripts/rom-models/derive.mjs';
 
-const WSOBJ = join(homedir(), 'Projects', 'star-wars-1983-source-text', 'WSOBJ.MAC');
-const opts = { skip: existsSync(WSOBJ) ? false : 'run `just vendor-source-all` first' };
+const WSOBJ = join(sourceDir('star-wars-1983'), 'WSOBJ.MAC');
+// The source is vendored in-repo, so it is always here. If it ever is NOT, that is
+// a broken checkout and these oracles must FAIL — never skip and report green.
+const opts = {};
 const byName = (objs, n) => objs.find((o) => o.name === n);
 
 test('.P args are DECIMAL and scaled by .S', () => {

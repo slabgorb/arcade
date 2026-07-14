@@ -1,0 +1,55 @@
+STAR WARS - RF END BOARD COMPONENT LIST        44 & 30 PIN OFFSET
+JED MARGOLIN  4/6/83
+	      4/14/83
+----------------------------------------------------------------------------------
+44 PIN
+
+PIN  SIGNAL		CAP	VALUE		PIN  SIGNAL		CAP	VALUE
+--------------------------------------          ---------------------------------------
+ A  GND						  1  GND		
+ B  +5V			C1	104		  2  +5V		C2	104
+ C  +12VDC		C3	104		  3  GND		C22	104
+ D  -5VDC		C4	104		  4  GND		C23	104
+ E  +10.3V UNREG	C5	104		  5  S1			C24	XXX
+ F  GND			C6	104		  6  LED 1		C25	XXX
+ H  COIN CNTR 2		C7	104		  7  COIN CNTR 1	C26	104
+ J  PITCH		C8	104		  8  S2			C27	XXX
+ K  YAW			C9	104		  9  THRUST		C28	XXX
+ L  SLAM		C10	104		 10  FIRE/START L	C29	104
+ M  SELF TEST		C11	104		 11  SPARE 1		C30	XXX
+ N  COIN L		C12	104		 12  COIN R		C31	104
+ P  COIN AUX		C13	104		 13  GND		C32	104
+ R  GND			C14	104		 14  FIRE/START R	C33	104
+ S  LEFT THUMB		C15	104		 15  RIGHT THUMB	C34	104
+ T  DIAGN		C16	104		 16  SPARE 2		C35	XXX
+ U  AUDIO R		C17	103		 17  AUDIO L		C36	103
+ V  RESET		C18	XXX		 18  +10.3V UNREG	C37	104
+ W			C19			 19  -5VDC		C38	104
+ X			C20			 20  +12VDC		C39	104
+ Y  +5V			C21	104		 21  +SENSE		C40	104
+ Z  GND						 22  GND
+
+--------------------------------------------------------------------------------------------
+30 PIN
+
+PIN  SIGNAL		CAP	VALUE		PIN  SIGNAL		CAP	VALUE
+--------------------------------------          ---------------------------------------
+ A  GND						  1  GND			
+ B  +5V			C54	104		  2  +5V		C55	104
+ C  +12VDC		C68	104		  3  +22VDC		C53	104
+ D  			C67			  4  -22VDC		C52	104
+ E  			C66			  5  			C51	
+ F			C65			  6  RED		C50	471
+ H  RED GND		C64	104		  7  GREEN		C49	471
+ J  GREEN GND		C63	104		  8  BLUE		C48	471
+ K  BLUE GND		C62	104		  9  Y OUT		C47	471
+ L  Y GND		C61	104		 10  X OUT		C46	471
+ M  X GND		C60	104		 11  DEFOCUS		C45	471
+ N  -22VDC		C59	104		 12  			C44	
+ P  +22VDC		C58	104		 13  			C43	
+ R  +5V			C57	104		 14  +SENSE		C42	XXX
+ S  GND			C56	104		 15  -SENSE		C41  	XXX
+
+
+
+	XXX - CAPACITOR NOT PROVIDED
