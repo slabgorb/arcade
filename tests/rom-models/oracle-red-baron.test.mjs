@@ -1,19 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { sourceDir } from '../../scripts/sources.mjs';
 import { parsePointTable, parseConnectList } from '../../scripts/rom-models/redbaron.mjs';
 import { extractPoint3, extractConnect } from '../../scripts/rom-models/portdata.mjs';
 import { assembleRedBaronPictures } from '../../scripts/rom-models/redbaron-pictures.mjs';
 
-const RB_SRC = join(homedir(), 'Projects', 'red-baron-source-text');
+const RB_SRC = sourceDir('red-baron');
 const REPO = join(import.meta.dirname, '..', '..');
 
 // The vendored source is machine-local (docs/reference-sources.md). Skip loudly
 // rather than fail if this checkout has not run `just vendor-source-all`.
-const haveSource = existsSync(join(RB_SRC, 'RBARON.MAC'));
-const opts = { skip: haveSource ? false : 'run `just vendor-source-all` first' };
+// The ROM source is in-repo now, so it is always here. What can still be absent
+// is the red-baron SUBREPO working tree these oracles compare against — it is a
+// separate gitignored repo. Skip (loudly) rather than ENOENT when it is missing.
+const havePort = existsSync(join(REPO, 'red-baron', 'src', 'core', 'biplane.ts'));
+const opts = { skip: havePort ? false : 'red-baron subrepo not checked out — run `just install-all`' };
 
 test('ORACLE: parsed DB.PLN vertices === red-baron biplane.ts PLANE_POINTS', opts, () => {
   // RBARON.MAC is .RADIX 16 at the top but flips to .RADIX 10 (L6217) for this

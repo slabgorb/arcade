@@ -1,30 +1,31 @@
 // Bakes the original Atari ROM source into a committed TypeScript artifact the
 // contact sheet can import.
 //
-// WHY BAKE: the vendored source lives at ~/Projects/*-source-text and is in NO
-// repo, so a browser page cannot import it. Same pattern as the existing
-// star-wars/tools/pokey-bake and tools/speech-bake. The generated file IS the
-// audit record.
+// WHY BAKE: the vendored source (reference/atari-source/) is raw MACRO-11
+// assembler text — a browser bundle cannot import it. Same pattern as the
+// existing star-wars/tools/pokey-bake and tools/speech-bake. The generated file
+// IS the audit record.
 //
 // Usage:  node scripts/bake-models.mjs star-wars
 //         just bake-models star-wars
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { homedir } from 'node:os';
+import { sourceDir } from './sources.mjs';
 import { parseWsobj } from './rom-models/wsobj.mjs';
 import { connectToEdges } from './rom-models/derive.mjs';
 import { assembleRedBaronPictures } from './rom-models/redbaron-pictures.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Each entry names its vendored source file(s) (relative to no repo — see
-// docs/reference-sources.md), the generated artifact it writes, and a `build`
+// Each entry names its vendored source file(s) (in-repo under
+// reference/atari-source/ — see docs/reference-sources.md), the generated
+// artifact it writes, and a `build`
 // that turns the raw source text(s) into { code, lines } — the emitted
 // TypeScript plus the human-readable per-object summary main() prints.
 const GAMES = {
   'star-wars': {
-    sources: [join(homedir(), 'Projects', 'star-wars-1983-source-text', 'WSOBJ.MAC')],
+    sources: [join(sourceDir('star-wars-1983'), 'WSOBJ.MAC')],
     out: join(ROOT, 'star-wars', 'src', 'tools', 'romModels.generated.ts'),
     build: (texts) => {
       const models = toRomModels(parseWsobj(texts[0]));
@@ -41,8 +42,8 @@ const GAMES = {
   },
   'red-baron': {
     sources: [
-      join(homedir(), 'Projects', 'red-baron-source-text', 'RBARON.MAC'),
-      join(homedir(), 'Projects', 'red-baron-source-text', '037007.XXX'),
+      join(sourceDir('red-baron'), 'RBARON.MAC'),
+      join(sourceDir('red-baron'), '037007.XXX'),
     ],
     out: join(ROOT, 'red-baron', 'src', 'tools', 'romPictures.generated.ts'),
     build: (texts) => {

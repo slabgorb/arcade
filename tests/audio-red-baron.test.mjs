@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { sourceDir } from '../scripts/sources.mjs';
 import { join } from 'node:path';
 import { parseMac } from '../scripts/audio/parse/mac.mjs';
 import { parseMap } from '../scripts/audio/parse/map.mjs';
 import rb from '../scripts/audio/games/red-baron.mjs';
 
-const SRC = join(homedir(), 'Projects', 'red-baron-source-text');
+const SRC = sourceDir('red-baron');
 const mac = () => parseMac(readFileSync(join(SRC, 'RBSOUN.MAC'), 'utf8'));
 
 test('red-baron: RBARON.MAP links RBSOUN at $71C4', () => {

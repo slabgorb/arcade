@@ -1,0 +1,49 @@
+STAR WARS - EPROM/PROM Part Numbers
+
+6/22/83
+
+Jed Margolin
+
+	
+Function	Location    Atari #	     Type	   FILE			ADR     	DIO CHKSUM	     REV
+----------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------
+MAIN:	
+
+Program   ROM 0	  1F	   136021-114	  137328-002	[RIVERA.STARWARS]WSOVLY  6000,1		661A	(A736)	      A
+							[RIVERA.STARWARS]WSROOT	 6000,0			(BEE4)	      A
+	  ROM 1   1H/J	   136021-102	  137276-300 	[RIVERA.STARWARS]WSROOT	 8000		571E		      A
+	  ROM 2	  1J/K	   136021-203	  137276-300 	[RIVERA.STARWARS]WSROOT	 A000		73DD		      B
+	  ROM 3	  1K/L	   136021-104	  137276-300 	[RIVERA.STARWARS]WSROOT	 C000		F839		      A
+	  ROM 4	  1M	   136021-206	  137276-300 	[RIVERA.STARWARS]WSROOT	 E000		0210		      B
+Microcode 000L	  7L	   136021-113	  37-82S137  	[MARGOLIN.SW]SWMP	  0 L	   	0FBE		      A
+	  000H	  7K	   136021-112	  37-82S137  	[MARGOLIN.SW]SWMP	  0 H	   	1176		      A
+	  400L	  7J	   136021-111	  37-82S137  	[MARGOLIN.SW]SWMP	400 L	   	01FC		      A
+	  400H	  7H	   136021-110	  37-82S137  	[MARGOLIN.SW]SWMP	400 H	   	08E4		      A
+----------------------------------------------------------------------------------------------------------------------------
+AVG:
+
+VGROM		  1L	   136021-105	  137212-001 	[RIVERA.STARWARS]WSROOT	3000		91D1		      A
+
+VGSTATE		  4B	   136021-109	  37-82S129  	[MARGOLIN.SW]AVGROM	   0 L	   	01A5		      A
+	
+----------------------------------------------------------------------------------------------------------------------------
+SOUND:
+
+Program ROM 0	  1J/K	   136021-107	  137276-300 	[RIVERA.SWSOUND]SNDAUX	4000		6509		      A
+	ROM 1	  1H	   136021-208	  137276-300 	[RIVERA.SWSOUND]SNDAUX	6000		9358		      B
+
+----------------------------------------------------------------------------------------------------------------------------
+
+137328-002 = 27128 300 ns	16K*8		 
+137276-300 = 2764  300 ns	8K*8		
+137212-001 = 2732  250 ns	4K*8
+37-82S129  = 82S129		256*4
+37-82S137  = 82S137		1K*4
+
+----------------------------------------------------------------------------------------------------------------------------
+REVISIONS:
+
+June 11, 1983		Initial release, rev A						All releases			GR
+June 15, 1983		206,208 ; rev B.  Improved diagnostics				All releases			GR
+June 22, 1983		203 ; rev B.  Turn on roll feature in ground phase		Phase in after 3000		GR

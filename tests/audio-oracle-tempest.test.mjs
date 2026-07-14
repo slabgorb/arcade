@@ -2,12 +2,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { sourceDir } from '../scripts/sources.mjs';
 import { join } from 'node:path';
 import { parseMac } from '../scripts/audio/parse/mac.mjs';
 import { parseMap } from '../scripts/audio/parse/map.mjs';
 
-const SRC = join(homedir(), 'Projects', 'tempest-source-text');
+const SRC = sourceDir('tempest');
 
 test('oracle: ALEXEC.MAP links ALSOUN at $CB01 and CHKSM9 at $CCAF', () => {
   const { symbols, modules } = parseMap(readFileSync(join(SRC, 'ALEXEC.MAP'), 'utf8'));

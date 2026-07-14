@@ -17,6 +17,11 @@ completed_stories:
     title: Draw a real vector model in each lobby tile's model slot
     points: 5
     completed: '2026-07-13'
+  - id: SH2-18
+    epic: SH2
+    title: "Extract @arcade/shared/synth — the WebAudio SYNTHESIS engine skeleton (lazy gesture gate, no-throw contract, resolveContextCtor, noiseBuffer, voice bookkeeping) now that a SECOND synthesis cabinet proves the duplication: battlezone bz1-11 and red-baron rb2-11 hand-write byte-identical copies. DISTINCT from /audio (SH2-16), which is a SAMPLE/.wav buffer player and cannot host oscillator synthesis — the two are siblings, not replacements. Ship the VERB (context bootstrap + silent-degrade + closed-context guard), keep the NUMBERS (each cabinet's oscillators/filters/ROM seams) local. Adopt in battlezone + red-baron via the publish→release→repin dance."
+    points: 5
+    completed: '2026-07-13'
   - id: sw5-5
     epic: sw5
     title: Re-port SURFACE_TOWER and SURFACE_BUNKER from the ROM — the tower is missing its cannon-top ring
@@ -27,3 +32,42 @@ completed_stories:
     title: "Extract @arcade/shared/synth — the WebAudio SYNTHESIS engine skeleton (lazy gesture gate, no-throw contract, resolveContextCtor, noiseBuffer, voice bookkeeping) now that a SECOND synthesis cabinet proves the duplication: battlezone bz1-11 and red-baron rb2-11 hand-write byte-identical copies. DISTINCT from /audio (SH2-16), which is a SAMPLE/.wav buffer player and cannot host oscillator synthesis — the two are siblings, not replacements. Ship the VERB (context bootstrap + silent-degrade + closed-context guard), keep the NUMBERS (each cabinet's oscillators/filters/ROM seams) local. Adopt in battlezone + red-baron via the publish→release→repin dance."
     points: 5
     completed: '2026-07-13'
+  - id: sw5-4
+    epic: sw5
+    title: Re-port EXHAUST_PORT from the ROM — it is 12 vertices in three concentric squares, not an 8-vertex octagon
+    points: 3
+    completed: '2026-07-13'
+  - id: tp1-1
+    epic: tp1
+    title: "THE REBASE — the ROM runs at 28.44 fps (256/9), not 60; our sim is 2.11x too fast"
+    points: 8
+    completed: '2026-07-13'
+  - id: tp1-3
+    epic: tp1
+    title: "THE CHEAP WINS — nine one-line fidelity fixes carved out of the clusters"
+    points: 3
+    completed: '2026-07-13'
+  - id: tp1-2
+    epic: tp1
+    title: "THE AUDIO CROSS-WIRING — player_fire.wav IS the enemy-explosion envelope; enemy_explosion.wav IS the thrust sound"
+    points: 4
+  - id: tp1-23
+    epic: tp1
+    title: WD-010 — warpAccel is fed a 1-based level, not the ROM's 0-based CURWAV (the one character that fell between tp1-1 and tp1-3)
+    points: 1
+    completed: '2026-07-13'
+  - id: tp1-4
+    epic: tp1
+    title: "THE CAM, part 1 — build the bytecode interpreter and the 11 enemy programs, selected per wave from CAMWAV"
+    points: 8
+    completed: '2026-07-13'
+  - id: rb4-1
+    epic: rb4
+    title: "THE RADIX SWEEP — the ROM's constants are HEX; we read them as decimal. ~30 of them."
+    points: 8
+    completed: '2026-07-13'
+  - id: sw5-6
+    epic: sw5
+    title: Pin TRENCH_WALL_H from the ROM and seat the exhaust port in the trench — the re-ported PORT plate hangs half below the floor
+    points: 3
+    completed: '2026-07-14'

@@ -25,11 +25,15 @@ tui-pid
 .pennyfarthing/tmux-activity
 # Local tmux config (copied from sample)
 tmux.conf
-tempest
-lobby
-star-wars
-asteroids
+# The gitignored subrepos. ANCHOR THESE (`/name/`, not `name`): an unanchored
+# name matches a directory at ANY depth, so a bare `tempest` also swallowed
+# reference/atari-source/tempest/ — 57 files of vendored ROM source vanished from
+# `git add` without a word. Only the top-level checkout is the subrepo.
+/tempest/
+/lobby/
+/star-wars/
+/asteroids/
 /battlezone/
 /red-baron/
-arcade-shared
+/arcade-shared/
 out/audio/

@@ -11,3 +11,6 @@ epics:
   - SH2
   - sw5
   - lb2
+  - tp1
+  - sw6
+  - rb4
