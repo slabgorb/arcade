@@ -1,0 +1,13 @@
+# This tree is a BYTE-OF-RECORD. Git must never rewrite a byte of it.
+#
+# Each upstream historicalsource repo shipped its own `.gitattributes` with
+# `* text=auto`, and vendoring dragged them in — which handed git permission to
+# "auto-detect" and line-ending-normalize our ROM images. It got away with it only
+# because ALEXEC.LDA/SNDAUX.LDA/the numbered dumps happen to contain NUL bytes, so
+# the heuristic guessed binary. A NUL-free ROM, or a checkout with
+# core.autocrlf=true, and the audit's oracle would be silently rewritten underneath
+# it — `just extract-audio` compares these bytes against the ROM.
+#
+# So: no eol conversion, ever, for anything in here. Text stays the LF-normalized
+# ASCII that vendorBytes() produced; binaries stay verbatim.
+* -text
