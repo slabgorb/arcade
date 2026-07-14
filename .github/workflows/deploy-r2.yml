@@ -31,10 +31,10 @@ jobs:
       # blobs from the audit commit. Under checkout's default fetch-depth: 1 that commit
       # is not in the clone at all, so the gate cannot run and `npm test` fails — which
       # would block the deploy of a perfectly good build.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -42,7 +42,7 @@ jobs:
       - run: npm run build
       - run: npm test
       - name: Fetch deploy script from slabgorb/arcade
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: slabgorb/arcade
           path: .arcade
