@@ -134,3 +134,8 @@ completed_stories:
     title: THE FRAMING clips the tube off-screen — tp1-31's ZADJL screen-Z translate is over-scaled; keep the whole well inside the viewport for all 16 wells
     points: 2
     completed: '2026-07-14'
+  - id: tp1-13
+    epic: tp1
+    title: "AUDIO WIRING GAPS — the missing warp phase, the bonus chime, the bolt-collision cue, and the invented kzap"
+    points: 4
+    completed: '2026-07-14'

@@ -564,3 +564,34 @@ interface are canvas-space, while `tube.eye.{distance,z}` stay raw ROM bytes
 because they are the projection's input, not its output.
 
 ---
+
+### An audio AC on a phase that DOESN'T EXIST forces a time-segment contract — pin a weak floor, route the duration
+
+**Situation:** A wiring story says "phase X has its sound" while the story that BUILDS phase X is
+still in the backlog (tp1-13: "the warp dive's second phase has its sound", but tp1-10 owns "the
+second phase exists: the eye flies INTO the new well").
+
+**Problem:** In the current sim the trigger point and the phase's end are the SAME FRAME (our dive's
+bottom-crossing IS its completion frame), so a naive wiring starts and stops the loop on one frame —
+a sound that ships, passes a dispatch test, and can never be heard. But pinning the authentic
+duration oversteps into the other story's scope, and there is no single ROM byte for it anyway (the
+ROM's space span is emergent: CENDWA→ENDWAV→NEWAV2 state frames plus the eye flight).
+
+**Prevention:** Read the OWNING story's ACs first and split the contract: this story pins (a) the
+trigger frame from the ROM (MOVCUD's `CMP I,ILINDDY / IFCS / JSR SOUTS3`, ALWELG.MAC:1032-1037),
+(b) that the phase exists AS TIME (mode stays 'warp', level does not advance, a deliberately WEAK
+`>= 2 frames` floor), and (c) the handover/stop call order. The authentic duration goes to a
+Delivery Finding for Dev-with-citation (never silently invented — the 0.92 lesson), and the
+forward-impact note names the owning story. Bonus edge the split exposes: past the bottom the ROM's
+spike collision is GATED OFF (`CMP I,ILINDDY / IFCC ;CURSOR STILL ON LINES`, ALWELG.MAC:1083-1085) —
+our stepWarp's post-advance spike check would crash a claw at negative depth, so the space phase
+needs an explicit crash-proof pin or the new segment imports a phantom hazard.
+
+**Also (tempest bonus quarry):** the skill-step bonus lifecycle is set at level select
+(`STA X,BONUS`, ALWELG.MAC:236 — the value IS the select index), awarded+chimed once at ENDWAV
+(`LDA X,BONUS / IFNE / JSR BONSCO … JSR SAUSON`, ALEXEC.MAC:371-376, THROUGH UPSCOR so it feeds the
+extra-life ladder), and cleared on ARRIVAL at the next well (ALWELG.MAC:117) — so it survives a
+mid-dive spike crash and pays on the replayed dive. BONPTM (ALWELG.MAC:275) is .RADIX 16 words read
+as BCD digit-pairs ×100: .WORD 60→6,000 … 1140→114,000; the LEVEL ladder is odd waves, so a
+contiguous 1..16 select has NO ROM value for even waves — pin ladder anchors as literals plus a
+totality guard, and route the even-wave mapping to a ruling.

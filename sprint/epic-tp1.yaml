@@ -237,7 +237,8 @@ stories:
     description: "Cluster C9. Subsumes S-011, S-013, S-014, S-015. Depends on tp1-2, which produces the corrected T3 bytes this story reuses."
     points: 4
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -247,7 +248,10 @@ stories:
       - "kzap.wav is DELETED. It has no basis anywhere in ALSOUN's 13-sound table — it was invented."
       - "Depends on tp1-2."
       - "npm test -- citations stays green."
+    completed: '2026-07-14'
+    branch: fix/tp1-13-audio-wiring-gaps
     type: bug
+    review_verdict: approved
   - id: tp1-14
     title: "THE SUPERZAPPER — 19-frame window, kills every OTHER frame (8 kills, not 19), and takes tankers"
     description: "Cluster C10. Subsumes W-042, W-043, B-001, B-019, S-012. Note the refuter's correction to W-042: our SECOND zap press is already correct — only the sustained first-press cadence is wrong. Depends on tp1-1 (the window is a frame count)."
