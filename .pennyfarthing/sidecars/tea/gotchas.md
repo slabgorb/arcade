@@ -531,3 +531,36 @@ and check WHICH tests pass pre-GREEN: every pre-GREEN pass must be an intended g
 failure reasons are the audit; "fails" is not enough — fails-for-the-right-reason is.
 
 ---
+
+### Adding REQUIRED per-well data to a shared interface? DERIVE it in the synthetic constructor and the sibling suites never notice
+
+**Situation:** A fidelity story adds required fields to a core interface that test
+fixtures build synthetically (tp1-9: `Tube` gains the per-well eye so
+`perspectiveDepth(tube, depth)` can derive R = (16+H)/(240+H) — but seven sibling
+suites build tubes via `makeCircleTube(16, origin, 60, 300)` and pin numerics
+computed under the old global R = 0.2).
+
+**Problem:** The obvious moves both lose. An OPTIONAL field (`eye?`) needs a hidden
+fallback constant — the very module-level closure the story deletes. A required
+field with an arbitrary default (say the circle well's H=24) silently re-curves
+every synthetic tube (R 0.2 → 0.1515) and breaks interior-depth pins across the
+10-12 perspective suite, lane-width, flip-pivot, claw-transform… a mass re-seat
+for zero fidelity gain, since synthetics aren't ROM wells.
+
+**Prevention:** Derive the new datum from what the synthetic constructor ALREADY
+knows, choosing the value CONSISTENT with the object it builds: the eye that would
+produce its own far/near ratio — q = far/near, H = (240q − 16)/(1 − q), so
+60/300 → H = 40 → R = 0.2 exactly. Every legacy numeric survives byte-identical,
+the module constant still dies, and the RED suite pins the derivation
+(`circle.eye.distance === 40`, `pd(circle, 0.5) === 1/6`) so nobody "simplifies"
+it to a hardcoded default later. Check the seam by NOT re-seating the sibling
+suites and watching them stay green pre- and post-GREEN.
+
+**Also (same story):** when the interface datum has a natural home in TWO unit
+systems (ROM screen units vs canvas ring units), pick per-FIELD consistency with
+its consumers and write the conversion into the test literals — tp1-9 exposes
+`tube.screenZ` canvas-oriented (−ZADJ·RING_SCALE) because the rings on the same
+interface are canvas-space, while `tube.eye.{distance,z}` stay raw ROM bytes
+because they are the projection's input, not its output.
+
+---
