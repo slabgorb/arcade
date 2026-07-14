@@ -414,7 +414,8 @@ stories:
     description: "Found by Yoda during tp1-5 and left homeless; filed on Jedi's instruction (2026-07-14). tp1-5 closed W-023 for waves 1-16 and that is where the game actually plays: TWFUSC's table (ALWELG.MAC:686-690) has NO record below wave 17, so CONTOUR's end-of-table path yields 0, neither of WFUSCH's chase bits is set, and every fuseball decision falls to LEFRIT — 'RANDOMLY CHOOSE LEFT OR RIGHT' (2171-2178), a `BIT RANDOM` coin with the player as no input at all. That is the fix tp1-5 shipped, and it is right. BUT THE TABLE STARTS AT 17: `TWFUSC: .BYTE TR,17.,32.,0,40 / .BYTE TR,33.,48.,40,0C0 / .BYTE T1,49.,99.,0C0`. From wave 17 the chase bits ramp on, and the ROM then routes through FUCHPL (2168-2170) — which is `JSR JCHPLA` followed by `JSR JCHROT`, i.e. it aims at the player and then REVERSES: the source's own comment is 'FUSE IS BACKWARDS'. MAYBLR adds an 'only if the invader index is even' rule on top. `src/core/enemies/interpreter.ts` (`jfuseup`) now rolls the LEFRIT coin UNCONDITIONALLY at every wave, so deep-wave fuseballs are wrong in the OTHER direction from the bug tp1-5 fixed — we have traded a fuseball that always chased for one that never does. Neither is the arcade. This is the second half of W-023 and nothing implements or tests it."
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
