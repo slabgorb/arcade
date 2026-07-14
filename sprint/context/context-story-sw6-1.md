@@ -1,0 +1,38 @@
+# Story sw6-1 Context
+
+## Title
+Bake the four POKEY music loops from the original 1983 source — port Rusty's POKEY Music driver (SNDPM.MAC) + the SWMUS.MAC tunes, upload to R2, and make Star Wars audible for the first time
+
+## Metadata
+- **Story ID:** sw6-1
+- **Type:** feature
+- **Points:** 8
+- **Priority:** p1
+- **Workflow:** tdd
+- **Repo:** star-wars, orchestrator
+- **Epic:** Star Wars — ROM audio fidelity (the music that has never played)
+
+## Problem
+Star Wars has never played music in production: the four .wav loops sw3-5's MUSIC manifest points at 404 on R2, and the shared audio engine's silent-degrade contract turns that into silence rather than an error. Produce them. Design: docs/superpowers/specs/2026-07-13-star-wars-music-bake-design.md. DO NOT reverse-engineer the disassembly (Music_Functions.asm's `fdb $805A, $8701, $3316` note words) and DO NOT emulate the sound board (we have no sound ROM binary, and the disasm listing carries mnemonics without opcode bytes, so one cannot be rebuilt from it). The ORIGINAL 1983 Atari source has the music fully commented at ~/Projects/star-wars-1983-source-text: SWMUS.MAC ('STAR WARS TUNES' — TUNTAB + every voice's note stream, with each assembled .BYTE carrying its original macro call as a comment directly above it, so the encoding documents itself: `;.CKEY 0` -> `.BYTE 85, 0`, `;.CALL 5` -> `.BYTE 8D, 5`, `;.ENDT` -> `.BYTE 0,0`) and SNDPM.MAC ('(RUSTY''S POKEY MUSIC) DRIVER, 6809 VERSION' — the opcode dispatch table, the note->frequency table, and the frequency/amplitude envelope engines). This is the pattern speech-bake already proved: it did not emulate the 6809 either, it lifted the LPC data from the source and re-implemented only the TMS5220 decoder in JS. Same here — lift the tune data, port the player, feed the ALREADY-VENDORED POKEY core (tools/pokey-bake/vendor/pokey.js). No second POKEY implementation enters the repo.
+
+## Technical Approach
+_Approach hints to be refined by TEA/Dev. The story title above defines the
+intended behavior._
+
+## Scope
+- In scope: the behavior described by the story title.
+- Out of scope: unrelated changes.
+
+## Acceptance Criteria
+- PROVENANCE — the tune data is generated from SWMUS.MAC (the original source), not hand-authored and not transcribed from the disassembly's fdb words. Mirror tools/speech-bake/gen-speech-data.mjs: a generator writes the data module, and the module says so and is not hand-edited.
+- THE PLAYER is a port of SNDPM.MAC: opcode dispatch, .CKEY key offset, .CALL, .GOSUB/.RETURN ($90/$91), .LOOP, .ENDT (0,0 terminator), the note->AUDF frequency table, and the frequency + amplitude envelopes (NUL/OFS/HRN/TRB/BAS/GLK/WW and NUL/SDR/HRD/QKR/TIE). An opcode or envelope the four in-scope tunes never reach MAY be left unimplemented — but it must THROW on encounter, never silently no-op. A silent no-op is how a tune loses a voice and nobody notices.
+- ORACLE — SWMUS.MAC comments its note streams in human notation (`.NOTE G5A,FS5A,E5B,D6H`). Pin the decoder against them: the bytes must decode to the notes the 1983 author wrote down. This is the hand-transcribed ROM oracle every fidelity story in this sprint carries, and here it is free — the source states the answer.
+- RADIX TRAP — SWMUS.MAC and SNDPM.MAC are `.RADIX 16`; constants are HEX unless the trailing-dot decimal trick is used (the file's own opening `.RADIX 16.` is a DECIMAL 16). A test must REFUTE the decimal reading of the frequency table and note durations, not merely assert the hex one. This project has been bitten twice already (red-baron RBARON/RBGRND equates; star-wars WSOBJ .PH vertices) — a decimal misread yields music that is plausible and wrong.
+- PHASE->TUNE MAPPING comes from the source's own named entry points, which state it outright: space=PMTH5 (';MAIN THEME (START OF GAME)'), towers=PMBEN (';BENS THEME (START OF TOWER)'), trench=PMRRP (';REBEL THEME WITH REPEATS(TRENCH WITH REPEATS)' — the with-repeats variant IS the looping trench cue), imperialMarch=PMDAR (';LORD VADER''S THEME'). Pin the mapping in a test so a future edit cannot silently reassign a theme.
+- SEGMENTS — the main board fires TWO space cues ($24/$25 'space wave music 1/2') and TWO towers cues ($20/$21), so the cabinet has more segments per phase than our four-file manifest has slots. Decide EXPLICITLY, with the ROM evidence written into the session: either bake one flattened loop per phase (manifest unchanged) or extend the MUSIC manifest to carry the segments (audio.ts + the sw3-5 music-channel tests move with it). Do not quietly pick one.
+- THE BAKE is headless and reproducible, mirroring tools/pokey-bake/bake-sfx.mjs, and drives the SAME vendored web-pokey core — no second POKEY implementation enters the repo. It emits four seamless loops: space_theme.wav, towers_theme.wav, trench_theme.wav, imperial_march.wav (or the manifest's names as revised under the SEGMENTS criterion; manifest and filenames must agree in the same PR).
+- UPLOAD — the four .wav are live in the arcade-assets R2 bucket under star-wars/music/ and answer 200. There is NO automated upload path for arcade-assets today (CI deploys each app's dist/ only; the existing sfx/ and speech/ appear to have been placed by hand): this story either adds one (a `just deploy-assets` recipe) or documents the manual step in docs/ops/hosting.md. A story that bakes four beautiful .wav files and never uploads them leaves the game exactly as silent as it is now.
+- THE ACCEPTANCE TEST IS A LIVE 200, NOT A GREEN VITEST — with the assets live, entering each phase rings the right loop and sw3-5's single-music-channel invariant still holds (one loop at a time; a phase edge swaps it). Verify in the browser and say so in the session; this is shell/IO and no unit test can prove it.
+
+---
+_Generated by `pf context create story sw6-1` from the sprint YAML._

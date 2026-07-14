@@ -96,7 +96,8 @@ stories:
     description: "Cluster C2, second half. Subsumes W-009 (the CHASER, moved here from tp1-4), W-023, W-026, W-027, W-032. NOTE: W-025 (the pulsar flips TOWARD the player) and W-007 (rule-driven flip direction) were CLOSED BY tp1-4 — the CAM it landed has no random-direction opcode, so there is no coin flip left to remove. What remains here is the CHASER: the rim state with its own counter and pincer rule (TOPPER is already transcribed and byte-verified in the CAM, so the interpreter is done — only the rim STATE is missing). PREREQUISITES LEFT BY tp1-4's REVIEW, all of which this story touches directly: (1) jchpla has no zero-delta branch, but the ROM's JCHPLA does — ASL/IFCC treats a delta of ZERO as positive and sets INVROT to CCW unconditionally, and CHASER CALLS JCHPLA to pick its pincer direction, so a chaser on the player's own lane currently gets a history-dependent direction; (2) fastestFlipperRimSpeed() in src/shell/input.ts still returns the pre-CAM 4 frames/lane — TOPPER's real cadence is a VSLOOP 4 crouch plus JUMP_ANGLE_STEPS/WTTFRA frames (~6.7), so the keyboard escape margin must be re-derived against it; (3) speedFor's default throws at runtime but gives no compile-time exhaustiveness — this story adds a sixth EnemyKind, so use assertNever; (4) the pulse kill (sim.ts) was not widened alongside the mid-jump grab gate."
     points: 6
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -105,7 +106,10 @@ stories:
       - "The pulsar runs a CAM program like every other enemy; its bespoke stepper is gone."
       - "Depends on tp1-4 (the interpreter). This story does not re-implement it."
       - "npm test -- citations stays green."
+    completed: '2026-07-14'
     type: refactor
+    review_findings: "HIGH: W-032's fix is unreachable dead code. The ROM uses ONE constant ($20) for both the carrier auto-split (JSMOVE, CMP I,20/IFCC) and SPLCHA's too-close test, so every naturally-arriving tanker is 'too close' and its children always get NEWGEN (no flipping). We split at TANKER_SPLIT_DEPTH=0.9 (INVAY 38.4), below the $20 band (INVAY 32 = depth 0.9286), so t.depth >= SPLIT_TOO_CLOSE_DEPTH is never true. Proven: deepest reachable tanker depth is 0.897 across levels 1-81. Gameplay unchanged, yet W-032 is stamped remediated_by:tp1-5 in the machine-checked audit. The W-032 test hides this by hand-placing a tanker at depth 0.95. MEDIUM: W-023 replacement test lacks a liveness guard (frozen fuseball passes vacuously); prerequisite 3 half-delivered (scoreFor/enemyCanShoot/makeEnemy/stepGame still lack assertNever, and interpreter.ts:151 falsely claims otherwise); widened citation gate validates nothing once remediated_by + NO_COUNTERPART are both set. The ROM archaeology (CHASER, POLDEL, JCHPLA, JCHKPU, TOPPER cadence, the 7-of-40 pulse) is verified correct against ALWELG.MAC."
+    review_verdict: approved
   - id: tp1-6
     title: "NYMPHS + THE 7-INVADER CAP — the arcade holds surplus enemies dormant; we have neither the cap nor the queue"
     description: "Cluster C3. Subsumes W-002, W-003, W-004, W-024, W-029, DA-012, DA-017. ONE OBJECT, NOT TWO CHANGES: the cap is not independently implementable. The ROM caps live invaders at 7 (NINVAD=7, WINVMX=6 for every wave 1-99) and regulates spawning by SLOT BACK-PRESSURE — nymphs simply stop advancing when the slots are booked. Without a nymph queue there is nowhere to hold the surplus, so adding the cap alone would silently drop spawns. Changes the difficulty of every wave. Also unblocks the fuseball turn-back (W-024) and the pulsar yo-yo (W-029), both keyed on NYMCOU."
@@ -388,3 +392,50 @@ stories:
     completed: '2026-07-13'
     type: bug
     review_verdict: approved
+  - id: tp1-24
+    title: "W-030's open half — the tanker's burst is THREE rules and we ship two: the children must be born at the PARENT's depth, above the grab line"
+    description: "Filed by Obi-Wan and Yoda out of the tp1-5 review (2026-07-14). WHAT IT IS: W-030 (pair-1, DIVERGENCE, unremediated) asserts TWO divergences and its own refuter verified both byte-accurate. tp1-5 closed the FIRST — the carrier bursts at $20 (depth 0.9286), not our invented 0.9 — because it had to: JSMOVE (ALWELG.MAC:1748-1758) auto-splits a climbing carrier at `CMP I,20 / IFCC`, and the KILINV it routes to (2344) hands SPLCHA the SAME `CMP I,20 / IFCC`. One byte, read twice. Writing it as two numbers is what made W-032's no-flip rule dead code for a whole review cycle. THE SECOND HALF IS UNTOUCHED. KILINV (2300-2302) opens `LDA Y,INVAY / STA TEMP0` — the PARENT's own depth — and ACTINV (1219-1226) then seats each child with `LDA TEMP0 / STA Y,INVAY`. Both children are born at the parent's exact depth. Ours clamps them to SPLIT_CHILD_DEPTH = 0.85 (src/core/sim.ts:222, `const depth = Math.min(t.depth, SPLIT_CHILD_DEPTH)`). WHY THIS IS NOT A TYPO: 0.85 is a deliberate softening, and SPLIT_CHILD_DEPTH's own comment says so — 'Must be < PLAYER_RIM_DEPTH (0.92) so a rim-split is not an instant grab.' It predates this epic. THE ROM DOES THE OPPOSITE ON PURPOSE: the carrier bursts at 0.9286, which is ABOVE the 0.92 grab line, and drops both children there — instantly lethal — and the ONLY thing that makes that survivable is the no-flip rule (NEWGEN/W-032, landed in tp1-5): the children cannot flip ONTO you, so they can grab you only if you are already standing on a lane one of them landed on. Burst position, child position, and no-flip are ONE mechanism. We now ship two thirds of it, which means our rim-burst is materially gentler than the cabinet's — and gentler by accident, not by ruling. THIS IS A DIFFICULTY CHANGE. It must be ratified or closed on purpose, with a test, not left as residue. HOUSEKEEPING: W-030's title still asserts both halves and its `claim`/`reasoning` still quote the old `TANKER_SPLIT_DEPTH = 0.9`, so the finding reads half-stale; tp1-5 re-anchored its `ours` onto the surviving divergence rather than stamp a `remediated_by` that would have been a lie. Split the finding (or amend it) as part of this story so the ledger stops asserting a divergence that is closed."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - "DECIDE FIRST, then build: this is a playability ruling, not a transcription. Either (a) adopt the ROM — children are born at the parent's depth, above PLAYER_RIM_DEPTH, lethal on the lanes they land on — or (b) ratify the 0.85 clamp as a deliberate, cited divergence. Do not leave it as residue. Record the decision and its reasoning in the story."
+      - "If (a): splitTanker seats both children at the PARENT's depth (KILINV 2300-2302 -> ACTINV 1219-1226, `LDA TEMP0 / STA Y,INVAY`), citing the source. SPLIT_CHILD_DEPTH is deleted, not left orphaned."
+      - "If (a): a test drives a REAL tanker climb (never a hand-placed depth — the tanker is destroyed the frame it crosses TANKER_SPLIT_DEPTH, so any fixture seating one above it is testing a board the sim cannot produce; this is exactly how W-032's dead branch survived a full review cycle) and asserts the children are born above PLAYER_RIM_DEPTH."
+      - "If (a): a test proves the burst is survivable — the no-flip rule (W-032) means a player NOT standing on a child's landing lane lives. If that test cannot be made to pass, that is the finding, and option (b) wins."
+      - "If (b): SPLIT_CHILD_DEPTH's comment cites the ROM line it is deliberately departing from, and the divergence is recorded in the audit rather than in a code comment alone."
+      - "W-030 stops being half-stale: split it into the closed half (split depth, remediated_by tp1-5, keeping its historical `ours`) and the open half, or amend its title/claim so it no longer asserts a divergence that is already fixed."
+      - "npm test -- citations stays green, and `node tools/audit/reanchor-citations.mjs` reports 0 lost."
+    type: bug
+  - id: tp1-25
+    title: "W-023's other half — from wave 17 the fuseball DOES chase, and it chases BACKWARDS"
+    description: "Found by Yoda during tp1-5 and left homeless; filed on Jedi's instruction (2026-07-14). tp1-5 closed W-023 for waves 1-16 and that is where the game actually plays: TWFUSC's table (ALWELG.MAC:686-690) has NO record below wave 17, so CONTOUR's end-of-table path yields 0, neither of WFUSCH's chase bits is set, and every fuseball decision falls to LEFRIT — 'RANDOMLY CHOOSE LEFT OR RIGHT' (2171-2178), a `BIT RANDOM` coin with the player as no input at all. That is the fix tp1-5 shipped, and it is right. BUT THE TABLE STARTS AT 17: `TWFUSC: .BYTE TR,17.,32.,0,40 / .BYTE TR,33.,48.,40,0C0 / .BYTE T1,49.,99.,0C0`. From wave 17 the chase bits ramp on, and the ROM then routes through FUCHPL (2168-2170) — which is `JSR JCHPLA` followed by `JSR JCHROT`, i.e. it aims at the player and then REVERSES: the source's own comment is 'FUSE IS BACKWARDS'. MAYBLR adds an 'only if the invader index is even' rule on top. `src/core/enemies/interpreter.ts` (`jfuseup`) now rolls the LEFRIT coin UNCONDITIONALLY at every wave, so deep-wave fuseballs are wrong in the OTHER direction from the bug tp1-5 fixed — we have traded a fuseball that always chased for one that never does. Neither is the arcade. This is the second half of W-023 and nothing implements or tests it."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - "WFUSCH's two chase bits are read from TWFUSC per wave (ALWELG.MAC:686-690), cited. Below wave 17 the table has no record and the bits are 0 — the LEFRIT coin tp1-5 shipped must NOT regress."
+      - "From wave 17 the fuseball takes FUCHPL: JCHPLA then JCHROT — it aims at the player and then reverses ('FUSE IS BACKWARDS', 2168-2170). Cite the source. Do not 'fix' the reversal; it is the ROM."
+      - "MAYBLR's even-invader-index gate is implemented or explicitly logged as a deviation with its reasoning."
+      - "A test pins BOTH sides against a real wave: a wave-1 fuseball still ignores the player (the same seed walks the same path wherever he stands, WITH a liveness guard — a frozen fuseball must not pass vacuously), and a wave-17+ fuseball demonstrably does not."
+      - "npm test -- citations stays green and `node tools/audit/reanchor-citations.mjs` reports 0 lost."
+    type: bug
+  - id: tp1-26
+    title: "The pulse and the potency zone are WAVE-PARAMETERISED in the ROM; we freeze both at their wave-1 value"
+    description: "Found by Obi-Wan during the tp1-5 review and left homeless; filed on Jedi's instruction (2026-07-14). tp1-5 landed W-026 (the pulse is ONE global counter, PULSON stepped by PULTIM, lit for 7 frames of 40) and W-027 (a pulse only kills from inside the potency zone, PULPOT). Both are correct AT WAVE 1 AND WRONG LATER, because both constants are wave-parameterised in the ROM's WTABLE and we hardcoded the first row. WPULTIM (ALWELG.MAC:610-613): `.BYTE T1,1,48.,4 / .BYTE T1,49.,64.,6 / .BYTE T1,65.,99.,8` — PULTIM is 4 for waves 1-48, then 6, then 8. `PULSE_STEP = 4` (src/core/rules.ts) is the first row only. Since PULTIM is the counter's STEP, changing it changes the period AND the duty cycle AND the reachable residue class — the whole '7 frames of 40' derivation is a wave-1 result, not a universal one. WPULPOT (606-609): `.BYTE T1,1,32.,0A0 / .BYTE T1,33.,64.,0A0 / .BYTE T1,65.,99.,0C0` — PULPOT is $A0 through wave 64 and $C0 from 65. `PULSAR_NEAR_FAR_DEPTH` hardcodes $A0. AND IT IS REACHABLE: nothing caps the level (sim.ts increments s.level on every clear; MAX_SELECT_LEVEL=16 only bounds the STARTING wave). A player who survives past wave 48 gets a pulse on the wrong beat and, past 64, a potency zone in the wrong place. SECOND, SMALLER PROBLEM, same family: `PULSAR_NEAR_FAR_DEPTH` currently serves TWO distinct ROM constants — JPULMO's climb-speed threshold and PULPOT (the W-027 kill gate). They coincide at $A0 today and DIVERGE at wave 65, so a future correction to one will silently move the other."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - "PULTIM is read per wave from WPULTIM (4 / 6 / 8 at waves 1-48 / 49-64 / 65-99), cited. The wave-1 behaviour tp1-5 pinned (period 40, lit for 7, seeded at -1 by INEWLI) must NOT regress."
+      - "PULPOT is read per wave from WPULPOT ($A0 for 1-64, $C0 for 65-99), cited, and is given its OWN name — it must stop sharing an identifier with JPULMO's climb-speed threshold, which is a different ROM constant that merely happens to equal it below wave 65."
+      - "A test derives the pulse period and duty cycle OUT OF THE RUNNING SIM (never by re-deriving the arithmetic in the test — that is how the audit and its own refuter both got 9 instead of 7) at a wave in each PULTIM band, and asserts they differ across the bands."
+      - "A test pins the kill gate at a wave on each side of 65, so the $A0 -> $C0 step is real and not decorative."
+      - "npm test -- citations stays green."
+    type: bug
