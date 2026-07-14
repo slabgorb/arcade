@@ -444,6 +444,9 @@ stories:
       - "A test derives the pulse period and duty cycle OUT OF THE RUNNING SIM (never by re-deriving the arithmetic in the test — that is how the audit and its own refuter both got 9 instead of 7) at a wave in each PULTIM band, and asserts they differ across the bands."
       - "A test pins the kill gate at a wave on each side of 65, so the $A0 -> $C0 step is real and not decorative."
       - "npm test -- citations stays green."
+      - "READ THIS BEFORE YOU PORT THE TABLES — tp1-25 already fell into the hole waiting for you. Both WPULTIM (ALWELG.MAC:610-613) and WPULPOT (606-609) END AT WAVE 99, and s.level is NOT capped (sim.ts increments it on every clear; MAX_SELECT_LEVEL bounds only the SELECT screen). A naive table walk returns its end-of-table 0 at wave 100 — and 0 is far nastier here than it was for the fuseball: PULTIM is the pulse counter's STEP, so a step of 0 means the counter never advances and THE PULSE FREEZES FOREVER; PULPOT of 0 puts the kill zone at depth 0. The ROM never reaches the end of its own table because CONTOUR (415-423) folds it first: for CURWAV >= 98 it substitutes a RANDOM wave, `LDA RANDO2 / AND I,1F / ORA I,40` then INC, giving 65..96 — a band that lies wholly inside each table's last record, so the draw is UNOBSERVABLE and the answer is deterministic. Every table lookup must go through that fold."
+      - Do NOT re-derive the fold per table. tp1-25 shipped it inline in wfuschForLevel (src/core/rules.ts) because it was the only bounded table at the time; this story makes it three. EXTRACT it once — a `contourWave(level)` helper carrying the ALWELG.MAC:415-423 citation — and route wfuschForLevel, WPULTIM and WPULPOT through it. The bug is in the SHAPE of the port, not in any one table, and the next table will inherit it.
+      - A test drives each of the three lookups at a wave ABOVE the last record (100, 150) and asserts the ROM's answer, not 0. wfuschForLevel's existing deep-wave tests (tests/core/tp1-25.fuseball-chase.test.ts) must still pass UNCHANGED after the extraction.
     type: bug
   - id: tp1-27
     title: PLAYER_RIM_DEPTH = 0.92 is an invented constant, and tp1-24 just made it load-bearing — derive the grab line from the ROM byte or ratify it
@@ -461,3 +464,30 @@ stories:
       - 'Cover the newly-reachable sliver [PLAYER_RIM_DEPTH, SPLIT_TOO_CLOSE_DEPTH): a tanker SHOT in that band drops children that are both lethal (above the grab line) AND flipping (below the too-close line). Untested today, and unreachable before tp1-24 removed the 0.85 clamp.'
       - npm test -- citations stays green, and `node tools/audit/reanchor-citations.mjs` reports 0 lost.
     type: bug
+  - id: tp1-28
+    title: The audit doc says MAYBLR chases on an EVEN invader index. It is ODD, and the error has now propagated through three documents.
+    description: "Found by TEA and Dev during tp1-25 (2026-07-14). docs/audit/findings/pair-1-alwelg-sim-enemies.json, finding W-023, states in its `claim`: 'MAYBLR only chases on an EVEN invader index (2157-2159).' It is FALSE. ALWELG.MAC:2157-2160 is `TXA / LSR / BCC LEFRIT / JSR FUCHPL`: LSR shifts bit 0 into the carry, BCC branches when the carry is CLEAR — an EVEN index — and that branch goes to LEFRIT, the COIN. The chase (FUCHPL) is what falls through, on an ODD index. The ROM's own comment on 2157 reads ';YES. ONLY IF INDEX IS EVEN' and is simply wrong — the auditor copied the comment instead of reading the branch. From there it propagated: audit claim -> tp1-25's story description -> tp1-25's AC-3, which asked for an 'even-invader-index gate'. This is the same disease as rb4-2 in red-baron: a doc that is cited as authority and is wrong. It cannot spread silently any more (tests/core/tp1-25.source-rules.test.ts pins the refutation with the call-site citation), but the doc still says it. Correct the claim. Do NOT touch the citations' line numbers or the remediated_by mechanics — only the prose that is false."
+    points: 1
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: trivial
+    acceptance_criteria:
+      - W-023's `claim` in docs/audit/findings/pair-1-alwelg-sim-enemies.json no longer asserts an EVEN gate. It states the code's behaviour — the chase falls through on an ODD index — and cites ALWELG.MAC:2157-2160, noting that the ROM's own comment on 2157 contradicts its own code.
+      - "The rest of the claim is preserved, including the parts that are RIGHT: TWFUSC's first record starts at wave 17, and TR alternates 0/$40 across 17-32 (the audit had this correct; it was the story that garbled it into a 'ramp')."
+      - npm test -- citations stays green and `node tools/audit/reanchor-citations.mjs` reports 0 lost. The existing refutation test in tests/core/tp1-25.source-rules.test.ts still passes UNCHANGED — it is the guard that stops this being 'corrected' back.
+    type: bug
+  - id: tp1-29
+    title: Give an enemy a STABLE slot id — the port has none, and at least one ROM rule (MAYBLR's parity gate) cannot be ported faithfully without it
+    description: "Found by Dev during tp1-25 (2026-07-14); the blocker behind that story's deviation D2. The ROM indexes invaders by X, a slot in the fixed INVAY array: INIINV (ALWELG.MAC:345-350) allocates NINVAD slots once and walks them with DEX, and a slot belongs to an invader for its whole life. The port has no such thing — s.enemies is a SPLICED array (sim.ts, `s.enemies.filter((_, i) => !deadEnemies.has(i))`), so an enemy's index SHIFTS whenever an EARLIER enemy dies. Any ROM rule keyed on the invader index therefore cannot be ported: MAYBLR's parity gate (2157-2160, which chases only on an ODD index — see tp1-28) is the one in front of us, and it is unlikely to be the last. Implementing it on array position would be WORSE than omitting it: a fuseball's chase would flicker on and off as UNRELATED enemies were shot, a behaviour the arcade has not got — it would trade a known, bounded deviation for an invented one. Give an enemy a slot id assigned at spawn and stable for its life, then implement MAYBLR's gate on it."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - An enemy carries a stable slot id, assigned at spawn and unchanged for its lifetime — it must NOT be its index in s.enemies, and it must survive the death of any other enemy. A test kills an earlier enemy and proves a later one's id did not move.
+      - MAYBLR's gate is implemented on that id and chases on an ODD index, per ALWELG.MAC:2157-2160 (`TXA / LSR / BCC LEFRIT / JSR FUCHPL`) — NOT the EVEN one the ROM's own comment claims. Cite the branch, not the comment.
+      - "tp1-25's deviation D2 is retired. Its behavioural tests (tests/core/tp1-25.fuseball-chase.test.ts) must be re-examined, NOT weakened: they pin a lone fuseball chasing at waves 18/49/100, which under a parity gate depends on that fuseball's slot. Make the test's fixture explicit about the slot rather than deleting the assertion."
+      - npm test -- citations stays green and `node tools/audit/reanchor-citations.mjs` reports 0 lost.
+    type: refactor
