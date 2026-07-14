@@ -31,7 +31,8 @@ stories:
     description: "Cluster C2. Subsumes EN-001, CD-013, CD-014, OB-013, RD-016, FL-002, FL-003, SN-003, MI-010. Run ALONGSIDE rb4-1 — this doc is the CAUSE of rb4-1, it is cited as authority in code comments across src/, and until it is fixed it will re-infect every future Red Baron story. It sources its enemy facts to R2BRON.MAC, a build that never shipped; it states its own radix rule correctly and then breaks it; its watchdog claim is off by 21x (CALFLG>=3, not >=0x40); three of its §1 line citations are off by one AND one of them is copied verbatim into src/core/timing.ts:18. It also mislabels the LOD as a 'distance LOD' — which is where biplane.ts's invented LOD_DISTANCE=1500 came from."
     points: 3
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-14'
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
