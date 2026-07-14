@@ -397,7 +397,8 @@ stories:
     description: "Filed by Obi-Wan and Yoda out of the tp1-5 review (2026-07-14). WHAT IT IS: W-030 (pair-1, DIVERGENCE, unremediated) asserts TWO divergences and its own refuter verified both byte-accurate. tp1-5 closed the FIRST — the carrier bursts at $20 (depth 0.9286), not our invented 0.9 — because it had to: JSMOVE (ALWELG.MAC:1748-1758) auto-splits a climbing carrier at `CMP I,20 / IFCC`, and the KILINV it routes to (2344) hands SPLCHA the SAME `CMP I,20 / IFCC`. One byte, read twice. Writing it as two numbers is what made W-032's no-flip rule dead code for a whole review cycle. THE SECOND HALF IS UNTOUCHED. KILINV (2300-2302) opens `LDA Y,INVAY / STA TEMP0` — the PARENT's own depth — and ACTINV (1219-1226) then seats each child with `LDA TEMP0 / STA Y,INVAY`. Both children are born at the parent's exact depth. Ours clamps them to SPLIT_CHILD_DEPTH = 0.85 (src/core/sim.ts:222, `const depth = Math.min(t.depth, SPLIT_CHILD_DEPTH)`). WHY THIS IS NOT A TYPO: 0.85 is a deliberate softening, and SPLIT_CHILD_DEPTH's own comment says so — 'Must be < PLAYER_RIM_DEPTH (0.92) so a rim-split is not an instant grab.' It predates this epic. THE ROM DOES THE OPPOSITE ON PURPOSE: the carrier bursts at 0.9286, which is ABOVE the 0.92 grab line, and drops both children there — instantly lethal — and the ONLY thing that makes that survivable is the no-flip rule (NEWGEN/W-032, landed in tp1-5): the children cannot flip ONTO you, so they can grab you only if you are already standing on a lane one of them landed on. Burst position, child position, and no-flip are ONE mechanism. We now ship two thirds of it, which means our rim-burst is materially gentler than the cabinet's — and gentler by accident, not by ruling. THIS IS A DIFFICULTY CHANGE. It must be ratified or closed on purpose, with a test, not left as residue. HOUSEKEEPING: W-030's title still asserts both halves and its `claim`/`reasoning` still quote the old `TANKER_SPLIT_DEPTH = 0.9`, so the finding reads half-stale; tp1-5 re-anchored its `ours` onto the surviving divergence rather than stamp a `remediated_by` that would have been a lie. Split the finding (or amend it) as part of this story so the ledger stops asserting a divergence that is closed."
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -408,6 +409,7 @@ stories:
       - "If (b): SPLIT_CHILD_DEPTH's comment cites the ROM line it is deliberately departing from, and the divergence is recorded in the audit rather than in a code comment alone."
       - "W-030 stops being half-stale: split it into the closed half (split depth, remediated_by tp1-5, keeping its historical `ours`) and the open half, or amend its title/claim so it no longer asserts a divergence that is already fixed."
       - "npm test -- citations stays green, and `node tools/audit/reanchor-citations.mjs` reports 0 lost."
+    completed: '2026-07-14'
     type: bug
   - id: tp1-25
     title: "W-023's other half — from wave 17 the fuseball DOES chase, and it chases BACKWARDS"
@@ -439,4 +441,20 @@ stories:
       - "A test derives the pulse period and duty cycle OUT OF THE RUNNING SIM (never by re-deriving the arithmetic in the test — that is how the audit and its own refuter both got 9 instead of 7) at a wave in each PULTIM band, and asserts they differ across the bands."
       - "A test pins the kill gate at a wave on each side of 65, so the $A0 -> $C0 step is real and not decorative."
       - "npm test -- citations stays green."
+    type: bug
+  - id: tp1-27
+    title: PLAYER_RIM_DEPTH = 0.92 is an invented constant, and tp1-24 just made it load-bearing — derive the grab line from the ROM byte or ratify it
+    description: "Filed by Obi-Wan out of the tp1-24 review (2026-07-14). WHAT IT IS: PLAYER_RIM_DEPTH (src/core/rules.ts:84) is `export const PLAYER_RIM_DEPTH = 0.92` with a bare comment and no ROM derivation. Invert it: INVAY = 0xf0 - 0.92 * 224 = 33.92 — NOT a clean ROM byte. Every neighbouring constant in that file is derived from one ((0xf0 - 0x20) / WARP_ALONG_SPAN; PULSAR_ALONG_PER_FRAME * ROM_FPS / WARP_ALONG_SPAN), and a round decimal with a bare comment is the exact fingerprint of the two constants this epic has ALREADY caught and killed: TANKER_SPLIT_DEPTH = 0.9 (tp1-5) and SPLIT_CHILD_DEPTH = 0.85 (tp1-24). No finding tracks it — it appears only inside OTHER findings' prose (W-010's `ours`, W-030's claim, WD-016), never as a claim of its own. WHY IT MATTERS NOW: it was harmless while a tanker's children were clamped to 0.85 and could never reach it. tp1-24 deleted that clamp and ratified a DIFFICULTY CHANGE expressed entirely in terms of this constant — 'the children are born ABOVE PLAYER_RIM_DEPTH, therefore a player on a flanking lane dies on the burst frame'. The grab line is now load-bearing for how lethal the game is, and nobody has ever audited it. If 0.92 is wrong, the lethality window is wrong. THE LIKELY ROM SIDE: the grab is JKITST/kill-check territory (ALWELG.MAC ~1981-82 is already cited by W-010 for the mid-jump gate); find the byte the ROM actually compares INVAY against and derive the constant from it exactly as SPLIT_TOO_CLOSE_DEPTH derives from $20. A CONSEQUENCE WORTH TESTING EITHER WAY: because the grab line (0.92) and the no-flip line (0.9286) are different numbers, there is a band [0.92, 0.9286) in which a BULLET-split child is born both LETHAL (above the grab line) and FLIPPING (below the too-close line, so it runs the wave's cam and can jump onto the player). That band was unreachable under the old clamp and is reachable now. The two-threshold structure is authentic — the ROM's grab and no-flip tests genuinely are different bytes — but the sliver's WIDTH is set by this unaudited 0.92, and no test covers it."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - Find the ROM byte the kill-check actually compares INVAY against (JKITST / the grab path — W-010 already cites ALWELG.MAC:1981-82 for the mid-jump gate on the same routine) and quote it byte-exact.
+      - EITHER derive PLAYER_RIM_DEPTH from that byte the way SPLIT_TOO_CLOSE_DEPTH derives from $20 — (0xf0 - BYTE) / WARP_ALONG_SPAN, no round decimals — OR, if the ROM genuinely has no such constant, ratify 0.92 as a deliberate divergence with the reasoning recorded in the audit, not in a code comment alone.
+      - Whichever way it goes, it is a FINDING in docs/audit/findings/ with both citations, so the grab line stops being the one number in rules.ts that nobody has ever checked. Today it is referenced only inside other findings' prose.
+      - "If the value MOVES: tp1-24's suite (tests/core/tp1-24.split-child-depth.test.ts) asserts children are born above PLAYER_RIM_DEPTH and that a flanking-lane player dies on the burst frame. Re-verify both against the new line — do not just let them re-derive and go green vacuously."
+      - 'Cover the newly-reachable sliver [PLAYER_RIM_DEPTH, SPLIT_TOO_CLOSE_DEPTH): a tanker SHOT in that band drops children that are both lethal (above the grab line) AND flipping (below the too-close line). Untested today, and unreachable before tp1-24 removed the 0.85 clamp.'
+      - npm test -- citations stays green, and `node tools/audit/reanchor-citations.mjs` reports 0 lost.
     type: bug
