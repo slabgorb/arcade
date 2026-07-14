@@ -3,6 +3,12 @@ repos:
   orchestrator:
     path: .
     type: orchestrator
+    default_branch: main
+    # MUST be the literal "trunk-based" — pf's branch-protection hook compares
+    # against that exact string (pf/hooks/branch_protection.py). A bare "trunk"
+    # silently falls through to the gitflow path and PROTECTS main, blocking the
+    # direct sprint commits this repo is supposed to allow.
+    branch_strategy: trunk-based
     description: 'Coordination repo for a series of browser-based vector arcade games.
 
       Holds shared context, sprint/session tooling, tmux session launcher,
@@ -43,6 +49,8 @@ repos:
   lobby:
     path: lobby
     type: ui
+    default_branch: develop
+    branch_strategy: gitflow
     description: 'Arcade lobby / front-end shell: a vector-style menu on black that
       lists
 

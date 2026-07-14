@@ -3,7 +3,7 @@ type: epic
 title: 'Red Baron — PLAY: ground sequence'
 description: 'PLAY / ground-sequence sub-mode (GRMODE D7=GROUND). Dive-and-strafe: ground objects/shells, ground collision, mountain-pass run. Built on rb1/rb2.'
 priority: p2
-status: backlog
+status: done
 repos: red-baron
 stories:
   - id: rb3-1
@@ -45,7 +45,7 @@ stories:
     description: 'Depends rb3-1 (PFCOL boxes) + rb3-3 (scrolling landscape). Findings §4 (GRDISP, R2BRON.MAC:3550-3706; PFOCOL): objects with type index >=4 are ACTIVE gun emplacements (they will return fire in rb3-5 via SHLAUN); type <4 are passive. Taxonomy (tank/tent/gun) is NOT labeled in ROM — only geometry + active/passive (findings §9 gap #4); do not invent named object types. Reuse guns.ts player-shell collision (CDSSET builds rotated/projected min-max windows; SHCDCK tests player shells) against the PFOCOL outlines — the SAME hit path as air kills, no new collision engine. Kills explode with an expanding-circle EXCRCL (reuse/extend explosion.ts). Score via scoring.ts PLVALU = depth x VALFRC (closer = more, §4); kills bump OBJKLD -> GMLEVL. First-playable ground slice lands HERE (fly low, strafe targets, score them).'
     points: 5
     priority: p2
-    status: backlog
+    status: canceled
     repos: red-baron
     workflow: tdd
   - id: rb3-5
@@ -53,7 +53,7 @@ stories:
     description: 'Depends rb3-4 (active emplacements exist). Findings §5(b) (SHLAUN, R2BRON.MAC:4022-4110): active ground objects (type >=4) lead/aim a shell at the player, launched only 1 of 4 calc-frames (FRAME&3, ~384 ms) and ONLY at GMLEVL>=2 — no ground shells at lower levels; the active shell budget grows with level via GRSLVL: 0,14,42,70. Reuse the guns.ts shell slot/advance/expire model (enemy shells were skipped by the player-shell hit test in rb2-5 — this is the reverse direction: emplacement shells that threaten the player). The player-hit consequence (death) is the terrain/ground channel handled by rb3-6 + the rb2-9 lives/respawn path — coordinate, do not duplicate the death sequence here.'
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: red-baron
     workflow: tdd
   - id: rb3-6
@@ -61,7 +61,7 @@ stories:
     description: 'Depends rb3-3 (mountains reaching min depth). Findings §5(b) (SCENE2/PLYCOL, R2BRON.MAC:781-782): a mountain reaching min depth runs PLYCOL with window PCDX=0C1, PCDY=60; on contact it sets GREND D6 GROUND COLLISION and the main loop aborts the frame ("PLAYER RAN INTO GROUND"). rb2 clamped altitude (I4YPOS 8*4..180*4) so you canNOT crash by pitching in a dogfight — terrain only bites HERE (findings §2, confirmed by context-epic-rb2 guardrail 5). CROSS-EPIC DEPENDENCY: the crash must feed the SAME ENDLFE -> DEC LIVES -> INITIAL respawn + WO.CNT(5) spawn-grace path as rb2-9 (findings §5) — rb2-9 is still BACKLOG. Either sequence rb2-9 first, or land the death-signal seam here (emit a "player died: ground" event) and wire the shared respawn when rb2-9 lands. Architect flags this as the one ordering risk in the epic.'
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: red-baron
     workflow: tdd
   - id: rb3-7
@@ -69,7 +69,7 @@ stories:
     description: 'Depends rb3-2..rb3-6. Mirrors rb2-12 / bz2-6 / sw2-7 live playtest. main.ts input->sim->camera has only a STRUCTURAL grep guard (cockpit-boot cannot run under vitest node env), so a human pass is required: confirm the PLANE<->GROUND wave alternation actually enters ground mode, the SCAPE mountains scroll and fall from the horizon, active (>=4) targets return fire at level>=2 while passive (<4) do not, strafing kills score by depth, and hitting a mountain at min depth ends the life. Confirm the ground mode forced-slow control feel vs the aerial feel. Verify the sim still ticks at the §1 calc-frame cadence (~10.42 Hz), not per rAF frame (the divide-N trap).'
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: red-baron
     workflow: tdd
     type: chore
@@ -84,3 +84,4 @@ stories:
     completed: '2026-07-11'
     type: bug
     review_verdict: approved
+completed: '2026-07-12'

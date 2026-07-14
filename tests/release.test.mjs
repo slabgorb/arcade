@@ -1,6 +1,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { releaseSteps } from '../scripts/release.mjs';
+import { releaseSteps, shouldRelease } from '../scripts/release.mjs';
+
+// On 2026-07-13 `just release-all` was run twice in a row. The second run shipped
+// SIX releases whose entire diff was package.json + package-lock.json: six version
+// bumps, six tags, six CI deploys re-uploading a byte-identical dist/. Nothing in
+// the script asked whether there was anything to release — it bumped uncondition-
+// ally. main IS the release target, so "is there anything to ship" is exactly
+// "does origin/develop hold commits origin/main lacks".
+
+test('shouldRelease: develop is ahead of main — there is something to ship', () => {
+  assert.equal(shouldRelease({ mainExistsOnRemote: true, pendingCommits: 1 }), true);
+  assert.equal(shouldRelease({ mainExistsOnRemote: true, pendingCommits: 42 }), true);
+});
+
+test('shouldRelease: main is level with develop — the empty release that actually happened', () => {
+  assert.equal(shouldRelease({ mainExistsOnRemote: true, pendingCommits: 0 }), false);
+});
+
+test('shouldRelease: first release always ships (there is no origin/main to compare against)', () => {
+  // pendingCommits is meaningless here — `origin/main..origin/develop` cannot even
+  // be resolved — so the absence of main must short-circuit before it is consulted.
+  assert.equal(shouldRelease({ mainExistsOnRemote: false, pendingCommits: 0 }), true);
+});
 
 test('releaseSteps: full command order when main already exists on the remote', () => {
   const steps = releaseSteps({ version: '0.1.0', mainExistsOnRemote: true });

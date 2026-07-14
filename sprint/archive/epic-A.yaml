@@ -3,7 +3,7 @@ type: epic
 title: Asteroids — faithful 1979 vector clone
 description: Full-fidelity browser vector clone of Atari's 1979 Asteroids. New gitignored subrepo (gitflow, port 5275, /asteroids/ base). ROM-accurate flight, splitting, waves, saucers, hyperspace; reference/ quarry from 6502disassembly.com/va-asteroids.
 priority: p1
-status: backlog
+status: done
 repos: asteroids
 stories:
   - id: A-1
@@ -199,7 +199,7 @@ stories:
     title: DVG-authentic glow/brightness + feel calibration vs footage
     points: 3
     priority: p1
-    status: backlog
+    status: canceled
     repos: asteroids
     workflow: tdd
   - id: A-20
@@ -221,3 +221,4 @@ stories:
     workflow: tdd
     completed: '2026-07-06'
     review_verdict: approved
+completed: '2026-07-12'

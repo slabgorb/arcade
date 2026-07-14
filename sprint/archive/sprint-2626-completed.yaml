@@ -30,6 +30,11 @@ completed_epics:
   - rb1
   - sw2
   - sw4
+  - A
+  - bz2
+  - rb2
+  - rb3
+  - sw3
 completed_stories:
   - id: 0-1
     epic: '0'
@@ -1257,4 +1262,74 @@ completed_stories:
     epic: lb2
     title: "Dress the lobby as a cabinet — implement the 'Arcade Lobby' Claude design (marquee, vector grid floor, bezel, CRT, tile redesign)"
     points: 5
+    completed: '2026-07-12'
+  - id: lb2-2
+    epic: lb2
+    title: Implement the ADR's cross-origin high-score path so lobby tiles show each game's real best score
+    points: 5
+    completed: '2026-07-12'
+  - id: lb2-3
+    epic: lb2
+    title: Lobby tiles re-read high scores on return from a game (kill the frozen-at-load read)
+    points: 2
+    completed: '2026-07-12'
+  - id: A-19
+    epic: A
+    title: DVG-authentic glow/brightness + feel calibration vs footage
+    points: 3
+    completed: '2026-07-12'
+  - id: bz2-6
+    epic: bz2
+    title: "Live playtest pass — verify aspect ratio, font, scale, controls, and pause fixes end-to-end"
+    points: 2
+    completed: '2026-07-12'
+  - id: bz2-7
+    epic: bz2
+    title: "Wire reserved ROM message strings to display surfaces — in-game HIGH SCORE label, GREAT SCORE, BONUS TANK AT award banner, ENEMY TO/LEFT/RIGHT/REAR direction callout (transcribed verbatim in core/text.ts by bz1-12, not yet rendered)"
+    points: 3
+    completed: '2026-07-12'
+  - id: bz2-8
+    epic: bz2
+    title: "Harden bz1-12 alert/text tests — pin aim-cone boundary (just-inside/outside AIM_COS) alongside the range boundary, use toBeNull for the moved-so-no-alert case, and add a producer-driven gameOverLines(nonzeroScore) SCORE-label assertion"
+    points: 1
+    completed: '2026-07-12'
+  - id: rb2-12
+    epic: rb2
+    title: Live playtest pass — verify the aerial slice end-to-end (fly, dogfight, waves, ace, lives, sound); mirrors bz2-6 / sw2-7
+    points: 2
+    completed: '2026-07-12'
+  - id: rb2-14
+    epic: rb2
+    title: 'Sound producers for the score tick + bonus life — rb2-11 built all 5 POKEY tables (TK/TP/BN/WP/TH) and audio-dispatch wires all 5, but the sim EMITS only 3 of the events: score-tick (TK small SOUND 0 / TP large SOUND 4) has no producer because score is added in lumps with no digit-tick animation, and bonus-life (BN, SOUND 2) has no award threshold in core/lives.ts. Source the extra-plane threshold from the ROM (findings §6A lists BN as a real cabinet cue), add a score-accumulation tick, and emit both GameEvent kinds from main.ts. The tables and the cue map already exist — this only lights them up.'
+    points: 3
+    completed: '2026-07-12'
+  - id: rb2-15
+    epic: rb2
+    title: 'Byte-exact POKEY envelopes for TP/BN/WP/TH — rb2-11 transcribed only TK byte-for-byte (the sole table the fidelity spec §6A prints: AUDF1=$30, AUDC1 $A4 decaying -1 per 7 frames). The other four are SYNTHESIZED to their documented channel+shape (fading / rising warble x6 / descending x3 / 6-note melody) because raw RBSOUN.MAC is not in this checkout — red-baron has no reference/ dir. Source RBSOUN.MAC from the Atari quarry (historicalsource, per the star-wars precedent) and replace the four synthesized envelopes with real bytes. WATCH THE OFF-BY-ONE: the ROM NUMBER byte is (# changes - 1), while EnvelopeStep.steps stores the count itself (steps = NUMBER + 1) — dropping a raw NUMBER straight in is short one step. The shape assertions in pokey.test.ts stay true, so no existing test should need to change.'
+    points: 3
+    completed: '2026-07-12'
+  - id: rb3-4
+    epic: rb3
+    title: 'Ground targets + strafing kills — GRDISP draws ground objects via PFOCOL collision outlines, type index >=4 = active gun emplacement / <4 = passive; player shells (reuse guns.ts CDSSET/SHCDCK rotated windows) strafe them; targets explode with expanding circles (EXCRCL); score via PLVALU = depth x VALFRC (closer worth more), reuse scoring.ts'
+    points: 5
+    completed: '2026-07-12'
+  - id: rb3-5
+    epic: rb3
+    title: 'Ground fire (emplacement -> player) — SHLAUN leads/aims at the player, fires only 1 of 4 frames (FRAME&3) and only at GMLEVL>=2 ("NO GROUND SHELLS @ LOWER LEVELS"), shell count grows with level GRSLVL: 0,14,42,70; reuse the guns.ts shell model'
+    points: 3
+    completed: '2026-07-12'
+  - id: rb3-6
+    epic: rb3
+    title: 'Terrain-crash death channel — when a mountain reaches min depth SCENE2 runs PLYCOL (window PCDX=0C1, PCDY=60); on contact set GREND D6 "GROUND COLLISION" and abort the frame ("PLAYER RAN INTO GROUND"); the ground-wave death that rb2 explicitly deferred'
+    points: 3
+    completed: '2026-07-12'
+  - id: rb3-7
+    epic: rb3
+    title: 'Live playtest pass — verify the ground slice end-to-end (enter a ground wave via MODECT alternation, fly the low mountain-pass run, strafe active + passive targets, take ground fire at GMLEVL>=2, crash into terrain), mirrors rb2-12 / bz2-6 / sw2-7'
+    points: 2
+    completed: '2026-07-12'
+  - id: sw3-14
+    epic: sw3
+    title: Trench voice-line parity gate not discriminating — all three cues (Luke @16 even / Yahoo @24 even / Force @22 odd) fire every trench run instead of only the current wave-parity's line(s); pin the gate with a non-vacuous per-parity regression test (fixes the vacuous AC6 test flagged in sw3-4 review)
+    points: 2
     completed: '2026-07-12'

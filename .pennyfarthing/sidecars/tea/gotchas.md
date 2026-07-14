@@ -93,3 +93,146 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 **Example (sw3-15):** the `$800` window gate would have flipped `force-bonus.test.ts` (kill at `-2400`) and `exhaust-port-outcome.test.ts`'s real-speed detonation (`-1500`) to RED. Re-seated both to `-300` (in-window); the clean/dirty-bonus and no-tunnel intents are unchanged; the new suite's "torpedo fired at trench entry no longer wins" is the replacement far-miss coverage.
 
 ---
+### WSOBJ.MAC is `.RADIX 16` — and the file contains NO `.RADIX` line to warn you
+
+**Situation:** Transcribing any star-wars `.WP`/`.P`/`.PGND`/`.PH` vertex table from
+WSOBJ.MAC to pin an authentic model (sw3-11, sw5-5, and sw5-4 next).
+
+**Problem:** The integer literals are HEX, but `grep -n RADIX WSOBJ.MAC` returns
+**nothing** — the radix is set upstream of the file, so the source itself gives you
+no warning. Small values (`4`, `6`, `8`) read identically in both bases, so a decimal
+misreading *looks* right and passes eyeball review; only two-digit values diverge.
+sw3-11 read the `.PGND` height column as decimal and shipped a tower whose three
+upper rings were all at the wrong height — and then wrote the wrong numbers into
+models.ts's doc comment, this sidecar, and its own test header, where they sat as
+"ground truth" for two more stories.
+
+**Prevention:** NEVER transcribe a WSOBJ.MAC table by reading it. Verify every
+two-digit literal arithmetically against the baked artifact
+(`star-wars/src/tools/romModels.generated.ts`), which the sw5-1 parser produces and
+which is independently correct. The macro tells you the arithmetic — e.g.
+`.PGND` is `.WORD .A*.S,.B*.S,.C*.S-GD$MDT` with `.S=30.*4`=120, `GD$MDT`=0xF00:
+
+    h=0x58 -> 88*120 - 3840 = 6720   <- the baked z. hex is right.
+    h= 58. -> 58*120 - 3840 = 3120   <- appears nowhere. decimal is refuted.
+
+Write that refutation INTO the test (`expect(z).not.toBe(58 * S - GD$MDT)`), so the
+next person cannot quietly regress to decimal.
+
+**Also (sw5-5):** ground objects SHARE one point table — `.WPZ2 TWR/BNK/STB` alias
+`.WP GND`'s 15 points, and each `.WGD` routine strokes only a subset (BNK strokes 6,
+STB 12, leaving the cannon-top ring for the white cap). So a faithful port carries
+vertices its own edges never touch. That breaks the registry's "no orphan vertices"
+invariant — carve it out by name and re-assert the intent over the DRAWN subgraph;
+do NOT trim the table, or romCompare's `verticesEqual` (a DEEP equality) slams shut
+and the whole edge comparison is forfeited. And `GD$MDT` is not cosmetic: its comment
+is "OFFSET HITE TO MID OF PLAYERS HITE" — it IS the ROM's skim altitude.
+
+---
+
+### The ROM's THIRD coordinate is HEIGHT — mapping it to our `z` stands the model on its edge
+
+**Situation:** Porting any star-wars ROM object (`.P` / `.PH` / `.PGND` in WSOBJ.MAC) into
+`models.ts`, and then deciding how the SHELL should orient it.
+
+**Problem:** The vertex triples transcribe cleanly into `models.ts` — and that is the trap.
+The ROM's frame is **(x = fore/aft, y = lateral, z = UP)**; ours is **y-up**. Feed a ROM
+triple straight into our world (i.e. draw it under `IDENTITY`) and you have silently mapped
+the ROM's HEIGHT axis onto our DEPTH axis: the object is rotated 90° onto its edge. It still
+*looks* like a plausible object, so eyeball review passes. sw5-4 shipped the exhaust port this
+way — a plate that should lie FLAT in the trench floor ended up standing vertically, half of it
+buried below the floor — and then wrote a test asserting the vertical reading was correct AND
+warning the next dev off the `rotationX(-90°)` that fixes it.
+
+**Prevention:** The ROM tells you which component is height, twice, if you look:
+- `.MACRO .PGND .A,.B,.C ;OFFSET HITE TO MID OF PLAYERS HITE` → `.WORD .A'*.S,.B'*.S,.C'*.S-GD$MDT`.
+  The **HEIGHT** offset `GD$MDT` is subtracted from the **THIRD** component. Third = height.
+- `render.ts`'s `TOWER_ORIENT` already says it in English: *"The ROM's up-axis is Z (x is
+  fore/aft, y lateral); ours is Y. This maps (x, y, z) -> (x, z, -y)."*
+
+So: **every ground object needs that `rotationX(-90°)` bridge.** An object whose third
+components are ALL ZERO is a HORIZONTAL plate (flat on the ground), never a billboard facing
+the pilot. Check the placement code too — WSBASE.MAC `BSVPORT` says `;Z HITE ON BOTTOM OF
+TRENCH` and `;Y WIDTH IN CENTER`, which settles the question outright.
+
+**Fix:** Square-symmetric objects (the port is three concentric SQUARES, |x|=|y| at every point)
+are 4-fold symmetric about the vertical, so the rotation's horizontal-axis swap is invisible —
+`rotationX(-90°)` alone lands it correctly, with no scale and no lift (`.PH` rows carry no
+`-GD$MDT`, unlike `.PGND`). Do NOT re-seat the model's vertices to suit a viewing angle:
+`romCompare`'s deep vertex compare demands them 1:1, and `PORT_HIT_RADIUS` is bound to the
+porthole in the same units. Orientation is the SHELL's job.
+
+**And beware the compensating hack:** a correctly-laid floor plate can still look wrong if
+another constant is also wrong. Ours read as a 2.8-pixel sliver — because `TRENCH_SKIM` flew the
+pilot 60 units off the deck where the ROM flies him 512–3840. sw5-4 "fixed" that by standing the
+port up: a third wrong constant cancelling two others. When a fidelity fix makes the game look
+WORSE, suspect a neighbouring constant before you suspect the fix. **Measure it** — project the
+model through the real `render()` path and print the screen footprint (2.8px vs 95.7px is not a
+matter of taste).
+
+---
+
+### WSBASE.MAC is `.RADIX 16` too — and it hands you the whole trench
+
+**Situation:** Any question about the star-wars TRENCH's dimensions, the pilot's flight band, or
+where the exhaust port sits.
+
+**Problem:** `trench-channel.ts` carried `TRENCH_HALF_W`/`TRENCH_WALL_H` as `PROVISIONAL … not
+pinned` for four stories, on the belief that the ROM offered only "two conflicting candidates and
+no documented ROM-unit↔our-unit conversion to arbitrate them". It offers neither conflict nor
+ambiguity — it offers a table, in the file nobody read.
+
+**Prevention/Fix:** `WSBASE.MAC` § `VIEW STARBASE` is the trench, drawn:
+- `TBSBL` ("BASE BOTTOM LINES") is the literal cross-section — rows of `(Y lateral, Z height)`:
+  `-400,0` / `400,0` (top rails) and `±400,-1000` / `±200,-1000` (floor). So **half-width `$400`
+  = 1024, depth `$1000` = 4096** — top at height 0, floor below it. Corroborated by `BSVSID`
+  (`LDD #-400 ;LEFT SIDE`) and `BSVSDW` (`LDD #-1000 ;BOTTOM EDGE` / `;LIMIT TO BOTTOM`).
+- `WSMAIN.MAC` `S1MVBS` clamps the pilot laterally to `#1FF` / `#-1FF` (±511), and `SMVG1B` drops
+  him into the trench until he is `#-0E00+100` — commented **`;JUST ABOVE BOTTOM OF TRENCH`**. So
+  the eye band is 512–3840 above the floor and he ENTERS LOW. `GD$MNT == 200` (512) is the same
+  minimum ground clearance the surface phase uses.
+- Consequence worth knowing: ±511 lateral inside ±1024 walls means **the cabinet's pilot can never
+  crash into a wall** — wall furniture is shoot-only, and only the channel-spanning catwalk can
+  block him. That is why the dive band exists.
+
+**⚠ The radix.** WSBASE has no `.RADIX` line either, but it proves itself from the inside:
+`;PAINFUL MATH -- 8000 WRAPAROUND HANDLER` (only `0x8000` is the signed-16 wrap; decimal 8000 is
+nothing) and `CMPD #7000`, which the disassembly independently reports as `$7000`. Read `-1000` as
+decimal and you get a 1000-deep trench that is wider than it is tall — a ditch. The real thing is
+a canyon, 2048 × 4096.
+
+**Also:** `.P` args are DECIMAL and `.PH` args are HEX — the macros differ by one character, and
+that is what the "H" means:
+    .MACRO .P  .1,.2,.3    .WORD .1'.*.S, …   <- trailing "." forces decimal
+    .MACRO .PH .1,.2,.3    .WORD .1'*.S,  …   <- no "." → ambient radix → HEX
+
+---
+
+### A test that STAGES the bolt on the target cannot see an aiming regression
+
+**Situation:** Any story that moves the camera, the player's position, or a target's position in a
+game where the player must AIM at things.
+
+**Problem:** star-wars' shooting tests all went through `boltOn()` — fabricate the obstacle AND the
+projectile at the same hardcoded position, then step once. The bolt is already on the target; the
+aim path (`input.fire` → `aimDirection` → the muzzle) is never executed. sw5-6 raised the pilot's
+eye 768 units and left the gun at the world origin, so the crosshair ray and the bolt ray came apart
+by 768: **all 7 shootable trench obstacles became unhittable, and the suite stayed 1018/1018 green.**
+The port was winnable only by aiming at *empty sky*. Nothing in the repo could see it.
+
+**Prevention:** For anything the player must aim at, write at least ONE test that fires the real gun:
+compute where the target appears on screen FROM THE EYE (invert the same projection the crosshair is
+drawn under), set `aimX/aimY` to that, hold `fire: true` through real `stepGame` frames, and assert
+the target DIES. Also assert the aim is *reachable* — |NDC| ≤ 1 — because "the player cannot even
+point at it" is a different failure from "the bolt misses", and the message should say which.
+
+**Fix / traps:**
+- **A kill is a SCORE/EVENT, never `obstacles.length === 0`** — that also fires when the thing simply
+  scrolls past and despawns. My first probe reported HITs that were despawns.
+- **Fire ONE bolt, not a held trigger.** Holding fire for N frames lets a LATE bolt (fired when the
+  target is already close, so it barely has time to drift) blunder into the hit sphere from the wrong
+  muzzle — two of my own tests passed *under the very regression they existed to catch*.
+- **Mutate to prove it bites**: put the bug back and confirm the suite fails. "Passes" is not evidence.
+- Assert the negative too: **aiming at nothing must not win.** That is what caught the absurdity.
+
+---
