@@ -119,3 +119,8 @@ completed_stories:
     title: "THE CAMERA — the far ring is built about the projected vanishing point, and FAR_RATIO is per-well, not a single 0.2"
     points: 6
     completed: '2026-07-14'
+  - id: tp1-31
+    epic: tp1
+    title: THE FRAMING — the per-well screen-Z vanishing point (ZADJL) translates the whole tube, and it slides in at level start (DB-008, deferred from tp1-9)
+    points: 3
+    completed: '2026-07-14'

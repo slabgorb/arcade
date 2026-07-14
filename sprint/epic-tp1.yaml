@@ -525,6 +525,8 @@ stories:
     description: "DB-008 (NO_COUNTERPART), deferred from tp1-9. The whole tube is translated on screen by a per-well signed-16-bit ZADJL, and on a NEW WAVE it eases in (target-current >>3 per step). Couples with tp1-9's DB-007 (far ring about the VP) — with DB-007 shipped, this completes the framing. ROM (ALDISP.MAC, .RADIX 16): ZADJL by wellID from HOLZAD low + HOLZDH high (1387-1388) = [-192,-224,-192,-128,-192,-192,-144,+96,+256,-224,+64,0,-352,+320,-192,+256]; X vanish is always 0 (2507); slide ease at 2494-2505 / ALWELG.MAC:80-84. Implement as a shell screen-translate of the whole Tube + a per-level tween; does not touch core projection. TEA recommended exposing the per-well offset as a pure constant to make it unit-testable. Full context in sprint/archive/tp1-9-session.md (Delivery Findings)."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
+    completed: '2026-07-14'
