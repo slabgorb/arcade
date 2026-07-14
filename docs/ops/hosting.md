@@ -68,6 +68,42 @@ just deploy-one <name>   # one app
 | Site serves stale build after green run | Cloudflare cache | check `cf-cache-status` / `last-modified` headers; purge zone cache if truly stale |
 | Need to roll back | `main` has a bad release | check out the previous tag, `just deploy-one <name>` from it, then fix forward on `develop` and release |
 
+## Game assets: the `arcade-assets` bucket
+
+Sound is **not** shipped in a game's `dist/`. The SFX, speech and music live in a
+separate public bucket, `arcade-assets`, fronted by
+`arcade-assets.slabgorb.com`, under a per-game prefix:
+
+| Prefix | What | Baked by |
+|--------|------|----------|
+| `star-wars/sfx/` | POKEY sound effects | `star-wars/tools/pokey-bake/bake-sfx.mjs` |
+| `star-wars/speech/` | TMS5220 LPC speech | `star-wars/tools/speech-bake/bake-speech.mjs` |
+| `star-wars/music/` | POKEY music (sw6-1) | `star-wars/tools/music-bake/bake-music.mjs` |
+
+**CI does not touch this bucket.** The reusable deploy workflow uploads each
+app's `dist/` and nothing else, so `arcade-assets` is populated by hand:
+
+```bash
+just deploy-assets     # bake star-wars/music/ and upload to arcade-assets
+```
+
+> **This gap has already cost us a whole epic.** sw3-5 built the entire music
+> path — core `MusicEvent` → `main.ts` `startLoop` → the `@arcade/shared/audio`
+> music channel — and pointed it at four `.wav` files that were never produced.
+> The engine's contract is *silent degrade at every failure path*, so four 404s
+> were indistinguishable from working code: no console error, no crash, just a
+> quiet game. Nothing in CI could see it, because CI never looks at this bucket.
+>
+> So when you add an asset, **the acceptance test is a live 200, not a green
+> test run**:
+>
+> ```bash
+> curl -sI https://arcade-assets.slabgorb.com/star-wars/music/space_theme.wav | head -1
+> ```
+>
+> and the filenames must agree with the game's manifest (`src/shell/audio.ts`).
+> A name mismatch is a 404, and a 404 is silence.
+
 ## Secrets
 
 One secret per game repo: `CLOUDFLARE_API_TOKEN` (R2-edit token, created in the

@@ -125,6 +125,34 @@ deploy-one name:
     node {{root}}/scripts/deploy-r2.mjs {{root}}/{{name}}/dist "arcade-{{name}}"
 
 # ============================================
+# ASSETS (the arcade-assets bucket — sfx / speech / music)
+# ============================================
+# Bake star-wars's POKEY music from the 1983 source and upload it to
+# arcade-assets under star-wars/music/.
+#
+# This is NOT part of CI, and deliberately so. The deploy workflows ship each
+# app's dist/ and nothing else, so the arcade-assets bucket has always been
+# filled by hand — which is exactly how star-wars shipped a complete music path
+# pointing at four .wav files that did not exist, and stayed silent for an epic
+# without one error in the console.
+#
+# The bake is deterministic: re-running it re-uploads byte-identical files. The
+# staging tree mirrors the bucket keys, so deploy-r2.mjs (which keys objects by
+# their path relative to the dir it is given, and already knows audio/wav) needs
+# no changes.
+deploy-assets:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    staging="$(mktemp -d)"
+    trap 'rm -rf "$staging"' EXIT
+    mkdir -p "$staging/star-wars/music"
+    echo "==> baking star-wars music"
+    node {{root}}/star-wars/tools/music-bake/bake-music.mjs "$staging/star-wars/music"
+    echo "==> uploading -> arcade-assets/star-wars/music/"
+    node {{root}}/scripts/deploy-r2.mjs "$staging" arcade-assets
+    echo "Done. Verify: curl -sI https://arcade-assets.slabgorb.com/star-wars/music/space_theme.wav"
+
+# ============================================
 # RELEASE (develop → main + tag → CI deploys to R2)
 # ============================================
 # Cut a semver release of one subrepo: gate on tests+build, bump version on
