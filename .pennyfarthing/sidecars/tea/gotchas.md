@@ -4,6 +4,34 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 
 ---
 
+### Pinning a lookup TABLE? Test the wave AFTER the last row. The bug lives where the table ENDS.
+
+**Situation:** Any story that ports a ROM wave/skill table (`TWFUSC`, `WPULTIM`, `WPULPOT`, the whole
+of Tempest's `WTABLE`; Red Baron and Battlezone have the same shape) into a per-level lookup.
+
+**Problem:** I pinned tp1-25's `TWFUSC` at **every boundary inside the table** — 17, 18, 32, 33, 48,
+49, 98, 99 — and shipped a function that was WRONG at 100. Every value I chose was *inside* the
+table, so the walk-off was invisible to me. Above the last record nothing matched and the lookup fell
+through to its end-of-table `return 0` — which is also the legitimate "no chase" answer for the EARLY
+waves. One value, two meanings: the deep-wave fuseball silently reverted to the exact coin-flip the
+story existed to remove. The Reviewer caught it; my suite could not, and I proved it — extending the
+last record's `end` from 99 to 999 left the full suite at **997/997 green**.
+
+**Prevention:** For any table lookup, the test set is not "the boundaries" — it is **the boundaries
+PLUS the first value past the end** (and, if reachable, past the start). Then ask the harder question:
+*is the out-of-range return value distinguishable from a legitimate in-range one?* If "not found" and
+a real answer are the same value (`0`, `-1`, `undefined`), the degradation is SILENT and no caller can
+tell. That is a design fault, not just a missing test.
+
+**And check the ROM before assuming out-of-range is even reachable there.** It usually isn't, because
+the original hardware capped it. Tempest's `CONTOUR` intercepts the wave *before* the table walk
+(ALWELG.MAC:415-423): `CMP I,98. / IFCS / LDA RANDO2 / AND I,1F / ORA I,40 / … / INC TEMP2` — for
+wave >= 99 it substitutes a **random** wave in **65..96**, which lies wholly inside the last record,
+so the ROM can never fall off its own table. Our port had no such fold, because `s.level` increments
+without a cap. **The port reaches states the ROM cannot.** Enumerate those states.
+
+---
+
 ### A SEEDED RNG makes "it's deterministic" vacuous — to tell a CHASE from a COIN, move the PLAYER
 
 **Situation:** Pinning any enemy decision that is supposed to depend on the player — a chase, an
