@@ -208,3 +208,31 @@ that is what the "H" means:
 
 ---
 
+### A test that STAGES the bolt on the target cannot see an aiming regression
+
+**Situation:** Any story that moves the camera, the player's position, or a target's position in a
+game where the player must AIM at things.
+
+**Problem:** star-wars' shooting tests all went through `boltOn()` — fabricate the obstacle AND the
+projectile at the same hardcoded position, then step once. The bolt is already on the target; the
+aim path (`input.fire` → `aimDirection` → the muzzle) is never executed. sw5-6 raised the pilot's
+eye 768 units and left the gun at the world origin, so the crosshair ray and the bolt ray came apart
+by 768: **all 7 shootable trench obstacles became unhittable, and the suite stayed 1018/1018 green.**
+The port was winnable only by aiming at *empty sky*. Nothing in the repo could see it.
+
+**Prevention:** For anything the player must aim at, write at least ONE test that fires the real gun:
+compute where the target appears on screen FROM THE EYE (invert the same projection the crosshair is
+drawn under), set `aimX/aimY` to that, hold `fire: true` through real `stepGame` frames, and assert
+the target DIES. Also assert the aim is *reachable* — |NDC| ≤ 1 — because "the player cannot even
+point at it" is a different failure from "the bolt misses", and the message should say which.
+
+**Fix / traps:**
+- **A kill is a SCORE/EVENT, never `obstacles.length === 0`** — that also fires when the thing simply
+  scrolls past and despawns. My first probe reported HITs that were despawns.
+- **Fire ONE bolt, not a held trigger.** Holding fire for N frames lets a LATE bolt (fired when the
+  target is already close, so it barely has time to drift) blunder into the hit sphere from the wrong
+  muzzle — two of my own tests passed *under the very regression they existed to catch*.
+- **Mutate to prove it bites**: put the bug back and confirm the suite fails. "Passes" is not evidence.
+- Assert the negative too: **aiming at nothing must not win.** That is what caught the absurdity.
+
+---
