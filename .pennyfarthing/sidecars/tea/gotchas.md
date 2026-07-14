@@ -237,6 +237,62 @@ point at it" is a different failure from "the bolt misses", and the message shou
 
 ---
 
+### The Red Baron quarry has TWO copies and they DISAGREE ABOUT LINE NUMBERS
+
+**Situation:** Any red-baron story that cites the Atari source by `FILE.MAC:LINE` — which is every
+rb4 fidelity story, and every RED test that pins a ROM constant.
+
+**Problem:** Three checkouts of the same source exist on this machine and they are NOT
+interchangeable:
+
+    ~/Projects/red-baron-source-text          LF-only   md5 497db9…  6294 lines   <- CITABLE
+    ~/Projects/red-baron-source               CRLF      md5 27cdfe…  6286 lines   <- NOT citable
+    red-baron/reference/red-baron/  (gitignored)         md5 27cdfe…              <- the CRLF one!
+
+The citable copy renders each form-feed page break (`\x0c`) as its own line; the CRLF sibling glues
+it onto the following `.SBTTL`/`.TITLE`. So the sibling is **8 lines short**, and the shortfall
+accrues in a **STAIRCASE**, not a constant offset:
+
+    citable = sibling + 0   (sibling lines    1- 263)
+                     + 1   (              265- 724)   <- CALCNT lives here: 620 vs 621
+                     + 2   (              726-1654)
+                     …
+                     + 8   (             5963-6285)   <- the vertex table
+
+A citation copied from the sibling is off by ONE near the top of the file and by EIGHT near the
+bottom. **There is no constant offset that repairs them** — "fix the off-by-one" by shifting
+everything +1 and you silently re-break every deep citation. rb4-2 exists because the findings doc
+was written against the sibling; its own header even names `reference/red-baron/` as its source.
+
+**Prevention:** Never resolve a citation against whatever copy is lying around. FINGERPRINT the
+quarry first, and make the fingerprint reject the sibling — RBARON.MAC must have **6294 lines**,
+`:74` = `\t.RADIX 16`, `:621` = `CALCNT\t=18`, `:6217` = `\t.RADIX 10`, `:6281` = `\t.RADIX 16`.
+Then *derive* each expected line by finding where the source defines the symbol; never type the
+number. `RED_BARON_SOURCE_DIR` defaults to the citable copy — keep it that way.
+
+**Also — the decoy build is not what it looks like.** `R2BRON.MAC` is byte-identical to `RBARON.MAC`
+except for **7 lines, and every one is a ROM self-test checksum byte**. So citing `R2BRON.MAC:NNNN`
+gives you the RIGHT text at the RIGHT line and the citation "verifies" — which is why 41 of them
+survived review. The poison is in **`R2GRND.MAC`**, the module R2BRON's load map links, which differs
+from shipped `RBGRND.MAC` in exactly two lines: `FRMECNT=4→5` (62.5 Hz → 50 Hz) and `CMP I,3` →
+`CMP I,40` (the watchdog, off by 21×). A blind `R2BRON`→`RBARON` rename is content-safe; a blind
+`R2GRND`→`RBGRND` rename **launders a lie**. And `R2BRON.MAP:10` identifies its own object module as
+`RBARON` — the decoy signs the ship build's name.
+
+**Test design that survives:** put the checker in the TEST file, not in `tools/` — then a doc-fix
+story needs zero production code and GREEN means the prose was actually corrected. Assert the
+guard bites (reconstruct the sibling's form-feed gluing in memory and require the fingerprint to
+reject it); a fingerprint nobody has tampered with is decoration.
+
+**What you CANNOT build:** a universal "every citation resolves" checker over the findings doc. I
+tried: 64% resolve against the citable copy vs 57% against the sibling — noise, because the oracle
+("which symbol does this prose citation mean?") is unreliable. `docs/audit/findings/*.json` carries a
+per-citation `verbatim` field and IS universally checkable. The doc does not. Until it does, check
+citations the doc makes at a symbol's DEFINITION (derive the line, demand the doc cite it) and leave
+use-site ranges alone.
+
+---
+
 ### A label's COMMENT is not a caller — for "what plays when", grep the `JSR`, never the callee
 
 **Situation:** Pinning which ROM tune/sound/effect belongs to which game moment (sw6-1:

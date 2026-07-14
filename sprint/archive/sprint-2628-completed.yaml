@@ -76,3 +76,8 @@ completed_stories:
     title: Pin TRENCH_WALL_H from the ROM and seat the exhaust port in the trench — the re-ported PORT plate hangs half below the floor
     points: 3
     completed: '2026-07-14'
+  - id: rb4-2
+    epic: rb4
+    title: "RETRACT THE POISONED DOC — it cites the decoy build R2BRON.MAC and misreads hex as decimal"
+    points: 3
+    completed: '2026-07-14'
