@@ -91,3 +91,8 @@ completed_stories:
     title: "W-023's other half — from wave 17 the fuseball DOES chase, and it chases BACKWARDS"
     points: 2
     completed: '2026-07-14'
+  - id: sw6-1
+    epic: sw6
+    title: Bake the four POKEY music loops from the original 1983 source — port Rusty's POKEY Music driver (SNDPM.MAC) + the SWMUS.MAC tunes, upload to R2, and make Star Wars audible for the first time
+    points: 8
+    completed: '2026-07-14'
