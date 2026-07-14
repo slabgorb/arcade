@@ -453,7 +453,8 @@ stories:
     description: "Filed by Obi-Wan out of the tp1-24 review (2026-07-14). WHAT IT IS: PLAYER_RIM_DEPTH (src/core/rules.ts:84) is `export const PLAYER_RIM_DEPTH = 0.92` with a bare comment and no ROM derivation. Invert it: INVAY = 0xf0 - 0.92 * 224 = 33.92 — NOT a clean ROM byte. Every neighbouring constant in that file is derived from one ((0xf0 - 0x20) / WARP_ALONG_SPAN; PULSAR_ALONG_PER_FRAME * ROM_FPS / WARP_ALONG_SPAN), and a round decimal with a bare comment is the exact fingerprint of the two constants this epic has ALREADY caught and killed: TANKER_SPLIT_DEPTH = 0.9 (tp1-5) and SPLIT_CHILD_DEPTH = 0.85 (tp1-24). No finding tracks it — it appears only inside OTHER findings' prose (W-010's `ours`, W-030's claim, WD-016), never as a claim of its own. WHY IT MATTERS NOW: it was harmless while a tanker's children were clamped to 0.85 and could never reach it. tp1-24 deleted that clamp and ratified a DIFFICULTY CHANGE expressed entirely in terms of this constant — 'the children are born ABOVE PLAYER_RIM_DEPTH, therefore a player on a flanking lane dies on the burst frame'. The grab line is now load-bearing for how lethal the game is, and nobody has ever audited it. If 0.92 is wrong, the lethality window is wrong. THE LIKELY ROM SIDE: the grab is JKITST/kill-check territory (ALWELG.MAC ~1981-82 is already cited by W-010 for the mid-jump gate); find the byte the ROM actually compares INVAY against and derive the constant from it exactly as SPLIT_TOO_CLOSE_DEPTH derives from $20. A CONSEQUENCE WORTH TESTING EITHER WAY: because the grab line (0.92) and the no-flip line (0.9286) are different numbers, there is a band [0.92, 0.9286) in which a BULLET-split child is born both LETHAL (above the grab line) and FLIPPING (below the too-close line, so it runs the wave's cam and can jump onto the player). That band was unreachable under the old clamp and is reachable now. The two-threshold structure is authentic — the ROM's grab and no-flip tests genuinely are different bytes — but the sliver's WIDTH is set by this unaudited 0.92, and no test covers it."
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -463,6 +464,7 @@ stories:
       - "If the value MOVES: tp1-24's suite (tests/core/tp1-24.split-child-depth.test.ts) asserts children are born above PLAYER_RIM_DEPTH and that a flanking-lane player dies on the burst frame. Re-verify both against the new line — do not just let them re-derive and go green vacuously."
       - 'Cover the newly-reachable sliver [PLAYER_RIM_DEPTH, SPLIT_TOO_CLOSE_DEPTH): a tanker SHOT in that band drops children that are both lethal (above the grab line) AND flipping (below the too-close line). Untested today, and unreachable before tp1-24 removed the 0.85 clamp.'
       - npm test -- citations stays green, and `node tools/audit/reanchor-citations.mjs` reports 0 lost.
+    completed: '2026-07-14'
     type: bug
   - id: tp1-28
     title: The audit doc says MAYBLR chases on an EVEN invader index. It is ODD, and the error has now propagated through three documents.
