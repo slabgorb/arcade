@@ -236,3 +236,63 @@ point at it" is a different failure from "the bolt misses", and the message shou
 - Assert the negative too: **aiming at nothing must not win.** That is what caught the absurdity.
 
 ---
+
+### A label's COMMENT is not a caller — for "what plays when", grep the `JSR`, never the callee
+
+**Situation:** Pinning which ROM tune/sound/effect belongs to which game moment (sw6-1:
+which of the 1983 tunes is the Death Star *surface* music?).
+
+**Problem:** `SNDPM.MAC:337` labels its entry point `PMBEN:: ;BENS THEME (START OF TOWER)`,
+and `SNDPBX.MAC` echoes it (`PM BEN ;BEN THEME:START TOWER`). Both say "tower". Both are
+**stale**. `PMBEN`'s only caller in the entire 1983 tree is `WSMAIN.MAC:2161`:
+
+    JSR PMBEN     ;BEN'S THEME WHEN LOSE GAME WITH NO HIGH SCORE
+
+It is the **game-over** theme. The real ground/towers cue is `PM4TH` ("BATTLE MUSIC IN
+FOURTHS: GROUND TOWERS", `WSMAIN.MAC:1636`). The story AC *and* the Architect's design
+spec both quoted the stale label as ground truth — the error propagated from a 1983
+comment into a 2026 acceptance criterion, and would have baked the you-lost music onto
+the Death Star surface.
+
+**Prevention/Fix:** A callee's label comment records what the author *intended* when he
+wrote it; the call site records what the game *does*. They drift. For any
+"which asset plays at moment X" question, enumerate the CALL SITES and read THEIR
+comments: `grep -rn "JSR[[:space:]]*PM[A-Z0-9]*" *.MAC` — there were exactly 11 in the
+whole tree, all in `WSMAIN.MAC`, each with an intent comment at the point of use. Then
+write the refutation INTO the test (`expect(towerTunes).not.toContain('BEN')`) with the
+call-site citation, so nobody "corrects" it back to the label.
+
+**Corollary — the sound-command IDs are POSITIONAL.** `SNDPBX.MAC` assigns each
+`AUD`/`PM`/`SPK` entry the next `PBX$EQ` (entry 0 = RESET), so a command's `$NN` is just
+its ordinal in file order. Count them to decode `$1D`/`$20`/`$22`/`$24` — don't guess.
+
+---
+
+### SWMUS.MAC is a self-documenting oracle — mine the comment/byte pairs, don't hand-decode
+
+**Situation:** Transcribing the star-wars POKEY music (or any assembled `.MAC` listing
+where the macro call survives as a comment).
+
+**Problem:** The `.NOTE`/`.CKEY`/`.LOOP` macro *definitions* are not preserved in the
+source tree, so the encoding looks unrecoverable.
+
+**Prevention/Fix:** It doesn't need them. `SWMUS.MAC` is the **assembled** listing: every
+`.BYTE` carries its original macro call as a comment directly above it —
+
+    ;.NOTE F5C
+    .BYTE  042, 016
+
+— so the file *is* its own Rosetta stone. Mine the pairs mechanically and the encoding
+falls out and self-verifies (1225/1227 on the first pass): pitch byte =
+`octave*12 + semitone + 1`, **0 = REST** (`NOTTAB:` literally opens `.WORD 0 ;REST`);
+opcode byte = `0x80 | index-into-PKDT` (SNDPM.MAC:934). Notes stay < `0x80` so the sign
+bit alone separates note from function (`TSTB ;CHECK THE OPCODE`).
+
+**⚠ The radix cuts BOTH ways here.** `SWMUS.MAC`/`SNDPM.MAC` are `.RADIX 16`, so the byte
+stream is HEX — but a **trailing dot forces DECIMAL**, and the tune *indices* use it:
+`.TUNE`'s expansion is `LDB #<2*'TNUM'.>` (SNDPM.MAC:325). Read `PMTH5`'s `.TUNE 1,27 …
+4,30` as hex and its four voices scatter across the DESCENT tune plus a test tone — and
+it would still play. So refute BOTH misreadings: decimal for the stream, hex for the
+indices.
+
+---
