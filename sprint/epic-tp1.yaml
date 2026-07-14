@@ -96,7 +96,8 @@ stories:
     description: "Cluster C2, second half. Subsumes W-009 (the CHASER, moved here from tp1-4), W-023, W-026, W-027, W-032. NOTE: W-025 (the pulsar flips TOWARD the player) and W-007 (rule-driven flip direction) were CLOSED BY tp1-4 — the CAM it landed has no random-direction opcode, so there is no coin flip left to remove. What remains here is the CHASER: the rim state with its own counter and pincer rule (TOPPER is already transcribed and byte-verified in the CAM, so the interpreter is done — only the rim STATE is missing). PREREQUISITES LEFT BY tp1-4's REVIEW, all of which this story touches directly: (1) jchpla has no zero-delta branch, but the ROM's JCHPLA does — ASL/IFCC treats a delta of ZERO as positive and sets INVROT to CCW unconditionally, and CHASER CALLS JCHPLA to pick its pincer direction, so a chaser on the player's own lane currently gets a history-dependent direction; (2) fastestFlipperRimSpeed() in src/shell/input.ts still returns the pre-CAM 4 frames/lane — TOPPER's real cadence is a VSLOOP 4 crouch plus JUMP_ANGLE_STEPS/WTTFRA frames (~6.7), so the keyboard escape margin must be re-derived against it; (3) speedFor's default throws at runtime but gives no compile-time exhaustiveness — this story adds a sixth EnemyKind, so use assertNever; (4) the pulse kill (sim.ts) was not widened alongside the mid-jump grab gate."
     points: 6
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -105,6 +106,7 @@ stories:
       - "The pulsar runs a CAM program like every other enemy; its bespoke stepper is gone."
       - "Depends on tp1-4 (the interpreter). This story does not re-implement it."
       - "npm test -- citations stays green."
+    completed: '2026-07-14'
     type: refactor
     review_findings: "HIGH: W-032's fix is unreachable dead code. The ROM uses ONE constant ($20) for both the carrier auto-split (JSMOVE, CMP I,20/IFCC) and SPLCHA's too-close test, so every naturally-arriving tanker is 'too close' and its children always get NEWGEN (no flipping). We split at TANKER_SPLIT_DEPTH=0.9 (INVAY 38.4), below the $20 band (INVAY 32 = depth 0.9286), so t.depth >= SPLIT_TOO_CLOSE_DEPTH is never true. Proven: deepest reachable tanker depth is 0.897 across levels 1-81. Gameplay unchanged, yet W-032 is stamped remediated_by:tp1-5 in the machine-checked audit. The W-032 test hides this by hand-placing a tanker at depth 0.95. MEDIUM: W-023 replacement test lacks a liveness guard (frozen fuseball passes vacuously); prerequisite 3 half-delivered (scoreFor/enemyCanShoot/makeEnemy/stepGame still lack assertNever, and interpreter.ts:151 falsely claims otherwise); widened citation gate validates nothing once remediated_by + NO_COUNTERPART are both set. The ROM archaeology (CHASER, POLDEL, JCHPLA, JCHKPU, TOPPER cadence, the 7-of-40 pulse) is verified correct against ALWELG.MAC."
     review_verdict: approved
