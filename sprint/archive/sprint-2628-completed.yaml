@@ -61,3 +61,8 @@ completed_stories:
     title: "THE RADIX SWEEP — the ROM's constants are HEX; we read them as decimal. ~30 of them."
     points: 8
     completed: '2026-07-13'
+  - id: sw5-6
+    epic: sw5
+    title: Pin TRENCH_WALL_H from the ROM and seat the exhaust port in the trench — the re-ported PORT plate hangs half below the floor
+    points: 3
+    completed: '2026-07-14'
