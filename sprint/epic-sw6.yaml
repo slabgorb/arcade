@@ -11,7 +11,7 @@ stories:
     description: "Star Wars has never played music in production: the four .wav loops sw3-5's MUSIC manifest points at 404 on R2, and the shared audio engine's silent-degrade contract turns that into silence rather than an error. Produce them. Design: docs/superpowers/specs/2026-07-13-star-wars-music-bake-design.md. DO NOT reverse-engineer the disassembly (Music_Functions.asm's `fdb $805A, $8701, $3316` note words) and DO NOT emulate the sound board (we have no sound ROM binary, and the disasm listing carries mnemonics without opcode bytes, so one cannot be rebuilt from it). The ORIGINAL 1983 Atari source has the music fully commented at ~/Projects/star-wars-1983-source-text: SWMUS.MAC ('STAR WARS TUNES' — TUNTAB + every voice's note stream, with each assembled .BYTE carrying its original macro call as a comment directly above it, so the encoding documents itself: `;.CKEY 0` -> `.BYTE 85, 0`, `;.CALL 5` -> `.BYTE 8D, 5`, `;.ENDT` -> `.BYTE 0,0`) and SNDPM.MAC ('(RUSTY''S POKEY MUSIC) DRIVER, 6809 VERSION' — the opcode dispatch table, the note->frequency table, and the frequency/amplitude envelope engines). This is the pattern speech-bake already proved: it did not emulate the 6809 either, it lifted the LPC data from the source and re-implemented only the TMS5220 decoder in JS. Same here — lift the tune data, port the player, feed the ALREADY-VENDORED POKEY core (tools/pokey-bake/vendor/pokey.js). No second POKEY implementation enters the repo."
     points: 8
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-07-14'
     repos: star-wars, orchestrator
     workflow: tdd
