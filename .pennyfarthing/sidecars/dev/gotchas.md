@@ -95,3 +95,50 @@ If the cwd isn't your checkout, do NOT kill it (it's another session's work). Se
 **Example (sw5-5):** re-porting the ground objects into raw ROM units made `TOWER_ORIENT` a real matrix (was IDENTITY) — precisely the class of bug tests miss. Port 5274 turned out to be `a-2`'s vite. Serving a-1 on 5284 and pressing `8` showed the corrected tower: tall tapered yellow column, white cannon cap, standing on the floor. Also note pre-existing 404s for the remote `arcade-assets.slabgorb.com` music `.wav`s — console noise, not your regression.
 
 ---
+
+### Rewriting a cited line has TWO honest exits, and `remediated_by` is only one of them — triage every LOST citation
+
+**Situation:** GREEN work in tempest that edits/deletes lines the audit's findings cite as
+`ours` (any tp1 story — tp1-6 rewrote the spawn block, the grab predicate, and the
+level-clear gate in one commit).
+
+**Problem:** `reanchor-citations.mjs` reports LOST and its own message offers "fix the
+quote, or mark the finding remediated_by" — but those map to DIFFERENT situations and
+picking by reflex writes a phantom fix into the audit. tp1-6's two LOST were both the
+second kind: W-010 (a CONFIRMED whose anchor line I split) and WD-016 (an OPEN divergence
+whose gate I respelled `remaining === 0` → `nymphs.length === 0` without fixing the
+divergence — the ROM still warps out from under rim invaders and we still don't). Stamping
+either would have closed the gate's eye on a live defect; the citation gate would go GREEN
+on a lie and the sidecar's tp1-25 lesson says the Reviewer WILL find it.
+
+**Prevention:** Before committing, run the reanchor tool and TRIAGE each LOST by asking
+"did this story remove the DIVERGENCE the finding describes, or merely re-spell the line?"
+Removed → `remediated_by` (quote frozen as history). Re-spelled → hand-edit `ours`
+line+verbatim onto the new spelling and leave the finding open. Half-removed → neither:
+re-point at the half that still diverges and file the split (the W-030/tp1-24 pattern).
+And when a re-spell makes half the finding's CLAIM stale (WD-016's NYMCOU clause now
+matches), log a finding for the audit curators rather than silently editing prose.
+
+---
+
+### Deleting a state mechanism? Grep the tests for INVARIANT pins on it — "RNG untouched" style assertions break semantically, not just at tsc
+
+**Situation:** A GREEN that replaces a core mechanism and adds a NEW RNG draw site (tp1-6:
+wave-init now rolls a lane per nymph, as the ROM's ININYM does).
+
+**Problem:** tsc finds every fixture that touches the deleted SHAPE, but not the tests that
+pin an INVARIANT the new mechanism legitimately breaks: `sim.framing.test.ts` asserted
+`out.rng` deep-equal across the select→start commit ("framing transitions must not touch
+RNG") — true for menus, now false for the commit that seeds a wave. Vitest catches it only
+if you run the FULL suite; the assertion reads like a law, and the reflex is to "fix" the
+implementation by hiding the draw (derived seed, pre-rolled lanes), which would silently
+fork the RNG accounting away from the ROM's.
+
+**Prevention:** When adding a draw site, grep tests for `rng` equality/snapshot assertions
+(`toEqual(rngBefore)`, seed compares) and re-scope the pinned invariant to what is still
+true (menu NAVIGATION stays RNG-free; the WAVE-SEEDING commit draws, citably). State the
+ROM citation in the updated test comment so the next reader knows the draw is the arcade's
+own cost, not leakage — and log the assertion-subject change as a deviation, since it is a
+spec edit, not a translation.
+
+---

@@ -489,5 +489,45 @@ constant — check that, it is what proves you only moved them into a region bot
 **Fixture trap that cost a red guard:** a guard test with `s.enemies = []` never fires — `checkLevelClear`
 warps the board out on frame 1 and *nobody can kill anybody*. Any "X still kills the player" guard needs
 a decoy enemy parked deep and far away.
+### Tempest's nested IF macros combine flags from ONE compare — `IFCS` + `IFNE` is STRICTLY-GREATER
+
+**Situation:** Decoding any ALWELG.MAC gate built from stacked `IFxx` macros (tp1-6:
+MOVNYM's invader-slot gate, 1113-1117 — `CMP WINVMX / IFCS / IFNE`).
+
+**Problem:** A 6502 `CMP` sets carry AND zero from the same subtraction, so consecutive
+`IFCS / IFNE` blocks are BOTH conditions of that one compare: carry-set (A >= operand)
+nested with not-equal (A != operand) = **A strictly greater**. Read the pair lazily as
+">=" and MOVNYM's freeze fires at 6 live invaders instead of 7 — the cap comes out one
+short of the cabinet, every wave, and WINVMX's own comment (ALCOMN.MAC:732 "MAX # OF
+INVADERS-1") is the corroboration nobody reads. The same file's single-`IFCS` gates
+(JFUSEUP's `CMP I,20`) really ARE plain >=, so the habit cuts both ways.
+
+**Prevention:** At every stacked-IF gate, write out which flag each macro consumes and
+from WHICH instruction (flags persist until the next flag-setting op — an `LDA` between
+compares re-arms Z). Then pin the decoded boundary in a source-rules test (assert the
+`IFCS` and `IFNE` lines verbatim) AND behaviorally on both sides (6 hatches / 7 freezes),
+so neither a lazy port nor a lazy re-read survives.
+
+---
+
+### A contract-change RED must SILENCE the legacy mechanism in fixtures, or mirrors pass off the old code
+
+**Situation:** RED for a story that REPLACES a state field/mechanism (tp1-6: the spawn
+timer `{remaining, timer}` → the nymph queue `{nymphs}`), where fixtures can only ADD
+the new field at runtime because the old one still exists.
+
+**Problem:** I first wrote fixtures as `s.spawn.nymphs = [...]` — leaving `remaining: 6,
+timer` live underneath. The OLD spawn timer kept firing inside my windows: the
+alone-zone test's "two hatches on different lanes" PASSED against unfixed code (two
+legacy timer-spawns on random lanes satisfied it), and a pulsar fixture guard counted a
+phantom second enemy. A mirror half is no protection when the legacy mechanism can
+counterfeit the observable the mirror asserts.
+
+**Prevention:** Replace the WHOLE object — `s.spawn = { nymphs: [...] }` — so the legacy
+path reads `undefined` and is structurally inert pre-GREEN (and the object literal
+doubles as the tsc-level contract pin post-GREEN: no cast, no extra fields). Then re-run
+and check WHICH tests pass pre-GREEN: every pre-GREEN pass must be an intended guard
+(keep-behavior half), never a new-behavior assertion. The testing-runner's per-test
+failure reasons are the audit; "fails" is not enough — fails-for-the-right-reason is.
 
 ---

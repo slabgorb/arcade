@@ -4,6 +4,9 @@ sprint:
   jira_sprint_id: 2
   jira_sprint_name: "TO Sprint 2628"
   goal: ROM fidelity
+  start_date: '2026-07-12'
+  end_date: '2026-07-26'
+  status: active
 
 completed_epics: []
 completed_stories:
@@ -100,4 +103,9 @@ completed_stories:
     epic: tp1
     title: PLAYER_RIM_DEPTH = 0.92 is an invented constant, and tp1-24 just made it load-bearing — derive the grab line from the ROM byte or ratify it
     points: 2
+    completed: '2026-07-14'
+  - id: tp1-6
+    epic: tp1
+    title: "NYMPHS + THE 7-INVADER CAP — the arcade holds surplus enemies dormant; we have neither the cap nor the queue"
+    points: 10
     completed: '2026-07-14'

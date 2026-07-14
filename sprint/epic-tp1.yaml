@@ -115,7 +115,8 @@ stories:
     description: "Cluster C3. Subsumes W-002, W-003, W-004, W-024, W-029, DA-012, DA-017. ONE OBJECT, NOT TWO CHANGES: the cap is not independently implementable. The ROM caps live invaders at 7 (NINVAD=7, WINVMX=6 for every wave 1-99) and regulates spawning by SLOT BACK-PRESSURE — nymphs simply stop advancing when the slots are booked. Without a nymph queue there is nowhere to hold the surplus, so adding the cap alone would silently drop spawns. Changes the difficulty of every wave. Also unblocks the fuseball turn-back (W-024) and the pulsar yo-yo (W-029), both keyed on NYMCOU."
     points: 10
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -125,7 +126,10 @@ stories:
       - "The fuseball turn-back (W-024) works, keyed on NYMCOU."
       - "The pulsar yo-yo (W-029) works, keyed on NYMCOU."
       - "npm test -- citations stays green."
+    completed: '2026-07-14'
     type: feature
+    review_findings: "HIGH: branch unmergeable — tp1-27 (45dcb1e) landed mid-flight; 7 conflicts (6 findings JSONs + interpreter.ts) and three auto-merge hazards (dead grabDepth split once PLAYER_RIM_DEPTH=1.0, stale 0.92 comment, upstream-retracted tp1-24 prose). Rebase + consolidate the rim to tp1-27's single CURSY-derived constant; findings JSONs: develop as base, re-apply 6 stamps, re-run reanchor. MEDIUM (testable): ININYM's index shift is 8-bit — the ROM wraps at nymph 16 (TXA/ASL×4), ours doesn't, so budgets > 16 (level 7+) pace slower than the cabinet; fix ((i & 0x0f) << 4) | lane with zero-bump post-wrap; TEA re-pins the band test (current one rejects the correct wrap for budgets > 16). LOW: TEMPY latch after failed hatch undocumented; budgets > NNYMPH=64 from L30. Substance otherwise sound: 1051/1051, citations green, honest audit trail."
+    review_verdict: approved
   - id: tp1-7
     title: "THE SKILL CONTOUR, part 1 — transcribe the ROM's eight per-wave difficulty tables and stop hand-tuning curves"
     description: "Cluster C4, cheap half. Subsumes W-011, W-012, W-014, W-019, W-020, W-033, W-035, W-037, DA-002. Eight table transcriptions from the ROM's CONTOUR/WTABLE machinery: enemy count, invader speed, spiker speed, bolt cap, bolt speed, tanker cargo, intro waves, pre-seeded spikes. Cheap TOGETHER — they are the same mechanism read eight times. Depends on tp1-1 (every one of these is a rate or a count) and tp1-6 (populations are capped by the slot machinery)."
