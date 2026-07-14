@@ -109,3 +109,8 @@ completed_stories:
     title: "NYMPHS + THE 7-INVADER CAP — the arcade holds surplus enemies dormant; we have neither the cap nor the queue"
     points: 10
     completed: '2026-07-14'
+  - id: tp1-12
+    epic: tp1
+    title: "THE PALETTE — enemy colours come from a per-wave-group COLTAB bank, not a fixed hex (and this hands us the invisible wells for free)"
+    points: 5
+    completed: '2026-07-14'

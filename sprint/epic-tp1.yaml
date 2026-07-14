@@ -214,7 +214,8 @@ stories:
     description: "Cluster C7. Subsumes V-011, V-019, DA-005 (colour half), DB-010, DB-017. One indirection: replace `enemy -> fixed hex` with `enemy -> palette slot -> per-wave-group COLTAB bank`. Six banks, advancing every 16 waves. This is what makes the arcade's later waves look like different games, and it brings the INVISIBLE-WELL WAVES (65-80) — one of Tempest's best-known difficulty spikes, which we simply do not have — for free. The enemy-burst-white item is carved out to tp1-3."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -224,7 +225,10 @@ stories:
       - "`blue` is added to GlyphColor."
       - "The ROM's palette is eight slots. Nothing outside those eight slots ships (notably: orange is not in it — see tp1-3's spiker)."
       - "npm test -- citations stays green."
+    completed: '2026-07-14'
+    branch: feat/tp1-12-palette-coltab
     type: feature
+    review_verdict: approved
   - id: tp1-13
     title: "AUDIO WIRING GAPS — the missing warp phase, the bonus chime, the bolt-collision cue, and the invented kzap"
     description: "Cluster C9. Subsumes S-011, S-013, S-014, S-015. Depends on tp1-2, which produces the corrected T3 bytes this story reuses."
@@ -497,3 +501,19 @@ stories:
       - "tp1-25's deviation D2 is retired. Its behavioural tests (tests/core/tp1-25.fuseball-chase.test.ts) must be re-examined, NOT weakened: they pin a lone fuseball chasing at waves 18/49/100, which under a parity gate depends on that fuseball's slot. Make the test's fixture explicit about the slot rather than deleting the assertion."
       - npm test -- citations stays green and `node tools/audit/reanchor-citations.mjs` reports 0 lost.
     type: refactor
+  - id: tp1-30
+    title: THE PALETTE, part 2 — enemies + starfield resolve colour through the COLTAB bank (V-019, DB-017)
+    description: "Follow-up to tp1-12 (THE PALETTE), which shipped the COLTAB mechanism + resolver + the well/accent + the invisible-well waves 65-80 + blue, but deferred the per-enemy and starfield recolouring (V-019 'the deepest change', DB-017). Depends on tp1-12's merged palette (COLTAB_BANKS/paletteBank/paletteColor in src/shell/glyphs.ts). CRITICAL first step: resolve the ROM-semantic question the mechanism assumes — does the pulsar read COLTAB slot 4, or is it always PULPIC turquoise/white (tp1-3/DA-020 established a PULPIC two-state toggle that may OVERRIDE slot 4)? And which tanker sub-stroke recolours (body only, keeping the cargo emblem that signals cargo type). This is NOT a blanket glyph override. Also lands the input guards on paletteColor/paletteBank (Number.isFinite level, slot bounds — flagged by 3 review specialists, unreachable until these callers exist) and extracts a pure resolveWellColor(level, zapFlash) so the well wiring is behaviourally testable (tp1-12's source-scan was mutation-proved gameable). Subsumes V-019 + DB-017; mark both remediated_by tp1-30 when done."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    depends_on: tp1-12
+    acceptance_criteria:
+      - 'The pulsar colour question is RESOLVED IN WRITING before wiring: cite whether the pulsar reads COLTAB slot 4 or PULPIC (ALDISP.MAC:861-867 vs 2410), and the tanker sub-stroke to recolour (body vs cargo emblem).'
+      - 'Enemy strokes resolve colour through paletteColor(level, SLOT_*), NOT a blanket override: the tanker CARGO EMBLEM and the pulsar white/cyan STROBE demonstrably survive (guarded by RED tests).'
+      - The starfield colours each plane through the palette from wave 5 (per-plane index, index 7 remapped to 4), and stays blue only while level < 5 (DB-017, ALDISP.MAC:2949-2961).
+      - 'paletteColor/paletteBank guard their inputs: a non-finite level and an out-of-range slot no longer break the PaletteColor contract or crash the render loop.'
+      - A pure resolveWellColor(level, zapFlash) is extracted and unit-tested behaviourally — replacing tp1-12's gameable well-wiring source-scan.
+      - V-019 and DB-017 are marked remediated_by tp1-30, citations reanchored, and npm test -- citations stays green.
