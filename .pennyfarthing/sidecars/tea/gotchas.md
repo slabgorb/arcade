@@ -437,3 +437,57 @@ it would still play. So refute BOTH misreadings: decimal for the stream, hex for
 indices.
 
 ---
+
+### When a "derive the constant" story finds NO byte, the gate is a STATE — and the answer may INVERT the story
+
+**Situation:** A ROM-fidelity story hands you an invented constant and says "find the byte the ROM
+compares against, or ratify it" (tp1-27: `PLAYER_RIM_DEPTH = 0.92`, the Tempest grab line).
+
+**Problem:** You go looking for a threshold byte, and the routine does not compare the quantity at
+all. `JKITST` — Tempest's grab — tests *not-jumping* and *both legs on the cursor's legs*, and
+NOTHING else (ALWELG.MAC:1980-1993). There is no INVAY compare, so there is no byte, so a story
+written as "derive it from the byte" has no literal answer and you are tempted to ratify the
+invention by default. **Ratifying is the wrong move.** The depth gate exists — it just lives one
+level up, in *who is allowed to run the routine*: `VKITST` appears in exactly ONE cam program,
+`TOPPER`, the CHASER cam, and `CHASER` seats the invader at `CURSY` ("PLACE EXACTLY AT TOP",
+1824-1826). So the grab line is not a tuned threshold — it IS the rim, `CURSY = ILINLIY = $10` →
+depth `(0xF0-0x10)/224` = **exactly 1.0**. The invented 0.92 let an invader still CLIMBING, eight
+units short of the rim, grab a player the cabinet would never have touched.
+
+**Prevention:** When the compare isn't in the routine, grep the OPCODE, not the routine — find every
+cam/state that can *reach* it. A gate you can't find as a number is usually a gate on state. And
+check whether the codebase already spells the same ROM line correctly somewhere else: `interpreter.ts`
+had `RIM_DEPTH = 1` with a doc comment literally reading *"the ROM's CURSY, the line the cursor sits
+on"*. Two spellings of one ROM constant, and the grab used the wrong one — that's the real defect,
+and it's invisible if you only look at the file the story names.
+
+**The sting: the answer can INVERT the story's own premise.** tp1-27's AC asked me to cover a sliver
+`[0.92, 0.9286)` where a split child is born "both LETHAL and FLIPPING". Once the grab line is 1.0 it
+sits ABOVE the burst line ($20 = 0.9286), so that interval is **empty** — no child is EVER born
+lethal; ATOP is tested BEFORE the carrier check (1744-1750), so a carrier that actually reaches the
+rim becomes a CHASER instead of bursting. The predecessor story (tp1-24) had ratified a difficulty
+change ("children are born above the grab line → the player dies on the burst frame") that was pure
+artefact of the invented constant, and had shipped a test named *"is INSTANTLY lethal"* asserting it.
+**Write the test that refutes the story, log the deviation, and re-seat the sibling.** An AC derived
+from an unaudited constant is not evidence.
+
+**Test design that survives:** pin every premise to a LITERAL (0.92, 0.9286, 1.0), never to the
+constant under audit — `expect(depth).toBeLessThan(PLAYER_RIM_DEPTH)` re-derives from the very number
+you are auditing and stays green for ANY value of it. That is exactly how 0.92 survived two stories
+that both leaned on it. Then add the invariant that catches the whole class: **invert the constant and
+demand a whole ROM byte back** (`0xF0 - 0.92*224 = 33.92` → not a byte → invented), and assert the
+grab line EQUALS the depth a chaser is pinned at (one ROM line, one number).
+
+**And ALWAYS probe the fix before handing off.** Applying the one-line change and running the FULL
+suite revealed **15 sibling tests in 8 files** that stage an enemy at `0.95` and call it "at the rim" —
+they encoded the same invented constant. Their intent ("an enemy at the rim grabs") was still right;
+only the staging depth was stale. TEA owns re-seating those (Dev cannot move goalposts), and re-seat
+to a coordinate FACT (`depth = 1` is the near rim by definition of the tube axis) rather than to
+`PLAYER_RIM_DEPTH`, or they go vacuous. A correct re-seat passes under BOTH the old and the new
+constant — check that, it is what proves you only moved them into a region both accept.
+
+**Fixture trap that cost a red guard:** a guard test with `s.enemies = []` never fires — `checkLevelClear`
+warps the board out on frame 1 and *nobody can kill anybody*. Any "X still kills the player" guard needs
+a decoy enemy parked deep and far away.
+
+---
