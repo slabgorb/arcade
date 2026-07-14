@@ -165,7 +165,8 @@ stories:
     description: "Cluster C5. Subsumes DB-006, DB-007, DB-008, DB-009, DB-016. Our perspective CURVE is algebraically correct; the CONSTANT is not. FAR_RATIO is a single module-level 0.2 for every level; the arcade's is per-well, R = (16+H)/(240+H), ranging 0.104-0.164. project, boundaryRail, laneWidth and flipPivot all close over the current module constant, so this is an API change, not a constant swap. Blocks tp1-10."
     points: 6
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -176,7 +177,9 @@ stories:
       - "project, boundaryRail, laneWidth and flipPivot take the tube rather than closing over a module constant."
       - "The starfield reuses the same hyperbolic law."
       - "npm test -- citations stays green."
+    completed: '2026-07-14'
     type: bug
+    review_verdict: approved
   - id: tp1-10
     title: "THE WARP DIVE — move the camera with the Claw, fly the eye into the new well, and replay the wave on a spike crash"
     description: "Cluster C6. Subsumes WD-010, WD-012, WD-013, WD-014, WD-015, WD-017, WD-018. Today the Claw changes size and screen position during the dive because the camera does not move with it. Needs tp1-1 (the velocities — warp accel carries the base rate SQUARED and is currently 4.45x too fast) and tp1-9 (the movable eye). Also the gate on tp1-11: restoring the ROM's spike depth is only fair once a spike crash replays the wave."
@@ -517,3 +520,11 @@ stories:
       - 'paletteColor/paletteBank guard their inputs: a non-finite level and an out-of-range slot no longer break the PaletteColor contract or crash the render loop.'
       - A pure resolveWellColor(level, zapFlash) is extracted and unit-tested behaviourally — replacing tp1-12's gameable well-wiring source-scan.
       - V-019 and DB-017 are marked remediated_by tp1-30, citations reanchored, and npm test -- citations stays green.
+  - id: tp1-31
+    title: THE FRAMING — the per-well screen-Z vanishing point (ZADJL) translates the whole tube, and it slides in at level start (DB-008, deferred from tp1-9)
+    description: "DB-008 (NO_COUNTERPART), deferred from tp1-9. The whole tube is translated on screen by a per-well signed-16-bit ZADJL, and on a NEW WAVE it eases in (target-current >>3 per step). Couples with tp1-9's DB-007 (far ring about the VP) — with DB-007 shipped, this completes the framing. ROM (ALDISP.MAC, .RADIX 16): ZADJL by wellID from HOLZAD low + HOLZDH high (1387-1388) = [-192,-224,-192,-128,-192,-192,-144,+96,+256,-224,+64,0,-352,+320,-192,+256]; X vanish is always 0 (2507); slide ease at 2494-2505 / ALWELG.MAC:80-84. Implement as a shell screen-translate of the whole Tube + a per-level tween; does not touch core projection. TEA recommended exposing the per-well offset as a pure constant to make it unit-testable. Full context in sprint/archive/tp1-9-session.md (Delivery Findings)."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: tempest
+    workflow: tdd

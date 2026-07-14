@@ -114,3 +114,8 @@ completed_stories:
     title: "THE PALETTE — enemy colours come from a per-wave-group COLTAB bank, not a fixed hex (and this hands us the invisible wells for free)"
     points: 5
     completed: '2026-07-14'
+  - id: tp1-9
+    epic: tp1
+    title: "THE CAMERA — the far ring is built about the projected vanishing point, and FAR_RATIO is per-well, not a single 0.2"
+    points: 6
+    completed: '2026-07-14'
