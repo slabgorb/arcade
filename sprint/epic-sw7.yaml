@@ -1,0 +1,97 @@
+id: sw7
+type: epic
+title: 'Star Wars — primary-source fidelity: the ruling sheet from the 2026-07-15 audit'
+description: "Files the ten clusters the boss ruled FIX on 2026-07-15 from the primary-source audit (star-wars/docs/2026-07-15-star-wars-primary-source-audit.md, branch chore/rom-fidelity-audit). 173 machine-checked findings, refutation held 53/53 with 21 corrections. Headline: the world runs at the wrong speed three ways (TICK_HZ=30 vs the cabinet's 20.508 Hz game frame; trench 31x slow; surface ramp missing) on top of largely byte-faithful data. sw7-1 (timebase) MUST land before any other numeric story or their constants re-bake on the wrong base. Every story cites finding ids; findings JSON carries the evidence (star-wars/docs/audit/findings/). Fixing a finding = mark it remediated_by and keep npm test -- citations green."
+priority: p1
+status: backlog
+repos: star-wars
+stories:
+  - id: sw7-1
+    title: R1 Timebase reconcile — kill TICK_HZ=30; the cabinet game frame is 20.508 Hz and everything routed through 30 runs 1.46x-2.93x fast
+    description: 'Subsumes T-007, T-008, G-003 (+G-001 cadence correction). TICK_HZ=30 in state.ts should be 20.508 (WSINT.MAC:147, 12 IRQs @ 246.094 Hz); trenchTimer counts 60 Hz steps (2.93x fast); fireball lifetime 2.13s vs ROM 3.12s. Verify EVERY TICK_HZ consumer. LANDS FIRST — all later numeric stories re-bake on this base. Evidence: docs/audit/findings/ per id; audit doc section Timing.'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw7-2
+    title: 'R2 Wave-parity family — GM.WAV is 0-based, ours 1-based: Imperial March, Great-shot-kid and both trench voice sets fire on wrong or inverted wave sets'
+    description: 'Subsumes U-005, U-006, U-007 (+U-008 correction: even-wave trench cues are INVERTED, not matching). ROM gates on 0-based GM.WAV (CMPA #4-1 = wave 4+, 1-based {4,6,8,...}); ours tests 1-based wave%2 — disjoint/inverted sets. One root fix: a 0-based wave accessor (or -1 shim) + rewire music/speech gates. Also S-012 indexes its bonus table by 0-based wave (story sw7-4).'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw7-3
+    title: R3 Text and board authenticity — PULL TRIGGER TO START, PRINCESS LEIAS REBEL FORCE, SHOOT YOUR INITIALS, the seeded OBI/WAN/HAN board, comma-grouped scores
+    description: "Subsumes H-010, H-011, H-012, H-015 (BCD-decoded seed board: OBI 1,285,353 ... RLM 380,655), H-020 (two-site formatScore fix at render.ts game-over + board). Optional rider: H-024 shield-gauge ramp — palette fully specified by refutation (green 5-9 / yellow 3-4 / red 1-2 + OR #0FF refuel flash). Warning from refutation: no <REBEL FORCE> string exists — the board title is PRINCESS LEIA'S REBEL FORCE via .NEXTMESS repositioning."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw7-4
+    title: R4 Score and shield rules — wave-scaled Force bonus, per-shield wave bonus and banner, drop the invented 400k/800k thresholds, post-hit shield window
+    description: 'Subsumes S-012 (Force bonus 5k/10k/25k/50k/100k by wave — index 0-based, hence depends on sw7-2), S-013 (5,000 per surviving shield unit + H-021 RWD banner), S-015 (BOOK_WAS_WRONG: remove non-ROM 400k/800k extra-shield thresholds — refuter did the exhaustive BCD hunt), S-016 (post-hit shield-loss window: ROM loses max one shield per gauge-redraw cycle).'
+    points: 4
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw7-2
+  - id: sw7-5
+    title: R5 Surface hazard — bunkers fire (GDBNKGN) and flying into a standing tower/bunker costs a shield; the maze fights back
+    description: "Subsumes D-016 (bunkers fire: object type .BYTE 3 SHORTY dispatches GDBNKGN via LBHI at WSGRND:1200; ours silences via kind !== 'bunker'), D-020 (ship-into-tower/bunker costs a shield + rolls the ship, GDVIEW BG1GLW+AUDCR; ours has NO ship-object collision). Record accepted deviations D-015/D-017/D-019/D-021/D-022 as house rules in the session (ROM: no wave-1 surface, no altitude penalty, traversal-only end, 5250-21000 u/s ramp)."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw7-1
+  - id: sw7-6
+    title: R6 Trench rebuild (flagship) — panel-grid wall model, wedge-chain length, fixed authored waves 0-10, WFF force-field catwalk, WGA/WPN model ports, 31x scroll speed, wall guns fire back
+    description: 'Subsumes B-008 (scroll 500 vs ~15,750 u/s — 31x, render-scale-independent, verified single caller S1MVBS in PHEBS), B-009 (wedge-chain trench length; DOFAR $8000 is a look-ahead window not total length), B-010 (KEYSTONE: 4-slot x 2-bit wall-panel grid, 49 wedges/11 pies — our 8-entity list cannot express it), B-011 (waves 0-10 are FIXED authored runs; ours randomizes), B-012 (catwalk = wall-mounted force field .WP WFF, side-gated, not channel-spanning), B-017 (wall guns BSGUN/DOBASE fire back), M-011 (.WP WGA wall-gun model), M-012 (WFF model — .WGD WFG comment CATWALK COLOR WHEN COLLIDED nails it), M-013 (drop 4 fabricated rails). Two size-l rewrites (B-010 model + B-012) plus data ports; likely splits at grooming. B-018 (miss re-flies whole trench) accepted — record.'
+    points: 14
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw7-1
+  - id: sw7-7
+    title: R7 Explosions and finale — piece lifetimes and age-keyed color ramp (TIE pieces never white-flash), 4-phase ring finale with looming prelim, authentic Death Star picture, tower/bunker debris
+    description: "Subsumes X-002 (piece lifetimes 24f/16f = 1.17s/0.78s wing/globe split), X-003 (age-keyed color ramp — CORRECTED: TIE pieces NEVER white-flash, timers born 24/16 below the #1F threshold; flash path belongs to ground objects at 32), X-006 (finale = 4-phase RED-blue-white DCIRCL+DRING animation, ~89 frames ~4.3s per X-008), X-007 (looming-station prelim — needs M-010), X-005 (tower/bunker ballistic debris + ground shadow; port TW1-3/BK1-3 pieces), M-010 (authentic Death Star pictures BSHEM/BSCIR/BSTRN/BSDSH at picture multiplier M.=32. — our 'no authentic data' comment is refuted)."
+    points: 12
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw7-1
+  - id: sw7-8
+    title: R8 Audio content — bake PMSF2/PMCNT/PMEND/PMBEN/PMDES, wire missing speech, dedicated AUDDF/AUDSS, fly-by doppler and R2 sound sets
+    description: "Subsumes U-010..U-014 (five tunes through the existing sw6-1 bake pipeline: PMSF2 port death-knell, PMCNT cantina/hi-score, PMEND finale, PMBEN Ben's theme + game-over, PMDES descent), U-015/U-016/U-017 (speech wiring: SPKR2N on port miss, SPKTHI on surface entry, attract/game-over lines), U-021/U-022 (dedicated AUDDF Death Star boom + AUDSS fireball-hit — both currently reuse enemy_explosion), U-019/U-020 (fly-by doppler set + R2 sound set — both size-l, DEFER-friendly if trimming). Sound board timebase 8.192ms confirmed correct in bake tools (U-001/U-002). R2 upload path per sw6-1 AC. Enables A-019 music-timed descent in sw7-9."
+    points: 13
+    priority: p2
+    status: backlog
+    repos: star-wars, orchestrator
+    workflow: tdd
+    depends_on: sw7-2
+  - id: sw7-9
+    title: R9 TIE choreography VM — port the per-fighter bytecode VM, TSPWAV wave composition, and Darth Vaders TIE
+    description: "Subsumes A-009 (the real thing: per-fighter bytecode VM — JMP @A(U) opcode dispatch into TCHOP, per-alien PC A$CHPC, one-deep call stack, IF/GOTO/GOSUB/RETURN/TWIRL, event-gated .CUNTIL/.CIF, 16 TCH1 scripts + 12 TCH2 split entries), A-016 (Darth: 4 lives, immortal in space, retreats — S-002's 2,000 pts sit unawarded), A-017 (TSPWAV 6 wave-composition sets + Darth ordering). Accepted symptom-divergences A-011..A-015, A-019 recorded — most dissolve if the VM lands. WARNING from refutation: A-015's reasoning proposed gating +/-2048 corners to D-waves — WRONG, TWV2Z shows them every wave; do not 'fix' toward that. A-019 (music-timed descent) wants sw7-8's tunes. Biggest rock; stage/split at grooming."
+    points: 18
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw7-1
+  - id: sw7-10
+    title: R10 Attract mode and starfield — rotating INS/SCR pages, intro crawl, in-flight coaching messages, the WSSTAR starfield
+    description: 'Subsumes H-017 (rotating attract: banner -> flight-instructions INS -> scoring page SCR -> hi-score table, per WSMAIN TPHASE), H-018 (receding intro crawl special messages), H-022 (in-flight coaching/bonus messages SFB/STF/ACW/BON/BRE/BSE/SHIELD GONE), M-015 (the entire WSSTAR starfield subsystem). Front-of-house, not gameplay — priority p3 by ruling.'
+    points: 10
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw7-3
