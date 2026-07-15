@@ -3,7 +3,7 @@ type: epic
 title: Star Wars — ROM wireframe geometry (contact-sheet audit)
 description: 'The ROM|PORT model contact sheet (orchestrator `just bake-models star-wars`; star-wars PR 77) compares our shipped wireframes against the original 1983 MACRO-11 source. models.ts states plainly that its EDGES were reconstructed by heuristic — the disassembly held vertex tables but no draw lists. The original source (WSOBJ.MAC) ships BOTH halves, so the connectivity was recoverable all along. Audit findings: DARTH_TIE is largely fabricated (44 of its 104 edges appear nowhere in the ROM — models.ts admits authoring them — and 12 real ones are missing); the TIE family has small edge drift (TIE 1/3, TI1 1/0, TI2 1/0, TI3 3/0); and the ground objects (exhaust port, surface tower, surface bunker) cannot yet be compared at all, because their edges live in `.WGD` PLOT/DRAWTO routines the parser does not read. Vertices are NOT in question — they were ported correctly and match the ROM byte-for-byte; this epic is about edges (and, for the ground objects, vertices too). Design for the parser extension: docs/superpowers/specs/2026-07-12-wgd-ground-object-edges-design.md'
 priority: p2
-status: backlog
+status: done
 repos: star-wars, orchestrator
 stories:
   - id: sw5-1
@@ -53,7 +53,8 @@ stories:
     title: Re-port the TIE family edges (TIE, TI1, TI2, TI3) — including the spider-ladder rung the port's own comment shows it omitted
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -63,7 +64,9 @@ stories:
       - Vertices are unchanged (they already match byte-for-byte; TIE vertex 0 is [-130,-208,234]).
       - Degenerate self-edges from the ROM are not copied.
       - The contact sheet reports 0/0 drift for all four TIE-family pairs.
+    completed: '2026-07-15'
     type: bug
+    review_verdict: approved
   - id: sw5-4
     title: Re-port EXHAUST_PORT from the ROM — it is 12 vertices in three concentric squares, not an 8-vertex octagon
     points: 3
@@ -120,3 +123,4 @@ stories:
     type: bug
     review_findings: "REJECTED on polish only - the engineering is CORRECT and mutation-verified. Cleared: HIGH-1 (gun on the ship; 0/7 -> 7/7 obstacles, and reverting the fix fails 8/11 tests), HIGH-2, HIGH-3, MED-4/5/6/7, LOW-8/9. Dev's deviation (choosing PORT_HIT_RADIUS over the ROM's +-$200 arming box) is VINDICATED by mutation: adopting 512 makes a support-berm shot win the run. The 5 sibling re-seats preserve every sw3-15 intent (mutation-confirmed). REMAINING, both mechanical: [MED-1] sw5-4's 'facing the pilot' claim still stands in 3 more files incl. src/tools/contactSheet.ts, the ROM comparison tool - the exact mechanism this epic exists to disarm. [MED-2] two new port tests still pass with the muzzle bug reintroduced (they hold fire 900 frames, so a late bolt lands by accident); their docstring claims they cannot. Fix the comments, make those two tests fire a single bolt or drop the claim."
     review_verdict: approved
+completed: '2026-07-15'

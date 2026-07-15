@@ -8,7 +8,8 @@ sprint:
   end_date: '2026-07-26'
   status: active
 
-completed_epics: []
+completed_epics:
+  - sw5
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -173,4 +174,9 @@ completed_stories:
     epic: tp1
     title: SHAPES — the pulsar bar, tanker cargo emblems and enemy shot, from the ROM
     points: 4
+    completed: '2026-07-15'
+  - id: sw5-3
+    epic: sw5
+    title: Re-port the TIE family edges (TIE, TI1, TI2, TI3) — including the spider-ladder rung the port's own comment shows it omitted
+    points: 2
     completed: '2026-07-15'
