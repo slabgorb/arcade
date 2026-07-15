@@ -230,3 +230,8 @@ completed_stories:
     title: R5 Surface hazard — bunkers fire (GDBNKGN) and flying into a standing tower/bunker costs a shield; the maze fights back
     points: 5
     completed: '2026-07-15'
+  - id: sw7-11
+    epic: sw7
+    title: R9a TIE choreography VM engine — per-fighter bytecode VM (A-009)
+    points: 8
+    completed: '2026-07-15'
