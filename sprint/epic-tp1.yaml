@@ -341,7 +341,8 @@ stories:
     description: "Cluster C13, part 2. Subsumes V-013, V-017, DA-007, DA-009, DA-018, DA-019. The splat is the ROM's 26-vertex tricolour outline with a SPATIAL colour cycle. NOTE the audit's own correction: the splat's DURATION (DA-010) is real but a quarter of its filed size once rebased, and its RADIUS CURVE (DA-011) was REFUTED — do not 'fix' the radius curve. Depends on tp1-1 (duration) and tp1-12 (colours)."
     points: 4
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -351,7 +352,9 @@ stories:
       - "The score pop-ups and shattered-spike sparkle match the ROM."
       - "Depends on tp1-1 and tp1-12."
       - "npm test -- citations stays green."
+    completed: '2026-07-15'
     type: bug
+    review_verdict: approved
   - id: tp1-19
     title: "SHAPES — the TEMPEST logo's own stair-stepped alphabet and the 22-dot star pictures"
     description: "Cluster C13, part 3. Subsumes V-014, V-015, V-022, DA-006 (shape half). The logo has its OWN alphabet — stair-stepped, not the game font. NOTE: the book's LOGO_PASSES=19 does not exist in the ROM at all (one of the nine things the book got wrong, §7) — do not restore it."

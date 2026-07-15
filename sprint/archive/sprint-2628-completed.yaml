@@ -245,3 +245,8 @@ completed_stories:
     title: THE LOD IS AN ORIENTATION BIT, NOT A DISTANCE — biplane.ts invented LOD_DISTANCE
     points: 3
     completed: '2026-07-15'
+  - id: tp1-18
+    epic: tp1
+    title: "SHAPES — the player-death splat, the burst effects, and the score pop-ups"
+    points: 4
+    completed: '2026-07-15'
