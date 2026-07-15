@@ -205,3 +205,8 @@ completed_stories:
     title: "DETERMINISM — the sim seeds its RNG from Date.now(); the ROM's RANDOM is an LFSR"
     points: 3
     completed: '2026-07-15'
+  - id: tp1-8
+    epic: tp1
+    title: "THE SKILL CONTOUR, part 2 — NYMCHA, the per-type population solver (the audit's second-largest rewrite)"
+    points: 8
+    completed: '2026-07-15'

@@ -154,7 +154,8 @@ stories:
     description: "Cluster C4, expensive half. Subsumes W-034. A per-type min/max population solver that RESERVES SLOTS for the cargo of tankers already on the board (so a board full of tankers cannot deadlock when they split) and BIASES SPIKERS TOWARD SHORT LANES. This is the second-largest rewrite in the audit. It needs tp1-6 (there are no slots to reserve without the nymph queue). Sized honestly at 8 — if it proves larger on contact, split it rather than absorbing the overrun silently."
     points: 8
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -165,7 +166,10 @@ stories:
       - "npm test -- citations stays green."
       - 'Handle the ROM min>max self-contradiction on waves 35-39 (routed from tp1-7): WSPIMI min=1 but the assembled WSPIMX max=0 — a 1981 typo (ALWELG.MAC:633 has un-dotted 35 = hex 0x35 = 53, a dead range; tp1-7 kept it verbatim as start:53 at rules.ts:688). NYMCHA reads the full min/max pair per wave, so decode from the consuming ROM code what happens when min > max on those five waves (do not assume clamp-to-min or clamp-to-max) and pin it with a cited test.'
       - Add radix-decoded source-rules pins for every WSPIMI/WSPIMX record whose start or end >= 0x0A (the tp1-7 WSPIMX-record-6 radix block is the template), so a future un-dotted-hex typo fails loudly instead of staying latent.
+    completed: '2026-07-15'
     type: feature
+    review_findings: "Core byte-faithful (independent opus decode: NYMCHA walk, type order, 6 tables, min>max all AGREE). 3 findings: [MED] reservation clamp-at-0 has a FALSE 'unreachable' comment (reachable wave-6 underflow proven); [LOW] LINE_LONG_DEPTH 0.2 should be (0xF0-0xCC)/WARP_ALONG_SPAN=0.161; [LOW] stale sim.ts:177-178 comment. TEA to rule clamp-vs-wrap + pin wave-6 + LINEY boundary; Dev fixes constant + 2 comments."
+    review_verdict: approved
   - id: tp1-9
     title: "THE CAMERA — the far ring is built about the projected vanishing point, and FAR_RATIO is per-well, not a single 0.2"
     description: "Cluster C5. Subsumes DB-006, DB-007, DB-008, DB-009, DB-016. Our perspective CURVE is algebraically correct; the CONSTANT is not. FAR_RATIO is a single module-level 0.2 for every level; the arcade's is per-well, R = (16+H)/(240+H), ranging 0.104-0.164. project, boundaryRail, laneWidth and flipPivot all close over the current module constant, so this is an API change, not a constant swap. Blocks tp1-10."
