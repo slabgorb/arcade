@@ -307,7 +307,9 @@ stories:
     description: "Cluster C13, part 1. Subsumes V-005..V-010, DA-004. The tanker's 17-vertex laced double diamond, the spiker's 21-point green spiral, the fuseball's 5-colour scribble, the player charge's 17 dots in two rings. Every item independently landable; blocks nothing. Depends on tp1-12 for the colours."
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-15'
+    branch: feat/tp1-17-tp1-17-shapes
     repos: tempest
     workflow: tdd
     acceptance_criteria:
