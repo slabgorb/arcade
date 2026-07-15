@@ -23,10 +23,15 @@ stories:
     description: 'Subsumes U-005, U-006, U-007 (+U-008 correction: even-wave trench cues are INVERTED, not matching). ROM gates on 0-based GM.WAV (CMPA #4-1 = wave 4+, 1-based {4,6,8,...}); ours tests 1-based wave%2 — disjoint/inverted sets. One root fix: a 0-based wave accessor (or -1 shim) + rewire music/speech gates. Also S-012 indexes its bonus table by 0-based wave (story sw7-4).'
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    assigned_to: Keith Avery
+    started: '2026-07-15'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-15'
     type: bug
+    review_findings: "Re-review after Rework 1: the Round-1 doc-fidelity blocker (stale sim.ts:776 ROM comment) is resolved; delta is comment + U-008 note + reanchors only; logic unchanged + mutation-proven; 1230/1230, build/lint/citations green, 0 lost. APPROVED."
+    review_verdict: approved
   - id: sw7-3
     title: R3 Text and board authenticity — PULL TRIGGER TO START, PRINCESS LEIAS REBEL FORCE, SHOOT YOUR INITIALS, the seeded OBI/WAN/HAN board, comma-grouped scores
     description: "Subsumes H-010, H-011, H-012, H-015 (BCD-decoded seed board: OBI 1,285,353 ... RLM 380,655), H-020 (two-site formatScore fix at render.ts game-over + board). Optional rider: H-024 shield-gauge ramp — palette fully specified by refutation (green 5-9 / yellow 3-4 / red 1-2 + OR #0FF refuel flash). Warning from refutation: no <REBEL FORCE> string exists — the board title is PRINCESS LEIA'S REBEL FORCE via .NEXTMESS repositioning."

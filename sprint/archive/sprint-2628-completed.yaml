@@ -195,3 +195,8 @@ completed_stories:
     title: R1 Timebase reconcile — kill TICK_HZ=30; the cabinet game frame is 20.508 Hz and everything routed through 30 runs 1.46x-2.93x fast
     points: 3
     completed: '2026-07-15'
+  - id: sw7-2
+    epic: sw7
+    title: 'R2 Wave-parity family — GM.WAV is 0-based, ours 1-based: Imperial March, Great-shot-kid and both trench voice sets fire on wrong or inverted wave sets'
+    points: 2
+    completed: '2026-07-15'
