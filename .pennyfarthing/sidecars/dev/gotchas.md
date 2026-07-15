@@ -240,3 +240,29 @@ frame on ground; after game over let the yoke fly the empty war (the ROM parks i
 And keep every rng DRAW unconditional across the change — evaluate the blimp's per-shot roll on
 every fire-frame and gate only the EFFECT — or the stream shifts and every seed-calibrated
 sibling (and the airship's own trajectory) silently re-rolls.
+
+---
+
+### One `ours` line can back MULTIPLE tempest findings across DIFFERENT pair files — reanchor's LOST finds the ones the story never named
+
+**Situation:** GREEN in tempest that edits a source line the audit cites, then marking the story's
+named findings `remediated_by` and running `reanchor-citations.mjs --write` (tp1-35 rewrote the
+enemy-bolt `strokeGlyph` call for V-009's frame source).
+
+**Problem:** You mark the findings the story names (V-005/V-007/V-009, all in pair-2) and expect a
+clean reanchor. But the SAME physical line can be the `ours` citation of a finding in a DIFFERENT
+pair file you never opened — the depth-driven `enemyBoltGlyph(Math.floor(b.depth*8))` line was
+cited by BOTH V-009 (pair-2, shot geometry+frame) AND **DA-018** (pair-3, the frame-cadence
+divergence). Marking only the named three, reanchor reported `LOST DA-018 render.ts:356` — and had
+I ignored it, the citation gate (`citations.test.ts`, which re-opens every `ours`) would go RED on
+the next story with a confusing "does not match verbatim", because DA-018's quote points at a line
+that no longer exists.
+
+**Prevention/Fix:** Treat every reanchor `LOST` as a finding to triage, not just the ones in the
+story's ACs. `grep -rl '"<the-line-or-symbol>"' docs/audit/findings/` to find EVERY finding citing
+the line, read each, and apply the two-honest-exits rule per finding: if your change removed the
+divergence it describes (DA-018: depth-driven → global `renderTime*ROM_FPS`, so the cadence is now
+the ROM's shared QFRAME/4 ≈ 7.1 Hz), mark THAT one `remediated_by` too and make the fix actually
+reproduce its target (don't just delete the line — match ROM_FPS/4 so the remediation is honest).
+Re-run reanchor until it reports `0 lost`. A story can legitimately close a finding outside its
+named set; log it as a deviation so the Reviewer sees the extra remediation.

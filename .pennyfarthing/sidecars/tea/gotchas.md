@@ -736,3 +736,33 @@ channel difference is in the SEED (:1061-1066). Pin the machine (seed, boundary,
 log a deviation correcting the AC, and cite all three lines. Same family as tp1-27 ("the gate is
 a state, not a byte"): the AC's decode of a true constant is still a decode, and decodes must be
 re-derived from the consuming code.
+
+---
+
+### An audit finding's `claim` can be REFUTED by its own `reasoning`, and its decode may cover ONE frame of many
+
+**Situation:** Pinning a tempest shape/behaviour off `docs/audit/findings/*.json`, where the sidebar
+("the audit `claim` pre-decodes the vertices") tempts you to transcribe the `claim` field verbatim
+into the RED oracle (tp1-35: V-005 pulsar chains, V-007 tanker cargo, V-009 enemy shot).
+
+**Problem:** The `claim` is the auditor's FIRST pass; the `reasoning` field then re-opens the ROM and
+sometimes CORRECTS it — and the correction is where the truth lives. V-007's `claim` said the fuse
+tanker's RED element is "a dot at (0,0C)"; its own `[CORRECTION]` says it is a real 0x0C-unit LINE
+(the top arm of a 4-colour plus). Pin the claim and you pin a fabricated dot. Second trap: a finding's
+decode can be PARTIAL. V-009's `claim` fully decodes only ESHOT1; ESHOT2/3/4 are distinct hand-authored
+tables the finding never touched (ALVROM.MAC:726-787, like FUSE0-3, NOT rotations) — transcribe "the
+finding" and you cover one of four animation frames and think you're done.
+
+**Prevention:** Read the WHOLE finding — `claim` AND `reasoning` (look for `[CORRECTION]`/`[REFUTATION]`)
+AND cross-check the raw ROM lines yourself before writing the oracle. When the decode is partial, pin
+the decoded part exactly, route the rest to a cited Delivery Finding (tp1-13 pattern), and log a
+partial-coverage deviation so the Reviewer diff-traces the un-pinned frames. And MEASURE the geometry,
+don't eyeball the prose: ESHOT1's "diagonal ticks" are ticks whose MIDPOINTS sit on the diagonals, not
+radial spokes — half of them run tangentially. `onDiagonal(midpoint)` is the invariant; "radial" is wrong.
+
+**Also — a fidelity fix can need a NEIGHBOUR fixed too (the compensating-constant trap, again).** V-005's
+correct `pulsarVariant` fix (idx≥5 → flat per PULTAB) makes the RENDERED pulsar read flat for most of its
+cycle, because `render.ts` feeds the selector a full-byte sine (`*0xff`, idx 0..15) where the ROM's PULSON
+lives in ~[-63,15] (idx 0..4, transient 5). Pinning the pure function is right; flag the render domain as
+a blocking Delivery Finding or you green a mostly-flat pulsar. Keep render's variant numbering (0=sharp..
+4=flat) so the dormant `pulsarBar(4)` and the selector both stay wired.

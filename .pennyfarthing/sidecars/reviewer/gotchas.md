@@ -71,3 +71,34 @@ pressure — the epic-11-6 lesson.
 **Example (tp1-10 round-trip 2):** APPROVED. Confirmed `advanceLevel`/`inSpace`/`spaceFrames`/`WARP_SPACE_FRAMES` all grepped to zero (dead removed), bonus paid in exactly one place (mutation-proven single-pay), 20-event union `never`-guarded in both dispatcher + census. All 6 unified guards RED-on-revert (test-analyzer + my own reversions). One LOW nit: a re-seated test's docstring oversold its LOCAL double-pay coverage (the regression is caught by a sibling test) — non-blocking, recorded as a follow-up.
 
 ---
+
+### On a tempest tp1 remediation story, AUDIT THE FINDINGS DIFF for laundering, and expect ONE `ours` line to close findings in MULTIPLE pair files
+
+**Situation:** Reviewing any tp1 story that fixes audit findings — it will edit `glyphs.ts`/`render.ts`
+lines the findings cite as `ours`, mark them `remediated_by`, and run `reanchor-citations.mjs`. The
+citation gate (`citations.test.ts`) will be GREEN by the time you review (Dev made it so).
+
+**Problem:** A green citation gate does NOT prove the remediation was honest. `remediated_by` freezes a
+finding's `ours` quote as history and STOPS the gate re-opening it — so a Dev could smuggle a real
+divergence past review by stamping `remediated_by` on a finding they only re-SPELLED (the dev-side
+`two-honest-exits` trap), or by editing a finding's `verbatim`/`claim`/`reasoning` PROSE to match the
+new code (laundering the audit's own record). The gate can't see either; only the DIFF can.
+
+**Prevention/Fix:** Run `git diff origin/develop...HEAD -- docs/audit/findings/` and confirm every
+changed line is EITHER a `"line": N` reanchor OR a `+  "remediated_by": "<story>"` addition — grep the
++/- lines for `verbatim|claim|title|reasoning|"source"` and require EMPTY. Any prose edit is a red flag:
+the ROM `source` side and the audit narrative must never change (the 1981 source doesn't change). Then,
+for each `remediated_by` stamp, confirm the code actually REMOVED that finding's divergence (not
+re-spelled it) — cheapest is to mutation-revert the fixed line and require a unit test RED. And expect
+the fix to close findings OUTSIDE the story's named set: tp1-35's one enemy-bolt line was the `ours` of
+BOTH V-009 (pair-2) AND DA-018 (pair-3, frame cadence); Dev correctly stamped both. `grep -rl` the
+fixed symbol across ALL pair files to be sure no cited finding was left pointing at a deleted line
+(that would fail the gate on the NEXT story, not this one).
+
+**Also — when ALL pf reviewer subagents are toggled off (`workflow.reviewer_subagents`) AND the review
+is self-authored (Dev+Reviewer one session):** you have ZERO independence. Do not hand-check your own
+transcription — you'll read it the same wrong way twice. Spawn an INDEPENDENT general-purpose auditor
+to re-decode the ROM coordinate-by-coordinate (mind the radix: ALVROM/ALDISP trailing `.`=decimal else
+hex) and mutation-test every load-bearing guard, then re-run one mutation yourself serially after it
+leaves the tree clean. tp1-35's auditor caught nothing (transcription was faithful, all 5 guards bit) —
+but that NULL result is only trustworthy because it came from independent eyes, not from the author's.

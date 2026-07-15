@@ -169,3 +169,8 @@ completed_stories:
     title: "WIRE UP THE DEAD MECHANICS — the returning ace is never imported and the player CANNOT DIE"
     points: 13
     completed: '2026-07-15'
+  - id: tp1-35
+    epic: tp1
+    title: SHAPES — the pulsar bar, tanker cargo emblems and enemy shot, from the ROM
+    points: 4
+    completed: '2026-07-15'
