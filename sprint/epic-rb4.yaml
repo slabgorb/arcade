@@ -80,7 +80,7 @@ stories:
     description: "Cluster C4. Subsumes FL-013, FL-014, FL-015, FL-001, FL-004, FL-005. A genuine rewrite, not a constant tweak — say so honestly. The ROM has NO YAW ROTATION: turning adds the scaled PLDELX to UNIV4X, a linear universe-X, and objects are drawn at (their X - UNIV4X) (RBARON.MAC:3200-3213, :2910). It has NO PITCH ROTATION either: climb/dive subtracts the eye height I4YPOS from every object's Y before the single Z rotation and the divide-by-depth (RBGRND.MAC:277-283). We rotate the camera about Y and emit a transient pitch. Also FL-001: the `.4WORD` macro (RBARON.MAC:15-18) MULTIPLIES EVERY OPERAND BY 4, so POTDLY — the pitch table — is 4x what we transcribed. That is an undecoded macro, the classic way this method's findings go wrong, and here it went wrong in OUR code."
     points: 13
     priority: p1
-    status: backlog
+    status: done
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -90,7 +90,10 @@ stories:
       - "The POT.X turn step is proportional to the error (an arithmetic >>3, bounded [-16,+15]), not a constant ramp; the invented MAX_TURN=40 cap is gone."
       - "HORIZN = 0x40 = 64 is added to the projected Y of EVERY object (POSITH), and the horizon sits at the finite depth HORZ = 0x1000 = 4096 and moves with altitude."
       - "This story depends on rb4-1 (its constants are hex) — do not land it first."
+    completed: '2026-07-15'
     type: refactor
+    review_verdict: approved
+    review_findings: 'Integration rework: approved on a base predating dependency rb4-1; merging current develop (rb4-1 radix sweep + rb4-2) yields 7 test failures (depth-scale/screen-scale vs HORIZN_NDC; citations + citation-evidence re-anchor). PR #26 must not merge until 913/913 green.'
   - id: rb4-6
     title: "THE ENEMY IS THE WRONG MACHINE — the weave reverses at the INNER window, and runs on Y too"
     description: "Cluster C5. Subsumes EN-016, EN-017, EN-018, EN-020, EN-021. A rewrite of the enemy stepper, not a constant tweak. (1) We reverse the weave at the OUTER window; the ROM reverses at the INNER one — P.INER is reached only when |position| < P.ILIM and does `EOR I,0FF ;REVERSE FLAG (HEAD AWAY FROM CENTER)` (RBARON.MAC:2794-2797). The plane turns around when it gets CLOSE TO CENTRE. This changes the shape of every engagement. (2) Enemy planes NEVER MOVE VERTICALLY in our clone; the ROM runs the SAME window/servo machine on the Y axis (PLNDEL enters with LDX I,2 for Y, then DEX/DEX to X=0 and re-runs the whole machine on X — RBARON.MAC:2747-2754, :2865-2873). (3) Planes FLY PAST you and are destroyed as objects when they cross P.MNDP; ours hover at a depth floor forever. (4) Drones have their own two-phase PARALLEL→FREE behaviour; ours weave exactly like leads. (5) The 90-degree entry bank is discarded on our first step()."
