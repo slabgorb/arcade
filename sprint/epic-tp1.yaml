@@ -307,9 +307,8 @@ stories:
     description: "Cluster C13, part 1. Subsumes V-005..V-010, DA-004. The tanker's 17-vertex laced double diamond, the spiker's 21-point green spiral, the fuseball's 5-colour scribble, the player charge's 17 dots in two rings. Every item independently landable; blocks nothing. Depends on tp1-12 for the colours."
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-07-15'
-    branch: feat/tp1-17-tp1-17-shapes
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -320,7 +319,10 @@ stories:
       - "Vertex data is TRANSCRIBED from the ROM and cited, never eyeballed."
       - "Depends on tp1-12 (palette slots)."
       - "npm test -- citations stays green."
+    completed: '2026-07-15'
+    branch: feat/tp1-17-tp1-17-shapes
     type: bug
+    review_verdict: approved
   - id: tp1-18
     title: "SHAPES — the player-death splat, the burst effects, and the score pop-ups"
     description: "Cluster C13, part 2. Subsumes V-013, V-017, DA-007, DA-009, DA-018, DA-019. The splat is the ROM's 26-vertex tricolour outline with a SPATIAL colour cycle. NOTE the audit's own correction: the splat's DURATION (DA-010) is real but a quarter of its filed size once rebased, and its RADIUS CURVE (DA-011) was REFUTED — do not 'fix' the radius curve. Depends on tp1-1 (duration) and tp1-12 (colours)."

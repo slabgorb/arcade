@@ -646,3 +646,41 @@ loop. Same trap bit the purity test, which walked `until out.level === 2` — un
 under replay; re-anchor it to the state transition (dying → playing), not the number.
 
 ---
+
+### Tempest ENEMY/PLAYER shapes live in ALVROM.MAC — SCVEC args are ABSOLUTE, and the audit `claim` pre-decodes them
+
+**Situation:** Any tempest "draw the ROM's real shape" story (tp1-17 tanker/spiker/fuseball/
+charge; the whole cluster C13 — tp1-18 splat/burst/pop-ups, tp1-19 logo alphabet/star pics).
+The eyeballed glyphs in `src/shell/glyphs.ts` (authored at Story 6-8, pre-audit) are the quarry.
+
+**Problem:** Two traps sink a naive transcription. (1) The `SCVEC x,y[,b]` macro reads like a
+*delta*, but `ALVROM.MAC:64-92` shows `CVEC` computes `x-OLX` for you — **SCVEC's args are the
+ABSOLUTE object point** (`x*CM/CD`), and `b` omitted/0 = beam-OFF (a positioning move, not a
+line). Read them as deltas and every shape scatters. `SCDOT x,y` = a beam-off move + one
+zero-length lit DOT (a 1-point stroke; `strokeGlyph` renders it as a filled `arc`). (2) The file
+is `.RADIX 16` for every shape (the only RADIX-10 window is lines 242-268), so `0F`=15, `0C`=12,
+`20`=32 — a two-digit literal read as decimal looks plausible and passes eyeball review.
+
+**Prevention/Fix:** You do NOT have to hand-decode. The primary-source audit already did it — the
+finding's **`claim` field spells out the decoded absolute vertices** (`jq '.[]|select(.id=="V-006")'
+docs/audit/findings/pair-2-alvrom-shapes-font.json`). Cross-check the `claim` against the raw
+`ALVROM.MAC` lines and cite the source line in the test. Shape→finding for cluster C13:
+tanker body=V-006 (GENTNK :651), spiker=V-008 (SPIRA1-4 :522), fuseball=**V-014** (FUSE0-3 :975,
+NOT in the story's "V-005..V-010" range!), player charge=V-010+DA-004 (DIARA2 :384).
+
+**Trap — the story's finding RANGE lies.** tp1-17 said "Subsumes V-005..V-010, DA-004" but its ACs
+named four shapes whose findings are V-006/V-008/**V-014**/V-010/DA-004 — the range OMITS the
+fuseball (V-014) and ADDS pulsar-bar V-005, tanker-cargo V-007 and enemy-shot V-009 that no AC
+mentions. Scope to the ACs (spec-authority), and log the mismatch as a Delivery Finding.
+
+**Test design that survives:** the repo Y-flips some shapes and not others (`CLAW_DELTAS` "no
+y-flip" vs `LIFE1` "Y is NEGATED"), so a byte-exact per-vertex delta match rejects a faithful port
+over a Y-sign choice. Pin **sign/order-invariant signatures** instead: vertex COUNT (the headline
+AC number — 17/21/17), a normalised sorted-RADII set (uniquely IDs a 21-pt spiral), ring ratios
+(GENTNK's 12:32), colour SETS (fuseball's 5 CSTAT groups), and "the 4 frames are NOT one curve
+rotated 90°/frame" (compare frame1 to `rot(frame0, 90°)` — Y-convention cancels since both frames
+share it). The byte-exact data still lands via the citation gate. And remember AC-7: editing
+glyphs.ts falsifies the fixed findings' `ours` quotes (`remediated_by: <story>`) AND shifts the
+line numbers of the *unfixed* citations into it (`node tools/audit/reanchor-citations.mjs --write`).
+
+---
