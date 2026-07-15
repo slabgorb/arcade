@@ -595,3 +595,54 @@ mid-dive spike crash and pays on the replayed dive. BONPTM (ALWELG.MAC:275) is .
 as BCD digit-pairs ×100: .WORD 60→6,000 … 1140→114,000; the LEVEL ladder is odd waves, so a
 contiguous 1..16 select has NO ROM value for even waves — pin ladder anchors as literals plus a
 totality guard, and route the even-wave mapping to a ruling.
+
+---
+
+### `tube.eye.{distance,z}` is a PHANTOM — shipped tp1-9 baked the eye into `farRatio`, no live field
+
+**Situation:** Any tp1 warp/camera story (tp1-10 and its follow-ups) that needs the
+per-well EYE — the SM quarry pointer AND the tp1-9 gotcha two entries up both name
+`tube.eye.{distance,z}`.
+
+**Problem:** That field DOES NOT EXIST in shipped `tempest/src/core/geometry.ts`. Two
+tp1-9 implementations raced (see `sprint/archive/tp1-9-session-superseded-a1.md`): the
+a-1 branch exposed `tube.eye` as data; the branch that actually MERGED folded the eye
+into `farRatio = (16+H)/(240+H)` and the precomputed far ring (`makeRingTube`,
+geometry.ts:245-266). The `Tube` interface is exactly `{laneCount, closed, far, near,
+farRatio, screenZ}` — no `eye`. A RED test written against `tube.eye.distance` pins a
+field that is `undefined` at runtime, and a handoff that says "the movable eye already
+exists" is quoting the superseded branch.
+
+**Prevention:** Before pinning a warp-camera test, RE-READ the shipped `Tube` interface —
+the eye you need for the dive (WD-012/WD-018) must be ADDED (a per-frame warp eye on
+`s.warp` or a moving effective-`farRatio`); it is not already a parameter. Quarry
+pointers and even a prior sidecar can name a field from a branch that lost the merge —
+verify against the working tree, not the archive.
+
+---
+
+### A contract INVERSION deadlocks a sibling's resolution-DETECTOR helper, not just its assertion
+
+**Situation:** RED for a story that INVERTS an outcome a sibling suite is built around
+(tp1-10/WD-015: a warp crash used to ADVANCE the level; now it REPLAYS the same wave).
+
+**Problem:** The obvious re-seat is "flip the `expect(level).toBe(2)` to `toBe(1)`". But
+`sim.warp-death-respawn.test.ts` drove every test through a helper —
+`runUntilResolved(s)` — whose LOOP CONDITION was `while (s.level === 1) step()`. Under
+the OLD contract the crash advanced out of level 1, so the loop exited. Under REPLAY the
+level never leaves 1, so the same helper spins to its 600-step bound on EVERY test — the
+suite doesn't fail with a clean "2 !== 1", it TIMES OUT / returns a mid-transition state,
+and the failure message points at the assertion, not the helper. The inversion moved the
+goalposts the helper itself was chasing.
+
+**Prevention:** When a contract change inverts an outcome, grep the sibling suite for
+its RESOLUTION DETECTOR (the `while`/`for` exit condition, not just the `expect`s) and
+ask "is the state this loop waits for still reachable?" Re-seat the helper to a
+condition that survives BOTH contracts — here `runUntilSettled` waits for "left
+'playing' and returned to it", which covers a clean warp (→ next wave) AND a crash (→
+replay of the same wave) without ever keying on the level number. Then confirm the
+re-seated suite fails on the ASSERTIONS (level 2→1) for the right reason, not on a hung
+loop. Same trap bit the purity test, which walked `until out.level === 2` — unreachable
+under replay; re-anchor it to the state transition (dying → playing), not the number.
+
+---

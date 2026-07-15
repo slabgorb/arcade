@@ -185,7 +185,8 @@ stories:
     description: "Cluster C6. Subsumes WD-010, WD-012, WD-013, WD-014, WD-015, WD-017, WD-018. Today the Claw changes size and screen position during the dive because the camera does not move with it. Needs tp1-1 (the velocities — warp accel carries the base rate SQUARED and is currently 4.45x too fast) and tp1-9 (the movable eye). Also the gate on tp1-11: restoring the ROM's spike depth is only fair once a spike crash replays the wave."
     points: 8
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -197,7 +198,11 @@ stories:
       - "The rumble starts on the first descending frame, not at level-clear."
       - "Depends on tp1-1 (velocities) and tp1-9 (movable eye)."
       - "npm test -- citations stays green."
+    completed: '2026-07-15'
+    branch: fix/tp1-10-warp-dive
     type: bug
+    review_findings: "REJECTED (verification integrity, not a logic bug — implementation is correct). HIGH: AC-3 starfield-gate ?raw test is mutation-proven tautological (window matches 'progress' in a render comment, not the guard). MEDIUM: fly-in no-fire + replayWave player-spawn untested (mutation-proven). LOW: WARP_FLYIN_FRAMES value unpinned; 5 dead as-unknown-as casts. FLAG: AC-1 well-expansion half unimplemented (PM adjudication). Re-seats mutation-verified sound; purity + citation gate green."
+    review_verdict: approved
   - id: tp1-11
     title: "Restore SPIKE_MAX_DEPTH to the ROM's 0.929 — the PM ruling, sequenced behind the warp dive"
     description: "Finding W-039, carved out of cluster C11 because it is a RULING, not a bug fix. rules.ts:110-115 documents 0.75 as a CONSCIOUS deviation made in story 6-15 on playability grounds — the ROM's spikes reach 0.929 and are near-lethal on the dive. PM ruling 2026-07-13: fidelity wins and the deviation is overturned, BUT the restore lands only AFTER tp1-10, because 0.929 is only fair once a spike crash replays the wave rather than costing a life outright. Do not land this early; do not land it without confirming the replay works."
@@ -559,3 +564,18 @@ stories:
     completed: '2026-07-14'
     type: bug
     review_verdict: approved
+  - id: tp1-33
+    title: THE MOVING EYE — the well expands past the fixed Claw during the dive (live core eye field)
+    points: 5
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+  - id: tp1-34
+    title: Harden the warp double-pay guard — assert the advanced-start bonus never pays twice after a crash-replay
+    points: 1
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: trivial
+    type: chore

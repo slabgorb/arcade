@@ -139,3 +139,8 @@ completed_stories:
     title: "AUDIO WIRING GAPS — the missing warp phase, the bonus chime, the bolt-collision cue, and the invented kzap"
     points: 4
     completed: '2026-07-14'
+  - id: tp1-10
+    epic: tp1
+    title: "THE WARP DIVE — move the camera with the Claw, fly the eye into the new well, and replay the wave on a spike crash"
+    points: 8
+    completed: '2026-07-15'
