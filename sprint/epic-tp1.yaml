@@ -163,6 +163,8 @@ stories:
       - "Spikers are biased toward short lanes, per the ROM's rule."
       - "Depends on tp1-6 (the nymph queue and the slot model)."
       - "npm test -- citations stays green."
+      - 'Handle the ROM min>max self-contradiction on waves 35-39 (routed from tp1-7): WSPIMI min=1 but the assembled WSPIMX max=0 — a 1981 typo (ALWELG.MAC:633 has un-dotted 35 = hex 0x35 = 53, a dead range; tp1-7 kept it verbatim as start:53 at rules.ts:688). NYMCHA reads the full min/max pair per wave, so decode from the consuming ROM code what happens when min > max on those five waves (do not assume clamp-to-min or clamp-to-max) and pin it with a cited test.'
+      - Add radix-decoded source-rules pins for every WSPIMI/WSPIMX record whose start or end >= 0x0A (the tp1-7 WSPIMX-record-6 radix block is the template), so a future un-dotted-hex typo fails loudly instead of staying latent.
     type: feature
   - id: tp1-9
     title: "THE CAMERA — the far ring is built about the projected vanishing point, and FAR_RATIO is per-well, not a single 0.2"
