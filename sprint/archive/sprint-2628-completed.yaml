@@ -215,3 +215,8 @@ completed_stories:
     title: R3 Text and board authenticity — PULL TRIGGER TO START, PRINCESS LEIAS REBEL FORCE, SHOOT YOUR INITIALS, the seeded OBI/WAN/HAN board, comma-grouped scores
     points: 3
     completed: '2026-07-15'
+  - id: tp1-33
+    epic: tp1
+    title: THE MOVING EYE — the well expands past the fixed Claw during the dive (live core eye field)
+    points: 5
+    completed: '2026-07-15'

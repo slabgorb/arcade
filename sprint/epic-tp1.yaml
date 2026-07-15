@@ -582,9 +582,12 @@ stories:
     title: THE MOVING EYE — the well expands past the fixed Claw during the dive (live core eye field)
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: tempest
     workflow: tdd
+    completed: '2026-07-15'
+    review_verdict: approved
   - id: tp1-34
     title: Harden the warp double-pay guard — assert the advanced-start bonus never pays twice after a crash-replay
     points: 1
