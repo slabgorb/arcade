@@ -159,3 +159,8 @@ completed_stories:
     title: "SHAPES — the tanker, spiker, fuseball and player charge, drawn from the ROM's vertex data"
     points: 5
     completed: '2026-07-15'
+  - id: sw5-2
+    epic: sw5
+    title: Re-port DARTH_TIE edges from the ROM draw list — remove the 44 fabricated edges, restore the 12 real ones
+    points: 3
+    completed: '2026-07-15'

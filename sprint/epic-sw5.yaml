@@ -32,7 +32,8 @@ stories:
     title: Re-port DARTH_TIE edges from the ROM draw list — remove the 44 fabricated edges, restore the 12 real ones
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -44,7 +45,10 @@ stories:
       - The contact sheet reports 0 in-ROM-not-in-port and 0 in-port-not-in-ROM for RTH to Darth Vader TIE.
       - DARTH_TIE's doc comment no longer claims a re-authored ring structure; it cites `.WL RTH` as the source.
       - 'Existing DARTH_TIE tests still pass. The induced-single-cycle topology guard assumed the AUTHORED ring structure — if it now fails, that is the guard being wrong about the ROM, not the ROM being wrong. Update it with rationale rather than reshaping the geometry to satisfy it.'
+    completed: '2026-07-15'
+    branch: fix/sw5-2-darth-tie-rom-edges
     type: bug
+    review_verdict: approved
   - id: sw5-3
     title: Re-port the TIE family edges (TIE, TI1, TI2, TI3) — including the spider-ladder rung the port's own comment shows it omitted
     points: 2
