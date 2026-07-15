@@ -64,7 +64,7 @@ stories:
     description: "Cluster C3. Subsumes CD-010, CD-011, EN-019, MI-021, CB-004, SN-009. The story that turns the clone back into a game. FOUR mechanics are wired to nothing. (1) returning-ace.ts is NEVER IMPORTED by any source file — the signature Red Baron mechanic is dead code, and the refuter confirmed the evade logic inside it is actually CORRECT, it is simply unreachable. (2) main.ts declares `lives` (:342) and assigns it (:406) and NEVER READS IT — there is no death, no respawn, no game over. (3) There is NO ground collision at all: you cannot fly into a mountain, though the ROM checks GREND every frame BEFORE any motion (RBARON.MAC:783-784). (4) No extra lives (BONUSL). (5) score-tick and bonus-life events are declared in core/events.ts and consumed in audio-dispatch.ts but EMITTED BY NOTHING — so three of the five shipped POKEY sounds (TK, TP, BN) can never play."
     points: 13
     priority: p1
-    status: in_review
+    status: done
     assigned_to: slabgorb
     started: '2026-07-15'
     repos: red-baron
@@ -76,7 +76,9 @@ stories:
       - "Extra lives are awarded (BONUSL, RBARON.MAC:1602), and the bonus-life event is EMITTED so the BN sound can fire."
       - "The score COUNT-UP exists (SCOREM: the ROM ticks the score up over time and fires SOUND 0 / SOUND 4 on every tick) and EMITS score-tick, so TK and TP can fire. The audio layer is NOT at fault — pokey.ts and audio-dispatch.ts are already correct; the producers are missing."
       - "A test proves every GameEvent variant declared in core/events.ts has at least one producer in src/. No event may be declared-and-consumed but never emitted."
+    completed: '2026-07-15'
     type: bug
+    review_verdict: approved
   - id: rb4-5
     title: "THE CAMERA IS THE WRONG SHAPE — the arcade TRANSLATES the world; we ROTATE it"
     description: "Cluster C4. Subsumes FL-013, FL-014, FL-015, FL-001, FL-004, FL-005. A genuine rewrite, not a constant tweak — say so honestly. The ROM has NO YAW ROTATION: turning adds the scaled PLDELX to UNIV4X, a linear universe-X, and objects are drawn at (their X - UNIV4X) (RBARON.MAC:3200-3213, :2910). It has NO PITCH ROTATION either: climb/dive subtracts the eye height I4YPOS from every object's Y before the single Z rotation and the divide-by-depth (RBGRND.MAC:277-283). We rotate the camera about Y and emit a transient pitch. Also FL-001: the `.4WORD` macro (RBARON.MAC:15-18) MULTIPLIES EVERY OPERAND BY 4, so POTDLY — the pitch table — is 4x what we transcribed. That is an undecoded macro, the classic way this method's findings go wrong, and here it went wrong in OUR code."

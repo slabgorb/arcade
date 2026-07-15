@@ -164,3 +164,8 @@ completed_stories:
     title: Re-port DARTH_TIE edges from the ROM draw list — remove the 44 fabricated edges, restore the 12 real ones
     points: 3
     completed: '2026-07-15'
+  - id: rb4-4
+    epic: rb4
+    title: "WIRE UP THE DEAD MECHANICS — the returning ace is never imported and the player CANNOT DIE"
+    points: 13
+    completed: '2026-07-15'
