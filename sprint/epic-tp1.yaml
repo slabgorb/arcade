@@ -583,3 +583,34 @@ stories:
     repos: tempest
     workflow: trivial
     type: chore
+  - id: tp1-35
+    title: SHAPES — the pulsar bar, tanker cargo emblems and enemy shot, from the ROM
+    description: "Cluster C13, part 1b — the three enemy shapes tp1-17 deferred (its ACs covered only tanker/spiker/fuseball/charge; the description's finding-range named these but no AC did). Transcribe from the ROM and cite: the PULSAR BAR (V-005 — ALDISP.MAC:2001-2035 has FIVE distinct hand-authored chains PULS0-4, not our one amplitude-scaled table; PULTAB clamps the flat variant where our selector inverts to sharpest). The TANKER CARGO EMBLEMS (V-007 — ALVROM.MAC:624-647: TANKP's TURQOI chevron and TANKF's FOUR-colour blue/red/green/yellow bar, not our cyan zigzag / single yellow cross). The ENEMY SHOT (V-009 — ALVROM.MAC:700-721: ESHOT1-4 are four outward DIAGONAL ticks + red dots, frame-driven off QFRAME, not our cardinal pinwheel off bullet depth). NOTE: the fuse-cargo emblem colour is currently pinned 'yellow' by tp1-30 — re-seat that test to the ROM's 4-colour mark. Mark V-005/V-007/V-009 remediated_by this story and re-anchor the shifted citations."
+    points: 4
+    priority: p1
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - The pulsar bar is the ROM's five authored chains (PULS0-4), not one amplitude-scaled table; flat/sharp selection matches PULTAB.
+      - The tanker cargo emblems are the ROM's TURQOI chevron (pulsar cargo) and 4-colour blue/red/green/yellow bar (fuseball cargo).
+      - The enemy shot is the ROM's ESHOT1-4 outward diagonal ticks + red dots.
+      - Vertex data is TRANSCRIBED from the ROM and cited (V-005/V-007/V-009 remediated_by this story).
+      - tp1-30's fuse-cargo-emblem colour test is re-seated to the ROM's 4-colour mark (Dev cannot move goalposts; TEA owns the re-seat).
+      - npm test -- citations stays green.
+    type: bug
+  - id: tp1-36
+    title: 'tp1-17 follow-up: fuseball vertex guard, V-008 audit fix, contact-sheet labels'
+    description: "Loose ends logged during tp1-17 (SHAPES part 1; see sprint/archive/tp1-17-session.md Delivery Findings). (1) The fuseball geometry has NO automated guard — tp1-17.shapes.test.ts pins FUSE0-3 by COLOUR only and the V-014 citation is frozen (remediated); add a vertex-count / exact-vertex test so a future edit cannot silently regress the shape (verified byte-exact against ALVROM.MAC:954-1095 at ship). (2) Correct finding V-008's factually-wrong claim text — 'SPIRA2/3/4 … re-authored, not rotated' is refuted by the source: SPIRA2/3/4 === rot90/180/270(SPIRA1) vertex-for-vertex (ALVROM.MAC:549-619). (3) Fix the stale models.html contact-sheet labels — COLOR.spiker='#ffa500' (orange) and the fuseball 'one of its tri-colour legs' comment predate tp1-3/tp1-17 (the spiker is green, the fuseball 5-colour). (4) In-game spot-check the 17-dot player charge (the /models.html sheet has no in-flight bullet, so its rendered appearance was never visually confirmed)."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - The fuseball glyph has a vertex-level test guard (vertex count and/or exact vertices), not colour-only.
+      - Finding V-008's claim text is corrected to state SPIRA2/3/4 are exact 90-degree rotations of SPIRA1 (cited to ALVROM.MAC:549-619).
+      - The models.html contact-sheet labels reflect the shipped shapes (spiker green; fuseball no longer 'tri-colour').
+      - The 17-dot player charge is confirmed to render correctly in a running game (screenshot with a bullet in flight).
+      - npm test -- citations stays green.
+    type: chore
