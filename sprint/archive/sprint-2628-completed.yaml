@@ -210,3 +210,8 @@ completed_stories:
     title: "THE SKILL CONTOUR, part 2 — NYMCHA, the per-type population solver (the audit's second-largest rewrite)"
     points: 8
     completed: '2026-07-15'
+  - id: sw7-3
+    epic: sw7
+    title: R3 Text and board authenticity — PULL TRIGGER TO START, PRINCESS LEIAS REBEL FORCE, SHOOT YOUR INITIALS, the seeded OBI/WAN/HAN board, comma-grouped scores
+    points: 3
+    completed: '2026-07-15'

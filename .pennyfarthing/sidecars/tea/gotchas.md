@@ -930,3 +930,47 @@ back to the clock — un-fixing the bug for one seed. Assert `?seed=0` under two
 boot and passes the seed into `initGame(seed)`; the sim never reads the clock again. But once-per-load seeding is
 NOT replay — an epic that needs same-seed regression tests needs the seed EXTERNALLY injectable (URL/global), a
 step beyond battlezone. AC-1's "no clock in the sim-step path" still ALLOWS that one boot read (grep ≤1 in main.ts).
+
+---
+
+### The shared VGMSGA font can't draw every ROM glyph — an apostrophe becomes a SPACE, silently
+
+**Situation:** RED for any star-wars (or sibling) text-authenticity story that pins a ROM message string
+containing punctuation the shared face lacks — sw7-3's board title `<PRINCESS LEIA'S REBEL FORCE>` (TCMES.MAC:605),
+and the coming attract/coaching-message stories (sw7-10 H-017/H-018/H-022) which quote apostrophised prose.
+
+**Problem:** `@arcade/shared/font` `GLYPH_CHARS` is exactly `" 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-,/_"` —
+caps, digits, dash, comma, slash, underscore. NO apostrophe, no period, no `<>`. `charGlyph` does not throw on a
+miss; it **degrades to BLANK (a space-width glyph)**. So `glowText(ctx, "LEIA'S …")` renders `LEIA S …` with a gap.
+Pin the exact apostrophe'd string and you force Dev to emit an unrenderable char; the on-screen result is worse
+(a gap), not the ROM's tick. The story TITLE for sw7-3 even dropped the apostrophe ("LEIAS") while its DESCRIPTION
+kept it — the two sources disagree because one anticipated the font gap.
+
+**Prevention:** BEFORE pinning a ROM string, `grep GLYPH_CHARS node_modules/@arcade/shared/dist/font.js` and check
+every non-alnum char with a quick `node -e "import('@arcade/shared/font').then(m=>console.log(m.hasGlyph(\"'\")))"`.
+If a glyph is missing: make the assertion tolerant of the unreproducible char (sw7-3 used `/^PRINCESS LEIA'?S REBEL
+FORCE$/`), and raise the glyph gap as a Delivery Finding — adding a glyph is a cross-repo `@arcade/shared` version
+bump, out of scope for a game-only story. Adding the glyph "quietly" is NOT in scope; the tolerant pin is.
+
+**Also — the seam is `layoutText`, and it captures the string BEFORE the font drops the glyph.** So a seam test
+asserts what was REQUESTED, not what rendered. Keep the two honest: pin the requested string tolerantly AND file the
+render-fidelity gap separately.
+
+---
+
+### A ROM board title made by `.NEXTMESS` is NOT a second short string — don't pin a bare fragment
+
+**Situation:** Pinning a star-wars framing title/label where the disasm shows two message symbols (sw7-3's
+hi-score header: RF1 + RF2, TCMES.MAC:604-605).
+
+**Problem:** `.NEXTMESS -320.,000.,VJMFL,RF1` (TCMES.MAC:604) LOOKS like a message named RF1 whose text is the
+comment's "REBEL FORCE". It emits NO `.ASCIN` text of its own — `.NEXTMESS` only writes XY+colour for a message
+SLOT and **re-positions the FOLLOWING message's text**. So RF1 is the SAME `PRINCESS LEIA'S REBEL FORCE` (RF2)
+re-centred for the half-screen initials layout, not a distinct `<REBEL FORCE>` string. The finding's own sub-claim
+("RF1 = <REBEL FORCE>") was wrong and the refutation corrected it. Ship a bare `REBEL FORCE` and you invent a string
+the cabinet never drew.
+
+**Prevention:** verify a title against the actual `.ASCIN`/`<…>` text at the message DEFINITION, not the
+`.NEXTMESS`/comment. Write the refutation INTO the test as a live guard: `expect(texts()).not.toContain('REBEL
+FORCE')` (exact-element) — green for the correct full title (a different element), red the instant someone draws
+the bare fragment.

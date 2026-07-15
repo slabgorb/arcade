@@ -37,9 +37,12 @@ stories:
     description: "Subsumes H-010, H-011, H-012, H-015 (BCD-decoded seed board: OBI 1,285,353 ... RLM 380,655), H-020 (two-site formatScore fix at render.ts game-over + board). Optional rider: H-024 shield-gauge ramp — palette fully specified by refutation (green 5-9 / yellow 3-4 / red 1-2 + OR #0FF refuel flash). Warning from refutation: no <REBEL FORCE> string exists — the board title is PRINCESS LEIA'S REBEL FORCE via .NEXTMESS repositioning."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-15'
+    review_verdict: approved
   - id: sw7-4
     title: R4 Score and shield rules — wave-scaled Force bonus, per-shield wave bonus and banner, drop the invented 400k/800k thresholds, post-hit shield window
     description: 'Subsumes S-012 (Force bonus 5k/10k/25k/50k/100k by wave — index 0-based, hence depends on sw7-2), S-013 (5,000 per surviving shield unit + H-021 RWD banner), S-015 (BOOK_WAS_WRONG: remove non-ROM 400k/800k extra-shield thresholds — refuter did the exhaustive BCD hunt), S-016 (post-hit shield-loss window: ROM loses max one shield per gauge-redraw cycle).'
