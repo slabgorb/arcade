@@ -200,3 +200,8 @@ completed_stories:
     title: 'R2 Wave-parity family — GM.WAV is 0-based, ours 1-based: Imperial March, Great-shot-kid and both trench voice sets fire on wrong or inverted wave sets'
     points: 2
     completed: '2026-07-15'
+  - id: rb4-3
+    epic: rb4
+    title: "DETERMINISM — the sim seeds its RNG from Date.now(); the ROM's RANDOM is an LFSR"
+    points: 3
+    completed: '2026-07-15'

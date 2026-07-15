@@ -51,14 +51,17 @@ stories:
     description: "Cluster C11 (GP-003). Small, cheap, and it UNBLOCKS regression-testing every other story in this epic — do it early. main.ts:467 calls createRng((Date.now() + kills)) to spawn every wave, INSIDE the sim-step path, and main.ts:349 seeds the blimp RNG from the wall clock too. The ROM's RANDOM (RBARON.MAC:6193) is a pure software LFSR with no clock input. Two consequences: the sim is non-deterministic (same-seed replay and same-seed regression tests are impossible — which is exactly what the rest of this epic needs), and it violates the core/shell boundary, which forbids the deterministic sim from reading wall-clock time."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
       - "Zero calls to Date.now() / performance.now() / Math.random() remain anywhere in src/core/ or in the sim-step path of src/main.ts. A test greps for them."
       - "One seeded Rng is threaded through the sim; the SHELL owns the seed and passes it in. The same seed + the same inputs reproduce the same game, pinned by a determinism test."
       - "The determinism test fingerprints a full multi-wave run (enemy spawn sides, blimp rolls, wave composition) and asserts two same-seed runs are identical."
+    completed: '2026-07-15'
     type: bug
+    review_verdict: approved
   - id: rb4-4
     title: "WIRE UP THE DEAD MECHANICS — the returning ace is never imported and the player CANNOT DIE"
     description: "Cluster C3. Subsumes CD-010, CD-011, EN-019, MI-021, CB-004, SN-009. The story that turns the clone back into a game. FOUR mechanics are wired to nothing. (1) returning-ace.ts is NEVER IMPORTED by any source file — the signature Red Baron mechanic is dead code, and the refuter confirmed the evade logic inside it is actually CORRECT, it is simply unreachable. (2) main.ts declares `lives` (:342) and assigns it (:406) and NEVER READS IT — there is no death, no respawn, no game over. (3) There is NO ground collision at all: you cannot fly into a mountain, though the ROM checks GREND every frame BEFORE any motion (RBARON.MAC:783-784). (4) No extra lives (BONUSL). (5) score-tick and bonus-life events are declared in core/events.ts and consumed in audio-dispatch.ts but EMITTED BY NOTHING — so three of the five shipped POKEY sounds (TK, TP, BN) can never play."

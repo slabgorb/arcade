@@ -900,3 +900,33 @@ authority, not sympathy: a verbatim-transcription epic means the port must conta
 the DOWNSTREAM solver's decode of the min>max clamp (tp1-8's NYMCHA), never from us silently editing the
 transcription (that IS the hand-tuning the epic deletes). Surface the contradiction as a blocking Delivery
 Finding to the consuming story; don't let the misread hide it. Match-bytes keeps the fidelity chain honest.
+
+---
+
+### A DETERMINISM story can't be tested with the booted-cockpit harness — it MOCKS the clock, so the trap is baked in
+
+**Situation:** rb4-3 (red-baron) — the sim seeded three `createRng()` streams from `Date.now()` inside
+main.ts; the story is to make same-seed replay/regression possible. The obvious RED test is "two same-seed
+runs are identical."
+
+**Problem:** the shared harness `tests/helpers/boot-cockpit.ts` does `vi.spyOn(Date, 'now').mockReturnValue(seedMs)`
+— it makes the run deterministic BY FREEZING THE CLOCK. So "same seedMs twice → identical" is GREEN against the
+BROKEN code (both runs read the same frozen `Date.now()`), and against the FIXED code, and against everything.
+It is exactly the sidecar's "a seeded RNG makes 'it's deterministic' vacuous" trap, wearing a harness. A
+determinism test built on `bootCockpit(seedMs)` proves nothing and is not even RED.
+
+**Prevention:** do NOT reuse the harness's clock-mock as the seed. Pin the two properties no frozen-clock run
+can fake, injecting the seed through a SHELL SEAM (here a `?seed=` URL param — a real, replayable, test-settable
+source) while controlling `Date.now()` INDEPENDENTLY:
+
+    determinism / clock-independence : same seed, DIFFERENT Date.now() per run  → identical  (RED today: diverges frame 1)
+    seed sensitivity (anti-vacuity)  : DIFFERENT seed, same Date.now()          → different   (RED today: identical — seed ignored)
+
+Sensitivity is the guard that "identical" means "reproduced a real RNG-driven run", not "two empty runs".
+And write the seed-`0` case explicitly: `Number("0")` is falsy, so a `param || Date.now()` parse drops seed 0
+back to the clock — un-fixing the bug for one seed. Assert `?seed=0` under two clocks stays identical (forces `??`).
+
+**Also:** the fleet already has the right pattern — battlezone/src/main.ts:110 reads `Date.now()` ONCE at shell
+boot and passes the seed into `initGame(seed)`; the sim never reads the clock again. But once-per-load seeding is
+NOT replay — an epic that needs same-seed regression tests needs the seed EXTERNALLY injectable (URL/global), a
+step beyond battlezone. AC-1's "no clock in the sim-step path" still ALLOWS that one boot read (grep ≤1 in main.ts).
