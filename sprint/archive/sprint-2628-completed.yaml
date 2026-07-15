@@ -235,3 +235,8 @@ completed_stories:
     title: R9a TIE choreography VM engine — per-fighter bytecode VM (A-009)
     points: 8
     completed: '2026-07-15'
+  - id: tp1-11
+    epic: tp1
+    title: "Restore SPIKE_MAX_DEPTH to the ROM's 0.929 — the PM ruling, sequenced behind the warp dive"
+    points: 1
+    completed: '2026-07-15'

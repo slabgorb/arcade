@@ -218,7 +218,8 @@ stories:
     description: "Finding W-039, carved out of cluster C11 because it is a RULING, not a bug fix. rules.ts:110-115 documents 0.75 as a CONSCIOUS deviation made in story 6-15 on playability grounds — the ROM's spikes reach 0.929 and are near-lethal on the dive. PM ruling 2026-07-13: fidelity wins and the deviation is overturned, BUT the restore lands only AFTER tp1-10, because 0.929 is only fair once a spike crash replays the wave rather than costing a life outright. Do not land this early; do not land it without confirming the replay works."
     points: 1
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -226,7 +227,9 @@ stories:
       - "The rules.ts:110-115 comment recording the 0.75 deviation is REPLACED with a note recording that the deviation was overturned by PM ruling on 2026-07-13 and why — not silently deleted."
       - "HARD GATE: tp1-10 is done and a spike crash demonstrably replays the wave. If it does not, this story stops and comes back to the PM."
       - "npm test -- citations stays green."
+    completed: '2026-07-15'
     type: bug
+    review_verdict: approved
   - id: tp1-12
     title: "THE PALETTE — enemy colours come from a per-wave-group COLTAB bank, not a fixed hex (and this hands us the invisible wells for free)"
     description: "Cluster C7. Subsumes V-011, V-019, DA-005 (colour half), DB-010, DB-017. One indirection: replace `enemy -> fixed hex` with `enemy -> palette slot -> per-wave-group COLTAB bank`. Six banks, advancing every 16 waves. This is what makes the arcade's later waves look like different games, and it brings the INVISIBLE-WELL WAVES (65-80) — one of Tempest's best-known difficulty spikes, which we simply do not have — for free. The enemy-burst-white item is carved out to tp1-3."
