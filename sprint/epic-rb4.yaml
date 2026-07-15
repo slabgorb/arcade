@@ -213,7 +213,8 @@ stories:
     description: "rb4-2 retracts the findings doc's 'built-in distance LOD' claim (which the doc itself only ever tagged '[LOD reading inferred]'). This story retires the BEHAVIOUR that grew out of it. The ROM does not test distance anywhere in the picture path. DRNPIC (RBARON.MAC:4961-4963, citable copy) reads 'LDA PLSTAT+6 ;PLANE ROTATED' then 'AND I,10' — and in a .RADIX 16 region that 10 is 0x10, bit D4, set/cleared at RBARON.MAC:2652 ';D4=0 (PLANE FACING AWAY)'. Bit clear takes the 20-branch: .DRPNT, the 29-point drone point-list, drawn with the DB.MAR front list. Bit set: scale-down plus DB.MAP with back faces. So the far/near model is chosen on ORIENTATION — is the plane turned away from you — not on how far away it is. src/core/biplane.ts instead carries LOD_DISTANCE, a depth threshold: first 1500 (invented outright), then re-derived by rb4-1's Reviewer as a projected-wingspan fraction — a better-argued version of a test the ROM never makes. src/core/enemy.ts:83 now cites it as precedent for another tunable. NOTE the trap rb4-1 already hit: biplane.ts's behavioural tests passed IDENTICALLY at 1500 and at 1584 — they only ever asked that the switch land somewhere inside the flight band. A test that stages the plane at a convenient depth CANNOT see this defect; pin the MODEL CHOICE against the orientation state."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -221,7 +222,11 @@ stories:
       - LOD_DISTANCE is gone from src/core/biplane.ts, and enemy.ts:83 no longer cites it as precedent for a tunable.
       - "A test proves the ROM's rule bites where a distance rule cannot: same depth, two orientations, two different models. A depth-threshold implementation must FAIL it — mutate the old rule back in and confirm it turns red."
       - The near model draws the back-face list (DB.MAP) and the far model the front list (DB.MAR), per DRNPIC's two branches.
+    completed: '2026-07-15'
+    branch: fix/rb4-13-lod-orientation-bit
     type: bug
+    review_findings: '1 HIGH: lod-orientation-wiring guard satisfiable by prose (regex matches main.ts:185 comment; strip comments + add positive wreck assertion). 3 MEDIUM (all test-side, mutation-proven): wreckSegments bit-following untested; explode() capture untested; AC-3 seam docstring overclaims. 2 LOW: biplane.ts:14 legacy cite :6258 should be :6267-6268 (citable copy); stale LOD_DISTANCE comment in radix-transcription.test.ts:117. Implementation logic stands; 24 rule-checker citation violations DISMISSED (wrong quarry copy).'
+    review_verdict: approved
   - id: rb4-14
     title: GIVE THE DOC VERBATIM — 199 prose citations nobody can mechanically check
     description: "The reason rb4-2 could not ship a universal citation checker. docs/audit/findings/*.json carry source: {file, line, verbatim}, and tools/audit/check-citations.mjs re-opens each cited line and compares BYTE-FOR-BYTE — no heuristics, no oracle problem. The findings doc carries no such field: it cites 'CALCNT (RBARON.MAC:620)' in prose, and there is no sound way for a machine to know which symbol a prose citation MEANS. Measured during rb4-2's RED: 64% of the doc's 199 citations 'resolved' against the citable copy versus 57% against the wrong one — noise, not a signal. So rb4-2 could only check the citations §1 makes at a symbol's DEFINITION (derive the line from the source, demand the doc cite it), and had to leave every use-site range unguarded. Adopt the audit's discipline: every citation in the doc carries the verbatim text of the line it cites, and a checker re-opens all 199 and compares bytes. Then the doc cannot rot again — not by a copy swap, not by a decoy, not by a typo — and the guard is mechanical rather than a reviewer's diligence."

@@ -240,3 +240,8 @@ completed_stories:
     title: "Restore SPIKE_MAX_DEPTH to the ROM's 0.929 — the PM ruling, sequenced behind the warp dive"
     points: 1
     completed: '2026-07-15'
+  - id: rb4-13
+    epic: rb4
+    title: THE LOD IS AN ORIENTATION BIT, NOT A DISTANCE — biplane.ts invented LOD_DISTANCE
+    points: 3
+    completed: '2026-07-15'
