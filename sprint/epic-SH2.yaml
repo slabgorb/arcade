@@ -352,7 +352,10 @@ stories:
     title: "Close the @arcade/shared/synth onRebuild footgun — a cabinet that holds a WebAudio node OUTSIDE the shared voice registry (a free-running hum oscillator, an approach whine, anything built once behind an 'if (node === null)' gate) MUST register an onRebuild reset, or that node keeps referencing the context the browser closed, its build gate never re-fires, and the sound dies permanently while the registry voices recover. That HALF recovery is worse than none: it looks like it works. This is not hypothetical — SH2-18's own recovery fix shipped exactly this regression into BOTH cabinets and it took the reviewer's fix-regression sweep to catch it; a comment on the method is the only thing standing between the next cabinet and the same trap. Make it structural rather than advisory: either have the engine own persistent (non-stoppable, gain-switched) voices so no cabinet-held nodes exist at all, or fail loudly — the design call is the story."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: arcade-shared,battlezone,red-baron
     workflow: tdd
+    completed: '2026-07-15'
     type: refactor
+    review_verdict: approved
