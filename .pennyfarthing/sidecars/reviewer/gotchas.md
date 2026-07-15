@@ -4,6 +4,73 @@ Common pitfalls encountered during code review.
 
 ---
 
+### A rework that hardens input-validation on ONE side of a trust boundary (encode/sanitize) must be checked on the OTHER side (decode) — and its own test may round-trip past the untouched side
+
+**Situation:** Re-reviewing a rework whose commit message says it "strips control chars from
+names" / "hardens the untrusted input" at a serialization boundary (a cookie, a query string, a
+wire format). Story lb2-8 round-trip 1: `bf1e2f9` added a C0/DEL strip to `sanitizeName`, which
+is called ONLY from `encodeRows` (the WRITE side). `rule_checker` was ENABLED and caught it; the
+disabled `security`/`test_analyzer` would have been the usual finders.
+
+**Problem:** `decodeRows` — the function that parses the GENUINELY untrusted value (any subdomain
+can write the cookie, a player can hand-edit it) — never sanitized the extracted name at all; it
+only checked non-emptiness and validated the score. So the write path stripped more than the read
+path re-validated, WIDENING an asymmetry the module's own comment claimed to close ("sanitized on
+the way in and re-validated on the way back"). The rework's OWN new test built the hostile name
+with `save()` → `encodeRows`, so it round-tripped through the side that WAS fixed and never
+exercised `decodeRows` against a RAW poisoned cookie. Green proved nothing about the read path.
+Verified by code-trace + a throwaway probe seeding `makeCookieJar({ [COOKIE]: 'A=B:9000' })`
+directly: name `A=B` (the `=`) survives decode untouched. `;`/`,`/`:` can't traverse the
+cookie/split boundaries and browsers reject raw control chars in `document.cookie`, so `=` is the
+only realistic survivor; textContent render means no XSS and there's no read→re-encode path, so
+it's cosmetic/self-inflicted (graffiti-tier) — NON-BLOCKING, but a real rule-#10 gap + a lying
+comment. Confirmed (not dismissed), rated MEDIUM, routed to a follow-up.
+
+**Prevention:** When a fix touches validation/sanitization at a boundary, enumerate BOTH the
+encode and decode functions and confirm the fix is symmetric — a strip added to the writer means
+nothing if the reader is the untrusted-input parser. And when the rework adds a test for that fix,
+check WHICH side it drives: a test that builds its hostile input through the encoder can't prove
+the decoder is hardened. Seed the raw wire value directly (bypass the encoder) and assert the
+decoded output. Don't let a green round-trip test stand in for read-path coverage.
+
+**Disposition:** the blocking finding was elsewhere (the AC-6 teardown, fixed + mutation-proven);
+this read-side asymmetry pre-existed round 0 and is textContent-safe, so it did not re-block —
+recorded as a non-blocking Delivery Finding (apply `sanitizeName` inside `decodeRows`, correct the
+comment, add a raw-cookie decode test). APPROVED with the follow-up.
+
+---
+
+### A rotation/teardown test that advances N×period where N ≡ 0 (mod cycle length) wraps the index back to its start — the "stopped" assertion passes even if stop() is a NO-OP
+
+**Situation:** Reviewing a cycling/rotating UI component with a teardown AC (a lobby board that
+rotates through the registry on a `setInterval`, a carousel, an attract-mode loop) whose test
+proves "stop() halts rotation" by advancing fake timers and asserting the active item didn't
+move. `test_analyzer` was DISABLED (toggles: `test_analyzer`), so the mutation check was mine.
+
+**Problem:** lb2-8's AC-6 (timer torn down, never fires against a detached DOM) had three tests
+and ALL THREE were vacuous. The load-bearing one advanced to index 1, called `stop()`, then
+`advanceTimersByTime(INTERVAL * 5)` and asserted still `GAMES[1]`. There are exactly **5 games**,
+so five more fires walk `1→2→3→4→0→1` — the index returns to 1 whether or not the timer was
+cleared. The assertion holds against a `stop()` that does nothing. The other two only asserted
+`not.toThrow()`: `render()` on a *detached-but-alive* node (after `panel.remove()`) doesn't throw,
+and `clearInterval` twice vs a no-op twice both don't throw — so neither pins teardown either.
+Net: a stated AC with **zero effective coverage**; a future regression to `stop()` (memory leak,
+detached-DOM writes) ships green-forever. The implementation was correct — the guard was scenery.
+This is the tp1-10 verification-integrity pattern (lang-review #8) wearing a modulo-arithmetic hat.
+
+**Prevention:** For any cycling-teardown test, DON'T trust a "still on the same item" assertion —
+mutation-prove it. Revert the real teardown (`stop(){}` no-op), run the file: if the teardown
+tests stay green, it's vacuous → REJECT to TEA. The blind spot is specifically `advance = k ×
+period × cycleLength` (wraps to origin) and `not.toThrow()` (holds for detached-but-alive nodes).
+
+**Fix (hand to TEA):** assert teardown DIRECTLY, independent of cycle-length arithmetic —
+`vi.useFakeTimers()` then after `stop()` expect `vi.getTimerCount()` to be `0`; OR advance a
+NON-multiple of the cycle length (e.g. one interval) and assert the item DID change if alive /
+did NOT if stopped; OR spy `clearInterval`. `getTimerCount()===0` is the cleanest — it pins the
+timer, not a downstream side effect, and survives a change to the game count.
+
+---
+
 ### FIRST review step: fetch and grep origin's LOG for the story id — a sibling checkout may have merged the same story mid-flight
 
 **Situation:** Reviewing any story in this multi-checkout arcade setup (a-1/a-2/a-3 all

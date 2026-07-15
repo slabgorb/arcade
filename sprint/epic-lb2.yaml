@@ -118,7 +118,8 @@ stories:
     description: "The centrepiece of the 'Arcade Lobby' design, split out of lb2-7 because it is BLOCKED ON DATA, not on markup. The design shows a bordered HIGH SCORES panel that cycles one game at a time on a ~4.5s timer: the game's name in its own glow colour, a TOP FIVE ladder of rank/name/score rows, and a row of pips (one per game, the active one lit in that game's colour). Building the panel is an afternoon. Feeding it is the problem: ADR-0004 decided the lobby reads scores across origins from a cookie carrying a SINGLE BARE NUMBER (arcade-hi-<gameId>=<top score>), so even once lb2-2 ships, the cabinet cannot deliver five rows or a single player NAME to the lobby — and the design needs both. This story must therefore FIRST amend ADR-0004 to widen the published summary from one number to a small top-N row list (name + score; note the 4096 B cookie cap is not the binding constraint — five 3-char names and five scores is well under 200 B), then implement the board on top of it. Depends on lb2-2 (the cookie transport must exist before it can be widened) and composes with lb2-3 (the board must re-read on return from a game, same pageshow entry point). Keep the house fail-soft rule: no readable rows must degrade to an explicit, honest empty state — never to invented names or a zero."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: arcade-shared, lobby
     workflow: tdd
     acceptance_criteria:
@@ -128,7 +129,10 @@ stories:
       - "A game with no readable scores shows an explicit empty state (e.g. NO SCORES YET), never a fabricated name, a placeholder ladder, or a zero."
       - The board re-reads on return from a game through lb2-3's single refresh entry point — beating your best and coming back updates the ladder without a manual reload.
       - The rotation timer is cleaned up on teardown and does not keep firing against a detached DOM.
+    completed: '2026-07-15'
     type: feature
+    review_findings: 'BLOCKING [HIGH/test]: AC-6 timer-teardown coverage is vacuous (mutation-proven — gutting stop() to a no-op leaves all 16 board tests green; INTERVAL×5 wraps the 5-game index back to start, other two AC-6 tests only assert not.toThrow()). Harden in highscore-board.test.ts (vi.getTimerCount()===0 after stop, or advance a non-multiple of GAMES.length, or spy clearInterval). Non-blocking: decodeRows omits the documented highest-first sort on the read path (highscore.ts); options bag not readonly; sanitizeName omits control chars. Finish-note: lobby package.json still pinned to v0.13.1 — repin at release. Code is otherwise correct: 640/640 green, injection-safe, fail-soft, AC-1 ADR amendment complete.'
+    review_verdict: approved
   - id: lb2-9
     title: Draw a real vector model in each lobby tile's model slot
     description: |-

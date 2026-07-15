@@ -4,6 +4,46 @@ Common pitfalls encountered during Dev (GREEN / implementation) work.
 
 ---
 
+### Widening an arcade-shared cookie/transport FORMAT breaks TWO coupled suites, not the one TEA scopes — and `"NO SCORES YET"` trips the `/NO SCORE/` source guard
+
+**Situation:** GREEN work that changes the VALUE SHAPE of a published `@arcade/shared`
+transport — lb2-8 widened the cross-origin high-score summary cookie from a single bare
+number (`arcade-hi-<gameId>=124500`, ADR-0004) to a top-N list of name+score rows.
+
+**Problem (two-suite coupling):** TEA's RED correctly flags the obvious coupled suite
+(`highscore-publish.test.ts`) for the rows migration — but the ORIGINAL transport suite from
+the feature's first story (`arcade-shared/tests/score-cookie.test.ts`, the lb2-2 ~50-test
+baseline) is *equally* welded to the bare-number signature (`publish('tempest', 124500)` →
+asserts `arcade-hi-tempest === '124500'`). It sits in the GREEN baseline as "passing", so
+`grep`-ing only the TEA-named file misses it; the instant you widen the transport it goes RED
+in a suite RED never touched. vitest catches it on the FULL run, not the story's own file.
+
+**Problem (source-guard substring):** the honest empty-state string `"NO SCORES YET"` CONTAINS
+`"NO SCORE"`, and `lobby/tests/refresh-rules.test.ts` has a `?raw` source guard `/NO SCORE|HI·/`
+that forbids that substring ANYWHERE except `src/core/score.ts`. Defining the constant in the
+board component fails the guard even though the board is the only consumer.
+
+**Prevention:** (1) When widening a shared transport format, `grep -rln "<the-cookie-prefix>\|publish(" arcade-shared/tests/`
+for EVERY suite asserting the old shape — migrate all of them (scalars → one-row ladders,
+`null` → `[]`, route number/null reads through the back-compat reader), not just TEA's named one.
+Log the extra migration as a Dev deviation + Delivery Finding so Reviewer confirms the coverage
+(scope/injection/fail-soft) survived and any dropped test is justified. (2) Put any cabinet-copy
+string that contains a guarded token in `core/score.ts` (the one place the guard allows) and
+import it — never inline it in the shell.
+
+**Also (overlay, not a regression):** developing the lobby against a locally-overlaid widened
+`node_modules/@arcade/shared` — the package.json pin stays at the OLD tag until the finish-time
+repin — Vite serves the STALE pre-bundled dep from `.vite` until `rm -rf node_modules/.vite &&
+vite --force`. vitest/tsc stay green throughout, so a blank dev-server page with a missing-export
+console error is a cache artifact, NOT your code. It will not recur after the finish repin.
+
+**Example (lb2-8):** widening broke `score-cookie.test.ts` (unnamed by TEA) alongside
+`highscore-publish.test.ts`; migrated both, dropped one now-meaningless decline-vs-clear test
+(the guarantee moved to the factory boundary), `NO_SCORES_YET` defined in `core/score.ts`.
+Net arcade-shared 490 green, lobby 150 green, both builds clean.
+
+---
+
 ### To implement an authentic vector shape, pull geometry from historicalsource — `star-wars/reference/disasm/` doesn't have it
 
 **Situation:** GREEN-phase implementation of an authentic 1983 vector *shape* (fireball, explosion, gunshot, object picture) in the star-wars game.

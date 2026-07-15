@@ -766,3 +766,33 @@ cycle, because `render.ts` feeds the selector a full-byte sine (`*0xff`, idx 0..
 lives in ~[-63,15] (idx 0..4, transient 5). Pinning the pure function is right; flag the render domain as
 a blocking Delivery Finding or you green a mostly-flat pulsar. Keep render's variant numbering (0=sharp..
 4=flat) so the dormant `pulsarBar(4)` and the selector both stay wired.
+
+---
+
+### When an AC's deliverable is a DOC in the orchestrator repo, don't file-read it from a subrepo test
+
+**Situation:** A story AC requires a written artifact that lives OUTSIDE the code repo being
+changed — e.g. lb2-8's AC-1 "amend ADR-0004 in writing," where the ADR is at the orchestrator's
+`docs/adr/0004-*.md` but the code changes are in `arcade-shared/` + `lobby/` (each its own
+gitignored subrepo with its own CI checkout).
+
+**Problem:** The obvious "guard the doc" test — a node-env test that reads `../../docs/adr/0004-*.md`
+and greps for the new shape — is a **CI-only lie**. Locally the subrepo is a subdir of the
+orchestrator, so `../../docs/` exists and the test passes. On GitHub Actions the subrepo is checked
+out ALONE: `../../docs/` does not exist, so either the test errors (file missing) or, worse, is
+written defensively and passes vacuously. This is the exact "green on the CI runner while wrong in
+the wild" trap `lobby/src/core/score.ts` calls out for `toLocaleString()` — the same failure shape,
+one directory up.
+
+**Prevention:** Split the AC. The BEHAVIOURAL half is almost always testable inside the code repo —
+lb2-8's "the published summary carries name+score rows rather than a bare number" is fully pinned by
+`highscore-summary.test.ts` (publish → `readTopScores` round-trip). The WRITTEN half (the ADR's prose,
+its size-vs-cap reasoning, its rejected alternatives) is a **Reviewer-verified doc deliverable**, not
+a unit test. Log it as a `minor` deviation naming the file the Reviewer must read, and file a Delivery
+Finding telling Dev to author it. Never reach across the subrepo boundary from a test.
+
+**Corollary — a format-widening story legitimately reddens EXISTING green tests.** Changing a published
+wire format (here: the cross-origin cookie value from `124500` to a rows encoding) invalidates the old
+assertions and any injected-stub signature (`spyTransport`'s `publish(id, number)`). In RED, LEAVE those
+alone — pre-editing them steals Dev's green work and turns the suite red for the wrong reason. Flag the
+churn as a non-blocking Conflict finding so Dev migrates them during GREEN, expecting it.

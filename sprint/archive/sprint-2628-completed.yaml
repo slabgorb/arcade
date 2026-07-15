@@ -180,3 +180,8 @@ completed_stories:
     title: Re-port the TIE family edges (TIE, TI1, TI2, TI3) — including the spider-ladder rung the port's own comment shows it omitted
     points: 2
     completed: '2026-07-15'
+  - id: lb2-8
+    epic: lb2
+    title: The rotating top-five HIGH SCORES board — and the cross-origin score payload it needs
+    points: 5
+    completed: '2026-07-15'
