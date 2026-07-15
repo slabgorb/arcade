@@ -684,3 +684,55 @@ glyphs.ts falsifies the fixed findings' `ours` quotes (`remediated_by: <story>`)
 line numbers of the *unfixed* citations into it (`node tools/audit/reanchor-citations.mjs --write`).
 
 ---
+
+### A vi.mock tap on a module NOBODY imports never runs — and that silence is the BETTER red
+
+**Situation:** RED for a WIRING story (rb4-4): the cockpit tests tap a core module with a
+delegating `vi.mock(path, importOriginal)` recorder to prove the booted sim DRIVES it — but the
+module is one the story itself asks Dev to create (`core/ground-collision`), or one no source
+file imports yet (`core/returning-ace`).
+
+**Problem:** Two opposite surprises. (a) You expect the missing-module mock to crash the file
+(import-RED); it does NOT — a `vi.mock` factory only runs when something actually imports the
+path, so a tap on an unimported module is silently inert and the file runs to its assertions.
+(b) You therefore CAN'T rely on the tap's mere existence as evidence of anything: `rec.calls`
+staying empty is exactly what both "unwired" and "my tap is broken" look like.
+
+**Prevention:** Lean into (a): a wiring suite whose tap is inert fails on its ASSERTIONS
+("0 calls — the mechanic is dead code"), which is a far better RED message than "Cannot find
+module". Guard (b) with a staging meta-test that proves the RUN reached the state where calls
+were due (tap a SECOND module that already works — rb4-4 taps `landscape.stepMountain` to prove
+the ground wave actually ran before asserting the collision check was consulted on those frames).
+Import-RED is fine for UNIT suites (the module's contract header explains it); wiring suites
+should be assertion-RED.
+
+**Also — the fast-tick cockpit:** the rb4-1 booted-cockpit harness ticks 16 ms (a real browser).
+ROM timelines live at the 96 ms calc frame, and a mechanic like the ace pass needs ~977 calc
+frames (= ~5900 browser ticks) to develop. Tick `nowMs += 96` instead — the fixed-step
+accumulator (cap 250 ms) yields exactly one calc frame per tick, the loop under test is still
+byte-for-byte the shipped loop, and a 1300-frame flight runs in ~100 ms. Calibrate staging
+constants (kill frame, floor frame, which seed rolls a lone plane) with a THROWAWAY probe test
+against the shipped code first; delete the probe before committing.
+
+---
+
+### When an AC hands you two constants and two channels, find the MACHINE before mapping them 1:1
+
+**Situation:** rb4-4's AC-2: "two death channels … carry the ROM's own durations (.TIME1=16,
+.TIME2=28 calc frames = 1.536 s / 2.688 s)". Both constants are real (RBARON.MAC:505-506). The
+mapping is not.
+
+**Problem:** The AC pattern-matched channel-A↔constant-1 / channel-B↔constant-2. The ROM's
+actual machine (EOLSEQ :1057-1126) is ONE count-up timer with a channel-dependent SEED: shells
+start EOGTMR at 0, ground at 0x0F, BOTH end at .TIME2=28 — so the durations are 28 and 13 calc
+frames, and .TIME1=16 is the spiral→starfield boundary INSIDE the sequence, not a channel's
+length. A test written to the AC's parenthetical would have pinned a fabricated 16-frame
+shot-down death and rejected the faithful implementation.
+
+**Prevention:** Before pinning, read the CONSUMER of each constant (grep the symbol, follow the
+compare): `.TIME1` is consumed by `CPX I,.TIME1 ;TIME FOR STARFIELD ?` (:1163) — a stage
+boundary; `.TIME2` by `CMP I,.TIME2 / BCC / JMP ENDLFE` (:1124-1126) — the terminator; the
+channel difference is in the SEED (:1061-1066). Pin the machine (seed, boundary, terminator),
+log a deviation correcting the AC, and cite all three lines. Same family as tp1-27 ("the gate is
+a state, not a byte"): the AC's decode of a true constant is still a decode, and decodes must be
+re-derived from the consuming code.

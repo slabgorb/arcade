@@ -196,3 +196,47 @@ spec edit, not a translation.
 **Example (tp1-10 ⨝ tp1-13):** unified to `flyIn` only; descent-bottom `warp-space`→(stop levelClear/T2 + start thrustSpace/T3), fly-in-end `warp-end`→stop both; events union 16→20; `startBonus` paid in `beginFlyIn`. 1253/1253, tsc 0, build 0, citations 19/19; all 6 guards RED-on-revert. This CLOSED tp1-10's own deferred "space sound over the fly-in" finding — the sibling had shipped exactly the sound tp1-10 punted.
 
 ---
+
+---
+
+### main.ts's accumulator loop carries a BRACE-SENSITIVE source regex — a pre-motion block must be a brace-free call
+
+**Situation:** GREEN work that inserts logic at the TOP of red-baron's calc-frame loop, BEFORE
+`flight = step(flight, input)` (rb4-4: the EOLSEQ/SCOREM/GREND pre-motion block — the ROM checks
+all three before PFMOTN).
+
+**Problem:** `tests/cockpit-boot.test.ts` pins the ÷N-trap fix STRUCTURALLY with
+`/while\s*\([^)]*SIM_TIMESTEP_S[^)]*\)\s*\{[^}]*\bstep\s*\(/` — `step(` must follow the loop
+opener with NO `}` in between. ANY braced statement inserted above the flight step (an `if {}`,
+a scoped `{}` block) breaks the guard, and the failure message ("step() must be called INSIDE
+the accumulator") points at the loop, not at your insertion.
+
+**Prevention/Fix:** Package the pre-motion logic as a main.ts-local helper returning "frame
+consumed?" and call it brace-free: `if (preMotionFrame(events)) continue`. The helper mutates
+the same closure state the loop does (and does its own `simFrame += 1; accumulator -= …` on
+consuming paths — do NOT move the shared decrement to the loop top: `simFrame`'s parity drives
+`blimpFires`, and shifting it re-times the airship's whole life). Grep
+`tests/cockpit-boot.test.ts` for source regexes before restructuring the loop.
+
+---
+
+### GREND's D6 is the freeze discriminant — only a GROUND death freezes the war; killing the WORLD for a shells death breaks the airship suites
+
+**Situation:** Wiring the rb4-4 death sequence into the cockpit loop: what stops while the
+EOGTMR runs?
+
+**Problem:** The obvious "death freezes everything" (skip the whole loop body while dying) is
+UNFAITHFUL and broke three sibling suites at once: the blimp's drift PAUSED for 28 calc frames
+per death (cockpit-loop's one-step-chain and CROSSES pins), game-over-clears-the-sky deleted a
+visible airship mid-screen (the "DROPPED state was off-screen" pin), and frozen in-flight shells
+were re-drawn every display frame (cockpit-draw-path's measured shell total inflated 82→130).
+
+**Prevention/Fix:** Read the branch: `BIT GREND / BVS 20$` (RBARON.MAC:783-789) tests V = D6 —
+the GROUND bit. Only a ground crash skips PFMOTN/NWPLNE/PLMOTN (world + planes frozen). A
+SHELLS death (GREND=0x80, D7 only) merely zeroes the PILOT's deltas (:1108-1113) and clears
+GUN.ST (:1109-1110): the horizon holds still, the planes "FLY AWAY", the airship drifts on. So:
+freeze ONLY the pilot (skip `flight = step(...)`, gate the trigger) on shells; consume the whole
+frame on ground; after game over let the yoke fly the empty war (the ROM parks in attract).
+And keep every rng DRAW unconditional across the change — evaluate the blimp's per-shot roll on
+every fire-frame and gate only the EFFECT — or the stream shifts and every seed-calibrated
+sibling (and the airship's own trajectory) silently re-rolls.
