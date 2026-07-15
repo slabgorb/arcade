@@ -84,7 +84,7 @@ stories:
     description: "Cluster C4. Subsumes FL-013, FL-014, FL-015, FL-001, FL-004, FL-005. A genuine rewrite, not a constant tweak — say so honestly. The ROM has NO YAW ROTATION: turning adds the scaled PLDELX to UNIV4X, a linear universe-X, and objects are drawn at (their X - UNIV4X) (RBARON.MAC:3200-3213, :2910). It has NO PITCH ROTATION either: climb/dive subtracts the eye height I4YPOS from every object's Y before the single Z rotation and the divide-by-depth (RBGRND.MAC:277-283). We rotate the camera about Y and emit a transient pitch. Also FL-001: the `.4WORD` macro (RBARON.MAC:15-18) MULTIPLIES EVERY OPERAND BY 4, so POTDLY — the pitch table — is 4x what we transcribed. That is an undecoded macro, the classic way this method's findings go wrong, and here it went wrong in OUR code."
     points: 13
     priority: p1
-    status: in_review
+    status: done
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
