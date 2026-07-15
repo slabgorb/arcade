@@ -11,10 +11,13 @@ stories:
     description: 'Subsumes T-007, T-008, G-003 (+G-001 cadence correction). TICK_HZ=30 in state.ts should be 20.508 (WSINT.MAC:147, 12 IRQs @ 246.094 Hz); trenchTimer counts 60 Hz steps (2.93x fast); fireball lifetime 2.13s vs ROM 3.12s. Verify EVERY TICK_HZ consumer. LANDS FIRST — all later numeric stories re-bake on this base. Evidence: docs/audit/findings/ per id; audit doc section Timing.'
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-15'
     type: bug
+    review_verdict: approved
   - id: sw7-2
     title: 'R2 Wave-parity family — GM.WAV is 0-based, ours 1-based: Imperial March, Great-shot-kid and both trench voice sets fire on wrong or inverted wave sets'
     description: 'Subsumes U-005, U-006, U-007 (+U-008 correction: even-wave trench cues are INVERTED, not matching). ROM gates on 0-based GM.WAV (CMPA #4-1 = wave 4+, 1-based {4,6,8,...}); ours tests 1-based wave%2 — disjoint/inverted sets. One root fix: a 0-based wave accessor (or -1 shim) + rewire music/speech gates. Also S-012 indexes its bonus table by 0-based wave (story sw7-4).'
