@@ -135,7 +135,8 @@ stories:
     description: "Cluster C4, cheap half. Subsumes W-011, W-012, W-014, W-019, W-020, W-033, W-035, W-037, DA-002. Eight table transcriptions from the ROM's CONTOUR/WTABLE machinery: enemy count, invader speed, spiker speed, bolt cap, bolt speed, tanker cargo, intro waves, pre-seeded spikes. Cheap TOGETHER — they are the same mechanism read eight times. Depends on tp1-1 (every one of these is a rate or a count) and tp1-6 (populations are capped by the slot machinery)."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -144,7 +145,10 @@ stories:
       - "Values are read through the tables at the wave index — no interpolation, no formula fitted to the table."
       - "Depends on tp1-1 (rates) and tp1-6 (populations)."
       - "npm test -- citations stays green."
+    completed: '2026-07-15'
     type: bug
+    review_findings: "WSPIMX record 6 radix misread: rules.ts:688 transcribes ROM ALWELG.MAC:633 '.BYTE T1,35,39.,1' as {start:35} but '35' is hex 0x35=53 (dead range) — arcade spiker-max 0 on waves 35-39, port returns 1. AC-1 verbatim violation, latent for tp1-7, live+self-contradictory (min>max) for tp1-8. 7/8 tables byte-perfect; fix is one line."
+    review_verdict: approved
   - id: tp1-8
     title: "THE SKILL CONTOUR, part 2 — NYMCHA, the per-type population solver (the audit's second-largest rewrite)"
     description: "Cluster C4, expensive half. Subsumes W-034. A per-type min/max population solver that RESERVES SLOTS for the cargo of tankers already on the board (so a board full of tankers cannot deadlock when they split) and BIASES SPIKERS TOWARD SHORT LANES. This is the second-largest rewrite in the audit. It needs tp1-6 (there are no slots to reserve without the nymph queue). Sized honestly at 8 — if it proves larger on contact, split it rather than absorbing the overrun silently."

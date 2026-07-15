@@ -185,3 +185,8 @@ completed_stories:
     title: The rotating top-five HIGH SCORES board — and the cross-origin score payload it needs
     points: 5
     completed: '2026-07-15'
+  - id: tp1-7
+    epic: tp1
+    title: "THE SKILL CONTOUR, part 1 — transcribe the ROM's eight per-wave difficulty tables and stop hand-tuning curves"
+    points: 5
+    completed: '2026-07-15'

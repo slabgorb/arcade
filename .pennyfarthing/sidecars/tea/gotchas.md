@@ -796,3 +796,107 @@ wire format (here: the cross-origin cookie value from `124500` to a rows encodin
 assertions and any injected-stub signature (`spyTransport`'s `publish(id, number)`). In RED, LEAVE those
 alone — pre-editing them steals Dev's green work and turns the suite red for the wrong reason. Flag the
 churn as a non-blocking Conflict finding so Dev migrates them during GREEN, expecting it.
+### The CONTOUR fold is OBSERVABLE for a MULTI-RECORD table — tp1-25's fold-to-99 does NOT generalise
+
+**Situation:** Porting any bounded Tempest WTABLE table whose deep-wave (65-99) region is more than ONE
+record — tp1-7 lifts eight at once (TNYMMX, TINVIN, TCHAMX, TSPIIN, TCHARIN, WWTAC2/3, WTANMX/WSPIMX, TELIHI).
+
+**Problem:** The sidecar's "test the wave AFTER the last row" gotcha and tp1-25's shipped fold
+(`wave = level >= 99 ? 99 : level`) both assume the CONTOUR fold band (a RANDOM wave in **65..96**,
+ALWELG.MAC:415-423) lands inside a SINGLE record, so the substituted wave is unobservable and folding to a
+fixed 99 gives the same byte. That was true for TWFUSC/WPULTIM/WPULPOT — and ONLY those. It is FALSE the
+moment the table has multiple deep records: **TNYMMX**'s band spans two TA records (`TA,65.,80.,35.,1` and
+`TA,81.,99.,43.,1`), so the ROM's wave-99+ enemy count is genuinely RANDOM in ~35..58 — and fold-to-99 gives
+TNYMMX(99)=**61**, HIGHER than any value the ROM's own fold can produce. **TINVIN**'s band is a `TR`
+alternation (-160/-191), also observable. Copy tp1-25's fold blindly and you over-specify a value the ROM
+randomises, or overshoot the band.
+
+**Prevention:** Pin the PLAYABLE range (waves 1..~64) to EXACT values; pin wave≥99 only to SANITY — the value
+is in the table's legit range and is NEVER the TE-0 walk-off (0 enemies / 0 cap / frozen speed). Route the
+exact deterministic fold strategy to a Delivery Finding: fold to a REPRESENTATIVE wave inside 65..96, not to
+99. Extract the fold ONCE as `contourWave(level)` (the tp1-26 epic note) — inlining it per-table is how the
+next table inherits the walk-off bug. Before writing, classify each table's LAST records: single-record band →
+tp1-25's fold is fine; multi-record band → the fold is observable, loosen the deep-wave pin.
+
+---
+
+### TELIHI's byte 0 is the "LINE VACANT" SENTINEL — the height formula gives nonsense unless you know it
+
+**Situation:** Transcribing Tempest's pre-seeded-spike table TELIHI (`NWTELI`, ALWELG.MAC:696, a `TZANDF`
+per-`(wave-1)mod16` table) into a per-wave spike HEIGHT (tp1-7 / W-037).
+
+**Problem:** The finding writes the height as depth = `($F0 - byte)/224` (byte $E0 → 0.071, $A0 → 0.357). Apply
+that to the clean-wave byte **0** and you get (240-0)/224 = **1.07** — a spike taller than the whole tube,
+where the finding says "waves 1-3 start CLEAN". Byte 0 is not a tip position at all: the ROM's `LINEY`
+convention is `IFEQ ;LINE VACANT?` (ALWELG.MAC:2209) — **0 means NO spike**, and a real spiker seeds a fresh
+line at `ILINDDY+1` ($F1, the far base) then DECREASES LINEY toward the rim as the spike grows. So the tip
+position is $10..$F0 (height = ($F0-tip)/224), and 0 is an out-of-range sentinel. Pin `initialSpikeHeightForLevel`
+as `byte === 0 ? 0 : ($F0 - byte)/224` and verify our `s.spikes[lane]` is that same depth-of-tip (it is:
+0 = none, grows toward the rim).
+
+**Prevention:** When a ROM table feeds a coordinate, find the CONSUMER's zero/vacant test before trusting a
+"convert the byte" formula — a value the formula maps to nonsense is usually a sentinel. `grep` the parameter's
+uses (`LINEY` here) for an `IFEQ`/`VACANT`/`= 0` guard.
+
+---
+
+### A pure TABLE-TRANSCRIPTION story has a HUGE sibling-re-seat surface — grep the HELPERS, not just the symbol
+
+**Situation:** Any Tempest fidelity story that swaps a hand-tuned difficulty curve for a ROM table and it is
+NOT the first to touch that quantity (tp1-7's eight tables all replaced story-3-4/6-9/6-13 invented curves).
+
+**Problem:** The direct grep for the symbol/constant misses two whole classes of green-now-DOOMED sibling:
+(1) tests that assert a PROPERTY the invented curve had but the ROM refutes — story 3-4 pinned speeds/count
+rising MONOTONICALLY across the geometry wrap (`p20 > p16`) and capped at L33; the ROM's TINVIN genuinely DIPS
+at wave 17 and climbs past 33, so those assertions are refuted, not just re-valued. (2) tests that reach the
+quantity through a SIM-DRIVEN HELPER (`spawnedKinds`, `fireBoard`, `transition`) — a plain grep never sees them.
+And the fixtures lie: `fireBoard(5, …)`'s first arg is the **SEED, not the level**, so the "bolt cap saturates
+to 4" test was secretly wave 1, where TCHAMX makes the cap **2**. A full-suite run only shows tests RED *now* —
+green-now-doomed ones surface at GREEN, in Dev's lap.
+
+**Prevention:** After the obvious grep, enumerate what the fix CHANGES (count, speed, cap, cargo intro, spawn
+intro, initial spikes) and grep for every ASSERTION on each — including `.every(h => h === 0)` at a wave the
+fix now seeds, `toBeGreaterThan` monotonicity claims, and helper calls whose numeric arg you must decode. Then
+RUN the suite once and read the pass list too: a keep-behavior test that STILL passes but for a coincidental
+reason (level 5's TCHAMX cap is also 4) is a landmine. Re-seat to a COORDINATE FACT, log each as a 6-field
+deviation, and remember the re-seat may change gameplay FEEL (a real wave-17 slowdown) — flag it PM-visible.
+
+---
+
+### A LATENT table record (consumed only by a reducer) escapes BOTH nets — pin the raw byte AND add a CI-safe port assert
+
+**Situation:** Transcribing a multi-record ROM table where only ONE derived scalar is consumed this story —
+tp1-7's WSPIMX (spiker max): the port reads only `firstNonZeroWave(WSPIMX)` = 4 (the intro wave); the
+per-wave curve is tp1-8's. So records 2..7 are LATENT — no export, no consumer, no behavioral test can reach
+them. Any radix/transcription error in a latent record is invisible: the Reviewer's independent re-decode
+caught WSPIMX record 6, my suite could not.
+
+**Problem — the byte itself.** `.RADIX 16` tables (ALWELG.MAC has NO `.RADIX` line — it's inherited hex; bare
+`0FF`/`1F` immediates prove it) encode start/end waves in HEX, and a **trailing dot forces DECIMAL**. Every
+multi-digit start in WSPIMI/WSPIMX is dotted (`17.`, `20.`, `35.`, `43.`) — EXCEPT `:633` `.BYTE T1,35,39.,1`,
+whose `35` lost its dot (od -c: a comma follows, no `.`). So it assembles to `0x35 = 53`, and `[53,39]` is a
+DEAD descending range → waves 35-39 fall to the gap value 0, not 1. Its sibling min WSPIMI:625 DOTS it (`35.`
+= dec 35, min 1), so the assembled ROM is **self-contradictory** on 35-39 (min 1 > max 0) — a genuine 1981
+typo. The decimal misread (`{start:35}` → max 1) accidentally PAPERS OVER the contradiction, which is why it
+looked right. Small single-digit values (`5`, `7`) read identically in both bases and hide the pattern.
+
+**Problem — the two nets both have holes.** (1) The source-rules ROM-pin suite pinned only WSPIMX's FIRST
+record (the TZ intro), never record 6 — an unpinned latent record. (2) That whole suite is
+`describe.skipIf(!sourceAvailable)` (the ROM is copyrighted/gitignored), so it runs on the author's box and
+**skips silently in CI** — even a correct pin there is off where it matters most.
+
+**Prevention:** For a latent record, enforcement is TWO layers. (a) In the ROM-pin suite, pin the raw `.BYTE`
+line VERBATIM and decode the radix in-test with a one-token assembler (`tok.endsWith('.') ? dec : hex`);
+assert the un-dotted start `≠` its decimal reading and contrast the dotted sibling — the WSOBJ "write the
+refutation INTO the test" rule. (b) Because that suite skips in CI, add the biting assertion to a **CI-safe**
+suite that reads `rules.ts` as text (not the ROM): parse the port's table literal, rebuild the reducer
+(`spikerMax(wave)` mirroring `contourValue`), and assert the latent band equals the radix-decoded ROM value.
+That one goes RED now, GREEN on Dev's one-line fix, and runs everywhere. Keep-behavior guards (intro wave
+unchanged, other maxes byte-identical) prove the fix is surgical.
+
+**The match-bytes-vs-honor-intent ruling.** When a "verbatim" byte is a provable TYPO, resolve it by AC
+authority, not sympathy: a verbatim-transcription epic means the port must contain the byte the ROM contains
+(0x35=53 → max 0), because the emergent "1 spiker" outcome — if that's what the cabinet did — must come from
+the DOWNSTREAM solver's decode of the min>max clamp (tp1-8's NYMCHA), never from us silently editing the
+transcription (that IS the hand-tuning the epic deletes). Surface the contradiction as a blocking Delivery
+Finding to the consuming story; don't let the misread hide it. Match-bytes keeps the fidelity chain honest.

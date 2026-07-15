@@ -68,6 +68,54 @@ period × cycleLength` (wraps to origin) and `not.toThrow()` (holds for detached
 NON-multiple of the cycle length (e.g. one interval) and assert the item DID change if alive /
 did NOT if stopped; OR spy `clearInterval`. `getTimerCount()===0` is the cleanest — it pins the
 timer, not a downstream side effect, and survives a change to the game count.
+### The radix trap bites on the ONE table operand that exceeds 0x09 — a bare (no-dot) CONTOUR start/end ≥ 0x0A is HEX, and a decimal-reading port silently mis-scopes a whole record
+
+**Situation:** Reviewing a tempest tp1 ROM-transcription story that lifts CONTOUR/WTABLE
+tables (ALWELG.MAC) into `rules.ts` as `ContourRecord[]` with `start`/`end` wave bounds.
+ALWELG.MAC has NO `.RADIX` directive → default is HEX; a trailing dot means DECIMAL
+(proof: `TB=0A`/`TR=0C` at :413-414 are invalid decimal; `AND I,1F`, `.BYTE ...,0E0` are
+bare hex; decimal values carry dots, `CMP I,98.`). Almost every table bound is either ≤9
+(hex==decimal, harmless) or dotted (`16.`,`32.`,`99.`), so a decimal misread is invisible
+99% of the time.
+
+**Problem:** tp1-7's WSPIMX record 6, ROM :633 `.BYTE T1,35,39.,1`, has `35` with NO dot
+while `39.` has one. `35` = **0x35 = 53**, so the assembled record is `[start=53,end=39]` —
+a backwards, DEAD range: the real arcade gives spiker-max 0 on waves 35-39. The port read
+`35` as decimal (`{start:35,end:39}`), returning max 1 — a live divergence. It is a genuine
+ROM typo (the parallel WSPIMI min table :625 dots it, `35.`, and its min=1 there makes the
+assembled max=0 self-contradictory). Nothing caught it: the value isn't consumed by tp1-7
+(only `firstNonZeroWave`=4 is), no test pins :633, and the source-rules suite that could
+skips in CI anyway. Reading the port's `start: 35` "looks right" — you re-make the author's
+radix mistake the same way. Only an INDEPENDENT `od -c` of the raw byte + decoding the radix
+from the equates catches it.
+
+**Prevention:** For every `ContourRecord` `start`/`end` (and any `.BYTE` operand) ≥ 10 that
+the port stores as a decimal literal, `od -c` the ROM line and confirm the operand carries a
+trailing dot. If it does NOT, it is HEX — the port's decimal transcription is wrong. Cross-
+check the twin table (min vs max, WSPIMI/WSPIMX) for the same wave: if one dots it and the
+other doesn't, the un-dotted one is the typo. This is the ONE finding an independent auditor
+earns its keep on across eight otherwise byte-perfect tables — spawn it (subagents were all
+toggled off here) and give it the raw ROM path + "mind the radix", exactly as tp1-35 said.
+
+**Disposition:** REJECT even though the shipped behavior is 100% correct and the record is
+descoped to the next story (tp1-8) — a "transcribed verbatim" table (AC-1) with an
+unnoticed, undocumented radix misread is not done, and it becomes a live, self-contradictory
+(min>max) divergence the moment tp1-8's solver reads the full curve. Fix is one line: match
+the assembled ROM (`start:53`/drop the record → waves 35-39 = 0, as every other gap in this
+table is handled) OR keep `35` as an EXPLICITLY DOCUMENTED deliberate deviation citing the
+:633 typo + the WSPIMI min=1 contradiction. Route red→TEA to pin :633's raw byte.
+
+**Re-review closure (what "fixed" looks like):** the correct fix is `{ start: 53, end: 39 }` —
+a DEAD DESCENDING range that reads like a bug (start>end). Do NOT re-flag it; it is the verbatim
+transcription of the un-dotted hex byte, and it needs its inline citation comment to survive the
+next dev's "helpful" un-fix. Verify the fix TWO ways, both mandatory on a self-authored rework:
+(1) MUTATION — revert `53`→`35`, run the suite: the CI-SAFE port test (`tp1-7.contour-tables`,
+reads rules.ts) must go RED while the ROM-side source-rules pins stay GREEN (they anchor ROM
+truth, not the port — that split is correct, not a gap). (2) INDEPENDENT re-decode — a general
+auditor re-derives the radix + record from raw bytes and returns CORRECT. Also confirm the ONLY
+consumer is unmoved: `firstNonZeroWave(WSPIMX)`=4 is set by record 1, so a latent record-6 change
+cannot shift the spiker intro — full suite stays byte-identical (1377/1377, zero RNG ripple).
+APPROVE once both confirm and the min>max contradiction is routed to tp1-8 as a blocking finding.
 
 ---
 

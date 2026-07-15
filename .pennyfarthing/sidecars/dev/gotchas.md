@@ -306,3 +306,54 @@ the ROM's shared QFRAME/4 ≈ 7.1 Hz), mark THAT one `remediated_by` too and mak
 reproduce its target (don't just delete the line — match ROM_FPS/4 so the remediation is honest).
 Re-run reanchor until it reports `0 lost`. A story can legitimately close a finding outside its
 named set; log it as a deviation so the Reviewer sees the extra remediation.
+
+---
+
+### Changing a per-wave COUNT shifts the seeded RNG and breaks seeded fixtures FAR from your diff
+
+**Situation:** Implementing a ROM-table transcription that changes a *count* consumed at state
+init — tp1-7 replaced `enemyCount = 6+2*(level-1)` with the TNYMMX table, making the level-1
+budget 10 instead of 6.
+
+**Problem:** `initialState(seed)` builds the wave's nymph queue by drawing `enemyCount(1)` random
+lanes (`spawnForLevel` → `nextInt` per nymph). Bumping the count from 6 to 10 draws **4 extra RNG
+values at init**, so every test fixture built on `playingState(seed)`/`isolated(seed)` starts its
+step with the RNG cursor in a *different place* — and any test that pins an exact seeded outcome
+downstream (a fuseball's LEFRIT jitter coin, here) silently flips. Two fuseball tests in unrelated
+files (`tp1-3`, `tp1-6`) went red at GREEN, nowhere near the rules.ts diff, and the failure looked
+like a speed/collision bug (the fuse "didn't grab at the rim") when the real cause was the jitter
+coin rolling the other way and hopping the fuse off the player's lane. The vitest RED run never
+saw it — vitest doesn't typecheck and the fixtures were green until the count actually changed.
+
+**Prevention:** When your change alters a value CONSUMED DURING `initialState`/state setup (a count,
+a loop bound, anything that gates an RNG draw), expect seeded fixtures elsewhere to shift. After
+GREEN, read the *reason* each newly-failing test fails before assuming a logic bug — a fixture that
+pins `lane`/`depth`/a coin outcome at a magic seed is RNG-fragile, not wrong. Fix the FIXTURE, not
+the assertion: pin the incidental degree of freedom out (set `jitterTimer` high so the roll doesn't
+fire) or SEARCH for a seed that reproduces the intended case (a `settleOnce`/`rollOnce` retry loop),
+never chase a new magic number. And run `tsc --noEmit` before handoff — vitest-green ≠ build-green
+(an unused `const` under `noUnusedLocals` passes vitest and fails the build).
+
+---
+
+### The INVERSE case: a LATENT table-record fix does NOT ripple — and comment it INLINE so cited lines don't shift
+
+**Situation:** GREEN for a fidelity fix to a single record of a ROM table whose value is consumed by
+only a REDUCER, not per-wave (tp1-7 rework: WSPIMX record 6 `start:35`→`53`, read solely by
+`firstNonZeroWave(WSPIMX)`=4 — the spiker intro wave, which record 1 already fixes).
+
+**Two things worth knowing.** (1) Unlike the count-change class above (which shifts every seeded
+fixture), a LATENT record change touches nothing downstream — the full suite stayed 1377/1377 with
+zero RNG ripple. Don't over-hunt for breakage that a latent fix can't cause; DO run the full suite
+once to PROVE it (the reassurance is only worth having if you checked). (2) The faithful fix can
+look like a bug: `{ start: 53, end: 39 }` is a deliberately DEAD descending range (it transcribes
+an un-dotted hex ROM byte, `0x35`, a 1981 typo). Without a comment, the next dev "fixes" `53>39`
+straight back to the misread `35`. It NEEDS an explanatory comment citing the ROM line + the typo.
+
+**Prevention:** Put that comment INLINE on the record line, not as a block ABOVE it. Any line you
+ADD above a record shifts every line below — and in a cited file (`docs/audit/findings/*.json` pins
+`ours` at a line number) that silently breaks the citation gate on the NEXT story. An inline `//` on
+the changed line itself adds no lines, keeps every citation anchored, and `npm test -- citations`
+stays green with no reanchor. (Inline comments also survive the test suites' `stripComments` only if
+that helper anchors `^\s*//` to line-start — an inline `//` is preserved, but it sits AFTER the `}`
+so a `/\{[^{}]*\}/g` record parser never sees it. Verify both still parse.)
