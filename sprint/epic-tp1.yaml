@@ -634,9 +634,13 @@ stories:
     title: 'THE MOVING EYE, part 2 — the fly-in: fly the eye INTO the new well over NEWAV2 (WD-018), replacing the countdown placeholder; reuse warpDiveTube toward the per-well EYLDES at +0x18/frame (ALWELG.MAC:85-91)'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: tempest
     workflow: tdd
+    completed: '2026-07-15'
+    branch: feat/tp1-37-moving-eye-fly-in
+    review_verdict: approved
   - id: tp1-38
     title: "THE MOVING EYE, part 3 — the full rim-fly-off: the near rim sweeps past the advancing eye and off-screen while the Claw rides CURSY (WD-012 full fidelity beyond tp1-33's near-ring-fixed model)"
     points: 5

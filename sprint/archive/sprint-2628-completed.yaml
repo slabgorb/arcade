@@ -220,3 +220,8 @@ completed_stories:
     title: THE MOVING EYE — the well expands past the fixed Claw during the dive (live core eye field)
     points: 5
     completed: '2026-07-15'
+  - id: tp1-37
+    epic: tp1
+    title: 'THE MOVING EYE, part 2 — the fly-in: fly the eye INTO the new well over NEWAV2 (WD-018), replacing the countdown placeholder; reuse warpDiveTube toward the per-well EYLDES at +0x18/frame (ALWELG.MAC:85-91)'
+    points: 3
+    completed: '2026-07-15'
