@@ -57,10 +57,13 @@ stories:
     description: "Subsumes D-016 (bunkers fire: object type .BYTE 3 SHORTY dispatches GDBNKGN via LBHI at WSGRND:1200; ours silences via kind !== 'bunker'), D-020 (ship-into-tower/bunker costs a shield + rolls the ship, GDVIEW BG1GLW+AUDCR; ours has NO ship-object collision). Record accepted deviations D-015/D-017/D-019/D-021/D-022 as house rules in the session (ROM: no wave-1 surface, no altitude penalty, traversal-only end, 5250-21000 u/s ramp)."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-1
+    completed: '2026-07-15'
+    review_verdict: approved
   - id: sw7-6
     title: R6 Trench rebuild (flagship) — panel-grid wall model, wedge-chain length, fixed authored waves 0-10, WFF force-field catwalk, WGA/WPN model ports, 31x scroll speed, wall guns fire back
     description: 'Subsumes B-008 (scroll 500 vs ~15,750 u/s — 31x, render-scale-independent, verified single caller S1MVBS in PHEBS), B-009 (wedge-chain trench length; DOFAR $8000 is a look-ahead window not total length), B-010 (KEYSTONE: 4-slot x 2-bit wall-panel grid, 49 wedges/11 pies — our 8-entity list cannot express it), B-011 (waves 0-10 are FIXED authored runs; ours randomizes), B-012 (catwalk = wall-mounted force field .WP WFF, side-gated, not channel-spanning), B-017 (wall guns BSGUN/DOBASE fire back), M-011 (.WP WGA wall-gun model), M-012 (WFF model — .WGD WFG comment CATWALK COLOR WHEN COLLIDED nails it), M-013 (drop 4 fabricated rails). Two size-l rewrites (B-010 model + B-012) plus data ports; likely splits at grooming. B-018 (miss re-flies whole trench) accepted — record.'

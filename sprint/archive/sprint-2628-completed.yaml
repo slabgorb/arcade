@@ -225,3 +225,8 @@ completed_stories:
     title: 'THE MOVING EYE, part 2 — the fly-in: fly the eye INTO the new well over NEWAV2 (WD-018), replacing the countdown placeholder; reuse warpDiveTube toward the per-well EYLDES at +0x18/frame (ALWELG.MAC:85-91)'
     points: 3
     completed: '2026-07-15'
+  - id: sw7-5
+    epic: sw7
+    title: R5 Surface hazard — bunkers fire (GDBNKGN) and flying into a standing tower/bunker costs a shield; the maze fights back
+    points: 5
+    completed: '2026-07-15'

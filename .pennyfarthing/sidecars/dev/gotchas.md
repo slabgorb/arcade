@@ -357,3 +357,22 @@ the changed line itself adds no lines, keeps every citation anchored, and `npm t
 stays green with no reanchor. (Inline comments also survive the test suites' `stripComments` only if
 that helper anchors `^\s*//` to line-start — an inline `//` is preserved, but it sits AFTER the `}`
 so a `/\{[^{}]*\}/g` record parser never sees it. Verify both still parse.)
+
+---
+
+### star-wars' purity guard greps COMMENTS too — the English word "window." in a core file reads as `window.` DOM access
+
+**Situation:** GREEN work adding a commented block to `star-wars/src/core/*` (sw7-5's crash
+comment ended a sentence with "…the ROM's `M.XP - $200 - speed` window. The crashed…").
+
+**Problem:** `tests/core/events.test.ts` pins the core boundary with `?raw` source regexes, and
+the `window access` pattern is `/\bwindow\s*\./` — which matches the word "window" followed by a
+sentence-ending PERIOD in prose just as well as real `window.foo` code. The suite goes red with
+"pure-core boundary: window access" pointing at a comment, hours after you wrote it. (A
+testing-runner helper hit this first and hot-fixed the comment mid-run — verify any such edit
+with `git diff` before trusting the GREEN it reports.)
+
+**Prevention:** In star-wars core comments, don't end a sentence right after the word "window"
+(write "time-window —", "fire window,", etc.). If a purity regex fires on a line you believe is
+prose, read the pattern in events.test.ts (~line 292) before assuming real DOM leakage — but
+check the CODE first; the guard exists because real leaks happen.
