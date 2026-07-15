@@ -4,6 +4,10 @@
 **Date:** 2026-07-12
 **Author:** Architect
 **Story:** lb2-1
+**Amended:** 2026-07-15 (lb2-8) — the published summary now carries a **top-five list of
+name+score rows**, not a single number, so the lobby can draw a HIGH SCORES ladder. Same cookie,
+same scoping, same self-healing derivation; only the value *format* widens. See
+[Amendment — lb2-8](#amendment--lb2-8-the-summary-carries-a-top-five-ladder-not-a-single-number).
 
 ## Context
 
@@ -192,6 +196,89 @@ no flag day.
    This decides how severe (1) actually is.
 3. **red-baron persists no high scores at all.** Its tile will read `NO SCORE` forever regardless of
    this ADR.
+
+## Amendment — lb2-8: the summary carries a top-five ladder, not a single number
+
+**Story:** lb2-8 · **Date:** 2026-07-15
+
+### Context
+
+The lobby's new HIGH SCORES board draws a **five-row ladder** — each row a player's **initials
+and score**. The summary shipped by this ADR carries a single bare integer
+(`arcade-hi-tempest=124500`): enough for a tile, but it physically **cannot carry a name**, and a
+board built on it could only fabricate initials. Fabricating them would be the cabinet lying about
+who holds a record — the exact failure the honest `NO SCORE` state exists to prevent.
+
+### Decision
+
+**Widen the one published summary cookie from a number to a top-N list of name+score rows.** The
+authoritative `localStorage` table is untouched; `save()` still publishes a *derived*, disposable,
+self-healing summary — it just derives **rows** now instead of one number, sorted highest-first and
+capped at `PUBLISHED_SUMMARY_DEPTH = 5`.
+
+```
+arcade-hi-<gameId> = <NAME:SCORE,NAME:SCORE,…>   # e.g. arcade-hi-tempest=JPX:149830,AAA:98000
+Domain=slabgorb.com  Path=/  SameSite=Lax  Max-Age=<400d>  [Secure when https]
+```
+
+**Same cookie name, same attributes, same scoping, same one-per-game isolation** — only the value
+*format* changes. Every cross-origin property this ADR established (host-suffix scoping, Safari
+survival, `SameSite`, dev/prod parity, republish-on-load, clear-on-empty) is unaffected: they are
+properties of the cookie's *name and attributes*, not its value.
+
+### Size against the 4096 B cap — not remotely the binding constraint
+
+A row is `NAME:SCORE` — a 3-char arcade name plus up to a 7-digit score is ~11 B; five of them
+with four commas is **≈ 59 B**. Even pathological names stay **< 200 B**. Against the **4096 B**
+per-cookie cap that is under **5%** — the ladder is ~2× the old single number and still negligible.
+The per-request overhead the original ADR analysed (static R2 buckets do not cache-bust on the
+`Cookie` header) is unchanged. **Size was never the reason to hesitate; correctness was.**
+
+### Why widening beats the alternatives
+
+- **A second, parallel "rows" cookie** (keep `arcade-hi-<id>` as the number, add
+  `arcade-hi-<id>-rows`). *Rejected.* It duplicates derived state this codebase deliberately treats
+  as disposable, doubles the per-request cookie weight, and creates two artifacts that can **drift
+  out of sync** (a number cookie and a rows cookie that disagree). The single top score is trivially
+  `rows[0].score`, so a second cookie carries **no information the rows cookie doesn't** — it is pure
+  redundancy. AC-1 says "rather than a single number," not "in addition to."
+- **A backend/KV service** to carry the richer payload. *Still rejected*, for the same reasons the
+  original ADR rejected it: the no-backend constraint holds, no cross-device requirement exists, and
+  it would add a spoofable write endpoint. Widening a cookie needs **zero new infrastructure**.
+- **Leave it a number; fabricate names on the board.** *Rejected* — it violates the house fail-soft
+  rule (AC-4). An invented initials row is the cabinet lying; the board's honest empty state
+  (`NO SCORES YET`) is the correct answer when there are no real names to show.
+
+### Back-compat — the tile never regresses mid-rollout
+
+`readTopScore(gameId): number | null` — the tile's original contract — is preserved. It derives the
+top score from **row 0** of the widened summary **and still parses a legacy bare-number cookie**, so
+tiles keep working during the window before each game is redeployed on the widened library. A legacy
+bare-number cookie yields **no rows** for the board (it carries no names), so the board honestly
+shows `NO SCORES YET` for that game until it republishes — never an invented ladder.
+
+### Security — names are the new untrusted input
+
+`gameId` was already slug-guarded; **names are new untrusted input** and land in a value where
+`; = , :` are structural. Names are therefore **sanitized** (those delimiters stripped) on publish
+and re-validated on read, so a hostile name cannot inject a cookie attribute, a second cookie, or an
+extra row. Poisoned rows (an `Infinity`/`1e999` score, a non-string name) are dropped at the
+derivation boundary. A forged score remains graffiti on a toy, per the original risk table.
+
+### Swappability preserved
+
+The publish/read pair still lives inside `@arcade/shared/highscore` behind the `TopScoreTransport`
+interface — which now carries `TopScoreRow[]` instead of `number | null`. The single-origin collapse
+this ADR rejected on cost stays **one adapter swap away**.
+
+### Blast radius
+
+| Repo | Change | Cost |
+|------|--------|------|
+| `arcade-shared` | Widen the summary to rows (`readTopScores`, `PUBLISHED_SUMMARY_DEPTH`, rows transport); keep `readTopScore` for the tile + legacy. Release a tag. | The real work. |
+| `lobby` | `getTopScores()` + the rotating board; repin to the new tag. | Moderate. |
+| `tempest`, `star-wars`, `asteroids`, `battlezone` | **Version bump only. No code** — the choke point at `save()` still publishes with no game-side change. | Trivial |
+| `red-baron` | None — persists no scores; its board slot reads `NO SCORES YET`. | — |
 
 ## Related Decisions
 
