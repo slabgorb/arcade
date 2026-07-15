@@ -630,3 +630,25 @@ stories:
       - The 17-dot player charge is confirmed to render correctly in a running game (screenshot with a bullet in flight).
       - npm test -- citations stays green.
     type: chore
+  - id: tp1-37
+    title: 'THE MOVING EYE, part 2 — the fly-in: fly the eye INTO the new well over NEWAV2 (WD-018), replacing the countdown placeholder; reuse warpDiveTube toward the per-well EYLDES at +0x18/frame (ALWELG.MAC:85-91)'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest
+    workflow: tdd
+  - id: tp1-38
+    title: "THE MOVING EYE, part 3 — the full rim-fly-off: the near rim sweeps past the advancing eye and off-screen while the Claw rides CURSY (WD-012 full fidelity beyond tp1-33's near-ring-fixed model)"
+    points: 5
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+  - id: tp1-39
+    title: Warp-dive polish — drawWarp speed streaks ride the diving (expanded) spokes, not the static base well (render.ts:892-904)
+    points: 1
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: trivial
+    type: chore
