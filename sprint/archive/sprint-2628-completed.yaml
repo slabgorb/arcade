@@ -300,3 +300,8 @@ completed_stories:
     title: R11a The gun is on the ship, surface edition — muzzle, fireball target, and cockpit hit-test unified at the flying ship point [0, altitude, 0]
     points: 2
     completed: '2026-07-16'
+  - id: tp1-40
+    epic: tp1
+    title: THE GLOW TAX — live shadowBlur saturates the GPU; production runs 8-34 fps
+    points: 5
+    completed: '2026-07-16'
