@@ -148,7 +148,10 @@ stories:
     description: 'Port Darth Vader TIE (A-016): 4 lives, immortal while in space, retreats. Award S-002 2,000 pts, which currently sit unawarded. Darth wave scheduling is composed in TSPWAV (sw7-12); flight behavior rides the sw7-11 VM. Full context: parent sw7-9 plus findings JSON. Keep citations green; mark A-016 and S-002 scoring remediated_by.'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-16'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-9
+    completed: '2026-07-16'
+    review_verdict: approved
