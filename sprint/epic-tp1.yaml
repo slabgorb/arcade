@@ -275,7 +275,8 @@ stories:
     description: "Cluster C10. Subsumes W-042, W-043, B-001, B-019, S-012. Note the refuter's correction to W-042: our SECOND zap press is already correct — only the sustained first-press cadence is wrong. Depends on tp1-1 (the window is a frame count)."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-16'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -285,7 +286,9 @@ stories:
       - "The second zap press is NOT changed — the audit's refuter confirmed it is already correct. Changing it is a regression."
       - "Depends on tp1-1 (frame counts)."
       - "npm test -- citations stays green."
+    completed: '2026-07-16'
     type: bug
+    review_verdict: approved
   - id: tp1-15
     title: "THE SPIKE MODEL — a charge burrows into a spike, cutting it to the bullet's own position over two hit-frames"
     description: "Cluster C11, minus W-039 (which is the ruling in tp1-11) and minus B-016/W-040 (carved out to tp1-3). Subsumes W-047, V-020, DB-014."

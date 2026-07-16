@@ -255,3 +255,8 @@ completed_stories:
     title: R9b TSPWAV wave composition — 6 wave sets + Darth ordering (A-017)
     points: 5
     completed: '2026-07-15'
+  - id: tp1-14
+    epic: tp1
+    title: "THE SUPERZAPPER — 19-frame window, kills every OTHER frame (8 kills, not 19), and takes tankers"
+    points: 3
+    completed: '2026-07-16'
