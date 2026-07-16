@@ -270,3 +270,8 @@ completed_stories:
     title: R9c Darth Vader's TIE — 4 lives, immortal in space, retreats, 2000 pts (A-016)
     points: 5
     completed: '2026-07-16'
+  - id: tp1-15
+    epic: tp1
+    title: "THE SPIKE MODEL — a charge burrows into a spike, cutting it to the bullet's own position over two hit-frames"
+    points: 3
+    completed: '2026-07-16'

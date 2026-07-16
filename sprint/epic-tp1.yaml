@@ -294,7 +294,8 @@ stories:
     description: "Cluster C11, minus W-039 (which is the ruling in tp1-11) and minus B-016/W-040 (carved out to tp1-3). Subsumes W-047, V-020, DB-014."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-16'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -302,7 +303,10 @@ stories:
       - "The shattered-spike visual matches the ROM."
       - "This story does NOT touch SPIKE_MAX_DEPTH (tp1-11) and does NOT touch the spiker's lane-hop polarity (tp1-3)."
       - "npm test -- citations stays green."
+    completed: '2026-07-16'
     type: bug
+    review_findings: 'HIGH regression: far-base spike clear (LINEY<-0, ALWELG.MAC:2598-2602) omitted — a spike can never be shot to 0 (probe: 0.05 -> 0.0134 floor), and resolveWarpSpikeHit crashes for any height>0, so a shot-at warp lane can never be made safe. Regression from the pre-tp1-15 Math.max(0,...) which reached 0. Burrow economy/slow-down/scoring/sparkle otherwise faithful and mutation-tested. Route to TEA: pin spike-clearability, then Dev adds the base-clear.'
+    review_verdict: approved
   - id: tp1-16
     title: "FIRE & COLLISION GEOMETRY — tick order, the invented far-end fire floor, and hit tolerances 2-3x too generous"
     description: "Cluster C12, minus W-022 (the fuseball vulnerability inversion, carved out to tp1-3). Subsumes W-001, W-021, W-030, W-046. ENEMY_FIRE_MIN_DEPTH is INVENTED — it silences every fresh spawn for the first 19% of its climb and the ROM has no such rule. Depends on tp1-4/tp1-5 for W-030's fairness valve."
