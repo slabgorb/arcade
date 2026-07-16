@@ -39,9 +39,58 @@ status:
 test-orchestrator:
     @node --test 'tests/**/*.test.mjs'
 
-# pull all 
+# Pull the orchestrator + every game, each onto its OWN default branch (main here,
+# develop in the games) — never onto whatever branch happens to be checked out.
+#
+# `git pull --rebase origin develop` rebases the CURRENT branch onto origin/develop.
+# Sitting on a feature branch, that replays your commits onto develop — and if the
+# branch was already squash-merged, every file the story added returns as an add/add
+# conflict and the checkout wedges mid-rebase. Git cannot see squash containment
+# (a squash's patch-id matches none of the originals), so `git branch --merged` and
+# `--cherry-mark` both insist the shipped work is unmerged. star-wars sat exactly
+# there on 2026-07-16: feat/sw7-8-… had already shipped in v0.0.20, four files
+# conflicting with themselves.
+#
+# So: only pull when the default branch is checked out. Otherwise advance the local
+# ref with a refspec fetch (`git fetch origin develop:develop`), which updates develop
+# without touching your working tree and is fast-forward-only — a diverged local
+# develop fails loudly instead of being quietly rebased. Every repo is attempted even
+# if an earlier one fails; the recipe exits non-zero listing whatever didn't land.
+#
+# Pull orchestrator + games onto their default branches (feature branches left alone)
 pull:
-    @git pull origin main --rebase --autostash && for g in {{games}}; do echo "==> $g"; (cd {{root}}/$g && git pull --rebase --autostash origin develop); done
+    #!/usr/bin/env bash
+    set -uo pipefail
+    failed=""
+    pull_one() {
+      dir="$1"; name="$2"; target="$3"
+      echo "==> $name"
+      if ! cur=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null); then
+        echo "    !! not a git checkout — skipped"
+        failed="$failed $name"
+        return
+      fi
+      if [ "$cur" = "$target" ]; then
+        git -C "$dir" pull --rebase --autostash origin "$target" || failed="$failed $name"
+      else
+        echo "    on '$cur', not '$target' — your checkout is left alone; advancing $target"
+        if ! git -C "$dir" fetch origin "$target:$target"; then
+          echo "    !! could not fast-forward $target — it has diverged from origin."
+          echo "       Fetched anyway; reconcile by hand: git -C $dir log $target..origin/$target"
+          git -C "$dir" fetch origin "$target"
+          failed="$failed $name"
+        fi
+      fi
+    }
+    pull_one {{root}} "arcade (orchestrator)" main
+    for g in {{games}}; do pull_one {{root}}/$g "$g" develop; done
+    if [ -n "$failed" ]; then
+      echo
+      echo "!! pull incomplete:$failed"
+      exit 1
+    fi
+    echo
+    echo "pull complete."
 
 # ============================================
 # VENDOR ORIGINAL SOURCE (historicalsource/*)
