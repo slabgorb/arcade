@@ -285,3 +285,8 @@ completed_stories:
     title: 'R7a TIE explosion pieces — per-piece lifetimes (X-002: wings 24f/1.17s, globe 16f/0.78s) + age-keyed colour ramp (X-003: TIE pieces NEVER white-flash)'
     points: 4
     completed: '2026-07-16'
+  - id: tp1-19
+    epic: tp1
+    title: "SHAPES — the TEMPEST logo's own stair-stepped alphabet and the 22-dot star pictures"
+    points: 4
+    completed: '2026-07-16'

@@ -370,7 +370,8 @@ stories:
     description: "Cluster C13, part 3. Subsumes V-014, V-015, V-022, DA-006 (shape half). The logo has its OWN alphabet — stair-stepped, not the game font. NOTE: the book's LOGO_PASSES=19 does not exist in the ROM at all (one of the nine things the book got wrong, §7) — do not restore it."
     points: 4
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-16'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -378,7 +379,9 @@ stories:
       - "The star pictures are the ROM's 22 dots."
       - "LOGO_PASSES is NOT reintroduced in any form. It is a book invention with no ROM basis (§7)."
       - "npm test -- citations stays green."
+    completed: '2026-07-16'
     type: bug
+    review_verdict: approved
   - id: tp1-20
     title: "HUD & MESSAGES — fixed field colours and the ROM's actual strings; drop the three invented captions"
     description: "Cluster C14. Subsumes V-018, V-033, V-034, V-035, V-036. Depends on tp1-12 for the palette."

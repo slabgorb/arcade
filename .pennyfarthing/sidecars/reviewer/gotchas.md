@@ -217,3 +217,33 @@ to re-decode the ROM coordinate-by-coordinate (mind the radix: ALVROM/ALDISP tra
 hex) and mutation-test every load-bearing guard, then re-run one mutation yourself serially after it
 leaves the tree clean. tp1-35's auditor caught nothing (transcription was faithful, all 5 guards bit) —
 but that NULL result is only trustworthy because it came from independent eyes, not from the author's.
+
+---
+
+### A stroke-structure fix to a point-set geometry pin has THREE mutation axes — merge, split, reorder — and the secondary assertion needs its own liveness proof
+
+**Situation:** Re-reviewing a fix that adds structure pins (a stroke/run COUNT plus a locality
+check) on top of a sorted-point-set shape comparison — tp1-19 round 3, the TEMLIT logo's
+`toHaveLength(11)` + per-stroke letter-window containment, added after a merged-polyline
+mutation (M7) sailed through the point-set pin.
+
+**Problem (axes):** the natural probe set is bigger than the mutation that prompted the fix.
+MERGE (bridge two letters) is killed by the count; SPLIT-to-compensate (merge one place, split
+another to keep the count) preserves the count and is only killed if the locality check fires
+on the bridge and/or the split's duplicated point trips the shape pin; REORDER (permute a run's
+interior vertices, multiset preserved) slips ALL of point-set + count + windows — a scrambled
+letterform ships green. Judge the reorder residual by REACHABILITY: `flat()` is a refactor's
+natural reach, interior permutation is not, and run-direction REVERSAL (the one plausible order
+change) draws the identical picture and SHOULD pass. The one-assertion cure that subsumes all
+three axes is comparing the SEGMENT multiset (consecutive point pairs, canonical endpoints).
+
+**Problem (liveness):** when a test has a primary count assertion followed by a secondary check,
+every natural mutation dies on the count FIRST — so the secondary check can be dead code and
+you cannot tell from green/red alone. Construct a count-PRESERVING mutation (M10: merge E→S,
+split M) and require the failure message to come from the secondary assertion itself.
+
+**Also (self-authored rounds):** with reviewer subagents toggled off and Dev+Reviewer in one
+session, an "expected split" derived from the test file's own transcription is an echo, not
+evidence — spawn an independent auditor on the PRIMARY source (mind CRLF + `.RADIX 16`) to
+re-derive the pinned number. tp1-19: ALVROM.MAC:1301-1351 independently returned 11 =
+[2,2,1,1,2,1,2], matching both the test and the prior round's trace.
