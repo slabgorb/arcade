@@ -267,7 +267,8 @@ stories:
     title: PLONSN, OR THE PLANE ESCAPES THE SCREEN — the servo must weave the DISPLAY position, clamped on-screen the ROM's way
     points: 8
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-16'
     repos: red-baron
     workflow: tdd
     type: refactor
