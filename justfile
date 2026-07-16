@@ -39,6 +39,10 @@ status:
 test-orchestrator:
     @node --test 'tests/**/*.test.mjs'
 
+# pull all 
+pull:
+    @git pull origin main --rebase --autostash && for g in {{games}}; do echo "==> $g"; (cd {{root}}/$g && git pull --rebase --autostash origin develop); done
+
 # ============================================
 # VENDOR ORIGINAL SOURCE (historicalsource/*)
 # ============================================
