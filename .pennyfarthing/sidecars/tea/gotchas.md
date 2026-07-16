@@ -974,3 +974,71 @@ the cabinet never drew.
 `.NEXTMESS`/comment. Write the refutation INTO the test as a live guard: `expect(texts()).not.toContain('REBEL
 FORCE')` (exact-element) — green for the correct full title (a different element), red the instant someone draws
 the bare fragment.
+
+---
+
+### A "missing" combined speech phrase may be a SEQUENCE TABLE — check SNDSPK before demanding a new bake
+
+**Situation:** Wiring a star-wars speech moment whose ROM symbol has no matching baked sample (sw7-8:
+U-017's SPKFOA "FORCE WILL BE WITH YOU ALWAYS" — the 23-line catalogue has `theForceWillBeWithYou` and
+`always` but no combined phrase).
+
+**Problem:** The instinct is "the catalogue is incomplete → this story needs a new TMS5220 bake" (a
+speech-bake + R2 upload + catalogue bump). But the speech ROM has only the 23 spDat streams; SPKFOA is
+not a 24th.
+
+**Prevention/Fix:** `grep -n '<SYMBOL>' SNDSPK.MAC` — the sound board's SPK entry points can be
+SEQUENCE TABLES over existing phrases: `SPKFOA:: LDD #TFOA` / `TFOA: .BYTE 15.,16.,0FF` = "speak
+phrase 15, then 16" (exactly spDat015/016 = the two existing bakes). So the wiring contract is ORDERED
+CUES over existing lines, no new bake. Corollary that shapes the shell: the TMS5220 is ONE serial
+chip — the cabinet physically cannot overlap phrases — so any moment that cues 2+ lines (game-over's
+REM→FOR→ALW, surface entry's THI→SIZ) needs the shell's speak() to QUEUE on `source.onended`, and the
+core's EVENT ORDER is the spoken order. Also: SPKFOR/SPKALW at WSMAIN.MAC:387/394 are COIN-INSERT
+reactions (IFRAME's COINSPK machine: first credit speaks FOR, the next ALW) — not attract/intro lines;
+a clone with no credit concept has no seam for them.
+
+---
+
+### "Bake another tune" can be a PIPELINE story — audit the stream's OPCODES before trusting the size
+
+**Situation:** Adding tunes to the sw6-1 music bake (sw7-8: PMSF2/PMCNT/PMEND/PMBEN/PMDES — "just five
+more PHASE_TUNES config rows", reads like config).
+
+**Problem:** The four shipped tracks (TH5/THB/SW4/REB/RR/DAR) exercise opcodes 0x80-0x87 + 0x8E/0x8F
+only. The five R8 tunes use machinery the generator and player have NEVER seen: `.CALL n` (0x8D — call
+TUNTAB[n] as a subroutine; SF2V1-4 are each just "CALL setup, CKEY k, CALL scale", the notes live in
+SF2V5/V6 which NO .TUNE references), `.GOSUB addr` (0x90 + ADDRESS WORD — a 3-byte record that breaks
+the 2-byte pair walk; CNTV1), `.RETURN` (0x91 — 1 byte, same break), plus 0x8A VC / 0x8C SYN / 0x81
+CRATE-inside-a-loop (the knell's accelerando). gen-music-data THROWS on address labels by design and
+pm-player THROWS on unknown opcodes — so "add a config row" is actually "extend both ends of the
+pipeline".
+
+**Prevention:** Before sizing/pinning, dump the tune's voice streams and list every byte ≥ 0x80 against
+the player's implemented set. Write the ORACLE against the FLATTENED decoded stream (what the cabinet
+played: subroutines inlined, loops expanded, keys applied) so Dev may flatten at generation time or
+teach the player calls — either satisfies. Bonus decode facts worth pinning: the ROM driver adds OKEY
+only to SOUNDFUL notes (`BEQ 9$ ;?SOUNDFUL NOTE?` BEFORE `ADDB OKEY`, SNDPM.MAC POKNL) — RESTS never
+transpose, so a +12 NKEY tune still opens with note 0; and a knell = LOOP 30 × [note, CKEY -1, CRATE 1]
+decodes to a 30-note descending chromatic accelerando — pin the shape, not the driver internals.
+
+---
+
+### The death knell belongs to the LAUNCH routine, not the kill — and that resolves a same-frame tune pile-up
+
+**Situation:** sw7-8 wiring PMSF2 ("SOUND THE DEATH KNELL") + PMEND (finale): U-010's claim reads
+"firing the proton torpedo into the exhaust port" — easy to pin both tunes on the detonation frame,
+where they'd fight for the one tune channel.
+
+**Problem:** The claim's phrasing hides WHICH routine calls PMSF2. It's `FRPTGN` — FiRe ProTon GuN,
+the routine that CREATES the torpedo (PT.LIV=1) — so the knell rings at LAUNCH, seconds before the
+window resolution enters PH$DX1 (whose INIT plays PMEND, WSMAIN.MAC:2179). Our sim's launch moment is
+the ARMING frame (the bolt that touches the port becomes the torpedo — the sw3-15 portTorpedoArmed
+latch), which is a DIFFERENT frame from detonation except in the degenerate armed-inside-the-window
+case. Pinning knell@arming / finale@detonation gives each tune its own frame, matches the ROM order,
+and the one-tune-channel steal handles the degenerate case exactly as the cabinet's single tune player
+would.
+
+**Prevention:** For any "sound X plays when Y" wiring, resolve the CALLER ROUTINE'S ROLE (its name and
+what it mutates), not just the call-site comment — two audio cues that look simultaneous in a
+quota-collapsed sim usually have distinct ROM moments that map onto distinct sim frames if you find
+the right latch edge.

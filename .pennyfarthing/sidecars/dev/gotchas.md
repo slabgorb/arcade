@@ -376,3 +376,38 @@ with `git diff` before trusting the GREEN it reports.)
 (write "time-window —", "fire window,", etc.). If a purity regex fires on a line you believe is
 prose, read the pattern in events.test.ts (~line 292) before assuming real DOM leakage — but
 check the CODE first; the guard exists because real leaks happen.
+
+---
+
+### A one-shot bake CAP can silently truncate FINITE ROM data — check the chain length before trusting the default
+
+**Situation:** sw7-8 adding AUDDF (death_star_boom) to tools/pokey-bake: the transcription was
+byte-perfect, the bake ran clean, and the wav came out at EXACTLY 1.62s — the same length as
+enemy_explosion. Exact equality between two unrelated effects is the tell.
+
+**Problem:** `MAX_SFX_S = 1.6` exists to bound SUSTAINED/LOOPING envelopes into a one-shot wav
+(enemy_explosion's envelope loops; the cap is doing intended work there). AUDDF is a FINITE
+288-tick (2.36s) decay chain — the cap silently cut its last ~0.75s and nothing failed. The
+expected-duration test I added (2.379s) is what caught it; a "samples.length > 0" sanity alone
+would have shipped the truncation.
+
+**Prevention:** when adding an effect, compute the chain's tick sum BY HAND (vol chain bounds the
+effect: sum count×duration to the .SZ) and pin the derived seconds in EXPECTED_SECONDS. If it
+exceeds the cap, don't raise the global (that would lengthen the looping effects and change
+shipped assets) — thread a per-spec `maxSeconds` through the expander. And treat any two effects
+with IDENTICAL durations as a cap artifact until proven otherwise.
+
+---
+
+### SNDPBX command ordinals: COUNT them with a multi-point calibration, never trust one anchor
+
+**Situation:** sw7-8 needed AUDDF/AUDSS's PBX command bytes for sfx-data provenance. The sidecar
+rule says the IDs are positional (entry 0 = RESET, commented entries skipped) — but a hand count
+is itself easy to fumble (I first wrote $32 for AUD SS; that's AUD RY).
+
+**Prevention:** count the whole table once and CALIBRATE against every ordinal already known
+from independent sources before reading off the new ones — sw7-8 had seven anchors (SPK STR=$16,
+TRU=$18, YAU=$1A, PM DAR=$1D, 4TH=$20, RRP=$22, TH5=$24 from the shipped Sound_NN mapping); all
+seven landing on the count is what makes the new $27 (AUD DF) / $34 (AUD SS) trustworthy. One
+matching anchor can be a coincidence; seven can't. Write the calibration into the provenance
+comment so the Reviewer can re-run it.

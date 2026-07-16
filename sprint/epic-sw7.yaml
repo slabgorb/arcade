@@ -87,10 +87,14 @@ stories:
     description: 'Subsumes U-010..U-014 (five tunes through the existing sw6-1 bake pipeline: PMSF2 port death-knell, PMCNT cantina/hi-score, PMEND finale, PMBEN Ben''s theme + game-over, PMDES descent), U-015/U-016/U-017 (speech wiring: SPKR2N on port miss, SPKTHI on surface entry, attract/game-over lines), U-021/U-022 (dedicated AUDDF Death Star boom + AUDSS fireball-hit — both currently reuse enemy_explosion), U-019/U-020 (fly-by doppler set + R2 sound set — both size-l, DEFER-friendly if trimming). Sound board timebase 8.192ms confirmed correct in bake tools (U-001/U-002). R2 upload path per sw6-1 AC. Enables A-019 music-timed descent in sw7-9.'
     points: 13
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: star-wars, orchestrator
     workflow: tdd
     depends_on: sw7-2
+    completed: '2026-07-16'
+    review_findings: R-1 [MEDIUM] double farewell on same-frame catwalk+port-miss death (sim.ts, probe-confirmed); R-2 [MEDIUM/TEST] speech-queue fetch-failure purge unguarded; R-3 [MEDIUM/TEST] five tunes never bake-tested + CRATE accelerando mutation survives; R-4 [LOW/TEST] SYN stub unasserted. Transcriptions independently verified byte-identical; knell 30->48 correction ACCEPTED on independent derivation. All findings testable — red rework.
+    review_verdict: approved
   - id: sw7-9
     title: R9 TIE choreography VM — port the per-fighter bytecode VM, TSPWAV wave composition, and Darth Vaders TIE
     description: 'Subsumes A-009 (the real thing: per-fighter bytecode VM — JMP @A(U) opcode dispatch into TCHOP, per-alien PC A$CHPC, one-deep call stack, IF/GOTO/GOSUB/RETURN/TWIRL, event-gated .CUNTIL/.CIF, 16 TCH1 scripts + 12 TCH2 split entries), A-016 (Darth: 4 lives, immortal in space, retreats — S-002''s 2,000 pts sit unawarded), A-017 (TSPWAV 6 wave-composition sets + Darth ordering). Accepted symptom-divergences A-011..A-015, A-019 recorded — most dissolve if the VM lands. WARNING from refutation: A-015''s reasoning proposed gating +/-2048 corners to D-waves — WRONG, TWV2Z shows them every wave; do not ''fix'' toward that. A-019 (music-timed descent) wants sw7-8''s tunes. Biggest rock; stage/split at grooming.'

@@ -260,3 +260,8 @@ completed_stories:
     title: "THE SUPERZAPPER — 19-frame window, kills every OTHER frame (8 kills, not 19), and takes tankers"
     points: 3
     completed: '2026-07-16'
+  - id: sw7-8
+    epic: sw7
+    title: R8 Audio content — bake PMSF2/PMCNT/PMEND/PMBEN/PMDES, wire missing speech, dedicated AUDDF/AUDSS, fly-by doppler and R2 sound sets
+    points: 13
+    completed: '2026-07-16'
