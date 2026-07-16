@@ -675,3 +675,19 @@ stories:
     repos: tempest
     workflow: trivial
     type: chore
+  - id: tp1-40
+    title: THE GLOW TAX — live shadowBlur saturates the GPU; production runs 8-34 fps
+    description: "Filed from the Architect's 2026-07-16 lag investigation (memory: tempest-lag-is-live-shadowblur; user DevTools trace Trace-20260716T085610 of PRODUCTION tempest.slabgorb.com at dpr=1.75). THE EVIDENCE: the GPU process is saturated ~100% (950-1050ms busy/sec) during every gameplay second, producing 8-34 fps (8-9 fps with explosion bursts on screen), while text framing screens run 60 fps at 96-196ms/sec GPU and the renderer main thread sits at ~2% — the game is GPU-raster-bound, not JS-bound. Controlled A/B (runtime no-op of the shadowBlur setter, nothing else) flips laggy scenes to a locked 60 fps at emulated dpr=2 — the root cause is live ctx.shadowBlur: a per-primitive Gaussian blur pass at device resolution, ~100+ blurred primitives per gameplay frame (16 tube spokes, rims, 16 rim dots, every strokeGlyph sub-stroke at render.ts:114, warp starfield ~160 blurred arc-fills/frame at render.ts:203, glowTrace triple-stroke with two blurred passes at render.ts:667). The phosphor buffers, per-frame gradients, and the sim are measured-innocent. THE FIX PATTERN IS ALREADY IN-REPO: render.ts:509-518 baked particles into cached additive glowSprites for exactly this reason ('the single most expensive Canvas 2D primitive') and then stopped halfway. Finish the job: (1) dots onto the existing glowSprite cache, (2) strokes/text glow becomes wider low-alpha UNBLURRED additive passes under the 'lighter' blend already in place, (3) a tunable scene-buffer dpr cap as the weak-GPU hedge (the trace cannot decompose blur vs the phosphor's three full-screen composites on the user's GPU). Keep the phosphor pipeline. Scope tempest-local — do NOT touch @arcade/shared/glow; promote later only if a second game proves the need."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    acceptance_criteria:
+      - 'Zero live shadowBlur in the per-frame scene path: no non-zero ctx.shadowBlur is set during gameplay/warp/framing draws (drawTube, strokeGlyph, drawStarfield, drawSpikes, drawBullets, drawEnemy, drawWarp, glowTrace, vecText). A source-scan or unit test pins this so it cannot silently regress.'
+      - All glow dots (rim vertex sparks, spike tip + SPARK sparkle, starfield dots, muzzle spark, vanishing-point glow) render via the cached additive glowSprite pattern of render.ts:509 — drawImage of a baked radial sprite, no per-dot blur.
+      - "Stroke/text glow is layered additive strokes: glowTrace's two blurred passes become wider, low-alpha, unblurred passes under 'lighter'; strokeGlyph and drawTube's glow envelopes get the same treatment. Eyeball pass on all modes (attract, select, gameplay, warp, gameover, highscore entry) confirms the neon look survives."
+      - The scene/phosphor buffer resolution cap is a single named tunable (e.g. RENDER_DPR_CAP); its default is chosen by measurement, not taste, and documented where it is defined.
+      - 'Performance is proven by trace, not vibes: a DevTools performance trace during heavy gameplay (explosion bursts + bullets on screen) shows steady ~60 fps with GPU-process busy under ~600ms/sec — the measurement method and numbers are recorded in the session file.'
+      - 'npm test -- citations stays green: render.ts is cited by audit findings, so re-anchor with node tools/audit/reanchor-citations.mjs --write after edits.'
+    type: bug
