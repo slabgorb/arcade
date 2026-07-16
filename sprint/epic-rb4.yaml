@@ -106,7 +106,8 @@ stories:
     description: "Cluster C5. Subsumes EN-016, EN-017, EN-018, EN-020, EN-021. A rewrite of the enemy stepper, not a constant tweak. (1) We reverse the weave at the OUTER window; the ROM reverses at the INNER one — P.INER is reached only when |position| < P.ILIM and does `EOR I,0FF ;REVERSE FLAG (HEAD AWAY FROM CENTER)` (RBARON.MAC:2794-2797). The plane turns around when it gets CLOSE TO CENTRE. This changes the shape of every engagement. (2) Enemy planes NEVER MOVE VERTICALLY in our clone; the ROM runs the SAME window/servo machine on the Y axis (PLNDEL enters with LDX I,2 for Y, then DEX/DEX to X=0 and re-runs the whole machine on X — RBARON.MAC:2747-2754, :2865-2873). (3) Planes FLY PAST you and are destroyed as objects when they cross P.MNDP; ours hover at a depth floor forever. (4) Drones have their own two-phase PARALLEL→FREE behaviour; ours weave exactly like leads. (5) The 90-degree entry bank is discarded on our first step()."
     points: 13
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-16'
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -116,6 +117,7 @@ stories:
       - "Drones implement the PARALLEL→FREE two-phase behaviour and spawn at DRINZ = 0x1600, not at the lead's depth."
       - "The blimp is an APPROACHING airship (Z from 0x1000, closing 0x80/frame), gated behind FOUR planes having appeared (N.PLNZ), firing 1-in-4 calc frames (2.604 shots/s) and only at GMLEVL >= 2 — NOT the constant-depth lateral drifter firing every 2nd frame at all levels that we ship. (CD-005 CERTIFIED our blimp as correct; the coverage review proved that CONFIRMED FALSE — it borrowed the plane's div-by-2. Do not trust it.)"
       - "Depends on rb4-1."
+    branch: feat/rb4-6-enemy-inner-weave-y-axis
     type: refactor
   - id: rb4-7
     title: "THE MISSION CLOCK — difficulty ramps twice as fast, and waves come in RUNS not alternation"
@@ -240,4 +242,21 @@ stories:
       - A checker re-opens all 199 citations against the citable quarry and compares byte-for-byte, failing on any mismatch. It runs where tests/audit/citations.test.ts runs, and degrades gracefully when the copyrighted source is absent (CI).
       - The checker rejects any citation to a module outside the shipped build, reusing rb4-2's SHIPPED allowlist rather than a second copy of it.
       - 'Mutation-proven: corrupt one verbatim and one line number, and confirm the checker turns red for each. A checker nobody has tampered with is decoration.'
+    type: refactor
+  - id: rb4-15
+    title: THE BLIMP IS THE WRONG MACHINE — an APPROACHING airship (Z-closing, N.PLNZ-gated, ÷4 fire, GMLEVL>=2), not a lateral drifter
+    description: 'Split from rb4-6 AC-5 (user ruling 2026-07-16): the blimp rewrite test blast radius (~25 tests across 5 files, several with module-import collection risk) dwarfs the enemy stepper, so it got its own story. The blimp is an APPROACHING airship, NOT the constant-depth lateral drifter we ship (CD-005 certified-correct = CONFIRMED FALSE by the coverage review — it borrowed the plane div-by-2). Derived from the CITABLE quarry ~/Projects/red-baron-source-text/RBARON.MAC (md5 497db93e..., 6294 lines, .RADIX 16 from :74 — NOT the CRLF sibling reference/red-baron/). ROM MACHINE: (1) INITBP :1425-1426 Z MSB=10/LSB=0 -> ENTERS at Z=0x1000=4096; BLMOTN :4259-4265 adds -0x80 to Z each calc-frame -> CLOSES 0x80=128/frame; :4266-4270 clears BLOBJ when Z<0x100 -> ~32 frames entry-to-gone. (2) Spawn gate :2325-2331 LDA N.PLNZ / CMP I,4 / BCC skip -> gated behind FOUR planes appearing, then RANDOM / AND I,0C -> a 1-in-4 roll. (3) SHLAUN :4027-4030 LDA FRAME / AND I,3 (1 OUT OF 4 FRAMES) -> fires only FRAME&3==0 = 2.604 shots/s, NOT every 2nd frame. (4) SHLAUN :4038-4041 LDX GMLEVL / DEX / DEX / BMI skip (NO GROUND SHELLS @ LOWER LEVELS) -> fires only GMLEVL>=2. NEW blimp.ts surface: exports BLIMP_Z_START=0x1000, BLIMP_CLOSE_SPEED=0x80, BLIMP_PLANE_GATE=4; signatures blimpFires(frame,level) and shouldSpawnBlimp(planeCount,roll). SIBLING RE-SEAT MAP (all assert the old drifter): blimp.test.ts L250/262/274/291/326 (drift model), L354/360 (div-by-2 cadence / no level gate), L301 (constant cruise depth), L179/183/192/202 (BLIMP_SPAWN_CHANCE + shouldSpawnBlimp(roll) signature — the 25% roll SURVIVES as the second ROM gate AND 0C, so UPDATE do not delete), L349 (single-arg blimpFires); screen-scale.test.ts L190/208/285/316 drift-across geometry [WARN: module import L71 of blimpDriftPerFrame/blimpOffScreen — deleting them crashes the WHOLE file incl unrelated debris/LOD tests; keep a shim or re-seat the import], L224/243/256 despawn semantics; cockpit-loop.test.ts L316/335/355 drift premise [WARN: destructures shouldSpawnBlimp/BLIMP_SPAWN_CHANCE/blimpOffScreen L90/92], L367/407 despawn+sighting; depth-scale.test.ts L263 (blimp mid-field -> now Z0=4096 > 3/4 P_INDP); blimp-wiring.test.ts L67 (main.ts uses shouldSpawnBlimp for the 25% roll -> now the N.PLNZ gate). SURVIVE (do not touch): blimp geometry/scoring(flat 200)/explosion/collision, biplane, enemy-fire, multiplane-wiring, returning-ace, determinism. Independent of rb4-6 enemy.ts/waves.ts (different module) but SEQUENCE AFTER rb4-6 to avoid main.ts + shared-test-file conflicts. A ready-made RED suite (blimp-approach.test.ts) was drafted during rb4-6 RED; re-derive from the ROM citations above (do not trust a copied file). Depends on rb4-1 (the Z/close constants are hex).'
+    points: 8
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    depends_on: rb4-1
+    acceptance_criteria:
+      - 'The blimp is an APPROACHING airship: it enters at Z=0x1000=4096 and CLOSES 0x80=128/calc-frame, despawning when Z<0x100 (~32 frames) — NOT a constant-depth lateral drifter.'
+      - Spawn is GATED behind FOUR planes having appeared (N.PLNZ>=4, RBARON.MAC:2325-2327), then the 1-in-4 RANDOM roll — not a bare 25% roll available at any time.
+      - Fires 1-in-4 calc frames (FRAME&3==0, SHLAUN:4027-4030 = 2.604 shots/s), NOT every 2nd frame.
+      - Fires ONLY at GMLEVL>=2 (SHLAUN:4038-4041); the early sky is safe from the airship.
+      - Re-seat the ~25 drifter-model sibling tests across blimp/screen-scale/cockpit-loop/depth-scale/blimp-wiring per the description map, handling the screen-scale/cockpit-loop module-import collection risk (keep a shim or re-seat the import).
+      - Depends on rb4-1 (the Z/close constants are hex, .RADIX 16).
     type: refactor
