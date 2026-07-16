@@ -312,7 +312,8 @@ stories:
     description: "Cluster C12, minus W-022 (the fuseball vulnerability inversion, carved out to tp1-3). Subsumes W-001, W-021, W-030, W-046. ENEMY_FIRE_MIN_DEPTH is INVENTED — it silences every fresh spawn for the first 19% of its climb and the ROM has no such rule. Depends on tp1-4/tp1-5 for W-030's fairness valve."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-16'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -321,7 +322,9 @@ stories:
       - "Hit tolerance is derived from ENSIZE (7 units for a flipper, 6 for a fuseball) and from closing speed, not hard-coded. Ours are currently ~1.9x and ~3.3x too generous."
       - "W-030's fairness valve depends on the CAM (tp1-4/tp1-5)."
       - "npm test -- citations stays green."
+    completed: '2026-07-16'
     type: bug
+    review_verdict: approved
   - id: tp1-17
     title: "SHAPES — the tanker, spiker, fuseball and player charge, drawn from the ROM's vertex data"
     description: "Cluster C13, part 1. Subsumes V-005..V-010, DA-004. The tanker's 17-vertex laced double diamond, the spiker's 21-point green spiral, the fuseball's 5-colour scribble, the player charge's 17 dots in two rings. Every item independently landable; blocks nothing. Depends on tp1-12 for the colours."

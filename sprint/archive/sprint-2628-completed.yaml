@@ -275,3 +275,8 @@ completed_stories:
     title: "THE SPIKE MODEL — a charge burrows into a spike, cutting it to the bullet's own position over two hit-frames"
     points: 3
     completed: '2026-07-16'
+  - id: tp1-16
+    epic: tp1
+    title: "FIRE & COLLISION GEOMETRY — tick order, the invented far-end fire floor, and hit tolerances 2-3x too generous"
+    points: 3
+    completed: '2026-07-16'
