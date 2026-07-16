@@ -263,3 +263,11 @@ stories:
       - Re-seat the ~25 drifter-model sibling tests across blimp/screen-scale/cockpit-loop/depth-scale/blimp-wiring per the description map, handling the screen-scale/cockpit-loop module-import collection risk (keep a shim or re-seat the import).
       - Depends on rb4-1 (the Z/close constants are hex, .RADIX 16).
     type: refactor
+  - id: rb4-16
+    title: PLONSN, OR THE PLANE ESCAPES THE SCREEN — the servo must weave the DISPLAY position, clamped on-screen the ROM's way
+    points: 8
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: refactor
