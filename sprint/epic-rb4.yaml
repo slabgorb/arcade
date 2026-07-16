@@ -106,7 +106,7 @@ stories:
     description: "Cluster C5. Subsumes EN-016, EN-017, EN-018, EN-020, EN-021. A rewrite of the enemy stepper, not a constant tweak. (1) We reverse the weave at the OUTER window; the ROM reverses at the INNER one — P.INER is reached only when |position| < P.ILIM and does `EOR I,0FF ;REVERSE FLAG (HEAD AWAY FROM CENTER)` (RBARON.MAC:2794-2797). The plane turns around when it gets CLOSE TO CENTRE. This changes the shape of every engagement. (2) Enemy planes NEVER MOVE VERTICALLY in our clone; the ROM runs the SAME window/servo machine on the Y axis (PLNDEL enters with LDX I,2 for Y, then DEX/DEX to X=0 and re-runs the whole machine on X — RBARON.MAC:2747-2754, :2865-2873). (3) Planes FLY PAST you and are destroyed as objects when they cross P.MNDP; ours hover at a depth floor forever. (4) Drones have their own two-phase PARALLEL→FREE behaviour; ours weave exactly like leads. (5) The 90-degree entry bank is discarded on our first step()."
     points: 13
     priority: p1
-    status: in_review
+    status: done
     started: '2026-07-16'
     repos: red-baron
     workflow: tdd
@@ -117,6 +117,7 @@ stories:
       - "Drones implement the PARALLEL→FREE two-phase behaviour and spawn at DRINZ = 0x1600, not at the lead's depth."
       - "The blimp is an APPROACHING airship (Z from 0x1000, closing 0x80/frame), gated behind FOUR planes having appeared (N.PLNZ), firing 1-in-4 calc frames (2.604 shots/s) and only at GMLEVL >= 2 — NOT the constant-depth lateral drifter firing every 2nd frame at all levels that we ship. (CD-005 CERTIFIED our blimp as correct; the coverage review proved that CONFIRMED FALSE — it borrowed the plane's div-by-2. Do not trust it.)"
       - "Depends on rb4-1."
+    completed: '2026-07-16'
     branch: feat/rb4-6-enemy-inner-weave-y-axis
     type: refactor
     review_findings: "Round 2 REJECTED (1 HIGH, 5 MEDIUM, 3 LOW — all HIGH/MEDIUM are test-side; production verified correct). [HIGH] AC-R3, the headline soft-lock guard, never calls guns.collides — it reimplements reach as hypot<=32*sqrt2; mutation-proven green under round 1's exact defect, and the circle inflates GMLEVL 4's margin (11.6 reported vs 10.8 through the real gun — still clears >10, so this is a guard rewrite, not a code fix). [MED] outer/inner zone targets unguarded at point of use (iidl||48 and odlx*2 survive 1069 green); PLNLVL ramp pin tautological (local literal, real export unused); spawnAltitude unguarded; WO_RTN guard import-binding-only; spawn-X world-origin vs ROM UNIV4X (undocumented deviation, routed to PLONSN successor). [LOW] EYE_ORIGIN as-unknown-as cast; stale HORIZN-bias comment; clamp NaN latent. Tables byte-exact (independently re-decoded), DIVBY4/altitude band/WO.RTN/displayPos all verified at the quarry."

@@ -290,3 +290,8 @@ completed_stories:
     title: "SHAPES — the TEMPEST logo's own stair-stepped alphabet and the 22-dot star pictures"
     points: 4
     completed: '2026-07-16'
+  - id: rb4-6
+    epic: rb4
+    title: "THE ENEMY IS THE WRONG MACHINE — the weave reverses at the INNER window, and runs on Y too"
+    points: 13
+    completed: '2026-07-16'
