@@ -403,3 +403,66 @@ history intact while making the current verdict unambiguous to a fuzzy gate. Sam
 Finding (production-unreachable, same class the prior round rated LOW with "optional one-liner").
 Rejecting a third round over an adjacent latent edge the spec never named is goalpost-moving; the
 right cost is a routed finding, not another cycle.
+---
+
+### A fix round convened to DELETE false claims can net-ADD them — re-run every row of its own verification table, and know that a behaviour-PRESERVING revert is uncatchable by construction
+
+**Situation:** Re-reviewing round 2 of a story you rejected for shipping a true fix beside false
+comments (sw7-16: the surface gun). Dev/TEA return with a mutation table (M1..M6′) proving every
+guard now bites, and the round-1 blocking findings genuinely fixed.
+
+**Problem:** The fix round is the *highest-risk* place for new false claims, because the author is
+now writing prose ABOUT their own corrections and nobody re-audits prose. sw7-16 round 2 deleted 3
+false claims and added 7: a guard-file header asserting "Round 2 makes `shipPoint` exhaustive over
+Phase" (TEA wrote the RED expecting it, Dev deliberately declined, nobody reconciled — so the file
+asserts a source property that does not hold); "JSDoc trimmed rather than grown" (measured 22→28,
++27%); "crosshairOn is GONE / One copy" (the trench copy survives and that file doesn't import the
+shared helper); and round 1's finding 3 RE-BROKEN — a false pointer replaced by another false
+pointer ("`tie-peel-away`… the suite that actually drives these paths (`spawnTie`, `moveEnemy`)" —
+it drives `moveEnemy` only; retargeting `spawnTie` alone left 1056/1056 green).
+
+**THE STRUCTURAL TRAP — a behaviour-preserving revert cannot be caught by any value assertion.**
+Dev claimed "re-inlining the literal reddens 5". `render.ts` called `surfaceShip(altitude)` and the
+test asserted `eyeOf(s)` == `surfaceShip(s.altitude)` — BOTH SIDES CALL THE SAME FUNCTION. Reverting
+render.ts to the inline `[0, state.altitude, 0]` returns the IDENTICAL value, so 45/45 stayed green.
+"Did you call my function or retype the same literal?" is a question about SOURCE STRUCTURE; a value
+test can only ever catch DRIFT. Any "reddens N" claim about such a revert is false *by construction* —
+you can refute it from the armchair, but run it anyway (10 s) because the author will not believe
+the armchair. Corollary: the RED that drove such a story is often a COLLECTION error from the missing
+export, not a behavioural failure — "13 reds → green" proves the export exists, nothing more.
+
+**Prevention:** (1) Treat the fix round's verification table as UNTRUSTED — re-run every row you
+would cite. (2) For each round-1 finding, ask "is it FIXED, or re-broken in a new form?" — a comment
+pointing at the wrong test is often "fixed" with a comment pointing at a *nearly* right test; mutate
+EACH caller the comment names, separately, not the helper as a whole (mutating the helper reddens via
+the guarded caller and hides the unguarded one). (3) Grep the fix round's own prose for falsifiable
+claims (`trimmed`, `GONE`, `One copy`, `exhaustive`, `every guard`, `reddens N`) and falsify each.
+(4) When TEA's test header describes a SOURCE change, diff it against what Dev actually shipped —
+a declined "recommended" finding silently strands the header.
+
+**Also — CHECK THE HOUSE STYLE BEFORE FLAGGING PROSE AS ROT.** An independent auditor flagged
+"the header says this file won't compile but it's 13/13 green" as a Moderate staleness defect. It is
+a repo-wide CONVENTION here (`events.test.ts:20`, `aiming.test.ts:19`, `surface-hazard.test.ts:70`
+all preserve present-tense RED narrative in merged code). Dismissed with evidence. Auditors reason
+from first principles and don't know the house style — grep for the pattern before confirming.
+
+**Also — when 7/9 pf subagents are toggled off AND the review is self-authored (one session ran
+TEA+Dev+Reviewer):** spawn independent auditors for the disabled domains and say so in the table
+("Skipped/disabled — covered by independent auditor X"), never claim the disabled row as coverage.
+On sw7-16 the four independent auditors produced EVERY sharpest finding (the `spawnTie` mutation
+proof, the JSDoc measurement, the NaN inversion). Constrain them READ-ONLY and run all mutations
+yourself, serially, after they return and `git status` is clean — round 1's test-analyzer left a live
+mutation on disk. One auditor independently chose to mutation-test in a disposable copy with
+symlinked `node_modules` — that is the pattern to ask for when you want a mutation from an agent.
+
+**Watch your own perl/sed mutations actually APPLY.** My first M1 silently didn't match; the suite
+stayed 32/32 and would have "proven" a guard inert. `git diff --stat` after every mutation, BEFORE
+trusting the run — an unapplied mutation looks exactly like a passing guard.
+
+**Disposition:** REJECTED again, on the cluster — specifically round-1 finding 3 unfixed + a
+provably false row in the verification table. Fix is ~15 lines of prose + optionally 2 lines of code.
+Be explicit that the engineering is right and the round is cheap: a second rejection reads as
+ceremony unless you show the mutations. Also record where the author corrected YOU (sw7-16: my
+round-1 "88 > COCKPIT_HIT_RADIUS (80)" compared the wrong sphere — 80 is the *player's* hit sphere;
+the bolt only needs `TURRET_HIT_RADIUS`=200, so no kill was ever lost). Stamp that ACCEPTED loudly —
+a review that only ever finds fault in one direction is not being read as adversarial, just hostile.

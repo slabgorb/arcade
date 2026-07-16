@@ -474,3 +474,63 @@ re-implementation of one.
 
 **Tell:** an integration suite that suddenly asserts "drawn somewhere else" / "no kill landed" after a
 signature change is accusing your code of a bug the MOCK is committing. Check the wrapper first.
+---
+
+### In a fix round convened to delete FALSE CLAIMS, your own correction prose is the likeliest new false claim — and never write "reverting X reddens N" about a behaviour-PRESERVING revert
+
+**Situation:** Dev green on round N+1 of a story the Reviewer rejected for shipping a true fix beside
+false comments (sw7-16: the surface gun). You fix the three claims, write a tidy mutation table
+proving each guard bites, and hand back.
+
+**Problem:** sw7-16 round 2 deleted 3 false claims and **added 7** — and was rejected again. The
+fix round is the highest-risk place for new falsehoods precisely because you are now writing prose
+ABOUT your own corrections, and nobody re-audits prose. What landed: a verification row claiming
+"re-inlining the literal reddens 5" (it reddens **zero**); "JSDoc trimmed rather than grown" (it grew
+22→28, +27% — *measure it*: `git show <base>:file | sed -n 'A,Bp' | wc -l`); "crosshairOn is GONE /
+One copy" (the sibling suite still had its own copy and didn't import the shared one); and TEA's test
+header asserting "Round 2 makes `shipPoint` exhaustive over Phase" while Dev had **deliberately
+declined** that refactor — nobody reconciled the two, so the guard file described code that did not
+exist.
+
+**THE STRUCTURAL TRAP — a behaviour-preserving revert is unprovable by mutation.** `render.ts`
+called `surfaceShip(alt)`; the test asserted `eyeOf(s) == surfaceShip(s.altitude)`. Reverting
+render.ts to an inline `[0, alt, 0]` returns the **same value**, so both sides of the `toEqual` move
+together and 45/45 stay green. "Did you call my function or retype its body?" is a question about
+SOURCE; value tests only ever catch DRIFT. If your change is a de-duplication whose revert is
+behaviour-identical, **no test can guard it** — the export/extraction itself is the guarantee. Say
+that. Also: when a new test file's RED came from a **missing export**, those reds are *collection
+errors*, not behavioural coverage — "13 reds → green" proves the export exists and nothing more.
+
+**And mutate the CALLER, not just the helper.** "Retargeting `toCockpit` reddens 2 tests" proved the
+*helper* was guarded via `moveEnemy` — but the comment claimed the suite drove **both** callers.
+Retargeting `spawnTie`'s call alone left 1056/1056 green (`tie-peel-away`'s fixture parks the spawner
+at `spawnTimer: 1e9`). Mutating a helper and mutating each of its call sites are **different
+experiments**; run the one your sentence actually claims.
+
+**Prevention:**
+1. Before handing back, grep your own round's prose for falsifiable words — `trimmed`, `GONE`,
+   `One copy`, `exhaustive`, `every guard`, `reddens N`, `guarded by` — and **falsify each one**.
+   Every one of these was a finding.
+2. If TEA's test header describes a SOURCE change, diff it against what you actually shipped. A
+   declined "recommended" finding silently strands the header — flagging your skip in the assessment
+   is NOT enough if the test file still asserts you did it.
+3. Given "delete the claim **or** make it true", **prefer making it true** when it's a couple of
+   lines. sw7-16's `shipPoint` → `switch` with no `default`/no trailing return took 6 lines and
+   converts the next recurrence into TS2366. Proven: add a 4th union member → compile error at the
+   function. That's a real guard a comment can never be.
+4. **Retract in place, visibly** (`~~strikethrough~~` + a RETRACTION note). Do not silently rewrite
+   a verification table — a table whose misses can be edited out is not evidence, and the Reviewer
+   will notice you erased the catch.
+
+**Also — a Reviewer's suggested one-liner can carry collateral; check before pasting it.** Finding 8
+proposed `if (!Number.isFinite(altitude)) altitude = SKIM_ALTITUDE`. But `!isFinite` also captures
+±Infinity, which the existing clamps handle *correctly* (`+Inf` → ceiling 238; `-Inf` → crash bump +
+shield + event) — pasting it would have silently deleted a shield charge and a `terrain-crash`.
+`Number.isNaN` closes the same regression with zero collateral. Take the narrower guard and **log the
+deviation**; the Reviewer accepted it.
+
+**Also — editing `src/core/sim.ts` at all shifts the audit citations.** Run
+`node tools/audit/reanchor-citations.mjs` (dry) → `--write`. "0 lost" means no `verbatim` re-points
+and no judgment calls. Then prove the anti-laundering rule yourself before claiming it: every `+`/`-`
+line in `docs/audit/findings/` that is not `"line":` must be **empty**. The citation gate reddens on
+the FULL suite, not on your story's files — run `npm test`, not just your two suites.
