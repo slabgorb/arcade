@@ -280,3 +280,8 @@ completed_stories:
     title: "FIRE & COLLISION GEOMETRY — tick order, the invented far-end fire floor, and hit tolerances 2-3x too generous"
     points: 3
     completed: '2026-07-16'
+  - id: sw7-7
+    epic: sw7
+    title: 'R7a TIE explosion pieces — per-piece lifetimes (X-002: wings 24f/1.17s, globe 16f/0.78s) + age-keyed colour ramp (X-003: TIE pieces NEVER white-flash)'
+    points: 4
+    completed: '2026-07-16'

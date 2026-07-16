@@ -1,0 +1,89 @@
+# Story sw7-7 Context
+
+## Title
+R7a Explosions — TIE piece lifetimes (X-002) and age-keyed colour ramp (X-003); TIE pieces never white-flash
+
+## Metadata
+- **Story ID:** sw7-7
+- **Type:** story
+- **Points:** 4
+- **Priority:** p2
+- **Workflow:** tdd
+- **Repo:** star-wars
+- **Epic:** Star Wars — primary-source fidelity: the ruling sheet from the 2026-07-15 audit
+
+> **SCOPE NARROWED 2026-07-16** (orchestrator commit `7245c4a`). The original 12-pt
+> sw7-7 subsumed six findings; the audit surface measured ~20-28 pts, including the
+> M-010 3D-sphere→2D-picture architecture reversal. Per the Jedi's ruling it was split
+> three ways. This context describes what sw7-7 **actually shipped**:
+>
+> | Findings | Story |
+> |---|---|
+> | X-002 + X-003 — TIE explosion pieces | **sw7-7 (R7a)** — this story, done |
+> | X-005 — tower/bunker ballistic debris + ground shadow | **sw7-14 (R7b)** |
+> | X-006 + X-007 + M-010 — 4-phase finale, looming prelim, authentic Death Star picture | **sw7-15 (R7c)** |
+
+## Problem
+Two ROM divergences in the TIE explosion, both cited to `WSXPLD.MAC`:
+
+- **X-002 — per-piece lifetimes.** `BGAXP` spawns three pieces, each with its own
+  `XP$TMR` decremented once per 20.508 Hz frame by `DOXPLD`. Wings (`TP$TI1`/`TP$TI2`)
+  load `#18` (:165, :196) and the centre globe (`TP$TI3`) loads `#10` (:224). With
+  `.RADIX 16` (`WSCOMN.MAC:5`) these are **hex** — 24 and 16 frames ≈ 1.170 s and
+  0.780 s. Ours used one flat eyeball tunable `TIE_DEATH_SECONDS = 0.7` for all three,
+  so the wings never outlived the globe.
+- **X-003 — age-keyed colour ramp; TIE pieces NEVER white-flash.** `VWTIN` (:761-770)
+  takes the white `VJFLS` "REALLY FLASH" branch only when a piece's timer exceeds
+  `#1F` (31); otherwise it indexes `TVWCLE[2×timer]`, an age-keyed ramp. TIE pieces are
+  born at 24/16 — both below 31 — and the timer only ever DECs, so they can **never**
+  reach white. That branch belongs solely to ground objects, which load `#20` (32) at
+  :330/:366/:401. This **corrects** the pre-audit note: the divergence is not a spurious
+  white flash but the *missing* ramp — ours drew one static `TIE_GLOW` green.
+
+## Technical Approach (as shipped)
+- `src/core/state.ts` — the flat `TIE_DEATH_SECONDS = 0.7` gave way to two frame-true
+  constants, `TIE_WING_LIFE_SECONDS = 0x18 / TICK_HZ` and
+  `TIE_GLOBE_LIFE_SECONDS = 0x10 / TICK_HZ`, matching the repo's existing idiom
+  (`DARTH_GLOW_SECONDS = 0x1f / TICK_HZ`). `TIE_DEATH_SECONDS` survives as an alias for
+  the wing (longest) life, so the `sim.ts` cull holds the entry for the whole cue and
+  `sim.ts` itself needed no change.
+- `src/shell/render.ts` — per-piece draw gates (the globe pops first) plus
+  `tiePieceGlow(timerFrames)`, keyed to each piece's **absolute remaining ROM timer**
+  over the `TVWCLE` `0x00..0x1F` domain rather than to its own age-fraction. Both pieces
+  therefore walk **one shared ramp**, the wing simply starting higher up it. This
+  reproduces the ROM's structure: a wing decayed to timer 16 shows the globe's birth
+  colour. An age-fraction model would normalise each piece to its own life, birth both at
+  the same hue, and erase exactly the per-piece divergence the ROM has.
+
+## Scope
+- **In scope:** X-002 lifetimes, X-003 ramp structure (age-keyed, ≥2 distinct hues,
+  never white). X-002/X-003 stamped `remediated_by: sw7-7`.
+- **Out of scope:** X-005, X-006, X-007, M-010 — see the split table above.
+- **Deliberately unpinned:** the exact `TVWCLE` hues. The finding itself scopes X-003 to
+  structure because those hues are AVG-hardware bitfields it leaves undecoded; pinning
+  pixels would reject a faithful port.
+- **Left OPEN on purpose:** X-001 (a `CONFIRMED` *match* record this story preserved) and
+  X-004 (`STRUCTURAL` — pieces still carry no velocity state) had citations re-pointed
+  onto their new spellings but were **not** stamped; stamping either would have
+  fabricated a fix or blinded the gate to a live gap.
+
+## Acceptance Criteria
+- **AC-1 (X-002):** wings outlive the globe at the ROM's 24:16 ratio; the cue spans the
+  wing life (~1.170 s), not 0.7 s. Frame-true constants, hex-decoded, on the 20.508 Hz base.
+- **AC-2 (X-003):** fragment colour is age-keyed (≥2 distinct hues over a life) and no TIE
+  piece is **ever** drawn white.
+- Citations stay green; X-002/X-003 marked `remediated_by: "sw7-7"`.
+
+## Known gap carried forward
+The shared-ramp property — this story's whole purpose — is pinned by **no test**. Proven
+by mutation during review: reverting `tiePieceGlow`'s argument to the rejected
+age-fraction model leaves the suite fully green. Because X-003 is now `remediated_by`,
+the citation gate has stopped watching that line, so the suite is the only remaining
+guard and it does not guard this. **sw7-14 edits this exact function** (ground pieces need
+the `VJFLS` branch) and inherits the obligation to pin it: wing-at-age-0 ≠ globe-at-age-0,
+and wing at timer 16 == globe at birth.
+
+---
+_Originally generated by `pf context create story sw7-7` from the pre-split sprint YAML;
+corrected at finish (2026-07-16) to record the delivered R7a scope rather than the
+superseded six-finding scope._
