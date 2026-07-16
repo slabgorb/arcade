@@ -98,9 +98,10 @@ stories:
   - id: sw7-9
     title: R9 TIE choreography VM — port the per-fighter bytecode VM, TSPWAV wave composition, and Darth Vaders TIE
     description: 'Subsumes A-009 (the real thing: per-fighter bytecode VM — JMP @A(U) opcode dispatch into TCHOP, per-alien PC A$CHPC, one-deep call stack, IF/GOTO/GOSUB/RETURN/TWIRL, event-gated .CUNTIL/.CIF, 16 TCH1 scripts + 12 TCH2 split entries), A-016 (Darth: 4 lives, immortal in space, retreats — S-002''s 2,000 pts sit unawarded), A-017 (TSPWAV 6 wave-composition sets + Darth ordering). Accepted symptom-divergences A-011..A-015, A-019 recorded — most dissolve if the VM lands. WARNING from refutation: A-015''s reasoning proposed gating +/-2048 corners to D-waves — WRONG, TWV2Z shows them every wave; do not ''fix'' toward that. A-019 (music-timed descent) wants sw7-8''s tunes. Biggest rock; stage/split at grooming.'
-    points: 18
+    points: 0
     priority: p2
-    status: split
+    status: done
+    completed: '2026-07-16'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-1
