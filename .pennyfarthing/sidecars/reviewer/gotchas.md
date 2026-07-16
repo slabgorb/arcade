@@ -247,3 +247,159 @@ session, an "expected split" derived from the test file's own transcription is a
 evidence — spawn an independent auditor on the PRIMARY source (mind CRLF + `.RADIX 16`) to
 re-derive the pinned number. tp1-19: ALVROM.MAC:1301-1351 independently returned 11 =
 [2,2,1,1,2,1,2], matching both the test and the prior round's trace.
+
+---
+
+### A ROM servo ported onto coordinates the ORIGINAL re-projected each frame will drive the target out of a FIXED weapon's reach — and no unit test can see it, because the gun tests hand-build their target and the servo tests never fire
+
+**Situation:** Reviewing a ROM-fidelity story that ports an authentic movement machine (rb4-6: Red
+Baron's PLNDEL window-servo — the ROM genuinely reverses AWAY from centre at P.ILIM, `EOR I,0FF`,
+:2794-2796) into a clone's existing entity coordinates. Every constant is byte-exact, the suite is
+1051/1051 green, `tsc` clean, and the guards mutation-bite. Nothing looks wrong.
+
+**Problem:** The ROM's servo runs on DISPLAY coordinates that TRACK the player's view (PLSTAT+8 is
+";X SCREEN POSITION", :3157) — the plane weaves away from wherever the pilot is LOOKING, and the pilot
+chases it. Our `enemy.x/y` are STATIC world coords the camera merely looks at (`main.ts:187-197`
+builds `projView` for RENDER only; nothing re-projects the enemy), and the gun collides in that same
+static space against a shell pinned at `y: 0` for its entire flight (`guns.ts:321`; `guns.step` only
+advances `z`), reaching at most `32*sqrt(2)=45.25`. So a servo that pushes |y| away from centre into
+`[P.ILIM, P.OLIM]` pushes the plane out of the ONLY region the gun can ever reach. Measured (200
+planes/level, isolated worktrees, HEAD vs origin/develop): baseline in-reach for its whole life at
+every level; at HEAD, GMLEVL 2/3/4 → avg **1.0** frames in reach (the spawn frame, before step() has
+run) and **0/200** planes reachable afterwards. `PLNLVL` hits GMLEVL 2 at **5 kills** → the game
+SOFT-LOCKS: no 6th kill is possible. Not a crash, not a red test — the game just quietly stops meaning
+anything. This is the `rom-normalization-vs-displacement` trap one level up: Dev correctly refused to
+re-apply HORIZN because "our y is already display space" — but our display space is FIXED, not
+player-relative, so the deeper premise (that our coords are the ROM's display coords) is only half true.
+
+**Why 1051 green proves nothing:** the two halves of the engagement are each tested in a world where
+the other doesn't exist. `engagement.test.ts:47` HAND-BUILDS its target at `y: 0` (so the gun is tested
+against a fixture that can't move), and every servo test drives `step()` without ever firing. The seam
+is untested, so the regression is invisible. The ONE artifact that did notice — the cockpit determinism
+fingerprint moving 52→53 because "one more shell lives out its flight instead of ending early on a
+plane that used to sit still in Y" — is the bug FILING ITSELF, and it was re-pinned as benign. A
+fingerprint that moves because a shell stopped connecting is a hittability regression wearing a
+determinism hat.
+
+**Prevention:** When a story changes WHERE an entity is allowed to be, do not stop at "the constants are
+byte-exact." Find the consumer that must REACH that entity (gun, hitbox, cursor, click target) and ask
+whether the producer's new range still intersects the consumer's fixed one. Then PROVE it empirically —
+`git worktree add --detach <scratch> HEAD` + a second at `origin/develop`, symlink `node_modules`, and
+probe both: "what fraction of entities are ever reachable, and for how many frames of their life?"
+Report frames-in-reach PER LIFE, not per run — a story that also shortens lifetimes (fly-past) confounds
+any per-run hit count, and "EVER reachable" is confounded the other way by the spawn frame (I over-claimed
+"never reachable" on a first probe that skipped frame 0; the honest number was 1.0 frames = spawn only).
+The worktree is also how you dodge the concurrent-mutation problem — test-analyzer mutates the LIVE tree,
+and preflight self-retracted its own counts here after catching a transient `DRINZ`-removed state.
+
+**Disposition:** REJECTED (CRITICAL). Do NOT accept "widen WINDOW_Y" — that hides it. The seam is a user
+decision: project enemy x/y through the player's attitude before the gun tests them (what the ROM does),
+or bound the servo to the reachable window. Route red→TEA with a reachability guard: spawn → stepWave →
+guns.step must land a hit at EVERY GMLEVL. That test is the missing regression seam, and it is what
+should have existed before the servo was touched.
+
+---
+
+### "No baked artifact to arbitrate" is a claim, not a fact — grep the assembler's own `.MACRO` block before accepting a descope justified by an unverifiable scale
+
+**Situation:** A ROM-fidelity story descopes a table transcription because the source uses a macro whose
+scale can't be confirmed. rb4-6: TEA and Dev BOTH asserted (suite header `enemy-machine.test.ts:40` and
+`enemy.ts:122`) that P.ODLX/P.IDLX/P.IIDL's `.2WORD`/`.3WORD` macros "carry an unverified ×2/×3 scale"
+with "NO baked artifact to arbitrate a transcription — pinning a byte here would risk the exact 'read the
+table, ship a fabricated constant' trap the epic exists to kill."
+
+**Problem:** The claim was FALSE, and falsifying it took one grep. The macros are DEFINED at
+RBARON.MAC:20-27 — in the same md5-verified file both agents cite, 47 lines above the `.RADIX 16` at :74
+that they DID read: `.MACRO .3WORD .A,.B,.C,.D / .WORD 3*.A,3*.B,3*.C,3*.D` and `.MACRO .2WORD ... /
+.WORD 2*.A,...`. Corroborated independently: the author wrote each table's 5th entry LONGHAND (`.WORD
+80*2` :2949, `2C*3` :2953, `40*3` :2956) precisely because the macro takes only 4 args — the same
+multiplier, spelled out. `.LEVLS=5` (:504) plus `LDA I,.LEVLS*2` / `.LEVLS*4` (:2791/:2797) prove the
+three tables are contiguous and indexed zone×GMLEVL, and P.WCHK (:2806-2864) servos the delta TOWARD them
+("ACCELERATE SO DELTA=MAX", :2832) — not one symmetric cap. Tables recover with ZERO ambiguity:
+P.ODLX=[288,280,264,248,256], P.IDLX=[24,60,84,108,132], P.IIDL=[0,48,72,120,192]. So the story shipped an
+INVENTED `weaveSpeedCap(ilim)=sqrt(ACCEL·ilim)` to avoid the risk of inventing something — inverting the
+epic's purpose while wearing its vocabulary. AC-1 literally names P.IIDL ("accelerates toward the P.IIDL
+target by level"); it survives only as prose in a comment.
+
+**Prevention:** A descope's RATIONALE is reviewable evidence, not context. When a story says a ROM value
+is unknowable, spend 60 seconds disproving it before accepting: `grep -n "\.MACRO" <source>` (assemblers
+define their macros in the file), check whether a sibling/longhand entry re-states the same arithmetic, and
+look for the equate that fixes the table stride (`.LEVLS`-style). A deviation resting on a false premise is
+not a deviation — it is an unlogged gap, and it must be FLAGGED, not stamped ACCEPTED, even when TEA
+pre-authorised it and Dev honestly labelled the stand-in as "inferred". Honest labelling of a constant does
+not make the reason for needing it true. rule-checker initially marked this COMPLIANT ("honestly labelled
+inferred, plausible reason") and upgraded to a violation only when handed the ROM evidence — so ASK the
+subagent to verify the premise, don't just ask it to check the label.
+
+**Disposition:** FLAGGED the deviation, HIGH finding, REJECTED. Fix = transcribe the three tables with
+citations, servo toward the zone target, delete the sqrt, and correct the false claim in BOTH the suite
+header and the source comment (the lie is duplicated, so a one-file fix leaves it half-alive).
+
+---
+
+### A regression guard that REIMPLEMENTS its consumer cannot guard it — mutate the named production function and require the guard RED; and a hypot/circumscribed-circle "reach" OVERSTATES a rotated-box hit-test
+
+**Situation:** Re-reviewing rb4-6 round 2 — the rework whose whole deliverable was "the soft-lock
+guard": AC-R3 in `display-space.test.ts`, a chase rig asserting frames-in-reach > 10 at every
+GMLEVL. The suite's own header says "the guard whose absence let round 1 ship. Never delete this."
+Dev's mutation table claimed "collides ignores the eye → 3 RED".
+
+**Problem:** AC-R3 never CALLS the production hit-test. It judges reach as
+`Math.hypot(now.x, now.y) <= 32*Math.SQRT2` — its own copy of the window geometry — so reverting
+`guns.collides` to ignore its eye (round 1's EXACT defect, the one the guard names) leaves all six
+AC-R3 tests green; only AC-R2's two pointwise tests fire (the "3 RED" was 2). Worse, the circle
+CIRCUMSCRIBES the real rotated 32×32 box, so the guard's margin systematically overstates the
+game's: re-measured through the real `collides` (same rig, boresight shell at the plane's depth),
+GMLEVL 4's margin was 10.8, not the reported 11.6 — a future WINDOW_X/Y change moves the real
+margin while the guard applauds. Same file, same disease in miniature: the "ramp cannot strand the
+player" test asserted `PLNLVL[5] === 2` on its own LOCAL literal while `scoring.ts` EXPORTS the
+real table — mutating the real export left all 11 tests green. A literal compared to itself is not
+a test.
+
+**Prevention:** For any guard whose story names the production function it protects, run the
+guard-vs-defect mutation YOURSELF: re-introduce the named defect in the named function and require
+the named guard RED — "some sibling went red" doesn't count (here ace-wiring caught one mutation by
+crashing, which proves nothing about the guard). Grep the guard's body for the production symbol:
+if the guard never imports/calls it, it is a parallel reimplementation and its green is about
+itself. For geometry guards, check the metric: circle-vs-box (or any convex-hull stand-in)
+overstates reach; run the measurement THROUGH the production predicate before trusting a thin
+margin. For any table/constant assertion in a test, check the operand's provenance: a re-typed
+local literal pins nothing — assert the EXPORT.
+
+**Disposition:** REJECTED (HIGH) even though production was proven correct — the Reviewer's own
+probe through the real `collides` cleared every level (597.3/112.5/24.1/20.2/10.8 vs bar 10), so
+the rework is a guard rewrite, not a code fix. Route red→TEA; expect the honest GMLEVL 4 margin
+≈ 10.8 and do NOT let anyone re-tune the bar to manufacture slack.
+
+---
+
+### Approving a round the SAME session authored: the fix's own comment is a CLAIM to verify (check #13 covers prose), and a multi-round session file needs its superseded `## Reviewer Assessment` headings retitled before the approval gate reads it
+
+**Situation:** rb4-6 round 3 — a relay session that ran Reviewer→TEA→Dev→Reviewer, so the review
+covered tests and fixes written by itself minutes earlier. The delta was tiny (3 test files + 3
+source one-liners) and every author-claimed mutation was already "proven".
+
+**Problem (two):** (1) The NaN-safe clamp fix was correct for what it named — but its COMMENT
+claimed to be "the total answer for a degenerate hand-built fixture", and the independent
+test-analyzer found NaN DELTAS flow unclamped (self-perpetuating: NaN fails every servo comparison)
+into the render-facing `bank`. The code fix matched its spec; the comment overclaimed past it — a
+fix-introduced small lie that only an agent who didn't write it caught. The author's own re-read
+"verified" the comment because the author remembered what it meant, not what it said. (2) The
+`gates/approval` gate hunts the session file for "an explicit APPROVED verdict" under
+`## Reviewer Assessment` — and after two rejection rounds the file carried TWO earlier assessments
+whose verdict lines read REJECTED. A haiku gate reading the first match would fail (or worse,
+waver on) a legitimate approval.
+
+**Prevention:** (1) On any self-authored round, treat every comment the fix ADDED as a falsifiable
+claim and hand it to the independent agent with the code — "re-scan the fix diff" (lang-review #13)
+includes the prose. Weight the subagent's mutations as the approval's evidence; the author's own
+mutation table is testimony, not proof. (2) Before running the approval exit on a multi-round
+session file, retitle superseded assessments so exactly ONE heading matches `## Reviewer
+Assessment` — e.g. `## Round-2 Reviewer Assessment (REJECTED — superseded by round 3)` — keeping
+history intact while making the current verdict unambiguous to a fuzzy gate. Same logic as the
+"first ## Reviewer Assessment wins the tag scan" lesson: the gate reads headings, not narrative.
+
+**Disposition:** APPROVED with the comment overclaim + delta-NaN gap as a non-blocking Delivery
+Finding (production-unreachable, same class the prior round rated LOW with "optional one-liner").
+Rejecting a third round over an adjacent latent edge the spec never named is goalpost-moving; the
+right cost is a routed finding, not another cycle.

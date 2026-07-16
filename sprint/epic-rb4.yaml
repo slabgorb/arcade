@@ -106,7 +106,7 @@ stories:
     description: "Cluster C5. Subsumes EN-016, EN-017, EN-018, EN-020, EN-021. A rewrite of the enemy stepper, not a constant tweak. (1) We reverse the weave at the OUTER window; the ROM reverses at the INNER one — P.INER is reached only when |position| < P.ILIM and does `EOR I,0FF ;REVERSE FLAG (HEAD AWAY FROM CENTER)` (RBARON.MAC:2794-2797). The plane turns around when it gets CLOSE TO CENTRE. This changes the shape of every engagement. (2) Enemy planes NEVER MOVE VERTICALLY in our clone; the ROM runs the SAME window/servo machine on the Y axis (PLNDEL enters with LDX I,2 for Y, then DEX/DEX to X=0 and re-runs the whole machine on X — RBARON.MAC:2747-2754, :2865-2873). (3) Planes FLY PAST you and are destroyed as objects when they cross P.MNDP; ours hover at a depth floor forever. (4) Drones have their own two-phase PARALLEL→FREE behaviour; ours weave exactly like leads. (5) The 90-degree entry bank is discarded on our first step()."
     points: 13
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-07-16'
     repos: red-baron
     workflow: tdd
@@ -119,6 +119,8 @@ stories:
       - "Depends on rb4-1."
     branch: feat/rb4-6-enemy-inner-weave-y-axis
     type: refactor
+    review_findings: "Round 2 REJECTED (1 HIGH, 5 MEDIUM, 3 LOW — all HIGH/MEDIUM are test-side; production verified correct). [HIGH] AC-R3, the headline soft-lock guard, never calls guns.collides — it reimplements reach as hypot<=32*sqrt2; mutation-proven green under round 1's exact defect, and the circle inflates GMLEVL 4's margin (11.6 reported vs 10.8 through the real gun — still clears >10, so this is a guard rewrite, not a code fix). [MED] outer/inner zone targets unguarded at point of use (iidl||48 and odlx*2 survive 1069 green); PLNLVL ramp pin tautological (local literal, real export unused); spawnAltitude unguarded; WO_RTN guard import-binding-only; spawn-X world-origin vs ROM UNIV4X (undocumented deviation, routed to PLONSN successor). [LOW] EYE_ORIGIN as-unknown-as cast; stale HORIZN-bias comment; clamp NaN latent. Tables byte-exact (independently re-decoded), DIVBY4/altitude band/WO.RTN/displayPos all verified at the quarry."
+    review_verdict: approved
   - id: rb4-7
     title: "THE MISSION CLOCK — difficulty ramps twice as fast, and waves come in RUNS not alternation"
     description: "Cluster C6. Subsumes MI-003, MI-004, MI-005, MI-007, MI-008, MI-009, CB-001, CD-009. GMLEVL indexes PLNLVL by OBJKLD>>1 — the ROM HALVES the kill count before the table lookup (RBARON.MAC:2399-2408), so OUR DIFFICULTY RAMPS EXACTLY TWICE AS FAST as the arcade's. (Filed independently by two pairs — CB-001 and MI-009 — and both refuters decoded the LSR themselves.) MCOUNT is indexed by MODECT>>1 and a ground MODECT reloads NEWCT=1, so the ROM runs RUNS of plane waves, not the 1:1 air/ground alternation we implement; MODECT wraps modulo 16. NEWCT counts WAVES, not calc frames — our inter-wave gap is ~10x too short. Ground mode ends on a CONDITION (GRNDCT spent AND no live ground objects), not a countdown; ours lasts ~0.4 s. CD-009 CERTIFIED our wave clock as an exact match; the coverage review proved that CONFIRMED FALSE (NWPLNE has three gates before DEC NEWCT; it saw one)."
