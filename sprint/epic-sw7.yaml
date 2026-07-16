@@ -179,3 +179,30 @@ stories:
     workflow: tdd
     depends_on: sw7-1
     type: bug
+  - id: sw7-16
+    title: R11a The gun is on the ship, surface edition — muzzle, fireball target, and cockpit hit-test unified at the flying ship point [0, altitude, 0]
+    description: "PLAYABILITY BUG (live report 2026-07-16: 'I shoot way lower than the crosshairs indicate'). Bolts spawn at COCKPIT origin (sim.ts:173 — the sw5-6 muzzle fix covered only the trench) while the surface camera flies at [0, state.altitude, 0] (render.ts cameraView), altitude 40..238: sight-line and bolt run on parallel rays separated by altitude, so every impact lands 40-238u below the reticle against TURRET_HIT_RADIUS 200 centred at the tower BASE. The sw5-6 comment 'other phases... already share the origin' is stale/false since the camera-lift. Fix: ONE ship point [0, altitude, 0] for (a) player muzzle, (b) fireball target (toCockpit), (c) cockpit hit-test — the trench's trenchView pattern. ROM: WSGUNS.MAC FRPTGN spawns at the ship (LDD M$TX/ADDD #100/M$TY/M$TZ). Design: star-wars docs/superpowers/specs/2026-07-16-surface-gunnery-and-traversal-design.md"
+    points: 2
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw7-17
+    title: R11b ROM laser is HITSCAN gun→site — 8-frame LZ.EDG sweep, instant resolve under the site, trench clip $7000 (G-004 re-ruled wont_fix→fix, G-012); BLOCKS sw7-6
+    description: "G-004 re-ruled wont_fix→FIX by the Jedi 2026-07-16: the projectile gun (12,000 u/s + 3s TTL) has a constant lead fraction closing/(bolt+closing) — 4.8% today makes every tower beyond |x|~4,100 unhittable dead-on (24 of SQUARE's 28 objects); at authentic surface speeds (sw7-18) it is 30-64%, and sw7-6's B-008 trench scroll (~15,750 u/s) OUT-RUNS the bolt entirely — so this story BLOCKS sw7-6 and sw7-18 (add depends_on at their setup). ROM (WSLAZR.MAC): laser is HITSCAN — beams drawn gun-ports→site each frame (VWLAZ), collision resolves instantly against the nearest object under the site (CLSLZ space min(CL.GDS,CL.ADS); CLGLZ ground; CLBLZ trench clipped to #7000=28,672 forward, :418); trigger starts an 8-game-frame sweep LDB #8/STB LZ.EDG, decrement per frame, retriggerable (:106-113, G-012 ~0.39s). Beam origin = ship point (sw7-16). Enemy fireballs STAY projectiles (authentic — real travelling objects). Stamp remediated_by G-004 (+G-012 if the sweep lands), reanchor citations, keep suite green. Design: star-wars docs/superpowers/specs/2026-07-16-surface-gunnery-and-traversal-design.md"
+    points: 5
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw7-16
+  - id: sw7-18
+    title: R11c Surface traversal rebuild — accelerating pilot $100→$400, five GD.SEQ awakening sequences (.C byte restored to all 19 mazes), end by traversal only, ~18s; wave 1 loses its invented surface (D-022+D-019+D-018 fix, D-015 ruled drop)
+    description: "Subsumes D-022 (fix: scroll a sim-integrated ACCELERATING rate — seed $100/frame=5,250 u/s, +1/frame/frame=+420 u/s², cap $400=21,000 u/s; WSMAIN.MAC 'LDD #100 ;INITIAL PLAYER SPEED', 'ADDD #1/CMPD #400'; keep the world-scroll camera inversion, STRUCTURAL-accepted), D-019 (fix: end by TRAVERSAL ONLY — GD.SEQ>=5, 'ONLY GO SO FAR INTO GROUND SEQUENCES', one sequence per $8000 wrap 'SEQUENCE RUNS 80 TO 80' — five wrapped passes of the maze ~371 frames ~18.1s; DROP the allTowersKilled early-exit from phaseCleared; the 50,000 clear bonus still banks once, decoupled, Q.ATP), D-018 (fix: re-transcribe the dropped 4th operand '.BYTE .C ;AWAKENING SEQUENCE NUMBER' WSGRND.MAC:115, values 0..3, into surfaceMazes.ts for all 19 mazes; objects activate when GD.SEQ >= entry.seq, WSGRND.MAC:740-742 — staged reveal per pass), and D-015 (RULED DROP: wave 1 runs space→trench like the cabinet — remove mazeForWave(1)→SQUARE special case and route wave-1 progression past 'surface'; first surface = wave 2 BUNK). Music rider: PH.TIM==14. → PMREB 'FINISH GROUND WITH REBEL' (sw7-8 hooks live). Today's behaviour for contrast: ONE pass at flat 600 u/s = ~57s of unhittable 2-px towers. DEPENDS ON sw7-17 (hitscan) — authentic speeds are unplayable under the projectile gun. Stamp remediated_by D-018/D-019/D-022/D-015, reanchor, suite green. Design: star-wars docs/superpowers/specs/2026-07-16-surface-gunnery-and-traversal-design.md"
+    points: 8
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw7-17
