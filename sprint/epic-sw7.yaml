@@ -199,9 +199,11 @@ stories:
     description: "G-004 re-ruled wont_fix→FIX by the Jedi 2026-07-16: the projectile gun (12,000 u/s + 3s TTL) has a constant lead fraction closing/(bolt+closing) — 4.8% today makes every tower beyond |x|~4,100 unhittable dead-on (24 of SQUARE's 28 objects); at authentic surface speeds (sw7-18) it is 30-64%, and sw7-6's B-008 trench scroll (~15,750 u/s) OUT-RUNS the bolt entirely — so this story BLOCKS sw7-6 and sw7-18 (add depends_on at their setup). ROM (WSLAZR.MAC): laser is HITSCAN — beams drawn gun-ports→site each frame (VWLAZ), collision resolves instantly against the nearest object under the site (CLSLZ space min(CL.GDS,CL.ADS); CLGLZ ground; CLBLZ trench clipped to #7000=28,672 forward, :418); trigger starts an 8-game-frame sweep LDB #8/STB LZ.EDG, decrement per frame, retriggerable (:106-113, G-012 ~0.39s). Beam origin = ship point (sw7-16). Enemy fireballs STAY projectiles (authentic — real travelling objects). Stamp remediated_by G-004 (+G-012 if the sweep lands), reanchor citations, keep suite green. Design: star-wars docs/superpowers/specs/2026-07-16-surface-gunnery-and-traversal-design.md"
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-16'
     repos: star-wars
     workflow: tdd
+    branch: fix/sw7-17-rom-hitscan-laser
     depends_on: sw7-16
   - id: sw7-18
     title: R11c Surface traversal rebuild — accelerating pilot $100→$400, five GD.SEQ awakening sequences (.C byte restored to all 19 mazes), end by traversal only, ~18s; wave 1 loses its invented surface (D-022+D-019+D-018 fix, D-015 ruled drop)
