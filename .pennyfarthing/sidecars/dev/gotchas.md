@@ -411,3 +411,66 @@ TRU=$18, YAU=$1A, PM DAR=$1D, 4TH=$20, RRP=$22, TH5=$24 from the shipped Sound_N
 seven landing on the count is what makes the new $27 (AUD DF) / $34 (AUD SS) trustworthy. One
 matching anchor can be a coincidence; seven can't. Write the calibration into the provenance
 comment so the Reviewer can re-run it.
+
+---
+
+### A ROM table that looks ABSURD is usually missing its SCALE — and the scale lives in the routine that CONSUMES the data, not near the data
+
+**Situation:** Transcribing a ROM data table whose magnitudes make no physical sense against the
+constants around them. rb4-6: P.ODLX/P.IDLX/P.IIDL (RBARON.MAC:2948-2956) assemble to deltas of
+288/24/0 "per frame" — inside a window (P.OLIM[0] = 0x40 = 64) a third that size. A 288-unit step in
+a 64-unit window is not a weave, it is a teleport.
+
+**Problem:** the absurdity gets read as evidence the TRANSCRIPTION is wrong, and the story invents a
+"behavioural stand-in" instead. Round 1 of rb4-6 did exactly that — it declared the `.2WORD`/`.3WORD`
+macro scale "unverified with NO baked artifact to arbitrate" and shipped `sqrt(ACCEL·ilim)`, i.e. it
+fabricated a constant to avoid the risk of fabricating a constant, in the epic that exists to kill
+fabricated constants. The Reviewer then proved the macros ARE defined (:20-27) — correct, and still
+not enough: the numbers remain absurd until you find the scale, so a Dev told only "the tables are
+recoverable" will transcribe them and watch the sim fly apart.
+
+**Prevention:** when a table's magnitudes don't fit their own units, do NOT re-litigate the radix or
+the macros — go read the CONSUMER and follow the value all the way into the state it mutates. The
+scale is almost never adjacent to the data. rb4-6's was one `JSR` away: `UPDPLN` integrates the delta
+into the position through `DIVBY4` (:2570-2581), and `DIVBY4` (:6170-6176) is a signed 16-bit ÷4
+(`CMP I,80 / ROR / ROR TEMP2`, twice — the `CMP` seeds the carry from the sign bit). So the tables are
+QUARTER-units per frame: 288 → 72, 24 → 6. Against a 64-unit window that is a hard run home and a
+gentle drift — exactly the engagement the arcade plays. The same delta is ALSO the rotation source at
+×1 ("PLANE X/Y ROTATION=-4*DELTA X", :2629), which is why one field legitimately feeds two consumers
+at two scales.
+
+**Grep that finds it:** `ST[AXY]\s+(ZX,)?<FIELD>` for the WRITES, then read every reader. If a 6502
+routine does `LDA <lsb> / STA TEMP2 / LDA <msb> / JSR DIVBYn` before an `ADC`, the value is being
+rescaled on the way in — and that shift IS part of the transcription, as much as the bytes are.
+
+**Also — the block layout comment is the primary source for coordinate SPACE.** rb4-6 round 1 spent a
+whole review round arguing whether enemy x/y were world or screen. RBARON.MAC:266-297 answers it flat:
+`+0 PLANE POSITION X` and `+8 DISPLAY POSITION X` are DIFFERENT FIELDS. Read the `.IF EQ,1` data-format
+block before deriving a coordinate space from behaviour.
+
+---
+
+### A `vi.mock` passthrough that RE-DECLARES the wrapped signature silently drops any argument the real function later grows
+
+**Situation:** GREEN work that adds a parameter to a core function a shell/integration suite mocks for
+recording. rb4-6 gave `guns.step(guns, targets)` a third `eye` argument.
+
+**Problem:** the recorder mock reads `step: (guns, targets) => { const out = actual.step(guns, targets)
+... }`. It still compiles (extra args are dropped, and the mock's type is inferred from its own
+parameter list, not checked against `actual`), and it still records — so the suite goes on measuring a
+sim that NO LONGER EXISTS. In rb4-6 the recorded cockpit collided from the eye origin while the real
+one collided from the pilot: **no kill landed in the entire 24-frame run**, and the suite's own
+`TARGET TRUTH` guard reported a plausible-looking "drawn in the wrong place" instead of "your mock is
+lying". It was caught only because a SEPARATE guard asserted its own precondition — `WRECK TRUTH`'s
+"no wreck was drawn — a kill must land, or this guard is vacuous".
+
+**Prevention:** when adding a parameter to a mocked function, `grep -rn "vi.mock.*<module>" tests/` and
+check every wrapper's parameter list, not just the call sites in `src/`. A passthrough is a COPY of the
+signature, and (guns.ts's own `shellDepth` comment says it best) a copy cannot track anything. Prefer
+`(...args: Parameters<typeof actual.step>) => actual.step(...args)` so the wrapper cannot drift; if the
+recorder needs a specific argument, destructure it from `args` AND record it — capturing what was
+really used is what let rb4-6's `TARGET TRUTH` become a genuine display-seam guard rather than a
+re-implementation of one.
+
+**Tell:** an integration suite that suddenly asserts "drawn somewhere else" / "no kill landed" after a
+signature change is accusing your code of a bug the MOCK is committing. Check the wrapper first.
