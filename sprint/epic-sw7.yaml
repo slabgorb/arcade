@@ -78,10 +78,13 @@ stories:
     description: 'Subsumes X-002 (piece lifetimes 24f/16f = 1.17s/0.78s wing/globe split), X-003 (age-keyed color ramp — CORRECTED: TIE pieces NEVER white-flash, timers born 24/16 below the #1F threshold; flash path belongs to ground objects at 32), X-006 (finale = 4-phase RED-blue-white DCIRCL+DRING animation, ~89 frames ~4.3s per X-008), X-007 (looming-station prelim — needs M-010), X-005 (tower/bunker ballistic debris + ground shadow; port TW1-3/BK1-3 pieces), M-010 (authentic Death Star pictures BSHEM/BSCIR/BSTRN/BSDSH at picture multiplier M.=32. — our ''no authentic data'' comment is refuted).'
     points: 12
     priority: p2
-    status: backlog
+    status: in_progress
+    assigned_to: Keith Avery
+    started: '2026-07-16T06:19:15Z'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-1
+    branch: feat/sw7-7-r7-explosions-finale
   - id: sw7-8
     title: R8 Audio content — bake PMSF2/PMCNT/PMEND/PMBEN/PMDES, wire missing speech, dedicated AUDDF/AUDSS, fly-by doppler and R2 sound sets
     description: 'Subsumes U-010..U-014 (five tunes through the existing sw6-1 bake pipeline: PMSF2 port death-knell, PMCNT cantina/hi-score, PMEND finale, PMBEN Ben''s theme + game-over, PMDES descent), U-015/U-016/U-017 (speech wiring: SPKR2N on port miss, SPKTHI on surface entry, attract/game-over lines), U-021/U-022 (dedicated AUDDF Death Star boom + AUDSS fireball-hit — both currently reuse enemy_explosion), U-019/U-020 (fly-by doppler set + R2 sound set — both size-l, DEFER-friendly if trimming). Sound board timebase 8.192ms confirmed correct in bake tools (U-001/U-002). R2 upload path per sw6-1 AC. Enables A-019 music-timed descent in sw7-9.'
