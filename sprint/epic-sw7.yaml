@@ -132,10 +132,13 @@ stories:
     description: 'Port TSPWAV wave composition (A-017): 6 wave-composition sets plus Darth ordering, driving the sw7-11 VM. LANDMINE from refutation: do NOT gate the +/-2048 corners to D-waves. A-015 reasoning proposed that and it is WRONG; TWV2Z shows the +/-2048 corners EVERY wave. Do not fix toward that. Builds on sw7-11 (VM engine). Full context: parent sw7-9 plus findings JSON. Keep citations green; mark A-017 remediated_by.'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-15'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-9
+    completed: '2026-07-15'
+    review_verdict: approved
   - id: sw7-13
     title: R9c Darth Vader's TIE — 4 lives, immortal in space, retreats, 2000 pts (A-016)
     description: 'Port Darth Vader TIE (A-016): 4 lives, immortal while in space, retreats. Award S-002 2,000 pts, which currently sit unawarded. Darth wave scheduling is composed in TSPWAV (sw7-12); flight behavior rides the sw7-11 VM. Full context: parent sw7-9 plus findings JSON. Keep citations green; mark A-016 and S-002 scoring remediated_by.'

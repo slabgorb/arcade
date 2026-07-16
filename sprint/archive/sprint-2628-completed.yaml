@@ -250,3 +250,8 @@ completed_stories:
     title: "SHAPES — the player-death splat, the burst effects, and the score pop-ups"
     points: 4
     completed: '2026-07-15'
+  - id: sw7-12
+    epic: sw7
+    title: R9b TSPWAV wave composition — 6 wave sets + Darth ordering (A-017)
+    points: 5
+    completed: '2026-07-15'
