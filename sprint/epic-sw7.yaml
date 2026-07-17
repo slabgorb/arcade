@@ -73,10 +73,14 @@ stories:
     description: 'The structural half of the old 14-pt R6 flagship (split 2026-07-16; catwalk → R6b, wall guns → R6c). Subsumes B-010 (KEYSTONE: 4-slot x 2-bit wall-panel grid, 49 wedges/11 pies — our 8-entity list cannot express it; size-l rewrite, the foundation R6b/R6c panel content plugs into), B-009 (wedge-chain trench length; DOFAR $8000 is a look-ahead window, not total length), B-011 (waves 0-10 are FIXED authored runs; ours randomizes every run), B-008 (scroll 500 vs ~15,750 u/s — 31x, render-scale-independent, single caller S1MVBS in PHEBS; length÷speed is ONE traversal system, bundled here like R11c did for the surface), M-013 (drop the 4 fabricated rails — the floor/wall geometry is rewritten here anyway; B-019 floor lines stay accepted). B-018 (miss re-flies whole trench) accepted — record. DEPENDS ON sw7-17 (hitscan laser): at 15,750 u/s closing the 12,000 u/s projectile bolt is out-run — B-008 is unplayable under the projectile gun.'
     points: 8
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-17T21:05:18Z'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-17
+    completed: '2026-07-17'
+    branch: feat/sw7-6-r6a-trench-structure-pacing
+    review_verdict: approved
   - id: sw7-7
     title: 'R7a TIE explosion pieces — per-piece lifetimes (X-002: wings 24f/1.17s, globe 16f/0.78s) + age-keyed colour ramp (X-003: TIE pieces NEVER white-flash)'
     description: 'Subsumes X-002 (TIE piece lifetimes: wings 0x18=24f=1.17s, globe 0x10=16f=0.78s — replaces flat TIE_DEATH_SECONDS=0.7) and X-003 (age-keyed colour/intensity ramp; TIE pieces born below the 0x1F flash threshold so they NEVER white-flash — the VJFLS flash path belongs to ground objects at 0x20=32). Split out of the original 12-pt sw7-7 on 2026-07-16; ground debris (X-005) went to a new R7b story and DS finale+picture (M-010/X-006/X-007) to a new R7c story.'

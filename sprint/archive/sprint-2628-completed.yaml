@@ -338,3 +338,8 @@ completed_stories:
     title: "THE TIMEBASE REBASE — the sim runs on FRAMES_PER_SEC=60; the ROM game frame is 15.625 Hz"
     points: 5
     completed: '2026-07-17'
+  - id: sw7-6
+    epic: sw7
+    title: R6a Trench structure & pacing — panel-grid wall model (B-010), wedge-chain length (B-009), fixed authored waves 0-10 (B-011), 31x scroll speed (B-008), drop fabricated rails (M-013)
+    points: 8
+    completed: '2026-07-17'
