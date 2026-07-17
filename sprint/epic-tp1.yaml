@@ -669,7 +669,8 @@ stories:
     title: "THE MOVING EYE, part 3 — the full rim-fly-off: the near rim sweeps past the advancing eye and off-screen while the Claw rides CURSY (WD-012 full fidelity beyond tp1-33's near-ring-fixed model)"
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-07-17'
     repos: tempest
     workflow: tdd
   - id: tp1-39
