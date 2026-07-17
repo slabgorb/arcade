@@ -318,3 +318,8 @@ completed_stories:
     title: "THE MOVING EYE, part 3 — the full rim-fly-off: the near rim sweeps past the advancing eye and off-screen while the Claw rides CURSY (WD-012 full fidelity beyond tp1-33's near-ring-fixed model)"
     points: 5
     completed: '2026-07-17'
+  - id: sw7-21
+    epic: sw7
+    title: R-LOCK The green lock-on circle is a non-ROM aim-assist, not authentic — rule remove vs keep-as-labelled; the code overclaims cabinet provenance (Object_12 = exhaust port, not a lock box)
+    points: 2
+    completed: '2026-07-17'

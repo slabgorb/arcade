@@ -240,7 +240,11 @@ stories:
     description: 'NEW fidelity finding (NOT in the 2026-07-15 audit; surfaced 2026-07-17 while reviewing sw7-17). The green LOCK-ON CIRCLE that rings the TIE under the reticle (isLocked / lockedEnemy / LOCK_RADIUS_NDC=0.12, story 8-14; drawn by render.ts drawLockOn) is a NON-ROM predictive aim-assist, and the code claims cabinet provenance it does not have. EVIDENCE: (1) no lock or lock-on anywhere in the 1983 source — grep hits are only inside the word BLOCK in the DIVTST/MATEST/SND test files. (2) The one object ever cited as a targeting-reticle / lock-on box — Object_12, three concentric squares — is actually .WP PORT (THERMAL EXHAUST PORT) per WSOBJ.MAC; that guess was SUPERSEDED in sw5-4. (3) The ROM gives ONLY the site crosshair (WSSITE.MAC) plus a POST-hit flash (LZ.HIT, the still-unported G-008) — feedback AFTER a hit, never a predictive you-have-this-shot. The specific comment to fix: the gameRules.ts LOCK_RADIUS_NDC docstring, the half-size of the aim box the cabinet lights a target inside — no ROM basis. IRONY to preserve in the fix: the QUANTITY the ring is computed from (the nearest object under the site) IS authentic — it is CLSLZ / min(CL.GDS,CL.ADS), the exact hitscan targeting sw7-17 ported; the cabinet simply never draws a ring around it. OPEN RULING (Jedi): either REMOVE the predictive lock ring for authenticity, OR KEEP it as an explicitly-labelled deliberate modernization (a house rule, like D-015/D-017). Either way the code must stop asserting cabinet provenance. If ruled a divergence, mint a finding id + remediated_by stamp per the epic contract and keep the citations suite green. WORKFLOW depends on the ruling: trivial if relabel-only; tdd if REMOVE (the story-8-14 lock-on tests change). Footnote: under the old projectile gun the ring was doubly wrong — it drew an authentic under-the-site fact while promising a hit the travelling bolt could not deliver (fixed by sw7-17).'
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-17'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-17'
     type: chore
+    branch: chore/sw7-21-remove-lock-on-ring
+    review_verdict: approved
