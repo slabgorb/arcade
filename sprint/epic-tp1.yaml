@@ -387,7 +387,8 @@ stories:
     description: "Cluster C14. Subsumes V-018, V-033, V-034, V-035, V-036. Depends on tp1-12 for the palette."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-17'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -396,7 +397,11 @@ stories:
       - "The ROM's actual strings ship, verbatim: 'ENTER YOUR INITIALS', 'RANKING FROM 1 TO n', 'SPIN KNOB TO CHANGE'."
       - "Depends on tp1-12 (palette)."
       - "npm test -- citations stays green."
+    completed: '2026-07-17'
     type: bug
+    branch: fix/tp1-20-hud-messages
+    review_findings: "APPROVED round 2 (round 1 REJECTED verdict superseded). Round 1: ROM re-verified field-by-field by an independent auditor (ALVROM SCORES + ALLANG messages, byte-level), 10/10 mutations killed, one HIGH — V-018 stamped remediated while its layout aspect lives. Round 2: fix verified four ways (delta-exact, byte-match, gate-bite mutation, full suite 1621/1621 + citations 25/25). Non-blocking follow-ups recorded: TEA hardening of two comment-foolable presence tests; HUD-layout follow-up story (V-018 stays open, ours points at the living evidence); curator note; reanchor unicode normalization."
+    review_verdict: approved
   - id: tp1-21
     title: "SCORING — the fuseball's score tier is a weighted random roll, not a depth band"
     description: "Cluster C15, minus B-009 (carved out to tp1-3) and minus SC-001, which is WON'T-FIX by PM ruling on 2026-07-13: Tempest's arcade high-score ladder is 8 deep and @arcade/shared ships 10 for the whole cabinet, but the cabinet-wide convention beats one game's fidelity and the four-game blast radius is not worth it. SC-001/004/009 are closed, not deferred — do not re-file them."

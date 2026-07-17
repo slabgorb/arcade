@@ -466,3 +466,27 @@ ceremony unless you show the mutations. Also record where the author corrected Y
 round-1 "88 > COCKPIT_HIT_RADIUS (80)" compared the wrong sphere — 80 is the *player's* hit sphere;
 the bolt only needs `TURRET_HIT_RADIUS`=200, so no kill was ever lost). Stamp that ACCEPTED loudly —
 a review that only ever finds fault in one direction is not being read as adversarial, just hostile.
+
+---
+
+### A multi-aspect finding whose `ours` cites only the FIXED aspect gets stamped `remediated_by` honestly-looking — audit the CLAIM for aspects with no citation anchor
+
+**Situation:** Reviewing a tp1 remediation story that stamps `remediated_by` on findings whose
+cited `ours` line the diff genuinely fixed (tp1-20: V-018's quote was the cycling-colour HUD line,
+and the colours WERE fixed).
+
+**Problem:** The citation only anchors ONE aspect of the finding. V-018's claim carries three:
+cycling colours (fixed), invented captions (fixed), and the SCORES-template LAYOUT — hi-score under
+P1's score, level below, a GREEN SCHIIN initials field — which the story deliberately left alone.
+The stamp freezes the WHOLE finding, so the un-cited layout divergence vanishes from the audit
+permanently. Everything mechanical is green (quote resolves, reanchor 0 lost, citations pass): the
+laundering-audit grep for prose edits also passes, because nothing was edited — the overclaim is in
+what the stamp SAYS, not in any diff line. Only reading the claim against the stamp catches it.
+
+**Prevention:** For every `remediated_by` added, read the finding's FULL claim and enumerate its
+aspects; for each aspect ask "did this diff remove it?" Any live aspect → the stamp overclaims:
+require the half-remediated split (W-030/tp1-24) — drop the stamp, re-point `ours` onto living
+evidence of the un-fixed aspect, file a curator note for the now-historical fixed half. The session
+record (TEA had logged the layout gap as a follow-up) does NOT substitute: the audit JSON is the
+machine-checked record, and it must not overclaim even when the sprint files tell the truth.
+

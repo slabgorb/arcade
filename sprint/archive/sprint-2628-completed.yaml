@@ -305,3 +305,8 @@ completed_stories:
     title: THE GLOW TAX — live shadowBlur saturates the GPU; production runs 8-34 fps
     points: 5
     completed: '2026-07-16'
+  - id: tp1-20
+    epic: tp1
+    title: "HUD & MESSAGES — fixed field colours and the ROM's actual strings; drop the three invented captions"
+    points: 5
+    completed: '2026-07-17'

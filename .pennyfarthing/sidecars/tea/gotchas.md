@@ -1042,3 +1042,30 @@ would.
 what it mutates), not just the call-site comment — two audio cues that look simultaneous in a
 quota-collapsed sim usually have distinct ROM moments that map onto distinct sim frames if you find
 the right latch edge.
+
+---
+
+### `bannerColorArg`'s regex cannot read a `vecText` call — bare-number POSITIONS satisfy its "the size is the first number" assumption
+
+**Situation:** Pinning the COLOUR of a text draw in tempest's render.ts (tp1-20 HUD fields; any
+future story that audits a colour argument rather than a string's presence).
+
+**Problem:** render.banners.test.ts's `bannerColorArg` finds the colour as "the token after the
+first bare number following the string literal" — sound for `drawGlowText(ctx, 'TEXT', W / 2,
+H * 0.2, 24, COLOR, …)` where the positions are EXPRESSIONS and only the size is a bare number,
+but WRONG for `vecText(ctx, String(s.score).padStart(6, '0'), 26, 22, 22, color, …)` where the
+positions are bare numbers: it captures the y-coordinate as the "colour". Worse, the text
+argument itself can be an expression carrying commas inside nested parens (`padStart(6, '0')`)
+or a template literal (`` `RANKING FROM 1 TO ${MAX_SELECT_LEVEL}` ``), which regex-only
+extraction truncates.
+
+**Prevention:** For colour pins, don't extend the regex — write a paren+quote-aware call slicer
+and a top-level-comma arg splitter (tp1-20.hud-messages.test.ts `textDrawCalls`/`argsOf`; both
+helpers share signature `(ctx, text, x, y, size, color, …)`, so text = args[1], colour =
+args[5]). Select the call by a regex on the TEXT ARG (with an exclude for lookalikes — the HUD
+score readout vs the gameover `FINAL SCORE ${…}` overlay both reference `s.score`), then
+classify args[5]. And self-check the parser in the suite with fixture strings (nested-comma and
+`${}` cases) so a RED audit can't be invalidated by a broken helper. `bannerColorArg` stays fine
+for quoted-literal drawGlowText banners — the trap is only calls with bare-number positions or
+non-literal text.
+

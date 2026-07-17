@@ -534,3 +534,23 @@ deviation**; the Reviewer accepted it.
 and no judgment calls. Then prove the anti-laundering rule yourself before claiming it: every `+`/`-`
 line in `docs/audit/findings/` that is not `"line":` must be **empty**. The citation gate reddens on
 the FULL suite, not on your story's files — run `npm test`, not just your two suites.
+
+---
+
+### `reanchor-citations.mjs --write` re-serializes the WHOLE findings file — `\uXXXX` escapes become literal unicode and bury your real diff
+
+**Situation:** Any tempest GREEN that runs the reanchor tool on a findings pair file still carrying
+the audit generator's `—`-style escapes (tp1-20 on pair-2/pair-6).
+
+**Problem:** The tool parses and re-writes the entire JSON with JS defaults, so every escaped
+em-dash/arrow in every finding flips to a literal character — hundreds of cosmetic +/- lines that
+make the anti-laundering check ("every non-`"line":` diff line must be empty") LOOK violated and
+hide the substantive changes from the Reviewer.
+
+**Prevention:** Verify the diff at the SEMANTIC level, not the byte level: `git show HEAD:<file>` →
+`json.loads` both versions → compare finding-by-finding, field-by-field, and print what actually
+changed. For tp1-20 that proved exactly 5 `remediated_by` stamps + 8 line re-points + 2 sanctioned
+verbatim re-spells and nothing else. Paste that inventory into the Dev assessment so the Reviewer
+audits 15 semantic changes instead of a 90KB byte diff. (Filed as an Improvement finding: the tool
+could serialize with escaped non-ASCII.)
+
