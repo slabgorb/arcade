@@ -11,15 +11,18 @@ stories:
     description: "Cluster C1. Subsumes C-001, M-001, M-003, F-004. The systematic error and the gate on everything numeric — LAND THIS ALONE AND FIRST, or every later numeric story bakes the 60 Hz reading into its baseline. movement.ts:45 and firing.ts:59 hard-code FRAMES_PER_SEC=60 labelled 'the ROM player-update cadence', but the cabinet advances one game frame per 64 ms = 15.625 Hz (NMI 250 Hz / 16 via AND I,0F + INC SYNC, BZONE.MAC:1084-1088; consumed by LSR SYNC at MAIN:422). The refutation established the effect is NOT uniform 3.84x: TURN is a pure per-frame quantum (3.84x too fast, M-001); FORWARD is 1.96x too fast because FORWARD_STEP=48 is itself under-scaled — the ROM SIN table peaks at 0x7FFF so the high byte is 127 not 64, and the M.SET halvings give 3/4 x 127 = 0x5E = 94 (M-003), partly cancelling the frame error; SHELL speed is only ~4% slow because the shell integrator already sub-steps 4x per frame (SAVE3=4 loop, BZONE.MAC:608, so 256 is per-sub-step -> ~16000 u/s, F-004). Expect the whole magnitude suite to re-baseline — that is the point, not a regression."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-17'
     repos: battlezone
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The 60 Hz conversion is corrected to the 15.625 Hz (64 ms) game frame everywhere it feeds a per-frame quantum (movement.ts:45, firing.ts:59), each carrying a comment citing BZONE.MAC:1085 (64 ms frame) and :422 (LSR SYNC)."
       - "FORWARD_STEP is corrected 48 -> 0x5E = 94 (the SIN table peaks at 0x7FFF, high byte 127, times 3/4); turn rate and forward speed are re-derived at 15.625 Hz. A test pins the corrected turn (ROM ~22 deg/s), forward, and shell speeds."
       - "The shell integrator is NOT naively rescaled: it already sub-steps 4x per frame (SAVE3=4, BZONE.MAC:608), so 256 is per-sub-step and yields ~16000 u/s — leave it (~4% is within tolerance). A test proves the shell speed was not multiplied by the frame-rate fix a second time."
       - "npm test -- citations stays green; the magnitude test suite is re-baselined against the 15.625 Hz values."
+    completed: '2026-07-17'
+    type: bug
+    review_verdict: approved
   - id: bz3-2
     title: "ENEMY AI AGGRESSION — the ROM tank is attack-dominant; the clone pursues 30% of the time"
     description: "Cluster C2. Subsumes E-002, E-004, E-009, E-011, E-013. Depends on bz3-1 (per-frame conversions). The ROM disposition tree is attack-DOMINANT: a fair coin (LDA PRAND / LSR / BCC R.ATCK) routes at least 50% of decisions straight to attack before any score logic, rising further when the player leads (E-002), where the clone makes pursuit a deliberate 0.3 minority and forbids back-to-back charges. The clone then COMPENSATES with a 2.5-5x wider fire cone (E-004, 6.9 deg vs ROM ~2.8 deg) and a ~1.5x faster turn (E-011, 34/59 vs ROM 22/44 deg/s) — the refuter confirmed these must be retuned TOGETHER with the disposition, not in isolation. Spawn arc is score-scaled in the ROM (0x0F->0x7F = +/-21 deg mild -> +/-178 deg full-aggro, centered on player heading) but the clone uses a fixed +/-90 deg (E-009). And the clone has NO long-range fire restraint where the ROM withholds fire at TDIST >= 0x24 until fully aggressive (E-013)."
@@ -28,11 +31,11 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "Enemy disposition is restored to attack-dominant: the ROM's fair-coin route to attack means at least 50% of decisions attack; the clone's charge probability is retuned up from 0.3 and the no-back-to-back restriction reconsidered against R.ATCK."
       - "The fire cone (toward ROM ~2.8 deg) and turn rate (toward ROM 22/44 deg/s) are retuned TOGETHER with the disposition change, not independently — they were compensations for the passivity."
       - "Spawn arc becomes score-scaled (+/-21 deg early -> +/-178 deg full aggression, centered on player heading), and the ROM's rookie fire-restraint (no fire while TDIST >= 0x24 until aggressive) is added."
+    type: bug
   - id: bz3-3
     title: "SPAWN PROBABILITY & ROSTER — missile odds are a 50/50 coin, and the super tank arrives one missile late"
     description: "Cluster C3. Subsumes R-008, E-010. Small and independent. (1) The missile-vs-tank spawn is a fair 50/50 coin flip in the ROM: LSR / BCC at BZONE.MAC:3737-3741 unambiguously resolves to a 1-bit coin, but the clone uses a provisional MISSILE_SPAWN_CHANCE=0.4 (enemies.ts:297) self-flagged 'undecoded'. (2) The super ('high-powered') tank appears one missile EARLY in the clone: NOR2D3 is '#missiles - 1' (LDA I,-1 init at :1175, 'SET TO 0 FOR FIRST' at :3773), so the ROM's CMP I,5 means the 6th missile, while the clone's from-0 missilesLaunched >= 5 fires on the 5th — a clean +1 off-by-one confirmed by the refuter."
@@ -41,10 +44,10 @@ stories:
     status: backlog
     repos: battlezone
     workflow: trivial
-    type: bug
     acceptance_criteria:
       - "MISSILE_SPAWN_CHANCE is corrected 0.4 -> 0.5 (fair coin, BZONE.MAC:3737-3741), and its 'undecoded' comment is replaced with the decode."
       - "Super-tank gating is fixed by one: it appears on the 6th missile (NOR2D3 = missiles - 1, CMP I,5), not the 5th."
+    type: bug
   - id: bz3-4
     title: "PER-TYPE COLLISION TABLES — the clone reuses one circle where the ROM has distinct proximity tables"
     description: "Cluster C4. Subsumes F-006, F-007. Depends on bz3-1 (units). The refuter confirmed F-005/006/007 are one architectural pattern: the clone flattens the ROM's per-type proximity tables to a single reused Euclidean tank-circle. (F-005, the shell-vs-tank view-space range+bearing cone, is ruled ACCEPT under the planar-sim descope and is NOT in this story.) Tank-vs-obstacle: the ROM uses per-type PROXTB radii (832/832/1024/960, i.e. .WORD 340/340/400/3C0 hex) where the clone sums two radii (~1876-2283), so obstacles block from ~2x too far (F-006). Shell-vs-obstacle: the ROM uses a distinct, smaller table PRXTBL (56/88/86, trailing-period decimals inside the hex block) with a >>2 range shift the clone omits, approximating it with the big tank-footprint radius (F-007)."
@@ -53,10 +56,10 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "Tank-vs-obstacle collision uses the per-type PROXTB radii (832/832/1024/960) rather than the summed-radii approximation."
       - "Shell-vs-obstacle collision uses the distinct PRXTBL table (56/88/86) with the ROM's >>2 range scaling, not the tank-footprint radius."
+    type: bug
   - id: bz3-5
     title: "EXPLOSION DEBRIS — a 6-piece gravity particle subsystem replacing the fixed 1.5s timer"
     description: "Cluster C5. Subsumes F-008 (re-sized m -> l by the coverage review AND the refuter: it is a whole new particle subsystem, not a constant swap). Depends on bz3-1. The ROM object explosion is a 6-piece gravity-driven particle sim: launch velocities IZVEL = 55,40,70,88,40,66 (BZMTNS.MAC:837-838, DECIMAL in that file's .RADIX 10 block — the refuter found a SIXTH byte .BYTE 66 at :838 that the auditor missed), GRAVTY = -4/frame (BZONE.MAC:380, decimal), pieces expanding then falling over ~3 s until the tallest lands. The clone has a fixed 1.5 s timer with no debris physics. Build this as a REUSABLE particle subsystem — the volcano eruption (bz3-6) consumes it."
@@ -65,10 +68,10 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "Object explosions spawn 6 gravity-driven debris pieces (IZVEL launch 55,40,70,88,40,66; GRAVTY=-4 per frame at 15.625 Hz) with physics-driven termination, replacing the fixed 1.5 s timer."
       - "The particle subsystem is factored so the volcano eruption (bz3-6) reuses it rather than re-implementing gravity particles."
+    type: bug
   - id: bz3-6
     title: "VOLCANO — the clone draws a static cone the ROM never had and omits the eruption it does have"
     description: "Cluster C6. Subsumes H-006, H-008. Depends on bz3-5 (particle subsystem). The clone draws a static volcano cone silhouette the ROM never had (H-008) while omitting the eruption the ROM does have: the VOLCNO rock ejecta (H-006), lifetime ~1.984 s, gravity ~-244 units/s^2 at the 15.625 Hz timebase, entirely unimplemented. Wire the ejecta onto the bz3-5 particle system and drop the invented cone."
@@ -77,10 +80,10 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The static volcano cone silhouette is removed (the ROM has no such cone)."
       - "The VOLCNO rock ejecta erupts using the bz3-5 particle subsystem, with the ROM's ejecta lifetime (~1.984 s) and gravity."
+    type: bug
   - id: bz3-7
     title: "RADAR SWEEP MECHANISM — the scanner computes a sweep angle but never uses it to gate blips"
     description: "Cluster C7. Subsumes D-001, D-002, D-003, D-005. D-001 depends on bz3-1 (frame rate). The defining arcade radar behaviour is missing: our core computes a sweep angle but never gates the blip list with it, so every target shows continuously instead of flashing as the rotating arm passes (D-003 — the ROM re-lights a blip only within a 0x0C = 16.875 deg window trailing the arm). No afterglow: the ROM sets BLIP=0xF0 then -8/frame = 30 frames = 1.92 s fade (D-002), which exceeds the sweep so blips pulse. The sweep is ~34% too slow: the ROM adds 0x0B (11) to SANGLE per frame over a 256-unit byte-angle circle -> 256/11 x 64 ms = 1489 ms/rev, where the clone uses 2000 ms (D-001; the 60 Hz false-match of 388 ms is ruled out). And no max range: the ROM drops the blip at TDIST >= 0x80, the clone clamps to the ring edge but never drops (D-005). DRADAR is JSRed once per frame at :510, so the sweep is FRAME-driven, not $INTCT-driven."
@@ -89,11 +92,11 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "Blips are sweep-gated: a target is painted only as the arm passes it (trailing window 0x0C ~ 16.875 deg), then fades (BLIP=0xF0, -8/frame ~ 1.92 s), so the scanner sweeps and blips pulse rather than showing continuously."
       - "Sweep rate is corrected to +0x0B (11) byte-angle units per frame -> 1489 ms/rev (not the clone's 2000 ms), driven off the game frame."
       - "Blips past maximum range (TDIST >= 0x80) are dropped, not clamped to the ring edge."
+    type: bug
   - id: bz3-8
     title: "MOUNTAIN & MOON GEOMETRY — the ridge is a procedural two-sine; the real MTN0-7 was in the ROM all along"
     description: "Cluster C8. Subsumes H-002, H-003. The clone's mountain ridge is a procedural two-sine profile (H-002) and its moon is independently authored (H-003), both built on the false premise that the quarry held no horizon picture data. It does: the hand-authored ridge is MTNS/MTN0-7 (BZMTNS.MAC:11-183, .RADIX 16) drawn by DRAW MOUNTAIN SCAPE/MOUNTS (BZONE.MAC:1240), with the moon embedded in MTN0 (brite tiers 7/2/5). (This premise-correction came from audit finding H-001: BATBL, which an earlier draft called 'the mountain-scape table', is actually the 'BATTLE' TITLE-LOGO object 0x17 — LOGOBJ at BZMTNS.MAC:846 — not the ridge.) Port the real geometry."
@@ -102,10 +105,10 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The mountain ridge is ported from the ROM's hand-authored MTN0-7 vector data (BZMTNS.MAC:11-183), replacing the procedural two-sine profile."
       - "The moon geometry is taken from its embedding in MTN0 (brite tiers 7/2/5), not authored separately."
+    type: bug
   - id: bz3-9
     title: "COLLISION BOUNCE — the ROM jolts the view and bobs the mountains on a hard hit; the clone does neither"
     description: "Cluster C9. Subsumes M-009, H-007. One ROM mechanic, two visible effects: the BOUNCE routine jolts the view on the Z-axis (M-009, the ROM's screen jolt on driving into an obstacle) AND bobs the mountain silhouette vertically (H-007, present in MOUNTS, absent from the clone). The clone reproduces neither."
@@ -114,9 +117,9 @@ stories:
     status: backlog
     repos: battlezone
     workflow: trivial
-    type: feature
     acceptance_criteria:
       - "Driving into an obstacle triggers the ROM's BOUNCE: a view jolt (Z-axis) plus a synchronized vertical bob of the mountain silhouette."
+    type: feature
   - id: bz3-10
     title: "MISSING AUDIO CUES — WARNG, RBEEP, BOING, BONER, and the saucer-kill DISINT zap"
     description: "Cluster C10. Subsumes U-008, U-009, U-010, U-012, U-014. Five ROM synth cues are missing or incomplete, and their trigger moments already exist in core: WARNG 'enemy in range' alarm (U-008 — alerts.ts already computes ENEMY IN RANGE for the HUD, only the audio half is missing), RBEEP radar-sweep beep (U-009), BOING obstacle-bump one-shot (U-010, the MOTION BLOCKED moment), BONER bonus-tank bell (U-012), and the DISINT zap layer omitted from the saucer kill (U-014, ~104 ms per the refuter's DS1 envelope correction; DISINT is high-priority but SAUSND/SUPBON outrank it). audio.ts is runtime synthesis, so compare envelope shape/timing, not waveforms; envelopes count NMIs at 250 Hz, not game frames."
@@ -125,10 +128,10 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: feature
     acceptance_criteria:
       - "The WARNG (enemy in range), RBEEP (radar sweep), BOING (obstacle bump), and BONER (bonus-tank) synth cues are added and fired on their existing core trigger moments."
       - "The saucer kill adds the DISINT zap layer (~104 ms) over the generic explosion, at the ROM's priority (below SAUSND/SUPBON)."
+    type: feature
   - id: bz3-11
     title: "OFF-AXIS ENEMY PROMPTS (visual) — the flashing ENEMY IN RANGE and ENEMY TO LEFT/RIGHT/REAR callouts"
     description: "Cluster C11. Subsumes C-004, C-005, S-021. The ROM cues the off-screen enemy two ways the clone half-implements: it FLASHES 'ENEMY IN RANGE' at ~3.9 Hz (C-004, gated by AND FRAME bit 1) where the clone draws it steadily, and it shows a directional 'ENEMY TO LEFT/RIGHT/REAR' callout (S-021, C-005) telling the player which way to turn toward the unseen enemy. The four direction strings are already transcribed in text.ts but alerts.ts only ever emits MOTION_BLOCKED and ENEMY_IN_RANGE — the directional half is dead. (The audio twin, WARNG, is bz3-10.)"
@@ -137,10 +140,10 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: feature
     acceptance_criteria:
       - "ENEMY IN RANGE flashes at the ROM cadence (~3.9 Hz, AND FRAME bit 1) instead of drawing steadily."
       - "The directional ENEMY TO LEFT/RIGHT/REAR callout is emitted (the four strings already exist in text.ts; wire the two that are never emitted)."
+    type: feature
   - id: bz3-12
     title: "ENEMY TANK MODEL DETAIL — the rotating radar antenna and animated treads the clone omits"
     description: "Cluster C12. Subsumes W-017, W-018. From world-3d, which otherwise filed ZERO model divergences (all 10 clone models are byte-exact ROM decodes). Every ROM enemy tank draws two sub-objects the clone renders as neither: a rotating radar antenna (RDRTBL/RDROBJ, W-017) and animated treads (TREAD4-TREADB / TREADS, W-018 — the clone's 'tread' references are all the control scheme, not geometry)."
@@ -149,10 +152,10 @@ stories:
     status: backlog
     repos: battlezone
     workflow: tdd
-    type: feature
     acceptance_criteria:
       - "Enemy tanks render a rotating radar antenna from the ROM's RDRTBL/RDROBJ geometry."
       - "Enemy tanks render animated treads (TREAD4-TREADB)."
+    type: feature
   - id: bz3-13
     title: "HUD & DOC TEXT — 'GREAT SCORE' on the initials screen, and the reversed language-code note"
     description: "Cluster C13. Subsumes S-020, B-028. Two small text corrections. (1) The initials-entry banner hard-codes 'HIGH SCORE' where the ROM shows the 'GREAT SCORE' congratulation (L1MSG); the MESSAGES.GREAT_SCORE constant is defined but consumed nowhere (S-020). (2) The findings doc's DSW0 language-code note is reversed: LNGTBL (indexed 2 x bits<7:6>) orders English/German/French/Spanish, so 01 = German and 10 = French, not the doc's 01=French/10=German (B-028, immaterial to gameplay but a factual error in a citation-authority doc)."
@@ -161,7 +164,7 @@ stories:
     status: backlog
     repos: battlezone
     workflow: trivial
-    type: chore
     acceptance_criteria:
       - "The initials-entry banner shows GREAT SCORE (using the existing unused MESSAGES.GREAT_SCORE constant)."
       - "The findings doc's DSW0 language codes are corrected to 01=German, 10=French."
+    type: chore

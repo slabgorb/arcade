@@ -333,3 +333,8 @@ completed_stories:
     title: R4 Score and shield rules — wave-scaled Force bonus, per-shield wave bonus and banner, drop the invented 400k/800k thresholds, post-hit shield window
     points: 4
     completed: '2026-07-17'
+  - id: bz3-1
+    epic: bz3
+    title: "THE TIMEBASE REBASE — the sim runs on FRAMES_PER_SEC=60; the ROM game frame is 15.625 Hz"
+    points: 5
+    completed: '2026-07-17'
