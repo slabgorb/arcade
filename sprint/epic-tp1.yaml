@@ -669,10 +669,12 @@ stories:
     title: "THE MOVING EYE, part 3 — the full rim-fly-off: the near rim sweeps past the advancing eye and off-screen while the Claw rides CURSY (WD-012 full fidelity beyond tp1-33's near-ring-fixed model)"
     points: 5
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-07-17'
     repos: tempest
     workflow: tdd
+    completed: '2026-07-17'
+    review_verdict: approved
   - id: tp1-39
     title: Warp-dive polish — drawWarp speed streaks ride the diving (expanded) spokes, not the static base well (render.ts:892-904)
     points: 1

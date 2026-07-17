@@ -313,3 +313,8 @@ completed_stories:
     title: R11b ROM laser is HITSCAN gun→site — 8-frame LZ.EDG sweep, instant resolve under the site, trench clip $7000 (G-004 re-ruled wont_fix→fix, G-012); BLOCKS sw7-6
     points: 5
     completed: '2026-07-17'
+  - id: tp1-38
+    epic: tp1
+    title: "THE MOVING EYE, part 3 — the full rim-fly-off: the near rim sweeps past the advancing eye and off-screen while the Claw rides CURSY (WD-012 full fidelity beyond tp1-33's near-ring-fixed model)"
+    points: 5
+    completed: '2026-07-17'
