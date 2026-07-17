@@ -490,3 +490,24 @@ evidence of the un-fixed aspect, file a curator note for the now-historical fixe
 record (TEA had logged the layout gap as a follow-up) does NOT substitute: the audit JSON is the
 machine-checked record, and it must not overclaim even when the sprint files tell the truth.
 
+
+---
+
+### The eyeball run does NOT require playing to the moment — drive render() directly on models.html with fabricated states
+
+**Situation:** tp1-38's warp-dive render change delegated "the visual" to the Reviewer's eyeball,
+but reaching a level-1 warp means clearing a 16-enemy wave — impractical to automate, and tempest
+has no dev phase-jump keys (unlike star-wars' 7/8/9).
+
+**Prevention/Recipe:** tempest serves a SECOND entry, `/models.html`, that boots only the contact
+sheet — no game loop, so render.ts's module singletons (phosphor, starfield) are yours alone.
+Playwright: navigate there, then one evaluate that imports `/src/core/state.ts`, `/src/core/
+geometry.ts`, `/src/shell/render.ts`, `/src/shell/fx.ts`, appends an own canvas, and defines
+`window.__probe(spec)` = fabricate `initialState(seed)` → set mode/warp/spikes/level per spec →
+call `render(ctx, s, W, H, createFx(), 1, 1/60)` ~30 times (settles the phosphor) → screenshot per
+state. Four frames covered tp1-38: pre-dive baseline, mid-expansion, the flagged rim-gone phase,
+and the fly-in. Verify the PORT OWNER first (`lsof -ti tcp:5273` → cwd) — 5273 belonging to THIS
+checkout is what makes the probe evidence, not someone else's tree.
+
+**Also:** screenshots land in the ORCHESTRATOR repo root by default (Playwright MCP cwd) — move
+them to the session scratchpad or they dirty the tree the SM is about to commit from.
