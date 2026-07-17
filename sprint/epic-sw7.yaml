@@ -221,10 +221,12 @@ stories:
     description: "Subsumes D-022 (fix: scroll a sim-integrated ACCELERATING rate — seed $100/frame=5,250 u/s, +1/frame/frame=+420 u/s², cap $400=21,000 u/s; WSMAIN.MAC 'LDD #100 ;INITIAL PLAYER SPEED', 'ADDD #1/CMPD #400'; keep the world-scroll camera inversion, STRUCTURAL-accepted), D-019 (fix: end by TRAVERSAL ONLY — GD.SEQ>=5, 'ONLY GO SO FAR INTO GROUND SEQUENCES', one sequence per $8000 wrap 'SEQUENCE RUNS 80 TO 80' — five wrapped passes of the maze ~371 frames ~18.1s; DROP the allTowersKilled early-exit from phaseCleared; the 50,000 clear bonus still banks once, decoupled, Q.ATP), D-018 (fix: re-transcribe the dropped 4th operand '.BYTE .C ;AWAKENING SEQUENCE NUMBER' WSGRND.MAC:115, values 0..3, into surfaceMazes.ts for all 19 mazes; objects activate when GD.SEQ >= entry.seq, WSGRND.MAC:740-742 — staged reveal per pass), and D-015 (RULED DROP: wave 1 runs space→trench like the cabinet — remove mazeForWave(1)→SQUARE special case and route wave-1 progression past 'surface'; first surface = wave 2 BUNK). Music rider: PH.TIM==14. → PMREB 'FINISH GROUND WITH REBEL' (sw7-8 hooks live). Today's behaviour for contrast: ONE pass at flat 600 u/s = ~57s of unhittable 2-px towers. DEPENDS ON sw7-17 (hitscan) — authentic speeds are unplayable under the projectile gun. Stamp remediated_by D-018/D-019/D-022/D-015, reanchor, suite green. Design: star-wars docs/superpowers/specs/2026-07-16-surface-gunnery-and-traversal-design.md"
     points: 8
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-17T23:53:11Z'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-17
+    branch: feat/sw7-18-r11c-surface-traversal-rebuild
   - id: sw7-19
     title: R6b Trench catwalk is a wall-mounted FORCE FIELD — side-gated .WP WFF panel, not a channel-spanning bar (B-012 + M-012)
     description: "Split from the 14-pt R6 flagship (2026-07-16). Subsumes B-012 (the catwalk is a wall-MOUNTED force field in the ROM, side-gated — .WP WFF panel content, not our channel-spanning bar; one of the original story's two size-l rewrites) and M-012 (the WFF model port — the ROM's .WGD WFG comment 'CATWALK COLOR WHEN COLLIDED' nails the identification). Expressed as panel content in the B-010 wall-panel grid, hence depends_on sw7-6 (R6a lands the grid). Collision is side-gated: the field blocks only the wall side it is mounted on."
