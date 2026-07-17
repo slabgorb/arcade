@@ -554,3 +554,25 @@ verbatim re-spells and nothing else. Paste that inventory into the Dev assessmen
 audits 15 semantic changes instead of a 90KB byte diff. (Filed as an Improvement finding: the tool
 could serialize with escaped non-ASCII.)
 
+
+---
+
+### A TEA source-text pin can encode a FALSE wiring premise — read the call site before "fixing" behavior that was never broken
+
+**Situation:** tp1-38's render suite demanded drawWarp stop anchoring the Claw via
+`clawTransform(tube, …)` ("the warped tube handed to drawWarp"). The premise: render maps
+`{...s, tube: warpDescentTube(...)}` and drawWarp draws that. False — the call site passes the
+UNMAPPED `s` (only drawTube/drawSpikes get the mapped `scene`), so the Claw was ALREADY static.
+
+**Prevention:** Before implementing a wiring change a textual pin demands, trace the actual call
+site. If the premise is wrong, the minimal GREEN is a clarity rename (`tube` → `staticTube`) that
+makes the correct wiring structural + a Delivery Finding correcting the record — not a behavior
+change. Satisfying the pin's letter while documenting its premise keeps both the suite and the
+audit honest.
+
+**Bonus (tempest warp geometry):** for a moving-eye phase, re-parameterising interior depths onto
+the truncated visible span (`d' = min(d, span)/span`, span = eye-clip depth) keeps the projective
+interpolation EXACT — position scale comes out `R/(1−(p+d)(1−R))`, the true CASCAL law — because
+the projective form is invariant under linear re-spans of PY. And `p + d_eye ≡ 1/(1−R)` (constant),
+so the eye-plane clip ring has a progress-independent scale. Both identities save you from hacking
+approximations into drawSpikes.
