@@ -1069,3 +1069,34 @@ classify args[5]. And self-check the parser in the suite with fixture strings (n
 for quoted-literal drawGlowText banners — the trap is only calls with bare-number positions or
 non-literal text.
 
+
+---
+
+### A contract change that would redden a sibling suite may really be a SEAM SPLIT — check whether the old contract is PERMANENTLY TRUE for a second consumer
+
+**Situation:** tp1-38 (the WD-012 rim-fly-off) "beyond tp1-33's near-ring-fixed model" — the
+obvious RED plan was to re-seat tp1-33.warp-eye.test.ts (its AC4 pins the near ring byte-identical
+across the dive, exactly what the new model refutes).
+
+**Problem:** `warpDiveTube` has TWO consumers with OPPOSITE cull semantics. The DESCENT advances a
+positive eye into the well — the rim crosses it at p* = (16+H)/224 and the ROM aborts behind-eye
+lines (ONELN2 "LDA EYH / IFPL ... LDA PYL / CMP EYL / IFCC / RTS", ALDISP.MAC:1550-1558). The
+FLY-IN parks the eye at −1536, and that same `IFPL` DISARMS the cull — nothing can be behind a
+negative eye, so the fly-in mapping (render drives warpDiveTube(newTube, 1→0)) must NEVER fly the
+rim off. One progress-only signature cannot serve both phases. Changing warpDiveTube in place
+would have broken the fly-in AND forced functional re-seats across tp1-33's whole suite.
+
+**Prevention:** Before re-seating a sibling suite for a "model upgrade", ask WHO ELSE consumes the
+seam and whether the OLD behaviour is still the correct contract for one of them. If yes, split
+the seam (tp1-38: new `warpDescentTube` for the dive; `warpDiveTube` retained as the fly-in
+frame) — the sibling suite then needs only a comment re-scope (its pins become permanent
+keep-behavior guards for the surviving consumer) and the re-seat surface drops to ZERO. Do the
+algebra before assuming the old seam is wrong everywhere: tp1-33's far-ring path was PROVABLY
+already exact (shipped near0+(far0−near0)·(1−p)/D ≡ VP+(R/D)(near0−VP), the true moving-eye far
+law), so the split was purely additive.
+
+**Bonus quarry for warp stories:** the rim's expansion in fractions of its eye-crossing p* is
+UNIVERSAL — kNear(f·p*) = 1/(1−f) (4/3, 2, 4 at f = ¼, ½, ¾) — a well-independent pin that
+complements per-well absolute samples. And past the bottom the ROM forces CURSY=0xFF
+(ALWELG.MAC:1038-1039) so DSPCUR stops drawing the cursor — the cursor "rides CURSY" only while
+on the lines.
