@@ -323,3 +323,8 @@ completed_stories:
     title: R-LOCK The green lock-on circle is a non-ROM aim-assist, not authentic — rule remove vs keep-as-labelled; the code overclaims cabinet provenance (Object_12 = exhaust port, not a lock box)
     points: 2
     completed: '2026-07-17'
+  - id: rb4-17
+    epic: rb4
+    title: "THE PLANE IS DRAWN AT THE WRONG SCALE — model bytes are not world units, and the ROM sizes the picture with its own Z"
+    points: 8
+    completed: '2026-07-17'
