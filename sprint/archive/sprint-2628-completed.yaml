@@ -328,3 +328,8 @@ completed_stories:
     title: "THE PLANE IS DRAWN AT THE WRONG SCALE — model bytes are not world units, and the ROM sizes the picture with its own Z"
     points: 8
     completed: '2026-07-17'
+  - id: sw7-4
+    epic: sw7
+    title: R4 Score and shield rules — wave-scaled Force bonus, per-shield wave bonus and banner, drop the invented 400k/800k thresholds, post-hit shield window
+    points: 4
+    completed: '2026-07-17'

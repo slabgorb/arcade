@@ -4,6 +4,47 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 
 ---
 
+### A "remove the invented constant" story: the invented number is often a REAL ROM value for a DIFFERENT mechanic — pin the mechanism you're deleting, not the number
+
+**Situation:** A BOOK_WAS_WRONG fidelity story hands you a constant to DELETE (sw7-4 / S-015:
+the clone's `EXTRA_LIFE_THRESHOLDS = [400_000, 800_000]`, "an extra shield when the score crosses
+400k/800k"). The code comment defended it hard ("do NOT ×10", cited a findings doc).
+
+**Problem:** It is tempting to write the removal test as "the ROM contains no 400,000/800,000" — but
+the numbers ARE in the ROM. They are the **Death-Star-SELECTION start bonus** display strings
+(`TSCBN1..4` = 200k/400k/600k/800k, WSGAS.MAC:527-530; banner MS.BON "DEATH STAR BONUS EARNED";
+awarded ONCE at game start, `SCRWAV`). The clone misread a one-time *selection* bonus as a recurring
+*score-threshold* extra-life ladder. A test asserting "400000 absent from the ROM" is both wrong and
+vacuous.
+
+**Prevention:** Pin the MECHANISM, not the literal. The correct removal test is behavioural: crossing
+those scores grants **no extra shield** (`finalizeScore(prev@399_999, next@800_000).lives ===
+prev.lives`), and the score funnel never RAISES lives for any jump. Invert the old suite (sw3-6's
+"awards a life at 400k" → "grants nothing at 400k"), keep the unrelated blocks (the `byte_4B2C`
+flash) verbatim. And record the real mechanic (the selection bonus) as a Delivery Finding — it is a
+genuine unmodelled feature, not noise, and explains where the book's error came from.
+
+---
+
+### A story that SUBSUMES an audit item can MISLABEL it — verify the item's ROM symbol before you scope its test
+
+**Situation:** A cluster story folds several audit findings into one line (sw7-4 R4: "S-013 (5,000 per
+surviving shield unit + **H-021 RWD banner**)").
+
+**Problem:** The story's parenthetical equated H-021 with S-013's per-shield banner. The 1983 source
+says they are **two different banners**: the per-shield reward is `MS.BRE` "BONUS FOR REMAINING
+ENERGY / 5,000 X N" (TCMES.MAC:611-612, end-of-wave VEWNXT), while H-021 is `MS.RWD` "50,000 FOR
+SHOOTING ALL TOWERS" (TCMES.MAC:609, shown when towers-left hits 0). Writing ONE banner test to the
+story's wording would have silently dropped the other and pinned the wrong text/trigger.
+
+**Prevention:** For every subsumed banner/sound/score item, grep the ROM for its symbol and its CALL
+SITE before scoping the test (the same "a label's comment is not a caller" discipline). Two banners →
+two tests; log the conflation as a deviation so the Reviewer knows the story text was corrected, not
+ignored. Corollary: the story's own description is a lower spec authority than the primary source it
+cites — when they disagree, the ROM wins, and you say so in writing.
+
+---
+
 ### Pinning a lookup TABLE? Test the wave AFTER the last row. The bug lives where the table ENDS.
 
 **Situation:** Any story that ports a ROM wave/skill table (`TWFUSC`, `WPULTIM`, `WPULPOT`, the whole

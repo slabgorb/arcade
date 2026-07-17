@@ -48,10 +48,14 @@ stories:
     description: 'Subsumes S-012 (Force bonus 5k/10k/25k/50k/100k by wave — index 0-based, hence depends on sw7-2), S-013 (5,000 per surviving shield unit + H-021 RWD banner), S-015 (BOOK_WAS_WRONG: remove non-ROM 400k/800k extra-shield thresholds — refuter did the exhaustive BCD hunt), S-016 (post-hit shield-loss window: ROM loses max one shield per gauge-redraw cycle).'
     points: 4
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-17'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-2
+    completed: '2026-07-17'
+    review_findings: 'HIGH: S-016 post-hit window bypassed at wave-internal phase boundaries — enterPhase resets shieldHitAt, so a hit on a phase-clear frame is not debounced (reachable AC violation). Fix: persist shieldHitAt across phases + phase-boundary regression test. Plus 3 LOW: unnecessary as-unknown-as GameState cast, stale audio.test.ts event-coverage list (missing shield-bonus/tower-bonus), layoutText mock drops opts.'
+    review_verdict: approved
   - id: sw7-5
     title: R5 Surface hazard — bunkers fire (GDBNKGN) and flying into a standing tower/bunker costs a shield; the maze fights back
     description: 'Subsumes D-016 (bunkers fire: object type .BYTE 3 SHORTY dispatches GDBNKGN via LBHI at WSGRND:1200; ours silences via kind !== ''bunker''), D-020 (ship-into-tower/bunker costs a shield + rolls the ship, GDVIEW BG1GLW+AUDCR; ours has NO ship-object collision). Record accepted deviations D-015/D-017/D-019/D-021/D-022 as house rules in the session (ROM: no wave-1 surface, no altitude penalty, traversal-only end, 5250-21000 u/s ramp).'
