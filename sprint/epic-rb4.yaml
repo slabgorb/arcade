@@ -312,3 +312,19 @@ stories:
     type: bug
     branch: fix/rb4-17-plane-picture-scale-dual-z
     review_verdict: approved
+  - id: rb4-18
+    title: The propeller flickers distractingly — it is drawn every frame; replicate the ROM's frame-skip/blank draw cadence (RBGRND draw gating) so it reads as spin, not strobe
+    points: 3
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
+  - id: rb4-19
+    title: Wrong font — route red-baron's text/HUD rendering through the shared @arcade/shared/font subpath (v0.15.0 already pinned) instead of the local/incorrect font
+    points: 2
+    priority: p2
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    type: bug
