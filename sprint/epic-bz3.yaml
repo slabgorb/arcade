@@ -28,13 +28,15 @@ stories:
     description: "Cluster C2. Subsumes E-002, E-004, E-009, E-011, E-013. Depends on bz3-1 (per-frame conversions). The ROM disposition tree is attack-DOMINANT: a fair coin (LDA PRAND / LSR / BCC R.ATCK) routes at least 50% of decisions straight to attack before any score logic, rising further when the player leads (E-002), where the clone makes pursuit a deliberate 0.3 minority and forbids back-to-back charges. The clone then COMPENSATES with a 2.5-5x wider fire cone (E-004, 6.9 deg vs ROM ~2.8 deg) and a ~1.5x faster turn (E-011, 34/59 vs ROM 22/44 deg/s) — the refuter confirmed these must be retuned TOGETHER with the disposition, not in isolation. Spawn arc is score-scaled in the ROM (0x0F->0x7F = +/-21 deg mild -> +/-178 deg full-aggro, centered on player heading) but the clone uses a fixed +/-90 deg (E-009). And the clone has NO long-range fire restraint where the ROM withholds fire at TDIST >= 0x24 until fully aggressive (E-013)."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-17'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - "Enemy disposition is restored to attack-dominant: the ROM's fair-coin route to attack means at least 50% of decisions attack; the clone's charge probability is retuned up from 0.3 and the no-back-to-back restriction reconsidered against R.ATCK."
       - "The fire cone (toward ROM ~2.8 deg) and turn rate (toward ROM 22/44 deg/s) are retuned TOGETHER with the disposition change, not independently — they were compensations for the passivity."
       - "Spawn arc becomes score-scaled (+/-21 deg early -> +/-178 deg full aggression, centered on player heading), and the ROM's rookie fire-restraint (no fire while TDIST >= 0x24 until aggressive) is added."
+    completed: '2026-07-17'
     type: bug
   - id: bz3-3
     title: "SPAWN PROBABILITY & ROSTER — missile odds are a 50/50 coin, and the super tank arrives one missile late"

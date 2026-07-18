@@ -343,3 +343,8 @@ completed_stories:
     title: R6a Trench structure & pacing — panel-grid wall model (B-010), wedge-chain length (B-009), fixed authored waves 0-10 (B-011), 31x scroll speed (B-008), drop fabricated rails (M-013)
     points: 8
     completed: '2026-07-17'
+  - id: bz3-2
+    epic: bz3
+    title: "ENEMY AI AGGRESSION — the ROM tank is attack-dominant; the clone pursues 30% of the time"
+    points: 3
+    completed: '2026-07-17'
