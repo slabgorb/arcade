@@ -1,0 +1,54 @@
+id: bz4
+type: epic
+title: Battlezone ROM fidelity — deferred bz3 follow-ups
+description: Long-tail ROM-fidelity refinements surfaced by the bz3 epic reviews (all shipped in v1.0.0 as documented deviations/non-blocking findings). Each has a verified primary-source citation from the bz3 work. Not required for fidelity-correctness; they close the remaining gaps between the clone and exact 1980-cabinet behavior. Fourth of the bz1/bz2/bz3/bz4 Battlezone epic line.
+priority: p3
+status: backlog
+repos: battlezone
+stories:
+  - id: bz4-1
+    title: BOUNCE completion — the 0xFF death/mutual-kill jolt (M-009 sibling) and the horizon-line bob (H-007 residual)
+    description: 'The ROM writes BOUNCE in three places; bz3-9 shipped only the obstacle-ram 0x3F. Add the getting-hit jolt: BOUNCE=0xFF on player death / windshield crack (BZONE.MAC:2337-2338) and on mutual player-enemy kill (BZONE.MAC:3363-3364), widening the bounce register from 0-63 to a full byte and reconciling its free-running behaviour across death. Also bob the horizon LINE with the mountains: bz3-9 bobbed only ridge/moon, but MOUNTS draws the horizon line from the same bounced beam origin (BZONE.MAC:1279-1282), so the ROM bobs them together. Surfaced by the bz3-9 review as an unfiled M-009 sibling plus an H-007 residual.'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: battlezone
+    workflow: tdd
+    acceptance_criteria:
+      - BOUNCE=0xFF fires on player death / windshield crack (BZONE.MAC:2337-2338) and mutual player-enemy kill (BZONE.MAC:3363-3364); the bounce register widens from 0-63 to a full byte and its post-death behaviour is reconciled.
+      - The horizon line bobs together with the mountain silhouette off the shared bounced beam origin (MOUNTS, BZONE.MAC:1279-1282), not just ridge and moon.
+  - id: bz4-2
+    title: Seeded-stochastic volcano emitter — per-rock independently-staggered respawn
+    description: 'bz3-6 shipped a fixed-velocity synchronized relaunch-on-retire loop as a documented deviation (core purity forbade RNG at the time). The ROM emits VOLCNO rocks independently and stochastically: each rock draws YSPD=(PRAND AND 7)+5 at random (BZONE.MAC:1405-1407) and respawns on its own staggered 1-in-8 timer (BZONE.MAC:1393-1395), not as a synchronized volley. Thread a seeded, deterministic PRNG into the eruption so the rocks stagger and vary per-rock while the sim stays replayable. Reuses the bz3-5 debris engine (already validated/config-guarded).'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: battlezone
+    workflow: tdd
+    acceptance_criteria:
+      - Volcano rocks respawn independently and staggered (the ROM's ~1-in-8 per-rock timer, BZONE.MAC:1393-1395), not as a synchronized 5-rock volley.
+      - Each rock's launch velocity is a randomly-drawn YSPD=(PRAND AND 7)+5 (BZONE.MAC:1405-1407), produced by a seeded deterministic PRNG that keeps the eruption replayable and core-pure.
+  - id: bz4-3
+    title: Enemy tank animation fidelity — movement-tied tread counter and absolute antenna orientation
+    description: 'bz3-12 shipped the rotating antenna + animated treads driving off the free-running frameCount, as a documented deviation. Two refinements to match the ROM: (1) tie the tread counter to tank MOVEMENT (TRDCTR INC on forward BZONE.MAC:2669 / DEC on reverse BZONE.MAC:2673) so treads freeze when the tank holds still and reverse with backward motion, threading a per-hostile movement-derived counter through Hostile/EnemyState/sim; (2) store the radar antenna angle ABSOLUTE, decoupled from tank heading (BZONE.MAC:1561-1562), rather than the shipped body_heading + RANGLE. Rate and period are already byte-exact; only the movement coupling and heading phase differ.'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: battlezone
+    workflow: tdd
+    acceptance_criteria:
+      - 'The tread animation counter is tied to tank movement (INC forward BZONE.MAC:2669 / DEC reverse BZONE.MAC:2673): treads freeze when stationary and reverse with backward motion.'
+      - The radar antenna angle is stored absolute, decoupled from tank heading (BZONE.MAC:1561-1562).
+    type: refactor
+  - id: bz4-4
+    title: Audio cue duration reconcile — BOING 456ms and the DISINT 104-vs-96ms ruling
+    description: bz3-10 residuals from the NUMBER x FRCNT envelope-decode correction. (1) BOING currently ships 496ms but the true NUMBER x FRCNT value is 456ms (WP1). (2) DISINT ships 104ms per the epic AC / refuter DS1 figure, but the pure engine model gives 96ms (NUMBER x FRCNT) — rule the AC-vs-engine tension and land whichever is correct. Also reword the audio.ts comment that currently states a formula-contradicting 'one frame per record' claim for multi-record cues.
+    points: 1
+    priority: p3
+    status: backlog
+    repos: battlezone
+    workflow: trivial
+    acceptance_criteria:
+      - BOING duration corrected to the true NUMBER x FRCNT value (456ms), and the misleading multi-record duration comment reworded to match the per-record formula.
+      - The DISINT 104ms (AC/refuter) vs 96ms (engine NUMBER x FRCNT) tension is ruled against source and the shipped value reflects the ruling.
+    type: chore
