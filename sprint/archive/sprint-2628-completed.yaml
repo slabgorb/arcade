@@ -495,3 +495,8 @@ completed_stories:
     title: Wrong font — route red-baron's text/HUD rendering through the shared @arcade/shared/font subpath (v0.15.0 already pinned) instead of the local/incorrect font
     points: 2
     completed: '2026-07-18'
+  - id: cp1-1
+    epic: cp1
+    title: "Scaffold — Vite/TS/Vitest on port 5278 + core/shell purity guard + CI caller + orchestrator registration"
+    points: 2
+    completed: '2026-07-18'
