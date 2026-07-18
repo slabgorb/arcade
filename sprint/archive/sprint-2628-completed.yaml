@@ -490,3 +490,8 @@ completed_stories:
     title: "THE SOUND — the envelope rule is off by two and the driver runs at 250 Hz, not the calc frame"
     points: 8
     completed: '2026-07-18'
+  - id: rb4-19
+    epic: rb4
+    title: Wrong font — route red-baron's text/HUD rendering through the shared @arcade/shared/font subpath (v0.15.0 already pinned) instead of the local/incorrect font
+    points: 2
+    completed: '2026-07-18'

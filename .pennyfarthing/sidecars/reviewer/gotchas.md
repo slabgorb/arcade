@@ -598,3 +598,74 @@ interface was still mid-migration) becomes a REMOVABLE leftover once GREEN ships
 both reviewer subagents tsc-probed that a single `as XModule` compiles clean and flagged it under
 type-safety-escape (check #1). When a story renames an interface field, grep the test casts in the same
 commit for a now-stale `unknown` bridge.
+
+---
+
+### A HUD-migration geometry test that pins bbox BOUNDS + a scale RATIO still lets a WRONG-SCALE (half-size) HUD ship green — the ratio is scale-invariant; demand ACTUAL COORDINATES for a known glyph at a known size
+
+**Situation:** Re-reviewing the rework of a font/HUD migration you rejected round 0 for shipping
+UNPINNED geometry (an upside-down HUD passed the whole suite). rb4-19 routed red-baron's HUD
+text (SCORE/PLANE/GUNS HOT/GAME OVER) through `@arcade/shared/font` via a new pure core renderer
+`hudTextSegments`. The rework added `tests/core/hud-font.test.ts` and the whole suite is green
+(1253/1253). Round-0 finding F1 explicitly named the axes to pin: "catches y-flip sign, **scale**,
+baseline".
+
+**Problem — the delivered geometry test caught 4 of 5 axes and LIED about the 5th.** Mutation-
+proven (mine, in an isolated worktree; test-analyzer independently reproduced against the full
+suite): invert the y-flip → RED; flip the baseline sign → RED; double the centre offset → RED;
+delete the zero-size guard → RED. But `scale = size / CELL_H` → `size / (CELL_H*2)` (a half-size
+HUD, or any constant-multiplier scale bug) → **ALL 1253 tests GREEN**. Root cause: the "height
+scales linearly with `size`" test asserts only the RATIO `h40/h20 ≈ 2`, which is invariant to any
+constant scale factor. Nothing pinned an ABSOLUTE height for a known size. The test's own comment
+"(catches a broken scale factor)" is disproven by mutation — a lying guard, the project's cardinal
+test sin — and it reproduces the EXACT round-0 reject symptom (a geometry mutation, whole suite
+green) on the magnitude axis instead of the orientation axis. Catastrophic scale errors (missing
+`/CELL_H` → 24× too big → breaches the left-align `minY>=8` band; near-zero → breaches `h20>4`)
+ARE backstopped, so it's a loose `~[0.4×,1.2×]` window, not wide-open like round 0 — but "loosely
+pinned + a comment that claims it's pinned" is still a rework in a fidelity project, and F1 NAMED
+scale, so it isn't goalpost-moving.
+
+**This is `renderer-migration-routing-vs-geometry` (my own memory) in miniature:** that memory says
+"routing tests pass while an upside-down/**mis-scaled** HUD ships green; pin actual output
+COORDINATES in a core unit test." The rework pinned bbox BOUNDS + RATIOS instead of COORDINATES —
+which is precisely why scale magnitude slipped. Round-0 F1 had asked for the right thing verbatim:
+"a known glyph at known x/y/size" (absolute coords catch scale for free); the rework substituted
+bounding-box comparisons.
+
+**Prevention:** For any glyph/geometry renderer, require at least ONE assertion that pins an ABSOLUTE
+coordinate or extent for a known input at a known size (e.g. "SCORE at size 20 → cap height 20px ±2"),
+not just a ratio and not just min/max bounds. A ratio catches non-linearity; bounds catch gross
+displacement; NEITHER catches a wrong linear coefficient. Mutation-prove it with a constant-multiplier
+scale change (`/(CELL_H*2)`), which is the one mutation a ratio test is structurally blind to. And
+when a test's comment names what it "catches", mutate exactly that and require RED — a self-authored
+rework is where a comment quietly overclaims past what the assertion delivers.
+
+**Also — the INVARIANT-tail "was-it-drawn" boolean is coarse.** rb4-19's `hudDrawn =
+livesCalled && windscreenCalled && hudTextCalled` is a single OR'd flag across four HUD-text draws;
+deleting the SCORE draw is caught only because the pinned seed yields an enemy-less frame 0 (SCORE
+the sole `hudTextSegments` caller there) and the loop throws on the first failing frame. Deleting
+PLANE slips INVARIANT-4 entirely (SCORE keeps the flag true) — caught only by the adoption test's
+`routedContent().includes('PLANE')`. No NET coverage hole, but the mock comment overclaims
+per-readout protection the single boolean doesn't provide. Capture the specific text per frame and
+assert SCORE appears every frame if you want the guard to mean what its comment says.
+
+**Disposition (rb4-19 round 1):** REJECTED. Production is CORRECT (independent auditor worked the
+arithmetic: upright, exact centring, AC-4 placement equivalent to the old fillText anchors to the
+pixel) — so this is a TEST-hardening rework, not a code fix. Blocking = the scale-magnitude gap +
+lying comment (route red→TEA: add an absolute-extent assertion, mutation-prove with `/(CELL_H*2)`).
+Fold in the coarse INVARIANT-4 comment, a non-`readonly` `Box` test interface, and a "no descenders"
+comment that's false for the shared `,` glyph (true only for the HUD charset). All test/comment side;
+~5 lines. Every round-0 finding (F2/F3/F4/F5/F6/V1/V2/V3) verified genuinely fixed.
+
+**Re-review closure (rb4-19 rounds 2→3, what "fixed" looks like):** the durable fix is an ABSOLUTE
+assertion, not a tighter ratio — `expect(|h20 − 20|).toBeLessThan(2)` for a size-20 readout (cap
+height == size px because the HUD caps/digits fill the full CELL_H; MEASURE it first, it's
+integer-exact so ±2 is pure headroom). Keep the linearity ratio too (catches a non-linear mutation
+the two absolute points might both satisfy). For the coarse "was-it-drawn" OR, the fix is a DEDICATED
+per-readout test that collects ALL offending frames (`frames.filter(!scoreDrawn)` → `toHaveLength(0)`),
+NOT another assertion after `hudDrawn` in the same throw-on-first loop (that stays shadowed). Verify
+BOTH by mutation: half-size `/(CELL_H*2)` → the absolute test RED; delete the SCORE draw → the
+dedicated test RED on ALL frames (not just the enemy-less frame 0). Because production was already
+correct, the fix is GREEN-not-RED test-hardening — legitimate, and mutation proof substitutes for a
+RED driver. Re-review is still a full self-authored-round pass (4 specialists + own serial mutations
+in an isolated worktree); all three rounds reproduced the same REDs independently. APPROVED.

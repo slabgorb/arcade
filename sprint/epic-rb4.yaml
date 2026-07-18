@@ -324,7 +324,11 @@ stories:
     title: Wrong font — route red-baron's text/HUD rendering through the shared @arcade/shared/font subpath (v0.15.0 already pinned) instead of the local/incorrect font
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: red-baron
     workflow: tdd
+    completed: '2026-07-18'
     type: bug
+    review_findings: "F1 scale axis unpinned: 'scales linearly' test asserts only ratio h40/h20, scale-invariant; mutation scale=size/(CELL_H*2) (half-size HUD) passes all 1253 tests, comment '(catches a broken scale factor)' disproven. Route red->TEA: add absolute cap-height assertion, mutation-prove under /(CELL_H*2). Production correct + AC-4 placement pixel-equivalent (independent auditor); test-hardening only. F2-F6/V1-V3 all mutation-verified fixed."
+    review_verdict: approved
