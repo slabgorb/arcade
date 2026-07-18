@@ -626,9 +626,11 @@ stories:
     title: Harden the warp double-pay guard — assert the advanced-start bonus never pays twice after a crash-replay
     points: 1
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: tempest
     workflow: trivial
+    completed: '2026-07-18'
     type: chore
   - id: tp1-35
     title: SHAPES — the pulsar bar, tanker cargo emblems and enemy shot, from the ROM
