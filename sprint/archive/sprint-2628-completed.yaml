@@ -505,3 +505,8 @@ completed_stories:
     title: "THE GROUND TARGETS — pyramid, house, tank and pill box are entirely absent"
     points: 8
     completed: '2026-07-18'
+  - id: cp1-2
+    epic: cp1
+    title: "Citation checker + claims JSON — the dossier becomes machine-verified before any constant is transcribed"
+    points: 3
+    completed: '2026-07-18'

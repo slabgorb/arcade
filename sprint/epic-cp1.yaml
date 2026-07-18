@@ -29,7 +29,7 @@ stories:
     description: "Port tempest/tools/audit + tests/audit/citations.test.ts with the ours side dropped (single-sided schema per the rom-source-study skill: id, claim, source{file,line,verbatim}, corroboration?). Convert docs/rom-study/ brief+glossary citations into docs/rom-study/claims/*.json. The checker re-opens every cited line in the vendored tree (arcade/reference/atari-source/centipede) byte-for-byte, prints one error per bad claim, exits non-zero; it degrades gracefully (schema-only checks) when the vendored tree is absent, so CI stays green. THIS BLOCKS cp1-4 and cp1-5 — rb4's lesson: any numeric story that lands before the gate re-bakes its own misreadings and then confirms itself."
     points: 3
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-07-18'
     repos: centipede
     workflow: tdd
@@ -38,6 +38,7 @@ stories:
       - "Every citation in docs/rom-study/brief.md and glossary.md exists as a claims/*.json entry; the two dossier drifts corrected during the study session stay correct."
       - "Checker runs schema-only without the vendored tree; CI (which lacks it) is green."
       - "Both revision.v4/ and root rev-1 file citations resolve (the dossier cites both)."
+    completed: '2026-07-18'
   - id: cp1-3
     title: "Picture-ROM transcription — decode 136001.201/202 into src/core/pictures.ts, byte-gated against the chips"
     description: "Decode the rev-2 picture ROM binaries (vendored VERBATIM at arcade/reference/atari-source/centipede/revision.v2/136001.201-202 — rev 4 shipped these chips) into a committed data module: tiles and sprites with names cross-referenced to CENPIC.MAC labels (CENPIC is .RADIX 16 at line 8, assembled OUTSIDE the CPU link — brief section 1). A vitest re-derives every tile from the ROM bytes and compares byte-exact, so the transcription is auditable, not asserted. Bake a contact-sheet artifact for human review (bake-models.mjs precedent at the orchestrator). NO hand-authored pixels anywhere."
