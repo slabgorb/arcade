@@ -128,11 +128,13 @@ stories:
     description: "Cluster C9. Subsumes M-009, H-007. One ROM mechanic, two visible effects: the BOUNCE routine jolts the view on the Z-axis (M-009, the ROM's screen jolt on driving into an obstacle) AND bobs the mountain silhouette vertically (H-007, present in MOUNTS, absent from the clone). The clone reproduces neither."
     points: 1
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: battlezone
     workflow: trivial
     acceptance_criteria:
       - "Driving into an obstacle triggers the ROM's BOUNCE: a view jolt (Z-axis) plus a synchronized vertical bob of the mountain silhouette."
+    completed: '2026-07-18'
     type: feature
   - id: bz3-10
     title: "MISSING AUDIO CUES — WARNG, RBEEP, BOING, BONER, and the saucer-kill DISINT zap"

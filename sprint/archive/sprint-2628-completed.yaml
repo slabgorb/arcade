@@ -403,3 +403,8 @@ completed_stories:
     title: R11c Surface traversal rebuild — accelerating pilot $100→$400, five GD.SEQ awakening sequences (.C byte restored to all 19 mazes), end by traversal only, ~18s; wave 1 loses its invented surface (D-022+D-019+D-018 fix, D-015 ruled drop)
     points: 8
     completed: '2026-07-18'
+  - id: bz3-9
+    epic: bz3
+    title: "COLLISION BOUNCE — the ROM jolts the view and bobs the mountains on a hard hit; the clone does neither"
+    points: 1
+    completed: '2026-07-18'
