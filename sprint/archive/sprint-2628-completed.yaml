@@ -378,3 +378,8 @@ completed_stories:
     title: "MOUNTAIN & MOON GEOMETRY — the ridge is a procedural two-sine; the real MTN0-7 was in the ROM all along"
     points: 5
     completed: '2026-07-18'
+  - id: bz3-10
+    epic: bz3
+    title: "MISSING AUDIO CUES — WARNG, RBEEP, BOING, BONER, and the saucer-kill DISINT zap"
+    points: 3
+    completed: '2026-07-18'

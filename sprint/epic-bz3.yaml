@@ -137,12 +137,14 @@ stories:
     description: "Cluster C10. Subsumes U-008, U-009, U-010, U-012, U-014. Five ROM synth cues are missing or incomplete, and their trigger moments already exist in core: WARNG 'enemy in range' alarm (U-008 — alerts.ts already computes ENEMY IN RANGE for the HUD, only the audio half is missing), RBEEP radar-sweep beep (U-009), BOING obstacle-bump one-shot (U-010, the MOTION BLOCKED moment), BONER bonus-tank bell (U-012), and the DISINT zap layer omitted from the saucer kill (U-014, ~104 ms per the refuter's DS1 envelope correction; DISINT is high-priority but SAUSND/SUPBON outrank it). audio.ts is runtime synthesis, so compare envelope shape/timing, not waveforms; envelopes count NMIs at 250 Hz, not game frames."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - "The WARNG (enemy in range), RBEEP (radar sweep), BOING (obstacle bump), and BONER (bonus-tank) synth cues are added and fired on their existing core trigger moments."
       - "The saucer kill adds the DISINT zap layer (~104 ms) over the generic explosion, at the ROM's priority (below SAUSND/SUPBON)."
+    completed: '2026-07-18'
     type: feature
   - id: bz3-11
     title: "OFF-AXIS ENEMY PROMPTS (visual) — the flashing ENEMY IN RANGE and ENEMY TO LEFT/RIGHT/REAR callouts"
