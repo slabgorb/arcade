@@ -429,3 +429,8 @@ completed_stories:
     title: "SCORING — the fuseball's score tier is a weighted random roll, not a depth band"
     points: 1
     completed: '2026-07-18'
+  - id: rb4-8
+    epic: rb4
+    title: "THE MOUNTAINS — placement is AUTHORED, they scroll laterally, and 'on horizon' is a latched bit"
+    points: 8
+    completed: '2026-07-18'

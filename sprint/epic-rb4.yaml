@@ -146,7 +146,8 @@ stories:
     description: "Cluster C7. Subsumes MI-014, MI-015, MI-016, MI-018, MI-019. We GENERATE an even stagger with all four mountains at x=0; the ROM AUTHORS their placement in PFOBIZ (RBARON.MAC:1305-1306 — four initial depths and four initial X positions, all hex). The ROM runs TWO closing rates (P.OBDZ=0x180=384 while on the horizon, 0x20=32 once fallen); we have one. 'On horizon' is a LATCHED STATUS BIT with hysteresis (PFOBJ+6 D7), not a depth comparison. Mountains SCROLL LATERALLY with the player — the ROM subtracts PLYRDL from every free object's X each calc frame and wraps (RBARON.MAC:3298-3306); ours never do, which is a large part of why the world feels static. Mountains recycle to P.OBZI=0x7F00=32512, so they spend real time on the horizon; ours recycle to HORZ and never do."
     points: 8
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -155,7 +156,10 @@ stories:
       - "Mountains scroll laterally with the player's delta and wrap."
       - "Mountains recycle to P.OBZI = 0x7F00 and the recycle threshold is the 16-bit 0x01C0 = 448 (NOT the 8-bit 0xC0 = 192)."
       - "Depends on rb4-1."
+    completed: '2026-07-18'
     type: bug
+    review_findings: "F1 (High): render-eye seam unguarded — eye[1]->eye[0] swap at main.ts:181 passes all 1151 tests, silently reintroducing the double-count; deviation's 'type-impossible' claim is false. F2 (Medium): wrapLateral modular/large-pan behavior untested (single-fold impostor passes). Code is correct; both are testable RED-rework gaps."
+    review_verdict: approved
   - id: rb4-9
     title: "THE SCREEN IS MISSING THINGS — the player's propeller is not drawn at all"
     description: "Cluster C8. Subsumes RD-001, RD-002, RD-004, RD-005, RD-006, RD-007, RD-008, RD-009, RD-010, OB-014. The ROM's most prominent foreground element — the player's own propeller, three sweeping blade arcs repatched into the display list EVERY VG FRAME at 62.5 Hz from seven pictures PROP0..PROP6 — IS NOT DRAWN. Neither is the enemy plane's prop (it is transcribed in topology.ts and never rendered — the biplanes fly with a bare nose). There is no depth-cued INTENSITY: the AVG has a 3-bit per-vector intensity and the ROM drives it from depth, and draws objects in TWO tiers (the airframe at V.BRIT, then the wing struts 0x60 dimmer — `;ADD LIGHTER LINES`, RBARON.MAC:5030-5040); we stroke the whole world in one flat green. Lives are tracked and never drawn. The windscreen bullet holes that accumulate as the ace shoots you are absent. The PLVALU readout (the live worth of the plane in your sights) is absent. Shells are DOTS in the ROM (VGDOT), not the line streaks we stroke. NOTE: OB-011 claimed the prop is NOT a 3-frame animation — the coverage review REFUTED that; it IS one (.PROPS is a six-entry JMPL table, 3 pictures x 2 VG buffers, and PLPROP patches one per frame). topology.ts's docstring is CORRECT; do not 'fix' it."
