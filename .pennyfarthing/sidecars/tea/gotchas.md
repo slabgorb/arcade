@@ -1296,3 +1296,24 @@ table (hand-transcribed from WSOBJ.MAC `.WP WFF`, `.RADIX 16` hex ×`.S`, INDEPE
 romCompare (`ROM_TO_PORT` gains `WFF`); leave WFG (a colour-flash render variant) OUT of the `Model3D`
 port — it carries the ROM's own out-of-range `DRAWTO 6,3` (only points 0..5 exist), which the "every edge
 index in range" invariant rightly rejects. Document that bug in the oracle test so nobody re-adds it.
+
+---
+
+### A purity SCANNER is code under test too — fixture-pin its no-flag cases, and strip STRINGS as well as comments
+
+**Situation:** cp1-1's core/shell boundary guard (centipede). The tempest-lineage guard raw-text-matches
+banned names, so a comment merely MENTIONING a global trips it (a trap that recurred). The fix was rb4-3's
+idiom: strip comments before matching.
+
+**Problem:** Comment-stripping alone still flags banned names inside STRING literals — my first cut flagged
+`"https://example.com/window.html"` (the `/window.` in a URL) as a live `window.` access. Only a fixture
+self-test suite (flags live code / ignores comments / ignores lookalikes) caught it before commit. And the
+string-strip has a twist: the shell-IMPORT rule must scan with strings INTACT, because an import specifier
+IS a string — strip order matters too (comments first, or an apostrophe in a comment opens a phantom string
+that swallows code).
+
+**Prevention:** When a story asks for a source-text scan guard, treat the scanner as its own unit under
+test: ship fixture self-tests for BOTH directions (must-flag: live calls/globals/shell imports; must-NOT-flag:
+comments, string data, lookalike identifiers like `windowSize`/`refetch`). That turns the one-off "prove it
+demonstrably fails" AC into a permanent machine-checked property, and it catches scanner defects at RED time
+instead of shipping false positives that a future story "fixes" by weakening the guard.
