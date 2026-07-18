@@ -165,7 +165,8 @@ stories:
     description: "Cluster C8. Subsumes RD-001, RD-002, RD-004, RD-005, RD-006, RD-007, RD-008, RD-009, RD-010, OB-014. The ROM's most prominent foreground element — the player's own propeller, three sweeping blade arcs repatched into the display list EVERY VG FRAME at 62.5 Hz from seven pictures PROP0..PROP6 — IS NOT DRAWN. Neither is the enemy plane's prop (it is transcribed in topology.ts and never rendered — the biplanes fly with a bare nose). There is no depth-cued INTENSITY: the AVG has a 3-bit per-vector intensity and the ROM drives it from depth, and draws objects in TWO tiers (the airframe at V.BRIT, then the wing struts 0x60 dimmer — `;ADD LIGHTER LINES`, RBARON.MAC:5030-5040); we stroke the whole world in one flat green. Lives are tracked and never drawn. The windscreen bullet holes that accumulate as the ace shoots you are absent. The PLVALU readout (the live worth of the plane in your sights) is absent. Shells are DOTS in the ROM (VGDOT), not the line streaks we stroke. NOTE: OB-011 claimed the prop is NOT a 3-frame animation — the coverage review REFUTED that; it IS one (.PROPS is a six-entry JMPL table, 3 pictures x 2 VG buffers, and PLPROP patches one per frame). topology.ts's docstring is CORRECT; do not 'fix' it."
     points: 13
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -175,7 +176,10 @@ stories:
       - "Lives are DRAWN (DSPLIF), the windscreen bullet holes accumulate (WNDSHD), and the PLVALU readout appears beside the score."
       - "Shells render as dots, not streaks. The invented second-colour 'GUNS HOT' banner is replaced by the ROM's monochrome vector message."
       - "Depends on rb4-1 (HORIZN, HORZ) — do not land it first."
+    completed: '2026-07-18'
     type: feature
+    review_findings: 'Test-quality rework (production code sound): (1) INVARIANT 4 HUD-tail vacuous — deleting both HUD draws passes green [cockpit-draw-path:796]; (2) two vacuous NaN assertions rule#8 [hud:133, intensity:109]; (3) PLVALU fillText + globalAlpha intensity render untested; (4) renderModel mock drops brightness param; (5) minor casts + negative-input edge tests.'
+    review_verdict: approved
   - id: rb4-10
     title: "THE SOUND — the envelope rule is off by two and the driver runs at 250 Hz, not the calc frame"
     description: "Cluster C9. Subsumes SN-003, SN-005, SN-006, SN-007, SN-008, SN-011, SN-012, SN-013, SN-014, SN-016, SN-017. THE CLOCK TRAP: MODSND is called from the NMI handler (RBGRND.MAC:237) at 250 Hz / 4 ms — NOT the 96 ms calc frame. Any envelope timed on the calc frame is 24x wrong. SN-003 is the subtlest finding in the audit and it argues the ROM's OWN COMMENTS are wrong: RBSOUN.MAC:89 and :152 both say NUMBER is '# of changes - 1', but the code renders exactly NUMBER distinct values — proven because under that reading all five sounds' AUDF and AUDC chains run out together (TK 28=28, TP 40=40, BN 288=288, WP 360=360, TH 256=256) and under the documented reading all five mismatch. Our pokey.ts enshrines a `steps = NUMBER + 1` rule in a loud warning comment; the correct rule is `steps = NUMBER - 1`. ANYONE WHO 'FIXES' THIS BACK TOWARD THE ASSEMBLER'S PROSE WILL RE-INTRODUCE THE BUG — record the arithmetic proof in the code. Also: the gun sound fires on EVERY shell including the ENEMY's; the engine hum's timbre is in the source (AUDC=0xA1) and we got it wrong; the explosion fires at the wrong moment and duration; the SPIRAL (shot-down dive whine) is missing."

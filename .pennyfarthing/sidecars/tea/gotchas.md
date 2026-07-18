@@ -1233,3 +1233,28 @@ a frame count. Pin the mechanism (one `stepWaveClock` call = one completed wave;
 a 1–4 frame countdown), and DON'T pin a derived seconds figure the ROM computes elsewhere (rb4-7's
 "0.48–3.07 s" gap is emergent from PLSTAT+7, the per-plane "^20 FRAMES TO CROSS CENTER" flight timer,
 RBARON.MAC:2361 — route it, the tp1-13 / rb4-4 lesson).
+
+---
+
+### Proving a DISPLAY-clock mechanic (not the calc clock): drive rAF FASTER than the sim step, and force the branch if the seeded sky starves it
+
+**Situation:** rb4-9 AC-1 — the player's prop must animate on the 62.5 Hz DISPLAY clock, NOT the
+~10.4 Hz calc clock (the Red Baron ÷N trap, `timing.ts`). A pure `propFrame` test can't tell which
+clock main.ts drives it on; a prop wrongly ticked off `simFrame` runs ~6× too slow and every pure
+test still passes.
+
+**Problem/technique:** the only honest proof BOOTS the cockpit (the `cockpit-draw-path.test.ts`
+stub pattern) and drives rAF at a cadence SHORTER than `SIM_TIMESTEP_S` (16 ms vs 96 ms), so most
+rAF frames run ZERO calc-frames. Then a display-clock mechanic still advances on those frames while
+a calc-clock one stands still. Discriminators that survive review: (1) the picture changes on ≥
+(FRAMES−slack) of the rAF frames, and (2) the change count > 2× the total calc-frames (count them
+by wrapping a per-calc-frame heartbeat like `tickCountUp`). Both are needed — (1) catches "never
+advances", (2) catches "advances but on the wrong clock".
+
+**Second trap — a boot harness can pass VACUOUSLY when the seeded sky starves the branch.** The
+gun-overheat colour test never saw `#ff5533` because the pinned sky shoots the pilot down and the
+death sequence cools `GUN.ST` before it ever locks out — so the "no red" assertion passed by
+checking nothing. Its paired non-vacuity guard ("the guns actually locked out") was RED and exposed
+it. Fix: FORCE the branch at the sim seam (`vi.mock` guns → `overheated: true`) so the draw path
+runs deterministically; the colour it then paints is still main.ts's own code. Always pair a
+negative canvas assertion ("never paints X") with a positive guard that the branch was exercised.

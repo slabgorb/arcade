@@ -454,3 +454,8 @@ completed_stories:
     title: The audit doc says MAYBLR chases on an EVEN invader index. It is ODD, and the error has now propagated through three documents.
     points: 1
     completed: '2026-07-18'
+  - id: rb4-9
+    epic: rb4
+    title: "THE SCREEN IS MISSING THINGS — the player's propeller is not drawn at all"
+    points: 13
+    completed: '2026-07-18'
