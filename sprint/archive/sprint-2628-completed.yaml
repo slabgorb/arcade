@@ -398,3 +398,8 @@ completed_stories:
     title: "THE MISSION CLOCK — difficulty ramps twice as fast, and waves come in RUNS not alternation"
     points: 8
     completed: '2026-07-18'
+  - id: sw7-18
+    epic: sw7
+    title: R11c Surface traversal rebuild — accelerating pilot $100→$400, five GD.SEQ awakening sequences (.C byte restored to all 19 mazes), end by traversal only, ~18s; wave 1 loses its invented surface (D-022+D-019+D-018 fix, D-015 ruled drop)
+    points: 8
+    completed: '2026-07-18'
