@@ -3,7 +3,7 @@ type: epic
 title: Tempest — ROM fidelity against Theurer's original 1981 source
 description: "Remediation epic for docs/2026-07-12-tempest-primary-source-audit.md, the first audit of our clone against Dave Theurer's ORIGINAL 1981 Atari assembler source (primary source at ~/Projects/tempest-source-text; the CRLF sibling ~/Projects/tempest-source is NOT citable). Our clone was built from SECONDARY sources — the \"Tempest vs Tempest\" book and a third-party disassembly — and the audit found the book wrong 9 times and our own docs/ux/2026-06-27-enemy-roster-rom-extract.md wrong as well, with production code citing it as authority. 236 findings, every citation byte-verified on both sides; 114 recommended fix, merged here into 21 stories. THE HEADLINE: the ROM runs at 28.44 fps (256/9), not 60 — our sim is 2.11x too fast and warp acceleration, which carries the base squared, is 4.45x too fast. The rebase (tp1-1) BLOCKS EVERY OTHER NUMERIC STORY: anything numeric that lands before it re-bakes the 60 and then confirms itself against this document. Second: enemies in the ROM are a bytecode VM (the CAM) with per-level programs — a level-1 flipper never flips while climbing — which our five hand-written state machines cannot express at any constant setting, so src/core/enemies/ does not survive this epic. RULINGS (PM gate, 2026-07-13): the full programme is committed at p1, not trickled; the 24-point CAM+nymph rewrite is bought; SPIKE_MAX_DEPTH is restored to the ROM's 0.929 but ONLY behind the warp-dive rework (tp1-10), since story 6-15's 0.75 was a conscious playability deviation that is only safe to undo once a spike crash replays the wave; SC-001 (the arcade's high-score ladder is 8 deep, @arcade/shared ships 10) is WON'T-FIX — the cabinet-wide convention beats one game's fidelity and it is not filed anywhere. Every story's acceptance criteria cite the ROM; tools/audit + tests/audit/citations.test.ts re-open every cited line byte-for-byte and must stay green."
 priority: p1
-status: backlog
+status: done
 repos: tempest
 stories:
   - id: tp1-1
@@ -693,9 +693,11 @@ stories:
     title: Warp-dive polish — drawWarp speed streaks ride the diving (expanded) spokes, not the static base well (render.ts:892-904)
     points: 1
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: tempest
     workflow: trivial
+    completed: '2026-07-18'
     type: chore
   - id: tp1-40
     title: THE GLOW TAX — live shadowBlur saturates the GPU; production runs 8-34 fps
@@ -716,3 +718,4 @@ stories:
     completed: '2026-07-16'
     type: bug
     review_verdict: approved
+completed: '2026-07-18'

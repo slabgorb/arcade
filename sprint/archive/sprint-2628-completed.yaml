@@ -11,6 +11,7 @@ sprint:
 completed_epics:
   - sw5
   - bz3
+  - tp1
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -477,5 +478,10 @@ completed_stories:
   - id: tp1-34
     epic: tp1
     title: Harden the warp double-pay guard — assert the advanced-start bonus never pays twice after a crash-replay
+    points: 1
+    completed: '2026-07-18'
+  - id: tp1-39
+    epic: tp1
+    title: Warp-dive polish — drawWarp speed streaks ride the diving (expanded) spokes, not the static base well (render.ts:892-904)
     points: 1
     completed: '2026-07-18'
