@@ -368,3 +368,8 @@ completed_stories:
     title: "PER-TYPE COLLISION TABLES — the clone reuses one circle where the ROM has distinct proximity tables"
     points: 3
     completed: '2026-07-17'
+  - id: bz3-5
+    epic: bz3
+    title: "EXPLOSION DEBRIS — a 6-piece gravity particle subsystem replacing the fixed 1.5s timer"
+    points: 5
+    completed: '2026-07-17'

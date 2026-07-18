@@ -71,12 +71,14 @@ stories:
     description: "Cluster C5. Subsumes F-008 (re-sized m -> l by the coverage review AND the refuter: it is a whole new particle subsystem, not a constant swap). Depends on bz3-1. The ROM object explosion is a 6-piece gravity-driven particle sim: launch velocities IZVEL = 55,40,70,88,40,66 (BZMTNS.MAC:837-838, DECIMAL in that file's .RADIX 10 block — the refuter found a SIXTH byte .BYTE 66 at :838 that the auditor missed), GRAVTY = -4/frame (BZONE.MAC:380, decimal), pieces expanding then falling over ~3 s until the tallest lands. The clone has a fixed 1.5 s timer with no debris physics. Build this as a REUSABLE particle subsystem — the volcano eruption (bz3-6) consumes it."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-17'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - "Object explosions spawn 6 gravity-driven debris pieces (IZVEL launch 55,40,70,88,40,66; GRAVTY=-4 per frame at 15.625 Hz) with physics-driven termination, replacing the fixed 1.5 s timer."
       - "The particle subsystem is factored so the volcano eruption (bz3-6) reuses it rather than re-implementing gravity particles."
+    completed: '2026-07-17'
     type: bug
   - id: bz3-6
     title: "VOLCANO — the clone draws a static cone the ROM never had and omits the eruption it does have"
