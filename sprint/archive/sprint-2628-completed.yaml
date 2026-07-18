@@ -434,3 +434,8 @@ completed_stories:
     title: "THE MOUNTAINS — placement is AUTHORED, they scroll laterally, and 'on horizon' is a latched bit"
     points: 8
     completed: '2026-07-18'
+  - id: sw6-4
+    epic: sw6
+    title: Every shipped Star Wars sound effect is baked at DOUBLE SPEED — the FX driver runs on the 8ms boundary, not the 4ms sound IRQ, and AUDDO's own header comment ("EVERY 16 MILS") is stale
+    points: 3
+    completed: '2026-07-14'

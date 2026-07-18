@@ -66,7 +66,8 @@ stories:
     description: "`tools/pokey-bake/bake-sfx.mjs:111` sets `SW_BEAT = 0.004096` with the comment 'sound-IRQ period'. The 4.096 ms IRQ is real — but the FX driver is NOT walked by it. `SNDAUX.MAC:165-168` gates the call: `LDA $INTCT / LSRA / IFCC` with the comment ';?8 MILL BOUNDARY?' — `$INTCT` increments once per 4 ms interrupt (`SNDAUX.MAC:102`) and `LSRA` shifts exactly ONE bit into carry, so `JSR AUDDO` fires on every OTHER interrupt. The FX tick is 8.192 ms and every shipped effect is therefore twice as fast as the cabinet's. Re-baked and confirmed by ear (2026-07-14): all seven effects double in length and the longer ones are right. WHY IT SURVIVED AN EAR CHECK: `SW_BEAT` scales the TIME axis only — it sets how long each register value is held (`stepDur = duration * SW_BEAT`, `bake-sfx.mjs:122`) and never touches the AUDF values, so a frequency sweep runs twice as fast through the IDENTICAL pitches. Nothing is transposed; the envelope is merely rushed. The effects sound like SHORTER versions of the right sound, not higher ones — there is no wrongness to hear, only absence, which is exactly what an ear signoff cannot catch. ⚠ THE SOURCE CONTRADICTS ITSELF AND ONE WITNESS IS LYING: AUDDO's own header (`SNDAUD.MAC:1084-1085`) says 'UPDATE AUDIO EVERY 16 MILS'. That comment is STALE. Its caller gates on ONE bit, not two (16 ms would need `ANDA #03`), and AUDDO's body (`SNDAUD.MAC:1086-1126`) contains NO internal divider — one `DEC AU$TMR(X)` per call per channel — so its tick IS its call rate. This is the sw6-1 lesson exactly: a label's comment is not its caller (`PMBEN` said ';BENS THEME (START OF TOWER)' and was the game-over theme). The call site wins."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-14'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
@@ -77,4 +78,5 @@ stories:
       - "RE-BAKE AND UPLOAD — all seven .wav re-baked and live in the arcade-assets R2 bucket under star-wars/sfx/, answering 200 with NEW checksums (unlike sw6-3, this story SHOULD change the assets — that is the point). Use `just deploy-assets` from the orchestrator; CI cannot do it (it only uploads an app's dist/)."
       - "THE ACCEPTANCE TEST IS THE GAME, NOT A GREEN VITEST — fire the lasers, kill a TIE, crash into the terrain, and hear effects that are twice as long as today's. Verify in a real browser with a cold cache and say so in the session. Port trap: a pinned arcade port may be served by a SIBLING CHECKOUT, so confirm the server's cwd with `lsof` first."
       - "CHECK, DO NOT ASSUME, THE OTHER BEAT — `bake-sfx.mjs:66` also carries `const BEAT = 1/250` for TEMPEST's older `alsoun` record format. That is a different game on a different sound board; do NOT change it as collateral. Say in the session whether it was checked and why it is (or is not) affected."
+    completed: '2026-07-14'
     type: bug
