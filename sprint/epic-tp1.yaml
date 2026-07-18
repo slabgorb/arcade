@@ -652,7 +652,8 @@ stories:
     description: "Loose ends logged during tp1-17 (SHAPES part 1; see sprint/archive/tp1-17-session.md Delivery Findings). (1) The fuseball geometry has NO automated guard — tp1-17.shapes.test.ts pins FUSE0-3 by COLOUR only and the V-014 citation is frozen (remediated); add a vertex-count / exact-vertex test so a future edit cannot silently regress the shape (verified byte-exact against ALVROM.MAC:954-1095 at ship). (2) Correct finding V-008's factually-wrong claim text — 'SPIRA2/3/4 … re-authored, not rotated' is refuted by the source: SPIRA2/3/4 === rot90/180/270(SPIRA1) vertex-for-vertex (ALVROM.MAC:549-619). (3) Fix the stale models.html contact-sheet labels — COLOR.spiker='#ffa500' (orange) and the fuseball 'one of its tri-colour legs' comment predate tp1-3/tp1-17 (the spiker is green, the fuseball 5-colour). (4) In-game spot-check the 17-dot player charge (the /models.html sheet has no in-flight bullet, so its rendered appearance was never visually confirmed)."
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -661,6 +662,7 @@ stories:
       - The models.html contact-sheet labels reflect the shipped shapes (spiker green; fuseball no longer 'tri-colour').
       - The 17-dot player charge is confirmed to render correctly in a running game (screenshot with a bullet in flight).
       - npm test -- citations stays green.
+    completed: '2026-07-18'
     type: chore
   - id: tp1-37
     title: 'THE MOVING EYE, part 2 — the fly-in: fly the eye INTO the new well over NEWAV2 (WD-018), replacing the countdown placeholder; reuse warpDiveTube toward the per-well EYLDES at +0x18/frame (ALWELG.MAC:85-91)'

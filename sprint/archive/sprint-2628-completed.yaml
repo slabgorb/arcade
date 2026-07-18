@@ -459,3 +459,8 @@ completed_stories:
     title: "THE SCREEN IS MISSING THINGS — the player's propeller is not drawn at all"
     points: 13
     completed: '2026-07-18'
+  - id: tp1-36
+    epic: tp1
+    title: 'tp1-17 follow-up: fuseball vertex guard, V-008 audit fix, contact-sheet labels'
+    points: 2
+    completed: '2026-07-18'
