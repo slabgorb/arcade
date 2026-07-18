@@ -151,12 +151,14 @@ stories:
     description: "Cluster C11. Subsumes C-004, C-005, S-021. The ROM cues the off-screen enemy two ways the clone half-implements: it FLASHES 'ENEMY IN RANGE' at ~3.9 Hz (C-004, gated by AND FRAME bit 1) where the clone draws it steadily, and it shows a directional 'ENEMY TO LEFT/RIGHT/REAR' callout (S-021, C-005) telling the player which way to turn toward the unseen enemy. The four direction strings are already transcribed in text.ts but alerts.ts only ever emits MOTION_BLOCKED and ENEMY_IN_RANGE — the directional half is dead. (The audio twin, WARNG, is bz3-10.)"
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - "ENEMY IN RANGE flashes at the ROM cadence (~3.9 Hz, AND FRAME bit 1) instead of drawing steadily."
       - "The directional ENEMY TO LEFT/RIGHT/REAR callout is emitted (the four strings already exist in text.ts; wire the two that are never emitted)."
+    completed: '2026-07-18'
     type: feature
   - id: bz3-12
     title: "ENEMY TANK MODEL DETAIL — the rotating radar antenna and animated treads the clone omits"

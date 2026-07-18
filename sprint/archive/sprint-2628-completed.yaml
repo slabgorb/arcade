@@ -383,3 +383,8 @@ completed_stories:
     title: "MISSING AUDIO CUES — WARNG, RBEEP, BOING, BONER, and the saucer-kill DISINT zap"
     points: 3
     completed: '2026-07-18'
+  - id: bz3-11
+    epic: bz3
+    title: "OFF-AXIS ENEMY PROMPTS (visual) — the flashing ENEMY IN RANGE and ENEMY TO LEFT/RIGHT/REAR callouts"
+    points: 3
+    completed: '2026-07-18'
