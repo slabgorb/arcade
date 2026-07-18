@@ -485,3 +485,8 @@ completed_stories:
     title: Warp-dive polish — drawWarp speed streaks ride the diving (expanded) spokes, not the static base well (render.ts:892-904)
     points: 1
     completed: '2026-07-18'
+  - id: rb4-10
+    epic: rb4
+    title: "THE SOUND — the envelope rule is off by two and the driver runs at 250 Hz, not the calc frame"
+    points: 8
+    completed: '2026-07-18'

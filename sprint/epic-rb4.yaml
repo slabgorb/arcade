@@ -185,7 +185,8 @@ stories:
     description: "Cluster C9. Subsumes SN-003, SN-005, SN-006, SN-007, SN-008, SN-011, SN-012, SN-013, SN-014, SN-016, SN-017. THE CLOCK TRAP: MODSND is called from the NMI handler (RBGRND.MAC:237) at 250 Hz / 4 ms — NOT the 96 ms calc frame. Any envelope timed on the calc frame is 24x wrong. SN-003 is the subtlest finding in the audit and it argues the ROM's OWN COMMENTS are wrong: RBSOUN.MAC:89 and :152 both say NUMBER is '# of changes - 1', but the code renders exactly NUMBER distinct values — proven because under that reading all five sounds' AUDF and AUDC chains run out together (TK 28=28, TP 40=40, BN 288=288, WP 360=360, TH 256=256) and under the documented reading all five mismatch. Our pokey.ts enshrines a `steps = NUMBER + 1` rule in a loud warning comment; the correct rule is `steps = NUMBER - 1`. ANYONE WHO 'FIXES' THIS BACK TOWARD THE ASSEMBLER'S PROSE WILL RE-INTRODUCE THE BUG — record the arithmetic proof in the code. Also: the gun sound fires on EVERY shell including the ENEMY's; the engine hum's timbre is in the source (AUDC=0xA1) and we got it wrong; the explosion fires at the wrong moment and duration; the SPIRAL (shot-down dive whine) is missing."
     points: 8
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -195,7 +196,10 @@ stories:
       - "The engine hum uses the ROM's AUDC=0xA1, the approach whine is a pitch ramp on the hum's own two channels, and the SPIRAL dive whine exists."
       - "Sound priority / mutual exclusion follows the ROM (TK, TP and BN share POKEY channel 1; a new one kills the one playing)."
       - "CAVEAT recorded in the story: the sound pair received the LEAST adversarial scrutiny in the audit (its refutation was run by the controller, not an independent agent) and RBSOUN.MAC's .INCLUDE of COND65 is ABSENT from the quarry. Re-derive every millisecond figure from the source before implementing it."
+    completed: '2026-07-18'
     type: bug
+    review_findings: "REJECT (test integrity, not code): 2 HIGH vacuous tests guarding the headline props (SN-015 'spiral distinct' passes when spiral==crash; SN-003 'distinct values' asserts only >=1) — both mutation-proven; envelopeFrames untested (return 1 passes); SN-003 proof doc overclaims for TK/TP; recorder mock signature drift; 3 dead double-casts. Production code verified correct against source. Route: TEA red rework."
+    review_verdict: approved
   - id: rb4-11
     title: "THE GROUND TARGETS — pyramid, house, tank and pill box are entirely absent"
     description: "Cluster C10. Subsumes OB-017, MI-008, OB-016, OB-018. 037007.XXX:1132-1230 defines a complete, self-contained ground-object set that topology.ts does not contain AT ALL: the point-sets PFPYRM (4 points), PFHOME (7), PFTANK (10), PFPBOX (16); the decode-lists DEPFPY/DEPFHS/DEPFTK/DEPFPB; the PFODEC pointer table; the PFLOB point-set table; the .PFLOB length table; and the PFOFFS table of 12 screen offsets. A ground wave deploys exactly two mountain target-groups (GRNDCT=2, GTIMER). The blimp's 8-vertex collision box BLCOLL (RBARON.MAC:6270-6277) is the ONLY member of the PLNDB master table missing from topology.ts. REMEMBER: this region of 037007.XXX is `.RADIX 10` — transcribe it as DECIMAL, exactly as the existing (correct) topology.ts transcription does. Do NOT apply rb4-1's hex correction here; that would break it."
