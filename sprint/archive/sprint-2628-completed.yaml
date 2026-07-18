@@ -353,3 +353,8 @@ completed_stories:
     title: PLONSN, OR THE PLANE ESCAPES THE SCREEN — the servo must weave the DISPLAY position, clamped on-screen the ROM's way
     points: 8
     completed: '2026-07-17'
+  - id: bz3-7
+    epic: bz3
+    title: "RADAR SWEEP MECHANISM — the scanner computes a sweep angle but never uses it to gate blips"
+    points: 5
+    completed: '2026-07-17'
