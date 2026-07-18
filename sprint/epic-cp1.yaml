@@ -1,0 +1,87 @@
+id: cp1
+type: epic
+title: Centipede — foundation slice (scaffold, citations, picture ROMs, playfield, player+shot, render)
+description: "First epic of the centipede clone — the arcade's first RASTER game. DESIGN SPEC (user-approved 2026-07-18): centipede/docs/superpowers/specs/2026-07-18-centipede-clone-design.md. GROUND TRUTH: centipede/docs/rom-study/ (brief, subsystems, glossary, open-questions) — built with the rom-source-study skill from the vendored 1981 source (arcade/reference/atari-source/centipede, pin dbbe6de) + the MAME driver (~/Projects/mame/src/mame/atari/centiped.cpp, sparse read-only clone). Cite the dossier, do not re-derive it. RULINGS: faithful raster (rev-2 picture ROMs byte-gated against the vendored 136001.201/202 binaries — rev 4 shipped rev-2's chips); pointer-lock mouse as trackball analog + key fallback, both clamped by the ROM's TBLMT limit; 1-PLAYER + attract only (no 2P/SWAP, no timer options, no self-test, no COIN65 port — free-play start); playable-slice epics. TIMEBASE: one sim step per video frame, FRAME_HZ = 15750/263 = 59.88593 (MAME hedges 262 vs 263 — open question 1; the constant is one line to correct). Core model stays ROM-shaped: 30x32 PLYFLD grid, 16 motion-object slots (0-11 segments, 12 flea/ANT, 13 spider/BUG, 14 the SINGLE shot, 15 player). RADIX DISCIPLINE (rb4-1 lesson): the CPU modules inherit .RADIX 16 from CENDE4 via .INCLUDE; every transcribed constant carries a radix-cited comment and membership in the citations suite; cp1-2 lands before any constant is transcribed. ROADMAP AFTER THIS EPIC: cp2 centipede train (~15), cp3 spider/flea/scorpion (~13), cp4 waves/scoring/high-scores/attract (~10), cp5 POKEY sound via extract-audio gate (~8), cp6 lobby+R2+release+closing rom-fidelity-audit (~5). Demo at epic end: glide the bottom zone and shoot mushrooms out of an authentic field. Repo github.com/slabgorb/centipede is bootstrapped (develop default, gitflow) but has NO scaffold yet — cp1-1 creates it."
+priority: p1
+status: backlog
+repos: centipede
+stories:
+  - id: cp1-1
+    title: "Scaffold — Vite/TS/Vitest on port 5278 + core/shell purity guard + CI caller + orchestrator registration"
+    description: "Mirror red-baron's config (the newest scaffold): Vite 8, TypeScript, Vitest 4, strictPort 5278, base '/'. src/core and src/shell skeletons with the boundary guard: a source-text scan test forbidding shell globals and wall-clock (window/document/Date.now/Math.random and friends) in src/core/ — word test prose to avoid the comment-scanner trap (tempest purity scanner matches forbidden names INSIDE COMMENTS). Ten-line CI deploy caller of slabgorb/arcade/.github/workflows/deploy-r2.yml@main targeting bucket arcade-centipede. Orchestrator side: add centipede to justfile games/subrepos lists and serve recipe, flip the CLAUDE.md port row from reserved to live."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    type: chore
+    acceptance_criteria:
+      - "npm install && npm run build && npm test green from a fresh checkout; npm run dev serves on 5278 and fails loudly if the port is taken (strictPort)."
+      - "Purity guard test exists, passes, and demonstrably fails when a forbidden global is introduced in src/core/ (prove with a temporary red run in the story notes)."
+      - "CI workflow caller committed; a push to main would deploy dist/ to arcade-centipede (workflow-lints clean; no release cut in this story)."
+      - "just serve launches centipede alongside the fleet; just install-all covers it; CLAUDE.md port table row 5278 is live, not reserved."
+  - id: cp1-2
+    title: "Citation checker + claims JSON — the dossier becomes machine-verified before any constant is transcribed"
+    description: "Port tempest/tools/audit + tests/audit/citations.test.ts with the ours side dropped (single-sided schema per the rom-source-study skill: id, claim, source{file,line,verbatim}, corroboration?). Convert docs/rom-study/ brief+glossary citations into docs/rom-study/claims/*.json. The checker re-opens every cited line in the vendored tree (arcade/reference/atari-source/centipede) byte-for-byte, prints one error per bad claim, exits non-zero; it degrades gracefully (schema-only checks) when the vendored tree is absent, so CI stays green. THIS BLOCKS cp1-4 and cp1-5 — rb4's lesson: any numeric story that lands before the gate re-bakes its own misreadings and then confirms itself."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "npm test -- citations re-opens every claim byte-for-byte against the vendored tree; a deliberately drifted line number or altered verbatim fails the suite (prove red once)."
+      - "Every citation in docs/rom-study/brief.md and glossary.md exists as a claims/*.json entry; the two dossier drifts corrected during the study session stay correct."
+      - "Checker runs schema-only without the vendored tree; CI (which lacks it) is green."
+      - "Both revision.v4/ and root rev-1 file citations resolve (the dossier cites both)."
+  - id: cp1-3
+    title: "Picture-ROM transcription — decode 136001.201/202 into src/core/pictures.ts, byte-gated against the chips"
+    description: "Decode the rev-2 picture ROM binaries (vendored VERBATIM at arcade/reference/atari-source/centipede/revision.v2/136001.201-202 — rev 4 shipped these chips) into a committed data module: tiles and sprites with names cross-referenced to CENPIC.MAC labels (CENPIC is .RADIX 16 at line 8, assembled OUTSIDE the CPU link — brief section 1). A vitest re-derives every tile from the ROM bytes and compares byte-exact, so the transcription is auditable, not asserted. Bake a contact-sheet artifact for human review (bake-models.mjs precedent at the orchestrator). NO hand-authored pixels anywhere."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "A test decodes 136001.201/202 from the vendored tree and matches src/core/pictures.ts byte-for-byte; it degrades to committed-fixture comparison when the tree is absent (CI)."
+      - "Tile/sprite names traceable to CENPIC.MAC labels; naming table committed in the story docs."
+      - "Contact sheet baked and committed; mushroom, all centipede head/body frames, spider, flea, scorpion, player gun, shot, and the character/digit tiles are all present and identified."
+      - "Zero hand-drawn pixel data: every byte in pictures.ts provably originates in the ROM dump."
+  - id: cp1-4
+    title: "Playfield + mushrooms — the 30x32 grid, seeding, damage states, scoring hooks, RESTOR sweep"
+    description: "PLYFLD grid semantics (PLYFLD=400, 30 wide by 32 high, CENDE4.MAC:61 — hex per the inherited radix), initial mushroom seeding from the seeded @arcade/shared/rng, per-hit mushroom damage states and hit count AS TRANSCRIBED FROM REV-4 CODE (CENTIP.DOC scoring prose — mushroom 1, partial 5 — is rev-1; diff against code per open question 4 before baking numbers), and the RESTOR repair sweep (CENTI4.MAC:1826). Score/status rows of the grid respected. Every constant: radix-cited comment + claims entry (cp1-2 gate is live). Determinism: same seed, same field, pinned by test."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "Grid dimensions, seeding counts, damage-state count, and per-state scoring all transcribed from rev-4 code with radix-cited comments AND claims/*.json entries; npm test -- citations green."
+      - "Where CENTIP.DOC prose and rev-4 code disagree on any number, the code wins and the divergence is recorded in docs/rom-study/open-questions.md."
+      - "Determinism test: identical seed + inputs reproduce the identical field through seeding, damage, and RESTOR."
+      - "No wall-clock, no Math.random in core (purity guard stays green)."
+  - id: cp1-5
+    title: "Player + single shot — bottom-zone movement, TBLMT clamp, slot-14 fire, shot-vs-mushroom collision"
+    description: "Player gun movement inside the ROM's bottom-zone rectangle (MOVE, CENTI4.MAC:1477), trackball movement limited per TBLMT (CENTI4.MAC:2514), single-shot firing (CHECK FIRE SWITCH, CENTI4.MAC:2099; slot 14 — ONE shot in flight is authentic), shot flight and grid-cell collision with mushrooms as the ROM computes it. Shell input: pointer-lock mouse deltas quantized to trackball counts + arrow/WASD synthesizing counts at the clamp rate; both paths feed the same core input contract. Trackball hardware context: counters read once per IRQ, 240x/s (centiped.cpp:514) — the shell aggregates per frame."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "Movement bounds, TBLMT clamp value, fire semantics, and shot speed transcribed with radix-cited comments + claims entries; citations suite green."
+      - "Exactly one shot in flight ever; firing while the shot lives is ignored, matching the ROM's slot-14 model."
+      - "Shot-vs-mushroom collision resolves on grid cells per the ROM's arithmetic (cited), covered by moving-shot tests (asteroids lesson: never test only stationary projectiles)."
+      - "Core input contract is device-agnostic counts; mouse and keyboard shells both drive it in a shell test."
+  - id: cp1-6
+    title: "Render shell — tile atlas, portrait integer scaling, CLRCH colors, ROM-tile text, playable demo page"
+    description: "Canvas 2D shell drawing from cp1-3's data via an offscreen atlas: portrait 240x256 logical resolution (visible area per centiped.cpp:1800, cabinet ROT270), integer scaling with letterbox, color-RAM init semantics from CLRCH (CENTI4.MAC:879), score/level text from the ROM's own character tiles (no shared /font). Wire the demo page: mouse+keys moving the gun, shooting mushrooms out of the seeded field — the epic's demo. Add the render source-wiring test using the repo ?raw idiom (reviewer-blessed on tempest tp1-39)."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "Playable slice in the browser on 5278: pointer-lock gun movement, firing, mushroom damage states rendered from ROM tiles at authentic proportions."
+      - "Logical resolution and rotation cited (centiped.cpp:1800, ROT270); rendering is integer-scaled with no smoothing (crisp pixels)."
+      - "CLRCH-derived palette applied and cited; no invented colors."
+      - "Render source-wiring test green; screenshot committed in the story docs as the epic demo artifact."
