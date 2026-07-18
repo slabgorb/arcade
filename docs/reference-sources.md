@@ -28,3 +28,4 @@ can change the audited bytes underneath the fidelity oracles.
 | tempest | historicalsource/tempest | 6c783be | ~/Projects/tempest-source | reference/atari-source/tempest | 2026-07-12 |
 | asteroids | historicalsource/asteroids | fafcd40 | ~/Projects/asteroids-source | reference/atari-source/asteroids | 2026-07-12 |
 | battlezone | historicalsource/battlezone | 38d0b07 | ~/Projects/battlezone-source | reference/atari-source/battlezone | 2026-07-12 |
+| centipede | historicalsource/centipede | dbbe6de | ~/Projects/centipede-source | ~/Projects/a-1/reference/atari-source/centipede | 2026-07-18 |

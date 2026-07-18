@@ -40,6 +40,7 @@ export const FLEET = [
   { repo: 'historicalsource/asteroids' },
   { repo: 'historicalsource/battlezone' },
   { repo: 'historicalsource/red-baron' },
+  { repo: 'historicalsource/centipede' },
   // Grandfathered: vendored by hand at the load-bearing -1983- path (cited across
   // the sprint context files). Index-only — the tool records it, never clobbers it.
   { repo: 'historicalsource/star-wars', ref: '5355b76', name: 'star-wars-1983', indexOnly: true },

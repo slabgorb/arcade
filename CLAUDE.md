@@ -10,9 +10,10 @@ launcher, and Pennyfarthing workflows. The games themselves live in their own
 gitignored subrepos, each with independent git history.
 
 **Type:** orchestrator (no application code lives here — only tooling in `scripts/`)
-**Games:** five, all faithful vector clones — `tempest/` (1981), `star-wars/` (1983),
-`asteroids/` (1979), `battlezone/` (1980), `red-baron/` (1980) — plus the `lobby/`
-front-end and the `arcade-shared/` library.
+**Games:** six faithful clones — five vector: `tempest/` (1981), `star-wars/` (1983),
+`asteroids/` (1979), `battlezone/` (1980), `red-baron/` (1980) — plus the first
+raster game, `centipede/` (1981, pre-implementation) — and the `lobby/` front-end
+and the `arcade-shared/` library.
 
 ## Repository Structure
 
@@ -36,6 +37,7 @@ arcade/                      # Orchestrator (this repo)
 ├── asteroids/               # Game — Atari 1979
 ├── battlezone/              # Game — Atari 1980
 ├── red-baron/               # Game — Atari 1980
+├── centipede/               # Game — Atari 1981 (raster; pre-implementation)
 └── arcade-shared/           # Library — published as @arcade/shared
 ```
 
@@ -106,6 +108,7 @@ port — there is no `/tempest/` path prefix:
 | asteroids  | `http://localhost:5275/`  | 5275 |
 | battlezone | `http://localhost:5276/`  | 5276 |
 | red-baron  | `http://localhost:5277/`  | 5277 |
+| centipede  | *(reserved — scaffold pending)* | 5278 |
 
 Ports are pinned with `strictPort` in each subrepo's `vite.config.ts`, so a
 collision fails loudly instead of silently wandering to another port. The first

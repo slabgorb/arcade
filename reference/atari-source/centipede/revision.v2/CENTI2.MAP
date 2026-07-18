@@ -1,0 +1,30 @@
+
+ATARI LINKM V05.00 LOAD MAP   28-MAY-81   14:19:41 
+BIN:CENTI2.SAV 
+
+BIN:CENTI2,CENTI2.XX=OBJ:CENTI2,CENIR2,CENTS2
+
+File Summary:
+    Name	Module	Ident	Creation Date/Time
+OBJ:CENTI2      CENDEF                   
+OBJ:CENIR2      CENDEF                   
+OBJ:CENTS2      CENDEF                   
+
+Section Summary:
+ Name   Addr   Size   Attributes     References (Files):
+. ABS.  0000   3366   
+CENIRQ  3366   06AB   
+CENTST  3A11   05EF   
+
+Global Symbol Summary:
+ Name   Value   Name   Value   Name   Value   Name   Value   Name   Value  
+ABS     3833   CLRCH   2656   IRQ     3879   WRITEA  3AC9   $COINA  0C01   
+CHAR    383E   COMP    3835   MAIN    200E   $BC     00CB   $INTCT  00D4   
+CKSUM   3A11   CPYRHT  2003   MESS    37DD   $BCCNT  00CA   $LAM    0C01   
+CKSUM0  2058   DIGITZ  3864   MESSAG  382D   $CCTIM  00C5   $LMBIT  0010   
+CKSUM1  2DAE   DIGIT2  3857   MOOLAH  3366   $CMODE  00D3   $LMTIM  00D2   
+CKSUM2  3365   INIT    2873   RESET   3B0D   $CNCT   00C9   $PSTSL  00CC   
+CKSUM3  3FF9   INITAL  383B   SCORES  2D5D   $CNSTT  00CF   $$CRDT  00C8   
+
+High limit = 4000   
+

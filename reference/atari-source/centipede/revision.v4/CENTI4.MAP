@@ -1,0 +1,29 @@
+
+ATARI LINKM V05.00 LOAD MAP   23-SEP-81   15:33:49 
+BIN:CENTI4.SAV 
+
+BIN:CENTI4,CENTI4.XX=OBJ:CENTI4,CENIR4,CENTS4
+
+File Summary:
+    Name	Module	Ident	Creation Date/Time
+OBJ:CENTI4      CENDE4          23-SEP-81  15:31:43
+OBJ:CENIR4      CENDE4          23-SEP-81  15:32:45
+OBJ:CENTS4      CENDE4          23-SEP-81  15:33:24
+
+Section Summary:
+ Name   Addr   Size   Attributes     References (Files):
+. ABS.  0000   33AD   ABS,OVR      CENTI4  CENIR4  CENTS4  
+CENIRQ  33AD   06A2   REL,OVR      CENIR4  
+CENTST  3A4F   05B1   REL,OVR      CENTS4  
+
+Global Symbol Summary:
+ Name   Value   Name   Value   Name   Value   Name   Value   Name   Value  
+ABS     387A   CLRCH   265A   IRQ     38C0   WRITEA  3B07   $COINA  0C01   
+CHAR    3885   COMP    387C   MAIN    200E   $BC     00CB   $INTCT  00D4   
+CKSUM   3A4F   CPYRHT  2003   MESS    3824   $BCCNT  00CA   $LAM    0C01   
+CKSUM0  2058   DIGITZ  38AB   MESSAG  3874   $CCTIM  00C5   $LMBIT  0010   
+CKSUM1  2DB1   DIGIT2  389E   MOOLAH  33AD   $CMODE  00D3   $LMTIM  00D2   
+CKSUM2  33AC   INIT    2876   RESET   3B4B   $CNCT   00C9   $PSTSL  00CC   
+CKSUM3  3FF9   INITAL  3882   SCORES  2D60   $CNSTT  00CF   $$CRDT  00C8   
+
+Low limit = 2000   High limit = 4000   
