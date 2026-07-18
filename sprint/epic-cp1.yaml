@@ -44,16 +44,17 @@ stories:
     description: "Decode the rev-2 picture ROM binaries (vendored VERBATIM at arcade/reference/atari-source/centipede/revision.v2/136001.201-202 — rev 4 shipped these chips) into a committed data module: tiles and sprites with names cross-referenced to CENPIC.MAC labels (CENPIC is .RADIX 16 at line 8, assembled OUTSIDE the CPU link — brief section 1). A vitest re-derives every tile from the ROM bytes and compares byte-exact, so the transcription is auditable, not asserted. Bake a contact-sheet artifact for human review (bake-models.mjs precedent at the orchestrator). NO hand-authored pixels anywhere."
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-07-18'
     repos: centipede
     workflow: tdd
-    branch: feat/cp1-3-picture-rom-transcription
     acceptance_criteria:
       - "A test decodes 136001.201/202 from the vendored tree and matches src/core/pictures.ts byte-for-byte; it degrades to committed-fixture comparison when the tree is absent (CI)."
       - "Tile/sprite names traceable to CENPIC.MAC labels; naming table committed in the story docs."
       - "Contact sheet baked and committed; mushroom, all centipede head/body frames, spider, flea, scorpion, player gun, shot, and the character/digit tiles are all present and identified."
       - "Zero hand-drawn pixel data: every byte in pictures.ts provably originates in the ROM dump."
+    completed: '2026-07-18'
+    branch: feat/cp1-3-picture-rom-transcription
   - id: cp1-4
     title: "Playfield + mushrooms — the 30x32 grid, seeding, damage states, scoring hooks, RESTOR sweep"
     description: "PLYFLD grid semantics (PLYFLD=400, 30 wide by 32 high, CENDE4.MAC:61 — hex per the inherited radix), initial mushroom seeding from the seeded @arcade/shared/rng, per-hit mushroom damage states and hit count AS TRANSCRIBED FROM REV-4 CODE (CENTIP.DOC scoring prose — mushroom 1, partial 5 — is rev-1; diff against code per open question 4 before baking numbers), and the RESTOR repair sweep (CENTI4.MAC:1826). Score/status rows of the grid respected. Every constant: radix-cited comment + claims entry (cp1-2 gate is live). Determinism: same seed, same field, pinned by test."
