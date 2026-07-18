@@ -469,3 +469,8 @@ completed_stories:
     title: R6b Trench catwalk is a wall-mounted FORCE FIELD — side-gated .WP WFF panel, not a channel-spanning bar (B-012 + M-012)
     points: 4
     completed: '2026-07-18'
+  - id: tp1-29
+    epic: tp1
+    title: Give an enemy a STABLE slot id — the port has none, and at least one ROM rule (MAYBLR's parity gate) cannot be ported faithfully without it
+    points: 3
+    completed: '2026-07-18'
