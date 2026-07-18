@@ -667,3 +667,32 @@ or the ground mode collapses to one frame and starves the systems that need its 
 are created before the wave block each frame, and `groundCollision` runs before mountains are created,
 so a 1-frame ground mode never lets the collision check SEE a mountain). Placeholder the GTIMER pacing
 (decrement GRNDCT per frame, visibleGroundObjects=0) until rb4-8/rb4-11 supply the real inputs.
+
+---
+
+### A RED assertion that never REACHED its expect() is unverified against existing data — a cross-check can encode a false premise about bytes shipped stories ago
+
+**Situation:** GREEN for a transcription story whose RED suite cross-checks the NEW data
+against an EXISTING transcription (rb4-11: "BLCOLL equals the blimp model's own bounding
+extents — ±16 in x, ±16 in y, ±40 in z").
+
+**Problem:** during RED the test never reached the assertion — `need(topo.BLCOLL_POINTS)`
+threw on the missing export, which IS the intended red. So the premise about the EXISTING
+side (rb2-2's BLIMP_POINTS) was never executed against the repo: the envelope is ±16 in y,
+but the GONDOLA corners are [±8, −20, ±8] — max |y| is 20. Land the byte-correct BLCOLL and
+the cross-check fails 16 ≠ 20 with your transcription blameless. The reflex "make the test
+pass" would corrupt the byte-pinned box (or 'fix' the blimp model!) to satisfy a claim the
+ROM never made — the ROM sized BLCOLL to the ENVELOPE; a shot under the gondola misses,
+authentically.
+
+**Prevention:** when a GREEN turns a need()-guarded cross-check red, audit the test's PREMISE
+against the QUARRY before touching either transcription. If the premise is false, re-seat the
+assertion to the true relationship (keep the axes that match; state the mismatch as the ROM's
+intent with the quarry citation), and log a Dev deviation + a Delivery Finding so TEA/Reviewer
+re-confirm intent. The transcription always outranks a test comment.
+
+**Also (orientation probes):** span-RATIO stroke laws are sign-blind — an upside-down pyramid
+passes 12/8 = 1.5. Before handoff, run a throwaway node probe through the REAL segments fn
+(vite `ssrLoadModule` from the repo root; scratch file, deleted before commit) and check the
+apex endpoint count sits at MAX ndc y, plus every group lands in-frame at a realistic carrier
+staging. Two minutes, and it is the only thing between you and a green-suite inverted render.

@@ -500,3 +500,8 @@ completed_stories:
     title: "Scaffold — Vite/TS/Vitest on port 5278 + core/shell purity guard + CI caller + orchestrator registration"
     points: 2
     completed: '2026-07-18'
+  - id: rb4-11
+    epic: rb4
+    title: "THE GROUND TARGETS — pyramid, house, tank and pill box are entirely absent"
+    points: 8
+    completed: '2026-07-18'

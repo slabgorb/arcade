@@ -205,7 +205,8 @@ stories:
     description: "Cluster C10. Subsumes OB-017, MI-008, OB-016, OB-018. 037007.XXX:1132-1230 defines a complete, self-contained ground-object set that topology.ts does not contain AT ALL: the point-sets PFPYRM (4 points), PFHOME (7), PFTANK (10), PFPBOX (16); the decode-lists DEPFPY/DEPFHS/DEPFTK/DEPFPB; the PFODEC pointer table; the PFLOB point-set table; the .PFLOB length table; and the PFOFFS table of 12 screen offsets. A ground wave deploys exactly two mountain target-groups (GRNDCT=2, GTIMER). The blimp's 8-vertex collision box BLCOLL (RBARON.MAC:6270-6277) is the ONLY member of the PLNDB master table missing from topology.ts. REMEMBER: this region of 037007.XXX is `.RADIX 10` — transcribe it as DECIMAL, exactly as the existing (correct) topology.ts transcription does. Do NOT apply rb4-1's hex correction here; that would break it."
     points: 8
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -214,7 +215,9 @@ stories:
       - "A ground wave deploys two mountain target-groups (GRNDCT = 2)."
       - "BLCOLL, the blimp's collision box, is transcribed and used for the blimp hit test."
       - "npm test -- citations stays green."
+    completed: '2026-07-18'
     type: feature
+    review_verdict: approved
   - id: rb4-12
     title: RE-POINT THE QUARRY — reference/red-baron/ is the CRLF sibling, the copy that poisoned the doc
     description: "Root cause of rb4-2, still on disk. Three checkouts of the Atari source exist and two DISAGREE ABOUT LINE NUMBERS. The citable byte-of-record is ~/Projects/red-baron-source-text (LF-only, md5 497db93e0b5cf3a67581463d2bac5e8d, RBARON.MAC = 6294 lines). The CRLF sibling (md5 27cdfeae404655fe4e65ced2a3621f95, 6286 lines) glues each form-feed page break (0x0C) onto the following .SBTTL/.TITLE line, losing 8 lines in a STAIRCASE: +0 below :263, +1 through :724 (this is why CALCNT reads 620 instead of 621), rising to +8 past :5963. No constant offset repairs a citation taken from it. red-baron/reference/red-baron/ — the gitignored quarry the findings doc's own header names as its source — IS the CRLF sibling. Until it is re-pointed, the next author reads the wrong line numbers and rb4-2 happens again. The orchestrator has already vendored the correct LF copy at arcade/reference/atari-source/red-baron/ (branch feat/extract-audio). tests/audit/source-citations.test.ts (rb4-2) already carries a fingerprint that rejects a glued copy — this story wires that guard in front of everything that reads the quarry."

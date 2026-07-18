@@ -669,3 +669,23 @@ dedicated test RED on ALL frames (not just the enemy-less frame 0). Because prod
 correct, the fix is GREEN-not-RED test-hardening — legitimate, and mutation proof substitutes for a
 RED driver. Re-review is still a full self-authored-round pass (4 specialists + own serial mutations
 in an isolated worktree); all three rounds reproduced the same REDs independently. APPROVED.
+
+---
+
+### Reviewing a relay-handoff of your own GREEN: the leverage is independent RE-DERIVATION, not re-reading
+
+**Situation:** pf's relay mode hands review to the same context that just implemented (rb4-11:
+Dev → Reviewer in one session). Re-reading your own diff finds nothing — you agree with yourself.
+
+**What actually found things:** (1) a from-scratch quarry re-derivation script (Python, not the
+vitest suites the Dev phase ran) — proves the transcription without trusting any test the same
+hands wrote; (2) the independent specialist subagents — ALL three real findings (call-detector
+recorder, sign-blind ratios, unpinned exact value) came from them, zero from self-re-reading;
+(3) settling disputed premises at the SOURCE (the gondola −20 read straight out of 037007.XXX),
+not from either side's test comments.
+
+**Rule of thumb:** when the review is a relay, budget your own effort into verification the Dev
+phase did NOT run (fresh derivations, source lookups, tracing degenerate cases the tests never
+stage) and let the subagents own the diff-reading. And check recorder mocks for WHAT they record:
+a tap that logs the INPUT of the function it wraps turns every "is drawn/is produced" assertion
+into a call-detector — mutation `return []` and see if anything reddens before trusting it.
