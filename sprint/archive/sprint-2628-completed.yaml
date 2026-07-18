@@ -373,3 +373,8 @@ completed_stories:
     title: "EXPLOSION DEBRIS — a 6-piece gravity particle subsystem replacing the fixed 1.5s timer"
     points: 5
     completed: '2026-07-17'
+  - id: bz3-8
+    epic: bz3
+    title: "MOUNTAIN & MOON GEOMETRY — the ridge is a procedural two-sine; the real MTN0-7 was in the ROM all along"
+    points: 5
+    completed: '2026-07-18'

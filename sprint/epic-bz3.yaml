@@ -112,12 +112,14 @@ stories:
     description: "Cluster C8. Subsumes H-002, H-003. The clone's mountain ridge is a procedural two-sine profile (H-002) and its moon is independently authored (H-003), both built on the false premise that the quarry held no horizon picture data. It does: the hand-authored ridge is MTNS/MTN0-7 (BZMTNS.MAC:11-183, .RADIX 16) drawn by DRAW MOUNTAIN SCAPE/MOUNTS (BZONE.MAC:1240), with the moon embedded in MTN0 (brite tiers 7/2/5). (This premise-correction came from audit finding H-001: BATBL, which an earlier draft called 'the mountain-scape table', is actually the 'BATTLE' TITLE-LOGO object 0x17 — LOGOBJ at BZMTNS.MAC:846 — not the ridge.) Port the real geometry."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - "The mountain ridge is ported from the ROM's hand-authored MTN0-7 vector data (BZMTNS.MAC:11-183), replacing the procedural two-sine profile."
       - "The moon geometry is taken from its embedding in MTN0 (brite tiers 7/2/5), not authored separately."
+    completed: '2026-07-18'
     type: bug
   - id: bz3-9
     title: "COLLISION BOUNCE — the ROM jolts the view and bobs the mountains on a hard hit; the clone does neither"
