@@ -363,3 +363,8 @@ completed_stories:
     title: "SPAWN PROBABILITY & ROSTER — missile odds are a 50/50 coin, and the super tank arrives one missile late"
     points: 1
     completed: '2026-07-17'
+  - id: bz3-4
+    epic: bz3
+    title: "PER-TYPE COLLISION TABLES — the clone reuses one circle where the ROM has distinct proximity tables"
+    points: 3
+    completed: '2026-07-17'
