@@ -10,6 +10,7 @@ sprint:
 
 completed_epics:
   - sw5
+  - bz3
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -412,4 +413,9 @@ completed_stories:
     epic: bz3
     title: "ENEMY TANK MODEL DETAIL — the rotating radar antenna and animated treads the clone omits"
     points: 3
+    completed: '2026-07-18'
+  - id: bz3-13
+    epic: bz3
+    title: "HUD & DOC TEXT — 'GREAT SCORE' on the initials screen, and the reversed language-code note"
+    points: 1
     completed: '2026-07-18'
