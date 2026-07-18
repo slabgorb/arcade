@@ -449,3 +449,8 @@ completed_stories:
     title: "The pulse and the potency zone are WAVE-PARAMETERISED in the ROM; we freeze both at their wave-1 value"
     points: 3
     completed: '2026-07-18'
+  - id: tp1-28
+    epic: tp1
+    title: The audit doc says MAYBLR chases on an EVEN invader index. It is ODD, and the error has now propagated through three documents.
+    points: 1
+    completed: '2026-07-18'
