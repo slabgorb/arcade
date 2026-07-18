@@ -43,12 +43,14 @@ stories:
     description: "Cluster C3. Subsumes R-008, E-010. Small and independent. (1) The missile-vs-tank spawn is a fair 50/50 coin flip in the ROM: LSR / BCC at BZONE.MAC:3737-3741 unambiguously resolves to a 1-bit coin, but the clone uses a provisional MISSILE_SPAWN_CHANCE=0.4 (enemies.ts:297) self-flagged 'undecoded'. (2) The super ('high-powered') tank appears one missile EARLY in the clone: NOR2D3 is '#missiles - 1' (LDA I,-1 init at :1175, 'SET TO 0 FOR FIRST' at :3773), so the ROM's CMP I,5 means the 6th missile, while the clone's from-0 missilesLaunched >= 5 fires on the 5th — a clean +1 off-by-one confirmed by the refuter."
     points: 1
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-17'
     repos: battlezone
     workflow: trivial
     acceptance_criteria:
       - "MISSILE_SPAWN_CHANCE is corrected 0.4 -> 0.5 (fair coin, BZONE.MAC:3737-3741), and its 'undecoded' comment is replaced with the decode."
       - "Super-tank gating is fixed by one: it appears on the 6th missile (NOR2D3 = missiles - 1, CMP I,5), not the 5th."
+    completed: '2026-07-17'
     type: bug
   - id: bz3-4
     title: "PER-TYPE COLLISION TABLES — the clone reuses one circle where the ROM has distinct proximity tables"

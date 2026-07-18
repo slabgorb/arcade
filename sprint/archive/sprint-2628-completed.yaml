@@ -358,3 +358,8 @@ completed_stories:
     title: "RADAR SWEEP MECHANISM — the scanner computes a sweep angle but never uses it to gate blips"
     points: 5
     completed: '2026-07-17'
+  - id: bz3-3
+    epic: bz3
+    title: "SPAWN PROBABILITY & ROSTER — missile odds are a 50/50 coin, and the super tank arrives one missile late"
+    points: 1
+    completed: '2026-07-17'
