@@ -388,3 +388,8 @@ completed_stories:
     title: "OFF-AXIS ENEMY PROMPTS (visual) — the flashing ENEMY IN RANGE and ENEMY TO LEFT/RIGHT/REAR callouts"
     points: 3
     completed: '2026-07-18'
+  - id: bz3-6
+    epic: bz3
+    title: "VOLCANO — the clone draws a static cone the ROM never had and omits the eruption it does have"
+    points: 3
+    completed: '2026-07-18'

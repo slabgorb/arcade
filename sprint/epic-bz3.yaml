@@ -85,12 +85,14 @@ stories:
     description: "Cluster C6. Subsumes H-006, H-008. Depends on bz3-5 (particle subsystem). The clone draws a static volcano cone silhouette the ROM never had (H-008) while omitting the eruption the ROM does have: the VOLCNO rock ejecta (H-006), lifetime ~1.984 s, gravity ~-244 units/s^2 at the 15.625 Hz timebase, entirely unimplemented. Wire the ejecta onto the bz3-5 particle system and drop the invented cone."
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - "The static volcano cone silhouette is removed (the ROM has no such cone)."
       - "The VOLCNO rock ejecta erupts using the bz3-5 particle subsystem, with the ROM's ejecta lifetime (~1.984 s) and gravity."
+    completed: '2026-07-18'
     type: bug
   - id: bz3-7
     title: "RADAR SWEEP MECHANISM — the scanner computes a sweep angle but never uses it to gate blips"
