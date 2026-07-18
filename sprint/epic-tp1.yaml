@@ -423,7 +423,8 @@ stories:
     description: "Obi-Wan's Ruling 2 from the tp1-1 review (2026-07-13), filed as its own story because the Reviewer fenced tp1-1 to the frame-rate family. THE PROBLEM: the citation gate cannot survive its own remediation. docs/audit/findings/*.json are an AUDIT RECORD — 'ours.verbatim' IS the defect text — so the moment any tp1 story fixes anything, tests/audit/citations.test.ts goes red. tp1-1 alone produced 98 failures: 82 were pure line drift (defect intact, only moved) and were re-pointed BY HAND; the other 16 were code actually fixed, and re-pointing those would have made the finding assert that the FIX is the defect. Dev's interim 'remediated_by' flag solved tp1-1 and MUST NOT BE REVERTED — but it does not scale: every one of the remaining 19 stories pays the same hand re-pointing tax. THE DURABLE FIX (Dev's own recommendation, adopted by the Reviewer): read the 'ours' side from the AUDIT COMMIT (git show 4232ed4:<file>) rather than from the working tree. The audit's record then becomes immutable, the gate becomes permanently stable, and the per-story re-pointing tax goes to zero. MUST LAND BEFORE tp1-4 (the CAM), which rewrites src/core/enemies/ and churns sim.ts heavily — it will drift citations far harder than tp1-1 did. The ROM 'source' side is byte-checked unconditionally today and must stay that way: that is where the audit's authority lives, and the 1981 source never changes."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -433,6 +434,7 @@ stories:
       - 'A finding whose class is NO_COUNTERPART can never be marked remediated_by — today that combination hard-errors with a confusing message. Either make it a clear error or make it unnecessary, and comment the branch: tp1-4/tp1-6/tp1-8 all ADD systems we do not have, which is exactly the NO_COUNTERPART class.'
       - "A test proves the gate survives a simulated code fix: mutate a cited 'ours' line in the working tree and citations stays green, while a mutated ROM source line still goes red."
       - npm test -- citations stays green (currently 8/8).
+    completed: '2026-07-18'
     type: chore
   - id: tp1-23
     title: WD-010 — warpAccel is fed a 1-based level, not the ROM's 0-based CURWAV (the one character that fell between tp1-1 and tp1-3)
