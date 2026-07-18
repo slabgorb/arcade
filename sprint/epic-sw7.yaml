@@ -238,7 +238,8 @@ stories:
     description: "Split from the 14-pt R6 flagship (2026-07-16). Subsumes B-012 (the catwalk is a wall-MOUNTED force field in the ROM, side-gated — .WP WFF panel content, not our channel-spanning bar; one of the original story's two size-l rewrites) and M-012 (the WFF model port — the ROM's .WGD WFG comment 'CATWALK COLOR WHEN COLLIDED' nails the identification). Expressed as panel content in the B-010 wall-panel grid, hence depends_on sw7-6 (R6a lands the grid). Collision is side-gated: the field blocks only the wall side it is mounted on."
     points: 4
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-18'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-6
@@ -264,3 +265,11 @@ stories:
     type: chore
     branch: chore/sw7-21-remove-lock-on-ring
     review_verdict: approved
+  - id: sw7-22
+    title: R6d Streaming wedge-panel trench — seat the exhaust port at its real BS.PLC distance (0x50000 = 327,680) so the pilot flies the full ~21s channel, and STREAM the grid's per-wedge wall-panel content (B-012 force fields now, B-017 guns next) in over it; replaces the TRENCH_FAR (28,672) port-clamp stub. Beam-reach stays $7000 so the port only becomes shootable in the final ~1.8s (WSLAZR CLBLZ). Unblocks the ~80 authentic force-field panels sw7-19 could not place into the 1.8s stub.
+    points: 8
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw7-19
