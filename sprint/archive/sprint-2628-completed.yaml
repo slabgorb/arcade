@@ -444,3 +444,8 @@ completed_stories:
     title: THE CITATION GATE — freeze the audit's 'ours' side to the audit commit; stop re-pointing 82 citations by hand every story
     points: 3
     completed: '2026-07-18'
+  - id: tp1-26
+    epic: tp1
+    title: "The pulse and the potency zone are WAVE-PARAMETERISED in the ROM; we freeze both at their wave-1 value"
+    points: 3
+    completed: '2026-07-18'
