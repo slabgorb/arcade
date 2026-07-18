@@ -424,3 +424,8 @@ completed_stories:
     title: 'R7b Ground debris — tower/bunker ballistic destruction explosion (X-005): 3 pieces, 0x20=32f=1.56s life, upward launch (728-1024 x4) + gravity 200/f, floor-freeze, scaled ground shadow (red bunker / white tower)'
     points: 4
     completed: '2026-07-18'
+  - id: tp1-21
+    epic: tp1
+    title: "SCORING — the fuseball's score tier is a weighted random roll, not a depth band"
+    points: 1
+    completed: '2026-07-18'

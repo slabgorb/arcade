@@ -407,7 +407,8 @@ stories:
     description: "Cluster C15, minus B-009 (carved out to tp1-3) and minus SC-001, which is WON'T-FIX by PM ruling on 2026-07-13: Tempest's arcade high-score ladder is 8 deep and @arcade/shared ships 10 for the whole cabinet, but the cabinet-wide convention beats one game's fidelity and the four-game blast radius is not worth it. SC-001/004/009 are closed, not deferred — do not re-file them."
     points: 1
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
@@ -415,6 +416,7 @@ stories:
       - "The roll's weights are transcribed from the ROM and cited."
       - "SC-001 is NOT implemented. The 10-deep ladder from @arcade/shared stands."
       - "npm test -- citations stays green."
+    completed: '2026-07-18'
     type: bug
   - id: tp1-22
     title: THE CITATION GATE — freeze the audit's 'ours' side to the audit commit; stop re-pointing 82 citations by hand every story
