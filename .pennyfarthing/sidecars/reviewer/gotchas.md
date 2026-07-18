@@ -4,6 +4,62 @@ Common pitfalls encountered during code review.
 
 ---
 
+### After a coordinate-space refactor, Dev's sibling re-seat DEFANGS a PASSING test in the same block — mutation-test the WHOLE describe-block, and break the feedback loop that hides the regression
+
+**Situation:** Reviewing a story that moves a shared mechanism into a NEW coordinate space (rb4-16:
+the enemy servo went from reading stored WORLD position to POST-DIVIDE SCREEN
+`(world−eye)×POSITH_SCALE/positionZ`). Dev correctly re-seated the sibling tests that turned RED,
+logged the deviation, and the full suite is green.
+
+**Problem — a green sibling can be silently VACUOUS.** When Dev re-seats a describe-block after a
+space change, they fix the tests that FAILED. But a test in the same block that still PASSES can be
+defanged by the very same change: with the default fixture depth (`positionZ=P_INDP`), a hand-built
+world `x` that used to sit "just inside the inner window" now projects into a DIFFERENT zone
+(`screen ≈ 3.88×world`), so the assertion no longer exercises the behavior its comment claims. It
+stays green — not because the behavior holds, but because it stopped testing it. Grepping the failing
+tests misses it; the FULL suite misses it (it passes). Only MUTATION catches it: delete the inner-
+window reversal in the production code and this test stays green while its re-seated siblings fail.
+Confirm it's a REGRESSION (not merely a weak test) by applying the same mutation to the PRE-refactor
+version of the identical test (`git show <base>:path`) — if the old one FAILS the mutation and the
+new one passes, the refactor defanged a previously-sound guard. That is the round-1 "green suite,
+unguarded behavior" pattern in miniature, and it is exactly what the reviewer exists to catch.
+
+**Problem — a feedback-loop guard COMPENSATES for the regression it names.** A reachability/UX guard
+that drives an outer control loop (rb4-16 AC-R3: a "chasing pilot" `flightStep`-ing toward the
+plane) can absorb the exact defect it claims to pin. Mutation-tearing the eye out of the servo (the
+round-1 soft-lock) left 3 of 5 levels green and the others failing by <1% — the pilot's own error-
+correction closed the gap. The guard's PROSE ("the reachability regression guard") oversold it; a
+different test (AC-1's direct "OBSERVES the eye") was the real proof. Always mutation-test a
+feedback-loop guard by breaking the INNER mechanism and checking it fails HARD, not thinly.
+
+**Problem — a new field with a totality docstring is usually UNtested and sometimes FALSE.** The
+story added `plonsnLimit`/`plonsnClamp` with loud totality claims ("PLONSN's own clamp sinks a NaN
+X"; "a non-finite limit leaves the position untouched"). The existing NaN totality test only sets
+`x`/`y` NaN — never the NEW `positionZ` field. Feed the new divide/clamp path degenerate values
+directly (a 6-line node repro of the exact expressions): a NEGATIVE `positionZ` → negative `limit` →
+`Math.abs(offset) > negative` is always true → the plane teleports to the WRONG side; `-Infinity`
+→ non-finite `x` that persists (no backstop). Both unreachable via `spawn` today, but a named
+successor (AC-4 reads the raw PLSTAT+19 LSB into that field) is a dated trigger — and the claim is
+simply false, in a module that disciplines totality and whose OWN AC-5 corrected a totality
+overclaim two functions away.
+
+**Prevention:** For any space/mechanism refactor: (1) mutation-test the ENTIRE describe-block Dev
+touched, not just the re-seated tests, and diff-compare the survivors against the pre-refactor
+version to prove the mutation used to be caught; (2) mutation-test feedback-loop guards by breaking
+the inner mechanism (assert they fail hard); (3) for every new function with a totality/never-throws
+docstring, reproduce the degenerate inputs of its NEW parameters directly. None of these are live
+product bugs, so they will never show up in the green suite or the AC checklist — they are pure
+safety-net erosion, which is the reviewer's job to find. REJECT with a tightly-scoped, mutation-
+VERIFIED finding list (a one-line re-seat, a domain guard, a totality test), not a vibe.
+
+**Example (rb4-16):** REJECTED with [HIGH] one defanged inner-window test
+(`enemy-machine.test.ts:208` — add `positionZ: identityZ()`), [MED] the `plonsnLimit`/`plonsnClamp`
+negative/-Infinity totality gap (`Math.max(0, positionZ)`), [MED] AC-R3's eye-overclaim prose, [MED]
+stale ±olim assertions passing by boresight coincidence, [LOW] two stale mock-type contracts. The
+machine and every ROM citation were sound; only the net had tears.
+
+---
+
 ### A rework that hardens input-validation on ONE side of a trust boundary (encode/sanitize) must be checked on the OTHER side (decode) — and its own test may round-trip past the untouched side
 
 **Situation:** Re-reviewing a rework whose commit message says it "strips control chars from

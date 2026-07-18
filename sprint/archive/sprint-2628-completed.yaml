@@ -348,3 +348,8 @@ completed_stories:
     title: "ENEMY AI AGGRESSION — the ROM tank is attack-dominant; the clone pursues 30% of the time"
     points: 3
     completed: '2026-07-17'
+  - id: rb4-16
+    epic: rb4
+    title: PLONSN, OR THE PLANE ESCAPES THE SCREEN — the servo must weave the DISPLAY position, clamped on-screen the ROM's way
+    points: 8
+    completed: '2026-07-17'

@@ -4,6 +4,56 @@ Common pitfalls encountered during Dev (GREEN / implementation) work.
 
 ---
 
+### Moving a shared mechanism into a NEW coordinate space breaks siblings THREE ways RED can't see — and the front-end wiring is a silent no-op unless you thread it yourself
+
+**Situation:** GREEN work that changes the SPACE a core mechanism reads, not just its value —
+rb4-16 moved the red-baron enemy window-servo from reading the plane's stored WORLD position to
+its POST-DIVIDE SCREEN position `(world − eye) × POSITH_SCALE / positionZ`, and replaced an ad-hoc
+±olim world clamp with the ROM's PLONSN screen bound. TEA rewrote ONLY the new suite
+(`plonsn.test.ts`) and reported "zero collateral, full suite 1111 pass."
+
+**Problem — TEA's "zero collateral" is the RED-vs-OLD-code illusion.** RED runs the NEW tests
+against the OLD implementation, so it CANNOT see the ripple GREEN introduces. Moving the servo
+world→screen turned SIX sibling assertions RED on the FULL green run, in files TEA never touched,
+in three distinct flavours: (1) **world-space zone fixtures** (`withEnemy({ x: -(ilim>>1) })`
+expecting "inside the inner window") — now the wrong ZONE, because `x` is a world coord and the
+servo reads `x × scale / depth`; (2) a **retired-invariant assertion** (`right.x ≤ olim`) — AC-3
+DELETES the ±olim fence, so world may now exceed olim by design; (3) a **real code regression** —
+the ±olim `clamp` used to be X's NaN sink, and the new per-axis PLONSN clamp dropped it, so a NaN
+x survived (a totality test, correctly RED). `npm test` (vitest) catches all three, but ONLY on
+the WHOLE suite — never on the story's own file.
+
+**Problem — the front-end wiring is a SILENT NO-OP.** The eye-aware servo is worthless unless
+`main.ts` actually passes the eye. TEA's RED pinned the CORE seam (3-arg `stepWave` in the new
+suite) but NOTHING asserts `main.ts` threads it — `main.ts` shipped `stepWave(enemies, level)`
+(2-arg), so the real game read the boresight and re-created the exact soft-lock the story kills,
+with 1120 tests green. The Dev self-review "wired to front end" line is the only thing that
+catches it. The consumer half (`guns.step(…, eye)`) was already wired a story earlier, which
+makes the producer gap easy to miss.
+
+**Prevention:** (1) After a space/mechanism change, `grep -rn` the WHOLE `tests/` for every fixture
+that hand-builds the old-space coordinate or asserts the retired invariant, and run the FULL
+`npm test` before declaring green — never the story's file alone. Re-seat intent-preservingly:
+seat zone fixtures at the IDENTITY depth (`positionZ = POSITH_SCALE` ⇒ screen == world) so the
+zone logic reads unchanged with the divide factored out; re-express excursion proxies that the new
+space legitimately shrinks (a weave whose WORLD amplitude falls as it closes is still a weave —
+assert the DELTA oscillates, not `maxAbs(world) > k`); delete assertions of the invariant the AC
+retires. Log each as a Dev deviation + a "TEA re-seat gap" Delivery Finding. (2) Trace the new
+input to the FRONT END (`main.ts`) and thread it — the producer call, not just the consumer — and
+file the missing-wiring test as a Finding. (3) When an undetermined ROM constant (here the Math
+Box divide's fixed-point) gates a "measure-and-see" guard (AC-R3), pin it EMPIRICALLY by sweeping
+through the exact guard and choosing the clean power-of-two centred in the band that holds EVERY
+baseline — that is the D5 process ("pin the scale/unit, never re-tune the bar"), and document it
+as a declared seam with the derivation shown, not a magic number.
+
+**Example (rb4-16):** 6 red siblings across `enemy.test.ts`/`enemy-machine.test.ts` (3 zone
+fixtures re-seated to identity depth, 1 Y-weave re-driven with a band-centred eye, 1 beeline
+re-expressed via deltaX sign-oscillation, 1 ±olim assertion deleted per AC-3), 1 code NaN-fix in
+`plonsnClamp`, `main.ts:577` given `toEye(flight)`, and `POSITH_SCALE = 2^14` swept-and-pinned
+(L0 15000/15000 exact; L1-4 244/110/66/26 ≥ the 208/44/32/17 bar). Net red-baron 1120 green.
+
+---
+
 ### Widening an arcade-shared cookie/transport FORMAT breaks TWO coupled suites, not the one TEA scopes — and `"NO SCORES YET"` trips the `/NO SCORE/` source guard
 
 **Situation:** GREEN work that changes the VALUE SHAPE of a published `@arcade/shared`
