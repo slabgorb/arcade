@@ -567,3 +567,34 @@ checkout is what makes the probe evidence, not someone else's tree.
 
 **Also:** screenshots land in the ORCHESTRATOR repo root by default (Playwright MCP cwd) — move
 them to the session scratchpad or they dirty the tree the SM is about to commit from.
+
+---
+
+### A mutation-testing subagent reverted my SOURCE files (not just tests) in the live tree — commit BEFORE review so `git checkout HEAD` restores it
+
+**Situation:** rb4-7 review. I spawned reviewer-test-analyzer + reviewer-rule-checker (background,
+parallel). Mid-review, PreToolUse system-reminders fired that `src/core/scoring.ts` and
+`src/core/waves.ts` had been "modified on disk" — reverted to their PRE-fix `develop` versions — and
+debug `console.error` lines had been injected into a test file. A subagent was mutation-testing in the
+LIVE working tree (revert source → run suite → confirm the tests go red → restore), and its transient
+reverts + my reads overlapped.
+
+**Problem:** This is the "don't verify while subagents mutate" hazard in its worst form — it hit the
+PRODUCTION source, not just tests. Any test run I did during that window would show FALSE failures
+(mission-clock.test.ts red because scoring.ts was reverted, not because my code is wrong), and a naive
+"tests are failing!" reaction would be exactly backwards.
+
+**Prevention:** (1) COMMIT the implementation before review — then a subagent's stray revert is fully
+recoverable with `git checkout HEAD -- <files>` (a `git reset --hard` also works; the commit is the
+source of truth). I had committed (3d268b6), so recovery was one command. (2) Detect the mutation from
+the system-reminders, then WAIT for the subagents to go idle before touching anything — I used a Monitor
+polling both subagent transcript sizes until 20s of no growth, then reset, then re-verified SERIALLY.
+(3) Treat every subagent test-failure claim during the run as suspect; re-run yourself against a clean
+HEAD before believing it. (4) Pass subagents the DIFF as a static file (I saved `git diff develop...HEAD`
+to scratch) so their primary input doesn't depend on the live tree they're about to mutate.
+
+**Bonus finding worth reusing:** a RED-phase `as unknown as XModule` cast (needed when the source
+interface was still mid-migration) becomes a REMOVABLE leftover once GREEN ships the matching shape —
+both reviewer subagents tsc-probed that a single `as XModule` compiles clean and flagged it under
+type-safety-escape (check #1). When a story renames an interface field, grep the test casts in the same
+commit for a now-stale `unknown` bridge.

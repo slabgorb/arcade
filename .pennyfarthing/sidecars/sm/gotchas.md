@@ -59,3 +59,33 @@ and `.session/<id>-session.md` gone.
 — `git merge origin/develop --no-commit --no-ff`, run the FULL suite, then `git merge --abort` —
 because local-green on a stale branch has masked a merge-red before. sw7-16: develop was 1 commit
 ahead (a version bump only), merged tree stayed 1483/1483.
+
+---
+
+### A parked story's blockers can be STALE or FALSE — re-verify each against the current tree before re-cutting, and protect a hand-authored context through sm-setup with an explicit override + md5 check
+
+**Situation:** Re-cutting rb4-16 (8pt, red-baron), parked with a full "⛔ PARKED" banner citing two hard
+blockers: (1) "PLONSN's window can't be byte-pinned — the SINE table is a bare ROM address whose data
+is in no `.MAC` file," and (2) "AC-R3 is infeasible — frames-in-reach = 0.0 at level 4 for every window,
+including no-PLONSN." The story had `started: 2026-07-16`, an archived session, and a curated
+context-story file whose body encoded a coordinate premise the banner itself flagged as wrong.
+
+**Problem:** Both blockers had dissolved and nobody had re-checked. (1) The SINE table was NOT missing —
+it was in `037007.XXX` (the picture/data ROM, ASCII assembler source), which the parked Dev never
+searched because he grepped only `*.MAC`. (2) The 0.0-at-L4 sweep was taken through a gun that a LATER
+story (rb4-17) had since DELETED and replaced with a depth-growing one — a stale number, not a wall.
+Treating the parked banner as current scope would have handed TEA a story specced around two ghosts.
+
+**Prevention:** When a story carries a PARKED/BLOCKED banner, treat every blocker as a claim to
+re-verify against the CURRENT tree and the CURRENT state of its dependencies — especially if a
+dependency shipped after the park. A blocker that reads "X is impossible / undiscoverable" is often
+"X wasn't found where they looked." `.XXX`/data-ROM dumps are ASCII source too; grep them, not just
+`.MAC`. Route the actual re-derivation to Architect/brainstorm — don't rubber-stamp the parked scope.
+
+**Prevention (context protection):** A re-cut's context is often hand-authored and must survive
+`sm-setup`, which regenerates story context by default (and the pointer-story YAML body is empty, so a
+regen writes garbage). The reliable guard: commit the context first, then pass `sm-setup` an explicit
+override ("DO NOT regenerate/overwrite sprint/context/context-story-<id>.md — SKIP that step"), and
+AFTER it returns, verify on disk with `git status --short <ctx>` (must be empty) and an md5 match to
+your committed copy. sm-setup honored the override cleanly here (`context_file_touched: false`, md5
+`e4f00270…` unchanged) — proactive prevention beats the "clobber then `git checkout --`" recovery.

@@ -626,3 +626,44 @@ interpolation EXACT — position scale comes out `R/(1−(p+d)(1−R))`, the tru
 the projective form is invariant under linear re-spans of PY. And `p + d_eye ≡ 1/(1−R)` (constant),
 so the eye-plane clip ring has a progress-independent scale. Both identities save you from hacking
 approximations into drawSpikes.
+
+---
+
+### A wave-SCHEDULE fidelity fix ripples into every booted-cockpit snapshot/staging test — and re-staging a stalled booted test wants SEED-HUNTING, not an aim controller
+
+**Situation:** rb4-7 flipped red-baron's wave clock from a per-frame countdown with 1:1 plane/ground
+alternation to the ROM's NEWCT-counts-WAVES model (a plane MODE fields a RUN of MCOUNT[MODECT>>1]
+plane waves, then one ground wave). Unit tests went green immediately; two BOOTED-cockpit sibling
+tests (that drive the real main.ts loop) turned red — exactly the "green-now-doomed sibling" the TEA
+sidecar warns surfaces in Dev's lap, not RED.
+
+**Problem:** Two distinct ripples. (1) A deterministic SNAPSHOT — `cockpit-draw-path`'s
+`TOTAL_LIVE_SHELLS` — shifts by one (52→51) because a different seeded sequence of planes consumes a
+shell a frame sooner. That guard's own comment says "re-read the numbers on purpose," so it is a
+deliberate re-baseline, not a regression. (2) A STAGING test — `ground-collision-wiring` — held fire
+and waited for the schedule to reach a ground wave. Under 1:1 alternation the ground wave came after
+wave 1 (~frame 8); under RUNS it comes only after the opening 4-plane run clears — and it never
+arrived. Probing showed why: **in a booted test the sim STALLS.** With no fire the opening plane never
+despawns (still alive after 800 calc frames ≈ 76 s — rb4-6's "fly past P.MNDP" does not fire for a
+level-0 plane in bounded time); and *with* hold-fire, each kill raises the score until a multi-plane
+wave spawns whose DRONE (offset ±256) the fixed-forward trigger can never hit, so the run stalls at
+wave 3. "Hold fire and wait" cannot reach a ground slot anymore.
+
+**Prevention/Fix:** (a) For the snapshot, re-baseline the one number with a cited comment — that IS the
+guard working. (b) For the stalled staging test, DON'T build an aim controller in the black-box booted
+harness (it only exposes tick()/pressKey — reading enemy screen positions to steer is fragile and may
+not converge). SEED-HUNT instead: a 12-seed probe (hold fire, 500 frames, tap `landscape.stepMountain`
+to detect ground mode) found 2 seeds whose opening RUN the held trigger clears and that reach a ground
+slot (~frame 107). Swap the seed + widen the frame window; the four assertions and their intent are
+untouched. Cheap, robust, no new test machinery. Write the throwaway probe to a scratch FILE (vitest
+swallows console.log) and delete it before committing.
+
+**Also — the interface rename is what forces the main.ts rewire.** No behavioral test pinned main.ts's
+wave integration, but renaming `WaveClock.countdown`→`newct` is a tsc error at the `stepWaveClock`
+call site, so tsc (not a test) forces the faithful rewire: move the step off the per-frame clear-sky
+tick onto the wave-COMPLETION edge. And AC-4's `groundModeEnds` predicate needs a REAL consumer in the
+loop, not just a unit pin — wire it as the ground-mode exit (arm GRNDCT on entry, hold until spent),
+or the ground mode collapses to one frame and starves the systems that need its duration (mountains
+are created before the wave block each frame, and `groundCollision` runs before mountains are created,
+so a 1-frame ground mode never lets the collision check SEE a mountain). Placeholder the GTIMER pacing
+(decrement GRNDCT per frame, visibleGroundObjects=0) until rb4-8/rb4-11 supply the real inputs.

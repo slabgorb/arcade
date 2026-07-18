@@ -393,3 +393,8 @@ completed_stories:
     title: "VOLCANO — the clone draws a static cone the ROM never had and omits the eruption it does have"
     points: 3
     completed: '2026-07-18'
+  - id: rb4-7
+    epic: rb4
+    title: "THE MISSION CLOCK — difficulty ramps twice as fast, and waves come in RUNS not alternation"
+    points: 8
+    completed: '2026-07-18'

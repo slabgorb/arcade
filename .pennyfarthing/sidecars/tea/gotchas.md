@@ -1141,3 +1141,95 @@ UNIVERSAL — kNear(f·p*) = 1/(1−f) (4/3, 2, 4 at f = ¼, ½, ¾) — a well-
 complements per-well absolute samples. And past the bottom the ROM forces CURSY=0xFF
 (ALWELG.MAC:1038-1039) so DSPCUR stops drawing the cursor — the cursor "rides CURSY" only while
 on the lines.
+
+---
+
+### A "depth gate" spec can INVERT the ROM branch — verify the BCS/BCC + comment placement firsthand
+
+**Situation:** rb4-16 AC-4 ported an outer-zone depth gate (RBARON.MAC:2776-2781). The context AND the
+approved design doc both said "when POSITION Z < 4 the plane flies past off-screen instead of turning
+back."
+
+**Problem:** The ROM says the OPPOSITE. `LDA PLSTAT+19 / CMP I,4 / BCS 10$ ;W/I DEPTH NO RETURN TO
+SCREEN`, and the fall-through (< 4) is `EOR I,0FF / STA FLAG+1 ;RETURN TO WARDS SCREEN CENTER`. So
+positionZ **≥ 4 flies past**; **< 4 returns to centre** — the mirror of the spec. A carry-branch is
+one letter (BCS vs BCC) and its comment sits on the branch line, not the fall-through; it is trivial to
+read the polarity backwards when summarising, and the summary is what lands in the context/design doc.
+Worse, the compare is on PLSTAT+**19** — the POSITION Z **LSB** (:295) — so "4" is a byte-column
+threshold with NO defined meaning in our continuous world-unit `positionZ` field. Both the direction and
+the threshold were unresolvable from the doc; guessing either would have shipped a wrong gate wearing the
+spec's confidence.
+
+**Prevention:** For any ported branch, read the 6502 firsthand and pin the polarity to the ROM author's
+OWN comment on the taken branch — never to the story's prose paraphrase. When the spec text and the ROM
+comment disagree on a fidelity story, the ROM wins and the conflict is a BLOCKING finding, not a test you
+write to the doc. And when a threshold compares a single byte of a multi-byte field, its scale in your
+(usually continuous) port is undefined — that alone blocks the pin until the representation is resolved
+with the user. Leave the AC as `it.todo` with the citation; do not manufacture a direction.
+
+---
+
+### A reachability/soft-lock BASELINE in a comment goes STALE when a sibling story changes the gun — RE-MEASURE
+
+**Situation:** rb4-16 AC-R3 is a frames-in-reach regression guard. `display-space.test.ts:343` documents
+the shipped baseline as "597.3/112.5/24.1/20.2/10.8" and warns GMLEVL 4's 10.8 margin is "REAL but thin."
+The re-cut design repeatedly cites 10.8 as the number to protect.
+
+**Problem:** Those numbers were measured through the OLD ±32 world-tube gun. rb4-17 DELETED that gun and
+shipped the depth-growing COLLD picture-plate gun — but nobody re-ran the harness, and the comment stayed.
+Re-measuring the SAME harness through the current gun gave 600 / 208.1 / 44.5 / 32.8 / **17.1** — GMLEVL 4
+is 17.1, not 10.8 (the wider gun catches close planes the tube missed). Setting the guard's bar to the
+stale 10.8 would have baked in ~40% of false slack at exactly the level that matters, and "captured
+honestly" would have been a lie the guard told itself.
+
+**Prevention:** A baseline is a MEASUREMENT of a specific machine, not a constant. Before you pin a guard
+to a documented number, identify every seam it flows through (here: the gun) and check whether a merged
+sibling story moved one. If so, re-run the harness yourself and pin the number you observe — a two-minute
+scratch harness that writes the result to a file (vitest swallows console.log) beats trusting a comment.
+Cite the measurement date + the gun version in the bar's comment so the NEXT gun change re-triggers this.
+
+---
+
+### A RED that RENAMES a field on a cast-mirrored module (`as XModule`) breaks tsc — optional fields don't save it, use `as unknown as`
+
+**Situation:** rb4-7 inverts the red-baron wave clock: `WaveClock` goes from `{modect, countdown}`
+(a per-frame gap) to `{modect, newct}` (NEWCT counts WAVES). The RED tests load the module the repo's
+house way — `m = (await import('../../src/core/waves')) as WavesModule` — with a local interface mirror
+whose fields are all optional so RED "fails loud, not undefined-explodes".
+
+**Problem:** Renaming a field the mirror declares (here `countdown` → `newct`) makes `tsc --noEmit` throw
+**TS2352** on the cast: the CURRENT source still exports `stepWaveClock(clock: {…countdown})`, and that
+function-typed property is **contravariant** in its parameter, so the source's `{…countdown}` param cannot
+be reconciled with the mirror's `{…newct}` param in EITHER direction. Making `newct?` optional fixes the
+plain `INITIAL_WAVE_CLOCK` field but NOT the `stepWaveClock` signature — the param still requires the
+missing `countdown`. A red tree that won't `tsc` is a mess to hand Dev and the Reviewer flags it.
+
+**Prevention:** cross the seam explicitly with `as unknown as XModule` — tsc literally suggests it, and it
+is the honest bridge for a RED mid-interface-migration (the source genuinely has the OLD shape; the mirror
+is the TARGET). The `XModule` interface STILL types every member, so `need(m.spawnWave, …)` and the
+surviving sibling tests keep full type-checking — `unknown` only bypasses the source-vs-mirror
+compatibility check, not the members' own types. Comment WHY at the cast. Runtime `need()` + the
+assertions do the real RED verification. (Don't reach for `unknown` reflexively: a mirror that only ADDS
+new optional members casts fine — it's the RENAME/RETYPE of an existing member that needs it.)
+
+---
+
+### When a story says a count "is indexed by X>>1", the clone usually mis-reads X directly AND mis-types the table's UNIT
+
+**Situation:** rb4-7 (red-baron mission clock). Two ROM tables are each indexed by a HALVED counter, and the
+clone got BOTH the halve and the table's meaning wrong: `GMLEVL = PLNLVL[OBJKLD>>1]` (difficulty; the clone
+indexed by `OBJKLD` directly → ramped 2× too fast) and `NEWCT = MCOUNT[MODECT>>1]` (wave-run length; the
+clone indexed `MCOUNT[MODECT % 8]`). The subtler bug was the UNIT: the clone read `MCOUNT` (values 4,2,3,2,…)
+as a per-CALC-FRAME inter-wave delay (a 96–384 ms countdown), when the ROM uses it as a COUNT OF WAVES in a
+RUN — `NEWCT` decrements once per COMPLETED wave (`DEC NEWCT`, RBARON.MAC:2258, behind three gates), never
+per frame. So the clone shipped a 1:1 plane/ground alternation with a sub-second gap; the arcade runs RUNS
+of 4,2,3,2,1,3,4,2 plane waves separated by single ground waves.
+
+**Prevention:** for any "indexed by X>>1" AC, pin TWO independent facts: (1) the HALVE — the headline
+invariant `f(2k) === oldTable[k]` ("it now takes twice the input to reach the same output") refutes the
+direct index in one line; and (2) the UNIT — trace the consumer of the table value. Here `MCOUNT`'s value
+feeds `STA NEWCT` and `NEWCT` is decremented by `DEC NEWCT` gated on wave-clear, so it is a WAVE count, not
+a frame count. Pin the mechanism (one `stepWaveClock` call = one completed wave; the clock never expires on
+a 1–4 frame countdown), and DON'T pin a derived seconds figure the ROM computes elsewhere (rb4-7's
+"0.48–3.07 s" gap is emergent from PLSTAT+7, the per-plane "^20 FRAMES TO CROSS CENTER" flight timer,
+RBARON.MAC:2361 — route it, the tp1-13 / rb4-4 lesson).

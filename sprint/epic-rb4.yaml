@@ -127,7 +127,8 @@ stories:
     description: "Cluster C6. Subsumes MI-003, MI-004, MI-005, MI-007, MI-008, MI-009, CB-001, CD-009. GMLEVL indexes PLNLVL by OBJKLD>>1 — the ROM HALVES the kill count before the table lookup (RBARON.MAC:2399-2408), so OUR DIFFICULTY RAMPS EXACTLY TWICE AS FAST as the arcade's. (Filed independently by two pairs — CB-001 and MI-009 — and both refuters decoded the LSR themselves.) MCOUNT is indexed by MODECT>>1 and a ground MODECT reloads NEWCT=1, so the ROM runs RUNS of plane waves, not the 1:1 air/ground alternation we implement; MODECT wraps modulo 16. NEWCT counts WAVES, not calc frames — our inter-wave gap is ~10x too short. Ground mode ends on a CONDITION (GRNDCT spent AND no live ground objects), not a countdown; ours lasts ~0.4 s. CD-009 CERTIFIED our wave clock as an exact match; the coverage review proved that CONFIRMED FALSE (NWPLNE has three gates before DEC NEWCT; it saw one)."
     points: 8
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -136,7 +137,10 @@ stories:
       - "NEWCT counts WAVES, not frames — the inter-wave gap is 0.48-3.07 s, not 96-384 ms."
       - "Ground mode ends when GRNDCT is spent AND no ground objects remain visible, not on a timer."
       - "Depends on rb4-1."
+    completed: '2026-07-18'
+    branch: fix/rb4-7-mission-clock-wave-runs
     type: bug
+    review_verdict: approved
   - id: rb4-8
     title: "THE MOUNTAINS — placement is AUTHORED, they scroll laterally, and 'on horizon' is a latched bit"
     description: "Cluster C7. Subsumes MI-014, MI-015, MI-016, MI-018, MI-019. We GENERATE an even stagger with all four mountains at x=0; the ROM AUTHORS their placement in PFOBIZ (RBARON.MAC:1305-1306 — four initial depths and four initial X positions, all hex). The ROM runs TWO closing rates (P.OBDZ=0x180=384 while on the horizon, 0x20=32 once fallen); we have one. 'On horizon' is a LATCHED STATUS BIT with hysteresis (PFOBJ+6 D7), not a depth comparison. Mountains SCROLL LATERALLY with the player — the ROM subtracts PLYRDL from every free object's X each calc frame and wraps (RBARON.MAC:3298-3306); ours never do, which is a large part of why the world feels static. Mountains recycle to P.OBZI=0x7F00=32512, so they spend real time on the horizon; ours recycle to HORZ and never do."
