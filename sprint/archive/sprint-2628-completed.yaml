@@ -408,3 +408,8 @@ completed_stories:
     title: "COLLISION BOUNCE — the ROM jolts the view and bobs the mountains on a hard hit; the clone does neither"
     points: 1
     completed: '2026-07-18'
+  - id: bz3-12
+    epic: bz3
+    title: "ENEMY TANK MODEL DETAIL — the rotating radar antenna and animated treads the clone omits"
+    points: 3
+    completed: '2026-07-18'

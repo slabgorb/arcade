@@ -169,12 +169,14 @@ stories:
     description: "Cluster C12. Subsumes W-017, W-018. From world-3d, which otherwise filed ZERO model divergences (all 10 clone models are byte-exact ROM decodes). Every ROM enemy tank draws two sub-objects the clone renders as neither: a rotating radar antenna (RDRTBL/RDROBJ, W-017) and animated treads (TREAD4-TREADB / TREADS, W-018 — the clone's 'tread' references are all the control scheme, not geometry)."
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - "Enemy tanks render a rotating radar antenna from the ROM's RDRTBL/RDROBJ geometry."
       - "Enemy tanks render animated treads (TREAD4-TREADB)."
+    completed: '2026-07-18'
     type: feature
   - id: bz3-13
     title: "HUD & DOC TEXT — 'GREAT SCORE' on the initials screen, and the reversed language-code note"
