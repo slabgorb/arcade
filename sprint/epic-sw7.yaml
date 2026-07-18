@@ -173,11 +173,15 @@ stories:
     title: 'R7b Ground debris — tower/bunker ballistic destruction explosion (X-005): 3 pieces, 0x20=32f=1.56s life, upward launch (728-1024 x4) + gravity 200/f, floor-freeze, scaled ground shadow (red bunker / white tower)'
     points: 4
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-18'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-1
+    completed: '2026-07-18'
     type: bug
+    branch: feat/sw7-14-r7b-ground-debris
+    review_verdict: approved
   - id: sw7-15
     title: 'R7c Death Star finale + authentic picture — 4-phase RED/blue/white ring finale (X-006: DCIRCL+DRING, no rays, ~89f/4.3s), looming-station prelim (X-007: enlarge toward viewer + end music), authentic 2D vector Death Star BSHEM/BSCIR/BSTRN/BSDSH at M.=32 (M-010, replaces the procedural 3D sphere)'
     points: 8
