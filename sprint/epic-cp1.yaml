@@ -11,15 +11,17 @@ stories:
     description: "Mirror red-baron's config (the newest scaffold): Vite 8, TypeScript, Vitest 4, strictPort 5278, base '/'. src/core and src/shell skeletons with the boundary guard: a source-text scan test forbidding shell globals and wall-clock (window/document/Date.now/Math.random and friends) in src/core/ — word test prose to avoid the comment-scanner trap (tempest purity scanner matches forbidden names INSIDE COMMENTS). Ten-line CI deploy caller of slabgorb/arcade/.github/workflows/deploy-r2.yml@main targeting bucket arcade-centipede. Orchestrator side: add centipede to justfile games/subrepos lists and serve recipe, flip the CLAUDE.md port row from reserved to live."
     points: 2
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-18'
     repos: centipede
     workflow: tdd
-    type: chore
+    branch: chore/cp1-1-scaffold-vite-purity-ci
     acceptance_criteria:
       - "npm install && npm run build && npm test green from a fresh checkout; npm run dev serves on 5278 and fails loudly if the port is taken (strictPort)."
       - "Purity guard test exists, passes, and demonstrably fails when a forbidden global is introduced in src/core/ (prove with a temporary red run in the story notes)."
       - "CI workflow caller committed; a push to main would deploy dist/ to arcade-centipede (workflow-lints clean; no release cut in this story)."
       - "just serve launches centipede alongside the fleet; just install-all covers it; CLAUDE.md port table row 5278 is live, not reserved."
+    type: chore
   - id: cp1-2
     title: "Citation checker + claims JSON — the dossier becomes machine-verified before any constant is transcribed"
     description: "Port tempest/tools/audit + tests/audit/citations.test.ts with the ours side dropped (single-sided schema per the rom-source-study skill: id, claim, source{file,line,verbatim}, corroboration?). Convert docs/rom-study/ brief+glossary citations into docs/rom-study/claims/*.json. The checker re-opens every cited line in the vendored tree (arcade/reference/atari-source/centipede) byte-for-byte, prints one error per bad claim, exits non-zero; it degrades gracefully (schema-only checks) when the vendored tree is absent, so CI stays green. THIS BLOCKS cp1-4 and cp1-5 — rb4's lesson: any numeric story that lands before the gate re-bakes its own misreadings and then confirms itself."
