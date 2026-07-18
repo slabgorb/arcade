@@ -1317,3 +1317,48 @@ test: ship fixture self-tests for BOTH directions (must-flag: live calls/globals
 comments, string data, lookalike identifiers like `windowSize`/`refetch`). That turns the one-off "prove it
 demonstrably fails" AC into a permanent machine-checked property, and it catches scanner defects at RED time
 instead of shipping false positives that a future story "fixes" by weakening the guard.
+
+---
+
+### A 3-argument ROM macro can EMIT 2 bytes — check the macro body before deciding a table's logical shape, and keep the "duplicate" points it creates
+
+**Situation:** rb4-11 transcribes the Red Baron ground targets: `PFPNTS .X,.Y,.Z` point-sets
+(037007.XXX:1186-1225) plus their decode-lists and tables. The rows read like 3-D points.
+
+**Problem:** The macro body is `.BYTE .X/2,.Y*2` (037007.XXX:10-12, and again RBGRND.MAC:77-79) —
+the THIRD argument is DISCARDED at assembly. Two consequences a naive transcription gets wrong:
+(1) the port's type is `Point2` `[x, y]` (the SCAPE0..3 house convention), not a `Point3` with a
+fabricated z; (2) PFTANK's last two rows `(0,0,32)` and `(0,0,28)` differ ONLY in the discarded
+argument, so the assembled ROM holds two IDENTICAL (0,0) points — and the decode-list ends
+`BV 8 / VV 9`, a zero-length LIT vector: the tank's centre DOT. A tidy-minded "de-duplication"
+(or a renderer that culls zero-length segments) silently deletes an authentic screen feature.
+
+**Prevention:** Read the `.MACRO` body before typing a single row; pin the discard in the
+source-derivation suite (`.BYTE .X/2,.Y*2` verbatim) and pin the dot as a REQUIRED zero-length
+segment in the render contract. Two free cross-checks caught/would-catch drift: (a) the program
+ROM mirrors the picture-ROM window by ADDRESS EQUATIONS (`PFODEC=DBLIMP+4F / PFLOB=PFODEC+82 /
+.PFLOB=PFLOB+8 / PFOFFS=.PFLOB+4`, RBARON.MAC:430-433) — 8 + four decode-lists-with-ENDDBs (48) +
+37 points × 2 (74) = $82, so any dropped/invented entry breaks an arithmetic the ROM's own author
+wrote; pin the sum. (b) When an index decode is ambiguous (PFOFFS's group key had two candidate
+sources), ALIGNMENT arithmetic can settle it: 4-byte PFCOL entries read at byte `6t + 4s` only land
+on entry boundaries if `t` is EVEN — so the key is group×2 and groups are 3 CONSECUTIVE entries,
+no need to find the byte's writer.
+
+---
+
+### RED for a module the story CREATES: a literal import fails tsc — compute the specifier, and let the wiring mock's silence be the red
+
+**Situation:** rb4-11's machine half lives in a NEW `src/core/ground-targets.ts`. The rb4-7
+`as unknown as` mirror trick covers renamed members on an EXISTING module, but any literal
+`import('../../src/core/ground-targets')` — static or dynamic — is TS2307 while the file
+does not exist, and the RED tree must stay `tsc --noEmit` clean.
+
+**Prevention:** In the unit suite, compute the specifier (`['..','..','src','core','ground-targets'].join('/')`)
+and `try { await import(/* @vite-ignore */ path) } catch { mod = {} }` — tsc cannot resolve a
+non-literal so it stays green, vitest resolves it at runtime relative to the test file, and every
+`need()` reds with the missing export's name. In the wiring suite, `vi.mock` factories are LAZY:
+a delegating `importOriginal` mock on the not-yet-existing module never runs while main.ts does
+not import it, so the recorders stay empty and the count assertions (`deploys === 2`, `draws > 0`)
+red honestly. Audit the pre-GREEN passes: recorder-emptiness makes universally-quantified guards
+("every recorded X is valid", "nothing drawn before the first deploy") pass VACUOUSLY — each must
+be paired, in the same file, with a positive existence assertion that reds until the wire lands.
