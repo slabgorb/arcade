@@ -1362,3 +1362,46 @@ not import it, so the recorders stay empty and the count assertions (`deploys ==
 red honestly. Audit the pre-GREEN passes: recorder-emptiness makes universally-quantified guards
 ("every recorded X is valid", "nothing drawn before the first deploy") pass VACUOUSLY — each must
 be paired, in the same file, with a positive existence assertion that reds until the wire lands.
+
+---
+
+### testing-runner can silently NARROW its run to the files your prompt names — cross-check the grand TOTAL, not just the failure list
+
+**Situation:** rb4-15 RED verify. The testing-runner prompt listed the six expected-failing files
+(so it could report them explicitly). It came back with "Total tests: 120 — 42 failed, 78 passed"
+and "✅ no unexpected collateral failures (no OTHER test files failing)".
+
+**Problem:** 120 is EXACTLY the sum of the six named files' tests (21+16+27+23+21+12). The real
+suite is 1362 tests across 81 files. The runner had scoped its run (or its report) to the files
+the prompt named — so its "no collateral" claim was made about 75 files it never looked at, and
+collateral is precisely what lives OUTSIDE the files you already know about (a sibling still
+importing a deleted export, a purity sweep tripping on a new constant). The existing lesson
+("counts reliable, names confabulated") holds per-file; SCOPE is a separate failure axis.
+
+**Prevention:** When the runner's total looks small, sum the per-file counts it reported — if the
+total EQUALS that sum, it ran only what you named. Cross-check against the repo's known suite
+size, and re-run the FULL suite yourself (`npx vitest run 2>&1 | tail`) before believing any
+"no collateral" claim. rb4-15's full run: 42 red, all in scope, 1319 green — true, but only the
+full run could say so.
+
+---
+
+### A spawn-GATE story breaks every "exactly one spawn per run" boot harness — split observed states into LIVES, and re-anchor per-life
+
+**Situation:** rb4-15 gates the blimp spawn behind "four planes have appeared" (N.PLNZ,
+RBARON.MAC:2325-2331). cockpit-loop.test.ts's harness assumed the airship rolls in on the FIRST
+wave decision (seed found via the FIRST Rng draw), lives once, and the whole `states` sequence is
+one life.
+
+**Problem:** three assumptions die at once. (1) The accepted roll's DRAW INDEX is now unknowable
+(it depends on how many wave decisions pass before the gate opens, and on whether Dev draws per
+decision or per open gate) — so find a seed whose stream rolls winners DENSELY (first draw wins +
+≥3 of the first 6), reading RAW Rng floats against the chance constant, NOT through the function
+under migration. (2) After the first airship is reaped, the gate+roll can legitimately land a
+SECOND — a concatenated `states` sequence breaks every consecutive-state assertion (step-identity,
+depth-delta) at the life boundary with a false red IN GREEN. Split into lives by SPAWN-OBJECT
+IDENTITY (the recorder tap returns the exact object main.ts stores) and assert per-life. (3)
+"it left by the end of the run" must anchor to the FIRST life's last sighting — the LAST life may
+honestly still be aloft when the run ends. Bonus: a second delegating tap on the OTHER module
+(waves) lets the cockpit prove the cross-module gate ordering ("planes shown at first blimp spawn
+>= 4") with no text inspection at all.
