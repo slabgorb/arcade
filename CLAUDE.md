@@ -108,7 +108,7 @@ port — there is no `/tempest/` path prefix:
 | asteroids  | `http://localhost:5275/`  | 5275 |
 | battlezone | `http://localhost:5276/`  | 5276 |
 | red-baron  | `http://localhost:5277/`  | 5277 |
-| centipede  | *(reserved — scaffold pending)* | 5278 |
+| centipede  | `http://localhost:5278/`  | 5278 |
 
 Ports are pinned with `strictPort` in each subrepo's `vite.config.ts`, so a
 collision fails loudly instead of silently wandering to another port. The first
