@@ -464,3 +464,8 @@ completed_stories:
     title: 'tp1-17 follow-up: fuseball vertex guard, V-008 audit fix, contact-sheet labels'
     points: 2
     completed: '2026-07-18'
+  - id: sw7-19
+    epic: sw7
+    title: R6b Trench catwalk is a wall-mounted FORCE FIELD — side-gated .WP WFF panel, not a channel-spanning bar (B-012 + M-012)
+    points: 4
+    completed: '2026-07-18'

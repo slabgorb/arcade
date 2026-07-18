@@ -1258,3 +1258,41 @@ checking nothing. Its paired non-vacuity guard ("the guns actually locked out") 
 it. Fix: FORCE the branch at the sim seam (`vi.mock` guns → `overheated: true`) so the draw path
 runs deterministically; the colour it then paints is still main.ts's own code. Always pair a
 negative canvas assertion ("never paints X") with a positive guard that the branch was exercised.
+### A "move the hazard to the wall + side-gate it" story: the OLD collision can't REACH the new position, so the RED signal is "the crash stops firing", not "the wrong side is hit"
+
+**Situation:** RED for a story that re-homes a hazard from the channel centre to a WALL and makes it
+side-gated (sw7-19: the star-wars trench "catwalk" is really a wall-mounted FORCE FIELD — B-012/M-012;
+WSPANL.MAC's `LDD M$TY+M.U1 / IFLE ;?ON LEFT SIDE?`).
+
+**Problem:** The instinct is to write "a pilot on the RIGHT dodges a LEFT field" as the headline RED. But
+the OLD collision was a `CATWALK_HIT_RADIUS`(240) SPHERE around the obstacle's point, and the pilot is
+clamped to ±511 inside walls at ±1024 — so a wall-mounted field (`pos[0]=±1024`) is ≥513 away and the old
+sphere NEVER fires for it. So "right pilot dodges" is GREEN on the unfixed code too (both miss), and only
+"same-side pilot GRAZES" goes RED — because the mechanic can't reach the wall at all yet. Chase the sphere
+and you'll write a suite whose only real RED is a model mismatch, missing the collision entirely.
+
+**Prevention:** For a re-home-and-gate story, make the RED headline "the mechanic now REACHES its new
+position and fires" (same-side pilot at the wall → `terrain-crash` fires — RED because the old sphere can't
+reach it), and pair it with the side MIRROR on BOTH walls (a left field grazes a left pilot, clears a right
+pilot; a right field the reverse) so a hardcoded "always left" gate can't pass. Two ROM facts shape the
+fixtures: (1) the ROM side gate is a pure sign test (`IFLE`) with NO lateral-distance check, so the field
+blocks the WHOLE half-channel on its side at its height slot — the dodge is opposite-wall or a different
+height slot, never "hug centre" (centre = Y≤0 = the left side). (2) The graze is glow+sound+roll and NO
+`lives-1` — invert the predecessor's "costs a shield" suite (here 14-7, DELETED): the shield accounting
+was explicitly deferred to a later scope (WSGLOW/S-016), and glow/roll are a deferred visual (A-018), so
+this story's only in-scope cue is the crash sound (`AUDCR` → `terrain-crash`).
+
+**Representation seam (TEA's to define):** when the new gate needs data the obstacle doesn't carry (which
+wall), reuse the existing field instead of inventing schema — here the mounted wall = `sign(pos[0])`, and
+the collision side-gates on `sign(trenchView[0])` matching. Log it as a deviation; Dev's spawning must
+produce hazards in that representation. And DON'T pin the ROM's exact band/depth literals ($200 top offset,
+$400 band, $400 depth) — those depend on the grid→world mapping Dev builds; pin the OBSERVABLE via extremes
+(a pilot a full channel above a low field clears; a field 8000 units downrange doesn't hit) and route the
+literals to a cited Delivery Finding (the tp1-13/rb4-4 "a decode of a true constant is still a decode" rule).
+
+**Model half:** the identifying evidence for "what IS this hazard" was a COMMENT on the collided twin —
+`.WGD WFG`'s ";CATWALK COLOR WHEN COLLIDED" nails WFF/WFG as the catwalk (M-012). Port WFF's 6-point 3-fin
+table (hand-transcribed from WSOBJ.MAC `.WP WFF`, `.RADIX 16` hex ×`.S`, INDEPENDENT of the bake) via
+romCompare (`ROM_TO_PORT` gains `WFF`); leave WFG (a colour-flash render variant) OUT of the `Model3D`
+port — it carries the ROM's own out-of-range `DRAWTO 6,3` (only points 0..5 exist), which the "every edge
+index in range" invariant rightly rejects. Document that bug in the oracle test so nobody re-adds it.
