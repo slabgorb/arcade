@@ -27,7 +27,8 @@ stories:
     description: "cp1-6 review carry-forwards R1/R4/R5. R1 (src/main.ts:61-71): input is sampled ONCE per rAF frame — on >60 Hz displays the 0-step frames drain-and-DROP accumulated movementX (about 50 percent sensitivity loss at 120 Hz), and a catch-up burst after a tab-unhide re-applies the SAME delta to up to ~15 sub-steps (gun teleport). Fix: deltas accumulate in the adapter until a sim step consumes them; each step drains exactly once (level inputs sampled per step; deltas never reused across steps). R4: canvas.requestPointerLock() (main.ts:36) returns a Promise whose rejection (re-lock cooldown after Escape) is unhandled. R5: input.ts's blur-handler comment claims to cover pointer-lock drops, but no pointerlockchange listener is wired — an Escape-exit that keeps window focus never clears held state. The pointer-lock path has NEVER been live-verified (headless browsers reject it — cp1-6 Dev finding): this story ends with a HUMAN smoke test by the user in a real browser tab."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-19'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
@@ -35,6 +36,7 @@ stories:
       - "requestPointerLock() rejection is handled (no unhandled-rejection noise on Escape then immediate re-click); a pointerlockchange listener clears held input state on lock exit; input-lifecycle tests cover both."
       - "HUMAN smoke test recorded in the story docs: pointer-lock acquire, mouse gun control, Escape exit, re-lock — performed by the user in a normal browser tab (headless cannot exercise it; cp1-6 Dev finding)."
       - "npm test -- citations stays green (no new transcription expected; re-anchor if any cited file is touched)."
+    completed: '2026-07-19'
     type: bug
   - id: cp2-3
     title: "The train arrives — CENTPC init, MOTION march + descent, OBSTAC turns, poisoned dives; gun blocked by mushrooms (MOVE/OBSTAC)"
@@ -75,3 +77,42 @@ stories:
       - "RESTOR: armed at death (MEM to PLYFLD base, PM-22), sweeps on the 8-frame cadence (PM-23 — code wins over its stale comment), restores partial AND poison mushrooms at 5 points each (PM-26) during the death pause; a deterministic test replays a death and pins the sweep order and scoring."
       - "The wave-1 loop is closed: clearing all 12 segments (including splits) ends the wave and the demo re-enters wave 1; dying mid-wave respawns with the field repaired per RESTOR."
       - "Demo artifact committed (screenshot or gif) from THIS checkout showing the train, a split, a death, and restored mushrooms — with upright sprites (cp2-1 landed first)."
+  - id: cp2-6
+    title: Gun/shot vertical is drawn through the collision cell — six 8px rows instead of pixel resolution; add gunScreenY mirroring gunScreenX
+    description: "USER-REPORTED (2026-07-19, cp2-2 human smoke test): vertical gun movement steps on a grid (set distance per jump) while horizontal is smooth. DIAGNOSED (read-only investigation, session cp2-2): render.ts:75-76 places the gun's screen-Y via cellScreenY(obstacleCell(h,v).v) — the COLLISION-grid mapping ((v+4)>>3, core/player.ts:139) — so across the ROM-faithful 40px vertical band (PLAYV 0x08-0x30) the sprite occupies only six discrete 8px rows; the live shot is snapped the same way at render.ts:79-80. Horizontal does NOT go through the collision cell: layout.ts:64-69 gunScreenX adds back the low-3-bit sub-cell offset (its own comment explains why a per-column step function would jitter) — there is no gunScreenY counterpart. PRE-EXISTING from cp1-6 (verbatim in b62ee1b's render.ts); NOT introduced by cp2-2 (input/timebase-only diff, per-axis symmetric); NOT ROM-faithful — the ROM draws the gun as motion-object slot 15 at full 8-bit pixel PLAYV with a half-pixel accumulator PLAYVL (claims PS-2/PS-8; OBSTAC's 8px cell is for mushroom lookups only, PS-16/17). FIX: add a pixel-accurate gunScreenY(v) to src/shell/layout.ts mirroring gunScreenX (raw player.v, bottom-referenced, NOT (v+4)>>3) and use it at render.ts:76 and :80. Low risk: no test pins the current cell-snapped vertical (sign-chain.test.ts covers gunScreenX only)."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "Vertical gun and shot screen positions are pixel-accurate across the whole PLAYV band: a test walks player.v one pixel at a time and asserts the rendered Y advances monotonically by the display scale each step (no 8px plateaus); gunScreenX behaviour unchanged."
+      - "Rotation/collision untouched: obstacleCell keeps its (v+4)>>3 mapping for OBSTAC lookups (PS-16/17 cited); core files unchanged; citations 26+ green."
+      - "Human (or screenshot-sequence) verification from THIS checkout: vertical glide visibly smooth, matching horizontal."
+    type: bug
+  - id: cp2-7
+    title: Mushroom hitbox sits one unit right of the sprite — visual column vs collision column disagree
+    description: "USER-REPORTED (2026-07-19, live play during the cp2-2 smoke-test session): the shot's mushroom hitbox registers one unit to the RIGHT of where the mushroom sprite is drawn ([*] sprite, (s) hitbox in the user's sketch). Suspect family: the same visual-vs-collision mapping split behind cp2-6 — layout.ts maps render columns through the ROT270 cell transform (cellScreenX / OBSTAC_H_BASE arithmetic with a 7-(delta&7) sub-cell refinement) while collision uses obstacleCell/OBSTAC-style (h+4)>>3-type rounding; an off-by-one can hide in the half-cell rounding bias, the OBSTAC_H_BASE anchor, or a >>3 floor vs round mismatch between the two paths. DIAGNOSIS FIRST: reproduce deterministically (seeded field, shot at a known column edge), then derive the ROM's own shot-vs-mushroom column arithmetic from the dossier (OBSTAC :1689, OVRLAP :1741, claims 07-player-shot.json) and decide which side is wrong — the draw column or the hit column — before touching either. NOTE the overlap with cp2-3, which transcribes OBSTAC properly for MOTION+MOVE: if cp2-3 lands first, re-verify this defect against its transcription; the fix may belong inside cp2-3's OBSTAC rather than the shell. Sequencing intent: resolve before cp2-4 (shot-vs-segment OVRLAP) so combat lands on a trusted collision grid."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "A deterministic test reproduces the off-by-one (shot at a mushroom's drawn column edge) and then pins the corrected alignment: the hit column equals the drawn column for every field column, derived from and cited to the ROM's OBSTAC/shot arithmetic (dossier + claims), not eyeballed."
+      - "Whichever side moves (draw or hit), the other's existing pins stay green; citations green; if cp2-3's OBSTAC transcription has landed, this fix uses it (no second collision mapper)."
+      - "Human or screenshot verification from THIS checkout: shooting the left edge of a mushroom destroys THAT mushroom, not its right neighbour."
+    type: bug
+  - id: cp2-8
+    title: Pointer-lock takes two clicks to bind — first click does not acquire
+    description: "USER-REPORTED (2026-07-19, cp2-2 human smoke test, real browser tab on this checkout's merged develop): binding the mouse takes TWO clicks — the first click does not acquire pointer lock, the second does. Reproduces on initial bind (user phrasing: 'takes two clicks to bind the mouse'). SUSPECTS, in order: (1) cp2-2's createPointerLock request() deliberately swallows the requestPointerLock() rejection (input.ts:174-178) — correct for the Escape-cooldown path, but it may now be silently eating a FIRST-click failure (e.g. a transient rejection or an engine quirk) that was previously loud; log-then-diagnose before assuming. (2) A first-click focus/gesture ordering issue: the first click may be spent focusing the canvas/window (or an overlay/start interaction) so the lock request happens without the expected engagement state. (3) The pointerlockchange/pointerLockElement guard mis-detecting an acquire as an exit and immediately resetting. It is UNKNOWN whether the double-click predates cp2-2 — the pointer-lock path was never live-verified before this smoke test (cp1-6 Dev finding), so do NOT assume regression; check out d7d27c8 (pre-cp2-2) locally and compare first-click behaviour as the first diagnostic step. Ends with a human re-test: ONE click must bind."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "Root cause identified and written up (including whether cp2-2 introduced it — compare against d7d27c8 first-click behaviour); the rejection swallow, if implicated, is narrowed so real first-attempt failures surface in diagnostics without reintroducing Escape-cooldown noise."
+      - "Unit/lifecycle tests pin the corrected acquire path (first request issued on the first qualifying click, no spurious exit-reset on acquire); cp2-2's 282-test suite and citations stay green."
+      - "HUMAN re-test recorded in story docs: one click binds the mouse in a real browser tab from THIS checkout; Escape then one click re-binds."
+    type: bug

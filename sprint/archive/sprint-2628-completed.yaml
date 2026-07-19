@@ -546,3 +546,8 @@ completed_stories:
     title: "Sprite orientation — every stamp renders 90 degrees clockwise; rotate at the shell atlas bake, keep the core decode byte-exact"
     points: 2
     completed: '2026-07-19'
+  - id: cp2-2
+    epic: cp2
+    title: "Input shell polish — per-step mouse-delta distribution (>60 Hz), pointer-lock rejection + pointerlockchange, human smoke test"
+    points: 2
+    completed: '2026-07-19'
