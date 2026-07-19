@@ -1,0 +1,86 @@
+id: jt1
+type: epic
+title: Joust — foundation slice (scaffold, citations, image transcription, arena, flight, render)
+description: "First epic of the joust clone — the arcade's first WILLIAMS game and second raster title. DESIGN SPEC (user-approved 2026-07-19): joust/docs/superpowers/specs/2026-07-19-joust-clone-design.md. GROUND TRUTH: joust/docs/rom-study/ (brief, subsystems, pictures, glossary, open-questions) — built with the rom-source-study skill from the vendored 1982 Williams source (arcade/reference/williams-source/joust, pin 9bcfdb1) + the MAME williams driver (~/Projects/mame/src/mame/williams, sparse). Cite the dossier, do not re-derive it. RULINGS: RV4/red-label behavior target (JOUSTRV4.SRC is both citation file and behavior; pre-patch originals preserved in ******** comments); 2-PLAYER SIMULTANEOUS co-op (P1 arrows+flap, P2 A/D+flap; the ROM degrades co-op→survival solo, so 1P is free); faithful raster (JOUSTI.SRC frames + COLOR1 palette — nibbles are literal palette indices, no remap PROM); free play (no coin layer; keep GA1/REPLAY/NSHIP + HSTD; JZAP/LZAP/KZAP zappers deliberately omitted); playable-slice epics. TIMEBASE: one sim step per video frame, FRAME_HZ = 8e6/(512*260) = 60.09615 (williams.cpp:1556); the ROM's nap unit IS one frame (five author oracles, brief §3) — never convert a gameplay constant through 4ms. CORE MODEL stays ROM-shaped: tagged-union process list with frame naps (40-slot scheduler, subsystems §1), positions 16-bit pixel+fraction (256 = 1 px/frame), PVELX is a FLYX table INDEX, joust resolves on sub-pixel PLANTZ+PPOSY, span collision + bitmask landing/snap, NO air drag / NO terminal velocity (cited negative claims — pin with tests). RADIX DISCIPLINE: Motorola syntax — bare DECIMAL, $ hex, @ OCTAL (all palette bytes + image rows!), % binary; every transcribed constant carries a radix-cited comment + claims entry; jt1-2 lands before any constant is transcribed (rb4/cp1 lesson). NO ROM BINARIES vendored — image transcription byte-gates against JOUSTI.SRC's own FCB/FDB data + *.PIC S-Records. ROADMAP AFTER THIS EPIC: jt2 the joust (~15: enemies/AI budget, joust resolution, eggs, wave machine core, transporters), jt3 menagerie (~13: pterodactyl+patches, lava troll, bridge, baiters, DYTBL ramp), jt4 game structure (~10: 2P co-op + six wave types, scoring/BCD, extra men, HSTD+initials, attract lessons), jt5 sound (~8: path decision — sound ROM source ABSENT, lean on MAME williamssound + shipped ROM), jt6 ship (~5: lobby tile, R2 + joust.slabgorb.com, release, closing rom-fidelity-audit). Demo at epic end: fly the ostrich around the authentic arena on 5279. Repo github.com/slabgorb/joust is bootstrapped (develop default, gitflow; dossier + spec merged) but has NO scaffold yet — jt1-1 creates it."
+priority: p1
+status: backlog
+repos: joust
+stories:
+  - id: jt1-1
+    title: "Scaffold — Vite/TS/Vitest on port 5279 + core/shell purity guard + CI caller + orchestrator registration"
+    description: "Mirror centipede's config (the newest raster scaffold): Vite 8, TypeScript, Vitest 4, strictPort 5279, base '/'. src/core and src/shell skeletons with the boundary guard: a source-text scan test forbidding shell globals and wall-clock (window/document/Date.now/Math.random and friends) in src/core/ — word test prose to avoid the comment-scanner trap. Ten-line CI deploy caller of slabgorb/arcade/.github/workflows/deploy-r2.yml@main targeting bucket arcade-joust. Orchestrator side: add joust to justfile games/subrepos lists and serve recipe, flip the CLAUDE.md port row from reserved to live, update repos.yaml notes past pre-implementation."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "npm install && npm run build && npm test green from a fresh checkout; npm run dev serves on 5279 and fails loudly if the port is taken (strictPort)."
+      - "Purity guard test exists, passes, and demonstrably fails when a forbidden global is introduced in src/core/ (prove with a temporary red run in the story notes)."
+      - "CI workflow caller committed; a push to main would deploy dist/ to arcade-joust (workflow-lints clean; no release cut in this story)."
+      - "just serve launches joust alongside the fleet; just install-all covers it; CLAUDE.md port table row 5279 is live, not reserved."
+  - id: jt1-2
+    title: "Citation checker + claims JSON — the dossier becomes machine-verified before any constant is transcribed"
+    description: "Port the centipede checker (cp1-2 shape; single-sided schema per the rom-source-study skill: id, claim, source{file,line,verbatim}, corroboration?). Convert docs/rom-study/ brief+subsystems+pictures citations into docs/rom-study/claims/*.json. The checker re-opens every cited line in the vendored tree (arcade/reference/williams-source/joust) byte-for-byte, prints one error per bad claim, exits non-zero; it degrades gracefully (schema-only checks) when the vendored tree is absent, so CI stays green. MAME citations (williams*.cpp) get schema-only claims (the sparse clone is machine-local). THIS BLOCKS jt1-3, jt1-4, and jt1-5 — the rb4/cp1 lesson: any numeric story that lands before the gate re-bakes its own misreadings and then confirms itself."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "npm test -- citations re-opens every claim byte-for-byte against the vendored tree; a deliberately drifted line number or altered verbatim fails the suite (prove red once)."
+      - "Every citation in brief.md, subsystems.md, and pictures.md exists as a claims/*.json entry; the 20-citation synthesis cross-sample is among them."
+      - "Checker runs schema-only without the vendored tree; CI (which lacks it) is green."
+      - "Radix traps are schema-encoded: a claim whose verbatim carries @ octal or !X operators round-trips exactly (no evaluation, no normalization)."
+  - id: jt1-3
+    title: "Image transcription — decode JOUSTI.SRC into src/core/pictures.ts, byte-gated, with COMCL5 RLE + collision spans + contact sheet"
+    description: "Transcribe the merged images source (JOUSTI.SRC — the link target; entity .SRC files are artist provenance, pictures.md) into a committed data module: both record formats (3-word entity frames with position word + w/h-at-source; 4-word background records = partial DMA blocks), the COMCL5 RLE stream decoded via the NEWCL5/UNCOM algorithm (SYSTEM.SRC:927-1023), the collision span tables (COFF bias, $8000/$8100 sentinels), and the COLOR1/HICOLR palettes (BBGGGRRR, resistor weights per williams_v.cpp:342-343). NO ROM binaries exist — the gate is a vitest that re-derives every frame from the vendored JOUSTI.SRC text (and cross-checks OSTRICH.SRC/*.PIC provenance for at least one entity) and compares byte-exact. Radix traps enforced: @ octal rows, decimal spans, % binary COMCL5, DMAFIX !X pre-XOR. Bake a contact-sheet artifact (91 blocks + COMCL5 expansion; bake-models.mjs precedent) for human review. NO hand-authored pixels anywhere. ASH1R/L (undecoded third format, open-questions §5) may be stubbed with its consumer traced or explicitly deferred with a finding."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "A test re-derives pictures.ts from the vendored JOUSTI.SRC byte-for-byte (frames, spans, palettes, COMCL5 expanded); it degrades to committed-fixture comparison when the tree is absent (CI)."
+      - "Frame names traceable to JOUSTI.SRC labels; the 91-block inventory from pictures.md is complete and identified on the committed contact sheet (ostrich/stork/buzzard 14 each, riders 13, egg 6, troll hand 6, flame 4, poof 3, ptero 6, cliffs, transporter)."
+      - "COMCL5 expands to CLIFF5's raw pixels via the transcribed RLE algorithm, cited to SYSTEM.SRC:927-1023; the expansion is pinned by test."
+      - "Zero hand-drawn pixel data: every byte in pictures.ts provably originates in the vendored source; citations suite green."
+  - id: jt1-4
+    title: "The arena — cliff placements, landing tables + snap Ys, lava + bridge, wrap bounds, ceiling/floor"
+    description: "The static world, transcribed: cliff/transporter/bridge placements (pictures.md layout table; JOUSTI.SRC:54-290, 749-752; JOUSTRV4.SRC:1126-1127 solid fills), the landing model — bitmask tables (LNDXTB/LNDYTB semantics, JOUSTRV4.SRC:6703-6707) resolving to the six hard-coded snap Ys (68/80/128/137/162/210, JOUSTRV4.SRC:6729-6759) — landing is a SNAP, not a resolve; cliff-side collision as the separate BCKXTB path (trace BCKCOL far enough to pin behavior — open-questions §4); X wrap [−10,292] modulus 303 (ELEFT/ERIGHT, JOUSTRV4.SRC:38-39, WRAPX :7291-7297); elastic ceiling $20 (:6497-6506); lava floor death at FLOOR+7 (:6508-6521); lava level per wave ($EA→$E0, :1929-1933, :962); bridge as wave-3 destruction hook (TBRIDGE, :954-957 — destruction animation itself may defer to jt3 with the troll). Every constant radix-cited + claims entry. Determinism pinned by test."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "Platform surfaces, wrap bounds, ceiling/floor, and placements all transcribed with radix-cited comments AND claims entries; npm test -- citations green."
+      - "Landing resolves via the bitmask+snap model: an entity crossing a platform's band from above lands AT the transcribed surface Y (all six), never penetrates, never sub-pixel-rests; walk-off-edge enters flight with zero VY."
+      - "X wrap is the ROM's [−10,292]/303 arithmetic (an entity at 293 emerges at −10); ceiling reflects velocity exactly (elastic); crossing FLOOR+7 kills."
+      - "No wall-clock, no Math.random in core (purity guard stays green)."
+  - id: jt1-5
+    title: "Flight + ground movement — flap impulse decay, gravity pair, FLYX ladder, ground state machine, 2P input contract"
+    description: "The flap model, transcribed exactly (subsystems §2): flap on release→press edge; impulse ΔVY = ((PTIMUP×96)>>8) − 96 (ADDFLP, JOUSTRV4.SRC:6429-6436); PTIMUP saturating frame counter (:6476-6478); gravity 4/frame wings-down (button held), 8 wings-up (:952-953, :6170, :6197) — the glide mechanic; FLYX 9-entry ladder ±{2.0,1.0,0.5,0.25,0} px/frame indexed by PVELX, ±2×joystick per flap edge only, REJECTION clamp at ±8 (update discarded, not saturated — :6440-6448; comments lie, trust branches); NO air drag, NO terminal velocity (negative tests pin both absent); takeoff −$0080 + 1px lift vs walk-off zero-VY (:6123-6151); wing-frame holds decoupled from gravity state (:6147, :6221, :6203); positions integrate as 16-bit pixel+fraction. Ground: the STATE machine (:7160-7175) with animation-driven deltas (ORRUN 0/3/2/1/2, skid 2 — :7185-7189, :7242), 8-frame state advance, landing conversion FRCONV (:6253-6257), skid sets PLANTZ=2 (:6071-6072 — recorded now, consumed by jt2's joust). Bump registers as one-shot positional shoves (:7270-7284, :6495-6496). Input: device-agnostic per-player contract {dir −1/0/+1, flap edge} mirroring the ROM's normalisation (:7261-7263); shell maps P1 arrows+flap and P2 A/D+flap, both proven against the same core contract in a shell test. Deterministic under seeded replay."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "Flap impulse, gravity pair, FLYX values, clamp-rejection semantics, wrap/ceiling/floor interactions, and the ground-state deltas all transcribed with radix-cited comments + claims entries; citations suite green."
+      - "Negative tests prove no-drag (horizontal speed persists indefinitely without flapping) and no-terminal-velocity (VY grows unbounded until floor/ceiling) — the dossier's cited negative claims stay true in code."
+      - "Determinism: identical seed + input script reproduces the identical flight trajectory bit-for-bit through wrap, ceiling bounce, landing, and takeoff."
+      - "Both players drive the same core contract from different shell mappings (P1 arrows, P2 A/D) in a shell test; a rapid-flap script out-climbs a slow-flap script (PTIMUP decay observable)."
+  - id: jt1-6
+    title: "Render shell — atlas, 292x240 integer scaling, COLOR1 palette, playable arena demo"
+    description: "Canvas 2D shell drawing from jt1-3's data via an offscreen atlas: 292x240 logical resolution (visible raster per williams.cpp:1556), integer scaling with letterbox, no smoothing, COLOR1 palette applied (nibbles are literal indices — no remap, pictures.md). Draw the arena (cliffs incl. expanded CLIFF5, bridge fills, lava) and both mounts with run/flap/skid animation frames. Wire the demo page: two players flying/running around the authentic arena on 5279 — the epic's demo. Render source-wiring test using the repo ?raw idiom (reviewer-blessed on tempest/centipede); no invented colors (denylist scan per cp2-1 hardening)."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "Playable slice in the browser on 5279: P1 and P2 flap/run/skid around the authentic arena with platform landings, wrap, ceiling bounce, and lava death rendered from transcribed frames at authentic proportions."
+      - "Logical resolution 292x240 cited (williams.cpp:1556); rendering is integer-scaled with no smoothing (crisp pixels); COLOR1-derived palette applied and cited; no invented colors (scan proves it)."
+      - "Render source-wiring test green; screenshot committed in the story docs as the epic demo artifact, taken from THIS checkout (prove 5279 ownership via lsof or serve a spare port)."
+      - "npm test fully green including citations and purity guard."
