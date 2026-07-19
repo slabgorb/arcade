@@ -756,3 +756,45 @@ sweep, not the M-010 tests. Run the FULL suite — a model swap's blast radius r
 Mark the findings you actually FIXED `"remediated_by": "<story>"` BY HAND (the checker then freezes
 their `ours` side), THEN run `node tools/audit/reanchor-citations.mjs --write` for the line-shift
 drift in the OTHER findings. The tool leaves the remediated ones alone (nothing to re-anchor to).
+
+---
+
+### Verifying a manual index.html rebrand: the name lives in FOUR parallel copies + a GREEN test pins the OLD one, and an early grep goes STALE under the user's live edits
+
+**Situation:** Ad-hoc "verify I didn't mess anything up" on the user's hand-edit to the lobby
+`index.html` — a marquee-wordmark rebrand (VECTOR ARCADE → SLABCADE, a portmanteau) that also
+deleted the `SLABGORB PRESENTS` and `INSERT COIN` lines. NEW_WORK_STATE, no story/phase — a
+verify-and-reconcile, not a GREEN run.
+
+**Problem — the human-readable name has FOUR independent copies and the build hides three.** The
+lobby wordmark is spelled one glyph per `<span>`, so the name is duplicated across (1) the visible
+`<span>` letters, (2) `<h1 aria-label="…">`, (3) `<title>`, and (4) an explanatory source comment.
+The user changed only the glyphs. `tsc && vite build` stays CLEAN (the HTML is still well-formed)
+and 148/150 tests pass — so it *looks* finished — while a screen reader still announces the OLD
+name and the browser tab still reads the OLD name. Worse: `tests/chrome.test.ts`'s accessible-name
+test (`expect(accessibleName(h1)).toBe('VECTOR ARCADE')`) stays GREEN, because the stale
+`aria-label` still matches it — a green assertion pinning a now-wrong value. The only RED is the two
+tests for the DELETED content. So the failing suite points at the removals, not at the desync that
+actually matters.
+
+**Problem — an early snapshot goes stale mid-session.** This was INTERACTIVE; the user kept editing
+while I worked. My opening `grep -rni centipede lobby/src` came back empty and I reported "the lobby
+registry has no centipede tile." By the time the user said "look again," `src/core/registry.ts` HAD
+the entry — they'd saved it after my grep. A grep / `git status` taken at the top of an interactive
+session is NOT ground truth by the time you report a conclusion from it.
+
+**Prevention:** (1) On any index.html brand/content edit, reconcile EVERY copy of the name —
+`grep -niE "<old name>|<title>|aria-label" index.html` — and don't trust a green suite: an
+accessible-name assertion pinned to a hardcoded string passes on the stale value, so update the
+TEST too (retarget the `toBe(...)`), and DELETE the tests for content the edit removed rather than
+leaving them red. (2) Prune the CSS the edit orphaned (`.presents`, `.insert-coin`, `.wordmark-gap`)
+but check shared keyframes first — `.select` still used `vb-blink`, so that keyframe stays. (3)
+Before reporting "X is missing" in a live session, RE-RUN the check — the user may have added it
+since your first look.
+
+**Example (lobby SLABCADE, 2026-07-19):** fixed `<title>`, `aria-label`, and the comment; deleted
+the two removed-content tests (`SLABGORB PRESENTS`, `INSERT COIN`); retargeted the accessible-name
+test to `SLABCADE`; removed three dead CSS rules (kept `vb-blink`, still used by `.select`). Full
+suite 148/148, build clean. Separately `registry.ts` had gained the centipede tile
+(`launchUrl: https://centipede.slabgorb.com/`) — which my first grep missed because the user saved
+it mid-session.
