@@ -3,7 +3,7 @@ type: epic
 title: Star Wars — ROM audio fidelity (the music that has never played)
 description: 'Star Wars ships a complete, correct music path that has never made a sound: sw3-5 wired the core phase-edge MusicEvent -> main.ts startLoop -> @arcade/shared/audio music channel, but the four .wav assets it points at were never produced and 404 on R2 (the sfx/ prefix, by contrast, is populated). The shared engine degrades silently at every failure path, so a missing asset is indistinguishable from working code — the game has simply been quiet since the feature shipped. Asset production was explicitly scoped out of sw3-5 and flagged by TEA, Dev and the Reviewer as a non-blocking Delivery Finding; no follow-up story was ever filed. This epic is that follow-up. Design: docs/superpowers/specs/2026-07-13-star-wars-music-bake-design.md'
 priority: p1
-status: backlog
+status: done
 repos: star-wars, orchestrator
 stories:
   - id: sw6-1
@@ -85,3 +85,4 @@ stories:
       - "CHECK, DO NOT ASSUME, THE OTHER BEAT — `bake-sfx.mjs:66` also carries `const BEAT = 1/250` for TEMPEST's older `alsoun` record format. That is a different game on a different sound board; do NOT change it as collateral. Say in the session whether it was checked and why it is (or is not) affected."
     completed: '2026-07-14'
     type: bug
+completed: '2026-07-19'

@@ -14,6 +14,7 @@ completed_epics:
   - tp1
   - cp1
   - tp2
+  - sw6
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -590,5 +591,15 @@ completed_stories:
   - id: cp2-6
     epic: cp2
     title: Gun/shot vertical is drawn through the collision cell — six 8px rows instead of pixel resolution; add gunScreenY mirroring gunScreenX
+    points: 2
+    completed: '2026-07-19'
+  - id: cp2-5
+    epic: cp2
+    title: "Death, the RESTOR sweep, and the wave-1 loop — the cp2 demo"
+    points: 4
+    completed: '2026-07-19'
+  - id: sw6-3
+    epic: sw6
+    title: The POKEY player's fail-loudly rule holds in the middle of the note path but not at its two boundaries — a note transposed onto index 0 becomes a silent rest, and a stray .ENDL silently replays a voice 256 times
     points: 2
     completed: '2026-07-19'
