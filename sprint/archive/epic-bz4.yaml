@@ -3,7 +3,7 @@ type: epic
 title: Battlezone ROM fidelity — deferred bz3 follow-ups
 description: Long-tail ROM-fidelity refinements surfaced by the bz3 epic reviews (all shipped in v1.0.0 as documented deviations/non-blocking findings). Each has a verified primary-source citation from the bz3 work. Not required for fidelity-correctness; they close the remaining gaps between the clone and exact 1980-cabinet behavior. Fourth of the bz1/bz2/bz3/bz4 Battlezone epic line.
 priority: p3
-status: backlog
+status: done
 repos: battlezone
 stories:
   - id: bz4-1
@@ -50,10 +50,12 @@ stories:
     description: bz3-10 residuals from the NUMBER x FRCNT envelope-decode correction. (1) BOING currently ships 496ms but the true NUMBER x FRCNT value is 456ms (WP1). (2) DISINT ships 104ms per the epic AC / refuter DS1 figure, but the pure engine model gives 96ms (NUMBER x FRCNT) — rule the AC-vs-engine tension and land whichever is correct. Also reword the audio.ts comment that currently states a formula-contradicting 'one frame per record' claim for multi-record cues.
     points: 1
     priority: p3
-    status: backlog
+    status: done
     repos: battlezone
     workflow: trivial
     acceptance_criteria:
       - BOING duration corrected to the true NUMBER x FRCNT value (456ms), and the misleading multi-record duration comment reworded to match the per-record formula.
       - The DISINT 104ms (AC/refuter) vs 96ms (engine NUMBER x FRCNT) tension is ruled against source and the shipped value reflects the ruling.
+    completed: '2026-07-19'
     type: chore
+completed: '2026-07-19'
