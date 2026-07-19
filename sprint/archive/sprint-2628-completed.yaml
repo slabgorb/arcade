@@ -13,6 +13,7 @@ completed_epics:
   - bz3
   - tp1
   - cp1
+  - tp2
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -570,4 +571,9 @@ completed_stories:
     epic: cp2
     title: Mushroom hitbox sits one unit right of the sprite — visual column vs collision column disagree
     points: 2
+    completed: '2026-07-19'
+  - id: tp2-2
+    epic: tp2
+    title: The level-select prompt says 'PRESS FIRE TO SELECT' but the sim advances on Enter (input.start), not fire
+    points: 1
     completed: '2026-07-19'

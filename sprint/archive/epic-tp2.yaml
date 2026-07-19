@@ -3,7 +3,7 @@ type: epic
 title: Tempest ROM fidelity — deferred tp1 follow-ups
 description: "Long-tail ROM-fidelity + UX follow-ups surfaced by the tp1 epic reviews and in-game verification (2026-07-18). Each carries a primary-source citation or a reproduced in-game observation from the tp1 work; none was required for tp1's fidelity-correctness. Second of the Tempest epic line (tp1 -> tp2). (Note: V-018's hi-score LAYOUT sub-claim, render.ts hi-score W/2 center, remains an open tp1-20 residual not yet filed here.)"
 priority: p3
-status: backlog
+status: done
 repos: tempest
 stories:
   - id: tp2-1
@@ -28,9 +28,8 @@ stories:
     description: "On the RATE YOURSELF / SELECT START LEVEL screen, the on-screen prompt reads PRESS FIRE TO SELECT (drawn by drawSelect in src/shell/render.ts) but the sim's select->playing transition reads input.start (Enter), NOT input.fire (src/core/sim.ts, case select: if (input.start) startGameAtLevel(...)). So on the select screen pressing FIRE (Space) does nothing; the level starts only on Enter. Found in-game during tp1-39 verification (Playwright drive: Space lit the prompt but never advanced; Enter did). The PRESS FIRE TO SELECT string was shipped by tp1-20 as a ROM-authentic message, which suggests the arcade cabinet started the selected level on the FIRE button — making the BEHAVIOUR (Enter-only) the bug, not the prompt. Decide against the ROM."
     points: 1
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-07-19'
-    branch: fix/tp2-2-select-fire-input
     repos: tempest
     workflow: trivial
     acceptance_criteria:
@@ -38,4 +37,9 @@ stories:
       - 'Implement the chosen fix: EITHER (a) the sim case select also advances on input.fire so Fire (Space) confirms — matching the prompt — WITHOUT double-triggering on the same press that entered select and WITHOUT regressing the Enter path; OR (b) the drawSelect prompt string is corrected to name the key that actually confirms.'
       - 'A test pins the chosen behaviour: the select->playing transition fires on the documented input, and the prompt string names an input that actually confirms (no lingering fire-does-nothing mismatch).'
       - npm test -- citations stays green.
+    completed: '2026-07-19'
+    branch: fix/tp2-2-select-fire-input
     type: bug
+    review_findings: '3 MEDIUM: (1) SelectState.fireHeld duplicates the canonical GameState.prevFire edge-latch (6-2) — rework to input.fire && !s.prevFire, delete the field; (2) no test pins spin-while-fire-held; (3) lost bullets===0 pin on the fire-confirm frame. No Critical/High; security/rules/preflight clean.'
+    review_verdict: approved
+completed: '2026-07-19'
