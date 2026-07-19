@@ -18,9 +18,11 @@ games := "tempest star-wars asteroids battlezone red-baron centipede"
 # `serve` and the install recipe below iterate this; game-only recipes use {{games}}.
 subrepos := "lobby tempest star-wars asteroids battlezone red-baron centipede"
 
-# Install dependencies in every subrepo (lobby + games)
+# Install dependencies in every subrepo (lobby + games), reconciling each subrepo's
+# installed @arcade/shared against its pinned version. Uses `npm ci` where a git-dep pin
+# has drifted (plain `npm install` keeps the cached old commit) — see scripts/deps-doctor.mjs.
 install-all:
-    @for g in {{subrepos}}; do echo "==> $g"; (cd {{root}}/$g && npm install); done
+    @node {{root}}/scripts/deps-doctor.mjs {{subrepos}}
 
 # Run tests in every game
 test-all:
@@ -138,6 +140,10 @@ serve:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Serving the arcade from {{root}} (the canonical checkout)"
+    # Preflight: a bumped @arcade/shared pin does not re-install under plain `npm install`,
+    # so node_modules can serve stale bytes (the lobby once 500'd this way on a missing
+    # /glow export). Reconcile installed vs pinned BEFORE launching — abort loudly on failure.
+    node {{root}}/scripts/deps-doctor.mjs {{subrepos}}
     echo "  lobby      → http://localhost:5270/"
     echo "  tempest    → http://localhost:5273/"
     echo "  star-wars  → http://localhost:5274/"
