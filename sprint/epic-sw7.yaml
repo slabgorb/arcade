@@ -275,3 +275,19 @@ stories:
     repos: star-wars
     workflow: tdd
     depends_on: sw7-19
+  - id: sw7-23
+    title: 'Cleanup: retire vestigial TIE-flight fields + inert ENEMY_SPEED ramp left by VM-flight wiring (PR #110)'
+    description: 'Follow-up from the sw7 TIE choreography-VM + authentic-fire whole-branch review (PR #110, merged 2026-07-19). applyManeuver now drives TIE motion from the VM at fixed rates, leaving dead paths: (L1) Enemy.bank set/read nowhere; Enemy.peeling never set, so the peel-cull filter is permanently false; Enemy.vel written by spawnTie but read by no space path. (L2) the RAMP_PER_WAVE-scaled ENEMY_SPEED now only seeds the unread vel, so later-wave TIEs no longer approach faster (difficulty ramps via spawn cadence + TGPROB fire cadence) — design-consistent but should be made explicit; either retire ENEMY_SPEED/vel or re-derive an explicit approach-speed target. (T4c) toCockpit is duplicated inline in tie-status.ts vs the private copy in sim.ts — extract one shared core helper. Pure-core; keep the suite and citations green.'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw7-24
+    title: 'Fidelity/playtest: tune VM-flight aggression + close deferred fire nuances (PR #110 follow-ups)'
+    description: 'Deferred fidelity/tuning items from the sw7 VM-flight + authentic-fire work (PR #110), best resolved after a playtest pass. (T4a) unshot TIEs now bear down and beeline the cockpit (~frame 93) before the choreography weave engages — tune approach feel, likely via the §5 play-cube clamp (position clamp each axis [$8300,$7CFF], model §5.3); note the §7 cockpit-collision-drop ALREADY exists (sim.ts:484-491), so this is feel-tuning, not a missing mechanism. (T4d) AIM_PLAYER/AIM_AHEAD reuse the moveEnemy snap-homing (full re-point) rather than the exact Math Box program $67 law (model §5); combined aim+roll maneuvers will not visibly spin until it lands. (T5a) the TGPROB fire table is ported for the first 8 rows only, so waves 9-11 hold threshold 0x80 (~50%) vs the ROM deeper 03,60 / 03,40 / 03,30 (~62/75/81%) — transcribe rows 8-15 from WSCPU.MAC:736. (T5b) §6 fire cond-1 uses C_AS (alien-aims-at-player) as the in-arc bit vs the ROM literal first gate C$PV (player-can-see-us, WSCPU.MAC:624) — the design deliberately elected the in-core-geometry bit; revisit whether C$PV semantics change feel. Each item can be its own commit; playtest to prioritise.'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: tdd
