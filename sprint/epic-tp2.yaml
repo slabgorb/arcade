@@ -11,7 +11,8 @@ stories:
     description: 'PULPOT (WPULPOT, ALWELG.MAC:606-609: $A0 for waves 1-64, $C0 for 65-99) is ONE ROM byte read at THREE JPULMO sites — the pulsar KILL gate (1804-1806), the climb-speed near/far switch (1783-1786), and the descend REVERSE (1795) — all widening to $C0 at wave 65. tp1-26 gave the KILL gate its own wave-parameterised lookup (pulpotKillDepthForLevel, routed through the contourWave fold) but LEFT the climb and reverse readers (src/core/enemies/interpreter.ts:183 climb, :321 reverse) frozen at PULSAR_NEAR_FAR_DEPTH = $A0 — a pre-existing deferral introduced by feat 6-15 (rules.ts:452-453: the L65+ $c0 tier is deep-level gold-plating, intentionally not modelled). Reviewer-noted consequence (tp1-26 review): at wave 65+ the ROM climbs a $A0..$C0-band pulsar at PULSAR (slow) speed while our port climbs it at FLIPPER (fast) speed. Close the gap, or formally ratify the deferral. The two constants (kill PULPOT vs climb PULSAR_NEAR_FAR_DEPTH) coincide at $A0 below wave 65 and diverge at 65.'
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-07-19'
     repos: tempest
     workflow: tdd
     acceptance_criteria:
