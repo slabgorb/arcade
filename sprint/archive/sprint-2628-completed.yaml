@@ -566,3 +566,8 @@ completed_stories:
     title: "The train arrives — CENTPC init, MOTION march + descent, OBSTAC turns, poisoned dives; gun blocked by mushrooms (MOVE/OBSTAC)"
     points: 5
     completed: '2026-07-19'
+  - id: cp2-7
+    epic: cp2
+    title: Mushroom hitbox sits one unit right of the sprite — visual column vs collision column disagree
+    points: 2
+    completed: '2026-07-19'
