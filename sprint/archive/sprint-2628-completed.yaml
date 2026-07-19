@@ -603,3 +603,8 @@ completed_stories:
     title: The POKEY player's fail-loudly rule holds in the middle of the note path but not at its two boundaries — a note transposed onto index 0 becomes a silent rest, and a stray .ENDL silently replays a voice 256 times
     points: 2
     completed: '2026-07-19'
+  - id: cp2-8
+    epic: cp2
+    title: Pointer-lock takes two clicks to bind — first click does not acquire
+    points: 2
+    completed: '2026-07-19'
