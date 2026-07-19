@@ -551,3 +551,8 @@ completed_stories:
     title: "Input shell polish — per-step mouse-delta distribution (>60 Hz), pointer-lock rejection + pointerlockchange, human smoke test"
     points: 2
     completed: '2026-07-19'
+  - id: sw7-20
+    epic: sw7
+    title: R6c Trench wall GUNS fire back — .WP WGA panel model + BSGUN/DOBASE fire behavior (B-017 + M-011)
+    points: 3
+    completed: '2026-07-19'
