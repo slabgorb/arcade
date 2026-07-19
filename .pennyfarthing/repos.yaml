@@ -199,12 +199,41 @@ repos:
     languages:
     - typescript
     framework: vite
+    dev_command: npm run dev
+    build_command: npm run build
+    test_command: npm test
     notes: 'Eighth subrepo in the arcade series. Gitignored, with its own git history
       (origin github.com/slabgorb/centipede, default branch develop, gitflow).
-      Pre-implementation: docs/rom-study/ (built with the rom-source-study skill from
-      the historicalsource/centipede rev-4 source plus the MAME driver) is the ground
-      truth every story cites. Vite/TS/Vitest scaffold and dev/build/test commands
-      land with the first story. Dev port 5278 reserved.
+      Implementation underway — epic cp1 (foundation) done, cp2/cp3 active.
+      docs/rom-study/ (built with the rom-source-study skill from the
+      historicalsource/centipede rev-4 source plus the MAME driver) is the ground
+      truth every story cites. Served on port 5278.
+
+      '
+  joust:
+    path: joust
+    type: ui
+    default_branch: develop
+    branch_strategy: gitflow
+    description: 'Faithful browser-based clone of Williams'' 1982 Joust. Side-view
+      flapping knight duel over a lava pit (player on ostrich vs buzzard riders,
+      eggs, the pterodactyl, the lava troll; screen-wrap platforms). First Williams
+      game and second raster game in the series — Canvas 2D, no backend, no game
+      engine. src/core holds the deterministic sim; src/shell holds
+      render/audio/input.
+
+      '
+    language: typescript
+    languages:
+    - typescript
+    framework: vite
+    notes: 'Ninth subrepo in the arcade series. Gitignored, with its own git history
+      (origin github.com/slabgorb/joust, default branch develop, gitflow).
+      Pre-implementation: docs/rom-study/ (built with the rom-source-study skill
+      from the historicalsource/joust 6809 source, vendored at
+      reference/williams-source/joust pin 9bcfdb1, plus the MAME williams driver)
+      is the ground truth every story cites. Vite/TS/Vitest scaffold and
+      dev/build/test commands land with the first story. Dev port 5279 reserved.
 
       '
   arcade-shared:
