@@ -174,7 +174,8 @@ stories:
     description: "USER-REPORTED (2026-07-19, live play + reference screenshot of the real cabinet): the score belongs ABOVE the gamefield, not within it. ROM ANCHORS (verified 2026-07-19): the ENTIRE HUD lives on the single top row v=0x1F (addr&0x1F==0x1F, PM-1 geometry; the row MUSHER refuses per PM-27, CENTI4.MAC:1622 'CMP I,1F ;TOP ROW') — NOT rows {0,1}, which are the bottom/player zone (PM-12/PM-28). Layout on v=0x1F, upright (all CK* mirror vars zeroed, CENTI4.MAC:742-751): P1 score 6 digits at 0x041F h0-5 (UPSCRE, CENTI4.MAC:2632-2645); P1 LIVES AS SHIP/GUN ICONS at 0x04DF h6-11 (DLIVES, :920-932 — 'LDA I,1F ;PICTURE OF SHIP'); high score at 0x059F h12-17 (:2663-2676); P2 lives at 0x065F h18-23 (:939-944); game-time/P2-score at 0x071F h24-29 (:2649-2658, colon 0x2E at :2658). Digit/glyph writers advance +0x20/char (CHAR, CENIR4.MAC:212). USER CONFIRMED 2026-07-19: lives-as-gun-icons is REQUIRED scope, not optional — and the ROM mandates it anyway (DLIVES draws ship pictures, never digits). Move the shell HUD to v=0x1F per these addresses; playfield rendering unchanged. New claims for the routine addresses (net-new — PM-1/PM-27 cover only geometry/reservation). Pairs with cp2-11 (same files)."
     points: 2
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-07-19T18:35:15Z'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
@@ -195,3 +196,17 @@ stories:
       - "On wave change in live play the field/enemy colours visibly change per the ROM's cycle; screenshot pair (wave 1 vs wave 2) from THIS checkout committed."
       - "The clone's CLRCH table matches 99$ byte-for-byte (one 0x06 at scheme X=30, NO 0x07 anywhere — any 0x07 is uncited and corrected); no invented colours (the denylist scans stay green)."
     type: feature
+  - id: cp2-14
+    title: Global orientation flip — cellScreenX + input sign chain match the upright cabinet
+    description: "REVIEWER-SURFACED (2026-07-19, cp2-12 review), USER-RULED same day: the clone renders the playfield as the HORIZONTAL MIRROR of the real upright cabinet. Derivation (cp2-12 Reviewer Assessment, byte-verified): ROM playfield addr decodes h=(addr-0x400)>>5, v=addr&0x1F with CK* mirror vars zeroed upright; MAME centiped is ROT270 over TILEMAP_SCAN_ROWS with no tilemap flip (centiped_v.cpp:93/:414), so the 90-degree-CCW rotation puts ROM h=0 at display LEFT (P1 score left, high score center — the classic layout; the same transform independently confirms the clone's known-correct vertical axis). The clone's cellScreenX(h)=LOGICAL_W-(h+1)*TILE_W (layout.ts:49, from cp1-6) puts h=0 at display RIGHT. Invisible until cp2-12's asymmetric HUD because the mushroom field is statistically symmetric and the input sign chain was tuned device-right-to-screen-right. USER RULING on cp2-12: mirror accepted there (HUD consistent with field); THIS story does the global flip — cellScreenX direction, the input sign chain (device-right-to-screen-right must still hold AFTER the flip), gunScreenX, and every h-anchored render site flip TOGETHER, so the cp2-12 HUD lands on the cabinet's true sides with no HUD special-casing. Re-pin sign-chain.test.ts, the cp2-7 hitbox pins, and the cp2-12 order-agnostic HUD tests (reviewer LOW: multiset pins cannot catch a mirror — add absolute left/right pins). SHOULD LAND BEFORE cp3's asymmetric entrants (flea drop columns, spider side-entry, scorpion crossing) make the mirror visible in live play."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    depends_on: cp2-12
+    acceptance_criteria:
+      - "cellScreenX maps ROM h=0 to screen LEFT, cited to the cp2-12 derivation (MAME ROT270 + TILEMAP_SCAN_ROWS, no tilemap flip; CK* zeroed upright); the HUD renders score h0-5 LEFT, lives h6-11, high score h12-17 center with NO HUD special-casing; screenshot from THIS checkout committed."
+      - "Input feel preserved: device-right still moves the gun screen-right after the flip; sign-chain and cp2-7 hitbox tests re-pinned, none weakened."
+      - "Orientation becomes testable: at least one render test pins ABSOLUTE left/right field placement (not order-agnostic multisets); suite + citations + build green."
+    type: bug
