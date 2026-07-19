@@ -47,3 +47,18 @@ connected (ssl/ownership active, resolves to Cloudflare IPs). Still needed befor
 serves: the game repo's `.github/workflows/deploy.yml` (copy a sibling, set `bucket: arcade-centipede`),
 the `CLOUDFLARE_API_TOKEN` secret on the repo, and `just release centipede`. The lobby tile in
 `registry.ts` was already added by the user.
+
+**Follow-up (centipede, 2026-07-19, same day):** `just release centipede` shipped v0.0.1 (merge to
+main), but the `deploy` CI run FAILED in 3s — the centipede repo had NO secrets (`gh secret list`
+empty), so the reusable `deploy-r2.yml` had no `CLOUDFLARE_API_TOKEN` and uploaded nothing. Bucket
+stayed empty; site 404'd everywhere. Fix used = the manual fallback `just deploy-one centipede`,
+which builds locally and `wrangler r2 object put --remote`s dist/ using the LOCAL OAuth login (no
+repo secret needed) — this is the "explicit upload to R2" path. After it: `/index.html` and the JS
+asset serve 200 with correct content-types, but root `/` still 404s — CONFIRMING the Transform Rule
+host list is explicit, not a `*.slabgorb.com` wildcard (siblings tempest/red-baron root=200,
+centipede root=404). Two items wrangler/`gh` here CANNOT do (need dashboard / the token value):
+(1) add `centipede.slabgorb.com` to the zone URL-rewrite Transform Rule host list — Cloudflare
+dashboard, Rules → Transform Rules; (2) `gh -R slabgorb/centipede secret set CLOUDFLARE_API_TOKEN`
+(the CI token is a scoped R2 API token, NOT the local wrangler OAuth token — it is not on disk here)
+so the NEXT `just release centipede` deploys via CI instead of failing again. Every sibling repo
+has exactly that one secret and nothing else.
