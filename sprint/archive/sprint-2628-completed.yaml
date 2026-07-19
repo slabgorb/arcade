@@ -776,3 +776,8 @@ completed_stories:
     title: The head factory — NEWHD spawns fresh heads into the player zone while the train bounces at the bottom
     points: 3
     completed: '2026-07-19'
+  - id: sw7-23
+    epic: sw7
+    title: 'Cleanup: retire vestigial TIE-flight fields + inert ENEMY_SPEED ramp left by VM-flight wiring (PR #110)'
+    points: 2
+    completed: '2026-07-19'

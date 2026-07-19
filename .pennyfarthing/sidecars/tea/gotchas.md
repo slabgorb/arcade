@@ -1483,3 +1483,26 @@ top-strip green/red HUD are all separable this way) — don't guess the region, 
 **Also — verify GREEN-ability, not just RED.** An "absence" pin (no rays / no amber) that counts
 polluting strokes is RED today AND RED forever. After writing it, prove the count goes to 0 under the
 intended fix shape (arcs, or tangential-polyline rings → 0 radial segments) before trusting the red.
+
+---
+
+### A source-rule regex `/import[^;]*\bSYM\b/` matches the INLINE use in a semicolon-free repo — it "passes" vacuously
+
+**Situation:** RED-pinning a de-duplication / extraction (sw7-23 T4c: `toCockpit` inlined in
+`tie-status.ts` must become an IMPORT of one shared helper). I wrote two source-read checks: the
+inline copy is gone (`not.toMatch(/normalize\(sub\(COCKPIT/)`) and the import exists
+(`toMatch(/import[^;]*\btoCockpit\b/)`).
+
+**Problem:** star-wars (like the whole arcade) writes ESM **without semicolons**. `[^;]*` is a
+negated class, so it spans **newlines** and everything else until the next `;` — and there IS no `;`.
+So `import[^;]*toCockpit` matched from the file's top `import` line all the way down to the line 65
+`const toCockpit = …` I was trying to force OUT. The "import exists" test passed GREEN against the
+un-refactored file — a vacuous pin that would have let Dev ship the extraction half-done (inline copy
+kept) with the suite green. testing-runner reported it PASSING when every sibling RED driver failed,
+which is the tell: an "it changed" pin that's green before the change is broken.
+
+**Prevention:** For "SYM is imported," match a real import STATEMENT, brace-scoped:
+`/import\s*\{[^}]*\bSYM\b[^}]*\}\s*from/` — `[^}]*` can't escape the `{ }`, so a later `const SYM`
+can't satisfy it. NEVER gate on `[^;]*` in a semicolon-free codebase; `[^;]` there ≈ `[\s\S]` and
+eats the whole file. And always eyeball the PASS list of a source-rule RED, not just the fail count:
+a dedup/extraction test that is green on the current tree is refuting nothing.
