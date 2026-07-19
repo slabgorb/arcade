@@ -689,3 +689,29 @@ phase did NOT run (fresh derivations, source lookups, tracing degenerate cases t
 stage) and let the subagents own the diff-reading. And check recorder mocks for WHAT they record:
 a tap that logs the INPUT of the function it wraps turns every "is drawn/is produced" assertion
 into a call-detector — mutation `return []` and see if anything reddens before trusting it.
+
+---
+
+### Seam-agnostic render tests (colour-family + span/topology) are BLIND to vertex-ORDER errors — hand-verify a ported ROM picture's point sequence against the source
+
+**Situation:** Reviewing sw7-15 / M-010 — a ROM 2D vector picture (the Death Star: a green
+BSCIR circle + white BSTRN trench + red BSDSH dish) ported into flat `Model3D` point tables and
+drawn seam-agnostically (the TEA suite asserts colour FAMILY present + geometric SPAN/offset, per
+the repo's "colour-family + topology, not pixels" convention).
+
+**Problem:** those tests cannot see a SWAPPED PAIR of vertices. The Death Star circle had its last
+two points transcribed in the wrong order (`(-50,0),(-49,10)` instead of the ROM's
+`(-49,10),(-50,0)`), which crosses one rim edge over its neighbour — a visible kink/self-crossing
+on the disc's left edge. But the x/y SPAN is unchanged (both points are still present) and the
+COLOUR is unchanged, so all four M-010 palette/span tests stayed green over a real transcription
+defect. It sailed through TEA (who wrote the seam-agnostic tests) and Dev (who transcribed it) and
+was caught only by the reviewer reading the point table against the ROM source line-by-line.
+
+**Prevention:** for any ported ROM PICTURE/shape, do not trust palette+span tests to prove the
+geometry — open the `.MAC` source and check the point SEQUENCE (order + closing edge), not just the
+point set. Then pin the order with a cheap, robust guard: a closed convex loop centred at the origin
+winds ONE way, so assert every consecutive cross-product `x_i·y_{i+1} − y_i·x_{i+1}` has the SAME
+sign (a swap flips exactly one). Mutation-prove it (fails on the swap, passes on the fix). Note the
+guard covers only what you guarded — here the body circle got the winding pin; the dish and trench
+orders were hand-verified against the ROM but are still only span/palette-pinned, so a future edit
+could reintroduce a kink there. Order-blindness is the systematic gap in span/family fidelity tests.

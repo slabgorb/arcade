@@ -1452,3 +1452,34 @@ staging bug; audit every red's failure MESSAGE, not just its redness — "releas
 no decode is gated" was a fixture defect wearing a RED suit. Also stage the OLD-behaviour half
 of a steal test on the shipped path (decode BEFORE request) so its red points at the missing
 mechanic, not at your staging.
+
+---
+
+### A star-wars CENTRED render effect shares its `deathStarDestroyedAt` gate with a centred BANNER — isolate the ring STRUCTURE by "surrounds the blast centre", not by a region box or a colour set
+
+**Situation:** RED for a star-wars finale render effect through the public `render()` — sw7-15's
+X-006 (the Death Star boom is 4-phase red→blue→white concentric rings, NO radial rays) driven by a
+recording canvas that classifies stroke colour families + counts radial-ray segments.
+
+**Problem:** The boom (`drawDeathStarBoom`) AND the "DEATH STAR DESTROYED" banner are BOTH gated on
+`state.deathStarDestroyedAt !== null && t - stamp <= DEATH_STAR_BOOM_SECONDS` — so any frame that shows
+the rings also shows the banner, dead-centre (`glowText`, white, y≈h*0.45). You cannot suppress the
+banner via state while showing the rings. Two false readings result: (1) the banner's white glyph
+segments get counted as radial rays — my "no rays" count read **52**, not the boom's real **16** (each
+76-segment banner glyph contributed ~12 collinear-with-centre segments), so the test could never go
+GREEN even after the rays were removed; (2) the always-white banner makes a colour-CYCLE test see white
+from frame 0, breaking a red→blue→white order assertion. A central-region box (r<R, y>110) does NOT
+exclude it — the banner sits at screen centre too.
+
+**Prevention:** Isolate the effect's STRUCTURE by geometry, not by region or palette. A concentric ring
+or a radial starburst SURROUNDS the blast centre — its points touch all four screen-centre quadrants;
+centred TEXT is a one-band horizontal strip (≤2 quadrants). Filter to strokes whose points span ≥3
+quadrants around centre (treating a near-centre `arc()` as a ring outright), THEN classify colour /
+count rays within that set. This dropped the ray count from a polluted 52 to a clean 16 and let the
+colour-cycle read ring colours only. Calibrate the isolation with a throwaway probe that DUMPS every
+stroke's family + centre-distance + y-range first (the current single steel `#8a93a8` body and the
+top-strip green/red HUD are all separable this way) — don't guess the region, measure it.
+
+**Also — verify GREEN-ability, not just RED.** An "absence" pin (no rays / no amber) that counts
+polluting strokes is RED today AND RED forever. After writing it, prove the count goes to 0 under the
+intended fix shape (arcs, or tangential-polyline rings → 0 radial segments) before trusting the red.

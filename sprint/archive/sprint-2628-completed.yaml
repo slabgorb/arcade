@@ -582,3 +582,8 @@ completed_stories:
     title: "Shooting the train — OVRLAP hit, EXPLOD animation, mushroom drop, NEWHD split, segment scoring"
     points: 4
     completed: '2026-07-19'
+  - id: sw7-15
+    epic: sw7
+    title: 'R7c Death Star finale + authentic picture — 4-phase RED/blue/white ring finale (X-006: DCIRCL+DRING, no rays, ~89f/4.3s), looming-station prelim (X-007: enlarge toward viewer + end music), authentic 2D vector Death Star BSHEM/BSCIR/BSTRN/BSDSH at M.=32 (M-010, replaces the procedural 3D sphere)'
+    points: 8
+    completed: '2026-07-19'

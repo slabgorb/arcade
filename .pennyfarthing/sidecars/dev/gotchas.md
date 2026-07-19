@@ -724,3 +724,35 @@ not re-hunt it: FEATHER the trigger (6 display frames on / 6 off — +1/shot hea
 And when a short-window suite exists to measure the entity itself (draw-path's TARGET TRUTH),
 hold the gate open at a delegating vi.mock seam that RECORDS the argument main.ts really passed —
 force the branch, keep the truth assertable — rather than stretching the run to minutes.
+
+---
+
+### Porting a ROM 2D vector PICTURE: draw DISJOINT segment-runs with explicit edges, and pick colours that hit the intended FAMILY (a teal "blue" reads as cyan)
+
+**Situation:** GREEN for sw7-15 / M-010 — replacing the procedural Death Star UV sphere with
+the authentic WSVROM 2D picture (a green `BSCIR` circle, a white `BSTRN` equatorial trench, a
+red `BSDSH` dish), each stroked in its own colour via three flat `Model3D` exports.
+
+**Problem 1 — disjoint runs.** A ROM picture is often several `AOFF/AON` runs (pen-up moves
+between them). `BSTRN` is TWO chords: `AOFF 49,10 / AON -49,-9` and `AOFF -49,-10 / AON 49,9`.
+A naive "polyline" builder that links every consecutive point (`edge i→i+1`) inserts a SPURIOUS
+segment between the two runs (here `(-49,-9)→(-49,-10)`), drawing a line the cabinet never drew.
+Build multi-run pictures with EXPLICIT edge pairs (`[[0,1],[2,3]]`), not a blanket polyline.
+
+**Problem 2 — colour family.** The TEA render tests classify strokes by COLOUR FAMILY (green/
+white/red/blue/cyan…), not exact hex. A "blue" with too much green reads as CYAN: `#3aa0ff` =
+(58,160,255) has g=160, and a `g≥140 && b≥140 && r≤130` cyan rule fires before the blue rule, so
+the finale's PH2 "blue" rings were classified cyan and the red→blue→white order test stayed red.
+A TRUE blue (`#3355ff`, g=85 < 140) classifies as blue. When a render colour must land in a named
+family, check it against the classifier's thresholds (low cross-channel bleed), don't just eyeball.
+
+**Problem 3 — registry invariants still apply to the swapped model.** `DEATH_STAR` stayed in the
+`MODELS` registry, so the new flat picture must still pass models.test.ts's well-formedness
+(finite verts, in-range/no-duplicate/no-degenerate edges, NO orphan vertices). A closed-loop
+circle and explicit-segment chords pass; a trimmed or mis-indexed table would redden the registry
+sweep, not the M-010 tests. Run the FULL suite — a model swap's blast radius reaches the registry.
+
+**Also:** any src edit to a file cited by `docs/audit/findings/*.json` reddens the citation gate.
+Mark the findings you actually FIXED `"remediated_by": "<story>"` BY HAND (the checker then freezes
+their `ours` side), THEN run `node tools/audit/reanchor-citations.mjs --write` for the line-shift
+drift in the OTHER findings. The tool leaves the remediated ones alone (nothing to re-anchor to).

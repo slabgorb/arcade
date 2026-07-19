@@ -186,11 +186,14 @@ stories:
     title: 'R7c Death Star finale + authentic picture — 4-phase RED/blue/white ring finale (X-006: DCIRCL+DRING, no rays, ~89f/4.3s), looming-station prelim (X-007: enlarge toward viewer + end music), authentic 2D vector Death Star BSHEM/BSCIR/BSTRN/BSDSH at M.=32 (M-010, replaces the procedural 3D sphere)'
     points: 8
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-19'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-1
+    completed: '2026-07-19'
     type: bug
+    review_verdict: approved
   - id: sw7-16
     title: R11a The gun is on the ship, surface edition — muzzle, fireball target, and cockpit hit-test unified at the flying ship point [0, altitude, 0]
     description: "PLAYABILITY BUG (live report 2026-07-16: 'I shoot way lower than the crosshairs indicate'). Bolts spawn at COCKPIT origin (sim.ts:173 — the sw5-6 muzzle fix covered only the trench) while the surface camera flies at [0, state.altitude, 0] (render.ts cameraView), altitude 40..238: sight-line and bolt run on parallel rays separated by altitude, so every impact lands 40-238u below the reticle against TURRET_HIT_RADIUS 200 centred at the tower BASE. The sw5-6 comment 'other phases... already share the origin' is stale/false since the camera-lift. Fix: ONE ship point [0, altitude, 0] for (a) player muzzle, (b) fireball target (toCockpit), (c) cockpit hit-test — the trench's trenchView pattern. ROM: WSGUNS.MAC FRPTGN spawns at the ship (LDD M$TX/ADDD #100/M$TY/M$TZ). Design: star-wars docs/superpowers/specs/2026-07-16-surface-gunnery-and-traversal-design.md"
