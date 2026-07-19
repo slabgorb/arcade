@@ -189,13 +189,15 @@ stories:
     description: "USER-REPORTED (2026-07-19): colours should change per round, as the arcade does. Pulled forward from cp4 by user instruction (the wave-1 loop shipped in cp2-5, so rounds already advance). ROM ANCHORS (verified 2026-07-19): the cycle is the LCOLOR index (CENDE4.MAC:208, one byte per player) advanced in the IRQ at CENIR4.MAC:310-325 — '+3 per wave' stepping through the 42-byte (decimal, CMP I,42.) triple-table 99$ (CENTI4.MAC:898-901), wrapping to 0 → exactly 14 distinct palettes cycling by round. The advance flag (bit7, ORA I,80) is set at new-wave CENTPC (CENTI4.MAC:461-463 ';TIME TO CHANGE COLORS'); 2-player swap uses bit6 (:715-717); game start resets to scheme 0 (INITSC :1201-1209 → JSR CLRCH with X=0). CLRCH (:879-895) loads 99$[X],[X+1],[X+2] into the COLORR pens (body/legs/eyes + mushroom/gun/alphanumerics — static mapping already claimed CL-1..CL-11; CL-11 explicitly deferred THIS cycling, which this story now claims). 0x06/0x07 RESOLVED AT THE TABLE: 99$ contains exactly one 0x06 (CENTI4.MAC:900, scheme X=30, the [X+2] eyes/mushroom-outline/alphanumerics pen) and NO 0x07 anywhere — the ROM stores 0x06; the decode to RGB is adapter policy (MAME centiped_v.cpp:211 corroboration per CL-1/CL-10). Any 0x07 in our CLRCH transcription is uncited and must be corrected to 0x06 with citation. Deterministic: colour = pure function of wave number + player; no rng."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-19T21:06:50Z'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
       - "The LCOLOR advance (+3, wrap at 42, 14 palettes; bit7 trigger at CENTPC) transcribed with radix-cited comments + claims entries filling CL-11's deferral; citations green; colour = pure function of wave number + player, pinned across at least waves 1-4 and the wrap at palette 14 (debug-seeded wave state acceptable)."
       - "On wave change in live play the field/enemy colours visibly change per the ROM's cycle; screenshot pair (wave 1 vs wave 2) from THIS checkout committed."
       - "The clone's CLRCH table matches 99$ byte-for-byte (one 0x06 at scheme X=30, NO 0x07 anywhere — any 0x07 is uncited and corrected); no invented colours (the denylist scans stay green)."
+    completed: '2026-07-19'
     type: feature
   - id: cp2-14
     title: Global orientation flip — cellScreenX + input sign chain match the upright cabinet

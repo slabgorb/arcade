@@ -812,3 +812,8 @@ completed_stories:
     title: HUD above the playfield — score/high-score in the reserved top rows, not inside the field
     points: 2
     completed: '2026-07-19'
+  - id: cp2-13
+    epic: cp2
+    title: Per-round colour cycling — transcribe the ROM's per-wave palette and apply it on wave change
+    points: 3
+    completed: '2026-07-19'
