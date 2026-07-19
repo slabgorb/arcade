@@ -151,3 +151,41 @@ stories:
       - "The wave still ends only when ALL live segments (train + factory heads) are cleared; the cp2-5 containment and wave-loop pins stay green."
       - "Demo evidence from THIS checkout: bottom-camping now draws fresh heads (screenshot or short sequence committed)."
     type: feature
+  - id: cp2-11
+    title: Remove the LEVEL indicator — the arcade HUD shows no level text
+    description: "USER-REPORTED (2026-07-19, live play + reference screenshot of the real cabinet): our clone draws a 'LEVEL n' text label (cp1-6 HUD); the arcade shows NO level indicator anywhere — its top rows carry current score, high score, and the lives/credits display only. Remove the LEVEL glyph run from the shell HUD (render/layout — locate by content; SCORE stays for now, cp2-12 moves it). Adjust/retire any render pins that assert the LEVEL text. Trivial in size but ROM-faithful in intent: nothing on screen the cabinet doesn't draw. Pairs with cp2-12 (same HUD area/test files — land adjacent or together)."
+    points: 1
+    priority: p2
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "No LEVEL text renders in any state (attract, play, death, game-over); the render source-text scans and HUD pins are updated, none weakened."
+      - "Suite + citations + build green; core untouched."
+  - id: cp2-12
+    title: HUD above the playfield — score/high-score in the reserved top rows, not inside the field
+    description: "USER-REPORTED (2026-07-19, live play + reference screenshot of the real cabinet): the score belongs ABOVE the gamefield, not within it. The arcade's top screen rows are HUD: current score (left of centre), high score (centre-right), lives shown as gun icons — and the ROM RESERVES playfield rows {0,1} at the top (already claimed by the MUSHER guards, see CT-46-area claims: mushrooms never occupy them) precisely because that band is HUD territory. Our clone draws SCORE inside the field area. Quarry the ROM's actual HUD row placement/glyph layout from source (score display routines; the reference screenshot corroborates), then move the shell HUD to the reserved band: playfield rendering unchanged, HUD occupying rows the field never uses. Consider the lives display: the arcade shows remaining lives as gun sprites next to the score — include if the quarry supports it cheaply, else record as a follow-up finding. Pairs with cp2-11 (same files)."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "Score (and high score if the quarry pins one) render in the reserved top rows, above every mushroom/segment; no HUD glyph ever overlaps the playable field; placement cited to the ROM source or explicitly recorded as screenshot-corroborated approximation."
+      - "The reserved-rows invariant is pinned: a test asserts HUD row indices ∩ mushroom-legal rows = ∅ (rows {0,1} stay mushroom-free per existing claims)."
+      - "Screenshot from THIS checkout committed showing the arcade-matching layout; suite + citations + build green."
+  - id: cp2-13
+    title: Per-round colour cycling — transcribe the ROM's per-wave palette and apply it on wave change
+    description: "USER-REPORTED (2026-07-19): colours should change per round, as the arcade does. NOTE: the epic originally routed 'wave colour cycling + the 0x06/0x07 palette-decode divergence' to cp4 — this story pulls the COLOUR CYCLING forward by user instruction (the wave-1 loop shipped in cp2-5, so rounds already advance and the cycling is visible immediately). Quarry the ROM's per-wave colour selection from source (the colour-RAM load routines behind cp1-6's CLRCH transcription — how the palette indexes advance per wave/round) and apply on wave increment in the shell. INTERPLAY: the known 0x06/0x07 palette-decode divergence (cp1-6 carry-forward, routed cp4 per the bootstrap: 'cp4 DAC 0x06 fix') may gate correct colours for some rounds — if the quarry hits it, fix it here WITH citation or explicitly record which rounds render approximate colours until cp4. Deterministic: colour choice is a pure function of wave number; no rng."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    type: feature
+    acceptance_criteria:
+      - "Per-wave palette transcribed with radix-cited comments + claims entries; citations green; colour = pure function of wave number, pinned across at least waves 1-4 (via the wave-loop or debug-seeded wave state)."
+      - "On wave change in live play the field/enemy colours visibly change per the ROM's cycle; screenshot pair (wave 1 vs wave 2) from THIS checkout committed."
+      - "The 0x06/0x07 decode divergence is either fixed-with-citation or its per-round impact explicitly recorded in open-questions/docs; no invented colours (the denylist scans stay green)."
