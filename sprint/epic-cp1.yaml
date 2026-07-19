@@ -76,7 +76,8 @@ stories:
     description: "Player gun movement inside the ROM's bottom-zone rectangle (MOVE, CENTI4.MAC:1477), trackball movement limited per TBLMT (CENTI4.MAC:2514), single-shot firing (CHECK FIRE SWITCH, CENTI4.MAC:2099; slot 14 — ONE shot in flight is authentic), shot flight and grid-cell collision with mushrooms as the ROM computes it. Shell input: pointer-lock mouse deltas quantized to trackball counts + arrow/WASD synthesizing counts at the clamp rate; both paths feed the same core input contract. Trackball hardware context: counters read once per IRQ, 240x/s (centiped.cpp:514) — the shell aggregates per frame."
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-19'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
