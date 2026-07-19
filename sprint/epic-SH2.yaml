@@ -166,7 +166,7 @@ stories:
     description: "Build the post-processing hook the design reserves. @arcade/shared/compositor exports RenderPass {name, render(src,dst,frame), resize?, clear?}, FrameInfo {dt,dpr,width,height,shake}, and createCompositor(passes) -> {beginScene(w,h,dpr), present(main, frame), clear()}: the game draws its scene into beginScene's offscreen ctx, and present runs the pass chain to the screen (empty passes = a plain blit with shake). @arcade/shared/phosphor exports phosphorPass({decay}) -> RenderPass (holding the EMA accumulator + twin buffers) and the pure phosphorAlpha(decay, dt). Migrate tempest's existing beginScene/composite phosphor + screen-shake onto createCompositor([phosphorPass({decay})]) — behaviour-identical, tempest is the ONLY consumer. Porting afterglow to the other cabinets stays deferred; they may adopt createCompositor([]) as a no-op seam."
     points: 5
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade-shared, tempest
     workflow: tdd
     acceptance_criteria:
@@ -230,7 +230,7 @@ stories:
     title: red-baron adopts @arcade/shared/loop — replace main.ts's duplicated hand-rolled fixed-step accumulator (the accumulator/SIM_TIMESTEP_S while-loop, main.ts:237-288) with the canonical advanceFixedSteps/createLoop; behaviour-preserving (same calc-frame cadence, findings §1 ÷6 trap), /loop already published (star-wars+asteroids consume it) and red-baron already pins @arcade/shared (math3d+rng)
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: red-baron
     workflow: trivial
     type: refactor
@@ -303,7 +303,7 @@ stories:
     title: "Extract @arcade/shared/modelview — the contact-sheet layout math (cellRects / modelBounds / fitDistance) now that a THIRD consumer proves the duplication. tempest's own modelView.ts comment SET this threshold: 'Two tiny copies of a grid partitioner do not justify a cross-repo shared library; revisit extraction at a third consumer.' red-baron's ROM picture sheet is that third consumer. Today: cellRects x3 (star-wars src/core/modelView.ts, tempest src/core/modelView.ts, red-baron src/tools/sheetLayout.ts); modelBounds + fitDistance x2 (star-wars core, red-baron tools). NOT dev-tool-only — star-wars src/shell/debug-overlay.ts consumes modelBounds for a real game surface. Adopt in all three via the publish -> release -> repin dance."
     points: 5
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade-shared, star-wars, tempest, red-baron
     workflow: tdd
     acceptance_criteria:
@@ -330,7 +330,7 @@ stories:
       Held OUT of SH2-18 on purpose: /audio is consumed by two SHIPPED games (star-wars, asteroids, migrated in SH2-17), and that regression risk should not ride along with a synthesis story. This is an INTERNAL refactor — createAudioEngine(manifest)'s public API, the filename-keyed buffer store, channel stealing and star-wars' context() accessor are all unchanged.
     points: 3
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade-shared,star-wars,asteroids
     workflow: tdd
     depends_on: SH2-18
@@ -344,7 +344,7 @@ stories:
     title: "Extract the fake AudioContext test harness — it is now hand-written FOUR times (battlezone/tests/shell/audio.test.ts, red-baron/tests/shell/audio.test.ts, arcade-shared/tests/synth.test.ts, plus a fifth divergent one in arcade-shared/tests/audio.test.ts for the sample player). SH2-18 grew the duplication rather than shrinking it, and TEA/Reviewer both flagged it. The harness is load-bearing, not incidental: the whole SH2-18 bug was invisible until battlezone's fake was upgraded to model a CLOSED context faithfully (close() really closes; every factory throws InvalidStateError synchronously; resume() rejects) — a cabinet with a cosmetic fake CANNOT express the failure that matters. Ship one faithful fake (a testing subpath or tests/helpers export) so a new cabinet inherits the teeth instead of re-deriving them, and so a fake can never silently drift weaker than the contract it guards."
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade-shared,battlezone,red-baron
     workflow: tdd
     type: chore
