@@ -223,7 +223,7 @@ stories:
     description: "Root cause of rb4-2, still on disk. Three checkouts of the Atari source exist and two DISAGREE ABOUT LINE NUMBERS. The citable byte-of-record is ~/Projects/red-baron-source-text (LF-only, md5 497db93e0b5cf3a67581463d2bac5e8d, RBARON.MAC = 6294 lines). The CRLF sibling (md5 27cdfeae404655fe4e65ced2a3621f95, 6286 lines) glues each form-feed page break (0x0C) onto the following .SBTTL/.TITLE line, losing 8 lines in a STAIRCASE: +0 below :263, +1 through :724 (this is why CALCNT reads 620 instead of 621), rising to +8 past :5963. No constant offset repairs a citation taken from it. red-baron/reference/red-baron/ — the gitignored quarry the findings doc's own header names as its source — IS the CRLF sibling. Until it is re-pointed, the next author reads the wrong line numbers and rb4-2 happens again. The orchestrator has already vendored the correct LF copy at arcade/reference/atari-source/red-baron/ (branch feat/extract-audio). tests/audit/source-citations.test.ts (rb4-2) already carries a fingerprint that rejects a glued copy — this story wires that guard in front of everything that reads the quarry."
     points: 2
     priority: p1
-    status: backlog
+    status: canceled
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -256,7 +256,7 @@ stories:
     description: "The reason rb4-2 could not ship a universal citation checker. docs/audit/findings/*.json carry source: {file, line, verbatim}, and tools/audit/check-citations.mjs re-opens each cited line and compares BYTE-FOR-BYTE — no heuristics, no oracle problem. The findings doc carries no such field: it cites 'CALCNT (RBARON.MAC:620)' in prose, and there is no sound way for a machine to know which symbol a prose citation MEANS. Measured during rb4-2's RED: 64% of the doc's 199 citations 'resolved' against the citable copy versus 57% against the wrong one — noise, not a signal. So rb4-2 could only check the citations §1 makes at a symbol's DEFINITION (derive the line from the source, demand the doc cite it), and had to leave every use-site range unguarded. Adopt the audit's discipline: every citation in the doc carries the verbatim text of the line it cites, and a checker re-opens all 199 and compares bytes. Then the doc cannot rot again — not by a copy swap, not by a decoy, not by a typo — and the guard is mechanical rather than a reviewer's diligence."
     points: 5
     priority: p2
-    status: backlog
+    status: canceled
     repos: red-baron
     workflow: tdd
     acceptance_criteria:
@@ -322,7 +322,7 @@ stories:
     title: The propeller flickers distractingly — it is drawn every frame; replicate the ROM's frame-skip/blank draw cadence (RBGRND draw gating) so it reads as spin, not strobe
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: red-baron
     workflow: tdd
     type: bug

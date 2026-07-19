@@ -63,7 +63,7 @@ stories:
     description: "Discovered while spiking lb2-1, and NOT caused by it. Safari's ITP deletes ALL script-writable storage — localStorage included, not just cookies — after 7 days of Safari use without genuine user interaction (tap/click/text entry; a script write does NOT count). This has been universal since Safari 13.1 (Mar 2020) and applies to ordinary first-party sites, not only ones classified as trackers. Consequence: a Safari player who does not return to tempest.slabgorb.com — with a real click — within 7 days can have their entire Tempest high-score table DELETED. This is a live production bug in every game, independent of the lobby and of ADR-0004. No local-storage mechanism escapes it (single-origin collapse would not have helped either); only a backend would, and cross-device was explicitly declined. Scope this story to what CAN be done locally: detect/soften the loss, and decide whether the arcade should tell the player their scores are ephemeral on Safari. Read docs/adr/0004-cross-origin-high-scores.md (Risks + Follow-ups) first. lb2-5 sizes how bad this actually is and should probably land first."
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade-shared, lobby
     workflow: tdd
     acceptance_criteria:
@@ -77,7 +77,7 @@ stories:
     description: "Sizes lb2-4. ITP resets its 7-day purge clock on genuine user interaction — but no primary source establishes whether that bookkeeping is keyed per-HOSTNAME (tempest.slabgorb.com) or per-REGISTRABLE-DOMAIN (slabgorb.com). This single fact decides how severe lb2-4 is: if per-registrable-domain, then ANY click anywhere in the arcade (e.g. clicking a lobby tile) keeps every game's storage alive and the problem nearly evaporates. If per-hostname, each game needs its own click every 7 days or its scores die. WebKit's WRITTEN policy defines a website as a registrable domain including all subdomains — but WebKit's localStorage partitioning already contradicts that same policy (bugs 225297/247565), so the policy cannot be trusted here. This must be measured, not read. Empirical: real Safari, Storage inspector / Settings > Safari > Advanced > Website Data shows per-site last-access."
     points: 1
     priority: p2
-    status: backlog
+    status: canceled
     repos: .
     workflow: trivial
     acceptance_criteria:
@@ -89,7 +89,7 @@ stories:
     title: red-baron persists no high scores at all — its lobby tile reads NO SCORE forever
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: red-baron
     workflow: tdd
     type: bug
