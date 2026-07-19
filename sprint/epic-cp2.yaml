@@ -160,12 +160,14 @@ stories:
     description: "USER-REPORTED (2026-07-19, live play + reference screenshot of the real cabinet): our clone draws a 'LEVEL n' text label (cp1-6 HUD); the arcade shows NO level indicator anywhere. ROM ANCHORS (verified 2026-07-19, vendored tree reference/atari-source/centipede/revision.v4/): a full-tree grep proves no LEVEL/WAVE/ROUND/STAGE string or digit-writer exists — those words appear only in comments (DIP bonus-level CENTI4.MAC:240; wave-colour CENIR4.MAC:311). The COMPLETE display set is the message table MESG (CENIR4.MAC:16, strings MESS0..MES10 at :67-110 — player/coinage/game-over/enter-initials/bonus-every/high-scores/great-score/credits/2-credit-minimum) plus copyright (CENTI4.MAC:12), drawn via MESS (CENIR4.MAC:111), CHAR (:203), DIGIT2/DIGITZ (:227/:237), and the HUD routines UPSCRE (CENTI4.MAC:2629), DLIVES (:920), SCORES (:1893), BONUS (:225). The negative claim ('no level text in the display set') is net-new — no existing claims entry covers it; add one citing the enumeration. Remove the LEVEL glyph run from the shell HUD; adjust/retire any render pins asserting it; nothing on screen the cabinet doesn't draw. Pairs with cp2-12 (same HUD area/test files — land adjacent or together)."
     points: 1
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-19T15:59:17Z'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
       - "No LEVEL text renders in any state (attract, play, death, game-over); the render source-text scans and HUD pins are updated, none weakened."
       - "Suite + citations + build green; core untouched."
+    completed: '2026-07-19'
     type: bug
   - id: cp2-12
     title: HUD above the playfield — score/high-score in the reserved top rows, not inside the field

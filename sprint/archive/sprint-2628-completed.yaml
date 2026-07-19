@@ -802,3 +802,8 @@ completed_stories:
     title: Audio cue duration reconcile — BOING 456ms and the DISINT 104-vs-96ms ruling
     points: 1
     completed: '2026-07-19'
+  - id: cp2-11
+    epic: cp2
+    title: Remove the LEVEL indicator — the arcade HUD shows no level text
+    points: 1
+    completed: '2026-07-19'
