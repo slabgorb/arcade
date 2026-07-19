@@ -127,7 +127,8 @@ stories:
     description: 'Subsumes H-017 (rotating attract: banner -> flight-instructions INS -> scoring page SCR -> hi-score table, per WSMAIN TPHASE), H-018 (receding intro crawl special messages), H-022 (in-flight coaching/bonus messages SFB/STF/ACW/BON/BRE/BSE/SHIELD GONE), M-015 (the entire WSSTAR starfield subsystem). Front-of-house, not gameplay — priority p3 by ruling.'
     points: 10
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-07-19'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-3
