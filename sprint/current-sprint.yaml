@@ -16,3 +16,4 @@ epics:
   - bz4
   - tp2
   - cp2
+  - cp3

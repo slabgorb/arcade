@@ -1,0 +1,47 @@
+id: cp3
+type: epic
+title: Centipede — the menagerie (spider, flea, scorpion) + poison goes live
+description: "Third centipede epic — the menagerie, RESCOPED per the cp2 planning ruling (2026-07-19, logged in epic-cp2.yaml): player death + the RESTOR sweep moved UP into cp2, so cp3 is spider/flea/scorpion, their collisions + scoring, and poison creation going LIVE (~11 pts, was ~13). DESIGN SPEC: centipede/docs/superpowers/specs/2026-07-18-centipede-clone-design.md (roadmap row cp3; demo 'The complete ecosystem'). GROUND TRUTH: centipede/docs/rom-study/ — cite the dossier + claims, never re-derive; citation gate live. SUBSYSTEM ANCHORS (subsystems.md, rev-4 CENTI4.MAC): flea ANTMV :46 + ANTPC :128, spider BUGOFF :250 + BUGMV :285, scorpion SCORP :2000; PLAY :1769 (extended from cp2-5 to creature contact), EXPLOD :961. SLOT MODEL (glossary): flea is slot 12 (ANTP =MOBJP+12., CENDEF.MAC:138), spider slot 13 (BUGP =MOBJP+13., CENDEF.MAC:139) — the author's names are ANT=flea, BUG=spider. RADIX: CENTI4.MAC inherits .RADIX 16 via CENDE4 — bare literals hex unless trailing-period decimal; every transcribed constant carries a radix-cited comment + claims entry. SCORING PROSE IS REV-1 (open question 4): CENTIP.DOC's verified examples — flea 200 (CENTIP.DOC:115), scorpion 1000 (:116), spider 300/600/900 by proximity (:117), spider hugs the bottom from 60,000 points (:201-202) — are DIFFED AGAINST REV-4 CODE before baking; code wins, divergences recorded in open-questions.md. POISON GOES LIVE: the scorpion is the sole creator of poison mushrooms (band 0x38-0x3B, POISON_DESTROY 0x37 — pre-extracted by cp1-4, claim PM-19); cp2-3's transcribed poisoned-dive branch and cp1-6's poison render branch are first exercised by real gameplay here. WAVE-GATING RULING (same class as cp2's poisoned-dive deferral): spawn/behaviour conditions that read wave or score state not yet modelled (wave progression is cp4) are transcribed with that input PARAMETERIZED and test-pinned; the demo forces spawns via debug seeding, and the conditions go fully live with cp4. Sequencing: all stories need cp2 complete (EXPLOD, PLAY, death + RESTOR machinery); cp3-1 spider first (extends PLAY contact death), cp3-2 flea independent after cp2, cp3-3 scorpion last (activates the dive + carries the ecosystem demo). Demo at epic end: the complete ecosystem on 5278."
+priority: p2
+status: backlog
+repos: centipede
+stories:
+  - id: cp3-1
+    title: "The spider (BUG, slot 13) — BUGOFF/BUGMV movement, mushroom eating, contact death, proximity scoring"
+    description: "The spider, transcribed from rev-4. BUGOFF (CENTI4.MAC:250) initializes the spider picture/state into slot 13 (BUGP =MOBJP+13., CENDEF.MAC:139); BUGMV (CENTI4.MAC:285) moves it per frame — transcribe the actual movement pattern (entry side, the bounce/diagonal legs, retreat/exit) from code rather than folklore, plus its effect on mushrooms it crosses (the spider EATS mushrooms — transcribe which cells clear and whether any score attaches). Contact with the gun kills the player via the PLAY path cp2-5 built (CENTI4.MAC:1769 — extend it to slot-13 contact as the ROM does). Shooting the spider scores BY PROXIMITY — CENTIP.DOC:117's 300/600/900 prose is rev-1: transcribe the actual distance bands and values from rev-4 code, diff per open question 4, and transcribe the kill visual (score display on death) as the ROM draws it. The bottom-hugging behaviour from 60,000 points (CENTIP.DOC:201-202) reads SCORE state: transcribe with the threshold parameterized (wave-gating ruling — score total lives in the sim already, so this may go fully live now if the code allows; record which)."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "Spider spawn/entry, movement pattern, retreat, and speed transcribed from BUGOFF/BUGMV with radix-cited comments + claims entries; npm test -- citations green; deterministic seeded tests pin the trajectory."
+      - "Mushrooms the spider crosses are cleared exactly as the ROM does it (which damage states, which cells); pinned by test."
+      - "Gun-vs-spider contact kills the player through the same PLAY/EXPLOD/RESTOR chain as segment death (cp2-5 machinery reused, not duplicated)."
+      - "Shot-vs-spider kill scores by the rev-4 proximity bands (CENTIP.DOC:117 prose diffed against code, divergences recorded); the kill-score visual renders as transcribed; one-shot economy holds."
+  - id: cp3-2
+    title: "The flea (ANT, slot 12) — ANTPC/ANTMV drop, mushroom seeding, multi-hit kill"
+    description: "The flea, transcribed from rev-4. ANTPC (CENTI4.MAC:128) initializes the flea into slot 12 (ANTP =MOBJP+12., CENDEF.MAC:138); ANTMV (CENTI4.MAC:46) drops it down the screen — transcribe the spawn TRIGGER (the ROM ties it to the mushroom population in the player zone — transcribe the actual count/rows from code), the mushroom SEEDING it performs as it falls (which cells, what probability source — must draw from the seeded rng, determinism preserved), the descent speed(s), and the hit behaviour (the folklore is two hits with a speed-up after the first — transcribe what rev-4 actually does, cite it, and record any folklore divergence). Kill scores flea 200 (CENTIP.DOC:115, rev-1 prose — diff against code per open question 4). Where the spawn condition reads wave state not yet modelled, parameterize per the epic's wave-gating ruling; the story's tests force spawns via debug seeding."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "Flea trigger condition, descent speed(s), seeding behaviour, and hit/kill semantics transcribed from ANTPC/ANTMV with radix-cited comments + claims entries; citations green."
+      - "Falling flea seeds mushrooms from the seeded rng only — determinism test replays an identical fall; purity guard green."
+      - "Hit behaviour matches rev-4 code (number of hits, any speed change between them), pinned by moving-shot tests; kill scores the rev-4 value with any CENTIP.DOC divergence recorded."
+      - "Gun-vs-flea contact kills the player through the shared PLAY/EXPLOD/RESTOR chain."
+  - id: cp3-3
+    title: "The scorpion (SCORP) — horizontal crossing, poison creation LIVE, dive activation; the ecosystem demo"
+    description: "The scorpion, transcribed from rev-4, and the epic's assembly story. SCORP (CENTI4.MAC:2000) starts and moves the scorpion — transcribe the start condition (parameterize any wave input per the epic ruling), crossing rows, direction, and speed(s). Every mushroom it passes becomes POISONED — the sole creator of the 0x38-0x3B band (cp1-4 pre-extraction, claim PM-19; POISON_DESTROY 0x37). This story turns two dormant branches LIVE for the first time: cp2-3's poisoned-dive (a centipede head meeting a scorpion-poisoned mushroom plunges to the bottom zone) and cp1-6's poison render branch (mushroomStamp 0x38-0x3B) — both get live-integration tests driven by an actual scorpion crossing, not seeded fields. Kill scores scorpion 1000 (CENTIP.DOC:116, rev-1 — diff per open question 4); transcribe whether the scorpion can harm the player (the gun sits in the bottom zone; transcribe what the code says rather than assuming). ECOSYSTEM DEMO: wave 1 + debug-forced spawns of all three creatures on 5278 — train marching, spider weaving, flea seeding, scorpion poisoning, a poisoned dive on screen. Port-ownership trap applies to any capture (lsof the server's cwd or serve a spare port)."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    acceptance_criteria:
+      - "Scorpion start condition, crossing rows, direction, and speed(s) transcribed from SCORP with radix-cited comments + claims entries; citations green; wave-dependent inputs parameterized per the epic ruling."
+      - "Mushrooms the scorpion passes flip to the poison band exactly as the ROM computes it; a live-integration test drives a scorpion crossing then a centipede head into the poisoned cell and observes the cp2-3 dive; the poison render branch draws from real state."
+      - "Shot-vs-scorpion kill scores the rev-4 value (prose diffed, divergence recorded); player-contact behaviour matches what the code says (transcribed, not assumed)."
+      - "Demo artifact committed (screenshot or gif) from THIS checkout showing train + spider + flea + scorpion + a poisoned dive with upright sprites — the complete ecosystem."
