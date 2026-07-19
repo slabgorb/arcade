@@ -11,7 +11,8 @@ stories:
     description: "Mirror centipede's config (the newest raster scaffold): Vite 8, TypeScript, Vitest 4, strictPort 5279, base '/'. src/core and src/shell skeletons with the boundary guard: a source-text scan test forbidding shell globals and wall-clock (window/document/Date.now/Math.random and friends) in src/core/ — word test prose to avoid the comment-scanner trap. Ten-line CI deploy caller of slabgorb/arcade/.github/workflows/deploy-r2.yml@main targeting bucket arcade-joust. Orchestrator side: add joust to justfile games/subrepos lists and serve recipe, flip the CLAUDE.md port row from reserved to live, update repos.yaml notes past pre-implementation."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-19'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -19,6 +20,8 @@ stories:
       - "Purity guard test exists, passes, and demonstrably fails when a forbidden global is introduced in src/core/ (prove with a temporary red run in the story notes)."
       - "CI workflow caller committed; a push to main would deploy dist/ to arcade-joust (workflow-lints clean; no release cut in this story)."
       - "just serve launches joust alongside the fleet; just install-all covers it; CLAUDE.md port table row 5279 is live, not reserved."
+    completed: '2026-07-19'
+    review_verdict: approved
   - id: jt1-2
     title: "Citation checker + claims JSON — the dossier becomes machine-verified before any constant is transcribed"
     description: "Port the centipede checker (cp1-2 shape; single-sided schema per the rom-source-study skill: id, claim, source{file,line,verbatim}, corroboration?). Convert docs/rom-study/ brief+subsystems+pictures citations into docs/rom-study/claims/*.json. The checker re-opens every cited line in the vendored tree (arcade/reference/williams-source/joust) byte-for-byte, prints one error per bad claim, exits non-zero; it degrades gracefully (schema-only checks) when the vendored tree is absent, so CI stays green. MAME citations (williams*.cpp) get schema-only claims (the sparse clone is machine-local). THIS BLOCKS jt1-3, jt1-4, and jt1-5 — the rb4/cp1 lesson: any numeric story that lands before the gate re-bakes its own misreadings and then confirms itself."
@@ -84,3 +87,16 @@ stories:
       - "Logical resolution 292x240 cited (williams.cpp:1556); rendering is integer-scaled with no smoothing (crisp pixels); COLOR1-derived palette applied and cited; no invented colors (scan proves it)."
       - "Render source-wiring test green; screenshot committed in the story docs as the epic demo artifact, taken from THIS checkout (prove 5279 ownership via lsof or serve a spare port)."
       - "npm test fully green including citations and purity guard."
+  - id: jt1-7
+    title: Purity-scanner hardening — real tokenizer for the core boundary guard (five confirmed false negatives)
+    description: "GATES jt1-5 (flight/movement — the first story whose core code grows real logic worth guarding). The jt1-1 Reviewer confirmed five false negatives in tests/purity.test.ts's comment-stripper/scanner, all reproduced by execution with a live control: (1) a /* inside an ordinary string constant silently disables the guard for everything up to the next real */ later in the file — worst case, accidental not adversarial; (2) // inside a string likewise truncates the line before scanning; (3) template-literal ${...} interpolation is stripped as comment-adjacent text; (4) aliasing escapes every call-anchored ban (const { random } = Math; const n = random()); (5) see the jt1-1 archived session (sprint/archive/jt1-1-session.md, Reviewer findings) for the fifth reproduction + the test-analyzer's stripper hole. Fix needs a real tokenizer (acorn is already in the dependency tree via vite), not regex patches — the Reviewer's explicit warning: a rushed regex patch in a rejection loop is how new holes get added. Fleet-wide pattern: centipede and tempest share the scanner shape; fold the fix back in a follow-up once joust proves it."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - 'Each of the five reproduced false negatives becomes a red-then-green test case: string-embedded /*, string-embedded //, template interpolation, Math destructuring alias, and the archived fifth case.'
+      - Scanner tokenizes source (acorn or equivalent) instead of regex comment-stripping; the existing 51-test suite plus the new cases stay green.
+      - Demonstrated red run against a poisoned src/core/ file recorded in story notes, matching the jt1-1 AC-2 evidence bar.
+    type: chore

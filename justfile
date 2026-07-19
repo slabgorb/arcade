@@ -12,11 +12,11 @@ default:
 # GAMES (subrepos registered in repos.yaml)
 # ============================================
 # Space-separated list; add new game subrepos here.
-games := "tempest star-wars asteroids battlezone red-baron centipede"
+games := "tempest star-wars asteroids battlezone red-baron centipede joust"
 
 # Every servable subrepo (the lobby shell + all games), in launch order.
 # `serve` and the install recipe below iterate this; game-only recipes use {{games}}.
-subrepos := "lobby tempest star-wars asteroids battlezone red-baron centipede"
+subrepos := "lobby tempest star-wars asteroids battlezone red-baron centipede joust"
 
 # Install dependencies in every subrepo (lobby + games), reconciling each subrepo's
 # installed @arcade/shared against its pinned version. Uses `npm ci` where a git-dep pin
@@ -151,6 +151,7 @@ serve:
     echo "  battlezone → http://localhost:5276/"
     echo "  red-baron  → http://localhost:5277/"
     echo "  centipede  → http://localhost:5278/"
+    echo "  joust      → http://localhost:5279/"
     trap 'kill 0' EXIT
     (cd {{root}}/lobby && npm run dev) &
     (cd {{root}}/tempest && npm run dev) &
@@ -159,6 +160,7 @@ serve:
     (cd {{root}}/battlezone && npm run dev) &
     (cd {{root}}/red-baron && npm run dev) &
     (cd {{root}}/centipede && npm run dev) &
+    (cd {{root}}/joust && npm run dev) &
     wait
 
 # ============================================

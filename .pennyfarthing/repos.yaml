@@ -227,13 +227,17 @@ repos:
     languages:
     - typescript
     framework: vite
+    dev_command: npm run dev
+    build_command: npm run build
+    test_command: npm test
     notes: 'Ninth subrepo in the arcade series. Gitignored, with its own git history
       (origin github.com/slabgorb/joust, default branch develop, gitflow).
-      Pre-implementation: docs/rom-study/ (built with the rom-source-study skill
-      from the historicalsource/joust 6809 source, vendored at
+      Implementation underway — epic jt1 (foundation) active; the Vite/TS/Vitest
+      scaffold, the core/shell purity guard and the CI deploy caller landed with
+      jt1-1. docs/rom-study/ (built with the rom-source-study skill from the
+      historicalsource/joust 6809 source, vendored at
       reference/williams-source/joust pin 9bcfdb1, plus the MAME williams driver)
-      is the ground truth every story cites. Vite/TS/Vitest scaffold and
-      dev/build/test commands land with the first story. Dev port 5279 reserved.
+      is the ground truth every story cites. Served on port 5279.
 
       '
   arcade-shared:

@@ -12,8 +12,8 @@ gitignored subrepos, each with independent git history.
 **Type:** orchestrator (no application code lives here — only tooling in `scripts/`)
 **Games:** seven faithful clones — five vector: `tempest/` (1981), `star-wars/` (1983),
 `asteroids/` (1979), `battlezone/` (1980), `red-baron/` (1980) — two raster:
-`centipede/` (1981) and the first Williams title, `joust/` (1982,
-pre-implementation) — and the `lobby/` front-end and the `arcade-shared/` library.
+`centipede/` (1981) and the first Williams title, `joust/` (1982) — and the
+`lobby/` front-end and the `arcade-shared/` library.
 
 ## Repository Structure
 
@@ -38,7 +38,7 @@ arcade/                      # Orchestrator (this repo)
 ├── battlezone/              # Game — Atari 1980
 ├── red-baron/               # Game — Atari 1980
 ├── centipede/               # Game — Atari 1981 (raster)
-├── joust/                   # Game — Williams 1982 (raster; pre-implementation)
+├── joust/                   # Game — Williams 1982 (raster)
 └── arcade-shared/           # Library — published as @arcade/shared
 ```
 
@@ -56,9 +56,9 @@ sprint lives.
 
 ### Every game + the lobby (TypeScript · Vite 8 · Vitest 4 · ES modules)
 
-All seven browser subrepos — `lobby`, `tempest`, `star-wars`, `asteroids`,
-`battlezone`, `red-baron`, `centipede` — take the **same** commands. Only the
-port differs (see the table below). `joust` joins when its scaffold story lands.
+All eight browser subrepos — `lobby`, `tempest`, `star-wars`, `asteroids`,
+`battlezone`, `red-baron`, `centipede`, `joust` — take the **same** commands.
+Only the port differs (see the table below).
 
 ```bash
 cd <subrepo>
@@ -110,7 +110,7 @@ port — there is no `/tempest/` path prefix:
 | battlezone | `http://localhost:5276/`  | 5276 |
 | red-baron  | `http://localhost:5277/`  | 5277 |
 | centipede  | `http://localhost:5278/`  | 5278 |
-| joust      | *(reserved — no scaffold yet)* | 5279 |
+| joust      | `http://localhost:5279/`  | 5279 |
 
 Ports are pinned with `strictPort` in each subrepo's `vite.config.ts`, so a
 collision fails loudly instead of silently wandering to another port. The first

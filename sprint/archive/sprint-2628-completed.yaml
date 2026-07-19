@@ -817,3 +817,8 @@ completed_stories:
     title: Per-round colour cycling — transcribe the ROM's per-wave palette and apply it on wave change
     points: 3
     completed: '2026-07-19'
+  - id: jt1-1
+    epic: jt1
+    title: "Scaffold — Vite/TS/Vitest on port 5279 + core/shell purity guard + CI caller + orchestrator registration"
+    points: 2
+    completed: '2026-07-19'
