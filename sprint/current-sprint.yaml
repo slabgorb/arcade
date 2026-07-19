@@ -9,8 +9,6 @@ sprint:
   number: 2628
 epics:
   - SH2
-  - lb2
-  - rb4
   - sw7
   - bz4
   - cp2

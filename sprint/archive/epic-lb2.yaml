@@ -3,7 +3,7 @@ type: epic
 title: Lobby follow-ups — cross-origin high scores, plus front-end/design work
 description: "Catch-all follow-up epic for the lobby, opened 2026-07-12 after the original lobby epic (epic 7) closed. First payload is the high-score break reported from production: the lobby tiles do not show each game's real best score and never update. Root cause is architectural, not a typo — lobby/src/shell/storage.ts reads localStorage on the LOBBY's own origin (arcade.slabgorb.com), while every game persists its table on its own origin (tempest.slabgorb.com, star-wars.slabgorb.com, ...). localStorage is origin-scoped, so in production the lobby reads a store no game ever writes; the shared @arcade/shared/highscore key/shape contract (SH-4) is correct but is being applied to the wrong origin. Separately, main.ts reads each score once while building the tile, so even a readable score is frozen for the life of the page. Fixing the first half requires a cross-origin decision under the standing no-backend constraint, so this epic gates implementation behind an ADR. Additional front-end/design stories will be appended to this epic from an in-flight Claude design pass."
 priority: p2
-status: backlog
+status: done
 repos: lobby
 stories:
   - id: lb2-1
@@ -160,3 +160,4 @@ stories:
     type: feature
     review_findings: "APPROVED on re-review (commit 74810d4, tests only — src untouched). All 3 blocking findings fixed and independently re-verified by mutation: the two attacks that previously passed 127/127 (scale dropped; empty point list = every bay blank) now both fail, as do 4 fresh attacks aimed at the new assertions (points reversed, points collapsed, scale x3 overflow, mountModels deleted from main.ts). Rule #2 readonly fixed. Residual accepted (LOW, filed as Delivery Finding): a constant translation offset is absorbed by the derived mapping — bounded by the in-bounds assertion to a few px off-centre, cosmetic not functional; two-line close is asserting offsetX/offsetY ~= size/2. Zero production-code findings across both passes. 132/132, tsc + build clean."
     review_verdict: approved
+completed: '2026-07-19'

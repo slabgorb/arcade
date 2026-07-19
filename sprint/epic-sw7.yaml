@@ -277,11 +277,13 @@ stories:
     title: R6d Streaming wedge-panel trench — seat the exhaust port at its real BS.PLC distance (0x50000 = 327,680) so the pilot flies the full ~21s channel, and STREAM the grid's per-wedge wall-panel content (B-012 force fields now, B-017 guns next) in over it; replaces the TRENCH_FAR (28,672) port-clamp stub. Beam-reach stays $7000 so the port only becomes shootable in the final ~1.8s (WSLAZR CLBLZ). Unblocks the ~80 authentic force-field panels sw7-19 could not place into the 1.8s stub.
     points: 8
     priority: p1
-    status: in_review
+    status: done
     started: '2026-07-19'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-19
+    completed: '2026-07-19'
+    review_verdict: approved
   - id: sw7-23
     title: 'Cleanup: retire vestigial TIE-flight fields + inert ENEMY_SPEED ramp left by VM-flight wiring (PR #110)'
     description: 'Follow-up from the sw7 TIE choreography-VM + authentic-fire whole-branch review (PR #110, merged 2026-07-19). applyManeuver now drives TIE motion from the VM at fixed rates, leaving dead paths: (L1) Enemy.bank set/read nowhere; Enemy.peeling never set, so the peel-cull filter is permanently false; Enemy.vel written by spawnTie but read by no space path. (L2) the RAMP_PER_WAVE-scaled ENEMY_SPEED now only seeds the unread vel, so later-wave TIEs no longer approach faster (difficulty ramps via spawn cadence + TGPROB fire cadence) — design-consistent but should be made explicit; either retire ENEMY_SPEED/vel or re-derive an explicit approach-speed target. (T4c) toCockpit is duplicated inline in tie-status.ts vs the private copy in sim.ts — extract one shared core helper. Pure-core; keep the suite and citations green.'
