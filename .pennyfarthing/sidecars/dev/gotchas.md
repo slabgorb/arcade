@@ -696,3 +696,31 @@ passes 12/8 = 1.5. Before handoff, run a throwaway node probe through the REAL s
 (vite `ssrLoadModule` from the repo root; scratch file, deleted before commit) and check the
 apex endpoint count sits at MAX ndc y, plus every group lands in-frame at a realistic carrier
 staging. Two minutes, and it is the only thing between you and a green-suite inverted render.
+
+---
+
+### A spawn-GATE story can kill DISTANT boot stagings whose choreography secretly employed the OLD entity — as the pilot's EXECUTIONER
+
+**Situation:** rb4-15 gates the blimp behind "four planes have appeared". GREEN turned four
+UNRELATED booted suites red: three ground-wave stagings (the shared seed-444 held-trigger clear)
+and cockpit-draw-path's pinned shell counts. None of them asserts anything about the blimp.
+
+**Problem:** the old drifter blimp spawned on the OPENING wave decision (25 % of seeds) and did
+TWO invisible jobs in every staging that ran longer than ~30 frames. (1) Its kill bumped `kills`,
+and every wave spawns via `createRng((seed + kills) >>> 0)` — so the hunted seeds' later-wave
+weave paths silently included the blimp kill in their derivation. (2) Far worse: its every-level
+÷2 fire SHOT the idle pilot, and the death sequence cools GUN.ST — which is the ONLY thing that
+un-jams a held trigger (heat +1/shot locks the gun out permanently at ~f31; cooling needs release
+frames). The blimp was the staging's hidden EXECUTIONER-COOLANT. Under the new gate: 0 of 30,000
+seeds reach a ground slot with a held trigger; under the OLD code, 5,746/30,000 do — ≈ the 25 %
+blimp-spawn rate, which is the tell that the entity, not the seed, carried the choreography.
+
+**Prevention/Fix:** when a story changes WHEN an entity exists (a spawn gate, a lifetime), grep
+for booted stagings with long held-input scripts and A/B them: `git stash push -- src`, run the
+seed-scan against OLD code, `git stash pop` — a success-rate ≈ the entity's spawn probability
+convicts the entity. The remedy that survives the next entity change is to remove the dependency,
+not re-hunt it: FEATHER the trigger (6 display frames on / 6 off — +1/shot heat never outruns the
+×3 release cooling), after which MOST seeds clear and the staging stops needing anyone to die.
+And when a short-window suite exists to measure the entity itself (draw-path's TARGET TRUTH),
+hold the gate open at a delegating vi.mock seam that RECORDS the argument main.ts really passed —
+force the branch, keep the truth assertable — rather than stretching the run to minutes.
