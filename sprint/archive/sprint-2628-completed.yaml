@@ -541,3 +541,8 @@ completed_stories:
     title: PULPOT is one ROM byte — the pulsar CLIMB/REVERSE tier also widens to $C0 at wave 65, but tp1-26 fixed only the kill gate
     points: 2
     completed: '2026-07-19'
+  - id: cp2-1
+    epic: cp2
+    title: "Sprite orientation — every stamp renders 90 degrees clockwise; rotate at the shell atlas bake, keep the core decode byte-exact"
+    points: 2
+    completed: '2026-07-19'
