@@ -771,3 +771,8 @@ completed_stories:
     title: "Extract the fake AudioContext test harness — it is now hand-written FOUR times (battlezone/tests/shell/audio.test.ts, red-baron/tests/shell/audio.test.ts, arcade-shared/tests/synth.test.ts, plus a fifth divergent one in arcade-shared/tests/audio.test.ts for the sample player). SH2-18 grew the duplication rather than shrinking it, and TEA/Reviewer both flagged it. The harness is load-bearing, not incidental: the whole SH2-18 bug was invisible until battlezone's fake was upgraded to model a CLOSED context faithfully (close() really closes; every factory throws InvalidStateError synchronously; resume() rejects) — a cabinet with a cosmetic fake CANNOT express the failure that matters. Ship one faithful fake (a testing subpath or tests/helpers export) so a new cabinet inherits the teeth instead of re-deriving them, and so a fake can never silently drift weaker than the contract it guards."
     points: 3
     completed: '2026-07-19'
+  - id: cp2-10
+    epic: cp2
+    title: The head factory — NEWHD spawns fresh heads into the player zone while the train bounces at the bottom
+    points: 3
+    completed: '2026-07-19'
