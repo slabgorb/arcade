@@ -23,12 +23,14 @@ stories:
     description: 'bz3-6 shipped a fixed-velocity synchronized relaunch-on-retire loop as a documented deviation (core purity forbade RNG at the time). The ROM emits VOLCNO rocks independently and stochastically: each rock draws YSPD=(PRAND AND 7)+5 at random (BZONE.MAC:1405-1407) and respawns on its own staggered 1-in-8 timer (BZONE.MAC:1393-1395), not as a synchronized volley. Thread a seeded, deterministic PRNG into the eruption so the rocks stagger and vary per-rock while the sim stays replayable. Reuses the bz3-5 debris engine (already validated/config-guarded).'
     points: 3
     priority: p3
-    status: backlog
+    status: done
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - Volcano rocks respawn independently and staggered (the ROM's ~1-in-8 per-rock timer, BZONE.MAC:1393-1395), not as a synchronized 5-rock volley.
       - Each rock's launch velocity is a randomly-drawn YSPD=(PRAND AND 7)+5 (BZONE.MAC:1405-1407), produced by a seeded deterministic PRNG that keeps the eruption replayable and core-pure.
+    completed: '2026-07-19'
+    branch: feat/bz4-2-volcano-emitter
   - id: bz4-3
     title: Enemy tank animation fidelity — movement-tied tread counter and absolute antenna orientation
     description: 'bz3-12 shipped the rotating antenna + animated treads driving off the free-running frameCount, as a documented deviation. Two refinements to match the ROM: (1) tie the tread counter to tank MOVEMENT (TRDCTR INC on forward BZONE.MAC:2669 / DEC on reverse BZONE.MAC:2673) so treads freeze when the tank holds still and reverse with backward motion, threading a per-hostile movement-derived counter through Hostile/EnemyState/sim; (2) store the radar antenna angle ABSOLUTE, decoupled from tank heading (BZONE.MAC:1561-1562), rather than the shipped body_heading + RANGLE. Rate and period are already byte-exact; only the movement coupling and heading phase differ.'
