@@ -556,3 +556,8 @@ completed_stories:
     title: R6c Trench wall GUNS fire back — .WP WGA panel model + BSGUN/DOBASE fire behavior (B-017 + M-011)
     points: 3
     completed: '2026-07-19'
+  - id: sw6-2
+    epic: sw6
+    title: A music cue that arrives before its buffer decodes is lost forever — the first-ever visitor hears no space theme, because @arcade/shared/audio's startSource silently no-ops on an unloaded buffer
+    points: 3
+    completed: '2026-07-19'

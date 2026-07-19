@@ -1429,3 +1429,26 @@ Corollary for re-seats: when a story retires an exported constant, siblings that
 PREMISES (`expect(depth).toBeLessThan(CONST)`) re-seat to the spelled ROM byte literal — and
 only suites staging waves where the byte is unchanged stay green under both codes; check the
 staged waves, not just the import list (tp1-5/tp1-6 stage only wave 1 → pure re-point).
+
+---
+
+### A deferred-decode GATE fixture races its own release — drain microtasks until the gate EXISTS before asserting on it
+
+**Situation:** sw6-2 (arcade-shared audio decode race). To pin last-request-wins in BOTH decode
+orders, the fake `decodeAudioData` returns a held promise per gated filename and the test calls
+`release(file)` to land decodes in a chosen order.
+
+**Problem:** `resume()` starts a fetch → arrayBuffer → decode chain that reaches the gate only
+after several microtasks. A `release(file)` issued right after `resume()`/`startLoop()` looks up
+a gate that DOESN'T EXIST YET — the fixture fails on its own staging ("no decode is gated"), a
+wrong-reason red that reads like the mechanism under test. It only bit the one test that released
+without an intervening `await flush()`; the others masked the race by flushing first.
+
+**Prevention:** Make `release()` self-sufficient: drain microtasks until the gate appears
+(`for (i<16 && !gates.has(file)) await Promise.resolve()`), THEN assert it exists (keep the
+assert — a typo'd filename must still fail loudly, not spin silently). General rule for any
+async-pipeline fixture: an ordering control that races the pipeline it controls is itself a
+staging bug; audit every red's failure MESSAGE, not just its redness — "release(...) called but
+no decode is gated" was a fixture defect wearing a RED suit. Also stage the OLD-behaviour half
+of a steal test on the shipped path (decode BEFORE request) so its red points at the missing
+mechanic, not at your staging.
