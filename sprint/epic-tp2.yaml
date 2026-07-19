@@ -11,7 +11,7 @@ stories:
     description: 'PULPOT (WPULPOT, ALWELG.MAC:606-609: $A0 for waves 1-64, $C0 for 65-99) is ONE ROM byte read at THREE JPULMO sites — the pulsar KILL gate (1804-1806), the climb-speed near/far switch (1783-1786), and the descend REVERSE (1795) — all widening to $C0 at wave 65. tp1-26 gave the KILL gate its own wave-parameterised lookup (pulpotKillDepthForLevel, routed through the contourWave fold) but LEFT the climb and reverse readers (src/core/enemies/interpreter.ts:183 climb, :321 reverse) frozen at PULSAR_NEAR_FAR_DEPTH = $A0 — a pre-existing deferral introduced by feat 6-15 (rules.ts:452-453: the L65+ $c0 tier is deep-level gold-plating, intentionally not modelled). Reviewer-noted consequence (tp1-26 review): at wave 65+ the ROM climbs a $A0..$C0-band pulsar at PULSAR (slow) speed while our port climbs it at FLIPPER (fast) speed. Close the gap, or formally ratify the deferral. The two constants (kill PULPOT vs climb PULSAR_NEAR_FAR_DEPTH) coincide at $A0 below wave 65 and diverge at 65.'
     points: 2
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-07-19'
     repos: tempest
     workflow: tdd
@@ -20,7 +20,9 @@ stories:
       - 'If (a): the wave-1 pulsar-motion behaviour must NOT regress — the tp1-5 / tp1-6 / sim.enemy-motion-fidelity pulsar suites stay green (they pin $A0 at wave 1, which is unchanged). Add a test that derives the climb/reverse boundary OUT OF the running sim (not re-derived arithmetic) and pins its widening to $C0 at a wave on each side of 65.'
       - 'If (a): PULSAR_NEAR_FAR_DEPTH (the frozen $A0 climb constant) is unified with / retired in favour of the wave-parameterised PULPOT — no two constants that merely coincide below wave 65 left drifting (the tp1-26 name-split hazard).'
       - Cite ALWELG.MAC:1783-1786 (climb), 1795 (reverse), 1804-1806 (kill), and WPULPOT 606-609. npm test -- citations stays green and node tools/audit/reanchor-citations.mjs reports 0 lost.
+    completed: '2026-07-19'
     type: bug
+    review_verdict: approved
   - id: tp2-2
     title: The level-select prompt says 'PRESS FIRE TO SELECT' but the sim advances on Enter (input.start), not fire
     description: "On the RATE YOURSELF / SELECT START LEVEL screen, the on-screen prompt reads PRESS FIRE TO SELECT (drawn by drawSelect in src/shell/render.ts) but the sim's select->playing transition reads input.start (Enter), NOT input.fire (src/core/sim.ts, case select: if (input.start) startGameAtLevel(...)). So on the select screen pressing FIRE (Space) does nothing; the level starts only on Enter. Found in-game during tp1-39 verification (Playwright drive: Space lit the prompt but never advanced; Enter did). The PRESS FIRE TO SELECT string was shipped by tp1-20 as a ROM-authentic message, which suggests the arcade cabinet started the selected level on the FIRE button — making the BEHAVIOUR (Enter-only) the bug, not the prompt. Decide against the ROM."

@@ -14,12 +14,12 @@ stories:
     status: backlog
     repos: centipede
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "In the browser: mushroom caps point up, the gun points up, SCORE/LEVEL glyphs read upright. A new screenshot is committed as the cp2-1 artifact (and the stale cp1-6 demo screenshot replaced or superseded), taken from THIS checkout — prove 5278 ownership via lsof or serve a spare port."
       - "A hand-derived SCREEN-orientation pixel golden (one asymmetric glyph, full grid) pins the atlas-path orientation; the existing ROM-byte-order golden for the core decode stays green untouched; cp1-3's byte-gate against the vendored chips stays green (core pictures.ts unchanged)."
       - "Rotation is applied in exactly ONE shell location (atlas bake or render, not both), with the mapping cited to MAME gfx-layout + ROT270 corroboration (schema-only claim)."
       - "R3 hardening: positive ?raw wiring scans run against comment-stripped source; the no-invented-colour scan denies CSS colour keywords and r/g/b literals; a gutted buildAtlas or a keyword colour now fails (prove red once in story notes)."
+    type: bug
   - id: cp2-2
     title: "Input shell polish — per-step mouse-delta distribution (>60 Hz), pointer-lock rejection + pointerlockchange, human smoke test"
     description: "cp1-6 review carry-forwards R1/R4/R5. R1 (src/main.ts:61-71): input is sampled ONCE per rAF frame — on >60 Hz displays the 0-step frames drain-and-DROP accumulated movementX (about 50 percent sensitivity loss at 120 Hz), and a catch-up burst after a tab-unhide re-applies the SAME delta to up to ~15 sub-steps (gun teleport). Fix: deltas accumulate in the adapter until a sim step consumes them; each step drains exactly once (level inputs sampled per step; deltas never reused across steps). R4: canvas.requestPointerLock() (main.ts:36) returns a Promise whose rejection (re-lock cooldown after Escape) is unhandled. R5: input.ts's blur-handler comment claims to cover pointer-lock drops, but no pointerlockchange listener is wired — an Escape-exit that keeps window focus never clears held state. The pointer-lock path has NEVER been live-verified (headless browsers reject it — cp1-6 Dev finding): this story ends with a HUMAN smoke test by the user in a real browser tab."
@@ -28,12 +28,12 @@ stories:
     status: backlog
     repos: centipede
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "The same device deltas produce the same total gun displacement under 60/120/144 Hz frame pacing (extend the timebase/main-loop tests); a catch-up burst applies each accumulated delta exactly once — no per-step reuse, no dropped deltas on 0-step frames."
       - "requestPointerLock() rejection is handled (no unhandled-rejection noise on Escape then immediate re-click); a pointerlockchange listener clears held input state on lock exit; input-lifecycle tests cover both."
       - "HUMAN smoke test recorded in the story docs: pointer-lock acquire, mouse gun control, Escape exit, re-lock — performed by the user in a normal browser tab (headless cannot exercise it; cp1-6 Dev finding)."
       - "npm test -- citations stays green (no new transcription expected; re-anchor if any cited file is touched)."
+    type: bug
   - id: cp2-3
     title: "The train arrives — CENTPC init, MOTION march + descent, OBSTAC turns, poisoned dives; gun blocked by mushrooms (MOVE/OBSTAC)"
     description: "The centipede train core, transcribed from rev-4. CENTPC (CENTI4.MAC:456) initializes the wave-1 train into motion-object slots 0-11 (NCENT =12. is DECIMAL — trailing period, CENDEF.MAC:119) entering from the top. MOTION (CENTI4.MAC:1277) steps every live segment each frame: horizontal march, row-drop + direction reversal when OBSTAC (CENTI4.MAC:1689) reports a mushroom or field edge, head/body picture + animation state (stamps from cp1-3 — no new pixels). The poison branch — a poisoned mushroom triggers the head's vertical DIVE to the bottom zone — is transcribed and test-pinned here (MOTION owns it) but goes live only when the scorpion creates poison in cp3 (cp1-6 TEA finding: poison codes 0x38-0x3B unexercised in live play until then). ALSO OWNED HERE (cp1-5 carry-forward): the ROM's MOVE blocks the GUN from gliding into a mushroom cell via the same OBSTAC (JSR OBSTAC / BNE 5$, CENTI4.MAC:1500-1503 horizontal, 1535-1536 vertical) — cp1-5's movePlayer only bounds-clamps; this story transcribes OBSTAC once and both consumers (MOTION and MOVE) use it. Determinism: seeded rng only; the purity guard stays green."

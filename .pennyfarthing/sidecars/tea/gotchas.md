@@ -1405,3 +1405,27 @@ IDENTITY (the recorder tap returns the exact object main.ts stores) and assert p
 honestly still be aloft when the run ends. Bonus: a second delegating tap on the OTHER module
 (waves) lets the cockpit prove the cross-module gate ordering ("planes shown at first blimp spawn
 >= 4") with no text inspection at all.
+
+---
+
+### A dual-rate switch can be UNOBSERVABLE at the wave your suites stage — probe a boundary only where the rates differ, and make the probe guard its own discriminability
+
+**Situation:** tp2-1 derives the pulsar climb-speed boundary OUT OF the running sim (bisecting
+stepGame's one-frame delta between a slow in-zone reference and a fast out-of-zone reference) to
+pin the $A0→$C0 widening at wave 65.
+
+**Problem:** At wave 1 the two rates are THE SAME BYTE (spd_pulsar $FEA0 == the L1 flipper,
+W-028), so a delta-based classification at wave 1 returns noise — the bisection would still
+"converge" and confidently report a meaningless boundary. Every existing pulsar-motion suite
+stages at wave 1 (where it's fine, nothing to discriminate) or L33 with unambiguous depths;
+nothing warns you the discriminator is degenerate at the natural staging wave.
+
+**Prevention:** Before bisecting any two-rate boundary, measure BOTH reference rates at that
+level and assert them apart (`fastRef > slowRef * 1.5`) INSIDE the probe helper — a wave where
+they coincide then fails loudly ("must be discriminable") instead of minting a fake boundary.
+Calibrate the refs with a throwaway probe first (rb4-4 pattern): here slow = 0.00614/frame
+level-independent, fast = 0.0113 (L17) → 0.0223 (L65+), so L17+ discriminates and L1 cannot.
+Corollary for re-seats: when a story retires an exported constant, siblings that import it for
+PREMISES (`expect(depth).toBeLessThan(CONST)`) re-seat to the spelled ROM byte literal — and
+only suites staging waves where the byte is unchanged stay green under both codes; check the
+staged waves, not just the import list (tp1-5/tp1-6 stage only wave 1 → pure re-point).

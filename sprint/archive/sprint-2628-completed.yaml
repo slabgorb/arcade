@@ -536,3 +536,8 @@ completed_stories:
     title: "Render shell — tile atlas, portrait integer scaling, CLRCH colors, ROM-tile text, playable demo page"
     points: 3
     completed: '2026-07-18'
+  - id: tp2-1
+    epic: tp2
+    title: PULPOT is one ROM byte — the pulsar CLIMB/REVERSE tier also widens to $C0 at wave 65, but tp1-26 fixed only the kill gate
+    points: 2
+    completed: '2026-07-19'
