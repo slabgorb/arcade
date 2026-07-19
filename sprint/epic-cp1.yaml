@@ -91,7 +91,8 @@ stories:
     description: "Canvas 2D shell drawing from cp1-3's data via an offscreen atlas: portrait 240x256 logical resolution (visible area per centiped.cpp:1800, cabinet ROT270), integer scaling with letterbox, color-RAM init semantics from CLRCH (CENTI4.MAC:879), score/level text from the ROM's own character tiles (no shared /font). Wire the demo page: mouse+keys moving the gun, shooting mushrooms out of the seeded field — the epic's demo. Add the render source-wiring test using the repo ?raw idiom (reviewer-blessed on tempest tp1-39)."
     points: 3
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-19'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
