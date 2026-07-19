@@ -781,3 +781,8 @@ completed_stories:
     title: 'Cleanup: retire vestigial TIE-flight fields + inert ENEMY_SPEED ramp left by VM-flight wiring (PR #110)'
     points: 2
     completed: '2026-07-19'
+  - id: bz4-1
+    epic: bz4
+    title: BOUNCE completion — the 0xFF death/mutual-kill jolt (M-009 sibling) and the horizon-line bob (H-007 residual)
+    points: 2
+    completed: '2026-07-19'

@@ -11,12 +11,13 @@ stories:
     description: 'The ROM writes BOUNCE in three places; bz3-9 shipped only the obstacle-ram 0x3F. Add the getting-hit jolt: BOUNCE=0xFF on player death / windshield crack (BZONE.MAC:2337-2338) and on mutual player-enemy kill (BZONE.MAC:3363-3364), widening the bounce register from 0-63 to a full byte and reconciling its free-running behaviour across death. Also bob the horizon LINE with the mountains: bz3-9 bobbed only ridge/moon, but MOUNTS draws the horizon line from the same bounced beam origin (BZONE.MAC:1279-1282), so the ROM bobs them together. Surfaced by the bz3-9 review as an unfiled M-009 sibling plus an H-007 residual.'
     points: 2
     priority: p3
-    status: backlog
+    status: done
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - BOUNCE=0xFF fires on player death / windshield crack (BZONE.MAC:2337-2338) and mutual player-enemy kill (BZONE.MAC:3363-3364); the bounce register widens from 0-63 to a full byte and its post-death behaviour is reconciled.
       - The horizon line bobs together with the mountain silhouette off the shared bounced beam origin (MOUNTS, BZONE.MAC:1279-1282), not just ridge and moon.
+    completed: '2026-07-19'
   - id: bz4-2
     title: Seeded-stochastic volcano emitter — per-rock independently-staggered respawn
     description: 'bz3-6 shipped a fixed-velocity synchronized relaunch-on-retire loop as a documented deviation (core purity forbade RNG at the time). The ROM emits VOLCNO rocks independently and stochastically: each rock draws YSPD=(PRAND AND 7)+5 at random (BZONE.MAC:1405-1407) and respawns on its own staggered 1-in-8 timer (BZONE.MAC:1393-1395), not as a synchronized volley. Thread a seeded, deterministic PRNG into the eruption so the rocks stagger and vary per-rock while the sim stays replayable. Reuses the bz3-5 debris engine (already validated/config-guarded).'
