@@ -60,16 +60,17 @@ stories:
     description: "PLYFLD grid semantics (PLYFLD=400, 30 wide by 32 high, CENDE4.MAC:61 — hex per the inherited radix), initial mushroom seeding from the seeded @arcade/shared/rng, per-hit mushroom damage states and hit count AS TRANSCRIBED FROM REV-4 CODE (CENTIP.DOC scoring prose — mushroom 1, partial 5 — is rev-1; diff against code per open question 4 before baking numbers), and the RESTOR repair sweep (CENTI4.MAC:1826). Score/status rows of the grid respected. Every constant: radix-cited comment + claims entry (cp1-2 gate is live). Determinism: same seed, same field, pinned by test."
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-07-18'
     repos: centipede
     workflow: tdd
-    branch: feat/cp1-4-playfield-mushrooms
     acceptance_criteria:
       - "Grid dimensions, seeding counts, damage-state count, and per-state scoring all transcribed from rev-4 code with radix-cited comments AND claims/*.json entries; npm test -- citations green."
       - "Where CENTIP.DOC prose and rev-4 code disagree on any number, the code wins and the divergence is recorded in docs/rom-study/open-questions.md."
       - "Determinism test: identical seed + inputs reproduce the identical field through seeding, damage, and RESTOR."
       - "No wall-clock, no Math.random in core (purity guard stays green)."
+    completed: '2026-07-18'
+    branch: feat/cp1-4-playfield-mushrooms
   - id: cp1-5
     title: "Player + single shot — bottom-zone movement, TBLMT clamp, slot-14 fire, shot-vs-mushroom collision"
     description: "Player gun movement inside the ROM's bottom-zone rectangle (MOVE, CENTI4.MAC:1477), trackball movement limited per TBLMT (CENTI4.MAC:2514), single-shot firing (CHECK FIRE SWITCH, CENTI4.MAC:2099; slot 14 — ONE shot in flight is authentic), shot flight and grid-cell collision with mushrooms as the ROM computes it. Shell input: pointer-lock mouse deltas quantized to trackball counts + arrow/WASD synthesizing counts at the clamp rate; both paths feed the same core input contract. Trackball hardware context: counters read once per IRQ, 240x/s (centiped.cpp:514) — the shell aggregates per frame."

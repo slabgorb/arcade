@@ -520,3 +520,8 @@ completed_stories:
     title: THE BLIMP IS THE WRONG MACHINE — an APPROACHING airship (Z-closing, N.PLNZ-gated, ÷4 fire, GMLEVL>=2), not a lateral drifter
     points: 8
     completed: '2026-07-18'
+  - id: cp1-4
+    epic: cp1
+    title: "Playfield + mushrooms — the 30x32 grid, seeding, damage states, scoring hooks, RESTOR sweep"
+    points: 5
+    completed: '2026-07-18'
