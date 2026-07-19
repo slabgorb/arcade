@@ -86,13 +86,15 @@ stories:
     description: "USER-REPORTED (2026-07-19, cp2-2 human smoke test): vertical gun movement steps on a grid (set distance per jump) while horizontal is smooth. DIAGNOSED (read-only investigation, session cp2-2): render.ts:75-76 places the gun's screen-Y via cellScreenY(obstacleCell(h,v).v) — the COLLISION-grid mapping ((v+4)>>3, core/player.ts:139) — so across the ROM-faithful 40px vertical band (PLAYV 0x08-0x30) the sprite occupies only six discrete 8px rows; the live shot is snapped the same way at render.ts:79-80. Horizontal does NOT go through the collision cell: layout.ts:64-69 gunScreenX adds back the low-3-bit sub-cell offset (its own comment explains why a per-column step function would jitter) — there is no gunScreenY counterpart. PRE-EXISTING from cp1-6 (verbatim in b62ee1b's render.ts); NOT introduced by cp2-2 (input/timebase-only diff, per-axis symmetric); NOT ROM-faithful — the ROM draws the gun as motion-object slot 15 at full 8-bit pixel PLAYV with a half-pixel accumulator PLAYVL (claims PS-2/PS-8; OBSTAC's 8px cell is for mushroom lookups only, PS-16/17). FIX: add a pixel-accurate gunScreenY(v) to src/shell/layout.ts mirroring gunScreenX (raw player.v, bottom-referenced, NOT (v+4)>>3) and use it at render.ts:76 and :80. Low risk: no test pins the current cell-snapped vertical (sign-chain.test.ts covers gunScreenX only)."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-19'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
       - "Vertical gun and shot screen positions are pixel-accurate across the whole PLAYV band: a test walks player.v one pixel at a time and asserts the rendered Y advances monotonically by the display scale each step (no 8px plateaus); gunScreenX behaviour unchanged."
       - "Rotation/collision untouched: obstacleCell keeps its (v+4)>>3 mapping for OBSTAC lookups (PS-16/17 cited); core files unchanged; citations 26+ green."
       - "Human (or screenshot-sequence) verification from THIS checkout: vertical glide visibly smooth, matching horizontal."
+    completed: '2026-07-19'
     type: bug
   - id: cp2-7
     title: Mushroom hitbox sits one unit right of the sprite — visual column vs collision column disagree

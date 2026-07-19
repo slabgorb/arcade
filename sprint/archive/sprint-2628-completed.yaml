@@ -587,3 +587,8 @@ completed_stories:
     title: 'R7c Death Star finale + authentic picture — 4-phase RED/blue/white ring finale (X-006: DCIRCL+DRING, no rays, ~89f/4.3s), looming-station prelim (X-007: enlarge toward viewer + end music), authentic 2D vector Death Star BSHEM/BSCIR/BSTRN/BSDSH at M.=32 (M-010, replaces the procedural 3D sphere)'
     points: 8
     completed: '2026-07-19'
+  - id: cp2-6
+    epic: cp2
+    title: Gun/shot vertical is drawn through the collision cell — six 8px rows instead of pixel resolution; add gunScreenY mirroring gunScreenX
+    points: 2
+    completed: '2026-07-19'
