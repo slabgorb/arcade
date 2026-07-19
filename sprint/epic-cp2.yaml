@@ -132,3 +132,18 @@ stories:
     repos: centipede
     workflow: tdd
     type: refactor
+  - id: cp2-10
+    title: The head factory — NEWHD spawns fresh heads into the player zone while the train bounces at the bottom
+    description: "USER-REQUESTED follow-up (2026-07-19, filed during cp2-5): once the train reaches the bottom, the arcade doesn't just bounce it (cp2-5's containment fix) — NEWHD (CENTI4.MAC:1647, gating pinned as CT-71 during cp2-5's quarry) periodically spawns FRESH single-segment heads into the player zone (spawn coords from source: MOBJH=0xFC/0x04 side entry, MOBJV=0x40 — low zone) until the wave is cleared, making bottom-camping lethal. Trigger chain: head-at-bottom sets NEWD (CT-23); the spawn is RNGEN-driven and DELAY-gated — this story deliberately injects the FIRST rng entropy into the motion loop, which cp2-5's TEA ruled out of the wave-1 demo for determinism (that ruling stands for cp2; this story lifts it properly): all tests must run seeded, and the purity guard stays green. Quarry the exact spawn cadence, RNGEN consumption, side selection, and count limits from rev-4 source with radix-cited claims per schema (checker tree: reference/atari-source/centipede/revision.v4/). Depends on cp2-5 (bottom bounce + sim assembly). Wave composition/speed progression stays cp4."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    type: feature
+    depends_on: cp2-5
+    acceptance_criteria:
+      - "With the train at the bottom (NEWD set), fresh heads enter the player zone per NEWHD's transcribed cadence/coords/side-selection; every constant radix-cited + claims entries; citations green."
+      - "RNGEN consumption is transcribed and seeded-deterministic: same seed → same spawn schedule; purity guard green; no Math.random."
+      - "The wave still ends only when ALL live segments (train + factory heads) are cleared; the cp2-5 containment and wave-loop pins stay green."
+      - "Demo evidence from THIS checkout: bottom-camping now draws fresh heads (screenshot or short sequence committed)."
