@@ -715,3 +715,101 @@ sign (a swap flips exactly one). Mutation-prove it (fails on the swap, passes on
 guard covers only what you guarded — here the body circle got the winding pin; the dish and trench
 orders were hand-verified against the ROM but are still only span/palette-pinned, so a future edit
 could reintroduce a kink there. Order-blindness is the systematic gap in span/family fidelity tests.
+
+---
+
+### When the ENTIRE subagent fleet fails to return, say so and do the work — and check the CONVENTION-vs-CODE axis a "documented" seam hides: an exported type's docstring can state the INVERSE of its own code and no test will care
+
+**Situation:** sw7-10 (star-wars attract mode + WSSTAR starfield). I spawned 9 specialists:
+2 died instantly (`respawn pane failed: fork failed: Device not configured`), 4 more reported
+"Spawned successfully" and returned NOTHING across ~10 minutes and 4 explicit FINAL-CALL
+pings each; 5 were disabled by `workflow.reviewer_subagents`. Net independent coverage: **zero**.
+
+**Problem 1 — the gate wants `All received: Yes` and you will be tempted to write it.**
+Don't. Write `No`, enumerate what actually happened per row, and put what *you* did in the
+Decision column ("Covered by Reviewer: …"). The agent def is explicit — "you cannot claim
+coverage from a subagent that failed" — and a falsified gate line is worth less than a
+blocked transition you can explain. Budget for doing all 9 domains yourself: it is
+achievable in one session if you stop pinging early (2 pings, then commit to solo) and
+spend the time on mutations instead of on waiting.
+
+**Problem 2 — the finding the fleet would have missed anyway: an INVERTED DOCSTRING on an
+exported type, on an axis no test varies.** `CrawlLine.size`'s docstring said "0 at the
+vanishing point"; the code, the render comment, the test-file header AND a test's own
+assertion message all said the opposite (0 = born near/big, 1 = retired at the vanishing
+point). Three corroborating sources, one lone outlier — and the outlier was the *only* place
+the convention was documented. Mutation-proved it matters: re-inverting the render
+(`remaining = 1 - size` → `size`) left the FULL suite green, because the render test fixed
+every line at a constant `size: 0.4` and therefore never varied the axis at all.
+
+**Why that is HIGH and not a comment nit:** the story's own Dev Assessment said this exact
+inversion had ALREADY shipped once and was caught only by driving the game in a browser. So
+the surviving docstring is the *pre-fix* description, sitting on the type contract, with zero
+test coverage beneath it. Wrong docstring + uncovered axis + documented prior occurrence of
+that precise bug = the next dev "fixes" the code to match the comment, sees 1751 green, and
+re-ships it. Severity comes from the COMBINATION, not from any element alone.
+
+**The systemic tell — ordinal guards everywhere, absolute guards nowhere.** Two unrelated
+mutations both sailed through 1751 tests (the crawl inversion, AND reading `#0200`/`#0100`
+as decimal 200/100). That is a shape: every guard in the story was order/presence/relative
+("hiscore dwells less than banner", ">1 signature", "≥40 more marks", "later size > earlier").
+All of them survive a constant multiplier anywhere in the chain. When two mutations on
+different subsystems both go green, stop treating them as separate findings and name the
+pattern — then demand ONE absolute assertion per axis (`pageDwellSeconds('banner') ≈ 24.97s`).
+
+**Prevention:** (1) For every exported type whose field encodes a DIRECTION or a normalised
+range, grep every other mention of that field and require them to agree; the docstring is the
+one that rots, because it is written first and never re-read. (2) If a render test pins a
+derived quantity, check whether it VARIES the input — a fixture with one constant value
+cannot pin a mapping. (3) Inline `FILE.MAC:NNNN` comments in `src/` are ungated in this repo:
+`citations.test.ts` machine-checks only `docs/audit/findings/*.json`, which is exactly why a
+wrong anchor (`WSMAIN.MAC:3176`, quote actually at `:3178`) survived TEA, Dev and every gate.
+Spot-check source-comment anchors by hand; they have no net.
+
+**Also — record where the author was RIGHT and you were WRONG.** I suspected Dev overstated
+"1751/1751 passing" because my worktree run showed 1749+2 skipped; the main tree really is
+1751/1751 and the skip was a worktree artifact. I put that retraction in the assessment.
+A review that only ever finds fault in one direction reads as hostile, not adversarial — and
+on this story the transcription was genuinely byte-exact across ~25 citations and 31 ROM
+strings, with the radix trap navigated correctly in BOTH directions (`M$STNM ==50.` decimal,
+`#0200`/`ANDB #10` hex). Say that plainly before the severity table.
+
+**Disposition:** REJECTED on the one HIGH (inverted docstring + uncovered axis), with 3 MEDIUM
+and 4 LOW. Fix is ~1 docstring, 1 digit, 1 claim, 2 test assertions — cheap, and worth being
+explicit about that so a rejection on a near-perfect story does not read as ceremony.
+
+**FOLLOW-UP (same story, sw7-10) — the "failed" fleet returned AFTER I closed the phase, and
+the auditor's headline claim CONTRADICTED my blocking finding. Chase it to source; do not
+fold, and do not dismiss.** The ROM auditor argued the crawl direction was inverted in the
+CODE (i.e. my "docstring is wrong, code is right" was exactly backwards). Its mechanism
+reading was sound; its POLARITY reading was not. What settled it needed no knowledge of the
+AVG scale field at all — three ROM comments in a chain: the list is "FOR MESSAGES THAT RECEDE
+INTO THE DISTANCE" (TCMES.MAC:167), the accumulator "ALWAYS STARTS AT LINEAR SCALE OF 0"
+(:183), and the line retires at the accumulator's MAX (:415). Start=0 and end=max across a
+RECEDING life ⇒ 0=near/large, max=far/gone. Its reading (born at the vanishing point, growing
+toward the viewer) is APPROACHING, which contradicts :167 outright.
+
+**Three transferable rules from that exchange:**
+1. When a subagent contradicts a finding you mutation-proved, re-derive from PRIMARY SOURCE on
+   a DIFFERENT axis than the one you both used. I had structural evidence (4 sources agree, 1
+   outlier); the refutation came from semantic evidence (the ROM says "RECEDE"). Two
+   independent routes to the same answer is what makes a contradiction settle instead of
+   ping-pong. The contradiction left my finding STRONGER than it was.
+2. A wrong headline does not make an auditor wrong. Same report was 3-for-4 on substance and
+   handed me four defects I had missed — two more wrong anchors (`WSSTAR.MAC:110` is `BLO 4$`;
+   VGCWHT is at `:113`), an invented motion model (the ROM has FOUR per-page star drifts at
+   WSMAIN.MAC:2244-2269, uncited; the port runs one), and a rate contradicted by source
+   (`STAR_SPEED=0x40` vs `#0080` everywhere). Grade item-by-item, never report-by-report.
+3. Late results are still results. I had recorded the fleet as failed and written
+   `All received: No` — correctly, at the time. When they landed I appended an ADDENDUM under
+   a `###` sub-heading (never a second `## Reviewer Assessment`, which the approval gate scans
+   for), re-ran `story update --review-verdict`, and explicitly stated the verdict was
+   unchanged. Do not silently rewrite history and do not ignore the data because the phase is
+   closed.
+
+**The diagnostic that came out of it, worth reusing on any transcription story:** separate the
+TEXT layer from the ARITHMETIC/MOTION layer and score them apart. Here strings were 32/32
+byte-perfect while every single defect (6 of them) sat in the reasoning layer — *where the dev
+quoted, they were exact; where they reasoned from a citation, the citation was off and the
+reasoning followed it off*. If a fidelity story looks flawless, you have probably only audited
+its text.

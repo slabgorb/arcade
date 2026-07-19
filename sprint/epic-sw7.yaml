@@ -127,11 +127,13 @@ stories:
     description: 'Subsumes H-017 (rotating attract: banner -> flight-instructions INS -> scoring page SCR -> hi-score table, per WSMAIN TPHASE), H-018 (receding intro crawl special messages), H-022 (in-flight coaching/bonus messages SFB/STF/ACW/BON/BRE/BSE/SHIELD GONE), M-015 (the entire WSSTAR starfield subsystem). Front-of-house, not gameplay — priority p3 by ruling.'
     points: 10
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-07-19'
     repos: star-wars
     workflow: tdd
     depends_on: sw7-3
+    review_findings: "REJECTED - 12 findings (1 High, 7 Medium, 4 Low). HIGH: src/core/attract.ts:30 CrawlLine.size docstring states the INVERSE of its own correct code; mutation-proven that re-inverting render.ts leaves all 1751 tests green (render.intro-crawl.test.ts:61 fixes every line at a constant size 0.4). This inversion already shipped once in this story and was caught only by browser eyeball. A late independent ROM auditor argued the CODE was the inverted half; refuted at source - TCMES.MAC:167 'MESSAGES THAT RECEDE INTO THE DISTANCE' + :183 'SIZE ALWAYS STARTS AT LINEAR SCALE OF 0' + retirement at :415 prove accumulator 0=near/large, max=far/gone, so render.ts is right. MEDIUM: three wrong ROM anchors (render.ts:1211 cites WSMAIN.MAC:3176, quote is at :3178; starfield.ts:13 and render.ts:1153 cite WSSTAR.MAC:110, VGCWHT is at :113); starfield motion model invented - ROM has FOUR per-page drift directions at WSMAIN.MAC:2244-2269, port runs one uniform Z drift, block uncited; STAR_SPEED 0x40 contradicts the ROM rate of 0x0080 on every mover; two unlogged coaching gates (BS.RPT, Q.ATP at WSMAIN.MAC:3190-3193); GameState.coaching 'cannot get stuck on screen' empirically false (hint+starfield freeze permanently after any wave-1 death); dwell constants have zero coverage (0x200/0x100 to decimal 200/100 ships green). Text layer is FLAWLESS - 32/32 strings byte-exact, radix navigated correctly both directions. Every defect is in the arithmetic/motion layer: where the story quoted a string it was perfect, where it reasoned from a citation the citation was off."
+    review_verdict: rejected
   - id: sw7-11
     title: R9a TIE choreography VM engine — per-fighter bytecode VM (A-009)
     description: 'Port the per-fighter TIE choreography bytecode VM (A-009, the real thing). JMP @A(U) opcode dispatch into TCHOP; per-alien program counter A$CHPC; one-deep call stack; opcodes IF/GOTO/GOSUB/RETURN/TWIRL; event-gated .CUNTIL/.CIF; 16 TCH1 scripts + 12 TCH2 split entries. Foundation of the split parent sw7-9: most divergences dissolve if the VM lands (accepted symptom-divergences A-011..A-014). A-019 music-timed descent also rides the VM but wants sw7-8 tunes, so DEFER that facet until sw7-8 lands. Depends on sw7-1 timebase (done). Full audit context: parent sw7-9 plus star-wars/docs/audit/findings/. Keep npm test citations green; mark A-009 remediated_by.'
