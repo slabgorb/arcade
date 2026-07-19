@@ -822,3 +822,8 @@ completed_stories:
     title: "Scaffold — Vite/TS/Vitest on port 5279 + core/shell purity guard + CI caller + orchestrator registration"
     points: 2
     completed: '2026-07-19'
+  - id: jt1-2
+    epic: jt1
+    title: "Citation checker + claims JSON — the dossier becomes machine-verified before any constant is transcribed"
+    points: 3
+    completed: '2026-07-19'

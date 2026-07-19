@@ -27,7 +27,8 @@ stories:
     description: "Port the centipede checker (cp1-2 shape; single-sided schema per the rom-source-study skill: id, claim, source{file,line,verbatim}, corroboration?). Convert docs/rom-study/ brief+subsystems+pictures citations into docs/rom-study/claims/*.json. The checker re-opens every cited line in the vendored tree (arcade/reference/williams-source/joust) byte-for-byte, prints one error per bad claim, exits non-zero; it degrades gracefully (schema-only checks) when the vendored tree is absent, so CI stays green. MAME citations (williams*.cpp) get schema-only claims (the sparse clone is machine-local). THIS BLOCKS jt1-3, jt1-4, and jt1-5 — the rb4/cp1 lesson: any numeric story that lands before the gate re-bakes its own misreadings and then confirms itself."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-19'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -35,6 +36,8 @@ stories:
       - "Every citation in brief.md, subsystems.md, and pictures.md exists as a claims/*.json entry; the 20-citation synthesis cross-sample is among them."
       - "Checker runs schema-only without the vendored tree; CI (which lacks it) is green."
       - "Radix traps are schema-encoded: a claim whose verbatim carries @ octal or !X operators round-trips exactly (no evaluation, no normalization)."
+    completed: '2026-07-19'
+    review_verdict: approved
   - id: jt1-3
     title: "Image transcription — decode JOUSTI.SRC into src/core/pictures.ts, byte-gated, with COMCL5 RLE + collision spans + contact sheet"
     description: "Transcribe the merged images source (JOUSTI.SRC — the link target; entity .SRC files are artist provenance, pictures.md) into a committed data module: both record formats (3-word entity frames with position word + w/h-at-source; 4-word background records = partial DMA blocks), the COMCL5 RLE stream decoded via the NEWCL5/UNCOM algorithm (SYSTEM.SRC:927-1023), the collision span tables (COFF bias, $8000/$8100 sentinels), and the COLOR1/HICOLR palettes (BBGGGRRR, resistor weights per williams_v.cpp:342-343). NO ROM binaries exist — the gate is a vitest that re-derives every frame from the vendored JOUSTI.SRC text (and cross-checks OSTRICH.SRC/*.PIC provenance for at least one entity) and compares byte-exact. Radix traps enforced: @ octal rows, decimal spans, % binary COMCL5, DMAFIX !X pre-XOR. Bake a contact-sheet artifact (91 blocks + COMCL5 expansion; bake-models.mjs precedent) for human review. NO hand-authored pixels anywhere. ASH1R/L (undecoded third format, open-questions §5) may be stubbed with its consumer traced or explicitly deferred with a finding."
@@ -99,4 +102,44 @@ stories:
       - 'Each of the five reproduced false negatives becomes a red-then-green test case: string-embedded /*, string-embedded //, template interpolation, Math destructuring alias, and the archived fifth case.'
       - Scanner tokenizes source (acorn or equivalent) instead of regex comment-stripping; the existing 51-test suite plus the new cases stay green.
       - Demonstrated red run against a poisoned src/core/ file recorded in story notes, matching the jt1-1 AC-2 evidence bar.
+    type: chore
+  - id: jt1-8
+    title: Qualify the dossier's 128 bare-:N citations — every citation enters the machine gate
+    description: "Follow-up from the jt1-2 TEA finding (see .session archive at finish): only 114 of the dossier's ~242 citations are fully qualified FILE:LINE; 128 are bare :N whose file inheritance is genuinely ambiguous (subsystems.md's own 'JOUSTRV4.SRC unless another file is named' rule is contradicted by at least one citation in each direction — :175 is ambiguous between RAMDEF.SRC and JOUSTRV4.SRC; :5934 cannot be the nearest-named SYSTEM.SRC). Each qualification is a human judgment against the vendored tree (reference/williams-source/joust, pin 9bcfdb1), NOT a mechanical rewrite — an extractor that guessed would bind claims to the wrong file and look green. jt1-2's suite already carries the enforcement rails: the bare-:N canary is one-sided (shrinking passes, growing fails), so this story drives it to 0 and then flips the coverage sweep to demand every citation. EXPANDED per the jt1-2 review (R1): the AC-2 sweep also SILENTLY drops citation forms its regex cannot parse — JOUSTRV4.SRC:2407+, TB12REV3.SRC:1160+, JOUSTI.SRC:54/55 are never enumerated, an invisible blind spot unlike the ruled bare-:N gap. Add a negative canary counting unparsed citation-shaped strings (must be 0 once the forms are either qualified or the parser handles +/slash ranges). Does NOT gate jt1-3/4/5: new transcription claims are new fully-qualified claims/*.json entries which the checker validates regardless of the legacy prose citations."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - Every bare :N citation in brief.md, subsystems.md, and pictures.md is rewritten as FILE:LINE, each verified against the vendored tree (spot-ambiguous cases documented in the story notes).
+      - The bare-citation canary count reaches 0 and the test is flipped to assert exactly 0 going forward.
+      - The AC-2 coverage sweep is widened from qualified-only to ALL citations, and stays green.
+      - A negative canary counts citation-shaped strings the sweep parser cannot enumerate; it reaches and asserts 0 (the +/slash range forms are parsed or rewritten).
+      - 'Canary scope note: the negative canary counts unparsed citation-shaped strings in the THREE SWEPT FILES only (brief.md, subsystems.md, pictures.md) — open-questions.md is outside AC-2 scope per the jt1-2 R2 ruling.'
+    type: chore
+  - id: jt1-9
+    title: Citation checker hardening — external-claim shape enforcement + robustness holes from the jt1-2 review
+    description: "Files the jt1-2 Reviewer's non-blocking checker findings as one bounded hardening pass (the checker itself shipped sound — all 131 primary claims independently re-verified byte-exact). (1) THE PAIRED DESIGN HOLE: externality is recognized by file extension alone, so renaming any claim's file to e.g. JOUSTRV4.cpp with a fabricated verbatim returns zero errors — the abuse the module header warns about, reached by filename instead of flag; and the 19 external .cpp claims carry prose markers in verbatim, a field whose contract is byte-exact quotation, where a plausible fake quote is undetectable. Reviewer's ruling (accepted by SM): do NOT rename the schema field (drags centipede along); instead ENFORCE THE MARKER SHAPE for external claims (all 19 already share a rigid self-describing form) or forbid verbatim on external claims outright — a shape rule cannot be forgotten the way a flag can, matching the extension-only ruling's spirit. Enforcement must also pin the external extension set (e.g. exactly .cpp) so a renamed .SRC claim cannot slip out of byte-verification. (2) Robustness: CLI prints 'all claims verified'/exit 0 on an EMPTY claims dir (should be a distinct loud state); wrong-case filenames pass on macOS (case-insensitive fs) but would fail CI/Linux; symlinked source files escape the containment check; a primitive (non-object) array element throws, contradicting the module's never-throw invariant; empty-string verbatim passes schema. (3) Two radix tests (tests/audit/citations.test.ts:403,422) assert JS language guarantees without calling the checker — rewrite them to drive the real implementation or delete them."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - An external claim whose verbatim deviates from the enforced marker shape (or carries any quotation-like text, if the forbid-verbatim option is chosen) fails the checker; prove red once with a plausible fake quote.
+      - 'A claim renamed to a non-allowed extension (or a .SRC file miscased/symlinked/renamed .cpp) is caught: extension set pinned, case-sensitive filename comparison, symlink containment enforced.'
+      - Empty claims dir is a distinct non-success outcome; primitive array elements and empty-string verbatims are schema errors, not throws; the two no-op radix tests exercise the real checker or are removed.
+    type: chore
+  - id: jt1-10
+    title: Dossier correction — SUB-001/002 process-block layout parrots a stale vendor comment (gates jt1-5)
+    description: "From the jt1-2 R2 review (non-blocking MEDIUM, verified by the Reviewer summing the vendored RMB directives): the dossier's process-block layout in subsystems.md — and claims SUB-001/SUB-002 which faithfully quote it — repeats the vendor's own stale 1982 comment ('8 OVERHEAD BYTES', 51-byte block). The source's actual directives disagree with the source's own comment: PLINK 2 + PID 1 + PPRI 1 + PNAP 1 + PPC 2 = 7 overhead bytes, and PPOSX 3 + PPOSY 3 sit before PRAM 43, making the block 56 bytes. The citations are CORRECT (the lines really say what's quoted) — the defect is that the dossier adopts the comment's arithmetic instead of the directives'. GATES jt1-5: flight/ground movement consumes this process model and would bake in a wrong struct. Fix: correct the dossier prose (keep the stale-comment observation as a note — it is good provenance), adjust/add claims so the derived layout figures are anchored to the RMB directive lines themselves, and leave a loud pointer for jt1-5's TEA."
+    points: 1
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - subsystems.md's process-block layout states 7 overhead bytes / 56-byte block derived from the RMB directives, with the vendor's contradictory '8 OVERHEAD BYTES' comment explicitly called out as stale.
+      - SUB-001/SUB-002 (and any new claims) anchor the corrected figures to the directive lines; citation suite + CLI stay green.
     type: chore
