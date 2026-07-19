@@ -577,3 +577,8 @@ completed_stories:
     title: The level-select prompt says 'PRESS FIRE TO SELECT' but the sim advances on Enter (input.start), not fire
     points: 1
     completed: '2026-07-19'
+  - id: cp2-4
+    epic: cp2
+    title: "Shooting the train — OVRLAP hit, EXPLOD animation, mushroom drop, NEWHD split, segment scoring"
+    points: 4
+    completed: '2026-07-19'

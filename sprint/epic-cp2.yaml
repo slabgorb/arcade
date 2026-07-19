@@ -58,7 +58,8 @@ stories:
     description: "Shot-vs-segment combat, transcribed from rev-4. OVRLAP (CENTI4.MAC:1741) resolves the shot-vs-segment collision as the ROM computes it. A hit segment EXPLODes (CENTI4.MAC:961 — explosion frames from cp1-3 stamps) and leaves a mushroom in its cell per the ROM's placement arithmetic. NEWHD (CENTI4.MAC:1643) promotes the segment behind the kill into a new head, splitting the train into independent trains. Head/body scoring is transcribed FROM REV-4 CODE — CENTIP.DOC's rev-1 scoring prose for head/body is diffed against the code FIRST per open question 4; code wins and any divergence is recorded in open-questions.md. The slot-14 single-shot economy (cp1-5) is unchanged."
     points: 4
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-19'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
@@ -66,6 +67,7 @@ stories:
       - "Killing a mid-train segment yields TWO independent trains (new head immediately behind the gap), pinned deterministically; head and body kills score the values taken from rev-4 code, with any CENTIP.DOC divergence recorded (open question 4)."
       - "A killed segment leaves a mushroom exactly where the ROM places one; the one-shot economy still holds (firing while the shot lives is ignored)."
       - "Moving-shot collision tests cover approach from both directions (asteroids lesson: never test only stationary projectiles)."
+    completed: '2026-07-19'
   - id: cp2-5
     title: "Death, the RESTOR sweep, and the wave-1 loop — the cp2 demo"
     description: "PLAY (CENTI4.MAC:1769) detects gun-vs-segment contact; the player EXPLODes (CENTI4.MAC:961); lives decrement (life count transcribed from rev-4 code — CENTIP.DOC is rev-1, diff per open question 4). Death arms MEM to the PLYFLD base (claim PM-22) so the frame-stepped RESTOR sweep (CENTI4.MAC:1826) walks the field: ACTIVE EVERY 8 FRAMES — the code's AND I,07 wins over its own stale ';EVERY 16 FRAMES' comment (claim PM-23, open question 6) — restoring partial and poison mushrooms at 5 points each via cp1-4's restoreMushroom primitive (SCORE_RESTORE=5, PM-26). Respawn resumes the wave; clearing the last segment ends wave 1 — for this epic the demo loops wave 1 (wave progression, composition tables, and colour cycling are cp4). EPIC DEMO on 5278: full wave 1 vs the centipede — kill the train, die to it, watch mushrooms restore, run out of lives, restart. The port-ownership trap applies to any screenshot (a sibling checkout may own 5278 — lsof the server's cwd, or serve this tree on a spare port)."
