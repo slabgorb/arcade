@@ -36,13 +36,15 @@ stories:
     description: 'bz3-12 shipped the rotating antenna + animated treads driving off the free-running frameCount, as a documented deviation. Two refinements to match the ROM: (1) tie the tread counter to tank MOVEMENT (TRDCTR INC on forward BZONE.MAC:2669 / DEC on reverse BZONE.MAC:2673) so treads freeze when the tank holds still and reverse with backward motion, threading a per-hostile movement-derived counter through Hostile/EnemyState/sim; (2) store the radar antenna angle ABSOLUTE, decoupled from tank heading (BZONE.MAC:1561-1562), rather than the shipped body_heading + RANGLE. Rate and period are already byte-exact; only the movement coupling and heading phase differ.'
     points: 3
     priority: p3
-    status: backlog
+    status: done
     repos: battlezone
     workflow: tdd
     acceptance_criteria:
       - 'The tread animation counter is tied to tank movement (INC forward BZONE.MAC:2669 / DEC reverse BZONE.MAC:2673): treads freeze when stationary and reverse with backward motion.'
       - The radar antenna angle is stored absolute, decoupled from tank heading (BZONE.MAC:1561-1562).
+    completed: '2026-07-19'
     type: refactor
+    branch: feat/bz4-3-tank-animation
   - id: bz4-4
     title: Audio cue duration reconcile — BOING 456ms and the DISINT 104-vs-96ms ruling
     description: bz3-10 residuals from the NUMBER x FRCNT envelope-decode correction. (1) BOING currently ships 496ms but the true NUMBER x FRCNT value is 456ms (WP1). (2) DISINT ships 104ms per the epic AC / refuter DS1 figure, but the pure engine model gives 96ms (NUMBER x FRCNT) — rule the AC-vs-engine tension and land whichever is correct. Also reword the audio.ts comment that currently states a formula-contradicting 'one frame per record' claim for multi-record cues.

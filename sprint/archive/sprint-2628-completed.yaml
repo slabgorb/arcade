@@ -791,3 +791,8 @@ completed_stories:
     title: Seeded-stochastic volcano emitter — per-rock independently-staggered respawn
     points: 3
     completed: '2026-07-19'
+  - id: bz4-3
+    epic: bz4
+    title: Enemy tank animation fidelity — movement-tied tread counter and absolute antenna orientation
+    points: 3
+    completed: '2026-07-19'
