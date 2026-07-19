@@ -43,7 +43,8 @@ stories:
     description: "The centipede train core, transcribed from rev-4. CENTPC (CENTI4.MAC:456) initializes the wave-1 train into motion-object slots 0-11 (NCENT =12. is DECIMAL — trailing period, CENDEF.MAC:119) entering from the top. MOTION (CENTI4.MAC:1277) steps every live segment each frame: horizontal march, row-drop + direction reversal when OBSTAC (CENTI4.MAC:1689) reports a mushroom or field edge, head/body picture + animation state (stamps from cp1-3 — no new pixels). The poison branch — a poisoned mushroom triggers the head's vertical DIVE to the bottom zone — is transcribed and test-pinned here (MOTION owns it) but goes live only when the scorpion creates poison in cp3 (cp1-6 TEA finding: poison codes 0x38-0x3B unexercised in live play until then). ALSO OWNED HERE (cp1-5 carry-forward): the ROM's MOVE blocks the GUN from gliding into a mushroom cell via the same OBSTAC (JSR OBSTAC / BNE 5$, CENTI4.MAC:1500-1503 horizontal, 1535-1536 vertical) — cp1-5's movePlayer only bounds-clamps; this story transcribes OBSTAC once and both consumers (MOTION and MOVE) use it. Determinism: seeded rng only; the purity guard stays green."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-19'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
@@ -51,6 +52,7 @@ stories:
       - "Wave-1 train: 12 segments enter and march per MOTION; mushroom and edge encounters drop a row and reverse direction per OBSTAC; behaviour pinned by deterministic seeded tests."
       - "Poisoned-dive branch test-pinned from a debug-seeded poison field (no scorpion yet): the head plunges to the bottom zone per the transcribed MOTION poison path."
       - "The gun can no longer glide into a mushroom cell (horizontal or vertical), per MOVE's own OBSTAC calls; cp1-5's movement/TBLMT tests stay green."
+    completed: '2026-07-19'
   - id: cp2-4
     title: "Shooting the train — OVRLAP hit, EXPLOD animation, mushroom drop, NEWHD split, segment scoring"
     description: "Shot-vs-segment combat, transcribed from rev-4. OVRLAP (CENTI4.MAC:1741) resolves the shot-vs-segment collision as the ROM computes it. A hit segment EXPLODes (CENTI4.MAC:961 — explosion frames from cp1-3 stamps) and leaves a mushroom in its cell per the ROM's placement arithmetic. NEWHD (CENTI4.MAC:1643) promotes the segment behind the kill into a new head, splitting the train into independent trains. Head/body scoring is transcribed FROM REV-4 CODE — CENTIP.DOC's rev-1 scoring prose for head/body is diffed against the code FIRST per open question 4; code wins and any divergence is recorded in open-questions.md. The slot-14 single-shot economy (cp1-5) is unchanged."
@@ -116,3 +118,11 @@ stories:
       - "Unit/lifecycle tests pin the corrected acquire path (first request issued on the first qualifying click, no spurious exit-reset on acquire); cp2-2's 282-test suite and citations stay green."
       - "HUMAN re-test recorded in story docs: one click binds the mouse in a real browser tab from THIS checkout; Escape then one click re-binds."
     type: bug
+  - id: cp2-9
+    title: Frame-exact MOTION turn — implement the ROM's coast-march during descent (V&7==4 gate, CT-20/21) replacing the freeze-h simplification
+    points: 2
+    priority: p2
+    status: backlog
+    repos: centipede
+    workflow: tdd
+    type: refactor

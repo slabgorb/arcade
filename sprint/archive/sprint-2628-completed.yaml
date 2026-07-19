@@ -561,3 +561,8 @@ completed_stories:
     title: A music cue that arrives before its buffer decodes is lost forever — the first-ever visitor hears no space theme, because @arcade/shared/audio's startSource silently no-ops on an unloaded buffer
     points: 3
     completed: '2026-07-19'
+  - id: cp2-3
+    epic: cp2
+    title: "The train arrives — CENTPC init, MOTION march + descent, OBSTAC turns, poisoned dives; gun blocked by mushrooms (MOVE/OBSTAC)"
+    points: 5
+    completed: '2026-07-19'
