@@ -3,7 +3,7 @@ type: epic
 title: Centipede — foundation slice (scaffold, citations, picture ROMs, playfield, player+shot, render)
 description: "First epic of the centipede clone — the arcade's first RASTER game. DESIGN SPEC (user-approved 2026-07-18): centipede/docs/superpowers/specs/2026-07-18-centipede-clone-design.md. GROUND TRUTH: centipede/docs/rom-study/ (brief, subsystems, glossary, open-questions) — built with the rom-source-study skill from the vendored 1981 source (arcade/reference/atari-source/centipede, pin dbbe6de) + the MAME driver (~/Projects/mame/src/mame/atari/centiped.cpp, sparse read-only clone). Cite the dossier, do not re-derive it. RULINGS: faithful raster (rev-2 picture ROMs byte-gated against the vendored 136001.201/202 binaries — rev 4 shipped rev-2's chips); pointer-lock mouse as trackball analog + key fallback, both clamped by the ROM's TBLMT limit; 1-PLAYER + attract only (no 2P/SWAP, no timer options, no self-test, no COIN65 port — free-play start); playable-slice epics. TIMEBASE: one sim step per video frame, FRAME_HZ = 15750/263 = 59.88593 (MAME hedges 262 vs 263 — open question 1; the constant is one line to correct). Core model stays ROM-shaped: 30x32 PLYFLD grid, 16 motion-object slots (0-11 segments, 12 flea/ANT, 13 spider/BUG, 14 the SINGLE shot, 15 player). RADIX DISCIPLINE (rb4-1 lesson): the CPU modules inherit .RADIX 16 from CENDE4 via .INCLUDE; every transcribed constant carries a radix-cited comment and membership in the citations suite; cp1-2 lands before any constant is transcribed. ROADMAP AFTER THIS EPIC: cp2 centipede train (~15), cp3 spider/flea/scorpion (~13), cp4 waves/scoring/high-scores/attract (~10), cp5 POKEY sound via extract-audio gate (~8), cp6 lobby+R2+release+closing rom-fidelity-audit (~5). Demo at epic end: glide the bottom zone and shoot mushrooms out of an authentic field. Repo github.com/slabgorb/centipede is bootstrapped (develop default, gitflow) but has NO scaffold yet — cp1-1 creates it."
 priority: p1
-status: backlog
+status: done
 repos: centipede
 stories:
   - id: cp1-1
@@ -91,7 +91,7 @@ stories:
     description: "Canvas 2D shell drawing from cp1-3's data via an offscreen atlas: portrait 240x256 logical resolution (visible area per centiped.cpp:1800, cabinet ROT270), integer scaling with letterbox, color-RAM init semantics from CLRCH (CENTI4.MAC:879), score/level text from the ROM's own character tiles (no shared /font). Wire the demo page: mouse+keys moving the gun, shooting mushrooms out of the seeded field — the epic's demo. Add the render source-wiring test using the repo ?raw idiom (reviewer-blessed on tempest tp1-39)."
     points: 3
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-07-19'
     repos: centipede
     workflow: tdd
@@ -100,3 +100,5 @@ stories:
       - "Logical resolution and rotation cited (centiped.cpp:1800, ROT270); rendering is integer-scaled with no smoothing (crisp pixels)."
       - "CLRCH-derived palette applied and cited; no invented colors."
       - "Render source-wiring test green; screenshot committed in the story docs as the epic demo artifact."
+    completed: '2026-07-18'
+completed: '2026-07-18'

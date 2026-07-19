@@ -12,6 +12,7 @@ completed_epics:
   - sw5
   - bz3
   - tp1
+  - cp1
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -529,4 +530,9 @@ completed_stories:
     epic: cp1
     title: "Player + single shot — bottom-zone movement, TBLMT clamp, slot-14 fire, shot-vs-mushroom collision"
     points: 5
+    completed: '2026-07-18'
+  - id: cp1-6
+    epic: cp1
+    title: "Render shell — tile atlas, portrait integer scaling, CLRCH colors, ROM-tile text, playable demo page"
+    points: 3
     completed: '2026-07-18'
