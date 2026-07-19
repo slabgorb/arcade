@@ -28,7 +28,9 @@ stories:
     description: "On the RATE YOURSELF / SELECT START LEVEL screen, the on-screen prompt reads PRESS FIRE TO SELECT (drawn by drawSelect in src/shell/render.ts) but the sim's select->playing transition reads input.start (Enter), NOT input.fire (src/core/sim.ts, case select: if (input.start) startGameAtLevel(...)). So on the select screen pressing FIRE (Space) does nothing; the level starts only on Enter. Found in-game during tp1-39 verification (Playwright drive: Space lit the prompt but never advanced; Enter did). The PRESS FIRE TO SELECT string was shipped by tp1-20 as a ROM-authentic message, which suggests the arcade cabinet started the selected level on the FIRE button — making the BEHAVIOUR (Enter-only) the bug, not the prompt. Decide against the ROM."
     points: 1
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-07-19'
+    branch: fix/tp2-2-select-fire-input
     repos: tempest
     workflow: trivial
     acceptance_criteria:
