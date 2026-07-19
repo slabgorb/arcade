@@ -17,6 +17,7 @@ completed_epics:
   - sw6
   - lb2
   - rb4
+  - SH2
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -663,5 +664,110 @@ completed_stories:
   - id: rb4-18
     epic: rb4
     title: The propeller flickers distractingly — it is drawn every frame; replicate the ROM's frame-skip/blank draw cadence (RBGRND draw gating) so it reads as spin, not strobe
+    points: 3
+    completed: '2026-07-19'
+  - id: cp2-9
+    epic: cp2
+    title: Frame-exact MOTION turn — implement the ROM's coast-march during descent (V&7==4 gate, CT-20/21) replacing the freeze-h simplification
+    points: 2
+    completed: '2026-07-19'
+  - id: SH2-1
+    epic: SH2
+    title: Author ADR-0002 (font strategy) and ADR-0003 (render-surface extraction) — record the decisions and amend ADR-0001's scope guard
+    points: 2
+    completed: '2026-07-08'
+  - id: SH2-2
+    epic: SH2
+    title: Stand up pure @arcade/shared/font (promote tempest's VGMSGA stroke font) + purity guard; re-point tempest to the shared module
+    points: 5
+    completed: '2026-07-09'
+  - id: SH2-3
+    epic: SH2
+    title: Glyph audit across the three canvas games + extend the shared stroke table to cover every rendered character
+    points: 3
+    completed: '2026-07-09'
+  - id: SH2-4
+    epic: SH2
+    title: asteroids — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors
+    points: 3
+    completed: '2026-07-09'
+  - id: SH2-5
+    epic: SH2
+    title: star-wars — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors
+    points: 3
+    completed: '2026-07-10'
+  - id: SH2-6
+    epic: SH2
+    title: battlezone — migrate HUD/framing text off the Vector Battle TTF onto @arcade/shared/font stroke-vectors (evolves bz2-2)
+    points: 3
+    completed: '2026-07-10'
+  - id: SH2-7
+    epic: SH2
+    title: lobby font — DECIDE and implement (canvas stroke-vector labels vs a self-hosted licensed webfont) to drop the non-commercial TTF
+    points: 5
+    completed: '2026-07-19'
+  - id: SH2-8
+    epic: SH2
+    title: Extract @arcade/shared/glow (browser subpath) — withGlow + glowPolyline superset — and migrate the three flat games
+    points: 5
+    completed: '2026-07-10'
+  - id: SH2-9
+    epic: SH2
+    title: tempest conforms to @arcade/shared/glow without regressing tube depth
+    points: 3
+    completed: '2026-07-10'
+  - id: SH2-10
+    epic: SH2
+    title: Extract @arcade/shared/view (browser) — resizeToDisplay + pure letterbox — and fold asteroids margin.ts + battlezone viewport.ts
+    points: 5
+    completed: '2026-07-11'
+  - id: SH2-11
+    epic: SH2
+    title: Extract the "additional pass" compositor + phosphor pass; migrate tempest's phosphor+shake through it (tempest sole consumer)
+    points: 5
+    completed: '2026-07-19'
+  - id: SH2-12
+    epic: SH2
+    title: Extract the @arcade/shared pause gate + browser esc-overlay from battlezone (pure /pause + browser /esc-overlay subpaths)
+    points: 3
+    completed: '2026-07-10'
+  - id: SH2-13
+    epic: SH2
+    title: Consistent keyboard high-score entry across the cabinet — type initials + Backspace (tempest mousewheel and star-wars/battlezone auto-tag retired; asteroids typing is the reference)
+    points: 13
+    completed: '2026-07-10'
+  - id: SH2-14
+    epic: SH2
+    title: Adopt @arcade/shared pause + esc-overlay across all five canvas games (consumes SH2-12's v0.9.0)
+    points: 5
+    completed: '2026-07-11'
+  - id: SH2-15
+    epic: SH2
+    title: red-baron adopts @arcade/shared/loop — replace main.ts's duplicated hand-rolled fixed-step accumulator (the accumulator/SIM_TIMESTEP_S while-loop, main.ts:237-288) with the canonical advanceFixedSteps/createLoop; behaviour-preserving (same calc-frame cadence, findings §1 ÷6 trap), /loop already published (star-wars+asteroids consume it) and red-baron already pins @arcade/shared (math3d+rng)
+    points: 2
+    completed: '2026-07-19'
+  - id: SH2-16
+    epic: SH2
+    title: Stand up @arcade/shared/audio (browser subpath) — extract the SFX voice-stealing engine + purity guard; re-point tempest
+    points: 5
+    completed: '2026-07-11'
+  - id: SH2-17
+    epic: SH2
+    title: Migrate star-wars, asteroids onto @arcade/shared/audio (consumes SH2-16) [battlezone descoped 2026-07-11 — synthesis engine, not a sample-engine consumer]
+    points: 5
+    completed: '2026-07-11'
+  - id: SH2-19
+    epic: SH2
+    title: "Extract @arcade/shared/modelview — the contact-sheet layout math (cellRects / modelBounds / fitDistance) now that a THIRD consumer proves the duplication. tempest's own modelView.ts comment SET this threshold: 'Two tiny copies of a grid partitioner do not justify a cross-repo shared library; revisit extraction at a third consumer.' red-baron's ROM picture sheet is that third consumer. Today: cellRects x3 (star-wars src/core/modelView.ts, tempest src/core/modelView.ts, red-baron src/tools/sheetLayout.ts); modelBounds + fitDistance x2 (star-wars core, red-baron tools). NOT dev-tool-only — star-wars src/shell/debug-overlay.ts consumes modelBounds for a real game surface. Adopt in all three via the publish -> release -> repin dance."
+    points: 5
+    completed: '2026-07-19'
+  - id: SH2-20
+    epic: SH2
+    title: '@arcade/shared/audio adopts the shared synth context bootstrap — kill the THIRD copy of the substrate and its per-gesture AudioContext leak (audio.ts:103-111 orphans a live context when createGain() throws; resume() is wired to every gesture). Internal refactor, no public API change; star-wars + asteroids must stay behaviour-identical.'
+    points: 3
+    completed: '2026-07-19'
+  - id: SH2-21
+    epic: SH2
+    title: "Extract the fake AudioContext test harness — it is now hand-written FOUR times (battlezone/tests/shell/audio.test.ts, red-baron/tests/shell/audio.test.ts, arcade-shared/tests/synth.test.ts, plus a fifth divergent one in arcade-shared/tests/audio.test.ts for the sample player). SH2-18 grew the duplication rather than shrinking it, and TEA/Reviewer both flagged it. The harness is load-bearing, not incidental: the whole SH2-18 bug was invisible until battlezone's fake was upgraded to model a CLOSED context faithfully (close() really closes; every factory throws InvalidStateError synchronously; resume() rejects) — a cabinet with a cosmetic fake CANNOT express the failure that matters. Ship one faithful fake (a testing subpath or tests/helpers export) so a new cabinet inherits the teeth instead of re-deriving them, and so a fake can never silently drift weaker than the contract it guards."
     points: 3
     completed: '2026-07-19'

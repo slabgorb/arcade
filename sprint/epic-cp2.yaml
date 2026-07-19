@@ -132,9 +132,11 @@ stories:
     title: Frame-exact MOTION turn — implement the ROM's coast-march during descent (V&7==4 gate, CT-20/21) replacing the freeze-h simplification
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-19'
     repos: centipede
     workflow: tdd
+    completed: '2026-07-19'
     type: refactor
   - id: cp2-10
     title: The head factory — NEWHD spawns fresh heads into the player zone while the train bounces at the bottom
@@ -159,10 +161,10 @@ stories:
     status: backlog
     repos: centipede
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "No LEVEL text renders in any state (attract, play, death, game-over); the render source-text scans and HUD pins are updated, none weakened."
       - "Suite + citations + build green; core untouched."
+    type: bug
   - id: cp2-12
     title: HUD above the playfield — score/high-score in the reserved top rows, not inside the field
     description: "USER-REPORTED (2026-07-19, live play + reference screenshot of the real cabinet): the score belongs ABOVE the gamefield, not within it. ROM ANCHORS (verified 2026-07-19): the ENTIRE HUD lives on the single top row v=0x1F (addr&0x1F==0x1F, PM-1 geometry; the row MUSHER refuses per PM-27, CENTI4.MAC:1622 'CMP I,1F ;TOP ROW') — NOT rows {0,1}, which are the bottom/player zone (PM-12/PM-28). Layout on v=0x1F, upright (all CK* mirror vars zeroed, CENTI4.MAC:742-751): P1 score 6 digits at 0x041F h0-5 (UPSCRE, CENTI4.MAC:2632-2645); P1 LIVES AS SHIP/GUN ICONS at 0x04DF h6-11 (DLIVES, :920-932 — 'LDA I,1F ;PICTURE OF SHIP'); high score at 0x059F h12-17 (:2663-2676); P2 lives at 0x065F h18-23 (:939-944); game-time/P2-score at 0x071F h24-29 (:2649-2658, colon 0x2E at :2658). Digit/glyph writers advance +0x20/char (CHAR, CENIR4.MAC:212). USER CONFIRMED 2026-07-19: lives-as-gun-icons is REQUIRED scope, not optional — and the ROM mandates it anyway (DLIVES draws ship pictures, never digits). Move the shell HUD to v=0x1F per these addresses; playfield rendering unchanged. New claims for the routine addresses (net-new — PM-1/PM-27 cover only geometry/reservation). Pairs with cp2-11 (same files)."
@@ -171,11 +173,11 @@ stories:
     status: backlog
     repos: centipede
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "P1 score (h0-5), high score (h12-17), and P1 lives as gun icons (h6-11, USER-REQUIRED) render on the v=0x1F HUD row per UPSCRE/DLIVES addresses, cited; no HUD glyph ever overlaps the playable field."
       - "The reserved-row invariant is pinned: a test asserts the HUD row is exactly v=0x1F and mushroom-legal rows exclude it (PM-27); lives icons decrease/increase with the life count."
       - "Screenshot from THIS checkout committed showing the arcade-matching layout; suite + citations + build green."
+    type: bug
   - id: cp2-13
     title: Per-round colour cycling — transcribe the ROM's per-wave palette and apply it on wave change
     description: "USER-REPORTED (2026-07-19): colours should change per round, as the arcade does. Pulled forward from cp4 by user instruction (the wave-1 loop shipped in cp2-5, so rounds already advance). ROM ANCHORS (verified 2026-07-19): the cycle is the LCOLOR index (CENDE4.MAC:208, one byte per player) advanced in the IRQ at CENIR4.MAC:310-325 — '+3 per wave' stepping through the 42-byte (decimal, CMP I,42.) triple-table 99$ (CENTI4.MAC:898-901), wrapping to 0 → exactly 14 distinct palettes cycling by round. The advance flag (bit7, ORA I,80) is set at new-wave CENTPC (CENTI4.MAC:461-463 ';TIME TO CHANGE COLORS'); 2-player swap uses bit6 (:715-717); game start resets to scheme 0 (INITSC :1201-1209 → JSR CLRCH with X=0). CLRCH (:879-895) loads 99$[X],[X+1],[X+2] into the COLORR pens (body/legs/eyes + mushroom/gun/alphanumerics — static mapping already claimed CL-1..CL-11; CL-11 explicitly deferred THIS cycling, which this story now claims). 0x06/0x07 RESOLVED AT THE TABLE: 99$ contains exactly one 0x06 (CENTI4.MAC:900, scheme X=30, the [X+2] eyes/mushroom-outline/alphanumerics pen) and NO 0x07 anywhere — the ROM stores 0x06; the decode to RGB is adapter policy (MAME centiped_v.cpp:211 corroboration per CL-1/CL-10). Any 0x07 in our CLRCH transcription is uncited and must be corrected to 0x06 with citation. Deterministic: colour = pure function of wave number + player; no rng."
@@ -184,8 +186,8 @@ stories:
     status: backlog
     repos: centipede
     workflow: tdd
-    type: feature
     acceptance_criteria:
       - "The LCOLOR advance (+3, wrap at 42, 14 palettes; bit7 trigger at CENTPC) transcribed with radix-cited comments + claims entries filling CL-11's deferral; citations green; colour = pure function of wave number + player, pinned across at least waves 1-4 and the wrap at palette 14 (debug-seeded wave state acceptable)."
       - "On wave change in live play the field/enemy colours visibly change per the ROM's cycle; screenshot pair (wave 1 vs wave 2) from THIS checkout committed."
       - "The clone's CLRCH table matches 99$ byte-for-byte (one 0x06 at scheme X=30, NO 0x07 anywhere — any 0x07 is uncited and corrected); no invented colours (the denylist scans stay green)."
+    type: feature

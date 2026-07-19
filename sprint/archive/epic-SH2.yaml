@@ -3,7 +3,7 @@ type: epic
 title: Shared render surface — extract font/glow/view/compositor into @arcade/shared and converge the cabinet on one vector treatment
 description: "Render-surface extraction epic arising from the 2026-07-08 cross-repo render survey (four games + lobby) and specified in docs/superpowers/specs/2026-07-08-shared-render-extraction-design.md. Follows the SH epic (math3d/rng/highscore/loop, all done) and resolves the font strategy the SH epic explicitly deferred to ADR-0002. The cabinet converges on ONE render treatment: choose best-of-show at each seam and apply it everywhere; tempest joins the shared code path like every other game but is never flattened (the shared glow primitive is a superset that carries tempest's tube gradient + multi-pass depth). Guiding rule: share the VERB (the identical mechanism), not the NUMBERS (per-cabinet constants stay in the games). Charter amendment (ADR-0003): @arcade/shared gains explicitly-flagged BROWSER subpaths (glow/view/compositor/phosphor) fenced from the pure core (math3d/rng/highscore/loop/font) by a source-regex purity guard; font is PURE (glyph geometry + layout, no DOM) so it joins the pure core. Font decision (ADR-0002): retire the non-commercial Vector Battle TTF cabinet-wide in favour of tempest's ROM stroke-vector font (VGMSGA) — a deliberate shared-visual-language choice over per-cabinet HUD-font fidelity; this supersedes the TTF approach that done stories bz2-2/A2-2 established. Afterglow PORTING to the other three cabinets is OUT OF SCOPE (deferred): the compositor makes phosphor a registered pass, and tempest's existing phosphor+shake is the sole first consumer, proving the extension point with working code and zero new behaviour. arcade-shared tests are untyped and run in a node env — pin contracts at runtime or via source-text regex, never compile-only annotations."
 priority: p2
-status: backlog
+status: done
 repos: arcade-shared
 stories:
   - id: SH2-1
@@ -359,3 +359,4 @@ stories:
     completed: '2026-07-15'
     type: refactor
     review_verdict: approved
+completed: '2026-07-19'
