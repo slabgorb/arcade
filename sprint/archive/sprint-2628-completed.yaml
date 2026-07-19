@@ -525,3 +525,8 @@ completed_stories:
     title: "Playfield + mushrooms — the 30x32 grid, seeding, damage states, scoring hooks, RESTOR sweep"
     points: 5
     completed: '2026-07-18'
+  - id: cp1-5
+    epic: cp1
+    title: "Player + single shot — bottom-zone movement, TBLMT clamp, slot-14 fire, shot-vs-mushroom collision"
+    points: 5
+    completed: '2026-07-18'

@@ -76,7 +76,7 @@ stories:
     description: "Player gun movement inside the ROM's bottom-zone rectangle (MOVE, CENTI4.MAC:1477), trackball movement limited per TBLMT (CENTI4.MAC:2514), single-shot firing (CHECK FIRE SWITCH, CENTI4.MAC:2099; slot 14 — ONE shot in flight is authentic), shot flight and grid-cell collision with mushrooms as the ROM computes it. Shell input: pointer-lock mouse deltas quantized to trackball counts + arrow/WASD synthesizing counts at the clamp rate; both paths feed the same core input contract. Trackball hardware context: counters read once per IRQ, 240x/s (centiped.cpp:514) — the shell aggregates per frame."
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-07-19'
     repos: centipede
     workflow: tdd
@@ -85,6 +85,7 @@ stories:
       - "Exactly one shot in flight ever; firing while the shot lives is ignored, matching the ROM's slot-14 model."
       - "Shot-vs-mushroom collision resolves on grid cells per the ROM's arithmetic (cited), covered by moving-shot tests (asteroids lesson: never test only stationary projectiles)."
       - "Core input contract is device-agnostic counts; mouse and keyboard shells both drive it in a shell test."
+    completed: '2026-07-18'
   - id: cp1-6
     title: "Render shell — tile atlas, portrait integer scaling, CLRCH colors, ROM-tile text, playable demo page"
     description: "Canvas 2D shell drawing from cp1-3's data via an offscreen atlas: portrait 240x256 logical resolution (visible area per centiped.cpp:1800, cabinet ROT270), integer scaling with letterbox, color-RAM init semantics from CLRCH (CENTI4.MAC:879), score/level text from the ROM's own character tiles (no shared /font). Wire the demo page: mouse+keys moving the gun, shooting mushrooms out of the seeded field — the epic's demo. Add the render source-wiring test using the repo ?raw idiom (reviewer-blessed on tempest tp1-39)."
