@@ -807,3 +807,8 @@ completed_stories:
     title: Remove the LEVEL indicator — the arcade HUD shows no level text
     points: 1
     completed: '2026-07-19'
+  - id: cp2-12
+    epic: cp2
+    title: HUD above the playfield — score/high-score in the reserved top rows, not inside the field
+    points: 2
+    completed: '2026-07-19'

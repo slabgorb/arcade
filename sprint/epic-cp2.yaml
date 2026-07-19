@@ -174,7 +174,7 @@ stories:
     description: "USER-REPORTED (2026-07-19, live play + reference screenshot of the real cabinet): the score belongs ABOVE the gamefield, not within it. ROM ANCHORS (verified 2026-07-19): the ENTIRE HUD lives on the single top row v=0x1F (addr&0x1F==0x1F, PM-1 geometry; the row MUSHER refuses per PM-27, CENTI4.MAC:1622 'CMP I,1F ;TOP ROW') — NOT rows {0,1}, which are the bottom/player zone (PM-12/PM-28). Layout on v=0x1F, upright (all CK* mirror vars zeroed, CENTI4.MAC:742-751): P1 score 6 digits at 0x041F h0-5 (UPSCRE, CENTI4.MAC:2632-2645); P1 LIVES AS SHIP/GUN ICONS at 0x04DF h6-11 (DLIVES, :920-932 — 'LDA I,1F ;PICTURE OF SHIP'); high score at 0x059F h12-17 (:2663-2676); P2 lives at 0x065F h18-23 (:939-944); game-time/P2-score at 0x071F h24-29 (:2649-2658, colon 0x2E at :2658). Digit/glyph writers advance +0x20/char (CHAR, CENIR4.MAC:212). USER CONFIRMED 2026-07-19: lives-as-gun-icons is REQUIRED scope, not optional — and the ROM mandates it anyway (DLIVES draws ship pictures, never digits). Move the shell HUD to v=0x1F per these addresses; playfield rendering unchanged. New claims for the routine addresses (net-new — PM-1/PM-27 cover only geometry/reservation). Pairs with cp2-11 (same files)."
     points: 2
     priority: p2
-    status: in_review
+    status: done
     started: '2026-07-19T18:35:15Z'
     repos: centipede
     workflow: tdd
@@ -182,6 +182,7 @@ stories:
       - "P1 score (h0-5), high score (h12-17), and P1 lives as gun icons (h6-11, USER-REQUIRED) render on the v=0x1F HUD row per UPSCRE/DLIVES addresses, cited; no HUD glyph ever overlaps the playable field."
       - "The reserved-row invariant is pinned: a test asserts the HUD row is exactly v=0x1F and mushroom-legal rows exclude it (PM-27); lives icons decrease/increase with the life count."
       - "Screenshot from THIS checkout committed showing the arcade-matching layout; suite + citations + build green."
+    completed: '2026-07-19'
     type: bug
   - id: cp2-13
     title: Per-round colour cycling — transcribe the ROM's per-wave palette and apply it on wave change
