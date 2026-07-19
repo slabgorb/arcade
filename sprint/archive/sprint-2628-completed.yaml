@@ -515,3 +515,8 @@ completed_stories:
     title: "Picture-ROM transcription — decode 136001.201/202 into src/core/pictures.ts, byte-gated against the chips"
     points: 5
     completed: '2026-07-18'
+  - id: rb4-15
+    epic: rb4
+    title: THE BLIMP IS THE WRONG MACHINE — an APPROACHING airship (Z-closing, N.PLNZ-gated, ÷4 fire, GMLEVL>=2), not a lateral drifter
+    points: 8
+    completed: '2026-07-18'
