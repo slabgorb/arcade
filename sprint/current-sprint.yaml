@@ -11,5 +11,6 @@ epics:
   - sw7
   - cp2
   - cp3
+  - cp4
   - td1
   - jt2
