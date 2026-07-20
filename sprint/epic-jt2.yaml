@@ -101,7 +101,8 @@ stories:
     description: "The epic's demo bar: wave 1 (and onward) playable against the buzzards on 5279. Shell renders enemies (buzzard + rider frames by facing/animation from jt1-3's data), eggs (bounce/settle/hatch states), and the transporter materialisation, through the existing atlas path; kill/egg score events surface as console/dev-overlay output only (scoring display is jt4; text seam renders no fonts). This story CONSUMES ENTITY_RECORDS for the enemy/egg frames — the jt1-3 count floors owed on those tables land here (ENTITY_RECORDS, PALETTES if consumed anew). Render source-wiring test per the repo ?raw idiom (jt1-6 precedent). Screenshot committed as the epic demo artifact, taken from THIS checkout with port-ownership proof (lsof or spare port — strictPort alone is porous, td1-1; the td1-3 lesson: a screenshot that predates the code it demos misrepresents the renderer)."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -109,6 +110,7 @@ stories:
       - "Enemy/egg/transporter frames render from transcribed data only (no invented pixels/colors — denylist scan green); ENTITY_RECORDS (+ any newly consumed table) carry count floors, proven red once by truncation."
       - "Render source-wiring test green; screenshot committed with port-ownership proof recorded in the story notes."
       - "npm test fully green including citations and purity guard."
+    completed: '2026-07-20'
   - id: jt2-8
     title: Correct the OSTBO wrong-prose — AC-1 in epic-jt2.yaml and docs/rom-study/subsystems.md say 'fraction included'; the ROM compares WHOLE PIXELS + PLANTZ (fraction EXCLUDED, PPOSY offset +0 vs the flight core's +1). Independently re-derived twice in jt2-3 (TEA triangulation + rule-checker item-0, quoted lines RAMDEF.SRC:174, JOUSTRV4.SRC:5008-5009, 6494, 6071-6072). Fix the dossier prose at subsystems.md:137-139; the corrected law is already pinned by tests/joust.test.ts + JT23 claims. Required by the jt2-3 Reviewer (tracked, not lost).
     description: "THREE wrong-prose corrections from jt2 reviews, all ROM-re-derived twice and already pinned green by tests — this chore fixes PROSE only. (1) OSTBO: AC-1 in epic-jt2.yaml (jt2-3 entry) and joust docs/rom-study/subsystems.md:137-139 say 'fraction included'; the ROM compares WHOLE PIXELS + PLANTZ (fraction EXCLUDED, PPOSY offset +0 vs the flight core's +1 — RAMDEF.SRC:174, JOUSTRV4.SRC:5008-5009, 6494, 6071-6072). (2) REMOUNT EDGE: jt2-4's description + AC-3 + epic law say 'NEARER' edge; the ROM enters from the FARTHER edge (JOUSTRV4.SRC:3270-3279, ELEFT/ERIGHT EQUs :38-39 → entry X −9/+291). (3) WAVTBL ROW COUNT: the epic description ('full 80-row WAVTBL decode', also in the jt2-5 entry + carried-seeds item 5 + context files) is wrong — the table is 90 ROWS (WAVTBL :2438 to WTBEND :2546, 90 FCB rows; WTBRST=row 81 so the loop cycles rows 81-90; the ROM's own 'WAVE 80' comment on the last row is the source's copy-paste artifact). Corrected laws pinned by tests/joust.test.ts (JT23), tests/egg.test.ts (JT24-030..033), tests/wave-source.test.ts (90-row byte-gate). Required by the jt2-3/jt2-4/jt2-5 Reviewers (tracked, not lost)."
@@ -118,3 +120,10 @@ stories:
     repos: joust
     workflow: trivial
     type: chore
+  - id: jt2-9
+    title: "Playtest follow-up (user, 2026-07-20): ledge seat + turning/facing + joust-facing feel + render polish. (1) LEDGE SEAT: the ground Y lands sprites too low on ALL ledges — feet clip through platform tops (user screenshots in the jt2-7 archive); derive the correct per-ledge seat Y from the dossier's platform/collision data, don't eyeball it. (2) TURNING: direction input never flips facing — port the ROM's turn mechanics (air PFACE flip; ground turn through the jt2-3 ground state machine's onMinus/skid chain, which is landed and tested but unreachable from input) and FLIP SPRITES at the blit by facing (blitOp draws right-facing only; the 'Facing is applied at the blit' comment in demo.ts is stale — fix it). (3) JOUST-FACING FEEL: colliding backwards wins the joust even when faced the wrong way — jt2-3's OSTBO transcription is height-only (facing-independent), so verify against the ROM before changing ANY law (ROM is canonical; the likely real fix is (2) so the player can point the right way); document the ruling either way. (4) Reviewer round-2 checks: per-tier z-depth (single destY>=0xC0 threshold is an approximation — dossier-cite the real per-platform depth), mount+rider blit alignment, run-frame cadence (rail pins >=2 distinct BRRUN frames, not the gait speed — tune to the ROM/feel). (5) Leftovers: cap/drain DemoState.events once consumed; BWNG1R/BWNG2R dangling collision-table refs (jt1-3 debt)."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd

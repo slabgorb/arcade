@@ -958,3 +958,8 @@ completed_stories:
     title: Fold the AST purity scanner back to centipede and tempest — six false negatives each
     points: 3
     completed: '2026-07-20'
+  - id: jt2-7
+    epic: jt2
+    title: "Demo — wave 1 vs the buzzards: shell rendering for enemies/eggs/transporters, the playable slice"
+    points: 2
+    completed: '2026-07-20'
