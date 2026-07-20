@@ -842,3 +842,8 @@ completed_stories:
     title: R10 Attract mode and starfield — rotating INS/SCR pages, intro crawl, in-flight coaching messages, the WSSTAR starfield
     points: 10
     completed: '2026-07-19'
+  - id: jt1-4
+    epic: jt1
+    title: "The arena — cliff placements, landing tables + snap Ys, lava + bridge, wrap bounds, ceiling/floor"
+    points: 5
+    completed: '2026-07-19'
