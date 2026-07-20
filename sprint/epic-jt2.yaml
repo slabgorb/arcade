@@ -86,7 +86,8 @@ stories:
     description: "Entry into the arena: 4 transporter pads tied to platform tiers (TR1ID-TR4ID, JOUSTRV4.SRC:5587-5590); spawn requires an empty screen third (SELARE, JOUSTRV4.SRC:6413-6424); players hold service tickets AHEAD of enemies (NPSERV/LPSERV, JOUSTRV4.SRC:5615-5674); safety is a TIMED MATERIALISATION aborted by any control input — not invulnerability (JOUSTRV4.SRC:5841-5892, 5923-5925). Player spawn constants: P1 X=100 facing right on the ostrich; P2 X=200 facing left on the stork (JOUSTRV4.SRC:1020-1039). Enemies entering a wave arrive via the pads under the same service; this is what jt2-5's spawn counts flow through. The materialisation state is a process nap pattern (jt2-1's machinery), and its abort-on-control law needs the input contract, both already landed."
     points: 2
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-20'
     repos: joust
     workflow: tdd
     acceptance_criteria:
