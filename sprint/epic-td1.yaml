@@ -171,3 +171,41 @@ stories:
       - Every new assertion is mutation-checked and observed RED before being accepted, including the both-pins-in-server-preview-bare case that td1-7 proved slips past an occurrence count.
       - All four suites and builds stay green, and each repo still passes standalone (a bare clone must not need the orchestrator).
     type: chore
+  - id: td1-10
+    title: just test-all and build-all mask every game's failure but the last — just ci prints CI passed with six of seven red
+    description: |-
+      Found by the td1-8 TEA (2026-07-20) while writing the RED phase for the `serve` recipe, and independently reproduced by SM before filing. PRE-EXISTING, not created by td1-8. Filed separately rather than folded in, for the same reason td1-8 filed its own config-type-check finding out: td1-8 is a 2-point story that already carries a real behavioural fix, and a masked-exit-code defect in the CI gate deserves its own RED phase rather than a footnote.
+
+      THE DEFECT (justfile:28-33, and :126-127):
+
+        test-all:
+            @for g in {{games}}; do echo "==> $g"; (cd {{root}}/$g && npm test); done
+        build-all:
+            @for g in {{games}}; do echo "==> $g"; (cd {{root}}/$g && npm run build); done
+        ci: test-orchestrator test-all build-all
+            @echo "CI passed!"
+
+      A `for` loop's exit status is the status of its LAST iteration. These recipe bodies are a single shell line with no `set -e` and no per-iteration status tracking, so every game's failure except the last is discarded.
+
+      REPRODUCED (exact shape of the recipe body, SM-verified 2026-07-20):
+        for g in a b c; do (exit 3 on a); done  -> exit 0    FIRST failure MASKED
+        for g in a b c; do (exit 3 on b); done  -> exit 0    MIDDLE failure MASKED
+        for g in a b c; do (exit 3 on c); done  -> exit 3    only the LAST propagates
+
+      `games := "tempest star-wars asteroids battlezone red-baron centipede joust"`, so ONLY joust's failure is ever visible. Six of the seven games can be fully red and `just ci` still prints "CI passed!".
+
+      WHY p1: this is strictly worse than td1-8's blast radius. td1-8 makes a dev-loop launcher look healthy; this makes a CI GATE report success. It is the same failure shape the whole td1 epic keeps circling — a check that cannot fail — sitting on the recipe most likely to be trusted as a release preflight. Note `just release` / `release-all` gate on each repo's own tests via scripts/release.mjs and do NOT route through `just ci`, so this is not believed to have shipped a broken release; confirm that during the fix rather than assuming it.
+
+      SUGGESTED FIX: track a failure flag per iteration, print a NAMED summary of which games failed, and exit non-zero if any did. Same discipline td1-8 lands for `serve` — a named summary line, not just a non-zero code. Consider whether test-all should fail fast or run all games and report the full set (the latter is more useful for a fleet sweep).
+
+      Also worth checking while here: `status`, `install-all` and any other `@for g in ...` recipe in the justfile share this shape. Sweep them all rather than fixing only the two named here.
+    points: 2
+    priority: p1
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - Every multi-repo for-loop recipe in the justfile propagates failure — a failing game in ANY position (first, middle, last) makes the recipe exit non-zero, proven for all three positions.
+      - A failed sweep names which games failed rather than only exiting non-zero, and just ci cannot print CI passed when any game is red.
+      - The all-green path still exits 0, so a fix that always fails cannot pass.
+    type: bug
