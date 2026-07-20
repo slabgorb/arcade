@@ -827,3 +827,8 @@ completed_stories:
     title: "Citation checker + claims JSON — the dossier becomes machine-verified before any constant is transcribed"
     points: 3
     completed: '2026-07-19'
+  - id: cp3-1
+    epic: cp3
+    title: "The spider (BUG, slot 13) — BUGOFF/BUGMV movement, mushroom eating, contact death, proximity scoring"
+    points: 5
+    completed: '2026-07-19'
