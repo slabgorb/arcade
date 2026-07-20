@@ -49,13 +49,16 @@ stories:
     description: "Two tests in the ORCHESTRATOR suite (tests/extract-audio.test.mjs, run with node --test, NOT vitest) have been red since at least 2026-07-19 and are unowned: 'audit: tempest sfx — link 5 catches the 4 sounds whose shipped bake omits the ROM terminal-zero write' and 'audit: red-baron — link 5 catches the 3 inverted envelopes (TP/BN/WP/TH synthesised, TK real)'. Confirmed still failing 2026-07-20 (19 pass / 2 fail of 21). First observed by jt1-1's TEA, who PROVED them pre-existing by moving his own new test file aside and re-running — so they are not attributable to any jt1 story (the develop-red misattribution trap; TEA's control is the right method to repeat). They depend on the gitignored vendored Atari source/audio assets, so the leading hypothesis is an ENVIRONMENT gap in this checkout rather than a code defect — but that is a hypothesis, not a finding: nobody has actually opened them. Triage first (env vs real regression), then either fix, or make the tests skip loudly when their inputs are absent (the jt1 discipline: a test that silently passes without its inputs is worse than one that skips)."
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: .
     workflow: tdd
     acceptance_criteria:
       - 'Both failures are diagnosed and the diagnosis is recorded: environment gap vs real regression, with the evidence that distinguishes them.'
       - Either the audits pass, or they SKIP self-describingly when the vendored assets are absent — never a silent pass; the orchestrator suite is green either way.
+    completed: '2026-07-20'
     type: bug
+    review_verdict: approved
   - id: td1-5
     title: Close the jt1 carried-open verification gaps — render internals and the text-match vacuity sweep
     description: "Two items the jt1 reviews explicitly declared UNVERIFIED rather than implying coverage. Both are recorded in the archived sessions; this story closes them. (1) RENDER INTERNALS: the jt1-6 review's edge-hunter was outstanding at write-up, so the atlas stream/raster discriminant, ragged-row reshape, integer scaling/smoothing, palette denylist and CSRC5L 13-of-14 rested on 'suite green + SM eyeball' — and the specialist LATER found a real defect there (reshapeRagged, fixed in joust#12). The class deserves a real check now: adversarial probing of the atlas/blit path, and consideration of a known-good pixel comparison for geometric fidelity (the Reviewer's point: a human eye reads monotonic skew as texture). (2) THE TEXT-MATCH VACUITY SWEEP: carried open since jt1-5. At least one doc/text assertion was found to be keyword-proximity rather than a content check (the arena-header case: it bites for the exact old sentence but its positive assertions accept vague prose). TEA flagged whole-file text matches passing vacuously THREE times across the epic. Sweep every text/source-scanning assertion in the joust suite and mutation-check it: does it fail on plausible wrong content, or only on the literal string someone happened to mutate?"

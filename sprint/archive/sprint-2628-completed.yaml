@@ -898,3 +898,8 @@ completed_stories:
     title: "Process scheduler core — the tagged-union process list, frame naps, two classes, kill by id+mask, per-frame RNG stir"
     points: 2
     completed: '2026-07-20'
+  - id: td1-4
+    epic: td1
+    title: Triage the two orchestrator extract-audio reds — tempest/red-baron link-5 audits
+    points: 2
+    completed: '2026-07-20'
