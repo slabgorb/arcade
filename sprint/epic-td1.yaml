@@ -146,3 +146,25 @@ stories:
     repos: .
     workflow: tdd
     type: bug
+  - id: td1-9
+    title: Four repos carry no scaffold suite at all — lobby, tempest, star-wars, asteroids have no config guard of any kind
+    description: |-
+      Filed by the td1-7 Dev + Reviewer (2026-07-20) as the recorded answer to td1-7's mandated OPEN DECISION, and made durable here because the decision otherwise lived only in the gitignored .session/ file (caught by the td1-7 reviewer-rule-checker as its single rule violation — a decision the story required to be explicit was, in tracked terms, invisible).
+
+      THE DECISION td1-7 TOOK, and why: lobby, tempest, star-wars and asteroids all carry the correct `host: '127.0.0.1'` pin in vite.config.ts (landed by td1-1) but have NO tests/scaffold.test.ts of any kind — no port pin assertion, no base assertion, no strictPort, no host. They are not guarding the broken invariant like the td1-7 three were; they are guarding NOTHING. Authoring four scaffold suites from scratch (choosing the idiom, then port/base/strictPort/host/allowedHosts assertions per repo) is materially more than the 1 point td1-7 was sized for, so td1-7 deliberately left them unguarded and filed this instead of growing scope. That call was independently reviewed and upheld.
+
+      WHY IT STILL MATTERS: the pin in those four configs is load-bearing and completely unprotected by tests. A future edit can delete `host: '127.0.0.1'` from any of the four and every suite stays green — which is exactly the regression td1-1 fixed and td1-7 guarded against elsewhere. td1-1 proved at the socket layer that strictPort alone does NOT protect a pinned port: with 127.0.0.1 held, vite falls through to the IPv6 twin [::1] and starts with NO collision error, so you can serve and screenshot the WRONG CHECKOUT silently.
+
+      REFERENCE IMPLEMENTATION: battlezone, red-baron, centipede and joust now all carry a block-anchored host assertion (td1-7). Port that shape — and note td1-7's own lesson, learned the hard way: a bare `count(cfg, "host: '127.0.0.1'") >= 2` is NOT sufficient. The td1-7 Reviewer proved by execution that moving both pins into the server block and leaving preview bare keeps the count at 2 and the suite fully green, under a test named "on both server and preview". Anchor on block membership, not occurrence count. Mutation-check every assertion, including that specific both-in-server case.
+
+      SCOPE NOTE: these four repos differ from each other more than the td1-7 three did (the lobby has no lint script, and allowedHosts/tunnel config is not uniform across them), so expect per-repo variation rather than a verbatim four-way copy.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: lobby,tempest,star-wars,asteroids
+    workflow: tdd
+    acceptance_criteria:
+      - lobby, tempest, star-wars and asteroids each gain a tests/scaffold.test.ts guarding at minimum the pinned port, base, strictPort on both blocks, and host 127.0.0.1 on both blocks.
+      - Every new assertion is mutation-checked and observed RED before being accepted, including the both-pins-in-server-preview-bare case that td1-7 proved slips past an occurrence count.
+      - All four suites and builds stay green, and each repo still passes standalone (a bare clone must not need the orchestrator).
+    type: chore
