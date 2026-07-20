@@ -11,7 +11,8 @@ stories:
     description: "GameState grows from a frame counter to the ruled ROM-shaped core (clone design spec §Architecture): a tagged-union process list mirroring the 40-slot cooperative scheduler's SEMANTICS (subsystems §1) — per-process nap timers decremented once per frame pass (PNAP, RAMDEF.SRC:171; 1 nap = 1 frame, five author oracles, brief §3), two scheduling classes run as two full passes (primaries then secondaries — PRISEC, SYSTEM.SRC:217/231/248; PROCCR/SECCR RAMDEF.SRC:8-18), kill takes id+mask so one call kills a class (KLPROC, SYSTEM.SRC:341-346). Per-frame RNG stir mirroring the IRQ's (SYSTEM.SRC:581-582 — RNG advances on the timer, not only on calls) via @arcade/shared/rng seeded by the shell. RULING: semantics only, NOT a memory image — no 56-byte blocks, no PPC resume addresses, no pool; the layout facts stay dossier citations. HAZARDS (jt1-10, binding): any layout claim anchors on PBLKM (RAMDEF.SRC:166), never a searched ORG $0 (an earlier one exists — claim JT10-010); any pool arithmetic re-derives 40x56=2240 (not the old 2040). Player entities join the list; existing flight/ground stepping is driven from it without behaviour change (the jt1-5 determinism replay must survive the migration bit-for-bit)."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -19,6 +20,7 @@ stories:
       - "The RNG advances once per frame independent of consumption (a frame with no RNG calls still changes the stream position), mirroring SYSTEM.SRC:581-582; deterministic under seed."
       - "The jt1-5 seeded-replay trajectory reproduces bit-for-bit with players now stepped from the process list (no behaviour change from the migration)."
       - "No wall-clock, no Math.random in core (purity guard green); frame.ts's GameState migration keeps npm test fully green."
+    completed: '2026-07-20'
   - id: jt2-2
     title: "Enemies — the shared LINET brain, the NSMART/WSMART intelligence budget, promotion to BOUNDR/B2UNDR/SHADOW, EMYTIM divider"
     description: "The three ground enemies (bounder/hunter/shadow lord) as processes on the same flight core the players use (buzzards flap). One shared dumb brain: LINET lane-tracking toward the three cliff-tier altitudes $45/$81/$D0 +/- $20 (JOUSTRV4.SRC:3722-3749, 7994-7997). Promotion to the smart brains BOUNDR/B2UNDR/SHADOW (JOUSTRV4.SRC:3787, 3971, 4230) under the GLOBAL intelligence budget: NSMART vs WSMART, seeded per wave from the pursuit nibble, growing every 15 s while enemies live (JOUSTRV4.SRC:2075-2129). EMYTIM divider: enemies integrate every Nth frame — 2 on waves 1-2 and after early deaths, else 1 (JOUSTRV4.SRC:2202-2205) — modeled as a DIVIDER, not a speed scale (open-questions §4, ruled). The IFN DEBUG invariants (JOUSTRV4.SRC:1982-1990, 3765-3770 — 'NSMART had better be zero') become test oracles for the budget bookkeeping. Wave seeding inputs (pursuit nibble) may be stubbed as parameters until jt2-5 lands the wave machine — the seam is the budget's INPUTS, not its laws. Enemy facing/mount animation uses jt1-3's transcribed buzzard/rider frames by name only (rendering is jt2-7)."

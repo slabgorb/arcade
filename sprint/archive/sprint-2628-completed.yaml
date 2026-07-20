@@ -893,3 +893,8 @@ completed_stories:
     title: "The flea (ANT, slot 12) — ANTPC/ANTMV drop, mushroom seeding, multi-hit kill"
     points: 3
     completed: '2026-07-20'
+  - id: jt2-1
+    epic: jt2
+    title: "Process scheduler core — the tagged-union process list, frame naps, two classes, kill by id+mask, per-frame RNG stir"
+    points: 2
+    completed: '2026-07-20'
