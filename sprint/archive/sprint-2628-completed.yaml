@@ -888,3 +888,8 @@ completed_stories:
     title: Global orientation flip — cellScreenX + input sign chain match the upright cabinet
     points: 3
     completed: '2026-07-20'
+  - id: cp3-2
+    epic: cp3
+    title: "The flea (ANT, slot 12) — ANTPC/ANTMV drop, mushroom seeding, multi-hit kill"
+    points: 3
+    completed: '2026-07-20'
