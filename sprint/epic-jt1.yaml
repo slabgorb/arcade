@@ -146,13 +146,16 @@ stories:
     description: "From the jt1-2 R2 review (non-blocking MEDIUM, verified by the Reviewer summing the vendored RMB directives): the dossier's process-block layout in subsystems.md — and claims SUB-001/SUB-002 which faithfully quote it — repeats the vendor's own stale 1982 comment ('8 OVERHEAD BYTES', 51-byte block). The source's actual directives disagree with the source's own comment: PLINK 2 + PID 1 + PPRI 1 + PNAP 1 + PPC 2 = 7 overhead bytes, and PPOSX 3 + PPOSY 3 sit before PRAM 43, making the block 56 bytes. The citations are CORRECT (the lines really say what's quoted) — the defect is that the dossier adopts the comment's arithmetic instead of the directives'. GATES jt1-5: flight/ground movement consumes this process model and would bake in a wrong struct. Fix: correct the dossier prose (keep the stale-comment observation as a note — it is good provenance), adjust/add claims so the derived layout figures are anchored to the RMB directive lines themselves, and leave a loud pointer for jt1-5's TEA."
     points: 1
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-19'
     repos: joust
     workflow: tdd
     acceptance_criteria:
       - subsystems.md's process-block layout states 7 overhead bytes / 56-byte block derived from the RMB directives, with the vendor's contradictory '8 OVERHEAD BYTES' comment explicitly called out as stale.
       - SUB-001/SUB-002 (and any new claims) anchor the corrected figures to the directive lines; citation suite + CLI stay green.
+    completed: '2026-07-19'
     type: chore
+    review_verdict: approved
   - id: jt1-11
     title: Purity-scanner evasion tail — unwrap trivia nodes, element-access bans, documented dataflow limits, line numbers
     description: "The jt1-7 review's remaining tail, deliberately not smuggled into the 2pt story (the accidental-evasion channels — SHELL case, bare Function() — were fixed pre-merge; these need deliberate circumvention or are polish): (1) unwrap Parenthesized/NonNull/satisfies expressions before identifier checks (const M = (Math) is one refactor away from accidental); (2) route ElementAccessExpression with a string-literal argument through BANNED_MEMBERS (Math['random']()); (3) DOCUMENT spread/Object.assign/Reflect.get/reassignment-aliasing/class-extends as stated limits — they need dataflow analysis and half-implementing it is worse than an honest boundary (Reviewer's ruling); (4) failure messages carry line numbers via node.getStart() — free on the AST, real cost on the 1800-line generated module without it; (5) the scanner-shadowing false positive (a local parameter named Math with a banned member IS flagged — overly strict, ~nil impact in core) gets a documented-limitation line. Fold-back note: centipede/tempest port the five ban tables + the case table when the fleet story is cut; this tail should land in joust FIRST so they port the finished shape."

@@ -852,3 +852,8 @@ completed_stories:
     title: Purity-scanner hardening — real tokenizer for the core boundary guard (five confirmed false negatives)
     points: 2
     completed: '2026-07-19'
+  - id: jt1-10
+    epic: jt1
+    title: Dossier correction — SUB-001/002 process-block layout parrots a stale vendor comment (gates jt1-5)
+    points: 1
+    completed: '2026-07-19'
