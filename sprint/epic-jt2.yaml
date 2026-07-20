@@ -86,7 +86,7 @@ stories:
     description: "Entry into the arena: 4 transporter pads tied to platform tiers (TR1ID-TR4ID, JOUSTRV4.SRC:5587-5590); spawn requires an empty screen third (SELARE, JOUSTRV4.SRC:6413-6424); players hold service tickets AHEAD of enemies (NPSERV/LPSERV, JOUSTRV4.SRC:5615-5674); safety is a TIMED MATERIALISATION aborted by any control input — not invulnerability (JOUSTRV4.SRC:5841-5892, 5923-5925). Player spawn constants: P1 X=100 facing right on the ostrich; P2 X=200 facing left on the stork (JOUSTRV4.SRC:1020-1039). Enemies entering a wave arrive via the pads under the same service; this is what jt2-5's spawn counts flow through. The materialisation state is a process nap pattern (jt2-1's machinery), and its abort-on-control law needs the input contract, both already landed."
     points: 2
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-07-20'
     repos: joust
     workflow: tdd
@@ -95,6 +95,7 @@ stories:
       - "SELARE: a spawn only proceeds into an empty screen third (a crowded third defers it), proven by test; players are served ahead of queued enemies (ticket order law)."
       - "Materialisation safety: an untouched player is safe for the timed window; ANY control input during it ends the safety early (abort law, not invulnerability) — both directions tested."
       - "A full wave-1 enemy complement (from jt2-5's counts) enters via pads deterministically under seed."
+    completed: '2026-07-20'
   - id: jt2-7
     title: "Demo — wave 1 vs the buzzards: shell rendering for enemies/eggs/transporters, the playable slice"
     description: "The epic's demo bar: wave 1 (and onward) playable against the buzzards on 5279. Shell renders enemies (buzzard + rider frames by facing/animation from jt1-3's data), eggs (bounce/settle/hatch states), and the transporter materialisation, through the existing atlas path; kill/egg score events surface as console/dev-overlay output only (scoring display is jt4; text seam renders no fonts). This story CONSUMES ENTITY_RECORDS for the enemy/egg frames — the jt1-3 count floors owed on those tables land here (ENTITY_RECORDS, PALETTES if consumed anew). Render source-wiring test per the repo ?raw idiom (jt1-6 precedent). Screenshot committed as the epic demo artifact, taken from THIS checkout with port-ownership proof (lsof or spare port — strictPort alone is porous, td1-1; the td1-3 lesson: a screenshot that predates the code it demos misrepresents the renderer)."

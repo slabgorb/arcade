@@ -938,3 +938,8 @@ completed_stories:
     title: just serve swallows a failed launch — bare wait returns 0, fleet looks healthy with one game silently missing
     points: 2
     completed: '2026-07-20'
+  - id: jt2-6
+    epic: jt2
+    title: "Transporters + the spawn service — pads by tier, the empty-third rule, ticket queue, timed materialisation safety"
+    points: 2
+    completed: '2026-07-20'
