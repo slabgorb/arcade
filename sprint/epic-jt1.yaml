@@ -142,14 +142,17 @@ stories:
     description: "Files the jt1-2 Reviewer's non-blocking checker findings as one bounded hardening pass (the checker itself shipped sound — all 131 primary claims independently re-verified byte-exact). (1) THE PAIRED DESIGN HOLE: externality is recognized by file extension alone, so renaming any claim's file to e.g. JOUSTRV4.cpp with a fabricated verbatim returns zero errors — the abuse the module header warns about, reached by filename instead of flag; and the 19 external .cpp claims carry prose markers in verbatim, a field whose contract is byte-exact quotation, where a plausible fake quote is undetectable. Reviewer's ruling (accepted by SM): do NOT rename the schema field (drags centipede along); instead ENFORCE THE MARKER SHAPE for external claims (all 19 already share a rigid self-describing form) or forbid verbatim on external claims outright — a shape rule cannot be forgotten the way a flag can, matching the extension-only ruling's spirit. Enforcement must also pin the external extension set (e.g. exactly .cpp) so a renamed .SRC claim cannot slip out of byte-verification. (2) Robustness: CLI prints 'all claims verified'/exit 0 on an EMPTY claims dir (should be a distinct loud state); wrong-case filenames pass on macOS (case-insensitive fs) but would fail CI/Linux; symlinked source files escape the containment check; a primitive (non-object) array element throws, contradicting the module's never-throw invariant; empty-string verbatim passes schema. (3) Two radix tests (tests/audit/citations.test.ts:403,422) assert JS language guarantees without calling the checker — rewrite them to drive the real implementation or delete them."
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: joust
     workflow: tdd
     acceptance_criteria:
       - An external claim whose verbatim deviates from the enforced marker shape (or carries any quotation-like text, if the forbid-verbatim option is chosen) fails the checker; prove red once with a plausible fake quote.
       - 'A claim renamed to a non-allowed extension (or a .SRC file miscased/symlinked/renamed .cpp) is caught: extension set pinned, case-sensitive filename comparison, symlink containment enforced.'
       - Empty claims dir is a distinct non-success outcome; primitive array elements and empty-string verbatims are schema errors, not throws; the two no-op radix tests exercise the real checker or are removed.
+    completed: '2026-07-20'
     type: chore
+    review_verdict: approved
   - id: jt1-10
     title: Dossier correction — SUB-001/002 process-block layout parrots a stale vendor comment (gates jt1-5)
     description: "From the jt1-2 R2 review (non-blocking MEDIUM, verified by the Reviewer summing the vendored RMB directives): the dossier's process-block layout in subsystems.md — and claims SUB-001/SUB-002 which faithfully quote it — repeats the vendor's own stale 1982 comment ('8 OVERHEAD BYTES', 51-byte block). The source's actual directives disagree with the source's own comment: PLINK 2 + PID 1 + PPRI 1 + PNAP 1 + PPC 2 = 7 overhead bytes, and PPOSX 3 + PPOSY 3 sit before PRAM 43, making the block 56 bytes. The citations are CORRECT (the lines really say what's quoted) — the defect is that the dossier adopts the comment's arithmetic instead of the directives'. GATES jt1-5: flight/ground movement consumes this process model and would bake in a wrong struct. Fix: correct the dossier prose (keep the stale-comment observation as a note — it is good provenance), adjust/add claims so the derived layout figures are anchored to the RMB directive lines themselves, and leave a loud pointer for jt1-5's TEA."

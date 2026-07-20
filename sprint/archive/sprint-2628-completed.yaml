@@ -872,3 +872,8 @@ completed_stories:
     title: Qualify the dossier's 128 bare-:N citations — every citation enters the machine gate
     points: 3
     completed: '2026-07-19'
+  - id: jt1-9
+    epic: jt1
+    title: Citation checker hardening — external-claim shape enforcement + robustness holes from the jt1-2 review
+    points: 2
+    completed: '2026-07-20'

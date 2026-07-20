@@ -235,3 +235,37 @@ Claims **JT5-045** and **JT5-046** carry the exact verbatims I cited in the reve
 | — | **Honest coverage gap:** the edge-hunter was outstanding at write-up, so the render internals it was dispatched for — atlas stream/raster discriminant, ragged-row reshape shear, integer-scale/smoothing, palette denylist, CSRC5L 13-of-14 — are verified only through the suite being green and SM's own eyeballing of the screenshot, **not independently by me**. Given jt1-5, I am naming this rather than implying coverage I do not have. | No |
 
 **Handoff:** To SM for finish-story.
+<!-- Relocated by SM: the Reviewer wrote this addendum to the recreated .session/ path after archive; moved here 2026-07-20. -->
+
+
+## Reviewer Addendum (post-verdict) — a real render defect I approved over
+
+The outstanding edge-hunter returned and found a defect in exactly the area I named as my coverage gap. **I verified it by inspection and it is decisive.** The story is merged (#11), so this is a hotfix item, not a verdict reversal.
+
+### `reshapeRagged` does not do the thing its own comment says it does
+
+`src/shell/render.ts:91-104`:
+
+```ts
+export function reshapeRagged(pixels: readonly number[], width: number, height: number): number[]
+```
+
+The signature carries **no per-row length information**, and the body consumes exactly `width` pixels per row from the flat stream. That is arithmetically **identical** to `pixels[y * width + x]` — the precise operation its doc comment (`:85-90`) says it prevents: *"Indexing that flat array as `y * width + x` slides every row after the first leftwards… Reshaping first is what keeps each row's leading pixels at column 0."* It cannot keep them at column 0, because `expandComcl5` discarded each row's real length before handing the array over.
+
+Real COMCL5 rows are `[186,186,185,185,184,182,…,168,…,178]` — only the first two are full width, so the shear begins at row 3 and compounds to ~18 px by the narrowest rows. The bottom island renders progressively skewed.
+
+**The shear test cannot catch it** (`tests/render.test.ts:207-215`). Input `[1,2,3,4,5,6]`, width 3, height 3, intending rows of 3/1/2 — but it asserts only `grid.slice(0,3) === [1,2,3]` and `grid[3] === 4`. Under a fixed stride, row 1 also begins at source index 3, whose value is 4, so **both the correct and the naive implementation satisfy every assertion**. It never inspects `grid[4]`, `grid[5]`, or row 2, which is exactly where they diverge.
+
+**This is my own jt1-3 finding arriving on schedule.** I wrote then: *"`ExpandedImage` returns a flat `pixels` array with `{width, height}`, but rows are ragged… Row boundaries are unrecoverable from the returned shape — I had to re-decode to render it. A jt1-6 consumer indexing `pixels[y*width+x]` will shear the image progressively."* I filed it, flagged it to jt1-6, and then approved the story that walked into it. The fix belongs upstream: `expandComcl5` should return row offsets or lengths (or pad rows to width), and `reshapeRagged` should consume them.
+
+**Why SM's screenshot review did not catch it:** a monotonic skew on a rocky cliff silhouette reads as texture, not as an error. Human review of a render is good at "is this a cliff" and poor at "is this cliff sheared" — worth remembering before leaning on an eyeball as the gate for geometric fidelity.
+
+### Also found, non-blocking
+
+- **The invented-colour denylist only scans `render.ts`.** `tests/render.test.ts:160-168` regexes `renderSource()` alone, but `src/main.ts` is also on the paint path and carries a hard-coded `context.fillStyle = '#000'` (`:202`) plus `rgb(...)` construction (`:93,193`). The value is correct; the gate simply does not look there. AC-2's "no invented colors (scan proves it)" is weaker than it reads.
+- **`viewport()` returns negative offsets below the logical raster.** `scale` is clamped to ≥1 but the offsets are not: `viewport(100,100)` → `offsetX -96`, `offsetY -70`. Reachable whenever `clientWidth/Height` is under 292×240 (a shrunk window, or before layout settles). Untested for that case.
+- **`stepGround`'s `onMinus` branch is unreachable** — `input.dir !== 0 ? onPlus : onZero` never selects it, pending a `facing` field. Author-disclosed and deferred, recorded for completeness.
+
+### Verified clean by the specialist, worth keeping
+
+The stream/raster discriminant holds (no path blits `COMCL5`/`ASH1R` as pixels, and `blit()` no-ops on an absent atlas slot); `CSRC5L` draws 13 of 14 via `heightOverride`; `HICOLR` is 8 live + 8 zeroed; the palette decode is a pure literal-index widen with no remap; `imageSmoothingEnabled = false` is genuinely assigned and **re-applied after every canvas resize**, which matters because resizing resets 2D context state; core imports nothing from shell; `prevFlap` is threaded per-player without cross-contamination; the clock lives entirely in `main.ts`.

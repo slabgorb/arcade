@@ -189,3 +189,31 @@ I spot-verified a second: `DOWNLDS.COM` is ~10 lines, so the file-adjacent-looki
 ## Sm Post-Finish Note — hotfix, two rounds (2026-07-20)
 
 Post-merge, the outstanding rule-checker's breadth sample found 7/30 wrong-FILE resolutions (23%) — checker-green, the hole the checker cannot see. Hotfix joust#14 (squash 9ebaac2), two rounds: R1 fixed the 7 (5 → external williams.cpp claims, externals 19→25) + re-audited the rest; the Reviewer's OWN sample then found a defect IN the fix (JT8-113: blank-line anchor + empty verbatim — a THIRD mode, right-file-wrong-line, invisible through the isCitation hole jt1-9 closes) and R2's triage found two more (JT8-069 header-anchor; JT8-095 wrong routine's header). Final tally: 10 of 136 corrected; zero blank anchors/empty verbatims across all 423 (Reviewer re-swept independently). Root cause: the resolver defaulted the file while copying the justifying clause that falsified it. Dev's two flagged-ambiguous cases were both CORRECT — defects lived only where no uncertainty was flagged. Clearance basis, per the Reviewer's own honest caveat: structural sweeps + triage, not a passage-by-passage read of all 136.
+
+<!-- Relocated by SM: the Reviewer wrote this addendum to the recreated .session/ path after archive; moved here 2026-07-20. -->
+
+
+## Reviewer Addendum (post-verdict, post-merge) — WRONG-FILE RESOLUTIONS FOUND
+
+The outstanding rule-checker returned and ran the breadth sample I named as this review's gap. **It found 7 wrong-file resolutions in 30 sampled — 23% — all checker-green.** jt1-8 is merged (#13) and `done`, so this is a **hotfix item**. I verified the two crispest cases myself; both confirmed.
+
+### Verified by me
+
+**JT8-003** resolved `:1556` → `JOUSTRV4.SRC:1556` = `BHS 49$   BR=YES` — a branch instruction supporting nothing. The surrounding prose is about the MAME driver's raster. **MAME `williams.cpp:1556` = `m_screen->set_raw(MASTER_CLOCK*2/3, 512, 6, 298, 260, 7, 247);`** — the exact `set_raw(...)` call the sentence quotes. Independent cross-check: **`sprint/epic-jt1.yaml` cites `williams.cpp:1556` twice** for precisely this fact (`FRAME_HZ = 8e6/(512*260)`, the 292×240 visible raster). The epic's own text disagrees with the qualification.
+
+**JT8-122** resolved `:1589` → `JOUSTRV4.SRC:1589` = `FDB -$00C0`, a pterodactyl X-velocity entry. **`williams.cpp:1589` = `WILLIAMS_BLITTER_SC1(config, m_blitter, 0xc000, m_maincpu, m_videoram);`** — the "no PROM tag" blitter instantiation the prose describes. `pictures.md` already cites `williams.cpp:1589` for the same fact three lines earlier, so the document now contradicts itself.
+
+### The pattern, from the specialist's sample
+
+Two failure modes, both **false confidence rather than acknowledged uncertainty**:
+
+1. **MAME-driver context abandoned for the JOUSTRV4.SRC default** — 5 instances across brief.md §3 (JT8-002 `:1537`, JT8-003 `:1556`, JT8-004 `:1545-1546`, JT8-005 `:1548-1549`) and pictures.md (JT8-122 `:1589`). The passages explicitly name `williams.cpp`; the resolutions dropped that context.
+2. **The default overriding an already-established alternate-file context mid-sentence** — JT8-020 `:617-650` → `JOUSTRV4.SRC` when the same sentence's previous citation is `SYSTEM.SRC:591-593` and `SYSTEM.SRC:617-650` is literally the 9-deep debounce shift register the prose describes; JT8-113 `:1057` → `JOUSTRV4.SRC` when `MESSAGE.SRC:1057` is exactly where the glyph table ends.
+
+**The two cases Dev flagged as ambiguous (`:175`, `:5934`) are both CORRECT** — and the specialist strengthened the `:175` argument by grepping `RAMDEF.SRC` for the six `WAVE OFFSETS` field names and finding zero hits, so that file could not define the struct at all. The defect is concentrated exactly where Dev did *not* flag uncertainty.
+
+### On my own review
+
+I approved this and named the missing breadth sample as the gap. The gap was the whole risk: the rails, the two verified cases and Dev's measured falsification of the mechanical rules all held — and none of them could see a wrong file with a right-looking verbatim, which is the failure mode I myself identified in jt1-2 and then did not sample for. Verifying two resolutions is not a sample of 127. **This is the second consecutive story where a late specialist found a real defect in precisely the area I flagged as uncovered**; naming a gap is not the same as covering it, and I should weight an outstanding specialist's scope as unreviewed rather than as probably-fine.
+
+**Recommended fix:** re-resolve the five MAME-context citations to `williams.cpp` (they become external `.cpp` claims — schema-only, never byte-opened, per the jt1-2 externality rule), re-resolve JT8-020 to `SYSTEM.SRC:617-650` and JT8-113 to `MESSAGE.SRC:1057`, and **re-sample the remaining ~97 unsampled resolutions** for the same two patterns — a 23% rate in the sample means roughly 20-30 more may be wrong. The canary and sweep rails stay green throughout and cannot help here.
