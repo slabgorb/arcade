@@ -943,3 +943,8 @@ completed_stories:
     title: "Transporters + the spawn service — pads by tier, the empty-third rule, ticket queue, timed materialisation safety"
     points: 2
     completed: '2026-07-20'
+  - id: td1-10
+    epic: td1
+    title: just test-all and build-all mask every game's failure but the last — just ci prints CI passed with six of seven red
+    points: 2
+    completed: '2026-07-20'

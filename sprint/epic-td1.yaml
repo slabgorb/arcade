@@ -204,11 +204,14 @@ stories:
       Also worth checking while here: `status`, `install-all` and any other `@for g in ...` recipe in the justfile share this shape. Sweep them all rather than fixing only the two named here.
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: .
     workflow: tdd
     acceptance_criteria:
       - Every multi-repo for-loop recipe in the justfile propagates failure — a failing game in ANY position (first, middle, last) makes the recipe exit non-zero, proven for all three positions.
       - A failed sweep names which games failed rather than only exiting non-zero, and just ci cannot print CI passed when any game is red.
       - The all-green path still exits 0, so a fix that always fails cannot pass.
+    completed: '2026-07-20'
     type: bug
+    review_verdict: approved
