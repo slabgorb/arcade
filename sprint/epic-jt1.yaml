@@ -59,7 +59,8 @@ stories:
     description: "The static world, transcribed: cliff/transporter/bridge placements (pictures.md layout table; JOUSTI.SRC:54-290, 749-752; JOUSTRV4.SRC:1126-1127 solid fills), the landing model — bitmask tables (LNDXTB/LNDYTB semantics, JOUSTRV4.SRC:6703-6707) resolving to the six hard-coded snap Ys (68/80/128/137/162/210, JOUSTRV4.SRC:6729-6759) — landing is a SNAP, not a resolve; cliff-side collision as the separate BCKXTB path (trace BCKCOL far enough to pin behavior — open-questions §4); X wrap [−10,292] modulus 303 (ELEFT/ERIGHT, JOUSTRV4.SRC:38-39, WRAPX :7291-7297); elastic ceiling $20 (:6497-6506); lava floor death at FLOOR+7 (:6508-6521); lava level per wave ($EA→$E0, :1929-1933, :962); bridge as wave-3 destruction hook (TBRIDGE, :954-957 — destruction animation itself may defer to jt3 with the troll). Every constant radix-cited + claims entry. Determinism pinned by test. NOTES from the jt1-3 review: (a) tools/transcribe-pictures.mjs ships without its own tests — the ruling: whichever story next CHANGES its grouping rules adds them (do not inherit the exemption silently). (b) The suite floors PIXEL_BLOCKS at 93 but has NO count floors on ENTITY_RECORDS/BACKGROUND_RECORDS/COLLISION_TABLES/PALETTES — each was empirically truncatable with the suite staying green (dropping the NULL palette passes); add floors when this story consumes those tables. (c) Prose citations in the bare :N form redden the jt1-8 canary — write FILE:LINE from the start."
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-20'
     repos: joust
     workflow: tdd
     acceptance_criteria:
