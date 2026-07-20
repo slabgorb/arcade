@@ -953,3 +953,8 @@ completed_stories:
     title: "Centipede speed goes live — thread CENTIS into the march step and entry direction"
     points: 2
     completed: '2026-07-20'
+  - id: td1-2
+    epic: td1
+    title: Fold the AST purity scanner back to centipede and tempest — six false negatives each
+    points: 3
+    completed: '2026-07-20'
