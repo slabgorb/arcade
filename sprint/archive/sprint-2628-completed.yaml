@@ -832,3 +832,8 @@ completed_stories:
     title: "The spider (BUG, slot 13) — BUGOFF/BUGMV movement, mushroom eating, contact death, proximity scoring"
     points: 5
     completed: '2026-07-19'
+  - id: jt1-3
+    epic: jt1
+    title: "Image transcription — decode JOUSTI.SRC into src/core/pictures.ts, byte-gated, with COMCL5 RLE + collision spans + contact sheet"
+    points: 5
+    completed: '2026-07-19'
