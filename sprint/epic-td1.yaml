@@ -1,0 +1,70 @@
+id: td1
+type: epic
+title: Tech debt — fleet-wide fixes and carried-open items from the joust jt1 epic
+description: 'Cross-repo tech debt surfaced by the jt1 joust foundation epic (2026-07-19/20). Three classes: (1) FLEET-WIDE holes joust found and closed locally — the sibling repos still carry them; (2) FOLD-BACK of improvements joust proved (the AST purity scanner and its case tables); (3) CARRIED-OPEN items the jt1 reviews named honestly rather than silently shipping. Each story cites the joust story/review that found it, and where joust already shipped the fix, the joust implementation is the reference — port it rather than re-deriving.'
+priority: p2
+status: backlog
+repos: lobby,tempest,star-wars,asteroids,battlezone,red-baron,centipede,joust
+stories:
+  - id: td1-1
+    title: Fleet strictPort is porous — pin host 127.0.0.1 in every subrepo's vite config
+    description: "Found by the jt1-3 review (2026-07-20) and reproduced in this environment: strictPort does NOT protect a pinned port. With 127.0.0.1:5279 held, vite binds [::1]:5279 and starts normally — two dev servers, one port, NO collision error. This makes CLAUDE.md's pinned-port guarantee AND its own 'the port may belong to a different checkout' warning weaker than documented: you can serve and screenshot the WRONG CHECKOUT with no error at all, which is exactly the trap the docs warn about, minus the safety net. joust already carries the fix (host: '127.0.0.1' on server AND preview in vite.config.ts, joust#11 era) — port it verbatim to the seven siblings. Note the behavioural strictPort test in joust/tests/scaffold.test.ts occupies IPv4 only, which is why it was flaky before the host pin; siblings that copy the test should copy the fix with it. Also worth updating the orchestrator CLAUDE.md trap paragraph to say strictPort alone is insufficient."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: lobby,tempest,star-wars,asteroids,battlezone,red-baron,centipede
+    workflow: trivial
+    acceptance_criteria:
+      - "Every servable subrepo's vite.config.ts pins host: '127.0.0.1' on both server and preview blocks; just serve still launches the whole fleet."
+      - With a port held on IPv4, that subrepo's dev server FAILS loudly rather than binding the IPv6 twin (prove for at least one repo).
+      - The orchestrator CLAUDE.md wrong-checkout trap paragraph states that strictPort alone does not protect the pin.
+    type: chore
+  - id: td1-2
+    title: Fold the AST purity scanner back to centipede and tempest — six false negatives each
+    description: "joust proved the shape; the siblings still run the regex comment-stripper with all six holes. Source: joust/tests/helpers/purity-scanner.ts (jt1-7 + jt1-11), built on the TypeScript compiler API (ts.createSourceFile — acorn is NOT in the Vite 8/rolldown tree and is JS-only anyway; that misprescription cost jt1-7 a finding). What ports: five intent-named ban tables (objects, member pairs, bare identifiers, calls, constructors) plus aliasing, general trivia-node unwrapping (parens/NonNull/satisfies/as-casts, proven general by composed review attacks), string-literal element access through the member table, located file:line reports, and the documented-limits header (five dataflow routes + shadowing strictness) with its mutation-checked rail. The six false negatives the siblings currently have: string-embedded /*, string-embedded //, template interpolation, Math destructuring alias, Date function-reference alias, and a string carrying BOTH markers. joust's test file is written as a portable flip/hold case table — copy it, expect to DELETE more code than you add. Watch for repo-specific ban differences (each game's core bans its own shell globals)."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: centipede,tempest
+    workflow: tdd
+    acceptance_criteria:
+      - centipede and tempest each run the TS-compiler-API scanner; all six false negatives are caught in each repo, each proven red against the old scanner once.
+      - Each repo's existing purity expectations still pass and the full suites stay green — no false positives on their generated/data modules.
+      - Both carry the documented-limits header and its rail; the centipede '= Date' double-report (fixed in joust's copy with a lookahead) is gone.
+    type: chore
+  - id: td1-3
+    title: Re-take the joust demo screenshot — the committed one predates the shear fix
+    description: "joust/docs/rom-study/jt1-6-demo.png was captured BEFORE the reshapeRagged hotfix (joust#12). The bottom island in it is progressively sheared — up to ~18px by its last row — because expandComcl5's ragged rows were being consumed at a fixed stride. The jt1-6 Reviewer's warning is the reason this matters: 'a monotonic skew on a rocky cliff reads as texture, not error. Human review of a render is good at is-this-a-cliff and poor at is-this-cliff-sheared.' So the artifact currently misrepresents the shipped renderer, and an eyeball cannot tell. Re-capture from THIS checkout with lsof port-ownership proof (the jt1-6 precedent: a stale server held 5279 and was proven out rather than assumed). While here, consider whether a known-good pixel comparison belongs in the suite — the Reviewer's point was that geometric fidelity needs a pixel-level or reference check, not a human glance; if that is more than 1 point, file it separately rather than growing this."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: joust
+    workflow: trivial
+    acceptance_criteria:
+      - The committed demo screenshot is re-taken from the post-hotfix renderer with lsof (or equivalent) proof of 5279 ownership recorded in the story notes.
+      - The bottom island's vertical channel columns hold position across consecutive rows (the shear signature is absent).
+    type: chore
+  - id: td1-4
+    title: Triage the two orchestrator extract-audio reds — tempest/red-baron link-5 audits
+    description: "Two tests in the ORCHESTRATOR suite (tests/extract-audio.test.mjs, run with node --test, NOT vitest) have been red since at least 2026-07-19 and are unowned: 'audit: tempest sfx — link 5 catches the 4 sounds whose shipped bake omits the ROM terminal-zero write' and 'audit: red-baron — link 5 catches the 3 inverted envelopes (TP/BN/WP/TH synthesised, TK real)'. Confirmed still failing 2026-07-20 (19 pass / 2 fail of 21). First observed by jt1-1's TEA, who PROVED them pre-existing by moving his own new test file aside and re-running — so they are not attributable to any jt1 story (the develop-red misattribution trap; TEA's control is the right method to repeat). They depend on the gitignored vendored Atari source/audio assets, so the leading hypothesis is an ENVIRONMENT gap in this checkout rather than a code defect — but that is a hypothesis, not a finding: nobody has actually opened them. Triage first (env vs real regression), then either fix, or make the tests skip loudly when their inputs are absent (the jt1 discipline: a test that silently passes without its inputs is worse than one that skips)."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - 'Both failures are diagnosed and the diagnosis is recorded: environment gap vs real regression, with the evidence that distinguishes them.'
+      - Either the audits pass, or they SKIP self-describingly when the vendored assets are absent — never a silent pass; the orchestrator suite is green either way.
+    type: bug
+  - id: td1-5
+    title: Close the jt1 carried-open verification gaps — render internals and the text-match vacuity sweep
+    description: "Two items the jt1 reviews explicitly declared UNVERIFIED rather than implying coverage. Both are recorded in the archived sessions; this story closes them. (1) RENDER INTERNALS: the jt1-6 review's edge-hunter was outstanding at write-up, so the atlas stream/raster discriminant, ragged-row reshape, integer scaling/smoothing, palette denylist and CSRC5L 13-of-14 rested on 'suite green + SM eyeball' — and the specialist LATER found a real defect there (reshapeRagged, fixed in joust#12). The class deserves a real check now: adversarial probing of the atlas/blit path, and consideration of a known-good pixel comparison for geometric fidelity (the Reviewer's point: a human eye reads monotonic skew as texture). (2) THE TEXT-MATCH VACUITY SWEEP: carried open since jt1-5. At least one doc/text assertion was found to be keyword-proximity rather than a content check (the arena-header case: it bites for the exact old sentence but its positive assertions accept vague prose). TEA flagged whole-file text matches passing vacuously THREE times across the epic. Sweep every text/source-scanning assertion in the joust suite and mutation-check it: does it fail on plausible wrong content, or only on the literal string someone happened to mutate?"
+    points: 2
+    priority: p3
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - Every text-matching or source-scanning assertion in the joust suite is mutation-checked; vacuous ones are re-aimed at content, and the sweep result is recorded (how many checked, how many were vacuous).
+      - The render internals get an adversarial pass beyond the existing suite; any defect found is fixed or filed, and the geometric-fidelity check question (pixel comparison vs known-good) is answered explicitly rather than left open.
+    type: chore
