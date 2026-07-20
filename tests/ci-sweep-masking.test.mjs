@@ -261,6 +261,21 @@ test('td1-10 AC2: `build-all` — the sweep NAMES the game whose build failed', 
   assert.ok(!namedFailed(r.combined, 'bravo'), `a passing game must not be reported as failed. Output:\n${r.combined}`);
 });
 
+test('td1-10 AC2: `build-all` — MULTIPLE build failures are ALL named, and a passing sibling is not', TO, () => {
+  // Mirror of the test-all multiple-failure test — build-all's all-named property must
+  // be proven directly, not only transitively through test-all. It pins the summary as
+  // ACCUMULATING failures (`failed="$failed $g"`) rather than OVERWRITING (`failed="$g"`):
+  // under an overwrite regression only the LAST failing game (charlie) would survive the
+  // summary and the alpha assertion below would red. alpha (first) and charlie (last)
+  // fail their build; bravo (middle) passes.
+  const games = [{ name: 'alpha', buildCode: 3 }, { name: 'bravo' }, { name: 'charlie', buildCode: 5 }];
+  const r = runRecipe({ justfileText: read('justfile'), recipe: 'build-all', recipeNames: ['build-all'], games });
+  assert.notEqual(r.status, 0, `two builds failed; the sweep must exit non-zero. Output:\n${r.combined}`);
+  assert.ok(namedFailed(r.combined, 'alpha'), `alpha's build failed and must be named. Output:\n${r.combined}`);
+  assert.ok(namedFailed(r.combined, 'charlie'), `charlie's build failed and must be named. Output:\n${r.combined}`);
+  assert.ok(!namedFailed(r.combined, 'bravo'), `bravo's build passed and must not be named as failed. Output:\n${r.combined}`);
+});
+
 // ---------------------------------------------------------------------------
 // ci — the gate that must not lie. Exercised through the REAL dependency chain
 // (`ci: test-orchestrator test-all build-all`) with only test-orchestrator stubbed;

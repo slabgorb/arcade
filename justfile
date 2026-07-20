@@ -24,18 +24,71 @@ subrepos := "lobby tempest star-wars asteroids battlezone red-baron centipede jo
 install-all:
     @node {{root}}/scripts/deps-doctor.mjs {{subrepos}}
 
-# Run tests in every game
+# Run tests in every game. A plain `@for ... ; done` one-liner runs under just's
+# default `sh` with no `set -e` and no per-iteration tracking — a `for` loop's exit
+# status is only its LAST iteration's, so every game's failure but the last was
+# silently discarded (td1-10). Ported the `pull` recipe's pattern (below): explicit
+# per-iteration failure accumulator, run every game (a fleet sweep should report the
+# FULL set of red games, not just the first), then exit non-zero with a named summary.
 test-all:
-    @for g in {{games}}; do echo "==> $g"; (cd {{root}}/$g && npm test); done
+    #!/usr/bin/env bash
+    set -uo pipefail
+    failed=""
+    for g in {{games}}; do
+      echo "==> $g"
+      if ! (cd {{root}}/$g && npm test); then
+        failed="$failed $g"
+      fi
+    done
+    if [ -n "$failed" ]; then
+      echo
+      echo "!! test-all FAILED:$failed"
+      exit 1
+    fi
+    echo
+    echo "test-all: all games passed."
 
-# Build every game
+# Build every game. Same masking defect and same fix as test-all (td1-10).
 build-all:
-    @for g in {{games}}; do echo "==> $g"; (cd {{root}}/$g && npm run build); done
+    #!/usr/bin/env bash
+    set -uo pipefail
+    failed=""
+    for g in {{games}}; do
+      echo "==> $g"
+      if ! (cd {{root}}/$g && npm run build); then
+        failed="$failed $g"
+      fi
+    done
+    if [ -n "$failed" ]; then
+      echo
+      echo "!! build-all FAILED:$failed"
+      exit 1
+    fi
+    echo
+    echo "build-all: all games passed."
 
-# Git status across orchestrator + every game
+# Git status across orchestrator + every game. Shares test-all/build-all's masking
+# shape; fixed for consistency (td1-10) even though a `git status --short` failure
+# here is rarer (a repo missing/not-a-checkout) and no test requires it.
 status:
-    @echo "=== arcade (orchestrator) ===" && git -C {{root}} status --short
-    @for g in {{games}}; do echo "=== $g ==="; git -C {{root}}/$g status --short; done
+    #!/usr/bin/env bash
+    set -uo pipefail
+    failed=""
+    echo "=== arcade (orchestrator) ==="
+    if ! git -C {{root}} status --short; then
+      failed="$failed arcade"
+    fi
+    for g in {{games}}; do
+      echo "=== $g ==="
+      if ! git -C {{root}}/$g status --short; then
+        failed="$failed $g"
+      fi
+    done
+    if [ -n "$failed" ]; then
+      echo
+      echo "!! status FAILED:$failed"
+      exit 1
+    fi
 
 # Run the orchestrator's own checks (canonical-serve contract regression guard)
 test-orchestrator:
