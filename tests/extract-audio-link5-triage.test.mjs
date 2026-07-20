@@ -1,6 +1,11 @@
 // tests/extract-audio-link5-triage.test.mjs
-// td1-4 RED — triage of the two long-standing link-5 audit reds in
-// tests/extract-audio.test.mjs:203 (tempest) and :301 (red-baron).
+// td1-4 RED — triage of the two long-standing link-5 audit reds, named in
+// tests/extract-audio.test.mjs by test name (their line numbers have already
+// drifted twice since RED — cite the name, not the line):
+//   'audit: tempest sfx — link 5, given the correct (tp1-2) cue map, catches
+//     two real bake-tool defects' (tempest)
+//   'audit: red-baron — link 5, taught the seq()/repeat() vocabulary,
+//     confirms rb4-10 un-inverted TP/BN/WP/TH' (red-baron)
 //
 // THE STANDING HYPOTHESIS WAS "ENVIRONMENT GAP". IT IS FALSE, FOR BOTH.
 // Every shipped input both audits read is present in this checkout (the CONTROL
@@ -12,15 +17,18 @@
 //
 //   red-baron — rb4-10 (585943b, 2026-07-18) replaced pokey.ts's `held(0x30)` /
 //     `{start,hold,change,steps}` vocabulary with `seq()`/`repeat()` chains.
-//     `held(` now appears ZERO times in that file, and
-//     parseRedBaronPokeySounds classifies a slot as held ONLY via /^held\(/ —
-//     so it now reports "sweeps" for ALL TEN slots of all five tones. It did not
-//     fail; it silently degraded into a constant.
+//     At RED time `held(` appeared ZERO times in that file, but
+//     parseRedBaronPokeySounds still classified a slot as held ONLY via
+//     /^held\(/ — so it reported "sweeps" for ALL TEN slots of all five
+//     tones. It did not fail; it silently degraded into a constant. (Fixed by
+//     74f57c9 below — see the AC1 red-baron tests for current behavior.)
 //
 //   tempest — tp1-2 (2b6c62e, 2026-07-13) un-crossed the cue mapping (LA is the
-//     fire cue, EX the explosion, T3 the thrust). scripts/audio/games/tempest.mjs
-//     still carries story 6-6's crossed by-ear mapping, so the audit now compares
-//     the ROM slice for one cue against the shipped bake for a DIFFERENT cue.
+//     fire cue, EX the explosion, T3 the thrust). At RED time
+//     scripts/audio/games/tempest.mjs still carried story 6-6's crossed
+//     by-ear mapping, so the audit compared the ROM slice for one cue against
+//     the shipped bake for a DIFFERENT cue. (Fixed by 74f57c9 below — see the
+//     AC1 tempest test for current behavior.)
 //
 // RESOLVED by 74f57c9 (td1-4 GREEN) — kept as a regression suite. At RED time
 // these tests failed on purpose; do NOT green a future failure here by
@@ -137,9 +145,10 @@ test('compareRedBaronShipped: a seq() CHANGE that does not resolve to a number i
 // The ROM has THREE distinct envelope shapes across the five tones
 // (holds/sweeps, sweeps/holds, holds/holds — see the ROM classification test
 // below). A scanner that reports one single classification for all five is not
-// measuring anything. This is the vacuity proof: it is why the three MISMATCH
-// assertions in extract-audio.test.mjs:313-316 currently pass for a reason that
-// has nothing to do with what the port says.
+// measuring anything. This is the vacuity proof: at RED time it was why three
+// MISMATCH assertions in extract-audio.test.mjs's red-baron link-5 audit
+// passed for a reason that had nothing to do with what the port said (that
+// test now asserts ROM_VERIFIED for all five — see its own comment history).
 test('parseRedBaronPokeySounds: does not collapse all five tones to one classification', () => {
   const shipped = parseRedBaronPokeySounds(readFileSync(POKEY_TS, 'utf8'));
   assert.equal(Object.keys(shipped).length, 5, 'all five tones must still be found');
@@ -178,8 +187,9 @@ test('red-baron ROM: the five tones carry three distinct sweep/hold shapes', () 
   assert.deepEqual(byTone.TH, { audfSweeps: false, audcSweeps: false });
 });
 
-// The corrected premise. extract-audio.test.mjs:301 is named for "the 3 inverted
-// envelopes (TP/BN/WP/TH synthesised, TK real)" — that was true of the port
+// The corrected premise. extract-audio.test.mjs's red-baron link-5 audit is
+// named for "the 3 inverted envelopes (TP/BN/WP/TH synthesised, TK real)" —
+// that was true of the port
 // rb2-11 shipped. rb4-10's commit body says outright that it re-sourced those
 // envelopes byte-exact from RBSOUN.MAC ("TP/BN/WP/TH inverted from the old
 // shape-only guesses"), i.e. it UN-inverted them. Structurally, all five now
