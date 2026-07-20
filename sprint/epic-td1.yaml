@@ -218,3 +218,25 @@ stories:
     completed: '2026-07-20'
     type: bug
     review_verdict: approved
+  - id: td1-11
+    title: bake-sfx expandAlsoun omits the ROM terminal-zero register write — five cues truncate their tail, player_fire among them
+    description: |-
+      Surfaced by td1-6 (2026-07-20), NOT created by it — the SECOND of the two bake-tool defects the tempest link-5 audit named. td1-6's description called it out as DISTINCT and OUT OF SCOPE ("the terminal-zero-write omission affecting segment_tick/enemy_explosion/enemy_fire/spike_shot — those read ROM=[0,0] shipped=null"), and this story is where it gets fixed. td1-6 also proved it affects a FIFTH cue the original triage did not know about: player_fire.
+
+      THE DEFECT: tempest/tools/pokey-bake/bake-sfx.mjs's expandAlsoun/expandSeq path omits the ROM's terminal register write — the final [reg, 0] event the ROM emits to silence the voice at the end of a sound. The shipped bake simply runs OUT of events two short of the ROM. Signature in the audit: `register-event stream differs ... ROM=[0,0] shipped=null (ROM emits N events, shipped emits N-2)`. This is the OPPOSITE shape from td1-6's mask bug (a same-position VALUE disagreement); here the shipped side has no event at all at the divergence point.
+
+      HOW player_fire JOINED THE LIST: the audit comparison stops at the FIRST divergence. player_fire had TWO defects — the AUDC high-nibble mask omission (td1-6) at event 3, and this terminal-zero omission at event 64. The mask bug at event 3 HID the tail truncation. td1-6 fixed the mask, the event-3 divergence vanished, the comparison walked further, and revealed ROM=[0,0] shipped=null at event 64. Exactly the same pattern by which td1-4 (un-crossing the cue->ROM map) revealed td1-6. So the affected set is FIVE, not four: segment_tick, enemy_explosion, enemy_fire, spike_shot, AND player_fire.
+
+      THE CANARY COUPLING (same shape as td1-6): the orchestrator test tests/extract-audio.test.mjs will, after td1-6, assert player_fire is MISMATCH on the terminal-zero tail (shipped=null), grouped WITH the other four (td1-6 re-aims it there). When THIS story fixes the terminal-zero write, all five cues' baked tails gain their [reg,0] event and become ROM_VERIFIED — so this story must FLIP all five from the MISMATCH group to the ROM_VERIFIED group in extract-audio.test.mjs, in lockstep with the tempest fix (the orchestrator imports tempest's working tree, so fixing tempest reddens the canary until the assertions move). Verify the blast radius empirically as td1-6 did: fixing the terminal write should move exactly these five cues' bytes and no others.
+
+      SCOPE: the fix is in the TEMPEST subrepo (tools/pokey-bake/), the canary flip in the orchestrator (trunk-based). Same two-repo sequence as td1-6: RED in tempest (a test proving expandAlsoun emits the terminal [reg,0]), GREEN fix, merge tempest PR to develop, THEN flip the five orchestrator canary rows. Do NOT also re-open td1-6's mask (already fixed); this is purely the tail write.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: tempest,.
+    workflow: tdd
+    acceptance_criteria:
+      - A failing tempest test proves expandAlsoun/expandSeq emits the ROM's terminal [reg,0] register write, red against the current tail-truncating code.
+      - All five affected cues (segment_tick, enemy_explosion, enemy_fire, spike_shot, player_fire) bake a stream whose length and tail match the ROM; the orchestrator link-5 audit stamps all five ROM_VERIFIED.
+      - The five orchestrator canary rows in tests/extract-audio.test.mjs are flipped from MISMATCH to ROM_VERIFIED in lockstep, and the blast radius is verified empirically (exactly these five cues' bytes move).
+    type: bug
