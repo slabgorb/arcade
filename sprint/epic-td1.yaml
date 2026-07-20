@@ -111,10 +111,13 @@ stories:
       A BEHAVIOURAL test (bind 127.0.0.1, assert the dev server fails loudly) would be stronger than a regex check on the config text, but note joust's own behavioural strictPort test occupies IPv4 only and was flaky before the host pin — copy that fix if the test is ported.
     points: 1
     priority: p2
-    status: backlog
-    repos: battlezone,red-baron,centipede
+    status: done
+    started: '2026-07-20'
+    repos: battlezone,red-baron,centipede,joust
     workflow: trivial
+    completed: '2026-07-20'
     type: chore
+    review_verdict: approved
   - id: td1-8
     title: just serve swallows a failed launch — bare wait returns 0, fleet looks healthy with one game silently missing
     description: |-

@@ -918,3 +918,8 @@ completed_stories:
     title: "The joust — box broad-phase + span narrow-phase, OSTBO sub-pixel resolution, bounce-apart, facing + bump registers"
     points: 3
     completed: '2026-07-20'
+  - id: td1-7
+    epic: td1
+    title: Scaffold suites guard the wrong invariant — assert host 127.0.0.1 pin, not just strictPort
+    points: 1
+    completed: '2026-07-20'
