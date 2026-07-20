@@ -12,6 +12,7 @@ import battlezone from '../scripts/audio/games/battlezone.mjs';
 import redBaron from '../scripts/audio/games/red-baron.mjs';
 import swSpeech from '../scripts/audio/games/star-wars-speech.mjs';
 import swMusic from '../scripts/audio/games/star-wars-music.mjs';
+import { link5SkipReason } from './helpers/link5-inputs.mjs';
 
 test('cli: parses game name and flags', () => {
   assert.deepEqual(parseArgs(['tempest', '--render']), { game: 'tempest', render: true, all: false, out: null });
@@ -163,10 +164,13 @@ test('adapter: tempest sfx() reports a vanished label as .missing, not a silent 
   const patched = { ...tempest, table: () => ({ ...real, labels: prunedLabels }) };
 
   const sfx = patched.sfx.call(patched);
-  assert.ok(!sfx.some((s) => s.name === 'player_fire'), 'player_fire must not appear as a normal (rendered) row');
+  // td1-4: EX2F is ALSOUN's ENEMY EXPLOSION record (ALSOUN.MAC:181, ";ENEMY
+  // EXPLOSION") — tp1-2 un-crossed the map so it now backs 'enemy_explosion',
+  // not 'player_fire' (which EX2F's bytes wrongly shipped as, pre-tp1-2).
+  assert.ok(!sfx.some((s) => s.name === 'enemy_explosion'), 'enemy_explosion must not appear as a normal (rendered) row');
   assert.ok(Array.isArray(sfx.missing), 'sfx() must attach a .missing list');
-  const miss = sfx.missing.find((m) => m.name === 'player_fire');
-  assert.ok(miss, 'player_fire must be named in .missing');
+  const miss = sfx.missing.find((m) => m.name === 'enemy_explosion');
+  assert.ok(miss, 'enemy_explosion must be named in .missing');
   assert.match(miss.reason, /EX2F/);
 });
 
@@ -181,8 +185,9 @@ test('audit: a sound whose labels vanish from source becomes an UNVERIFIED row, 
   const patched = { ...tempest, table: () => ({ ...real, labels: prunedLabels }) };
 
   const verdicts = await audit(patched);
-  const row = verdicts.find((v) => v.sound === 'player_fire');
-  assert.ok(row, 'player_fire must still produce a row in the audit, not vanish');
+  // td1-4: see the sibling test above — EX2F backs 'enemy_explosion' post-tp1-2.
+  const row = verdicts.find((v) => v.sound === 'enemy_explosion');
+  assert.ok(row, 'enemy_explosion must still produce a row in the audit, not vanish');
   assert.equal(row.verdict, VERDICT.UNVERIFIED, row.reason);
   assert.match(row.reason, /EX2F/);
   assert.match(row.reason, /link 1 \(parse\)/);
@@ -196,31 +201,58 @@ test('audit: a sound whose labels vanish from source becomes an UNVERIFIED row, 
 // of these ever change, that is real news about either the ROM data or the
 // shipped port — do not "fix" it by loosening the assertion; investigate.
 //
-// LINK 5 (COMPARE) is the point of this file's fix: three CONFIRMED shipped
-// defects (established by reading the ports' source directly) must show up as
-// real MISMATCH verdicts, not get silently stamped ROM-VERIFIED. That is
-// exercised below for tempest, battlezone AND red-baron.
-test('audit: tempest sfx — link 5 catches the 4 sounds whose shipped bake omits the ROM terminal-zero write', async () => {
+// LINK 5 (COMPARE) is the point of this file's fix: CONFIRMED shipped defects
+// (established by reading the ports' source directly) must show up as real
+// MISMATCH verdicts, not get silently stamped ROM-VERIFIED. That is exercised
+// below for tempest, battlezone AND red-baron.
+//
+// td1-4 RE-BASELINE: this test's premise ("4 sounds ... omits the ROM
+// terminal-zero write") predates tp1-2 (2b6c62e, 2026-07-13), which un-crossed
+// the cue->ROM-address map in scripts/audio/games/tempest.mjs (see td1-4's
+// triage file, tests/extract-audio-link5-triage.test.mjs). Under the CORRECT
+// mapping, link 5 now compares each cue against its own ROM record instead of
+// a different cue's, and that surfaces TWO real, distinct bake-tool defects,
+// not one:
+//   (a) bake-sfx.mjs's expandAlsoun() path omits the ROM's terminal-zero
+//       register write, for segment_tick/enemy_explosion/enemy_fire/spike_shot.
+//   (b) bake-sfx.mjs's expandSeq() never applies the ROM's AUDC high-nibble
+//       mask on a ramp (MODSND's odd-channel XOR/AND 0F0/XOR dance,
+//       RBSOUN.MAC's sibling logic in ALSOUN.MAC) — envelope.mjs's
+//       maskHighNibble:true DOES apply it — so player_fire's AUDC values
+//       diverge from event 3 onward, not merely at the tail. This is a
+//       genuinely NEW finding this fix surfaces; it is not silenced here.
+test('audit: tempest sfx — link 5, given the correct (tp1-2) cue map, catches two real bake-tool defects', async (t) => {
+  const reason = link5SkipReason('tempest');
+  if (reason) { t.skip(reason); return; }
+
   const verdicts = await audit(tempest);
   const sfx = verdicts.filter((v) => !v.sound.startsWith('speech/') && !v.sound.startsWith('music/'));
   const byName = Object.fromEntries(sfx.map((v) => [v.sound, v]));
 
-  // Confirmed mismatch (task brief): bake-sfx.mjs's expandAlsoun() path omits
-  // the ROM's terminal-zero register write for these four.
-  for (const name of ['segment_tick', 'player_fire', 'enemy_fire', 'spike_shot']) {
+  // Terminal-zero-write omission (a): the ROM's register-event stream is two
+  // events longer than the shipped bake's, and the divergence is at the tail.
+  for (const name of ['segment_tick', 'enemy_explosion', 'enemy_fire', 'spike_shot']) {
     assert.equal(byName[name].verdict, VERDICT.MISMATCH, `${name}: ${byName[name].reason}`);
     assert.match(byName[name].reason, /register-event stream differs/);
   }
 
+  // AUDC high-nibble-mask omission (b): player_fire's LA record ramps AUDC by
+  // -8 each step; the ROM masks the high (distortion) nibble on every step, the
+  // shipped bake does not, so the streams disagree well before the tail.
+  assert.equal(byName.player_fire.verdict, VERDICT.MISMATCH, byName.player_fire.reason);
+  assert.match(byName.player_fire.reason, /register-event stream differs/);
+
   // Not shipped at all (absent from sfx-data.mjs's SFX and DEFERRED, or
   // explicitly DEFERRED/never baked) — cannot be machine-compared.
-  for (const name of ['launch', 'three_second_warning', 'pulsar_active']) {
+  for (const name of ['three_second_warning', 'pulsar_active']) {
     assert.equal(byName[name].verdict, VERDICT.UNVERIFIED, `${name}: expected UNVERIFIED, got ${byName[name].verdict}`);
   }
 
   // The remaining sounds' shipped expansion genuinely matches our ROM-derived
-  // event stream register-for-register, value-for-value, in time order.
-  for (const name of ['pulsar_hum', 'extra_life', 'player_explosion', 'warp', 'enemy_explosion', 'countdown_beep']) {
+  // event stream register-for-register, value-for-value, in time order —
+  // including thrust_space, compared for the first time now that it has its
+  // own cue instead of being shadowed under enemy_explosion's old (wrong) slot.
+  for (const name of ['pulsar_hum', 'extra_life', 'player_explosion', 'warp', 'thrust_space', 'countdown_beep']) {
     assert.equal(byName[name].verdict, VERDICT.ROM_VERIFIED, `${name}: ${byName[name].reason}`);
   }
 
@@ -298,7 +330,19 @@ test('findRomEnvelopeShapes: detects each of the three ROM-table shapes independ
   assert.ok(findRomEnvelopeShapes('0xa4, 0x07, 0xff, 0x04').length > 0);
 });
 
-test('audit: red-baron — link 5 catches the 3 inverted envelopes (TP/BN/WP/TH synthesised, TK real)', async () => {
+// td1-4 RE-BASELINE: this test's premise ("3 inverted envelopes") predates
+// rb4-10 (585943b, 2026-07-18), which re-sourced TP/BN/WP/TH byte-exact from
+// RBSOUN.MAC — i.e. UN-inverted them (see td1-4's triage file,
+// tests/extract-audio-link5-triage.test.mjs, for the full derivation). The
+// scanner that judges them also had to be taught rb4-10's seq()/repeat() chain
+// vocabulary (scripts/audio/compare/shipped.mjs's parseRedBaronPokeySounds) —
+// under the old `held(...)`-only scanner it silently classified all five tones
+// identically, so the old MISMATCH assertions here passed for a reason that
+// had nothing to do with the port. All five tones now agree with the ROM.
+test('audit: red-baron — link 5, taught the seq()/repeat() vocabulary, confirms rb4-10 un-inverted TP/BN/WP/TH', async (t) => {
+  const reason = link5SkipReason('red-baron');
+  if (reason) { t.skip(reason); return; }
+
   const verdicts = await audit(redBaron);
   const analog = verdicts.filter((v) => v.verdict === VERDICT.NO_ROM_AUDIO);
   assert.equal(analog.length, 4);
@@ -307,23 +351,14 @@ test('audit: red-baron — link 5 catches the 3 inverted envelopes (TP/BN/WP/TH 
   assert.equal(sfx.length, 5);
   const byName = Object.fromEntries(sfx.map((v) => [v.sound, v]));
 
-  // Confirmed inverted: the ROM sweeps one register and holds the other; the
-  // shipped src/shell/pokey.ts port has it backwards (or invents a sweep the
-  // ROM never has).
-  for (const name of ['bonus_life', 'new_plane', 'three_hundred']) {
-    assert.equal(byName[name].verdict, VERDICT.MISMATCH, `${name}: ${byName[name].reason}`);
-    assert.match(byName[name].reason, /disagrees with the ROM envelope/);
-  }
-
   // point_tick (TK) is byte-exact per red-baron.mjs's header comment; the
   // structural sweep/hold check the driver runs passes for it too.
-  assert.equal(byName.point_tick.verdict, VERDICT.ROM_VERIFIED, byName.point_tick.reason);
-  // ten_point_tick (TP) was never independently ROM-sourced by the port (it
-  // was "SYNTHESISED to shape"), but happens to hold/sweep the same registers
-  // as the ROM — the structural check this driver runs cannot distinguish
-  // "coincidentally correct shape" from "actually verified values", and the
-  // task brief scopes link 5 to exactly that structural check.
-  assert.equal(byName.ten_point_tick.verdict, VERDICT.ROM_VERIFIED, byName.ten_point_tick.reason);
+  // bonus_life/new_plane/three_hundred/ten_point_tick (BN/WP/TH/TP) were
+  // re-sourced byte-exact from RBSOUN.MAC by rb4-10 and now structurally agree
+  // with the ROM's sweep/hold shape as well.
+  for (const name of ['point_tick', 'bonus_life', 'new_plane', 'three_hundred', 'ten_point_tick']) {
+    assert.equal(byName[name].verdict, VERDICT.ROM_VERIFIED, `${name}: ${byName[name].reason}`);
+  }
 });
 
 test('audit: star-wars speech — content-identical prefixes classed ROM-VERIFIED with the trailing-byte caveat named, EXCEPT phrase 19 whose shorter (ROM) blob never reaches a STOP frame', async () => {

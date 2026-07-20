@@ -7,10 +7,15 @@
 //   T51F..PO6A = 222 bytes                  -> ends at $CCAE
 //   ALEXEC.MAP: CHKSM9 = $CCAF              -> the arithmetic closes exactly
 //
-// WARNING: the source COMMENTS ARE LIES. ALSOUN is Atari's generic library, so
-// EX2 is commented "ENEMY EXPLOSION" but Tempest uses it as player_fire; T26/T36
-// are commented "THRUST" but are warp/enemy_explosion. Key on the ROM ADDRESS,
-// never on the comment.
+// The source comments ARE trustworthy — ALSOUN is Atari's GENERIC sound
+// library, and Theurer's per-slot comments name what THIS game plays each
+// record as (ALSOUN.MAC:87-100, PNTRS): EX2 really is "ENEMY EXPLOSION", LA3
+// really is "PLAYER FIRE", T36 really is "THRUST SOUND IN SPACE". Story 6-6
+// distrusted them anyway and identified these sounds BY EAR instead, and got
+// two of the three backwards — that misreading is what tp1-2 (2b6c62e,
+// 2026-07-13) corrected, in both this file's SOUNDS table and the shipped
+// tools/pokey-bake/sfx-data.mjs. Key on the ROM ADDRESS (which is what SOUNDS
+// below encodes via `label`), not on a listening test.
 import { readFileSync } from 'node:fs';
 import { sourceDir } from '../../sources.mjs';
 import { join } from 'node:path';
@@ -25,13 +30,13 @@ const TICK_HZ = 250;          // the sound IRQ, ~250 Hz (1 beat ~= 4 ms)
 // never by the source's misleading comment.
 const SOUNDS = [
   { label: 'LO5F', audc: 'LO5A', name: 'segment_tick' },
-  { label: 'EX2F', audc: 'EX2A', name: 'player_fire' },
-  { label: 'LA3F', audc: 'LA3A', name: 'launch' },
+  { label: 'EX2F', audc: 'EX2A', name: 'enemy_explosion' },
+  { label: 'LA3F', audc: 'LA3A', name: 'player_fire' },
   { label: 'PU6F', audc: 'PU6A', name: 'pulsar_hum' },
   { label: 'WP4F', audc: 'WP4A', name: 'extra_life' },
   { label: 'DI1F', audc: 'DI1A', name: 'player_explosion' },
   { label: 'T26F', audc: 'T26A', name: 'warp' },
-  { label: 'T36F', audc: 'T36A', name: 'enemy_explosion' },
+  { label: 'T36F', audc: 'T36A', name: 'thrust_space' },
   { label: 'ES8F', audc: 'ES8A', name: 'enemy_fire' },
   { label: 'EL7F', audc: 'EL7A', name: 'spike_shot' },
   { label: 'SL1F', audc: 'SL1A', name: 'countdown_beep' },

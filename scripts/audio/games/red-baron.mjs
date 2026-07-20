@@ -3,10 +3,11 @@
 // RBARON.MAP: `RBSOUN 71C4 0104` -> $71C4, 260 bytes, in chip 036996.01 ($7000).
 // .IRPC X,<12345678> -> 8 slots = all 4 POKEY channels.
 //
-// red-baron/src/shell/pokey.ts claims TP/BN/WP/TH were "SYNTHESISED" because "the
-// raw RBSOUN.MAC is not in this checkout". The file exists and has real data for
-// all four — and three of them are INVERTED in the port (it holds the register the
-// ROM sweeps and sweeps the register the ROM holds). Only TK is ROM-exact.
+// rb4-10 (585943b, 2026-07-18) re-sourced TP/BN/WP/TH byte-exact from RBSOUN.MAC —
+// they had previously been "SYNTHESISED to shape" (rb2-11) with three of the four
+// INVERTED (holding the register the ROM sweeps and sweeping the register the ROM
+// holds). All five tones (TK/TP/BN/WP/TH) now agree with the ROM's sweep/hold
+// shape; see scripts/audio/compare/shipped.mjs's compareRedBaronShipped.
 //
 // xTerminator: RBSOUN's own doc block (the shared T2SOUN base driver) reads "TO
 // STOP A CHANNEL & RETURN TO ITS IDLE STATE, PUT IN AS A 2 BYTE SEQUENCE X,0 WHERE

@@ -159,9 +159,59 @@ function splitTopLevelArgs(s) {
   return parts.map((p) => p.trim());
 }
 
+// Every function-call NAME appearing anywhere in `expr` (e.g. 'seq', 'repeat').
+// Used to check whether an argument expression is built ENTIRELY out of chain
+// vocabulary this scanner understands, or reaches for something it doesn't.
+function callNamesIn(expr) {
+  const names = new Set();
+  const re = /\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
+  let m;
+  while ((m = re.exec(expr))) names.add(m[1]);
+  return names;
+}
+
+// rb4-10's chain vocabulary (pokey.ts): `seq(start, hold, change, number)` is
+// one 4-byte envelope sequence, `repeat(n, seq(...))` is n identical copies of
+// one. Anything else (a future helper, a typo, a hand-rolled literal) is a
+// vocabulary this scanner does not know how to read.
+const KNOWN_CHAIN_CALLS = new Set(['seq', 'repeat']);
+
+// Every `seq(start, hold, change, number)` call's CHANGE argument (3rd
+// positional), wherever it appears in `expr` — inside an array literal, or
+// nested inside a `repeat(n, seq(...))`.
+function seqChanges(expr) {
+  const changes = [];
+  const re = /\bseq\(([^)]*)\)/g;
+  let m;
+  while ((m = re.exec(expr))) {
+    const parts = m[1].split(',').map((p) => p.trim());
+    if (parts.length < 3) continue;
+    changes.push(Number(parts[2]));
+  }
+  return changes;
+}
+
+// A register slot's CHAIN "sweeps" iff ANY step's CHANGE != 0 (rb4-10's
+// `seq(start, hold, change, number)` vocabulary — see pokey.ts's header for
+// the STVAL/FRCNT/CHANGE/NUMBER derivation). Returns `null` when `expr`
+// contains a call this scanner does not recognise, or no `seq(...)` at all —
+// an unparseable vocabulary must be ADMITTED, not judged, so the caller can
+// answer `unverified` instead of risking a confident (and possibly wrong)
+// match/mismatch.
+function chainSweeps(expr) {
+  for (const name of callNamesIn(expr)) {
+    if (!KNOWN_CHAIN_CALLS.has(name)) return null;
+  }
+  const changes = seqChanges(expr);
+  if (changes.length === 0) return null;
+  return changes.some((c) => c !== 0);
+}
+
 // Regex/text-scan extraction of red-baron's POKEY_SOUNDS table. Returns
-// tone -> { audfSweeps, audcSweeps }. A slot is "sweeps" unless its argument
-// is a bare `held(...)` call (pokey.ts's own name for a flat register).
+// tone -> { audfSweeps, audcSweeps }, OR tone -> { unparseable: true, reason }
+// when either slot's chain expression is written in a vocabulary chainSweeps
+// does not recognise — that third state is what lets the caller distinguish
+// "read it and it disagrees with the ROM" from "could not read it at all".
 export function parseRedBaronPokeySounds(tsSource) {
   const out = {};
   const callRe = /\b([A-Z]{2}):\s*table\(/g;
@@ -178,10 +228,15 @@ export function parseRedBaronPokeySounds(tsSource) {
     }
     const args = splitTopLevelArgs(tsSource.slice(start, i - 1));
     if (args.length < 3) continue;
-    out[name] = {
-      audfSweeps: !/^held\(/.test(args[1]),
-      audcSweeps: !/^held\(/.test(args[2]),
-    };
+    const audfSweeps = chainSweeps(args[1]);
+    const audcSweeps = chainSweeps(args[2]);
+    out[name] = (audfSweeps === null || audcSweeps === null)
+      ? {
+          unparseable: true,
+          reason: `POKEY_SOUNDS.${name} uses a chain vocabulary this scanner does not recognise ` +
+            `(expected seq()/repeat() — rb4-10) and cannot be confidently classified as sweeping or held`,
+        }
+      : { audfSweeps, audcSweeps };
   }
   return out;
 }
@@ -201,6 +256,9 @@ export function compareRedBaronShipped(tone, romSweeps, pokeyTsPath) {
     return unverified(
       `could not extract POKEY_SOUNDS.${tone} from ${pokeyTsPath} (regex scan found no 'table(' definition for it) — cannot machine-compare`,
     );
+  }
+  if (shipped.unparseable) {
+    return unverified(`${pokeyTsPath}: ${shipped.reason}`);
   }
   const diffs = [];
   if (romSweeps.audfSweeps !== shipped.audfSweeps) {
