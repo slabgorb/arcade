@@ -17,6 +17,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+// td1-8 moved the fleet launch out of the justfile `serve` recipe into this module;
+// AC2 below now enumerates the fleet instead of grepping the recipe text.
+import { jobsFor } from '../scripts/serve.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
@@ -63,14 +66,33 @@ test('AC2: justfile defines a single canonical `serve` recipe', () => {
   );
 });
 
-test('AC2: canonical `serve` recipe launches the lobby and the game subrepos', () => {
+// RE-AIMED BY td1-8 (2026-07-20). Story 7-7's AC2 guard, unchanged in intent; only
+// the evidence moved. It used to match `/lobby/i` and `/tempest|games/i` against the
+// justfile `serve` recipe body, back when that body inlined eight backgrounded
+// `npm run dev` jobs. td1-8 moved the fleet launch into scripts/serve.mjs, because
+// the recipe's bare `wait` returned 0 no matter which job died — seven servers up and
+// one dead read as a healthy fleet, which is the opposite of a canonical launcher.
+//
+// This is a strictly stronger statement of the same AC. The old assertion could be
+// satisfied by the word "lobby" appearing anywhere in the recipe (an echo, a comment);
+// `/tempest|games/i` was weaker still. The fleet is now enumerable, so AC2 can say what
+// it always meant: the canonical launcher launches the lobby AND every game.
+test('AC2: canonical `serve` launches the lobby and the game subrepos', () => {
+  const launched = jobsFor('/ARCADE').map((j) => j.name);
+  assert.ok(launched.includes('lobby'), 'the canonical launcher must launch the lobby shell');
+
+  const games = read('justfile').match(/^games\s*:=\s*"([^"]*)"/m);
+  assert.notEqual(games, null, 'justfile must define a `games` list');
+  for (const game of games[1].trim().split(/\s+/)) {
+    assert.ok(
+      launched.includes(game),
+      `the canonical launcher must launch every game in \`games\` — ${game} is missing from the fleet`,
+    );
+  }
+
+  // …and the recipe must actually run that launcher, or the fleet above is a dead table.
   const body = recipeBody(read('justfile'), 'serve') ?? '';
-  assert.match(body, /lobby/i, 'serve recipe must launch the lobby');
-  assert.match(
-    body,
-    /tempest|games/i,
-    'serve recipe must launch the game subrepos (a literal game or the games list)',
-  );
+  assert.match(body, /serve\.mjs/, 'the canonical `serve` recipe must invoke scripts/serve.mjs');
 });
 
 test('AC2: the canonical serve set (`subrepos` / install-all) includes the lobby', () => {

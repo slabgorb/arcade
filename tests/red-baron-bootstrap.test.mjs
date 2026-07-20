@@ -27,6 +27,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+// td1-8 moved the fleet launch out of the justfile `serve` recipe into this module;
+// the "serve launches red-baron" assertion below now reads the real spawn spec.
+import { jobsFor } from '../scripts/serve.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
@@ -150,12 +153,33 @@ test('AC: justfile `subrepos` variable includes red-baron (and keeps the existin
   }
 });
 
-test('AC: canonical `serve` recipe launches red-baron', () => {
+// RE-AIMED BY td1-8 (2026-07-20). This assertion is unchanged in INTENT and still
+// belongs to the red-baron bootstrap story; only its evidence moved.
+//
+// It used to read `(cd {{root}}/red-baron && npm run dev) &` out of the justfile
+// `serve` recipe body. td1-8 moved the fleet launch out of that recipe and into
+// scripts/serve.mjs, because a bash recipe that backgrounds eight jobs cannot be
+// tested for whether it NOTICES one dying (the recipe's bare `wait` returned 0 with
+// a server dead). The launch invocation still exists — it is now data, produced by
+// jobsFor(), which is what the supervisor actually spawns.
+//
+// The original comment's point is preserved and, if anything, sharpened: it warned
+// that a bare `/red-baron/` match would pass even with the launch missing, because
+// the recipe also echoed a "red-baron → :5277" diagnostic. So this does NOT merely
+// check that red-baron appears in SERVERS — it asserts the real spawn spec (command,
+// args, cwd) that the launcher will execute, plus the recipe actually delegating to
+// it. A dead SERVERS entry the recipe never calls cannot pass.
+test('AC: canonical `serve` launches red-baron', () => {
+  const job = jobsFor('/ARCADE').find((j) => j.name === 'red-baron');
+  assert.ok(job, 'red-baron must be in the fleet scripts/serve.mjs launches (SERVERS)');
+  assert.equal(job.command, 'npm', 'red-baron must be LAUNCHED (not just listed)');
+  assert.deepEqual(job.args, ['run', 'dev'], 'red-baron must be launched with `npm run dev`');
+  assert.equal(job.cwd, join('/ARCADE', 'red-baron'), 'red-baron must be launched from its own subrepo directory');
+  assert.equal(job.port, Number(RED_BARON_PORT), `red-baron must be launched on its pinned port ${RED_BARON_PORT}`);
+
+  // …and the recipe must actually run that launcher, or the fleet above is a dead table.
   const body = recipeBody(read('justfile'), 'serve') ?? '';
-  // Anchor to the actual launch invocation, not a bare `red-baron` mention — the
-  // recipe also echoes a "red-baron → :5277" diagnostic line, so a bare match
-  // would pass even if the `(cd .../red-baron && npm run dev)` launch were missing.
-  assert.match(body, /\(cd \{\{root\}\}\/red-baron && npm run dev\) &/, 'the canonical serve recipe must LAUNCH red-baron (not just echo it)');
+  assert.match(body, /serve\.mjs/, 'the canonical `serve` recipe must invoke scripts/serve.mjs, which launches the fleet');
 });
 
 // --- AC: lobby tile --------------------------------------------------------

@@ -41,6 +41,16 @@ test('the deps-doctor script exists', () => {
   );
 });
 
+// RE-AIMED BY td1-8 (2026-07-20). Identical intent — the preflight must run BEFORE
+// anything is served — and it is still this story's guard. Only the launch's spelling
+// moved: td1-8 replaced the recipe's eight inlined `(cd .../X && npm run dev) &` jobs
+// with a single `scripts/serve.mjs` call, because the bare `wait` that terminated the
+// old recipe returned 0 no matter which of those jobs died.
+//
+// So the ordering anchor changes from "the first `npm run dev`" to "the call to
+// serve.mjs" — which is now the first moment anything gets launched. The property
+// asserted (reconcile the @arcade/shared pin before a single server starts, or the
+// lobby 500s on stale node_modules bytes again) is untouched.
 test('`serve` runs the deps-doctor preflight before launching servers', () => {
   const body = recipeBody(read('justfile'), 'serve') ?? '';
   assert.match(
@@ -48,11 +58,11 @@ test('`serve` runs the deps-doctor preflight before launching servers', () => {
     /deps-doctor\.mjs/,
     'the serve recipe must invoke scripts/deps-doctor.mjs as a preflight so it cannot serve stale @arcade/shared bytes',
   );
-  // The preflight must precede the launches, or a stale dep is already being served.
+  // The preflight must precede the launch, or a stale dep is already being served.
   const doctorAt = body.indexOf('deps-doctor.mjs');
-  const launchAt = body.search(/npm run dev/);
+  const launchAt = body.indexOf('serve.mjs');
   assert.ok(doctorAt !== -1 && launchAt !== -1, 'serve must both preflight and launch');
-  assert.ok(doctorAt < launchAt, 'the deps-doctor preflight must run BEFORE the first `npm run dev`');
+  assert.ok(doctorAt < launchAt, 'the deps-doctor preflight must run BEFORE scripts/serve.mjs launches the fleet');
 });
 
 test('`install-all` reconciles through deps-doctor (not a bare `npm install` loop)', () => {

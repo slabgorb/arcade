@@ -27,6 +27,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+// td1-8 moved the fleet launch out of the justfile `serve` recipe into this module;
+// the "serve launches battlezone" assertion below now reads the real spawn spec.
+import { jobsFor } from '../scripts/serve.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
@@ -137,9 +140,24 @@ test('AC: justfile `subrepos` variable includes battlezone', () => {
   assert.match(subrepos[1], /\bbattlezone\b/, 'battlezone must be in the `subrepos` variable (serve/install-all iterate it)');
 });
 
-test('AC: canonical `serve` recipe launches battlezone', () => {
+// RE-AIMED BY td1-8 (2026-07-20). Same intent, still this story's guard; only the
+// evidence moved. It used to match `/battlezone/` against the justfile `serve` recipe
+// body. td1-8 moved the fleet launch out of that recipe into scripts/serve.mjs (the
+// recipe's bare `wait` returned 0 with a server dead, so the launch had to become
+// testable). The launch is now the spawn spec jobsFor() produces.
+//
+// Note the original was the WEAK form its red-baron sibling explicitly warned about —
+// a bare `/battlezone/` mention would have passed even if the launch were missing.
+// Re-aiming fixes that: this asserts the real spawn spec, not a mention.
+test('AC: canonical `serve` launches battlezone', () => {
+  const job = jobsFor('/ARCADE').find((j) => j.name === 'battlezone');
+  assert.ok(job, 'battlezone must be in the fleet scripts/serve.mjs launches (SERVERS)');
+  assert.equal(job.command, 'npm', 'battlezone must be LAUNCHED alongside lobby/tempest/star-wars');
+  assert.deepEqual(job.args, ['run', 'dev']);
+  assert.equal(job.cwd, join('/ARCADE', 'battlezone'), 'battlezone must be launched from its own subrepo directory');
+
   const body = recipeBody(read('justfile'), 'serve') ?? '';
-  assert.match(body, /battlezone/, 'the canonical serve recipe must launch battlezone alongside lobby/tempest/star-wars');
+  assert.match(body, /serve\.mjs/, 'the canonical `serve` recipe must invoke scripts/serve.mjs, which launches the fleet');
 });
 
 test('reconcile (SM decision #1): justfile `games`/`subrepos` also backfill star-wars', () => {

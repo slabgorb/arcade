@@ -135,7 +135,11 @@ ci: test-orchestrator test-all build-all
 # `just release <name>` (CI deploys on merge to main) or `just deploy` (manual
 # fallback). Run `just install-all` once on a fresh checkout first.
 #
-# Serve the whole arcade (lobby :5270 + games) from this canonical checkout — Ctrl-C stops all
+# Serve the whole arcade (lobby :5270 + games) from this canonical checkout — Ctrl-C stops all.
+# The launch/supervise logic lives in scripts/serve.mjs (td1-8): it names a server that
+# fails to start, exits non-zero when one does, tears the rest down instead of hanging on
+# a bare `wait`, and only prints a ready URL once that port is observed accepting a
+# connection — see tests/serve-launcher.test.mjs for the behaviour this is required to have.
 serve:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -144,24 +148,13 @@ serve:
     # so node_modules can serve stale bytes (the lobby once 500'd this way on a missing
     # /glow export). Reconcile installed vs pinned BEFORE launching — abort loudly on failure.
     node {{root}}/scripts/deps-doctor.mjs {{subrepos}}
-    echo "  lobby      → http://localhost:5270/"
-    echo "  tempest    → http://localhost:5273/"
-    echo "  star-wars  → http://localhost:5274/"
-    echo "  asteroids  → http://localhost:5275/"
-    echo "  battlezone → http://localhost:5276/"
-    echo "  red-baron  → http://localhost:5277/"
-    echo "  centipede  → http://localhost:5278/"
-    echo "  joust      → http://localhost:5279/"
-    trap 'kill 0' EXIT
-    (cd {{root}}/lobby && npm run dev) &
-    (cd {{root}}/tempest && npm run dev) &
-    (cd {{root}}/star-wars && npm run dev) &
-    (cd {{root}}/asteroids && npm run dev) &
-    (cd {{root}}/battlezone && npm run dev) &
-    (cd {{root}}/red-baron && npm run dev) &
-    (cd {{root}}/centipede && npm run dev) &
-    (cd {{root}}/joust && npm run dev) &
-    wait
+    # No `trap ... EXIT` here on purpose: `kill 0` would SIGTERM this recipe's own
+    # shell along with the fleet, so the recipe always died of signal 15 (143) no
+    # matter what serve.mjs computed — silently re-erasing the exit code this story
+    # exists to carry. Teardown (including each server's vite grandchild) now lives
+    # in scripts/serve.mjs itself, so the code below simply propagates as this
+    # recipe's own exit status.
+    node {{root}}/scripts/serve.mjs {{root}}
 
 # ============================================
 # DEPLOY (R2 static hosting)

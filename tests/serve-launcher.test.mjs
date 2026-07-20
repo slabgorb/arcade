@@ -54,12 +54,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, mkdtempSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync, mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import net from 'node:net';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync, spawn } from 'node:child_process';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
@@ -441,7 +441,17 @@ test('td1-8 AC2: the serve CLI itself exits non-zero and names the servers that 
   }
 
   assert.equal(signal, null, `the launcher must not hang — it was killed by ${signal} after the timeout`);
+  // Reviewer HIGH (td1-8, review round): `notEqual(status, 0)` alone cannot tell
+  // "correctly non-zero because a server died" from "killed by a signal, code
+  // discarded" — both are non-zero. A signal-death is exactly the failure mode of
+  // the recipe's `trap 'kill 0' EXIT` (it SIGTERMs its own shell, so $? is 143 =
+  // 128+15 regardless of health). So require a GENUINE exit code: a real integer,
+  // not the 128+N a shell reports for a signal-kill, and not null (a raw signal).
   assert.notEqual(status, 0, `every server failed to launch, so the CLI must exit non-zero. Output:\n${output}`);
+  assert.ok(
+    Number.isInteger(status) && status > 0 && status < 128,
+    `the CLI must exit with a genuine non-zero code carrying health information, not be killed by a signal (128+N) or hang; got status=${status}, signal=${signal}. Output:\n${output}`,
+  );
   for (const name of ['lobby', 'joust']) {
     assert.match(output, new RegExp(name), `the CLI must name the servers that did not start (missing ${name}). Output:\n${output}`);
   }
@@ -463,8 +473,24 @@ test('td1-8 wiring: the `serve` recipe delegates to scripts/serve.mjs', () => {
   );
 });
 
-test('td1-8 wiring: the recipe no longer backgrounds its own `npm run dev` jobs', () => {
-  const body = recipeBody(read('justfile'), 'serve') ?? '';
+// Comments must be stripped before this guard runs. The recipe legitimately DESCRIBES
+// what it used to do, and prose about `npm run dev` or a `localhost:5270` example must
+// not trip a guard aimed at executable text — the same false-positive class
+// extract-audio.test.mjs's stripComments() exists to avoid.
+const stripShellComments = (body) => body.replace(/^\s*#.*$/gm, '');
+
+// This is a TEXT guard, deliberately, and it is the one thing the behavioural tests
+// above cannot check: they prove scripts/serve.mjs supervises correctly, but they can
+// say nothing about the justfile ALSO launching servers behind its back. Two launchers,
+// one of them untested, is precisely the state td1-8 exists to end.
+//
+// Kept broad (any `npm run dev` in executable recipe text) rather than pinned to the
+// old bash spelling `(cd {{root}}/X && npm run dev) &`: the anti-goal is "the recipe
+// launches a dev server itself", not "the recipe uses that particular syntax". A
+// narrower pattern would wave through `cd x; npm run dev &` or a for-loop rewrite,
+// which are the same defect wearing different clothes.
+test('td1-8 wiring: the recipe does not launch dev servers itself, beside scripts/serve.mjs', () => {
+  const body = stripShellComments(recipeBody(read('justfile'), 'serve') ?? '');
   assert.doesNotMatch(
     body,
     /npm run dev/,
@@ -473,7 +499,7 @@ test('td1-8 wiring: the recipe no longer backgrounds its own `npm run dev` jobs'
 });
 
 test('td1-8 wiring: the recipe no longer prints ready URLs it has not observed', () => {
-  const body = recipeBody(read('justfile'), 'serve') ?? '';
+  const body = stripShellComments(recipeBody(read('justfile'), 'serve') ?? '');
   assert.doesNotMatch(
     body,
     /localhost:52\d\d/,
@@ -506,4 +532,249 @@ test('td1-8 wiring: every SERVERS port matches the port CLAUDE.md publishes for 
       `scripts/serve.mjs pins ${name} to ${port}, but CLAUDE.md documents "${row.trim()}"`,
     );
   }
+});
+
+// ---------------------------------------------------------------------------
+// The launcher must not SWALLOW its children's output.
+//
+// THIS IS A GAP IN THIS FILE'S OWN RED PHASE, found at verify. Every test above
+// asserts what the launcher PRINTS ITSELF, through the injected `log` sink — so
+// none of them notice that `spawn(cmd, args, { cwd })` with no `stdio` option
+// defaults to 'pipe', leaving every dev server's stdout and stderr going into
+// pipes nobody reads. Measured: a child printing a marker produces ZERO
+// occurrences of it in the launcher's combined output.
+//
+// It inverts the story exactly. td1-8's complaint was that a failure's only
+// signal was "that repo's vite stack trace interleaved with seven repos'
+// concurrent startup chatter". A launcher that removes the interleaving by
+// removing the OUTPUT names the corpse and destroys the autopsy: `just serve`
+// says "FAILED: red-baron did not start (exit code 1)" and offers no way to
+// learn why. In normal operation the loss is worse — no "VITE ready in 340ms",
+// no HMR, no compile errors, for any of the eight servers.
+//
+// NOT A HANG. A tempting adjacent theory — undrained pipes fill and deadlock the
+// child — was tested and DISPROVED: a child wrote 2MB and exited normally in
+// 485ms. Do not "fix" a deadlock that does not exist; the defect is output loss.
+//
+// HOW THIS OBSERVES OUTPUT WITHOUT PINNING THE MECHANISM
+// Two reasonable fixes exist and this must pass under BOTH:
+//   (a) stdio: 'inherit' — the child writes straight to the launcher's fd 1/2;
+//   (b) pipe each stream and prefix every line with its server name — the
+//       launcher writes to its own fd 1/2.
+// Either way the text lands on THE LAUNCHER PROCESS'S stdout/stderr. So these
+// run the launcher in a subprocess and read its fds, rather than inspecting the
+// `log` sink or asserting on spawn options. Asserting `stdio: 'inherit'` would
+// foreclose (b) — the implementation-coupling disease this story spent a phase
+// curing on six other tests.
+//
+// The launcher's own `log` is silenced in the driver, so ANY captured text can
+// only have come from a child. Attribution (which server said what) is
+// deliberately NOT pinned: (b) satisfies it and (a) does not, and forcing (b)
+// through a test would make this design decision for Dev rather than leaving it.
+
+const CHILD_STDOUT_MARKER = 'CHILD_SAYS_VITE_READY_ON_STDOUT';
+const CHILD_STDERR_MARKER = 'CHILD_SAYS_STACK_TRACE_ON_STDERR';
+
+// Runs supervise() in a real subprocess and returns everything that reached its
+// stdout and stderr. `log` is silenced inside the driver.
+function captureLauncherOutput(jobs, { abortAfterMs = null } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'td1-8-child-output-'));
+  const driver = join(dir, 'driver.mjs');
+  writeFileSync(driver, `
+    const { supervise } = await import(process.argv[2]);
+    const spec = JSON.parse(process.argv[3]);
+    const ac = new AbortController();
+    if (spec.abortAfterMs) setTimeout(() => ac.abort(), spec.abortAfterMs);
+    // The launcher's OWN reporting is silenced: anything on this process's
+    // stdout/stderr must therefore have come from a child.
+    await supervise(spec.jobs, { log: () => {}, signal: ac.signal });
+    process.exit(0);
+  `);
+
+  const res = spawnSync(
+    NODE,
+    [driver, pathToFileURL(SERVE_SCRIPT).href, JSON.stringify({ jobs, abortAfterMs })],
+    { encoding: 'utf8', timeout: 30000 },
+  );
+
+  assert.equal(res.error?.code, undefined, `the launcher subprocess failed to run: ${res.error?.message}`);
+  assert.notEqual(res.signal, 'SIGTERM', 'the launcher subprocess timed out rather than finishing');
+  const stdout = res.stdout ?? '';
+  const stderr = res.stderr ?? '';
+  return { stdout, stderr, combined: `${stdout}${stderr}` };
+}
+
+// A dev server that greets on stdout, throws on stderr, then dies — the exact
+// scenario the story is about (a server that did not come up, and the operator
+// needing to know why). The 120ms delay lets both writes flush before exit.
+const chattyThenDies = (name, port) => ({
+  name,
+  port,
+  command: NODE,
+  args: ['-e', `process.stdout.write('${CHILD_STDOUT_MARKER}\\n');process.stderr.write('${CHILD_STDERR_MARKER}\\n');setTimeout(()=>process.exit(1),120)`],
+  cwd: root,
+});
+
+// A healthy dev server that greets and keeps running — guards against a "fix"
+// that only surfaces child output on death, which would still lose every HMR
+// message and compile error during a normal session.
+const chattyAndHealthy = (name, port) => ({
+  name,
+  port,
+  command: NODE,
+  args: ['-e', `process.stdout.write('${CHILD_STDOUT_MARKER}\\n');process.stderr.write('${CHILD_STDERR_MARKER}\\n');require('net').createServer(c=>c.end()).listen(${port},'127.0.0.1');setTimeout(()=>process.exit(0),${WATCHDOG_MS})`],
+  cwd: root,
+});
+
+test('td1-8: a dead server\'s STDOUT reaches the operator, not a pipe nobody reads', { timeout: 30000 }, async () => {
+  const port = await freePort();
+  const { combined } = captureLauncherOutput([chattyThenDies('red-baron', port)]);
+
+  assert.ok(
+    combined.includes(CHILD_STDOUT_MARKER),
+    `the launcher discarded the server's stdout. Naming a dead server while destroying its output leaves the operator no way to diagnose it. Captured:\n${JSON.stringify(combined)}`,
+  );
+});
+
+test('td1-8: a dead server\'s STDERR reaches the operator — that is where the stack trace is', { timeout: 30000 }, async () => {
+  const port = await freePort();
+  const { combined } = captureLauncherOutput([chattyThenDies('red-baron', port)]);
+
+  // Asserted separately from stdout on purpose: a fix that forwards only stdout
+  // would pass the test above while still destroying the vite stack trace, which
+  // is the single piece of output td1-8's story text actually names.
+  assert.ok(
+    combined.includes(CHILD_STDERR_MARKER),
+    `the launcher discarded the server's stderr — the vite stack trace the story is about. Captured:\n${JSON.stringify(combined)}`,
+  );
+});
+
+test('td1-8: a HEALTHY server\'s output reaches the operator too, not just a dying one', { timeout: 30000 }, async () => {
+  const port = await freePort();
+  const { combined } = captureLauncherOutput([chattyAndHealthy('tempest', port)], { abortAfterMs: 1500 });
+
+  // A launcher that buffered child output and flushed it only on failure would
+  // pass both tests above and still lose every HMR message and compile error in
+  // a normal session — the dev loop `just serve` exists to serve.
+  assert.ok(
+    combined.includes(CHILD_STDOUT_MARKER),
+    `a running server's stdout never reached the operator (no HMR, no "VITE ready", no compile errors). Captured:\n${JSON.stringify(combined)}`,
+  );
+  assert.ok(
+    combined.includes(CHILD_STDERR_MARKER),
+    `a running server's stderr never reached the operator. Captured:\n${JSON.stringify(combined)}`,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// The RECIPE seam — the thing the operator actually runs.
+//
+// GAP THIS CLOSES (Reviewer HIGH, td1-8 review round): every test above drives
+// `node scripts/serve.mjs` directly. Nothing exercised the justfile `serve`
+// recipe — and that is exactly where the story's core defect survived. The
+// recipe still ends `trap 'kill 0' EXIT` … `node scripts/serve.mjs`, and
+// `kill 0` SIGTERMs the recipe's OWN shell, so the recipe dies of signal 15 and
+// returns 143 no matter what the script computed. The launcher went from
+// ALWAYS 0 (the original bug) to ALWAYS 143 — still no health information in
+// the exit code a caller checks. Same lesson as the stdio miss, one layer out:
+// validate the wiring, not just the component.
+//
+// HOW THIS TESTS THE RECIPE WITHOUT BINDING THE EIGHT PINNED PORTS
+// It extracts the REAL recipe body from the repo justfile (via recipeBody, the
+// same helper the other suites use — never a hand-pasted copy, which would be
+// the vacuity this epic keeps killing), renders just's `{{root}}`/`{{subrepos}}`
+// against a throwaway fixture tree, and points `{{root}}` at that fixture. The
+// fixture's scripts/serve.mjs is a STUB that just `process.exit(code)` — no
+// vite, no npm, no ports. The stub deps-doctor exits 0. So the recipe runs its
+// real preflight+trap+delegation shape end to end, and the only thing faked is
+// what the launcher would have computed.
+//
+// PROCESS-GROUP ISOLATION: the recipe is spawned `detached: true`, so it leads
+// its own process group and its `kill 0` reaches only itself — never this test
+// runner. (Verified: without detach, `kill 0` would take the runner down too.)
+//
+// MECHANISM NOT PINNED: this asserts the OBSERVABLE contract — the recipe's exit
+// code distinguishes a healthy shutdown (0) from a dead server (non-zero), and a
+// signal-kill (128+N / null) is not a health signal. Whether Dev disarms the
+// trap and forwards the code, or moves group teardown into the script with
+// detached children, is left open.
+
+// Render a `just` recipe body: substitute {{root}} and {{subrepos}}. just also
+// strips the recipe's common leading indentation before running; do the same so
+// the shebang line lands at column 0, faithfully reproducing what `just` runs.
+function renderRecipe(body, { root, subrepos }) {
+  const lines = body.replace(/\n+$/, '').split('\n');
+  const indents = lines.filter((l) => l.trim() !== '').map((l) => l.match(/^\s*/)[0].length);
+  const common = indents.length ? Math.min(...indents) : 0;
+  return lines
+    .map((l) => l.slice(common))
+    .join('\n')
+    .replaceAll('{{root}}', root)
+    .replaceAll('{{subrepos}}', subrepos) + '\n';
+}
+
+// Run the REAL `serve` recipe against a fixture whose stub launcher exits with
+// `serveExitCode`. Returns the recipe process's { status, signal }. Binds nothing.
+function runServeRecipe(serveExitCode) {
+  const dir = mkdtempSync(join(tmpdir(), 'td1-8-recipe-'));
+  mkdirSync(join(dir, 'scripts'), { recursive: true });
+  // Stub launcher: the whole fleet, reduced to one line — exit with a code we choose.
+  writeFileSync(join(dir, 'scripts', 'serve.mjs'), `process.exit(${serveExitCode});\n`);
+  // Stub preflight: always clean, so it never masks the exit-code question under test.
+  writeFileSync(join(dir, 'scripts', 'deps-doctor.mjs'), 'process.exit(0);\n');
+
+  const body = recipeBody(read('justfile'), 'serve');
+  assert.notEqual(body, null, 'justfile must define a `serve` recipe');
+  // Guard against a vacuous run: we must be exercising the real trap+delegation.
+  assert.match(body, /serve\.mjs/, 'the recipe under test must delegate to scripts/serve.mjs');
+
+  const script = join(dir, 'recipe.sh');
+  writeFileSync(script, renderRecipe(body, { root: dir, subrepos: 'stub' }));
+
+  return new Promise((resolvePromise) => {
+    // detached => the recipe leads its OWN process group, so its `kill 0` (if the
+    // trap still fires one) cannot reach this test runner. Never unref'd; we wait.
+    const child = spawn('bash', [script], { detached: true, stdio: 'ignore' });
+    const killTimer = setTimeout(() => { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ } }, 20000);
+    child.on('exit', (status, signal) => {
+      clearTimeout(killTimer);
+      resolvePromise({ status, signal });
+    });
+  });
+}
+
+test('td1-8: the `serve` recipe exits 0 when the launcher shut down healthy', { timeout: 30000 }, async () => {
+  const { status, signal } = await runServeRecipe(0);
+  assert.equal(
+    signal,
+    null,
+    `a healthy shutdown must be a genuine exit, not a signal-kill — the recipe's \`trap 'kill 0' EXIT\` SIGTERMs its own shell (got signal=${signal}, status=${status})`,
+  );
+  assert.equal(
+    status,
+    0,
+    `the launcher exited 0 (healthy), but the recipe returned ${status} — the recipe throws away the launcher's exit code`,
+  );
+});
+
+test('td1-8: the `serve` recipe exit code DISTINGUISHES a dead server from a healthy fleet', { timeout: 30000 }, async () => {
+  const healthy = await runServeRecipe(0);
+  const failed = await runServeRecipe(1);
+
+  // The whole point of the story: `$?` must carry health information. Today both
+  // come back signal SIGTERM / status 143, so they are INDISTINGUISHABLE — this
+  // is the assertion that fails against the always-143 recipe.
+  assert.notDeepEqual(
+    { status: failed.status, signal: failed.signal },
+    { status: healthy.status, signal: healthy.signal },
+    `a dead server and a healthy fleet produced the SAME recipe result (${JSON.stringify(failed)}); the recipe's exit code carries no health information — exactly the defect td1-8 was filed to fix`,
+  );
+  // …and specifically: healthy is 0, failed is a genuine non-zero code (not a
+  // signal-kill, which is what the trap currently turns every outcome into).
+  assert.equal(healthy.status, 0, `healthy fleet must be exit 0; got ${JSON.stringify(healthy)}`);
+  assert.equal(failed.signal, null, `a dead server must be reported by a genuine exit code, not a signal-kill; got ${JSON.stringify(failed)}`);
+  assert.ok(
+    Number.isInteger(failed.status) && failed.status > 0 && failed.status < 128,
+    `a dead server must yield a genuine non-zero exit code (not 128+N signal-kill, not null); got ${JSON.stringify(failed)}`,
+  );
 });
