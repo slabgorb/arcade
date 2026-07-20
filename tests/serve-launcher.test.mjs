@@ -1,0 +1,509 @@
+// td1-8 — `just serve` must not swallow a failed launch.
+//
+// THE DEFECT (justfile:139-164 as of 2026-07-20):
+//   set -euo pipefail            # does NOT catch a failure inside a backgrounded subshell
+//   echo "  lobby → http://localhost:5270/"   # …×8, printed BEFORE any bind is attempted
+//   (cd .../lobby && npm run dev) &          # …×8
+//   wait                                      # returns 0 no matter which jobs died
+// Seven servers up, one dead: `wait` blocks forever, exit code 0, no summary line.
+// That re-attenuates the loud-failure guarantee td1-1 bought at the socket layer.
+//
+// WHY THESE TESTS ARE SHAPED THIS WAY
+// A test that greps the justfile for `wait -n`, or for the ABSENCE of a bare `wait`,
+// would pass the moment someone types the right string — whether or not the recipe
+// actually reports a dead server. This epic keeps finding exactly that failure mode
+// (td1-4's whole finding; td1-5 exists to sweep such assertions out of joust). So the
+// load-bearing tests below EXERCISE the launcher: they hand it synthetic "servers"
+// (node one-liners that bind a port, or exit 7 after 200ms) and assert on the real
+// result — exit code, named failures, and WHEN the ready banner is emitted.
+//
+// THE CONTRACT THIS PINS (TEA design decision, RED phase)
+// The launch/supervise logic moves OUT of the justfile recipe and INTO
+// `scripts/serve.mjs`, which the recipe then calls. This is the established idiom
+// here — the recipe already delegates its preflight to `node scripts/deps-doctor.mjs`,
+// and scripts/ already holds release.mjs, deploy-r2.mjs, vendor-source.mjs. A bash
+// recipe cannot be tested with fast synthetic jobs; a node module can.
+//
+//   scripts/serve.mjs exports:
+//     SERVERS                     [{ name, port }, …] — the canonical cabinet, in launch order
+//     jobsFor(root[, servers])    -> [{ name, port, command, args, cwd }]
+//     supervise(jobs, opts)       -> Promise<{ exitCode, failures: [{name, code, …}], ready: [name] }>
+//       opts.log     (line) => void   every human-readable line the launcher emits (default: console.log)
+//       opts.signal  AbortSignal      abort => shut every child down (the Ctrl-C path)
+//
+//   scripts/serve.mjs CLI:  node scripts/serve.mjs [root]
+//     builds jobsFor(root), supervises, and exits with the resulting exit code.
+//
+// Behaviours pinned: a dead job makes the launcher exit NON-ZERO and NAME the job;
+// survivors get torn down instead of hanging on `wait`; a ready URL is printed only
+// AFTER that port is observed accepting a connection; and an all-healthy fleet still
+// exits 0 (so a "fix" that always fails cannot pass).
+//
+// ONE NON-OBVIOUS REQUIREMENT, called out so it is not discovered the hard way:
+// tearing the fleet down the instant the FIRST job dies loses the others' names.
+// Port collisions arrive in a burst — three games whose ports a sibling checkout
+// already holds all EADDRINUSE within milliseconds — and an operator who is told
+// about one of them fixes one port, re-runs, and meets the next. So the launcher
+// must drain concurrent deaths for a short window before killing survivors. The
+// MULTIPLE-dead-jobs test below spaces two deaths 100ms apart to require it.
+//
+// (TEA verified during RED that this suite is satisfiable: a reference launcher
+// greened all 13 non-justfile tests, and a launcher reproducing today's exact
+// defect — banner up front, background everything, always return 0 — reds 13 of
+// 16. These tests are not passable by typing the right string into the justfile.)
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync, mkdtempSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import net from 'node:net';
+import { execFileSync } from 'node:child_process';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
+const SERVE_SCRIPT = join(root, 'scripts', 'serve.mjs');
+
+// Import lazily and per-test, so a missing module reds each test individually with
+// its own reason instead of killing the whole file at collection time.
+async function loadServe() {
+  try {
+    return await import('../scripts/serve.mjs');
+  } catch (err) {
+    assert.fail(`scripts/serve.mjs must exist and be importable — ${err.message}`);
+  }
+}
+
+// Same recipe-body extractor contract as canonical-serve.test.mjs / deps-doctor.test.mjs:
+// header at column 0, indented body, `:=` assignments excluded.
+function recipeBody(justfile, name) {
+  const lines = justfile.split('\n');
+  const header = new RegExp(`^${name}(\\s|:)`);
+  const isAssignment = /:=/;
+  const start = lines.findIndex((line) => header.test(line) && !isAssignment.test(line));
+  if (start === -1) return null;
+  const body = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim() === '') { body.push(line); continue; }
+    if (!/^\s/.test(line)) break;
+    body.push(line);
+  }
+  return body.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Synthetic "servers". Each is a real child process with real exit codes and a
+// real TCP bind — the only thing faked is that they are fast.
+// ---------------------------------------------------------------------------
+
+const NODE = process.execPath;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const s = net.createServer();
+    s.on('error', reject);
+    s.listen(0, '127.0.0.1', () => {
+      const { port } = s.address();
+      s.close(() => resolve(port));
+    });
+  });
+}
+
+// Every long-lived synthetic server carries a self-destruct. Tearing the fleet
+// down is the launcher's job, so a launcher that fails to do it would otherwise
+// leave orphan node processes behind on every red run. WATCHDOG_MS is far beyond
+// every deadline asserted below, so it can never rescue a broken launcher — it
+// only stops a failing run from littering the machine.
+const WATCHDOG_MS = 25000;
+
+// Binds `port` after `delayMs`, then stays up (like a real dev server).
+const healthy = (name, port, delayMs = 0) => ({
+  name,
+  port,
+  command: NODE,
+  args: ['-e', `setTimeout(()=>{require('net').createServer(c=>c.end()).listen(${port},'127.0.0.1')},${delayMs});setTimeout(()=>process.exit(0),${WATCHDOG_MS})`],
+  cwd: root,
+});
+
+// Never binds; exits `code` after `delayMs` — the EADDRINUSE shape.
+const diesAtStartup = (name, port, delayMs, code) => ({
+  name,
+  port,
+  command: NODE,
+  args: ['-e', `setTimeout(()=>process.exit(${code}),${delayMs})`],
+  cwd: root,
+});
+
+// Binds, serves for a while, THEN dies — the crash-after-startup shape, which a
+// launcher that only checks the first second of life would miss.
+const diesLate = (name, port, bindMs, dieMs, code) => ({
+  name,
+  port,
+  command: NODE,
+  args: ['-e', `const s=require('net').createServer(c=>c.end());setTimeout(()=>s.listen(${port},'127.0.0.1'),${bindMs});setTimeout(()=>{try{s.close()}catch{}process.exit(${code})},${dieMs})`],
+  cwd: root,
+});
+
+// Alive but deaf: the process runs and never binds. A hung server must never get
+// a "ready" URL printed for it.
+const neverBinds = (name, port) => ({
+  name,
+  port,
+  command: NODE,
+  args: ['-e', `setTimeout(()=>process.exit(0),${WATCHDOG_MS})`],
+  cwd: root,
+});
+
+// A launcher that never notices a dead job HANGS (that is the bare-`wait` bug
+// itself). Racing it against a deadline turns that hang into a readable failure
+// instead of a bare test-runner timeout.
+async function resolvesWithin(promise, ms, what) {
+  let timer;
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`the launcher did not finish within ${ms}ms — ${what}`)), ms);
+  });
+  try {
+    return await Promise.race([promise, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function waitFor(pred, timeoutMs, what) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (pred()) return;
+    await sleep(25);
+  }
+  assert.fail(`timed out after ${timeoutMs}ms waiting for ${what}`);
+}
+
+const readyRe = (port) => new RegExp(`http://localhost:${port}\\b`);
+
+// ---------------------------------------------------------------------------
+// The launcher exists and is delegated to
+// ---------------------------------------------------------------------------
+
+test('td1-8: the launch/supervise logic lives in scripts/serve.mjs, not inline in the recipe', () => {
+  assert.ok(
+    existsSync(SERVE_SCRIPT),
+    'scripts/serve.mjs must exist — a bash recipe that backgrounds eight jobs cannot be tested for whether it notices one dying',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// BEHAVIOUR: a dead job is detected, named, and makes the launcher exit non-zero
+// ---------------------------------------------------------------------------
+
+test('td1-8 AC2: one job of N exits non-zero -> the launcher exit code is NON-ZERO', { timeout: 30000 }, async () => {
+  const { supervise } = await loadServe();
+  const [pA, pDead, pC] = [await freePort(), await freePort(), await freePort()];
+
+  const result = await resolvesWithin(
+    supervise(
+      [healthy('tempest', pA), diesAtStartup('red-baron', pDead, 200, 7), healthy('joust', pC)],
+      { log: () => {} },
+    ),
+    8000,
+    'red-baron died at t+200ms and two long-running siblings kept it blocked (this is bare `wait`)',
+  );
+
+  assert.notEqual(
+    result.exitCode,
+    0,
+    'a dead server must not be reported as a healthy fleet — this is the bare `wait` returning 0',
+  );
+});
+
+test('td1-8 AC1: the failure is NAMED — a silent non-zero exit is barely better than silence', { timeout: 30000 }, async () => {
+  const { supervise } = await loadServe();
+  const lines = [];
+  const [pA, pDead] = [await freePort(), await freePort()];
+
+  const result = await resolvesWithin(
+    supervise([healthy('tempest', pA), diesAtStartup('red-baron', pDead, 200, 7)], { log: (l) => lines.push(l) }),
+    8000,
+    'red-baron died and the launcher never reported it',
+  );
+
+  assert.ok(
+    result.failures.some((f) => f.name === 'red-baron'),
+    `the result must carry the dead job by name; got ${JSON.stringify(result.failures)}`,
+  );
+  const named = lines.filter((l) => /red-baron/.test(l) && /fail/i.test(l));
+  assert.ok(
+    named.length > 0,
+    `the launcher must print a line naming the dead server (e.g. "FAILED: red-baron did not start"); it printed:\n${lines.join('\n')}`,
+  );
+  assert.ok(
+    !lines.some((l) => /tempest/.test(l) && /fail/i.test(l)),
+    'a healthy server must not be reported as failed',
+  );
+});
+
+test('td1-8: the dead job\'s exit code is reported, not flattened to a bare boolean', { timeout: 30000 }, async () => {
+  const { supervise } = await loadServe();
+  const pDead = await freePort();
+
+  const result = await resolvesWithin(
+    supervise([diesAtStartup('red-baron', pDead, 150, 7)], { log: () => {} }),
+    8000,
+    'the only server died at t+150ms',
+  );
+
+  const failure = result.failures.find((f) => f.name === 'red-baron');
+  assert.ok(failure, 'red-baron must appear in failures');
+  assert.equal(failure.code, 7, 'the child\'s real exit status must survive to the report');
+});
+
+test('td1-8: survivors are torn down — the launcher does NOT block forever like bare `wait`', { timeout: 30000 }, async () => {
+  const { supervise } = await loadServe();
+  const [pForever, pDead] = [await freePort(), await freePort()];
+  const started = Date.now();
+
+  // `healthy` runs until killed. Under today's recipe this is precisely the hang:
+  // seven long-running servers keep `wait` blocked while the eighth is dead.
+  const result = await resolvesWithin(
+    supervise([healthy('tempest', pForever), diesAtStartup('red-baron', pDead, 200, 7)], { log: () => {} }),
+    8000,
+    'a long-running sibling kept the launcher blocked after red-baron died — exactly the bare-`wait` hang',
+  );
+
+  const elapsed = Date.now() - started;
+  assert.notEqual(result.exitCode, 0);
+  assert.ok(
+    elapsed < 8000,
+    `the launcher must tear the fleet down once a server dies; it took ${elapsed}ms (a long-running sibling kept it blocked)`,
+  );
+});
+
+test('td1-8: MULTIPLE dead jobs are all named, not just the first one to die', { timeout: 30000 }, async () => {
+  const { supervise } = await loadServe();
+  const lines = [];
+  const [pA, pB, pC] = [await freePort(), await freePort(), await freePort()];
+
+  const result = await resolvesWithin(
+    supervise(
+      [
+        healthy('tempest', pA),
+        diesAtStartup('red-baron', pB, 150, 7),
+        diesAtStartup('centipede', pC, 250, 3),
+      ],
+      { log: (l) => lines.push(l) },
+    ),
+    8000,
+    'two servers died and the launcher never reported either',
+  );
+
+  const names = result.failures.map((f) => f.name).sort();
+  assert.deepEqual(
+    names,
+    ['centipede', 'red-baron'],
+    `both dead servers must be reported; got ${JSON.stringify(result.failures)}`,
+  );
+  for (const name of ['red-baron', 'centipede']) {
+    assert.ok(
+      lines.some((l) => new RegExp(name).test(l) && /fail/i.test(l)),
+      `the summary must name ${name}; it printed:\n${lines.join('\n')}`,
+    );
+  }
+});
+
+test('td1-8: a job that dies LATE (after binding) is still caught — not just startup failures', { timeout: 30000 }, async () => {
+  const { supervise } = await loadServe();
+  const lines = [];
+  const [pA, pLate] = [await freePort(), await freePort()];
+
+  const result = await resolvesWithin(
+    supervise([healthy('tempest', pA), diesLate('joust', pLate, 100, 700, 4)], { log: (l) => lines.push(l) }),
+    8000,
+    'joust bound, served, then crashed at t+700ms and the launcher never noticed',
+  );
+
+  assert.notEqual(result.exitCode, 0, 'a server that crashes after startup must still fail the run');
+  assert.ok(
+    result.failures.some((f) => f.name === 'joust'),
+    `a late death must be reported; got ${JSON.stringify(result.failures)}`,
+  );
+  assert.ok(
+    lines.some((l) => /joust/.test(l) && /fail/i.test(l)),
+    `the summary must name the late-dying server; it printed:\n${lines.join('\n')}`,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// BEHAVIOUR: the ready banner must not assert readiness it has not observed
+// ---------------------------------------------------------------------------
+
+test('td1-8 AC4: a ready URL is printed only AFTER that port is observed accepting a connection', { timeout: 30000 }, async () => {
+  const { supervise } = await loadServe();
+  const lines = [];
+  const port = await freePort();
+  const ac = new AbortController();
+
+  // Binds at t+700ms. Today's recipe echoes all eight URLs before the first
+  // `npm run dev` even runs, so any pre-bind ready line is the defect itself.
+  const running = supervise([healthy('lobby', port, 700)], { log: (l) => lines.push(l), signal: ac.signal });
+
+  await sleep(250);
+  assert.ok(
+    !lines.some((l) => readyRe(port).test(l)),
+    `the ready URL for :${port} was printed before the server bound — the banner is asserting readiness it has not observed. Printed so far:\n${lines.join('\n')}`,
+  );
+
+  await waitFor(() => lines.some((l) => readyRe(port).test(l)), 6000, `the ready URL for :${port} after the bind`);
+  ac.abort();
+  const result = await resolvesWithin(running, 8000, 'the launcher must shut the fleet down when its AbortSignal fires (the Ctrl-C path)');
+
+  assert.deepEqual(result.failures, [], 'a healthy server must not be reported as failed');
+  assert.ok(result.ready.includes('lobby'), 'a server whose port accepted a connection must be reported ready');
+});
+
+test('td1-8 AC4: a server that runs but never binds NEVER gets a ready URL printed', { timeout: 30000 }, async () => {
+  const { supervise } = await loadServe();
+  const lines = [];
+  const [pGood, pDeaf] = [await freePort(), await freePort()];
+  const ac = new AbortController();
+
+  const running = supervise(
+    [healthy('tempest', pGood), neverBinds('red-baron', pDeaf)],
+    { log: (l) => lines.push(l), signal: ac.signal },
+  );
+
+  await waitFor(() => lines.some((l) => readyRe(pGood).test(l)), 6000, 'tempest to be reported ready');
+  await sleep(400);
+  ac.abort();
+  const result = await resolvesWithin(running, 8000, 'the launcher must shut the fleet down when its AbortSignal fires (the Ctrl-C path)');
+
+  assert.ok(
+    !lines.some((l) => readyRe(pDeaf).test(l)),
+    `a hung server that never bound must not be advertised as ready. Printed:\n${lines.join('\n')}`,
+  );
+  assert.ok(!result.ready.includes('red-baron'), 'red-baron never bound — it must not appear in `ready`');
+  assert.ok(result.ready.includes('tempest'), 'tempest did bind — it must appear in `ready`');
+});
+
+// ---------------------------------------------------------------------------
+// GUARD: a launcher that "passes" by always failing must not pass
+// ---------------------------------------------------------------------------
+
+test('td1-8: an all-healthy fleet stays up and shuts down with exit code 0', { timeout: 30000 }, async () => {
+  const { supervise } = await loadServe();
+  const lines = [];
+  const [pA, pB, pC] = [await freePort(), await freePort(), await freePort()];
+  const ac = new AbortController();
+
+  const running = supervise(
+    [healthy('lobby', pA), healthy('tempest', pB, 150), healthy('joust', pC, 300)],
+    { log: (l) => lines.push(l), signal: ac.signal },
+  );
+
+  await waitFor(
+    () => [pA, pB, pC].every((p) => lines.some((l) => readyRe(p).test(l))),
+    8000,
+    'all three servers to be reported ready',
+  );
+
+  // Nothing has died; the launcher must still be running (this is the Ctrl-C path).
+  ac.abort();
+  const result = await resolvesWithin(running, 8000, 'the launcher must shut the fleet down when its AbortSignal fires (the Ctrl-C path)');
+
+  assert.deepEqual(result.failures, [], `no server died, so nothing may be reported failed: ${JSON.stringify(result.failures)}`);
+  assert.equal(result.exitCode, 0, 'a healthy fleet shut down by the operator must exit 0');
+  assert.deepEqual(result.ready.sort(), ['joust', 'lobby', 'tempest']);
+});
+
+// ---------------------------------------------------------------------------
+// END TO END: the CLI's own exit code, through a real process boundary.
+// Guards the seam where supervise() reports non-zero and the CLI ignores it.
+// ---------------------------------------------------------------------------
+
+test('td1-8 AC2: the serve CLI itself exits non-zero and names the servers that did not start', () => {
+  assert.ok(existsSync(SERVE_SCRIPT), 'scripts/serve.mjs must exist for the CLI contract to be testable');
+
+  // An empty root: every subrepo directory is missing, so every launch fails
+  // immediately (spawn ENOENT / npm error). No real vite, no real ports, fast.
+  const emptyRoot = mkdtempSync(join(tmpdir(), 'td1-8-serve-empty-'));
+
+  let status = null;
+  let output = '';
+  let signal = null;
+  try {
+    output = execFileSync(NODE, [SERVE_SCRIPT, emptyRoot], { encoding: 'utf8', stdio: 'pipe', timeout: 60000 });
+    status = 0;
+  } catch (err) {
+    status = err.status;
+    signal = err.signal;
+    output = `${err.stdout ?? ''}${err.stderr ?? ''}`;
+  }
+
+  assert.equal(signal, null, `the launcher must not hang — it was killed by ${signal} after the timeout`);
+  assert.notEqual(status, 0, `every server failed to launch, so the CLI must exit non-zero. Output:\n${output}`);
+  for (const name of ['lobby', 'joust']) {
+    assert.match(output, new RegExp(name), `the CLI must name the servers that did not start (missing ${name}). Output:\n${output}`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// WIRING: the recipe must actually route through the tested launcher.
+// These are text contracts on purpose — they carry no behavioural claim of their
+// own (the tests above do that); they exist so the justfile cannot keep its own
+// untested copy of the launch logic alongside the fixed one.
+// ---------------------------------------------------------------------------
+
+test('td1-8 wiring: the `serve` recipe delegates to scripts/serve.mjs', () => {
+  const body = recipeBody(read('justfile'), 'serve') ?? '';
+  assert.match(
+    body,
+    /serve\.mjs/,
+    'the serve recipe must call scripts/serve.mjs — the launcher under test is the one that must actually run',
+  );
+});
+
+test('td1-8 wiring: the recipe no longer backgrounds its own `npm run dev` jobs', () => {
+  const body = recipeBody(read('justfile'), 'serve') ?? '';
+  assert.doesNotMatch(
+    body,
+    /npm run dev/,
+    'the recipe must not keep a second, untested copy of the launch loop beside scripts/serve.mjs',
+  );
+});
+
+test('td1-8 wiring: the recipe no longer prints ready URLs it has not observed', () => {
+  const body = recipeBody(read('justfile'), 'serve') ?? '';
+  assert.doesNotMatch(
+    body,
+    /localhost:52\d\d/,
+    'the ready banner must be emitted by the launcher AFTER a bind, not echoed unconditionally by the recipe',
+  );
+});
+
+test('td1-8 wiring: SERVERS is the whole cabinet, in the justfile\'s launch order', { timeout: 30000 }, async () => {
+  const { SERVERS } = await loadServe();
+  const justfile = read('justfile');
+  const subrepos = justfile.match(/^subrepos\s*:=\s*"([^"]*)"/m);
+  assert.notEqual(subrepos, null, 'justfile must still define the canonical `subrepos` list');
+
+  assert.deepEqual(
+    SERVERS.map((s) => s.name),
+    subrepos[1].trim().split(/\s+/),
+    'moving the port table into scripts/serve.mjs must not drop or reorder a subrepo',
+  );
+});
+
+test('td1-8 wiring: every SERVERS port matches the port CLAUDE.md publishes for that subrepo', { timeout: 30000 }, async () => {
+  const { SERVERS } = await loadServe();
+  const claude = read('CLAUDE.md').split('\n');
+  for (const { name, port } of SERVERS) {
+    const row = claude.find((l) => new RegExp(`\\b${name}\\b`).test(l) && /localhost:52\d\d/.test(l));
+    assert.ok(row, `CLAUDE.md must document a localhost port for ${name}`);
+    assert.match(
+      row,
+      new RegExp(`localhost:${port}\\b`),
+      `scripts/serve.mjs pins ${name} to ${port}, but CLAUDE.md documents "${row.trim()}"`,
+    );
+  }
+});
