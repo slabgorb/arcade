@@ -206,22 +206,36 @@ test('audit: a sound whose labels vanish from source becomes an UNVERIFIED row, 
 // MISMATCH verdicts, not get silently stamped ROM-VERIFIED. That is exercised
 // below for tempest, battlezone AND red-baron.
 //
-// td1-4 RE-BASELINE: this test's premise ("4 sounds ... omits the ROM
-// terminal-zero write") predates tp1-2 (2b6c62e, 2026-07-13), which un-crossed
-// the cue->ROM-address map in scripts/audio/games/tempest.mjs (see td1-4's
-// triage file, tests/extract-audio-link5-triage.test.mjs). Under the CORRECT
-// mapping, link 5 now compares each cue against its own ROM record instead of
-// a different cue's, and that surfaces TWO real, distinct bake-tool defects,
-// not one:
+// td1-4 RE-BASELINE (updated by td1-6): this test's premise ("4 sounds ... omits
+// the ROM terminal-zero write") predates tp1-2 (2b6c62e, 2026-07-13), which
+// un-crossed the cue->ROM-address map in scripts/audio/games/tempest.mjs (see
+// td1-4's triage file, tests/extract-audio-link5-triage.test.mjs). Under the
+// CORRECT mapping, link 5 compares each cue against its OWN ROM record instead of
+// a different cue's, and that surfaced TWO real, distinct bake-tool defects:
 //   (a) bake-sfx.mjs's expandAlsoun() path omits the ROM's terminal-zero
-//       register write, for segment_tick/enemy_explosion/enemy_fire/spike_shot.
-//   (b) bake-sfx.mjs's expandSeq() never applies the ROM's AUDC high-nibble
-//       mask on a ramp (MODSND's odd-channel XOR/AND 0F0/XOR dance,
-//       RBSOUN.MAC's sibling logic in ALSOUN.MAC) — envelope.mjs's
-//       maskHighNibble:true DOES apply it — so player_fire's AUDC values
-//       diverge from event 3 onward, not merely at the tail. This is a
-//       genuinely NEW finding this fix surfaces; it is not silenced here.
-test('audit: tempest sfx — link 5, given the correct (tp1-2) cue map, catches two real bake-tool defects', async (t) => {
+//       register write — the shipped stream RUNS OUT of events at the tail
+//       (compareTempestSfx's `shipped=null`).
+//   (b) bake-sfx.mjs's expandSeq() never applied the ROM's AUDC high-nibble mask
+//       on a ramp (MODSND's odd-channel XOR/AND 0F0/XOR dance; envelope.mjs's
+//       maskHighNibble:true always did), so player_fire's AUDC VALUES diverged
+//       mid-stream (ROM=[1,170] shipped=[1,154]), well before the tail.
+//
+// td1-6 has now FIXED (b): tempest's expandSeq masks the AUDC high nibble (merged
+// to tempest develop, #150 / 211b158), and this checkout's link 5 reads tempest's
+// fixed working tree. player_fire's masked AUDC now AGREES value-for-value, so the
+// comparison no longer stops at the mid-stream value disagreement — it walks on
+// and hits the SAME terminal-zero tail truncation as the other four. player_fire
+// has therefore JOINED group (a): (a) now affects FIVE cues
+// (segment_tick/enemy_explosion/enemy_fire/spike_shot/player_fire).
+//
+// (a) — the terminal-zero omission — is STILL OPEN, filed as td1-11, which will
+// fix bake-sfx's terminal-zero write and flip all five cues to ROM_VERIFIED here.
+// The discipline this comment has always kept (the two defects must stay
+// distinguishable) now reads "mask: FIXED by td1-6" vs "terminal-zero: OPEN,
+// td1-11": the player_fire block below GUARDS that the mask fix stayed in — its
+// divergence is the tail `shipped=null`, NOT the old value disagreement — so
+// reverting td1-6 reds this test from the orchestrator side.
+test('audit: tempest sfx — link 5, given the correct (tp1-2) cue map, pins the terminal-zero defect (5 cues, td1-11) and guards td1-6\'s mask fix', async (t) => {
   const reason = link5SkipReason('tempest');
   if (reason) { t.skip(reason); return; }
 
@@ -233,27 +247,42 @@ test('audit: tempest sfx — link 5, given the correct (tp1-2) cue map, catches 
   // events longer than the shipped bake's, and the divergence is at the tail —
   // the shipped side has RUN OUT of events at the point they first disagree
   // (compareTempestSfx's `shipped=null`), not merely written a different value.
-  // td1-4 review round 2 MEDIUM: this must be pinned distinctly from
-  // player_fire's assertion below, or the two "distinct defects" this comment
-  // claims are unverifiable — flipping which bug produced which failure would
-  // not be caught by either.
-  for (const name of ['segment_tick', 'enemy_explosion', 'enemy_fire', 'spike_shot']) {
+  // As of td1-6 (mask fix), player_fire's masked AUDC agrees value-for-value, so
+  // it too now diverges only at this terminal-zero tail — it JOINS this group.
+  // All five are owned by td1-11 (still open). td1-4 review round 2 MEDIUM: this
+  // tail shape must stay pinned distinctly from the mask-fix guard below, or the
+  // two defects (terminal-zero OPEN vs mask FIXED) become unverifiable — flipping
+  // which bug produced which failure would go uncaught.
+  for (const name of ['segment_tick', 'enemy_explosion', 'enemy_fire', 'spike_shot', 'player_fire']) {
     assert.equal(byName[name].verdict, VERDICT.MISMATCH, `${name}: ${byName[name].reason}`);
     assert.match(byName[name].reason, /register-event stream differs/);
     assert.match(byName[name].reason, /shipped=null/, `${name}: expected the divergence to be the shipped stream running OUT of events (terminal-zero omission), got: ${byName[name].reason}`);
   }
 
-  // AUDC high-nibble-mask omission (b): player_fire's LA record ramps AUDC by
-  // -8 each step; the ROM masks the high (distortion) nibble on every step, the
-  // shipped bake does not, so the streams disagree well before the tail — BOTH
-  // sides still have an event at the divergence point (register 1 = AUDC), they
-  // just disagree on its VALUE. That is the opposite shape from the terminal-zero
-  // group above (`shipped=null`) and must be asserted as such to actually
-  // distinguish the two defects, not merely share their generic reason prefix.
-  assert.equal(byName.player_fire.verdict, VERDICT.MISMATCH, byName.player_fire.reason);
-  assert.match(byName.player_fire.reason, /register-event stream differs/);
-  assert.doesNotMatch(byName.player_fire.reason, /shipped=null/, `player_fire: expected a same-position VALUE disagreement, not a truncated shipped stream, got: ${byName.player_fire.reason}`);
-  assert.match(byName.player_fire.reason, /ROM=\[1,\d+\] shipped=\[1,\d+\]/, `player_fire: expected both sides to carry an AUDC (register 1) event at the divergence point, disagreeing only in value, got: ${byName.player_fire.reason}`);
+  // AUDC high-nibble-mask omission (b) — FIXED by td1-6, and GUARDED here. Before
+  // the fix, player_fire's LA record ramped AUDC by -8 each step; the ROM masked
+  // the high (distortion) nibble every step and the shipped bake did not, so the
+  // streams disagreed on a VALUE mid-stream (ROM=[1,170] shipped=[1,154]), well
+  // before the tail. tempest's expandSeq now applies that mask (#150), so this
+  // checkout's link 5 sees the masked AUDC AGREE value-for-value — player_fire's
+  // divergence has MOVED to the terminal-zero tail (asserted in the (a) group
+  // above, where player_fire now lives). This block is the mask-fix guard: the
+  // reason must NOT be the old same-position value disagreement, and MUST be the
+  // tail `shipped=null` shape. Reverting td1-6 brings the mid-stream value
+  // divergence back — the comparison stops there, so `shipped=null` is no longer
+  // the reason — which reds BOTH assertions, keeping td1-6 guarded from the
+  // orchestrator side. (VERIFIED by a throwaway revert of tempest's mask: both
+  // assertions go RED with reason `ROM=[1,170] shipped=[1,154]`.)
+  assert.doesNotMatch(
+    byName.player_fire.reason,
+    /ROM=\[1,\d+\] shipped=\[1,\d+\]/,
+    `player_fire: td1-6's mask fix should have removed the mid-stream AUDC value disagreement; a same-position value diff here means the mask was reverted: ${byName.player_fire.reason}`,
+  );
+  assert.match(
+    byName.player_fire.reason,
+    /shipped=null/,
+    `player_fire: with the mask fixed, the only divergence left is the terminal-zero tail (td1-11); got: ${byName.player_fire.reason}`,
+  );
 
   // Not shipped at all (absent from sfx-data.mjs's SFX and DEFERRED, or
   // explicitly DEFERRED/never baked) — cannot be machine-compared.
