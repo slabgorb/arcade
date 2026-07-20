@@ -286,3 +286,13 @@ AC-1 requires the flap model *"transcribed exactly"*, and `PTIMUP` is the decay 
 I reported that the arena-header test "bites." That is true only for the **exact old sentence** — I mutated that specific string. The specialist showed the positive assertions are loose keyword-proximity regexes on bare `X`/`Y`, and constructed vague prose that satisfies them while documenting nothing. So the regression guard against the known-bad sentence is real; the claim that the test verifies the header *documents the formats* is not. My "answers TEA's vacuity concern" conclusion was overstated.
 
 **Handoff:** Back to Dev (GREEN) for the two `PTIMUP` writes. The rest of the transcription — FLYX, X-tables, the clamp, the arena obligations — I verified and it stands; none of it needs rework.
+
+## Sm Post-Finish Note — verdict reversal + hotfix (2026-07-20)
+
+After the finish ceremony completed (PR #9 merged, story archived), the Reviewer's outstanding edge-hunter returned and the verdict was REVERSED to rejected: two real PTIMUP transcription errors, both SM-verified at source — land() wrote timeUp 0 where STLDIR writes 1 (:6245-6246 "MINIMUM DOWN TIME"); walkOff() never cleared it where STFALL does (:6154). Surface: −1 flap instead of −96 after a saturated glide, demo-reachable. The twelve-for-twelve anchor check was genuine but the two writes sat in routines cited for OTHER reasons — a clean anchor check is not coverage.
+
+**Hotfix shipped:** joust PR #10 (squash 0ff5591), the Reviewer's exact bounded scope + his prescribed test shapes + the reader NaN guard from his non-blocking tail. Claims JT5-045/046. Verdict restored to approved on the strength of the applied prescription; the jt1-6 review is asked to double-check the hotfix.
+
+**Process cost recorded honestly:** the SM cut the hotfix branch in the SHARED joust checkout while TEA was mid-RED on jt1-6, sweeping TEA's uncommitted WIP into the first fix commit (and briefly deleting a tracked file misjudged as WIP). Repaired: commit rebuilt with only the four fix files, WIP extracted to scratchpad and restored byte-identical, jt1-6 branch repointed to the fixed develop. Lesson filed to SM memory: never branch-switch a shared working tree while a teammate is mid-phase — hand the fix to the active branch rider or wait.
+
+Non-blocking tail carried forward: PBUMPX/PBUMPY unmodeled (bumps listed in scope — flag to jt2's combat epic planning); land() lacks the assertInt/parity guard of its siblings; the arena-header positive assertions are loose keyword regexes (regression guard real, positive coverage weak).
