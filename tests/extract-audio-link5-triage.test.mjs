@@ -22,8 +22,11 @@
 //     still carries story 6-6's crossed by-ear mapping, so the audit now compares
 //     the ROM slice for one cue against the shipped bake for a DIFFERENT cue.
 //
-// These tests fail on purpose. Do NOT green them by loosening an assertion —
-// every expectation below is sourced from the ROM-facing side of the pair.
+// RESOLVED by 74f57c9 (td1-4 GREEN) — kept as a regression suite. At RED time
+// these tests failed on purpose; do NOT green a future failure here by
+// loosening an assertion — every expectation below is sourced from the
+// ROM-facing side of the pair. (Round 2 added two more tests below, for
+// review findings raised against 74f57c9 itself — see their own comments.)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
@@ -107,6 +110,26 @@ test('compareRedBaronShipped: a chain vocabulary it cannot parse is UNVERIFIED, 
   assert.match(res.reason, /TK/);
 });
 
+// td1-4 review round 2 MEDIUM: a `seq()` call whose CHANGE argument is a
+// symbolic constant (or anything else that doesn't resolve to a finite
+// number) must ALSO be admitted as unparseable, not judged. `Number('HOLD')`
+// is `NaN`, and `NaN !== 0` is `true` in JS — without this, an unresolvable
+// CHANGE reads as "sweeps" with full confidence, the exact failure class
+// this story exists to close, just with a different cause than the bracket
+// bug above.
+test('compareRedBaronShipped: a seq() CHANGE that does not resolve to a number is UNVERIFIED, never a confident MISMATCH', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'td1-4-nan-change-'));
+  const symbolic = join(dir, 'pokey.ts');
+  writeFileSync(symbolic, 'export const POKEY_SOUNDS = { TK: table(1, [seq(0x30, 7, HOLD, 4)], [seq(0xa4, 7, -1, 4)]) }\n');
+  const res = compareRedBaronShipped('TK', { audfSweeps: false, audcSweeps: true }, symbolic);
+  assert.equal(
+    res.status,
+    'unverified',
+    `an unresolvable CHANGE must be admitted, not judged (NaN !== 0 must not read as "sweeps"). Got: ${res.status} — ${res.reason}`,
+  );
+  assert.match(res.reason, /TK/);
+});
+
 // ===========================================================================
 // AC1 — red-baron root cause: the scanner degraded into a constant.
 // ===========================================================================
@@ -167,6 +190,81 @@ test('red-baron link 5: rb4-10 un-inverted TP/BN/WP/TH — all five tones now ag
     const res = compareRedBaronShipped(tone, romSweeps[tone], POKEY_TS);
     assert.equal(res.status, 'match', `${tone}: ${res.reason}`);
   }
+});
+
+// ===========================================================================
+// RESOLVED, round 2 (Reviewer HIGH #1 + #2, 74f57c9's review round) —
+// splitTopLevelArgs was bracket-blind ([ / ] were never tracked), so any
+// table() whose register chain is a multi-element BARE ARRAY LITERAL had its
+// args shredded at the array's own internal commas. TH is the only tone
+// shaped that way (a six-note AUDF chain, RBSOUN.MAC:185-192) — every other
+// tone's chain is a single seq()/repeat() call, which happens to survive
+// bracket-blind splitting by accident. TH shipped stamped ROM_VERIFIED
+// without its AUDC chain having been read AT ALL; the two tests below pin
+// the fix directly (not by inference from the real pokey.ts, which cannot by
+// itself distinguish "read correctly" from "read wrong but coincidentally
+// matches") and close the coverage gap that let it ship: before this pair,
+// flipping either `!==` in compareRedBaronShipped's diff (shipped.mjs:264,
+// 267) left all tests green.
+// ===========================================================================
+
+test('parseRedBaronPokeySounds: a multi-element bare array literal (TH-shaped) is read as ONE argument, not shredded at its own internal commas', () => {
+  const src = `export const POKEY_SOUNDS = {
+    TH: table(
+      2,
+      [
+        seq(0x79, 2, 0, 0x10),
+        seq(0x6c, 2, 0, 0x10),
+        seq(0x60, 2, 0, 0x10),
+        seq(0x40, 2, 1, 0x20),
+        seq(0x60, 2, 0, 0x10),
+        seq(0x40, 2, 0, 0x20),
+      ],
+      [seq(0xa4, 2, 0, 0x80)],
+    ),
+  }\n`;
+  const shipped = parseRedBaronPokeySounds(src);
+  // A nonzero CHANGE buried in the FOURTH of six seq() calls — invisible to
+  // the old bracket-blind splitter, which only ever compared whichever single
+  // seq() call happened to land in the misaligned args[1]/args[2] slots (the
+  // FIRST one). Catching it here proves the whole array is read as one
+  // argument, not fragmented at commas that sit inside the array literal.
+  assert.deepEqual(
+    shipped.TH,
+    { audfSweeps: true, audcSweeps: false },
+    'a nonzero CHANGE in a middle element of a six-seq bare array must still be found (td1-4 review round 2, HIGH #1)',
+  );
+});
+
+test('compareRedBaronShipped: a genuinely inverted, PARSEABLE seq()/repeat() port is a confident MISMATCH naming the right register (TH-shaped multi-element array)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'td1-4-mismatch-'));
+  const inverted = join(dir, 'pokey.ts');
+  // TH-shaped: AUDF is the real six-element bare array, byte-exact to the ROM
+  // (all CHANGE 0 — holds flat, agreeing with romSweeps below). AUDC is a
+  // single-element array whose CHANGE the ROM holds flat but this synthetic
+  // port sweeps — a genuine inversion, not an unrecognised vocabulary.
+  writeFileSync(
+    inverted,
+    `export const POKEY_SOUNDS = {
+      TH: table(
+        2,
+        [
+          seq(0x79, 2, 0, 0x10),
+          seq(0x6c, 2, 0, 0x10),
+          seq(0x60, 2, 0, 0x10),
+          seq(0x40, 2, 0, 0x20),
+          seq(0x60, 2, 0, 0x10),
+          seq(0x40, 2, 0, 0x20),
+        ],
+        [seq(0xa4, 2, -1, 0x80)],
+      ),
+    }\n`,
+  );
+  const romSweeps = { audfSweeps: false, audcSweeps: false }; // TH's real ROM shape (holds, holds)
+  const res = compareRedBaronShipped('TH', romSweeps, inverted);
+  assert.equal(res.status, 'mismatch', `expected a confident MISMATCH, got: ${JSON.stringify(res)}`);
+  assert.match(res.reason, /AUDC/, 'the diff must name the register that actually disagrees');
+  assert.doesNotMatch(res.reason, /AUDF:/, 'AUDF genuinely agrees here (both hold flat) — it must not also be named');
 });
 
 // ===========================================================================

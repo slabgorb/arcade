@@ -16,7 +16,7 @@ test('red-baron: RBARON.MAP links RBSOUN at $71C4', () => {
   assert.deepEqual({ base: snd.base, size: snd.size }, { base: 0x71c4, size: 0x0104 });
 });
 
-test('red-baron: BONUS LIFE sweeps FREQUENCY and holds VOLUME — pokey.ts has it inverted', () => {
+test('red-baron: BONUS LIFE sweeps FREQUENCY and holds VOLUME (ROM ground truth from RBSOUN.MAC; see shipped.mjs/pokey.ts for the port-side check)', () => {
   const { bytes, labels } = mac();
   const bn1 = labels.get('BN1');  // AUDF1
   const bn2 = labels.get('BN2');  // AUDC1

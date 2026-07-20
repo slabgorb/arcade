@@ -139,15 +139,20 @@ export async function compareTempestSfx(name, romEvents) {
 // found inverted.
 // ---------------------------------------------------------------------------
 
-// Small brace/paren-aware top-level comma splitter — enough for the fixed
-// shape of `table(CHANNEL, ARG1, ARG2)` call sites; no TS parser needed.
+// Small brace/paren/bracket-aware top-level comma splitter — enough for the
+// fixed shape of `table(CHANNEL, ARG1, ARG2)` call sites; no TS parser
+// needed. MUST track `[`/`]` alongside `(`/`{`/`)`/`}` — a register chain
+// written as a bare array literal (e.g. TH's six-note AUDF chain, or any
+// single-element `[seq(...)]` AUDC chain) puts its own internal commas at
+// depth 0 if brackets aren't counted, shredding the call's real argument
+// boundaries.
 function splitTopLevelArgs(s) {
   const parts = [];
   let depth = 0;
   let cur = '';
   for (const c of s) {
-    if (c === '(' || c === '{') depth++;
-    else if (c === ')' || c === '}') depth--;
+    if (c === '(' || c === '{' || c === '[') depth++;
+    else if (c === ')' || c === '}' || c === ']') depth--;
     if (c === ',' && depth === 0) {
       parts.push(cur);
       cur = '';
@@ -178,7 +183,14 @@ const KNOWN_CHAIN_CALLS = new Set(['seq', 'repeat']);
 
 // Every `seq(start, hold, change, number)` call's CHANGE argument (3rd
 // positional), wherever it appears in `expr` — inside an array literal, or
-// nested inside a `repeat(n, seq(...))`.
+// nested inside a `repeat(n, seq(...))`. Returns `null` — the same "cannot
+// confidently classify" sentinel `chainSweeps` itself returns for an unknown
+// call name — if any CHANGE fails to resolve to a finite number (e.g. a
+// symbolic constant like `HOLD` this scanner has no table for). Without this,
+// `Number(...)` on unresolvable input yields `NaN`, and `NaN !== 0` is `true`
+// in JS — which would silently report "sweeps" for a slot this scanner could
+// not actually read, the exact confident-but-wrong failure mode td1-4 exists
+// to close.
 function seqChanges(expr) {
   const changes = [];
   const re = /\bseq\(([^)]*)\)/g;
@@ -186,7 +198,9 @@ function seqChanges(expr) {
   while ((m = re.exec(expr))) {
     const parts = m[1].split(',').map((p) => p.trim());
     if (parts.length < 3) continue;
-    changes.push(Number(parts[2]));
+    const change = Number(parts[2]);
+    if (!Number.isFinite(change)) return null;
+    changes.push(change);
   }
   return changes;
 }
@@ -194,8 +208,9 @@ function seqChanges(expr) {
 // A register slot's CHAIN "sweeps" iff ANY step's CHANGE != 0 (rb4-10's
 // `seq(start, hold, change, number)` vocabulary — see pokey.ts's header for
 // the STVAL/FRCNT/CHANGE/NUMBER derivation). Returns `null` when `expr`
-// contains a call this scanner does not recognise, or no `seq(...)` at all —
-// an unparseable vocabulary must be ADMITTED, not judged, so the caller can
+// contains a call this scanner does not recognise, has a CHANGE argument that
+// does not resolve to a finite number, or has no `seq(...)` at all — an
+// unparseable vocabulary must be ADMITTED, not judged, so the caller can
 // answer `unverified` instead of risking a confident (and possibly wrong)
 // match/mismatch.
 function chainSweeps(expr) {
@@ -203,7 +218,7 @@ function chainSweeps(expr) {
     if (!KNOWN_CHAIN_CALLS.has(name)) return null;
   }
   const changes = seqChanges(expr);
-  if (changes.length === 0) return null;
+  if (changes === null || changes.length === 0) return null;
   return changes.some((c) => c !== 0);
 }
 
@@ -233,8 +248,9 @@ export function parseRedBaronPokeySounds(tsSource) {
     out[name] = (audfSweeps === null || audcSweeps === null)
       ? {
           unparseable: true,
-          reason: `POKEY_SOUNDS.${name} uses a chain vocabulary this scanner does not recognise ` +
-            `(expected seq()/repeat() — rb4-10) and cannot be confidently classified as sweeping or held`,
+          reason: `POKEY_SOUNDS.${name} uses a chain vocabulary or a seq() CHANGE argument this scanner ` +
+            `does not recognise (expected seq()/repeat() — rb4-10 — with a numeric CHANGE) and cannot be ` +
+            `confidently classified as sweeping or held`,
         }
       : { audfSweeps, audcSweeps };
   }

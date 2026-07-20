@@ -230,17 +230,30 @@ test('audit: tempest sfx — link 5, given the correct (tp1-2) cue map, catches 
   const byName = Object.fromEntries(sfx.map((v) => [v.sound, v]));
 
   // Terminal-zero-write omission (a): the ROM's register-event stream is two
-  // events longer than the shipped bake's, and the divergence is at the tail.
+  // events longer than the shipped bake's, and the divergence is at the tail —
+  // the shipped side has RUN OUT of events at the point they first disagree
+  // (compareTempestSfx's `shipped=null`), not merely written a different value.
+  // td1-4 review round 2 MEDIUM: this must be pinned distinctly from
+  // player_fire's assertion below, or the two "distinct defects" this comment
+  // claims are unverifiable — flipping which bug produced which failure would
+  // not be caught by either.
   for (const name of ['segment_tick', 'enemy_explosion', 'enemy_fire', 'spike_shot']) {
     assert.equal(byName[name].verdict, VERDICT.MISMATCH, `${name}: ${byName[name].reason}`);
     assert.match(byName[name].reason, /register-event stream differs/);
+    assert.match(byName[name].reason, /shipped=null/, `${name}: expected the divergence to be the shipped stream running OUT of events (terminal-zero omission), got: ${byName[name].reason}`);
   }
 
   // AUDC high-nibble-mask omission (b): player_fire's LA record ramps AUDC by
   // -8 each step; the ROM masks the high (distortion) nibble on every step, the
-  // shipped bake does not, so the streams disagree well before the tail.
+  // shipped bake does not, so the streams disagree well before the tail — BOTH
+  // sides still have an event at the divergence point (register 1 = AUDC), they
+  // just disagree on its VALUE. That is the opposite shape from the terminal-zero
+  // group above (`shipped=null`) and must be asserted as such to actually
+  // distinguish the two defects, not merely share their generic reason prefix.
   assert.equal(byName.player_fire.verdict, VERDICT.MISMATCH, byName.player_fire.reason);
   assert.match(byName.player_fire.reason, /register-event stream differs/);
+  assert.doesNotMatch(byName.player_fire.reason, /shipped=null/, `player_fire: expected a same-position VALUE disagreement, not a truncated shipped stream, got: ${byName.player_fire.reason}`);
+  assert.match(byName.player_fire.reason, /ROM=\[1,\d+\] shipped=\[1,\d+\]/, `player_fire: expected both sides to carry an AUDC (register 1) event at the divergence point, disagreeing only in value, got: ${byName.player_fire.reason}`);
 
   // Not shipped at all (absent from sfx-data.mjs's SFX and DEFERRED, or
   // explicitly DEFERRED/never baked) — cannot be machine-compared.
