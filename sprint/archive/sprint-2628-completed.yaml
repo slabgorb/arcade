@@ -933,3 +933,8 @@ completed_stories:
     title: "Wave machine core — the CIA process, full 80-row WAVTBL decode, six-type dispatch skeleton, degrade laws, seeding"
     points: 3
     completed: '2026-07-20'
+  - id: td1-8
+    epic: td1
+    title: just serve swallows a failed launch — bare wait returns 0, fleet looks healthy with one game silently missing
+    points: 2
+    completed: '2026-07-20'

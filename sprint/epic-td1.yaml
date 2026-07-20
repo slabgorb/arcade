@@ -145,10 +145,13 @@ stories:
       RELATED: td1-1 also surfaced that vite.config.ts is excluded from type-checking everywhere in the fleet (every tsconfig include is [src,tests]; no ESLint; CI runs only build+test). Proven by injecting 'host: 5150' (a number where string|boolean is required) into lobby/vite.config.ts — 'npm run build' passed cleanly. Consider folding a scoped config type-check into this story or filing it separately.
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: .
     workflow: tdd
+    completed: '2026-07-20'
     type: bug
+    review_verdict: approved
   - id: td1-9
     title: Four repos carry no scaffold suite at all — lobby, tempest, star-wars, asteroids have no config guard of any kind
     description: |-
