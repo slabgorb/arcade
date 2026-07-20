@@ -837,3 +837,8 @@ completed_stories:
     title: "Image transcription — decode JOUSTI.SRC into src/core/pictures.ts, byte-gated, with COMCL5 RLE + collision spans + contact sheet"
     points: 5
     completed: '2026-07-19'
+  - id: sw7-10
+    epic: sw7
+    title: R10 Attract mode and starfield — rotating INS/SCR pages, intro crawl, in-flight coaching messages, the WSSTAR starfield
+    points: 10
+    completed: '2026-07-19'
