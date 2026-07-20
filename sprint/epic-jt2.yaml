@@ -1,0 +1,99 @@
+id: jt2
+type: epic
+title: Joust — the joust slice (scheduler, enemies + intelligence budget, joust resolution, eggs, wave machine core, transporters)
+description: "Second epic of the joust clone — the roadmap's 'The joust' slice (DESIGN: docs/superpowers/specs/2026-07-20-joust-jt2-epic-design.md at the orchestrator, executing joust/docs/superpowers/specs/2026-07-19-joust-clone-design.md roadmap row jt2). GROUND TRUTH: joust/docs/rom-study/ (machine-gated by the citations suite) — cite the dossier, do not re-derive it; new transcriptions add fully-qualified FILE:LINE claims (the jt1-8 lesson: never bare :N). RULINGS THIS EPIC (design doc §Design rulings, all binding): scheduler = the ruled tagged-union process list with frame naps / two classes / kill-by-id+mask, NOT a memory image (no 56-byte blocks, no PPC, no RAM pool — layout facts stay citations); SCORING SEAM — core emits kill/egg score events carrying transcribed DVALUE/EGGVAL values, BCD accumulation + display + extra men are jt4 (the 50-points-for-dying credit JOUSTRV4.SRC:4730-4732 is DEFERRED with its verify-in-emulation caveat, open-questions §4); TEXT SEAM — wave machine emits message beats, shell renders NONE of them (fonts are later work; WAVDEL delays are ~1s, JOUSTRV4.SRC:2045/2601 divide by 6 — no exact-duration pins); EMYTIM is an integrate-every-Nth-frame DIVIDER not a speed scale (2 on waves 1-2, JOUSTRV4.SRC:2202-2205); WBJSR phantom wave types 12/14 pinned ABSENT as a negative claim (JOUSTRV4.SRC:187); wave-type dispatch lands as the 6-entry WJSRTB skeleton with survival/co-op live + degrade-by-player-count (gladiator/egg/ptero behaviours are jt4/jt3); baiter seam — jt2 builds the NSMART/WSMART budget incl. 15s growth, BAITBL spawn schedule is jt3. SEEDS CARRIED FROM jt1 (all binding, verified in the archives): (1) EntityState needs a FACING field — jt1-6 gap, skid chain + PLANTZ currently unreachable, the joust needs both (skid PLANTZ=2, JOUSTRV4.SRC:6071-6072, recorded by jt1-5 as jt2's consumable); (2) PBUMPX/PBUMPY bump registers unmodeled — jt1-5 tail, drain laws cited (X ≤3 px/frame JOUSTRV4.SRC:7270-7284, Y whole JOUSTRV4.SRC:6495-6496); (3) scheduler layout anchors on PBLKM (RAMDEF.SRC:166) never a searched ORG $0 (claim JT10-010), pool arithmetic is 40x56=2240 not 2040; (4) count floors owed on consumption (jt1-3 review): COLLISION_TABLES floors land with jt2-3, ENTITY_RECORDS floors with jt2-7; (5) the full 80-row WAVTBL decode is jt2-5's appendix (open-questions §4 names it). The IFN DEBUG blocks (JOUSTRV4.SRC:1982-1990, 2953-2959, 2966-2970, 3765-3770) are the author's own invariant list — free oracles for wave/budget bookkeeping tests. Demo at epic end: wave 1 vs the buzzards on 5279, screenshot with port-ownership proof (strictPort alone is porous — td1-1)."
+priority: p1
+status: backlog
+repos: joust
+stories:
+  - id: jt2-1
+    title: "Process scheduler core — the tagged-union process list, frame naps, two classes, kill by id+mask, per-frame RNG stir"
+    description: "GameState grows from a frame counter to the ruled ROM-shaped core (clone design spec §Architecture): a tagged-union process list mirroring the 40-slot cooperative scheduler's SEMANTICS (subsystems §1) — per-process nap timers decremented once per frame pass (PNAP, RAMDEF.SRC:171; 1 nap = 1 frame, five author oracles, brief §3), two scheduling classes run as two full passes (primaries then secondaries — PRISEC, SYSTEM.SRC:217/231/248; PROCCR/SECCR RAMDEF.SRC:8-18), kill takes id+mask so one call kills a class (KLPROC, SYSTEM.SRC:341-346). Per-frame RNG stir mirroring the IRQ's (SYSTEM.SRC:581-582 — RNG advances on the timer, not only on calls) via @arcade/shared/rng seeded by the shell. RULING: semantics only, NOT a memory image — no 56-byte blocks, no PPC resume addresses, no pool; the layout facts stay dossier citations. HAZARDS (jt1-10, binding): any layout claim anchors on PBLKM (RAMDEF.SRC:166), never a searched ORG $0 (an earlier one exists — claim JT10-010); any pool arithmetic re-derives 40x56=2240 (not the old 2040). Player entities join the list; existing flight/ground stepping is driven from it without behaviour change (the jt1-5 determinism replay must survive the migration bit-for-bit)."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "Processes nap in whole frames (a process napping N wakes on exactly the Nth pass); primaries all step before any secondary each frame; kill-by-id+mask removes a class in one call — each law cited + claims entries; citations suite green."
+      - "The RNG advances once per frame independent of consumption (a frame with no RNG calls still changes the stream position), mirroring SYSTEM.SRC:581-582; deterministic under seed."
+      - "The jt1-5 seeded-replay trajectory reproduces bit-for-bit with players now stepped from the process list (no behaviour change from the migration)."
+      - "No wall-clock, no Math.random in core (purity guard green); frame.ts's GameState migration keeps npm test fully green."
+  - id: jt2-2
+    title: "Enemies — the shared LINET brain, the NSMART/WSMART intelligence budget, promotion to BOUNDR/B2UNDR/SHADOW, EMYTIM divider"
+    description: "The three ground enemies (bounder/hunter/shadow lord) as processes on the same flight core the players use (buzzards flap). One shared dumb brain: LINET lane-tracking toward the three cliff-tier altitudes $45/$81/$D0 +/- $20 (JOUSTRV4.SRC:3722-3749, 7994-7997). Promotion to the smart brains BOUNDR/B2UNDR/SHADOW (JOUSTRV4.SRC:3787, 3971, 4230) under the GLOBAL intelligence budget: NSMART vs WSMART, seeded per wave from the pursuit nibble, growing every 15 s while enemies live (JOUSTRV4.SRC:2075-2129). EMYTIM divider: enemies integrate every Nth frame — 2 on waves 1-2 and after early deaths, else 1 (JOUSTRV4.SRC:2202-2205) — modeled as a DIVIDER, not a speed scale (open-questions §4, ruled). The IFN DEBUG invariants (JOUSTRV4.SRC:1982-1990, 3765-3770 — 'NSMART had better be zero') become test oracles for the budget bookkeeping. Wave seeding inputs (pursuit nibble) may be stubbed as parameters until jt2-5 lands the wave machine — the seam is the budget's INPUTS, not its laws. Enemy facing/mount animation uses jt1-3's transcribed buzzard/rider frames by name only (rendering is jt2-7)."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "LINET altitude targets, tolerance band, and the promotion rule transcribed with radix-cited comments + claims entries; a dumb enemy tracks lanes, a promoted one runs its smart brain; citations suite green."
+      - "The budget's laws hold under test: seeded from the pursuit nibble per wave, +1 every 15 s (900 frames) while enemies live, promotions debit it, deaths credit it back — and the IFN DEBUG invariant (budget zero at wave end with all enemies dead) holds as an oracle."
+      - "EMYTIM=2 makes an enemy integrate on exactly every 2nd frame (identical inputs, half the displacement of EMYTIM=1 over any window) — a divider, not a scale; proven by test."
+      - "All three smart brains produce distinct, cited behaviours (bounder/hunter/shadow-lord pursuit differences per their JOUSTRV4.SRC blocks); deterministic under seeded replay."
+  - id: jt2-3
+    title: "The joust — box broad-phase + span narrow-phase, OSTBO sub-pixel resolution, bounce-apart, facing + bump registers"
+    description: "Entity-vs-entity collision and the game's namesake resolution. Broad-phase box test then narrow-phase against jt1-3's transcribed collision spans (COFF bias, $8000/$8100 sentinels — pictures.md); this story CONSUMES COLLISION_TABLES, so the count floors owed since the jt1-3 review land here (each table gets a floor; dropping one must redden the suite). THE JOUST (OSTBO, JOUSTRV4.SRC:5002-5012): compare (PLANTZ + PPOSY) 16-bit FRACTION INCLUDED — strictly lower wins, exact tie = both bounce (JOUSTRV4.SRC:5014-5017); skidding sets PLANTZ=2 (JOUSTRV4.SRC:6071-6072 — jt1-5's recorded consumable); enemies NEVER kill each other (JOUSTRV4.SRC:4953-4961). Bounce-apart: winner PBUMPY -2 / loser +2, wrong-way velocity inverted and halved (JOUSTRV4.SRC:5163-5176); horizontal reverse-minus-2 with half passed to the other as bump (JOUSTRV4.SRC:5114-5157). CARRIED SEEDS (binding): add FACING to EntityState — the jt1-6 gap that leaves the skid chain (SKID_DELTA/SKID_PLANT_Z) unreachable; wire the ground state machine's onMinus transitions through it so skid/PLANTZ=2 is REACHABLE and tested. Model PBUMPX/PBUMPY as one-shot positional shoves with the cited drain laws (X drained <=3 px/frame JOUSTRV4.SRC:7270-7284; Y consumed whole JOUSTRV4.SRC:6495-6496) — the jt1-5 tail. Kills emit score events carrying transcribed DVALUE bytes: bounder 500 / hunter 750 / shadow lord 1500 (JOUSTRV4.SRC:5563-5577); accumulation is jt4 (scoring seam ruling). The 50-points-for-dying credit is DEFERRED (verify-in-emulation caveat, open-questions §4)."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "The joust resolves on the 16-bit sub-pixel (PLANTZ + PPOSY) comparison: a 1-fraction-unit height difference decides the winner; an exact tie bounces both — proven at the fraction level, not integer Y (the dossier's false-tie trap)."
+      - "Facing exists; the skid chain is reachable (a facing-vs-input reversal enters it) and skidding demonstrably lowers the lance via PLANTZ=2 into a joust outcome; bump registers drain by the cited laws (X <=3 px/frame, Y whole)."
+      - "Bounce-apart velocities/bumps match the transcribed laws; enemies never kill each other (enemy-enemy contact always bounces); kill events carry 500/750/1500 per type — all cited + claims entries, citations suite green."
+      - "COLLISION_TABLES (and every table this story consumes) carry count floors — deleting a table or truncating spans reddens the suite (prove red once); determinism replay through a joust stays bit-for-bit."
+  - id: jt2-4
+    title: "Eggs — spawn with victim velocity, bounce/settle laws, ledge tables, value ladder + air catch, hatch and remount, 4-egg permadeath"
+    description: "The egg lifecycle as a process: spawn carrying the victim's velocities (JOUSTRV4.SRC:2991-2996); bounce keeps 1/4 of VY inverted, X index decays 2 per bounce (JOUSTRV4.SRC:3204-3218); settle when |VY| <= $20 and X index = 0 (JOUSTRV4.SRC:3219-3222); ledge placement via EGLEDG/EGGLNT (69 slots, 8 px apart, JOUSTRV4.SRC:2910-2935); eggs use the NARROWER 4..288 wrap (JOUSTRV4.SRC:3141-3146), not the entity band. Values 250/500/750/1000 capped (EGGVAL, JOUSTRV4.SRC:3097-3104); mid-air catch +500 (PFEET, JOUSTRV4.SRC:3065-3069) — emitted as score events per the epic's scoring seam. Hatch: buzzard flies in from the NEARER edge at max speed to remount (JOUSTRV4.SRC:3245-3278). Each enemy carries 4 eggs before permadeath (PEGG, JOUSTRV4.SRC:2900-2901, 3001). Egg score-message state overlays PRDIR/PPVELX (JOUSTRV4.SRC:3028-3036) — the tagged union carries egg-specific fields, it does not grow the shared struct."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "Spawn/bounce/settle laws transcribed and proven: an egg inherits its victim's velocities, quarter-VY bounces with X-index decay, settles exactly at the cited thresholds; the 4..288 egg wrap differs from the entity band by test."
+      - "Value ladder caps at 1000; the air catch pays 500 via PFEET; both emitted as score events with claims entries."
+      - "Hatch produces a remount flight from the nearer screen edge at max FLYX speed; the 4th egg kill is permadeath (no hatch, PEGG law); citations suite green."
+      - "Determinism: a seeded joust-kill -> egg -> hatch sequence replays bit-for-bit."
+  - id: jt2-5
+    title: "Wave machine core — the CIA process, full 80-row WAVTBL decode, six-type dispatch skeleton, degrade laws, seeding"
+    description: "The wave machine as the CIA process (JOUSTRV4.SRC:1875): the 4-byte nibble-packed wave table — bounders:hunters / lords:pursuers / pterodactyls / status (JOUSTRV4.SRC:175-181) — with THE FULL 80-ROW WAVTBL DECODE as this story's appendix (open-questions §4 names it; head/sample/tail was the dossier's honest gap; loop at 81 via WTBRST/WTBEND, JOUSTRV4.SRC:2535-2546, 2018-2021; late waves all Shadow Lords at max pursuit $00,$AF). Wave number is independent BCD 0-99 (JOUSTRV4.SRC:2001-2004). Status low nibble dispatches the six wave types via the WJSRTB skeleton (JOUSTRV4.SRC:2586-2591) — survival/co-op paths LIVE with the degrade-by-player-count laws (co-op -> survival solo JOUSTRV4.SRC:2628-2631; gladiator no-ops solo JOUSTRV4.SRC:2697-2700); gladiator/egg/ptero BEHAVIOURS are jt4/jt3 (ruled seam). High nibble cliff destruction recorded as data (JOUSTRV4.SRC:185-192); the bridge burn is jt3's. Seeds jt2-2's budget (pursuit nibble -> NSMART/WSMART) and EMYTIM (2 on waves 1-2, JOUSTRV4.SRC:2202-2205). NEGATIVE CLAIMS pinned: WBJSR phantom types 12/14 never implemented (JOUSTRV4.SRC:187); wave 0's table entry never played (PWAVE seeded at WAVTBL-WLEN, JOUSTRV4.SRC:2437, 1878). WAVDEL-area delays are APPROXIMATELY 1 s (divide by 6 through a variable-length message loop, JOUSTRV4.SRC:2045, 2601) — emit message beats per the text seam, pin no exact durations. The IFN DEBUG invariants (JOUSTRV4.SRC:2953-2959, 2966-2970) are wave-bookkeeping test oracles."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "All 80 WAVTBL rows decoded and committed with a re-derivation gate against the vendored source (the jt1-3 byte-gate pattern); the loop-at-81 law and the late-wave $00,$AF plateau hold by test; claims entries for the format and the decode."
+      - "Wave counter is BCD 0-99 independent of the table index; wave-type dispatch routes all six types with survival/co-op live and the degrade laws proven (2P co-op wave becomes survival when a player is out; gladiator no-ops solo)."
+      - "Negative claims pinned by test: types 12/14 unreachable/absent; wave 0 never played from a fresh game; no exact-duration assertion on WAVDEL beats (message events carry the beat, not a pinned second)."
+      - "Budget/EMYTIM seeding flows to jt2-2's inputs (pursuit nibble in, NSMART seed out; waves 1-2 set the divider to 2); IFN DEBUG wave invariants hold as oracles; citations suite green."
+  - id: jt2-6
+    title: "Transporters + the spawn service — pads by tier, the empty-third rule, ticket queue, timed materialisation safety"
+    description: "Entry into the arena: 4 transporter pads tied to platform tiers (TR1ID-TR4ID, JOUSTRV4.SRC:5587-5590); spawn requires an empty screen third (SELARE, JOUSTRV4.SRC:6413-6424); players hold service tickets AHEAD of enemies (NPSERV/LPSERV, JOUSTRV4.SRC:5615-5674); safety is a TIMED MATERIALISATION aborted by any control input — not invulnerability (JOUSTRV4.SRC:5841-5892, 5923-5925). Player spawn constants: P1 X=100 facing right on the ostrich; P2 X=200 facing left on the stork (JOUSTRV4.SRC:1020-1039). Enemies entering a wave arrive via the pads under the same service; this is what jt2-5's spawn counts flow through. The materialisation state is a process nap pattern (jt2-1's machinery), and its abort-on-control law needs the input contract, both already landed."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "Pad positions/tiers and spawn constants transcribed with claims entries; P1/P2 materialise at the cited X/facing/mounts; citations suite green."
+      - "SELARE: a spawn only proceeds into an empty screen third (a crowded third defers it), proven by test; players are served ahead of queued enemies (ticket order law)."
+      - "Materialisation safety: an untouched player is safe for the timed window; ANY control input during it ends the safety early (abort law, not invulnerability) — both directions tested."
+      - "A full wave-1 enemy complement (from jt2-5's counts) enters via pads deterministically under seed."
+  - id: jt2-7
+    title: "Demo — wave 1 vs the buzzards: shell rendering for enemies/eggs/transporters, the playable slice"
+    description: "The epic's demo bar: wave 1 (and onward) playable against the buzzards on 5279. Shell renders enemies (buzzard + rider frames by facing/animation from jt1-3's data), eggs (bounce/settle/hatch states), and the transporter materialisation, through the existing atlas path; kill/egg score events surface as console/dev-overlay output only (scoring display is jt4; text seam renders no fonts). This story CONSUMES ENTITY_RECORDS for the enemy/egg frames — the jt1-3 count floors owed on those tables land here (ENTITY_RECORDS, PALETTES if consumed anew). Render source-wiring test per the repo ?raw idiom (jt1-6 precedent). Screenshot committed as the epic demo artifact, taken from THIS checkout with port-ownership proof (lsof or spare port — strictPort alone is porous, td1-1; the td1-3 lesson: a screenshot that predates the code it demos misrepresents the renderer)."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "Playable in the browser on 5279: wave 1 spawns via transporters, buzzards track/flap/joust, kills spawn eggs that bounce/settle/hatch, wave 2 follows — P1 and P2 both live per the 2P contract."
+      - "Enemy/egg/transporter frames render from transcribed data only (no invented pixels/colors — denylist scan green); ENTITY_RECORDS (+ any newly consumed table) carry count floors, proven red once by truncation."
+      - "Render source-wiring test green; screenshot committed with port-ownership proof recorded in the story notes."
+      - "npm test fully green including citations and purity guard."
