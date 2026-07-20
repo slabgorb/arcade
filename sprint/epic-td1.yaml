@@ -71,3 +71,21 @@ stories:
       - Every text-matching or source-scanning assertion in the joust suite is mutation-checked; vacuous ones are re-aimed at content, and the sweep result is recorded (how many checked, how many were vacuous).
       - The render internals get an adversarial pass beyond the existing suite; any defect found is fixed or filed, and the geometric-fidelity check question (pixel comparison vs known-good) is answered explicitly rather than left open.
     type: chore
+  - id: td1-6
+    title: tempest bake-sfx expandSeq omits the ROM AUDC high-nibble mask on a ramp — player_fire diverges from event 3
+    description: |-
+      Surfaced by td1-4 (2026-07-20), NOT created by it — a pre-existing tempest bake-tool defect that only became visible once td1-4 un-crossed the orchestrator's cue->ROM-address map (scripts/audio/games/tempest.mjs). Before that fix, link 5 was comparing player_fire's ROM slice against a DIFFERENT cue's shipped bake, so this divergence was hidden behind the wrong comparison.
+
+      THE DEFECT: tempest/tools/pokey-bake/bake-sfx.mjs's expandSeq() never applies the ROM's AUDC high-nibble (distortion) mask on a ramp — the odd-channel XOR/AND-0xF0/XOR dance MODSND performs in ALSOUN.MAC. The orchestrator's own envelope.mjs DOES apply it (maskHighNibble: true). Consequence: player_fire's LA record ramps AUDC by -8 per step, the ROM masks the high nibble on every step, the shipped bake does not — so the two streams disagree from event 3 onward, not merely at the tail. Observed reason string: ROM=[1,170] shipped=[1,154].
+
+      This is DISTINCT from the terminal-zero-write omission affecting segment_tick/enemy_explosion/enemy_fire/spike_shot (those read ROM=[0,0] shipped=null). Two different bake-tool bugs; do not conflate them.
+
+      td1-4 deliberately surfaced this as a real MISMATCH rather than narrowing the assertion to hide it — tests/extract-audio.test.mjs:243 currently asserts player_fire MISMATCH with a distinguishing reason match. That assertion is the canary: when this story lands, that expectation must flip to ROM_VERIFIED. Fixing the bake tool without updating it will redden the orchestrator suite, which is the intended coupling.
+
+      Scope note: the fix is in the TEMPEST subrepo (tools/pokey-bake/), which is why td1-4 (scope '.') could not take it. Verified by the td1-4 Reviewer as real, with 'out of scope here' confirmed as the right call.
+    points: 2
+    priority: p3
+    status: backlog
+    repos: tempest
+    workflow: tdd
+    type: bug
