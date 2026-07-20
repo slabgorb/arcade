@@ -903,3 +903,8 @@ completed_stories:
     title: Triage the two orchestrator extract-audio reds — tempest/red-baron link-5 audits
     points: 2
     completed: '2026-07-20'
+  - id: td1-1
+    epic: td1
+    title: Fleet strictPort is porous — pin host 127.0.0.1 in every subrepo's vite config
+    points: 2
+    completed: '2026-07-20'
