@@ -928,3 +928,8 @@ completed_stories:
     title: "Eggs — spawn with victim velocity, bounce/settle laws, ledge tables, value ladder + air catch, hatch and remount, 4-egg permadeath"
     points: 2
     completed: '2026-07-20'
+  - id: jt2-5
+    epic: jt2
+    title: "Wave machine core — the CIA process, full 80-row WAVTBL decode, six-type dispatch skeleton, degrade laws, seeding"
+    points: 3
+    completed: '2026-07-20'
