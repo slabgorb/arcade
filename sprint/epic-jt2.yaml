@@ -56,7 +56,8 @@ stories:
     description: "The egg lifecycle as a process: spawn carrying the victim's velocities (JOUSTRV4.SRC:2991-2996); bounce keeps 1/4 of VY inverted, X index decays 2 per bounce (JOUSTRV4.SRC:3204-3218); settle when |VY| <= $20 and X index = 0 (JOUSTRV4.SRC:3219-3222); ledge placement via EGLEDG/EGGLNT (69 slots, 8 px apart, JOUSTRV4.SRC:2910-2935); eggs use the NARROWER 4..288 wrap (JOUSTRV4.SRC:3141-3146), not the entity band. Values 250/500/750/1000 capped (EGGVAL, JOUSTRV4.SRC:3097-3104); mid-air catch +500 (PFEET, JOUSTRV4.SRC:3065-3069) — emitted as score events per the epic's scoring seam. Hatch: buzzard flies in from the NEARER edge at max speed to remount (JOUSTRV4.SRC:3245-3278). Each enemy carries 4 eggs before permadeath (PEGG, JOUSTRV4.SRC:2900-2901, 3001). Egg score-message state overlays PRDIR/PPVELX (JOUSTRV4.SRC:3028-3036) — the tagged union carries egg-specific fields, it does not grow the shared struct."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -64,6 +65,7 @@ stories:
       - "Value ladder caps at 1000; the air catch pays 500 via PFEET; both emitted as score events with claims entries."
       - "Hatch produces a remount flight from the nearer screen edge at max FLYX speed; the 4th egg kill is permadeath (no hatch, PEGG law); citations suite green."
       - "Determinism: a seeded joust-kill -> egg -> hatch sequence replays bit-for-bit."
+    completed: '2026-07-20'
   - id: jt2-5
     title: "Wave machine core — the CIA process, full 80-row WAVTBL decode, six-type dispatch skeleton, degrade laws, seeding"
     description: "The wave machine as the CIA process (JOUSTRV4.SRC:1875): the 4-byte nibble-packed wave table — bounders:hunters / lords:pursuers / pterodactyls / status (JOUSTRV4.SRC:175-181) — with THE FULL 80-ROW WAVTBL DECODE as this story's appendix (open-questions §4 names it; head/sample/tail was the dossier's honest gap; loop at 81 via WTBRST/WTBEND, JOUSTRV4.SRC:2535-2546, 2018-2021; late waves all Shadow Lords at max pursuit $00,$AF). Wave number is independent BCD 0-99 (JOUSTRV4.SRC:2001-2004). Status low nibble dispatches the six wave types via the WJSRTB skeleton (JOUSTRV4.SRC:2586-2591) — survival/co-op paths LIVE with the degrade-by-player-count laws (co-op -> survival solo JOUSTRV4.SRC:2628-2631; gladiator no-ops solo JOUSTRV4.SRC:2697-2700); gladiator/egg/ptero BEHAVIOURS are jt4/jt3 (ruled seam). High nibble cliff destruction recorded as data (JOUSTRV4.SRC:185-192); the bridge burn is jt3's. Seeds jt2-2's budget (pursuit nibble -> NSMART/WSMART) and EMYTIM (2 on waves 1-2, JOUSTRV4.SRC:2202-2205). NEGATIVE CLAIMS pinned: WBJSR phantom types 12/14 never implemented (JOUSTRV4.SRC:187); wave 0's table entry never played (PWAVE seeded at WAVTBL-WLEN, JOUSTRV4.SRC:2437, 1878). WAVDEL-area delays are APPROXIMATELY 1 s (divide by 6 through a variable-length message loop, JOUSTRV4.SRC:2045, 2601) — emit message beats per the text seam, pin no exact durations. The IFN DEBUG invariants (JOUSTRV4.SRC:2953-2959, 2966-2970) are wave-bookkeeping test oracles."
@@ -105,6 +107,7 @@ stories:
       - "npm test fully green including citations and purity guard."
   - id: jt2-8
     title: Correct the OSTBO wrong-prose — AC-1 in epic-jt2.yaml and docs/rom-study/subsystems.md say 'fraction included'; the ROM compares WHOLE PIXELS + PLANTZ (fraction EXCLUDED, PPOSY offset +0 vs the flight core's +1). Independently re-derived twice in jt2-3 (TEA triangulation + rule-checker item-0, quoted lines RAMDEF.SRC:174, JOUSTRV4.SRC:5008-5009, 6494, 6071-6072). Fix the dossier prose at subsystems.md:137-139; the corrected law is already pinned by tests/joust.test.ts + JT23 claims. Required by the jt2-3 Reviewer (tracked, not lost).
+    description: "TWO wrong-prose corrections from jt2 reviews, both ROM-re-derived twice and already pinned green by tests — this chore fixes PROSE only. (1) OSTBO: AC-1 in epic-jt2.yaml (jt2-3 entry) and joust docs/rom-study/subsystems.md:137-139 say 'fraction included'; the ROM compares WHOLE PIXELS + PLANTZ (fraction EXCLUDED, PPOSY offset +0 vs the flight core's +1 — RAMDEF.SRC:174, JOUSTRV4.SRC:5008-5009, 6494, 6071-6072; TEA triangulation + rule-checker item-0, jt2-3). (2) REMOUNT EDGE: the jt2-4 story description + AC-3 + epic law #7 + context-story-jt2-4.md say the hatched buzzard flies in from the 'NEARER' edge; the ROM enters from the FARTHER edge (opposite the egg's half) and sweeps toward the rider — JOUSTRV4.SRC:3270-3279 (BHI EGGMRT branch), ELEFT/ERIGHT EQUs :38-39 give entry X −9/+291 (TEA byte-gate + rule-checker item-0, jt2-4). Corrected laws are pinned by tests/joust.test.ts (JT23 claims) and tests/egg.test.ts (JT24-030..033). Required by the jt2-3 and jt2-4 Reviewers (tracked, not lost)."
     points: 1
     priority: p2
     status: backlog

@@ -923,3 +923,8 @@ completed_stories:
     title: Scaffold suites guard the wrong invariant — assert host 127.0.0.1 pin, not just strictPort
     points: 1
     completed: '2026-07-20'
+  - id: jt2-4
+    epic: jt2
+    title: "Eggs — spawn with victim velocity, bounce/settle laws, ledge tables, value ladder + air catch, hatch and remount, 4-egg permadeath"
+    points: 2
+    completed: '2026-07-20'
