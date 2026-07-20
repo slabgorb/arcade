@@ -867,3 +867,8 @@ completed_stories:
     title: "Render shell — atlas, 292x240 integer scaling, COLOR1 palette, playable arena demo"
     points: 3
     completed: '2026-07-19'
+  - id: jt1-8
+    epic: jt1
+    title: Qualify the dossier's 128 bare-:N citations — every citation enters the machine gate
+    points: 3
+    completed: '2026-07-19'
