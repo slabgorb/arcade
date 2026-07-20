@@ -19,6 +19,7 @@ completed_epics:
   - rb4
   - SH2
   - bz4
+  - jt1
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -876,4 +877,9 @@ completed_stories:
     epic: jt1
     title: Citation checker hardening — external-claim shape enforcement + robustness holes from the jt1-2 review
     points: 2
+    completed: '2026-07-20'
+  - id: jt1-11
+    epic: jt1
+    title: Purity-scanner evasion tail — unwrap trivia nodes, element-access bans, documented dataflow limits, line numbers
+    points: 1
     completed: '2026-07-20'
