@@ -28,7 +28,8 @@ stories:
     description: "The real difficulty curve, and the harder (rng-sensitive) half of the scope fence. CENTPC (:496-551) lays CENTIN connected segments (head + bodies, :477-524) and then fills the REMAINING slots CENTIN..NCENT-1 with LOOSE INDEPENDENT HEADS (:527-546): DEAD=NCENT is set unconditionally (:549-551), so a 'short' train still puts 12 objects on screen — wave 2 is 11 segments PLUS one free-roaming head, NOT a shorter train (the cp3-4 carry-forward's 'shorter' framing was imprecise; the design doc corrects it). Each loose head costs TWO seeded-rng reads in ROM order: first the DIRECTION sign ('BIT RNGEN / BPL / JSR COMP' :536-540, negative → try other direction) then HPOS ('LDA RNGEN / AND I,0F8' :543-545). MOBJDV for a loose head is 2, or CKFE if cocktail (:531-534 — non-cocktail default 2, cocktail is out of scope, transcribe the default and note the branch). createCentipede() currently hardcodes NCENT=12 connected; this story makes it read centin and place the loose heads. DETERMINISM: draw ONLY from @arcade/shared/rng (seeded by the shell); a determinism test replays an identical wave from a fixed seed and asserts identical loose-head columns/directions; purity guard stays green (no Date.now/Math.random). Closes the fragmentation half of the scope fence at centipede.ts:162-168. NEEDS cp4-1 (speed) landed so the loose heads march at the right CENTIS."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
@@ -36,6 +37,8 @@ stories:
       - "A determinism test replays an identical wave from a fixed seed and asserts byte-identical loose-head columns and directions; a second seed produces a different-but-deterministic field; purity guard green."
       - "An integration test drives a real wave clear to centin=11 and observes exactly one loose head plus an 11-segment connected train, all alive, all marching at the wave's CENTIS."
       - "The scope-fence comment at centipede.ts:162-168 is struck (both halves now closed) or updated to reflect what genuinely remains; full suite green from baseline; build + lint clean."
+    completed: '2026-07-20'
+    review_verdict: approved
   - id: cp4-3
     title: "Per-wave colour walk — LCOLOR advance on the all-dead re-lay"
     description: "The third CENTPC per-wave effect: :461-463 'LDA X,LCOLOR-1 / ORA I,80 / STA X,LCOLOR-1 ;TIME TO CHANGE COLORS', inside the same all-dead guard (:459-460 ';NO CHANGE IN COLOR OR SPEED UNTIL ALL DEAD') that gates the speed/length walk — so it fires on the WAVE-CLEAR re-lay, NOT the death re-lay. The centipede's colour changes wave to wave; today it does not. Transcribe how LCOLOR (a per-player colour selector) feeds CLRCH's colour init / the IRQ colour cycling (subsystems.md CLRCH :879), and drive the rendered segment colour from it. This story spans core (the LCOLOR flag on SimState, advanced on the wave-clear re-lay) and shell (render.ts / palette.ts consuming it) — keep the sim change and the render change in SEPARATE commits per the epic's boundary ruling. VERIFY on a server proven to be THIS checkout (lsof the port's cwd first) that the train visibly changes colour between waves. NEEDS cp4-1/cp4-2 landed (the re-lay path they touch is the same CENTPC block)."

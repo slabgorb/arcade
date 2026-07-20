@@ -963,3 +963,8 @@ completed_stories:
     title: "Demo — wave 1 vs the buzzards: shell rendering for enemies/eggs/transporters, the playable slice"
     points: 2
     completed: '2026-07-20'
+  - id: cp4-2
+    epic: cp4
+    title: "Fragmented train — CENTIN connected segments plus loose extra heads from RNGEN"
+    points: 3
+    completed: '2026-07-20'
