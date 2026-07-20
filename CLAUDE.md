@@ -122,6 +122,13 @@ same port with **no collision error at all**. Every subrepo's `vite.config.ts`
 also pins `host: '127.0.0.1'` on both the `server` and `preview` blocks to
 close that gap (discovered on joust as jt1-3, ported fleet-wide as td1-1).
 
+**The pin only bites when _both_ sides of a collision have it.** A sibling
+checkout that hasn't pulled td1-1 still binds an unpinned host and can land on
+`[::1]:<port>`, silently coexisting with your pinned server on
+`127.0.0.1:<port>` — reproducing the exact trap below. So the guarantee is
+per-checkout, not fleet-wide: it holds once every checkout serving that port
+carries the pin. Until then, keep proving whose server answers.
+
 > **Trap — the port may belong to a *different checkout*.** Because every checkout
 > (`a-1`, `a-2`, …) pins the *same* ports, `localhost:5274` may be served by a
 > sibling checkout's working tree. If you screenshot it to verify a render change,
