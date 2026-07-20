@@ -973,3 +973,8 @@ completed_stories:
     title: tempest bake-sfx expandSeq omits the ROM AUDC high-nibble mask on a ramp — player_fire diverges from event 3
     points: 2
     completed: '2026-07-20'
+  - id: cp4-5
+    epic: cp4
+    title: "Game loop — start, game-over, restart; INIT/RESET reseed"
+    points: 3
+    completed: '2026-07-20'

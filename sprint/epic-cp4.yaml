@@ -70,7 +70,8 @@ stories:
     description: "Wire the outer loop the sim currently only half-has: SimState.gameOver is set on the last-life death (sim.ts:383-385) and step() early-returns while gameOver (sim.ts:454), but NOTHING transitions BACK — there is no start gate and no restart. Transcribe the ROM's flow: INIT (:1162 'INITIALIZE EVERYTHING') seeds a fresh game (NLIVES→LIVES :849-851, BONUSL/BONUSM :855-859, playfield :1220, the wave-1 train), and the main loop's life-exhaustion path (:610-624 — ':615 BPL 55$ ;IF IN ATTRACT DO NOT CHECK LIVES', ':624-625 LDA LIVES / ORA LIVES+1' → game over when both zero). Design the start→playing→game-over→restart states and the input that starts/restarts a game (keyboard clone — transcribe the ROM's start condition, port the input). The RESET/INIT reseed MUST produce a deterministic fresh sim from a fresh seed (no Date.now/Math.random) — reuse the existing seeded init path (sim.ts createInitialState). SEQUENCES BEFORE cp4-6: high-score save fires ON game-over, so game-over must be a real, reachable, testable state first. This story owns the state machine; cp4-6 hooks the save into it and cp4-7 hooks attract into it."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: centipede
     workflow: tdd
     acceptance_criteria:
@@ -78,6 +79,8 @@ stories:
       - "A restart/INIT reseeds a fresh deterministic sim (fresh lives, bonus thresholds, playfield, wave-1 train) from a seed — a determinism test replays an identical fresh game; purity guard green (no Date.now/Math.random)."
       - "Input starts a game from the start/attract state and restarts from game-over (keyboard port of the ROM's start condition, transcribed); pinned by a test driving the transitions."
       - "Game-over is a reachable, observable state (last-life death → game-over → awaits restart); full suite green from baseline; build + lint clean."
+    completed: '2026-07-20'
+    review_verdict: approved
   - id: cp4-6
     title: "High-score persistence and initials entry"
     description: "Close the load-only high-score gap: main.ts:49-50 LOADS from @arcade/shared/highscore and render.ts:231 draws it, but nothing ever SAVES — the high score renders and can never change (same class as cp3-2's invisible flea, wired at one end only). On game-over (the cp4-5 state), if the final score qualifies, persist it via the @arcade/shared/highscore WRITE path (makeHighScoreStorage already constructed at main.ts:49). Then initials: GETINT (:1001 'GET PLAYERS INITIALS FOR HIGH SCORE') and UPDATE (:2534 'UPDATE HIGH SCORE TABLE') are a TRACKBALL-driven initials picker in silicon — for a keyboard clone this is a UX PORT, not a transcription, and is THE ONE LEGIT DIVERGENCE from the ROM in this epic (log it as a deviation with rationale). Design a keyboard initials-entry UI (src/shell) that feeds the shared highscore contract; keep it a shell concern, sim untouched where possible. NEEDS cp4-5 (game-over must be a real state to save on). Uses the shared library's existing row guard (makeHighScoreRowGuard('wave'), main.ts:49) — the score row already carries a wave field."
