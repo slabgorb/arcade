@@ -978,3 +978,8 @@ completed_stories:
     title: "Game loop — start, game-over, restart; INIT/RESET reseed"
     points: 3
     completed: '2026-07-20'
+  - id: jt2-9
+    epic: jt2
+    title: "Playtest follow-up (user, 2026-07-20): ledge seat + turning/facing + joust-facing feel + render polish. (1) LEDGE SEAT: the ground Y lands sprites too low on ALL ledges — feet clip through platform tops (user screenshots in the jt2-7 archive); derive the correct per-ledge seat Y from the dossier's platform/collision data, don't eyeball it. (2) TURNING: direction input never flips facing — port the ROM's turn mechanics (air PFACE flip; ground turn through the jt2-3 ground state machine's onMinus/skid chain, which is landed and tested but unreachable from input) and FLIP SPRITES at the blit by facing (blitOp draws right-facing only; the 'Facing is applied at the blit' comment in demo.ts is stale — fix it). (3) JOUST-FACING FEEL: colliding backwards wins the joust even when faced the wrong way — jt2-3's OSTBO transcription is height-only (facing-independent), so verify against the ROM before changing ANY law (ROM is canonical; the likely real fix is (2) so the player can point the right way); document the ruling either way. (4) Reviewer round-2 checks: per-tier z-depth (single destY>=0xC0 threshold is an approximation — dossier-cite the real per-platform depth), mount+rider blit alignment, run-frame cadence (rail pins >=2 distinct BRRUN frames, not the gait speed — tune to the ROM/feel). (5) Leftovers: cap/drain DemoState.events once consumed; BWNG1R/BWNG2R dangling collision-table refs (jt1-3 debt)."
+    points: 3
+    completed: '2026-07-20'
