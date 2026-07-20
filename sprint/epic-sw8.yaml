@@ -1,0 +1,45 @@
+id: sw8
+type: epic
+title: 'Cabinet feel: the flight and combat loop — render/experiential fidelity vs the cabinet longplay'
+description: 'Second fidelity axis after sw7. sw7 verified sim-vs-ROM (constants/opcodes/tables) and is live; this epic verifies pixels-and-feel-vs-cabinet from a playtest report + the star-wars-longplay.mov reference. Coverage gap, not a regression: the render/camera/tuning layer was never held against the cabinet the way the sim was held against the source. GAMEPLAY-first per user directive 2026-07-20 (front-of-house split to sw9). Each story RULES the divergence (bug/tuning/accepted-deviation) before fixing — many items are already ROM-authentic in code and the real culprit is camera/projection/tuning. Design: star-wars/docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md'
+priority: p1
+status: backlog
+repos: star-wars
+stories:
+  - id: sw8-1
+    title: 'The moving eye — port the ST.UX viewer drift so the space viewpoint MOVES: Death Star can leave frame, starfield drifts laterally instead of forward-streaming (collapses camera + starfield + DS-approach)'
+    points: 5
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw8-2
+    title: TIE feel and fire fairness — tune VM-driven flight to sweep/arc (not Y-zoom/barrel-roll) and make incoming fire dodgeable or shootable (homing always-arrives); absorbs backlog sw7-24
+    points: 5
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    depends_on: sw8-1
+    type: bug
+  - id: sw8-3
+    title: Enemy-fire readability — add the lingering destroy-burst when a fireball is shot down (today silent-delete) and verify incoming-fire colour vs WSVROM/WSGUNS
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw8-4
+    title: Trench reads long + side guns register — extend the visible render window past the 28,672u cutoff and thicken wall-panel density so the channel reads its ~21s length and the wall guns are legible
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw8-5
+    title: Surface HUD + tower render — draw the TOWERS-remaining counter and POINTS-NEXT-TOWER readout (towerCount helper exists, never drawn) and verify the tower field vs the wave 2/3 longplay
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd

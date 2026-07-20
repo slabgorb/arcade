@@ -1,0 +1,29 @@
+id: sw9
+type: epic
+title: 'Cabinet front-of-house: attract, cockpit canopy frame, difficulty select'
+description: 'Deferred companion to sw8 (user: the start stuff can wait). The genuinely-MISSING shell/front-of-house features sw7 never scoped: the persistent X-wing cockpit canopy frame (red struts + blue bars framing every gameplay view), the SELECT-A-DEATH-STAR difficulty/start-wave picker with the real 200k/400k/600k/800k start bonuses (whose numbers sw7-4 removed from a mis-attributed extra-shield mechanic — this is their correct home), and an attract-mode parity pass. Design: star-wars/docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md'
+priority: p2
+status: backlog
+repos: star-wars
+stories:
+  - id: sw9-1
+    title: 'X-wing cockpit canopy frame — the persistent red-strut/blue-bar overlay framing every gameplay view; OPEN FIRST: determine provenance (authentic WSVROM color-vector picture vs cabinet artwork) then draw as static screen-space overlay'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw9-2
+    title: SELECT-A-DEATH-STAR difficulty picker — countdown start-wave select EASY/MEDIUM/HARD with the real 200k/400k/600k/800k start bonuses (reinstated in their correct home after sw7-4 removed them from a mis-attributed mechanic); sets starting wave, banks the bonus
+    points: 5
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: sw9-3
+    title: Attract-mode parity pass — hold the rotating banner/instructions/scoring/hi-score machine (sw7-10) beside the longplay attract loop and close ordering/timing/text gaps
+    points: 2
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: tdd

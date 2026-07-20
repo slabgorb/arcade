@@ -13,3 +13,5 @@ epics:
   - cp4
   - td1
   - jt2
+  - sw8
+  - sw9
