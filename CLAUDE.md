@@ -115,7 +115,12 @@ port — there is no `/tempest/` path prefix:
 Ports are pinned with `strictPort` in each subrepo's `vite.config.ts`, so a
 collision fails loudly instead of silently wandering to another port. The first
 server to bind a pinned port owns it; a second `just serve` on the same port
-errors out rather than quietly starting a rival copy.
+errors out rather than quietly starting a rival copy — **but `strictPort` alone
+does not protect the pin.** With `127.0.0.1:<port>` held, an unpinned `host`
+lets Vite happily bind `[::1]:<port>` instead — two dev servers sharing the
+same port with **no collision error at all**. Every subrepo's `vite.config.ts`
+also pins `host: '127.0.0.1'` on both the `server` and `preview` blocks to
+close that gap (discovered on joust as jt1-3, ported fleet-wide as td1-1).
 
 > **Trap — the port may belong to a *different checkout*.** Because every checkout
 > (`a-1`, `a-2`, …) pins the *same* ports, `localhost:5274` may be served by a
