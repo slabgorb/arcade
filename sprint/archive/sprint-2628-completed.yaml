@@ -857,3 +857,8 @@ completed_stories:
     title: Dossier correction — SUB-001/002 process-block layout parrots a stale vendor comment (gates jt1-5)
     points: 1
     completed: '2026-07-19'
+  - id: jt1-5
+    epic: jt1
+    title: "Flight + ground movement — flap impulse decay, gravity pair, FLYX ladder, ground state machine, 2P input contract"
+    points: 5
+    completed: '2026-07-19'
