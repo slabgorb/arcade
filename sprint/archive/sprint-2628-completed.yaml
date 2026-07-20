@@ -908,3 +908,8 @@ completed_stories:
     title: Fleet strictPort is porous — pin host 127.0.0.1 in every subrepo's vite config
     points: 2
     completed: '2026-07-20'
+  - id: jt2-2
+    epic: jt2
+    title: "Enemies — the shared LINET brain, the NSMART/WSMART intelligence budget, promotion to BOUNDR/B2UNDR/SHADOW, EMYTIM divider"
+    points: 5
+    completed: '2026-07-20'
