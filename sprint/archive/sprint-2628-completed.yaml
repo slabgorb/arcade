@@ -913,3 +913,8 @@ completed_stories:
     title: "Enemies — the shared LINET brain, the NSMART/WSMART intelligence budget, promotion to BOUNDR/B2UNDR/SHADOW, EMYTIM divider"
     points: 5
     completed: '2026-07-20'
+  - id: jt2-3
+    epic: jt2
+    title: "The joust — box broad-phase + span narrow-phase, OSTBO sub-pixel resolution, bounce-apart, facing + bump registers"
+    points: 3
+    completed: '2026-07-20'

@@ -41,7 +41,8 @@ stories:
     description: "Entity-vs-entity collision and the game's namesake resolution. Broad-phase box test then narrow-phase against jt1-3's transcribed collision spans (COFF bias, $8000/$8100 sentinels — pictures.md); this story CONSUMES COLLISION_TABLES, so the count floors owed since the jt1-3 review land here (each table gets a floor; dropping one must redden the suite). THE JOUST (OSTBO, JOUSTRV4.SRC:5002-5012): compare (PLANTZ + PPOSY) 16-bit FRACTION INCLUDED — strictly lower wins, exact tie = both bounce (JOUSTRV4.SRC:5014-5017); skidding sets PLANTZ=2 (JOUSTRV4.SRC:6071-6072 — jt1-5's recorded consumable); enemies NEVER kill each other (JOUSTRV4.SRC:4953-4961). Bounce-apart: winner PBUMPY -2 / loser +2, wrong-way velocity inverted and halved (JOUSTRV4.SRC:5163-5176); horizontal reverse-minus-2 with half passed to the other as bump (JOUSTRV4.SRC:5114-5157). CARRIED SEEDS (binding): add FACING to EntityState — the jt1-6 gap that leaves the skid chain (SKID_DELTA/SKID_PLANT_Z) unreachable; wire the ground state machine's onMinus transitions through it so skid/PLANTZ=2 is REACHABLE and tested. Model PBUMPX/PBUMPY as one-shot positional shoves with the cited drain laws (X drained <=3 px/frame JOUSTRV4.SRC:7270-7284; Y consumed whole JOUSTRV4.SRC:6495-6496) — the jt1-5 tail. Kills emit score events carrying transcribed DVALUE bytes: bounder 500 / hunter 750 / shadow lord 1500 (JOUSTRV4.SRC:5563-5577); accumulation is jt4 (scoring seam ruling). The 50-points-for-dying credit is DEFERRED (verify-in-emulation caveat, open-questions §4)."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -49,6 +50,7 @@ stories:
       - "Facing exists; the skid chain is reachable (a facing-vs-input reversal enters it) and skidding demonstrably lowers the lance via PLANTZ=2 into a joust outcome; bump registers drain by the cited laws (X <=3 px/frame, Y whole)."
       - "Bounce-apart velocities/bumps match the transcribed laws; enemies never kill each other (enemy-enemy contact always bounces); kill events carry 500/750/1500 per type — all cited + claims entries, citations suite green."
       - "COLLISION_TABLES (and every table this story consumes) carry count floors — deleting a table or truncating spans reddens the suite (prove red once); determinism replay through a joust stays bit-for-bit."
+    completed: '2026-07-20'
   - id: jt2-4
     title: "Eggs — spawn with victim velocity, bounce/settle laws, ledge tables, value ladder + air catch, hatch and remount, 4-egg permadeath"
     description: "The egg lifecycle as a process: spawn carrying the victim's velocities (JOUSTRV4.SRC:2991-2996); bounce keeps 1/4 of VY inverted, X index decays 2 per bounce (JOUSTRV4.SRC:3204-3218); settle when |VY| <= $20 and X index = 0 (JOUSTRV4.SRC:3219-3222); ledge placement via EGLEDG/EGGLNT (69 slots, 8 px apart, JOUSTRV4.SRC:2910-2935); eggs use the NARROWER 4..288 wrap (JOUSTRV4.SRC:3141-3146), not the entity band. Values 250/500/750/1000 capped (EGGVAL, JOUSTRV4.SRC:3097-3104); mid-air catch +500 (PFEET, JOUSTRV4.SRC:3065-3069) — emitted as score events per the epic's scoring seam. Hatch: buzzard flies in from the NEARER edge at max speed to remount (JOUSTRV4.SRC:3245-3278). Each enemy carries 4 eggs before permadeath (PEGG, JOUSTRV4.SRC:2900-2901, 3001). Egg score-message state overlays PRDIR/PPVELX (JOUSTRV4.SRC:3028-3036) — the tagged union carries egg-specific fields, it does not grow the shared struct."
@@ -101,3 +103,11 @@ stories:
       - "Enemy/egg/transporter frames render from transcribed data only (no invented pixels/colors — denylist scan green); ENTITY_RECORDS (+ any newly consumed table) carry count floors, proven red once by truncation."
       - "Render source-wiring test green; screenshot committed with port-ownership proof recorded in the story notes."
       - "npm test fully green including citations and purity guard."
+  - id: jt2-8
+    title: Correct the OSTBO wrong-prose — AC-1 in epic-jt2.yaml and docs/rom-study/subsystems.md say 'fraction included'; the ROM compares WHOLE PIXELS + PLANTZ (fraction EXCLUDED, PPOSY offset +0 vs the flight core's +1). Independently re-derived twice in jt2-3 (TEA triangulation + rule-checker item-0, quoted lines RAMDEF.SRC:174, JOUSTRV4.SRC:5008-5009, 6494, 6071-6072). Fix the dossier prose at subsystems.md:137-139; the corrected law is already pinned by tests/joust.test.ts + JT23 claims. Required by the jt2-3 Reviewer (tracked, not lost).
+    points: 1
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: trivial
+    type: chore
