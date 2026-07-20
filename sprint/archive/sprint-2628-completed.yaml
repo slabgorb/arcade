@@ -862,3 +862,8 @@ completed_stories:
     title: "Flight + ground movement — flap impulse decay, gravity pair, FLYX ladder, ground state machine, 2P input contract"
     points: 5
     completed: '2026-07-19'
+  - id: jt1-6
+    epic: jt1
+    title: "Render shell — atlas, 292x240 integer scaling, COLOR1 palette, playable arena demo"
+    points: 3
+    completed: '2026-07-19'
