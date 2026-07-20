@@ -91,10 +91,13 @@ stories:
       Scope note: the fix is in the TEMPEST subrepo (tools/pokey-bake/), which is why td1-4 (scope '.') could not take it. Verified by the td1-4 Reviewer as real, with 'out of scope here' confirmed as the right call.
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-07-20'
     repos: tempest
     workflow: tdd
+    completed: '2026-07-20'
     type: bug
+    review_verdict: approved
   - id: td1-7
     title: Scaffold suites guard the wrong invariant — assert host 127.0.0.1 pin, not just strictPort
     description: |-

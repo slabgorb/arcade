@@ -968,3 +968,8 @@ completed_stories:
     title: "Fragmented train — CENTIN connected segments plus loose extra heads from RNGEN"
     points: 3
     completed: '2026-07-20'
+  - id: td1-6
+    epic: td1
+    title: tempest bake-sfx expandSeq omits the ROM AUDC high-nibble mask on a ramp — player_fire diverges from event 3
+    points: 2
+    completed: '2026-07-20'
