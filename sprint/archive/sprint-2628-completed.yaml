@@ -883,3 +883,8 @@ completed_stories:
     title: Purity-scanner evasion tail — unwrap trivia nodes, element-access bans, documented dataflow limits, line numbers
     points: 1
     completed: '2026-07-20'
+  - id: cp2-14
+    epic: cp2
+    title: Global orientation flip — cellScreenX + input sign chain match the upright cabinet
+    points: 3
+    completed: '2026-07-20'
