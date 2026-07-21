@@ -56,7 +56,8 @@ stories:
     description: "The pterodactyl as a process on a gravity-EXEMPT flight core (FLYXP table ±$0300, 'NO GRAVITY!' JOUSTRV4.SRC:1506, 1585-1595 — the ptero ignores the gravity pair the mounts obey). THE KILL WINDOW is a lance-height MATCH, not the ostrich height compare: the attack frame requires the player's lance at offset 8 ± 3; else offset 10 ± 2; AND opposite facings AND the player facing INTO it (JOUSTRV4.SRC:4971-5000). Failing ANY of those tests falls through to the NORMAL joust — which the ptero WINS. Kill value = 1000 points (DVALUE $10 via SCRHUN, JOUSTRV4.SRC:5563-5577 — DERIVED, not stated in any comment; caveat carried forward per ruling C, open-questions §4) emitted as a score event. The pterodactyl WAVE TYPE goes live: jt2-5 landed the 6-entry WJSRTB dispatch skeleton (JOUSTRV4.SRC:2586-2591); the pterodactyl entry (menagerie behaviour, ruled jt3) now spawns pteros per the wave table's ptero nibble (JOUSTRV4.SRC:175-181). Ptero frames = 6 blocks (jt1-3). Death animation (ASH1R/L dissolve) is jt3-6; this story emits the kill and uses the existing interim poof until then. Radix-cited + claims entries."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-21'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -64,6 +65,7 @@ stories:
       - "The lance-height kill window resolves per the ROM: correct offset band + opposite facings + player-facing-into-it kills the ptero (1000-pt event, caveat carried); failing any single test drops into the normal joust and the ptero wins — every branch tested + cited."
       - "The pterodactyl wave type spawns pteros from the wave table's ptero nibble through jt2-5's dispatch; claims entries; citations suite green."
       - "Determinism: a seeded ptero encounter (kill and loss) replays bit-for-bit; purity guard green."
+    completed: '2026-07-21'
   - id: jt3-5
     title: "Baiters + the RV4 ptero-farming patches — BAITBL schedule (V4 15s->1s), max-3 PCHASE=-1, the PCHASE-gated patch block"
     description: "Baiters are anti-stall pterodactyls — the SAME ptero core (jt3-4) with PCHASE = -1 (JOUSTRV4.SRC:2108-2113), capped at 3 live. They spawn on the BAITBL schedule, written literally as SECONDS*60/8 (JOUSTRV4.SRC:2150-2163); the V4 rewrite COLLAPSES the mid-game cadence from 15s to 1s ('4 MIN 16 SEC -> 2 MIN 16 SEC') with the RV3 original preserved in ******** comments (JOUSTRV4.SRC:2135-2148). This CLOSES the baiter seam: jt2-2 built the NSMART/WSMART budget + its 15s growth (JOUSTRV4.SRC:2075-2129); the BAITBL spawn SCHEDULE was explicitly owed to jt3 (seed 3). THE RV4 PATCH BLOCK (baiter-only — PCHASE-gated per subsystems §2): six patches aim the ptero LOWER, slow its dive, reroute its lanes, and make its first pass MISS (JOUSTRV4.SRC:6296-6360, header JOUSTRV4.SRC:6268 — the anti-farming block); each preserves its displaced instruction as a ******** comment. Because the patches gate on PCHASE they modify BAITERS' behaviour, NOT the plain wave-type ptero — that gating is why baiters + patches are ONE story. The BAITBL cadence reads from jt3-1's difficulty axis where wave-varying. Radix-cited + claims entries."

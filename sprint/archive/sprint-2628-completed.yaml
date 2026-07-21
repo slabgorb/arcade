@@ -1018,3 +1018,8 @@ completed_stories:
     title: "Lava troll — PADGRA->ADDLAV grip, break-free VY threshold, RV4 30s-grace + escalating pull cap, LNDB7 dispatch, escape-scores-50 event"
     points: 3
     completed: '2026-07-21'
+  - id: jt3-4
+    epic: jt3
+    title: "Pterodactyl — gravity-exempt FLYXP flight, the lance-height kill window, opposite-facing gate, normal-joust-loses fallback, the ptero wave type"
+    points: 3
+    completed: '2026-07-21'
