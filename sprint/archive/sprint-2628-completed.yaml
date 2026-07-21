@@ -994,3 +994,8 @@ completed_stories:
     title: "DEFECT — the flea goes live: render slot 12, and wire CENTPC's per-wave CENTIN decrement so it can spawn"
     points: 2
     completed: '2026-07-20'
+  - id: sw8-1
+    epic: sw8
+    title: 'The moving eye — port the ST.UX viewer drift so the space viewpoint MOVES: Death Star can leave frame, starfield drifts laterally instead of forward-streaming (collapses camera + starfield + DS-approach)'
+    points: 5
+    completed: '2026-07-21'

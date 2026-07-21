@@ -10,9 +10,12 @@ stories:
     title: 'The moving eye — port the ST.UX viewer drift so the space viewpoint MOVES: Death Star can leave frame, starfield drifts laterally instead of forward-streaming (collapses camera + starfield + DS-approach)'
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-21'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-21'
+    review_verdict: approved
   - id: sw8-2
     title: TIE feel and fire fairness — tune VM-driven flight to sweep/arc (not Y-zoom/barrel-roll) and make incoming fire dodgeable or shootable (homing always-arrives); absorbs backlog sw7-24
     points: 5
