@@ -1,0 +1,99 @@
+id: jt3
+type: epic
+title: "Joust — the menagerie (difficulty ramp, bridge + cliff destruction, lava troll, pterodactyl, baiters + RV4 patches, ptero death dissolve)"
+description: "Third epic of the joust clone — the roadmap's 'Menagerie' slice (DESIGN: docs/superpowers/specs/2026-07-21-joust-jt3-epic-design.md at the orchestrator, executing joust/docs/superpowers/specs/2026-07-19-joust-clone-design.md roadmap row jt3: 'pterodactyl (+patches), lava troll, bridge destruction, baiters, difficulty ramp — demo: the full ecosystem hunts you'). GROUND TRUTH: joust/docs/rom-study/ (machine-gated by the citations suite) — cite the dossier, do not re-derive it; new transcriptions add fully-qualified FILE:LINE claims (the jt1-8 lesson: never bare :N). USER RULINGS THIS EPIC (2026-07-21, all binding): (A) DIFFICULTY CENTRALIZES — the DYTBL 28-row walk (IWAVE, JOUSTRV4.SRC:1890-1926) + GA1 starting column (JOUSTRV4.SRC:930-939) become THE per-wave difficulty source, and jt2's story-local stubs (EMYTIM divider JOUSTRV4.SRC:2202-2205, lava-level step JOUSTRV4.SRC:1929-1933, NSMART/WSMART budget seed JOUSTRV4.SRC:2075-2129) re-point to it — jt2's seeded determinism replays survive bit-for-bit (the retrofit changes the SOURCE of these values, not any wave's realized values; the jt2-1 migration bar); (B) PTERO DEATH DECODED NOW — the ASH1R/L third image format (JOUSTI.SRC:2778-2781, open-questions §5, 'value/run pairs?') is traced + decoded byte-gated, not deferred to a poof; (C) SCORING SEAM CONTINUES — transcribe DVALUE/escape values, emit score EVENTS, and carry each verify-in-emulation caveat (ptero=1000 is DERIVED via SCRHUN JOUSTRV4.SRC:5563-5577; troll-escape 50 JOUSTRV4.SRC:6666-6670; the 50-for-dying credit JOUSTRV4.SRC:4730-4732 already deferred by jt2) forward to jt4 where BCD accumulation lands — no emulation gating in jt3. ARCHITECT RULINGS: RV4 behaviour target — the baiter-gated ptero-farming patch block (JOUSTRV4.SRC:6296-6360, header :6268) and the troll 30s-grace/escalating-pull patches (JOUSTRV4.SRC:6374-6396) are the red-label behaviour, each preserving its displaced instruction as a ******** comment; wave-type dispatch — the PTERODACTYL wave type goes live on jt2-5's 6-entry WJSRTB skeleton (JOUSTRV4.SRC:2586-2591), gladiator/egg wave BEHAVIOURS stay jt4; text seam unchanged — menagerie message beats are events, no fonts (jt4). SEEDS CARRIED FROM jt1/jt2 (all binding, verified in the archives): (1) jt1-4 RESERVED the LNDB7 troll-grip landing dispatch (the seventh outcome, TTROLL-gated) — jt3-3 makes it reachable; (2) jt2-5 recorded the wave table's HIGH NIBBLE cliff destruction as DATA (JOUSTRV4.SRC:185-192) — jt3-2 makes it behaviour; (3) the BAITBL spawn schedule is OWED — jt2-2 built the NSMART/WSMART budget + 15s growth, jt3-5 lands the schedule and closes the baiter seam; (4) P2 STORK-MOUNT POSOFF GAP still open (jt2-9 HIGH: SFLY1R/SRUN*R/SRUNSR lack ENTITY_RECORDS entries → clipped feet; ROM POSOFFs at JOUSTI.SRC:782-796) — jt3-7 consumes new ENTITY_RECORDS and MUST enumerate BOTH mounts + the new ptero/troll frames or they silently no-lift; (5) count floors owed on consumption (jt1-3 review) — ENTITY_RECORDS floors land wherever this epic consumes new frames (jt3-7). The IFN DEBUG blocks (JOUSTRV4.SRC:1982-1990, 2953-2959, 2966-2970, 3765-3770) remain the author's own invariant list — free oracles for wave/budget bookkeeping. Demo at epic end: a late wave with the full menagerie playable on 5279, screenshot with port-ownership proof (strictPort alone is porous — td1-1; a screenshot predating the code it demos misrepresents the renderer — td1-3). NOTE: jt2-8 (prose corrections chore) is a jt2 leftover in backlog, not jt3's concern."
+priority: p1
+status: backlog
+repos: joust
+stories:
+  - id: jt3-1
+    title: "Difficulty ramp — DYTBL 28-row decode, IWAVE per-wave walk + plateau, GA1 starting column, retrofit jt2's per-wave stubs"
+    description: "The ROM's difficulty engine, centralized (user ruling A). DYTBL = 28 DYWORD rows (JOUSTRV4.SRC:7303-7332), each a start->end pair walked once per wave by a per-difficulty step schedule then held FLAT (IWAVE, JOUSTRV4.SRC:1890-1926). Operator GA1 (default 5) picks the STARTING column — tiers 0-3 / 4-6 / 7+ (JOUSTRV4.SRC:930-939). THE FULL 28-ROW DECODE is this story's appendix with a re-derivation byte-gate against the vendored tree (the jt2-5 90-row WAVTBL pattern — re-derive from source, degrade to committed fixture in CI). RETROFIT: the per-wave difficulty knobs jt2 landed as story-local stubs re-point to this walk as THE source — EMYTIM divider (2 on waves 1-2, JOUSTRV4.SRC:2202-2205), lava-level step ($EA->$E5->$E0, JOUSTRV4.SRC:1929-1933), and the NSMART/WSMART budget SEED (pursuit nibble, JOUSTRV4.SRC:2075-2129) — with jt2's seeded determinism replays surviving BIT-FOR-BIT (the jt2-1 migration bar: the retrofit changes where these values COME FROM, not any given wave's realized value). Radix discipline: every DYWORD constant carries a radix-cited comment + claims entry (Motorola syntax — bare DECIMAL, $ hex, @ octal, % binary). The wave-varying menagerie cadences (ptero/troll/baiter) in jt3-3/4/5 read from this axis."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "All 28 DYTBL rows decoded and committed with a re-derivation gate against the vendored source (the jt2-5 byte-gate pattern); the IWAVE walk-once-per-wave-then-plateau law and the GA1 starting-column tiers (0-3/4-6/7+) hold by test at two GA1 tiers; claims entries for the table format and the decode."
+      - "The retrofit re-points jt2's EMYTIM / lava-level / budget-seed stubs to read from the DYTBL walk; jt2's seeded determinism replays reproduce bit-for-bit (the migration changes the source, not any wave's realized values)."
+      - "A difficulty value walks start->end by its per-difficulty step exactly once per wave then plateaus (a wave past the walk length reads the end value); proven by test."
+      - "No wall-clock, no Math.random in core (purity guard green); npm test fully green including citations."
+  - id: jt3-2
+    title: "Bridge + cliff destruction — TBRIDGE wave-3 burn, high-nibble cliff destruction as behaviour, arena mutation, second-variant + wave-numbering trace"
+    description: "jt2-5 recorded the wave table's HIGH NIBBLE (cliff destruction, JOUSTRV4.SRC:185-192) as DATA; this story makes it BEHAVIOUR. The bridge burns after wave 3 (TBRIDGE, JOUSTRV4.SRC:954-957): its solid-fill (JOUSTRV4.SRC:1126-1127, jt1-4) is removed and the landing/background-collision geometry mutates so an entity no longer lands or bounces on the gone bridge. High-nibble cliff destruction mutates the NAMED cliff's surfaces per wave. TRACE OBLIGATIONS (do not guess — dossier open questions): (1) the cliff SECOND-VARIANT records — every cliff record has a variant one scanline shorter (JOUSTI.SRC:54/55 et al.; open-questions §5, consumer NOT FOUND, 'possibly an erase variant') — this destruction path is the prime suspect consumer; trace it and record the finding either way (wire it if it is the consumer, or update open-questions §5 with the evidence if still unfound/dead). (2) TBRIDGE/TTROLL arithmetic vs the '1ST, 2ND, OR 3RD WAVE?' comment (JOUSTRV4.SRC:4719) don't obviously agree (open-questions §4) — trace the wave numbering before relying on edge cases; document in the story notes. Arena mutation is a core state change driven by a wave event (jt1-5 FROZE/exported the arena — mutate through the event, do NOT unfreeze exports; add a mutable arena-state seam if needed). Every constant radix-cited + claims entry. GATES jt3-3 (the troll spawns only after the bridge has burned)."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "The bridge burns on the cited wave: its solid-fill is removed and an entity that would have landed/collided on the bridge no longer does; the wave-numbering trace (JOUSTRV4.SRC:4719 vs TBRIDGE/TTROLL) is documented in the story notes."
+      - "High-nibble cliff destruction mutates the named cliff's landing + background-collision geometry per the transcribed table; claims entries; citations suite green."
+      - "The cliff second-variant consumer is traced: either this destruction path consumes it (wired + cited) or it is documented as still-unfound/dead with the evidence (open-questions §5 updated)."
+      - "Determinism: a seeded run through the wave-3 bridge burn and a cliff-destruction wave replays bit-for-bit; purity guard green."
+  - id: jt3-3
+    title: "Lava troll — PADGRA->ADDLAV grip, break-free VY threshold, RV4 30s-grace + escalating pull cap, LNDB7 dispatch, escape-scores-50 event"
+    description: "The lava troll's hand as a process. Spawns off CLIF5's landing path AFTER the bridge burns (TTROLL = TBRIDGE + 1 wave, JOUSTRV4.SRC:954-957) — jt3-2 gates this. The GRIP repoints the victim's gravity vector (PADGRA -> ADDLAV, JOUSTRV4.SRC:1651-1652): the grabbed entity's per-frame gravity add is swapped for the troll's downward pull. Break-free needs SUSTAINED VY < -$0180 (JOUSTRV4.SRC:6616-6617); a successful escape scores 50 (JOUSTRV4.SRC:6666-6670) — emitted as a score EVENT with the verify-in-emulation caveat carried forward (SCRTEN backwards trap, open-questions §4; ruling C). RV4 PATCHES (the red-label behaviour target): a 30-second grace, then +1 pull/frame capped at $500 — arithmetically INESCAPABLE at the cap (PATCH1/2/3, JOUSTRV4.SRC:6374-6396); each patch preserves its displaced instruction as a ******** comment. Landing: the LNDB7 troll-grip dispatch RESERVED by jt1-4 (the seventh landing outcome, TTROLL-gated) becomes REACHABLE and is exercised by test here. The troll hand's 6 image blocks are already transcribed (jt1-3). Radix-cited constants + claims entries."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "The troll spawns only after the bridge has burned (TTROLL gate), off CLIF5's landing path; the LNDB7 troll-grip dispatch reserved in jt1-4 is now reachable and exercised by test."
+      - "The grip repoints gravity (PADGRA->ADDLAV); break-free requires sustained VY < -$0180; a clean escape emits a 50-point score event (caveat carried); all cited + claims entries."
+      - "RV4 escalation: after the 30s grace, pull grows +1/frame to the $500 cap and is inescapable at cap; each patch preserves its pre-patch instruction as a ******** comment; proven by test at and below the cap."
+      - "Determinism: seeded grab->struggle->escape and grab->cap->death both replay bit-for-bit; citations + purity guard green."
+  - id: jt3-4
+    title: "Pterodactyl — gravity-exempt FLYXP flight, the lance-height kill window, opposite-facing gate, normal-joust-loses fallback, the ptero wave type"
+    description: "The pterodactyl as a process on a gravity-EXEMPT flight core (FLYXP table ±$0300, 'NO GRAVITY!' JOUSTRV4.SRC:1506, 1585-1595 — the ptero ignores the gravity pair the mounts obey). THE KILL WINDOW is a lance-height MATCH, not the ostrich height compare: the attack frame requires the player's lance at offset 8 ± 3; else offset 10 ± 2; AND opposite facings AND the player facing INTO it (JOUSTRV4.SRC:4971-5000). Failing ANY of those tests falls through to the NORMAL joust — which the ptero WINS. Kill value = 1000 points (DVALUE $10 via SCRHUN, JOUSTRV4.SRC:5563-5577 — DERIVED, not stated in any comment; caveat carried forward per ruling C, open-questions §4) emitted as a score event. The pterodactyl WAVE TYPE goes live: jt2-5 landed the 6-entry WJSRTB dispatch skeleton (JOUSTRV4.SRC:2586-2591); the pterodactyl entry (menagerie behaviour, ruled jt3) now spawns pteros per the wave table's ptero nibble (JOUSTRV4.SRC:175-181). Ptero frames = 6 blocks (jt1-3). Death animation (ASH1R/L dissolve) is jt3-6; this story emits the kill and uses the existing interim poof until then. Radix-cited + claims entries."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "The ptero is gravity-exempt: it holds altitude with no flap input where a mount would fall (FLYXP, cited); proven by a no-input drift test against a mount baseline."
+      - "The lance-height kill window resolves per the ROM: correct offset band + opposite facings + player-facing-into-it kills the ptero (1000-pt event, caveat carried); failing any single test drops into the normal joust and the ptero wins — every branch tested + cited."
+      - "The pterodactyl wave type spawns pteros from the wave table's ptero nibble through jt2-5's dispatch; claims entries; citations suite green."
+      - "Determinism: a seeded ptero encounter (kill and loss) replays bit-for-bit; purity guard green."
+  - id: jt3-5
+    title: "Baiters + the RV4 ptero-farming patches — BAITBL schedule (V4 15s->1s), max-3 PCHASE=-1, the PCHASE-gated patch block"
+    description: "Baiters are anti-stall pterodactyls — the SAME ptero core (jt3-4) with PCHASE = -1 (JOUSTRV4.SRC:2108-2113), capped at 3 live. They spawn on the BAITBL schedule, written literally as SECONDS*60/8 (JOUSTRV4.SRC:2150-2163); the V4 rewrite COLLAPSES the mid-game cadence from 15s to 1s ('4 MIN 16 SEC -> 2 MIN 16 SEC') with the RV3 original preserved in ******** comments (JOUSTRV4.SRC:2135-2148). This CLOSES the baiter seam: jt2-2 built the NSMART/WSMART budget + its 15s growth (JOUSTRV4.SRC:2075-2129); the BAITBL spawn SCHEDULE was explicitly owed to jt3 (seed 3). THE RV4 PATCH BLOCK (baiter-only — PCHASE-gated per subsystems §2): six patches aim the ptero LOWER, slow its dive, reroute its lanes, and make its first pass MISS (JOUSTRV4.SRC:6296-6360, header JOUSTRV4.SRC:6268 — the anti-farming block); each preserves its displaced instruction as a ******** comment. Because the patches gate on PCHASE they modify BAITERS' behaviour, NOT the plain wave-type ptero — that gating is why baiters + patches are ONE story. The BAITBL cadence reads from jt3-1's difficulty axis where wave-varying. Radix-cited + claims entries."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "Baiters are pteros with PCHASE=-1, capped at 3 live, spawned on the BAITBL SECONDS*60/8 schedule; the V4 15s->1s mid-game cadence collapse is transcribed with the RV3 original preserved as ******** provenance; claims entries."
+      - "The six PCHASE-gated patches change baiter behaviour (aim-lower / slow-dive / lane-reroute / first-pass-miss) and DO NOT change the plain wave-type ptero (the gate is proven both ways); each patch keeps its pre-patch instruction as a ******** comment."
+      - "The baiter seam closes against jt2-2: the budget's 15s growth (jt2) and the BAITBL spawn schedule (this story) drive baiter appearance together; the IFN DEBUG budget invariant still holds as an oracle; citations suite green."
+      - "Determinism: a seeded stall that triggers baiters replays bit-for-bit; purity guard green."
+  - id: jt3-6
+    title: "Ptero death dissolve — decode the ASH1R/L third image format byte-gated, wire ptero/baiter death -> dissolve + event"
+    description: "The pterodactyl's death dissolve, DECODED (user ruling B: decode now, byte-gated). ASH1R/L (JOUSTI.SRC:2778-2781) is a THIRD, still-undecoded image format flagged in open-questions §5 ('value/run pairs?', 'trace the consumer before the ptero death story'). This story TRACES the ASH1R/L consumer to establish the format, then decodes it into src/core/pictures.ts under the SAME byte-gate every other frame uses (re-derive from vendored JOUSTI.SRC, degrade to committed fixture in CI). Extends the encoding discriminant added in jt1-6 (raster|stream) with the third format so it is never blitted as a raster (the jt1-6 consumer hazard). Wires ptero + baiter death (jt3-4, jt3-5) into a dissolve animation state (a nap-driven frame sequence, jt2-1's process machinery) replacing the interim poof; the kill score event (1000, caveat) was already emitted by jt3-4. NO hand-authored pixels — every byte provably originates in the vendored source (the jt1-3 bar). CONTINGENCY: if the trace shows ASH1R/L is genuinely underivable from the text alone (no consumer establishes the format), fall back to the poof and record the finding with the SPECIFIC blocker (do NOT invent the format) — but the ruling is decode-now, so exhaust the trace first."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "The ASH1R/L consumer is traced and the format established from the vendored source; ASH1R/L decodes into pictures.ts and is re-derived byte-for-byte by the citations gate (committed-fixture fallback in CI); claims entries."
+      - "The encoding discriminant distinguishes the third format so it is never blitted as a raster; zero hand-authored pixels (provenance proven)."
+      - "Ptero and baiter death enter the dissolve animation (not the interim poof); the kill event carrying 1000 (caveat) still fires; citations suite green."
+      - "Determinism: a seeded ptero kill -> dissolve -> removal replays bit-for-bit; purity guard green."
+  - id: jt3-7
+    title: "Demo — 'the full ecosystem hunts you': shell rendering for ptero/baiters/troll/bridge-burn/cliff-destruction, playable late-wave slice"
+    description: "The epic's demo bar: reach a wave where the full menagerie is present and playable on 5279. Shell renders the pterodactyl + baiters (6 ptero frames by facing/animation), the lava troll hand (6 frames, grabbing off CLIF5), the bridge burning + cliff destruction (arena mutation from jt3-2), and the ptero dissolve (jt3-6), through the existing atlas path. Kill/escape/score events surface as console/dev-overlay output only (scoring display is jt4; text seam renders no fonts). CONSUMES NEW ENTITY_RECORDS for the ptero/troll frames — the jt1-3 count-floor discipline applies (ENTITY_RECORDS floor, proven red once by truncation). CARRIED SEED (jt2-9 HIGH, still open — seed 4): the P2 stork mount is not POSOFF-lifted (SFLY1R/SRUN*R/SRUNSR lack ENTITY_RECORDS entries -> 17px rider/mount gap + clipped feet; ROM POSOFFs at JOUSTI.SRC:782-796) — this render story ENUMERATES BOTH MOUNTS plus the new ptero/troll frames in ENTITY_RECORDS so nothing silently no-lifts (a render fix keyed on ENTITY_RECORDS no-lifts frames MISSING from the table — enumerate both mounts). Render source-wiring test per the ?raw idiom (jt1-6); no invented colors (denylist scan green). Screenshot committed as the epic demo artifact, taken from THIS checkout with port-ownership proof (lsof or spare port — strictPort alone is porous, td1-1; a screenshot predating the code it demos misrepresents the renderer, td1-3)."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - "Playable in the browser on 5279: a late wave spawns the full menagerie — pteros/baiters hunt, the troll grabs off CLIF5 after the bridge burns, cliff destruction mutates the arena — with P1 and P2 both live per the 2P contract."
+      - "All new frames render from transcribed data only (ptero/baiters/troll/dissolve — no invented pixels/colors, denylist scan green); ENTITY_RECORDS carries a count floor proven red once by truncation; the P2 stork mount is POSOFF-lifted (both mounts + new frames enumerated — no silent no-lift)."
+      - "Render source-wiring test green; screenshot committed with port-ownership proof recorded in the story notes."
+      - "npm test fully green including citations and purity guard."
