@@ -999,3 +999,8 @@ completed_stories:
     title: 'The moving eye — port the ST.UX viewer drift so the space viewpoint MOVES: Death Star can leave frame, starfield drifts laterally instead of forward-streaming (collapses camera + starfield + DS-approach)'
     points: 5
     completed: '2026-07-21'
+  - id: cp4-3
+    epic: cp4
+    title: "Per-wave colour walk — LCOLOR advance on the all-dead re-lay (CLOSED subsumed by cp2-13, no code)"
+    points: 0
+    completed: '2026-07-21'
