@@ -1033,3 +1033,8 @@ completed_stories:
     title: "Ptero death dissolve — decode the ASH1R/L third image format byte-gated, wire ptero/baiter death -> dissolve + event"
     points: 2
     completed: '2026-07-21'
+  - id: cp4-4
+    epic: cp4
+    title: "Bonus lives — score-threshold crossing, BONUSV increment, the 6-life cap"
+    points: 3
+    completed: '2026-07-21'
