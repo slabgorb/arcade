@@ -1003,4 +1003,9 @@ completed_stories:
     epic: cp4
     title: "Per-wave colour walk — LCOLOR advance on the all-dead re-lay (CLOSED subsumed by cp2-13, no code)"
     points: 0
+  - id: jt3-1
+    epic: jt3
+    title: "Difficulty ramp — DYTBL 28-row decode, IWAVE per-wave walk + plateau, GA1 starting column, retrofit jt2's per-wave stubs"
+    points: 3
+    completed: '2026-07-21'
     completed: '2026-07-21'
