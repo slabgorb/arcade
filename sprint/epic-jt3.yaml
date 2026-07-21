@@ -86,7 +86,8 @@ stories:
     description: "The pterodactyl's death dissolve, DECODED (user ruling B: decode now, byte-gated). ASH1R/L (JOUSTI.SRC:2778-2781) is a THIRD, still-undecoded image format flagged in open-questions §5 ('value/run pairs?', 'trace the consumer before the ptero death story'). This story TRACES the ASH1R/L consumer to establish the format, then decodes it into src/core/pictures.ts under the SAME byte-gate every other frame uses (re-derive from vendored JOUSTI.SRC, degrade to committed fixture in CI). Extends the encoding discriminant added in jt1-6 (raster|stream) with the third format so it is never blitted as a raster (the jt1-6 consumer hazard). Wires ptero + baiter death (jt3-4, jt3-5) into a dissolve animation state (a nap-driven frame sequence, jt2-1's process machinery) replacing the interim poof; the kill score event (1000, caveat) was already emitted by jt3-4. NO hand-authored pixels — every byte provably originates in the vendored source (the jt1-3 bar). CONTINGENCY: if the trace shows ASH1R/L is genuinely underivable from the text alone (no consumer establishes the format), fall back to the poof and record the finding with the SPECIFIC blocker (do NOT invent the format) — but the ruling is decode-now, so exhaust the trace first."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-21'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -94,6 +95,7 @@ stories:
       - "The encoding discriminant distinguishes the third format so it is never blitted as a raster; zero hand-authored pixels (provenance proven)."
       - "Ptero and baiter death enter the dissolve animation (not the interim poof); the kill event carrying 1000 (caveat) still fires; citations suite green."
       - "Determinism: a seeded ptero kill -> dissolve -> removal replays bit-for-bit; purity guard green."
+    completed: '2026-07-21'
   - id: jt3-7
     title: "Demo — 'the full ecosystem hunts you': shell rendering for ptero/baiters/troll/bridge-burn/cliff-destruction, playable late-wave slice"
     description: "The epic's demo bar: reach a wave where the full menagerie is present and playable on 5279. Shell renders the pterodactyl + baiters (6 ptero frames by facing/animation), the lava troll hand (6 frames, grabbing off CLIF5), the bridge burning + cliff destruction (arena mutation from jt3-2), and the ptero dissolve (jt3-6), through the existing atlas path. Kill/escape/score events surface as console/dev-overlay output only (scoring display is jt4; text seam renders no fonts). CONSUMES NEW ENTITY_RECORDS for the ptero/troll frames — the jt1-3 count-floor discipline applies (ENTITY_RECORDS floor, proven red once by truncation). CARRIED SEED (jt2-9 HIGH, still open — seed 4): the P2 stork mount is not POSOFF-lifted (SFLY1R/SRUN*R/SRUNSR lack ENTITY_RECORDS entries -> 17px rider/mount gap + clipped feet; ROM POSOFFs at JOUSTI.SRC:782-796) — this render story ENUMERATES BOTH MOUNTS plus the new ptero/troll frames in ENTITY_RECORDS so nothing silently no-lifts (a render fix keyed on ENTITY_RECORDS no-lifts frames MISSING from the table — enumerate both mounts). Render source-wiring test per the ?raw idiom (jt1-6); no invented colors (denylist scan green). Screenshot committed as the epic demo artifact, taken from THIS checkout with port-ownership proof (lsof or spare port — strictPort alone is porous, td1-1; a screenshot predating the code it demos misrepresents the renderer, td1-3)."

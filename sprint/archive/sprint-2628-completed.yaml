@@ -1028,3 +1028,8 @@ completed_stories:
     title: "Baiters + the RV4 ptero-farming patches — BAITBL schedule (V4 15s->1s), max-3 PCHASE=-1, the PCHASE-gated patch block"
     points: 3
     completed: '2026-07-21'
+  - id: jt3-6
+    epic: jt3
+    title: "Ptero death dissolve — decode the ASH1R/L third image format byte-gated, wire ptero/baiter death -> dissolve + event"
+    points: 2
+    completed: '2026-07-21'
