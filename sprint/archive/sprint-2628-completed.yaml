@@ -21,6 +21,7 @@ completed_epics:
   - bz4
   - jt1
   - cp3
+  - jt3
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -1042,4 +1043,8 @@ completed_stories:
     epic: sw8
     title: TIE feel and fire fairness — tune VM-driven flight to sweep/arc (not Y-zoom/barrel-roll) and make incoming fire dodgeable or shootable (homing always-arrives); absorbs backlog sw7-24
     points: 5
+  - id: jt3-7
+    epic: jt3
+    title: "Demo — 'the full ecosystem hunts you': shell rendering for ptero/baiters/troll/bridge-burn/cliff-destruction, playable late-wave slice"
+    points: 2
     completed: '2026-07-21'
