@@ -1023,3 +1023,8 @@ completed_stories:
     title: "Pterodactyl — gravity-exempt FLYXP flight, the lance-height kill window, opposite-facing gate, normal-joust-loses fallback, the ptero wave type"
     points: 3
     completed: '2026-07-21'
+  - id: jt3-5
+    epic: jt3
+    title: "Baiters + the RV4 ptero-farming patches — BAITBL schedule (V4 15s->1s), max-3 PCHASE=-1, the PCHASE-gated patch block"
+    points: 3
+    completed: '2026-07-21'

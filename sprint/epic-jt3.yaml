@@ -71,7 +71,8 @@ stories:
     description: "Baiters are anti-stall pterodactyls — the SAME ptero core (jt3-4) with PCHASE = -1 (JOUSTRV4.SRC:2108-2113), capped at 3 live. They spawn on the BAITBL schedule, written literally as SECONDS*60/8 (JOUSTRV4.SRC:2150-2163); the V4 rewrite COLLAPSES the mid-game cadence from 15s to 1s ('4 MIN 16 SEC -> 2 MIN 16 SEC') with the RV3 original preserved in ******** comments (JOUSTRV4.SRC:2135-2148). This CLOSES the baiter seam: jt2-2 built the NSMART/WSMART budget + its 15s growth (JOUSTRV4.SRC:2075-2129); the BAITBL spawn SCHEDULE was explicitly owed to jt3 (seed 3). THE RV4 PATCH BLOCK (baiter-only — PCHASE-gated per subsystems §2): six patches aim the ptero LOWER, slow its dive, reroute its lanes, and make its first pass MISS (JOUSTRV4.SRC:6296-6360, header JOUSTRV4.SRC:6268 — the anti-farming block); each preserves its displaced instruction as a ******** comment. Because the patches gate on PCHASE they modify BAITERS' behaviour, NOT the plain wave-type ptero — that gating is why baiters + patches are ONE story. The BAITBL cadence reads from jt3-1's difficulty axis where wave-varying. Radix-cited + claims entries."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-21'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -79,6 +80,7 @@ stories:
       - "The six PCHASE-gated patches change baiter behaviour (aim-lower / slow-dive / lane-reroute / first-pass-miss) and DO NOT change the plain wave-type ptero (the gate is proven both ways); each patch keeps its pre-patch instruction as a ******** comment."
       - "The baiter seam closes against jt2-2: the budget's 15s growth (jt2) and the BAITBL spawn schedule (this story) drive baiter appearance together; the IFN DEBUG budget invariant still holds as an oracle; citations suite green."
       - "Determinism: a seeded stall that triggers baiters replays bit-for-bit; purity guard green."
+    completed: '2026-07-21'
   - id: jt3-6
     title: "Ptero death dissolve — decode the ASH1R/L third image format byte-gated, wire ptero/baiter death -> dissolve + event"
     description: "The pterodactyl's death dissolve, DECODED (user ruling B: decode now, byte-gated). ASH1R/L (JOUSTI.SRC:2778-2781) is a THIRD, still-undecoded image format flagged in open-questions §5 ('value/run pairs?', 'trace the consumer before the ptero death story'). This story TRACES the ASH1R/L consumer to establish the format, then decodes it into src/core/pictures.ts under the SAME byte-gate every other frame uses (re-derive from vendored JOUSTI.SRC, degrade to committed fixture in CI). Extends the encoding discriminant added in jt1-6 (raster|stream) with the third format so it is never blitted as a raster (the jt1-6 consumer hazard). Wires ptero + baiter death (jt3-4, jt3-5) into a dissolve animation state (a nap-driven frame sequence, jt2-1's process machinery) replacing the interim poof; the kill score event (1000, caveat) was already emitted by jt3-4. NO hand-authored pixels — every byte provably originates in the vendored source (the jt1-3 bar). CONTINGENCY: if the trace shows ASH1R/L is genuinely underivable from the text alone (no consumer establishes the format), fall back to the poof and record the finding with the SPECIFIC blocker (do NOT invent the format) — but the ruling is decode-now, so exhaust the trace first."
