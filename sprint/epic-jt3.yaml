@@ -26,7 +26,8 @@ stories:
     description: "jt2-5 recorded the wave table's HIGH NIBBLE (cliff destruction, JOUSTRV4.SRC:185-192) as DATA; this story makes it BEHAVIOUR. The bridge burns after wave 3 (TBRIDGE, JOUSTRV4.SRC:954-957): its solid-fill (JOUSTRV4.SRC:1126-1127, jt1-4) is removed and the landing/background-collision geometry mutates so an entity no longer lands or bounces on the gone bridge. High-nibble cliff destruction mutates the NAMED cliff's surfaces per wave. TRACE OBLIGATIONS (do not guess — dossier open questions): (1) the cliff SECOND-VARIANT records — every cliff record has a variant one scanline shorter (JOUSTI.SRC:54/55 et al.; open-questions §5, consumer NOT FOUND, 'possibly an erase variant') — this destruction path is the prime suspect consumer; trace it and record the finding either way (wire it if it is the consumer, or update open-questions §5 with the evidence if still unfound/dead). (2) TBRIDGE/TTROLL arithmetic vs the '1ST, 2ND, OR 3RD WAVE?' comment (JOUSTRV4.SRC:4719) don't obviously agree (open-questions §4) — trace the wave numbering before relying on edge cases; document in the story notes. Arena mutation is a core state change driven by a wave event (jt1-5 FROZE/exported the arena — mutate through the event, do NOT unfreeze exports; add a mutable arena-state seam if needed). Every constant radix-cited + claims entry. GATES jt3-3 (the troll spawns only after the bridge has burned)."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-21'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -34,6 +35,7 @@ stories:
       - "High-nibble cliff destruction mutates the named cliff's landing + background-collision geometry per the transcribed table; claims entries; citations suite green."
       - "The cliff second-variant consumer is traced: either this destruction path consumes it (wired + cited) or it is documented as still-unfound/dead with the evidence (open-questions §5 updated)."
       - "Determinism: a seeded run through the wave-3 bridge burn and a cliff-destruction wave replays bit-for-bit; purity guard green."
+    completed: '2026-07-21'
   - id: jt3-3
     title: "Lava troll — PADGRA->ADDLAV grip, break-free VY threshold, RV4 30s-grace + escalating pull cap, LNDB7 dispatch, escape-scores-50 event"
     description: "The lava troll's hand as a process. Spawns off CLIF5's landing path AFTER the bridge burns (TTROLL = TBRIDGE + 1 wave, JOUSTRV4.SRC:954-957) — jt3-2 gates this. The GRIP repoints the victim's gravity vector (PADGRA -> ADDLAV, JOUSTRV4.SRC:1651-1652): the grabbed entity's per-frame gravity add is swapped for the troll's downward pull. Break-free needs SUSTAINED VY < -$0180 (JOUSTRV4.SRC:6616-6617); a successful escape scores 50 (JOUSTRV4.SRC:6666-6670) — emitted as a score EVENT with the verify-in-emulation caveat carried forward (SCRTEN backwards trap, open-questions §4; ruling C). RV4 PATCHES (the red-label behaviour target): a 30-second grace, then +1 pull/frame capped at $500 — arithmetically INESCAPABLE at the cap (PATCH1/2/3, JOUSTRV4.SRC:6374-6396); each patch preserves its displaced instruction as a ******** comment. Landing: the LNDB7 troll-grip dispatch RESERVED by jt1-4 (the seventh landing outcome, TTROLL-gated) becomes REACHABLE and is exercised by test here. The troll hand's 6 image blocks are already transcribed (jt1-3). Radix-cited constants + claims entries."

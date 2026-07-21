@@ -1008,4 +1008,8 @@ completed_stories:
     title: "Difficulty ramp — DYTBL 28-row decode, IWAVE per-wave walk + plateau, GA1 starting column, retrofit jt2's per-wave stubs"
     points: 3
     completed: '2026-07-21'
+  - id: jt3-2
+    epic: jt3
+    title: "Bridge + cliff destruction — TBRIDGE wave-3 burn, high-nibble cliff destruction as behaviour, arena mutation, second-variant + wave-numbering trace"
+    points: 2
     completed: '2026-07-21'
