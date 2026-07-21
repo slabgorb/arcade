@@ -41,7 +41,8 @@ stories:
     description: "The lava troll's hand as a process. Spawns off CLIF5's landing path AFTER the bridge burns (TTROLL = TBRIDGE + 1 wave, JOUSTRV4.SRC:954-957) — jt3-2 gates this. The GRIP repoints the victim's gravity vector (PADGRA -> ADDLAV, JOUSTRV4.SRC:1651-1652): the grabbed entity's per-frame gravity add is swapped for the troll's downward pull. Break-free needs SUSTAINED VY < -$0180 (JOUSTRV4.SRC:6616-6617); a successful escape scores 50 (JOUSTRV4.SRC:6666-6670) — emitted as a score EVENT with the verify-in-emulation caveat carried forward (SCRTEN backwards trap, open-questions §4; ruling C). RV4 PATCHES (the red-label behaviour target): a 30-second grace, then +1 pull/frame capped at $500 — arithmetically INESCAPABLE at the cap (PATCH1/2/3, JOUSTRV4.SRC:6374-6396); each patch preserves its displaced instruction as a ******** comment. Landing: the LNDB7 troll-grip dispatch RESERVED by jt1-4 (the seventh landing outcome, TTROLL-gated) becomes REACHABLE and is exercised by test here. The troll hand's 6 image blocks are already transcribed (jt1-3). Radix-cited constants + claims entries."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-21'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -49,6 +50,7 @@ stories:
       - "The grip repoints gravity (PADGRA->ADDLAV); break-free requires sustained VY < -$0180; a clean escape emits a 50-point score event (caveat carried); all cited + claims entries."
       - "RV4 escalation: after the 30s grace, pull grows +1/frame to the $500 cap and is inescapable at cap; each patch preserves its pre-patch instruction as a ******** comment; proven by test at and below the cap."
       - "Determinism: seeded grab->struggle->escape and grab->cap->death both replay bit-for-bit; citations + purity guard green."
+    completed: '2026-07-21'
   - id: jt3-4
     title: "Pterodactyl — gravity-exempt FLYXP flight, the lance-height kill window, opposite-facing gate, normal-joust-loses fallback, the ptero wave type"
     description: "The pterodactyl as a process on a gravity-EXEMPT flight core (FLYXP table ±$0300, 'NO GRAVITY!' JOUSTRV4.SRC:1506, 1585-1595 — the ptero ignores the gravity pair the mounts obey). THE KILL WINDOW is a lance-height MATCH, not the ostrich height compare: the attack frame requires the player's lance at offset 8 ± 3; else offset 10 ± 2; AND opposite facings AND the player facing INTO it (JOUSTRV4.SRC:4971-5000). Failing ANY of those tests falls through to the NORMAL joust — which the ptero WINS. Kill value = 1000 points (DVALUE $10 via SCRHUN, JOUSTRV4.SRC:5563-5577 — DERIVED, not stated in any comment; caveat carried forward per ruling C, open-questions §4) emitted as a score event. The pterodactyl WAVE TYPE goes live: jt2-5 landed the 6-entry WJSRTB dispatch skeleton (JOUSTRV4.SRC:2586-2591); the pterodactyl entry (menagerie behaviour, ruled jt3) now spawns pteros per the wave table's ptero nibble (JOUSTRV4.SRC:175-181). Ptero frames = 6 blocks (jt1-3). Death animation (ASH1R/L dissolve) is jt3-6; this story emits the kill and uses the existing interim poof until then. Radix-cited + claims entries."

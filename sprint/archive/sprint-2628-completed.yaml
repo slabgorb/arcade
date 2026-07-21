@@ -1013,3 +1013,8 @@ completed_stories:
     title: "Bridge + cliff destruction — TBRIDGE wave-3 burn, high-nibble cliff destruction as behaviour, arena mutation, second-variant + wave-numbering trace"
     points: 2
     completed: '2026-07-21'
+  - id: jt3-3
+    epic: jt3
+    title: "Lava troll — PADGRA->ADDLAV grip, break-free VY threshold, RV4 30s-grace + escalating pull cap, LNDB7 dispatch, escape-scores-50 event"
+    points: 3
+    completed: '2026-07-21'
