@@ -1038,3 +1038,8 @@ completed_stories:
     title: "Bonus lives — score-threshold crossing, BONUSV increment, the 6-life cap"
     points: 3
     completed: '2026-07-21'
+  - id: sw8-2
+    epic: sw8
+    title: TIE feel and fire fairness — tune VM-driven flight to sweep/arc (not Y-zoom/barrel-roll) and make incoming fire dodgeable or shootable (homing always-arrives); absorbs backlog sw7-24
+    points: 5
+    completed: '2026-07-21'
