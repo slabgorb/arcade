@@ -1048,3 +1048,8 @@ completed_stories:
     title: "Demo — 'the full ecosystem hunts you': shell rendering for ptero/baiters/troll/bridge-burn/cliff-destruction, playable late-wave slice"
     points: 2
     completed: '2026-07-21'
+  - id: cp4-6
+    epic: cp4
+    title: "High-score persistence and initials entry"
+    points: 3
+    completed: '2026-07-22'
