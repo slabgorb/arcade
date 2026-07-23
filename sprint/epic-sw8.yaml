@@ -49,3 +49,27 @@ stories:
     status: backlog
     repos: star-wars
     workflow: tdd
+  - id: sw8-6
+    title: 'TIE approach reads as a field-crossing sweep, not a centerline zoom — choreography homes each fighter to x≈0 through the long approach (measured: a TIE flew x=0 its whole life; #2/#3 steer x→0); carry the ROM lateral offset across the field as they close so TIEs cross the screen like the longplay, not grow-on-the-crosshair-then-loop'
+    points: 5
+    priority: p1
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw8-7
+    title: TIE spawn cadence + on-screen density — ours puts up only 3 fighters (capped), first not until ~1.6s; the cabinet dogfight is a swirl. Rule the ROM TSPWAV spawn schedule/count/onset vs ours and match the on-screen density
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw8-8
+    title: Incoming-fire reaction window (sw8-2 follow-up) — an idle ship died in <1s to a fireball during the sw8-4 investigation; verify a dodge/shoot window actually exists per sw8-2's acceptance and fix if homing still 'always arrives'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: bug
