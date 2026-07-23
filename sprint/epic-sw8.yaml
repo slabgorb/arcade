@@ -36,7 +36,7 @@ stories:
     repos: star-wars
     workflow: tdd
   - id: sw8-4
-    title: Trench reads long + side guns register — extend the visible render window past the 28,672u cutoff and thicken wall-panel density so the channel reads its ~21s length and the wall guns are legible
+    title: Trench reads deep — port the ROM far-end terminus (TBSBF ∐ frame) drawn at the ROM-authentic $7000 draw clamp (BSVFAR/BSVBOT; keep TRENCH_FAR, do NOT raise it) so the channel reads as a deep receding tunnel with a vanishing end; verify side-gun/wall-panel legibility vs the longplay
     points: 3
     priority: p2
     status: backlog
