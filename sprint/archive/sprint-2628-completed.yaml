@@ -1053,3 +1053,8 @@ completed_stories:
     title: "High-score persistence and initials entry"
     points: 3
     completed: '2026-07-22'
+  - id: sw8-4
+    epic: sw8
+    title: Trench reads deep — port the ROM far-end terminus (TBSBF ∐ frame) drawn at the ROM-authentic $7000 draw clamp (BSVFAR/BSVBOT; keep TRENCH_FAR, do NOT raise it) so the channel reads as a deep receding tunnel with a vanishing end; verify side-gun/wall-panel legibility vs the longplay
+    points: 3
+    completed: '2026-07-24'

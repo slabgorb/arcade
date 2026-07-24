@@ -39,9 +39,12 @@ stories:
     title: Trench reads deep — port the ROM far-end terminus (TBSBF ∐ frame) drawn at the ROM-authentic $7000 draw clamp (BSVFAR/BSVBOT; keep TRENCH_FAR, do NOT raise it) so the channel reads as a deep receding tunnel with a vanishing end; verify side-gun/wall-panel legibility vs the longplay
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-24'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-24'
+    review_verdict: approved
   - id: sw8-5
     title: Surface HUD + tower render — draw the TOWERS-remaining counter and POINTS-NEXT-TOWER readout (towerCount helper exists, never drawn) and verify the tower field vs the wave 2/3 longplay
     points: 3
