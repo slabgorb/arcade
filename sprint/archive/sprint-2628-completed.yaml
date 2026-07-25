@@ -1058,3 +1058,8 @@ completed_stories:
     title: Trench reads deep — port the ROM far-end terminus (TBSBF ∐ frame) drawn at the ROM-authentic $7000 draw clamp (BSVFAR/BSVBOT; keep TRENCH_FAR, do NOT raise it) so the channel reads as a deep receding tunnel with a vanishing end; verify side-gun/wall-panel legibility vs the longplay
     points: 3
     completed: '2026-07-24'
+  - id: sw8-3
+    epic: sw8
+    title: Enemy-fire readability — add the lingering destroy-burst when a fireball is shot down (today silent-delete) and verify incoming-fire colour vs WSVROM/WSGUNS
+    points: 3
+    completed: '2026-07-24'

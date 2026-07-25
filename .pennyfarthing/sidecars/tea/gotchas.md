@@ -1506,3 +1506,30 @@ which is the tell: an "it changed" pin that's green before the change is broken.
 can't satisfy it. NEVER gate on `[^;]*` in a semicolon-free codebase; `[^;]` there ≈ `[\s\S]` and
 eats the whole file. And always eyeball the PASS list of a source-rule RED, not just the fail count:
 a dedup/extraction test that is green on the current tree is refuting nothing.
+
+---
+
+### A render "is it drawn?" test near screen-centre must be a DIFFERENCE, not an absolute `=== 0` — the star-wars space frame already strokes VGCRED near centre (the Death Star dish)
+
+**Situation:** sw8-3 (shot-down fireball leaves a lingering red sparkle). The natural AC4 render test:
+build a scene with the burst, render through the recording-canvas idiom
+(`render.enemy-fireball.test.ts`), and assert "there is red ink near centre, and NONE when there's
+no burst" — `expect(redAtCenter(withoutBurst)).toBe(0)` as the control.
+
+**Problem:** That control is a false failure. A `space`/`playing` frame from `initialState` draws the
+Death Star, whose **superlaser dish is `DEATH_STAR_DISH_GLOW = '#ff3b30'` (VGCRED)** — the SAME red as
+the fireball — and it projects near screen centre. The RED run reported `expected 17 to be greater
+than 17`: there are ~17 red segments near centre with no burst at all. An absolute `=== 0` control
+would have gone red in BOTH phases (a broken test), and a bare `redAtCenter(withBurst) > 0` would have
+passed VACUOUSLY off the dish, never proving the burst draws anything.
+
+**Prevention:** Assert the burst as a DIFFERENCE between two otherwise-identical frames —
+`redAtCenter(withBurst) > redAtCenter(withoutBurst)` (or `burning` vs a `{...s, destroyedShots: []}`
+twin). Any constant backdrop ink — dish, HUD, coaching glyphs — is identical in both and cancels
+exactly, leaving only the burst's own ink. This is the render analogue of the core "unshot control"
+(`shootable-fireballs`): measure the delta a change makes, not an absolute the backdrop pollutes.
+Bonus tell that the difference works: the RED failure reads `expected N to be greater than N` (equal
+sides) — proof render ignores the new field, and proof the backdrop matched out. Colours to know are
+red near centre: `FIREBALL_GLOW`, `DEATH_STAR_DISH_GLOW`, `HUD_LABEL_COLOR '#ff2222'`,
+`PAGE_HEADER_GLOW` (briefs only). The amber muzzle flash (`FIRE_GLOW '#ffd60a'`) is NOT red (`isRed`
+rejects green ≥ 100).
