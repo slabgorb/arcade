@@ -59,7 +59,8 @@ stories:
     description: "The session layer closes the loop. GOVER goes tri-state — 0 = over, negative = running, positive $7F = attract simulation (JOUSTRV4.SRC:232-233,712,1015); a player with no lives is OUT and waits, the game reaches over only when EVERY player is out. The wave-to-wave progression stepDemo already runs is CONSOLIDATED under stepGame so score/lives/gover ride the same single sim step (the jt2-1 one-sim seam — no divergent loop). DBAIT BAITER REMOVAL (deferred by jt3, demo.ts): a baiter that dissolves is REMOVED and the nbait count SETTLES on entry so the max-3 cap (PCHASE=-1, JOUSTRV4.SRC:2108-2113) frees a slot instead of the swarm holding forever; the baiter dissolve already tags itself for this count. Radix-cited + claims entries."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-26'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -67,6 +68,7 @@ stories:
       - "The wave-to-wave loop runs under stepGame with score/lives/gover on the single sim step (no second stepping path); a seeded multi-wave game replays bit-for-bit."
       - "DBAIT baiter removal frees a slot: a dissolved baiter is removed and nbait settles so a new baiter can spawn under the max-3 cap; proven by a test that fills the cap, kills one, and spawns again; cited."
       - "Determinism + purity guard + citations green across a full seeded game to game-over."
+    completed: '2026-07-26'
   - id: jt4-5
     title: "Demo — 'two knights, full loop': co-op spawn -> waves -> death -> extra man -> game-over on 5279, dev-overlay readout"
     description: "The epic's demo bar: two knights playing a FULL loop on 5279 — co-op spawn, waves advancing, mounts dying, an extra man awarded, and game-over — with a DEV-OVERLAY score/lives/wave readout (the authentic MESSAGE.SRC display is jt5's row, deliberately NOT stubbed here). Drives the identical stepGame the sim runs; no shell-side game logic. Render source-wiring test per the ?raw idiom (jt1-6); no invented colors (denylist scan green). Screenshot committed as the epic demo artifact, taken from THIS checkout with port-ownership proof (lsof or a spare port — strictPort alone is porous, td1-1; a screenshot predating the code it demos misrepresents the renderer, td1-3)."

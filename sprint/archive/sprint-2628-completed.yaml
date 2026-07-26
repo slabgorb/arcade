@@ -1093,3 +1093,8 @@ completed_stories:
     title: "Egg + gladiator wave types + the 2P bounties — complete all six types, co-op/survival/gladiator 3000, the PLYG1/2 polarity trap"
     points: 3
     completed: '2026-07-26'
+  - id: jt4-4
+    epic: jt4
+    title: "Game-over + the loop + DBAIT — GOVER tri-state, per-player out, stepGame consolidation, baiter removal + nbait settle"
+    points: 2
+    completed: '2026-07-26'
