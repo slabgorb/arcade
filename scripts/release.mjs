@@ -8,8 +8,11 @@
 //
 // Usage: node scripts/release.mjs <repoDir> [patch|minor|major]   (default patch)
 import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const LOBBY_REGISTRY_REL = 'src/core/registry.ts';
 
 const LEVELS = ['patch', 'minor', 'major'];
 
@@ -48,12 +51,88 @@ export function releaseSteps({ version, mainExistsOnRemote }) {
   ];
 }
 
+// Pure: rewrite the `version` string of the lobby-registry entry whose `id`
+// matches `id`, returning { text, changed }. Returns the source untouched with
+// changed:false when no entry has that id — releasing a game the lobby does not
+// list (red-baron), or the lobby itself, must not rewrite the file. The match is
+// non-greedy so it stops at the FIRST `version` after the id and never bleeds
+// into the next entry. This is the whole cross-repo coupling, kept pure and
+// git-free so it stays unit-testable and release.mjs stays single-repo at heart.
+export function bumpRegistryVersion(source, id, version) {
+  const safeId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(id:\\s*'${safeId}'[\\s\\S]*?version:\\s*')[^']*(')`);
+  const text = source.replace(re, `$1${version}$2`);
+  return { text, changed: text !== source };
+}
+
 function out(cwd, cmd, args) {
   return execFileSync(cmd, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
 function run(cwd, cmd, args) {
   execFileSync(cmd, args, { cwd, stdio: ['ignore', 'inherit', 'inherit'] });
+}
+
+// Impure follow-on: after a game ships, carry its new version into the lobby's
+// tile registry and commit it to the lobby's develop, so the tile stops going
+// stale (centipede's tile read 0.0.0 long after it shipped). This runs AFTER the
+// game is already released, so it is best-effort by contract: every precondition
+// miss — releasing the lobby itself, no lobby checkout beside this repo, the
+// lobby not release-ready (off develop / dirty / diverged), or no tile for this
+// game — SKIPS LOUDLY and returns. It must never throw and turn a shipped game
+// into a failed command. The tile ships to prod on the next lobby release
+// (release-all releases the lobby last, so one deploy carries every game's bump).
+export function syncLobbyTileVersion({ repoDir, name, version }) {
+  const warn = (msg) =>
+    console.warn(
+      `  ⚠ lobby tile sync skipped — ${msg}. ${name} v${version} shipped; edit lobby/${LOBBY_REGISTRY_REL} by hand to make the tile match.`,
+    );
+
+  // The lobby lists games, not itself — releasing it has no tile to sync.
+  if (name === 'lobby') return { synced: false, reason: 'lobby has no tile of its own' };
+
+  const lobbyDir = resolve(repoDir, '..', 'lobby');
+  try {
+    try {
+      out(lobbyDir, 'git', ['rev-parse', '--is-inside-work-tree']);
+    } catch {
+      warn(`no lobby checkout at ${lobbyDir}`);
+      return { synced: false };
+    }
+    if (out(lobbyDir, 'git', ['rev-parse', '--abbrev-ref', 'HEAD']) !== 'develop') {
+      warn('the lobby is not on develop');
+      return { synced: false };
+    }
+    if (out(lobbyDir, 'git', ['status', '--porcelain']) !== '') {
+      warn('the lobby working tree is dirty');
+      return { synced: false };
+    }
+    run(lobbyDir, 'git', ['fetch', 'origin', 'develop']);
+    try {
+      // Reconcile with origin before adding our commit. ff-only is a no-op when
+      // local is level with or ahead of origin, and fails (→ skip) if diverged.
+      run(lobbyDir, 'git', ['merge', '--ff-only', 'origin/develop']);
+    } catch {
+      warn('the lobby develop has diverged from origin/develop');
+      return { synced: false };
+    }
+
+    const registryPath = resolve(lobbyDir, LOBBY_REGISTRY_REL);
+    const { text, changed } = bumpRegistryVersion(readFileSync(registryPath, 'utf8'), name, version);
+    if (!changed) {
+      console.log(`  lobby: no tile for ${name} (or already at v${version}) — nothing to sync.`);
+      return { synced: false };
+    }
+    writeFileSync(registryPath, text);
+    run(lobbyDir, 'git', ['add', LOBBY_REGISTRY_REL]);
+    run(lobbyDir, 'git', ['commit', '-m', `chore(lobby): sync ${name} tile to v${version}`]);
+    run(lobbyDir, 'git', ['push', 'origin', 'develop']);
+    console.log(`  lobby: ${name} tile synced to v${version} on develop (ships on the next lobby release).`);
+    return { synced: true, version };
+  } catch (err) {
+    warn(String(err?.message ?? err));
+    return { synced: false };
+  }
 }
 
 export function release(repoDir, level = 'patch') {
@@ -125,6 +204,8 @@ export function release(repoDir, level = 'patch') {
     }
   }
   console.log(`${name}: released ${tag} — the push to main triggers the R2 deploy workflow.`);
+  // Follow the version into the lobby's tile registry (best-effort; never fatal).
+  syncLobbyTileVersion({ repoDir, name, version });
   return { name, skipped: false, version };
 }
 

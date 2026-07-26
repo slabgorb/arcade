@@ -282,14 +282,22 @@ deploy-assets:
 release name level="patch":
     node {{root}}/scripts/release.mjs {{root}}/{{name}} {{level}}
 
-# Release every servable subrepo (lobby + games) at the same bump level
+# Release every servable subrepo (lobby + games) at the same bump level.
+# Games release FIRST so each one's version-bump lands on the lobby's develop
+# (scripts/release.mjs syncs the tile via syncLobbyTileVersion); the lobby
+# releases LAST so a single lobby deploy ships every accumulated tile bump.
+# {{subrepos}} itself stays in launch order (lobby first) for serve/deploy —
+# only the release order is special here.
 release-all level="patch":
     #!/usr/bin/env bash
     set -euo pipefail
     for s in {{subrepos}}; do
+      [ "$s" = "lobby" ] && continue
       echo "==> releasing $s"
       node {{root}}/scripts/release.mjs {{root}}/$s {{level}}
     done
+    echo "==> releasing lobby (last — ships accumulated tile-version bumps)"
+    node {{root}}/scripts/release.mjs {{root}}/lobby {{level}}
 
 # ============================================
 # tempest

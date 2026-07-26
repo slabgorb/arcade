@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { releaseSteps, shouldRelease } from '../scripts/release.mjs';
+import { bumpRegistryVersion, releaseSteps, shouldRelease } from '../scripts/release.mjs';
 
 // On 2026-07-13 `just release-all` was run twice in a row. The second run shipped
 // SIX releases whose entire diff was package.json + package-lock.json: six version
@@ -58,4 +58,61 @@ test('releaseSteps: every step has a human-readable desc', () => {
   for (const s of releaseSteps({ version: '1.2.3', mainExistsOnRemote: true })) {
     assert.ok(s.desc && s.desc.length > 3, `step ${s.args.join(' ')} lacks desc`);
   }
+});
+
+// The lobby lists each game with a hand-maintained `version` string in
+// lobby/src/core/registry.ts. `just release <game>` bumped the game's own
+// package.json but never that string, so every release left the tile stale —
+// centipede's tile still read 0.0.0 after it had shipped. bumpRegistryVersion is
+// the pure text transform release.mjs now applies to the registry so the tile
+// follows the release; the IO wrapper that commits it to the lobby's develop is
+// built on top. Pure text in -> text out keeps it unit-testable and keeps
+// release.mjs's single-repo purity: the transform knows nothing about git.
+const REGISTRY_FIXTURE = `export const GAMES = [
+  {
+    id: 'tempest',
+    title: 'TEMPEST',
+    launchUrl: 'https://tempest.slabgorb.com/',
+    color: '#00eaff',
+    controls: ['ROTATE — Wheel / ←→', 'FIRE — Click / Space'],
+    version: '1.0.24',
+  },
+  {
+    id: 'joust',
+    title: 'JOUST',
+    launchUrl: 'https://joust.slabgorb.com/',
+    color: '#f0a828',
+    controls: ['MOVE — ←→ / A D', 'FLAP — Space / Shift'],
+    version: '0.0.4',
+  },
+]
+`;
+
+test('bumpRegistryVersion: rewrites the named entry and reports it changed', () => {
+  const { text, changed } = bumpRegistryVersion(REGISTRY_FIXTURE, 'joust', '0.0.5');
+  assert.equal(changed, true);
+  assert.match(text, /id: 'joust',[\s\S]*?version: '0\.0\.5',/);
+  assert.doesNotMatch(text, /version: '0\.0\.4'/);
+});
+
+test('bumpRegistryVersion: leaves every OTHER entry untouched (no cross-entry bleed)', () => {
+  // The non-greedy match must stop at the FIRST version after the id, or bumping
+  // tempest could reach across and rewrite joust's version too.
+  const { text } = bumpRegistryVersion(REGISTRY_FIXTURE, 'tempest', '1.0.25');
+  assert.match(text, /id: 'tempest',[\s\S]*?version: '1\.0\.25',/);
+  assert.match(text, /id: 'joust',[\s\S]*?version: '0\.0\.4',/); // joust unchanged
+});
+
+test('bumpRegistryVersion: id with no tile is a no-op — changed:false, text identical', () => {
+  // Releasing a game the lobby does not list (red-baron is provisioned but not
+  // listed) or the lobby itself must NOT rewrite the file or trigger a commit.
+  const { text, changed } = bumpRegistryVersion(REGISTRY_FIXTURE, 'red-baron', '1.0.0');
+  assert.equal(changed, false);
+  assert.equal(text, REGISTRY_FIXTURE);
+});
+
+test('bumpRegistryVersion: bumping to the SAME version is a no-op — no empty commit', () => {
+  const { text, changed } = bumpRegistryVersion(REGISTRY_FIXTURE, 'joust', '0.0.4');
+  assert.equal(changed, false);
+  assert.equal(text, REGISTRY_FIXTURE);
 });
