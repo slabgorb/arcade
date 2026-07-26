@@ -28,7 +28,8 @@ stories:
     description: "Per-player lives and the extra-man award. NSHIP seeds the starting life count (default 5 — the free-play clone's kept CMOS adjustment, TB12REV3.SRC:134-151 / EQU.SRC:110-127); a mount death decrements that player's OWN count (both-players-out -> game-over is jt4-4's GOVER). The REPLAY extra-man threshold (@20,000 — the x16 CMOS nibble, JOUSTRV4.SRC:915-928) is checked as score accrues and RE-ARMED after each award (JOUSTRV4.SRC:7382-7411) so the next man lands at the next multiple — proven across TWO awards. The dying-player 50-point credit (JOUSTRV4.SRC:4730-4732 — deferred by jt2) is emitted here as the death is booked and accrues into jt4-1's register (SCRTEN caveat carried). Radix-cited + claims entries."
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-07-26'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -36,6 +37,8 @@ stories:
       - "The REPLAY extra-man award fires at the x16 threshold (@20,000) and RE-ARMS after each award so a second man lands at the next multiple; proven by test across two awards; cited."
       - "The dying-player 50-point credit is emitted as the death is booked and accrues into the jt4-1 register (SCRTEN caveat carried); cited."
       - "Determinism: a seeded run crossing two extra-man thresholds replays bit-for-bit; purity guard + citations green."
+    completed: '2026-07-26'
+    review_verdict: approved
   - id: jt4-3
     title: "Egg + gladiator wave types + the 2P bounties — complete all six types, co-op/survival/gladiator 3000, the PLYG1/2 polarity trap"
     description: "Completes 'all six wave types' and pays the co-op scoring the dispatch skeleton has been routing for free. jt2-5 landed the 6-entry WJSRTB (nop/intro/coop/gladiator/egg/ptero, JOUSTRV4.SRC:2586-2591) with the DEGRADE laws (co-op->survival solo, JOUSTRV4.SRC:2628-2631; gladiator no-ops solo, JOUSTRV4.SRC:2697-2700); jt3-4 made only the PTERO type live. This story lands the remaining two type BEHAVIOURS — the EGG wave spawns its wave as eggs, the GLADIATOR wave arms PvP — and the three 2P BOUNTIES: co-op 3000 each VOIDED by a partner-kill, survival 3000 for a DEATHLESS wave, gladiator 3000 to the FIRST partner-killer (JOUSTRV4.SRC:2642-2728,4691-4698). THE POLARITY TRAP: the same two PLYG1/2 flag bytes INVERT meaning between co-op and gladiator (JOUSTRV4.SRC:2634-2635 vs JOUSTRV4.SRC:2703-2705); the 'GAME START GOOF' PATC11 cleans up the boot state (JOUSTRV4.SRC:6282-6284) — transcribe BOTH polarities + the cleanup, pin each by test, preserve any displaced instruction as a ******** comment (RV4 discipline). Bounties accrue into jt4-1's registers. Radix-cited + claims entries."

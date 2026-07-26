@@ -1073,3 +1073,8 @@ completed_stories:
     title: Surface HUD + tower render — draw the TOWERS-remaining counter and POINTS-NEXT-TOWER readout (towerCount helper exists, never drawn) and verify the tower field vs the wave 2/3 longplay
     points: 3
     completed: '2026-07-26'
+  - id: jt4-2
+    epic: jt4
+    title: "Extra men — NSHIP starting lives, the REPLAY x16 threshold re-armed per award, the 50-for-dying credit"
+    points: 2
+    completed: '2026-07-26'

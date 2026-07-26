@@ -1533,3 +1533,30 @@ sides) — proof render ignores the new field, and proof the backdrop matched ou
 red near centre: `FIREBALL_GLOW`, `DEATH_STAR_DISH_GLOW`, `HUD_LABEL_COLOR '#ff2222'`,
 `PAGE_HEADER_GLOW` (briefs only). The amber muzzle flash (`FIRE_GLOW '#ffd60a'`) is NOT red (`isRed`
 rejects green ≥ 100).
+
+### A mechanic that hangs off an entity DEATH — check whether the sim EMITS a death event or SILENTLY removes the process, then PROBE for a deterministic death frame to anchor the integration test
+
+**Situation:** jt4-2 (joust extra men) needs a player mount death to (a) drop that player's `lives`
+and (b) book the 50-for-dying credit. jt4-1's session layer (`game.ts` / `stepGame`) already drains
+`{kind:'score'}` *events* the sim emits, so the obvious assumption is "the sim emits a death event
+too; drain it the same way."
+
+**Problem:** It does NOT. In `demo.ts` `collisionPass`, a player that loses a joust (or a ptero
+attack) is `removed.add(pl.id)` — the process just vanishes from `sim.processes`. No event, no
+respawn (players are spawned ONCE in `createWaveDemo`, lines 466-467, and nothing re-adds them). A
+test written against a phantom `{kind:'death'}` event would be un-satisfiable, and a Dev told to
+"drain the death event" would be chasing something that isn't there. The correct seam is a
+frame-over-frame **process-set diff**: a player id live in `game.sim.sim.processes` last frame and
+gone this frame == one mount death (exactly the shape of jt4-1's score-event `!prior.has(e)` diff,
+but over the process set, not the event log).
+
+**Prevention:** Before writing the integration test for a death/removal-triggered mechanic, grep the
+sim for how the entity actually leaves (`removed.add`, filter, splice) and whether ANY event marks
+it. If it's a silent removal, spec the booking as a process-set diff and say so in the contract, so
+Dev wires it there instead of hunting a non-existent event. Then **probe** for a *deterministic*
+death: a throwaway test that steps `stepDemo` under candidate inputs and writes the first frame each
+player id disappears to a scratch file (vitest swallows `console.log`; `writeFileSync` to the
+scratchpad, or throw). Under SEED 0x1234, `{1:flap(-1),2:flap(1)}` kills P1 at frame 49 with **zero
+prior score** (so the post-death score is exactly the 50 credit — a clean `toBe(50)`), and
+`{1:flap(1),2:flap(-1)}` kills P2 at frame 99. Anchoring the integration test to a probed frame with
+no confounding prior score is what lets you assert the credit *exactly* instead of `>= 50`.
