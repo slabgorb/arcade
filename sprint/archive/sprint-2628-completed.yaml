@@ -1097,4 +1097,8 @@ completed_stories:
     epic: jt4
     title: "Game-over + the loop + DBAIT — GOVER tri-state, per-player out, stepGame consolidation, baiter removal + nbait settle"
     points: 2
+  - id: sw9-2
+    epic: sw9
+    title: SELECT-A-DEATH-STAR difficulty picker — countdown start-wave select EASY/MEDIUM/HARD with the real 200k/400k/600k/800k start bonuses (reinstated in their correct home after sw7-4 removed them from a mis-attributed mechanic); sets starting wave, banks the bonus
+    points: 5
     completed: '2026-07-26'

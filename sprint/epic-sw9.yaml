@@ -19,9 +19,11 @@ stories:
     title: SELECT-A-DEATH-STAR difficulty picker — countdown start-wave select EASY/MEDIUM/HARD with the real 200k/400k/600k/800k start bonuses (reinstated in their correct home after sw7-4 removed them from a mis-attributed mechanic); sets starting wave, banks the bonus
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-26'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-26'
   - id: sw9-3
     title: Attract-mode parity pass — hold the rotating banner/instructions/scoring/hi-score machine (sw7-10) beside the longplay attract loop and close ordering/timing/text gaps
     points: 2
