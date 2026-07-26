@@ -52,9 +52,12 @@ stories:
     title: Surface HUD + tower render — draw the TOWERS-remaining counter and POINTS-NEXT-TOWER readout (towerCount helper exists, never drawn) and verify the tower field vs the wave 2/3 longplay
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-26'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-26'
+    review_verdict: approved
   - id: sw8-6
     title: 'TIE approach reads as a field-crossing sweep, not a centerline zoom — choreography homes each fighter to x≈0 through the long approach (measured: a TIE flew x=0 its whole life; #2/#3 steer x→0); carry the ROM lateral offset across the field as they close so TIEs cross the screen like the longplay, not grow-on-the-crosshair-then-loop'
     points: 5

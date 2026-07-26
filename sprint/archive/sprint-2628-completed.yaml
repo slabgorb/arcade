@@ -1068,3 +1068,8 @@ completed_stories:
     title: "BCD scoring core — the game.ts session layer, per-player SCRHUN/SCRTEN registers, drain the kill/egg/ptero event stream"
     points: 3
     completed: '2026-07-25'
+  - id: sw8-5
+    epic: sw8
+    title: Surface HUD + tower render — draw the TOWERS-remaining counter and POINTS-NEXT-TOWER readout (towerCount helper exists, never drawn) and verify the tower field vs the wave 2/3 longplay
+    points: 3
+    completed: '2026-07-26'
