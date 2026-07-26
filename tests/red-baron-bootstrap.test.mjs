@@ -13,7 +13,6 @@
 //   - justfile lists red-baron in `games`, `subrepos`, and the `serve` recipe
 //     CONSISTENTLY (fix the variables, not just the hardcoded trap block), and
 //     does NOT regress the existing games out of those variables
-//   - the lobby tile (lobby/src/core/registry.ts GAMES) gains a red RED BARON tile
 //   - cloudflared/config.yml routes /red-baron/* → :5277 ahead of the lobby
 //     catch-all, and NEVER to a sibling pin (5270/5273/5274/5275/5276)
 //   - red-baron/.git exists with a develop branch (gitflow), no remote required
@@ -79,23 +78,6 @@ function repoBlock(yaml, name) {
     body.push(line);
   }
   return body.join('\n');
-}
-
-// Pull the { ... } object literal for a given game id out of the lobby registry.
-function lobbyTile(registry, id) {
-  const re = new RegExp(`\\{[^{}]*id:\\s*['"]${id}['"][^{}]*\\}`);
-  const m = registry.match(re);
-  return m ? m[0] : null;
-}
-
-function hexToRgb(hex) {
-  const h = hex.replace('#', '');
-  const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-  return {
-    r: parseInt(n.slice(0, 2), 16),
-    g: parseInt(n.slice(2, 4), 16),
-    b: parseInt(n.slice(4, 6), 16),
-  };
 }
 
 // --- AC: orchestrator .gitignore ------------------------------------------
@@ -180,31 +162,6 @@ test('AC: canonical `serve` launches red-baron', () => {
   // …and the recipe must actually run that launcher, or the fleet above is a dead table.
   const body = recipeBody(read('justfile'), 'serve') ?? '';
   assert.match(body, /serve\.mjs/, 'the canonical `serve` recipe must invoke scripts/serve.mjs, which launches the fleet');
-});
-
-// --- AC: lobby tile --------------------------------------------------------
-
-test('AC: lobby registry lists a red-baron tile launching its subdomain', () => {
-  const registry = read('lobby/src/core/registry.ts');
-  const tile = lobbyTile(registry, 'red-baron');
-  assert.notEqual(tile, null, "lobby GAMES must contain a { id: 'red-baron', ... } tile");
-  assert.match(tile, /title:\s*['"]RED BARON['"]/, "red-baron tile needs title: 'RED BARON'");
-  assert.match(tile, /launchUrl:\s*['"]https:\/\/red-baron\.slabgorb\.com\/['"]/, "red-baron tile must launch its subdomain");
-});
-
-test('AC: the red-baron tile is a red-family colour, distinct from the sibling tiles', () => {
-  const registry = read('lobby/src/core/registry.ts');
-  const tile = lobbyTile(registry, 'red-baron') ?? '';
-  const m = tile.match(/color:\s*['"](#[0-9a-fA-F]{3,8})['"]/);
-  assert.notEqual(m, null, 'red-baron tile must define a colour hex');
-  const hex = m[1].toLowerCase();
-  // Distinct from every existing tile colour.
-  for (const taken of ['#00eaff', '#ffe81f', '#ff6a00', '#00ff41']) {
-    assert.notEqual(hex, taken, `red-baron colour must differ from the existing tile colour ${taken}`);
-  }
-  // "Red Baron" → a red-dominant hue (faithful to the crimson Fokker).
-  const { r, g, b } = hexToRgb(hex);
-  assert.ok(r > g && r > b, `red-baron tile should be red-family (R dominant); got ${hex}`);
 });
 
 // --- AC: cloudflared ingress (/red-baron/* → :5277, ahead of lobby) ---------

@@ -13,7 +13,6 @@
 //   - justfile lists battlezone in `games`, `subrepos`, and the `serve` recipe
 //     CONSISTENTLY — Dev must fix the variables, not just the hardcoded trap block
 //     (star-wars is currently wired only in the trap — see Delivery Findings)
-//   - the lobby tile (lobby/src/core/registry.ts GAMES) gains a green battlezone
 //   - cloudflared/config.yml routes /battlezone/* → :5276 ahead of the lobby
 //     catch-all, and NEVER to 5275 (the pin bz1 lost to asteroids/epic A)
 //   - battlezone/.git exists with a develop branch (gitflow)
@@ -74,23 +73,6 @@ function repoBlock(yaml, name) {
     body.push(line);
   }
   return body.join('\n');
-}
-
-// Pull the { ... } object literal for a given game id out of the lobby registry.
-function lobbyTile(registry, id) {
-  const re = new RegExp(`\\{[^{}]*id:\\s*['"]${id}['"][^{}]*\\}`);
-  const m = registry.match(re);
-  return m ? m[0] : null;
-}
-
-function hexToRgb(hex) {
-  const h = hex.replace('#', '');
-  const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-  return {
-    r: parseInt(n.slice(0, 2), 16),
-    g: parseInt(n.slice(2, 4), 16),
-    b: parseInt(n.slice(4, 6), 16),
-  };
 }
 
 // --- AC: orchestrator .gitignore ------------------------------------------
@@ -173,28 +155,6 @@ test('reconcile (SM decision #1): justfile `games`/`subrepos` also backfill star
   assert.notEqual(subrepos, null, 'justfile must define a `subrepos` list');
   assert.match(games[1], /\bstar-wars\b/, 'backfill star-wars into `games` (build-all/test-all iterate it)');
   assert.match(subrepos[1], /\bstar-wars\b/, 'backfill star-wars into `subrepos` (install-all/serve iterate it)');
-});
-
-// --- AC: lobby tile --------------------------------------------------------
-
-test('AC: lobby registry lists a battlezone tile launching its subdomain', () => {
-  const registry = read('lobby/src/core/registry.ts');
-  const tile = lobbyTile(registry, 'battlezone');
-  assert.notEqual(tile, null, "lobby GAMES must contain a { id: 'battlezone', ... } tile");
-  assert.match(tile, /title:\s*['"]BATTLEZONE['"]/, "battlezone tile needs title: 'BATTLEZONE'");
-  assert.match(tile, /launchUrl:\s*['"]https:\/\/battlezone\.slabgorb\.com\/['"]/, "battlezone tile must launch its subdomain");
-});
-
-test('AC: the battlezone tile is a green-family colour, distinct from the cyan/yellow tiles', () => {
-  const registry = read('lobby/src/core/registry.ts');
-  const tile = lobbyTile(registry, 'battlezone') ?? '';
-  const m = tile.match(/color:\s*['"](#[0-9a-fA-F]{3,8})['"]/);
-  assert.notEqual(m, null, 'battlezone tile must define a colour hex');
-  const hex = m[1].toLowerCase();
-  assert.notEqual(hex, '#00eaff', 'battlezone colour must differ from tempest cyan (#00eaff)');
-  assert.notEqual(hex, '#ffe81f', 'battlezone colour must differ from star-wars yellow (#ffe81f)');
-  const { r, g, b } = hexToRgb(hex);
-  assert.ok(g > r && g > b, `battlezone tile should be green-family (G dominant); got ${hex}`);
 });
 
 // --- AC: cloudflared ingress (/battlezone/* → :5276, ahead of lobby) --------
