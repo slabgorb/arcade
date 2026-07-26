@@ -1088,3 +1088,8 @@ completed_stories:
     title: 'X-wing cockpit canopy frame — the persistent red-strut/blue-bar overlay framing every gameplay view; OPEN FIRST: determine provenance (authentic WSVROM color-vector picture vs cabinet artwork) then draw as static screen-space overlay'
     points: 3
     completed: '2026-07-26'
+  - id: jt4-3
+    epic: jt4
+    title: "Egg + gladiator wave types + the 2P bounties — complete all six types, co-op/survival/gladiator 3000, the PLYG1/2 polarity trap"
+    points: 3
+    completed: '2026-07-26'
