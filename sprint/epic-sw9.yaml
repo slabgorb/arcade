@@ -10,9 +10,11 @@ stories:
     title: 'X-wing cockpit canopy frame — the persistent red-strut/blue-bar overlay framing every gameplay view; OPEN FIRST: determine provenance (authentic WSVROM color-vector picture vs cabinet artwork) then draw as static screen-space overlay'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-07-26'
     repos: star-wars
     workflow: tdd
+    completed: '2026-07-26'
   - id: sw9-2
     title: SELECT-A-DEATH-STAR difficulty picker — countdown start-wave select EASY/MEDIUM/HARD with the real 200k/400k/600k/800k start bonuses (reinstated in their correct home after sw7-4 removed them from a mis-attributed mechanic); sets starting wave, banks the bonus
     points: 5

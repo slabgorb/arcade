@@ -45,10 +45,16 @@ Screen-limit equates (WSGLOB.MAC:32-39, dotted = **decimal**): `VGLIMR==480.`,
 edges near vertical mid, NOT the top corners — "TOP" names the upper of the side pair),
 `VGRW0==552.`.
 
-**Transcription caveat for Dev (GREEN).** The gun-site picture data lives **after
-`.RADIX 16`** (WSVROM.MAC:1246) — so `AON`/`AOFF`/`CXY` coordinates **without a trailing
-dot are HEX**, while `M.=10.` (the per-picture AVG scale) and the screen-limit equates
-above are dotted **decimals**. Transcribe the vertex runs at the ROM `M.`/`D.` scale, map
+**Transcription caveat for Dev (GREEN) — CORRECTED at review.** TEA's original ruling
+here claimed the un-dotted `AON`/`AOFF`/`CXY` coordinates are HEX (because of `.RADIX 16`
+at WSVROM.MAC:1246). **That was refuted by Dev and confirmed by the Reviewer: they are
+DECIMAL.** The `AON`/`AOFF`/`CXY` macro definitions (WSVROM.MAC:112-149) splice a literal
+`.` onto every substituted argument (`'.1'.` — see the `AON` body at :120), which MACRO-11
+reads as forced decimal regardless of the ambient radix; the macros' own headers say
+"ABSOLUTE DECIMAL COORDS". The `.RADIX 16` directive governs only *bare* literals, and the
+five gun-site pictures express every coordinate through the macros. `M.=10.` and the
+screen-limit equates above are dotted decimals as stated. Transcribe the vertex runs
+(decimal) at the ROM `M.`/`D.` scale, map
 AVG screen-space (X ±480, Y ±552; +Y up) to canvas pixels, and author the polylines from
 the `AON`/`AOFF` runs (the same picture-data idiom as the ported models). Do **not** reuse
 the cyan reticle glow (`GLOW = '#00e5ff'`) for the frame — the frame is a true deep blue

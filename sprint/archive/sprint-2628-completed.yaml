@@ -1083,3 +1083,8 @@ completed_stories:
     title: 'TIE approach reads as a field-crossing sweep, not a centerline zoom — choreography homes each fighter to x≈0 through the long approach (measured: a TIE flew x=0 its whole life; #2/#3 steer x→0); carry the ROM lateral offset across the field as they close so TIEs cross the screen like the longplay, not grow-on-the-crosshair-then-loop'
     points: 5
     completed: '2026-07-26'
+  - id: sw9-1
+    epic: sw9
+    title: 'X-wing cockpit canopy frame — the persistent red-strut/blue-bar overlay framing every gameplay view; OPEN FIRST: determine provenance (authentic WSVROM color-vector picture vs cabinet artwork) then draw as static screen-space overlay'
+    points: 3
+    completed: '2026-07-26'
