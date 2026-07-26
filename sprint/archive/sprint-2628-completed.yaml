@@ -1063,3 +1063,8 @@ completed_stories:
     title: Enemy-fire readability — add the lingering destroy-burst when a fireball is shot down (today silent-delete) and verify incoming-fire colour vs WSVROM/WSGUNS
     points: 3
     completed: '2026-07-24'
+  - id: jt4-1
+    epic: jt4
+    title: "BCD scoring core — the game.ts session layer, per-player SCRHUN/SCRTEN registers, drain the kill/egg/ptero event stream"
+    points: 3
+    completed: '2026-07-25'
