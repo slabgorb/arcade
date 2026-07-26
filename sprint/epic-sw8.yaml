@@ -85,3 +85,10 @@ stories:
     repos: star-wars
     workflow: tdd
     type: bug
+  - id: sw8-9
+    title: TIE in-front loiter — fighters currently fly PAST the cockpit (converge x→0 at negative depth, behind the eye) instead of loitering-and-converging IN FRONT as the longplay shows; port the deferred §5 play-cube clamp (sub_8DE3, sw8-2 AC3 'deferred tuning') + loiter/no-ram (model §9-3 'no body collision'); confirmed by sw8-6 Dev finding (sprint/archive/sw8-6-session.md)
+    points: 3
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
