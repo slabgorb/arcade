@@ -813,3 +813,29 @@ byte-perfect while every single defect (6 of them) sat in the reasoning layer �
 quoted, they were exact; where they reasoned from a citation, the citation was off and the
 reasoning followed it off*. If a fidelity story looks flawless, you have probably only audited
 its text.
+
+---
+
+### For a trajectory/feel fix, adversarially probe the SIDE EFFECT on OTHER gated systems — but MEASURE it in a full wave, don't reason from the gate in isolation
+
+**Situation:** sw8-6 (star-wars) changed one line — `spawnTie`'s heading from `lookRotation(toCockpit(pos))`
+(nose at origin) to a straight `lookRotation(FACING_PLAYER)` so offset TIEs CARRY their lateral offset
+(the field-crossing sweep). The tests all pass; the mechanism is clean.
+
+**The real reviewer question is not the changed line — it's what else reads `orient`.** Grep found the
+enemy FIRE gate: `C_AS` ("in sights") = `dot(nose, toCockpit(pos)) >= cos(12°)` (tie-status.ts). With the
+nose now fixed down-range while the fighter carries an offset, the angle to the cockpit GROWS as it
+closes (`x/depth > tan 12° ≈ 0.213`), so an offset TIE leaves the fire cone at close range — I predicted
+a fire REDUCTION and a possibly-toothless wave. **Reasoning from the gate in isolation was wrong.** A
+throwaway full-wave probe (`initialState`, step `stepGame` with NO_INPUT, count `enemy-fire` events, fix
+vs. reverted) showed fire went UP (6 vs 4): the same heading change makes offset TIEs fly PAST instead of
+ram-and-vanish at ~f62, so they live longer to fire, and the homing re-aims them mid-pass. The
+second-order dynamics dominated the first-order gate effect. Measure the side effect end-to-end (put the
+probe OUTSIDE `tests/` or delete before you finish), don't approve OR reject on the gate math alone.
+
+**And a `reviewer-rule-checker` "stale citation" flag is a FALSE ALARM when the finding is
+`remediated_by`.** The checker flagged audit finding A-009 (`cites sim.ts:1163 "function moveEnemy(...)"`,
+now a different line) as drifted. But A-009 carries `remediated_by: sw7-11` — the citations gate
+DELIBERATELY skips remediated findings and freezes their line as a historical record (that is why
+`citations.test.ts` was green). Before confirming any "citation drift" finding, check the finding's
+`remediated_by`/frozen status; a frozen citation pointing at retired code is correct, not a defect.

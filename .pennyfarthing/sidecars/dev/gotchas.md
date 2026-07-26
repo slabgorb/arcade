@@ -798,3 +798,43 @@ test to `SLABCADE`; removed three dead CSS rules (kept `vb-blink`, still used by
 suite 148/148, build clean. Separately `registry.ts` had gained the centipede tile
 (`launchUrl: https://centipede.slabgorb.com/`) — which my first grep missed because the user saved
 it mid-session.
+
+---
+
+### A "sweep vs zoom" TIE-approach fix is the SPAWN HEADING, not the flight loop — and it retro-improves a CONFIRMED audit finding you must re-spell (not freeze)
+
+**Situation:** sw8-6 (star-wars) — offset TIEs "grow on the crosshair then loop" instead of sweeping
+across the field. TEA's probe showed the angular position `|x|/depth` is dead FLAT across the
+approach (a centreline zoom); the fix must make it WIDEN (carry the offset).
+
+**Where it actually lives:** NOT `applyManeuver`/the choreography VM. `spawnTie` seeded
+`orient: lookRotation(toCockpit(pos))` — the nose aimed at the *exact origin* from the offset slot.
+Flight thrusts along the nose (`applyManeuver` §5), so a nose pointed at the origin drags `x` down
+*proportionally to depth* → `|x|/depth` constant → zoom. The ROM (WSCPU §4, finding A-008
+`LDA #0C0 ;FACE ALIEN TOWARDS PLAYER`) faces the fighter **straight down-range** (an Ax/By sign
+flip), NOT a per-slot look-at-origin. One-line fix: `orient: lookRotation([0,0,1])` (a named
+`FACING_PLAYER`). Straight facing → forward thrust holds `x` while depth shrinks → `|x|/depth`
+widens → the fighter sweeps across and flies PAST, exactly the longplay. The choreography's own
+later YAW/AIM_PLAYER maneuvers steer it home. **Probe the design space before editing prod:** build
+the hero with an overridden `orient` (blend 0=straight … 1=look-at-origin) in a throwaway
+`*.test.ts` at the repo root (delete before commit) and read the `x`,`depth`,`ratio` table — it
+showed lean=1 flat/rams, lean=0 carries-then-flies-past, instantly.
+
+**The test tension you'll hit:** a faithful full carry holds `x=−1024` across the whole near field,
+so a preservation guard that measures convergence at a MID-FIELD sample (`|x_close| < |x_spawn|` at
+depth 3000) fails by an exact tie — `expected 1024 to be less than 1024`. The ROM script converges
+only LATE (TCH1A2's first YAW is ~66 frames in, after the field is swept), so convergence is a
+fly-past/end-of-life event, not mid-field. Correct measure: `min(|x|) over the FULL trajectory <
+spawn·0.3` (it comes home somewhere), keeping the guard's intent. Log this as a real-time deviation
+— it is re-measuring the same property at the right point, not weakening a driver; the RED driver
+(the sweep assertion) stays untouched and mutation-verified.
+
+**Audit-citation fallout (two kinds, one edit):** the edit shifts cited lines two ways
+(`tools/audit/reanchor-citations.mjs` documents both). (1) A line MOVED, verbatim intact →
+`reanchor-citations.mjs --write` fixes the number (A-015 here). (2) You CHANGED a cited line's text
+(`lookRotation(dir)` → `lookRotation(FACING_PLAYER)`, A-008). The tool reports it LOST. Its default
+prescription is `remediated_by: <story>` (freeze it) — but A-008 is a **CONFIRMED** finding that
+your change made MORE faithful (the code now matches the ROM's straight facing exactly), so DON'T
+freeze it: re-spell its `ours.line`/`ours.verbatim` AND the claim/reasoning prose to the new code so
+the gate keeps verifying our code still faces the player. Freezing a still-live CONFIRMED match
+would stop the audit checking it. Run the citations suite green before committing.

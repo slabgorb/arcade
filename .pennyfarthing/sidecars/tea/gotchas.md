@@ -1534,6 +1534,8 @@ red near centre: `FIREBALL_GLOW`, `DEATH_STAR_DISH_GLOW`, `HUD_LABEL_COLOR '#ff2
 `PAGE_HEADER_GLOW` (briefs only). The amber muzzle flash (`FIRE_GLOW '#ffd60a'`) is NOT red (`isRed`
 rejects green ≥ 100).
 
+---
+
 ### A mechanic that hangs off an entity DEATH — check whether the sim EMITS a death event or SILENTLY removes the process, then PROBE for a deterministic death frame to anchor the integration test
 
 **Situation:** jt4-2 (joust extra men) needs a player mount death to (a) drop that player's `lives`
@@ -1560,3 +1562,40 @@ scratchpad, or throw). Under SEED 0x1234, `{1:flap(-1),2:flap(1)}` kills P1 at f
 prior score** (so the post-death score is exactly the 50 credit — a clean `toBe(50)`), and
 `{1:flap(1),2:flap(-1)}` kills P2 at frame 99. Anchoring the integration test to a probed frame with
 no confounding prior score is what lets you assert the credit *exactly* instead of `>= 50`.
+
+---
+
+### "Sweep vs zoom" on an approaching object: the RED driver is the world-space ANGULAR position |x|/depth, NOT the on-screen NDC — the moving eye contaminates the screen metric and makes it green-now
+
+**Situation:** sw8-6 (star-wars) — "TIE approach reads as a field-crossing SWEEP, not a centerline
+ZOOM / grow-on-the-crosshair-then-loop." The instinct (and the story context's "capture recipe") is
+to measure the on-screen sweep with `eyeOf`/`aimAt` (invert the camera to get the TIE's NDC-x) and
+assert it traverses a wide span.
+
+**Problem:** the on-screen `ndcX = f·(x − eye.x)/depth` mixes TWO contributions. The moving eye
+(sw8-1/sw8-2, already shipped & BOUNDED ±2048) pans and already makes `|ndcX|` grow several-fold
+during the approach (slot 1 probe: 0.056 → 0.31 purely because the eye slides right while the TIE is
+left) — so an on-screen "the sweep is wide" test is GREEN on the unfixed tree and pins nothing. The
+choreography defect is invisible under the eye's own motion.
+
+**Prevention:** isolate the choreography by dropping the eye entirely and measuring the object's
+**world-space angular lateral position `|x|/depth`** across the approach. A *zoom* collapses the
+lateral offset proportionally to depth, so `|x|/depth` is FLAT (holds a fixed screen angle, just
+grows); a *sweep* carries the offset, so `|x|/depth` WIDENS as it closes. RED driver = `closeRatio >
+spawnRatio × 1.5` (today flat: `expected 0.0322 to be greater than 0.0484`). Pin the magnitude LOW
+(1.5×) — the true carried amount is longplay-tuned ("eyeball-owned," design §3), Dev's not the test's.
+Bound it with two guards from the measured facts so the fix stays faithful: the centred (x=0) object
+stays centred (`maxAbsX < 100`), and the offset ones still CONVERGE (`|x_close| < |x_spawn|`) — both
+true of a carried-then-converging arc (angular widens WHILE absolute shrinks). Route the frame-by-
+frame longplay comparison (AC "measure against the .mov") to manual QA, not a fabricated ±N% pin.
+
+**Rule the divergence by RUNNING it first (epic sw8 §3).** A single-hero probe — `spawnTieForTest`
++ `{...initialState(seed), enemies:[hero], spawnTimer:1e9, enemyFireCooldown:1e9}`, step `NO_INPUT`,
+dump `pos`+depth per frame — told the whole story in one run (offset TIEs ram ~f62, centred one loops
+past the cockpit, `|x|/depth` dead flat). Put the probe OUTSIDE `tests/` or delete it before commit
+(a scratch `*.test.ts` at the repo root still enters `npx vitest run`).
+
+**Adjacent-scope trap:** the same probe shows the objects RAM the cockpit / loop past it — tempting
+to also pin "un-shot TIE never rams." Don't: ram-removal is a DIFFERENT story's contract (9-3 "no
+body collision"), pinned by `space-combat.test.ts`; asserting against it here reds a sibling. Log it
+as a Delivery Finding and leave the collision contract alone.
