@@ -25,6 +25,7 @@ completed_epics:
   - sw9
   - jt4
   - cp4
+  - sw7
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -1130,3 +1131,13 @@ completed_stories:
     title: Frame order — reproduce the ROM mainloop sequence so PLAY precedes SHOOT and SHOOT scans slot 13 first
     points: 3
     completed: '2026-07-27'
+  - id: sw7-24
+    epic: sw7
+    title: 'Fidelity/playtest: tune VM-flight aggression + close deferred fire nuances (PR #110 follow-ups)'
+    points: 3
+    completed: '2026-07-27'
+  - id: sw7-9
+    epic: sw7
+    title: R9 TIE choreography VM — port the per-fighter bytecode VM, TSPWAV wave composition, and Darth Vaders TIE
+    points: 0
+    completed: '2026-07-16'

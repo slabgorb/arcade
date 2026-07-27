@@ -1742,3 +1742,32 @@ that runs BETWEEN the sites and assert the side-effect's end-of-frame value THRO
 implementation stays red on value alone. Pair it with the sibling site that holds the undecremented
 value so both directions are pinned (spider 0xFF + segment 0xFE). Generalizes to any
 counter/animation/timer that ticks mid-frame between candidate hook points.
+
+---
+
+### A "deferred follow-ups" story is a claim about a DEAD tree — and a done sibling can say "absorbs backlog X" while X sits in the backlog untouched
+
+**Situation:** sw7-24 bundled four items (T4a/T4d/T5a/T5b) deferred from PR #110, filed 2026-07-21
+in epic sw7. By pickup (2026-07-27), epic sw8 had landed SIX stories on the same subsystem —
+and sw8-2's TITLE literally ends "absorbs backlog sw7-24", status done/approved, while sw7-24 sat
+in the sw7 backlog untouched. Nothing in the merge gate or setup sees this: the absorption lives
+only in a title string in ANOTHER epic's YAML.
+
+**Problem:** three of the four items were closed or owned elsewhere: T4d ($67 aim steer) and T5a
+(deep TGPROB rows) SHIPPED in sw8-2 (AC4/AC7, with their own suites); T4a's mechanism (§5
+play-cube clamp) was RE-FILED as sw8-9 after sw8-6's Dev finding. Writing RED to the story text
+would have re-specced shipped work and trampled sw8-9's turf. Meanwhile the one survivor, T5b
+(C$PV vs C_AS fire cond-1), had been ruled "not revisited — no feel problem surfaced" by sw8-2
+AC8 — but sw8-6/sw8-7 then CHANGED the geometry that ruling was measured under (TIEs now fly
+past and sit BEHIND the eye in a denser swirl), reviving it: the C_AS-only gate lets off-screen
+TIEs fire (fixture proof: 30 fires in 160 frames from behind the eye, on today's tree).
+
+**Prevention:** before scoping RED on any deferred-items/follow-up story: (1) `git log
+origin/develop --oneline` since the parent PR and grep ALL epic YAMLs for the story's own id — a
+done story titled "absorbs/supersedes {id}" is a closure the sprint tracking never recorded;
+(2) re-verify every item against the CURRENT tree — the code's own TODO comments name what
+survived (sim.ts's `TODO(playtest)` pointed at the play-cube clamp and sw8-2 AC3 precisely);
+(3) treat a sibling's "not revisited / no feel problem" ruling as MEASURED UNDER a specific
+geometry — if later stories moved that geometry, the ruling is stale and the item is live again
+(the rb4-16 "re-measure the baseline" rule, applied to a design election instead of a number).
+Scope RED to the residue; descope the rest each with a named owner story or shipping evidence.
