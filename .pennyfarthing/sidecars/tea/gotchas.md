@@ -1599,3 +1599,37 @@ past the cockpit, `|x|/depth` dead flat). Put the probe OUTSIDE `tests/` or dele
 to also pin "un-shot TIE never rams." Don't: ram-removal is a DIFFERENT story's contract (9-3 "no
 body collision"), pinned by `space-combat.test.ts`; asserting against it here reds a sibling. Log it
 as a Delivery Finding and leave the collision contract alone.
+
+---
+
+### Retiring an invented CADENCE constant: rule the fixture-PARK seam and hunt the constant's dt-unit hitchhikers before Dev zeroes it
+
+**Situation:** sw8-7 deletes star-wars' invented `SPAWN_INTERVAL = 1.5` spawn countdown (the ROM
+tops its 3 alien slots up EVERY frame — `LDA WV.LIV / CMPA #03 / IFLO / JSR ADASHP`,
+WSMAIN.MAC:1450-1454; onset is NWNSHP at phase init, WSCPU.MAC:969; slot count is `A$EQ ==3`,
+WSGLOB.MAC:589). The honest fix zeroes/retires the constant — and the constant has TWO classes of
+test hitchhiker a symbol-grep half-finds.
+
+**Problem:** (1) `spawnTimer: 1e9` is the fleet's quiet-sky park idiom in 15 files — a fix that
+deletes the countdown floods every parked fixture with mooks in GREEN. (2) Three suites used the
+constant as a *dt step unit* (`stepGame(s, NO_INPUT, SPAWN_INTERVAL / 4)`): zero the constant and
+those steps become `dt = 0`, killing motion assertions ("TIEs close over time") as false collateral
+far from the spawner. Also (3) the invented per-wave `spawnInterval` RAMP was pinned green in FOUR
+suites (`w5 < w1`, `toBe(SPAWN_INTERVAL)`, `> 0` after-floor asserts) — all green-now-DOOMED.
+
+**Prevention:** grep the constant across tests/ and sort hits into: park-idiom fixtures (KEEP by
+writing "a positive timer still parks" into the RED contract — the ROM cadence becomes the
+degenerate countdown seeded 0 / re-armed 0), dt-units (pre-migrate to literal seconds, byte-identical
+today, so the constant can retire), and value/ramp pins (TEA retires them now with deviations — Dev
+cannot move goalposts). Bonus trap for the same shape: a floor constant guarding the old ramp
+(`SPAWN_INTERVAL_FLOOR = 0.3`, `Math.max(floor, …)`) silently clamps the new 0 back up — flag it as
+a finding or the refill RED stays red under a "correct" fix. And spec whether `initialState` stays
+enemy-empty: a ROM-literal init-fill leaks ghost mooks into every fixture that doesn't override
+`enemies`; "full density within 3 ticks through stepGame" preserves the fixture base and is
+imperceptible vs frame-0.
+
+**Quarry pointer (star-wars spawn machinery):** WV.LIV lifecycle = NWNSHP `CLR`/`INC`
+(WSCPU.MAC:996,1005), ADASHP construct+group-advance (:1058, last group loops forever — TWV2Z),
+CPUGON `DEC` on death (:813). Space phase END is TIME-boxed by the PH.TIM music schedule
+(WSMAIN.MAC:1420-1448), NOT a kill quota — filed as sw8-11; the TWV2Z tail-loop fallback gap as
+sw8-10.
