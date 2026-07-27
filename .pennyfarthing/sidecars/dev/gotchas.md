@@ -838,3 +838,30 @@ your change made MORE faithful (the code now matches the ROM's straight facing e
 freeze it: re-spell its `ours.line`/`ours.verbatim` AND the claim/reasoning prose to the new code so
 the gate keeps verifying our code still faces the player. Freezing a still-live CONFIRMED match
 would stop the audit checking it. Run the citations suite green before committing.
+
+---
+
+### A REFERENCE branch bundles decisions your story hasn't ratified — port the mechanism, strip the pending ruling, and guard the CHECK not the MOVEMENT
+
+**Situation:** cp2-16 (centipede) ports the PLAYEX stamps from the superseded cp2-15 reference
+branch (`7babb64`). The reference's stepPlayingFrame threads a `died` flag that also FREEZES the
+spider/flea/SHOOT steppers on the kill frame — the ROM's BUGMV/ANTMV dead-gun gates — but the
+session had explicitly routed that freeze-vs-run question for a ruling (upstream #35 keeps
+steppers running for replay stability, and an attract demo now depends on the draw cadence).
+
+**Problem:** porting the reference wholesale would have decided the ruling silently, shifted
+rng-draw cadence on every death frame, and put the attract demo's determinism in play — none of
+it demanded by any red. The reference is spec-with-proofs for the MECHANISM (stamps at the three
+PLAY caller sites, slot-12 post-SHOOT/post-move phasing), not a ratified design for every choice
+it happens to contain.
+
+**Prevention:** before porting, split the reference diff into (a) what the reds demand, (b) what
+both regimes agree on, (c) what's pending a ruling. Here the narrow line: gate the PLAY CHECKS
+one-death-per-frame (`!playerHit`) — in the ROM a dead gun's PLAY is unreachable (both callers
+gate on PLAYP), and in #35's regime the single consolidated check had the same net effect, so
+(b) covers it — while the STEPPERS stay ungated (c). Log the strip as a deviation so the ruling
+story knows the gates are cleanly addable. Bonus, same story: a finding that counts occurrences
+of a line-number STRING overcounts wrong citations — of four `1447`s in the dossier, two were a
+DIFFERENT instruction genuinely at :1447 (`ADC X,MOBJH`); verify each occurrence's claimed
+instruction against the quarry before sweeping, and expect inherited line cites to be off by a
+line or two per copy (the reference's ":1281 LDX I,NCENT-1" is :1284 in this quarry).

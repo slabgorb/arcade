@@ -839,3 +839,27 @@ now a different line) as drifted. But A-009 carries `remediated_by: sw7-11` — 
 DELIBERATELY skips remediated findings and freezes their line as a historical record (that is why
 `citations.test.ts` was green). Before confirming any "citation drift" finding, check the finding's
 `remediated_by`/frozen status; a frozen citation pointing at retired code is correct, not a defect.
+
+---
+
+### A subagent's "stale quarry copy / N-line offset" claim can be ITS OWN newline handling — adjudicate with universal-newline reads of BOTH copies before believing it
+
+**Situation:** cp2-16 review. The rule-checker verified all 8 new CENTI4.MAC citations exact
+against the repo-bundled quarry (`reference/atari-source/...`) but reported the OTHER local copy
+(`~/Projects/centipede-source/...`) as "stale, systematically 2-line offset" (`:1284` allegedly
+landing on `AND I,0F`), md5s and line counts differing.
+
+**Problem:** the review had used that other copy for its own verifications — a true staleness
+claim would have invalidated every line cite made from it, and blindly repeating the subagent's
+framing into findings would have planted a false "corrupt quarry" record. But these ROM sources
+are CRLF-MIXED: split them without universal newlines and line numbers drift; md5/line-count
+deltas can be pure newline bytes. The subagent's offset was an artifact of ITS splitting, not
+the file's content.
+
+**Prevention:** before recording any quarry-discrepancy claim, read BOTH copies with
+`open(p, newline=None, encoding='latin-1')` and print the exact disputed lines side by side. In
+this case every cited line was IDENTICAL in both copies (`:1284 LDX I,NCENT-1`, `:1449 JSR
+PLAY`, `:1805-1806` stamp) — the right disposition was "citations verified against both; prefer
+the repo-bundled path as canonical", not "stale copy". The general rule: a line-number dispute
+between two readers of the same ROM source is a NEWLINE question before it is a REVISION
+question.

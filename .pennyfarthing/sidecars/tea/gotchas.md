@@ -1697,3 +1697,48 @@ correction as a deviation; the ROM outranks the story prose. Bonus: EXPLOD's mai
 kill-frame explosion pictures order-observable — PLAY-killed-in-MOTION ends its frame one picture
 decremented (0xFE), BUGMV/SHOOT kills hold the full 0xFF; pin both and say which asserts pass
 today coincidentally so Dev doesn't puzzle at them.
+
+---
+
+### A superseded session's PROBE is a ready-made RED — lift its fixtures verbatim and demand its failure messages MESSAGE-FOR-MESSAGE
+
+**Situation:** cp2-16 RED (centipede). The story inherits from a superseded cp2-15 session whose
+review probe ran a 10-test reference suite against the exact tree now on develop (`156430e`) and
+recorded 4 failures with their assertion messages (`expected 20 to be 255`, `expected +0 to be
+254`, `expected +0 to be 200`, `expected 1 to be 4`).
+
+**Problem:** re-deriving fresh fixtures for a probe-documented delta wastes the probe's proof AND
+risks staging drift — a transcription slip (window off by one, wrong dv) produces a red that fails
+for the wrong reason and looks identical in a pass/fail count. The probe's messages are a
+fingerprint: each names the exact assert that fires and today's exact wrong value.
+
+**Prevention:** (1) Confirm develop's HEAD is STILL the probe's tree before trusting it (here:
+`156430e` unchanged; a moved head re-opens every probe claim). (2) Lift the probed fixtures
+verbatim into the story-scoped file, cutting only what's out of scope. (3) Verify the red
+reproduces the probe messages verbatim — a different message or a different first-failing assert
+means transcription error, not a new bug; investigate before committing. (4) Re-verify every ROM
+line the lifted comments cite against YOUR quarry copy — this session the archive's ANTMV move
+cite (`:105`) was two lines off the local copy's `27$: STA ANTV` (`:103`), the known
+line-staircase trap; cite what you opened, not what you inherited.
+
+---
+
+### An end-of-frame COUNTER value pins the STAMP SITE, not just the stamp — use a downstream stepper's same-frame delta to force WHERE a fix lands
+
+**Situation:** cp2-16's declared scope is "stamp the killing slot 0xFF" (PLAYEX :1805-1806). A
+naive red (`pic === 0xFF` after a segment kills the gun) is satisfiable by bolting the stamp onto
+the sim's existing consolidated post-EXPLOD `checkPlayerContact` — one line, green, and the frame
+order stays wrong.
+
+**Problem:** the assertion pins the VALUE but not the SITE. The ROM stamps per-caller: MOTION's
+PLAY (:1449) stamps BEFORE EXPLOD (:31) — the segment ends its kill frame already counted down to
+0xFE — while BUGMV (:33) and ANTMV (:37) stamp AFTER it and hold 0xFF. Only a stamp INSIDE the
+MOTION site can ever end a frame at 0xFE, because stepExplosions has already run by the time the
+consolidated check fires.
+
+**Prevention:** when a story relocates a side-effect into a specific call site, find a stepper
+that runs BETWEEN the sites and assert the side-effect's end-of-frame value THROUGH it: the delta
+(0xFE vs 0xFF here) discriminates the site with no source inspection, and the wrong-site
+implementation stays red on value alone. Pair it with the sibling site that holds the undecremented
+value so both directions are pinned (spider 0xFF + segment 0xFE). Generalizes to any
+counter/animation/timer that ticks mid-frame between candidate hook points.
