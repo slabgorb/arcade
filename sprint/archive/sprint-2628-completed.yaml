@@ -1152,3 +1152,8 @@ completed_stories:
     title: Correct the OSTBO wrong-prose — AC-1 in epic-jt2.yaml and docs/rom-study/subsystems.md say 'fraction included'; the ROM compares WHOLE PIXELS + PLANTZ (fraction EXCLUDED, PPOSY offset +0 vs the flight core's +1). Independently re-derived twice in jt2-3 (TEA triangulation + rule-checker item-0, quoted lines RAMDEF.SRC:174, JOUSTRV4.SRC:5008-5009, 6494, 6071-6072). Fix the dossier prose at subsystems.md:137-139; the corrected law is already pinned by tests/joust.test.ts + JT23 claims. Required by the jt2-3 Reviewer (tracked, not lost).
     points: 1
     completed: '2026-07-27'
+  - id: sw8-11
+    epic: sw8
+    title: Space phase END is TIME-boxed in the ROM, not kill-quota'd — PHESP1 advances to PH$SP2 on the PH.TIM music schedule (theme→theme B→descent→'GO AHEAD AND DESCEND', WSMAIN.MAC:1420-1448) with an endless TIE supply; our SPACE_WAVE_QUOTA=6 kill gate (state.ts:882, self-described 'chosen to play right… until deeper reverse-engineering recovers the real numbers') is that unrecovered number. Rule the divergence and port or ratify
+    points: 3
+    completed: '2026-07-27'

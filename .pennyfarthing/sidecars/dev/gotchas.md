@@ -865,3 +865,24 @@ of a line-number STRING overcounts wrong citations — of four `1447`s in the do
 DIFFERENT instruction genuinely at :1447 (`ADC X,MOBJH`); verify each occurrence's claimed
 instruction against the quarry before sweeping, and expect inherited line cites to be off by a
 line or two per copy (the reference's ":1281 LDX I,NCENT-1" is :1284 in this quarry).
+
+---
+
+### The known "TEA's re-seat is incomplete" failure has a NUMERIC variant — grep the trigger FIELD, and expect the citation gate to hand you the story's own finding as LOST
+
+**Situation:** sw8-11 GREEN (quota → PH.TIM time-box). TEA's sweep was thorough by SYMBOL
+(`SPACE_WAVE_QUOTA`, 12 files re-seated, full-suite-verified) — and still two fixtures broke in
+GREEN, because they forced the space→surface cross with a NUMERIC literal (`phaseKills: 9999`)
+the symbol grep cannot see. One even said "whatever mechanism GREEN builds" in its own comment —
+mechanism-agnostic intent, mechanism-specific staging.
+
+**Fix/Prevention:** after a mechanism swap, grep the trigger FIELD (`phaseKills:` /
+`spawnTimer:` / whatever the old gate read), not just the retired constant. Re-seat onto the
+RED's dual-mechanism helper so the fixture stays valid under both.
+
+**Citation-gate corollary:** deleting the divergent line LOSES exactly the citation of the audit
+finding that documented the divergence (here A-019 quoting `export const SPACE_WAVE_QUOTA = 6`).
+That is the one case where `remediated_by: "<story>"` is the honest exit (the story really
+removed the defect; X-002/sw7-7 precedent) — everything else re-anchors mechanically
+(`tools/audit/reanchor-citations.mjs --write`; its full-file re-serialization normalizes unicode
+escapes across all findings files, so warn the Reviewer the bulk of that diff is mechanical).
