@@ -1166,3 +1166,8 @@ completed_stories:
     title: Four repos carry no scaffold suite at all — lobby, tempest, star-wars, asteroids have no config guard of any kind
     points: 3
     completed: '2026-07-27'
+  - id: cp2-17
+    epic: cp2
+    title: 'Death-frame stepping ruling — ROM BUGMV/ANTMV freezes (:289-291/:50-56) vs #35 replay stability; pin the multi-collider frame (cross-hazard PLAYEX guards + NCENT-1 tie-break; evidence in cp2-16 session archive)'
+    points: 3
+    completed: '2026-07-27'

@@ -8,6 +8,5 @@ sprint:
   status: active
   number: 2628
 epics:
-  - cp2
   - td1
   - sw8
