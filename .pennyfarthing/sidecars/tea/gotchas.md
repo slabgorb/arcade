@@ -1658,3 +1658,42 @@ both wrong seams (check-before-move and shoot-before-check), not just the curren
 (2) before trusting a multi-assert RED, run a throwaway PROBE test asserting the CURRENT
 wrong behavior (creature died, wrong points paid) — proves the staging engages the
 mechanism and the red is not vacuous; delete the probe before commit.
+
+**⚠ CORRECTION (2026-07-27, a-2 cp2-15 review probe):** the sentence above claiming the
+consolidated `checkPlayerContact` reading `state.flea` pre-move "already reproduces the ROM's
+interleave for free" is REFUTED by execution: running a-2's dual-window suite against the merged
+`156430e` tree, a fast flea in both boxes kills the PLAYER and scores 0 where the ROM's SHOOT
+kills the FLEA for 200 first (`expected +0 to be 200`), and a slow flea is never sped up
+(`expected 1 to be 4`). A pre-SHOOT check with the pre-step position is NOT equivalent to a
+post-SHOOT check with the post-step position — the shot resolution between them changes who
+lives. Scoped to cp2-16 with the shipped in-code comment to correct; see the next entry and
+`sprint/archive/cp2-15-session-superseded-a2.md`.
+
+---
+
+### A FRAME-ORDER story's dual-window fixtures must be staged valid under BOTH orders — and "creatures inherit it" is refuted by grepping the callee's callers
+
+**Situation:** cp2-15 (centipede) — the sim resolves SHOOT before PLAY and scans segments before
+slot 13; the ROM runs MOTION(+PLAY) :30, EXPLOD :31, BUGMV(+PLAY) :33, SHOOT :34, SCORP :36,
+ANTMV(+PLAY) :37. RED must pin "on a dual-window frame the PLAYER dies and nothing scores."
+
+**Problem:** (1) A dual-window fixture placed naively is only in-window under ONE order — the
+mover shifts between the old code's check moment (pre-MOTION) and the ROM's (post-MOTION), so the
+red discriminates on GEOMETRY, not order, and survives a wrong fix. (2) The AC said the fix should
+be "written so cp3-2/cp3-3 creatures inherit it" — but PLAY has exactly THREE callers (:108 ANTMV,
+:417 BUGMV, :1449 MOTION; SCORP none), and ANTMV runs AFTER SHOOT — the flea's dual-window frame
+resolves the SHOT first in the ROM. Pinning player-first for every creature would have baked the
+overshoot IN and rejected the faithful fix.
+
+**Prevention:** (1) Measure the mover's per-frame step against the window width and stage the
+meeting point so pre- AND post-move positions are BOTH inside (centipede: step 2 vs window 6 →
+offset the actor 2px from the meeting point; spider ≤2 vs 5/10; slot 12 doesn't move until after
+SHOOT so pre-move staging serves both). Then every red discriminates on ORDER alone. Add the
+mirror pair (in-window post-move-only kills / pre-move-only misses, both halves in ONE test) to
+pin the mover-vs-shot order directly. (2) For any "X inherits Y" AC clause, grep the callee's
+CALL SITES and their mainloop positions before extending the pin — pin the exceptions as
+keep-behavior GUARDS (green before and after) so an overshooting fix goes red. Log the AC
+correction as a deviation; the ROM outranks the story prose. Bonus: EXPLOD's mainloop slot makes
+kill-frame explosion pictures order-observable — PLAY-killed-in-MOTION ends its frame one picture
+decremented (0xFE), BUGMV/SHOOT kills hold the full 0xFF; pin both and say which asserts pass
+today coincidentally so Dev doesn't puzzle at them.
