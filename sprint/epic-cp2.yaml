@@ -235,10 +235,11 @@ stories:
     title: PLAYEX side-effects on a gun death — stamp the colliding slot 0xFF and blank the shot (CENTI4.MAC:1805-1808)
     points: 2
     priority: p3
-    status: in_review
+    status: done
     started: '2026-07-27T11:00:35Z'
     repos: centipede
     workflow: tdd
+    completed: '2026-07-27'
     type: bug
     review_verdict: approved
   - id: cp2-17

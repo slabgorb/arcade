@@ -1141,3 +1141,8 @@ completed_stories:
     title: R9 TIE choreography VM — port the per-fighter bytecode VM, TSPWAV wave composition, and Darth Vaders TIE
     points: 0
     completed: '2026-07-16'
+  - id: cp2-16
+    epic: cp2
+    title: PLAYEX side-effects on a gun death — stamp the colliding slot 0xFF and blank the shot (CENTI4.MAC:1805-1808)
+    points: 2
+    completed: '2026-07-27'
