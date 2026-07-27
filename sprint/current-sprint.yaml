@@ -10,5 +10,4 @@ sprint:
 epics:
   - cp2
   - td1
-  - jt2
   - sw8

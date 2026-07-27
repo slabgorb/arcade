@@ -26,6 +26,7 @@ completed_epics:
   - jt4
   - cp4
   - sw7
+  - jt2
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -1145,4 +1146,9 @@ completed_stories:
     epic: cp2
     title: PLAYEX side-effects on a gun death — stamp the colliding slot 0xFF and blank the shot (CENTI4.MAC:1805-1808)
     points: 2
+    completed: '2026-07-27'
+  - id: jt2-8
+    epic: jt2
+    title: Correct the OSTBO wrong-prose — AC-1 in epic-jt2.yaml and docs/rom-study/subsystems.md say 'fraction included'; the ROM compares WHOLE PIXELS + PLANTZ (fraction EXCLUDED, PPOSY offset +0 vs the flight core's +1). Independently re-derived twice in jt2-3 (TEA triangulation + rule-checker item-0, quoted lines RAMDEF.SRC:174, JOUSTRV4.SRC:5008-5009, 6494, 6071-6072). Fix the dossier prose at subsystems.md:137-139; the corrected law is already pinned by tests/joust.test.ts + JT23 claims. Required by the jt2-3 Reviewer (tracked, not lost).
+    points: 1
     completed: '2026-07-27'
