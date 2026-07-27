@@ -137,7 +137,8 @@ stories:
     title: "music-bake pipeline cannot reproduce finish_ground.wav: sw7-18's PMREB one-shot exists only in R2 — OUTPUT_FILES has no entry, so 'just deploy-assets' never re-uploads it and a bucket wipe loses it. Add finishGround (REB, TUNTAB 19-22) to gen-music-data TUNE_SPEC + bake OUTPUT_FILES and drop the carve-out in bake-music.test.mjs's manifest-agreement test (gap surfaced/documented by sw8-12)"
     points: 1
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-07-27'
     repos: star-wars
     workflow: tdd
     type: chore
