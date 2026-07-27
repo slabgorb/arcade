@@ -1,7 +1,7 @@
 # Story jt2-3 Context
 
 ## Title
-The joust — box broad-phase + span narrow-phase, OSTBO sub-pixel resolution, bounce-apart, facing + bump registers
+The joust — box broad-phase + span narrow-phase, OSTBO whole-pixel resolution, bounce-apart, facing + bump registers
 
 ## Metadata
 - **Story ID:** jt2-3
@@ -24,7 +24,7 @@ intended behavior._
 - Out of scope: unrelated changes.
 
 ## Acceptance Criteria
-- The joust resolves on the 16-bit sub-pixel (PLANTZ + PPOSY) comparison: a 1-fraction-unit height difference decides the winner; an exact tie bounces both — proven at the fraction level, not integer Y (the dossier's false-tie trap).
+- The joust resolves on the WHOLE-pixel (PLANTZ + PPOSY, fraction EXCLUDED — OSTBO reads PPOSY at offset +0) comparison: a 1-whole-pixel height difference decides the winner; an exact tie — same whole pixel, any fraction — bounces both, proven at the whole-pixel level, not the 8.8 fraction (the dossier's false-'sub-pixel' trap, corrected in jt2-8).
 - Facing exists; the skid chain is reachable (a facing-vs-input reversal enters it) and skidding demonstrably lowers the lance via PLANTZ=2 into a joust outcome; bump registers drain by the cited laws (X <=3 px/frame, Y whole).
 - Bounce-apart velocities/bumps match the transcribed laws; enemies never kill each other (enemy-enemy contact always bounces); kill events carry 500/750/1500 per type — all cited + claims entries, citations suite green.
 - COLLISION_TABLES (and every table this story consumes) carry count floors — deleting a table or truncating spans reddens the suite (prove red once); determinism replay through a joust stays bit-for-bit.

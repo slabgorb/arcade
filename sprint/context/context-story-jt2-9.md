@@ -50,7 +50,7 @@ This story captures the user's playtest feedback from the jt2-7 demo (2026-07-20
 **Source:** jt2-7 user playtest (archive line ~409) — "Z-order across ALL platform tiers." The Reviewer noted (archive lines 410–411) that the OSTBO transcription is HEIGHT-ONLY, so verify against the ROM before changing any law.
 
 **Data sources:**
-- jt2-3 description (epic-jt2.yaml lines 40–42) — OSTBO sub-pixel resolution (PLANTZ + PPOSY)
+- jt2-3 description (epic-jt2.yaml lines 40–42) — OSTBO whole-pixel resolution (PLANTZ + PPOSY)
 - jt2-8 chore (epic-jt2.yaml lines 114–116) — "OSTBO: AC-1 ... the ROM compares WHOLE PIXELS + PLANTZ (fraction EXCLUDED, PPOSY offset +0 vs the flight core's +1 — RAMDEF.SRC:174, JOUSTRV4.SRC:5008-5009, 6494, 6071-6072)"
 - ROM (JOUSTRV4.SRC:5002-5012) — the real joust law, cited in epic-jt2.yaml jt2-3
 
