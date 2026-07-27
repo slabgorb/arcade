@@ -1171,3 +1171,8 @@ completed_stories:
     title: 'Death-frame stepping ruling — ROM BUGMV/ANTMV freezes (:289-291/:50-56) vs #35 replay stability; pin the multi-collider frame (cross-hazard PLAYEX guards + NCENT-1 tie-break; evidence in cp2-16 session archive)'
     points: 3
     completed: '2026-07-27'
+  - id: sw8-14
+    epic: sw8
+    title: "music-bake pipeline cannot reproduce finish_ground.wav: sw7-18's PMREB one-shot exists only in R2 — OUTPUT_FILES has no entry, so 'just deploy-assets' never re-uploads it and a bucket wipe loses it. Add finishGround (REB, TUNTAB 19-22) to gen-music-data TUNE_SPEC + bake OUTPUT_FILES and drop the carve-out in bake-music.test.mjs's manifest-agreement test (gap surfaced/documented by sw8-12)"
+    points: 1
+    completed: '2026-07-27'
