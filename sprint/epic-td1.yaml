@@ -172,7 +172,8 @@ stories:
       SCOPE NOTE: these four repos differ from each other more than the td1-7 three did (the lobby has no lint script, and allowedHosts/tunnel config is not uniform across them), so expect per-repo variation rather than a verbatim four-way copy.
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-07-27'
     repos: lobby,tempest,star-wars,asteroids
     workflow: tdd
     acceptance_criteria:
