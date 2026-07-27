@@ -23,6 +23,7 @@ completed_epics:
   - cp3
   - jt3
   - sw9
+  - jt4
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -1106,5 +1107,10 @@ completed_stories:
   - id: sw9-3
     epic: sw9
     title: Attract-mode parity pass — hold the rotating banner/instructions/scoring/hi-score machine (sw7-10) beside the longplay attract loop and close ordering/timing/text gaps
+    points: 2
+    completed: '2026-07-26'
+  - id: jt4-5
+    epic: jt4
+    title: "Demo — 'two knights, full loop': co-op spawn -> waves -> death -> extra man -> game-over on 5279, dev-overlay readout"
     points: 2
     completed: '2026-07-26'
