@@ -172,7 +172,7 @@ stories:
       SCOPE NOTE: these four repos differ from each other more than the td1-7 three did (the lobby has no lint script, and allowedHosts/tunnel config is not uniform across them), so expect per-repo variation rather than a verbatim four-way copy.
     points: 3
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-07-27'
     repos: lobby,tempest,star-wars,asteroids
     workflow: tdd
@@ -180,7 +180,9 @@ stories:
       - lobby, tempest, star-wars and asteroids each gain a tests/scaffold.test.ts guarding at minimum the pinned port, base, strictPort on both blocks, and host 127.0.0.1 on both blocks.
       - Every new assertion is mutation-checked and observed RED before being accepted, including the both-pins-in-server-preview-bare case that td1-7 proved slips past an occurrence count.
       - All four suites and builds stay green, and each repo still passes standalone (a bare clone must not need the orchestrator).
+    completed: '2026-07-27'
     type: chore
+    review_verdict: approved
   - id: td1-10
     title: just test-all and build-all mask every game's failure but the last — just ci prints CI passed with six of seven red
     description: |-
