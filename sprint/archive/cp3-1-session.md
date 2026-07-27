@@ -105,6 +105,9 @@ Each finding is one list item. Use "No upstream findings" if none.
   `checkPlayerContact` to the end of the frame), not introduced by cp3-1.
   Affects `src/core/sim.ts` (order `checkPlayerContact` between `stepSpider` and
   `resolveSpiderShotHit`). *Found by Reviewer during review.*
+  **RESOLVED by cp2-15** — centipede `fe9a9aa` orders `checkPlayerContact`
+  exactly there and blanks the shot on a hit (PLAYEX `:1807-1808`), pinned by
+  `tests/frame-order.test.ts` AC-1; claims CT-102/103/104.
 
 - **Improvement** (non-blocking): the SHOOT-tail delay gate (`:2305-2307
   LDA X,DEAD-1 / ORA DELAY / BEQ 50$`) means the ROM keeps ticking a killed
@@ -128,6 +131,10 @@ Each finding is one list item. Use "No upstream findings" if none.
   cp2-scoped shared-skeleton work with its own regression surface across every
   segment test. Not hacked in here. Affects `src/core/sim.ts`.
   *Found by Reviewer during review (edge-hunter retry, triaged).*
+  **RESOLVED by cp2-15** — centipede `fe9a9aa` runs one descending SHOOT scan
+  (spider 13 → scorpion/flea 12 → segments 11..0) with the segment resolution
+  moved to the scan's tail, pinned by `tests/frame-order.test.ts` AC-2; the
+  full 900-test suite stayed green.
 
 ## Design Deviations
 
