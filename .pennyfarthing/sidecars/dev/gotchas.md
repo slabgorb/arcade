@@ -886,3 +886,27 @@ That is the one case where `remediated_by: "<story>"` is the honest exit (the st
 removed the defect; X-002/sw7-7 precedent) — everything else re-anchors mechanically
 (`tools/audit/reanchor-citations.mjs --write`; its full-file re-serialization normalizes unicode
 escapes across all findings files, so warn the Reviewer the bulk of that diff is mechanical).
+
+---
+
+### Splitting a CONCATENATED bake needs the release-ORDER check, and a positional manifest scrape can mask a missing bake source
+
+**Situation:** sw8-12 split theme B out of star-wars' concatenated `space_theme.wav` (the core now
+cues `themeB` at its own 10s milestone) — a code change AND an asset re-shape in one story.
+
+**Problem (two distinct):** (1) The asset and the code deploy through DIFFERENT channels (R2
+deploy-assets by hand vs the release CI), so there is a WRONG ORDER in each direction: upload the
+re-baked assets before the merge and LIVE (old code) plays a re-shaped loop early; release the new
+code before uploading and the old concatenated wav DOUBLE-PLAYS theme B (loop lands it at ~8.3s,
+the cue again at 10s). (2) bake-music.test.mjs's manifest-agreement test scraped audio.ts's TUNES
+with a POSITIONAL count (first 5 entries) — which silently excluded `finishGround` and thereby
+hid that `finish_ground.wav` has NO bake source at all (OUTPUT_FILES never included it; a bucket
+wipe loses the asset forever). Extending the count by one for the new tune would have deepened
+the mask.
+
+**Prevention:** (1) When a story re-shapes a served asset, write the ORDERING into the Delivery
+Findings as release-blocking: deploy-assets with/before the release, never from the unmerged
+branch; verify the bake locally into the scratchpad instead. (2) Never extend a positional scrape
+— scrape the WHOLE manifest, and if an entry has no bake source, state the carve-out in the test
+with a filed owner (sw8-14) rather than tuning the count so the test can't see it. A test that
+"agrees" by not looking is the silent-404 bug the suite exists to prevent.

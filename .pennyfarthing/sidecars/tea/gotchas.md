@@ -1805,3 +1805,36 @@ LEFT-TO-RIGHT — `CMPD #2+7+1*20.` is (2+7+1)×20 = 200 frames, not 29 — and 
 re-ratify the 20 Hz game frame. And the box is NOT constant-length: `SC.FWV==0` seeds
 PH.TIM=39 on the run's FIRST wave ("START A BIT AHEAD"), so wave 1's box is 19.05s vs 21s —
 a boundary test staged at 21s on wave 1 is wrong by two whole seconds.
+
+---
+
+### Moving an EDGE cue to a mid-phase MILESTONE: phase-stamp every collected cue, and MEASURE the baked asset before deciding who owns an interior milestone
+
+**Situation:** sw8-12 (star-wars) ports the space music from phase-edge cues to the ROM's PH.TIM
+milestone schedule (theme@2s / themeB@10s / descent@20s, WSMAIN.MAC:1415-1444) on sw8-11's
+phaseTime clock.
+
+**Problem (three distinct traps):** (1) A once-only pin ("exactly one descent between 20s and the
+warp") PASSED against the unfixed code — the OLD edge-cued descent lands inside the collection
+window, and a bare count can't tell the milestone from the edge. (2) The 10s theme-B milestone
+looked like it needed no core cue because the shipped `space_theme.wav` already concatenates
+TH5+THB "in the order WSMAIN fires them" — but running the bake's own pm-player
+(`renderVoice` × TICK_SECONDS) measured TH5 at 6.332s, so the concatenation lands THB at ~8.33s,
+1.67s EARLY: the ROM's schedule has real SILENCE between tunes, and back-to-back baking erased it.
+(3) The old edge condition (`phase==='space' && next==='surface'`) had silently never fired for
+wave 1 at all — sw7-18 made wave 1 fly space→trench, so the descent tune was missing from every
+first wave and nobody noticed; the milestone port "widens" behavior on wave 1 and the Reviewer
+must know that is deliberate.
+
+**Prevention:** (1) When a cue MOVES moments, stamp each collected cue with the PHASE (or
+equivalent moment marker) it fired in and assert the stamp — count alone passes coincidentally
+off the old moment landing in the window. Audit every pre-GREEN pass for exactly this. (2) Before
+scoping an interior milestone as "carried by the asset", MEASURE the asset with the bake's own
+tools (one `node -e` against pm-player); a concatenated bake encodes ZERO-gap sequencing and
+diverges the moment the ROM schedule has silence in it. Route the asset restructuring as a
+blocking Delivery Finding with the measured durations IN it. (3) For any edge-cued X, enumerate
+the phase-graph variants (wave 1's space→trench vs 2+'s space→surface) — an edge cue can be dead
+for a whole class and the milestone port resurrects it; record the widening as a Gap finding.
+**Bonus re-seat shape:** a parity/law suite whose staging rides the moving moment re-seats best
+as a MOMENT-AGNOSTIC helper (collect at the old edge; if silent, fly to the new milestone) —
+green under both codes, red under a half-fix, and the law's assertions never move.
