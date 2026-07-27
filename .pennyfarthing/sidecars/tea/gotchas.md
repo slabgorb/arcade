@@ -1771,3 +1771,37 @@ survived (sim.ts's `TODO(playtest)` pointed at the play-cube clamp and sw8-2 AC3
 geometry — if later stories moved that geometry, the ruling is stale and the item is live again
 (the rb4-16 "re-measure the baseline" rule, applied to a design election instead of a number).
 Scope RED to the residue; descope the rest each with a named owner story or shipping evidence.
+
+---
+
+### A MECHANISM-SWAP story (quota → clock): dual-stage the edge in a shared helper so 12 sibling suites are green under BOTH, and make kill-frame stagings close under ANY dt
+
+**Situation:** sw8-11 ports the space phase's END from the invented 6-kill quota to the ROM
+PH.TIM time-box (WSMAIN.MAC:1418-1448). Twelve suites staged "end of space" as
+`phaseKills: SPACE_WAVE_QUOTA` — every one green today and doomed at GREEN, and the constant
+itself must vanish, so the sw3-15 "move the hit inside the new gate" re-seat doesn't apply:
+the GATE ITSELF is being replaced.
+
+**What worked:** a support helper (tests/support/space-phase-end.ts) staging BOTH triggers as
+LITERALS — `SPACE_PHASE_OVER = { phaseKills: 6, phaseTime: 21 } as Partial<GameState>` — spread
+into fixtures in place of the old idiom. Under the old code the unknown `phaseTime` key is
+runtime-inert and the quota trips; under the new code the clock trips. Full-suite proof pre-fix:
+182/183 files green, only the new contract red. Three helper flavours cover the staging space:
+OVER / NOT_OVER / CLOSING_KILL (kill-frame carry tests).
+
+**Traps hit:** (1) TS weak-type check — a fresh literal with ONLY the not-yet-existing field
+(`{ phaseTime: 21 } as Partial<GameState>`) fails "no properties in common"; anchor the cast
+with one REAL overlapping field (`phaseKills`) and it compiles clean under strict tsc.
+(2) A "one step from the edge" staging pinned at `phaseTime: 20.99` silently depends on dt —
+phase-progression's `crossFrom` steps at dt=0.001, which NEVER crosses 21 in its 4-step budget.
+A kill-frame staging must be already-spent (`phaseTime: 21`) so the killing step is the warp
+step under both mechanisms at any dt. (3) Progress-sweep guards (death-star-body's monotonic
+growth) can't dual-stage one point — drive BOTH axes together (`kills k` + `clock 21·k/6`) so
+the sweep rises under either mechanism.
+
+**Radix/arithmetic corollary (the quarry side):** WSMAIN's milestone compares evaluate
+LEFT-TO-RIGHT — `CMPD #2+7+1*20.` is (2+7+1)×20 = 200 frames, not 29 — and the sibling
+`;2 SECONDS` comments on `#2*20.` (WSMAIN.MAC:2064/2096/2128) both prove the convention and
+re-ratify the 20 Hz game frame. And the box is NOT constant-length: `SC.FWV==0` seeds
+PH.TIM=39 on the run's FIRST wave ("START A BIT AHEAD"), so wave 1's box is 19.05s vs 21s —
+a boundary test staged at 21s on wave 1 is wrong by two whole seconds.

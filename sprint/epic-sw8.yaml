@@ -106,7 +106,17 @@ stories:
     title: Space phase END is TIME-boxed in the ROM, not kill-quota'd — PHESP1 advances to PH$SP2 on the PH.TIM music schedule (theme→theme B→descent→'GO AHEAD AND DESCEND', WSMAIN.MAC:1420-1448) with an endless TIE supply; our SPACE_WAVE_QUOTA=6 kill gate (state.ts:882, self-described 'chosen to play right… until deeper reverse-engineering recovers the real numbers') is that unrecovered number. Rule the divergence and port or ratify
     points: 3
     priority: p3
+    status: in_progress
+    started: '2026-07-27'
+    repos: star-wars
+    workflow: tdd
+    type: bug
+  - id: sw8-12
+    title: "Space-phase music follows the PH.TIM milestone schedule — the ROM opens the phase in SILENCE and plays theme at 2s (PMTH5, or PMDAR on GM.WAV>=3 odd), theme B at 10s (PMTHB), descent at 20s (PMDES) — 1s BEFORE the warp (WSMAIN.MAC:1418-1440, left-to-right eval: (2+7+1)*20=200, (2+7+1+9+1)*20=400 frames @ 20 Hz; first-wave head start 39 frames shifts all cues ~1.95s earlier). Our clone cues the space track + descent tune ON the phase edges (sw3-5/U-014). Depends on sw8-11's phaseTime clock; descoped from sw8-11 (end-condition only)"
+    points: 2
+    priority: p3
     status: backlog
     repos: star-wars
     workflow: tdd
+    depends_on: sw8-11
     type: bug
