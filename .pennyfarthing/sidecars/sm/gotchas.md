@@ -89,3 +89,36 @@ override ("DO NOT regenerate/overwrite sprint/context/context-story-<id>.md — 
 AFTER it returns, verify on disk with `git status --short <ctx>` (must be empty) and an md5 match to
 your committed copy. sm-setup honored the override cleanly here (`context_file_touched: false`, md5
 `e4f00270…` unchanged) — proactive prevention beats the "clobber then `git checkout --`" recovery.
+
+---
+
+### SUPERSEDED-AT-REVIEW choreography — no second finish, archive as `-superseded-<checkout>`, probe the delta against upstream BEFORE seeding the follow-up
+
+**Situation:** cp2-15 ran setup→RED→GREEN here while a sibling checkout ran the SAME story
+concurrently and merged+finished it (centipede#35 at 03:40; this checkout's GREEN landed 03:41 —
+truly concurrent, so nothing at setup time could have warned; per-checkout sprint state is
+invisible until pushed). The Reviewer's fetch-and-grep first step caught it.
+
+**Problem:** the finish flow is the wrong tool twice over: `pf sprint story finish` is not
+idempotent (the upstream archive already exists; a re-run corrupts tracking), and the local
+sprint YAML edits (in_progress/in_review stamps) CONFLICT with the incoming done state.
+
+**Choreography that worked:** (1) discard the local sprint YAML phase stamps (`git checkout --`)
+— upstream's committed done state wins; (2) move the local UNTRACKED context-story file aside
+(upstream committed its own; yours blocks the pull); (3) stash sidecar edits, pull --ff-only,
+pop, UNION-resolve (both checkouts' TEA wrote a gotcha about the same story — keep both, and if
+one contains a claim your probe REFUTED, append a dated CORRECTION between them rather than
+editing their voice); (4) archive the whole session as
+`sprint/archive/<id>-session-superseded-<checkout>.md` (tp1-9 precedent) — do NOT delete it, it
+is the follow-up story's spec; (5) BEFORE seeding the follow-up, run your branch's suite against
+the merged upstream tree in a scratch worktree — the pass/fail split IS the delta scope, and it
+can surface divergences upstream doesn't know about (here: 2 failures inside the filed follow-up
+scope + 2 OUTSIDE it, a real ROM-fidelity bug in the merged code); (6) hand-author the follow-up
+context file citing the archived session + the pushed reference branch, with the sm-setup
+DO-NOT-REGENERATE banner; (7) leave the local branch pushed as reference — no PR (it would trip
+the sibling's merge gate).
+
+**Prevention next time:** none available at setup (concurrent starts are invisible); the net is
+the Reviewer's fetch-first step + this choreography. Expect an add/add conflict if both
+checkouts named a new test file identically — the follow-up treats the reference branch as
+spec-with-proofs, never as a mergeable branch.
