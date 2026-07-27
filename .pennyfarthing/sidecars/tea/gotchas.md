@@ -1633,3 +1633,28 @@ imperceptible vs frame-0.
 CPUGON `DEC` on death (:813). Space phase END is TIME-boxed by the PH.TIM music schedule
 (WSMAIN.MAC:1420-1448), NOT a kill quota — filed as sw8-11; the TWV2Z tail-loop fallback gap as
 sw8-10.
+
+---
+
+### A "match the ROM mainloop order" story: the blanket ordering claim can be PER-CREATURE INVERTED — grep every creature's PLAY call site before pinning "inheritance"
+
+**Situation:** cp2-15 RED — "PLAY precedes SHOOT, written so cp3-2/cp3-3 creatures inherit it."
+The story, the ACs, and the SM context all state the order as one global fact.
+
+**Problem:** PLAY has THREE call sites and they straddle SHOOT: MOTION (:1449, mainloop :30)
+and BUGMV (:417, :33) run BEFORE SHOOT (:34), but the flea's PLAY lives in ANTMV (:107-108)
+at :37 — AFTER SHOOT. A flea both-boxes test written to the story's wording ("player dies,
+no points") would pin behavior the ROM does not have (the ROM shoots the flea first). The
+consolidated `checkPlayerContact` reading `state.flea` pre-move already reproduces the ROM's
+interleave for free. Pin the creatures the claim is TRUE for (spider, segment), route the
+inversion into a Conflict finding + deviation, and cover "inheritance" with the descending-
+scan leg (slot 12 beats segments) instead.
+
+**Prevention:** For any frame-order story, `grep -n 'JSR <routine>'` the mainloop AND the
+routine's callers first; a shared routine's position is per-caller, not global. Two
+generalizable RED techniques from the same story: (1) stage the moving creature ONE
+movement-step outside BOTH windows so pre-move reads miss — the staging itself then rejects
+both wrong seams (check-before-move and shoot-before-check), not just the current bug;
+(2) before trusting a multi-assert RED, run a throwaway PROBE test asserting the CURRENT
+wrong behavior (creature died, wrong points paid) — proves the staging engages the
+mechanism and the red is not vacuous; delete the probe before commit.

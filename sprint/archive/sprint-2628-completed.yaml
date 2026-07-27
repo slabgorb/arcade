@@ -1125,3 +1125,8 @@ completed_stories:
     title: "Attract mode — self-playing ATTRT demo plus copyright and bonus panel"
     points: 2
     completed: '2026-07-27'
+  - id: cp2-15
+    epic: cp2
+    title: Frame order — reproduce the ROM mainloop sequence so PLAY precedes SHOOT and SHOOT scans slot 13 first
+    points: 3
+    completed: '2026-07-27'
