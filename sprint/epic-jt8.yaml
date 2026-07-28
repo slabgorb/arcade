@@ -27,7 +27,8 @@ stories:
     description: 'The horizontal hunt that makes an enemy corner the player instead of orbiting (BODIR :3876 / BOLEVB :3939-3945). dir follows PFACE (BODIR: LDA PFACE,U to CURJOY plus/minus 1); PFACE is nudged toward the target by copying the targeted player X-velocity DIRECTION (BOLEV LDA PVELX,X :3907), THROTTLED (DO NOT COPY PLAYERS MOVES TOO OFTEN, :3939) with a periodic flip (TRY THE OTHER DIRECTION, COM PFACE,U :3945). Extend the smart brains (enemy.ts) so the Decision also updates facing per the throttle, and frame.ts carries the updated facing back onto the enemy process (today enemy facing is set once at spawn and never changes). BUILDS ON jt8-1 (the target). Radix-cited plus claims entry for the throttle and flip.'
     points: 3
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-28'
     repos: joust
     workflow: tdd
     acceptance_criteria:

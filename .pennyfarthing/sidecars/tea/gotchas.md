@@ -1838,3 +1838,68 @@ for a whole class and the milestone port resurrects it; record the widening as a
 **Bonus re-seat shape:** a parity/law suite whose staging rides the moving moment re-seats best
 as a MOMENT-AGNOSTIC helper (collect at the old edge; if silent, fly to the new milestone) —
 green under both codes, red under a half-fix, and the law's assertions never move.
+
+---
+
+### PROBE YOUR OWN CONTRACT BEFORE HANDOFF — a suite can assert two ROM-true things that no implementation can satisfy at once
+
+**Situation:** jt8-2 RED (joust) pinned the `BOLEVB` horizontal-homing throttle. The contract
+modelled BOTH ROM RAM bytes by name — `PPVELX` ("OLD PLAYERS X VELOCITY", RAMDEF.SRC:209) and
+`PRDIR` ("REVERSE DIRECTION COUNTER", :208) — because naming ROM fields after the ROM is this
+port's house style (`TargetState` is literally `tarply`/`tarpl2`/`tartm1`/`tartm2`).
+
+**Problem:** two separately-correct assertions were jointly unsatisfiable. One test said the
+workspace stays byte-identical to its seed across mismatched wakes (true — `BNE BODIR3` at :3941
+jumps clear of everything). Another said the gate reads the TARGET's index (also true). But
+`homingWake` can only satisfy both if it never writes `ppvelx` — and if it never writes it, the
+field is dead and the comparison has nothing to read. The resolution was in the ROM the whole
+time: **PPVELX is written in exactly ONE place, and it is not in the routine under test.** It is
+set at `BOLEV` (:3907-3908) on entry to a level-flight episode timed by `BOLETM` (:3909) — and
+BOLETM belongs to a DIFFERENT backlog story (uf1-9, "the DECISION timer BOLETM :3909"). With no
+decision boundary in scope there is no honest moment to take a snapshot, so the right contract
+drops the field, compares live, and routes the staleness as a deviation + a finding.
+
+**Prevention:** before the exit protocol, write a THROWAWAY implementation of your own contract
+and run the suite against it. Not to check the tests fail — you already know they fail — but to
+check they can PASS, and that they pin one coherent machine. A red suite proves nothing about
+satisfiability, and an unsatisfiable contract is discovered by Dev at GREEN, mid-story, with your
+name on it. Then mutate the throwaway once per guard and record which tests red (jt8-2: 5 / 9 / 1
+/ 3 / 1 across five mutations) — that table IS the mutation-check the ACs ask for, it costs one
+run each, and it goes in the handoff so the Reviewer never has to take "hardened" on trust.
+Safety rules that made it cheap: `cp` the src files to the scratchpad FIRST, commit the RED
+BEFORE probing, restore from the `cp` (never `git checkout`), and end with `md5` + `git status`
+proving src/ is byte-identical plus a CONTROL run showing the red is back.
+
+**Corollary — modelling a ROM field by name is not automatically faithful.** `RMB 1` tells you
+the byte exists, never that YOUR routine writes it. Grep every write of the symbol (`STA X,U` /
+`CLR X,U` / `COM X,U`) before putting it in a contract: if every write site is out of scope, the
+field is out of scope too, and shipping it as a carried-but-unwritten struct member is worse than
+omitting it — it reads as modelled when it is inert.
+
+---
+
+### A story's own ACs can be REFUTED by the ROM they cite — pin the machine, deviate the prose
+
+**Situation:** jt8-2's ACs (and the epic design spec) described horizontal homing as "PFACE is
+nudged TOWARD the target by copying the target's X-velocity DIRECTION", with an AC demanding "a
+seeded run shows a smart enemy closing horizontal distance on a stationary target". Both the
+story and the Architect's spec cited the correct lines.
+
+**Problem:** the cited lines say something else. `BOLEVB` (:3939-3946) compares the enemy's own
+FLYX index against its target's; on a MATCH it ticks a counter and eventually does
+`COM PFACE,U` — "TRY THE OTHER DIRECTION". A complement is not a nudge and carries no toward-ness
+at all: against a STATIONARY target (index 0) a buzzard saturated at ±8 never matches and never
+turns, which is the exact opposite of the AC. Proof it is not an oversight: across the whole
+BOUNDR brain (:3787-3946) the ONLY write to PFACE is that one `COM`. The aiming writes
+(`CLR PFACE,U  FACE RIGHT` / `STA PFACE,U  FACE LEFT`) first appear at :4122/:4141 — inside
+`B2DIR`, the hunter's cliff look-ahead, which the same design spec assigns to the NEXT story.
+
+**Prevention:** when an AC paraphrases a mechanism, open the cited lines and enumerate the writes
+to the field the AC claims moves. A one-line grep (`^\s*(CLR|COM|STA|STB|STD)\s+PFACE` over the
+routine's line range) settles "does this brain steer?" in seconds, and turning that grep INTO a
+test is the strongest negative claim available — it re-fails if anyone later ports the neighbour
+story's aiming code into this one. Then pin the ROM, log a Design Deviation naming the AC text
+you did not implement, and say in the handoff which story owns the behaviour the AC was reaching
+for. The epic's outcome sentence survives this ("enemies turn toward and corner you") — a
+velocity-matched reversal IS the anti-orbit mechanism — but the AC's mechanism did not, and Dev
+must not be left to reconcile that at GREEN.
