@@ -1,0 +1,60 @@
+id: jt8
+type: epic
+title: 'Joust — playability: enemies hunt (full pursuit AI) and eggs can be caught'
+description: 'Fifth joust epic — the PLAYABILITY slice. The game boots, renders, scores and tracks lives, but is not playable: enemies never hunt (smart brains are stepped without the player at frame.ts:265, and enemy facing never changes, so they orbit at a fixed altitude) and eggs cannot be collected (collisionPass has no player-vs-egg pass; the whole egg.ts scoring ladder is pure, tested, and never called). DESIGN + RULINGS: joust/docs/superpowers/specs/2026-07-28-joust-playability-design.md (Architect, 2026-07-28). GROUND TRUTH: joust/docs/rom-study/ + reference/williams-source/joust/JOUSTRV4.SRC (red-label RV4). REUSE-FIRST: the vertical-seek brains (enemy.ts, jt2-2) and the full egg ladder (egg.ts, jt2-4) already exist and are ROM-cited — this epic is WIRING plus two cited-only additions (horizontal homing + target selection), not a new system. USER RULINGS (2026-07-28, binding): (1) FULL pursuit AI; (2) FULL TARPLY/TARTM targeting with spawn-grace timers; (3) pf TDD, ROM citations, PRs to develop; (4) egg collection faithful to PLYEGG/EGGSCR. ARCHITECTURE: all additions pure src/core; the sim gains ONE carried field (aggro state) mirroring IntelBudget/BaiterClock; no second stepping path (jt2-1 one-sim seam). OUT OF SCOPE: 1P mode (shell concern, jt5). Radix discipline (Motorola: bare DECIMAL, dollar hex); every transcribed constant carries a radix-cited claim.'
+priority: p1
+status: in_progress
+repos: joust
+stories:
+  - id: jt8-1
+    title: Target aggro subsystem (TARPLY/TARTM) plus wire the targeted player into the enemy step
+    description: 'The aggro subsystem SELPLY reads (JOUSTRV4.SRC:4462-4520) plus the wiring that lights up the existing vertical-seek brains. A new pure module core/target.ts carries the global target state — TARPLY/TARPL2 (primary/secondary targeted-player workspaces) with grace timers TARTM1/TARTM2 reloaded from TARTIM — and the lifecycle: register a player on spawn (STPLY1/2, :4655-4665), decrement the grace timers each frame (:4857-4862), a player is targetable only once its timer reaches 0 (:4464-4469, freshly-materialised knights are protected), pick the nearest targetable player by combined absolute dX/dY when both qualify (:4476-4514), shift the slot on target death (TARPL2 to TARPLY, :4746-4753), and reset both slots at wave/game start (:969-970). The aggro state rides the sim like IntelBudget/BaiterClock (a carried field on DemoSim/DemoState, advanced in stepDemo). frame.ts runBehaviour computes THIS enemy target as a PlayerView (or null) via the module and passes it into the existing stepEnemy(enemy, player) at frame.ts:265 — the vertical seek in smartDecision (enemy.ts) is already faithful and only lacked the player. No second stepping path (the jt2-1 one-sim seam); the purity guard sweeps target.ts. Every constant radix-cited plus a claims entry. FIRST in the enemy chain (jt8-1 to jt8-3).'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - core/target.ts exists as a pure module carrying TARPLY/TARPL2/TARTM1/TARTM2 aggro state, threaded onto the sim (advanced in stepDemo, no second stepping path); the purity guard sweeps it green.
+      - 'SELPLY selection is pinned by test: a player inside its grace window (timer greater than 0) is NOT targetable; when both players are targetable the nearest by combined absolute dX/dY is chosen; no targetable players returns null. Mutation-checked; claims entry for :4462-4520.'
+      - 'The lifecycle is pinned and cited: register-on-spawn sets the grace timer from TARTIM (:4655-4665); the timer decrements each frame (:4857-4862); the primary slot shifts to the secondary on target death (:4746-4753); both slots reset at wave/game start (:969-970).'
+      - frame.ts passes the selected target into stepEnemy; a smart enemy below a targetable player now flaps toward that player altitude in a seeded run (vertical seek live), pinned by a deterministic trace; npm test fully green including citations and purity.
+  - id: jt8-2
+    title: Enemy horizontal homing — PFACE nudge toward the target (copy X-vel dir, throttled plus periodic flip)
+    description: 'The horizontal hunt that makes an enemy corner the player instead of orbiting (BODIR :3876 / BOLEVB :3939-3945). dir follows PFACE (BODIR: LDA PFACE,U to CURJOY plus/minus 1); PFACE is nudged toward the target by copying the targeted player X-velocity DIRECTION (BOLEV LDA PVELX,X :3907), THROTTLED (DO NOT COPY PLAYERS MOVES TOO OFTEN, :3939) with a periodic flip (TRY THE OTHER DIRECTION, COM PFACE,U :3945). Extend the smart brains (enemy.ts) so the Decision also updates facing per the throttle, and frame.ts carries the updated facing back onto the enemy process (today enemy facing is set once at spawn and never changes). BUILDS ON jt8-1 (the target). Radix-cited plus claims entry for the throttle and flip.'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - A smart enemy horizontally offset from its target updates PFACE toward the target per the ROM throttle (copy X-vel direction, not every wake); dir follows the updated facing; pinned by a seeded test with the throttle interval cited (:3907-3945).
+      - The periodic direction flip (TRY THE OTHER DIRECTION) fires on its cited cadence and is mutation-checked; claims entry.
+      - frame.ts carries the updated facing back onto the enemy process each wake (facing is no longer frozen at spawn); a seeded run shows a smart enemy closing horizontal distance on a stationary target.
+      - 'Determinism: the seeded pursuit replays bit-for-bit; purity guard plus citations green; the dumb LINET enemy is unchanged (still lane-tracks, ignores the player).'
+  - id: jt8-3
+    title: Cliff look-ahead (B2XLEN/SHXLEN) plus shadow-lord SHLEP player-line tracking
+    description: 'The hunter/shadow navigation and the deadliest brain. B2DIR (:4104-4159) projects B2XLEN = 27+4 = 31 px ahead in the travel direction (scaled by PVELY), samples the arena solid-mask (BCKXTB plus/minus B2XLEN AND BCKYTB) — our arena.groundMaskAt is that BCKXTB/BCKYTB analog — and on a cliff ahead flips PFACE and slows (B2AV). The plain bounder lacks this look-ahead (B2XLEN :3969, SHXLEN :4228 = 31). Shadow lord (SHADOW :4230): SHDN free-fall on descent (NO FLAPING WINGS, :4246), SHLEP tracks the PLAYER line directly (:4277), flaps only to escape the lava below dollar-D3. Extend the hunter/shadow brains (enemy.ts b2undr/shadow) with the look-ahead turn and the shadow player-line track (bounder unchanged). BUILDS ON jt8-1/jt8-2. Radix-cited plus claims entries.'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - The hunter/shadow look-ahead turns the enemy (flip PFACE plus slow) when a cliff is B2XLEN=31 px ahead in its travel direction, and does NOT turn in open air — both cases pinned against arena.groundMaskAt; the plain bounder does NOT look ahead. Claims entry (:4104-4159, B2XLEN :3969 / SHXLEN :4228).
+      - The shadow lord free-falls on descent (no brake) and tracks the targeted player line via SHLEP; lava-escape below dollar-D3 holds; pinned plus mutation-checked (:4230-4277).
+      - Radix-cited constants plus claims entries; the citations suite is green.
+      - 'Determinism: a seeded hunter navigating a cliff and a shadow hunting a player replay bit-for-bit; purity guard plus npm test green.'
+  - id: jt8-4
+    title: Egg collection — the player-vs-egg catch pass (PLYEGG/EGGSCR), ladder plus 500 mid-air, cancel remount
+    description: 'The missing egg pickup — PLYEGG (:3009) / EGGSCR (:3030-3095). Add a player-vs-egg pass to collisionPass (demo.ts): on a player overlapping an egg, emit the egg score events via the EXISTING egg.ts core (eggScoreEvents = the EGGVAL ladder 250/500/750/1000 by hit count capped, :3097-3104, PLUS 500 if caught mid-air with PFEET==0, :3063-3069), attribute the score to the catching player (a score/reason:egg/player event the game.ts drain already credits to the right ledger), REMOVE the egg, and cancel any incoming remount bird (AUTOFF, :3078-3087). REUSE-FIRST: the entire scoring ladder plus air bonus already exist and are tested (egg.ts, jt2-4) and game.ts already drains reason:egg — the only new code is the catch pass plus egg removal. INDEPENDENT of the enemy chain (jt8-1 to jt8-3) — the quickest standalone playability win. Radix-cited plus claims entry for PLYEGG/EGGSCR.'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - 'collisionPass gains a player-vs-egg pass: a player overlapping an egg emits the egg score events (via egg.ts eggScoreEvents) attributed to the catching player and REMOVES the egg; pinned by test.'
+      - A mid-air catch (PFEET==0, egg not yet bounced) emits ladder plus 500; a grounded/settled catch emits ladder only; the ladder value follows the hit count (250/500/750/1000 capped). Cited (:3063-3069, :3097-3104); mutation-checked.
+      - The catching player ledger advances (not the partner) via the existing game.ts drain; an incoming remount bird for that egg is cancelled (AUTOFF, :3078-3087).
+      - 'Determinism: a seeded run where a knight catches a fallen egg replays the exact score events bit-for-bit; purity guard plus citations plus npm test green.'
