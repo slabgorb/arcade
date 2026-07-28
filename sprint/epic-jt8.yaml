@@ -11,7 +11,8 @@ stories:
     description: 'The aggro subsystem SELPLY reads (JOUSTRV4.SRC:4462-4520) plus the wiring that lights up the existing vertical-seek brains. A new pure module core/target.ts carries the global target state — TARPLY/TARPL2 (primary/secondary targeted-player workspaces) with grace timers TARTM1/TARTM2 reloaded from TARTIM — and the lifecycle: register a player on spawn (STPLY1/2, :4655-4665), decrement the grace timers each frame (:4857-4862), a player is targetable only once its timer reaches 0 (:4464-4469, freshly-materialised knights are protected), pick the nearest targetable player by combined absolute dX/dY when both qualify (:4476-4514), shift the slot on target death (TARPL2 to TARPLY, :4746-4753), and reset both slots at wave/game start (:969-970). The aggro state rides the sim like IntelBudget/BaiterClock (a carried field on DemoSim/DemoState, advanced in stepDemo). frame.ts runBehaviour computes THIS enemy target as a PlayerView (or null) via the module and passes it into the existing stepEnemy(enemy, player) at frame.ts:265 — the vertical seek in smartDecision (enemy.ts) is already faithful and only lacked the player. No second stepping path (the jt2-1 one-sim seam); the purity guard sweeps target.ts. Every constant radix-cited plus a claims entry. FIRST in the enemy chain (jt8-1 to jt8-3).'
     points: 3
     priority: p1
-    status: backlog
+    status: in_review
+    started: '2026-07-28'
     repos: joust
     workflow: tdd
     acceptance_criteria:
@@ -58,3 +59,15 @@ stories:
       - A mid-air catch (PFEET==0, egg not yet bounced) emits ladder plus 500; a grounded/settled catch emits ladder only; the ladder value follows the hit count (250/500/750/1000 capped). Cited (:3063-3069, :3097-3104); mutation-checked.
       - The catching player ledger advances (not the partner) via the existing game.ts drain; an incoming remount bird for that egg is cancelled (AUTOFF, :3078-3087).
       - 'Determinism: a seeded run where a knight catches a fallen egg replays the exact score events bit-for-bit; purity guard plus citations plus npm test green.'
+  - id: jt8-5
+    title: Decode the exact SELPLY nearest-target metric (:4476-4514) and retire the min-of-axes approximation
+    description: 'jt8-1 shipped an HONEST APPROXIMATION for SELPLY''s nearest-of-two tiebreak: target.ts coordDistance/nearer picks the smaller min(|dx|,|dy|), tie keeps the primary (cited JT81-003, pinned by the DISCRIMINATING case in tests/target.test.ts). Three independent jt8-1 analyses (TEA, reviewer test-analyzer, reviewer comment-analyzer) each FAILED to hand-decode the actual 6809 sequence — a 16-bit two''s-complement negate with an overflow-guarded per-axis compare (TSTA/BNE :4487/:4505) and a final CMPB 1,S / BLO :4512-4515 (a STRICT less-than that appears to fall through to LDX TARPL2, favouring the SECONDARY, the OPPOSITE of the shipped primary-tie). The metric may be Chebyshev / Y-dominant, not min-of-axes. This story decodes :4476-4514 at INSTRUCTION level (emulator trace or a verified 6809 hand-trace), then either replaces coordDistance/nearer with the true metric+tie or CONFIRMS the approximation faithful — do NOT hand-guess (the jt8-1 ruling). BUILDS ON jt8-1; independent of jt8-2/jt8-3/jt8-4.'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - 'The SELPLY nearest-of-two metric (:4476-4514) is decoded at 6809 instruction level with evidence (emulator trace or verified hand-trace): the axis combination (min/max/Euclidean or a dominant axis) AND the exact tie direction (the CMPB 1,S / BLO strict-less at :4512-4515) are stated, not guessed.'
+      - target.ts coordDistance/nearer is replaced with the decoded metric+tie (or the current min-of-axes + primary-tie is CONFIRMED faithful and the ⚠ docstrings/JT81-003 downgraded from "approximation" to "verified"); the discriminating case in tests/target.test.ts is updated to pin the decoded choice and is mutation-checked.
+      - 'Determinism: the corrected selection replays bit-for-bit under a fixed seed; the purity guard, the citation suite, and npm test are all green.'
