@@ -25,7 +25,9 @@ stories:
     description: "joust/src/core/difficulty.ts holds DIFFICULTY_TABLE — 28 DYWORD rows byte-gated against JOUSTRV4.SRC:7304-7331 (LAVTIM, LAVGRA, LAVLAV, EGGWT, EGGWT2, the BODN/BOUP buzzard rows, the HUDN/HUUP hunter rows, the SHDN/SHUP shadow-lord rows, BOLETM/HULETM/SHLETM/SHCLTM) — plus the IWAVE walk engine that reads them: difficultyValue, ga1StartColumn, stepNibble and GA1_DEFAULT. Every one of those has ZERO production references. The module IS imported by src/core/wave.ts and src/core/arena.ts, but only for the three retrofit knobs emytimForWave, lavaLevelForWave and seedBudgetForRow, and all three are hand-written walks that never touch a row. Net effect: none of the ROM's per-wave escalation — enemy energy, dive rate, velocity, wing-up and wing-down cadence, egg wait, bolt time, lava timing and gravity — reaches the running game, and no consumer module references a row name at all. This story establishes the SEAM and wires a proven subset rather than all 28 rows at once: the jt2 retrofit note in difficulty.ts:38 already rules that this module is the SOURCE for per-wave knobs, so the walk should feed the existing consumers rather than living beside them. Expect a real blast radius on jt2's seeded determinism replays — the retrofit's own bar was that realized values reproduce bit-for-bit, so any row that changes a wave's realized value is a deliberate, logged deviation, not a silent drift. Size the subset so the remaining rows are inventoried into a follow-up instead of growing this story."
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    assigned_to: Keith Avery
+    started: '2026-07-28'
     repos: joust
     workflow: tdd
     acceptance_criteria:
