@@ -1176,3 +1176,8 @@ completed_stories:
     title: "music-bake pipeline cannot reproduce finish_ground.wav: sw7-18's PMREB one-shot exists only in R2 — OUTPUT_FILES has no entry, so 'just deploy-assets' never re-uploads it and a bucket wipe loses it. Add finishGround (REB, TUNTAB 19-22) to gen-music-data TUNE_SPEC + bake OUTPUT_FILES and drop the carve-out in bake-music.test.mjs's manifest-agreement test (gap surfaced/documented by sw8-12)"
     points: 1
     completed: '2026-07-27'
+  - id: sw8-9
+    epic: sw8
+    title: TIE in-front loiter — fighters currently fly PAST the cockpit (converge x→0 at negative depth, behind the eye) instead of loitering-and-converging IN FRONT as the longplay shows; port the deferred §5 play-cube clamp (sub_8DE3, sw8-2 AC3 'deferred tuning') + loiter/no-ram (model §9-3 'no body collision'); confirmed by sw8-6 Dev finding (sprint/archive/sw8-6-session.md)
+    points: 3
+    completed: '2026-07-28'
