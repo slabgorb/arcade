@@ -1,0 +1,37 @@
+id: uf1
+type: epic
+title: Unwired features — ported-but-unconsumed mechanics found by the 2026-07-28 fleet sweep
+description: 'A fleet-wide sweep on 2026-07-28 (all nine subrepos on develop) hunted for features that are built, tested and cited against ROM source but never reach the running game. Mechanical module-graph scans were ~95% false positives — the fleet is well wired: no cold GameState fields, every arcade-shared subpath consumed, every event kind emitted AND handled, every .wav in every manifest returning 200 on R2 (the sw3-5 silent-404 class is clean). The real findings came from in-source confessions (the author who left the gap signed it) and from partially-consumed catalogues. This epic carries the gaps where the PORT ALREADY EXISTS and only the wiring is missing, so each story consumes tested code rather than deriving new fidelity. Also open from the same sweep, NOT yet storied: star-wars 10-of-23 speech lines with no trigger (need R2-damage / Vader-on-tail / wingmen mechanics first), star-wars Status.C_AH always false (core/tie-status.ts:107), star-wars trench wedge grid only 6-of-19 exports reaching prod (PANEL_GUN / decodePanelColumn / PIES / wedgeGroup still test-only), the lobby attract-mode demo loop that CLAUDE.md and repos.yaml promise but lobby/src does not contain, and centipede + joust shipping with no audio module at all.'
+priority: p2
+status: backlog
+repos: red-baron,joust
+stories:
+  - id: uf1-1
+    title: red-baron enemy planes cannot shoot — wire planeFires into the calc-frame damage channel
+    description: "planeFires(level, frame, roll) — red-baron/src/core/enemy.ts:789 — is ported from R2BRON.MAC:4798-4807, covered by tests/core/enemy-fire.test.ts (AC-8, the divide-by-2 FRAME cadence over the PLNLVL level gate) and tests/core/blimp.test.ts, and has ZERO production callers. main.ts:632 states it plainly: 'The blimp is the modelled enemy shooter; plane fire (planeFires) is not yet wired into the shell loop, so it stays silent for now.' Consequence: all three player-hit emission sites in main.ts (:557, :602, :750) are CRSHSN collision crashes, so the pilot is currently immortal to enemy gunfire — the game's central threat does not exist. The blimp path is the working reference: main.ts:742 latches enemyFiring for the SN-017 gun cue when blimpFires(simFrame, level) is true, and :747 rolls BLIMP_HIT_CHANCE against a dedicated blimpRng before calling the rb2-9 loseLife damage channel, guarded by dying === null and not gameOver. Mirror that seam for planes. Note red-baron has no single stepGame: the calc-frame loop in main.ts assembles the GameEvent list itself, and the roll must come from a seeded Rng so the URL seed param (main.ts:461) still replays deterministically. Watch the level gate — planeFireChance returns 0 below level 4, 0.5 at level 4, 1 above, so a wave-1 playtest will correctly show nothing."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: red-baron
+    workflow: tdd
+    acceptance_criteria:
+      - planeFires is called from the calc-frame loop for each live plane, with its roll drawn from a seeded Rng so a given seed param replays the same fire pattern.
+      - A plane's fire can cost the pilot a life through the same rb2-9 loseLife channel the blimp uses, guarded by dying === null and not gameOver, and emits a player-hit GameEvent.
+      - A plane firing latches enemyFiring for the SN-017 gun cue, matching the blimp's rb4-10 behaviour that every shell rattles the same gun.
+      - 'The level gate is preserved end to end: no plane fire occurs below level 4, and level 4 fires on roughly half its eligible frames.'
+      - A test proves the wiring non-vacuous by mutation — disabling the new call site reddens a test that asserts player damage from plane fire, not merely that planeFires returns true.
+  - id: uf1-2
+    title: joust DYTBL difficulty engine is production-dead — wire difficultyValue as the per-wave source
+    description: "joust/src/core/difficulty.ts holds DIFFICULTY_TABLE — 28 DYWORD rows byte-gated against JOUSTRV4.SRC:7304-7331 (LAVTIM, LAVGRA, LAVLAV, EGGWT, EGGWT2, the BODN/BOUP buzzard rows, the HUDN/HUUP hunter rows, the SHDN/SHUP shadow-lord rows, BOLETM/HULETM/SHLETM/SHCLTM) — plus the IWAVE walk engine that reads them: difficultyValue, ga1StartColumn, stepNibble and GA1_DEFAULT. Every one of those has ZERO production references. The module IS imported by src/core/wave.ts and src/core/arena.ts, but only for the three retrofit knobs emytimForWave, lavaLevelForWave and seedBudgetForRow, and all three are hand-written walks that never touch a row. Net effect: none of the ROM's per-wave escalation — enemy energy, dive rate, velocity, wing-up and wing-down cadence, egg wait, bolt time, lava timing and gravity — reaches the running game, and no consumer module references a row name at all. This story establishes the SEAM and wires a proven subset rather than all 28 rows at once: the jt2 retrofit note in difficulty.ts:38 already rules that this module is the SOURCE for per-wave knobs, so the walk should feed the existing consumers rather than living beside them. Expect a real blast radius on jt2's seeded determinism replays — the retrofit's own bar was that realized values reproduce bit-for-bit, so any row that changes a wave's realized value is a deliberate, logged deviation, not a silent drift. Size the subset so the remaining rows are inventoried into a follow-up instead of growing this story."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
+    acceptance_criteria:
+      - difficultyValue drives at least the lava rows and the buzzard energy-and-wing rows through their real consumers, so a later wave observably differs from wave 1 on each wired dial.
+      - ga1StartColumn and the GA1 tier buckets (0-3, 4-6, 7 and above) select the start column that seeds each wired row, with GA1_DEFAULT 5 as the shipped operator setting.
+      - 'The IWAVE walk semantics hold for every wired row: the walk runs wave minus 1 times, clamps at END by the signed comparison, and holds flat forever after.'
+      - The three retrofit knobs emytimForWave, lavaLevelForWave and seedBudgetForRow are reconciled with the table rather than duplicated — either sourced from it or documented as deliberately separate with the ROM citation for why.
+      - jt2's seeded determinism replays still reproduce, or every changed realized value is logged as a deviation with its JOUSTRV4.SRC citation.
+      - The rows NOT wired by this story are inventoried in the epic or a follow-up story, so the remaining gap is tracked rather than rediscovered by the next sweep.
