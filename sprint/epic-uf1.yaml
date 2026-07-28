@@ -113,3 +113,35 @@ stories:
       - No other claim in the hosting section is left contradicting the table, and docs/ops/hosting.md is checked for the same omission.
       - No orchestrator test is added that pins the lobby registry's contents — curation stays a product decision.
     type: chore
+  - id: uf1-8
+    title: joust DYTBL flight-control rows — wire the long/short range seek and the PDIST distance-to-go (10 rows)
+    description: "Ten DYTBL rows drive the ROM's long/short RANGE SEEK decision and the PDIST 'distance to go' budget, and joust/src/core/enemy.ts models NEITHER mechanic — smartDecision has no range gate and no PDIST at all, so the rows have nowhere to land. The rows and their single ROM consumers, recovered by grepping each label in JOUSTRV4.SRC: BODNRG :3801, BOUPRG :3844, HUDNRG :3984, HUUPRG :4028, SHDNRG :4243, SHUPRG :4257 (each 'CMPD/SUBD <row>  LONG OR SHORT RANGE SEEK' against the player Y-delta), and BODNDI :3803, BOUPDI :3851, HUDNDI :3988, HUUPDI :4035 ('SET DISTANCE TO GO DOWN/UP' into PDIST,U). NOTE THE NAMING TRAP that uf1-2 hit: RG is RanGe, NOT eneRGy — 'DYLEN EQU $14-6' = 14 and BODNRG's GA1-5 start is $000E = 14, i.e. the row replaced the hardcoded '#DYLEN' immediate, and the ROM comment says RANGE SEEK outright. Every row's GA1 column 1 reproduces exactly the pre-DYTBL immediate the ROM's trailing comments record, so the wave-1 value is a free correctness check on any port. Build the range gate and the PDIST model first; the wiring is then the uf1-2 seam (difficulty.waveValue) applied to new consumers. uf1-2 shipped the seam, the wave threading through stepEnemy/stepFrame/stepDemo, and the ROW_DISPOSITION inventory that lists these ten as owned here."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: joust
+    workflow: tdd
+  - id: uf1-9
+    title: joust DYTBL cadence rows — wire the wing-flap timer, the decision timer and the up-flight VY gates (11 rows)
+    description: "Eleven DYTBL rows drive per-wave TIMING that joust/src/core/enemy.ts does not model: the buzzard has no wing-flap cadence timer and no 'time until next decision' timer at all — smartDecision returns a fresh boolean flap every step, where the ROM gates flapping on PJOYT. The rows and their single ROM consumers: the WING cadence BOUPWD :3864 ('#2'), BOUPWU :3894 ('#8'), HUUPWD :4182 ('#2'), HUUPWU :4047 ('#8') — each 'LDA <row> / STA PJOYT,U', wing-down and wing-up hold times; the DECISION timer BOLETM :3909, HULETM :4060, SHLETM :4316, SHUPTM :4283, SHCLTM :4375 (each 'TIME UNTIL NEXT DECISION'); and the up-flight VY gates HUUPVY :4178 ('CMPD HUUPVY  #-$0100') and SHUPVY :4272 ('CMPD SHUPVY  #-$0200'). Each row's GA1 column 1 equals the pre-DYTBL immediate in its own ROM comment (BOUPWD start 2, BOUPWU start 8), so a correct port reproduces the old constant at wave 1 — the same free check uf1-2 used. The wing timer is the substantial build here: it changes the shape of enemy flight, so expect a real determinism blast radius on the demo replays, and budget for re-baselining rather than assuming the jt2 bar holds. uf1-2 shipped the seam (difficulty.waveValue), the wave threading, and the ROW_DISPOSITION inventory that lists these eleven as owned here."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: joust
+    workflow: tdd
+  - id: uf1-10
+    title: joust DYTBL egg-wait and lava-troll rows — wire EGGWT/EGGWT2 and LAVTIM/LAVGRA (4 rows, blocked on the troll grip)
+    description: "Four DYTBL rows whose consumers do not exist in the clone. THE EGG PAIR: EGGWT (JOUSTRV4.SRC:3224, 'EGGLND LDA EGGWT  GET CURRENT WAIT TIME' — the settled egg's wait before it hatches) and EGGWT2 (:2761, 'LDB EGGWT2  INITIAL EGG WAITING TIME'). joust/src/core/egg.ts models the fall, the settle, the hatch and the remount but carries NO wait timer of any kind, so per-wave egg-hatch pressure — the ROM walks EGGWT from $40 down to $10, so late-wave eggs hatch four times sooner — never reaches the player. THE TROLL PAIR: LAVTIM (:1611, 'LDA LAVTIM  RESET TIMER' — the lava troll's hand-animation frame timer) and LAVGRA (:6395, PATCH1 'LDD LAVGRA  GIVE CURRENT LAVA TROLL GRAVITY' seeding CLVGRA). LAVGRA's designated consumer ALREADY EXISTS as troll.beginGrip(baseGravity) — but is BLOCKED: uf1-11 found beginGrip/stepGrip/escalateGrip have zero production callers, so wiring LAVGRA into beginGrip today connects one dead module to another and changes nothing a player can see. DO uf1-11 FIRST or this half is theatre. NOT IN SCOPE and never will be: LAVLAV, the fifth 'lava' row — its label appears exactly ONCE in the whole of JOUSTRV4.SRC, on its own DYWORD line at :7306. Williams shipped a row nothing reads; uf1-2 recorded it as dead-in-rom in ROW_DISPOSITION so no future sweep re-files it as a porting gap."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: joust
+    workflow: tdd
+  - id: uf1-11
+    title: joust troll GRIP is production-dead — beginGrip/stepGrip/escalateGrip have zero production callers
+    description: "joust/src/core/troll.ts implements the lava troll's grip — the PATCH1/2/3 escalation the 1982 source added in 'VERSION 3 SOFTWARE' — and NONE of it runs. beginGrip, stepGrip, escalateGrip, escapeScoreEvent and the TrollGrip type have ZERO references in src/ outside troll.ts itself; only trollSpawnable is live (demo.ts:961). demo.ts:420 admits it in its own words: '(stepGrip) is a pure core exercised directly; wiring the live grab off the LNDB7 …'. So a troll spawns, and can never actually grab anyone: the grace timer (LAVKLL 30*60, :6393), the +1/frame pull escalation to the $500 cap (:6374-6386), the -$0180 break-free threshold (:6616), the 50-point escape award (:6668) and the pull into the lava are all unreachable. This is the same disease as uf1-2 one layer down — a faithful, tested, cited pure core with no caller — and it BLOCKS uf1-10's LAVGRA half, which has nothing to feed until the grab is live. The missing piece is the GRAB itself: the LNDB7 hand-out/hand-grab detection that repoints the victim's gravity vector from ADDGRA to ADDLAV (PADGRA, :1651-1652). Found by TEA during uf1-2 test design while tracing which DYTBL rows had a live consumer chain."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
