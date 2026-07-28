@@ -1186,3 +1186,8 @@ completed_stories:
     title: star-wars speech catalogue — correct the stale deferred-count comment and inventory the 10 untriggered lines
     points: 1
     completed: '2026-07-28'
+  - id: jt8-1
+    epic: jt8
+    title: Target aggro subsystem (TARPLY/TARTM) plus wire the targeted player into the enemy step
+    points: 3
+    completed: '2026-07-28'

@@ -11,7 +11,7 @@ stories:
     description: 'The aggro subsystem SELPLY reads (JOUSTRV4.SRC:4462-4520) plus the wiring that lights up the existing vertical-seek brains. A new pure module core/target.ts carries the global target state — TARPLY/TARPL2 (primary/secondary targeted-player workspaces) with grace timers TARTM1/TARTM2 reloaded from TARTIM — and the lifecycle: register a player on spawn (STPLY1/2, :4655-4665), decrement the grace timers each frame (:4857-4862), a player is targetable only once its timer reaches 0 (:4464-4469, freshly-materialised knights are protected), pick the nearest targetable player by combined absolute dX/dY when both qualify (:4476-4514), shift the slot on target death (TARPL2 to TARPLY, :4746-4753), and reset both slots at wave/game start (:969-970). The aggro state rides the sim like IntelBudget/BaiterClock (a carried field on DemoSim/DemoState, advanced in stepDemo). frame.ts runBehaviour computes THIS enemy target as a PlayerView (or null) via the module and passes it into the existing stepEnemy(enemy, player) at frame.ts:265 — the vertical seek in smartDecision (enemy.ts) is already faithful and only lacked the player. No second stepping path (the jt2-1 one-sim seam); the purity guard sweeps target.ts. Every constant radix-cited plus a claims entry. FIRST in the enemy chain (jt8-1 to jt8-3).'
     points: 3
     priority: p1
-    status: in_review
+    status: done
     started: '2026-07-28'
     repos: joust
     workflow: tdd
@@ -20,6 +20,8 @@ stories:
       - 'SELPLY selection is pinned by test: a player inside its grace window (timer greater than 0) is NOT targetable; when both players are targetable the nearest by combined absolute dX/dY is chosen; no targetable players returns null. Mutation-checked; claims entry for :4462-4520.'
       - 'The lifecycle is pinned and cited: register-on-spawn sets the grace timer from TARTIM (:4655-4665); the timer decrements each frame (:4857-4862); the primary slot shifts to the secondary on target death (:4746-4753); both slots reset at wave/game start (:969-970).'
       - frame.ts passes the selected target into stepEnemy; a smart enemy below a targetable player now flaps toward that player altitude in a seeded run (vertical seek live), pinned by a deterministic trace; npm test fully green including citations and purity.
+    completed: '2026-07-28'
+    review_verdict: approved
   - id: jt8-2
     title: Enemy horizontal homing — PFACE nudge toward the target (copy X-vel dir, throttled plus periodic flip)
     description: 'The horizontal hunt that makes an enemy corner the player instead of orbiting (BODIR :3876 / BOLEVB :3939-3945). dir follows PFACE (BODIR: LDA PFACE,U to CURJOY plus/minus 1); PFACE is nudged toward the target by copying the targeted player X-velocity DIRECTION (BOLEV LDA PVELX,X :3907), THROTTLED (DO NOT COPY PLAYERS MOVES TOO OFTEN, :3939) with a periodic flip (TRY THE OTHER DIRECTION, COM PFACE,U :3945). Extend the smart brains (enemy.ts) so the Decision also updates facing per the throttle, and frame.ts carries the updated facing back onto the enemy process (today enemy facing is set once at spawn and never changes). BUILDS ON jt8-1 (the target). Radix-cited plus claims entry for the throttle and flip.'
