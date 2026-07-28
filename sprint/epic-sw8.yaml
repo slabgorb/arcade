@@ -91,9 +91,10 @@ stories:
     title: TIE in-front loiter — fighters currently fly PAST the cockpit (converge x→0 at negative depth, behind the eye) instead of loitering-and-converging IN FRONT as the longplay shows; port the deferred §5 play-cube clamp (sub_8DE3, sw8-2 AC3 'deferred tuning') + loiter/no-ram (model §9-3 'no body collision'); confirmed by sw8-6 Dev finding (sprint/archive/sw8-6-session.md)
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
     repos: star-wars
     workflow: tdd
+    started: '2026-07-28'
   - id: sw8-10
     title: Past-plan TIE supply loops the set's LAST group (TWV2Z), not a bare 1A1 mook — ADASHP clamps WV.LVL to the last group and RESTARTS its loop pointer (WSCPU.MAC:1058-1090), so the endless tail is the 18-entry TWV2Z mix incl. the ±2048 corners; our waveSpawnPlan fallback (sim.ts spawnTie 'past the plan's end') invents a single '1A1' entry. Latent today (wave-1 plan 27 entries vs ≤9 spawns under the 6-kill quota) — bites if quota rises or the phase becomes time-boxed
     points: 2
