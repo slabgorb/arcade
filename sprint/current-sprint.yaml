@@ -11,3 +11,5 @@ epics:
   - td1
   - sw8
   - uf1
+  - cp5
+  - jt5
