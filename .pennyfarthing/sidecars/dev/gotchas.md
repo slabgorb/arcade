@@ -910,3 +910,49 @@ branch; verify the bake locally into the scratchpad instead. (2) Never extend a 
 — scrape the WHOLE manifest, and if an entry has no bake source, state the carve-out in the test
 with a filed owner (sw8-14) rather than tuning the count so the test can't see it. A test that
 "agrees" by not looking is the silent-404 bug the suite exists to prevent.
+
+---
+
+### Re-anchoring citation pins: a verbatim that occurs TWICE can be re-pointed at the wrong code and the gate still goes GREEN — and 1/3 of the pins are frozen on purpose
+
+**Situation:** GREEN work that inserts lines into a file the ROM-fidelity audit cites.
+`docs/audit/findings/*.json` pin an `ours` citation as `{file, line, verbatim}` and
+`tests/audit/citations.test.ts` re-opens the pinned LINE to byte-compare it, so ANY insertion —
+even a comment — moves every pin below it. uf1-12 added 5 lines to `star-wars/src/core/sim.ts`
+(the `stepGame` viewport shadow) and TEA had pre-measured the cost honestly: only the two
+citation tests fail. That measurement is correct and still not enough to re-anchor safely.
+
+**Problem — the gate cannot tell a re-anchor from a MIS-anchor.** It only asks "does the text at
+this line still match?", so a pin moved to the wrong occurrence of the same text passes. In
+uf1-12, 2 of 23 moved pins had non-unique verbatims: `      damage++` occurs at `sim.ts:616`,
+`1016` **and** `1101`, and `    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {` at `615` and
+`1100` (the space and surface damage paths are near-identical code). Fixing by "search for the
+text, take the first/nearest hit" silently re-points finding S-016 at the SURFACE site — a GREEN
+gate over an audit record that now describes the wrong routine. That is strictly worse than the
+red it replaced, because nothing will ever flag it again.
+
+Second trap in the other direction: **~1/3 of the `ours` pins are already stale BY DESIGN.** The
+checker exempts any finding carrying `remediated_by` (`tools/audit/check-citations.mjs:117`) so a
+fixed finding keeps the citation it was AUDITED with. uf1-12 found 34 such pins against 96 live
+ones. A re-anchor sweep that "fixes all the stale pins" rewrites the audit's own history and
+destroys the record of what the code looked like when the finding was written.
+
+**What works (uf1-12, 23 pins across 9 files, zero reformatting):**
+1. Compare with the checker's own rule — `trimEnd()`, not exact equality (`:158`).
+2. **Skip every finding with `remediated_by`.** If it is exempt from the check, it is exempt from
+   the fix.
+3. Resolve a multi-candidate verbatim by the file's **uniform shift**: one edit inserts at ONE
+   point, so every pin below it moves by the SAME delta. Take the candidate at `old + delta`.
+   Never by proximity — the wrong occurrence can easily be the closer one.
+4. **Refuse to guess.** Report anything the shift rule cannot settle and look at it by hand.
+5. Write with `JSON.stringify(findings, null, 2) + '\n'` — the findings files are 2-space with a
+   trailing newline, so the diff stays line-numbers-only (verify with `git diff --stat`: equal
+   insertions/deletions and no reformat).
+
+**Also:** a line number in a CODE COMMENT is outside the gate entirely. uf1-12's own new comment
+cited `sim.ts:298` for the gun's `beamDir` — a line the same commit pushed to 303. Nothing catches
+that but you; name the symbol instead of the line.
+
+**Tooling:** filed as **td1-13** (star-wars, 2pts) — a `tools/audit/reanchor.mjs` implementing the
+five rules above, dry-run by default. Until it exists, every story touching a cited file redoes
+this by hand. Same gate ships in tempest, same trap.

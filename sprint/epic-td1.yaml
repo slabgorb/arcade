@@ -263,9 +263,9 @@ stories:
     status: backlog
     repos: star-wars
     workflow: tdd
-    type: chore
     acceptance_criteria:
       - "A re-anchor tool exists beside tools/audit/check-citations.mjs, dry-run by default, and writes only under --apply; its output names every pin it moved (id, file, old line, new line)."
       - "It uses the checker's own trimEnd comparison and SKIPS findings with `remediated_by`, so a remediated finding's historical citation is never rewritten."
       - "A verbatim matching more than one line is resolved by the file's uniform insertion shift, never by proximity; anything the shift cannot settle is REPORTED and left untouched (proven with a fixture whose verbatim occurs 3+ times — sim.ts's `damage++` is a real one)."
       - "Applied to a real edit, it leaves the findings JSON byte-identical apart from the line numbers (2-space indent, trailing newline) and the citation gate goes green."
+    type: chore
