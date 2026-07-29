@@ -95,17 +95,25 @@ stories:
   - id: uf1-6
     title: lobby attract-mode demo loop is promised by the docs and absent from the code
     description: "Two documents promise the lobby runs an attract-mode demo loop when idle. The orchestrator CLAUDE.md describes the lobby as 'a vector-style menu on black that lists the games as glowing tiles, launches them, runs an attract-mode demo loop when idle, and shows per-game high scores', and .pennyfarthing/repos.yaml carries the same sentence as the lobby's registered description — which makes it the description the agent topology loads into every session's prime context. The code does not contain it. lobby/src holds six TypeScript files (main.ts, core/registry.ts, core/score.ts, shell/font.ts, shell/storage.ts, shell/tiles.ts) and grep finds zero matches for attract, idle or demo across all of them. Every other subrepo in the fleet matches attract; the lobby is the only one that does not. This is the only finding in the sweep where the gap is a promise rather than an unconsumed port, so it needs a product ruling BEFORE implementation: build the loop, or strike the claim from both documents. Whoever picks it up should get that ruling first rather than assuming build — the two resolutions differ by roughly three points and one of them is a documentation edit. If the ruling is build, note that the fleet already has attract implementations to study in tempest, star-wars, asteroids, battlezone, red-baron and centipede, and that arcade is desktop-only: no phone-layout criterion belongs in this story."
-    points: 3
+    points: 5
     priority: p2
-    status: backlog
+    status: done
     repos: lobby
     workflow: tdd
     acceptance_criteria:
-      - 'The product ruling is recorded in the story before implementation begins: build the attract loop, or strike the claim from CLAUDE.md and repos.yaml.'
-      - Code and documents agree when the story closes — either lobby/src implements an idle attract loop and both documents describe it accurately, or neither document claims one.
-      - If built, the loop starts only after a defined idle period, stops on any input, and never interferes with launching a tile or reading the high-score table.
-      - If built, the behaviour holds across desktop widths — arcade is keyboard and mouse only, so no narrow-viewport criterion applies.
-      - repos.yaml is updated in the same change as CLAUDE.md if the claim is struck, since its lobby description is what the agent topology loads into every session.
+      - 'The product ruling is recorded and delivered: the lobby ships an always-on showcase carousel that frames each opted-in game live, not an idle-triggered attract loop of its own.'
+      - Games opt in through a required showcase boolean on the lobby registry, so a newly added game can neither silently default into the carousel nor silently vanish from it.
+      - 'Exactly one iframe exists in the pane at any moment: each slide replaces the frame element rather than reassigning its src, so a second game sim never runs on the same main thread.'
+      - Each opted-in game holds the pane for 20 seconds, then the carousel rotates to the next one and wraps at the end.
+      - 'The pane is structurally incapable of making noise: the frame carries an empty allow attribute and stays out of the tab order.'
+      - A frame that has not loaded within 8 seconds is written off, the carousel moves on, and that game is not shown again for the rest of the session.
+      - When every opted-in game has failed to load, or when no game opted in, the section is removed from the DOM entirely and every timer stops, so the lobby looks exactly as it did before the feature existed.
+      - The way into the framed game is a real anchor element, never a div with a click handler, so click, command-click, middle-click and Tab plus Enter all work.
+      - When prefers-reduced-motion matches, no frame mounts and no rotation starts; a static card names the game on deck and a button lets the visitor ask for the demo.
+      - 'Code and documents agree when the story closes: the repos.yaml lobby description describes the carousel accurately and no longer claims Canvas 2D or an idle attract loop.'
+      - The behaviour holds across desktop widths — arcade is keyboard and mouse only, so no narrow-viewport criterion applies.
+    completed: '2026-07-29'
+    review_verdict: approved
   - id: uf1-7
     title: orchestrator CLAUDE.md production table omits centipede and joust — both buckets are live
     description: "The orchestrator CLAUDE.md 'Production: R2 static hosting' table lists six apps — lobby, tempest, star-wars, asteroids, battlezone, red-baron — and omits centipede and joust. Both are live: centipede.slabgorb.com and joust.slabgorb.com each returned 200 when probed on 2026-07-28, and the lobby's own registry ships tiles pointing at both (lobby/src/core/registry.ts lists centipede at version 0.0.0 and joust at 0.0.6). So the table under-reports the deployed fleet by two games, and a reader trusting it would conclude those two games are not deployed at all. Confirm each bucket name against the live setup rather than inferring it from the pattern before writing the rows — the existing rows pair a domain with an arcade-prefixed bucket, but that is a convention to verify, not a rule to assume. Two rows and a probe. Note the lobby registry's own comment is accurate and needs no change: red-baron is provisioned but deliberately unlisted because it is not finished enough for production, and per the standing rule no orchestrator test may pin the lobby registry's contents — curation is a product decision validated by the lobby's own registry test."
@@ -166,3 +174,11 @@ stories:
       - The three C_PS-bearing CUNTIL gates in TCH1DZ release on C_PS alone, not only on their C_PN/C_AS/C_AG partners.
       - 'Mutation-proven: pinning C_PS back to false reddens the TCH1DZ_20 reachability test.'
       - The tie-status.ts header line listing C_PS as out-of-scope is corrected, so the next sweep does not re-report it; C_AD, C_AV and C_PM stay listed with the ROM reason they are correctly absent.
+  - id: uf1-13
+    title: lobby showcase carousel — close the deferred review residuals
+    description: "Four items the uf1-6 reviews deferred, none blocking, all in lobby. FIRST, src/shell/showcase.ts header states that total load failure REMOVES the pane, unconditionally — that is no longer exactly true. Rotation now holds while the pane owns focus, so if every game is dead while a visitor has focus on the launch link, retirement is deferred until they blur. It self-heals and holding is the right call, but the comment states an invariant the code no longer keeps unconditionally, which is precisely the kind of stale prose that gets a correct guard deleted by a future maintainer. Document the exception. SECOND, the focus-hold branch overwrites a still-armed slideTimer when next() is entered from the load-timeout callback, so next() runs about twice per dwell while focus is held. Measured flat at 2 live timers across 140 seconds and 0 after retirement, so nothing accumulates — but one clearTimeout makes the bookkeeping honest. THIRD, and the most valuable, the reveal button's arrow aria-hidden and the static card caption's deliberate LACK of aria-hidden are both untested: a refactor back to a single textContent assignment passes all 127 tests while making the arrow announce as black right-pointing small triangle. That asymmetry sits on the one point in the whole feature that needed a judgment call, which is the worst place to have no coverage. The reduced-motion path also emits no launch anchor, so its caption is the only thing naming the game and a screen-reader user who tabs straight to the button hears SHOW DEMO with no game name — an aria-label on the button would close it. FOURTH, a test comment in showcase-dom.test.ts calls a guard reorder silent when tsc under strict would actually reject it outright. Also worth one line: the new hosting.md subsection does not point the reader back to the failure-modes table above it once a game fails the liveness check."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: lobby
+    workflow: trivial

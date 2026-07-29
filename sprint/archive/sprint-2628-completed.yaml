@@ -1206,3 +1206,8 @@ completed_stories:
     title: star-wars Status.C_AH is always false — squadmates never react to a nearby kill
     points: 3
     completed: '2026-07-29'
+  - id: uf1-6
+    epic: uf1
+    title: lobby attract-mode demo loop is promised by the docs and absent from the code
+    points: 5
+    completed: '2026-07-29'

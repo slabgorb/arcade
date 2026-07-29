@@ -1,0 +1,43 @@
+id: ad1
+type: epic
+title: Attract demos — the self-play the cabinets owe the lobby
+description: "The lobby showcase carousel (uf1-6) frames each game's LIVE attract mode, so a game with no self-play demo contributes a text screen or an idle death instead of gameplay. Day one only tempest self-plays (demoActive, story 10-3) and centipede animates its attract world; star-wars and battlezone show rotating text pages, asteroids drifts rocks with no ship, and joust boots gover=GOVER_RUNNING with nobody at the controls. Each story here gives one game a real self-play attract demo and flips its own showcase flag in lobby/src/core/registry.ts. This work is owed to the cabinets regardless of the lobby: a machine that does not demo itself is unfaithful to every one of these ROMs."
+priority: p2
+status: backlog
+repos: star-wars,battlezone,asteroids,joust,red-baron
+stories:
+  - id: ad1-1
+    title: star-wars self-play attract demo — fly the TIE wave unattended, then opt into the lobby carousel
+    points: 5
+    priority: p2
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+  - id: ad1-2
+    title: battlezone self-play attract demo — drive and duel unattended behind the attract text, then opt in
+    points: 5
+    priority: p2
+    status: backlog
+    repos: battlezone
+    workflow: tdd
+  - id: ad1-3
+    title: asteroids self-play attract demo — put a ship in the drifting rock field, then opt in
+    points: 3
+    priority: p2
+    status: backlog
+    repos: asteroids
+    workflow: tdd
+  - id: ad1-4
+    title: joust attract simulation — wire GOVER_ATTRACT (0x7f), the ROM's game-SIMULATION mode, then opt in
+    points: 5
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
+  - id: ad1-5
+    title: red-baron attract demo + earn a lobby tile — it has a live bucket and no registry entry
+    points: 5
+    priority: p3
+    status: backlog
+    repos: red-baron
+    workflow: tdd
