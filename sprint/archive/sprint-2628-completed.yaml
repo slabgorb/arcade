@@ -1191,3 +1191,8 @@ completed_stories:
     title: Target aggro subsystem (TARPLY/TARTM) plus wire the targeted player into the enemy step
     points: 3
     completed: '2026-07-28'
+  - id: uf1-2
+    epic: uf1
+    title: joust DYTBL difficulty engine is production-dead — wire difficultyValue as the per-wave source
+    points: 5
+    completed: '2026-07-28'
