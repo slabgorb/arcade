@@ -54,9 +54,11 @@ repos:
     description: 'Arcade lobby / front-end shell: a vector-style menu on black that
       lists
 
-      the games as glowing tiles, launches them, runs an attract-mode demo loop
+      the games as glowing tiles, launches them, shows per-game high scores, and
 
-      when idle, and shows per-game high scores. Canvas 2D, no backend.
+      runs a showcase carousel framing the live games that opt in. Plain DOM and
+
+      CSS, no canvas, no backend.
 
       '
     language: typescript

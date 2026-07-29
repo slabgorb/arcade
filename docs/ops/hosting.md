@@ -68,6 +68,22 @@ just deploy-one <name>   # one app
 | Site serves stale build after green run | Cloudflare cache | check `cf-cache-status` / `last-modified` headers; purge zone cache if truly stale |
 | Need to roll back | `main` has a bad release | check out the previous tag, `just deploy-one <name>` from it, then fix forward on `develop` and release |
 
+### The lobby showcase pane is blank or missing
+
+The lobby frames each opted-in game live (`lobby/src/shell/showcase.ts`). It cannot
+see inside a cross-origin frame, so it can only detect a game that never loads at
+all: after 8 s of silence it writes that game off and moves to the next, and if every
+game fails it removes the pane entirely — the lobby then looks exactly as it did
+before the feature existed.
+
+A game serving a **broken build** still fires `load` and looks healthy from the
+lobby. That is undetectable from the parent by design. Check liveness out of band:
+
+    just check-showcase
+
+Which games appear is `showcase: true` in `lobby/src/core/registry.ts` — not a
+config, a per-game product decision that flips as each game's self-play demo lands.
+
 ## Game assets: the `arcade` bucket (served at `arcade-assets.slabgorb.com`)
 
 > **⚠ The bucket is called `arcade`, not `arcade-assets`.** Every *other* bucket

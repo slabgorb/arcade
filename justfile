@@ -272,6 +272,38 @@ deploy-assets:
     node {{root}}/scripts/deploy-r2.mjs "$staging" {{assets_bucket}}
     echo "Done. Verify: curl -sI https://arcade-assets.slabgorb.com/star-wars/music/space_theme.wav"
 
+# Prove every game's URL actually answers — not just the ones the lobby
+# showcases today. The loop below iterates the whole fleet regardless of a
+# game's `showcase` flag in the lobby's registry; there is no per-showcase
+# filtering here.
+#
+# The lobby CANNOT detect a broken build behind a cross-origin frame: iframe.onload
+# fires for error pages too, and same-origin policy hides everything else. So
+# liveness is checked HERE rather than pretended at in CI, where a network
+# assertion on a GitHub runner is a flaky red that teaches everyone to ignore it.
+#
+# The game list below is duplicated from lobby/src/core/registry.ts — bash
+# here cannot import the lobby's TypeScript registry, so update this list too
+# whenever a game is added.
+check-showcase:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    fail=0
+    for u in tempest star-wars asteroids battlezone centipede joust; do
+      # curl already prints 000 itself via -w on a connection failure (and also
+      # exits non-zero, which `set -uo pipefail` without `-e` tolerates) — an
+      # `|| echo 000` fallback here would double that into "000000" instead of
+      # reporting cleanly. -L so a redirect (e.g. a future Cloudflare rule) is
+      # not mistaken for an outage — it reports the FINAL response's status.
+      # --connect-timeout/--max-time so a host that stalls after the TCP
+      # handshake cannot wedge this check forever; a timeout also surfaces as
+      # curl's own 000, landing in the same non-200 path with no extra logic.
+      code=$(curl -sL --connect-timeout 5 --max-time 15 -o /dev/null -w "%{http_code}" "https://$u.slabgorb.com/")
+      printf "%-12s %s\n" "$u" "$code"
+      [ "$code" = "200" ] || fail=1
+    done
+    exit $fail
+
 # ============================================
 # RELEASE (develop → main + tag → CI deploys to R2)
 # ============================================
