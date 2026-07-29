@@ -54,15 +54,28 @@ requires the chosen rule be logged as a deviation with its rationale.
 - **In scope:** deriving `C_PS` in `computeStatus`; proving the `TCH1DZ_20` arm
   reachable; the three `C_PS`-bearing `CUNTIL` gates releasing on `C_PS` alone; the
   mutation proof; the `tie-status.ts` header comment correction.
+- **In scope (FOLDED IN 2026-07-29, AC-6):** the viewport aspect must reach the pure
+  core so `C_PS` measures against the *same ray the gun uses*. TEA filed this as uf1-14
+  after handoff, then measured it: the shell supplies a real aspect
+  (`src/shell/input.ts:45`), and at 16:9 / depth 6000 the aspect-aware gun ray and the
+  unit-aspect ray separate by 269 u at yoke 0.1, **539 u at yoke 0.2** and 2694 u at full
+  deflection — against a sights band only 500 u wide. From ~a fifth of yoke travel the
+  bands stop overlapping entirely, so an aspect-blind `C_PS` fires on fighters the pilot
+  is not aiming at. Shipping that would defeat this story's own purpose, so the user
+  folded it in rather than deferring. Costs an edit to `sim.ts` — **re-anchor
+  `npm test -- citations` afterwards** (36 pinned lines across 9 findings files).
 - **Out of scope:** `C_AD`, `C_AV` and `C_PM`. Their absence is **correct, not a
   gap** — the ROM never sets `C_AD` (`WSCPU.MAC:28` annotates it `/PLEASE DELETE/`,
   zero setters tree-wide) and the assembled program gates on none of the three. AC-5
   requires they stay documented as correctly-absent so the next sweep does not
   re-file them.
-- **Out of scope:** retuning `C_AS`/`FIRE_CONE_COS` beyond what AC-1's finding
-  supports. If the ROM threshold turns out to be portable and retiring the 12° guess
-  becomes a real change, that is a separate story to file — not a silent widening of
-  this one.
+- **Out of scope:** retuning `C_AS`/`FIRE_CONE_COS`. TEA answered AC-1's open question —
+  `WSMAIN.MAC:3930` does **not** yield a threshold for it — and filed the real lead
+  (`WSCPU.MAC:615-618`, `Y² + Z² ≤ 0x20`) as **uf1-13**. Leave the `TODO(playtest)`.
+- **Out of scope:** `C_PV`'s ±45° pyramid, which has the same root cause as AC-6 but is
+  a separate, already-shipping defect (the rendered vertical half-angle is 30°, not 45°,
+  so off-screen TIEs pass the §6 fire gate). Owned by **uf1-14**, which depends on this
+  story landing the viewport in `GameState`.
 
 ## Acceptance Criteria
 - computeStatus derives C_PS from a rule cited to WSMAIN.MAC:3930, or the absence of a portable threshold there is logged as a deviation with the chosen rule and its rationale.
