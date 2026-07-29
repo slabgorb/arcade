@@ -863,3 +863,44 @@ PLAY`, `:1805-1806` stamp) — the right disposition was "citations verified aga
 the repo-bundled path as canonical", not "stale copy". The general rule: a line-number dispute
 between two readers of the same ROM source is a NEWLINE question before it is a REVISION
 question.
+
+---
+
+### A story that RETIRES a mechanism silently HOLLOWS OUT the suites that guarded it — the tests stay green because they can no longer fail
+
+**Situation:** sw8-8 (star-wars) retired `spaceEye`, a frame-driven space camera, replacing it with a
+constant cockpit origin. The author correctly retired and inverted the ONE suite named after the
+mechanism (`render.moving-eye.test.ts` → `render.space-camera.test.ts`) and shipped 1985/1985 green.
+
+**Problem:** a DIFFERENT suite — `bounded-eye-combat.test.ts`, the sw8-2 guard for "incoming fire
+stays shootable/fair", i.e. the exact invariant the story existed to restore — went from meaningful
+to **incapable of failing**, and stayed green the whole time so nothing flagged it. Its four tests
+all read the eye through `eyeOf(s)`; once `cameraView` returned a constant, `eyeOf` was `[0,0,0]`
+for every state, including the `frame: 50_000` and `advance(…, 1600)` fixtures built specifically to
+exercise drift. Its last assertion reduced to `Math.hypot(0,0,0) < 33_000` — `0 < 33_000`. Its header
+still described the deleted `spaceEye` as present-tense fact. Green, reassuring, and dead: a future
+regression of the very split the story fixed would now be caught only by the new suite, while a file
+called "bounded-eye-combat" sat there looking like a guard.
+
+**Prevention:** when a diff DELETES or CONSTANT-FOLDS a seam, do not review only the files the diff
+touched. Grep every consumer of the retired seam (here: the 13 importers of `eyeOf`) and, for each
+test that reads it, ask *can this assertion still fail?* The tell is a value that used to vary and
+is now compile-time constant — assertions over it are literals comparing literals. The retiring
+story's own suite is usually handled (the author is thinking about it); the collateral suites in
+OTHER stories' files are the ones that rot, and `vitest` will never tell you, because passing is
+exactly what they do. Narrow it fast: consumers on untouched phases/branches are unaffected — here
+11 of 13 were surface/trench and only 2 saw the space change.
+
+**Prevention (the mirror trap):** an INVERTED test can over-reach past what the source supports.
+The same diff inverted "the Death Star leaves frame" into "the Death Star holds the optical axis
+to 1e-6". The ROM evidence supported only "the CAMERA does not drift" — and the epic's own design
+spec recorded a direct longplay observation that the station IS entirely out of frame mid-combat.
+So the inversion pinned as an invariant something our own primary evidence refuted, and would have
+blocked the correct follow-up. When you invert an assertion, check that the NEW claim is the one the
+source actually makes, not merely the negation of the old one — negation is not evidence.
+
+**Also:** disabled specialists are not coverage. Five of nine reviewer subagents were off via
+`workflow.reviewer_subagents`; two of the seven confirmed findings (a dead `state` parameter hidden
+by `noUnusedParameters: false`, and the design-spec conflict) came from assessing those domains by
+hand. Record the disabled rows honestly as "Skipped / disabled" AND say who covered the domain
+instead — otherwise the table reads as if nine specialists agreed.
