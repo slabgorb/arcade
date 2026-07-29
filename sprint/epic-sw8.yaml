@@ -88,6 +88,7 @@ stories:
     repos: star-wars
     workflow: tdd
     type: bug
+    review_verdict: approved
   - id: sw8-9
     title: TIE in-front loiter — fighters currently fly PAST the cockpit (converge x→0 at negative depth, behind the eye) instead of loitering-and-converging IN FRONT as the longplay shows; port the deferred §5 play-cube clamp (sub_8DE3, sw8-2 AC3 'deferred tuning') + loiter/no-ram (model §9-3 'no body collision'); confirmed by sw8-6 Dev finding (sprint/archive/sw8-6-session.md)
     points: 3
@@ -170,3 +171,11 @@ stories:
     repos: star-wars
     workflow: tdd
     type: bug
+  - id: sw8-18
+    title: "Correct the ST.UX tombstone's ROM citations and the sw8-8 suite header's retired-fix guidance (sw8-8 review round 2 findings). (1) gameRules.ts:238-239 claims 'Every writer sits under WSMAIN.MAC .SBTTL MOVE STARS IN SOME DIRECTION and is an SMV* routine' — FALSE: that SBTTL is 2243-2291, .SBTTL MOVE THE PLAYER starts 2292, and the space-wave writer SMVSP1/SMVSP2/SMVNXT/S1MV at 2522 is under MOVE THE PLAYER; S1MV is not an SMV* name. The correction STRENGTHENS the ruling — the routine the ROM files under 'MOVE THE PLAYER' writes nothing but ST.UX. (2) gameRules.ts:241 cites WSMAIN.MAC:2523-2531 — omits the SMVSP1: label at 2522 and runs into S1MVHP: at 2531 (a different routine); correct span 2522-2530, which the design-spec amendment added in the SAME commit already uses. (3) that enumeration omits ST.UX writer S1MVHP (;MOVE DURING HYPER, LSLD8, 2531-2536). (4) incoming-fire-reaction-window.test.ts:40 refers in present tense to bounded-eye-combat.test.ts, deleted by sw8-8; :45-46 offers 'seat the pilot at spaceEye' as a live option the story ruled out and the tombstone forbids; :47-48 describes the re-seated control as fencing off 'parking the eye', now the shipped design. (5) render.ts:61/:63 duplicate '../core/gameRules' import. (6) space-eye-is-cockpit.test.ts:14-15 says the advance(...,1600) fixture yielded [0,0,0]; its own advance() doc at :70-77 correctly says [0,768,0] (trench). Also note in test 3's comment that it is an AC anchor subsumed by test 1, and consider the phase-guard assert in render.space-camera.test.ts's advance()"
+    points: 2
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: trivial
+    type: chore
