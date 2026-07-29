@@ -71,7 +71,9 @@ requires the chosen rule be logged as a deviation with its rationale.
   re-file them.
 - **Out of scope:** retuning `C_AS`/`FIRE_CONE_COS`. TEA answered AC-1's open question —
   `WSMAIN.MAC:3930` does **not** yield a threshold for it — and filed the real lead
-  (`WSCPU.MAC:615-618`, `Y² + Z² ≤ 0x20`) as **uf1-13**. Leave the `TODO(playtest)`.
+  (`WSCPU.MAC:615-618`, `Y² + Z² ≤ 0x20`) as **uf1-15** (filed as uf1-13, renumbered
+  during the green phase — a sibling checkout had already taken 13 for a lobby story).
+  Leave the `TODO(playtest)`.
 - **Out of scope:** `C_PV`'s ±45° pyramid, which has the same root cause as AC-6 but is
   a separate, already-shipping defect (the rendered vertical half-angle is 30°, not 45°,
   so off-screen TIEs pass the §6 fire gate). Owned by **uf1-14**, which depends on this
