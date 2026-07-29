@@ -1196,3 +1196,8 @@ completed_stories:
     title: joust DYTBL difficulty engine is production-dead — wire difficultyValue as the per-wave source
     points: 5
     completed: '2026-07-28'
+  - id: jt8-2
+    epic: jt8
+    title: Enemy horizontal homing — PFACE nudge toward the target (copy X-vel dir, throttled plus periodic flip)
+    points: 3
+    completed: '2026-07-29'
