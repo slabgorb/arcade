@@ -1961,3 +1961,49 @@ WEAKER than `tests/audit/citations.test.ts`. Mine trimmed both sides; the repo's
 line, and an unlabelled statement (`JSR`, `FDB`, the bare `CLR EGGS1` at :907) carries a leading TAB
 that a labelled one (DEATH1, WNRM) does not. A trimming check passes a claim CI then rejects. When
 duplicating an existing global gate at story scope, match its strictness or don't duplicate it.
+
+---
+
+### Reachability at a FIXED depth is not reachability through impact — a closing target's angle DIVERGES as depth → 0
+
+**Situation:** Any story about whether the player can answer an incoming threat in a first-person
+game where the camera/eye is not exactly the point the threat is aimed at (sw8-8; the parent sw8-2
+had already "closed" this).
+
+**Problem:** sw8-2 pinned "incoming fire stays aim-reachable" with `bounded-eye-combat.test.ts`,
+which places a STATIC fireball at `[1200, 0, -8000]` and `enemyShots: []` — a shot that never
+closes. That test is green, correct, and blind to the actual defect. `aimAt` divides lateral offset
+by REMAINING DEPTH: for a target sitting at depth 8000 a 2048-unit eye offset is a small angle, but
+for the SAME target decaying toward the origin the depth goes to zero while its offset from the eye
+tends to the eye's own offset, so the angle diverges and it necessarily leaves the view in its
+final approach. Measured on develop: **100 % of flights went unreachable BEFORE impact**, blind tail
+0.731–2.146 s, `reachableAtImpact` false for every flight of every seed — while the sw8-2 suite
+stayed green. **Any non-zero eye offset produces the blind tail**; bounding it only moves when the
+tail starts, which is exactly why sw8-2 shipped believing it was fixed.
+
+**Prevention:** For "can the player answer it", never assert reachability at a staged position.
+Drive a real run, track each threat by a stable identity (the homing law only SCALES position, so
+`normalize(pos)` is invariant over a shot's whole life — no reaching into sim internals), and
+assert on the FINAL frame plus a contiguous window ending at impact. Then confirm with the gun,
+not the geometry: aim with a yoke CLAMPED to ±1 (what `src/shell/input.ts` can physically produce
+— `aimDirection` does NOT clamp, so an unclamped test aim is an input the hardware cannot make and
+will pass vacuously) and mash the trigger on alternate frames, because the trigger is edge-triggered
+and a held button fires once. The clamped/unclamped pair IS the diagnosis: 0 kills clamped vs every
+kill unclamped proves the target is hittable and the player simply cannot point at it.
+
+**Also — measure the OBVIOUS fix before handing the story over.** I applied the natural
+seam-unification (home the shot to `spaceEye` and seat the cockpit sphere there) as a throwaway
+mutation: it left MORE tests failing and reddened two siblings, because `spaceEye` is a **sawtooth
+of the integer `frame`** that jumps 4096 units at each wrap — so homing at it is neither continuous
+nor dt-invariant, and `homing-fireball.test.ts`'s frame-rate-independence test catches it. Ten
+minutes in RED converted "Dev will discover this the hard way" into a blocking Delivery Finding.
+Corollary: when the obvious fix is measurably wrong AND the alternatives are each blocked by a
+different existing guarantee, the seam is genuinely unruled — say so and route it to Architect
+rather than inventing an AC that picks one.
+
+**And fence the cheap fixes with mutation-proven controls.** Two green controls, each proven to
+bite: parking the eye turns ALL the RED tests green and is caught only by a "the eye still drifts"
+control (it would silently revert the previous story's shipped feature); halving the homing decay
+is caught only by a "duration is not the defect" control. A story whose complaint was "it killed me
+in under a second" is exactly the shape where someone later "fixes" it by slowing the projectile —
+pin the refuted half of the complaint, not just the confirmed half.
