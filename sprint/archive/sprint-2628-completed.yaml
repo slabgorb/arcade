@@ -1201,3 +1201,8 @@ completed_stories:
     title: Enemy horizontal homing — PFACE nudge toward the target (copy X-vel dir, throttled plus periodic flip)
     points: 3
     completed: '2026-07-29'
+  - id: uf1-3
+    epic: uf1
+    title: star-wars Status.C_AH is always false — squadmates never react to a nearby kill
+    points: 3
+    completed: '2026-07-29'
