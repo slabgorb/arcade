@@ -122,3 +122,64 @@ the sibling's merge gate).
 the Reviewer's fetch-first step + this choreography. Expect an add/add conflict if both
 checkouts named a new test file identically — the follow-up treats the reference branch as
 spec-with-proofs, never as a mergeable branch.
+
+**CORRECTION (2026-07-29, sw8-8):** "none available at setup" is too pessimistic — there ARE two
+cheap setup-time probes, and they cost seconds. See the entry directly below.
+
+---
+
+### A sibling's claim is invisible until PUSHED — probe the remote branch list and sibling `.session/` dirs BEFORE spawning `sm-setup`
+
+**Situation:** `/pf-work sw8-8`. Every board signal said GO: `pf agent start sm` reported
+`NEW_WORK_STATE`, `pf sprint backlog` listed sw8-8 as available, the epic YAML said
+`status: backlog` **on `origin/main` as well as locally**, the merge gate was clean, and
+`gh pr list -R slabgorb/star-wars` returned nothing. Nothing in the tracking system objected.
+
+**Problem:** a-2 had been running sw8-8 for ~13 hours and was sitting in Reviewer **round 2**
+(`setup` 10:32 → `red` → `green` 3h19m → `review` → `green` 7h55m → `review` re-entered 31 minutes
+before I looked). It had pushed three commits to `origin/feat/sw8-8-incoming-fire-reaction-window`
+but had **not pushed its sprint status stamp**, and per-checkout `.session/` files are never
+committed. So the entire claim was invisible to `pf`. Setting up here would have duplicated an
+11-hour green, raced the same `sim.ts` `homeShots` path, and collided add/add on the RED test file.
+
+**The two probes that caught it (both seconds, both before any spawn):**
+```bash
+git -C <subrepo> fetch --prune origin          # then:
+git -C <subrepo> branch -r | grep -E "<story-id>"        # a pushed feat/ branch = someone owns it
+ls /Users/slabgorb/Projects/a-*/.session/*-session.md    # live sessions across ALL checkouts
+```
+The branch probe alone was decisive: three commits with a `rework round 1` message dated *today*
+is a story in review, not a backlog item. The `.session/` sweep then named the owner and the exact
+phase. Run BOTH — a sibling that hasn't pushed yet is caught only by the second.
+
+**Prevention:** treat `pf sprint backlog` / `status: backlog` as **necessary but not sufficient**.
+The authoritative question is not "what does tracking say?" but "does a branch or a session file
+exist for this story anywhere?" Make the two probes a reflex in the New Work Flow, before
+`sm-setup`. Cost of the probe: ~10 seconds. Cost of skipping it: the whole
+SUPERSEDED-AT-REVIEW choreography in the entry above.
+
+**Corollary — push your own claim immediately.** The reason sw8-8 was invisible is that a-2's
+stamp sat local. After `sm-setup` returns, commit the epic-YAML stamp + the context file and
+**push** in the same breath; an unpushed claim is an invisible claim, and you are the sibling in
+someone else's version of this story. (jt8-4's claim was pushed within a minute of setup — the
+push was rejected first time because `main` had moved, so expect a `pull --rebase`.)
+
+**Also worth knowing:** `sm-setup` created the session, context and branch correctly but left the
+story at `status: backlog` — it did NOT stamp `in_progress`. Verify with
+`pf sprint story show <id> | grep Status` and stamp it yourself
+(`pf sprint story update <id> --status in_progress`). An unstamped story is invisible to the
+sibling probes above even after you push.
+
+**Never write the literal `**Phase:**` token inside your assessment prose.** `pf handoff
+complete-phase` rewrites the phase stamp by pattern, not by position — it hit all three occurrences
+in jt8-4's session file, silently turning a sentence that began ``  `**Phase:** setup` Workflow
+Tracking at line 15… `` into ``  `**Phase:** red Workflow Tracking at line 15… `` (it ate the
+closing backtick and the separator). The header of my own setup assessment was relabelled `red`
+too. Say "the phase pointer read `setup` on arrival" instead, and after `complete-phase` run
+`grep -n '\*\*Phase:\*\*' <session>` — exactly ONE hit (the real pointer) is correct. Anything else
+is prose the next rewrite will corrupt, and the session file is the permanent archived record.
+
+**Contention is broader than the story.** sw8-8 owns the star-wars TIE fire gate, so `uf1-14`
+(C_PV pyramid), `uf1-15` (C_AS cone) and `sw8-16` (C$T9/A$GLW coverage) all touch the files a-2 is
+actively reworking — they were the *worst* available picks despite two of them being p1. When a
+story is blocked by a sibling, rule out its whole file neighbourhood, not just its id.
