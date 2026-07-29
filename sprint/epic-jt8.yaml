@@ -57,7 +57,8 @@ stories:
     description: 'The missing egg pickup — PLYEGG (:3009) / EGGSCR (:3030-3095). Add a player-vs-egg pass to collisionPass (demo.ts): on a player overlapping an egg, emit the egg score events via the EXISTING egg.ts core (eggScoreEvents = the EGGVAL ladder 250/500/750/1000 by hit count capped, :3097-3104, PLUS 500 if caught mid-air with PFEET==0, :3063-3069), attribute the score to the catching player (a score/reason:egg/player event the game.ts drain already credits to the right ledger), REMOVE the egg, and cancel any incoming remount bird (AUTOFF, :3078-3087). REUSE-FIRST: the entire scoring ladder plus air bonus already exist and are tested (egg.ts, jt2-4) and game.ts already drains reason:egg — the only new code is the catch pass plus egg removal. INDEPENDENT of the enemy chain (jt8-1 to jt8-3) — the quickest standalone playability win. Radix-cited plus claims entry for PLYEGG/EGGSCR.'
     points: 2
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-07-29'
     repos: joust
     workflow: tdd
     acceptance_criteria:
