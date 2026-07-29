@@ -913,46 +913,50 @@ with a filed owner (sw8-14) rather than tuning the count so the test can't see i
 
 ---
 
-### Re-anchoring citation pins: a verbatim that occurs TWICE can be re-pointed at the wrong code and the gate still goes GREEN — and 1/3 of the pins are frozen on purpose
+### The citation gate's re-anchor loop already HAS a tool in the repo (check `tools/audit/` before writing one), and the working-tree model it serves is what tempest retired
 
 **Situation:** GREEN work that inserts lines into a file the ROM-fidelity audit cites.
-`docs/audit/findings/*.json` pin an `ours` citation as `{file, line, verbatim}` and
-`tests/audit/citations.test.ts` re-opens the pinned LINE to byte-compare it, so ANY insertion —
-even a comment — moves every pin below it. uf1-12 added 5 lines to `star-wars/src/core/sim.ts`
-(the `stepGame` viewport shadow) and TEA had pre-measured the cost honestly: only the two
-citation tests fail. That measurement is correct and still not enough to re-anchor safely.
+`docs/audit/findings/*.json` pin an `ours` citation as `{file, line, verbatim}` and star-wars's
+`tests/audit/citations.test.ts` re-opens the pinned LINE **in the working tree**
+(`check-citations.mjs:155`), so ANY insertion — even a comment — moves every pin below it.
+uf1-12 added 5 lines to `star-wars/src/core/sim.ts` (the `stepGame` viewport shadow) and moved 23
+pins across 9 findings files; `sim.ts` alone carries 36.
 
-**Problem — the gate cannot tell a re-anchor from a MIS-anchor.** It only asks "does the text at
-this line still match?", so a pin moved to the wrong occurrence of the same text passes. In
-uf1-12, 2 of 23 moved pins had non-unique verbatims: `      damage++` occurs at `sim.ts:616`,
-`1016` **and** `1101`, and `    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {` at `615` and
-`1100` (the space and surface damage paths are near-identical code). Fixing by "search for the
-text, take the first/nearest hit" silently re-points finding S-016 at the SURFACE site — a GREEN
-gate over an audit record that now describes the wrong routine. That is strictly worse than the
-red it replaced, because nothing will ever flag it again.
+**Problem 1 — the repo already has the tool.** Dev hand-rolled a scratchpad re-anchor script
+without looking. `tools/audit/reanchor-citations.mjs` has been there all along (dry-run by
+default, `--write` to apply, skips `remediated_by`, nearest-match on duplicates). Run against the
+hand-anchored result it said "96 already correct, 0 re-anchored, 0 lost" — i.e. it would have done
+the identical job in one command. **`ls tools/` before writing any audit/maintenance script.**
 
-Second trap in the other direction: **~1/3 of the `ours` pins are already stale BY DESIGN.** The
-checker exempts any finding carrying `remediated_by` (`tools/audit/check-citations.mjs:117`) so a
-fixed finding keeps the citation it was AUDITED with. uf1-12 found 34 such pins against 96 live
-ones. A re-anchor sweep that "fixes all the stale pins" rewrites the audit's own history and
-destroys the record of what the code looked like when the finding was written.
+**Problem 2 — the loop itself is obsolete, and the sibling proved it.** tempest RETIRED this in
+tp1-22 by pointing its gate at the **audit COMMIT** (`git show 4232ed4:<file>`) instead of the
+working tree. The audit record is immutable, so a finding green once is green forever however the
+code is later refactored, `ours.line` goes decorative, and tempest's re-anchor tool is demoted to
+a LOST-only health check. star-wars still reads the working tree, so it still pays the churn —
+filed as **td1-13** (port the freeze; the reconciliation of already-moved pins is the real work).
 
-**What works (uf1-12, 23 pins across 9 files, zero reformatting):**
-1. Compare with the checker's own rule — `trimEnd()`, not exact equality (`:158`).
-2. **Skip every finding with `remediated_by`.** If it is exempt from the check, it is exempt from
-   the fix.
-3. Resolve a multi-candidate verbatim by the file's **uniform shift**: one edit inserts at ONE
-   point, so every pin below it moves by the SAME delta. Take the candidate at `old + delta`.
-   Never by proximity — the wrong occurrence can easily be the closer one.
-4. **Refuse to guess.** Report anything the shift rule cannot settle and look at it by hand.
-5. Write with `JSON.stringify(findings, null, 2) + '\n'` — the findings files are 2-space with a
-   trailing newline, so the diff stays line-numbers-only (verify with `git diff --stat`: equal
-   insertions/deletions and no reformat).
+**Why the freeze matters beyond saved churn — a non-unique verbatim can go green on the WRONG
+code.** The gate only asks "does the text at this line still match?", so a pin moved to a
+different occurrence of the same text passes. In star-wars `sim.ts`, `      damage++` occurs at
+616, 1016 **and** 1101, and `    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {` at 615 and
+1100 — the space and surface damage paths are near-identical code. A mis-anchored S-016 would
+describe the surface routine and read green forever; nothing would ever flag it. Nearest-match
+(what the tool does) is sound for insert-only edits, since insertions preserve order, but its own
+header states that as an assumption and a code MOVE breaks it. Freezing makes it moot.
+
+**Second trap, opposite direction: ~1/3 of the pins are stale BY DESIGN.** The checker exempts any
+finding carrying `remediated_by` (`check-citations.mjs:117`) so a fixed finding keeps the citation
+it was AUDITED with — 34 such pins against 96 live ones in star-wars. A sweep that "fixes all the
+stale pins" rewrites the audit's own history. Whatever tool you run, it must skip them (both
+repos' tools do).
+
+**If you must re-anchor by hand anyway** (mid-story, tool unavailable): compare with the checker's
+own rule — `trimEnd()`, not exact equality (`:158`); skip `remediated_by`; resolve a
+multi-candidate verbatim by the file's uniform shift (one edit inserts at ONE point, so every pin
+below moves by the same delta) and refuse to guess otherwise; write with
+`JSON.stringify(findings, null, 2) + '\n'` so the diff stays line-numbers-only (`git diff --stat`
+should show equal insertions/deletions and no reformat).
 
 **Also:** a line number in a CODE COMMENT is outside the gate entirely. uf1-12's own new comment
 cited `sim.ts:298` for the gun's `beamDir` — a line the same commit pushed to 303. Nothing catches
 that but you; name the symbol instead of the line.
-
-**Tooling:** filed as **td1-13** (star-wars, 2pts) — a `tools/audit/reanchor.mjs` implementing the
-five rules above, dry-run by default. Until it exists, every story touching a cited file redoes
-this by hand. Same gate ships in tempest, same trap.
