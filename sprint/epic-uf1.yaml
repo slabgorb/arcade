@@ -45,7 +45,9 @@ stories:
     description: "star-wars/src/core/tie-status.ts:107 carries the gap in its own words: 'C_AH (0x01) — NEARBY ALIEN HAS BEEN HIT (WSCPU.MAC:27,357: CHSET C$AH in the damage handler). TODO: a later task threads the hit resolver's per-step result through state (or a per-step arg) so squadmates react to a nearby kill; for now this always reads false.' The choreography VM this bit feeds is no longer speculative — sw7-11 landed it and sw7/sw8 wired it: sim.ts:131 imports initVm/tickChoreo/program/Status/Twist/Move, sim.ts:388 steps every TIE's VM each game frame against computeStatus, and sim.ts:2082 seats each fighter's program from the sw7-12 TSPWAV plan via choreoPc. So C_AH is a live VM condition input that is permanently pinned to false, which silently prunes every branch the ROM gates on it. Compare the sibling bit C_AG immediately above, which was closed the same way this one must be: a later fire step sets e.firedGun on the frame the TIE fires and computeStatus merely reports it. Mirror that. The hit resolver is the hitscan model swapped in by sw7-17 — see the memory of that story's blast radius (29 suites, 125 tests, 11 vacuous tests surfaced), so expect fixtures to need the new per-step signal and trust mutation over green."
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    assigned_to: Keith Avery
+    started: '2026-07-29'
     repos: star-wars
     workflow: tdd
     acceptance_criteria:
