@@ -960,3 +960,47 @@ should show equal insertions/deletions and no reformat).
 **Also:** a line number in a CODE COMMENT is outside the gate entirely. uf1-12's own new comment
 cited `sim.ts:298` for the gun's `beamDir` — a line the same commit pushed to 303. Nothing catches
 that but you; name the symbol instead of the line.
+
+---
+
+### A shipped feature can be a MIS-PORT of a real register — grep every consumer of the ROM symbol before you inherit the port's premise
+
+**Situation:** sw8-8 (star-wars) had to close a fairness defect that traced back to `spaceEye`, a
+camera sw8-1 derived from the ROM's `ST.UX`. Two obvious fixes existed and both were blocked: home
+the incoming fire at the camera (breaks frame-rate independence — the camera is a sawtooth of the
+integer `frame`), or park the camera (deletes the shipped drift).
+
+**Problem:** the dilemma was fake, and it dissolved the moment anyone grepped the ROM symbol instead
+of reasoning from the port. `ST.UX` has exactly ONE reader in the whole 1983 tree — the star
+generator (`WSSTAR.MAC:98-102`, `LDD ST.UX ;STARS RELATIVE MOVEMENT`). Its siblings are literally
+named `;PLAYERS UNIVERSE Y/Z FOR STARS` (WSGLOB.MAC:752-753), every writer sits under `.SBTTL MOVE
+STARS IN SOME DIRECTION`, and the Death-Star movers are assembled out (`.REPT 0`). sw8-1 read the
+writer (`S1MV: LDD FRAME / JSR LSLD7 / STD ST.UX`) correctly and ported it TWICE — faithfully into
+`starfield.ts`, and again as a global camera. The second copy was the whole bug, and it had been
+live and green for two stories, defended by its own confident doc comment.
+
+**Prevention:** when a defect traces to a ported ROM register, do not start from the port's reading.
+`grep -rn "SYMBOL" *.MAC` and enumerate **every reader and every writer**. A register with one
+consumer is a single-purpose register no matter how general its declaration comment sounds
+(`ST.UX::` is commented `;VIEWER X POSITION` — that names the QUANTITY; the siblings name the
+CONSUMER). Check whether the port already implements the same register somewhere else and correctly:
+a duplicate port is the strongest possible evidence that one of the two copies is wrong. And check
+whether the ROM's writers even run in the phase you care about — four of these five were attract
+and interstitial screens.
+
+**Prevention (the retirement itself):** DELETE the mis-ported symbol, do not leave it exported and
+unused — a dead `spaceEye` is an invitation to wire it back in. Leave a TOMBSTONE comment in its
+place carrying the source case (which file reads it, which write it, which are assembled out) and
+pointing at where the register legitimately lives. Then INVERT the tests that asserted the mis-port
+rather than deleting them: `render.moving-eye.test.ts` became `render.space-camera.test.ts` whose
+first test now pins that the camera is frame-INVARIANT. The inversion is the tripwire; deleting the
+tests would leave the third re-derivation unopposed. Rename the file too — a filename asserting the
+retired premise is a citation the next reader will trust.
+
+**Also:** retiring a symbol shifts line numbers across `sim.ts`/`render.ts`/`gameRules.ts` and the
+audit citation gate WILL redden (38 findings here). Run `node tools/audit/reanchor-citations.mjs`
+DRY FIRST and read the summary line: `0 lost` means every hit was a pure line MOVE and `--write` is
+safe. A non-zero "lost" means a citation's quoted TEXT is gone, which is a real decision (mark the
+finding `remediated_by`), not a mechanical reanchor. After `--write`, confirm the diff is only
+`"line": N` values — the tool re-serializes whole files and has previously turned `\uXXXX` escapes
+into literal unicode, burying the real change.
