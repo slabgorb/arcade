@@ -255,3 +255,17 @@ stories:
     repos: joust
     workflow: tdd
     type: bug
+  - id: td1-13
+    title: star-wars/tempest audit pins are re-anchored by hand — a duplicate-line verbatim can be silently re-pointed at the wrong code
+    description: "Found by Dev during uf1-12 (2026-07-29). docs/audit/findings/*.json pin an `ours` citation as {file, line, verbatim}, and tests/audit/citations.test.ts re-opens the pinned LINE and byte-compares it — so ANY edit to a cited file, including a comment-only one, moves the pins below it and reddens the gate. Every story that touches src/core/sim.ts pays this: uf1-12 inserted 5 lines and had to move 23 pins across 9 findings files (tempest hit the same thing on tp1-*). There is no tool — each story re-anchors by hand, and that is where the hazard is. MEASURED in uf1-12: 2 of the 23 pins could NOT be resolved by verbatim alone, because the cited text is not unique in the file. `      damage++` occurs at sim.ts:616, 1016 and 1101, and `    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {` at 615 and 1100. A hand fix (or a naive search-and-replace) that takes the first or the nearest-looking match re-points finding S-016 at the SURFACE damage site instead of the space one — and the gate goes GREEN on it, because the verbatim still matches. The audit record silently starts describing the wrong code, which is worse than the red it replaced. What uf1-12 did by hand and a tool should do: (1) verify with the checker's own comparison (trimEnd, not exact — check-citations.mjs:158); (2) SKIP findings carrying `remediated_by` — the checker exempts them (:117) so they keep their historical citation, and 34 of them are already stale on purpose; (3) resolve a multi-candidate verbatim by the file's UNIFORM shift (one insertion point per edit ⇒ every pin below moves by the same delta) rather than by proximity; (4) refuse to guess — report anything the shift rule cannot settle. Suggested shape: tools/audit/reanchor.mjs beside check-citations.mjs, dry-run by default, --apply to write (JSON.stringify(…, null, 2) + trailing newline preserves the files' existing style — verified in uf1-12, 23 line changes and zero reformatting). A reference implementation from uf1-12 is quoted in that story's session archive. Fleet note: tempest carries the same gate and the same trap, so the tool belongs wherever the gate does; scope this story to star-wars and port it after."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: star-wars
+    workflow: tdd
+    type: chore
+    acceptance_criteria:
+      - "A re-anchor tool exists beside tools/audit/check-citations.mjs, dry-run by default, and writes only under --apply; its output names every pin it moved (id, file, old line, new line)."
+      - "It uses the checker's own trimEnd comparison and SKIPS findings with `remediated_by`, so a remediated finding's historical citation is never rewritten."
+      - "A verbatim matching more than one line is resolved by the file's uniform insertion shift, never by proximity; anything the shift cannot settle is REPORTED and left untouched (proven with a fixture whose verbatim occurs 3+ times — sim.ts's `damage++` is a real one)."
+      - "Applied to a real edit, it leaves the findings JSON byte-identical apart from the line numbers (2-space indent, trailing newline) and the citation gate goes green."
