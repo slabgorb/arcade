@@ -83,10 +83,11 @@ stories:
     title: Incoming-fire reaction window (sw8-2 follow-up) — an idle ship died in <1s to a fireball during the sw8-4 investigation; verify a dodge/shoot window actually exists per sw8-2's acceptance and fix if homing still 'always arrives'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
     repos: star-wars
     workflow: tdd
     type: bug
+    started: '2026-07-29'
   - id: sw8-9
     title: TIE in-front loiter — fighters currently fly PAST the cockpit (converge x→0 at negative depth, behind the eye) instead of loitering-and-converging IN FRONT as the longplay shows; port the deferred §5 play-cube clamp (sub_8DE3, sw8-2 AC3 'deferred tuning') + loiter/no-ram (model §9-3 'no body collision'); confirmed by sw8-6 Dev finding (sprint/archive/sw8-6-session.md)
     points: 3
