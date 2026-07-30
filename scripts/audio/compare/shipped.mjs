@@ -355,7 +355,7 @@ export function compareBattlezoneShipped(audioTsPath) {
 
 // ---------------------------------------------------------------------------
 // Star Wars speech — compare ROM-sliced LPC bytes against the shipped
-// star-wars/tools/speech-bake/speech-data.mjs entry, matched by phrase NUMBER
+// plugins/star-wars/tools/speech-bake/speech-data.mjs entry, matched by phrase NUMBER
 // (both sides are independently 1..23 ordered — matching by transcribed
 // slug/name is NOT reliable, since a few phrases' wording differs slightly
 // between our PHRASES table and the shipped `phrase` text, e.g. "with" vs
@@ -364,14 +364,14 @@ export function compareBattlezoneShipped(audioTsPath) {
 export async function compareStarWarsSpeech(order, romLpc) {
   let mod;
   try {
-    mod = await import(new URL('../../../star-wars/tools/speech-bake/speech-data.mjs', import.meta.url));
+    mod = await import(new URL('../../../plugins/star-wars/tools/speech-bake/speech-data.mjs', import.meta.url));
   } catch (err) {
-    return unverified(`could not load star-wars/tools/speech-bake/speech-data.mjs (shipped artifact): ${err.message}`);
+    return unverified(`could not load plugins/star-wars/tools/speech-bake/speech-data.mjs (shipped artifact): ${err.message}`);
   }
   const SPEECH = mod.default;
   const shipped = SPEECH.find((p) => p.n === order);
   if (!shipped) {
-    return unverified(`no shipped entry with n=${order} in star-wars/tools/speech-bake/speech-data.mjs — nothing to compare against`);
+    return unverified(`no shipped entry with n=${order} in plugins/star-wars/tools/speech-bake/speech-data.mjs — nothing to compare against`);
   }
   const shipLpc = shipped.lpc;
 

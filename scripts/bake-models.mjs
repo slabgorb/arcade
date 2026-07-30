@@ -26,7 +26,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const GAMES = {
   'star-wars': {
     sources: [join(sourceDir('star-wars-1983'), 'WSOBJ.MAC')],
-    out: join(ROOT, 'star-wars', 'src', 'tools', 'romModels.generated.ts'),
+    out: join(ROOT, 'plugins', 'star-wars', 'src', 'tools', 'romModels.generated.ts'),
     build: (texts) => {
       const models = toRomModels(parseWsobj(texts[0]));
       const drawn = models.filter((m) => m.hasDrawList).length;
@@ -132,7 +132,7 @@ export function emitTs(models) {
 //
 // Dev-tool data. Never import this from src/core — the core is the pure sim.
 
-import type { Vec3 } from '@arcade/shared/math3d'
+import type { Vec3 } from '@shared/math3d'
 
 export interface RomModel {
   readonly name: string

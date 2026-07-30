@@ -1,0 +1,1690 @@
+// src/shell/render.ts
+//
+// Paints the core's 3D state as glowing vector lines on black — the shared
+// arcade visual language. The shell owns the canvas; the core owns the math.
+// World-space entities run through the Math Box (perspective projection), then
+// their edges are stroked with `shadowBlur` for the vector-CRT glow. The shell
+// does NO game math — it only consumes positions the core already computed.
+
+import {
+  EXHAUST_PORT_DISTANCE,
+  ENEMY_SHOT_TTL,
+  FIREBALL_DESTROY_BURST_SECONDS,
+  ENEMY_SHOT_HIT_RADIUS,
+  SPAWN_DISTANCE,
+  SPACE_PHASE_END_S,
+  STARTING_LIVES,
+  PORT_AHEAD_RANGE,
+  forceBonusForWave,
+  SHIELD_BONUS_PER_UNIT,
+  TIE_WING_LIFE_SECONDS,
+  TIE_GLOBE_LIFE_SECONDS,
+  TIE_DEATH_SPREAD,
+  TICK_HZ,
+  towersForWave,
+  nextTowerWorth,
+  DEATH_STAR_CHOICES,
+  type GameState,
+} from '../core/state'
+import type { HighScoreTable } from '@shared/highscore'
+import { formatScore, formatLives, formatWave } from '../core/hud'
+import {
+  TIE_FIGHTER,
+  TIE_WING_FRAG_1,
+  TIE_WING_FRAG_2,
+  TIE_WING_FRAG_3,
+  DEATH_STAR_SURFACE,
+  DEATH_STAR,
+  DEATH_STAR_TRENCH,
+  DEATH_STAR_DISH,
+  SURFACE_TOWER,
+  TOWER_CAP,
+  SURFACE_BUNKER,
+  GROUND_DEBRIS_CHUNK,
+  GROUND_DEBRIS_SHADOW,
+  GD_HEIGHT_OFFSET,
+  EXHAUST_PORT,
+  TRENCH_TURRET,
+  TRENCH_SQUARE,
+  TRENCH_CATWALK,
+} from '../core/models'
+import { STAR_FAR, type Star } from '../core/starfield'
+import {
+  INSTRUCTIONS_HEADER,
+  INSTRUCTIONS_BODY,
+  SCORING_HEADER,
+  SCORING_ROWS,
+} from '../core/attract'
+import { surfaceGrid } from '../core/surface-grid'
+import { trenchChannel } from '../core/trench-channel'
+import { trenchWallDetail, trenchFarEnd } from '../core/trench-detail'
+import { crosshairNdc, FOV_Y } from '../core/gameRules'
+import { surfaceShip } from '../core/sim' // the ship point (sw7-16), not a copy
+import { COCKPIT } from '../core/gameRules' // the space eye = the cockpit (sw8-8), not a literal
+import {
+  perspective,
+  multiply,
+  rotationX,
+  rotationZ,
+  translation,
+  scaling,
+  viewMatrix,
+  transform,
+  IDENTITY,
+  type Mat4,
+  type Vec3,
+} from '@shared/math3d'
+import { project, drawWireframe, GLOW_FOR, NEAR, FAR } from './wireframe'
+import { layoutText, CELL_H } from './font'
+import { glowPolyline } from './glow'
+
+const GLOW = '#00e5ff' // cockpit cyan
+const TIE_GLOW = GLOW_FOR['TIE Fighter'] // enemy green (shared)
+/** The TVWCLE colour table's index domain: VWTIN compares the timer against #1F
+ *  before indexing, so the ramp spans timers 0x00..0x1F (WSXPLD.MAC:763-768). */
+const TVWCLE_DOMAIN = 0x1f
+/** Age-keyed glow for an exploded TIE piece (sw7-7 X-003). VWTIN colours each piece
+ *  from its OWN countdown timer against ONE shared table — `LDB XP$TMR(X) / CMPB #1F /
+ *  IFHI -> VJFLS ELSE LDU #TVWCLE / LSLB / LDD B(U)`, i.e. colour = TVWCLE[2*timer]
+ *  (WSXPLD.MAC:761-770) — cooling as DOXPLD DECs it ("SHOW US BEATING IT").
+ *  Keyed to the ABSOLUTE remaining frames, NOT to each piece's own life fraction:
+ *  both pieces walk the SAME ramp and the wing merely starts higher up it (born at
+ *  0x18 = 24) than the globe (0x10 = 16), so at equal wall-clock age they show
+ *  DIFFERENT hues, and a wing decayed to 16 shows the globe's birth colour. A
+ *  per-life fraction would erase exactly that per-piece tell.
+ *  The exact TVWCLE hues are AVG VGCOLR bitfields the finding leaves undecoded, so we
+ *  cool within the enemy-green family. NEVER white — the VJFLS "REALLY FLASH" branch
+ *  needs timer > 0x1F, unreachable for pieces born at 24/16 that only ever DEC; that
+ *  path is a ground-object one (timer 0x20), finding X-005 / sw7-14. */
+function tiePieceGlow(timerFrames: number): string {
+  const t = Math.min(1, Math.max(0, timerFrames / TVWCLE_DOMAIN)) // 1 = fresh, 0 = spent
+  const r = Math.round(120 * t) // warm tint fades: 120 -> 0
+  const g = Math.round(80 + 150 * t) // green dims: 230 -> 80
+  const b = Math.round(70 * t) // 70 -> 0
+  return `rgb(${r}, ${g}, ${b})`
+}
+const TURRET_GLOW = GLOW_FOR['Surface Tower'] // vector red (shared) — trench turrets + bunkers
+// The GDVIEW surface palette (sw3-11, WSGRND.MAC): the tower column strokes
+// VGCYLW yellow, its cap/hat "SPECIAL WHITE" (VGCWHT), and lone undamaged
+// bunkers VGCRED — which is exactly the shared 'Surface Tower' red above.
+const TOWER_GLOW = '#ffd60a' // tower yellow column (VGCYLW; the sw2-3 cabinet yellow)
+const CAP_GLOW = '#f4f4ff' // tower white cap (VGCWHT, faint vector-blue cast)
+const SURFACE_GLOW = GLOW_FOR['Death Star Surface'] // death star steel (shared)
+// sw7-15 / M-010: the authentic 2D vector picture is three coloured parts (WSVROM.MAC
+// DEATH STAR PICS): a GREEN disc (BSCIR, VGCGRN), a WHITE equatorial trench chord (BSTRN,
+// VGCWHT), and a RED superlaser dish (BSDSH, VGCRED) — not one steel hull.
+const DEATH_STAR_BODY_GLOW = '#22e600' // VGCGRN — the green base disc + farmland
+const DEATH_STAR_TRENCH_GLOW = '#ffffff' // VGCWHT — the equatorial trench line
+const DEATH_STAR_DISH_GLOW = '#ff3b30' // VGCRED — the superlaser dish
+const BOLT_GLOW = '#9dff00' // player laser green
+const FIRE_GLOW = '#ffd60a' // enemy muzzle-flash amber (the firing tell)
+// The enemy fireball red — VGCRED, the cabinet vector red. ROM-authentic, and RULED so
+// (sw8-3): the alien gun shot is drawn `COLOR VGCRED,0FF` in every sparkle frame
+// (WSVROM.MAC:54, VGCRED==4; GNB0-3 bodies :487/528/569/610; GNT0-3 inherit it) with NO
+// hue cycling by age/distance — so no change, only this citation. drawFireballBurst reuses it.
+const FIREBALL_GLOW = '#ff3b30'
+
+/**
+ * Trench wireframe glow (fidelity epic, task 5) — findings ## Colors &
+ * intensities: every trench-pass opcode (`$6270` floor side A, `$6250` floor
+ * side B, `$6260` wall walk, `$6280` exhaust-port-adjacent pass) shares STAT
+ * colour register 2 at varying intensity — "the trench reads green in the
+ * cabinet." Replaces `SURFACE_GLOW` (death star steel) on the trench channel
+ * + wall-detail strokes ONLY; the surface phase keeps SURFACE_GLOW. The
+ * register is pinned by the opcodes above; a real cabinet screenshot (task-5
+ * report) confirms the hue directly (a saturated, no-blue green, sampled
+ * ~#00e600/#1cdd00 off the HUD's own green text and the shield gauge) — the
+ * value below is picked to match that sample, not literally quoted from the
+ * ROM (no colour LUT survives there, only the register index).
+ */
+const TRENCH_GLOW = '#22e600' // PROVISIONAL(findings ## Colors & intensities) — register pinned, hex matched to a cabinet screenshot
+
+// How long a TIE's muzzle starburst stays lit after it looses a fireball — the
+// enemy-fire "tell": a brief flash at the firing
+// point, then gone, not a glow trailing the bolt down its whole 6s flight.
+const ENEMY_MUZZLE_FLASH_SECONDS = 0.1
+
+// Display orientation per surface model (story 8-4). The authentic object-space
+// axes do not match the in-game view, so each model is rotated into place before
+// it is drawn (the vertex data in core/models.ts stays untouched).
+//
+//   SURFACE — the cross-sections stand in the X/Y plane in object space; a -90°
+//   roll about Z lays them down so the relief rises in +Y from the y=0 floor.
+//   TOWER   — the ROM authors ground objects Z-UP and height-recentred; see
+//   TOWER_ORIENT below, which is the whole bridge into our y-up world.
+//   TRENCH  — the floor squares and catwalk rails are AUTHORED here (not ported),
+//   flat in the y=0 plane, so they need no reorientation (story 8-5).
+//   PORT    — the exhaust port is NOT trench furniture: it is a ROM GROUND OBJECT
+//   (`.WP PORT`, `.S=8 ;GROUND OBJECT SCALING`, drawn by the cabinet with the
+//   bunker's own colour and scale registers), so it needs the SAME up-axis bridge
+//   the tower family does. See PORT_ORIENT below.
+//
+// NOTE: structural tests can't catch orientation/scale — these MUST be eyeballed
+// in the dev server once the surface phase is reachable in play.
+export const SURFACE_ORIENT: Mat4 = rotationZ(-Math.PI / 2)
+export const TRENCH_ORIENT: Mat4 = IDENTITY
+
+// The exhaust port's placement basis (story sw5-6).
+//
+// sw5-4 drew the port under TRENCH_ORIENT = IDENTITY, believing `.WP PORT`'s twelve
+// zeros meant "flat in z, facing the pilot down −Z". They do not. The ROM's THIRD
+// coordinate is HEIGHT — its own macro says so, `.MACRO .PGND .A,.B,.C ;OFFSET HITE TO
+// MID OF PLAYERS HITE` applying GD$MDT to the third component — and TOWER_ORIENT below
+// already states the convention out loud. Twelve points with zero HEIGHT is a HORIZONTAL
+// plate, and WSBASE.MAC `BSVPORT` lays it on the floor in as many words:
+//
+//     LDD #-1000
+//     STD M.GD+4        ;Z HITE ON BOTTOM OF TRENCH
+//     LDD #0
+//     STD M.GD+2        ;Y WIDTH IN CENTER
+//
+// So the port is a hole in the trench FLOOR — where the authored octagon was all along.
+// Under IDENTITY the ROM's height axis landed on our DEPTH axis, standing the plate on
+// its edge with half of it buried below the floor. This is that missing remap.
+//
+// It is TOWER_ORIENT's rotation WITHOUT the lift and WITHOUT the scale:
+//   - no lift:  `.PH` rows carry no `-GD$MDT` recentring (unlike `.PGND`), so there is
+//     nothing to undo — the plate is authored at height 0 and belongs at the floor.
+//   - no scale: the port is drawn 1:1, which is what binds PORT_HIT_RADIUS (108, world
+//     units) to the porthole's 96 (model units). GROUND_MODEL_SCALE would break that.
+//
+// The port is three concentric SQUARES (|x| = |y| at every point), so it is 4-fold
+// symmetric about the vertical and the rotation's horizontal-axis swap is invisible.
+export const PORT_ORIENT: Mat4 = rotationX(-Math.PI / 2)
+
+// The ROM → world presentation scale for the ground objects (story sw5-5).
+//
+// models.ts now holds the GROUND LASAR TOWER family in RAW ROM UNITS, as it
+// already did for every ship — which is what lets the contact sheet compare them
+// against the ROM at all. The ROM authors them at `.S = 30.*4` = 120 units per
+// design unit, so the base ring (r = 8) spans 960 raw units. The shipped game
+// draws that footprint at r = 32, and the maze spacing and turret hit radius all
+// assume it: 32/960 = 1/30. The tower gets TALLER (sw5-5 corrects its hex-misread
+// heights), never wider.
+export const GROUND_MODEL_SCALE = 1 / 30
+
+// The ground-object placement basis (story sw5-5). TOWER_ORIENT was IDENTITY only
+// because sw3-11 had hand-re-authored these models into the port's own frame; now
+// that they carry the ROM's data verbatim, this is what bridges the two. Applied
+// as `modelMatrix(pos, TOWER_ORIENT, GROUND_MODEL_SCALE)`, i.e. AFTER the scale:
+//
+//   1. rotationX(-90°) stands the model up. The ROM's up-axis is Z (x is fore/aft,
+//      y lateral); ours is Y. This maps (x, y, z) -> (x, z, -y).
+//   2. the lift undoes GD$MDT. The ROM recentres every ground object's height so
+//      that model z = 0 is the height the PLAYER flies at (its comment: "OFFSET
+//      HITE TO MID OF PLAYERS HITE"), which leaves the base ring at z = -GD$MDT.
+//      Adding GD$MDT back — at the presentation scale — seats the base on the y=0
+//      floor, where the camera and the maze expect it.
+//
+// That lift is 3840/30 = 128 world units, which is exactly SKIM_ALTITUDE: the ROM
+// has been telling us the ship's skim height all along. Derived here from the ROM
+// constant rather than from SKIM_ALTITUDE itself, so that retuning the flight
+// height (a play-balance knob) cannot silently sink the towers into the floor.
+export const TOWER_ORIENT: Mat4 = multiply(
+  translation(0, GD_HEIGHT_OFFSET * GROUND_MODEL_SCALE, 0),
+  rotationX(-Math.PI / 2),
+)
+
+// TIE display correction (story 8-13). The authentic model stacks its two
+// hexagonal solar panels along the object-space Y axis (panels at y=±208, lying
+// flat in X/Z) — a TIE on its side. A +90° roll about Z stands them upright so
+// they sit left/right of the cockpit pod, with the model's depth axis on +Z.
+// This FIXED correction is composed with each enemy's DYNAMIC look-at-cockpit
+// `orient` (computed in core) so the upright TIE then banks at the player.
+//
+// NOTE: like the surface orients, the exact correction escapes structural tests
+// (the render guard only asserts `orient` is APPLIED) and MUST be eyeballed in
+// the dev server (port 5274) — confirm the panels read upright and the ship
+// faces the cockpit before sign-off.
+export const TIE_ORIENT: Mat4 = rotationZ(Math.PI / 2)
+
+// TRENCH_SKIM (a fixed 60-unit cockpit skim, added to the eye here) is GONE (sw5-6). It
+// was the fudge that hid a frame collision: the channel builds its floor at y=0, but the
+// pilotable band was transcribed in the ROM's frame (top = 0) as a NEGATIVE dive, so
+// `TRENCH_SKIM + trenchView[1]` ranged over y ∈ [−3268, +60] — the pilot spent most of the
+// band flying UNDERNEATH the trench. The band is now a height ABOVE the floor
+// (TRENCH_EYE_MIN..TRENCH_EYE_MAX) and `state.trenchView` IS the eye. Nothing to add.
+const PORT_GLOW = GLOW_FOR['Exhaust Port'] // exhaust-port target amber (shared)
+
+// Where the shell seats the Death Star surface in Z (story 8-11). The relief is
+// DEEP (object Z spans ~ -3840..+6720) and SURFACE_ORIENT only ROLLS it about Z,
+// so its near end stays at +6720 in world Z. Drawn at Z=0 (the old bug) that near
+// end fell BEHIND the cockpit and was clipped by the near plane, leaving the
+// floor invisible while only a far speck survived ahead of the turrets. We shift
+// the whole relief forward so its near ring sits just inside the turret band
+// (turrets spawn at -SPAWN_DISTANCE and scroll in) and the rest recedes ahead to
+// the horizon — derived from the model so it tracks the geometry, not a literal.
+const SURFACE_NEAR_EXTENT = Math.max(...DEATH_STAR_SURFACE.vertices.map((v) => v[2]))
+const Z_SURFACE_PLACEMENT = SURFACE_NEAR_EXTENT + SPAWN_DISTANCE / 2
+
+/**
+ * Where the shell seats the Death Star surface floor: the static forward seat in
+ * Z so the relief reads as a skimmable floor ahead of the cockpit instead of
+ * straddling it at the origin (the 8-11 bug). The altitude-skim framing — the
+ * floor dropping away as the ship climbs — is no longer baked here; it lives in
+ * the CAMERA (`cameraView`), which lifts the eye to the ship's altitude. The floor
+ * keeps its true world Y = 0 (the surface plane), so it and the turrets (also at
+ * y ≈ 0) share one frame and the camera lifts them together.
+ */
+export function surfacePlacement(): { floor: Vec3 } {
+  return { floor: [0, 0, -Z_SURFACE_PLACEMENT] }
+}
+
+// Where the shell seats the Death Star BODY during the space phase (story 11-7).
+// FAR sits behind the TIE spawn band (TIE_SPAWN_DISTANCE 8000) yet inside the FAR
+// clip plane (wireframe.ts FAR 9000); NEAR is the closest it looms by the dive.
+const DEATH_STAR_Z_FAR = -8500
+const DEATH_STAR_Z_NEAR = -3500
+const DEATH_STAR_SCALE_FAR = 1
+const DEATH_STAR_SCALE_NEAR = 2.4
+
+/**
+ * Where the shell seats the Death Star body — derived PURELY from sim state,
+ * honouring the core/shell boundary like `surfacePlacement`/`trenchPlacement`:
+ * the core owns the geometry, the shell derives the seat from `state.phaseTime`.
+ * The space phase is TIME-boxed (sw8-11), so the approach rides the phase
+ * clock: as the 21 s box runs down the ship CLOSES on the body, which slides
+ * nearer (|z| ↓) AND scales up — its apparent size grows monotonically across
+ * the phase, independent of kills. Pure: reads state, mutates nothing; the
+ * body never enters the sim, so it cannot touch determinism or TIE hit-tests.
+ */
+export function deathStarPlacement(state: GameState): { pos: Vec3; scale: number } {
+  const p = Math.min(1, Math.max(0, state.phaseTime / SPACE_PHASE_END_S))
+  const z = DEATH_STAR_Z_FAR + (DEATH_STAR_Z_NEAR - DEATH_STAR_Z_FAR) * p
+  const scale = DEATH_STAR_SCALE_FAR + (DEATH_STAR_SCALE_NEAR - DEATH_STAR_SCALE_FAR) * p
+  return { pos: [0, 0, z], scale }
+}
+
+// sw7-15 / M-010: the picture is in raw ROM units (radius 50); scale it up so the body
+// reads at its on-screen size (~the retired sphere's R=520): 50 × 10.4 ≈ 520.
+const DEATH_STAR_PIC_SCALE = 10.4
+
+// sw7-15 / X-007: the finale PRELIM (PH$DX1, WSMAIN.MAC:3386 "VIEW DETH STAR, ENLARGING").
+// After the winning port kill the station looms very large and ENLARGES toward the viewer
+// over the prelim, instead of snapping to the next wave's far seed.
+const DEATH_STAR_LOOM_SECONDS = 1.2
+const DEATH_STAR_LOOM_MAX_SCALE = 4.0
+
+/**
+ * Where the shell draws the Death Star: normally `deathStarPlacement` (the space-phase
+ * approach), but through the finale the DX1 loom overrides it — the station is seated
+ * NEAR and enlarges toward the viewer (X-007). Pure: reads state, mutates nothing.
+ */
+function deathStarSeat(state: GameState): { pos: Vec3; scale: number } {
+  if (state.mode === 'playing' && state.deathStarDestroyedAt !== null) {
+    const age = state.t - state.deathStarDestroyedAt
+    if (age >= 0 && age <= DEATH_STAR_BOOM_SECONDS) {
+      const loomT = Math.min(1, age / DEATH_STAR_LOOM_SECONDS)
+      const scale = DEATH_STAR_SCALE_NEAR + (DEATH_STAR_LOOM_MAX_SCALE - DEATH_STAR_SCALE_NEAR) * loomT
+      return { pos: [0, 0, DEATH_STAR_Z_NEAR], scale }
+    }
+  }
+  return deathStarPlacement(state)
+}
+
+/**
+ * Draw the authentic 2D vector Death Star (M-010): a GREEN disc, a WHITE equatorial
+ * trench chord and a RED superlaser dish, each stroked in its own colour — replacing
+ * the story-11-7 single-steel UV sphere. The picture is a flat billboard at `seat`.
+ */
+function drawDeathStar(ctx: CanvasRenderingContext2D, seat: { pos: Vec3; scale: number }, view: Mat4, proj: Mat4, w: number, h: number): void {
+  const mv = multiply(view, modelMatrix(seat.pos, IDENTITY, seat.scale * DEATH_STAR_PIC_SCALE))
+  drawWireframe(ctx, DEATH_STAR, mv, proj, w, h, DEATH_STAR_BODY_GLOW)
+  drawWireframe(ctx, DEATH_STAR_TRENCH, mv, proj, w, h, DEATH_STAR_TRENCH_GLOW)
+  drawWireframe(ctx, DEATH_STAR_DISH, mv, proj, w, h, DEATH_STAR_DISH_GLOW)
+}
+
+/**
+ * The camera (view matrix) derived PURELY from sim state — the cockpit IS the
+ * camera. Space looks from the origin down −Z; the surface and trench lift the eye
+ * to the cockpit's skim height (the ship's altitude over the surface, a fixed skim
+ * over the trench floor) so the floor reads below it. This replaces the retired
+ * world-shift constants (`SKIM_OFFSET` and the per-entity altitude drops): instead
+ * of shoving the world down, we raise the camera. Pure core math; the boundary holds.
+ */
+export function cameraView(state: GameState): Mat4 {
+  // The surface eye IS the core's ship point, not a copy of it (sw7-16): the camera and the gun
+  // read the same function, so they cannot drift apart.
+  if (state.phase === 'surface') return viewMatrix(surfaceShip(state.altitude), IDENTITY)
+  // The trench eye rides the fixed skim PLUS the pilotable viewpoint offset (story
+  // sw3-2): steering pans/dives the camera so the dodge the sim computes is what the
+  // player sees. `trenchView` is a collision-world offset (z unused); added onto the
+  // display skim, kept separate from it.
+  if (state.phase === 'trench')
+    // `trenchView` IS the eye: lateral offset, height above the y=0 trench floor (sw5-6).
+    return viewMatrix(state.trenchView, IDENTITY)
+  // space: the eye IS the cockpit at the world origin (sw8-8). sw8-1 drove this camera off
+  // `ST.UX`, but `ST.UX` is the STARFIELD's register — its only reader in the 1983 tree is the
+  // star generator (`WSSTAR.MAC:98`, `LDD ST.UX ;STARS RELATIVE MOVEMENT`), and the full case is
+  // in the tombstone in `core/gameRules.ts`. Sliding the camera off the cockpit put the pilot's
+  // view and gun somewhere his shield was not, so incoming fire left his reachable arc before it
+  // hit him. The world is therefore drawn from the same point the gun fires from and the fireball
+  // homes at — the sw7-16 invariant, now satisfied by holding the view still rather than by
+  // dragging the gun. The LATERAL DRIFT still happens where the ROM puts it: the starfield slides
+  // under `STAR_LATERAL_SPEED` (`core/starfield.ts`), which is what makes space read as motion.
+  return viewMatrix(COCKPIT, IDENTITY)
+}
+
+/**
+ * A per-entity model matrix `translation ∘ rotation ∘ scale` — object space to
+ * world. `orient` is the display rotation (it may be a composed matrix); `s` is a
+ * uniform world scale (default 1). Compose with the camera as `view × model` and
+ * hand the result to `drawWireframe`.
+ */
+export function modelMatrix(pos: Vec3, orient: Mat4 = IDENTITY, s = 1): Mat4 {
+  return multiply(translation(pos[0], pos[1], pos[2]), multiply(orient, scaling(s, s, s)))
+}
+
+/**
+ * Where the shell draws the trench floor and the exhaust port — derived PURELY
+ * from sim state, honouring the core/shell boundary: the core owns the port's
+ * world position (`state.exhaustPort.pos`), the shell only consumes it. The
+ * floor channel follows the port up the run so the port always sits inside it
+ * (closing the ~244-unit float of the old static placement); with no active port
+ * it rests at the spawn distance. The display skim (camera height) is applied by
+ * the caller, so `port` here is the verbatim sim position.
+ */
+export function trenchPlacement(state: GameState): { floor: Vec3; port: Vec3 } {
+  const port: Vec3 = state.exhaustPort?.pos ?? [0, 0, -EXHAUST_PORT_DISTANCE]
+  return { floor: [0, 0, port[2]], port }
+}
+
+// HUD / framing type (SH2-5). The shared ROM stroke-vector face
+// (@shared/font via ./font) replaces the retired vendored TTF; these are
+// cap heights in screen px — the 24-unit glyph cell (CELL_H) scales onto each.
+// The face is CAPS-ONLY; glowText uppercases defensively.
+const HUD_TEXT_PX = 18
+const BANNER_TEXT_PX = 48
+const TITLE_TEXT_PX = 64
+// sw7-10 attract-page type. The brief and the score table are dense multi-line pages,
+// so they set smaller and tighter than the HUD.
+const PAGE_TEXT_PX = 14
+const PAGE_LINE_H = 26
+/** Advance of one glyph as a fraction of the cap height, for laying the fixed-width ROM
+ *  page strings into columns. Matches the VGMSGA cell the shared font ships. */
+const PAGE_CHAR_W = 0.62
+/** Widest line in the flight brief (TCMES.MAC:554-568) — sets the block's left margin. */
+const INSTRUCTIONS_COLS = 35
+const PAGE_HEADER_GLOW = '#ff3b30' // VGCRED — the brief is drawn RED (TCMES.MAC:553-568)
+const SCORING_GLOW = '#c77dff' // VGCPRP — the score table is PURPLE (TCMES.MAC:573-581)
+// The intro crawl's recession. A line is born big and low (just off the bottom) and
+// travels up to CRAWL_VANISH_FRAC, shrinking to CRAWL_FAR_PX as it goes.
+//
+// Both the row and the type size taper LINEARLY in the line's remaining life rather than
+// through a true 1/depth perspective. A strict perspective looks right for two or three
+// lines but collapses with eight: measured on the running game, the six late-cycle
+// survivors landed inside 36 px of each other at 3.5 px type — a solid unreadable bar.
+// Linear keeps ~30 px of leading between consecutive lines across the whole run. The
+// cabinet gets away with a harder taper because its crawl does not drift at a constant
+// rate at all (it FREEZES between BN.CNT $E0 and $160, then accelerates 4× to clear the
+// screen — TCMES.MAC:395-420); that pacing machine is not ported, so a constant-rate
+// crawl needs the gentler curve to stay legible. See the sw7-10 Delivery Findings.
+const CRAWL_GLOW = '#ffd60a'
+const CRAWL_NEAR_PX = 26
+const CRAWL_FAR_PX = 10
+const CRAWL_VANISH_FRAC = 0.46
+const CRAWL_NEAR_FRAC = 1.02
+
+// Inter-glyph tracking for the thin caps-only face — it reads cramped at zero.
+// glowText's old canvas tracking was 0.1em (0.1 × the font px: 1.80/4.80/6.40px
+// at 18/48/64). A CONSTANT tracking in glyph-cell units (0.1 × CELL_H) reproduces
+// that screen tracking at every size, because each run scales the cell by
+// sizePx/CELL_H and layoutText's letterSpacing opt is in the same cell units.
+const HUD_TRACKING_EM = 0.1
+const GLYPH_TRACKING = HUD_TRACKING_EM * CELL_H
+
+export function render(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  w: number,
+  h: number,
+  highScores: HighScoreTable<'wave'> = [],
+): void {
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, w, h)
+
+  // The WSSTAR field goes down FIRST, so everything else flies in front of it — the
+  // attract pages and all three flight phases alike (sw7-10 / M-015; the cabinet drives
+  // the field in flight too, WSMAIN.MAC:2525-2528).
+  drawStarfield(ctx, state.starfield, w, h)
+
+  const proj = perspective(FOV_Y, w / h, NEAR, FAR)
+  // The cockpit IS the camera (story 11-2): one view matrix from sim state places
+  // every model via MVP = projection × view × model, retiring the per-entity
+  // world-shift glue. Space → origin; surface/trench → eye lifted to skim height.
+  const view = cameraView(state)
+
+  if (state.phase === 'surface') {
+    // Story 11-5: the surface is a procedural receding ground grid (ADR 0002 part
+    // A) — the DEATH_STAR_SURFACE spike was never a ground and is retired from this
+    // scene (kept in the registry, re-classified). The grid is authored in world
+    // space on the y=0 floor and scrolls toward the cockpit via surfaceScrollZ; the
+    // camera (lifted to the ship's altitude) is the only transform.
+    drawWireframe(ctx, surfaceGrid(state.surfaceScrollZ), view, proj, w, h, SURFACE_GLOW)
+    for (const tu of state.turrets) {
+      // Ground objects stand on the surface at their TRUE world Y (base ≈ 0).
+      // The camera lifts floor and objects together, so they sit ON the floor as
+      // the ship climbs — the per-turret altitude drop (the 8-4 reconcile) is
+      // gone, the camera owns it. The GDVIEW palette (sw3-11): towers are the
+      // tall YELLOW column wearing the WHITE cap — the tower's gun, where its
+      // fireballs erupt — and bunker-kind sites are the squat RED shorty.
+      // Column and cap share the tower's placement transform.
+      const towerMat = multiply(view, modelMatrix(tu.pos, TOWER_ORIENT, GROUND_MODEL_SCALE))
+      if (tu.kind === 'bunker') {
+        drawWireframe(ctx, SURFACE_BUNKER, towerMat, proj, w, h, TURRET_GLOW)
+      } else {
+        drawWireframe(ctx, SURFACE_TOWER, towerMat, proj, w, h, TOWER_GLOW)
+        drawWireframe(ctx, TOWER_CAP, towerMat, proj, w, h, CAP_GLOW)
+      }
+    }
+    // Ground-debris explosion (sw7-14 / X-005): each blown-off piece is a tumbling
+    // chunk arcing up from the kill, plus a scaled shadow on the floor beneath it —
+    // WHITE for towers (VWTWN), RED for bunkers (VWBKN). The sim owns the ballistics;
+    // the shell only paints the piece where the sim put it (pos) and its shadow at the
+    // same x/z on the y=0 floor, which the perspective scales with distance.
+    for (const d of state.groundDebris) {
+      const glow = d.kind === 'bunker' ? FIREBALL_GLOW : CAP_GLOW // VGCRED / VGCWHT
+      drawWireframe(ctx, GROUND_DEBRIS_CHUNK, multiply(view, modelMatrix(d.pos)), proj, w, h, glow)
+      const shadowAt: Vec3 = [d.pos[0], 0, d.pos[2]]
+      drawWireframe(ctx, GROUND_DEBRIS_SHADOW, multiply(view, modelMatrix(shadowAt)), proj, w, h, glow)
+    }
+  } else if (state.phase === 'trench') {
+    // Story 11-6 — the trench is a procedural WALLED channel (ADR 0002 part B):
+    // floor rails, lateral floor ribs, two vertical ribbed side walls, and top
+    // rails, authored in world space on the y=0 floor and scrolled toward the
+    // cockpit via trenchScrollZ. The flat TRENCH tile (a ~224×4px sliver) is
+    // retired from this scene (kept in the registry, re-classified). The camera
+    // (skimming just above the floor) is the only transform — like the surface grid.
+    drawWireframe(ctx, trenchChannel(state.trenchScrollZ), view, proj, w, h, TRENCH_GLOW)
+    // Fidelity epic (task 2) — recessed wall panels/windows, a SEPARATE model from
+    // trenchChannel (see src/core/trench-detail.ts) so the 11-6 full-height-rung
+    // contract stays intact; scrolls in lockstep with the channel.
+    drawWireframe(ctx, trenchWallDetail(state.trenchScrollZ), view, proj, w, h, TRENCH_GLOW)
+    // sw8-4 — the ROM far-end terminus (WSBASE.MAC BSVFAR / TBSBF): a static ∐
+    // cross-section capping the channel at the far draw cull (−TRENCH_FAR) so the
+    // corridor READS as a deep tunnel with a vanishing end instead of fading out.
+    drawWireframe(ctx, trenchFarEnd(state.trenchScrollZ), view, proj, w, h, TRENCH_GLOW)
+    // Fidelity epic (task 3) — wall turrets/squares (shootable) and catwalk
+    // hazards, each riding its own sim-state world position (trenchObstacles
+    // scrolls in lockstep with the channel/port in stepTrench).
+    for (const o of state.trenchObstacles) {
+      const model =
+        o.kind === 'turret' ? TRENCH_TURRET : o.kind === 'square' ? TRENCH_SQUARE : TRENCH_CATWALK
+      drawWireframe(ctx, model, multiply(view, modelMatrix(o.pos, TRENCH_ORIENT)), proj, w, h, TURRET_GLOW)
+    }
+    // The exhaust port still rides up the channel at its true sim world position.
+    const { port } = trenchPlacement(state)
+    if (state.exhaustPort) {
+      drawWireframe(ctx, EXHAUST_PORT, multiply(view, modelMatrix(port, PORT_ORIENT)), proj, w, h, PORT_GLOW)
+    }
+  } else {
+    // Wave 1 — the space phase. The Death Star body looms far down −Z and grows as
+    // the player closes on it (deathStarPlacement). Draw it FIRST so it sits BEHIND
+    // the TIEs (painter's order) and never intrudes on a fighter's hit-test.
+    drawDeathStar(ctx, deathStarSeat(state), view, proj, w, h)
+    // Each TIE banks at the player: its per-enemy look-at `orient` (core) turned
+    // upright by the fixed TIE_ORIENT display correction (display first, then look
+    // => multiply(orient, TIE_ORIENT)), placed in the world by its model matrix.
+    for (const e of state.enemies)
+      drawWireframe(ctx, TIE_FIGHTER, multiply(view, modelMatrix(e.pos, multiply(e.orient, TIE_ORIENT))), proj, w, h, TIE_GLOW)
+    // A destroyed TIE breaks into three ROM pieces (story sw3-8), each with its OWN
+    // life (sw7-7 X-002): the two wings persist to TIE_WING_LIFE_SECONDS (0x18 = 24f ≈
+    // 1.170 s) while the centre globe pops FIRST at TIE_GLOBE_LIFE_SECONDS (0x10 = 16f ≈
+    // 0.780 s). Each piece colours itself from its OWN remaining ROM timer via the
+    // shared TVWCLE ramp (sw7-7 X-003) — never the white VJFLS flash, which is a
+    // ground-object path. The split direction is a render tell (TIE_ORIENT), and the
+    // fly-apart spread stays age-driven (no per-piece velocity state — finding X-004,
+    // an accepted structural gap).
+    for (const d of state.dyingTies) {
+      const at = (dx: number, dy: number, dz: number): Mat4 =>
+        multiply(view, modelMatrix([d.pos[0] + dx, d.pos[1] + dy, d.pos[2] + dz], TIE_ORIENT))
+      // FRAG_1/FRAG_2 are the left/right wings (XP$TMR born 0x18); FRAG_3 is the centre
+      // globe ('TIE Fragment Cabin' — the name is a misnomer, the geometry is the ROM's
+      // TP$TI3 globe), born 0x10 and therefore first to pop.
+      if (d.age <= TIE_WING_LIFE_SECONDS) {
+        const wf = Math.min(1, d.age / TIE_WING_LIFE_SECONDS)
+        const ws = wf * TIE_DEATH_SPREAD
+        const wc = tiePieceGlow((TIE_WING_LIFE_SECONDS - d.age) * TICK_HZ)
+        drawWireframe(ctx, TIE_WING_FRAG_1, at(-ws, 0, 0), proj, w, h, wc)
+        drawWireframe(ctx, TIE_WING_FRAG_2, at(ws, 0, 0), proj, w, h, wc)
+      }
+      if (d.age <= TIE_GLOBE_LIFE_SECONDS) {
+        const gf = Math.min(1, d.age / TIE_GLOBE_LIFE_SECONDS)
+        const gs = gf * TIE_DEATH_SPREAD
+        const gc = tiePieceGlow((TIE_GLOBE_LIFE_SECONDS - d.age) * TICK_HZ)
+        drawWireframe(ctx, TIE_WING_FRAG_3, at(0, 0, gs), proj, w, h, gc)
+      }
+    }
+  }
+  // The player laser is drawn for exactly as long as it is ON — `state.laserOn`, the ROM's LZ.ON,
+  // which is the SAME fact the core's collision gates on (CLSLZ/CLGLZ/CLBLZ each open
+  // `LDA LZ.ON / IFNE ;?ARE LAZARS ON?`; VWLAZ draws off that byte). So the shell keeps no timer
+  // of its own and cannot drift from the frames that actually kill things.
+  //
+  // NOT `state.laserEdge > 0`: the counter is stored POST-decrement, so on the last live frame of
+  // every sweep it has already clamped to 0 while the beam is still shooting — that gate drew
+  // nothing on a frame a kill could land. Gated to a live run so it never bleeds onto the
+  // attract/game-over screens.
+  if (state.mode === 'playing') {
+    if (state.laserOn) drawPlayerLaserToSite(ctx, state, w, h)
+    // A TIE's muzzle starburst at the instant of firing — the enemy-fire tell.
+    // Like the player laser it is derived purely from elapsed flight vs TTL (no
+    // shell-side effect state) and gated to a live run, so a fireball frozen by
+    // the sim on the framing screens can't keep flashing. `life` fades 1 → 0
+    // across the brief window so the burst shrinks out instead of popping off.
+    for (const s of state.enemyShots) {
+      const elapsed = ENEMY_SHOT_TTL - s.ttl
+      if (elapsed <= ENEMY_MUZZLE_FLASH_SECONDS)
+        drawMuzzleFlash(ctx, transform(view, s.pos), 1 - elapsed / ENEMY_MUZZLE_FLASH_SECONDS, proj, w, h)
+    }
+    // The destroy-burst at each fireball the player has just shot down (sw8-3): a red
+    // sparkle at the kill point fading over its lifetime — gated to a live run like the
+    // muzzle flash so a burst frozen by the sim can't flash on the framing screens.
+    for (const b of state.destroyedShots) {
+      const life = 1 - b.age / FIREBALL_DESTROY_BURST_SECONDS
+      drawFireballBurst(ctx, transform(view, b.pos), life, proj, w, h)
+    }
+    // The Death-Star explosion beat (sw2-4), derived purely from the sim stamp —
+    // no shell-side effect state, like the flashes above. Screen-space and centred
+    // so it plays through the warp to space the port kill triggers this frame.
+    if (state.deathStarDestroyedAt !== null) {
+      const boom = state.t - state.deathStarDestroyedAt
+      if (boom <= DEATH_STAR_BOOM_SECONDS) drawDeathStarBoom(ctx, boom / DEATH_STAR_BOOM_SECONDS, w, h)
+    }
+  }
+  // Bolts and fireballs ride the same camera as the models (transform through the
+  // view), so they stay seated in the scene when the eye is lifted (surface/trench).
+  for (const s of state.enemyShots) drawFireball(ctx, transform(view, s.pos), proj, w, h, s.ttl)
+
+  // The framing layer (story 8-6): the playing HUD during a run, the attract/title
+  // screen at idle, the game-over board after. The 3D scene above renders behind
+  // all of them (an empty starfield on the framing screens).
+  if (state.mode === 'attract') {
+    drawAttract(ctx, state, highScores, w, h)
+  } else if (state.mode === 'select') {
+    drawSelect(ctx, state, w, h)
+  } else if (state.mode === 'gameover') {
+    drawGameOver(ctx, state, highScores, w, h)
+  } else {
+    drawCrosshair(ctx, state, w, h)
+    drawCockpitFrame(ctx, w, h)
+    drawHudHeader(ctx, state, w, h)
+    drawSurfaceTowerHud(ctx, state, w, h)
+    drawTrenchBanners(ctx, state, w, h)
+    drawCoaching(ctx, state, w, h)
+  }
+}
+
+/**
+ * The player's shot as cabinet-style converging laser beams — the "pew pew".
+ *
+ * Four cyan lines fire from the cannon tips at the screen corners and meet AT THE SITE — the
+ * crosshair the pilot is aiming with. The cannon tips are a fixed SCREEN-space frame (the
+ * cockpit guns), so they do not move with the 3D camera.
+ *
+ * They converge on the site rather than on a bolt because there is no bolt (story sw7-17 / R11b):
+ * the laser is hitscan, and the ROM draws it gun-ports → site every frame it is on —
+ * `VWLAZ ;VIEW ANY LASARS` (WSLAZR.MAC:149), fed by the site values the sweep latches each frame
+ * (`LDD VG.RSX ;16 BIT REAL SITE VALUE, FOR LAZAR / STD LZ.RSX`). Beam and reticle are the same
+ * point by construction: both come from `crosshairNdc`.
+ *
+ * WHAT THAT DOES NOT MEAN. The beam is not a promise about where the shot lands. `crosshairNdc`
+ * CLAMPS to ±1 while `gameRules.aimDirection` — which the core actually resolves along — does not,
+ * so once the yoke leaves [-1, 1] the drawn beam pins to the screen edge while the shot resolves
+ * further out (at aimX 1.5: drawn 1.000, resolved 1.500). That is reachable in ordinary play, since
+ * the yoke listener is on `window` rather than the canvas, and it is OLDER than this function —
+ * the reticle has always been drawn clamped and the shot has never been. It is logged as a
+ * follow-up on sw7-17; do not read this beam as evidence that the divergence is gone.
+ */
+function drawPlayerLaserToSite(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  w: number,
+  h: number,
+): void {
+  const [nx, ny] = crosshairNdc(state.aimX, state.aimY)
+  // The same NDC→screen mapping `drawCrosshair` and `project` use (Y flipped for the canvas),
+  // so the beams converge exactly on the reticle rather than near it.
+  const tip: readonly [number, number] = [(nx * 0.5 + 0.5) * w, (-ny * 0.5 + 0.5) * h]
+  const cannons: ReadonlyArray<readonly [number, number]> = [
+    [0, 0],
+    [w, 0],
+    [0, h],
+    [w, h],
+  ]
+  ctx.lineWidth = 2
+  ctx.strokeStyle = GLOW
+  ctx.shadowColor = GLOW
+  ctx.shadowBlur = 12
+  ctx.beginPath()
+  for (const [cx, cy] of cannons) {
+    ctx.moveTo(cx, cy)
+    ctx.lineTo(tip[0], tip[1])
+  }
+  ctx.stroke()
+  ctx.shadowBlur = 0
+}
+
+// Muzzle-flash geometry: a ring of short rays fanning out from the firing point.
+// Eight reads as a clean starburst; MAX_LEN is the full-brightness ray length in
+// screen pixels (faded by `life`). Tuned to sit just outside the 6px fireball
+// spark so the burst frames the bolt rather than hiding inside it.
+const MUZZLE_RAYS = 8
+const MUZZLE_MAX_LEN = 14
+
+/**
+ * A brief starburst at an enemy fireball's muzzle: `MUZZLE_RAYS` amber rays
+ * radiating from the firing point, their length and glow scaled by `life`
+ * (1 at the instant of firing → 0 as the flash fades) so it flares then vanishes.
+ * Anchored to the fireball's own projected point (the player's laser no longer works this way —
+ * it is hitscan and converges on the site); an off-screen or
+ * behind-camera shot (no projection) simply draws nothing.
+ */
+function drawMuzzleFlash(
+  ctx: CanvasRenderingContext2D,
+  pos: Vec3,
+  life: number,
+  proj: Mat4,
+  w: number,
+  h: number,
+): void {
+  const p = project(pos, proj, w, h)
+  if (!p) return
+  const len = MUZZLE_MAX_LEN * life
+  ctx.lineWidth = 2
+  ctx.strokeStyle = FIRE_GLOW
+  ctx.shadowColor = FIRE_GLOW
+  ctx.shadowBlur = 12 * life
+  ctx.beginPath()
+  for (let i = 0; i < MUZZLE_RAYS; i++) {
+    const a = (i / MUZZLE_RAYS) * Math.PI * 2
+    ctx.moveTo(p[0], p[1])
+    ctx.lineTo(p[0] + Math.cos(a) * len, p[1] + Math.sin(a) * len)
+  }
+  ctx.stroke()
+  ctx.shadowBlur = 0
+}
+
+// How far a destroy-burst's rays reach at full flare — a touch longer than the muzzle
+// flash (14) so a downed fireball reads as a distinct, brighter POP, not another muzzle
+// tell. A render tunable (the burst is a cabinet-feel readability cue, sw8-3).
+const BURST_MAX_LEN = 20
+/**
+ * The destroy-burst at a shot-down fireball's kill point (sw8-3): the same radial
+ * sparkle as the muzzle flash but in the fireball's own VGCRED (FIREBALL_GLOW), its rays
+ * and glow scaled by `life` (1 at the kill → 0 as it fades) so it flares then vanishes.
+ * A red pop where the fireball died — the cabinet afterimage the old silent-delete
+ * lacked. An off-screen / behind-camera point (no projection) simply draws nothing.
+ */
+function drawFireballBurst(
+  ctx: CanvasRenderingContext2D,
+  pos: Vec3,
+  life: number,
+  proj: Mat4,
+  w: number,
+  h: number,
+): void {
+  const p = project(pos, proj, w, h)
+  if (!p) return
+  const len = BURST_MAX_LEN * life
+  ctx.lineWidth = 2
+  ctx.strokeStyle = FIREBALL_GLOW
+  ctx.shadowColor = FIREBALL_GLOW
+  ctx.shadowBlur = 12 * life
+  ctx.beginPath()
+  for (let i = 0; i < MUZZLE_RAYS; i++) {
+    const a = (i / MUZZLE_RAYS) * Math.PI * 2
+    ctx.moveTo(p[0], p[1])
+    ctx.lineTo(p[0] + Math.cos(a) * len, p[1] + Math.sin(a) * len)
+  }
+  ctx.stroke()
+  ctx.shadowBlur = 0
+}
+
+// The Death-Star finale (sw7-15 / X-006): the ROM's VWXPLN four-phase ring animation
+// (WSXPLD.MAC) — concentric circles (DCIRCL) and smoothly-scaling rings (DRING) that
+// cycle colour RED → BLUE → WHITE (PH0/PH1 VGCRED, PH2 VGCBLU, PH3 VGCWHT), with NO
+// radial rays. SCREEN-SPACE and centred so it survives the same-frame warp to space a
+// port kill triggers. `progress` runs 0 → 1 across DEATH_STAR_BOOM_SECONDS; the three
+// colour windows OVERLAP so the blast cross-fades red→blue→white as its rings expand.
+const BOOM_BLUE_GLOW = '#3355ff' // VGCBLU — the PH1/PH2 blue rings (a true blue, not teal)
+function drawDeathStarBoom(ctx: CanvasRenderingContext2D, progress: number, w: number, h: number): void {
+  const cx = w / 2
+  const cy = h / 2
+  const maxR = Math.min(w, h) * 0.46
+  ctx.lineWidth = 2
+  // A triangular fade window: 0 outside [start,end], peaking at `peak`.
+  const bump = (start: number, peak: number, end: number): number => {
+    if (progress <= start || progress >= end) return 0
+    return progress < peak ? (progress - start) / (peak - start) : (end - progress) / (end - peak)
+  }
+  // One colour phase: three concentric circles expanding outward, faded by `alpha`.
+  const phase = (color: string, alpha: number): void => {
+    if (alpha <= 0.02) return
+    ctx.strokeStyle = color
+    ctx.shadowColor = color
+    ctx.shadowBlur = 16 * alpha
+    for (let i = 0; i < 3; i++) {
+      const r = maxR * (0.2 + progress) * (1 - i * 0.22)
+      if (r <= 8) continue
+      ctx.globalAlpha = Math.min(1, alpha * (1 - i * 0.2))
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+  }
+  phase(DEATH_STAR_DISH_GLOW, bump(-0.2, 0.15, 0.55)) // PH0/PH1 red (VGCRED)
+  phase(BOOM_BLUE_GLOW, bump(0.3, 0.5, 0.82)) // PH2 blue (VGCBLU)
+  phase(DEATH_STAR_TRENCH_GLOW, bump(0.55, 0.85, 1.1)) // PH3 white (VGCWHT)
+  ctx.globalAlpha = 1
+  ctx.shadowBlur = 0
+}
+
+// The authentic enemy fireball is a RED radial SPARKLE that FLICKERS across four
+// frames with fuse-ball tips — the ROM's gunshot picture (WSVROM.MAC `.SBTTLE
+// GUNSHOT PICTURES`, "GUN SHOTS -- SPARKLES WITH FUSE BALLS"). Each frame draws ~8
+// spikes radiating FROM the centre (`CXY 0,0`, then `AON 0,0` → `AON dx,dy`) in the
+// vector-generator red, aspect-rounded. `GNB0-3` are four DISTINCT spike tables the
+// cabinet cycles as an animation; these are each frame's spike deltas (the `AON`
+// after every `AON 0,0` return-to-centre), re-expressed in a nominal ±18 space and
+// scaled to the projected body radius. Hand-irregular on purpose — an evenly-spaced
+// asterisk reads mechanical, not like a sparkle. Story sw3-11 added the flicker +
+// fuse tips that sw3-9 shipped without (it drew GNB0 alone, frozen).
+const FIREBALL_FRAMES: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+  // GNB0
+  [[2, 16], [15, 8], [16, -6], [6, -10], [-6, -16], [-12, -8], [-16, 2], [-6, 8]],
+  // GNB1
+  [[3, 12], [16, 6], [14, -10], [0, -16], [-10, -15], [-16, -4], [-16, 6], [-6, 12]],
+  // GNB2
+  [[2, 12], [12, 10], [17, 2], [14, -8], [-2, -14], [-14, -12], [-18, -2], [-12, 12]],
+  // GNB3
+  [[3, -17], [12, -10], [17, -2], [14, 10], [-3, 14], [-14, 10], [-17, 0], [-12, -12]],
+]
+const FIREBALL_SPIKE_NOM = 18 // the ±nominal radius the spike deltas are authored in
+
+// The tip fuse ball (`GNT0-3`, the `FUSE` macro → `JSRL VRGNT`): a small three-spoke
+// cluster the cabinet draws AT each spike's outer tip, itself rotating across the
+// four frames. Each is one frame's `AON dx,dy` spokes, authored in a nominal ±6 and
+// drawn SMALL relative to the sparkle so it reads as a fuse ball at the tip, not a
+// second spike.
+const FIREBALL_FUSE_FRAMES: ReadonlyArray<ReadonlyArray<readonly [number, number]>> = [
+  [[0, 2], [4, -2], [-4, -2]], // GNT0
+  [[-2, 0], [2, 4], [2, -4]], // GNT1
+  [[0, -2], [-4, 2], [4, 2]], // GNT2
+  [[2, 0], [-2, -4], [-2, 4]], // GNT3
+]
+const FIREBALL_FUSE_NOM = 6 // the ±nominal the fuse spokes are authored in
+const FIREBALL_FUSE_SCALE = 0.22 // fuse-ball spoke length as a fraction of the sparkle radius
+// The gunshot flickers through its four frames; ~0.05 s/frame reads as a live
+// sparkle rather than a frozen star. The frame is derived from the shot's own age
+// (ENEMY_SHOT_TTL - ttl) — deterministic, shell-side, no effect state — the same
+// "elapsed vs TTL" rule the muzzle flash and player laser already use.
+const FIREBALL_FRAME_SECONDS = 0.05
+
+/**
+ * An enemy fireball as the authentic RED sparkle (story sw3-9), animated across the
+ * ROM's four gunshot frames with fuse-ball tips (story sw3-11). Billboarded and
+ * sized in WORLD units by the same ENEMY_SHOT_HIT_RADIUS the sim uses to shoot it
+ * down — what you see is what you shoot — so it projects like any 3D body (`camPos`
+ * is already view-space): a near fireball swells, a distant one shrinks.
+ *
+ * The frame is picked from the shot's age (`ttl` in, elapsed = ENEMY_SHOT_TTL - ttl)
+ * so the flicker is deterministic and lives entirely in the shell — the sim never
+ * knows about it. The spikes radiate FROM the projected centre (matching the ROM's
+ * GNB sparkle), so — unlike sw2-2's perimeter ring — they overlap the muzzle
+ * starburst (story 9-6). The two are kept apart by COLOUR, not geometry: the
+ * fireball is red (FIREBALL_GLOW / VGCRED), the muzzle flash stays amber (FIRE_GLOW).
+ */
+function drawFireball(
+  ctx: CanvasRenderingContext2D,
+  camPos: Vec3,
+  proj: Mat4,
+  w: number,
+  h: number,
+  ttl: number,
+): void {
+  const c = project(camPos, proj, w, h)
+  if (!c) return
+  // Screen radius: project a point one body-radius to the side in view space, so
+  // the sparkle scales with depth under the same perspective the whole scene uses.
+  const edge = project([camPos[0] + ENEMY_SHOT_HIT_RADIUS, camPos[1], camPos[2]], proj, w, h)
+  if (!edge) return
+  const projR = Math.hypot(edge[0] - c[0], edge[1] - c[1])
+  const k = projR / FIREBALL_SPIKE_NOM
+  const fuseK = (projR * FIREBALL_FUSE_SCALE) / FIREBALL_FUSE_NOM
+  const frame = Math.floor(Math.max(0, ENEMY_SHOT_TTL - ttl) / FIREBALL_FRAME_SECONDS) % FIREBALL_FRAMES.length
+  const spikes = FIREBALL_FRAMES[frame]
+  const fuse = FIREBALL_FUSE_FRAMES[frame]
+  ctx.lineWidth = 2
+  ctx.strokeStyle = FIREBALL_GLOW
+  ctx.shadowColor = FIREBALL_GLOW
+  ctx.shadowBlur = 12
+  ctx.beginPath()
+  for (const [dx, dy] of spikes) {
+    const tx = c[0] + dx * k
+    const ty = c[1] + dy * k
+    // The spike radiates FROM the projected centre outward — the mark of the sparkle
+    // (a ring would lie on its perimeter with nothing at the centre).
+    ctx.moveTo(c[0], c[1])
+    ctx.lineTo(tx, ty)
+    // Its fuse ball — a small rotating cluster AT the tip, short and off the centre.
+    for (const [fx, fy] of fuse) {
+      ctx.moveTo(tx, ty)
+      ctx.lineTo(tx + fx * fuseK, ty + fy * fuseK)
+    }
+  }
+  ctx.stroke()
+  ctx.shadowBlur = 0
+}
+
+// ---------------------------------------------------------------------------
+// X-wing cockpit canopy frame (story sw9-1) — the persistent "gun site"
+// overlay bolted to the screen edges. Authentic WSVROM.MAC AVG picture data,
+// `.SBTTL PLAYER'S GUN SITE` (WSVROM.MAC:1413-1885): five self-labelled
+// "SITE / PLAYER'S ... GUN / SHIP" pictures — VGSTTR "SITE: PLAYER'S SIDE
+// GUN, TOP RIGHT" (right rail), VGSTTL (left rail), VGSTBR "SITE: PLAYERS
+// GUN, BOTTOM RIGHT SCREEN" (bottom-right), VGSTBL (bottom-left), VGSTBM
+// "SITE: PLAYER'S FRONT SHIP, BOTTOM MIDDLE" (bottom-middle) — each VOFF-
+// anchored to a fixed AVG screen limit (VGLIMR/VGLIML/VGLIMB/VGOFFY,
+// WSGLOB.MAC:32-39) then drawn via AON/AOFF line runs, never through the 3D
+// Math Box: COLOR VGCBLU for the gun shaft/tip, COLOR VGCRED for the
+// collar/dish. Static screen-space overlay, the same picture family as the
+// aim reticle (VGSITE "LAZAR AIM SITE" → drawCrosshair below).
+//
+// Transcription: AON/AOFF/CXY arguments are forced DECIMAL by their own
+// macro (WSVROM.MAC:112-149, commented "ABSOLUTE DECIMAL COORDS" — the
+// macro splices a literal "." onto the substituted digits before they're
+// evaluated, which in MACRO-11 forces decimal regardless of the ambient
+// `.RADIX 16` set at WSVROM.MAC:1246; only bare, macro-free literals in that
+// section are hex). Each picture's resolved point is
+// `VOFF_anchor + M./D. * (raw - CXY_start)` (M.=10., D.=1, NOASPECT
+// throughout); the five run tables below are that formula pre-resolved to
+// flat AVG screen-space coordinates (X ±480 nominal, Y ±552, +Y up) —
+// see sprint/context/context-story-sw9-1.md for the full derivation.
+
+const GUN_SITE_BLUE = '#3355ff' // VGCBLU (WSGLOB.MAC:56) — a true deep blue, distinct from the cyan reticle
+const GUN_SITE_RED = '#ff3b30' // VGCRED (WSGLOB.MAC:59) — same red register as the fireball/dish glow
+
+interface GunSiteRun {
+  readonly color: string
+  readonly pts: ReadonlyArray<readonly [number, number]>
+}
+
+// Each picture's run below is LOCAL to its own VOFF anchor — i.e. already
+// `M./D. * (raw - CXY_start)` (M.=10., D.=1, NOASPECT throughout) but with
+// the VOFF offset (VGLIMR/VGLIML/VGLIMB/VGOFFY) NOT yet added back, so the
+// authentic ROM shape is preserved exactly; only WHERE each anchor lands on
+// the canvas (below, `GUN_SITE_PICTURES`) and the shared px-per-unit scale
+// (`GUN_SITE_SCALE`) are ours to choose, same as any HUD element's screen
+// placement in this file.
+
+// VGSTTR — SITE: PLAYER'S SIDE GUN, TOP RIGHT (WSVROM.MAC:1545) — right rail
+const VGSTTR_RUNS: readonly GunSiteRun[] = [
+  { color: GUN_SITE_BLUE, pts: [[100, 30], [30, 30], [10, 10], [100, 10]] },
+  { color: GUN_SITE_BLUE, pts: [[10, 10], [10, -10], [100, -10]] },
+  { color: GUN_SITE_BLUE, pts: [[10, -10], [30, -30], [100, -30]] },
+  { color: GUN_SITE_RED, pts: [[20, -20], [0, -20], [-10, -10], [10, -10]] },
+  { color: GUN_SITE_RED, pts: [[-10, -10], [-10, 10], [10, 10]] },
+  { color: GUN_SITE_RED, pts: [[-10, 10], [0, 20], [20, 20]] },
+  {
+    color: GUN_SITE_RED,
+    pts: [
+      [40, 30], [30, 50], [0, 70], [-60, 70], [-60, 60], [-40, 50], [-30, 30],
+      [-30, -30], [-40, -50], [-60, -60], [-60, -70], [0, -70], [30, -50], [40, -30],
+    ],
+  },
+  { color: GUN_SITE_RED, pts: [[30, -50], [-30, -50], [-60, -70]] },
+  { color: GUN_SITE_RED, pts: [[-30, -50], [-20, -30], [-20, 30], [-30, 50], [30, 50]] },
+  { color: GUN_SITE_RED, pts: [[-30, 50], [-60, 70]] },
+  { color: GUN_SITE_BLUE, pts: [[-30, 10], [-80, 10], [-90, 0], [-80, -10], [-30, -10]] },
+  { color: GUN_SITE_BLUE, pts: [[-30, 0], [-90, 0]] },
+]
+
+// VGSTBR — SITE: PLAYERS GUN, BOTTOM RIGHT SCREEN (WSVROM.MAC:1614)
+const VGSTBR_RUNS: readonly GunSiteRun[] = [
+  { color: GUN_SITE_BLUE, pts: [[100, -20], [50, 10], [30, 10], [10, -10], [10, -30], [30, -50], [100, -90]] },
+  { color: GUN_SITE_BLUE, pts: [[100, -80], [10, -30]] },
+  { color: GUN_SITE_BLUE, pts: [[10, -10], [100, -60]] },
+  { color: GUN_SITE_BLUE, pts: [[100, -30], [30, 10]] },
+  { color: GUN_SITE_RED, pts: [[30, 10], [0, 10], [-10, 0], [-10, -20], [0, -30], [20, -40]] },
+  { color: GUN_SITE_RED, pts: [[10, -30], [-10, -20]] },
+  { color: GUN_SITE_RED, pts: [[-10, 0], [10, -10]] },
+  { color: GUN_SITE_RED, pts: [[20, 0], [0, 10]] },
+  {
+    color: GUN_SITE_RED,
+    pts: [
+      [40, 10], [40, 30], [30, 50], [0, 70], [-60, 70], [-60, 60], [-40, 50], [-30, 30],
+      [-30, -30], [-40, -50], [-60, -60], [-60, -70], [0, -70], [30, -50], [-30, -50], [-60, -70],
+    ],
+  },
+  { color: GUN_SITE_RED, pts: [[-30, -50], [-20, -30], [-20, 30], [-30, 50], [-60, 70]] },
+  { color: GUN_SITE_RED, pts: [[-30, 50], [30, 50]] },
+  { color: GUN_SITE_BLUE, pts: [[-30, 20], [-70, 40], [-90, 40], [-90, 30], [-80, 20], [-30, -10]] },
+  { color: GUN_SITE_BLUE, pts: [[-30, 0], [-90, 30]] },
+  { color: GUN_SITE_BLUE, pts: [[-80, 40], [-30, 10]] },
+]
+
+// VGSTBM — SITE: PLAYER'S FRONT SHIP, BOTTOM MIDDLE (WSVROM.MAC:1691)
+const VGSTBM_RUNS: readonly GunSiteRun[] = [
+  {
+    color: GUN_SITE_BLUE,
+    pts: [
+      [-120, -100], [-100, -40], [-80, -20], [-50, 0], [-30, 20], [30, 20],
+      [50, 0], [80, -20], [100, -40], [120, -100],
+    ],
+  },
+  { color: GUN_SITE_BLUE, pts: [[90, -100], [70, -40], [30, 0], [-30, 0], [-70, -40], [-90, -100]] },
+  { color: GUN_SITE_RED, pts: [[-70, -100], [-40, -10]] },
+  { color: GUN_SITE_RED, pts: [[40, 0], [70, -100]] },
+  { color: GUN_SITE_RED, pts: [[90, -30], [70, 0], [40, 40], [20, 60], [30, 20]] },
+  { color: GUN_SITE_RED, pts: [[20, 60], [-20, 60], [-30, 20]] },
+  { color: GUN_SITE_RED, pts: [[-20, 60], [-40, 40], [-70, 0], [-90, -30]] },
+]
+
+// VGSTTL — SITE: PLAYER'S SIDE GUN, TOP LEFT (WSVROM.MAC:1738) — left rail (mirror of VGSTTR)
+const VGSTTL_RUNS: readonly GunSiteRun[] = [
+  { color: GUN_SITE_BLUE, pts: [[-100, 30], [-30, 30], [-10, 10], [-100, 10]] },
+  { color: GUN_SITE_BLUE, pts: [[-10, 10], [-10, -10], [-100, -10]] },
+  { color: GUN_SITE_BLUE, pts: [[-10, -10], [-30, -30], [-100, -30]] },
+  { color: GUN_SITE_RED, pts: [[-20, -20], [0, -20], [10, -10], [-10, -10]] },
+  { color: GUN_SITE_RED, pts: [[10, -10], [10, 10], [-10, 10]] },
+  { color: GUN_SITE_RED, pts: [[10, 10], [0, 20], [-20, 20]] },
+  {
+    color: GUN_SITE_RED,
+    pts: [
+      [-40, 30], [-30, 50], [0, 70], [60, 70], [60, 60], [40, 50], [30, 30],
+      [30, -30], [40, -50], [60, -60], [60, -70], [0, -70], [-30, -50], [-40, -30],
+    ],
+  },
+  { color: GUN_SITE_RED, pts: [[-30, -50], [30, -50], [60, -70]] },
+  { color: GUN_SITE_RED, pts: [[30, -50], [20, -30], [20, 30], [30, 50], [-30, 50]] },
+  { color: GUN_SITE_RED, pts: [[30, 50], [60, 70]] },
+  { color: GUN_SITE_BLUE, pts: [[30, 10], [80, 10], [90, 0], [80, -10], [30, -10]] },
+  { color: GUN_SITE_BLUE, pts: [[30, 0], [90, 0]] },
+]
+
+// VGSTBL — SITE: PLAYER'S SIDE GUN, BOTTOM LEFT (WSVROM.MAC:1810) — mirror of VGSTBR
+const VGSTBL_RUNS: readonly GunSiteRun[] = [
+  { color: GUN_SITE_BLUE, pts: [[-100, -20], [-50, 10], [-30, 10], [-10, -10], [-10, -30], [-30, -50], [-100, -90]] },
+  { color: GUN_SITE_BLUE, pts: [[-100, -80], [-10, -30]] },
+  { color: GUN_SITE_BLUE, pts: [[-10, -10], [-100, -60]] },
+  { color: GUN_SITE_BLUE, pts: [[-100, -30], [-30, 10]] },
+  { color: GUN_SITE_RED, pts: [[-30, 10], [0, 10], [10, 0], [10, -20], [0, -30], [-20, -40]] },
+  { color: GUN_SITE_RED, pts: [[-10, -30], [10, -20]] },
+  { color: GUN_SITE_RED, pts: [[10, 0], [-10, -10]] },
+  { color: GUN_SITE_RED, pts: [[-20, 0], [0, 10]] },
+  {
+    color: GUN_SITE_RED,
+    pts: [
+      [-40, 10], [-40, 30], [-30, 50], [0, 70], [60, 70], [60, 60], [40, 50], [30, 30],
+      [30, -30], [40, -50], [60, -60], [60, -70], [0, -70], [-30, -50], [30, -50], [60, -70],
+    ],
+  },
+  { color: GUN_SITE_RED, pts: [[30, -50], [20, -30], [20, 30], [30, 50], [60, 70]] },
+  { color: GUN_SITE_RED, pts: [[30, 50], [-30, 50]] },
+  { color: GUN_SITE_BLUE, pts: [[30, 20], [70, 40], [90, 40], [90, 30], [80, 20], [30, -10]] },
+  { color: GUN_SITE_BLUE, pts: [[30, 0], [90, 30]] },
+  { color: GUN_SITE_BLUE, pts: [[80, 40], [30, 10]] },
+]
+
+interface GunSitePicture {
+  /** Anchor position as a fraction of the canvas, so the frame stays put at
+   *  the screen edges regardless of viewport size — the same convention as
+   *  the rest of this file's overlay layout (e.g. `HUD_MARGIN_FRAC`). */
+  readonly xFrac: number
+  readonly yFrac: number
+  readonly runs: readonly GunSiteRun[]
+}
+
+// px per local AVG unit — a fixed size (like `drawCrosshair`'s r/GAP/CHEV),
+// not scaled by canvas dimensions. Anchor fractions place each of the five
+// pictures near its ROM-authentic screen edge while keeping every stroked
+// point clear of two independent test isolation heuristics elsewhere in the
+// suite: `render.player-laser.test.ts`'s cannon-tip-corner detector
+// (CORNER_TOL=120px around each canvas corner) and
+// `render.death-star-picture.test.ts`'s Death-Star body isolation circle
+// (radius 300 around screen centre, for y in [110,500]). Verified in RED/
+// GREEN by direct calculation, not eyeballed — see sprint/context/
+// context-story-sw9-1.md.
+const GUN_SITE_SCALE = 0.65
+const GUN_SITE_PICTURES: readonly GunSitePicture[] = [
+  { xFrac: 0.925, yFrac: 0.5, runs: VGSTTR_RUNS },
+  { xFrac: 0.7, yFrac: 0.95, runs: VGSTBR_RUNS },
+  { xFrac: 0.5, yFrac: 0.9667, runs: VGSTBM_RUNS },
+  { xFrac: 0.075, yFrac: 0.5, runs: VGSTTL_RUNS },
+  { xFrac: 0.3, yFrac: 0.95, runs: VGSTBL_RUNS },
+]
+
+/**
+ * The persistent X-wing cockpit canopy frame (story sw9-1): the five
+ * authentic `PLAYER'S GUN SITE` pictures, static in screen space (no game
+ * logic — the geometry is fixed constants, not derived from `state`). Drawn
+ * every gameplay frame alongside the crosshair, in the same absolute-canvas-
+ * coordinate style as `glowLine`'s HUD frame brackets.
+ */
+function drawCockpitFrame(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  for (const pic of GUN_SITE_PICTURES) {
+    const ax = pic.xFrac * w
+    const ay = pic.yFrac * h
+    for (const run of pic.runs) {
+      // AVG +Y is up; canvas +Y is down — flip the local Y on the way in.
+      const pts: Array<readonly [number, number]> = run.pts.map(([lx, ly]) => [
+        ax + GUN_SITE_SCALE * lx,
+        ay - GUN_SITE_SCALE * ly,
+      ])
+      glowPolyline(ctx, pts, { stroke: run.color, width: 1.5, blur: 8 })
+    }
+  }
+}
+
+/**
+ * The cockpit reticle, tracking the yoke (core-computed via crosshairNdc): a
+ * centre cross for the precise aim point, framed by four cabinet chevrons at the
+ * cardinals — inward-pointing arrowheads converging on the centre (story 8-14).
+ * The chevrons are static screen geometry (no game logic), drawn in the same cyan
+ * glow as the cross.
+ */
+function drawCrosshair(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
+  const [nx, ny] = crosshairNdc(state.aimX, state.aimY)
+  const cx = (nx * 0.5 + 0.5) * w
+  // Match project()'s NDC→screen mapping (which flips Y for the canvas), so the
+  // reticle sits exactly where a target at the same NDC is drawn: +aimY → top.
+  const cy = (-ny * 0.5 + 0.5) * h
+  const r = 16
+  ctx.lineWidth = 2
+  ctx.strokeStyle = GLOW
+  ctx.shadowColor = GLOW
+  ctx.shadowBlur = 10
+  ctx.beginPath()
+  // Centre cross with a gap at the aim point.
+  ctx.moveTo(cx - r, cy)
+  ctx.lineTo(cx - 5, cy)
+  ctx.moveTo(cx + 5, cy)
+  ctx.lineTo(cx + r, cy)
+  ctx.moveTo(cx, cy - r)
+  ctx.lineTo(cx, cy - 5)
+  ctx.moveTo(cx, cy + 5)
+  ctx.lineTo(cx, cy + r)
+  // Four converging chevrons: each apex points inward toward the centre, set just
+  // outside the cross (GAP > r) with arms of length CHEV.
+  const GAP = 22
+  const CHEV = 7
+  // top — apex below its arms (points down)
+  ctx.moveTo(cx - CHEV, cy - GAP - CHEV)
+  ctx.lineTo(cx, cy - GAP)
+  ctx.lineTo(cx + CHEV, cy - GAP - CHEV)
+  // bottom — apex above its arms (points up)
+  ctx.moveTo(cx - CHEV, cy + GAP + CHEV)
+  ctx.lineTo(cx, cy + GAP)
+  ctx.lineTo(cx + CHEV, cy + GAP + CHEV)
+  // left — apex right of its arms (points right)
+  ctx.moveTo(cx - GAP - CHEV, cy - CHEV)
+  ctx.lineTo(cx - GAP, cy)
+  ctx.lineTo(cx - GAP - CHEV, cy + CHEV)
+  // right — apex left of its arms (points left)
+  ctx.moveTo(cx + GAP + CHEV, cy - CHEV)
+  ctx.lineTo(cx + GAP, cy)
+  ctx.lineTo(cx + GAP + CHEV, cy + CHEV)
+  ctx.stroke()
+  ctx.shadowBlur = 0
+}
+
+// HUD header geometry (story 8-17; reworked fidelity epic task 5). Side inset
+// and the gauge width scale with the viewport width so the header reflows
+// instead of clipping; the vertical offsets are small top-anchored constants,
+// the cabinet's top status strip. HUD_FRAME_BOTTOM_Y sits below the shield
+// gauge's numeral + SHIELD label stack (the tallest column) so the frame
+// brackets never collide with it — see the geometry note on `drawShieldMeter`.
+const HUD_MARGIN_FRAC = 0.025 // side inset as a fraction of width
+const HUD_ROW1_Y = 34 // SCORE label / WAVE row baseline (top row)
+const HUD_ROW2_Y = 58 // SCORE value baseline (second left-column row)
+const HUD_ROW3_Y = 80 // bonus/extra-life flash row baseline (beneath the score value)
+const HUD_METER_Y = 42 // shield-gauge top
+const HUD_METER_H = 24 // shield-gauge frame height
+const HUD_FRAME_TOP_Y = 10 // top bracket line, clear above the text row
+const HUD_FRAME_BOTTOM_Y = 112 // bottom bracket line, clear below the shield gauge's numeral/label
+
+/**
+ * Palette (fidelity epic, task 5) — findings ## HUD & framing / ## Colors &
+ * intensities identify a single colour ($6280, STAT register 2) for the
+ * SCORE panel, but that undersells it: a real cabinet screenshot (task-5
+ * report has the source URLs + pixel sampling) shows the panel uses TWO
+ * colours — the static "SCORE"/"WAVE" words are RED, the live digits (score,
+ * wave number) are GREEN, matching the same green the shield gauge and
+ * trench walls use. HUD_LABEL_COLOR/HUD_VALUE_COLOR split what the findings
+ * doc described as one opcode; the register-2 green is pinned by the doc,
+ * the exact hexes are matched to the screenshot sample (~#e60001 red,
+ * ~#1cdd00/#00e600 green — no colour LUT survives in the ROM itself).
+ */
+const HUD_LABEL_COLOR = '#ff2222' // PROVISIONAL — hex matched to a cabinet screenshot; register not identified in findings
+const HUD_VALUE_COLOR = '#22e600' // PROVISIONAL(findings ## HUD & framing, ## Colors & intensities) — register pinned, hex matched to a cabinet screenshot
+// The flashing bonus/extra-life row (byte_4B2C, sw3-6) — the amber/yellow the
+// cabinet screenshot shows directly under the score value. PROVISIONAL hex.
+const HUD_BONUS_COLOR = '#ffcc00'
+
+/**
+ * Shield-gauge colour — findings ## HUD & framing: `word_96B6` "Shield colour
+ * table" draws a HEALTHY gauge (≥5 shields remaining — the common case at
+ * STARTING_LIVES=6) in `$6280`, the same register-2 green as the score panel
+ * and the trench walls (confirmed green, not red, by the same cabinet
+ * screenshot — the whole gauge INCLUDING its "SHIELD" label is green, unlike
+ * SCORE/WAVE's red label). The table's low-shield ramp ($6480/$6680
+ * amber-ish, $6080 at empty) is real ROM behaviour this single-colour gauge
+ * does not reproduce — an unimplemented nuance already tracked in Open
+ * follow-ups #7.
+ */
+const HUD_SHIELD_COLOR = '#22e600' // PROVISIONAL(findings ## HUD & framing, ## Colors & intensities) — register pinned (healthy tier only), hex matched to a cabinet screenshot
+
+/**
+ * In-run HUD header (story 8-17; reworked fidelity epic task 5 to the arcade
+ * layout): SCORE label-over-value (left), the wireframe SHIELD gauge
+ * (centre), and WAVE value-then-label on one line (right) — matching a real
+ * cabinet screenshot's asymmetric layout (task-5 report) — bracketed by two
+ * glowing frame lines, the closest approximation this renderer has of the
+ * ROM's 4-corner-dot HUD frame (findings ## HUD & framing, `sub_6112`; a true
+ * corner-dot frame is tracked in Open follow-ups #7). All text is the shared
+ * ROM stroke-vector face via glowText; every value is formatted by the pure
+ * core (`core/hud.ts`) so the shell only lays out what the core computed — the
+ * boundary holds.
+ */
+function drawHudHeader(ctx: CanvasRenderingContext2D, state: GameState, w: number, _h: number): void {
+  const margin = Math.round(w * HUD_MARGIN_FRAC)
+
+  // Left: SCORE label (red) over the value (green) — two short lines.
+  glowText(ctx, 'SCORE', margin, HUD_ROW1_Y, HUD_TEXT_PX, 'left', HUD_LABEL_COLOR, 10)
+  glowText(ctx, formatScore(state.score), margin, HUD_ROW2_Y, HUD_TEXT_PX, 'left', HUD_VALUE_COLOR, 10)
+
+  // Bonus/extra-life flash row (byte_4B2C, sw3-6): while the core's `bonusFlash`
+  // is live (re-armed on any score change, decaying to 0), echo the score in amber
+  // directly beneath it — the cabinet's "score changed, redraw HUD" flash. Absent
+  // once the flash has fully decayed.
+  if (state.bonusFlash > 0) {
+    glowText(ctx, formatScore(state.score), margin, HUD_ROW3_Y, HUD_TEXT_PX, 'left', HUD_BONUS_COLOR, 10)
+  }
+
+  // Right: WAVE — one line, value then label, each its own colour (a real
+  // cabinet screenshot shows this asymmetric layout: SCORE stacks label over
+  // value, WAVE runs value-then-label on a single row). The gap is MEASURED off
+  // the label's laid-out width (layoutText is pure — no ctx.measureText needed),
+  // not a fixed px constant: the old TTF-tuned 56 put the numeral inside the
+  // wider stroke-face label (SH2-5 review [HIGH]). +8px of air between them.
+  const waveLabelGap =
+    layoutText('WAVE', { letterSpacing: GLYPH_TRACKING }).width * (HUD_TEXT_PX / CELL_H) + 8
+  glowText(ctx, 'WAVE', w - margin, HUD_ROW1_Y, HUD_TEXT_PX, 'right', HUD_LABEL_COLOR, 10)
+  glowText(ctx, formatWave(state.wave), w - margin - waveLabelGap, HUD_ROW1_Y, HUD_TEXT_PX, 'right', HUD_VALUE_COLOR, 10)
+
+  // Centre: the wireframe shield gauge with its numeral + label.
+  drawShieldMeter(ctx, state, w)
+
+  // Frame: top and bottom glowing brackets spanning the inset width.
+  glowLine(ctx, margin, HUD_FRAME_TOP_Y, w - margin, HUD_FRAME_TOP_Y, GLOW)
+  glowLine(ctx, margin, HUD_FRAME_BOTTOM_Y, w - margin, HUD_FRAME_BOTTOM_Y, GLOW)
+
+  // Reset shared glow state so nothing leaks into the next frame.
+  ctx.shadowBlur = 0
+}
+
+/**
+ * The Death Star surface gameplay HUD (sw8-5): a TOWERS-remaining counter and the
+ * escalating "XXXXX POINTS NEXT TOWER" readout — the cabinet's VWMTWR (WSMAIN.MAC:3481-
+ * 3535). Both are gated exactly as the ROM gates them: the surface phase, and only WHILE
+ * towers remain to hit (`LDA GD.TWL / IFNE ;?MORE TOWERS TO HIT?`) — so a bunkers-only
+ * wave and an all-cleared field show nothing. The worth shown is
+ * `nextTowerWorth(phaseKills)`, the SAME value the sim banks when that tower falls
+ * (`sim.ts`), so the figure on screen can never lie about the points.
+ *
+ * Colours follow the cabinet — the `TWRMULT` number green (VGCGRN), the labels red
+ * (MS.NXT is drawn VGCRED, TCMES.MAC:606). The exact seats (VGRW6/VGRW7) and the
+ * `FRAMEL & 0x30` blink that alternates the readout with "50,000 FOR SHOOTING ALL TOWERS"
+ * are the visual-pass's to tune against the longplay (sw8-5 Delivery Findings §8.5).
+ */
+function drawSurfaceTowerHud(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
+  if (state.phase !== 'surface') return
+  const remaining = towersForWave(state.wave) - state.phaseKills
+  if (remaining <= 0) return // bunkers-only wave, or every tower already cleared — no messages
+
+  const margin = Math.round(w * HUD_MARGIN_FRAC)
+  const y = h - 30
+
+  // "XXXXX POINTS NEXT TOWER" — the green worth of the next tower, then the red label,
+  // laid out with the measured-gap idiom drawHudHeader uses for the WAVE numeral+label.
+  const worth = String(nextTowerWorth(state.phaseKills))
+  const worthW = layoutText(worth, { letterSpacing: GLYPH_TRACKING }).width * (HUD_TEXT_PX / CELL_H)
+  glowText(ctx, worth, margin, y, HUD_TEXT_PX, 'left', HUD_VALUE_COLOR, 10)
+  glowText(ctx, 'POINTS NEXT TOWER', margin + worthW + 8, y, HUD_TEXT_PX, 'left', HUD_LABEL_COLOR, 10)
+
+  // "TOWERS <n>" — the towers-left counter (MS.TWR + GD.TWL), on the right.
+  glowText(ctx, `TOWERS ${remaining}`, w - margin, y, HUD_TEXT_PX, 'right', HUD_VALUE_COLOR, 10)
+}
+
+// How long the "Use the Force" banner stays lit after the award (fidelity epic,
+// task 4). Not a ROM-recovered dwell time — findings ## HUD & framing has no
+// on-screen timing for it, so this is a tuned UX choice.
+const FORCE_BANNER_SECONDS = 3
+
+// How long the reward banners (per-shield "BONUS FOR REMAINING ENERGY" and the
+// all-towers "50,000 FOR SHOOTING ALL TOWERS") dwell after they are banked (sw7-4).
+// A tuned UX dwell like FORCE_BANNER_SECONDS — the ROM shows them in its between-wave
+// beats, which our sim has no distinct screen for.
+const REWARD_BANNER_SECONDS = 3
+
+// How long the Death-Star finale plays after a port kill. sw7-15 / X-008: this is
+// ROM-DEFINED, not a UX guess — VWXPLN advances XP.CNT through PH1/PH2/PH3 = 31+27+31
+// = 89 game frames at 20.508 Hz (WSXPLD.MAC), ≈ 4.34 s, materially longer than the old
+// 2.5 s. Derived from the game frame (TICK_HZ) so it stays true if the timebase moves.
+const DEATH_STAR_BOOM_SECONDS = 89 / TICK_HZ
+// The slipped-past-port "MISSED" banner (sw2-4) — a UX dwell, no ROM counterpart.
+const MISS_BANNER_SECONDS = 2
+
+/**
+ * Trench banners (fidelity epic, task 4): "EXHAUST PORT AHEAD" while the port
+ * is within PORT_AHEAD_RANGE, and the "Use the Force" bonus banner for a few
+ * seconds after a clean port kill — both authentic HUD strings (findings
+ * ## HUD & framing / Open follow-ups #7). The force banner reads
+ * `state.forceBonusAwardedAt` (stamped by `stepTrench`'s port-hit path and
+ * re-stamped across the wave transition by `clearRun`), so it keeps showing
+ * into the next wave's space phase, not just while still in the trench.
+ */
+function drawTrenchBanners(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
+  if (
+    state.phase === 'trench' &&
+    state.exhaustPort &&
+    -state.exhaustPort.pos[2] <= PORT_AHEAD_RANGE
+  ) {
+    glowText(ctx, 'EXHAUST PORT AHEAD', w / 2, h * 0.22, BANNER_TEXT_PX, 'center', '#dddddd', 14)
+  }
+  if (state.forceBonusAwardedAt !== null && state.t - state.forceBonusAwardedAt <= FORCE_BANNER_SECONDS) {
+    // "<amount> FOR USING THE FORCE" is the confirmed authentic cabinet banner
+    // wording — findings ## HUD & framing / Open follow-ups #7 cites a real
+    // cabinet screenshot reading "5,000 FOR USING THE FORCE"
+    // (docs/star-wars-1983-source-findings.md:655); the plain "USE THE FORCE"
+    // string listed earlier in the same item is a shorter ROM string-table
+    // fragment, not the full banner text.
+    // sw7-4 / S-012: the banner shows the WAVE-scaled amount (TSCFRC), not a flat 5,000.
+    glowText(ctx, `${forceBonusForWave(state.wave).toLocaleString('en-US')} FOR USING THE FORCE`, w / 2, h * 0.16, BANNER_TEXT_PX, 'center', '#dddddd', 12)
+  }
+  // The per-surviving-shield reward banner (sw7-4 / S-013): MS.BRE "BONUS FOR
+  // REMAINING ENERGY" over "5,000  X <shields>" (TCMES.MAC:611-612), banked at a won
+  // run and riding the warp on `shieldBonusAwardedAt` (re-stamped by clearRun).
+  if (
+    state.shieldBonusAwardedAt !== null &&
+    state.t - state.shieldBonusAwardedAt <= REWARD_BANNER_SECONDS
+  ) {
+    glowText(ctx, 'BONUS FOR REMAINING ENERGY', w / 2, h * 0.28, BANNER_TEXT_PX, 'center', '#dddddd', 12)
+    glowText(ctx, `${SHIELD_BONUS_PER_UNIT.toLocaleString('en-US')} X ${state.lives}`, w / 2, h * 0.34, BANNER_TEXT_PX, 'center', '#dddddd', 12)
+  }
+  // The all-towers reward banner (sw7-4 / H-021): MS.RWD "50,000 FOR SHOOTING ALL
+  // TOWERS" (TCMES.MAC:609, ROM:E039). Since sw7-18 / D-019 the bonus banks MID-SURFACE
+  // (the frame the last tower falls, decoupled from the phase clear), so `towerBonusAwardedAt`
+  // is stamped there; `progress` carries it across the surface->trench edge so the banner
+  // still shows for REWARD_BANNER_SECONDS from the stamp, whether that spans the edge or not.
+  if (
+    state.towerBonusAwardedAt !== null &&
+    state.t - state.towerBonusAwardedAt <= REWARD_BANNER_SECONDS
+  ) {
+    glowText(ctx, '50,000 FOR SHOOTING ALL TOWERS', w / 2, h * 0.22, BANNER_TEXT_PX, 'center', '#dddddd', 12)
+  }
+  // The winning shot's payoff (sw2-4): a bold "DEATH STAR DESTROYED" callout that
+  // rides across the warp into the next wave's space phase (deathStarDestroyedAt
+  // is re-stamped by clearRun), pairing with the explosion flash below.
+  if (
+    state.deathStarDestroyedAt !== null &&
+    state.t - state.deathStarDestroyedAt <= DEATH_STAR_BOOM_SECONDS
+  ) {
+    glowText(ctx, 'DEATH STAR DESTROYED', w / 2, h * 0.45, BANNER_TEXT_PX, 'center', '#ffffff', 18)
+  }
+  // The run's failure tell (sw2-4): a clear "EXHAUST PORT MISSED", so a slipped
+  // port no longer reads as a nondescript scrape.
+  if (
+    state.exhaustPortMissedAt !== null &&
+    state.t - state.exhaustPortMissedAt <= MISS_BANNER_SECONDS
+  ) {
+    glowText(ctx, 'EXHAUST PORT MISSED', w / 2, h * 0.45, BANNER_TEXT_PX, 'center', '#ff5555', 16)
+  }
+}
+
+// Shield-gauge width as a fraction of the viewport — findings ## HUD & framing
+// names the ROM's `word_96CA` "Shield vector table" ring graphic but gives no
+// screen extent; measured directly off a real cabinet screenshot instead
+// (task-5 report), where the gauge spans ~36% of the 640-wide frame, centred.
+const HUD_GAUGE_FRAC = 0.36
+
+/**
+ * The centre shield gauge (fidelity epic, task 5): a wireframe trapezoid — a
+ * top edge and two vertical side edges with NO bottom edge, closed instead by
+ * a centre-peaked chevron running bottom-left → top-centre apex → bottom-right
+ * — echoing the ROM's `word_96CA` "Shield vector table" ring graphic (findings
+ * ## HUD & framing). This shape (not a row of segmented boxes) is traced
+ * directly off a real cabinet screenshot (task-5 report has the source +
+ * pixel measurements); findings gives the concept and colour register, the
+ * screenshot gives the silhouette. `STARTING_LIVES - 1` tick marks gradate
+ * the top edge like a ruler, one per shield above the first; a tick stays lit
+ * only while its shield is still held, so the scale reads down as shields are
+ * lost (the ROM's `sub_9558` depletion animation is real but unrecovered in
+ * detail — this is our best-effort mapping of "remaining shields" onto the
+ * gauge, not a traced animation). The live count and the SHIELD label sit
+ * beneath, both through the pure `formatLives` (no raw shell formatting) —
+ * the screenshot shows the whole gauge, numeral included, in the one green.
+ *
+ * Geometry note: HUD_FRAME_BOTTOM_Y is sized to clear this stack's label
+ * baseline (`yBot + 34`) — grow the gauge's vertical footprint and the
+ * frame's bottom bracket must move down with it.
+ */
+function drawShieldMeter(ctx: CanvasRenderingContext2D, state: GameState, w: number): void {
+  const gaugeW = Math.round(w * HUD_GAUGE_FRAC)
+  const x0 = Math.round(w / 2 - gaugeW / 2)
+  const x1 = x0 + gaugeW
+  const apexX = w / 2
+  const yTop = HUD_METER_Y
+  const yBot = yTop + HUD_METER_H
+  const tickLen = 8
+
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.strokeStyle = HUD_SHIELD_COLOR
+  ctx.shadowColor = HUD_SHIELD_COLOR
+  ctx.shadowBlur = 8
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  // Top edge + the two vertical sides (no bottom edge).
+  ctx.moveTo(x0, yTop)
+  ctx.lineTo(x1, yTop)
+  ctx.moveTo(x0, yTop)
+  ctx.lineTo(x0, yBot)
+  ctx.moveTo(x1, yTop)
+  ctx.lineTo(x1, yBot)
+  // The centre chevron: bottom-left corner up to the apex (on the top edge,
+  // dead centre) and back down to the bottom-right corner.
+  ctx.moveTo(x0, yBot)
+  ctx.lineTo(apexX, yTop)
+  ctx.lineTo(x1, yBot)
+  // Tick marks: one gradation per shield above the first, lit only while that
+  // shield is still held.
+  for (let i = 1; i < STARTING_LIVES; i++) {
+    if (i >= state.lives) continue
+    const tx = x0 + (gaugeW / STARTING_LIVES) * i
+    ctx.moveTo(tx, yTop)
+    ctx.lineTo(tx, yTop + tickLen)
+  }
+  ctx.stroke()
+  ctx.restore()
+
+  glowText(ctx, formatLives(state.lives), w / 2, yBot + 16, HUD_TEXT_PX, 'center', HUD_SHIELD_COLOR, 8)
+  glowText(ctx, 'SHIELD', w / 2, yBot + 34, HUD_TEXT_PX, 'center', HUD_SHIELD_COLOR, 8)
+  ctx.shadowBlur = 0
+}
+
+/** A single glowing frame line — the HUD header's top/bottom brackets. */
+function glowLine(
+  ctx: CanvasRenderingContext2D,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  color: string,
+): void {
+  // The cabinet's additive-glow envelope ('lighter') stays here, per-cabinet; the
+  // line itself strokes through the shared primitive. glowPolyline resets shadowBlur
+  // inside the save scope, so the explicit reset after restore preserves the original
+  // no-leak behaviour (restore brings back the pre-save shadowBlur).
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  glowPolyline(ctx, [[x0, y0], [x1, y1]], { stroke: color, width: 1.5, blur: 8 })
+  ctx.restore()
+  ctx.shadowBlur = 0
+}
+
+/**
+ * The in-flight coaching hint (sw7-10 / H-022) — whatever `state.coaching` holds this
+ * frame, drawn on the ROM's VGRW7 text row high in the cockpit view.
+ *
+ * The shell paints the string and nothing more: WHICH message, and whether there is one
+ * at all, is entirely the core's ruling (`coachingFor`). That is what keeps the stale
+ * "DEATH STAR BONUS EARNED" call-site comment (WSMAIN.MAC:3362) out of the cabinet —
+ * there is no second place where a message string could be invented.
+ */
+function drawCoaching(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
+  if (state.coaching === null) return
+  glowText(ctx, state.coaching, w / 2, h * 0.2, HUD_TEXT_PX, 'center', GLOW, 12)
+  ctx.shadowBlur = 0
+}
+
+/**
+ * The 50-star WSSTAR backdrop (sw7-10 / M-015).
+ *
+ * The cabinet draws each star as the single-point glyph VGSTAR in white (VGCWHT,
+ * WSSTAR.MAC:113) — so this is a plain screen-space point divide, NOT a wireframe
+ * through the camera: `state.starfield` already carries each star's depth AHEAD of the
+ * eye, and the core slides the field past every step. A star nearer the eye sits further
+ * out from the vanishing point and burns a touch brighter, which is what sells the drift.
+ */
+function drawStarfield(ctx: CanvasRenderingContext2D, stars: readonly Star[], w: number, h: number): void {
+  const focal = w / 2
+  for (const s of stars) {
+    if (s.z <= 0) continue // behind the eye — nothing to project
+    const sx = w / 2 + (s.x / s.z) * focal
+    const sy = h / 2 - (s.y / s.z) * focal
+    if (sx < 0 || sx >= w || sy < 0 || sy >= h) continue // streamed off the edge
+    // Nearer stars read brighter (the ROM's ST.BRT outside-brightness term).
+    const near = Math.max(0, Math.min(1, 1 - s.z / STAR_FAR))
+    ctx.fillStyle = `rgba(244, 244, 255, ${(0.35 + 0.65 * near).toFixed(3)})`
+    ctx.fillRect(Math.round(sx), Math.round(sy), 1, 1)
+  }
+}
+
+/** The attract/title screen: the marquee, a start prompt, and the high-score board. */
+function drawAttract(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  highScores: HighScoreTable<'wave'>,
+  w: number,
+  h: number,
+): void {
+  // sw7-10 / H-017: the idle screen ROTATES through four pages (WSMAIN.MAC:335-338),
+  // it is not one static marquee. The core owns which page is up and how long it has
+  // been there; the shell only paints whichever one it is handed.
+  switch (state.attract.page) {
+    case 'instructions':
+      drawInstructionsPage(ctx, w, h)
+      break
+    case 'scoring':
+      drawScoringPage(ctx, w, h)
+      break
+    case 'hiscore':
+      drawHighScoreBoard(ctx, highScores, w, h)
+      break
+    default:
+      drawBannerPage(ctx, state, w, h)
+  }
+
+  // sw9-3 / AC-1: VWCOIN draws this persistent bottom line on ALL FOUR attract
+  // phases (PHEBNR WSMAIN.MAC:1268, PHEINS :702, PHESCR :733, PHEHIS :904), not
+  // only the banner — the ROM's `MS.STR` (TCMES.MAC:549). Drawn here, once, after
+  // the per-page switch so it is additive and never duplicates the banner itself.
+  glowText(ctx, 'PULL TRIGGER TO START', w / 2, h * 0.94, HUD_TEXT_PX, 'center', BOLT_GLOW, 12)
+
+  ctx.shadowBlur = 0
+}
+
+/** PH$BNR — the marquee and the receding intro crawl. The persistent start
+ *  invitation is drawn once for all four attract pages by `drawAttract`. */
+function drawBannerPage(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
+  glowText(ctx, 'STAR WARS', w / 2, h * 0.26, TITLE_TEXT_PX, 'center', GLOW, 28)
+
+  // sw7-10 / H-018 — "RECEDE INTO THE DISTANCE … THE 'STAR WARS' EFFECT" (TCMES.MAC:167,
+  // :231). A line is born BIG and low, then shrinks away toward a vanishing point as it
+  // recedes. `size` (0→1) is the ROM's scale accumulator, and it runs that way round:
+  // the AVG scale field is a shift count, so a SMALLER field draws BIGGER — which the
+  // ROM states outright at WSMAIN.MAC:3178, `LDD #VGSCAL-100 ;DOUBLE SIZE`. So the
+  // accumulator counting UP from 0 (SPMON) is the line getting SMALLER, not larger.
+  // (:3176 is `JSR VWMTWZ`; the anchor was off by two and is corrected here.)
+  //
+  // `remaining` runs 1 at birth (near, big, low) to 0 at retirement (the vanishing
+  // point). Drawn FAR first so nearer lines overlap them, as the cabinet stacks them.
+  for (const line of [...state.attract.crawl].sort((a, b) => b.size - a.size)) {
+    const remaining = 1 - line.size
+    const px = CRAWL_FAR_PX + (CRAWL_NEAR_PX - CRAWL_FAR_PX) * remaining
+    const y = h * (CRAWL_VANISH_FRAC + (CRAWL_NEAR_FRAC - CRAWL_VANISH_FRAC) * remaining)
+    glowText(ctx, line.text, w / 2, y, px, 'center', CRAWL_GLOW, 10)
+  }
+}
+
+/** PH$INS — the flight brief, MS.FLI..FLZ (TCMES.MAC:553-568), drawn RED like the cabinet. */
+function drawInstructionsPage(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  glowText(ctx, INSTRUCTIONS_HEADER, w / 2, h * 0.12, HUD_TEXT_PX, 'center', PAGE_HEADER_GLOW, 12)
+  // The cabinet sets this brief LEFT-aligned on two x-coordinates: a numbered item opens
+  // at -444 and its continuation lines sit at -420 (TCMES.MAC:554-568). That 24-unit step
+  // is ≈ one character at the ROM's ~25-units-per-glyph pitch, so the paragraphs read as
+  // hanging indents. Centring every line (which is what this page did first) throws that
+  // structure away and leaves a ragged diamond — so the block is set from one margin and
+  // the continuations are pushed in by a single character.
+  const char = PAGE_TEXT_PX * PAGE_CHAR_W
+  const left = w / 2 - (INSTRUCTIONS_COLS * char) / 2
+  let y = h * 0.2
+  for (const line of INSTRUCTIONS_BODY) {
+    const numbered = /^\d/.test(line)
+    glowText(ctx, line, numbered ? left : left + char, y, PAGE_TEXT_PX, 'left', PAGE_HEADER_GLOW, 6)
+    y += PAGE_LINE_H
+  }
+}
+
+/** PH$SCR — the per-enemy point table, MS.SCR..SCZ (TCMES.MAC:573-581), drawn PURPLE.
+ *  Each row is one fixed-width ROM string, so it is set LEFT-aligned from a common
+ *  margin: that is what keeps the point values in their column. */
+function drawScoringPage(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  glowText(ctx, SCORING_HEADER, w / 2, h * 0.16, BANNER_TEXT_PX, 'center', SCORING_GLOW, 18)
+  const left = w / 2 - (SCORING_ROWS[0].length * PAGE_TEXT_PX * PAGE_CHAR_W) / 2
+  let y = h * 0.3
+  for (const row of SCORING_ROWS) {
+    glowText(ctx, row, left, y, PAGE_TEXT_PX, 'left', SCORING_GLOW, 8)
+    y += PAGE_LINE_H * 1.35
+  }
+}
+
+/** PH$SDS — the SELECT-A-DEATH-STAR difficulty picker (story sw9-2): title,
+ *  fire instruction, and the three EASY/MEDIUM/HARD choices (TCMES.MAC:582-587),
+ *  the hovered one lit like a live target. Positions come from the core's own
+ *  DEATH_STAR_CHOICES.aim so the drawn cursor always agrees with the hit-test. */
+function drawSelect(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
+  glowText(ctx, 'SELECT A DEATH STAR', w / 2, h * 0.26, BANNER_TEXT_PX, 'center', GLOW, 24)
+  glowText(ctx, 'FIRE LASER AT DESIRED DEATH STAR', w / 2, h * 0.38, HUD_TEXT_PX, 'center', BOLT_GLOW, 12)
+  const hoverIndex = state.select?.hover ?? null
+  for (let i = 0; i < DEATH_STAR_CHOICES.length; i++) {
+    const choice = DEATH_STAR_CHOICES[i]
+    const x = w / 2 + choice.aim[0] * w * 0.3
+    const y = h / 2 - choice.aim[1] * h * 0.3
+    const hovered = i === hoverIndex
+    glowText(ctx, choice.label, x, y, BANNER_TEXT_PX * 0.6, 'center', hovered ? BOLT_GLOW : GLOW, hovered ? 20 : 10)
+  }
+  ctx.shadowBlur = 0
+}
+
+/** The game-over screen: the banner, the run's final score, and the board. */
+function drawGameOver(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  highScores: HighScoreTable<'wave'>,
+  w: number,
+  h: number,
+): void {
+  glowText(ctx, 'GAME OVER', w / 2, h * 0.24, BANNER_TEXT_PX, 'center', TIE_GLOW, 24)
+  // sw7-3 H-020: the framing screens comma-group the score like the in-run HUD
+  // (VW8DIG, TCMES.MAC:791) — route through the same pure formatScore.
+  glowText(ctx, `SCORE ${formatScore(state.score)}`, w / 2, h * 0.33, HUD_TEXT_PX, 'center', GLOW, 12)
+
+  if (state.entry !== null) {
+    // SH2-13: the armed initials entry — the typed buffer with a cursor slot
+    // while the 3-char convention still has room. The board waits until the
+    // commit lands so the screen reads as one question.
+    // sw7-3 ruling: the ROM's HSZ is <SHOOT YOUR INITIALS> (shoot-a-grid, TCMES.MAC:603), but our clone uses KEYBOARD entry (H-013 accepted), so ENTER matches what the player does — accepted divergence.
+    glowText(ctx, 'ENTER YOUR INITIALS', w / 2, h * 0.42, HUD_TEXT_PX, 'center', BOLT_GLOW, 12)
+    const buf = state.entry.initials
+    glowText(ctx, buf.length < 3 ? `${buf}_` : buf, w / 2, h * 0.52, BANNER_TEXT_PX, 'center', GLOW, 18)
+    glowText(ctx, 'TYPE A-Z  BACKSPACE FIXES  START CONFIRMS', w / 2, h * 0.62, HUD_TEXT_PX, 'center', GLOW, 6)
+  } else {
+    glowText(ctx, 'PULL TRIGGER TO START', w / 2, h * 0.39, HUD_TEXT_PX, 'center', BOLT_GLOW, 12) // sw7-3 H-010 (STR)
+    drawHighScoreBoard(ctx, highScores, w, h)
+  }
+
+  ctx.shadowBlur = 0
+}
+
+/** The local high-score ladder (descending), shared by the framing screens. */
+function drawHighScoreBoard(
+  ctx: CanvasRenderingContext2D,
+  highScores: HighScoreTable<'wave'>,
+  w: number,
+  h: number,
+): void {
+  // sw7-3 H-011: the ROM board title is message RF2 (TCMES.MAC:605), not a
+  // generic 'HIGH SCORES' (which the ROM only uses for an operator service-menu
+  // option). NOTE: the shared VGMSGA font has no apostrophe glyph, so the "'" is
+  // dropped to a blank at draw time — the authentic string is kept here so it
+  // renders correctly once that glyph lands (Delivery Finding: font apostrophe gap).
+  glowText(ctx, "PRINCESS LEIA'S REBEL FORCE", w / 2, h * 0.5, HUD_TEXT_PX, 'center', GLOW, 10)
+
+  let y = h * 0.5 + 30
+  if (highScores.length === 0) {
+    glowText(ctx, 'NO SCORES YET', w / 2, y, HUD_TEXT_PX, 'center', GLOW, 6)
+    return
+  }
+  for (let i = 0; i < highScores.length; i++) {
+    const e = highScores[i]
+    const rank = String(i + 1).padStart(2, ' ')
+    // sw7-3 H-020: comma-group the board score (VW8DIG) like the in-run HUD.
+    const pts = formatScore(e.score)
+    glowText(ctx, `${rank}  ${e.name}  ${pts}  WAVE ${e.wave}`, w / 2, y, HUD_TEXT_PX, 'center', GLOW, 6)
+    y += 24
+  }
+}
+
+// Glowing vector-style text (caps): a wide bloom plus a tighter inner glow under
+// a crisp core, mirroring tempest's HUD so both games light their thin caps the
+// same way. SH2-5: glyphs are STROKED from the shared ROM vector font
+// (layoutText geometry via ./font), not drawn through the canvas text API —
+// text lights up exactly like the wireframes it flies over. `sizePx` is the cap
+// height the 24-unit glyph cell scales onto; `align` anchors the text box on x
+// (the old ctx.textAlign contract, now explicit); y stays the baseline.
+function glowText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  sizePx: number,
+  align: 'left' | 'center' | 'right',
+  color: string,
+  blur: number,
+): void {
+  const caps = text.toUpperCase() // the shared VGMSGA face is caps-only
+  const scale = sizePx / CELL_H
+  const { strokes, width } = layoutText(caps, { letterSpacing: GLYPH_TRACKING })
+  const w = width * scale
+  const ox = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x
+  const trace = (): void => {
+    ctx.beginPath()
+    for (const s of strokes) {
+      // Glyph space is y-up with the baseline at 0; map to screen (y grows down).
+      s.points.forEach((p, i) => {
+        const sx = ox + p.x * scale
+        const sy = y - p.y * scale
+        if (i === 0) ctx.moveTo(sx, sy)
+        else ctx.lineTo(sx, sy)
+      })
+    }
+    ctx.stroke()
+  }
+  ctx.strokeStyle = color
+  ctx.shadowColor = color
+  ctx.lineWidth = 1.5
+  if (blur > 0) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.shadowBlur = blur * 1.5
+    trace()
+    ctx.shadowBlur = blur * 0.8
+    trace()
+    ctx.restore()
+  }
+  ctx.shadowBlur = 0
+  trace()
+}
