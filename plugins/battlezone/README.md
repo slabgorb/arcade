@@ -10,27 +10,41 @@ A faithful, browser-based clone of Atari's 1980 vector arcade game *Battlezone*
 You steer a tank with two independent treads, aim through a fixed gunsight,
 and watch a green radar scanner for the next hostile. Glowing wireframe
 vectors on black, rendered with HTML5 Canvas 2D — no 3D engine, no physics
-engine, no backend. The game is a **deterministic pure simulation core** (its
-own ported "Math Box") wrapped by a thin input/render shell — the same
-architecture as its siblings, [tempest](../tempest) and
-[star-wars](../star-wars).
+engine, no backend. The game is a **deterministic pure simulation core** (the
+ported Atari "Math Box", now shared at `@shared/math3d`) wrapped by a thin
+input/render shell — the same architecture as its siblings,
+[tempest](../tempest) and [star-wars](../star-wars).
 
-> **Status:** In active development. 3D render foundation, dual-tread tank
-> movement, player firing, the radar scanner, and the enemy roster (slow tank,
-> guided missile, super tank) are in place (bz1-1–bz1-8). The bonus saucer,
-> difficulty ratchet, lives/attract mode, and audio are landing next
-> (bz1-9–bz1-12).
+> **Status:** Shipped and live at **v1.0.3**. The 3D render foundation,
+> dual-tread movement, firing, radar, the full enemy roster (slow tank, guided
+> missile, super tank), the bonus saucer, the difficulty ratchet,
+> lives/attract mode, audio and the 15.625 Hz ROM timebase are all in.
 
 ---
 
 ## Quick start
 
+**battlezone is a plugin inside the arcade monorepo — it is not a standalone
+repo and has no build, dev-server or test commands of its own.** Its
+`package.json` is a three-field stub (name/version/private); the repository root
+owns every tool. Run everything from the **monorepo root**:
+
 ```bash
-npm install
-npm run dev
+npm install                              # once, for the whole cabinet
+npx vitest run --project battlezone      # battlezone's suite: 72 files / 1038 tests
+npx vitest run                           # the whole cabinet
+npm run lint                             # tsc --noEmit across the monorepo
+npm run test:orchestrator                # the root node:test suite
 ```
 
-Then open **http://localhost:5276**.
+> **There is no way to open battlezone in a browser from this repo right now.**
+> The root `npx vite` serves the **lobby** at every path — `/`, `/battlezone/`
+> and a nonsense control `/banana/` all return the same `<title>Slabcade</title>`
+> page. That is a blanket SPA fallback, not routing. Do not screenshot
+> `/battlezone/` and report it as battlezone. The per-plugin dev server, the
+> port pin (battlezone owned 5276) and `npm run build` were all removed by the
+> monorepo migration; the root build and the plugin router are still being wired
+> up.
 
 ---
 
@@ -75,22 +89,40 @@ the most important rule in the codebase.
 ```
 src/
 ├── core/              # PURE, deterministic, unit-tested — no DOM/canvas
-│   ├── math3d.ts      # the ported "Math Box": vec3 / mat4 / perspective
 │   ├── camera.ts      # TankPose, view/projection setup
 │   ├── scene.ts       # world → NDC wireframe projector
 │   ├── models.ts      # ROM-decoded 3D wireframe models
 │   ├── movement.ts    # dual-tread differential-drive kinematics
 │   ├── obstacles.ts   # the 21 ROM-positioned obstacles
 │   ├── horizon.ts     # skyline / mountains / volcano / moon
+│   ├── volcano.ts     # the erupting-volcano particle emitter
 │   ├── firing.ts      # player shell projectile + line-of-sight
 │   ├── enemies.ts     # roster spawn/AI/hit/explosion/scoring
+│   ├── saucer.ts      # the bonus saucer
+│   ├── debris.ts      # explosion debris
 │   ├── radar.ts       # radar contacts + sweep
+│   ├── difficulty.ts  # the ROM difficulty ratchet
+│   ├── timebase.ts    # the 15.625 Hz ROM game-frame clock
 │   ├── scoring.ts     # point values
-│   ├── input.ts       # Input type (tread axes)
-│   └── rng.ts         # seeded PRNG (deterministic)
-├── shell/             # IO: input.ts (KeyboardTreads), render.ts
+│   ├── screens.ts     # attract / game-over / initials screen text
+│   ├── alerts.ts      # in-game alert lines
+│   ├── text.ts        # message strings
+│   ├── events.ts      # sim → shell event stream
+│   ├── sim.ts         # the whole game as one stepped GameState
+│   ├── state.ts       # GameState shape + initGame
+│   └── input.ts       # Input type (tread axes)
+├── shell/             # IO: input.ts (KeyboardTreads), render.ts, glow.ts,
+│                      # font.ts, audio.ts + audio-dispatch.ts, and pause.ts /
+│                      # viewport.ts — local wrappers over the shared modules
 └── main.ts            # bootstrap: canvas + wire shell ↔ core
 ```
+
+Three pure modules that used to live here — the Math Box (`core/math3d.ts`), the
+seeded PRNG (`core/rng.ts`) and the high-score table + storage seam
+(`core/highscore.ts` + `shell/storage.ts`) — were extracted to the arcade's
+shared library and are consumed as `@shared/math3d`, `@shared/rng` and
+`@shared/highscore`. `tests/scaffold.test.ts`, `tests/rng-extraction.test.ts` and
+`tests/highscore-extraction.test.ts` assert the local copies stay gone.
 
 **The core is pure and deterministic.** It never imports from `shell/`, never
 touches the DOM/`window`/`canvas`, and never calls `Date.now()`,
@@ -114,22 +146,29 @@ The disassembly quarry itself is kept locally under `reference/` (gitignored)
 
 ## Tech stack
 
-- **Language:** TypeScript (ES modules, strict mode)
-- **Build tool:** [Vite](https://vitejs.dev/)
-- **Tests:** [Vitest](https://vitest.dev/) — TDD on the pure core
+- **Language:** TypeScript (ES modules, strict mode — via the root `tsconfig.json`)
+- **Build tool:** [Vite](https://vitejs.dev/), configured once at the monorepo root
+- **Tests:** [Vitest](https://vitest.dev/) — TDD on the pure core; battlezone is
+  the `battlezone` project in the root `vitest.config.ts`
 - **Rendering:** HTML5 Canvas 2D (`shadowBlur` for the vector-CRT glow)
 
 ---
 
 ## Development
 
+Every command runs from the **monorepo root**, not from this directory.
+
 | Command | What it does |
 |---------|--------------|
-| `npm run dev` | Start the Vite dev server on port 5276 |
-| `npm run build` | Type-check (`tsc --noEmit`) and build to `dist/` |
-| `npm run preview` | Serve the production build locally on port 5276 |
-| `npm test` | Run the Vitest suite once |
-| `npm run test:watch` | Run Vitest in watch mode |
+| `npx vitest run --project battlezone` | Run battlezone's suite once (72 files / 1038 tests) |
+| `npx vitest --project battlezone` | The same suite in watch mode |
+| `npx vitest run` | Run the whole cabinet |
+| `npm run lint` | `tsc --noEmit` over the monorepo, battlezone included |
+| `npm run test:orchestrator` | The root `node:test` suite |
+
+`npm run build` at the root is **not wired yet** (it calls a
+`scripts/build-app.mjs` that does not exist), and there is no per-plugin `dev`,
+`build`, `preview`, `test` or `lint` script at all.
 
 ---
 
@@ -141,8 +180,15 @@ learn how the original worked.
 
 ## Releasing
 
-This repo ships from the [arcade orchestrator](https://github.com/slabgorb/arcade):
-`just release battlezone` gates on tests + build, merges `develop` → `main`, tags
-`vX.Y.Z`, and pushes. Every push to `main` auto-deploys to Cloudflare R2 via
-GitHub Actions (`.github/workflows/deploy.yml`) — **`main` is production; never
-push it by hand.** A red CI run deploys nothing.
+Battlezone no longer has a release pipeline of its own. It used to be a separate
+gitflow repo shipped by `just release battlezone` — feature branches onto
+`develop`, a `--no-ff` merge to `main`, a bare `vX.Y.Z` tag, and a per-repo
+`.github/workflows/deploy.yml` that uploaded `dist/` to the `arcade-battlezone`
+R2 bucket on every push to `main`. All of that was removed when battlezone was
+imported into the [arcade monorepo](https://github.com/slabgorb/arcade) as
+`plugins/battlezone`: no `develop` branch, no per-repo CI, no bucket of its own.
+
+The last standalone release was **v1.0.3** (`413bb0c` on the old `develop`); the
+pre-monorepo history is parked at `.migration-backup/battlezone.git`. How the
+monorepo builds, versions and deploys the cabinet is still being wired up — see
+the orchestrator's `docs/ops/`.
