@@ -2965,6 +2965,9 @@ pf sprint story add --title "Safari ITP purges the games' own high scores after 
 pf sprint story add --title "Empirically test Safari ITP's interaction clock: per-hostname or per-eTLD+1" \
   --description "ADR-0004 follow-up 2, never filed. Decides the severity of the purge story above. Needs a real Safari, not a spec reading — WebKit's localStorage partitioning already contradicts its own published policy."
 
+pf sprint story add --title "Purity fence: importClosure misses side-effect and dynamic imports" \
+  --description "src/shared/tests/purity.test.ts's importClosure() only matches 'from ...' relative imports, so a bare side-effect import (import './x.js') or a dynamic import() bypasses the transitive-closure check entirely. Verified by mutation during the Task 4 re-review: the closure test did NOT catch a side-effect import of a DOM-touching helper; only the whole-tree backstop did, and that backstop only reaches it because src/shared is currently flat. The gap becomes real the moment src/shared grows subdirectories. Inherited byte-identical from the original arcade-shared test, not introduced by the migration."
+
 pf sprint story add --title "Typecheck arcade-shared's tests: 22 pre-existing errors in WebAudio doubles" \
   --description "src/shared/tests is excluded from the root tsconfig (Task 4) because arcade-shared never had a tsconfig and its tests were never compiled — only run through vitest, which strips types. Measured 22 real errors, almost all hand-rolled FakeAudioContext/FakeGain doubles that do not satisfy the WebAudio types, plus possibly-undefined and empty-tuple indexing in tests/synth.test.ts. Fix the doubles and drop the exclude. Until then these tests can assert against types that do not hold."
 
