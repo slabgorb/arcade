@@ -904,3 +904,67 @@ source actually makes, not merely the negation of the old one — negation is no
 by `noUnusedParameters: false`, and the design-spec conflict) came from assessing those domains by
 hand. Record the disabled rows honestly as "Skipped / disabled" AND say who covered the domain
 instead — otherwise the table reads as if nine specialists agreed.
+
+---
+
+### Re-reviewing a MERGE RESOLUTION: the author's own verifications are structurally blind to a mis-anchored DUPLICATE, and a story's own edit can invalidate a citation written in the same commit
+
+**Situation:** sw8-8 (star-wars) round 3. The story retired `spaceEye`; while it sat in review,
+`origin/develop` gained uf1-12, which built a NEW consumer (`C_PS`, the player-sights bit gating a
+choreography branch) on the very seam sw8-8 deletes. Dev merged develop in, re-pointed both consumers
+at the cockpit, re-seated 25 tests, and re-anchored 36 audit citations. Round 2's APPROVED verdict on
+the branch's own content stood; the re-review was scoped to the resolution.
+
+**Problem 1 — "the diff is only `line` changes" and "the `remediated_by` counts match" BOTH pass a
+silent mis-anchor.** Dev verified the citation re-anchor two ways beyond the tool's own report, and
+both checks are real, and neither can detect the failure mode. The re-anchor tool matches
+NEAREST-LINE, so when a pinned verbatim occurs more than once in its file it can be re-pointed at the
+WRONG occurrence — and `check-citations.mjs` re-opens the pin against the working tree, finds the
+text it expected, and goes green forever while the finding now describes a different routine. A
+sibling story (td1-13) had already been filed naming this hazard AND the exact two duplicated
+verbatims in `sim.ts` (`      damage++` and `    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {`,
+each appearing twice because the space and surface cockpit-damage paths are near-identical). Two of
+the three duplicate-verbatim pins in the whole findings set moved in this very round.
+
+**Prevention:** enumerate the pins programmatically, not by reading the diff. For every finding,
+count occurrences of `ours.verbatim` in `ours.file`; for every pin whose count > 1 AND whose line
+moved, open BOTH occurrences and decide from the finding's CLAIM which one it means. Here `G-009`
+(fireball→player hit) and `S-016` ("every colliding TIE and fireball does `damage++`") both belong to
+the SPACE path — verified by the enclosing section comment and the emitted event (`cause: 'enemy'` vs
+`cause: 'turret'`). Also reconcile the checked-pin COUNT: 96 gate-checked here, and the 41 that do
+not resolve against the working tree are the `remediated_by`/`NO_COUNTERPART` ones the checker
+deliberately does not re-open (`check-citations.mjs:150-165`) — if you don't establish that split you
+will either report 41 phantom failures or miss a real one.
+
+**Problem 2 — a citation and the edit that invalidates it can land in the SAME commit, so no diff
+ever shows them disagreeing.** sw8-8 added a 31-line `AMENDED` blockquote to a design spec and, in
+the same commit, a new test file citing that spec at `:26-30` for a longplay observation. The
+citation was CORRECT when written; the amendment pushed the quoted sentence to `:45-46`. Two full
+review rounds read past it. The general hole: the audit gate re-opens ROM citations, but nothing
+re-opens a `file.md:NN` or `.MAC:NNNN` span embedded in an ordinary source comment. Six such defects
+shipped in this one branch.
+
+**Prevention:** for every line-span citation ADDED or MOVED by the diff, re-open it — and when the
+diff also EDITS the cited file, re-open it in both revisions (`git show <base>:<file>` vs the working
+tree). A citation into a file the same commit touches is guilty until proven innocent. Prefer naming
+the SYMBOL over the line when reviewing the fix.
+
+**Meta-lesson that cost the most: sync the orchestrator BEFORE reviewing.** This checkout was 21
+commits behind `origin/main`. The story record for uf1-12 — whose acceptance criteria I needed to
+rule on the seam — did not exist locally; I had to read it from `origin/main:sprint/epic-uf1.yaml`.
+Worse, the Dev sidecar on `origin/main` ALREADY carried Problem 2 as a lesson ("a line number in a
+CODE COMMENT is outside the gate entirely … nothing catches that but you; name the symbol instead of
+the line"), written by uf1-12 days earlier. The institutional memory that would have caught the
+round's headline finding was one `git pull` away. `git fetch` on the SUBREPO is not enough — fetch
+and read the orchestrator too.
+
+**What the round got right, worth repeating:** re-prove the story's own tripwire on the MERGED tree
+rather than the tree it was written against. The merge rewrote `tie-status.ts`, so I backed up
+`render.ts` by `cp` (never `git checkout` — see `git-checkout-clobbers-uncommitted-mutation`),
+reinstated the retired bounded eye in `cameraView`, and got 6 of 12 red across all three tripwire
+suites with the original defect message verbatim; restored, md5-matched, CONTROL 12/12 green. And
+when you suspect a re-seated negative control is vacuous, look for the STRUCTURAL argument before
+measuring: here the player's aim does not influence the fighter's flight, so the tracked and parked
+runs fly identical trajectories until the branch diverges, which means only the sights bit can
+differ — the mirror positive is what makes the negative interpretable, and no fixture choice can
+change that.
