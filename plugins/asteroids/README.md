@@ -11,21 +11,40 @@ and fire to break large rocks into smaller ones before they (or a roaming
 saucer) get you. Glowing vector lines on black, rendered with HTML5 Canvas 2D —
 no physics engine, no backend.
 
-> **Status:** In active development. Flight, firing, asteroid splitting, wave
-> spawning, and the large saucer are in place (A-1–A-11). Small saucer, aimed
-> fire, hyperspace, lives/respawn, attract mode, ROM-exact shape/velocity
-> tables, and sound are landing next (A-12–A-19).
+> **Status:** Shipped and live, at **v1.0.14**. Flight, firing, asteroid
+> splitting, wave spawning, both saucers, aimed fire, hyperspace,
+> lives/respawn, attract mode, the ROM-exact shape/velocity tables, scoring,
+> high scores, pause, and sound are all in.
 
 ---
 
+## Where this lives
+
+Asteroids is **not a standalone repo any more.** It is a plugin inside the
+[arcade](https://github.com/slabgorb/arcade) monorepo, at `plugins/asteroids/`.
+There is no per-game `package.json` toolchain, no per-game `vite.config.ts`, no
+per-game `.github/workflows/deploy.yml` — the repo root owns all three. The
+shared library it used to consume as the pinned git dependency `@arcade/shared`
+is now `src/shared/` at the root, reached through the **`@shared/*`** alias.
+
 ## Quick start
 
+Everything runs **from the repo root**, not from this directory:
+
 ```bash
-npm install
-npm run dev
+npm install                            # installs the whole cabinet, once
+npx vitest run --project asteroids     # asteroids' suite: 44 files / 823 tests
+npm run lint                           # tsc --noEmit across the monorepo
 ```
 
-Then open **http://localhost:5275**.
+**Serving asteroids in a browser is not wired yet.** Bare `npx vite` at the
+root starts the cabinet dev server, but it is configured with
+`root: lobby` — so `/asteroids/` returns the **lobby's** HTML, exactly as a
+nonsense path like `/banana/` does (verified by curl: all three return
+`<title>Slabcade</title>`). Do not screenshot `/asteroids/` and report it as
+this game. Per-game routing and the root `npm run build`
+(`scripts/build-app.mjs`, which does not exist yet — it exits
+`MODULE_NOT_FOUND`) land later in the plugin-host migration.
 
 ---
 
@@ -74,12 +93,21 @@ src/
 │   ├── saucer.ts      # large/small saucer spawn + movement + fire
 │   ├── waves.ts       # wave director (spawn counts/timing/placement)
 │   ├── score.ts       # scoring + bonus-ship rules
+│   ├── lives.ts       # death, respawn, bonus ships
+│   ├── hyperspace.ts  # the jump + its return odds
 │   ├── bounds.ts      # toroidal wrap math
-│   ├── input.ts       # Input type
-│   └── rng.ts         # seeded PRNG (deterministic)
-├── shell/             # IO: render.ts, input.ts, loop.ts
+│   ├── events.ts      # the core → shell event stream (audio cues)
+│   └── input.ts       # Input type
+├── shell/             # IO: render, input, audio, glow, font, margin
 └── main.ts            # bootstrap: canvas + wire shell ↔ core
 ```
+
+The seeded PRNG and the fixed-timestep game loop are **not** here — they were
+extracted to the shared library (SH-3 / SH-5) and are imported as
+`@shared/rng` and `@shared/loop`. Same for the stroke font, the glow
+primitive, the audio engine, the high-score table, the pause gate and the
+viewport fit. `tests/rng-extraction.test.ts` and `tests/loop-extraction.test.ts`
+guard that no local copy comes back.
 
 **The core is pure and deterministic.** It never imports from `shell/`, never
 touches the DOM/`window`/`canvas`, and never calls `Date.now()`,
@@ -93,12 +121,13 @@ frame-rate independent.
 
 ## Reference material
 
-Authentic shape tables, velocities, and timing constants are being ported from
-the commented disassembly of the original cabinet (story A-17). Until then,
-provisional values are named and isolated in `core/rocks.ts`, `core/saucer.ts`,
-and `core/waves.ts` so the eventual data swap is a constant change, not a
-refactor. The disassembly quarry itself is kept locally under `reference/`
-(gitignored) — never committed.
+The authentic shape tables and velocities were ported from the commented
+disassembly of the original cabinet (story A-17) and live in `reference/` as
+typed data — `reference/shapes.ts` and `reference/velocities.ts`, which **are**
+committed, because they are derived numeric tables rather than the copyrighted
+source. The raw disassembly quarry itself is never committed; this directory's
+`.gitignore` ignores everything under `reference/` and re-includes only the
+`.ts` tables.
 
 ---
 
@@ -113,13 +142,19 @@ refactor. The disassembly quarry itself is kept locally under `reference/`
 
 ## Development
 
+All of these run **from the repo root**. `plugins/asteroids/package.json` is now
+a three-field manifest (name, version, private) with no scripts of its own — the
+old `npm run dev` / `build` / `preview` / `test` inside this directory are gone,
+along with the `vite.config.ts` that pinned port 5275.
+
 | Command | What it does |
 |---------|--------------|
-| `npm run dev` | Start the Vite dev server on port 5275 |
-| `npm run build` | Type-check (`tsc --noEmit`) and build to `dist/` |
-| `npm run preview` | Serve the production build locally on port 5275 |
-| `npm test` | Run the Vitest suite once |
-| `npm run test:watch` | Run Vitest in watch mode |
+| `npx vitest run --project asteroids` | Run just asteroids' suite (44 files / 823 tests) |
+| `npx vitest run` | Run the whole cabinet's suite |
+| `npm run lint` | `tsc --noEmit` across the monorepo, this game included |
+| `npm run test:orchestrator` | The root's `node --test` suite |
+
+`npm run build` at the root is **not wired yet** (see *Where this lives*).
 
 ---
 
@@ -131,8 +166,14 @@ learn how the original worked.
 
 ## Releasing
 
-This repo ships from the [arcade orchestrator](https://github.com/slabgorb/arcade):
-`just release asteroids` gates on tests + build, merges `develop` → `main`, tags
-`vX.Y.Z`, and pushes. Every push to `main` auto-deploys to Cloudflare R2 via
-GitHub Actions (`.github/workflows/deploy.yml`) — **`main` is production; never
-push it by hand.** A red CI run deploys nothing.
+The standalone `develop` → `main` → `vX.Y.Z` flow is **retired**, along with this
+game's own `.github/workflows/deploy.yml`. Releases now happen from the monorepo
+and are tagged **`asteroids-vX.Y.Z`**; the version of record is
+`plugins/asteroids/package.json` (currently **1.0.14**, carried over from the
+last standalone release). The release and deploy machinery for the monorepo is
+still being wired — until it lands, do not assume `just release asteroids`
+works from here.
+
+The pre-migration git history is not in this repo. It is parked at
+`.migration-backup/asteroids.git` in the orchestrator checkout, and remains on
+GitHub at `slabgorb/asteroids` (`develop` = `38795fb`, `v1.0.14`).
