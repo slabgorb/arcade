@@ -3364,6 +3364,9 @@ pf sprint story add --title "Typecheck arcade-shared's tests: 22 pre-existing er
 
 pf sprint story add --title "Rename the cabinet bucket arcade-lobby -> arcade-cabinet" \
   --description "Spec §6.2. arcade-lobby now holds the whole cabinet, not just the lobby. Cosmetic; costs one custom-domain rebind. Not the bucket named 'arcade', which is the assets bucket."
+
+pf sprint story add --title "One green light: run the orchestrator's node:test suite under vitest too" \
+  --description "PLAN DEFECT #14, owner ruling 2026-07-30 (deferred, not descoped). The repo has TWO test runners and the migration was only ever watching one. tests/**/*.test.mjs are node:test files run by 'npm run test:orchestrator'; vitest.config.ts declares projects for shared, host, lobby and the seven games, none rooted at tests/. So 'npx vitest run' — the command every migration task used as its green light — never executed a single orchestrator test. Task 9 surfaced this: two assertions in tests/battlezone-bootstrap.test.mjs went red while 'npx vitest run' reported 489 files / 6239 tests all passing. Give tests/ a vitest project, or otherwise make one command cover both runners, so a red orchestrator test cannot pass unnoticed again. The .mjs files use node:test's API (test/assert from node:test and node:assert/strict), not vitest's, so this is a real port and not a config one-liner."
 ```
 
 - [ ] **Step 6: Record the teardown and commit**
