@@ -1,18 +1,22 @@
 // src/host/contract.ts — the plugin contract.
 //
-// A game declares itself with one exported `meta` object. That manifest is the
-// ONLY thing the lobby reads, and src/host/registry.ts is generated from every
-// plugins/*/plugin.ts. The hand-maintained lobby list it replaced carried six
-// hardcoded launch URLs and six hardcoded version strings that nothing checked.
+// A game declares itself with one exported `meta` object. That manifest is the ONLY
+// thing the lobby will read: Task 14 generates src/host/registry.ts from every
+// plugins/*/plugin.ts, and Task 15 repoints the lobby at it — retiring
+// lobby/src/core/registry.ts, which is STILL the live list as of this commit and
+// carries six hardcoded launch URLs and six hardcoded version strings that nothing
+// checks.
 //
-// `validateMeta` is the typed statement of that contract. Its two build-time
-// consumers cannot call it: scripts/gen-registry.mjs and scripts/build-app.mjs
-// are plain Node scripts that run before any TypeScript build, so they read the
-// manifests as TEXT and re-state these rules in JavaScript. Three checks
-// therefore have to be kept in step — this validator, those scripts' regexes,
-// and TypeScript's own type and excess-property checking of each manifest's
-// `const meta: GameMeta = {…}`. If they drift, this file is the one that is
-// right; the scripts are echoes of it.
+// The tense above is load-bearing, so plainly: **as of this commit, nothing calls
+// `validateMeta`.** It is the typed statement of the contract, and its own tests are
+// its only exercise. Its two build-time consumers do not exist yet and, once written,
+// cannot call it — scripts/gen-registry.mjs (Task 14) and scripts/build-app.mjs
+// (Task 16) will be plain Node scripts that run before any TypeScript build, so they
+// will read the manifests as TEXT and re-state these rules in JavaScript. Three checks
+// will then have to be kept in step: this validator, those scripts' regexes, and
+// TypeScript's own type and excess-property checking of each manifest's
+// `const meta: GameMeta = {…}`. If they drift, this file is the one that is right;
+// the scripts are echoes of it.
 
 /** A game on the cabinet, as the lobby sees it. */
 export interface GameMeta {
@@ -34,7 +38,7 @@ export interface GameMeta {
    * stated rather than inferred.
    *
    * Uniqueness across the fleet is NOT checkable here — one manifest cannot see its
-   * siblings. scripts/gen-registry.mjs owns the duplicate-order check.
+   * siblings. scripts/gen-registry.mjs (Task 14) will own the duplicate-order check.
    */
   readonly order: number
   /** Whether the lobby lists it. `false` is a deliberate statement, not an omission. */
@@ -43,7 +47,7 @@ export interface GameMeta {
    * Does this game's attract mode earn a slot in the lobby showcase carousel?
    *
    * Required, not optional — carried over verbatim from the field's own rationale in
-   * the registry this replaces: "An optional flag with a falsy default means a newly
+   * the registry this will replace: "An optional flag with a falsy default means a newly
    * added game silently opts out and nobody notices — the same class of invisible
    * absence this whole feature exists to correct."
    */
@@ -60,7 +64,16 @@ export interface BuildSpec {
 }
 
 const URL_SAFE_ID = /^[a-z][a-z0-9-]*$/
-const HEX_COLOR = /^#[0-9a-fA-F]{3,8}$/
+
+// 3, 4, 6 or 8 digits — the only lengths CSS actually accepts (#rgb, #rgba, #rrggbb,
+// #rrggbbaa). A plain {3,8} range, which is what this started as, admits #12345 and
+// #1234567: no browser renders either, so a one-digit typo like '#00eaf' would reach a
+// tile as a dead colour. Every colour the cabinet ships is 6-digit, so nothing changes.
+const HEX_COLOR = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
+
+/** Blank-but-present is the same defect as missing: it reads as a value and renders as
+ *  nothing. Applied to every field where the empty string would be silently displayed. */
+const isBlank = (s: string): boolean => s.trim().length === 0
 
 /**
  * Every key a manifest may carry. Anything else is rejected rather than passed
@@ -104,7 +117,7 @@ export function validateMeta(meta: unknown, dirName: string): GameMeta {
   if (m.id !== dirName) {
     throw new Error(`${where}: id '${m.id}' does not match directory '${dirName}'`)
   }
-  if (typeof m.title !== 'string' || m.title.length === 0) {
+  if (typeof m.title !== 'string' || isBlank(m.title)) {
     throw new Error(`${where}: title must be a non-empty string`)
   }
   if (typeof m.year !== 'number' || !Number.isInteger(m.year)) {
@@ -113,8 +126,12 @@ export function validateMeta(meta: unknown, dirName: string): GameMeta {
   if (typeof m.color !== 'string' || !HEX_COLOR.test(m.color)) {
     throw new Error(`${where}: color must be a hex colour like '#00eaff'; got ${JSON.stringify(m.color)}`)
   }
-  if (!Array.isArray(m.controls) || m.controls.length === 0 || !m.controls.every((c) => typeof c === 'string')) {
-    throw new Error(`${where}: controls must be a non-empty array of strings`)
+  if (
+    !Array.isArray(m.controls) ||
+    m.controls.length === 0 ||
+    !m.controls.every((c) => typeof c === 'string' && !isBlank(c))
+  ) {
+    throw new Error(`${where}: controls must be a non-empty array of non-empty strings`)
   }
   if (typeof m.order !== 'number' || !Number.isInteger(m.order)) {
     throw new Error(`${where}: order must be an integer; got ${JSON.stringify(m.order)}`)
@@ -128,7 +145,7 @@ export function validateMeta(meta: unknown, dirName: string): GameMeta {
   if (typeof m.showcase !== 'boolean') {
     throw new Error(`${where}: showcase must be a boolean; got ${JSON.stringify(m.showcase)}`)
   }
-  if (typeof m.version !== 'string' || m.version.length === 0) {
+  if (typeof m.version !== 'string' || isBlank(m.version)) {
     throw new Error(`${where}: version must be a non-empty string (import it from ./package.json)`)
   }
 

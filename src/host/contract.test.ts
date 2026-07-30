@@ -10,6 +10,10 @@
 
 import { describe, it, expect } from 'vitest'
 import { validateMeta } from './contract'
+// Source text, not behaviour — the repo idiom for invariants that live in how the
+// module is WRITTEN rather than what it returns (cf. the games' purity and citation
+// scanners). Used below to catch KNOWN_KEYS drifting away from GameMeta.
+import contractSource from './contract.ts?raw'
 
 const valid = {
   id: 'tempest',
@@ -152,6 +156,19 @@ describe('validateMeta', () => {
       expect(() => validateMeta({ ...valid, color: '#gggggg' }, 'tempest')).toThrow(/color/)
     })
 
+    it('rejects hex lengths CSS does not accept — 5 and 7 digits', () => {
+      // The lengths a one-digit typo produces. No browser renders either, so '#00eaf'
+      // would reach a tile as a dead colour; a plain {3,8} range lets both through.
+      expect(() => validateMeta({ ...valid, color: '#00eaf' }, 'tempest')).toThrow(/color/)
+      expect(() => validateMeta({ ...valid, color: '#00eaffe' }, 'tempest')).toThrow(/color/)
+    })
+
+    it('accepts the four hex lengths CSS does accept', () => {
+      for (const color of ['#0ef', '#0efc', '#00eaff', '#00eaffcc']) {
+        expect(validateMeta({ ...valid, color }, 'tempest').color).toBe(color)
+      }
+    })
+
     it('accepts every colour the cabinet actually ships', () => {
       for (const color of ['#00eaff', '#ffe81f', '#ff6a00', '#00ff41', '#d43b3b', '#2aa358', '#f0a828']) {
         expect(validateMeta({ ...valid, color }, 'tempest').color).toBe(color)
@@ -230,6 +247,21 @@ describe('validateMeta', () => {
       expect(out.controls).toEqual(['ROTATE — Wheel / ←→', 'FIRE — Click / Space'])
     })
 
+    it('rejects blank-but-present strings, which render as nothing', () => {
+      // A whitespace title clears a `length === 0` check and ships an empty tile.
+      expect(() => validateMeta({ ...valid, title: '   ' }, 'tempest')).toThrow(/title/)
+      expect(() => validateMeta({ ...valid, version: '  ' }, 'tempest')).toThrow(/version/)
+      expect(() => validateMeta({ ...valid, controls: ['FIRE — Space', '  '] }, 'tempest')).toThrow(
+        /controls/,
+      )
+    })
+
+    it('reports a field error before an unknown key when a manifest has both', () => {
+      // The unknown-key scan runs LAST on purpose: the bad field is the more
+      // actionable message. Nothing but this test holds that ordering in place.
+      expect(() => validateMeta({ ...valid, color: 'cyan', bogus: 1 }, 'tempest')).toThrow(/color/)
+    })
+
     it('rejects an unknown key rather than passing it through', () => {
       // Deliberate: the manifests are copied from a registry whose shape had extra
       // fields, so an unknown key is far likelier to be stale data or a typo than
@@ -250,6 +282,35 @@ describe('validateMeta', () => {
       expect(() =>
         validateMeta({ ...valid, launchUrl: 'https://tempest.slabgorb.com/' }, 'tempest'),
       ).toThrow(/derived/)
+    })
+  })
+
+  describe('the key list cannot drift away from the type', () => {
+    // KNOWN_KEYS fails LOUDLY in one direction only: forget to add a new field and the
+    // validator rejects every manifest that uses it. The other direction is silent —
+    // add a key to KNOWN_KEYS with no validation branch and that field is admitted
+    // unchecked forever. These two read the source text, because that is where the
+    // invariant lives.
+    const fieldsOf = (iface: string): string[] => {
+      const body = contractSource.match(new RegExp(`export interface ${iface} \\{([\\s\\S]*?)\\n\\}`))
+      if (!body) throw new Error(`interface ${iface} not found in contract.ts`)
+      return [...body[1].matchAll(/^\s*readonly (\w+)\??:/gm)].map((m) => m[1])
+    }
+
+    it('declares exactly the fields GameMeta declares, in the same order', () => {
+      const known = contractSource.match(/const KNOWN_KEYS: readonly string\[\] = \[([\s\S]*?)\n\]/)
+      if (!known) throw new Error('KNOWN_KEYS not found in contract.ts')
+      const listed = [...known[1].matchAll(/'([^']+)'/g)].map((m) => m[1])
+      expect(listed).toEqual(fieldsOf('GameMeta'))
+      expect(listed).toHaveLength(9)
+    })
+
+    it('validates every key it admits — each one has a typeof/shape branch', () => {
+      // A key in KNOWN_KEYS that the validator never reads is an unvalidated field
+      // wearing the contract's badge.
+      for (const key of fieldsOf('GameMeta')) {
+        expect(contractSource).toContain(`m.${key}`)
+      }
     })
   })
 })
