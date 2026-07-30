@@ -1903,3 +1903,61 @@ you did not implement, and say in the handoff which story owns the behaviour the
 for. The epic's outcome sentence survives this ("enemies turn toward and corner you") — a
 velocity-matched reversal IS the anti-orbit mechanism — but the AC's mechanism did not, and Dev
 must not be left to reconcile that at GREEN.
+
+---
+
+### A whole STORY can be the refuted prose — when the bug report's premise is backwards, the RED pins the machine and the filed behaviour becomes a green REGRESSION GUARD
+
+**Situation:** jt8-6 (joust) was filed by a Reviewer on jt8-4 with a REPRODUCED repro: the egg-ladder
+counter "must survive a mount death — DEGGS shares the DECISION BLOCK with DSCORE — but our
+`eggHits` rides the player PROCESS and resets to rung 1 on every respawn (a veteran scores 1000,
+then the identical staging after a respawn scores 250)." Three points, `type: bug`, a named fix
+("re-home the count onto a per-player record on DemoSim, the jt8-1 targets precedent"), and an
+explicit out-of-scope note ("the wave/game reset scope is still open").
+
+**Problem:** the ROM says the opposite, in the same record the story cites. `DEATH1 CLR EGGS1`
+(JOUSTRV4.SRC:4669) is the first instruction of the routine commented "DEATH OF PLAYER 1", and
+`DEATH1` *is* the `DDEAD` field of P1DEC (`FDB DEATH1,EGGS1,…`, :5551) — dispatched on the LOSER's
+decision at both kill sites (`LDY PDECSN,U` / `JSR [DDEAD,Y]`, :5071-5074 for a joust loss and
+:6563-6564 for the lava, `LDX #0  NO VICTOR`). So the reported symptom is FAITHFUL. Implementing the
+story as written would have been a deliberate fidelity regression, shipped with a citation on it.
+Worse, the real defect was the boundary the story waved out of scope: `WNRM CLR EGGS1/EGGS2`
+(:1979-1980) clears at EVERY wave start, and `stepDemo`'s advance carries the player processes
+forward — probed, a knight holding 2 hits pays 750 on his first catch of the next wave where the ROM
+pays 250. The story was inverted on both halves.
+
+**Where the misfile came from** (the reusable part): jt8-4 established the counter's LIFETIME from
+the routine that WRITES it — "EGGSMN writes the count back … EGGSCR never resets it, so the count
+persists for that player" (claims/egg-catch.json JT84-006, mirrored into demo.ts's doc-block and
+jt8-4's own source-test prose). The first clause is a fact about EGGSCR; the second is a claim about
+the whole program and it is false. `DEGGS` is a POINTER (`LDY DEGGS,Y` then `LDB ,Y`; the debug guard
+at :3039 says "SHOULD NEVER BE ZERO" because it holds an address) into the fixed cells EGGS1/EGGS2.
+Grep the CELLS instead of the routine and the lifetime is total and finite in one command: ten lines,
+six `CLR`s — game start, every wave start, death.
+
+**The shape of the RED that follows.** Do NOT write the story's test.
+- Pin the missing boundary (the wave clear) — that is the only genuinely failing group.
+- Pin the boundary the story wanted DELETED as a **regression guard**. It is green on arrival, so it
+  looks like padding; it is the opposite. It is the only thing standing between Dev and a faithful
+  behaviour being "fixed" away, and its non-vacuity has to come from mutation, not assertion.
+- Pin the reset scope EXHAUSTIVELY (assert the complete SET of source lines that touch the cells).
+  That single test closes the story's "reset scope still open" note and stops the lifetime being
+  re-litigated by inference later.
+- Retire the refuted prose wherever it spread — a committed claim, a src doc-block and a sibling
+  test's header, here. Turn each into a narrow test naming the exact refuted clause, so an honest
+  rewording passes and only the original overclaim fails.
+
+**And mutate the guard against the story's OWN design, not a strawman.** The first pass at the death
+guard passed a throwaway implementation of the story-as-filed (a per-player record on `DemoSim`) —
+because that probe restored the credit AFTER the collision pass, while the test's catch happened on
+the restore frame. The story's own wording ("readable by the sim at event-emit time") says the
+restore belongs BEFORE the pass; placed there, the guard bit. Two lessons: build the mutation as the
+competing design would really be built, and add the timing-independent form of the guard — "after a
+re-creation, NO later frame may hand the credit back", looped over a dozen frames — so it holds
+whenever the restore lands.
+
+**Bonus, cheap and repeatable:** the probe also caught that this suite's own verbatim check was
+WEAKER than `tests/audit/citations.test.ts`. Mine trimmed both sides; the repo's compares the raw
+line, and an unlabelled statement (`JSR`, `FDB`, the bare `CLR EGGS1` at :907) carries a leading TAB
+that a labelled one (DEATH1, WNRM) does not. A trimming check passes a claim CI then rejects. When
+duplicating an existing global gate at story scope, match its strictness or don't duplicate it.
