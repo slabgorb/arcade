@@ -2356,6 +2356,25 @@ console.log(`Building ${id}${entries.length ? ` (+ ${entries.join(', ')})` : ''}
 await build(defineAppConfig({ id, entries }));
 ```
 
+- [ ] **Step 5b: Gitignore `dist/` BEFORE the first build — this task owns it**
+
+**PLAN DEFECT #17, found by Task 12b.** The root `.gitignore` has **no `dist/` entry**, and no task
+in this plan added one. Verified: `git check-ignore -v dist/tempest` matches nothing. Every subrepo
+used to carry its own `dist/` rule inside its own `.gitignore`; those went away with the per-repo
+tooling, and the build output moved to a **root** `dist/<id>/` that nothing ignores.
+
+This task is the one that first creates that directory, so it is the one that must close the hole —
+and it must do so **before Step 6 runs a build**, not after, or the very next `git add -A` in any
+session commits eight built apps.
+
+```bash
+printf '# Build output — every app builds to dist/<id>/ (Task 16).\ndist/\n' >> .gitignore
+git check-ignore -v dist/tempest    # must now match
+```
+
+joust's removed `fresh-checkout hygiene` assertion is what routed this here; Task 12b's
+`build output is never tracked` test is currently the only guard, and a todo cannot stop a commit.
+
 - [ ] **Step 6: Build every app**
 
 ```bash
