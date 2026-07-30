@@ -670,7 +670,18 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `@shared/highscore` (Task 4).
-- Produces: a tracked `lobby/` whose 11 test files / 127 tests pass under the `lobby` vitest project, and a `lobby/package.json` carrying the version that `just release lobby` bumps and tags.
+- Produces: a tracked `lobby/` passing under the `lobby` vitest project, and a `lobby/package.json` carrying the version that `just release lobby` bumps and tags.
+
+**The count MUST fall: 11 files / 127 tests → 10 / 122.** The pre-migration baseline is a
+comparison point, never a target — `tests/scaffold.test.ts` asserts the `lobby/vite.config.ts` that
+Step 1 deletes, so the whole file goes. This is defect #9's shape (a bare number that reads like an
+order) and it was corrected for Tasks 6–12 but missed here. Removals are still counted and
+justified per file in the report, per the topology policy in Global Constraints.
+
+**FIX ROUND — added after Task 5's review, owner ruling 2026-07-30.** The review returned four
+Important findings; two of them (`base: '/'` and the dev-server host pin) were invariants whose
+intent survives, and the owner ruled they be closed **in place here** rather than left unguarded
+until Tasks 19/12b. See Step 4 below.
 
 **`lobby/package.json` is REPLACED, not deleted.** An earlier draft of this plan deleted it, which would have broken Task 17: `just release lobby` bumps a version and tags `lobby-vX.Y.Z`, and with no `package.json` there is nothing to bump or read. The lobby gets the same three-field stub every game gets — no dependencies, no scripts, because the root owns the toolchain.
 
@@ -734,6 +745,61 @@ Source: see docs/ops/migration-manifest.md
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
+
+- [ ] **Step 4 (FIX ROUND): close the two orphaned invariants and the stale README**
+
+Added after review. Steps 1–3 and 5 are already done and committed at `030b19d`; this step is the
+delta.
+
+**4a — Restore the host pin to the root `vite.config.ts`.** The guard is absent from the product,
+not just from the deleted test: the factory has **no `server`/`preview` block at all**, and its
+header comment at `:5-6` asserts the disproven rationale ("there is exactly one dev server now, so
+there is no eight-way port collision to guard"). Replace that comment and add both blocks to
+`defineAppConfig`'s returned config:
+
+```typescript
+    // ONE dev server for the cabinet, but the pin still matters. strictPort alone
+    // does NOT protect it: with 127.0.0.1:5270 held by another checkout (a-2, a-3),
+    // an unpinned host lets Vite bind [::1]:5270 instead and two servers share the
+    // port with no error — the silent-wrong-checkout trap td1-1 closed fleet-wide.
+    // Collapsing eight ports to one reduces that surface; it does not remove it,
+    // and a wrong-checkout server now serves the whole cabinet, not one game.
+    server: { host: '127.0.0.1', port: 5270, strictPort: true },
+    preview: { host: '127.0.0.1', port: 5270, strictPort: true },
+```
+
+This is verbatim what **Task 19 Step 0** used to own; that step is now a verify-only check, so do
+not expect a later task to add it.
+
+**4b — Seed `tests/monorepo-topology.test.mjs` with the two invariants the deleted
+`scaffold.test.ts` orphaned.** Task 12b consolidates the seven games' share into this same file
+later and has been amended to **extend, not create** it. Add only these two tests — the games'
+share is not yours:
+
+- `defineAppConfig({ id: 'lobby' }).base === '/'` — the intent of the deleted `serves under base /`.
+- `host === '127.0.0.1'` on **both** the `server` and `preview` blocks, with a comment stating why
+  `strictPort` alone does not protect the pin (the cross-checkout `[::1]` bind).
+
+Import the factory the way 12b does: `const { defineAppConfig } = await import('../vite.config.ts')`.
+
+**4c — Rewrite `lobby/README.md`.** It was imported unchanged and no task in the plan owns it
+(`grep -i readme` over this plan returned zero hits before this amendment). It is now false in five
+places, two of them actively harmful:
+
+- `:19` tells the reader to run `npm install` inside `lobby/` — which creates precisely the per-app
+  lockfile Task 12b asserts must not exist.
+- `:46` documents `vX.Y.Z` release tags, which this epic declares **invalid** in the monorepo
+  (`<app>-vX.Y.Z` is the form).
+- `:20` dev server on port 5270 via `npm run dev`; `:35` a `vite.config.ts` this task deletes;
+  `:40` "Served under `/lobby/`" when the lobby's base is `/`; `:47` a `.github/workflows/deploy.yml`
+  this task deletes.
+
+Point the commands at the root (`npm install` and `just serve` from the repo root), correct the
+tag format, correct the base, and drop the references to deleted files. Do not invent new workflow:
+describe what the monorepo actually does now.
+
+**Report:** append a fix report to `task-5-report.md` covering 4a/4b/4c, the covering tests, the
+command run, and its output.
 
 ---
 
@@ -1296,14 +1362,26 @@ Tasks 6–12 removed per-game assertions that checked the old topology. Those in
 Do not guess. Read the "topology assertions removed" section of every import report:
 
 ```bash
-grep -A 30 -i "topology" .superpowers/sdd/2026-07-30-arcade-plugin-host/task-{6,7,8,9,10,11,12}-report.md
+grep -A 30 -i "topology" .superpowers/sdd/2026-07-30-arcade-plugin-host/task-{5,6,7,8,9,10,11,12}-report.md
 ```
 
-Build a checklist of every distinct invariant that was dropped. The per-game counts to reconcile against are tempest 12, star-wars 17, asteroids 17, battlezone 38, red-baron 27, centipede 26, joust 34.
+**Task 5 (the lobby) is in that list deliberately — PLAN DEFECT #11.** Until `9822adc`+ this grep
+and the count list below covered only the seven games, so the lobby's five removed assertions were
+structurally invisible to the one task built to catch exactly this class of loss. Task 5's review
+caught it. The lobby is an app like any other here.
 
-- [ ] **Step 2: Write the consolidated suite**
+Build a checklist of every distinct invariant that was dropped. The per-app counts to reconcile
+against are **lobby 5**, tempest 12, star-wars 17, asteroids 17, battlezone 38, red-baron 27,
+centipede 26, joust 34.
 
-Create `tests/monorepo-topology.test.mjs`. It must cover, once each:
+- [ ] **Step 2: Extend the consolidated suite**
+
+**`tests/monorepo-topology.test.mjs` ALREADY EXISTS — Task 5's fix round created it** (owner ruling,
+2026-07-30) carrying the two invariants the lobby's deleted `scaffold.test.ts` orphaned: the
+`base: '/'` assertion and the dev-server host pin. **Do not re-create the file and do not duplicate
+those two tests** — read it first, then add the games' share around them.
+
+The completed file must cover, once each:
 
 ```javascript
 // The cabinet-wide wiring invariants. These were asserted seven times over, once per
@@ -2527,9 +2605,16 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `build-app.mjs` (Task 16), `defineAppConfig` (Task 3).
 - Produces: `just serve` running one Vite dev server on 5270 — `/` the lobby, `/<id>/` each game.
 
-- [ ] **Step 0: Restore the host pinning to `vite.config.ts` — a guard the plan wrongly dropped**
+- [ ] **Step 0: VERIFY the host pinning — already restored in Task 5, do NOT re-add**
 
-Task 3's factory carries this comment and no `server`/`preview` block at all:
+**Owner ruling 2026-07-30: this step moved forward into Task 5's fix round.** Task 5's review found
+the guard was gone from the *product*, not merely from the deleted test, and the owner ruled it be
+closed in place rather than left unguarded until this task. Your job here is to **confirm** the
+`server`/`preview` blocks below are present in `vite.config.ts` and that the misleading comment is
+gone. If both hold, tick this step and move to Step 1 — adding them a second time is a defect.
+
+The rationale is retained because the recurring failure is someone "simplifying" the pin away
+again. Task 3's factory originally carried this comment and no `server`/`preview` block at all:
 
 ```
 // The old per-repo `strictPort` + `host: '127.0.0.1'` pinning is gone: there is
