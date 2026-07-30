@@ -215,21 +215,21 @@ Expected: FAIL — `git rev-parse audit/tempest^{commit}` exits non-zero because
 
 - [ ] **Step 3: Fetch the commits and create the tags**
 
+Fetch from the **local checkouts**, not from GitHub. Both objects are verified present in `./tempest/.git` and `./red-baron/.git` right now, whereas a GitHub fetch of a bare SHA can be refused with `Server does not allow request for unadvertised object`. This step **must** run before Tasks 6 and 10 delete those `.git` directories.
+
 ```bash
-git fetch --no-tags https://github.com/slabgorb/tempest.git 4232ed4
+# Verify the source objects exist before relying on them.
+git -C tempest   cat-file -e 4232ed4^{commit} || { echo "tempest audit commit missing"; exit 1; }
+git -C red-baron cat-file -e 6038a07b9044f1add37fd12c217cd39ec1629439^{commit} || { echo "red-baron audit commit missing"; exit 1; }
+
+git fetch --no-tags "$PWD/tempest"   4232ed4
 git tag audit/tempest 4232ed4
 
-git fetch --no-tags https://github.com/slabgorb/red-baron.git 6038a07b9044f1add37fd12c217cd39ec1629439
+git fetch --no-tags "$PWD/red-baron" 6038a07b9044f1add37fd12c217cd39ec1629439
 git tag audit/red-baron 6038a07b9044f1add37fd12c217cd39ec1629439
 ```
 
-If a fetch is refused with `error: Server does not allow request for unadvertised object`, fetch the branch that contains it instead and then tag:
-
-```bash
-git fetch --no-tags https://github.com/slabgorb/tempest.git develop:refs/tmp/tempest-develop
-git tag audit/tempest 4232ed4
-git update-ref -d refs/tmp/tempest-develop
-```
+Note that tagging a commit keeps its whole ancestor chain reachable, so each game's history up to its audit point comes along. That is accepted: it is detached from `main`, it is what makes the gates work unmodified, and it is far cheaper than re-anchoring pinned line numbers by hand.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -2017,6 +2017,12 @@ The new stages, replacing the develop→main `--no-ff` merge entirely:
 2. **Gate** — `npx vitest run --project <name>` and `node scripts/build-app.mjs <name>`. Only that game's project runs, which is what keeps a red joust from blocking a tempest release.
 3. **Bump** — `plugins/<name>/package.json` (or `lobby/package.json`) by `patch|minor|major`.
 4. **Regenerate** — `node scripts/gen-registry.mjs`, so the tile version follows the bump in the same commit.
+
+   **Delete `syncLobbyTileVersion`.** The current script hand-writes each game's bumped version into `lobby/src/core/registry.ts` — the file Task 15 deletes. `gen-registry.mjs` replaces it entirely: the tile version is derived from the game's own `package.json` rather than copied into a second place that can drift. Grep for remaining callers before finishing:
+
+   ```bash
+   grep -rn "syncLobbyTileVersion" scripts/ tests/ || echo "clean"
+   ```
 5. **Commit** — `chore(release): <name> vX.Y.Z`, including the regenerated registry.
 6. **Tag** — annotated `<name>-vX.Y.Z`.
 7. **Push** — `git push origin main && git push origin <name>-vX.Y.Z`.
@@ -2716,6 +2722,24 @@ The first irreversible step. Everything before this is local; nothing a player c
 
 **Interfaces:**
 - Consumes: the real inventory from Task 1, the deploy workflow from Task 18.
+
+- [ ] **Step 0: Drift check — has any game moved since the manifest was pinned?**
+
+A sibling session pushed 19 sprint commits to orchestrator `main` during Task 1, and nothing prevents another session claiming a backlog story mid-migration. Game code landing on `slabgorb/<game>/develop` after the import would be **silently absent** from the monorepo, because the import took the SHAs pinned in `docs/ops/migration-manifest.md`.
+
+This converts that invisible loss into a detected one. Run it before the cutover, and re-import any drifted game before continuing.
+
+```bash
+while IFS='|' read -r _ repo sha _; do
+  repo=$(echo "$repo" | tr -d ' `'); sha=$(echo "$sha" | tr -d ' `')
+  case "$repo" in repo|---|'') continue;; esac
+  remote=$(git ls-remote "https://github.com/slabgorb/$repo.git" refs/heads/develop 2>/dev/null | cut -f1)
+  if [ -n "$remote" ] && [ "$remote" != "$sha" ]; then
+    echo "DRIFTED: $repo — manifest $sha, origin/develop $remote"
+  fi
+done < <(grep '^| ' docs/ops/migration-manifest.md)
+echo "drift check complete — any DRIFTED line above must be re-imported before cutover"
+```
 
 - [ ] **Step 1: Deploy the whole cabinet to the new bucket**
 
