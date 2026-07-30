@@ -528,6 +528,19 @@ rm -f src/shared/.gitkeep
 
 Remove the `/arcade-shared/` line from `.gitignore`, leaving the other eight for now (each import task removes its own).
 
+- [ ] **Step 2b: Remove the stale `exclude` left by Task 3**
+
+`vitest.config.ts` lines 54-55 carry a leftover from a design that was superseded:
+
+```typescript
+// Task 21 adds a jsdom sibling project for the cookie-migration tests.
+exclude: ['**/node_modules/**', '**/*.dom.test.ts'],
+```
+
+Task 21 no longer adds a sibling project — it uses a `// @vitest-environment jsdom` docblock instead, matching the lobby's idiom. Delete both the comment and the `exclude` line from the `shared` project entry.
+
+This matters beyond tidiness: leaving it means Task 21's `highscore.dom.test.ts` would be **excluded from the only project that would run it**, so the high-score migration test would silently never execute — and a test that never runs is indistinguishable from a passing one.
+
 - [ ] **Step 3: Run the shared tests to see the purity test fail**
 
 Run: `npx vitest run --project shared`
