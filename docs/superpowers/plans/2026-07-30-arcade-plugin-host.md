@@ -1743,6 +1743,32 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `validateMeta` (Task 13), each game's `package.json` version (Tasks 6–12).
 - Produces: `src/host/registry.ts` exporting `GAMES: readonly GameMeta[]` and `getGame(id): GameMeta | undefined` — consumed by Task 15's lobby rewrite.
 
+> **PLAN DEFECT #19 — three things about this task's relationship to `validateMeta`.** Found by
+> Task 13's implementer while building the contract, and verified before amending.
+>
+> 1. **The tempest literal below omitted `order`** — 7 manifests, 6 `order` fields, with 2-7 taken.
+>    `order` is a REQUIRED, never-defaulted field by global constraint. Both `validateMeta` and
+>    `tsc` reject the omission, but **the generator below would coerce `Number(undefined)`/`Number(null)`
+>    and sort tempest first anyway**, shipping the omission invisibly. Fixed above to `order: 1`. If
+>    you add a manifest, `order` is not optional.
+> 2. **The generator never actually calls `validateMeta`**, despite the Interfaces line above saying
+>    it consumes it — `scripts/gen-registry.mjs` is an `.mjs` script and cannot import a `.ts`
+>    module. What it has instead is a **hand-duplicated** subset of the rules, and that subset omits
+>    four of them: id-vs-directory agreement, `year`, `listed`, and unknown-key rejection. Two
+>    validators that disagree is worse than one, because the loose one is the one that runs. Either
+>    make the generator call the real thing, or state in your report exactly which rules the
+>    duplicate does NOT enforce and why that is acceptable. Do not leave the Interfaces line
+>    claiming a consumption that does not happen.
+>    (If you do wire it up, `delete g.showcaseRaw` must happen **before** the call, or unknown-key
+>    rejection fires on the generator's own scratch field.)
+> 3. **Nothing calls `validateMeta` at runtime anywhere in the plan.** Its only exercise is its own
+>    unit suite, so the seven real manifests are never actually put through the gate they were
+>    written for. **This task now owns closing that**: add a test under `src/host/` that imports all
+>    seven `plugins/<id>/plugin.ts` manifests and runs each through `validateMeta`. It needs no
+>    config change — Task 3 already declares a `host` vitest project. That test is what makes the
+>    contract load-bearing rather than decorative, and it satisfies the `{ todo: true }` marker Task
+>    12b left naming this task.
+
 - [ ] **Step 1: Write the seven manifests**
 
 Copy each game's `title`, `color`, `controls` and `showcase` **verbatim** from the current `lobby/src/core/registry.ts` so no tile text and no carousel membership changes. Values for red-baron (absent from that list) come from its own docs, with `showcase: false`.
@@ -1761,6 +1787,7 @@ export const meta: GameMeta = {
   controls: ['ROTATE — Wheel / ←→', 'FIRE — Click / Space'],
   listed: true,
   showcase: true,
+  order: 1,
   version,
 }
 
