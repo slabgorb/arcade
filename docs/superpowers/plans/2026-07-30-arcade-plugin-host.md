@@ -36,6 +36,27 @@
   2. **Record the exact count removed per file, with the reason**, in that task's report. A falling test count is a finding to be justified, never tidying.
   3. Rewrite, do not delete, any assertion whose *intent* survives — `@arcade/shared/rng` becoming `@shared/rng` is a specifier change, and that test should still assert the consumer imports shared RNG.
   4. Do NOT re-create a removed assertion inside another game. Seven copies of one invariant is the duplication this epic exists to delete.
+  5. **`scaffold.test.ts` is TWO DIFFERENT FILES across the fleet. Never generalise one game's handling of it to another.** Measured, by `describe` block:
+
+     | game | describes in `scaffold.test.ts` | handling |
+     |---|---|---|
+     | tempest, star-wars, asteroids | **1** — the `vite.config.ts` dev/preview contract only (5 assertions) | the whole file is false by design → **delete the file** |
+     | battlezone | **5** (22 assertions) | delete only describe 1 |
+     | red-baron | **5** (22 assertions) | delete only describe 1 |
+     | centipede | **6** (26 assertions) | delete only describes 1 and 6 |
+     | joust | **8** (34 assertions) | delete only describes 1, 2 and 8 |
+
+     In the four multi-describe games the vite/CI describes are a **minority** of the file. The rest assert things the collapse does **not** remove:
+
+     - `index.html boots a canvas via src/main.ts` — **survives unchanged.** This epic never modifies a game's `main.ts`.
+     - `src/core + src/shell skeletons (the boundary the epic lives on)` — **survives unchanged.** This is the single most important rule in every game repo.
+     - `tsconfig.json (TypeScript strict…)` — **intent survives, form changes.** The per-game tsconfig becomes a stub extending the root, so rewrite it to assert the `extends` chain still reaches strict; do not delete it.
+     - `Math Box is consumed from @arcade/shared, not a local copy (SH-2)` (battlezone) and `first native @arcade/shared consumer (proves the dependency pipe)` (red-baron) — **intent survives**, specifier rewrite to `@shared`.
+     - `package.json scripts (verbatim from the sibling games)` and `CI deploy caller (.github/workflows/deploy.yml)` — **false by design**; the root owns both.
+     - joust only: `strictPort is real, not just declared (behavioural)` — false by design here; this is the behavioural half of the host pin and **Task 12b re-establishes it once**, so it is moving, not dying.
+     - joust only: `fresh-checkout hygiene (npm install from a clean clone)` — false by design; the root owns install.
+
+     **Deleting a whole `scaffold.test.ts` because another game's was deletable would silently drop the core/shell boundary guard, and the suite would go GREENER.** That is this epic's documented recurring failure mode — an accurate report, a green suite, and a vanished guarantee. Account for this file describe by describe, never file by file.
 - **The `@arcade/shared` grep must tolerate escaped forms.** A plain `grep "@arcade/shared"` **misses** `@arcade\/shared\/highscore` — the backslash-escaped form that appears inside regex literals in source-wiring tests, and which Task 5 hit for real. Use `grep -rnE '@arcade\\?/shared'`, and also check for the bare word pair, since a stale *comment* may say "arcade shared" without a slash at all:
 
   ```bash
@@ -851,7 +872,7 @@ grep -rnE '@arcade\\?/shared' plugins/star-wars/ || echo "clean"
 - [ ] **Step 4: Run star-wars's suite**
 
 Run: `npx vitest run --project star-wars`
-Expected: PASS — but **NOT at the 190 files / 2035 tests pre-migration baseline.** ~17 of star-wars' assertions are topology tests asserting what the collapse removes, so a count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere.
+Expected: PASS — but **NOT at the 190 files / 2035 tests pre-migration baseline.** **measured** 15 topology assertions — `scaffold.test.ts` 5 (single `describe`, all the `vite.config.ts` contract → delete the file), `rng-extraction.test.ts` 3, `loop-extraction.test.ts` 3, `pause-adoption.test.ts` 4 — of which only the two `pins @arcade/shared as a git-URL dependency` assertions plus the 5 scaffold ones are false by design. **The other 8 are specifier rewrites.** A count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere.
 
 star-wars has a `tools/` test directory and a `tests/support` helper tree — both move with the game and need no path changes.
 
@@ -919,7 +940,7 @@ grep -rnE '@arcade\\?/shared' plugins/asteroids/ || echo "clean"
 - [ ] **Step 4: Run asteroids's suite**
 
 Run: `npx vitest run --project asteroids`
-Expected: PASS — but **NOT at the 45 files / 831 tests pre-migration baseline.** ~17 of asteroids' assertions are topology tests asserting what the collapse removes, so a count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere.
+Expected: PASS — but **NOT at the 45 files / 831 tests pre-migration baseline.** **measured** 21 topology assertions — `scaffold.test.ts` 5 (single `describe`, all the `vite.config.ts` contract → delete the file), `rng-extraction.test.ts` 3, `loop-extraction.test.ts` 3, `audio-migration.test.ts` 6, `pause-adoption.test.ts` 4. The plan previously said 17; it undercounted `audio-migration.test.ts`. Most of these are **specifier rewrites**, not removals. A count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere.
 
 - [ ] **Step 5: Commit**
 
