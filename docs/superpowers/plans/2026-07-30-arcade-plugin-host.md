@@ -19,6 +19,14 @@
 - **Release tags:** `<game>-vX.Y.Z` (e.g. `tempest-v1.0.29`). Unprefixed `vX.Y.Z` tags are invalid in the monorepo.
 - **CI checkout MUST use `fetch-depth: 0`.** tempest's and red-baron's citation gates read blobs from historical commits; a shallow clone fails them.
 - **Games with no high-score persistence:** red-baron, joust. Do not add storage to them.
+- **Version numbers written inline in Tasks 6-12 are ILLUSTRATIVE.** Task 1's
+  `just release-all` bumps every app, so the authoritative values are the ones recorded in
+  `docs/ops/migration-manifest.md`. Read them from there; never copy a version out of this
+  plan.
+- **The lobby carries a showcase carousel** (`lobby/src/core/showcase.ts`,
+  `lobby/src/shell/showcase.ts`, `just check-showcase`) that reads `showcase` and
+  `launchUrl` from the registry. `GameMeta` carries `showcase` and `order`; both are
+  required and never defaulted.
 - Every commit message ends with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 
 ---
@@ -591,7 +599,7 @@ grep -rn "@arcade/shared" lobby/ || echo "no @arcade/shared references remain"
 - [ ] **Step 4: Run the lobby tests**
 
 Run: `npx vitest run --project lobby`
-Expected: PASS, 9 test files. A failure here is an unrewritten import or a missing jsdom environment — check `vitest.config.ts`'s lobby project has `environment: 'jsdom'`.
+Expected: PASS, 11 test files. A failure here is an unrewritten import or a missing jsdom environment — check `vitest.config.ts`'s lobby project has `environment: 'jsdom'`.
 
 - [ ] **Step 5: Commit**
 
@@ -640,7 +648,7 @@ Read the version recorded in `docs/ops/migration-manifest.md` and use it verbati
 ```json
 {
   "name": "tempest",
-  "version": "1.0.29",
+  "version": "1.0.28",
   "private": true
 }
 ```
@@ -713,7 +721,7 @@ rm -f plugins/star-wars/vite.config.ts plugins/star-wars/tsconfig.json \
 ```json
 {
   "name": "star-wars",
-  "version": "0.0.33",
+  "version": "0.0.32",
   "private": true
 }
 ```
@@ -738,7 +746,7 @@ grep -rn "@arcade/shared" plugins/star-wars/ || echo "clean"
 - [ ] **Step 4: Run star-wars's suite**
 
 Run: `npx vitest run --project star-wars`
-Expected: PASS, 182 test files. star-wars has a `tools/` test directory and a `tests/support` helper tree — both move with the game and need no path changes.
+Expected: PASS, 183 test files. star-wars has a `tools/` test directory and a `tests/support` helper tree — both move with the game and need no path changes.
 
 - [ ] **Step 5: Commit**
 
@@ -779,7 +787,7 @@ rm -f plugins/asteroids/vite.config.ts plugins/asteroids/tsconfig.json \
 ```json
 {
   "name": "asteroids",
-  "version": "1.0.15",
+  "version": "1.0.14",
   "private": true
 }
 ```
@@ -845,7 +853,7 @@ rm -f plugins/battlezone/vite.config.ts plugins/battlezone/tsconfig.json \
 ```json
 {
   "name": "battlezone",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "private": true
 }
 ```
@@ -921,7 +929,7 @@ rm -f plugins/red-baron/vite.config.ts plugins/red-baron/tsconfig.json \
 ```json
 {
   "name": "red-baron",
-  "version": "0.1.1",
+  "version": "0.0.23",
   "private": true
 }
 ```
@@ -999,7 +1007,7 @@ rm -f plugins/centipede/vite.config.ts plugins/centipede/tsconfig.json \
 ```json
 {
   "name": "centipede",
-  "version": "0.0.7",
+  "version": "0.0.6",
   "private": true
 }
 ```
@@ -1068,7 +1076,7 @@ rm -f plugins/joust/vite.config.ts plugins/joust/tsconfig.json \
 ```json
 {
   "name": "joust",
-  "version": "0.0.8",
+  "version": "0.0.7",
   "private": true
 }
 ```
@@ -1093,7 +1101,7 @@ If any hits appear (in tests, say), rewrite them the same way as the other games
 - [ ] **Step 4: Run joust's suite**
 
 Run: `npx vitest run --project joust`
-Expected: PASS, 68 test files.
+Expected: PASS, 75 test files.
 
 - [ ] **Step 5: Verify .gitignore has no subrepo entries left**
 
@@ -1105,7 +1113,7 @@ grep -nE "^/(tempest|lobby|star-wars|asteroids|battlezone|red-baron|centipede|jo
 - [ ] **Step 6: Run the whole cabinet**
 
 Run: `npx vitest run`
-Expected: PASS across every project. The app suites total **655** test files — 9 lobby + 149 tempest + 182 star-wars + 45 asteroids + 72 battlezone + 81 red-baron + 49 centipede + 68 joust — plus arcade-shared's own suite and `src/host`'s. Record the exact total vitest reports here; it is the number the verification checklist compares against.
+Expected: PASS across every project. The app suites total **665** test files — 11 lobby + 149 tempest + 183 star-wars + 45 asteroids + 72 battlezone + 81 red-baron + 49 centipede + 75 joust — plus arcade-shared's own suite and `src/host`'s. Record the exact total vitest reports here; it is the number the verification checklist compares against.
 
 - [ ] **Step 7: Commit**
 
@@ -1145,7 +1153,9 @@ const valid = {
   year: 1981,
   color: '#00eaff',
   controls: ['ROTATE — Wheel / ←→', 'FIRE — Click / Space'],
+  order: 1,
   listed: true,
+  showcase: true,
   version: '1.0.29',
 }
 
@@ -1180,6 +1190,13 @@ describe('validateMeta', () => {
   it('rejects a missing version', () => {
     const { version: _drop, ...noVersion } = valid
     expect(() => validateMeta(noVersion, 'tempest')).toThrow(/version/)
+  })
+
+  it('rejects a missing showcase flag rather than defaulting it', () => {
+    // A falsy default would let a new game drop out of the carousel silently —
+    // the exact invisible absence the flag exists to prevent.
+    const { showcase: _drop, ...noShowcase } = valid
+    expect(() => validateMeta(noShowcase, 'tempest')).toThrow(/showcase/)
   })
 
   it('rejects a non-object', () => {
@@ -1220,8 +1237,25 @@ export interface GameMeta {
   readonly color: string
   /** Keybinding hints, one line each. */
   readonly controls: readonly string[]
+  /**
+   * Position on the cabinet floor, ascending. Explicit because the order it replaces
+   * was CURATED (tempest, star-wars, asteroids, battlezone, centipede, joust — the
+   * order the games were built), and generating from directory names would silently
+   * re-sort the lobby alphabetically. Tile order is a design decision, so it is
+   * stated rather than inferred.
+   */
+  readonly order: number
   /** Whether the lobby lists it. `false` is a deliberate statement, not an omission. */
   readonly listed: boolean
+  /**
+   * Does this game's attract mode earn a slot in the lobby showcase carousel?
+   *
+   * Required, not optional — carried over verbatim from the field's own rationale in
+   * the registry this replaces: "An optional flag with a falsy default means a newly
+   * added game silently opts out and nobody notices — the same class of invisible
+   * absence this whole feature exists to correct."
+   */
+  readonly showcase: boolean
   /** The game's released version, imported from its own package.json. */
   readonly version: string
 }
@@ -1267,8 +1301,16 @@ export function validateMeta(meta: unknown, dirName: string): GameMeta {
   if (!Array.isArray(m.controls) || m.controls.length === 0 || !m.controls.every((c) => typeof c === 'string')) {
     throw new Error(`${where}: controls must be a non-empty array of strings`)
   }
+  if (typeof m.order !== 'number' || !Number.isInteger(m.order)) {
+    throw new Error(`${where}: order must be an integer`)
+  }
   if (typeof m.listed !== 'boolean') {
     throw new Error(`${where}: listed must be a boolean`)
+  }
+  // Required, never defaulted — a falsy default is how a new game silently opts out
+  // of the carousel and nobody notices.
+  if (typeof m.showcase !== 'boolean') {
+    throw new Error(`${where}: showcase must be a boolean`)
   }
   if (typeof m.version !== 'string' || m.version.length === 0) {
     throw new Error(`${where}: version must be a non-empty string (import it from ./package.json)`)
@@ -1308,7 +1350,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the seven manifests**
 
-Copy each game's `title`, `color` and `controls` **verbatim** from the current `lobby/src/core/registry.ts` so no tile text changes. Values for red-baron (absent from that list) come from its own docs.
+Copy each game's `title`, `color`, `controls` and `showcase` **verbatim** from the current `lobby/src/core/registry.ts` so no tile text and no carousel membership changes. Values for red-baron (absent from that list) come from its own docs, with `showcase: false`.
 
 `plugins/tempest/plugin.ts`:
 
@@ -1323,6 +1365,7 @@ export const meta: GameMeta = {
   color: '#00eaff',
   controls: ['ROTATE — Wheel / ←→', 'FIRE — Click / Space'],
   listed: true,
+  showcase: true,
   version,
 }
 
@@ -1342,7 +1385,9 @@ export const meta: GameMeta = {
   year: 1983,
   color: '#ffe81f',
   controls: ['AIM — Mouse', 'FIRE — Click / Space'],
+  order: 2,
   listed: true,
+  showcase: false,
   version,
 }
 ```
@@ -1359,7 +1404,9 @@ export const meta: GameMeta = {
   year: 1979,
   color: '#ff6a00',
   controls: ['ROTATE/THRUST — ←→↑ / WASD', 'FIRE — Space / K'],
+  order: 3,
   listed: true,
+  showcase: false,
   version,
 }
 ```
@@ -1376,7 +1423,9 @@ export const meta: GameMeta = {
   year: 1980,
   color: '#00ff41',
   controls: ['DRIVE — Arrows / E D I K', 'FIRE — Space / F'],
+  order: 4,
   listed: true,
+  showcase: false,
   version,
 }
 ```
@@ -1396,7 +1445,9 @@ export const meta: GameMeta = {
   year: 1980,
   color: '#d43b3b',
   controls: ['FLY — Mouse / Arrows', 'FIRE — Click / Space'],
+  order: 7,
   listed: false,
+  showcase: false,
   version,
 }
 ```
@@ -1413,7 +1464,9 @@ export const meta: GameMeta = {
   year: 1981,
   color: '#2aa358',
   controls: ['Mouse'],
+  order: 5,
   listed: true,
+  showcase: true,
   version,
 }
 ```
@@ -1430,7 +1483,9 @@ export const meta: GameMeta = {
   year: 1982,
   color: '#f0a828',
   controls: ['MOVE — ←→ / A D', 'FLAP — Space / Shift'],
+  order: 6,
   listed: true,
+  showcase: false,
   version,
 }
 ```
@@ -1461,6 +1516,17 @@ test('the committed registry matches a fresh generation', () => {
   execFileSync('node', ['scripts/gen-registry.mjs'], { stdio: 'inherit' });
   const after = readFileSync('src/host/registry.ts', 'utf8');
   assert.equal(after, before, 'src/host/registry.ts is stale — run `npm run gen:registry`');
+});
+
+test('the cabinet keeps its curated tile order', () => {
+  // The order the old hand-maintained registry shipped. Generating from directory
+  // names would have re-sorted the lobby alphabetically — a visible change nobody
+  // asked for. This test is what makes that a failure rather than a surprise.
+  const registry = readFileSync('src/host/registry.ts', 'utf8');
+  const ids = [...registry.matchAll(/^\s*id: '([^']+)'/gm)].map((m) => m[1]);
+  assert.deepEqual(ids, [
+    'tempest', 'star-wars', 'asteroids', 'battlezone', 'centipede', 'joust', 'red-baron',
+  ]);
 });
 
 test('each manifest version matches its package.json', () => {
@@ -1526,7 +1592,13 @@ function readManifest(dir) {
     year: Number(pick('year')),
     color: str('color'),
     controls: JSON.parse(controlsRaw.replace(/'/g, '"')),
+    order: Number(pick('order')),
     listed: pick('listed') === 'true',
+    // Read explicitly and asserted below — never defaulted. `pick` returning null
+    // must be an error, not a silent `false`, or a manifest that forgot the flag
+    // drops out of the carousel with no signal.
+    showcase: pick('showcase') === 'true',
+    showcaseRaw: pick('showcase'),
     version,
   };
 }
@@ -1536,7 +1608,17 @@ const dirs = readdirSync(PLUGINS_DIR, { withFileTypes: true })
   .map((d) => d.name)
   .sort();
 
-const games = dirs.map(readManifest);
+// Read in directory order, then sort by the CURATED `order` field. Emitting in
+// directory order would silently re-sort the cabinet alphabetically — the tile
+// sequence is a design decision, not an accident of the filesystem.
+const games = dirs.map(readManifest).sort((a, b) => a.order - b.order);
+
+const seenOrder = new Set();
+for (const g of games) {
+  if (!Number.isInteger(g.order)) throw new Error(`${g.id}: order must be an integer`);
+  if (seenOrder.has(g.order)) throw new Error(`duplicate order ${g.order} (${g.id})`);
+  seenOrder.add(g.order);
+}
 
 // Validate through the same contract the type system uses. Duplicated as a plain
 // check here because this script runs before any TS build.
@@ -1546,6 +1628,10 @@ for (const g of games) {
   if (!/^#[0-9a-fA-F]{3,8}$/.test(g.color)) throw new Error(`${g.id}: bad colour ${g.color}`);
   if (!g.controls.length) throw new Error(`${g.id}: empty controls`);
   if (!g.version) throw new Error(`${g.id}: empty version`);
+  if (g.showcaseRaw !== 'true' && g.showcaseRaw !== 'false') {
+    throw new Error(`${g.id}: showcase must be present and literally true or false`);
+  }
+  delete g.showcaseRaw;
 }
 
 const entries = games
@@ -1556,7 +1642,9 @@ const entries = games
     year: ${g.year},
     color: '${g.color}',
     controls: [${g.controls.map((c) => `'${c}'`).join(', ')}],
+    order: ${g.order},
     listed: ${g.listed},
+    showcase: ${g.showcase},
     version: '${g.version}',
   },`,
   )
@@ -1578,6 +1666,12 @@ ${entries}
 
 /** The games the lobby lists — \`listed: false\` opts a game out deliberately. */
 export const LISTED_GAMES: readonly GameMeta[] = GAMES.filter((g) => g.listed)
+
+/** The path a game is served at on the single origin. Replaces the old
+ *  hand-maintained absolute \`launchUrl\`, which could drift from reality. */
+export function gamePath(id: string): string {
+  return \`/\${id}/\`
+}
 
 /** Look up a game by id; \`undefined\` when no game matches. */
 export function getGame(id: string): GameMeta | undefined {
@@ -1618,12 +1712,17 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Files:**
 - Delete: `lobby/src/core/registry.ts`
-- Modify: `lobby/src/main.ts`, `lobby/src/shell/tiles.ts`
-- Modify: `lobby/tests/**` — any test importing the old registry
+- Modify: `lobby/src/main.ts`, `lobby/src/shell/tiles.ts`, `lobby/src/core/showcase.ts`, `lobby/src/shell/showcase.ts`
+- Modify: `lobby/tests/**` — every test importing the old registry (`tiles`, `chrome`, `showcase`, `showcase-dom`, `refresh`, `main`, `registry`)
+- Modify: `justfile` — the `check-showcase` recipe's URL scheme
 
 **Interfaces:**
-- Consumes: `LISTED_GAMES` and `GameMeta` from `@host/registry` (Task 14).
-- Produces: tiles whose `href` is the relative path `/<id>/` rather than an absolute subdomain URL. This is what makes the single origin work.
+- Consumes: `LISTED_GAMES`, `GameMeta` and `gamePath(id)` from `@host/registry` (Task 14).
+- Produces: tiles and showcase frames pointing at the relative path `/<id>/` rather than an absolute subdomain URL. This is what makes the single origin work.
+
+**Context this task must not miss.** The lobby gained a **showcase carousel** after the plan was first written: `lobby/src/core/showcase.ts` (pure state — imports the `Game` type from the registry being deleted) and `lobby/src/shell/showcase.ts` (owns an iframe; reads `game.launchUrl` **twice** — `frame.src` and `launch.href`). `createShowcase` filters on `g.showcase`, which `GameMeta` now carries. There is also a `just check-showcase` recipe built around the subdomain URLs.
+
+A welcome side effect: after the cutover the showcase iframes are **same-origin**, so no cross-origin framing constraints apply to them at all.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1645,6 +1744,22 @@ describe('tiles use same-origin paths', () => {
 
   it('omits games marked listed: false', () => {
     expect(LISTED_GAMES.some((g) => g.id === 'red-baron')).toBe(false)
+  })
+})
+
+describe('the showcase carousel survives the origin collapse', () => {
+  it('carries the same membership the old registry had', () => {
+    // tempest and centipede were the two showcase: true entries. If this changes,
+    // a game silently entered or left the carousel during the migration.
+    expect(GAMES.filter((g) => g.showcase).map((g) => g.id)).toEqual(['tempest', 'centipede'])
+  })
+
+  it('frames each showcased game at a same-origin path, not a subdomain', () => {
+    const section = document.createElement('section')
+    mountShowcase(section, createShowcase(GAMES))
+    const src = section.querySelector('iframe')?.getAttribute('src')
+    expect(src).toMatch(/^\/[a-z-]+\/$/)
+    expect(src).not.toContain('slabgorb.com')
   })
 })
 ```
@@ -2748,7 +2863,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 Run before declaring the epic done:
 
-- [ ] `npx vitest run` — all nine projects green, 655 test files
+- [ ] `npx vitest run` — all projects green, 665 app test files + shared + host
 - [ ] `npx tsc --noEmit` — clean
 - [ ] `node --test 'tests/**/*.test.mjs'` — registry, audit-refs and deploy-r2 tests green
 - [ ] `just serve` then `curl` each of `/`, `/tempest/` … `/joust/` — all `200`
