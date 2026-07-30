@@ -2606,8 +2606,30 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ## Task 19: One dev server, one port
 
 **Files:**
-- Modify: `justfile` — `serve`, `install-all`, `test-all`, `deploy`, `deploy-one`
+- Modify: `justfile` — `serve`, `install-all`, `test-all`, `deploy`, `deploy-one`, **`deploy-assets`**
+- Modify: `plugins/star-wars/tools/music-bake/deploy-assets.test.mjs` — strengthen its path guard
 - Delete: `scripts/serve.mjs`, `scripts/deps-doctor.mjs` (both exist only to orchestrate eight subrepos)
+
+- [ ] **Step 0b: Fix `deploy-assets`, which Task 7 broke and no task owned — added after Task 7's review**
+
+`justfile:268` and `:270` still run `node {{root}}/star-wars/tools/music-bake/bake-music.mjs` and
+`…/pokey-bake/bake-sfx.mjs`. Root-level `star-wars/` no longer exists — it is `plugins/star-wars/` —
+so the recipe dies before the upload. Task 7's report deferred this to "Task 17/19", but that
+ownership did not exist: this task's scope named only `serve`/`install-all`/`test-all`/`deploy`/
+`deploy-one`, and Task 17 touches only `scripts/release.mjs`. It is now explicitly yours.
+
+Re-point both paths at `plugins/star-wars/…`.
+
+**And strengthen the guard, because it went green over the breakage.**
+`plugins/star-wars/tools/music-bake/deploy-assets.test.mjs:76` asserts only that the *string*
+`star-wars/music` appears somewhere in the justfile — which the **stale** path satisfies just as
+well as a correct one. Assert that the script paths the recipe invokes actually **exist on disk**,
+so a future move reddens instead of passing.
+
+This matters more here than the shape suggests: assets and code deploy independently in this repo,
+`audio.ts` degrades silently on a 404, and a missing star-wars upload once hid from sw7-18 all the
+way to sw8-14. Losing the only watcher over the upload path is precisely the failure this epic
+exists to prevent.
 
 **Interfaces:**
 - Consumes: `build-app.mjs` (Task 16), `defineAppConfig` (Task 3).
