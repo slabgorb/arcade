@@ -116,22 +116,35 @@ export function readManifest(dir) {
   }
   const { version } = JSON.parse(readFileSync(join(PLUGINS_DIR, dir, 'package.json'), 'utf8'));
 
+  const parsed = {
+    id: str('id'),
+    title: str('title'),
+    year: num('year'),
+    color: str('color'),
+    controls,
+    order: num('order'),
+    listed: bool('listed'),
+    showcase: bool('showcase'),
+    version,
+  };
+
+  // Hand validateMeta the keys it does NOT read, too. Building `parsed` from a fixed
+  // list of nine reads means a tenth key — a stale `launchUrl` transcribed from the old
+  // registry, or a typo'd `showcas` — is simply not looked at, and validateMeta's
+  // unknown-key rule can never fire because the extra key never reaches it. Measured:
+  // adding `launchUrl` to a manifest passed generation cleanly until this loop existed.
+  // The known set is `Object.keys(parsed)` itself, so no second list can drift.
+  // (A nested object literal would make this over-report rather than under-report; the
+  // manifests are flat by design, and a loud false alarm beats a silent drop.)
+  for (const key of body[1].matchAll(/^\s*([A-Za-z_$][\w$]*)\s*[:,]/gm)) {
+    const name = key[1];
+    if (name in parsed) continue;
+    parsed[name] = pick(name) ?? true;
+  }
+
   // One validator, and it is the real one. `dir` is what makes the id-vs-directory
-  // rule bite; every key here must be a known key or validateMeta rejects the object.
-  return validateMeta(
-    {
-      id: str('id'),
-      title: str('title'),
-      year: num('year'),
-      color: str('color'),
-      controls,
-      order: num('order'),
-      listed: bool('listed'),
-      showcase: bool('showcase'),
-      version,
-    },
-    dir,
-  );
+  // rule bite.
+  return validateMeta(parsed, dir);
 }
 
 /** Render the registry source. Pure — writes nothing, so tests can diff it against the
