@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <title>Slabcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #000;
+        --fg: #00eaff;
+        --dim: #4fb8cc;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+
+      body {
+        background: var(--bg);
+        color: #dff;
+        font-family: 'Vector Battle', 'Orbitron', monospace;
+      }
+
+      /* The cabinet: everything lives inside it. */
+      .cabinet {
+        position: relative;
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      /* ---- Cabinet furniture (decoration only) --------------------------------
+         Every decorative layer carries .chrome, and .chrome is pointer-events: none.
+         This is not a nicety: a full-bleed grid floor with a z-index and no
+         pointer-events rule produces a screen that looks perfect in a screenshot and
+         is completely dead to the mouse — every tile unclickable, with nothing on
+         fire to tell you why. It is also aria-hidden, because none of it is content. */
+      .chrome { pointer-events: none; }
+
+      /* Double-mirror cabinet art: a receding vector grid floor plus its mirrored
+         ceiling. The bottom trench is the Battlezone/Star Wars horizon; the top is
+         its reflection through the half-silvered combiner the real cabinets used. */
+      .grid-layer {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .grid-floor,
+      .grid-ceiling {
+        position: absolute;
+        left: -50%;
+        width: 200%;
+      }
+
+      .grid-floor {
+        bottom: -2px;
+        height: 46vh;
+        transform: perspective(340px) rotateX(74deg);
+        transform-origin: bottom center;
+        background-image:
+          repeating-linear-gradient(90deg, transparent 0 63px, rgba(0, 234, 255, 0.55) 63px 64px),
+          repeating-linear-gradient(0deg, transparent 0 47px, rgba(0, 234, 255, 0.45) 47px 48px);
+        -webkit-mask-image: linear-gradient(to top, #000 6%, transparent 82%);
+        mask-image: linear-gradient(to top, #000 6%, transparent 82%);
+        filter: drop-shadow(0 0 3px rgba(0, 234, 255, 0.5));
+      }
+
+      /* Dimmer than the floor: it is a reflection, not a second floor. */
+      .grid-ceiling {
+        top: -2px;
+        height: 34vh;
+        transform: perspective(340px) rotateX(-74deg);
+        transform-origin: top center;
+        background-image:
+          repeating-linear-gradient(90deg, transparent 0 63px, rgba(0, 234, 255, 0.3) 63px 64px),
+          repeating-linear-gradient(0deg, transparent 0 47px, rgba(0, 234, 255, 0.24) 47px 48px);
+        -webkit-mask-image: linear-gradient(to bottom, #000 2%, transparent 74%);
+        mask-image: linear-gradient(to bottom, #000 2%, transparent 74%);
+        filter: drop-shadow(0 0 3px rgba(0, 234, 255, 0.35));
+      }
+
+      /* Bezel: four L-shaped brackets that frame the screen like a cabinet's mask. */
+      .bezel {
+        position: fixed;
+        width: 46px;
+        height: 46px;
+        z-index: 3;
+        box-shadow: 0 0 8px rgba(0, 234, 255, 0.5);
+      }
+      .bezel-tl {
+        top: 20px;
+        left: 20px;
+        border-top: 2px solid rgba(0, 234, 255, 0.7);
+        border-left: 2px solid rgba(0, 234, 255, 0.7);
+      }
+      .bezel-tr {
+        top: 20px;
+        right: 20px;
+        border-top: 2px solid rgba(0, 234, 255, 0.7);
+        border-right: 2px solid rgba(0, 234, 255, 0.7);
+      }
+      .bezel-bl {
+        bottom: 20px;
+        left: 20px;
+        border-bottom: 2px solid rgba(0, 234, 255, 0.7);
+        border-left: 2px solid rgba(0, 234, 255, 0.7);
+      }
+      .bezel-br {
+        bottom: 20px;
+        right: 20px;
+        border-bottom: 2px solid rgba(0, 234, 255, 0.7);
+        border-right: 2px solid rgba(0, 234, 255, 0.7);
+      }
+
+      /* Screen curvature: the glass darkens toward the corners. */
+      .vignette {
+        position: fixed;
+        inset: 0;
+        z-index: 4;
+        background: radial-gradient(
+          120% 120% at 50% 50%,
+          transparent 55%,
+          rgba(0, 0, 0, 0.55) 80%,
+          #000 100%
+        );
+      }
+
+      /* ---- Content ------------------------------------------------------------ */
+      .content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(2.5rem, 6vh, 4.5rem);
+        padding: clamp(3.5rem, 8vh, 6rem) 5vw clamp(2.5rem, 6vh, 4rem);
+      }
+
+      .marquee {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.1rem;
+        text-align: center;
+        width: 100%;
+        max-width: 60rem;
+      }
+
+      /* The wordmark is spread letter-by-letter across the marquee — each glyph is
+         its own span, justified apart. It carries an aria-label because otherwise a
+         screen reader announces "SLABCADE", or spells it out one letter at a
+         time; the visual trick must not cost the page its name. */
+      .wordmark {
+        margin: 0;
+        align-self: stretch;
+        display: flex;
+        justify-content: space-between;
+        font-weight: 900;
+        font-size: clamp(1.5rem, 7vw, 5rem);
+        line-height: 0.9;
+        letter-spacing: 0.05em;
+        padding-left: 0.05em;
+        color: #fff;
+        text-shadow:
+          0 0 6px #fff,
+          0 0 20px var(--fg),
+          0 0 46px var(--fg),
+          0 0 80px rgba(0, 234, 255, 0.6);
+      }
+
+      /* ---- Showcase pane -------------------------------------------------------
+         One live game, framed, cycling. Content, NOT chrome: it must keep
+         pointer-events so its launch link works. The per-game glow arrives as
+         --glow, set from the registry entry, exactly as the tiles do it. */
+      .showcase {
+        --glow: var(--fg);
+        position: relative;
+        width: 100%;
+        /* Capped against viewport height as well as width: 68rem alone let the pane
+           push #games off the bottom of the screen entirely on shorter desktop
+           viewports. The svh term caps the RESULTING HEIGHT (aspect-ratio locks
+           height = width * 9/16, so width = 40svh * 16/9 => height = 40svh) to 40%
+           of the viewport, leaving room for the marquee above and at least one full
+           tile row below. dvh/vh would do as a fallback; svh was fine in testing. */
+        max-width: min(68rem, calc(40svh * 16 / 9));
+        aspect-ratio: 16 / 9;
+        border: 1.5px solid var(--glow);
+        border-radius: 3px;
+        background: #000;
+        box-shadow:
+          0 0 18px color-mix(in srgb, var(--glow) 45%, transparent),
+          inset 0 0 24px color-mix(in srgb, var(--glow) 10%, transparent);
+        overflow: hidden;
+      }
+
+      /* Before main.ts runs — or forever, if the bundle fails to boot — this is
+         an empty bordered box, which is exactly the silent degrade this feature
+         exists to prevent (see shell/showcase.ts's header comment). `replaceChildren`
+         un-hides it the instant anything mounts, and `retire()` removes the section
+         outright, so this only ever applies to the un-bootstrapped state. */
+      .showcase:empty {
+        display: none;
+      }
+
+      /* Starts invisible and fades in on its own `load`. That is the whole
+         transition: no timer, no crossfade, and the black pane covers the load
+         flash for free. */
+      .showcase-frame {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+      }
+
+      .showcase-frame.is-loaded { opacity: 1; }
+
+      /* The click shield, and a real link. Covers the frame so the pointer never
+         reaches the game. */
+      .showcase-launch {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: block;
+      }
+
+      /* Negative offset, unlike .tile's +3px: .showcase clips overflow, and the
+         launch link's border box IS the clip rect, so an outward-drawn ring is
+         discarded by the clip before it ever paints. Drawing the ring 3px INSIDE
+         the box is the only way a keyboard visitor sees it at all. */
+      .showcase-launch:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: -3px;
+      }
+
+      .showcase-caption {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0.7rem;
+        z-index: 3;
+        pointer-events: none;
+        text-align: center;
+        font-family: 'Orbitron', monospace;
+        font-size: 0.62rem;
+        letter-spacing: 0.24em;
+        padding-left: 0.24em;
+        color: var(--glow);
+        opacity: 0.9;
+        text-shadow: 0 0 6px currentColor;
+      }
+
+      /* Shown instead of the frame when the visitor has asked for reduced motion. */
+      .showcase-reveal {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 3;
+        padding: 0.7rem 1.4rem;
+        font-family: 'Orbitron', monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.24em;
+        color: var(--glow);
+        background: color-mix(in srgb, var(--glow) 6%, #000);
+        border: 1.5px solid var(--glow);
+        border-radius: 3px;
+        cursor: pointer;
+        text-shadow: 0 0 6px currentColor;
+      }
+
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .games {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: clamp(1.4rem, 3vw, 2.6rem);
+        width: 100%;
+        max-width: 68rem;
+      }
+
+      /* Each tile is a real link. The per-game glow colour arrives as --glow, set
+         from the registry entry, and everything inside inherits it. */
+      .tile {
+        --glow: var(--fg);
+        flex: 0 1 18rem;
+        min-height: 11rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.7rem;
+        padding: 1.6rem 1.4rem;
+        text-align: center;
+        text-decoration: none;
+        color: var(--glow);
+        background: color-mix(in srgb, var(--glow) 4%, #000);
+        border: 1.5px solid var(--glow);
+        border-radius: 3px;
+        box-shadow:
+          0 0 10px color-mix(in srgb, var(--glow) 45%, transparent),
+          inset 0 0 14px color-mix(in srgb, var(--glow) 12%, transparent);
+        transition:
+          transform 0.12s ease,
+          box-shadow 0.12s ease,
+          background 0.12s ease;
+      }
+
+      .tile:hover,
+      .tile:focus-visible {
+        transform: translateY(-3px) scale(1.03);
+        background: color-mix(in srgb, var(--glow) 10%, #000);
+        box-shadow:
+          0 0 22px color-mix(in srgb, var(--glow) 75%, transparent),
+          inset 0 0 22px color-mix(in srgb, var(--glow) 22%, transparent);
+      }
+
+      /* The tile is keyboard-reachable, so it must be keyboard-VISIBLE. The lift on
+         :focus-visible alone is not a focus indicator — a white ring is. */
+      .tile:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 3px;
+      }
+
+      .tile:active { transform: scale(0.98); }
+
+      /* One line, always. Two-word titles ("STAR WARS", "RED BARON") would otherwise
+         break at the space and sit two lines tall while their neighbours sit one,
+         ragging the whole row. The design avoided this with non-breaking spaces in
+         its hardcoded markup; our titles come from the registry as ordinary strings,
+         so the fix belongs here rather than in the data. */
+      .tile-title {
+        font-family: 'Vector Battle', 'Orbitron', monospace;
+        font-weight: 700;
+        font-size: clamp(1.4rem, 3.4vw, 2.2rem);
+        letter-spacing: 0.16em;
+        padding-left: 0.16em;
+        white-space: nowrap;
+        text-shadow:
+          0 0 5px currentColor,
+          0 0 14px currentColor;
+      }
+
+      .tile-score {
+        font-family: 'Orbitron', monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.22em;
+        padding-left: 0.22em;
+        opacity: 0.85;
+        text-shadow: 0 0 6px currentColor;
+      }
+
+      .tile-version {
+        font-family: 'Orbitron', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.24em;
+        padding-left: 0.24em;
+        opacity: 0.5;
+        text-shadow: 0 0 5px currentColor;
+      }
+
+      .tile-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        margin-top: 0.35rem;
+        font-family: 'Orbitron', monospace;
+        font-size: 0.62rem;
+        letter-spacing: 0.05em;
+        opacity: 0.62;
+      }
+
+      .footer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.9rem;
+        text-align: center;
+      }
+
+      .disclaimer {
+        margin: 0;
+        font-family: 'Orbitron', monospace;
+        font-size: 0.58rem;
+        letter-spacing: 0.34em;
+        padding-left: 0.34em;
+        color: var(--dim);
+        text-shadow: 0 0 5px rgba(0, 234, 255, 0.35);
+      }
+
+      /* The tile lift on hover/focus is a transition; if the player has asked the OS
+         to stop motion, hold the tiles still. */
+      @media (prefers-reduced-motion: reduce) {
+        .tile {
+          transition: none;
+        }
+
+        .showcase-frame {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="cabinet">
+      <!-- Cabinet furniture. Decoration only: pointer-events: none, aria-hidden,
+           and never in the tab order. -->
+      <div class="grid-layer chrome" aria-hidden="true">
+        <div class="chrome grid-floor" data-chrome="grid-floor"></div>
+        <div class="chrome grid-ceiling" data-chrome="grid-ceiling"></div>
+      </div>
+
+      <div class="chrome bezel bezel-tl" data-chrome="bezel" aria-hidden="true"></div>
+      <div class="chrome bezel bezel-tr" data-chrome="bezel" aria-hidden="true"></div>
+      <div class="chrome bezel bezel-bl" data-chrome="bezel" aria-hidden="true"></div>
+      <div class="chrome bezel bezel-br" data-chrome="bezel" aria-hidden="true"></div>
+
+      <div class="chrome vignette" data-chrome="vignette" aria-hidden="true"></div>
+
+      <div class="content">
+        <header class="marquee">
+          <h1 class="wordmark" aria-label="SLABCADE">
+            <span aria-hidden="true">S</span>
+            <span aria-hidden="true">L</span>
+            <span aria-hidden="true">A</span>
+            <span aria-hidden="true">B</span>
+            <span aria-hidden="true">C</span>
+            <span aria-hidden="true">A</span>
+            <span aria-hidden="true">D</span>
+            <span aria-hidden="true">E</span>
+          </h1>
+        </header>
+
+        <!-- One live game, framed and cycling. Filled by main.ts; it removes
+             itself if no game has opted in or every frame fails to load. -->
+        <section id="showcase" class="showcase"></section>
+
+        <!-- Filled from the registry by main.ts. Never hardcoded: adding a game to
+             src/core/registry.ts is the only edit needed to put it on the cabinet. -->
+        <nav id="games" class="games" aria-label="Games"></nav>
+
+        <footer class="footer">
+          <p class="disclaimer">
+            A&nbsp;FAN-MADE&nbsp;TRIBUTE&nbsp;TO&nbsp;THE&nbsp;80's ARCADE&nbsp;ERA&nbsp;&nbsp;&middot;&nbsp;&nbsp;NOT&nbsp;AFFILIATED
+          </p>
+        </footer>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
