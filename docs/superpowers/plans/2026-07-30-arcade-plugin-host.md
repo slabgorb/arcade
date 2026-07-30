@@ -38,19 +38,25 @@
   4. Do NOT re-create a removed assertion inside another game. Seven copies of one invariant is the duplication this epic exists to delete.
   5. **`scaffold.test.ts` is TWO DIFFERENT FILES across the fleet. Never generalise one game's handling of it to another.** Measured, by `describe` block:
 
-     | game | describes in `scaffold.test.ts` | handling |
-     |---|---|---|
-     | tempest, star-wars, asteroids | **1** — the `vite.config.ts` dev/preview contract only (5 assertions) | the whole file is false by design → **delete the file** |
-     | battlezone | **5** (22 assertions) | delete only describe 1 |
-     | red-baron | **5** (22 assertions) | delete only describe 1 |
-     | centipede | **6** (26 assertions) | delete only describes 1 and 6 |
-     | joust | **8** (34 assertions) | delete only describes 1, 2 and 8 |
+     **The table below is by measured `describe` TITLE, not by index — read the titles in the file
+     and match on those.** An earlier version of this table omitted the `package.json scripts`
+     describe in all four multi-describe games (PLAN DEFECT #13, found while dispatching Task 9),
+     which would have left 7 assertions demanding per-game `dev`/`build`/`test` scripts that the
+     monorepo deliberately removes.
+
+     | game | describes | DELETE (false by design) | REWRITE (intent survives) | KEEP unchanged |
+     |---|---|---|---|---|
+     | tempest, star-wars, asteroids | **1** (5 assertions) | the whole file — it is only the `vite.config.ts` dev/preview contract | — | — |
+     | battlezone | **5** (22) | `vite.config.ts`, `package.json scripts` | `tsconfig.json`, `Math Box … from @arcade/shared (SH-2)` | `index.html boots a canvas` |
+     | red-baron | **5** (22) | `vite.config.ts`, `package.json scripts` | `tsconfig.json`, `first native @arcade/shared consumer` | `index.html boots a canvas` |
+     | centipede | **6** (26) | `vite.config.ts`, `package.json scripts`, `CI deploy caller` | `tsconfig.json` | `index.html boots a canvas`, **`src/core + src/shell skeletons`** |
+     | joust | **8** (34) | `vite.config.ts`, `strictPort is real (behavioural)`, `package.json scripts`, `fresh-checkout hygiene`, `CI deploy caller` | `tsconfig.json` | `index.html boots a canvas`, **`src/core + src/shell skeletons`** |
 
      In the four multi-describe games the vite/CI describes are a **minority** of the file. The rest assert things the collapse does **not** remove:
 
      - `index.html boots a canvas via src/main.ts` — **survives unchanged.** This epic never modifies a game's `main.ts`.
      - `src/core + src/shell skeletons (the boundary the epic lives on)` — **survives unchanged.** This is the single most important rule in every game repo.
-     - `tsconfig.json (TypeScript strict…)` — **intent survives, form changes.** The per-game tsconfig becomes a stub extending the root, so rewrite it to assert the `extends` chain still reaches strict; do not delete it.
+     - `tsconfig.json (TypeScript strict…)` — **intent survives, form changes.** The per-game tsconfig becomes a stub extending the root, so rewrite it to assert the `extends` chain still reaches strict; do not delete it. Note the concrete break: these describes assert on the file's **raw text** (`expect(read('tsconfig.json')).toMatch(/"strict":\s*true/)`), and the stub contains only `extends` + `include`, so the text match fails even though strictness is fully intact. Rewrite it to follow the `extends` chain, or read the root config.
      - `Math Box is consumed from @arcade/shared, not a local copy (SH-2)` (battlezone) and `first native @arcade/shared consumer (proves the dependency pipe)` (red-baron) — **intent survives**, specifier rewrite to `@shared`.
      - `package.json scripts (verbatim from the sibling games)` and `CI deploy caller (.github/workflows/deploy.yml)` — **false by design**; the root owns both.
      - joust only: `strictPort is real, not just declared (behavioural)` — false by design here; this is the behavioural half of the host pin and **Task 12b re-establishes it once**, so it is moving, not dying.
