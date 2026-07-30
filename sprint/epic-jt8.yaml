@@ -84,13 +84,24 @@ stories:
     title: 'Egg-ladder counter outlives a life — DEGGS shares the DECISION BLOCK with DSCORE (JOUSTRV4.SRC:106/:111/:113), so it must survive a mount death; our eggHits rides the player PROCESS and resets to rung 1 on every respawn. REPRODUCED: a veteran with 3 prior hits scores 1000, then the identical staging after a respawn scores 250. respawnPlayerProcess (demo.ts:333) builds a fresh process and eggHits has only three sites in src/ (decl :167, read :904, write :905) — nothing carries it across, and game.ts:439 appends the fresh process. Re-home the count where it outlives a process but stays readable by the sim at event-emit time (a per-player record on DemoSim, the jt8-1 targets precedent). The DCRE field name (DECISION TO BE RECREATED BY WHOM) is the positive evidence the block is the persistent per-player identity. NOTE the wave/game reset scope is still open — the decision-block initialiser was not chased. Filed by Reviewer on jt8-4 (R-1)'
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-07-29'
     repos: joust
     workflow: tdd
+    completed: '2026-07-30'
     type: bug
+    review_findings: "ROUND 2, 1 HIGH (same claim, new errors): JT86-001 cites DEATH3 as :2952-2990 but the routine spans :2952-3007 (1$ PULS X,U,PC; :2990 DE3HRD is a mid-routine branch label), and asserts 'its single CLR (:2985)' when there are FIVE (:2985, :2995-2998) — the truncated range is what conceals the false count, and it also contradicts egg.ts spawnEgg's own :2991-2996 citation. Plus MEDIUM: 'decrements the GLOBAL NSMART/NENEMY' glosses NSMART's variable SUBA PCHASE,U (:2962-2964) as a decrement; only NENEMY is a literal DEC. Root cause both rounds: the claim is over-specified for a statement about :112 — required fix DROPS the extents and the CLR inventory (exact text in the assessment). Confirmed independently by reviewer-rule-checker. Implementation still correct and untouched (1872/1872, lint+build clean). SEPARATE non-blocking finding for a NEW story: EGGSCR has two call sites (:3006 inside DEATH3, :3021 the collision); the ROM scores an enemy's LAST egg to the victor on the kill and our port drops that award entirely."
+    review_verdict: approved
   - id: jt8-7
     title: "Egg catch is box-only — the transcribed CEGGUP mask is never consulted, so the collect radius is a bird's height instead of an egg's. collisionMaskFor (demo.ts:687) returns null for kind egg, so the catch pass stops at broadPhase (:902) while the joust pass 100 lines above does broadPhase then narrowPhase (:783-788). CEGGUP/CEGGLF/CEGGRT/CEGGMN all exist with real spans and JOUSTI.SRC anchors (pictures.ts:1799-1806) and ENTITY_RECORDS.EGGI (:1699) explicitly names CEGGUP — a ported, claimed, unconsumed asset of exactly the kind the uf1 sweep hunts. Effect: vertical reach is the 16px ENTITY_BOX_H vs CEGGUP's 7 real scanlines, so an egg can be collected from visibly clear of it. BLOCKED ON A DECISION FIRST: the ROM has four egg masks for its orientation/hatching frames and EggState carries no frame field, so the variant question must be answered before wiring — do not just hardcode CEGGUP. Filed by Reviewer on jt8-4 (R-2)"
+    points: 3
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
+    type: bug
+  - id: jt8-8
+    title: 'Egg score on the KILL — EGGSCR has two call sites and our port models only one. grep JSR EGGSCR in JOUSTRV4.SRC returns :3006 and :3021; jt8-4 wired :3021 (PLYEGG, the catch). The other is inside DEATH3: when a killed enemy transferred egg count decrements to zero (STA PEGG,Y / DEC PEGG,Y YOU CAN ONLY SQUEEZE SO MUCH BLOOD FROM AN EGG / BNE 1$, :3000-3002) the ROM does TFR Y,X / LDU ,S GET VICTORS WORKSPACE / BEQ 1$ / JSR EGGSCR SCORE EGG (:3003-3006), so an enemy LAST egg is scored to the victor immediately on the kill, bumping the DEGGS ladder with no catch required. Our port implements the decrement (spawnEgg eggsLeft minus 1, egg.ts:141) and treats eggsLeft zero as permadeath where hatchEgg returns null (egg.ts:273-275), but nothing ever scores it, so both the award and its ladder bump are silently dropped in play. Also makes JT84-003 incomplete, which states the collision IS the scoring trigger and there is no separate pickup step. Note the victor guard: BEQ skips when U is zero (a lava death has no victor). Filed by Reviewer on jt8-6 (round 2)'
     points: 3
     priority: p2
     status: backlog
