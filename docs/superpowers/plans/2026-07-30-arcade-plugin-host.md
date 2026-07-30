@@ -1351,7 +1351,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 Tasks 6–12 removed per-game assertions that checked the old topology. Those invariants still matter; they are just now singular. This task re-establishes them **once**, in the orchestrator suite, closing the window opened by the imports.
 
 **Files:**
-- Create: `tests/monorepo-topology.test.mjs`
+- Modify: `tests/monorepo-topology.test.mjs` — **it already exists**, created by Task 5's fix round with the two lobby invariants. Do not create it.
 
 **Interfaces:**
 - Consumes: the root `package.json`, `tsconfig.json`, `vite.config.ts` factory (Task 3); the seven imported `plugins/<id>/` trees (Tasks 6–12); `src/shared/` (Task 4).
@@ -1441,21 +1441,29 @@ test('the root scripts the games used to declare individually', () => {
   assert.ok(scripts.build.includes('build-app.mjs'));
 });
 
+// ⚠️ THE NEXT TWO TESTS ALREADY EXIST in the file, shipped by Task 5's fix round.
+// `node:test` permits DUPLICATE TEST NAMES SILENTLY — paste either one verbatim and you
+// get two copies, with no error to tell you. Do NOT re-add them.
+//   - the base test: EXTEND the existing one by adding the GAMES loop below to it. Its
+//     lobby assertions are already there.
+//   - the host-pin test: it is complete as shipped. Leave it entirely alone.
+
 test('every game is served under its own base path, lobby at the root', async () => {
   // Replaces seven per-repo assertions that base was '/' and the port was pinned.
   // There is one dev server now, so a port pin per game is meaningless.
   const { defineAppConfig } = await import('../vite.config.ts');
-  for (const g of GAMES) {
+  for (const g of GAMES) {              // <-- ADD ONLY THIS LOOP to the existing test
     const cfg = defineAppConfig({ id: g });
     assert.equal(cfg.base, `/${g}/`);
     assert.ok(cfg.build.outDir.endsWith(`dist/${g}`));
   }
-  const lobby = defineAppConfig({ id: 'lobby' });
+  const lobby = defineAppConfig({ id: 'lobby' });   // already present — do not duplicate
   assert.equal(lobby.base, '/');
   assert.ok(lobby.build.outDir.endsWith('dist'));
 });
 
 test('the dev-server host pin survives — strictPort alone does not protect it', async () => {
+  // ALREADY SHIPPED BY TASK 5 — reproduced here only so you can recognise it. Do not re-add.
   // Replaces the seven per-repo scaffold assertions on strictPort + host:'127.0.0.1'.
   // Still load-bearing with one server: a-1/a-2/a-3 race the same port, and an
   // unpinned host lets a second checkout bind [::1]:5270 alongside 127.0.0.1:5270
