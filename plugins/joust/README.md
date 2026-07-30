@@ -73,10 +73,20 @@ node plugins/joust/tools/audit/check-citations.mjs   # → "checked 883 claim(s)
 this directory, not one. Six files here resolve it (`tests/helpers/joust-source.ts`,
 `tests/audit/citations.test.ts` and the four tools), and every one of them
 honours `JOUST_SOURCE_DIR` first. Get the depth wrong and nothing goes red:
-110 `describe.skipIf(!vendoredAvailable)` guards across 29 test files quietly
-skip, the byte-for-byte citation gate stops opening its 883 claims, and the
-suite still reports 75 files passed. The Task 12 import measured that failure
-mode deliberately — 1280 passed | 566 skipped, fully green — before repairing it.
+**94** `describe.skipIf(!vendoredAvailable)` / `it.skipIf(...)` guards across
+**28** test files quietly skip, the byte-for-byte citation gate degrades to
+schema-only, and the suite still reports 75 files passed. The Task 12 import
+measured that failure mode deliberately — 1280 passed | 566 skipped, fully
+green — before repairing it.
+
+> Count it the way this says, or you will get a different number. **94 is the
+> executable call sites.** The literal string `skipIf(!vendoredAvailable)`
+> occurs **110** times in `tests/`, but **16** of those are inside comments
+> (`// re-derivation SKIPS there (describe.skipIf(!vendoredAvailable))…`), and
+> a comment-inclusive line count via `grep -rn '\.skipIf('` gives a third
+> answer, 108. 94 + 16 = 110 reconciles exactly. The file figure moves too:
+> 29 files *mention* the guard, 28 actually *carry* one —
+> `tests/helpers/transporter-contract.ts` only talks about it.
 
 The vendored tree **is committed to this monorepo** (49 files), so the
 byte-verification half of the citation gate runs everywhere, not only on a
@@ -107,7 +117,14 @@ sibling.
   there naming `@arcade/shared/rng` are provenance, not a dependency). Whether
   joust adopts the shared library is an open ruling owned by `sprint/epic-jt5.yaml`,
   not something to settle by adding an import.
-- **It has no citation-gate escape hatch.** Every claim in
-  `docs/rom-study/claims/*.json` re-opens against the vendored line
-  byte-for-byte, and the checker refuses to report success over an empty claim
-  set rather than passing vacuously.
+- **The citation gate cannot pass over an empty CLAIM SET.** With
+  `docs/rom-study/claims/` missing or empty the checker refuses to report
+  success and exits non-zero, rather than announcing victory over nothing.
+  **That guard does not extend to a missing SOURCE TREE**, and the distinction
+  is the whole of the path-depth warning above: with the tree absent the gate
+  degrades *by design* to a schema-only check and still prints
+  `checked 883 claim(s) / all claims verified`, exit 0 —
+  `JOUST_SOURCE_DIR=/nonexistent node plugins/joust/tools/audit/check-citations.mjs`
+  demonstrates it in one command. Byte-for-byte re-opening is therefore a
+  property of *having the tree wired up correctly*, not something the gate can
+  enforce on its own. Check the skip count, not the exit code.

@@ -90,17 +90,26 @@
 // suite 1872 → 1846 tests with its FILE count unchanged at 75. The plan's "34"
 // is this file's pre-migration TOTAL, not the false-by-design subset.
 //
-// What SURVIVED is REWRITTEN, not deleted:
-//   * the tsconfig strict guard now asserts the stub DELEGATES strictness to
-//     the monorepo root instead of declaring it — see the long note below.
-//   * `type-checks both src and tests` is KEPT (only its rationale comment is
-//     corrected). It is not false by design: the stub really does still declare
-//     `"include": ["src", "tests"]`, and the assertion still catches a stub that
-//     quietly stops covering the suite. Task 12b asserts `extends`, not
-//     `include`, so this is not a duplicate of anything being consolidated.
-//   * `index.html boots a canvas` and `src/core + src/shell skeletons` are
-//     untouched. The boundary they pin is exactly as load-bearing as it was,
-//     and the epic still lives on it.
+// What SURVIVED is REWRITTEN, not deleted — all 8 of them, enumerated, so the
+// survivor list reconciles against the delta above (26 removed + 8 kept = 34):
+//   * `tsconfig.json exists` (1 test, 1 assertion) — KEPT UNCHANGED. Still true
+//     and still worth pinning: the stub is now the `extends` hinge the two
+//     assertions below hang off, so its absence must fail loudly here rather
+//     than as a confusing chain-walk error.
+//   * the tsconfig strict guard (1 test) is REWRITTEN — it now asserts the stub
+//     DELEGATES strictness to the monorepo root instead of declaring it, and
+//     went 1 assertion → 3. See the long note below.
+//   * `type-checks both src and tests` (1 test, 2 assertions) is KEPT (only its
+//     rationale comment is corrected). It is not false by design: the stub
+//     really does still declare `"include": ["src", "tests"]`, and the
+//     assertion still catches a stub that quietly stops covering the suite.
+//     Task 12b asserts `extends`, not `include`, so this is not a duplicate of
+//     anything being consolidated.
+//   * `index.html boots a canvas` (2 tests) and `src/core + src/shell
+//     skeletons` (3 tests) are untouched. The boundary they pin is exactly as
+//     load-bearing as it was, and the epic still lives on it.
+//
+// 1 + 1 + 1 + 2 + 3 = 8 surviving `it` blocks.
 //
 // Reaching up the `extends` chain to the root config is the one place this file
 // is no longer standalone-clone-pure — the plugin is not a repo now.
