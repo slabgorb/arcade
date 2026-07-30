@@ -211,9 +211,23 @@ stories:
     status: backlog
     repos: .
     workflow: tdd
-    type: chore
     acceptance_criteria:
       - The false claim at plugins/red-baron/docs/audit/coverage-review.md line 355 no longer misleads a reader, without the original audit text being silently rewritten out of existence.
       - The remedy states explicitly that red-baron has no high-score persistence and never had one, citing the empty git log -S search over the archived repo rather than asserting it.
       - The plugin README pointer added during the migration agrees with whatever correction lands here.
       - No other claim in coverage-review.md about shared-library consumption is left unchecked — the same doc is swept for sibling claims before the story closes.
+    type: chore
+  - id: uf1-17
+    title: red-baron's tile promises Mouse and Click controls that were never implemented
+    description: "Same class as uf1-6 — a promise the docs make that the code never kept. Found during the monorepo migration (plan task 14, 2026-07-30) and verified against source, not inferred. plugins/red-baron/plugin.ts declares controls ['FLY — Mouse / Arrows', 'FIRE — Click / Space'], which the lobby renders verbatim on the game's tile. But plugins/red-baron/src/main.ts binds only keydown and keyup (arrows, WASD and Space); its single pointerdown listener is the audio unlock, not a control. So Mouse does not fly and Click does not fire — half of every advertised control does nothing. The text came into the manifest verbatim from the migration brief, which took it from red-baron's own docs, so the error predates the migration and was faithfully carried forward rather than introduced by it. This is latent rather than live because red-baron ships listed:false and showcase:false, so no tile is rendered today — but it becomes user-visible the moment red-baron is listed, which is a one-field change someone will make without re-reading the control strings. Decide the honest fix: either implement pointer flight and click-to-fire, or correct the manifest to describe the keyboard controls that actually exist. Correcting the text is the cheap option and is probably right, since nothing in the ROM work calls for a mouse. Check the other six manifests' control strings against their own main.ts bindings while here — this was found by accident, not by a sweep, so siblings are unaudited."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: .
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - Every control string in plugins/red-baron/plugin.ts describes an input the game actually binds, verified against src/main.ts rather than against the docs the wrong text came from.
+      - The remaining six manifests' control strings are each checked against their own main.ts bindings, and any further mismatch is fixed or filed rather than left for the next accident to find.
+      - If the fix is to correct the text rather than implement the inputs, red-baron's own docs are corrected too, so the wrong strings cannot be copied forward a second time.
+      - A test pins at least one control string against the real binding, so this class fails loudly instead of waiting for someone to flip listed to true.

@@ -11,7 +11,16 @@
 ## Global Constraints
 
 - **No game's `main.ts` is modified by this epic.** The boot helper is deferred (spec §4.3). If a task seems to require touching a game's `main.ts` beyond an import-path rewrite, stop and escalate.
-- **Node** `>=20` locally; CI uses `node-version: 22`.
+- **Node `>=22.18`** locally; CI uses `node-version: 22`. **Raised from `>=20` by Task 14** — and the
+  reason is load-bearing, not housekeeping. This plan assumed an `.mjs` script cannot import a `.ts`
+  module, which is the entire justification for `scripts/gen-registry.mjs` carrying a hand-duplicated
+  copy of `validateMeta`'s rules. That assumption is **false** on Node ≥ 22.18, which strips types by
+  default; `src/host/contract.ts` is erasable-syntax only, so the generator imports and calls the
+  **real** validator and no second implementation exists to drift. Two consequences:
+  - **`contract.ts` must stay erasable-syntax only** — no `enum`, no parameter properties, no
+    namespaces. Adding one silently breaks the generator's import.
+  - **Task 18's workflow must not pin Node 20.** `node-version: 22` resolves to the latest 22.x and
+    is fine; a literal `20` would fail at generation time, not at test time.
 - **Pinned dev dependencies, root only:** `typescript@^5.4.0`, `vite@^8.1.0`, `vitest@^4.1.9`, `@types/node@^20.19.43`, `jsdom@^29.1.1`, `@types/jsdom@^28.0.3`.
 - **`repos.yaml` `branch_strategy` MUST be the literal string `trunk-based`.** pf's `branch_protection.py` compares against that exact spelling; any other value silently protects `main` and blocks direct sprint commits.
 - **Vite base:** `/<id>/` for every game, `/` for the lobby.
