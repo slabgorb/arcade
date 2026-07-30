@@ -1193,7 +1193,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `@shared/highscore` (Task 4). centipede runs its **own** `src/shell/timebase.ts` at the ROM's 15750/263 Hz and its own `fitIntegerScale` — leave both alone.
-- Produces: `plugins/centipede/` with 49 test files green.
+- Produces: `plugins/centipede/` with **50** test files green — the pre-migration measurement is 50 files / 912 tests, verified by running centipede's own suite immediately before dispatch. **The plan's old "49" was wrong and dangerously so** (PLAN DEFECT #16, same class as tempest's corrected "149" undercount at Task 6): centipede's `scaffold.test.ts` SURVIVES this task — the corrected describe table deletes three of its six describes and keeps three — so the file count must not fall. A worker trusting "49" would look for a whole file to delete and land on exactly the file the policy exists to protect, which is the epic's documented recurring failure mode. **Test count falls; file count does not.**
 
 - [ ] **Step 1: Move the tree and strip per-repo tooling**
 
@@ -1264,7 +1264,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: nothing from `@shared` — joust's `main.ts` imports no shared module today. Do not add any.
-- Produces: `plugins/joust/` with 68 test files green. **No high-score storage.**
+- Produces: `plugins/joust/` with **75** test files green — the pre-migration measurement is 75 files / 1872 tests, verified by running joust's own suite immediately before dispatch. **The plan's old "68" was wrong by seven whole files** (PLAN DEFECT #16, the same stale-count class as centipede's "49" and tempest's "149"). joust's `scaffold.test.ts` SURVIVES this task — the corrected table deletes five of its eight describes and keeps three, including the `src/core + src/shell` skeletons guard. **Test count falls; file count does not.** Never delete a file to reach a number in this plan; the numbers in it have been wrong three times and the measurement never has. **No high-score storage.**
 
 - [ ] **Step 1: Move the tree and strip per-repo tooling**
 
