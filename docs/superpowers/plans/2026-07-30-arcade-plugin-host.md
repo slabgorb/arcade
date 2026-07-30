@@ -913,7 +913,7 @@ rm -f plugins/star-wars/vite.config.ts plugins/star-wars/tsconfig.json \
 ```json
 {
   "name": "star-wars",
-  "version": "0.0.32",
+  "version": "0.0.33",
   "private": true
 }
 ```
@@ -1276,7 +1276,7 @@ rm -f plugins/joust/vite.config.ts plugins/joust/tsconfig.json \
 ```json
 {
   "name": "joust",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "private": true
 }
 ```
