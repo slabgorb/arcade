@@ -2449,6 +2449,24 @@ Mutation-prove it twice, because it has two failure directions: reformat one man
 export across two lines (the regex stops matching → must redden), and delete a declared `.html`
 (must redden the other way). Revert both.
 
+**And make the extractor itself fail loudly, not just the test.** A test catches this in CI; the
+script should refuse to produce a wrong build at all. In `scripts/build-app.mjs`, if a manifest's
+source contains the string `BuildSpec` but the regex does not match, **`throw`** — never fall through
+to `entries = []`. The whole hazard is that the regex is defeated by formatting `tsc` is perfectly
+happy with, so silence is indistinguishable from "this game has no dev tools":
+
+```
+entries on its own line     trailing comma after the array     satisfies BuildSpec
+as const                    double-quoted strings              array spilling past printer width
+```
+
+Every one of those yields zero entries and a **green** build that silently drops star-wars' two dev
+pages and tempest's one. Prettier reformatting a manifest is enough to trigger it.
+
+Also pin the **parsed** list per game as data (`tempest → ['models.html']`, `star-wars →
+['models.html','scenes.html']`, `red-baron → ['models.html']`), not merely an aggregate count — an
+aggregate stays green when one game's entry moves to another.
+
 - [ ] **Step 6: Build every app**
 
 ```bash
