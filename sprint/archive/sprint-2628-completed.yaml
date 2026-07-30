@@ -1211,3 +1211,8 @@ completed_stories:
     title: lobby attract-mode demo loop is promised by the docs and absent from the code
     points: 5
     completed: '2026-07-29'
+  - id: jt8-4
+    epic: jt8
+    title: Egg collection — the player-vs-egg catch pass (PLYEGG/EGGSCR), ladder plus 500 mid-air, cancel remount
+    points: 2
+    completed: '2026-07-29'

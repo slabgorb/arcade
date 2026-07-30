@@ -57,7 +57,7 @@ stories:
     description: 'The missing egg pickup — PLYEGG (:3009) / EGGSCR (:3030-3095). Add a player-vs-egg pass to collisionPass (demo.ts): on a player overlapping an egg, emit the egg score events via the EXISTING egg.ts core (eggScoreEvents = the EGGVAL ladder 250/500/750/1000 by hit count capped, :3097-3104, PLUS 500 if caught mid-air with PFEET==0, :3063-3069), attribute the score to the catching player (a score/reason:egg/player event the game.ts drain already credits to the right ledger), REMOVE the egg, and cancel any incoming remount bird (AUTOFF, :3078-3087). REUSE-FIRST: the entire scoring ladder plus air bonus already exist and are tested (egg.ts, jt2-4) and game.ts already drains reason:egg — the only new code is the catch pass plus egg removal. INDEPENDENT of the enemy chain (jt8-1 to jt8-3) — the quickest standalone playability win. Radix-cited plus claims entry for PLYEGG/EGGSCR.'
     points: 2
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-07-29'
     repos: joust
     workflow: tdd
@@ -66,6 +66,8 @@ stories:
       - A mid-air catch (PFEET==0, egg not yet bounced) emits ladder plus 500; a grounded/settled catch emits ladder only; the ladder value follows the hit count (250/500/750/1000 capped). Cited (:3063-3069, :3097-3104); mutation-checked.
       - The catching player ledger advances (not the partner) via the existing game.ts drain; an incoming remount bird for that egg is cancelled (AUTOFF, :3078-3087).
       - 'Determinism: a seeded run where a knight catches a fallen egg replays the exact score events bit-for-bit; purity guard plus citations plus npm test green.'
+    completed: '2026-07-29'
+    review_verdict: approved
   - id: jt8-5
     title: Decode the exact SELPLY nearest-target metric (:4476-4514) and retire the min-of-axes approximation
     description: 'jt8-1 shipped an HONEST APPROXIMATION for SELPLY''s nearest-of-two tiebreak: target.ts coordDistance/nearer picks the smaller min(|dx|,|dy|), tie keeps the primary (cited JT81-003, pinned by the DISCRIMINATING case in tests/target.test.ts). Three independent jt8-1 analyses (TEA, reviewer test-analyzer, reviewer comment-analyzer) each FAILED to hand-decode the actual 6809 sequence — a 16-bit two''s-complement negate with an overflow-guarded per-axis compare (TSTA/BNE :4487/:4505) and a final CMPB 1,S / BLO :4512-4515 (a STRICT less-than that appears to fall through to LDX TARPL2, favouring the SECONDARY, the OPPOSITE of the shipped primary-tie). The metric may be Chebyshev / Y-dominant, not min-of-axes. This story decodes :4476-4514 at INSTRUCTION level (emulator trace or a verified 6809 hand-trace), then either replaces coordDistance/nearer with the true metric+tie or CONFIRMS the approximation faithful — do NOT hand-guess (the jt8-1 ruling). BUILDS ON jt8-1; independent of jt8-2/jt8-3/jt8-4.'
@@ -78,3 +80,19 @@ stories:
       - 'The SELPLY nearest-of-two metric (:4476-4514) is decoded at 6809 instruction level with evidence (emulator trace or verified hand-trace): the axis combination (min/max/Euclidean or a dominant axis) AND the exact tie direction (the CMPB 1,S / BLO strict-less at :4512-4515) are stated, not guessed.'
       - target.ts coordDistance/nearer is replaced with the decoded metric+tie (or the current min-of-axes + primary-tie is CONFIRMED faithful and the ⚠ docstrings/JT81-003 downgraded from "approximation" to "verified"); the discriminating case in tests/target.test.ts is updated to pin the decoded choice and is mutation-checked.
       - 'Determinism: the corrected selection replays bit-for-bit under a fixed seed; the purity guard, the citation suite, and npm test are all green.'
+  - id: jt8-6
+    title: 'Egg-ladder counter outlives a life — DEGGS shares the DECISION BLOCK with DSCORE (JOUSTRV4.SRC:106/:111/:113), so it must survive a mount death; our eggHits rides the player PROCESS and resets to rung 1 on every respawn. REPRODUCED: a veteran with 3 prior hits scores 1000, then the identical staging after a respawn scores 250. respawnPlayerProcess (demo.ts:333) builds a fresh process and eggHits has only three sites in src/ (decl :167, read :904, write :905) — nothing carries it across, and game.ts:439 appends the fresh process. Re-home the count where it outlives a process but stays readable by the sim at event-emit time (a per-player record on DemoSim, the jt8-1 targets precedent). The DCRE field name (DECISION TO BE RECREATED BY WHOM) is the positive evidence the block is the persistent per-player identity. NOTE the wave/game reset scope is still open — the decision-block initialiser was not chased. Filed by Reviewer on jt8-4 (R-1)'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
+    type: bug
+  - id: jt8-7
+    title: "Egg catch is box-only — the transcribed CEGGUP mask is never consulted, so the collect radius is a bird's height instead of an egg's. collisionMaskFor (demo.ts:687) returns null for kind egg, so the catch pass stops at broadPhase (:902) while the joust pass 100 lines above does broadPhase then narrowPhase (:783-788). CEGGUP/CEGGLF/CEGGRT/CEGGMN all exist with real spans and JOUSTI.SRC anchors (pictures.ts:1799-1806) and ENTITY_RECORDS.EGGI (:1699) explicitly names CEGGUP — a ported, claimed, unconsumed asset of exactly the kind the uf1 sweep hunts. Effect: vertical reach is the 16px ENTITY_BOX_H vs CEGGUP's 7 real scanlines, so an egg can be collected from visibly clear of it. BLOCKED ON A DECISION FIRST: the ROM has four egg masks for its orientation/hatching frames and EggState carries no frame field, so the variant question must be answered before wiring — do not just hardcode CEGGUP. Filed by Reviewer on jt8-4 (R-2)"
+    points: 3
+    priority: p2
+    status: backlog
+    repos: joust
+    workflow: tdd
+    type: bug
