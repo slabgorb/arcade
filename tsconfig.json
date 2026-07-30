@@ -19,5 +19,12 @@
       "@host/*": ["src/host/*"]
     }
   },
-  "include": ["src", "plugins", "lobby", "scripts"]
+  "include": ["src", "plugins", "lobby", "scripts"],
+  // arcade-shared shipped with no tsconfig, so its tests were never compiled — only
+  // run through vitest, which strips types. Folding them into `src` would newly
+  // typecheck them and surface 22 pre-existing errors in test doubles. Excluded to
+  // hold the pre-migration line; the errors are a filed story, not a silent pass.
+  // NOTE: this is scoped to src/shared/tests ONLY. Every game's tests remain
+  // typechecked, exactly as they were in their own repos.
+  "exclude": ["src/shared/tests"]
 }

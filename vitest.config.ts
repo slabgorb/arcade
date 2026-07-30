@@ -51,8 +51,6 @@ export default defineConfig({
           root: resolve(root, 'src/shared'),
           globals: true,
           environment: 'node',
-          // Task 21 adds a jsdom sibling project for the cookie-migration tests.
-          exclude: ['**/node_modules/**', '**/*.dom.test.ts'],
         },
       },
       {
