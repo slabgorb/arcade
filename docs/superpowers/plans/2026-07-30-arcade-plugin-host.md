@@ -728,7 +728,7 @@ The hardest game import: it carries a citation gate that reads git history (Task
 
 **Interfaces:**
 - Consumes: `@shared/*` (Task 4), the `audit/tempest` tag (Task 2).
-- Produces: `plugins/tempest/` with 149 test files green, and a `models.html` second entry recorded for Task 16's build spec.
+- Produces: `plugins/tempest/` with all 150 test files green **minus the topology assertions removed under the Step 5 policy** (the pre-migration measurement is 150 files / 1747 tests; the plan's old "149" was an undercount from a `find` sweep), and a `models.html` second entry recorded for Task 16's build spec.
 
 - [ ] **Step 1: Move the tree and strip per-repo tooling**
 
@@ -774,7 +774,13 @@ grep -rnE '@arcade\\?/shared' plugins/tempest/ || echo "clean"
 - [ ] **Step 5: Run tempest's suite**
 
 Run: `npx vitest run --project tempest`
-Expected: PASS, 150 test files (1747 tests) — including `tests/audit/citations.test.ts` and `tests/audit/citation-gate-freeze.test.ts`, which resolve `git show 4232ed4:src/core/sim.ts`. If those two fail with a git error, Task 2's tag is missing or was not fetched; do not re-anchor the pins.
+Expected: PASS — but **NOT at the 150 files / 1747 tests pre-migration baseline.** This game's topology tests assert the very things the collapse removes, so a count *below* baseline is EXPECTED here. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number, and never leave a removal unaccounted to protect one.
+
+Measured for tempest before you start: `tests/scaffold.test.ts` (5 assertions, entirely the `vite.config.ts` dev/preview contract Step 1 deletes — the file goes), plus the two `pins @arcade/shared as a git-URL dependency` assertions in `tests/rng-extraction.test.ts` and `tests/loop-extraction.test.ts`. The remaining `rng-extraction`, `loop-extraction` and `pause-adoption` assertions are **specifier rewrites, not removals** — including the two in `pause-adoption` that dynamically `import('@arcade/shared/pause')` and `/esc-overlay`, which become `@shared/*` (the alias is live in `vitest.config.ts`, so the dynamic import resolves).
+
+The host-pin assertion in `scaffold.test.ts` (`pins host 127.0.0.1 on both server and preview`, td1-1) is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once for the cabinet. Remove it here; do not re-create it in another game.
+
+Also expected to pass: `tests/audit/citations.test.ts` and `tests/audit/citation-gate-freeze.test.ts`, which resolve `git show 4232ed4:src/core/sim.ts`. If those two fail with a git error, Task 2's tag is missing or was not fetched; do not re-anchor the pins.
 
 - [ ] **Step 6: Commit**
 
@@ -845,7 +851,9 @@ grep -rnE '@arcade\\?/shared' plugins/star-wars/ || echo "clean"
 - [ ] **Step 4: Run star-wars's suite**
 
 Run: `npx vitest run --project star-wars`
-Expected: PASS, 190 test files (2035 tests). star-wars has a `tools/` test directory and a `tests/support` helper tree — both move with the game and need no path changes.
+Expected: PASS — but **NOT at the 190 files / 2035 tests pre-migration baseline.** ~17 of star-wars' assertions are topology tests asserting what the collapse removes, so a count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere.
+
+star-wars has a `tools/` test directory and a `tests/support` helper tree — both move with the game and need no path changes.
 
 - [ ] **Step 5: Commit**
 
@@ -911,7 +919,7 @@ grep -rnE '@arcade\\?/shared' plugins/asteroids/ || echo "clean"
 - [ ] **Step 4: Run asteroids's suite**
 
 Run: `npx vitest run --project asteroids`
-Expected: PASS, 45 test files (831 tests).
+Expected: PASS — but **NOT at the 45 files / 831 tests pre-migration baseline.** ~17 of asteroids' assertions are topology tests asserting what the collapse removes, so a count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere.
 
 - [ ] **Step 5: Commit**
 
@@ -982,7 +990,7 @@ Expected from the last command: one hit, unchanged.
 - [ ] **Step 4: Run battlezone's suite**
 
 Run: `npx vitest run --project battlezone`
-Expected: PASS, 72 test files (1057 tests).
+Expected: PASS — but **NOT at the 72 files / 1057 tests pre-migration baseline.** ~38 of battlezone's assertions are topology tests asserting what the collapse removes — the largest set in the fleet — so a count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere.
 
 - [ ] **Step 5: Commit**
 
@@ -1053,7 +1061,11 @@ grep -rnE '@arcade\\?/shared' plugins/red-baron/ || echo "clean"
 - [ ] **Step 4: Run red-baron's suite**
 
 Run: `npx vitest run --project red-baron`
-Expected: PASS, 81 test files (1362 tests + 1 todo) — including `tests/audit/citations.test.ts` and `tests/audit/citation-evidence.test.ts`, which resolve `git cat-file -e 6038a07b9044f1add37fd12c217cd39ec1629439^{commit}`. A `git-said-no` / "this clone's object database has no commit" failure means Task 2's tag is missing. Fix the tag; do not re-anchor the pins.
+Expected: PASS — but **NOT at the 81 files / 1362 tests (+1 todo) pre-migration baseline.** ~27 of red-baron's assertions are topology tests asserting what the collapse removes, so a count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere.
+
+**red-baron runs vitest 4.1.10 while every other app runs 4.1.9**, and the monorepo pins one version at the root. If red-baron's suite is the only one that goes red on import, suspect the patch-version change before suspecting the move.
+
+Also expected to pass: `tests/audit/citations.test.ts` and `tests/audit/citation-evidence.test.ts`, which resolve `git cat-file -e 6038a07b9044f1add37fd12c217cd39ec1629439^{commit}`. A `git-said-no` / "this clone's object database has no commit" failure means Task 2's tag is missing. Fix the tag; do not re-anchor the pins.
 
 - [ ] **Step 5: Note red-baron's reference/ quarry**
 
@@ -1131,7 +1143,9 @@ grep -rnE '@arcade\\?/shared' plugins/centipede/ || echo "clean"
 - [ ] **Step 4: Run centipede's suite**
 
 Run: `npx vitest run --project centipede`
-Expected: PASS, 50 test files (912 tests), including `tests/audit/citations.test.ts` (which does **not** read git — it re-opens working-tree files, so the move is transparent to it).
+Expected: PASS — but **NOT at the 50 files / 912 tests pre-migration baseline.** ~26 of centipede's assertions are topology tests asserting what the collapse removes, so a count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere. centipede's `scaffold.test.ts` is also where the codebase states the governing rule ("cross-repo wiring invariants live in the ORCHESTRATOR suite") — read it before you cut anything.
+
+Also expected to pass: `tests/audit/citations.test.ts`, which does **not** read git — it re-opens working-tree files, so the move is transparent to it.
 
 - [ ] **Step 5: Commit**
 
@@ -1200,7 +1214,7 @@ If any hits appear (in tests, say), rewrite them the same way as the other games
 - [ ] **Step 4: Run joust's suite**
 
 Run: `npx vitest run --project joust`
-Expected: PASS, 75 test files (1872 tests).
+Expected: PASS — but **NOT at the 75 files / 1872 tests pre-migration baseline.** ~34 of joust's assertions are topology tests asserting what the collapse removes, so a count *below* baseline is EXPECTED. Apply the Global Constraints' topology policy: remove only assertions false **by design**, **rewrite — never delete —** any whose intent survives (`@arcade/shared/rng` → `@shared/rng` is a specifier change; that test must still assert the consumer imports shared RNG), and record the **exact count removed per file, with the reason**, in your report. Never delete a test to reach a number. A `scaffold.test.ts` host-pin assertion is **not retired** — Task 19 restores that pin at the root and Task 12b asserts it once; remove it here, do not re-create it elsewhere. joust's host pin is the ORIGIN of that guard (jt1-3, ported fleet-wide as td1-1) — its removal here is the one most worth double-checking against Task 12b.
 
 - [ ] **Step 5: Verify .gitignore has no subrepo entries left**
 
