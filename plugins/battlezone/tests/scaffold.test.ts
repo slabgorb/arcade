@@ -74,16 +74,41 @@ describe('scaffold — tsconfig.json (TypeScript strict, via the monorepo root c
 
     // NOT `expect(text).toMatch(/"strict":\s*true/)` — the loop can only exit
     // once that regex has already matched, so re-asserting it is a guard that
-    // cannot fail. What is actually unguarded at this point is that the chain was
-    // WALKED: if the plugin stub grew its own inline `"strict": true`, the loop
-    // would never iterate, `visited` would stay empty, and strictness would have
-    // quietly stopped being inherited from the root the way this migration
-    // requires. Pin that instead.
+    // cannot fail.
+    //
+    // What IS unguarded after the walk is the stub's own text, and the hole is
+    // bigger than it looks. The loop searches for `"strict": true`. A stub
+    // carrying `"strict": FALSE` does not match it, so the walk simply steps
+    // over the override, finds `true` at the monorepo root, and passes — while
+    // the effective setting for this plugin is `false`. The pre-migration
+    // assertion read the game's own file raw and had no such hole; walking the
+    // chain reintroduced it.
+    //
+    // So assert the stub does not mention `strict` AT ALL. That is deliberately
+    // stronger than banning `false` specifically: this file's entire job is to
+    // DELEGATE, so any local mention of `strict` is a lie about where strictness
+    // comes from — `true` means it has quietly stopped inheriting, `false` means
+    // it is inheriting and then silently undoing it, and either way the root
+    // config is no longer the single answer to "does battlezone compile strict?".
+    // It is a raw-text check (the file may carry comments/trailing commas), so
+    // even the string "strict" inside a stub comment trips it. That is intended:
+    // a stub small enough to need no comments is the point.
+    //
+    // This REPLACES an earlier `expect(visited.length).toBeGreaterThan(0)`.
+    // Keeping both would have been the very defect this guard exists to prevent:
+    // once the stub provably contains no `"strict"` at all, the loop must have
+    // iterated at least once, so `visited.length > 0` could no longer fail. It
+    // was subsumed, not weakened — the assertion below fails on strictly more.
+    //
+    // Back-ported from red-baron (Task 10 review round). centipede and joust
+    // inherit this pattern next — copy THIS shape, not the chain-walk alone.
     expect(
-      visited.length,
-      'strictness was satisfied without following a single "extends" — the plugin ' +
-        'tsconfig is a stub that must INHERIT strict from the monorepo root, not set it locally',
-    ).toBeGreaterThan(0)
+      read('tsconfig.json'),
+      'the plugin tsconfig is a stub that must INHERIT strict from the monorepo root — ' +
+        'it must not mention "strict" itself, in either direction: `true` means it stopped ' +
+        'inheriting, `false` means it silently overrides the root the chain-walk above ' +
+        'would then step straight past',
+    ).not.toMatch(/"strict"/)
   })
 })
 
