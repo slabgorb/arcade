@@ -8,22 +8,65 @@
 // inside the subrepo so a standalone `git clone battlezone` still passes).
 //
 // Guarded here, per the story ACs:
-//   - orchestrator .gitignore ignores battlezone/ (like tempest/lobby/star-wars)
 //   - .pennyfarthing/repos.yaml registers battlezone in the star-wars entry shape
 //   - justfile lists battlezone in `games`, `subrepos`, and the `serve` recipe
 //     CONSISTENTLY — Dev must fix the variables, not just the hardcoded trap block
 //     (star-wars is currently wired only in the trap — see Delivery Findings)
 //   - cloudflared/config.yml routes /battlezone/* → :5276 ahead of the lobby
 //     catch-all, and NEVER to 5275 (the pin bz1 lost to asteroids/epic A)
-//   - battlezone/.git exists with a develop branch (gitflow)
 //
 // RED until GREEN lands the wiring. Run from the orchestrator root:
 //   npm test   (→ node --test 'tests/**/*.test.mjs')
+//
+// ===========================================================================
+// MONOREPO MIGRATION (Task 9 — battlezone imported as plugins/battlezone)
+// ===========================================================================
+//
+// TWO assertions were REMOVED here, both false BY DESIGN once battlezone stopped
+// being a gitignored sibling subrepo. Quoted by their exact old titles:
+//
+//   * `AC: orchestrator .gitignore ignores the battlezone/ subrepo`
+//     It matched the root .gitignore against /^\/battlezone\/\s*$/m. The import
+//     deletes that line — the tree is tracked in this repo now, so ignoring it
+//     would erase the game. Nothing survives to re-home.
+//
+//   * `AC: battlezone/.git exists with a develop branch (gitflow)`
+//     It asserted existsSync('battlezone/.git') and that the repo carried a
+//     `develop` branch. battlezone has no repo, no remote and no develop branch
+//     any more; its pre-monorepo history is PARKED at
+//     .migration-backup/battlezone.git, which .gitignore itself declares
+//     transient ("safe to remove once every game is imported"). A deliberately
+//     temporary backup is not an invariant, so this is NOT re-created anywhere —
+//     specifically NOT in tests/monorepo-topology.test.mjs, whose header reserves
+//     the games' share for Task 12b.
+//
+// The file is NOT deleted. Six assertions below still pass and still guard LIVE
+// orchestrator config that this task does not touch. Their owners, so the tasks
+// that retire them can find them:
+//
+//   TASK 22 (rewrites .pennyfarthing/repos.yaml)
+//     - `AC: repos.yaml registers battlezone in the star-wars entry shape`
+//       NOTE: still GREEN but already STALE — it asserts `path: battlezone`,
+//       which is now wrong on disk (plugins/battlezone). It reads the YAML, not
+//       the filesystem, so it cannot tell. Fix both together.
+//
+//   TASK 19 (one dev server — collapses the eight pinned ports, scripts/serve.mjs
+//            and the cloudflared routing)
+//     - `AC: justfile \`games\` variable includes battlezone`
+//     - `AC: justfile \`subrepos\` variable includes battlezone`
+//     - `AC: canonical \`serve\` launches battlezone`
+//       (imports jobsFor from ../scripts/serve.mjs, which Task 19 deletes, and
+//       asserts cwd === <root>/battlezone — stale for the same reason as above)
+//     - `reconcile (SM decision #1): justfile \`games\`/\`subrepos\` also backfill star-wars`
+//     - `AC: cloudflared routes /battlezone/* to :5276, ahead of the lobby catch-all`
+//
+// Ruling (PLAN DEFECT #14): each import task retires its OWN game's bootstrap
+// assertions as it lands. centipede-, joust- and red-baron-bootstrap.test.mjs
+// carry the identical pair and are Tasks 10-13's to retire the same way.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 // td1-8 moved the fleet launch out of the justfile `serve` recipe into this module;
@@ -74,17 +117,6 @@ function repoBlock(yaml, name) {
   }
   return body.join('\n');
 }
-
-// --- AC: orchestrator .gitignore ------------------------------------------
-
-test('AC: orchestrator .gitignore ignores the battlezone/ subrepo', () => {
-  const gitignore = read('.gitignore');
-  assert.match(
-    gitignore,
-    /^\/battlezone\/\s*$/m,
-    'battlezone/ must be gitignored at the orchestrator, root-anchored and directory-only (alongside tempest/lobby/star-wars)',
-  );
-});
 
 // --- AC: repos.yaml registration (star-wars entry shape) -------------------
 
@@ -174,14 +206,4 @@ test('AC: cloudflared routes /battlezone/* to :5276, ahead of the lobby catch-al
   const lobbyCatchAll = cf.indexOf('service: http://localhost:5270');
   assert.notEqual(lobbyCatchAll, -1, 'cloudflared/config.yml must retain the lobby catch-all (:5270)');
   assert.ok(bzIdx < lobbyCatchAll, 'the /battlezone rule must be ordered AHEAD of the lobby catch-all');
-});
-
-// --- AC: battlezone repo initialized with develop (gitflow) ----------------
-
-test('AC: battlezone/.git exists with a develop branch (gitflow)', () => {
-  assert.ok(existsSync(join(root, 'battlezone/.git')), 'battlezone/.git must exist (git init -b develop)');
-  const branches = execFileSync('git', ['-C', join(root, 'battlezone'), 'branch', '--list', 'develop'], {
-    encoding: 'utf8',
-  });
-  assert.match(branches, /develop/, 'battlezone repo must have a develop branch');
 });

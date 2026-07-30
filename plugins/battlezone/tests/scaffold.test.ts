@@ -72,7 +72,18 @@ describe('scaffold — tsconfig.json (TypeScript strict, via the monorepo root c
       text = read(rel)
     }
 
-    expect(text, `"strict": true was found in ${rel}`).toMatch(/"strict":\s*true/)
+    // NOT `expect(text).toMatch(/"strict":\s*true/)` — the loop can only exit
+    // once that regex has already matched, so re-asserting it is a guard that
+    // cannot fail. What is actually unguarded at this point is that the chain was
+    // WALKED: if the plugin stub grew its own inline `"strict": true`, the loop
+    // would never iterate, `visited` would stay empty, and strictness would have
+    // quietly stopped being inherited from the root the way this migration
+    // requires. Pin that instead.
+    expect(
+      visited.length,
+      'strictness was satisfied without following a single "extends" — the plugin ' +
+        'tsconfig is a stub that must INHERIT strict from the monorepo root, not set it locally',
+    ).toBeGreaterThan(0)
   })
 })
 
