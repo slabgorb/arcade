@@ -599,7 +599,7 @@ grep -rn "@arcade/shared" lobby/ || echo "no @arcade/shared references remain"
 - [ ] **Step 4: Run the lobby tests**
 
 Run: `npx vitest run --project lobby`
-Expected: PASS, 11 test files. A failure here is an unrewritten import or a missing jsdom environment — check `vitest.config.ts`'s lobby project has `environment: 'jsdom'`.
+Expected: PASS, 11 test files (127 tests). A failure here is an unrewritten import or a missing jsdom environment — check `vitest.config.ts`'s lobby project has `environment: 'jsdom'`.
 
 - [ ] **Step 5: Commit**
 
@@ -675,7 +675,7 @@ grep -rn "@arcade/shared" plugins/tempest/ || echo "clean"
 - [ ] **Step 5: Run tempest's suite**
 
 Run: `npx vitest run --project tempest`
-Expected: PASS, 149 test files — including `tests/audit/citations.test.ts` and `tests/audit/citation-gate-freeze.test.ts`, which resolve `git show 4232ed4:src/core/sim.ts`. If those two fail with a git error, Task 2's tag is missing or was not fetched; do not re-anchor the pins.
+Expected: PASS, 150 test files (1747 tests) — including `tests/audit/citations.test.ts` and `tests/audit/citation-gate-freeze.test.ts`, which resolve `git show 4232ed4:src/core/sim.ts`. If those two fail with a git error, Task 2's tag is missing or was not fetched; do not re-anchor the pins.
 
 - [ ] **Step 6: Commit**
 
@@ -746,7 +746,7 @@ grep -rn "@arcade/shared" plugins/star-wars/ || echo "clean"
 - [ ] **Step 4: Run star-wars's suite**
 
 Run: `npx vitest run --project star-wars`
-Expected: PASS, 183 test files. star-wars has a `tools/` test directory and a `tests/support` helper tree — both move with the game and need no path changes.
+Expected: PASS, 190 test files (2035 tests). star-wars has a `tools/` test directory and a `tests/support` helper tree — both move with the game and need no path changes.
 
 - [ ] **Step 5: Commit**
 
@@ -812,7 +812,7 @@ grep -rn "@arcade/shared" plugins/asteroids/ || echo "clean"
 - [ ] **Step 4: Run asteroids's suite**
 
 Run: `npx vitest run --project asteroids`
-Expected: PASS, 45 test files.
+Expected: PASS, 45 test files (831 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -883,7 +883,7 @@ Expected from the last command: one hit, unchanged.
 - [ ] **Step 4: Run battlezone's suite**
 
 Run: `npx vitest run --project battlezone`
-Expected: PASS, 72 test files.
+Expected: PASS, 72 test files (1057 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -954,7 +954,7 @@ grep -rn "@arcade/shared" plugins/red-baron/ || echo "clean"
 - [ ] **Step 4: Run red-baron's suite**
 
 Run: `npx vitest run --project red-baron`
-Expected: PASS, 81 test files — including `tests/audit/citations.test.ts` and `tests/audit/citation-evidence.test.ts`, which resolve `git cat-file -e 6038a07b9044f1add37fd12c217cd39ec1629439^{commit}`. A `git-said-no` / "this clone's object database has no commit" failure means Task 2's tag is missing. Fix the tag; do not re-anchor the pins.
+Expected: PASS, 81 test files (1362 tests + 1 todo) — including `tests/audit/citations.test.ts` and `tests/audit/citation-evidence.test.ts`, which resolve `git cat-file -e 6038a07b9044f1add37fd12c217cd39ec1629439^{commit}`. A `git-said-no` / "this clone's object database has no commit" failure means Task 2's tag is missing. Fix the tag; do not re-anchor the pins.
 
 - [ ] **Step 5: Note red-baron's reference/ quarry**
 
@@ -1032,7 +1032,7 @@ grep -rn "@arcade/shared" plugins/centipede/ || echo "clean"
 - [ ] **Step 4: Run centipede's suite**
 
 Run: `npx vitest run --project centipede`
-Expected: PASS, 49 test files, including `tests/audit/citations.test.ts` (which does **not** read git — it re-opens working-tree files, so the move is transparent to it).
+Expected: PASS, 50 test files (912 tests), including `tests/audit/citations.test.ts` (which does **not** read git — it re-opens working-tree files, so the move is transparent to it).
 
 - [ ] **Step 5: Commit**
 
@@ -1101,7 +1101,7 @@ If any hits appear (in tests, say), rewrite them the same way as the other games
 - [ ] **Step 4: Run joust's suite**
 
 Run: `npx vitest run --project joust`
-Expected: PASS, 75 test files.
+Expected: PASS, 75 test files (1872 tests).
 
 - [ ] **Step 5: Verify .gitignore has no subrepo entries left**
 
@@ -1113,7 +1113,22 @@ grep -nE "^/(tempest|lobby|star-wars|asteroids|battlezone|red-baron|centipede|jo
 - [ ] **Step 6: Run the whole cabinet**
 
 Run: `npx vitest run`
-Expected: PASS across every project. The app suites total **665** test files — 11 lobby + 149 tempest + 183 star-wars + 45 asteroids + 72 battlezone + 81 red-baron + 49 centipede + 75 joust — plus arcade-shared's own suite and `src/host`'s. Record the exact total vitest reports here; it is the number the verification checklist compares against.
+
+Expected: PASS across every project, at **699 test files and 10 451 tests**. That is the measured pre-migration baseline, captured by running every suite in place before anything moved:
+
+| app | test files | tests |
+|---|---|---|
+| tempest | 150 | 1747 |
+| star-wars | 190 | 2035 |
+| asteroids | 45 | 831 |
+| battlezone | 72 | 1057 |
+| red-baron | 81 | 1362 (+1 todo) |
+| centipede | 50 | 912 |
+| joust | 75 | 1872 |
+| lobby | 11 | 127 |
+| arcade-shared | 25 | 508 |
+
+**A lower count means tests were dropped in the move — it is a failure, not a rounding difference.** Compare against this table, never against an estimate. (`src/host`'s own tests are added later by Task 13 and are additional to these.)
 
 - [ ] **Step 7: Commit**
 
