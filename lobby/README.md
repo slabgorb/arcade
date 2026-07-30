@@ -2,8 +2,8 @@
 
 The arcade's front door — a vector-style lobby on black that lists the games as
 glowing tiles, launches them, runs an attract-mode demo loop when idle, and shows
-per-game high scores. Canvas 2D, no backend. Second subrepo in the **arcade**
-series; sprint/epics are managed at the orchestrator (epic 7).
+per-game high scores. Canvas 2D, no backend. One app in the **arcade** monorepo;
+sprint/epics are managed at the orchestrator root (epic 7).
 
 **▶ Live: [arcade.slabgorb.com](https://arcade.slabgorb.com)** — this lobby is
 the arcade's front door.
@@ -11,7 +11,8 @@ the arcade's front door.
 ## Stack
 
 TypeScript (ES modules, strict) · Vite 8 · Vitest 4 · HTML5 Canvas 2D. No engine,
-no backend. Mirrors the `tempest` toolchain so the two games stay consistent.
+no backend. Uses the same root Vite/Vitest toolchain as every other app in this
+monorepo — there is no separate lobby-specific config left to drift.
 
 ## Commands
 
@@ -22,7 +23,8 @@ Run these from the **repo root**, not from inside `lobby/`:
 
 ```bash
 npm install                       # installs the whole cabinet — no per-app npm install
-npx vite                          # dev server for the whole cabinet; / is the lobby
+npx vite                          # dev server; today this serves ONLY the lobby (no
+                                   # plugins/ tree exists yet for vite to also serve)
 npm test                          # vitest across every project, lobby included
 npx vitest run --project lobby    # this app's tests only
 ```
@@ -50,8 +52,14 @@ DOM bootstrap stays in `main.ts`. The lobby is served at the cabinet root (`/`)
 
 ## Releasing
 
-The lobby ships as part of the `arcade` monorepo, not as its own repo. Release
-tags are `lobby-vX.Y.Z` — a bare `vX.Y.Z` is invalid here, since this monorepo
-holds every app's tags side by side. See the root `justfile`'s `release` /
-`release-all` recipes and `docs/ops/hosting.md` for the current release and R2
-deploy mechanics; **`main` is production — never push it by hand.**
+The lobby ships as part of the `arcade` monorepo, not as its own repo — its
+`.git` history is gone (removed when it was imported) and it has no `develop`/
+`main` of its own to gate a release on. The monorepo-wide release path (what
+gates a release, what tags it, what pushes and deploys) is still being built by
+a later stage of this migration and is not in place yet — do not try
+`just release lobby` today; it predates this app being an app in a monorepo
+and cannot run against it.
+
+The one settled fact already: release tags are `lobby-vX.Y.Z`. A bare
+`vX.Y.Z` is invalid in this monorepo, since it holds every app's tags side by
+side. **`main` is production — never push it by hand.**
