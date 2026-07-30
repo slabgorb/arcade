@@ -488,12 +488,40 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: `@shared/highscore`, `@shared/math3d`, `@shared/rng`, `@shared/loop`, `@shared/font`, `@shared/pause`, `@shared/glow`, `@shared/view`, `@shared/audio`, `@shared/synth`, `@shared/esc-overlay`, `@shared/name-entry` — consumed by every game import in Tasks 5–12.
 
+### ⚠ Read before starting: arcade-shared's tests have never been typechecked
+
+`arcade-shared` has **no tsconfig at all**. Its tests are run by vitest, which strips types without checking them, so `src/shared/tests/**` has never been compiled. The root tsconfig's `include` covers `src`, which would put those files inside `tsc --noEmit` for the first time.
+
+I measured it: **22 pre-existing type errors**, almost all hand-rolled WebAudio doubles that never satisfied the real types (`FakeAudioContext` is not assignable to `AudioContext`; `FakeGain` likewise), plus a few `possibly undefined` and empty-tuple indexing errors in `tests/synth.test.ts`.
+
+**Decision: exclude `src/shared/tests/**` from the root tsconfig, and file the 22 errors as their own story.**
+
+This preserves the pre-migration behaviour *exactly* — those files were never typechecked before and are not typechecked now. It is deliberately NOT a blanket "exclude tests": each game's own tsconfig has always had `include: ["src", "tests"]`, so the games' tests **are** typechecked today and must stay that way. Excluding them all would silently drop real coverage.
+
+Add to the root `tsconfig.json`:
+
+```jsonc
+{
+  // arcade-shared shipped with no tsconfig, so its tests were never compiled — only
+  // run through vitest, which strips types. Folding them into `src` would newly
+  // typecheck them and surface 22 pre-existing errors in test doubles. Excluded to
+  // hold the pre-migration line; the errors are a filed story, not a silent pass.
+  // NOTE: this is scoped to src/shared/tests ONLY. Every game's tests remain
+  // typechecked, exactly as they were in their own repos.
+  "exclude": ["src/shared/tests"]
+}
+```
+
+Do **not** attempt to fix the 22 errors in this task, and do **not** widen the exclude to cover any game's tests.
+
 - [ ] **Step 1: Move the tree**
 
+`src/shared/` already exists carrying a `.gitkeep` from Task 3 — remove it once real files land, or it ships as noise.
+
 ```bash
-mkdir -p src/shared
 cp -R arcade-shared/src/. src/shared/
 cp -R arcade-shared/tests src/shared/tests
+rm -f src/shared/.gitkeep
 ```
 
 - [ ] **Step 2: Drop the subrepo from .gitignore**
@@ -553,7 +581,14 @@ describe('shared purity', () => {
 - [ ] **Step 5: Run the shared tests to verify they pass**
 
 Run: `npx vitest run --project shared`
-Expected: PASS. If the purity test reports offenders, the `BROWSER_SUBPATHS` exemption list needs to match the set that was exempt under the old `dist/` scan — read the original test's exemption list and copy it exactly rather than inventing one.
+Expected: PASS at **25 test files / 508 tests** — the measured pre-migration baseline. Fewer means files were dropped in the copy.
+
+If the purity test reports offenders, the `BROWSER_SUBPATHS` exemption list must match the set that was exempt under the old `dist/` scan — **read the original test's list and copy it exactly.** The list written in this plan is a guess and is very likely wrong; the original is authoritative.
+
+Then confirm the typecheck holds:
+
+Run: `npx tsc --noEmit`
+Expected: exit 0. If it reports errors inside `src/shared/tests/`, the `exclude` from the section above is missing or misspelled. If it reports errors in `src/shared/*.ts` (not tests), those are real and in scope — the library source *was* compiled before, by arcade-shared's own build.
 
 - [ ] **Step 6: Commit**
 
@@ -2869,6 +2904,9 @@ pf sprint story add --title "Safari ITP purges the games' own high scores after 
 
 pf sprint story add --title "Empirically test Safari ITP's interaction clock: per-hostname or per-eTLD+1" \
   --description "ADR-0004 follow-up 2, never filed. Decides the severity of the purge story above. Needs a real Safari, not a spec reading — WebKit's localStorage partitioning already contradicts its own published policy."
+
+pf sprint story add --title "Typecheck arcade-shared's tests: 22 pre-existing errors in WebAudio doubles" \
+  --description "src/shared/tests is excluded from the root tsconfig (Task 4) because arcade-shared never had a tsconfig and its tests were never compiled — only run through vitest, which strips types. Measured 22 real errors, almost all hand-rolled FakeAudioContext/FakeGain doubles that do not satisfy the WebAudio types, plus possibly-undefined and empty-tuple indexing in tests/synth.test.ts. Fix the doubles and drop the exclude. Until then these tests can assert against types that do not hold."
 
 pf sprint story add --title "Rename the cabinet bucket arcade-lobby -> arcade-cabinet" \
   --description "Spec §6.2. arcade-lobby now holds the whole cabinet, not just the lobby. Cosmetic; costs one custom-domain rebind. Not the bucket named 'arcade', which is the assets bucket."
