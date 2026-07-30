@@ -18,6 +18,40 @@
 //
 // RED until GREEN lands the wiring. Run from the orchestrator root:
 //   npm test   (→ node --test 'tests/**/*.test.mjs')
+//
+// ===========================================================================
+// MONOREPO MIGRATION (Task 11 — centipede imported as plugins/centipede)
+// ===========================================================================
+//
+// NOTHING WAS REMOVED FROM THIS FILE, and that is a measurement, not an
+// oversight. Unlike battlezone's and red-baron's bootstrap suites, this one
+// never carried the two assertions the import retires: there is no
+// `.gitignore ignores centipede/` assertion here and no `centipede/.git exists
+// with a develop branch` assertion. The header above says why — both landed
+// with the repo bootstrap (commit 43f388c) and were explicitly declared NOT
+// guarded here. So the import found nothing false by design to retire, and all
+// five tests below still pass against live orchestrator config.
+//
+// Their owners, so the tasks that retire them can find them:
+//
+//   TASK 19 (one dev server — collapses the eight pinned ports and
+//            scripts/serve.mjs)
+//     - `justfile \`games\` lists centipede (test-all/build-all fleet coverage)`
+//     - `justfile \`subrepos\` lists centipede (install-all + fleet ops coverage)`
+//     - `justfile vars do not regress the existing games`
+//     - `\`serve\` launches centipede alongside the fleet, on its pinned port`
+//       NOTE: still GREEN but already STALE in the same way red-baron's is — it
+//       asserts `job.cwd === <root>/centipede`, which is now wrong on disk
+//       (plugins/centipede). It reads scripts/serve.mjs's spec, not the
+//       filesystem, so it cannot tell. Fix both together.
+//
+//   TASK 22 (docs — CLAUDE.md, repos.yaml)
+//     - `CLAUDE.md port table row 5278 is live, not reserved`
+//
+// Removing any of them here would delete a live guard and hand this task's
+// breakage to the task that owns it; leaving a red one would do the reverse.
+// Neither happened: `npm run test:orchestrator` is 290 pass / 0 fail / 0 skipped
+// both before and after the import.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

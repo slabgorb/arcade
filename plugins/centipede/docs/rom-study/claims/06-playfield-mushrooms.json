@@ -1,0 +1,383 @@
+[
+  {
+    "id": "PM-1",
+    "claim": "PLYFLD = 0x400 (hex; 1024 decimal). The playfield RAM is 30 cells WIDE by 32 HIGH, occupying 0x400-0x7BF (960 bytes = 30*32). Radix is hex (inherited .RADIX 16 from CENDE4), so 400 is 0x400, not decimal 400.",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 61,
+      "verbatim": "PLYFLD\t=400\t\t\t;30 WIDE BY 32 HIGH (400-7BF)"
+    },
+    "corroboration": {
+      "file": "src/mame/atari/centiped.cpp",
+      "line": 2377,
+      "note": "MAME cabinet ROT270 — the 30-wide x 32-high playfield RAM is mounted on a vertically rotated monitor. Addressing convention: the vertical screen index v = addr & 0x1F (0-31, 32 HIGH); the horizontal index h = (addr - 0x400) >> 5 (0-29, 30 WIDE). v=0x1F is the top (score) row, v=0,1 the bottom (player) rows."
+    }
+  },
+  {
+    "id": "PM-2",
+    "claim": "MUSH is the running count of mushrooms on the LOWER part of the screen (the flea-spawn / player zone). It is a per-player 2-byte cell.",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 222,
+      "verbatim": "MUSH:\t.BLKB 2\t\t\t;NUMBER OF MUSHROOMS ON LOWER PART OF SCREEN"
+    }
+  },
+  {
+    "id": "PM-3",
+    "claim": "MEM is the 2-byte playfield ADDRESS POINTER the RESTOR sweep walks while restoring mushrooms after the player's death. MEM+1 == 0 means the sweep is idle/done.",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 223,
+      "verbatim": "MEM:\t.BLKB 2\t\t\t;PLAYFIELD ADDRESS POINTER FOR RESTORING MUSHROOMS."
+    }
+  },
+  {
+    "id": "PM-4",
+    "claim": "INIT clears the whole playfield (0x400 base) before seeding. The clear loop stamps 0 across PLYFLD, PLYFLD+0x100, +0x200, +0x300 for X=0..0xFF, i.e. 0x400-0x7FF.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1212,
+      "verbatim": "10$:\tSTA AX,PLYFLD\t\t;CLEAR PLAYFIELD"
+    }
+  },
+  {
+    "id": "PM-5",
+    "claim": "Initial mushroom seeding: the column-walk (TEMP1) starts at 0x1B (27 decimal). TEMP1 supplies the low 5 address bits (the vertical index v) of each placement and is DETERMINISTIC — only the row/horizontal bits come from the RNG.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1220,
+      "verbatim": "\tLDX I,1B"
+    }
+  },
+  {
+    "id": "PM-6",
+    "claim": "The seeding loop counter is `45.` — the TRAILING PERIOD makes it DECIMAL 45 inside this otherwise-hex file. With the DEX/BPL loop tail (PM-14) this yields 46 placement ATTEMPTS (X = 45 down through 0 inclusive), not 45.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1222,
+      "verbatim": "\tLDX I,45."
+    }
+  },
+  {
+    "id": "PM-7",
+    "claim": "Seeding placement reads RNGEN (the POKEY hardware random-number generator) for the row/horizontal position. This hardware entropy is the ONLY ROM randomness the sim replaces — with the seeded @arcade/shared/rng (mulberry32). The COUNTS, the column walk, the 0x3F value and the reserved rows are ROM facts; the rng stream mapping is adapter policy.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1223,
+      "verbatim": "20$:\tLDA RNGEN\t\t;RANDOM NUMBER"
+    }
+  },
+  {
+    "id": "PM-8",
+    "claim": "MUSH-count boundary: a placement's vertical index (TEMP2 & 0x1F) compared to 0x0C (12 decimal). At or above 0x0C is the UPPER part of the screen and is NOT counted toward MUSH; below 0x0C is the lower part and IS counted.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1241,
+      "verbatim": "25$:\tCMP I,0C"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1242,
+      "note": "BCS 30$ ;IF ON UPPER PART OF SCREEN — the branch that skips the MUSH increment for v >= 0x0C."
+    }
+  },
+  {
+    "id": "PM-9",
+    "claim": "For a lower-screen placement onto an empty cell, MUSH (the lower-screen mushroom count) is incremented by one.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1246,
+      "verbatim": "\tINC X,MUSH-1\t\t;ADD ONE TO MUSHROOM COUNT"
+    }
+  },
+  {
+    "id": "PM-10",
+    "claim": "Each seeded obstacle is a FULL mushroom = 0x3F (hex; 63 decimal). The seeding writes 0x3F (EOR CKC0, which is 0 in the upright cabinet).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1247,
+      "verbatim": "30$:\tLDA I,3F"
+    }
+  },
+  {
+    "id": "PM-11",
+    "claim": "The full-mushroom value is stamped into the playfield at the computed address (TEMP2).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1249,
+      "verbatim": "\tSTA NY,TEMP2\t\t;PUT UP OBSTACLE"
+    }
+  },
+  {
+    "id": "PM-12",
+    "claim": "The column walk stays off the bottom rows: after decrementing TEMP1, if the result is below 2 (0x02) it is NOT used — the walk resets (PM-13). So seeded mushrooms occupy vertical index v in [0x02, 0x1B]; rows v=0 and v=1 (the bottom/player rows) are never seeded.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1253,
+      "verbatim": "\tCMP I,2"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1254,
+      "note": "BCS 35$ ;STAY OFF BOTTOM ROW — keeps TEMP1 >= 2."
+    }
+  },
+  {
+    "id": "PM-13",
+    "claim": "When the column walk would drop below 2 it wraps back to 0x1B (the start), so the deterministic v-sequence cycles through 0x1B..0x02 across the 46 attempts.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1255,
+      "verbatim": "\tLDA I,1B"
+    }
+  },
+  {
+    "id": "PM-14",
+    "claim": "The seeding loop tail is DEX / BPL, so with the initial count 45. (decimal, PM-6) it runs 46 times (X = 45 down to 0, then DEX makes -1 and BPL exits). 46 placement attempts total.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1259,
+      "verbatim": "\tBPL 20$\t\t\t;PUT UP OBSTACLES"
+    }
+  },
+  {
+    "id": "PM-15",
+    "claim": "When a shot hits an obstacle, its picture is masked to the low 6 bits (& 0x3F) to read the mushroom state.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2151,
+      "verbatim": "105$:\tAND I,3F"
+    }
+  },
+  {
+    "id": "PM-16",
+    "claim": "Mushroom picture codes occupy 0x38-0x3F: a masked value BELOW 0x38 is NOT a mushroom (the shot passes it). So 'is a mushroom' == (cell & 0x3F) >= 0x38.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2152,
+      "verbatim": "\tCMP I,38"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2153,
+      "note": "BCC 108$ ;IF NOT A MUSHROOM — branch taken for values < 0x38."
+    }
+  },
+  {
+    "id": "PM-17",
+    "claim": "A shot DECREMENTS the mushroom picture code by 1 (SBC I,1 with carry set). Full normal mushroom 0x3F steps 0x3F->0x3E->0x3D->0x3C on successive hits.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2154,
+      "verbatim": "\tSBC I,1\t\t\t;CARRY IS SET"
+    }
+  },
+  {
+    "id": "PM-18",
+    "claim": "A NORMAL mushroom (band 0x3C-0x3F) is DESTROYED when the decrement reaches 0x3B — i.e. after 4 shots on a full 0x3F (0x3F->0x3E->0x3D->0x3C->destroyed). MUSHROOM_HP = 4.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2155,
+      "verbatim": "\tCMP I,3B"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2156,
+      "note": "BEQ 106$ ;END OF MUSHROOM — the destroy branch for the normal band."
+    }
+  },
+  {
+    "id": "PM-19",
+    "claim": "A POISONED mushroom (band 0x38-0x3B, distinguished from normal by bit 0x04 clear) is DESTROYED when the decrement reaches 0x37 — 4 shots on a full poisoned 0x3B. Both destroy thresholds (0x3B normal, 0x37 poison) prevent a normal mushroom decrementing INTO the poison band.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2157,
+      "verbatim": "\tCMP I,37"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2158,
+      "note": "BNE 107$ ;NOT END OF MUSHROOM — fall-through to 106$ (destroy) only when the value is 0x37."
+    }
+  },
+  {
+    "id": "PM-20",
+    "claim": "DESTROYING a mushroom with a shot awards 1 point (LDA I,01 = 0x01; added in BCD, so 1 point). The point is awarded only on the destroying hit, not on partial hits.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2161,
+      "verbatim": "\tLDA I,01"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2162,
+      "note": "JSR SCORN1 ;ADD 1 POINT FOR MUSHROOM."
+    }
+  },
+  {
+    "id": "PM-21",
+    "claim": "When a shot makes a mushroom disappear, MUSHDC is called to decrement the lower-screen mushroom count.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2168,
+      "verbatim": "\tJSR MUSHDC\t\t;DEC MUSHROOMS"
+    }
+  },
+  {
+    "id": "PM-22",
+    "claim": "The RESTOR sweep is ARMED when the player finishes exploding (EXPLOD): MEM is set to 0x0400 (MEM = 0, MEM+1 = 4), i.e. the playfield base. This is why partial/poisoned mushrooms are restored 'after your death'.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 997,
+      "verbatim": "\tSTA MEM+1\t\t;RESTORE MUSHROOMS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 996,
+      "note": "LDA I,4 sets MEM+1 = 0x04; the preceding STA MEM (line 995, after LDA I,0) sets MEM = 0x00 — together MEM = 0x0400 = PLYFLD."
+    }
+  },
+  {
+    "id": "PM-23",
+    "claim": "RESTOR is called every frame (JSR RESTOR from MAINLOOP) but does one restore only when FRAME & 0x07 == 0 — i.e. every 8 frames. The adjacent comment 'EVERY 16 FRAMES' is WRONG; the code (AND I,07) wins: cadence is 8 frames.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1831,
+      "verbatim": "\tAND I,07"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1832,
+      "note": "BNE 5$ ;EVERY 16 FRAMES — the comment misstates the cadence; AND I,07 masks 3 bits = every 8 frames. Recorded as a code-vs-comment divergence in open-questions.md."
+    }
+  },
+  {
+    "id": "PM-24",
+    "claim": "RESTOR waits for the player-explosion sound (CHAN5) to finish before restoring — the restore animation begins only after the death explosion.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1834,
+      "verbatim": "\tBNE 5$\t\t\t;WAIT FOR PLAYER EXPLOSION TO FINISH"
+    }
+  },
+  {
+    "id": "PM-25",
+    "claim": "RESTOR restores a DAMAGED/POISONED mushroom to a full normal mushroom 0x3F. A cell with (value & 0x3F) in [0x38, 0x3E] is restored to 0x3F; a full mushroom (0x3F) is skipped (BCS 20$ on CMP I,3F); non-mushroom cells (< 0x38) are skipped.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1851,
+      "verbatim": "\tLDA I,3F"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1850,
+      "note": "CMP I,3F / BCS 20$ ;IF FULL MUSHROOM — full mushrooms (0x3F) are not restored; only the 0x38-0x3E partial/poison band is."
+    }
+  },
+  {
+    "id": "PM-26",
+    "claim": "RESTOR awards 5 points for each restored mushroom (LDA I,5, added in BCD = 5 points). This matches CENTIP.DOC's 'partial/poisoned mushrooms (after your death) = 5'.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1856,
+      "verbatim": "\tLDA I,5"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1857,
+      "note": "JSR SCORN1 ;AWARD 5 PTS. FOR RESTORED MUSHROOMS."
+    }
+  },
+  {
+    "id": "PM-27",
+    "claim": "The TOP row (vertical index v = 0x1F) is reserved: MUSHER refuses to drop a mushroom there. This is the score/status row at the top of the screen.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1622,
+      "verbatim": "\tCMP I,1F"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1623,
+      "note": "BEQ 20$ ;DON'T PUT UP MUSHROOM IF ON TOP ROW."
+    }
+  },
+  {
+    "id": "PM-28",
+    "claim": "The player row (vertical index v = 1) is reserved: MUSHER refuses to drop a mushroom on the same row as the player.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1632,
+      "verbatim": "5$:\tCMP I,01"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1633,
+      "note": "BEQ 20$ ;NOT ON THE SAME ROW AS THE PLAYER."
+    }
+  },
+  {
+    "id": "PM-29",
+    "claim": "A mushroom dropped by a killed centipede segment (MUSHER) is a FULL mushroom 0x3F — the same full value as seeding (PM-10) and RESTOR (PM-25).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1638,
+      "verbatim": "10$:\tLDA I,3F"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1640,
+      "note": "STA NY,OBST ;PUT MUSHROOM ON SCREEN."
+    }
+  },
+  {
+    "id": "PM-30",
+    "claim": "MUSHDC decrements the lower-screen mushroom count (MUSH) only when the destroyed mushroom's vertical index is below 0x0C — the same lower/upper boundary the seeding count uses (PM-8).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1612,
+      "verbatim": "\tDEC X,MUSH-1\t\t;CORRECT MUSHROOM COURT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1609,
+      "note": "5$: CMP I,0C / BCS 10$ ;IF MUSHROOM IS ON UPPER HALF OF SCREEN — decrement skipped for v >= 0x0C."
+    }
+  },
+  {
+    "id": "PM-31",
+    "claim": "Scoring is BCD: SCORN1 sets decimal mode (SED) before adding points, so score constants like 0x01 (mushroom) and 0x05 (restore) add as decimal 1 and 5.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1951,
+      "verbatim": "\tSED"
+    }
+  },
+  {
+    "id": "PM-32",
+    "claim": "AC-2 diff: CENTIP.DOC (rev-1 design doc) scoring prose says 'Destroying a mushroom = 1'. This AGREES with rev-4 code (PM-20, LDA I,01). No divergence — 1 point is safe to bake.",
+    "source": {
+      "file": "CENTIP.DOC",
+      "line": 111,
+      "verbatim": "1)Destroying a mushroom = 1"
+    }
+  },
+  {
+    "id": "PM-33",
+    "claim": "AC-2 diff: CENTIP.DOC (rev-1) says 'Partial mushrooms or \"poisoned\" mushrooms (after your death) = 5'. This AGREES with rev-4 RESTOR (PM-26, LDA I,5) and confirms the trigger is the player's death (PM-22). No divergence — 5 points is safe to bake.",
+    "source": {
+      "file": "CENTIP.DOC",
+      "line": 112,
+      "verbatim": "2)Partial mushrooms or \"poisoned\" mushrooms (after your death) = 5"
+    }
+  },
+  {
+    "id": "PM-34",
+    "claim": "AC-2 diff: CENTIP.DOC (rev-1) says 'There will be no mushrooms on the bottom line' (singular). Rev-4 code reserves MORE rows: seeding stays off v=0 AND v=1 (PM-12), and MUSHER also reserves the top score row v=0x1F (PM-27) and the player row v=1 (PM-28). Code wins; the divergence is recorded in open-questions.md.",
+    "source": {
+      "file": "CENTIP.DOC",
+      "line": 142,
+      "verbatim": "scattered throughout the screen.  There will be no mushrooms on the bottom line."
+    }
+  }
+]

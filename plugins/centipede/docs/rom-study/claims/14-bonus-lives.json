@@ -1,0 +1,191 @@
+[
+ {
+  "id": "BL-1",
+  "claim": "BONUSV is the DIP increment table: four .WORD entries, hex under .RADIX 16, whose BCD digit pairs (0100/0120/0150/0200) are scaled *100 to the bonus-life options 10,000/12,000/15,000/20,000",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 248,
+   "verbatim": "BONUSV:\t.WORD 100,120,150,200\t;*100 PER BONUS LIFE"
+  }
+ },
+ {
+  "id": "BL-2",
+  "claim": "The bonus increment is DIP-selected from OPTNS bits D4-D5 (masked with hex 30) — not modelled by the clone, which hardcodes the first entry",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 240,
+   "verbatim": "\tAND I,30\t\t;D4-D5=BONUS LEVEL OPTIONS"
+  }
+ },
+ {
+  "id": "BL-3",
+  "claim": "BONUS1 returns the low byte of the selected BONUSV word as the increment",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 245,
+   "verbatim": "\tLDA Y,BONUSV\t\t;GET BONUS VALUE INCREMENT"
+  }
+ },
+ {
+  "id": "BL-4",
+  "claim": "INIT seeds the FIRST threshold from the SAME BONUSV entry it uses as the increment, so the first bonus life lands at the increment itself",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 857,
+   "verbatim": "\tLDA Y,BONUSV+1\t\t;SET INITIAL BONUS VALUES"
+  }
+ },
+ {
+  "id": "BL-5",
+  "claim": "The threshold compare runs with decimal mode CLEARED — packed BCD orders identically to binary, so the magnitude test is a plain 16-bit compare",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1967,
+   "verbatim": "15$:\tCLD"
+  }
+ },
+ {
+  "id": "BL-6",
+  "claim": "The compare's low byte is SCORE1 against BONUSL — the score's hundreds and thousands digits, so the test has 100-point granularity and never reads SCORE0",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1970,
+   "verbatim": "\tCMP X,BONUSL-1"
+  }
+ },
+ {
+  "id": "BL-7",
+  "claim": "The compare's high byte is SCORE2 against BONUSM, completing a two-byte (four BCD digit) comparison of the score in units of 100",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1972,
+   "verbatim": "\tSBC X,BONUSM-1"
+  }
+ },
+ {
+  "id": "BL-8",
+  "claim": "A score below the threshold branches away with no award and no advance",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1973,
+   "verbatim": "\tBCC 25$\t\t\t;NOT AT BONUS LEVEL"
+  }
+ },
+ {
+  "id": "BL-9",
+  "claim": "The threshold ADVANCE runs in decimal mode — the increment is added to BONUSL:BONUSM as packed BCD",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1975,
+   "verbatim": "\tSED"
+  }
+ },
+ {
+  "id": "BL-10",
+  "claim": "The high byte of the increment is added to BONUSM to set the next bonus level; the carry out of BONUSM has nowhere to go, so the level wraps at four BCD digits",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1979,
+   "verbatim": "\tLDA Y,BONUSV+1\t\t;SET NEXT BONUS LEVEL FOR THIS PLAYER"
+  }
+ },
+ {
+  "id": "BL-11",
+  "claim": "The OPTSW2 timed-play branch: with the unlimited-time default the award proceeds directly to the lives test (the branch itself is out of the clone's scope)",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1985,
+   "verbatim": "\tBEQ 18$\t\t\t;IF UNLIMITED TIME"
+  }
+ },
+ {
+  "id": "BL-12",
+  "claim": "The award ceiling is 6, tested against LIVES",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1990,
+   "verbatim": "\tCMP I,6"
+  }
+ },
+ {
+  "id": "BL-13",
+  "claim": "At six the award is refused — but the threshold has ALREADY been advanced above, so a refused bonus still moves the level",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1991,
+   "verbatim": "\tBEQ 25$\t\t\t;NO MORE LIVES 6 IS MAX"
+  }
+ },
+ {
+  "id": "BL-14",
+  "claim": "Finding LIVES above six hangs the program in a one-instruction loop (a deliberate watchdog reset), so six is an invariant rather than a clamp",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1992,
+   "verbatim": "10$:\tBCS 10$\t\t\t;OOPS-RESET"
+  }
+ },
+ {
+  "id": "BL-15",
+  "claim": "The award itself is a single INC of LIVES",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1993,
+   "verbatim": "\tINC X,LIVES-1\t\t;ADD A LIFE AS A BONUS"
+  }
+ },
+ {
+  "id": "BL-16",
+  "claim": "The bonus-life sound is a write to CHAN4 — deferred to the cp5 audio epic, not modelled here",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1995,
+   "verbatim": "\tSTA CHAN4\t\t;BONUS LIFE SOUND"
+  }
+ },
+ {
+  "id": "BL-17",
+  "claim": "LIVES counts SPARE lives, not total: INIT stores NLIVES-1 because the gun on screen is the life being played",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 851,
+   "verbatim": "\tSTX LIVES\t\t;NUMBER OF LIVES-1 (WE ARE PLAYING WITH ONE)"
+  }
+ },
+ {
+  "id": "BL-18",
+  "claim": "DLIVES draws at most six gun icons, matching the six-spare ceiling exactly",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 923,
+   "verbatim": "\tSTA TEMP1\t\t;MAX NUMBER OF LIVES"
+  }
+ },
+ {
+  "id": "BL-19",
+  "claim": "A DIFFERENT routine on the same carry: crossing a 10,000-point boundary (the carry out of SCORE1) triggers the new-head frequency bump, not the bonus life",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1959,
+   "verbatim": "\tBCC 15$\t\t\t;IF NOT ON 10K BOUNDARY"
+  }
+ },
+ {
+  "id": "BL-20",
+  "claim": "That 10,000-point boundary decrements COUNT3 to increase the frequency of new heads — a separate difficulty dial the clone does not yet model",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1962,
+   "verbatim": "\tSTA X,COUNT3-1\t\t;INCREASE FREQUENCY OF NEW HEADS"
+  }
+ },
+ {
+  "id": "BL-21",
+  "claim": "SCORNG's tail falls straight through to its exit after one award: one scoring event advances the threshold at most once, with no catch-up loop",
+  "source": {
+   "file": "CENTI4.MAC",
+   "line": 1997,
+   "verbatim": "25$:\tLDX TEMP2\t\t;RESTORE X"
+  }
+ }
+]

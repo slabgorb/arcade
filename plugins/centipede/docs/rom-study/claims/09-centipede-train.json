@@ -1,0 +1,1461 @@
+[
+  {
+    "id": "CT-1",
+    "claim": "NCENT = 12. (trailing-period DECIMAL under .RADIX 16) is the centipede segment count: motion-object slots 0-11 hold the 12 segments of the wave-1 train (glossary: slots 0-11).",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 119,
+      "verbatim": "NCENT\t=12.\t\t\t;NUMBER OF CENTIPEDES"
+    },
+    "corroboration": {
+      "file": "CENDEF.MAC",
+      "line": 119,
+      "note": "CENDEF.MAC (rev-1 equates) carries the identical line; glossary maps slots 0-11 to the 12 segments."
+    }
+  },
+  {
+    "id": "CT-2",
+    "claim": "MOBJP picture-code bit layout: bit 6 (D6) = 0 marks a centipede HEAD (set = body); bit 5 (D5) = 1 marks a POISONED head; bit 7 (D7) = 1 marks NO OBJECT (vacant/exploding). Head pictures are 0-7, turning/body 8-F.",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 132,
+      "verbatim": "\t\t\t\t;D6=0 FOR HEAD"
+    },
+    "corroboration": {
+      "file": "CENDE4.MAC",
+      "line": 133,
+      "note": ";D5=1 FOR POISONED CENTIPEDE HEAD, D7=1 FOR NO OBJECT — the poison (0x20) and dead (0x80) bits."
+    }
+  },
+  {
+    "id": "CT-3",
+    "claim": "CENTPC seeds the head (slot 0) with picture code 0x03 (LDA I,03 / STA MOBJP ;HEAD PICTURE) — one of the 8 head pictures 0-7 (bit 6 clear).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 477,
+      "verbatim": "5$:\tLDA I,03"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 478,
+      "note": "STA MOBJP ;HEAD PICTURE — the head picture is stored to slot-0 MOBJP."
+    }
+  },
+  {
+    "id": "CT-4",
+    "claim": "The head enters at VPOS 0xF8 — the top of the screen (LDA I,0F8 / EOR CKF8 / STA MOBJV). CKF8 = 0 in the 1-player upright build (CENTI4.MAC:750), so the value written is 0xF8; V decreases toward the bottom (V=8 is the player row).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 489,
+      "verbatim": "\tLDA I,0F8"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 491,
+      "note": "STA MOBJV ;VPOS — the head vertical position; 490 EOR CKF8 is a no-op upright."
+    }
+  },
+  {
+    "id": "CT-5",
+    "claim": "The head enters at HPOS 0x80 — horizontal centre of the screen (LDA I,80 / STA MOBJH ;HPOS).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 492,
+      "verbatim": "\tLDA I,80"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 493,
+      "note": "STA MOBJH ;HPOS — the head horizontal position."
+    }
+  },
+  {
+    "id": "CT-6",
+    "claim": "Body segments (slots 1..N-1) take body picture 0x42, alternating with 0x47 down the train (LDY I,42 initial; LDY I,47 ;ALTERNATE BODY SEGMENTS on underflow). Both have bit 6 set (body).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 498,
+      "verbatim": "\tLDY I,42"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 519,
+      "note": "LDY I,47 ;ALTERNATE BODY SEGMENTS — the alternate body picture cycled in at 3F underflow."
+    }
+  },
+  {
+    "id": "CT-7",
+    "claim": "Each body segment is placed 8 px away in H from the segment ahead of it (LDA I,-8 / ADC MOBJH-1, or LDA I,8 for the other direction) — so the 12 segments enter as one horizontal train spaced 8 px apart.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 512,
+      "verbatim": "30$:\tLDA I,-8"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 514,
+      "note": "ADC X,MOBJH-1 — the +/-8 offset is added to the previous segment HPOS; 509 LDA I,8 is the +8 branch."
+    }
+  },
+  {
+    "id": "CT-8",
+    "claim": "Each body segment copies the horizontal direction of the segment ahead (LDA MOBJDH-1 / STA MOBJDH ;DIRECTION) — the whole train marches as one, same heading.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 506,
+      "verbatim": "\tLDA X,MOBJDH-1"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 507,
+      "note": "STA X,MOBJDH ;DIRECTION — the copied heading; MOBJDV-1 -> MOBJDV likewise (504-505)."
+    }
+  },
+  {
+    "id": "CT-9",
+    "claim": "CENTPC finishes by setting DEAD = NCENT (LDA I,NCENT / STA DEAD-1) — all 12 segments alive at wave start.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 549,
+      "verbatim": "90$:\tLDA I,NCENT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 551,
+      "note": "STA X,DEAD-1 — the per-player DEAD count is initialised to NCENT (12)."
+    }
+  },
+  {
+    "id": "CT-10",
+    "claim": "The head horizontal step magnitude is CENTIS (the centipede speed): STY MOBJDH ;HDIR=CENTIS*1 OR -1, with the initial sign chosen from FRAME&2. CENTIS is loaded at LDA X,CENTIS-1.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 488,
+      "verbatim": "10$:\tSTY MOBJDH\t\t;HDIR=CENTIS*1 OR -1"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 479,
+      "note": "LDA X,CENTIS-1 — the centipede speed feeds both the initial MOBJDV (480) and MOBJDH (488)."
+    }
+  },
+  {
+    "id": "CT-11",
+    "claim": "MOTION steps every segment each frame: LDX I,NCENT-1 then a descending loop (DEX / BMI exit / JMP back), so slots 11..0 are updated per video frame.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1284,
+      "verbatim": "2$:\tLDX I,NCENT-1"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1471,
+      "note": "30$: DEX (1471) / BMI 35$ (1472) / JMP 5$ (1473) — the per-frame descending loop over all NCENT slots."
+    }
+  },
+  {
+    "id": "CT-12",
+    "claim": "A vacant or exploding segment is skipped: LDA MOBJP / BPL 6$ / (else) JMP 30$ ;IF EXPLOSION OR VACANT POSITION — MOBJP bit 7 set (negative) means no live object, so it is stepped past.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1292,
+      "verbatim": "\tJMP 30$\t\t\t;IF EXPLOSION OR VACANT POSITION"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1291,
+      "note": "BPL 6$ — a non-negative MOBJP (live) falls through to stepping; negative branches to the JMP 30$ skip."
+    }
+  },
+  {
+    "id": "CT-13",
+    "claim": "Horizontal march: every stepped segment advances H by its MOBJDH each frame (LDA MOBJDH / ADC MOBJH / STA MOBJH ;CHANGE HPOS). This is the unconditional per-frame march.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1447,
+      "verbatim": "\tADC X,MOBJH"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1448,
+      "note": "STA X,MOBJH ;CHANGE HPOS — 1445 LDA MOBJDH, 1446 CLC, 1447 ADC MOBJH."
+    }
+  },
+  {
+    "id": "CT-14",
+    "claim": "Vertical descent (upright, non-cocktail branch 185$): V is decremented by MOBJDV (SEC / SBC MOBJDV / STA MOBJV ;CHANGE VPOS). Since V=0xF8 is the top and V=8 the bottom, a positive DV moves the segment DOWN the screen.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1443,
+      "verbatim": "\tSBC X,MOBJDV"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1444,
+      "note": "STA X,MOBJV ;CHANGE VPOS — reached from the turn/descend path (15$ -> 18$ -> 185$), not on a plain horizontal-march frame."
+    }
+  },
+  {
+    "id": "CT-15",
+    "claim": "A segment is a HEAD when MOBJP bit 6 is clear: AND I,40 / BEQ 10$ ;HEAD routes heads to the edge/OBSTAC logic; bodies (bit 6 set) fall through to the follow-the-leader test.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1330,
+      "verbatim": "\tBEQ 10$\t\t\t;HEAD"
+    },
+    "corroboration": {
+      "file": "CENDE4.MAC",
+      "line": 132,
+      "note": ";D6=0 FOR HEAD — the picture-code bit whose clear state marks a head."
+    }
+  },
+  {
+    "id": "CT-16",
+    "claim": "For a head, MOTION consults OBSTAC on the cell ahead: JSR OBSTAC / BEQ 13$ ;NO OBSTACLE. A zero result (empty cell) skips to the overlap check; a non-zero result is a mushroom or field edge to react to.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1360,
+      "verbatim": "\tJSR OBSTAC"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1361,
+      "note": "BEQ 13$ ;NO OBSTACLE — OBSTAC returns Z=1 (A=0) for an empty cell."
+    }
+  },
+  {
+    "id": "CT-17",
+    "claim": "A field edge or a NORMAL mushroom makes the head TURN (drop a row + reverse): CMP I,38 / BCC 15$ ;IF NOT A MUSHROOM (code < 0x38 = edge/non-mushroom) and CMP I,3C / BCS 15$ ;IF NOT A POISONED MUSHROOM (code >= 0x3C = normal mushroom 0x3C-0x3F) both branch to the turn handler 15$.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1363,
+      "verbatim": "\tBCC 15$\t\t\t;IF NOT A MUSHROOM"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1365,
+      "note": "BCS 15$ ;IF NOT A POISIONED MUSHROOM (sic) — a normal mushroom 0x3C-0x3F turns; only 0x38-0x3B is poison."
+    }
+  },
+  {
+    "id": "CT-18",
+    "claim": "A POISONED mushroom (code 0x38-0x3B, i.e. >=0x38 and <0x3C) sets the head poisoned: LDA MOBJP / ORA I,20 / STA MOBJP ;SET HEAD AS POISONED — bit 5 (0x20) becomes the poison flag.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1368,
+      "verbatim": "\tSTA X,MOBJP\t\t;SET HEAD AS POISONED"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1367,
+      "note": "ORA I,20 — sets the poison bit on the head picture code (cp1-4 poison band, PM-19: destroy at 0x37)."
+    }
+  },
+  {
+    "id": "CT-19",
+    "claim": "A POISONED head DIVES: at the top of the head logic, LDA MOBJP / AND I,20 / BNE 15$ ;IF HEAD IS POISONED GO TO BOTTOM OF SCREEN sends it straight to the descend path every frame, bypassing the edge/OBSTAC checks, so it plunges vertically to the bottom zone.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1341,
+      "verbatim": "\tBNE 15$\t\t\t;IF HEAD IS POISONED GO TO BOTTOM OF SCREEN"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1340,
+      "note": "AND I,20 — tests the poison bit; when set the head descends unconditionally (the dive)."
+    }
+  },
+  {
+    "id": "CT-20",
+    "claim": "The turn reverses the horizontal heading via COMP (negate): LDA MOBJDH / JSR COMP / STA MOBJDH ;CHANGE DIRECTION — the classic bounce off a mushroom/wall.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1457,
+      "verbatim": "\tSTA X,MOBJDH\t\t;CHANGE DIRECTION"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1456,
+      "note": "JSR COMP — negates MOBJDH so the segment reverses horizontal travel."
+    }
+  },
+  {
+    "id": "CT-21",
+    "claim": "The horizontal reversal is gated to a cell boundary: after the H update, AND I,07 / CMP I,04 / BNE 30$ ;NOT TIME TO CHANGE DIRECTION — the direction only flips when V&7 == 4 (mid-cell), which paces the drop-and-reverse to one row per turn.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1453,
+      "verbatim": "\tCMP I,04"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1454,
+      "note": "BNE 30$ ;NOT TIME TO CHANGE DIRECTION — 1451 LDA MOBJV, 1452 AND I,07 select the boundary."
+    }
+  },
+  {
+    "id": "CT-22",
+    "claim": "A BODY segment turns/descends only when it has caught up to where the segment ahead turned: LDA MOBJV-1 / SBC MOBJV / ABS / CMP I,08 / BCS 15$ ;DIFFERENCE=8 — a vertical gap of 8 (one cell) to the leader triggers the body to follow down; otherwise it just marches horizontally (JMP 20$).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1336,
+      "verbatim": "\tBCS 15$\t\t\t;DIFFERENCE=8"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1333,
+      "note": "SBC X,MOBJV computes |prev.V - cur.V| (1334 JSR ABS); >=8 (1335 CMP I,08) means follow the leader down."
+    }
+  },
+  {
+    "id": "CT-23",
+    "claim": "When a non-body, non-poisoned head reaches the bottom row (V < 9), NEWD is set to start adding new heads: EOR CKF8 / CMP I,9 / BCS (skip) ... STY NEWD ;START ADDING NEW HEADS (Y=1). This is NEWHD’s trigger.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1310,
+      "verbatim": "\tSTY NEWD\t\t;START ADDING NEW HEADS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1305,
+      "note": "CMP I,9 — a head with V < 9 is on the bottom row; 1306 BCS 71$ skips when not on the bottom."
+    }
+  },
+  {
+    "id": "CT-24",
+    "claim": "At the bottom row a head clears its poison bit before bouncing back up: LDA MOBJP / AND I,0DF / STA MOBJP ;CLEAR POISONED BIT — 0xDF masks off bit 5 (0x20), ending the dive.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1396,
+      "verbatim": "\tSTA X,MOBJP\t\t;CLEAR POISONED BIT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1395,
+      "note": "AND I,0DF — clears the poison bit (0x20) so the head resumes normal marching after the dive reaches the bottom."
+    }
+  },
+  {
+    "id": "CT-25",
+    "claim": "Descent continues while the segment is mid-cell: 71$: AND I,07 / BNE 15$ ;DON'T SPEED UP IF TURNING — a segment whose V is not on an 8-px boundary (V&7 != 0) keeps taking the turn/descend path, so a drop spans a full cell.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1313,
+      "verbatim": "\tBNE 15$\t\t\t;DON'T SPEED UP IF TURNING"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1312,
+      "note": "AND I,07 on MOBJV (upright, post EOR CKF8) — non-zero means mid-descent, forcing the 15$ path."
+    }
+  },
+  {
+    "id": "CT-26",
+    "claim": "MOTION is a no-op during DELAY (between waves and while the player is dead): MOTION: LDA DELAY / BEQ 2$ ;IF NO DELAY / RTS — the train freezes until DELAY clears.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1281,
+      "verbatim": "\tBEQ 2$\t\t\t;IF NO DELAY"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1280,
+      "note": "MOTION: LDA DELAY — a non-zero DELAY returns immediately (1282 RTS) without stepping any segment."
+    }
+  },
+  {
+    "id": "CT-27",
+    "claim": "OBSTAC is a single shared routine with a fixed register contract: ENTRY (A)=MOBJV, (Y)=MOBJDH, (TEMP1)=MOBJH; EXIT (Z)=0=OBSTACLE / =1=NO OBSTACLE, (A)=playfield stamp code, (OBST)=cell address. MOTION, MOVE (the gun) and SHOOT (the shot) all call this one routine.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1692,
+      "verbatim": ";ENTRY\t(A)=MOBJV"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1695,
+      "note": ";EXIT (Z)=0=OBSTACLE — the zero flag reports presence, A the cell code (1698)."
+    }
+  },
+  {
+    "id": "CT-28",
+    "claim": "OBSTAC probes the cell 8*direction AHEAD of the object: TYA / ASL / ASL / ASL ;8*DIRECTION / ADC TEMP1 ;LOOK FOR OBSTACLE AT — the entry Y (MOBJDH) is multiplied by 8 and added to H, so a moving centipede looks one cell ahead in its travel direction. The gun and shot pass Y=0 (probe in place); only the centipede uses a non-zero direction.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1711,
+      "verbatim": "\tASL\t\t\t;8*DIRECTION"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1713,
+      "note": "ADC TEMP1 ;LOOK FOR OBSTACLE AT (H'=H+8*D) — the direction-offset probe that the dir=0 consumers (PS-19 shot) collapse to a straight look."
+    }
+  },
+  {
+    "id": "CT-29",
+    "claim": "OBSTAC maps the probe H’ to a grid column reversed about 0xF7 and floored to 8 px: LDA I,0F7 / SBC TEMP1 / (5$) AND I,0F8 — hcol = ((0xF7-H’) & 0xF8) >> 3. The row is (V+4)>>3 round-to-nearest (ADC I,0). This is the identical addressing cp1-5 pinned for the shot at dir=0 (PS-16/17/18).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1715,
+      "verbatim": "\tLDA I,0F7"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1720,
+      "note": "AND I,0F8 floors to the 8-px column; PS-16/17/18 pin the same (V+4)>>3 row and 0x400 base for the dir=0 shot."
+    }
+  },
+  {
+    "id": "CT-30",
+    "claim": "The GUN is blocked from gliding into a mushroom cell horizontally: MOVE builds the candidate PLAYH, sets LDY I,0 (direction 0, probe in place) / LDA PLAYV / JSR OBSTAC / BNE 5$ ;OBSTACLE ENCOUNTERED, and on an obstacle 5$: LDA PLAYH reloads the OLD PLAYH — so the move is refused, the gun stays put.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1503,
+      "verbatim": "\tBNE 5$\t\t\t;OBSTACLE ENCOUNTERED"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1515,
+      "note": "5$: LDA PLAYH restores the pre-move H on an obstacle; 1500 LDY I,0 is the dir=0 (probe-in-place) OBSTAC call."
+    }
+  },
+  {
+    "id": "CT-31",
+    "claim": "The GUN is blocked vertically the same way: with the (already horizontally-updated) PLAYH in TEMP1 and LDY I,0, MOVE runs JSR OBSTAC / BNE 45$ ;OBSTACLE ENCOUNTERED on the candidate PLAYV, and 45$: LDA PLAYV reloads the OLD PLAYV — the gun cannot step into a mushroom cell on either axis.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1536,
+      "verbatim": "\tBNE 45$\t\t\t;OBSTACLE ENCOUNTERED"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1560,
+      "note": "45$: LDA PLAYV restores the pre-move V on an obstacle; 1534 LDY I,0 dir=0. Horizontal is resolved first (1497-1516), so vertical probes the new column."
+    }
+  },
+  {
+    "id": "CT-32",
+    "claim": "SHOOT's shot-vs-object collision (CENTI4.MAC:2171-2303, NOT OVRLAP:1746 which is the inter-segment overlap check) scans every motion-object slot from 13 down to 0 (LDX I,13. then 16$: DEX / JMP 115$). The FIRST slot in that high->low scan that satisfies both collision windows is killed and the loop exits (JMP 19$), so among overlapping segments the HIGHEST slot index (tail-ward) wins — deterministic.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2171,
+      "verbatim": "11$:\tLDX I,13."
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2294,
+      "note": "16$: DEX (2292) / BMI 30$ (2293) / JMP 115$ (2294) is the descending scan; a hit takes JMP 19$ (2289) and never DEXes again, so the first (highest-index) match wins."
+    }
+  },
+  {
+    "id": "CT-33",
+    "claim": "The shot-vs-segment VERTICAL collision window is |MOBJV - SHOTV| < 5: after |dV| is computed and put in Y, 12$: CPY I,5 / BCS 132$ rejects the segment when the gap is 5 or more. (This 12$ path is taken for any non-flea object, CPX I,12. / BNE 12$ at 2188-2189.)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2202,
+      "verbatim": "12$:\tCPY I,5\t\t\t;SHOT UP 6, AND CENTS DOWN 2 (SELL AT 20)"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2203,
+      "note": "BCS 132$ ;NOT IN V WINDOW — carry set (Y>=5) skips to 132$ (JMP 16$, next object). The shot advances +7/frame (PS-14) < 2*5-1=9, so consecutive frames' V windows overlap: no segment is tunneled vertically."
+    }
+  },
+  {
+    "id": "CT-34",
+    "claim": "The shot-vs-segment HORIZONTAL collision window is |MOBJH - SHOTH| < 6: with |dH| in Y for a centipede segment (CPX I,12. / BCC 142$ at 2211-2212), 142$: CPY I,6 / BCS 16$ rejects the segment when the horizontal gap is 6 or more. Both windows must hold for a hit.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2266,
+      "verbatim": "142$:\tCPY I,6"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2267,
+      "note": "BCS 16$ ;NOT IN H WINDOW — carry set (Y>=6) skips to 16$ (next object). SHOTH is constant (the shot flies straight up its own column, PS-19)."
+    }
+  },
+  {
+    "id": "CT-35",
+    "claim": "Killing a BODY segment scores 10 points: LDY I,10 (;BODY=10 POINT) loads the low BCD digit-pair 0x10 (which SED-mode addition renders as decimal 10) with the score MSB (TEMP1) left 0. A segment is a body when MOBJP bit 6 is set: AND I,40 / BNE 145$ ;IF BODY SEGMENT keeps the body value.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2270,
+      "verbatim": "\tLDY I,10\t\t;BODY=10 POINT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2273,
+      "note": "2271-2272 LDA X,MOBJP / AND I,40; BNE 145$ (2273) branches to the SCORNG call keeping Y=0x10 and TEMP1=0 for a body — decimal 10 points."
+    }
+  },
+  {
+    "id": "CT-36",
+    "claim": "Killing a HEAD segment scores 100 points: for a head (bit 6 clear, so AND I,40 is zero and the BNE is NOT taken) LDY I,0 (;HEAD=100 POINTS) zeros the low digit-pair and INC TEMP1 sets the score MSB to 0x01, giving the BCD value 0x0100 = 100 points.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2274,
+      "verbatim": "\tLDY I,0\t\t\t;HEAD=100 POINTS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2275,
+      "note": "INC TEMP1 makes the 2nd score byte (SCORE1, hundreds) = 1; with the low digit-pair 0 the added score is 0x0100 BCD = 100."
+    }
+  },
+  {
+    "id": "CT-37",
+    "claim": "Scoring is BCD: SCORNG/SCORN1 runs SED (set-decimal) before ADC X,SCORE0-1, so the byte values passed in add as decimal digit-pairs. ENTRY (A)=points 1st digit-pair (SCORE0), (TEMP1)=points 2nd digit-pair (SCORE1) — the reason 0x10 renders 10 and 0x0100 renders 100.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1951,
+      "verbatim": "\tSED"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1938,
+      "note": "1937-1938 document the entry contract: A=SCORE 1st digit, TEMP1=SCORE+1 2nd digit; 1951 SED / 1967 CLD bracket the decimal-mode add (1953-1958)."
+    }
+  },
+  {
+    "id": "CT-38",
+    "claim": "CENTIP.DOC (rev-1, Ed Logg 5/13/81) prose scoring AGREES with rev-4 code for segments: '3)Centipede body = 10' and '4)Centipede head = 100'. Open question 4 (diff rev-1 prose vs rev-4 code; code wins) resolves with NO divergence for head/body scoring — both give body 10 / head 100 (rev-4 CT-35/36). No open-questions correction needed for this constant.",
+    "source": {
+      "file": "CENTIP.DOC",
+      "line": 113,
+      "verbatim": "3)Centipede body = 10"
+    },
+    "corroboration": {
+      "file": "CENTIP.DOC",
+      "line": 114,
+      "note": "'4)Centipede head = 100' — the head value; both match rev-4 CENTI4.MAC:2270/2274-2275 (CT-35/36). Recorded in open-questions.md #4 as an AGREEMENT, mirroring the cp1-4 mushroom-scoring finding."
+    }
+  },
+  {
+    "id": "CT-39",
+    "claim": "The shot-kill SPLITS the train: after scoring, the segment immediately BEHIND the kill (slot X+1, MOBJP+1) is promoted to a HEAD by clearing bit 6 (AND I,0BF) and storing it back (STA X,MOBJP+1 ;NEW HEAD). Slots 0..X-1 keep marching under the original head while slots X+1..last become a second independent train led by the new head — two trains from one.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2283,
+      "verbatim": "\tSTA X,MOBJP+1\t\t;NEW HEAD"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2282,
+      "note": "AND I,0BF (0xBF = ~0x40) clears only the body bit, leaving the poison bit (0x20) and low picture bits intact, so a body 0x42->0x02 / 0x47->0x07 becomes a valid head picture (0-7)."
+    }
+  },
+  {
+    "id": "CT-40",
+    "claim": "The split promotion is guarded: it is SKIPPED (BEQ/BMI 15$, straight to the mushroom drop) when the killed segment is the LAST slot (CPX I,NCENT-1 / BEQ 15$ ;END SEGMENT(LAST CENTI) — no segment behind it) or when the segment behind is already dead (LDA X,MOBJP+1 / BMI 15$ ;END SEGMENT(NEXT DEAD) — MOBJP+1 bit 7 set). Only a live trailing segment is promoted.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2278,
+      "verbatim": "\tCPX I,NCENT-1"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2281,
+      "note": "2280-2281 LDA X,MOBJP+1 / BMI 15$ — a negative (bit-7-set, vacant/exploding) trailing pic skips promotion; 2278-2279 CPX I,NCENT-1 / BEQ 15$ skips at the tail slot."
+    }
+  },
+  {
+    "id": "CT-41",
+    "claim": "A killed segment is set to the EXPLOSION picture 0xFF: after scoring/split/mushroom-drop, 19$: LDA I,0FF / STA X,MOBJP ;EXPLOSION PICTURE stamps MOBJP = 0xFF (bit 7 set, so MOTION skips it as vacant, CT-12). This is the first frame of the explosion animation EXPLOD then advances.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2302,
+      "verbatim": "\tSTA X,MOBJP\t\t;EXPLOSION PICTURE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2301,
+      "note": "2301 LDA I,0FF is the explosion start picture; 2300 STA CHAN0 fires the explosion sound alongside it."
+    }
+  },
+  {
+    "id": "CT-42",
+    "claim": "After a segment kill the shot is re-armed to the gun: 20$: JSR RSHOT ;POSITION SHOT repositions the single slot-14 shot back onto the gun (SHOTV = PLAYV+4, SHOTH = PLAYH — PS-11), so the one-shot economy holds: exactly one shot exists, and it is consumed by the hit before the player can fire again.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2303,
+      "verbatim": "20$:\tJSR RSHOT\t\t;POSITION SHOT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2301,
+      "note": "RSHOT (CENTI4.MAC:1581) re-glues the shot to the gun; the same routine cp1-5 pinned for off-top/mushroom re-arm (PS-11/12). One shot in flight ever."
+    }
+  },
+  {
+    "id": "CT-43",
+    "claim": "EXPLOD (CENTI4.MAC:963) advances each exploding segment one animation frame per call: for a segment whose MOBJP is in the exploding range it does DEC X,MOBJP ;NEXT PICTURE. A kill starts at 0xFF (CT-41) and EXPLOD decrements 0xFF->0xFE->...->0xFA on successive frames (segment explosions have NO frame-rate gate — the FRAME&3 slow-down at 985-987 applies only to the PLAYER explosion).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 969,
+      "verbatim": "\tDEC X,MOBJP\t\t;NEXT PICTURE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 963,
+      "note": "EXPLOD: LDX I,13. iterates slots 13..0; 964-966 skip live segments (MOBJP < 0xF9), the DEC path runs for MOBJP >= 0xFA."
+    }
+  },
+  {
+    "id": "CT-44",
+    "claim": "A segment is FINISHED exploding at 0xF9: CPY I,0FA / BCC 20$ ;IF FINISHED EXPLODING stops decrementing once MOBJP drops below 0xFA (i.e. reaches 0xF9). So the explosion runs the 6 pictures 0xFF,0xFE,0xFD,0xFC,0xFB,0xFA (one frame each) and then rests at 0xF9 — a vacant slot (bit 7 set, CT-12) that MOTION skips.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 968,
+      "verbatim": "\tBCC 20$\t\t\t;IF FINISHED EXPLODING"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 967,
+      "note": "967 CPY I,0FA is the compare; 965-966 CPY I,0F9 / BCC 25$ leave truly-alive (<0xF9) segments untouched. Explosion pictures reuse cp1-3 motion-object stamps — no new pixels."
+    }
+  },
+  {
+    "id": "CT-45",
+    "claim": "A killed segment leaves a MUSHROOM in its cell: at 15$ the kill path runs JSR CALLS / JSR OBSTAC to compute the killed segment's playfield cell, then JSR MUSHER ;PUT MUSHROOMS ON SCREEN drops a mushroom there. CALLS feeds OBSTAC the segment's own H/V with the direction normalized to +1/-1 (its MOBJDH sign), so the drop cell is one 8px cell ahead in the travel direction.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2287,
+      "verbatim": "\tJSR MUSHER\t\t;PUT MUSHROOMS ON SCREEN"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 444,
+      "note": "CALLS (447) NOTE: (Y)=X,MOBJDH(1 OR FF) — it passes OBSTAC the SIGN of MOBJDH (+/-1), NOT the speed magnitude, so the probe is exactly one cell (8px) ahead regardless of CENTIS."
+    }
+  },
+  {
+    "id": "CT-46",
+    "claim": "MUSHER writes a FULL mushroom (0x3F) at the OBSTAC cell: LDA I,3F ... STA NY,OBST ;PUT MUSHROOM ON SCREEN. It is guarded: it does NOT overwrite an existing stamp (LDA NY,OBST / BNE 20$ ;DON'T INCREMENT IF MUSHROOM ALREADY ON SCREEN) and refuses the reserved rows — the top-of-cocktail row 0 (BEQ 20$), the top score row 0x1F (CMP I,1F / BEQ 20$), and (upright) the player's own row 1 (CMP I,01 / BEQ 20$).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1640,
+      "verbatim": "\tSTA NY,OBST\t\t;PUT MUSHROOM ON SCREEN"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1638,
+      "note": "10$: LDA I,3F is the full-mushroom code (== cp1-4 MUSHROOM_FULL, PM-10); 1618/1621/1623/1633 are the four guards (occupied, row 0, row 0x1F, upright row 1)."
+    }
+  },
+  {
+    "id": "CT-47",
+    "claim": "A dropped mushroom that lands on the LOWER screen (row < 0x0C) bumps the mushroom court count: CMP I,0C / BCS 10$ ;IF ON UPPER PART OF SCREEN skips the bump for row >= 0x0C, otherwise INC X,MUSH-1 ;ADD TO MUSHROOM COUNT increments MUSH. This is the exact mirror of cp1-5's MUSHDC decrement (PM-30) at the same 0x0C (MUSH_LOWER_BOUND) boundary.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1637,
+      "verbatim": "\tINC X,MUSH-1\t\t;ADD TO MUSHROOM COUNT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1634,
+      "note": "1634-1635 CMP I,0C / BCS 10$ gate the INC; 0x0C is MUSH_LOWER_BOUND (PM-30, playfield.ts). The court count rises when the centipede seeds the lower screen and falls when the gun clears it."
+    }
+  },
+  {
+    "id": "CT-48",
+    "claim": "CALLS normalizes the OBSTAC probe direction to the SIGN of MOBJDH (+1 or -1), never the speed: LDA X,MOBJDH / BMI 10$ picks Y=-1 for a leftward segment, else LDY I,1. OBSTAC then probes 8*(+/-1) = one cell ahead (CT-28). This is the faithful direction the mushroom-drop and the head obstacle look-ahead both use — independent of CENTIS.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 450,
+      "verbatim": "\tLDA X,MOBJDH"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 444,
+      "note": "The CALLS header (444) states (Y)=X,MOBJDH(1 OR FF); 449-452 LDY I,-1 / LDA X,MOBJDH / BMI 10$ / LDY I,1 realize the sign pick. cp2-3 MOTION currently probes at dir=+/-CENTIS(=2) instead — a fidelity gap, see Delivery Findings."
+    }
+  },
+  {
+    "id": "CT-49",
+    "claim": "PLAY (CENTI4.MAC:1775) rejects a centipede-segment collision with the player when the horizontal gap is 6 or more: for a non-flea object (CPX I,13. / BNE 10$) 10$: CMP I,07 / BCS 25$ ;DIFF > 6 returns no-collision. So a hit needs |MOBJH-PLAYH| < 7.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1786,
+      "verbatim": "\tBCS 25$\t\t\t;DIFF > 6"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1785,
+      "note": "10$: CMP I,07 is the |dH| compare; 1777 SBC PLAYH / 1778 JSR ABS built the absolute horizontal distance."
+    }
+  },
+  {
+    "id": "CT-50",
+    "claim": "PLAY's vertical window is the same 7: after the H window passes, 15$: LDA MOBJV / SBC PLAYV / ABS / CMP I,7 / BCS 25$ ;DIFF>6 rejects a gap of 7 or more, so a hit needs |MOBJV-PLAYV| < 7.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1793,
+      "verbatim": "\tBCS 25$\t\t\t;DIFF>6"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1792,
+      "note": "CMP I,7 is the |dV| compare against 7; 1790 SBC PLAYV / 1791 JSR ABS build |dV|."
+    }
+  },
+  {
+    "id": "CT-51",
+    "claim": "PLAY's binding test is a Manhattan diamond: CLC / ADC TEMP2 (X+Y = |dH|+|dV|) then CMP I,0C / 30$: BCS 25$ ;IF NOT A HIT - the player dies only when |dH|+|dV| < 0x0C (12), tighter than the two 7-px axis windows. (For the flea, X==13., CMP I,14. relaxes it to 20; the centipede path uses 0x0C.)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1798,
+      "verbatim": "\tCMP I,0C"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1795,
+      "note": "ADC TEMP2 ;X+Y sums the two absolute distances; 1799 30$: BCS 25$ rejects a sum >= 0x0C."
+    }
+  },
+  {
+    "id": "CT-52",
+    "claim": "On a player collision PLAYEX sets a death pause: LDA I,30 / STA DELAY ;SET DELAY BEFORE NEXT SETUP arms DELAY = 0x30 (48 frames). During DELAY MOTION is a no-op (CT-26) and NEWHD is gated off (CT-71); the death/RESTOR sequence runs inside this pause.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1802,
+      "verbatim": "\tSTA DELAY\t\t;SET DELAY BEFORE NEXT SETUP"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1801,
+      "note": "LDA I,30 is the DELAY value; PLAYEX =. (1800) is the collision-handler entry reached with carry clear."
+    }
+  },
+  {
+    "id": "CT-53",
+    "claim": "PLAYEX blows up the player and the colliding segment: LDA I,20 / STA PLAYP ;CHANGE PICTURE starts the player-explosion animation at picture 0x20, and LDA I,0FF / STA X,MOBJP stamps the colliding segment's slot 0xFF (the segment-explosion start, CT-41). SHOTP is blanked (0x28).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1804,
+      "verbatim": "\tSTA PLAYP\t\t;CHANGE PICTURE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1803,
+      "note": "LDA I,20 is the player-explosion start picture; 1805-1806 LDA I,0FF / STA X,MOBJP stamp the segment; 1807-1808 blank the shot."
+    }
+  },
+  {
+    "id": "CT-54",
+    "claim": "EXPLOD animates the player explosion one picture every FOUR frames: LDA FRAME / AND I,03 / BNE 30$ ;SLOW DOWN EXPLOSION gates the advance to FRAME&3==0, and INC PLAYP steps PLAYP 0x20->0x28; CMP I,28 / BCS 30$ ;PLAYER IS FINISHED EXPLODING marks 0x28 as done. So the player-explosion frames play across ~9 pictures at 4 frames each.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 987,
+      "verbatim": "\tBNE 30$\t\t\t;SLOW DOWN EXPLOSION"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 986,
+      "note": "AND I,03 selects the 4-frame cadence; 989-991 CMP I,28 / BCS 30$ / INC PLAYP advance the picture from 0x20 to the 0x28 finish."
+    }
+  },
+  {
+    "id": "CT-55",
+    "claim": "When the player explosion reaches its LAST frame (PLAYP==0x27) EXPLOD arms RESTOR: CMP I,27 / BNE 30$ then LDA I,0 / STA MEM / LDA I,4 / STA MEM+1 ;RESTORE MUSHROOMS sets (MEM,MEM+1)=0x0400 (PLYFLD base, PM-22). So RESTOR is armed at the END of the death animation, not the instant of contact.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 997,
+      "verbatim": "\tSTA MEM+1\t\t;RESTORE MUSHROOMS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 992,
+      "note": "CMP I,27 detects the last explosion frame; 994-996 LDA I,0/STA MEM/LDA I,4 write the 0x0400 sweep start (== RESTOR_START, PM-22)."
+    }
+  },
+  {
+    "id": "CT-56",
+    "claim": "RESTOR does work only every 8 frames: LDA FRAME / AND I,07 / BNE 5$ masks 3 bits, so the sweep advances when FRAME&7==0. The adjacent comment ';EVERY 16 FRAMES' is STALE - the code (AND I,07) wins (== RESTOR_FRAME_MASK, PM-23, open-questions.md item 6).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1832,
+      "verbatim": "\tBNE 5$\t\t\t;EVERY 16 FRAMES"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1831,
+      "note": "AND I,07 => active every 8 frames; the ';EVERY 16 FRAMES' text on this very line is the documented stale comment (PM-23)."
+    }
+  },
+  {
+    "id": "CT-57",
+    "claim": "RESTOR waits for the player-explosion sound before sweeping: LDA CHAN5 / BNE 5$ ;WAIT FOR PLAYER EXPLOSION TO FINISH holds the sweep until CHAN5 (the player-explosion sound channel, set at PLAYEX) clears. So the mushroom restore begins only after the death explosion audio ends.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1834,
+      "verbatim": "\tBNE 5$\t\t\t;WAIT FOR PLAYER EXPLOSION TO FINISH"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1833,
+      "note": "LDA CHAN5 tests the player-explosion sound channel armed at PLAYEX (1811-1812 LDA I,13 / STA CHAN5)."
+    }
+  },
+  {
+    "id": "CT-58",
+    "claim": "The RESTOR per-cell repair restores a partial OR poison mushroom to a FULL normal mushroom: LDA NY,MEM / AND I,3F / CMP I,38 / BCC 20$ (skip <0x38) / CMP I,3F / BCS 20$ (skip full 0x3F) then LDA I,3F / STA NY,MEM ;RESTORE TO FULL MUSHROOM rewrites any 0x38-0x3E cell to 0x3F. Poison mushrooms (0x38-0x3B) therefore become normal full mushrooms. Identical band to cp1-4 restoreMushroom (PM-25).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1853,
+      "verbatim": "\tSTA NY,MEM\t\t;RESTORE TO FULL MUSHROOM"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1850,
+      "note": "BCS 20$ skips a full 0x3F; 1847-1848 CMP I,38 / BCC 20$ skips non-mushrooms - the restored band is exactly 0x38-0x3E, == restoreMushroom (PM-25)."
+    }
+  },
+  {
+    "id": "CT-59",
+    "claim": "Each restored mushroom scores 5 via the SCORN1 entry: LDA I,5 / JSR SCORN1 ;AWARD 5 PTS. FOR RESTORED MUSHROOMS. SCORN1 (CENTI4.MAC:1947) is the scoring entry that does NOT decrement DEAD - unlike SCORNG (1943, DEC X,DEAD-1). So restoring mushrooms never changes the live-segment count. (== SCORE_RESTORE=5, PM-26.)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1857,
+      "verbatim": "\tJSR SCORN1\t\t;AWARD 5 PTS. FOR RESTORED MUSHROOMS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1856,
+      "note": "LDA I,5 is the restore award; 1947 SCORN1 =. is the DEAD-preserving entry, distinct from 1943-1945 SCORNG which DEC X,DEAD-1."
+    }
+  },
+  {
+    "id": "CT-60",
+    "claim": "RESTOR restores exactly ONE mushroom per active pass then returns: after the restore it does INC MEM (advance past the restored cell) and RTS. Non-mushroom cells are walked forward within the SAME pass by 20$: INC MEM / BNE 10$ ;ALWAYS-BYPASS END OF PLAYFIELD CHECK, so one active frame restores the NEXT damaged mushroom in address order and stops there.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1878,
+      "verbatim": "\tINC MEM"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1885,
+      "note": "20$: INC MEM (1885) / BNE 10$ (1888) is the skip-forward scan over empty/full cells; 1883 RTS returns after a single restore (1878 INC MEM advances past it)."
+    }
+  },
+  {
+    "id": "CT-61",
+    "claim": "The sweep runs the playfield in ADDRESS order (0x0400 up) and disarms at the end: the pointer test CMP I,07 (MEM+1) ... CMP I,0C0 (MEM) / BCC 10$ ;NOT DONE YET keeps going below 0x07C0; at 0x07C0 STY MEM+1 ;CLEAR POINTER zeroes MEM+1 (disarmed). PLYFLD is 0x0400-0x07BF, so the sweep visits every cell once, in the flat offset order h*0x20+v.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1842,
+      "verbatim": "\tSTY MEM+1\t\t;CLEAR POINTER"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1841,
+      "note": "BCC 10$ continues while MEM < 0x07C0; 1837-1840 CMP I,07 / CMP I,0C0 bound the end; MEM=0x0400+h*0x20+v maps 1:1 to the flat cell offset."
+    }
+  },
+  {
+    "id": "CT-62",
+    "claim": "The wave ENDS when DEAD reaches 0: at the end of SHOOT, LDX PLAYER / LDA X,DEAD-1 / ORA DELAY / BEQ 50$ ;IF ALL DEAD OR WE ARE DELAYING UNTIL NEXT WAVE, and 50$ does LDA I,40 / STA DELAY ;DELAY BEFORE NEXT WAVE. So clearing all 12 segments (DEAD==0) arms a 0x40-frame between-wave pause; CHKEND then re-enters via CENTPC.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2319,
+      "verbatim": "\tSTA DELAY\t\t;DELAY BEFORE NEXT WAVE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2307,
+      "note": "BEQ 50$ fires when DEAD-1 (live count) AND DELAY are both zero; 2317-2318 INC CENTIS / LDA I,40 speed up and pause before the next wave."
+    }
+  },
+  {
+    "id": "CT-63",
+    "claim": "A killed centipede segment decrements DEAD via the SCORNG entry: SCORNG: STX TEMP2 / LDX PLAYER / DEC X,DEAD-1 runs before the shared SCORN1 add. The head/body kill scoring (CT-35/36) enters at SCORNG, so DEAD == the count of live segments and reaches 0 exactly when the last segment is shot (CT-62).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1945,
+      "verbatim": "\tDEC X,DEAD-1"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1947,
+      "note": "SCORN1 =. (1947) is the entry BELOW the DEC - mushroom/restore scoring (2162, 1857) enters at SCORN1 and does not touch DEAD."
+    }
+  },
+  {
+    "id": "CT-64",
+    "claim": "CHKEND holds the death/wave DELAY until RESTOR finishes: 5$: LDA MEM+1 / BNE 1$ ;WAIT UNTIL MUSHROOMS RESTORED returns without touching DELAY while the sweep is armed (MEM+1 != 0), then DEC DELAY only once the sweep has disarmed. So the death pause does not expire until every mushroom has been restored.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 595,
+      "verbatim": "\tBNE 1$\t\t\t;WAIT UNTIL MUSHROOMS RESTORED"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 596,
+      "note": "DEC DELAY (596) runs only after 594-595 LDA MEM+1 / BNE 1$ confirm the RESTOR pointer is cleared."
+    }
+  },
+  {
+    "id": "CT-65",
+    "claim": "When the death DELAY expires with the gun dead, CHKEND respawns and advances the life: 40$: LDA PLAYP / AND I,0AF / BNE 50$ ;IF GUN IS NOT ALIVE-WE ARE ON NEXT WAVE routes a dead gun to 50$: JSR INIT1 (respawn gun+shot); the continue path DEC X,LIVES-1 ;START NEXT LIFE spends a life and 90$: JSR CENTPC ;GET NEW CENTIPEDE re-lays a fresh train.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 613,
+      "verbatim": "50$:\tJSR INIT1\t\t;INITIALIZE PLAYER AND MISSILE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 730,
+      "note": "DEC X,LIVES-1 (730) spends the life on respawn; 734 JSR CENTPC re-enters the wave; 608-610 route a dead gun (PLAYP&0xAF) to the respawn."
+    }
+  },
+  {
+    "id": "CT-66",
+    "claim": "Game over when LIVES hits 0: 55$: LDA LIVES / ORA LIVES+1 / BNE 70$ ;IF GAME NOT OVER - a zero life count falls through to DEC MODE ;MODE=-1 FOR ATTRACT, ending the game (back to attract, high-score update). So the last death (LIVES already 0 at respawn) is game over.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 627,
+      "verbatim": "\tDEC MODE\t\t;MODE=-1 FOR ATTRACT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 626,
+      "note": "BNE 70$ (626) continues the game while LIVES|LIVES+1 != 0; 624-625 load the life count; 627 DEC MODE drops to attract on zero."
+    }
+  },
+  {
+    "id": "CT-67",
+    "claim": "Starting lives are DIP-selectable 2 to 5 with a code base of 2: CHKST does LDA OPTNS / AND I,0C / LSR / LSR / ADC I,2 / STA NLIVES ;2 TO 5 LIVES TO START WITH, i.e. NLIVES = ((OPTNS & 0x0C) >> 2) + 2. The fixed base is 2; the option adds 0-3.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 771,
+      "verbatim": "\tSTA NLIVES\t\t;2 TO 5 LIVES TO START WITH"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 770,
+      "note": "ADC I,2 (770) is the +2 base; 767-769 AND I,0C / LSR / LSR isolate the two option bits (0-3)."
+    }
+  },
+  {
+    "id": "CT-68",
+    "claim": "CENTIP.DOC (rev-1) AGREES with the rev-4 lives code (open question 4, code wins - no divergence). The rev-1 starting-lives DIP table reads 2 / *3 / 4 / 5 lives, the asterisk marking 3 as the factory default, matching the rev-4 range ((OPTNS>>2)&3)+2 in [2,5] (CT-67). Like the mushroom (PM-32/33) and segment (CT-38) scoring, the prose confirms the code; the deterministic demo parameterizes the option to the factory default 3.",
+    "source": {
+      "file": "CENTIP.DOC",
+      "line": 65,
+      "verbatim": "lives\t\t\t OFF   ON\t\t\t*3 lives"
+    },
+    "corroboration": {
+      "file": "CENTIP.DOC",
+      "line": 64,
+      "note": "'Starting ... ON ON => 2 lives' (64) begins the DIP table; line 65's '*3 lives' asterisk is the factory default; both revs give the range 2-5."
+    }
+  },
+  {
+    "id": "CT-69",
+    "claim": "SHOOT skips a segment at the very top of the screen: after the alive/dead picture filter, 117$: LDA X,MOBJV / EOR CKF8 / CMP I,0F8 / BCS 132$ ;IF OFF TOP OF SCREEN rejects any object whose MOBJV >= 0xF8 (CKF8=0 upright). A centipede segment at the 0xF8 entry row (CENT_ENTER_V, CT-4) is therefore NOT shootable until it descends below 0xF8.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2182,
+      "verbatim": "\tBCS 132$\t\t;IF OFF TOP OF SCREEN"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2181,
+      "note": "CMP I,0F8 (2181) against MOBJV (2179); BCS 132$ skips the object as off-top. 0xF8 == CENT_ENTER_V (CT-4), the head's entry row."
+    }
+  },
+  {
+    "id": "CT-70",
+    "claim": "The mainloop runs a fixed per-frame order (CENTI4.MAC:30-39): MOTION (move centipedes, and PLAY player-collision within it), EXPLOD (explode segments+player), MOVE (gun), SHOOT (fire+collide), NEWHD (new heads), CHKEND (end-of-game/wave), RESTOR (restore mushrooms). PLAY is called from inside MOTION (:1449) per segment; RESTOR runs LAST.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 39,
+      "verbatim": "\tJSR RESTOR\t\t;RESTORE MUSHROOMS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 30,
+      "note": "30 JSR MOTION / 31 EXPLOD / 32 MOVE / 34 SHOOT / 35 NEWHD / 38 CHKEND / 39 RESTOR - the frame order; 1449 JSR PLAY is MOTION's per-segment player-collision check."
+    }
+  },
+  {
+    "id": "CT-71",
+    "claim": "NEWHD's fresh-head spawn (CENTI4.MAC:1647) is NEWD-gated, death-gated, and RNG-driven: LDA NEWD / BEQ 40$ ;NOT TIME FOR NEW HEADS (only after a head reached the bottom, CT-23) then LDA DELAY / BNE 40$ ;NOT WHEN PLAYER IS DEAD (never during the death pause), and the entry edge is picked from LDA RNGEN. Because it consumes hardware entropy and is orthogonal to death/RESTOR and to closing the wave, the deterministic wave-1 demo DEFERS the live spawn (routed forward); the NEWD trigger itself is already pinned (CT-23).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1650,
+      "verbatim": "\tBNE 40$\t\t\t;NOT WHEN PLAYER IS DEAD"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1679,
+      "note": "1647-1648 LDA NEWD / BEQ 40$ is the trigger gate; 1650 BNE 40$ blocks it during DELAY; 1679 LDA RNGEN picks the 0xFC/0x04 entry edge - the RNG dependence the seed-free train avoids."
+    }
+  },
+  {
+    "id": "CT-72",
+    "claim": "User-reported defect (cp2-5, mid-GREEN): the bottom of a turn/dive is not a floor, it's a BOUNCE. When a segment mid-vertical-step is at/below the bottom row (V<9, the SAME gate as CT-23's NEWD arm), MOTION negates MOBJDV before applying it: 16$: CMP I,9 / BCS 18$ ;IF NOT AT BOTTOM ... 167$: LDA X,MOBJDV / JSR COMP / STA X,MOBJDV ;COMPLEMENT MOBJDV — then 18$/19$ applies the NOW-reversed DV to MOBJV the SAME frame, so V touches 8 for exactly one frame and heads back up; it never goes negative. This applies uniformly to heads AND bodies (a body only skips the head-specific NEWD/poison/tail bookkeeping via `AND I,40 / BNE 167$`, landing at the same negate). Our sim's prior `descend()`/`dive()` had no floor at all here, so a segment turning or diving at the bottom row marched V below CENT_BOTTOM_V without limit — the reported 'segments leave the playfield, wave unclearable' bug.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1434,
+      "verbatim": "\tSTA X,MOBJDV\t\t;COMPLEMENT MOBJDV"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1389,
+      "note": "16$: CMP I,9 / 1390: BCS 18$ ;IF NOT AT BOTTOM — the same V<9 gate CT-23 uses to arm NEWD; here it instead decides whether 167$'s negate runs before the V update at 18$/19$."
+    }
+  },
+  {
+    "id": "CT-73",
+    "claim": "The bounced segment doesn't sail back to the top of the screen — ascending (negative MOBJDV, upright/non-cocktail: LDY CKC0 / BEQ 155$), it re-turns downward once V reaches the SAME bound as the player's own top edge (PLAYV_MAX, PS-6): 155$: CMP I,30 / BCS 167$ ;TURN DOWN / BCC 18$ ;ALWAYS. So a bottom-bounced segment ping-pongs between V=8 and V=0x30 (the player's zone) rather than crossing the whole field, until it's killed.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1386,
+      "verbatim": "\tBCS 167$\t\t\t;TURN DOWN"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1385,
+      "note": "155$: CMP I,30 sets up the comparison BCS 1386 branches on; 1379 LDY CKC0 / BEQ 155$ selects this upright (non-cocktail) path."
+    }
+  },
+  {
+    "id": "CT-74",
+    "claim": "The head turns at the LEFT field edge exactly as at a mushroom: LDA MOBJH / CMP I,0F0 / BCC 11$ ;IF NOT AT LEFT EDGE. With MOBJH >= 0xF0 and MOBJDH>=0 (marching toward the edge) the branch falls through into the shared turn/descent handler (15$), so 0xF0 is the CENT_EDGE_LEFT turn constant. Dedicated byte-cite folding in the cp2-3-review LOW: this value previously rode CT-17s verbatim.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1343,
+      "verbatim": "\tCMP I,0F0"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1344,
+      "note": "BCC 11$ ;IF NOT AT LEFT EDGE — H>=0xF0 does NOT branch away, so it takes the edge-turn path (direction-aware via the following LDY MOBJDH)."
+    }
+  },
+  {
+    "id": "CT-75",
+    "claim": "The head turns at the RIGHT field edge: 11$: CMP I,10 / BCS 12$ ;IF NOT A RIGHT EDGE. With MOBJH < 0x10 and MOBJDH<0 (marching toward the right edge) it falls into the turn/descent handler, so 0x10 is the CENT_EDGE_RIGHT turn constant. Dedicated byte-cite for the folded-in edge constant (cp2-3-review LOW). NOTE: line 1308s CMP I,10 is an unrelated pic>=0x10 body/poison test (70$ NEWD arm); the field-edge constant is 11$ at line 1351.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1351,
+      "verbatim": "11$:\tCMP I,10"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1352,
+      "note": "BCS 12$ ;IF NOT A RIGHT EDGE — H<0x10 does NOT branch to OBSTAC(12$); it takes the edge-turn path."
+    }
+  },
+  {
+    "id": "CT-76",
+    "claim": "The multi-frame descent needs no per-segment turning flag: a segment mid-cell (V&7 != 0) skips the speed-up / head-body / edge-OBSTAC logic and re-enters the vertical step directly — 71$: AND I,07 / BNE 15$ ;DON T SPEED UP IF TURNING. Once a turn or dive leaves the 8px boundary, MOTION keeps descending it every frame until V&7 returns to 0 (one full 8px cell). mid-descent IS derivable from V&7 — this replaces the sim freeze-h descend() turning bookkeeping.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1313,
+      "verbatim": "\tBNE 15$\t\t\t;DON'T SPEED UP IF TURNING"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1312,
+      "note": "71$: AND I,07 masks MOBJV to its cell phase; BNE 15$ routes any non-zero phase straight to the vertical-step handler."
+    }
+  },
+  {
+    "id": "CT-77",
+    "claim": "The horizontal march at 20$ is UNCONDITIONAL every stepped frame, mid-descent included: 20$: LDA MOBJDH / CLC / ADC MOBJH / STA MOBJH ;CHANGE HPOS runs BEFORE the V&7==4 reversal gate (CT-21). So a turning head COASTS in the OLD direction while it descends, flipping MOBJDH only when V&7==4 — dh px of coast out then dh px back per cell, NET-ZERO horizontal displacement, peak excursion +4px (half a cell) toward the obstacle, never entering the obstacle cell (OBSTAC probes a full 8px ahead, CT-28). This is the frame-exact turn the sim freeze-h simplification approximated.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1448,
+      "verbatim": "\tSTA X,MOBJH\t\t;CHANGE HPOS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1454,
+      "note": "the reversal that follows the H march is gated: 1451 LDA MOBJV / 1452 AND I,07 / 1453 CMP I,04 / 1454 BNE 30$ — MOBJDH flips (25$) only at V&7==4 (CT-21)."
+    }
+  },
+  {
+    "id": "CT-78",
+    "claim": "NEWHD is a per-frame down-counter gated by NEWD (CT-23) and DELAY (CT-71): each frame it does LDA COUNT1 / BEQ 10$ (spawn attempt) else DEC COUNT1 / RTS — so a fresh head is only ATTEMPTED once every COUNT1 frames, and COUNT1 counts down one per video frame while the factory is armed.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1651,
+      "verbatim": "\tLDA COUNT1"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1653,
+      "note": "1652 BEQ 10$ / 1653 DEC COUNT1: while NEWD is set and DELAY==0, NEWHD decrements COUNT1 once per frame and only attempts a spawn (10$) when COUNT1 reaches 0."
+    }
+  },
+  {
+    "id": "CT-79",
+    "claim": "NEWHD spawns a fresh head only into a DEAD motion-object slot: it scans slots NCENT-1..0 (LDY I,NCENT-1 down to 0) and fills the FIRST (highest-index) slot whose MOBJP is negative (bit 7 set = dead/vacant/exploding, BMI 20$). If every slot is live it RTSes without spawning — the live-segment population is capped at NCENT (12).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1659,
+      "verbatim": "\tBMI 20$\t\t\t;IF SEGMENT IS DEAD"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1657,
+      "note": "1657 LDY I,NCENT-1 starts the scan at slot 11; 1660-1661 DEY / BPL 12$ walk down to 0; 1662 RTS returns with NO spawn when no dead slot is found — a hard cap of NCENT live segments."
+    }
+  },
+  {
+    "id": "CT-80",
+    "claim": "A fresh factory head is stamped MOBJP = 0x00 (LDA I,0 / STA Y,MOBJP ;MAKE HEAD PICTURE) — a plain live head picture (bits 6/5/7 all clear), NOT the 0x03 the initial CENTPC train head uses (CT-3).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1665,
+      "verbatim": "\tSTA Y,MOBJP\t\t;MAKE HEAD PICTURE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1664,
+      "note": "1664 20$: LDA I,0 loads the picture; 0x00 has bit6 (head), bit5 (poison) and bit7 (dead) all clear — a plain live head, distinct from CENTPC 0x03 (CT-3)."
+    }
+  },
+  {
+    "id": "CT-81",
+    "claim": "The fresh head enters at MOBJV = 0x40 (LDA I,40 / EOR CKF8 / STA Y,MOBJV ;VPOS FOR NEW HEAD) — down in the player zone, not at the 0xF8 top of screen the initial train enters from (CT-4). CKF8=0 upright, so the written value is 0x40.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1666,
+      "verbatim": "\tLDA I,40"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1668,
+      "note": "1667 EOR CKF8 is a no-op upright (CKF8=0, CT-4); 1668 STA Y,MOBJV writes 0x40 — the low player zone, far below the 0xF8 top entry (CT-4)."
+    }
+  },
+  {
+    "id": "CT-82",
+    "claim": "The fresh head is given MOBJDV = 2 (LDA I,2 / STA Y,MOBJDV ;NEW BUG GOES FAST) — it descends toward the player at the wave-1 centipede speed (CT-10).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1671,
+      "verbatim": "\tLDA I,2"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1672,
+      "note": "1672 STA Y,MOBJDV ;NEW BUG GOES FAST — the fresh head descends at speed 2, the same wave-1 CENTIS the initial train uses (CT-10)."
+    }
+  },
+  {
+    "id": "CT-83",
+    "claim": "The fresh head's default entry column is MOBJH = 0xFC (LDA I,0FC / STA Y,MOBJH ;HPOS FOR NEW HEAD) — one screen edge; the alternate side (CT-85) is chosen by RNGEN.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1669,
+      "verbatim": "\tLDA I,0FC"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1670,
+      "note": "1670 STA Y,MOBJH ;HPOS FOR NEW HEAD writes 0xFC before the RNGEN test; the RNGEN-bit-clear branch (CT-84/85) overwrites it with 0x04."
+    }
+  },
+  {
+    "id": "CT-84",
+    "claim": "NEWHD picks the entry side from a SINGLE RNGEN read masked to bit 1: LDA RNGEN / AND I,02 / BNE 30$ — bit 1 SET keeps the default H=0xFC entering with MOBJDH=+2 (A is still 0x02 at 30$ STA Y,MOBJDH); bit 1 CLEAR takes the CT-85 branch. This lone RNGEN read is the sole hardware-entropy input to the otherwise deterministic motion loop.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1680,
+      "verbatim": "\tAND I,02"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1679,
+      "note": "1679 LDA RNGEN reads POKEY's free-running random register once; 1681 BNE 30$ keeps H=0xFC and MOBJDH=+2 (A still = 0x02) when bit 1 is set. The only entropy NEWHD consumes."
+    }
+  },
+  {
+    "id": "CT-85",
+    "claim": "When RNGEN bit 1 is CLEAR the fresh head enters from the mirror edge: LDA I,4 / STA Y,MOBJH (H=0x04) and LDA I,-2 / STA Y,MOBJDH (MOBJDH=-2). So the two possible spawns are exactly (H=0xFC, MOBJDH=+2) and (H=0x04, MOBJDH=-2) — symmetric mirror entries from opposite edges.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1682,
+      "verbatim": "\tLDA I,4"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1684,
+      "note": "1683 STA Y,MOBJH overwrites H with 0x04; 1684 LDA I,-2 / 1685 30$: STA Y,MOBJDH sets MOBJDH=-2. The two symmetric configs are (H=0xFC, dh=+2) and (H=0x04, dh=-2)."
+    }
+  },
+  {
+    "id": "CT-86",
+    "claim": "A spawned fresh head increments the live-segment count: INC X,DEAD-1 ;DEAD=DEAD+1. Since the wave ends only at DEAD==0 (CT-62/63), every factory head must be killed too — the factory keeps the wave open until it both stops producing (DELAY-gated at wave-clear, CT-71) and all its heads die.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1686,
+      "verbatim": "\tINC X,DEAD-1\t\t;DEAD=DEAD+1"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1310,
+      "note": "DEAD is the live-segment count CENTPC sets to NCENT (CT-9) and SHOOT SCORNG decrements per kill (CT-63); the wave ends at DEAD==0 (CT-62). A factory head raising DEAD means the wave cannot close until every fresh head is also killed."
+    }
+  },
+  {
+    "id": "CT-87",
+    "claim": "Each spawn tightens the cadence: if COUNT3 >= 0x60 it is decremented by 8 (SBC I,8) and written back, then COUNT1 is reset to the new COUNT3 (25$: STA COUNT1). COUNT3 floors at 0x60 ('SMALLEST VALUE WE ALLOW', ~1.5 s) — so successive fresh heads arrive progressively sooner, down to a minimum interval.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1676,
+      "verbatim": "\tSBC I,8"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1674,
+      "note": "1673-1675 LDA X,COUNT3-1 / CMP I,60 / BCC 25$ floor the ramp at 0x60 ('1 1/2 SECONDS'); 1677 STA X,COUNT3-1 writes back; 1678 25$: STA COUNT1 resets the down-counter to the ramped interval."
+    }
+  },
+  {
+    "id": "CT-88",
+    "claim": "INIT boots the new-head counters to 0xC0: LDA I,0C0 / STA COUNT1 ;INITIALIZE COUNTERS FOR ADDING NEW HEADS / STA COUNT3 / STA COUNT3+1. So the initial spawn interval is 192 frames (~3 s at 60 Hz); the ramp (CT-87) shortens it from there.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1196,
+      "verbatim": "\tSTA COUNT1\t\t;INITIALIZE COUNTERS FOR ADDING NEW HEADS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1195,
+      "note": "1195 LDA I,0C0 is the initial value; 1197-1198 STA COUNT3 / STA COUNT3+1 seed the per-player interval. 0xC0 = 192 frames ~= 3 s — the first fresh head cannot arrive until ~3 s after the factory arms."
+    }
+  },
+  {
+    "id": "CT-89",
+    "claim": "Only a PLAIN head arms the factory: at the bottom row (V<9, CT-23) the NEWHD trigger tests LDA MOBJP / CMP I,10 / BCS 70$ ;IF BODY OR POISONED HEAD — a picture >= 0x10 (a body 0x4x or a poisoned head 0x2x) skips the STY NEWD arm. NEWD is set only when a non-poisoned head (pic < 0x10) reaches the bottom.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1309,
+      "verbatim": "\tBCS 70$\t\t\t;IF BODY OR POISONED HEAD"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1305,
+      "note": "1303-1306 read MOBJV, CMP I,9 / BCS 71$ require the bottom row (V<9); 1307-1308 LDA MOBJP / CMP I,10 gate on the picture — only pics < 0x10 (a plain head, bit6+bit5 clear) reach 1310 STY NEWD (CT-23)."
+    }
+  },
+  {
+    "id": "CT-90",
+    "claim": "CENTPC clears NEWD at the end of laying a wave: LDA MCKSUM (=0) / STA NEWD ;NEWD=0(NOT TIME FOR PUTTING IN NEW HEAD). The factory disarms on every wave re-lay and must be re-triggered by a head of the new wave reaching the bottom (CT-23).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 553,
+      "verbatim": "\tSTA NEWD\t\t;NEWD=0(NOT TIME FOR PUTTING IN NEW HEAD)"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 552,
+      "note": "552 LDA MCKSUM ('SHOULD BE ZERO') is the value stored; CENTPC (CT-3..CT-9) ends by clearing NEWD, so each fresh wave starts with the factory disarmed until a head of the NEW wave reaches the bottom (CT-23)."
+    }
+  },
+  {
+    "id": "CT-91",
+    "claim": "On respawn CHKEND reloads COUNT1 from the persisted COUNT3: LDA X,COUNT3-1 / STA COUNT1 ;RESET NEW HEAD COUNTER. COUNT3 itself is reset only by INIT (CT-88), so the new-head cadence carries its ramp forward across lives and waves — it does not reset per wave.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 698,
+      "verbatim": "\tSTA COUNT1\t\t;RESET NEW HEAD COUNTER"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 697,
+      "note": "697 738$: LDA X,COUNT3-1 loads the CURRENT (persisted, ramped) per-player COUNT3; only INIT (CT-88) resets COUNT3 itself. A respawn re-arms COUNT1 to it."
+    }
+  },
+  {
+    "id": "CT-92",
+    "claim": "INIT seeds the per-player centipede SPEED counter CENTIS to 2 at boot (\"FAST TO START WITH\"), the companion to CENTIN's decimal 12. seven lines earlier. CENTIS is what paces CENTPC's per-wave decrement of CENTIN, so its boot value fixes when the first shorter centipede — and therefore the first flea — can appear.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1174,
+      "verbatim": "\tLDA I,02\t\t;FAST TO START WITH"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1176,
+      "note": ":1175-1176 STA CENTIS / STA CENTIS+1 store it for both players; :1167-1169 is the matching CENTIN=12. seed, DECIMAL there and hex nowhere."
+    }
+  },
+  {
+    "id": "CT-93",
+    "claim": "CENTPC decrements CENTIN only when CENTIS has reached 3: \":465 CMP I,03 / :466 BCC 5$ ;IF CENTIS < 3\" branches past the ENTIRE block. The reset of CENTIS at 3$/4$ lives INSIDE the taken branch, so a wave that does not decrement CENTIN does not reset CENTIS either — which is what makes the cadence alternate rather than fire every wave.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 466,
+      "verbatim": "\tBCC 5$\t\t\t;IF CENTIS < 3"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 460,
+      "note": ":465 CMP I,03 supplies the comparand; the whole block is additionally gated on all-dead by :459-460 LDA X,DEAD-1 / BNE 5$ ';NO CHANGE IN COLOR OR SPEED UNTIL ALL DEAD', so it runs on the wave-clear re-lay and never on a death re-lay."
+    }
+  },
+  {
+    "id": "CT-94",
+    "claim": "When CENTPC's decrement takes CENTIN to zero it reloads it with HEX 0C — twelve, a full-length centipede again. This is a different literal from INIT's DECIMAL '12.' (:1167) and from ANTMV's DECIMAL gate 'CMP I,12.' (:65): three twelves within one screen, two of them decimal and one hex, in a file whose .RADIX is 16.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 469,
+      "verbatim": "\tLDA I,0C"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 470,
+      "note": ":467-468 DEC X,CENTIN-1 / BNE 3$ is the decrement and its non-zero skip; :470 STA X,CENTIN-1 ';LONG CENTI AGAIN' stores the reload."
+    }
+  },
+  {
+    "id": "CT-95",
+    "claim": "After decrementing, CENTPC resets CENTIS from SCORE2: 2 at or above BCD 0x04 (40,000 points — the ROM's own comment reads ';ONLY FAST CENTIPEDES AFTER 40000'), otherwise 1. Because the decrement needs CENTIS>=3 and SHOOT's wave clear adds exactly one, a reset to 1 makes CENTIN fall every SECOND wave while a reset to 2 makes it fall EVERY wave.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 474,
+      "verbatim": "\tBCS 4$\t\t\t;ONLY FAST CENTIPEDES AFTER 40000"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 476,
+      "note": ":471 3$: LDA I,02 and :475 LDA I,01 are the two values; :472-473 LDY X,SCORE2-1 / CPY I,4 is the test; :476 4$: STA X,CENTIS-1 stores whichever was selected."
+    }
+  },
+  {
+    "id": "CT-96",
+    "claim": "SHOOT's wave-clear tail increments CENTIS ('FASTER') on the same event that arms the between-wave DELAY: 50$ is reached when DEAD and DELAY are both zero, i.e. the frame the last segment dies. So CENTIS is bumped exactly once per cleared wave, and the NEXT wave's CENTPC reads it back.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2317,
+      "verbatim": "50$:\tINC X,CENTIS-1\t\t;FASTER"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2319,
+      "note": ":2318-2319 LDA I,40 / STA DELAY ';DELAY BEFORE NEXT WAVE' is CT-62's WAVE_DELAY, set by this same 50$ — the increment and the pause are one event. :2302-2305 LDX PLAYER / LDA X,DEAD-1 / ORA DELAY / BEQ 50$ is the condition."
+    }
+  },
+  {
+    "id": "CT-97",
+    "claim": "INIT seeds the per-player centipede LENGTH counter CENTIN to DECIMAL twelve — 'LDA I,12.', the trailing period overriding the file's inherited .RADIX 16. That boot value sits exactly ON the closed side of ANTMV's spawn gate (':65 CMP I,12. / :66 BCS 30$ ;NO ANTS EARLY IN GAME'), which is why a fresh game has no fleas at all until CENTPC's per-wave cadence (CT-93) first decrements it.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1167,
+      "verbatim": "\tLDA I,12."
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1169,
+      "note": ":1168-1169 STA CENTIN / STA CENTIN+1 ';SET CENTIPEDE SIZE' store it for both players; :1174-1176 is the matching CENTIS=2 seed (CT-92). The gate that reads it is FL-5."
+    }
+  },
+  {
+    "id": "CT-98",
+    "claim": "CENTPC's loose-head fill gives each extra head a hardcoded vertical step of 2 ('LDA I,2'), the non-cocktail default — NOT the connected train's CENTIS and NOT NEWHD's :1671 fresh-head 2. Same numeric value, different routine: a loose head marches at |dv| = |dh| = 2 on both axes regardless of the wave's CENTIS.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 533,
+      "verbatim": "\tLDA I,2"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 534,
+      "note": ":533-536 LDA I,2 / LDY CKFE / BEQ 80$ / TYA — the 2 is used unless CKFE (cocktail) is set, which is out of scope; :537 80$: STA X,MOBJDV stores it. Distinct from NEWHD_SPAWN_DV (CT-82, :1671)."
+    }
+  },
+  {
+    "id": "CT-99",
+    "claim": "Each loose head's entry DIRECTION is drawn from bit 7 of a fresh RNGEN byte via BIT (which sets N from the memory bit without disturbing the accumulator holding dv): BPL keeps +dv when bit 7 is clear, else COMP two's-complement-negates it to -dv. The sign mask is bit 7 (0x80), not the spider routine's SP-3 side bit 0x04. This is the FIRST of two RNGEN reads per loose head.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 538,
+      "verbatim": "\tBIT RNGEN"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 540,
+      "note": ":539 BPL 82$ ';IF GOING POSITIVE' branches on N (bit 7); :540 JSR COMP ';TRY OTHER DIRECTION' negates; :541 82$: STA X,MOBJDH stores the signed step."
+    }
+  },
+  {
+    "id": "CT-100",
+    "claim": "Each loose head's HPOS is a SECOND, independent RNGEN byte masked to a multiple of 8 ('AND I,0F8', hex under the file's inherited .RADIX 16 — column-aligned). There is no rejection-sampling loop (unlike ANTPC's flea column, FL-2), so the minimum value is 0. Second of the two RNGEN reads per loose head, after the direction sign (CT-99).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 543,
+      "verbatim": "\tAND I,0F8"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 542,
+      "note": ":542 LDA RNGEN loads the fresh byte; :544 STA X,MOBJH ';HPOS' stores the masked column."
+    }
+  },
+  {
+    "id": "CT-101",
+    "claim": "A loose head's picture byte is 0x00 ('LDA I,0'), a PLAIN head — not CENTPC's connected-head 0x03 (CT-3). It is the same zero-picture idiom NEWHD uses for a fresh head (CT-80, :1664), so the loose head reuses NEWHD_HEAD_PIC rather than the connected head's picture.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 531,
+      "verbatim": "\tLDA I,0"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 532,
+      "note": ":532 STA X,MOBJP writes it to the slot's picture. Same value and idiom as NEWHD_HEAD_PIC (CT-80, :1664 'LDA I,0 ;MAKE HEAD PICTURE')."
+    }
+  },
+  {
+    "id": "CT-102",
+    "claim": "The mainloop resolves the player-collision test BEFORE the shot collisions: BUGMV — whose final act is PLAY against the spider (CT-103) — is called at :33, and SHOOT at :34. On a frame where a creature stands in both the gun box and the shot box, the PLAYER dies: PLAYEX has already stamped the collider 0xFF (:1805-1806) by the time SHOOT runs, and SHOOT skips a slot at or above 0xF8 (CT-104), so no points score on a death frame.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 33,
+      "verbatim": "\tJSR BUGMV\t\t;MOVE BUG"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 34,
+      "verbatim": "\tJSR SHOOT\t\t;FIRE SHOTS AND CHECK FOR COLLISIONS",
+      "note": "MOTION (:30), which hosts the segments own PLAY call (:1449), also precedes SHOOT. The one inversion is slot 12: ANTMV (:37), which hosts the flea PLAY (:107-108), runs AFTER SHOOT."
+    }
+  },
+  {
+    "id": "CT-103",
+    "claim": "BUGMV ends by calling PLAY with X=13 — AFTER the spider has moved (the diagonal step is :342-356) — so the gun-collision test reads the spider POST-move position, this frame, not last frame.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 417,
+      "verbatim": "\tJSR PLAY"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 416,
+      "verbatim": "90$:\tLDX I,13.\t\t;RESTORE X",
+      "note": "X is restored to 13 (decimal, trailing period) immediately before the call; PLAY branches on CPX I,13. (:1779) to select the spider wider box."
+    }
+  },
+  {
+    "id": "CT-104",
+    "claim": "SHOOT skips any slot whose picture is at or above 0xF8 as dead — which includes the 0xFF that PLAYEX stamps on the object that killed the player (:1805-1806) — so a creature that took the player down the same frame can never also be shot for points.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2177,
+      "verbatim": "\tCMP I,0F8"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2178,
+      "verbatim": "\tBCS 132$\t\t;IF SEGMENT IS DEAD",
+      "note": "The scan entry and exit are CT-32 (:2171 LDX I,13.; :2292-2294 DEX/BMI/JMP)."
+    }
+  }
+]

@@ -1,0 +1,143 @@
+[
+  {
+    "id": "PIC-1",
+    "claim": "CENPIC (rev-2 picture data, the ground truth for the shipped rev-4 picture chips) sets .RADIX 16 — every hex literal in this file is base-16.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 8,
+      "verbatim": "\t.RADIX 16"
+    }
+  },
+  {
+    "id": "PIC-2",
+    "claim": "Region 0x000-0x7FF (starting at .=0) is the LOWER bitplane for the 8x16 motion-object stamps — chip 136001.201, PLANE_LOWER.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 12,
+      "verbatim": "\t.=0\t\t\t;LOWER BIT FOR 8X16 MOTION OBJECTS"
+    },
+    "corroboration": {
+      "file": "src/mame/atari/centiped.cpp",
+      "line": 2033,
+      "note": "ROM_START(centiped) gfx1 region 0x1000, ROM_LOAD(\"136001-211.f7\", 0x0000, 0x0800, ...) — chip 211 (== vendored 136001.201, same SHA1) loads the first half."
+    }
+  },
+  {
+    "id": "PIC-3",
+    "claim": "The .=200 block (region 0x200-0x3FF within the lower plane) is the 8x8 playfield stamp block: BLANK, A-Z, CIRCLE C/P, DOT, ONE HALF, GUN, 0-9, four COLOR blanks, COLON, then the poison/plain mushroom growth stages — 8 bytes each, unlabelled (.BYTE + ;comment only). GREEN names these by the CHAR_/DIGIT_/MUSHROOM_ convention (no CENPIC label exists).",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 53,
+      "verbatim": "\t.=200\t\t\t\t\t;8X8 PLAYFIELD STAMPS"
+    }
+  },
+  {
+    "id": "PIC-4",
+    "claim": "The .=400 block holds the ODD-numbered motion objects (HEAD1,3,5,...,SHOT,BUG1,3,5,7,ANT1,3,SCORP1,3) — the even/odd split that gives HEAD0..HEADF their interleaved offsets.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 113,
+      "verbatim": "\t.=400\t\t\t;ODD NUMBERED MOTION OBJECTS"
+    }
+  },
+  {
+    "id": "PIC-5",
+    "claim": "Region 0x800-0xFFF (.=800) is the UPPER bitplane of the same 8x16 motion-object stamp layout — chip 136001.202, PLANE_UPPER. The upper-plane byte for a stamp at lower-plane offset X is region[X+0x800].",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 156,
+      "verbatim": "\t.=800\t\t\t;UPPER BIT OF 8 X 16 MOTION OBJECT STAMPS"
+    },
+    "corroboration": {
+      "file": "src/mame/atari/centiped.cpp",
+      "line": 2034,
+      "note": "ROM_LOAD(\"136001-212.hj7\", 0x0800, 0x0800, ...) — chip 212 (== vendored 136001.202, same SHA1) loads the second half; gfxdecode's spritelayout planeoffset {RGN_FRAC(1,2),0} (centiped.cpp:1722-1732) confirms the planar 2bpp split and that pixel x=0 is the MSB."
+    }
+  },
+  {
+    "id": "PIC-6",
+    "claim": "The .=800+200 (0xA00) block mirrors the .=200 tile block byte-for-byte layout as the upper-plane copy of the same playfield stamps.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 195,
+      "verbatim": "\t.=800+200\t\t\t\t;8X8 PLAYFIELD STAMPS"
+    }
+  },
+  {
+    "id": "PIC-7",
+    "claim": "The .=0C00 block holds the ODD-numbered motion objects' upper-plane bytes, mirroring .=400 the same way .=800 mirrors .=0.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 254,
+      "verbatim": "\t.=0C00\t\t\t\t;ODD NUMBERED MOTION OBJECTS"
+    }
+  },
+  {
+    "id": "PIC-8",
+    "claim": "HEAD0 (the first centipede head/body sprite frame) is a labelled 8x16 stamp at region offset 0x000 — CENDEF.MAC's motion-object picture numbers 0-7 all index this one HEAD0..HEADF pool for head, body, and poisoned variants (no separate BODY sprite set).",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 13,
+      "verbatim": "HEAD0:\t.BYTE 0,0,0,0,3C,18,18,0FF,7E,3C,18,0,0,0,0,0"
+    }
+  },
+  {
+    "id": "PIC-9",
+    "claim": "GUN (the player's gun motion-object stamp) sits at region offset 0x080.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 21,
+      "verbatim": "GUN:\t.BYTE 0,0,0,0,18,30,0F2,0FF,0F2,30,18,0,0,0,0,0"
+    }
+  },
+  {
+    "id": "PIC-10",
+    "claim": "BUG0 (the first spider frame) sits at region offset 0x0A0 — BUG0..BUG7 are the spider's 8 motion-object frames.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 26,
+      "verbatim": "BUG0:\t.BYTE 44,22,11,22,44,68,0A0,3C,0A0,68,44,22,11,22,44,0"
+    }
+  },
+  {
+    "id": "PIC-11",
+    "claim": "ANT0 (the first flea frame) sits at region offset 0x0E0 — ANT0..ANT3 are the flea's 4 motion-object frames.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 30,
+      "verbatim": "ANT0:\t.BYTE 0,0,0,18,18,98,7F,8F,7F,1E,7C,0B8,0,0,0,0"
+    }
+  },
+  {
+    "id": "PIC-12",
+    "claim": "SCORP0 (the first scorpion frame) sits at region offset 0x180 — SCORP0..SCORP3 are the scorpion's 4 motion-object frames.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 42,
+      "verbatim": "SCORP0:\t.BYTE 1,6,0D,8,8,7C,0FF,0FC,0F8,0C8,0CD,0C6,0C1,0CC,0E4,7C"
+    }
+  },
+  {
+    "id": "PIC-13",
+    "claim": "SHOT (the player's fired shot) is a labelled 8x16 motion-object stamp at region offset 0x480.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 122,
+      "verbatim": "SHOT:\t.BYTE 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+    }
+  },
+  {
+    "id": "PIC-14",
+    "claim": "HEADS is HEAD0's upper-plane byte at region offset 0x800 (== 0x000 + PLANE_SIZE) — the mirror invariant that lets PLANE_UPPER be indexed directly by the same lower-plane offset.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 157,
+      "verbatim": "HEADS:\t.BYTE 0,0,0,0,3C,7E,7E,7E,7E,3C,18,0,0,0,0,0"
+    },
+    "corroboration": {
+      "file": "src/mame/atari/centiped.cpp",
+      "line": 1722,
+      "note": "gfx_layout spritelayout: {8,16, RGN_FRAC(1,2), 2, {RGN_FRAC(1,2),0}, {0,1,2,3,4,5,6,7}, {0*8,...}, 16*8} — plane 1 from the region's second half, plane 0 from the first, confirming the 0x000/0x800 mirror this claim set decodes against."
+    }
+  }
+]

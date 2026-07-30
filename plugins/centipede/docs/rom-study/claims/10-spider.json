@@ -1,0 +1,338 @@
+[
+  {
+    "id": "SP-1",
+    "claim": "BUGOFF parks the spider off the playfield at BUGV=0x60 (LDA I,60 / EOR CKF8; upright CKF8=0 makes the EOR identity) and BUGH=0xFF, with picture BUGP=0xF8 (no spider) and COUNT2=0x60 as the hide counter.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 274,
+      "verbatim": "\tSTA BUGV\t\t;VPOS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 272,
+      "note": "LDA I,60 / EOR CKF8 supplies the value stored here; :275-280 store BUGH=0xFF, BUGP=0xF8 and COUNT2=0x60."
+    }
+  },
+  {
+    "id": "SP-2",
+    "claim": "The spider's V speed BUGDV is 2 (fast) by default and 1 (slow) below the score gate. The gate byte is (OPTNS & 40) | 10 -- 0x10 on hard, 0x50 on easy -- compared against SCORE1; the BCC is taken (keeping the fast Y=2) only when the threshold is STRICTLY BELOW SCORE1. SCORE2 non-zero (score > 9999) skips the compare entirely and stays fast.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 255,
+      "verbatim": "\tLDY I,2"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 263,
+      "note": "LDY I,1 is the slow fall-through; :256-262 are the SCORE2 short-circuit and the DIP compare. NOTE the ';IF SCORE < 1000,USE SLOW SPIDER' comment sits on the BCC at :262 but describes the FALL-THROUGH, not the branch."
+    }
+  },
+  {
+    "id": "SP-3",
+    "claim": "The spider's entry side is varied by RNGEN bit 2: when the bit is CLEAR the H direction keeps the V speed's sign, when SET it is negated through COMP. BUGDH therefore always has the same MAGNITUDE as BUGDV, so the spider walks a 45-degree diagonal.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 266,
+      "verbatim": "\tAND I,04"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 267,
+      "note": "BEQ 20$ ;VARY SIDE SPIDER COMES OUT ON skips the TYA / JSR COMP / TAY negation at :268-270."
+    }
+  },
+  {
+    "id": "SP-4",
+    "claim": "The spider cycles eight walking faces, picture codes 0x14 (BUG0) through 0x1B (BUG7): BUGP is incremented, and once it reaches 0x1C it is reset to 0x14. The advance is gated to one face every four frames by FRAME & 03.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 309,
+      "verbatim": "\tCMP I,1C"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 311,
+      "note": "LDA I,14 is the wrap target; :303-305 'LDA FRAME / AND I,03 / BNE 20$' is the 4-frame cadence."
+    }
+  },
+  {
+    "id": "SP-5",
+    "claim": "BUGMV steps the spider by SUBTRACTING its direction bytes: BUGH = BUGH - BUGDH and (upright, non-cocktail branch) BUGV = BUGV - BUGDV. This is the OPPOSITE sign convention to MOTION, which marches a centipede segment with ADC MOBJH.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 344,
+      "verbatim": "\tSBC BUGDH"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 355,
+      "note": "SBC BUGDV is the matching vertical subtract on the non-cocktail path selected by LDY CKC0 / BEQ 50$ at :348-349."
+    }
+  },
+  {
+    "id": "SP-6",
+    "claim": "Direction changes happen only when COUNT2 counts down to zero; the counter is then reloaded with 0x30. On expiry two RNGEN reads decide independently whether to park the H direction and whether to reverse BUGDV, the latter masked by (OPTNS & 40) | 20.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 341,
+      "verbatim": "\tSTA COUNT2\t\t;DELAY CHANGE INDIRECTION"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 340,
+      "note": "LDA I,30 supplies the reload; :314-315 'DEC COUNT2 / BNE 40$' is the gate and :316/:335 are the two RNGEN reads."
+    }
+  },
+  {
+    "id": "SP-7",
+    "claim": "The H-direction park is SKIPPED whenever the spider sits at either horizontal extreme -- BUGH >= 0xFB or BUGH < 0x05 -- because a spider parked with BUGDH=0 at an edge could never walk back onto the field.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 322,
+      "verbatim": "\tCPY I,0FB"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 324,
+      "note": "CPY I,05 / BCC 30$ is the matching right-edge guard; both branch to 30$, skipping the STA OLDDH / LDA I,0 park at :326-327."
+    }
+  },
+  {
+    "id": "SP-8",
+    "claim": "Reaching the bottom row (BUGV < 9) reverses the spider's vertical direction, but ONLY when BUGDV is non-negative: an already-ascending spider is left alone (BPL takes the reversal, BMI falls through to the overlap test).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 374,
+      "verbatim": "\tCMP I,9"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 377,
+      "note": "BPL 85$ ;CHANGE V DIRECTION reverses only a non-negative BUGDV; :378 BMI 80$ skips the reversal for an ascending spider."
+    }
+  },
+  {
+    "id": "SP-9",
+    "claim": "The spider's top limit falls with the score: SCORE2 is biased by 6 in BCD (the 60,000-point datum), a negative result uses the minimum, the remainder is halved by a binary LSR, clamped to 5, multiplied by 8 and subtracted from 0x60. Because of the halving the ceiling does not actually move until 80,000, and the BCD borrow makes it RESET at 860,000 -- as the code's own comment records.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 384,
+      "verbatim": "\tSBC I,6"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 391,
+      "note": "LDA I,5 ;LIMIT AFTER 160K is the clamp; :386 'BPL 71$ ;IF SCORE >=60K OR >=860K' documents the BCD wrap, and :392-399 are the three ASLs and the 0x60 subtract."
+    }
+  },
+  {
+    "id": "SP-10",
+    "claim": "OVRLAP turns the spider around when a live object shares its EXACT row: the horizontal difference is EOR'd with the direction byte and must land at or above 0xF4, a cheap signed 'within 12 in front' test. Objects with picture >= 0xF4 are dead and skipped.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1762,
+      "verbatim": "\tCMP I,0F4"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1763,
+      "note": "BCS 40$ ;WE HAVE AN OVERLAP returns carry set; :1750-1752 require an exact MOBJV match and :1754-1755 skip dead segments."
+    }
+  },
+  {
+    "id": "SP-11",
+    "claim": "A spider whose H reaches 0xFF has walked off the side and is re-parked by calling BUGOFF again, which restores the off-screen coordinates and re-rolls its speed and entry side.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 370,
+      "verbatim": "\tCMP I,0FF"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 420,
+      "note": "100$: JSR BUGOFF ;KEEP BUG OFF SCREEN TEMPORARILY is the branch target of the BCS at :371."
+    }
+  },
+  {
+    "id": "SP-12",
+    "claim": "While the spider is parked, COUNT2 counts down; at zero the respawn delay is reloaded from RNGEN masked by 0x2F and floored by 0x0F (so it always lies in 0x0F..0x3F with bit 4 clear), and BUGP is set back to the first walking face.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 427,
+      "verbatim": "\tAND I,2F"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 428,
+      "note": "ORA I,0F floors the value; :430-433 'LDA I,14 ... STA BUGP ;PICTURE' restores the first face and turns the spider's sound channel on."
+    }
+  },
+  {
+    "id": "SP-13",
+    "claim": "The spider EATS the playfield cell it moves onto, but only when (cell & 0x3F) >= 0x38 -- the same mushroom test the rest of the game uses. Lower codes are text and score glyphs sharing the playfield RAM and are deliberately left alone. A qualifying cell is zeroed outright, not damaged by a stage.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 363,
+      "verbatim": "\tCMP I,38"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 364,
+      "note": "BCC 60$ ;DO NOT LET BUG EAT MESSAGES. skips the removal; :365-367 store 0 into the cell and call MUSHDC."
+    }
+  },
+  {
+    "id": "SP-14",
+    "claim": "MUSHDC decrements the lower-screen mushroom court only when the eaten cell's row is BELOW 0x0C; a mushroom on the upper half of the screen leaves the count untouched.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1609,
+      "verbatim": "5$:\tCMP I,0C"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1612,
+      "note": "DEC X,MUSH-1 ;CORRECT MUSHROOM COURT is reached only by falling through the BCS at :1610."
+    }
+  },
+  {
+    "id": "SP-15",
+    "claim": "PLAY gives motion-object slot 13 -- the spider -- its own horizontal window of DECIMAL 10, entered by the CPX I,13. test, where an ordinary centipede segment uses the HEX window 07. The trailing period makes this decimal 10, not 0x10.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1781,
+      "verbatim": "\tCMP I,10."
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1779,
+      "note": "CPX I,13. / BNE 10$ selects this branch for the spider only; :1785-1786 'CMP I,07 / BCS 25$ ;DIFF > 6' is the segment's narrower hex window."
+    }
+  },
+  {
+    "id": "SP-16",
+    "claim": "The spider's Manhattan-diamond bound in PLAY is DECIMAL 14, against the segment's HEX 0C. Both are reached after the shared |dV| < 7 test, and both compare the sum |dH| + |dV|.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1822,
+      "verbatim": "40$:\tCMP I,14.\t\t;CHECK DIAGONAL TOO"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1798,
+      "note": "CMP I,0C is the segment's hex bound on the same shared path; :1796-1797 'CPX I,13. / BEQ 40$' routes the spider to the wider decimal bound."
+    }
+  },
+  {
+    "id": "SP-17",
+    "claim": "SHOOT gives the spider a horizontal hit window of DECIMAL 10, while the vertical window of 5 is shared with the centipede segments.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2232,
+      "verbatim": "13$:\tCPY I,10."
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2202,
+      "note": "12$: CPY I,5 is the shared vertical window; :2209-2210 'CPX I,13. / BEQ 13$' routes the spider to the decimal-10 horizontal test."
+    }
+  },
+  {
+    "id": "SP-18",
+    "claim": "Shooting the spider scores by PROXIMITY to the gun, measured as the absolute difference |BUGV - PLAYV|. A distance at or above 0x40 scores 300; below 0x16 scores 900; the band between them scores 600.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2243,
+      "verbatim": "\tCMP I,40"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2247,
+      "note": "CMP I,16 splits the two closer bands; :2238/:2246/:2250 load Y with 3, 9 and 6, which become the BCD hundreds of 300, 900 and 600."
+    }
+  },
+  {
+    "id": "SP-19",
+    "claim": "The points sprite is selected by the PTS byte, which starts at 0xB6 and is INCremented once or twice. The walk is therefore 300 -> 900 -> 600, which is NOT ascending by score: it is the CENPIC sprite order THREE, NINE, SIX.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2236,
+      "verbatim": "137$:\tLDY I,0B6"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2245,
+      "note": "INC PTS ;POINTS=900 is the first increment and :2249 INC PTS ;POINTS=600 the second, confirming the non-monotonic order."
+    }
+  },
+  {
+    "id": "SP-20",
+    "claim": "After a spider kill the spider's H is clamped into 0x10..0xF0 purely so the points sprite it is about to display stays on screen, and COUNT and COUNT2 are both loaded with 0x80.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2256,
+      "verbatim": "\tLDA I,0F0"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2259,
+      "note": "LDA I,10 is the low clamp; :2262 '141$: STA BUGH ;KEEP PTS. DISPLAY ON SCREEN' performs the store and :2251-2253 load both counters with 0x80."
+    }
+  },
+  {
+    "id": "SP-21",
+    "claim": "EXPLOD walks motion-object slots 13 down to 0, so the spider explodes alongside the segments. When the spider's explosion reaches its rest picture the slot is replaced by the PTS points sprite -- but only while the player is alive.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 977,
+      "verbatim": "\tLDA PTS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 979,
+      "note": "STA BUGP ;PUT UP POINTS FOR KILLING SPIDER performs the swap; :972-976 gate it on CPX I,13. and on PLAYP indicating a live player, and :963 'EXPLOD: LDX I,13.' starts the walk at the spider's slot."
+    }
+  },
+  {
+    "id": "SP-22",
+    "claim": "The three points sprites are real CENPIC labels: THREE and SIX in the lower plane and NINE in the upper. Walking CENPIC's .BYTE/.REPT stream from '.=0' places THREE at 0x1B0, SIX at 0x1C0 and NINE at 0x5B0, which is exactly what the PTS picture codes decode to under offset = ((pic & 1) << 10) | (((pic >> 1) & 0x3F) << 4): 0xB6 -> THREE, 0xB7 -> NINE, 0xB8 -> SIX.",
+    "source": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 47,
+      "verbatim": "THREE:\t.BYTE 0,0,0,0F8,88,0F8,0,0F8,88,0F8,0,0F8,0A8,0A8,0,0"
+    },
+    "corroboration": {
+      "file": "revision.v2/CENPIC.MAC",
+      "line": 146,
+      "note": "NINE: is the odd-bank counterpart at offset 0x5B0; SIX: follows THREE at :48 / 0x1C0."
+    }
+  },
+  {
+    "id": "SP-23",
+    "claim": "SHOOT's tail brings a killed spider back. Every frame, any spider picture at or above 0x9C counts as dead and decrements COUNT (loaded with 0x80 by the kill); at zero BUGOFF is called, re-parking the spider so the ordinary respawn countdown can start a fresh one. This runs regardless of whether a shot was fired, and it is the ONLY path out of the points-display state -- BUGMV deliberately freezes there, so COUNT2 stops ticking.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2310,
+      "verbatim": "\tCMP I,9C"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2314,
+      "note": "JSR BUGOFF is reached only when the DEC COUNT at :2312 reaches zero; :2311 'BCC 40$ ;IF BUG NOT DEAD' skips the whole countdown for a walking spider, and :2252 'STA COUNT' is where the kill loads 0x80."
+    }
+  },
+  {
+    "id": "SP-24",
+    "claim": "BUGMV's picture-class gate: a spider picture with bit 5 set is not a walking face, and one that is ALSO below the parked code 0xF8 is a points sprite -- in which case BUGMV returns immediately, so a spider showing its kill score neither moves nor animates nor ticks its direction counter. Only a picture at or above 0xF8 falls through to the parked/respawn countdown.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 297,
+      "verbatim": "\tAND I,20"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 300,
+      "note": "BCC 3$ ;PTS.STILL ON returns via the RTS at :292 for any picture below 0xF8 that reached this test; :301 JMP 130$ takes the parked/exploding pictures to the respawn countdown instead."
+    }
+  }
+]

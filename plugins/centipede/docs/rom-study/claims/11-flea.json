@@ -1,0 +1,324 @@
+[
+  {
+    "id": "FL-1",
+    "claim": "ANTPC parks the flea off the top of the playfield: picture ANTP=0x1C (the first of the flea pictures) and ANTV=0xF8 (upright CKF8=0 makes the EOR identity), which is also the value ANTMV reads as \"not currently falling\".",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 134,
+      "verbatim": "\tSTA ANTP\t\t;PICTURE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 137,
+      "note": "LDA I,1C / EOR CKC0 supplies the picture stored here; :135-137 store ANTV=0xF8, the parked position."
+    }
+  },
+  {
+    "id": "FL-2",
+    "claim": "The flea's column is drawn by REJECTION SAMPLING, not a clamp: RNGEN is masked to a multiple of 8 (AND I,0F8) and re-read whenever the result is 0x00 or below 0x10, then biased down by 4. Accepted columns are therefore 0x0C, 0x14, ... 0xF4. The ROM's own comment admits the loop can hang on dead hardware.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 139,
+      "verbatim": "\tAND I,0F8"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 142,
+      "note": ":138 LDA RNGEN is re-read by the 10$ loop; :140 BEQ and :141-142 CMP I,10 / BCC are the two rejections; :143-145 SEC / SBC I,04 / STA ANTH applies the bias."
+    }
+  },
+  {
+    "id": "FL-3",
+    "claim": "ANTDV, the flea's descent speed, is 3 when SCORE2 (the BCD byte of the 10,000s digits) is at or above 6 -- i.e. from 60,000 points -- and 2 below it. A score at or past 1,000,000 wraps the two-digit byte back to 0x00 and the flea reverts to the slow speed.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 146,
+      "verbatim": "\tLDY I,3"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 150,
+      "note": ":149-150 CMP I,6 / BCS 20$ is the gate, commented \";ANT GOES FASTER A 60K\"; :151 LDY I,2 is the slow fall-through and :152 STY ANTDV stores it."
+    }
+  },
+  {
+    "id": "FL-4",
+    "claim": "ANTMV moves the slot only while its picture is BELOW 0x20. Slot 12 is shared with the scorpion (pictures 0x30-0x33) and with the explosion pool (0xF9-0xFF), and this gate is what keeps ANTMV off both.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 55,
+      "verbatim": "\tCMP I,20"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 56,
+      "note": ":53-54 LDA ANTP / EOR CKC0 loads the value compared here; :56 BCC 4$ takes the move path, and the fall-through at :57 is an unconditional RTS."
+    }
+  },
+  {
+    "id": "FL-5",
+    "claim": "A PARKED flea is released only while CENTIN -- the wave's centipede length -- is BELOW DECIMAL 12. The trailing period is load-bearing: this is decimal 12, not the hex 0x12 (=18) compared eleven lines later at :72. INIT seeds CENTIN to decimal 12 (:1167), so wave one has no fleas at all.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 65,
+      "verbatim": "\tCMP I,12."
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1167,
+      "note": "The ROM comments the branch \";NO ANTS EARLY IN GAME\" at :66. INIT's \"LDA I,12. / STA CENTIN\" at :1167-1169 is the boot value, and :469-470 resets it to 0x0C (=12) when it reaches 0."
+    }
+  },
+  {
+    "id": "FL-6",
+    "claim": "The mushroom ceiling that admits a flea has three score bands: 5 below 20,000 (SCORE2 < 2), 9 from 20,000 (SCORE2 < 0x12), and (SCORE2 >> 1) + 6 from 120,000. The third band's halving is a BINARY LSR of a BCD byte, not a decimal halving -- at SCORE2=0x19 it yields 0x0C, where halving the decimal 19 would give 9.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 69,
+      "verbatim": "\tLDY I,05"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 76,
+      "note": ":68 CMP I,2 selects between :69 LDY I,05 and :71 LDY I,09; :72 CMP I,12 (HEX 18) gates the third band, and :74-77 LSR / CLC / ADC I,6 / TAY builds it, commented \";EVERY 20K\" and \";INCREASE MINIMUM NUMBER OF MUSHROOMS\"."
+    }
+  },
+  {
+    "id": "FL-7",
+    "claim": "The threshold is compared against MUSH, the count of mushrooms on the lower part of the screen. The branch that SUPPRESSES the flea is taken only when the threshold is STRICTLY BELOW MUSH, so a board whose count exactly equals the threshold still releases the flea.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 79,
+      "verbatim": "\tCMP X,MUSH-1"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 80,
+      "note": ":78 TYA loads the threshold into A before this compare; :80 BCC 30$ is the suppressing branch, commented \";IF THERE ARE MANY MUSHROOMS NEAR BOTTOM\". MUSH is defined at CENDE4.MAC:222 as \"NUMBER OF MUSHROOMS ON LOWER PART OF SCREEN\"."
+    }
+  },
+  {
+    "id": "FL-8",
+    "claim": "The flea's picture changes only on frames where FRAME & 3 == 0 -- the same one-in-four cadence that gates its mushroom seeding at :111.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 82,
+      "verbatim": "\tAND I,03"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 83,
+      "note": ":81 LDA FRAME supplies the value masked here; :83 BNE 20$ skips the picture change, commented \";SLOW DOWN PICTURE CHANGES\"."
+    }
+  },
+  {
+    "id": "FL-9",
+    "claim": "The flea picture advances by TWO, not one: INC ANTP bumps the byte in memory and the following LDA/ADC I,01 adds one again to the value read back. From ANTPC's 0x1C the cycle is 0x1C -> 0x1E -> 0x1C, so pictures 0x1D and 0x1F are never shown -- the \";FROM 1C TO 1F\" comment describes the ORA mask's range, not the reachable set.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 84,
+      "verbatim": "\tINC ANTP"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 89,
+      "note": ":85-88 LDA ANTP / CLC / ADC I,01 / AND I,03 is the second increment and the wrap; :89 ORA I,1C carries the \";FROM 1C TO 1F\" comment, and :91 STA ANTP stores the result."
+    }
+  },
+  {
+    "id": "FL-10",
+    "claim": "A flea whose post-move V falls below 4 has reached the bottom of the screen and is removed by re-running ANTPC, which draws a fresh column and re-reads the score for its speed.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 105,
+      "verbatim": "\tCMP I,4"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 125,
+      "note": ":104 EOR CKF8 normalizes the value compared here; :106 BCC 40$ is the branch, commented \";IF BOTTOM OF SCREEN\", and 40$ at :125 is \"JSR ANTPC ;REMOVE ANT FROM SCREEN\"."
+    }
+  },
+  {
+    "id": "FL-11",
+    "claim": "The seeded mushroom appears 4 pixels ABOVE the flea's post-move position -- i.e. where the flea has just been, since V decreases downward. The horizontal coordinate is ANTH, stashed into TEMP1 at :92-93 for OBSTAC to read.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 116,
+      "verbatim": "\tLDA I,4\t\t\t;MAKE MUSHROOM APPEAR AFTER ANT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 121,
+      "note": ":117-119 EOR CKFF / CLC / ADC ANTV adds the offset to the post-move ANTV; :120 LDY I,0 passes direction 0 and :121-122 JSR OBSTAC / JSR MUSHER perform the placement."
+    }
+  },
+  {
+    "id": "FL-12",
+    "claim": "Seeding is gated twice: only on a frame where FRAME & 3 == 0, and then only when a fresh RNGEN read also has its low two bits clear -- one value in four. The FRAME test runs FIRST, so an off-cadence frame consumes no entropy at all.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 114,
+      "verbatim": "\tAND I,03"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 112,
+      "note": ":110-112 LDA FRAME / AND I,03 / BNE 30$ returns before :113 LDA RNGEN is ever read; :115 BNE 30$ is the rng rejection, commented \";DO NOT PUT UP MUSHROOM\"."
+    }
+  },
+  {
+    "id": "FL-13",
+    "claim": "SHOOT's default vertical window is 5, shared with the centipede segments, and an object at or above 0xF8 is off the top of the screen and unshootable -- which is exactly where a parked flea sits.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2202,
+      "verbatim": "12$:\tCPY I,5\t\t\t;SHOT UP 6, AND CENTS DOWN 2 (SELL AT 20)"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2181,
+      "note": ":2181-2182 CMP I,0F8 / BCS 132$ is the off-top guard, commented \";IF OFF TOP OF SCREEN\"; :2203 BCS 132$ rejects anything outside this window."
+    }
+  },
+  {
+    "id": "FL-14",
+    "claim": "A flea that has already been hit descends 4 per frame against a shot rising 6, so SHOOT WIDENS its vertical window from 5 to 7. The test selecting the wide window is ANTDV >= 4, which means \"has been hit\" -- ANTPC's 60,000-point speed is only 3 and still takes the narrow window.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2198,
+      "verbatim": "\tCPY I,7\t\t\t;SHOT GOES UP 6, FAST ANT DOWN 4"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2196,
+      "note": ":2194-2197 LDA ANTDV / EOR CKF8 / CMP I,4 / BCC 12$ is the selector, commented \";NOT FAST ANT\"; the wide window here carries \";SHOT GOES UP 6, FAST ANT DOWN 4\"."
+    }
+  },
+  {
+    "id": "FL-15",
+    "claim": "The flea's horizontal hit window is 6, narrower than the spider's DECIMAL 10 at :2232.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2217,
+      "verbatim": "\tCPY I,6\t\t\t;CHECK ANT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2218,
+      "note": ":2204-2208 computes the absolute horizontal distance into Y; :2218 BCS 132$ rejects anything at or beyond this window, commented \";NOT IN H WINDOW\"."
+    }
+  },
+  {
+    "id": "FL-16",
+    "claim": "Killing a flea scores 200 points, loaded as the BCD MSB 2 and passed to SCORN1. This CONFIRMS the rev-1 prose at CENTIP.DOC:115 -- there is no divergence for this creature (open question 4).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2219,
+      "verbatim": "\tLDY I,2\t\t\t;200 POINTS FOR ANT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2298,
+      "note": ":2296-2298 STY TEMP1 / LDA I,0 / JSR SCORN1 is where Y reaches the scoring routine, commented \";SCORES FOR SPIDER,ANT, OR SCORPION\"."
+    }
+  },
+  {
+    "id": "FL-17",
+    "claim": "The FIRST hit on a flea does not kill it: it stores 4 into ANTDV, speeding the flea up, and branches to 108$ which repositions the shot without ever reaching SCORN1 -- so a first hit awards nothing.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2223,
+      "verbatim": "\tSTA ANTDV\t\t;SPEED UP ON FIRST HIT"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2224,
+      "note": ":2224 BNE 108$ is the unconditional exit, and 108$ at :2169 is \"JMP 20$\", which lands on :2303 JSR RSHOT -- the shot is consumed but no score is added."
+    }
+  },
+  {
+    "id": "FL-18",
+    "claim": "The flea carries no hit counter: ANTDV itself is the flag. A flea whose ANTDV already equals 4 is on its SECOND hit and explodes, taking the scoring path instead of the speed-up path.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2222,
+      "verbatim": "\tBEQ 129$\t\t\t;TIME TO EXPLODE ANT (2ND HIT)"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2221,
+      "note": ":2220-2221 LDA I,4 / CMP ANTDV is the comparison; this branch is commented \";TIME TO EXPLODE ANT (2ND HIT)\" and 129$ at :2229 is \"JMP 18$\", the scoring-and-explosion path."
+    }
+  },
+  {
+    "id": "FL-19",
+    "claim": "A killed motion object is stamped with picture 0xFF, and EXPLOD counts any picture at or above 0xFA down by one per frame, stopping at 0xF9. For slot 12 nothing further happens: the points-sprite tail at :972 is guarded by \"CPX I,13.\" and belongs to the spider alone.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2302,
+      "verbatim": "\tSTA X,MOBJP\t\t;EXPLOSION PICTURE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 965,
+      "note": ":2301 LDA I,0FF supplies the value stored here, commented \";EXPLOSION PICTURE\"; EXPLOD at :963-970 walks slots 13..0 and :965-968 CPY I,0F9 / CPY I,0FA bound the countdown."
+    }
+  },
+  {
+    "id": "FL-20",
+    "claim": "SCORP -- not ANTMV or EXPLOD -- is what brings a killed flea back. Once the explosion has counted below 0xFA the routine falls through to re-run ANTPC, re-parking the slot as a fresh flea. Without this branch a killed flea would be stranded forever, because ANTMV refuses any picture at or above 0x20.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2075,
+      "verbatim": "58$:\tJMP ANTPC\t\t;RESET ENTRY TO ALLOW ANTS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2073,
+      "note": ":2072-2074 EOR CKC0 / CMP I,0FA / BCS 90$ keeps the explosion running until it is spent; only then does control reach this JMP, commented \";RESET ENTRY TO ALLOW ANTS\"."
+    }
+  },
+  {
+    "id": "FL-21",
+    "claim": "PLAY branches on the SLOT index, and only slot 13 (the spider) takes the wider box. ANTMV enters PLAY with DECIMAL slot 12, so the flea collides with the gun on the DEFAULT segment windows: |dH| < 7, |dV| < 7 and the Manhattan sum < 0x0C.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1785,
+      "verbatim": "10$:\tCMP I,07"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1798,
+      "note": ":1779-1780 CPX I,13. / BNE 10$ routes every non-spider slot to this default window; :1792 CMP I,7 is the shared vertical window and :1798 CMP I,0C the diamond bound. ANTMV calls PLAY at :107-108 with \"LDX I,12.\"."
+    }
+  },
+  {
+    "id": "FL-22",
+    "claim": "ANTDH is set to zero by ANTPC and never written again by ANTMV: the flea falls straight down and never moves horizontally.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 154,
+      "verbatim": "\tSTA ANTDH\t\t;HDIR"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 153,
+      "note": ":153 LDA I,0 supplies the value stored here, commented \";HDIR\"; no instruction in ANTMV (:50-126) writes ANTDH."
+    }
+  },
+  {
+    "id": "FL-23",
+    "claim": "The flea's 'not on screen' state is a POSITION, not a picture: ANTPC parks it at ANTV=0xF8 while leaving a perfectly live picture (0x1C) in the slot, and the ROM names that state itself — ':125 40$: JSR ANTPC ;REMOVE ANT FROM SCREEN'. ANTMV's own on-screen predicate is the matching comparison ':61-62 CMP I,0F8 / BCC 5$ ;IF ON SCREEN, KEEP MOVING'. A renderer must therefore gate slot 12 on v < 0xF8, not on the picture band as it does for the spider's 0xF8 'no spider' code.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 125,
+      "verbatim": "40$:\tJSR ANTPC\t\t;REMOVE ANT FROM SCREEN"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 62,
+      "note": ":59-62 4$: LDA ANTV / EOR CKF8 / CMP I,0F8 / BCC 5$ is ANTMV's own on-screen test; :132-137 ANTPC stores picture 0x1C and ANTV=0xF8 together, so the parked slot holds a LIVE picture at an off-screen position."
+    }
+  }
+]

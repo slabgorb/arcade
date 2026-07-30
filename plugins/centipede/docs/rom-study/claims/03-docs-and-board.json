@@ -1,0 +1,20 @@
+[
+  {
+    "id": "DB-1",
+    "claim": "CENTIP.DOC is Ed Logg's own program documentation, filed under this name.",
+    "source": {
+      "file": "CENTIP.DOC",
+      "line": 3,
+      "verbatim": "FILE NAME:\tCENTIP.DOC"
+    }
+  },
+  {
+    "id": "DB-2",
+    "claim": "Playfield RAM PLYFLD is 30 wide by 32 high, mapped at 400-7BF.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 61,
+      "verbatim": "PLYFLD\t=400\t\t\t;30 WIDE BY 32 HIGH (400-7BF)"
+    }
+  }
+]

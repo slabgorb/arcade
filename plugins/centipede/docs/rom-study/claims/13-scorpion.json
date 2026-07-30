@@ -1,0 +1,226 @@
+[
+  {
+    "id": "SC-1",
+    "claim": "SCORP moves the shared slot 12 only while its picture is a LIVE scorpion, the band 0x30-0x33: :2007-2008 \"CMP I,30 / BCS 50$\" enters the move code for 0x30 and up, while :2003-2004 \"CMP I,34 / BCC 2$\" sends 0x34 and above to the explosion handler. So isScorpion(pic) is 0x30 <= pic < 0x34.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2007,
+      "verbatim": "2$:\tCMP I,30"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2003,
+      "note": "CMP I,34 draws the exploding boundary one above the top scorpion picture 0x33."
+    }
+  },
+  {
+    "id": "SC-2",
+    "claim": "A scorpion may START only from the PARKED slot: :2009-2012 \"LDA ANTV / EOR CKF8 / CMP I,0F8 / BCC 3$\" branches away (an ant is already in flight) whenever ANTV is below 0xF8, so the spawn gate requires ANTV >= 0xF8.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2011,
+      "verbatim": "\tCMP I,0F8"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2013,
+      "note": "The FRAME test at :2013-2014 is the next gate once the slot is confirmed parked."
+    }
+  },
+  {
+    "id": "SC-3",
+    "claim": "The scorpion spawn gate reads CENTIN as DECIMAL 11 (:2017-2020 \"LDA CENTIN-1 / CMP I,11.\") \u2014 one lower than the flea's decimal 12 \u2014 so scorpions appear only once the centipede has been worn down further than the flea requires.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2019,
+      "verbatim": "\tCMP I,11."
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2020,
+      "note": "CMP I,11. carries a trailing period (decimal); BCS 3$ holds the scorpion out at or above 11."
+    }
+  },
+  {
+    "id": "SC-4",
+    "claim": "The spawn is attempted only on a FRAME whose LOW byte is zero: :2013-2014 \"LDA FRAME / BEQ 4$\" reads the low byte of the 2-byte FRAME counter (CENDE4.MAC:125 \"FRAME: .BLKB 2\"), so a spawn window opens once every 256 frames.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2014,
+      "verbatim": "\tBEQ 4$\t\t\t;SCORP NOW"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2013,
+      "note": "LDA FRAME loads the low byte; BEQ 4$ takes the spawn path only when it is 0."
+    }
+  },
+  {
+    "id": "SC-5",
+    "claim": "The scorpion enters on a 1-in-4 rng roll: :2021-2023 \"LDA RNGEN / AND I,03 / BNE 3$\" rejects three RNGEN values in four before a scorpion is started.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2022,
+      "verbatim": "\tAND I,03"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2021,
+      "note": "LDA RNGEN supplies the byte AND I,03 masks; BNE 3$ rejects a non-zero result."
+    }
+  },
+  {
+    "id": "SC-6",
+    "claim": "The crossing speed is chosen off the score: below 20,000 (SCORE2 < 2, :2029-2030 \"CMP I,2\") the magnitude is 1 (:2041 \"LDA I,1\"); at or above 20,000 it is 2 (:2035 \"LDA I,2\") UNLESS a 1-in-4 rng roll keeps it slow (:2032-2034 \"AND I,03 / BEQ 5$\"). The direction is RNGEN bit 7 (:2036/:2042 \"BIT RNGEN / BPL\", negating to -magnitude when the bit is set).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2030,
+      "verbatim": "\tCMP I,2"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2036,
+      "note": "BIT RNGEN / BPL 10$ keeps the positive magnitude; the fall-through LDA I,-N negates it."
+    }
+  },
+  {
+    "id": "SC-7",
+    "claim": "A started scorpion begins at the screen edge and walks flat: :2046-2047 \"LDA I,0 / STA ANTH ;START AT EDGE\" and :2048 \"STA ANTDV ;CLEAR VERTICAL DIRECTION\" \u2014 ANTH=0, ANTDV=0, so the scorpion never descends.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2047,
+      "verbatim": "\tSTA ANTH\t\t;START AT EDGE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2048,
+      "note": "STA ANTDV clears the vertical step immediately after ANTH is zeroed."
+    }
+  },
+  {
+    "id": "SC-8",
+    "claim": "The scorpion's row is drawn from RNGEN into the upper half: :2049-2054 \"LDA RNGEN / AND I,78 / CLC / ADC I,70 / ... / STA ANTV\" gives ANTV = (RNGEN & 0x78) + 0x70, i.e. a multiple of 8 in [0x70, 0xE8] \u2014 always on screen, never at the 0xF8 park.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2050,
+      "verbatim": "\tAND I,78"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2052,
+      "note": "ADC I,70 biases the masked RNGEN into the upper-half band."
+    }
+  },
+  {
+    "id": "SC-9",
+    "claim": "The crossing is horizontal only: upright (CKC0=0) :2065-2067 \"CLC / ADC ANTDH / STA ANTH\" adds ANTDH to ANTH each frame, and ANTV is never touched by the move code.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2067,
+      "verbatim": "53$:\tSTA ANTH\t\t;NEW HORIZONTAL POSITION"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2066,
+      "note": "STA ANTH stores the new horizontal position produced by ADC ANTDH."
+    }
+  },
+  {
+    "id": "SC-10",
+    "claim": "The scorpion re-parks the instant ANTH returns to 0: :2069 \"BNE 60$\" continues the crossing while ANTH is non-zero, and the fall-through :2070/:2075 \"BEQ 58$ / 58$ JMP ANTPC\" runs the SAME ANTPC re-park the flea uses, drawing a fresh column.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2075,
+      "verbatim": "58$:\tJMP ANTPC\t\t;RESET ENTRY TO ALLOW ANTS"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2069,
+      "note": "BNE 60$ / BEQ 58$ split on ANTH: zero routes to JMP ANTPC."
+    }
+  },
+  {
+    "id": "SC-11",
+    "claim": "The scorpion picture cycles by a GENUINE +1 every four frames: :2077-2078 \"LDA FRAME / AND I,03 / BNE 70$\" gates the change, and :2080-2085 \"LDA ANTP / CLC / ADC I,01 / AND I,03 / ORA I,30\" adds one and wraps within 0x30-0x33 \u2014 unlike the flea's INC-then-ADC +2, so all four SCORP pictures are reachable.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2082,
+      "verbatim": "\tADC I,01\t\t;UPDATE PICTURE NUMBER"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2078,
+      "note": "AND I,03 on FRAME gates the change to every fourth frame; the +1 has no prior memory INC."
+    }
+  },
+  {
+    "id": "SC-12",
+    "claim": "Every normal mushroom the scorpion passes is poisoned: :2090-2096 \"CMP I,40 / BCS 90$ / CMP I,3C / BCC 90$ / AND I,0FB / ... / STA NY,OBST\" poisons a cell in [0x3C, 0x40) by clearing bit 2, mapping 0x3C-0x3F onto the 0x38-0x3B band (cp1-4's PM-19). Empty, non-mushroom and already-poisoned cells fall through untouched.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2094,
+      "verbatim": "\tAND I,0FB"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2092,
+      "note": "CMP I,3C / BCC 90$ excludes already-poisoned and empty cells; CMP I,40 excludes non-mushrooms."
+    }
+  },
+  {
+    "id": "SC-13",
+    "claim": "SHOOT scores the shared slot as a SCORPION when its picture is 0x20 or above: :2213-2216 \"LDA X,MOBJP / EOR CKC0 / CMP I,20 / BCS 131$\" routes past the flea's two-hit branch straight to the scorpion's single-hit 131$.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2216,
+      "verbatim": "\tBCS 131$\t\t;IF SCORPION"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2202,
+      "note": "The same band split at :2192 sent the scorpion past the flea's speed-dependent V window to the generic 12$."
+    }
+  },
+  {
+    "id": "SC-14",
+    "claim": "The scorpion's shot windows are the generic V window 5 (:2202 \"CPY I,5\") and a WIDER decimal-10 H window (:2226 \"CPY I,10.\") \u2014 a hit needs |dV| < 5 and |dH| < 10.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2226,
+      "verbatim": "131$:\tCPY I,10."
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2202,
+      "note": "CPY I,10. is decimal (trailing period); CPY I,5 is the generic vertical window the scorpion inherits."
+    }
+  },
+  {
+    "id": "SC-15",
+    "claim": "A scorpion is worth 1000 points for a single hit: :2228 \"LDY I,10\" loads the SCORN1 high byte as HEX 0x10, which the BCD score routine reads as the decimal digits 1,0 -> 1000. There is no two-hit path (129$ jumps straight to 18$).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2228,
+      "verbatim": "\tLDY I,10\t\t;1000 FOR SCORPION"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2296,
+      "note": "18$ STY TEMP1 takes Y (0x10) as the MSB of the score passed to SCORN1."
+    }
+  },
+  {
+    "id": "SC-16",
+    "claim": "A killed scorpion takes the SHARED 0xFF explosion picture: :2301-2302 \"LDA I,0FF / STA X,MOBJP ;EXPLOSION PICTURE\" \u2014 the same byte a killed flea or segment takes, which EXPLOD counts down and SCORP (:2072-2075) re-parks. A slot parked off the top (ANTV >= 0xF8) is not shootable (:2180-2182).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2302,
+      "verbatim": "\tSTA X,MOBJP\t\t;EXPLOSION PICTURE"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2296,
+      "note": "STA X,MOBJP writes 0xFF into slot 12; the shared EXPLOD/ANTPC path revives it (cp3-2)."
+    }
+  }
+]

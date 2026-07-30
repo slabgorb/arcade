@@ -1,0 +1,97 @@
+[
+  {
+    "id": "TB-1",
+    "claim": "The author's own interrupt spec: 4 IRQs per frame, one flagged as VBLANK — the root of the 59.886 Hz timebase.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 31,
+      "verbatim": ";INTERRUPT REQUIREMENTS:IRQ 4 PER FRAME (1 IN VBLANK)"
+    },
+    "corroboration": {
+      "file": "src/mame/atari/centiped.cpp",
+      "line": 25,
+      "note": "MAME hardware header: 12.096MHz master -> HSYNC=XTAL/256/3=15.75kHz -> VSYNC=HSYNC/263=59.88593Hz (MAME hedges the divisor, \"could be /262\" — open question 1). Three-way corroborated in brief.md §3 alongside the GTIME timer-wrap arithmetic and the scanline-timer IRQ generation."
+    }
+  },
+  {
+    "id": "TB-2",
+    "claim": "The IRQ handler distinguishes the VBLANK-flagged interrupt with BIT ENDSCN / BVS.",
+    "source": {
+      "file": "CENIRQ.MAC",
+      "line": 264,
+      "verbatim": "4$:\tBIT ENDSCN"
+    }
+  },
+  {
+    "id": "TB-3",
+    "claim": "Only the VBLANK-flagged IRQ increments SYNC and the 16-bit FRAME counter.",
+    "source": {
+      "file": "CENIRQ.MAC",
+      "line": 268,
+      "verbatim": "5$:\tINC SYNC\t\t;WE ARE IN NEXT FRAME"
+    }
+  },
+  {
+    "id": "TB-4",
+    "claim": "Rev 1's mainloop gates on SYNC: LSR SYNC / BCC spin-wait.",
+    "source": {
+      "file": "CENTI.MAC",
+      "line": 17,
+      "verbatim": "1$:\tLSR SYNC"
+    }
+  },
+  {
+    "id": "TB-5",
+    "claim": "Rev 4's mainloop gates on SYNC identically.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 17,
+      "verbatim": "1$:\tLSR SYNC"
+    }
+  },
+  {
+    "id": "TB-6",
+    "claim": "Immediately after clearing SYNC, the mainloop pets the watchdog.",
+    "source": {
+      "file": "CENTI.MAC",
+      "line": 19,
+      "verbatim": "\tSTA WTCHDG\t\t;WRITE TO WATCHDOG"
+    }
+  },
+  {
+    "id": "TB-7",
+    "claim": "GTIME, the BCD game-time counter, increments (SED/CLD-wrapped) when FRAME's low byte wraps, every 256 frames.",
+    "source": {
+      "file": "CENIRQ.MAC",
+      "line": 273,
+      "verbatim": "\tLDA GTIME\t\t;INCREMENT GAME TIMER"
+    }
+  },
+  {
+    "id": "TB-8",
+    "claim": "GTIME's equate comment: game time in 4-second increments.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 277,
+      "verbatim": "GTIME:\t.BLKB 2\t\t\t;GAME TIME IN 4 SECOND INCREMENTS (DECIMAL)"
+    }
+  },
+  {
+    "id": "TB-9",
+    "claim": "The self-test doc corroborates: average game time accurate to four seconds.",
+    "source": {
+      "file": "CENTIP.DOC",
+      "line": 407,
+      "verbatim": "time the EAROM was cleared.  The second is the average game time accurate to four"
+    }
+  },
+  {
+    "id": "TB-10",
+    "claim": "The IRQ's own SYNC-overrun trap: if SYNC reaches 8 missed VBLANKs, spin until the watchdog resets the machine.",
+    "source": {
+      "file": "CENIRQ.MAC",
+      "line": 281,
+      "verbatim": "8$:\tLDA SYNC"
+    }
+  }
+]

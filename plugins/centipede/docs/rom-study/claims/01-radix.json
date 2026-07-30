@@ -1,0 +1,74 @@
+[
+  {
+    "id": "RX-1",
+    "claim": ".RADIX 16 is set once in the shared rev-1 include CENDEF, inherited by every CPU module that .INCLUDEs it.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 2,
+      "verbatim": "\t.RADIX 16"
+    }
+  },
+  {
+    "id": "RX-2",
+    "claim": "Rev 4's equivalent shared include CENDE4 sets the same .RADIX 16.",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 2,
+      "verbatim": "\t.RADIX 16"
+    }
+  },
+  {
+    "id": "RX-3",
+    "claim": "The picture-data module CENPIC, assembled separately (not linked), sets its own .RADIX 16.",
+    "source": {
+      "file": "CENPIC.MAC",
+      "line": 8,
+      "verbatim": "\t.RADIX 16"
+    }
+  },
+  {
+    "id": "RX-4",
+    "claim": "The sync-PROM module SYNC, assembled separately, sets its own .RADIX 16.",
+    "source": {
+      "file": "SYNC.MAC",
+      "line": 5,
+      "verbatim": "\t.RADIX 16"
+    }
+  },
+  {
+    "id": "RX-5",
+    "claim": "COIN65, assembled separately, sets its own .RADIX 16 (space-indented in this file).",
+    "source": {
+      "file": "COIN65.MAC",
+      "line": 11,
+      "verbatim": "        .RADIX 16"
+    }
+  },
+  {
+    "id": "RX-6",
+    "claim": "COIN65 restores the caller's radix on exit.",
+    "source": {
+      "file": "COIN65.MAC",
+      "line": 662,
+      "verbatim": "\t.RADIX .RAD\t\t;RESTORE RADIX"
+    }
+  },
+  {
+    "id": "RX-7",
+    "claim": "NCENT, the segment-count equate, carries a trailing period, so 12. is decimal twelve even inside a hex-radix file.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 119,
+      "verbatim": "NCENT\t=12.\t\t\t;NUMBER OF CENTIPEDES"
+    }
+  },
+  {
+    "id": "RX-8",
+    "claim": "CMP I,37. compares against decimal 37 inside the otherwise-hex CENIRQ module.",
+    "source": {
+      "file": "CENIRQ.MAC",
+      "line": 285,
+      "verbatim": "\tCMP I,37."
+    }
+  }
+]

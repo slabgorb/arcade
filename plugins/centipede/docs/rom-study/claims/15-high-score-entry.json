@@ -1,0 +1,173 @@
+[
+  {
+    "id": "HS-1",
+    "claim": "GETINT is the routine that collects the player's initials for the high-score table. (The .SBTTL misspells SCORE as CORE; the body comment at :1002 spells it correctly.)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1001,
+      "verbatim": "\t.SBTTL\tGETINT-GET PLAYERS INITIALS FOR HIGH CORE"
+    }
+  },
+  {
+    "id": "HS-2",
+    "claim": "GETINT displays the message \"GREAT SCORE\" before collecting initials.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1036,
+      "verbatim": "\tJSR MESS\t\t;DISPLAY \"GREAT SCORE\""
+    }
+  },
+  {
+    "id": "HS-3",
+    "claim": "GETINT displays the message \"ENTER YOUR INITIALS\".",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1038,
+      "verbatim": "\tJSR MESS\t\t;DISPLAY \"ENTER YOUR INITIALS\""
+    }
+  },
+  {
+    "id": "HS-4",
+    "claim": "The initials picker commits a letter on a FIRE debounce of 2 frames off then 3 frames on \u2014 the trackball/fire input model the keyboard clone replaces.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1071,
+      "verbatim": "\tBNE 60$\t\t\t;2 FRAMES OFF 3 FRAMES ON"
+    }
+  },
+  {
+    "id": "HS-5",
+    "claim": "Initials entry is complete after THREE letters: UPDINT is compared against 3 (RADIX 16, so 03 is 3 in either radix).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1074,
+      "verbatim": "\tCMP I,03"
+    }
+  },
+  {
+    "id": "HS-6",
+    "claim": "Below three letters the routine branches back to keep collecting \u2014 the entry does not finish early.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1075,
+      "verbatim": "\tBCC 55$\t\t\t;IF WE ARE NOT DONE"
+    }
+  },
+  {
+    "id": "HS-7",
+    "claim": "Each newly opened initial slot starts on the letter A.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1104,
+      "verbatim": "\tSTA X,INITL\t\t;SET INITIAL TO A"
+    }
+  },
+  {
+    "id": "HS-8",
+    "claim": "The initials entry arms a timeout by SEEDING the high byte of the frame counter with 0xF4 (RADIX 16). It is not a count of 244 frames: FRAME+1 advances once per 256 frames (see HS-17) and the entry waits for it to reach zero, so the wait is (0x100-0xF4)*256 = 3072 frames (~51 s at 15750/263 Hz) \u2014 matching the line's own \"ABOUT 50 SECONDS\". Reloaded on each accepted letter.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1101,
+      "verbatim": "\tLDA I,0F4\t\t;ABOUT 50 SECONDS"
+    }
+  },
+  {
+    "id": "HS-9",
+    "claim": "The letter is scrolled by reading the HORIZONTAL TRACKBALL \u2014 the silicon input mechanism the keyboard clone ports away from.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1135,
+      "verbatim": "\tLDY TB\t\t\t;GET HORIZONTAL TRACKBALL READINGS"
+    }
+  },
+  {
+    "id": "HS-10",
+    "claim": "On completion the high scores are copied to the EAROM buffer \u2014 the cabinet's persist step, whose clone equivalent is the @arcade/shared/highscore save.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1117,
+      "verbatim": "62$:\tJSR COPYHS\t\t;COPY HIGH SCORES TO EAROM BUFFER"
+    }
+  },
+  {
+    "id": "HS-11",
+    "claim": "UPDATE is the routine that updates the high-score table when a game ends.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2534,
+      "verbatim": "\t.SBTTL\tUPDATE-UPDATE HIGH SCORE TABLE"
+    }
+  },
+  {
+    "id": "HS-12",
+    "claim": "UPDATE takes the qualifying verdict by comparing the finished score against each board entry; a borrow means the new score beats that entry.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2574,
+      "verbatim": "\tBCC 30$\t\t\t;NEW HIGH SCORE"
+    }
+  },
+  {
+    "id": "HS-13",
+    "claim": "The board is walked three bytes per entry across NSCORE entries.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2578,
+      "verbatim": "\tCPY I,3*NSCORE"
+    }
+  },
+  {
+    "id": "HS-14",
+    "claim": "On a qualifying score UPDATE clears UPDINT so GETINT starts with the first initial.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2592,
+      "verbatim": "\tSTA UPDINT\t\t;STARTING WITH FIRST INITIAL"
+    }
+  },
+  {
+    "id": "HS-15",
+    "claim": "The ROM's high-score table is EIGHT entries deep \u2014 shallower than @arcade/shared/highscore's MAX_HIGH_SCORES of 10 (logged as a Delivery Finding).",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 120,
+      "verbatim": "NSCORE\t=8\t\t\t;NUMBER OF HIGH SCORE ENTRIES"
+    }
+  },
+  {
+    "id": "HS-16",
+    "claim": "The entry's INITIAL timeout is seeded by UPDATE with 0xF0, giving (0x100-0xF0)*256 = 4096 frames (~68 s at 15750/263 Hz) \u2014 independently corroborating the 256-frame tick model, since the line's own comment calls it one minute at 60Hz.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2625,
+      "verbatim": "\tLDA I,0F0\t\t;1 MINUTE AT 60HZ"
+    }
+  },
+  {
+    "id": "HS-17",
+    "claim": "FRAME is a 16-bit counter incremented once per frame, and FRAME+1 is its HIGH byte \u2014 incremented only when the low byte overflows. This is why a timeout seeded into FRAME+1 lasts (0x100-seed)*256 frames rather than `seed` frames.",
+    "source": {
+      "file": "CENIR4.MAC",
+      "line": 269,
+      "verbatim": "\tINC FRAME\t\t;UPDATE FRAME COUNTER"
+    }
+  },
+  {
+    "id": "HS-18",
+    "claim": "UPDATE writes the finished score into the high-score table BEFORE any initial is collected, so a timed-out or abandoned initials entry costs the player their NAME but never their PLACE on the board.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2619,
+      "verbatim": "\tLDA X,SCORE2\t\t;MOVE HIGH SCORES IN"
+    }
+  },
+  {
+    "id": "HS-19",
+    "claim": "The ROM seeds only the FIRST initial slot to 'A' and CLEARS the second and third, so an untouched entry displays \"A\" plus two blanks \u2014 not three A's.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2614,
+      "verbatim": "\tLDA I,0\t\t\t;CLEARS SECOND AND THIRD INITIALS"
+    }
+  }
+]

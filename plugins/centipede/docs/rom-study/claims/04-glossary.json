@@ -1,0 +1,173 @@
+[
+  {
+    "id": "GL-1",
+    "claim": "ANTMV's subtitle: move ant down screen — the author's name for the flea.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 46,
+      "verbatim": "\t.SBTTL ANTMV-MOVE ANT DOWN SCREEN"
+    }
+  },
+  {
+    "id": "GL-2",
+    "claim": "CENTIP.DOC's own scoring list names object 4 \"Flea (ant, bomber, etc.)\".",
+    "source": {
+      "file": "CENTIP.DOC",
+      "line": 46,
+      "verbatim": "4)Flea (ant, bomber, etc.)"
+    }
+  },
+  {
+    "id": "GL-3",
+    "claim": "BUGMV's subtitle: move bug — the author's name for the spider.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 285,
+      "verbatim": "\t.SBTTL\tBUGMV-MOVE BUG"
+    }
+  },
+  {
+    "id": "GL-4",
+    "claim": "SCORP's subtitle: move and start scorpion.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2000,
+      "verbatim": "\t.SBTTL\tSCORP-MOVE AND START SCORPION"
+    }
+  },
+  {
+    "id": "GL-5",
+    "claim": "CENTIP.DOC names object 3 \"Scorpion (mermaid, etc.)\".",
+    "source": {
+      "file": "CENTIP.DOC",
+      "line": 45,
+      "verbatim": "3)Scorpion (mermaid, etc.)"
+    }
+  },
+  {
+    "id": "GL-6",
+    "claim": "MOBJP is a 16-byte block, one entry per motion-object slot.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 129,
+      "verbatim": "MOBJP:\t.BLKB 16.\t\t;MOTION OBJECT PICTURE (0=NO MOTION OBJECT)"
+    }
+  },
+  {
+    "id": "GL-7",
+    "claim": "ANTP is slot 12 (MOBJP+12), the flea.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 138,
+      "verbatim": "ANTP\t=MOBJP+12."
+    }
+  },
+  {
+    "id": "GL-8",
+    "claim": "BUGP is slot 13 (MOBJP+13), the spider.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 139,
+      "verbatim": "BUGP\t=MOBJP+13."
+    }
+  },
+  {
+    "id": "GL-9",
+    "claim": "SHOTP is slot 14 (MOBJP+14), the player shot.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 140,
+      "verbatim": "SHOTP\t=MOBJP+14."
+    }
+  },
+  {
+    "id": "GL-10",
+    "claim": "PLAYP is slot 15 (MOBJP+15), the player gun.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 141,
+      "verbatim": "PLAYP\t=MOBJP+15."
+    }
+  },
+  {
+    "id": "GL-11",
+    "claim": "INC SYNC is the instruction the glossary points to for SYNC, the once-per-VBLANK frame flag.",
+    "source": {
+      "file": "CENIRQ.MAC",
+      "line": 268,
+      "verbatim": "5$:\tINC SYNC\t\t;WE ARE IN NEXT FRAME"
+    }
+  },
+  {
+    "id": "GL-12",
+    "claim": "The mainloop's LSR SYNC is the instruction the glossary cites alongside CENIRQ.MAC:268 for SYNC.",
+    "source": {
+      "file": "CENTI.MAC",
+      "line": 17,
+      "verbatim": "1$:\tLSR SYNC"
+    }
+  },
+  {
+    "id": "GL-13",
+    "claim": "FRAME is the 16-bit frame counter, incremented (with carry into FRAME+1) here.",
+    "source": {
+      "file": "CENIRQ.MAC",
+      "line": 269,
+      "verbatim": "\tINC FRAME\t\t;UPDATE FRAME COUNTER"
+    }
+  },
+  {
+    "id": "GL-14",
+    "claim": "MOOLAH is the coin-routine entry point, called from the rev-4 IRQ module.",
+    "source": {
+      "file": "CENIR4.MAC",
+      "line": 398,
+      "verbatim": "55$:\tJSR MOOLAH\t\t;COIN ROUTINE"
+    }
+  },
+  {
+    "id": "GL-15",
+    "claim": "EAROM (electrically alterable ROM) init/read/write routines live in this range of CENTS4.",
+    "source": {
+      "file": "CENTS4.MAC",
+      "line": 85,
+      "verbatim": "\t.SBTTL\tINITEA-INITIALIZE FROM EAROM"
+    }
+  },
+  {
+    "id": "GL-16",
+    "claim": "ENDSCN, the end-of-screen/VBLANK status register, is defined at 0C00.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 74,
+      "verbatim": "ENDSCN\t=0C00\t\t\t;ENDSCREEN (D6=1=ON)"
+    }
+  },
+  {
+    "id": "GL-17",
+    "claim": "ENDSCN is tested here with BIT ENDSCN.",
+    "source": {
+      "file": "CENIRQ.MAC",
+      "line": 264,
+      "verbatim": "4$:\tBIT ENDSCN"
+    }
+  },
+  {
+    "id": "GL-18",
+    "claim": "COPYHS's subtitle carries the author's recurring typo: \"HIGH CORES\" for high scores.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 905,
+      "verbatim": "\t.SBTTL\tCOPYHS-COPY HIGH CORES TO EA ROM BUFFER"
+    }
+  },
+  {
+    "id": "GL-19",
+    "claim": "GETINT's subtitle repeats the same \"HIGH CORE\" typo.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1001,
+      "verbatim": "\t.SBTTL\tGETINT-GET PLAYERS INITIALS FOR HIGH CORE"
+    }
+  }
+]

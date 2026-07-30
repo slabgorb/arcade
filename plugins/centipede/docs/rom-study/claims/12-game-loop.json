@@ -1,0 +1,200 @@
+[
+  {
+    "id": "LOOP-1",
+    "claim": "INIT is the single seed-everything routine (mushrooms, centipede, spider, ant) the game reuses at power-on and at game start",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1163,
+      "verbatim": ";INIT-INITIALIZE EVERYTHING"
+    }
+  },
+  {
+    "id": "LOOP-2",
+    "claim": "The 1-player START button is read as START1; an unpressed button (carry set after LSR) skips starting the game",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 833,
+      "verbatim": "20$:\tLDA START1"
+    }
+  },
+  {
+    "id": "LOOP-3",
+    "claim": "START1 gate: BCS branches away IF 1 PLAYER GAME NOT STARTED — i.e. the game begins only when the button reads active",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 836,
+      "verbatim": "\tBCS 92$\t\t\t;IF 1 PLAYER GAME NOT STARTED"
+    }
+  },
+  {
+    "id": "LOOP-4",
+    "claim": "Starting a game seeds LIVES from NLIVES minus one (the on-screen gun is the extra life not counted in LIVES)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 851,
+      "verbatim": "\tSTX LIVES\t\t;NUMBER OF LIVES-1 (WE ARE PLAYING WITH ONE)"
+    }
+  },
+  {
+    "id": "LOOP-5",
+    "claim": "Starting a game advances MODE into play (INC MODE — the attract->playing transition)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 852,
+      "verbatim": "\tINC MODE\t\t;NOW IN PLAY MODE"
+    }
+  },
+  {
+    "id": "LOOP-6",
+    "claim": "In attract, the life-exhaustion check is skipped (BPL to the life test only when not in attract)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 615,
+      "verbatim": "\tBPL 55$\t\t\t;IF IN ATTRACT DO NOT CHECK LIVES"
+    }
+  },
+  {
+    "id": "LOOP-7",
+    "claim": "Game-over test reads the two-byte LIVES; a non-zero total means the game is not over",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 624,
+      "verbatim": "55$:\tLDA LIVES"
+    }
+  },
+  {
+    "id": "LOOP-8",
+    "claim": "The high byte of the game-over LIVES test (LIVES+1, the 2-player slot) is OR-ed in before the not-over branch",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 625,
+      "verbatim": "\tORA LIVES+1"
+    }
+  },
+  {
+    "id": "LOOP-9",
+    "claim": "Both LIVES bytes zero falls through to game over; a non-zero total branches to keep playing (IF GAME NOT OVER)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 626,
+      "verbatim": "\tBNE 70$\t\t\t;IF GAME NOT OVER"
+    }
+  },
+  {
+    "id": "LOOP-10",
+    "claim": "Game over drops MODE back to attract (DEC MODE, MODE=-1 FOR ATTRACT)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 627,
+      "verbatim": "\tDEC MODE\t\t;MODE=-1 FOR ATTRACT"
+    }
+  },
+  {
+    "id": "LOOP-11",
+    "claim": "ATTRT is real self-playing gameplay run in attract mode, not a static screen",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 158,
+      "verbatim": "\t.SBTTL ATTRACT-MODE GAMEPLAY"
+    }
+  },
+  {
+    "id": "LOOP-12",
+    "claim": "The demo gun moves only every other 128-frame block: it skips the frame when FRAME bit 7 is set (AND I,80 / BNE 70$ 'DON'T MOVE THIS FRAME')",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 183,
+      "verbatim": "\tBNE 70$\t\t\t;DON'T MOVE THIS FRAME"
+    }
+  },
+  {
+    "id": "LOOP-13",
+    "claim": "The demo gun reverses to move RIGHT when PLAYH drops below 0x1C (CMP I,1C / BCC reverse)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 189,
+      "verbatim": "\tCMP I,1C"
+    }
+  },
+  {
+    "id": "LOOP-14",
+    "claim": "The demo gun reverses to move LEFT when PLAYH reaches 0xE4 (CMP I,0E4 / BCS reverse)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 192,
+      "verbatim": "\tCMP I,0E4"
+    }
+  },
+  {
+    "id": "LOOP-15",
+    "claim": "The demo gun's horizontal sweep direction is stored in PLAYDH and moved by MHOR",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 196,
+      "verbatim": "\tSTY PLAYDH"
+    }
+  },
+  {
+    "id": "LOOP-16",
+    "claim": "The demo gun also sweeps vertically, reversing UP when PLAYV reaches 0x30 (CMP I,30 / BCS reverse)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 202,
+      "verbatim": "\tCMP I,30"
+    }
+  },
+  {
+    "id": "LOOP-17",
+    "claim": "The demo gun reverses DOWN when PLAYV drops below 9 (CMP I,9 / BCC reverse)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 205,
+      "verbatim": "\tCMP I,9"
+    }
+  },
+  {
+    "id": "LOOP-18",
+    "claim": "The demo gun's vertical sweep direction is stored in PLAYDV and moved by MVER",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 209,
+      "verbatim": "\tSTY PLAYDV"
+    }
+  },
+  {
+    "id": "LOOP-19",
+    "claim": "The demo gun fires by repositioning/releasing the shot via RSHOT1 each attract frame",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 212,
+      "verbatim": "55$:\tJSR RSHOT1\t\t;REPOSITION SHOT"
+    }
+  },
+  {
+    "id": "LOOP-20",
+    "claim": "Attract draws the '1980 ATARI' copyright message (CPYRHT via MESSAG)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 12,
+      "verbatim": "\t.ASCIN /1980 ATARI/\t;COPYRIGHT MESSAGE"
+    }
+  },
+  {
+    "id": "LOOP-21",
+    "claim": "Attract draws the 'BONUS LIFE EVERY XXXX' panel showing the DIP-selected bonus increment (BONUS routine)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 225,
+      "verbatim": "\t.SBTTL\tBONUS - DISPLAY \"BONUS LIFE EVERY XXXX\" MESSAGE"
+    }
+  },
+  {
+    "id": "LOOP-22",
+    "claim": "The bonus increment table BONUSV holds *100-per-bonus-life words (100->10000 the factory default at OPTNS D4-D5=00)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 248,
+      "verbatim": "BONUSV:\t.WORD 100,120,150,200\t;*100 PER BONUS LIFE"
+    }
+  }
+]

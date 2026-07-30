@@ -1,0 +1,316 @@
+[
+  {
+    "id": "CL-1",
+    "claim": "COLORR (color RAM) is based at 0x1404. The equate comment splits it: playfield/character pens use entries 0-3 (COLORR+0..+3), motion-object (sprite) pens use entries 9-B (COLORR+9..+B). This is the single source of every on-screen colour — the palette module models exactly these entries and nothing else (AC-3, no invented colours).",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 100,
+      "verbatim": "COLORR\t=1404\t\t\t;COLOR RAM (PF=0-3)(MOTION OBJECT=9-B)"
+    },
+    "corroboration": {
+      "file": "src/mame/atari/centiped_v.cpp",
+      "line": 211,
+      "note": "MAME centiped_paletteram_w: paletteram is 0x1400-0x140F; only offset&4 entries are wired (COLORR=0x1404 => offset 4). offset&8==0 => character pen (offset&3 = 0..3); offset&8 => sprite pen (offset&3 = 1..3). Confirms the PF=0-3 / MOBJ=9-B split. Schema-only corroboration; never byte-opened."
+    }
+  },
+  {
+    "id": "CL-2",
+    "claim": "CLRCH (COLOR RAM INITIALIZATION) loads a 3-nibble colour scheme from table 99$, indexed by X (the colour index). It reads 99$[X], 99$[X+1], 99$[X+2] and distributes them to six color-RAM entries (three playfield pens + three sprite pens). The RGB value each nibble produces is hardware-decode / adapter policy (see CL-1 corroboration); the ROM fact is which entry gets which nibble and which screen element it paints.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 883,
+      "verbatim": "CLRCH:\tLDA X,99$"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 882,
+      "note": ";ENTRY (X)=INDEX FOR COLORS — X selects the colour scheme; INIT enters with X=0 (CL-11)."
+    }
+  },
+  {
+    "id": "CL-3",
+    "claim": "Playfield pen 1 (COLORR+01) = 99$[X] and paints the INSIDE of mushrooms, the gun, and the number-of-lives indicator. In the default scheme (X=0) this nibble is 0x0D.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 893,
+      "verbatim": "\tSTA COLORR+01\t\t;INSIDE OF MUSHROOMS AND GUN FOR NUMBER OF LIVES"
+    }
+  },
+  {
+    "id": "CL-4",
+    "claim": "Playfield pen 2 (COLORR+02) = 99$[X+2] and paints the OUTSIDE of mushrooms and ALL alphanumerics (score/level text). In the default scheme (X=0) this nibble is 0x0E.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 891,
+      "verbatim": "\tSTX COLORR+02\t\t;OUTSIDE OF MUSHROOMS AND ALL ALPHANUMERICS"
+    }
+  },
+  {
+    "id": "CL-5",
+    "claim": "Playfield pen 3 (COLORR+03) = 99$[X+1] and paints the INSIDE of a POISON mushroom. In the default scheme (X=0) this nibble is 0x00.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 895,
+      "verbatim": "\tSTY COLORR+03\t\t;INSIDE OF POISON MUSHROOM"
+    }
+  },
+  {
+    "id": "CL-6",
+    "claim": "Sprite pen 1 (COLORR+09) = 99$[X+1] and paints the centipede LEGS. Same nibble as the poison-inside playfield pen (CL-5).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 894,
+      "verbatim": "\tSTY COLORR+09\t\t;LEGS="
+    }
+  },
+  {
+    "id": "CL-7",
+    "claim": "Sprite pen 2 (COLORR+0A) = 99$[X+2] and paints the centipede EYES. Same nibble as the mushroom-outside/alphanumeric playfield pen (CL-4).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 890,
+      "verbatim": "\tSTX COLORR+0A\t\t;EYES"
+    }
+  },
+  {
+    "id": "CL-8",
+    "claim": "Sprite pen 3 (COLORR+0B) = 99$[X] and paints the centipede BODY. Same nibble as the mushroom-inside/gun playfield pen (CL-3).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 892,
+      "verbatim": "\tSTA COLORR+0B\t\t;BODY="
+    }
+  },
+  {
+    "id": "CL-9",
+    "claim": "The colour-scheme table 99$ begins 0D,0,0E,... so the DEFAULT scheme (X=0) is nibbles [0x0D, 0x00, 0x0E]: 99$[0]=0x0D (mushroom-inside/gun/body), 99$[1]=0x00 (poison-inside/legs), 99$[2]=0x0E (mushroom-outside/alphanumeric/eyes). These three nibbles + the black background (CL-10) are the entire cp1-6 demo palette.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 898,
+      "verbatim": "99$:\t.BYTE 0D,0,0E,2,4,1,0E,1,0C,4,1,0B"
+    }
+  },
+  {
+    "id": "CL-10",
+    "claim": "The background pen (playfield pen 0, COLORR+0) is set to nibble 0x0F, which the hardware decode renders BLACK (all three colour bits off, no dim). The renderer's screen-clear colour is therefore this CLRCH-derived black, not an invented '#000'.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1203,
+      "verbatim": "\tSTA COLORR\t\t;BLACK BACKGROUND"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1202,
+      "note": "LDA I,0F — the value 0x0F written to COLORR+0. MAME decode (centiped_v.cpp:211): r=g=b=0xFF*(~bit), so 0x0F=1111b => r/g/b all 0 => black. Schema-only."
+    }
+  },
+  {
+    "id": "CL-11",
+    "claim": "INIT calls CLRCH with the colour index reset to 0 (LDA I,0 / TAX / JSR CLRCH), so a fresh game/attract screen uses scheme 0 (CL-9). The cp1-6 demo pins this default scheme.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1209,
+      "verbatim": "\tJSR CLRCH\t\t;SET UP COLOR RAM"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1207,
+      "note": "TAX after LDA I,0 (line ~1205) => X=0 entering CLRCH; the adjacent comment 'START COLOR INDEX AT BEGINNING'. Scheme index advances +3 per wave (CENIR4.MAC:310-325 JSR CLRCH) — the deferral this note flagged is now transcribed by cp2-13 (CL-17..CL-27)."
+    }
+  },
+  {
+    "id": "CL-12",
+    "claim": "The rev-4 on-screen TEXT display set is EXACTLY the MESG message table plus the copyright line — there is NO level/wave/round/stage indicator anywhere. MESG (CENIR4.MAC:16) is the complete pointer table of 11 message groups MESS0..MES10 (each in 4 languages: base/+G German/+F French/+S Spanish), enumerated at CENIR4.MAC:67-110: MESS0 'PLAYER', MESS1-3 the coinage lines ('1 COIN 2 PLAYS' / '1 COIN 1 PLAY' / '2 COINS 1 PLAY'), MESS4 'GAME OVER', MESS5 'ENTER YOUR INITIALS', MESS6 'BONUS EVERY ', MESS7 'HIGH SCORES', MESS8 'GREAT SCORE', MESS9 'CREDITS ', MES10 '2 CREDIT MINIMUM'. The only other ASCII drawn is the copyright '1980 ATARI' (CENTI4.MAC:12). These strings are emitted by MESS/CHAR (CENIR4.MAC:111/203); the numeric HUD (score, high scores, lives, bonus) is drawn by DIGIT2/DIGITZ (CENIR4.MAC:227/237) via UPSCRE/DLIVES/SCORES/BONUS (CENTI4.MAC) — all digit writers, none emitting a 'LEVEL' string. A full-tree grep for level/wave/round/stage finds those words ONLY inside code comments (the bonus-level DIP option CENTI4.MAC:240 'D4-D5=BONUS LEVEL OPTIONS'; the colour-change-between-waves note CENIR4.MAC:311 'TIME TO CHANGE COLOR BETWEEN WAVES') — never as an ASCIN display string nor a digit-writer target. A faithful clone therefore draws no 'LEVEL' (nor WAVE/ROUND/STAGE) label; the cp1-6 clone's 'LEVEL 1' HUD text (src/shell/render.ts) has no ROM basis and is removed under cp2-11.",
+    "source": {
+      "file": "CENIR4.MAC",
+      "line": 16,
+      "verbatim": "MESG:\t.WORD MESS0"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 12,
+      "note": "The copyright '1980 ATARI' (CENTI4.MAC:12, '.ASCIN /1980 ATARI/') is the only drawn ASCII text outside the MESG table. The MESG table head at CENIR4.MAC:16 is followed by 43 more .WORD entries through MES10S (CENIR4.MAC:59), then the strings themselves (CENIR4.MAC:67-110); MES10 at CENIR4.MAC:56 is the last group. No entry — and no digit-writer routine — produces a level/wave/round/stage label; those words appear only in comments. Schema-only corroboration; never byte-opened."
+    }
+  },
+  {
+    "id": "CL-13",
+    "claim": "UPSCRE draws player 1's SCORE as six raw BCD digits on the top HUD row, with NO text label. It writes the playfield address 0x041F into TEMP4/TEMP4+1 (LDA I,1F -> TEMP4 low byte; LDA I,4 -> TEMP4+1 high byte, ';PLAYFIELD ADDRESS'), then emits SCORE2, SCORE1, SCORE0 through DIGIT2 (three BCD bytes = six digits; the first pair with SEC = zero-suppression, the last with CLC = always drawn). Decomposed (PM-1): v = 0x041F & 0x1F = 0x1F (the reserved top row) and h = (0x041F-0x400)>>5 = 0, so the score occupies columns h0-5 of v=0x1F. There is no CHAR call for any letter in this path — the score is bare digits, confirming the rev-4 in-play HUD carries no 'SCORE' word (see CL-12). Upright, CKBF/CK03 are zero (CLEAR zeroes them, CENTI4.MAC:742-751, from MCKSUM=0) so each EOR is a no-op and the address is literal.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2632,
+      "verbatim": "UPSCRE:\tLDA I,1F"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2637,
+      "note": "LDA I,4 (2635) -> STA TEMP4+1 ';PLAYFIELD ADDRESS' (2637) is the high byte 0x04; with TEMP4 low = 0x1F (2632) the address is 0x041F. SCORE2/SCORE1/SCORE0 drawn via DIGIT2 at 2638-2645 (SEC first for zero-suppression, CLC last). CLEAR (CENTI4.MAC:737 'LDA MCKSUM ;IT BETTER BE ZERO') zeroes CKBF/CK03 at 742-751 so EOR CKBF / EOR CK03 are no-ops upright. Schema-only."
+    }
+  },
+  {
+    "id": "CL-14",
+    "claim": "UPSCRE draws the HIGH SCORE as six raw BCD digits on the top HUD row at playfield address 0x059F. After the P1-score (CL-13) and the optional game-time field, it loads LDA I,9F -> TEMP4 (low byte) and LDA I,5 -> TEMP4+1 (high byte), then emits HSCORE+2, HSCORE+1, HSCORE through DIGIT2 (six digits; the last via JMP DIGIT2). Decomposed (PM-1): v = 0x059F & 0x1F = 0x1F (the reserved top row) and h = (0x059F-0x400)>>5 = 12, so the high score occupies columns h12-17 of v=0x1F. Upright, CKBF/CK03 are zero (CLEAR, CENTI4.MAC:742-751) so the EOR masks are no-ops and the address is literal. The high score is a persisted value (HSCORE), not a field of the live game state.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2663,
+      "verbatim": "10$:\tLDA I,9F"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2666,
+      "note": "LDA I,5 (2666) -> STA TEMP4+1 (2668) is the high byte 0x05; with TEMP4 low = 0x9F (2663) the address is 0x059F. HSCORE+2/+1/+0 drawn via DIGIT2 at 2669-2676 (JMP DIGIT2 tail-call on the last pair). Schema-only."
+    }
+  },
+  {
+    "id": "CL-15",
+    "claim": "DLIVES draws player 1's remaining LIVES as ship/gun PICTURES (never digits) on the top HUD row at playfield address 0x04DF, columns h6-11. It sets TEMP1 = 6 (LDA I,6, ';MAX NUMBER OF LIVES') = the column budget, builds the address from LDA I,PLYFLD/100 (high byte 0x04) and LDA I,0DF (low byte 0xDF), loads LDX LIVES, then loops up to TEMP1 times: at 10$ it loads the ship glyph (LDA I,1F ';PICTURE OF SHIP'), DEX, and if X has gone negative loads a blank (LDA I,0 ';NO MORE SHIPS') before JSR CHAR emits the glyph and advances one column (+0x20, CL-16). Decomposed (PM-1): v = 0x04DF & 0x1F = 0x1F (the reserved top row) and h = (0x04DF-0x400)>>5 = 6, so lives occupy columns h6-11 of v=0x1F. So the count of ship icons drawn equals the remaining life count, capped at 6 columns; a life lost removes one icon, a bonus life adds one (up to the cap).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 932,
+      "verbatim": "10$:\tLDA I,1F\t\t;PICTURE OF SHIP"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 922,
+      "note": "DLIVES: LDA I,6 (922) -> STA TEMP1 ';MAX NUMBER OF LIVES' (923) = 6-column budget; LDA I,PLYFLD/100 (924) high byte 0x04, LDA I,0DF (928) low byte 0xDF => address 0x04DF; LDX LIVES (931) then one ship (0x1F) per remaining life, LDA I,0 ';NO MORE SHIPS' (935) blanks the spent columns; DEC TEMP1 / BNE 10$ (937-938) walks all six. Never a digit-writer. Schema-only."
+    }
+  },
+  {
+    "id": "CL-16",
+    "claim": "CHAR advances the on-screen write cursor by exactly +0x20 (one playfield column) per glyph. After storing the glyph byte at (TEMP4) (STA NY,TEMP4), CHAR adds 0x20 to the 16-bit address TEMP4/TEMP4+1 (LDA I,20 / CLC / ADC TEMP4 / STA TEMP4, carry into TEMP4+1) and returns. Since a playfield column is 0x20 apart (PLYFLD_STRIDE, PM-1), each successive digit or picture lands one column (h+1) to the side of the last. This is why the six-digit score (CL-13), the six-column lives block (CL-15), and the six-digit high score (CL-14) each occupy six consecutive h-columns. Upright, CKC0/CKFF are zero (CLEAR, CENTI4.MAC:742-751) so the step is +0x20 exactly (not -0x20 cocktail-mirrored).",
+    "source": {
+      "file": "CENIR4.MAC",
+      "line": 209,
+      "verbatim": "\tLDA I,20"
+    },
+    "corroboration": {
+      "file": "CENIR4.MAC",
+      "line": 212,
+      "note": "CHAR: (CENIR4.MAC:204) stores the glyph (STA NY,TEMP4, 208) then LDA I,20 (209) / EOR CKC0 (210, no-op upright) / CLC (211) / ADC TEMP4 (212) / STA TEMP4 (213), with LDA CKFF (214) / ADC TEMP4+1 (215) carrying into the high byte — a +0x20 address bump = one column. Schema-only."
+    }
+  },
+  {
+    "id": "CL-17",
+    "claim": "LCOLOR is the per-player colour cursor: `.BLKB 2` = two bytes, one per player (CENDE4.MAC:208 'CURRENT COLOR OF LEGS FOR BOTH PLAYERS'). Only the low 6 bits index the 99$ scheme table (CL-9/CL-25/CL-26/CL-27); bit7 (0x80) is the 'change colours between waves' flag and bit6 (0x40) the 'change player' flag (2-player). Every access is `LDA/STA X,LCOLOR-1` with X=PLAYER (1-based), so player 1 uses LCOLOR[0]. This byte is what the IRQ advances (CL-18/CL-19/CL-20), CENTPC flags for a new wave (CL-22), the 2-player path re-flags (CL-23), and INITSC resets (CL-24).",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 208,
+      "verbatim": "LCOLOR:\t.BLKB 2\t\t\t;CURRENT COLOR OF LEGS FOR BOTH PLAYERS"
+    }
+  },
+  {
+    "id": "CL-18",
+    "claim": "On a wave change the IRQ advances the colour index by +3 (ADC I,03 'NEXT INDEX') — one full 3-nibble scheme — so each successive wave loads the next scheme in 99$. Radix: 03 is hex 0x03 = decimal 3 under `.RADIX 16` (CENDEF.MAC:2), and +3 is exactly the stride between adjacent schemes (a scheme is 99$[X],[X+1],[X+2], CL-2). The add happens only after the bit7 gate (CL-20) strips the flags via AND I,3F (CENIR4.MAC:317).",
+    "source": {
+      "file": "CENIR4.MAC",
+      "line": 319,
+      "verbatim": "\tADC I,03\t\t;NEXT INDEX"
+    },
+    "corroboration": {
+      "file": "CENIR4.MAC",
+      "line": 317,
+      "note": "22$: AND I,3F (317) clears bit7/bit6 before CLC (318) / ADC I,03 (319) — the index arithmetic runs on the low-6-bit table offset only."
+    }
+  },
+  {
+    "id": "CL-19",
+    "claim": "The advanced index wraps at DECIMAL 42 (CMP I,42. — the trailing period forces decimal under `.RADIX 16`; a bare `42` would be hex 0x42 = 66). 42 / 3 = exactly 14 three-nibble schemes, so the colour cycle has period 14 waves. On reaching 42 the index is reset to 0 (LDA I,0, CENIR4.MAC:322), not modulo-subtracted; because 42 is a multiple of the +3 stride and the index starts at 0 (CL-24), the stored sequence 0,3,6,...,39,0,... is identical to ((wave-1)*3) mod 42 — the pure function the clone pins.",
+    "source": {
+      "file": "CENIR4.MAC",
+      "line": 320,
+      "verbatim": "\tCMP I,42."
+    },
+    "corroboration": {
+      "file": "CENIR4.MAC",
+      "line": 322,
+      "note": "BCC 23$ (321, 'IF NO OVERFOW') keeps the added index when < 42.; otherwise LDA I,0 (322) resets to scheme 0. 14 schemes = the 42-byte table (CL-9/25/26/27)."
+    }
+  },
+  {
+    "id": "CL-20",
+    "claim": "The IRQ advances the index only when bit7 of LCOLOR is set: BMI 22$ ('TIME TO CHANGE COLOR BETWEEN WAVES') branches on the sign bit to the +3/wrap path (CL-18/CL-19). With bit7 clear the index is left where it is (or, with bit6, re-applied unchanged for the next player, CL-23). So the advance is strictly one-per-wave, gated by the CENTPC flag (CL-22) — a flag-driven step, NOT a free-running per-frame counter.",
+    "source": {
+      "file": "CENIR4.MAC",
+      "line": 311,
+      "verbatim": "\tBMI 22$\t\t\t;TIME TO CHANGE COLOR BETWEEN WAVES"
+    },
+    "corroboration": {
+      "file": "CENIR4.MAC",
+      "line": 310,
+      "note": "LDA X,LCOLOR-1 (310, 'LAST COLOR OF LEGS') loads the per-player cursor; BMI (311) tests bit7. The 2-player bit6 path is CMP I,40 / BCC 25$ / AND I,3F / BPL 23$ (312-315) — re-store, no +3."
+    }
+  },
+  {
+    "id": "CL-22",
+    "claim": "CENTPC (initialize centipede picture, run at the start of each wave) raises the bit7 'change colours' flag: ORA I,80 (set 0x80) then STA X,LCOLOR-1 ('TIME TO CHANGE COLORS'), but ONLY once the previous centipede is fully dead (LDA X,DEAD-1 / BNE 5$, CENTI4.MAC:459-460 'NO CHANGE IN COLOR OR SPEED UNTIL ALL DEAD'). So the flag is raised exactly once per cleared wave, and the IRQ (CL-18/19/20) consumes it to step +3. Together with the INITSC reset to 0 (CL-24), wave N displays scheme index ((N-1)*3) mod 42.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 462,
+      "verbatim": "\tORA I,80"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 463,
+      "note": "STA X,LCOLOR-1 (463, 'TIME TO CHANGE COLORS') stores the flagged cursor; the DEAD-1 guard (459-460) gates it to a genuine wave clear so wave 1's fresh spawn (DEAD != 0) does not pre-advance off the INITSC reset (CL-24)."
+    }
+  },
+  {
+    "id": "CL-23",
+    "claim": "In a 2-player game the per-player colour swap raises bit6 instead: ORA I,40 (set 0x40) then STA X,LCOLOR-1 ('INDICATE COLOR CHANGE FOR NEXT PLAYER', CENTI4.MAC:717). The IRQ's bit6 path (CENIR4.MAC:312-315: CMP I,40 / BCC 25$ / AND I,3F / BPL 23$) re-applies the current player's scheme WITHOUT the +3 advance. This clone is 1-player only (cp2-12), so bit6 is transcribed as quarry and DEFERRED — not implemented. The per-wave cycle (bit7, CL-20/CL-22) is the only cursor path the clone models; schemeForWave takes no player argument beyond the (constant) player 1.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 716,
+      "verbatim": "\tORA I,40"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 717,
+      "note": "STA X,LCOLOR-1 (717) with the ';INDICATE COLOR CHANGE FOR NEXT PLAYER' comment; consumed by the CENIR4.MAC:312-315 bit6 branch (no +3). Out of 1-player-demo scope — logged as a Design Deviation deferral."
+    }
+  },
+  {
+    "id": "CL-24",
+    "claim": "A fresh game/screen resets the colour cursor to 0: INITSC (CENTI4.MAC:1201 'INITSC =.') runs LDA I,0 (1205) / STA X,LCOLOR-1 ('MAKE SURE OF CORRECT STARTING COLOR', 1206) — clearing bit7/bit6 as well as the index — then TAX (1207) / JSR CLRCH (1209) renders scheme 0 (99$[0..2] = [0x0D,0x00,0x0E], CL-9). So wave 1 always shows scheme 0. The background pen 0 is set to 0x0F black SEPARATELY at 1202-1203 (LDA I,0F / STA COLORR 'BLACK BACKGROUND', CL-10) and is scheme-INDEPENDENT — CLRCH writes only COLORR+01/+02/+03/+09/+0A/+0B, never COLORR+0, so every wave keeps a black background.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1206,
+      "verbatim": "\tSTA X,LCOLOR-1\t\t;MAKE SURE OF CORRECT STARTING COLOR"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1209,
+      "note": "LDA I,0 (1205) -> STA X,LCOLOR-1 (1206) -> TAX (1207) -> JSR CLRCH (1209, 'SET UP COLOR RAM'). LDA I,0F (1202) / STA COLORR (1203, 'BLACK BACKGROUND') sets the background pen outside CLRCH, so it is invariant across schemes."
+    }
+  },
+  {
+    "id": "CL-25",
+    "claim": "The colour-scheme table 99$ continues at table index 12 with 12 nibbles (schemes 4-7): [0x01,0x0C,0x0A], [0x09,0x0B,0x04], [0x0C,0x0D,0x0A], [0x09,0x0C,0x0E]. Values are hex under `.RADIX 16`. This is the second of four `.BYTE` rows (CL-9 is row 1 at CENTI4.MAC:898); rows 3-4 are CL-26/CL-27.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 899,
+      "verbatim": "\t.BYTE 1,0C,0A,9,0B,4,0C,0D,0A,9,0C,0E"
+    }
+  },
+  {
+    "id": "CL-26",
+    "claim": "99$ row 3 (table index 24-35) is [0x0A,0x0E,0x01],[0x0B,0x01,0x04],[0x01,0x00,0x06],[0x0D,0x0E,0x0A] (schemes 8-11). This row carries the ONLY 0x06 in the entire 42-byte table — at table index 32, which is scheme X=30's [X+2] pen (the eyes / mushroom-outside / alphanumerics pen, CL-4/CL-7). There is NO 0x07 anywhere in 99$: the ROM stores 0x06, and the nibble->RGB decode is adapter policy (CL-1/CL-10, MAME centiped_v.cpp:211). Any 0x07 in a CLRCH/99$ transcription is uncited and wrong.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 900,
+      "verbatim": "\t.BYTE 0A,0E,1,0B,1,4,1,0,6,0D,0E,0A"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 900,
+      "note": "Counting the 12 nibbles of row 3 from table index 24, the '6' is the 9th (index 32); it is the [X+2] entry of the scheme beginning at X=30. No '7' appears in any of the four rows (898-901). Decode corroborated schema-only by MAME centiped_v.cpp:211."
+    }
+  },
+  {
+    "id": "CL-27",
+    "claim": "99$ row 4 (table index 36-41) is [0x0E,0x0C,0x0B],[0x00,0x0D,0x02] (schemes 12-13), completing the table. 12+12+12+6 = 42 bytes = exactly 14 three-nibble schemes, matching the CMP I,42. wrap (CL-19). The full 42-byte table (rows 1-4: CL-9/CL-25/CL-26/CL-27) is the complete per-wave palette set the clone transcribes byte-for-byte.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 901,
+      "verbatim": "\t.BYTE 0E,0C,0B,0,0D,2"
+    }
+  }
+]

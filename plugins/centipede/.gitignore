@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.DS_Store
+.session/
+
+# Reference material quarried locally (original Atari source / MAME) — NEVER
+# committed or pushed. The durable, cited extraction lives in docs/rom-study/.
+reference/

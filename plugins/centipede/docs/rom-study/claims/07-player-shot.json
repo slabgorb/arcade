@@ -1,0 +1,258 @@
+[
+  {
+    "id": "PS-1",
+    "claim": "Slot 14 is the SINGLE player shot: SHOTH = MOBJH+14. (the shot's horizontal motion-object cell). There is exactly one shot slot, so at most one shot exists at a time (AC-2).",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 150,
+      "verbatim": "SHOTH\t=MOBJH+14."
+    },
+    "corroboration": {
+      "file": "CENDE4.MAC",
+      "line": 155,
+      "note": "SHOTV =MOBJV+14. — the same slot 14 owns the shot's vertical cell; one slot => one shot."
+    }
+  },
+  {
+    "id": "PS-2",
+    "claim": "Slot 15 is the player gun: PLAYH = MOBJH+15. The gun and shot are adjacent motion-object slots (15 and 14).",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 151,
+      "verbatim": "PLAYH\t=MOBJH+15."
+    },
+    "corroboration": {
+      "file": "CENDE4.MAC",
+      "line": 156,
+      "note": "PLAYV =MOBJV+15. — slot 15 vertical cell."
+    }
+  },
+  {
+    "id": "PS-3",
+    "claim": "MOVE horizontal LEFT-edge clamp: a candidate PLAYH >= 0xF4 (244) is pinned to 0xF4. (Left/right are reversed vs the motion-object video because the cabinet is ROT270.)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1505,
+      "verbatim": "\tCMP I,0F4"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1507,
+      "note": "LDA I,0F4 ;KEEP AT EDGE — the clamp value written when at the left edge."
+    }
+  },
+  {
+    "id": "PS-4",
+    "claim": "MOVE horizontal RIGHT-edge clamp: a candidate PLAYH < 0x0B (11) is pinned to 0x0B. Together with PS-3 the gun's horizontal range is [0x0B, 0xF4].",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1510,
+      "verbatim": "3$:\tCMP I,0B"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1512,
+      "note": "LDA I,0B ;KEEP AT EDGE — the clamp value written when at the right edge."
+    }
+  },
+  {
+    "id": "PS-5",
+    "claim": "MOVE vertical BOTTOM-edge clamp (upright): a candidate PLAYV < 0x08 (8) is pinned to 0x08. This is the bottom of the player zone.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1538,
+      "verbatim": "\tCMP I,8"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1557,
+      "note": "43$: LDA I,8 ;KEEP AT BOTTOM DGE (sic) — the clamp value written at the bottom edge."
+    }
+  },
+  {
+    "id": "PS-6",
+    "claim": "MOVE vertical TOP-edge clamp (upright, non-cocktail path 37$): a candidate PLAYV >= 0x31 is pinned to 0x30 (48). Together with PS-5 the gun's vertical range is [0x08, 0x30] — a ~40px band at the bottom of the screen. (The 0xF1/0xC8 paths are cocktail-only; CKC0=0 in the 1-player upright build, CENTI4.MAC:746.)",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1549,
+      "verbatim": "37$:\tCMP I,31"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1551,
+      "note": "LDA I,30 — clamp value for the upright top edge (0x30)."
+    }
+  },
+  {
+    "id": "PS-7",
+    "claim": "TBLMT clamps the per-frame signed trackball delta to magnitude 8: |delta| kept if < 8 or >= 0xF8 (-8), otherwise limited to +8 / -8 (0xF8). So the raw trackball count fed to the gun each frame is in [-8, +8].",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2519,
+      "verbatim": "TBLMT:\tCMP I,08"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2524,
+      "note": "LDA I,08 ;LIMIT RANGE TO 8 (and 2526 LDA I,0F8 ;LIMIT TO -8) — the +8 / -8 clamp values."
+    }
+  },
+  {
+    "id": "PS-8",
+    "claim": "TBLMT then SIGNED-DIVIDES the clamped delta by 2 (CMP I,80 sets carry = sign, ROR shifts it in), returning the integer pixel move (MSB, in [-4,+4]) and a half-pixel LSB (0 or 0x80) accumulated in PLAYHL/PLAYVL. Net max gun speed = 4 px/frame.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2528,
+      "verbatim": "\tROR"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2527,
+      "note": "CMP I,80 ;SIGNED DIVIDE BY 2 — the compare feeding the ROR that halves the clamped delta."
+    }
+  },
+  {
+    "id": "PS-9",
+    "claim": "The fire switch is read from port FIRE (0xC01); for player 1 it is bit D2, active-low (0 = pressed). The sim's device-agnostic input models this as a boolean (true = pressed); active-low is a hardware detail the shell abstracts.",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 80,
+      "verbatim": "FIRE\t=0C01\t\t\t;FIRE SWITCH (PLAYER 1=D2=0=ON;PLAYER 2=D3=0=ON)"
+    }
+  },
+  {
+    "id": "PS-10",
+    "claim": "Fire is detected by AND I,04 / BEQ: (FIRE & 0x04) == 0 means the switch is pressed. 0x04 is the D2 fire bit for player 1.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2129,
+      "verbatim": "5$:\tAND I,04"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2130,
+      "note": "BEQ 10$ ;SWITCH JUST PUSHED DOWN — taken when the fire bit is 0 (pressed)."
+    }
+  },
+  {
+    "id": "PS-11",
+    "claim": "SINGLE-SHOT GATE (AC-2): the fire switch is only tested when the shot is AT REST on the gun, i.e. SHOTV == PLAYV+4 (LDA I,04 / ADC PLAYV / CMP SHOTV). If SHOTV != PLAYV+4 the shot is in flight and BNE 102$ skips the fire test entirely — so pressing fire while the shot lives is IGNORED, never queued.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2114,
+      "verbatim": "\tCMP SHOTV"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2115,
+      "note": "BNE 102$ ;SHOT IS GOING UP — in-flight shots branch past the fire test, so a live shot blocks re-firing."
+    }
+  },
+  {
+    "id": "PS-12",
+    "claim": "RE-ARM condition #1 (off top): when SHOTV >= 0xF3 the shot is off the top of the screen and is reset to the gun (BCS 108$ -> 20$ JSR RSHOT). The shot travels toward increasing V (the gun sits at low V, the top of the screen at high V).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2108,
+      "verbatim": "2$:\tCMP I,0F3"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2109,
+      "note": "BCS 108$ ;IF OFF TOP OF SCREEN-RESET POSITION — the off-top re-arm branch."
+    }
+  },
+  {
+    "id": "PS-13",
+    "claim": "The shot's REST position is PLAYV + 4 (LDA I,04 / ADC PLAYV): the shot sits 4 px above the gun while attached, and RSHOT (CENTI4.MAC:1582) writes the same PLAYV+4 when re-arming. Detecting rest as SHOTV==PLAYV+4 is the basis of the single-shot gate (PS-11).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2110,
+      "verbatim": "\tLDA I,04"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2113,
+      "note": "ADC PLAYV ;SHOT MOVES UP 6 AND SHIP DOWN 3 MAX — PLAYV+4 is the shot's on-gun rest V."
+    }
+  },
+  {
+    "id": "PS-14",
+    "claim": "The shot advances +7 px per frame in V (LDA I,7 / EOR CKFE=0 / ADC SHOTV / STA SHOTV). This is the shot speed (AC-1). CKFE=0 in the 1-player upright build (CENTI4.MAC:750).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2137,
+      "verbatim": "\tLDA I,7"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2142,
+      "note": "STA SHOTV ;ADD 7 TO SHOT'S POSITION — the per-frame +7 advance."
+    }
+  },
+  {
+    "id": "PS-15",
+    "claim": "The shot-vs-obstacle collision is tested at V = (old SHOTV) + 1 (LDA I,01 / EOR CKFF=0 / ADC TEMP2, TEMP2 = old SHOTV), while the shot itself moves to old+7. Exactly ONE cell is tested per frame; because the +7 step is strictly less than the 8px cell height (PS-16), consecutive test points are <=7px apart and cannot skip a cell -> the ROM does NOT tunnel.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2144,
+      "verbatim": "\tLDA I,01"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 2147,
+      "note": "ADC TEMP2 — TEMP2 holds the pre-advance SHOTV, so the OBSTAC probe is old SHOTV + 1."
+    }
+  },
+  {
+    "id": "PS-16",
+    "claim": "OBSTAC maps a motion-object V pixel to a grid ROW by dividing by 8 (LSR x3) and rounding to the nearest row (ADC I,0 adds the carry = bit 2 of V). So the playfield cell height is 8 px and vcell = (V + 4) >> 3.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1701,
+      "verbatim": "OBSTAC:\tLSR"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1704,
+      "note": "ADC I,0 ;ADD ONE IF HALF WAY TO NEXT ROW — round-to-nearest, so vcell = round(V/8)."
+    }
+  },
+  {
+    "id": "PS-17",
+    "claim": "OBSTAC maps a motion-object H pixel to a grid COLUMN reversed about 0xF7 and quantised to 8 px (LDA I,0F7 / SBC H / AND I,0F8): hcol = (0xF7 - H) >> 3. Cell width is 8 px. For H in [0x0B,0xF4] this yields hcol in [0,29] = the 30 playfield columns.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1715,
+      "verbatim": "\tLDA I,0F7"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1720,
+      "note": "AND I,0F8 — clears the low 3 bits, i.e. floor to the 8px column."
+    }
+  },
+  {
+    "id": "PS-18",
+    "claim": "OBSTAC's base address is PLYFLD/4 (MSB byte 1) shifted left twice into 0x400, so the obstacle address is 0x400 + hcol*0x20 + vcell — the SAME (base 0x400, stride 0x20) addressing cp1-4 baked into playfield.ts. The shot collision therefore indexes the exact playfield grid, gated by isMushroom (PM-15/16) and resolved by damageMushroom (PM-17/18/19/20).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1706,
+      "verbatim": "\tLDA I,1\t\t\t;BASE ADDRESS OF PLAYFIELD/4"
+    },
+    "corroboration": {
+      "file": "CENTI4.MAC",
+      "line": 1733,
+      "note": "STA OBST ;PLAYFIELD ADDRESS= — the completed address; the \"800\" in the adjacent comment is the cocktail/stale form, MSB 1<<2 = 0x400 in upright."
+    }
+  },
+  {
+    "id": "PS-19",
+    "claim": "The shot passes direction 0 to OBSTAC (LDY I,0 / GIVE NO DIRECTION), so no 8*direction offset is added to the horizontal: the collision column comes straight from SHOTH. The shot flies straight up its own column.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2148,
+      "verbatim": "\tLDY I,0\t\t\t;GIVE NO DIRECTION \"OBSTAC\""
+    }
+  }
+]

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "RS-1",
+    "claim": "Rev 1 disk 34A is dated 5/11/81, the earliest of four preserved Centipede releases documented in CENTI.DOC's ledger.",
+    "source": {
+      "file": "CENTI.DOC",
+      "line": 3,
+      "verbatim": "DOCUMENTATION DISK(S):34A\tPROJECT NAME:CENTIPEDE\t\tDATE:5/11/81"
+    }
+  },
+  {
+    "id": "RS-2",
+    "claim": "Rev 4's ledger entry: CENTI4/CENIR4/CENTS4 each include CENDE4 and COIN65.",
+    "source": {
+      "file": "CENTI.DOC",
+      "line": 198,
+      "verbatim": "INCLUDES:CENDE4,COIN65"
+    }
+  },
+  {
+    "id": "RS-3",
+    "claim": "Rev 4 re-cut only program EPROMs — the ledger lists no picture ROMs or sync PROM for this revision.",
+    "source": {
+      "file": "CENTI.DOC",
+      "line": 214,
+      "verbatim": "GENERAL ROMS/PROMS:NONE"
+    }
+  },
+  {
+    "id": "RS-4",
+    "claim": "Rev 4 shipped no design doc — the ledger's documentation-file field is NONE.",
+    "source": {
+      "file": "CENTI.DOC",
+      "line": 210,
+      "verbatim": "DOCUMENTATION FILE:NONE"
+    }
+  },
+  {
+    "id": "RS-5",
+    "claim": "The author's own link-command comment names the three CPU modules assembled together.",
+    "source": {
+      "file": "CENDEF.MAC",
+      "line": 42,
+      "verbatim": ";LINK COMMAND: CENTI,CENIRQ,CENTST"
+    }
+  },
+  {
+    "id": "RS-6",
+    "claim": "The linker map confirms the same three-module link (CENTI, CENIRQ, CENTST).",
+    "source": {
+      "file": "CENTI.MAP",
+      "line": 6,
+      "verbatim": "BIN:CENTI,CENTI.XX=OBJ:CENTI,CENIRQ,CENTST"
+    }
+  },
+  {
+    "id": "RS-7",
+    "claim": "Rev 4's main CPU module CENTI4 includes the shared equates file CENDE4.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2,
+      "verbatim": "\t.INCLUDE CENDE4"
+    }
+  },
+  {
+    "id": "RS-8",
+    "claim": "Rev 4's IRQ module CENIR4 also includes CENDE4.",
+    "source": {
+      "file": "CENIR4.MAC",
+      "line": 3,
+      "verbatim": "\t.INCLUDE CENDE4"
+    }
+  },
+  {
+    "id": "RS-9",
+    "claim": "Rev 4's self-test module CENTS4 also includes CENDE4.",
+    "source": {
+      "file": "CENTS4.MAC",
+      "line": 4,
+      "verbatim": "\t.INCLUDE CENDE4"
+    }
+  },
+  {
+    "id": "RS-10",
+    "claim": "The coin-handling module COIN65 is included from the rev-4 IRQ module.",
+    "source": {
+      "file": "CENIR4.MAC",
+      "line": 13,
+      "verbatim": "\t.INCLUDE COIN65\t\t;<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    }
+  },
+  {
+    "id": "RS-11",
+    "claim": "The ROM part ledger maps the picture ROMs (136001-101/102) to their chip positions.",
+    "source": {
+      "file": "CENTI.DOC",
+      "line": 18,
+      "verbatim": "136001-101\tF7\t\tPICTURE ROM\t0\t\t136001.101\t\t8316\t\t2KX8\t\tALL"
+    }
+  },
+  {
+    "id": "RS-12",
+    "claim": "The ROM part ledger maps the sync PROM 136001-113, a 256x4 82S129, to chip P4.",
+    "source": {
+      "file": "CENTI.DOC",
+      "line": 32,
+      "verbatim": "136001-113\tP4\t\tSYNC\t\tN/A\t\t136001.113\t\t825S129\t\t256X4\t\tBITS 3-0"
+    }
+  }
+]

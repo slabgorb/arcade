@@ -27,7 +27,7 @@ export const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
 // Every file the two red link-5 audits actually open, and which audit needs it.
 const LINK5_INPUTS = [
-  // MONOREPO MIGRATION — tempest (Task 6) and now red-baron (Task 10) were both
+  // MONOREPO MIGRATION — tempest (Task 6) and red-baron (Task 10) were both
   // imported into this repo as plugins/<id>, so NEITHER is a gitignored sibling
   // subrepo any more and both halves of link 5 are always present, in-repo.
   //
@@ -38,7 +38,8 @@ const LINK5_INPUTS = [
   // when in truth the port is sitting right there and only the probe was looking in
   // the wrong place. That is precisely the absent-vs-wrong confusion the header
   // above says must never happen, arriving from the other direction. The probe keeps
-  // earning its keep for centipede/joust, which are still subrepos.
+  // earning its keep for joust, the last game still a gitignored subrepo (Task 12);
+  // centipede came in as plugins/centipede in Task 11 and never had a path here.
   { audit: 'tempest', path: join('plugins', 'tempest', 'tools', 'pokey-bake', 'sfx-data.mjs') },
   { audit: 'tempest', path: join('plugins', 'tempest', 'tools', 'pokey-bake', 'bake-sfx.mjs') },
   { audit: 'red-baron', path: join('plugins', 'red-baron', 'src', 'shell', 'pokey.ts') },
