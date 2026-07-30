@@ -1,11 +1,11 @@
 // src/host/contract.ts — the plugin contract.
 //
-// A game declares itself with one exported `meta` object. That manifest is the ONLY
-// thing the lobby will read: Task 14 generates src/host/registry.ts from every
-// plugins/*/plugin.ts, and Task 15 repoints the lobby at it — retiring
-// lobby/src/core/registry.ts, which is STILL the live list as of this commit and
-// carries six hardcoded launch URLs and six hardcoded version strings that nothing
-// checks.
+// A game declares itself with one exported `meta` object. That manifest will be the
+// ONLY thing the lobby reads: Task 14 will generate src/host/registry.ts from every
+// plugins/*/plugin.ts, and Task 15 will repoint the lobby at it, retiring
+// lobby/src/core/registry.ts — which is STILL the live list as of this commit, and
+// still carries six hardcoded launch URLs and six hardcoded version strings that
+// nothing checks.
 //
 // The tense above is load-bearing, so plainly: **as of this commit, nothing calls
 // `validateMeta`.** It is the typed statement of the contract, and its own tests are
@@ -150,6 +150,12 @@ export function validateMeta(meta: unknown, dirName: string): GameMeta {
   }
 
   // Checked last so a manifest with a real field error gets that message first.
+  //
+  // Note for anyone writing a test that depends on WHICH branch threw: the hint below
+  // lists every valid key, so this message contains the literal text 'color', 'title',
+  // 'order' and so on. A test asserting a bare field name cannot tell this branch from
+  // that field's own check — assert on the field error's distinctive wording instead.
+  //
   // Rejecting rather than ignoring is deliberate: these manifests are transcribed
   // from a registry with a DIFFERENT shape, so an unknown key is far likelier to be
   // stale data or a typo than an intended extension — and passing it through would

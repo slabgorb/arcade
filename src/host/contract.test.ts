@@ -257,9 +257,22 @@ describe('validateMeta', () => {
     })
 
     it('reports a field error before an unknown key when a manifest has both', () => {
-      // The unknown-key scan runs LAST on purpose: the bad field is the more
-      // actionable message. Nothing but this test holds that ordering in place.
-      expect(() => validateMeta({ ...valid, color: 'cyan', bogus: 1 }, 'tempest')).toThrow(/color/)
+      // The unknown-key scan runs LAST on purpose: the bad field is the more actionable
+      // message.
+      //
+      // Assert on the COLOUR error's own wording, and on the absence of the other
+      // branch's. A bare /color/ cannot fail here: the unknown-key hint lists every
+      // valid key, and 'color' is one of them, so /color/ matches whichever branch
+      // throws — the first version of this test matched the very reversal it was
+      // written to detect, and passed under a faithful hoist of the scan.
+      let message = ''
+      try {
+        validateMeta({ ...valid, color: 'cyan', bogus: 1 }, 'tempest')
+      } catch (e) {
+        message = (e as Error).message
+      }
+      expect(message).toMatch(/hex colour/)
+      expect(message).not.toMatch(/unknown key/)
     })
 
     it('rejects an unknown key rather than passing it through', () => {
