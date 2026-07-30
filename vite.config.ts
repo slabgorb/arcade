@@ -2,8 +2,6 @@
 // near-identical per-repo configs.
 //
 // Every game is served under /<id>/ on the single origin; the lobby is the root.
-// The old per-repo `strictPort` + `host: '127.0.0.1'` pinning is gone: there is
-// exactly one dev server now, so there is no eight-way port collision to guard.
 import { defineConfig, type UserConfig } from 'vite'
 import { resolve } from 'node:path'
 
@@ -37,6 +35,14 @@ export function defineAppConfig({ id, entries = [] }: AppSpec): UserConfig {
       emptyOutDir: true,
       rollupOptions: { input },
     },
+    // ONE dev server for the cabinet, but the pin still matters. strictPort alone
+    // does NOT protect it: with 127.0.0.1:5270 held by another checkout (a-2, a-3),
+    // an unpinned host lets Vite bind [::1]:5270 instead and two servers share the
+    // port with no error — the silent-wrong-checkout trap td1-1 closed fleet-wide.
+    // Collapsing eight ports to one reduces that surface; it does not remove it,
+    // and a wrong-checkout server now serves the whole cabinet, not one game.
+    server: { host: '127.0.0.1', port: 5270, strictPort: true },
+    preview: { host: '127.0.0.1', port: 5270, strictPort: true },
   }
 }
 

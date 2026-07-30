@@ -15,13 +15,20 @@ no backend. Mirrors the `tempest` toolchain so the two games stay consistent.
 
 ## Commands
 
+`lobby/` is no longer its own toolchain — `lobby/package.json` is a bare
+`{name, version, private}` stub, and there is no `lobby/vite.config.ts` or
+lockfile. The root owns install, dev-serve and test for the whole cabinet.
+Run these from the **repo root**, not from inside `lobby/`:
+
 ```bash
-npm install          # Install dependencies
-npm run dev          # Vite dev server → http://localhost:5270
-npm run build        # tsc --noEmit && vite build
-npm test             # vitest run --passWithNoTests
-npm run test:watch   # vitest in watch mode
+npm install                       # installs the whole cabinet — no per-app npm install
+npx vite                          # dev server for the whole cabinet; / is the lobby
+npm test                          # vitest across every project, lobby included
+npx vitest run --project lobby    # this app's tests only
 ```
+
+(There is no working root `npm run build` yet — that lands in a later stage of
+the monorepo migration. Don't run it expecting a lobby build.)
 
 ## Structure
 
@@ -32,17 +39,19 @@ lobby/
 │   └── main.ts       # bootstrap: canvas + render shell
 ├── tests/            # Vitest suites against the pure core
 ├── index.html        # Vite entry
-└── vite.config.ts    # dev server pinned to port 5270, base /lobby/
+├── package.json      # {name, version, private} stub — no scripts, no deps
+└── tsconfig.json     # extends the root tsconfig
 ```
 
-The pure `core/` vs. IO `shell` split follows the same discipline as `tempest`:
-anything testable without a canvas lives in `core/`; the DOM bootstrap stays in
-`main.ts`. Served under `/lobby/` on arcade.slabgorb.com.
+The pure `core/` vs. IO `shell` split follows the same discipline as the other
+apps in this monorepo: anything testable without a canvas lives in `core/`; the
+DOM bootstrap stays in `main.ts`. The lobby is served at the cabinet root (`/`)
+— every other app gets its own `/<id>/` — on arcade.slabgorb.com.
 
 ## Releasing
 
-This repo ships from the [arcade orchestrator](https://github.com/slabgorb/arcade):
-`just release lobby` gates on tests + build, merges `develop` → `main`, tags
-`vX.Y.Z`, and pushes. Every push to `main` auto-deploys to Cloudflare R2 via
-GitHub Actions (`.github/workflows/deploy.yml`) — **`main` is production; never
-push it by hand.** A red CI run deploys nothing.
+The lobby ships as part of the `arcade` monorepo, not as its own repo. Release
+tags are `lobby-vX.Y.Z` — a bare `vX.Y.Z` is invalid here, since this monorepo
+holds every app's tags side by side. See the root `justfile`'s `release` /
+`release-all` recipes and `docs/ops/hosting.md` for the current release and R2
+deploy mechanics; **`main` is production — never push it by hand.**
