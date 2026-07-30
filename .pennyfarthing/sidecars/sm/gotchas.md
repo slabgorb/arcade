@@ -193,3 +193,69 @@ is prose the next rewrite will corrupt, and the session file is the permanent ar
 (C_PV pyramid), `uf1-15` (C_AS cone) and `sw8-16` (C$T9/A$GLW coverage) all touch the files a-2 is
 actively reworking — they were the *worst* available picks despite two of them being p1. When a
 story is blocked by a sibling, rule out its whole file neighbourhood, not just its id.
+
+---
+
+### When the STORY is wrong, the pipeline still works — but get the repurpose/close ruling from the user BEFORE RED, and expect the review rounds to land on PROSE
+
+**Situation:** jt8-6 (joust, 3pt, `type: bug`) was filed by a Reviewer on jt8-4 with a REPRODUCED repro
+and a named fix. TEA's first act was to open the cited ROM lines, and they said the opposite of the
+story: `DEATH1 CLR EGGS1` (:4669) clears the egg counter on every death, so the "bug" was faithful
+behaviour and the story's prescribed fix ("re-home the count so it outlives the process") would have
+been a deliberate fidelity regression. The real defect was the boundary the story explicitly fenced
+OUT of scope.
+
+**What worked, in order:**
+
+1. **Ask the backlog-shape question before any code.** "The premise is refuted" has three legitimate
+   tracking answers — repurpose the story, repurpose and retitle, or close-as-not-a-bug and file fresh —
+   and they are the user's call, not the pipeline's. Fidelity itself needed no ruling (the epic carried a
+   binding user ruling that egg collection must match PLYEGG/EGGSCR), so the only real question was the
+   board. The user chose repurpose-without-retitle, which means **the story TITLE still asserts the
+   refuted premise** — record that in the deviation's forward-impact so a later reader is not misled.
+2. **Protect the derived ACs.** This story had `acceptance_criteria: null`; `sm-setup` DERIVED six ACs
+   from the Reviewer's finding text. Three of them were refuted. A `⚠ CORRECTION` banner at the TOP of
+   the context file pointing at the session's Design Deviations is the right fix — do not rewrite
+   `sm-setup`'s ACs in place, and do not leave Dev reading refuted ACs as their primary input.
+3. **Let the filed behaviour become a green regression guard.** The single most valuable artifact was a
+   test group that PASSES on arrival, guarding the behaviour the story wanted deleted. Its non-vacuity
+   came from building the story's own design and watching it fail.
+
+**Where three review rounds went, and the lesson for the Reviewer's budget:** all three rejections were
+**claim prose**, never code. The code was correct from round 1 and never changed after it. Rounds 1-3
+each died on a claim asserting more than its cited line supports — a universal about death routines,
+then a wrong line extent plus a false instruction count, then (caught pre-commit) a wrong "never". Two
+structural reasons, both worth acting on:
+
+- **`comment_analyzer` is disabled in `workflow.reviewer_subagents` on this project**, so the ONE domain
+  where every defect actually lived had no specialist. Every enabled check was green all three rounds.
+- **`tests/audit/citations.test.ts` verifies the `source.line`/`verbatim` PAIR and cannot see line
+  references embedded in claim BODIES.** That is exactly where the round-2 errors sat. A truncated
+  extent is worse than a wrong fact: it *manufactures* corroboration, because a reader who checks only
+  the cited span sees the false count as true.
+
+**The fix that finally held was structural, not a reword:** drop the categories of assertion that keep
+being wrong (line extents, instruction censuses) and state each routine's COMPLETE write set instead —
+checkable by one grep and stable when line numbers shift. When a claim fails review twice, stop
+correcting its values and ask what it should stop asserting.
+
+**Two process notes worth keeping:**
+- **An incomplete subagent return is not a clean one.** The round-2 rule-checker's first reply contained
+  only its closing lines — no verdicts. It had done the work and lost the report; a `SendMessage` asking
+  for the results recovered a full audit that caught both defects. Ask before you either trust it or
+  re-dispatch it.
+- **Have the specialist audit text YOU drafted.** The Reviewer wrote two of the three failing drafts.
+  Dev caught an error in the Reviewer's suggested replacement ("shared, never to one creature" — DEATH4
+  is bound by exactly one record) precisely because the reviewer's brief said "I drafted the failing
+  text too; verify, don't trust." Say that explicitly in the handoff.
+
+**Finish went clean:** `develop` had not moved (no trial-merge needed), PR #43 squash-merged with an
+explicit `-R slabgorb/joust` and verified `state: MERGED` from `gh` itself, and the push was rejected
+first time because a sibling checkout had landed 11 sw8-8 commits — `pull --rebase` resolved with no
+conflict. Verified afterward that the fix is really on `develop` and the suite is green THERE, not just
+on the branch.
+
+**One hook trap on the way out:** after `cd joust && git checkout develop` to verify the merge, the next
+orchestrator commit was BLOCKED — pf's branch-protection hook judges the repo/branch from the SESSION's
+working directory, which was still `joust/` on the protected `develop`, no matter what `cd` the command
+itself began with. Run a bare `cd <orchestrator> && pwd` first, or use `git -C <abs>` throughout.
