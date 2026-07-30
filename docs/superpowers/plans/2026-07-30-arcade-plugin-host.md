@@ -36,6 +36,13 @@
   2. **Record the exact count removed per file, with the reason**, in that task's report. A falling test count is a finding to be justified, never tidying.
   3. Rewrite, do not delete, any assertion whose *intent* survives — `@arcade/shared/rng` becoming `@shared/rng` is a specifier change, and that test should still assert the consumer imports shared RNG.
   4. Do NOT re-create a removed assertion inside another game. Seven copies of one invariant is the duplication this epic exists to delete.
+- **The `@arcade/shared` grep must tolerate escaped forms.** A plain `grep "@arcade/shared"` **misses** `@arcade\/shared\/highscore` — the backslash-escaped form that appears inside regex literals in source-wiring tests, and which Task 5 hit for real. Use `grep -rnE '@arcade\\?/shared'`, and also check for the bare word pair, since a stale *comment* may say "arcade shared" without a slash at all:
+
+  ```bash
+  grep -rnE '@arcade\\?/shared' plugins/<id>/ ; grep -rni "arcade.\{0,3\}shared" plugins/<id>/ | grep -v "@shared"
+  ```
+
+  A source-wiring test that greps its own source for an import specifier is a *test* of the migration, not a casualty of it — rewrite its expected string, never delete the test.
 
   Task 12b then adds the consolidated orchestrator-level assertions covering everything the removals gave up. Until 12b lands, those invariants are unguarded — a bounded, explicitly accepted window.
 - Every commit message ends with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
@@ -759,9 +766,9 @@ No dependencies and no scripts: the root owns the toolchain. This file exists so
 - [ ] **Step 4: Remove /tempest/ from .gitignore and rewrite shared imports**
 
 ```bash
-grep -rl "@arcade/shared" plugins/tempest/src plugins/tempest/tests \
+grep -rlE '@arcade\\?/shared' plugins/tempest/src plugins/tempest/tests \
   | xargs sed -i '' 's|@arcade/shared/|@shared/|g'
-grep -rn "@arcade/shared" plugins/tempest/ || echo "clean"
+grep -rnE '@arcade\\?/shared' plugins/tempest/ || echo "clean"
 ```
 
 - [ ] **Step 5: Run tempest's suite**
@@ -830,9 +837,9 @@ rm -f plugins/star-wars/vite.config.ts plugins/star-wars/tsconfig.json \
 - [ ] **Step 3: Remove /star-wars/ from .gitignore and rewrite shared imports**
 
 ```bash
-grep -rl "@arcade/shared" plugins/star-wars/src plugins/star-wars/tests \
+grep -rlE '@arcade\\?/shared' plugins/star-wars/src plugins/star-wars/tests \
   | xargs sed -i '' 's|@arcade/shared/|@shared/|g'
-grep -rn "@arcade/shared" plugins/star-wars/ || echo "clean"
+grep -rnE '@arcade\\?/shared' plugins/star-wars/ || echo "clean"
 ```
 
 - [ ] **Step 4: Run star-wars's suite**
@@ -896,9 +903,9 @@ rm -f plugins/asteroids/vite.config.ts plugins/asteroids/tsconfig.json \
 - [ ] **Step 3: Remove /asteroids/ from .gitignore and rewrite shared imports**
 
 ```bash
-grep -rl "@arcade/shared" plugins/asteroids/src plugins/asteroids/tests \
+grep -rlE '@arcade\\?/shared' plugins/asteroids/src plugins/asteroids/tests \
   | xargs sed -i '' 's|@arcade/shared/|@shared/|g'
-grep -rn "@arcade/shared" plugins/asteroids/ || echo "clean"
+grep -rnE '@arcade\\?/shared' plugins/asteroids/ || echo "clean"
 ```
 
 - [ ] **Step 4: Run asteroids's suite**
@@ -964,9 +971,9 @@ rm -f plugins/battlezone/vite.config.ts plugins/battlezone/tsconfig.json \
 Only `@arcade/shared/...` specifiers change. battlezone's `./shell/pause` and `./shell/viewport` are local modules and must be left exactly as they are.
 
 ```bash
-grep -rl "@arcade/shared" plugins/battlezone/src plugins/battlezone/tests \
+grep -rlE '@arcade\\?/shared' plugins/battlezone/src plugins/battlezone/tests \
   | xargs sed -i '' 's|@arcade/shared/|@shared/|g'
-grep -rn "@arcade/shared" plugins/battlezone/ || echo "clean"
+grep -rnE '@arcade\\?/shared' plugins/battlezone/ || echo "clean"
 grep -rn "from './shell/pause'" plugins/battlezone/src/main.ts
 ```
 
@@ -1038,9 +1045,9 @@ rm -f plugins/red-baron/vite.config.ts plugins/red-baron/tsconfig.json \
 - [ ] **Step 3: Remove /red-baron/ from .gitignore and rewrite shared imports**
 
 ```bash
-grep -rl "@arcade/shared" plugins/red-baron/src plugins/red-baron/tests \
+grep -rlE '@arcade\\?/shared' plugins/red-baron/src plugins/red-baron/tests \
   | xargs sed -i '' 's|@arcade/shared/|@shared/|g'
-grep -rn "@arcade/shared" plugins/red-baron/ || echo "clean"
+grep -rnE '@arcade\\?/shared' plugins/red-baron/ || echo "clean"
 ```
 
 - [ ] **Step 4: Run red-baron's suite**
@@ -1116,9 +1123,9 @@ rm -f plugins/centipede/vite.config.ts plugins/centipede/tsconfig.json \
 - [ ] **Step 3: Remove /centipede/ from .gitignore and rewrite shared imports**
 
 ```bash
-grep -rl "@arcade/shared" plugins/centipede/src plugins/centipede/tests \
+grep -rlE '@arcade\\?/shared' plugins/centipede/src plugins/centipede/tests \
   | xargs sed -i '' 's|@arcade/shared/|@shared/|g'
-grep -rn "@arcade/shared" plugins/centipede/ || echo "clean"
+grep -rnE '@arcade\\?/shared' plugins/centipede/ || echo "clean"
 ```
 
 - [ ] **Step 4: Run centipede's suite**
@@ -1185,7 +1192,7 @@ rm -f plugins/joust/vite.config.ts plugins/joust/tsconfig.json \
 - [ ] **Step 3: Remove /joust/ from .gitignore and check for shared imports**
 
 ```bash
-grep -rn "@arcade/shared" plugins/joust/ || echo "joust imports nothing from @arcade/shared — expected"
+grep -rnE '@arcade\\?/shared' plugins/joust/ || echo "joust imports nothing from @arcade/shared — expected"
 ```
 
 If any hits appear (in tests, say), rewrite them the same way as the other games.
@@ -1333,6 +1340,20 @@ test('every game is served under its own base path, lobby at the root', async ()
   const lobby = defineAppConfig({ id: 'lobby' });
   assert.equal(lobby.base, '/');
   assert.ok(lobby.build.outDir.endsWith('dist'));
+});
+
+test('the dev-server host pin survives — strictPort alone does not protect it', async () => {
+  // Replaces the seven per-repo scaffold assertions on strictPort + host:'127.0.0.1'.
+  // Still load-bearing with one server: a-1/a-2/a-3 race the same port, and an
+  // unpinned host lets a second checkout bind [::1]:5270 alongside 127.0.0.1:5270
+  // with no error — serving the whole cabinet from the wrong working tree.
+  const { defineAppConfig } = await import('../vite.config.ts');
+  for (const block of ['server', 'preview']) {
+    const cfg = defineAppConfig({ id: 'lobby' })[block];
+    assert.equal(cfg.host, '127.0.0.1', `${block}.host must be pinned to IPv4 loopback`);
+    assert.equal(cfg.strictPort, true, `${block}.strictPort must be true`);
+    assert.equal(cfg.port, 5270);
+  }
 });
 
 test('exactly one deploy workflow exists for the whole cabinet', () => {
@@ -2471,18 +2492,45 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `build-app.mjs` (Task 16), `defineAppConfig` (Task 3).
 - Produces: `just serve` running one Vite dev server on 5270 — `/` the lobby, `/<id>/` each game.
 
+- [ ] **Step 0: Restore the host pinning to `vite.config.ts` — a guard the plan wrongly dropped**
+
+Task 3's factory carries this comment and no `server`/`preview` block at all:
+
+```
+// The old per-repo `strictPort` + `host: '127.0.0.1'` pinning is gone: there is
+// exactly one dev server now, so there is no eight-way port collision to guard.
+```
+
+**That reasoning is wrong and the guard must come back.** The collision td1-1 closed was never only eight-way — it is also **between checkouts**. `a-1`, `a-2` and `a-3` all exist on this machine and all run `just serve`. `strictPort` alone does not protect a pin: with `127.0.0.1:5270` held by one checkout, an unpinned `host` lets Vite happily bind `[::1]:5270` in another, and two dev servers share the port with **no collision error at all**. That is the exact silent-wrong-checkout trap documented in the orchestrator CLAUDE.md.
+
+Collapsing eight ports to one shrinks the surface but does not remove it, and in one respect concentrates it: a wrong-checkout server now serves the **entire cabinet** wrongly rather than one game.
+
+Add to `defineAppConfig`'s returned config, and replace the misleading comment:
+
+```typescript
+    // ONE dev server for the cabinet, but the pin still matters. strictPort alone
+    // does NOT protect it: with 127.0.0.1:5270 held by another checkout (a-2, a-3),
+    // an unpinned host lets Vite bind [::1]:5270 instead and two servers share the
+    // port with no error — the silent-wrong-checkout trap td1-1 closed fleet-wide.
+    // Collapsing eight ports to one reduces that surface; it does not remove it,
+    // and a wrong-checkout server now serves the whole cabinet, not one game.
+    server: { host: '127.0.0.1', port: 5270, strictPort: true },
+    preview: { host: '127.0.0.1', port: 5270, strictPort: true },
+```
+
 - [ ] **Step 1: Replace the serve recipe**
 
 ```make
 # Serve the whole cabinet from ONE dev server. The lobby is /, each game /<id>/.
 #
-# This replaces eight servers on eight pinned ports. The strictPort + host pinning
-# each subrepo carried (td1-1) existed to stop eight servers colliding across
-# sibling checkouts; with one server there is one port to collide on, and Vite's
-# default failure is loud enough.
+# Replaces eight servers on eight pinned ports. The host+strictPort pin lives in
+# vite.config.ts (see its comment) and still matters across sibling checkouts —
+# a-1/a-2/a-3 all race this one port now.
 serve:
-    @npx vite --port 5270 --strictPort
+    @npx vite
 ```
+
+The port and strictPort come from the config rather than CLI flags, so a bare `npx vite` at the repo root is pinned too — not only invocations that remember the flags.
 
 - [ ] **Step 2: Replace install-all and test-all**
 
