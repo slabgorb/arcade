@@ -1,6 +1,11 @@
 # CLAUDE.md — Star Wars
 
-Guidance for working in this repository.
+Guidance for working in this **plugin**. star-wars is no longer a standalone
+repo: it lives at `plugins/star-wars/` inside the **arcade** monorepo, alongside
+`plugins/tempest/` and the other games. Its own `.git`, `.github/workflows/`,
+`vite.config.ts`, `tsconfig.json` and `package-lock.json` were removed on import;
+the root owns the toolchain. The `package.json` here carries a name and a version
+and nothing else.
 
 ## Project Overview
 
@@ -13,30 +18,53 @@ input/render/audio shell.
 Sibling of [tempest](../tempest) — same arcade visual language and the same hard
 core/shell boundary, but a genuinely 3D core instead of Tempest's 2.5D tube.
 
-- **Type:** Single-repo browser game (client-only, no backend)
+- **Type:** a plugin in the arcade monorepo (client-only, no backend)
 - **Language:** TypeScript (ES modules, strict)
-- **Build tool:** Vite · **Testing:** Vitest (TDD on the pure core)
-- **Status:** Wave 0 skeleton (math box + core/shell boundary + glow loop).
+- **Build tool:** Vite (root config) · **Testing:** Vitest (TDD on the pure core)
+- **Status:** shipped and live at `v0.0.33` — all three phases playable. (The old
+  "Wave 0 skeleton" line here was stale by many releases.)
 
-## Repository Structure
+## Directory Structure
 
 ```
-star-wars/
+plugins/star-wars/
 ├── src/
 │   ├── core/            # PURE, unit-tested, no DOM/canvas
-│   │   ├── math3d.ts    # the "Math Box": vec3/mat4, perspective projection
-│   │   ├── models.ts    # 3D wireframe model registry
 │   │   ├── state.ts     # GameState type
 │   │   ├── sim.ts       # stepGame(state, input, dt) → state
 │   │   ├── input.ts     # Input type (yoke, abstracted)
-│   │   └── rng.ts       # seeded PRNG (deterministic)
-│   ├── shell/           # IO: render.ts, input.ts, loop.ts (audio.ts to come)
+│   │   ├── models.ts    # 3D wireframe model registry
+│   │   ├── tie-vm.ts    # TIE choreography VM (+ tie-waves, tie-status)
+│   │   ├── trench-*.ts  # channel / detail / obstacles / wedges
+│   │   ├── surface*.ts  # surface-grid, surfaceMazes
+│   │   └── …            # attract, coaching, events, gameRules, highScores,
+│   │                    #   hud, modelView, scenePresets, starfield
+│   ├── shell/           # IO: render, input, audio, font, glow, wireframe,
+│   │                    #   debug-overlay
+│   ├── tools/           # dev-only: contactSheet (models.html),
+│   │                    #   sceneSheet (scenes.html), romCompare, romModels.generated
 │   └── main.ts          # bootstrap: canvas + wire shell ↔ core
 ├── tests/               # Vitest suites (mostly against the pure core)
+├── tools/               # audit gate + the ROM bake tools (music/pokey/speech)
 ├── reference/           # GITIGNORED — disassembly + audio refs (see its README)
-├── index.html           # Vite entry
-└── vite.config.ts       # dev server pinned to port 5274
+├── index.html           # main entry
+├── models.html          # dev tool — model contact sheet
+└── scenes.html          # dev tool — scene sheet
 ```
+
+**There is no `core/math3d.ts`, no `core/rng.ts` and no `shell/loop.ts`.** The
+Math Box, the seeded PRNG and the fixed-timestep loop live in the shared library
+and are imported as `@shared/math3d`, `@shared/rng` and `@shared/loop` — as are
+`@shared/{font,glow,pause,esc-overlay,audio,highscore,view,name-entry}`. Since the
+monorepo migration the library is **in-repo** at `src/shared/` (repo root),
+reached through the `@shared` alias; it is not an npm dependency and there is no
+version pin to bump. Do not re-create local copies —
+`tests/rng-extraction.test.ts` and `tests/loop-extraction.test.ts` will fail.
+
+**All three HTML entries must survive any build wiring.** The deleted
+`vite.config.ts` declared `index.html`, `models.html` **and** `scenes.html` in
+`build.rollupOptions.input`; the root build config takes them as an `entries`
+list. Omit them and the two dev tools vanish from the bundle silently.
 
 ## The Hard Architectural Boundary (most important rule)
 
@@ -58,35 +86,72 @@ does game math.
 
 ## Commands
 
+Run these from the **repo root**, not from `plugins/star-wars/`. There are no
+scripts in this directory's `package.json`.
+
 ```bash
-npm install          # Install dependencies
-npm run dev          # Vite dev server → http://localhost:5274
-npm run build        # tsc --noEmit && vite build
-npm test             # vitest run --passWithNoTests
-npm run test:watch   # vitest in watch mode
-npm test -- <name>   # Run a specific test file/pattern
+npm install                                  # install the whole cabinet, once
+npx vitest run --project star-wars           # this game's suite: 189 files, 2028 tests
+npx vitest run --project star-wars <pattern> # filter, e.g. `… trench` → 24 files, 236 tests
+npx vitest run --project star-wars citations # the citation gate (was `npm test -- citations`)
+npx vitest run                               # every project in the monorepo
+npm run lint                                 # tsc --noEmit across the monorepo
 ```
+
+⚠ **There is no way to run star-wars in a browser from this repo yet — do not
+tell a user to, and do not try to verify a render change by loading it.** The
+per-game dev server (port 5274) went with the deleted `vite.config.ts`, and the
+root `npx vite` sets `root: lobby`, so it serves the lobby at *every* path.
+Probed on a spare port: `/`, `/star-wars/`, `/star-wars/models.html`,
+`/star-wars/scenes.html` and the nonsense control `/banana/` all return `200`
+with `<title>Slabcade</title>` — identical bytes, including the control, which is
+what proves it is a blanket SPA fallback rather than a misconfiguration. A
+screenshot taken there is the **lobby**, not this game. `npm run build` at the
+root is likewise not wired yet (`scripts/build-app.mjs` does not exist —
+`MODULE_NOT_FOUND`).
+
+Consequence for the standing "the shell is verified by running the game"
+convention below: that route is **currently unavailable**, so shell changes rest
+on the source-wiring tests alone until a later migration task restores it.
+
+## The citation gate
+
+`tests/audit/citations.test.ts` + `tools/audit/check-citations.mjs`. Unlike
+tempest's, this gate re-opens each finding's `ours` citation **against the
+working tree**, not against a frozen commit — so any edit that shifts a cited
+line breaks it. Re-anchor with `tools/audit/reanchor-citations.mjs` after editing
+a cited file. The source side reads
+`/Users/slabgorb/Projects/star-wars-1983-source-text` (override with
+`STARWARS_SOURCE_DIR`); if that path is missing the source-side describe
+**skips**, which is a silent pass — check it ran.
+
+The migration's `@arcade/shared/*` → `@shared/*` rewrite deliberately did **not**
+touch `docs/`: the findings' `ours.verbatim` quotes are frozen audit evidence, and
+rewriting them would make the audit misquote itself.
 
 ## Testing
 
 TDD on the pure core with Vitest — write the failing test first, then make it
 pass. Cover: the math box (matrix multiply, rotation, projection invariants),
 each enemy/object behavior driven by a fixed RNG seed, collision/hit-tests in 3D,
-and scoring/phase-transition logic. The shell (render/input/audio/loop) is
-verified by running the game.
+and scoring/phase-transition logic. The shell (render/input/audio) was
+conventionally verified by running the game — **that route is unavailable in this
+repo today** (see the Commands warning above), so shell changes currently rest on
+the source-wiring tests (`tests/shell/render.*.test.ts` and friends) alone.
 
-## Build Roadmap
+## Build Roadmap — complete
 
-Built in "waves," each a self-contained slice (mirroring tempest's cadence):
+Built in "waves," each a self-contained slice (mirroring tempest's cadence). All
+six shipped; the list is kept as the map of where each subsystem lives.
 
 - **Wave 0 — Skeleton:** Vite+TS, canvas bootstrap, fixed-timestep loop, the
   math box, one glowing wireframe spinning. ✅
 - **Wave 1 — Space combat:** cockpit crosshair, TIE fighters, fireballs, firing,
-  collisions, lives, score.
-- **Wave 2 — Death Star surface:** towers, laser turrets, terrain skim.
-- **Wave 3 — Trench run:** the trench, catwalks, the exhaust port, the bonus.
-- **Wave 4 — Framing:** HUD, waves/difficulty ramp, attract/title, high scores.
-- **Wave 5 — Audio:** POKEY SFX + TMS5220 speech ("Use the Force, Luke").
+  collisions, lives, score. ✅
+- **Wave 2 — Death Star surface:** towers, laser turrets, terrain skim. ✅
+- **Wave 3 — Trench run:** the trench, catwalks, the exhaust port, the bonus. ✅
+- **Wave 4 — Framing:** HUD, waves/difficulty ramp, attract/title, high scores. ✅
+- **Wave 5 — Audio:** POKEY SFX + TMS5220 speech ("Use the Force, Luke"). ✅
 
 ## Reference Material
 
@@ -135,12 +200,20 @@ compiled form of these files; `docs/tie-flight-ai-model.md` maps the TIE AI.
 
 ## Git Workflow
 
-- **Default branch:** `develop` (gitflow). PRs target `develop`.
-- **`main` = production:** release merges only (`just release star-wars` from
-  the arcade orchestrator); every push to `main` auto-deploys to R2 — never
-  push it by hand.
-- **Branches:** `feat/{description}`, `fix/{description}`, `chore/{description}`.
-- Just commit; no need to ask first (`develop` is the working branch).
+star-wars has no git history of its own any more — it is a directory in the
+**arcade** repo and follows that repo's workflow. Its pre-migration history is
+parked, unpushed-safe, at `.migration-backup/star-wars.git` (repo root,
+gitignored); `develop` there is `822ee06`, level with the old `origin`, which is
+the per-game rollback point.
+
+- **Do not** look for a `develop` branch here, open a PR against the old
+  `slabgorb/star-wars` remote, or run `just release star-wars`.
+- **Release tags are `star-wars-vX.Y.Z`.** A bare `vX.Y.Z` is invalid in the
+  monorepo. The per-game release mechanism is being rebuilt by the migration and
+  is not wired yet, so this file names no release command rather than a guessed
+  one.
+- Imported at version `0.0.33` — see `docs/ops/migration-manifest.md` at the repo
+  root for the source SHA and the rollback target.
 
 ## Important Notes
 

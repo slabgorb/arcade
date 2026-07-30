@@ -12,21 +12,35 @@ no physics engine, no backend. The game is a **deterministic pure simulation
 core** (its own little "Math Box") wrapped by a thin input/render/audio shell —
 the same architecture as its sibling, [tempest](../tempest).
 
-> **Status:** Wave 0 skeleton. The math box (vec3/mat4 + perspective), the
-> core/shell boundary, and a glowing wireframe render-loop are in place. The
-> game proper — TIE waves, the Death Star surface, the trench — lands wave by
-> wave.
+> **Status:** shipped and live at `v0.0.33`. All three phases — TIE waves, the
+> Death Star surface, the trench run — are playable, with POKEY SFX, TMS5220
+> speech and the ROM music. The "Wave 0 skeleton" note that stood here was stale
+> by many releases; see [CHANGELOG.md](CHANGELOG.md) for what actually landed.
 
 ---
 
 ## Quick start
 
+star-wars is no longer a standalone repo — it is a plugin inside the **arcade**
+monorepo, at `plugins/star-wars/`. Everything runs from the repo root, not from
+here:
+
 ```bash
-npm install
-npm run dev
+npm install                            # installs the whole cabinet, once
+npx vitest run --project star-wars     # this game's suite (189 files, 2028 tests)
+npm run lint                           # tsc --noEmit across the monorepo
 ```
 
-Then open **http://localhost:5274**. (Tempest runs next door on 5273.)
+> **You cannot run star-wars in a browser from this repo yet.** There is no
+> per-game dev server any more (the pinned port 5274 went with the deleted
+> `vite.config.ts`), and the root `npx vite` is not wired to serve games yet:
+> the root config sets `root: lobby`, so **every** path returns the lobby.
+> Verified by execution on a spare port, not assumed —
+> `/`, `/star-wars/`, `/star-wars/models.html`, `/star-wars/scenes.html` and the
+> nonsense control `/banana/` all return `200` with `<title>Slabcade</title>`.
+> Identical bytes on all five, including the control: that is a blanket SPA
+> fallback, not routing. Play the released build at
+> [star-wars.slabgorb.com](https://star-wars.slabgorb.com) instead.
 
 ---
 
@@ -60,15 +74,32 @@ the most important rule in the codebase.
 ```
 src/
 ├── core/              # PURE, deterministic, unit-tested — no DOM/canvas
-│   ├── math3d.ts      # the "Math Box": vec3 / mat4 / perspective projection
-│   ├── models.ts      # 3D wireframe model registry (ported from the disassembly)
 │   ├── state.ts       # GameState type
 │   ├── sim.ts         # stepGame(state, input, dt) → state
 │   ├── input.ts       # Input type (the yoke, abstracted)
-│   └── rng.ts         # seeded PRNG (deterministic)
-├── shell/             # IO: render.ts, input.ts, loop.ts (audio.ts to come)
+│   ├── models.ts      # 3D wireframe model registry (ported from the disassembly)
+│   ├── tie-vm.ts      # the TIE choreography VM (WSCPU.MAC), tie-waves, tie-status
+│   ├── trench-*.ts    # trench channel / detail / obstacles / wedges
+│   ├── surface*.ts    # surface-grid, surfaceMazes
+│   └── …              # attract, coaching, events, gameRules, highScores, hud,
+│                      #   modelView, scenePresets, starfield
+├── shell/             # IO: render.ts, input.ts, audio.ts, font.ts, glow.ts,
+│                      #   wireframe.ts, debug-overlay.ts
+├── tools/             # dev-only: contactSheet.ts (models.html),
+│                      #   sceneSheet.ts (scenes.html), romCompare.ts,
+│                      #   romModels.generated.ts
 └── main.ts            # bootstrap: canvas + wire shell ↔ core
 ```
+
+There is **no `core/math3d.ts` and no `core/rng.ts`** in this tree, and no
+`shell/loop.ts`: the Math Box, the seeded PRNG and the fixed-timestep loop were
+extracted to the shared library during the SH epic and are consumed as
+`@shared/math3d`, `@shared/rng` and `@shared/loop`. So are the font, glow, pause,
+esc-overlay, audio-engine, high-score, view and name-entry primitives. Since the
+monorepo migration the library is in-repo at `src/shared/` (repo root), reached
+through the `@shared` alias rather than an npm dependency —
+`tests/rng-extraction.test.ts` and `tests/loop-extraction.test.ts` guard both
+halves of that.
 
 **The core is pure and deterministic.** It never imports from `shell/`, never
 touches the DOM/`window`/`canvas`, and never calls `Date.now()`,
@@ -101,13 +132,26 @@ under `reference/` (gitignored — see [reference/README.md](reference/README.md
 
 ## Development
 
+Every command runs from the **repo root**, not from `plugins/star-wars/`. This
+directory has a `package.json`, but it carries only a name and a version — there
+are no scripts and no dependencies here any more.
+
 | Command | What it does |
 |---------|--------------|
-| `npm run dev` | Start the Vite dev server on port 5274 |
-| `npm run build` | Type-check (`tsc --noEmit`) and build to `dist/` |
-| `npm run preview` | Serve the production build locally on port 5274 |
-| `npm test` | Run the Vitest suite once |
-| `npm run test:watch` | Run Vitest in watch mode |
+| `npm install` | Install the whole cabinet's toolchain (root, once) |
+| `npx vitest run --project star-wars` | This game's suite — 189 files, 2028 tests |
+| `npx vitest run --project star-wars <pattern>` | Filter, e.g. `… trench` → 24 files, 236 tests |
+| `npx vitest run` | Every project in the monorepo |
+| `npm run lint` | `tsc --noEmit` across the monorepo |
+| `npm run test:watch` | Vitest in watch mode |
+
+`npm run dev`, `npm run preview` and `npm run build` are **deliberately absent**:
+the first two went with the deleted per-game `vite.config.ts` (see Quick start),
+and the root `npm run build` is not wired yet — it runs `node
+scripts/build-app.mjs`, which does not exist in this checkout (`MODULE_NOT_FOUND`).
+A later migration task adds it. When it lands it must declare **all three** of
+this game's HTML entries — `index.html`, `models.html` and `scenes.html` — or the
+two dev tools are silently dropped from the bundle.
 
 ---
 
@@ -119,8 +163,19 @@ learn how the original worked.
 
 ## Releasing
 
-This repo ships from the [arcade orchestrator](https://github.com/slabgorb/arcade):
-`just release star-wars` gates on tests + build, merges `develop` → `main`, tags
-`vX.Y.Z`, and pushes. Every push to `main` auto-deploys to Cloudflare R2 via
-GitHub Actions (`.github/workflows/deploy.yml`) — **`main` is production; never
-push it by hand.** A red CI run deploys nothing.
+star-wars used to ship from its own repo, on its own `develop`/`main` gitflow,
+with its own `.github/workflows/deploy.yml` pushing to the `arcade-star-wars` R2
+bucket. All three are gone: the repo is now a directory in
+[arcade](https://github.com/slabgorb/arcade), and the workflow was deleted on
+import.
+
+Per-game independent releases survive the move, but the mechanism is being
+rebuilt by the migration and is **not wired yet** — so no release command is
+documented here rather than a guessed one. Two things are settled and worth
+knowing:
+
+- **Release tags are `star-wars-vX.Y.Z`.** A bare `vX.Y.Z` tag is invalid in the
+  monorepo — it cannot say which app it releases.
+- The version this tree was imported at is `0.0.33`, recorded in
+  `package.json` and in `docs/ops/migration-manifest.md` at the repo root, which
+  also holds the pre-migration `develop` SHA for a per-game rollback.
