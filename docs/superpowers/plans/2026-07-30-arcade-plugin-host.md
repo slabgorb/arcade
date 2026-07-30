@@ -2613,6 +2613,34 @@ gh secret list -R slabgorb/arcade | grep CLOUDFLARE_API_TOKEN || echo "MISSING �
 
 If missing, set it from a file or a pipe — `gh secret set` under this harness stores an empty value on EOF.
 
+- [ ] **Step 4b: Assert the workflow's deploy target — this task owns it now**
+
+**PLAN DEFECT #18, found by Task 12b's review.** Every game's deleted `CI deploy caller` describe
+asserted *which bucket* its workflow uploaded to and *what triggered* it. Task 12b booked that
+interior as an accepted loss on the grounds that this task replaces the callers — but this task, as
+written, produces workflow YAML and **no test**, so after 12b's loss and this task's silence,
+**nothing anywhere asserts which bucket CI deploys to.** Seven per-repo guards became zero.
+
+That is the exact "the invariant moves, it does not evaporate" failure the epic exists to prevent,
+arrived at by two tasks each reasonably assuming the other held it.
+
+Add to `tests/monorepo-topology.test.mjs` (node:test — this is the orchestrator suite, not vitest;
+Task 12b already created the file, so extend it rather than replacing anything):
+
+```js
+test('the deploy workflow targets the cabinet bucket, on a tag trigger', () => {
+  const wf = readFileSync('.github/workflows/deploy.yml', 'utf8')
+  assert.match(wf, /arcade-lobby/, 'CI must upload to the cabinet bucket')
+  assert.match(wf, /tags:/, 'deploy must fire on a tag, not a push to main')
+  assert.doesNotMatch(wf, /arcade-(tempest|star-wars|asteroids|battlezone|red-baron|centipede|joust)\b/,
+    'the seven per-game buckets are retired — a reference to one means the prefix collapse regressed')
+})
+```
+
+Mutation-prove it: point the workflow at `arcade-tempest`, confirm red, revert. Do not skip this
+because the workflow "obviously" says the right thing — that is what the seven deleted guards were
+for, and every silent failure found in this migration passed a reading.
+
 - [ ] **Step 5: Commit**
 
 ```bash
