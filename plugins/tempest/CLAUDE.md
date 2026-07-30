@@ -70,12 +70,19 @@ everything from the **repo root**:
 
 ```bash
 npm install                                # installs the whole cabinet
-npx vite                                   # the cabinet's single dev server
 npm run lint                               # tsc --noEmit over the whole monorepo
 npm test                                   # vitest across every project
 npx vitest run --project tempest           # tempest's suite only
 npx vitest run --project tempest <name>    # a specific tempest test file/pattern
 ```
+
+**There is no way to run tempest in a browser from this repo yet.** Do not tell a
+user to, and do not try to verify a render change by loading it. Root
+`vite.config.ts` sets `root: lobby`, so `npx vite` serves the lobby at *every*
+path — `/tempest/` returns the lobby's `index.html`, and so does a nonsense
+control path like `/banana/`; it is a blanket fallback, not routing. `npm run
+build` is not wired for tempest either. Both land in a later stage of the
+monorepo migration; the old per-game `npm run dev` on port 5273 is gone.
 
 ## Testing
 
@@ -83,7 +90,10 @@ TDD on the pure core with Vitest — write the failing test first, then make it
 pass. Cover: projection/geometry math (lane interpolation, wrap vs clamp), each
 enemy state machine driven by a fixed RNG seed, collision (bullet↔enemy,
 enemy↔player, spike↔player-on-warp), and scoring/spawn/level-transition logic.
-The shell (render/input/audio/loop) is verified by running the game.
+The standing convention is that the shell (render/input/audio/loop) is verified by
+running the game — but that is not currently possible from this repo (see
+Commands), so shell changes rest on the source-wiring tests alone until a dev
+server is wired. Say so plainly rather than claiming a visual check you did not make.
 
 ## The fidelity audit and its citation gate
 

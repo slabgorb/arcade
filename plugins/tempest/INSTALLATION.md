@@ -49,15 +49,26 @@ library it consumes (`@shared/*`) lives in this same repo at `src/shared/`.
 
 ---
 
-## 3. Run the dev server
+## 3. Run the dev server — not yet available for tempest
 
-```bash
-npx vite
+**Skip this step.** There is no working dev server for tempest right now, and the
+old per-game `npm run dev` on port 5273 is gone with `vite.config.ts`. Wiring one
+lands in a later stage of the monorepo migration.
+
+`npx vite` at the repo root does start, but it serves only the lobby. Root
+`vite.config.ts` sets `root: lobby`, so every path falls back to the lobby's
+`index.html`:
+
+```
+/                    -> 200  <title>Slabcade</title>   (lobby)
+/tempest/            -> 200  <title>Slabcade</title>   (lobby)
+/tempest/models.html -> 200  <title>Slabcade</title>   (lobby)
+/banana/             -> 200  <title>Slabcade</title>   (control — identical)
 ```
 
-One Vite dev server serves the whole cabinet from the repo root. Hot module
-replacement means edits under `plugins/tempest/src/` refresh the game
-automatically.
+The `/banana/` control is the point: this is a blanket fallback, not routing that
+is merely misconfigured. Until the migration wires it, tempest is exercised
+through its test suite (step 4), not by loading it in a browser.
 
 ---
 
@@ -78,8 +89,10 @@ Tempest's fidelity audit carries a **citation gate** that must stay green:
 npx vitest run --project tempest citations
 ```
 
-It reads tempest's code as it stood at the audit commit `4232ed4` via
-`git show`, so it needs the full history — a shallow clone will fail it.
+That filter matches 4 files / 25 tests — the live gate only; `citation-gate-freeze`
+is deliberately not named `*citations*`. The gate reads tempest's code as it stood
+at the audit commit `4232ed4` via `git show`, so it needs the full history — a
+shallow clone will fail it.
 
 ---
 
@@ -101,9 +114,11 @@ Releases and the Cloudflare R2 deploy path are described in the root
 
 | Symptom | Cause & fix |
 |---------|-------------|
-| The dev server's port is already in use | Stop whatever holds it (`lsof -i :<port>`), or pass `--port`. The cabinet's port is configured once, at the root. |
 | `npm install` fails on an engine/syntax error | Your Node is too old. Upgrade to Node 20.19+ (or 22.12+) — see [Prerequisites](#prerequisites). |
-| Blank black screen, no tube | Open the browser devtools console for errors, and confirm the dev server compiled without TypeScript errors. |
-| Mousewheel scrolls the page instead of spinning | Click the canvas once to give it focus, then use the wheel. |
-| High scores don't persist | The game uses `localStorage`. Private/incognito windows and "block all cookies" settings can disable it. |
 | The citation gate fails with a git error | Your clone is shallow, or the `audit/tempest` tag was not fetched. `git fetch --unshallow --tags`. |
+| `npx vite` shows the lobby when you asked for `/tempest/` | Working as currently built — see [step 3](#3-run-the-dev-server--not-yet-available-for-tempest). Not a misconfiguration on your end. |
+
+The gameplay-side symptoms this file used to list (blank canvas, mousewheel
+scrolling the page, high scores not persisting) are held back until a dev server
+can actually load tempest — there is no point troubleshooting a screen you cannot
+reach yet.

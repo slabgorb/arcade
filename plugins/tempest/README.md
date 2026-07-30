@@ -26,13 +26,18 @@ from the **repo root**, not from inside `plugins/tempest/`:
 
 ```bash
 npm install                         # installs the whole cabinet — no per-app npm install
-npx vite                            # dev server for the whole cabinet
 npm test                            # vitest across every project, tempest included
 npx vitest run --project tempest    # this app's tests only
 ```
 
-(There is no working root `npm run build` yet — that lands in a later stage of the
-monorepo migration. Don't run it expecting a tempest build.)
+> **You cannot run tempest in a browser right now.** Neither a root dev server nor
+> a root build reaches this app yet — both land in a later stage of the monorepo
+> migration, and the old per-game `npm run dev` / port 5273 are gone. `npx vite` at
+> the root serves the **lobby only**: root `vite.config.ts` sets `root: lobby`, so
+> `/tempest/` falls back to the lobby's `index.html` (as does any other path — a
+> control request to `/banana/` returns exactly the same page). `npm run build` is
+> likewise not wired for tempest. Until then, tempest is exercised through its test
+> suite, not by loading it.
 
 For prerequisites and troubleshooting, see **[INSTALLATION.md](INSTALLATION.md)**.
 
@@ -79,13 +84,17 @@ src/
 │   ├── state.ts       # GameState type
 │   ├── sim.ts         # stepGame(state, input, dt) → state
 │   ├── input.ts       # Input type
-│   ├── rng.ts         # seeded PRNG (deterministic)
+│   ├── events.ts      # GameEvents drained by the shell
 │   ├── rules.ts       # scoring, difficulty, spawn tables
-│   ├── highscore.ts   # high-score table logic
 │   └── enemies/       # per-type state machines (flipper, tanker, …)
-├── shell/             # IO: render.ts, input.ts, audio/fx.ts, loop.ts, storage.ts
+├── shell/             # IO: render.ts, input.ts, audio.ts, fx.ts, loop.ts, glow.ts
+├── tools/             # contactSheet.ts — the models.html dev tool
 └── main.ts            # bootstrap: canvas + wire shell ↔ core
 ```
+
+The seeded PRNG, the high-score table, the vector font, the fixed-timestep loop
+kernel and the pause gate are **not** here — they live in the monorepo's shared
+library at `src/shared/`, imported through the `@shared/*` alias.
 
 **The core is pure and deterministic.** It never imports from `shell/`, never
 touches the DOM/`window`/`canvas`, and never calls `Date.now()`,
@@ -112,18 +121,24 @@ All of these run from the **repo root** — there are no per-app scripts.
 
 | Command | What it does |
 |---------|--------------|
-| `npx vite` | Start the cabinet's single Vite dev server |
 | `npm run lint` | Type-check the whole monorepo (`tsc --noEmit`) |
 | `npm test` | Run the Vitest suite once, across every project |
 | `npx vitest run --project tempest` | Run only tempest's suite |
 | `npm run test:watch` | Run Vitest in watch mode |
 
+`npx vite` is deliberately absent from that table: it starts, but it serves the
+lobby at every path — see the Quick start note. Nothing here launches tempest in a
+browser yet.
+
 ### Testing
 
 The pure core is developed test-first with Vitest. Tests live under `tests/core/`
-(geometry, RNG, each enemy state machine, collisions, scoring, level transitions,
-warp) and `tests/shell/` (loop, storage). The shell's render/input/audio is
-verified by running the game.
+(geometry, each enemy state machine, collisions, scoring, level transitions, warp)
+and `tests/shell/` (loop, input, audio, and source-wiring checks on render/fx).
+The standing convention is that the shell's render/input/audio is verified by
+**running the game** — which you cannot do from this repo until the migration
+wires a dev server, so shell changes currently rest on the source-wiring tests
+alone. Weigh that before landing one.
 
 ```bash
 npx vitest run --project tempest              # full tempest suite
