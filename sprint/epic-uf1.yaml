@@ -203,3 +203,17 @@ stories:
     repos: star-wars
     workflow: tdd
     type: bug
+  - id: uf1-16
+    title: red-baron's audit doc claims a @arcade/shared/highscore consumer that never existed
+    description: "Same documentation-drift class as uf1-7, found during the monorepo migration (plan task 10, 2026-07-30). plugins/red-baron/docs/audit/coverage-review.md line 355 states 'We use @arcade/shared/highscore'. That is false on disk and, unlike most drift, it was never true: red-baron persists no high scores at all, and git log -S'highscore' over every commit in the archived pre-migration repo (.migration-backup/red-baron.git) returns empty, so no such consumer ever existed to be removed. The migration deliberately did NOT edit this file — docs/audit/ is a frozen audit record and rewriting it retroactively would falsify the audit rather than fix the code, which is why this is a story instead of a one-line patch. Decide the honest remedy: either an errata note appended to the audit doc that leaves the original claim visible and dated, or a correction recorded wherever that audit's findings are indexed. Do not simply delete the sentence. Note the migration already added a pointer to this in the plugin's README, so whatever is done here should reconcile the two. No test reads coverage-review.md, so nothing goes red either way — this is a truthfulness fix, not a breakage fix."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: .
+    workflow: tdd
+    type: chore
+    acceptance_criteria:
+      - The false claim at plugins/red-baron/docs/audit/coverage-review.md line 355 no longer misleads a reader, without the original audit text being silently rewritten out of existence.
+      - The remedy states explicitly that red-baron has no high-score persistence and never had one, citing the empty git log -S search over the archived repo rather than asserting it.
+      - The plugin README pointer added during the migration agrees with whatever correction lands here.
+      - No other claim in coverage-review.md about shared-library consumption is left unchecked — the same doc is swept for sibling claims before the story closes.

@@ -3344,7 +3344,32 @@ Repeat for a-3. Delete the `.pre-migration` copies only after confirming nothing
 
 - [ ] **Step 5: File the deferred follow-up stories**
 
-These are named in the spec as out of scope and must exist as stories rather than dying in an archive note:
+These are named in the spec as out of scope and must exist as stories rather than dying in an archive note.
+
+> **PLAN DEFECT #15 — the invocations below are written against a CLI that does not exist.**
+> `pf sprint story add` takes **positional** arguments and has **no `--description` flag**:
+>
+> ```
+> pf sprint story add [OPTIONS] EPIC_ID TITLE POINTS
+> options: --type --priority --workflow --jira --repos --epic --initiative --depends-on --sprint-file --dry-run
+> ```
+>
+> Every command in this step would have failed on unknown option `--title`. Discovered for real
+> while filing `uf1-16` during Task 10, so the correct shape is now known and proven:
+>
+> ```bash
+> pf sprint story add uf1 "the title" 1 --type chore --priority p3 --repos .
+> ```
+>
+> **Each story below therefore needs an epic chosen at filing time**, and its `description` and
+> `acceptance_criteria` added to the epic YAML *after* the CLI creates the entry — the CLI cannot
+> carry them. `sprint/epic-uf1.yaml`'s `uf1-7` is the reference shape (a double-quoted
+> `description:` scalar plus an `acceptance_criteria:` list). Verify with `git diff` afterwards:
+> `pf` round-trips the entire epic file on every mutation, so a bad scalar corrupts more than the
+> row you added. Keep the prose free of unquoted `#`, which has silently truncated an epic before.
+>
+> The `--description` text in each command below is still the right *content* — it just has to
+> reach the YAML by editing, not by flag.
 
 ```bash
 pf sprint story add --title "Shell convergence: compositional host helpers across the seven games" \
