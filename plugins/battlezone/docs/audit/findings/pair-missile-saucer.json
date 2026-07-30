@@ -1,0 +1,267 @@
+[
+    {
+        "id": "R-001",
+        "class": "CONFIRMED",
+        "title": "Missile (R2D3) intro threshold: DIP-selected score band {5,10,20,30}K — the ROM byte is BCD, not decimal 16",
+        "claim": "ROM: a robot converts to an R2D3 buzz-bomber only once score >= MISLVL[dip] (ROBCHK, BZONE.MAC:3730-3732: LDA HITS / CMP AX,MISLVL / BCC TANKCK; the same gate guards BUZBOM swoop at :3259). MISLVL = .BYTE 5,10,20,30 (BZMTNS.MAC:484). This line sits in a .RADIX 16 region (BZMTNS .RADIX 16 at :460, next .RADIX 10 at :501), so the raw bytes are $05,$10,$20,$30. RADIX TRAP RESOLVED: these are NOT decimal {5,16,32,48} — HITS is a BCD counter (SED/CLD bracket every score add, e.g. :2356/2361, :2501/2506) and the score is displayed with three FIXED trailing zeros (YSCMSG '<SCORE     000>', BZONE.MAC:4299), so one HITS unit = 1000 pts and $10 read as BCD = 10. Effective band = {5000, 10000, 20000, 30000} points, selected by DIP bits (OPTION>>2)&3. Ours pins the factory-default option: MISSILE_INTRO_THRESHOLD = 10000, gate at enemies.ts:367. Band + mechanism match; the specific default (10K) is a DIP pin the ROM cannot resolve at rest.",
+        "reasoning": "The value 10 in MISLVL is the classic hex-as-decimal hazard the skill warns of, but here the correct read is BCD: $10 as a BCD nibble-pair prints '10', and it is compared against the BCD HITS counter, so it means 10 (thousand), not 16 (thousand). Reading it as pure decimal would give 16000 and silently break the intro cadence — exactly the sibling-red-baron failure mode. Our scoring.ts:66 comment already documents the {5K,10K,20K,30K} band and the 10K default pin from arcade-museum; the primary source confirms the band exactly via the BCD MISLVL table. The default is a physical DIP read (OPTION=POKEY $0A00), unknowable from ROM code alone.",
+        "source": {
+            "file": "BZMTNS.MAC",
+            "line": 484,
+            "verbatim": "MISLVL:\t.BYTE 5,10,20,30"
+        },
+        "ours": {
+            "file": "src/core/scoring.ts",
+            "line": 66,
+            "verbatim": "export const MISSILE_INTRO_THRESHOLD = 10000"
+        }
+    },
+    {
+        "id": "R-002",
+        "class": "CONFIRMED",
+        "title": "Missile (R2D3) kill value = 2000 points",
+        "claim": "ROM: killing an R2D3 adds BCD 2 to the score. In the kill-score routine, LDA I,2 (BZONE.MAC:2348) is selected when the dead unit is an R2D3 (the very next line, BIT R2D3FL / BMI 90$ at :2349, takes the buzz-bomb branch), then SED / ADC ZX,HITS / CLD (:2356-2361). Because one HITS unit = 1000 displayed points (YSCMSG '<SCORE     000>', BZONE.MAC:4299), +2 = 2000. Ours: SCORES.missile = 2000 (scoring.ts:33). Match.",
+        "reasoning": "The score-add loads the increment by unit type: I,1 for a plain tank (:2354), I,2 for an R2D3 (:2348, guarded by R2D3FL at :2349), I,3 for the TR7 super tank (:2352). All are BCD (SED at :2356). HITS carries thousands (three fixed zeros appended at display, :4299), so the immediate value IS the thousands digit. R2D3 -> 2 -> 2000. Byte-confirmed.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2348,
+            "verbatim": "\tLDA I,2"
+        },
+        "ours": {
+            "file": "src/core/scoring.ts",
+            "line": 33,
+            "verbatim": "  missile: 2000,"
+        }
+    },
+    {
+        "id": "R-003",
+        "class": "CONFIRMED",
+        "title": "Saucer kill value = 5000 points",
+        "claim": "ROM: when the PLAYER's shell destroys the saucer, LDA I,5 / CLC / SED / ADC HITS / STA HITS (BZONE.MAC:2499-2503) adds BCD 5 to the score. With one HITS unit = 1000 points (YSCMSG '<SCORE     000>', :4299), that is 5000 points. The award is gated to the player only: TXA / BNE C.60$ at :2493-2494 skips the add when a ROBOT blew the saucer up. Ours: SCORES.saucer = 5000 (scoring.ts:37). Match, and distinct from the 2000-pt appearance gate (R-004).",
+        "reasoning": "This block sits immediately after SAUCHK (the saucer collision test, :2454-2490) which sets SCOLFG=$40 on a hit; the +5 BCD add is the saucer's kill reward. HITS is BCD thousands, so 5 -> 5000. The player-only guard (TXA/BNE) mirrors the missile rule 'only points for enemy' and confirms a robot-killed saucer scores nothing.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2499,
+            "verbatim": "\tLDA I,5"
+        },
+        "ours": {
+            "file": "src/core/scoring.ts",
+            "line": 37,
+            "verbatim": "  saucer: 5000,"
+        }
+    },
+    {
+        "id": "R-004",
+        "class": "CONFIRMED",
+        "title": "Saucer starts appearing at score >= 2000 points",
+        "claim": "ROM: the saucer spawn path (SAUCMV 40$) refuses to start a saucer while the score is too low: LDA HITS / LSR / BNE 41$ (BZONE.MAC:3459-3461). LSR of HITS is non-zero only when HITS >= 2; since one HITS unit = 1000 points (:4299), the saucer first appears at 2000 points. Ours: SAUCER_APPEARANCE_SCORE = 2000 (scoring.ts:45), gating the spawn clock at saucer.ts:195. Match. This is distinct from the 5000-pt KILL value (R-003) — two separate constants, correctly kept apart.",
+        "reasoning": "HITS=1 ($01) LSR-> $00 -> Z set -> RTS (no saucer); HITS=2 ($02) LSR-> $01 -> BNE 41$ -> proceed to bring the saucer out. HITS is BCD thousands, so the boundary is exactly 2000 points. Our saucer.ts burns the spawn clock only at score >= SAUCER_APPEARANCE_SCORE, matching the gate.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3459,
+            "verbatim": "40$:\tLDA HITS\t\t;D  IF SCORE NOT TOO LOW"
+        },
+        "ours": {
+            "file": "src/core/scoring.ts",
+            "line": 45,
+            "verbatim": "export const SAUCER_APPEARANCE_SCORE = 2000"
+        }
+    },
+    {
+        "id": "R-005",
+        "class": "CONFIRMED",
+        "title": "Saucer is unarmed — it never fires",
+        "claim": "ROM: the entire SAUCER MOTION routine (SAUCMV, BZONE.MAC:3385-3470) only (a) burns the explosion timer when hit, (b) rotates the display angle (SCANGL += 8), and (c) drifts by SAINCX/SAINCY, re-picking random motion on a timer. There is NO shell-load and NO fire path anywhere in the saucer code — contrast the tank/robot path which loads a shell (M.SET SHELLX/SHELLY, :2749-2757). Ours: the saucer ships unarmed and harmless — SaucerStepResult carries no shell and no playerHit channel ('never fires', saucer.ts:6). Match.",
+        "reasoning": "Auditing an absence: I read the whole SAUCMV block and its only outputs are SAPOSX/SAPOSY (motion), SCANGL (spin), SINT (explosion intensity), SAUCER/STIMER (lifecycle). No SHELLX/SHELLY/FIRECT write, no projectile spawn. The saucer is a pure bonus target. Our design's narrow SaucerStepResult (no fire, no playerHit) is faithful.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3385,
+            "verbatim": "\t.SBTTL SAUCER MOTION"
+        },
+        "ours": {
+            "file": "src/core/saucer.ts",
+            "line": 6,
+            "verbatim": "// radar, and never fires. PURE core (epic non-negotiable): all time enters as"
+        }
+    },
+    {
+        "id": "R-006",
+        "class": "CONFIRMED",
+        "title": "The first missile of a game flies straight in ('be nice'); later ones swoop",
+        "claim": "ROM: BUZBOM branches on NOR2D3 ('# of R2D3's -1 this game'): LDA NOR2D3 / BEQ 37$ (BZONE.MAC:3250-3251) sends the FIRST missile straight to RGOAL (37$: LDA RGOAL / JMP 19$), skipping the swoop wiggle entirely. NOR2D3 is INC'd to 0 for the first R2D3 (R2D3CK, :3773 'THIS WILL SET NOR2D3 TO 0 FOR FIRST'). Later missiles (NOR2D3 > 0) fall through to the FRAME-driven swoop. Ours: weaving = missilesLaunched !== 1 && range > MISSILE_CLOSE_RANGE (enemies.ts:435) — the first missile (count 1) flies straight, matching ROM NOR2D3==0. Match (with the documented 0-based vs $ff-sentinel modeling offset).",
+        "reasoning": "NOR2D3 starts at $ff (game init) and R2D3CK INCrements it on each spawn, so the first buzz-bomb runs with NOR2D3=0 -> BEQ taken -> straight flight. Our missilesLaunched is 1-based for the same 'first', so missilesLaunched!==1 reproduces 'straight for the first, swoop thereafter'. The condition also matches ROM's far-only swoop (see R-009).",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3250,
+            "verbatim": "20$:\tLDA NOR2D3\t\t;D  IF FIRST R2D3"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 527,
+            "verbatim": "  const weaving = missilesLaunched !== 1 && range > MISSILE_CLOSE_RANGE"
+        }
+    },
+    {
+        "id": "R-007",
+        "class": "CONFIRMED",
+        "title": "Missile swerve reverses every ~0.5 s (bit 3 of FRAME -> 8 frames at 15.625 Hz = 0.512 s)",
+        "claim": "ROM: the swoop offset is RGOAL +/- (FRAME & $1F), and its SIGN flips on bit 3 of FRAME: LDA FRAME / LSR x4 (leaving carry = FRAME bit 3) / BCS 18$ -> SBC else ADC TEMP1 (BZONE.MAC:3274-3286). Bit 3 of an incrementing frame counter toggles every 8 frames. At the true sim timebase (15.625 Hz, 64 ms/frame): 8 x 64 ms = 0.512 s per half-swing. Ours: MISSILE_SWERVE_PERIOD = 0.5 (enemies.ts:290), used as the swerve half-period. 0.512 vs 0.500 — match. NOT a false 60 Hz read: at 60 Hz the ROM half-period would be 8/60 = 0.133 s, which 0.5 does not match; the sim-rate 0.512 s does.",
+        "reasoning": "Four LSRs shift FRAME right four places; the final LSR deposits original bit 3 into carry, so BCS selects subtract vs add — a sign toggle with period 2^4 = 16 frames (half-period 8). The magnitude term (FRAME & $1F, 0..31 byte-angle units, peak ~43.6 deg) is a ramping sawtooth, unlike our fixed +/-0.35 rad square wave (see R-009 for the magnitude divergence), but the 0.5 s half-PERIOD is confirmed by the source.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3274,
+            "verbatim": "40$:\tLDA FRAME\t\t;C  SET UP X1 & Y1 FOR M.FOR1"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 354,
+            "verbatim": "const MISSILE_SWERVE_PERIOD = 0.5"
+        }
+    },
+    {
+        "id": "R-008",
+        "class": "DIVERGENCE",
+        "title": "Missile-vs-tank spawn odds are a 50/50 coin flip in ROM; ours uses 40%",
+        "claim": "ROM: once score-eligible (R-001), a robot converts to an R2D3 on a single random bit: LDY PRAND / EOR OLDRND / LSR / BCC TANKCK (BZONE.MAC:3733-3738) -> 50% stay tank; the other 50% BNE R2D3CK (:3741) becomes a buzz-bomb. That is an even 1-bit coin flip. Ours: MISSILE_SPAWN_CHANCE = 0.4 (enemies.ts:297), and the code comment flags the odds as 'undecoded; PROVISIONAL 40%'. The primary source RESOLVES the undecoded value to 50%. Recommend retuning 0.4 -> 0.5.",
+        "reasoning": "LSR shifts PRAND-xor-OLDRND bit 0 into carry; BCC (bit0==0) -> tank, else R2D3 — exactly even odds. Our clone left this as a guessed 40%; the source shows the real primitive is one POKEY-random bit = 50%. The ROM converts per goal-reset rather than per-spawn, so this is a close-but-not-exact structural mapping, but the odds primitive is unambiguously 1/2.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3738,
+            "verbatim": "\tBCC TANKCK"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 309,
+            "verbatim": "const MISSILE_SPAWN_CHANCE = 0.4"
+        },
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-3"
+    },
+    {
+        "id": "R-009",
+        "class": "DIVERGENCE",
+        "title": "Missile swoop-onset distance is score/DIP-dependent in ROM; ours homes at a fixed range ($0800)",
+        "claim": "ROM: a non-first missile swoops only while FAR — it compares a computed distance threshold against TDIST and swoops when threshold < TDIST (CMP TDIST / BCC 40$, BZONE.MAC:3270-3271); when close it flies straight at RGOAL. The threshold is dynamic: (MISLVL[dip] + BCD $25) - HITS, floored at 8 (:3259-3269), so it SHRINKS as score rises — higher score makes the missile swoop from progressively closer, i.e. weave more. Ours: a single fixed cutoff MISSILE_CLOSE_RANGE = 0x0800 (enemies.ts:169) — the missile weaves while range > $0800 and homes inside it, with no score dependence.",
+        "reasoning": "The threshold arithmetic mixes the BCD score scale (MISLVL, HITS, +$25) into a distance byte compared with TDIST, so a faithful port is non-trivial and the exact world-unit scaling is not cleanly recoverable from this routine alone. The clone's fixed $0800 is a reasonable in-band stand-in (all missile-flight constants are flagged provisional in enemies.ts), but it drops the difficulty ramp where missiles grow more evasive as the score climbs. Accept for now; note for a future missile-AI true-up.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3270,
+            "verbatim": "35$:\tCMP TDIST"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 223,
+            "verbatim": "export const MISSILE_CLOSE_RANGE = 0x0800"
+        },
+        "recommendation": "accept",
+        "verdict": "CONFIRMED"
+    },
+    {
+        "id": "R-010",
+        "class": "STRUCTURAL",
+        "title": "ROM buzz-bomb is a 3D swooping bomb that levitates over obstacles; our missile is planar and passes through",
+        "claim": "ROM: the R2D3 has a Z altitude (EXPOSZ) and spawns HIGH — STARTZ = $1800 = 6144 loaded into EXPOSZ at spawn (R2D3CK, BZONE.MAC:3774) — then 'FLIES THE BUZZ BOMB DIRECTLY AT PLAYER, AT HIGH SPEED, SWOOPING IN ON HIM' (:3199-3200). On hitting another object it 'LEVITATES AND RESTARTS SWOOPING' (:3201-3202): INC EXPOSZ+0D raises its altitude (:3356) and it backs out the move and retries. Ours: stepMissile is fully PLANAR (x/z only; e.g. enemies.ts:446 advances x with no y term) and ignores obstacles entirely (the enemies.ts comment: altitude $1800 'passes over the field; the planar core keeps only x/z'); a missile that sails too far is scrapped+respawned (MISSILE_ABANDON_RANGE) rather than hopping obstacles. Deliberate planar-sim descope.",
+        "reasoning": "The vertical swoop and obstacle-levitation are 3D behaviors the core's planar-sim ruling drops on purpose (the same ruling that makes the saucer's hover height a render concern). This is STRUCTURAL, not a numeric bug: we differ because we are planar and the arcade is 3D. Recorded for completeness; accept under the epic descope.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3356,
+            "verbatim": "30$:\tINC EXPOSZ+0D"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 538,
+            "verbatim": "  const x = hostile.x + Math.sin(heading) * MISSILE_SPEED * dt"
+        },
+        "recommendation": "accept"
+    },
+    {
+        "id": "R-011",
+        "class": "CONFIRMED",
+        "title": "Missile kills the player by CONTACT and detonates both — it owns no projectile",
+        "claim": "ROM: BUZBOM has no shell; it kills on collision with the player. When the object-object test reports 'we got him' (BMI 60$, BZONE.MAC:3345), 60$ sets COLFLG/COLFLG+2 = $20, CRACK = 2 and blows both up ('BLOW'M BOTH UP', :3358-3364). There is no fire/shell-load in the buzz-bomb path. Ours: stepMissile detonates on contact — px*px + pz*pz < PLAYER_RADIUS^2 returns playerHit and an exploding missile (enemies.ts:453), and the missile carries no Shell (contact kill, dis65 6491). Match.",
+        "reasoning": "The buzz-bomb is a kamikaze: its only kill mechanism is running into the player, which cracks both. No projectile is ever spawned by BUZBOM (contrast the robot tank, which loads and fires a shell). Our contact-kill model with no missile-owned shell is faithful.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3358,
+            "verbatim": "60$:\tLDA I,20\t\t;C  BLOW'M BOTH UP"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 545,
+            "verbatim": "  if (px * px + pz * pz < PLAYER_RADIUS * PLAYER_RADIUS) {"
+        }
+    },
+    {
+        "id": "R-012",
+        "class": "DIVERGENCE",
+        "title": "Saucer wander is random per-axis velocity re-picked on a random timer; ours nudges a heading each frame at constant speed",
+        "claim": "ROM (SAUCMV): when the decision timer STIMER hits 0, the saucer draws fresh signed per-axis velocities from POKEY randomness — LDA PRAND -> SAINCX (:3439-3446) and LDA PRAND -> SAINCY (:3447-3454), each a signed byte (-128..127 world-units/frame) sign-extended to 16 bits — then re-arms the decision timer to PRAND>>1 (0..127 frames, :3455-3457). Between decisions it moves in a straight line at that velocity (:3423-3436). Ours: a constant-speed cruise along a heading that is nudged every frame — heading += (rand*2-1) * WANDER_RATE * dt at SAUCER_SPEED (saucer.ts:219, SAUCER_SPEED=2400, WANDER_RATE=1.6). Both are seeded random wanders, but the mechanisms differ (piecewise-constant random velocity held for a random interval vs continuous small heading jitter at fixed speed).",
+        "reasoning": "The ROM saucer is a random-walk of straight segments: pick (vx,vy) each in +/-127, hold for a random 0..8.1 s (PRAND>>1 frames / 15.625 Hz), repeat. Peak per-axis speed ~127*15.625 = ~1984 u/s (diagonal ~2806 u/s), which brackets our 2400 u/s cruise, so the pace is in the same ballpark — but the coordinate scales differ (the saucer uses a 16-bit SAPOSX, not the tanks' 4-byte world position), so this is not a clean numeric match. Our heading-jitter model is a defensible behavioral stand-in (TEA band); flagged as a mechanism divergence.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3439,
+            "verbatim": "30$:\tLDA PRAND\t\t;C  SET NEW MOTION VALUES"
+        },
+        "ours": {
+            "file": "src/core/saucer.ts",
+            "line": 219,
+            "verbatim": "      const heading = wrapAngle(saucer.heading + (nextFloat(rng) * 2 - 1) * WANDER_RATE * dt)"
+        },
+        "recommendation": "accept",
+        "verdict": "CONFIRMED"
+    },
+    {
+        "id": "R-013",
+        "class": "DIVERGENCE",
+        "title": "Saucer re-appearance wait is a raw PRAND (0-16.3 s); ours draws 4-12 s",
+        "claim": "ROM: after a saucer is destroyed, the inter-saucer wait is a full random byte: LDA PRAND / STA STIMER (BZONE.MAC:3410-3411), i.e. 0..255 frames. At 15.625 Hz that is 0..16.32 s, uniform, and the field then waits it down before eligibility (41$: LDA STIMER / BNE 28$, :3463-3464). Ours: SPAWN_WAIT drawn uniformly in 4..12 s (saucer.ts:104-105, SPAWN_WAIT_MIN=4/MAX=12). The bands overlap but the ROM range is wider and includes near-instant re-spawns (down to 0 s) and longer waits (up to ~16 s).",
+        "reasoning": "STIMER is the shared saucer cadence counter: PRAND (0..255 frames) between saucers, and PRAND>>1 (0..127 frames) between in-flight direction changes (R-012). Our 4-12 s band is a provisional TEA choice; the source shows the authentic distribution is uniform 0..~16.3 s. Accept (in-band, provisional), but the range could be widened to match.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3410,
+            "verbatim": "\tLDA PRAND\t\t;C  RESET TIMER TILL NEXT SAUCER"
+        },
+        "ours": {
+            "file": "src/core/saucer.ts",
+            "line": 104,
+            "verbatim": "const SPAWN_WAIT_MIN = 4"
+        },
+        "recommendation": "accept",
+        "verdict": "CONFIRMED"
+    },
+    {
+        "id": "R-014",
+        "class": "DIVERGENCE",
+        "title": "An unshot ROM saucer never departs on its own; ours retires it after 25 s",
+        "claim": "ROM: the ONLY in-game write of SAUCER=0 is after the saucer's explosion finishes (SAUCMV, LDA I,0 / STA SAUCER at BZONE.MAC:3412-3413, reached only via the SCOLFG explosion countdown). No code path removes an UNSHOT saucer: the visibility check at :1654-1661 only toggles SAUCER between $81 (in view, sound on) and $01 (out of view, sound off) for audio — it never zeroes it (the other STA SAUCER sites, :831/:1196, are attract/new-game inits). So an unshot saucer wanders the wrapped near-space indefinitely until the player kills it. Ours: the saucer LEAVES unshot after VISIT_DURATION = 25 s (saucer.ts:118, exit at :212 age >= VISIT_DURATION). This is a non-ROM departure our clone adds.",
+        "reasoning": "I traced every SAUCER store: 831 and 1196 are game/attract initialization; 1658/1661 write $81/$01 (sound gating, never 0); 3469 is INC SAUCER (spawn); 3413 is the sole =0, in the post-explosion branch. Therefore an unshot saucer has no departure timer in the ROM. Our 25 s visit timer is a reasonable playability addition but diverges from the arcade, which keeps the saucer on the field until shot. Accept, but note the divergence direction (we remove something the ROM keeps).",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3413,
+            "verbatim": "\tSTA SAUCER"
+        },
+        "ours": {
+            "file": "src/core/saucer.ts",
+            "line": 212,
+            "verbatim": "    if (age >= VISIT_DURATION) {"
+        },
+        "recommendation": "accept",
+        "verdict": "CONFIRMED"
+    },
+    {
+        "id": "R-015",
+        "class": "NO_COUNTERPART",
+        "title": "Saucer visual spin (SCANGL += 8/frame, ~176 deg/s) has no core counterpart",
+        "claim": "ROM: every frame the alive saucer rotates its display orientation — LDA SCANGL / CLC / ADC I,8 / STA SCANGL (BZONE.MAC:3417-3420). $08 of a 256-unit byte-angle is 11.25 deg/frame; at 15.625 Hz that is 175.8 deg/s of constant spin. Ours: the core saucer has no spin state — its `heading` is a drift DIRECTION, not a visual rotation, and nothing advances an orientation for rendering. NO_COUNTERPART (a render-layer spin the pure core does not model).",
+        "reasoning": "SCANGL is the saucer's on-screen orientation (declared 'SAUCER ANGLE', :271), advanced a fixed +8/frame independent of motion — a purely visual rotisserie spin. The planar core carries only position and drift heading, so there is no field to hold this. Recording as NO_COUNTERPART; it is a render concern (like the saucer's hover height), so ours is null.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3417,
+            "verbatim": "\tLDA SCANGL\t\t;C  ROTATE SAUCER"
+        },
+        "ours": null,
+        "recommendation": "accept"
+    }
+]

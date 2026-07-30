@@ -29,7 +29,6 @@ tmux.conf
 # name matches a directory at ANY depth, so a bare `tempest` also swallowed
 # reference/atari-source/tempest/ — 57 files of vendored ROM source vanished from
 # `git add` without a word. Only the top-level checkout is the subrepo.
-/battlezone/
 /red-baron/
 /centipede/
 /joust/

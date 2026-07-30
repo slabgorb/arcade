@@ -1,0 +1,32 @@
+[
+  {
+    "id": "R-008",
+    "verdict": "CONFIRMED",
+    "reasoning": "Decoded the branch at BZONE.MAC:3733-3741 (.RADIX 16 region, :3..:4878). LDY PRAND / TYA / EOR OLDRND / STY OLDRND leaves A = (PRAND XOR OLDRND); LSR drops bit 0 into carry; BCC TANKCK (:3738) takes the tank path when bit0==0; the fall-through (LDA I,2 / STA TIMOUT / BNE R2D3CK, :3739-3741, BNE always taken since A=2) is the R2D3/missile path when bit0==1. bit0 of a POKEY LFSR draw XORed with its predecessor is uniform, so this is an even 1-bit coin flip = exactly 50%. The XOR-with-OLDRND is only a decorrelation fudge ('FUDGE POKEY RANDOMNESS'), not a bias. Ours: enemies.ts:297 MISSILE_SPAWN_CHANCE = 0.4, applied at enemies.ts:367 as `nextFloat(rng) < MISSILE_SPAWN_CHANCE` — a per-eligible-spawn probability, directly comparable to the ROM's per-conversion bit. The code comment self-flags the value as 'undecoded; PROVISIONAL 40%'. The primary source resolves it to 1/2; ours is 40%. Real divergence, and the recommended retune 0.4 -> 0.5 is correct. No radix/BCD trap (I,2 = 2 in either radix; the coin flip carries no operand). MISSILE_SPAWN_CHANCE is the single governing constant (grep shows only def+use).",
+    "corrections": null
+  },
+  {
+    "id": "R-009",
+    "verdict": "CONFIRMED",
+    "reasoning": "Decoded BZONE.MAC:3250-3271 (.RADIX 16). First-missile shortcut (LDA NOR2D3 / BEQ 37$) flies straight. Otherwise: X = (OPTION>>2)&3 (DIP index), A = MISLVL[X], CLC/SED/ADC I,25/CLD adds BCD $25 (=25 decimal), SEC/SBC HITS subtracts the score; BMI 33$ and CMP I,8/BCS floor the result at 8, giving threshold = max(8, (MISLVL[dip]+BCD 25) - HITS). CMP TDIST / BCC 40$ swoops (FRAME-driven wiggle) when threshold < TDIST and flies straight at RGOAL (37$) when close. As HITS rises the threshold shrinks toward 8, so the missile swoops from progressively closer -> weaves more; the LDA HITS+1/BNE 33$ shortcut pins the minimum-8 threshold once score >= 100k, consistent with that direction. Ours: enemies.ts:169 MISSILE_CLOSE_RANGE = 0x0800 fixed, used at :435 `weaving = missilesLaunched !== 1 && range > MISSILE_CLOSE_RANGE` — a single cutoff with no score/DIP term. Real divergence; recommendation accept is appropriate (the byte-to-world-unit scaling of TDIST is not cleanly recoverable from this routine, which the finding honestly states). Direction and floor arithmetic verified correct.",
+    "corrections": null
+  },
+  {
+    "id": "R-012",
+    "verdict": "CONFIRMED",
+    "reasoning": "Decoded the 30$ new-motion block, BZONE.MAC:3439-3457. LDA PRAND / STA SAINCX then ORA I,0 / BMI 31$ sign-extends: SAINCX+1 = $FF when the random byte's bit7 is set, else $00, making SAINCX a signed 16-bit velocity in -128..+127; the same for SAINCY (:3447-3454). LDA PRAND / LSR / STA STIMER (:3455-3457) re-arms the decision timer to PRAND>>1 = 0..127 frames = 0..8.13 s at 15.625 Hz. Between decisions the 23$ block adds SAINCX/SAINCY straight to the 16-bit SAPOSX/SAPOSY every frame (piecewise-constant straight-line motion). Ours: saucer.ts:219 nudges a heading each frame (heading += (rand*2-1)*WANDER_RATE*dt, WANDER_RATE=1.6) and cruises at fixed SAUCER_SPEED=2400. Genuinely different mechanism (random-velocity-held-for-random-interval vs continuous heading jitter at constant speed); recommendation accept. Peak per-axis speed 127*15.625 = 1984 u/s (diagonal ~2806) loosely brackets 2400, and the finding correctly flags the SAPOSX coordinate scale as not a clean numeric match. Timebase used (15.625 Hz) is correct.",
+    "corrections": null
+  },
+  {
+    "id": "R-013",
+    "verdict": "CONFIRMED",
+    "reasoning": "Decoded BZONE.MAC:3410-3413: at the end of the saucer explosion countdown (SCOLFG DEC'd to 0), LDA PRAND / STA STIMER loads a full random byte 0..255 as the inter-saucer wait, then STA SAUCER = 0. The spawn path waits it down: 40$ score gate (HITS LSR, >= 2000), then 41$: LDA STIMER / BNE 28$ (DEC STIMER / RTS) until STIMER hits 0, then INC SAUCER. So the post-kill wait is uniform 0..255 frames = 0..16.32 s at 15.625 Hz, including near-instant re-spawns when PRAND=0. Ours: saucer.ts:104-105 SPAWN_WAIT_MIN=4 / MAX=12, drawn uniformly in 4..12 s. Bands overlap but ROM is wider (down to 0 s, up to ~16.3 s). Real divergence, recommendation accept. Note: at the WRONG 60 Hz timebase 255/60 = 4.25 s would have falsely appeared to match our 4-12 band — the finding correctly used 15.625 Hz and the divergence is genuine.",
+    "corrections": null
+  },
+  {
+    "id": "R-014",
+    "verdict": "CONFIRMED",
+    "reasoning": "Verified the absence by tracing all six SAUCER stores (grep). 831 and 1196 are inits (both in A=0 clear-blocks: 831 alongside FRAME/LETR/OBJCOL/SCOLFG at game-over hi-score entry, 1196 alongside HITS+2/ACTION/GOVER/TIMOUT at new-game). 1658 (LDA I,81 / STA SAUCER, in view) and 1661 (LDA I,1 / STA SAUCER, out of view) only toggle bit7 for sound gating in the display routine (:1639-1661) and never zero SAUCER. 3469 is INC SAUCER (spawn). 3413 (LDA I,0 / STA SAUCER) is the SOLE gameplay =0, inside the SCOLFG!=0 explosion branch, reachable only after SCOLFG is set to $40 at :2484 — which is the SAUCHK shell-collision handler (only nonzero SCOLFG write in play). Therefore an UNSHOT saucer has no departure path; it wanders the wrapped near-space (SAUCER stays $01/$81) until the player kills it. Ours: saucer.ts:118 VISIT_DURATION=25, exit at :212 (age >= VISIT_DURATION -> saucer=null), a non-ROM 25 s auto-departure our clone invents. Real divergence (we remove a persistence the ROM keeps); recommendation accept.",
+    "corrections": null
+  }
+]

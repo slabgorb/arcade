@@ -1,0 +1,175 @@
+[
+    {
+        "id": "F-001",
+        "class": "CONFIRMED",
+        "title": "Shell lifetime ($7F = 127 update-steps) and max range (32512 units) match",
+        "claim": "ROM: on fire, FIRECT (player slot) / FIRECT+2 (enemy slot) is set to $7F = 127 (BZONE.MAC:2700, :3151). SHUPDT decrements it once per call (BZONE.MAC:4074) and moves the shell by |SINCX| that same step. Total steps before expiry = 127, per-step travel = 256 units (forced: the disassembly's far-plane note gives 256*127 = 32512 = $7F00, a hair past the far plane $7AFF = 31487). Clone: SHELL_MAX_RANGE = 32512 and expiry is distance-based (range > 32512 -> null), i.e. it encodes exactly 256 x 127. 32512 == 32512 and the 127-step count is preserved. MATCH.",
+        "reasoning": "The clone does not store a frame countdown; it accumulates travelled distance and expires at SHELL_MAX_RANGE. Because it advances 256 units per its own frame and 32512/256 = 127, the total distance and the effective step count both equal the ROM's. This is a genuine value match independent of the timebase question (F-004), which concerns speed/time-of-flight, not total range. Both player and enemy shells use the identical $7F lifetime, matching the clone sharing SHELL_MAX_RANGE across firing.ts and enemies.ts.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2700,
+            "verbatim": "\tLDA I,7F\t\t;C  INDICATE SHELL FIRED"
+        },
+        "ours": {
+            "file": "src/core/firing.ts",
+            "line": 77,
+            "verbatim": "export const SHELL_MAX_RANGE = 32512"
+        }
+    },
+    {
+        "id": "F-002",
+        "class": "CONFIRMED",
+        "title": "Four shell sub-steps per frame, collision checked after each",
+        "claim": "ROM: the main loop primes SAVE3 = 4 (BZONE.MAC:608) and runs `JSR COLCHK / JSR SHUPDT` four times per game frame (BZONE.MAC:610-613) so the shell is advanced and re-tested for collision 4x/frame -- the swept-collision walk that stops a fast shell tunnelling an obstacle. Clone: SHELL_SUBSTEPS_PER_FRAME = 4 and stepFiring subdivides each frame's travel into that many collision-checked sub-steps. 4 == 4. MATCH.",
+        "reasoning": "The four-iteration loop counter (SAVE3=4) is the authority for the sub-step count, and COLCHK sits inside the loop before SHUPDT so a collision test follows every position update -- exactly the clone's per-sub-step shellBlocked check. Note the ROM sub-step is 256 units and the clone's is 64 (see F-004); the COUNT of four matches, the per-sub-step DISTANCE does not.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 608,
+            "verbatim": "\tLDA I,4"
+        },
+        "ours": {
+            "file": "src/core/firing.ts",
+            "line": 63,
+            "verbatim": "const SHELL_SUBSTEPS_PER_FRAME = 4"
+        }
+    },
+    {
+        "id": "F-003",
+        "class": "CONFIRMED",
+        "title": "Exactly one shell per tank (two shells total: player slot + enemy slot)",
+        "claim": "ROM: SHUPDT indexes shells by X = 2 then X = 0 (BZONE.MAC:4070, 'START WITH SECOND SHELL'), i.e. two shell slots -- slot 0 the player's, slot 2 the enemy's -- and the fire routine only loads a slot when its FIRECT is zero (BZONE.MAC:2695-2701), so each tank has at most one shell airborne. Clone: the player's shell is a single `Shell | null` gated by `if (active === null)` before a new one can spawn (firing.ts:109); the enemy holds its own single `shell` slot in enemies.ts. One shell per tank each. MATCH.",
+        "reasoning": "The two-slot design (player + enemy) with a one-at-a-time gate is reproduced structurally: firing.ts models the player's slot, enemies.ts the enemy's, and neither can hold two live shells. This is the deterministic single-shell rule, not a numeric constant, so it is confirmed by structure.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 4070,
+            "verbatim": "SHUPDT:\tLDX I,2\t\t\t;C  START WITH SECOND SHELL"
+        },
+        "ours": {
+            "file": "src/core/firing.ts",
+            "line": 133,
+            "verbatim": "  if (active === null) {"
+        }
+    },
+    {
+        "id": "F-004",
+        "class": "DIVERGENCE",
+        "title": "Shell speed built on a false 60 Hz frame; wall-clock 15360 vs 16000 u/s, and the shell/tank speed RATIO is broken 3.84x",
+        "claim": "TIMEBASE (preflight): sim frame = 64 ms = 15.625 Hz. ROM shell: 256 units/sub-step x 4 sub-steps/frame = 1024 units/frame; 1024 / 0.064 s = 16000 units/s (equivalently 256 x (4 x 15.625) = 256 x 62.5 = 16000). Clone: SHELL_SPEED = SHELL_STEP_PER_FRAME(256) x FRAMES_PER_SEC(60) = 15360 units/s (firing.ts:65) -- 15360/16000 = 0.96, ~4% slow, because the ROM's true per-256-quantum cadence is 62.5 Hz (4 sub-steps x 15.625) not 60. Worse, the clone's SHELL_STEP_PER_FRAME(256) is actually the ROM's PER-SUB-STEP value (|SINCX| ~= 256), so the clone models 4 sub-steps of 64 units (256/frame) while the ROM does 4 sub-steps of 256 units (1024/frame). CROSS-SUBSYSTEM: movement.ts applies its per-frame quantum ONCE/frame with the same x60 -> tank MAX_SPEED = 96 x 60 = 5760 u/s vs ROM 96 units/frame / 0.064 = 1500 u/s = 3.84x too fast. Shell/tank speed ratio: ROM 16000/1500 = 10.7x; clone 15360/5760 = 2.7x. Enemy shells move only ~1/4 as fast RELATIVE to tank motion as in the arcade.",
+        "reasoning": "The isolated shell speed is only 4% off, which alone would be within playtest tolerance -- but that near-match is a coincidence of the 60-vs-62.5 error nearly cancelling the inverted sub-step model. The consequential defect is that firing.ts and movement.ts both bake FRAMES_PER_SEC = 60 while the real frame rate is 15.625 Hz, and because the shell quantum is applied 4x/frame (rate 62.5) but the tank quantum 1x/frame (rate 15.625), the same x60 fudge lands the shell nearly right and the tank 3.84x too fast. The result is a broken relative speed: the player can outrun/dodge enemy fire in a way the cabinet never permitted. Fix belongs to a fleet-wide timebase rebase (step the sim at 15.625 Hz, or scale each quantum by its true per-frame multiplier), after which SHELL_SPEED should be 16000 u/s. This is the single most consequential pair-combat finding.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 608,
+            "verbatim": "\tLDA I,4"
+        },
+        "ours": {
+            "file": "src/core/firing.ts",
+            "line": 65,
+            "verbatim": "export const SHELL_SPEED = SHELL_STEP_PER_FRAME * FRAMES_PER_SEC"
+        },
+        "remediated_by": "bz3-1",
+        "recommendation": "fix",
+        "size": "m",
+        "verdict": "CONFIRMED",
+        "refuter_correction": "The relative-speed MAGNITUDE is overstated ~2x because the finding computes the ROM tank speed from the clone's under-scaled FORWARD_STEP=48 (giving 'ROM 1500 u/s'), which is inconsistent with M-003. Using the TRUE ROM tank speed (2*94*15.625 = 2937.5 u/s): true ROM shell/tank ratio = 16000/2937.5 = 5.45x; clone = 15360/5760 = 2.67x. So the ratio is broken by ~2x (not 3.84x as the title says) and enemy shells move ~1/2 as fast relative to tank motion as the arcade (not ~1/4). The shell absolute-speed claim (15360 vs 16000, ~4% slow) is correct; only the relative-ratio figures need the M-003-consistent tank speed."
+    },
+    {
+        "id": "F-005",
+        "class": "DIVERGENCE",
+        "title": "Shell-vs-tank hit test is a view-space range+bearing cone in ROM, a flat Euclidean circle in the clone",
+        "claim": "ROM QWIKCK/SHRTCK (BZONE.MAC:2268-2327): gets range to the shell from the Math Box (MOUTHI:MOUTLO), derives an angular term from |TANGLE - TANGLE+2| (the aim-vs-target bearing), scales it (ASL, then LSR/LSR, plus an extra LSR for a non-R2D3), forms threshold = angular_term x 1.5 + base where base = $38 = 56 for a tank (BZONE.MAC:2324) and +$18 = 24 more for an R2D3 missile (BZONE.MAC:2319), then declares a hit when threshold >= scaled range (CMP TEMP3, BZONE.MAC:2326). The hit window is ANGULAR -- a cone in the firer's view space that narrows with distance. Clone (enemies.ts:514): `dx*dx + dz*dz < TANK_HIT_RADIUS*TANK_HIT_RADIUS`, TANK_HIT_RADIUS = PLAYER_RADIUS = $480 = 1152 -- a fixed top-down circle, independent of aim direction and of distance-scaling.",
+        "reasoning": "The clone deliberately flattens the game to a planar top-down sim (planar-sim ruling), so a bearing-cone hit test cannot be reproduced verbatim; a fixed-radius circle is a defensible approximation for that architecture and is not obviously wrong in feel. But it IS a real behavioural divergence: the ROM's window tightens with range (harder to hit distant tanks) and widens with poor aim tolerance near the muzzle, neither of which the constant-radius circle captures. The base constants ($38 = 56, +$18 = 24 for the missile) are recorded here as the quarry the clone lacked. Recommend accepting the circle under the planar-sim ruling rather than a large view-space rework.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2324,
+            "verbatim": "\tADC I,38"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 619,
+            "verbatim": "    if (dx * dx + dz * dz < TANK_HIT_RADIUS * TANK_HIT_RADIUS) {"
+        },
+        "recommendation": "accept",
+        "verdict": "CONFIRMED"
+    },
+    {
+        "id": "F-006",
+        "class": "DIVERGENCE",
+        "title": "Tank-vs-obstacle collision: clone sums two radii (~1876-2283), ROM uses a single per-type PROXTB threshold (832/1024/960)",
+        "claim": "ROM OBJOBJ (BZONE.MAC:3600-3689): centre-to-object distance (MOUTHI:MOUTLO) is compared directly against PROXTB[type] (BZONE.MAC:3690: `.WORD 340,340` then 10 zero words then `.WORD 400,0,0,3C0` = $340=832, $400=1024, $3C0=960 units), with a 3/4-tank-radius pre-add applied only for the robot (BZONE.MAC:3637-3648); tank-vs-tank collides when the distance high byte < 5 (=1280 units) or < 3 (=768) for an R2D3 (BZONE.MAC:3681-3684). Clone (movement.ts:90): block = PLAYER_RADIUS(1152) + OBSTACLE_RADIUS[type], OBSTACLE_RADIUS = {narrow-pyramid 512*sqrt2 ~= 724, wide-pyramid 800*sqrt2 ~= 1131, tall-box 724, short-box 640*sqrt2 ~= 905}, giving block thresholds ~1876/2283/1876/2057. The clone's per-type combined radius is roughly 2x the ROM's single PROXTB value.",
+        "reasoning": "The clone models tank-obstacle blocking as (player radius + circumscribed obstacle radius); the ROM stores one pre-combined threshold per object type in PROXTB and compares it to raw centre distance. Assuming the Math Box output is ~world units (corroborated: the tank-tank check treats high-byte 5 as the collide range and PLAYER_RADIUS $480=1152 is itself a Math-Box-space value), obstacles in the clone block from about twice as far, so the player is stopped well short of an obstacle it could graze in the cabinet. The clone's header already flags the exact obstacle_radius table ($6955) as a deferred byte-decode -- PROXTB IS that table; decode it. Caveat: full Math-Box output scaling is undecoded, so the exact ratio is approximate; the structural divergence (sum-of-radii vs single per-type threshold) is certain.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3690,
+            "verbatim": "PROXTB:\t.WORD 340,340"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 97,
+            "verbatim": "    const block = PLAYER_RADIUS + OBSTACLE_RADIUS[o.type]"
+        },
+        "recommendation": "fix",
+        "size": "m",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-4"
+    },
+    {
+        "id": "F-007",
+        "class": "DIVERGENCE",
+        "title": "Shell-vs-obstacle uses a dedicated per-type proximity table (PRXTBL 56/88/86) in ROM; clone reuses the big tank-footprint radius",
+        "claim": "ROM COLCHK (BZONE.MAC:2408-2444): shell-to-object distance is shifted right twice (>>2 via the two ROR sequences at :2424-:2428 into TEMP3) then compared against PRXTBL[object-type] (BZONE.MAC:2510: `.BYTE 56.,88.` then 10 zero bytes then `.BYTE 86.,0,0,0` -- the trailing periods are DECIMAL in this .RADIX 16 region, so 56, 88, 86), a table DISTINCT from the tank collision table PROXTB. A shell explodes on the object when PRXTBL[type] >= distance>>2, i.e. an effective radius of PRXTBL[type] x 4 in Math-Box units (56x4=224, 88x4=352, 86x4=344). Clone shellBlocked (firing.ts:83-88) reuses OBSTACLE_RADIUS[type] (the tank-footprint circumscribed radius, 724-1131) directly with no >>2 scaling -- a different table and a different formula.",
+        "reasoning": "The ROM keeps a separate, smaller proximity table for SHELL-vs-object than for TANK-vs-object; a projectile is a point and clips closer to an obstacle's surface than a tank hull does. The clone approximates both with the single tank-footprint circumscribed radius, which the module header itself calls out as the deferred $6139 projectile-diameter decode. PRXTBL is that table (56/88/86 decimal). Decode it and apply the >>2 range scaling so shells clip obstacles at the ROM distance rather than the (larger) tank footprint. Caveat: the >>2 and Math-Box scaling mean the absolute unit conversion needs the Math Box decode; the fact of a separate, smaller per-type table is certain from the source.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2510,
+            "verbatim": "PRXTBL:\t.BYTE 56.,88."
+        },
+        "ours": {
+            "file": "src/core/firing.ts",
+            "line": 95,
+            "verbatim": "    const r = OBSTACLE_RADIUS[o.type]"
+        },
+        "recommendation": "fix",
+        "size": "m",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-4"
+    },
+    {
+        "id": "F-008",
+        "class": "DIVERGENCE",
+        "title": "Explosion is a 6-piece gravity-driven particle sim (~3 s) in ROM; clone is a fixed 1.5 s timer with no debris physics",
+        "claim": "ROM: EXINIT (BZONE.MAC:2587-2611) seeds 6 tank-fragment pieces -- each piece gets ZVELOC = IZVEL[i] (BZMTNS.MAC:837: `.BYTE 55,40,70,88,40`, DECIMAL in BZMTNS's .RADIX 10 region, i.e. 55,40,70,88,40 units), position = tank position, orientation = PRAND (random spin phase), EXPOSZ = 0. EXPLDE (BZONE.MAC:1756-1854) runs once/frame: EXPOSZ += ZVELOC x 4 (sign-extended <<2), ZVELOC += GRAVTY = -4/frame (BZONE.MAC:1799; GRAVTY=-4. decimal), plus XY drift EXPTBX/EXPTBY (BZMTNS.MAC:833/835) and a per-piece orientation spin; the sequence ends only when ALL six pieces have fallen below ground (EXPOSZ high byte negative, BZONE.MAC:1841-1848). Duration is physics-driven: the tallest piece (V0=88) apexes at 88/4 ~= 22 frames and lands past -256 at ~48 frames x 64 ms ~= 3.0 s. Clone: EXPLOSION_DURATION = 1.5 s (enemies.ts:155), a fixed constant with NO particle simulation in the pure core -- ~half the ROM blast, and no flying/spinning/falling debris.",
+        "reasoning": "The clone's own comment admits EXPLOSION_DURATION is 'PROVISIONAL -- no quarry citation for blast length yet'; this finding supplies the citation. Two divergences: (1) duration ~1.5 s vs a physics-derived ~3.0 s (governed by max IZVEL=88 and GRAVTY=-4), so the clone's blast is roughly half as long; (2) the core simulates no debris at all -- the ROM's six fragments launch upward, drift horizontally, spin, and fall under gravity. The exact duration depends on the >>? Math-Box/height scaling and the ground threshold, so ~3 s is an estimate with the arithmetic shown; the fixed-timer-vs-particle-physics structural gap is certain. Debris RENDERING may live in shell/, but the deterministic-core lifecycle here is a single scalar timer.",
+        "source": {
+            "file": "BZMTNS.MAC",
+            "line": 837,
+            "verbatim": "IZVEL:\t.BYTE 55,40,70,88,40"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 192,
+            "verbatim": "export const EXPLOSION_DURATION = 1.5"
+        },
+        "recommendation": "fix",
+        "size": "l",
+        "verdict": "CONFIRMED",
+        "refuter_correction": [
+            "Size: m -> l. This is not a table decode or constant swap (unlike F-005/006/007) but a new deterministic-core subsystem: 6 pieces each carrying position (X,Y,Z), Z-velocity, and orientation; per-frame gravity integration (EXPOSZ += ZVELOC*4, ZVELOC += -4); XY drift tables (EXPTBX/EXPTBY); per-piece orientation spin; and a physics-driven termination (all six below ground) — plus threading that debris state through state/cloneState and rendering the flying/spinning/falling fragments in shell/. The coverage review's m->l flag is correct.",
+            "IZVEL has SIX launch velocities, not five. The cited line BZMTNS.MAC:837 '.BYTE 55,40,70,88,40' is byte-exact, but a 6th byte '.BYTE 66' follows at BZMTNS.MAC:838 (still decimal, .RADIX 10), and EXINIT seeds 6 pieces (IZVEL[0..5]). So the six per-piece velocities are 55,40,70,88,40,66. The max is still 88, so the ~3s duration estimate is unchanged."
+        ],
+        "remediated_by": "bz3-5"
+    },
+    {
+        "id": "F-009",
+        "class": "NO_COUNTERPART",
+        "title": "Shell-strikes-obstacle explosion + sound cue has no event in the clone",
+        "claim": "ROM COLCHK: when a shell hits a playfield object it explodes the shell (FIRECT = $A0, BZONE.MAC:2437-2438), sets the short explosion counter EXPCNT = $70 and turns on the impact sound (BZONE.MAC:2439-2443). Clone: firing.shellBlocked returns true and stepFiring returns null (firing.ts:127) -- the shell vanishes SILENTLY. events.ts defines shot-fired, enemy-destroyed, player-hit, hostile-spawn, saucer-present/gone but NO shell-impact / obstacle-hit event (the header states shell-impact is 'deliberately absent: no consumer exists yet'), so no sound cue fires when a shell strikes an obstacle.",
+        "reasoning": "The ROM plays a distinct short explosion sound whenever a shell detonates against an obstacle; the clone models the collision (the shell disappears) but emits no game event, so the shell-vs-obstacle blast is inaudible. This is a missing event/cue, not a wrong value -- ours is null because the pure core has no counterpart producer. The omission is documented and deliberate (no audio consumer wired yet), so accept for now and add the event when the audio side wants it.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2439,
+            "verbatim": "\tLDA I,070\t\t;C  TURN ON SOUND SHORT"
+        },
+        "ours": null,
+        "recommendation": "accept"
+    }
+]

@@ -1,0 +1,181 @@
+[
+  {
+    "id": "C-001",
+    "class": "DIVERGENCE",
+    "title": "Game-frame timebase is 64 ms / 15.625 Hz, but the clone scales ROM per-frame quanta by 60 Hz — everything so derived runs 3.84x too fast",
+    "claim": "ROM sim frame = NMI/16 = 4 ms x 16 = 64 ms = 1/0.064 = 15.625 Hz (the NMI reads $INTCT, `AND I,0F`, and `INC SYNC` only when the low nibble wraps every 16th 4 ms NMI; the comment on the $INTCT read literally reads `IF NOT END OF FRAME (64 MS)`; MAIN gates on `LSR SYNC`). The clone instead hard-codes FRAMES_PER_SEC = 60 to convert the ROM's per-frame quanta to per-second rates. Ratio 60 / 15.625 = 3.84. So every rate built as (ROM per-frame quantum x FRAMES_PER_SEC) is 3.84x too fast: MAX_SPEED = 2 x 48 x 60 = 5760 u/s where the ROM is 2 x 48 x 15.625 = 1500 u/s; SHELL_SPEED = 256 x 60 = 15360 u/s where the ROM is 256 x 15.625 = 4000 u/s; MAX_TURN_RATE is off by the same 3.84x. The whole simulation moves at nearly 4x arcade speed.",
+    "reasoning": "This is the classic 'assume 60 fps' fidelity trap. The preflight ground truth fixes the game frame at 64 ms (NMI/16): BZONE.MAC:1084-1088 increment $INTCT every 4 ms NMI, `AND I,0F` gates `INC SYNC` every 16th NMI ('END OF FRAME (64 MS)'), and MAIN:422 spins on `LSR SYNC` so the loop body runs exactly once per 64 ms. movement.ts and firing.ts both label FRAMES_PER_SEC=60 'the ROM player-update cadence' / 'the ROM's per-frame quantum to a 60 Hz frame' — a false premise; the cadence is 15.625 Hz. Because the clone integrates every rate as (constant * dt) (see C-003), the clone's OWN 60 Hz step rate is harmless — the error is purely this conversion constant. The per-frame quanta themselves (FORWARD_STEP=48 = 3/4 x 64, SHELL_STEP_PER_FRAME=256) are ROM-faithful and UNCOMPENSATED, so the 3.84x is live on screen. Exact per-constant magnitudes and the playtest re-tune belong to the movement / firing / enemy auditors; this finding owns the shared root: the timebase constant is 3.84x too high. firing.ts:59 carries the identical `const FRAMES_PER_SEC = 60`.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 1085,
+      "verbatim": "\tLDA $INTCT\t\t;D  IF NOT END OF FRAME (64 MS)"
+    },
+    "ours": {
+      "file": "src/core/movement.ts",
+      "line": 45,
+      "verbatim": "const FRAMES_PER_SEC = 60"
+    },
+    "remediated_by": "bz3-1",
+    "recommendation": "fix",
+    "size": "m",
+    "verdict": "CONFIRMED",
+    "refuter_correction": "The title/claim 'everything so derived runs 3.84x too fast' is OVERSTATED and self-inconsistent with F-004. Only the TURN rate is cleanly 3.84x. (1) FORWARD: the finding's own example 'MAX_SPEED 5760 vs ROM 1500' derives the ROM value from the clone's under-scaled FORWARD_STEP=48; the true ROM step is 0x5E=94 (M-003), so real ROM MAX_SPEED = 2*94*15.625 = 2937.5 u/s and the LIVE forward error is 1.96x, not 3.84x. (2) SHELL: the claim 'SHELL_SPEED 15360 vs ROM 256*15.625=4000, 3.84x too fast' is WRONG — SHUPDT runs 4x/frame (SAVE3=4 loop at :608-613; FIRECT $7F decremented once per SHUPDT call, 127 sub-steps * 256 = 32512 max range), so the ROM's 256-quantum cadence is 62.5 Hz → ROM shell = 16000 u/s and the clone's 15360 is ~4% SLOW, not 3.84x fast. This directly contradicts F-004, which is the correct account. C-001 should keep the timebase root but drop the blanket 3.84x claim: turn 3.84x, forward 1.96x, shell ~0.96x."
+  },
+  {
+    "id": "C-002",
+    "class": "CONFIRMED",
+    "title": "Fixed-timestep sim decoupled from render faithfully mirrors the ROM's SYNC-gated MAIN loop and separate display scan",
+    "claim": "The ROM advances the simulation exactly once per 64 ms frame by spinning MAIN on `LSR SYNC` (SYNC is set by the NMI every 16th tick), then hands drawing to an independently-clocked vector generator. The clone's createLoop runs the sim in fixed dt sub-steps inside stepFrame and does all drawing in a separate renderFrame — the same architecture: a fixed-rate simulation clock decoupled from a variable-rate draw clock, with a spiral-of-death clamp (maxFrame=0.25 s) standing in for the ROM's watchdog/stack guard. Only the sim RATE differs (that error is C-001); the STRUCTURE matches.",
+    "reasoning": "MAIN:422-423 `LSR SYNC / BCC MAIN` blocks the whole game loop until the NMI has ticked SYNC (BZONE.MAC:1088 `INC SYNC`), so the sim body is a fixed-cadence step, never a wall-clock-variable one. The clone's shared loop is exactly this: advanceFixedSteps folds elapsed wall time into an accumulator and runs `step(dt)` a whole number of times, so the sim sees only constant dt regardless of render jitter — the same determinism the SYNC gate buys the ROM. main.ts splits stepFrame (side-effecting sim) from renderFrame (pure draw), the software analog of the ROM's SYNC-gated MAIN vs its VTIMER-driven display scan. Recording this CONFIRMED is what makes the C-001 divergence trustworthy: the disagreement is the rate constant, not the loop shape.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 422,
+      "verbatim": "MAIN:\tLSR SYNC\t\t;S  SYNC UP"
+    },
+    "ours": {
+      "file": "src/main.ts",
+      "line": 325,
+      "verbatim": "const loop = createLoop(stepFrame, renderFrame)"
+    }
+  },
+  {
+    "id": "C-003",
+    "class": "STRUCTURAL",
+    "title": "dt integrated as a per-second rate makes the internal step-rate behaviour-neutral; the ROM's integer FRAME counter becomes a float seconds accumulator",
+    "claim": "Every core rate is applied as (constant * dt) and every timer as (timer - dt) with dt in seconds (movement.ts:111-114 heading/x/z += rate*dt; sim.ts:116 modeAge += dt; enemies.ts reload/reversing/moveCounter -= dt). Consequently the CHOICE of sim step rate (the clone's 60 Hz vs the ROM's 15.625 Hz) does NOT by itself change observable behaviour — it only changes granularity/smoothness. The only thing that alters observable speed is the conversion constant in C-001. The ROM's per-frame INTEGER counter FRAME (incremented once per game frame at BZONE.MAC:439) has no integer counterpart; the clone tracks elapsed as a float `modeAge` in seconds.",
+    "reasoning": "This is the 'merely a different spelling vs changes behaviour' boundary the cadence audit must draw. Because the integration is rate-based, running the sim at 60 sub-steps/s instead of 15.625 steps/s is behaviour-preserving (a finer Riemann sum of the same velocities) — so the clone's fixed 1/60 step is STRUCTURAL, not a divergence. What is NOT behaviour-preserving is reading a per-frame QUANTUM (a fixed increment the ROM applies once per 64 ms) and multiplying it by the wrong frames-per-second (C-001), or modelling a per-frame COUNTER/timer as a float that is compared against seconds instead of counting integer frames. Where the ROM's logic keys off the integer FRAME value's bits (C-004/C-005/C-006) or the sub-frame $INTCT counter (C-007), the float seconds model has no bit to test and the clone must reconstruct the effect explicitly.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 439,
+      "verbatim": "\tINC FRAME"
+    },
+    "ours": {
+      "file": "src/core/sim.ts",
+      "line": 123,
+      "verbatim": "  const modeAge = s.modeAge + dt"
+    },
+    "recommendation": "accept"
+  },
+  {
+    "id": "C-004",
+    "class": "DIVERGENCE",
+    "title": "ENEMY IN RANGE is drawn steadily; the ROM flashes it on FRAME bit 1 (~128 ms on / 128 ms off, ~3.9 Hz)",
+    "claim": "The ROM guards the ERANGE in-range message with `LDA I,2 / AND FRAME / BEQ D.10` (BZONE.MAC:4045-4047): bit 1 of the 15.625 Hz frame counter is set for 2 of every 4 frames, so the message shows 2 frames (128 ms) then hides 2 frames (128 ms) = a ~3.9 Hz blink while in game. The clone's inGameAlert returns MESSAGES.ENEMY_IN_RANGE every frame the hostile is aligned+in range (alerts.ts:54), and main.ts:250 draws it unconditionally — a STEADY, non-blinking message.",
+    "reasoning": "Decoding the :556/:4046 FRAME-parity gates in scope. `AND FRAME` with the immediately-preceding `LDA I,2` selects bit 1 of FRAME (the game-frame counter, incremented at BZONE.MAC:439 once per 64 ms). AND result 0 (bit 1 clear) -> BEQ skips the MSGS draw; nonzero (bit 1 set) -> draw. Over frames 0..7 bit 1 is 0,0,1,1,0,0,1,1, i.e. drawn in blocks of two frames = 128 ms visible, 128 ms hidden. The `BIT ATRACT / BMI D.5` at :4041 routes the in-game path to this flash. The clone reproduces the message TEXT and the aligned+in-range trigger but not its blink cadence, so the HUD alert reads as a solid label rather than the arcade's pulsing warning. Small, cosmetic, but observable.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4046,
+      "verbatim": "\tAND FRAME"
+    },
+    "ours": {
+      "file": "src/main.ts",
+      "line": 242,
+      "verbatim": "    if (message !== null) drawMessage(ctx, message, w, h)"
+    },
+    "recommendation": "fix",
+    "size": "s",
+    "verdict": "CONFIRMED",
+    "remediated_by": "bz3-11"
+  },
+  {
+    "id": "C-005",
+    "class": "NO_COUNTERPART",
+    "title": "The off-axis direction prompt (ENEMY TO LEFT/RIGHT/REAR), which the ROM flashes on FRAME bit 1, is never emitted — the strings are defined but dead",
+    "claim": "When a robot is in view but off the gunsight (PTURN >= 22 degrees, BZONE.MAC:558-559), the ROM points the player at it with a FLASHING 'ENEMY TO <LEFT|RIGHT|REAR>' prompt (:561 `LDX I,ETO`, drawn under the same `LDA I,2 / AND FRAME` bit-1 blink at :555-556). The clone defines these strings in text.ts (ENEMY_TO / LEFT / RIGHT / REAR) but no code ever returns or draws them — grep finds zero consumers outside text.ts; inGameAlert (alerts.ts) emits only MOTION_BLOCKED and ENEMY_IN_RANGE. The feature is absent.",
+    "reasoning": "Decoding the :556 FRAME-parity gate in scope reveals it flashes a direction prompt the clone does not render at all. The strings' existence in text.ts is a defined-but-unused stub, not a counterpart behaviour, so ours is null (there is no display code to cite). This borders on HUD-content scope (a HUD auditor owns adding the prompt and its PTURN>=22 threshold, itself a decimal `22.` in a hex region at :559); the cadence-scoped observation is that IF it is added it must blink on FRAME bit 1 exactly as ENEMY IN RANGE should (C-004), not render steadily. Filing NO_COUNTERPART rather than DIVERGENCE because the behaviour is entirely missing, not merely mis-timed.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 556,
+      "verbatim": "\tAND FRAME"
+    },
+    "ours": {
+      "file": "src/core/alerts.ts",
+      "line": 68,
+      "verbatim": "export function enemyDirection("
+    },
+    "recommendation": "fix",
+    "size": "s",
+    "remediated_by": "bz3-11"
+  },
+  {
+    "id": "C-006",
+    "class": "STRUCTURAL",
+    "title": "Attract-demo motion is an invented sinusoidal autopilot, not the ROM's FRAME bit-6 forward/reverse patrol (4.096 s each way)",
+    "claim": "In attract, the ROM drives the tank by testing bit 6 of FRAME: `BIT FRAME / BVS 3$` (BZONE.MAC:2621-2625) sends control to M.FOR (move forward) when bit 6 is clear and M.REV (move reverse) when set. Bit 6 of the 15.625 Hz frame counter toggles every 64 frames = 64 x 64 ms = 4.096 s, so the attract tank drives forward 4.096 s, reverses 4.096 s, forever — a slow square-wave patrol. The clone's attract demo instead synthesises tread inputs from continuous sines of the demo clock (sim.ts:68, leftTread = clampAxis(0.75 + 0.25*sin(t*0.7)); a ~9 s period lazy arc), deliberately NOT derived from the frame counter.",
+    "reasoning": "Decoding the :2621 FRAME-parity gate in scope. BIT sets the V flag from bit 6 of the operand, so `BIT FRAME / BVS` branches on FRAME bit 6 — a 4.096 s alternation given the 64 ms frame. The clone's demoInput is documented as an intentional, un-steerable invented autopilot (sim.ts comment: 'Deliberately NOT derived from player input'), so this is a different-mechanism STRUCTURAL divergence confined to the attract demo, not a gameplay defect. Observable only as a different attract trajectory (smooth sinusoidal wander vs blocky forward/reverse pacing). Low stakes; recorded so the cluster owner knows the ROM's attract locomotion is a FRAME-bit toggle, not a random or continuous path, should attract fidelity ever be pursued.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2621,
+      "verbatim": "\tBIT FRAME"
+    },
+    "ours": {
+      "file": "src/core/sim.ts",
+      "line": 72,
+      "verbatim": "    leftTread: clampAxis(0.75 + 0.25 * Math.sin(t * 0.7)),"
+    },
+    "recommendation": "accept"
+  },
+  {
+    "id": "C-007",
+    "class": "STRUCTURAL",
+    "title": "Robot AI harvests sub-frame $INTCT bits (250 Hz) as entropy and low-frequency gates; the clone substitutes a frame-quantized seeded PRNG",
+    "claim": "The ROM's robot AI samples the free-running 250 Hz interrupt counter $INTCT for cheap randomness/timing: R.EVAD reads `LDA $INTCT / AND I,7` as a 1-in-8 evade gate (BZONE.MAC:3083-3084); R.RAND flips a random-turn sign on `BIT $INTCT` bit 7 (:3100, a 512 ms square wave: bit 7 = 128 NMIs x 4 ms); the buzz-bomb launcher flips its offset sign on `BIT $INTCT` bit 6 (:3791, a 256 ms square wave). Because $INTCT advances 16 per game frame (64 ms / 4 ms) these are low-frequency square waves jittered by MAIN's variable execution time. The clone has no sub-frame clock; it draws AI randomness from a carried seeded PRNG (@arcade/shared/rng: nextFloat, e.g. spawn bearing at enemies.ts:349).",
+    "reasoning": "Decoding the in-scope sub-frame $INTCT reads (:3083/:3100/:3791). The ROM exploits a hardware timing artifact — the phase of the 250 Hz NMI counter at the (variable) moment MAIN reaches the AI code — as a free entropy/oscillator source. A deterministic, pure clone (no wall clock, no 250 Hz tick) cannot reproduce that timing jitter and correctly does not try: it uses a seeded PRNG so the observable outcome (pseudo-random evade/turn/launch decisions) is statistically faithful while being replayable. This is a genuine STRUCTURAL substitution: observable behaviour (randomized AI) is preserved; the specific NMI-phase mechanism has no counterpart and would be wrong to bolt on. Recommendation accept — the seeded PRNG is the right port of $INTCT-as-noise.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3083,
+      "verbatim": "R.EVAD:\tLDA $INTCT"
+    },
+    "ours": {
+      "file": "src/core/enemies.ts",
+      "line": 441,
+      "verbatim": "    const dir = player.heading + (nextFloat(rng) - 0.5) * spread"
+    },
+    "recommendation": "accept"
+  },
+  {
+    "id": "C-008",
+    "class": "NO_COUNTERPART",
+    "title": "The 250 Hz NMI base clock ($INTCT) — the ROM's fundamental sub-frame tick — has no clone counterpart",
+    "claim": "Every ROM cadence is derived from one 4 ms (250 Hz) NMI that increments $INTCT (BZONE.MAC:1084): the 64 ms game frame is $INTCT/16 (via SYNC), the 24 ms display refresh is a separate NMI/6 countdown (VTIMER), the sound envelopes in MODSND count NMIs, and the AI entropy of C-007 reads $INTCT directly. The clone collapses all of this onto a single ~60 Hz requestAnimationFrame clock feeding a 60 Hz fixed sim step; there is no 250 Hz sub-frame counter anywhere. Anything the ROM keys to $INTCT below the frame boundary (sub-frame sound envelope timing, $INTCT-phase entropy) has no direct analog.",
+    "reasoning": "The root structural fact of the cadence audit: the ROM is a THREE-clock machine (250 / 15.625 / 41.67 Hz) all divided down from the NMI, whereas the clone is a one-clock machine (rAF -> fixed 60 Hz step, with render riding the same rAF). This is not a defect — a browser game cannot and should not run a 250 Hz interrupt — but it is the reason several ROM behaviours (C-007 entropy, C-009 display refresh, and the sound envelopes owned by the audio auditor) must be reconstructed rather than transliterated. Recorded as NO_COUNTERPART so downstream owners know the sub-frame clock is genuinely absent, not merely unfound. ours is null: there is no sub-frame tick to cite.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 1084,
+      "verbatim": "\tINC $INTCT\t\t;C  UPDATE INTERRUPT COUNT"
+    },
+    "ours": null,
+    "recommendation": "accept"
+  },
+  {
+    "id": "C-009",
+    "class": "NO_COUNTERPART",
+    "title": "The 24 ms / 41.67 Hz display-refresh clock (VTIMER -> GOADD vector-generator restart) has no clone counterpart",
+    "claim": "The ROM runs a THIRD clock: the NMI counts VTIMER down from 6 (`LDA I,6 / STA VTIMER`, BZONE.MAC:1229-1230; `DEC VTIMER` :1214) and every 6th NMI restarts the vector generator — `STA GOADD ;START UP VECTOR GENERATOR FOR 24 MS.` (:1228). 6 x 4 ms = 24 ms = 41.67 Hz display refresh, decoupled from the 64 ms sim frame via the BUFRDY double buffer, so each rendered frame is re-scanned ~2.67 times before the next sim frame swaps buffers. The clone has no fixed display-refresh cadence and no double buffer: renderFrame redraws directly from the single live immutable GameState once per rAF callback (main.ts:164 onward), at whatever rate the display provides.",
+    "reasoning": "Completing the three-clock decode. The 24 ms VTIMER/GOADD cadence is the vector monitor's redraw rate (the source of the cabinet's characteristic flicker) and is independent of both the 64 ms sim frame and the 250 Hz NMI. The clone's render model is fundamentally different: JS is single-threaded, render happens between sim steps from an immutable snapshot, so no BUFRDY-style async double buffer is needed and no fixed 41.67 Hz scan exists. Observable difference is display-character (flicker/persistence), not simulation. NO_COUNTERPART with ours null; recommendation accept — reproducing a 24 ms vector-scan cadence in a Canvas 2D clone would be a cosmetic affectation, not a fidelity gain.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 1228,
+      "verbatim": "30$:\tSTA GOADD\t\t;C  START UP VECTOR GENERATOR FOR 24 MS."
+    },
+    "ours": null,
+    "recommendation": "accept"
+  },
+  {
+    "id": "C-010",
+    "class": "CONFIRMED",
+    "title": "Each subsystem advances exactly once per sim step, matching the ROM's once-per-frame MAIN update order",
+    "claim": "The ROM's MAIN loop, once past the SYNC gate, updates each subsystem exactly once per 64 ms frame in a fixed order (e.g. `JSR ROTATE` then `JSR BATTLE` at BZONE.MAC:494-495, with MOTION and the draw pass following). The clone's stepBattle runs stepTank -> stepFiring -> stepEnemies -> stepSaucer exactly once per sim step (sim.ts:119-131), a fixed serial order with each subsystem advanced once per tick — the same single-pass, ordered update discipline. The per-step structure is faithful; only the tick RATE differs (C-001).",
+    "reasoning": "Confirming the consumed-cadence contract's shape. The ROM never double-steps or skips a subsystem within a frame — the SYNC-gated MAIN body is a straight-line sequence of one JSR per subsystem — and neither does the clone: stepBattle is a straight-line sequence of one call per subsystem, invoked once per fixed dt sub-step by createLoop. This matters because a fixed-timestep accumulator CAN run multiple sub-steps in a single rAF callback after a stall; each such sub-step still performs exactly one ordered pass over all subsystems, preserving the invariant that no subsystem is advanced twice relative to another within a tick. A second CONFIRMED (with C-002) anchoring the audit's trust: the loop shape and update order are right; the numeric rate (C-001) is the divergence.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 495,
+      "verbatim": "\tJSR BATTLE"
+    },
+    "ours": {
+      "file": "src/core/sim.ts",
+      "line": 139,
+      "verbatim": "  const enemyStep = stepEnemies(s.enemies, player, playerShell, dt, s.score, ratchet, differential)"
+    }
+  }
+]

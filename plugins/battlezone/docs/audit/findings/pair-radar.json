@@ -1,0 +1,156 @@
+[
+  {
+    "id": "D-001",
+    "class": "DIVERGENCE",
+    "title": "Radar sweep rotation period is ~34% too slow (2000 ms vs ROM ~1489 ms/rev)",
+    "claim": "ROM: DRADAR runs once per sim frame (JSR DRADAR at BZONE.MAC:510) and adds 0x0B (=11) to the sweep angle SANGLE each frame over a 256-unit byte-angle circle. One revolution = 256/11 = 23.27 frames. At the 15.625 Hz timebase (64 ms/frame): 23.27 x 64 = 1489 ms/rev = 0.671 rev/s = 15.47 deg/frame. Ours: SWEEP_PERIOD_MS = 2000 ms/rev = 0.500 rev/s = 11.52 deg/frame at 64 ms. Ours is 2000/1489 = 1.34x too slow. NOT a false 60 Hz match: at 60 Hz (16.67 ms) the ROM period would be 23.27 x 16.67 = 388 ms, so 2000 matches neither timebase; it is an unsourced round number.",
+    "reasoning": "SANGLE is written only at BZONE.MAC:3898 (STA SANGLE), inside DRADAR, and DRADAR is JSRed once per display frame (line 510, after BIGWND). So the +0x0B increment is strictly per-frame, not per-$INTCT. 0x0B is in the .RADIX 16 region (line 3 governs until 4878) with no trailing period, so it is hex 0x0B = 11 decimal. Battlezone angles are 8-bit BAM (256 = full turn), consistent with SIN/COS taking a byte. Our sweepAngle() advances linearly in real ms with a hard-coded 2000 ms period, decoupled from any frame count.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3895,
+      "verbatim": "\tLDA I,0B\t\t\t;C  INCREMENT SWEEP ANGLE"
+    },
+    "ours": {
+      "file": "src/core/radar.ts",
+      "line": 58,
+      "verbatim": "export const SWEEP_PERIOD_MS = 2000"
+    },
+    "recommendation": "fix",
+    "size": "m",
+    "verdict": "CONFIRMED",
+    "remediated_by": "bz3-7"
+  },
+  {
+    "id": "D-002",
+    "class": "DIVERGENCE",
+    "title": "Blip afterglow/decay lifecycle absent — our blips carry no brightness or fade",
+    "claim": "ROM: when the sweep passes a target the blip timer BLIP is set to 0xF0 (=240) (BZONE.MAC:3947-3948), then DR.BLP subtracts 8 every frame (SBC I,8 at 4058, STA BLIP at 4059). Fade to 0 = 240/8 = 30 frames = 30 x 64 ms = 1920 ms ~= 1.92 s afterglow. Because the fade (1.92 s) exceeds the sweep period (1.49 s, see D-001), an in-range target re-lights before it fully fades, so it pulses brighter just after each sweep pass rather than blinking off. Ours: RadarBlip carries only {bearing, range} (no brightness, no timer); every visible blip is emitted at full strength every frame with no decay.",
+    "reasoning": "The blip is a decaying timer, not a boolean. It is re-armed to 0xF0 only on a sweep pass (D-003) and counts down 8/frame. 0xF0, 8, 0xE0 are all in the .RADIX 16 region so hex. Our core RadarBlip has no field to carry brightness or a decay counter, and deriveRadar unconditionally pushes each blip (radar.ts:88), so there is nothing for a renderer to fade.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4058,
+      "verbatim": "\tSBC I,8"
+    },
+    "ours": {
+      "file": "src/core/radar.ts",
+      "line": 88,
+      "verbatim": "    blips.push({ bearing, range })"
+    },
+    "recommendation": "fix",
+    "size": "m",
+    "verdict": "CONFIRMED",
+    "remediated_by": "bz3-7"
+  },
+  {
+    "id": "D-003",
+    "class": "DIVERGENCE",
+    "title": "Blip is not sweep-gated — ROM paints a target only as the rotating sweep crosses it",
+    "claim": "ROM: the blip is re-lit (BLIP <- 0xF0) only while (SANGLE - target_relative_bearing) is in [0, 0x0C): BMI 23$ skips if negative, CMP I,0C / BCS 23$ skips if >= 0x0C (BZONE.MAC:3944-3948). 0x0C/256 x 360 = 16.875 deg window trailing the sweep line, i.e. the blip flashes on only when the sweep arm sweeps over the bearing, then fades (D-002). Ours: deriveRadar emits every visible contact every frame regardless of sweep position; sweepAngle() is computed but never consumed to gate blip output, so all targets are shown continuously and simultaneously.",
+    "reasoning": "This is the defining radar behavior: a rotating arm that lights each blip as it passes and lets it decay. The gate is a signed compare of sweep angle vs the target's relative bearing GARBAG (formed at 3937-3940). Our two functions are decoupled: deriveRadar (radar.ts:75) never references the sweep, and sweepAngle (radar.ts:98) never feeds the blip list. Related to D-002 (the decay half of the same lifecycle).",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3945,
+      "verbatim": "\tCMP I,0C"
+    },
+    "ours": {
+      "file": "src/core/radar.ts",
+      "line": 98,
+      "verbatim": "export function sweepAngle(elapsedMs: number): number {"
+    },
+    "recommendation": "fix",
+    "size": "m",
+    "verdict": "CONFIRMED",
+    "remediated_by": "bz3-7"
+  },
+  {
+    "id": "D-004",
+    "class": "DIVERGENCE",
+    "title": "ROM radar shows exactly one blip (the tracked enemy); ours emits one per contact",
+    "claim": "ROM: DRADAR calls TRACK (BZONE.MAC:3934), which follows exactly ONE object — the single active robot/tank OR the R2D3 missile — so the scanner paints at most one blip per frame. Ours: deriveRadar loops over ALL contacts (radar.ts:80) and pushes one blip per radar-visible contact, unbounded. In stock Battlezone only one enemy is alive at a time, so this is usually behaviorally equivalent, but the model permits multiple simultaneous blips the arcade never draws.",
+    "reasoning": "The whole DRADAR routine operates on a single tracked object: TEMP1/TEMP2 (its relative position) and TANGLE, all set up by the one TRACK call. There is no loop over an enemy list. Our design is more general; flagging for the record, but since gameplay spawns one enemy at a time it is not a live defect.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3934,
+      "verbatim": "21$:\tJSR TRACK\t\t\t;C  TRACK THE ROBOT"
+    },
+    "ours": {
+      "file": "src/core/radar.ts",
+      "line": 100,
+      "verbatim": "  for (const c of contacts) {"
+    },
+    "recommendation": "accept",
+    "verdict": "CONFIRMED"
+  },
+  {
+    "id": "D-005",
+    "class": "DIVERGENCE",
+    "title": "No maximum radar range — ROM drops the blip when the target is out of range",
+    "claim": "ROM: the in-range blip is drawn only when the distance high byte TDIST < 0x80 (CMP I,80 / BCC 35$ at BZONE.MAC:3977-3978); TDIST >= 0x80 is OUT OF RANGE, which clears EIRNGE (STA EIRNGE at 3980) and skips drawing a fresh blip. Ours: deriveRadar computes range = hypot(dx,dz) (radar.ts:87) and emits it unconditionally — there is no maximum radar range, so a target at any distance paints a blip. NOTE: the world-unit value of the 0x80 threshold is not derivable from this routine alone (it is the high byte of the TRACK matrix-mult magnitude of TEMP1/TEMP2), so the fix is 'add a max-range gate', threshold value TBD from TRACK.",
+    "reasoning": "0x80 is hex (radix-16 region). The same threshold drives the 'ENEMY IN RANGE' warning (EIRNGE = 'ENEMY IN RANGE FLAG', BZONE.MAC:258) and gates blip drawing, so it is effectively the radar/firing range limit. Our core has no equivalent cutoff.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3977,
+      "verbatim": "\tCMP I,80\t\t\t;D  IF OUT OF RANGE"
+    },
+    "ours": {
+      "file": "src/core/radar.ts",
+      "line": 87,
+      "verbatim": "    const range = Math.hypot(dx, dz)"
+    },
+    "recommendation": "fix",
+    "size": "m",
+    "verdict": "CONFIRMED",
+    "remediated_by": "bz3-7"
+  },
+  {
+    "id": "D-006",
+    "class": "CONFIRMED",
+    "title": "Saucer and obstacles are correctly excluded from the radar",
+    "claim": "ROM: DRADAR paints only the tracked robot/tank or missile — never the saucer and never the 21 obstacles. The routine description is explicit: it displays 'RADAR SWEEP AND BLIP OF OTHER TANK' only (BZONE.MAC:3881-3882). The saucer is drawn by its own code, not here (note SANGLE's byte is even labeled 'SAUCER ORIENTATION' at line 250, yet no saucer blip is emitted in DRADAR). Ours: RADAR_INVISIBLE_KINDS = ['obstacle', 'saucer'] (radar.ts:55) filters exactly those two kinds out of the blip list. Match.",
+    "reasoning": "DRADAR has no path that reads obstacle tables or saucer state to make a blip; it only ever processes the single TRACK'd hostile. Our filter drops obstacle + saucer, keeping tank/super-tank/missile visible, which is the same set the ROM can paint.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3882,
+      "verbatim": ";\t      AND BLIP OF OTHER TANK, IF WITH FIRING RANGE"
+    },
+    "ours": {
+      "file": "src/core/radar.ts",
+      "line": 56,
+      "verbatim": "export const RADAR_INVISIBLE_KINDS: readonly RadarContactKind[] = ['obstacle', 'saucer']"
+    }
+  },
+  {
+    "id": "D-007",
+    "class": "CONFIRMED",
+    "title": "The missile (R2D3) is a radar target, matching our 'missile' visibility",
+    "claim": "ROM: the missile is a scannable target — DRADAR's range handling branches to R2D3CK (27$: JSR R2D3CK at BZONE.MAC:3988) and TRACK follows the active R2D3 (R2D3FL guards throughout, e.g. 3970). Ours: 'missile' is NOT in RADAR_INVISIBLE_KINDS, so it passes the kind filter (radar.ts:81 'continue' only fires for obstacle/saucer) and is emitted as a blip. Match.",
+    "reasoning": "DRADAR treats the R2D3 buzz-bomb as a tracked hostile alongside the tank (R2D3FL flag selects R2D3CK vs TANKCK). Our model keeps 'tank', 'super-tank', and 'missile' radar-visible while dropping only obstacle+saucer, so the missile paints a blip in both.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3988,
+      "verbatim": "27$:\tJSR R2D3CK"
+    },
+    "ours": {
+      "file": "src/core/radar.ts",
+      "line": 101,
+      "verbatim": "    if (RADAR_INVISIBLE_KINDS.includes(c.kind)) continue"
+    }
+  },
+  {
+    "id": "D-008",
+    "class": "CONFIRMED",
+    "title": "Blip direction encodes the enemy's bearing relative to the player heading",
+    "claim": "ROM: the blip is placed at the tracked enemy's RELATIVE bearing. GARBAG is formed as TANGLE (player heading) minus the tracked object's world angle (BZONE.MAC:3935-3940, comment 'RELATIVE ANGLE OF ROBOT'), and the blip is drawn via SIN/COS(GARBAG). Ours: bearing = atan2(dx,dz) - pose.heading (radar.ts:86), i.e. enemy azimuth minus player heading. Both encode the enemy's bearing relative to the player's facing. Match on semantics. NOTE: ROM uses 8-bit BAM (256 = full turn) and ours radians; the exact sign/handedness is not byte-verified here, only the relative-bearing meaning.",
+    "reasoning": "The 'ENEMY TO LEFT/RIGHT' cue lives in the message layer, but the blip's on-dish direction is this relative-bearing value, computed the same way on both sides (subtract player heading from target azimuth). The units differ (byte-angle vs radians) so this confirms the model, not the raw constant.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3937,
+      "verbatim": "\tSTA GARBAG\t\t\t;C  RELATIVE ANGLE OF ROBOT"
+    },
+    "ours": {
+      "file": "src/core/radar.ts",
+      "line": 106,
+      "verbatim": "    const bearing = normalizeAngle(Math.atan2(dx, dz) - pose.heading)"
+    }
+  }
+]

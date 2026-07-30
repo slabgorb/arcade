@@ -1,0 +1,29 @@
+[
+  {
+    "id": "U-005",
+    "verdict": "CONFIRMED",
+    "reasoning": "ROM confirmed. BZONE.MAC is .RADIX 16 (line 3). Engine 'speed sound' is a single latch bit: LIDLE=0, HIDLE=0x10 (BZONE.MAC:368-369). The motion routine loads HIDLE when the tank moves (M.10$: LDA I,HIDLE, BZONE.MAC:2687) or LIDLE when stopped (M.STOP: LDA I,LIDLE, 2689), then masks the object's SNDWRD with AND I,0EF (0xEF clears exactly bit 0x10) and ORs the chosen state back (BZONE.MAC:2691-2694). So the engine has exactly TWO pitches, toggled by bit 0x10 — no throttle-proportional variation is possible (the rumble is a discrete circuit gated by one bit, POKEY not involved). Our engineParams (audio.ts:79) instead ramps frequency 40+80*t and gain 0.12+0.18*t continuously over t in [0,1] (40->120 Hz, 0.12->0.30). A genuine two-state-vs-continuous behavioural divergence, correctly recorded; the endpoints do bracket the ROM's two states and audio.ts is self-declared non-ROM synthesis, so the auditor's 'accept' disposition is reasonable. Factual claim survives intact."
+  },
+  {
+    "id": "U-007",
+    "verdict": "CONFIRMED",
+    "reasoning": "Absence proven. The single hardware latch is SOUND=0x1840 (BZONE.MAC:375). In the NMI, the value written to STA SOUND (56$, BZONE.MAC:1213) is ORed with only the zero-page, non-indexed SNDWRD (ORA Z,SNDWRD, BZONE.MAC:1141) — the player's copy (object index 0). The engine bit is written per-object via the indexed STA ZX,SNDWRD (BZONE.MAC:2694), and I traced every SNDWRD access: the enemy tanks' indexed copies (ZX/AY/AX,SNDWRD at 2371-2375, 2491-2492, 2691-2704) are computed working copies that are NEVER read into the latch value. Only the player's zero-page copy reaches STA SOUND, so hostile tanks are silent as they move. Our clone runs a dedicated 'track' loop (55 Hz square chopped by a 9 Hz LFO, audio.ts:150) the whole time the hostile is alive (state.enemies.hostile.phase === 'alive', audio-dispatch.ts:93-94) — a continuous enemy-movement rumble with no ROM basis. Invented cue confirmed."
+  },
+  {
+    "id": "U-014",
+    "verdict": "CONFIRMED",
+    "reasoning": "Confirmed with a minor numeric correction. On saucer kill, SAUCHK sets SCOLFG=0x40 (LDA I,40 / STA SCOLFG), then fires DISINT via SNDON (LDA I,DISINT / JSR SNDON, BZONE.MAC:2485-2486), AND sets EXPCNT=0xA0=160 plus the LOX=2 explosion bit into SNDWRD (BZONE.MAC:2487-2492). DISINT (=0x20, BZSOUN.MAC:74) is a POKEY tone sweep (DS channel), a DIFFERENT generator from the discrete-latch explosion the EXPCNT counter drives in the NMI — so the ROM genuinely layers a distinct disintegration zap over the explosion. DISINT is unconditionally started by the direct JSR SNDON (independent of object routing), so it is definitely emitted. Our clone plays only 'explosion' for every enemy-destroyed event regardless of kind, saucer included (audio-dispatch.ts:38; kind='saucer' carried at events.ts:28,38 but never used to vary the cue), omitting the DISINT layer so saucer and tank deaths sound identical. Core divergence stands."
+    ,
+    "corrections": "Envelope numbers are slightly off. DS1 = .BYTE 30,1,0FC,0C (BZSOUN.MAC:217), decoded via the 4-byte record STVAL/FRCNT/CHANGE/NUMBER (BZSOUN.MAC:62-65) where NUMBER is the count of CHANGES and total values = NUMBER+1 (proven by the file's own EX1: 0FF,1,-1,6 -> 7 values). So DS1 is start 0x30 + 12 changes of -4 = 13 values, each held FRCNT=1 sound-frame (4 ms NMI). That is ~52 ms per segment, and DS1 has two identical segments => ~104 ms total, not the finding's '12 values x 1 frame = 48 ms, x2 = ~96 ms'. Also 'highest-priority sound in the NMI chain' overstates: DISINT=0x20 is high but SAUSND=0x40 and SUPBON=0x80 outrank it (BZSOUN.MAC:75-76; SNDON searches from the top bit down). The explosion figure is right: EXPCNT=0xA0=160 decremented once per 4 ms NMI => ~640 ms."
+  },
+  {
+    "id": "S-020",
+    "verdict": "CONFIRMED",
+    "reasoning": "ROM string verified. L1MSG: ASCVH LINE1,-64.,24.,<GREAT SCORE> (BZONE.MAC:4302). HISCRE draws the initials-entry screen by outputting LINE1 first (LDX I,LINE1 / JSR MSGS, BZONE.MAC:879-880) above LINE2='ENTER YOUR INITIALS' (L2MSG), LINE3, LINE4. LINE1 unambiguously maps to L1MSG='GREAT SCORE' via the ENGMSG message table (BZONE.MAC:4283) and the ASCVH definitions (4302). This is distinct from the separate 'HIGH SCORES' plural table banner (HISMSG, 4300) and the 'HIGH SCORE      000' attract line (CHIMSG, 4294). Our entryLines() (screens.ts:41) hardcodes the literal 'HIGH SCORE' as the first line of the very same initials-entry screen, and MESSAGES.GREAT_SCORE='GREAT SCORE' is defined (text.ts:54) but consumed nowhere (repo-wide grep finds only the definition). Divergence and the unused-constant observation both confirmed."
+  },
+  {
+    "id": "B-028",
+    "verdict": "CONFIRMED",
+    "reasoning": "BOOK_WAS_WRONG confirmed against the source. LNGTBL: .WORD ENGLISH-1,GERMAN-1,FRENCH-1,SPANSH-1 (BZONE.MAC:4102) — word order English/German/French/Spanish. MSGS decodes the language DIP: LDA OPTION / ROL x4 / AND I,6 / TAY / push LNGTBL+Y then RTS (BZONE.MAC:4103-4113). I simulated ROL x4 (9-bit rotate through carry) for all 256 OPTION values under both initial-carry values: after AND I,6 the surviving bits are b2=OPTION bit7 and b1=OPTION bit6, so Y = 2 x (bits<7:6>) = 2xLL, independent of carry. Indexing LNGTBL (English/German/French/Spanish) by 2xLL gives LL=00->English, 01->German, 10->French, 11->Spanish. The doc (docs/battlezone-1980-source-findings.md:390, inherited verbatim from the disassembly's memory-map comment) says '01=French, 10=German' — the 01/10 pair is reversed. The finding's factual claim about the source is exactly correct. Immaterial to gameplay (no language ported), but the citation-authority doc's claim is wrong as stated."
+  }
+]

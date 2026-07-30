@@ -1,0 +1,184 @@
+[
+    {
+        "id": "M-001",
+        "class": "DIVERGENCE",
+        "title": "Player tank turns 3.84x too fast: motion integrator scaled to 60 Hz, but the sim frame is 15.625 Hz",
+        "claim": "MOTION runs once per main-loop frame (BZONE.MAC:622, gated by LSR SYNC at :422 = 64 ms = 15.625 Hz). One pivot frame = 2 ITANGL, each +0x80 into the 16-bit TANGLE:LANGLE angle = 2/512 rev/frame. ROM full-pivot rate = (2/512 rev) x 15.625 frame/s = 0.06104 rev/s = 0.3835 rad/s = 21.97 deg/s (16.4 s per 360deg). The clone scales its per-frame quantum by FRAMES_PER_SEC=60: MAX_TURN_RATE = (2*pi/512) * 2 * 60 = 1.4726 rad/s = 84.4 deg/s (4.27 s per 360deg). Ratio 60/15.625 = 3.84x too fast. Because TURN_UNIT itself is exact (see M-002), the entire turn-rate error is this timebase constant. Same 3.84x factor inflates MAX_SPEED (see M-003 for the net figure).",
+        "reasoning": "The clone steps the sim in constant 1/60 s sub-steps (main.ts:17 'advances in constant 1/60 sub-steps') and multiplies each per-frame quantum by FRAMES_PER_SEC=60 to get a per-second rate. But the arcade's MOTION/BOUND are called once per game frame, and the main loop spins on 'LSR SYNC / BCC MAIN' (:422-423) which the NMI advances at 250 Hz / 16 = 15.625 Hz (preflight ground truth). So the clone advances the tank 3.84x more often per second than the cabinet. The movement.ts header openly assumes '60 Hz frame (the shell's rAF cadence)' and defers the exact value to a bz1-12 playtest -- but 60 is not the cabinet's sim rate, 15.625 is. This is the classic timebase error: it inflates every per-second motion constant by 3.84x.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 622,
+            "verbatim": "\tJSR MOTION\t\t;C  UPDATE TANK POSITION"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 45,
+            "verbatim": "const FRAMES_PER_SEC = 60"
+        },
+        "remediated_by": "bz3-1",
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED"
+    },
+    {
+        "id": "M-002",
+        "class": "CONFIRMED",
+        "title": "Turn quantum TURN_UNIT = 2*pi/512 rad matches the ROM's 0x80-per-turn 16-bit facing wheel",
+        "claim": "ITANGL adds I,80 to LANGLE with carry into TANGLE (BZONE.MAC:2826-2832); DTANGL subtracts I,80 (:2834-2840). TANGLE is the high byte, 0x00-0xFF = 0-360deg (SIN routine comment :2141); LANGLE is 8 fractional bits below it, so the combined angle TANGLE:LANGLE spans 0x0000-0xFFFF per revolution. One turn unit = 0x0080 / 0x10000 = 1/512 revolution = 2*pi/512 rad. The clone's TURN_UNIT = (2*Math.PI)/512 is exact.",
+        "reasoning": "The step magnitude of one rotation unit is byte-exact between source and clone. Only the per-second SCALING is wrong (M-001); the quantum itself is right. Recording this makes the turn-rate divergence attributable purely to FRAMES_PER_SEC, not to the angle model.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2826,
+            "verbatim": "ITANGL:\tLDA I,80\t\t;C  INCREMENT TANK'S ANGLE"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 41,
+            "verbatim": "const TURN_UNIT = (2 * Math.PI) / 512"
+        }
+    },
+    {
+        "id": "M-003",
+        "class": "DIVERGENCE",
+        "title": "Forward-step magnitude under-scaled: FORWARD_STEP=48 vs ROM peak ~94 (0x5E); net forward speed ~1.96x too fast",
+        "claim": "M.FOR calls M.SET (BZONE.MAC:2794), which takes the HIGH byte of the 16-bit sin/cos (TXA at :2761 after JSR SIN) and forms x3/4 of it via two arithmetic halvings (CMP I,80 / ROR at :2762-2763, then again + ADC). The sin/cos table peaks at 0x7FFF (:2190), high byte 0x7F = 127, so the peak per-step displacement = 0x7F * 3/4 = 0x5E = 94 world units; full-forward = 2 M.FOR/frame = 188 units/frame. ROM peak forward speed = 188 * 15.625 = 2937.5 units/s. The clone uses FORWARD_STEP=48 (its comment: '3/4 x 64' -- a half-amplitude sine, 0x40 not 0x7F), giving MAX_SPEED = 48*2*60 = 5760 units/s. Net = 5760/2937.5 = 1.96x too fast. Decomposed: frame-rate 60/15.625=3.84x (M-001) times step 48/94=0.51x = 1.96x. The two errors partially cancel FOR SPEED but not for turn. Fixing FRAMES_PER_SEC alone (48*2*15.625=1500 units/s = 0.51x ROM) would leave the tank too slow; FORWARD_STEP must move to ~94 as well.",
+        "reasoning": "Both the world units and the collision radius in movement.ts are literal ROM values (PLAYER_RADIUS = 0x480 = 1152; obstacle half-extents 512/800/640; obstacles placed on the +-32768 ROM grid), so the position step is directly comparable to the ROM. The clone's step amplitude was taken from a Battlezone.dis65 comment '3/4 x 64' (that quarry file is absent from this checkout), but the assembler source's sin table maxes at 0x7FFF -> high byte 0x7F=127, not 64. Note the tests are magnitude-agnostic by design (movement.test.ts header: 'never a specific speed or radius'), so this constant was never verified against the ROM. Cluster with M-001: correcting FRAMES_PER_SEC alone over-corrects speed; both constants change together.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2190,
+            "verbatim": "\t.WORD 7FFF"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 42,
+            "verbatim": "const FORWARD_STEP = 48"
+        },
+        "remediated_by": "bz3-1",
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED"
+    },
+    {
+        "id": "M-004",
+        "class": "CONFIRMED",
+        "title": "Full-throttle = 2 tread steps, single tread = 1 step: the (leftTread+rightTread)/2 speed law matches",
+        "claim": "Full forward M.FF = JSR M.FOR then falls through to M.F = JSR M.FOR again = 2 M.FOR/frame (BZONE.MAC:2667-2670). A single-tread turn+move (M.RTF/M.LTF) does JMP M.F = 1 M.FOR/frame (:2663-2664, :2659-2660). So both treads forward = 2 steps, one tread forward = 1 step, a 2:1 ratio. The clone's v = MAX_SPEED*(leftTread+rightTread)/2 gives v=MAX_SPEED at L=R=1 (both treads) and v=MAX_SPEED/2 at L=1,R=0 (one tread) -- the same 2:1 ratio.",
+        "reasoning": "The differential-drive forward law is faithful: forward speed is proportional to the SUM of the two tread contributions, one tread contributing exactly half of both. The clone's continuous (L+R)/2 is the exact analog of the ROM's discrete 2-steps / 1-step.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2667,
+            "verbatim": "M.FF:\tJSR M.FOR\t\t;C  FULL FOWARD"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 114,
+            "verbatim": "  const v = (MAX_SPEED * (input.leftTread + input.rightTread)) / 2"
+        }
+    },
+    {
+        "id": "M-005",
+        "class": "CONFIRMED",
+        "title": "Pivot (opposed treads) = 2 turn units and zero translation, single-tread turn = 1 unit: the (rightTread-leftTread)/2 yaw law matches",
+        "claim": "Pivot-in-place M.PR = 2 JSR DTANGL then JMP M.6$ (BZONE.MAC:2653-2655) -- 2 turn units and NO position change (M.6$ skips M.NEXT/M.FOR). A single-tread turn (M.RTF/M.LTF) does exactly 1 ITANGL/DTANGL plus 1 M.FOR, so pivot yaw = 2x the turn-while-moving yaw. The clone's yawRate = MAX_TURN_RATE*(rightTread-leftTread)/2 gives full MAX_TURN_RATE at opposed treads (L=-1,R=1 -> (1-(-1))/2=1) with v=(L+R)/2=0 (no translation), and half rate at one tread (L=1,R=0 -> (0-1)/2=-0.5) with v=1/2 -- matching pivot=2x single-tread turn and pivot=zero-translation.",
+        "reasoning": "The yaw law is proportional to the DIFFERENCE of tread contributions, and the opposed-tread pivot both doubles the yaw and cancels translation exactly as the ROM's M.PR/M.PL (which JMP M.6$ to skip the move). The clone's (R-L)/2 with the shared v=(L+R)/2 reproduces both properties.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2653,
+            "verbatim": "M.PR:\tJSR DTANGL\t\t;C  PIVOT RIGHT"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 118,
+            "verbatim": "  const yawRate = (MAX_TURN_RATE * (input.rightTread - input.leftTread) * turnScale) / 2"
+        }
+    },
+    {
+        "id": "M-006",
+        "class": "CONFIRMED",
+        "title": "No forward/reverse asymmetry: reverse speed equals forward speed in the ROM, and the clone is magnitude-symmetric",
+        "claim": "Full reverse M.FR = 2 JSR M.REV (BZONE.MAC:2671-2673), mirroring full forward M.FF = 2 JSR M.FOR. M.FOR adds (X1,Y1) to (TPOSX,TPOSY) (:2795-2808); M.REV subtracts the SAME (X1,Y1) (:2811-2824). Both use identical M.SET-computed step magnitudes, so |reverse speed| = |forward speed| exactly -- there is NO forward/reverse asymmetry in the player tank. The clone's v = MAX_SPEED*(L+R)/2 with signed treads yields equal magnitude for L=R=1 vs L=R=-1, matching (and its own test 'forward and reverse move at equal speed magnitude' pins this).",
+        "reasoning": "The audit brief listed 'forward/reverse asymmetry' as a thing to check; the source shows there is none -- M.FOR and M.REV are exact add/subtract mirrors of the same step. The clone's symmetric signed-tread model is therefore correct, and any future 'reverse is slower' tuning would be a DIVERGENCE from the ROM.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2671,
+            "verbatim": "M.FR:\tJSR M.REV\t\t;C  FULL REVERSE"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 114,
+            "verbatim": "  const v = (MAX_SPEED * (input.leftTread + input.rightTread)) / 2"
+        }
+    },
+    {
+        "id": "M-007",
+        "class": "CONFIRMED",
+        "title": "Rotate-then-move order matches: the ROM turns the angle before advancing along it",
+        "claim": "In a single-tread turn+move, M.RTF does JSR DTANGL (rotate) THEN JMP M.F -> JSR M.FOR (BZONE.MAC:2663-2664); M.FOR then reads the just-updated TANGLE via M.SET and advances along it. So the ROM rotates the facing, then translates along the NEW facing, within one frame. The clone computes heading = pose.heading + yawRate*dt first (movement.ts:111), then forwardFromHeading(heading) and the translation (:112-114) -- same rotate-then-move order.",
+        "reasoning": "Integration order affects the arc a single tread traces; both apply the frame's rotation before the frame's translation. The clone's own header notes 'the ROM's rotate-then-move order' and this confirms it against the assembler source.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2663,
+            "verbatim": "M.RTF:\tJSR DTANGL\t\t;C  RIGHT TURN FOWARD"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 120,
+            "verbatim": "  const heading = pose.heading + yawRate * dt"
+        }
+    },
+    {
+        "id": "M-008",
+        "class": "CONFIRMED",
+        "title": "Obstacle collision is a dead stop (restore prior position, keep heading) -- no positional bounce-back",
+        "claim": "On collision M.NEXT calls JSR OBJOBJ; if it collides, JSR BAKOUT (BZONE.MAC:2674-2676). BAKOUT restores the pre-move OTPOSX/OTPOSY into TPOSX/TPOSY -- comment 'DEAD STOP' (:2866-2867) -- and does NOT touch TANGLE/LANGLE, so the frame's rotation is kept. The clone does exactly this: on isBlocked it restores x=pose.x, z=pose.z (movement.ts:117-119) and returns the already-rotated heading. There is no rebound impulse in either.",
+        "reasoning": "The ROM's obstacle response is a hard positional stop with rotation retained -- not a bounce-back displacement. (The word 'bounce' in the ROM is a separate VISUAL effect, see M-009.) The clone's revert-position/keep-heading matches the BAKOUT semantics exactly.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2866,
+            "verbatim": "BAKOUT:\tLDA OTPOSX\t\t;C  DEAD STOP"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 127,
+            "verbatim": "    x = pose.x"
+        }
+    },
+    {
+        "id": "M-009",
+        "class": "NO_COUNTERPART",
+        "title": "Missing collision 'BOUNCE': the ROM's Z-axis screen jolt (0x3F, halved each frame) on ramming an obstacle",
+        "claim": "First contact with an obstacle sets BOUNCE = 0x3F = 63 (LDA I,3F / STA BOUNCE, BZONE.MAC:2681-2682). Each frame BOUND halves it: LSR BOUNCE (:2134), so 63->31->15->7->3->1->0 over ~6 frames (~0.38 s at 15.625 Hz). KLUDGE subtracts BOUNCE from the display depth DDEND before the perspective divide (SEC / LDA DDEND / SBC BOUNCE, :2110-2113), producing a decaying Z-axis jolt of the whole view -- the 'bounce' when you ram a pyramid. The clone has no counterpart: it does a clean dead stop (M-008) with no camera jolt; grep of src/ for bounce/jolt/shake/kludge is empty.",
+        "reasoning": "This is the 'obstacle bounce-back behaviour and its magnitude' and 'Z-axis kludge movement' the brief asked about: the bounce is not positional (that's a dead stop) but a VISUAL Z-offset of the camera that decays by halving. It is authentic game feel that is absent from the clone. Cosmetic -- a render/camera effect, not core kinematics -- hence small.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2682,
+            "verbatim": "\tSTA BOUNCE"
+        },
+        "ours": {
+            "file": "src/core/camera.ts",
+            "line": 86,
+            "verbatim": "  const eyeX = pose.x + fwd[0] * bounce"
+        },
+        "recommendation": "fix",
+        "size": "s",
+        "remediated_by": "bz3-9"
+    },
+    {
+        "id": "M-010",
+        "class": "STRUCTURAL",
+        "title": "Discrete 11-state motion table vs continuous differential drive (float/dt port)",
+        "claim": "The ROM decodes 4 POKEY joystick-switch bits (ALLPOT, masked to 0x0F) into one of 11 discrete motion states via MTAB (BZONE.MAC:2651-2652: M.FF, M.PR, M.RTF, M.STOP, M.PL, M.FR, M.LTR, M.STOP, M.LTF, M.RTR, M.STOP), with codes < 5 forced to M.STOP (:2642-2643). The clone instead models two continuous tread axes in [-1,1] integrated by dt (input.ts / movement.ts stepTank). Driven by the keyboard the treads only ever reach 0 or +-1, so the clone lands on the same discrete states the table enumerates; the continuous form is a faithful superset, differing only because the port is float/dt where the arcade is integer/table.",
+        "reasoning": "Records the structural relationship so the M-001/M-003 magnitude findings are read against the right model. Not a defect: the continuous drive reproduces every table state under keyboard input and is the standard float/dt analog of an integer switch table. Accept as an inherent port difference.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2651,
+            "verbatim": "MTAB:\t.WORD M.FF-1,M.PR-1,M.RTF-1,M.STOP-1,M.PL-1,M.FR-1"
+        },
+        "ours": {
+            "file": "src/core/movement.ts",
+            "line": 113,
+            "verbatim": "export function stepTank(pose: TankPose, input: Input, dt: number): TankPose {"
+        },
+        "recommendation": "accept"
+    }
+]

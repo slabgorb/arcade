@@ -1,0 +1,173 @@
+[
+  {
+    "id": "W-001",
+    "class": "CONFIRMED",
+    "title": "Narrow pyramid ($00) vertices + edges are a byte-exact ROM decode",
+    "claim": "All 5 vertices and 8 edges of NARROW_PYRAMID match ROM PYRTBL (vertex data) + PYROBJ (draw list). ROM stores `.NWORD A,B,C` = words (4A,4B,4C); clone [x,y,z] = [-4B, 8C, 4A]. PYRTBL v0 (A,B,C)=(-128,-128,-80) -> [-4(-128), 8(-80), 4(-128)] = [512,-640,-512] = clone v0. Apex (0,0,80) -> [0,640,0]. Base half-width 512, apex height 640. PYROBJ draw stream TLABS 0 / TVCTR 4,1,0,3,4,2,3 / BVCTR 2 / TVCTR 1 decodes to edges [0,4][4,1][1,0][0,3][3,4][4,2][2,3][2,1], identical to models.ts.",
+    "reasoning": "OBJPNT[0]=PYRTBL (BZMTNS.MAC:485), OBJTBL[0]=PYROBJ (BZONE.MAC:4405). BZMTNS vertex tables are `.RADIX 10` (BZMTNS.MAC:501) and the local `.NWORD` macro (BZMTNS.MAC:496-499) emits `.WORD 4*X` per arg, so each stored word is the decimal source value x4. Clone's own decode note (models.ts:30-32) reads stored words as (Z,X,Y), negates X, doubles Y. Verified all 5 verts and all 8 edges.",
+    "source": { "file": "BZMTNS.MAC", "line": 503, "verbatim": "\t.NWORD -128,-128,-80" },
+    "ours": { "file": "src/core/models.ts", "line": 90, "verbatim": "    [512, -640, -512]," }
+  },
+  {
+    "id": "W-002",
+    "class": "CONFIRMED",
+    "title": "Wide pyramid ($0c) vertices + edges are a byte-exact ROM decode",
+    "claim": "All 5 vertices + 8 edges of WIDE_PYRAMID match ROM ROCK1 (verts) + PYROBJ (draw list). ROCK1 v0 (A,B,C)=(-200,-200,-80) -> [-4(-200),8(-80),4(-200)] = [800,-640,-800] = clone v0; apex (0,0,100) -> [0,800,0]. Base half-width 800, apex height 800. Same PYROBJ edge stream as the narrow pyramid (both $00 and $0c share command list PYROBJ, differing only in vertex table).",
+    "reasoning": "OBJPNT[12]=ROCK1 (BZMTNS.MAC:488), OBJTBL[12]=PYROBJ (BZONE.MAC:4409). ROCK1 at BZMTNS.MAC:665-670, `.RADIX 10`, x4 macro. Verified all 5 verts + 8 edges.",
+    "source": { "file": "BZMTNS.MAC", "line": 666, "verbatim": "\t.NWORD -200,-200,-80" },
+    "ours": { "file": "src/core/models.ts", "line": 105, "verbatim": "    [800, -640, -800]," }
+  },
+  {
+    "id": "W-003",
+    "class": "CONFIRMED",
+    "title": "Tall box ($01) vertices + edges are a byte-exact ROM decode",
+    "claim": "All 8 vertices + 12 edges of TALL_BOX match ROM CUBTBL (verts) + CUBOBJ (draw list). CUBTBL is a full cube: base 4 verts C=-80 (y=-640), top 4 verts C=+80 (y=+640); half-width 512 (A,B=+-128 -> +-512). v0 (-128,-128,-80) -> [512,-640,-512]. CUBOBJ stream decodes to edges [0,1][1,2][2,3][3,0][0,4][4,5][5,6][6,7][7,4][5,1][2,6][7,3], identical to models.ts.",
+    "reasoning": "OBJPNT[1]=CUBTBL (BZMTNS.MAC:485), OBJTBL[1]=CUBOBJ (BZONE.MAC:4405). CUBTBL BZMTNS.MAC:508-516, `.RADIX 10`, x4. Verified all 8 verts + 12 edges.",
+    "source": { "file": "BZMTNS.MAC", "line": 509, "verbatim": "\t.NWORD -128,-128,-80" },
+    "ours": { "file": "src/core/models.ts", "line": 120, "verbatim": "    [512, -640, -512], [-512, -640, -512], [-512, -640, 512], [512, -640, 512]," }
+  },
+  {
+    "id": "W-004",
+    "class": "CONFIRMED",
+    "title": "Short box ($0f) vertices + edges are a byte-exact ROM decode",
+    "claim": "All 8 vertices + 12 edges of SHORT_BOX match ROM ROCK2 (verts) + CUBOBJ (draw list). ROCK2 base C=-80 (y=-640), top C=-10 (y=-80), half-width 640 (A,B=+-160 -> +-640). v0 (-160,-160,-80) -> [640,-640,-640]; v4 (-160,-160,-10) -> [640,-80,-640]. Total height only 560 (vs tall box 1280) = a genuinely short box. Same CUBOBJ edge stream as the tall box.",
+    "reasoning": "OBJPNT[15]=ROCK2 (BZMTNS.MAC:488), OBJTBL[15]=CUBOBJ (BZONE.MAC:4409). ROCK2 BZMTNS.MAC:671-679, `.RADIX 10`, x4. Verified all 8 verts + 12 edges.",
+    "source": { "file": "BZMTNS.MAC", "line": 672, "verbatim": "\t.NWORD -160,-160,-80" },
+    "ours": { "file": "src/core/models.ts", "line": 133, "verbatim": "    [640, -640, -640], [-640, -640, -640], [-640, -640, 640], [640, -640, 640]," }
+  },
+  {
+    "id": "W-005",
+    "class": "CONFIRMED",
+    "title": "Shell/projectile ($03) vertices + edges are a byte-exact ROM decode",
+    "claim": "All 5 vertices + 8 edges of SHELL match ROM SHLTBL (verts) + SHLOBJ (draw list). SHLTBL v0 (-10,-10,-12) -> [-4(-10),8(-12),4(-10)] = [40,-96,-40]; tip v4 (20,0,-7) -> [0,-56,80]. A tiny tetra-pyramid. SHLOBJ decodes to edges [0,4][4,1][1,0][0,3][3,4][4,2][2,3][2,1], identical to models.ts (same topology as the pyramids).",
+    "reasoning": "OBJPNT[3]=SHLTBL (BZMTNS.MAC:485), OBJTBL[3]=SHLOBJ (BZONE.MAC:4405). SHLTBL BZMTNS.MAC:517-522, `.RADIX 10`, x4. Verified all 5 verts + 8 edges.",
+    "source": { "file": "BZMTNS.MAC", "line": 518, "verbatim": "\t.NWORD -10,-10,-12" },
+    "ours": { "file": "src/core/models.ts", "line": 356, "verbatim": "    [40, -96, -40]," }
+  },
+  {
+    "id": "W-006",
+    "class": "CONFIRMED",
+    "title": "Slow Tank ($02) — all 24 vertices + 38 edges are a byte-exact ROM decode",
+    "claim": "Every one of the 24 vertices and 38 edges of SLOW_TANK matches ROM TNKTBL (verts) + TNKOBJ (draw list). e.g. TNKTBL v0 (-184,-128,-80) -> [512,-640,-736]; v4 (-256,-142,-52) -> [568,-416,-1024]; v23 (-128,0,20) -> [0,160,-512]. TNKOBJ's two-group draw stream (TLABS 17 body + TLABS 3 hull) decodes edge-for-edge to models.ts's 38 edges [23,22][12,13][14,20]...[1,0].",
+    "reasoning": "OBJPNT[2]=TNKTBL (BZMTNS.MAC:485), OBJTBL[2]=TNKOBJ (BZONE.MAC:4405). TNKTBL BZMTNS.MAC:523-547 (`.RADIX 10`, x4); TNKOBJ BZONE.MAC:4449-4496. Hand-decoded all 24 verts and traced the full command stream to all 38 edges. This is the tank BODY only — treads and radar dish are drawn as separate ROM objects (see W-017, W-018).",
+    "source": { "file": "BZMTNS.MAC", "line": 524, "verbatim": "\t.NWORD -184,-128,-80" },
+    "ours": { "file": "src/core/models.ts", "line": 148, "verbatim": "    [512, -640, -736], [-512, -640, -736], [-512, -640, 968], [512, -640, 968]," }
+  },
+  {
+    "id": "W-007",
+    "class": "CONFIRMED",
+    "title": "Super Tank ($21) — all 25 vertices + 34 edges are a byte-exact ROM decode",
+    "claim": "Every one of the 25 vertices and 34 edges of SUPER_TANK matches ROM TR7TBL (verts) + TR7OBJ (draw list). e.g. TR7TBL v0 (364,92,-80) -> [-368,-640,1456]; v6 (274,0,-69) -> [0,-552,1096]; v24 (-114,0,69) -> [0,552,-456]. TR7OBJ's three TLABS groups + final SBRITE segment decode to all 34 edges [0,1][1,4]...[23,24].",
+    "reasoning": "$21 = index 33: OBJPNT[33]=TR7TBL (BZMTNS.MAC:493), OBJTBL[33]=TR7OBJ (BZONE.MAC:4414). TR7TBL BZMTNS.MAC:806-831 (`.RADIX 10`, x4); TR7OBJ BZONE.MAC:4728-4775. Verified all 25 verts + 34 edges. ('TR7' is the ROM's internal codename for the super tank.)",
+    "source": { "file": "BZMTNS.MAC", "line": 807, "verbatim": "\t.NWORD 364,92,-80" },
+    "ours": { "file": "src/core/models.ts", "line": 169, "verbatim": "    [-368, -640, 1456], [-552, -640, -456], [552, -640, -456], [368, -640, 1456]," }
+  },
+  {
+    "id": "W-008",
+    "class": "CONFIRMED",
+    "title": "Missile/rocket ($16) — all 26 vertices + 43 edges are a byte-exact ROM decode",
+    "claim": "Every one of the 26 vertices and 43 edges of MISSILE matches ROM R2D3TB (verts) + R2DOBJ (draw list). e.g. R2D3TB v0 (-96,36,0) -> [-144,0,-384]; nose v13 (348,0,0) -> [0,0,1392]. R2DOBJ's four TLABS groups decode to all 43 edges [13,12][12,6]...[17,21].",
+    "reasoning": "$16 = index 22: OBJPNT[22]=R2D3TB (BZMTNS.MAC:490), OBJTBL[22]=R2DOBJ (BZONE.MAC:4411). R2D3TB BZMTNS.MAC:681-711 (`.RADIX 10`, x4); R2DOBJ BZONE.MAC:4596-4652. Verified all 26 verts + 43 edges. ('R2D3' is the ROM codename for this guided enemy — the clone labels it 'Missile'.)",
+    "source": { "file": "BZMTNS.MAC", "line": 682, "verbatim": "\t.NWORD -96,36,0" },
+    "ours": { "file": "src/core/models.ts", "line": 191, "verbatim": "    [-144, 0, -384], [-72, 96, -384], [72, 96, -384], [144, 0, -384], [72, -96, -384], [-72, -96, -384]," }
+  },
+  {
+    "id": "W-009",
+    "class": "CONFIRMED",
+    "title": "Saucer ($20) — all 17 vertices + 32 edges are a byte-exact ROM decode",
+    "claim": "Every one of the 17 vertices and 32 edges of SAUCER matches ROM SAUTBL (verts) + SAUOBJ (draw list). Lower ring 8 verts C=-10 (y=-80), upper ring 8 verts C=+20 (y=+160), apex v16 (0,0,70) -> [0,560,0]. e.g. SAUTBL v0 (-60,0,-10) -> [0,-80,-240]. SAUOBJ decodes to all 32 edges [16,8][8,9][9,16]...[2,1].",
+    "reasoning": "$20 = index 32: OBJPNT[32]=SAUTBL (BZMTNS.MAC:493), OBJTBL[32]=SAUOBJ (BZONE.MAC:4414). SAUTBL BZMTNS.MAC:787-804 (`.RADIX 10`, x4); SAUOBJ BZONE.MAC:4653-4691. Verified all 17 verts + 32 edges.",
+    "source": { "file": "BZMTNS.MAC", "line": 788, "verbatim": "\t.NWORD -60,0,-10" },
+    "ours": { "file": "src/core/models.ts", "line": 213, "verbatim": "    [0, -80, -240], [-160, -80, -160], [-240, -80, 0], [-160, -80, 160]," }
+  },
+  {
+    "id": "W-010",
+    "class": "STRUCTURAL",
+    "title": "Explosion debris: 9 vertices ROM-exact, but the 8 edges are AUTHORED (ROM draws points, not lines)",
+    "claim": "EXPLOSION_DEBRIS's 9 vertices are ROM-exact — vertices 0-7 are REX0 ($24 'spatter0' frame-0 ring: e.g. (0,13,-45) -> [-52,-360,0]) and vertex 8 is EXPTBL's ($0e) single origin point (0,0,0). But the ROM draws these 8 ring points as individual DOTS via EXHOBJ (8x TDOT, zero line segments); the clone's Model3D schema has no point primitive, so its 8 origin->point edges are an authored radiating-shrapnel connectivity, NOT in the ROM.",
+    "reasoning": "OBJPNT[0x24=36]=REX0 (BZMTNS.MAC:494), and the ROM's dot-plot command list for the spatter shapes is EXHOBJ (BZONE.MAC:4717-4727), which is all TDOT (cmd 0, plot point) with no TVCTR. REX0 BZMTNS.MAC:712-720, EXPTBL BZMTNS.MAC:616-618, both `.RADIX 10`, x4. The clone's module header documents this hybrid honestly. This is a representational mismatch (wireframe-only schema vs ROM point sprites), not a decode error; recommend accepting the authored edges as the closest wireframe rendering of a dot burst.",
+    "source": { "file": "BZMTNS.MAC", "line": 713, "verbatim": "\t.NWORD 0,13,-45" },
+    "ours": { "file": "src/core/models.ts", "line": 379, "verbatim": "    [-52, -360, 0], [-36, -360, 36], [0, -360, 52], [36, -360, 36]," },
+    "recommendation": "accept"
+  },
+  {
+    "id": "W-011",
+    "class": "STRUCTURAL",
+    "title": "Vertical (Y) axis is scaled x2 relative to X/Z (x8 vs x4) to compensate the Math Box's asymmetric scale",
+    "claim": "The clone decodes ROM `.NWORD A,B,C` (each stored word already x4 via the macro) into [x,y,z] = [-4B, 8C, 4A]: X and Z are x4, but the vertical Y is x8 (an extra x2). Every model above is internally consistent under this transform, but the x2 on Y is a rendering-equivalence choice, not a raw ROM value — it stretches every object vertically 2x relative to a uniform decode.",
+    "reasoning": "The clone comment (models.ts:31) states the x2 'compensates the Math Box's X/Z-halving so all three axes share one scale'. The Math Box scale factors live in the ported microcode (@arcade/shared/math3d, from MBUCOD) which is out of citable scope, so I cannot byte-confirm the halving. Corroborating shipped evidence: ROTPNT doubles the math-box screen outputs with ASL before use (BZONE.MAC:1687 `ASL` on the range read, and again on the lateral read at :1702), showing the pipeline does apply x2 rescales between the Math Box and screen. Whether x2 is the exactly-correct vertical compensation is a rendering-proportion question the clone settled by live playtest (camera.ts bz2-3 note); recommend accept but flag for the Math Box (math3d) pair to confirm the scale factors.",
+    "source": { "file": "BZMTNS.MAC", "line": 496, "verbatim": "\t.MACRO .NWORD ...1,...2,...3,...4,...5" },
+    "ours": { "file": "src/core/models.ts", "line": 31, "verbatim": "//     `yc = rawY * 2` (compensates the Math Box's X/Z-halving so all three" },
+    "recommendation": "accept"
+  },
+  {
+    "id": "W-012",
+    "class": "CONFIRMED",
+    "title": "21-obstacle placement field matches ROM PTBLX1/PTBLY1 after the x4 pre-multiply decode",
+    "claim": "Exactly 21 obstacles, and all 21 (x,z) positions match the ROM. ROM PTBLX1 (BZONE.MAC:4866-4871) and PTBLY1 (:4872-4877) each hold 21 words via the local `.NWORD` macro (BZONE.MAC:4861-4864) that emits `.WORD 4*X`, HEX radix (pre-:4878). e.g. PTBLX1[0]=4*0x800=8192; PTBLX1[4]=4*0x2000=0x8000=-32768 (signed); PTBLY1[8]=4*0x1400=20480. Clone obstacle #0 (8192,8192), #4 z=-32768, #8 x=20480 etc. all reproduce these. NOTE the preflight's x4/x4/x2 warning is for the mountain `.MWORD` macro (BATBL, :4879) — the OBSTACLE tables use plain `.NWORD` = uniform x4, which is what the clone applied.",
+    "reasoning": "Verified all 21 x and all 21 z values. Axis correspondence observed: clone.x = ROM PTBLY1 and clone.z = ROM PTBLX1 (a transpose of the ROM's XMATRX/YMATRX labels). In the ROM, ROTATE loads PTBLX1->XMATRX and PTBLY1->YMATRX (BZONE.MAC:1668-1673); the disassembly the clone followed (dis65) labels PTBLX1 as 'obstacle_z_pos' ($7681) and PTBLY1 as 'obstacle_x_pos' ($76ab), consistent with its top-down minimap. Whether this transpose mirrors the world depends on the player-init/heading convention and the Math Box axis mapping (out of this pair's scope) — the position SET itself is byte-identical to the ROM. $7681+42=$76ab and $76ab+42=$76d5=BATBL confirms the two 21-word tables abut the mountain table exactly.",
+    "source": { "file": "BZONE.MAC", "line": 4866, "verbatim": "PTBLX1:\t.NWORD 800,0,0,1000" },
+    "ours": { "file": "src/core/obstacles.ts", "line": 90, "verbatim": "  { x: 8192, z: 8192, orientation: 0.0, type: 'wide-pyramid' }, // #0: type=$0c facing=$00" }
+  },
+  {
+    "id": "W-013",
+    "class": "CONFIRMED",
+    "title": "Obstacle type + facing (PTBLO1) matches ROM; facing is an 8-bit angle wheel",
+    "claim": "All 21 (type,facing) pairs match ROM PTBLO1 and the table's trailing 0FF sentinel is honored. PTBLO1 (BZMTNS.MAC:840-845, `.RADIX 16`): 0C,00 / 0F,10 / 0C,20 / 0F,40 / 0C,18 / 00,28 ... 01,0A0 / 0FF. Types map $0c=wide-pyramid, $0f=short-box, $00=narrow-pyramid, $01=tall-box. Facing byte -> radians as facing*(2*PI/256): #1 0x10=16 -> 16*2*PI/256 = 0.392699 rad; #20 0xA0=160 -> 3.926991 rad, both exactly as obstacles.ts.",
+    "reasoning": "PTBLO1 at $3FCC (BZONE.MAP), defined BZMTNS.MAC:840 (radix flips back to 16 at :839). The 8-bit wheel (0-255 = full turn) is the same convention the ROM SIN/COS routines use (A = angle 0-FF = 0-360 deg, BZONE.MAC:2141). Verified all 21 type bytes, all 21 facing bytes, and the 0FF terminator.",
+    "source": { "file": "BZMTNS.MAC", "line": 840, "verbatim": "PTBLO1:\t.BYTE 0C,0,0F,10,0C,20,0F,40" },
+    "ours": { "file": "src/core/obstacles.ts", "line": 90, "verbatim": "  { x: 8192, z: 8192, orientation: 0.0, type: 'wide-pyramid' }, // #0: type=$0c facing=$00" }
+  },
+  {
+    "id": "W-014",
+    "class": "CONFIRMED",
+    "title": "Projection curve is a true 1/range perspective divide in both ROM and clone",
+    "claim": "ROM formula: screen_x = lateral/range and screen_y = height/range — the Math Box divides the rotated lateral coord by range for the horizontal, and the hardware Z-divider (ZDIV, fed the vertex height via DDEND in PNTPUT) divides the vertical by the same range; both screen axes are proportional to 1/range. Clone formula: perspective(fovY,...) 4x4 matrix followed by the w-divide in transform(), giving screen ∝ 1/z_eye. Same curve (hyperbolic 1/z), not linear/orthographic.",
+    "reasoning": "PNTPUT loads each vertex's 3rd word (height) into DDEND, KLUDGE moves it to DIVOUT and `STA ZDIV` starts the divide (BZONE.MAC:2121); the first Math Box read is the range used for the horizontal divide and the near/far test (BZONE.MAC:1698-1700). Clone: scene.ts:66 builds a standard perspective matrix and scene.ts:111 applies it with a perspective divide. The near/far cull constants themselves (NEAR_CULL 1023, FAR_CULL 31487) come from the clone's mathbox.html doc (non-shipped, uncitable); the shipped far-cull evidence is `CMP I,7B` on the doubled range high byte (BZONE.MAC:1699).",
+    "source": { "file": "BZONE.MAC", "line": 2121, "verbatim": "\tSTA ZDIV\t\t;C  START DIVIDE" },
+    "ours": { "file": "src/core/scene.ts", "line": 66, "verbatim": "  return perspective(fovY, aspect, NEAR_CULL, FAR_CULL)" }
+  },
+  {
+    "id": "W-015",
+    "class": "CONFIRMED",
+    "title": "Horizontal field of view: ROM's +-45deg (90deg full) cull cone equals the clone's 90deg DISPLAY_FOV",
+    "claim": "ROM ROTPNT discards any object whose |lateral| >= range (BZONE.MAC:1719-1723: `LDA Y1 / CMP X2 / LDA Y1+1 / SBC X2+1 / BCS discard`, where X2=range and Y1=|lateral|). |lateral| < range means half-angle < atan(1) = 45deg, i.e. a 90deg FULL horizontal cone. The clone renders DISPLAY_FOV = 2*H_FOV = 2*(PI/4) = PI/2 = 90deg full horizontal field (camera.ts:57, scene.ts:65) — matching the ROM cone. Objects beyond +-45deg fall outside NDC +-1 and are clipped, so the clone reproduces the angular cull via projection clipping rather than an explicit per-object test.",
+    "reasoning": "The clone's H_FOV=PI/4 is really the HALF-angle of this cone; the comment framing it as 'the 45deg VISIBILITY cone' and DISPLAY_FOV as 'deliberately WIDER' (camera.ts:46-57) mischaracterizes the geometry (90deg is the full cone, not a widening), but the rendered field (90deg full) is the correct match. The clone's explicit cull (scene.ts:75-80) is distance-only; the angular cull is achieved by NDC clipping, which is behaviorally equivalent for on/off-screen visibility.",
+    "source": { "file": "BZONE.MAC", "line": 1719, "verbatim": "\tLDA Y1\t\t\t;D  IF Y >= X" },
+    "ours": { "file": "src/core/camera.ts", "line": 57, "verbatim": "export const DISPLAY_FOV = 2 * H_FOV" }
+  },
+  {
+    "id": "W-016",
+    "class": "STRUCTURAL",
+    "title": "Trig: ROM uses a fixed-point Q15 quarter-wave SIN table + 2-step EXTRAPOLATE; clone uses IEEE-754 float",
+    "claim": "ROM SIN/COS is a 65-entry quarter-wave lookup in Q15 fixed point: table runs 0x0000, 0x0324, 0x0647 ... 0x7FFF (0x7FFF = amplitude 1.0), indexed by an 8-bit angle (256 steps = full circle), with COS(a)=SIN(a+0x40) and sign/quadrant folding. EXTRAPOLATE (SINXTR/COSXTR) linearly interpolates 2 sub-divisions between adjacent table entries for finer landscape rotation. The clone instead calls IEEE-754 Math.sin/Math.cos (camera.ts:64, and math3d rotationY) at full float precision, with only the input orientation quantized to the 8-bit wheel.",
+    "reasoning": "SIN table BZONE.MAC:2174-2190 (65 `.WORD`s, HEX); routine header BZONE.MAC:2138-2145; EXTRAPOLATE BZONE.MAC:2192-2247. EXTRAPOLATE is invoked only for the landscape angle LANGLE (BZONE.MAC:1473-1490) which drives the mountain/horizon (out of the object pair's scope, handled by horizon.ts); the OBJECT pipeline (PNTPUT, BZONE.MAC:2002-2014) calls SIN/COS directly with no extrapolation. This is a deterministic float-vs-fixed representational difference, not a value error: the clone is strictly more precise. Accept; note the ROM's 1/256 orientation quantization is preserved by the clone's facing-byte inputs (see W-013).",
+    "source": { "file": "BZONE.MAC", "line": 2174, "verbatim": "99$:\t.WORD 0,324,647,96A" },
+    "ours": { "file": "src/core/camera.ts", "line": 64, "verbatim": "  return [Math.sin(heading), 0, Math.cos(heading)]" },
+    "recommendation": "accept"
+  },
+  {
+    "id": "W-017",
+    "class": "NO_COUNTERPART",
+    "title": "Enemy tank rotating radar antenna (RDRTBL/RDROBJ) has no model in the clone",
+    "claim": "Every ROM enemy tank draws a separate rotating radar-scanner object on top: RDRTBL is an 8-vertex model (BZMTNS.MAC:606-615) drawn by RDROBJ (BZONE.MAC:4517-4530), emitted by ROTATE as object $0D with its own spin angle RANGLE (BZONE.MAC:1559-1562 `LDA I,0D ;C OUTPUT RADAR ANT.`). The clone's models.ts has no radar-antenna model and never renders one (grep of src/ finds 'radar' only in the player HUD radar.ts and 'antenna' nowhere) — the enemy tank is a single body wireframe (W-006) with no dish.",
+    "reasoning": "The rotating radar dish is a distinctive always-visible feature of the original enemy tanks. Its omission is a real, visible fidelity gap, not a decode question. Verified absent from src/core and src/shell.",
+    "source": { "file": "BZMTNS.MAC", "line": 606, "verbatim": "RDRTBL:\t.BYTE ERADAR-RDRTBL" },
+    "ours": null,
+    "recommendation": "fix",
+    "size": "m",
+    "remediated_by": "bz3-12"
+  },
+  {
+    "id": "W-018",
+    "class": "NO_COUNTERPART",
+    "title": "Animated tank treads (TREAD4-TREADB / TREADS) have no model in the clone",
+    "claim": "ROM tanks draw animated treads as 8 separate frame objects (OBJPNT indices 4-11 -> TREAD4..TREADB, BZMTNS.MAC:549-604) each a 6-vertex strip, drawn via the TREADS command list (BZONE.MAC:4509-4516) with the frame chosen by the tread counter TRDCTR for a rolling-tread animation. The clone has no tread geometry: 'tread' appears in src/ only as the dual-tread CONTROL scheme (movement/input), never as a rendered model.",
+    "reasoning": "The moving treads are a subtle animation on the enemy tank base. Lower visual priority than the radar dish but genuinely present in the ROM and absent in the clone's single-body tank model (W-006). Verified absent from src/. Recommend fix at lower priority.",
+    "source": { "file": "BZMTNS.MAC", "line": 549, "verbatim": "TREAD4:\t.BYTE TREAD5-TREAD4" },
+    "ours": null,
+    "recommendation": "fix",
+    "size": "m",
+    "remediated_by": "bz3-12"
+  }
+]

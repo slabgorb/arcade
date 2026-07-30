@@ -1,0 +1,258 @@
+[
+    {
+        "id": "U-001",
+        "class": "STRUCTURAL",
+        "title": "Sound timebase is the 250 Hz NMI (4 ms), not the 64 ms game frame — every envelope 'frame' is 4 ms",
+        "claim": "MODSND (the sound-continue routine) is JSR'd unconditionally inside the NMI handler (BZONE.MAC:1108), and the NMI counts a full game frame as 16 interrupts: INC $INTCT then AND I,0F (BZONE.MAC:1086) — 0x10 = 16 NMIs per 64 ms frame, so 1 NMI = 64/16 = 4 ms = 250 Hz. Therefore BZSOUN's FRCNT ('# OF FRAMES BEFORE ANY CHANGE') and every EXPCNT/SXPCNT decrement counts 4 ms units at 250 Hz — NOT 64 ms (15.625 Hz) and NOT 60 Hz. BZSOUN.MAC:17-18's own doc block ('CALLED ONCE EVERY 16 MSEC') is the generic Tube-Chase driver comment and is stale for Battlezone, which drives it 4x faster.",
+        "reasoning": "This is the datum on which every other envelope comparison in this pair rests, so it is recorded first. The '64 MS' comment on BZONE.MAC:1085 combined with AND I,0F proves the frame is 16 interrupts; MODSND at :1108 sits after label 10$ (reached on both the end-of-frame and not-end-of-frame paths), so it runs every interrupt. Our synthesis has no counterpart frame counter — audio.ts schedules with WebAudio's real-time clock (context.currentTime + seconds), so it is inherently correct against wall-clock and does not need to reproduce the 4 ms tick. Recorded STRUCTURAL/accept because it changes how we must read every ROM envelope below, not because our code is wrong.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1086,
+            "verbatim": "\tAND I,0F"
+        },
+        "ours": {
+            "file": "src/shell/audio.ts",
+            "line": 183,
+            "verbatim": "  envelope.gain.exponentialRampToValueAtTime(0.001, context.currentTime + seconds)"
+        },
+        "recommendation": "accept"
+    },
+    {
+        "id": "U-002",
+        "class": "CONFIRMED",
+        "title": "One explosion generator fires for BOTH the player's death and an enemy kill — envelope ~1.02 s big blast",
+        "claim": "A tank hit sets the discrete EXPLOD bit (SOUND port 0x1840 bit 0, EXPLOD=1) via EXPCNT: big blast EXPCNT=0FF=255 (BZONE.MAC:2368-2369), and both player and robot run the same code (AY,EXPCNT / ZX,EXPCNT indexed by tank). The NMI holds the EXPLOD bit on while DEC EXPCNT stays non-zero (BZONE.MAC:1125-1131), so 255 counts down at 250 Hz = 254 x 4 ms = 1016 ms ~= 1.02 s. Our audio-dispatch routes BOTH 'enemy-destroyed' (audio-dispatch.ts:38) and 'player-hit' (audio-dispatch.ts:43) to the single 'explosion' burst (audio.ts:212, 0.9 s dark noise), matching the ROM's single generator and landing in the right envelope ballpark (0.9 s vs 1.02 s).",
+        "reasoning": "Trigger AND envelope shape both match, so this is CONFIRMED. The one caveat (not a defect): the ROM has explosion SIZE TIERS the clone flattens — big 0FF=1.02 s for the tank that was hit, small 070=112->~444 ms for the OTHER tank (BZONE.MAC:2377-2378), and 0A0=160->~636 ms for a shot object/saucer. Our clone plays one 0.9 s burst regardless, but the core assertion in audio-dispatch's own comment ('the cabinet had one explosion generator, not a per-side pair') is exactly right and the duration is authentic to the big blast.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2368,
+            "verbatim": "\tLDA I,0FF\t\t;C  BIG EXPLOSION IN TANK HIT"
+        },
+        "ours": {
+            "file": "src/shell/audio-dispatch.ts",
+            "line": 38,
+            "verbatim": "        audio.play('explosion')"
+        }
+    },
+    {
+        "id": "U-003",
+        "class": "CONFIRMED",
+        "title": "Cannon report fires on FIRE (shot-fired); ROM gate is only ~16-20 ms driving an analog ring-out",
+        "claim": "Pressing FIRE sets SXPCNT=5 (BZONE.MAC:2705-2706) plus the LOUDSH bit (0x08). The NMI turns on the SHELL bit (SOUND port bit 2, ORA I,4) while DEC SXPCNT stays non-zero (BZONE.MAC:1133-1139), so the discrete shell circuit is GATED for 5 -> 1 = 4 x 4 ms = 16 ms (~20 ms counting the trigger frame). Our clone plays 'cannon' on the 'shot-fired' event (audio-dispatch.ts:35) as a 0.18 s = 180 ms bright noise burst (audio.ts:209). Trigger is exact; the 180 ms length is a synthesis approximation of the discrete cannon circuit's analog decay, which is NOT expressible in the ROM (the ROM only gates the trigger, the RC/analog tail is hardware).",
+        "reasoning": "The trigger event (player FIRE -> one shell) maps one-to-one, so CONFIRMED. The envelope LENGTH cannot be validated against ROM: the source only shows a 16-20 ms gate on a discrete circuit whose decay lives in analog hardware, not code. 180 ms is a defensible synthesis of that ring-out. Flagged in reasoning (not as a defect) so a later tuner knows the ROM gate is a short click and the tail is invented.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2705,
+            "verbatim": "\tLDA I,5\t\t\t;C  TURN ON EXPLOSION"
+        },
+        "ours": {
+            "file": "src/shell/audio.ts",
+            "line": 413,
+            "verbatim": "            noiseBurst(context, out, 0.18, 2200, 0.9)"
+        }
+    },
+    {
+        "id": "U-004",
+        "class": "CONFIRMED",
+        "title": "Saucer cue is a swept-frequency warble — ROM wobbles at ~7.8 Hz, clone LFO at 6 Hz",
+        "claim": "SAUSND channel 1 (SA1, BZSOUN.MAC:225) sweeps the POKEY AUDF: 40,1,-2,10 = start 0x40, hold 1 frame, step -2, 0x10=16 values -> descends 64->34 over 16 frames = 64 ms; the next subsequence 20,1,2,10 climbs 32->62 over 64 ms. One full down+up wobble = 32 frames x 4 ms = 128 ms -> 1/0.128 = 7.8 Hz warble (SA2 0A1,10,0,4 holds a pure-tone control byte). Our saucerVoice is a 620 Hz triangle whose pitch is wobbled by a 6 Hz LFO of depth 180 (audio.ts:124). Both are frequency-swept tones at a comparable rate; trigger matches too (SAUSND runs while the SAUCER flag is set via the NMI priority chain, and we startLoop('saucer') on 'saucer-present', stop on 'saucer-gone').",
+        "reasoning": "Cue TYPE (a periodic pitch wobble, not a steady tone or noise) and trigger (present while the visitor is alive) both match, so CONFIRMED. The rate is close but not exact: ROM 7.8 Hz vs clone 6 Hz — a minor, playtest-tunable delta, not a defect. Absolute pitch (620 Hz) is a synthesis choice since AUDF->Hz needs the POKEY clock, which is hardware.",
+        "source": {
+            "file": "BZSOUN.MAC",
+            "line": 225,
+            "verbatim": "SA1:\t.BYTE 40,1,-2,10"
+        },
+        "ours": {
+            "file": "src/shell/audio.ts",
+            "line": 327,
+            "verbatim": "  lfo.frequency.setValueAtTime(6, context.currentTime)"
+        }
+    },
+    {
+        "id": "U-005",
+        "class": "DIVERGENCE",
+        "title": "Engine hum is a TWO-STATE bit in ROM (idle vs moving), a continuous throttle ramp in the clone",
+        "claim": "The ROM engine sound is a single SNDWRD bit: MOTION selects HIDLE=0x10 when the tank moves (any forward/reverse/pivot reaches M.10$ -> LDA I,HIDLE) or LIDLE=0 when stopped (M.STOP -> LDA I,LIDLE), masks with AND I,0EF and ORs it back (BZONE.MAC:2687-2694). So the engine has exactly TWO pitches — idle and moving — toggled by bit 0x10. Our engineParams instead maps tread effort CONTINUOUSLY: frequency 40 + 80*t Hz and gain 0.12 + 0.18*t over t in [0,1] (audio.ts:79), i.e. an infinitely-variable ramp rather than a two-position switch.",
+        "reasoning": "The ROM cannot vary engine pitch with throttle magnitude — POKEY isn't even involved; it's a discrete rumble circuit gated by one latch bit with two states. Our continuous ramp is a richer, defensible synthesis embellishment (and the endpoints bracket the ROM's two states: near-idle at t=0, revved at t=1). Recorded as a real behavioural divergence for the record, but recommend accept: audio.ts is explicitly non-ROM synthesis tuned to footage, and a smooth ramp is a reasonable modern reading of the two-state circuit.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2687,
+            "verbatim": "M.10$:\tLDA I,HIDLE"
+        },
+        "ours": {
+            "file": "src/shell/audio.ts",
+            "line": 85,
+            "verbatim": "  return { frequency: 40 + 80 * t, gain: 0.12 + 0.18 * t }"
+        },
+        "recommendation": "accept",
+        "verdict": "CONFIRMED"
+    },
+    {
+        "id": "U-006",
+        "class": "CONFIRMED",
+        "title": "Engine rumble runs only during gameplay and never falls fully silent at idle",
+        "claim": "In game the SOUND latch is written ORA I,0A0 ('GAME - ENABLE SOUNDS AND RUMBLE', BZONE.MAC:1144); at game-over/initials the rumble bit is dropped, ORA I,60 ('TURN OFF RUMBLE ONLY', BZONE.MAC:1209). And stopped-but-in-game is LIDLE=0 (a LOW idle level, not the port disabled) — so the rumble free-runs quietly while parked. Our updateContinuousSounds drives the hum only when state.mode==='playing' and calls stopEngine() otherwise (audio-dispatch.ts:86-91), and engineParams idle is 40 Hz at gain 0.12 (never zero in-run, audio.ts:79) — matching 'the tank never falls silent, the engine circuit free-runs'.",
+        "reasoning": "Both facts the clone implements — (a) rumble gated to gameplay only, off in attract/game-over, and (b) a low but non-zero idle when the tank is stopped mid-run — are exactly what the ROM does (0A0 enable in-game / 60 rumble-off out-of-game; LIDLE is a level, not silence). CONFIRMED.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1144,
+            "verbatim": "\tORA I,0A0\t\t;C  GAME - ENABLE SOUNDS AND RUMBLE"
+        },
+        "ours": {
+            "file": "src/shell/audio-dispatch.ts",
+            "line": 107,
+            "verbatim": "    audio.setEngine(effort > 1 ? 1 : effort)"
+        }
+    },
+    {
+        "id": "U-007",
+        "class": "DIVERGENCE",
+        "title": "Clone plays a continuous hostile 'track' tread rattle that the ROM never emits",
+        "claim": "The ROM routes only the PLAYER's engine to sound: the single SOUND port is SOUND=1840 (BZONE.MAC:375), and the NMI ORs only the zero-page (player, index 0) copy — ORA Z,SNDWRD (BZONE.MAC:1141) — into that one latch. The engine bit is written per-tank via ZX,SNDWRD (BZONE.MAC:2694) but the enemy tanks' copies (index 2) never reach the latch, so hostiles are silent as they move; their presence is signalled only by WARNG and RBEEP (see U-008, U-009). Our clone runs a dedicated 'track' loop — a 55 Hz square chopped by a 9 Hz LFO (audio.ts:150) — the whole time the hostile is alive (audio-dispatch.ts:93-94), a sound with no ROM basis.",
+        "reasoning": "This is an invented cue: nothing in the sound system produces a continuous enemy-movement rumble. It is a synthesis addition, not a fidelity match. Recommend wont_fix (ambient synthesis liberty, harmless and atmospheric) rather than fix, but recorded so it is not mistaken for a ROM-faithful sound. Note the irony that the clone ADDED a non-existent enemy rumble while OMITTING the two enemy cues the ROM actually has (U-008/U-009).",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1141,
+            "verbatim": "\tORA Z,SNDWRD"
+        },
+        "ours": {
+            "file": "src/shell/audio-dispatch.ts",
+            "line": 113,
+            "verbatim": "    audio.startLoop('track') // idempotent while already running"
+        },
+        "recommendation": "wont_fix",
+        "verdict": "CONFIRMED"
+    },
+    {
+        "id": "U-008",
+        "class": "NO_COUNTERPART",
+        "title": "WARNG 'enemy in range' alarm has no clone sound (the visual alert already fires)",
+        "claim": "When a hostile first enters range the ROM sets EIRNGE and issues WARNG (BZONE.MAC:4052-4054). WARNG channel 1 (WG3, BZSOUN.MAC:167) is 40,2,-1,18 = start 0x40, hold 2 frames, step -1, 0x18=24 values -> a descending sweep of 24 x 2 = 48 frames = 192 ms, repeated three times = ~576 ms of pulsing alarm (WG4 0A3,30,0,3 supplies the control tail). This is the signature Battlezone 'enemy approaching' warble. Our clone computes the exact same GAME MOMENT — inGameAlert raises the 'ENEMY IN RANGE' HUD string when a hostile is gunsight-aligned and within ENEMY_ALERT_RANGE (core/alerts.ts) — but emits NO sound for it.",
+        "reasoning": "The trigger condition is already present and unit-tested in core (alerts.ts), so only the audio half is missing — a small, high-value add. This is arguably the most player-relevant omission in the pair: the alarm is how a player knows to turn and shoot. NO_COUNTERPART with ours=null (no sound exists); recommend fix.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 4053,
+            "verbatim": "\tLDA I,WARNG\t\t;C  OUTPUT WARNING SOUND"
+        },
+        "ours": null,
+        "recommendation": "fix",
+        "size": "m",
+        "remediated_by": "bz3-10"
+    },
+    {
+        "id": "U-009",
+        "class": "NO_COUNTERPART",
+        "title": "RBEEP radar-sweep beep has no clone sound (the radar HUD exists)",
+        "claim": "As the radar sweep passes a blip the ROM issues RBEEP (BZONE.MAC:3993-3996: when the sweep is near the blip, BLIP < 0F0). RBEEP channel 1 (BE3, BZSOUN.MAC:175) is 23,10,0,1 = one value 0x23 held 0x10=16 frames = 64 ms (BE4 0A3,10,0,1 = control) — a short radar tick. Our clone renders a full radar scanner HUD (core/radar.ts, deriveRadar/sweepAngle; drawRadar in main.ts) but plays no beep as the sweep crosses a contact.",
+        "reasoning": "The radar and its sweep already exist in the clone, so the beep is a natural, low-cost authenticity add (fire a short blip when a contact enters the sweep wedge). NO_COUNTERPART with ours=null; recommend fix, size s. Lower priority than WARNG but part of the signature soundscape.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3995,
+            "verbatim": "\tLDA I,RBEEP"
+        },
+        "ours": null,
+        "recommendation": "fix",
+        "size": "s",
+        "remediated_by": "bz3-10"
+    },
+    {
+        "id": "U-010",
+        "class": "NO_COUNTERPART",
+        "title": "BOING obstacle-bump one-shot has no clone sound (the 'MOTION BLOCKED' moment already fires)",
+        "claim": "When the tank drives into an object and OBJCOL was not already set, the ROM plays BOING once (BZONE.MAC:2679-2680, 'SOUND OF RUNNING INTO OBJECT'). BOING channel 1 (WP1, BZSOUN.MAC:187) is a 10-subsequence descending pitch cascade starting 0C0,1,0F6,6 = start 0xC0, hold 1 frame, step 0xF6=-10, 6 values — the classic 'boing' bump. Our clone detects the same event — inGameAlert raises 'MOTION BLOCKED BY OBJECT' when a translate intent produces zero displacement (core/alerts.ts) — but plays no bump sound.",
+        "reasoning": "Same pattern as U-008: the collision moment is already computed in core, only the audio is absent. NO_COUNTERPART with ours=null; recommend fix, size s.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2679,
+            "verbatim": "\tLDA I,BOING\t\t;C  SOUND OF RUNNING INTO OBJECT"
+        },
+        "ours": null,
+        "recommendation": "fix",
+        "size": "s",
+        "remediated_by": "bz3-10"
+    },
+    {
+        "id": "U-011",
+        "class": "NO_COUNTERPART",
+        "title": "BLKSND continuous block/obstacle-push buzz has no clone sound",
+        "claim": "Distinct from the one-shot BOING, the NMI priority chain re-issues BLKSND every time channel 1 idles WHILE OBJCOL is still set (BZONE.MAC:1117-1119) — a sustained low buzz for as long as the tank is pressed against an obstacle. BLKSND channel 1 (BK1, BZSOUN.MAC:182) is 10,1,0,20 = value 0x10 held, 0x20=32 changes x 1 frame = 32 frames = 128 ms of steady tone, looped by the priority chain. Our clone has no sustained-contact buzz.",
+        "reasoning": "Minor ambient cue and partly redundant with the BOING one-shot (U-010) for feedback purposes; the sustained buzz mostly matters for holding-into-a-wall. NO_COUNTERPART with ours=null; recommend accept (low value, easy to skip) — recorded for completeness of the ROM sound inventory.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1119,
+            "verbatim": "\tLDA I,BLKSND"
+        },
+        "ours": null,
+        "recommendation": "accept"
+    },
+    {
+        "id": "U-012",
+        "class": "NO_COUNTERPART",
+        "title": "BONER bonus-tank bell has no clone sound (bonus-tank thresholds exist)",
+        "claim": "On earning a bonus tank (INC LIVES) the ROM rings BONER (BZONE.MAC:2563-2564, 'ING THE BELL'). BONER channel 3 (BO3, BZSOUN.MAC:204) is 10,70,0,2 = value 0x10 held FRCNT=0x70=112 frames, 2 changes = 224 frames x 4 ms = ~896 ms (BO4 0A2,20,0,1... = control) — a bell 'bong'. Our clone computes bonus-tank award moments (difficulty.ts BONUS_TANK_SCORES = [15000, 100000], bonusTanksCrossed) but plays no reward cue.",
+        "reasoning": "The award logic is present in core, so the missing half is only the audio reward. Positive-feedback cue, low cost. NO_COUNTERPART with ours=null; recommend fix, size s.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2563,
+            "verbatim": "\tLDA I,BONER\t\t;C  ING THE BELL"
+        },
+        "ours": null,
+        "recommendation": "fix",
+        "size": "s",
+        "remediated_by": "bz3-10"
+    },
+    {
+        "id": "U-013",
+        "class": "NO_COUNTERPART",
+        "title": "SUPBON super-bonus jingle has no clone sound",
+        "claim": "On the rare super-bonus award the ROM plays SUPBON (BZONE.MAC:2573 LDA I,SUPBON; also :832-833 'PLAY THE TUNE FOR THE TURKEY'). SUPBON is the only cue using all four channels (SU1..SU4, BZSOUN.MAC:232-254) — a multi-voice jingle, e.g. SU1 D9,30,0,1 / A2,30,0,1 / 90,30,0,1... a sequence of held tones. It also suppresses every other sound while it plays (BIT SUPER -> BMI, BZONE.MAC:1109-1110). Our clone has no super-bonus jingle.",
+        "reasoning": "A rare high-score celebration cue; lowest gameplay relevance of the missing sounds. NO_COUNTERPART with ours=null; recommend wont_fix (rare, multi-voice, low value) — recorded to complete the inventory and because its SUPER-suppresses-all behaviour is referenced by the priority finding U-015.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2573,
+            "verbatim": "\tLDA I,SUPBON"
+        },
+        "ours": null,
+        "recommendation": "wont_fix"
+    },
+    {
+        "id": "U-014",
+        "class": "DIVERGENCE",
+        "title": "Saucer kill plays the generic explosion but omits the distinct DISINT disintegration zap",
+        "claim": "Shooting the saucer runs SAUCHK: it sets SCOLFG=0x40, fires DISINT via SNDON (BZONE.MAC:2483-2486), AND sets EXPCNT=0A0=160 with the LOX big-explosion bit (BZONE.MAC:2487-2492). So a saucer death is TWO layered sounds: a short DISINT zap (DS1 30,1,0FC,0C = start 0x30, step 0xFC=-4, 0x0C=12 values x 1 frame = 48 ms, x2 = ~96 ms) LAYERED over a 0A0=160 -> ~636 ms explosion. Our clone treats a saucer kill as an ordinary 'enemy-destroyed' whose kind='saucer' (events.ts:28,38) and plays only the generic 0.9 s 'explosion' (audio-dispatch.ts:38) — capturing the explosion layer but omitting the DISINT zap that makes the saucer death sound different from a tank kill.",
+        "reasoning": "The clone's comment ('the blast cue is the same discrete circuit') is only half true: the ROM does add an explosion, but it ALSO plays DISINT (the highest-priority sound in the NMI chain) to give the saucer a distinctive disintegration. Missing that layer means saucer and tank deaths sound identical, which the ROM avoided. DIVERGENCE; recommend fix, size s — add a short distinct zap for saucer kills.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2485,
+            "verbatim": "\tLDA I,DISINT"
+        },
+        "ours": {
+            "file": "src/core/events.ts",
+            "line": 28,
+            "verbatim": "export type DestroyedKind = HostileKind | 'saucer'"
+        },
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED",
+        "refuter_correction": "Review round 2 correction: the decode model this field originally cited — 'total values = NUMBER+1, proven by EX1' — is WRONG in general. MODSND, the sound-continue engine (BZSOUN.MAC:301-348), walks NUMBER FRCNT-frame holds per record then falls straight into the next record's own STVAL; the file's own EX2 (BZSOUN.MAC:79, 0,45,0,1: NUMBER=1, FRCNT=0x45=69, documented to play ~0x46=70 frames ≈ FRCNT, not 2xFRCNT) proves duration is NUMBER x FRCNT sound-frames, not (NUMBER+1) x FRCNT. That fix moved WARNG/RBEEP/BONER (FRCNT>1) back down to the finding's original ~576/64/896 ms. DS1's own FRCNT is 1, but the NUMBER x FRCNT formula is PER RECORD, so it also corrects the FRCNT=1 cues: MODSND preempts each record's final conceptual value, so each of DS1's 2 records sounds 12 values (not 13) x 1 frame = 12 frames => 2 x 12 = 24 frames = ~96 ms. bz4-4 ruling: ~96 ms is source-correct, restoring this finding's own original claim above ('12 values x 1 frame = 48 ms, x2 = ~96 ms'). The round-2 '~104 ms (2 segments x ~52 ms)' figure counted NUMBER+1 = 13 values/record (26 frames) — the identical (NUMBER+1) over-count this correction already rejects for WARNG/RBEEP/BONER, wrongly rationalised here as 'one 4 ms frame' when it is one frame PER record (x2 records = 8 ms). Also 'highest-priority sound in the NMI chain' overstates: DISINT=0x20 is high but SAUSND=0x40 and SUPBON=0x80 outrank it (BZSOUN.MAC:75-76; SNDON searches from the top bit down). The explosion figure is right: EXPCNT=0xA0=160 decremented once per 4 ms NMI => ~640 ms.",
+        "remediated_by": "bz3-10"
+    },
+    {
+        "id": "U-015",
+        "class": "STRUCTURAL",
+        "title": "ROM sounds are single-channel with a strict priority chain; the clone mixes every cue freely",
+        "claim": "The NMI runs a fixed priority gate before starting any POKEY sound (BZONE.MAC:1109-1124): (1) if SUPER (super-bonus) is active, start NOTHING (BIT SUPER -> BMI 15$); (2) if POINT != 0 a sound is already playing, so don't start a new one (LDA Z,POINT -> BNE 15$ — sounds never preempt each other); (3) otherwise prioritise SCOLFG->DISINT > OBJCOL->BLKSND > SAUCER->SAUSND. All sound ends when channel 1 goes idle (BZSOUN.MAC:159). Our clone has no priority: every cue is an independent WebAudio graph that simply sums — audio-dispatch fires play/startLoop per event with no arbitration (e.g. audio-dispatch.ts:35), so a saucer warble and an explosion sound simultaneously where the ROM would suppress the lower one.",
+        "reasoning": "The ROM's priority + 'no preemption' + 'SUPBON silences all' scheme is an artifact of POKEY channel scarcity (only 4 voices, channel 1 gates the whole envelope engine). WebAudio has no such scarcity and the clone implements only a small subset of cues that rarely collide, so free mixing is acceptable. STRUCTURAL/accept — recorded so the absence of a priority layer is a known, deliberate divergence, not an oversight.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1112,
+            "verbatim": "\tBNE 15$"
+        },
+        "ours": {
+            "file": "src/shell/audio-dispatch.ts",
+            "line": 35,
+            "verbatim": "        audio.play('cannon')"
+        },
+        "recommendation": "accept"
+    }
+]

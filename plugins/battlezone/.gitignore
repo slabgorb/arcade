@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+
+# Reference disassembly — the commented reverse-engineered source of Atari's
+# Battlezone (6502disassembly.com/va-battlezone/), pulled locally as a research
+# quarry. NEVER committed or pushed — checkout-local only. Everything durable
+# extracted from it lives in committed docs/ + src/core/ instead (story bz1-2).
+reference/

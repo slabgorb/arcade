@@ -1,0 +1,176 @@
+[
+    {
+        "id": "H-001",
+        "class": "BOOK_WAS_WRONG",
+        "title": "BATBL is the BATTLE ZONE title-logo 'BAT' object, NOT the mountain-scape table",
+        "claim": "The audit plan's ground truth (docs/audit/plan.md:67 'the BATBL mountain-scape table' and :113 Rosetta 'BATBL = the mountain-scape table') is refuted by primary source. BATBL/TLETBL/ZONTBL are three 3D object models in the OBJPNT object-pointer table (BZONE.MAC:490: '.WORD EX2TBL,EX1TBL,R2D3TB,BATBL' -> BATBL is object #0x17). LOGOBJ (BZMTNS.MAC:846: '.BYTE 17,80,1E,80,1F,80') lists objects 0x17(BATBL),0x1E(TLETBL),0x1F(ZONTBL), and it is consumed by '.SBTTL BATTLE ZONE LOGO' / 'HANDLE LOGO DISPLAY' (BZONE.MAC:701-703, 739 'LDA AY,LOGOBJ ;C SET UP OBJ #,X,Y'), whose kludge comment 'IF LOGO HIGH ENOUGH TO BRING OUT \"ZONE\"' (BZONE.MAC:755) names ZONTBL. The label mnemonics spell BAT-TLE-ZON(E) = BATTLEZONE. The ACTUAL mountain-scape is MTNS / MTN0..MTN7 (BZMTNS.MAC:11-183), drawn by 'DRAW MOUNTAIN SCAPE' / MOUNTS (BZONE.MAC:1240).",
+        "reasoning": "BATBL is stored in the identical .BYTE(size)+.MWORD(vertices) object-model format as PYRTBL/CUBTBL/TNKTBL and is reachable ONLY through OBJPNT (the 3D draw-object dispatch) and LOGOBJ; it is never referenced by DRAW MOUNTAIN SCAPE. The ×4/×4/×2 '.MWORD ..A,..B,..C -> .NWORD ..A*4,..B*4,..C*2' decode (BZONE.MAC:4879-4881) therefore governs the 3D LOGO LETTERS, not any horizon silhouette; the letters' z grows with x (z ~= x/8) because the logo recedes in depth. The real mountains use direct hex 'VCTR dx,dy,brite' deltas (radix-16 region from BZMTNS.MAC:8), no ×4 macro. Auditing BATBL as the mountains would byte-compare the clone's ridge against the title logo. This is a mislabel in the plan's ground truth, not in our code; recorded so the mountain-geometry comparison targets MTNS.",
+        "source": {
+            "file": "BZMTNS.MAC",
+            "line": 846,
+            "verbatim": "LOGOBJ:\t.BYTE 17,80,1E,80,1F,80"
+        },
+        "ours": {
+            "file": "src/core/horizon.ts",
+            "line": 127,
+            "verbatim": "const MTN_PANORAMA: readonly PanoramaPolyline[] = deriveMtnPanorama()"
+        },
+        "recommendation": "accept",
+        "verdict": "CONFIRMED",
+        "refuter_correction": "Supporting prose mislabels the OBJPNT table's file: the finding writes '(BZONE.MAC:490: .WORD EX2TBL,EX1TBL,R2D3TB,BATBL)', but that line lives in BZMTNS.MAC:490, not BZONE.MAC:490 (BZONE.MAC:490 is 'LDA I,10. ;C INIT DIVIDER'). The OBJPNT table is defined in BZMTNS.MAC, not BZONE.MAC. The finding's primary 'source' field (BZMTNS.MAC:846 LOGOBJ) is correct and the object-index substance is unaffected. Re-anchored by bz3-8: `ours` now points at the ROM-derived ridge (`MTN_PANORAMA`/`MTN_SEGMENTS`) that H-002 ported, replacing the old (now-deleted) `MOUNTAIN_RIDGE` line this finding originally used only as a where-the-ridge-lives pointer."
+    },
+    {
+        "id": "H-002",
+        "class": "DIVERGENCE",
+        "title": "Mountain ridge is a procedural two-sine profile; ROM ships hand-authored MTN0..MTN7 vector data",
+        "claim": "horizon.ts builds the ridge as 48 samples of a fixed two-sine curve (horizon.ts:53-60), on the stated premise (horizon.ts:6-8) that 'the disassembly quarry holds no horizon picture data ... zero hits for horizon/volcano/moon'. That premise is false: BZMTNS.MAC:11-183 IS the mountain picture data. MTNS (BZMTNS.MAC:11) dispatches eight silhouette segments MTN0..MTN7, each a run of relative 'VCTR dx,dy,brite' strokes at the radix-16 vector scale (e.g. MTN0 opens 'VCTR 0,40,0' = move +0x40=+64 units; peaks reach dy up to 0x60=96). These are 8 distinct authored ridge chunks, tiled around the wrap, not a sine.",
+        "reasoning": "The clone reinvented the ridge procedurally because a secondary-source sweep (the disassembly, not the .MAC source) missed BZMTNS.MAC. The governing radix for MTN0..MTN7 is 16 (nearest preceding '.RADIX 16' at BZMTNS.MAC:8), so every VCTR delta is hex. A faithful ridge is a direct transcription of the MTN0..MTN7 VCTR deltas (2D silhouette in vector-generator space), not a two-sine fit. Data differs entirely; this is a real geometry divergence.",
+        "source": {
+            "file": "BZMTNS.MAC",
+            "line": 19,
+            "verbatim": "MTN0:\tVCTR 0,40,0"
+        },
+        "ours": {
+            "file": "src/core/horizon.ts",
+            "line": 57,
+            "verbatim": "    const el = Math.max(0, 0.055 + 0.045 * Math.sin((k % 48) * 2.9) + 0.03 * Math.sin((k % 48) * 1.35 + 2))"
+        },
+        "recommendation": "fix",
+        "size": "l",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-8"
+    },
+    {
+        "id": "H-003",
+        "class": "DIVERGENCE",
+        "title": "Moon is independently authored; ROM moon is embedded in MTN0 with three brightness tiers",
+        "claim": "The clone's MOON (horizon.ts:75-89) is an authored crescent: an outer disc arc (centre az 5.5, el 0.24, radius 0.045) plus an offset inner terminator arc (radius 0.034). The ROM moon lives inside the first mountain segment MTN0 (BZMTNS.MAC:36-67, marked ';MOON' ... ';END OF MOON') and is drawn in three intensity tiers: 'PART A' the bright disc outline at brite 7 (BZMTNS.MAC:36-49), 'PART B' the terminator at brite 2 (BZMTNS.MAC:50-55), then an inner detail run at brite 5 (BZMTNS.MAC:56-67). Radix-16, so 'VCTR 5,-0C,7' = dx +5, dy -0x0C(-12), brite 7.",
+        "reasoning": "The crescent FORM (bright limb + dim terminator) is faithfully reproduced, so the concept is right, but the clone authored position/size/data from scratch rather than porting the MTN0 moon, and it flattens the ROM's 3-tier brightness (7/2/5) into an un-graded outline. Because the moon rides inside MTN0, it is at a FIXED azimuth on the mountain ring in both (scrolls with heading) - that part matches. A port of MTNS (H-002) brings the real moon with it.",
+        "source": {
+            "file": "BZMTNS.MAC",
+            "line": 36,
+            "verbatim": "\tVCTR 5,-0C,7\t\t;MOON"
+        },
+        "ours": {
+            "file": "src/core/horizon.ts",
+            "line": 81,
+            "verbatim": "      return [5.5 + 0.045 * Math.sin(t), 0.24 + 0.045 * Math.cos(t)] as const"
+        },
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED",
+        "refuter_correction": "Minor precision: the finding labels the inner detail run 'brite 5 (BZMTNS.MAC:56-67)', but the pure brite-5 strokes are lines 57-66; line 56 ('VCTR 1B,3,0') is a brite-0 positioning move and line 67 ('VCTR 1,1,2') closes at brite 2. Immaterial to the divergence.",
+        "remediated_by": "bz3-8"
+    },
+    {
+        "id": "H-004",
+        "class": "CONFIRMED",
+        "title": "Horizon line is a flat, full-width line at eye level in both",
+        "claim": "ROM HORIZN (BZMTNS.MAC:9) is a single horizontal stroke 'VCTR -600,0,3' = dx -0x600(-1536), dy 0, brite 3 (dim) - a level line wider than the screen half-width (drawn from centre after VGCNTR/VGVTR2, BZONE.MAC:1278-1282). The clone emits '{ x1: -1, y1: 0, x2: 1, y2: 0 }' (horizon.ts:142): a full-width line at NDC y=0. Both place the ground/sky meeting on the eye axis (dy=0), consistent with the flat-plain, no-pitch camera (camera.ts eye at world y=0).",
+        "reasoning": "Geometry matches: horizontal, centred on the eye line, spanning past the visible field. Dim brightness (3) is a shell/render concern outside horizon.ts. Confirmed.",
+        "source": {
+            "file": "BZMTNS.MAC",
+            "line": 9,
+            "verbatim": "HORIZN:\tVCTR -600,0,3"
+        },
+        "ours": {
+            "file": "src/core/horizon.ts",
+            "line": 222,
+            "verbatim": "  const segments: SceneSegment[] = [{ x1: -1, y1: 0, x2: 1, y2: 0 }]"
+        },
+        "remediated_by": "bz4-1"
+    },
+    {
+        "id": "H-005",
+        "class": "CONFIRMED",
+        "title": "Backdrop is fixed at infinity: it scrolls 1:1 with heading and wraps every 360 degrees",
+        "claim": "MOUNTS derives the mountain X position from the tank angle (TANGLE:LANGLE, the 9-bit heading per BZONE.MAC:227-229) by a 4-place right shift, annotated 'THIS MEANS IT WRAPS AROUND EVERY 360 DEGRS' (BZONE.MAC:1253). The mountains carry no distance term - they translate purely with heading and repeat once per full turn, i.e. fixed at infinity. The clone does the same: offsetSteps() reduces (azimuth - heading) modulo the WHEEL (horizon.ts:106) so the skyline is exactly periodic in heading, and panoramaToNdc maps that offset linearly to x. Answer to the scope question 'fixed at infinity or tracks turn?': it TRACKS TURN as an infinitely-distant ring, and both implementations agree.",
+        "reasoning": "The ROM has no parallax/scale-by-distance on the mountains (angle-only positioning, 360-degree wrap); the clone's integer angle-wheel is a finer-grained (2^20 vs 256 step) equivalent that guarantees the same periodicity. Confirmed. (The ROM's separate translational object/background parallax is a distance effect, not a heading effect - see H-009.)",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1253,
+            "verbatim": "\tLSR\t\t\t;THIS MEANS IT WRAPS AROUND EVERY 360 DEGRS"
+        },
+        "ours": {
+            "file": "src/core/horizon.ts",
+            "line": 165,
+            "verbatim": "  const steps = Math.round(frac * WHEEL) % WHEEL"
+        }
+    },
+    {
+        "id": "H-006",
+        "class": "NO_COUNTERPART",
+        "title": "Volcano rock ejecta physics (VOLCNO) is entirely unimplemented in the clone",
+        "claim": "The ROM's VOLCAO ROCK MOVEMENT (BZONE.MAC:1377-1449, VOLCNO) is a per-frame (64 ms) projectile sim of up to NOROCK=5 rocks (BZONE.MAC:319). Per rock: lifetime OBJTIM=0x1F=31 frames = 31*64ms = 1.984 s (BZONE.MAC:1396); initial vertical velocity YSPD = (PRAND&7)+5 = 5..12 units/frame = at 15.625 Hz, 78.1..187.5 units/s (BZONE.MAC:1405-1408); horizontal speed XSPD = (PRAND&3)+1 = 1..4 units/frame, 50% negated for left/right = +/-15.6..62.5 units/s (BZONE.MAC:1398-1404); gravity is 'DEC X,YSPD ;GRAVITY TAMES HOLD' i.e. dv = -1 unit/frame per frame = -1 unit/frame^2 = -1*15.625^2 = -244.1 units/s^2 (BZONE.MAC:1417); spawn is 1/8 per inactive rock per frame ('AND I,7 / BNE', BZONE.MAC:1393-1395); rocks die on ground contact (YPOSH<0 and YPOSL<0xA2, BZONE.MAC:1425-1432); each rock renders as a DOT whose brightness = (OBJTIM<<3)&0xE0, so it dims as it ages (BZONE.MAC:1355-1360). horizon.ts has none of this (deferred to bz1-12, header horizon.ts:29-31).",
+        "reasoning": "The clone's header defers eruption animation to a future story and draws only a static silhouette, so there is no counterpart to compare against - class NO_COUNTERPART, ours null. Constants documented here at the correct 15.625 Hz timebase so the future story can port them directly. All VOLCNO constants are radix-16 (nearest '.RADIX 16' governs BZONE.MAC's code region); the ground threshold 0xA2 and lifetime 0x1F are hex.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1417,
+            "verbatim": "\tDEC X,YSPD\t\t;GRAVITY TAMES HOLD"
+        },
+        "ours": null,
+        "recommendation": "fix",
+        "size": "l",
+        "remediated_by": "bz3-6"
+    },
+    {
+        "id": "H-007",
+        "class": "DIVERGENCE",
+        "title": "ROM mountains bob vertically with collision BOUNCE; clone backdrop is vertically static",
+        "claim": "MOUNTS shifts the mountain drawing origin down by BOUNCE>>4 every frame: 'LDA BOUNCE' (BZONE.MAC:1265), four LSRs, then subtracted from the beam Y (XCOMP+2) at BZONE.MAC:1271-1277. BOUNCE is the 'COLLISION BOUNCE VIEW AMT' (BZONE.MAC:275, controlled by BOUNCE CONTROL :2124), so on obstacle collision the whole mountain range visibly jolts vertically by BOUNCE/16 vector units. The clone's backdrop Y depends only on elevation - panoramaToNdc computes 'y = tan(elevation)/(tan(H_FOV/2)/aspect)' (horizon.ts:132) with no per-frame vertical offset ('y is heading-independent - the camera never pitches', horizon.ts:118-119).",
+        "reasoning": "A real, if subtle, ROM effect the clone omits. The horizon-side change is small (add a vertical NDC offset), but it needs a collision-bounce value plumbed from the movement/collision sim, which horizon.ts does not currently receive - flag for the story that owns bounce.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1265,
+            "verbatim": "\tLDA BOUNCE\t\t;C  PROVIDE BOUNCE"
+        },
+        "ours": {
+            "file": "src/core/horizon.ts",
+            "line": 191,
+            "verbatim": "  const y = Math.tan(elevation) / (Math.tan(H_FOV / 2) / aspect)"
+        },
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-9"
+    },
+    {
+        "id": "H-008",
+        "class": "DIVERGENCE",
+        "title": "Clone draws a static volcano cone; the ROM has no cone silhouette - the volcano is only an eruption point",
+        "claim": "The clone renders VOLCANO as a fixed cone-with-crater polyline off the ridge (horizon.ts:63-72). The ROM draws NO volcano cone: MOUNTS only positions the beam to the eruption point ('MOVE BEAM TO TOP OF VOLCANO', BZONE.MAC:1318, reached when TANGLE is in [0x39,0x88] i.e. the volcano is on-screen, BZONE.MAC:1290-1294) and then plots the flying rocks (VGVTR2+VGDOT loop, BZONE.MAC:1325-1364). A source-wide search for volcano geometry finds only VOLCNO (rock movement) and this top-of-volcano positioning - the visible 'volcano' is a ridge peak that erupts, with the eruption BEING the ejecta, not a distinct outline.",
+        "reasoning": "The clone effectively inverts the ROM: it draws a cone but no ejecta, whereas the ROM draws ejecta but no cone. The faithful volcano is a peak in the MTNS silhouette at the eruption azimuth plus the H-006 rock fountain, not a free-standing authored cone. Ties to H-002 (port MTNS) and H-006 (port ejecta).",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1318,
+            "verbatim": "25$:\tJSR VGCNTR\t\t;C MOVE BEAM TO TOP OF VOLCANO"
+        },
+        "ours": {
+            "file": "src/core/horizon.ts",
+            "line": 129,
+            "verbatim": "    [0.72, 0],"
+        },
+        "recommendation": "fix",
+        "size": "m",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-6"
+    },
+    {
+        "id": "H-009",
+        "class": "STRUCTURAL",
+        "title": "Clone splits backdrop FOV (45 deg) from scene FOV (90 deg); the ROM composites both through one vector generator with no such split",
+        "claim": "The clone renders the panorama at BACKDROP_FOV = H_FOV = 45 deg (horizon.ts:45) while the 3D scene is displayed at DISPLAY_FOV = 90 deg (camera.ts:57), and its header attributes that split to the '§7 object/background parallax' (horizon.ts:14-20). The ROM has no backdrop-specific FOV constant: MOUNTS (BZONE.MAC:1247) drives the mountains from the same tank angle through the same AVG that then draws the 3D objects in the same buffer/pass, so backdrop and scene share ONE on-screen angular scale.",
+        "reasoning": "The ROM's genuine object/background parallax is TRANSLATIONAL - near objects sweep across the view faster than the infinitely-distant mountains when the tank STRAFES/advances (a distance effect), not because the mountains are drawn at a narrower angular scale than the scene. The clone's 45/90 split is an authored interpretation that may misattribute that translational effect to an angular-scale mismatch. Deriving the ROM's exact mountain-degrees-per-screen-unit needs the AVG SCAL/window analysis (out of horizon.ts scope), so this is filed STRUCTURAL, not a hard value divergence. The clone already flags the split as unresolved and defers final calibration to the epic-closing playtest (horizon.ts:13-20); this finding records that the ROM itself carries no backdrop/scene FOV split.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 1247,
+            "verbatim": "MOUNTS:\tLDX I,0\t\t;LDA VIEW FOR 1 BIT RESOLUTION"
+        },
+        "ours": {
+            "file": "src/core/horizon.ts",
+            "line": 59,
+            "verbatim": "export const BACKDROP_FOV = H_FOV"
+        },
+        "recommendation": "accept"
+    }
+]

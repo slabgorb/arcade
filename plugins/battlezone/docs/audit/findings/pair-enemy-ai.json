@@ -1,0 +1,248 @@
+[
+    {
+        "id": "E-001",
+        "class": "STRUCTURAL",
+        "title": "Enemy AI is a per-frame ACTION-countdown decision-tree state machine; the clone is a goal-heading machine with float re-pick timers",
+        "claim": "The ROM robot is driven by a single frame counter ACTION, decremented once per 64 ms game frame (BZONE.MAC:485 `DEC ACTION`). While ACTION>0 ROBOT steers the tank toward RGOAL and fires every frame; when ACTION reaches 0 ROBOT branches to the decision block R.40$ (:2973-2975 `LDA ACTION ;D IF DECISION TIME`), which re-selects a disposition (attack/evade/random) and reloads ACTION with a frame count: evade $40=64 fr=4.096 s (:3095), the attract default $30=48 fr=3.072 s (:2887), and a short in-game reaction as low as 4 fr=0.256 s (:2912 `LDA I,4`). The clone models the equivalent idea as a goal-heading machine with states charge/flank/wander whose goal re-picks when a FLOAT moveCounter counts down GOAL_PERIOD=3.5 s / CHARGE_PERIOD=2.0 s (enemies.ts:228-229), then steers toward goalHeading (enemies.ts:647). Same shape (periodic disposition re-pick + steer-to-goal), different state set and reload cadence — notably the ROM re-decides far faster while attacking (0.26 s) than the clone re-picks (2-3.5 s).",
+        "reasoning": "This is the float-seconds vs integer-frame boundary the AI audit must draw, and it is the parent of the value-level divergences below. ACTION is a per-frame integer timer: MAIN's `DEC ACTION` at :485 runs exactly once per 64 ms SYNC-gated frame (see pair-cadence C-001/C-003 for the 15.625 Hz timebase), so a reload of $40 means 64 frames means 4.096 s. The clone cannot test an integer ACTION bit; it carries moveCounter/reversing as float seconds and burns them down by dt (enemies.ts:601-602), reconstructing the effect. The state SETS differ too: the ROM's dispositions are attack (RGOAL=bearing), evade (RGOAL=bearing^$40), and random (RGOAL jittered), whereas the clone's are charge/flank/wander. Recorded STRUCTURAL rather than DIVERGENCE because a periodic-repick + steer-to-goal machine is a faithful port of the ACTION machine; the specific odds, reloads, angles and fire gate are the divergences (E-002, E-004, E-009, E-011). Recommendation accept: the machine shape is the right port.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2973,
+            "verbatim": "10$:\tLDA ACTION\t\t;D  IF DECISION TIME"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 755,
+            "verbatim": "      const goalHeading = goal === 'charge' ? bearing : (turnTo ?? bearing)"
+        },
+        "recommendation": "accept"
+    },
+    {
+        "id": "E-002",
+        "class": "DIVERGENCE",
+        "title": "ROM disposition is attack-DOMINANT (>=50% of decisions attack); the clone makes charge a MINORITY goal (0.3, no back-to-back)",
+        "claim": "At every decision (ACTION==0) the ROM selects disposition via R.50$/R.40$: (a) if FTIMER==$FF ('been nice too long') -> attack; (b) else a 50% coin from the POKEY random byte -> attack (:3072-3074 `LDA PRAND / LSR / BCC R.ATCK`); (c) else if the player's score high byte is set ('he's good') -> attack; (d) else by the SIGN of (player-enemy) score: equal->evade, player behind->random wander, player ahead->attack (:3077-3082 `LDA HITS / SBC HITS+2 / BEQ R.EVAD / BCC R.RAND / BCS R.ATCK`). So at minimum HALF of all decisions are a full attack, rising further as the player pulls ahead. The clone instead uses FIXED goal odds — charge 0.3, flank 0.5, wander 0.2 (CHARGE_CHANCE=0.3, FLANK_CHANCE=0.5) — AND forbids a charge from repeating back-to-back (enemies.ts:628-630 `const canCharge = goal !== 'charge'`), so charge (the true pursuit) is a deliberate minority. The clone's enemy therefore attacks much LESS often than the arcade tank.",
+        "reasoning": "Decoding the R.50$/R.40$ branch tree: `LDA PRAND / LSR / BCC R.ATCK` sends bit 0 of the POKEY noise register — a fair coin — straight to attack, before any score logic; that alone is a 50% attack floor per decision. The score-sign test then adds attack whenever the player leads. The clone's tuning comment (enemies.ts:216-224) openly makes flank dominant and charge rare 'so the tank JOCKEYS' and 'can never sit barrel-on', which is a design choice OPPOSITE to the ROM's attack bias. Net observable: the clone's tank spends most of its time flanking/wandering and pursues seldom, where the arcade tank charges at least half the time. The seeded-PRNG substitution for PRAND itself is fine and already logged STRUCTURAL (pair-cadence C-007); this finding is about the ODDS the PRNG feeds, which are wrong. Fix = re-weight the disposition selection toward attack and gate it on the score differential rather than fixed odds; size m because it is a re-write of the goal-repick block, not a constant.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3072,
+            "verbatim": "\tLDA PRAND\t\t;D  IF RANDOM ATTACK"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 636,
+            "verbatim": "          if (canCharge && roll < CHARGE_CHANCE) {"
+        },
+        "recommendation": "fix",
+        "size": "m",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-2"
+    },
+    {
+        "id": "E-003",
+        "class": "CONFIRMED",
+        "title": "Evade steers to a  90-degree flank (bearing XOR $40), a strafe not a retreat, held ~4 s — the clone's flank goal matches",
+        "claim": "The ROM's evade disposition sets RGOAL = (angle-to-player) XOR $40 (:3092-3094 `JSR TRACK / EOR I,40 / STA RGOAL`). In the 256-unit-per-circle angle format ($20=45 deg is stated at :3525), $40 = 64 units = 90 deg, so the tank flees PERPENDICULAR to the player (a strafe / circling run), NOT directly away ($80=180 deg). It holds that goal for ACTION=$40=64 frames = 4.096 s (:3095-3096). The clone's flank goal is bearing +/- FLANK_ARC where FLANK_ARC = Math.PI/2 = 90 deg (enemies.ts:231, applied at :635) held for GOAL_PERIOD=3.5 s (enemies.ts:229). The +/-90 deg strafe geometry and the ~4 s hold both match (4.096 s ROM vs 3.5 s clone).",
+        "reasoning": "Decoding the macro: EOR I,40 is XOR with $40. Battlezone stores angles as a single byte = full circle (TRACK's `LDA I,20 ;C USE 45 DEG` at :3525 fixes 1 unit = 360/256 = 1.40625 deg, so $40 = 90 deg). XOR $40 on the player bearing yields a heading rotated a quarter-turn, i.e. a flank/circle, which is exactly the clone's flank interpretation ('ROM player_angle XOR $40', enemies.ts:230). The hold time also lands: $40 frames * 64 ms = 4.096 s vs the clone's 3.5 s GOAL_PERIOD — same order, a good match. Recording this CONFIRMED anchors the E-002 divergence: the clone got the flank GEOMETRY and DURATION right; what it got wrong (E-002) is how OFTEN it flanks vs attacks. Note the ROM reaches evade only on an EVEN score (BEQ R.EVAD), a narrow band, whereas the clone flanks 50% of re-picks — that frequency gap is E-002's, not this finding's.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3093,
+            "verbatim": "\tEOR I,40"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 286,
+            "verbatim": "const FLANK_ARC = Math.PI / 2"
+        }
+    },
+    {
+        "id": "E-004",
+        "class": "DIVERGENCE",
+        "title": "Fire-aim window is ~2.5-5x too wide: ROM fires within <2 angle units (~1.4-2.8 deg), the clone within 6.9 deg",
+        "claim": "FIREIT fires only when the absolute angle between the tank's barrel and the player bearing is < 2 angle units (:3145 `CMP I,2 / BCS 50$` skips firing when the error >= 2). At 360/256 = 1.40625 deg per unit that is < 2.81 deg, and because the comparison is on an INTEGER byte the effective firing window is an error of 0 or 1 unit, i.e. <= 1.41 deg. The clone fires when |errPlayer| <= FIRE_CONE = 0.12 rad = 6.88 deg (enemies.ts:251, used at :661), which is 2.4x wider than the ROM's 2.81 deg ceiling and ~4.9x wider than its effective ~1.41 deg. The clone's enemy lands hits from angles the arcade tank would never fire at.",
+        "reasoning": "Decoding: FIREIT (:3137-3146) does `JSR TRACK` (bearing to player), subtracts the barrel angle TANGLE+2, takes the absolute value, then `CMP I,2 / BCS 50$` — branch-away (no fire) when |error| >= 2. So fire requires |error| < 2 units. The clone's own comment (enemies.ts:243-249) states the ROM window is '±$02 ≈ ±2.81°' and admits tuning UP to ~±6.9° 'so the slow-turning maneuvering tank still catches the player'. That admission is the tell: the wide cone is a COMPENSATION for the clone's slower-than-ROM sweep and rarer attack disposition (E-002/E-011), so tightening FIRE_CONE in isolation would make the clone tank nearly harmless. Fix it as part of the E-001/E-002/E-011 cluster (restore the attack-dominant disposition and the sweep that lines up a shot), then the ROM-tight cone becomes playable. Size s for the constant itself; the coupling is why it cannot ship alone.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3145,
+            "verbatim": "10$:\tCMP I,2"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 252,
+            "verbatim": "const FIRE_CONE = 0.12"
+        },
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-2"
+    },
+    {
+        "id": "E-005",
+        "class": "CONFIRMED",
+        "title": "Spawn fire-grace ~2 s: FIREIT withholds all fire until FTIMER >= $20 (32 frames = 2.048 s) — clone SPAWN_FIRE_GRACE=2.0 s",
+        "claim": "FIREIT's first gate is `LDA FTIMER / CMP I,20 / BCS 3$` then RTS (:3120-3123): if FTIMER < $20 the tank fires nothing. FTIMER is zeroed at spawn (:3875 `STA FTIMER`, A=0) and incremented once per 64 ms frame (:489 `INC FTIMER`), so $20 = 32 frames * 64 ms = 2.048 s of guaranteed no-fire grace after a tank appears. The clone gates enemy fire on hostile.phaseAge >= SPAWN_FIRE_GRACE = 2.0 s (enemies.ts:263, used at :660). CONFIRMED: 2.048 s ROM vs 2.0 s clone.",
+        "reasoning": "Straight decode, no macro subtlety: CMP I,20 is hex $20 = 32 (this region is `.RADIX 16`; :4878 flips to decimal, far below). 32 frames at the confirmed 15.625 Hz frame rate (pair-cadence C-001) = 2.048 s. The clone's comment (enemies.ts:254-262) already cites this exact origin ('cmp #$20 ≈ 32 frames'). Recording CONFIRMED: the anti-unfair-opening grace is a faithful port, value and mechanism. One nuance worth noting for the ramp finding (E-006): FTIMER carries a SECOND threshold at $FF that drops the tank's other fire restraints, so FTIMER is both the grace timer here and the aggression ramp there — the clone splits those into SPAWN_FIRE_GRACE and AGGRESSION_RAMP_SECONDS, which is a reasonable decomposition.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3121,
+            "verbatim": "\tCMP I,20"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 327,
+            "verbatim": "const SPAWN_FIRE_GRACE = 2.0"
+        }
+    },
+    {
+        "id": "E-006",
+        "class": "CONFIRMED",
+        "title": "Per-spawn aggression ramp reaches full at ~16.3 s (FTIMER 0->$FF), grounding the clone's AGGRESSION_RAMP_SECONDS=17",
+        "claim": "FTIMER counts up +1 per 64 ms frame (:489) from a per-spawn reset of 0 (:3875), saturating at $FF = 255 frames = 16.32 s. At FTIMER==$FF the decision tree unconditionally attacks (R.50$ :3069-3070 `LDA FTIMER ;D IF WE'VE BEEN NICE TOO LONG / CMP I,0FF / BEQ R.ATCK`) and FIREIT's rookie/in-view/range restraints are bypassed (:3124 `CMP I,0FF / BEQ 5$`). So a tank that spawned mild becomes fully aggressive ~16.3 s after appearing. The clone's difficulty ratchet ramps a fresh spawn from mild to full over AGGRESSION_RAMP_SECONDS = 17 s, fed by the hostile's phaseAge (difficulty.ts:38, applied at :71). CONFIRMED: 16.32 s ROM vs 17 s clone — the source of the '~17 seconds' the clone cites.",
+        "reasoning": "The clone's difficulty.ts comment attributes the ~17 s to 'findings §5, hub-page narrative'; the primary source pins it exactly: FTIMER is a per-spawn frame counter (reset at :3875, +1 at :489, capped at $FF at :486-489) and $FF frames * 64 ms = 16.32 s, rounding to the clone's 17. Recorded CONFIRMED because the ENDPOINT matches. Honest caveat carried in reasoning, not a separate divergence: the ROM realises the ramp as a TWO-THRESHOLD STEP function — a hard fire-grace boundary at $20 (E-005) and a hard restraint-drop at $FF here — whereas the clone linearly interpolates aggression across the interval (difficulty.ts:68-72). The clone's own comment already flags 'the interior interpolation (linear here) ... is OUR reading', so the shape is an acknowledged approximation and the confirmable claim is the 16.3 s endpoint.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3069,
+            "verbatim": "R.50$:\tLDA FTIMER\t\t;D  IF WE'VE BEEN NICE TOO LONG"
+        },
+        "ours": {
+            "file": "src/core/difficulty.ts",
+            "line": 38,
+            "verbatim": "export const AGGRESSION_RAMP_SECONDS = 17"
+        }
+    },
+    {
+        "id": "E-007",
+        "class": "CONFIRMED",
+        "title": "Enemy 'score' rises 1000 per player death (LDA I,1 BCD in 1000-point units) — clone ENEMY_SCORE_PER_PLAYER_DEATH=1000",
+        "claim": "When the robot kills the player the ROM adds 1 (BCD) to the enemy score HITS+2 (:3358-3370: `LDA I,1 ;C ONLY POINTS FOR ENEMY` ... `SED / ADC HITS+2 / STA HITS+2`). The score words HITS/HITS+2 are stored in units of 1000 points (elsewhere a saucer awards `LDA I,5` = 5 = 5000 pts; a tank +1 = 1000), so the enemy's running score climbs 1000 per player death — the differential the AI reads. The clone's difficulty model uses ENEMY_SCORE_PER_PLAYER_DEATH = 1000 (difficulty.ts:35). CONFIRMED.",
+        "reasoning": "Decoding the BCD add: SED sets decimal mode, `LDA I,1 / ADC HITS+2` increments the enemy score by one unit, CLD clears it. The unit is 1000 points: the player-side award sites store scores the same way (the +5 saucer award = 5000 pts / 1000 = 5), so HITS+2's +1 = 1000. This matters beyond bookkeeping because HITS+2 is the enemy term in the aggression differential HITS-HITS+2 that R.40$ (E-002) and ROBCHK (E-008) key on: getting its unit right is what lets E-008 confirm the 7000 differential. The comment 'ONLY POINTS FOR ENEMY' confirms this counter is the enemy's private score, not the player's HUD score. Recorded CONFIRMED.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3365,
+            "verbatim": "\tLDA I,1\t\t\t;C  ONLY POINTS FOR ENEMY"
+        },
+        "ours": {
+            "file": "src/core/difficulty.ts",
+            "line": 35,
+            "verbatim": "export const ENEMY_SCORE_PER_PLAYER_DEATH = 1000"
+        }
+    },
+    {
+        "id": "E-008",
+        "class": "CONFIRMED",
+        "title": "FULL_AGGRESSION_DIFFERENTIAL=7000 is grounded: ROBCHK caps the score-differential aggression term at 7 (CMP I,7) in 1000-point units",
+        "claim": "ROBCHK derives the enemy's aggression from the score differential player-minus-enemy (HITS - HITS+2) and CAPS that differential at 7 before using it (:3754-3760: `LDA HITS / SBC HITS+2` ... `CMP I,7 / BCC 8$`, with 6$ clamping to `LDA I,7`). In the 1000-point score unit (E-007) the cap of 7 is 7000 points — matching the clone's FULL_AGGRESSION_DIFFERENTIAL = 7000 (difficulty.ts:32). CONFIRMED as a value; see reasoning for the role nuance.",
+        "reasoning": "The clone attributes 7000 to 'findings §5, code label $69fd, hub-page narrative' — the primary source pins the constant directly: ROBCHK's window routine clamps the player-minus-enemy differential at 7 (`CMP I,7`, with the 6$: `LDA I,7` saturation), and E-007 fixes the unit at 1000 pts/count, so 7 = 7000. The nuance kept honest here: in the ROM the clamped differential specifically widens the SPAWN-ANGLE SPREAD (the mask of E-009), i.e. 7 is the point past which extra lead no longer scatters the spawn further; the clone reuses 7000 as the differential at which a GLOBAL aggression scalar saturates (throttle, fire cone, spawn arc all at once). Value confirmed and correctly scaled; the ROM's role for it is narrower than the clone's. Still CONFIRMED — the number is right and its ROM origin is now cited, which is what makes it trustworthy rather than a borrowed secondary-source figure.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3759,
+            "verbatim": "\tCMP I,7"
+        },
+        "ours": {
+            "file": "src/core/difficulty.ts",
+            "line": 32,
+            "verbatim": "export const FULL_AGGRESSION_DIFFERENTIAL = 7000"
+        }
+    },
+    {
+        "id": "E-009",
+        "class": "DIVERGENCE",
+        "title": "Spawn arc is score-scaled in the ROM (+/-21 deg mild -> +/-178 deg full-aggro, centred on the player's heading); the clone uses a FIXED +/-90 deg",
+        "claim": "The replacement tank spawns in the PLAYER'S forward direction plus a random angular offset whose SPREAD grows with the score differential. ROB1 forms offset = +/-(PRAND AND mask) angle-units and adds it to the player's heading TANGLE (:3788-3795 `ROB1: STA TEMP1 ... ADC TANGLE`); the mask comes from the ROBCHK window routine (:3752-3772) and widens from $0F (15 units = +/-21 deg, when the player is even/behind) up to $7F (127 units = +/-178 deg) at the diff=7 cap (E-008). So a mild enemy appears nearly dead ahead (+/-21 deg) and a full-aggression enemy 'in any direction' (+/-178 deg), always measured off the player's facing. The clone spawns within a FIXED +/-90 deg forward arc — SPAWN_FORWARD_ARC = Math.PI, offset = (nextFloat-0.5)*PI off player.heading (enemies.ts:317, :349) — that does NOT scale with aggression: wider than the ROM's mild case, narrower than its full-aggro case, and constant throughout.",
+        "reasoning": "Decoding the mask build (:3761-3772): starting from $0F, `LSR` of min(diff,7) then a loop of `SEC / ROL` shifts additional 1-bits in, producing $0F, $1F, $3F, $7F as the differential climbs — a spread that doubles roughly every 2000 points of lead. The offset is then `PRAND AND mask` with the sign flipped by an $INTCT bit (:3791, the entropy substitution already logged in pair-cadence C-007), added to the player angle TANGLE at :3795, and the resulting unit vector is added to the player's POSITION (:3855-3867) — so tanks materialise in the player's view cone when mild and all around them when the player is dominating. This IS the ROM's 'spawns in any direction ... with full aggression' (findings §5), and it is GRADUATED, not binary. The clone half-models it: a constant +/-90 deg forward bias (good — no rear-spawn ambush) but no coupling to the aggression differential that difficulty.ts already computes. Fix = drive SPAWN_FORWARD_ARC from the aggression scalar (narrow when mild, approach full circle at the 7000 cap); size m because it wires difficulty.ts into spawnHostile, a new parameter path, not a constant edit.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3795,
+            "verbatim": "\tADC TANGLE"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 355,
+            "verbatim": "    const dir = player.heading + (nextFloat(rng) - 0.5) * SPAWN_FORWARD_ARC"
+        },
+        "recommendation": "fix",
+        "size": "m",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-2"
+    },
+    {
+        "id": "E-010",
+        "class": "DIVERGENCE",
+        "title": "Super ('high-powered') tank appears one missile early: ROM gates on NOR2D3>=5 (the 6th missile), the clone on a 0-based count>=5 (the 5th)",
+        "claim": "TR7CHK returns the high-powered TR7 tank when NOR2D3 >= 5 (:3704-3707 `TR7CHK: CLC ... LDA NOR2D3 ... CMP I,5`, carry set = TR7; a negative NOR2D3 stays a regular tank). NOR2D3 is documented as '# OF R2D3'S -1 THIS GAME' (:301), initialised to -1 at game start (:1175-1176 `LDA I,-1 / STA NOR2D3`) and +1 on each missile spawn, so NOR2D3 >= 5 is reached only when the 6th missile has launched. The clone flips to super when a 0-based missilesLaunched >= SUPER_TANK_AFTER_MISSILES = 5 (enemies.ts:163, decided at :370), i.e. after the 5th missile — one wave too early.",
+        "reasoning": "Decoding NOR2D3's offset semantics is the whole finding. Its .BLKB comment ('# OF R2D3'S -1') and the R2D3CK spawn comment ('THIS WILL SET NOR2D3 TO 0 FOR FIRST') establish NOR2D3 = (missiles spawned) - 1, and the game-start `LDA I,-1 / STA NOR2D3` confirms the -1 origin. TR7CHK's `CMP I,5` (carry set when NOR2D3 >= 5) therefore first yields a super tank at missiles-spawned = 6. The clone's missilesLaunched starts at 0 and increments at spawn, so its `>= 5` fires at 5. The clone's own comment (enemies.ts:157-163, 13-16) acknowledges modelling the $ff sentinel as a 0-based counter and calls it a logged deviation — this finding quantifies that deviation: it is a clean +1, and it makes the super tank arrive one missile-wave sooner than the arcade. Fix = compare against 6 (or seed the counter at -1 to mirror NOR2D3 exactly); size s, a one-constant change, but note it interacts with the missile-pair's spawn counter so verify both sides step together.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3707,
+            "verbatim": "\tCMP I,5\t\t\t;C  CLEAR CARRY FOR TANK"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 407,
+            "verbatim": "  return missilesLaunched >= SUPER_TANK_AFTER_MISSILES ? 'super-tank' : 'tank'"
+        },
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-3"
+    },
+    {
+        "id": "E-011",
+        "class": "DIVERGENCE",
+        "title": "Enemy turn rate tuned ~1.5x above the ROM: ROM sweeps ~22 deg/s (super ~44), the clone runs ~34 deg/s (super ~59)",
+        "claim": "ITANGL/DTANGL rotate the tank by adding $0080 to the 16-bit angle TANGLE:LANGLE (:2826-2841 `ITANGL: LDA I,80 ... ADC LANGLE ... ADC TANGLE`) = half of one 256-unit circle-step = 0.703 deg per call. In its pivot path ROBOT issues 2 turn calls per frame for a regular tank and 4 per frame for the TR7 super tank, = 1 unit/frame and 2 units/frame = 1.406 and 2.813 deg/frame; at the 15.625 Hz frame rate that is ~22 deg/s regular and ~44 deg/s super. The clone turns the enemy at TANK_TURN_RATE = 0.4 * MAX_TURN_RATE and SUPER_TANK_TURN_RATE = 0.7 * MAX_TURN_RATE (enemies.ts:201-202); with MAX_TURN_RATE ~84 deg/s that is ~34 deg/s and ~59 deg/s — about 1.5x and 1.3x the ROM rates.",
+        "reasoning": "Decoding the angle math: ITANGL adds the immediate $80 to the low byte LANGLE and carries into the high byte TANGLE (a 16-bit angle where the high byte is the 256-unit circle position, 360/256 = 1.40625 deg/unit as fixed by TRACK's $20=45 deg at :3525). $0080 out of $10000 = 0.5 unit = 0.703 deg/call; ROBOT's big-turn branch calls it twice (regular) and the TR7 branch adds two more (super), so up to 1 and 2 units/frame. Converting at the CONFIRMED 15.625 Hz (NOT 60 — these are per-frame quanta, so the pair-cadence C-001 timebase applies): 1 unit/frame * 1.40625 deg * 15.625 = 21.97 deg/s, super 43.95 deg/s. The clone's comment (enemies.ts:192-199) cites exactly 'the ROM's raw ~22°/s (super ~44°/s)' and states it is 'tuned UP here so the slow-turning tank still closes and lines up a shot'. So this is a knowing divergence, and like E-004 it compensates for the clone's rarer attack disposition (E-002); it should be retuned toward the ROM rate as part of that cluster, not alone. Size s (two constants).",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 2826,
+            "verbatim": "ITANGL:\tLDA I,80\t\t;C  INCREMENT TANK'S ANGLE"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 202,
+            "verbatim": "const TANK_TURN_RATE = MAX_TURN_RATE * 0.4"
+        },
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-2"
+    },
+    {
+        "id": "E-012",
+        "class": "CONFIRMED",
+        "title": "Aim is arctangent-to-player and the shell leaves along the tank's OWN barrel (TANGLE+2) — the clone matches",
+        "claim": "TRACK computes the bearing from the robot to the player as the arctangent of the inter-tank vector (:3487-3573, ABS the components, quadrant table, `LDA AX,ARCTAN`) and returns it in A; ROBOT steers RGOAL toward that bearing, and FIREIT launches the shell along the tank's own facing TANGLE+2, not straight at the player — `LDA TANGLE+2 ;C SET UP SHELLS MOTION` then COS/SIN of that angle set the shell velocity (:3158-3183). So only a roughly-aligned barrel fires and the shot follows the barrel. The clone computes bearingTo(player), re-locks a charging tank onto it each step (enemies.ts:647), gates fire on alignment (:661), and fires the shell with heading = hostile.heading (:663) — the same aim-then-fire-along-own-barrel structure.",
+        "reasoning": "Two confirmations in one: (1) the tank AIMS by true arctangent bearing to the player (TRACK), which the clone mirrors with Math.atan2-based bearingTo and a charge goal that re-locks the live bearing every frame; (2) crucially the shell inherits the TANK'S heading (TANGLE+2), so a tank that is only approximately aimed fires an approximately-aimed shell that can miss — the clone does the identical thing by setting the shell heading to hostile.heading rather than to the player bearing (enemies.ts:663). This is the shared 'shell matches the facing of the firing unit' fact (pair note offset 2674) confirmed on the enemy side. Recording CONFIRMED: the tracking-and-fire GEOMETRY is faithful; the divergences are in the fire-cone width (E-004) and how the barrel is swept toward alignment (E-002/E-011), not in this aim-then-fire-along-barrel structure.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3158,
+            "verbatim": "\tLDA TANGLE+2\t\t;C  SET UP SHELLS MOTION"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 775,
+            "verbatim": "        shell = { x: hostile.x, z: hostile.z, heading: hostile.heading, range: 0 }"
+        }
+    },
+    {
+        "id": "E-013",
+        "class": "DIVERGENCE",
+        "title": "Clone enemy has NO range restraint on firing; the ROM withholds fire when the player is too far (TDIST>=$24) until fully aggressive",
+        "claim": "Before a tank is fully aggressive, FIREIT refuses to fire when the player is too far away — `LDA TDIST / CMP I,24 / BCS 50$` returns without firing when TDIST >= $24 (:3134-3136) — and likewise when the robot is off the player's view (PTURN >= $20). These restraints are dropped only once FTIMER == $FF (:3124, the ~16 s ramp of E-006) or the player's score is high. The clone's enemy fire gate (enemies.ts:656-663) tests only shell-availability, the 2 s spawn grace, the post-strike reload, and barrel alignment — there is NO range term (:661), so a freshly-spawned clone tank fires the instant it lines up at ANY distance.",
+        "reasoning": "Decoding FIREIT's restraint ladder (:3124-3136): after the $20 fire-grace (E-005), if FTIMER != $FF the tank must ALSO clear a series of 'be nice' checks before firing — player score not-a-rookie, robot within the player's forward view (PTURN < $20), and target within range (TDIST < $24) — any of which, failing, aborts the shot. Only at FTIMER == $FF (`CMP I,0FF / BEQ 5$`) are these skipped and the tank allowed to snipe freely. The clone implements the grace (E-005) and the ramp endpoint (E-006) but not this MIDDLE band of restraint: its fire condition has no TDIST analog, so early-game enemies are more lethal at long range than the arcade's. Honest limit: $24 is an undecoded TDIST distance byte (its world-unit scale is deferred, like the clone's own provisional distance constants), so the exact firing range cannot be pinned here — but the RESTRAINT's absence is the divergence, and it is grounded. Fix = add a range gate to the enemy fire condition that relaxes with the aggression ramp; size s (one added clause), value to be trued up in playtest with the deferred distance scale.",
+        "source": {
+            "file": "BZONE.MAC",
+            "line": 3135,
+            "verbatim": "\tCMP I,24"
+        },
+        "ours": {
+            "file": "src/core/enemies.ts",
+            "line": 667,
+            "verbatim": "        Math.abs(errPlayer) <= FIRE_CONE + (1 - aggro) * MILD_FIRE_EXTRA"
+        },
+        "recommendation": "fix",
+        "size": "s",
+        "verdict": "CONFIRMED",
+        "remediated_by": "bz3-2"
+    }
+]

@@ -1,0 +1,513 @@
+[
+  {
+    "id": "B-001",
+    "class": "CONFIRMED",
+    "title": "Slow tank kill = 1000 points",
+    "claim": "Doc §1: slow tank scores 1000. Source: the player-hit-robot path adds BCD immediate 1 with implicit ×1000 (SED block, HITS is the score-in-thousands byte).",
+    "reasoning": "QWIKCK's score-add (BZONE.MAC:2354) falls through to `LDA I,1 ;C ADD 1 OTHERWISE`, then CLC/SED/`ADC ZX,HITS` at 2356-2357. Scores are BCD with an implicit trailing thousands digit (memory: battlezone scores BCD), so +1 = 1000 points. Matches scoring.ts SCORES.slowTank=1000 exactly.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2354,
+      "verbatim": "4$:\tLDA I,1\t\t\t;C  ADD 1 OTHERWISE"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 31,
+      "verbatim": "  slowTank: 1000,"
+    }
+  },
+  {
+    "id": "B-002",
+    "class": "CONFIRMED",
+    "title": "Missile (R2D3) kill = 2000 points",
+    "claim": "Doc §1: missile scores 2000. Source: when the killed unit is a missile (R2D3FL set) the add is BCD immediate 2 (×1000).",
+    "reasoning": "BZONE.MAC:2348 `LDA I,2` sits under `BIT R2D3FL; BMI 90$` (2349-2350) — the missile branch — feeding the same SED `ADC ZX,HITS`. BCD +2 = 2000. The missile is object id $16 (R2DOBJ, see B-005). Matches scoring.ts SCORES.missile=2000.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2348,
+      "verbatim": "\tLDA I,2"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 33,
+      "verbatim": "  missile: 2000,"
+    }
+  },
+  {
+    "id": "B-003",
+    "class": "CONFIRMED",
+    "title": "Super tank (TR7) kill = 3000 points",
+    "claim": "Doc §1: super tank scores 3000. Source: when TR7CHK reports a super tank the add is BCD immediate 3 (×1000).",
+    "reasoning": "BZONE.MAC:2352 `LDA I,3` follows `JSR TR7CHK ... BCS 90$` (2351-2353) — TR7 = 'tank rev 7' = super tank (object id $21, TR7OBJ in OBJTBL). BCD +3 = 3000. Matches scoring.ts SCORES.superTank=3000.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2352,
+      "verbatim": "\tLDA I,3"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 35,
+      "verbatim": "  superTank: 3000,"
+    }
+  },
+  {
+    "id": "B-004",
+    "class": "CONFIRMED",
+    "title": "Saucer kill = 5000 points",
+    "claim": "Doc §1: saucer scores 5000. Source: the saucer-kill routine adds BCD immediate 5 (×1000).",
+    "reasoning": "SAUCHK's player-killed-saucer path (BZONE.MAC:2499) is `LDA I,5` then CLC/SED/`ADC HITS` (2500-2502). BCD +5 = 5000. This is distinct from the saucer APPEARANCE score of 2000 (B-007). Matches scoring.ts SCORES.saucer=5000.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2499,
+      "verbatim": "\tLDA I,5"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 37,
+      "verbatim": "  saucer: 5000,"
+    }
+  },
+  {
+    "id": "B-005",
+    "class": "CONFIRMED",
+    "title": "Object roster IDs — missile = $16, and the OBJTBL ordering",
+    "claim": "Doc §1 object index: missile at $16, plus the ordering $00 narrow pyramid / $01 tall box / $02 slow tank / $03 shell / $04-$0b treads / $0c wide pyramid / $0d radar / $0e projectile-explosion / $0f short box / $20 saucer / $21 super tank / $22-$23 empty / $24-$2b spatter. Source: OBJTBL / OBJPNT ordering.",
+    "reasoning": "OBJTBL (BZONE.MAC:4405) and its continuation enumerate shape-command pointers in exactly the doc's id order. The 6th .WORD group (BZONE.MAC:4411) places R2DOBJ at index $16 — independently corroborated by the R2D3FL missile branch in the score-add (B-002) and models.ts's inline '$16 Missile'. $20=SAUOBJ, $21=TR7OBJ, $22-$23=0,0 (empty), $24-$2b=EXHOBJ (spatter). Roster matches.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4411,
+      "verbatim": "\t.WORD EX2OBJ,EX1OBJ,R2DOBJ,BT0OBJ"
+    },
+    "ours": {
+      "file": "src/core/models.ts",
+      "line": 46,
+      "verbatim": "//   short box · `$16` Missile · `$20` Saucer · `$21` Super Tank · `$24`-`$2b`"
+    }
+  },
+  {
+    "id": "B-006",
+    "class": "CONFIRMED",
+    "title": "Missile-appearance DIP band = 5K / 10K / 20K / 30K",
+    "claim": "Doc §2/§9: missiles start at a DIP-selected threshold of 5K, 10K, 20K, or 30K. Source: MISLVL table = BCD 5,10,20,30 (implicit ×1000).",
+    "reasoning": "MISLVL (BZMTNS.MAC:484) `.BYTE 5,10,20,30` sits in a .RADIX 16 region (BZMTNS radix flips 16→10 only at line 501), so the bytes are $05,$10,$20,$30 — valid BCD 5/10/20/30, consumed under SED at BZONE.MAC:3261. Indexed by the DIP MM field (B-025). ×1000 = 5K/10K/20K/30K. Clone pins the 10K factory default (B-029).",
+    "source": {
+      "file": "BZMTNS.MAC",
+      "line": 484,
+      "verbatim": "MISLVL:\t.BYTE 5,10,20,30"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 66,
+      "verbatim": "export const MISSILE_INTRO_THRESHOLD = 10000"
+    }
+  },
+  {
+    "id": "B-007",
+    "class": "CONFIRMED",
+    "title": "Saucer starts appearing at 2000 points",
+    "claim": "Doc §2: saucers begin at 2000 points. Source: the saucer-spawn gate requires (score-thousands >> 1) != 0, i.e. HITS >= 2 (BCD 2 = 2000).",
+    "reasoning": "In the saucer state machine, BZONE.MAC:3459 `LDA HITS` then `LSR; BNE 41$` (3460-3461): HITS=$01 (1000) LSRs to 0 → RTS, no saucer; HITS=$02 (2000) LSRs to $01 → nonzero → spawn. Threshold is exactly score >= 2000. Matches scoring.ts SAUCER_APPEARANCE_SCORE=2000, distinct from the 5000 kill value.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3459,
+      "verbatim": "40$:\tLDA HITS\t\t;D  IF SCORE NOT TOO LOW"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 45,
+      "verbatim": "export const SAUCER_APPEARANCE_SCORE = 2000"
+    }
+  },
+  {
+    "id": "B-008",
+    "class": "CONFIRMED",
+    "title": "Secondary missile threshold = base + 25K",
+    "claim": "Doc §2 (code ref $6679): missiles have a second threshold = base + 25,000. Source: the missile-goal routine adds BCD immediate 25 (×1000) to MISLVL[MM].",
+    "reasoning": "BZONE.MAC:3259-3265 loads MISLVL[MM], CLC/SED, `ADC I,25` (3262), CLD, then SBC HITS — i.e. compares the player's score against (base_threshold + 25 BCD = +25000). Confirms the doc's +25K secondary band. Not ported to clone core (doc says out of scope); recorded for the missile-ramp story. The `ours` anchor is the doc's own claim line (this value lives only in the doc, not yet in core).",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3262,
+      "verbatim": "\tADC I,25"
+    },
+    "ours": {
+      "file": "docs/battlezone-1980-source-findings.md",
+      "line": 130,
+      "verbatim": "> \"Missiles have a second score threshold equal to the base threshold plus 25K points.\" — code"
+    }
+  },
+  {
+    "id": "B-009",
+    "class": "CONFIRMED",
+    "title": "Always one hostile, with no inter-spawn delay",
+    "claim": "Doc §2: there is always one hostile (alive or exploding) and no delay between one leaving and the next appearing. Source: the robot-reset path re-seats a fresh tank immediately, with no wait timer.",
+    "reasoning": "TANKCK (BZONE.MAC:3742) resets goal/position (`LDA PRAND; STA RGOAL`), clears R2D3FL/COLFLG+2 and sets ACTION/TIMOUT to 1 (short) in the same pass — the next hostile is placed with no delay countdown. There is no queue or spawn-cooldown constant; a single hostile is continuously present. Behavioural confirmation; `ours` anchors the doc claim (no single core constant encodes it).",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3742,
+      "verbatim": "TANKCK:\tLDA PRAND\t\t;C  RESET GOAL"
+    },
+    "ours": {
+      "file": "docs/battlezone-1980-source-findings.md",
+      "line": 115,
+      "verbatim": "> \"There will always be one hostile unit on the battlefield, either alive or exploding. When"
+    }
+  },
+  {
+    "id": "B-010",
+    "class": "CONFIRMED",
+    "title": "Exactly 21 obstacles",
+    "claim": "Doc §3: there are 21 fixed obstacles. Source: the placement setup loops 21 times and the position tables hold 21 entries each.",
+    "reasoning": "BZONE.MAC:1504 `LDX I,21` drives the obstacle-table setup loop; PTBLX1/PTBLY1 each hold exactly 21 .NWORD entries (BZONE.MAC:4866-4877), and the collision scan bounds at OBJTBL+21 (720). Matches obstacles.ts OBSTACLES (21 entries).",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 1504,
+      "verbatim": "\tLDX I,21"
+    },
+    "ours": {
+      "file": "src/core/obstacles.ts",
+      "line": 89,
+      "verbatim": "export const OBSTACLES: readonly Obstacle[] = ["
+    }
+  },
+  {
+    "id": "B-011",
+    "class": "CONFIRMED",
+    "title": "Four obstacle shapes: $00 narrow pyramid, $0c wide pyramid, $01 tall box, $0f short box",
+    "claim": "Doc §3: obstacles are exactly these four shape ids. Source: OBJTBL maps $00 and $0c to PYROBJ (pyramid), $01 and $0f to CUBOBJ (box); narrow/wide and tall/short differ only in their vertex data, not command stream.",
+    "reasoning": "OBJTBL (BZONE.MAC:4405) `PYROBJ,CUBOBJ,TNKOBJ,SHLOBJ` and its 4th .WORD group (4409) `PYROBJ,RDROBJ,EXPOBJ,CUBOBJ` put $00=$0c=PYROBJ and $01=$0f=CUBOBJ — the same draw-command streams, distinguished by per-index OBJPNT vertex tables (narrow vs wide, tall vs short). Matches obstacles.ts ObstacleType union.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4405,
+      "verbatim": "OBJTBL:\t.WORD PYROBJ,CUBOBJ,TNKOBJ,SHLOBJ"
+    },
+    "ours": {
+      "file": "src/core/obstacles.ts",
+      "line": 61,
+      "verbatim": "export type ObstacleType = 'narrow-pyramid' | 'wide-pyramid' | 'tall-box' | 'short-box'"
+    }
+  },
+  {
+    "id": "B-012",
+    "class": "CONFIRMED",
+    "title": "Obstacle placement tables — addresses, int16-LE / ×4 format, and an axis-label caveat",
+    "claim": "Doc §3: obstacles stored as three parallel tables — positions ($7681 and $76ab, 21×int16 LE) and type/facing ($3fcc). Source symbols PTBLX1 ($7681), PTBLY1 ($76ab), PTBLO1 ($3fcc); each position is a .NWORD (×4) word.",
+    "reasoning": "PTBLO1=$3FCC is confirmed by BZONE.MAP's global symbol table. PTBLX1 (BZONE.MAC:4866) is the first position table; PTBLY1 follows 42 bytes later, and PTBLY1+42=BATBL ($76D5, MAP) fixes PTBLX1=$7681 and PTBLY1=$76AB — the doc's two addresses exactly. TWO caveats for the fix queue, neither a byte-data divergence: (1) RADIX — these tables are .RADIX 16 (HEX, .NWORD pre-multiplies ×4, so ROM value 0x800×4=8192 matches obstacles.ts #0 x=8192); the DECIMAL .MWORD tables at BZONE.MAC:4882+ (BATBL/TLETBL/ZONTBL) are the MOUNTAINS, not obstacles — do not confuse them. (2) AXIS LABEL — the source names the $7681 table PTBLX1 (X) and $76ab PTBLY1 (Y/depth), whereas the doc/disassembly label them 'z_pos'/'x_pos'; obstacles.ts followed the disassembly (x←$76ab, z←$7681), so clone x/z are transposed vs the source symbol names. Byte values are all present and correct; the disassembly's axis assignment is cross-checked to VisBattlezone GenerateMap, so this is flagged for a future story to settle against the Math Box feed, not asserted as a proven divergence.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4866,
+      "verbatim": "PTBLX1:\t.NWORD 800,0,0,1000"
+    },
+    "ours": {
+      "file": "src/core/obstacles.ts",
+      "line": 12,
+      "verbatim": "//   * `obstacle_z_pos` — 21 x int16 LE — ROM address `$7681` (file offset"
+    }
+  },
+  {
+    "id": "B-013",
+    "class": "CONFIRMED",
+    "title": "Facing byte → radians on a 256-unit angle wheel (256 = full turn)",
+    "claim": "Doc §3: orientation = facing_byte × (2π/256). Source: the ROM-wide 8-bit angle wheel where 45° = $20 (32/256).",
+    "reasoning": "The angle classifier at BZONE.MAC:3525 `LDA I,20 ;C USE 45 DEG` proves $20 (32) = 45° on a 256-step wheel, i.e. 256 = 360°. obstacles.ts encodes the wheel directly: entry #1 facing $10 (=16) → 16×2π/256 = 0.392699 rad, matching its orientation field. Wheel and conversion confirmed.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3525,
+      "verbatim": "22$:\tLDA I,20\t\t;C  USE 45 DEG"
+    },
+    "ours": {
+      "file": "src/core/obstacles.ts",
+      "line": 91,
+      "verbatim": "  { x: 16384, z: 0, orientation: 0.392699, type: 'short-box' }, // #1: type=$0f facing=$10"
+    }
+  },
+  {
+    "id": "B-014",
+    "class": "CONFIRMED",
+    "title": "Vertex table at $388e; format = length byte + 16-bit X/Y/Z triples",
+    "claim": "Doc §4: vertex-data-address table at $388e (OBJPNT), each blob a length byte followed by 16-bit coordinates. Source: OBJPNT=$388E (MAP) points at PYRTBL etc., each `.BYTE <next-table-offset>` length byte + `.NWORD X,Y,Z` (×4) vertices.",
+    "reasoning": "OBJPNT=$388E is a BZONE.MAP global. PYRTBL (BZMTNS.MAC:502) opens with `.BYTE CUBTBL-PYRTBL` (a length/next-offset byte) then five `.NWORD` triples (each coordinate a 16-bit word ×4). Container format matches the doc. Note: the doc's per-axis decode 'zc,-xc,yc×2' is the renderer's interpretation compensating the Math Box's X/Z halving — the ROM stores three uniform ×4 words; this is a render convention, not a stored-scale divergence.",
+    "source": {
+      "file": "BZMTNS.MAC",
+      "line": 502,
+      "verbatim": "PYRTBL:\t.BYTE CUBTBL-PYRTBL"
+    },
+    "ours": {
+      "file": "src/core/models.ts",
+      "line": 29,
+      "verbatim": "//   * Each vertex blob: a length byte, then N vertices of 6 bytes each — 16-"
+    }
+  },
+  {
+    "id": "B-015",
+    "class": "CONFIRMED",
+    "title": "Shape command stream = 5-bit vertex index + 3-bit command (cmd 4 = draw edge, cmd 0 = point)",
+    "claim": "Doc §4: each command byte is a 3-bit command + 5-bit vertex index; cmd 4 draws an edge, cmd 0 plots a point, others move/set. Source: the draw-command macros encode exactly this.",
+    "reasoning": "The object-language macros define the 3-bit command in the low bits and the vertex index in the high 5 bits: TVCTR (BZONE.MAC:4251-4252) = `4 + <<INDEX*8>&0F8>` (cmd 4, draw), TDOT (4235-4236) = `INDEX*8&0F8` (cmd 0, point), and SBRITE=1, BVCTR=2, TLABS=3, TSPCL=5, TSLIM=6, OBJEND=$FF. This matches the doc's command decode byte-for-byte.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4252,
+      "verbatim": ".BYTE 4+<<INDEX*8>&^H0F8>"
+    },
+    "ours": {
+      "file": "src/core/models.ts",
+      "line": 34,
+      "verbatim": "//     `cmd = byte & 0x07`. `cmd 4` = draw edge (current beam position →"
+    }
+  },
+  {
+    "id": "B-016",
+    "class": "CONFIRMED",
+    "title": "View-frustum clip: near $03ff (1023), far $7aff (31487)",
+    "claim": "Doc §4: objects nearer than $03ff or farther than $7aff are culled before vertex processing. Source: the object-projection routine culls Z<$0400 (too close) and Z>=$7B00 (too far), boundaries $03FF and $7AFF, after restoring the Math Box's halved X/Z scale.",
+    "reasoning": "In ROTPNT the returned Z is doubled by ASL/ROL (BZONE.MAC:1687-1692) — this undoes the Math Box's X/Z halving, giving full-scale world Z in X2/X2+1. Near cull: `LSR;LSR;BEQ 20$ ;D IF TOO CLOSE` (1695-1697) drops Z with high byte < 4, i.e. Z < $0400, last-visible boundary $03FF = 1023. Far cull: `CMP I,7B ... BCS 20$ ;D IF TOO FAR` (1699-1700) drops Z >= $7B00, last-visible boundary $7AFF = 31487. Both match the doc exactly. The clone does not hard-code these (they are a Math Box property); the ours anchor is obstacles.ts's own note of the same bounds.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 1699,
+      "verbatim": "\tCMP I,7B\t\t;D  IF TOO FAR, THROW OUT"
+    },
+    "ours": {
+      "file": "src/core/obstacles.ts",
+      "line": 44,
+      "verbatim": "// ($03ff=1023 .. $7aff=31487, mathbox.html): that window clips by distance"
+    }
+  },
+  {
+    "id": "B-017",
+    "class": "CONFIRMED",
+    "title": "Model roster — vertex/edge counts (spot-checked) match the ROM shape tables",
+    "claim": "Doc §4: 10 Model3D entries, 9 of them byte-exact ROM decodes. Source spot-checks confirm the container decode: narrow pyramid 5 verts / 8 edges, box 8 verts, shell 5 verts.",
+    "reasoning": "PYRTBL (BZMTNS.MAC:502) decodes to 5 vertices (four base + apex (0,0,80)); its command stream PYROBJ (BZONE.MAC:4419-4430) issues 8 TVCTR draws = 8 edges (matches doc narrow-pyramid 5v/8e). CUBTBL = 8 vertices (box, 12 edges is a cube), SHLTBL = 5 vertices (shell). These independently reproduce the doc's counts. The full byte-exactness of all 10 models (tank/super-tank/missile/saucer/debris) was NOT re-decoded here — see the LIMITATION note; the container format and spot-checked shapes support the doc's claim.",
+    "source": {
+      "file": "BZMTNS.MAC",
+      "line": 502,
+      "verbatim": "PYRTBL:\t.BYTE CUBTBL-PYRTBL"
+    },
+    "ours": {
+      "file": "src/core/models.ts",
+      "line": 9,
+      "verbatim": "// ROM-VERIFIED — every model below except `EXPLOSION_DEBRIS` (see its own"
+    }
+  },
+  {
+    "id": "B-018",
+    "class": "NO_COUNTERPART",
+    "title": "Coordinate-system handedness (+X left, +Y up, +Z into monitor) not stated in shipped source",
+    "claim": "Doc §4 quotes mathbox.html: '+X points to the left, +Y up, +Z into the monitor'. Searched BZONE.MAC and BZMTNS.MAC (the vertex tables and Math Box interface); the handedness is a Math Box projection property and is not stated as a citable constant in the shipped assembler source.",
+    "reasoning": "The shipped source encodes vertex data consistent with a Y-up convention (PYRTBL's apex is (0,0,80), the 3rd coordinate being height), but the specific left-handed X and +Z-into-screen mapping lives in the Math Box (2901 microcode = MBUCOD, which is NOT on the link string and cannot be cited). No shipped module states the handedness, so there is no primary-source counterpart to confirm or refute the doc's quote; it is accepted as an unverifiable-but-plausible Math Box convention.",
+    "source": {
+      "file": "BZMTNS.MAC",
+      "line": 507,
+      "verbatim": "\t.NWORD 0,0,80"
+    },
+    "ours": null,
+    "recommendation": "accept"
+  },
+  {
+    "id": "B-019",
+    "class": "CONFIRMED",
+    "title": "Enemy score rises by 1000 each time the player is killed",
+    "claim": "Doc §5 (code ref $69fd): the enemy's own score increases by 1000 points when the player dies. Source: the score-add is X-indexed; the enemy-killed-player path adds BCD 1 to the enemy's score slot (HITS+2).",
+    "reasoning": "The score add writes `ADC ZX,HITS` (BZONE.MAC:2357) — a zero-page,X store into HITS+X. With X=2 (enemy killed player) this targets HITS+2, the enemy's score; the preceding `TXA; BNE 4$` (2346) routes the X!=0 case straight to `LDA I,1` (+1000). So each player death adds 1000 to the enemy score. Matches difficulty.ts ENEMY_SCORE_PER_PLAYER_DEATH=1000.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2357,
+      "verbatim": "\tADC ZX,HITS"
+    },
+    "ours": {
+      "file": "src/core/difficulty.ts",
+      "line": 35,
+      "verbatim": "export const ENEMY_SCORE_PER_PLAYER_DEATH = 1000"
+    }
+  },
+  {
+    "id": "B-020",
+    "class": "CONFIRMED",
+    "title": "Full aggression at a 7000-point player-minus-enemy differential",
+    "claim": "Doc §5: the enemy reaches full aggression (spawns in any direction) when the player out-scores it by 7000. Source: the spawn-window routine computes HITS-HITS+2 and caps it at BCD 7 (=7000).",
+    "reasoning": "In ROBCHK's tank-placement path, BZONE.MAC:3754-3761 does `SEC; LDA HITS; SBC HITS+2` (player-thousands minus enemy-thousands), then `CMP I,7` (3759) and caps with `LDA I,7` (3761). The capped differential (BCD 7 = 7000) drives the angular spread of the spawn window — small differential = tank placed in front, >=7000 = full 360° spread. Matches difficulty.ts FULL_AGGRESSION_DIFFERENTIAL=7000.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3759,
+      "verbatim": "\tCMP I,7"
+    },
+    "ours": {
+      "file": "src/core/difficulty.ts",
+      "line": 32,
+      "verbatim": "export const FULL_AGGRESSION_DIFFERENTIAL = 7000"
+    }
+  },
+  {
+    "id": "B-021",
+    "class": "CONFIRMED",
+    "title": "Per-spawn aggression ramp of ~17 seconds (FTIMER saturates at $FF)",
+    "claim": "Doc §5: even an initially-mild enemy becomes more aggressive ~17 seconds after spawning. Source: FTIMER increments once per frame to a $FF ceiling and gates the enemy's willingness to fire.",
+    "reasoning": "FTIMER is incremented each main-loop frame until it saturates at $FF (BZONE.MAC:486-489), and FIREIT gates firing on it: `LDA FTIMER ... CMP I,20 ;D IF TOO SOON AFTER APPEARING` (3120-3121) and `CMP I,0FF; BEQ 5$` (full willingness at ceiling). At the true 15.625 Hz sim rate, 255 frames = 255/15.625 = 16.3 s — the doc's '~17 seconds' is a fair approximation (arithmetic shown; slightly closer to 16). Matches difficulty.ts AGGRESSION_RAMP_SECONDS=17.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3120,
+      "verbatim": "FIREIT:\tLDA FTIMER\t\t;D  IF TOO SOON AFTER APPEARING"
+    },
+    "ours": {
+      "file": "src/core/difficulty.ts",
+      "line": 38,
+      "verbatim": "export const AGGRESSION_RAMP_SECONDS = 17"
+    }
+  },
+  {
+    "id": "B-022",
+    "class": "CONFIRMED",
+    "title": "Radar shows enemy tanks/missiles only — obstacles and saucers do not paint",
+    "claim": "Doc §7: enemy tanks and missiles appear on radar; obstacles and saucers do not. Source: DRADAR paints only the other-tank blip; obstacles and the saucer are never fed to it.",
+    "reasoning": "DRADAR (BZONE.MAC:3882, section header) 'DISPLAY RADAR SWEEP AND BLIP OF OTHER TANK, IF WITH FIRING RANGE' — the radar's only contact is the single hostile tank/missile (via TRACK). The 21 obstacles and the saucer are drawn in the world but never handed to the radar routine. Matches radar.ts RADAR_INVISIBLE_KINDS = ['obstacle','saucer'].",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3882,
+      "verbatim": ";\t      AND BLIP OF OTHER TANK, IF WITH FIRING RANGE"
+    },
+    "ours": {
+      "file": "src/core/radar.ts",
+      "line": 56,
+      "verbatim": "export const RADAR_INVISIBLE_KINDS: readonly RadarContactKind[] = ['obstacle', 'saucer']"
+    }
+  },
+  {
+    "id": "B-023",
+    "class": "CONFIRMED",
+    "title": "Battlefield objects visible only within a ~45° half-angle cone",
+    "claim": "Doc §7: battlefield units are visible in a cone '45 degrees wide'. Source: the projection routine culls any object whose lateral offset |Y| meets or exceeds its depth X — a 45° half-angle (±45°, 90° full) view cone.",
+    "reasoning": "ROTPNT culls with `LDA Y1 ... CMP X2 / SBC X2+1 / BCS 20$ ;D IF Y >= X` (BZONE.MAC:1719-1723): an object survives only while |lateral| < depth, i.e. within ±45° of the view axis. This is the geometric source of the doc's '45 degrees' cone (and of the separately-noted 90° full-FOV horizon claim). The clone has no explicit cone constant; ours anchors the doc claim.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 1719,
+      "verbatim": "\tLDA Y1\t\t\t;D  IF Y >= X"
+    },
+    "ours": {
+      "file": "docs/battlezone-1980-source-findings.md",
+      "line": 353,
+      "verbatim": "> \"The units on the battlefield are visible in a cone 45 degrees wide, which is why when you"
+    }
+  },
+  {
+    "id": "B-024",
+    "class": "CONFIRMED",
+    "title": "Sound: POKEY channels + discrete circuits, control at $1840",
+    "claim": "Doc §8: four POKEY channels plus discrete engine/cannon/explosion circuits, sound control write at $1840. Source: BZSOUN's POKEY channel driver and the SOUND/CHAN1-4 globals.",
+    "reasoning": "BZSOUN.MAC is the POKEY sound driver; BZONE.MAP globals SOUND=$1840, POKEY=$1820, CHAN1F..CHAN4F ($1820-$1826) confirm the four-channel POKEY plus the $1840 control write. BZSOUN.MAC:159 ('ALL SOUNDS END WHEN CHANNEL 1 GOES IDLE') confirms the channel-priority structure the doc describes. LIMITATION: the exact per-effect-to-channel assignments in the doc (channel 1 = collision/merp/saucer, channel 2 = ping/extra-life/alert, channels 3/4 = missile buzz; discrete engine/cannon/explosion) are quoted from the hub prose and were NOT individually re-traced through the sound tables — the structural inventory is confirmed, the per-cue mapping is accepted as plausible.",
+    "source": {
+      "file": "BZSOUN.MAC",
+      "line": 159,
+      "verbatim": ";NOTE: ALL SOUNDS END WHEN CHANNEL 1 GOES IDLE, SO IT SHOULD BE THE"
+    },
+    "ours": {
+      "file": "docs/battlezone-1980-source-findings.md",
+      "line": 371,
+      "verbatim": "> Channel 1: \"collision with object, post-collision 'merp', saucer hit, saucer alive, high"
+    }
+  },
+  {
+    "id": "B-025",
+    "class": "CONFIRMED",
+    "title": "DSW0 = LLBBMMTT; MM (missile threshold) is bits 3-2",
+    "claim": "Doc §9: DSW0 at $0A00 packs LL/BB/MM/TT (language / bonus / missile / tanks); MM selects the missile threshold. Source: OPTION=$0A00 (MAP) and the missile routine extracts MM as bits 3-2.",
+    "reasoning": "OPTION=$0A00 and OPTON2=$0C00 are BZONE.MAP globals (doc's DSW0/$0A00). The missile-threshold read does `LDA OPTION; LSR; LSR; AND I,3` (BZONE.MAC:3254-3257) then indexes MISLVL — extracting the two bits at positions 3-2 = the MM field of LLBBMMTT. The BB field is read with LSR×4 (B-026), TT with AND 3 (B-027), LL with a ROL×4 (B-028), corroborating the full bit layout. Layout confirmed.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3257,
+      "verbatim": "\tAND I,3"
+    },
+    "ours": {
+      "file": "docs/battlezone-1980-source-findings.md",
+      "line": 400,
+      "verbatim": "DSW0 ($0A00): LLBBMMTT"
+    }
+  },
+  {
+    "id": "B-026",
+    "class": "CONFIRMED",
+    "title": "Bonus-tank award effectively fires at 15K/25K/50K — clone matches (strict-boundary decode)",
+    "claim": "Doc §9 / DIP comment: BB bonus tank at 15K / 25K / 50K. Clone difficulty.ts uses 15000. NEWLIF awards the extra tank when the score crosses STRICTLY ABOVE BONTBL[BB] = BCD 14/24/49 (thousands); because every Battlezone point value is a whole multiple of 1000, “score > 14000” is identical to “score >= 15000”, so the effective award threshold is exactly 15/25/50K. Clone matches.",
+    "reasoning": "BONTBL (BZMTNS.MAC:483) `.BYTE 0,14,24,49` sits in a RADIX-16 region -> BCD 14/24/49. NEWLIF (BZONE.MAC:2545-2559): `LDA AX,BONTBL` then `CMP TEMP1 / BCC 20$` (skip if threshold < OLD score) and `CMP HITS / BCS 20$` (skip if threshold >= NEW score). The life is granted ONLY when TEMP1 <= 14 < HITS, i.e. the frame the score first exceeds 14000 (in thousand-units) — NOT at exactly 14000, which fails the strict `BCS` test. Since all kill values (1000/2000/3000/5000) are whole thousands, the first score above 14000 is always 15000, so the award is behaviorally identical to the clone’s BONUS_TANK_SCORES[0]=15000. The attract screen `SED; ADC I,1` (BZONE.MAC:1042) shows 15000 to match. This SUPERSEDES an earlier BOOK_WAS_WRONG reading of this same claim that mistook the strict boundary for an award AT 14000 and would have wrongly retuned 15000->14000 (killed by the Phase-3 coverage review + a NEWLIF re-trace, 2026-07-17; the contradicting CONFIRMED is score-hud S-007).",
+    "source": {
+      "file": "BZMTNS.MAC",
+      "line": 483,
+      "verbatim": "BONTBL:\t.BYTE 0,14,24,49"
+    },
+    "ours": {
+      "file": "src/core/difficulty.ts",
+      "line": 44,
+      "verbatim": "export const BONUS_TANK_SCORES: readonly [number, number] = [15_000, 100_000]"
+    }
+  },
+  {
+    "id": "B-027",
+    "class": "CONFIRMED",
+    "title": "TT (starting tanks) = DIP value + 2",
+    "claim": "Doc §9: TT = number of starting tanks (value + 2). Source: LIVES is set from (OPTION & 3) + 2.",
+    "reasoning": "BZONE.MAC:1204-1207 does `LDA OPTION; AND I,3; ADC I,2; STA LIVES` (with CLC preceding at 1203) — the TT field (bits 1-0) plus 2 becomes the starting life count. Matches the doc's 'value + 2' exactly.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 1206,
+      "verbatim": "\tADC I,2"
+    },
+    "ours": {
+      "file": "docs/battlezone-1980-source-findings.md",
+      "line": 404,
+      "verbatim": "  TT=number of starting tanks (value + 2)"
+    }
+  },
+  {
+    "id": "B-028",
+    "class": "BOOK_WAS_WRONG",
+    "title": "DSW0 language codes: 01 is GERMAN and 10 is FRENCH (doc has them swapped)",
+    "claim": "Doc §9 (quoted from the disassembly's memory-map comment): LL = 00 English, 01 French, 10 German, 11 Spanish. Source: LNGTBL orders English, German, French, Spanish and is indexed by 2×LL, so 01→German and 10→French.",
+    "reasoning": "MSGS reads the language DIP: `LDA OPTION; ROL; ROL; ROL; ROL; AND I,6; TAY; LDA AY,LNGTBL+1` (BZONE.MAC:4103-4110). A 9-bit ROL×4 places OPTION bits 7,6 (LL) at bit positions 2,1, so Y = 2×LL (word index). LNGTBL (BZONE.MAC:4102) = `ENGLISH-1, GERMAN-1, FRENCH-1, SPANSH-1`, so LL=00→English, 01→German, 10→French, 11→Spanish. The doc's 'French/German' assignment for 01/10 is reversed — the disassembly's comment was wrong and the doc inherited it. Immaterial to clone gameplay (no language is ported), but a factual error in the citation-authority doc; fix is a one-line correction to §9. findings-doc.test.ts is attestation-only and needs no retune.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4102,
+      "verbatim": "LNGTBL:\t.WORD ENGLISH-1,GERMAN-1,FRENCH-1,SPANSH-1"
+    },
+    "ours": {
+      "file": "docs/battlezone-1980-source-findings.md",
+      "line": 401,
+      "verbatim": "  LL=language (00=English, 01=French, 10=German, 11=Spanish)"
+    },
+    "recommendation": "fix",
+    "size": "s",
+    "verdict": "CONFIRMED",
+    "remediated_by": "bz3-13"
+  },
+  {
+    "id": "B-029",
+    "class": "CONFIRMED",
+    "title": "Missile factory-default (10K) is honestly pinned from a community DIP table, not a ROM line",
+    "claim": "Doc §9: the ROM resolves the missile threshold to a 4-option band (5K/10K/20K/30K) but NOT to a single factory default; the 10K default is pinned from arcade-museum.com's community DIP table. Source confirms the band exists as a runtime DIP read, with no default encoded.",
+    "reasoning": "MISLVL (BZMTNS.MAC:484) supplies the four options, selected at runtime from the physical DIP bank at OPTION=$0A00 (B-025). No ROM constant names which position ships as default — that is off-board switch state. The doc §9 and scoring.ts:16 both state this honestly and pin 10K to a published community source rather than inventing a ROM line. Per the task's instruction to verify the pin is honestly sourced: it is. No fabricated source line.",
+    "source": {
+      "file": "BZMTNS.MAC",
+      "line": 484,
+      "verbatim": "MISLVL:\t.BYTE 5,10,20,30"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 16,
+      "verbatim": "// The one DIP-selectable value (`MISSILE_INTRO_THRESHOLD`) is STILL pinned"
+    }
+  },
+  {
+    "id": "B-030",
+    "class": "CONFIRMED",
+    "title": "Explosion debris is point-drawn in ROM — the clone's authored edges are honestly flagged (§6)",
+    "claim": "Doc §6: the spatter debris shapes ($24-$2b) draw as isolated points (cmd 0), not connected edges, so EXPLOSION_DEBRIS's edges are AUTHORED, not ROM-exact. Source: EXHOBJ (the $24-$2b command stream) is eight TDOT (cmd 0 = plot point) with zero TVCTR (cmd 4 = draw edge).",
+    "reasoning": "EXHOBJ (BZONE.MAC:4717-4726) is `TLABS 7; SBRITE 0A0; TDOT 0 .. TDOT 7; OBJEND` — eight point-plot commands (TDOT = cmd 0, per B-015) and no edge-draw command. The ROM genuinely renders debris as points, which Model3D (edges-only) cannot represent, so the clone's origin→point edges are a documented authored choice, not a decode error. The doc's §6 accounting is accurate.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4719,
+      "verbatim": "\tTDOT 0"
+    },
+    "ours": {
+      "file": "src/core/models.ts",
+      "line": 55,
+      "verbatim": "// ROM draws each one as 8 individual POINTS (`cmd 0`), never as connected"
+    }
+  }
+]

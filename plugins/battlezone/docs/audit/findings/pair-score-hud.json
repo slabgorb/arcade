@@ -1,0 +1,412 @@
+[
+  {
+    "id": "S-001",
+    "class": "CONFIRMED",
+    "title": "Slow tank kill = 1000 points (BCD add 1, x1000 implicit zeros)",
+    "claim": "ROM: on a shell-vs-object kill the score adder falls through to the default branch 4$ = LDA I,1 (BZONE.MAC:2354), which is then SED-added (decimal/BCD mode, BZONE.MAC:2356) into the HITS counter. The score is displayed as the HITS BCD digits with three literal trailing zeros baked into the label string (SCORE, YSCORE = 'SCORE     000', line 4299; ZEROS '000 ' appended to high scores). So BCD add of 1 -> HITS=$01 -> renders '1' + '000' = 1000 points for a regular ('slow') tank. Ours SCORES.slowTank = 1000. MATCH.",
+    "reasoning": "The kill-value dispatch (BZONE.MAC:2346-2358): TXA/BNE 4$ sends X!=0 objects to 4$ (add 1); the X==0 path tries missile (LDA I,2) then TR7/super (LDA I,3), else falls into 4$ = add 1. The regular tank is the fall-through default = BCD 1. The implicit x1000 is the '000' suffix in every score label string; DIGT2S draws only the HITS/HSCTBL BCD bytes and the label supplies the low three zero digits. 1 (BCD) x 1000 = 1000.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2354,
+      "verbatim": "4$:\tLDA I,1\t\t\t;C  ADD 1 OTHERWISE"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 31,
+      "verbatim": "  slowTank: 1000,"
+    }
+  },
+  {
+    "id": "S-002",
+    "class": "CONFIRMED",
+    "title": "Missile (R2D3) kill = 2000 points (BCD add 2, x1000 implicit zeros)",
+    "claim": "ROM: when the killed object is the R2D3 missile the adder loads LDA I,2 (BZONE.MAC:2348) on the X==0 / R2D3FL-negative path (BIT R2D3FL / BMI 90$, lines 2349-2350) and SED-adds it to HITS. BCD add of 2 -> HITS=$02 -> displayed '2' + implicit '000' = 2000 points. Ours SCORES.missile = 2000. MATCH.",
+    "reasoning": "Dispatch order in QWIKCK's score add: X==0 -> A=2 (tentative missile); BIT R2D3FL, BMI 90$ commits the 2 when R2D3FL bit7 is set (it IS the buzz-bomber missile). The SED at 2356 makes the +2 a BCD add; label '000' supplies the x1000. 2 (BCD) x 1000 = 2000. VOCAB: R2D3 = missile.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2348,
+      "verbatim": "\tLDA I,2"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 33,
+      "verbatim": "  missile: 2000,"
+    }
+  },
+  {
+    "id": "S-003",
+    "class": "CONFIRMED",
+    "title": "Super tank (TR7) kill = 3000 points (BCD add 3, x1000 implicit zeros)",
+    "claim": "ROM: for the high-powered TR7 tank the adder loads LDA I,3 (BZONE.MAC:2352) after TR7CHK returns carry-set (JSR TR7CHK / LDA I,3 / BCS 90$, lines 2351-2353), then SED-adds it to HITS. BCD add of 3 -> HITS=$03 -> '3' + implicit '000' = 3000 points. Ours SCORES.superTank = 3000. MATCH.",
+    "reasoning": "TR7CHK (BZONE.MAC:3704-3708) sets carry when the current enemy is the TR7 (the 'super' tank) rather than the old CLVUKER. On the X==0 non-R2D3 path the adder JSR TR7CHKs and, if carry, loads BCD 3. SED at 2356 + '000' label = x1000. 3 (BCD) x 1000 = 3000. VOCAB: super tank = 3000.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2352,
+      "verbatim": "\tLDA I,3"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 35,
+      "verbatim": "  superTank: 3000,"
+    }
+  },
+  {
+    "id": "S-004",
+    "class": "CONFIRMED",
+    "title": "Saucer kill = 5000 points (BCD add 5, x1000 implicit zeros)",
+    "claim": "ROM: SAUCHK's player-kills-saucer branch loads LDA I,5 (BZONE.MAC:2499), CLC/SED, ADC HITS (lines 2500-2503) — a BCD add of 5 to the score. 5 (BCD) -> HITS=$05 -> '5' + implicit '000' = 5000 points. Ours SCORES.saucer = 5000. MATCH.",
+    "reasoning": "In SAUCHK the collision is credited only when the PLAYER's shell hit it (TXA/BNE C.60$ at 2493 skips scoring when a robot blew it up). The value added is BCD 5, in decimal mode (SED at 2501), giving 5000 via the '000' label suffix. This is the saucer's KILL value, distinct from its 2000-point APPEARANCE threshold (S-005). 5 (BCD) x 1000 = 5000.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 2499,
+      "verbatim": "\tLDA I,5"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 37,
+      "verbatim": "  saucer: 5000,"
+    }
+  },
+  {
+    "id": "S-005",
+    "class": "CONFIRMED",
+    "title": "Saucer starts appearing at score 2000 (HITS>>1 != 0, BCD)",
+    "claim": "ROM: the saucer spawn gate in SAUCMV is LDA HITS / LSR / BNE 41$ / RTS (BZONE.MAC:3459-3462): the saucer is eligible to appear only when (HITS >> 1) != 0, i.e. HITS >= $02. HITS is the low BCD byte of the score in thousands, so HITS=$02 = 2 -> 2000 points. HITS=$01 (1000) -> LSR -> 0 -> RTS (too low). Ours SAUCER_APPEARANCE_SCORE = 2000. MATCH.",
+    "reasoning": "40$ ('IF SCORE NOT TOO LOW') shifts the BCD thousands byte right one bit; a nonzero result means the thousands count reached 2. Combined with the x1000 display scheme (S-001), the first score at which a saucer can be brought out is 2000. Distinct from the 5000 kill value (S-004) — the ROM tracks 'when it shows up' and 'what it's worth' separately, exactly as scoring.ts documents.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 3459,
+      "verbatim": "40$:\tLDA HITS\t\t;D  IF SCORE NOT TOO LOW"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 45,
+      "verbatim": "export const SAUCER_APPEARANCE_SCORE = 2000"
+    }
+  },
+  {
+    "id": "S-006",
+    "class": "CONFIRMED",
+    "title": "Missile-appearance DIP band = 5000/10000/20000/30000; our 10000 default sits in-band",
+    "claim": "ROM: MISLVL: .BYTE 5,10,20,30 (BZMTNS.MAC:484). This table is inside BZMTNS's .RADIX 16 region (line 460 '.RADIX 16' governs until line 501 '.RADIX 10'), so the bytes are $05,$10,$20,$30 — which as BCD read 5,10,20,30. ROBCHK selects one by DIP (LDA OPTION/LSR/LSR/AND I,3/TAX) and compares the score: LDA HITS / CMP AX,MISLVL / BCC TANKCK (BZONE.MAC:3730-3732) — the missile (R2D3) appears once HITS >= MISLVL[dip]. With the x1000 display: 5000/10000/20000/30000. Ours MISSILE_INTRO_THRESHOLD = 10000 = MISLVL[1] ($10 = BCD 10). Band MATCHES; the specific 10K default is the arcade-museum factory pin (not a ROM constant — a runtime DIP read).",
+    "reasoning": "RADIX TRAP: had these bytes been decimal, .BYTE 10 would assemble to $0A, an invalid BCD nibble that could never compare cleanly against the BCD HITS counter. The radix-16 reading ($10/$20/$30) is the only one that yields valid BCD 10/20/30 — proof the hex radix is correct here. The threshold compare uses the low BCD byte only, guarded by HITS+1==0 (ROBCHK line 3723-3724), i.e. below 100000. Our chosen default of the four options carries no ROM contradiction.",
+    "source": {
+      "file": "BZMTNS.MAC",
+      "line": 484,
+      "verbatim": "MISLVL:\t.BYTE 5,10,20,30"
+    },
+    "ours": {
+      "file": "src/core/scoring.ts",
+      "line": 66,
+      "verbatim": "export const MISSILE_INTRO_THRESHOLD = 10000"
+    }
+  },
+  {
+    "id": "S-007",
+    "class": "CONFIRMED",
+    "title": "Bonus-tank DIP band = 15000/25000/50000; our 15000 default sits in-band",
+    "claim": "ROM: BONTBL: .BYTE 0,14,24,49 (BZMTNS.MAC:483), inside BZMTNS's .RADIX 16 region (line 460-501), so the bytes are $00,$14,$24,$49 = BCD 0,14,24,49. NEWLIF grants an extra tank when the score CROSSES BONTBL[dip]: it reads BONTBL[dip], and awards the life when prior score <= value < current score (BZONE.MAC:2552-2560), i.e. on reaching value+1 thousands. The attract banner confirms the +1: DISTBL loads BONTBL, SED-ADC I,1, and displays it with '000' (BZONE.MAC:1039-1049) -> shown thresholds 15000/25000/50000. Ours BONUS_TANK_SCORES[0] = 15_000 = BONTBL[1] ($14 = BCD 14, awards at 15000). Band MATCHES; 15K default is the arcade-museum factory pin.",
+    "reasoning": "RADIX TRAP again: .BYTE 14/24/49 in hex = $14/$24/$49 = valid BCD 14/24/49; as decimal they would be $0E/$18/$31 (BCD-invalid). BONTBL stores 'last value BELOW the award', so the award triggers one thousand higher (14 -> 15000), which is exactly what the +1 display arithmetic prints — the stored value and the displayed/awarded threshold are self-consistent at 15000/25000/50000. Our two-element pin [15000,100000] takes the level-1 factory default plus the fixed super bonus (S-008).",
+    "source": {
+      "file": "BZMTNS.MAC",
+      "line": 483,
+      "verbatim": "BONTBL:\t.BYTE 0,14,24,49"
+    },
+    "ours": {
+      "file": "src/core/difficulty.ts",
+      "line": 44,
+      "verbatim": "export const BONUS_TANK_SCORES: readonly [number, number] = [15_000, 100_000]"
+    }
+  },
+  {
+    "id": "S-008",
+    "class": "CONFIRMED",
+    "title": "Super bonus (second extra tank) at 100000 points",
+    "claim": "ROM: independent of the DIP bonus level, NEWLIF grants a SUPER bonus tank when the score's high BCD byte HITS+1 first becomes nonzero while the prior high byte was zero (LDX HITS+1 / BNE 40$ ... 40$: LDA TEMP1+1 / BNE 20$ / INC LIVES / SUPER, BZONE.MAC:2554-2572). HITS+1 becomes nonzero when the thousands count passes 99 -> 100 thousands = 100000 points. The attract banner names it literally: BONMS1 = '000 AND 100000' (BZONE.MAC:4310), rendered as 'BONUS TANK AT n000 AND 100000'. Ours BONUS_TANK_SCORES[1] = 100_000. MATCH.",
+    "reasoning": "The super-bonus branch fires exactly once, on the carry of the low BCD byte into the high byte (score reaching 100000 thousands-scaled). The BONPL1 string 'AND 100000' is the on-screen confirmation of that fixed second award. Our extraTanksEarned() treats 100000 as the second, crossing-based threshold — same one-shot semantics.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4310,
+      "verbatim": "BONMS1: ASCVH BONPL1,0,0,<000 AND 100000>"
+    },
+    "ours": {
+      "file": "src/core/difficulty.ts",
+      "line": 44,
+      "verbatim": "export const BONUS_TANK_SCORES: readonly [number, number] = [15_000, 100_000]"
+    }
+  },
+  {
+    "id": "S-009",
+    "class": "CONFIRMED",
+    "title": "In-game alert 'ENEMY IN RANGE' matches ROM verbatim",
+    "claim": "ROM: RNGMSG (ERANGE) = 'ENEMY IN RANGE' (BZONE.MAC:4295), emitted by the radar routine when the tracked enemy is in the firing window (LDX I,ERANGE at BZONE.MAC:4048). Ours MESSAGES.ENEMY_IN_RANGE = 'ENEMY IN RANGE'. Exact wording match.",
+    "reasoning": "The string in the ENGMSG English table is the authoritative shipped text. Our text.ts transcribes it verbatim and alerts.ts emits it (the trigger geometry — 20000-unit range + aim cone — is our own FEEL-level reading, authority 3, not a ROM value; the WORDS match).",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4295,
+      "verbatim": "RNGMSG:\tASCVH ERANGE,-110.,90.,<ENEMY IN RANGE>"
+    },
+    "ours": {
+      "file": "src/core/text.ts",
+      "line": 40,
+      "verbatim": "  ENEMY_IN_RANGE: 'ENEMY IN RANGE',"
+    }
+  },
+  {
+    "id": "S-010",
+    "class": "CONFIRMED",
+    "title": "In-game alert 'MOTION BLOCKED BY OBJECT' matches ROM verbatim",
+    "claim": "ROM: BLKMSG (BLOCKD) = 'MOTION BLOCKED BY OBJECT' (BZONE.MAC:4296), emitted when OBJCOL is set (BZONE.MAC:572-578). Ours MESSAGES.MOTION_BLOCKED = 'MOTION BLOCKED BY OBJECT'. Exact wording match.",
+    "reasoning": "Authoritative ENGMSG entry. alerts.ts raises it when a translation intent produced zero displacement (the movement hard-stop) — a faithful analogue of the ROM's OBJCOL collision flag.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4296,
+      "verbatim": "BLKMSG:\tASCVH BLOCKD,-110.,82.,<MOTION BLOCKED BY OBJECT>"
+    },
+    "ours": {
+      "file": "src/core/text.ts",
+      "line": 42,
+      "verbatim": "  MOTION_BLOCKED: 'MOTION BLOCKED BY OBJECT',"
+    }
+  },
+  {
+    "id": "S-011",
+    "class": "CONFIRMED",
+    "title": "'GAME OVER' matches ROM verbatim",
+    "claim": "ROM: GMOMSG (GAMOVR) = 'GAME OVER' (BZONE.MAC:4297), output when GOVER is set and not in logo/attract (BZONE.MAC:586-587). Ours MESSAGES.GAME_OVER = 'GAME OVER'. Exact wording match.",
+    "reasoning": "Authoritative ENGMSG entry; GAMOVR is also the scaling boundary in MSGS (CMP I,GAMOVR at 4133). Our gameOverLines() composes it with the run score, mirroring the ROM's GAME OVER card + INFO score.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4297,
+      "verbatim": "GMOMSG:\tASCVH GAMOVR,-28.,24.,<GAME OVER>"
+    },
+    "ours": {
+      "file": "src/core/text.ts",
+      "line": 44,
+      "verbatim": "  GAME_OVER: 'GAME OVER',"
+    }
+  },
+  {
+    "id": "S-012",
+    "class": "CONFIRMED",
+    "title": "'PRESS START' matches ROM verbatim",
+    "claim": "ROM: PSTMSG (PRSTRT) = 'PRESS START' (BZONE.MAC:4298), shown on the attract screen when no coins are needed (LDX I,PRSTRT at BZONE.MAC:601). Ours MESSAGES.PRESS_START = 'PRESS START'. Exact wording match.",
+    "reasoning": "Authoritative ENGMSG entry. In the ROM this branch is reached only when $$CRDT (credits) is zero — the free-play / no-coin path — which is exactly the browser build's coin-op-descoped attract prompt.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4298,
+      "verbatim": "PSTMSG:\tASCVH PRSTRT,-34.,0.,<PRESS START>"
+    },
+    "ours": {
+      "file": "src/core/text.ts",
+      "line": 46,
+      "verbatim": "  PRESS_START: 'PRESS START',"
+    }
+  },
+  {
+    "id": "S-013",
+    "class": "CONFIRMED",
+    "title": "Running-score label 'SCORE' + implicit '000' matches ROM",
+    "claim": "ROM: YSCMSG (YSCORE) = 'SCORE     000' (BZONE.MAC:4299) — the label plus the three implicit low-order zero digits; INFO draws the HITS BCD digits to the left of them (LDA I,HITS / JSR DIGT2S, BZONE.MAC:4214-4215). Ours MESSAGES.SCORE = 'SCORE' (label stored without the trailing padding/zeros; the shell composes the running number). Label wording matches; the '000' is the x1000 BCD scheme (see S-001).",
+    "reasoning": "The '000' baked into the ROM string is the physical evidence of the implicit-trailing-zero scoring: stored score is in thousands, three zeros are drawn by the label. text.ts deliberately stores the bare label and lets the shell append the digits — a faithful decomposition, documented in its transcription header.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4299,
+      "verbatim": "YSCMSG:\tASCVH YSCORE,32.,80.,<SCORE     000>"
+    },
+    "ours": {
+      "file": "src/core/text.ts",
+      "line": 48,
+      "verbatim": "  SCORE: 'SCORE',"
+    }
+  },
+  {
+    "id": "S-014",
+    "class": "CONFIRMED",
+    "title": "In-game high-score label 'HIGH SCORE' + implicit '000' matches ROM",
+    "claim": "ROM: CHIMSG (CHISCR) = 'HIGH SCORE      000' (BZONE.MAC:4294) — the in-game high-score readout label plus three implicit zeros; INFO draws the HSCTBL BCD high score to its left (BZONE.MAC:4224-4229). Ours MESSAGES.HIGH_SCORE = 'HIGH SCORE'. Label wording matches; '000' is the x1000 scheme.",
+    "reasoning": "Distinct from the attract board header 'HIGH SCORES' (plural, S-015). CHISCR is the single running high-score line shown during play; its '000' suffix is again the implicit-zero display of a thousands-scaled BCD value.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4294,
+      "verbatim": "CHIMSG:\tASCVH CHISCR,32.,70.,<HIGH SCORE      000>"
+    },
+    "ours": {
+      "file": "src/core/text.ts",
+      "line": 50,
+      "verbatim": "  HIGH_SCORE: 'HIGH SCORE',"
+    }
+  },
+  {
+    "id": "S-015",
+    "class": "CONFIRMED",
+    "title": "Attract board header 'HIGH SCORES' matches ROM verbatim",
+    "claim": "ROM: HISMSG (HISCOR) = 'HIGH SCORES' (BZONE.MAC:4300), the header drawn above the high-score table in DISTBL (LDX I,HISCOR at BZONE.MAC:963). Ours MESSAGES.HIGH_SCORES = 'HIGH SCORES'. Exact wording match.",
+    "reasoning": "Authoritative ENGMSG entry; screens.ts attractLines() uses MESSAGES.HIGH_SCORES as the board header, so the attract table header cannot drift from the ROM roster.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4300,
+      "verbatim": "HISMSG:\tASCVH HISCOR,-28.,40.,<HIGH SCORES>"
+    },
+    "ours": {
+      "file": "src/core/text.ts",
+      "line": 52,
+      "verbatim": "  HIGH_SCORES: 'HIGH SCORES',"
+    }
+  },
+  {
+    "id": "S-016",
+    "class": "CONFIRMED",
+    "title": "Enemy-direction callout strings 'ENEMY TO'/'LEFT'/'RIGHT'/'REAR' match ROM verbatim",
+    "claim": "ROM: ETOMSG = 'ENEMY TO ' (BZONE.MAC:4287), LFTMSG 'LEFT' (4288), RITMSG 'RIGHT' (4289), RERMSG 'REAR' (4290) — the four ENGMSG entries composed into 'ENEMY TO LEFT/RIGHT/REAR'. Ours MESSAGES.ENEMY_TO = 'ENEMY TO' (trailing space dropped, composed in the shell), with LEFT/RIGHT/REAR alongside. Wording matches. (The TRIGGER logic that consumes them is absent — see S-021.)",
+    "reasoning": "The ROM string carries a trailing space ('ENEMY TO ') so the direction word concatenates cleanly; text.ts stores the bare 'ENEMY TO' and composes the direction in the shell — a faithful decomposition of the wording. This finding records the STRINGS match; whether anything renders them is S-021.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4287,
+      "verbatim": "ETOMSG:\tASCVH ETO,-110.,74.,<ENEMY TO >"
+    },
+    "ours": {
+      "file": "src/core/text.ts",
+      "line": 58,
+      "verbatim": "  ENEMY_TO: 'ENEMY TO',"
+    }
+  },
+  {
+    "id": "S-017",
+    "class": "CONFIRMED",
+    "title": "Initials-entry prompt 'ENTER YOUR INITIALS' matches ROM verbatim",
+    "claim": "ROM: L2MSG (LINE2) = 'ENTER YOUR INITIALS' (BZONE.MAC:4291), shown on the high-score initials-entry screen (HISCRE outputs LINE1-4). Ours screens.ts entryLines() renders 'ENTER YOUR INITIALS'. Exact wording match.",
+    "reasoning": "The entry screen's second line is verbatim from the ROM. (Its first line — the congratulation banner — is where our screen DIVERGES: ROM 'GREAT SCORE' vs our 'HIGH SCORE', see S-020. The controller-specific instruction lines LINE3/LINE4 are deliberately descoped for the keyboard build.)",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4291,
+      "verbatim": "L2MSG:\tASCVH LINE2,7.,26.,<ENTER YOUR INITIALS>"
+    },
+    "ours": {
+      "file": "src/core/screens.ts",
+      "line": 44,
+      "verbatim": "    'ENTER YOUR INITIALS',"
+    }
+  },
+  {
+    "id": "S-018",
+    "class": "CONFIRMED",
+    "title": "Starting tanks band = (OPTION&3)+2 -> 2..5; our default 3 is in-band",
+    "claim": "ROM: a fresh run sets LIVES = (OPTION AND 3) + 2 (LDA OPTION / AND I,3 / ADC I,2 / STA LIVES, BZONE.MAC:1204-1207; carry cleared at 1203) — a DIP-selectable 2/3/4/5 tanks. Ours STARTING_TANKS = 3, the arcade-museum factory default, inside the band. MATCH.",
+    "reasoning": "The lives count feeds the INFO HUD (one tank glyph drawn per life, BZONE.MAC:4193-4207), so it is part of the score/HUD framing. The specific default (3) is a runtime DIP read, not a ROM constant — pinned from the cabinet DIP sheet exactly like MISSILE_INTRO_THRESHOLD; no ROM contradiction.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 1206,
+      "verbatim": "\tADC I,2"
+    },
+    "ours": {
+      "file": "src/core/state.ts",
+      "line": 49,
+      "verbatim": "export const STARTING_TANKS = 3"
+    }
+  },
+  {
+    "id": "S-019",
+    "class": "CONFIRMED",
+    "title": "High-score initials are 3 characters",
+    "claim": "ROM: the initials store is INITLS: .BLKB 3*HSCNUM (BZONE.MAC:306) — 3 bytes (letters) per table entry — and the entry loop writes exactly three (STINTL/STINTL+1/STINTL+2 set up at BZONE.MAC:860-864; DSPALP drawn 3x). Ours screens.ts entryLines() caps the buffer at 3 (initials.length < 3). MATCH.",
+    "reasoning": "Three initials per high-score row is the classic arcade convention and is explicit in both the storage sizing (3*HSCNUM) and the three-letter entry cursor logic. Our keyboard entry commits 0-3 uppercase chars verbatim, matching the length.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 306,
+      "verbatim": "INITLS:\t.BLKB 3*HSCNUM\t\t;INITIALS"
+    },
+    "ours": {
+      "file": "src/core/screens.ts",
+      "line": 46,
+      "verbatim": "    initials.length < 3 ? `${initials}_` : initials,"
+    }
+  },
+  {
+    "id": "S-020",
+    "class": "DIVERGENCE",
+    "title": "Initials-entry banner is 'HIGH SCORE'; ROM shows 'GREAT SCORE'",
+    "claim": "ROM: the high-score initials-entry screen's top banner is LINE1 = 'GREAT SCORE' (L1MSG, BZONE.MAC:4302), drawn first by HISCRE (LDX I,LINE1 / JSR MSGS, BZONE.MAC:879-880) above 'ENTER YOUR INITIALS'. Ours screens.ts entryLines() hardcodes 'HIGH SCORE' as the first line (src/core/screens.ts:41) instead. The ROM's 'GREAT SCORE' congratulation is replaced by a generic 'HIGH SCORE' header. text.ts even transcribes GREAT_SCORE = 'GREAT SCORE' (line 54) but nothing consumes it.",
+    "reasoning": "MESSAGES.GREAT_SCORE exists in the roster but is unused; entryLines() uses a raw 'HIGH SCORE' literal rather than the ROM banner. Small, exact-wording fix: swap the entry-screen banner to MESSAGES.GREAT_SCORE so the qualifying-run congratulation matches the arcade.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4302,
+      "verbatim": "L1MSG:\tASCVH LINE1,-64.,24.,<GREAT SCORE>"
+    },
+    "ours": {
+      "file": "src/core/screens.ts",
+      "line": 41,
+      "verbatim": "    'HIGH SCORE',"
+    },
+    "recommendation": "fix",
+    "size": "s",
+    "verdict": "CONFIRMED",
+    "remediated_by": "bz3-13"
+  },
+  {
+    "id": "S-021",
+    "class": "NO_COUNTERPART",
+    "title": "Directional 'ENEMY TO LEFT/RIGHT/REAR' HUD callout is not implemented",
+    "claim": "ROM: the main display flashes a directional enemy callout when the tracked enemy is OUT of the forward view: LDA PTURN / CMP I,22. / BCC (in view -> skip); else LDX I,ETO ('ENEMY TO ') + REAR/LEFT/RIGHT by bearing (BZONE.MAC:555-571; trigger at LDX I,ETO, line 561). Ours: alerts.ts inGameAlert() emits only MOTION_BLOCKED and ENEMY_IN_RANGE; the ENEMY_TO/LEFT/RIGHT/REAR strings are transcribed in text.ts but no core logic ever selects them. The off-screen direction cue the arcade shows has no counterpart.",
+    "reasoning": "This is a real, gameplay-relevant HUD element (it tells the player which way to turn toward an unseen enemy), gated on bearing bucket (front if PTURN<22, rear if PTURN>0x6B, else left/right by SAVE2 sign) and flashed on a frame bit. Our alert decider has two branches and neither is directional. ours=null: implementing it is ADDED logic in alerts.ts, not a divergent existing line. Sized m: a bearing-bucket decision plus wiring the four existing strings.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 561,
+      "verbatim": "\tLDX I,ETO\t\t;C  POINT DIRECTION"
+    },
+    "ours": {
+      "file": "src/core/alerts.ts",
+      "line": 68,
+      "verbatim": "export function enemyDirection("
+    },
+    "recommendation": "fix",
+    "size": "m",
+    "remediated_by": "bz3-11"
+  },
+  {
+    "id": "S-022",
+    "class": "NO_COUNTERPART",
+    "title": "Attract copyright line '  ATARI 1980' is absent from our attract/logo screen",
+    "claim": "ROM: the logo/copyright block draws '  ATARI 1980' (CPYMSG, .ASCVG '  ATARI 1980', BZONE.MAC:4312; output via LDX I,COPYRT at BZONE.MAC:482). Ours screens.ts attractLines() emits only ['BATTLEZONE', '', board..., PRESS START] (src/core/screens.ts:19) — no copyright/attribution line. The ROM's on-screen '(C) ATARI 1980' has no counterpart.",
+    "reasoning": "Cosmetic authenticity detail, not gameplay. Left as accept: the arcade branding line is reasonably omitted from a fan clone, and CPYMSG uses the ROM's special '(C)' glyph the browser font may not carry. Recorded for completeness of the framing audit.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4312,
+      "verbatim": "\t.ASCVG\t<  ATARI 1980>"
+    },
+    "ours": null,
+    "recommendation": "accept"
+  },
+  {
+    "id": "S-023",
+    "class": "NO_COUNTERPART",
+    "title": "Attract 'BONUS TANK AT n000 AND 100000' banner is not rendered",
+    "claim": "ROM: DISTBL composes and shows a bonus-info banner on the high-score/attract screen: BONMSG 'BONUS TANK AT ' (BZONE.MAC:4309) + the DIP bonus level (BONTBL[dip]+1) + BONMS1 '000 AND 100000' (BZONE.MAC:4310) -> e.g. 'BONUS TANK AT 15000 AND 100000' (BZONE.MAC:1039-1051). Ours: MESSAGES.BONUS_TANK_AT = 'BONUS TANK AT' is transcribed but no screen composes/renders the bonus-threshold banner; difficulty.ts implements the award mechanic (S-007/S-008) but the informational attract line has no counterpart.",
+    "reasoning": "The award itself is faithfully modeled (extraTanksEarned crossing 15000/100000); only the attract-mode advertisement of the thresholds is missing. Accept: cosmetic attract text, and the composed value depends on the DIP bonus level our build fixes to the default. Recorded so the ENGMSG BONUS entries are fully mapped.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 4309,
+      "verbatim": "BONMSG:\tASCVH BONPLN,-87.,-70.,<BONUS TANK AT >"
+    },
+    "ours": null,
+    "recommendation": "accept"
+  },
+  {
+    "id": "S-024",
+    "class": "STRUCTURAL",
+    "title": "ROM high-score board is a fixed 10 entries; our table type is unbounded",
+    "claim": "ROM: the board is fixed at HSCNUM = 10. (decimal — trailing period in the radix-16 region) entries: HSCTBL: .BLKB 3*HSCNUM and INITLS: .BLKB 3*HSCNUM (BZONE.MAC:304-306), and CKSCOR/DISTBL iterate <HSCNUM-1>*3. Ours HighScoreTable = readonly HighScoreEntryBase[] (src/core/state.ts:27) — an unbounded array; how many rows persist/display is left to the shell + @arcade/shared/highscore, not pinned to 10 in core. Not a value error, a structural difference in where the cap lives.",
+    "reasoning": "HSCNUM=10 is decimal (the '.' forces decimal inside BZONE's .RADIX 16 region), so a full ten-place board. Our core carries no fixed size; the board length is a shell/storage concern (the domain-agnostic shared highscore module). Accept: behavior-equivalent as long as the shell caps at 10 — flagged so a reviewer confirms the display/persist cap rather than assuming core enforces it.",
+    "source": {
+      "file": "BZONE.MAC",
+      "line": 304,
+      "verbatim": "HSCNUM\t=10."
+    },
+    "ours": {
+      "file": "src/core/state.ts",
+      "line": 29,
+      "verbatim": "export type HighScoreTable = readonly HighScoreEntryBase[]"
+    },
+    "recommendation": "accept"
+  }
+]

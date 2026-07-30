@@ -92,7 +92,13 @@ async function attemptAsync(fn) {
 function compareSfxShipped(adapter, s) {
   if (adapter.name === 'tempest') return shipped.compareTempestSfx(s.name, s.events);
   if (adapter.name === 'battlezone') {
-    return shipped.compareBattlezoneShipped(join(REPO_ROOT, 'battlezone', 'src', 'shell', 'audio.ts'));
+    // battlezone was imported into the monorepo (plugins/battlezone) and is no
+    // longer a gitignored sibling subrepo. Without the `plugins` segment the
+    // read fails and every cue silently degrades from MISMATCH to UNVERIFIED —
+    // an audit that quietly stops auditing. red-baron is still a subrepo below.
+    return shipped.compareBattlezoneShipped(
+      join(REPO_ROOT, 'plugins', 'battlezone', 'src', 'shell', 'audio.ts'),
+    );
   }
   if (adapter.name === 'red-baron') {
     return shipped.compareRedBaronShipped(
