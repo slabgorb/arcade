@@ -164,6 +164,16 @@ stamp sat local. After `sm-setup` returns, commit the epic-YAML stamp + the cont
 someone else's version of this story. (jt8-4's claim was pushed within a minute of setup — the
 push was rejected first time because `main` had moved, so expect a `pull --rebase`.)
 
+**Push the claim branch EMPTY — don't wait for a commit to carry it.** The decisive probe above is
+`git branch -r | grep <story-id>`, and at setup time there is nothing to commit in the subrepo yet,
+so the natural instinct is to defer the branch push until RED lands a test. That leaves the widest
+possible invisibility window open across the whole RED phase. `git -C <subrepo> push -u origin
+fix/<id>-<slug>` works fine on a zero-commit branch (tip == `develop`) and lights up the sibling
+probe instantly — jt8-6 was claimed this way. Note the two pushes go to DIFFERENT remotes and both
+are needed: the orchestrator stamp+context to `arcade` `main`, the branch to the subrepo. The pf
+branch-protection hook judges from the *session* cwd (orchestrator `main`, `trunk-based`), so
+`git -C joust push` of a `fix/` branch sails through.
+
 **Also worth knowing:** `sm-setup` created the session, context and branch correctly but left the
 story at `status: backlog` — it did NOT stamp `in_progress`. Verify with
 `pf sprint story show <id> | grep Status` and stamp it yourself
