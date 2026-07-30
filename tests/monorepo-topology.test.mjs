@@ -51,10 +51,22 @@
 //      for every app; the shape being guarded no longer exists. What survives
 //      as an invariant — that there is exactly one workflow — is asserted below
 //      (todo until Task 18).
-//   5. `vite`/`vitest` RESOLVED major versions read out of each game's own
-//      `node_modules` (centipede, joust). Plugins have no `node_modules`. The
-//      DECLARED ranges are asserted below instead; this is a reduction from
-//      "what actually resolved" to "what is asked for".
+//   5. WITHDRAWN — NOT a loss. `vite`/`vitest` RESOLVED major versions were
+//      first booked here on the grounds that plugins have no `node_modules`.
+//      That was the wrong reading: the invariant was never about the plugins'
+//      node_modules. joust's own record routes it by name — "the 'what actually
+//      RESOLVED into node_modules' Vite-8 / Vitest-4 check now belongs to the
+//      root's single node_modules". It is asserted below, against the real
+//      installed versions, alongside the declared ranges.
+//   6. `npm run dev` and `npm run preview` (all seven games' `package.json
+//      scripts` describes asserted `dev → vite` and `preview → vite preview`).
+//      The root has NEITHER, and Task 19 does not add them: `just serve`
+//      becomes `npx vite --port 5270 --strictPort`, run from the root, and
+//      preview has no successor recipe at all. So the SCRIPTS are gone with no
+//      root equivalent — booked here rather than glossed, because the test
+//      below deliberately does not pretend to cover them. The capability they
+//      named is not gone (one dev server still serves the cabinet); the
+//      per-app npm entry points are.
 //
 // The one removal that is NOT a loss, and was nearly booked as one: joust's
 // `scaffold — strictPort is real, not just declared (AC-1, behavioural)`. See
@@ -108,6 +120,13 @@ test('exactly one package.json declares dependencies', () => {
       ['name', 'private', 'version'],
       `${dir}/package.json must carry only name/version/private — ${id} has grown a field back`,
     );
+    // The key SET is not the whole contract. The pre-migration tests asserted the
+    // values too (joust: `name === 'joust'`, `private === true`), and both still
+    // matter: `name` is what Task 17's `<app>-vX.Y.Z` tags and Task 14's manifests
+    // read back, and `private: false` would make an app publishable to npm.
+    assert.equal(pkg.name, id, `${dir}/package.json name must match its directory`);
+    assert.equal(pkg.private, true, `${dir} must stay private`);
+    assert.match(pkg.version, /^\d+\.\d+\.\d+$/, `${dir} version must be a bare semver`);
   }
 });
 
@@ -173,19 +192,41 @@ test('every app tsconfig extends the root, at the right depth', () => {
 });
 
 test('the root declares the scripts and the toolchain the apps used to declare individually', () => {
-  // Replaces the interior of the seven `package.json scripts` describes: each one
-  // demanded dev/build/preview/test/test:watch/lint scripts plus vite/vitest/
-  // typescript devDependencies in its OWN package.json. There is one of each now.
+  // Replaces the interior of the seven `package.json scripts` describes. Each one
+  // demanded SIX scripts — dev/build/preview/test/test:watch/lint — plus
+  // vite/vitest/typescript devDependencies, in its OWN package.json.
+  //
+  // FOUR of the six have a root equivalent and are asserted below. TWO do not:
+  // `dev` and `preview` are NOT root scripts and are not coming back — see
+  // accepted loss #6 in the header. Saying "there is one of each now" would be
+  // false, and a false coverage claim in this file is worse than the gap it
+  // papers over: it tells the next auditor a window is closed when it is open.
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.type, 'module', 'the cabinet is ESM (joust asserted this per-repo)');
   assert.equal(pkg.scripts.test, 'vitest run --passWithNoTests');
+  assert.equal(pkg.scripts['test:watch'], 'vitest');
   assert.equal(pkg.scripts.lint, 'tsc --noEmit');
   assert.ok(pkg.scripts.build.includes('build-app.mjs'), 'build must go through the app builder');
-  // Declared majors, not resolved ones — plugins have no node_modules for the
-  // old "what actually RESOLVED" check to read. See accepted loss #5 in the header.
-  assert.match(pkg.devDependencies.vite, /^\^8\./, 'Vite 8');
-  assert.match(pkg.devDependencies.vitest, /^\^4\./, 'Vitest 4');
   assert.ok(pkg.devDependencies.typescript, 'typescript must be a root devDependency');
+  // Declared ranges…
+  assert.match(pkg.devDependencies.vite, /^\^8\./, 'Vite 8 must be asked for');
+  assert.match(pkg.devDependencies.vitest, /^\^4\./, 'Vitest 4 must be asked for');
+  // …and what ACTUALLY RESOLVED. joust's removal record routes this half here by
+  // name: "the 'what actually RESOLVED into node_modules' Vite-8 / Vitest-4 check
+  // now belongs to the root's single node_modules". A declared range cannot catch
+  // a stale install — which is the entire reason the original existed — and there
+  // is exactly one node_modules to read now. This file already hard-requires the
+  // root install (the behavioural strictPort test spawns node_modules/.bin/vite),
+  // so reading it here costs no new precondition.
+  for (const [dep, major] of [['vite', 8], ['vitest', 4]]) {
+    const installed = JSON.parse(read('node_modules', dep, 'package.json')).version;
+    assert.equal(
+      installed.split('.')[0],
+      String(major),
+      `node_modules/${dep} resolved to ${installed}, not ${major}.x — the install is stale ` +
+        `even though package.json asks for the right range`,
+    );
+  }
 });
 
 test('every game is served under its own base path, lobby at the root', async () => {
@@ -271,7 +312,13 @@ test('strictPort is real, not just declared — the pin is PROVEN, not asserted'
   // 127.0.0.1:5270) that a declarative check reads straight past.
   //
   // It is also cheap: vite refuses in ~150ms, well under the 25s cap below.
-  const PORT = 5270;
+  //
+  // The port comes from the factory, not from a literal: a hardcoded constant
+  // that drifted from the config would still fail — but it would burn the full
+  // 25s cap and then report "strictPort is not in effect", pointing the reader
+  // at the pin when the fault was in this test.
+  const { defineAppConfig } = await import('../vite.config.ts');
+  const PORT = defineAppConfig({ id: 'lobby' }).server.port;
 
   /** Hold the port so the dev server has to collide with something. */
   const occupy = () =>
@@ -335,15 +382,21 @@ test('build output is never tracked', () => {
   assert.equal(tracked.trim(), '', 'built output has been committed');
 });
 
-test('the root .gitignore covers node_modules and dist', { todo: 'dist/ is UNOWNED — nearest owner is Task 16 (scripts/build-app.mjs, the thing that first writes dist/). No task brief adds it.' }, () => {
-  // The other half of joust's `fresh-checkout hygiene`: its .gitignore had to
-  // cover node_modules AND dist. Task 12's record routes both to the root
-  // .gitignore. node_modules is there; dist/ is NOT, and no later brief adds it
-  // — so the anti-tracking test above is currently the only thing standing
-  // between `git add -A` and a committed build. Flagged, not absorbed.
-  const ignore = read('.gitignore');
-  assert.match(ignore, /^node_modules\/$/m, '.gitignore must cover node_modules');
-  assert.match(ignore, /^\/?dist\/?$/m, '.gitignore must cover dist');
+// The other half of joust's `fresh-checkout hygiene` describe: its .gitignore had
+// to cover node_modules AND dist, and Task 12's record routes both to the root
+// .gitignore. These are SPLIT deliberately. node_modules is assertable today;
+// dist is not. Bundling them would put the provable half behind a `{ todo }`,
+// where node:test swallows the failure — leaving a removed invariant unguarded
+// while the file looked like it was covering it. A todo must defer only what
+// genuinely cannot pass yet.
+test('the root .gitignore covers node_modules', () => {
+  assert.match(read('.gitignore'), /^node_modules\/$/m, '.gitignore must cover node_modules');
+});
+
+test('the root .gitignore covers dist', { todo: 'Task 16 Step 5b (added by plan commit 17e69b9, placed before its first build) adds dist/ to .gitignore' }, () => {
+  // Until Task 16 lands this, `build output is never tracked` above is the only
+  // thing standing between `git add -A` and a committed build.
+  assert.match(read('.gitignore'), /^\/?dist\/?$/m, '.gitignore must cover dist');
 });
 
 test('exactly one deploy workflow exists for the whole cabinet', { todo: 'Task 18 creates .github/workflows/deploy.yml and deletes deploy-r2.yml' }, () => {
@@ -351,8 +404,9 @@ test('exactly one deploy workflow exists for the whole cabinet', { todo: 'Task 1
   // describes centipede and joust each removed whole). Today the directory
   // still holds deploy-r2.yml alone; Task 18 replaces it with one tag-triggered
   // workflow. Written now, todo-marked, so the invariant has an owner rather
-  // than a hole.
-  assert.deepEqual(readdirSync(path('.github', 'workflows')), ['deploy.yml']);
+  // than a hole. Sorted: readdir order is filesystem-dependent, and this must
+  // stay a stable comparison if the directory ever holds more than one entry.
+  assert.deepEqual(readdirSync(path('.github', 'workflows')).sort(), ['deploy.yml']);
 });
 
 test('every plugins/ directory is a real app with an entry', () => {
