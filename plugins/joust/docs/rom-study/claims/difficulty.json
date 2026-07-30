@@ -1,0 +1,299 @@
+[
+  {
+    "id": "JT31-001",
+    "claim": "DYWORD struct: byte offset 0 is DYWST0, the start column for GA1 tiers 0-3 (a signed word) (JOUSTRV4.SRC:202).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 202,
+      "verbatim": "DYWST0\tRMB\t2\tWORD START 0,1,2,3"
+    }
+  },
+  {
+    "id": "JT31-002",
+    "claim": "DYWORD struct: byte offset 2 is DYWST1, the start column for GA1 tiers 4-6 (JOUSTRV4.SRC:203).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 203,
+      "verbatim": "DYWST1\tRMB\t2\tWORD START 4,5,6"
+    }
+  },
+  {
+    "id": "JT31-003",
+    "claim": "DYWORD struct: byte offset 4 is DYWST2, the start column for GA1 tiers 7-9 (JOUSTRV4.SRC:204).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 204,
+      "verbatim": "DYWST2\tRMB\t2\tWORD START 7,8,9"
+    }
+  },
+  {
+    "id": "JT31-004",
+    "claim": "DYWORD struct: byte offset 6 is DYWEND, the signed word end/plateau value the walk clamps at (JOUSTRV4.SRC:205).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 205,
+      "verbatim": "DYWEND\tRMB\t2\tWORD END VALUE"
+    }
+  },
+  {
+    "id": "JT31-005",
+    "claim": "DYWORD struct: byte offset 8 is DYWTIM, five bytes = ten nibbles of per-difficulty step-cadence times before the next adjustment (JOUSTRV4.SRC:206).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 206,
+      "verbatim": "DYWTIM\tRMB\t5\tNIBBLE TIMES BEFORE NEXT ADJUSTMENTS"
+    }
+  },
+  {
+    "id": "JT31-006",
+    "claim": "DYWORD struct: byte offset 13 is DYWINC, the signed byte per-step increment (JOUSTRV4.SRC:207).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 207,
+      "verbatim": "DYWINC\tRMB\t1\tBYTE LENGTH,INCREMENT"
+    }
+  },
+  {
+    "id": "JT31-007",
+    "claim": "DYWORD struct: DYWLEN closes the row at 14 bytes (RMB 0 caps the field layout) (JOUSTRV4.SRC:208).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 208,
+      "verbatim": "DYWLEN\tRMB\t0"
+    }
+  },
+  {
+    "id": "JT31-008",
+    "claim": "The DYWORD macro takes eight operands START1,START2,START3,INCRE,ENDV,TIM1,TIM2,TIM3 — INCRE is the FOURTH operand (JOUSTRV4.SRC:210).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 210,
+      "verbatim": "DYWORD\tMACRO START1,START2,START3,INCRE,ENDV,TIM1,TIM2,TIM3"
+    }
+  },
+  {
+    "id": "JT31-009",
+    "claim": "The DYWORD macro emits FDB START1,START2,START3,ENDV,TIM1,TIM2 — six big-endian words, twelve bytes (JOUSTRV4.SRC:211).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 211,
+      "verbatim": "\t FDB\tSTART1,START2,START3,ENDV,TIM1,TIM2"
+    }
+  },
+  {
+    "id": "JT31-010",
+    "claim": "The DYWORD macro emits FCB TIM3,INCRE last — so INCRE, the 4th operand, is the 14th and LAST byte, not the 4th (JOUSTRV4.SRC:212).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 212,
+      "verbatim": "\t FCB\tTIM3,INCRE"
+    }
+  },
+  {
+    "id": "JT31-011",
+    "claim": "DYTBL is the label of the dynamic-intelligence difficulty table (JOUSTRV4.SRC:7303); the 28 DYWORD rows run JOUSTRV4.SRC:7304-7331.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7303,
+      "verbatim": "DYTBL"
+    }
+  },
+  {
+    "id": "JT31-012",
+    "claim": "DYTBL row 1 (LAVTIM) = DYWORD $000B,$0006,$0004,-01,$0001,$FA86,$4433,$21: three tier starts 11/6/4, inc -1, end 1 (JOUSTRV4.SRC:7304).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7304,
+      "verbatim": "\tDYWORD\t$000B,$0006,$0004,-01,$0001,$FA86,$4433,$21\tLAVTIM"
+    }
+  },
+  {
+    "id": "JT31-013",
+    "claim": "DYEND EQU * terminates DYTBL; the table is 28 DYWORD rows (JOUSTRV4.SRC:7304-7331), 392 bytes, ending at JOUSTRV4.SRC:7332.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7332,
+      "verbatim": "DYEND\tEQU\t*"
+    }
+  },
+  {
+    "id": "JT31-014",
+    "claim": "GA1 (operator difficulty) is read via RCMSA to pick the DYTBL start column (JOUSTRV4.SRC:930).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 930,
+      "verbatim": "\tLDX\t#GA1\t\tGET GAME ADJUST"
+    }
+  },
+  {
+    "id": "JT31-015",
+    "claim": "GA1 0,1,2,3 → start-column offset 0 (CMPA #3 / BLS keeps offset 0) (JOUSTRV4.SRC:933).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 933,
+      "verbatim": "\tCMPA\t#3\t\tGAME ADJUST 0,1,2,3 ?"
+    }
+  },
+  {
+    "id": "JT31-016",
+    "claim": "GA1 4,5,6 → start-column offset 1; GA1 7+ → offset 2 (CMPA #6 / BLS, the second INC) (JOUSTRV4.SRC:936).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 936,
+      "verbatim": "\tCMPA\t#6\t\tGAME ADJUST 4,5,6?"
+    }
+  },
+  {
+    "id": "JT31-017",
+    "claim": "The GA1 7+ tier increments the start offset a second time to select DYWST2 (JOUSTRV4.SRC:938).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 938,
+      "verbatim": "\tINC\t,S"
+    }
+  },
+  {
+    "id": "JT31-018",
+    "claim": "The DYTBL start-value init walks the table (LDX #DYTBL) seeding the RAM working copy (JOUSTRV4.SRC:939).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 939,
+      "verbatim": "1$\tLDX\t#DYTBL\t\tROM INITILIZATION"
+    }
+  },
+  {
+    "id": "JT31-019",
+    "claim": "DYNADJ is the RAM working copy of DYTBL, stepped once per wave (JOUSTRV4.SRC:940).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 940,
+      "verbatim": "\tLDY\t#DYNADJ\t\tRAM AREA"
+    }
+  },
+  {
+    "id": "JT31-020",
+    "claim": "The per-entry countdown timer is seeded to 2 at difficulty init (LDA #2 / STA 2,Y) (JOUSTRV4.SRC:945).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 945,
+      "verbatim": "\tLDA\t#2"
+    }
+  },
+  {
+    "id": "JT31-021",
+    "claim": "IWAVE (the inter-wave difficulty pass) reads GA1 as the difficulty level for the walk (JOUSTRV4.SRC:1890).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1890,
+      "verbatim": "1$\tLDX\t#GA1\t\tGET GAME ADJUST"
+    }
+  },
+  {
+    "id": "JT31-022",
+    "claim": "IWAVE gates each entry on its DYNADJ+2 countdown timer — steps only when the timer reaches zero (JOUSTRV4.SRC:1895).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1895,
+      "verbatim": "2$\tLDB\t2,Y\t\tTIME TO CHANGE THE VALUE?"
+    }
+  },
+  {
+    "id": "JT31-023",
+    "claim": "The per-difficulty nibble byte offset is DYWTIM*2 + level, then ASRB (the level LSB selects the nibble half) (JOUSTRV4.SRC:1900).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1900,
+      "verbatim": "\tADDB\t#DYWTIM*2\tGET OFFSET FOR TIME TABLE"
+    }
+  },
+  {
+    "id": "JT31-024",
+    "claim": "The step-cadence value is the masked low nibble (ANDB #$0F) of the selected DYWTIM byte (JOUSTRV4.SRC:1908).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1908,
+      "verbatim": "5$\tANDB\t#$0F"
+    }
+  },
+  {
+    "id": "JT31-025",
+    "claim": "The per-step increment is the signed byte DYWINC (JOUSTRV4.SRC:1910), sign-extended (SEX) before the add.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1910,
+      "verbatim": "\tLDB\tDYWINC,X"
+    }
+  },
+  {
+    "id": "JT31-026",
+    "claim": "Each step adds the increment then compares the new value against DYWEND (CMPD DYWEND,X) (JOUSTRV4.SRC:1914).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1914,
+      "verbatim": "\tCMPD\tDYWEND,X"
+    }
+  },
+  {
+    "id": "JT31-027",
+    "claim": "On reaching/passing DYWEND the value is clamped to DYWEND (LDD DYWEND,X) — the plateau (JOUSTRV4.SRC:1921).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1921,
+      "verbatim": "7$\tLDD\tDYWEND,X"
+    }
+  },
+  {
+    "id": "JT31-028",
+    "claim": "IWAVE advances one DYWORD row per entry by DYWLEN (LEAX DYWLEN,X) across all 28 rows (JOUSTRV4.SRC:1923).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1923,
+      "verbatim": "15$\tLEAX\tDYWLEN,X"
+    }
+  },
+  {
+    "id": "JT31-029",
+    "claim": "The lava-level step (retrofit): SAFRAM raises the lava once per wave inside the same IWAVE pass (JOUSTRV4.SRC:1929).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1929,
+      "verbatim": "\tLDA\tSAFRAM\t\tRASIE LAVA IF POSSIBLE"
+    }
+  },
+  {
+    "id": "JT31-030",
+    "claim": "The lava stops rising at the $E0 floor (CMPA #$E0 / BLS): the sequence is $EA → $E5 → $E0 (JOUSTRV4.SRC:1930).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1930,
+      "verbatim": "\tCMPA\t#$E0"
+    }
+  },
+  {
+    "id": "JT31-031",
+    "claim": "The pursuit-nibble budget seed (retrofit) masks the wave-row persue value to its low nibble (ANDA #$0F) (JOUSTRV4.SRC:2076).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2076,
+      "verbatim": "\tANDA\t#$0F"
+    }
+  },
+  {
+    "id": "JT31-032",
+    "claim": "The masked pursuit nibble is stored to WSMART as the intelligence-budget seed (JOUSTRV4.SRC:2077).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2077,
+      "verbatim": "\tSTA\tWSMART"
+    }
+  },
+  {
+    "id": "JT31-033",
+    "claim": "The EMYTIM divider (retrofit) is set to 2 on the 1st/2nd wave to slow the enemy (JOUSTRV4.SRC:2205).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2205,
+      "verbatim": "\tSTA\tEMYTIM\t\tSLOW DOWN THE ENEMY ONLY!"
+    }
+  }
+]

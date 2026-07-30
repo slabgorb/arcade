@@ -1,0 +1,92 @@
+[
+  {
+    "id": "JT44-001",
+    "claim": "AC-1 GOVER tri-state (the positive rung): GAMSIM sets $7F — 'LDA #$7F  GAME SIMULATION MODE' / STA GOVER (JOUSTRV4.SRC:232-233), the attract/game-simulation mode a real game never boots into. game.ts exports GOVER_ATTRACT = $7F.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 232,
+      "verbatim": "GAMSIM\tLDA\t#$7F\t\tGAME SIMULATION MODE"
+    }
+  },
+  {
+    "id": "JT44-002",
+    "claim": "AC-1 GOVER tri-state (the OVER rung): ATTRCT clears GOVER to 0 — 'CLR GOVER  STATE OF GAME = OVER' (JOUSTRV4.SRC:712). game.ts exports GOVER_OVER = 0; settleGameOver returns it iff every player is out.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 712,
+      "verbatim": "ATTRCT\tCLR\tGOVER\t\tSTATE OF GAME = OVER"
+    }
+  },
+  {
+    "id": "JT44-003",
+    "claim": "AC-1 GOVER tri-state (the RUNNING rung): the boot DECrements GOVER from 0 to non-zero/negative — 'DEC GOVER  STATE OF GAME = STARTING THE GAME (.NE.)' (JOUSTRV4.SRC:1015). game.ts exports GOVER_RUNNING = -1; createGame boots here and a lone survivor keeps it running.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1015,
+      "verbatim": "\tDEC\tGOVER\t\tSTATE OF GAME = STARTING THE GAME (.NE.)"
+    }
+  },
+  {
+    "id": "JT44-004",
+    "claim": "AC-3 the baiter max-3 cap: the EMYOK send-off refuses a 4th baiter — 'CMPA #3-1  ONLY ALLOW 3 BAITERS ON THE SCREEN' / BHI (JOUSTRV4.SRC:2108-2109). MAX_BAITERS = 3 (baiter.ts); the DBAIT settle frees a slot under this cap.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2108,
+      "verbatim": "\tCMPA\t#3-1\t\tONLY ALLOW 3 BAITERS ON THE SCREEN"
+    }
+  },
+  {
+    "id": "JT44-005",
+    "claim": "AC-3 the baiter tag: a sent-off baiter arms PCHASE = -1 — 'LDA #-1' / 'STA PCHASE,Y  BAITER TYPE PTERODACTYL'S' (JOUSTRV4.SRC:2112-2113), the PCHASE ne 0 tag the demo carries as DemoProcess.baiter and the DBAIT settle keys on.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2113,
+      "verbatim": "\tSTA\tPCHASE,Y\tBAITER TYPE PTERODACTYL'S"
+    }
+  },
+  {
+    "id": "JT44-006",
+    "claim": "AC-3 the DBAIT settle-on-death: a killed baiter DECrements NBAIT on the death entry — PTEKLL 'LDA PCHASE,U  KILLED A BAITER?' / BEQ PTEKL2 / 'DEC NBAIT' (JOUSTRV4.SRC:1370-1372). demo.ts settles NBAIT when a live baiter disappears (becomes a baiter-tagged dissolve), freeing a cap slot.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1370,
+      "verbatim": "\tLDA\tPCHASE,U\tKILLED A BAITER?"
+    }
+  },
+  {
+    "id": "JT44-007",
+    "claim": "the egg wave enters its complement AS EGGS: 'WAVEGG LDX #EGG1  EGG WAVE' (JOUSTRV4.SRC:2737). demo.ts's spawnWaveEnemies routes an egg-dispatch wave (status $08) to settled egg processes instead of materialising ground enemies.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2737,
+      "verbatim": "WAVEGG\tLDX\t#EGG1\t\tEGG WAVE"
+    }
+  },
+  {
+    "id": "JT44-008",
+    "claim": "the egg wave pre-matures 2 egg hatchings: 'LDA #2  NUMBER OF PRE-MATURE EGG HATCHINGS' (JOUSTRV4.SRC:2776). The byte-exact EGG1 placement table (2737-2776) is untranscribed — jt4-4 pins the 'enters as eggs' observable, not the exact coordinates/count (TEA design deviation).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2776,
+      "verbatim": "\tLDA\t#2\t\tNUMBER OF PRE-MATURE EGG HATCHINGS"
+    }
+  },
+  {
+    "id": "JT44-009",
+    "claim": "the SPDGLA DEC-keep-positive idempotence: an already-claimed re-INC is DECremented straight back — 'DEC ,Y  (KEEP THE NBR POSITIVE)' (JOUSTRV4.SRC:4688). recordPartnerKill preserves the $80 'TRUE WINNING GLADIATOR' claim across a same-winner re-kill so the 3,000 bounty is never lost.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4688,
+      "verbatim": "\tDEC\t,Y\t\t(KEEP THE NBR POSITIVE)"
+    }
+  },
+  {
+    "id": "JT44-010",
+    "claim": "the SPDGLA partner-kill counter: 'INC ,Y  KEEP TRACK OF PLAYER VS. PLAYER KILLS' (JOUSTRV4.SRC:4685) — the INC that flips a gladiator-armed -1 to the claimed marker (recordPartnerKill), the LIVE per-frame detection stepGame drives from collisionPass's partnerKill event.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4685,
+      "verbatim": "\tINC\t,Y\t\tKEEP TRACK OF PLAYER VS. PLAYER KILLS"
+    }
+  }
+]

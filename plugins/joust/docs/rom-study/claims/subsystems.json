@@ -1,0 +1,587 @@
+[
+  {
+    "id": "SUB-001",
+    "claim": "Executive / OS: 40 cooperative coroutine slots (PBLKM EQU 40). Each slot is a 56-byte process block laid out by the RMB directives from the block ORG $0 — 7 overhead bytes (PLINK 2, PID 1, PPRI 1, PNAP 1, PPC 2) + PPOSX 3 + PPOSY 3 + PRAM 43. Corrected in jt1-10: the earlier figure of 51 was wrong twice over, taking PBLKL's stale author comment for the overhead AND omitting the two position fields entirely.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 166,
+      "verbatim": "PBLKM\tEQU\t40\tNUMBER OF MAXIMUM PROCESSES THAT CAN EXIST"
+    }
+  },
+  {
+    "id": "SUB-002",
+    "claim": "Executive / OS: PLINK is the first of the five process-block overhead fields, 2 bytes holding the link to the next process (0 ends the chain). PLINK 2 + PID 1 + PPRI 1 + PNAP 1 + PPC 2 = 7 overhead bytes, not the 8 PBLKL's comment claims.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 168,
+      "verbatim": "PLINK\tRMB\t2\tPROCESS OVERHEAD, LINK TO NXT PROC (IF=0 END LINK)"
+    }
+  },
+  {
+    "id": "SUB-003",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Dispatch is JMP [PPC,U] (SYSTEM.SRC:221);",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 221,
+      "verbatim": "\tJMP\t[PPC,U]\t\tDEFAULT PC SLEEP ADDRESS, GO START/RE-START"
+    }
+  },
+  {
+    "id": "SUB-004",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): PCNAP n pops the JSR return address as the resume PC (NAPTPC, SYSTEM.SRC:222-225).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 222,
+      "verbatim": "NAPTPC\tLDX\t,S++\t\tGET NEXT PC COUNTER"
+    }
+  },
+  {
+    "id": "SUB-005",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): The stack is reset every pass (LDS #STACK at SYSTEM.SRC:216,237,321) — all coroutine state lives in the block, never in locals.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 216,
+      "verbatim": "\tLDS\t#STACK\t\tSTACK IS RESET"
+    }
+  },
+  {
+    "id": "SUB-006",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): The stack is reset every pass (LDS #STACK at SYSTEM.SRC:216,237,321) — all coroutine state lives in the block, never in locals.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 237,
+      "verbatim": "EXEPEN\tLDS\t#STACK\t\tSTACK IS RESET"
+    }
+  },
+  {
+    "id": "SUB-007",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): The stack is reset every pass (LDS #STACK at SYSTEM.SRC:216,237,321) — all coroutine state lives in the block, never in locals.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 321,
+      "verbatim": "SUCIDE\tLDS\t#STACK\t\tSTACK IS IN THE CLEAR"
+    }
+  },
+  {
+    "id": "SUB-008",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Two scheduling classes run as two full passes (primaries then secondaries — PRISEC, SYSTEM.SRC:217,231,248; PROCCR sets PPRI=0, SECCR 255, RAMDEF.SRC:8-18).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 217,
+      "verbatim": "\tCLR\tPRISEC\t\tPRIMARY PROCESSES ARE FIRST"
+    }
+  },
+  {
+    "id": "SUB-009",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Two scheduling classes run as two full passes (primaries then secondaries — PRISEC, SYSTEM.SRC:217,231,248; PROCCR sets PPRI=0, SECCR 255, RAMDEF.SRC:8-18).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 231,
+      "verbatim": "\tLDA\tPPRI,U\t\tIS THIS A PRIMARY PROCESS??"
+    }
+  },
+  {
+    "id": "SUB-010",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Two scheduling classes run as two full passes (primaries then secondaries — PRISEC, SYSTEM.SRC:217,231,248; PROCCR sets PPRI=0, SECCR 255, RAMDEF.SRC:8-18).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 248,
+      "verbatim": "\tLDA\tPPRI,U\t\tIS THIS A SECONDARY PROCESS??"
+    }
+  },
+  {
+    "id": "SUB-011",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Two scheduling classes run as two full passes (primaries then secondaries — PRISEC, SYSTEM.SRC:217,231,248; PROCCR sets PPRI=0, SECCR 255, RAMDEF.SRC:8-18).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 8,
+      "verbatim": "PROCCR\tMACRO\tADDR,ID"
+    }
+  },
+  {
+    "id": "SUB-012",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Kill takes ID+mask so one call kills a class (KLPROC, SYSTEM.SRC:341-346).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 341,
+      "verbatim": "KLPROC\tPSHS\tD,U"
+    }
+  },
+  {
+    "id": "SUB-013",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Frame pacing. PNAP decrements once per exec-loop pass (SYSTEM.SRC:233,250) and the loop is gated by the DMA double-buffer (EXECST/EXEINT spin, SYSTEM.SRC:162-169; buffer release :316-317) — one pass per video frame.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 233,
+      "verbatim": "\tDEC\tPNAP,U\t\t1 LESS NAP TIME UNIT"
+    }
+  },
+  {
+    "id": "SUB-014",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Frame pacing. PNAP decrements once per exec-loop pass (SYSTEM.SRC:233,250) and the loop is gated by the DMA double-buffer (EXECST/EXEINT spin, SYSTEM.SRC:162-169; buffer release :316-317) — one pass per video frame.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 250,
+      "verbatim": "\tDEC\tPNAP,U\t\t1 LESS NAP TIME UNIT"
+    }
+  },
+  {
+    "id": "SUB-015",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Frame pacing. PNAP decrements once per exec-loop pass (SYSTEM.SRC:233,250) and the loop is gated by the DMA double-buffer (EXECST/EXEINT spin, SYSTEM.SRC:162-169; buffer release :316-317) — one pass per video frame.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 162,
+      "verbatim": "EXECST\tLDX\t#DTBL1\t\tPUT NEW IMAGES IN DMA AREA #1?"
+    }
+  },
+  {
+    "id": "SUB-016",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): …oracles: PCNAP 60 WAIT A SECOND (:5934), LDA #90 1 1/2 SECOND (:959), LDD #30*60 30 SECOND WAIT (:6393), LDD #60*60 NBR OF INTERUPTS UNTIL 1 MINUTE (SYSTEM.SRC:612), and the SECONDS*60/8 idiom in BAITBL (:2150-2163).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 612,
+      "verbatim": "\tLDD\t#60*60\t\tNBR OF INTERUPTS UNTIL 1 MINUTE"
+    }
+  },
+  {
+    "id": "SUB-017",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): IRQ (SYSTEM.SRC:578-728): PIA CB1 rising edge on VA11 → handler at ~240 Hz;",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 578,
+      "verbatim": "IRQ\tSTS\tIRQSTK\t\tREMEMBER STACK POINTER (NO DCON FROM NOW ON!)"
+    }
+  },
+  {
+    "id": "SUB-018",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): everything after the quadrant test (VSCAN ANDB #$C0, SYSTEM.SRC:587-589) runs only on quadrant 0 = 60 Hz.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 587,
+      "verbatim": "\tLDB\tVSCAN"
+    }
+  },
+  {
+    "id": "SUB-019",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Blitter (\"Special Chips\", DMA at $CA00): 8-byte blocks + link, 60 transfers/frame budget (RAMDEF.SRC:144-152,362);",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 144,
+      "verbatim": "WCDMA\tRMB\t1\tWRITE/CLEAR'S DMA CONTROL BYTE"
+    }
+  },
+  {
+    "id": "SUB-020",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Blitter (\"Special Chips\", DMA at $CA00): 8-byte blocks + link, 60 transfers/frame budget (RAMDEF.SRC:144-152,362);",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 362,
+      "verbatim": "DMA1\tRMB\t10*60\tONLY 60 DMA TRANSFERS PER SCREEN (8 DMA BYTES + LINK)"
+    }
+  },
+  {
+    "id": "SUB-021",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): control bits H,L,F,K,Z,S,W,R (RAMDEF.SRC:154-162) map 1:1 to MAME's flags;",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 154,
+      "verbatim": "*  DMA BITS: H,L,F,K Z,S,W,R"
+    }
+  },
+  {
+    "id": "SUB-022",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): fired by a PULU/PSHS trick with IRQs off (SYSTEM.SRC:708-711).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 708,
+      "verbatim": "IRQDMA\tLDS\t#DMA+8\t\tSTART/RESTART DMA LOOPING"
+    }
+  },
+  {
+    "id": "SUB-023",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Memory map (source ↔ MAME williams.cpp:532-548 agree on every symbol): DP base $A000, stack $BF00, GAMORG $5ED0, video RAM $0000-$97FF (column-major), ROM overlay bank-switch $C900 (write-only; shadow DRRUC $BFFF), palette $C000, blitter $CA00, video counter…",
+    "source": {
+      "file": "williams.cpp",
+      "line": 532,
+      "verbatim": "(MAME williams driver williams.cpp:532-548 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "SUB-024",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Input: muxed via widget-PIA CB2 (EQU.SRC:70; game code P1JOY/P2JOY, :7247-7264): WPIAA $01 left, $02 right, $04 flap (\"JUMP BUTTON\"), $10 start-2, $20 start-1.",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 70,
+      "verbatim": "*CB2\tOUTPUT SWITCH MUX CONTROL 1=PLAYER1,0=PLAYER2"
+    }
+  },
+  {
+    "id": "SUB-025",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Sound interface: 6-bit command on coin-door PIA B ($C80E), $FF idle strobe (SYSTEM.SRC:184-187);",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 184,
+      "verbatim": "\tLDB\t#$FF\t\tSEND THE SOUND TO THE SOUND BOARD"
+    }
+  },
+  {
+    "id": "SUB-026",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): priority-gated queue of (code, duration) entries (SND, SYSTEM.SRC:761-773).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 761,
+      "verbatim": "SND\tLDA\t,X+\t\tGET SOUND PIRORITY"
+    }
+  },
+  {
+    "id": "SUB-027",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Board: M6808 @ 3.58 MHz÷4 + MC1408 DAC (williams.cpp:1540,1563);",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1540,
+      "verbatim": "(MAME williams driver williams.cpp:1540 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "SUB-028",
+    "claim": "Executive / OS (SYSTEM.SRC, with RAMDEF.SRC + EQU.SRC): Board: M6808 @ 3.58 MHz÷4 + MC1408 DAC (williams.cpp:1540,1563);",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1563,
+      "verbatim": "(MAME williams driver williams.cpp:1563 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "SUB-029",
+    "claim": "Flight physics + entity mechanics (JOUSTRV4.SRC + SHRAMDEF.SRC): position is 3 bytes/axis (page, pixel, fraction — SHRAMDEF.SRC:176-177);",
+    "source": {
+      "file": "SHRAMDEF.SRC",
+      "line": 176,
+      "verbatim": "PPOSX\tRMB\t3\tPROCESS'S OBJECT X LOCATION (AND FRACTIONAL DISTANCE)"
+    }
+  },
+  {
+    "id": "SUB-030",
+    "claim": "Flight physics + entity mechanics (JOUSTRV4.SRC + SHRAMDEF.SRC): PVELX is a table index, not a velocity (SHRAMDEF.SRC:191,193).",
+    "source": {
+      "file": "SHRAMDEF.SRC",
+      "line": 191,
+      "verbatim": "PVELY\tRMB\t2\t\tFACTIONAL SIGNED VELOCITY Y-DIRECTION"
+    }
+  },
+  {
+    "id": "SUB-031",
+    "claim": "Flight physics + entity mechanics (JOUSTRV4.SRC + SHRAMDEF.SRC): PVELX is a table index, not a velocity (SHRAMDEF.SRC:191,193).",
+    "source": {
+      "file": "SHRAMDEF.SRC",
+      "line": 193,
+      "verbatim": "PVELX\tRMB\t1\t\tTABLE LOOK-UP FLYING VELOCITY-X"
+    }
+  },
+  {
+    "id": "SUB-032",
+    "claim": "Waves, AI, scoring (JOUSTRV4.SRC): RV3 carried only patches 1-3, inline (JOUSTRV3.SRC:7170-7197).",
+    "source": {
+      "file": "JOUSTRV3.SRC",
+      "line": 7170,
+      "verbatim": "PATCH1\tSTD\tPPICH,Y\t\tOLD INSTRUCTION"
+    }
+  },
+  {
+    "id": "SUB-033",
+    "claim": "Text engine (MESSAGE.SRC, PHRASE.SRC, MESSEQU*.SRC): Separate ROM block, 11-entry jump table at $4A50 (EQU.SRC:12, MESSAGE.SRC:28-39), authored by Cary Kolker (MESSAGE.SRC:13).",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 12,
+      "verbatim": "MESS\tEQU\t$4A50\tEQUATE FOR MESS ROUTINES AND CHARACTERS (4K+ BLOCK)"
+    }
+  },
+  {
+    "id": "SUB-034",
+    "claim": "Text engine (MESSAGE.SRC, PHRASE.SRC, MESSEQU*.SRC): Separate ROM block, 11-entry jump table at $4A50 (EQU.SRC:12, MESSAGE.SRC:28-39), authored by Cary Kolker (MESSAGE.SRC:13).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 28,
+      "verbatim": "\tORG\tMESS\tSTART AT THE ADDRESS SPECIFIED ABOVE"
+    }
+  },
+  {
+    "id": "SUB-035",
+    "claim": "Text engine (MESSAGE.SRC, PHRASE.SRC, MESSEQU*.SRC): Separate ROM block, 11-entry jump table at $4A50 (EQU.SRC:12, MESSAGE.SRC:28-39), authored by Cary Kolker (MESSAGE.SRC:13).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 13,
+      "verbatim": "*\tSTARTED : MAY 25, 1982\tBY : CARY KOLKER\t*"
+    }
+  },
+  {
+    "id": "SUB-036",
+    "claim": "Text engine (MESSAGE.SRC, PHRASE.SRC, MESSEQU*.SRC): Two fonts: \"5×7\" = 3 bytes × 7 rows, \"3×5\" = 2 bytes × 5 rows (MESSAGE.SRC:347,839; 53 + 49 glyphs at :241-344, data to :1057).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 347,
+      "verbatim": "L0\tFCB\t$03,$07\t\tXSIZE,YSIZE"
+    }
+  },
+  {
+    "id": "SUB-037",
+    "claim": "Text engine (MESSAGE.SRC, PHRASE.SRC, MESSEQU*.SRC): Two fonts: \"5×7\" = 3 bytes × 7 rows, \"3×5\" = 2 bytes × 5 rows (MESSAGE.SRC:347,839; 53 + 49 glyphs at :241-344, data to :1057).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 839,
+      "verbatim": "S0\tFCB\t$02,$05 \tCHARACTER '0 & O'"
+    }
+  },
+  {
+    "id": "SUB-038",
+    "claim": "Text engine (MESSAGE.SRC, PHRASE.SRC, MESSEQU*.SRC): Text is not ASCII: custom charset (digits $00-$09, space $0A, A-Z $0B-$24; MESSEQU2.SRC:1-61) with the terminator OR'd into the last byte (END EQU $80);",
+    "source": {
+      "file": "MESSEQU2.SRC",
+      "line": 1,
+      "verbatim": "END\tEQU\t$80"
+    }
+  },
+  {
+    "id": "SUB-039",
+    "claim": "Text engine (MESSAGE.SRC, PHRASE.SRC, MESSEQU*.SRC): Phrase index is *signed* — $F5-$FF sit physically before the PHRASE label (PHRASE.SRC:1-12).",
+    "source": {
+      "file": "PHRASE.SRC",
+      "line": 1,
+      "verbatim": "\tFDB\tMS10\t$F5\t'FOR DISMOUNTING FIRST PLAYER'"
+    }
+  },
+  {
+    "id": "SUB-040",
+    "claim": "Text engine (MESSAGE.SRC, PHRASE.SRC, MESSEQU*.SRC): A TEXT block is a screen-full of {address, colour, phrase#} records (PHRASE.SRC:376-384; walker MESSAGE.SRC:218-226).",
+    "source": {
+      "file": "PHRASE.SRC",
+      "line": 376,
+      "verbatim": "ROMOK\tFDB\t$3E50\tCURSOR"
+    }
+  },
+  {
+    "id": "SUB-041",
+    "claim": "Text engine (MESSAGE.SRC, PHRASE.SRC, MESSEQU*.SRC): A TEXT block is a screen-full of {address, colour, phrase#} records (PHRASE.SRC:376-384; walker MESSAGE.SRC:218-226).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 218,
+      "verbatim": "1$\tLDX\t,Y++\tGET THE ADDRESS TO WRITE IT AT"
+    }
+  },
+  {
+    "id": "SUB-042",
+    "claim": "Attract mode (ATT.SRC + game module): Two presentations: the MARQUE logo page — Ken Lantz's line-drawing engine (ATT.SRC:3,49-50, workspace $BC00, undecoded, open question) — and the 14-entry instructional sequence (ATMST, :337-365: 5-byte records {demo routine, message, dwell, erase}), which runs…",
+    "source": {
+      "file": "ATT.SRC",
+      "line": 3,
+      "verbatim": "*\tKenneth F. Lantz\tc@ March 1982\tWilliam Electronics"
+    }
+  },
+  {
+    "id": "SUB-043",
+    "claim": "Attract mode: ATT.SRC:49 places the MARQUE logo-page CODE at ORG $D000, in high memory because it needs screen access. (The $BC00 the dossier sentence also names is the engine's WORKSPACE, at ATT.SRC:19 — pinned separately by SUB-055.)",
+    "source": {
+      "file": "ATT.SRC",
+      "line": 49,
+      "verbatim": "\tORG\t$D000\t\tin high memory due to screen access"
+    }
+  },
+  {
+    "id": "SUB-044",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): TB12 = shared utility block at $3B10 reached via 28 3-byte vectors (EQU.SRC:11,210-237): CMOS nibble r/w, BCD↔hex, credits, coin pricing, audits, the HSTD page.",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 11,
+      "verbatim": "TSBORG\tEQU\t$3B10\tEQUATE FOR THE AUDITING AND CMOS HANDLING (~4K BLOCK)"
+    }
+  },
+  {
+    "id": "SUB-045",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): TB12 = shared utility block at $3B10 reached via 28 3-byte vectors (EQU.SRC:11,210-237): CMOS nibble r/w, BCD↔hex, credits, coin pricing, audits, the HSTD page.",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 210,
+      "verbatim": "CKCMSV\tRMB\t3\tTHE POWER UP TESTING OF CMOS CHECKSUMS"
+    }
+  },
+  {
+    "id": "SUB-046",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): CMOS: protected adjustments at $CC00, writable bookkeeping at $CD00 (EQU.SRC:30,90,109), all 4-bit.",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 30,
+      "verbatim": "CMOS\tEQU\t$CC00\tCMOS MEMORY"
+    }
+  },
+  {
+    "id": "SUB-047",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): CMOS: protected adjustments at $CC00, writable bookkeeping at $CD00 (EQU.SRC:30,90,109), all 4-bit.",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 90,
+      "verbatim": "\tORG\tCMOS+$100 WRITABLE CMOS"
+    }
+  },
+  {
+    "id": "SUB-048",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): CMOS: protected adjustments at $CC00, writable bookkeeping at $CD00 (EQU.SRC:30,90,109), all 4-bit.",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 109,
+      "verbatim": "\tORG\tCMOS\tADEQUATE BIRTH CONTROL PROTECTION"
+    }
+  },
+  {
+    "id": "SUB-049",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): 18 adjustments with factory defaults (EQU.SRC:110-127; TB12REV3.SRC:134-151) — a free-play clone keeps only GA1 (difficulty), REPLAY (extra man @20,000), NSHIP (lives, default 5), and the HSTD gate;",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 110,
+      "verbatim": "REPLAY\tRMB\t2\tREPLAY LEVEL"
+    }
+  },
+  {
+    "id": "SUB-050",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): 18 adjustments with factory defaults (EQU.SRC:110-127; TB12REV3.SRC:134-151) — a free-play clone keeps only GA1 (difficulty), REPLAY (extra man @20,000), NSHIP (lives, default 5), and the HSTD gate;",
+    "source": {
+      "file": "TB12REV3.SRC",
+      "line": 134,
+      "verbatim": "DEFALT\tFCB\t$20\tREPLAY @20,000"
+    }
+  },
+  {
+    "id": "SUB-051",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): Ten audit counters (EQU.SRC:92-101).",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 92,
+      "verbatim": "SLOT1\tRMB\t6\tLEFT COIN TOTAL"
+    }
+  },
+  {
+    "id": "SUB-052",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): High scores: all-time \"JOUST CHAMPIONS\" + daily \"DAILY BUZZARDS\", 14-nibble entries, 5/player/table (\"MAXIMUM 5 ENTRYS\", PHRASE.SRC:306), 3 initials, default table = the dev team (WIL/MRS/JRN/PFZ/CWK, TB12REV3.SRC:389-393 — whose top score's BCD digits double…",
+    "source": {
+      "file": "PHRASE.SRC",
+      "line": 306,
+      "verbatim": "ONLY5\tFCB\tCM,CA,CX,CI,CM,CU,CM,CSPC,C5,CSPC,CE,CN,CT,CR,CY,CS+END"
+    }
+  },
+  {
+    "id": "SUB-053",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): …BUZZARDS\", 14-nibble entries, 5/player/table (\"MAXIMUM 5 ENTRYS\", PHRASE.SRC:306), 3 initials, default table = the dev team (WIL/MRS/JRN/PFZ/CWK, TB12REV3.SRC:389-393 — whose top score's BCD digits double as the build date, brief §0).",
+    "source": {
+      "file": "TB12REV3.SRC",
+      "line": 389,
+      "verbatim": "DEFHSR"
+    }
+  },
+  {
+    "id": "SUB-054",
+    "claim": "Operator / CMOS (TB12REV3.SRC, T12REV3.SRC, EQU.SRC): T12 = the $F000 diagnostics ROM: reset vectors (T12REV3.SRC:1997-1999 → JMP [$EFF8] trampoline), per-PROM checksum ledger (ROMTAB), operator books.",
+    "source": {
+      "file": "T12REV3.SRC",
+      "line": 1997,
+      "verbatim": "\tORG\tTSTORG+$FF0"
+    }
+  },
+  {
+    "id": "SUB-055",
+    "claim": "Attract mode: the MARQUE logo page's line-drawing engine takes its workspace at $BC00, in scratch memory — the only occurrence of $BC00 in ATT.SRC. (The cited ATT.SRC:49 ORG is the $D000 code origin, a different address.)",
+    "source": {
+      "file": "ATT.SRC",
+      "line": 19,
+      "verbatim": "\tORG\t$BC00\tin scratch memory"
+    }
+  },
+  {
+    "id": "JT10-001",
+    "claim": "Process block: PID is 1 byte — the process id number, zero meaning the slot holds no process.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 169,
+      "verbatim": "PID\tRMB\t1\t   \"\t   \"\t  I.D. NBR (IF=0 NO PROCESS)"
+    }
+  },
+  {
+    "id": "JT10-002",
+    "claim": "Process block: PPRI is 1 byte — the scheduling class and start link of the object block. PROCCR sets it to 0 (primary) and SECCR to 255 (secondary).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 170,
+      "verbatim": "PPRI\tRMB\t1\t   \"       \"\t  START LINK OF OBJECT(S) BLOCK"
+    }
+  },
+  {
+    "id": "JT10-003",
+    "claim": "Process block: PNAP is 1 byte — sleep time in frames, decremented once per exec-loop pass. One nap unit is one video frame.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 171,
+      "verbatim": "PNAP\tRMB\t1\t   \"\t   \"\t  SLEEP TIME IF<>0"
+    }
+  },
+  {
+    "id": "JT10-004",
+    "claim": "Process block: PPC is 2 bytes — the resume PC the dispatcher jumps through. These five fields total 7 overhead bytes.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 172,
+      "verbatim": "PPC\tRMB\t2\t   \"\t   \"\t  PROCESSES PC COUNTER"
+    }
+  },
+  {
+    "id": "JT10-005",
+    "claim": "Process block: PPOSX is 3 bytes — the object X location AND its fractional distance, i.e. a 16-bit pixel+fraction value plus its page byte. This is one of the two fields the earlier figure of 51 omitted entirely, and it is the field jt1-5 integrates.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 173,
+      "verbatim": "PPOSX\tRMB\t3\tPROCESS'S OBJECT X LOCATION (AND FRACTIONAL DISTANCE)"
+    }
+  },
+  {
+    "id": "JT10-006",
+    "claim": "Process block: PPOSY is 3 bytes — the object Y location and fractional distance, the vertical counterpart of PPOSX and the second field the earlier figure of 51 dropped.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 174,
+      "verbatim": "PPOSY\tRMB\t3\tPROCESS'S OBJECT Y LOCATION (AND FRACTIONAL DISTANCE)"
+    }
+  },
+  {
+    "id": "JT10-007",
+    "claim": "Process block: PRAML is 43 — the number of process-exclusive RAM bytes, and the only part of the earlier figure of 51 that was right.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 175,
+      "verbatim": "PRAML\tEQU\t43\tNUMBER OF PROCESSES RAM BYTES"
+    }
+  },
+  {
+    "id": "JT10-008",
+    "claim": "Process block: PRAM reserves PRAML (43) bytes of process-exclusive RAM, the last field before PBLKL closes the block.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 176,
+      "verbatim": "PRAM\tRMB\tPRAML\tPROCESSES  EXCLUSIVE RAM"
+    }
+  },
+  {
+    "id": "JT10-009",
+    "claim": "Process block: PBLKL EQU * assembles to 56 — the true block length, since EQU * takes the assembler's current offset after every RMB above it. Its own author comment reads \"8 OVERHEAD BYTES\", which is STALE: the directives give 7. The assembler follows the directives, not the comment, and this one line is why the dossier said 51 for four stories.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 180,
+      "verbatim": "PBLKL\tEQU\t*\t\t8 OVERHEAD BYTES + PROCESSES EXCLUSIVE RAM"
+    }
+  },
+  {
+    "id": "JT10-010",
+    "claim": "Process block: the block's own ORG $0 resets the assembler offset, which is what makes every RMB below it a field OFFSET within the process block rather than an absolute address. It is also the anchor a layout walk must start from — RAMDEF.SRC carries an earlier ORG $0 for the image pointer table, so starting from the wrong one derives a different block.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 167,
+      "verbatim": "\tORG\t$0\tPROCESS BLOCK OFFSETS"
+    }
+  }
+]

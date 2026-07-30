@@ -1,0 +1,65 @@
+[
+  {
+    "id": "JT86-001",
+    "claim": "DDEAD is the DECISION BLOCK's death-wish hook, keyed to the LOSER: `DDEAD RMB 2  DEATH WISH ROUTINE (REG.X VICTOR, REG.U LOSER)`. All nine decision records bind it, and the routines are per creature TYPE rather than per creature: DEATH1 is bound by two records (G1DEC :5543, P1DEC :5551) and DEATH2 by two (G2DEC :5547, P2DEC :5555) — the attract-mode and play records for each player — while the four enemy records share DEATH3 (:5559, :5563, :5567, :5571) and the pterodactyl's P7DEC binds DEATH4 (:5575). Only the players' routines clear a persistent per-player cell: DEATH1/DEATH2 clear the egg counter (JT86-002/003). DEATH3 makes no write to the dead entity at all — it adjusts the two GLOBAL enemy counts (NSMART by the killed enemy's own PCHASE via `LDA NSMART / SUBA PCHASE,U / STA NSMART`, and NENEMY by a literal `DEC`) and otherwise writes only to the egg process it creates — and DEATH4's only writes to the dead entity are its dying-animation program (PJOYT/PJOY). Consistently, all five non-player records carry DEGGS = 0: an enemy has no egg counter at all, which is what the debug guard at :3039 ('SHOULD NEVER BE ZERO') catches. (JOUSTRV4.SRC:112).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 112,
+      "verbatim": "DDEAD\tRMB\t2\tDEATH WISH ROUTINE (REG.X VICTOR, REG.U LOSER)"
+    }
+  },
+  {
+    "id": "JT86-002",
+    "claim": "A player's death CLEARS that player's egg-hit counter: `DEATH1 CLR EGGS1` is the first instruction of the routine commented 'DEATH OF PLAYER 1' (:4667). The EGGVAL ladder therefore does NOT survive a mount death — it climbs only within one life. This is why jt8-6 keeps the count on the player PROCESS (a death removes the process) instead of re-homing it somewhere that outlives the man. (JOUSTRV4.SRC:4669).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4669,
+      "verbatim": "DEATH1\tCLR\tEGGS1"
+    }
+  },
+  {
+    "id": "JT86-003",
+    "claim": "The clear is per player: `DEATH2 CLR EGGS2`, under 'DEATH OF PLAYER 2' (:4673). EGGS1 and EGGS2 are separate cells, so one knight's death leaves the other knight's ladder untouched. (JOUSTRV4.SRC:4675).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4675,
+      "verbatim": "DEATH2\tCLR\tEGGS2"
+    }
+  },
+  {
+    "id": "JT86-004",
+    "claim": "The death routine is dispatched on the DEAD man's decision record, never the victor's: OSTWIN does `LDY PDECSN,U` (:5071, where U is documented as the loser) and then `JSR [DDEAD,Y]  CALL DEATH ROUTINE (REG.X VICTOR, REG.U DEAD)`. The lava death reaches the same hook with `LDX #0  NO VICTOR` (:6562-6564), so every route to a player's death clears that player's counter. (JOUSTRV4.SRC:5074).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5074,
+      "verbatim": "\tJSR\t[DDEAD,Y]\tCALL DEATH ROUTINE (REG.X VICTOR, REG.U DEAD)"
+    }
+  },
+  {
+    "id": "JT86-005",
+    "claim": "P1DEC binds the two fields side by side: `FDB DEATH1,EGGS1,STPLY1,SCRHUN,PLYG1,PLYTIM` — DDEAD -> DEATH1 and DEGGS -> EGGS1 are consecutive words of player 1's decision record (P2DEC does the same with DEATH2/EGGS2 at :5555). So DEGGS holds the ADDRESS of a fixed per-player cell rather than the count itself, and the routine that clears that cell is a field of the very same record. (JOUSTRV4.SRC:5551).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5551,
+      "verbatim": "\tFDB\tDEATH1,EGGS1,STPLY1,SCRHUN,PLYG1,PLYTIM"
+    }
+  },
+  {
+    "id": "JT86-006",
+    "claim": "EVERY wave start clears both egg-hit counters: `WNRM CLR EGGS1  RESET NUMBER OF EGGS KILLED BY PLAYER 1`, followed by `CLR EGGS2` for player 2 (:1980), in the same wave-setup block as `CLR WSMART`. The ladder does not carry across a wave boundary — the first catch of a new wave pays the first rung. (JOUSTRV4.SRC:1979).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1979,
+      "verbatim": "WNRM\tCLR\tEGGS1\t\tRESET NUMBER OF EGGS KILLED BY PLAYER 1"
+    }
+  },
+  {
+    "id": "JT86-007",
+    "claim": "A new game clears both egg-hit counters: `CLR EGGS1  RESET NUMBER OF EGG KILLED` (:907) and `CLR EGGS2` (:912), in the block that also clears the player score areas SPLY1/SPLY2. Together with :1979-1980 and :4669/:4675 this is the counter's COMPLETE lifetime — three reset boundaries, none of them inside EGGSCR. (JOUSTRV4.SRC:907).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 907,
+      "verbatim": "\tCLR\tEGGS1\t\tRESET NUMBER OF EGG KILLED"
+    }
+  }
+]

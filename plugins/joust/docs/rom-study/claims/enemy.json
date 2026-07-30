@@ -1,0 +1,263 @@
+[
+  {
+    "id": "JT22-001",
+    "claim": "Enemy intelligence budget: NSMART is the CURRENT number of promoted (attacking/smart) enemies — the debit side of the budget. Promotions raise it, deaths of smart enemies lower it; it must reach zero at wave end (the IFN DEBUG oracle).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 308,
+      "verbatim": "NSMART\tRMB\t1\tCURRENT NUMBER OF ATTACKING ENEMIES"
+    }
+  },
+  {
+    "id": "JT22-002",
+    "claim": "Enemy intelligence budget: WSMART is the WANTED number of smart enemies for the wave — the target the budget grows toward. Seeded from the wave pursuit nibble and bumped every 15 s while enemies live. A dumb enemy promotes while NSMART < WSMART.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 309,
+      "verbatim": "WSMART\tRMB\t1\tNUMBER OF ENEMIES THAT SHOULD ATTACK IN A WAVE"
+    }
+  },
+  {
+    "id": "JT22-003",
+    "claim": "PCHASE is the per-enemy smart flag: 1 = promoted/chasing (running a smart brain), 0 = dumb (running LINET). Promotion sets it 1; a death debits NSMART by exactly this flag, so a dumb death credits nothing and a smart death credits one.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 213,
+      "verbatim": "PCHASE\tRMB\t1\t\tENEMIES CHASE (=1) OR NON-CHASE (=0) FLAG"
+    }
+  },
+  {
+    "id": "JT22-004",
+    "claim": "EMYTIM is the PAUSE TIME BETWEEN ENEMIES MOVEMENTS — an integrate-every-Nth-frame DIVIDER (the enemy process naps EMYTIM frames between steps), NOT a per-step speed scale. 2 on waves 1-2 slows enemies to half rate; 1 otherwise.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 336,
+      "verbatim": "EMYTIM\tRMB\t1\tPAUSE TIME BETWEEN ENEMIES MOVEMENTS"
+    }
+  },
+  {
+    "id": "JT22-005",
+    "claim": "WSMART is seeded from the wave pursuit NIBBLE: the low four bits of WPERSUE (ANDA #$0F) become the wanted-smart count. This is the budget INPUT jt2-5 (wave machine) will supply; jt2-2 stubs it as a parameter.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2076,
+      "verbatim": "\tANDA\t#$0F"
+    }
+  },
+  {
+    "id": "JT22-006",
+    "claim": "The masked pursuit nibble is stored to WSMART — the per-wave seed of the intelligence budget target (WBEGIN, JOUSTRV4.SRC:2072-2077).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2077,
+      "verbatim": "\tSTA\tWSMART"
+    }
+  },
+  {
+    "id": "JT22-007",
+    "claim": "Intelligence growth cadence: PDELAY reloads to 112 and the comment states the interval outright — AFTER 15 SECONDS BUMP NBR OF INTELLIGENT PEOPLE. Combined with the 8-frame nap (EMYOK PCNAP 8) this is 112x8 = 896 frames ~= 15 s at ~60 Hz.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2094,
+      "verbatim": "EMY2\tLDA\t#112\t\tAFTER 15 SECONDS BUMP NBR OF INTELLIGENT PEOPLE"
+    }
+  },
+  {
+    "id": "JT22-008",
+    "claim": "The growth timer naps 8 frames per decrement (EMYOK PCNAP 8): the 112-count PDELAY is decremented once every 8 frames while enemies live, so a WSMART bump lands every 112x8 = 896 frames.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2096,
+      "verbatim": "EMYOK\tPCNAP\t8"
+    }
+  },
+  {
+    "id": "JT22-009",
+    "claim": "When the 15-second timer expires while enemies live, WSMART is bumped by one (INC WSMART) — the intelligence budget grows, allowing one more promotion.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2127,
+      "verbatim": "\tINC\tWSMART"
+    }
+  },
+  {
+    "id": "JT22-010",
+    "claim": "The WSMART growth saturates at 255: INC WSMART / BNE EMY2 / DEC WSMART restores the value if the increment wrapped to zero, so the target never rolls over.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2129,
+      "verbatim": "\tDEC\tWSMART"
+    }
+  },
+  {
+    "id": "JT22-011",
+    "claim": "Promotion debits the budget: the dumb LINET brain, on finding NSMART < WSMART, jumps here and does INC NSMART (JUST GOT SMARTER) — one more attacking enemy, consuming one unit of the WSMART allowance.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3764,
+      "verbatim": "LNTSMT\tINC\tNSMART\t\tJUST GOT SMARTER"
+    }
+  },
+  {
+    "id": "JT22-012",
+    "claim": "Promotion invariant (IFN DEBUG oracle): before promoting, PCHASE had BETTER BE ZERO — an already-smart enemy is never re-promoted. This is the no-double-promote bookkeeping oracle for the budget tests.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3766,
+      "verbatim": "\tLDA\tPCHASE,U\tDEBUG, BETTER BE ZERO"
+    }
+  },
+  {
+    "id": "JT22-013",
+    "claim": "The promotion target is data: PDECSN,U points at the enemy decision block that carries which smart brain this enemy becomes (bounder/hunter/shadow-lord).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3772,
+      "verbatim": "\tLDX\tPDECSN,U"
+    }
+  },
+  {
+    "id": "JT22-014",
+    "claim": "DSMART,X (within the PDECSN decision block) is the address of the smart brain to run on promotion — BOUNDR, B2UNDR, or SHADOW; it is stored to PJOY and jumped to, so the promoted enemy immediately runs its smart brain.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3773,
+      "verbatim": "\tLDX\tDSMART,X"
+    }
+  },
+  {
+    "id": "JT22-015",
+    "claim": "Second promotion path: a buzzard remounted by its thrown rider also promotes (MOUNRI INC NSMART, JUST GOT SMARTER), debiting the budget the same way LINET promotion does.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3669,
+      "verbatim": "MOUNRI\tINC\tNSMART\t\tJUST GOT SMARTER"
+    }
+  },
+  {
+    "id": "JT22-016",
+    "claim": "Death credits the budget back: on an enemy death, NSMART is reduced (BUMP DOWN SMARTNESS VARIABLE) by that enemy PCHASE flag.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2962,
+      "verbatim": "\tLDA\tNSMART\t\tBUMP DOWN SMARTNESS VARIABLE"
+    }
+  },
+  {
+    "id": "JT22-017",
+    "claim": "The death credit equals the PCHASE flag (SUBA PCHASE,U): a smart enemy (PCHASE=1) credits one back to NSMART, a dumb enemy (PCHASE=0) credits nothing — the exact inverse of promotion.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2963,
+      "verbatim": "\tSUBA\tPCHASE,U"
+    }
+  },
+  {
+    "id": "JT22-018",
+    "claim": "Each enemy death also decrements NENEMY, the number of enemies on the screen — the count that must reach zero (with NSMART) at wave end.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2965,
+      "verbatim": "\tDEC\tNENEMY\t\tDECREMENT NBR OF ENEMIES ON THE SCREEN"
+    }
+  },
+  {
+    "id": "JT22-019",
+    "claim": "Budget bookkeeping oracle (IFN DEBUG): at wave normalise (WNRM) with all enemies dead, NSMART THIS HAD BETTER BE ZERO — the promotions/deaths ledger balances to zero. jt2-2 uses this as a test oracle.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1983,
+      "verbatim": "\tLDA\tNSMART\t\tTHIS HAD BETTER BE ZERO!!!!!!!!!!"
+    }
+  },
+  {
+    "id": "JT22-020",
+    "claim": "Companion oracle: NENEMY THIS HAD BETTER BE ZERO at wave normalise — no enemy processes survive into the next wave.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1986,
+      "verbatim": "41$\tLDA\tNENEMY\t\tTHIS HAD BETTER BE ZERO!!!!!!!!!!"
+    }
+  },
+  {
+    "id": "JT22-021",
+    "claim": "EMYTIM resets to 1 at wave normalise (NO ENEMY SLOW DOWN) — the default divider is every-frame; the halved rate is only set for waves 1-2.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1993,
+      "verbatim": "\tLDA\t#1\t\tNO ENEMY SLOW DOWN"
+    }
+  },
+  {
+    "id": "JT22-022",
+    "claim": "The slow-down divider value is literally 2 (LDA #2 -> STA EMYTIM), set when TBRIDGE marks the 1st/2nd wave — enemies integrate every 2nd frame.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2204,
+      "verbatim": "\tLDA\t#2"
+    }
+  },
+  {
+    "id": "JT22-023",
+    "claim": "EMYTIM is consumed as a process NAP count (LDA EMYTIM / JSR VNAPTPC): the enemy/egg process sleeps EMYTIM frames between integration steps, which is what makes it a DIVIDER — half the steps over any window when EMYTIM=2, not a scaled velocity.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3156,
+      "verbatim": "\tLDA\tEMYTIM\t\tENEMY FALL TIME"
+    }
+  },
+  {
+    "id": "JT22-024",
+    "claim": "VNAPTPC naps the process for the accumulator frame count then resumes (NAPTPC, SYSTEM.SRC:222) — the mechanism by which EMYTIM divides the enemy update rate onto the jt2-1 frame-nap scheduler.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3157,
+      "verbatim": "\tJSR\tVNAPTPC"
+    }
+  },
+  {
+    "id": "JT22-025",
+    "claim": "The hunter (advanced bounder, B2UNDR) has a horizontal look-ahead length B2XLEN = 27+4 = 31 that the plain bounder lacks: it projects its path and slows/turns before flying into a cliff (B2DIR).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3969,
+      "verbatim": "B2XLEN\tEQU\t27+4"
+    }
+  },
+  {
+    "id": "JT22-026",
+    "claim": "The shadow lord also carries a horizontal look-ahead length SHXLEN = 27+4 = 31 (SHDIR), the cliff-avoidance the plain bounder does not perform.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4228,
+      "verbatim": "SHXLEN\tEQU\t27+4"
+    }
+  },
+  {
+    "id": "JT22-027",
+    "claim": "Shadow-lord descent is distinct: SHDN sets NO FLAPING WINGS (CLRB, wings up) and free-falls toward the target, only flapping to escape the lava below cliff5 — where the bounder/hunter actively brake their descent at a Y-velocity threshold.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4246,
+      "verbatim": "SHDN\tLDD\t#SHDN2\t\tNO FLAPING WINGS"
+    }
+  },
+  {
+    "id": "JT22-028",
+    "claim": "Shadow-lord level flight tracks the PLAYER line directly (SHLEP: LDB PPOSY+1,X PLAYERS LINE TO TRACK) — it hunts the player altitude, distinguishing it from bounder/hunter.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4279,
+      "verbatim": "\tLDB\tPPOSY+1,X\tPLAYERS LINE TO TRACK"
+    }
+  },
+  {
+    "id": "JT22-029",
+    "claim": "By contrast the bounder level flight remembers its OWN line to track (BOLEV: LDD PPOSY,U REMEMBER LINE TO TRACK), not the players — the cited difference behind AC-4 pursuit distinctions.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3905,
+      "verbatim": "\tLDD\tPPOSY,U\t\tREMEMBER LINE TO TRACK"
+    }
+  }
+]

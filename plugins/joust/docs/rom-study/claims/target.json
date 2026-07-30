@@ -1,0 +1,119 @@
+[
+  {
+    "id": "JT81-001",
+    "claim": "SELPLY returns the player an enemy should hunt: it reads the primary target slot TARPLY, and with no primary registered there is nobody to chase.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4462,
+      "verbatim": "SELPLY\tLDX\tTARPLY\t\tGET TARGETED PLAYER TO KILL"
+    }
+  },
+  {
+    "id": "JT81-002",
+    "claim": "The spawn-grace gate: a player is targetable ONLY once its delay timer TARTM1 has reached zero (BEQ). A freshly-materialised knight, whose timer is still counting down, cannot be locked onto.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4464,
+      "verbatim": "\tLDA\tTARTM1\t\tDELAY TIMER AT ZERO?"
+    }
+  },
+  {
+    "id": "JT81-003",
+    "claim": "When both players are targetable SELPLY picks the nearer by a FIND CLOSEST CO-ORDINANT metric — the smaller of the per-axis gaps between the enemy and each player.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4477,
+      "verbatim": "\tSUBB\tPPOSY+1,U\tFIND CLOSEST CO-ORDINANT"
+    }
+  },
+  {
+    "id": "JT81-004",
+    "claim": "STPLY registers a player into a target slot: the primary TARPLY if it is empty, otherwise the secondary TARPL2.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4656,
+      "verbatim": "STPLY2\tLDD\tTARPLY\t\tIS THIS SPOT EMPTY?"
+    }
+  },
+  {
+    "id": "JT81-005",
+    "claim": "Registration arms the slot's grace timer from TARTIM (the master targeting delay = 90 frames, JOUSTRV4.SRC:959-960) — the protection is born non-zero, not at zero.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4659,
+      "verbatim": "\tLDA\tTARTIM\t\tGIVE CURRENT TIME DELAY TIME"
+    }
+  },
+  {
+    "id": "JT81-006",
+    "claim": "On the death of the primary target, the secondary is shifted up into the primary slot (TARPL2 into TARPLY, TARTM2 into TARTM1) and the secondary slot is cleared.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4749,
+      "verbatim": "\tSTD\tTARPLY\t\tHERE IF YES"
+    }
+  },
+  {
+    "id": "JT81-007",
+    "claim": "Each frame the grace timers decrement toward zero, guarded by a BEQ so a timer already at zero is not decremented (it floors at 0 rather than wrapping to 255).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4857,
+      "verbatim": "\tLDA\tTARTM1\t\tDECREMENT TARGETED PLAYERS TIME"
+    }
+  },
+  {
+    "id": "JT81-008",
+    "claim": "At the wave/game reset both target slots are cleared (TARPLY and TARPL2 set to zero), so no enemy carries a stale target across the boundary.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 969,
+      "verbatim": "\tSTD\tTARPLY\t\tRESET TARGETED PLAYER(S)"
+    }
+  },
+  {
+    "id": "JT81-009",
+    "claim": "TARPLY is the primary targeted-player workspace pointer.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 289,
+      "verbatim": "TARPLY\tRMB\t2\tTARGETED PLAYERS WORKSPACE"
+    }
+  },
+  {
+    "id": "JT81-010",
+    "claim": "TARPL2 is the secondary targeted-player workspace pointer.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 290,
+      "verbatim": "TARPL2\tRMB\t2\tTARGETED PLAYERS WORKSPACE"
+    }
+  },
+  {
+    "id": "JT81-011",
+    "claim": "TARTIM is the master delay applied to a newly-registered player before an enemy may target it.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 328,
+      "verbatim": "TARTIM\tRMB\t1\tMASTER DELAY BEFORE TARGETING THE PLAYER"
+    }
+  },
+  {
+    "id": "JT81-012",
+    "claim": "TARTM1 is the current grace time left (for the TARPLY player) before the enemy finds it; TARTM2 is the same for TARPL2.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 329,
+      "verbatim": "TARTM1\tRMB\t1\tCURRENT TIME LEFT (FOR \"TARPLY\") UNTIL FINDING PLAYER"
+    }
+  },
+  {
+    "id": "JT81-013",
+    "claim": "TARTIM, the master targeting delay, is initialised to 90 frames — '1 1/2 SECOND OF DELAY BEFORE TARGETING PLAYER' — the spawn-grace an enemy waits (via the TARTM1/TARTM2 reload) before it may lock onto a freshly-materialised knight (LDA #90 / STA TARTIM).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 959,
+      "verbatim": "\tLDA\t#90\t\t1 1/2 SECOND OF DELAY BEFORE TARGETING PLAYER"
+    }
+  }
+]

@@ -1,0 +1,218 @@
+[
+  {
+    "id": "JT82-001",
+    "claim": "BODIR is the smart enemy's horizontal decision, and it is nothing but the facing: it reads PFACE and returns a direction from its sign. There is no toward-the-target term.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3876,
+      "verbatim": "BODIR\tLDA\tPFACE,U"
+    }
+  },
+  {
+    "id": "JT82-002",
+    "claim": "A negative PFACE branches to BODN1C, the left-hand arm of the decision (PFACE is a flag: 0 = right faced, non-zero = left, RAMDEF.SRC:186).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3877,
+      "verbatim": "\tBMI\tBODN1C"
+    }
+  },
+  {
+    "id": "JT82-003",
+    "claim": "A non-negative PFACE yields joystick direction +1 (move right).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3878,
+      "verbatim": "\tLDA\t#1"
+    }
+  },
+  {
+    "id": "JT82-004",
+    "claim": "A negative PFACE yields joystick direction -1 (move left). DECIMAL: the operand is a bare -1, not a hex byte.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3882,
+      "verbatim": "BODN1C\tLDA\t#-1"
+    }
+  },
+  {
+    "id": "JT82-005",
+    "claim": "The horizontal-homing throttle: the enemy loads the targeted player's X velocity it holds in PPVELX, under the author's own comment DO NOT COPY PLAYERS MOVES TOO OFTEN.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3939,
+      "verbatim": "BOLEVB\tLDA\tPPVELX,U\tDO NOT COPY PLAYERS MOVES TOO OFTEN"
+    }
+  },
+  {
+    "id": "JT82-006",
+    "claim": "The throttle compares that value against the ENEMY'S OWN velocity index (,U = self, not ,X = the player). The wake counts only when the enemy is already flying its target's speed.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3940,
+      "verbatim": "\tCMPA\tPVELX,U"
+    }
+  },
+  {
+    "id": "JT82-007",
+    "claim": "On a MISMATCH the branch jumps to BODIR3, clear of the counter block entirely: an unmatched wake does not decrement, does not reset, does nothing at all.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3941,
+      "verbatim": "\tBNE\tBODIR3"
+    }
+  },
+  {
+    "id": "JT82-008",
+    "claim": "On a match the reverse-direction counter PRDIR is decremented. DERIVED CADENCE: PRDIR is a single byte (RAMDEF.SRC:208), so from a CLEARED counter this DEC and the BMI on the next line walk 0 -> $FF -> ... -> $80 (128 wakes, every result negative, no flip) and the 129th DEC lands $7F, non-negative, which finally reaches the flip. 129 is DERIVED from the 8-bit wrap and is nowhere stated as a constant in the source. The zero it walks from is the one the flip itself writes at JOUSTRV4.SRC:3944, so 129 is the cadence BETWEEN flips.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3942,
+      "verbatim": "\tDEC\tPRDIR,U"
+    }
+  },
+  {
+    "id": "JT82-009",
+    "claim": "While the decremented counter is still negative the flip is skipped, which is what spreads the reversal over many matched wakes rather than firing on the first.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3943,
+      "verbatim": "\tBMI\tBODIR3"
+    }
+  },
+  {
+    "id": "JT82-010",
+    "claim": "The flip CLEARS the counter back to zero, so every reversal cycle costs the same number of matched wakes as the first.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3944,
+      "verbatim": "\tCLR\tPRDIR,U"
+    }
+  },
+  {
+    "id": "JT82-011",
+    "claim": "The reversal itself is a COMplement of PFACE under the comment TRY THE OTHER DIRECTION: it toggles the facing, it does not aim it at anything.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3945,
+      "verbatim": "\tCOM\tPFACE,U\t\tTRY THE OTHER DIRECTION"
+    }
+  },
+  {
+    "id": "JT82-012",
+    "claim": "Control then falls into BODIR, so the newly complemented facing is what BODIR reads on this same wake: the flip steers the current wake, not the next one.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3946,
+      "verbatim": "BODIR3\tJMP\tBODIR"
+    }
+  },
+  {
+    "id": "JT82-013",
+    "claim": "The hunter (B2) carries the identical throttle block, under the identical comment, so horizontal homing is a per-smart-brain law and not a bounder-only quirk.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4087,
+      "verbatim": "B2LE11\tLDA\tPPVELX,U\tDO NOT COPY PLAYERS MOVES TOO OFTEN"
+    }
+  },
+  {
+    "id": "JT82-014",
+    "claim": "The hunter's reversal is the same COM PFACE,U under the same TRY THE OTHER DIRECTION comment.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4093,
+      "verbatim": "\tCOM\tPFACE,U\t\tTRY THE OTHER DIRECTION"
+    }
+  },
+  {
+    "id": "JT82-015",
+    "claim": "The shadow lord carries the same throttle block a third time (its copy uses the long branches LBNE/LBMI, same law, further jump).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4303,
+      "verbatim": "SHLEPB\tLDA\tPPVELX,U\tDO NOT COPY PLAYERS MOVES TOO OFTEN"
+    }
+  },
+  {
+    "id": "JT82-016",
+    "claim": "The shadow lord's reversal is the same COM PFACE,U under the same TRY THE OTHER DIRECTION comment.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4309,
+      "verbatim": "\tCOM\tPFACE,U\t\tTRY THE OTHER DIRECTION"
+    }
+  },
+  {
+    "id": "JT82-017",
+    "claim": "The reverse-direction counter is cleared to ZERO on the bird the hatch creates. That bird is the riderless seeker: the same block goes on to hand it PJOY = SEEKE (JOUSTRV4.SRC:3268, thirteen lines further down), so this zero is the seeker's starting value and not the value a mounted enemy's decision routine begins with.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3255,
+      "verbatim": "\tCLR\tPRDIR,Y\t\tASSUME BIRD NEVER CAME WITHIN SHORT RANGE SCAN"
+    }
+  },
+  {
+    "id": "JT82-018",
+    "claim": "PRDIR is the reverse-direction counter and is ONE byte of RAM. The 8-bit width is load-bearing: modelled as an unbounded integer the counter would never reach a non-negative DEC result and the enemy would never reverse.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 208,
+      "verbatim": "PRDIR\tRMB\t1\t\tREVERSE DIRECTION COUNTER (FOR EMEMY TRACKING)"
+    }
+  },
+  {
+    "id": "JT82-019",
+    "claim": "PPVELX holds the OLD player X velocity the throttle compares against. It is one byte, and it is written only on entry to level flight (JOUSTRV4.SRC:3907-3908), never inside the throttle itself.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 209,
+      "verbatim": "PPVELX\tRMB\t1\t\tOLD PLAYERS X VELOCITY (FOR EMEMY TRACKING)"
+    }
+  },
+  {
+    "id": "JT82-020",
+    "claim": "The store that plants the short-range sensor flag in PRDIR on the seeking bird. SEEKFS loads the value on the preceding line; this line commits it to the bird's own workspace, and no branch lies between the two.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3585,
+      "verbatim": "\tSTA\tPRDIR,U\t\tTHE BIRD CAME WITHIN SHORT RANGE SENSORS"
+    }
+  },
+  {
+    "id": "JT82-021",
+    "claim": "This branch is where a seeking bird gets the man, and it is the only branch to MOUNTM anywhere in the source. So it is the sole route by which a bird ALREADY IN FLIGHT picks up a dismounted man. It is NOT the only way a buzzard comes to carry a rider: an enemy created at a transporter is handed one directly (STD PRIDER,U, JOUSTRV4.SRC:5730) and never passes through here.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3592,
+      "verbatim": "\tBEQ\tMOUNTM\t\tGOT THE MAN!!!"
+    }
+  },
+  {
+    "id": "JT82-022",
+    "claim": "On this arm the enemy loads its intelligence's smart decision routine from DSMART, which the next line installs as the routine its process runs. The arm is conditional: LDA GOVER / BNE 2$ (JOUSTRV4.SRC:3688-3689) reaches it only when the game is NOT over, and the fall-through arm at :3690 loads DJOY instead - a dummie dum dum bird.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3693,
+      "verbatim": "2$\tLDD\tDSMART,X\tSELECT PROPER JOYSTICK ROUTINE"
+    }
+  },
+  {
+    "id": "JT82-023",
+    "claim": "Process creation ends here, having written only the scheduling fields it names: the free-list link, the nap, the program counter, the process id and the primary/secondary priority. It clears no other byte of the recycled workspace, which is why each creation site clears the fields it cares about one at a time.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 403,
+      "verbatim": "\tSTB\tPPRI,Y\t\tNEW - PRIMARY/SECONDARY PROCESS SELECTION"
+    }
+  },
+  {
+    "id": "JT82-024",
+    "claim": "SEEKFS loads the short-range sensor value the next line stores into PRDIR. The value is 1, written in the assembler's bare radix, which for this source is DECIMAL.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3584,
+      "verbatim": "SEEKFS\tLDA\t#1"
+    }
+  }
+]

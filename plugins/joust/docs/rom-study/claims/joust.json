@@ -1,0 +1,452 @@
+[
+  {
+    "id": "JT23-001",
+    "claim": "Entity-vs-entity collision is a box broad-phase: HITEM tests the X intersection of the two collision boxes first, then the Y intersection, before any pixel-span work.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4909,
+      "verbatim": "HITEM\tSTX\tCOLOBJ"
+    }
+  },
+  {
+    "id": "JT23-002",
+    "claim": "Broad-phase X test: HITEM compares the two objects' X positions against their collision boxes (WITHIN X INTERSECTION SQUARES?).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4910,
+      "verbatim": "\tLDD\tPPOSX,U\t\tWITHIN X INTERSECTION SQUARES?"
+    }
+  },
+  {
+    "id": "JT23-003",
+    "claim": "Broad-phase Y test: after X passes, HITEM checks the Y box intersection (WITHIN Y INTERSECTION SQUARES?) using PCOLY1/PCOLY2 — bottom/top of the rough box.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4919,
+      "verbatim": "\tLDD\tPCOLY1,X\tWITHIN Y INTERSECTION SQUARES?"
+    }
+  },
+  {
+    "id": "JT23-004",
+    "claim": "Narrow phase indirect-loads the frame record's collision-span pointer (the per-scanline mask) via the picture handle PPICH.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4924,
+      "verbatim": "\tLDY\t[PPICH,X]"
+    }
+  },
+  {
+    "id": "JT23-005",
+    "claim": "The narrow-phase pixel-span walker is BPCOL: it steps the two collision-span tables scanline-aligned looking for an overlapping (left,right) pair.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7043,
+      "verbatim": "BPCOL\tLDD\t2,X"
+    }
+  },
+  {
+    "id": "JT23-006",
+    "claim": "PPOSY is a THREE-byte field [super-high, whole PIXEL, fraction], big-endian. The whole-pixel word is at offset +0..+1; the 8.8 pixel:fraction word the flight core integrates is at PPOSY+1..+2.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 174,
+      "verbatim": "PPOSY\tRMB\t3\tPROCESS'S OBJECT Y LOCATION (AND FRACTIONAL DISTANCE)"
+    }
+  },
+  {
+    "id": "JT23-007",
+    "claim": "THE JOUST is decided on WHOLE PIXELS, fraction EXCLUDED: OSTBO reads PPOSY at offset +0 (the [super-high, pixel] word) via ADDD PPOSY,X — NOT PPOSY+1 (the 8.8 word). This corrects the dossier prose 'fraction included' (subsystems.md:137-139), a jt1-10-class wrong-prose citation.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5008,
+      "verbatim": "\tADDD\tPPOSY,X\t\t (DETERMINATION OF WHO IS KILLED)"
+    }
+  },
+  {
+    "id": "JT23-008",
+    "claim": "OSTBO forms (PLANTZ,X + PPOSY,X) − (PLANTZ,U + PPOSY,U) on the whole-pixel word (SUBD PPOSY,U, again offset +0, no +1).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5009,
+      "verbatim": "\tSUBD\tPPOSY,U"
+    }
+  },
+  {
+    "id": "JT23-009",
+    "claim": "Exact tie in the whole-pixel joust height = BOTH bounce: BEQ branches to the 'PLAYERS COLIDE' bounce path when the difference is zero (BR=BOTH ON SAME LEVEL).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5010,
+      "verbatim": "\tBEQ\t1$\t\t BR=BOTH ON SAME LEVEL"
+    }
+  },
+  {
+    "id": "JT23-010",
+    "claim": "Otherwise the strictly-smaller (higher on screen) height wins: BMI (difference negative → REG.X higher) takes the victor path OSTXT3; a positive difference falls through to OSTPYP.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5011,
+      "verbatim": "\tBMI\tOSTXT3"
+    }
+  },
+  {
+    "id": "JT23-011",
+    "claim": "The tie path is a pure bounce (no kill): it plays the 'players collide' clank and branches to the bounce restore, skipping OSTWIN — nobody is killed on an exact-height tie.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5014,
+      "verbatim": "1$\tLDX\t#SNPTHD\t\tPLAYERS COLIDE"
+    }
+  },
+  {
+    "id": "JT23-012",
+    "claim": "The 8.8 (pixel.fraction) Y value the FLIGHT core integrates lives at PPOSY+1 ('ADD IN FRACTIONAL DISTANCE') — the +1 that OSTBO deliberately omits, proving OSTBO's offset-0 read is the whole pixel.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6494,
+      "verbatim": "ADDGRX\tADDD\tPPOSY+1,U\tADD IN FRACTIONAL DISTANCE"
+    }
+  },
+  {
+    "id": "JT23-013",
+    "claim": "PLANTZ = 2 while skidding is TWO WHOLE PIXELS lower ('SKIDDING OSTRICH HAS A LANTZ 2 PIXELS LOWER') — only consistent with the whole-pixel joust compare; a fractional add of 2 would be 2/256 px, not the documented 2 pixels.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6071,
+      "verbatim": "\tLDB\t#2\t\tSKIDDING OSTRICH HAS A LANTZ 2 PIXELS LOWER"
+    }
+  },
+  {
+    "id": "JT23-014",
+    "claim": "Skidding stores the lance offset to PLANTZ (STB PLANTZ,U) — the register OSTBO adds to the whole-pixel Y.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6072,
+      "verbatim": "\tSTB\tPLANTZ,U"
+    }
+  },
+  {
+    "id": "JT23-015",
+    "claim": "PFACE is the facing register: 0 = right-faced, non-zero = left-faced. The ground state machine's onPlus/onMinus transitions are FACING-relative (joystick vs PFACE); adding facing makes the onMinus reversal/skid chain reachable (the jt1-6 gap).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 186,
+      "verbatim": "PFACE\tRMB\t1\t\t0=RIGHT FACED, <>0=LEFT FACE"
+    }
+  },
+  {
+    "id": "JT23-016",
+    "claim": "Enemies never kill each other: OSTHIT ANDs the two PIDs and, on the enemy-vs-enemy class bit, branches to the no-kill bounce path.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4953,
+      "verbatim": "\tLDA\tPID,U\t\tENEMIES DO NOT KILL EACH OTHER"
+    }
+  },
+  {
+    "id": "JT23-017",
+    "claim": "The enemy-vs-enemy (and ptero-vs-ptero) contact branches to OSTHT2 = NO KILL, a bump-only bounce.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4961,
+      "verbatim": "\tBNE\tOSTHT2\t\t BR=NO KILL (ENEMY VS. ENEMY, PTERO VS. PTERO)"
+    }
+  },
+  {
+    "id": "JT23-018",
+    "claim": "Bounce-apart vertical (winner/top): OSTXUP loads −2 into PBUMPY,X — the one on top is shoved UP by two pixels.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5163,
+      "verbatim": "OSTXUP\tLDA\t#-2"
+    }
+  },
+  {
+    "id": "JT23-019",
+    "claim": "OSTXUP stores the −2 to PBUMPY of the top object (X IS ON TOP, MAKE X GO UP); a downward 'wrong-way' velocity is then inverted and halved (COMA/NEGB/SBCA/ASRA/RORB).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5164,
+      "verbatim": "\tSTA\tPBUMPY,X\t\tX IS ON TOP, MAKE X GO UP"
+    }
+  },
+  {
+    "id": "JT23-020",
+    "claim": "Bounce-apart vertical (loser/bottom): OSTXDN loads +2 into PBUMPY,X — the one on the bottom is shoved DOWN by two pixels.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5175,
+      "verbatim": "OSTXDN\tLDA\t#2"
+    }
+  },
+  {
+    "id": "JT23-021",
+    "claim": "OSTXDN stores the +2 to PBUMPY of the bottom object (U IS ON TOP, MAKE X LOWER); an upward 'wrong-way' velocity is inverted and halved.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5176,
+      "verbatim": "\tSTA\tPBUMPY,X\t\tU IS ON TOP, MAKE X LOWER"
+    }
+  },
+  {
+    "id": "JT23-022",
+    "claim": "Bounce-apart horizontal: on a same-level (COLDX≠0) hit, OSTXLF reverses the entity's own X velocity (NEGA) and slows it by 2.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5114,
+      "verbatim": "OSTXLF\tLDA\tPVELX,X\t\tU IS ON RIGHT, MOVE X LEFT"
+    }
+  },
+  {
+    "id": "JT23-023",
+    "claim": "The +2 is the 'slow down a bit' term applied to the reversed X velocity before half of it is handed to the other object as PBUMPX.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5117,
+      "verbatim": "\tADDA\t#2\t\tSLOW DOWN A BIT"
+    }
+  },
+  {
+    "id": "JT23-024",
+    "claim": "The horizontal shove passed to the OTHER object is HALVED (ASRA, a signed shift-right) before being stored.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5121,
+      "verbatim": "\tASRA"
+    }
+  },
+  {
+    "id": "JT23-025",
+    "claim": "The halved reversed velocity is stored as the other object's PBUMPX one-shot horizontal shove.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5122,
+      "verbatim": "\tSTA\tPBUMPX,U"
+    }
+  },
+  {
+    "id": "JT23-026",
+    "claim": "PBUMPX is a one-shot horizontal shove drained at most 3 px/frame: WRAPX loads the register (ALSO ADD IN BUMP REGISTER) before applying at most ±3 to this frame's delta.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7270,
+      "verbatim": "WRAPX\tLDA\tPBUMPX,U\tALSO ADD IN BUMP REGISTER"
+    }
+  },
+  {
+    "id": "JT23-027",
+    "claim": "PBUMPX drain: while the register exceeds 3 (CMPA #3), spend 3 this frame and keep the rest for next frame.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7273,
+      "verbatim": "\tCMPA\t#3"
+    }
+  },
+  {
+    "id": "JT23-028",
+    "claim": "PBUMPX drain: the register is reduced by 3 each frame it is over the cap (SUBA #3, stored back to PBUMPX).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7276,
+      "verbatim": "\tSUBA\t#3"
+    }
+  },
+  {
+    "id": "JT23-029",
+    "claim": "PBUMPX drain: once the remaining shove is within ±3 (WRPBRM) it is applied whole and the register cleared.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7288,
+      "verbatim": "\tCLR\tPBUMPX,U\t\tAND RESET BUMP REGISTER"
+    }
+  },
+  {
+    "id": "JT23-030",
+    "claim": "PBUMPY is consumed WHOLE in a single frame: it is added directly to the whole-pixel Y (ADDA PBUMPY,U, A being the pixel byte after the 8.8 integration).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6495,
+      "verbatim": "\tADDA\tPBUMPY,U\tADD IN BUMPING REGISTER"
+    }
+  },
+  {
+    "id": "JT23-031",
+    "claim": "PBUMPY is cleared the same frame it is applied (CLR PBUMPY,U) — a one-shot vertical shove, unlike the multi-frame PBUMPX drain.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6496,
+      "verbatim": "\tCLR\tPBUMPY,U"
+    }
+  },
+  {
+    "id": "JT23-032",
+    "claim": "DVALUE is the per-decision-block byte holding the kill score, encoded in thousands/hundreds nibbles — decoded by the block's DVALUR routine (SCRTEN or SCRHUN), not a plain ×100.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 128,
+      "verbatim": "DVALUE\tRMB\t1\tSCORE WHEN KILLED (IN THOUSANDS/HUNDREDS)"
+    }
+  },
+  {
+    "id": "JT23-033",
+    "claim": "On a kill, OSTWIN fetches the dead object's decision block and reads its DVALUE byte (GET DEAD OBJECTS SCORE) — the score EVENT value; accumulation is jt4.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5076,
+      "verbatim": "\tLDY\tPDECSN,U\tGET DEAD OBJECTS SCORE"
+    }
+  },
+  {
+    "id": "JT23-034",
+    "claim": "OSTWIN loads the dead object's DVALUE score byte into A.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5077,
+      "verbatim": "\tLDA\tDVALUE,Y"
+    }
+  },
+  {
+    "id": "JT23-035",
+    "claim": "OSTWIN dispatches the block's DVALUR score routine (SCRTEN for bounder/hunter, SCRHUN for the shadow lord), which turns the DVALUE byte into the awarded points.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5080,
+      "verbatim": "\tJSR\t[DVALUR,Y]\tSCORE ROUTINE"
+    }
+  },
+  {
+    "id": "JT23-036",
+    "claim": "The bounder decision block P4DEC promotes LINET → BOUNDR and scores via SCRTEN.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5562,
+      "verbatim": "P4DEC\tFDB\tLINET,BOUNDR,0000,$0000,SCOPL2,PLYR3,TREPL3,EMYDIE"
+    }
+  },
+  {
+    "id": "JT23-037",
+    "claim": "Bounder DVALUE = $05: via SCRTEN (tens high-nibble, hundreds low-nibble) = 0 tens + 5 hundreds = 500 points.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5565,
+      "verbatim": "\tFCB\tWHI*$11,$05,MSGAMO"
+    }
+  },
+  {
+    "id": "JT23-038",
+    "claim": "The hunter decision block P5DEC promotes LINET → B2UNDR and scores via SCRTEN.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5566,
+      "verbatim": "P5DEC\tFDB\tLINET,B2UNDR,0000,$0000,SCOPL2,PLYR4,TREPL3,EMYDIE"
+    }
+  },
+  {
+    "id": "JT23-039",
+    "claim": "Hunter DVALUE = $57: via SCRTEN (tens high-nibble, hundreds low-nibble) = 5 tens + 7 hundreds = 750 points. A naïve ×100 of $57 would give 5700 — the trap SCRTEN's backwards tens/hundreds decode avoids.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5569,
+      "verbatim": "\tFCB\tWHI*$11,$57,MSGAMO"
+    }
+  },
+  {
+    "id": "JT23-040",
+    "claim": "The shadow-lord decision block P6DEC promotes LINET → SHADOW and scores via SCRHUN.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5570,
+      "verbatim": "P6DEC\tFDB\tLINET,SHADOW,0000,$0000,SCOPL2,PLYR5,TREPL3,EMYDIE"
+    }
+  },
+  {
+    "id": "JT23-041",
+    "claim": "Shadow-lord DVALUE = $15: via SCRHUN (thousands high-nibble, hundreds low-nibble) = 1 thousand + 5 hundreds = 1500 points.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5573,
+      "verbatim": "\tFCB\tWHI*$11,$15,MSGAMO"
+    }
+  },
+  {
+    "id": "JT23-042",
+    "claim": "SCRTEN (bounder/hunter DVALUR): decodes the DVALUE byte as tens (high nibble) and hundreds (low nibble) — the 'HUNDREDS AND TENS (BACKWARDS)' routine.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7357,
+      "verbatim": "SCRTEN\tLDY\tDSCORE,X\tGET SCORE AREA"
+    }
+  },
+  {
+    "id": "JT23-043",
+    "claim": "SCRTEN masks the high nibble as the TENS digit (ANDA #$F0, 'SCORE TENS').",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7360,
+      "verbatim": "\tANDA\t#$F0\t\tSCORE TENS"
+    }
+  },
+  {
+    "id": "JT23-044",
+    "claim": "SCRTEN masks the low nibble as the HUNDREDS digit (ANDB #$0F, '& HUNDREDS') — so $57 = 5 tens + 7 hundreds = 750.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7361,
+      "verbatim": "\tANDB\t#$0F\t\t\t& HUNDREDS"
+    }
+  },
+  {
+    "id": "JT23-045",
+    "claim": "SCRHUN (shadow-lord DVALUR): decodes the DVALUE byte as thousands (high nibble) and hundreds (low nibble) directly — 'INCREMENT SCORE BY THOUSANDS AND HUNDREDS' — so $15 = 1500.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7346,
+      "verbatim": "SCRHUN\tLDY\tDSCORE,X\tGET SCORE AREA"
+    }
+  },
+  {
+    "id": "JT23-046",
+    "claim": "PBUMPX is the horizontal bump register (BUMPING DELTA X) — the one-shot shove drained by WRAPX.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 199,
+      "verbatim": "PBUMPX\tRMB\t1\t\tBUMPING DELTA X"
+    }
+  },
+  {
+    "id": "JT23-047",
+    "claim": "PBUMPY is the vertical bump register (BUMP REGISTER IN Y DIRECTION) — consumed whole each frame.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 200,
+      "verbatim": "PBUMPY\tRMB\t1\t\tBUMP REGISTER IN Y DIRECTION"
+    }
+  },
+  {
+    "id": "JT23-048",
+    "claim": "PLANTZ is the lance-height offset for skidding — added to the whole-pixel Y in the joust determination.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 202,
+      "verbatim": "PLANTZ\tRMB\t1\t\tLANTZ OFFSET FOR SKIDDING"
+    }
+  },
+  {
+    "id": "JT23-049",
+    "claim": "The collision box's Y bounds are PCOLY1 (bottom line of the rough box) and PCOLY2 (top) — the HITEM broad-phase Y intersection operands.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 203,
+      "verbatim": "PCOLY1\tRMB\t1\t\tCOLISION DETECTS BOTTOM LINE OF ROUGH BOX"
+    }
+  },
+  {
+    "id": "JT23-050",
+    "claim": "PCOLX is the collision box's right-hand X bound — the HITEM broad-phase X intersection operand.",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 205,
+      "verbatim": "PCOLX\tRMB\t2\t\tCOLISION DETECT RIGHT HAND SIDE OF COLISION"
+    }
+  }
+]

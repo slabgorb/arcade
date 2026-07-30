@@ -1,0 +1,1226 @@
+[
+  {
+    "id": "JT8-001",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1176` in brief.md, resolved to MESSAGE.SRC:1176 by reading the vendored context. SYSTEM.SRC:12-13 (RAMDEF, EQU), MESSAGE.SRC:3-6 + PHRASE at MESSAGE.SRC:1176,",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1176,
+      "verbatim": "\tINCLUDE PHRASE.SRC"
+    }
+  },
+  {
+    "id": "JT8-002",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1537` in brief.md, resolved to williams.cpp:1537.  12/3/4 = 1.0 MHz E-clock (JOUSTRV4.SRC:1537); Re-resolved in the jt1-8 hotfix: the passage is a Board facts (MAME) list whose sibling citations are williams.cpp, so the bare :1537 is the driver line stating the MC6809E E-clock, not a JOUSTRV4 instruction. EXTERNAL secondary source — schema-only, never byte-opened.",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1537,
+      "verbatim": "(MAME williams driver williams.cpp:1537 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "JT8-003",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1556` in brief.md, resolved to williams.cpp:1556.  6, 298, 260, 7, 247) (JOUSTRV4.SRC:1556) → 8 MHz dot clock, 512×260 total, 292×240 Re-resolved in the jt1-8 hotfix: williams.cpp:1556 is the set_raw video call giving the 512x260 raster and the 292x240 visible window — the same line the epic YAML cites. EXTERNAL secondary source — schema-only, never byte-opened.",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1556,
+      "verbatim": "(MAME williams driver williams.cpp:1556 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "JT8-004",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1545-1546` in brief.md, resolved to williams.cpp:1545-1546.  The VA11 line toggles every 32 scanlines (JOUSTRV4.SRC:1545-1546); Re-resolved in the jt1-8 hotfix: the VA11 scanline toggle is a driver-level fact stated by the MAME williams driver, not by the 1982 program source. EXTERNAL secondary source — schema-only, never byte-opened.",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1545,
+      "verbatim": "(MAME williams driver williams.cpp:1545-1546 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "JT8-005",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1548-1549` in brief.md, resolved to williams.cpp:1548-1549.  line rises at scanline 240 (JOUSTRV4.SRC:1548-1549). Re-resolved in the jt1-8 hotfix: the vertical-blank line rise at scanline 240 is likewise a driver-level fact. EXTERNAL secondary source — schema-only, never byte-opened.",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1548,
+      "verbatim": "(MAME williams driver williams.cpp:1548-1549 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "JT8-006",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3-12` in brief.md, resolved to JOUST.DOC:3-12 by reading the vendored context. 0/1, JOUST.DOC:3-12), the module map (:14-30), the missing-sound pointer",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 3,
+      "verbatim": "\tASSEMBLY CONDITIONS;"
+    }
+  },
+  {
+    "id": "JT8-007",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:14-30` in brief.md, resolved to JOUST.DOC:14-30 by reading the vendored context. 0/1, :3-12), the module map (JOUST.DOC:14-30), the missing-sound pointer",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 14,
+      "verbatim": "\tFILES TO ASSEMBLE;"
+    }
+  },
+  {
+    "id": "JT8-008",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:32-34` in brief.md, resolved to JOUST.DOC:32-34 by reading the vendored context. (JOUST.DOC:32-34), the checksum calculator (SUMMER.SRC, :36-37), and the VAX",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 32,
+      "verbatim": "\tSOUNDS FOR JOUST"
+    }
+  },
+  {
+    "id": "JT8-009",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:36-37` in brief.md, resolved to JOUST.DOC:36-37 by reading the vendored context. (:32-34), the checksum calculator (SUMMER.SRC, JOUST.DOC:36-37), and the VAX",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 36,
+      "verbatim": "\tCHECK SUM CALCULATOR FOR JOUST"
+    }
+  },
+  {
+    "id": "JT8-010",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:39-42` in brief.md, resolved to JOUST.DOC:39-42 by reading the vendored context. ASCII HEX NIBBLES 0, 8-E\", DOWNLDS.COM, JOUST.DOC:39-42).",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 39,
+      "verbatim": "\tUTILITIES"
+    }
+  },
+  {
+    "id": "JT8-011",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:316-317` in subsystems.md, resolved to SYSTEM.SRC:316-317 by reading the vendored context. buffer release SYSTEM.SRC:316-317) —",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 316,
+      "verbatim": "DTBEN\tINC\tDTBL1-DTBL1A,U\t\tINDICATE BUFFER READY FOR INTERUPTS"
+    }
+  },
+  {
+    "id": "JT8-012",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5934` in subsystems.md, resolved to JOUSTRV4.SRC:5934 by reading the vendored context. independently by author oracles: PCNAP 60 WAIT A SECOND (JOUSTRV4.SRC:5934),",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5934,
+      "verbatim": "\tPCNAP\t60\t\tWAIT A SECOND THEN.."
+    }
+  },
+  {
+    "id": "JT8-013",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:959` in subsystems.md, resolved to JOUSTRV4.SRC:959 by reading the vendored context. LDA #90 1 1/2 SECOND (JOUSTRV4.SRC:959), LDD #30*60 30 SECOND WAIT (:6393),",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 959,
+      "verbatim": "\tLDA\t#90\t\t1 1/2 SECOND OF DELAY BEFORE TARGETING PLAYER"
+    }
+  },
+  {
+    "id": "JT8-014",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6393` in subsystems.md, resolved to JOUSTRV4.SRC:6393 by reading the vendored context. LDA #90 1 1/2 SECOND (:959), LDD #30*60 30 SECOND WAIT (JOUSTRV4.SRC:6393),",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6393,
+      "verbatim": "\tLDD\t#30*60\t\t30 SECOND WAIT TILL TOUGHER LAVA TROLL"
+    }
+  },
+  {
+    "id": "JT8-015",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2150-2163` in subsystems.md, resolved to JOUSTRV4.SRC:2150-2163 by reading the vendored context. SECONDS*60/8 idiom in BAITBL (JOUSTRV4.SRC:2150-2163).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2150,
+      "verbatim": "\tFDB\t1*60/8\t\t\tA FASTER SEND OFF OF BAITERS (V4)"
+    }
+  },
+  {
+    "id": "JT8-016",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:579-580` in subsystems.md, resolved to SYSTEM.SRC:579-580 by reading the vendored context. (SYSTEM.SRC:579-580), PRNG stir (INC RANDOM / DEC RANDOM+1, :581-582 — RNG",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 579,
+      "verbatim": "\tLDA\t#WDATA"
+    }
+  },
+  {
+    "id": "JT8-017",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:581-582` in subsystems.md, resolved to SYSTEM.SRC:581-582 by reading the vendored context. (:579-580), PRNG stir (INC RANDOM / DEC RANDOM+1, SYSTEM.SRC:581-582 — RNG",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 581,
+      "verbatim": "\tINC\tRANDOM"
+    }
+  },
+  {
+    "id": "JT8-018",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:697-700` in subsystems.md, resolved to SYSTEM.SRC:697-700 by reading the vendored context. (never blit into the beam's quadrant, SYSTEM.SRC:697-700).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 697,
+      "verbatim": "IRQNXT\tSTA\t>ISQCNT"
+    }
+  },
+  {
+    "id": "JT8-019",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:591-593` in subsystems.md, resolved to SYSTEM.SRC:591-593 by reading the vendored context. commit from the RAMCOL shadow (SYSTEM.SRC:591-593 — palette writes are deferred,",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 591,
+      "verbatim": "*\tUPDATE COLOR RAM DURING VERTICAL RE-TRACE (REALLY TOP OF SCREEN)"
+    }
+  },
+  {
+    "id": "JT8-020",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:617-650` in subsystems.md, resolved to SYSTEM.SRC:617-650.  not immediate), switch debounce (9-deep shift register, JOUSTRV4.SRC:617-650). Re-resolved in the jt1-8 hotfix: the sentence's prior citation is SYSTEM.SRC:591-593 and the subject is the IRQ handler's 9-deep switch-debounce shift register, which lives in SYSTEM.SRC; JOUSTRV4.SRC:617 is a process-link walk and supports nothing here.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 617,
+      "verbatim": "*\tTHIS ROUTINE IS SERVICED EVERY 1/60 SEC AND 2 CONSECTIVE"
+    }
+  },
+  {
+    "id": "JT8-021",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7247-7264` in subsystems.md, resolved to JOUSTRV4.SRC:7247-7264 by reading the vendored context. JOUSTRV4.SRC:7247-7264): WPIAA $01 left, $02 right, $04 flap (\"JUMP BUTTON\"),",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7247,
+      "verbatim": "P1JOY\tLDA\tWCPIAB\t\tSELECT HALF OF MUX"
+    }
+  },
+  {
+    "id": "JT8-022",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7261-7263` in subsystems.md, resolved to JOUSTRV4.SRC:7261-7263 by reading the vendored context. (ANDA #$03 / ASRA / SBCA #0, JOUSTRV4.SRC:7261-7263).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7261,
+      "verbatim": "P2NJMP\tANDA\t#$03\t\tCONVERT JOYSTICK TO + (RIGHT), 0, - (LEFT)"
+    }
+  },
+  {
+    "id": "JT8-023",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6494` in subsystems.md, resolved to JOUSTRV4.SRC:6494 by reading the vendored context. pixel/frame (ADDGRX ADDD PPOSY+1,U, JOUSTRV4.SRC:6494).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6494,
+      "verbatim": "ADDGRX\tADDD\tPPOSY+1,U\tADD IN FRACTIONAL DISTANCE"
+    }
+  },
+  {
+    "id": "JT8-024",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:146` in subsystems.md, resolved to JOUSTRV4.SRC:146 by reading the vendored context. The struct is overlaid per role (wave processes ORG PPOSX JOUSTRV4.SRC:146;",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 146,
+      "verbatim": "\tORG\tPPOSX"
+    }
+  },
+  {
+    "id": "JT8-025",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3028-3036` in subsystems.md, resolved to JOUSTRV4.SRC:3028-3036 by reading the vendored context. store score-message state in PRDIR/PPVELX JOUSTRV4.SRC:3028-3036) — a clone needs a",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3028,
+      "verbatim": "*\t\t  PJOYT,PPVELX = MESSAGE & COLOR"
+    }
+  },
+  {
+    "id": "JT8-026",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:952-953` in subsystems.md, resolved to JOUSTRV4.SRC:952-953 by reading the vendored context. Gravity base 4/frame (GRAV, JOUSTRV4.SRC:952-953);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 952,
+      "verbatim": "\tLDA\t#4\t\tINITILIZE GRAVITY"
+    }
+  },
+  {
+    "id": "JT8-027",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6170` in subsystems.md, resolved to JOUSTRV4.SRC:6170 by reading the vendored context. up adds 4 (FLAPS2 CLRB JOUSTRV4.SRC:6170;",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6170,
+      "verbatim": "FLAPS2\tCLRB\t\t\tNO OFFSET TO GRAVITY"
+    }
+  },
+  {
+    "id": "JT8-028",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6197` in subsystems.md, resolved to JOUSTRV4.SRC:6197 by reading the vendored context. FLIPS2 LDB #$04 JOUSTRV4.SRC:6197) —",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6197,
+      "verbatim": "FLIPS2\tLDB\t#$04\t\tOFFSET TO GRAVITY"
+    }
+  },
+  {
+    "id": "JT8-029",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6429-6436` in subsystems.md, resolved to JOUSTRV4.SRC:6429-6436 by reading the vendored context. Flap impulse ΔVY = ((PTIMUP×96)>>8) − 96 (ADDFLP, JOUSTRV4.SRC:6429-6436):",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6429,
+      "verbatim": "ADDFLP\tLDB\tPTIMUP,U\tNOW CALC GAINED Y VELOCITY"
+    }
+  },
+  {
+    "id": "JT8-030",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6476-6478` in subsystems.md, resolved to JOUSTRV4.SRC:6476-6478 by reading the vendored context. PTIMUP saturates at 255 (JOUSTRV4.SRC:6476-6478).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6476,
+      "verbatim": "AIRTIM\tINC\tPTIMUP,U\tNBR OF TICKS IN THE AIR"
+    }
+  },
+  {
+    "id": "JT8-031",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7150-7158` in subsystems.md, resolved to JOUSTRV4.SRC:7150-7158 by reading the vendored context. (JOUSTRV4.SRC:7150-7158, non-linear doubling);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7150,
+      "verbatim": "\tFDB\t-$0200"
+    }
+  },
+  {
+    "id": "JT8-032",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6437-6439` in subsystems.md, resolved to JOUSTRV4.SRC:6437-6439 by reading the vendored context. edge, ±2×joystick (JOUSTRV4.SRC:6437-6439);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6437,
+      "verbatim": "\tLDA\tCURJOY\t\tADD IN JOYSTICKS LEFT OR RIGHT POSITION"
+    }
+  },
+  {
+    "id": "JT8-033",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:40` in subsystems.md, resolved to JOUSTRV4.SRC:40,6440-6448 by reading the vendored context. not clamped (MAXVX 8, JOUSTRV4.SRC:40,6440-6448).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 40,
+      "verbatim": "MAXVX\tEQU\t8\t\tMAXIMUM X +- VELOCITY"
+    }
+  },
+  {
+    "id": "JT8-034",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6440-6448` in subsystems.md, resolved to JOUSTRV4.SRC:40,6440-6448 by reading the vendored context. not clamped (MAXVX 8, JOUSTRV4.SRC:40,6440-6448).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6440,
+      "verbatim": "\tBLT\tADXMAX"
+    }
+  },
+  {
+    "id": "JT8-035",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:41-42` in subsystems.md, resolved to JOUSTRV4.SRC:41-42 by reading the vendored context. no terminal velocity (MAXVY/MINVY declared JOUSTRV4.SRC:41-42,",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 41,
+      "verbatim": "MAXVY\tEQU\t$1000\t\tMAXIMUM Y + VELOCITY (FALLING)"
+    }
+  },
+  {
+    "id": "JT8-036",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6497-6506` in subsystems.md, resolved to JOUSTRV4.SRC:6497-6506 by reading the vendored context. Ceiling $20 reflects velocity elastically (JOUSTRV4.SRC:6497-6506);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6497,
+      "verbatim": "\tCMPA\t#CEILNG\t\tHIGHEST POSITION *****"
+    }
+  },
+  {
+    "id": "JT8-037",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6508-6521` in subsystems.md, resolved to JOUSTRV4.SRC:6508-6521 by reading the vendored context. FLOOR+7 = $E6 (\"DEATH VIA SWIMMING IN THE LAVA\", JOUSTRV4.SRC:6508-6521).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6508,
+      "verbatim": "ADGCEI\tCMPA\t#FLOOR+7\tBELOW SEA LEVEL (ON THE FLOOR)?"
+    }
+  },
+  {
+    "id": "JT8-038",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:38-39` in subsystems.md, resolved to JOUSTRV4.SRC:38-39 by reading the vendored context. X wraps over [−10, 292] modulus 303 (ELEFT/ERIGHT, JOUSTRV4.SRC:38-39, WRAPX",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 38,
+      "verbatim": "ELEFT\tEQU\t-10\t\tEXTREME LEFT SIDE OF WRAP AROUND SCREEN"
+    }
+  },
+  {
+    "id": "JT8-039",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7291-7297` in subsystems.md, resolved to JOUSTRV4.SRC:7291-7297 by reading the vendored context. JOUSTRV4.SRC:7291-7297);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7291,
+      "verbatim": "\tADDD\tPPOSX,U\t\tCHECK IF .EQ. OR BETWEEN -11 TO 296"
+    }
+  },
+  {
+    "id": "JT8-040",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3141-3146` in subsystems.md, resolved to JOUSTRV4.SRC:3141-3146 by reading the vendored context. eggs use a narrower 4..288 wrap (JOUSTRV4.SRC:3141-3146).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3141,
+      "verbatim": "\tCMPD\t#288\t\tNEW WRAP AROUND STYLE (4 TO 288)"
+    }
+  },
+  {
+    "id": "JT8-041",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7160-7175` in subsystems.md, resolved to JOUSTRV4.SRC:7160-7175 by reading the vendored context. (JOUSTRV4.SRC:7160-7175) — speed is *animation-driven* (run table 0/3/2/1/2 px,",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7160,
+      "verbatim": "STATE\tMACRO\tWAIT,CALL,MINUS,ZERO,PLUS,FLYVEL"
+    }
+  },
+  {
+    "id": "JT8-042",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7185-7189` in subsystems.md, resolved to JOUSTRV4.SRC:7185-7189 by reading the vendored context. JOUSTRV4.SRC:7185-7189), with a fictitious velocity byte only for bump maths (:6000).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7185,
+      "verbatim": "ORRUN\tFCB\tRUN1,0\t\tINITIAL FRAME FROM STANDSTILL TO FRAME 1"
+    }
+  },
+  {
+    "id": "JT8-043",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6000` in subsystems.md, resolved to JOUSTRV4.SRC:6000 by reading the vendored context. :7185-7189), with a fictitious velocity byte only for bump maths (JOUSTRV4.SRC:6000).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6000,
+      "verbatim": "\tLDA\t6,X\t\tUPDATE FICTISIOUS VELX FOR BUMPING"
+    }
+  },
+  {
+    "id": "JT8-044",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6703-6707` in subsystems.md, resolved to JOUSTRV4.SRC:6703-6707 by reading the vendored context. Landing is a bitmask lookup (LNDXTB[x] & LNDYTB[y], JOUSTRV4.SRC:6703-6707) then a",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6703,
+      "verbatim": "CKGND\tLDX\tPPOSX,U\t\tGET X LOCATION OF OBJECT"
+    }
+  },
+  {
+    "id": "JT8-045",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6729-6759` in subsystems.md, resolved to JOUSTRV4.SRC:6729-6759 by reading the vendored context. snap to hard-coded surface Ys (68/80/128/137/162/210, JOUSTRV4.SRC:6729-6759).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6729,
+      "verbatim": "\tLDB\t#$0045-1\tON TOP OF CLIFF PIXEL HEIGHT"
+    }
+  },
+  {
+    "id": "JT8-046",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7270-7284` in subsystems.md, resolved to JOUSTRV4.SRC:7270-7284 by reading the vendored context. JOUSTRV4.SRC:7270-7284;",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7270,
+      "verbatim": "WRAPX\tLDA\tPBUMPX,U\tALSO ADD IN BUMP REGISTER"
+    }
+  },
+  {
+    "id": "JT8-047",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6495-6496` in subsystems.md, resolved to JOUSTRV4.SRC:6495-6496 by reading the vendored context. Y consumed whole, JOUSTRV4.SRC:6495-6496).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6495,
+      "verbatim": "\tADDA\tPBUMPY,U\tADD IN BUMPING REGISTER"
+    }
+  },
+  {
+    "id": "JT8-048",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5002-5012` in subsystems.md, resolved to JOUSTRV4.SRC:5002-5012 by reading the vendored context. The joust (OSTBO, JOUSTRV4.SRC:5002-5012): compare",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5002,
+      "verbatim": "OSTBO\tLDB\tPLANTZ,U"
+    }
+  },
+  {
+    "id": "JT8-049",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5014-5017` in subsystems.md, resolved to JOUSTRV4.SRC:5014-5017 by reading the vendored context. exact tie = both bounce (JOUSTRV4.SRC:5014-5017).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5014,
+      "verbatim": "1$\tLDX\t#SNPTHD\t\tPLAYERS COLIDE"
+    }
+  },
+  {
+    "id": "JT8-050",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6071-6072` in subsystems.md, resolved to JOUSTRV4.SRC:6071-6072 by reading the vendored context. lower, JOUSTRV4.SRC:6071-6072).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6071,
+      "verbatim": "\tLDB\t#2\t\tSKIDDING OSTRICH HAS A LANTZ 2 PIXELS LOWER"
+    }
+  },
+  {
+    "id": "JT8-051",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:4953-4961` in subsystems.md, resolved to JOUSTRV4.SRC:4953-4961 by reading the vendored context. Enemies never kill each other (JOUSTRV4.SRC:4953-4961).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4953,
+      "verbatim": "\tLDA\tPID,U\t\tENEMIES DO NOT KILL EACH OTHER"
+    }
+  },
+  {
+    "id": "JT8-052",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5163-5176` in subsystems.md, resolved to JOUSTRV4.SRC:5163-5176 by reading the vendored context. halved (JOUSTRV4.SRC:5163-5176);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5163,
+      "verbatim": "OSTXUP\tLDA\t#-2"
+    }
+  },
+  {
+    "id": "JT8-053",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5114-5157` in subsystems.md, resolved to JOUSTRV4.SRC:5114-5157 by reading the vendored context. other as bump (JOUSTRV4.SRC:5114-5157).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5114,
+      "verbatim": "OSTXLF\tLDA\tPVELX,X\t\tU IS ON RIGHT, MOVE X LEFT"
+    }
+  },
+  {
+    "id": "JT8-054",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2991-2996` in subsystems.md, resolved to JOUSTRV4.SRC:2991-2996 by reading the vendored context. Eggs: spawn with the victim's velocities (JOUSTRV4.SRC:2991-2996);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2991,
+      "verbatim": "\tLDD\tPVELY,U\t\tSAME VELOCITIES"
+    }
+  },
+  {
+    "id": "JT8-055",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3204-3218` in subsystems.md, resolved to JOUSTRV4.SRC:3204-3218 by reading the vendored context. of VY inverted, X index decays 2/bounce (JOUSTRV4.SRC:3204-3218);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3204,
+      "verbatim": "\tADDA\t#-2"
+    }
+  },
+  {
+    "id": "JT8-056",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3219-3222` in subsystems.md, resolved to JOUSTRV4.SRC:3219-3222 by reading the vendored context. VY · ≤ $20 and X index = 0 (JOUSTRV4.SRC:3219-3222);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3219,
+      "verbatim": "\tCMPD\t#-$0020"
+    }
+  },
+  {
+    "id": "JT8-057",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2910-2935` in subsystems.md, resolved to JOUSTRV4.SRC:2910-2935 by reading the vendored context. (69 slots, 8 px apart, JOUSTRV4.SRC:2910-2935).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2910,
+      "verbatim": "EGLEDG\tFCB\t3+5\t\t\t\tLEVEL0 - CLIF1L, CLIF1R"
+    }
+  },
+  {
+    "id": "JT8-058",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3097-3104` in subsystems.md, resolved to JOUSTRV4.SRC:3097-3104 by reading the vendored context. (EGGVAL, JOUSTRV4.SRC:3097-3104);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3097,
+      "verbatim": "EGGVAL\tFCB\t$52\t\t250"
+    }
+  },
+  {
+    "id": "JT8-059",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3065-3069` in subsystems.md, resolved to JOUSTRV4.SRC:3065-3069 by reading the vendored context. mid-air catch +500 (PFEET, JOUSTRV4.SRC:3065-3069).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3065,
+      "verbatim": "\tLDA\tPFEET,Y"
+    }
+  },
+  {
+    "id": "JT8-060",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3245-3278` in subsystems.md, resolved to JOUSTRV4.SRC:3245-3278 by reading the vendored context. buzzard flies in from the nearer edge at max speed to remount (JOUSTRV4.SRC:3245-3278).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3245,
+      "verbatim": "\tLDA\t#EMYID\t\tSIGNAL BUZARD TO  START FLYING IN!"
+    }
+  },
+  {
+    "id": "JT8-061",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2900-2901` in subsystems.md, resolved to JOUSTRV4.SRC:2900-2901,3001 by reading the vendored context. Each enemy carries 4 eggs before permadeath (PEGG, JOUSTRV4.SRC:2900-2901,3001).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2900,
+      "verbatim": "\tLDA\t#4\t\t4 EGGS BEFORE ENEMY R.I.P.'S"
+    }
+  },
+  {
+    "id": "JT8-062",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3001` in subsystems.md, resolved to JOUSTRV4.SRC:2900-2901,3001 by reading the vendored context. Each enemy carries 4 eggs before permadeath (PEGG, JOUSTRV4.SRC:2900-2901,3001).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3001,
+      "verbatim": "\tDEC\tPEGG,Y\t\tYOU CAN ONLY SQUEEZE SO MUCH BLOOD FROM AN EGG"
+    }
+  },
+  {
+    "id": "JT8-063",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:954-957` in subsystems.md, resolved to JOUSTRV4.SRC:954-957 by reading the vendored context. (wave 3 + 1, TBRIDGE/TTROLL, JOUSTRV4.SRC:954-957);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 954,
+      "verbatim": "\tLDA\t#3"
+    }
+  },
+  {
+    "id": "JT8-064",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1651-1652` in subsystems.md, resolved to JOUSTRV4.SRC:1651-1652 by reading the vendored context. gravity vector (PADGRA → ADDLAV, JOUSTRV4.SRC:1651-1652);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1651,
+      "verbatim": "\tLDX\t#ADDLAV\t\tTHE VICTIMS GRAVITY IS NOW BASED UPON"
+    }
+  },
+  {
+    "id": "JT8-065",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6616-6617` in subsystems.md, resolved to JOUSTRV4.SRC:6616-6617 by reading the vendored context. VY < −$0180 (JOUSTRV4.SRC:6616-6617, escape scores 50, :6666-6670);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6616,
+      "verbatim": "\tCMPD\t#-$0180\t\tBREAK FREE VELOCITY?"
+    }
+  },
+  {
+    "id": "JT8-066",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6666-6670` in subsystems.md, resolved to JOUSTRV4.SRC:6666-6670 by reading the vendored context. VY < −$0180 (:6616-6617, escape scores 50, JOUSTRV4.SRC:6666-6670);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6666,
+      "verbatim": "ADLFRE\tLDA\tPID,U\t\tIS THE PERSON ALIVE"
+    }
+  },
+  {
+    "id": "JT8-067",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6374-6396` in subsystems.md, resolved to JOUSTRV4.SRC:6374-6396 by reading the vendored context. arithmetically inescapable at cap (PATCH1/2/3, JOUSTRV4.SRC:6374-6396).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6374,
+      "verbatim": "PATCH2\tLDD\tLAVKLL\t\tCHECK LAVA TROOL TIMER"
+    }
+  },
+  {
+    "id": "JT8-068",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1506` in subsystems.md, resolved to JOUSTRV4.SRC:1506 by reading the vendored context. Pterodactyl: gravity-exempt (FLYXP table ±$0300, \"NO GRAVITY!\" JOUSTRV4.SRC:1506,",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1506,
+      "verbatim": "\tLDX\t#FLYXP\t\tADD IN BUMPX,Y; AND VELX,Y; NO GRAVITY!"
+    }
+  },
+  {
+    "id": "JT8-069",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1585-1595` in subsystems.md, resolved to JOUSTRV4.SRC:1587. JOUSTRV4.SRC:1585-1595); Hotfix round 2: re-anchored from the title comment at :1585 to the first DATA row, which is the -$0300 entry the prose actually cites. Anchoring on a header while the evidence sits below it is the jt1-2 header-anchoring class.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1587,
+      "verbatim": "\tFDB\t-$0300"
+    }
+  },
+  {
+    "id": "JT8-070",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:4971-5000` in subsystems.md, resolved to JOUSTRV4.SRC:4971-5000 by reading the vendored context. into it (JOUSTRV4.SRC:4971-5000) — failing any test falls into the normal joust, which",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4971,
+      "verbatim": "\tLDB\tPLANTZ,U\tLANTZ ON CORRECT LINE?"
+    }
+  },
+  {
+    "id": "JT8-071",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6296-6360` in subsystems.md, resolved to JOUSTRV4.SRC:6296-6360 by reading the vendored context. slow its dive, reroute its lanes, make its first pass miss (JOUSTRV4.SRC:6296-6360).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6296,
+      "verbatim": "PATCH9\tTST\tPCHASE,U\tNON-BAITERS IGNORE THIS"
+    }
+  },
+  {
+    "id": "JT8-072",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5587-5590` in subsystems.md, resolved to JOUSTRV4.SRC:5587-5590 by reading the vendored context. JOUSTRV4.SRC:5587-5590);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5587,
+      "verbatim": "TR1ID\tFDB\tTRANS1,$6A+7,$51-1,CURTR1"
+    }
+  },
+  {
+    "id": "JT8-073",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6413-6424` in subsystems.md, resolved to JOUSTRV4.SRC:6413-6424 by reading the vendored context. spawn requires an empty screen third (SELARE, JOUSTRV4.SRC:6413-6424);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6413,
+      "verbatim": "SELARE\tLDA\tPPOSY+1,X"
+    }
+  },
+  {
+    "id": "JT8-074",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5615-5674` in subsystems.md, resolved to JOUSTRV4.SRC:5615-5674 by reading the vendored context. players hold tickets ahead of enemies (NPSERV/LPSERV, JOUSTRV4.SRC:5615-5674);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5615,
+      "verbatim": "\tLDA\tNPSERV\t\tTAKE A NUMBER TO BE SERVED BY THE TRANSPORTER"
+    }
+  },
+  {
+    "id": "JT8-075",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5841-5892` in subsystems.md, resolved to JOUSTRV4.SRC:5841-5892,5923-5925 by reading the vendored context. invulnerability (JOUSTRV4.SRC:5841-5892,5923-5925).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5841,
+      "verbatim": "\tBNE\t51$\t\tBR=PLAYER/ENEMY WANTS TO FLAP"
+    }
+  },
+  {
+    "id": "JT8-076",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5923-5925` in subsystems.md, resolved to JOUSTRV4.SRC:5841-5892,5923-5925 by reading the vendored context. invulnerability (JOUSTRV4.SRC:5841-5892,5923-5925).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5923,
+      "verbatim": "\tLDA\t#$80\t\tENABLE THIS PLAYERS COLISIONS"
+    }
+  },
+  {
+    "id": "JT8-077",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1020-1039` in subsystems.md, resolved to JOUSTRV4.SRC:1020-1039 by reading the vendored context. P2: X=200, facing left, stork (JOUSTRV4.SRC:1020-1039).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1020,
+      "verbatim": "\tLDD\tOSTRICH\t\tSTART HORSE (OSTRICH)"
+    }
+  },
+  {
+    "id": "JT8-078",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1875` in subsystems.md, resolved to JOUSTRV4.SRC:1875 by reading the vendored context. Wave machine (CIA process, JOUSTRV4.SRC:1875): 4-byte nibble-packed table —",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1875,
+      "verbatim": "CIA\tCLR\tWAVBCD\t\tWAVE STARTS AT ZERO"
+    }
+  },
+  {
+    "id": "JT8-079",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:175-181` in subsystems.md, resolved to JOUSTRV4.SRC:175-181 by reading the vendored context. bounders:hunters / lords:pursuers / pterodactyls / status (JOUSTRV4.SRC:175-181);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 175,
+      "verbatim": "WBOUND\tRMB\t0\tNBR OF BOUNDERS IN THIS WAVE (UPPER NIBBLE)"
+    }
+  },
+  {
+    "id": "JT8-080",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2586-2591` in subsystems.md, resolved to JOUSTRV4.SRC:2586-2591 by reading the vendored context. / egg / pterodactyl — WJSRTB, JOUSTRV4.SRC:2586-2591), high nibble destroys cliffs",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2586,
+      "verbatim": "WJSRTB\tFDB\tWAVRTS\t\tNOP ROUTINE"
+    }
+  },
+  {
+    "id": "JT8-081",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:185-192` in subsystems.md, resolved to JOUSTRV4.SRC:185-192 by reading the vendored context. (JOUSTRV4.SRC:185-192).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 185,
+      "verbatim": "WBPER\tEQU\t$01\tIF=1, PERSUE WILL BE INSTANTANIOUSLY"
+    }
+  },
+  {
+    "id": "JT8-082",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2535-2546` in subsystems.md, resolved to JOUSTRV4.SRC:2535-2546,2018-2021 by reading the vendored context. JOUSTRV4.SRC:2535-2546,2018-2021);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2535,
+      "verbatim": "WTBRST\tFCB\t$00,$AF,0,WBPER+WBCL1+0\t\tWAVE 81"
+    }
+  },
+  {
+    "id": "JT8-083",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2018-2021` in subsystems.md, resolved to JOUSTRV4.SRC:2535-2546,2018-2021 by reading the vendored context. JOUSTRV4.SRC:2535-2546,2018-2021);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2018,
+      "verbatim": "\tCMPX\t#WTBEND\t\tAT END OF TABLE??"
+    }
+  },
+  {
+    "id": "JT8-084",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2001-2004` in subsystems.md, resolved to JOUSTRV4.SRC:2001-2004 by reading the vendored context. Wave number is independent BCD 0-99 (JOUSTRV4.SRC:2001-2004).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2001,
+      "verbatim": "\tLDA\tWAVBCD\t\tBCD WAVE NUMBER"
+    }
+  },
+  {
+    "id": "JT8-085",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2628-2631` in subsystems.md, resolved to JOUSTRV4.SRC:2628-2631 by reading the vendored context. degrade by live player count (co-op → survival, JOUSTRV4.SRC:2628-2631;",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2628,
+      "verbatim": "WCOOP\tLDA\tSPLY2+6\t\tTHIS MESSAGE IS FOR TWO PLAYERS ONLY"
+    }
+  },
+  {
+    "id": "JT8-086",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2697-2700` in subsystems.md, resolved to JOUSTRV4.SRC:2697-2700 by reading the vendored context. no-ops solo, JOUSTRV4.SRC:2697-2700).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2697,
+      "verbatim": "WGLAD\tLDA\tSPLY1+6\t\tTHIS MESSAGE IS FOR TWO PLAYERS ONLY"
+    }
+  },
+  {
+    "id": "JT8-087",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3722-3749` in subsystems.md, resolved to JOUSTRV4.SRC:3722-3749,7994-7997 by reading the vendored context. (JOUSTRV4.SRC:3722-3749,7994-7997) — and are *promoted* to their smart brains",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3722,
+      "verbatim": "LINET\tLDA\tNSMART\t\tGET NUMBER OF SMART ENEMIES"
+    }
+  },
+  {
+    "id": "JT8-088",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7994-7997` in subsystems.md, resolved to JOUSTRV4.SRC:3722-3749,7994-7997 by reading the vendored context. (JOUSTRV4.SRC:3722-3749,7994-7997) — and are *promoted* to their smart brains",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7994,
+      "verbatim": "AOFFL1\tEQU\t$45"
+    }
+  },
+  {
+    "id": "JT8-089",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3787` in subsystems.md, resolved to JOUSTRV4.SRC:3787,3971,4230 by reading the vendored context. (BOUNDR/B2UNDR/SHADOW, JOUSTRV4.SRC:3787,3971,4230) under a global intelligence",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3787,
+      "verbatim": "BOUNDR\tDEC\tPLAVT,U"
+    }
+  },
+  {
+    "id": "JT8-090",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:3971` in subsystems.md, resolved to JOUSTRV4.SRC:3787,3971,4230 by reading the vendored context. (BOUNDR/B2UNDR/SHADOW, JOUSTRV4.SRC:3787,3971,4230) under a global intelligence",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3971,
+      "verbatim": "B2UNDR\tDEC\tPLAVT,U"
+    }
+  },
+  {
+    "id": "JT8-091",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:4230` in subsystems.md, resolved to JOUSTRV4.SRC:3787,3971,4230 by reading the vendored context. (BOUNDR/B2UNDR/SHADOW, JOUSTRV4.SRC:3787,3971,4230) under a global intelligence",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4230,
+      "verbatim": "SHADOW\tDEC\tPLAVT,U"
+    }
+  },
+  {
+    "id": "JT8-092",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2075-2129` in subsystems.md, resolved to JOUSTRV4.SRC:2075-2129 by reading the vendored context. growing every 15 s while enemies live (JOUSTRV4.SRC:2075-2129).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2075,
+      "verbatim": "\tLDA\tWPERSUE,X\tSET PERSUE VARIABLE"
+    }
+  },
+  {
+    "id": "JT8-093",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2108-2113` in subsystems.md, resolved to JOUSTRV4.SRC:2108-2113 by reading the vendored context. anti-stall pterodactyls (max 3, PCHASE=−1, JOUSTRV4.SRC:2108-2113) on the BAITBL",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2108,
+      "verbatim": "\tCMPA\t#3-1\t\tONLY ALLOW 3 BAITERS ON THE SCREEN"
+    }
+  },
+  {
+    "id": "JT8-094",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2135-2148` in subsystems.md, resolved to JOUSTRV4.SRC:2135-2148 by reading the vendored context. :2150-2163, RV3 original preserved in comments JOUSTRV4.SRC:2135-2148).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2135,
+      "verbatim": "********\tFDB\t1*60/8\t\tMAKE THE BAITER MORE FIERCE"
+    }
+  },
+  {
+    "id": "JT8-095",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7340-7366` in subsystems.md, resolved to JOUSTRV4.SRC:7353. *backwards* — JOUSTRV4.SRC:7340-7366): Bounder 500 / Hunter 750 / Shadow Lord 1500 / Hotfix round 2: re-anchored from :7340, which heads SCRHUN — a DIFFERENT routine. The prose is about SCRTEN and its BACKWARDS digit convention, stated verbatim on this line; SCRTEN itself begins at :7357.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7353,
+      "verbatim": "*\t       REG.A - TENS & HUNDREDS BCD DIGIT (BACKWARDS)"
+    }
+  },
+  {
+    "id": "JT8-096",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:5563-5577` in subsystems.md, resolved to JOUSTRV4.SRC:5563-5577 by reading the vendored context. Ptero 1000 (decision-block DVALUE bytes, JOUSTRV4.SRC:5563-5577;",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5563,
+      "verbatim": "\tFDB\tDEATH3,0,STENMY,SCRTEN,0,EMYTIM"
+    }
+  },
+  {
+    "id": "JT8-097",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2642-2728` in subsystems.md, resolved to JOUSTRV4.SRC:2642-2728,4691-4698 by reading the vendored context. 3000 to the first partner-killer (JOUSTRV4.SRC:2642-2728,4691-4698) — the same two",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2642,
+      "verbatim": "\tLDA\tPLYG1\t\tPLAYER 1 OR"
+    }
+  },
+  {
+    "id": "JT8-098",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:4691-4698` in subsystems.md, resolved to JOUSTRV4.SRC:2642-2728,4691-4698 by reading the vendored context. 3000 to the first partner-killer (JOUSTRV4.SRC:2642-2728,4691-4698) — the same two",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4691,
+      "verbatim": "SPDGLA\tCLR\tPLYG1\t\tONLY 1 GLADIATOR IN THE WAVE"
+    }
+  },
+  {
+    "id": "JT8-099",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2634-2635` in subsystems.md, resolved to JOUSTRV4.SRC:2634-2635 by reading the vendored context. (JOUSTRV4.SRC:2634-2635 vs :2703-2705), the \"GAME START GOOF\" PATC11 cleans up",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2634,
+      "verbatim": "\tCLR\tPLYG1\t\tRESET PLAYER HIT PLAYER COUNTER(S)"
+    }
+  },
+  {
+    "id": "JT8-100",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2703-2705` in subsystems.md, resolved to JOUSTRV4.SRC:2703-2705 by reading the vendored context. (:2634-2635 vs JOUSTRV4.SRC:2703-2705), the \"GAME START GOOF\" PATC11 cleans up",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2703,
+      "verbatim": "\tLDA\t#-1\t\tSET-UP PLAYER KILLING PLAYER VARIABLES"
+    }
+  },
+  {
+    "id": "JT8-101",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6282-6284` in subsystems.md, resolved to JOUSTRV4.SRC:6282-6284 by reading the vendored context. (JOUSTRV4.SRC:6282-6284).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6282,
+      "verbatim": "PATC11\tCLR\tPLYG1\t\tRESET 3,000 POINT TRIGGER"
+    }
+  },
+  {
+    "id": "JT8-102",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:4730-4732` in subsystems.md, resolved to JOUSTRV4.SRC:4730-4732 by reading the vendored context. The dying player is credited 50 points (JOUSTRV4.SRC:4730-4732).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4730,
+      "verbatim": "\tLDX\tPDECSN,U\tSCORE 50 POINTS FOR DYING"
+    }
+  },
+  {
+    "id": "JT8-103",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:915-928` in subsystems.md, resolved to JOUSTRV4.SRC:915-928,7382-7411 by reading the vendored context. (JOUSTRV4.SRC:915-928,7382-7411).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 915,
+      "verbatim": "\tLDX\t#REPLAY\t\tREAD CMOS LEVEL PASS"
+    }
+  },
+  {
+    "id": "JT8-104",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7382-7411` in subsystems.md, resolved to JOUSTRV4.SRC:915-928,7382-7411 by reading the vendored context. (JOUSTRV4.SRC:915-928,7382-7411).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7382,
+      "verbatim": "SCRLEV\tLDD\t1,Y\t\tGET 100'S OF THOUSANDS TO 100'S."
+    }
+  },
+  {
+    "id": "JT8-105",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7303-7332` in subsystems.md, resolved to JOUSTRV4.SRC:7303-7332 by reading the vendored context. Difficulty: 28 DYWORD rows (DYTBL, JOUSTRV4.SRC:7303-7332) each walk",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7303,
+      "verbatim": "DYTBL"
+    }
+  },
+  {
+    "id": "JT8-106",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1890-1926` in subsystems.md, resolved to JOUSTRV4.SRC:1890-1926 by reading the vendored context. (IWAVE, JOUSTRV4.SRC:1890-1926);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1890,
+      "verbatim": "1$\tLDX\t#GA1\t\tGET GAME ADJUST"
+    }
+  },
+  {
+    "id": "JT8-107",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:930-939` in subsystems.md, resolved to JOUSTRV4.SRC:930-939 by reading the vendored context. 0-3 / 4-6 / 7+, JOUSTRV4.SRC:930-939).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 930,
+      "verbatim": "\tLDX\t#GA1\t\tGET GAME ADJUST"
+    }
+  },
+  {
+    "id": "JT8-108",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1929-1933` in subsystems.md, resolved to JOUSTRV4.SRC:1929-1933 by reading the vendored context. wave later (:954-957), lava creeps $EA→$E0 (JOUSTRV4.SRC:1929-1933), waves 1-2 run",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1929,
+      "verbatim": "\tLDA\tSAFRAM\t\tRASIE LAVA IF POSSIBLE"
+    }
+  },
+  {
+    "id": "JT8-109",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2202-2205` in subsystems.md, resolved to JOUSTRV4.SRC:2202-2205 by reading the vendored context. enemies at half rate (EMYTIM=2, JOUSTRV4.SRC:2202-2205).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2202,
+      "verbatim": "\tLDA\tTBRIDGE\t\t1ST, OR 2ND WAVE?"
+    }
+  },
+  {
+    "id": "JT8-110",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6270-6403` in subsystems.md, resolved to JOUSTRV4.SRC:6270-6403 by reading the vendored context. The red-label patch block (ORG $D760, JOUSTRV4.SRC:6270-6403): eleven patches,",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6270,
+      "verbatim": "\tORG\t$D760\tMODULE \"ATT.SRC\" ENDED AT $D6EF ON 10/29/82"
+    }
+  },
+  {
+    "id": "JT8-111",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:6268` in subsystems.md, resolved to JOUSTRV4.SRC:6268 by reading the vendored context. to stop pterodactyl farming (header JOUSTRV4.SRC:6268).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6268,
+      "verbatim": "*\tPATCHES TO PREVENT PLAYER FROM PTERODACTYL HUNTING"
+    }
+  },
+  {
+    "id": "JT8-112",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:241-344` in subsystems.md, resolved to MESSAGE.SRC:241-344 by reading the vendored context. 53 + 49 glyphs at MESSAGE.SRC:241-344, data to :1057).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 241,
+      "verbatim": "FONT57\tFDB\tL0"
+    }
+  },
+  {
+    "id": "JT8-113",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1057` in subsystems.md, resolved to MESSAGE.SRC:1055.  53 + 49 glyphs at :241-344, data to JOUSTRV4.SRC:1057). Re-resolved in the jt1-8 hotfix: the whole paragraph is MESSAGE.SRC's font block. MESSAGE.SRC:1057 is the blank line closing the glyph data that ends with character V at MESSAGE.SRC:1055 — which is what the dossier's data to :1057 delimits. JOUSTRV4.SRC:1057 is an unrelated score load. Hotfix round 2: re-anchored from :1057, which is a BLANK line whose verbatim was the empty string. The glyph data ends at MESSAGE.SRC:1055 (FCB $01,$00, the last row of character V); the dossier now states that extent instead of the two blank lines after it.",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1055,
+      "verbatim": "\tFCB\t$01,$00"
+    }
+  },
+  {
+    "id": "JT8-114",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:91-92` in subsystems.md, resolved to MESSAGE.SRC:91-92 by reading the vendored context. blitted SOLID with the colour in the constant register (MESSAGE.SRC:91-92) — one font,",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 91,
+      "verbatim": "\tLDB\t#$1A\tREAD SERIAL, WRITE BLOCK, CONSTANT SUBB, ZERO SUPPRESS"
+    }
+  },
+  {
+    "id": "JT8-115",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:213-222` in subsystems.md, resolved to MESSAGE.SRC:213-222 by reading the vendored context. erase = draw in colour 0 (MESSAGE.SRC:213-222), correct only over",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 213,
+      "verbatim": "OUTTEXT\tCLR\tFLAG\tCLEAR THE ERASE FLAG"
+    }
+  },
+  {
+    "id": "JT8-116",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:337-365` in subsystems.md, resolved to JOUSTRV4.SRC:337-365 by reading the vendored context. 14-entry instructional sequence (ATMST, JOUSTRV4.SRC:337-365: 5-byte records",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 337,
+      "verbatim": "ATMST\tFDB\tATMRTS,ATX1*256+2\tINTRO MESSAGE"
+    }
+  },
+  {
+    "id": "JT8-117",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:284-290` in subsystems.md, resolved to JOUSTRV4.SRC:284-290 by reading the vendored context. message byte selects the small font (JOUSTRV4.SRC:284-290 — the hand-computed-branch",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 284,
+      "verbatim": "\tTSTA"
+    }
+  },
+  {
+    "id": "JT8-118",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:232-233` in subsystems.md, resolved to JOUSTRV4.SRC:232-233,712,1015 by reading the vendored context. negative = running, positive $7F = attract simulation (JOUSTRV4.SRC:232-233,712,1015).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 232,
+      "verbatim": "GAMSIM\tLDA\t#$7F\t\tGAME SIMULATION MODE"
+    }
+  },
+  {
+    "id": "JT8-119",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:712` in subsystems.md, resolved to JOUSTRV4.SRC:232-233,712,1015 by reading the vendored context. negative = running, positive $7F = attract simulation (JOUSTRV4.SRC:232-233,712,1015).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 712,
+      "verbatim": "ATTRCT\tCLR\tGOVER\t\tSTATE OF GAME = OVER"
+    }
+  },
+  {
+    "id": "JT8-120",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1015` in subsystems.md, resolved to JOUSTRV4.SRC:232-233,712,1015 by reading the vendored context. negative = running, positive $7F = attract simulation (JOUSTRV4.SRC:232-233,712,1015).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1015,
+      "verbatim": "\tDEC\tGOVER\t\tSTATE OF GAME = STARTING THE GAME (.NE.)"
+    }
+  },
+  {
+    "id": "JT8-121",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:835-837` in subsystems.md, resolved to TB12REV3.SRC:835-837 by reading the vendored context. (TB12REV3.SRC:835-837).",
+    "source": {
+      "file": "TB12REV3.SRC",
+      "line": 835,
+      "verbatim": "11$\tEXG\tX,Y\tX=CMOS, Y=DEST"
+    }
+  },
+  {
+    "id": "JT8-122",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1589` in pictures.md, resolved to williams.cpp:1589.  WILLIAMS_BLITTER_SC1 with no PROM tag (williams.cpp:1656-1660, JOUSTRV4.SRC:1589); Re-resolved in the jt1-8 hotfix: pictures.md cites williams.cpp:1656-1660 three lines earlier and this bare :1589 continues it — the WILLIAMS_BLITTER_SC1 machine-config line. EXTERNAL secondary source — schema-only, never byte-opened.",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1589,
+      "verbatim": "(MAME williams driver williams.cpp:1589 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "JT8-123",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:7787` in pictures.md, resolved to JOUSTRV4.SRC:7787 by reading the vendored context. (BCKXS1 JOUSTRV4.SRC:7616, LNDXS1 JOUSTRV4.SRC:7787).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7787,
+      "verbatim": "LNDXS1\tEQU\t*"
+    }
+  },
+  {
+    "id": "JT8-124",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:761` in pictures.md, resolved to JOUSTRV4.SRC:761 by reading the vendored context. @350 LT BLUE PLAYER 2 (JOUSTRV4.SRC:761).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 761,
+      "verbatim": "\tFCB\t@350\t\tLT BLUE PLAYER 2 ON H.S.T.D. TABLE"
+    }
+  },
+  {
+    "id": "JT8-125",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:762` in pictures.md, resolved to JOUSTRV4.SRC:762 by reading the vendored context. JOUSTRV4.SRC:754-761) and NULL (blanking, JOUSTRV4.SRC:762, used :705-706).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 762,
+      "verbatim": "NULL\tFCB\t@000"
+    }
+  },
+  {
+    "id": "JT8-126",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:705-706` in pictures.md, resolved to JOUSTRV4.SRC:705-706 by reading the vendored context. JOUSTRV4.SRC:754-761) and NULL (blanking, :762, used JOUSTRV4.SRC:705-706).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 705,
+      "verbatim": "HSTD\tLDX\t#NULL"
+    }
+  },
+  {
+    "id": "JT8-127",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:781` in pictures.md, resolved to JOUSTI.SRC:781 by reading the vendored context. Stork (JOUSTI.SRC:781) · 18 · 14 · same states ·",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 781,
+      "verbatim": "STORK\tEQU\t*"
+    }
+  },
+  {
+    "id": "JT8-128",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:1668` in pictures.md, resolved to JOUSTI.SRC:1668 by reading the vendored context. Buzzard (JOUSTI.SRC:1668) · 18 · 14 · same states ·",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 1668,
+      "verbatim": "BUZARD\tEQU\t*"
+    }
+  },
+  {
+    "id": "JT8-129",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2046-2206` in pictures.md, resolved to JOUSTI.SRC:2046-2206 by reading the vendored context. Riders (JOUSTI.SRC:2046-2206) · 23 · 13 · PLY1-5 R/L $0707;",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2046,
+      "verbatim": "PLYR1\tFDB\t0,$02EF,PLY1R\tRIDER ON SKIDDING HORSE"
+    }
+  },
+  {
+    "id": "JT8-130",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2255` in pictures.md, resolved to JOUSTI.SRC:2255 by reading the vendored context. Egg (JOUSTI.SRC:2255) · 7 · 6 · up/right/left + 3 hatch stages ·",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2255,
+      "verbatim": "EGGI\tFDB\tCEGGUP,$00FA,EGGUP"
+    }
+  },
+  {
+    "id": "JT8-131",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2376` in pictures.md, resolved to JOUSTI.SRC:2376 by reading the vendored context. Lava-troll hand (JOUSTI.SRC:2376) · 6 · 6 · GRAB1-6 ·",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2376,
+      "verbatim": "ILAVAT\tFDB\t0,$00FB,GRAB1"
+    }
+  },
+  {
+    "id": "JT8-132",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2481` in pictures.md, resolved to JOUSTI.SRC:2481 by reading the vendored context. Flame (JOUSTI.SRC:2481) · 4 · 4 · FLAME1-4 ·",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2481,
+      "verbatim": "IFLAME\tFDB\t0,$00F2,FLAME1"
+    }
+  },
+  {
+    "id": "JT8-133",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2564` in pictures.md, resolved to JOUSTI.SRC:2564 by reading the vendored context. Death poof (JOUSTI.SRC:2564) · 3 · 3 · FL1-3 ·",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2564,
+      "verbatim": "POOF1\tPOSOFF\t0,$01,$18,FL1"
+    }
+  },
+  {
+    "id": "JT8-134",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2601` in pictures.md, resolved to JOUSTI.SRC:2601 by reading the vendored context. Pterodactyl (JOUSTI.SRC:2601) · 6 · 6 · PT1-3 R/L ·",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2601,
+      "verbatim": "IPTERO\tPOSOFF\tPT1RC,1,11,PT1R"
+    }
+  },
+  {
+    "id": "JT8-135",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:2778` in pictures.md, resolved to JOUSTI.SRC:2778 by reading the vendored context. Ptero dissolve (JOUSTI.SRC:2778) · 1 · 1 · ASH1R/L — third format, decoded in jt1-3 (see below) ·",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2778,
+      "verbatim": "ASH1R"
+    }
+  },
+  {
+    "id": "JT8-136",
+    "claim": "Qualified in jt1-8: the dossier wrote this as a bare `:749` in pictures.md, resolved to JOUSTI.SRC:749 by reading the vendored context. Transporter (JOUSTI.SRC:749) · 4 · 1 · TRASRC $0E03 ·",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 749,
+      "verbatim": "TRANS1\tFDB\t$0A00,TRASRC,$3551,$0E03!XDMAFIX\t\tOLD X $6A"
+    }
+  }
+]

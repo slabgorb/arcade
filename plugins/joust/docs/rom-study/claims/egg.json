@@ -1,0 +1,326 @@
+[
+  {
+    "id": "JT24-001",
+    "claim": "Spawn (DEATH3) carries the victim's velocities to the egg VERBATIM: LDD PVELY,U / STD PVELY,Y then LDA PVELX,U / STA PVELX,Y — 'SAME VELOCITIES'.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2991,
+      "verbatim": "\tLDD\tPVELY,U\t\tSAME VELOCITIES"
+    }
+  },
+  {
+    "id": "JT24-002",
+    "claim": "Spawn RESETS the egg's bump registers: CLR PBUMPX,Y (and CLR PBUMPY,Y next line) — 'RESET BUMPAGE REGISTERS'. The inherited velocities carry, the shoves do not.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2995,
+      "verbatim": "\tCLR\tPBUMPX,Y\tRESET BUMPAGE REGISTERS"
+    }
+  },
+  {
+    "id": "JT24-003",
+    "claim": "The egg inherits the enemy's remaining egg count: LDA PEGG,U — 'TRANSFER NBR OF EGG LEFT'.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2999,
+      "verbatim": "\tLDA\tPEGG,U\t\tTRANSFER NBR OF EGG LEFT"
+    }
+  },
+  {
+    "id": "JT24-004",
+    "claim": "Each spawned egg DECrements the count: DEC PEGG,Y — 'YOU CAN ONLY SQUEEZE SO MUCH BLOOD FROM AN EGG'. This is the permadeath counter.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3001,
+      "verbatim": "\tDEC\tPEGG,Y\t\tYOU CAN ONLY SQUEEZE SO MUCH BLOOD FROM AN EGG"
+    }
+  },
+  {
+    "id": "JT24-005",
+    "claim": "After the DEC, BNE means eggs remain (the egg will hatch); falling through (PEGG reached 0) is permadeath — 'BR=YOU CAN GET MORE EGGS'.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3002,
+      "verbatim": "\tBNE\t1$\t\t BR=YOU CAN GET MORE EGGS"
+    }
+  },
+  {
+    "id": "JT24-006",
+    "claim": "An enemy carries 4 eggs before permadeath: LDA #4 — '4 EGGS BEFORE ENEMY R.I.P.'S' (stored to PEGG,Y next line).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2900,
+      "verbatim": "\tLDA\t#4\t\t4 EGGS BEFORE ENEMY R.I.P.'S"
+    }
+  },
+  {
+    "id": "JT24-007",
+    "claim": "Ledge eggs are placed every 8th pixel position: LDB #8 — 'PUT AN EGG EVERY 8TH PIXEL POSITION' (the MUL two lines down scales the slot index by 8).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2871,
+      "verbatim": "\tLDB\t#8\t\tPUT AN EGG EVERY 8TH PIXEL POSITION"
+    }
+  },
+  {
+    "id": "JT24-008",
+    "claim": "EGLEDG is the cumulative ledge-egg count per cliff tier; LEVEL0 (CLIF1L,CLIF1R) = 3+5 = 8 slots.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2910,
+      "verbatim": "EGLEDG\tFCB\t3+5\t\t\t\tLEVEL0 - CLIF1L, CLIF1R"
+    }
+  },
+  {
+    "id": "JT24-009",
+    "claim": "EGLEDG LEVEL5 (CLIF5) cumulative = 3+5+11+7+7+5+8+23 = 69 — the total number of ledge egg slots across all six tiers.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2915,
+      "verbatim": "\tFCB\t3+5+11+7+7+5+8+23\t\tLEVEL5 - CLIF5"
+    }
+  },
+  {
+    "id": "JT24-010",
+    "claim": "The egg uses a NARROWER wrap than an entity: CMPD #288 — 'NEW WRAP AROUND STYLE (4 TO 288)'. This runs AFTER the normal WRAPX.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3141,
+      "verbatim": "\tCMPD\t#288\t\tNEW WRAP AROUND STYLE (4 TO 288)"
+    }
+  },
+  {
+    "id": "JT24-011",
+    "claim": "Egg wrap upper correction: an X past 288 subtracts the 284-unit span (ADDD #4-288 = ADDD #-284).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3143,
+      "verbatim": "\tADDD\t#4-288"
+    }
+  },
+  {
+    "id": "JT24-012",
+    "claim": "Egg wrap lower bound: CMPD #4 — an X below 4 gets the correction added.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3144,
+      "verbatim": "EGGWR3\tCMPD\t#4"
+    }
+  },
+  {
+    "id": "JT24-013",
+    "claim": "Egg wrap lower correction: an X below 4 adds the 284-unit span (ADDD #288-4 = ADDD #284), completing the [4,288] band.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3146,
+      "verbatim": "\tADDD\t#288-4"
+    }
+  },
+  {
+    "id": "JT24-014",
+    "claim": "On a bounce the egg's positive FLYX X index decays 2 toward zero: ADDA #-2 (EGGVX path).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3204,
+      "verbatim": "\tADDA\t#-2"
+    }
+  },
+  {
+    "id": "JT24-015",
+    "claim": "On a bounce the egg's negative FLYX X index decays 2 toward zero: EGGVXM ADDA #2 — the mirror of the positive decay.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3207,
+      "verbatim": "EGGVXM\tADDA\t#2"
+    }
+  },
+  {
+    "id": "JT24-016",
+    "claim": "The bounced Y velocity keeps a QUARTER of itself: ASRA (with the RORB/ASRA/RORB that follow, an arithmetic >>2 of the 16-bit D).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3211,
+      "verbatim": "\tASRA"
+    }
+  },
+  {
+    "id": "JT24-017",
+    "claim": "After the >>2, the Y velocity is INVERTED: COMA (with NEGB / SBCA #-1) is the 6809 16-bit two's-complement negate — so velY' = -(velY>>2).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3215,
+      "verbatim": "\tCOMA"
+    }
+  },
+  {
+    "id": "JT24-018",
+    "claim": "Settle threshold on velY: CMPD #-$0020 — the bounced (upward) velY is compared against -$20.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3219,
+      "verbatim": "\tCMPD\t#-$0020"
+    }
+  },
+  {
+    "id": "JT24-019",
+    "claim": "BLT here means the egg is STILL bouncing: a velY faster (more negative) than -$20 keeps falling — 'BR=STILL TOO FAST TO LAND'. Settle needs velY >= -$20.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3220,
+      "verbatim": "\tBLT\tEGGBCK\t\tBR=STILL TOO FAST TO LAND"
+    }
+  },
+  {
+    "id": "JT24-020",
+    "claim": "Settle also needs the X index at exactly 0: LDA PVELX,U / BNE keeps bouncing — 'BR=STILL TOO FAST TO LAND'. A nonzero index never settles.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3222,
+      "verbatim": "\tBNE\tEGGBCK\t\tBR=STILL TOO FAST TO LAND"
+    }
+  },
+  {
+    "id": "JT24-021",
+    "claim": "EGGVAL value ladder entry 1: FCB $52 → 250 (DVALUE-decoded via SCRTEN as tens/hundreds, not a raw x100).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3097,
+      "verbatim": "EGGVAL\tFCB\t$52\t\t250"
+    }
+  },
+  {
+    "id": "JT24-022",
+    "claim": "EGGVAL value ladder entry 2: FCB $05 → 500 (via SCRHUN).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3099,
+      "verbatim": "\tFCB\t$05\t\t500"
+    }
+  },
+  {
+    "id": "JT24-023",
+    "claim": "EGGVAL value ladder entry 3: FCB $57 → 750 (via SCRTEN — the $57->750 trap, NOT 5700).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3101,
+      "verbatim": "\tFCB\t$57\t\t750"
+    }
+  },
+  {
+    "id": "JT24-024",
+    "claim": "EGGVAL value ladder entry 4: FCB $10 → 1000 (via SCRHUN) — 'PEG AT 1,000', the cap for the 4th and every later hit.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3103,
+      "verbatim": "\tFCB\t$10\t\tPEG AT 1,000"
+    }
+  },
+  {
+    "id": "JT24-025",
+    "claim": "The egg-hit counter pegs at 4: CMPB #4 — 'THE MAGIC MAXIMUM NUMBER IS 4' (BHS skips the increment at/above 4, capping the ladder at 1000).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3043,
+      "verbatim": "\tCMPB\t#4\t\tTHE MAGIC MAXIMUM NUMBER IS 4"
+    }
+  },
+  {
+    "id": "JT24-026",
+    "claim": "The mid-air catch bonus is gated on PFEET: LDA PFEET,Y — 0 means the egg was caught before bouncing (bonus live).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3065,
+      "verbatim": "\tLDA\tPFEET,Y"
+    }
+  },
+  {
+    "id": "JT24-027",
+    "claim": "A mid-air catch scores an extra 500: LDA #$05 — 'SCORE 500 POINTS' (via SCRHUN, in the player's workspace).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3068,
+      "verbatim": "\tLDA\t#$05\t\tSCORE 500 POINTS"
+    }
+  },
+  {
+    "id": "JT24-028",
+    "claim": "On hatch the egg signals a buzzard to fly in: LDA #EMYID — 'SIGNAL BUZARD TO START FLYING IN!'.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3245,
+      "verbatim": "\tLDA\t#EMYID\t\tSIGNAL BUZARD TO  START FLYING IN!"
+    }
+  },
+  {
+    "id": "JT24-029",
+    "claim": "The hatching buzzard carries the enemy's remaining egg count forward: LDA PEGG,U — 'MAINTAIN NBR OF EGGS LEFT IN THE BIRD' (permadeath persists through remounts).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3251,
+      "verbatim": "\tLDA\tPEGG,U\t\tMAINTAIN NBR OF EGGS LEFT IN THE BIRD"
+    }
+  },
+  {
+    "id": "JT24-030",
+    "claim": "The fly-in buzzard moves at MAX FLYX speed 8: STA PVELX,Y — 'AT MAXIMUM WARP SPEED' (LDA #8 the line above).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3257,
+      "verbatim": "\tSTA\tPVELX,Y\t\tAT MAXIMUM WARP SPEED"
+    }
+  },
+  {
+    "id": "JT24-031",
+    "claim": "The buzzard enters from the FARTHER edge, not the nearer one: BHI EGGMRT — 'BR=MAN ON RIGHT SIDE OF SCREEN' selects the LEFT-edge start (EGGMRT). This CORRECTS AC-3/epic-law-#7's 'nearer edge' prose (a jt1-10-class wrong-prose citation).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3272,
+      "verbatim": "\tBHI\tEGGMRT\t\t BR=MAN ON RIGHT SIDE OF SCREEN"
+    }
+  },
+  {
+    "id": "JT24-032",
+    "claim": "Man-on-LEFT case: the buzzard starts at the RIGHT edge, LDD #ERIGHT-1 (=291), flying left (NEG PVELX) toward the rider — the far edge.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3275,
+      "verbatim": "\tLDD\t#ERIGHT-1"
+    }
+  },
+  {
+    "id": "JT24-033",
+    "claim": "Man-on-RIGHT case (EGGMRT): the buzzard starts at the LEFT edge, LDD #ELEFT+1 (=-9), flying right toward the rider — the far edge.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3278,
+      "verbatim": "EGGMRT\tLDD\t#ELEFT+1"
+    }
+  },
+  {
+    "id": "JT24-034",
+    "claim": "The remount promotes the buzzard to smart: INC PCHASE,U (0->1), paired with MOUNRI's INC NSMART (JT22-015) — the same debit a LINET promotion applies.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3676,
+      "verbatim": "\tINC\tPCHASE,U"
+    }
+  },
+  {
+    "id": "JT24-035",
+    "claim": "The egg's score-message state OVERLAYS PPVELX: STA PPVELX,X — 'SAVE IT IN EGGS PPVELX AREA'. Egg fields reuse the process RAM; the shared struct does not grow (epic tagged-union ruling).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3036,
+      "verbatim": "\tSTA\tPPVELX,X\tSAVE IT IN EGGS PPVELX AREA"
+    }
+  },
+  {
+    "id": "JT24-036",
+    "claim": "The egg's score value OVERLAYS PRDIR: STB PRDIR,X — 'SAVE SCORE VALUE IN EGGS PRDIR WORKSPACE'. The same RAM-overlay ruling.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3054,
+      "verbatim": "\tSTB\tPRDIR,X\t\tSAVE SCORE VALUE IN EGGS PRDIR WORKSPACE"
+    }
+  }
+]

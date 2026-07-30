@@ -1,0 +1,92 @@
+[
+  {
+    "id": "JT84-001",
+    "claim": "DEGGS is the per-PLAYER egg-hit counter that drives the EGGVAL ladder: `DEGGS RMB 2` is declared inside the `* DECISION BLOCK *` (ORG $0, JOUSTRV4.SRC:101-113), so it is decision-area state, NOT egg state. This is why jt8-4 homes the count on the player process and not on EggState.hitCount. (JOUSTRV4.SRC:113).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 113,
+      "verbatim": "DEGGS\tRMB\t2\tEGG KILLED COUNTER"
+    }
+  },
+  {
+    "id": "JT84-002",
+    "claim": "PLYEGG is the player-vs-egg collision entry point — 'COLISION DETECT WITH THE EGG'. The catch pass in demo.ts collisionPass is this routine. (JOUSTRV4.SRC:3009).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3009,
+      "verbatim": "PLYEGG\tEQU\t*\t\tCOLISION DETECT WITH THE EGG"
+    }
+  },
+  {
+    "id": "JT84-003",
+    "claim": "The player/egg collision collects the egg's score by calling EGGSCR — the collision IS the scoring trigger; there is no separate pickup step. (JOUSTRV4.SRC:3021).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3021,
+      "verbatim": "\tJSR\tEGGSCR\t\tCOLLECT THE EGGS SCORE VALUE"
+    }
+  },
+  {
+    "id": "JT84-004",
+    "claim": "EGGSCR finds the incrementing ladder count through the CATCHING PLAYER's decision area: LDY PDECSN,U, where U is documented at :3025-3026 as \"THE PLAYER'S (VICTOR) WORKSPACE THAT HIT THE EGG\" (X is the egg's). The counter is reached via U, never via X. (JOUSTRV4.SRC:3033).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3033,
+      "verbatim": "\tLDY\tPDECSN,U\tFIND INCREMENTING SCORE VALUE FOR EGG"
+    }
+  },
+  {
+    "id": "JT84-005",
+    "claim": "The decision area's egg counter is DEGGS: LDY DEGGS,Y loads the pointer to the count that indexes EGGVAL, after Y was set to the catching player's PDECSN. (JOUSTRV4.SRC:3037).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3037,
+      "verbatim": "\tLDY\tDEGGS,Y"
+    }
+  },
+  {
+    "id": "JT84-006",
+    "claim": "EGGSMN writes the bumped (and capped) count BACK to the counter: STB ,Y. This write-back is what makes the ladder CLIMB across successive catches WITHIN one life — EGGSCR itself never resets it. That is a fact about EGGSCR and not about the counter's lifetime: the reset boundaries live in three other places (a new game :907/:912, EVERY wave start WNRM :1979-1980, and the player's own death-wish routine DEATH1/DEATH2 :4669/:4675 — see JT86-002..007). (JOUSTRV4.SRC:3053).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3053,
+      "verbatim": "EGGSMN\tSTB\t,Y"
+    }
+  },
+  {
+    "id": "JT84-007",
+    "claim": "On collecting an egg whose rider had an inbound remount bird (PDIST,X non-zero, :3078), the bird is sent away: LDD #AUTOFF — 'THE BIRD SHOULD GO OFF SCREEN'. Our port matures a settled wave egg straight into the remount enemy, so egg and inbound bird never coexist; the reachable analogue is that a caught egg is removed before the hatch matures it. (JOUSTRV4.SRC:3086).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3086,
+      "verbatim": "\tLDD\t#AUTOFF\t\tTHE BIRD SHOULD GO OFF SCREEN"
+    }
+  },
+  {
+    "id": "JT84-008",
+    "claim": "AUTOFF is written into the inbound bird's joystick-program pointer: STD PJOY,Y — the bird keeps flying but under the auto-off-screen program. (JOUSTRV4.SRC:3087).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3087,
+      "verbatim": "\tSTD\tPJOY,Y"
+    }
+  },
+  {
+    "id": "JT84-009",
+    "claim": "A collected egg stops participating in collisions: LDA PID,X — 'NO LONGER COLIDE WITH EGG'. The ROM keeps the process alive to float the score value (EGGWAK re-points PPC at EGGHIT, :3088-3091); jt8-4 removes the process instead, which is the honest subset — collected once, never twice. (JOUSTRV4.SRC:3092).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3092,
+      "verbatim": "\tLDA\tPID,X\t\tNO LONGER COLIDE WITH EGG"
+    }
+  },
+  {
+    "id": "JT84-010",
+    "claim": "The collide bit is masked off with ANDA #$7F — clearing PID bit 7 ($80), the same collision-enable bit jt2-6's materialisation window toggles. JOUSTRV4.SRC is bare-decimal with $ hex, so $7F is 127. (JOUSTRV4.SRC:3093).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3093,
+      "verbatim": "\tANDA\t#$7F"
+    }
+  }
+]

@@ -1,0 +1,308 @@
+[
+  {
+    "id": "JT34-001",
+    "claim": "AC-1 gravity exemption: the ptero flight loads the FLYXP X-velocity table and the load-bearing comment states \"NO GRAVITY!\" — the ptero obeys no gravity pair (JOUSTRV4.SRC:1506).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1506,
+      "verbatim": "\tLDX\t#FLYXP\t\tADD IN BUMPX,Y; AND VELX,Y; NO GRAVITY!"
+    }
+  },
+  {
+    "id": "JT34-002",
+    "claim": "AC-1: the ptero integrates its position by calling ADDGRX, the entry ONE instruction past the mount ADDB GRAV, so the gravity add is skipped (JOUSTRV4.SRC:1508).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1508,
+      "verbatim": "\tJSR\tADDGRX\t\tADD IN GRAVITY"
+    }
+  },
+  {
+    "id": "JT34-003",
+    "claim": "AC-1: ADDGRA — the MOUNT entry — ADDs the variable gravity to VY every frame; the ptero starts after it (JOUSTRV4.SRC:6489).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6489,
+      "verbatim": "ADDGRA\tADDB\tGRAV\t\tADD IN VARIABLE GRAVITY"
+    }
+  },
+  {
+    "id": "JT34-004",
+    "claim": "AC-1: ADDGRX begins at the position integrate (ADDD PPOSY+1,U, the fractional distance), one instruction past the gravity add — the ptero enters here (JOUSTRV4.SRC:6494).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6494,
+      "verbatim": "ADDGRX\tADDD\tPPOSY+1,U\tADD IN FRACTIONAL DISTANCE"
+    }
+  },
+  {
+    "id": "JT34-005",
+    "claim": "AC-1: the FLYXP ptero X-velocity ladder low endpoint is -$0300 (index −8), wider than the mount FLYX -$0200 (JOUSTRV4.SRC:1587).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1587,
+      "verbatim": "\tFDB\t-$0300"
+    }
+  },
+  {
+    "id": "JT34-006",
+    "claim": "AC-1: the FLYXP label sits on the ZERO entry ($0000) in the MIDDLE of the nine-rung ladder — the FLYX house convention (JOUSTRV4.SRC:1591).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1591,
+      "verbatim": "FLYXP\tFDB\t$0000"
+    }
+  },
+  {
+    "id": "JT34-007",
+    "claim": "AC-1: the FLYXP ptero X-velocity ladder high endpoint is $0300 (index +8) = 768 decimal — the ptero tops out wider than the mount $0200 (JOUSTRV4.SRC:1595).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1595,
+      "verbatim": "\tFDB\t$0300"
+    }
+  },
+  {
+    "id": "JT34-008",
+    "claim": "AC-2 lance offset: B starts from the player LANTZ (LDB PLANTZ,U) — a skidding player (PLANTZ 2) lowers the lance and shifts the band (JOUSTRV4.SRC:4971).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4971,
+      "verbatim": "\tLDB\tPLANTZ,U\tLANTZ ON CORRECT LINE?"
+    }
+  },
+  {
+    "id": "JT34-009",
+    "claim": "AC-2 lance offset: ADDB PPOSY+1,U adds the player WHOLE-pixel Y (offset +1 is the pixel byte, fraction excluded) (JOUSTRV4.SRC:4972).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4972,
+      "verbatim": "\tADDB\tPPOSY+1,U"
+    }
+  },
+  {
+    "id": "JT34-010",
+    "claim": "AC-2 lance offset: SUBB PPOSY+1,X subtracts the ptero WHOLE-pixel Y, so B = PLANTZ + playerPixelY − pteroPixelY (JOUSTRV4.SRC:4973).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4973,
+      "verbatim": "\tSUBB\tPPOSY+1,X"
+    }
+  },
+  {
+    "id": "JT34-011",
+    "claim": "AC-2 band select: CMPA #FLY2-FLY1 tests the ptero PIMAGE against the frame stride 12 — \"ATTACKING FRAME?\" — selecting the 8±3 band over 10±2 (JOUSTRV4.SRC:4975).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4975,
+      "verbatim": "\tCMPA\t#FLY2-FLY1\tATTACKING FRAME?"
+    }
+  },
+  {
+    "id": "JT34-012",
+    "claim": "AC-2 band select: BLS 13$ branches to the wings-down/glide band (10±2) when the ptero is NOT in the attacking frame (JOUSTRV4.SRC:4976).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4976,
+      "verbatim": "\tBLS\t13$\t\t BR=NO WINGS DOWN FRAME"
+    }
+  },
+  {
+    "id": "JT34-013",
+    "claim": "AC-2 frame stride: FLY1 is an RMB 12 buffer, so FLY2-FLY1 = 12, the attacking-frame discriminant threshold (JOUSTRV4.SRC:140).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 140,
+      "verbatim": "FLY1\tRMB\t12"
+    }
+  },
+  {
+    "id": "JT34-014",
+    "claim": "AC-2 frame stride: FLY3 is the third consecutive RMB 12 buffer, so FLY3-FLY1 = 24 — the attacking frame is PIMAGE > 12 (JOUSTRV4.SRC:142).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 142,
+      "verbatim": "FLY3\tRMB\t12\t"
+    }
+  },
+  {
+    "id": "JT34-015",
+    "claim": "AC-2 attacking band: SUBB #15-7 fudges the lance offset to the centre of the pterodactyl mouth at 8 (JOUSTRV4.SRC:4978).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4978,
+      "verbatim": "\tSUBB\t#15-7\t\tFUDGE FROM LANTZ TO CENTER OF PTERO-MOUTH"
+    }
+  },
+  {
+    "id": "JT34-016",
+    "claim": "AC-2 attacking band: CMPB #3 — \"WITHIN 7 PIXELS?\" — kills only when |offset − 8| ≤ 3 (JOUSTRV4.SRC:4981).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4981,
+      "verbatim": "15$\tCMPB\t#3\t\tWITHIN 7 PIXELS?"
+    }
+  },
+  {
+    "id": "JT34-017",
+    "claim": "AC-2 glide band: SUBB #15-5 fudges the lance offset to the centre of the pterodactyl mouth at 10 for the wings-up frames (JOUSTRV4.SRC:4986).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4986,
+      "verbatim": "\tSUBB\t#15-5\t\tFUDGE FROM LANTZ TO CENTER OF PTERO-MOUTH"
+    }
+  },
+  {
+    "id": "JT34-018",
+    "claim": "AC-2 glide band: CMPB #2 — \"WITHIN 5 PIXELS?\" — kills only when |offset − 10| ≤ 2 (JOUSTRV4.SRC:4989).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4989,
+      "verbatim": "10$\tCMPB\t#2\t\tWITHIN 5 PIXELS?"
+    }
+  },
+  {
+    "id": "JT34-019",
+    "claim": "AC-2 band fail: BHI OSTBO drops an out-of-band lance into the NORMAL joust — \"CANNOT KILL PTERODACTYL\" (JOUSTRV4.SRC:4990).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4990,
+      "verbatim": "14$\tBHI\tOSTBO\t\t BR=NO, CANNOT KILL PTERODACTYL"
+    }
+  },
+  {
+    "id": "JT34-020",
+    "claim": "AC-2 opposite facings: LDA PFACE,U reads the player facing — \"FACING IN OPPSITE DIRECTIONS?\" — for the EOR test against the ptero PFACE (JOUSTRV4.SRC:4991).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4991,
+      "verbatim": "\tLDA\tPFACE,U\t\tFACING IN OPPSITE DIRECTIONS?"
+    }
+  },
+  {
+    "id": "JT34-021",
+    "claim": "AC-2 opposite facings: BPL OSTBO — same-sign facings EOR to a non-negative byte and CANNOT KILL the pterodactyl (JOUSTRV4.SRC:4993).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4993,
+      "verbatim": "\tBPL\tOSTBO\t\t BR=NO, CANNOT KILL PTERODACTYL"
+    }
+  },
+  {
+    "id": "JT34-022",
+    "claim": "AC-2 facing-into: LDD COLDX (ptero.x − player.x) — \"FACING PTERODACTYL?\" — decides which side the ptero is on (JOUSTRV4.SRC:4994).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4994,
+      "verbatim": "\tLDD\tCOLDX\t\tFACING PTERODACTYL?"
+    }
+  },
+  {
+    "id": "JT34-023",
+    "claim": "AC-2 facing-into: BPL 11$ — with the ptero on the right and the player facing right (into it), the pterodactyl is KILLED (JOUSTRV4.SRC:5001).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5001,
+      "verbatim": "\tBPL\t11$\t\t BR=YES, KILLED PTERODACTYL"
+    }
+  },
+  {
+    "id": "JT34-024",
+    "claim": "AC-2 fallback: OSTBO is the ordinary joust (LDB PLANTZ,U, the plantHeight compare) any kill-window miss falls into — the epic rules the ptero wins it (JOUSTRV4.SRC:5002).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5002,
+      "verbatim": "OSTBO\tLDB\tPLANTZ,U"
+    }
+  },
+  {
+    "id": "JT34-025",
+    "claim": "AC-2 score chain: P7DEC (the ptero enemy) decodes its DVALUE through SCRHUN — the 4th FDB operand names the DVALUR routine (JOUSTRV4.SRC:5575).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5575,
+      "verbatim": "\tFDB\tDEATH4,0,STENMY,SCRHUN,0,EMYTIM"
+    }
+  },
+  {
+    "id": "JT34-026",
+    "claim": "AC-2 score (DERIVED): the ptero DVALUE byte is $10 (2nd FCB operand of P7DEC); through SCRHUN this is 1 thousand + 0 hundreds = 1000, verified in emulation (JOUSTRV4.SRC:5577).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5577,
+      "verbatim": "\tFCB\tWHI*$11,$10,MSGAMO"
+    }
+  },
+  {
+    "id": "JT34-027",
+    "claim": "AC-2 score chain: SCRHUN is the \"INCREMENT SCORE BY THOUSANDS AND HUNDREDS\" routine — the high nibble is thousands, the low nibble hundreds (JOUSTRV4.SRC:7340).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7340,
+      "verbatim": "*\tINCREMENT SCORE BY THOUSANDS AND HUNDREDS"
+    }
+  },
+  {
+    "id": "JT34-028",
+    "claim": "AC-2 score chain: SCRHUN LDY DSCORE,X points at the score area before adding the BCD thousands/hundreds digit (JOUSTRV4.SRC:7346).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7346,
+      "verbatim": "SCRHUN\tLDY\tDSCORE,X\tGET SCORE AREA"
+    }
+  },
+  {
+    "id": "JT34-029",
+    "claim": "AC-2 score chain: SCRHUN ADDA 2,Y adds the DVALUE byte at the score THOUSANDS/HUNDREDS position, so $10 = 1000 (JOUSTRV4.SRC:7348).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7348,
+      "verbatim": "\tADDA\t2,Y"
+    }
+  },
+  {
+    "id": "JT34-030",
+    "claim": "AC-3 dispatch: WJSRTB is the six-entry wave subroutine table; entry 0 is the NOP routine WAVRTS (JOUSTRV4.SRC:2586).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2586,
+      "verbatim": "WJSRTB\tFDB\tWAVRTS\t\tNOP ROUTINE"
+    }
+  },
+  {
+    "id": "JT34-031",
+    "claim": "AC-3 dispatch: WPTERO is the SIXTH WJSRTB entry (index 5) — the PTERODACTYL WAVE, which jt2-5 routes as WAVE_TYPES[5] = ptero (JOUSTRV4.SRC:2591).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2591,
+      "verbatim": "\tFDB\tWPTERO\t\tPTERODACTYL WAVE"
+    }
+  },
+  {
+    "id": "JT34-032",
+    "claim": "AC-3 spawn count: WPTEN is the wave-row byte \"NBR OF PTERODACTYLS IN THIS WAVE\" — the ptero nibble the spawn count reads (JOUSTRV4.SRC:179).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 179,
+      "verbatim": "WPTEN\tRMB\t1\tNBR OF PTERODACTYLS IN THIS WAVE"
+    }
+  },
+  {
+    "id": "JT34-033",
+    "claim": "AC-3 spawn count: the ptero wave routine reads LDA WPTEN,X to get the number of pterodactyls for this wave (JOUSTRV4.SRC:2614).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2614,
+      "verbatim": "\tLDA\tWPTEN,X\t\t GET NBR OF PTERODCTYLS FOR THIS WAVE"
+    }
+  },
+  {
+    "id": "JT34-034",
+    "claim": "AC-3 spawn count: STA PJOYT,Y stores WPTEN as the NUMBER OF PTERODACTYLS TO CREATE for the wave (JOUSTRV4.SRC:2615).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2615,
+      "verbatim": "\tSTA\tPJOYT,Y\t\tNUMBER OF PTERODACTYLS TO CREATE"
+    }
+  }
+]

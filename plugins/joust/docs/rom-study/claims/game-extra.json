@@ -1,0 +1,65 @@
+[
+  {
+    "id": "JT42-001",
+    "claim": "AC-1/AC-2 the REPLAY extra-man level defaults to 20,000 — DEFALT's REPLAY entry is FCB $20 (BCD 20), commented 'REPLAY @20,000' (TB12REV3.SRC:134); the boot code justifies that CMOS byte ×16 into LEVPAS, so BCD 20 × 1000 = 20,000.",
+    "source": {
+      "file": "TB12REV3.SRC",
+      "line": 134,
+      "verbatim": "DEFALT\tFCB\t$20\tREPLAY @20,000"
+    }
+  },
+  {
+    "id": "JT42-002",
+    "claim": "AC-1 each player starts with NSHIP = 5 men — DEFALT's NMEN entry is FCB $05 (TB12REV3.SRC:135), the kept free-play CMOS default.",
+    "source": {
+      "file": "TB12REV3.SRC",
+      "line": 135,
+      "verbatim": "\tFCB\t$05\tNMEN"
+    }
+  },
+  {
+    "id": "JT42-003",
+    "claim": "AC-1 the starting-lives count is the CMOS symbol NSHIP, '# OF SHIPS/1 CREDIT GAME' (EQU.SRC:111).",
+    "source": {
+      "file": "EQU.SRC",
+      "line": 111,
+      "verbatim": "NSHIP\tRMB\t2\t# OF SHIPS/1 CREDIT GAME"
+    }
+  },
+  {
+    "id": "JT42-004",
+    "claim": "AC-2 the REPLAY CMOS nibble is read and JUSTIFIED ×16 (four ASLB/ROLA pairs) into LEVPAS / SPLY1+8 / SPLY2+8, the per-player 'LEVEL TO PASS' — the ×16 that turns BCD 20 into the 20,000 score threshold (JOUSTRV4.SRC:915-928).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 915,
+      "verbatim": "\tLDX\t#REPLAY\t\tREAD CMOS LEVEL PASS"
+    }
+  },
+  {
+    "id": "JT42-005",
+    "claim": "AC-2 SCRLEV compares the accruing score against the per-player level — 'PAST LEVEL FOR EXTRA MAN?' — and awards an extra man when the score reaches it (JOUSTRV4.SRC:7385).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7385,
+      "verbatim": "\tCMPD\t8,Y\t\tPAST LEVEL FOR EXTRA MAN?"
+    }
+  },
+  {
+    "id": "JT42-006",
+    "claim": "AC-2 after awarding a man SCRLEV re-arms the level (adds LEVPAS) and RE-CHECKS — 'BRA SCRLEV … RE-CHECK FOR LEVEL PASS (LOW LEVELS)' — so the next man is due at the next multiple and one big jump can pass several levels (JOUSTRV4.SRC:7411).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7411,
+      "verbatim": "\tBRA\tSCRLEV\t\tRE-CHECK FOR LEVEL PASS (LOW LEVELS)"
+    }
+  },
+  {
+    "id": "JT42-007",
+    "claim": "AC-3 a player death scores the dying player 50 points via SCRTEN — 'SCORE 50 POINTS FOR DYING', LDA #$50 / JSR SCRTEN — so through the backwards SCRTEN decode $50 = 5 tens = 50, not the forwards 5000 (JOUSTRV4.SRC:4730-4732).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4730,
+      "verbatim": "\tLDX\tPDECSN,U\tSCORE 50 POINTS FOR DYING"
+    }
+  }
+]

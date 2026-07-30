@@ -1,0 +1,200 @@
+[
+  {
+    "id": "JT33-001",
+    "claim": "Spawn gate: TBRIDGE is seeded to 3 — the wave the bridge burns, the arena.bridgeBurned latch (JOUSTRV4.SRC:954-955).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 954,
+      "verbatim": "\tLDA\t#3"
+    }
+  },
+  {
+    "id": "JT33-002",
+    "claim": "Spawn gate: TTROLL is seeded to 1 — the NUMBER OF WAVES AFTER BRIDGE DESTROY the troll first appears, so the troll wave = TBRIDGE+1 = 4 (JOUSTRV4.SRC:956-957).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 956,
+      "verbatim": "\tLDA\t#1\t\tNUMBER OF WAVES AFTER BRIDGE DESTROY TILL TROLL"
+    }
+  },
+  {
+    "id": "JT33-003",
+    "claim": "Grip: the grabbed victim's gravity vector is repointed to ADDLAV — the lava troll's gravity routine replaces the normal ADDGRA (JOUSTRV4.SRC:1651).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1651,
+      "verbatim": "\tLDX\t#ADDLAV\t\tTHE VICTIMS GRAVITY IS NOW BASED UPON"
+    }
+  },
+  {
+    "id": "JT33-004",
+    "claim": "Grip: the ADDLAV pointer is stored into the victim's PADGRA gravity vector, so its per-frame gravity add becomes the troll's downward pull (JOUSTRV4.SRC:1652).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1652,
+      "verbatim": "\tSTX\tPADGRA,U\t THE LAVA TROLLS GRAVITY"
+    }
+  },
+  {
+    "id": "JT33-005",
+    "claim": "ADDLAV entry: the troll's gravity routine clears the victim's bump/velocity-X — the player is not going anywhere while gripped (JOUSTRV4.SRC:6608).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6608,
+      "verbatim": "ADDLAV\tCLR\tPBUMPX,U\tNO BUMPAGE ALLOWED"
+    }
+  },
+  {
+    "id": "JT33-006",
+    "claim": "ADDLAV adds the CURRENT (variable) lava-troll gravity CLVGRA to the victim's VY — the PATCH3 red-label behaviour (JOUSTRV4.SRC:6612).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6612,
+      "verbatim": "\tADDD\tCLVGRA\t\tPATCH3"
+    }
+  },
+  {
+    "id": "JT33-007",
+    "claim": "PATCH3 provenance: the displaced pre-patch instruction 'ADDD LAVGRA' (the CONSTANT troll gravity) is preserved as a ******** comment beneath the CLVGRA add (JOUSTRV4.SRC:6613).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6613,
+      "verbatim": "********\tADDD\tLAVGRA"
+    }
+  },
+  {
+    "id": "JT33-008",
+    "claim": "Break-free: after adding troll gravity, VY is compared to -$0180 — the break-free velocity threshold (JOUSTRV4.SRC:6616).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6616,
+      "verbatim": "\tCMPD\t#-$0180\t\tBREAK FREE VELOCITY?"
+    }
+  },
+  {
+    "id": "JT33-009",
+    "claim": "Break-free is SIGNED: BLT ADLFRE takes the free path only when the post-gravity VY is signed-less-than -$0180 (JOUSTRV4.SRC:6617).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6617,
+      "verbatim": "\tBLT\tADLFRE\t\t BR=NO, SO STOP FALLING"
+    }
+  },
+  {
+    "id": "JT33-010",
+    "claim": "Escape score: a clean break-free loads #$50 (BCD) — 50 points for breaking free (JOUSTRV4.SRC:6668).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6668,
+      "verbatim": "\tLDA\t#$50\t\tSCORE 50 POINTS FOR BREAKING FREE"
+    }
+  },
+  {
+    "id": "JT33-011",
+    "claim": "Escape score is awarded through SCRTEN, the BCD 'tens/hundreds' score routine — the verify-in-emulation caveat ($50 BCD = 50, not 80/500) rides here (JOUSTRV4.SRC:6670).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6670,
+      "verbatim": "\tJSR\tSCRTEN\t"
+    }
+  },
+  {
+    "id": "JT33-012",
+    "claim": "PATCH1 provenance: the displaced pre-patch instruction 'STD PPICH,Y' is preserved as the patch's OLD INSTRUCTION first line (JOUSTRV4.SRC:6392).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6392,
+      "verbatim": "PATCH1\tSTD\tPPICH,Y\t\tOLD INSTRUCTION"
+    }
+  },
+  {
+    "id": "JT33-013",
+    "claim": "Escalation grace: PATCH1 seeds LAVKLL to 30*60 (=1800) — a 30-second wait (60 frames/sec, VNAPTIM #1) before the troll gets tougher (JOUSTRV4.SRC:6393).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6393,
+      "verbatim": "\tLDD\t#30*60\t\t30 SECOND WAIT TILL TOUGHER LAVA TROLL"
+    }
+  },
+  {
+    "id": "JT33-014",
+    "claim": "PATCH1 seeds CLVGRA from LAVGRA — the current per-wave lava-troll gravity is the grip's starting pull (JOUSTRV4.SRC:6395).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6395,
+      "verbatim": "\tLDD\tLAVGRA\t\tGIVE CURRENT LAVA TROLL GRAVITY"
+    }
+  },
+  {
+    "id": "JT33-015",
+    "claim": "PATCH2 counts down LAVKLL each frame — while the timer is nonzero the pull stays at its grace value (JOUSTRV4.SRC:6374).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6374,
+      "verbatim": "PATCH2\tLDD\tLAVKLL\t\tCHECK LAVA TROOL TIMER"
+    }
+  },
+  {
+    "id": "JT33-016",
+    "claim": "Escalation cap: CLVGRA is compared to $500, the MAXIMUM lava-troll gravity, with BHI skipping the increment above it (JOUSTRV4.SRC:6378).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6378,
+      "verbatim": "\tCMPD\t#$500\t\tMAXIMUM LAVA TROLL GRAVITY"
+    }
+  },
+  {
+    "id": "JT33-017",
+    "claim": "Escalation step: once the grace expires the pull grows +1 per frame (ADDD #1) up to the $500 cap (JOUSTRV4.SRC:6380).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6380,
+      "verbatim": "\tADDD\t#1"
+    }
+  },
+  {
+    "id": "JT33-018",
+    "claim": "PATCH3 needs no routine of its own — the variable-gravity swap lives in ADDLAV (ADDD CLVGRA), so PATCH3 is an EQU * marker (JOUSTRV4.SRC:6367).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6367,
+      "verbatim": "PATCH3\tEQU\t*\t\tNO ROUTINES NEEDED"
+    }
+  },
+  {
+    "id": "JT33-019",
+    "claim": "LNDB7 spawn gate: the troll grab only starts when TTROLL is zero — LAVA TROLL ACTIVE? gates the landing dispatch (JOUSTRV4.SRC:6765).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6765,
+      "verbatim": "\tLDA\tTTROLL\tLAVA TROLL ACTIVE?"
+    }
+  },
+  {
+    "id": "JT33-020",
+    "claim": "LNDB7 spawn gate: LAVNBR caps live trolls — a nonzero count skips starting another (JOUSTRV4.SRC:6767).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6767,
+      "verbatim": "\tLDA\tLAVNBR\tTOO MANY LAVA TROLLS?"
+    }
+  },
+  {
+    "id": "JT33-021",
+    "claim": "LNDB7 spawn: creating a troll increments LAVNBR (1 more lava troll) (JOUSTRV4.SRC:6774).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6774,
+      "verbatim": "1$\tINC\tLAVNBR\t\t1 MORE LAVA TROLL"
+    }
+  },
+  {
+    "id": "JT33-022",
+    "claim": "LNDB7 spawn: the grab process is created with the lava-troll id LAVID (JOUSTRV4.SRC:6775).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6775,
+      "verbatim": "\tLDA\t#LAVID\t\tLAVATROLL I.D."
+    }
+  }
+]

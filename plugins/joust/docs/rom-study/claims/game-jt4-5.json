@@ -1,0 +1,38 @@
+[
+  {
+    "id": "JT45-001",
+    "claim": "AC-1 RESPAWN — the re-create process a dead player re-enters through: 'CREP1 EQU *  CREATE PLAYER 1' (JOUSTRV4.SRC:5610), with CREP2 the P2 twin (:5611). game.ts's stepGame RE-CREATES a removed player process (via the transporter spawn constants) when its ledger still has lives.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5610,
+      "verbatim": "CREP1\tEQU\t*\t* * * * CREATE PLAYER 1"
+    }
+  },
+  {
+    "id": "JT45-002",
+    "claim": "AC-1 RESPAWN — the re-create DECrements the man count then branches away at zero: 'JSR DECLIV  DECREMENT NBR OF LIVES' (JOUSTRV4.SRC:5613) followed by 'BEQ PLYDIE' (:5614). stepGame re-enters a spent player only when its lives remain > 0 (the DEC fell THROUGH the zero-gate); bookDeath already owns the decrement, so respawn owns only the re-entry.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5613,
+      "verbatim": "\tJSR\tDECLIV\t\tDECREMENT NBR OF LIVES"
+    }
+  },
+  {
+    "id": "JT45-003",
+    "claim": "AC-1 RESPAWN — the DECLIV body drops the man count by one: '10$ DECA  1 LESS MAN LEFT' (JOUSTRV4.SRC:5399) stored back as 'STA 5,X  SAVE THIS AS NBR OF LIVES LEFT' (:5400). This is the life-decrement bookDeath models; the BEQ PLYDIE at :5614 tests its zero result to gate the re-create.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5399,
+      "verbatim": "10$\tDECA\t\t\t1 LESS MAN LEFT"
+    }
+  },
+  {
+    "id": "JT45-004",
+    "claim": "AC-1 RESPAWN — the terminal at zero lives: PLYDIE (JOUSTRV4.SRC:5605) shares 'EMYDIE JMP VSUCIDE' (:5606) — the man is GONE, no re-create. stepGame leaves a player at ZERO lives OUT (settleGameOver marks it out) and never re-enters it; the game reaches GOVER_OVER only when EVERY player is out.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5606,
+      "verbatim": "EMYDIE\tJMP\tVSUCIDE"
+    }
+  }
+]

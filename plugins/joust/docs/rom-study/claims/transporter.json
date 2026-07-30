@@ -1,0 +1,497 @@
+[
+  {
+    "id": "JT26-001",
+    "claim": "Transporter record offset 0: TIMAGE is the source address of the pad image (JOUSTRV4.SRC:96).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 96,
+      "verbatim": "TIMAGE\tRMB\t2\t\tSOURCE ADDRESS OF IMAGE"
+    }
+  },
+  {
+    "id": "JT26-002",
+    "claim": "Transporter record: TPOSX is the pad X pixel position (JOUSTRV4.SRC:97).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 97,
+      "verbatim": "TPOSX\tRMB\t2\t\tTRANSPORTER X PIXEL POSITION"
+    }
+  },
+  {
+    "id": "JT26-003",
+    "claim": "Transporter record: TPOSY is the pad Y pixel position (JOUSTRV4.SRC:98).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 98,
+      "verbatim": "TPOSY\tRMB\t2\t\tTRANSPORTER Y PIXEL POSITION"
+    }
+  },
+  {
+    "id": "JT26-004",
+    "claim": "Transporter record offset 6: TCURUSE is the pad \"in use\" flag address (JOUSTRV4.SRC:99).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 99,
+      "verbatim": "TCURUSE\tRMB\t2\t\tTRANSPORTER \"IN USE\" FLAG ADDRESS"
+    }
+  },
+  {
+    "id": "JT26-005",
+    "claim": "Pad TR1: FDB TRANS1,$6A+7,$51-1,CURTR1 → TPOSX $6A+7=113, TPOSY $51-1=80 (top tier) (JOUSTRV4.SRC:5587).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5587,
+      "verbatim": "TR1ID\tFDB\tTRANS1,$6A+7,$51-1,CURTR1"
+    }
+  },
+  {
+    "id": "JT26-006",
+    "claim": "Pad TR2: FDB TRANS2,$E0+7,$81-1,CURTR2 → TPOSX $E0+7=231, TPOSY $81-1=128 (middle tier) (JOUSTRV4.SRC:5588).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5588,
+      "verbatim": "TR2ID\tFDB\tTRANS2,$E0+7,$81-1,CURTR2"
+    }
+  },
+  {
+    "id": "JT26-007",
+    "claim": "Pad TR3: FDB TRANS3,$10+7,$8A-1,CURTR3 → TPOSX $10+7=23, TPOSY $8A-1=137 (middle tier) (JOUSTRV4.SRC:5589).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5589,
+      "verbatim": "TR3ID\tFDB\tTRANS3,$10+7,$8A-1,CURTR3"
+    }
+  },
+  {
+    "id": "JT26-008",
+    "claim": "Pad TR4: FDB TRANS4,$78+7,$D3-1,CURTR4 → TPOSX $78+7=127, TPOSY $D3-1=210 (bottom tier) (JOUSTRV4.SRC:5590).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5590,
+      "verbatim": "TR4ID\tFDB\tTRANS4,$78+7,$D3-1,CURTR4"
+    }
+  },
+  {
+    "id": "JT26-009",
+    "claim": "SELARE reads the object Y (PPOSY+1,X) to classify it into a screen third (JOUSTRV4.SRC:6413).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6413,
+      "verbatim": "SELARE\tLDA\tPPOSY+1,X"
+    }
+  },
+  {
+    "id": "JT26-010",
+    "claim": "SELARE bottom-third boundary is the OPERAND #$A3+6 = $A9; the \"$8A+6\" second column is a dead comment (JOUSTRV4.SRC:6414).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6414,
+      "verbatim": "\tCMPA\t#$A3+6\t\t$8A+6\tBOTTOM AREA3 FREE?"
+    }
+  },
+  {
+    "id": "JT26-011",
+    "claim": "SELARE: BLO 1$ — Y below $A9 keeps checking (not the bottom third) (JOUSTRV4.SRC:6415).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6415,
+      "verbatim": "\tBLO\t1$\t\t BR=YES"
+    }
+  },
+  {
+    "id": "JT26-012",
+    "claim": "SELARE: else INC AREA3 marks the bottom third occupied (JOUSTRV4.SRC:6416).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6416,
+      "verbatim": "\tINC\tAREA3\t\tHERE IF NO!"
+    }
+  },
+  {
+    "id": "JT26-013",
+    "claim": "SELARE middle-third boundary is #$51: Y below $51 is the top third, else middle (JOUSTRV4.SRC:6419).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6419,
+      "verbatim": "1$\tCMPA\t#$51\t\tMIDDLE AREA2 FREE?"
+    }
+  },
+  {
+    "id": "JT26-014",
+    "claim": "SELARE: BLO 2$ — Y below $51 branches to the top third (JOUSTRV4.SRC:6420).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6420,
+      "verbatim": "\tBLO\t2$\t\t BR=YES"
+    }
+  },
+  {
+    "id": "JT26-015",
+    "claim": "SELARE: else INC AREA2 marks the middle third occupied (JOUSTRV4.SRC:6421).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6421,
+      "verbatim": "\tINC\tAREA2\t\tHERE IF NO!"
+    }
+  },
+  {
+    "id": "JT26-016",
+    "claim": "SELARE: INC AREA1 marks the top third occupied — the remaining case (JOUSTRV4.SRC:6424).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6424,
+      "verbatim": "2$\tINC\tAREA1\t\tMUST BE IN TOP AREA1"
+    }
+  },
+  {
+    "id": "JT26-017",
+    "claim": "AREA1 is the TOP-third empty flag SELARE increments (RAMDEF.SRC:302).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 302,
+      "verbatim": "AREA1\tRMB\t1\tTOP AREA EMPTY FLAG FOR SELARE"
+    }
+  },
+  {
+    "id": "JT26-018",
+    "claim": "AREA2 is the MIDDLE-third empty flag SELARE increments (RAMDEF.SRC:303).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 303,
+      "verbatim": "AREA2\tRMB\t1\tMIDDLE AREA EMPTY FLAG FOR SELARE"
+    }
+  },
+  {
+    "id": "JT26-019",
+    "claim": "AREA3 is the BOTTOM-third empty flag SELARE increments (RAMDEF.SRC:304).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 304,
+      "verbatim": "AREA3\tRMB\t1\tBOTTOM AREA EMPTY FLAG FOR SELARE"
+    }
+  },
+  {
+    "id": "JT26-020",
+    "claim": "Re-incarnation clears the AREA flags before the scan — CLR AREA1 begins the sweep (JOUSTRV4.SRC:5622).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5622,
+      "verbatim": "\tCLR\tAREA1\t\tFIND A CLEAR AREA TO APPEAR FROM"
+    }
+  },
+  {
+    "id": "JT26-021",
+    "claim": "The scan JSR SELARE classifies each active object into its third (JOUSTRV4.SRC:5634).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5634,
+      "verbatim": "30$\tJSR\tSELARE\t\tCHECK IF AREA IS CLEAR"
+    }
+  },
+  {
+    "id": "JT26-022",
+    "claim": "Select: LDA AREA3 tests whether the bottom area is empty before using its transporter (JOUSTRV4.SRC:5641).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5641,
+      "verbatim": "\tLDA\tAREA3\t\tBOTTOM AREA EMPYT?"
+    }
+  },
+  {
+    "id": "JT26-023",
+    "claim": "Select: LDA AREA2 tests whether the middle area is empty (JOUSTRV4.SRC:5645).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5645,
+      "verbatim": "50$\tLDA\tAREA2\t\tMIDDLE AREA EMPYT?"
+    }
+  },
+  {
+    "id": "JT26-024",
+    "claim": "Select: LDA AREA1 tests whether the top area is empty (JOUSTRV4.SRC:5651).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5651,
+      "verbatim": "60$\tLDA\tAREA1\t\tTOP AREA EMPYT?"
+    }
+  },
+  {
+    "id": "JT26-025",
+    "claim": "Player takes a number: LDA NPSERV draws the next player ticket (JOUSTRV4.SRC:5615).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5615,
+      "verbatim": "\tLDA\tNPSERV\t\tTAKE A NUMBER TO BE SERVED BY THE TRANSPORTER"
+    }
+  },
+  {
+    "id": "JT26-026",
+    "claim": "INC NPSERV advances the player take-a-number counter after the draw (JOUSTRV4.SRC:5617).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5617,
+      "verbatim": "\tINC\tNPSERV"
+    }
+  },
+  {
+    "id": "JT26-027",
+    "claim": "Player's turn test: CMPB LPSERV — served when the held number equals LPSERV (JOUSTRV4.SRC:5620).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5620,
+      "verbatim": "CREPLY\tCMPB\tLPSERV\t\tIS IT THIS PLAYERS TURN?"
+    }
+  },
+  {
+    "id": "JT26-028",
+    "claim": "Enemy takes a number: LDA NESERV draws the next enemy ticket (JOUSTRV4.SRC:5664).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5664,
+      "verbatim": "\tLDA\tNESERV\t\tTAKE A NUMBER TO BE SERVED BY THE TRANSPORTER"
+    }
+  },
+  {
+    "id": "JT26-029",
+    "claim": "INC NESERV advances the enemy take-a-number counter after the draw (JOUSTRV4.SRC:5666).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5666,
+      "verbatim": "\tINC\tNESERV"
+    }
+  },
+  {
+    "id": "JT26-030",
+    "claim": "Players first: LDA NPSERV reads whether any player still holds a number (JOUSTRV4.SRC:5672).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5672,
+      "verbatim": "\tLDA\tNPSERV\t\tANY PLAYERS HOLDING A NUMBER?"
+    }
+  },
+  {
+    "id": "JT26-031",
+    "claim": "Players first: CMPA LPSERV compares the next player number against the one in service (JOUSTRV4.SRC:5673).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5673,
+      "verbatim": "\tCMPA\tLPSERV"
+    }
+  },
+  {
+    "id": "JT26-032",
+    "claim": "Players first: BNE CRELP — an unserved player makes enemies wait (find a transporter 1st) (JOUSTRV4.SRC:5674).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5674,
+      "verbatim": "\tBNE\tCRELP\t\t BR=YES, LET THEM FIND A TRANSPORTER 1ST"
+    }
+  },
+  {
+    "id": "JT26-033",
+    "claim": "Enemy's turn test: CMPB LESERV — served when the held number equals LESERV (JOUSTRV4.SRC:5675).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5675,
+      "verbatim": "\tCMPB\tLESERV\t\tIS IT THIS ENEMIES TURN?"
+    }
+  },
+  {
+    "id": "JT26-034",
+    "claim": "Serving a player bumps LPSERV to the next numbered card (JOUSTRV4.SRC:5722).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5722,
+      "verbatim": "\tINC\tLPSERV\tALLOW PLAYERS NEXT NUMBERED CARD TO USE TRANSPORTER"
+    }
+  },
+  {
+    "id": "JT26-035",
+    "claim": "Serving an enemy bumps LESERV to the next numbered card (JOUSTRV4.SRC:5724).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5724,
+      "verbatim": "2$\tINC\tLESERV\tALLOW ENEMIES NEXT NUMBERED CARD TO USE TRANSPORTER"
+    }
+  },
+  {
+    "id": "JT26-036",
+    "claim": "NPSERV is the players’ take-a-number input stack for the transporter (RAMDEF.SRC:248).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 248,
+      "verbatim": "NPSERV\tRMB\t1\tPLAYERS \"TAKE A NUMBER\" INPUT STACK FOR TRANSPORTER"
+    }
+  },
+  {
+    "id": "JT26-037",
+    "claim": "LPSERV is the player number currently in service (RAMDEF.SRC:249).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 249,
+      "verbatim": "LPSERV\tRMB\t1\tPLAYERS \"TAKE A NUMBER\" NUMBER IN SERVICE FOR \"."
+    }
+  },
+  {
+    "id": "JT26-038",
+    "claim": "NESERV is the enemies’ take-a-number input stack for the transporter (RAMDEF.SRC:250).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 250,
+      "verbatim": "NESERV\tRMB\t1\tENEMIES \"TAKE A NUMBER\" INPUT STACK FOR TRANSPORTER"
+    }
+  },
+  {
+    "id": "JT26-039",
+    "claim": "LESERV is the enemy number currently in service (RAMDEF.SRC:251).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 251,
+      "verbatim": "LESERV\tRMB\t1\tENEMIES \"TAKE A NUMBER\" NUMBER IN SERVICE FOR \"."
+    }
+  },
+  {
+    "id": "JT26-040",
+    "claim": "The materialisation window naps one frame per pass: PCNAP 1 (JOUSTRV4.SRC:5828).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5828,
+      "verbatim": "20$\tPCNAP\t1"
+    }
+  },
+  {
+    "id": "JT26-041",
+    "claim": "The window reads the whole joystick word: LDD CURJOY (JOUSTRV4.SRC:5831).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5831,
+      "verbatim": "\tLDD\tCURJOY"
+    }
+  },
+  {
+    "id": "JT26-042",
+    "claim": "ANY nonzero joystick aborts early: BNE 51$ (player/enemy wants to flap) (JOUSTRV4.SRC:5841).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5841,
+      "verbatim": "\tBNE\t51$\t\tBR=PLAYER/ENEMY WANTS TO FLAP"
+    }
+  },
+  {
+    "id": "JT26-043",
+    "claim": "An untouched window times out: BEQ 50$ when it elapses (JOUSTRV4.SRC:5848).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5848,
+      "verbatim": "\tBEQ\t50$"
+    }
+  },
+  {
+    "id": "JT26-044",
+    "claim": "The abort handler 51$ is reached ABORTED EARLY on a control input (JOUSTRV4.SRC:5892).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5892,
+      "verbatim": "51$\tLDX\tPDECSN,U\tABORTED EARLY, KILL SOUND"
+    }
+  },
+  {
+    "id": "JT26-045",
+    "claim": "PLYINT re-enables collisions on exit: LDA #$80 (enable this player’s collisions) (JOUSTRV4.SRC:5923).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5923,
+      "verbatim": "\tLDA\t#$80\t\tENABLE THIS PLAYERS COLISIONS"
+    }
+  },
+  {
+    "id": "JT26-046",
+    "claim": "PLYINT ORs the enable bit into PID: ORA PID,U (JOUSTRV4.SRC:5924).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5924,
+      "verbatim": "\tORA\tPID,U"
+    }
+  },
+  {
+    "id": "JT26-047",
+    "claim": "PLYINT stores the now-collidable PID: STA PID,U (JOUSTRV4.SRC:5925).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5925,
+      "verbatim": "\tSTA\tPID,U"
+    }
+  },
+  {
+    "id": "JT26-048",
+    "claim": "PROCCR creates player #1 (JOUSTRV4.SRC:1019).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1019,
+      "verbatim": "\tPROCCR\tPLAYR,PLYID\tCREATE PLAYER #1"
+    }
+  },
+  {
+    "id": "JT26-049",
+    "claim": "Player 1 mounts the OSTRICH: LDD OSTRICH (JOUSTRV4.SRC:1020).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1020,
+      "verbatim": "\tLDD\tOSTRICH\t\tSTART HORSE (OSTRICH)"
+    }
+  },
+  {
+    "id": "JT26-050",
+    "claim": "Player 1 faces right: CLR PFACE,Y (PFACE 0 = right) (JOUSTRV4.SRC:1022).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1022,
+      "verbatim": "\tCLR\tPFACE,Y\t\tPLAYER IS FACING RIGHT"
+    }
+  },
+  {
+    "id": "JT26-051",
+    "claim": "Player 1 spawn X = 100: LDX #100 (JOUSTRV4.SRC:1023).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1023,
+      "verbatim": "\tLDX\t#100\t\tSTART X POSITION"
+    }
+  },
+  {
+    "id": "JT26-052",
+    "claim": "PROCCR creates player #2 (JOUSTRV4.SRC:1034).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1034,
+      "verbatim": "\tPROCCR\tPLAYR,PLYID\tCREATE PLAYER #2"
+    }
+  },
+  {
+    "id": "JT26-053",
+    "claim": "Player 2 mounts the STORK: LDD STORK (JOUSTRV4.SRC:1035).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1035,
+      "verbatim": "\tLDD\tSTORK\t\tSTART HORSE"
+    }
+  },
+  {
+    "id": "JT26-054",
+    "claim": "Player 2 faces left: LDB #$FF (PFACE <>0 = left) (JOUSTRV4.SRC:1037).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1037,
+      "verbatim": "\tLDB\t#$FF\t\tOSTRICH & RIDER ARE FACEING LEFT"
+    }
+  },
+  {
+    "id": "JT26-055",
+    "claim": "Player 2 spawn X = 200: LDX #200 (JOUSTRV4.SRC:1039).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1039,
+      "verbatim": "\tLDX\t#200\t\tSTART X POSITION"
+    }
+  }
+]

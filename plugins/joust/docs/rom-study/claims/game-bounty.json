@@ -1,0 +1,101 @@
+[
+  {
+    "id": "JT43-001",
+    "claim": "AC-1 the WJSRTB dispatch routes the gladiator type to WGLAD — 'FDB WGLAD  GLADIATOR SET-UP' (JOUSTRV4.SRC:2589), the routine jt4-3 makes live as the PvP-arming behaviour.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2589,
+      "verbatim": "\tFDB\tWGLAD\t\tGLADIATOR SET-UP"
+    }
+  },
+  {
+    "id": "JT43-002",
+    "claim": "AC-1 the WJSRTB dispatch routes the egg type to WAVEGG — 'FDB WAVEGG  EGG WAVE SET-UP' (JOUSTRV4.SRC:2590), the routine jt4-3 makes live as the spawn-eggs behaviour.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2590,
+      "verbatim": "\tFDB\tWAVEGG\t\tEGG WAVE SET-UP"
+    }
+  },
+  {
+    "id": "JT43-003",
+    "claim": "AC-3 THE POLARITY (co-op side): WCOOP CLRs PLYG1/2 to 0 — 'CLR PLYG1  RESET PLAYER HIT PLAYER COUNTER(S)' (JOUSTRV4.SRC:2634-2635); a partner-kill later INCrements one non-zero and VOIDS the team bonus.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2634,
+      "verbatim": "\tCLR\tPLYG1\t\tRESET PLAYER HIT PLAYER COUNTER(S)"
+    }
+  },
+  {
+    "id": "JT43-004",
+    "claim": "AC-2 the co-op wave awards 3,000 via SCRHUN — 'LDA #$30   3,000 POINTS!!!' / JSR SCRHUN (JOUSTRV4.SRC:2651), guarded by the PLYG1|PLYG2 clean test (LDA PLYG1 / ORA PLYG2 / BEQ award, :2642-2646); decoded through jt4-1's SCRHUN $30 = 3000, never a fresh literal.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2651,
+      "verbatim": "\tLDA\t#$30\t\t 3,000 POINTS!!!"
+    }
+  },
+  {
+    "id": "JT43-005",
+    "claim": "AC-2 the survival bonus is gated on the player NOT dying this wave — WSUSCR 'LDA PLYD1  DID PLAYER 1 DIE?' / BNE ENDTS (no score) (JOUSTRV4.SRC:2677-2678); a deathless survivor banks the 3,000, a survivor who died banks nothing.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2677,
+      "verbatim": "\tLDA\tPLYD1\t\tDID PLAYER 1 DIE?"
+    }
+  },
+  {
+    "id": "JT43-006",
+    "claim": "AC-3 THE POLARITY (gladiator side): WGLAD arms PLYG1/2 to -1 — 'LDA #-1  SET-UP PLAYER KILLING PLAYER VARIABLES' / STA PLYG1 / STA PLYG2 'TO AWARD SCORE UPON 1ST ENCOUNTER' (JOUSTRV4.SRC:2703-2705) — the INVERSE of the co-op CLR-to-0.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2703,
+      "verbatim": "\tLDA\t#-1\t\tSET-UP PLAYER KILLING PLAYER VARIABLES"
+    }
+  },
+  {
+    "id": "JT43-007",
+    "claim": "AC-1 the egg wave spawns its complement AS EGGS — 'WAVEGG LDX #EGG1  EGG WAVE' (JOUSTRV4.SRC:2737), with 'LDA #2  NUMBER OF PRE-MATURE EGG HATCHINGS' (:2776); jt4-3 pins the spawn predicate flowing through dispatchWaveType (the sim wave-5 hatch wiring is deferred to jt4-4).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2737,
+      "verbatim": "WAVEGG\tLDX\t#EGG1\t\tEGG WAVE"
+    }
+  },
+  {
+    "id": "JT43-008",
+    "claim": "AC-2/AC-3 SPDGLA tracks player-vs-player kills — 'INC ,Y  KEEP TRACK OF PLAYER VS. PLAYER KILLS' / BEQ SPDGLA (JOUSTRV4.SRC:4685-4687): from gladiator's -1 the FIRST kill flips to 0 and scores the winner; from co-op's 0 it counts up (BGT SPDIE2, no award).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4685,
+      "verbatim": "\tINC\t,Y\t\tKEEP TRACK OF PLAYER VS. PLAYER KILLS"
+    }
+  },
+  {
+    "id": "JT43-009",
+    "claim": "AC-2 the gladiator bounty awards 3,000 to the FIRST partner-killer — SPDGLA CLR PLYG1/2 ('ONLY 1 GLADIATOR IN THE WAVE'), LDA #$80 / STA ,Y ('INDICATE TRUE WINNING GLADIATOR'), then 'LDA #$30  SCORE 3,000' / JSR SCRHUN (JOUSTRV4.SRC:4691-4698); decoded through jt4-1's SCRHUN $30 = 3000.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4697,
+      "verbatim": "\tLDA\t#$30\t\tSCORE 3,000"
+    }
+  },
+  {
+    "id": "JT43-010",
+    "claim": "AC-3 the PATC11 'GAME START GOOF' boot cleanup clears the 3,000-point trigger — 'PATC11 CLR PLYG1  RESET 3,000 POINT TRIGGER' / CLR PLYG2 (JOUSTRV4.SRC:6282-6283) — so a fresh game never opens armed with a stale gladiator -1; createGame seeds guards {0,0}.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6282,
+      "verbatim": "PATC11\tCLR\tPLYG1\t\tRESET 3,000 POINT TRIGGER"
+    }
+  },
+  {
+    "id": "JT43-011",
+    "claim": "AC-3 RV4 discipline: the PATC11 patch OVERWROTE a JMP EMSGS and the source preserves the displaced instruction as its tail — 'JMP EMSGS  ERASE ANY END OF WAVE MESSAGES(OLD INSTRUCTION)' (JOUSTRV4.SRC:6284); jt4-3 keeps it as a ******** comment in game.ts (documented, not executed).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6284,
+      "verbatim": "\tJMP\tEMSGS\t\tERASE ANY END OF WAVE MESSAGES(OLD INSTRUCTION)"
+    }
+  }
+]

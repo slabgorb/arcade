@@ -25,11 +25,11 @@ tui-pid
 .pennyfarthing/tmux-activity
 # Local tmux config (copied from sample)
 tmux.conf
-# The gitignored subrepos. ANCHOR THESE (`/name/`, not `name`): an unanchored
-# name matches a directory at ANY depth, so a bare `tempest` also swallowed
-# reference/atari-source/tempest/ — 57 files of vendored ROM source vanished from
-# `git add` without a word. Only the top-level checkout is the subrepo.
-/joust/
+# All nine subrepos are imported now, so no `/name/` entry survives here. The
+# rule that governed them is kept as a warning: ANCHOR any such entry
+# (`/name/`, not `name`) — an unanchored name matches a directory at ANY depth,
+# so a bare `tempest` also swallowed reference/atari-source/tempest/ and 57
+# files of vendored ROM source vanished from `git add` without a word.
 out/audio/
 # Imported subrepos' own .git directories, parked here rather than deleted so the
 # pre-monorepo history stays recoverable on this machine. Safe to remove once every

@@ -1,0 +1,281 @@
+[
+  {
+    "id": "JT25-001",
+    "claim": "WAVTBL row format: byte0 HIGH nibble is WBOUND, the number of bounders in the wave (JOUSTRV4.SRC:175).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 175,
+      "verbatim": "WBOUND\tRMB\t0\tNBR OF BOUNDERS IN THIS WAVE (UPPER NIBBLE)"
+    }
+  },
+  {
+    "id": "JT25-002",
+    "claim": "WAVTBL row format: byte0 LOW nibble is WHUNT, the number of hunters in the wave (JOUSTRV4.SRC:176).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 176,
+      "verbatim": "WHUNT\tRMB\t1\tNBR OF HUNTERS IN THIS WAVE (LOWER NIBBLE)"
+    }
+  },
+  {
+    "id": "JT25-003",
+    "claim": "WAVTBL row format: byte1 LOW nibble is WPERSUE, the pursuit nibble that seeds WSMART (JOUSTRV4.SRC:178).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 178,
+      "verbatim": "WPERSUE\tRMB\t1\tNBR OF PERSUERS IN THIS WAVE (LOWER NIBBLE)"
+    }
+  },
+  {
+    "id": "JT25-004",
+    "claim": "WAVTBL row format: byte3 is WSTATUS, the whole status byte (cliff bits | JSR type bits | persue bit) (JOUSTRV4.SRC:180).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 180,
+      "verbatim": "WSTATUS\tRMB\t1\tSTATUS BYTE FOR THIS WAVE"
+    }
+  },
+  {
+    "id": "JT25-005",
+    "claim": "Status bit WBPER = $01, the instantaneous-pursue flag — below the JSR type mask, so it never leaks into the wave type (JOUSTRV4.SRC:185).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 185,
+      "verbatim": "WBPER\tEQU\t$01\tIF=1, PERSUE WILL BE INSTANTANIOUSLY"
+    }
+  },
+  {
+    "id": "JT25-006",
+    "claim": "Status bit WBJSR0 = $02, the low bit of the 3-bit JSR-table offset that selects the wave type (JOUSTRV4.SRC:186).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 186,
+      "verbatim": "WBJSR0\tEQU\t$02\tTHESE 3 BITS ARE A JSR TABLE OFFSET"
+    }
+  },
+  {
+    "id": "JT25-007",
+    "claim": "Status bit WBJSR1 = $04; the comment lists the JSR offsets 0,2,4,6,8,10,12,14, but WJSRTB implements only six — offsets 12 and 14 are phantom, in no wave (JOUSTRV4.SRC:187).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 187,
+      "verbatim": "WBJSR1\tEQU\t$04\t (0 = AN NOP, OTHERS ARE 2,4,6,8,10,12,14)"
+    }
+  },
+  {
+    "id": "JT25-008",
+    "claim": "Status bit WBCL1L = $10 records CLIFF1L destroyed — a high-nibble cliff-destruction DATA bit, no behaviour in jt2-5 (JOUSTRV4.SRC:189).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 189,
+      "verbatim": "WBCL1L\tEQU\t$10\tIF=1, CLIFF1L IS DISABLED (OR DESTROYED)"
+    }
+  },
+  {
+    "id": "JT25-009",
+    "claim": "Composite cliff mask WBCL1 = WBCL1L+WBCL1R = $30 — derived from its primitives, not hand-typed (JOUSTRV4.SRC:193).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 193,
+      "verbatim": "WBCL1\tEQU\tWBCL1L+WBCL1R"
+    }
+  },
+  {
+    "id": "JT25-010",
+    "claim": "Composite cliff mask WBCLS = WBCL1+WBCL2+WBCL4 = $F0, all cliffs — the high-nibble data mask (JOUSTRV4.SRC:197).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 197,
+      "verbatim": "WBCLS\tEQU\tWBCL1+WBCL2+WBCL4"
+    }
+  },
+  {
+    "id": "JT25-011",
+    "claim": "The wave number is an independent BCD counter: LDA WAVBCD reads the BCD wave number (0-99), distinct from the WAVTBL pointer (JOUSTRV4.SRC:2001).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2001,
+      "verbatim": "\tLDA\tWAVBCD\t\tBCD WAVE NUMBER"
+    }
+  },
+  {
+    "id": "JT25-012",
+    "claim": "DAA decimal-adjusts the incremented wave number, making it BCD: 0x09+1 = 0x10 (not 0x0A), 0x99+1 = 0x00 (JOUSTRV4.SRC:2003).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2003,
+      "verbatim": "\tDAA"
+    }
+  },
+  {
+    "id": "JT25-013",
+    "claim": "PWAVE is seeded to WAVTBL-WLEN — one row BEFORE wave 1 — then advanced before the first wave, so wave 0 is never played (JOUSTRV4.SRC:1878).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1878,
+      "verbatim": "\tLDD\t#WAVTBL-WLEN"
+    }
+  },
+  {
+    "id": "JT25-014",
+    "claim": "Loop-at-81: after advancing one WLEN row per wave, CMPX #WTBEND tests for the end of the table (JOUSTRV4.SRC:2018).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2018,
+      "verbatim": "\tCMPX\t#WTBEND\t\tAT END OF TABLE??"
+    }
+  },
+  {
+    "id": "JT25-015",
+    "claim": "Loop-at-81: at end of table the pointer restarts at WTBRST (wave 81), so the late-wave plateau repeats forever (JOUSTRV4.SRC:2020).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2020,
+      "verbatim": "\tLDX\t#WTBRST\t\tYES, RESTART AT NEW POINT"
+    }
+  },
+  {
+    "id": "JT25-016",
+    "claim": "WAVTBL wave 1 row = $30,$01,0,2 — 3 bounders, 1 pursuer, status 2 (the intro wave) (JOUSTRV4.SRC:2439).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2439,
+      "verbatim": "\tFCB\t$30,$01,0,2\t\t\tWAVE 1 - NEEDS INTRO MESSAGE"
+    }
+  },
+  {
+    "id": "JT25-017",
+    "claim": "WTBRST wave 81 row = $00,$AF,0,... — no bounders/hunters, all shadow lords ($A) at max pursuit ($F): the $00,$AF plateau (JOUSTRV4.SRC:2535).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2535,
+      "verbatim": "WTBRST\tFCB\t$00,$AF,0,WBPER+WBCL1+0\t\tWAVE 81"
+    }
+  },
+  {
+    "id": "JT25-018",
+    "claim": "WTBEND closes the wave table — END OF WAVE TABLE, REPEAT AT WTBRST (the loop-back point) (JOUSTRV4.SRC:2546).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2546,
+      "verbatim": "WTBEND\tEQU\t*\t\t\tEND OF WAVE TABLE, REPEAT AT \"WTBRST\""
+    }
+  },
+  {
+    "id": "JT25-019",
+    "claim": "WJSRTB dispatch masks the status low nibble to the JSR bits: ANDB #WBJSR0+WBJSR1+WBJSR2 = & $0E (JOUSTRV4.SRC:2042).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2042,
+      "verbatim": "\tANDB\t#WBJSR0+WBJSR1+WBJSR2\tMASK OFF OTHER BITS"
+    }
+  },
+  {
+    "id": "JT25-020",
+    "claim": "WJSRTB dispatch calls the wave-type routine indirectly through the six-entry table: JSR [B,X] (JOUSTRV4.SRC:2044).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2044,
+      "verbatim": "\tJSR\t[B,X]"
+    }
+  },
+  {
+    "id": "JT25-021",
+    "claim": "WJSRTB[0] = WAVRTS, the NOP wave type (index 0) (JOUSTRV4.SRC:2586).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2586,
+      "verbatim": "WJSRTB\tFDB\tWAVRTS\t\tNOP ROUTINE"
+    }
+  },
+  {
+    "id": "JT25-022",
+    "claim": "WJSRTB[5] = WPTERO, the pterodactyl wave type (index 5, JSR offset 10) — the last of the six real types (JOUSTRV4.SRC:2591).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2591,
+      "verbatim": "\tFDB\tWPTERO\t\tPTERODACTYL WAVE"
+    }
+  },
+  {
+    "id": "JT25-023",
+    "claim": "Degrade law: a WCOOP co-op wave checks player 2 alive (SPLY2+6) — two players only (JOUSTRV4.SRC:2628).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2628,
+      "verbatim": "WCOOP\tLDA\tSPLY2+6\t\tTHIS MESSAGE IS FOR TWO PLAYERS ONLY"
+    }
+  },
+  {
+    "id": "JT25-024",
+    "claim": "Degrade law: when a player is out, a co-op wave degrades to survival — BEQ WAVSUR (JOUSTRV4.SRC:2629).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2629,
+      "verbatim": "\tBEQ\tWAVSUR\t\t BR=PLAYER 2 DEAD, GO TO SURVIVAL WAVE"
+    }
+  },
+  {
+    "id": "JT25-025",
+    "claim": "Degrade law: a WGLAD gladiator wave checks player 1 alive (SPLY1+6) — two players only (JOUSTRV4.SRC:2697).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2697,
+      "verbatim": "WGLAD\tLDA\tSPLY1+6\t\tTHIS MESSAGE IS FOR TWO PLAYERS ONLY"
+    }
+  },
+  {
+    "id": "JT25-026",
+    "claim": "Degrade law: a gladiator wave no-ops (BEQ WAVRT2 → RTS) when a player is out — solo it does nothing (JOUSTRV4.SRC:2698).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2698,
+      "verbatim": "\tBEQ\tWAVRT2\t\t BR=PLAYER 1 DEAD"
+    }
+  },
+  {
+    "id": "JT25-027",
+    "claim": "Message beat timing is ~1 s and unpinned: LDA #180/6 is a message-loop count, WAIT A SECOND — the shell owns timing (JOUSTRV4.SRC:2045).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2045,
+      "verbatim": "WPAUSE\tLDA\t#180/6\t\tWAIT A SECOND"
+    }
+  },
+  {
+    "id": "JT25-028",
+    "claim": "The intro reset ~1 s delay is LDA #90/6, a 1 SECOND DELAY — approximate, not an exact-frame beat duration (JOUSTRV4.SRC:2601).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2601,
+      "verbatim": "\tLDA\t#90/6\t\tRESET OF 1 SECOND DELAY"
+    }
+  },
+  {
+    "id": "JT25-029",
+    "claim": "IFN DEBUG death oracle: the death path fires only for an enemy — LDA PID,U reads the DEAD ENEMY process id (JOUSTRV4.SRC:2954).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2954,
+      "verbatim": "\tLDA\tPID,U\tTHIS IS A DEAD ENEMY ISN'T IT?"
+    }
+  },
+  {
+    "id": "JT25-030",
+    "claim": "IFN DEBUG death oracle: CMPA #EMYID confirms it is an enemy before decrementing NENEMY (JOUSTRV4.SRC:2955).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2955,
+      "verbatim": "\tCMPA\t#EMYID"
+    }
+  },
+  {
+    "id": "JT25-031",
+    "claim": "IFN DEBUG oracle: after DEC NENEMY the count must not go negative — BPL 45$ else the author SWIs (JOUSTRV4.SRC:2967).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2967,
+      "verbatim": "\tBPL\t45$"
+    }
+  }
+]

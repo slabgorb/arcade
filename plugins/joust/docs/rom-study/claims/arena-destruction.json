@@ -1,0 +1,227 @@
+[
+  {
+    "id": "JT32-001",
+    "claim": "Cliff-destruction status bit WBCL1R = $20 disables/destroys CLIFF1R — a WSTATUS high-nibble bit jt3-2 makes behaviour (JOUSTRV4.SRC:190).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 190,
+      "verbatim": "WBCL1R\tEQU\t$20\tIF=1, CLIFF1R IS DISABLED (OR DESTROYED)"
+    }
+  },
+  {
+    "id": "JT32-002",
+    "claim": "Cliff-destruction status bit WBCL2 = $40 disables/destroys CLIFF2 (JOUSTRV4.SRC:191).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 191,
+      "verbatim": "WBCL2\tEQU\t$40\tIF=1, CLIFF2 IS DISABLED (OR DESTROYED)"
+    }
+  },
+  {
+    "id": "JT32-003",
+    "claim": "Cliff-destruction status bit WBCL4 = $80 disables/destroys CLIFF4 (JOUSTRV4.SRC:192).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 192,
+      "verbatim": "WBCL4\tEQU\t$80\tIF=1, CLIFF4 IS DISABLED (OR DESTROYED)"
+    }
+  },
+  {
+    "id": "JT32-004",
+    "claim": "WCLFTB row for CLIF1L: FCB WBCL1L($10),$01,$03 — status bit, LNDXTB landing bit cleared, BCKXTB collision bits cleared (both CLIF1L $01 and CLIF1R $02) (JOUSTRV4.SRC:2407).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2407,
+      "verbatim": "WCLFTB\tFCB\tWBCL1L,$01,$03"
+    }
+  },
+  {
+    "id": "JT32-005",
+    "claim": "WCLFTB row for CLIF1R: FCB WBCL1R($20),$00,$00 — landing/background bytes are $00 because CLIF1R shares CLIF1L's merged ledge bit $01 and its side is cleared by CLIF1L's $03 (JOUSTRV4.SRC:2409).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2409,
+      "verbatim": "WCLFT2\tFCB\tWBCL1R,$00,$00"
+    }
+  },
+  {
+    "id": "JT32-006",
+    "claim": "WCLFTB row for CLIF2: FCB WBCL2($40),$02,$04 — landing bit $02 (LNDB1) and background bit $04 cleared on destroy (JOUSTRV4.SRC:2411).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2411,
+      "verbatim": "WCLFT3\tFCB\tWBCL2,$02,$04"
+    }
+  },
+  {
+    "id": "JT32-007",
+    "claim": "WCLFTB row for CLIF4: FCB WBCL4($80),$10,$40 — landing bit $10 (LNDB4) and background bit $40 cleared on destroy (JOUSTRV4.SRC:2413).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2413,
+      "verbatim": "WCLFT4\tFCB\tWBCL4,$10,$40"
+    }
+  },
+  {
+    "id": "JT32-008",
+    "claim": "WCLFEW destroy path clears the cliff's landing bit (byte 1 of the WCLFTB record) from the RAM landing table LNDXD1 (JOUSTRV4.SRC:2310).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2310,
+      "verbatim": "31$\tLDA\t1,X\t\tDESTROY LANDING AREA"
+    }
+  },
+  {
+    "id": "JT32-009",
+    "claim": "WCLFEW destroy path clears the cliff's background-collision bit (byte 2 of the WCLFTB record) from the RAM collision table BCKXD1 (JOUSTRV4.SRC:2321).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2321,
+      "verbatim": "\tLDA\t2,X\t\tDESTROY BUMPING (COLISION) AREA"
+    }
+  },
+  {
+    "id": "JT32-010",
+    "claim": "WCLFEW dispatches destroy-vs-create on the NEW status bit (BITB ,X): bit set destroys the cliff, bit clear rebuilds it — so a destroyed cliff returns when a later wave drops its bit (JOUSTRV4.SRC:2304).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2304,
+      "verbatim": "\tBITB\t,X\t\tYES, DESTROY OR CREATE?"
+    }
+  },
+  {
+    "id": "JT32-011",
+    "claim": "IWAVE edge-triggers destruction: EORA WSTATUS,X XORs the old wave's status with the new wave's to find which cliff bits CHANGED (JOUSTRV4.SRC:2022).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2022,
+      "verbatim": "\tEORA\tWSTATUS,X\tANY CLIFFS CHANGED?"
+    }
+  },
+  {
+    "id": "JT32-012",
+    "claim": "IWAVE masks the changed bits to the cliff nibble with ANDA #WBCLS ($F0) before walking WCLFTB — only high-nibble cliff bits drive destruction (JOUSTRV4.SRC:2023).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2023,
+      "verbatim": "\tANDA\t#WBCLS\t\tALL CLIFFS; WBCL1+WBCL2+WBCL4"
+    }
+  },
+  {
+    "id": "JT32-013",
+    "claim": "IWAVE2 reads TBRIDGE, the countdown to the bridge burn, once per inter-wave pass (JOUSTRV4.SRC:1934).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1934,
+      "verbatim": "IWAVE2\tLDA\tTBRIDGE\t\tTIME TILL BURNS YOUR BRIDGES BEHIND YOU"
+    }
+  },
+  {
+    "id": "JT32-014",
+    "claim": "TBRIDGE is DECremented once per wave setup; seeded at 3, it reaches zero as wave 3 begins (JOUSTRV4.SRC:1936).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1936,
+      "verbatim": "\tDEC\tTBRIDGE"
+    }
+  },
+  {
+    "id": "JT32-015",
+    "claim": "When TBRIDGE reaches zero the bridge burns: JSR STBRID starts the bridge-collapsing (flame sweep) routine (JOUSTRV4.SRC:1938).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1938,
+      "verbatim": "\tJSR\tSTBRID\t\tSTART BRIDGE COLAPSING ROUTINE, LEFT TO RT."
+    }
+  },
+  {
+    "id": "JT32-016",
+    "claim": "BRIDGE is the left half of the bridge solid-fill over the lava (dest $00D3 at the CLIF5 Y-row, width $1B) (JOUSTRV4.SRC:1126).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1126,
+      "verbatim": "BRIDGE\tFDB\t$1200+LIB*$11,0,$00D3,$1B03!XDMAFIX"
+    }
+  },
+  {
+    "id": "JT32-017",
+    "claim": "BRIDG2 is the second half of the bridge solid-fill (dest $78D3, width $1E) (JOUSTRV4.SRC:1127).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1127,
+      "verbatim": "BRIDG2\tFDB\t$1200+LIB*$11,0,$78D3,$1E03!XDMAFIX"
+    }
+  },
+  {
+    "id": "JT32-018",
+    "claim": "LAVABC (the bridge-burn flame) MODIFIES the CLIF5 landing area column by column as it sweeps (JOUSTRV4.SRC:5258).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5258,
+      "verbatim": "LAVABC\tLDX\tPDIST,U\t\tMODIFY CLIFF5 LANDING AREA"
+    }
+  },
+  {
+    "id": "JT32-019",
+    "claim": "The burn writes the updated CLIF5 landing bit ($20) back into the RAM landing table LNDXTB — the bridge span loses footing while the island keeps it (JOUSTRV4.SRC:5263).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5263,
+      "verbatim": "\tSTA\tLNDXTB,X\tSTORE IT AWAY!"
+    }
+  },
+  {
+    "id": "JT32-020",
+    "claim": "TRACE (open-questions §4): the \"1ST, OR 2ND WAVE?\" comment reads TBRIDGE, a countdown, feeding the EMYTIM early-game slowdown — not a wave number (JOUSTRV4.SRC:2202).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2202,
+      "verbatim": "\tLDA\tTBRIDGE\t\t1ST, OR 2ND WAVE?"
+    }
+  },
+  {
+    "id": "JT32-021",
+    "claim": "TRACE (open-questions §4): the \"1ST, 2ND, OR 3RD WAVE?\" comment reads TTROLL, a countdown that is nonzero exactly on waves 1-3, feeding the EMYTIM slowdown — not a wave number (JOUSTRV4.SRC:4719).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4719,
+      "verbatim": "\tLDA\tTTROLL\t\t1ST, 2ND, OR 3RD WAVE?"
+    }
+  },
+  {
+    "id": "JT32-022",
+    "claim": "TRACE (open-questions §5): the CLIF1L cliff record is a 4-word DMA record (collision ptr, source ptr, dest $0145, w/h $1107) (JOUSTI.SRC:54).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 54,
+      "verbatim": "CLIF1L\tFDB\tCCLF1L,CSRC1L,$0145,$1107!XDMAFIX"
+    }
+  },
+  {
+    "id": "JT32-023",
+    "claim": "TRACE (open-questions §5): CLIF1L's SECOND variant is a 3-word record — same source/dest, height nibble one less ($1106 vs $1107), collision pointer DROPPED — and no game-code path references it (JOUSTI.SRC:55).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 55,
+      "verbatim": "\tFDB\t       CSRC1L,$0145,$1106!XDMAFIX"
+    }
+  },
+  {
+    "id": "JT32-024",
+    "claim": "TRACE (open-questions §5): the CLIF2 cliff record is a 4-word DMA record (dest $2B51, w/h $2C09) (JOUSTI.SRC:106).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 106,
+      "verbatim": "CLIF2\tFDB\tCCLF2,CSRC2,$2B51,$2C09!XDMAFIX\tOLD X $56"
+    }
+  },
+  {
+    "id": "JT32-025",
+    "claim": "TRACE (open-questions §5): CLIF2's SECOND variant is one scanline shorter ($2C08 vs $2C09) with its collision pointer dropped — the same unconsumed erase-variant shape (JOUSTI.SRC:107).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 107,
+      "verbatim": "\tFDB\t      CSRC2,$2B51,$2C08!XDMAFIX"
+    }
+  }
+]

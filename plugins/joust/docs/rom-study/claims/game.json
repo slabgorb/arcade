@@ -1,0 +1,38 @@
+[
+  {
+    "id": "JT41-001",
+    "claim": "AC-2 SCRHUN loads the DSCORE score area and adds the thousands/hundreds digit — the routine that 'INCREMENTs SCORE BY THOUSANDS AND HUNDREDS' (JOUSTRV4.SRC:7340), the digit packing thousands in the high nibble, hundreds in the low ($15->1500, $10->1000) (JOUSTRV4.SRC:7346).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7346,
+      "verbatim": "SCRHUN\tLDY\tDSCORE,X\tGET SCORE AREA"
+    }
+  },
+  {
+    "id": "JT41-002",
+    "claim": "AC-2 SCRTEN loads the DSCORE score area and adds the BACKWARDS tens/hundreds digit — the routine whose input digit is 'TENS & HUNDREDS BCD DIGIT (BACKWARDS)' (JOUSTRV4.SRC:7353), tens in the high nibble, hundreds in the low ($57->750, not 570) (JOUSTRV4.SRC:7357).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7357,
+      "verbatim": "SCRTEN\tLDY\tDSCORE,X\tGET SCORE AREA"
+    }
+  },
+  {
+    "id": "JT41-003",
+    "claim": "AC-2 SCRTEN masks the HIGH nibble (ANDA #$F0) as the SCORE TENS — the backwards packing puts the tens place in the high nibble (JOUSTRV4.SRC:7360).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7360,
+      "verbatim": "\tANDA\t#$F0\t\tSCORE TENS"
+    }
+  },
+  {
+    "id": "JT41-004",
+    "claim": "AC-2 SCRTEN masks the LOW nibble (ANDB #$0F) as the hundreds — the backwards packing puts the hundreds place in the low nibble, so $57 = 5 tens + 7 hundreds = 750 (JOUSTRV4.SRC:7361).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7361,
+      "verbatim": "\tANDB\t#$0F\t\t\t& HUNDREDS"
+    }
+  }
+]

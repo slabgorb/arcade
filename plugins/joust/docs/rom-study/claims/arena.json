@@ -1,0 +1,434 @@
+[
+  {
+    "id": "JT4-001",
+    "claim": "Arena bounds: CEILNG is $0020 — the highest position in the game. HEX. The ceiling test compares only the HIGH byte of the 16-bit position, so it is a whole-pixel threshold.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 36,
+      "verbatim": "CEILNG\tEQU\t$0020\t\tCEILING (HIGHEST POSITION) OF GAME)"
+    }
+  },
+  {
+    "id": "JT4-002",
+    "claim": "Arena bounds: FLOOR is $00DF — the lowest position. Lava death is a further 7 pixels below this (FLOOR+7 = 230).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 37,
+      "verbatim": "FLOOR\tEQU\t$00DF\t\tTHE FLOOR (LOWEST POSITION OF GAME)"
+    }
+  },
+  {
+    "id": "JT4-003",
+    "claim": "Arena bounds: ELEFT is -10, the extreme left of the wrap-around screen. DECIMAL and NEGATIVE — a reader that treats a leading minus as a symbol cannot resolve it at all.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 38,
+      "verbatim": "ELEFT\tEQU\t-10\t\tEXTREME LEFT SIDE OF WRAP AROUND SCREEN"
+    }
+  },
+  {
+    "id": "JT4-004",
+    "claim": "Arena bounds: ERIGHT is 292, the extreme right of the wrap-around screen. DECIMAL. ERIGHT-ELEFT+1 = 303 is the wrap correction step.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 39,
+      "verbatim": "ERIGHT\tEQU\t292\t\tEXTREME RIGHT SIDE OF WRAP AROUND SCREEN"
+    }
+  },
+  {
+    "id": "JT4-005",
+    "claim": "Arena bounds: MAXVX is 8, the maximum X velocity. This is why the ROM's single-correction wrap and a modulus agree for everything the game can actually produce — and why writing the modulus would ship green.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 40,
+      "verbatim": "MAXVX\tEQU\t8\t\tMAXIMUM X +- VELOCITY"
+    }
+  },
+  {
+    "id": "JT4-006",
+    "claim": "X wrap: WRAPX compares the new X against ERIGHT and, per the BLE on the next line, subtracts the span ONCE if it is past. There is no loop and no modulus.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7292,
+      "verbatim": "\tCMPD\t#ERIGHT"
+    }
+  },
+  {
+    "id": "JT4-007",
+    "claim": "X wrap: the single right-side correction is a subtract of ERIGHT-ELEFT+1 = 303, applied at most once. On a large delta the result can legally remain outside the range (600 -> 297), which a modulus would never produce.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7294,
+      "verbatim": "\tADDD\t#-(ERIGHT-ELEFT+1)"
+    }
+  },
+  {
+    "id": "JT4-008",
+    "claim": "X wrap: the left-side comparison against ELEFT uses BGE on the following line, so ELEFT itself is a legal position — the bounds do not wrap.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7295,
+      "verbatim": "WRXMAX\tCMPD\t#ELEFT"
+    }
+  },
+  {
+    "id": "JT4-009",
+    "claim": "X wrap: the single left-side correction adds the same 303 span, again at most once.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7297,
+      "verbatim": "\tADDD\t#(ERIGHT-ELEFT+1)"
+    }
+  },
+  {
+    "id": "JT4-010",
+    "claim": "Ceiling: ADDGRX compares the whole-pixel Y against CEILNG. Only the HIGH byte is tested, so a fraction cannot tip an entity over the boundary.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6497,
+      "verbatim": "\tCMPA\t#CEILNG\t\tHIGHEST POSITION *****"
+    }
+  },
+  {
+    "id": "JT4-011",
+    "claim": "Ceiling: BHI skips the whole ceiling handler when the position is strictly above the ceiling — so contact is at-or-past, not past.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6498,
+      "verbatim": "\tBHI\tADGCEI\t\t BR=HAVE NOT HIT CEILING"
+    }
+  },
+  {
+    "id": "JT4-012",
+    "claim": "Ceiling: BPL skips the velocity negation when the entity is ALREADY moving down. An entity descending through the ceiling band keeps its velocity; flipping it would fling it back up and trap it there.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6501,
+      "verbatim": "\tBPL\tADGDWN\t\t BR=ALREADY GOING DOWN, DON'T GO UP"
+    }
+  },
+  {
+    "id": "JT4-013",
+    "claim": "Ceiling: COMA/NEGB/SBCA #-1 is exact 16-bit two's-complement negation of the velocity — elastic with no damping.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6504,
+      "verbatim": "\tSBCA\t#-1\t\tINVERT VELOCITY"
+    }
+  },
+  {
+    "id": "JT4-014",
+    "claim": "Ceiling: ADGDWN loads CEILNG*256 UNCONDITIONALLY, so the position is CLAMPED to exactly CEILING<<8 with the fraction zeroed — however far past the ceiling the step went. A mirroring implementation drifts from the ROM within one frame.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6506,
+      "verbatim": "ADGDWN\tLDD\t#CEILNG*256"
+    }
+  },
+  {
+    "id": "JT4-015",
+    "claim": "Lava death: ADGCEI compares the whole-pixel Y against FLOOR+7 = 230.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6508,
+      "verbatim": "ADGCEI\tCMPA\t#FLOOR+7\tBELOW SEA LEVEL (ON THE FLOOR)?"
+    }
+  },
+  {
+    "id": "JT4-016",
+    "claim": "Lava death: BHS is unsigned higher-or-same, so the threshold is at-or-below on whole pixels — one pixel short with a full fraction still lives.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6509,
+      "verbatim": "\tBHS\tADGFLR\t\t BR=YES, TOO BAD, YOU ARE DEAD"
+    }
+  },
+  {
+    "id": "JT4-017",
+    "claim": "Landing: CKGND ANDs the LNDXTB column mask with the LNDYTB scanline mask; a non-zero result means the entity is starting to land on a cliff, and the background-collision path is then skipped entirely.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6705,
+      "verbatim": "\tLDA\tLNDXTB,X\tSTARTING TO LAND ON A CLIFF?"
+    }
+  },
+  {
+    "id": "JT4-018",
+    "claim": "Background collision: BCKXTB/BCKYTB is a SEPARATE box broad-phase, reached only when the landing masks produce nothing. Its bit assignment differs from the landing table's.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6708,
+      "verbatim": "\tLDA\tBCKXTB,X\tBACKGROUND MAP IN X DIRECTION"
+    }
+  },
+  {
+    "id": "JT4-019",
+    "claim": "Landing dispatch: the first split is CMPA #$08 — below goes to the LND13 group, equal is LNDB3, above is the LND47 group.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6715,
+      "verbatim": "LND18\tCMPA\t#$08"
+    }
+  },
+  {
+    "id": "JT4-020",
+    "claim": "Landing dispatch: the second split is CMPA #$20, with values below it landing on CLIF4.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6718,
+      "verbatim": "LND47\tCMPA\t#$20"
+    }
+  },
+  {
+    "id": "JT4-021",
+    "claim": "Landing dispatch: CLIF5 is selected by a BIT test, not equality — LNDYTB never holds a bare $20 because CLIF5's band is $A0 (bit 7 | bit 5). A dispatch written as bit-per-platform equality misses CLIF5 entirely and drops entities through the bottom island.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6720,
+      "verbatim": "\tBITA\t#$20"
+    }
+  },
+  {
+    "id": "JT4-022",
+    "claim": "Landing dispatch: the fall-through when bit 5 is absent is LNDB7, the lava troll's grip — the SEVENTH outcome. Bit 7 WITHOUT bit 5 means the troll, not a platform.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6722,
+      "verbatim": "\tBRA\tLNDB7"
+    }
+  },
+  {
+    "id": "JT4-023",
+    "claim": "Landing dispatch: within the low group, BHI sends masks 3..7 to LNDB2 while 1 falls through to LNDB0 and 2 branches to LNDB1.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6726,
+      "verbatim": "\tBHI\tLNDB2"
+    }
+  },
+  {
+    "id": "JT4-024",
+    "claim": "Landing snap: LNDB0 (CLIF1L & CLIF1R) assigns whole-pixel Y $0045-1 = 68 — one pixel above its LNDYTB band top of 69, i.e. the entity rests ON the surface.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6729,
+      "verbatim": "\tLDB\t#$0045-1\tON TOP OF CLIFF PIXEL HEIGHT"
+    }
+  },
+  {
+    "id": "JT4-025",
+    "claim": "Landing snap: LNDB1 (CLIF2) assigns $0051-1 = 80, one pixel above band top 81.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6735,
+      "verbatim": "\tLDB\t#$0051-1\tON TOP OF CLIFF PIXEL HEIGHT"
+    }
+  },
+  {
+    "id": "JT4-026",
+    "claim": "Landing snap: LNDB2 assigns $0081-1 = 128, one pixel above band top 129 — which is CLIF3U's band. The author comment on the label line reads CLIF3R, but CLIF3R sits at 138 and is served by LNDB3. A transcription following comments instead of constants maps the wrong cliff to this bit.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6741,
+      "verbatim": "\tLDB\t#$0081-1\tON TOP OF CLIFF PIXEL HEIGHT"
+    }
+  },
+  {
+    "id": "JT4-027",
+    "claim": "Landing snap: LNDB3 (CLIF3L & CLIF3R) assigns $008A-1 = 137, one pixel above band top 138.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6747,
+      "verbatim": "\tLDB\t#$008A-1\tON TOP OF CLIFF PIXEL HEIGHT"
+    }
+  },
+  {
+    "id": "JT4-028",
+    "claim": "Landing snap: LNDB4 (CLIF4) assigns $00A3-1 = 162, one pixel above band top 163.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6753,
+      "verbatim": "\tLDB\t#$00A3-1\tON TOP OF CLIFF PIXEL HEIGHT"
+    }
+  },
+  {
+    "id": "JT4-029",
+    "claim": "Landing snap: LNDB5 (CLIF5) assigns $00D3-1 = 210, one pixel above band top 211.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6759,
+      "verbatim": "\tLDB\t#$00D3-1\tON TOP OF CLIFF PIXEL HEIGHT"
+    }
+  },
+  {
+    "id": "JT4-030",
+    "claim": "Landing is a SNAP: the whole-pixel Y is stored directly into the position and, on the following line, CLRA zeroes the fraction — nothing about the entry position or velocity survives, which is what makes landing idempotent.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6730,
+      "verbatim": "\tSTB\tPPOSY+1,U"
+    }
+  },
+  {
+    "id": "JT4-031",
+    "claim": "Landing: LNDB7 is the lava trolls' handler, the seventh dispatch destination. Its behaviour is gated on TTROLL and belongs to a later story; the dispatch slot must exist now or the bitmask decision tree is wrong.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6764,
+      "verbatim": "LNDB7\tEQU\t*\tLAVA TROLLS"
+    }
+  },
+  {
+    "id": "JT4-032",
+    "claim": "Bridge: TBRIDGE is seeded with 3 — the wave number at which the bridge is destroyed. DECIMAL.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 955,
+      "verbatim": "\tSTA\tTBRIDGE\t\tWAVE NBR TO DESTROY BRIDGE"
+    }
+  },
+  {
+    "id": "JT4-033",
+    "claim": "Troll: TTROLL is seeded with 1 — the number of waves after the bridge is destroyed before the lava troll comes out into the open. DECIMAL.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 957,
+      "verbatim": "\tSTA\tTTROLL\t\t COMES OUT IN THE OPEN"
+    }
+  },
+  {
+    "id": "JT4-034",
+    "claim": "Lava: SAFRAM starts at $EA, the wave-1 lava surface level. HEX. Rising lava means DEcreasing Y.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 962,
+      "verbatim": "\tLDA\t#$EA\t\tSTART LEVEL OF LAVA FOR BUBBLING LAVA ROUTINE"
+    }
+  },
+  {
+    "id": "JT4-035",
+    "claim": "Lava rise: the per-wave step compares SAFRAM against $E0 and, per the BLS on the next line, stops there. The lava is a five-unit step with a hard floor, not an unbounded subtract.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1930,
+      "verbatim": "\tCMPA\t#$E0"
+    }
+  },
+  {
+    "id": "JT4-036",
+    "claim": "Lava rise: each wave subtracts $5, producing exactly three distinct levels ($EA, $E5, $E0) before the guard holds it forever.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1932,
+      "verbatim": "\tSUBA\t#$5"
+    }
+  },
+  {
+    "id": "JT4-037",
+    "claim": "Bridge: TBRIDGE is decremented once per wave and, per the BEQ above, stops at zero — so the bridge burns on wave 3 and stays gone.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1936,
+      "verbatim": "\tDEC\tTBRIDGE"
+    }
+  },
+  {
+    "id": "JT4-038",
+    "claim": "Background collision: BCKCOL is the cliff-side pixel path, entered from CKGND after the box broad-phase hits. This trace closes open-questions §4.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6799,
+      "verbatim": "BCKCOL\tTFR\tA,B"
+    }
+  },
+  {
+    "id": "JT4-039",
+    "claim": "Background collision: BCKB0 dereferences CLIF1L's record indirectly to reach its collision-span pointer — the very tables jt1-3 transcribed — then walks them from a loaded origin.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6818,
+      "verbatim": "\tLDY\t[CLIF1L]\tCOLISION DETECT POINTERS"
+    }
+  },
+  {
+    "id": "JT4-040",
+    "claim": "Background collision: bit 0 walks CLIF1L from X origin -32. NEGATIVE DECIMAL: the left cliff starts off-screen to the left.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6819,
+      "verbatim": "\tLDD\t#-32"
+    }
+  },
+  {
+    "id": "JT4-041",
+    "claim": "Background collision: bit 0 walks CLIF1L from Y origin 69, which is exactly CLIF1L's own record destination scanline — the same number stated in two unrelated places.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6820,
+      "verbatim": "\tLDX\t#69"
+    }
+  },
+  {
+    "id": "JT4-042",
+    "claim": "Background collision: bit 4 is CLIF3L here. In the LANDING table bit 4 is CLIF4 — the two mechanisms use DIFFERENT bit assignments (eight bits with left/right separate vs six with the pairs merged), so sharing one table between them collides against the wrong geometry.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6823,
+      "verbatim": "BCKB4\tEQU\t*\tBIT 4 = CLIF3L"
+    }
+  },
+  {
+    "id": "JT4-043",
+    "claim": "Background collision: BCKB3 (bit 3 = CLIF3U) dereferences CLIF3R's collision pointer — not CLIF3U's.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6874,
+      "verbatim": "\tLDY\t[CLIF3R]\tCOLISION DETECT POINTERS"
+    }
+  },
+  {
+    "id": "JT4-044",
+    "claim": "Background collision: BCKB5 (bit 5 = CLIF3R) is BYTE-IDENTICAL to BCKB3 — the same CLIF3R pointer with CLIF3U's origin (202,129), even though CLIF3R sits at (254,138). Whether that is a shipped bug or deliberate reuse is not settled; the transcription PRESERVES it, because tidying it would silently change collision behaviour.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6863,
+      "verbatim": "\tLDY\t[CLIF3R]\tCOLISION DETECT POINTERS"
+    }
+  },
+  {
+    "id": "JT4-045",
+    "claim": "Background collision: bit 7 is CLIF5, walked from origin (54,211) — the bottom island, matching its record destination and NEWCL5's hard-coded start position.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6904,
+      "verbatim": "\tLDY\t[CLIF5]\t\tCOLISION DETECT POINTERS"
+    }
+  },
+  {
+    "id": "JT4-046",
+    "claim": "Landing dispatch: the LNDB2 label line carries the author comment 'CLIF3R' — the comment that is WRONG. Its constant on the next line resolves to CLIF3U's band. Recorded so the hazard is anchored at the line a reader actually sees.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6740,
+      "verbatim": "LNDB2\tEQU\t*\tCLIF3R"
+    }
+  },
+  {
+    "id": "JT4-047",
+    "claim": "Landing dispatch: LNDB3's label line names both CLIF3L and CLIF3R, which is where CLIF3R is really served — one pixel above scanline 138, not LNDB2's 129.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6746,
+      "verbatim": "LNDB3\tEQU\t*\tCLIF3L & CLIF3R"
+    }
+  },
+  {
+    "id": "JT4-048",
+    "claim": "Landing dispatch: LNDB4's label line names CLIF4. In the LANDING table bit 4 is CLIF4; in the BACKGROUND table the same bit is CLIF3L — the two mechanisms' bit assignments differ.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6752,
+      "verbatim": "LNDB4\tEQU\t*\tCLIF4"
+    }
+  }
+]

@@ -1,0 +1,641 @@
+[
+  {
+    "id": "PIC-001",
+    "claim": "The image ROM source: JOUSTI.SRC is the merged, self-contained images module (single ORG $0000, JOUSTI.SRC:18; pointer table of 30 entries at JOUSTI.SRC:18-49; running LENGTH EQU * marker at JOUSTI.SRC:2817).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 18,
+      "verbatim": "\tORG\t$0000"
+    }
+  },
+  {
+    "id": "PIC-002",
+    "claim": "The image ROM source: JOUSTI.SRC is the merged, self-contained images module (single ORG $0000, JOUSTI.SRC:18; pointer table of 30 entries at JOUSTI.SRC:18-49; running LENGTH EQU * marker at JOUSTI.SRC:2817).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2817,
+      "verbatim": "LENGTH\tEQU\t*\tCURRENT TOTAL LENGTH OF IMAGES"
+    }
+  },
+  {
+    "id": "PIC-003",
+    "claim": "The image ROM source: The per-entity artist files (OSTRICH.SRC, CLIFF.SRC, …) are byte-identical upstreams, not variants: ORUN1R's 20 pixel rows in OSTRICH.SRC:12-31 reappear verbatim at JOUSTI.SRC:1369-1388, with the artist file's commented-out record header (OSTRICH.SRC:6) made…",
+    "source": {
+      "file": "OSTRICH.SRC",
+      "line": 12,
+      "verbatim": "\tFCB\t$00,$00,$00,$00,$00,$08,$F8,$00"
+    }
+  },
+  {
+    "id": "PIC-004",
+    "claim": "The image ROM source: …files (OSTRICH.SRC, CLIFF.SRC, …) are byte-identical upstreams, not variants: ORUN1R's 20 pixel rows in OSTRICH.SRC:12-31 reappear verbatim at JOUSTI.SRC:1369-1388, with the artist file's commented-out record header (OSTRICH.SRC:6) made live…",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 1369,
+      "verbatim": "\tFCB\t$00,$00,$00,$00,$00,$08,$F8,$00"
+    }
+  },
+  {
+    "id": "PIC-005",
+    "claim": "The image ROM source: …variants: ORUN1R's 20 pixel rows in OSTRICH.SRC:12-31 reappear verbatim at JOUSTI.SRC:1369-1388, with the artist file's commented-out record header (OSTRICH.SRC:6) made live (JOUSTI.SRC:1368).",
+    "source": {
+      "file": "OSTRICH.SRC",
+      "line": 6,
+      "verbatim": "******* ORUN1R\tFDB\t$0814!XDMAFIX"
+    }
+  },
+  {
+    "id": "PIC-006",
+    "claim": "The image ROM source: …rows in OSTRICH.SRC:12-31 reappear verbatim at JOUSTI.SRC:1369-1388, with the artist file's commented-out record header (OSTRICH.SRC:6) made live (JOUSTI.SRC:1368).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 1368,
+      "verbatim": "ORUN1R\tFDB\t$0814!XDMAFIX"
+    }
+  },
+  {
+    "id": "PIC-007",
+    "claim": "The image ROM source: The artist files carry a 64-byte development header (ORG 4096; FDB 5376,$AA05,$0814,$70C0,…, OSTRICH.SRC:7-11) that the merge strips — its two FCB rows are the 16-entry palette, byte-identical to COLOR1's live column.",
+    "source": {
+      "file": "OSTRICH.SRC",
+      "line": 7,
+      "verbatim": "\tORG\t4096"
+    }
+  },
+  {
+    "id": "PIC-008",
+    "claim": "Two record formats: Entity frames — 3-word records, emitted by the POSOFF macro (JOUSTI.SRC:12-13 — FDB COLISN,XOFF*256+256-YOFF,SRC):",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 12,
+      "verbatim": "POSOFF\tMACRO\tCOLISN,XOFF,YOFF,SRC"
+    }
+  },
+  {
+    "id": "PIC-009",
+    "claim": "Two record formats: The consumer (WRHOR2, JOUSTRV4.SRC:6093-6098) adds the position word to CLSX/CLSY, loads the source pointer, and post-increments past the leading w/h word (ORUN1R FDB $0814!XDMAFIX, JOUSTI.SRC:1368).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6093,
+      "verbatim": "WRHOR2\tLDD\t2,Y"
+    }
+  },
+  {
+    "id": "PIC-010",
+    "claim": "Two record formats: Facing variants sit 6 bytes apart — SRCADP adds #6 for left-facing (JOUSTRV4.SRC:1518-1524).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1518,
+      "verbatim": "\tLDB\tPIMAGE,U\tGET IMAGE NBR"
+    }
+  },
+  {
+    "id": "PIC-011",
+    "claim": "Two record formats: Background/cliff records — 4-word records that *are* a partial DMA block (FDB collision, source, absolute_dest, w/h — field offsets match RAMDEF.SRC:144-152): CLIF1L FDB CCLF1L,CSRC1L,$0145,$1107!XDMAFIX (JOUSTI.SRC:54).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 144,
+      "verbatim": "WCDMA\tRMB\t1\tWRITE/CLEAR'S DMA CONTROL BYTE"
+    }
+  },
+  {
+    "id": "PIC-012",
+    "claim": "Two record formats: Background/cliff records — 4-word records that *are* a partial DMA block (FDB collision, source, absolute_dest, w/h — field offsets match RAMDEF.SRC:144-152): CLIF1L FDB CCLF1L,CSRC1L,$0145,$1107!XDMAFIX (JOUSTI.SRC:54).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 54,
+      "verbatim": "CLIF1L\tFDB\tCCLF1L,CSRC1L,$0145,$1107!XDMAFIX"
+    }
+  },
+  {
+    "id": "PIC-013",
+    "claim": "Two record formats: Consumer BCKYUP (JOUSTRV4.SRC:1112-1117) un-XORs the height (EORB #!WDMAFIX), computes the lowest scanline for quadrant bucketing, and blits with control $0A (transparent).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1112,
+      "verbatim": "BCKYUP\tLDB\tWCLENY,Y\t\tCALC LOWEST POINT"
+    }
+  },
+  {
+    "id": "PIC-014",
+    "claim": "Two record formats: The first word is dual-purpose: transporter records carry a literal DMA control word $0A00 there instead of a collision pointer (JOUSTI.SRC:749-752).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 749,
+      "verbatim": "TRANS1\tFDB\t$0A00,TRASRC,$3551,$0E03!XDMAFIX\t\tOLD X $6A"
+    }
+  },
+  {
+    "id": "PIC-015",
+    "claim": "Two record formats: DMAFIX EQU $0404 (JOUSTI.SRC:8) pre-XORs the human-readable w/h for the first-revision SC1 blitter, which XORs it back (williamsblitter.cpp:115-116; Joust uses WILLIAMS_BLITTER_SC1, williams.cpp:1589).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 8,
+      "verbatim": "DMAFIX\tEQU\t$0404"
+    }
+  },
+  {
+    "id": "PIC-016",
+    "claim": "Two record formats: DMAFIX EQU $0404 (JOUSTI.SRC:8) pre-XORs the human-readable w/h for the first-revision SC1 blitter, which XORs it back (williamsblitter.cpp:115-116; Joust uses WILLIAMS_BLITTER_SC1, williams.cpp:1589).",
+    "source": {
+      "file": "williamsblitter.cpp",
+      "line": 115,
+      "verbatim": "(MAME williams driver williamsblitter.cpp:115-116 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-017",
+    "claim": "Two record formats: DMAFIX EQU $0404 (JOUSTI.SRC:8) pre-XORs the human-readable w/h for the first-revision SC1 blitter, which XORs it back (williamsblitter.cpp:115-116; Joust uses WILLIAMS_BLITTER_SC1, williams.cpp:1589).",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1589,
+      "verbatim": "(MAME williams driver williams.cpp:1589 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-018",
+    "claim": "Pixel format: 4 bpp, 2 pixels/byte, high nibble = left pixel (williamsblitter.cpp:159,171; the source's own LN EQU 16 / RN EQU 1 / BN EQU 17, SYSTEM.SRC:782-784).",
+    "source": {
+      "file": "williamsblitter.cpp",
+      "line": 159,
+      "verbatim": "(MAME williams driver williamsblitter.cpp:159 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-019",
+    "claim": "Pixel format: 4 bpp, 2 pixels/byte, high nibble = left pixel (williamsblitter.cpp:159,171; the source's own LN EQU 16 / RN EQU 1 / BN EQU 17, SYSTEM.SRC:782-784).",
+    "source": {
+      "file": "williamsblitter.cpp",
+      "line": 171,
+      "verbatim": "(MAME williams driver williamsblitter.cpp:171 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-020",
+    "claim": "Pixel format: 4 bpp, 2 pixels/byte, high nibble = left pixel (williamsblitter.cpp:159,171; the source's own LN EQU 16 / RN EQU 1 / BN EQU 17, SYSTEM.SRC:782-784).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 782,
+      "verbatim": "LN\tEQU\t16\tnybble moving constants left nybble = nybble *16"
+    }
+  },
+  {
+    "id": "PIC-021",
+    "claim": "Pixel format: blits iterate height outer / width inner with a 256-byte destination stride (williamsblitter.cpp:203-204,213,219).",
+    "source": {
+      "file": "williamsblitter.cpp",
+      "line": 203,
+      "verbatim": "(MAME williams driver williamsblitter.cpp:203-204 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-022",
+    "claim": "Pixel format: blits iterate height outer / width inner with a 256-byte destination stride (williamsblitter.cpp:203-204,213,219).",
+    "source": {
+      "file": "williamsblitter.cpp",
+      "line": 213,
+      "verbatim": "(MAME williams driver williamsblitter.cpp:213 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-023",
+    "claim": "Pixel format: blits iterate height outer / width inner with a 256-byte destination stride (williamsblitter.cpp:203-204,213,219).",
+    "source": {
+      "file": "williamsblitter.cpp",
+      "line": 219,
+      "verbatim": "(MAME williams driver williamsblitter.cpp:219 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-024",
+    "claim": "Pixel format: CLIF1L \"17 BY 7 BYTES\" (JOUSTI.SRC:53) is literally 7 FCB lines × 17 bytes (JOUSTI.SRC:57-63).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 53,
+      "verbatim": "* 17 BY 7 BYTES"
+    }
+  },
+  {
+    "id": "PIC-025",
+    "claim": "Pixel format: CLIF1L \"17 BY 7 BYTES\" (JOUSTI.SRC:53) is literally 7 FCB lines × 17 bytes (JOUSTI.SRC:57-63).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 57,
+      "verbatim": "\tFCB $AA,$AA,$AA,$AA,$AA,$AA,$AA,$AA,$AA,$AA,$AA,$AA,$AA,$AA,$AA,$AA,$A0"
+    }
+  },
+  {
+    "id": "PIC-026",
+    "claim": "Pixel format: Proven by the WCX(high)/WCY(low) split (RAMDEF.SRC:148-149), by the OLD X comments (e.g. CLIF2 dest $2B51, 43·2 = 86 = $56, JOUSTI.SRC:106), and by NEWCL5's hard-coded LDX #$1B*2 / LDY #$D3 (SYSTEM.SRC:927-928) matching CLIF5's dest $1BD3 (JOUSTI.SRC:287).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 148,
+      "verbatim": "WCX\tRMB\t1\tWRITE/CLEAR'S DMA DESTINATION X PIXEL LOCATION"
+    }
+  },
+  {
+    "id": "PIC-027",
+    "claim": "Pixel format: Proven by the WCX(high)/WCY(low) split (RAMDEF.SRC:148-149), by the OLD X comments (e.g. CLIF2 dest $2B51, 43·2 = 86 = $56, JOUSTI.SRC:106), and by NEWCL5's hard-coded LDX #$1B*2 / LDY #$D3 (SYSTEM.SRC:927-928) matching CLIF5's dest $1BD3 (JOUSTI.SRC:287).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 106,
+      "verbatim": "CLIF2\tFDB\tCCLF2,CSRC2,$2B51,$2C09!XDMAFIX\tOLD X $56"
+    }
+  },
+  {
+    "id": "PIC-028",
+    "claim": "Pixel format: Proven by the WCX(high)/WCY(low) split (RAMDEF.SRC:148-149), by the OLD X comments (e.g. CLIF2 dest $2B51, 43·2 = 86 = $56, JOUSTI.SRC:106), and by NEWCL5's hard-coded LDX #$1B*2 / LDY #$D3 (SYSTEM.SRC:927-928) matching CLIF5's dest $1BD3 (JOUSTI.SRC:287).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 927,
+      "verbatim": "NEWCL5\tLDX\t#$1B*2\t\tSTART X PIXEL POSITION ON SCREEN"
+    }
+  },
+  {
+    "id": "PIC-029",
+    "claim": "Pixel format: Proven by the WCX(high)/WCY(low) split (RAMDEF.SRC:148-149), by the OLD X comments (e.g. CLIF2 dest $2B51, 43·2 = 86 = $56, JOUSTI.SRC:106), and by NEWCL5's hard-coded LDX #$1B*2 / LDY #$D3 (SYSTEM.SRC:927-928) matching CLIF5's dest $1BD3 (JOUSTI.SRC:287).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 287,
+      "verbatim": "CLIF5\tFDB\tCCLF5,CSRC5,$1BD3,$5D02!XDMAFIX\t\tOLD X 36"
+    }
+  },
+  {
+    "id": "PIC-030",
+    "claim": "Pixel format: Blit destination Y wraps within the low byte (williamsblitter.cpp:241) — a sprite crossing scanline 255 wraps to 0 in the same column.",
+    "source": {
+      "file": "williamsblitter.cpp",
+      "line": 241,
+      "verbatim": "(MAME williams driver williamsblitter.cpp:241 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-031",
+    "claim": "Pixel format: No remap PROM on Joust — nibbles are literal palette indices. The blitter's remap table is identity when no PROM is attached (williamsblitter.cpp:54-59);",
+    "source": {
+      "file": "williamsblitter.cpp",
+      "line": 54,
+      "verbatim": "(MAME williams driver williamsblitter.cpp:54-59 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-032",
+    "claim": "Pixel format: Joust's machine config is williams_b1 → WILLIAMS_BLITTER_SC1 with no PROM tag (williams.cpp:1656-1660, :1589);",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1656,
+      "verbatim": "(MAME williams driver williams.cpp:1656-1660 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-033",
+    "claim": "Pixel format: the only config in the driver that attaches one is the SC2 machine at williams.cpp:1773.",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1773,
+      "verbatim": "(MAME williams driver williams.cpp:1773 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-034",
+    "claim": "Collision data (live, not decorative): A mask is a per-scanline (left,right) span pair, 4 bytes/row, values biased by COFF EQU $0200 (JOUSTI.SRC:7) so sentinels are negative: $8000 = no collision this scanline (JOUSTI.SRC:837), $8100 = end of table (JOUSTI.SRC:73).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 7,
+      "verbatim": "COFF\tEQU\t$0200"
+    }
+  },
+  {
+    "id": "PIC-035",
+    "claim": "Collision data (live, not decorative): A mask is a per-scanline (left,right) span pair, 4 bytes/row, values biased by COFF EQU $0200 (JOUSTI.SRC:7) so sentinels are negative: $8000 = no collision this scanline (JOUSTI.SRC:837), $8100 = end of table (JOUSTI.SRC:73).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 837,
+      "verbatim": "CSKIDR\tFDB\t$8000,$8000\tNO COLISION ON THIS LINE"
+    }
+  },
+  {
+    "id": "PIC-036",
+    "claim": "Collision data (live, not decorative): A mask is a per-scanline (left,right) span pair, 4 bytes/row, values biased by COFF EQU $0200 (JOUSTI.SRC:7) so sentinels are negative: $8000 = no collision this scanline (JOUSTI.SRC:837), $8100 = end of table (JOUSTI.SRC:73).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 73,
+      "verbatim": "\tFDB\t$8100,$8100\t\tTERMINATING POINTER"
+    }
+  },
+  {
+    "id": "PIC-037",
+    "claim": "Collision data (live, not decorative): Entity-vs-entity collision is box broad-phase (HITEM, JOUSTRV4.SRC:4909-4923) then span narrow-phase: indirect loads through the frame records' collision pointers (LDY [PPICH,X], JOUSTRV4.SRC:4924,4930), row-aligned ×4 (ASLB pair with a $1F max Y delta,…",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4909,
+      "verbatim": "HITEM\tSTX\tCOLOBJ"
+    }
+  },
+  {
+    "id": "PIC-038",
+    "claim": "Collision data (live, not decorative): …broad-phase (HITEM, JOUSTRV4.SRC:4909-4923) then span narrow-phase: indirect loads through the frame records' collision pointers (LDY [PPICH,X], JOUSTRV4.SRC:4924,4930), row-aligned ×4 (ASLB pair with a $1F max Y delta, JOUSTRV4.SRC:4936-4937), walked by…",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4924,
+      "verbatim": "\tLDY\t[PPICH,X]"
+    }
+  },
+  {
+    "id": "PIC-039",
+    "claim": "Collision data (live, not decorative): …broad-phase (HITEM, JOUSTRV4.SRC:4909-4923) then span narrow-phase: indirect loads through the frame records' collision pointers (LDY [PPICH,X], JOUSTRV4.SRC:4924,4930), row-aligned ×4 (ASLB pair with a $1F max Y delta, JOUSTRV4.SRC:4936-4937), walked by…",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4930,
+      "verbatim": "\tLDX\t[PPICH,U]"
+    }
+  },
+  {
+    "id": "PIC-040",
+    "claim": "Collision data (live, not decorative): …loads through the frame records' collision pointers (LDY [PPICH,X], JOUSTRV4.SRC:4924,4930), row-aligned ×4 (ASLB pair with a $1F max Y delta, JOUSTRV4.SRC:4936-4937), walked by BPCOL (JOUSTRV4.SRC:7043).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4936,
+      "verbatim": "\tSUBB\tPCOLY2,U"
+    }
+  },
+  {
+    "id": "PIC-041",
+    "claim": "Collision data (live, not decorative): …pointers (LDY [PPICH,X], JOUSTRV4.SRC:4924,4930), row-aligned ×4 (ASLB pair with a $1F max Y delta, JOUSTRV4.SRC:4936-4937), walked by BPCOL (JOUSTRV4.SRC:7043).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7043,
+      "verbatim": "BPCOL\tLDD\t2,X"
+    }
+  },
+  {
+    "id": "PIC-042",
+    "claim": "Collision data (live, not decorative): Only the mount collides. Mounted rider overlays carry collision pointer 0 (PLYR1, JOUSTI.SRC:2046);",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2046,
+      "verbatim": "PLYR1\tFDB\t0,$02EF,PLY1R\tRIDER ON SKIDDING HORSE"
+    }
+  },
+  {
+    "id": "PIC-043",
+    "claim": "Collision data (live, not decorative): the dismounted standing rider has a real mask (CEGGMN, JOUSTI.SRC:2159).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2159,
+      "verbatim": "\tFDB\tCEGGMN,$00F5,PLY4S"
+    }
+  },
+  {
+    "id": "PIC-044",
+    "claim": "Collision data (live, not decorative): Masks are shared aggressively: all three flap frames use one table (CWNG1R/2R/3R are one address, JOUSTI.SRC:801-803).",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 801,
+      "verbatim": "CWNG1R"
+    }
+  },
+  {
+    "id": "PIC-045",
+    "claim": "Collision data (live, not decorative): Background collision is a *separate* mechanism: per-X-column RAM tables BCKXTB/LNDXTB (RAMDEF.SRC:372-378) copied from ROM tables per wave (BCKXS1 JOUSTRV4.SRC:7616, LNDXS1 :7787).",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 372,
+      "verbatim": "BCKXD1\tRMB\t$20\tBACKGROUND COLISION AREA -$20 TO -$01"
+    }
+  },
+  {
+    "id": "PIC-046",
+    "claim": "Collision data (live, not decorative): Background collision is a *separate* mechanism: per-X-column RAM tables BCKXTB/LNDXTB (RAMDEF.SRC:372-378) copied from ROM tables per wave (BCKXS1 JOUSTRV4.SRC:7616, LNDXS1 :7787).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7616,
+      "verbatim": "BCKXS1\tEQU\t*"
+    }
+  },
+  {
+    "id": "PIC-047",
+    "claim": "Palette: Hardware: 16 palette bytes, BBGGGRRR, resistor-weighted DACs (williams_v.cpp:342-343).",
+    "source": {
+      "file": "williams_v.cpp",
+      "line": 342,
+      "verbatim": "(MAME williams driver williams_v.cpp:342-343 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "PIC-048",
+    "claim": "Palette: Active game palette = the first operand column of COLOR1 (SYSTEM.SRC:908-923; second column is a dead alternate — the assembler's operand field ends at the first whitespace).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 908,
+      "verbatim": "COLOR1\tFCB\t@000\t@000\tCOLOR 0 - BACKGROUND COLOR"
+    }
+  },
+  {
+    "id": "PIC-049",
+    "claim": "Palette: Decode confirmed by the author's English names: @077 YELLOW PLAYER 1 (JOUSTRV4.SRC:759), @350 LT BLUE PLAYER 2 (:761).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 759,
+      "verbatim": "\tFCB\t@077\t\tYELLOW PLAYER 1 ON H.S.T.D. TABLE"
+    }
+  },
+  {
+    "id": "PIC-050",
+    "claim": "Palette: 4 · @017 · red — \"MAN'S BODY\" (enemy knight, SYSTEM.SRC:912)",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 912,
+      "verbatim": "\tFCB\t@017\t@017\tCOLOR 4 - MAN'S BODY"
+    }
+  },
+  {
+    "id": "PIC-051",
+    "claim": "Palette: JOUSTI.SRC:2054 is PLY1R's image-record header — the 7x7 size word $0707. It identifies the PLY1R rider-body entry and its dimensions ONLY: $0707 is byte-identical across PLY1R/PLY2R/PLY3R and carries no colour information. The nibble evidence is pinned by PIC-068.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2054,
+      "verbatim": "PLY1R\tFDB\t$0707!XDMAFIX"
+    }
+  },
+  {
+    "id": "PIC-052",
+    "claim": "Palette: JOUSTI.SRC:2083 is PLY2R's image-record header — the same 7x7 size word $0707 as PLY1R and PLY3R, identifying the entry and its dimensions only. The distinguishing nibble evidence is pinned by PIC-069.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2083,
+      "verbatim": "PLY2R\tFDB\t$0707!XDMAFIX"
+    }
+  },
+  {
+    "id": "PIC-053",
+    "claim": "Palette: JOUSTI.SRC:2114 is PLY3R's image-record header — the same 7x7 size word $0707 as PLY1R and PLY2R, identifying the entry and its dimensions only. The distinguishing nibble evidence is pinned by PIC-070.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2114,
+      "verbatim": "PLY3R\tFDB\t$0707!XDMAFIX"
+    }
+  },
+  {
+    "id": "PIC-054",
+    "claim": "Palette: Two more palettes ship: HICOLR (high-score page, 8 entries + 8 black, JOUSTRV4.SRC:754-761) and NULL (blanking, :762, used :705-706).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 754,
+      "verbatim": "HICOLR\tFCB\t@000\t\tBACKGROUND"
+    }
+  },
+  {
+    "id": "PIC-055",
+    "claim": "Palette: The only palette cycling in the game is INC RAMCOL+2 once per frame on the high-score page (JOUSTRV4.SRC:727);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 727,
+      "verbatim": "\tINC\tRAMCOL+2\tCONTINUALLY CHANGE 1 COLOR WORD"
+    }
+  },
+  {
+    "id": "PIC-056",
+    "claim": "Palette: the lava shimmer is the LAVA process writing pixels (SYSTEM.SRC:786-904), not a palette effect.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 786,
+      "verbatim": "LAVA\tLDX\t#$00FF\t\tstart at the bottom left edge"
+    }
+  },
+  {
+    "id": "PIC-057",
+    "claim": "Playfield layout (screen 292×240 visible): CLIF1L / CLIF1R (top ledge pair) · JOUSTI.SRC:54,78 · 2,69 / 252,69 · 34×7 / 48×7",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 78,
+      "verbatim": "CLIF1R\tFDB\tCCLF1R,CSRC1R,$7E45,$1807!XDMAFIX\t\tOLD X FC"
+    }
+  },
+  {
+    "id": "PIC-058",
+    "claim": "Playfield layout (screen 292×240 visible): CLIF3L / CLIF3U / CLIF3R · JOUSTI.SRC:160,193,222 · 2,138 / 202,129 / 254,138 · 64×8 / 58×11 / 48×7",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 160,
+      "verbatim": "CLIF3L\tFDB\tCCLF3L,CSRC3L,$018A,$2008!XDMAFIX"
+    }
+  },
+  {
+    "id": "PIC-059",
+    "claim": "Playfield layout (screen 292×240 visible): CLIF3L / CLIF3U / CLIF3R · JOUSTI.SRC:160,193,222 · 2,138 / 202,129 / 254,138 · 64×8 / 58×11 / 48×7",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 193,
+      "verbatim": "CLIF3U\tFDB\tCCLF3R,CSRC3U,$6581,$1D0B!XDMAFIX\t\tOLD X CA"
+    }
+  },
+  {
+    "id": "PIC-060",
+    "claim": "Playfield layout (screen 292×240 visible): CLIF3L / CLIF3U / CLIF3R · JOUSTI.SRC:160,193,222 · 2,138 / 202,129 / 254,138 · 64×8 / 58×11 / 48×7",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 222,
+      "verbatim": "CLIF3R\tFDB\tCCLF3R,CSRC3R,$7F8A,$1807!XDMAFIX\t\tOLD X CA"
+    }
+  },
+  {
+    "id": "PIC-061",
+    "claim": "Playfield layout (screen 292×240 visible): CLIF4 (mid pedestal) · JOUSTI.SRC:254 · 106,163 · 64×8",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 254,
+      "verbatim": "CLIF4\tFDB\tCCLF4,CSRC4,$35A3,$2008!XDMAFIX\t\tOLD X 6A"
+    }
+  },
+  {
+    "id": "PIC-062",
+    "claim": "Playfield layout (screen 292×240 visible): CLIF5 (bottom island: top strip + side caps) · JOUSTI.SRC:288-290 · 54,211 / 54,211 / 224,211 · 186×2 / 16×13 / 16×13",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 288,
+      "verbatim": "\tFDB\t      CSRC5,$1BD3,$5D02!XDMAFIX\t\tTOP"
+    }
+  },
+  {
+    "id": "PIC-063",
+    "claim": "Playfield layout (screen 292×240 visible): BRIDGE / BRIDG2 (lava shore) · JOUSTRV4.SRC:1126-1127 · 0,211 / 240,211 · 54×3 / 60×3 — solid-colour fills, control $1200+LIB*$11",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1126,
+      "verbatim": "BRIDGE\tFDB\t$1200+LIB*$11,0,$00D3,$1B03!XDMAFIX"
+    }
+  },
+  {
+    "id": "PIC-064",
+    "claim": "Playfield layout (screen 292×240 visible): The bulk of CLIFF5 is RLE-compacted: COMCL5 (871 bytes of %-binary FCBs, JOUSTI.SRC:594-740), un-compacted at wave start by VNEWCL5 (JOUSTRV4.SRC:996);",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 594,
+      "verbatim": "COMCL5\tFCB\t%00001110,%10011111,%01110110,%11110111,%00101001,%11000111"
+    }
+  },
+  {
+    "id": "PIC-065",
+    "claim": "Playfield layout (screen 292×240 visible): The bulk of CLIFF5 is RLE-compacted: COMCL5 (871 bytes of %-binary FCBs, JOUSTI.SRC:594-740), un-compacted at wave start by VNEWCL5 (JOUSTRV4.SRC:996);",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 996,
+      "verbatim": "\tJSR\tVNEWCL5\t\tUN-COMPACT CLIF5"
+    }
+  },
+  {
+    "id": "PIC-066",
+    "claim": "Playfield layout (screen 292×240 visible): the manual background loop draws the rest and stops before CLIF5 (JOUSTRV4.SRC:1008-1011).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1008,
+      "verbatim": "\tLDU\t#CLIF1L\t\tPUT UP ALL OF THE BACKGROUND MANNUALLY"
+    }
+  },
+  {
+    "id": "PIC-067",
+    "claim": "Frame inventory (contact-sheet checklist — 91 blocks): Ostrich (JOUSTI.SRC:759) · 18 (9 states × 2 facings) · 14 · run1-4, skid, fly1, fly3 (R+L)",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 759,
+      "verbatim": "OSTRICH\tEQU\t*"
+    }
+  },
+  {
+    "id": "PIC-071",
+    "claim": "Playfield: WCLFTB heads the per-wave cliff destroy/create data table (JOUSTRV4.SRC:2407+) — four records (WCLFTB, WCLFT2, WCLFT3, WCLFT4) covering CLIF1L, CLIF1R, CLIF2 and CLIF4, each pairing an FCB control triple with an FDB (cliff image, transporter) pair. Only CLIF2's transporter field holds a live pointer (CURTR1); the other three are 0. Added because the open-ended 'N+' linespec form is invisible to the AC-2 extractor regex, so this citation would otherwise be silently uncovered (see jt1-8's negative canary).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2407,
+      "verbatim": "WCLFTB\tFCB\tWBCL1L,$01,$03"
+    }
+  },
+  {
+    "id": "PIC-068",
+    "claim": "Palette: PLY1R's rider-body pixel rows are drawn in nibble 5 — the colour evidence for the rider-nibble → palette-entry mapping. The preceding line (JOUSTI.SRC:2054) is the 7x7 size header $0707, byte-identical across all three riders and carrying no colour information.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2055,
+      "verbatim": "\tFCB\t$00,$55,$50,$00,$00,$00,$00"
+    }
+  },
+  {
+    "id": "PIC-069",
+    "claim": "Palette: PLY2R's rider-body pixel rows are drawn in nibble 7 — distinct from PLY1R's nibble 5 and PLY3R's nibble 4, which is what makes the rider-nibble → palette-entry mapping legible.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2084,
+      "verbatim": "\tFCB\t$00,$77,$70,$00,$00,$00,$00"
+    }
+  },
+  {
+    "id": "PIC-070",
+    "claim": "Palette: PLY3R's rider-body pixel rows are drawn in nibble 4 — distinct from PLY1R's nibble 5 and PLY2R's nibble 7.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2115,
+      "verbatim": "\tFCB\t$00,$44,$40,$00,$00,$00,$00"
+    }
+  }
+]

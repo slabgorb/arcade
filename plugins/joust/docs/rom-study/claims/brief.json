@@ -1,0 +1,290 @@
+[
+  {
+    "id": "BRF-001",
+    "claim": "Credits, in the author's own header (JOUSTRV4.SRC:5-11, identical in RV1-3): Williams Electronics 1982 · game designer John Newcomer · main programmer Bill Pfutzenreuter · other programmers Cary Kolker, Ken Lantz · started Feb 10, 1982.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5,
+      "verbatim": "*\tWILLIAMS ELECTRONICS 1982"
+    }
+  },
+  {
+    "id": "BRF-002",
+    "claim": "Revision — four program revisions, three shipped label sets: MAME preserves three shipped sets (williams.cpp:4013-4015): joust (Green label, parent), jousty (Yellow), joustr (Red) — all GAME( 1982, … \"Williams\" … ROT0 …).",
+    "source": {
+      "file": "williams.cpp",
+      "line": 4013,
+      "verbatim": "(MAME williams driver williams.cpp:4013-4015 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "BRF-003",
+    "claim": "Revision: TB12REV1 carries the date stamp 07/21/82 for the RV1/RV2 family. (The T12REV1 ROMTAB entry the same dossier sentence names — $6000 PROM sum $22 — is a different file and line, pinned by BRF-032.)",
+    "source": {
+      "file": "TB12REV1.SRC",
+      "line": 394,
+      "verbatim": "\tFCB\t$00,$10,$72,$12\t\t07/21/82"
+    }
+  },
+  {
+    "id": "BRF-004",
+    "claim": "Revision — four program revisions, three shipped label sets: RV3, RV4 · T12REV3, TB12REV3 · Red 3006-28..39 (joustr); RV4 is the shipped red program · RV3/RV4 fudge $6000 to sum $85 (JOUSTRV3.SRC:1140, JOUSTRV4.SRC:1136); RV4's patch-area fudge targets $D000 sum $3D (JOUSTRV4.SRC:6278) — both match T12REV3's ROMTAB (FCB…",
+    "source": {
+      "file": "JOUSTRV3.SRC",
+      "line": 1140,
+      "verbatim": "\tFCB\t$CE\tFUDGE TO MAKE THIS PROM ($6000) ADD UP TO $85"
+    }
+  },
+  {
+    "id": "BRF-005",
+    "claim": "Revision — four program revisions, three shipped label sets: RV3, RV4 · T12REV3, TB12REV3 · Red 3006-28..39 (joustr); RV4 is the shipped red program · RV3/RV4 fudge $6000 to sum $85 (JOUSTRV3.SRC:1140, JOUSTRV4.SRC:1136); RV4's patch-area fudge targets $D000 sum $3D (JOUSTRV4.SRC:6278) — both match T12REV3's ROMTAB (FCB…",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1136,
+      "verbatim": "\tFCB\t$99\tFUDGE TO MAKE THIS PROM ($6000) ADD UP TO $85"
+    }
+  },
+  {
+    "id": "BRF-006",
+    "claim": "Revision — four program revisions, three shipped label sets: …is the shipped red program · RV3/RV4 fudge $6000 to sum $85 (JOUSTRV3.SRC:1140, JOUSTRV4.SRC:1136); RV4's patch-area fudge targets $D000 sum $3D (JOUSTRV4.SRC:6278) — both match T12REV3's ROMTAB (FCB $60,$85 / FCB $D0,$3D); TB12REV3 stamps 09/10/82…",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6278,
+      "verbatim": "\tFCB\t$F3\t(ZAPPER) FUDGE TO GET THIS PART ($D000) ADD UP TO $3D"
+    }
+  },
+  {
+    "id": "BRF-007",
+    "claim": "Revision: TB12REV3 carries the date stamp 09/10/82 for the RV3/RV4 family, sitting in the DEFHSR/DEFGOD default-high-score table. (The T12REV3 ROMTAB rows the same dossier sentence names are a different file — no B — pinned by BRF-030 and BRF-031.)",
+    "source": {
+      "file": "TB12REV3.SRC",
+      "line": 394,
+      "verbatim": "\tFCB\t$00,$10,$91,$02\t\t09/10/82 NEW REV. TO HANDEL"
+    }
+  },
+  {
+    "id": "BRF-008",
+    "claim": "Revision — four program revisions, three shipped label sets: …— both match T12REV3's ROMTAB (FCB $60,$85 / FCB $D0,$3D); TB12REV3 stamps 09/10/82 (TB12REV3.SRC:394); RV4 patch area dated 10/29/82 (JOUSTRV4.SRC:6270)",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6270,
+      "verbatim": "\tORG\t$D760\tMODULE \"ATT.SRC\" ENDED AT $D6EF ON 10/29/82"
+    }
+  },
+  {
+    "id": "BRF-009",
+    "claim": "What shipped: The author's own assembly map (JOUST.DOC:14-21): seven modules — JOUSTI.SRC (images), MESSAGE.SRC (strings/font/routines), TB12.SRC (game utilities), JOUST.SRC (the game), ATT.SRC (attract marquee), SYSTEM.SRC (beam interference / process / IRQ overhead),…",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 14,
+      "verbatim": "\tFILES TO ASSEMBLE;"
+    }
+  },
+  {
+    "id": "BRF-010",
+    "claim": "What shipped: Include graph (all verified): game modules pull the *short* twins — JOUSTRV4.SRC:15-17 includes SHRAMDEF.SRC, SHORTEQU.SRC (\"CMOS\"), MESSEQU.SRC — while system/support modules pull the full ones: SYSTEM.SRC:12-13 (RAMDEF, EQU), MESSAGE.SRC:3-6 + PHRASE at…",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 15,
+      "verbatim": "\tINCLUDE\tSHRAMDEF.SRC\tDONT FORGET STANDARD DEFINITIONS"
+    }
+  },
+  {
+    "id": "BRF-011",
+    "claim": "What shipped: …the *short* twins — JOUSTRV4.SRC:15-17 includes SHRAMDEF.SRC, SHORTEQU.SRC (\"CMOS\"), MESSEQU.SRC — while system/support modules pull the full ones: SYSTEM.SRC:12-13 (RAMDEF, EQU), MESSAGE.SRC:3-6 + PHRASE at :1176, ATT.SRC:6-8, T12REV*:3-6, TB12REV*:2-5.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 12,
+      "verbatim": "\tINCLUDE\tRAMDEF.SRC\tDONT FORGET STANDARD DEFINITIONS"
+    }
+  },
+  {
+    "id": "BRF-012",
+    "claim": "What shipped: …includes SHRAMDEF.SRC, SHORTEQU.SRC (\"CMOS\"), MESSEQU.SRC — while system/support modules pull the full ones: SYSTEM.SRC:12-13 (RAMDEF, EQU), MESSAGE.SRC:3-6 + PHRASE at :1176, ATT.SRC:6-8, T12REV*:3-6, TB12REV*:2-5.",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 3,
+      "verbatim": "\tINCLUDE RAMDEF.SRC"
+    }
+  },
+  {
+    "id": "BRF-013",
+    "claim": "What shipped: …SHORTEQU.SRC (\"CMOS\"), MESSEQU.SRC — while system/support modules pull the full ones: SYSTEM.SRC:12-13 (RAMDEF, EQU), MESSAGE.SRC:3-6 + PHRASE at :1176, ATT.SRC:6-8, T12REV*:3-6, TB12REV*:2-5.",
+    "source": {
+      "file": "ATT.SRC",
+      "line": 6,
+      "verbatim": "\tINCLUDE RAMDEF.SRC"
+    }
+  },
+  {
+    "id": "BRF-014",
+    "claim": "What shipped: JOUST.DOC:26,28,30 warns \"BEWARE OF JOUST.SRC\" on the short twins.",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 26,
+      "verbatim": "\t SHRAMDEF.SRC\t- A SHORTENED VERSION OF RAMDEF (BEWARE OF JOUST.SRC)"
+    }
+  },
+  {
+    "id": "BRF-015",
+    "claim": "What shipped: JOUST.DOC:26,28,30 warns \"BEWARE OF JOUST.SRC\" on the short twins.",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 28,
+      "verbatim": "\t SHORTEQU.SRC\t- A SHORTENED VERSION OF EQU.SRC (BEWARE OF JOUST.SRC)"
+    }
+  },
+  {
+    "id": "BRF-016",
+    "claim": "What shipped: JOUST.DOC:26,28,30 warns \"BEWARE OF JOUST.SRC\" on the short twins.",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 30,
+      "verbatim": "\t MESSEQU2.SRC\t- LETTER & TEXT DEFINITIONS (BEWARE OF JOUST.SRC)"
+    }
+  },
+  {
+    "id": "BRF-017",
+    "claim": "What shipped: ROM address map (MAME ROM_START( joust ), williams.cpp:3006-3027): twelve 4K program EPROMs — 1-9 at $0000-$8FFF, 10-12 at $D000-$FFFF.",
+    "source": {
+      "file": "williams.cpp",
+      "line": 3006,
+      "verbatim": "(MAME williams driver williams.cpp:3006-3027 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "BRF-018",
+    "claim": "What shipped: The sound board source is absent. JOUSTSND.DOC:2 says only SEE [LIBRARY.SOUND]VSNDRM4.SRC;",
+    "source": {
+      "file": "JOUSTSND.DOC",
+      "line": 2,
+      "verbatim": "SEE [LIBRARY.SOUND]VSNDRM4.SRC"
+    }
+  },
+  {
+    "id": "BRF-019",
+    "claim": "What shipped: JOUST.DOC:33 names JOUSTSND.SRC - ENTIRE 4K SOUND ROM (6800 PROCESSOR).",
+    "source": {
+      "file": "JOUST.DOC",
+      "line": 33,
+      "verbatim": "\t JOUSTSND.SRC\t- ENTIRE 4K SOUND ROM (6800 PROCESSOR)"
+    }
+  },
+  {
+    "id": "BRF-020",
+    "claim": "What shipped: MAME confirms the shipped chip is the *shared* Williams board ROM video_sound_rom_4_std_780.ic12 (williams.cpp:3022) — sound ground truth will lean on MAME's board emulation + that ROM's behavior (open question).",
+    "source": {
+      "file": "williams.cpp",
+      "line": 3022,
+      "verbatim": "(MAME williams driver williams.cpp:3022 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "BRF-021",
+    "claim": "Radix — Motorola conventions, three bases in live use: All three appear in shipped data: decimal loop constants (50$ LDX #14285/2 1/2 SEC DEBOUNCE, JOUSTRV4.SRC:1830), hex addresses everywhere, and octal pixel rows in the image sources (FCB @000,@377,@160,… — OSTRICH.SRC).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1830,
+      "verbatim": "50$\tLDX\t#14285/2\t\t1/2 SEC DEBOUNCE"
+    }
+  },
+  {
+    "id": "BRF-022",
+    "claim": "Radix — Motorola conventions, three bases in live use: Operators: !H(x) high byte (RAMDEF.SRC:116 SETDP !H(BASE)), !X XOR-family (OSTRICH.SRC $0814!XDMAFIX);",
+    "source": {
+      "file": "RAMDEF.SRC",
+      "line": 116,
+      "verbatim": "\tSETDP\t!H(BASE)\tDEFAULT DP FOR ASSEMBLER"
+    }
+  },
+  {
+    "id": "BRF-023",
+    "claim": "Timebase — 60.10 Hz video, a \"4 ms\" VA11 IRQ, nap-scheduled processes: Board facts (MAME): master clock 12 MHz (williams.cpp:1531), MC6809E at 12/3/4 = 1.0 MHz E-clock (:1537);",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1531,
+      "verbatim": "(MAME williams driver williams.cpp:1531 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  },
+  {
+    "id": "BRF-024",
+    "claim": "Timebase — 60.10 Hz video, a \"4 ms\" VA11 IRQ, nap-scheduled processes: Source side: the PIA is initialized to interrupt on VA11's low-high edge only — \"ENABLE PIA'S 4MS INTERUPT LOW-HIGH EDGE\" (SYSTEM.SRC:95) — so the \"4 ms\" IRQ fires on a subset of VA11 toggles, ~4 per frame;",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 95,
+      "verbatim": "\tLDB\t#%00110101\tBUT ENABLE PIA'S 4MS INTERUPT LOW-HIGH EDGE"
+    }
+  },
+  {
+    "id": "BRF-025",
+    "claim": "Timebase — 60.10 Hz video, a \"4 ms\" VA11 IRQ, nap-scheduled processes: the IRQ handler walks display DMA by quadrant (\"BUMP QUADRANT COUNTER (SAME AS VERT COUNTER)\", SYSTEM.SRC:715) and updates color RAM \"ON VERTICAL LINE 0\" (SYSTEM.SRC:589).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 715,
+      "verbatim": "IRQSKD\tLDA\t>ISQCNT\t\tBUMP QUADRANT COUNTER (SAME AS VERT COUNTER)"
+    }
+  },
+  {
+    "id": "BRF-026",
+    "claim": "Timebase — 60.10 Hz video, a \"4 ms\" VA11 IRQ, nap-scheduled processes: the IRQ handler walks display DMA by quadrant (\"BUMP QUADRANT COUNTER (SAME AS VERT COUNTER)\", SYSTEM.SRC:715) and updates color RAM \"ON VERTICAL LINE 0\" (SYSTEM.SRC:589).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 589,
+      "verbatim": "\tLBNE\tIRQ2\t\tUPDATE COLOR RAM ON VERTICAL LINE 0"
+    }
+  },
+  {
+    "id": "BRF-027",
+    "claim": "What the author already told us: the game re-keys these every revision (EORA #$B6 in RV2 → EORA #$A1 \"JZAPPER DATA\", JOUSTRV4.SRC:1741).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1741,
+      "verbatim": "\tEORA\t#$A1\t\tJZAPPER DATA"
+    }
+  },
+  {
+    "id": "BRF-028",
+    "claim": "What the author already told us: The sting is deliberately subtle: on mismatch JZAP executes INC LXPOS2+1 (JOUSTRV4.SRC:1743) — corrupt one position byte and return, so bootlegs degrade mysteriously.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1743,
+      "verbatim": "\tINC\tLXPOS2+1\t"
+    }
+  },
+  {
+    "id": "BRF-029",
+    "claim": "What the author already told us: T12REV* is the $F000 \"TEST ROM … INCLUDING AUDITING AND ADJUSTMENTS\" (T12REV1.SRC:1) — diagnostics, operator bookkeeping, H.S.T.D.",
+    "source": {
+      "file": "T12REV1.SRC",
+      "line": 1,
+      "verbatim": "\tNAM\tF000 TEST ROM FOR 'JOUST' INCLUDING AUDITING AND ADJUSTMENTS"
+    }
+  },
+  {
+    "id": "BRF-030",
+    "claim": "Revision: T12REV3's ROMTAB expects the $6000 PROM to sum to $85 — the target RV3/RV4's fudge byte (JOUSTRV3.SRC:1140, JOUSTRV4.SRC:1136) is computed to hit. This is the real ROMTAB row; TB12REV3.SRC:394 is a date stamp in the default-high-score table, not a ROMTAB entry.",
+    "source": {
+      "file": "T12REV3.SRC",
+      "line": 421,
+      "verbatim": "\tFCB\t$60,$85\t6000"
+    }
+  },
+  {
+    "id": "BRF-032",
+    "claim": "Revision: T12REV1's ROMTAB expects the $6000 PROM to sum to $22 — the RV1/RV2-family counterpart of T12REV3's $85, and the row the dossier's 'T12REV1 ROMTAB expects $6000 PROM sum $22' actually rests on.",
+    "source": {
+      "file": "T12REV1.SRC",
+      "line": 421,
+      "verbatim": "\tFCB\t$60,$22\t6000"
+    }
+  },
+  {
+    "id": "BRF-031",
+    "claim": "Revision: T12REV3's ROMTAB expects the $D000 PROM to sum to $3D — the target RV4's patch-area fudge (JOUSTRV4.SRC:6278) is computed to hit.",
+    "source": {
+      "file": "T12REV3.SRC",
+      "line": 428,
+      "verbatim": "\tFCB\t$D0,$3D\tD000"
+    }
+  }
+]

@@ -1,0 +1,200 @@
+[
+  {
+    "id": "JT36-01",
+    "claim": "CLIFER reads each ASH byte as (length = hi nybble) | (color = lo nybble) — JOUSTRV4.SRC:4605.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4605,
+      "verbatim": "2$\tLDA\t,Y+\tlo nybble is color, hi nybble is length"
+    }
+  },
+  {
+    "id": "JT36-02",
+    "claim": "A $00 ASH byte (length and color both 0) ends the image — JOUSTRV4.SRC:4606.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4606,
+      "verbatim": "\tBEQ\t1$\tlength & color equ 0, end of image"
+    }
+  },
+  {
+    "id": "JT36-03",
+    "claim": "The ash colour is the LOW nybble, isolated by ANDA #$0F — JOUSTRV4.SRC:4607.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4607,
+      "verbatim": "\tANDA\t#$0F"
+    }
+  },
+  {
+    "id": "JT36-04",
+    "claim": "The run length is the HIGH nybble, extracted by ANDA #$F0 (then four LSRA) — JOUSTRV4.SRC:4611.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4611,
+      "verbatim": "\tANDA\t#$F0\tlength nybble is extracted"
+    }
+  },
+  {
+    "id": "JT36-05",
+    "claim": "A length-nybble-0 byte ends the LINE, the next row one down (BNE 3$) — JOUSTRV4.SRC:4616.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4616,
+      "verbatim": "\tBNE\t3$\tif length equ 0, end of line"
+    }
+  },
+  {
+    "id": "JT36-06",
+    "claim": "The LAST byte of a run is always one pixel (CMPA #1) — JOUSTRV4.SRC:4622.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4622,
+      "verbatim": "\tCMPA\t#1\tlast byte is always one pixel to enhance debris image"
+    }
+  },
+  {
+    "id": "JT36-07",
+    "claim": "That last byte keeps only its high nybble (ANDB #$F0) — JOUSTRV4.SRC:4624.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4624,
+      "verbatim": "\tANDB\t#$F0\trequirements"
+    }
+  },
+  {
+    "id": "JT36-08",
+    "claim": "PTEASH computes the ash animation destination — JOUSTRV4.SRC:1411.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1411,
+      "verbatim": "PTEASH\tLDD\tPPOSX,U\t\tGET DESTINATION OF ANIMATION"
+    }
+  },
+  {
+    "id": "JT36-09",
+    "claim": "PTEASH JMPs into CLIFER, the cliff run-length blitter — JOUSTRV4.SRC:1419.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1419,
+      "verbatim": "\tJMP\tCLIFER"
+    }
+  },
+  {
+    "id": "JT36-10",
+    "claim": "The ptero dissolve is a 3 FRAME ANIMATION (LDA #3) — JOUSTRV4.SRC:1388.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1388,
+      "verbatim": "\tLDA\t#3\t\t3 FRAME ANIMATION"
+    }
+  },
+  {
+    "id": "JT36-11",
+    "claim": "The dissolve data pointer is ASH1R — pterodactyl ashes to ashes (LDD ASH1R) — JOUSTRV4.SRC:1390.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1390,
+      "verbatim": "\tLDD\tASH1R\t\tPTERODACTYL ASHES TO ASHES"
+    }
+  },
+  {
+    "id": "JT36-12",
+    "claim": "Each ASH frame is drawn by BSR PTEASH — JOUSTRV4.SRC:1393.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1393,
+      "verbatim": "\tBSR\tPTEASH"
+    }
+  },
+  {
+    "id": "JT36-13",
+    "claim": "The frame is held PCNAP 2 after the first draw — JOUSTRV4.SRC:1394.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1394,
+      "verbatim": "\tPCNAP\t2"
+    }
+  },
+  {
+    "id": "JT36-14",
+    "claim": "And PCNAP 6 after the redraw — 2+6 = 8 naps per frame — JOUSTRV4.SRC:1398.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1398,
+      "verbatim": "\tPCNAP\t6\t\twhile we sleep a little"
+    }
+  },
+  {
+    "id": "JT36-15",
+    "claim": "DEATH4 is the pterodactyl death dispatch — JOUSTRV4.SRC:2941.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2941,
+      "verbatim": "DEATH4\tPSHS\tX,U\tSAVE (REG.X VICTOR, & REG.U DEAD GUY)"
+    }
+  },
+  {
+    "id": "JT36-16",
+    "claim": "DEATH4 shows a dead pterodactyl by dispatching PJOY to PTEKLL (LDD #PTEKLL) — JOUSTRV4.SRC:2944.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2944,
+      "verbatim": "\tLDD\t#PTEKLL\t\tSHOW A DEAD PTERODACTYL!!!!!!!!!!!!!"
+    }
+  },
+  {
+    "id": "JT36-17",
+    "claim": "PTEKLL is the shared ptero/baiter death dance (COM PFACE,U) — JOUSTRV4.SRC:1369.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1369,
+      "verbatim": "PTEKLL\tCOM\tPFACE,U"
+    }
+  },
+  {
+    "id": "JT36-18",
+    "claim": "The baiter branch tests PCHASE — killed a baiter? — JOUSTRV4.SRC:1370.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1370,
+      "verbatim": "\tLDA\tPCHASE,U\tKILLED A BAITER?"
+    }
+  },
+  {
+    "id": "JT36-19",
+    "claim": "A killed baiter DECrements the live-baiter count NBAIT — JOUSTRV4.SRC:1372.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1372,
+      "verbatim": "\tDEC\tNBAIT"
+    }
+  },
+  {
+    "id": "JT36-20",
+    "claim": "The ASH1R/L run-length data begins PTERA1 with FCB $D0,$1C,$01 — JOUSTI.SRC:2781.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2781,
+      "verbatim": "\tFCB\t$D0,$1C,$01"
+    }
+  },
+  {
+    "id": "JT36-21",
+    "claim": "The image pointer table points at ASH1R, a dissolving pterodactyl (FDB ASH1R) — JOUSTI.SRC:48.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 48,
+      "verbatim": "\tFDB\tASH1R\tA DISOULVING PTERODACTYL"
+    }
+  },
+  {
+    "id": "JT36-22",
+    "claim": "The image pointer table points at ASH1L, the mirrored dissolve (FDB ASH1L) — JOUSTI.SRC:49.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 49,
+      "verbatim": "\tFDB\tASH1L\tA DISOULVING PTERODACTYL "
+    }
+  }
+]

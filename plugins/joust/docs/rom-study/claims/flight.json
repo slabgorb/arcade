@@ -1,0 +1,425 @@
+[
+  {
+    "id": "JT5-001",
+    "claim": "Flap impulse: ADDFLP reads PTIMUP — frames aloft — as the input to the vertical impulse, which is what makes lift DECAY the longer a bird hovers.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6429,
+      "verbatim": "ADDFLP\tLDB\tPTIMUP,U\tNOW CALC GAINED Y VELOCITY"
+    }
+  },
+  {
+    "id": "JT5-002",
+    "claim": "Flap impulse: the multiplier is 256*96/255, which the assembler folds to 96. With MUL and the high-byte take on the next lines this yields (PTIMUP*96)>>8.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6430,
+      "verbatim": "\tLDA\t#256*96/255\tCALC NBR -96 TO 0 FROM 0 TO 255"
+    }
+  },
+  {
+    "id": "JT5-003",
+    "claim": "Flap impulse: TFR A,B then CLRA keeps only the HIGH byte of the 16-bit product — the >>8 of the impulse formula.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6432,
+      "verbatim": "\tTFR\tA,B"
+    }
+  },
+  {
+    "id": "JT5-004",
+    "claim": "Flap impulse: SUBD #96 makes the result range from -96 (PTIMUP 0, strongest) to nearly 0 (PTIMUP 255, spent). DECIMAL.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6434,
+      "verbatim": "\tSUBD\t#96\t\tNEW DELTA-Y, USE IN GRAVITY CALC"
+    }
+  },
+  {
+    "id": "JT5-005",
+    "claim": "Flap impulse: ADDD PVELY — the impulse is ADDED to existing velocity, not assigned. A bird already falling at 500 flaps to 404, not to -96.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6435,
+      "verbatim": "\tADDD\tPVELY,U"
+    }
+  },
+  {
+    "id": "JT5-006",
+    "claim": "Flap steering: ASLA doubles the normalised joystick, so a flap moves the FLYX index by exactly +/-2 rungs.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6438,
+      "verbatim": "\tASLA"
+    }
+  },
+  {
+    "id": "JT5-007",
+    "claim": "Flap steering, the REJECTION clamp: BGT returns WITHOUT storing, so a result past +MAXVX leaves the index entirely UNCHANGED. This is rejection, not saturation — a player at +8 who flaps right stays at +8, and the top rung is reachable only from exactly one rung below. The branch comment reads 'BR=NO' and is inverted; trust the branch.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6442,
+      "verbatim": "\tBGT\tADXMX2\t\t BR=NO"
+    }
+  },
+  {
+    "id": "JT5-008",
+    "claim": "Flap steering: the mirror-image rejection for the negative bound — BLT past -MAXVX returns without storing. Note the rejection is HORIZONTAL only: the vertical impulse was already committed above, so a rejected flap still lifts.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6447,
+      "verbatim": "\tBLT\tADXMX2\t\t BR=NO"
+    }
+  },
+  {
+    "id": "JT5-009",
+    "claim": "PTIMUP: incremented once per airborne frame — the tick count that decays the flap impulse.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6476,
+      "verbatim": "AIRTIM\tINC\tPTIMUP,U\tNBR OF TICKS IN THE AIR"
+    }
+  },
+  {
+    "id": "JT5-010",
+    "claim": "PTIMUP saturation: on overflow the counter is decremented straight back to 255 rather than wrapping. Wrapping would hand a fully-spent flapper a brand-new full-strength impulse.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6478,
+      "verbatim": "\tDEC\tPTIMUP,U\tNO OVERFLOW, JUST SATURATE"
+    }
+  },
+  {
+    "id": "JT5-011",
+    "claim": "Gravity pair: with the flap button HELD the gravity offset is CLEARED — wings down, GRAV alone. This is the glide.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6170,
+      "verbatim": "FLAPS2\tCLRB\t\t\tNO OFFSET TO GRAVITY"
+    }
+  },
+  {
+    "id": "JT5-012",
+    "claim": "Gravity pair: with the button RELEASED the offset is $04 — wings up, GRAV+4. Holding the button therefore exactly halves the fall rate. The pair is an OFFSET to GRAV, not two independent constants.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6197,
+      "verbatim": "FLIPS2\tLDB\t#$04\t\tOFFSET TO GRAVITY"
+    }
+  },
+  {
+    "id": "JT5-013",
+    "claim": "Gravity integration: ADDGRA adds the gravity byte to the 16-bit Y velocity, and ADDGRX then adds that velocity to the 8.8 Y position. No cap and no damping appear anywhere in the chain — there is no terminal velocity.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6489,
+      "verbatim": "ADDGRA\tADDB\tGRAV\t\tADD IN VARIABLE GRAVITY"
+    }
+  },
+  {
+    "id": "JT5-014",
+    "claim": "Gravity: GRAV is initialised to 4. DECIMAL. Despite the 'VARIABLE GRAVITY' comment at the add site its only writer is this init.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 952,
+      "verbatim": "\tLDA\t#4\t\tINITILIZE GRAVITY"
+    }
+  },
+  {
+    "id": "JT5-015",
+    "claim": "FLYX ladder: the table STARTS here, four entries BEFORE the FLYX label, at index -8 = -$0200 (2 px/frame left). HEX, signed 16-bit.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7150,
+      "verbatim": "\tFDB\t-$0200"
+    }
+  },
+  {
+    "id": "JT5-016",
+    "claim": "FLYX ladder: the FLYX label sits on the ZERO entry, not the table start — the index is SIGNED and reads backwards for leftward flight. A transcription treating this label as element 0 and storing nine entries forward is wrong for EVERY leftward flight while reading like a sensible ladder. LNDXS3 has the same zero-point-label shape; it is a Williams house convention.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7154,
+      "verbatim": "FLYX\tFDB\t$0000"
+    }
+  },
+  {
+    "id": "JT5-017",
+    "claim": "FLYX ladder: the final entry, index +8 = $0200. The rungs double at each step, giving +/-{2.0, 1.0, 0.5, 0.25, 0} px/frame — a non-linear ladder, not a linear velocity.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7158,
+      "verbatim": "\tFDB\t$0200"
+    }
+  },
+  {
+    "id": "JT5-018",
+    "claim": "Flight X integration: the FLYX word is fetched by SIGNED index from the ladder base.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6513,
+      "verbatim": "\tLDD\tA,X"
+    }
+  },
+  {
+    "id": "JT5-019",
+    "claim": "Flight X integration: the ladder word's LOW byte accumulates into PVELX+2, the sub-pixel accumulator that lives in the VELOCITY rather than the position. This is why X and Y use different position formats — only whole pixels ever reach PPOSX.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6514,
+      "verbatim": "\tADDB\tPVELX+2,U\tADD IN FRACTIONAL DISTANCE"
+    }
+  },
+  {
+    "id": "JT5-020",
+    "claim": "Flight X integration: ADCA #0 carries the sub-pixel overflow into the whole-pixel delta, which is what makes the shallow rungs advance a pixel every few frames instead of every frame.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6516,
+      "verbatim": "\tADCA\t#0\t\tCARRY TO POSITION X"
+    }
+  },
+  {
+    "id": "JT5-021",
+    "claim": "Takeoff: a flap-initiated launch sets Y velocity to -$0080. HEX, negative meaning upward.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6124,
+      "verbatim": "\tLDD\t#-$0080\t\tINITIAL Y VELOCITY"
+    }
+  },
+  {
+    "id": "JT5-022",
+    "claim": "Takeoff: DEC PPOSY+1 lifts the entity one WHOLE pixel out of the landing band. Without this lift the entity re-lands on the same frame it took off.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6126,
+      "verbatim": "STKILL\tDEC\tPPOSY+1,U\tJUMP UP 1 PIXEL (GET OUT OF LANDING AREA)"
+    }
+  },
+  {
+    "id": "JT5-023",
+    "claim": "Walk-off: STFALL clears the fractional distances but performs NO lift — the entity simply stops being supported, which is what makes stepping off a ledge feel different from jumping.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6144,
+      "verbatim": "1$\tCLR\tPPOSY+2,U\tRESET FRACTIONAL DISTANCES"
+    }
+  },
+  {
+    "id": "JT5-024",
+    "claim": "Walk-off: the initial Y velocity is ZERO. A walk-off is not an accelerating fall that has already begun.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6150,
+      "verbatim": "\tSTD\tPVELY,U\t\tINITIAL Y VELOCITY"
+    }
+  },
+  {
+    "id": "JT5-025",
+    "claim": "Ground state machine: the STATE macro row is wait, animation call, three direction targets, and the FLYX index the state hands to flight on takeoff.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7161,
+      "verbatim": "\tFCB\tWAIT,!HCALL,!WCALL,MINUS-*,ZERO-*,PLUS-*,FLYVEL"
+    }
+  },
+  {
+    "id": "JT5-026",
+    "claim": "Ground state machine: PLYAR is the reversing state — 8 frames of REVR before settling to the standing state.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7163,
+      "verbatim": "PLYAR\tSTATE\t8,REVR,PLYBR,PLYBR,PLYBR,0"
+    }
+  },
+  {
+    "id": "JT5-027",
+    "claim": "Ground state machine: PLYFR is the fastest run — 1 frame per step, and it hands FLYX index 8 to flight, the ladder's top rung.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7168,
+      "verbatim": "PLYFR\tSTATE\t1,RUNR,PLYIR,PLYFR,PLYFR,8"
+    }
+  },
+  {
+    "id": "JT5-028",
+    "claim": "Ground state machine: PLYMR is the last skid state, settling back toward standing. The skid chain is what gives a hard landing its slide.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7175,
+      "verbatim": "PLYMR\tSTATE\t4,SKIDR,PLYBR,PLYBR,PLYCR,2"
+    }
+  },
+  {
+    "id": "JT5-029",
+    "claim": "Ground movement: ORRUN's rows pair an animation frame with a per-frame X delta; the first is the standstill-to-frame-1 entry with delta 0.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7185,
+      "verbatim": "ORRUN\tFCB\tRUN1,0\t\tINITIAL FRAME FROM STANDSTILL TO FRAME 1"
+    }
+  },
+  {
+    "id": "JT5-030",
+    "claim": "Ground movement: the largest run delta is 3 pixels, on the frame-3-to-4 transition. The deltas 0/3/2/1/2 are what make the run cycle visibly uneven.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7186,
+      "verbatim": "\tFCB\tRUN4,3\t\tPIXEL JUMP FROM FRAME 3 TO 4 (PFRAME 2 TO 1)"
+    }
+  },
+  {
+    "id": "JT5-031",
+    "claim": "Ground movement: the skid frame carries an X delta of 2, packed with its picture index as SKID*256+2.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7242,
+      "verbatim": "\tLDD\t#SKID*256+2\tGET CORRECT DELTA X & PICTURE FOR SKID"
+    }
+  },
+  {
+    "id": "JT5-032",
+    "claim": "Landing conversion: FRCONV's first entry is the standing state — a landing at rest. The table maps incoming horizontal speed to a ground state.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6253,
+      "verbatim": "FRCONV\tFDB\tPLYBR\tSTAND STILL"
+    }
+  },
+  {
+    "id": "JT5-033",
+    "claim": "Landing conversion: FRCONV's last entry is the fastest running state, so a bird landing at full speed keeps running rather than stopping dead.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6257,
+      "verbatim": "\tFDB\tPLYFR\tNAP 1 - FASTEST SPEED"
+    }
+  },
+  {
+    "id": "JT5-034",
+    "claim": "Joust resolution: a skidding mount records PLANTZ 2 — it sits two pixels lower, which decides who wins a joust. jt1-5 records it; jt2 consumes it.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6071,
+      "verbatim": "\tLDB\t#2\t\tSKIDDING OSTRICH HAS A LANTZ 2 PIXELS LOWER"
+    }
+  },
+  {
+    "id": "JT5-035",
+    "claim": "Input contract: the two joystick direction bits are masked to $03 before normalisation.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7261,
+      "verbatim": "P2NJMP\tANDA\t#$03\t\tCONVERT JOYSTICK TO + (RIGHT), 0, - (LEFT)"
+    }
+  },
+  {
+    "id": "JT5-036",
+    "claim": "Input contract: ASRA then SBCA #0 maps the raw bits to -1/0/+1. Notably raw 3 — BOTH directions held — normalises to 0, so a shell that implements 'last pressed wins' does not match the ROM.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7262,
+      "verbatim": "\tASRA\t\t\t VIA MATHAMATICAL EXPRESSION"
+    }
+  },
+  {
+    "id": "JT5-037",
+    "claim": "Landing X map: LNDXS1 is ONE contiguous 352-byte table covering CRT pixel -$20 through $13F — not a family of per-wave variants. Confirmed by the RAM declarations LNDXD1 $20 + LNDXTB $140 = 352 (RAMDEF.SRC:376-378).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7787,
+      "verbatim": "LNDXS1\tEQU\t*"
+    }
+  },
+  {
+    "id": "JT5-038",
+    "claim": "Landing X map: the first data row is CRT pixel -$20, i.e. the table's index origin is 32 pixels left of screen zero.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7788,
+      "verbatim": "\tFCB\t%10001001,%10001001,%10001001,%10001001\tCRT PIXEL -$20"
+    }
+  },
+  {
+    "id": "JT5-039",
+    "claim": "Landing X map: LNDXS3 is a LABEL INTO the table at the zero point, not a separate table — the same zero-point-label shape as FLYX.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7799,
+      "verbatim": "LNDXS3\tFCB\t%10001001,%10001001,%10001001,%10001001\tCRT PIXEL $00"
+    }
+  },
+  {
+    "id": "JT5-040",
+    "claim": "Landing X map: LNDXS2 is the END MARKER immediately after the 352 bytes, exactly parallel to the RAM bound LNDXD2. The story's framing of LNDXS1/2/3 as three per-wave sources was wrong.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7879,
+      "verbatim": "LNDXS2\tEQU\t*"
+    }
+  },
+  {
+    "id": "JT5-041",
+    "claim": "Background X map: BCKXS1 is the collision counterpart of LNDXS1, same 352-byte shape and origin.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 7616,
+      "verbatim": "BCKXS1\tEQU\t*"
+    }
+  },
+  {
+    "id": "JT5-042",
+    "claim": "Wave init: LNDXUP copies the ROM landing table into its RAM buffer at wave start.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 987,
+      "verbatim": "LNDXUP\tLDA\tLNDXS1-LNDXD1,X"
+    }
+  },
+  {
+    "id": "JT5-043",
+    "claim": "Wave init: the copy ORs in bit 5 — 'FOR NOW, CLIFF 5 LANDS AT ALL POINTS'. Omitting this makes the bottom island unlandable outside its own X span, which surfaces as entities falling through the world. Per-cliff destruction is a later read-modify-write that only ever REMOVES bits.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 988,
+      "verbatim": "\tORA\t#$20\t\tFOR NOW, CLIFF 5 LANDS AT ALL POINTS"
+    }
+  },
+  {
+    "id": "JT5-044",
+    "claim": "Ground test: CKGND ANDs the X-direction landing mask with the Y-direction one; the result is the mask the landing dispatch consumes.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6705,
+      "verbatim": "\tLDA\tLNDXTB,X\tSTARTING TO LAND ON A CLIFF?"
+    }
+  },
+  {
+    "id": "JT5-045",
+    "claim": "Landing sets PTIMUP to 1, not zero — the \"MINIMUM DOWN TIME\" — so the first flap after touchdown is computed from timeUp=1 (STLDIR).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6245,
+      "verbatim": "\tLDA\t#1\t\tMINIMUM DOWN TIME"
+    }
+  },
+  {
+    "id": "JT5-046",
+    "claim": "Walking off a ledge CLEARS PTIMUP (STFALL) — a saturated glide does not carry its spent impulse into the fall; the next flap is full strength.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6154,
+      "verbatim": "\tCLR\tPTIMUP,U\tNEEDS TO BE DONE"
+    }
+  },
+  {
+    "id": "JT6-001",
+    "claim": "Render: the visible raster is 292x240 pixels. EXTERNAL secondary source — the MAME williams driver states the board-level geometry the 1982 program source never does, so this is schema-only and never byte-opened. It is the logical backbuffer size the shell scales by an integer factor.",
+    "source": {
+      "file": "williams.cpp",
+      "line": 1556,
+      "verbatim": "(MAME williams driver williams.cpp:1556 — external secondary source: not in the vendored 1982 tree, schema-only, never byte-opened)"
+    }
+  }
+]

@@ -1,0 +1,233 @@
+// src/main.ts
+//
+// Story jt2-7 (GREEN, Julia) — the wave-1 demo, playable. main.ts is now a thin
+// SHELL over the pure core: it seeds the wave-1 demo wiring with a shell-owned
+// seed, steps it once per video frame through the shell timebase, and RENDERS the
+// resulting process list — players, buzzard-rider enemies and eggs — from the
+// transcribed ENTITY_RECORDS through the existing atlas path.
+//
+// The demo IS the sim (src/core/demo.ts): main.ts never runs its own stepping
+// loop, so "the demo loop and the sim must not diverge" (the jt2-1 carried seam)
+// is structural, not a discipline. SHELL owns the clock: wall time accumulates
+// here and the core is stepped in whole video frames — core never reads a clock.
+
+import { ENTITY_RECORDS, PALETTES, COMCL5, expandComcl5 } from './core/pictures.js'
+import { drawList, type DrawOp } from './core/demo.js'
+import { createGame, stepGame, overlayReadout, type GameState } from './core/game.js'
+import { pumpFrames } from './shell/timebase.js'
+import {
+  LOGICAL_HEIGHT,
+  LOGICAL_WIDTH,
+  buildGameAtlas,
+  configureContext,
+  paintDissolve,
+  reshapeRagged,
+  rgbaPalette,
+  viewport,
+} from './shell/render.js'
+import { mapPlayer1, mapPlayer2 } from './shell/input.js'
+
+const canvas = document.querySelector<HTMLCanvasElement>('#game')
+if (!canvas) throw new Error('index.html must host a <canvas id="game">')
+const context = canvas.getContext('2d')
+if (!context) throw new Error('2d canvas context unavailable')
+configureContext(context)
+
+// Everything is drawn into a fixed 292x240 backbuffer and blitted to the
+// visible canvas at an INTEGER scale, so the 1982 pixels stay square.
+const logical = document.createElement('canvas')
+logical.width = LOGICAL_WIDTH
+logical.height = LOGICAL_HEIGHT
+const logicalContextOrNull = logical.getContext('2d')
+if (!logicalContextOrNull) throw new Error('2d context unavailable for the backbuffer')
+const logicalContext: CanvasRenderingContext2D = logicalContextOrNull
+configureContext(logicalContext)
+
+const colours = rgbaPalette(PALETTES.COLOR1)
+const atlas = buildGameAtlas()
+
+// The atlas as an ImageBitmap-able surface, so blits are a drawImage rather
+// than a per-pixel loop.
+const atlasCanvas = document.createElement('canvas')
+atlasCanvas.width = atlas.width
+atlasCanvas.height = atlas.height
+const atlasContext = atlasCanvas.getContext('2d')
+if (!atlasContext) throw new Error('2d context unavailable for the atlas')
+const atlasImage = atlasContext.createImageData(atlas.width, atlas.height)
+atlasImage.data.set(atlas.data)
+atlasContext.putImageData(atlasImage, 0, 0)
+
+// CLIF5's compacted island, expanded once and reshaped out of its ragged rows.
+const island = expandComcl5(COMCL5.bytes)
+const islandGrid = reshapeRagged(island.pixels, island.width, island.height, island.rowLengths)
+
+/** Draw one raster block at a whole-pixel destination. */
+function blit(name: string, x: number, y: number, heightOverride?: number): void {
+  const slot = atlas.blocks[name]
+  if (!slot) return
+  // CSRC5L holds 14 rows while its record draws 13 — the caller passes the
+  // RECORD height so the extra row is carried but never shown.
+  const height = heightOverride ?? slot.height
+  logicalContext.drawImage(atlasCanvas, slot.x, slot.y, slot.width, height, x, y, slot.width, height)
+}
+
+/** The pixel-source block for a named ENTITY_RECORDS frame (transcribed data only). */
+function entitySource(name: string): string | undefined {
+  return ENTITY_RECORDS.find((r) => r.name === name)?.source
+}
+
+/**
+ * Blit one ordered render op from the core's `drawList`. An ENTITY_RECORDS frame
+ * name resolves to its transcribed pixel-source block; an atlas block (a stork
+ * mount frame, an arena tile source) blits directly. A left-facer (`op.facing`
+ * of -1) is MIRRORED horizontally here: every buzzard/ostrich/stork atlas frame
+ * is drawn right-facing, so the flip is the shell's job (jt2-9 — the SELECTION
+ * incl. facing is DATA on the op; the mirror is the only canvas step).
+ */
+function blitOp(op: DrawOp): void {
+  const name = entitySource(op.name) ?? op.name
+  if (op.facing === -1) {
+    const slot = atlas.blocks[name]
+    if (!slot) return
+    const height = op.height ?? slot.height
+    logicalContext.save()
+    logicalContext.translate(op.x + slot.width, op.y)
+    logicalContext.scale(-1, 1)
+    logicalContext.drawImage(atlasCanvas, slot.x, slot.y, slot.width, height, 0, 0, slot.width, height)
+    logicalContext.restore()
+    return
+  }
+  blit(name, op.x, op.y, op.height)
+}
+
+/**
+ * The bottom lava island (COMCL5's expanded stream, not the atlas) — drawn as the
+ * FOREGROUND after the sprites so it occludes entities behind its front edge.
+ */
+function drawIsland(): void {
+  for (let row = 0; row < island.height; row++) {
+    for (let column = 0; column < island.width; column++) {
+      const nibble = islandGrid[row * island.width + column]
+      if (nibble === 0) continue
+      const colour = colours[nibble]
+      logicalContext.fillStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
+      logicalContext.fillRect(54 + column, 211 + row, 1, 1)
+    }
+  }
+}
+
+// The dev-overlay palette index — the colour-5 rider nibble (PLYR1), a transcribed
+// COLOR1 entry, NOT an invented literal (so the denylist scan stays clean).
+const OVERLAY_COLOUR_INDEX = 5
+
+/**
+ * Draw the DEV-OVERLAY: each player's score + lives and the wave number, read
+ * STRAIGHT off the GameState through the pure `overlayReadout` projection — the shell
+ * keeps NO score/lives counters of its own, so the readout cannot drift from the sim
+ * (routing≠geometry). The authentic MESSAGE.SRC score row is jt5; this is the dev bar.
+ */
+function drawOverlay(state: GameState): void {
+  const readout = overlayReadout(state)
+  const colour = colours[OVERLAY_COLOUR_INDEX]
+  logicalContext.fillStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
+  logicalContext.font = '8px monospace'
+  logicalContext.textBaseline = 'top'
+  logicalContext.fillText(`WAVE ${readout.wave}`, 4, 2)
+  for (const p of readout.players) {
+    const digits = p.score.toString().padStart(6, '0')
+    logicalContext.fillText(`P${p.player} ${digits} MEN ${p.lives}`, 4, 2 + p.player * 10)
+  }
+}
+
+// ─── The game: seeded, stepped and rendered from the SESSION layer ────────────
+//
+// jt4-5 MIGRATION (Dev/Korben, Design Deviation — the jt2-7 precedent where main.ts's
+// stepping seam moved and its source-text pin was widened): the shell now drives the
+// SESSION layer — `createGame` + `stepGame` from core/game — NOT the raw sim it drove
+// before (`createWaveDemo` / `stepDemo` from core/demo). The jt2-1 one-sim seam still
+// holds: `stepGame` internally WRAPS the demo's `stepDemo` over a `createWaveDemo`-built
+// sim, so there is no divergent second stepping path — and the dev-overlay reads the
+// per-player score/lives/wave registers straight off the GameState it steps (no
+// shell-side game state). A fixed shell-owned seed replays the same run each load; core
+// mints no entropy, so the seed crosses the boundary from here.
+const SEED = 0x1a2b_3c4d
+let game: GameState = createGame(SEED)
+
+// The player process ids (stable across a life; a respawn re-enters the same id),
+// so keyboard input maps to the right processes each frame.
+const [player1Id, player2Id] = game.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
+let prevFlap1 = false
+let prevFlap2 = false
+
+const held = new Set<string>()
+window.addEventListener('keydown', (e) => {
+  held.add(e.code)
+  if (e.code === 'Space') e.preventDefault()
+})
+window.addEventListener('keyup', (e) => held.delete(e.code))
+
+const MAX_CATCHUP_SECONDS = 0.25
+let accumulator = 0
+let last = 0
+let started = false
+
+const frame = (now: number): void => {
+  if (!started) {
+    started = true
+    last = now
+  } else {
+    const elapsed = Math.min((now - last) / 1000, MAX_CATCHUP_SECONDS)
+    last = now
+    accumulator = pumpFrames(accumulator, elapsed, () => {
+      const in1 = mapPlayer1(held, prevFlap1)
+      const in2 = mapPlayer2(held, prevFlap2)
+      game = stepGame(game, { [player1Id]: in1, [player2Id]: in2 })
+      prevFlap1 = in1.flapHeld
+      prevFlap2 = in2.flapHeld
+    })
+  }
+
+  logicalContext.fillStyle = `rgb(${colours[0].r} ${colours[0].g} ${colours[0].b})`
+  logicalContext.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT)
+  // Render BY the core's ordered draw list (back platforms → entity sprites →
+  // foreground platforms) — the render SELECTION lives in the pure core
+  // (enemyFrame/playerDrawList/drawList), never by-eye in the shell.
+  for (const op of drawList(game.sim)) {
+    // The dissolve's ASH1R is a runlength stream — not in the atlas, so blitOp
+    // would silently skip it (jt3-7 B1). Decode + paint it via expandAshFrames
+    // here, the ASH twin of the COMCL5 island path, indexed by op.frame.
+    if (op.name === 'ASH1R') paintDissolve(logicalContext, op, colours)
+    else blitOp(op)
+  }
+  // The bottom island is the front-most layer, occluding entities behind it.
+  drawIsland()
+  // The dev-overlay reads the session registers straight off the stepped GameState.
+  drawOverlay(game)
+
+  canvas.width = canvas.clientWidth
+  canvas.height = canvas.clientHeight
+  configureContext(context)
+  const view = viewport(canvas.width, canvas.height)
+  // The letterbox is palette index 0's colour (the 1982 background), not an
+  // invented literal — so the widened denylist scan covers this file too.
+  context.fillStyle = `rgb(${colours[0].r} ${colours[0].g} ${colours[0].b})`
+  context.fillRect(0, 0, canvas.width, canvas.height)
+  context.drawImage(
+    logical,
+    0,
+    0,
+    LOGICAL_WIDTH,
+    LOGICAL_HEIGHT,
+    view.offsetX,
+    view.offsetY,
+    LOGICAL_WIDTH * view.scale,
+    LOGICAL_HEIGHT * view.scale,
+  )
+
+  requestAnimationFrame(frame)
+}
+
+// The shell's clock, and the only one: pumpFrames drains wall time into whole
+// simulation steps at the ROM's own video rate. Core is never asked what time
+// it is.
+requestAnimationFrame(frame)

@@ -1,0 +1,218 @@
+[
+  {
+    "id": "JT3-001",
+    "claim": "COMCL5 expansion: NEWCL5 hard-codes the CLIFF5 start X pixel as $1B*2 = 54 — one of the two independent source statements that corroborate the expanded island's origin (the other is CLIF5's own dest word $1BD3).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 927,
+      "verbatim": "NEWCL5\tLDX\t#$1B*2\t\tSTART X PIXEL POSITION ON SCREEN"
+    }
+  },
+  {
+    "id": "JT3-002",
+    "claim": "COMCL5 expansion: NEWCL5 hard-codes the start Y pixel as $D3 = 211, the scanline the bottom island begins on.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 928,
+      "verbatim": "\tLDY\t#$D3\t\tSTART Y PIXEL POSITION ON SCREEN"
+    }
+  },
+  {
+    "id": "JT3-003",
+    "claim": "COMCL5 stream format: the run-length codeword opens with a UNARY prefix — INCA counts one more encoded length per bit until a 1 bit is found (UNCLP). This is what makes the stream Elias-gamma coded rather than the value/run byte pairs a first reading suggests.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 941,
+      "verbatim": "10$\tINCA\t\t\t1 MORE ENCODED LENGTH"
+    }
+  },
+  {
+    "id": "JT3-004",
+    "claim": "COMCL5 stream format: the decoded gamma codeword is TWO more than the run length — \"CODEWORD & RUN LENGTH ARE TWO OFF\". A decoder that skipped this subtraction over-draws every run by two pixels.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 949,
+      "verbatim": "\tSUBA\t#2\t\tCODEWORD & RUN LENGTH ARE TWO OFF"
+    }
+  },
+  {
+    "id": "JT3-005",
+    "claim": "COMCL5 stream format: exactly three further bits carry the colour code, read by the same REST routine as the run length.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 951,
+      "verbatim": "\tLDA\t#3\t\tGET 3 BIT COLOR ??NIBBLE??"
+    }
+  },
+  {
+    "id": "JT3-006",
+    "claim": "COMCL5 stream format: a run length of zero means end-of-line, or end-of-image when the three colour bits are also zero — the two terminators are distinguished only by the colour field.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 956,
+      "verbatim": "\tANDA\t#$07\t\t\"END OF LINE\" OR \"END OF IMAGE\"?"
+    }
+  },
+  {
+    "id": "JT3-007",
+    "claim": "COMCL5 colour mapping: ADDA #8-1 maps colour codes 1..7 onto palette nibbles 8..14, while code 0 stays nibble 0. This is why the expansion can only ever emit the alphabet {0} u {8..14} — a decoder omitting this step emits 1..7 and produces a plausible image in entirely the wrong colours.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 966,
+      "verbatim": "\tADDA\t#8-1"
+    }
+  },
+  {
+    "id": "JT3-008",
+    "claim": "COMCL5 stream format: REST seeds the accumulator with an implicit leading 1 before shifting in the fetched bits — the Elias-gamma reconstruction step.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 1013,
+      "verbatim": "\tLDA\t#1\t\tRUN LENGTH START BIT"
+    }
+  },
+  {
+    "id": "JT3-009",
+    "claim": "COMCL5 expansion: on end-of-line the destination advances exactly one scanline (LEAY 1,Y) and X reloads to the start of the line, which is what makes the expanded island rows ragged rather than a padded rectangle.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 959,
+      "verbatim": "\tLEAY\t1,Y\t\tNEXT PIXEL LINE"
+    }
+  },
+  {
+    "id": "JT3-010",
+    "claim": "ASH1R/ASH1L format, stated by the author: the pterodactyl-dissolve stream is one byte per run — LOW nibble is the colour, HIGH nibble is the length. This closes open-questions §5, which recorded the format as undecoded.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4605,
+      "verbatim": "2$\tLDA\t,Y+\tlo nybble is color, hi nybble is length"
+    }
+  },
+  {
+    "id": "JT3-011",
+    "claim": "ASH1R/ASH1L format: a byte of $00 (length and colour both zero) terminates the image.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4606,
+      "verbatim": "\tBEQ\t1$\tlength & color equ 0, end of image"
+    }
+  },
+  {
+    "id": "JT3-012",
+    "claim": "ASH1R/ASH1L format: the colour nibble is replicated into both halves of the byte by multiplying by 17 ($0A -> $AA), so a run writes whole BYTES — two pixels at a time — not single pixels.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4608,
+      "verbatim": "\tLDB\t#17\treplicate lo nybble ($0A-=-$AA) for color"
+    }
+  },
+  {
+    "id": "JT3-013",
+    "claim": "ASH1R/ASH1L format: a length nibble of zero means end-of-line; the destination then advances one scanline.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4616,
+      "verbatim": "\tBNE\t3$\tif length equ 0, end of line"
+    }
+  },
+  {
+    "id": "JT3-014",
+    "claim": "ASH1R/ASH1L format: the LAST byte of every run is masked to its high nibble alone, so each run ends on a single pixel rather than a full byte — \"last byte is always one pixel to enhance debris image\". This is why run lengths counted as pixels give ragged, inconsistent row widths.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4622,
+      "verbatim": "\tCMPA\t#1\tlast byte is always one pixel to enhance debris image"
+    }
+  },
+  {
+    "id": "JT3-015",
+    "claim": "ASH1R/ASH1L format: the destination advances by $100 per byte because Williams images are stored column-major — the blitter walks down a column, not across a row.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4626,
+      "verbatim": "\tLEAX\t$100,X\tnext location is over 1 as our images are horizontally"
+    }
+  },
+  {
+    "id": "JT3-016",
+    "claim": "ASH1R/ASH1L consumer: the pterodactyl death path loads ASH1R into its frame pointer, the trace that identifies which game state consumes the dissolve stream.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1390,
+      "verbatim": "\tLDD\tASH1R\t\tPTERODACTYL ASHES TO ASHES"
+    }
+  },
+  {
+    "id": "JT3-017",
+    "claim": "Transcription hazard: CCLF1L's collision mask opens here, and its comment runs off the end of the line without a continuation marker.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 65,
+      "verbatim": "CCLF1L\tFDB\t10+COFF,35+32+COFF\tCLIF1L STARTS -9 TO 33 PIXEL (INCLUDING "
+    }
+  },
+  {
+    "id": "JT3-018",
+    "claim": "Transcription hazard: the tail of the previous line's comment sits alone in the LABEL column, indistinguishable by shape from a real label. A transcription honouring it truncates CCLF1L's 8-row mask to ONE row and attributes the other seven to an invented symbol — a wrong collision mask that is still well-formed, so nothing downstream complains.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 66,
+      "verbatim": "ZERO)"
+    }
+  },
+  {
+    "id": "JT3-019",
+    "claim": "Transcription hazard: the second comment-wrap case, whose tail lands on the following line.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 89,
+      "verbatim": "CCLF1R\tFDB\t1+COFF,36+32+COFF\t\tCLIF1R GOES 10 MORE PIXELS OFF S"
+    }
+  },
+  {
+    "id": "JT3-020",
+    "claim": "Transcription hazard: CREEN is comment-wrap debris in the label column, but unlike ZERO) it is a well-formed uppercase identifier, so NO shape heuristic can separate it from a real label. The discriminator that works is semantic: a real label is referenced somewhere in the file, comment debris is referenced by nothing.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 90,
+      "verbatim": "CREEN"
+    }
+  },
+  {
+    "id": "JT3-021",
+    "claim": "CLIFF5 sub-record: the left-side cap CSRC5L is drawn as 8 bytes by 13 scanlines ($080D pre-XORed with DMAFIX), but the CSRC5L data below holds FOURTEEN rows of 8. The record draws 13 of the 14 available rows; the transcription keeps all 112 bytes rather than truncating to the record.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 289,
+      "verbatim": "\tFDB\t      CSRC5L,$1BD3,$080D!XDMAFIX\tLEFT SIDE"
+    }
+  },
+  {
+    "id": "JT3-022",
+    "claim": "CLIFF5 sub-record: this is the fourteenth and final row of CSRC5L data — the row CLIF5s 13-scanline sub-record never draws.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 320,
+      "verbatim": "\tFCB\t$00,$00,$00,$00,$00,$00,$00,$0E"
+    }
+  },
+  {
+    "id": "JT3-023",
+    "claim": "Palette: the NULL palette of sixteen zero entries begins here, immediately after HICOLR's eight live entries — which is why the high-score page palette reads as 8 live colours followed by 8 black.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 762,
+      "verbatim": "NULL\tFCB\t@000"
+    }
+  },
+  {
+    "id": "JT3-024",
+    "claim": "Image module extent: LENGTH EQU * marks the end of the merged images module, the running total the transcription must reach to prove no trailing block was dropped.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2817,
+      "verbatim": "LENGTH\tEQU\t*\tCURRENT TOTAL LENGTH OF IMAGES"
+    }
+  }
+]

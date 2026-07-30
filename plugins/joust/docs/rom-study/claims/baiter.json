@@ -1,0 +1,299 @@
+[
+  {
+    "id": "JT35-001",
+    "claim": "AC-1 cap: the baiter count compare is CMPA #3-1 — \"ONLY ALLOW 3 BAITERS ON THE SCREEN\", so 3-1=2 is the last allowed on-screen index (JOUSTRV4.SRC:2108).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2108,
+      "verbatim": "\tCMPA\t#3-1\t\tONLY ALLOW 3 BAITERS ON THE SCREEN"
+    }
+  },
+  {
+    "id": "JT35-002",
+    "claim": "AC-1 cap: BHI 11$ refuses the 4th baiter when NBAIT is higher than 2 — \"3 BAITERS ON SCREEN, BUT READY\", leaving the send-off ready (JOUSTRV4.SRC:2109).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2109,
+      "verbatim": "\tBHI\t11$\t\t BR=3 BAITERS ON SCREEN, BUT READY"
+    }
+  },
+  {
+    "id": "JT35-003",
+    "claim": "AC-1 tag: the baiter is stamped with LDA #-1, the PCHASE = -1 marker literal (JOUSTRV4.SRC:2112).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2112,
+      "verbatim": "\tLDA\t#-1"
+    }
+  },
+  {
+    "id": "JT35-004",
+    "claim": "AC-1 tag: STA PCHASE,Y writes the -1 into PCHASE — \"BAITER TYPE PTERODACTYL'S\", the flag every anti-farming patch gates on (JOUSTRV4.SRC:2113).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2113,
+      "verbatim": "\tSTA\tPCHASE,Y\tBAITER TYPE PTERODACTYL'S"
+    }
+  },
+  {
+    "id": "JT35-005",
+    "claim": "AC-1 nap: EMYOK PCNAP 8 sleeps the send-off clock 8 display frames per tick — the /8 in the BAITBL SECONDS*60/8 literal (JOUSTRV4.SRC:2096).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2096,
+      "verbatim": "EMYOK\tPCNAP\t8"
+    }
+  },
+  {
+    "id": "JT35-006",
+    "claim": "AC-1 schedule (V4): the first live BAITBL row is FDB 1*60/8 — \"A FASTER SEND OFF OF BAITERS (V4)\", the fierce 1-second front of the collapse (JOUSTRV4.SRC:2150).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2150,
+      "verbatim": "\tFDB\t1*60/8\t\t\tA FASTER SEND OFF OF BAITERS (V4)"
+    }
+  },
+  {
+    "id": "JT35-007",
+    "claim": "AC-1 schedule (V4): the second live BAITBL row is FDB 1*60/8 — \"THIS IS PATCH7\", naming the 15s->1s collapse patch (JOUSTRV4.SRC:2151).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2151,
+      "verbatim": "\tFDB\t1*60/8\t\t\tTHIS IS PATCH7"
+    }
+  },
+  {
+    "id": "JT35-008",
+    "claim": "AC-1 schedule (V4): the wave-N seed row BWAVN FDB 30*60/8 anchors the unchanged 30/45/60 tail of the V4 BAITBL table (JOUSTRV4.SRC:2161).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2161,
+      "verbatim": "BWAVN\tFDB\t30*60/8"
+    }
+  },
+  {
+    "id": "JT35-009",
+    "claim": "AC-1 provenance (RV3): the RV3 original BAITBL is preserved behind ******** — FDB 1*60/8 \"MAKE THE BAITER MORE FIERCE\", the classic-green schedule the V4 collapse rewrote (JOUSTRV4.SRC:2135).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2135,
+      "verbatim": "********\tFDB\t1*60/8\t\tMAKE THE BAITER MORE FIERCE"
+    }
+  },
+  {
+    "id": "JT35-010",
+    "claim": "AC-1 provenance (RV3): a ******** RV3 row FDB 15*60/8 — one of the seven 15-second mid-game rungs the V4 rewrite collapsed to 1 second (JOUSTRV4.SRC:2139).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2139,
+      "verbatim": "********\tFDB\t15*60/8"
+    }
+  },
+  {
+    "id": "JT35-011",
+    "claim": "AC-1 provenance (RV3): the ******** RV3 wave-N seed BWAVN FDB 30*60/8 — the 30/45/60 tail unchanged across the collapse (JOUSTRV4.SRC:2146).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2146,
+      "verbatim": "********BWAVN\tFDB\t30*60/8"
+    }
+  },
+  {
+    "id": "JT35-012",
+    "claim": "AC-1 offsets: BAISBL FCB (BWAVN-BAITBL-2)/2 is the wave-N BAITBL start offset — index 10 into the 14-row table (JOUSTRV4.SRC:2167).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2167,
+      "verbatim": "BAISBL\tFCB\t(BWAVN-BAITBL-2)/2\tSTART OFFSET FOR WAVE N"
+    }
+  },
+  {
+    "id": "JT35-013",
+    "claim": "AC-1 offsets: FCB (BWAV2-BAITBL-2)/2 is the wave-2 BAITBL start offset — index 11 (JOUSTRV4.SRC:2168).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2168,
+      "verbatim": "\tFCB\t(BWAV2-BAITBL-2)/2\tSTART OFFSET FOR WAVE 2"
+    }
+  },
+  {
+    "id": "JT35-014",
+    "claim": "AC-1 offsets: FCB (BWAV1-BAITBL-2)/2 is the wave-1 BAITBL start offset — index 12, the slow wave-1 start (JOUSTRV4.SRC:2169).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2169,
+      "verbatim": "\tFCB\t(BWAV1-BAITBL-2)/2\tSTART OFFSET FOR WAVE 1"
+    }
+  },
+  {
+    "id": "JT35-015",
+    "claim": "AC-2 header: the patch block is titled \"PATCHES TO PREVENT PLAYER FROM PTERODACTYL HUNTING\" — the six PCHASE-gated anti-farming patches (JOUSTRV4.SRC:6268).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6268,
+      "verbatim": "*\tPATCHES TO PREVENT PLAYER FROM PTERODACTYL HUNTING"
+    }
+  },
+  {
+    "id": "JT35-016",
+    "claim": "AC-2 PATCH9 gate: PATCH9 TST PCHASE,U — \"NON-BAITERS IGNORE THIS\", the TST/BEQ gate opening the seek-timer patch (JOUSTRV4.SRC:6296).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6296,
+      "verbatim": "PATCH9\tTST\tPCHASE,U\tNON-BAITERS IGNORE THIS"
+    }
+  },
+  {
+    "id": "JT35-017",
+    "claim": "AC-2 PATCH9 seek-timer: DEC PPVELX,U decrements the seek timer each attack, \"CONTINUE NEXT SEEK TIMER\" (JOUSTRV4.SRC:6298).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6298,
+      "verbatim": "\tDEC\tPPVELX,U\tCONTINUE NEXT SEEK TIMER"
+    }
+  },
+  {
+    "id": "JT35-018",
+    "claim": "AC-2 PATCH9 saturate: INC PPVELX,U restores the timer after a DEC to zero — saturating it at 1, never 0 (JOUSTRV4.SRC:6300).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6300,
+      "verbatim": "\tINC\tPPVELX,U"
+    }
+  },
+  {
+    "id": "JT35-019",
+    "claim": "AC-2 PATCH8 gate: PATCH8 TST PCHASE,U — \"THIS ONLY APPLIES TO BAITERS\", gating the first-pass-miss patch (JOUSTRV4.SRC:6307).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6307,
+      "verbatim": "PATCH8\tTST\tPCHASE,U\tTHIS ONLY APPLIES TO BAITERS"
+    }
+  },
+  {
+    "id": "JT35-020",
+    "claim": "AC-2 PATCH8 first-pass-miss: LDA #138 — \"DELAY TILL PTERODACTYL IS 1/2 WAY ACROSS SCREEN\", making the baiter miss its first pass (JOUSTRV4.SRC:6309).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6309,
+      "verbatim": "\tLDA\t#138\t\tDELAY TILL PTERODACTYL IS 1/2 WAY ACROSS SCREEN"
+    }
+  },
+  {
+    "id": "JT35-021",
+    "claim": "AC-2 PATCH8 provenance: 10$ STA PPVELX,U carries the displaced pre-patch write inline as \"(RESTORE OLD INSTRUCTION)\" (JOUSTRV4.SRC:6310).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6310,
+      "verbatim": "10$\tSTA\tPPVELX,U\t(RESTORE OLD INSTRUCTION)"
+    }
+  },
+  {
+    "id": "JT35-022",
+    "claim": "AC-2 PATCH7 collapse: \"MAKE BAITERS COME OUT MORE QUICKLY, TYPICAL OLD TIME 4 MIN\" documents the V4 schedule collapse intent (JOUSTRV4.SRC:6313).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6313,
+      "verbatim": "*\t7TH PATCH, MAKE BAITERS COME OUT MORE QUICKLY, TYPICAL OLD TIME 4 MIN"
+    }
+  },
+  {
+    "id": "JT35-023",
+    "claim": "AC-2 PATCH7 is a table: PATCH7 EQU * — \"NO CODE MODIFIED, JUST A TABLE\", the 15s->1s BAITBL rewrite itself (JOUSTRV4.SRC:6317).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6317,
+      "verbatim": "PATCH7\tEQU\t*\t\tNO CODE MODIFIED, JUST A TABLE"
+    }
+  },
+  {
+    "id": "JT35-024",
+    "claim": "AC-2 PATCH6 provenance: PATCH6 BLO 10$ — \"BR=TRACK ON LINE 2 (RESTORE OLD 2 INSTRUCTIONS)\", the displaced pre-patch branch kept inline (JOUSTRV4.SRC:6323).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6323,
+      "verbatim": "PATCH6\tBLO\t10$\t\tBR=TRACK ON LINE 2 (RESTORE OLD 2 INSTRUCTIONS)"
+    }
+  },
+  {
+    "id": "JT35-025",
+    "claim": "AC-2 PATCH6 gate: 10$ TST PCHASE,U — \"AGAIN, THIS IS ONLY FOR BAITERS\", gating the lane-reroute (JOUSTRV4.SRC:6327).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6327,
+      "verbatim": "10$\tTST\tPCHASE,U\tAGAIN, THIS IS ONLY FOR BAITERS"
+    }
+  },
+  {
+    "id": "JT35-026",
+    "claim": "AC-2 PATCH6 lane-reroute: 20$ LDA #$88 — \"NEW LINE TO TRACK FOR LOWER CLIFFS\", the flank drop to the lower cliffs line (JOUSTRV4.SRC:6334).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6334,
+      "verbatim": "20$\tLDA\t#$88\t\tNEW LINE TO TRACK FOR LOWER CLIFFS"
+    }
+  },
+  {
+    "id": "JT35-027",
+    "claim": "AC-2 PATCH6 plain lane: 30$ LDA #AOFFL2-2 is the plain line-2 track (=$7F) the non-baiter fall-through and mid-band use (JOUSTRV4.SRC:6337).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6337,
+      "verbatim": "30$\tLDA\t#AOFFL2-2\tASSUME NEAR TRACKING LINE 2"
+    }
+  },
+  {
+    "id": "JT35-028",
+    "claim": "AC-2 PATCH5 provenance: PATCH5 STA PEGG,U — \"RESTORE OLD INSTRUCTION\", the displaced write kept ahead of the slow-dive gate (JOUSTRV4.SRC:6344).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6344,
+      "verbatim": "PATCH5\tSTA\tPEGG,U\t\tRESTORE OLD INSTRUCTION"
+    }
+  },
+  {
+    "id": "JT35-029",
+    "claim": "AC-2 PATCH5 gate: TST PCHASE,U — \"AND AGAIN, THIS DOES NOT PERTAIN TO NON-BAITERS\", gating the slow-dive (JOUSTRV4.SRC:6345).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6345,
+      "verbatim": "\tTST\tPCHASE,U\tAND AGAIN, THIS DOES NOT PERTAIN TO NON-BAITERS"
+    }
+  },
+  {
+    "id": "JT35-030",
+    "claim": "AC-2 PATCH5 slow-dive: ASR PVELY+0,U begins the ASR/ROR pair (run twice) that signed-divides the Y velocity by 4 (JOUSTRV4.SRC:6347).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6347,
+      "verbatim": "\tASR\tPVELY+0,U\t"
+    }
+  },
+  {
+    "id": "JT35-031",
+    "claim": "AC-2 PATCH4 gate: PATCH4 TST PCHASE,U — \"HOWEVER, THIS PATCH IS NOT USED ON NON-BAITERS\", gating the aim-lower (JOUSTRV4.SRC:6357).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6357,
+      "verbatim": "PATCH4\tTST\tPCHASE,U\tHOWEVER, THIS PATCH IS NOT USED ON NON-BAITERS"
+    }
+  },
+  {
+    "id": "JT35-032",
+    "claim": "AC-2 PATCH4 aim-lower: ADDB #2 — \"JUST LOWER THE ATTACK WINDOW BY 2 PIXELS\", the leg-aim adjustment (JOUSTRV4.SRC:6359).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6359,
+      "verbatim": "\tADDB\t#2\t\tJUST LOWER THE ATTACK WINDOW BY 2 PIXELS"
+    }
+  },
+  {
+    "id": "JT35-033",
+    "claim": "AC-2 PATCH4 provenance: 10$ STB PRDIR,U carries the displaced pre-patch write inline as \"(RESTORE OLD INSTRUCTION)\" (JOUSTRV4.SRC:6360).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6360,
+      "verbatim": "10$\tSTB\tPRDIR,U\t\tX=PDIST, Y=PRDIR (RESTORE OLD INSTRUCTION)"
+    }
+  }
+]
