@@ -1,5 +1,26 @@
 # Story jt8-6 Context
 
+> ## ⚠ CORRECTION (2026-07-29, TEA/RED) — READ BEFORE THE ACs BELOW
+>
+> **The ACs below are `sm-setup`-derived (the story YAML carries none) and AC-1, AC-2 and AC-5 are
+> refuted by the ROM they cite. Do not implement them.** The authority for this story is the
+> `## Design Deviations` and `## Tea Assessment` sections of `.session/jt8-6-session.md`, plus the
+> headers of `tests/demo-jt8-6.test.ts` and `tests/demo-jt8-6-source.test.ts`.
+>
+> - **AC-1/AC-2 (re-home onto `DemoSim` so the count survives a death) — REFUTED.** `DEATH1 CLR EGGS1`
+>   (JOUSTRV4.SRC:4669) opens the routine commented "DEATH OF PLAYER 1"; `DEATH1` is P1DEC's `DDEAD`
+>   field (:5551), dispatched on the LOSER's decision at :5074 and :6564. The counter is CLEARED on
+>   every death, so the reported symptom (250 after a respawn) is faithful and `eggHits` stays on the
+>   player process. Re-homing it would be a fidelity regression, and the suite guards against it.
+> - **AC-5 (wave/game reset out of scope) — DROPPED; that boundary IS the defect.** `WNRM CLR
+>   EGGS1/EGGS2` (:1979-1980) clears at every wave start, while `stepDemo`'s advance carries the player
+>   processes forward — probed at 750 where the ROM pays 250. The whole fix is that one clear.
+> - AC-3 (per-player init), AC-4 (event path unchanged) and AC-6 (determinism/purity) stand.
+>
+> The "wave/game reset scope is still open" note the story shipped with is now CLOSED: the counter's
+> complete lifetime is three reset boundaries (game start :907/:912, every wave start :1979-1980,
+> death :4669/:4675), pinned as an exhaustive SET by the provenance suite.
+
 ## Title
 Egg-ladder counter outlives a life — DEGGS shares the DECISION BLOCK with DSCORE (JOUSTRV4.SRC:106/:111/:113), so it must survive a mount death; our eggHits rides the player PROCESS and resets to rung 1 on every respawn. REPRODUCED: a veteran with 3 prior hits scores 1000, then the identical staging after a respawn scores 250.
 
