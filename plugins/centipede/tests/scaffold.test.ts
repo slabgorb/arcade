@@ -13,11 +13,14 @@
 // MONOREPO MIGRATION (Task 11 — centipede imported as plugins/centipede)
 // ===========================================================================
 //
-// THREE whole describes were REMOVED here, all false BY DESIGN once centipede
-// stopped being a standalone repo. Quoted by their exact old titles:
+// THREE whole describes were REMOVED here — 19 tests / 35 assertions in total,
+// all false BY DESIGN once centipede stopped being a standalone repo. Quoted by
+// their exact old titles. ("Assertions" counts `expect()` statements, a
+// statement inside a `for` loop once per iteration.)
 //
-//   * `scaffold — vite.config.ts (pinned port 5278, base /)` (6 tests, 13
-//     assertions). centipede has no vite.config.ts any more; the monorepo root
+//   * `scaffold — vite.config.ts (pinned port 5278, base /)` (6 tests, 12
+//     assertions — 7 `expect` statements, one of them a 6-iteration loop over
+//     TAKEN_PORTS). centipede has no vite.config.ts any more; the monorepo root
 //     owns the dev server, the build, `base`, `strictPort` and the host pin.
 //     The invariants are NOT retired — they are restored at the root by Task 19
 //     and asserted ONCE for the whole cabinet in the orchestrator suite
@@ -30,10 +33,16 @@
 //     plugin is deliberately gone, and the Vite-8/Vitest-4 resolution check now
 //     belongs to the root's single node_modules.
 //   * `scaffold — CI deploy caller (.github/workflows/deploy.yml)` (5 tests, 12
-//     assertions). There is no per-repo CI caller any more — the whole ten-line
-//     `slabgorb/arcade/.github/workflows/deploy-r2.yml@main` shape, the
+//     assertions — 7 `expect` statements, one of them a 6-iteration loop over
+//     the sibling buckets). There is no per-repo CI caller any more — the whole
+//     ten-line `slabgorb/arcade/.github/workflows/deploy-r2.yml@main` shape, the
 //     arcade-centipede bucket target and the sibling-bucket guard go with it.
 //     One cabinet, one deploy; Task 12b owns whatever replaces it.
+//
+// 6 + 8 + 5 = 19 tests and 12 + 11 + 12 = 35 assertions, which is the whole of
+// the delta: this file went 26 `it` blocks → 7, and centipede's suite 912 → 893
+// tests with its FILE count unchanged at 50. The plan's "26" is this file's
+// pre-migration TOTAL, not the false-by-design subset.
 //
 // What SURVIVED is REWRITTEN, not deleted: the tsconfig strict guard now
 // asserts the stub DELEGATES strictness to the root instead of declaring it.
