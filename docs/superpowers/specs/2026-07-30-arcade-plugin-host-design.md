@@ -3,6 +3,8 @@
 **Date:** 2026-07-30
 **Author:** Architect
 **Status:** Proposed — pending implementation plan
+**Amended:** 2026-07-30 — §4.3's boot helper deferred to a follow-up epic; its premise of
+fleet-wide `main.ts` uniformity was measured and found false. See §4.3.
 **Supersedes:** ADR-0001 (Option 4 → Option 2), ADR-0004 (single-origin now adopted)
 **Model:** `~/Projects/words` — a self-hosted plugin host where "adding a new game is one
 folder plus one registry line."
@@ -61,7 +63,7 @@ Four constraints were set by the owner and every subsequent decision derives fro
 | Per-game release + version | **Preserved.** A red joust test must not block a tempest release. |
 | Per-game git history | **Dropped.** Squashed import is acceptable. |
 | Standalone game clone builds | **Dropped.** This is what unlocks direct shared imports. |
-| Contract depth | Manifest + boot helper (not a full `mount()` host). |
+| Contract depth | Manifest only in this epic; the boot helper is deferred (§4.3). |
 | Sequencing | Flag day — one epic, all nine at once. |
 | Branch strategy | Trunk-based on `main`. |
 
@@ -83,15 +85,14 @@ arcade/
 │   │   ├── math3d.ts rng.ts highscore.ts loop.ts font.ts
 │   │   └── pause.ts glow.ts view.ts audio.ts synth.ts esc-overlay.ts name-entry.ts
 │   └── host/
-│       ├── boot.ts         # bootGame() — the ~60 lines every main.ts repeats
-│       ├── contract.ts     # GameMeta, HostContext, Game, validateMeta
+│       ├── contract.ts     # GameMeta, validateMeta  (boot.ts deferred — §4.3)
 │       └── registry.ts     # GENERATED from every plugins/*/plugin.ts
 ├── plugins/
 │   ├── tempest/
 │   │   ├── plugin.ts       # the manifest — the contract
 │   │   ├── package.json    # {name, version, private} ONLY — no deps, no scripts
 │   │   ├── index.html
-│   │   ├── main.ts         # calls bootGame(meta, …)
+│   │   ├── main.ts         # unchanged by this epic
 │   │   ├── src/core/  src/shell/
 │   │   ├── tests/  tools/  docs/  public/
 │   │   └── tsconfig.json   # extends the root base
@@ -162,79 +163,59 @@ The generated file is committed (not gitignored) so the diff is reviewable and t
 builds without a pre-step; `gen-registry.mjs` runs in CI and fails if the committed file
 is stale.
 
-### 4.3 The boot helper
+### 4.3 The boot helper — DEFERRED to a follow-up epic
 
-```ts
-// plugins/tempest/main.ts
-import { bootGame } from '@host/boot'
-import { meta } from './plugin'
+**Amended 2026-07-30, before planning.** The original draft of this section specified a
+`bootGame(meta, create, opts)` helper owning canvas lookup, DPR resize, audio unlock, the
+Escape pause gate, high-score construction and the rAF loop, on the stated grounds that
+this is "exactly what all seven games' `main.ts` files repeat today."
 
-bootGame(meta, (host) => {
-  const sim = initialState((Math.random() * 0xffffffff) >>> 0)
-  sim.highScoreTable = host.highScores.load()
-  return {
-    step: (dtMs) => stepSim(sim, dtMs),
-    draw: () => render(host.ctx, sim, host.view),
-  }
-})
-```
+**That premise was false**, and it was drawn from tempest's `main.ts` on the assumption the
+fleet followed it. Measured across all seven:
 
-`bootGame` owns exactly what all seven games' `main.ts` files repeat today (the lobby is
-not a game and does not use it):
+| game | resize | audio unlock | Esc pause | high scores | loop |
+|---|---|---|---|---|---|
+| tempest | `resizeToDisplay` | ✅ | ✅ | shared factory | **own** `shell/loop` |
+| star-wars | `resizeToDisplay` | ✅ | ✅ | shared + own core module | shared |
+| asteroids | `resizeToDisplay` | ✅ | ✅ | shared factory | shared |
+| battlezone | **own** `applyLetterbox` | ✅ | **own** `shell/pause`, no overlay | shared factory | shared |
+| red-baron | **none** | ✅ | ✅ | **none** | **own** |
+| centipede | **own** `fitIntegerScale` | **none** | **none** | shared factory | **own** `pumpFrame` |
+| joust | **none** | **none** | **none** | **none** | **own** timebase |
 
-- canvas lookup and the "no `<canvas id="game">`" error
-- `resizeToDisplay` plus the `window.resize` listener and DPR resolution
-- the click/keydown audio-unlock pair (idempotent `resume()`)
-- the Escape pause toggle, its `e.repeat` edge guard, and the Esc overlay draw
-- high-score storage construction via `makeHighScoreStorage`
-- the rAF loop with the `stepUnlessPaused` gate
+The only element common to all seven is `document.querySelector('#game')` followed by
+`getContext('2d')` — not an abstraction worth a helper. Even tempest's `createLoop` is not
+the shared one: it is a bespoke state-machine loop with `dispatch()`, `getState()`,
+`onModeChange` and `onSubStep`. red-baron's `main.ts` is 918 lines and uses neither the
+shared loop nor shared storage.
 
-It does **not** own rendering, because the games genuinely differ: centipede blits a fixed
-240×256 logical backbuffer at integer scale, tempest draws DPR-scaled vectors full-window,
-joust and centipede run fixed-step ROM cadences while tempest and star-wars run variable
-`dt`. The host hands over a surface and services; the game decides what to draw on it.
+**Decision: this epic ships the manifest and the generated registry (§4.1–4.2) and no boot
+helper.** Shell convergence becomes its own follow-up epic, planned against the real
+matrix above rather than an assumed one.
 
-```ts
-interface HostContext<E extends HighScoreEntryBase> {
-  canvas: HTMLCanvasElement
-  ctx: CanvasRenderingContext2D
-  view: ViewportSize                // live — mutated by the resize listener
-  highScores: HighScoreStorage<E>
-  audio: { resume(): void }         // gesture-unlock already wired
-  paused(): boolean
-}
+Two reasons beyond the false premise:
 
-interface Game {
-  step(dtMs: number): void
-  draw(): void
-}
+1. **Bisectability.** The flag day is a pure-infrastructure change — every file moves, but
+   no runtime behaviour changes. Folding in a shell refactor that *does* change behaviour
+   means a post-migration bug cannot be bisected to "the move" or "the refactor."
+2. **ROM fidelity.** centipede and joust run the cabinets' own cadences (centipede's
+   15750/263 Hz accumulator). Converging them onto a shared loop is exactly the class of
+   change that silently alters game behaviour, and it must not ride along inside a
+   migration whose acceptance criteria are about paths and buckets.
 
-interface BootOptions<E extends HighScoreEntryBase> {
-  stepHz?: number                             // fixed-step accumulator; omitted ⇒ variable dt
-  guard?: (v: unknown) => v is E              // from makeHighScoreRowGuard('level' | 'wave')
-}
+The follow-up epic's likely shape is **compositional** rather than monolithic — small
+independent helpers (`mountCanvas`, `installAudioUnlock`, `installPauseToggle`) that each
+game adopts only where it already does that thing — but that is a decision for that epic's
+own design, not a commitment made here.
 
-function bootGame<E extends HighScoreEntryBase>(
-  meta: GameMeta,
-  create: (host: HostContext<E>) => Game,
-  opts?: BootOptions<E>,
-): void
-```
-
-The generic carries each game's own high-score entry type — tempest's rows have `level`,
-centipede's have `wave` — so `host.highScores.load()` returns that game's shape and the
-existing `makeHighScoreRowGuard('level')` call sites move across unchanged.
-
-Games with a fixed ROM cadence pass `{ stepHz: 15750 / 263 }` and `bootGame` runs the
-accumulator; games with variable timing pass nothing. **Both existing patterns are
-expressible, so no game has to change how it steps.** That is the acceptance bar for this
-abstraction: if adopting `bootGame` would force a game to change its timing, the
-abstraction is wrong, not the game.
+Nothing in this epic forecloses it: after the collapse, all seven `main.ts` files live in
+one repo behind one `tsconfig`, which is strictly easier ground for that work than seven
+repos on four different `@arcade/shared` pins.
 
 ## 5. Shared code
 
 `@arcade/shared` becomes `src/shared/`, reached through a `@shared/*` path alias (with
-`@host/*` alongside it for the boot helper and contract) declared once in the root
+`@host/*` alongside it for the contract and generated registry) declared once in the root
 `tsconfig.json` and once in the Vite factory.
 
 Deleted along with the package boundary: the git-URL dependency, tag pinning, the
@@ -431,7 +412,8 @@ assert the rows survive. A single-pass seed-and-read test would certify a featur
 erases itself, which is precisely the class of green-suite-over-broken-behaviour that
 ADR-0004's own risk table called out for the lobby's storage tests.
 
-red-baron persists no high scores at all and has nothing to migrate.
+red-baron and joust persist no high scores at all and have nothing to migrate. (ADR-0004
+named only red-baron; joust postdates it.)
 
 **Unfiled follow-up to file during this epic.** ADR-0004 logged three follow-ups that were
 never turned into stories. The live one: Safari's ITP purges script-writable storage after
@@ -477,7 +459,8 @@ clone of both.
 3. Import each tree as one squashed commit recording its source SHA in the message.
    Archive — do not delete — the nine repos, so per-file blame stays reachable.
 4. Collapse tooling: root `package.json`, Vite factory, vitest projects, tsconfig aliases.
-5. Extract `src/host/boot.ts` and `contract.ts`; rewrite seven games' `main.ts`.
+5. Write `src/host/contract.ts` (`GameMeta`, `validateMeta`) and seven `plugin.ts`
+   manifests. No `main.ts` is touched — the boot helper is deferred (§4.3).
 6. Generate the registry; delete the lobby's hardcoded one.
 7. Re-base every app to `/<id>/`; audit asset paths per game.
 8. One tag-triggered deploy workflow; delete the eight callers and the reusable workflow.
@@ -505,8 +488,10 @@ origin for each game's `index.html` and its assets — not a green test suite. T
 asset layers degrade silently by design, so a 404 is indistinguishable from working code
 in any vitest run; only a live fetch against the bucket proves the upload landed.
 
-**Sizing.** 14–20 stories, ~60k LOC touched, no per-game escape hatch. That is the cost of
-a flag day, chosen deliberately. The fleet currently has **zero open PRs across all nine
+**Sizing.** ~14 stories, ~60k LOC moved, no per-game escape hatch. With the boot helper
+deferred, every story in this epic is infrastructure: files move, configs collapse, nothing
+a player can see changes except the URL and the high-score bridge. That is the cost of a
+flag day, chosen deliberately. The fleet currently has **zero open PRs across all nine
 repos**, which is the best window available.
 
 ## 11. What this supersedes
@@ -547,10 +532,12 @@ Both superseded ADRs get a status amendment in the same epic, not a silent overw
 
 ## 13. Out of scope
 
+- **The boot helper / shell convergence.** Deferred to its own epic — see §4.3 for the
+  measured adoption matrix and the reasoning. This epic touches no game's `main.ts`.
 - **Full `mount()` host / single-page cabinet.** Words' actual shape — one `index.html`,
   games as lazy-loaded chunks the host swaps in place — is *not* adopted, because it is
-  incompatible with per-game independent releases. The `bootGame` seam is deliberately
-  drawn so that a later move to `mount()` is a host-side change, not a fleet-wide rewrite.
+  incompatible with per-game independent releases. It remains reachable later, but only
+  after the shell convergence above.
 - **Cross-device leaderboards.** Still declined; the no-backend constraint holds.
 - **The Safari ITP purge fix.** Named in §8, to be filed as its own story, explicitly not
   fixed by this work.
