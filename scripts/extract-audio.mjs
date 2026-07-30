@@ -95,16 +95,19 @@ function compareSfxShipped(adapter, s) {
     // battlezone was imported into the monorepo (plugins/battlezone) and is no
     // longer a gitignored sibling subrepo. Without the `plugins` segment the
     // read fails and every cue silently degrades from MISMATCH to UNVERIFIED —
-    // an audit that quietly stops auditing. red-baron is still a subrepo below.
+    // an audit that quietly stops auditing.
     return shipped.compareBattlezoneShipped(
       join(REPO_ROOT, 'plugins', 'battlezone', 'src', 'shell', 'audio.ts'),
     );
   }
   if (adapter.name === 'red-baron') {
+    // Task 10 moved red-baron to plugins/red-baron for the same reason, and the
+    // same trap applies: a stale path here does not throw, it degrades every one
+    // of the five tones to UNVERIFIED with a truthful-sounding ENOENT reason.
     return shipped.compareRedBaronShipped(
       s.tone,
       { audfSweeps: s.audfSweeps, audcSweeps: s.audcSweeps },
-      join(REPO_ROOT, 'red-baron', 'src', 'shell', 'pokey.ts'),
+      join(REPO_ROOT, 'plugins', 'red-baron', 'src', 'shell', 'pokey.ts'),
     );
   }
   return { status: 'unverified', reason: 'no shipped-artifact comparator is wired for this game yet' };

@@ -27,12 +27,21 @@ export const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
 // Every file the two red link-5 audits actually open, and which audit needs it.
 const LINK5_INPUTS = [
-  // tempest was imported into the monorepo (plugins/tempest) and is no longer a
-  // gitignored sibling subrepo — its half of link 5 is now always present, in-repo.
-  // red-baron is still a subrepo, so the probe stays exactly as load-bearing as it was.
+  // MONOREPO MIGRATION — tempest (Task 6) and now red-baron (Task 10) were both
+  // imported into this repo as plugins/<id>, so NEITHER is a gitignored sibling
+  // subrepo any more and both halves of link 5 are always present, in-repo.
+  //
+  // The probe is NOT retired, and these paths still had to move. `existsSync` on a
+  // stale path is the quietest failure in this file's design: it reports "absent",
+  // link5SkipReason() hands back a plausible "run `just install-all`" message, and
+  // the two link-5 audits SKIP — announcing that the shipped port was not compared,
+  // when in truth the port is sitting right there and only the probe was looking in
+  // the wrong place. That is precisely the absent-vs-wrong confusion the header
+  // above says must never happen, arriving from the other direction. The probe keeps
+  // earning its keep for centipede/joust, which are still subrepos.
   { audit: 'tempest', path: join('plugins', 'tempest', 'tools', 'pokey-bake', 'sfx-data.mjs') },
   { audit: 'tempest', path: join('plugins', 'tempest', 'tools', 'pokey-bake', 'bake-sfx.mjs') },
-  { audit: 'red-baron', path: join('red-baron', 'src', 'shell', 'pokey.ts') },
+  { audit: 'red-baron', path: join('plugins', 'red-baron', 'src', 'shell', 'pokey.ts') },
 ];
 
 /** Every link-5 input, each tagged with whether it is present under `root`. */

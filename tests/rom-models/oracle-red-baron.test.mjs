@@ -10,21 +10,39 @@ import { assembleRedBaronPictures } from '../../scripts/rom-models/redbaron-pict
 const RB_SRC = sourceDir('red-baron');
 const REPO = join(import.meta.dirname, '..', '..');
 
-// The vendored source is machine-local (docs/reference-sources.md). Skip loudly
-// rather than fail if this checkout has not run `just vendor-source-all`.
-// The ROM source is in-repo now, so it is always here. What can still be absent
-// is the red-baron SUBREPO working tree these oracles compare against — it is a
-// separate gitignored repo. Skip (loudly) rather than ENOENT when it is missing.
-const havePort = existsSync(join(REPO, 'red-baron', 'src', 'core', 'biplane.ts'));
-const opts = { skip: havePort ? false : 'red-baron subrepo not checked out — run `just install-all`' };
+// MONOREPO MIGRATION (Task 10) — this guard used to be a legitimate environment
+// probe: red-baron was a gitignored sibling subrepo, so a checkout that had not
+// run `just install-all` genuinely had no port to compare the ROM against, and
+// skipping loudly beat an ENOENT.
+//
+// red-baron is now plugins/red-baron, TRACKED IN THIS REPO. Two consequences:
+//
+//   1. The path had to move. It did not announce itself when it didn't: the
+//      stale `red-baron/src/core/biplane.ts` simply stopped existing, `havePort`
+//      went false, and all NINE oracles below skipped with a confident,
+//      completely wrong explanation ("subrepo not checked out"). The suite stayed
+//      green while the ROM-vs-port comparison quietly stopped happening.
+//   2. Because the port is tracked, its absence is no longer an environment
+//      condition anybody can be in — it would mean this repo is broken. So it is
+//      no longer a SKIP. Missing files fail the file, loudly, at import.
+const PORT_CORE = join(REPO, 'plugins', 'red-baron', 'src', 'core');
+for (const f of ['biplane.ts', 'topology.ts']) {
+  if (!existsSync(join(PORT_CORE, f))) {
+    throw new Error(
+      `plugins/red-baron/src/core/${f} is missing — the ROM oracles below cannot compare the ` +
+        `port against the Atari source. red-baron is tracked in this repo, so this is NOT a ` +
+        `"subrepo not checked out" condition and must not be skipped past.`,
+    );
+  }
+}
 
-test('ORACLE: parsed DB.PLN vertices === red-baron biplane.ts PLANE_POINTS', opts, () => {
+test('ORACLE: parsed DB.PLN vertices === red-baron biplane.ts PLANE_POINTS', () => {
   // RBARON.MAC is .RADIX 16 at the top but flips to .RADIX 10 (L6217) for this
   // table. Starting the parser at 16 and NOT honouring .RADIX yields hex
   // garbage — this assertion is what catches that.
   const rom = parsePointTable(readFileSync(join(RB_SRC, 'RBARON.MAC'), 'utf8'), 'DB.PLN', 16);
   const port = extractPoint3(
-    readFileSync(join(REPO, 'red-baron', 'src', 'core', 'biplane.ts'), 'utf8'),
+    readFileSync(join(REPO, 'plugins', 'red-baron', 'src', 'core', 'biplane.ts'), 'utf8'),
     'PLANE_POINTS',
   );
   assert.equal(port.length, 42, 'ground truth should be the 42-vertex plane');
@@ -34,9 +52,9 @@ test('ORACLE: parsed DB.PLN vertices === red-baron biplane.ts PLANE_POINTS', opt
   assert.deepEqual(rom, port);
 });
 
-test('ORACLE: parsed DB.MAP/DB.MAR/DB.LNS === red-baron topology.ts', opts, () => {
+test('ORACLE: parsed DB.MAP/DB.MAR/DB.LNS === red-baron topology.ts', () => {
   const pics = readFileSync(join(RB_SRC, '037007.XXX'), 'utf8');
-  const ts = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
+  const ts = readFileSync(join(REPO, 'plugins', 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
   // DB.MAP has no ENDDB of its own — it falls straight through into DB.MAR
   // (topology.ts documents this). That fall-through is an editorial split,
   // not a ROM fact, so this call site — not the parser — declares it.
@@ -54,7 +72,7 @@ test('ORACLE: parsed DB.MAP/DB.MAR/DB.LNS === red-baron topology.ts', opts, () =
   }
 });
 
-test('ORACLE: parseConnectList does not truncate at an interior label (SMP00)', opts, () => {
+test('ORACLE: parseConnectList does not truncate at an interior label (SMP00)', () => {
   // 037007.XXX:175-178 — SMP00 falls through the interior label H.MAP: before
   // reaching its own ENDDB. A decoder entering at SMP00 runs all 3 ops; a
   // boundary rule of "stop at the next differently-labelled line" would wrongly
@@ -69,7 +87,7 @@ test('ORACLE: parseConnectList does not truncate at an interior label (SMP00)', 
   ]);
 });
 
-test('ORACLE: pen semantics are not inverted (BLANKV=up, VSBLEV=down)', opts, () => {
+test('ORACLE: pen semantics are not inverted (BLANKV=up, VSBLEV=down)', () => {
   // DB.MAP has no ENDDB of its own (falls through into DB.MAR) — declare that
   // boundary here too, same as the DB.MAP case above.
   const ops = parseConnectList(readFileSync(join(RB_SRC, '037007.XXX'), 'utf8'), 'DB.MAP', {
@@ -94,33 +112,33 @@ test('parseConnectList throws rather than silently truncating when unterminated'
   );
 });
 
-test('ORACLE: extractPoint3 throws on a prefix match instead of returning the wrong export', opts, () => {
+test('ORACLE: extractPoint3 throws on a prefix match instead of returning the wrong export', () => {
   // topology.ts exports PIECE0_POINTS and STAR0_POINTS, but no bare PIECE0 or
   // STAR0. `src.indexOf('export const ' + name)` used to prefix-match and
   // silently hand back PIECE0_POINTS's / STAR0_POINTS's data instead of
   // throwing — exactly the wrong-answer-not-a-crash bug this oracle exists
   // to catch.
-  const ts = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
+  const ts = readFileSync(join(REPO, 'plugins', 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
   assert.throws(() => extractPoint3(ts, 'PIECE0'), /no export named PIECE0/);
   assert.throws(() => extractPoint3(ts, 'STAR0'), /no export named STAR0/);
 });
 
-test('ORACLE: extractConnect throws on a scalar, not an array literal', opts, () => {
+test('ORACLE: extractConnect throws on a scalar, not an array literal', () => {
   // topology.ts exports POINT_STRIDE = 6 (a scalar constant), not an array.
   // The unbounded forward search used to walk past it and silently return
   // DB_MAP's data instead of throwing.
-  const ts = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
+  const ts = readFileSync(join(REPO, 'plugins', 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
   assert.throws(
     () => extractConnect(ts, 'POINT_STRIDE'),
     /not assigned an array literal/,
   );
 });
 
-test('ORACLE: extractPoint3 throws on a slice assignment, not a literal', opts, () => {
+test('ORACLE: extractPoint3 throws on a slice assignment, not a literal', () => {
   // biplane.ts exports DRONE_POINTS = PLANE_POINTS.slice(0, 29), not a literal.
   // The unbounded forward search used to walk past it and silently return
   // a later array instead of throwing.
-  const ts = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'biplane.ts'), 'utf8');
+  const ts = readFileSync(join(REPO, 'plugins', 'red-baron', 'src', 'core', 'biplane.ts'), 'utf8');
   assert.throws(
     () => extractPoint3(ts, 'DRONE_POINTS'),
     /not assigned an array literal/,
@@ -146,7 +164,7 @@ test('ORACLE: extractPoint3 throws on a slice assignment, not a literal', opts, 
 //      037007.XXX's own PLPCLN table, `.BYTE PCDEC0-PIECE3-3` at L768, and by
 //      the 'assembleRedBaronPictures' oracle test below deep-equalling
 //      PIECE3_POINTS.)
-test('ORACLE: PIECE0-2 point-table lengths are parsed from ROM labels AND agree with the independent RBARON.MAC equates', opts, () => {
+test('ORACLE: PIECE0-2 point-table lengths are parsed from ROM labels AND agree with the independent RBARON.MAC equates', () => {
   const program = readFileSync(join(RB_SRC, 'RBARON.MAC'), 'utf8');
   const pics = readFileSync(join(RB_SRC, '037007.XXX'), 'utf8');
 
@@ -189,11 +207,11 @@ test('ORACLE: PIECE0-2 point-table lengths are parsed from ROM labels AND agree 
 // DB.PLN/DB.MAP/DB.MAR/DB.LNS above, which already had oracle coverage). This
 // block closes that gap at the orchestrator level, ahead of (and
 // cross-checking) the browser contact sheet's own romCompare.ts.
-test('ORACLE: assembleRedBaronPictures — every baked picture deep-equals its topology.ts/biplane.ts port counterpart', opts, () => {
+test('ORACLE: assembleRedBaronPictures — every baked picture deep-equals its topology.ts/biplane.ts port counterpart', () => {
   const program = readFileSync(join(RB_SRC, 'RBARON.MAC'), 'utf8');
   const pics = readFileSync(join(RB_SRC, '037007.XXX'), 'utf8');
-  const topo = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
-  const biplane = readFileSync(join(REPO, 'red-baron', 'src', 'core', 'biplane.ts'), 'utf8');
+  const topo = readFileSync(join(REPO, 'plugins', 'red-baron', 'src', 'core', 'topology.ts'), 'utf8');
+  const biplane = readFileSync(join(REPO, 'plugins', 'red-baron', 'src', 'core', 'biplane.ts'), 'utf8');
 
   const rom = assembleRedBaronPictures(program, pics);
   assert.equal(rom.length, 13, 'expected all 13 red-baron pictures (plane×2, prop×3, piece×4, star×2, blimp, colld)');

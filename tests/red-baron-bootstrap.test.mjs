@@ -19,11 +19,55 @@
 //
 // RED until GREEN lands the wiring. Run from the orchestrator root:
 //   npm test   (→ node --test 'tests/**/*.test.mjs')
+//
+// ===========================================================================
+// MONOREPO MIGRATION (Task 10 — red-baron imported as plugins/red-baron)
+// ===========================================================================
+//
+// TWO assertions were REMOVED here, both false BY DESIGN once red-baron stopped
+// being a gitignored sibling subrepo. Quoted by their exact old titles:
+//
+//   * `AC: orchestrator .gitignore ignores the red-baron/ subrepo`
+//     It matched the root .gitignore against /^\/red-baron\/\s*$/m. The import
+//     deletes that line — the tree is tracked in this repo now, so ignoring it
+//     would erase the game. Nothing survives to re-home.
+//
+//   * `AC: red-baron/.git exists with a develop branch (gitflow)`
+//     It asserted existsSync('red-baron/.git') and that the repo carried a
+//     `develop` branch. red-baron has no repo, no remote and no develop branch
+//     any more; its pre-monorepo history is PARKED at
+//     .migration-backup/red-baron.git, which .gitignore itself declares
+//     transient ("safe to remove once every game is imported"). A deliberately
+//     temporary backup is not an invariant, so this is NOT re-created anywhere —
+//     specifically NOT in tests/monorepo-topology.test.mjs, whose header reserves
+//     the games' share for Task 12b.
+//
+// The file is NOT deleted. Five assertions below still pass and still guard LIVE
+// orchestrator config that this task does not touch. Their owners, so the tasks
+// that retire them can find them:
+//
+//   TASK 22 (rewrites .pennyfarthing/repos.yaml)
+//     - `AC: repos.yaml registers red-baron in the star-wars entry shape`
+//       NOTE: still GREEN but already STALE — it asserts `path: red-baron`,
+//       which is now wrong on disk (plugins/red-baron). It reads the YAML, not
+//       the filesystem, so it cannot tell. Fix both together.
+//
+//   TASK 19 (one dev server — collapses the eight pinned ports, scripts/serve.mjs
+//            and the cloudflared routing)
+//     - `AC: justfile \`games\` variable includes red-baron (and keeps the existing games)`
+//     - `AC: justfile \`subrepos\` variable includes red-baron (and keeps the existing subrepos)`
+//     - `AC: canonical \`serve\` launches red-baron`
+//       (imports jobsFor from ../scripts/serve.mjs, which Task 19 deletes, and
+//       asserts cwd === <root>/red-baron — stale for the same reason as above)
+//     - `AC: cloudflared routes /red-baron/* to :5277, ahead of the lobby catch-all`
+//
+// Ruling (PLAN DEFECT #14): each import task retires its OWN game's bootstrap
+// assertions as it lands. centipede- and joust-bootstrap.test.mjs carry the
+// identical pair and are Tasks 11-13's to retire the same way.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 // td1-8 moved the fleet launch out of the justfile `serve` recipe into this module;
@@ -79,17 +123,6 @@ function repoBlock(yaml, name) {
   }
   return body.join('\n');
 }
-
-// --- AC: orchestrator .gitignore ------------------------------------------
-
-test('AC: orchestrator .gitignore ignores the red-baron/ subrepo', () => {
-  const gitignore = read('.gitignore');
-  assert.match(
-    gitignore,
-    /^\/red-baron\/\s*$/m,
-    'red-baron/ must be gitignored at the orchestrator, root-anchored and directory-only (like /battlezone/)',
-  );
-});
 
 // --- AC: repos.yaml registration (star-wars entry shape) -------------------
 
@@ -186,14 +219,4 @@ test('AC: cloudflared routes /red-baron/* to :5277, ahead of the lobby catch-all
   const lobbyCatchAll = cf.indexOf('service: http://localhost:5270');
   assert.notEqual(lobbyCatchAll, -1, 'cloudflared/config.yml must retain the lobby catch-all (:5270)');
   assert.ok(rbIdx < lobbyCatchAll, 'the /red-baron rule must be ordered AHEAD of the lobby catch-all');
-});
-
-// --- AC: red-baron repo initialized with develop (gitflow) -----------------
-
-test('AC: red-baron/.git exists with a develop branch (gitflow)', () => {
-  assert.ok(existsSync(join(root, 'red-baron/.git')), 'red-baron/.git must exist (git init -b develop)');
-  const branches = execFileSync('git', ['-C', join(root, 'red-baron'), 'branch', '--list', 'develop'], {
-    encoding: 'utf8',
-  });
-  assert.match(branches, /develop/, 'red-baron repo must have a develop branch');
 });

@@ -45,7 +45,9 @@ import redBaron from '../scripts/audio/games/red-baron.mjs';
 import tempest from '../scripts/audio/games/tempest.mjs';
 import { link5Inputs, link5SkipReason, missingLink5Inputs, REPO_ROOT } from './helpers/link5-inputs.mjs';
 
-const POKEY_TS = join(REPO_ROOT, 'red-baron', 'src', 'shell', 'pokey.ts');
+// MONOREPO MIGRATION (Task 10) — red-baron is plugins/red-baron now, exactly as
+// tempest's SFX_DATA below moved in Task 6.
+const POKEY_TS = join(REPO_ROOT, 'plugins', 'red-baron', 'src', 'shell', 'pokey.ts');
 const SFX_DATA = join(REPO_ROOT, 'plugins', 'tempest', 'tools', 'pokey-bake', 'sfx-data.mjs');
 
 // ===========================================================================
