@@ -424,7 +424,10 @@ test('every plugins/ directory is a real app with an entry', () => {
   }
 });
 
-test('every plugins/ directory carries a plugin manifest', { todo: 'Task 14 writes the seven plugins/<id>/plugin.ts manifests' }, () => {
+// Un-todo'd by Task 14, which wrote the seven manifests. What they CONTAIN is
+// tests/registry.test.mjs's and src/host/registry.test.ts's business; this stays a
+// bare existence check, in the file that owns "every app is wired the same way".
+test('every plugins/ directory carries a plugin manifest', () => {
   for (const g of GAMES) {
     assert.ok(existsSync(path('plugins', g, 'plugin.ts')), `plugins/${g}/plugin.ts missing`);
   }

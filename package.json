@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "The arcade: a plugin host for browser-based vector and raster arcade-game clones.",
-  "engines": { "node": ">=20" },
+  "engines": { "node": ">=22.18" },
   "scripts": {
     "build": "node scripts/build-app.mjs",
     "test": "vitest run --passWithNoTests",

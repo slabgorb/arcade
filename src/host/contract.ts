@@ -1,22 +1,36 @@
 // src/host/contract.ts — the plugin contract.
 //
 // A game declares itself with one exported `meta` object. That manifest will be the
-// ONLY thing the lobby reads: Task 14 will generate src/host/registry.ts from every
+// ONLY thing the lobby reads: Task 14 has generated src/host/registry.ts from every
 // plugins/*/plugin.ts, and Task 15 will repoint the lobby at it, retiring
 // lobby/src/core/registry.ts — which is STILL the live list as of this commit, and
 // still carries six hardcoded launch URLs and six hardcoded version strings that
-// nothing checks.
+// nothing checks (one of them, battlezone's, already stale at 1.0.0 against a
+// package.json that says 1.0.3 — the generated registry has it right).
 //
-// The tense above is load-bearing, so plainly: **as of this commit, nothing calls
-// `validateMeta`.** It is the typed statement of the contract, and its own tests are
-// its only exercise. Its two build-time consumers do not exist yet and, once written,
-// cannot call it — scripts/gen-registry.mjs (Task 14) and scripts/build-app.mjs
-// (Task 16) will be plain Node scripts that run before any TypeScript build, so they
-// will read the manifests as TEXT and re-state these rules in JavaScript. Three checks
-// will then have to be kept in step: this validator, those scripts' regexes, and
-// TypeScript's own type and excess-property checking of each manifest's
-// `const meta: GameMeta = {…}`. If they drift, this file is the one that is right;
-// the scripts are echoes of it.
+// Task 14 has since landed, and with it the two callers this file was written for, so
+// the paragraph that used to stand here — "as of this commit, nothing calls
+// `validateMeta`" — is history. It is called twice now:
+//
+//   - scripts/gen-registry.mjs validates every manifest it reads. Task 13 expected that
+//     script to re-state these rules in JavaScript, because an .mjs file "cannot import
+//     a .ts module"; it can, since Node 22.18/23.6 strips types by default, and this
+//     file is erasable-syntax only (interfaces, annotations, `as` — no enums,
+//     namespaces or parameter properties). KEEP IT THAT WAY: adding one enum here
+//     would break `npm run gen:registry` and silently return the fleet to two
+//     validators that can disagree. Task 16's scripts/build-app.mjs can import it the
+//     same way.
+//   - src/host/registry.test.ts runs all seven real manifests, and the generated
+//     registry itself, through it on every `vitest run`.
+//
+// The generator still parses the manifests as TEXT (Node cannot import plugin.ts: its
+// `import { version } from './package.json'` wants an import attribute, and Node's JSON
+// modules have no named exports), and it still owns two checks this file cannot make —
+// field PRESENCE, because a coerced-away absence is indistinguishable from a real value
+// here, and duplicate `order`, because one manifest cannot see its siblings. Everything
+// about a VALUE is decided here. So two things must be kept in step, not three: this
+// validator and TypeScript's own type and excess-property checking of each manifest's
+// `const meta: GameMeta = {…}`.
 
 /** A game on the cabinet, as the lobby sees it. */
 export interface GameMeta {
