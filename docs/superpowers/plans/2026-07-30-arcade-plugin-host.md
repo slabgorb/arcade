@@ -27,6 +27,17 @@
   `lobby/src/shell/showcase.ts`, `just check-showcase`) that reads `showcase` and
   `launchUrl` from the registry. `GameMeta` carries `showcase` and `order`; both are
   required and never defaulted.
+- **TOPOLOGY TESTS: 171 tests across the seven games assert the topology this migration removes.** Measured, per game: tempest 12, star-wars 17, asteroids 17, battlezone 38, red-baron 27, centipede 26, joust 34. They live in `scaffold.test.ts`, `rng-extraction.test.ts`, `loop-extraction.test.ts`, `highscore-extraction.test.ts`, `audio-migration.test.ts`, `arcade-shared-pipe.test.ts` and `pause-adoption.test.ts`, and they assert things that are **deliberately gone** after the collapse: the `@arcade/shared` git-URL pin, per-game `dev`/`build`/`test` scripts, pinned dev ports, `strictPort` on server and preview, `base: '/'`, and the ten-line per-repo CI deploy caller.
+
+  **Policy — the invariant moves, it does not evaporate.** This is not licence to delete failing tests. The codebase already states the rule, in centipede's own `scaffold.test.ts`: *"The cross-repo wiring invariants … live in the ORCHESTRATOR suite … a subrepo test must never file-read orchestrator docs (tp1 lesson)."* After the collapse **all** of this is cross-repo wiring, so it belongs in the orchestrator suite — asserted **once** for the whole cabinet instead of seven near-identical times.
+
+  Therefore, in each import task (6–12):
+  1. Remove only assertions that are false **by design** because the thing they check no longer exists.
+  2. **Record the exact count removed per file, with the reason**, in that task's report. A falling test count is a finding to be justified, never tidying.
+  3. Rewrite, do not delete, any assertion whose *intent* survives — `@arcade/shared/rng` becoming `@shared/rng` is a specifier change, and that test should still assert the consumer imports shared RNG.
+  4. Do NOT re-create a removed assertion inside another game. Seven copies of one invariant is the duplication this epic exists to delete.
+
+  Task 12b then adds the consolidated orchestrator-level assertions covering everything the removals gave up. Until 12b lands, those invariants are unguarded — a bounded, explicitly accepted window.
 - Every commit message ends with `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 
 ---
@@ -1221,6 +1232,146 @@ All nine trees imported; 655 test files green under one vitest run. Persists no
 high scores.
 
 Source: see docs/ops/migration-manifest.md
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 12b: Consolidate the removed topology invariants into the orchestrator suite
+
+Tasks 6–12 removed per-game assertions that checked the old topology. Those invariants still matter; they are just now singular. This task re-establishes them **once**, in the orchestrator suite, closing the window opened by the imports.
+
+**Files:**
+- Create: `tests/monorepo-topology.test.mjs`
+
+**Interfaces:**
+- Consumes: the root `package.json`, `tsconfig.json`, `vite.config.ts` factory (Task 3); the seven imported `plugins/<id>/` trees (Tasks 6–12); `src/shared/` (Task 4).
+- Produces: one suite asserting the cabinet-wide wiring that seven `scaffold.test.ts` files used to assert per-repo.
+
+- [ ] **Step 1: Read what was actually removed**
+
+Do not guess. Read the "topology assertions removed" section of every import report:
+
+```bash
+grep -A 30 -i "topology" .superpowers/sdd/2026-07-30-arcade-plugin-host/task-{6,7,8,9,10,11,12}-report.md
+```
+
+Build a checklist of every distinct invariant that was dropped. The per-game counts to reconcile against are tempest 12, star-wars 17, asteroids 17, battlezone 38, red-baron 27, centipede 26, joust 34.
+
+- [ ] **Step 2: Write the consolidated suite**
+
+Create `tests/monorepo-topology.test.mjs`. It must cover, once each:
+
+```javascript
+// The cabinet-wide wiring invariants. These were asserted seven times over, once per
+// game's scaffold.test.ts, back when each game was its own repo with its own vite
+// config, port, scripts and CI caller. The collapse makes them singular — and the
+// codebase's own rule (centipede scaffold.test.ts: "cross-repo wiring invariants live
+// in the ORCHESTRATOR suite") says this is where they belong.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+
+const GAMES = ['tempest', 'star-wars', 'asteroids', 'battlezone', 'red-baron', 'centipede', 'joust'];
+
+test('exactly one package.json declares dependencies', () => {
+  // The four-way @arcade/shared version drift is what this replaces. Per-game
+  // package.json files carry name/version/private and nothing else.
+  for (const g of GAMES) {
+    const pkg = JSON.parse(readFileSync(`plugins/${g}/package.json`, 'utf8'));
+    assert.deepEqual(Object.keys(pkg).sort(), ['name', 'private', 'version'],
+      `plugins/${g}/package.json must carry only name/version/private`);
+  }
+  const pkg = JSON.parse(readFileSync('lobby/package.json', 'utf8'));
+  assert.deepEqual(Object.keys(pkg).sort(), ['name', 'private', 'version']);
+});
+
+test('no @arcade/shared dependency survives anywhere', () => {
+  // Replaced by the @shared/* alias. A reappearance means someone re-introduced the
+  // pinned git dependency and with it the drift.
+  const root = readFileSync('package.json', 'utf8');
+  assert.ok(!root.includes('@arcade/shared'));
+  for (const g of [...GAMES, 'lobby']) {
+    const dir = g === 'lobby' ? 'lobby' : `plugins/${g}`;
+    assert.ok(!readFileSync(`${dir}/package.json`, 'utf8').includes('@arcade/shared'));
+  }
+});
+
+test('no per-app vite config, tsconfig base, or lockfile survives', () => {
+  for (const g of [...GAMES.map((g) => `plugins/${g}`), 'lobby']) {
+    assert.ok(!existsSync(`${g}/vite.config.ts`), `${g} must not carry its own vite config`);
+    assert.ok(!existsSync(`${g}/package-lock.json`), `${g} must not carry its own lockfile`);
+    assert.ok(!existsSync(`${g}/.github`), `${g} must not carry its own CI`);
+  }
+});
+
+test('every app tsconfig extends the root, at the right depth', () => {
+  for (const g of GAMES) {
+    const tc = JSON.parse(readFileSync(`plugins/${g}/tsconfig.json`, 'utf8'));
+    assert.equal(tc.extends, '../../tsconfig.json');
+  }
+  assert.equal(JSON.parse(readFileSync('lobby/tsconfig.json', 'utf8')).extends, '../tsconfig.json');
+});
+
+test('the root scripts the games used to declare individually', () => {
+  const { scripts } = JSON.parse(readFileSync('package.json', 'utf8'));
+  assert.equal(scripts.test, 'vitest run --passWithNoTests');
+  assert.equal(scripts.lint, 'tsc --noEmit');
+  assert.ok(scripts.build.includes('build-app.mjs'));
+});
+
+test('every game is served under its own base path, lobby at the root', async () => {
+  // Replaces seven per-repo assertions that base was '/' and the port was pinned.
+  // There is one dev server now, so a port pin per game is meaningless.
+  const { defineAppConfig } = await import('../vite.config.ts');
+  for (const g of GAMES) {
+    const cfg = defineAppConfig({ id: g });
+    assert.equal(cfg.base, `/${g}/`);
+    assert.ok(cfg.build.outDir.endsWith(`dist/${g}`));
+  }
+  const lobby = defineAppConfig({ id: 'lobby' });
+  assert.equal(lobby.base, '/');
+  assert.ok(lobby.build.outDir.endsWith('dist'));
+});
+
+test('exactly one deploy workflow exists for the whole cabinet', () => {
+  // Was eight ten-line callers plus a reusable workflow.
+  const wf = readdirSync('.github/workflows');
+  assert.deepEqual(wf, ['deploy.yml']);
+});
+
+test('every plugins/ directory is a real app with a manifest and an entry', () => {
+  for (const dir of readdirSync('plugins', { withFileTypes: true })) {
+    if (!dir.isDirectory()) continue;
+    for (const f of ['plugin.ts', 'package.json', 'tsconfig.json', 'index.html', 'main.ts']) {
+      assert.ok(existsSync(`plugins/${dir.name}/${f}`), `plugins/${dir.name}/${f} missing`);
+    }
+  }
+});
+```
+
+Some assertions depend on later tasks — the single deploy workflow lands in Task 18, and `main.ts`/`plugin.ts` in Tasks 12/14. Any assertion that cannot pass yet must be written and marked with `{ todo: true }` **naming the task that satisfies it**, never omitted.
+
+- [ ] **Step 3: Run it**
+
+Run: `node --test tests/monorepo-topology.test.mjs`
+Expected: PASS, with any `todo` entries clearly attributed to a pending task.
+
+- [ ] **Step 4: Reconcile the accounting**
+
+In the commit message, state the total removed across Tasks 6–12 against what this suite now covers, and name any invariant that was dropped and deliberately **not** re-established, with the reason. An invariant that silently disappears between the two accountings is the failure this task exists to prevent.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add tests/monorepo-topology.test.mjs
+git commit -m "test(migrate): consolidate the seven games' topology invariants into one suite
+
+Tasks 6-12 removed per-game assertions checking the @arcade/shared git pin, per-game
+scripts, pinned ports, strictPort, base '/' and the per-repo CI caller — all
+deliberately gone after the collapse. The invariants are re-established here once,
+per the codebase's own rule that cross-repo wiring belongs in the orchestrator suite.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
