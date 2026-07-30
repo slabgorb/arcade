@@ -2714,6 +2714,29 @@ gh secret list -R slabgorb/arcade | grep CLOUDFLARE_API_TOKEN || echo "MISSING �
 
 If missing, set it from a file or a pipe — `gh secret set` under this harness stores an empty value on EOF.
 
+- [ ] **Step 4a: Three Node facts this workflow must respect (from Task 14's review)**
+
+**The ≥22.18 floor is transitive to the ENTIRE orchestrator suite, not just the generator.**
+`tests/registry.test.mjs` imports `../scripts/gen-registry.mjs`, which imports
+`../src/host/contract.ts`. On Node < 22.18 that import fails at **module load**, and under
+`node --test 'tests/**/*.test.mjs'` a load failure takes the whole file down — so **all ~310 tests
+stop collecting**, rather than merely losing the registry ones. A wrong pin here is not a partial
+failure, it is a suite that does not run. `node-version: 22` resolves to the latest 22.x and is
+correct; a literal `20` is not.
+
+**CI must run `npm run test:orchestrator`, or the registry anti-rot guard never runs at all.**
+`--check` exists on the generator but has **no npm script** — `gen:registry` only writes. Staleness
+is enforced solely through `tests/registry.test.mjs`. If this workflow runs only vitest, a committed
+registry can drift from the manifests forever and CI will stay green. Either invoke
+`test:orchestrator` in the workflow or add a `gen:registry -- --check` step; do not assume the vitest
+run covers it.
+
+**Verify whether Node 22.x still prints `ExperimentalWarning: Type Stripping` on stderr.** Nobody has
+been able to check — every machine on this plan runs Node 25, where the output is clean. If 22.x
+still warns, both `test:orchestrator` and `gen:registry` carry warning noise on every CI run. Find
+out before locking the pin; the fix is a version bump or `--disable-warning=ExperimentalWarning`, but
+knowing beats discovering.
+
 - [ ] **Step 4b: Assert the workflow's deploy target — this task owns it now**
 
 **PLAN DEFECT #18, found by Task 12b's review.** Every game's deleted `CI deploy caller` describe
