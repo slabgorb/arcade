@@ -1473,7 +1473,7 @@ export const build: BuildSpec = { entries: ['models.html'] }
 
 ```typescript
 import { version } from './package.json'
-import type { GameMeta } from '@host/contract'
+import type { GameMeta, BuildSpec } from '@host/contract'
 
 export const meta: GameMeta = {
   id: 'star-wars',
@@ -1486,6 +1486,9 @@ export const meta: GameMeta = {
   showcase: false,
   version,
 }
+
+// star-wars ships TWO dev-tool pages alongside the game.
+export const build: BuildSpec = { entries: ['models.html', 'scenes.html'] }
 ```
 
 `plugins/asteroids/plugin.ts`:
@@ -1530,7 +1533,7 @@ export const meta: GameMeta = {
 
 ```typescript
 import { version } from './package.json'
-import type { GameMeta } from '@host/contract'
+import type { GameMeta, BuildSpec } from '@host/contract'
 
 // listed: false — red-baron is provisioned but not finished enough for the
 // cabinet floor. Under the old hand-maintained registry this was an OMISSION
@@ -1546,6 +1549,9 @@ export const meta: GameMeta = {
   showcase: false,
   version,
 }
+
+// red-baron ships the model contact sheet too.
+export const build: BuildSpec = { entries: ['models.html'] }
 ```
 
 `plugins/centipede/plugin.ts`:
@@ -2060,7 +2066,20 @@ done
 ls dist dist/tempest
 ```
 
-Expected: `dist/index.html` (lobby) plus `dist/<id>/index.html` for each game, and `dist/tempest/models.html` from the extra entry.
+Expected: `dist/index.html` (lobby) plus `dist/<id>/index.html` for each game, **and every extra dev-tool page**. Three games ship them, and they are silently lost if a `build` export is missing — assert them explicitly:
+
+```bash
+for f in dist/index.html \
+         dist/tempest/index.html dist/tempest/models.html \
+         dist/star-wars/index.html dist/star-wars/models.html dist/star-wars/scenes.html \
+         dist/red-baron/index.html dist/red-baron/models.html \
+         dist/asteroids/index.html dist/battlezone/index.html \
+         dist/centipede/index.html dist/joust/index.html; do
+  [ -f "$f" ] && echo "ok   $f" || echo "MISSING $f"
+done
+```
+
+Expected: twelve `ok` lines, no `MISSING`. That list is the complete set of HTML entries across the fleet, taken from the per-repo `vite.config.ts` files before they were deleted — tempest and red-baron each had `models.html`, star-wars had `models.html` **and** `scenes.html`, and the other four had only `index.html`.
 
 **Base-path audit.** Each game moved from `base: '/'` to `base: '/<id>/'`. Grep each game's built HTML and JS for absolute asset paths that no longer carry the prefix:
 
