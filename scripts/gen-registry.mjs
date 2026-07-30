@@ -114,7 +114,15 @@ export function readManifest(dir) {
       `${where}: version must be the shorthand \`version,\` imported from ./package.json — a literal would be ignored`,
     );
   }
-  const { version } = JSON.parse(readFileSync(join(PLUGINS_DIR, dir, 'package.json'), 'utf8'));
+  // Named, not raw: an unwrapped read gives `ENOENT: no such file or directory, open
+  // '/Users/…/plugins/foo/package.json'` — true, but it buries which plugin is broken in a
+  // path, while every other failure in this file leads with `plugins/<dir>/…`.
+  let version;
+  try {
+    ({ version } = JSON.parse(readFileSync(join(PLUGINS_DIR, dir, 'package.json'), 'utf8')));
+  } catch (e) {
+    throw new Error(`plugins/${dir}/package.json: cannot read a version from it — ${e.message}`);
+  }
 
   const parsed = {
     id: str('id'),
@@ -133,11 +141,19 @@ export function readManifest(dir) {
   // registry, or a typo'd `showcas` — is simply not looked at, and validateMeta's
   // unknown-key rule can never fire because the extra key never reaches it. Measured:
   // adding `launchUrl` to a manifest passed generation cleanly until this loop existed.
-  // The known set is `Object.keys(parsed)` itself, so no second list can drift.
-  // (A nested object literal would make this over-report rather than under-report; the
-  // manifests are flat by design, and a loud false alarm beats a silent drop.)
-  for (const key of body[1].matchAll(/^\s*([A-Za-z_$][\w$]*)\s*[:,]/gm)) {
-    const name = key[1];
+  //
+  // THE LIMITING FACTOR IS THIS REGEX, not the known set. `Object.keys(parsed)` means
+  // there is no second list of valid names to drift, but a key the pattern cannot see is
+  // dropped exactly as before — and review measured that too: the first version matched
+  // bare identifiers only, so `'launchUrl': '…'` and `"launchUrl": '…'` both generated
+  // cleanly. Quoted keys are matched now. Two known limits remain, both of which
+  // OVER-report (a loud false alarm) rather than drop silently: a computed key
+  // (`[NAME]: …`), and a nested object literal, whose inner lines read as top-level keys.
+  // The manifests are flat, one field per line, by design.
+  for (const key of body[1].matchAll(
+    /^\s*(?:'([^']*)'|"([^"]*)"|([A-Za-z_$][\w$]*))\s*[:,]/gm,
+  )) {
+    const name = key[1] ?? key[2] ?? key[3];
     if (name in parsed) continue;
     parsed[name] = pick(name) ?? true;
   }
@@ -217,7 +233,20 @@ export function getGame(id: string): GameMeta | undefined {
   return { source, games };
 }
 
+// Every throw in this file names the offending file and says what is wrong with it. An
+// uncaught one lands under ten lines of V8 stack trace, which buries the sentence someone
+// needs. buildRegistry() still throws for programmatic callers (tests want the Error);
+// only the CLI flattens it.
 function main(argv) {
+  try {
+    return run(argv);
+  } catch (e) {
+    console.error(`gen-registry: ${e.message}`);
+    process.exit(1);
+  }
+}
+
+function run(argv) {
   const check = argv.includes('--check');
   const { source, games } = buildRegistry();
   const tally = `${games.length} games (${games.filter((g) => g.listed).length} listed)`;

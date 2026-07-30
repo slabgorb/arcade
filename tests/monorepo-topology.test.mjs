@@ -229,6 +229,37 @@ test('the root declares the scripts and the toolchain the apps used to declare i
   }
 });
 
+test('the running Node meets the floor package.json declares', () => {
+  // A DIAGNOSTIC, not a wiring rule. The cabinet loads TypeScript into bare Node in two
+  // places — the root vite.config.ts that four tests below reach through, and
+  // scripts/gen-registry.mjs's `import … from '../src/host/contract.ts'`, which
+  // tests/registry.test.mjs imports in turn — and both need Node's type stripping, on by
+  // default since 22.18/23.6.
+  //
+  // Below that floor the suite does not explain itself. Measured on this checkout with
+  // `node --no-experimental-strip-types --test 'tests/**/*.test.mjs'`, which reproduces an
+  // older Node exactly: 305 tests, 298 pass, 5 fail — four of these tests plus the whole of
+  // tests/registry.test.mjs, whose six tests simply never collect, reported as one bare
+  // `✖ tests/registry.test.mjs` over an ERR_UNKNOWN_FILE_EXTENSION stack. (node:test runs
+  // each file in its own process, so the damage stops at the file; the rest of the suite
+  // still runs.) Nothing in that output says "your Node is too old". This test does.
+  //
+  // It is also the only thing checking `engines` at all, which was `>=20` — already untrue
+  // before Task 14, since the vite.config.ts loads predate it.
+  const { engines } = JSON.parse(read('package.json'));
+  const declared = engines?.node;
+  assert.match(String(declared), /^>=\d+\.\d+/, 'package.json must declare engines.node as >=X.Y');
+
+  const [wantMajor, wantMinor] = declared.replace('>=', '').split('.').map(Number);
+  const [haveMajor, haveMinor] = process.versions.node.split('.').map(Number);
+  assert.ok(
+    haveMajor > wantMajor || (haveMajor === wantMajor && haveMinor >= wantMinor),
+    `arcade needs Node ${declared}, but this is v${process.versions.node}. Below ${declared} ` +
+      `Node cannot import a .ts file, so scripts/gen-registry.mjs, tests/registry.test.mjs ` +
+      `and the root vite.config.ts all fail to load with ERR_UNKNOWN_FILE_EXTENSION.`,
+  );
+});
+
 test('every game is served under its own base path, lobby at the root', async () => {
   // Task 5's fix round shipped the lobby half of this test (as `the lobby is
   // served under base /`); Task 12b adds the seven games' loop and the outDir

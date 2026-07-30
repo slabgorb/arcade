@@ -50,6 +50,9 @@ const MANIFESTS = {
   tempest,
 } as const
 
+/** The three manifests that ship dev-tool pages. Kept honest against the source text by
+ *  `covers every manifest that exports a build spec` — a hand-maintained subset with
+ *  nothing checking its membership is the defect this whole task is about. */
 const BUILDS = {
   tempest: tempestBuild,
   'star-wars': starWarsBuild,
@@ -70,7 +73,10 @@ describe('the seven real manifests', () => {
   })
 
   it.each(Object.entries(MANIFESTS))('%s passes validateMeta against its directory', (dir, meta) => {
-    expect(validateMeta(meta, dir)).toEqual(meta)
+    // The operative assertion is "does not throw" — validateMeta's whole job is rejection.
+    // `.toBe`, not `.toEqual`: it returns the SAME reference, so toEqual would compare an
+    // object with itself and pass no matter what the validator did to it.
+    expect(validateMeta(meta, dir)).toBe(meta)
   })
 
   it.each(Object.entries(MANIFESTS))('%s declares its own package.json version', (dir, meta) => {
@@ -83,6 +89,17 @@ describe('the seven real manifests', () => {
     // Not checkable inside validateMeta — one manifest cannot see its siblings.
     const orders = Object.values(MANIFESTS).map((m) => m.order)
     expect(new Set(orders).size).toBe(orders.length)
+  })
+
+  it('covers every manifest that exports a build spec', () => {
+    // The symmetric guard to `covers every plugins/ directory`, and for the same reason:
+    // without it, a fourth manifest gaining `export const build` joins the build with its
+    // entries checked by nothing. Read from the source text because a manifest that is not
+    // imported above cannot be asked whether it has the export.
+    const declared = dirNames().filter((dir) =>
+      /^export const build:/m.test(readFileSync(join(PLUGINS, dir, 'plugin.ts'), 'utf8')),
+    )
+    expect(Object.keys(BUILDS).sort()).toEqual(declared)
   })
 
   it('declares only build entries that exist on disk', () => {
@@ -98,9 +115,17 @@ describe('the generated registry', () => {
   it('holds exactly the seven manifests, each still passing validateMeta', () => {
     // The generated file is committed, so it can be hand-edited. Re-validating it here
     // means a hand edit that breaks the contract fails the suite, not just the generator.
+    //
+    // The directory comes from the FILESYSTEM, not from `game.id`. Passing the id of the
+    // object under test makes validateMeta's id-vs-directory rule compare a value with
+    // itself: it can never fire, so an edited id would sail through the one check written
+    // to catch it. Taking the directory from disk is what makes the claim above true.
+    const dirs = dirNames()
     expect(GAMES).toHaveLength(Object.keys(MANIFESTS).length)
     for (const game of GAMES) {
-      expect(validateMeta(game, game.id)).toEqual(game)
+      const dir = dirs.find((d) => d === game.id)
+      expect(dir, `registry has '${game.id}', which is not a plugins/ directory`).toBeDefined()
+      expect(validateMeta(game, dir as string)).toBe(game)
     }
   })
 
