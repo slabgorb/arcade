@@ -84,7 +84,8 @@ stories:
     title: 'Egg-ladder counter outlives a life — DEGGS shares the DECISION BLOCK with DSCORE (JOUSTRV4.SRC:106/:111/:113), so it must survive a mount death; our eggHits rides the player PROCESS and resets to rung 1 on every respawn. REPRODUCED: a veteran with 3 prior hits scores 1000, then the identical staging after a respawn scores 250. respawnPlayerProcess (demo.ts:333) builds a fresh process and eggHits has only three sites in src/ (decl :167, read :904, write :905) — nothing carries it across, and game.ts:439 appends the fresh process. Re-home the count where it outlives a process but stays readable by the sim at event-emit time (a per-player record on DemoSim, the jt8-1 targets precedent). The DCRE field name (DECISION TO BE RECREATED BY WHOM) is the positive evidence the block is the persistent per-player identity. NOTE the wave/game reset scope is still open — the decision-block initialiser was not chased. Filed by Reviewer on jt8-4 (R-1)'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-07-29'
     repos: joust
     workflow: tdd
     type: bug
