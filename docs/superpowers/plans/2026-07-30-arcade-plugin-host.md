@@ -2402,6 +2402,53 @@ git check-ignore -v dist/tempest    # must now match
 joust's removed `fresh-checkout hygiene` assertion is what routed this here; Task 12b's
 `build output is never tracked` test is currently the only guard, and a todo cannot stop a commit.
 
+- [ ] **Step 5c: Pin the dev-tool entries against the filesystem — nothing else does**
+
+**PLAN DEFECT #20.** Three games ship a second HTML entry beyond `index.html`, measured on disk:
+
+| app | HTML files |
+|---|---|
+| tempest | `index.html`, `models.html` |
+| star-wars | `index.html`, `models.html`, `scenes.html` |
+| red-baron | `index.html`, `models.html` |
+
+(asteroids, battlezone, centipede and joust ship `index.html` only. The manifests in Task 14 declare
+exactly this set — verified — so the *data* is right.)
+
+What is missing is any guard on the **chain** that carries it. `BuildSpec` has no runtime validator
+and no test, and Step 5's extraction reads the declaration with a **regex over source text**:
+
+```js
+const m = src.match(/export const build:\s*BuildSpec\s*=\s*\{\s*entries:\s*\[([^\]]*)\]/)
+```
+
+Reformat a manifest across two lines and that match returns `null`. The build then emits a game with
+**no dev-tool page and no error** — `tsc` still passes, because the declaration is perfectly valid
+TypeScript. Task 12b's `dev-tool HTML entries are opt-in, never inherited` guards the *factory*
+(`defineAppConfig` honours `entries` in both directions); it says nothing about whether the entries
+ever reach it.
+
+Add to `tests/monorepo-topology.test.mjs` (node:test), asserting **both directions against the
+filesystem** so neither a silent drop nor a stale declaration survives:
+
+```js
+test('every plugin dev-tool HTML file is declared, and every declared one exists', () => {
+  for (const id of GAMES) {
+    const dir = `plugins/${id}`
+    const onDisk = readdirSync(dir).filter(f => f.endsWith('.html') && f !== 'index.html').sort()
+    const src = existsSync(`${dir}/plugin.ts`) ? readFileSync(`${dir}/plugin.ts`, 'utf8') : ''
+    const m = src.match(/export const build:\s*BuildSpec\s*=\s*\{\s*entries:\s*\[([^\]]*)\]/)
+    const declared = m ? [...m[1].matchAll(/['"]([^'"]+)['"]/g)].map(x => x[1]).sort() : []
+    assert.deepEqual(declared, onDisk,
+      `${id}: declared dev-tool entries must match the .html files on disk — a regex that stops matching drops a page silently`)
+  }
+})
+```
+
+Mutation-prove it twice, because it has two failure directions: reformat one manifest's `build`
+export across two lines (the regex stops matching → must redden), and delete a declared `.html`
+(must redden the other way). Revert both.
+
 - [ ] **Step 6: Build every app**
 
 ```bash
