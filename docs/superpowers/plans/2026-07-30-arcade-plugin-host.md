@@ -2975,12 +2975,24 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ## Task 23: Cut over the origin
 
-The first irreversible step. Everything before this is local; nothing a player can see has changed.
-
-**Files:** none — Cloudflare configuration and a deploy.
+**Files:** none — a deploy plus Cloudflare configuration.
 
 **Interfaces:**
 - Consumes: the real inventory from Task 1, the deploy workflow from Task 18.
+
+### Ownership split (owner ruling, 2026-07-30)
+
+**The owner handles all Cloudflare/DNS work.** Do not attempt it, and do not treat it as blocked work — it is simply somebody else's.
+
+| Steps | Owner | Reversible? |
+|---|---|---|
+| 0–3: drift check, deploy, verify the new origin, verify assets | **the agent** | Yes — purely additive |
+| 4: unbind the 7 R2 custom domains, add 7 Single Redirect rules | **the human owner** | Re-bind to undo |
+| 5–6: verify the redirects, verify the high-score bridge in a browser | the agent, *after* step 4 | n/a — read-only |
+
+**Steps 0–3 carry no outage risk at all.** Games are uploaded into key prefixes of the *existing* `arcade-lobby` bucket, which already sits behind the *existing* `arcade.slabgorb.com` custom domain. So `arcade.slabgorb.com/tempest/` starts working as soon as its keys land, with **no DNS change**, while all seven old subdomains keep serving their own buckets exactly as before. Nothing a player can reach changes until the owner does step 4.
+
+That decoupling is the point: the new origin is proven working *before* any hostname is touched, so step 4 is a redirect of already-validated paths rather than a leap.
 
 - [ ] **Step 0: Drift check — has any game moved since the manifest was pinned?**
 
@@ -3018,7 +3030,21 @@ for p in "" tempest/ star-wars/ asteroids/ battlezone/ red-baron/ centipede/ jou
 done
 ```
 
-Expected: `200` on every line. A `404` on a bare `<id>/` means the zone's directory-path `index.html` rewrite rule does not cover the nested paths — extend it before continuing.
+Expected: `200` on every line.
+
+**A `404` on a bare `<id>/` is the one thing here the agent cannot fix, and it is expected to need attention.** R2 serves objects by exact key, so `/tempest/` only resolves because a zone-level URL-rewrite rule (`arcade index.html for directory paths`) appends `index.html` to `/`-terminated paths. That rule was written when the only directory path was the lobby's root. If it does not match nested paths, every game 404s at its bare path while `/tempest/index.html` works fine.
+
+Diagnose precisely and hand it over:
+
+```bash
+for p in tempest/ tempest/index.html; do
+  printf '%-22s %s\n' "/$p" "$(curl -s -o /dev/null -w '%{http_code}' "https://arcade.slabgorb.com/$p")"
+done
+```
+
+- Both `200` → the rewrite rule already covers nested paths. Nothing needed.
+- `/tempest/` is `404` but `/tempest/index.html` is `200` → **the rewrite rule needs extending to nested directory paths. That is a Cloudflare change and belongs to the owner.** Report it with this exact evidence rather than working around it; a client-side fallback would paper over a routing bug for every game at once.
+- Both `404` → the upload did not land. That one *is* the agent's: re-check `just deploy` output and the key prefixes.
 
 - [ ] **Step 3: Verify each game's assets resolve under its prefix**
 
@@ -3028,14 +3054,24 @@ curl -s https://arcade.slabgorb.com/tempest/ | grep -oE '(src|href)="[^"]+"' | h
 
 Expected: every relative asset resolves under `/tempest/`. Spot-check one JS and one asset URL per game with `curl -o /dev/null -w '%{http_code}'`.
 
-- [ ] **Step 4: Redirect the old hostnames**
+- [ ] **Step 4: Redirect the old hostnames — OWNER'S STEP, not the agent's**
 
-For each hostname in the Task 1 inventory: unbind the R2 custom domain (R2 → bucket → Settings → Public access → remove custom domain), add a proxied DNS record for the hostname pointing at the zone, then add a Single Redirect rule:
+Hand over, do not attempt. The agent's job is to have steps 0–3 green first, so this is a redirect of already-verified paths.
 
-- **When:** `http.host eq "tempest.slabgorb.com"`
-- **Then:** dynamic redirect, `concat("https://arcade.slabgorb.com/tempest", http.request.uri.path)`, status 301, preserve query string.
+All seven hostnames are live R2 custom-domain bindings (verified in Task 1): `tempest`, `star-wars`, `asteroids`, `battlezone`, `red-baron`, `centipede`, `joust` — each `.slabgorb.com`. `arcade.slabgorb.com` itself stays bound to `arcade-lobby` and must **not** be touched.
 
-A DNS record alone cannot produce a path redirect — the rule is what does the work.
+Per hostname:
+1. R2 → the game's bucket → Settings → Public access → remove the custom domain.
+2. Add a proxied DNS record for that hostname pointing at the zone.
+3. Add a Single Redirect rule:
+   - **When:** `http.host eq "tempest.slabgorb.com"`
+   - **Then:** dynamic redirect → `concat("https://arcade.slabgorb.com/tempest", http.request.uri.path)`, status **301**, preserve query string.
+
+A DNS record alone cannot produce a path redirect — the rule does the work. Free tier; needs neither a Worker nor Enterprise Origin Rules.
+
+**Do not pass query-string decorations** on these redirects beyond preserving the original: ADR-0004 records that ITP 2.3 caps cookies to 24 hours when a page is reached via tracker-style link decoration, and the high-score bridge depends on that cookie surviving.
+
+Order matters only in that a hostname is briefly unreachable between steps 1 and 3. Doing one game end-to-end first confirms the rule shape before repeating it six times.
 
 - [ ] **Step 5: Verify each redirect**
 
