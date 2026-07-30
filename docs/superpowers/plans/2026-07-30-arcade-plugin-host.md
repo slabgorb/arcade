@@ -624,20 +624,48 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Files:**
 - Move: `lobby/**` → stays at `lobby/` but becomes tracked
-- Delete: `lobby/vite.config.ts`, `lobby/package.json`, `lobby/tsconfig.json`, `lobby/.github/`
+- Delete: `lobby/vite.config.ts`, `lobby/.github/`, `lobby/package-lock.json`
+- Replace: `lobby/package.json` with a `{name, version, private}` stub; `lobby/tsconfig.json` with one extending the root
 - Modify: `lobby/src/**` — rewrite `@arcade/shared/*` imports to `@shared/*`
 - Modify: `.gitignore`
 
 **Interfaces:**
 - Consumes: `@shared/highscore` (Task 4).
-- Produces: a tracked `lobby/` whose 9 test files pass under the `lobby` vitest project.
+- Produces: a tracked `lobby/` whose 11 test files / 127 tests pass under the `lobby` vitest project, and a `lobby/package.json` carrying the version that `just release lobby` bumps and tags.
+
+**`lobby/package.json` is REPLACED, not deleted.** An earlier draft of this plan deleted it, which would have broken Task 17: `just release lobby` bumps a version and tags `lobby-vX.Y.Z`, and with no `package.json` there is nothing to bump or read. The lobby gets the same three-field stub every game gets — no dependencies, no scripts, because the root owns the toolchain.
 
 - [ ] **Step 1: Strip the per-repo tooling and untrack the subrepo**
 
 ```bash
 rm -rf lobby/.git lobby/.github lobby/node_modules
-rm -f lobby/vite.config.ts lobby/tsconfig.json lobby/package.json lobby/package-lock.json
+rm -f lobby/vite.config.ts lobby/package-lock.json
 ```
+
+Note `lobby/tsconfig.json` and `lobby/package.json` are **replaced** in the next step, not deleted here.
+
+- [ ] **Step 1b: Write the stub package.json and tsconfig**
+
+`lobby/package.json` — read the version from `docs/ops/migration-manifest.md`, do not copy the number below:
+
+```json
+{
+  "name": "lobby",
+  "version": "0.0.22",
+  "private": true
+}
+```
+
+`lobby/tsconfig.json`:
+
+```json
+{
+  "extends": "../tsconfig.json",
+  "include": ["src", "tests"]
+}
+```
+
+Note the single `../` — the lobby sits one level down, unlike the games at `plugins/<id>/` which need `../../`.
 
 - [ ] **Step 2: Remove /lobby/ from .gitignore**
 
