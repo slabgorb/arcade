@@ -1,26 +1,239 @@
-// The cabinet-wide wiring invariants that lobby's `tests/scaffold.test.ts` used to
-// assert per-repo, before Task 5 deleted it along with `lobby/vite.config.ts` (the
-// file scaffold.test.ts existed to guard). The collapse to a single root
-// `vite.config.ts` factory makes the invariant singular — and the codebase's own
-// rule (centipede `scaffold.test.ts`: "cross-repo wiring invariants live in the
-// ORCHESTRATOR suite") says this is where it belongs.
+// The cabinet-wide wiring invariants. These were asserted eight times over — once
+// per app's own `tests/scaffold.test.ts` (plus the per-game extraction/adoption
+// suites) — back when every app was its own repo with its own vite config, port,
+// scripts, lockfile, CI caller and `@arcade/shared` git pin. The collapse to a
+// single root `vite.config.ts` factory, a single `package.json` and a single
+// `src/shared` makes every one of them singular — and the codebase's own rule
+// (centipede `scaffold.test.ts`: "cross-repo wiring invariants live in the
+// ORCHESTRATOR suite") says this is where they belong.
 //
-// Scope: ONLY the two lobby invariants Task 5's fix round owns. Task 12b extends
-// this same file with the seven games' equivalent share (base `/<id>/`, per-game
-// build.outDir, and the identical host-pin check run once per game) once Tasks
-// 6-12 have imported them — do not add that share here.
+// Provenance, so a future reader can audit the consolidation rather than trust it:
+//   - Task 5  deleted `lobby/tests/scaffold.test.ts`        (5 tests)
+//   - Task 6  deleted `tempest/tests/scaffold.test.ts`       (5) + 2 git-pin assertions
+//   - Task 7  deleted `star-wars/tests/scaffold.test.ts`     (5) + 3 git-pin assertions
+//   - Task 8  deleted `asteroids/tests/scaffold.test.ts`     (5) + 3 git-pin assertions
+//   - Task 9  removed 2 whole describes + 4 git-pin assertions from battlezone (19)
+//   - Task 10 removed 2 whole describes + 2 git-pin assertions from red-baron  (16)
+//   - Task 11 removed 3 whole describes from centipede (19 tests / 35 assertions)
+//   - Task 12 removed 5 whole describes from joust     (26 tests / 50 assertions)
+// Each surviving `plugins/<id>/tests/scaffold.test.ts` header quotes its own
+// removals by exact old title; the deleted three (tempest, star-wars, asteroids)
+// are recorded in `.superpowers/sdd/2026-07-30-arcade-plugin-host/task-{6,7,8}-report.md`.
+//
+// TWO of these tests predate Task 12b: Task 5's fix round shipped the lobby's
+// `base` assertion (extended here with the seven games' loop, and renamed to say
+// so) and the declarative host-pin test (left exactly as shipped). `node:test`
+// permits duplicate test names silently, so nothing below re-adds them.
+//
+// KNOWINGLY ACCEPTED LOSSES — invariants that were removed and are NOT restored
+// anywhere. Recorded here, not omitted, because an invariant that vanishes
+// between the two accountings is the failure this file exists to prevent:
+//
+//   1. `does NOT reuse 5270/5273/5274/5275/...` (battlezone, centipede, joust —
+//      a loop over each game's TAKEN_PORTS). There is one port now. Its nearest
+//      successor is base-path uniqueness, which IS asserted below.
+//   2. `allow-lists arcade.slabgorb.com on both server and preview` (battlezone
+//      only). That existed so the retired Cloudflare tunnel could forward a
+//      public Host header into a dev server. The tunnel is history
+//      (`cloudflared/` is kept as history; production is static R2), and `host`
+//      is pinned to IPv4 loopback below, so no external hostname can reach the
+//      dev server at all. Restoring it would re-open the hole it once managed.
+//   3. red-baron's `resolves an @arcade/shared new enough to carry /synth` —
+//      its VERSION half read `node_modules/@arcade/shared/package.json` and
+//      demanded >= 0.14.0 to catch the stale-lockfile trap (edit the `#ref`,
+//      run a bare `npm install`, keep the old commit). There is no installed
+//      package, no `#ref` and no lockfile entry, so the trap cannot occur. Its
+//      export half survives in-plugin on `@shared/synth`.
+//   4. The per-game CI callers' interior detail — the `arcade-<id>` bucket
+//      target, the push-to-main trigger, the ten-line thin-caller shape and the
+//      sibling-bucket guard (centipede, joust). Task 18 replaces all eight
+//      callers with ONE tag-triggered workflow whose bucket is `arcade-lobby`
+//      for every app; the shape being guarded no longer exists. What survives
+//      as an invariant — that there is exactly one workflow — is asserted below
+//      (todo until Task 18).
+//   5. `vite`/`vitest` RESOLVED major versions read out of each game's own
+//      `node_modules` (centipede, joust). Plugins have no `node_modules`. The
+//      DECLARED ranges are asserted below instead; this is a reduction from
+//      "what actually resolved" to "what is asked for".
+//
+// The one removal that is NOT a loss, and was nearly booked as one: joust's
+// `scaffold — strictPort is real, not just declared (AC-1, behavioural)`. See
+// the behavioural test near the bottom of this file — it is restored, not
+// downgraded to the declarative check.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { spawn, execFileSync } from 'node:child_process';
+import { join, resolve } from 'node:path';
 
-test('the lobby is served under base /', async () => {
-  // The intent of the deleted `lobby/tests/scaffold.test.ts` "serves under base /"
-  // assertion, which died with lobby/vite.config.ts in Task 5 Step 1.
+// tests/ → the repo root is one level up. Resolved from the file, not from cwd,
+// so `node --test tests/monorepo-topology.test.mjs` and `npm run test:orchestrator`
+// (which globs from the root) agree no matter where either is invoked.
+const repo = resolve(import.meta.dirname, '..');
+const path = (...rel) => join(repo, ...rel);
+const read = (...rel) => readFileSync(path(...rel), 'utf8');
+
+const GAMES = ['tempest', 'star-wars', 'asteroids', 'battlezone', 'red-baron', 'centipede', 'joust'];
+// Every app, with its directory: the games under plugins/, the lobby at the root.
+const APPS = [...GAMES.map((id) => [id, join('plugins', id)]), ['lobby', 'lobby']];
+
+// Anti-vacuity anchor for every GAMES loop below. A loop over a hardcoded list
+// is blind to an EIGHTH plugin nobody added to the list — it would sail through
+// all seven iterations and guard nothing about the newcomer. This test is what
+// makes the seven-element loops honest, so it must run and it must be first.
+test('plugins/ holds exactly the seven games this file loops over', () => {
+  const dirs = readdirSync(path('plugins'), { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+  assert.deepEqual(
+    dirs,
+    [...GAMES].sort(),
+    'plugins/ and this file\'s GAMES list have diverged — every loop below is now ' +
+      'silently skipping an app. Add the new game to GAMES (and to vitest.config.ts).',
+  );
+});
+
+test('exactly one package.json declares dependencies', () => {
+  // Replaces the seven `scaffold — package.json scripts` describes (battlezone 7,
+  // red-baron 7, centipede 8 tests, joust 9 tests) and the four-way @arcade/shared
+  // version drift they lived alongside. Per-app package.json files carry
+  // name/version/private and nothing else: no scripts, no devDependencies, no
+  // `type: module`, no dependencies. The root owns the toolchain.
+  for (const [id, dir] of APPS) {
+    const pkg = JSON.parse(read(dir, 'package.json'));
+    assert.deepEqual(
+      Object.keys(pkg).sort(),
+      ['name', 'private', 'version'],
+      `${dir}/package.json must carry only name/version/private — ${id} has grown a field back`,
+    );
+  }
+});
+
+test('no @arcade/shared dependency survives anywhere', () => {
+  // Replaces the NINE identical `pins @arcade/shared as a git-URL dependency`
+  // assertions removed across tempest (2), star-wars (3), asteroids (3),
+  // battlezone (4) and red-baron (2 — one of them `drops the pre-font #v0.5.0
+  // pin (AC-4)`). Those guarded a pinned git pipe; the pipe is now the
+  // `@shared/*` alias. A reappearance means someone re-introduced the pin and
+  // with it the version drift the monorepo exists to delete.
+  assert.ok(!read('package.json').includes('@arcade/shared'), 'root package.json');
+  for (const [, dir] of APPS) {
+    assert.ok(!read(dir, 'package.json').includes('@arcade/shared'), `${dir}/package.json`);
+  }
+  // The lockfile and node_modules are where a re-introduced pin would actually
+  // land, so check the artifacts and not only the declaration.
+  assert.ok(!read('package-lock.json').includes('@arcade/shared'), 'package-lock.json');
+  assert.ok(!existsSync(path('node_modules', '@arcade')), 'node_modules/@arcade must not exist');
+});
+
+test('no per-app vite config, tsconfig base, lockfile, or CI caller survives', () => {
+  // Replaces the eight `vite.config.ts exists` assertions (which inverted), the
+  // per-repo `.github/workflows/deploy.yml` callers (centipede 5 tests, joust 6)
+  // and joust's `fresh-checkout hygiene` lockfile assertion — which the collapse
+  // likewise INVERTS: a plugin must now NOT carry a lockfile.
+  for (const [, dir] of APPS) {
+    assert.ok(!existsSync(path(dir, 'vite.config.ts')), `${dir} must not carry its own vite config`);
+    assert.ok(!existsSync(path(dir, 'vitest.config.ts')), `${dir} must not carry its own vitest config`);
+    assert.ok(!existsSync(path(dir, 'package-lock.json')), `${dir} must not carry its own lockfile`);
+    assert.ok(!existsSync(path(dir, '.github')), `${dir} must not carry its own CI`);
+    // "No node_modules of its own" (centipede/joust) means no INSTALLED tree —
+    // not literally no directory. Vite writes its dep-optimizer cache to
+    // <root>/node_modules/.vite, and every app IS a vite root, so `lobby/` grows
+    // that directory the moment anyone runs the dev server. Asserting absence
+    // outright would go red on a developer's machine for doing nothing wrong.
+    // Anything OTHER than the cache means someone ran `npm install` in here.
+    if (existsSync(path(dir, 'node_modules'))) {
+      assert.deepEqual(
+        readdirSync(path(dir, 'node_modules')).filter((e) => e !== '.vite'),
+        [],
+        `${dir}/node_modules holds installed packages — the root owns the toolchain`,
+      );
+    }
+  }
+});
+
+test('every app tsconfig extends the root, at the right depth', () => {
+  // The games sit one level deeper than the lobby, so the relative `extends`
+  // differs by exactly one `../`. Getting it wrong is silent: tsc reports a
+  // missing base config only when it runs, and each plugin's strict-mode guard
+  // walks this same chain — a broken hop makes those guards unreachable.
+  for (const g of GAMES) {
+    const tc = JSON.parse(read('plugins', g, 'tsconfig.json'));
+    assert.equal(tc.extends, '../../tsconfig.json', `plugins/${g}/tsconfig.json extends`);
+  }
+  assert.equal(JSON.parse(read('lobby', 'tsconfig.json')).extends, '../tsconfig.json');
+  // Raw text, not JSON.parse: the ROOT tsconfig carries `//` comments (the
+  // src/shared/tests exclusion note), so parsing it throws. Every plugin's own
+  // strict-mode guard walks the `extends` chain expecting to land here, and
+  // this is the one config that terminates that walk.
+  assert.match(read('tsconfig.json'), /"strict":\s*true/,
+    'the root config is the only place strictness is declared — every plugin stub delegates here');
+});
+
+test('the root declares the scripts and the toolchain the apps used to declare individually', () => {
+  // Replaces the interior of the seven `package.json scripts` describes: each one
+  // demanded dev/build/preview/test/test:watch/lint scripts plus vite/vitest/
+  // typescript devDependencies in its OWN package.json. There is one of each now.
+  const pkg = JSON.parse(read('package.json'));
+  assert.equal(pkg.type, 'module', 'the cabinet is ESM (joust asserted this per-repo)');
+  assert.equal(pkg.scripts.test, 'vitest run --passWithNoTests');
+  assert.equal(pkg.scripts.lint, 'tsc --noEmit');
+  assert.ok(pkg.scripts.build.includes('build-app.mjs'), 'build must go through the app builder');
+  // Declared majors, not resolved ones — plugins have no node_modules for the
+  // old "what actually RESOLVED" check to read. See accepted loss #5 in the header.
+  assert.match(pkg.devDependencies.vite, /^\^8\./, 'Vite 8');
+  assert.match(pkg.devDependencies.vitest, /^\^4\./, 'Vitest 4');
+  assert.ok(pkg.devDependencies.typescript, 'typescript must be a root devDependency');
+});
+
+test('every game is served under its own base path, lobby at the root', async () => {
+  // Task 5's fix round shipped the lobby half of this test (as `the lobby is
+  // served under base /`); Task 12b adds the seven games' loop and the outDir
+  // assertions, and renames it to match what it now covers. Between them these
+  // replace the eight per-repo `serves under base /` assertions — which are
+  // now false for the games BY DESIGN: each is mounted under /<id>/ on the one
+  // origin, and only the lobby keeps the root.
   const { defineAppConfig } = await import('../vite.config.ts');
+  const bases = new Set();
+  for (const g of GAMES) {
+    const cfg = defineAppConfig({ id: g });
+    assert.equal(cfg.base, `/${g}/`, `${g} must serve under /${g}/`);
+    assert.ok(cfg.build.outDir.endsWith(`dist/${g}`), `${g} must build into dist/${g}`);
+    bases.add(cfg.base);
+  }
   const lobby = defineAppConfig({ id: 'lobby' });
   assert.equal(lobby.base, '/', 'the lobby must serve at the cabinet root, not under a subpath');
+  assert.ok(lobby.build.outDir.endsWith('dist'), 'the lobby must build into dist/');
+  bases.add(lobby.base);
+  // The successor to the retired `does NOT reuse <sibling port>` loops: eight
+  // apps on one origin collide on PATH now, not on port. Two games sharing a
+  // base would silently overwrite each other in dist/ and in the bucket.
+  assert.equal(bases.size, GAMES.length + 1, 'every app must own a distinct base path');
+});
+
+test('dev-tool HTML entries are opt-in, never inherited', async () => {
+  // Replaces battlezone's `does not copy star-wars models.html rollupOptions` —
+  // the one assertion in the eight configs that guarded against a game
+  // inheriting a sibling's second entry point by copy-paste. The factory makes
+  // that structural: a game gets exactly `index.html` unless it declares more.
+  const { defineAppConfig } = await import('../vite.config.ts');
+  for (const g of GAMES) {
+    assert.deepEqual(
+      Object.keys(defineAppConfig({ id: g }).build.rollupOptions.input),
+      ['main'],
+      `${g} must not inherit a sibling's extra HTML entry`,
+    );
+  }
+  // …and the opt-in half really opts in, or the assertion above would pass on a
+  // factory that simply ignores `entries`.
+  const withTool = defineAppConfig({ id: 'tempest', entries: ['models.html'] });
+  assert.deepEqual(Object.keys(withTool.build.rollupOptions.input).sort(), ['main', 'models']);
 });
 
 test('the dev-server host pin survives — strictPort alone does not protect it', async () => {
+  // ALREADY SHIPPED BY TASK 5's FIX ROUND — untouched by Task 12b.
   // Replaces the per-repo scaffold assertion on strictPort + host:'127.0.0.1'
   // (originated jt1-3, ported fleet-wide as td1-1). Still load-bearing with one
   // dev server: a-1/a-2/a-3 race the same port, and an unpinned host lets a
@@ -34,5 +247,131 @@ test('the dev-server host pin survives — strictPort alone does not protect it'
     assert.equal(lobby[block].host, '127.0.0.1', `${block}.host must be pinned to IPv4 loopback`);
     assert.equal(lobby[block].strictPort, true, `${block}.strictPort must be true`);
     assert.equal(lobby[block].port, 5270, `${block}.port must stay pinned to 5270`);
+  }
+});
+
+test('strictPort is real, not just declared — the pin is PROVEN, not asserted', async () => {
+  // ===================================================================
+  // joust's `scaffold — strictPort is real, not just declared (AC-1,
+  // behavioural)`, RESTORED — not downgraded.
+  // ===================================================================
+  // joust is where this guard was invented (jt1-3, ported fleet-wide as td1-1)
+  // and it was the ONLY repo in the arcade where the pin was ever PROVEN rather
+  // than asserted: it bound a real TCP port, spawned the real vite, and watched
+  // it refuse to start. Task 12's removal record warns, correctly, that the
+  // declarative test above restores the CLAIM and not the PROOF, and asks that
+  // the difference be booked as a knowingly-accepted reduction in coverage.
+  //
+  // It does not have to be. The collapse removed the seven per-plugin vite
+  // binaries and ports, but it did not remove the ROOT one: there is one vite,
+  // one config and one pinned port, which is exactly what this proof needs. It
+  // is reconstructed here, cabinet-wide, and it catches what no config-object
+  // assertion can — a vite that silently ignores `strictPort`, a pin sitting on
+  // the wrong block, or the IPv6 fall-through ([::1]:5270 alongside a held
+  // 127.0.0.1:5270) that a declarative check reads straight past.
+  //
+  // It is also cheap: vite refuses in ~150ms, well under the 25s cap below.
+  const PORT = 5270;
+
+  /** Hold the port so the dev server has to collide with something. */
+  const occupy = () =>
+    new Promise((res) => {
+      const s = createServer();
+      // Already held by somebody else (a sibling checkout, a stray dev server).
+      // The collision the test needs exists either way, so carry on.
+      s.once('error', () => res({ release: async () => {} }));
+      s.listen(PORT, '127.0.0.1', () =>
+        res({ release: () => new Promise((done) => s.close(() => done())) }),
+      );
+    });
+
+  const lock = await occupy();
+  const vite = spawn('node_modules/.bin/vite', [], { cwd: repo, stdio: ['ignore', 'pipe', 'pipe'] });
+  let output = '';
+  let spawnError = null;
+  vite.stdout.on('data', (b) => (output += b.toString()));
+  vite.stderr.on('data', (b) => (output += b.toString()));
+
+  const exit = await new Promise((res) => {
+    const timer = setTimeout(() => {
+      vite.kill('SIGKILL');
+      res('still-running');
+    }, 25_000);
+    vite.on('error', (e) => {
+      clearTimeout(timer);
+      spawnError = e;
+      res('spawn-failed');
+    });
+    vite.on('exit', (code) => {
+      clearTimeout(timer);
+      res(code ?? -1);
+    });
+  });
+  await lock.release();
+
+  // Distinguish "vite could not be launched" from "vite refused to start",
+  // or a fresh checkout with no install reads as a passing proof.
+  assert.equal(spawnError, null, `could not spawn node_modules/.bin/vite: ${spawnError?.message}`);
+  assert.notEqual(
+    exit,
+    'still-running',
+    `vite kept running with ${PORT} occupied — strictPort is not in effect, so the dev ` +
+      `server silently wandered to another port (or to [::1]:${PORT}). Output:\n${output}`,
+  );
+  assert.notEqual(exit, 0, `vite must exit non-zero on a port collision. Output:\n${output}`);
+  assert.match(
+    output,
+    new RegExp(String(PORT)),
+    `vite failed, but never named the contested port ${PORT} — it may have failed for an ` +
+      `unrelated reason, which would make this proof vacuous. Output:\n${output}`,
+  );
+});
+
+test('build output is never tracked', () => {
+  // joust's `fresh-checkout hygiene` `git ls-files -- dist` anti-tracking check.
+  // It always ran with cwd: root, so it was a repo-wide property even then; the
+  // collapse just makes that explicit. dist/ is where every app now builds.
+  const tracked = execFileSync('git', ['ls-files', '--', 'dist'], { cwd: repo, encoding: 'utf8' });
+  assert.equal(tracked.trim(), '', 'built output has been committed');
+});
+
+test('the root .gitignore covers node_modules and dist', { todo: 'dist/ is UNOWNED — nearest owner is Task 16 (scripts/build-app.mjs, the thing that first writes dist/). No task brief adds it.' }, () => {
+  // The other half of joust's `fresh-checkout hygiene`: its .gitignore had to
+  // cover node_modules AND dist. Task 12's record routes both to the root
+  // .gitignore. node_modules is there; dist/ is NOT, and no later brief adds it
+  // — so the anti-tracking test above is currently the only thing standing
+  // between `git add -A` and a committed build. Flagged, not absorbed.
+  const ignore = read('.gitignore');
+  assert.match(ignore, /^node_modules\/$/m, '.gitignore must cover node_modules');
+  assert.match(ignore, /^\/?dist\/?$/m, '.gitignore must cover dist');
+});
+
+test('exactly one deploy workflow exists for the whole cabinet', { todo: 'Task 18 creates .github/workflows/deploy.yml and deletes deploy-r2.yml' }, () => {
+  // Was eight ten-line per-repo callers plus the reusable deploy-r2.yml (the
+  // describes centipede and joust each removed whole). Today the directory
+  // still holds deploy-r2.yml alone; Task 18 replaces it with one tag-triggered
+  // workflow. Written now, todo-marked, so the invariant has an owner rather
+  // than a hole.
+  assert.deepEqual(readdirSync(path('.github', 'workflows')), ['deploy.yml']);
+});
+
+test('every plugins/ directory is a real app with an entry', () => {
+  // The brief's draft looked for `main.ts` at the plugin root; every game
+  // actually boots `src/main.ts` (index.html: <script src="/src/main.ts">) and
+  // no later task moves it, so this asserts the real entry. The manifest half
+  // is the separate todo below — splitting them keeps four provable files
+  // provable instead of parking all five behind Task 14.
+  for (const g of GAMES) {
+    for (const f of ['package.json', 'tsconfig.json', 'index.html', 'src/main.ts']) {
+      assert.ok(existsSync(path('plugins', g, f)), `plugins/${g}/${f} missing`);
+    }
+    assert.match(read('plugins', g, 'index.html'), /src=["']\/src\/main\.ts["']/,
+      `plugins/${g}/index.html must boot src/main.ts`);
+  }
+});
+
+test('every plugins/ directory carries a plugin manifest', { todo: 'Task 14 writes the seven plugins/<id>/plugin.ts manifests' }, () => {
+  for (const g of GAMES) {
+    assert.ok(existsSync(path('plugins', g, 'plugin.ts')), `plugins/${g}/plugin.ts missing`);
   }
 });
