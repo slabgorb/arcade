@@ -83,10 +83,10 @@ export async function compareTempestSfx(name, romEvents) {
   let sfxData;
   let bake;
   try {
-    sfxData = await import(new URL('../../../tempest/tools/pokey-bake/sfx-data.mjs', import.meta.url));
-    bake = await import(new URL('../../../tempest/tools/pokey-bake/bake-sfx.mjs', import.meta.url));
+    sfxData = await import(new URL('../../../plugins/tempest/tools/pokey-bake/sfx-data.mjs', import.meta.url));
+    bake = await import(new URL('../../../plugins/tempest/tools/pokey-bake/bake-sfx.mjs', import.meta.url));
   } catch (err) {
-    return unverified(`could not load tempest/tools/pokey-bake/ (shipped artifact): ${err.message}`);
+    return unverified(`could not load plugins/tempest/tools/pokey-bake/ (shipped artifact): ${err.message}`);
   }
   const { SFX, DEFERRED } = sfxData;
   const { expandAlsoun, expandStream } = bake;
@@ -96,11 +96,11 @@ export async function compareTempestSfx(name, romEvents) {
     const deferred = DEFERRED.find((d) => d.name === name);
     if (deferred) {
       return unverified(
-        `tempest/tools/pokey-bake/sfx-data.mjs lists '${name}' in DEFERRED, not baked/shipped: ${deferred.reason}`,
+        `plugins/tempest/tools/pokey-bake/sfx-data.mjs lists '${name}' in DEFERRED, not baked/shipped: ${deferred.reason}`,
       );
     }
     return unverified(
-      `no shipped entry named '${name}' in tempest/tools/pokey-bake/sfx-data.mjs (SFX or DEFERRED) — nothing to compare against`,
+      `no shipped entry named '${name}' in plugins/tempest/tools/pokey-bake/sfx-data.mjs (SFX or DEFERRED) — nothing to compare against`,
     );
   }
 
@@ -115,7 +115,7 @@ export async function compareTempestSfx(name, romEvents) {
 
   const at = firstDiffIndex(romPairs, shipPairs);
   return mismatch(
-    `register-event stream differs from tempest/tools/pokey-bake/'s expansion at event ${at}: ` +
+    `register-event stream differs from plugins/tempest/tools/pokey-bake/'s expansion at event ${at}: ` +
       `ROM=${JSON.stringify(romPairs[at] ?? null)} shipped=${JSON.stringify(shipPairs[at] ?? null)} ` +
       `(ROM emits ${romPairs.length} events, shipped emits ${shipPairs.length})`,
   );

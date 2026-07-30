@@ -27,8 +27,11 @@ export const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
 // Every file the two red link-5 audits actually open, and which audit needs it.
 const LINK5_INPUTS = [
-  { audit: 'tempest', path: join('tempest', 'tools', 'pokey-bake', 'sfx-data.mjs') },
-  { audit: 'tempest', path: join('tempest', 'tools', 'pokey-bake', 'bake-sfx.mjs') },
+  // tempest was imported into the monorepo (plugins/tempest) and is no longer a
+  // gitignored sibling subrepo — its half of link 5 is now always present, in-repo.
+  // red-baron is still a subrepo, so the probe stays exactly as load-bearing as it was.
+  { audit: 'tempest', path: join('plugins', 'tempest', 'tools', 'pokey-bake', 'sfx-data.mjs') },
+  { audit: 'tempest', path: join('plugins', 'tempest', 'tools', 'pokey-bake', 'bake-sfx.mjs') },
   { audit: 'red-baron', path: join('red-baron', 'src', 'shell', 'pokey.ts') },
 ];
 

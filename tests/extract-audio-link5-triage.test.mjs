@@ -46,7 +46,7 @@ import tempest from '../scripts/audio/games/tempest.mjs';
 import { link5Inputs, link5SkipReason, missingLink5Inputs, REPO_ROOT } from './helpers/link5-inputs.mjs';
 
 const POKEY_TS = join(REPO_ROOT, 'red-baron', 'src', 'shell', 'pokey.ts');
-const SFX_DATA = join(REPO_ROOT, 'tempest', 'tools', 'pokey-bake', 'sfx-data.mjs');
+const SFX_DATA = join(REPO_ROOT, 'plugins', 'tempest', 'tools', 'pokey-bake', 'sfx-data.mjs');
 
 // ===========================================================================
 // AC1 — the control that kills the "environment gap" hypothesis.
