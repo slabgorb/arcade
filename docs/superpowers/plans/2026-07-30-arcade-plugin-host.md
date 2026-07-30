@@ -412,8 +412,6 @@ export default defineConfig({
           root: resolve(root, 'src/shared'),
           globals: true,
           environment: 'node',
-          // Task 21 adds a jsdom sibling project for the cookie-migration tests.
-          exclude: ['**/node_modules/**', '**/*.dom.test.ts'],
         },
       },
       {
@@ -431,7 +429,14 @@ export default defineConfig({
           name: 'lobby',
           root: resolve(root, 'lobby'),
           globals: true,
-          environment: 'jsdom',
+          // 'node', NOT 'jsdom'. This matches lobby's own vite.config.ts: the
+          // project default is node, and the four tests that need a DOM opt in
+          // per-file with a `// @vitest-environment jsdom` docblock
+          // (tiles, showcase-dom, refresh, main). Forcing jsdom project-wide
+          // BREAKS two other tests — storage.test.ts and refresh-rules.test.ts
+          // call fileURLToPath(new URL(...)), and jsdom's URL global does not
+          // round-trip through it ("The URL must be of scheme file").
+          environment: 'node',
         },
       },
       ...GAMES.map((id) => ({
@@ -2511,24 +2516,17 @@ describe('one-time migration from the cross-origin cookie', () => {
 })
 ```
 
-These need a DOM. Put this block in `src/shared/tests/highscore.dom.test.ts` and add a jsdom sibling project to `vitest.config.ts` — the `shared` project already excludes `**/*.dom.test.ts`, so the two do not overlap:
+These need a DOM. **Do not add a vitest project for it** — follow the idiom the lobby already uses: keep the project on `node` and opt this one file into jsdom with a docblock. Put the block in `src/shared/tests/highscore.dom.test.ts` starting with:
 
 ```typescript
-{
-  resolve: { alias },
-  test: {
-    name: 'shared-dom',
-    root: resolve(root, 'src/shared'),
-    globals: true,
-    environment: 'jsdom',
-    include: ['**/*.dom.test.ts'],
-  },
-},
+// @vitest-environment jsdom
 ```
+
+That is how `lobby/tests/{tiles,showcase-dom,refresh,main}.test.ts` get their DOM today, and it avoids a second project plus an `exclude` rule that has to stay in sync with a filename pattern. It also confines jsdom to the file that wants it — relevant because jsdom's `URL` global does not round-trip through `fileURLToPath`, which is what broke two lobby tests when jsdom was applied project-wide (Task 3).
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npx vitest run --project shared-dom`
+Run: `npx vitest run --project shared tests/highscore.dom.test.ts`
 Expected: FAIL — `load()` returns `[]` because nothing seeds from the cookie yet.
 
 - [ ] **Step 3: Implement the seed**
@@ -2578,7 +2576,7 @@ battlezone passes `isHighScoreRow` (the base guard, no domain field) rather than
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `npx vitest run --project shared-dom && npx vitest run --project shared`
+Run: `npx vitest run --project shared`
 Expected: PASS, including the reload-survival test.
 
 - [ ] **Step 5: Retire the publish side**
@@ -2603,7 +2601,7 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/shared lobby vitest.config.ts
+git add src/shared lobby
 git commit -m "feat(highscore): seed same-origin scores from the legacy cookie once
 
 Players' tables live on the old per-game origins and cannot cross to
