@@ -315,7 +315,7 @@ export function buildEntriesFor(id) {
  * independently. So the lobby cleans only its OWN output — every top-level entry
  * of dist/ that is not a game directory — and builds with emptyOutDir off.
  */
-function cleanLobbyOutput(distDir) {
+export function cleanLobbyOutput(distDir) {
   if (!existsSync(distDir)) return
   const games = new Set(appIds().filter((id) => id !== 'lobby'))
   for (const entry of readdirSync(distDir, { withFileTypes: true })) {
@@ -324,7 +324,13 @@ function cleanLobbyOutput(distDir) {
   }
 }
 
-export async function buildApp(id) {
+/**
+ * The exact Vite config this script builds `id` with. Separate from buildApp, and
+ * side-effect free, so the two properties that cost the fleet a rebuild to discover
+ * — the lobby must not empty dist/, and no app may pick up a config file — are
+ * assertable without running a build.
+ */
+export async function appBuildConfig(id) {
   const isLobby = id === 'lobby'
   const appDir = isLobby ? join(ROOT, 'lobby') : join(PLUGINS_DIR, id)
   if (!existsSync(appDir)) {
@@ -345,7 +351,6 @@ export async function buildApp(id) {
   }
 
   // Dynamic so that importing this module (from a test) costs nothing but node:fs.
-  const { build } = await import('vite')
   const { defineAppConfig } = await import('../vite.config.ts')
 
   const config = {
@@ -358,14 +363,21 @@ export async function buildApp(id) {
     // that it was building a game.
     configFile: false,
   }
-  if (isLobby) {
-    cleanLobbyOutput(config.build.outDir)
-    config.build = { ...config.build, emptyOutDir: false }
-  }
+  // A game empties its own dist/<id>/ as usual; only the lobby, whose outDir is
+  // the shared parent, must not. See cleanLobbyOutput.
+  if (isLobby) config.build = { ...config.build, emptyOutDir: false }
+  return config
+}
 
-  console.log(`Building ${id}${entries.length ? ` (+ ${entries.join(', ')})` : ''} → ${config.build.outDir}`)
+export async function buildApp(id) {
+  const config = await appBuildConfig(id)
+  const { build } = await import('vite')
+  const entries = Object.keys(config.build.rollupOptions.input).filter((k) => k !== 'main')
+  if (id === 'lobby') cleanLobbyOutput(config.build.outDir)
+
+  console.log(`Building ${id}${entries.length ? ` (+ ${entries.join('.html, ')}.html)` : ''} → ${config.build.outDir}`)
   await build(config)
-  return { id, entries, outDir: config.build.outDir }
+  return { id, outDir: config.build.outDir }
 }
 
 async function main(argv) {

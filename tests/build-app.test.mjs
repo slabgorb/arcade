@@ -24,7 +24,10 @@
 // breaks reddens the fleet invariant too.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseBuildEntries } from '../scripts/build-app.mjs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { parseBuildEntries, appBuildConfig, cleanLobbyOutput } from '../scripts/build-app.mjs';
 
 const WHERE = 'plugins/demo/plugin.ts';
 const parse = (src) => parseBuildEntries(src, WHERE);
@@ -165,4 +168,51 @@ test('structure inside strings and comments cannot derail the read', () => {
 /* entries: ['also-a-ghost.html'] */
 export const build: BuildSpec = { entries: ['models.html'] }`;
   assert.deepEqual(parse(src), ['models.html']);
+});
+
+// ---------------------------------------------------------------------------
+// Building one app must not disturb the other seven
+// ---------------------------------------------------------------------------
+
+test('building the lobby must not empty dist/ — it is every game\'s parent', async () => {
+  // MEASURED before it was fixed: with the factory's `emptyOutDir: true`, building
+  // tempest and then the lobby left dist/tempest/index.html GONE. The lobby's
+  // outDir is dist/ itself, so emptying it takes all seven games with it — and a
+  // build script whose apps delete each other is not building them independently.
+  const lobby = await appBuildConfig('lobby');
+  assert.equal(lobby.build.emptyOutDir, false, 'the lobby must not empty its outDir');
+  assert.match(lobby.build.outDir, /dist$/);
+
+  // The opposite for a game: dist/<id>/ is its own, so it MUST still be emptied,
+  // or a renamed asset lingers forever and gets uploaded to R2 next deploy.
+  const game = await appBuildConfig('tempest');
+  assert.equal(game.build.emptyOutDir, true, 'a game must still empty its own dist/<id>/');
+  assert.match(game.build.outDir, /dist\/tempest$/);
+
+  // And neither may pick up a config file: the root vite.config.ts's default export
+  // is the LOBBY's config, so a config search that ever walked up from an app root
+  // would build the lobby while reporting a game.
+  assert.equal(lobby.configFile, false);
+  assert.equal(game.configFile, false);
+  // The entries really reach the build — the whole chain, end to end.
+  assert.deepEqual(Object.keys(game.build.rollupOptions.input).sort(), ['main', 'models']);
+});
+
+test('cleanLobbyOutput removes the lobby\'s own output and nothing else', () => {
+  const dist = mkdtempSync(join(tmpdir(), 'dist-'));
+  try {
+    mkdirSync(join(dist, 'tempest'), { recursive: true });
+    writeFileSync(join(dist, 'tempest', 'index.html'), 'game');
+    mkdirSync(join(dist, 'assets'), { recursive: true });
+    writeFileSync(join(dist, 'assets', 'lobby-abc.js'), 'stale');
+    writeFileSync(join(dist, 'index.html'), 'lobby');
+
+    cleanLobbyOutput(dist);
+
+    assert.ok(existsSync(join(dist, 'tempest', 'index.html')), 'a game build must survive');
+    assert.ok(!existsSync(join(dist, 'assets')), 'the lobby\'s stale assets must go');
+    assert.ok(!existsSync(join(dist, 'index.html')), 'the lobby\'s stale index must go');
+  } finally {
+    rmSync(dist, { recursive: true, force: true });
+  }
 });
