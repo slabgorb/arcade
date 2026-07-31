@@ -159,6 +159,31 @@ export function shouldRelease({ hasPreviousTag, changedFiles, force = false }) {
 }
 
 /**
+ * Pure: the GATE — the two commands that must both succeed before anything is
+ * bumped, tagged or pushed.
+ *
+ * `--project <id>` is the whole of the per-app isolation that had to survive the
+ * collapse: eight repos with eight suites became one suite with ten projects, and
+ * without the filter a red joust would block a tempest release. It is not a
+ * vacuous filter — a name no project declares is a startup error, exit 1
+ * ("No projects matched the filter", measured on vitest 4.1.10) — but
+ * tests/release.test.mjs also checks every app id against vitest.config.ts, so
+ * the drift is caught before a release rather than during one.
+ *
+ * Relative paths: the executor runs every command with `cwd: ROOT`.
+ */
+export function gateSteps(id) {
+  return [
+    { desc: `npx vitest run --project ${id}`, cmd: 'npx', args: ['vitest', 'run', '--project', id] },
+    {
+      desc: `node scripts/build-app.mjs ${id}`,
+      cmd: process.execPath,
+      args: ['scripts/build-app.mjs', id],
+    },
+  ];
+}
+
+/**
  * Pure: the ordered command plan from "the bump and the regenerated registry are
  * in the worktree" to "the tag is on origin". The executor below just runs it.
  *
@@ -274,15 +299,11 @@ export function release(id, level = 'patch', { force = false } = {}) {
     return { id, skipped: true };
   }
 
-  // ---- Gate. Only this app's vitest project runs, which is what keeps a red
-  // joust from blocking a tempest release — the per-repo isolation that had to
-  // survive the collapse. It is not a vacuous filter: `--project` with a name no
-  // project declares is a startup error ("No projects matched the filter"), exit
-  // 1, measured on vitest 4.1.10.
-  console.log(`==> ${id}: npx vitest run --project ${id}`);
-  run('npx', ['vitest', 'run', '--project', id]);
-  console.log(`==> ${id}: node scripts/build-app.mjs ${id}`);
-  run(process.execPath, [join(ROOT, 'scripts', 'build-app.mjs'), id]);
+  // ---- Gate: tests green and the build succeeds, or nothing ships. See gateSteps.
+  for (const step of gateSteps(id)) {
+    console.log(`==> ${id}: ${step.desc}`);
+    run(step.cmd, step.args);
+  }
 
   // ---- Bump, then regenerate, in that order and into the same commit.
   writeFileSync(pkgPath, setPackageVersion(source, current, version));

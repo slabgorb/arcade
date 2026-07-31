@@ -22,6 +22,7 @@ import {
   nextVersion,
   packagePathFor,
   releaseFiles,
+  gateSteps,
   releaseSteps,
   setPackageVersion,
   shouldRelease,
@@ -231,6 +232,25 @@ test('shouldRelease: --force ships a shared-code change the directory diff canno
 // ---------------------------------------------------------------------------
 // The gate, and the two files that must never come back
 // ---------------------------------------------------------------------------
+
+test('the gate runs ONE app\'s project and ONE app\'s build', () => {
+  // The claim this whole task rests on: a red joust must not block a tempest
+  // release. Eight repos with eight suites became one suite with ten projects, so
+  // `--project <id>` IS the isolation — an unfiltered `vitest run` would restore
+  // the fleet-wide gate the collapse was supposed to survive.
+  const steps = gateSteps('tempest');
+  assert.equal(steps.length, 2, 'the gate is tests + build, both of them');
+  assert.deepEqual(steps[0].args, ['vitest', 'run', '--project', 'tempest']);
+  assert.equal(steps[0].cmd, 'npx');
+  assert.deepEqual(steps[1].args, ['scripts/build-app.mjs', 'tempest']);
+  assert.equal(steps[1].cmd, process.execPath, 'the build must run under this node, not a shell lookup');
+  // Every step is the named app's, for every app — no cross-app leakage.
+  for (const id of appIds()) {
+    for (const step of gateSteps(id)) {
+      assert.ok(step.args.includes(id), `${id}: a gate step does not name the app being released`);
+    }
+  }
+});
 
 test('every app id names a real vitest project — the gate cannot be vacuous', async () => {
   // The gate is `npx vitest run --project <id>`. An id with no matching project
