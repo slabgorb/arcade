@@ -25,11 +25,25 @@ tui-pid
 .pennyfarthing/tmux-activity
 # Local tmux config (copied from sample)
 tmux.conf
-# All nine subrepos are imported now, so no `/name/` entry survives here. The
-# rule that governed them is kept as a warning: ANCHOR any such entry
-# (`/name/`, not `name`) — an unanchored name matches a directory at ANY depth,
-# so a bare `tempest` also swallowed reference/atari-source/tempest/ and 57
-# files of vendored ROM source vanished from `git add` without a word.
+# All nine subrepos are imported, so no `/name/` entry survives here for the eight
+# whose directories are gone. The rule that governed them is kept as a warning:
+# ANCHOR any such entry (`/name/`, not `name`) — an unanchored name matches a
+# directory at ANY depth, so a bare `tempest` also swallowed
+# reference/atari-source/tempest/ and 57 files of vendored ROM source vanished
+# from `git add` without a word.
+#
+# LEFTOVER, not a subrepo. arcade-shared's content was imported to src/shared/
+# (13 .ts files in each, the same library), but the original directory was never
+# deleted — the teardown task owns that. Until then it sits here as 59M of stale
+# library plus its own node_modules/ and dist/, matched by nothing.
+#
+# Ignored because the only thing that was stopping `git add -A` from committing
+# all 59M was a rule people have to remember. That is the same gap /dist/ below
+# was added to close, and this epic has repeatedly found that a guarantee resting
+# on discipline rather than mechanism is the one that eventually fails.
+#
+# Delete this line together with the directory.
+/arcade-shared/
 out/audio/
 # Build output. Every app now builds into a ROOT dist/<id>/ (dist/ itself for the
 # lobby) via `node scripts/build-app.mjs <id>`. Each subrepo used to carry its own

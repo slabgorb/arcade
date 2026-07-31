@@ -121,9 +121,13 @@ test('releaseSteps: main is pushed BEFORE the tag', () => {
 
 test('releaseSteps: staging is explicit, never `git add -A`', () => {
   // The old script staged `-A`. In a monorepo that sweeps whatever else is
-  // sitting in the tree into the release commit — this checkout carries an
-  // untracked `arcade-shared/` right now — and the release commit must contain
-  // the two files the script itself wrote.
+  // sitting in the tree into the release commit, and the release commit must
+  // contain the two files the script itself wrote and nothing else.
+  //
+  // The leftover `arcade-shared/` used to be the live example here; it is now
+  // gitignored, so `-A` would no longer catch that particular 59M. The rule
+  // stands regardless — ignoring one known directory does not make staging the
+  // whole tree safe, it just removes the example that made it obvious.
   const files = ['plugins/asteroids/package.json', 'src/host/registry.ts'];
   const add = releaseSteps({ id: 'asteroids', version: '0.0.2', files }).find((s) => s.args[0] === 'add');
   assert.deepEqual(add.args, ['add', '--', ...files]);
