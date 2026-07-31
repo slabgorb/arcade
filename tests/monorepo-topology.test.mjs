@@ -457,8 +457,17 @@ test('the root .gitignore covers dist', () => {
 // dist directory, the gate steps and their ORDER all observable, and makes the
 // tag parse a behaviour rather than a claim.
 //
-// Four assertions below are unavoidably textual (the trigger, fetch-depth, the
-// secret wiring, the Node major); each names the edit that breaks it.
+// Four assertions below are unavoidably textual, because they live in `on:`,
+// `uses:` and `env:` blocks that no run: shim can observe: fetch-depth, the
+// secret wiring, the account id and the Node major. Each names the edit that
+// breaks it, and each was mutation-checked against the REAL key rather than
+// against the prose above it — a distinction this file learned the hard way
+// twice (see workflowConfig, and the account id's own note).
+//
+// The tag TRIGGER used to be the fifth. It is not textual any more: the globs
+// are parsed out and evaluated against the tags scripts/release.mjs actually
+// cuts, because `assert.match(cfg, /tags:/)` could not tell a trigger that
+// fires from one that never runs at all.
 // ===========================================================================
 
 const WORKFLOW = ['.github', 'workflows', 'deploy.yml'];
@@ -481,6 +490,62 @@ function workflowConfig() {
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('#'))
     .join('\n');
+}
+
+/**
+ * The tag globs the workflow actually triggers on, read out of `on: push: tags:`.
+ *
+ * Parsed rather than grepped, because a grep cannot tell a trigger that FIRES
+ * from one that never runs. MEASURED: rewriting `tags: ['*-v*']` to `tags: ['v*']`
+ * left the whole orchestrator suite green at 348/348 — and `v*` matches NONE of
+ * the tags `just release` cuts, since every one of them starts with an app id.
+ * A workflow that never runs is the quietest deploy failure there is: no red X,
+ * no run, nothing at all to notice.
+ *
+ * THROWS rather than returning `[]`: a parser that quietly found no globs would
+ * make the assertions below vacuous, which is the failure this file exists for.
+ */
+function tagTriggerGlobs() {
+  const lines = workflowConfig().split('\n');
+  const at = lines.findIndex((l) => /^\s*tags:/.test(l));
+  if (at === -1) throw new Error('deploy.yml has no `tags:` trigger at all');
+  // The globs must hang off `on: push:`. A `tags:` under anything else — or with
+  // no `push:` before it — is not a tag trigger however much it looks like one.
+  const push = lines.findIndex((l) => /^\s*push:\s*$/.test(l));
+  if (push === -1 || push > at) throw new Error('deploy.yml: `tags:` is not under an `on: push:`');
+  const inline = /^\s*tags:\s*\[(.*)\]\s*$/.exec(lines[at]);
+  let raw;
+  if (inline) {
+    raw = inline[1].split(',');
+  } else {
+    raw = [];
+    for (let i = at + 1; i < lines.length; i++) {
+      const item = /^\s*-\s*(\S.*?)\s*$/.exec(lines[i]);
+      if (!item) break;
+      raw.push(item[1]);
+    }
+  }
+  const globs = raw.map((g) => g.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+  if (globs.length === 0) throw new Error('deploy.yml declares `tags:` with no pattern');
+  return globs;
+}
+
+/**
+ * GitHub's filter-pattern semantics for a ref, the subset a tag glob can use:
+ * `*` matches zero or more characters but NOT `/`, `**` matches across `/`, and
+ * everything else is literal. (Workflow syntax → "filter pattern cheat sheet".)
+ */
+function globMatchesRef(glob, ref) {
+  const source = glob
+    .split('**')
+    .map((between) =>
+      between
+        .split('*')
+        .map((literal) => literal.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+        .join('[^/]*'),
+    )
+    .join('.*');
+  return new RegExp(`^${source}$`).test(ref);
 }
 
 /**
@@ -699,6 +764,41 @@ test('the deploy workflow targets the cabinet bucket, on a tag trigger', () => {
   assert.doesNotMatch(wf, /^\s*branches:/m, 'main carries every app; a branch trigger redeploys all eight');
 });
 
+test('the tag trigger actually fires for every tag scripts/release.mjs cuts', async () => {
+  // The `tags:` match above is the brief's, and it is not enough on its own:
+  // MEASURED, `tags: ['v*']` — a glob that matches no release tag this repo can
+  // produce — left the suite green at 348/348. That is the whole deploy silently
+  // never running, which is worse than a red one.
+  //
+  // So the globs are evaluated against the tags the RELEASE SCRIPT makes, the
+  // same way the resolve step below is checked against isReleaseTag(). Two
+  // halves of one contract: the trigger has to fire, and the step has to agree
+  // about which app fired it.
+  const { tagFor } = await import('../scripts/release.mjs');
+  const { appIds } = await import('../scripts/build-app.mjs');
+  const globs = tagTriggerGlobs();
+  const fires = (ref) => globs.some((g) => globMatchesRef(g, ref));
+
+  for (const id of appIds()) {
+    const tag = tagFor(id, '10.20.30');
+    assert.ok(
+      fires(tag),
+      `just release ${id} pushes ${tag}, and ${JSON.stringify(globs)} does not match it — no run at all`,
+    );
+  }
+
+  // Anti-vacuity, with subjects that CAN exhibit the effect: `tags: ['*']` would
+  // satisfy every line above while deploying on any tag whatsoever. The first two
+  // are REAL tags in this repo (the audit anchors from Task 2), and a bare
+  // `vX.Y.Z` is the pre-monorepo tag shape the app-prefixed scheme retired.
+  for (const ref of ['audit/tempest', 'audit/red-baron', 'v1.0.0']) {
+    assert.ok(
+      !fires(ref),
+      `${ref} names no app to deploy, but ${JSON.stringify(globs)} would start a run for it`,
+    );
+  }
+});
+
 test('the deploy workflow clones full history and carries the Cloudflare credentials', () => {
   // All three read the COMMENT-STRIPPED file (see workflowConfig): the first of
   // them survived a real mutation until it did, because this workflow explains
@@ -713,7 +813,20 @@ test('the deploy workflow clones full history and carries the Cloudflare credent
     /CLOUDFLARE_API_TOKEN:\s*\$\{\{\s*secrets\.CLOUDFLARE_API_TOKEN\s*\}\}/,
     'the upload step must receive the repository secret',
   );
-  assert.match(cfg, /CLOUDFLARE_ACCOUNT_ID:\s*[0-9a-f]{32}/, 'wrangler needs the account id');
+  // The VALUE, not the shape. This read `[0-9a-f]{32}` and MEASURED green at
+  // 348/348 with the id swapped for another well-formed 32-hex string: an
+  // assertion that could not tell the arcade account from anybody else's, on a
+  // step whose whole job is to authenticate to one particular account. Same
+  // defect class as the fetch-depth comment above — the assertion described the
+  // right thing without being able to check it.
+  //
+  // The id is a plan constant and is not a secret (docs/ops/hosting.md carries it
+  // in the clear); pinning it literally is the point.
+  assert.match(
+    cfg,
+    /CLOUDFLARE_ACCOUNT_ID:\s*a55aafa9b0691f828cd6864be28c1674\s*$/m,
+    'wrangler must authenticate against the arcade Cloudflare account',
+  );
 });
 
 test('an empty CLOUDFLARE_API_TOKEN stops the upload instead of authenticating as nobody', () => {
