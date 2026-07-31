@@ -167,6 +167,31 @@ test('an unregistered token is reported with the file and line that carry it', a
   ]);
 });
 
+test('inherited Object keys are not mistaken for registered repos', async () => {
+  const { registeredRepoIdentifiers, repoRoutingViolations } = await helper();
+
+  // javascript.md check #3 (prototype pollution) applied to this exact code shape.
+  // If the identifier collection is a plain `{}` rather than a Set or Map, then
+  // `identifiers['constructor']` and `identifiers['__proto__']` are truthy for FREE,
+  // and a sprint file routing to a repo literally named `constructor` sails through
+  // the guard. That is not hypothetical pedantry — a `repos:` value is arbitrary text
+  // out of a YAML file, and the whole job of this helper is deciding which arbitrary
+  // strings are legitimate. Membership must be answered by real content only.
+  const identifiers = registeredRepoIdentifiers(['repos:', '  arcade:', '    path: .'].join('\n'));
+
+  for (const inherited of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    assert.ok(
+      !identifiers.has(inherited),
+      `${inherited} is an inherited Object member, never a registered repo — use a Set/Map, not {}`,
+    );
+  }
+
+  const fixture = { path: 'sprint/epic-fixture.yaml', text: 'repos: constructor' };
+  assert.deepEqual(repoRoutingViolations([fixture], identifiers), [
+    { file: 'sprint/epic-fixture.yaml', line: 1, token: 'constructor' },
+  ]);
+});
+
 // ---------------------------------------------------------------------------
 // AC-3 — the archive is a decision, not an oversight.
 // ---------------------------------------------------------------------------
@@ -193,8 +218,17 @@ test('the sprint/archive decision is stated, and the guarded scope matches it', 
   // English to the human.
   assert.equal(typeof ARCHIVE_SCANNED, 'boolean', 'the archive decision must be declared, not inferred');
 
-  const scanned = guardedSprintFiles(repo).map((f) => f.path);
+  const files = guardedSprintFiles(repo);
+  const scanned = files.map((f) => f.path);
   assert.ok(scanned.length > 0, 'the guard must scan something');
+
+  // javascript.md check #6: `readFileSync(p)` with no encoding hands back a Buffer,
+  // not a string. A Buffer survives `.split('\n')`-free code paths and then quietly
+  // fails to match any anchored regex, so the guard would report zero violations
+  // across every file and read as a clean pass. Pin the type, not just the count.
+  for (const f of files) {
+    assert.equal(typeof f.text, 'string', `${f.path}: file text must be decoded, not a Buffer`);
+  }
 
   const scansArchive = scanned.some((p) => p.includes('sprint/archive/'));
   assert.equal(
