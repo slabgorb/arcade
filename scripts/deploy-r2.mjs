@@ -44,6 +44,18 @@ function walk(dir) {
   return out;
 }
 
+// Slashes are stripped from BOTH ends. `tempest`, `tempest/` and `/tempest/` are
+// the same prefix to a caller, but `tempest//x` and `/tempest/x` are genuinely
+// different R2 keys from `tempest/x` — they would 404 behind the custom domain
+// while the upload reported success. A bare '/' normalises away entirely, to the
+// root, rather than filing the whole app under an empty-named directory.
+//
+// One function, used by both the keys and the summary line, so a deploy cannot
+// report a prefix it did not actually use.
+export function normalizePrefix(keyPrefix = '') {
+  return String(keyPrefix).replace(/^\/+|\/+$/g, '');
+}
+
 // Pure: walks distDir and computes the upload set. No wrangler, no side effects.
 //
 // `keyPrefix` puts a game's objects under its own key prefix in the shared bucket —
@@ -57,11 +69,8 @@ export function collectUploads(distDir, keyPrefix = '') {
   }
   const files = walk(distDir);
   if (files.length === 0) throw new Error(`no files found under ${distDir} — did the build run?`);
-  // Trailing slashes are stripped before the single separator is added back:
-  // `tempest/` and `tempest` are the same prefix to a caller, but `tempest//x`
-  // is a genuinely different R2 key from `tempest/x` and would 404 while the
-  // upload reported success.
-  const prefix = keyPrefix ? `${keyPrefix.replace(/\/+$/, '')}/` : '';
+  const trimmed = normalizePrefix(keyPrefix);
+  const prefix = trimmed ? `${trimmed}/` : '';
   return files.map((file) => {
     const rel = relative(distDir, file).split('\\').join('/'); // POSIX keys on any OS
     const key = `${prefix}${rel}`;
@@ -79,7 +88,8 @@ export function uploadDir(distDir, bucket, keyPrefix = '') {
       { stdio: ['ignore', 'ignore', 'inherit'] },
     );
   }
-  console.log(`Uploaded ${uploads.length} objects to ${bucket}${keyPrefix ? `/${keyPrefix}` : ''}.`);
+  const shown = normalizePrefix(keyPrefix);
+  console.log(`Uploaded ${uploads.length} objects to ${bucket}${shown ? `/${shown}` : ''}.`);
 }
 
 // CLI entry (only when run directly, not when imported by the test).

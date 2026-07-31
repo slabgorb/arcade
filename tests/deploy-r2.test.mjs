@@ -99,6 +99,23 @@ test('collectUploads does not double the slash on a trailing-slash prefix', () =
   }
 });
 
+test('collectUploads strips a LEADING slash too — /tempest/x is not tempest/x', () => {
+  // The same reasoning as the trailing-slash case, which only closed half of it:
+  // R2 keys have no leading slash, so `/tempest/index.html` is a different object
+  // from `tempest/index.html` and would 404 behind the custom domain while the
+  // upload reported success. `'/'` alone must normalise to no prefix at all,
+  // rather than putting the whole lobby under an empty-named directory.
+  const dir = mkdtempSync(join(tmpdir(), 'deploy-r2-lead-'));
+  try {
+    writeFileSync(join(dir, 'index.html'), '<!doctype html>');
+    assert.deepEqual(collectUploads(dir, '/tempest').map((u) => u.key), ['tempest/index.html']);
+    assert.deepEqual(collectUploads(dir, '/tempest/').map((u) => u.key), ['tempest/index.html']);
+    assert.deepEqual(collectUploads(dir, '/').map((u) => u.key), ['index.html']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('collectUploads throws a friendly error on an empty dist dir', () => {
   const tmp = mkdtempSync(join(tmpdir(), 'deploy-r2-empty-'));
   try {

@@ -8,12 +8,17 @@
 //
 //     /export const build:\s*BuildSpec\s*=\s*\{\s*entries:\s*\[([^\]]*)\]/
 //
-// returns null for SIX formattings a printer might produce. Each one yields zero
-// entries and a GREEN build that has silently dropped a dev-tool page. Prettier
-// reformatting a manifest is enough to cause it.
+// returns null for FOUR formattings, measured below and named there: `satisfies
+// BuildSpec`, no type annotation, a comment before the key, and a quoted key. Each
+// yields zero entries and a GREEN build that has silently dropped a dev-tool page.
+//
+// The plan named six, and three of those (`entries` on its own line, a trailing
+// comma, an array spilling across lines) plus `as const` do NOT defeat it — see the
+// measurement in `survives every reformatting…` below, which is the authority here.
+// The hazard is real either way; only its trigger list was wrong.
 //
 // So this file asserts two properties, and they are different properties:
-//   1. all six formattings PARSE — the reader is structural, not a shape-match;
+//   1. those formattings PARSE — the reader is structural, not a shape-match;
 //   2. anything it cannot read THROWS. Never `[]`. Returning `[]` from a failed
 //      read is indistinguishable from "this game has no dev tools", which is the
 //      entire hazard.

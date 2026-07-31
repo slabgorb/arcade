@@ -49,15 +49,30 @@ export function appIds() {
 //
 // The hazard, stated plainly because it is the whole reason this code is not a
 // one-line regex: three games ship a second HTML page (tempest models.html,
-// star-wars models.html + scenes.html, red-baron models.html). A naive
-// `/entries:\s*\[([^\]]*)\]/` is defeated by `entries` on its own line, a trailing
-// comma, `satisfies BuildSpec`, `as const`, double quotes, or the array spilling
-// past a printer's width — Prettier reformatting a manifest is enough. Every one of
-// those yields ZERO entries and a GREEN build that silently drops a dev-tool page.
+// star-wars models.html + scenes.html, red-baron models.html), and a reader that
+// stops matching drops one with no error at all — a GREEN build, minus a page.
+//
+// The naive reader this replaces, quoted exactly as tests/build-app.test.mjs
+// measures it:
+//
+//     /export const build:\s*BuildSpec\s*=\s*\{\s*entries:\s*\[([^\]]*)\]/
+//
+// MEASURED, not imagined — the four formattings that defeat it are:
+//   · `satisfies BuildSpec` in place of the `: BuildSpec` annotation
+//   · no type annotation at all
+//   · a comment between `{` and the `entries` key
+//   · a quoted key (`'entries':`)
+// and the ones that DO NOT defeat it, contrary to this comment's first draft:
+// `entries` on its own line, an array spilling across lines (`\s*` spans
+// newlines), a trailing comma (`[^\]]*` absorbs it) and `as const` (it sits after
+// the `]`, outside the match). Nor would a printer reflow the shipped
+// declarations at 80 columns — they are 60 chars (tempest, red-baron) and 75
+// (star-wars). The hazard is real; the trigger list it was first justified with
+// was not, and the test below is the authority on which is which.
 //
 // Two defences, because a test alone only catches it after the fact:
 //   1. the reader below is structural (comments and string contents are blanked,
-//      then brackets are matched), so all six of those reformattings parse;
+//      then brackets are matched), so all of those reformattings parse;
 //   2. anything it still cannot read THROWS. It never falls through to `[]`, since
 //      silence is indistinguishable from "this game has no dev tools".
 
@@ -356,11 +371,12 @@ export async function appBuildConfig(id) {
   const config = {
     ...defineAppConfig({ id, entries }),
     // The root vite.config.ts's default export is the LOBBY's config, and every app
-    // root is a subdirectory of the repo. MEASURED on Vite 8.1: with
-    // root=plugins/tempest the config search does NOT walk up (resolved configFile
-    // was undefined), so this pins that behaviour rather than depending on it —
-    // a config search that ever did walk up would build the lobby while reporting
-    // that it was building a game.
+    // root is a subdirectory of the repo. MEASURED on Vite 8.2.0 — the version
+    // actually installed, and therefore the one actually run (package.json asks
+    // for ^8.1.0): with root=plugins/tempest the config search does NOT walk up,
+    // resolving configFile to undefined. So this pins that behaviour rather than
+    // depending on it — a search that ever did walk up would build the lobby
+    // while reporting that it was building a game.
     configFile: false,
   }
   // A game empties its own dist/<id>/ as usual; only the lobby, whose outDir is
