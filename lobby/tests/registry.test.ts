@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { GAMES, LISTED_GAMES, getGame, gamePath } from '@host/registry'
 
 // What the lobby reads out of the registry.
@@ -100,6 +102,32 @@ describe('the games the lobby lists', () => {
     for (const g of LISTED_GAMES) {
       expect(typeof g.showcase).toBe('boolean')
     }
+  })
+})
+
+// A SOURCE rule, in the idiom tests/refresh-rules.test.ts and tests/storage.test.ts
+// already use, and for the same reason they use it: this property is not observable from
+// the rendered page today.
+//
+// main.ts hands `mountShowcase` the same list it hands `renderTiles`. Swap that one to
+// the unfiltered `GAMES` and nothing anywhere goes red — measured, not assumed — because
+// `createShowcase` filters on `showcase` and no game currently combines `listed: false`
+// with `showcase: true`. The day one does, an unlisted game appears in the carousel it
+// was held back from, and the first anyone would know is seeing it on the cabinet. So
+// the rule is stated where it can be checked: in the text.
+describe('which list the lobby reads', () => {
+  const source = readFileSync(fileURLToPath(new URL('../src/main.ts', import.meta.url)), 'utf8')
+  /** main.ts's CODE — prose *about* GAMES is not a read of GAMES. */
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+
+  it('renders and showcases LISTED_GAMES, and never touches the unfiltered GAMES', () => {
+    expect(code).toMatch(/renderTiles\(\s*games,\s*LISTED_GAMES\s*,/)
+    expect(code).toMatch(/mountShowcase\(\s*showcase\s*,\s*LISTED_GAMES\s*\)/)
+    // `\bGAMES\b` cannot match inside `LISTED_GAMES`: `_` is a word character, so there
+    // is no boundary before the `G`. This fires only on a genuinely bare `GAMES`.
+    expect(code, 'main.ts reads GAMES — red-baron opted out and would appear').not.toMatch(
+      /\bGAMES\b/,
+    )
   })
 })
 
