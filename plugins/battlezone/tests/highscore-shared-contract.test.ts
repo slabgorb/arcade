@@ -72,7 +72,7 @@ beforeEach(() => installStorage(makeFakeStorage()))
 afterEach(() => installStorage(undefined))
 
 // battlezone's persistence seam, as main.ts will build it post-SH-6.
-const storage = () => makeHighScoreStorage<HighScoreEntryBase>(GAME_ID, isHighScoreRow)
+const storage = () => makeHighScoreStorage<HighScoreEntryBase>(GAME_ID, isHighScoreRow, '')
 
 // A faithful proxy for the lobby's read — lobby/src/shell/storage.ts getTopScore
 // filters the parsed rows through the SAME shared isHighScoreRow and takes the

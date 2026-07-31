@@ -425,7 +425,7 @@ describe('row guard — migrated rows carry a null domain value', () => {
 // =============================================================================
 
 describe('makeHighScoreStorage — load()', () => {
-  const store = () => makeHighScoreStorage('asteroids', makeHighScoreRowGuard('wave'))
+  const store = () => makeHighScoreStorage('asteroids', makeHighScoreRowGuard('wave'), 'wave')
   const KEY = 'asteroids-high-scores'
 
   const loadFrom = (payload: unknown): WaveEntry[] => {
@@ -505,7 +505,7 @@ describe('makeHighScoreStorage — load()', () => {
 })
 
 describe('makeHighScoreStorage — save()', () => {
-  const store = () => makeHighScoreStorage('asteroids', makeHighScoreRowGuard('wave'))
+  const store = () => makeHighScoreStorage('asteroids', makeHighScoreRowGuard('wave'), 'wave')
   const KEY = 'asteroids-high-scores'
 
   it('writes the table as JSON under the `${gameId}-high-scores` key', () => {
@@ -557,8 +557,8 @@ describe('makeHighScoreStorage — save()', () => {
 describe('makeHighScoreStorage — per-game isolation + lobby cross-check', () => {
   it('two gameIds do not collide: each store reads/writes only its own key', () => {
     setLocalStorage(makeFakeStorage())
-    const tempest = makeHighScoreStorage('tempest', makeHighScoreRowGuard('level'))
-    const asteroids = makeHighScoreStorage('asteroids', makeHighScoreRowGuard('wave'))
+    const tempest = makeHighScoreStorage('tempest', makeHighScoreRowGuard('level'), 'level')
+    const asteroids = makeHighScoreStorage('asteroids', makeHighScoreRowGuard('wave'), 'wave')
     tempest.save(LEVEL_TABLE)
     asteroids.save(WAVE_TABLE)
     expect(tempest.load()).toEqual(LEVEL_TABLE)
@@ -571,7 +571,7 @@ describe('makeHighScoreStorage — per-game isolation + lobby cross-check', () =
   it('what the factory writes is what the lobby would read as the top score', () => {
     const fake = makeFakeStorage()
     setLocalStorage(fake)
-    makeHighScoreStorage('tempest', makeHighScoreRowGuard('level')).save(LEVEL_TABLE)
+    makeHighScoreStorage('tempest', makeHighScoreRowGuard('level'), 'level').save(LEVEL_TABLE)
 
     // Replay the lobby's read using ONLY shared exports.
     const raw = fake.getItem(highScoreKey('tempest'))

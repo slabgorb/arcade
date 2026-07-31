@@ -578,7 +578,7 @@ describe('cp4-6 AC-1 — the board round-trips through @shared/highscore', () =>
   beforeEach(() => installStorage(makeFakeStorage()))
   afterEach(() => installStorage(undefined))
 
-  const storage = () => makeHighScoreStorage<Row>(GAME_ID, makeHighScoreRowGuard('wave'))
+  const storage = () => makeHighScoreStorage<Row>(GAME_ID, makeHighScoreRowGuard('wave'), 'wave')
 
   it('a board written at game-over is read back by a FRESH storage handle (a page reload)', () => {
     const typed = seedState(type3(driveToGameOver(0x7777, 42_000), 'KEA'), { wave: 3 })

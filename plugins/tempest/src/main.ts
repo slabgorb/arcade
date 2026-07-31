@@ -15,7 +15,7 @@ import { drawEscOverlay } from '@shared/esc-overlay'
 // tempest records the `level` reached; the shared factory binds load/save to the
 // 'tempest-high-scores' localStorage key and validates each row's finite score +
 // level (the lobby reads the same key + shape — SH-4).
-const highScores = makeHighScoreStorage('tempest', makeHighScoreRowGuard('level'))
+const highScores = makeHighScoreStorage('tempest', makeHighScoreRowGuard('level'), 'level')
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!

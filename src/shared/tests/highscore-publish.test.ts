@@ -1,41 +1,35 @@
 // tests/highscore-publish.test.ts
 //
-// lb2-2 / ADR-0004 — the CHOKE POINT.
+// Task 21 — the publish side is RETIRED. This file used to prove that
+// `makeHighScoreStorage` published the board's top-N ladder to the ADR-0004 cookie on
+// every save and republished it on every load. That behaviour is gone, and this file now
+// pins its ABSENCE, because a removal with no assertion behind it is a change nothing
+// guards: the old code would come back the first time someone "restored" it.
 //
-// Every game calls `makeHighScoreStorage(gameId, guard)` exactly once in its main.ts,
-// and that factory owns the only `save()` in the cabinet. Install the publish there
-// and tempest / star-wars / asteroids / battlezone are fixed by a VERSION BUMP with
-// ZERO game-side code. That claim is an acceptance criterion, so it is tested here
-// literally: the factory is called with the same TWO arguments the games pass today.
+// ── WHY IT WENT ─────────────────────────────────────────────────────────────
+// ADR-0004's cookie existed for exactly one reason: the lobby (arcade.slabgorb.com) and
+// each game (<game>.slabgorb.com) were DIFFERENT ORIGINS, and localStorage is partitioned
+// by origin, so the lobby could not read a game's table. The cabinet is now ONE origin.
+// The lobby reads the table directly (`readLocalTopScore`), so there is nothing left for
+// a publish to achieve — and one very good reason not to do it.
 //
-// The load-bearing invariants:
+// ── THE INVARIANT THAT REPLACED IT ──────────────────────────────────────────
+// The cookie is now the MIGRATION SOURCE, not a derived cache. It holds the only copy of a
+// returning player's pre-collapse scores that can cross onto the new origin. The old code
+// CLEARED it whenever the table read back empty (the "zombie ladder" fix, which was right
+// when the cookie was derived). Keeping that would be catastrophic now: a player whose
+// first post-migration load happens with a corrupt or evicted table would have their one
+// surviving copy deleted by the very load meant to rescue it. So:
 //
-//   AUTHORITY   localStorage stays the source of truth. The cookie is a DERIVED cache —
-//               republished on every load — so it heals itself and can NEVER lose a
-//               player's scores. Delete the cookie and one game load brings it back;
-//               delete the table and the scores are genuinely gone. Only one of those
-//               two is allowed to be true.
+//   NOTHING WRITES THE COOKIE. Not save, not save([]), not load, not a load that finds
+//   nothing. Every assertion below is one of the ways the old code used to write it.
 //
-//   SELF-HEAL   `load()` republishes. That is what reaches the four already-shipped
-//               games with no code change, and what repairs a stale or ITP-purged
-//               cookie on the player's next visit.
-//
-//   FAIL-SOFT   A cookie failure must never cost a score. If publishing throws, the
-//               table is still written to localStorage and nothing propagates.
-//
-//   SWAPPABLE   ADR-0004 rejected the single-origin collapse on COST, not merit, and
-//               requires it to stay one adapter swap away. The transport is therefore
-//               injectable, and a test proves an injected one is actually used.
+// The seeding half — what the factory now DOES with that cookie — lives in
+// tests/highscore.dom.test.ts, against a real jsdom cookie jar and a real Storage.
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { makeCookieJar, locationStub, PROD_TEMPEST, type CookieJar } from './helpers/cookie-jar'
 import { makeFakeStorage, makeQuotaStorage } from './helpers/storage-stub'
-import {
-  makeHighScoreStorage,
-  makeHighScoreRowGuard,
-  highScoreKey,
-  readTopScore,
-  type TopScoreRow,
-} from '../highscore'
+import { makeHighScoreStorage, makeHighScoreRowGuard, highScoreKey } from '../highscore'
 
 const guard = makeHighScoreRowGuard('level')
 const KEY = highScoreKey('tempest')
@@ -44,28 +38,16 @@ const COOKIE = 'arcade-hi-tempest'
 /** A tempest-shaped table. Rows carry the game's own `level` domain field. */
 const table = (...scores: number[]) => scores.map((score, i) => ({ name: 'AAA', score, level: i + 1 }))
 
+/** The exact call plugins/tempest/src/main.ts makes. */
+const storage = () => makeHighScoreStorage('tempest', guard, 'level')
+
 /** Install a browser (cookie jar + location) and a per-origin localStorage. */
-function installBrowser(jar: CookieJar, storage: Storage): void {
+function installBrowser(jar: CookieJar, store: Storage): void {
   const loc = locationStub(PROD_TEMPEST)
   vi.stubGlobal('document', jar.document)
   vi.stubGlobal('location', loc.location)
   vi.stubGlobal('window', loc.window)
-  vi.stubGlobal('localStorage', storage)
-}
-
-/** A transport that records the ROWS it was asked to publish, and can be told to fail. */
-function spyTransport(opts: { throws?: boolean } = {}) {
-  const published: Array<{ gameId: string; rows: TopScoreRow[] }> = []
-  return {
-    published,
-    publish(gameId: string, rows: readonly TopScoreRow[]): void {
-      published.push({ gameId, rows: [...rows] })
-      if (opts.throws) throw new Error('cookie jar is on fire')
-    },
-    read(): TopScoreRow[] {
-      return []
-    },
-  }
+  vi.stubGlobal('localStorage', store)
 }
 
 afterEach(() => {
@@ -73,313 +55,161 @@ afterEach(() => {
 })
 
 // ---------------------------------------------------------------------------
-// The zero-game-code claim (AC): the games' existing call site is untouched
+// Nothing publishes: every former write path is now silent
 // ---------------------------------------------------------------------------
 
-describe('the four shipped games are fixed by a version bump alone', () => {
-  it('publishes from the SAME two-argument call the games already make', () => {
-    // tempest/src/main.ts:18 — `makeHighScoreStorage('tempest', makeHighScoreRowGuard('level'))`.
-    // If this needs a third argument at the call site, the publish was NOT installed at
-    // the choke point and every game would need a code change. That is the AC.
+describe('the factory never writes the summary cookie', () => {
+  it('save() does not publish the board', () => {
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    const storage = makeHighScoreStorage('tempest', guard)
-    storage.save(table(9000, 3000))
+    storage().save(table(124500, 90000, 100))
 
-    // The tile's top score derives from the published summary (row 0) — a value here proves
-    // the publish ran from the SAME two-argument call, whatever the summary's encoding.
-    expect(readTopScore('tempest')).toBe(9000)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// save() publishes the TOP score
-// ---------------------------------------------------------------------------
-
-describe('save() — publishes the top score', () => {
-  it('publishes the highest score on the board', () => {
-    const jar = makeCookieJar()
-    installBrowser(jar, makeFakeStorage())
-
-    makeHighScoreStorage('tempest', guard).save(table(124500, 90000, 100))
-
-    expect(readTopScore('tempest')).toBe(124500)
-  })
-
-  it('publishes the MAX, not the first row — corrupt or unsorted data must not lie', () => {
-    // The board is written sorted descending, but we do not trust that: the lobby's
-    // existing read already takes Math.max rather than table[0], and the publish must
-    // hold the same line or a scrambled table publishes a wrong, lower score.
-    const jar = makeCookieJar()
-    installBrowser(jar, makeFakeStorage())
-
-    makeHighScoreStorage('tempest', guard).save(table(100, 124500, 3000))
-
-    expect(readTopScore('tempest')).toBe(124500)
-  })
-
-  it('publishes nothing for an empty board — NO SCORE, not a score of 0', () => {
-    const jar = makeCookieJar()
-    installBrowser(jar, makeFakeStorage())
-
-    makeHighScoreStorage('tempest', guard).save([])
-
+    expect(jar.writes, 'not one assignment to document.cookie').toEqual([])
     expect(jar.values()[COOKIE]).toBeUndefined()
+  })
+
+  it('load() does not republish the board', () => {
+    const jar = makeCookieJar()
+    installBrowser(jar, makeFakeStorage({ [KEY]: JSON.stringify(table(124500, 900)) }))
+
+    expect(storage().load()).toEqual(table(124500, 900))
+
+    expect(jar.writes).toEqual([])
+    expect(jar.values()[COOKIE]).toBeUndefined()
+  })
+
+  it('does not overwrite a legacy cookie that is already there', () => {
+    // The self-heal used to "correct" a cookie it thought was stale. There is no
+    // authority to correct it with any more — the cookie predates this origin.
+    const jar = makeCookieJar({ [COOKIE]: 'JPX:149830' })
+    installBrowser(jar, makeFakeStorage({ [KEY]: JSON.stringify(table(17)) }))
+
+    storage().load()
+    storage().save(table(17))
+
+    expect(jar.values()[COOKIE]).toBe('JPX:149830')
   })
 
   it('does not touch a sibling game’s cookie', () => {
-    const jar = makeCookieJar({ 'arcade-hi-star-wars': '8000' })
+    const jar = makeCookieJar({ 'arcade-hi-star-wars': 'ZZZ:8000' })
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(table(9000))
+    storage().save(table(9000))
+    storage().load()
 
-    expect(jar.values()['arcade-hi-star-wars']).toBe('8000')
+    expect(jar.values()['arcade-hi-star-wars']).toBe('ZZZ:8000')
   })
 })
 
 // ---------------------------------------------------------------------------
-// localStorage stays authoritative — the cookie is derived, never a source of truth
+// The cookie is the MIGRATION SOURCE — an empty board must never delete it
 // ---------------------------------------------------------------------------
 
-describe('the table remains the source of truth', () => {
-  it('still writes the FULL table to localStorage, byte-for-byte unmigrated', () => {
-    // No migration is performed and none is needed. The stored JSON must remain
-    // exactly what the games have always written — same key, same shape, same rows.
+describe('an empty board no longer clears the cookie', () => {
+  it('save([]) leaves the legacy ladder alone', () => {
+    // The old contract: an empty table derives NO summary, so the transport CLEARED.
+    // Correct while the cookie mirrored the table; fatal now that it outranks it.
+    const jar = makeCookieJar({ [COOKIE]: 'JPX:149830,AAA:98000' })
+    installBrowser(jar, makeFakeStorage())
+
+    storage().save([])
+
+    expect(jar.values()[COOKIE]).toBe('JPX:149830,AAA:98000')
+  })
+
+  it('a load that finds the table EVICTED leaves the ladder alone', () => {
+    // Quota eviction / ITP / cleared site data. This is precisely the player whose
+    // scores only exist in the cookie — deleting it here would be deleting the last copy.
+    const jar = makeCookieJar({ [COOKIE]: 'JPX:149830' })
+    installBrowser(jar, makeFakeStorage()) // the table is GONE
+
+    expect(storage().load(), 'the seed rebuilds the board from the ladder').toEqual([
+      { name: 'JPX', score: 149830, level: null },
+    ])
+
+    expect(jar.values()[COOKIE]).toBe('JPX:149830')
+  })
+
+  it('a load that finds the table CORRUPT leaves the ladder alone', () => {
+    const jar = makeCookieJar({ [COOKIE]: 'JPX:149830' })
+    installBrowser(jar, makeFakeStorage({ [KEY]: '{not valid json' }))
+
+    expect(storage().load()).toEqual([])
+
+    expect(jar.values()[COOKIE]).toBe('JPX:149830')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Removing the publish must not have cost the thing that actually matters
+// ---------------------------------------------------------------------------
+
+describe('the table is still persisted, exactly as before', () => {
+  it('writes the FULL table to localStorage, byte-for-byte unmigrated', () => {
+    // The stored JSON is what the games have always written — same key, same shape,
+    // same rows. Nothing about the cookie's retirement reshapes the table.
     const jar = makeCookieJar()
-    const storage = makeFakeStorage()
-    installBrowser(jar, storage)
+    const store = makeFakeStorage()
+    installBrowser(jar, store)
 
     const rows = table(9000, 3000)
-    makeHighScoreStorage('tempest', guard).save(rows)
+    storage().save(rows)
 
-    expect(JSON.parse(storage.getItem(KEY) as string)).toEqual(rows)
+    expect(JSON.parse(store.getItem(KEY) as string)).toEqual(rows)
   })
 
-  it('the cookie is a CACHE: losing it loses nothing, because load() rebuilds it', () => {
-    // ITP purged the cookie, or the user cleared cookies but not site data. The table
-    // is untouched, so the next game load must republish the real score from it.
-    const jar = makeCookieJar()
-    const storage = makeFakeStorage({ [KEY]: JSON.stringify(table(124500, 900)) })
-    installBrowser(jar, storage)
+  it('round-trips across a reload: a saved table loads back through a new instance', () => {
+    installBrowser(makeCookieJar(), makeFakeStorage())
 
-    expect(jar.values()[COOKIE], 'precondition: the cookie is gone').toBeUndefined()
+    storage().save(table(9000, 3000))
 
-    const loaded = makeHighScoreStorage('tempest', guard).load()
-
-    expect(loaded).toEqual(table(124500, 900))
-    expect(readTopScore('tempest'), 'load() must republish from the table').toBe(124500)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// load() republishes — the self-heal that needs no game-side code
-// ---------------------------------------------------------------------------
-
-describe('load() — republishes on every game load (self-heal)', () => {
-  it('heals a STALE cookie holding a wrong number', () => {
-    // The "frozen wrong number" the lobby shows today. A cookie left over from an old
-    // build, or forged by hand, must be corrected by the authoritative table on the
-    // very next load — not trusted.
-    const jar = makeCookieJar({ [COOKIE]: '17' })
-    installBrowser(jar, makeFakeStorage({ [KEY]: JSON.stringify(table(124500)) }))
-
-    makeHighScoreStorage('tempest', guard).load()
-
-    expect(readTopScore('tempest')).toBe(124500)
+    expect(storage().load()).toEqual(table(9000, 3000))
   })
 
-  it('publishes nothing when the game has no stored table yet (a fresh player)', () => {
-    const jar = makeCookieJar()
-    installBrowser(jar, makeFakeStorage())
-
-    expect(makeHighScoreStorage('tempest', guard).load()).toEqual([])
-    expect(jar.values()[COOKIE]).toBeUndefined()
-  })
-
-  it('publishes only the valid rows’ maximum when the table is partly corrupt', () => {
-    // load() already drops rows that fail the guard; the published score must come from
-    // the survivors, never from a poisoned row (a `1e999` -> Infinity score would
-    // otherwise be published as the top score).
+  it('drops poisoned rows on load — a 1e999 -> Infinity score never reaches the board', () => {
     const poisoned = JSON.stringify([
       { name: 'AAA', score: 1e999, level: 1 },
       { name: 'BBB', score: 4200, level: 2 },
       { name: 'CCC' },
     ])
-    const jar = makeCookieJar()
-    installBrowser(jar, makeFakeStorage({ [KEY]: poisoned }))
+    installBrowser(makeCookieJar(), makeFakeStorage({ [KEY]: poisoned }))
 
-    makeHighScoreStorage('tempest', guard).load()
-
-    expect(readTopScore('tempest')).toBe(4200)
+    expect(storage().load()).toEqual([{ name: 'BBB', score: 4200, level: 2 }])
   })
 })
 
 // ---------------------------------------------------------------------------
-// The cookie may never OUTLIVE the table it is derived from (the zombie score)
-// ---------------------------------------------------------------------------
-//
-// The suite used to test only one direction — cookie gone, table alive -> republish — and
-// that asymmetry hid a real bug. The mirror case is the dangerous one: the table is gone
-// and the cookie lives on, so the lobby advertises a high score the game itself denies,
-// for up to 400 days, and replaying the game could not fix it.
-//
-// ADR-0004:38 calls the cookie "fully derivable from the table". Derivation is a TOTAL
-// function: the derived value of an empty table is NO SCORE, and the cookie must say so.
-
-describe('load() — a table that is gone CLEARS the cookie, it does not leave a zombie', () => {
-  it('clears the cookie when the table has been evicted (quota / ITP / cleared storage)', () => {
-    // The player scored 50000 once. The browser later evicted tempest.slabgorb.com's
-    // localStorage, but the slabgorb.com cookie is separate storage and survived. The
-    // player revisits the game: the board is genuinely empty, so the tile must say so too.
-    const jar = makeCookieJar({ [COOKIE]: '50000' })
-    installBrowser(jar, makeFakeStorage()) // the table is GONE
-
-    const loaded = makeHighScoreStorage('tempest', guard).load()
-
-    expect(loaded, 'the game shows an empty board').toEqual([])
-    expect(
-      jar.values()[COOKIE],
-      'the tile must not keep advertising a score the game no longer has',
-    ).toBeUndefined()
-  })
-
-  it('clears the cookie when the stored table is corrupt', () => {
-    // Corrupt JSON means load() hands the game an empty board. The tile must match the
-    // board the player actually sees, not a remembered number.
-    const jar = makeCookieJar({ [COOKIE]: '50000' })
-    installBrowser(jar, makeFakeStorage({ [KEY]: '{not valid json' }))
-
-    expect(makeHighScoreStorage('tempest', guard).load()).toEqual([])
-    expect(jar.values()[COOKIE]).toBeUndefined()
-  })
-
-  it('clears the cookie when every row in the table is malformed', () => {
-    const jar = makeCookieJar({ [COOKIE]: '50000' })
-    installBrowser(jar, makeFakeStorage({ [KEY]: '[{"name":"AAA"},5,null]' }))
-
-    expect(makeHighScoreStorage('tempest', guard).load()).toEqual([])
-    expect(jar.values()[COOKIE]).toBeUndefined()
-  })
-
-  it('does NOT clear a sibling game’s cookie while clearing its own', () => {
-    const jar = makeCookieJar({ [COOKIE]: '50000', 'arcade-hi-star-wars': '8000' })
-    installBrowser(jar, makeFakeStorage())
-
-    makeHighScoreStorage('tempest', guard).load()
-
-    expect(jar.values()['arcade-hi-star-wars']).toBe('8000')
-  })
-
-  it('leaves the cookie ALONE when storage is unreachable — silence is not an empty board', () => {
-    // The critical exception. In private mode / node there is no localStorage at all, so we
-    // cannot know what the table says. Clearing here would destroy a perfectly good
-    // published score on the strength of no evidence whatsoever.
-    const jar = makeCookieJar({ [COOKIE]: '50000' })
-    vi.stubGlobal('document', jar.document)
-    vi.stubGlobal('localStorage', undefined)
-
-    expect(makeHighScoreStorage('tempest', guard).load()).toEqual([])
-    expect(jar.values()[COOKIE], 'an unreadable table must not destroy the cookie').toBe('50000')
-  })
-
-  it('save([]) clears the cookie — a reset board is NO SCORE, not a remembered one', () => {
-    const jar = makeCookieJar({ [COOKIE]: '50000' })
-    installBrowser(jar, makeFakeStorage())
-
-    makeHighScoreStorage('tempest', guard).save([])
-
-    expect(jar.values()[COOKIE]).toBeUndefined()
-  })
-
-  it('round-trips: a cleared cookie reads back as NO SCORE, never as a stale number', () => {
-    const jar = makeCookieJar({ [COOKIE]: '50000' })
-    installBrowser(jar, makeFakeStorage())
-    expect(readTopScore('tempest'), 'precondition: the zombie is there').toBe(50000)
-
-    makeHighScoreStorage('tempest', guard).load()
-
-    expect(readTopScore('tempest')).toBeNull()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Fail-soft — a cookie failure must never cost a score or crash a game
+// Fail-soft — unchanged: a storage failure must never cost a game
 // ---------------------------------------------------------------------------
 
-describe('fail-soft — publishing never breaks persistence', () => {
-  it('still writes the table to localStorage when publishing throws', () => {
-    // The cookie is a nice-to-have; the player's scores are not. If the publish blows
-    // up, the save must still land.
-    const transport = spyTransport({ throws: true })
-    const storage = makeFakeStorage()
-    installBrowser(makeCookieJar(), storage)
-
-    const rows = table(9000)
-    const hs = makeHighScoreStorage('tempest', guard, transport)
-
-    expect(() => hs.save(rows)).not.toThrow()
-    expect(JSON.parse(storage.getItem(KEY) as string)).toEqual(rows)
-  })
-
-  it('still returns the loaded table when republishing throws', () => {
-    const transport = spyTransport({ throws: true })
-    installBrowser(makeCookieJar(), makeFakeStorage({ [KEY]: JSON.stringify(table(9000)) }))
-
-    const hs = makeHighScoreStorage('tempest', guard, transport)
-
-    expect(() => hs.load()).not.toThrow()
-    expect(hs.load()).toEqual(table(9000))
-  })
-
-  it('does not throw when localStorage itself is full (the pre-existing quota path)', () => {
+describe('fail-soft — persistence never breaks the game', () => {
+  it('does not throw when localStorage is full (the quota path)', () => {
     installBrowser(makeCookieJar(), makeQuotaStorage())
 
-    const hs = makeHighScoreStorage('tempest', guard)
-
-    expect(() => hs.save(table(9000))).not.toThrow()
+    expect(() => storage().save(table(9000))).not.toThrow()
   })
 
   it('does not throw when there is no browser at all (node)', () => {
     vi.stubGlobal('document', undefined)
     vi.stubGlobal('localStorage', undefined)
 
-    const hs = makeHighScoreStorage('tempest', guard)
+    const hs = storage()
 
     expect(() => hs.save(table(9000))).not.toThrow()
     expect(() => hs.load()).not.toThrow()
     expect(hs.load()).toEqual([])
   })
-})
 
-// ---------------------------------------------------------------------------
-// The transport is a narrow, swappable seam (AC-3)
-// ---------------------------------------------------------------------------
+  it('does not seed when storage is unreachable — silence is not an empty table', () => {
+    // The critical exception. With no localStorage we cannot know whether this browser
+    // has already migrated, and a seed we cannot persist would be a board that vanishes
+    // the moment the player scores. Read nothing, write nothing, show nothing.
+    const jar = makeCookieJar({ [COOKIE]: 'JPX:149830' })
+    vi.stubGlobal('document', jar.document)
+    vi.stubGlobal('localStorage', undefined)
 
-describe('the transport is injectable — single-origin stays one adapter swap away', () => {
-  it('uses an injected transport instead of the cookie', () => {
-    // ADR-0004 rejected collapsing the cabinet onto one origin on COST, not merit, and
-    // requires that swapping the cookie for same-origin localStorage (or a fetch) touch
-    // ONE adapter and nothing else. If this test cannot redirect the publish, the
-    // transport is welded in and that promise is not real.
-    const transport = spyTransport()
-    const jar = makeCookieJar()
-    installBrowser(jar, makeFakeStorage())
-
-    makeHighScoreStorage('tempest', guard, transport).save(table(9000, 100))
-
-    expect(transport.published).toEqual([
-      { gameId: 'tempest', rows: [{ name: 'AAA', score: 9000 }, { name: 'AAA', score: 100 }] },
-    ])
-    expect(jar.values()[COOKIE], 'the cookie transport must NOT also have run').toBeUndefined()
-  })
-
-  it('routes the load()-time republish through the injected transport too', () => {
-    const transport = spyTransport()
-    installBrowser(makeCookieJar(), makeFakeStorage({ [KEY]: JSON.stringify(table(4200)) }))
-
-    makeHighScoreStorage('tempest', guard, transport).load()
-
-    expect(transport.published).toEqual([{ gameId: 'tempest', rows: [{ name: 'AAA', score: 4200 }] }])
+    expect(storage().load()).toEqual([])
+    expect(jar.values()[COOKIE], 'and the ladder survives for the next load').toBe('JPX:149830')
   })
 })

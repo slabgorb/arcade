@@ -10,11 +10,20 @@
 // tile already reads stays derivable from row 0, so the tile never regresses.
 //
 // These tests pin the CONTRACT, not the encoding:
-//   - `makeHighScoreStorage(id, guard).save(table)` publishes a rows summary.
+//   - `cookieTopScoreTransport.publish(id, rows)` writes a rows summary.
 //   - `readTopScores(id)` reads the board's ladder back (up to PUBLISHED_SUMMARY_DEPTH).
 //   - `readTopScore(id)` still yields the single top score for the tile.
 // The exact cookie byte-encoding is Dev's call; every assertion here is about observable
 // behaviour through the public API + the real cookie jar.
+//
+// TASK 21 — WHY THE WRITES MOVED. The publisher used to be the game's own
+// `makeHighScoreStorage(id, guard).save(board)`: the factory derived the ladder from the
+// board and pushed it through the transport. The cabinet is one origin now, that publish
+// is retired (tests/highscore-publish.test.ts pins its absence), and the cookie is a
+// READ-ONLY legacy bridge. What still has to hold is the DECODE: these are the exact
+// cookie shapes the one-time migration seed has to parse out of a returning player's
+// browser, so every case below now authors its cookie through the transport's surviving
+// write half and asserts on the read.
 //
 // AC-1's WRITTEN half — amending ADR-0004 in docs/adr/ — is NOT tested here: that ADR
 // lives in the ORCHESTRATOR repo, outside this library's CI checkout, so a file-read
@@ -31,6 +40,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { makeCookieJar, locationStub, PROD_TEMPEST, type CookieJar } from './helpers/cookie-jar'
 import { makeFakeStorage } from './helpers/storage-stub'
 import {
+  cookieTopScoreTransport,
   makeHighScoreStorage,
   makeHighScoreRowGuard,
   readTopScore,
@@ -42,11 +52,10 @@ import {
 const guard = makeHighScoreRowGuard('level')
 const COOKIE = 'arcade-hi-tempest'
 
-/** A tempest-shaped table. Each row carries the arcade initials + score the board needs,
- *  plus the game's own `level` domain field (which must NOT ride across into the summary). */
+/** A published ladder, exactly as a pre-collapse game left it in the jar. */
 type Row = [name: string, score: number]
-const table = (...rows: Row[]) =>
-  rows.map(([name, score], i) => ({ name, score, level: i + 1 }))
+const ladder = (...rows: Row[]): TopScoreRow[] => rows.map(([name, score]) => ({ name, score }))
+const publish = (...rows: Row[]): void => cookieTopScoreTransport.publish('tempest', ladder(...rows))
 
 /** Install a browser (cookie jar + location) and a per-origin localStorage, exactly as
  *  the real publish path sees them. */
@@ -71,9 +80,7 @@ describe('save() publishes a rows summary the board can read back', () => {
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(
-      table(['JPX', 149830], ['AAA', 98000], ['CDE', 4200]),
-    )
+    publish(['JPX', 149830], ['AAA', 98000], ['CDE', 4200])
 
     expect(readTopScores('tempest')).toEqual<TopScoreRow[]>([
       { name: 'JPX', score: 149830 },
@@ -88,9 +95,7 @@ describe('save() publishes a rows summary the board can read back', () => {
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(
-      table(['LOW', 100], ['TOP', 124500], ['MID', 3000]),
-    )
+    publish(['LOW', 100], ['TOP', 124500], ['MID', 3000])
 
     expect(readTopScores('tempest')).toEqual<TopScoreRow[]>([
       { name: 'TOP', score: 124500 },
@@ -120,7 +125,7 @@ describe('save() publishes a rows summary the board can read back', () => {
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(table(['JPX', 149830]))
+    publish(['JPX', 149830])
 
     const raw = jar.values()[COOKIE]
     expect(raw, 'the game published something').toBeDefined()
@@ -132,11 +137,9 @@ describe('save() publishes a rows summary the board can read back', () => {
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(
-      table(
-        ['R1', 100], ['R2', 200], ['R3', 300], ['R4', 400],
-        ['R5', 500], ['R6', 600], ['R7', 700],
-      ),
+    publish(
+      ['R1', 100], ['R2', 200], ['R3', 300], ['R4', 400],
+      ['R5', 500], ['R6', 600], ['R7', 700],
     )
 
     // Pin the constant AND the behaviour independently, so neither can go vacuous.
@@ -150,7 +153,7 @@ describe('save() publishes a rows summary the board can read back', () => {
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(table(['JPX', 149830], ['AAA', 98000]))
+    publish(['JPX', 149830], ['AAA', 98000])
 
     expect(readTopScore('tempest')).toBe(149830)
   })
@@ -159,20 +162,25 @@ describe('save() publishes a rows summary the board can read back', () => {
     const jar = makeCookieJar({ 'arcade-hi-star-wars': 'ZZZ:8000' })
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(table(['AAA', 9000]))
+    publish(['AAA', 9000])
 
     expect(jar.values()['arcade-hi-star-wars']).toBe('ZZZ:8000')
   })
 
-  it('leaves NO game-domain field in the summary — the ladder carries name+score only', () => {
-    const jar = makeCookieJar()
-    installBrowser(jar, makeFakeStorage())
-
-    makeHighScoreStorage('tempest', guard).save(table(['AAA', 9000]))
-
-    // A row that leaked `level` would let the board accidentally depend on a game-private
-    // field. The summary contract is exactly {name, score}.
+  it('decodes to name+score ONLY — a third field is rejected, never smuggled through', () => {
+    // The ladder never carried a game's `level`/`wave`, and the DECODE must not start
+    // accepting one from a hand-edited cookie either. This is load-bearing for Task 21:
+    // the migration seed builds its rows from exactly these two keys and stamps the domain
+    // field as null itself, so a decoded row carrying anything else would be seeded
+    // straight into the player's table.
+    installBrowser(makeCookieJar({ [COOKIE]: 'AAA:9000' }), makeFakeStorage())
     expect(Object.keys(readTopScores('tempest')[0]).sort()).toEqual(['name', 'score'])
+
+    vi.unstubAllGlobals()
+    installBrowser(makeCookieJar({ [COOKIE]: 'BBB:9000:3' }), makeFakeStorage())
+    expect(readTopScores('tempest'), 'a third `:field` makes the row junk, not partial').toEqual(
+      [],
+    )
   })
 })
 
@@ -185,7 +193,7 @@ describe('a summary that cannot be trusted reads as [] — never a fabricated la
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save([])
+    cookieTopScoreTransport.publish('tempest', [])
 
     expect(jar.values()[COOKIE], 'no zombie summary').toBeUndefined()
     expect(readTopScores('tempest')).toEqual([])
@@ -212,10 +220,10 @@ describe('a summary that cannot be trusted reads as [] — never a fabricated la
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save([
-      { name: 'AAA', score: 1e999, level: 1 }, // Infinity — must be dropped
-      { name: 42 as unknown as string, score: 5000, level: 2 }, // non-string name — dropped
-      { name: 'BBB', score: 4200, level: 3 }, // the only clean row
+    cookieTopScoreTransport.publish('tempest', [
+      { name: 'AAA', score: 1e999 }, // Infinity — must be dropped
+      { name: 42 as unknown as string, score: 5000 }, // non-string name — dropped
+      { name: 'BBB', score: 4200 }, // the only clean row
     ])
 
     const rows = readTopScores('tempest')
@@ -226,16 +234,25 @@ describe('a summary that cannot be trusted reads as [] — never a fabricated la
     }
   })
 
-  it('clears a zombie summary when the table is gone — the board must match the game', () => {
-    // The table was evicted (quota / ITP / cleared storage) but the shared-domain cookie
-    // survived. load() re-derives from an empty table => the summary must clear, or the
-    // board advertises a ladder the game itself no longer has.
+  it('a ladder with no table behind it is a MIGRATION source, not a zombie to clear', () => {
+    // This case INVERTED in Task 21. It used to assert that load() cleared the cookie when
+    // the table was gone, because the cookie was a cache derived from the table and had no
+    // business outliving it. Post-collapse the cookie is the older, richer artefact: a
+    // returning player's table was written on <game>.slabgorb.com and cannot cross, so
+    // "cookie present, table absent" is the NORMAL first load, and clearing would destroy
+    // the only surviving copy. It seeds the board instead, and the ladder stays put.
     const jar = makeCookieJar({ [COOKIE]: 'AAA:50000,BBB:9000' })
-    installBrowser(jar, makeFakeStorage()) // table GONE
+    installBrowser(jar, makeFakeStorage()) // no same-origin table
 
-    expect(makeHighScoreStorage('tempest', guard).load()).toEqual([])
-    expect(jar.values()[COOKIE], 'the zombie ladder is cleared').toBeUndefined()
-    expect(readTopScores('tempest')).toEqual([])
+    expect(makeHighScoreStorage('tempest', guard, 'level').load()).toEqual([
+      { name: 'AAA', score: 50000, level: null },
+      { name: 'BBB', score: 9000, level: null },
+    ])
+    expect(jar.values()[COOKIE], 'the ladder is not cleared').toBe('AAA:50000,BBB:9000')
+    expect(readTopScores('tempest')).toEqual<TopScoreRow[]>([
+      { name: 'AAA', score: 50000 },
+      { name: 'BBB', score: 9000 },
+    ])
   })
 })
 
@@ -251,7 +268,7 @@ describe('the summary is injection-safe and small', () => {
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(table(['X;Y=Z,Q:R', 9000]))
+    publish(['X;Y=Z,Q:R', 9000])
 
     // No injected cookie: only tempest's own summary exists.
     expect(Object.keys(jar.values())).toEqual([COOKIE])
@@ -269,7 +286,7 @@ describe('the summary is injection-safe and small', () => {
     const hostile = 'A' + String.fromCharCode(10) + 'B' + String.fromCharCode(0) + 'C'
     installBrowser(makeCookieJar(), makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(table([hostile, 9000]))
+    publish([hostile, 9000])
 
     // The control chars are gone; the real letters survive; the score is unharmed.
     expect(readTopScores('tempest')[0]?.name).toBe('ABC')
@@ -278,7 +295,7 @@ describe('the summary is injection-safe and small', () => {
 
   it('a clean 3-char name round-trips intact', () => {
     installBrowser(makeCookieJar(), makeFakeStorage())
-    makeHighScoreStorage('tempest', guard).save(table(['JPX', 9000]))
+    publish(['JPX', 9000])
     expect(readTopScores('tempest')[0]).toEqual({ name: 'JPX', score: 9000 })
   })
 
@@ -287,11 +304,9 @@ describe('the summary is injection-safe and small', () => {
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())
 
-    makeHighScoreStorage('tempest', guard).save(
-      table(
-        ['ABC', 9999999], ['DEF', 8888888], ['GHI', 7777777],
-        ['JKL', 6666666], ['MNO', 5555555],
-      ),
+    publish(
+      ['ABC', 9999999], ['DEF', 8888888], ['GHI', 7777777],
+      ['JKL', 6666666], ['MNO', 5555555],
     )
 
     const value = jar.values()[COOKIE]
@@ -331,8 +346,8 @@ describe('fail-soft with no browser', () => {
     vi.stubGlobal('document', undefined)
     vi.stubGlobal('localStorage', undefined)
 
-    const hs = makeHighScoreStorage('tempest', guard)
-    expect(() => hs.save(table(['AAA', 9000]))).not.toThrow()
+    const hs = makeHighScoreStorage('tempest', guard, 'level')
+    expect(() => hs.save([{ name: 'AAA', score: 9000, level: 1 }])).not.toThrow()
     expect(() => hs.load()).not.toThrow()
     expect(readTopScores('tempest')).toEqual([])
   })

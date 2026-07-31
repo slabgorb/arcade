@@ -27,7 +27,7 @@ import { resizeToDisplay } from '@shared/view'
 // wave (the lobby reads the same key + shape — SH-4).
 // (SH2-5: no font boot needed — HUD text is stroked from the shared ROM vector
 // font, a synchronous glyph table with no async asset to load.)
-const highScoreStorage = makeHighScoreStorage('star-wars', makeHighScoreRowGuard('wave'))
+const highScoreStorage = makeHighScoreStorage('star-wars', makeHighScoreRowGuard('wave'), 'wave')
 
 const canvas = document.getElementById('game') as HTMLCanvasElement
 const ctx = canvas.getContext('2d')!

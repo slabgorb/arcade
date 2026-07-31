@@ -247,7 +247,7 @@
     "ours": {
       "file": "src/main.ts",
       "line": 30,
-      "verbatim": "const highScoreStorage = makeHighScoreStorage('star-wars', makeHighScoreRowGuard('wave'))"
+      "verbatim": "const highScoreStorage = makeHighScoreStorage('star-wars', makeHighScoreRowGuard('wave'), 'wave')"
     }
   },
   {

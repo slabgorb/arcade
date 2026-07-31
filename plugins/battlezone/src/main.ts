@@ -111,7 +111,7 @@ window.addEventListener('keydown', unlockAudio)
 // module + `battlezone-high-scores` key the lobby reads). battlezone records no
 // domain field, so it binds the domain-AGNOSTIC base guard `isHighScoreRow`
 // directly — not makeHighScoreRowGuard — closing the tile's NO SCORE gap.
-const highScoreStorage = makeHighScoreStorage('battlezone', isHighScoreRow)
+const highScoreStorage = makeHighScoreStorage('battlezone', isHighScoreRow, '')
 
 // The core is seeded once per page load — the shell owns the wall clock, the
 // core sees only the word (epic boundary: randomness enters as a carried

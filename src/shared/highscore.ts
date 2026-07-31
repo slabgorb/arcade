@@ -1,9 +1,11 @@
 // @arcade/shared/highscore — the high-score TABLE logic + its TWO persistence seams:
-// the localStorage table (authoritative) and the cross-origin score cookie (derived).
+// the localStorage table (authoritative) and the cross-origin score cookie (now a
+// READ-ONLY legacy bridge — see "the cross-origin transport" below).
 //
 // NOTE: this is a BROWSER subpath, not a pure one (ADR-0003's fence, tests/purity.test.ts).
-// It was pure until lb2-2: `save()`/`load()` now write `document.cookie`, so the subpath
-// touches the DOM and is classified by its dirtiest export. The table logic below
+// It was pure until lb2-2: `load()` reads `document.cookie` and both `load()`/`save()`
+// touch `localStorage`, so the subpath touches the DOM and is classified by its dirtiest
+// export. The table logic below
 // (qualifiesForHighScore / insertHighScore / highScoreKey / isHighScoreRow) is still pure
 // and side-effect-free — but the module as a whole is not, and saying otherwise would make
 // the purity fence a lie.
@@ -29,19 +31,16 @@
 //
 // No rendering, no game state. There are TWO IO surfaces:
 //
-//   localStorage  the game's own high-score TABLE. Origin-scoped, authoritative, and
-//                 never migrated. This is the source of truth.
-//   document.cookie  the top score alone, published to the shared parent domain so the
-//                 lobby — which lives on a DIFFERENT ORIGIN and therefore cannot read the
-//                 table — can show it on a tile (lb2-2 / ADR-0004, below).
-//
-// The cookie is DERIVED from the table and mirrors it in both directions, so it is always
-// disposable: losing it costs nothing (the next load republishes it) and it can never
-// outlive the board it came from (an empty table clears it).
+//   localStorage  the game's own high-score TABLE. Origin-scoped, authoritative, and the
+//                 source of truth. Read AND written.
+//   document.cookie  the pre-migration summary ladder, scoped to the registrable domain.
+//                 READ ONLY as of Task 21 — nothing in the cabinet writes it any more.
+//                 It is the one-time bridge that carries a returning player's scores from
+//                 the old per-game origins onto the single cabinet origin.
 //
 // Both seams degrade gracefully on every failure mode (missing / corrupt / unavailable /
 // quota-exceeded / no DOM / a hostile document) — a game keeps playing, scores just don't
-// persist, and a tile that cannot be trusted reads NO SCORE rather than a wrong number.
+// persist, and a summary that cannot be trusted seeds nothing rather than a wrong number.
 
 /** Board depth — the classic 10-deep arcade ladder. The single source of truth
  *  (AC-4): no game redeclares it. */
@@ -146,27 +145,36 @@ export function makeHighScoreRowGuard<DomainKey extends string>(
   }
 }
 
-// --- the cross-origin transport (ADR-0004) -----------------------------------
+// --- the cross-origin transport (ADR-0004) — LEGACY, READ-ONLY ---------------
 //
-// lb2-2. The games and the lobby are DIFFERENT ORIGINS in production
-// (tempest.slabgorb.com vs arcade.slabgorb.com — six R2 buckets, six domains), and
-// localStorage is partitioned by origin. So the lobby was reading a store no game had
-// ever written, and every tile showed NO SCORE or a frozen stale number.
+// lb2-2. The games and the lobby USED TO BE different origins (tempest.slabgorb.com vs
+// arcade.slabgorb.com — six R2 buckets, six domains), and localStorage is partitioned by
+// origin. So the lobby was reading a store no game had ever written, and every tile
+// showed NO SCORE or a frozen stale number.
 //
-// The fix: a game publishes its TOP SCORE to a cookie scoped to the registrable domain
-// (`Domain=slabgorb.com`), which every subdomain can read. Cookie scoping is
-// host-suffix-based, so it walks straight through the storage partitioning that kills
-// every other same-browser option (notably Safari, which partitions localStorage
-// per-ORIGIN in defiance of its own published spec).
+// The fix was a cookie scoped to the registrable domain (`Domain=slabgorb.com`), which
+// every subdomain can read. Cookie scoping is host-suffix-based, so it walks straight
+// through the storage partitioning that kills every other same-browser option (notably
+// Safari, which partitions localStorage per-ORIGIN in defiance of its own published spec).
 //
-// The cookie is a DERIVED CACHE, never a source of truth: the localStorage table below
-// stays authoritative and unmigrated, and the cookie is republished on every load, so it
-// heals itself and cannot lose a player's scores. Losing the cookie costs nothing;
-// losing the table would cost everything, and nothing here can do that.
+// ── WHAT CHANGED (Task 21) ──────────────────────────────────────────────────
+// The single-origin collapse ADR-0004 rejected on COST has since HAPPENED: the cabinet is
+// one origin, serving every game from arcade.slabgorb.com. That makes the cookie pointless
+// as a transport — the lobby can just read the table — and it makes the players' existing
+// tables, written on the old per-game origins, unreachable. The cookie is the only thing
+// that crosses that boundary, so it has exactly one job left:
 //
-// The transport sits behind a narrow interface because ADR-0004 rejected collapsing the
-// cabinet onto one origin on COST, not merit: swapping the cookie for same-origin
-// localStorage (or a fetch) must remain a one-adapter change.
+//   READ ONLY. Nothing publishes to this cookie any more. `makeHighScoreStorage` no
+//   longer writes it on save and no longer republishes it on load; the read exists solely
+//   so a returning player's pre-migration scores can be seeded ONCE into same-origin
+//   storage (see `makeHighScoreStorage` below). Load never clears it either — it is the
+//   migration SOURCE now, not a derived cache, and a clear would destroy the only copy.
+//   Safe to delete this whole section once the migration window has passed.
+//
+// `cookieTopScoreTransport.publish` survives as the write half of the ADR-0004 interface,
+// but no production code path calls it: its only remaining caller is the cookie suite,
+// which uses it to author the legacy cookies the READ side has to parse. It goes when the
+// rest of this section does.
 
 /** One published high-score row: the arcade initials and the score, and nothing else. The
  *  game's own domain field (`level` | `wave`) is deliberately NOT carried across — the board
@@ -410,17 +418,19 @@ export const cookieTopScoreTransport: TopScoreTransport = {
   },
 }
 
-/** The board's published ladder for a game — up to PUBLISHED_SUMMARY_DEPTH name+score rows,
+/** The legacy published ladder for a game — up to PUBLISHED_SUMMARY_DEPTH name+score rows,
  *  highest first, or [] when there is nothing trustworthy to show (never a fabricated row).
- *  This is what the LOBBY's high-scores board imports (lb2-8, widening ADR-0004). */
+ *  Written by the OLD per-game origins (lb2-8, widening ADR-0004); since Task 21 this is
+ *  read-only, and its one consumer is the one-time seed in `makeHighScoreStorage`. */
 export function readTopScores(gameId: string): TopScoreRow[] {
   return cookieTopScoreTransport.read(gameId)
 }
 
-/** The single best score a game has published, or null when there is none to show. Derives
- *  from row 0 of the widened summary, and still parses a LEGACY bare-number cookie so a tile
- *  does not blank mid-rollout (before a game is redeployed on this version). This is what the
- *  lobby's TILE imports — its original ADR-0004 contract, unbroken by the widening. */
+/** The single best score a game published BEFORE the origin collapse, or null when there is
+ *  none. Derives from row 0 of the widened summary, and still parses a LEGACY bare-number
+ *  cookie (the pre-lb2-8 shape) so a tile does not blank for a player whose cookie predates
+ *  the widening. Since Task 21 this is the lobby tile's FALLBACK, behind same-origin
+ *  storage — see `readLocalTopScore`. */
 export function readTopScore(gameId: string): number | null {
   const raw = readSummaryCookie(gameId)
   if (raw === null) return null
@@ -453,52 +463,19 @@ function getStorage(): Storage | null {
 // degrades gracefully — load returns [], save is a no-op — so persistence never
 // crashes the game. load FILTERS the parsed rows (it does not rebuild them), so
 // a survivor keeps its exact shape including an absent optional `date`.
+//
+// `domainKey` is the game's own domain field name — 'level' for tempest, 'wave' for
+// star-wars / asteroids / centipede, and '' for battlezone, which persists the base
+// shape and has no domain field at all. It exists for the one-time cookie seed below,
+// which has to BUILD rows rather than merely validate them. It is passed explicitly
+// rather than recovered from `validator`, because a guard is an opaque predicate and
+// reverse-engineering its field name would be guesswork.
 export function makeHighScoreStorage<E extends HighScoreEntryBase>(
   gameId: string,
   validator: (value: unknown) => value is E,
-  transport: TopScoreTransport = cookieTopScoreTransport,
+  domainKey: string,
 ): HighScoreStorage<E> {
   const key = highScoreKey(gameId)
-
-  // The board's top-N ladder, or [] when there is nothing worth publishing. Derives the
-  // summary the transport carries: keep only rows with a string name and a publishable
-  // (finite, positive, whole) score — the same finite line isHighScoreRow holds — carry
-  // name+score ONLY (the game-private `level`/`wave` field does not ride across), sort
-  // highest-first (the table is written sorted, but corrupt or unsorted data must still
-  // yield the true ranking), and cap at PUBLISHED_SUMMARY_DEPTH.
-  function topRowsOf(table: readonly E[]): TopScoreRow[] {
-    const rows: TopScoreRow[] = []
-    for (const entry of table) {
-      if (typeof entry.name !== 'string' || !isPublishableScore(entry.score)) continue
-      rows.push({ name: entry.name, score: entry.score })
-    }
-    rows.sort((a, b) => b.score - a.score)
-    return rows.slice(0, PUBLISHED_SUMMARY_DEPTH)
-  }
-
-  // Publish the derived ladder across the origin boundary so the lobby's board can read it.
-  // This is the choke point ADR-0004 targets: every game already calls this factory exactly
-  // once, so installing the publish HERE reaches tempest / star-wars / asteroids / battlezone
-  // with a version bump and no game-side code at all.
-  //
-  // The cookie MIRRORS the table in BOTH directions. An empty board derives NO rows, and the
-  // transport CLEARS on `[]` — it does not merely decline to write. Skipping the clear is what
-  // let a stale ladder outlive the table it came from: the player's board was gone (quota
-  // eviction, an ITP purge, a cleared localStorage) while the cookie kept advertising a high
-  // score for up to 400 days, and replaying the game could not fix it, because a load with an
-  // empty table published nothing. That is a tile showing a number the game itself denies — the
-  // exact defect this story exists to remove. ADR-0004 says the cookie is "fully derivable from
-  // the table"; derivation is a TOTAL function, and the derived summary of an empty table is
-  // NO ROWS.
-  function publishTop(table: readonly E[]): void {
-    try {
-      transport.publish(gameId, topRowsOf(table))
-    } catch {
-      // The cookie is a cache; the player's scores are not. A transport that blows up
-      // must never cost a score or crash a game.
-      console.warn(`[highscore] could not publish ${gameId}'s high-score summary; the lobby may lag`)
-    }
-  }
 
   function parseTable(raw: string): E[] {
     try {
@@ -514,11 +491,54 @@ export function makeHighScoreStorage<E extends HighScoreEntryBase>(
     }
   }
 
+  // ONE-TIME cross-origin migration. Player tables were written on
+  // <game>.slabgorb.com; the cabinet now serves from arcade.slabgorb.com/<id>/ and
+  // localStorage does not cross that boundary. The ADR-0004 summary cookie is
+  // scoped to the registrable domain, so it DOES cross — it is the bridge.
+  //
+  // Top five survive (PUBLISHED_SUMMARY_DEPTH); rows six through ten are lost. The
+  // domain field cannot cross at all, so seeded rows carry null (see the guard) —
+  // fabricating a level or a wave would be the cabinet inventing a fact about a
+  // player's game. Runs only when same-origin storage holds NO table at all, so it
+  // can never overwrite real local scores, and never runs again once anything has
+  // been saved — including an empty table, which is a board the player cleared.
+  //
+  // Returns the rows it seeded, so the load that triggers the migration shows them
+  // immediately. That means what load() RETURNS and what it PERSISTS are produced
+  // separately, and a divergence would be invisible on this pass and fatal on the
+  // next (storage is no longer empty, so the seed never runs again and the scores
+  // are gone). tests/highscore.dom.test.ts closes that gap by re-reading through a
+  // second storage instance — the reload half of every "seeds ..." case.
+  function seedFromLegacyCookie(storage: Storage): E[] {
+    const rows = readTopScores(gameId)
+    if (rows.length === 0) return []
+
+    // A game with no domain field (battlezone) gets the base shape and nothing else:
+    // writing a literal empty-string key would be inventing a field name.
+    const candidates: unknown[] = rows.map((row) =>
+      domainKey === ''
+        ? { name: row.name, score: row.score }
+        : { name: row.name, score: row.score, [domainKey]: null },
+    )
+    // Validate what we built with the game's OWN guard, so a row that could not
+    // survive a reload is never written in the first place.
+    const seeded = candidates.filter(validator)
+    if (seeded.length === 0) return []
+
+    try {
+      storage.setItem(key, JSON.stringify(seeded))
+    } catch {
+      // Quota / private mode. The player still sees their migrated board this
+      // session, and the cookie is untouched, so the next load tries again.
+      console.warn(`[highscore] could not persist ${key}'s migrated scores (storage full)`)
+    }
+    return seeded
+  }
+
   function load(): E[] {
     const storage = getStorage()
-    // Storage is unreachable (node, private mode), so we cannot know what the table says.
-    // Leave the cookie ALONE: silence is not evidence of an empty board, and clearing on a
-    // failed read would throw away a perfectly good published score.
+    // Storage is unreachable (node, private mode), so we cannot know what the table says —
+    // and must not seed, because "I could not read it" is not "it is empty".
     if (!storage) return []
 
     let raw: string | null
@@ -528,27 +548,78 @@ export function makeHighScoreStorage<E extends HighScoreEntryBase>(
       return []
     }
 
-    // Whatever we return here IS the board the player sees — a missing key and corrupt
-    // JSON both mean an empty board. Republish on every load so the cookie tracks it:
-    // that heals an evicted or stale cookie upward, and clears a zombie one downward.
-    const rows = raw === null ? [] : parseTable(raw)
-    publishTop(rows)
-    return rows
+    // NO table at all means one of two things: a genuinely new player, or a returning
+    // one whose board is stranded on the old origin. Only the second has a cookie.
+    if (raw === null) return seedFromLegacyCookie(storage)
+
+    // Whatever we return here IS the board the player sees — corrupt JSON means an
+    // empty board, and NOT a re-seed: the key exists, so this browser has already
+    // migrated and the cookie must not resurrect a ladder the player has moved past.
+    return parseTable(raw)
   }
 
   function save(table: readonly E[]): void {
     const storage = getStorage()
-    if (storage) {
-      try {
-        storage.setItem(key, JSON.stringify(table))
-      } catch {
-        console.warn(`[highscore] could not persist ${key} (storage full or unavailable)`)
-      }
+    if (!storage) return
+    try {
+      storage.setItem(key, JSON.stringify(table))
+    } catch {
+      console.warn(`[highscore] could not persist ${key} (storage full or unavailable)`)
     }
-    // Publish AFTER the table is safely written: localStorage is the source of truth and
-    // gets the first and best chance to succeed.
-    publishTop(table)
   }
 
   return { load, save }
+}
+
+// The game's stored table as raw JSON, or null when this browser has NO table for it at
+// all — no storage, no key, or a read that threw. That distinction is the whole point:
+// "there is no table" and "the table is empty" are different answers, and only the first
+// one licenses falling back to the pre-collapse cookie.
+function readLocalTableRaw(gameId: string): string | null {
+  const storage = getStorage()
+  if (!storage) return null
+  try {
+    return storage.getItem(highScoreKey(gameId))
+  } catch {
+    return null
+  }
+}
+
+// The best score in a stored table, or null when it holds none. Rows are filtered through
+// the domain-agnostic `isHighScoreRow`, so a tile holds the same finite-score line as every
+// game's own guard and a poisoned `1e999` -> Infinity row can never render. Takes the MAX
+// rather than row 0: the table is written sorted, but corrupt or hand-edited data must
+// still yield the true best, never a lower number presented as the top score.
+function maxScoreIn(raw: string): number | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!Array.isArray(parsed)) return null
+
+  const scores = parsed.filter(isHighScoreRow).map((row) => row.score)
+  return scores.length === 0 ? null : Math.max(...scores)
+}
+
+/** The best score this browser knows for a game, or null when there is none to show.
+ *
+ *  This is the lobby tile's read, and the adapter swap ADR-0004 said the single-origin
+ *  collapse would cost. Same-origin storage is authoritative: the cabinet serves every game
+ *  from one origin now, so the game's own table is right there and a derived cookie can only
+ *  ever be staler than it.
+ *
+ *  The pre-collapse summary cookie is consulted ONLY when this browser has no table for the
+ *  game at all — the returning player whose scores are still stranded on the old per-game
+ *  origin and who has not opened that game since. A table that exists and is EMPTY (a board
+ *  the player cleared) or unusable (corrupt, all rows malformed) is a real answer of NO
+ *  SCORE, and falling back there would resurrect a ladder the player has already moved past
+ *  — the same zombie-score defect ADR-0004 fixed, arriving from the other direction.
+ *
+ *  Every failure mode degrades to null — NO SCORE, never a wrong number. */
+export function readBestKnownScore(gameId: string): number | null {
+  const raw = readLocalTableRaw(gameId)
+  if (raw === null) return readTopScore(gameId)
+  return maxScoreIn(raw)
 }

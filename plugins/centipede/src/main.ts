@@ -61,7 +61,7 @@ const demoKind: DemoKind | null = rawDemo === 'ecosystem' || rawDemo === 'flea' 
 // uses on it — qualifiesForHighScore, insertHighScore, stepNameEntry — is pure.
 // The shell keeps exactly two jobs: load the board into the sim at boot, and
 // save it back when the core hands over a new array.
-const highScoreStorage = makeHighScoreStorage('centipede', makeHighScoreRowGuard('wave'))
+const highScoreStorage = makeHighScoreStorage('centipede', makeHighScoreRowGuard('wave'), 'wave')
 
 const mouse = createMouseAdapter(window)
 const keyboard = createKeyboardAdapter(window)
