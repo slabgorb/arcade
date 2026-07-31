@@ -34,12 +34,13 @@ front door, with every game one tile away.
 | **Asteroids** | [asteroids.slabgorb.com](https://asteroids.slabgorb.com) | Faithful clone of Atari's 1979 vector arcade game — inertial ship flight, splitting rocks, and a roaming saucer. | [`plugins/asteroids`](plugins/asteroids) |
 | **Battlezone** | [battlezone.slabgorb.com](https://battlezone.slabgorb.com) | Faithful clone of Atari's 1980 vector arcade game — first-person 3D wireframe tank duel with dual-tread steering. | [`plugins/battlezone`](plugins/battlezone) |
 | **Red Baron** | [red-baron.slabgorb.com](https://red-baron.slabgorb.com) | Faithful clone of Atari's 1980 vector arcade game — first-person WWI biplane dogfight over a vector landscape. | [`plugins/red-baron`](plugins/red-baron) |
-| **Centipede** | [in the lobby](https://arcade.slabgorb.com) | Faithful clone of Atari's 1981 raster arcade game — trackball shooter in a mushroom field, with spider, flea and scorpion. | [`plugins/centipede`](plugins/centipede) |
+| **Centipede** | [in the lobby](https://arcade.slabgorb.com)&nbsp;† | Faithful clone of Atari's 1981 raster arcade game — trackball shooter in a mushroom field, with spider, flea and scorpion. | [`plugins/centipede`](plugins/centipede) |
 | **Joust** | [in the lobby](https://arcade.slabgorb.com)&nbsp;† | Faithful clone of Williams' 1982 raster arcade game — flapping knight duel over a lava pit. | [`plugins/joust`](plugins/joust) |
 
-† Joust is the newest cabinet and the only one whose deploy has never been confirmed —
-its bucket was created late in the migration, after the design spec had recorded it as
-never created at all. Its tile may not launch yet.
+† The two newest cabinets, added after the per-game hosting table was last written, and
+reached through the lobby's tiles. Joust has had a green deploy (v0.0.8, during the
+migration); centipede's has never been confirmed from this repo, so its tile may not
+launch yet. See [`docs/ops/hosting.md`](docs/ops/hosting.md).
 
 Plus the front door: [**the lobby**](lobby), the vector-style menu that lists and
 launches every game above.

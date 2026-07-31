@@ -124,11 +124,23 @@ link decoration, and the one-time high-score bridge reads that cookie.
 > domain is the whole of the rollback.
 >
 > "Bound" is a statement about **routing, not content**. The inventory above measured
-> which buckets and domains exist; nothing has measured what any of them serves, and
-> `arcade-joust` was created only 2026-07-26 — after the design spec recorded joust's
-> bucket as "known never to have been created at all" — so at least one of these
-> hostnames may answer from an empty bucket. **Do not infer a live game from a live
-> hostname; request it:**
+> which buckets and domains exist; **nothing has measured what any of the seven
+> serves.** What this repo's own record does establish, and what it does not:
+>
+> - **tempest, star-wars, asteroids, battlezone, red-baron** were the production cabinet
+>   under the pre-migration architecture — the bucket table this file used to carry
+>   listed each with its own bucket and domain.
+> - **centipede** appeared in **no** pre-migration hosting table (the retired one listed
+>   six apps and omitted it), and nothing here records a deploy to `arcade-centipede`.
+>   It is the one genuinely unverified case.
+> - **joust** was long doubted: the design spec records its bucket as "known never to
+>   have been created at all". **That is superseded.** `arcade-joust` was created
+>   2026-07-26, and Task 1 of this migration released joust v0.0.8 with a green CI
+>   deploy — the migration ledger reads "All three CI deploys GREEN (joust's first clean
+>   one)". A green deploy proves an upload step ran; it still does not prove what the
+>   hostname serves today.
+>
+> **Do not infer a live game from a live hostname; request it:**
 >
 > ```bash
 > for g in tempest star-wars asteroids battlezone red-baron centipede joust; do
@@ -138,8 +150,12 @@ link decoration, and the one-time high-score bridge reads that cookie.
 >
 > - `200` — still serving its own bucket; not cut over.
 > - `301 -> https://arcade.slabgorb.com/<g>/` — cut over.
-> - `404` — bound but the bucket is empty at that key: that game never deployed. It is
->   a rollback target in name only, and its redirect is the *fix*, not the risk.
+> - `404` — **read it against the list above; it does not mean one thing for all seven.**
+>   For the five established games it is an **anomaly worth investigating**: content that
+>   was being served has stopped being served, out of a bucket this migration never wrote
+>   to. For centipede it more likely means bound-but-empty — that game never deployed —
+>   in which case it is a rollback target in name only and the redirect is the *fix*,
+>   not the risk.
 
 ## Shipping: a TAG is production
 

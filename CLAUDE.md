@@ -185,11 +185,16 @@ Redirects onto `arcade.slabgorb.com/<id>/` is the **owner's** step, and it had n
 taken when this file was written.
 
 That is a statement about *routing*, not about content. Task 1 measured which buckets
-and domains exist; nothing has measured what any of them serves. `arcade-joust` was only
-created 2026-07-26, after the design spec recorded joust's bucket as "known never to
-have been created at all" — so joust's hostname may well answer from an empty bucket.
-**Do not infer a live game from a live hostname; request it.** Full architecture, the
-real bucket inventory and the runbook: [`docs/ops/hosting.md`](./docs/ops/hosting.md).
+and domains exist; **nothing has measured what any of them serves.** Five of the seven
+(tempest, star-wars, asteroids, battlezone, red-baron) were the production cabinet
+before the migration and this repo's retired hosting table listed each one. Centipede
+appeared in no such table and nothing here records a deploy to its bucket — it is the
+one genuinely unverified case. Joust was doubted for the same reason, but that is
+superseded: `arcade-joust` was created 2026-07-26 and Task 1 released joust v0.0.8 with
+a **green CI deploy**. A green deploy proves an upload ran, not what a hostname serves
+today, so: **do not infer a live game from a live hostname; request it.** Full
+architecture, the real bucket inventory, the runbook and how to read a `404` per game:
+[`docs/ops/hosting.md`](./docs/ops/hosting.md).
 
 The Cloudflare tunnel that once served the arcade is retired; [`cloudflared/`](./cloudflared/)
 is kept as history.
