@@ -303,10 +303,15 @@ test('the CLI rejects an unknown option instead of ignoring it', () => {
   // This script pushes tags, and a tag push deploys. Someone typing a `--dry-run`
   // that does not exist and getting a REAL release out of it is the worst failure
   // this file could have, so unknown flags abort before any git command runs.
-  const result = spawnSync(process.execPath, [path('scripts', 'release.mjs'), 'tempest', 'patch', '--dry-run'], {
-    cwd: repo,
-    encoding: 'utf8',
-  });
+  //
+  // The app id is deliberately one that CANNOT exist. This test spawns the real
+  // CLI: with the flag check removed it would fall through to release(), and a
+  // test that only avoids cutting a real release because the tree happens to be
+  // dirty is not a test, it is a near miss. `nosuchapp` is refused by the id
+  // check, and — if that were removed too — by the absent package.json, so no
+  // mutation of this file can turn this line into a release.
+  const cli = [path('scripts', 'release.mjs'), 'nosuchapp', 'patch', '--dry-run'];
+  const result = spawnSync(process.execPath, cli, { cwd: repo, encoding: 'utf8' });
   assert.equal(result.status, 1, `expected exit 1, got ${result.status}\n${result.stderr}`);
   assert.match(result.stderr, /unknown option: --dry-run/);
   assert.match(result.stderr, /Usage: node scripts\/release\.mjs/);
@@ -320,8 +325,12 @@ test('release() rejects an unknown app before it runs any git command', () => {
   // reordered, a bump of a package.json that does not exist.
   const source = readFileSync(path('scripts', 'release.mjs'), 'utf8');
   const body = source.slice(source.indexOf('export function release('));
-  assert.ok(
-    body.indexOf('no such app') < body.indexOf("out('git'"),
-    'the unknown-app check must precede the first git command',
-  );
+  const check = body.indexOf('no such app');
+  const firstGit = body.indexOf("out('git'");
+  // Both must EXIST before they can be ordered. Measured: without this, deleting
+  // the check outright made `-1 < 300` true and the test passed on its absence —
+  // a mutation-found hole in this very assertion.
+  assert.ok(check >= 0, 'the unknown-app check is gone');
+  assert.ok(firstGit >= 0, 'no git command found — this test is reading the wrong function');
+  assert.ok(check < firstGit, 'the unknown-app check must precede the first git command');
 });
