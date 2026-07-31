@@ -1,7 +1,7 @@
 id: uf1
 type: epic
 title: Unwired features — ported-but-unconsumed mechanics found by the 2026-07-28 fleet sweep
-description: 'A fleet-wide sweep on 2026-07-28 (all nine subrepos on develop) hunted for features that are built, tested and cited against ROM source but never reach the running game. Mechanical module-graph scans were roughly 95 percent false positives — the fleet is well wired: no cold GameState fields, every arcade-shared subpath consumed, every event kind emitted AND handled, every .wav in every manifest returning 200 on R2, so the sw3-5 silent-404 class is clean. The real findings came from in-source confessions (the author who left the gap signed it) and from partially-consumed catalogues. Most stories here consume tested code rather than deriving new fidelity: the port already exists and only the wiring is missing. Two exceptions are called out in their own stories — uf1-6 is a promise the docs make that the code never kept, and uf1-7 is documentation drift. The sweep''s remaining finding — centipede and joust both shipping with no audio module at all — was epic-scale rather than story-scale and now has its own epics, cp5 and jt5, each seeded with a seam story. Context that drove that split: centipede and joust both ship with no audio module at all. centipede names its own gap in src/core/bonus.ts:32 — the bonus-life sound is ''DEFERRED to cp5 with the rest of the audio, and deliberately not stubbed, an empty hook would be dead code pretending to be a seam'' — so centipede audio already has a planned epic id. joust carries no equivalent note. Both need the multi-story treatment tempest, star-wars and asteroids each received, not a single story.'
+description: 'A fleet-wide sweep on 2026-07-28 (all nine subrepos on develop) hunted for features that are built, tested and cited against ROM source but never reach the running game. Mechanical module-graph scans were roughly 95 percent false positives — the fleet is well wired: no cold GameState fields, every arcade-shared subpath consumed, every event kind emitted AND handled, every .wav in every manifest returning 200 on R2, so the sw3-5 silent-404 class is clean. The real findings came from in-source confessions (the author who left the gap signed it) and from partially-consumed catalogues. Most stories here consume tested code rather than deriving new fidelity: the port already exists and only the wiring is missing. Two exceptions are called out in their own stories — uf1-6 is a promise the docs make that the code never kept, and uf1-7 is documentation drift. The sweep''s remaining finding — centipede and joust both shipping with no audio module at all — was epic-scale rather than story-scale and now has its own epics, cp5 and jt5, each seeded with a seam story. Context that drove that split: centipede and joust both ship with no audio module at all. centipede names its own gap in src/core/bonus.ts:32 — the bonus-life sound is ''DEFERRED to cp5 with the rest of the audio, and deliberately not stubbed, an empty hook would be dead code pretending to be a seam'' — so centipede audio already has a planned epic id. joust carries no equivalent note. Both need the multi-story treatment tempest, star-wars and asteroids each received, not a single story. --- SPLIT 2026-07-31. This epic had grown a second, unrelated charter: fifteen stories filed by the 2026-07-30 monorepo migration were landing here because this is where the last sweep''s leftovers went, leaving one 78-point epic under a title describing only half of it. Those are now epic mg1 (the migration tail). Also out: shell convergence became epic sc1 on the design''s own instruction (section 4.3); uf1-17 became ad1-6 because it edits the same red-baron manifest as ad1-5; uf1-21 became sw8-20 because it is a star-wars ROM display ruling; and uf1-7 was CANCELED — the migration''s Task 22 rewrote the hosting table it existed to correct, so its deliverable no longer exists. What remains here is the original sweep only. ONE PATH NOTE for every story below: they were written against nine repos and name paths like star-wars/src/core/. The tree is plugins/<game>/src/core/ now, and mg1-4 is the sweep that fixes the repos: routing those stale paths ride in on.'
 priority: p2
 status: backlog
 repos: red-baron,joust,star-wars,lobby,.
@@ -119,7 +119,7 @@ stories:
     description: "The orchestrator CLAUDE.md 'Production: R2 static hosting' table lists six apps — lobby, tempest, star-wars, asteroids, battlezone, red-baron — and omits centipede and joust. Both are live: centipede.slabgorb.com and joust.slabgorb.com each returned 200 when probed on 2026-07-28, and the lobby's own registry ships tiles pointing at both (lobby/src/core/registry.ts lists centipede at version 0.0.0 and joust at 0.0.6). So the table under-reports the deployed fleet by two games, and a reader trusting it would conclude those two games are not deployed at all. Confirm each bucket name against the live setup rather than inferring it from the pattern before writing the rows — the existing rows pair a domain with an arcade-prefixed bucket, but that is a convention to verify, not a rule to assume. Two rows and a probe. Note the lobby registry's own comment is accurate and needs no change: red-baron is provisioned but deliberately unlisted because it is not finished enough for production, and per the standing rule no orchestrator test may pin the lobby registry's contents — curation is a product decision validated by the lobby's own registry test."
     points: 1
     priority: p3
-    status: backlog
+    status: canceled
     repos: .
     workflow: trivial
     acceptance_criteria:
@@ -203,34 +203,6 @@ stories:
     repos: star-wars
     workflow: tdd
     type: bug
-  - id: uf1-16
-    title: red-baron's audit doc claims a @arcade/shared/highscore consumer that never existed
-    description: "Same documentation-drift class as uf1-7, found during the monorepo migration (plan task 10, 2026-07-30). plugins/red-baron/docs/audit/coverage-review.md line 355 states 'We use @arcade/shared/highscore'. That is false on disk and, unlike most drift, it was never true: red-baron persists no high scores at all, and git log -S'highscore' over every commit in the archived pre-migration repo (.migration-backup/red-baron.git) returns empty, so no such consumer ever existed to be removed. The migration deliberately did NOT edit this file — docs/audit/ is a frozen audit record and rewriting it retroactively would falsify the audit rather than fix the code, which is why this is a story instead of a one-line patch. Decide the honest remedy: either an errata note appended to the audit doc that leaves the original claim visible and dated, or a correction recorded wherever that audit's findings are indexed. Do not simply delete the sentence. Note the migration already added a pointer to this in the plugin's README, so whatever is done here should reconcile the two. No test reads coverage-review.md, so nothing goes red either way — this is a truthfulness fix, not a breakage fix."
-    points: 1
-    priority: p3
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - The false claim at plugins/red-baron/docs/audit/coverage-review.md line 355 no longer misleads a reader, without the original audit text being silently rewritten out of existence.
-      - The remedy states explicitly that red-baron has no high-score persistence and never had one, citing the empty git log -S search over the archived repo rather than asserting it.
-      - The plugin README pointer added during the migration agrees with whatever correction lands here.
-      - No other claim in coverage-review.md about shared-library consumption is left unchecked — the same doc is swept for sibling claims before the story closes.
-    type: chore
-  - id: uf1-17
-    title: red-baron's tile promises Mouse and Click controls that were never implemented
-    description: "Same class as uf1-6 — a promise the docs make that the code never kept. Found during the monorepo migration (plan task 14, 2026-07-30) and verified against source, not inferred. plugins/red-baron/plugin.ts declares controls ['FLY — Mouse / Arrows', 'FIRE — Click / Space'], which the lobby renders verbatim on the game's tile. But plugins/red-baron/src/main.ts binds only keydown and keyup (arrows, WASD and Space); its single pointerdown listener is the audio unlock, not a control. So Mouse does not fly and Click does not fire — half of every advertised control does nothing. The text came into the manifest verbatim from the migration brief, which took it from red-baron's own docs, so the error predates the migration and was faithfully carried forward rather than introduced by it. This is latent rather than live because red-baron ships listed:false and showcase:false, so no tile is rendered today — but it becomes user-visible the moment red-baron is listed, which is a one-field change someone will make without re-reading the control strings. Decide the honest fix: either implement pointer flight and click-to-fire, or correct the manifest to describe the keyboard controls that actually exist. Correcting the text is the cheap option and is probably right, since nothing in the ROM work calls for a mouse. Check the other six manifests' control strings against their own main.ts bindings while here — this was found by accident, not by a sweep, so siblings are unaudited."
-    points: 1
-    priority: p3
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - Every control string in plugins/red-baron/plugin.ts describes an input the game actually binds, verified against src/main.ts rather than against the docs the wrong text came from.
-      - The remaining six manifests' control strings are each checked against their own main.ts bindings, and any further mismatch is fixed or filed rather than left for the next accident to find.
-      - If the fix is to correct the text rather than implement the inputs, red-baron's own docs are corrected too, so the wrong strings cannot be copied forward a second time.
-      - A test pins at least one control string against the real binding, so this class fails loudly instead of waiting for someone to flip listed to true.
-    type: bug
   - id: uf1-18
     title: the origin collapse widened the showcase iframe's default permissions beyond autoplay
     description: "Raised by the Task 15 implementer as a deliberate scope boundary, 2026-07-30, and filed rather than left in a report. The lobby's showcase carousel frames live games. Before the monorepo migration each game sat on its own subdomain, so the pane was a CROSS-ORIGIN frame and every Permissions-Policy feature whose default allowlist is `self` was denied to it automatically, by origin, without anyone declaring anything. The single-origin collapse makes that frame SAME-ORIGIN, so every one of those features now matches by default. Task 15 found and fixed the autoplay half the hard way — it had assumed allow=\"\" denied autoplay, and measurement in real Chromium showed allow=\"\" is behaviourally identical to omitting the attribute (both grant), while allow=\"autoplay 'none'\" denies. The shipped fix names autoplay explicitly. But autoplay is not the only self-defaulted feature: fullscreen, camera, microphone, geolocation, display-capture, midi and others default to `self` too, and the same reasoning applies to all of them. No shipped game requests any of these today, so this is posture rather than an active bug — but the pane's stated purpose is to be STRUCTURALLY incapable of surprising the visitor, and it currently rests on no game ever asking. The Task 15 implementer deliberately scoped its fix to autoplay because that is the only guarantee the pane ever claimed, on the reasoning that silently widening the policy would be the same overreach in the other direction. That judgement was right and is why this is a separate story. Decide the pane's real policy and declare it: an explicit deny-list of the features a game frame has no business requesting, or a documented decision that same-origin games are trusted with them. Measure in a real browser rather than reasoning from the spec — that is exactly what went wrong the first time."
@@ -245,157 +217,3 @@ stories:
       - A test pins the shipped allow attribute so a future edit that widens it reddens, in the same shape as the autoplay guard Task 15 landed.
       - The comment in lobby/src/shell/showcase.ts states which features are denied and which are deliberately permitted, so the next reader does not have to re-derive it.
     type: chore
-  - id: uf1-19
-    title: A genuinely multi-app dev server — just serve currently serves the lobby at every path
-    description: "Raised by the Task 19 implementer, 2026-07-31, and filed rather than left in a report. The monorepo plan assumed Task 19 would deliver one dev server for the whole cabinet. It does not, and the implementer measured why rather than reporting a pass: the root vite.config.ts default-exports defineAppConfig({ id: 'lobby' }), so the single dev server IS the lobby, and every other path falls through to the lobby's SPA fallback. Probed: `/`, all seven `/<id>/` paths, AND the nonsense control `/banana/` all return 200 with NINE IDENTICAL body hashes and <title>Slabcade</title>. The control is the point — an all-200 check of the seven game paths would have reported 'the cabinet serves' while proving nothing, which is this migration's recurring failure shape. The task's own brief carried exactly that vacuous check; the implementer replaced it with an assertion that CAN fail (a game path must be byte-identical to the /banana/ control, so the day a real multi-app server lands, that test reddens and tells its successor to finish the job) and wrote the truth into the recipe comment, lobby/README.md and README.md. So nothing today is false — but the capability the plan named was never built, and no task owns it. Deciding how is the work: a vite plugin resolving /<id>/ to plugins/<id>/index.html, a multi-page rollupOptions.input, or accepting one-app-at-a-time and renaming the recipe so it stops implying otherwise."
-    points: 5
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - Either the dev server genuinely serves each game at /<id>/ from its own plugin sources, or the recipe and its docs are renamed and reworded so nothing claims a cabinet-wide dev server exists.
-      - The verification uses a nonsense control path and asserts a game path DIFFERS from it. An all-200 sweep of known paths is explicitly insufficient — it passes today against a server that serves the lobby at every URL.
-      - The existing byte-identical-to-control assertion added by Task 19 is updated rather than deleted, so the invariant moves instead of evaporating.
-  - id: uf1-20
-    title: "CI's lobby deploy leg uploads the whole dist/ tree — defect #21's shape, latent in deploy.yml"
-    description: "Raised by the Task 19 implementer, 2026-07-31. PLAN DEFECT #21 was that both lobby deploy legs ran deploy-r2.mjs against the WHOLE dist/ tree unprefixed, so `just deploy-one lobby` published every game from whatever build happened to be on disk — measured at 34 objects, 29 of them games. Task 19 fixed the justfile side with a lobbyOwnedEntries helper (the single definition cleanLobbyOutput also uses, so the two cannot drift) and proved it: 34/29 became 5/0. The CI side was deliberately left alone and is NOT fixed: .github/workflows/deploy.yml has no --lobby-only on its lobby leg. It is safe TODAY only by accident of environment — a fresh GitHub runner builds one app, so dist/ holds only that app. Nothing asserts that property, and it stops holding the moment CI builds more than one app in a job or reuses a workspace or adds a cache. The implementer correctly declined to fix it in place: the workflow belongs to Task 18, and tests/monorepo-topology.test.mjs pins that argv by deepEqual, so changing it means changing a completed task's pinned contract. Small change, real latent exposure, needs its own review."
-    points: 2
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - The CI lobby leg uploads only the lobby's own top-level output, reusing the same lobbyOwnedEntries definition the justfile uses rather than a second one that can drift.
-      - The pinned argv deepEqual in tests/monorepo-topology.test.mjs is updated in the same change, so the workflow and its guard stay in agreement.
-      - The guarding assertion is the NEGATIVE — that no <game>/ key appears in the lobby leg's upload set. A test that merely confirms the lobby's own files are present passes both before and after the regression.
-  - id: uf1-21
-    title: 'star-wars: the ten ROM default high scores should carry wave null, not the fabricated wave 0'
-    description: "Routed out of the monorepo migration's Task 20 review and DECLINED by Task 21's implementer with reasoning worth keeping, 2026-07-31. plugins/star-wars/src/core/highScores.ts:20-31 seeds ten default rows using wave 0 as its no-real-run marker, and its own comment at :14-16 calls that value 'a clone artifact, not a ROM value'. The migration made null the honest encoding of exactly that idea: Task 20 widened HighScoreEntry's domain field to number | null specifically so a row with no real run says so instead of inventing one, on the standing ruling that the cabinet must not invent a fact about a player's game. The renderer already cooperates — render.ts:1639 blanks a null wave, so these rows would draw with an empty column and no further change. It was declined for three reasons that all still hold: it is a DATA change inside a game's src/core, not the mechanical call-site update the main.ts carve-out authorises; nothing in the seeding task needed it, since the seed never touches DEFAULT_HIGH_SCORES; and it is a ROM-fidelity display decision with its own test file, so it deserves its own review rather than riding along in a migration commit. The judgement to decline was endorsed. Note the display question is genuinely open: the real cabinet shows SOMETHING in that column for its defaults, so 'blank' may or may not be the faithful answer — settle that against the ROM rather than assuming null-renders-blank is automatically right."
-    points: 2
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - The ten default rows encode 'no real run' as null rather than the fabricated 0, or the story records a ROM citation showing the cabinet really does display 0 for its defaults and closes as won't-fix.
-      - Whatever is chosen, the value and the reason are stated in the file so the next reader does not re-derive it — the current comment already flags 0 as a clone artifact without acting on it.
-      - The board's rendering of the default rows is asserted by a test that distinguishes a blank column from the string '0' and from the string 'null'. String(null) is 'null', a truthy non-empty string, so an assertion satisfied by 'a value was drawn' is satisfied by every wrong answer.
-      - The existing star-wars high-score test file is updated rather than duplicated, and the change is proven non-vacuous by mutation.
-  - id: uf1-22
-    title: sprint epics still route stories to per-game repos that repos.yaml no longer registers
-    description: "Found by the Task 22 reviewer during the monorepo migration, 2026-07-31, outside that task's file list and therefore filed rather than fixed in passing. Task 22 collapsed .pennyfarthing/repos.yaml to a single 'arcade' entry, because there is now exactly one repo. But the sprint YAMLs were not part of that change and still carry per-game routing on epics and stories — repos values of star-wars, battlezone, asteroids, joust, red-baron, centipede, lobby, and multi-repo lists like 'lobby,tempest,star-wars,asteroids,battlezone,red-baron,centipede'. Every one of those names a repo the registry no longer knows. The blast radius was checked rather than assumed: pf/context/generate.py:53 renders a story's repos field as PROSE into the agent context and never resolves it to a path, so nothing crashes and no command breaks — which is precisely why this will not surface on its own. What it does instead is quietly wrong: every future story setup hands the agent a context file telling it to work in a repo that does not exist, pointing at directories that moved to plugins/<id>/ during the collapse. The failure mode is an agent confidently cd-ing somewhere wrong, or a human reading the sprint and believing the old topology. This is a mechanical sweep across many files, which is the other reason it is its own story: doing it inside a documentation task would have buried a large diff under an unrelated review."
-    points: 3
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - Every epic and story repos value names a repo that .pennyfarthing/repos.yaml actually registers, or the field is dropped where it no longer carries meaning.
-      - A guard fails if a sprint file names a repo the registry does not know, so this cannot silently reappear as new stories are filed. It must read the registry rather than hardcoding the valid set, or it becomes the next stale list.
-      - Historical or completed stories are handled deliberately — either migrated with the rest or explicitly left as a record of the pre-collapse world, with the choice stated so the next reader does not treat it as an oversight.
-      - The pf toolchain still round-trips every touched sprint file. This repo has had an epic truncated by a YAML round-trip through an unquoted value, so re-read each file after the sweep rather than trusting the write.
-  - id: uf1-23
-    title: 'deploy-r2 is not atomic: index.html must upload LAST, or a failed deploy leaves a live page pointing at absent assets'
-    description: "Found for real during the monorepo cutover, 2026-07-31, not by inspection. The first `just deploy` of the whole cabinet died on its FOURTH object when Cloudflare returned 523 Origin is unreachable, a transient API-gateway fault. wrangler had already authenticated and uploaded three files; the script threw, the recipe exited 1, and the games loop never ran at all. Production survived completely intact, and the reason it survived is the problem. scripts/deploy-r2.mjs uploads whatever collectUploads() walks, which is alphabetical, so the lobby goes assets/... then favicon.png then fonts/... then index.html. index.html is the COMMIT POINT - the single object that switches the live site from the old build to the new one, because every other asset is content-hashed and therefore additive. It sorted last purely because it begins with the letter i. Had the 523 arrived one object later, the new index.html would have gone live with tiles linking to /<id>/ for seven games that had not been uploaded yet: six dead tiles on the front door, from a command that exits 1 without indicating which side of the commit point it stopped on. This is not hypothetical headroom either. Any future lobby file sorting after index.html - manifest.json, robots.txt, sw.js, a sitemap - moves the commit point permanently into the middle of the upload, and then a mid-flight failure publishes a page whose assets do not exist. The fix is to make the ordering a property rather than an accident."
-    points: 3
-    priority: p1
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - collectUploads or its caller orders every HTML entry point after every asset it references, so a partial upload can never publish a page ahead of the files it loads. Ordering by filename is not sufficient - the guarantee must not depend on a letter.
-      - A test proves the ordering holds for a fixture whose HTML filename sorts BEFORE its assets, since the current behaviour passes trivially for a directory whose index.html happens to sort last.
-      - A partial-failure test asserts that when an upload throws midway, no HTML entry point has been written. Asserting that the command exits non-zero is not enough - it already does that, and it is exactly what happened while the site was one object away from breaking.
-      - The lobby and a prefixed game are both covered, since the lobby writes to the bucket root and a game writes under its own prefix, and only the lobby's index.html can replace the live front door.
-      - The rationale is recorded in the script so the next reader does not restore alphabetical ordering as a simplification.
-  - id: uf1-24
-    title: 'Shell convergence: compositional host helpers across the seven games'
-    description: "Spec section 4.3, named as out of scope for the monorepo migration and deferred here rather than dying in an archive note. The seven games' main.ts files share almost nothing structurally even though they each do the same handful of things: mount a canvas, unlock audio on first gesture, install a pause toggle, wire a high-score store. The migration deliberately did not touch this - a Global Constraint forbade modifying any game's main.ts beyond an import-path rewrite, precisely so the collapse could not be blamed for a behaviour change. That constraint expires with the migration; this story is what it was protecting. Design compositional helpers - mountCanvas, installAudioUnlock, installPauseToggle - that each game adopts ONLY where it already does that thing. The adoption matrix in the spec is the input: this is not a mandate to give every game every helper, and a game that has no pause today must not grow one here. The hard constraint is timing fidelity: centipede and joust are ROM-cadence games whose per-wave timing is gated against original source, so a helper that changes when a frame starts or how input is sampled is a regression even if every test stays green. Land the helpers behind the games rather than in front of them, and adopt one game at a time so a cadence change has one suspect."
-    points: 8
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - Each helper is adopted only by games that already perform that behaviour, with the adoption matrix recorded so a later reader can see which omissions are deliberate rather than missed.
-      - centipede's and joust's ROM cadences are unchanged, proven by their existing determinism replays reproducing bit-for-bit rather than by the suite being green.
-      - Adoption lands one game per commit, so a timing regression has a single suspect.
-      - Each helper is proven non-vacuous by mutation - disabling it reddens a test asserting the behaviour it provides, not merely that the helper was called.
-  - id: uf1-25
-    title: Safari ITP purges the games' own high scores after 7 days
-    description: "ADR-0004 logged this as follow-up 1 and it was never filed - found while auditing that ADR during the monorepo migration's Task 22. Safari's Intelligent Tracking Prevention deletes script-writable storage, including localStorage, after 7 days without user interaction with the site. This has been universal since Safari 13.1 and applies to first-party storage, not just trackers. A player who does not come back within a week can lose their high-score table outright. This is PRE-EXISTING and entirely unaffected by the migration - the collapse to one origin changes which origin holds the table, not how long Safari keeps it. It is filed separately from the migration work for exactly that reason: fixing it is a product decision about durable storage, not a cleanup task. Note the interaction with the migration's own cookie bridge - that cookie is a 400-day document.cookie value on the registrable domain and is NOT subject to the same 7-day localStorage purge, so today it is accidentally the more durable of the two stores. Its publish side is now retired, so it will not keep itself fresh. Severity depends on uf1-26's measurement of how the interaction clock is scoped."
-    points: 3
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - The behaviour is confirmed in a real Safari, not inferred from WebKit's published policy, since that policy has already proven to differ from observed behaviour elsewhere in this area.
-      - A decision is recorded with its reasoning - accept the loss, re-seed from the surviving cookie, or move to a storage mechanism ITP does not purge - rather than leaving the gap documented and unowned.
-      - If re-seeding is chosen, it must not resurrect a table the player deliberately cleared. An EMPTY table is a real answer and must not fall through to the cookie, which is the exact bug readBestKnownScore already exists to prevent.
-      - Whatever is chosen is guarded by a test that fails if the durability assumption changes.
-  - id: uf1-26
-    title: "Empirically test Safari ITP's interaction clock: per-hostname or per-eTLD+1"
-    description: "ADR-0004 logged this as follow-up 2 and it was never filed. It decides the SEVERITY of uf1-25, which is why it is worth its own story despite being small. If ITP's 7-day interaction clock is scoped per-hostname, then before the monorepo collapse a player had seven independent clocks - playing tempest did nothing to preserve their asteroids table - and the collapse to one origin is a genuine IMPROVEMENT, because any visit to arcade.slabgorb.com now refreshes the clock for every game at once. If the clock is scoped per-eTLD+1, the behaviour was already shared and the collapse changes nothing. The migration made this measurable for the first time by putting every game on one origin. This must be measured in a real Safari rather than read out of the specification: WebKit's localStorage partitioning already contradicts its own published policy, which is precisely the trap that produced a Critical finding during this migration when iframe permission behaviour was reasoned about instead of measured and came out exactly backwards."
-    points: 2
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - The scoping is determined by observation in a real Safari - two hostnames on one registrable domain, one visited and one not - and not from documentation.
-      - The result is written into ADR-0004 as an amendment with the date and the Safari version tested, since the answer can change between releases.
-      - uf1-25's severity is updated to match the finding rather than left at its filed guess.
-  - id: uf1-27
-    title: 'Purity fence: importClosure misses side-effect and dynamic imports'
-    description: "src/shared/tests/purity.test.ts enforces ADR-0003's pure/browser split, and its strongest guard is a transitive fence - a module declared PURE must not reach a DOM global THROUGH an import either, not merely in its own source text. That fence walks the import graph with importClosure(), which matches only `from '...'` relative specifiers. A bare side-effect import (import './x.js') or a dynamic import() therefore bypasses the closure check entirely. This was found by MUTATION during the Task 4 re-review, by a reviewer trying an attack the implementer had not thought of: it made a pure module reach the DOM via a side-effect import, and the closure test stayed GREEN. Only the whole-tree backstop caught it, and that backstop only reaches the file because src/shared is currently FLAT - every module sits in one directory. The gap becomes real the moment src/shared grows subdirectories, which is the natural next step for a library this size. The regex is byte-identical to the one in the original arcade-shared repo, so this is inherited rather than introduced by the migration - which is why it is filed rather than fixed in passing."
-    points: 2
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - importClosure resolves bare side-effect imports and dynamic import() calls in addition to `from` specifiers, so a pure module cannot reach a DOM global by any import form.
-      - The fix is proven by the mutation that exposed it - a pure module reaching the DOM through a side-effect import must redden the CLOSURE test by name, not merely the whole-tree backstop.
-      - A subdirectory case is covered, since the current backstop's coverage depends on src/shared being flat and that is the condition about to change.
-      - The ESM specifier detail is preserved - the walker resolves .js specifiers back to .ts, without which it traverses nothing and passes vacuously.
-  - id: uf1-28
-    title: "Typecheck arcade-shared's tests: 22 pre-existing errors in WebAudio doubles"
-    description: "src/shared/tests is excluded from the root tsconfig, added during the migration's Task 4 to hold the pre-migration line rather than to hide new damage. The reason it was needed: arcade-shared never had a tsconfig of its own and its tests were never compiled - vitest strips types without checking them - so nobody had ever type-checked that directory. Probing it under the root config surfaced 22 real errors, almost all hand-rolled FakeAudioContext and FakeGain doubles that do not satisfy the real WebAudio types, plus possibly-undefined access and empty-tuple indexing in tests/synth.test.ts. The exclude was scoped to that one path deliberately - every game's tsconfig has always included its own tests, so a blanket exclude would have silently dropped seven games' type coverage. The cost of leaving it: these tests can assert against types that do not hold, and any test file added under src/shared/tests is untypechecked from the moment it lands. That already happened during the migration - Task 21's highscore.dom.test.ts is untypechecked today. Fix the doubles, drop the exclude."
-    points: 3
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - The exclude for src/shared/tests is removed from the root tsconfig and npx tsc --noEmit exits 0 with it gone.
-      - The WebAudio doubles satisfy the real types rather than being cast to them, since a cast reintroduces the same blindness the exclude created.
-      - No other path is added to the exclude list as part of this work - the whole point is that the exclusion was scoped to one directory and stays that way.
-      - The test suite's pass count is unchanged, so the fix is a typing change and not a quiet removal of tests that would not compile.
-  - id: uf1-29
-    title: Rename the cabinet bucket arcade-lobby to arcade-cabinet
-    description: "Spec section 6.2, deferred out of the monorepo migration. The bucket named arcade-lobby now holds the entire cabinet - the lobby at its root keys and all seven games under their own key prefixes - so its name describes what it used to be rather than what it is. Purely cosmetic, and the cost is one custom-domain rebind on arcade.slabgorb.com plus updating every reference in code and docs. Two traps worth knowing before starting. First, do NOT confuse this with the bucket named plain `arcade`, which is the ASSETS bucket behind arcade-assets.slabgorb.com - it is the one bucket in the account whose name does not match its domain, and mistaking the two produces a `specified bucket does not exist` error that reads like a permissions problem. Second, the bucket name is not in one place: it appears in the justfile's deploy recipes, in .github/workflows/deploy.yml, and is asserted by tests/monorepo-topology.test.mjs, which pins the CI deploy target by name specifically so a silent retarget cannot happen. Weigh whether the rename is worth a rebind of the live front door at all - there is a reasonable case for leaving it and documenting the name as historical."
-    points: 1
-    priority: p3
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - Every reference moves together - justfile recipes, the CI workflow, and the topology test that pins the deploy target by name - so no path can still write to the old bucket.
-      - The assets bucket named `arcade` is untouched and the distinction is stated wherever the new name is introduced, because that pair has already caused a confusing failure.
-      - The custom domain arcade.slabgorb.com serves the cabinet from the renamed bucket before the old bucket is removed, verified by a real request rather than by the rebind reporting success.
-      - If the decision is instead to keep the name, the story closes with that reasoning recorded in docs/ops/hosting.md so it is not re-opened.
-  - id: uf1-30
-    title: "One green light: run the orchestrator's node:test suite under vitest too"
-    description: "PLAN DEFECT 14 from the monorepo migration, deferred by owner ruling on 2026-07-30 - deferred, explicitly not descoped. This repo has TWO test runners and the migration spent most of its life watching only one. The files under tests/ are node:test files, run by `npm run test:orchestrator`; vitest.config.ts declares projects for shared, host, lobby and the seven games, and NONE of them is rooted at tests/. So `npx vitest run` - the command nearly every migration task used as its green light - never executed a single orchestrator test. Task 9 is where this surfaced for real: two assertions in tests/battlezone-bootstrap.test.mjs went RED while `npx vitest run` cheerfully reported 489 files and 6239 tests all passing. That is this migration's signature failure shape - an accurate report, a green suite, and a vanished guarantee - except here the guarantee had not vanished, it was simply never being looked at. Give tests/ a vitest project, or otherwise make one command cover both runners, so a red orchestrator test cannot pass unnoticed again. Note this is a real port and not a config one-liner: the .mjs files use node:test's API - test and assert imported from node:test and node:assert/strict - rather than vitest's globals."
-    points: 5
-    priority: p2
-    status: backlog
-    repos: .
-    workflow: tdd
-    acceptance_criteria:
-      - One command covers both runners, so a failing orchestrator test cannot coexist with a green report from the command a developer or CI actually runs.
-      - The migration's own counterexample is the regression test - a deliberately failing assertion in a tests/*.test.mjs file must redden that single command.
-      - Both counts are reported and reconciled after the change, so no test is silently dropped or double-counted while the runners are merged.
-      - If the .mjs files are ported to vitest's API rather than adapted, the port is proven behaviour-preserving by the counts matching before and after, since node:test and vitest differ in how they treat assertion-free tests.

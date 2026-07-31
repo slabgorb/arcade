@@ -1,0 +1,168 @@
+id: mg1
+type: epic
+title: Monorepo migration tail — the follow-ups the 2026-07-30 plugin collapse deferred, descoped or created
+description: "The 2026-07-30 flag day collapsed nine repos into this one (design: docs/superpowers/specs/2026-07-30-arcade-plugin-host-design.md, plan: docs/superpowers/plans/2026-07-30-arcade-plugin-host.md). Every story here was filed BY that migration — deferred out of it by owner ruling, descoped by a task implementer who declined to fix outside their file list, or created by the collapse itself. They were filed into epic uf1 because that is where the previous sweep's leftovers went, which left uf1 carrying two unrelated charters under a title describing only one; this epic is that split. What is NOT here: uf1 keeps the 2026-07-28 unwired-features sweep (ported-but-unconsumed ROM mechanics), ad1-6 moved to ad1 because it edits the same red-baron manifest as ad1-5, sw8-20 moved to sw8 because it is a star-wars ROM display ruling, and shell convergence became its own epic sc1 because the design says so in its own words (section 4.3). TWO ITEMS OUTSIDE THESE STORIES REMAIN OWNER ACTIONS, not backlog: the seven <game>.slabgorb.com custom domains are still bound to their old R2 buckets and have NOT been replaced with Single Redirects onto arcade.slabgorb.com/<id>/ (CLAUDE.md records this), and the old per-game buckets must not be deleted until that is verified end to end with a live 200 per game, not a green suite."
+priority: p2
+status: backlog
+repos: .
+stories:
+  - id: mg1-1
+    title: red-baron's audit doc claims a @arcade/shared/highscore consumer that never existed
+    description: "Same documentation-drift class as uf1-7, found during the monorepo migration (plan task 10, 2026-07-30). plugins/red-baron/docs/audit/coverage-review.md line 355 states 'We use @arcade/shared/highscore'. That is false on disk and, unlike most drift, it was never true: red-baron persists no high scores at all, and git log -S'highscore' over every commit in the archived pre-migration repo (.migration-backup/red-baron.git) returns empty, so no such consumer ever existed to be removed. The migration deliberately did NOT edit this file — docs/audit/ is a frozen audit record and rewriting it retroactively would falsify the audit rather than fix the code, which is why this is a story instead of a one-line patch. Decide the honest remedy: either an errata note appended to the audit doc that leaves the original claim visible and dated, or a correction recorded wherever that audit's findings are indexed. Do not simply delete the sentence. Note the migration already added a pointer to this in the plugin's README, so whatever is done here should reconcile the two. No test reads coverage-review.md, so nothing goes red either way — this is a truthfulness fix, not a breakage fix."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - The false claim at plugins/red-baron/docs/audit/coverage-review.md line 355 no longer misleads a reader, without the original audit text being silently rewritten out of existence.
+      - The remedy states explicitly that red-baron has no high-score persistence and never had one, citing the empty git log -S search over the archived repo rather than asserting it.
+      - The plugin README pointer added during the migration agrees with whatever correction lands here.
+      - No other claim in coverage-review.md about shared-library consumption is left unchecked — the same doc is swept for sibling claims before the story closes.
+    type: chore
+  - id: mg1-2
+    title: A genuinely multi-app dev server — just serve currently serves the lobby at every path
+    description: "Raised by the Task 19 implementer, 2026-07-31, and filed rather than left in a report. The monorepo plan assumed Task 19 would deliver one dev server for the whole cabinet. It does not, and the implementer measured why rather than reporting a pass: the root vite.config.ts default-exports defineAppConfig({ id: 'lobby' }), so the single dev server IS the lobby, and every other path falls through to the lobby's SPA fallback. Probed: `/`, all seven `/<id>/` paths, AND the nonsense control `/banana/` all return 200 with NINE IDENTICAL body hashes and <title>Slabcade</title>. The control is the point — an all-200 check of the seven game paths would have reported 'the cabinet serves' while proving nothing, which is this migration's recurring failure shape. The task's own brief carried exactly that vacuous check; the implementer replaced it with an assertion that CAN fail (a game path must be byte-identical to the /banana/ control, so the day a real multi-app server lands, that test reddens and tells its successor to finish the job) and wrote the truth into the recipe comment, lobby/README.md and README.md. So nothing today is false — but the capability the plan named was never built, and no task owns it. Deciding how is the work: a vite plugin resolving /<id>/ to plugins/<id>/index.html, a multi-page rollupOptions.input, or accepting one-app-at-a-time and renaming the recipe so it stops implying otherwise."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - Either the dev server genuinely serves each game at /<id>/ from its own plugin sources, or the recipe and its docs are renamed and reworded so nothing claims a cabinet-wide dev server exists.
+      - The verification uses a nonsense control path and asserts a game path DIFFERS from it. An all-200 sweep of known paths is explicitly insufficient — it passes today against a server that serves the lobby at every URL.
+      - The existing byte-identical-to-control assertion added by Task 19 is updated rather than deleted, so the invariant moves instead of evaporating.
+  - id: mg1-3
+    title: "CI's lobby deploy leg uploads the whole dist/ tree — defect #21's shape, latent in deploy.yml"
+    description: "Raised by the Task 19 implementer, 2026-07-31. PLAN DEFECT #21 was that both lobby deploy legs ran deploy-r2.mjs against the WHOLE dist/ tree unprefixed, so `just deploy-one lobby` published every game from whatever build happened to be on disk — measured at 34 objects, 29 of them games. Task 19 fixed the justfile side with a lobbyOwnedEntries helper (the single definition cleanLobbyOutput also uses, so the two cannot drift) and proved it: 34/29 became 5/0. The CI side was deliberately left alone and is NOT fixed: .github/workflows/deploy.yml has no --lobby-only on its lobby leg. It is safe TODAY only by accident of environment — a fresh GitHub runner builds one app, so dist/ holds only that app. Nothing asserts that property, and it stops holding the moment CI builds more than one app in a job or reuses a workspace or adds a cache. The implementer correctly declined to fix it in place: the workflow belongs to Task 18, and tests/monorepo-topology.test.mjs pins that argv by deepEqual, so changing it means changing a completed task's pinned contract. Small change, real latent exposure, needs its own review."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - The CI lobby leg uploads only the lobby's own top-level output, reusing the same lobbyOwnedEntries definition the justfile uses rather than a second one that can drift.
+      - The pinned argv deepEqual in tests/monorepo-topology.test.mjs is updated in the same change, so the workflow and its guard stay in agreement.
+      - The guarding assertion is the NEGATIVE — that no <game>/ key appears in the lobby leg's upload set. A test that merely confirms the lobby's own files are present passes both before and after the regression.
+  - id: mg1-4
+    title: sprint epics still route stories to per-game repos that repos.yaml no longer registers
+    description: "Found by the Task 22 reviewer during the monorepo migration, 2026-07-31, outside that task's file list and therefore filed rather than fixed in passing. Task 22 collapsed .pennyfarthing/repos.yaml to a single 'arcade' entry, because there is now exactly one repo. But the sprint YAMLs were not part of that change and still carry per-game routing on epics and stories — repos values of star-wars, battlezone, asteroids, joust, red-baron, centipede, lobby, and multi-repo lists like 'lobby,tempest,star-wars,asteroids,battlezone,red-baron,centipede'. Every one of those names a repo the registry no longer knows. The blast radius was checked rather than assumed: pf/context/generate.py:53 renders a story's repos field as PROSE into the agent context and never resolves it to a path, so nothing crashes and no command breaks — which is precisely why this will not surface on its own. What it does instead is quietly wrong: every future story setup hands the agent a context file telling it to work in a repo that does not exist, pointing at directories that moved to plugins/<id>/ during the collapse. The failure mode is an agent confidently cd-ing somewhere wrong, or a human reading the sprint and believing the old topology. This is a mechanical sweep across many files, which is the other reason it is its own story: doing it inside a documentation task would have buried a large diff under an unrelated review."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - Every epic and story repos value names a repo that .pennyfarthing/repos.yaml actually registers, or the field is dropped where it no longer carries meaning.
+      - A guard fails if a sprint file names a repo the registry does not know, so this cannot silently reappear as new stories are filed. It must read the registry rather than hardcoding the valid set, or it becomes the next stale list.
+      - Historical or completed stories are handled deliberately — either migrated with the rest or explicitly left as a record of the pre-collapse world, with the choice stated so the next reader does not treat it as an oversight.
+      - The pf toolchain still round-trips every touched sprint file. This repo has had an epic truncated by a YAML round-trip through an unquoted value, so re-read each file after the sweep rather than trusting the write.
+  - id: mg1-5
+    title: 'deploy-r2 is not atomic: index.html must upload LAST, or a failed deploy leaves a live page pointing at absent assets'
+    description: "Found for real during the monorepo cutover, 2026-07-31, not by inspection. The first `just deploy` of the whole cabinet died on its FOURTH object when Cloudflare returned 523 Origin is unreachable, a transient API-gateway fault. wrangler had already authenticated and uploaded three files; the script threw, the recipe exited 1, and the games loop never ran at all. Production survived completely intact, and the reason it survived is the problem. scripts/deploy-r2.mjs uploads whatever collectUploads() walks, which is alphabetical, so the lobby goes assets/... then favicon.png then fonts/... then index.html. index.html is the COMMIT POINT - the single object that switches the live site from the old build to the new one, because every other asset is content-hashed and therefore additive. It sorted last purely because it begins with the letter i. Had the 523 arrived one object later, the new index.html would have gone live with tiles linking to /<id>/ for seven games that had not been uploaded yet: six dead tiles on the front door, from a command that exits 1 without indicating which side of the commit point it stopped on. This is not hypothetical headroom either. Any future lobby file sorting after index.html - manifest.json, robots.txt, sw.js, a sitemap - moves the commit point permanently into the middle of the upload, and then a mid-flight failure publishes a page whose assets do not exist. The fix is to make the ordering a property rather than an accident."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - collectUploads or its caller orders every HTML entry point after every asset it references, so a partial upload can never publish a page ahead of the files it loads. Ordering by filename is not sufficient - the guarantee must not depend on a letter.
+      - A test proves the ordering holds for a fixture whose HTML filename sorts BEFORE its assets, since the current behaviour passes trivially for a directory whose index.html happens to sort last.
+      - A partial-failure test asserts that when an upload throws midway, no HTML entry point has been written. Asserting that the command exits non-zero is not enough - it already does that, and it is exactly what happened while the site was one object away from breaking.
+      - The lobby and a prefixed game are both covered, since the lobby writes to the bucket root and a game writes under its own prefix, and only the lobby's index.html can replace the live front door.
+      - The rationale is recorded in the script so the next reader does not restore alphabetical ordering as a simplification.
+  - id: mg1-6
+    title: Safari ITP purges the games' own high scores after 7 days
+    description: "ADR-0004 logged this as follow-up 1 and it was never filed - found while auditing that ADR during the monorepo migration's Task 22. Safari's Intelligent Tracking Prevention deletes script-writable storage, including localStorage, after 7 days without user interaction with the site. This has been universal since Safari 13.1 and applies to first-party storage, not just trackers. A player who does not come back within a week can lose their high-score table outright. This is PRE-EXISTING and entirely unaffected by the migration - the collapse to one origin changes which origin holds the table, not how long Safari keeps it. It is filed separately from the migration work for exactly that reason: fixing it is a product decision about durable storage, not a cleanup task. Note the interaction with the migration's own cookie bridge - that cookie is a 400-day document.cookie value on the registrable domain and is NOT subject to the same 7-day localStorage purge, so today it is accidentally the more durable of the two stores. Its publish side is now retired, so it will not keep itself fresh. Severity depends on mg1-7's measurement of how the interaction clock is scoped."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - The behaviour is confirmed in a real Safari, not inferred from WebKit's published policy, since that policy has already proven to differ from observed behaviour elsewhere in this area.
+      - A decision is recorded with its reasoning - accept the loss, re-seed from the surviving cookie, or move to a storage mechanism ITP does not purge - rather than leaving the gap documented and unowned.
+      - If re-seeding is chosen, it must not resurrect a table the player deliberately cleared. An EMPTY table is a real answer and must not fall through to the cookie, which is the exact bug readBestKnownScore already exists to prevent.
+      - Whatever is chosen is guarded by a test that fails if the durability assumption changes.
+  - id: mg1-7
+    title: "Empirically test Safari ITP's interaction clock: per-hostname or per-eTLD+1"
+    description: "ADR-0004 logged this as follow-up 2 and it was never filed. It decides the SEVERITY of mg1-6, which is why it is worth its own story despite being small. If ITP's 7-day interaction clock is scoped per-hostname, then before the monorepo collapse a player had seven independent clocks - playing tempest did nothing to preserve their asteroids table - and the collapse to one origin is a genuine IMPROVEMENT, because any visit to arcade.slabgorb.com now refreshes the clock for every game at once. If the clock is scoped per-eTLD+1, the behaviour was already shared and the collapse changes nothing. The migration made this measurable for the first time by putting every game on one origin. This must be measured in a real Safari rather than read out of the specification: WebKit's localStorage partitioning already contradicts its own published policy, which is precisely the trap that produced a Critical finding during this migration when iframe permission behaviour was reasoned about instead of measured and came out exactly backwards."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - The scoping is determined by observation in a real Safari - two hostnames on one registrable domain, one visited and one not - and not from documentation.
+      - The result is written into ADR-0004 as an amendment with the date and the Safari version tested, since the answer can change between releases.
+      - mg1-6's severity is updated to match the finding rather than left at its filed guess.
+  - id: mg1-8
+    title: 'Purity fence: importClosure misses side-effect and dynamic imports'
+    description: "src/shared/tests/purity.test.ts enforces ADR-0003's pure/browser split, and its strongest guard is a transitive fence - a module declared PURE must not reach a DOM global THROUGH an import either, not merely in its own source text. That fence walks the import graph with importClosure(), which matches only `from '...'` relative specifiers. A bare side-effect import (import './x.js') or a dynamic import() therefore bypasses the closure check entirely. This was found by MUTATION during the Task 4 re-review, by a reviewer trying an attack the implementer had not thought of: it made a pure module reach the DOM via a side-effect import, and the closure test stayed GREEN. Only the whole-tree backstop caught it, and that backstop only reaches the file because src/shared is currently FLAT - every module sits in one directory. The gap becomes real the moment src/shared grows subdirectories, which is the natural next step for a library this size. The regex is byte-identical to the one in the original arcade-shared repo, so this is inherited rather than introduced by the migration - which is why it is filed rather than fixed in passing."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - importClosure resolves bare side-effect imports and dynamic import() calls in addition to `from` specifiers, so a pure module cannot reach a DOM global by any import form.
+      - The fix is proven by the mutation that exposed it - a pure module reaching the DOM through a side-effect import must redden the CLOSURE test by name, not merely the whole-tree backstop.
+      - A subdirectory case is covered, since the current backstop's coverage depends on src/shared being flat and that is the condition about to change.
+      - The ESM specifier detail is preserved - the walker resolves .js specifiers back to .ts, without which it traverses nothing and passes vacuously.
+  - id: mg1-9
+    title: "Typecheck arcade-shared's tests: 22 pre-existing errors in WebAudio doubles"
+    description: "src/shared/tests is excluded from the root tsconfig, added during the migration's Task 4 to hold the pre-migration line rather than to hide new damage. The reason it was needed: arcade-shared never had a tsconfig of its own and its tests were never compiled - vitest strips types without checking them - so nobody had ever type-checked that directory. Probing it under the root config surfaced 22 real errors, almost all hand-rolled FakeAudioContext and FakeGain doubles that do not satisfy the real WebAudio types, plus possibly-undefined access and empty-tuple indexing in tests/synth.test.ts. The exclude was scoped to that one path deliberately - every game's tsconfig has always included its own tests, so a blanket exclude would have silently dropped seven games' type coverage. The cost of leaving it: these tests can assert against types that do not hold, and any test file added under src/shared/tests is untypechecked from the moment it lands. That already happened during the migration - Task 21's highscore.dom.test.ts is untypechecked today. Fix the doubles, drop the exclude."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - The exclude for src/shared/tests is removed from the root tsconfig and npx tsc --noEmit exits 0 with it gone.
+      - The WebAudio doubles satisfy the real types rather than being cast to them, since a cast reintroduces the same blindness the exclude created.
+      - No other path is added to the exclude list as part of this work - the whole point is that the exclusion was scoped to one directory and stays that way.
+      - The test suite's pass count is unchanged, so the fix is a typing change and not a quiet removal of tests that would not compile.
+  - id: mg1-10
+    title: Rename the cabinet bucket arcade-lobby to arcade-cabinet
+    description: "Spec section 6.2, deferred out of the monorepo migration. The bucket named arcade-lobby now holds the entire cabinet - the lobby at its root keys and all seven games under their own key prefixes - so its name describes what it used to be rather than what it is. Purely cosmetic, and the cost is one custom-domain rebind on arcade.slabgorb.com plus updating every reference in code and docs. Two traps worth knowing before starting. First, do NOT confuse this with the bucket named plain `arcade`, which is the ASSETS bucket behind arcade-assets.slabgorb.com - it is the one bucket in the account whose name does not match its domain, and mistaking the two produces a `specified bucket does not exist` error that reads like a permissions problem. Second, the bucket name is not in one place: it appears in the justfile's deploy recipes, in .github/workflows/deploy.yml, and is asserted by tests/monorepo-topology.test.mjs, which pins the CI deploy target by name specifically so a silent retarget cannot happen. Weigh whether the rename is worth a rebind of the live front door at all - there is a reasonable case for leaving it and documenting the name as historical."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - Every reference moves together - justfile recipes, the CI workflow, and the topology test that pins the deploy target by name - so no path can still write to the old bucket.
+      - The assets bucket named `arcade` is untouched and the distinction is stated wherever the new name is introduced, because that pair has already caused a confusing failure.
+      - The custom domain arcade.slabgorb.com serves the cabinet from the renamed bucket before the old bucket is removed, verified by a real request rather than by the rebind reporting success.
+      - If the decision is instead to keep the name, the story closes with that reasoning recorded in docs/ops/hosting.md so it is not re-opened.
+  - id: mg1-11
+    title: "One green light: run the orchestrator's node:test suite under vitest too"
+    description: "PLAN DEFECT 14 from the monorepo migration, deferred by owner ruling on 2026-07-30 - deferred, explicitly not descoped. This repo has TWO test runners and the migration spent most of its life watching only one. The files under tests/ are node:test files, run by `npm run test:orchestrator`; vitest.config.ts declares projects for shared, host, lobby and the seven games, and NONE of them is rooted at tests/. So `npx vitest run` - the command nearly every migration task used as its green light - never executed a single orchestrator test. Task 9 is where this surfaced for real: two assertions in tests/battlezone-bootstrap.test.mjs went RED while `npx vitest run` cheerfully reported 489 files and 6239 tests all passing. That is this migration's signature failure shape - an accurate report, a green suite, and a vanished guarantee - except here the guarantee had not vanished, it was simply never being looked at. Give tests/ a vitest project, or otherwise make one command cover both runners, so a red orchestrator test cannot pass unnoticed again. Note this is a real port and not a config one-liner: the .mjs files use node:test's API - test and assert imported from node:test and node:assert/strict - rather than vitest's globals."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - One command covers both runners, so a failing orchestrator test cannot coexist with a green report from the command a developer or CI actually runs.
+      - The migration's own counterexample is the regression test - a deliberately failing assertion in a tests/*.test.mjs file must redden that single command.
+      - Both counts are reported and reconciled after the change, so no test is silently dropped or double-counted while the runners are merged.
+      - If the .mjs files are ported to vitest's API rather than adapted, the port is proven behaviour-preserving by the counts matching before and after, since node:test and vitest differ in how they treat assertion-free tests.
+  - id: mg1-12
+    title: Probe what each old <game>.slabgorb.com hostname actually serves before any bucket is torn down
+    description: "CLAUDE.md records the gap in its own words: 'Task 1 measured which buckets and domains exist; NOTHING has measured what any of them serves', and closes with the rule this story exists to honour — 'do not infer a live game from a live hostname; request it.' The seven arcade-<game> buckets still exist and their <game>.slabgorb.com custom domains are still bound to them; unbinding those for Single Redirects onto arcade.slabgorb.com/<id>/ is the owner's step and had not been taken. Before ANY of that is touched, and long before the irreversible teardown, somebody has to fetch each hostname and record what came back. Five of the seven (tempest, star-wars, asteroids, battlezone, red-baron) were the production cabinet before the migration and appeared in the retired hosting table, so they are expected-live. Joust was doubted and is cleared: arcade-joust was created 2026-07-26 and Task 1 released joust v0.0.8 with a green CI deploy — but note a green deploy proves an UPLOAD RAN, not what a hostname serves today, which is the whole point of this story. CENTIPEDE IS THE ONE GENUINELY UNVERIFIED CASE: it appeared in no hosting table and nothing on record shows a deploy to its bucket. THE BAR IS A LIVE 200 WITH A BODY, NOT A GREEN SUITE — fetch each index.html and at least one hashed asset per host, record the status, the content-type and enough of the body to tell a real build from a bucket-default or an error page. Record the result in docs/ops/hosting.md so the teardown has something to check itself against instead of an assumption."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: trivial
+    type: chore
+  - id: mg1-13
+    title: Archive the arcade-shared GitHub repo — the design says archive it, and it is the one of nine still live
+    description: "The plugin-host design, section 5: 'arcade-shared the repo is archived.' It is not. Checked 2026-07-31: slabgorb/lobby, slabgorb/star-wars and slabgorb/tempest all report archived=true, while slabgorb/arcade-shared reports archived=false — a live, writable repo that nothing consumes and nobody owns, whose contents now live in src/shared/. The risk is small but it is the sharp kind: a push to a dead repo is invisible, and the next person to find it has no way to tell it is dead. Archive it, and while there confirm the other eight are archived too — the design's rule was 'archive, do not delete', because history was squashed on import and those repos are the ONLY place pre-migration per-file blame survives (see td1-13, which needs exactly that history to cut an audit/star-wars tag). Deleting one is unrecoverable; check the whole set rather than assuming this is the only miss."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: .
+    workflow: trivial
+    type: chore

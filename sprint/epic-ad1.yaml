@@ -1,7 +1,7 @@
 id: ad1
 type: epic
 title: Attract demos — the self-play the cabinets owe the lobby
-description: "The lobby showcase carousel (uf1-6) frames each game's LIVE attract mode, so a game with no self-play demo contributes a text screen or an idle death instead of gameplay. Day one only tempest self-plays (demoActive, story 10-3) and centipede animates its attract world; star-wars and battlezone show rotating text pages, asteroids drifts rocks with no ship, and joust boots gover=GOVER_RUNNING with nobody at the controls. Each story here gives one game a real self-play attract demo and flips its own showcase flag in lobby/src/core/registry.ts. This work is owed to the cabinets regardless of the lobby: a machine that does not demo itself is unfaithful to every one of these ROMs."
+description: "The lobby showcase carousel (uf1-6) frames each game's LIVE attract mode, so a game with no self-play demo contributes a text screen or an idle death instead of gameplay. Day one only tempest self-plays (demoActive, story 10-3) and centipede animates its attract world; star-wars and battlezone show rotating text pages, asteroids drifts rocks with no ship, and joust boots gover=GOVER_RUNNING with nobody at the controls. Each story here gives one game a real self-play attract demo and then flips 'showcase: true' in its own plugins/<id>/plugin.ts manifest. NOTE THE MIGRATION: the 2026-07-30 collapse to a monorepo DELETED lobby/src/core/registry.ts — the file this epic used to name — and generates src/host/registry.ts from the seven manifests instead, so a tile can no longer be opted in from the lobby side at all. This work is owed to the cabinets regardless of the lobby: a machine that does not demo itself is unfaithful to every one of these ROMs."
 priority: p2
 status: backlog
 repos: star-wars,battlezone,asteroids,joust,red-baron
@@ -35,9 +35,26 @@ stories:
     repos: joust
     workflow: tdd
   - id: ad1-5
-    title: red-baron attract demo + earn a lobby tile — it has a live bucket and no registry entry
+    title: red-baron attract demo — then flip listed+showcase in its own manifest (both ship false today with a recorded reason)
     points: 5
     priority: p3
     status: backlog
     repos: red-baron
     workflow: tdd
+  - id: ad1-6
+    title: red-baron's tile promises Mouse and Click controls that were never implemented
+    description: |-
+      Same class as uf1-6 — a promise the docs make that the code never kept. Found during the monorepo migration (plan task 14, 2026-07-30) and verified against source, not inferred. plugins/red-baron/plugin.ts declares controls ['FLY — Mouse / Arrows', 'FIRE — Click / Space'], which the lobby renders verbatim on the game's tile. But plugins/red-baron/src/main.ts binds only keydown and keyup (arrows, WASD and Space); its single pointerdown listener is the audio unlock, not a control. So Mouse does not fly and Click does not fire — half of every advertised control does nothing. The text came into the manifest verbatim from the migration brief, which took it from red-baron's own docs, so the error predates the migration and was faithfully carried forward rather than introduced by it. This is latent rather than live because red-baron ships listed:false and showcase:false, so no tile is rendered today — but it becomes user-visible the moment red-baron is listed, which is a one-field change someone will make without re-reading the control strings. Decide the honest fix: either implement pointer flight and click-to-fire, or correct the manifest to describe the keyboard controls that actually exist. Correcting the text is the cheap option and is probably right, since nothing in the ROM work calls for a mouse. Check the other six manifests' control strings against their own main.ts bindings while here — this was found by accident, not by a sweep, so siblings are unaudited.
+
+      PAIRED WITH ad1-5 (noted 2026-07-31): both stories edit the same twenty-line file, plugins/red-baron/plugin.ts — this one corrects the `controls` strings, ad1-5 flips `listed` and `showcase` once the attract demo exists. Do this one first and let ad1-5 be a flag flip, or do them together; two separate reviews of one manifest is waste. The 'lobby/src/core/registry.ts' this story class used to name no longer exists — the migration deleted it and generates src/host/registry.ts from the seven manifests.
+    points: 1
+    priority: p3
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - Every control string in plugins/red-baron/plugin.ts describes an input the game actually binds, verified against src/main.ts rather than against the docs the wrong text came from.
+      - The remaining six manifests' control strings are each checked against their own main.ts bindings, and any further mismatch is fixed or filed rather than left for the next accident to find.
+      - If the fix is to correct the text rather than implement the inputs, red-baron's own docs are corrected too, so the wrong strings cannot be copied forward a second time.
+      - A test pins at least one control string against the real binding, so this class fails loudly instead of waiting for someone to flip listed to true.
+    type: bug

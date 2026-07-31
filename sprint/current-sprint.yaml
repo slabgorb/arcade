@@ -15,3 +15,5 @@ epics:
   - jt5
   - jt8
   - ad1
+  - mg1
+  - sc1

@@ -1,0 +1,21 @@
+id: sc1
+type: epic
+title: Shell convergence — compositional host helpers across the seven games
+description: "Named out of scope by the plugin-host design in its own words (section 4.3: 'Shell convergence becomes its own follow-up epic, planned against the real matrix above rather than an assumed one'), and promoted here from the single 8-point story it had been parked as. The seven games' main.ts files share almost nothing structurally even though each mounts a canvas, unlocks audio on a first gesture, installs a pause toggle and wires a high-score store. The migration deliberately touched none of them — a Global Constraint forbade modifying any game's main.ts beyond an import-path rewrite, precisely so the collapse could not be blamed for a behaviour change. That constraint expired with the migration; this epic is what it was protecting. The design's section 4.3 carries the MEASURED adoption matrix (which game uses resizeToDisplay vs its own letterbox vs nothing, which unlocks audio, which has an Esc pause, which uses the shared loop) and that matrix is this epic's input — it is not a mandate to give every game every helper, and a game with no pause today must not grow one here. THE HARD CONSTRAINT IS TIMING FIDELITY: centipede and joust run the cabinets' own cadences gated against original source, so a helper that changes when a frame starts or how input is sampled is a regression even when every test stays green. Land helpers behind the games rather than in front of them, and adopt one game at a time so a cadence change has exactly one suspect."
+priority: p2
+status: backlog
+repos: .
+stories:
+  - id: sc1-1
+    title: 'Shell convergence: compositional host helpers across the seven games'
+    description: "Spec section 4.3, named as out of scope for the monorepo migration and deferred here rather than dying in an archive note. The seven games' main.ts files share almost nothing structurally even though they each do the same handful of things: mount a canvas, unlock audio on first gesture, install a pause toggle, wire a high-score store. The migration deliberately did not touch this - a Global Constraint forbade modifying any game's main.ts beyond an import-path rewrite, precisely so the collapse could not be blamed for a behaviour change. That constraint expires with the migration; this story is what it was protecting. Design compositional helpers - mountCanvas, installAudioUnlock, installPauseToggle - that each game adopts ONLY where it already does that thing. The adoption matrix in the spec is the input: this is not a mandate to give every game every helper, and a game that has no pause today must not grow one here. The hard constraint is timing fidelity: centipede and joust are ROM-cadence games whose per-wave timing is gated against original source, so a helper that changes when a frame starts or how input is sampled is a regression even if every test stays green. Land the helpers behind the games rather than in front of them, and adopt one game at a time so a cadence change has one suspect."
+    points: 8
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - Each helper is adopted only by games that already perform that behaviour, with the adoption matrix recorded so a later reader can see which omissions are deliberate rather than missed.
+      - centipede's and joust's ROM cadences are unchanged, proven by their existing determinism replays reproducing bit-for-bit rather than by the suite being green.
+      - Adoption lands one game per commit, so a timing regression has a single suspect.
+      - Each helper is proven non-vacuous by mutation - disabling it reddens a test asserting the behaviour it provides, not merely that the helper was called.
