@@ -41,6 +41,22 @@ test('emitPicturesTs: header explains COLLD\'s empty connect array and the near-
   assert.match(ts, /near-zero drift is the EXPECTED/);
 });
 
+test('emitPicturesTs imports @shared/math3d, never the retired @arcade/shared package', () => {
+  // This emitter kept `@arcade/shared/math3d` — the npm package name that stopped
+  // existing when the nine repos collapsed — through the whole migration, because
+  // `GAMES['red-baron'].out` pointed at a deleted directory and the baker's output
+  // therefore never reached a file anything type-checked. Two bugs holding each
+  // other up. Fixing only one of them would have been the worse outcome: the
+  // repo-wide `tsc --noEmit` is the first step of the deploy workflow.
+  //
+  // tests/rom-models/bake.test.mjs holds the general form of this — every emitted
+  // specifier against tsconfig's declared aliases, and against the tracked
+  // artifact's own import line. This is the red-baron-specific spelling of it.
+  const ts = emitPicturesTs(toRomPictures(PICS));
+  assert.match(ts, /^import type \{ Vec3 \} from '@shared\/math3d'$/m);
+  assert.doesNotMatch(ts, /@arcade\/shared/, 'that package does not exist in the monorepo');
+});
+
 test('emitPicturesTs output is byte-identical across repeated calls on the same input (idempotent)', () => {
   const models = toRomPictures(PICS);
   assert.equal(emitPicturesTs(models), emitPicturesTs(models));

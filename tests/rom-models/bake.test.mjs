@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { toRomModels, emitTs } from '../../scripts/bake-models.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+import { GAMES, toRomModels, emitTs, toRomPictures, emitPicturesTs } from '../../scripts/bake-models.mjs';
+
+const REPO = join(import.meta.dirname, '..', '..');
+const path = (...rel) => join(REPO, ...rel);
 
 const OBJS = [{
   name: 'TIE', scale: 13,
@@ -51,4 +56,89 @@ test('emitTs: header documents WFG\'s out-of-range ROM stroke and tells consumer
   assert.match(ts, /\bWFG\b/, 'the anomaly must name the object');
   assert.match(ts, /vertices\.length/, '...and tell consumers the filter predicate');
   assert.match(ts, /self-edge/i, 'the existing degenerate-self-edge caveat must survive');
+});
+
+// ---------------------------------------------------------------------------
+// THE GAMES TABLE AND THE EMITTED HEADER — the two halves of "this bake landed"
+//
+// Everything above tests the PURE transforms. Nothing tested where their output
+// goes or what specifier it carries, and both had rotted through the migration
+// with the whole suite green:
+//
+//   · `GAMES['red-baron'].out` still said `<ROOT>/red-baron/src/tools/…`, a
+//     directory the migration deleted. main() does
+//     `mkdirSync(dirname(cfg.out), { recursive: true })`, so the run CREATED the
+//     dead tree, printed "13 pictures", exited 0 — and
+//     plugins/red-baron/src/tools/romPictures.generated.ts, the file the game
+//     imports, was never written.
+//   · emitPicturesTs still emitted `import type { Vec3 } from
+//     '@arcade/shared/math3d'` — the npm package that stopped existing when the
+//     repos collapsed. Fixing only the PATH would therefore have been worse than
+//     the bug: it would have overwritten a correct tracked file with a specifier
+//     that resolves under neither the vite alias map nor tsconfig `paths`, and
+//     `npm run lint` (repo-wide `tsc --noEmit`) is the FIRST step of the deploy
+//     workflow — so it would have blocked EVERY app's deploy.
+// ---------------------------------------------------------------------------
+
+const PICS = [{
+  name: 'Plane (near)',
+  points: [[0, 0, 40], [-16, 0, 40], [16, 0, 40]],
+  connect: [{ point: 0, draw: false }, { point: 1, draw: true }, { point: 2, draw: true }],
+}];
+
+/** The one place each baked artifact is named, so the two tests below agree. */
+const ARTIFACTS = {
+  'star-wars': { rel: 'plugins/star-wars/src/tools/romModels.generated.ts', emit: () => emitTs(toRomModels(OBJS)) },
+  'red-baron': { rel: 'plugins/red-baron/src/tools/romPictures.generated.ts', emit: () => emitPicturesTs(toRomPictures(PICS)) },
+};
+
+test('every GAMES entry writes into the plugin the game actually lives in', () => {
+  // Anti-vacuity first: a loop over an empty or renamed table passes every
+  // assertion inside it, which is exactly how this defect survived.
+  assert.deepEqual(Object.keys(GAMES).sort(), ['red-baron', 'star-wars']);
+  for (const [game, { rel }] of Object.entries(ARTIFACTS)) {
+    const out = GAMES[game].out;
+    assert.equal(
+      relative(REPO, out).split(sep).join('/'),
+      rel,
+      `bake-models writes ${game} to ${out} — that is not the file the game imports`,
+    );
+    // The path being right is not the same as the path being REAL. mkdirSync
+    // creates whatever dirname it is handed, so only the committed artifact
+    // existing at that exact path proves the baker and the game agree.
+    assert.ok(existsSync(out), `${rel} does not exist — the baker is writing into a directory nobody reads`);
+  }
+});
+
+test('every emitted header imports through an alias this repo actually declares', () => {
+  // Checked against tsconfig's OWN `paths` rather than a hardcoded '@shared', so
+  // renaming the alias reddens here instead of at a deploy.
+  const tsconfig = readFileSync(path('tsconfig.json'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+  const prefixes = [...tsconfig.matchAll(/"(@[^"*]+)\/\*"\s*:/g)].map((m) => m[1]);
+  assert.ok(prefixes.includes('@shared'), `tsconfig declares no @shared alias (found: ${prefixes.join(', ')})`);
+
+  for (const [game, { rel, emit }] of Object.entries(ARTIFACTS)) {
+    const ts = emit();
+    const specifiers = [...ts.matchAll(/\bfrom\s+'([^']+)'/g)].map((m) => m[1]);
+    assert.ok(specifiers.length > 0, `${game}: the emitted header has no imports — this test is reading nothing`);
+    for (const spec of specifiers) {
+      if (spec.startsWith('.')) continue; // relative is always resolvable
+      assert.ok(
+        prefixes.some((p) => spec === p || spec.startsWith(`${p}/`)),
+        `${game}: emitted header imports "${spec}", which resolves under no declared alias — ` +
+          `a re-bake would redden the repo-wide tsc that gates every app's deploy`,
+      );
+    }
+    // And the tightest form of the same question: the specifier the baker emits
+    // must be the one the COMMITTED artifact already holds, so `just bake-models`
+    // can never rewrite a tracked, type-checked file into a broken one.
+    const committed = readFileSync(path(rel), 'utf8');
+    const line = /^import .*$/m.exec(committed);
+    assert.ok(line, `${rel} has no import line — this half of the check is vacuous`);
+    assert.ok(
+      ts.includes(line[0]),
+      `${game}: the baker emits a different import line than ${rel} holds.\n` +
+        `  committed: ${line[0]}\n  emitted:   ${/^import .*$/m.exec(ts)?.[0]}`,
+    );
+  }
 });

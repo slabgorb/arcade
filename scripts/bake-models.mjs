@@ -23,7 +23,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // artifact it writes, and a `build`
 // that turns the raw source text(s) into { code, lines } — the emitted
 // TypeScript plus the human-readable per-object summary main() prints.
-const GAMES = {
+//
+// EVERY `out` MUST BE THE PATH THE GAME ACTUALLY IMPORTS — `plugins/<id>/…`. The
+// migration moved these and red-baron's entry was left behind at the pre-migration
+// `<ROOT>/red-baron/src/tools/…`. main() calls `mkdirSync(dirname(cfg.out),
+// { recursive: true })`, so a dead path is CREATED rather than refused: the run
+// printed 13 pictures and exited 0 while the tracked artifact was never touched.
+// tests/rom-models/bake.test.mjs reads this table and pins both halves.
+export const GAMES = {
   'star-wars': {
     sources: [join(sourceDir('star-wars-1983'), 'WSOBJ.MAC')],
     out: join(ROOT, 'plugins', 'star-wars', 'src', 'tools', 'romModels.generated.ts'),
@@ -45,7 +52,7 @@ const GAMES = {
       join(sourceDir('red-baron'), 'RBARON.MAC'),
       join(sourceDir('red-baron'), '037007.XXX'),
     ],
-    out: join(ROOT, 'red-baron', 'src', 'tools', 'romPictures.generated.ts'),
+    out: join(ROOT, 'plugins', 'red-baron', 'src', 'tools', 'romPictures.generated.ts'),
     build: (texts) => {
       const pictures = toRomPictures(assembleRedBaronPictures(texts[0], texts[1]));
       const lines = [
@@ -74,6 +81,16 @@ export function toRomModels(objs) {
 }
 
 const vec = (v) => `[${v.join(', ')}]`;
+
+// THE IMPORT SPECIFIER IN EVERY EMITTED HEADER IS PART OF THE CONTRACT.
+// `@arcade/shared/math3d` was an npm package name before the collapse; there is no
+// such package now, and the specifier resolves under NEITHER the vite alias map nor
+// tsconfig's `paths`. Emitting it would regress a tracked, type-checked file, and
+// `npm run lint` is a repo-wide `tsc --noEmit` that runs as the FIRST step of the
+// deploy workflow — so one stale specifier here blocks every app's deploy, not just
+// the game it was baked for. In-tree code takes `@shared/…`.
+// tests/rom-models/bake{,-redbaron}.test.mjs check the emitted specifier against
+// tsconfig's alias prefixes AND against the tracked artifact's own import line.
 
 export function emitTs(models) {
   const body = models.map((m) => `  {
@@ -205,7 +222,7 @@ export function emitPicturesTs(pictures) {
 //
 // Dev-tool data. Never import this from src/core — the core is the pure sim.
 
-import type { Vec3 } from '@arcade/shared/math3d'
+import type { Vec3 } from '@shared/math3d'
 
 export interface RomConnectOp {
   readonly point: number
