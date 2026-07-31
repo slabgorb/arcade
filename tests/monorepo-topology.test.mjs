@@ -578,6 +578,86 @@ function workflowConfig() {
 }
 
 /**
+ * Every GitHub Actions expression in `text`, as
+ * `{ line, raw, body, terminated }`.
+ *
+ * Scanned out of the RAW file, COMMENTS INCLUDED — which is the whole point, and
+ * the one thing every other test in this section is structurally blind to.
+ * `runWorkflow` hands each `run:` block to bash, and bash throws `#` lines away
+ * before anything else happens; GitHub does the opposite, expanding the template
+ * over the entire file BEFORE any shell exists to have comments in. So a broken
+ * expression inside a comment is invisible to an executing test and fatal to the
+ * real thing. `workflowConfig()` — which strips comments — must never be used
+ * here for the same reason.
+ */
+function actionsExpressions(text) {
+  const found = [];
+  const open = /\$\{\{/g;
+  let m;
+  while ((m = open.exec(text)) !== null) {
+    const close = text.indexOf('}}', m.index + 3);
+    const line = text.slice(0, m.index).split('\n').length;
+    if (close === -1) {
+      found.push({ line, raw: text.slice(m.index), body: null, terminated: false });
+      break;
+    }
+    found.push({
+      line,
+      raw: text.slice(m.index, close + 2),
+      body: text.slice(m.index + 3, close),
+      terminated: true,
+    });
+    open.lastIndex = close + 2;
+  }
+  return found;
+}
+
+/**
+ * The contexts and built-in functions an expression may begin with. Not a
+ * grammar — deliberately. The empty-expression check below is the one that
+ * fires on the observed failure; this heads-only check is a cheap extension that
+ * catches an expression referring to nothing at all, and it is kept to a
+ * leading-identifier test so it cannot start pretending to be a parser.
+ */
+const ACTIONS_EXPRESSION_HEADS = new Set([
+  'github', 'env', 'vars', 'job', 'jobs', 'steps', 'runner', 'secrets',
+  'strategy', 'matrix', 'needs', 'inputs',
+  'contains', 'startsWith', 'endsWith', 'format', 'join', 'toJSON', 'fromJSON',
+  'hashFiles', 'success', 'always', 'cancelled', 'failure',
+]);
+
+/**
+ * Everything wrong with `text`'s Actions expressions, as messages naming the
+ * file and line. An empty array means nothing is wrong — and the test below
+ * proves this function can return a NON-empty one before trusting that.
+ */
+function expressionDefects(where, text) {
+  const defects = [];
+  for (const e of actionsExpressions(text)) {
+    const at = `${where}:${e.line}`;
+    if (!e.terminated) {
+      defects.push(`${at}: an Actions expression is opened and never closed`);
+      continue;
+    }
+    const body = e.body.trim();
+    if (body === '') {
+      defects.push(
+        `${at}: an EMPTY Actions expression — GitHub expands this before any shell runs, ` +
+          'so the whole workflow fails to parse and never starts',
+      );
+      continue;
+    }
+    const head = /^[A-Za-z_][A-Za-z0-9_-]*/.exec(body);
+    if (!head || !ACTIONS_EXPRESSION_HEADS.has(head[0])) {
+      defects.push(
+        `${at}: '${e.raw}' does not begin with an Actions context or built-in function`,
+      );
+    }
+  }
+  return defects;
+}
+
+/**
  * The tag globs the workflow actually triggers on, read out of `on: push: tags:`.
  *
  * Parsed rather than grepped, because a grep cannot tell a trigger that FIRES
@@ -795,6 +875,66 @@ test('exactly one deploy workflow exists for the whole cabinet', () => {
   // filesystem-dependent, and this must stay a stable comparison if the
   // directory ever holds more than one entry.
   assert.deepEqual(readdirSync(path('.github', 'workflows')).sort(), ['deploy.yml']);
+});
+
+test('every Actions expression in every workflow is well-formed', () => {
+  // THE GUARD THAT WAS MISSING. Everything else in this section models the
+  // SHELL; GitHub models the TEMPLATE first, and nothing checked the file
+  // against the thing that actually parses it. The workflow carried a comment
+  // that spelled out an empty expression while explaining why no expression
+  // belongs in a run: block, and it took the whole workflow down — while this
+  // suite happily EXECUTED that comment as a bash no-op and stayed green.
+  //
+  // OBSERVED, not reasoned from docs (`gh run view 30647462417`, and
+  // `gh run list` over all four runs of this file):
+  //   · "This run likely failed because of a workflow file issue."
+  //   · `--json jobs` returns `[]` — every run, zero jobs, nothing ever ran.
+  //   · `--json name` returns ".github/workflows/deploy.yml", the PATH, not the
+  //     `name: deploy` on line 14 — GitHub never parsed far enough to read it.
+  //   · Plain pushes to `main` produced runs at all, so the `tags:` filter that
+  //     should have rejected them was never read either.
+  // Four pushes, four startup failures, back to this file's first commit: it had
+  // never once started.
+  const dir = ['.github', 'workflows'];
+  const files = readdirSync(path(...dir)).sort();
+  assert.ok(files.length > 0, 'no workflow files at all — this guard would be checking nothing');
+
+  // POSITIVE CONTROL FIRST. A green run of this test means the files are clean
+  // only if the check can go red at all, so it is fired at four known-bad texts
+  // before it is believed about the real ones. The first is the LITERAL line 106
+  // that broke production, comment marker and all.
+  for (const [why, text, expected] of [
+    [
+      'the exact line that broke production',
+      '          # command below is plain shell over "$APP" with no ${{ }} interpolation',
+      /EMPTY Actions expression/,
+    ],
+    ['an empty expression in a config value', '      group: deploy-${{ }}', /EMPTY Actions expression/],
+    ['an expression naming no context', '        if: ${{ nonsense.value }}', /context or built-in function/],
+    ['an expression that is never closed', '      group: deploy-${{ github.ref_name', /never closed/],
+  ]) {
+    const defects = expressionDefects('control', text);
+    assert.equal(defects.length, 1, `positive control (${why}) found ${defects.length} defects, not 1`);
+    assert.match(defects[0], expected, `positive control (${why}) reported the wrong defect`);
+  }
+
+  const defects = files.flatMap((f) => expressionDefects(`.github/workflows/${f}`, read(...dir, f)));
+  assert.deepEqual(
+    defects,
+    [],
+    'a malformed Actions expression fails the workflow at STARTUP: no jobs, no logs, no deploy, ' +
+      'and nothing that executes the run: blocks can see it',
+  );
+
+  // ANTI-VACUITY, and the pin. Zero expressions found would also report zero
+  // defects — so the two the workflow is known to carry are named as data. Both
+  // are legitimate and neither may quietly become something else; a third one
+  // added on purpose belongs in this list, deliberately.
+  assert.deepEqual(
+    actionsExpressions(read(...WORKFLOW)).map((e) => (e.body ?? '').trim()),
+    ['github.ref_name', 'secrets.CLOUDFLARE_API_TOKEN'],
+    'deploy.yml must carry exactly the two expressions it needs — and the scanner must find them',
+  );
 });
 
 test('the deploy workflow gates and ships exactly one app, in order, to one bucket', () => {

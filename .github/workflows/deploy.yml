@@ -103,11 +103,25 @@ jobs:
             exit 1
           fi
           # Exported to the JOB environment rather than as step outputs, so every
-          # command below is plain shell over "$APP" with no ${{ }} interpolation
-          # inside any run: block. Two consequences, both wanted: a tag name can
-          # never reach a shell as CODE, and tests/monorepo-topology.test.mjs can
-          # execute these scripts verbatim with nothing standing in for GitHub's
-          # templating.
+          # command below is plain shell over "$APP" and NO Actions expression is
+          # interpolated inside any run: block. Two consequences, both wanted: a
+          # tag name can never reach a shell as CODE, and
+          # tests/monorepo-topology.test.mjs can execute these scripts verbatim
+          # with nothing standing in for GitHub's templating. Do not "simplify"
+          # this away by reading the tag through an expression in a run: block —
+          # that is the tag-injection path this indirection exists to close.
+          #
+          # AN ACTIONS EXPRESSION MUST NEVER BE WRITTEN IN THIS FILE EXCEPT WHERE
+          # ONE IS MEANT TO BE EVALUATED — not even inside a comment. GitHub
+          # expands the template over the whole file before any shell runs, and
+          # `#` means nothing to it. This paragraph once spelled the delimiters
+          # out to describe them, and that empty expression took the workflow
+          # down at startup: four pushes, four runs with ZERO jobs, "this run
+          # likely failed because of a workflow file issue", and `gh run list`
+          # reporting the workflow's NAME as this file's path because GitHub
+          # never parsed far enough to read `name:`. Say "an Actions expression"
+          # in words instead. Pinned by `every Actions expression in every
+          # workflow is well-formed` in tests/monorepo-topology.test.mjs.
           {
             echo "APP=$app"
             # The lobby owns the bucket ROOT and builds into dist/; every game gets
