@@ -31,19 +31,30 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # ONE QUEUE FOR THE WHOLE CABINET, on purpose.
+    # ONE QUEUE FOR THE WHOLE CABINET, on purpose — a CHOICE, not a limitation.
     #
     # The retired workflow grouped by `github.repository`, which WAS per-app back
-    # when apps were repos. That grouping cannot be reconstructed here: a job-level
-    # `concurrency` may only read the `github` context, and GitHub's expression
-    # syntax has no way to strip `-vX.Y.Z` off `github.ref_name`. So the honest
-    # choices are one queue per TAG — which guards nothing, since a tag is pushed
-    # once — or one queue for everything.
+    # when apps were repos. Within THIS single job that grouping is unreachable:
+    # `concurrency` is evaluated before any step runs, so it cannot see the app id
+    # the first step resolves, and GitHub's expression syntax has no replace,
+    # regex or substring function with which to strip `-vX.Y.Z` off
+    # `github.ref_name` itself. (`format`/`join`/`contains` are the whole string
+    # toolkit.)
     #
-    # One queue is also the safer of the two now that all eight apps upload to a
-    # SINGLE bucket through a SINGLE account token: `just release-all` can push
-    # eight tags in a burst, and this serialises what would otherwise be eight
-    # concurrent wrangler upload storms into one bucket. A deploy is minutes.
+    # It is NOT unreachable in general, and an earlier draft of this comment
+    # wrongly said so — claiming a job-level `concurrency` may read only the
+    # `github` context. It may also read `needs`, `strategy`, `matrix`, `inputs`
+    # and `vars` (Actions docs, "Contexts" availability table). So splitting the
+    # tag parse into its own job and grouping on
+    # `deploy-${{ needs.resolve.outputs.id }}` WOULD reconstruct per-app queues.
+    #
+    # We deliberately do not, and the reason is the bucket, not the syntax: all
+    # eight apps now upload to a SINGLE bucket through a SINGLE account token, and
+    # `just release-all` pushes eight tags in a burst. One queue serialises what
+    # would otherwise be eight concurrent wrangler upload storms into one bucket.
+    # A deploy is minutes, and nothing here is latency-sensitive. Per-app queues
+    # would buy independence the shared bucket does not actually give us, at the
+    # cost of an extra job and a checkout to feed it.
     concurrency:
       group: deploy-arcade
       cancel-in-progress: false
