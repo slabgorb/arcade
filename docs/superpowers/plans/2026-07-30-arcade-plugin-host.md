@@ -2860,7 +2860,26 @@ exists to prevent.
 
 **Interfaces:**
 - Consumes: `build-app.mjs` (Task 16), `defineAppConfig` (Task 3).
-- Produces: `just serve` running one Vite dev server on 5270 — `/` the lobby, `/<id>/` each game.
+- Produces: `just serve` running one Vite dev server on 5270, replacing the eight-supervisor fleet.
+
+  **PLAN DEFECT #22 — this line promised `/<id>/` each game, and the task's own steps do not build
+  that.** Corrected 2026-07-31 by owner ruling, after the Task 19 implementer measured it rather than
+  reporting a pass. The root `vite.config.ts` default-exports `defineAppConfig({ id: 'lobby' })`, so
+  the one dev server **is the lobby**, and every other path is its SPA fallback: `/`, all seven
+  `/<id>/`, **and a nonsense `/banana/` control** return 200 with **nine identical body hashes** and
+  `<title>Slabcade</title>`.
+
+  The trap this defect set is the reason it matters: Step 6 as written was an all-200 curl sweep of
+  the seven game paths, which **passes against a server that serves one app at every URL**. It would
+  have reported "the cabinet serves" and proved nothing — this plan's recurring shape, and the twelfth
+  instance of it. Step 6 is now an assertion that CAN fail: a game path must be **byte-identical to
+  the `/banana/` control**, so the day a genuine multi-app server lands, that test reddens and tells
+  its successor to finish the job.
+
+  **Building the real multi-app dev server is FILED as `uf1-19`** (a vite plugin resolving `/<id>/` to
+  `plugins/<id>/index.html`, a multi-page `rollupOptions.input`, or renaming the recipe so it stops
+  implying otherwise). It is out of scope here: nothing in Tasks 20-23 needs it, and production is
+  unaffected — the live cabinet is built artefacts in R2, not a dev server.
 
 - [ ] **Step 0: VERIFY the host pinning — already restored in Task 5, do NOT re-add**
 
