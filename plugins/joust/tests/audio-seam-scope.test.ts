@@ -35,7 +35,7 @@
 // is satisfied by the very sentence it was meant to replace.
 
 import { describe, it, expect } from 'vitest'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, relative } from 'node:path'
 
@@ -195,6 +195,98 @@ describe('jt5-1 — the README’s "what joust does NOT do" section is brought t
     // satisfied by the stale text they replace.
     expect(md, 'the README must name the dispatch module').toMatch(/audio-dispatch/)
     expect(md, 'the README must record the shared-engine adoption').toMatch(/@shared\/audio/)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Project rules — `.pennyfarthing/gates/lang-review/typescript.md`
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// The checklist is the Reviewer's rubric, so the three modules this story
+// creates are held to it here rather than discovered at review. Only the checks
+// that actually apply to a data module, a manifest and a switch are pinned;
+// check #3's "missing exhaustiveness check in switch/case" is covered in
+// audio-dispatch.test.ts, which is where the `never` guard lives.
+//
+// The scans strip comments first — a checklist that fires on prose describing
+// the rule is the trap joust's own purity scanner was rewritten to avoid — but
+// the import-extension scan runs with STRINGS INTACT, because an import
+// specifier IS a string.
+
+const NEW_MODULES = ['src/core/events.ts', 'src/shell/audio.ts', 'src/shell/audio-dispatch.ts']
+
+/** Source with comments removed. Block comments first, then line comments. */
+const codeOnly = (src: string): string =>
+  src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ')
+
+const eachNewModule = (): { name: string; src: string }[] =>
+  NEW_MODULES.map((name) => {
+    const p = join(root, name)
+    if (!existsSync(p)) throw new Error(`jt5-1 must create ${name}`)
+    return { name, src: readFileSync(p, 'utf8') }
+  })
+
+describe('jt5-1 — the new modules satisfy the TypeScript review checklist', () => {
+  it('#1 no type-safety escapes — the seam is typed, not cast into place', () => {
+    const offenders: string[] = []
+    for (const { name, src } of eachNewModule()) {
+      const code = codeOnly(src)
+      for (const [label, re] of [
+        ['as any', /\bas\s+any\b/],
+        ['as unknown as', /\bas\s+unknown\s+as\b/],
+        ['@ts-ignore', /@ts-ignore/],
+        ['@ts-expect-error', /@ts-expect-error/],
+        [': any', /:\s*any\b/],
+      ] as const) {
+        if (re.test(code)) offenders.push(`${name}: ${label}`)
+      }
+      // `@ts-ignore` lives in a COMMENT, so it must be sought in the raw text.
+      if (/@ts-(ignore|nocheck)/.test(src)) offenders.push(`${name}: ts suppression comment`)
+    }
+    expect(offenders, 'a cue map that needs a cast is a cue map with the wrong types').toEqual([])
+  })
+
+  it('#2 no over-broad generics — the manifest is keyed by the union, not by string', () => {
+    const offenders: string[] = []
+    for (const { name, src } of eachNewModule()) {
+      const code = codeOnly(src)
+      for (const [label, re] of [
+        ['Record<string, any>', /Record<\s*string\s*,\s*any\s*>/],
+        ['bare Function type', /:\s*Function\b/],
+        ['bare object type', /:\s*object\b/],
+      ] as const) {
+        if (re.test(code)) offenders.push(`${name}: ${label}`)
+      }
+    }
+    expect(
+      offenders,
+      'SOUNDS/CHANNELS/CUE_SOURCES keyed by `string` would let a typo add a cue no kind reaches',
+    ).toEqual([])
+  })
+
+  it('#4 no `||` defaulting where `??` is meant', () => {
+    // `x || fallback` swallows 0 and '' — and a ROM priority of 0 and an empty
+    // channel name are both values this seam can legitimately hold.
+    const offenders: string[] = []
+    for (const { name, src } of eachNewModule()) {
+      const code = codeOnly(src)
+      const hits = code.match(/\|\|\s*(['"`]|[0-9])/g)
+      if (hits) offenders.push(`${name}: ${hits.join(', ')}`)
+    }
+    expect(offenders, 'use ?? — 0 and "" are valid values here, not absences').toEqual([])
+  })
+
+  it('#5 every relative import carries the .js extension', () => {
+    // joust's ESM convention: 100+ relative imports across src/ carry `.js`
+    // (`shell/timebase.ts:7` is the single pre-existing exception and is out of
+    // this story's scope). Bare specifiers like `@shared/audio` take none.
+    const offenders: string[] = []
+    for (const { name, src } of eachNewModule()) {
+      for (const m of src.matchAll(/from\s+'(\.\.?\/[^']*)'/g)) {
+        if (!m[1].endsWith('.js')) offenders.push(`${name}: ${m[1]}`)
+      }
+    }
+    expect(offenders, 'a relative import without .js breaks Node16 ESM resolution').toEqual([])
   })
 })
 
