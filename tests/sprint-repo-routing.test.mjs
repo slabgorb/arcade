@@ -128,10 +128,18 @@ test('an entry with no explicit path falls back to its name, as pf itself does',
   // the guard reddens loudly while pointing at 89 innocent lines. Anchor on
   // start-of-line, not on a preceding newline.
   const identifiers = registeredRepoIdentifiers(['repos:', '  solo:', '    type: game'].join('\n'));
-  assert.ok(identifiers.has('solo'), 'a pathless entry must still be valid under its own name');
-  assert.ok(
-    identifiers.size > 0,
-    'an empty identifier set means the `repos:` block was not located at all — see the note above',
+  assert.deepEqual([...identifiers], ['solo'], 'a pathless entry must be valid under its own name, and nothing else');
+
+  // The empty-set trap this test was written to catch is asserted where it can
+  // actually fail: a registry the helper cannot make sense of must THROW, never hand
+  // back an empty Set that reads as "nothing is registered" and reddens every sprint
+  // line at once. The previous `identifiers.size > 0` could not fail independently —
+  // `.has('solo')` on the line above already implies it — so it was decoration.
+  // (Reviewer finding 6; javascript.md check #8.)
+  assert.throws(
+    () => registeredRepoIdentifiers(['repos:', '    solo:', '        type: game'].join('\n')),
+    /registered no entries/,
+    'an unparseable repos block must throw, not degrade to an empty Set',
   );
 });
 
@@ -303,5 +311,226 @@ test("no sprint scalar carries an unquoted ' #' — the exact shape that truncat
     offenders,
     [],
     `unquoted values containing ' #' will be truncated by the next pf YAML round-trip:\n${offenders.join('\n')}`,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// REWORK — mg1-4 round 2. Four failures the Reviewer proved by mutation, plus
+// one live corruption that arrived with the mg1-2 merge. Every test below was
+// observed failing on real data before being committed; none fails merely
+// because an export is missing.
+// ---------------------------------------------------------------------------
+
+test('the unquoted-# scan covers LIST ITEMS, which is the shape that actually truncated epic-SH', async () => {
+  const { yamlRoundTripRisks } = await helper();
+
+  // The test above this one is named "the exact shape that truncated epic-SH" and
+  // CANNOT FAIL on that shape. Proven by mutation: its regex matches only
+  // `id|title|repos|workflow|status|priority|description` key:value lines, and the
+  // SH-1 line that was actually lost is an acceptance_criteria LIST ITEM. The repair
+  // is preserved verbatim in sprint/archive/epic-SH.yaml, single-quoted by SH-3 on
+  // 2026-07-07:
+  //
+  //   - 'The dev inner-loop path (npm link or a #branch ref) is documented in the
+  //      shared repo README.'
+  //
+  // Re-adding that line unquoted to a live shard left the suite 10/10 green. This is
+  // the incident's own text, replayed. A guard named after an incident it cannot
+  // detect is worse than no guard: it reads as coverage.
+  const fixture = {
+    path: 'sprint/epic-fixture.yaml',
+    text: [
+      '  - id: fx-1',
+      '    title: a story',
+      '    acceptance_criteria:',
+      '      - The dev inner-loop path (npm link or a #branch ref) is documented in the shared repo README.',
+      "      - 'A quoted item with a #branch ref survives the round-trip and is NOT an offender.'",
+      '      - An ordinary item with no hash at all.',
+    ].join('\n'),
+  };
+
+  const risks = yamlRoundTripRisks([fixture]);
+
+  assert.deepEqual(
+    risks.filter((r) => r.kind === 'unquoted-hash').map((r) => r.line),
+    [4],
+    'only the UNQUOTED list item is at risk — line 5 is single-quoted and line 6 has no hash',
+  );
+});
+
+test('a scalar field with an unquoted # is still caught — the old coverage must not regress', async () => {
+  const { yamlRoundTripRisks } = await helper();
+
+  // Widening the scan to list items must not drop what the inline version already
+  // caught. Both shapes, one fixture, so a fix that swaps one for the other reddens.
+  const fixture = {
+    path: 'sprint/epic-fixture.yaml',
+    text: [
+      '  - id: fx-1',
+      '    title: a title with a #ref in it',
+      "    description: 'a quoted description with a #ref survives'",
+      '    acceptance_criteria:',
+      '      - a list item with a #ref in it',
+    ].join('\n'),
+  };
+
+  assert.deepEqual(
+    yamlRoundTripRisks([fixture]).filter((r) => r.kind === 'unquoted-hash').map((r) => r.line),
+    [2, 5],
+    'the unquoted title AND the unquoted list item, but not the quoted description',
+  );
+});
+
+test('an acceptance criterion mangled into a YAML complex key is reported', async () => {
+  const { yamlRoundTripRisks, guardedSprintFiles } = await helper();
+
+  // A SECOND round-trip corruption, and unlike the one above this is LIVE in the
+  // tree right now rather than reconstructed. mg1-14 arrived with the mg1-2 merge
+  // carrying an acceptance criterion whose text contains ': ', which pf's YAML
+  // writer emitted as an explicit complex mapping key:
+  //
+  //   - ? A test covers HMR end to end ... is explicitly insufficient
+  //     : that check passed while game HMR was entirely dead ...
+  //
+  // `yaml.safe_load` parses that criterion as a DICT, not a string. The AC survived
+  // its text but lost its type, so anything iterating acceptance_criteria as prose
+  // now gets an object. The existing story-shape guard waves it through because
+  // `- ? A test covers` still matches /^ {6}- \S/ — the `?` is a non-space character.
+  // AC-4 is "the pf toolchain still round-trips every touched sprint file"; this is
+  // that toolchain failing to, in a file this story touched.
+  const fixture = {
+    path: 'sprint/epic-fixture.yaml',
+    text: [
+      '    acceptance_criteria:',
+      '      - ? a criterion whose text contained a colon-space and got mangled',
+      '        : the remainder, now parsed as the mapping VALUE',
+      '      - an ordinary criterion',
+    ].join('\n'),
+  };
+
+  assert.deepEqual(
+    yamlRoundTripRisks([fixture]).filter((r) => r.kind === 'complex-key').map((r) => r.line),
+    [2],
+    'the complex-key item is reported at the line that opens it',
+  );
+
+  // And on the real tree, because a fixture-only guard proves only that the fixture
+  // was written correctly. This is the assertion that is red on arrival.
+  const live = yamlRoundTripRisks(guardedSprintFiles(repo)).filter((r) => r.kind === 'complex-key');
+  assert.deepEqual(
+    live,
+    [],
+    `acceptance criteria mangled into YAML complex keys — re-quote the value so it round-trips as a string:\n${live
+      .map((r) => `${r.file}:${r.line}`)
+      .join('\n')}`,
+  );
+});
+
+test('a block-sequence repos value is not invisible to the guard', async () => {
+  const { repoRoutingViolations } = await helper();
+
+  // The guard splits a `repos:` SCALAR on commas. Given the block-sequence form it
+  // captures an empty remainder, skips the empty token and reports NOTHING — proven
+  // by mutation. That is the worst available outcome for AC-2, whose whole purpose is
+  // that a retired repo "cannot silently reappear": in this form every value is
+  // invisible, permanently and silently.
+  //
+  // It is not hypothetical. `pf/core/resolver.py:42` does `epic.get("repos", [])` — a
+  // LIST default — so the list form is the shape pf's own model expects, and
+  // normalising to it is the natural fix for td1-15, which this very story filed.
+  // The guard must not go blind on the day its sibling bug is fixed.
+  const listForm = {
+    path: 'sprint/epic-fixture.yaml',
+    text: ['repos:', '  - joust', '  - arcade', 'stories:'].join('\n'),
+  };
+
+  assert.deepEqual(repoRoutingViolations([listForm], new Set(['arcade', '.'])), [
+    { file: 'sprint/epic-fixture.yaml', line: 2, token: 'joust' },
+  ]);
+});
+
+test('a repos key with neither a scalar nor list items is itself a violation', async () => {
+  const { repoRoutingViolations } = await helper();
+
+  // The failure mode above generalises: any `repos:` the guard cannot read a value
+  // out of must fail LOUD rather than yield zero violations. Silence is what let the
+  // block-sequence form through, so an empty key is reported rather than skipped —
+  // otherwise the fix for the previous test can be "return nothing for empty values",
+  // which passes it while preserving the hole.
+  const empty = { path: 'sprint/epic-fixture.yaml', text: ['repos:', 'stories:'].join('\n') };
+
+  assert.deepEqual(repoRoutingViolations([empty], new Set(['arcade', '.'])), [
+    { file: 'sprint/epic-fixture.yaml', line: 1, token: '' },
+  ]);
+});
+
+// ---------------------------------------------------------------------------
+// AC-1 / AC-2 applied to the ARTEFACT, not just its source. The sweep corrected
+// the YAML; pf renders that YAML into sprint/context/*.md, and those files are
+// what an agent is actually handed.
+// ---------------------------------------------------------------------------
+
+test('generated context docs in live scope name a registered repo', async () => {
+  const { registeredRepoIdentifiers, contextRepoViolations, guardedContextFiles } = await helper();
+
+  // The defect this story exists to fix is not "a YAML file contains the string
+  // joust" — nobody reads the YAML. It is, in the story's own words, that "every
+  // future story setup hands the agent a context file telling it to work in a repo
+  // that does not exist." That sentence describes sprint/context/, and four of those
+  // files still name retired repos: jt8 -> joust, sw8 -> star-wars, td1 and uf1 ->
+  // multi-name lists, behind 30 open stories between them.
+  //
+  // They do not self-heal. sm-setup Step 4b regenerates a STORY context
+  // unconditionally but an EPIC context only "if the epic has no context document
+  // yet", and the sm-setup-exit gate's epic-context-validated check asserts only that
+  // the file exists and is non-empty. So a drifted context passes its gate forever.
+  // Filed upstream as td1-16; this guard is the local half.
+  const identifiers = registeredRepoIdentifiers(read('.pennyfarthing', 'repos.yaml'));
+  const violations = contextRepoViolations(guardedContextFiles(repo), identifiers);
+
+  const rendered = violations.map((v) => `${v.file}:${v.line} -> ${v.token}`).join('\n');
+  assert.deepEqual(
+    violations,
+    [],
+    `generated context docs still route to repos the registry does not register:\n${rendered}`,
+  );
+});
+
+test('context scope follows the archive rule — completed work is left as a record', async () => {
+  const { guardedContextFiles } = await helper();
+
+  // ARCHIVE_POLICY's reasoning is that no agent is ever routed from a completed
+  // story, so correcting the live backlog is the fix and editing the record is not.
+  // The same rule decides this scope, and it must be applied rather than restated:
+  // ~30 story contexts on disk belong to DONE stories and carry pre-collapse names.
+  // Rewriting them would falsify the record; scanning them would redden the guard
+  // over work nobody will ever be routed to.
+  const scanned = guardedContextFiles(repo).map((f) => f.path);
+  assert.ok(scanned.length > 0, 'the context guard must scan something');
+
+  for (const p of scanned) {
+    assert.match(p, /^sprint\/context\/context-(epic|story)-[^/]+\.md$/, `${p}: unexpected path shape`);
+  }
+
+  // Every path decoded to a string, for the same Buffer reason as the YAML scan:
+  // a Buffer matches no anchored regex, so the guard would report zero violations
+  // across every file and read as a clean pass. (javascript.md check #6.)
+  for (const f of guardedContextFiles(repo)) {
+    assert.equal(typeof f.text, 'string', `${f.path}: file text must be decoded, not a Buffer`);
+  }
+
+  // A context belonging to a story that is `done` must NOT be scanned. sw8-11 is
+  // done and its context names star-wars; if it appears here the guard has adopted a
+  // scope its own policy rejects, and it will be red for reasons no one can fix.
+  assert.ok(
+    !scanned.includes('sprint/context/context-story-sw8-11.md'),
+    'a completed story\'s context is a record, not live routing — see ARCHIVE_POLICY',
+  );
+
+  // And an epic that still has open stories MUST be scanned, or the guard is scoped
+  // into vacuity. jt8 has 4 open stories at the time of writing.
+  assert.ok(
+    scanned.includes('sprint/context/context-epic-jt8.md'),
+    'an epic with open stories is live routing and must be in scope',
   );
 });
