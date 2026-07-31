@@ -10,7 +10,20 @@
 
 ## Global Constraints
 
-- **No game's `main.ts` is modified by this epic.** The boot helper is deferred (spec §4.3). If a task seems to require touching a game's `main.ts` beyond an import-path rewrite, stop and escalate.
+- **No game's `main.ts` is modified by this epic.** The boot helper is deferred (spec §4.3). If a task seems to require touching a game's `main.ts` beyond an import-path rewrite **or a mechanical call-site update**, stop and escalate.
+
+  **Carve-out added 2026-07-31 by owner ruling, after Task 21 escalated.** Task 21 must add a
+  `domainKey` argument to `makeHighScoreStorage` at five call sites (`tempest` `'level'`; `star-wars`,
+  `asteroids`, `centipede` `'wave'`; `battlezone` passes the base `isHighScoreRow`). Each is a
+  one-line argument addition — no game logic, no boot sequence, and `tsc` proves every one
+  mechanically. What this constraint exists to block is the **deferred boot helper** and changes to
+  game behaviour; a call-site update is neither. The alternative considered and rejected was a
+  `gameId → domainKey` map inside `src/shared/highscore.ts`, which honours the constraint literally
+  while pushing per-game knowledge into shared code and creating a second place to drift from what
+  the call site already states.
+
+  **The escalation itself was correct and should still happen.** The rule stands for anything that is
+  not a pure call-site update.
 - **Node `>=22.18`** locally; CI uses `node-version: 22`. **Raised from `>=20` by Task 14** — and the
   reason is load-bearing, not housekeeping. This plan assumed an `.mjs` script cannot import a `.ts`
   module, which is the entire justification for `scripts/gen-registry.mjs` carrying a hand-duplicated
