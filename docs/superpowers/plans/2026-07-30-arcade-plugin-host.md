@@ -3320,7 +3320,23 @@ Remove the `publish` call inside `save()` and the republish-on-load helper. Keep
 
 - [ ] **Step 6: Point the lobby at same-origin storage**
 
-`lobby/src/shell/storage.ts` reads the cookie via `readTopScore`. Same-origin now, so it reads `localStorage` directly. Update it and its tests — note the existing test seeded a single shared in-memory store, which modelled the bug as a fixture; same-origin is now genuinely correct, so that fixture becomes accurate rather than misleading.
+`lobby/src/shell/storage.ts` reads the cookie via `readTopScore`. Same-origin now, so the lobby stops reading the cookie as its primary source. Update it and its tests — note the existing test seeded a single shared in-memory store, which modelled the bug as a fixture; same-origin is now genuinely correct, so that fixture becomes accurate rather than misleading.
+
+**PLAN DEFECT #25 — "reads `localStorage` directly" is wrong, and the direct form has a real bug.**
+Corrected 2026-07-31 by owner ruling. A direct read cannot distinguish an **empty** table from a
+**missing** one, and the obvious `readLocalTable(id) ?? readTopScore(id)` therefore falls through to
+the cookie for a board the player deliberately cleared — **resurrecting it for the cookie's 400-day
+lifetime.** The ordering policy is real logic and belongs in one place, so it lives in
+`readBestKnownScore` in `src/shared/highscore.ts` (local first, cookie only when there is genuinely no
+local answer — "no key / no storage / the read threw", never "an empty table"), and the lobby is a
+one-line delegate.
+
+The lobby's source rule is tightened in the same change to forbid the shape this defect describes:
+the lobby may not carry the high-score key literal, and may not `JSON.parse` a table itself. **The
+owner ratified that rule** — a lobby that re-derives storage knowledge is how the empty-vs-missing
+distinction gets lost a second time. Both halves of this were flagged by the reviewer as a rule
+authored in the same change that justified departing from the brief, which is why it went to the
+owner rather than being settled by the implementer.
 
 - [ ] **Step 7: Run the full cabinet**
 
