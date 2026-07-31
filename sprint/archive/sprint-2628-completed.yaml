@@ -1231,3 +1231,8 @@ completed_stories:
     title: A genuinely multi-app dev server — just serve currently serves the lobby at every path
     points: 5
     completed: '2026-07-31'
+  - id: mg1-9
+    epic: mg1
+    title: "Typecheck arcade-shared's tests: 22 pre-existing errors in WebAudio doubles"
+    points: 3
+    completed: '2026-07-31'

@@ -119,7 +119,7 @@ stories:
     description: "src/shared/tests is excluded from the root tsconfig, added during the migration's Task 4 to hold the pre-migration line rather than to hide new damage. The reason it was needed: arcade-shared never had a tsconfig of its own and its tests were never compiled - vitest strips types without checking them - so nobody had ever type-checked that directory. Probing it under the root config surfaced 22 real errors, almost all hand-rolled FakeAudioContext and FakeGain doubles that do not satisfy the real WebAudio types, plus possibly-undefined access and empty-tuple indexing in tests/synth.test.ts. The exclude was scoped to that one path deliberately - every game's tsconfig has always included its own tests, so a blanket exclude would have silently dropped seven games' type coverage. The cost of leaving it: these tests can assert against types that do not hold, and any test file added under src/shared/tests is untypechecked from the moment it lands. That already happened during the migration - Task 21's highscore.dom.test.ts is untypechecked today. Fix the doubles, drop the exclude."
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-07-31'
     repos: arcade
     workflow: tdd
@@ -128,6 +128,7 @@ stories:
       - The WebAudio doubles satisfy the real types rather than being cast to them, since a cast reintroduces the same blindness the exclude created.
       - No other path is added to the exclude list as part of this work - the whole point is that the exclusion was scoped to one directory and stays that way.
       - The test suite's pass count is unchanged, so the fix is a typing change and not a quiet removal of tests that would not compile.
+    completed: '2026-07-31'
   - id: mg1-10
     title: Rename the cabinet bucket arcade-lobby to arcade-cabinet
     description: "Spec section 6.2, deferred out of the monorepo migration. The bucket named arcade-lobby now holds the entire cabinet - the lobby at its root keys and all seven games under their own key prefixes - so its name describes what it used to be rather than what it is. Purely cosmetic, and the cost is one custom-domain rebind on arcade.slabgorb.com plus updating every reference in code and docs. Two traps worth knowing before starting. First, do NOT confuse this with the bucket named plain `arcade`, which is the ASSETS bucket behind arcade-assets.slabgorb.com - it is the one bucket in the account whose name does not match its domain, and mistaking the two produces a `specified bucket does not exist` error that reads like a permissions problem. Second, the bucket name is not in one place: it appears in the justfile's deploy recipes, in .github/workflows/deploy.yml, and is asserted by tests/monorepo-topology.test.mjs, which pins the CI deploy target by name specifically so a silent retarget cannot happen. Weigh whether the rename is worth a rebind of the live front door at all - there is a reasonable case for leaving it and documenting the name as historical."
