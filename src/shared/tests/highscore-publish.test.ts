@@ -10,7 +10,7 @@
 // ADR-0004's cookie existed for exactly one reason: the lobby (arcade.slabgorb.com) and
 // each game (<game>.slabgorb.com) were DIFFERENT ORIGINS, and localStorage is partitioned
 // by origin, so the lobby could not read a game's table. The cabinet is now ONE origin.
-// The lobby reads the table directly (`readLocalTopScore`), so there is nothing left for
+// The lobby reads the table directly (`readBestKnownScore`), so there is nothing left for
 // a publish to achieve — and one very good reason not to do it.
 //
 // ── THE INVARIANT THAT REPLACED IT ──────────────────────────────────────────
@@ -168,11 +168,10 @@ describe('the table is still persisted, exactly as before', () => {
   })
 
   it('drops poisoned rows on load — a 1e999 -> Infinity score never reaches the board', () => {
-    const poisoned = JSON.stringify([
-      { name: 'AAA', score: 1e999, level: 1 },
-      { name: 'BBB', score: 4200, level: 2 },
-      { name: 'CCC' },
-    ])
+    // RAW JSON: `JSON.stringify({score: 1e999})` emits `null`, so a stringified fixture
+    // would store no Infinity at all and the guard would be rejecting the wrong thing.
+    const poisoned =
+      '[{"name":"AAA","score":1e999,"level":1},{"name":"BBB","score":4200,"level":2},{"name":"CCC"}]'
     installBrowser(makeCookieJar(), makeFakeStorage({ [KEY]: poisoned }))
 
     expect(storage().load()).toEqual([{ name: 'BBB', score: 4200, level: 2 }])

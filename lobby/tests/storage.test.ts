@@ -92,10 +92,13 @@ describe('getTopScore — reads the game’s own table', () => {
   })
 
   it('ignores a poisoned row — a 1e999 -> Infinity score never renders as the top', () => {
-    const poisoned = JSON.stringify([
-      { name: 'AAA', score: 1e999, level: 1 },
-      { name: 'BBB', score: 4200, level: 2 },
-    ])
+    // Written as RAW JSON on purpose. `JSON.stringify({score: 1e999})` emits `null`,
+    // so a fixture built by stringifying Infinity never stores the poison it claims to
+    // — and `Math.max(null, 4200)` is 4200, so the test would pass with the row filter
+    // deleted. `JSON.parse('1e999')` DOES yield Infinity, which is exactly how a
+    // hand-edited or hostile table carries one.
+    const poisoned =
+      '[{"name":"AAA","score":1e999,"level":1},{"name":"BBB","score":4200,"level":2}]'
     bootLobby(makeCookieJar(), makeFakeStorage({ [KEY]: poisoned }))
 
     expect(getTopScore('tempest')).toBe(4200)
@@ -289,7 +292,7 @@ describe('the lobby owns no transport of its own', () => {
 
   it('reads the score through @shared/highscore, not a hand-rolled parse', () => {
     // ADR-0004 required the single-origin collapse to stay ONE adapter change away. It
-    // was, and this file is the proof: the collapse landed as `readLocalTopScore` in the
+    // was, and this file is the proof: the collapse landed as `readBestKnownScore` in the
     // shared library, and the lobby's read is still a single delegating expression. That
     // promise only stays true while the lobby parses NOTHING for itself — no cookie jar,
     // no storage key, no JSON.

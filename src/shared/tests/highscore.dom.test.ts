@@ -170,6 +170,27 @@ describe('one-time migration from the cross-origin cookie', () => {
     expect(tempest().load(), 'and all five survive the reload').toEqual(seeded)
   })
 
+  it('writes NOTHING when the game’s own guard would reject a migrated row', () => {
+    // The seed BUILDS rows rather than merely validating them, so it is the one place
+    // that can persist something the game will not read back. A guard that rejects a null
+    // domain — a game that has not taken the Task 20 widening — must get an empty board,
+    // not a table that looks right on this pass and evaporates on the next. Writing the
+    // rows anyway would ALSO disarm the seed forever, because storage would no longer be
+    // empty: one bad pass, scores gone for good.
+    type Strict = HighScoreEntryBase & { level: number }
+    const strictGuard = (value: unknown): value is Strict =>
+      isHighScoreRow(value) && typeof (value as { level?: unknown }).level === 'number'
+
+    document.cookie = 'arcade-hi-tempest=JPX:149830; Path=/'
+    const strict = makeHighScoreStorage<Strict>('tempest', strictGuard, 'level')
+
+    expect(strict.load()).toEqual([])
+    expect(
+      localStorage.getItem(highScoreKey('tempest')),
+      'nothing was persisted, so the cookie can still seed a game that accepts null',
+    ).toBeNull()
+  })
+
   it('never runs twice: a board the player has since cleared stays cleared', () => {
     document.cookie = 'arcade-hi-tempest=JPX:149830; Path=/'
     expect(tempest().load()).toHaveLength(1)
