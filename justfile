@@ -178,16 +178,20 @@ ci: lint test-orchestrator test-all build-all
 # unpinned host lets a sibling checkout bind [::1]:5270 beside your 127.0.0.1:5270
 # with no collision error and serve the whole cabinet from the wrong working tree.
 #
-# ⚠ WHAT THIS SERVES TODAY: the LOBBY, at every path. MEASURED, not assumed — the
-# root vite.config.ts default-exports `defineAppConfig({ id: 'lobby' })`, whose
-# `root` is lobby/, so /, /tempest/, /tempest/models.html and the nonsense control
-# /banana/ all return 200 with <title>Slabcade</title> and identical bytes. The
-# identical control is the proof: it is a blanket SPA fallback, not a route table.
-# So a screenshot taken at /tempest/ is the LOBBY — do not verify a game's render
-# here. Pinned by `the dev server serves the LOBBY at every path` in
-# tests/canonical-serve.test.mjs, which reddens the day the games are really wired
-# in and this paragraph has to change.
-# Serve the arcade in dev — ONE vite on :5270 (today: the lobby at every path)
+# WHAT THIS SERVES: the whole cabinet. The lobby at /, and each game at /<id>/ from
+# its own plugin sources — the same paths as the built output and the R2 key
+# prefixes. A screenshot taken at /tempest/ is tempest; verifying a game's render
+# locally is what this is for. Each game runs as its own middleware-mode Vite server,
+# built from the same defineAppConfig(<id>) the build uses and mounted by the
+# `arcade:serve-the-cabinet` plugin in vite.config.ts.
+#
+# An unknown path (/banana/) still falls through to the lobby's SPA fallback, so an
+# all-200 sweep of /, /tempest/, /star-wars/ … proves NOTHING — a fallback answers 200
+# to everything, and before mg1-2 that fallback was the entire behaviour: every path
+# returned byte-identical lobby HTML. Compare a game path against a nonsense control
+# and assert they DIFFER. Pinned by `the one dev server serves the whole cabinet, not
+# one app at every path` in tests/canonical-serve.test.mjs, which does exactly that.
+# Serve the arcade in dev — ONE vite on :5270 (lobby at /, each game at /<id>/)
 serve:
     @npx vite
 

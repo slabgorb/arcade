@@ -98,17 +98,18 @@ npx vitest run                               # every project in the monorepo
 npm run lint                                 # tsc --noEmit across the monorepo
 ```
 
-⚠ **There is no way to run star-wars in a browser from this repo yet — do not
-tell a user to, and do not try to verify a render change by loading it.** The
-per-game dev server (port 5274) went with the deleted `vite.config.ts`, and the
-root `npx vite` sets `root: lobby`, so it serves the lobby at *every* path.
-Probed on a spare port: `/`, `/star-wars/`, `/star-wars/models.html`,
-`/star-wars/scenes.html` and the nonsense control `/banana/` all return `200`
-with `<title>Slabcade</title>` — identical bytes, including the control, which is
-what proves it is a blanket SPA fallback rather than a misconfiguration. A
-screenshot taken there is the **lobby**, not this game. `npm run build` at the
-root is likewise not wired yet (`scripts/build-app.mjs` does not exist —
-`MODULE_NOT_FOUND`).
+**Run it in a browser with `just serve`, then open <http://127.0.0.1:5270/star-wars/>.**
+One dev server at the repo root serves the whole cabinet — the lobby at `/`, each game
+at `/<id>/` from its own plugin sources — so a render change can be verified by loading
+it, and a screenshot taken at `/star-wars/` is this game. Both second entries are served
+too: `/star-wars/models.html` and `/star-wars/scenes.html`. Build with
+`node scripts/build-app.mjs star-wars` (→ `dist/star-wars/`).
+
+The per-game dev server on port 5274 is gone; there is one port, 5270, pinned in
+`vite.config.ts` rather than on the command line. Two claims that stood here until
+mg1-2 were true when written and are now false: that the root server returns the lobby
+at every path, and that `scripts/build-app.mjs` does not exist. Both were measured
+again — the server serves this game, and the build runs.
 
 Consequence for the standing "the shell is verified by running the game"
 convention below: that route is **currently unavailable**, so shell changes rest

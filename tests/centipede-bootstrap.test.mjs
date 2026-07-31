@@ -76,8 +76,10 @@
 //     because there is one dev server on one port. Its two halves survive
 //     cabinet-wide, not per game: the pin is PROVEN behaviourally by `strictPort
 //     is real, not just declared` (tests/monorepo-topology.test.mjs), and what
-//     the one server actually serves is pinned by `the dev server serves the
-//     LOBBY at every path` (tests/canonical-serve.test.mjs).
+//     the one server actually serves is pinned by `the one dev server serves the
+//     whole cabinet, not one app at every path` (tests/canonical-serve.test.mjs).
+//     That guard was `the dev server serves the LOBBY at every path` until mg1-2,
+//     which made the one server serve each game at /<id>/ and inverted it.
 //
 //   · the per-game pinned PORT (5278) goes with them. Its nearest successor is
 //     base-path uniqueness — `/centipede/` — asserted for all seven in
@@ -96,9 +98,11 @@
 // note at tests/canonical-serve.test.mjs:30 predicted this and deliberately did
 // not assert 5278's ABSENCE, leaving the removal to the task that owns the file.
 //
-// There is no per-game successor: one dev server, one port, and it serves the
-// LOBBY at every path (`the dev server serves the LOBBY at every path`,
-// tests/canonical-serve.test.mjs). The surviving halves are cabinet-wide — the one
+// There is no per-game successor: one dev server, one port. It served the LOBBY at
+// every path when this note was written; since mg1-2 it serves each game at /<id>/,
+// centipede included, pinned by `the one dev server serves the whole cabinet, not one
+// app at every path` (tests/canonical-serve.test.mjs). The surviving halves are
+// cabinet-wide — the one
 // pinned port is read from the config and required in both docs by `AC2: each
 // canonical serve doc references THE pinned port`, and centipede's `/centipede/`
 // base path is asserted with the other six in tests/monorepo-topology.test.mjs.

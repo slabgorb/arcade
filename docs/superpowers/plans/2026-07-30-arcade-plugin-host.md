@@ -2902,6 +2902,14 @@ exists to prevent.
   implying otherwise). It is out of scope here: nothing in Tasks 20-23 needs it, and production is
   unaffected — the live cabinet is built artefacts in R2, not a dev server.
 
+  > **Superseded 2026-07-31.** `uf1-19` no longer exists: the epic split that day moved this work to
+  > **`mg1-2`**, which has since SHIPPED it. The paragraph above is left as written because it is the
+  > record of what Task 19 decided and why. What actually landed was none of the three options it
+  > lists — each game runs as its own middleware-mode Vite server built from the same
+  > `defineAppConfig(<id>)` the build uses, mounted under its `/<id>/` prefix, so no URL or HTML
+  > rewriting is hand-rolled and dev cannot drift from the build. The tripwire described above did
+  > exactly its job: it reddened, and it told its successor what to finish.
+
 - [ ] **Step 0: VERIFY the host pinning — already restored in Task 5, do NOT re-add**
 
 **Owner ruling 2026-07-30: this step moved forward into Task 5's fix round.** Task 5's review found

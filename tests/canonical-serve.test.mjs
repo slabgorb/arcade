@@ -43,15 +43,54 @@
 //
 // Run from the orchestrator root: `npm run test:orchestrator`.
 
-import { test } from 'node:test';
+import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
+
+/** A short content fingerprint. Bodies are compared BY HASH, never by value: the
+ *  pages here are ~16KB and the modules carry an inline base64 sourcemap, so an
+ *  assertion on the raw strings buries its own failure message under tens of
+ *  kilobytes of diff. The identity being asserted is the same either way. */
+const hash = (s) => createHash('sha256').update(s).digest('hex').slice(0, 12);
+
+/** The `<title>` of an HTML file, or null. Read from disk — never hardcoded, so
+ *  renaming a game cannot leave this suite asserting a title nothing serves. */
+const titleOf = (htmlOrPath, fromDisk = false) => {
+  const html = fromDisk ? read(htmlOrPath) : htmlOrPath;
+  return (html.match(/<title>([^<]*)<\/title>/) ?? [])[1] ?? null;
+};
+
+/** Every app id under plugins/, read from the directory rather than listed.
+ *  scripts/build-app.mjs and the deploy workflow already read plugins/ directly;
+ *  a hand-maintained list here would be a fourth copy free to drift.
+ *
+ *  THE EMPTINESS GUARD LIVES HERE, not at the call sites. Every test below loops
+ *  over this list, and a `for` over an empty array runs zero assertions and
+ *  reports success — so a discovery failure would turn the whole suite green
+ *  while proving nothing, which is the exact vacuity this file exists to refuse.
+ *  It was first written as an `assert.ok(games.length >= 7, …)` repeated at each
+ *  call site, and review found it had been repeated at only two of the four:
+ *  a rule that must be remembered per call site is a rule that will be forgotten.
+ *  Throwing from the helper makes it structural — a new test cannot opt out. */
+const gameIds = () => {
+  const ids = readdirSync(join(root, 'plugins'), { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+  assert.ok(
+    ids.length >= 7,
+    `expected at least the seven games under plugins/, found ${ids.length} (${ids.join(', ') || 'none'}) — ` +
+      `every test in this file loops over this list, and an empty one makes all of them pass vacuously`,
+  );
+  return ids;
+};
 
 // Extract a `just` recipe body by name. A recipe header sits at column 0
 // (`name:`, `name args:`, or `name: deps`); its body lines are indented.
@@ -192,53 +231,76 @@ test('docs explain that strictPort lets only one server own the pinned port', ()
 // What the one dev server ACTUALLY serves — behavioural, not declarative
 // ---------------------------------------------------------------------------
 //
-// This is the successor to `AC2: canonical serve launches the lobby and the game
-// subrepos`, and it exists because that test's replacement was very nearly a curl
-// loop asserting 200 on `/`, `/tempest/`, `/star-wars/` … which passes VACUOUSLY.
-// MEASURED against the real root `vite` on 2026-07-31: every one of those paths
-// returns 200 — and so does `/banana/`, which is not an app, with byte-identical
-// HTML and `<title>Slabcade</title>`. The root vite.config.ts default-exports
-// `defineAppConfig({ id: 'lobby' })`, whose `root` is lobby/, so the dev server is
-// the LOBBY and every path is its SPA fallback. An all-200 check would have
-// reported "the cabinet serves" about a server that serves one app.
+// RETIRED HERE BY mg1-2, quoted by exact old title so the accounting is auditable:
 //
-// So the assertion is the identity, not the status code: a game's path returns the
-// same bytes as a nonsense path. That is the operational statement of "the dev
-// server does not serve the games", it cannot be satisfied by a fallback, and it
-// reddens the day someone genuinely wires the games in — which is exactly when the
-// `serve` recipe's comment, lobby/README.md and each plugin's CLAUDE.md all have to
-// stop warning that a screenshot taken at /tempest/ is the lobby.
+//   * `the dev server serves the LOBBY at every path (a game path is not a game)`
+//     It asserted that `/<id>/` returned bytes IDENTICAL to the nonsense control
+//     `/banana/` — the operational statement of "the dev server does not serve the
+//     games". It was correct, it was deliberately built to redden the day someone
+//     wired the games in, and this is that day. It is not deleted: AC3 requires the
+//     invariant MOVE rather than evaporate, so the same machinery — one spawned
+//     vite, one nonsense control, one body comparison — survives below with the
+//     comparison INVERTED. Identical became distinct. Everything that made the old
+//     assertion unfakeable by a fallback makes the new one unfakeable too.
 //
-// Making the one dev server genuinely serve the cabinet is uf1-19 (PLAN DEFECT
-// #22) — the gap is accepted and filed, not an oversight.
+// The vacuity trap that shaped both versions is unchanged and still live: an
+// all-200 sweep of `/`, `/tempest/`, `/star-wars/` … passes against a server that
+// serves ONE app at every URL, because a blanket SPA fallback answers 200 to
+// everything. That is why there is a control, and why `/banana/` — not an app, not
+// a plugin directory, not a route — is compared against rather than merely listed.
 //
-// IF YOU ARE READING THIS BECAUSE IT WENT RED: check whether the dev server now
-// really serves the games. If it does, this test has done its job — correct all
-// FOUR sites that describe the behaviour (vite.config.ts's default-export comment,
-// which is the file that causes it; the justfile `serve` recipe; lobby/README.md;
-// README.md), plus the affected plugins' CLAUDE.md, and replace this with the real
-// per-app assertion.
-test('the dev server serves the LOBBY at every path (a game path is not a game)', { timeout: 60_000 }, async () => {
+// mg1-2 MEASURED two further things on 2026-07-31, before writing any of this, and
+// both are the reason the tests below assert what they do:
+//
+//   1. `/tempest/src/main.ts` returned **200 with content-type text/html** — the
+//      fallback, serving the lobby's page in place of a module that does not
+//      resolve. So "the game's script loads" CANNOT be tested by status alone: a
+//      200 is exactly what the broken server already gives. The module tests below
+//      assert the content-type and compare against the lobby's own module.
+//   2. Every plugin's index.html and lobby/index.html BOTH reference the same
+//      absolute specifier `/src/main.ts`. Under the current per-app `root` that is
+//      unambiguous; under any server rooted higher up it is a collision, and the
+//      losing side gets the lobby's bootstrap while still looking like JavaScript.
+//
+// The suite therefore asks four separate questions, because passing the first three
+// while failing the fourth is a dev server that renders a game page and then dies:
+//   is it a DIFFERENT page than the control · is it THIS game's page · does a
+//   sub-entry resolve to its OWN file · does the game's module actually load.
+//
+// IF YOU ARE READING THIS BECAUSE IT WENT RED: the dev server has stopped serving
+// the cabinet. Start at vite.config.ts — its default export is what decides this.
+
+describe('the one dev server serves the whole cabinet, not one app at every path', () => {
   // A spare port, passed on the CLI. The pinned 5270 is deliberately NOT used: a
-  // sibling checkout (a-2, a-3) may legitimately hold it, and this test is about
+  // sibling checkout (a-1, a-3) may legitimately hold it, and this suite is about
   // WHAT is served, not about the pin — the pin is proven separately and
   // behaviourally by `strictPort is real, not just declared` in
   // tests/monorepo-topology.test.mjs.
-  const port = 5290 + Math.floor(Math.random() * 40);
-  const vite = spawn('node_modules/.bin/vite', ['--port', String(port), '--strictPort'], {
-    cwd: root,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  //
+  // 54xx, not the 5290-5329 the predecessor drew from: CLAUDE.md tells developers
+  // to run `npx vite --port 5290 --strictPort` to serve their own tree beside a
+  // sibling's server, so that range is the one most likely to be occupied on a
+  // working machine — and with strictPort a collision kills the server, failing
+  // this suite for a reason that has nothing to do with the cabinet. Nothing in
+  // the repo documents 54xx.
+  const port = 5400 + Math.floor(Math.random() * 100);
+  let vite;
   let output = '';
-  vite.stdout.on('data', (b) => (output += b.toString()));
-  vite.stderr.on('data', (b) => (output += b.toString()));
 
+  /** GET a path off the dev server. Returns status, content-type and body. */
   const get = async (path) => {
     const res = await fetch(`http://127.0.0.1:${port}/${path}`);
-    return { status: res.status, body: await res.text() };
+    return { status: res.status, type: res.headers.get('content-type') ?? '', body: await res.text() };
   };
 
-  try {
+  before(async () => {
+    vite = spawn('node_modules/.bin/vite', ['--port', String(port), '--strictPort'], {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    vite.stdout.on('data', (b) => (output += b.toString()));
+    vite.stderr.on('data', (b) => (output += b.toString()));
+
     // Poll for readiness rather than sleeping: a fixed sleep either flakes on a
     // slow machine or wastes the difference on a fast one.
     let ready = null;
@@ -250,35 +312,254 @@ test('the dev server serves the LOBBY at every path (a game path is not a game)'
       }
     }
     assert.notEqual(ready, null, `the dev server never accepted a connection on ${port}. Output:\n${output}`);
-    assert.equal(ready.status, 200, `the dev server must serve the lobby at /. Output:\n${output}`);
-    assert.match(ready.body, /<title>Slabcade<\/title>/, 'the root must be the lobby');
+  });
 
-    // The control. `/banana/` is not an app, not a plugin directory, and not a
-    // route — whatever comes back is the fallback, by construction.
+  after(() => vite?.kill('SIGKILL'));
+
+  test('the lobby is still the front door at /', { timeout: 60_000 }, async () => {
+    // A regression guard, not a new requirement. The lobby owns `/` because it owns
+    // the bucket's root keys in production; a change that serves the games by
+    // demoting the front door has broken the thing it was meant to extend.
+    const res = await get('');
+    assert.equal(res.status, 200, `the dev server must serve the lobby at /. Output:\n${output}`);
+    assert.equal(titleOf(res.body), titleOf('lobby/index.html', true), 'the root must be the lobby');
+  });
+
+  test('AC2/AC3: every game path DIFFERS from the nonsense control', { timeout: 60_000 }, async () => {
+    // Anti-vacuity on the LIST itself is enforced inside gameIds() — see the note
+    // there for why it is not repeated at each call site.
+    const games = gameIds();
     const control = await get('banana/');
 
-    for (const game of ['tempest', 'star-wars', 'asteroids', 'battlezone', 'red-baron', 'centipede', 'joust']) {
+    // Anti-vacuity on the CONTROL. Under the old (identical-bytes) assertion the
+    // risk was comparing errors to errors; under DIFFERS it is subtler — anything
+    // unstable makes "differs" trivially true. Pin it to today's behaviour: an
+    // unknown path is the lobby's SPA fallback.
+    assert.equal(
+      control.status,
+      200,
+      `the control /banana/ returned ${control.status}. If you deliberately made unknown paths 404, that ` +
+        `is a change to unknown-path handling that mg1-2 does not ask for — log a design deviation and ` +
+        `re-point this assertion, rather than letting the control silently become an error page.`,
+    );
+    assert.equal(
+      titleOf(control.body),
+      titleOf('lobby/index.html', true),
+      `the control /banana/ must be the lobby's SPA fallback — it is not an app, not a plugin directory ` +
+        `and not a route, so whatever answers it is the fallback by construction.`,
+    );
+
+    for (const game of games) {
       const res = await get(`${game}/`);
+      assert.notEqual(
+        hash(res.body),
+        hash(control.body),
+        `/${game}/ returned bytes IDENTICAL to the nonsense control /banana/ (both sha256:${hash(control.body)}, ` +
+          `<title>${titleOf(control.body)}</title>), which means it is the fallback and not ${game}. The dev ` +
+          `server is serving one app at every path. Fix vite.config.ts's default export — it is the file ` +
+          `that causes this.`,
+      );
+    }
+  });
+
+  test('AC1: each game path serves THAT game, not merely something non-control', { timeout: 60_000 }, async () => {
+    // "Differs from the control" alone is satisfiable by a server that serves ONE
+    // game at all seven paths — every path would differ from /banana/ and the
+    // previous test would pass. Identity is what closes that hole, and it is read
+    // from each plugin's own index.html on disk so the suite cannot drift from a
+    // rename.
+    const games = gameIds();
+    const lobbyTitle = titleOf('lobby/index.html', true);
+    const seen = new Map();
+
+    for (const game of games) {
+      const expected = titleOf(`plugins/${game}/index.html`, true);
+      assert.ok(expected, `plugins/${game}/index.html has no <title> to identify it by`);
+
+      const res = await get(`${game}/`);
+      assert.equal(res.status, 200, `/${game}/ returned ${res.status}`);
       assert.equal(
-        res.body,
-        control.body,
-        `/${game}/ returned different bytes from the nonsense control /banana/ — the dev server may now ` +
-          `genuinely serve the games (uf1-19). If so this guard has done its job: correct vite.config.ts's ` +
-          `default-export comment FIRST — it is the file that causes the behaviour — then the \`serve\` ` +
-          `recipe's comment, lobby/README.md, README.md and plugins/${game}/CLAUDE.md, and replace this ` +
-          `test with the real per-app assertion.`,
+        titleOf(res.body),
+        expected,
+        `/${game}/ served <title>${titleOf(res.body)}</title>, but plugins/${game}/index.html is ` +
+          `<title>${expected}</title>. The path resolved to the wrong app's entry point.`,
+      );
+      assert.notEqual(
+        titleOf(res.body),
+        lobbyTitle,
+        `/${game}/ served the lobby. A game path must resolve into plugins/${game}/, not into lobby/.`,
+      );
+      seen.set(game, hash(res.body));
+    }
+
+    // Distinctness of the whole set. Implied by distinct titles today, asserted
+    // anyway: it is the property that actually matters ("seven paths, seven apps"),
+    // and it keeps holding if two games are ever given the same title.
+    assert.equal(
+      new Set(seen.values()).size,
+      games.length,
+      `the ${games.length} game paths returned only ${new Set(seen.values()).size} distinct bodies — at ` +
+        `least two paths are serving the same app. Fingerprints: ` +
+        `${JSON.stringify(Object.fromEntries(seen))}`,
+    );
+  });
+
+  test('AC1: every shape of a game URL reaches the game, not the lobby', { timeout: 60_000 }, async () => {
+    // REGRESSION GUARD (mg1-2 review, finding R1). The first router matched the app
+    // id with `(?:\/|$)` — the id had to be followed by a slash or the end of the
+    // URL. `/tempest?x=1` is followed by `?`, so the match failed entirely and the
+    // request fell through to the lobby: 200, <title>Slabcade</title>, no error.
+    // A game path silently serving the lobby is the precise defect this story
+    // exists to remove, so every shape a browser or a developer can produce is
+    // pinned here rather than only the canonical one.
+    const game = gameIds()[0];
+    const expected = titleOf(`plugins/${game}/index.html`, true);
+    const lobbyTitle = titleOf('lobby/index.html', true);
+    assert.notEqual(expected, lobbyTitle, 'fixture problem: the game and the lobby must be distinguishable');
+
+    for (const path of [`${game}/`, `${game}`, `${game}?debug=1`, `${game}/?debug=1`, `${game}/#frag`]) {
+      const res = await get(path);
+      assert.equal(
+        titleOf(res.body),
+        expected,
+        `/${path} served <title>${titleOf(res.body)}</title> instead of <title>${expected}</title>. ` +
+          `Every shape of a game's URL must reach the game — a query string or a missing trailing ` +
+          `slash falling through to the lobby is a silent wrong-app serve.`,
       );
     }
 
-    // Anti-vacuity: the control must be the LOBBY, not an error page or an empty
-    // body that everything would trivially match.
-    assert.match(
-      control.body,
-      /<title>Slabcade<\/title>/,
-      `the control /banana/ must be the lobby's SPA fallback; if it is an error page this test compares ` +
-        `errors to errors and proves nothing. Got status ${control.status}.`,
+    // …and the control is unaffected by the same shapes, so the fix cannot have
+    // been "route everything to a game".
+    for (const path of ['banana/', 'banana', 'banana?debug=1']) {
+      assert.equal(titleOf((await get(path)).body), lobbyTitle, `/${path} must still be the lobby's fallback`);
+    }
+  });
+
+  test('AC1: a plugin sub-entry serves its OWN file, not the game index', { timeout: 60_000 }, async () => {
+    // The failure this catches is a wildcard rewrite: `/<id>/*` → plugins/<id>/index.html
+    // serves the right APP but the wrong PAGE, and every assertion above still
+    // passes. /tempest/models.html is named in the measurement that opened this
+    // story.
+    //
+    // Enumerated from the directory, not listed: a hardcoded set here would be a
+    // fifth copy of "which games ship a second page" (the others being each
+    // plugin.ts `build` export, AppSpec.entries, and build-app.mjs), free to drift
+    // the day a game gains a page.
+    const subEntries = gameIds().flatMap((game) =>
+      readdirSync(join(root, 'plugins', game))
+        .filter((f) => f.endsWith('.html') && f !== 'index.html')
+        .map((f) => [game, f]),
     );
-  } finally {
-    vite.kill('SIGKILL');
+    assert.ok(
+      subEntries.length >= 4,
+      `expected the known second entries (tempest/models.html, star-wars/models.html, star-wars/scenes.html, ` +
+        `red-baron/models.html); found ${subEntries.length} — if this is empty the loop below asserts nothing`,
+    );
+
+    for (const [game, entry] of subEntries) {
+      const expected = titleOf(`plugins/${game}/${entry}`, true);
+      const indexTitle = titleOf(`plugins/${game}/index.html`, true);
+      assert.ok(expected, `plugins/${game}/${entry} has no <title> to identify it by`);
+      assert.notEqual(expected, indexTitle, `fixture problem: ${game}/${entry} must be distinguishable from its index`);
+
+      const res = await get(`${game}/${entry}`);
+      assert.equal(res.status, 200, `/${game}/${entry} returned ${res.status}`);
+      assert.equal(
+        titleOf(res.body),
+        expected,
+        `/${game}/${entry} served <title>${titleOf(res.body)}</title> instead of <title>${expected}</title>. ` +
+          `A rewrite that maps every /${game}/* to index.html serves the right app and the wrong page.`,
+      );
+    }
+  });
+
+  test('AC1: a game page\'s own module really loads — 200 is not enough', { timeout: 60_000 }, async () => {
+    // MEASURED 2026-07-31 on the pre-fix server: /tempest/src/main.ts returned 200
+    // with content-type text/html — the SPA fallback answering for a module that
+    // does not resolve. A status check here is therefore VACUOUS by measurement,
+    // not by argument: it already passes against a server that serves no games.
+    //
+    // Two things make it non-vacuous. The content-type must be JavaScript (the
+    // fallback is text/html), and the module must DIFFER from the lobby's own —
+    // because every plugin index.html and lobby/index.html reference the SAME
+    // absolute specifier `/src/main.ts`, so a server that resolves game modules
+    // against the repo root hands back the lobby's bootstrap, which is real
+    // JavaScript and would satisfy a content-type check on its own.
+    const appModules = (html) =>
+      [...html.matchAll(/<script[^>]*type="module"[^>]*src="([^"]+)"/g)]
+        .map((m) => m[1])
+        // Vite injects its own client; /@vite/, /@id/ and /@fs/ are its namespace,
+        // not the app's entry. `includes`, NOT `startsWith` — MEASURED 2026-07-31
+        // by serving tempest through defineAppConfig({ id: 'tempest' }): under a
+        // per-app `base` Vite emits its client as "/tempest/@vite/client", which
+        // does not START with /@. A startsWith filter therefore counts Vite's own
+        // client as the app's module — and since that client is real JavaScript
+        // that differs from the lobby's bootstrap, every assertion below would
+        // pass on it. The `>= 1` guard would then be satisfied by a page carrying
+        // NO app entry at all, which is the precise vacuity this suite exists to
+        // refuse.
+        .filter((src) => !src.includes('/@'));
+
+    const lobbyEntries = appModules((await get('')).body);
+    assert.ok(lobbyEntries.length >= 1, 'the lobby page must reference at least one module of its own');
+    const lobbyModule = await get(lobbyEntries[0].replace(/^\//, ''));
+
+    for (const game of gameIds()) {
+      const page = await get(`${game}/`);
+      const entries = appModules(page.body);
+      assert.ok(
+        entries.length >= 1,
+        `/${game}/ referenced no module of its own (only Vite's injected /@… scripts). Found: ` +
+          `${JSON.stringify([...page.body.matchAll(/<script[^>]*src="([^"]+)"/g)].map((m) => m[1]))}`,
+      );
+
+      for (const src of entries) {
+        const mod = await get(src.replace(/^\//, ''));
+        assert.equal(mod.status, 200, `/${game}/ references ${src}, which returned ${mod.status}`);
+        assert.match(
+          mod.type,
+          /javascript|ecmascript/i,
+          `${src} (referenced by /${game}/) came back as "${mod.type}", not JavaScript. A 200 of text/html ` +
+            `is the SPA fallback standing in for a module that does not resolve — the page would render ` +
+            `and then die. This is the measured pre-fix behaviour of /${game}/src/main.ts.`,
+        );
+        assert.notEqual(
+          hash(mod.body),
+          hash(lobbyModule.body),
+          `${src} (referenced by /${game}/) served the LOBBY's module — byte-identical to what / references ` +
+            `(sha256:${hash(lobbyModule.body)}). Every plugin index.html and lobby/index.html both reference ` +
+            `"/src/main.ts", so a server that resolves it against the repo root gives ${game} the lobby's ` +
+            `bootstrap — real JavaScript, wrong app.`,
+        );
+      }
+    }
+  });
+});
+
+// --- the dead story id this work was filed under ---------------------------
+
+test('mg1-2: nothing still routes this work to the retired id `uf1-19`', () => {
+  // uf1-19 was renumbered to mg1-2 when epic uf1 was split on 2026-07-31 (uf1 now
+  // ends at uf1-18, and no sprint file defines uf1-19). Unlike the deliberately
+  // un-asserted absence of the old port 5273 at the top of this file — a doc may
+  // legitimately mention a retired port while explaining the collapse — a dead
+  // story id has no legitimate use: it points a reader at nothing. One of the
+  // references is this repo explaining when its own tripwire should redden.
+  const sites = ['CLAUDE.md', 'README.md', 'lobby/README.md', 'justfile', 'vite.config.ts'];
+  for (const site of sites) {
+    // Report the LINES, not the file. `assert.doesNotMatch` prints the whole
+    // subject on failure, and CLAUDE.md is 10KB — the message that tells you what
+    // to fix would be buried under the document containing the defect.
+    const hits = read(site)
+      .split('\n')
+      .map((line, i) => [i + 1, line])
+      .filter(([, line]) => line.includes('uf1-19'));
+    assert.deepEqual(
+      hits,
+      [],
+      `${site} routes the multi-app dev server to uf1-19, which does not exist — the epic split renumbered ` +
+        `it to mg1-2. Point the reader at mg1-2, or drop the sentence if the paragraph is now obsolete.\n` +
+        hits.map(([n, line]) => `  ${site}:${n}: ${line.trim()}`).join('\n'),
+    );
   }
 });

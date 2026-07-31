@@ -259,3 +259,51 @@ on the branch.
 orchestrator commit was BLOCKED — pf's branch-protection hook judges the repo/branch from the SESSION's
 working directory, which was still `joust/` on the protected `develop`, no matter what `cd` the command
 itself began with. Run a bare `cd <orchestrator> && pwd` first, or use `git -C <abs>` throughout.
+
+---
+
+### POST-MONOREPO (2026-07-30 collapse): the claim is still TWO pushes, but now to ONE remote — and the sibling probes changed shape
+
+**Correction to the entry above** ("the two pushes go to DIFFERENT remotes and both are needed").
+That was true when the games were subrepos. After the plugin collapse there is exactly one repo and
+one remote, so the two pushes are `origin main` (the epic-YAML stamp + `sprint/context/context-story-<id>.md`)
+and `origin <feat-branch>` (empty, tip == main, purely so `git branch -r | grep <id>` lights up for a
+sibling). Both still needed, same remote. Done for mg1-2: claim commit `0e57baa` on `main`, branch
+`feat/mg1-2-multi-app-dev-server` pushed at zero commits ahead.
+
+**The sibling probes still work but one of them silently no-ops now.** `ls /Users/slabgorb/Projects/a-*/.session/*-session.md`
+returned `zsh: no matches found` — that is the glob failing, NOT a clean board, and under a different
+shell it would have printed nothing and looked identical to "no sessions." Read the probe's output,
+don't just check it ran. The branch probe (`git fetch --prune && git branch -r | grep -Ei "<epic>"`)
+is the reliable half now that all checkouts share one remote — it sees every sibling's branches
+directly instead of needing a per-subrepo fetch.
+
+**`sm-setup` STILL leaves the story at `status: backlog`** (confirmed again on mg1-2, third time).
+Stamp it yourself with `pf sprint story update <id> --status in_progress` and verify with
+`pf sprint story show <id> | grep -i Status`. Treat this as unconditional, not as a maybe.
+
+### When a story's AC is an either/or, get the ruling BEFORE `sm-setup` — and annotate the AC rather than rewriting it
+
+**Situation:** mg1-2's AC1 read "Either the dev server genuinely serves each game at /<id>/ …, or the
+recipe and its docs are renamed and reworded so nothing claims a cabinet-wide dev server exists." Two
+completely different deliverables — a 5-point build vs. a doc rename — behind one AC.
+
+**Why it must be settled at setup:** TEA writes a different RED test for each branch, so an unruled
+either/or does not merely risk rework, it makes the RED phase unspecifiable. This is the same shape as
+the jt8-6 "when the STORY is wrong" entry: the backlog-shape question is the user's, not the pipeline's.
+Cost of asking: one question. Cost of not: a whole discarded RED.
+
+**Tell for spotting it cheaply:** compare the points against a same-epic doc-only story. mg1-2 was 5pt
+while mg1-1 (a pure truthfulness fix) was 1pt — the estimate had already implicitly chosen "build",
+which is worth putting to the user as the recommended option rather than asking cold.
+
+**Handling the losing branch:** `sm-setup` copies ACs verbatim from the epic YAML, so the rejected half
+lands in the context as TEA's primary input even when the ruling is recorded above it. Do NOT edit the
+AC text — add a `> ⚠` block immediately above it saying which branch is dead and why, leaving the
+original visible. Rewriting it would disguise a decision as the story having always said so, and the
+epic YAML would then disagree with the context with no record of which came first.
+
+**Also worth a grep at setup: story ids cited in prose go stale on an epic split.** mg1-2 was `uf1-19`
+until the 2026-07-31 split; `CLAUDE.md:134,136` and the migration plan still named the dead id, and one
+of those was a test's own explanation of when it should redden. `grep -rn "<old-id>" *.md docs/ sprint/`
+costs nothing and the hits are usually inside the story's own blast radius.

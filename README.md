@@ -120,7 +120,7 @@ Details and runbook: [`docs/ops/hosting.md`](docs/ops/hosting.md).
 ## Working on a game
 
 ```bash
-just serve                # the ONE dev server for the cabinet (see the caveat below)
+just serve                # the ONE dev server: lobby at /, each game at /<id>/
 just test-all             # every project's tests, in one vitest process
 just test-one tempest     # one app's tests — what the release gate runs
 just build-all            # build every app (seven games + the lobby) into dist/
@@ -131,7 +131,11 @@ There are no per-game `dev-*`/`test-*`/`build-*` recipes any more, and no
 `just status`/`just pull`: each was `cd <name> && npm run …` across eight sibling
 checkouts that are now one repo. Take the app id as an argument instead.
 
-⚠ **`just serve` serves the LOBBY at every path today.** The root `vite.config.ts`
-default-exports the lobby's config, so `/`, `/tempest/` and even a nonsense `/banana/`
-all return `200` with identical bytes. A screenshot taken at `/tempest/` is the lobby —
-the `/<id>/` paths are real in the R2 build, not in dev.
+**`just serve` serves the whole cabinet** on one port: the lobby at `/` and each game at
+`/<id>/` from its own plugin sources — the same paths the R2 build uses, so a dev URL and
+a production URL differ only in origin. A screenshot taken at `/tempest/` is Tempest.
+
+Unknown paths (`/banana/`) still fall through to the lobby's SPA fallback, so an all-`200`
+sweep of known paths proves nothing about whether the games are really wired in — until
+mg1-2 that fallback answered every path with identical lobby HTML. Check with a nonsense
+control and assert a game path DIFFERS from it, as `tests/canonical-serve.test.mjs` does.

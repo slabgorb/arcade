@@ -76,13 +76,17 @@ npx vitest run --project tempest           # tempest's suite only
 npx vitest run --project tempest <name>    # a specific tempest test file/pattern
 ```
 
-**There is no way to run tempest in a browser from this repo yet.** Do not tell a
-user to, and do not try to verify a render change by loading it. Root
-`vite.config.ts` sets `root: lobby`, so `npx vite` serves the lobby at *every*
-path — `/tempest/` returns the lobby's `index.html`, and so does a nonsense
-control path like `/banana/`; it is a blanket fallback, not routing. `npm run
-build` is not wired for tempest either. Both land in a later stage of the
-monorepo migration; the old per-game `npm run dev` on port 5273 is gone.
+**Run it in a browser with `just serve`, then open <http://127.0.0.1:5270/tempest/>.**
+One dev server at the repo root serves the whole cabinet — the lobby at `/`, each
+game at `/<id>/` from its own plugin sources — so a render change can be verified
+by loading it, and a screenshot taken at `/tempest/` is tempest. `models.html` is
+served too, at `/tempest/models.html`. Build with
+`node scripts/build-app.mjs tempest` (→ `dist/tempest/`).
+
+The old per-game `npm run dev` on port 5273 is gone; there is one port, 5270, and
+it is pinned in `vite.config.ts` rather than on the command line. Until mg1-2 the
+root server really did return the lobby at every path, so any older note claiming
+a screenshot at `/tempest/` is the lobby predates this.
 
 ## Testing
 
@@ -91,9 +95,10 @@ pass. Cover: projection/geometry math (lane interpolation, wrap vs clamp), each
 enemy state machine driven by a fixed RNG seed, collision (bullet↔enemy,
 enemy↔player, spike↔player-on-warp), and scoring/spawn/level-transition logic.
 The standing convention is that the shell (render/input/audio/loop) is verified by
-running the game — but that is not currently possible from this repo (see
-Commands), so shell changes rest on the source-wiring tests alone until a dev
-server is wired. Say so plainly rather than claiming a visual check you did not make.
+running the game, and that is possible again: `just serve` →
+<http://127.0.0.1:5270/tempest/> (see Commands). Do it rather than resting a shell
+change on the source-wiring tests alone — and if you did not actually look, say so
+plainly rather than claiming a visual check you did not make.
 
 ## The fidelity audit and its citation gate
 

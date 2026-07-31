@@ -2007,3 +2007,84 @@ control (it would silently revert the previous story's shipped feature); halving
 is caught only by a "duration is not the defect" control. A story whose complaint was "it killed me
 in under a second" is exactly the shape where someone later "fixes" it by slowing the projectile —
 pin the refuted half of the complaint, not just the confirmed half.
+
+---
+
+### On a dev server with an SPA fallback, "the module loads" is VACUOUS on status — the fallback answers 200 with text/html
+
+**Situation:** mg1-2 RED. The story required the dev server to genuinely serve each game at
+`/<id>/`. The obvious integration test is "fetch the page, fetch the module it references, assert
+200".
+
+**Problem:** MEASURED against the pre-fix server before writing anything — `/tempest/src/main.ts`
+returned **200 with `content-type: text/html`**. A blanket SPA fallback answers every unmatched
+URL with the one app's HTML, so a status check on a missing module passes, and passes against a
+server that serves NO games at all. The check would have shipped green while proving nothing.
+
+Two assertions make it real, and both were derived from measurements rather than caution:
+- **content-type must be JavaScript.** The fallback is `text/html`; that alone separates a resolved
+  module from a fallback standing in for one.
+- **the module must DIFFER from the lobby's own.** Every `plugins/*/index.html` AND
+  `lobby/index.html` reference the SAME absolute specifier `/src/main.ts`. It is unambiguous only
+  because each app is served with its own `root`; a server rooted higher up hands a game the
+  lobby's bootstrap — real JavaScript, right content-type, wrong app.
+
+**Prevention:** on any server-backed test, ask what the 404 path actually returns BEFORE choosing
+the assertion. If unmatched URLs return 200-with-HTML, then status, `res.ok` and "it didn't throw"
+are all vacuous, and the only honest assertions are on the content-type and on a control body.
+
+---
+
+### Vite's injected client is `/<id>/@vite/client` under a per-app `base` — a `startsWith('/@')` filter lets it through and re-vacuates the test
+
+**Situation:** same story. To find "the app's own entry module" in a served page, the natural filter
+is to drop Vite's injected scripts: `srcs.filter(s => !s.startsWith('/@'))`.
+
+**Problem:** that is only true at `base: '/'`. Serving tempest through
+`defineAppConfig({ id: 'tempest' })` (base `/tempest/`) emits
+`["/tempest/@vite/client", "/tempest/src/main.ts"]` — the client does NOT start with `/@`. The
+filter kept it, and because Vite's client is real JavaScript that differs from the lobby's
+bootstrap, every downstream assertion passed on it. Worse, the `entries.length >= 1` anti-vacuity
+guard would then be satisfied by a page carrying NO app entry at all — the guard against vacuity
+was itself made vacuous by the thing it was guarding.
+
+**Prevention:** `includes('/@')`, not `startsWith('/@')`, whenever a base path may be prefixed.
+More generally: a filter written against `base: '/'` silently mis-classifies under any other base,
+and the failure is a test that passes on the framework's own injected asset.
+
+---
+
+### PROBE YOUR OWN CONTRACT by serving ONE app through the config that already exists
+
+**Situation:** mg1-2's RED asserts five things about a multi-app dev server that does not exist yet.
+Nothing in a red suite proves the assertions are jointly SATISFIABLE — a suite can demand things no
+implementation can deliver at once, and Dev discovers that hours in.
+
+**What worked:** the repo already had a per-app config factory (`defineAppConfig({ id })`) used by
+the build. Spinning up `createServer({ configFile: false, ...defineAppConfig({ id: 'tempest' }) })`
+serves ONE game for real, and the suite's own predicates can be run against it. All five came back
+CAN PASS — and the run is what exposed the `/@` filter bug above. The probe cost ~15 minutes and
+was the single highest-value step of the phase.
+
+**Two mechanics worth remembering:** a throwaway probe importing `vite` must live INSIDE the repo
+(one placed in a scratchpad dir cannot resolve `vite` from `node_modules`), and a Vite dev server
+keeps the event loop alive — `await server.close()` is not enough, add `process.exit(0)` or the
+probe hangs until the tool timeout kills it.
+
+**Prevention:** when RED specifies behaviour nothing implements yet, look for an existing code path
+that produces the behaviour in a NARROWER form (one app instead of eight, one wave instead of all)
+and run the predicates against that. "Is my contract achievable?" is a separate question from "is
+it failing?", and only the first one is answered by watching it go red.
+
+---
+
+### Compare large bodies BY HASH — an `assert.notEqual` on two 16KB pages buries its own message
+
+**Situation:** first run of mg1-2's RED. The failures were correct, but the report was 30KB: node
+prints `actual` and `expected` in full, and the modules carry an inline base64 sourcemap.
+
+**Prevention:** `hash(a) !== hash(b)` asserts the identical property and keeps the message
+readable; put the fingerprint and the distinguishing detail (the `<title>`, the path) in the
+message instead. Same for `assert.doesNotMatch` against a whole file — CLAUDE.md is 10KB, so a
+prose assertion prints the entire document containing the defect. Split the file, filter the
+matching lines, and `deepEqual` against `[]` so the message names `file:line`.
