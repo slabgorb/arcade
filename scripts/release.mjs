@@ -89,6 +89,21 @@ export function tagFor(id, version) {
   return `${id}-v${version}`;
 }
 
+/**
+ * Is `tag` a release tag OF `id`? The inverse of tagFor, and stricter than the
+ * glob that fetches candidates.
+ *
+ * `git tag -l 'tempest-v*'` is a prefix match, so a future app called
+ * `tempest-vector` would hand `tempest-v0.1.0`… no — it would hand
+ * `tempest-vector-v0.1.0`, which that glob matches. Picking it up as tempest's
+ * "last tag" would diff tempest's directory against a SIBLING's release and
+ * decide, silently, that there was nothing to ship.
+ */
+export function isReleaseTag(id, tag) {
+  const safe = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${safe}-v\\d+\\.\\d+\\.\\d+$`).test(tag);
+}
+
 /** Bump a bare X.Y.Z. Anything else throws rather than being guessed at. */
 export function nextVersion(current, level) {
   if (!LEVELS.includes(level)) {
@@ -231,9 +246,11 @@ function run(cmd, args) {
 /** The app's most recent release tag, or null if it has never been released. */
 function lastTagFor(id) {
   // -v:refname sorts by version, not lexically, so v1.0.9 does not beat v1.0.10.
-  // The glob is anchored by the `-v` in tagFor, and no app id is a prefix of
-  // another, so `tempest-v*` cannot pick up a sibling's tag.
-  const [newest] = out('git', ['tag', '-l', `${id}-v*`, '--sort=-v:refname']).split('\n').filter(Boolean);
+  // The glob only narrows; isReleaseTag is what decides (see its comment — the
+  // glob would also match a longer app id that starts with this one).
+  const [newest] = out('git', ['tag', '-l', `${id}-v*`, '--sort=-v:refname'])
+    .split('\n')
+    .filter((t) => isReleaseTag(id, t));
   return newest ?? null;
 }
 

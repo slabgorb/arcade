@@ -23,6 +23,7 @@ import {
   packagePathFor,
   releaseFiles,
   gateSteps,
+  isReleaseTag,
   releaseSteps,
   setPackageVersion,
   shouldRelease,
@@ -62,6 +63,21 @@ test('the deploy workflow can parse the app back out of every tag this script ma
   assert.equal(parse('red-baron-v0.1.1'), 'red-baron');
   // An unprefixed tag comes back unchanged — which is how the workflow detects it.
   assert.equal(parse('v1.0.0'), 'v1.0.0');
+});
+
+test('isReleaseTag is the exact inverse of tagFor, not the glob that finds candidates', () => {
+  // `git tag -l 'tempest-v*'` is a PREFIX match. It answers "which tags might be
+  // tempest's", not "which are" — a future app named `tempest-vector` would put
+  // `tempest-vector-v0.1.0` in that list, and taking it as tempest's last release
+  // would diff tempest's directory against a sibling's tag and skip the release.
+  for (const id of appIds()) assert.ok(isReleaseTag(id, tagFor(id, '1.2.3')), id);
+  assert.equal(isReleaseTag('tempest', 'tempest-vector-v0.1.0'), false);
+  assert.equal(isReleaseTag('tempest', 'asteroids-v1.0.0'), false);
+  assert.equal(isReleaseTag('tempest', 'tempest-v1.0'), false);
+  assert.equal(isReleaseTag('tempest', 'audit/tempest'), false);
+  // Hyphens and dots in an id are literal, never regex metacharacters.
+  assert.equal(isReleaseTag('star-wars', 'star-wars-v0.0.33'), true);
+  assert.equal(isReleaseTag('star-wars', 'starxwars-v0.0.33'), false);
 });
 
 // ---------------------------------------------------------------------------
