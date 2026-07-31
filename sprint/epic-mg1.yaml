@@ -51,7 +51,7 @@ stories:
     description: "Found by the Task 22 reviewer during the monorepo migration, 2026-07-31, outside that task's file list and therefore filed rather than fixed in passing. Task 22 collapsed .pennyfarthing/repos.yaml to a single 'arcade' entry, because there is now exactly one repo. But the sprint YAMLs were not part of that change and still carry per-game routing on epics and stories — repos values of star-wars, battlezone, asteroids, joust, red-baron, centipede, lobby, and multi-repo lists like 'lobby,tempest,star-wars,asteroids,battlezone,red-baron,centipede'. Every one of those names a repo the registry no longer knows. The blast radius was checked rather than assumed: pf/context/generate.py:53 renders a story's repos field as PROSE into the agent context and never resolves it to a path, so nothing crashes and no command breaks — which is precisely why this will not surface on its own. What it does instead is quietly wrong: every future story setup hands the agent a context file telling it to work in a repo that does not exist, pointing at directories that moved to plugins/<id>/ during the collapse. The failure mode is an agent confidently cd-ing somewhere wrong, or a human reading the sprint and believing the old topology. This is a mechanical sweep across many files, which is the other reason it is its own story: doing it inside a documentation task would have buried a large diff under an unrelated review."
     points: 3
     priority: p1
-    status: in_review
+    status: in_progress
     started: '2026-07-31'
     repos: arcade
     workflow: tdd
@@ -183,7 +183,6 @@ stories:
       - Editing a file under plugins/<id>/src/ delivers an HMR update to a client loaded at /<id>/, measured against a live server rather than inferred from configuration.
       - The lobby's existing HMR still works after the change - it does today, and a fix that trades the games' hot reload for the lobby's is not a fix.
       - "`just serve` starts with no 'Port is already in use' output. Silencing that noise is why the shared server exists; a fix that reintroduces six errors per start has regressed the thing mg1-2 paid for."
-      - ? A test covers HMR end to end for at least one game AND the lobby - connect a vite-hmr websocket, touch a real source file, assert the update arrives. Asserting that a websocket UPGRADE is accepted is explicitly insufficient
-        : that check passed while game HMR was entirely dead, because the socket that accepted was the lobby's.
+      - "A test covers HMR end to end for at least one game AND the lobby - connect a vite-hmr websocket, touch a real source file, assert the update arrives. Asserting that a websocket UPGRADE is accepted is explicitly insufficient: that check passed while game HMR was entirely dead, because the socket that accepted was the lobby's."
       - The warning comment in vite.config.ts and any doc describing the limitation are removed or corrected in the same change, so nothing is left claiming a gap that no longer exists.
     type: bug

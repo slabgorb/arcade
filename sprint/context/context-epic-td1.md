@@ -8,7 +8,7 @@ Cross-repo tech debt surfaced by the jt1 joust foundation epic (2026-07-19/20). 
 
 ## Metadata
 - **Epic ID:** td1
-- **Repo:** lobby,tempest,star-wars,asteroids,battlezone,red-baron,centipede,joust
+- **Repo:** arcade
 
 ## Background
 _Cross-story constraints and guardrails to be filled in as the epic

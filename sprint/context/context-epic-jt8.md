@@ -8,7 +8,7 @@ Fifth joust epic — the PLAYABILITY slice. The game boots, renders, scores and 
 
 ## Metadata
 - **Epic ID:** jt8
-- **Repo:** joust
+- **Repo:** arcade
 
 ## Background
 _Cross-story constraints and guardrails to be filled in as the epic

@@ -8,7 +8,7 @@ The 2026-07-30 flag day collapsed nine repos into this one (design: docs/superpo
 
 ## Metadata
 - **Epic ID:** mg1
-- **Repo:** .
+- **Repo:** arcade
 
 ## Background
 

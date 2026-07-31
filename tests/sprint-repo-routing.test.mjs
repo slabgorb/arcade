@@ -292,25 +292,27 @@ test('every story keeps its id, title and a non-empty acceptance_criteria block'
   }
 });
 
-test("no sprint scalar carries an unquoted ' #' — the exact shape that truncated epic-SH", () => {
-  // A bare `#` preceded by whitespace starts a YAML comment, so an unquoted value
-  // containing one loses everything after it on the next round-trip. Single-quoting
-  // the value is what fixed SH-1 and what keeps it fixed. Anchored on the fields the
-  // sweep actually rewrites plus the prose fields most likely to carry a `#ref`.
-  const offenders = [];
-  for (const { path: file, text } of epicFiles()) {
-    text.split('\n').forEach((line, i) => {
-      const m = /^\s*(id|title|repos|workflow|status|priority|description):\s*(.*)$/.exec(line);
-      if (!m) return;
-      const value = m[2];
-      if (value.startsWith("'") || value.startsWith('"') || value === '') return;
-      if (/\s#/.test(value)) offenders.push(`${file}:${i + 1}: ${line.trim()}`);
-    });
-  }
+test("no sprint scalar carries an unquoted ' #' — the exact shape that truncated epic-SH", async () => {
+  const { yamlRoundTripRisks } = await helper();
+
+  // This test used to carry its own inline scan, and that scan matched only
+  // `id|title|repos|workflow|status|priority|description` key:value lines — so it
+  // could not fail on the shape its own name cites. SH-1's loss was an
+  // acceptance_criteria LIST ITEM. It now delegates to `yamlRoundTripRisks`, which
+  // reads list items and mapping entries alike, and it is measured: re-adding the
+  // archived SH-1 line unquoted to a live shard leaves this test RED, where before
+  // the whole suite stayed green.
+  //
+  // Both round-trip shapes are asserted here rather than only the hash, because the
+  // live tree is where a real regression lands and the fixtures above only prove the
+  // detector works in a laboratory.
+  const risks = yamlRoundTripRisks(epicFiles());
+
+  const rendered = risks.map((r) => `${r.file}:${r.line} [${r.kind}] ${r.text}`).join('\n');
   assert.deepEqual(
-    offenders,
+    risks,
     [],
-    `unquoted values containing ' #' will be truncated by the next pf YAML round-trip:\n${offenders.join('\n')}`,
+    `values that will not survive the next pf YAML round-trip:\n${rendered}`,
   );
 });
 

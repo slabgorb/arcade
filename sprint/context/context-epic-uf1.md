@@ -8,7 +8,7 @@ A fleet-wide sweep on 2026-07-28 (all nine subrepos on develop) hunted for featu
 
 ## Metadata
 - **Epic ID:** uf1
-- **Repo:** red-baron,joust,star-wars,lobby,.
+- **Repo:** arcade
 
 ## Background
 _Cross-story constraints and guardrails to be filled in as the epic

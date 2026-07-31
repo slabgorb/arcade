@@ -8,7 +8,7 @@ Second fidelity axis after sw7. sw7 verified sim-vs-ROM (constants/opcodes/table
 
 ## Metadata
 - **Epic ID:** sw8
-- **Repo:** star-wars
+- **Repo:** arcade
 
 ## Background
 _Cross-story constraints and guardrails to be filled in as the epic
