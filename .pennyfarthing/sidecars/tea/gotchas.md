@@ -2178,3 +2178,99 @@ file on disk while `npx` goes looking. Widening the pinned set is the wrong firs
 deliberate list, and the newcomer must be provisioned before it is pinned. Worth knowing before you
 write the spawn, not after — and it is a reason to run the FULL orchestrator suite, not just your
 own file, before believing a RED is clean.
+
+---
+
+### A BOUNDED assertion is not a leak detector — mutate the accumulate bug and watch two of your three guards sail through
+
+**Situation:** jt5-1 (joust) builds a per-frame cue channel. Three tests guard "the stream is
+REBUILT each frame, never appended to": an event is GONE next frame, a long quiet run drains, and
+the stream is not the game's existing capped log wearing a new name. All three read as if they
+pin the same property.
+
+**Problem:** with a throwaway implementation in place, mutating `cues = [...sim.cues]` to
+`cues = [...game.events, ...sim.cues]` reddened **one of the three**. The other two were bounded,
+not exact — `toBeLessThan(EVENT_KINDS.length)` over a quiet window, and
+`toBeLessThan(sim.events.length)` — and an appended stream that has gathered four events in a
+quiet window sits comfortably under any bound generous enough to look safe. A bound reads like a
+leak detector and is not one: it only fires once the leak is already large, and the window a test
+picks is usually too short for that.
+
+**Prevention:** for any "rebuilt / drained / cleared each cycle" property, find a cycle where the
+correct answer is **exactly zero** and assert `toEqual([])` there. Measure that cycle, don't
+assume it — a throwaway run printing `frame N: cues=X simlog=Y` for a band of frames hands you a
+frame where the stream must be empty *and* the thing it might be confused with is non-empty
+(here: frame 200 emits nothing while the capped log still holds three entries, so one frame
+discriminates both ways at once). Same mutation after the rewrite: 4 red, not 1.
+
+**Corollary — the mutation battery is what ranks your guards.** Reading the three tests, they look
+equally strong; only the mutation separates them. Budget the probe run: it is the difference
+between shipping one working guard and believing you shipped three.
+
+---
+
+### A mutation that DIDN'T APPLY is indistinguishable from a guard that doesn't bite — make the mutation assert its own landing
+
+**Situation:** same mutation battery. `mutate.sh "drift ONE cited verbatim by a byte" python3 -c
+"...replace('SNEDIE\tFCB\t040,!N$16!.$7F,20\tENEMY DIES', ...)"` came back **1928 passed** — a
+clean green, which reads as "the citation guard is vacuous, the whole AC5 file is scenery."
+
+**Problem:** the `$16` and `$7F` in the ROM verbatim were eaten by the shell before python ever saw
+them (with a `SyntaxWarning: invalid escape sequence` scrolling past in the noise), so `.replace()`
+matched nothing and wrote the file back unchanged. The run was green because **nothing was
+mutated**. Rewritten as a heredoc'd script with `assert needle in s` and `assert s2 != s`, the same
+mutation reddens 1 test. Two minutes from concluding a real guard was worthless.
+
+**Prevention:** every mutation must prove it landed before the run is believed —
+`assert <needle> in s` / `assert mutated != original`, and `print()` a one-line confirmation the
+harness echoes above the result. Treat a mutation reporting **zero** new failures as a claim about
+your MUTATION first and the guard second, exactly as a grep returning 0 is a claim about your
+pattern first (the cp5-1 `grep -Eci` lesson, arrived at from the other direction). This bites
+hardest on ROM work, where the strings you mutate are full of `$`, `!`, `\t` and backslashes — the
+characters a shell most wants to eat. Write mutations to a FILE and run the file; never `python3 -c`
+through a quoted shell argument.
+
+---
+
+### The moments a story lists as "the sim already produces every one" can have ZERO production callers — grep the emitter before you pin the cue
+
+**Situation:** jt5-1's description names the moments its event channel should carry — "the flap, a
+lance joust won or lost, a rider unhorsed, an egg laid, collected or hatching, the buzzard, the
+pterodactyl arriving, **the lava troll's grab**, the wave clearing, a life lost" — prefaced with
+"The sim already produces every moment worth a cue."
+
+**Problem:** three of them do not exist to be observed, and each fails differently.
+- **The lava troll's grab.** `troll.beginGrip` is exported, unit-tested and has **zero production
+  callers**. The codebase already said so, in a registry nobody greps: `difficulty.ts` carries a
+  `no-consumer-yet` entry reading *"a LIVE troll grab — troll.beginGrip exists but has zero
+  production callers (uf1-11)"*, owner `uf1-10`.
+- **The thuds.** The collision pass COMPUTES the bounce and then `continue`s past it, and
+  `bounceTop`/`bounceBottom`/`bounceHorizontal` likewise have zero production callers. A cue here
+  would announce a collision the sim does not resolve — audible, and a lie.
+- **The flap.** Real, reachable, and a **two-edge** cue in the ROM: the press plays wing-DOWN
+  (GOFLAP→FLAST2) and the RELEASE plays wing-UP (GOFLIP). Our core sees only the press edge, so
+  wiring it ships half a paired cue.
+
+**Prevention:** for every moment a story asks you to emit, grep the CALLERS of the function that
+would emit it, not just its definition — `grep -rn "beginGrip" src/ | grep -v "^src/core/troll.ts"`
+settles it in one command. An exported, tested, well-documented function is not a live mechanic.
+Then check whether the repo keeps a gap registry (joust's `difficulty.ts` `no-consumer-yet` rows,
+each with a ROM line and an owner story): a story's premise is often already refuted there, with
+the owner named, and quoting it turns a scoping argument into a citation. Drop the unreachable
+moments from the union — a declared-but-unemittable kind passes the manifest and dispatch sweeps
+(they read the same tuple) and ships a cue that can never fire — and add a test that FORBIDS the
+deferred names, so a later well-meaning addition has to come with its emitter.
+
+**Bonus, and it decided this story's whole shape:** the machine may not have the sound at all.
+joust's ROM carries a complete 38-entry sound table with Williams's own comment on each row
+("ENEMY DIES", "EGG HATCHING SOUND"), and there is **no wave-clear sound, no egg-laid sound and no
+joust-won sound** in it. Half the story's guessed moment list had no cue and a third of the ROM's
+cues had no moment in the list. Read the machine's table BEFORE accepting the story's list of
+moments — the intersection is the story, and the two leftovers are Delivery Findings.
+
+**And check what the quarry does NOT contain.** `JOUSTSND.DOC` is three lines long and its entire
+content is `SEE [LIBRARY.SOUND]VSNDRM4.SRC` — the sound board's own firmware is not vendored. So an
+AC offering "cite the ROM **or the sound board**" has only one of its two options available, every
+citation must come from the game side, and no claim about what a sound CODE actually sounds like is
+supportable. Pin the absence in a test, so a later story cannot quietly cite a listing that is not
+there.
