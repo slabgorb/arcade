@@ -22,6 +22,7 @@ games := "tempest star-wars asteroids battlezone red-baron centipede joust"
 # with them the `@arcade/shared` git-dep pin they had to be reconciled against
 # (scripts/deps-doctor.mjs, deleted): the shared library is in-tree at src/shared,
 # reached through the `@shared` alias, so there is no pin left to drift.
+# Install the whole cabinet (one npm install at the root)
 install-all:
     @npm install
 
@@ -35,11 +36,13 @@ install-all:
 # Deliberately NOT `npm test`: that is `vitest run --passWithNoTests`, which is the
 # right stance for a per-app script but the wrong one for the fleet gate — a config
 # that stopped matching any test file would sail through it.
+# Run every project's tests in ONE vitest process
 test-all:
     @npx vitest run
 
 # One app's project only — what the release gate runs.
 # `--project <unknown>` is a startup error in vitest, not a silent zero-test pass.
+# Run ONE app's tests, e.g. `just test-one tempest` — what the release gate runs
 test-one name:
     @npx vitest run --project {{name}}
 
@@ -52,6 +55,7 @@ test-one name:
 # The lobby builds LAST. Its outDir is dist/, the parent of every game's dist/<id>/,
 # so it is the app whose output the others sit inside; building it last means a
 # `just build-all` leaves a complete tree even if cleanLobbyOutput ever regressed.
+# Build every app (seven games + the lobby) into dist/
 build-all:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -141,6 +145,7 @@ ci: test-orchestrator test-all build-all
 # here. Pinned by `the dev server serves the LOBBY at every path` in
 # tests/canonical-serve.test.mjs, which reddens the day the games are really wired
 # in and this paragraph has to change.
+# Serve the arcade in dev — ONE vite on :5270 (today: the lobby at every path)
 serve:
     @npx vite
 
@@ -161,6 +166,7 @@ serve:
 # games), so an unrestricted upload here republishes every game sitting on disk:
 # 34 objects, 29 of them games. Deploy one app, ship eight — from whatever build
 # happens to be lying around, at whatever commit.
+# Build + upload EVERY app to the arcade-lobby bucket (manual fallback; prefer `just release`)
 deploy:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -218,6 +224,7 @@ deploy-one name:
 # no changes.
 assets_bucket := "arcade"
 
+# Bake star-wars's music + sfx and upload them to the assets bucket
 deploy-assets:
     #!/usr/bin/env bash
     set -euo pipefail

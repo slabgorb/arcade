@@ -176,6 +176,20 @@ import { onlyFor, parseArgs } from '../scripts/deploy-r2.mjs';
 
 const GAME_IDS = appIds().filter((id) => id !== 'lobby');
 
+// ANTI-VACUITY ANCHOR for every negative assertion below, and it must run first.
+// All of them are "no <game>/ key appears", computed against GAME_IDS — which is
+// read off the real plugins/ directory. An EMPTY GAME_IDS makes the fixture build
+// no game directories, makes gameKeys() return [] unconditionally, and makes even
+// the control (`the fixture must be able to exhibit the defect`) compare 0 to 0.
+// Every test in this block would then pass while proving nothing.
+test('the real plugin list is non-empty — the negative assertions have a subject', () => {
+  assert.ok(
+    GAME_IDS.length >= 7 && GAME_IDS.includes('tempest'),
+    `appIds() yielded ${JSON.stringify(GAME_IDS)} — with no games, every "no game key" assertion ` +
+      `below is vacuously true. tests/monorepo-topology.test.mjs owns the exact-seven check.`,
+  );
+});
+
 /** A dist/ tree the shape a full `just build-all` leaves: lobby files at the top,
  *  every game in its own directory beneath them. */
 function makeFullDist() {
