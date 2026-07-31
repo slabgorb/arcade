@@ -169,6 +169,18 @@ jobs:
       # and nothing else invokes it, so without this step a stale registry could
       # drift from its manifests forever with CI green. It also holds the
       # cabinet-wide topology invariants, including the ones that guard this file.
+      #
+      # IT NEEDS `just`, AND NO STEP HERE INSTALLS IT. tests/ci-sweep-masking.test.mjs
+      # drives the real justfile recipes through the real launcher, and `just` is a
+      # brew install on a developer's machine and absent from ubuntu-latest — so this
+      # step failed 312/328 on all eight release tags of 2026-07-31 and nothing
+      # deployed. The fix is deliberately NOT a step in this file: `rust-just` is a
+      # root devDependency, so `npm ci` above installs it and npm puts
+      # node_modules/.bin on PATH for every npm script. That makes the suite
+      # self-sufficient on a fresh clone too, and leaves this workflow unchanged.
+      # Pinned by `every binary the orchestrator suite spawns is provisioned by CI`
+      # in tests/monorepo-topology.test.mjs — which reads package-lock.json, never
+      # the machine.
       - run: npm run test:orchestrator
 
       # Only THIS app's project. A red joust suite must not block a tempest

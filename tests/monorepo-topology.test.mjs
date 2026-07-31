@@ -1273,6 +1273,213 @@ test('the deploy workflow runs a Node that meets the floor package.json declares
   );
 });
 
+/**
+ * Every external binary the orchestrator suite spawns, as `name -> [test files]`.
+ *
+ * Read out of the test SOURCES rather than listed here, so a spawn of some new
+ * binary is covered the day it is written instead of the day somebody remembers
+ * this file. A bare name is a PATH lookup and therefore a prerequisite; anything
+ * containing a `/` is a path inside the repo (`node_modules/.bin/vite`) and
+ * `process.execPath` is the Node already running, so neither is one.
+ *
+ * It scans SOURCE TEXT, comments included — so a comment that spells out a spawn
+ * call with a literal binary name is picked up as if it were code. That is not a
+ * false negative and it does not go quiet: the named-set assertion below reddens on
+ * it immediately. Describe such a call in words rather than in syntax.
+ *
+ * It THROWS on a spawn target it cannot resolve to a literal — the same rule
+ * `runScripts` follows above, for the same reason. A scanner that quietly skipped
+ * what it did not understand would make the test below pass by finding nothing,
+ * which is the precise failure mode this whole section exists to catch.
+ */
+function suiteBinaries() {
+  const files = readdirSync(path('tests'), { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('.mjs'))
+    .sort();
+  if (files.length === 0) throw new Error('no orchestrator test sources found — this scanner would find nothing');
+  const found = new Map();
+  for (const f of files) {
+    const text = read('tests', f);
+    // `const JUST = 'just'` — the one indirection the suite actually uses. Any
+    // OTHER expression is rejected below rather than guessed at.
+    const consts = new Map(
+      [...text.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(['"])([^'"]*)\2\s*;/g)].map((m) => [m[1], m[3]]),
+    );
+    for (const m of text.matchAll(/\b(spawnSync|spawn|execFileSync|execSync)\(\s*([^,)]+?)\s*[,)]/g)) {
+      const raw = m[2];
+      if (raw === 'process.execPath') continue;
+      const literal = /^(['"])(.*)\1$/.exec(raw);
+      let cmd = literal ? literal[2] : consts.get(raw);
+      if (cmd === undefined) {
+        throw new Error(
+          `tests/${f}: cannot resolve the spawn target \`${raw}\` to a binary name. ` +
+            'Bind it to a `const NAME = \'binary\';` so this guard can see what CI must provide.',
+        );
+      }
+      // execSync takes a whole command line; the binary is its first word.
+      if (m[1] === 'execSync') cmd = cmd.trim().split(/\s+/)[0];
+      if (cmd === '' || cmd.includes('/')) continue;
+      if (!found.has(cmd)) found.set(cmd, []);
+      if (!found.get(cmd).includes(f)) found.get(cmd).push(f);
+    }
+  }
+  return found;
+}
+
+// ---------------------------------------------------------------------------
+// THE PREREQUISITE GUARD. Everything above models what the deploy workflow RUNS.
+// This models what the runner HAS — the question nothing in this repo had ever
+// asked.
+//
+// Task 18 put `npm run test:orchestrator` in the workflow for a real reason: it
+// is the only check that the committed registry still matches the manifests. But
+// that suite had never once executed on a runner, and nobody checked what it
+// needs in order to execute at all.
+//
+// MEASURED, `gh run view 30648720269` (the lobby v0.0.23 deploy): 328 tests, 312
+// pass, 16 fail — every failure carrying the same sentence,
+//   "the `just` binary is required to test its recipes (brew install just)".
+// tests/ci-sweep-masking.test.mjs drives the REAL justfile recipes through the
+// REAL launcher, and `just` is a brew install here and absent from ubuntu-latest.
+// Green locally at 328/328, red on the runner at 312/328, on all EIGHT release
+// tags cut that afternoon. Nothing deployed.
+//
+// Why no existing test could see it: runWorkflow executes the workflow's `run:`
+// blocks with `node`, `npm` and `npx` REPLACED on PATH by logging shims. It
+// proves the command LINE the workflow composes — it cannot prove the command
+// EXISTS, and a missing binary is invisible to it by construction.
+//
+// So this test never asks the machine whether a binary is installed. `which just`
+// passes here and would have passed on the commit that broke production; it is
+// not a weaker version of the missing measurement, it is the wrong measurement.
+// What is asserted instead is that each binary is PROVISIONED for CI: by
+// package-lock.json (which `npm ci` installs before the test step), by a workflow
+// step that installs it first, or by the runner image itself.
+// ---------------------------------------------------------------------------
+test('every binary the orchestrator suite spawns is provisioned by CI, not by the developer machine', () => {
+  const required = suiteBinaries();
+
+  // ANTI-VACUITY, and the pin. A scanner that found nothing would satisfy every
+  // assertion below without checking anything, so what it found is named as data.
+  // A new prerequisite belongs in this list deliberately — and only once the
+  // provisioning half below is satisfied for it.
+  assert.deepEqual(
+    [...required.keys()].sort(),
+    ['bash', 'git', 'just', 'node'],
+    'the set of binaries the suite spawns changed — provision the newcomer before pinning it here',
+  );
+  assert.deepEqual(
+    required.get('just'),
+    ['ci-sweep-masking.test.mjs'],
+    'the scanner must find `just` in the very file whose sixteen tests blocked eight releases',
+  );
+
+  const cfg = workflowConfig();
+  const scripts = runScripts(read(...WORKFLOW));
+  const provided = new Map();
+
+  // (1) THE RUNNER IMAGE. Claimed only for the runner this workflow actually
+  // names: `bash` is the default shell of a `run:` step on a Linux runner, and
+  // `git` is both in the image and a hard requirement of actions/checkout, which
+  // could not have produced the checkout every later step reads. Retarget the job
+  // at a different image and these claims stop being made.
+  assert.match(cfg, /^\s+runs-on:\s*ubuntu-latest\s*$/m, 'this guard only knows what ubuntu-latest provides');
+  const RUNNER = { os: 'linux', cpu: 'x64' };
+  provided.set('bash', 'the ubuntu-latest default shell for `run:` steps');
+  if (/uses:\s*actions\/checkout@/.test(cfg)) provided.set('git', 'actions/checkout, which cannot clone without it');
+  if (/uses:\s*actions\/setup-node@/.test(cfg)) {
+    for (const b of ['node', 'npm', 'npx']) provided.set(b, 'actions/setup-node');
+  }
+
+  // (2) ORDER. Everything the lockfile provides arrives with `npm ci`, so a suite
+  // that ran before it would find nothing installed.
+  const testStep = scripts.findIndex((s) => s.includes('npm run test:orchestrator'));
+  const ciStep = scripts.findIndex((s) => /\bnpm ci\b/.test(s));
+  assert.ok(testStep !== -1, 'the workflow must run the orchestrator suite at all');
+  assert.ok(ciStep !== -1, 'the workflow must install the dependencies');
+  assert.ok(ciStep < testStep, '`npm ci` must run BEFORE the orchestrator suite, not after it');
+
+  // (3) A WORKFLOW STEP that installs a binary — and only one that runs BEFORE the
+  // suite. `npm install -g wrangler` lives in the upload step, three steps later,
+  // so it is deliberately NOT counted: a tool installed after the suite has already
+  // exited cannot help it. This leg is what keeps the workflow-step route open for
+  // a future prerequisite that has no npm package.
+  for (const [i, s] of scripts.entries()) {
+    if (i >= testStep) continue;
+    for (const m of s.matchAll(/npm (?:install|i) -g\s+([\w@/.-]+)/g)) {
+      provided.set(m[1].replace(/^.*\//, ''), `\`${m[0]}\`, a workflow step before the suite`);
+    }
+  }
+
+  // (4) THE PROJECT'S OWN DEPENDENCIES — read from package-lock.json, which is
+  // exactly what `npm ci` installs, and NOT from node_modules, which is a fact
+  // about this machine. Only direct dependencies of the root count: those are the
+  // ones npm is guaranteed to link into the top-level node_modules/.bin, which is
+  // what npm puts on PATH for `npm run`.
+  const lock = JSON.parse(read('package-lock.json'));
+  const root = lock.packages[''];
+  const direct = { ...(root.dependencies ?? {}), ...(root.devDependencies ?? {}) };
+  assert.ok(Object.keys(direct).length > 0, 'package-lock.json lists no root dependencies — it is not the arcade lock');
+  const fromLock = new Map();
+  for (const name of Object.keys(direct)) {
+    const entry = lock.packages[`node_modules/${name}`];
+    assert.ok(entry, `package-lock.json has no entry for the direct dependency \`${name}\` — the lock is stale`);
+    for (const bin of Object.keys(entry.bin ?? {})) {
+      fromLock.set(bin, name);
+      provided.set(bin, `the \`${name}\` dependency, installed by \`npm ci\``);
+    }
+  }
+
+  const missing = [...required.keys()].filter((b) => !provided.has(b));
+  assert.deepEqual(
+    missing,
+    [],
+    `${missing.map((b) => `\`${b}\` (spawned by tests/${required.get(b)?.join(', tests/')})`).join('; ')} ` +
+      'is required by the orchestrator suite and provisioned NOWHERE in CI. It exists on this ' +
+      'machine and not on the runner — the exact shape that reddened all sixteen ' +
+      'ci-sweep-masking tests and blocked eight releases. Add it as a devDependency (so `npm ci` ' +
+      'installs it and node_modules/.bin puts it on PATH for every npm script) or install it in a ' +
+      'workflow step before `npm run test:orchestrator`.',
+  );
+
+  // (5) THE PLATFORM. A lockfile generated on this developer's darwin/arm64
+  // machine can carry a wrapper package whose real binary ships as a
+  // platform-gated optional dependency — rust-just is exactly that shape, ten of
+  // them. If the runner's platform is missing from the lock, `npm ci` links a
+  // `just` on ubuntu that cannot exec anything: provisioned on paper, absent in
+  // fact, and a second helping of the same "verified here, assumed there" bug.
+  for (const [bin, name] of fromLock) {
+    if (!required.has(bin)) continue;
+    const optional = Object.keys(lock.packages[`node_modules/${name}`].optionalDependencies ?? {});
+    if (optional.length === 0) continue;
+    const usable = optional.filter((dep) => {
+      const e = lock.packages[`node_modules/${dep}`];
+      return e && (e.os ?? [RUNNER.os]).includes(RUNNER.os) && (e.cpu ?? [RUNNER.cpu]).includes(RUNNER.cpu);
+    });
+    assert.ok(
+      usable.length > 0,
+      `\`${name}\` provides \`${bin}\` through ${optional.length} platform-gated packages and ` +
+        `package-lock.json carries none for ${RUNNER.os}/${RUNNER.cpu} — \`npm ci\` on the runner ` +
+        'would link a launcher with no binary behind it. Re-generate the lock so the runner\'s platform is in it.',
+    );
+  }
+
+  // (6) …and it must actually have LANDED. `npm ci` writes node_modules/.bin from
+  // the same lock read above, so a bin named in the lock and absent from .bin means
+  // THIS checkout's install is stale — the same gap the vite/vitest resolved-version
+  // check near the top of this file closes. It is the only line here that reads the
+  // machine, and it reads the product of `npm ci`, never the developer's PATH.
+  for (const [bin, name] of fromLock) {
+    if (!required.has(bin)) continue;
+    assert.ok(
+      existsSync(path('node_modules', '.bin', bin)),
+      `package-lock.json says \`${name}\` provides \`${bin}\`, but node_modules/.bin/${bin} does not ` +
+        'exist — run `npm ci`; this install predates the dependency',
+    );
+  }
+});
+
 test('every plugins/ directory is a real app with an entry', () => {
   // The brief's draft looked for `main.ts` at the plugin root; every game
   // actually boots `src/main.ts` (index.html: <script src="/src/main.ts">) and
