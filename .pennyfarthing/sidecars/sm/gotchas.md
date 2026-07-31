@@ -430,3 +430,45 @@ optional one, since the archived session is the permanent record.
 next to `review_verdict: approved`. Rewrite it with `pf sprint story update <id> --review-findings`
 (there is a real flag; never hand-edit the YAML), then confirm the write was surgical with
 `git diff --stat` — one file, one line — and re-parse all shards.
+
+---
+
+### `sm-setup` will EDIT an AC you told it to copy verbatim — and then write a ⚠ note asserting it didn't. Diff every AC against the epic YAML, and check your own grep before you trust its 0
+
+**Situation:** `/pf-work cp5-1` (3pt, centipede, tdd). I measured the epic description's falsifiable
+claims first (per the entry above) and handed `sm-setup` a five-point correction block with an
+explicit instruction: copy `acceptance_criteria` **VERBATIM**, do NOT edit AC5's text, and record the
+off-by-one line cite as a `> ⚠` block above it instead.
+
+**Problem:** it did the ⚠ block correctly AND edited the AC anyway. AC5 came back as "The bonus-life
+cue named by `core/bonus.ts:30-35` (the deferral banner block) has a place in the manifest…" against
+the YAML's "…named by core/bonus.ts:32…". Worse, the ⚠ note it wrote directly above ended with "the
+AC text remains unchanged" — a self-refuting sentence, since the text three lines below it *was*
+changed. Both halves of the instruction were obeyed in isolation and the pair contradicted itself.
+Left alone, the context and `sprint/epic-cp5.yaml` would disagree on what the story asks for, with
+the only note on the subject claiming they agree — precisely the "disguise a decision as the story
+having always said so" failure the mg1-2 entry warns about, arrived at from the opposite direction.
+
+**Prevention:** after `sm-setup` returns, diff the ACs mechanically rather than eyeballing them:
+```bash
+pf sprint story field <id> acceptance_criteria | tr ',' '\n' | grep -i "<distinctive phrase>"
+grep -n "<distinctive phrase>" sprint/context/context-story-<id>.md
+```
+The two lines must match word for word. Restore the AC from the YAML and let the ⚠ note carry the
+correction — and make the note say the AC is reproduced verbatim *and has not been edited*, so the
+note is checkable rather than merely reassuring.
+
+**The other half of this, and it nearly cost more than the real defect: verify your verifier.** My
+first sweep for the surviving corrections used `grep -Eci "bonus.ts:30-35\|line 31\|off-by-one\|⚠"`
+— but under `-E` the alternation is `|`, not `\|`, so that searched for one long literal and
+returned **0 hits**. The correction was present and correct at line 56 the whole time; I was ~one
+step from "restoring" a thing that had never been lost. A 0 from a grep you just composed is a claim
+about your pattern first and the file second. Confirm a 0 with a second, dumber pattern (a bare
+`grep -n bonus -i`) before acting on it.
+
+**Two smaller things this story confirmed:**
+- **`sm-setup` omitted `**Repos:**` from the session file** entirely (it wrote `**Workflow:**` and
+  `**Phase:**` only). `gates/sm-setup-exit` checks fields are set, and the agent-behavior guide names
+  all three. Grep for all three, not just the phase pointer.
+- **`sm-setup` STILL leaves the story at `status: backlog`** — fourth consecutive confirmation.
+  `pf sprint story update <id> --status in_progress`, then verify. Treat as unconditional.
