@@ -1037,3 +1037,47 @@ findings now fixed; kept for the record)` heading. Re-label round 1's trailing
 `grep -c '^## Reviewer Assessment'` → exactly 1, and check which verdict line comes first.
 
 **Related:** the same rule applies to `review_findings` in the epic YAML after a multi-round story.
+
+---
+
+### Reviewing your own work by hand finds OVERSIGHTS; it does not find FALSE BELIEFS — that is what the specialists are for
+
+**Situation:** mg1-2. Round 1 was a by-hand review of code I had written myself, with no specialists
+available. It was genuinely careful — it probed nine URL shapes against a live server and found a
+silent lobby-serve, exercised HMR end to end and found it dead, and caught an unreachable hook. Three
+real defects, all rejected on. Round 3 then ran the four enabled specialists over the SAME diff and
+they found four more.
+
+**The pattern in what they found is the point.** Both defects in code I wrote were things I had
+already reasoned about and believed I had handled:
+
+- I wrote the anti-vacuity guard for the loops — and applied it at two of four call sites. Reviewing
+  my own file, I read the guard I remembered writing rather than the four places it needed to be.
+- I wrote a confident comment explaining why `apply: 'serve'` prevents the plugin recursing into its
+  own child servers. `rule-checker` went into Vite's source and refuted it: `apply` filters by
+  COMMAND, and a middlewareMode child still resolves command `'serve'`, so such a plugin is KEPT.
+  The code was safe for two reasons my comment never named.
+
+Neither was an oversight of something unconsidered. Both were **false beliefs I had already
+committed to prose** — and self-review re-reads the belief instead of re-deriving it. That is the
+category a second reader reaches and you cannot.
+
+**Practical rules:**
+- When you wrote the code, say so in the specialist brief and ask them to verify your STATED
+  RATIONALE, not just the behaviour. The best finding of this review came from someone checking a
+  comment's reasoning against the library's source.
+- A guard applied "everywhere it's needed" by hand is a guard applied at some of the places. Prefer
+  hoisting it somewhere a new call site cannot opt out of — and mutation-test that the hoisted
+  version fires more widely than the hand-written one did (here: 5 tests fail, versus 2 before).
+- Do not stamp the subagent gate's `All received: Yes` for specialists that did not run. If the
+  harness blocks spawning, say so, assess the domains by hand, and ASK — the authorisation took one
+  question and bought four findings.
+
+**And still verify what they hand you.** Of four specialists, two returned a claim that did not
+survive checking: preflight's rolled-up total was a digit-concatenation of the two suites
+(`345748` for 335 + 10413), and security's `fs.allow` scoping claim implied `@shared` was
+unreachable — which would have meant a runtime break, refuted in one request
+(`/tempest/@fs/<repo>/src/shared/rng.ts` → `200 text/javascript`). Neither changed an outcome, but
+both would have entered the permanent record as fact. Credit where due: security caught its OWN
+false positive mid-review when plain `curl` normalised `..` client-side, and re-ran with
+`--path-as-is`.
