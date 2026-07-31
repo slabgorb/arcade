@@ -258,7 +258,7 @@ test('every app tsconfig extends the root, at the right depth', () => {
 // have taken 25 innocent files down with it. mg1-9 removes the exclusion entirely,
 // so there is no shape left to police; the test's own closing message said to delete
 // it when that landed. Its successors are in `tests/shared-tests-typechecked.test.mjs`,
-// which asserts the stronger property: nothing is excluded, and every file under
+// which asserts the stronger property: nothing is excluded, and every TEST file under
 // src/shared/tests is in the tsc program.
 
 test('the root declares the scripts and the toolchain the apps used to declare individually', () => {

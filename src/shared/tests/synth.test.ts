@@ -52,7 +52,7 @@
 // RED until src/synth.ts exists and exports createSynthEngine + noiseBuffer.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 // Type-only, so it is erased at compile time and cannot disturb the dynamic
-// `import('../synth')` above that `vi.resetModules()` depends on. The builders below
+// `import('../synth')` in loadSynth() below that `vi.resetModules()` depends on. The builders
 // are handed a SynthTarget by the engine, and saying so is what makes them typecheck
 // against the real signature instead of a hand-drawn approximation of it.
 import type { SynthTarget } from '../synth'
@@ -86,7 +86,7 @@ import type { SynthTarget } from '../synth'
 //      the constructor. A getter only throws if something actually reads it.
 //
 // Pinned by tests/shared-tests-typechecked.test.mjs, which bans casts, `any` and
-// `@ts-*` directives in this file, and asserts every file here is in the tsc program.
+// `@ts-*` directives in this file, and asserts every TEST file here is in the tsc program.
 
 /** A member of the real interface that this suite never exercises. */
 const unused = (): never => {
