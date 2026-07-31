@@ -185,16 +185,40 @@ export function shouldRelease({ hasPreviousTag, changedFiles, force = false }) {
  *     which the exclusion removes. Verified in both directions: with the exclusion
  *     the same diff is empty; without it, it returns `src/host/registry.ts`.
  *
+ *   · `vite.config.ts` — the ONE vite config in the repo (`git ls-files | grep
+ *     vite.config` returns exactly one), which `build-app.mjs:369` imports for
+ *     `defineAppConfig`. Its own header calls it "the one place `base`, `outDir`
+ *     and the alias map are decided", so a change there moves every app's base
+ *     path, output directory, `@shared`/`@host` alias map and rollup inputs. It
+ *     is in the set for the same reason `src/shared` is: leaving it out
+ *     reproduces the exact defect above — a real, build-affecting change reading
+ *     as "nothing to release".
+ *
  * A second `release-all` after a shared-only change therefore still skips, so the
  * 2026-07-13 bug this guard exists for stays fixed while a shared fix now ships.
  *
- * WHAT IS STILL OUTSIDE THE SET, stated rather than glossed: the root build
- * config — `vite.config.ts`, `package-lock.json`, `tsconfig.json`. A change to
- * one of those alters every app's build and will read as "nothing to release".
- * `--force` is the remedy, and the skip message names it.
+ * TWO ROOT FILES ARE DELIBERATELY OUT, and the reason is not obvious from the
+ * code, which is why it is written down here rather than left to be re-litigated:
+ *
+ *   · `tsconfig.json`. It looks like it belongs beside `vite.config.ts` and it
+ *     does not. NOTHING IN THE GATE TYPE-CHECKS — `grep -n "tsc" scripts/build-app.mjs`
+ *     returns nothing, the gate is `vitest run --project <id>` plus
+ *     `build-app.mjs <id>`, vite transpiles through esbuild without checking
+ *     types, and module resolution goes through the vite alias map above rather
+ *     than tsconfig's `paths`. Measured on asteroids: adding a type-only option
+ *     (`noUnusedLocals`) and an option esbuild does read
+ *     (`useDefineForClassFields`) each produced a BYTE-IDENTICAL `dist/`. So
+ *     including it would not be cheap over-inclusion — it would guarantee a
+ *     release of an unchanged artifact, which is the 2026-07-13 bug re-entered
+ *     through a different door. (Honest limit: an esbuild-relevant option could
+ *     change output for code that uses the feature; `--force` covers that.)
+ *   · `package-lock.json` — the same byte-identical property in the common case,
+ *     and it churns on every install.
+ *
+ * `--force` is the remedy for both, and the skip message names them.
  */
 export function changePathsFor(id) {
-  return [appDirFor(id), 'src/shared', 'src/host', `:(exclude)${REGISTRY_REL}`];
+  return [appDirFor(id), 'src/shared', 'src/host', 'vite.config.ts', `:(exclude)${REGISTRY_REL}`];
 }
 
 /**
@@ -342,12 +366,12 @@ export function release(id, level = 'patch', { force = false } = {}) {
     // A no-op SUCCESS, not a failure: a sweep over every app must not abort on
     // the first one that has nothing to ship.
     console.log(
-      `${id}: nothing to release — no change under ${appDirFor(id)}/, src/shared/ or src/host/ since ${previous}. Skipped.`,
+      `${id}: nothing to release — no change under ${appDirFor(id)}/, src/shared/, src/host/ or vite.config.ts since ${previous}. Skipped.`,
     );
     console.log(
-      `  Root build config (vite.config.ts, package-lock.json, tsconfig.json) is outside that set —`,
+      `  tsconfig.json and package-lock.json are outside that set on purpose: nothing in the gate`,
     );
-    console.log(`  to ship a change to one of those, re-run with --force.`);
+    console.log(`  type-checks, so a change to either leaves dist/ byte-identical. Re-run with --force to ship one.`);
     return { id, skipped: true };
   }
 

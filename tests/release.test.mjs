@@ -259,6 +259,7 @@ test('changePathsFor asks about everything the app is built from, minus the regi
     'plugins/tempest',
     'src/shared',
     'src/host',
+    'vite.config.ts',
     ':(exclude)src/host/registry.ts',
   ]);
   assert.deepEqual(changePathsFor('lobby')[0], 'lobby');
@@ -267,12 +268,25 @@ test('changePathsFor asks about everything the app is built from, minus the regi
     assert.equal(paths[0], appDirFor(id), `${id}: its own directory must be first`);
     assert.ok(paths.includes('src/shared'), `${id}: a shared-code change must be visible`);
     assert.ok(paths.includes('src/host'), `${id}: a host change must be visible`);
+    // The single vite config decides base, outDir, the alias map and the rollup
+    // inputs for every app — build-app.mjs imports it. Omitting it repeats the
+    // src/shared defect: a build-affecting change reading as "nothing to release".
+    assert.ok(paths.includes('vite.config.ts'), `${id}: a vite config change must be visible`);
     // The exclusion is what keeps every OTHER app's release from looking like a
     // change to this one — every release rewrites the registry.
     assert.ok(
       paths.includes(':(exclude)src/host/registry.ts'),
       `${id}: without the exclusion this guard can never fire again`,
     );
+    // Deliberately ABSENT, pinned so the next reader does not "complete the set".
+    // Nothing in the gate type-checks (`grep -n tsc scripts/build-app.mjs` finds
+    // nothing), so a tsconfig-only change leaves dist/ byte-identical — measured
+    // on asteroids for both a type-only option and one esbuild reads. Including
+    // it would guarantee a release of an unchanged artifact, which is the
+    // 2026-07-13 empty-release bug through a different door.
+    for (const out of ['tsconfig.json', 'package-lock.json']) {
+      assert.ok(!paths.includes(out), `${id}: ${out} must stay out — it cannot change dist/`);
+    }
   }
 });
 
