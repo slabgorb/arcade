@@ -295,3 +295,17 @@ stories:
       - A guard fails if a sprint file names a repo the registry does not know, so this cannot silently reappear as new stories are filed. It must read the registry rather than hardcoding the valid set, or it becomes the next stale list.
       - Historical or completed stories are handled deliberately — either migrated with the rest or explicitly left as a record of the pre-collapse world, with the choice stated so the next reader does not treat it as an oversight.
       - The pf toolchain still round-trips every touched sprint file. This repo has had an epic truncated by a YAML round-trip through an unquoted value, so re-read each file after the sweep rather than trusting the write.
+  - id: uf1-23
+    title: 'deploy-r2 is not atomic: index.html must upload LAST, or a failed deploy leaves a live page pointing at absent assets'
+    description: "Found for real during the monorepo cutover, 2026-07-31, not by inspection. The first `just deploy` of the whole cabinet died on its FOURTH object when Cloudflare returned 523 Origin is unreachable, a transient API-gateway fault. wrangler had already authenticated and uploaded three files; the script threw, the recipe exited 1, and the games loop never ran at all. Production survived completely intact, and the reason it survived is the problem. scripts/deploy-r2.mjs uploads whatever collectUploads() walks, which is alphabetical, so the lobby goes assets/... then favicon.png then fonts/... then index.html. index.html is the COMMIT POINT - the single object that switches the live site from the old build to the new one, because every other asset is content-hashed and therefore additive. It sorted last purely because it begins with the letter i. Had the 523 arrived one object later, the new index.html would have gone live with tiles linking to /<id>/ for seven games that had not been uploaded yet: six dead tiles on the front door, from a command that exits 1 without indicating which side of the commit point it stopped on. This is not hypothetical headroom either. Any future lobby file sorting after index.html - manifest.json, robots.txt, sw.js, a sitemap - moves the commit point permanently into the middle of the upload, and then a mid-flight failure publishes a page whose assets do not exist. The fix is to make the ordering a property rather than an accident."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - collectUploads or its caller orders every HTML entry point after every asset it references, so a partial upload can never publish a page ahead of the files it loads. Ordering by filename is not sufficient - the guarantee must not depend on a letter.
+      - A test proves the ordering holds for a fixture whose HTML filename sorts BEFORE its assets, since the current behaviour passes trivially for a directory whose index.html happens to sort last.
+      - A partial-failure test asserts that when an upload throws midway, no HTML entry point has been written. Asserting that the command exits non-zero is not enough - it already does that, and it is exactly what happened while the site was one object away from breaking.
+      - The lobby and a prefixed game are both covered, since the lobby writes to the bucket root and a game writes under its own prefix, and only the lobby's index.html can replace the live front door.
+      - The rationale is recorded in the script so the next reader does not restore alphabetical ordering as a simplification.
