@@ -46,6 +46,22 @@ export function defineAppConfig({ id, entries = [] }: AppSpec): UserConfig {
   }
 }
 
-// Bare `vite` / `vite dev` at the repo root serves the whole cabinet from the
-// lobby's root: / is the lobby, /<id>/ is each game.
+// The default export is the LOBBY's config, and the lobby is the whole of what a
+// bare `vite` / `vite dev` at the repo root serves — at EVERY path, not just at /.
+//
+// An earlier revision of this comment claimed the opposite ("/ is the lobby,
+// /<id>/ is each game"). MEASURED against the real dev server: /, /tempest/,
+// /tempest/models.html and the nonsense control /banana/ all return 200 with
+// byte-identical HTML and <title>Slabcade</title>. `root` above resolves to
+// lobby/, so every unmatched path is that app's SPA fallback — a blanket
+// fallback, not a route table. The identical control is the proof; an all-200
+// check would report "the cabinet serves" about a one-app server.
+//
+// The /<id>/ paths ARE real in the built output — that is what `base` decides,
+// and what the R2 upload prefixes mirror. Making the single dev server serve them
+// too is uf1-19 (PLAN DEFECT #22; the gap is an accepted, filed one, not an
+// oversight). Until it lands, a screenshot taken at /tempest/ is the lobby.
+//
+// Pinned by `the dev server serves the LOBBY at every path` in
+// tests/canonical-serve.test.mjs, which reddens the day uf1-19 changes this.
 export default defineConfig(defineAppConfig({ id: 'lobby' }))

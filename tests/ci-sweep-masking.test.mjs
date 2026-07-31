@@ -1,5 +1,7 @@
 // td1-10 — `just test-all`, `just build-all`, and therefore `just ci` must not
-// swallow a game's failure.
+// swallow a game's failure. (Task 19 added `just serve`, on the same principle
+// and through the same harness: a just recipe must carry its command's exit
+// status out to the caller. See the `serve` block near the bottom.)
 //
 // THE DEFECT (justfile as of 2026-07-20):
 //   test-all:
@@ -357,12 +359,21 @@ test('td1-10 AC2: `build-all` — MULTIPLE build failures are ALL named, and a p
   assert.ok(!namedFailed(r.combined, 'bravo'), `bravo's build passed and must not be named as failed. Output:\n${r.combined}`);
 });
 
-test('`build-all` builds the LOBBY as well as the seven games', TO, () => {
+test('`build-all` builds the LOBBY as well as the seven games — and FIRST', TO, () => {
   // NEW with Task 19, and it could not have been asked before: the old recipe
   // looped `{{games}}` only, so the lobby — the arcade's front door, and the one
   // app whose outDir is the parent of every other's — was never in the sweep. A
   // regression to `for g in {{games}}` would still exit 0 on a green fleet, so no
   // exit-status test can see it; only the log of what was actually built can.
+  //
+  // THE ORDER IS PART OF THE ASSERTION, and it is not tidiness. The lobby's outDir
+  // is dist/, the parent of every game's dist/<id>/, so its clean step is the only
+  // one that can reach another app's output. cleanLobbyOutput exists to stop that;
+  // building the lobby first is the independent second defence for the day it
+  // regresses, because a game's own `emptyOutDir: true` clears only its own
+  // subdirectory. MEASURED by replacing cleanLobbyOutput with `rmSync(distDir)` —
+  // the exact emptyOutDir: true behaviour Task 16 found deleting all seven games —
+  // and running both orders: lobby LAST leaves 0 of 7 games, lobby FIRST leaves 7.
   const r = runRecipe({
     justfileText: read('justfile'),
     recipe: 'build-all',
@@ -372,9 +383,75 @@ test('`build-all` builds the LOBBY as well as the seven games', TO, () => {
   assert.equal(r.status, 0, `an all-green build-all must exit 0. Output:\n${r.combined}`);
   assert.deepEqual(
     r.built,
-    ['alpha', 'bravo', 'charlie', 'lobby'],
-    `build-all must build every game AND the lobby, once each. Built: ${JSON.stringify(r.built)}`,
+    ['lobby', 'alpha', 'bravo', 'charlie'],
+    `build-all must build every game AND the lobby, once each, with the LOBBY FIRST — a lobby-last ` +
+      `sweep loses all seven games to any regression in cleanLobbyOutput (measured: 0 of 7 survive). ` +
+      `\`just deploy\` builds it first too; the two must not drift. Built: ${JSON.stringify(r.built)}`,
   );
+});
+
+// ---------------------------------------------------------------------------
+// serve — a dev server that fails to start must NOT read as success
+// ---------------------------------------------------------------------------
+// RESTORED HERE. These are the successors to two guards retired with
+// tests/serve-launcher.test.mjs, quoted by exact old title:
+//
+//   - `td1-8: the serve recipe exits 0 when the launcher shut down healthy`
+//   - `td1-8: the serve recipe exit code DISTINGUISHES a dead server from a
+//      healthy fleet`
+//
+// The FLEET they described is gone — one dev server, no supervisor, nothing left
+// to be half-dead. The INVARIANT is not: `just serve` must still carry the dev
+// server's exit status out to the caller. td1-8 exists because that recipe once
+// swallowed it two different ways (a bare `wait` that returned 0 with a server
+// dead, then a `trap … EXIT` whose `kill 0` made every run die of signal 15), and
+// both times the recipe reported success while the arcade was not being served.
+//
+// Nothing else asserts this any more. tests/canonical-serve.test.mjs TEXT-MATCHES
+// the recipe body, and its behavioural test spawns `node_modules/.bin/vite`
+// directly — bypassing the recipe entirely. So `serve: @npx vite || true`, a
+// backgrounded `@npx vite &`, or a re-added preflight line that dies before vite
+// starts would pass every one of those assertions. These two catch all three.
+
+test('td1-8 (successor): `serve` carries a failed dev server out to the caller', TO, () => {
+  const r = runRecipe({
+    justfileText: read('justfile'),
+    recipe: 'serve',
+    recipeNames: ['serve'],
+    games: ALL_PASS,
+    npxExit: 7,
+  });
+  assert.equal(r.signal, null, `serve must not die of a signal; got signal=${r.signal}`);
+  assert.equal(
+    r.status,
+    7,
+    `the dev server exited 7, but \`just serve\` returned ${r.status} — a server that fails to start ` +
+      `must not read as success. A trailing \`|| true\`, a backgrounded \`&\`, or a \`trap … EXIT\` ` +
+      `whose \`kill 0\` signals the recipe's own shell all do this. Output:\n${r.combined}`,
+  );
+  // Anti-vacuity: it must have exited 7 BECAUSE the dev server did, not because
+  // the recipe fell over earlier (a missing script, a bad preflight). A recipe
+  // that never reached vite would satisfy the status assertion for free.
+  assert.deepEqual(
+    r.npxCalls,
+    ['vite'],
+    `serve must actually launch the dev server exactly once; it ran ${JSON.stringify(r.npxCalls)}`,
+  );
+});
+
+test('td1-8 (successor): `serve` exits 0 when the dev server shut down healthy', TO, () => {
+  // The other half, and the reason the first is not satisfiable by a recipe that
+  // simply always fails — Ctrl-C on a healthy server must not look like a crash.
+  const r = runRecipe({
+    justfileText: read('justfile'),
+    recipe: 'serve',
+    recipeNames: ['serve'],
+    games: ALL_PASS,
+    npxExit: 0,
+  });
+  assert.equal(r.signal, null);
+  assert.equal(r.status, 0, `a healthy shutdown must exit 0; got ${r.status}. Output:\n${r.combined}`);
+  assert.deepEqual(r.npxCalls, ['vite'], `serve must launch the dev server; it ran ${JSON.stringify(r.npxCalls)}`);
 });
 
 // ---------------------------------------------------------------------------

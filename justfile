@@ -52,15 +52,37 @@ test-one name:
 # keeps td1-10's explicit per-iteration failure accumulator: every app is attempted,
 # and the summary names the FULL set of broken ones rather than only the last.
 #
-# The lobby builds LAST. Its outDir is dist/, the parent of every game's dist/<id>/,
-# so it is the app whose output the others sit inside; building it last means a
-# `just build-all` leaves a complete tree even if cleanLobbyOutput ever regressed.
-# Build every app (seven games + the lobby) into dist/
+# THE LOBBY BUILDS FIRST, and the order is load-bearing rather than cosmetic.
+#
+# Its outDir is dist/ itself — the parent of every game's dist/<id>/ — so it is the
+# one app whose clean step can reach another app's output. cleanLobbyOutput exists
+# to stop that (it deletes only the lobby's own top-level entries), and this order
+# is the second, independent line of defence for the day it regresses: a game's own
+# `emptyOutDir: true` clears only its own dist/<id>/, so once the lobby has gone
+# first, nothing that runs afterwards can touch a sibling.
+#
+# MEASURED, not reasoned — cleanLobbyOutput was temporarily replaced with
+# `rmSync(distDir)` (exactly the emptyOutDir: true behaviour Task 16 found deleting
+# all seven games) and build-all run in both orders:
+#   lobby LAST  -> 0 of 7 games survive   (they are built, then wiped)
+#   lobby FIRST -> 7 of 7 games survive
+# An earlier revision of this comment claimed the opposite and put the lobby last;
+# it was wrong in the one direction that matters, on the exact interaction that
+# already cost this migration a fleet-deleting build.
+#
+# `just deploy` builds the lobby first for the same reason. The two must not drift:
+# the ORDER is pinned by `build-all builds the LOBBY as well as the seven games`
+# (tests/ci-sweep-masking.test.mjs), which asserts the build log by deepEqual.
+#
+# (Release order is the opposite — `release-all` ships games first, lobby last — for
+# an unrelated reason: the lobby's tiles read the accumulated version bumps out of
+# the generated registry. Builds have no such dependency.)
+# Build every app (the lobby first, then the seven games) into dist/
 build-all:
     #!/usr/bin/env bash
     set -uo pipefail
     failed=""
-    for g in {{games}} lobby; do
+    for g in lobby {{games}}; do
       echo "==> $g"
       if ! node {{root}}/scripts/build-app.mjs "$g"; then
         failed="$failed $g"

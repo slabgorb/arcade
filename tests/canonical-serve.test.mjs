@@ -204,9 +204,15 @@ test('docs explain that strictPort lets only one server own the pinned port', ()
 // `serve` recipe's comment, lobby/README.md and each plugin's CLAUDE.md all have to
 // stop warning that a screenshot taken at /tempest/ is the lobby.
 //
+// Making the one dev server genuinely serve the cabinet is uf1-19 (PLAN DEFECT
+// #22) — the gap is accepted and filed, not an oversight.
+//
 // IF YOU ARE READING THIS BECAUSE IT WENT RED: check whether the dev server now
-// really serves the games. If it does, this test has done its job — update those
-// three documents and replace it with the real per-app assertion.
+// really serves the games. If it does, this test has done its job — correct all
+// FOUR sites that describe the behaviour (vite.config.ts's default-export comment,
+// which is the file that causes it; the justfile `serve` recipe; lobby/README.md;
+// README.md), plus the affected plugins' CLAUDE.md, and replace this with the real
+// per-app assertion.
 test('the dev server serves the LOBBY at every path (a game path is not a game)', { timeout: 60_000 }, async () => {
   // A spare port, passed on the CLI. The pinned 5270 is deliberately NOT used: a
   // sibling checkout (a-2, a-3) may legitimately hold it, and this test is about
@@ -252,9 +258,10 @@ test('the dev server serves the LOBBY at every path (a game path is not a game)'
         res.body,
         control.body,
         `/${game}/ returned different bytes from the nonsense control /banana/ — the dev server may now ` +
-          `genuinely serve the games. If so this guard has done its job: update the \`serve\` recipe's ` +
-          `comment, lobby/README.md and plugins/${game}/CLAUDE.md, then replace this test with the real ` +
-          `per-app assertion.`,
+          `genuinely serve the games (uf1-19). If so this guard has done its job: correct vite.config.ts's ` +
+          `default-export comment FIRST — it is the file that causes the behaviour — then the \`serve\` ` +
+          `recipe's comment, lobby/README.md, README.md and plugins/${game}/CLAUDE.md, and replace this ` +
+          `test with the real per-app assertion.`,
       );
     }
 
