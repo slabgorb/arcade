@@ -69,12 +69,28 @@ const titleOf = (htmlOrPath, fromDisk = false) => {
 
 /** Every app id under plugins/, read from the directory rather than listed.
  *  scripts/build-app.mjs and the deploy workflow already read plugins/ directly;
- *  a hand-maintained list here would be a fourth copy free to drift. */
-const gameIds = () =>
-  readdirSync(join(root, 'plugins'), { withFileTypes: true })
+ *  a hand-maintained list here would be a fourth copy free to drift.
+ *
+ *  THE EMPTINESS GUARD LIVES HERE, not at the call sites. Every test below loops
+ *  over this list, and a `for` over an empty array runs zero assertions and
+ *  reports success — so a discovery failure would turn the whole suite green
+ *  while proving nothing, which is the exact vacuity this file exists to refuse.
+ *  It was first written as an `assert.ok(games.length >= 7, …)` repeated at each
+ *  call site, and review found it had been repeated at only two of the four:
+ *  a rule that must be remembered per call site is a rule that will be forgotten.
+ *  Throwing from the helper makes it structural — a new test cannot opt out. */
+const gameIds = () => {
+  const ids = readdirSync(join(root, 'plugins'), { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort();
+  assert.ok(
+    ids.length >= 7,
+    `expected at least the seven games under plugins/, found ${ids.length} (${ids.join(', ') || 'none'}) — ` +
+      `every test in this file loops over this list, and an empty one makes all of them pass vacuously`,
+  );
+  return ids;
+};
 
 // Extract a `just` recipe body by name. A recipe header sits at column 0
 // (`name:`, `name args:`, or `name: deps`); its body lines are indented.
@@ -310,16 +326,9 @@ describe('the one dev server serves the whole cabinet, not one app at every path
   });
 
   test('AC2/AC3: every game path DIFFERS from the nonsense control', { timeout: 60_000 }, async () => {
+    // Anti-vacuity on the LIST itself is enforced inside gameIds() — see the note
+    // there for why it is not repeated at each call site.
     const games = gameIds();
-    // Anti-vacuity on the LIST itself: a for-loop over an empty array asserts
-    // nothing and reports success. If plugins/ ever fails to enumerate, this suite
-    // must fail loudly rather than pass by iterating zero times.
-    assert.ok(
-      games.length >= 7,
-      `expected at least the seven games under plugins/, found ${games.length} (${games.join(', ')}) — ` +
-        `if this list is empty every loop below passes vacuously`,
-    );
-
     const control = await get('banana/');
 
     // Anti-vacuity on the CONTROL. Under the old (identical-bytes) assertion the

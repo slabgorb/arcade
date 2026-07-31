@@ -95,9 +95,25 @@ function serveTheCabinet(): Plugin {
 
   return {
     name: 'arcade:serve-the-cabinet',
-    // Dev only. `defineAppConfig` is also what each CHILD is built from, so this
-    // plugin must never end up inside it — a child that mounted its own children
-    // would recurse forever.
+    // Excluded from `vite build`. That is ALL this flag does here.
+    //
+    // It is specifically NOT what prevents this plugin recursing into the child
+    // servers it creates. An earlier revision of this comment claimed it was, and
+    // review refuted it against Vite's own source: `createServer()` always resolves
+    // its config with command `'serve'` — `middlewareMode` included — and the plugin
+    // filter KEEPS plugins whose `apply` equals the command. So an `apply: 'serve'`
+    // plugin that reached a child's plugin list would run `configureServer` again
+    // and spawn children forever.
+    //
+    // Two structural facts are the real guards, and both must hold:
+    //   1. `defineAppConfig()` — the one thing shared between the build and every
+    //      child — declares no `plugins` field at all, so a child spread from it
+    //      has nothing to recurse with. Do not add one.
+    //   2. `configFile: false` on the child `createServer()` call below stops Vite
+    //      auto-discovering THIS file, whose default export is what actually
+    //      carries `plugins: [serveTheCabinet()]`.
+    // Removing either — on the belief that `apply` protects you — reintroduces
+    // silent infinite recursion at server start.
     apply: 'serve',
 
     async configureServer(server) {
@@ -153,7 +169,12 @@ function serveTheCabinet(): Plugin {
       // that build-only hook could never fire. Dead code shaped like the cleanup
       // path invites someone to fix a leak by editing the half that never runs.
       server.httpServer?.on('close', () => {
-        for (const child of children.values()) void child.close()
+        // `.catch`, not a bare `void`: close() returns a promise, and a child whose
+        // socket has already gone rejects — during teardown, where an unhandled
+        // rejection is noise at best and a non-zero exit at worst. Nothing can be
+        // done about a child that fails to close while the parent is closing, so
+        // the rejection is swallowed deliberately rather than by omission.
+        for (const child of children.values()) void child.close().catch(() => {})
       })
     },
   }
