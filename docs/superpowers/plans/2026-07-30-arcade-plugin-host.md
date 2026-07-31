@@ -2726,6 +2726,29 @@ gh secret list -R slabgorb/arcade | grep CLOUDFLARE_API_TOKEN || echo "MISSING �
 
 If missing, set it from a file or a pipe — `gh secret set` under this harness stores an empty value on EOF.
 
+- [ ] **Step 4c: Nothing type-checks anywhere in the release or deploy path (from Task 17's reviews)**
+
+Measured, not assumed: `grep -n "tsc" scripts/build-app.mjs` returns **nothing**. The release gate is
+`npx vitest run --project <id>` plus `node scripts/build-app.mjs <id>`, and neither type-checks —
+Vite transpiles through esbuild without checking types, and module resolution goes through
+`vite.config.ts`'s own alias map rather than `tsconfig.json`'s `paths`. `npm run lint` (`tsc
+--noEmit`) exists and **nothing in the release or deploy path invokes it**.
+
+So a type error can be released and deployed today. It reddens only in a developer's own terminal.
+
+This surfaced from the other direction during Task 17: `tsconfig.json` was proposed for the
+release-skip pathspec, and rejected because a tsconfig-only change produces a **byte-identical**
+`dist/` — including it would trigger a guaranteed-spurious release, which is the 2026-07-13
+empty-deploy bug re-entered through a different door. The real failure it was reaching for is an
+undetected type error, and the right place to catch that is a **gate**, not change-detection.
+
+**This workflow must run `tsc --noEmit`.** Note it cannot be scoped per-app — the root `tsconfig.json`
+covers `src`, `plugins`, `lobby` and `scripts` together — so it is one repo-wide step, not a
+per-app one.
+
+Consider also adding it to `gateSteps` in `scripts/release.mjs` so a manual `just release` is gated
+the same way CI is; that is a Task 17 file, so decide and route rather than editing it here.
+
 - [ ] **Step 4a: Three Node facts this workflow must respect (from Task 14's review)**
 
 **The ≥22.18 floor is real, it predates Task 14, and its blast radius is 5 tests — not the suite.**
