@@ -1,6 +1,6 @@
 # ADR-0001: Shared-code strategy for the vector-arcade subrepos
 
-**Status:** Accepted
+**Status:** Accepted — **Superseded 2026-07-30** (see [the amendment](#amendment--2026-07-30-superseded-by-the-monorepo-collapse) at the end)
 **Date:** 2026-07-04
 **Author:** Architect (Emmanuel Goldstein)
 **Story:** N/A — arises from the 2026-07-04 cross-repo extraction survey
@@ -212,6 +212,21 @@ lobby/package.json                  # imports @arcade/shared/highscore → contr
   **bz2-2** (battlezone adopt shared font) and **A2-2** (asteroids letter spacing).
 - Downstream extraction epic (proposed working id `SH`): math3d → rng → highscore/storage →
   loop primitive, each a story once this ADR is accepted.
+
+## Amendment — 2026-07-30: superseded by the monorepo collapse
+
+**Status: Superseded** by `docs/superpowers/specs/2026-07-30-arcade-plugin-host-design.md`.
+
+Option 4 (version-pinned git dependency) is retired; Option 2 (workspace/monorepo),
+rejected here because it "directly contradicts the topology," is adopted — the
+topology is what changed. Two of this ADR's decision drivers are explicitly
+retired by owner ruling: "independence preserved" and "a standalone game clone
+must still build."
+
+The determinism driver is RETAINED and better served. A shared change that alters
+a game's replay behaviour now fails that game's tests in the same commit, rather
+than lying dormant behind a pin until someone re-points it and forty changes land
+at once.
 
 ---
 

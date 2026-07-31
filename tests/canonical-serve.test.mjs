@@ -27,11 +27,16 @@
 //     5270 lobby)`
 //     Half of it survives below, read from the config instead of a literal. The
 //     tempest half asserted a port that no longer exists: eight pinned ports are
-//     one. NOTE (owner: the docs task) — CLAUDE.md and README.md still carry the
-//     eight-port table and the eight-subrepo layout wholesale. That staleness is
-//     deliberately NOT patched here, and deliberately NOT asserted against either:
-//     a test demanding 5273 be absent would go red on documentation this task does
-//     not own, which is the failure mode the migration keeps hitting.
+//     one.
+//
+//     RESOLVED BY TASK 22, the docs task this note was addressed to. CLAUDE.md and
+//     README.md carried the eight-port table and the eight-subrepo layout
+//     wholesale; both are rewritten, and the surviving assertion below now lands on
+//     single-port prose rather than on a retired table's lobby row — which is what
+//     it was previously satisfied by, making it green off the very staleness it was
+//     meant to outlive. Still deliberately NOT asserted: the ABSENCE of 5273. A
+//     doc may legitimately mention an old port while explaining the collapse, and
+//     an absence test would be a tripwire on prose rather than on the pin.
 //
 // They do not touch the operator's live infrastructure (R2 buckets, CI runs);
 // that is a runtime fact, not an in-repo one.

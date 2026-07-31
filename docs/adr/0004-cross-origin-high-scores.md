@@ -1,6 +1,6 @@
 # ADR-0004: Cross-origin high scores — the lobby reads a cookie, not localStorage
 
-**Status:** Accepted
+**Status:** Accepted — **Superseded 2026-07-30** (see [the amendment](#amendment--2026-07-30-the-single-origin-collapse-happened-and-the-cost-estimate-was-wrong) at the end)
 **Date:** 2026-07-12
 **Author:** Architect
 **Story:** lb2-1
@@ -280,10 +280,32 @@ this ADR rejected on cost stays **one adapter swap away**.
 | `tempest`, `star-wars`, `asteroids`, `battlezone` | **Version bump only. No code** — the choke point at `save()` still publishes with no game-side change. | Trivial |
 | `red-baron` | None — persists no scores; its board slot reads `NO SCORES YET`. | — |
 
+## Amendment — 2026-07-30: the single-origin collapse happened, and the cost estimate was wrong
+
+**Status: Superseded** by `docs/superpowers/specs/2026-07-30-arcade-plugin-host-design.md`.
+
+This ADR rejected collapsing onto one origin "on cost, not merit," pricing it as
+requiring Enterprise-only Origin Rules. That estimate assumed path routing to
+MULTIPLE buckets. One bucket with per-game key prefixes needs neither Origin Rules
+nor a Worker, and the old hostnames redirect via free-tier Single Redirects.
+
+The cookie is not deleted: it became the one-time migration bridge, since it is
+the only pre-migration state readable from the new origin. Its `publish` side is
+retired; `readTopScores` remains until the migration window closes. Top five rows
+survive; the domain field cannot cross and seeds as `null`.
+
+This ADR's closing note — "kept cheap to revisit… collapsing later swaps one
+adapter" — held.
+
+The three follow-ups this ADR logged were never filed as stories. The live one
+(Safari's ITP 7-day purge of the games' OWN localStorage) is unaffected by the
+migration and is filed separately — see the epic's final task.
+
 ## Related Decisions
 
 - **ADR-0001** — establishes `@arcade/shared` and the git-tag pinning this fix rides on. Its
   *diagnosis* of the lobby contract (shape drift) is superseded here; its *decision* stands.
+  Both ADRs are superseded by the 2026-07-30 monorepo collapse; see each one's amendment.
 
 ---
 

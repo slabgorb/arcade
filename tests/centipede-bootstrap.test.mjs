@@ -82,6 +82,27 @@
 //   · the per-game pinned PORT (5278) goes with them. Its nearest successor is
 //     base-path uniqueness — `/centipede/` — asserted for all seven in
 //     tests/monorepo-topology.test.mjs.
+//
+// ===========================================================================
+// TASK 22 (docs — CLAUDE.md, repos.yaml) — RETIRED, as the ledger above routes it
+// ===========================================================================
+//   - `CLAUDE.md port table row 5278 is live, not reserved`  DELETED
+//
+// Task 19 already deleted the eight-server fleet and the eight pinned ports; this
+// test outlived them by one task only because it read the DOCUMENTATION of the
+// ports rather than the ports themselves. It asserted a `| centipede | … | 5278 |`
+// row in CLAUDE.md's dev-URL table — and that table is exactly what Task 22
+// deletes, because eight ports are one and 5278 is not a port anything binds. The
+// note at tests/canonical-serve.test.mjs:30 predicted this and deliberately did
+// not assert 5278's ABSENCE, leaving the removal to the task that owns the file.
+//
+// There is no per-game successor: one dev server, one port, and it serves the
+// LOBBY at every path (`the dev server serves the LOBBY at every path`,
+// tests/canonical-serve.test.mjs). The surviving halves are cabinet-wide — the one
+// pinned port is read from the config and required in both docs by `AC2: each
+// canonical serve doc references THE pinned port`, and centipede's `/centipede/`
+// base path is asserted with the other six in tests/monorepo-topology.test.mjs.
+// The `CENTIPEDE_PORT` constant goes with the test that used it.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -91,9 +112,6 @@ import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
-
-// The pinned port contract: centipede owns 5278.
-const CENTIPEDE_PORT = '5278';
 
 // Games expected to already be wired into the justfile vars — GREEN adds
 // centipede WITHOUT dropping any of these.
@@ -119,18 +137,5 @@ test('justfile vars do not regress the existing games', () => {
   }
 });
 
-test('CLAUDE.md port table row 5278 is live, not reserved', () => {
-  const claude = read('CLAUDE.md');
-  const row = claude
-    .split('\n')
-    .find((line) => line.includes('| centipede') && line.includes(CENTIPEDE_PORT));
-  assert.notEqual(row, undefined, 'CLAUDE.md must keep a centipede row in the port table');
-  assert.ok(
-    !/reserved/i.test(row),
-    `the centipede port row must no longer read "reserved": ${row}`,
-  );
-  assert.ok(
-    row.includes(`http://localhost:${CENTIPEDE_PORT}/`),
-    `the centipede port row must carry the live dev URL: ${row}`,
-  );
-});
+// `CLAUDE.md port table row 5278 is live, not reserved` was retired here by Task
+// 22 — see the ledger at the top of this file.

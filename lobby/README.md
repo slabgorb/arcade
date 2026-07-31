@@ -62,12 +62,20 @@ DOM bootstrap stays in `main.ts`. The lobby is served at the cabinet root (`/`)
 
 The lobby ships as part of the `arcade` monorepo, not as its own repo — its
 `.git` history is gone (removed when it was imported) and it has no `develop`/
-`main` of its own to gate a release on. The monorepo-wide release path (what
-gates a release, what tags it, what pushes and deploys) is still being built by
-a later stage of this migration and is not in place yet — do not try
-`just release lobby` today; it predates this app being an app in a monorepo
-and cannot run against it.
+`main` of its own to gate a release on. It releases like every other app, from
+the repo root:
 
-The one settled fact already: release tags are `lobby-vX.Y.Z`. A bare
-`vX.Y.Z` is invalid in this monorepo, since it holds every app's tags side by
-side. **`main` is production — never push it by hand.**
+```bash
+just release lobby [patch|minor|major]
+```
+
+That gates on `npx vitest run --project lobby` plus `node scripts/build-app.mjs
+lobby`, bumps `lobby/package.json`, regenerates the committed
+`src/host/registry.ts` into the same commit, tags **`lobby-vX.Y.Z`** and pushes.
+The TAG is what deploys — a push to `main` ships nothing, because `main` carries
+every app's commits and could not say which one to build. A bare `vX.Y.Z` is
+invalid in this monorepo, since it holds every app's tags side by side.
+
+`just release-all` deliberately ships the lobby **last**: each game's version
+bump is baked into the generated registry, and these tiles read their versions
+from there, so one lobby release at the end carries every accumulated bump.

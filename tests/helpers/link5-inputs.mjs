@@ -1,11 +1,11 @@
 // tests/helpers/link5-inputs.mjs
 // TEST HELPER (td1-4) — the presence probe for LINK 5's shipped inputs.
 //
-// LINK 5 (COMPARE) is the only link in the audit chain that reaches OUTSIDE the
-// orchestrator: it reads the sibling game repos' checked-out working trees,
-// which are separate GITIGNORED subrepos. Links 1-4 run anywhere (the vendored
-// ROM images live in reference/atari-source/, in-repo); link 5 needs a full
-// `just install-all` checkout.
+// LINK 5 (COMPARE) reads the GAMES' shipped source. That used to mean reaching
+// outside the orchestrator into gitignored sibling subrepos; since the monorepo
+// collapse every one of those trees is tracked here under plugins/<id>/, so both
+// halves of link 5 are always present in a complete checkout. Links 1-4 read the
+// vendored ROM images in reference/atari-source/, also in-repo.
 //
 // WHY THIS EXISTS (AC2): the two link-5 audit tests assert concrete verdicts
 // (ROM-VERIFIED / MISMATCH). If their shipped inputs are absent, EVERY row
@@ -37,9 +37,10 @@ const LINK5_INPUTS = [
   // the two link-5 audits SKIP — announcing that the shipped port was not compared,
   // when in truth the port is sitting right there and only the probe was looking in
   // the wrong place. That is precisely the absent-vs-wrong confusion the header
-  // above says must never happen, arriving from the other direction. The probe keeps
-  // earning its keep for joust, the last game still a gitignored subrepo (Task 12);
-  // centipede came in as plugins/centipede in Task 11 and never had a path here.
+  // above says must never happen, arriving from the other direction. Task 12 has
+  // since imported joust as well, so no game is a gitignored subrepo any more; the
+  // probe now earns its keep purely as an absent-vs-wrong discriminator, and its
+  // skip message (below) had to stop telling readers to go looking for a subrepo.
   { audit: 'tempest', path: join('plugins', 'tempest', 'tools', 'pokey-bake', 'sfx-data.mjs') },
   { audit: 'tempest', path: join('plugins', 'tempest', 'tools', 'pokey-bake', 'bake-sfx.mjs') },
   { audit: 'red-baron', path: join('plugins', 'red-baron', 'src', 'shell', 'pokey.ts') },
@@ -66,7 +67,9 @@ export function link5SkipReason(audit = null, root = REPO_ROOT) {
   if (missing.length === 0) return null;
   return (
     `link 5 (COMPARE) input(s) absent from this checkout — ${missing.map((m) => m.path).join(', ')}. ` +
-    'These live in gitignored sibling subrepos; run `just install-all`. ' +
+    'These are TRACKED in this repo under plugins/<id>/ — they are not a sibling subrepo you ' +
+    'forgot to clone — so an absent one means an incomplete checkout or a stale path in this ' +
+    'file. Re-sync the working tree (`git status`), then `just install-all` for dependencies. ' +
     'SKIPPED, not passed: the shipped port was NOT compared against the ROM.'
   );
 }

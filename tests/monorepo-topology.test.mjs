@@ -180,6 +180,60 @@ test('no per-app vite config, tsconfig base, lockfile, or CI caller survives', (
   }
 });
 
+test('repos.yaml is one trunk-based entry, which is what keeps main committable', () => {
+  // The SUCCESSOR to five per-repo registration assertions Task 22 retired:
+  //   `AC: repos.yaml registers battlezone in the star-wars entry shape`
+  //   `AC: repos.yaml registers red-baron in the star-wars entry shape`
+  //   `repos.yaml joust entry has moved past pre-implementation`
+  //   `CLAUDE.md port table row 5278 is live, not reserved`   (centipede)
+  //   `CLAUDE.md port table row 5279 is live, not reserved`   (joust)
+  // Each named a repo, a `develop`, a gitflow strategy or a pinned port that no
+  // longer exists. What survives is not per-game and is far more load-bearing:
+  // repos.yaml is the gate every pf command reads, and one wrong word in it
+  // blocks every direct commit to main — the workflow this repo is built on.
+  //
+  // MEASURED against pf 13.4.0's own `_get_protected_branches` (2026-07-31), which
+  // is why the assertions below are on the LITERAL spelling rather than on "some
+  // trunk-ish value":
+  //   as committed (`trunk-based`) -> protected set is EMPTY   -> main committable
+  //   `trunk` / `trunk_based` / `gitflow` -> protected == {main} -> every commit blocked
+  // The hook defaults to trunk-based when the key is absent, so a DELETED key is
+  // survivable and a MISSPELLED one is not. That is the trap; hence this test.
+  const yaml = read('.pennyfarthing', 'repos.yaml');
+
+  const reposAt = yaml.indexOf('\nrepos:');
+  assert.notEqual(reposAt, -1, 'repos.yaml must have a top-level `repos:` key — pf reads it by name');
+  const body = yaml.slice(reposAt);
+  const entries = [...body.matchAll(/^ {2}([A-Za-z0-9._-]+):\s*$/gm)].map((m) => m[1]);
+  assert.deepEqual(
+    entries,
+    ['arcade'],
+    'repos.yaml must hold exactly ONE entry — nine repos are one repo. A second entry means a ' +
+      'retired subrepo came back, and if it is gitflow the hook starts protecting its default branch.',
+  );
+
+  // `path: .` is what makes pf recognise THIS checkout as that entry:
+  // _detect_current_repo compares `git rev-parse --show-toplevel` against
+  // project_root/path. If it does not match, pf falls back to protecting
+  // {main, develop, master} and main is blocked again — from the other direction.
+  assert.match(yaml, /^ {4}path: \.$/m, 'the arcade entry must be `path: .` — the repo root IS the repo');
+  assert.match(yaml, /^ {4}default_branch: main$/m, 'the arcade entry must declare `default_branch: main`');
+  assert.match(
+    yaml,
+    /^ {4}branch_strategy: trunk-based$/m,
+    'branch_strategy must be the literal string `trunk-based` — pf compares against that exact spelling',
+  );
+  // The mutants, named. `assert.match` on the good value alone would still pass if
+  // a second, wrong branch_strategy line were added below it.
+  for (const wrong of ['trunk', 'trunk_based', 'trunkbased', 'gitflow']) {
+    assert.doesNotMatch(
+      yaml,
+      new RegExp(`^ {4}branch_strategy: ${wrong}\\s*$`, 'm'),
+      `branch_strategy: ${wrong} silently falls through to the gitflow path and PROTECTS main`,
+    );
+  }
+});
+
 test('every app tsconfig extends the root, at the right depth', () => {
   // The games sit one level deeper than the lobby, so the relative `extends`
   // differs by exactly one `../`. Getting it wrong is silent: tsc reports a

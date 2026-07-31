@@ -102,6 +102,27 @@
 //     `cloudflared/` is kept only as history) and vite.config.ts pins the dev
 //     server to 127.0.0.1, so no external hostname can reach it at all. The rule
 //     it asserted cannot be satisfied and must not be restored.
+//
+// ===========================================================================
+// TASK 22 (docs + repos.yaml) — RETIRED, as the Task 9 ledger above routes it
+// ===========================================================================
+//   - `AC: repos.yaml registers battlezone in the star-wars entry shape`  DELETED
+//
+// It asserted a per-repo REGISTRATION — `path: battlezone`, `default_branch:
+// develop`, `branch_strategy: gitflow`, plus dev/build/test commands — in a file
+// that now holds exactly ONE entry, `arcade`. There is no battlezone repo to
+// register: no path of its own, no remote, no `develop`, and no per-game
+// dev/build/test commands (they take an app id at the root). Every field it
+// checked describes a thing that stopped existing, and the ledger above already
+// recorded that `path: battlezone` had gone stale on disk.
+//
+// It is NOT re-homed per game, because there is no per-game entry to re-home it
+// to. The one invariant that DID survive — and it is the load-bearing one, since
+// a wrong `branch_strategy` blocks every direct commit to main — is asserted
+// cabinet-wide by `repos.yaml is one trunk-based entry, which is what keeps main
+// committable` in tests/monorepo-topology.test.mjs. The `repoBlock` helper goes
+// with the test: it existed only to slice one repo's block out of a multi-repo
+// file.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -111,40 +132,6 @@ import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
-
-// --- helpers ---------------------------------------------------------------
-
-// Extract a top-level repo block (`  name:` at 2-space indent) from repos.yaml,
-// returning its 4-space-indented field lines.
-function repoBlock(yaml, name) {
-  const lines = yaml.split('\n');
-  const start = lines.findIndex((line) => line === `  ${name}:`);
-  if (start === -1) return null;
-  const body = [];
-  for (let i = start + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim() === '') { body.push(line); continue; }
-    if (!/^\s{4,}/.test(line)) break; // dedent → next repo or top-level key
-    body.push(line);
-  }
-  return body.join('\n');
-}
-
-// --- AC: repos.yaml registration (star-wars entry shape) -------------------
-
-test('AC: repos.yaml registers battlezone in the star-wars entry shape', () => {
-  const block = repoBlock(read('.pennyfarthing/repos.yaml'), 'battlezone');
-  assert.notEqual(block, null, 'battlezone must be registered under repos: in .pennyfarthing/repos.yaml');
-  assert.match(block, /path:\s*battlezone/, 'repos.yaml battlezone entry needs path: battlezone');
-  assert.match(block, /type:\s*ui/, 'repos.yaml battlezone entry needs type: ui');
-  assert.match(block, /default_branch:\s*develop/, 'repos.yaml battlezone entry needs default_branch: develop');
-  assert.match(block, /branch_strategy:\s*gitflow/, 'repos.yaml battlezone entry needs branch_strategy: gitflow');
-  assert.match(block, /language:\s*typescript/, 'repos.yaml battlezone entry needs language: typescript');
-  assert.match(block, /framework:\s*vite/, 'repos.yaml battlezone entry needs framework: vite');
-  assert.match(block, /dev_command:/, 'repos.yaml battlezone entry needs a dev_command');
-  assert.match(block, /build_command:/, 'repos.yaml battlezone entry needs a build_command');
-  assert.match(block, /test_command:/, 'repos.yaml battlezone entry needs a test_command');
-});
 
 // --- AC: justfile wiring (consistent across vars AND serve) -----------------
 
