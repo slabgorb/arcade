@@ -1073,3 +1073,54 @@ is the discriminator. Result: 29/22/38/35 modules across four games, zero non-JS
 joust 6.2%, no console errors. For a story whose entire point is that a render could not be
 verified locally, verifying it any other way would have been the same shape of proof-by-proxy the
 story was filed to end.
+
+---
+
+### Making a hand-rolled double SATISFY a big DOM interface: it is ~4 mechanical families, and only two facts are non-obvious
+
+**Situation:** mg1-9. `src/shared/tests/synth.test.ts` carried 22 type errors because its
+`FakeAudioContext`/`FakeGain` doubles approximated Web Audio rather than implementing it — invisible
+for the whole life of arcade-shared, because vitest strips types without checking them. TEA banned
+the cheap exits (`as`, `any`, `@ts-nocheck`, and narrowing the production signature), so the only
+route was to actually satisfy `AudioContext` (38 members), `AudioBufferSourceNode` (20),
+`OscillatorNode` (18), `GainNode` (12), `AudioParam` (12), `AudioBuffer` (7).
+
+**It is far less work than the member counts suggest — 280 lines of diff, ~30 minutes.** The count
+is intimidating and the actual difficulty is concentrated in two places:
+
+1. **`Float32Array` is generic as of TS 5.7.** `new Float32Array(n)` infers
+   `Float32Array<ArrayBufferLike>` and does NOT satisfy
+   `AudioBuffer.getChannelData(): Float32Array<ArrayBuffer>` — the failure path goes through
+   `SharedArrayBuffer` and reads like a compiler bug. Declare the field as
+   `Float32Array<ArrayBuffer>` and construct it `new Float32Array(new ArrayBuffer(len *
+   Float32Array.BYTES_PER_ELEMENT))`. This was the last error standing.
+2. **Members you never call must be LAZY.** `readonly listener: AudioListener = unused()`
+   typechecks perfectly and throws on every test, because a field initialiser runs in the
+   constructor. Use `get listener(): AudioListener { return unused() }`. `tsc` cannot see this
+   distinction at all — the suite going green is the only signal, so run it, do not infer it.
+
+Everything else is mechanical: `extends EventTarget` supplies the three EventTarget members on the
+context and on every node; unused methods become one-line `return unused()` where `unused` returns
+`never`; and `connect`/`disconnect` need their overload signatures declared ahead of the
+implementation, with `'connect' in target` narrowing `AudioNode | AudioParam` **without a cast**
+(which matters when a source-rule test is banning casts).
+
+**The call-site half is where the design decision lives.** Once `createGain()` returns a real
+`GainNode`, a builder typed `(target: SynthTarget)` sees real node types — so the test's local
+`HumController` must hold `OscillatorNode`/`GainNode`/`AudioContext`, not the fakes. That is not a
+loss: the assertions still reach the doubles' recording fields (`.values`, `.connectedTo`) through
+the context's own registries (`only().gains`, `contexts()[0].oscillators`), which stay typed as the
+fakes. **Keep the registries fake and let the factory returns go real** — that one split is what
+makes the whole conversion cheap, and it is closer to what a cabinet actually sees.
+
+**Two smaller traps:** a `vi.fn(() => …)` with no declared parameter infers a ZERO-argument
+signature, so `mock.calls[0][0]` indexes an empty tuple — three of the 22 errors were that one
+omission, fixed by writing `vi.fn((_target: SynthTarget) => …)`. And importing the real type into a
+suite built around dynamic `import()` + `vi.resetModules()` is safe as `import type` — it is erased
+at compile time and cannot disturb the module reset.
+
+**Verify the pass COUNT, not just green.** The AC was "the pass count is unchanged, so the fix is a
+typing change and not a quiet removal of tests that would not compile." Shared came back 501/501
+across 26 files and the full cabinet 10413 + 1 todo across 698 — both identical to the pre-fix
+baseline TEA recorded. A conversion this wide is exactly where a test quietly stops running, and
+"all green" would not have said so.

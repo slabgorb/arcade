@@ -307,3 +307,46 @@ epic YAML would then disagree with the context with no record of which came firs
 until the 2026-07-31 split; `CLAUDE.md:134,136` and the migration plan still named the dead id, and one
 of those was a test's own explanation of when it should redden. `grep -rn "<old-id>" *.md docs/ sprint/`
 costs nothing and the hits are usually inside the story's own blast radius.
+
+---
+
+### A backlog story's DESCRIPTION can be stale without any banner saying so — measure its premise before `sm-setup`, because `sm-setup` copies it forward as current fact
+
+**Situation:** `/pf-work mg1-9`, a clean 3-pointer with unambiguous ACs. Nothing was parked, nothing
+was blocked, no `⛔` banner anywhere. The epic YAML's description said "src/shared/tests is excluded
+from the root tsconfig" and "Task 21's `highscore.dom.test.ts` is untypechecked today."
+
+**Problem:** both sentences were false. A later commit had **narrowed the exclusion from the
+directory to the single file** `src/shared/tests/synth.test.ts`, so 25 of the 26 shared test files
+were already typechecked and `highscore.dom.test.ts` was among them. The real remaining scope was
+one file, not a directory. `sm-setup` renders the `description` field into the context's Background
+verbatim, so without an override TEA's primary input would have asserted a directory-wide blindness
+that no longer existed — and the natural RED test ("prove these 26 files are unchecked") would have
+been unwritable or vacuous on arrival.
+
+**The tell, and it is cheap:** the description contained a *falsifiable measurement* ("22 errors",
+"is excluded"). Any description that quotes a number or a file's current state is a claim with a
+timestamp on it. Running it costs seconds:
+
+```bash
+# empty the exclude in a scratch copy, measure, revert — then `git status --short` MUST be empty
+npx tsc --noEmit 2>&1 | grep -c 'error TS'
+```
+
+22 errors, all in one file — matching the tsconfig comment's own census exactly, which is what
+proved the *narrowing* commit was the newer truth and the *story* was the stale one.
+
+**Prevention:** extend the parked-blocker rule (three entries up) to unparked stories. The trigger is
+not the banner, it is the falsifiable claim. Re-verify it, then pass `sm-setup` the measured facts as
+an explicit correction block in the prompt and tell it to use those for Background while copying the
+`acceptance_criteria` **verbatim** — the ACs here were still perfectly good even though the
+description around them had rotted. Record the refutation in the SM Assessment too: the epic YAML
+still says the old thing, and the archived session is where a later reader learns which came first.
+
+**Second thing this story surfaced: a guard test whose correct fate is DELETION.**
+`tests/monorepo-topology.test.mjs` asserted the exclusion exists and equals the one-file list, and its
+own comment said "if `<this story>` landed, delete this test with it." So the orchestrator suite
+going red mid-work is the *expected* signal, not damage. Say so loudly in the context — a Dev who
+reads that red as a regression will restore the exclusion to make it green and fail AC1 while
+appearing to succeed. Grep the story's own id (and its pre-split id) across `tests/` at setup;
+instructions addressed to the story are usually sitting right there.

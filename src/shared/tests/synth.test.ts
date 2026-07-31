@@ -51,6 +51,11 @@
 //
 // RED until src/synth.ts exists and exports createSynthEngine + noiseBuffer.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+// Type-only, so it is erased at compile time and cannot disturb the dynamic
+// `import('../synth')` above that `vi.resetModules()` depends on. The builders below
+// are handed a SynthTarget by the engine, and saying so is what makes them typecheck
+// against the real signature instead of a hand-drawn approximation of it.
+import type { SynthTarget } from '../synth'
 
 // ── Fake WebAudio surface ────────────────────────────────────────────────────
 // The rb-grade fake (rb2-11, review round 1): close() really CLOSES, and a closed
@@ -58,8 +63,42 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 // contract exists to survive. A fake whose close() is cosmetic (battlezone's, today)
 // literally cannot express the bug, which is why bz has zero coverage of this path.
 
-class FakeAudioParam {
+// These doubles SATISFY the real Web Audio interfaces — `implements AudioContext`,
+// `implements GainNode`, and so on — rather than being asserted into place with a
+// cast (mg1-9). The distinction is the whole point: a double that is cast can drift
+// from the type it stands in for and no checker will ever say so, which is exactly
+// how this file accumulated 22 type errors while its tests passed. `tsc` never saw
+// it, because arcade-shared shipped without a tsconfig and vitest strips types
+// without checking them.
+//
+// Three things make the full surface affordable, and the second is not guessable:
+//
+//   1. `extends EventTarget` supplies addEventListener/removeEventListener/
+//      dispatchEvent honestly, on the context and on every node.
+//   2. `Float32Array` is GENERIC as of TS 5.7. `new Float32Array(n)` infers
+//      `Float32Array<ArrayBufferLike>`, which does not satisfy
+//      `AudioBuffer.getChannelData(): Float32Array<ArrayBuffer>` — it fails through
+//      SharedArrayBuffer. Hence the explicit `new Float32Array(new ArrayBuffer(...))`
+//      in FakeBuffer.
+//   3. Members the suite never touches are LAZY GETTERS, never initialised fields.
+//      `readonly listener: AudioListener = unused()` typechecks perfectly and throws
+//      the instant any test constructs a context, because a field initialiser runs in
+//      the constructor. A getter only throws if something actually reads it.
+//
+// Pinned by tests/shared-tests-typechecked.test.mjs, which bans casts, `any` and
+// `@ts-*` directives in this file, and asserts every file here is in the tsc program.
+
+/** A member of the real interface that this suite never exercises. */
+const unused = (): never => {
+  throw new Error('not implemented in the Web Audio test double')
+}
+
+class FakeAudioParam implements AudioParam {
   readonly values: number[] = []
+  automationRate: AutomationRate = 'a-rate'
+  readonly defaultValue = 0
+  readonly maxValue = 3.4028234663852886e38
+  readonly minValue = -3.4028234663852886e38
   private v = 0
   get value(): number {
     return this.v
@@ -68,65 +107,126 @@ class FakeAudioParam {
     this.v = next
     this.values.push(next)
   }
-  setValueAtTime(v: number): this {
+  setValueAtTime(v: number, _startTime: number): this {
     this.value = v
     return this
   }
-  linearRampToValueAtTime(v: number): this {
+  linearRampToValueAtTime(v: number, _endTime: number): this {
     this.value = v
     return this
   }
-  exponentialRampToValueAtTime(v: number): this {
+  exponentialRampToValueAtTime(v: number, _endTime: number): this {
     this.value = v
+    return this
+  }
+  setTargetAtTime(target: number, _startTime: number, _timeConstant: number): this {
+    this.value = target
+    return this
+  }
+  setValueCurveAtTime(_values: Iterable<number>, _startTime: number, _duration: number): this {
+    return unused()
+  }
+  cancelScheduledValues(_cancelTime: number): this {
+    return this
+  }
+  cancelAndHoldAtTime(_cancelTime: number): this {
     return this
   }
 }
 
-class FakeNode {
+class FakeNode extends EventTarget implements AudioNode {
   connectedTo: unknown = null
   disconnected = false
-  connect<T>(target: T): T {
-    this.connectedTo = target
-    return target
+  channelCount = 2
+  channelCountMode: ChannelCountMode = 'max'
+  channelInterpretation: ChannelInterpretation = 'speakers'
+  readonly numberOfInputs = 1
+  readonly numberOfOutputs = 1
+  readonly context: BaseAudioContext
+  constructor(context: BaseAudioContext) {
+    super()
+    this.context = context
   }
-  disconnect(): void {
+  // The overloads are declared so the implementation satisfies BOTH of AudioNode's
+  // signatures. `'connect' in target` narrows the union without a cast.
+  connect(destinationNode: AudioNode, output?: number, input?: number): AudioNode
+  connect(destinationParam: AudioParam, output?: number): void
+  connect(target: AudioNode | AudioParam, _output?: number, _input?: number): AudioNode | void {
+    this.connectedTo = target
+    if ('connect' in target) return target
+    return undefined
+  }
+  disconnect(): void
+  disconnect(output: number): void
+  disconnect(destinationNode: AudioNode): void
+  disconnect(destinationNode: AudioNode, output: number): void
+  disconnect(destinationNode: AudioNode, output: number, input: number): void
+  disconnect(destinationParam: AudioParam): void
+  disconnect(destinationParam: AudioParam, output: number): void
+  disconnect(_target?: number | AudioNode | AudioParam, _output?: number, _input?: number): void {
     this.disconnected = true
   }
 }
 
-class FakeGain extends FakeNode {
+class FakeGain extends FakeNode implements GainNode {
   readonly gain = new FakeAudioParam()
 }
 
-class FakeOscillator extends FakeNode {
-  type = 'sine'
-  readonly frequency = new FakeAudioParam()
-  start(): void {}
-  stop(): void {}
+class FakeDestination extends FakeNode implements AudioDestinationNode {
+  readonly maxChannelCount = 2
 }
 
-class FakeBuffer {
-  readonly data: Float32Array
-  constructor(
-    readonly numberOfChannels: number,
-    readonly length: number,
-    readonly sampleRate: number,
-  ) {
-    this.data = new Float32Array(length)
+class FakeOscillator extends FakeNode implements OscillatorNode {
+  type: OscillatorType = 'sine'
+  readonly frequency = new FakeAudioParam()
+  readonly detune = new FakeAudioParam()
+  onended: ((this: AudioScheduledSourceNode, ev: Event) => unknown) | null = null
+  start(_when?: number): void {}
+  stop(_when?: number): void {}
+  setPeriodicWave(_periodicWave: PeriodicWave): void {
+    unused()
   }
-  getChannelData(): Float32Array {
+}
+
+class FakeBuffer implements AudioBuffer {
+  // Explicitly `Float32Array<ArrayBuffer>` — see note 2 in the header above.
+  readonly data: Float32Array<ArrayBuffer>
+  readonly numberOfChannels: number
+  readonly length: number
+  readonly sampleRate: number
+  constructor(numberOfChannels: number, length: number, sampleRate: number) {
+    this.numberOfChannels = numberOfChannels
+    this.length = length
+    this.sampleRate = sampleRate
+    this.data = new Float32Array(new ArrayBuffer(length * Float32Array.BYTES_PER_ELEMENT))
+  }
+  get duration(): number {
+    return this.length / this.sampleRate
+  }
+  getChannelData(_channel: number): Float32Array<ArrayBuffer> {
     return this.data
   }
+  copyFromChannel(_destination: Float32Array, _channelNumber: number, _bufferOffset?: number): void {
+    unused()
+  }
+  copyToChannel(_source: Float32Array, _channelNumber: number, _bufferOffset?: number): void {
+    unused()
+  }
 }
 
-class FakeBufferSource extends FakeNode {
-  buffer: FakeBuffer | null = null
+class FakeBufferSource extends FakeNode implements AudioBufferSourceNode {
+  buffer: AudioBuffer | null = null
   loop = false
-  start(): void {}
-  stop(): void {}
+  loopEnd = 0
+  loopStart = 0
+  readonly detune = new FakeAudioParam()
+  readonly playbackRate = new FakeAudioParam()
+  onended: ((this: AudioScheduledSourceNode, ev: Event) => unknown) | null = null
+  start(_when?: number, _offset?: number, _duration?: number): void {}
+  stop(_when?: number): void {}
 }
 
-class FakeAudioContext {
+class FakeAudioContext extends EventTarget implements AudioContext {
   static instances: FakeAudioContext[] = []
   /** Set to make createGain() throw — models a ctor that half-builds then fails. */
   static failCreateGain = false
@@ -139,13 +239,27 @@ class FakeAudioContext {
   readonly sources: FakeBufferSource[] = []
   currentTime = 0
   sampleRate = 48_000
-  state = 'running'
-  readonly destination = new FakeNode()
+  state: AudioContextState = 'running'
+  readonly destination: AudioDestinationNode
+  readonly baseLatency = 0
+  readonly outputLatency = 0
+  onstatechange: ((this: BaseAudioContext, ev: Event) => unknown) | null = null
   resumeCalls = 0
   closeCalls = 0
 
   constructor() {
+    super()
+    this.destination = new FakeDestination(this)
     FakeAudioContext.instances.push(this)
+  }
+
+  // Real members this suite never reads. Getters, not fields: a field initialiser
+  // would run here in the constructor and throw on every single test.
+  get listener(): AudioListener {
+    return unused()
+  }
+  get audioWorklet(): AudioWorklet {
+    return unused()
   }
 
   resume(): Promise<void> {
@@ -170,28 +284,100 @@ class FakeAudioContext {
     if (this.state === 'closed') throw new Error('InvalidStateError: context is closed')
   }
 
-  createGain(): FakeGain {
+  createGain(): GainNode {
     this.assertOpen()
     if (FakeAudioContext.failCreateGain) throw new Error('createGain failed')
-    const g = new FakeGain()
+    const g = new FakeGain(this)
     this.gains.push(g)
     return g
   }
-  createOscillator(): FakeOscillator {
+  createOscillator(): OscillatorNode {
     this.assertOpen()
-    const o = new FakeOscillator()
+    const o = new FakeOscillator(this)
     this.oscillators.push(o)
     return o
   }
-  createBuffer(channels: number, length: number, sampleRate: number): FakeBuffer {
+  createBuffer(channels: number, length: number, sampleRate: number): AudioBuffer {
     this.assertOpen()
     return new FakeBuffer(channels, length, sampleRate)
   }
-  createBufferSource(): FakeBufferSource {
+  createBufferSource(): AudioBufferSourceNode {
     this.assertOpen()
-    const s = new FakeBufferSource()
+    const s = new FakeBufferSource(this)
     this.sources.push(s)
     return s
+  }
+
+  // ── the rest of the AudioContext surface ───────────────────────────────────
+  // Never called by this suite, but a double that omits them is not an
+  // AudioContext, and pretending otherwise is what the cast used to do.
+  suspend(): Promise<void> {
+    return unused()
+  }
+  getOutputTimestamp(): AudioTimestamp {
+    return unused()
+  }
+  createAnalyser(): AnalyserNode {
+    return unused()
+  }
+  createBiquadFilter(): BiquadFilterNode {
+    return unused()
+  }
+  createChannelMerger(_numberOfInputs?: number): ChannelMergerNode {
+    return unused()
+  }
+  createChannelSplitter(_numberOfOutputs?: number): ChannelSplitterNode {
+    return unused()
+  }
+  createConstantSource(): ConstantSourceNode {
+    return unused()
+  }
+  createConvolver(): ConvolverNode {
+    return unused()
+  }
+  createDelay(_maxDelayTime?: number): DelayNode {
+    return unused()
+  }
+  createDynamicsCompressor(): DynamicsCompressorNode {
+    return unused()
+  }
+  createIIRFilter(_feedforward: Iterable<number>, _feedback: Iterable<number>): IIRFilterNode {
+    return unused()
+  }
+  createPanner(): PannerNode {
+    return unused()
+  }
+  createPeriodicWave(
+    _real: Iterable<number>,
+    _imag: Iterable<number>,
+    _constraints?: PeriodicWaveConstraints,
+  ): PeriodicWave {
+    return unused()
+  }
+  createScriptProcessor(
+    _bufferSize?: number,
+    _numberOfInputChannels?: number,
+    _numberOfOutputChannels?: number,
+  ): ScriptProcessorNode {
+    return unused()
+  }
+  createStereoPanner(): StereoPannerNode {
+    return unused()
+  }
+  createWaveShaper(): WaveShaperNode {
+    return unused()
+  }
+  createMediaElementSource(_mediaElement: HTMLMediaElement): MediaElementAudioSourceNode {
+    return unused()
+  }
+  createMediaStreamDestination(): MediaStreamAudioDestinationNode {
+    return unused()
+  }
+  createMediaStreamSource(_mediaStream: MediaStream): MediaStreamAudioSourceNode {
+    return unused()
+  }
+  decodeAudioData(_audioData: ArrayBuffer): Promise<AudioBuffer> {
+    return unused()
   }
 }
 
@@ -573,13 +759,19 @@ describe('persistent voices — engine-owned, self-healing (SH2-22)', () => {
   // battlezone's hum / red-baron's whine do today) and returns a controller closing over
   // the nodes + the context, so control() can drive params. The engine holds the nodes;
   // the cabinet only ever sees this controller.
+  //
+  // The controller holds the REAL node types, not the doubles: the builder is handed a
+  // `SynthTarget`, so `createOscillator()` is typed `OscillatorNode` — which is what a
+  // cabinet's builder actually sees. The assertions below still reach the doubles'
+  // recording fields (`.values`, `.connectedTo`) through the context's own registries
+  // (`only().gains`, `contexts()[0].oscillators`), which stay typed as the fakes.
   type HumController = {
-    osc: FakeOscillator
-    gain: FakeGain
-    context: FakeAudioContext
+    osc: OscillatorNode
+    gain: GainNode
+    context: AudioContext
   }
   const makeHumBuilder = () =>
-    vi.fn((target: { context: FakeAudioContext; out: FakeGain }): HumController => {
+    vi.fn((target: SynthTarget): HumController => {
       const osc = target.context.createOscillator()
       osc.type = 'sawtooth'
       const gain = target.context.createGain()
@@ -907,7 +1099,11 @@ describe('voice bookkeeping — idempotent start/stop, no node leaks (AC-6)', ()
     const { createSynthEngine } = await loadSynth()
     const synth = createSynthEngine()
     synth.resume()
-    const build = vi.fn(() => ({ stop: () => {} }))
+    // Declaring the parameter is what makes `mock.calls[0][0]` a SynthTarget. Left
+    // implicit, vi.fn infers a zero-argument signature, `calls[0]` is the empty tuple
+    // and reading `[0]` off it is an out-of-range index — which is exactly what the
+    // three type errors on these lines were saying before mg1-9.
+    const build = vi.fn((_target: SynthTarget) => ({ stop: () => {} }))
 
     synth.startVoice('gun', build)
     expect(build).toHaveBeenCalledTimes(1)
@@ -1044,7 +1240,7 @@ describe('noiseBuffer — white noise, the raw material of the one-shots', () =>
   it('fills the buffer with noise spanning both polarities in [-1, 1]', async () => {
     const { noiseBuffer } = await loadSynth()
     const ctx = new FakeAudioContext()
-    const data = noiseBuffer(ctx, 0.1).getChannelData()
+    const data = noiseBuffer(ctx, 0.1).getChannelData(0)
 
     expect(data.length).toBeGreaterThan(0)
     // Every sample in range...
