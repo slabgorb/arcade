@@ -549,6 +549,49 @@ function globMatchesRef(glob, ref) {
 }
 
 /**
+ * The workflow's YAML skeleton: every configuration line, comments and blank
+ * lines removed, with each `run:` VALUE collapsed to `<shell>` (the shell itself
+ * is pinned behaviourally by the argv deep-equals below, and duplicating it here
+ * would just make this brittle without making it stronger).
+ *
+ * This exists because of a question the first sweep of this file never asked.
+ * That sweep asked "can prose satisfy each assertion?" and closed every hole it
+ * found — but the review then found a defect in the one block that had NO
+ * assertion at all, which no amount of auditing existing assertions could ever
+ * have surfaced. `concurrency`, `permissions`, `timeout-minutes`, `runs-on`,
+ * `cache: npm` and both `uses:` action versions were all invisible to the suite.
+ *
+ * So this is deliberately exhaustive rather than selective: a deep-equal over
+ * the WHOLE skeleton cannot leave a key unguarded, because adding, removing or
+ * editing any line changes the array. It is the structural complement to the
+ * behavioural tests, not a replacement for them.
+ */
+function workflowSkeleton() {
+  const lines = workflowConfig().split('\n');
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === '') continue;
+    const m = /^(\s*)(- )?run:(.*)$/.exec(lines[i]);
+    if (!m) {
+      out.push(lines[i]);
+      continue;
+    }
+    const keyIndent = m[1].length + (m[2]?.length ?? 0);
+    out.push(`${m[1]}${m[2] ?? ''}run: <shell>`);
+    if (m[3].trim() === '|') {
+      let j = i + 1;
+      for (; j < lines.length; j++) {
+        if (lines[j].trim() === '') continue;
+        if (lines[j].length - lines[j].trimStart().length <= keyIndent) break;
+      }
+      i = j - 1;
+    }
+  }
+  if (out.length === 0) throw new Error('deploy.yml has no configuration lines at all');
+  return out;
+}
+
+/**
  * Every `run:` script in a workflow file, in order and dedented — either an
  * inline `run: npm ci` or a `run: |` literal block.
  *
@@ -799,6 +842,93 @@ test('the tag trigger actually fires for every tag scripts/release.mjs cuts', as
   }
 });
 
+test('the deploy workflow gives every tag its own concurrency group', () => {
+  // A SHARED concurrency group does not serialise deploys. It DISCARDS them.
+  //
+  // A group holds exactly one pending run by default — "any additional pending
+  // runs cancel the previous one" (Actions docs, concurrency), i.e. `queue:
+  // single`. `cancel-in-progress: false` governs only the RUNNING job and does
+  // nothing for the queue. An earlier revision of this workflow used one group,
+  // `deploy-arcade`, for all eight apps, in the stated belief that it serialised
+  // the uploads. Under `just release-all` — eight tags pushed in a burst — the
+  // first would run, and each new arrival would cancel the one waiting: roughly
+  // the first and the last deploy, and the middle six silently do not. Silently
+  // is the word: release-all exits 0 having already bumped, committed, tagged and
+  // pushed all eight, the lost runs read as *cancelled* rather than failed, and
+  // release.mjs's change detection then skips the re-release because the bump is
+  // already on main.
+  //
+  // The invariant is therefore NOT "the group string is this literal", it is
+  // "two different tags cannot collide in one group" — so it is checked by
+  // rendering the group expression for two tags and requiring them to differ.
+  // The one other legitimate design, a single group that opts into real queueing
+  // with `queue: max` (up to 100 pending), satisfies this too.
+  const cfg = workflowConfig();
+  const group = /^\s*group:\s*(.+?)\s*$/m.exec(cfg);
+  assert.ok(group, 'the deploy job must declare a concurrency group');
+  // Only `github.ref_name` is substituted, because the tag is the only thing that
+  // varies between two deploys. A group keyed on something per-RUN instead (a run
+  // id, say) would fail here, and rightly: it is indistinguishable from having no
+  // concurrency control at all.
+  const render = (tag) => group[1].replaceAll(/\$\{\{\s*github\.ref_name\s*\}\}/g, tag);
+  const disjoint = render('tempest-v1.0.29') !== render('joust-v0.0.4');
+  const queuesForReal = /^\s*queue:\s*max\s*$/m.test(cfg);
+  assert.ok(
+    disjoint || queuesForReal,
+    `concurrency group '${group[1]}' is shared by every tag and does not set queue: max — ` +
+      'a release-all burst would cancel its own pending deploys instead of queueing them',
+  );
+});
+
+test("the deploy workflow's configuration skeleton is pinned, key for key", () => {
+  // The exhaustive structural guard — see workflowSkeleton. Every line of YAML
+  // configuration, in order. This is the test that would have caught the shared
+  // concurrency group on the commit that introduced it, and it is the only thing
+  // guarding `permissions`, `timeout-minutes`, `runs-on`, `cache: npm` and the
+  // two pinned action versions at all.
+  //
+  // When this reddens, read the diff rather than pasting the new value in: it
+  // fires on any CI change whatsoever, which is the point. Every line here is
+  // load-bearing and several are asserted a second time, semantically, above.
+  assert.deepEqual(workflowSkeleton(), [
+    'name: deploy',
+    'on:',
+    '  push:',
+    "    tags: ['*-v*']",
+    'permissions:',
+    '  contents: read',
+    'jobs:',
+    '  deploy:',
+    '    runs-on: ubuntu-latest',
+    '    timeout-minutes: 30',
+    '    concurrency:',
+    '      group: deploy-${{ github.ref_name }}',
+    '      cancel-in-progress: false',
+    '    steps:',
+    '      - uses: actions/checkout@v5',
+    '        with:',
+    '          fetch-depth: 0',
+    '      - name: Resolve the app from the tag',
+    '        run: <shell>',
+    '      - uses: actions/setup-node@v5',
+    '        with:',
+    '          node-version: 22',
+    '          cache: npm',
+    '      - run: <shell>',
+    '      - run: <shell>',
+    '      - run: <shell>',
+    '      - name: Unit tests for this app',
+    '        run: <shell>',
+    '      - name: Build this app',
+    '        run: <shell>',
+    '      - name: Upload to R2',
+    '        run: <shell>',
+    '        env:',
+    '          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}',
+    '          CLOUDFLARE_ACCOUNT_ID: a55aafa9b0691f828cd6864be28c1674',
+  ]);
+});
+
 test('the deploy workflow clones full history and carries the Cloudflare credentials', () => {
   // All three read the COMMENT-STRIPPED file (see workflowConfig): the first of
   // them survived a real mutation until it did, because this workflow explains
@@ -885,13 +1015,36 @@ test('the deploy workflow runs a Node that meets the floor package.json declares
   // `node --no-experimental-strip-types scripts/build-app.mjs tempest`:
   // ERR_UNKNOWN_FILE_EXTENSION at load. A literal 20 here would not redden a
   // test, it would produce no build at all.
+  // This compared MAJORS ONLY (`>=22.18` -> 22, `node-version: 22` -> 22), so it
+  // enforced `>=22` while its own name and message claimed `>=22.18`.
+  // `node-version: 22.17.0` — an ordinary reproducibility pin — passed it, and
+  // installs a Node WITHOUT default type stripping: exactly the "no build at all"
+  // failure described above. Same defect class as the account id below: an
+  // assertion that described the right thing without being able to check it.
   const declared = JSON.parse(read('package.json')).engines.node;
-  const floor = Number(declared.replace('>=', '').split('.')[0]);
-  const pinned = /node-version:\s*'?"?(\d+)/.exec(workflowConfig());
-  assert.ok(pinned, 'the workflow must pin a Node major for setup-node');
+  const floor = declared.replace(/^[^\d]*/, '').split('.').map(Number);
+  const pinned = /node-version:\s*'?"?([0-9]+(?:\.[0-9]+)*)/.exec(workflowConfig());
+  assert.ok(pinned, 'the workflow must pin a Node version for setup-node');
+  const parts = pinned[1].split('.').map(Number);
+
+  // Unstated components of the PIN are +Infinity, not 0: setup-node resolves any
+  // partial spec to the newest build matching it, so `22` means "the latest 22.x"
+  // and `22.18` means "the latest 22.18.x". Unstated components of the FLOOR are
+  // 0, since `>=22.18` means `>=22.18.0`. That asymmetry is the whole fix — it is
+  // what makes a bare `22` pass and an explicit `22.17.0` fail against `>=22.18`.
+  const meets = (() => {
+    for (let i = 0; i < 3; i++) {
+      const p = i < parts.length ? parts[i] : Infinity;
+      const f = i < floor.length ? floor[i] : 0;
+      if (p !== f) return p > f;
+    }
+    return true;
+  })();
   assert.ok(
-    Number(pinned[1]) >= floor,
-    `deploy.yml runs Node ${pinned[1]}.x but package.json declares ${declared}`,
+    meets,
+    `deploy.yml pins Node ${pinned[1]} but package.json declares ${declared} — ` +
+      'setup-node would install a Node without default type stripping, and ' +
+      'build-app.mjs -> gen-registry.mjs -> src/host/contract.ts would not load',
   );
 });
 

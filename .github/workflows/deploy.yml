@@ -31,32 +31,36 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # ONE QUEUE FOR THE WHOLE CABINET, on purpose — a CHOICE, not a limitation.
+    # ONE GROUP PER TAG. Every run gets its own group, so no deploy is ever
+    # pending behind another and none can be cancelled by a sibling.
     #
-    # The retired workflow grouped by `github.repository`, which WAS per-app back
-    # when apps were repos. Within THIS single job that grouping is unreachable:
-    # `concurrency` is evaluated before any step runs, so it cannot see the app id
-    # the first step resolves, and GitHub's expression syntax has no replace,
-    # regex or substring function with which to strip `-vX.Y.Z` off
-    # `github.ref_name` itself. (`format`/`join`/`contains` are the whole string
-    # toolkit.)
+    # THIS MUST NOT BECOME A SINGLE SHARED GROUP. An earlier revision used
+    # `group: deploy-arcade` for the whole cabinet, believing that serialised the
+    # uploads. It does not — it DISCARDS them. A concurrency group holds exactly
+    # ONE pending run by default: "any additional pending runs cancel the previous
+    # one" (Actions docs, concurrency). `cancel-in-progress: false` protects only
+    # the RUNNING job; it does nothing for the queue. So with all eight sharing a
+    # group, `just release-all` would push eight tags, run the first, and have
+    # each new arrival cancel the one waiting — roughly the first and the last
+    # would deploy and the middle six would vanish. Silently: `release-all` exits
+    # 0 having already bumped, committed, tagged and pushed all eight, the lost
+    # runs read as *cancelled* rather than failed, and because the bump is already
+    # on main, release.mjs's change detection then SKIPS the re-release without
+    # --force. Pinned by `the deploy workflow gives every tag its own concurrency
+    # group` in tests/monorepo-topology.test.mjs.
     #
-    # It is NOT unreachable in general, and an earlier draft of this comment
-    # wrongly said so — claiming a job-level `concurrency` may read only the
-    # `github` context. It may also read `needs`, `strategy`, `matrix`, `inputs`
-    # and `vars` (Actions docs, "Contexts" availability table). So splitting the
-    # tag parse into its own job and grouping on
-    # `deploy-${{ needs.resolve.outputs.id }}` WOULD reconstruct per-app queues.
+    # Concurrent uploads are safe here, which is what makes per-tag grouping the
+    # right answer rather than merely the safe-looking one: scripts/deploy-r2.mjs
+    # only ever `wrangler r2 object put`s, one object at a time, under a key
+    # prefix disjoint from every other app's (the lobby owns the root keys, each
+    # game owns `<id>/`). It never lists, deletes or prunes, so there is no
+    # whole-bucket sync for a concurrent deploy to race. Two apps uploading at
+    # once cannot touch the same key.
     #
-    # We deliberately do not, and the reason is the bucket, not the syntax: all
-    # eight apps now upload to a SINGLE bucket through a SINGLE account token, and
-    # `just release-all` pushes eight tags in a burst. One queue serialises what
-    # would otherwise be eight concurrent wrangler upload storms into one bucket.
-    # A deploy is minutes, and nothing here is latency-sensitive. Per-app queues
-    # would buy independence the shared bucket does not actually give us, at the
-    # cost of an extra job and a checkout to feed it.
+    # (If serialising ever DOES become necessary, the fix is one shared group plus
+    # `queue: max` — up to 100 pending — not a shared group on its own.)
     concurrency:
-      group: deploy-arcade
+      group: deploy-${{ github.ref_name }}
       cancel-in-progress: false
     steps:
       # fetch-depth: 0 is REQUIRED, not tidiness. tempest's and red-baron's ROM
