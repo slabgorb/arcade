@@ -31,6 +31,7 @@
   // check by shrinking what is checked, and the file it hides stays hidden long after
   // whoever added it has moved on — the errors above went unnoticed for the entire
   // life of arcade-shared. `tests/shared-tests-typechecked.test.mjs` asserts this key
-  // stays empty and that every file under src/shared/tests is in the tsc program.
+  // stays empty and that every TEST file under src/shared/tests is in the tsc program.
+  // (The two helpers/*.ts files are compiled too, but the assertion enumerates *.test.ts.)
   "include": ["src", "plugins", "lobby", "scripts"]
 }

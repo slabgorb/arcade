@@ -112,9 +112,15 @@ test('every test file under src/shared/tests is in the tsc program', () => {
 });
 
 test('tsc --noEmit exits 0 with the shared tests in the program', () => {
-  // The other half of AC1. On its own this is vacuous — it passes today, with
-  // synth.test.ts excluded — which is precisely why it is stated as a PAIR with the
-  // test above. Green here plus green there is the AC; green here alone is not.
+  // The other half of AC1. INSUFFICIENT ALONE — not vacuous, a distinction review
+  // round 1 was right to draw. Each half catches a state the other misses:
+  //
+  //   exclusion present (pre-fix)      → `in the tsc program` FAILS, this one passes
+  //   exclusion gone, doubles unfixed  → `in the tsc program` passes, this one FAILS (22 errors)
+  //   fixed                            → both pass
+  //
+  // So both can fail, neither is tautological, and only the pair covers the middle
+  // state — which is precisely where a half-done fix would sit.
   const { status, errors } = tsc();
   assert.equal(
     status,
@@ -158,6 +164,26 @@ test('the root tsconfig excludes nothing', () => {
  * apostrophe inside a comment opens a phantom string that swallows real code.
  * (cp1-1's purity guard shipped exactly that bug, then the mirror one — a URL
  * containing `/window.` flagged as a live `window.` access.)
+ *
+ * EVERY literal regex is line-bounded, and the backtick one is why. Review round 1
+ * found a real cast could be hidden from this scanner entirely:
+ *
+ *     const s = "quote" // contains a stray backtick ` here
+ *     const c = ctx as unknown as AudioContext
+ *     const t = `template`
+ *
+ * The line-comment strip deliberately refuses to fire on a line carrying a quote
+ * before its `//` (so a URL like 'http://x' cannot have its own contents eaten),
+ * which leaves that stray backtick alive. The backtick rule then paired it with the
+ * OPENING backtick of the real template literal two lines down and swallowed the
+ * cast between them. What the scanner believed it was reading was one line:
+ *
+ *     const s = "" // contains a stray backtick ``template`
+ *
+ * `[^`\\\n]` closes it: a literal cannot span lines, so a stray backtick can reach
+ * at most to the end of its own. Measured before changing it — synth.test.ts has 0
+ * multi-line template literals and 0 lines with an odd backtick count, so nothing
+ * legitimate is affected. The bypass shape is pinned in the fixture test below.
  */
 export const stripToCode = (src) =>
   src
@@ -165,7 +191,7 @@ export const stripToCode = (src) =>
     .replace(/^[^\n'"`]*?\/\/.*$/gm, (line) => line.replace(/\/\/.*$/, ' '))
     .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
     .replace(/"(?:[^"\\\n]|\\.)*"/g, '""')
-    .replace(/`(?:[^`\\]|\\.)*`/g, '``');
+    .replace(/`(?:[^`\\\n]|\\.)*`/g, '``');
 
 // The types the doubles stand in for. A cast to any of these is the failure AC2
 // names: it makes tsc exit 0 while the double still does not satisfy the type,
@@ -189,20 +215,28 @@ const WEBAUDIO_TYPES = [
 /** Returns a list of human-readable violations; empty means clean. */
 export const findSuppressions = (src) => {
   const bad = [];
-  // ts-directives live in COMMENTS, so these scan the RAW text.
+  // ts-directives live in COMMENTS, so these scan the RAW text — but a directive only
+  // WORKS immediately after the comment opener. Matching the bare token anywhere made
+  // the guard redden on its own documentation: a comment reading "never add
+  // @ts-nocheck to this file" is advice, not a suppression, and review round 1 caught
+  // that this file survived only because it happened to write the glob `@ts-*`.
   for (const d of ['@ts-nocheck', '@ts-ignore', '@ts-expect-error']) {
-    if (src.includes(d)) bad.push(`${d} suppresses the checker instead of satisfying it`);
+    const directive = new RegExp(String.raw`(?:^|[^\S\n])\/\/\s*${d}\b|\/\*\s*${d}\b`, 'm');
+    if (directive.test(src)) bad.push(`${d} suppresses the checker instead of satisfying it`);
   }
   const code = stripToCode(src);
   // `any` defeats the check as thoroughly as a cast does.
   if (/\bas\s+any\b/.test(code)) bad.push('`as any` cast');
   if (/:\s*any\b/.test(code)) bad.push('`: any` annotation');
-  if (/<any>/.test(code)) bad.push('`<any>` cast');
+  if (/(?<![A-Za-z0-9_$])<any>/.test(code)) bad.push('`<any>` cast');
   for (const t of WEBAUDIO_TYPES) {
     if (new RegExp(String.raw`\bas\s+(?:unknown\s+as\s+)?${t}\b`).test(code)) {
       bad.push(`cast to ${t} — the double must satisfy it, not be asserted into it`);
     }
-    if (new RegExp(String.raw`<${t}>\s*[A-Za-z_(]`).test(code)) {
+    // The lookbehind is the difference between a legacy cast `<T>expr` (nothing before
+    // the `<`) and an ordinary generic call `identity<T>(x)` (a callee name before it).
+    // Without it the scanner flagged the latter, which is not a cast at all.
+    if (new RegExp(String.raw`(?<![A-Za-z0-9_$])<${t}>\s*[A-Za-z_(]`).test(code)) {
       bad.push(`angle-bracket cast to ${t}`);
     }
   }
@@ -214,7 +248,9 @@ test('the WebAudio doubles are not cast or suppressed into place', () => {
   // guard against the wrong fix, not a driver. Its non-vacuity was established by
   // mutation, not by argument: TEA inserted `as unknown as AudioContext`, a
   // `@ts-nocheck`, and an `: any` in turn and confirmed each one reddens this test.
-  // See the TEA Assessment in the mg1-9 session for the three failure messages.
+  // an `as any` and a `: any` in turn and confirmed each one reddens this test. Review
+  // round 1 added two more shapes it MISSED; those are pinned in the fixture test below.
+  // See the TEA Assessment in the mg1-9 session for the four failure messages.
   const bad = findSuppressions(read(SYNTH_TEST));
   assert.deepEqual(
     bad,
@@ -234,9 +270,22 @@ test('the suppression scanner flags what it must and ignores what it must not', 
     ['const c = ctx as AudioContext', 'direct cast'],
     ['const g = node as GainNode', 'cast to a node type'],
     ['// @ts-nocheck', 'whole-file suppression'],
-    ['// @ts-expect-error the double is wrong', 'line suppression'],
+    ['  // @ts-expect-error the double is wrong', 'line suppression, indented'],
+    ['/* @ts-ignore */', 'a block-comment directive'],
     ['const c = ctx as any', '`as any`'],
     ['function f(ctx: any) {}', '`: any` parameter'],
+    ['const c = <AudioContext>ctx', 'a legacy angle-bracket cast'],
+    // THE REVIEW-ROUND-1 BYPASS. A stray backtick inside a `//` comment on a line
+    // that also carries a quote — so the comment survives the strip — used to pair
+    // with the opening backtick of a real template literal below and swallow every
+    // line between, cast included. If this row ever goes green again, the
+    // line-bounding on the backtick rule in stripToCode has been undone.
+    [
+      'const s = "quote" // contains a stray backtick ` here\n' +
+        'const c = ctx as unknown as AudioContext\n' +
+        'const t = `template`',
+      'a cast hidden behind a stray backtick in a surviving comment',
+    ],
   ];
   for (const [src, why] of flagged) {
     assert.ok(findSuppressions(src).length > 0, `the scanner must flag ${why}: ${src}`);
@@ -244,11 +293,14 @@ test('the suppression scanner flags what it must and ignores what it must not', 
 
   const ignored = [
     ['// the double must not be cast as AudioContext', 'a comment describing the rule'],
+    ['// never add @ts-nocheck to this file', 'PROSE naming a directive, not a directive'],
+    ['// the guard bans @ts-ignore and friends', 'prose naming a directive mid-sentence'],
     ['const url = "as unknown as AudioContext"', 'the pattern inside a string'],
     ['const x = synth as unknown as Record<string, unknown>', 'a cast to an unrelated type'],
     ['class FakeGain extends FakeAudioNode implements GainNode {}', '`implements` — the honest form'],
     ['const anyOf = (xs) => xs.length > 0', 'an identifier merely containing "any"'],
     ['let ctx: AudioContext | null = null', 'an honest type annotation'],
+    ['const c = identity<AudioContext>(ctx)', 'a generic CALL, which is not a cast'],
   ];
   for (const [src, why] of ignored) {
     assert.deepEqual(findSuppressions(src), [], `the scanner must NOT flag ${why}: ${src}`);
@@ -293,10 +345,24 @@ test('no test was quietly removed from synth.test.ts', () => {
   // exit 0, and the suite's own pass count cannot object — it would simply be
   // smaller, and still green.
   //
-  // Baselines measured on the pre-fix tree (2026-07-31, TEA): the shared vitest
-  // project runs 501 tests across 26 files, all passing; synth.test.ts declares 51
-  // `it(` blocks in 11 `describe`s. The counts below are source-text facts, which is
-  // what makes this cheap enough to run in the orchestrator suite.
+  // THIS IS A PROXY FOR AC4, NOT AC4 ITSELF. Be clear about the gap, because the
+  // numbers below invite more confidence than they earn:
+  //
+  //   - AC4's literal claim is about the SUITE's pass count. The baselines measured on
+  //     the pre-fix tree (2026-07-31, TEA) were 501 tests across 26 files for the
+  //     shared vitest project, and 10413 + 1 todo across 698 files cabinet-wide. NO
+  //     test asserts those — running vitest from inside the orchestrator suite would
+  //     cross the two-runner boundary CLAUDE.md draws and cost ~110s. They are
+  //     recorded in the session and re-measured by hand at review.
+  //   - What IS asserted is a source-text census of one file. It catches a deletion,
+  //     which is the failure AC4 names. It does NOT catch a SWAP — delete one
+  //     meaningful test, add a trivial one, and both counts are unchanged. Closing
+  //     that would mean pinning every test's title against a committed baseline;
+  //     judged not worth the churn for a file that changes rarely.
+  //
+  // So: green here means "no test was deleted outright from synth.test.ts", not "the
+  // suite's coverage is provably identical". Both review rounds re-measured the real
+  // numbers to cover the difference.
   const src = read(SYNTH_TEST);
   const its = (src.match(/^\s*(?:it|test)\(/gm) ?? []).length;
   const describes = (src.match(/^\s*describe\(/gm) ?? []).length;
