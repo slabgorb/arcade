@@ -8,10 +8,11 @@
 //     just release tempest         ->  tempest-v1.0.29
 //     just release lobby minor     ->  lobby-v0.1.0
 //
-// One repo cannot hold two v1.0.29, so every tag is namespaced by app.
-// .github/workflows/deploy.yml parses the app id back out of the tag and deploys
-// only that app; an UNPREFIXED vX.Y.Z tag matches its trigger not at all and
-// deploys nothing, which is why `tagFor` is the one place the name is built.
+// One repo cannot hold two v1.0.29, so every tag is namespaced by app. Task 18
+// will add `.github/workflows/deploy.yml` (it does not exist yet), which parses
+// the app id back out of the tag and deploys only that app; an UNPREFIXED vX.Y.Z
+// tag will match its trigger not at all and deploy nothing, which is why `tagFor`
+// is the one place the name is built.
 //
 // WHAT WENT AWAY WITH THE SUBREPOS
 //   · the develop -> main `--no-ff` merge, and with it `checkout -B main
@@ -109,11 +110,13 @@ export function nextVersion(current, level) {
   if (!LEVELS.includes(level)) {
     throw new Error(`unknown level "${level}" — expected ${LEVELS.join('|')}`);
   }
-  // Deliberately strict: no `v` prefix, no `-rc.1`, no `+build`. Every app's
-  // package.json is a three-field stub whose version tests/monorepo-topology
-  // already pins as bare semver, and a bump this function had to GUESS at would
-  // produce a tag CI parses back into a version that is not the one on disk.
-  const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(current).trim());
+  // Deliberately strict: no `v` prefix, no `-rc.1`, no `+build`, and no leading
+  // zeros (`01.2.3` — semver forbids them, and `01.2.4` is not a version anyone
+  // meant). Every app's package.json is a three-field stub whose version
+  // tests/monorepo-topology already pins as bare semver, and a bump this function
+  // had to GUESS at would produce a tag CI parses back into a version that is not
+  // the one on disk.
+  const m = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(String(current).trim());
   if (!m) throw new Error(`version "${current}" is not a bare X.Y.Z — refusing to guess a bump`);
   const [major, minor, patch] = m.slice(1).map(Number);
   if (level === 'major') return `${major + 1}.0.0`;
@@ -155,22 +158,43 @@ export function setPackageVersion(source, from, to) {
  *
  * The old question ("does origin/develop hold commits origin/main lacks?") cannot
  * be asked of a trunk that carries eight apps: after releasing tempest, `main` is
- * ahead of every other app's last tag too. So the question is asked of the app's
- * OWN directory instead — `git diff --name-only <its last tag> HEAD -- plugins/<id>`.
- *
- * KNOWN AND DELIBERATE UNDER-REPORT: a change to `src/shared/**` alone (which
- * every game bundles) does not appear in this diff, so a shared-only fix reads as
- * "nothing to release". That is why the skip is printed with the `--force`
- * escape hatch named in the same breath, and why `force` short-circuits first.
- * Widening the path set to `src/shared` is not the fix it looks like: every
- * release regenerates `src/host/registry.ts`, so including the shared tree would
- * make every app look changed by every OTHER app's release, and this guard would
- * never fire again.
+ * ahead of every other app's last tag too. So the question is asked of the paths
+ * the app is BUILT FROM instead — see changePathsFor.
  */
 export function shouldRelease({ hasPreviousTag, changedFiles, force = false }) {
   if (force) return true;
   if (!hasPreviousTag) return true; // an app's first release has nothing to diff against
   return changedFiles > 0;
+}
+
+/**
+ * The `git diff` pathspec that answers "has this app changed since its last tag":
+ * everything it is built from, minus the one file every release rewrites.
+ *
+ * The first draft asked only about `plugins/<id>`, on the stated grounds that
+ * widening it would make every app look changed by every OTHER app's release.
+ * That reasoning was wrong and review measured it: a release commit touches
+ * `<app>/package.json` and `src/host/registry.ts`, and nothing else. So
+ *
+ *   · `src/shared/**` — bundled into every app — costs NOTHING in false
+ *     positives. Verified against three real release commits: `git diff
+ *     --name-only <tag>~1 <tag> -- plugins/asteroids src/shared` is empty for
+ *     tempest's, centipede's and the lobby's releases.
+ *   · `src/host/**` matters too — every plugin manifest, `plugins/<id>/plugin.ts`,
+ *     imports from `@host` — and is poisoned by exactly one file, `registry.ts`,
+ *     which the exclusion removes. Verified in both directions: with the exclusion
+ *     the same diff is empty; without it, it returns `src/host/registry.ts`.
+ *
+ * A second `release-all` after a shared-only change therefore still skips, so the
+ * 2026-07-13 bug this guard exists for stays fixed while a shared fix now ships.
+ *
+ * WHAT IS STILL OUTSIDE THE SET, stated rather than glossed: the root build
+ * config — `vite.config.ts`, `package-lock.json`, `tsconfig.json`. A change to
+ * one of those alters every app's build and will read as "nothing to release".
+ * `--force` is the remedy, and the skip message names it.
+ */
+export function changePathsFor(id) {
+  return [appDirFor(id), 'src/shared', 'src/host', `:(exclude)${REGISTRY_REL}`];
 }
 
 /**
@@ -275,7 +299,13 @@ export function release(id, level = 'patch', { force = false } = {}) {
   if (branch !== 'main') {
     throw new Error(`${id}: releases are cut from main; you are on ${branch}`);
   }
-  run('git', ['fetch', 'origin', '--tags']);
+  try {
+    run('git', ['fetch', 'origin', '--tags']);
+  } catch (err) {
+    // Offline or no access: without this, the operator gets a raw execFileSync
+    // dump where every other failure in this file names the app and the problem.
+    throw new Error(`${id}: cannot reach origin to fetch branches and tags — ${err.message}`);
+  }
   let originMain;
   try {
     originMain = out('git', ['rev-parse', 'origin/main']);
@@ -304,15 +334,20 @@ export function release(id, level = 'patch', { force = false } = {}) {
   }
 
   const previous = lastTagFor(id);
-  const appDir = appDirFor(id);
+  const paths = changePathsFor(id);
   const changedFiles = previous
-    ? out('git', ['diff', '--name-only', previous, 'HEAD', '--', appDir]).split('\n').filter(Boolean).length
+    ? out('git', ['diff', '--name-only', previous, 'HEAD', '--', ...paths]).split('\n').filter(Boolean).length
     : 0;
   if (!shouldRelease({ hasPreviousTag: Boolean(previous), changedFiles, force })) {
     // A no-op SUCCESS, not a failure: a sweep over every app must not abort on
     // the first one that has nothing to ship.
-    console.log(`${id}: nothing to release — no change under ${appDir}/ since ${previous}. Skipped.`);
-    console.log(`  A src/shared change does not show in that diff; re-run with --force to ship one.`);
+    console.log(
+      `${id}: nothing to release — no change under ${appDirFor(id)}/, src/shared/ or src/host/ since ${previous}. Skipped.`,
+    );
+    console.log(
+      `  Root build config (vite.config.ts, package-lock.json, tsconfig.json) is outside that set —`,
+    );
+    console.log(`  to ship a change to one of those, re-run with --force.`);
     return { id, skipped: true };
   }
 
@@ -323,22 +358,47 @@ export function release(id, level = 'patch', { force = false } = {}) {
   }
 
   // ---- Bump, then regenerate, in that order and into the same commit.
-  writeFileSync(pkgPath, setPackageVersion(source, current, version));
-  console.log(`==> ${id}: ${current} -> ${version} in ${pkgRel}`);
-  console.log(`==> ${id}: node scripts/gen-registry.mjs (the tile version follows the bump)`);
-  run(process.execPath, [join(ROOT, 'scripts', 'gen-registry.mjs')]);
+  //
+  // This is the one window where a failure leaves the WORKTREE modified with no
+  // commit to explain it: measured with gen-registry.mjs made to throw, the tree
+  // was left holding ` M plugins/joust/package.json` at a version that was never
+  // released, and the next release of any app then refused with "working tree is
+  // not clean" with nothing connecting the two. Undone here rather than left for
+  // a reflexive `git add -A` to bake in.
+  try {
+    writeFileSync(pkgPath, setPackageVersion(source, current, version));
+    console.log(`==> ${id}: ${current} -> ${version} in ${pkgRel}`);
+    console.log(`==> ${id}: node scripts/gen-registry.mjs (the tile version follows the bump)`);
+    run(process.execPath, [join(ROOT, 'scripts', 'gen-registry.mjs')]);
+  } catch (err) {
+    let restored = true;
+    try {
+      run('git', ['checkout', '--', ...releaseFiles(id)]);
+    } catch {
+      restored = false;
+    }
+    throw new Error(
+      `${id}: the version bump / registry regeneration failed — ${err.message}\n` +
+        (restored
+          ? `  The worktree was restored (${releaseFiles(id).join(', ')}); nothing was committed, tagged or pushed.`
+          : `  AND THE RESTORE FAILED. Check git status: ${pkgRel} may still hold ${version}, a version that was never released.`),
+    );
+  }
 
   const steps = releaseSteps({ id, version, files: releaseFiles(id) });
   for (const step of steps) {
     console.log(`==> ${id}: ${step.desc}`);
     try {
       run(step.cmd, step.args);
-    } catch {
+    } catch (err) {
       // No automatic rollback, and no pretence of one: by this point the commit
       // and the tag may exist locally, and guessing which is worse than saying
-      // exactly where it stopped.
+      // exactly where it stopped. The underlying message is carried through —
+      // stderr is inherited when this runs as a CLI, but not when release() is
+      // called programmatically, and there the cause would otherwise be lost.
       throw new Error(
-        `${id}: release stopped at "${step.desc}" — nothing after it ran.\n` +
+        `${id}: release stopped at "${step.desc}" — ${err.message}\n` +
+          `  Nothing after that step ran.\n` +
           `  Inspect: git log --oneline -1 && git tag -l ${tag}\n` +
           `  Undo a LOCAL commit/tag: git tag -d ${tag} && git reset --hard origin/main`,
       );

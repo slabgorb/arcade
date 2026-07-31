@@ -19,6 +19,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import {
   appDirFor,
+  changePathsFor,
   nextVersion,
   packagePathFor,
   releaseFiles,
@@ -48,10 +49,11 @@ test('tagFor namespaces every tag by app', () => {
 });
 
 test('the deploy workflow can parse the app back out of every tag this script makes', () => {
-  // Run the REAL parameter expansion `.github/workflows/deploy.yml` uses
-  // (`app="${GITHUB_REF_NAME%-v*}"`) rather than a JavaScript imitation of it —
-  // the round trip is the contract between this file and that workflow, and an
-  // imitation could agree with this script while disagreeing with bash.
+  // Run the REAL parameter expansion that Task 18's `.github/workflows/deploy.yml`
+  // WILL use (`app="${GITHUB_REF_NAME%-v*}"`) — the file does not exist yet —
+  // rather than a JavaScript imitation of it. The round trip is the contract
+  // between this file and that workflow, and an imitation could agree with this
+  // script while disagreeing with bash.
   const parse = (tag) =>
     execFileSync('bash', ['-c', 'printf %s "${1%-v*}"', 'bash', tag], { encoding: 'utf8' });
   for (const id of appIds()) {
@@ -181,7 +183,10 @@ test('nextVersion bumps the right field and zeroes the ones below it', () => {
 });
 
 test('nextVersion refuses to guess at anything that is not a bare X.Y.Z', () => {
-  for (const bad of ['1.0', 'v1.0.0', '1.0.0-rc.1', '1.0.0+build', '', 'latest']) {
+  // Leading zeros are in the list because the comment says "refusing to guess"
+  // and `01.2.3` -> `01.2.4` is a guess: semver forbids the form outright, and
+  // the tag it would produce is not a version anyone meant.
+  for (const bad of ['1.0', 'v1.0.0', '1.0.0-rc.1', '1.0.0+build', '', 'latest', '01.2.3', '1.02.3', '1.2.03']) {
     assert.throws(() => nextVersion(bad, 'patch'), /not a bare X\.Y\.Z/, `accepted ${JSON.stringify(bad)}`);
   }
   assert.throws(() => nextVersion('1.0.0', 'sideways'), /unknown level/);
@@ -237,12 +242,38 @@ test('shouldRelease: an app that has never been released always ships', () => {
   assert.equal(shouldRelease({ hasPreviousTag: false, changedFiles: 0 }), true);
 });
 
-test('shouldRelease: --force ships a shared-code change the directory diff cannot see', () => {
-  // The guard's known under-report: src/shared/** is bundled into every game but
-  // lives outside plugins/<id>, so a shared-only fix reads as "nothing changed".
-  // force must win over BOTH other clauses, or the escape hatch is not one.
+test('shouldRelease: --force wins over both other clauses', () => {
+  // The escape hatch for what the pathspec still cannot see (root build config).
   assert.equal(shouldRelease({ hasPreviousTag: true, changedFiles: 0, force: true }), true);
   assert.equal(shouldRelease({ hasPreviousTag: false, changedFiles: 0, force: true }), true);
+});
+
+test('changePathsFor asks about everything the app is built from, minus the registry', () => {
+  // The first draft asked only about plugins/<id>, justified by a claim review
+  // MEASURED as false: widening to src/shared costs nothing (a release commit
+  // touches only <app>/package.json and src/host/registry.ts), and src/host —
+  // which every plugin.ts imports from — is poisoned by that one file alone.
+  // Without this, a src/shared-only fix plus `just release-all` shipped nothing,
+  // exit 0, eight times over.
+  assert.deepEqual(changePathsFor('tempest'), [
+    'plugins/tempest',
+    'src/shared',
+    'src/host',
+    ':(exclude)src/host/registry.ts',
+  ]);
+  assert.deepEqual(changePathsFor('lobby')[0], 'lobby');
+  for (const id of appIds()) {
+    const paths = changePathsFor(id);
+    assert.equal(paths[0], appDirFor(id), `${id}: its own directory must be first`);
+    assert.ok(paths.includes('src/shared'), `${id}: a shared-code change must be visible`);
+    assert.ok(paths.includes('src/host'), `${id}: a host change must be visible`);
+    // The exclusion is what keeps every OTHER app's release from looking like a
+    // change to this one — every release rewrites the registry.
+    assert.ok(
+      paths.includes(':(exclude)src/host/registry.ts'),
+      `${id}: without the exclusion this guard can never fire again`,
+    );
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -326,13 +357,22 @@ test('syncLobbyTileVersion and the hand-written lobby registry are gone, with no
   // The justfile and the tests are held to the stricter rule: a COMMENT there
   // claiming the release script syncs the lobby tile is itself the defect, since
   // the behaviour it documents no longer exists.
-  const hits = spawnSync(
-    'git',
-    // This file necessarily names it — it is the guard — so it excludes itself.
-    ['grep', '-n', '-e', GONE[0], '--', 'tests', 'justfile', ':(exclude)tests/release.test.mjs'],
-    { cwd: repo, encoding: 'utf8' },
-  );
+  // This file necessarily names it — it is the guard — so it excludes itself.
+  const grep = (term) =>
+    spawnSync('git', ['grep', '-n', '-e', term, '--', 'tests', 'justfile', ':(exclude)tests/release.test.mjs'], {
+      cwd: repo,
+      encoding: 'utf8',
+    });
+  const hits = grep(GONE[0]);
+  // git grep exits 1 for "no match" and >1 for a real error — a bad pathspec
+  // returns empty stdout and empty stderr, byte-identical to clean.
+  assert.ok(hits.status === 0 || hits.status === 1, `git grep failed (${hits.status}): ${hits.stderr}`);
   assert.equal(hits.stdout.trim(), '', `${GONE[0]} is still claimed by:\n${hits.stdout}`);
+  // Anti-vacuity: the SAME invocation must find a term that really is in there,
+  // or this leg reports "clean" for everything, for ever.
+  const control = grep('release-all');
+  assert.equal(control.status, 0, 'the control term was not found — this grep is searching nothing');
+  assert.match(control.stdout, /^justfile:\d+:/m);
 });
 
 test('the CLI rejects an unknown option instead of ignoring it', () => {
@@ -353,6 +393,27 @@ test('the CLI rejects an unknown option instead of ignoring it', () => {
   assert.match(result.stderr, /Usage: node scripts\/release\.mjs/);
   // It must have stopped before touching git: no fetch, no tag, no push.
   assert.equal(result.stdout.trim(), '', `it started working: ${result.stdout}`);
+});
+
+test('release() actually RUNS the gate, and runs it before the bump', () => {
+  // gateSteps' shape is pinned above, but its shape is not its use: review deleted
+  // the executor's four-line gate loop outright and the entire orchestrator suite
+  // stayed green (337/336), because the only thing that had ever run the gate was
+  // a sandbox release that does not persist.
+  //
+  // Nor can CI supply this guard. `node --test tests/**` in the deploy workflow
+  // would catch the registry mutant after the fact, but a MISSING gate is only
+  // observable when some other app is red — there is nothing for CI to see. So it
+  // lives here, in the same source-text idiom as the preflight-ordering test
+  // below, which is the only kind of assertion that can reach the executor
+  // without a test that performs a release.
+  const source = readFileSync(path('scripts', 'release.mjs'), 'utf8');
+  const body = source.slice(source.indexOf('export function release('));
+  const gate = body.indexOf('gateSteps(');
+  const bump = body.indexOf('writeFileSync(pkgPath');
+  assert.ok(gate >= 0, 'release() never calls gateSteps — a release could ship code it did not test');
+  assert.ok(bump >= 0, 'release() never writes the bumped version — this test is reading the wrong function');
+  assert.ok(gate < bump, 'the gate must run BEFORE the version is bumped, or a red app is left bumped');
 });
 
 test('release() rejects an unknown app before it runs any git command', () => {

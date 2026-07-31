@@ -358,22 +358,28 @@ check-showcase:
 # The argument is an APP ID now (`tempest`), not a subrepo path: there are no
 # subrepos, and scripts/release.mjs validates the id against plugins/ + lobby.
 # e.g. `just release tempest` (patch) or `just release tempest minor`
-release name level="patch":
-    node {{root}}/scripts/release.mjs {{name}} {{level}}
+#
+# The third parameter exists so the remedy the skip message names is reachable
+# from the interface people actually use: `just release tempest patch --force`.
+# Without it just reads `--force` as another recipe name and dies with
+# "Justfile does not contain recipe `--force`" — measured, which is how it got
+# here. Empty by default, and an unquoted empty expansion adds no argument.
+release name level="patch" force="":
+    node {{root}}/scripts/release.mjs {{name}} {{level}} {{force}}
 
 # Release every app at the same bump level. Games first and the lobby LAST: each
 # game's bump is baked into the generated registry, and the lobby's tiles read
 # their versions from there — so one lobby release at the end ships every
 # accumulated tile bump. An app with nothing to ship skips itself.
-release-all level="patch":
+release-all level="patch" force="":
     #!/usr/bin/env bash
     set -euo pipefail
     for g in {{games}}; do
       echo "==> releasing $g"
-      node {{root}}/scripts/release.mjs "$g" {{level}}
+      node {{root}}/scripts/release.mjs "$g" {{level}} {{force}}
     done
     echo "==> releasing lobby (last — ships the accumulated tile-version bumps)"
-    node {{root}}/scripts/release.mjs lobby {{level}}
+    node {{root}}/scripts/release.mjs lobby {{level}} {{force}}
 
 # ============================================
 # tempest
