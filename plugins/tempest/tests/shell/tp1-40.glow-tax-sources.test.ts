@@ -36,6 +36,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, relative } from 'node:path'
+import { sharedGlowImports } from '../helpers/shared-glow-imports'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const read = (rel: string): string => readFileSync(join(root, rel), 'utf8')
@@ -91,12 +92,44 @@ describe('tp1-40 AC-1 — zero live shadow blur in the scene path', () => {
 })
 
 describe('tp1-40 AC-1/AC-3 — the shared blur envelope is out of the scene path', () => {
+  // Asked by MODULE IDENTITY, not by spelling. This used to be
+  // `not.toMatch(/from ['"]@shared\/glow['"]/)`, which was airtight while
+  // `@arcade/shared/glow` was an npm PACKAGE — a bare specifier was then the only
+  // reachable form. The monorepo migration put the module in-tree at
+  // src/shared/glow.ts, so `../../../../src/shared/glow` reaches the identical
+  // module and matched the regex not at all. See tests/helpers/shared-glow-imports.ts.
   for (const file of tsFilesUnder('src/shell')) {
-    it(`${file} does not import @shared/glow`, () => {
-      const code = stripComments(read(file))
-      expect(code).not.toMatch(/from\s*['"]@shared\/glow['"]/)
+    it(`${file} does not import src/shared/glow, by any specifier`, () => {
+      expect(
+        sharedGlowImports(file, read(file)),
+        'the shared envelope sets canvas shadowBlur — a per-primitive GPU Gaussian pass ' +
+          'whose source AC-1 above cannot see. Use the tempest-local ./glow helper.',
+      ).toEqual([])
     })
   }
+
+  // POSITIVE CONTROL. Every assertion above is an "expect nothing" — the failure
+  // mode is a checker that can no longer find anything, and that is precisely how
+  // the regex form went blind. So prove the checker still bites, on both spellings,
+  // and prove it leaves the local helper alone.
+  it('catches the relative spelling as well as the alias, and never the local ./glow', () => {
+    const from = 'src/shell/render.ts'
+    expect(sharedGlowImports(from, "import { glowEnvelope } from '@shared/glow'")).toEqual(['@shared/glow'])
+    expect(sharedGlowImports(from, "import { glowEnvelope } from '../../../../src/shared/glow'")).toEqual([
+      '../../../../src/shared/glow',
+    ])
+    expect(sharedGlowImports(from, "import '../../../../src/shared/glow.ts'")).toEqual([
+      '../../../../src/shared/glow.ts',
+    ])
+    expect(sharedGlowImports(from, "await import('@shared/glow')")).toEqual(['@shared/glow'])
+    // The tempest-local layered-pass helper is what the story REPLACED it with —
+    // a check that flagged this would be unsatisfiable.
+    expect(sharedGlowImports(from, "import { glowStrokePasses } from './glow'")).toEqual([])
+    // …and a sibling game's glow, and an unrelated shared module, are not it.
+    expect(sharedGlowImports(from, "import x from '@shared/font'")).toEqual([])
+    // A COMMENT quoting the forbidden import is prose, not an import.
+    expect(sharedGlowImports(from, "// import { x } from '@shared/glow'")).toEqual([])
+  })
 })
 
 describe('tp1-40 AC-4 — the scene dpr cap is wired, not decorative', () => {

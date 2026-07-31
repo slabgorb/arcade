@@ -25,6 +25,7 @@ import renderSrc from '../../src/shell/render.ts?raw'
 import { drawTube } from '../../src/shell/render'
 import { makeCircleTube } from '../../src/core/geometry'
 import type { GameState } from '../../src/core/state'
+import { sharedGlowImports } from '../helpers/shared-glow-imports'
 
 // ── A minimal recording CanvasRenderingContext2D ────────────────────────────
 // Captures every shadowBlur assignment, a snapshot of stroke state (style,
@@ -145,12 +146,29 @@ function drawTestTube(): RecCtx {
 // ── Wiring: the glow tax is gone from the tube (tp1-40 AC-1/AC-3) ────────────
 
 describe('drawTube wiring — tempest-local layered glow, no shared blur envelope', () => {
-  it('no longer imports @shared/glow (its contract IS live blur)', () => {
-    expect(renderSrc).not.toMatch(/from\s*['"]@shared\/glow['"]/)
+  // By MODULE IDENTITY, not by spelling: this was
+  // `not.toMatch(/from ['"]@shared\/glow['"]/)`, which could only ever be written
+  // one way while `@arcade/shared/glow` was an npm package. src/shared/glow.ts is
+  // in-tree since the monorepo migration, so `../../../../src/shared/glow` reaches
+  // the same module past that regex. See tests/helpers/shared-glow-imports.ts.
+  it('no longer imports src/shared/glow, by any specifier (its contract IS live blur)', () => {
+    expect(sharedGlowImports('src/shell/render.ts', renderSrc)).toEqual([])
   })
 
   it('imports the tempest-local glow helper instead', () => {
     expect(renderSrc).toMatch(/from\s*['"]\.\/glow['"]/)
+  })
+
+  // POSITIVE CONTROL for the assertion above, which expects an empty array and
+  // would therefore stay green if the checker went blind — the exact failure the
+  // migration caused. Both spellings must be caught; `./glow` must not be.
+  it('the check bites on both spellings of the shared module and on neither local one', () => {
+    const from = 'src/shell/render.ts'
+    expect(sharedGlowImports(from, "import { glowEnvelope } from '@shared/glow'")).toEqual(['@shared/glow'])
+    expect(sharedGlowImports(from, "import { glowEnvelope } from '../../../../src/shared/glow'")).toEqual([
+      '../../../../src/shared/glow',
+    ])
+    expect(sharedGlowImports(from, "import { glowStrokePasses } from './glow'")).toEqual([])
   })
 })
 
