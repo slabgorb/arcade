@@ -2461,16 +2461,28 @@ export across two lines (the regex stops matching → must redden), and delete a
 **And make the extractor itself fail loudly, not just the test.** A test catches this in CI; the
 script should refuse to produce a wrong build at all. In `scripts/build-app.mjs`, if a manifest's
 source contains the string `BuildSpec` but the regex does not match, **`throw`** — never fall through
-to `entries = []`. The whole hazard is that the regex is defeated by formatting `tsc` is perfectly
-happy with, so silence is indistinguishable from "this game has no dev tools":
+to `entries = []`. Silence is otherwise indistinguishable from "this game has no dev tools", and the
+result is a green build missing star-wars' two dev pages and tempest's one.
 
-```
-entries on its own line     trailing comma after the array     satisfies BuildSpec
-as const                    double-quoted strings              array spilling past printer width
-```
+**Which formattings actually defeat it — measured, after an earlier revision of this step listed the
+wrong ones.** I asserted six defeating formattings without running them; Task 16's implementer
+contradicted the list and was right. Against
+`/export const build:\s*BuildSpec\s*=\s*\{\s*entries:\s*\[([^\]]*)\]/`:
 
-Every one of those yields zero entries and a **green** build that silently drops star-wars' two dev
-pages and tempest's one. Prettier reformatting a manifest is enough to trigger it.
+| formatting | result | why |
+|---|---|---|
+| `entries` on its own line | **matches** | `\s*` spans newlines |
+| trailing comma in the array | **matches** | `[^\]]*` absorbs it |
+| `as const` after the object | **matches** | falls outside the match |
+| double-quoted strings | **matches** | the capture is `[^\]]*` |
+| **`satisfies BuildSpec`** (no `: BuildSpec` annotation) | **DEFEATS** | the annotation is what the pattern anchors on |
+| **a comment before the key** | **DEFEATS** | `\{\s*entries` admits whitespace, not `//` |
+| **a quoted key** (`'entries':`) | **DEFEATS** | the pattern expects a bare key |
+
+Pin the **real** killers by name in the test. The hazard is genuine — it is simply narrower and
+differently shaped than this plan first claimed, and a test written against the imagined list would
+have guarded nothing. Note also that neither shipped declaration reflows at 80 columns (60, 60 and
+75 characters), so a Prettier pass will not trigger it on today's manifests.
 
 Also pin the **parsed** list per game as data (`tempest → ['models.html']`, `star-wars →
 ['models.html','scenes.html']`, `red-baron → ['models.html']`), not merely an aggregate count — an
