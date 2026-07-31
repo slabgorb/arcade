@@ -9,7 +9,7 @@
 // and blanks the pane; implementing it in currentGame() alone replays the same live
 // game twice whenever its predecessor is dead. Both functions defer to `scanFrom`.
 
-import type { Game } from './registry'
+import type { GameMeta } from '@host/contract'
 
 export interface ShowcaseState {
   /** Ids of the games that opted in, in registry order. Fixed at creation. */
@@ -20,8 +20,16 @@ export interface ShowcaseState {
   readonly unavailable: ReadonlySet<string>
 }
 
-/** Build from the registry, keeping only entries with `showcase: true`. */
-export function createShowcase(games: readonly Game[]): ShowcaseState {
+/**
+ * Build from the list of games the lobby shows, keeping only entries with
+ * `showcase: true`.
+ *
+ * `listed` is NOT consulted here, deliberately: this takes whatever list it is handed
+ * and applies one filter. main.ts hands it `LISTED_GAMES`, so a `listed: false` game
+ * cannot reach the carousel even if its manifest says `showcase: true` — the opt-out
+ * wins, and it wins in one place rather than two.
+ */
+export function createShowcase(games: readonly GameMeta[]): ShowcaseState {
   return {
     order: games.filter((g) => g.showcase).map((g) => g.id),
     index: 0,

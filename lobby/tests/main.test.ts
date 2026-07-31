@@ -1,12 +1,25 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { GAMES } from '../src/core/registry'
+import { GAMES, LISTED_GAMES, gamePath } from '@host/registry'
 
 // Wiring. Every other test in this story can pass while the page stays blank: a
 // perfect tiles.ts that main.ts never calls, or a main.ts that renders into a
 // container index.html no longer has. This drives the real bootstrap end to end —
 // import main.ts against a DOM, and assert the tiles actually land, with the real
 // registry and the real score reader behind them.
+//
+// Task 15 made this file the guard on ONE specific mistake. The generated registry
+// exports two lists: `GAMES` (all seven manifests) and `LISTED_GAMES` (the six with
+// `listed: true`). `import { GAMES }` here compiles, type-checks, renders beautifully,
+// and quietly puts red-baron — deliberately held back from production — on the live
+// cabinet. Nothing about the resulting page looks wrong. So the assertions below pin the
+// rendered list to `LISTED_GAMES` by identity and by order, and name red-baron directly:
+// if main.ts ever reads the unfiltered list, this file reddens rather than the lobby
+// shipping a game that was opted out on purpose.
+//
+// MIGRATION RECORD (Task 15) — 0 cases and 0 assertions removed. `GAMES` was rewritten
+// to `LISTED_GAMES` throughout (the list main.ts actually renders), href literals were
+// rewritten to same-origin paths, and one case was ADDED for the red-baron guard.
 
 // A minimal in-memory localStorage. The lobby no longer reads a game's table out of it
 // (lb2-2 / ADR-0004 — that store belongs to another origin and the lobby can never see it),
@@ -51,20 +64,50 @@ afterEach(() => {
 })
 
 describe('lobby bootstrap', () => {
-  it('fills the grid with one tile per registry game', async () => {
+  it('fills the grid with one tile per LISTED registry game', async () => {
     vi.stubGlobal('localStorage', fakeStorage())
     await import('../src/main')
 
     const tiles = document.querySelectorAll('#games a')
-    expect(tiles.length).toBe(GAMES.length)
+    expect(tiles.length).toBe(LISTED_GAMES.length)
+    // Stated as a number as well as a length, because `LISTED_GAMES.length` alone would
+    // follow the registry wherever it went: if the filter broke and both lists became
+    // seven, the comparison above would still hold. Six is what the cabinet ships.
+    expect(tiles.length).toBe(6)
+    expect(GAMES.length).toBe(7)
   })
 
-  it('wires each tile to its game real launch URL', async () => {
+  it('wires each tile to its game real launch path, in listed order', async () => {
     vi.stubGlobal('localStorage', fakeStorage())
     await import('../src/main')
 
     const hrefs = [...document.querySelectorAll('#games a')].map((a) => a.getAttribute('href'))
-    expect(hrefs).toEqual(GAMES.map((g) => g.launchUrl))
+    expect(hrefs).toEqual(LISTED_GAMES.map((g) => gamePath(g.id)))
+    // Order and membership, spelled out. `LISTED_GAMES.map(...)` on both sides of an
+    // equality can only prove the renderer used the list it was given — it cannot notice
+    // that the list itself changed. This can.
+    expect(hrefs).toEqual([
+      '/tempest/',
+      '/star-wars/',
+      '/asteroids/',
+      '/battlezone/',
+      '/centipede/',
+      '/joust/',
+    ])
+    expect(hrefs.some((h) => h?.includes('slabgorb.com'))).toBe(false)
+  })
+
+  // The trap this whole task turns on. red-baron is in the generated registry with
+  // `listed: false` — a product decision, not an oversight. A lobby built from `GAMES`
+  // instead of `LISTED_GAMES` renders a seventh tile that looks entirely correct.
+  it('gives red-baron no tile, because its manifest opted out', async () => {
+    vi.stubGlobal('localStorage', fakeStorage())
+    await import('../src/main')
+
+    expect(document.querySelector('#games a[href="/red-baron/"]')).toBeNull()
+    expect(document.getElementById('games')?.textContent).not.toContain('RED BARON')
+    // And the reason it has no tile is the flag, not an accident of ordering.
+    expect(GAMES.find((g) => g.id === 'red-baron')?.listed).toBe(false)
   })
 
   it('shows a real published score on the game that has one, and NO SCORE on the rest', async () => {
@@ -78,10 +121,10 @@ describe('lobby bootstrap', () => {
     publishScore('tempest', 149830)
     await import('../src/main')
 
-    const tempest = document.querySelector('#games a[href="https://tempest.slabgorb.com/"]')
+    const tempest = document.querySelector('#games a[href="/tempest/"]')
     expect(tempest?.textContent).toContain('HI · 149,830')
 
-    const asteroids = document.querySelector('#games a[href="https://asteroids.slabgorb.com/"]')
+    const asteroids = document.querySelector('#games a[href="/asteroids/"]')
     expect(asteroids?.textContent).toContain('NO SCORE')
   })
 
@@ -93,19 +136,24 @@ describe('lobby bootstrap', () => {
     await import('../src/main')
 
     const tiles = document.querySelectorAll('#games a')
-    expect(tiles.length).toBe(GAMES.length)
+    expect(tiles.length).toBe(LISTED_GAMES.length)
     expect(tiles[0]?.textContent).toContain('NO SCORE')
   })
 
-  it('mounts the showcase pane on the games that opted in', async () => {
+  it('mounts the showcase pane on the listed games that opted in', async () => {
     vi.stubGlobal('localStorage', fakeStorage())
     await import('../src/main')
 
-    const showcased = GAMES.filter((g) => g.showcase)
+    // Filtered from LISTED_GAMES, not GAMES: `createShowcase` looks only at `showcase`,
+    // so main.ts handing it the unfiltered list is how an unlisted game would appear in
+    // the carousel it was held back from.
+    const showcased = LISTED_GAMES.filter((g) => g.showcase)
     const link = document.querySelector('#showcase a.showcase-launch')
     // Either the pane is live on an opted-in game, or nobody opted in and it retired.
     if (showcased.length > 0) {
-      expect(link?.getAttribute('href')).toBe(showcased[0]?.launchUrl)
+      expect(link?.getAttribute('href')).toBe(gamePath(showcased[0]!.id))
+      // Same-origin now, so the frame and the link are ordinary in-site paths.
+      expect(link?.getAttribute('href')).not.toContain('slabgorb.com')
     } else {
       expect(document.getElementById('showcase')).toBeNull()
     }

@@ -1,21 +1,35 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { LOAD_TIMEOUT_MS, SLIDE_MS, mountShowcase } from '../src/shell/showcase'
-import type { Game } from '../src/core/registry'
+import type { GameMeta } from '@host/contract'
+import { gamePath } from '@host/registry'
 
 // Synthetic games only. jsdom does not fetch iframe subresources, so a frame here
 // never loads on its own — which is exactly right: the success path is a dispatched
 // `load` event and the timeout path is the honest default. The timeout is the branch
 // most likely to be wrong, so it gets the most attention.
-function game(id: string, showcase: boolean): Game {
+//
+// MIGRATION RECORD (Task 15) — 0 cases and 0 assertions removed. Two rewrites:
+//
+//   1. The synthetic factory builds a `GameMeta`; `launchUrl` is gone, and each game's
+//      frame/link target is now the derived `gamePath(id)`.
+//   2. Every `frame()?.src` read became `frameSrc()` — see below. `.src` is a reflected
+//      URL property: jsdom RESOLVES it against the document, so a `/alpha/` attribute
+//      reads back as 'http://localhost:3000/alpha/'. Comparing the resolved form would
+//      pass just as well for an absolute URL that happened to resolve the same way,
+//      which is the very thing this migration is trying to make impossible. The
+//      attribute is what the code wrote, so the attribute is what is asserted.
+function game(id: string, showcase: boolean): GameMeta {
   return {
     id,
     title: id.toUpperCase(),
-    launchUrl: `https://${id}.example.test/`,
+    year: 1980,
     color: '#00eaff',
     controls: ['FIRE — Space'],
-    version: '1.0.0',
+    order: 1,
+    listed: true,
     showcase,
+    version: '1.0.0',
   }
 }
 
@@ -23,10 +37,18 @@ const ALPHA = game('alpha', true)
 const BRAVO = game('bravo', true)
 const OPTED_OUT = game('delta', false)
 
+/** Where a game's slide points: the same path the tiles use. */
+const pathTo = (g: GameMeta): string => gamePath(g.id)
+
 let section: HTMLElement
 
 function frame(): HTMLIFrameElement | null {
   return section.querySelector('iframe')
+}
+
+/** The frame's `src` ATTRIBUTE — the literal string the shell wrote, unresolved. */
+function frameSrc(): string | null {
+  return frame()?.getAttribute('src') ?? null
 }
 
 // jsdom 29 does not implement matchMedia, so the shell must tolerate its absence
@@ -55,15 +77,18 @@ describe('showcase pane', () => {
   it('mounts exactly one iframe, on the first opted-in game', () => {
     mountShowcase(section, [ALPHA, OPTED_OUT, BRAVO])
     expect(section.querySelectorAll('iframe')).toHaveLength(1)
-    expect(frame()?.src).toBe(ALPHA.launchUrl)
+    expect(frameSrc()).toBe(pathTo(ALPHA))
   })
 
   // The pane must be structurally incapable of making noise. The autoplay
-  // permission's default allowlist is `self`, so a cross-origin frame never
-  // inherits it; an explicit empty allow="" makes that permanent. (allow="" does
-  // not delegate any feature at all — it is not a blanket "denies everything"
-  // property for features whose default allowlist is `*`. Autoplay is the one
-  // this pane structurally depends on, so that's the claim under test here.)
+  // permission's default allowlist is `self` — which used to do the work for us,
+  // because the frames were cross-origin and could never inherit it. Task 15 put
+  // every game on the SAME origin, so `self` now matches and the frame WOULD
+  // inherit autoplay by default: this attribute went from belt-and-braces to the
+  // only thing holding the line, and this assertion with it. (allow="" does not
+  // delegate any feature at all — it is not a blanket "denies everything" property
+  // for features whose default allowlist is `*`. Autoplay is the one this pane
+  // structurally depends on, so that's the claim under test here.)
   it('keeps the frame from ever inheriting autoplay, and out of the tab order', () => {
     mountShowcase(section, [ALPHA])
     const f = frame() as HTMLIFrameElement
@@ -80,7 +105,7 @@ describe('showcase pane', () => {
     mountShowcase(section, [ALPHA])
     const link = section.querySelector('a.showcase-launch') as HTMLAnchorElement
     expect(link).not.toBeNull()
-    expect(link.getAttribute('href')).toBe(ALPHA.launchUrl)
+    expect(link.getAttribute('href')).toBe(pathTo(ALPHA))
     expect(link.textContent).toContain('Play ALPHA')
   })
 
@@ -106,9 +131,9 @@ describe('showcase pane', () => {
     // Not just the same src on the same node — an actual new element. A `frame.src =
     // ...` reassignment would satisfy every other assertion here too.
     expect(frame()).not.toBe(before)
-    expect(frame()?.src).toBe(BRAVO.launchUrl)
+    expect(frameSrc()).toBe(pathTo(BRAVO))
     const link = section.querySelector('a.showcase-launch') as HTMLAnchorElement
-    expect(link.getAttribute('href')).toBe(BRAVO.launchUrl)
+    expect(link.getAttribute('href')).toBe(pathTo(BRAVO))
   })
 
   it('marks the frame loaded when it actually loads', () => {
@@ -143,7 +168,7 @@ describe('showcase pane', () => {
   it('cancels the abandoned dwell timer when a failure forces an early rotation', () => {
     mountShowcase(section, [ALPHA, BRAVO])
     vi.advanceTimersByTime(LOAD_TIMEOUT_MS)
-    expect(frame()?.src).toBe(BRAVO.launchUrl)
+    expect(frameSrc()).toBe(pathTo(BRAVO))
     // Exactly bravo's own pair — its load timeout and its dwell. Not alpha's
     // abandoned dwell timer too.
     expect(vi.getTimerCount()).toBe(2)
@@ -187,7 +212,7 @@ describe('showcase pane', () => {
     vi.advanceTimersByTime(SLIDE_MS)
 
     expect(frame()).not.toBe(before)
-    expect(frame()?.src).toBe(BRAVO.launchUrl)
+    expect(frameSrc()).toBe(pathTo(BRAVO))
   })
 })
 
@@ -195,7 +220,7 @@ describe('showcase failure model', () => {
   it('gives up on a frame that never loads and moves on', () => {
     mountShowcase(section, [ALPHA, BRAVO])
     vi.advanceTimersByTime(LOAD_TIMEOUT_MS)
-    expect(frame()?.src).toBe(BRAVO.launchUrl)
+    expect(frameSrc()).toBe(pathTo(BRAVO))
   })
 
   it('does not return to a game that failed', () => {
@@ -203,14 +228,14 @@ describe('showcase failure model', () => {
     vi.advanceTimersByTime(LOAD_TIMEOUT_MS) // alpha written off -> bravo
     ;(frame() as HTMLIFrameElement).dispatchEvent(new Event('load'))
     vi.advanceTimersByTime(SLIDE_MS) // bravo's dwell expires; alpha is dead
-    expect(frame()?.src).toBe(BRAVO.launchUrl)
+    expect(frameSrc()).toBe(pathTo(BRAVO))
   })
 
   it('a loaded frame is not written off when the load timeout would have fired', () => {
     mountShowcase(section, [ALPHA, BRAVO])
     ;(frame() as HTMLIFrameElement).dispatchEvent(new Event('load'))
     vi.advanceTimersByTime(LOAD_TIMEOUT_MS)
-    expect(frame()?.src).toBe(ALPHA.launchUrl)
+    expect(frameSrc()).toBe(pathTo(ALPHA))
   })
 
   // The whole point of the design. Not a black box, not an empty bordered
@@ -270,15 +295,15 @@ describe('reduced motion', () => {
     mountShowcase(section, [ALPHA, BRAVO])
     ;(section.querySelector('button.showcase-reveal') as HTMLButtonElement).click()
 
-    expect(frame()?.src).toBe(ALPHA.launchUrl)
+    expect(frameSrc()).toBe(pathTo(ALPHA))
     ;(frame() as HTMLIFrameElement).dispatchEvent(new Event('load'))
     vi.advanceTimersByTime(SLIDE_MS)
-    expect(frame()?.src).toBe(BRAVO.launchUrl)
+    expect(frameSrc()).toBe(pathTo(BRAVO))
   })
 
   it('runs normally when the visitor has not asked for reduced motion', () => {
     stubReducedMotion(false)
     mountShowcase(section, [ALPHA])
-    expect(frame()?.src).toBe(ALPHA.launchUrl)
+    expect(frameSrc()).toBe(pathTo(ALPHA))
   })
 })

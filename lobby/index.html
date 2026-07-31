@@ -456,8 +456,9 @@
              itself if no game has opted in or every frame fails to load. -->
         <section id="showcase" class="showcase"></section>
 
-        <!-- Filled from the registry by main.ts. Never hardcoded: adding a game to
-             src/core/registry.ts is the only edit needed to put it on the cabinet. -->
+        <!-- Filled from the registry by main.ts. Never hardcoded: a game reaches the
+             cabinet by declaring plugins/<id>/plugin.ts and regenerating
+             src/host/registry.ts (`npm run gen:registry`), and by nothing else. -->
         <nav id="games" class="games" aria-label="Games"></nav>
 
         <footer class="footer">

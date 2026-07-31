@@ -282,26 +282,43 @@ deploy-assets:
 # liveness is checked HERE rather than pretended at in CI, where a network
 # assertion on a GitHub runner is a flaky red that teaches everyone to ignore it.
 #
-# The game list below is duplicated from lobby/src/core/registry.ts — bash
-# here cannot import the lobby's TypeScript registry, so update this list too
-# whenever a game is added.
+# The game list is no longer duplicated here. It is READ from the generated
+# registry (src/host/registry.ts) — node strips the types on import, so bash can
+# ask the same source of truth the lobby renders, and adding a game needs no edit
+# to this recipe. The old hand-kept `for u in tempest star-wars ...` list is
+# exactly the drift this migration exists to remove.
+#
+# URL scheme, and why it is not flipped yet: after the origin collapse every game
+# is served at ARCADE_ORIGIN/<id>/ — but the cutover of the live hostnames is
+# Task 23's step 4, and it is the owner's to make. Until it happens the games
+# answer on their own subdomains and NOWHERE else, so probing the single origin
+# today would report a seven-line outage that isn't one — and a check that cries
+# wolf is worse than no check, which is the reason this recipe exists at all.
+# So: subdomains by default, single origin on request. After the cutover, set
+# ARCADE_ORIGIN=https://arcade.slabgorb.com in the environment (or make it the
+# default here — the paths already come from gamePath()).
 check-showcase:
     #!/usr/bin/env bash
     set -uo pipefail
     fail=0
-    for u in tempest star-wars asteroids battlezone centipede joust; do
+    origin="${ARCADE_ORIGIN:-}"
+    # id + path pairs, straight from the registry's own gamePath(). LISTED_GAMES,
+    # not GAMES: red-baron is `listed: false` and has no live URL to probe.
+    while read -r id path; do
+      if [ -n "$origin" ]; then url="$origin$path"; else url="https://$id.slabgorb.com/"; fi
       # curl already prints 000 itself via -w on a connection failure (and also
       # exits non-zero, which `set -uo pipefail` without `-e` tolerates) — an
       # `|| echo 000` fallback here would double that into "000000" instead of
-      # reporting cleanly. -L so a redirect (e.g. a future Cloudflare rule) is
-      # not mistaken for an outage — it reports the FINAL response's status.
-      # --connect-timeout/--max-time so a host that stalls after the TCP
-      # handshake cannot wedge this check forever; a timeout also surfaces as
-      # curl's own 000, landing in the same non-200 path with no extra logic.
-      code=$(curl -sL --connect-timeout 5 --max-time 15 -o /dev/null -w "%{http_code}" "https://$u.slabgorb.com/")
-      printf "%-12s %s\n" "$u" "$code"
+      # reporting cleanly. -L so a redirect (e.g. Task 23's Single Redirect rules
+      # from the old hostnames) is not mistaken for an outage — it reports the
+      # FINAL response's status. --connect-timeout/--max-time so a host that
+      # stalls after the TCP handshake cannot wedge this check forever; a timeout
+      # also surfaces as curl's own 000, landing in the same non-200 path with no
+      # extra logic.
+      code=$(curl -sL --connect-timeout 5 --max-time 15 -o /dev/null -w "%{http_code}" "$url")
+      printf "%-12s %-46s %s\n" "$id" "$url" "$code"
       [ "$code" = "200" ] || fail=1
-    done
+    done < <(node -e "import('{{root}}/src/host/registry.ts').then(m => console.log(m.LISTED_GAMES.map(g => g.id + ' ' + m.gamePath(g.id)).join('\n')))")
     exit $fail
 
 # ============================================

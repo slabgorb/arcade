@@ -4,18 +4,24 @@
 //
 // Two things here are load-bearing and easy to destroy by accident:
 //
-// 1. **The registry is the source of truth.** Every game's title, launch URL, glow
-//    colour and control hints come from `GAMES` (src/core/registry.ts) and nowhere
-//    else. The design file hardcodes all four into its markup — it has no registry
-//    to read — and copying that markup across would fork the source of truth so that
-//    adding a game meant editing two places and forgetting one.
+// 1. **The registry is the source of truth.** Every game's title, glow colour, control
+//    hints and version come from the GENERATED registry (src/host/registry.ts, built
+//    from each plugins/<id>/plugin.ts) and nowhere else. The design file hardcodes all
+//    four into its markup — it has no registry to read — and copying that markup across
+//    would fork the source of truth so that adding a game meant editing two places and
+//    forgetting one.
+//
+//    The launch target is no longer carried at all: it is DERIVED by `gamePath(id)`,
+//    because every game is served at /<id>/ on one origin. The hand-maintained
+//    `launchUrl` it replaces was a fifth thing to keep in sync, and nothing checked it.
 //
 // 2. **A tile is a real link.** `<a href>` is why clicking, Tab+Enter, middle-click,
 //    ⌘-click and "open in new tab" all work without a line of JavaScript. A <div>
 //    with a click handler looks identical on screen and silently loses four of those
 //    five. So: an anchor, with an href, and nothing clever.
 
-import type { Game } from '../core/registry'
+import type { GameMeta } from '@host/contract'
+import { gamePath } from '@host/registry'
 import { formatScoreLine } from '../core/score'
 
 // A labelled child span. Text is set via textContent, never innerHTML — registry
@@ -37,13 +43,18 @@ const GAME_ATTR = 'data-game'
  * property, so every glowing part of the tile (border, title, score, controls)
  * inherits it from CSS rather than being coloured here.
  */
-export function buildTile(game: Game, topScore: number | null): HTMLAnchorElement {
+export function buildTile(game: GameMeta, topScore: number | null): HTMLAnchorElement {
   const tile = document.createElement('a')
   tile.className = 'tile'
-  tile.href = game.launchUrl
+  // Was `game.launchUrl` — an absolute subdomain URL from a hand-kept list. The cabinet
+  // is one origin now, so the target is derived from the id by the registry's own
+  // `gamePath`, and there is no URL left to keep in sync. Deriving it HERE with a
+  // template literal would be the same fork in miniature: two places that must agree on
+  // the path scheme, one of which nobody would remember to change.
+  tile.href = gamePath(game.id)
   tile.style.setProperty('--glow', game.color)
   // Which game this tile speaks for. `refreshScores` needs to find the tile again long
-  // after it was built, and the href is a URL, not an id.
+  // after it was built, and the href is a path, not an id.
   tile.setAttribute(GAME_ATTR, game.id)
 
   tile.append(line('tile-title', game.title))
@@ -75,7 +86,7 @@ export function buildTile(game: Game, topScore: number | null): HTMLAnchorElemen
  */
 export function renderTiles(
   container: HTMLElement,
-  games: readonly Game[],
+  games: readonly GameMeta[],
   getScore: (id: string) => number | null,
 ): void {
   container.replaceChildren(...games.map((game) => buildTile(game, getScore(game.id))))

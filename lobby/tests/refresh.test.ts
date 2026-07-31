@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { GAMES } from '../src/core/registry'
+import { LISTED_GAMES } from '@host/registry'
 
 // lb2-3 — the tiles must RE-READ the high score when the player comes back.
 //
@@ -23,10 +23,14 @@ import { GAMES } from '../src/core/registry'
 // `document.cookie` on every call, so a fresh read genuinely sees a fresh score — the only
 // thing missing is something to ask for it.
 
-const TEMPEST = '#games a[href="https://tempest.slabgorb.com/"]'
-const ASTEROIDS = '#games a[href="https://asteroids.slabgorb.com/"]'
-const BATTLEZONE = '#games a[href="https://battlezone.slabgorb.com/"]'
-const CENTIPEDE = '#games a[href="https://centipede.slabgorb.com/"]'
+// MIGRATION RECORD (Task 15) — 0 cases and 0 assertions removed. The four tile selectors
+// below were rewritten from absolute subdomain hrefs to the same-origin paths the tiles
+// now carry, and the grid-size assertion follows LISTED_GAMES instead of GAMES. Every
+// claim about the refresh is untouched.
+const TEMPEST = '#games a[href="/tempest/"]'
+const ASTEROIDS = '#games a[href="/asteroids/"]'
+const BATTLEZONE = '#games a[href="/battlezone/"]'
+const CENTIPEDE = '#games a[href="/centipede/"]'
 
 function tile(selector: string): HTMLAnchorElement {
   const el = document.querySelector<HTMLAnchorElement>(selector)
@@ -202,7 +206,7 @@ describe('the refresh reuses the tiles it already built', () => {
     firePageshow(true)
     firePageshow(false)
 
-    expect(document.querySelectorAll('#games a').length).toBe(GAMES.length)
+    expect(document.querySelectorAll('#games a').length).toBe(LISTED_GAMES.length)
   })
 })
 

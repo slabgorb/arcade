@@ -1,20 +1,27 @@
 import { describe, it, expect } from 'vitest'
 import { advance, createShowcase, currentGame, markUnavailable } from '../src/core/showcase'
-import type { Game } from '../src/core/registry'
+import type { GameMeta } from '@host/contract'
 
 // Driven entirely by SYNTHETIC games, never by the real registry — the same
 // discipline tests/tiles.test.ts uses. Which real game carries `showcase: true`
 // changes as each demo lands, and a test that pins it turns shipping a demo into
 // a test edit.
-function game(id: string, showcase: boolean): Game {
+//
+// MIGRATION RECORD (Task 15) — 0 cases and 0 assertions removed. The synthetic factory
+// builds a `GameMeta` instead of the deleted `Game`: `launchUrl` is gone (the carousel
+// derives its path from the id now) and `year`/`order`/`listed` are supplied. This file
+// asserts nothing about launch targets, so no assertion moved.
+function game(id: string, showcase: boolean): GameMeta {
   return {
     id,
     title: id.toUpperCase(),
-    launchUrl: `https://${id}.example.test/`,
+    year: 1980,
     color: '#00eaff',
     controls: ['FIRE — Space'],
-    version: '1.0.0',
+    order: 1,
+    listed: true,
     showcase,
+    version: '1.0.0',
   }
 }
 

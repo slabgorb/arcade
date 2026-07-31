@@ -11,10 +11,15 @@
 //    A warm second frame would be a second 60 Hz sim on the same main thread, which is
 //    the cost that disqualified the per-tile layout in the first place.
 //
-// 2. **allow="" is a safety property, not a tidiness one.** The autoplay permission's
-//    default allowlist is `self`, so a cross-origin frame never inherits it. Stating it
-//    empty makes the carousel structurally incapable of making noise — no muting logic,
-//    no cooperation required from six separate games.
+// 2. **allow="" is a safety property, not a tidiness one, and the origin collapse made
+//    it MORE load-bearing, not less.** The autoplay permission's default allowlist is
+//    `self` — which used to mean "a cross-origin frame never inherits it", i.e. the
+//    subdomains could not have made noise even without this attribute. Every game is now
+//    framed from the SAME origin, so `self` matches and the frame would inherit autoplay
+//    by default. The empty `allow` is now the only thing keeping the carousel
+//    structurally incapable of making noise — no muting logic, no cooperation required
+//    from six separate games. Do not delete it as redundant; it stopped being redundant
+//    the moment the cabinet became one origin.
 //
 // 3. **Total failure REMOVES the pane.** It does not hide it and it does not sit on a
 //    black rectangle. An empty bordered box is indistinguishable from a game that
@@ -22,11 +27,15 @@
 //    stop being fooled by.
 //
 // Known limit, stated rather than papered over: `load` fires for an error page too, so
-// a game serving a broken build looks healthy from here. Cross-origin isolation makes
-// that undetectable from the parent. Liveness is checked out of band — `just
-// check-showcase`, and docs/ops/hosting.md.
+// a game serving a broken build looks healthy from here. This USED to be undetectable in
+// principle — the frames were cross-origin and same-origin policy hid everything inside
+// them. Since the origin collapse the parent could in fact read the framed document, so
+// the limit is now a choice rather than a wall: liveness is still checked out of band by
+// `just check-showcase` (see docs/ops/hosting.md), because a real HTTP status from
+// outside the page beats a DOM heuristic from inside it.
 
-import type { Game } from '../core/registry'
+import type { GameMeta } from '@host/contract'
+import { gamePath } from '@host/registry'
 import {
   advance,
   createShowcase,
@@ -53,12 +62,17 @@ function prefersReducedMotion(): boolean {
 }
 
 /** The pane's contents for one game: the frame, the launch overlay, the caption. */
-function slideFor(game: Game): Node[] {
+function slideFor(game: GameMeta): Node[] {
+  // Both the frame and the link below take the SAME derived path. They used to read the
+  // same hand-maintained `launchUrl` twice; deriving it twice would reintroduce the same
+  // pair-that-must-agree, so it is computed once here.
+  const href = gamePath(game.id)
+
   // No `title` on the frame: it is aria-hidden decoration, and the accessible name
   // that matters belongs to the link laid over it.
   const frame = document.createElement('iframe')
   frame.className = 'showcase-frame'
-  frame.src = game.launchUrl
+  frame.src = href
   frame.setAttribute('allow', '')
   frame.setAttribute('aria-hidden', 'true')
   frame.setAttribute('tabindex', '-1')
@@ -68,7 +82,7 @@ function slideFor(game: Game): Node[] {
   // pointer never reaches the game and nobody half-plays Tempest through the pane.
   const launch = document.createElement('a')
   launch.className = 'showcase-launch'
-  launch.href = game.launchUrl
+  launch.href = href
   const name = document.createElement('span')
   name.className = 'visually-hidden'
   name.textContent = `Play ${game.title}`
@@ -86,7 +100,7 @@ function slideFor(game: Game): Node[] {
 }
 
 /** The pane's contents when motion is unwelcome: the game named, and a way in. */
-function staticCardFor(game: Game, onReveal: () => void): Node[] {
+function staticCardFor(game: GameMeta, onReveal: () => void): Node[] {
   const caption = document.createElement('span')
   caption.className = 'showcase-caption'
   // Plain title, not the live slide's "NOW SHOWING · …" — nothing is showing here,
@@ -114,7 +128,7 @@ function staticCardFor(game: Game, onReveal: () => void): Node[] {
  * own lifecycle, and retires itself (removing `section`) when there is nothing left
  * to show.
  */
-export function mountShowcase(section: HTMLElement, games: readonly Game[]): void {
+export function mountShowcase(section: HTMLElement, games: readonly GameMeta[]): void {
   const byId = new Map(games.map((g) => [g.id, g]))
   let state: ShowcaseState = createShowcase(games)
   let slideTimer: ReturnType<typeof setTimeout> | undefined
