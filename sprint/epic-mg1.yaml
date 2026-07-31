@@ -116,7 +116,7 @@ stories:
     description: "src/shared/tests is excluded from the root tsconfig, added during the migration's Task 4 to hold the pre-migration line rather than to hide new damage. The reason it was needed: arcade-shared never had a tsconfig of its own and its tests were never compiled - vitest strips types without checking them - so nobody had ever type-checked that directory. Probing it under the root config surfaced 22 real errors, almost all hand-rolled FakeAudioContext and FakeGain doubles that do not satisfy the real WebAudio types, plus possibly-undefined access and empty-tuple indexing in tests/synth.test.ts. The exclude was scoped to that one path deliberately - every game's tsconfig has always included its own tests, so a blanket exclude would have silently dropped seven games' type coverage. The cost of leaving it: these tests can assert against types that do not hold, and any test file added under src/shared/tests is untypechecked from the moment it lands. That already happened during the migration - Task 21's highscore.dom.test.ts is untypechecked today. Fix the doubles, drop the exclude."
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-07-31'
     repos: .
     workflow: tdd
