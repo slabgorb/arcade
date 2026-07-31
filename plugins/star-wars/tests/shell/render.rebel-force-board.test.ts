@@ -131,3 +131,36 @@ describe('sw7-3 H-020 — board scores are comma-grouped (VW8DIG), not the raw i
     expect(all).not.toContain('380655')
   })
 })
+
+// Task 20 — a row migrated across the origin boundary (the ADR-0004 summary
+// cookie) carries name + score only, so its `wave` is an honest `null`, not a
+// fabricated number. The column must render BLANK, not the string 'null':
+// `WAVE ${e.wave}` on a null wave is `WAVE null` — a truthy, non-empty string
+// that a vaguer "something was drawn" assertion would happily accept. The
+// assertion below targets that exact substring, so it fails if the ternary
+// fix in drawHighScoreBoard is reverted to the bare template interpolation.
+describe('Task 20 — a migrated row (wave: null) renders blank, not the string "null"', () => {
+  const MIGRATED_BOARD: HighScoreTable<'wave'> = [{ name: 'JPX', score: 149_830, wave: null }]
+
+  it('does not draw the string "null" for the migrated row\'s wave', () => {
+    render(makeCtx(), attract(), W, H, MIGRATED_BOARD)
+    const all = texts().join('\n')
+    expect(all, `wave column drew the string "null"; saw: ${JSON.stringify(texts())}`).not.toMatch(
+      /WAVE\s*NULL/,
+    )
+  })
+
+  it("still draws the migrated row's name and score", () => {
+    render(makeCtx(), attract(), W, H, MIGRATED_BOARD)
+    const all = texts().join('\n')
+    expect(all).toContain('JPX')
+    expect(all).toContain('149,830')
+  })
+
+  it('an ordinary row on the same board still shows its real wave', () => {
+    const mixed: HighScoreTable<'wave'> = [...BOARD, ...MIGRATED_BOARD]
+    render(makeCtx(), attract(), W, H, mixed)
+    const all = texts().join('\n')
+    expect(all).toContain('WAVE 4')
+  })
+})

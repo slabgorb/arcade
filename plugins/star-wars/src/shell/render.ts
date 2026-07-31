@@ -1633,7 +1633,11 @@ function drawHighScoreBoard(
     const rank = String(i + 1).padStart(2, ' ')
     // sw7-3 H-020: comma-group the board score (VW8DIG) like the in-run HUD.
     const pts = formatScore(e.score)
-    glowText(ctx, `${rank}  ${e.name}  ${pts}  WAVE ${e.wave}`, w / 2, y, HUD_TEXT_PX, 'center', GLOW, 6)
+    // Task 20: a row migrated across the origin boundary (the ADR-0004 summary
+    // cookie) carries no wave — `e.wave` is an honest `null`, not a fabricated
+    // number. Render the column blank rather than `String(null)` -> 'WAVE null'.
+    const wave = e.wave === null ? '' : e.wave
+    glowText(ctx, `${rank}  ${e.name}  ${pts}  WAVE ${wave}`, w / 2, y, HUD_TEXT_PX, 'center', GLOW, 6)
     y += 24
   }
 }

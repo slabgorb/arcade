@@ -54,11 +54,16 @@ export interface HighScoreEntryBase {
   date?: string // optional ISO-8601 timestamp of the entry
 }
 
-/** A high-score entry with its game's numeric domain field mixed in by name:
- *  HighScoreEntry<'level'> for tempest, HighScoreEntry<'wave'> for star-wars and
- *  asteroids. */
+/** A game's own domain field — the level or wave the score was set on.
+ *
+ *  `null` means MIGRATED: the row came across the origin boundary in the ADR-0004
+ *  summary cookie, which carries name and score only. Fabricating a level would be
+ *  the cabinet inventing a fact about a player's game — the same lie the lb2-8
+ *  amendment refused when it declined to invent initials. Boards render a blank.
+ *  Rows written after migration always carry a real number, so null is strictly
+ *  transitional and clears itself as new scores displace old ones. */
 export type HighScoreEntry<DomainKey extends string> = HighScoreEntryBase & {
-  [K in DomainKey]: number
+  [K in DomainKey]: number | null
 }
 
 /** A table is a list of entries, ordered descending by score (lowest last). */
@@ -130,7 +135,12 @@ export function makeHighScoreRowGuard<DomainKey extends string>(
     // guard below narrows it to a type without an index signature, so we read
     // the game's own domain field (`level` | `wave`) from this view by name.
     const row = value as Record<string, unknown>
-    return isHighScoreRow(value) && Number.isFinite(row[domainKey])
+    if (!isHighScoreRow(value)) return false
+    const domain = row[domainKey]
+    // A finite number, or an EXPLICIT null (a migrated row). `undefined` and a
+    // missing key are still rejected: those mean the row is malformed, not
+    // migrated, and silently admitting them would let junk into the table.
+    return Number.isFinite(domain) || domain === null
   }
 }
 

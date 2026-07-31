@@ -391,6 +391,35 @@ describe('makeHighScoreRowGuard — domain-aware guard, generic over the field n
   })
 })
 
+describe('row guard — migrated rows carry a null domain value', () => {
+  const guard = makeHighScoreRowGuard('level')
+
+  it('accepts a normal row', () => {
+    expect(guard({ name: 'JPX', score: 149830, level: 12 })).toBe(true)
+  })
+
+  it('accepts a migrated row whose level is explicitly null', () => {
+    // Seeded from the cross-origin cookie, which carries no domain field. The
+    // alternative — fabricating a level — would be the cabinet inventing a fact
+    // about a player's game.
+    expect(guard({ name: 'JPX', score: 149830, level: null })).toBe(true)
+  })
+
+  it('still rejects a row with the domain field missing entirely', () => {
+    expect(guard({ name: 'JPX', score: 149830 })).toBe(false)
+  })
+
+  it('still rejects a non-numeric, non-null domain value', () => {
+    expect(guard({ name: 'JPX', score: 149830, level: 'twelve' })).toBe(false)
+    expect(guard({ name: 'JPX', score: 149830, level: undefined })).toBe(false)
+    expect(guard({ name: 'JPX', score: 149830, level: NaN })).toBe(false)
+  })
+
+  it('still rejects a non-finite score', () => {
+    expect(guard({ name: 'JPX', score: Infinity, level: 3 })).toBe(false)
+  })
+})
+
 // =============================================================================
 // makeHighScoreStorage(gameId, validator) — the persistence factory
 // =============================================================================
