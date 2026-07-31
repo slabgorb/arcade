@@ -144,6 +144,13 @@ hand. Read that file's comment before changing it: every plugin's `index.html` *
 `lobby/index.html` reference the same absolute `/src/main.ts`, which is unambiguous only
 because each app keeps its own `root`.
 
+> ⚠ **Hot reload does not reach the games — refresh the browser.** The lobby hot-reloads; a game
+> does not, because the seven child servers share the parent's websocket and the lobby's wins every
+> upgrade. Nothing is stale: each child's watcher is live and a reload serves the new code, so the
+> edit-refresh-look loop works. Filed as **mg1-14**; read the comment in `vite.config.ts` before
+> attempting it, since the obvious fix reintroduces six `Port is already in use` errors per start
+> and still leaves six games without HMR.
+
 > ⚠ **Unknown paths are still the lobby's SPA fallback, and that is deliberate** — an
 > all-`200` sweep of `/`, `/tempest/`, `/star-wars/` … therefore proves nothing, because
 > a fallback answers `200` to everything. Until mg1-2 that fallback *was* the whole

@@ -107,6 +107,24 @@ function serveTheCabinet(): Plugin {
           await createServer({
             configFile: false,
             ...defineAppConfig({ id }),
+            // ⚠ HOT RELOAD DOES NOT REACH THE GAMES. Sharing the parent's server
+            // is what stops each child opening its own websocket on Vite's default
+            // 24678, where six of the seven lose and print `Port is already in use`
+            // on every start. But the parent's own socket then wins every upgrade,
+            // so a game's HMR messages go nowhere. MEASURED: editing a file under
+            // plugins/tempest/ delivers nothing to a game client, while editing one
+            // under lobby/ delivers `full-reload` to the lobby's.
+            //
+            // The dev server is still fully usable — each child's WATCHER is live
+            // and re-requesting a module returns fresh content, so a manual browser
+            // refresh picks up every change. Only the automatic push is missing,
+            // and no game had hot reload before this story either.
+            //
+            // Do not "fix" this by dropping the shared server: that trades a silent
+            // gap for six errors per start AND still leaves six games without HMR.
+            // `hmr: { server, path: '/<id>/@hmr' }` was tried and does not route
+            // either. A real fix needs a per-child HMR port or a dispatching
+            // websocket layer — filed as mg1-14.
             server: { middlewareMode: true, hmr: { server: server.httpServer ?? undefined } },
           }),
         )
@@ -116,20 +134,27 @@ function serveTheCabinet(): Plugin {
       // post-hook) because the lobby's SPA fallback is one of them and would
       // otherwise answer `/tempest/` first — which is precisely the bug.
       server.middlewares.use((req: Connect.IncomingMessage, res, next: Connect.NextFunction) => {
-        const id = /^\/([^/?#]+)(?:\/|$)/.exec(req.url ?? '')?.[1]
+        // The id is the first path segment, ended by `/`, `?`, `#` or the end of
+        // the URL. A LOOKAHEAD, not a consuming match: `(?:\/|$)` looked equivalent
+        // and silently dropped `/tempest?x=1` — the segment is followed by `?`,
+        // which is neither a slash nor the end, so the whole match failed and the
+        // request fell through to the lobby. A game path quietly serving the lobby
+        // is the exact defect this story exists to remove, so the four shapes
+        // `/tempest`, `/tempest/`, `/tempest?x=1` and `/tempest/?x=1` are pinned in
+        // tests/canonical-serve.test.mjs.
+        const id = /^\/([^/?#]+)(?=[/?#]|$)/.exec(req.url ?? '')?.[1]
         const child = id === undefined ? undefined : children.get(id)
         if (!child) return next()
         child.middlewares(req, res, next)
       })
 
+      // The only cleanup path. A `closeBundle` hook stood here too and was deleted:
+      // this plugin is `apply: 'serve'`, so it is excluded from builds entirely and
+      // that build-only hook could never fire. Dead code shaped like the cleanup
+      // path invites someone to fix a leak by editing the half that never runs.
       server.httpServer?.on('close', () => {
         for (const child of children.values()) void child.close()
       })
-    },
-
-    async closeBundle() {
-      for (const child of children.values()) await child.close()
-      children.clear()
     },
   }
 }

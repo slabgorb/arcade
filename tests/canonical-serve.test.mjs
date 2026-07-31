@@ -395,6 +395,37 @@ describe('the one dev server serves the whole cabinet, not one app at every path
     );
   });
 
+  test('AC1: every shape of a game URL reaches the game, not the lobby', { timeout: 60_000 }, async () => {
+    // REGRESSION GUARD (mg1-2 review, finding R1). The first router matched the app
+    // id with `(?:\/|$)` — the id had to be followed by a slash or the end of the
+    // URL. `/tempest?x=1` is followed by `?`, so the match failed entirely and the
+    // request fell through to the lobby: 200, <title>Slabcade</title>, no error.
+    // A game path silently serving the lobby is the precise defect this story
+    // exists to remove, so every shape a browser or a developer can produce is
+    // pinned here rather than only the canonical one.
+    const game = gameIds()[0];
+    const expected = titleOf(`plugins/${game}/index.html`, true);
+    const lobbyTitle = titleOf('lobby/index.html', true);
+    assert.notEqual(expected, lobbyTitle, 'fixture problem: the game and the lobby must be distinguishable');
+
+    for (const path of [`${game}/`, `${game}`, `${game}?debug=1`, `${game}/?debug=1`, `${game}/#frag`]) {
+      const res = await get(path);
+      assert.equal(
+        titleOf(res.body),
+        expected,
+        `/${path} served <title>${titleOf(res.body)}</title> instead of <title>${expected}</title>. ` +
+          `Every shape of a game's URL must reach the game — a query string or a missing trailing ` +
+          `slash falling through to the lobby is a silent wrong-app serve.`,
+      );
+    }
+
+    // …and the control is unaffected by the same shapes, so the fix cannot have
+    // been "route everything to a game".
+    for (const path of ['banana/', 'banana', 'banana?debug=1']) {
+      assert.equal(titleOf((await get(path)).body), lobbyTitle, `/${path} must still be the lobby's fallback`);
+    }
+  });
+
   test('AC1: a plugin sub-entry serves its OWN file, not the game index', { timeout: 60_000 }, async () => {
     // The failure this catches is a wildcard rewrite: `/<id>/*` → plugins/<id>/index.html
     // serves the right APP but the wrong PAGE, and every assertion above still

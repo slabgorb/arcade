@@ -167,3 +167,18 @@ stories:
     repos: .
     workflow: trivial
     type: chore
+  - id: mg1-14
+    title: Hot module replacement does not reach the games — the dev server's children share one websocket
+    points: 3
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    type: bug
+    description: "Found by the Reviewer on mg1-2, 2026-07-31, and MEASURED rather than inferred. mg1-2 made one dev server serve the whole cabinet by mounting one middlewareMode Vite server per game under its /<id>/ prefix. Each child is created with hmr: { server: parentHttpServer }, and that is load-bearing: without it every child opens its own websocket on Vite's default port 24678, six of the seven lose the race, and `just serve` prints six 'Port is already in use' errors on every start. The cost is that the parent's own socket then wins every upgrade, so the games' HMR messages go nowhere. Measured by editing real files against a live server: touching plugins/tempest/src/core/rules.ts delivers NOTHING to a game client, while touching lobby/src/shell/tiles.ts delivers full-reload to the lobby's. The lobby's HMR works; the seven games' does not. This is NOT a regression - before mg1-2 no game could be served at all, so no game had hot reload to lose - and the dev server is fully usable meanwhile: each child's file WATCHER is live and re-requesting a module returns fresh content, so a manual browser refresh picks up every change. Only the automatic push is missing. One approach was already tried and does NOT work: hmr: { server, path: '/<id>/@hmr' } routes no better than the bare shared server. Likely candidates are a distinct HMR port per child (cheap, but it puts seven more unpinned ports into a repo that has been bitten twice by port collisions across sibling checkouts - see td1-1) or an upgrade-dispatching layer on the parent that hands the socket to the child owning the URL's prefix (correct, more work). Note also that NO test in this repo covers HMR for any app, including the lobby's working one - which is exactly why a silent HMR gap reached review green. The technique is cheap: connect a websocket with the 'vite-hmr' protocol, touch a file, assert an update message arrives."
+    acceptance_criteria:
+      - Editing a file under plugins/<id>/src/ delivers an HMR update to a client loaded at /<id>/, measured against a live server rather than inferred from configuration.
+      - The lobby's existing HMR still works after the change - it does today, and a fix that trades the games' hot reload for the lobby's is not a fix.
+      - "`just serve` starts with no 'Port is already in use' output. Silencing that noise is why the shared server exists; a fix that reintroduces six errors per start has regressed the thing mg1-2 paid for."
+      - A test covers HMR end to end for at least one game AND the lobby - connect a vite-hmr websocket, touch a real source file, assert the update arrives. Asserting that a websocket UPGRADE is accepted is explicitly insufficient: that check passed while game HMR was entirely dead, because the socket that accepted was the lobby's.
+      - The warning comment in vite.config.ts and any doc describing the limitation are removed or corrected in the same change, so nothing is left claiming a gap that no longer exists.
