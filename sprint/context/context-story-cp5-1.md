@@ -43,7 +43,15 @@ The established shape (reference: `plugins/tempest/src/shell/audio.ts:1-24`):
 
 Centipede's base URL is the `centipede/` prefix on the same assets host: `https://arcade-assets.slabgorb.com/centipede/sfx/`.
 
-Centipede already imports five modules from `@shared`: `@shared/rng`, `@shared/highscore`, `@shared/name-entry`, `@shared/font`, `@shared/loop`. Audio is one more import line — no subpath export, no version pin, no bump ceremony.
+Centipede already imports four modules from `@shared`: `@shared/rng`, `@shared/highscore`, `@shared/name-entry`, `@shared/loop`. Audio is one more import line — no subpath export, no version pin, no bump ceremony.
+
+> ⚠ **Correction (TEA, red phase 2026-07-31) — the setup phase got this wrong and the epic description was right.**
+> An earlier revision of this file said "five modules … including `@shared/font`". It does not. The three
+> `@shared/font` hits in centipede are all *negative* references — a comment in `src/shell/layout.ts:134`
+> ("NOT @shared/font — score/level are ROM tiles") and two in `tests/render.test.ts` that assert the import
+> is absent. Verified with `grep -rhoE "from '@shared/[a-z-]+'" plugins/centipede/src`: rng ×6, highscore ×2,
+> name-entry ×1, loop ×1. **Do not add `@shared/font`** — `plugins/centipede/tests/render.test.ts:132`
+> actively forbids it by epic ruling (score and level digits are ROM picture tiles).
 
 ### Event Carrier: State Field, Not Step Result
 
@@ -84,6 +92,12 @@ The asteroids precedent shows the pattern: `plugins/asteroids/src/core/sim.ts` (
 
 6. **AC6:** No .wav is committed to the repo and no R2 upload is claimed by this story — the manifest names files that later stories bake, and the story says so plainly rather than implying the game now has sound.
    - Verify `plugins/centipede/README.md:121-123` is updated: the status note must state the seam exists while no samples ship yet, not that audio is unsupported.
+   - ⚠ **TEA (red phase): there are TWO stale places in that README, and 121-123 is the lesser one.**
+     The **status block at `README.md:11-20`** is the primary claim — it says centipede is "playable and
+     **silent**", that "there is no `src/shell/audio.ts`, no event channel and no dispatch", and cites
+     `src/core/bonus.ts:32` for the deferral. Every one of those sentences is falsified by this story.
+     Update BOTH; `tests/audio-seam-scope.test.ts` pins both and pins that the game is not claimed to
+     have sound.
 
 ## Technical Approach
 

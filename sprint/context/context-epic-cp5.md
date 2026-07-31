@@ -41,8 +41,14 @@ rest of the audio, and deliberately not stubbed"*. The block any story should ci
 `─── THE ONE THING THAT IS *NOT* HERE ───` deferral banner at **`bonus.ts:30-35`**. (The Overview's
 quotation of the ROM line itself is accurate.)
 
-Minor: centipede imports **five** `@shared` modules, not the four listed — `rng`, `highscore`,
-`name-entry`, `loop` and also `font`.
+~~Minor: centipede imports **five** `@shared` modules, not the four listed — `rng`, `highscore`,
+`name-entry`, `loop` and also `font`.~~
+**RETRACTED (TEA, 2026-07-31) — the Overview was right and this "correction" was wrong.** Centipede
+imports **four**: `rng`, `highscore`, `name-entry`, `loop`. The `@shared/font` hits that produced the
+claim are all *negative* references (`src/shell/layout.ts:134` "NOT @shared/font", plus two assertions
+in `tests/render.test.ts` that the import is absent). Measured with
+`grep -rhoE "from '@shared/[a-z-]+'" plugins/centipede/src`. **`@shared/font` must not be added** —
+`tests/render.test.ts:132` forbids it by epic ruling (score/level digits are ROM picture tiles).
 
 ### Guardrails that carry across every story in this epic
 
