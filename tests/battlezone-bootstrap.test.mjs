@@ -90,8 +90,10 @@
 //     because there is one dev server on one port. Its two halves survive
 //     cabinet-wide, not per game: the pin is PROVEN behaviourally by `strictPort
 //     is real, not just declared` (tests/monorepo-topology.test.mjs), and what
-//     the one server actually serves is pinned by `the dev server serves the
-//     LOBBY at every path` (tests/canonical-serve.test.mjs).
+//     the one server actually serves is pinned by `the one dev server serves the
+//     whole cabinet, not one app at every path` (tests/canonical-serve.test.mjs).
+//     That guard was `the dev server serves the LOBBY at every path` until mg1-2,
+//     which made the one server serve each game at /<id>/ and inverted it.
 //
 //   · the per-game pinned PORT (5276) goes with them. Its nearest successor is
 //     base-path uniqueness — `/battlezone/` — asserted for all seven in

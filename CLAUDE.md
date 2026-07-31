@@ -124,16 +124,33 @@ just serve      # ONE vite dev server, on ONE port: http://127.0.0.1:5270/
 from `vite.config.ts`, deliberately **not** from CLI flags, so a bare `npx vite`, an
 editor task or a copy-pasted command is pinned exactly as the recipe is.
 
-> ⚠ **What it actually serves today: the LOBBY, at every path.** The root
-> `vite.config.ts` default-exports `defineAppConfig({ id: 'lobby' })`, whose `root` is
-> `lobby/`, so `/`, `/tempest/`, `/tempest/models.html` and a nonsense `/banana/` all
-> return `200` with byte-identical HTML and `<title>Slabcade</title>`. It is a blanket
-> SPA fallback, not a route table. **A screenshot taken at `/tempest/` is the lobby** —
-> do not verify a game's render there. The `/<id>/` paths are real in the *built*
-> output (that is what `base` decides, and what the R2 key prefixes mirror); making the
-> dev server serve them too is filed as **uf1-19**. Pinned by `the dev server serves
-> the LOBBY at every path` in `tests/canonical-serve.test.mjs`, which reddens the day
-> uf1-19 lands and this paragraph has to change.
+**What it serves: the whole cabinet.** The lobby at `/`, and each game at `/<id>/` from
+its own plugin sources — the same paths as the built output and the R2 key prefixes, so
+a dev URL and a production URL differ only in origin. A screenshot taken at `/tempest/`
+is Tempest, and verifying a game's render locally is what this is for.
+
+| Dev URL                          | Serves                      |
+|----------------------------------|-----------------------------|
+| `http://127.0.0.1:5270/`         | `lobby/index.html`          |
+| `http://127.0.0.1:5270/tempest/` | `plugins/tempest/index.html`|
+| `.../tempest/models.html`        | that plugin's second entry  |
+| `.../banana/` (unknown)          | the lobby's SPA fallback    |
+
+Each game is served by its own Vite server in `middlewareMode`, built from the same
+`defineAppConfig(<id>)` the build uses and mounted under its `/<id>/` prefix by the
+`arcade:serve-the-cabinet` plugin in `vite.config.ts`. That is why dev cannot drift from
+the build — one definition feeds both — and why nothing here rewrites URLs or HTML by
+hand. Read that file's comment before changing it: every plugin's `index.html` *and*
+`lobby/index.html` reference the same absolute `/src/main.ts`, which is unambiguous only
+because each app keeps its own `root`.
+
+> ⚠ **Unknown paths are still the lobby's SPA fallback, and that is deliberate** — an
+> all-`200` sweep of `/`, `/tempest/`, `/star-wars/` … therefore proves nothing, because
+> a fallback answers `200` to everything. Until mg1-2 that fallback *was* the whole
+> behaviour: every path returned byte-identical lobby HTML. Any check that the cabinet
+> serves must compare a game path against a nonsense control and assert they DIFFER.
+> Pinned by `the one dev server serves the whole cabinet, not one app at every path` in
+> `tests/canonical-serve.test.mjs`, which does exactly that.
 
 Eight pinned ports are now one, but the pin still matters — and `strictPort` alone
 does not protect it. `strictPort` makes a collision **fail loudly**, so only one
