@@ -46,10 +46,15 @@ import {
   stepSim,
   WAVE_DELAY,
   DEATH_DELAY,
+  PLAYER_EXPLODE_START,
   type SimState,
 } from '../src/core/sim'
 import { CENT_BODY_PIC, DEAD_BIT, type Segment } from '../src/core/centipede'
 import { BONUS_INCREMENT } from '../src/core/bonus'
+import { SPIDER_OFF_PIC, SPIDER_PIC_MIN } from '../src/core/spider'
+import { FLEA_PARK_V } from '../src/core/flea'
+import { isScorpion } from '../src/core/scorpion'
+import { MUSHROOM_FULL, PLYFLD_STRIDE, SCORE_RESTORE } from '../src/core/playfield'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const eventsPath = join(repoRoot, 'src', 'core', 'events.ts')
@@ -337,6 +342,58 @@ describe('cp5-1 AC1 — stepSim emits the stream as state', () => {
     expect(kindsOf(after)).not.toContain('bonus-life')
   })
 
+  it('a bonus awarded by the RESTOR sweep emits it too — the OTHER award path', () => {
+    // REWORK (Reviewer round 1, MEDIUM). `awardBonus` runs on two funnels, not
+    // one: the play frame's, and the death pause's, because RESTOR pays 5 a cell
+    // as it repairs (:1850-1857) and a long sweep can cross the threshold
+    // mid-death. Only the first was wired, so the ROM's :1994-1995 cue was
+    // reachable from half its causes. bonus-lives.test.ts:314 exists precisely
+    // because this path can cross, so the fixture is its, deliberately.
+    //
+    // Control vs treatment, because a death also SPENDS a life: the only
+    // difference between the two runs is the starting score.
+    const drive = (startScore: number): { end: SimState; seen: string[] } => {
+      let s: SimState = { ...createSim(0x2222), score: startScore } as SimState
+      for (const [h, v] of [
+        [5, 6],
+        [8, 7],
+        [12, 3],
+        [20, 9],
+      ] as Array<[number, number]>) {
+        s.playfield.cells[h * PLYFLD_STRIDE + v] = MUSHROOM_FULL - 1
+      }
+      s = { ...s, segs: [{ h: s.player.h, v: s.player.v, dh: 2, dv: 2, pic: 0x03 }] } as SimState
+      const seen: string[] = []
+      let armed = false
+      // Exit on `delay`, never on `lives` — the treatment run ends where it
+      // started and a "stepped down yet?" loop would run into a SECOND death.
+      for (let i = 0; i < 4000; i++) {
+        s = stepSim(s, IDLE)
+        seen.push(...kindsOf(s))
+        if (!armed && s.delay > 0) armed = true
+        else if (armed && s.delay === 0) return { end: s, seen }
+      }
+      throw new Error('test setup failed: the death pause never ended within the frame budget')
+    }
+
+    const control = drive(0)
+    expect(
+      control.end.score,
+      'fixture sanity: the sweep must actually score, or this test proves nothing',
+    ).toBeGreaterThan(0)
+    expect(control.seen, 'the control crosses no threshold').not.toContain('bonus-life')
+
+    const treatment = drive(BONUS_INCREMENT - control.end.score)
+    expect(
+      treatment.end.lives,
+      'the death costs a life and the sweep buys one back — so `lives` alone cannot see this',
+    ).toBe(control.end.lives + 1)
+    expect(
+      treatment.seen,
+      'the sweep awarded a life mid-death and the cue the ROM writes at :1994-1995 never fired',
+    ).toContain('bonus-life')
+  })
+
   it('the player dying emits player-died', () => {
     // Stage a body segment ON the gun: MOTION's PLAY (sim.ts:377) kills it.
     const s = createSim(0x1234)
@@ -397,25 +454,234 @@ describe('cp5-1 AC2 — the stream is REBUILT each frame, never carried forward'
     ).not.toContain('shot-fired')
   })
 
+  it('a DEATH-PAUSE frame does not repeat the cue that armed it', () => {
+    // The rebuild has TWO halves and the test above only exercises one.
+    // `stepPlayingFrame` allocates a fresh array on entry, so a playing frame
+    // cannot carry anything forward however the clear is written — the clear is
+    // only load-bearing on the paths that return `{ ...state }`, and the death
+    // pause is the long one. Found by mutation: carrying the stale array forward
+    // in stepSim left all 955 tests green, because nothing looked HERE.
+    const s = createSim(0x1234)
+    const onGun: Segment = { h: s.player.h, v: s.player.v, dh: 2, dv: 2, pic: CENT_BODY_PIC }
+    const death = stepSim({ ...s, segs: [onGun] } as SimState, IDLE)
+    expect(kindsOf(death), 'precondition: the gun must die').toContain('player-died')
+    expect(death.delay, 'precondition: the pause must be armed').toBe(DEATH_DELAY)
+
+    const paused = stepSim(death, IDLE)
+    expect(paused.delay, 'precondition: still inside the pause').toBeGreaterThan(0)
+    expect(
+      kindsOf(paused),
+      'the pause replayed the death frame\'s cues — 0x30 frames of "the gun exploded" in a row',
+    ).toEqual([])
+  })
+
   it('a long idle run drains to an empty stream instead of accumulating', () => {
     // The unbounded-growth shape of the same bug: if the array is appended to,
     // it grows forever and the shell replays the whole game every frame.
+    //
+    // REWORK (Reviewer round 1, MEDIUM): this bound was `< EXPECTED_KINDS.length`
+    // (< 18) while the measured value is 0. A regression leaking a small constant
+    // per frame — which is EXACTLY the shape of the dropped loop-stop this round
+    // fixed — sails through `< 18` forever. Pinned to the real number.
     let s: SimState = stepSim(createSim(0x1234), FIRE)
     for (let i = 0; i < 120; i++) s = stepSim(s, IDLE)
     expect(
       streamOf(s).length,
       'the stream never drained — events are accumulating across frames',
-    ).toBeLessThan(EXPECTED_KINDS.length)
+    ).toBe(0)
   })
 
-  it('a fresh game reseeded through START starts from an empty stream', () => {
+  it('a fresh game reseeded through START emits the march and nothing else', () => {
     // stepPhase's restart (sim.ts:866) rebuilds from createSim; a stream that
     // survived the reseed would replay the last life's cues over the new one.
+    //
+    // REWORK (Reviewer round 1, MEDIUM): `< 18` again, where the measured stream
+    // is exactly one event. It is not empty and must not be: the reseeded game
+    // has a live train at delay 0, so the march becomes audible on this very
+    // frame and its `-start` is due. Pinning the CONTENT rather than a loose
+    // bound is what makes this test able to see a stale attract cue.
     let s: SimState = stepSim(createAttract(0x1234), { ...FIRE, start: true })
-    // The press that starts the game must not carry the attract demo's cues in.
-    expect(streamOf(s).length).toBeLessThan(EXPECTED_KINDS.length)
+    expect(kindsOf(s), 'the START frame carries the march edge and no carried-in cue').toEqual([
+      'march-start',
+    ])
     s = stepSim(s, IDLE)
     expect(Array.isArray(ext(s).events)).toBe(true)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// AC4 — a loop that opens must CLOSE, observed in play
+//
+// REWORK (Reviewer round 1, HIGH). The suite this file shipped with proved that
+// the dispatch turns a `-start` into `startLoop`, and that the union carries a
+// `-stop` for every `-start`. Neither of those is the property AC4 is about,
+// which is that the STREAM the sim produces closes what it opens. The seam
+// shipped green over a real leak: the spider's `-stop` was computed inside
+// `stepPlayingFrame`, so the reset that happens on the death pause's exit — not
+// a playing frame — dropped it, and the spider's loop rang over an empty screen
+// for 192 frames of a 6000-frame run.
+//
+// The tests below observe the loops IN PLAY, which is the only place that bug
+// exists. Nothing here hand-builds an event.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** What a shell driven by this stream believes is ringing, after `events`. */
+function applyEdges(open: Set<string>, kinds: readonly string[]): Set<string> {
+  const next = new Set(open)
+  for (const kind of kinds) {
+    if (kind.endsWith('-start')) next.add(kind.slice(0, -'-start'.length))
+    else if (kind.endsWith('-stop')) next.delete(kind.slice(0, -'-stop'.length))
+  }
+  return next
+}
+
+/** What is ACTUALLY sounding in this state, read from the sim, not the stream.
+ *  Deliberately a second, independent expression of the same predicates
+ *  `sim.ts` uses — if it were imported from there the comparison below would be
+ *  the code agreeing with itself. */
+function trulyAudible(s: SimState): Set<string> {
+  const live = new Set<string>()
+  if (s.phase !== 'playing') return live
+  if (s.delay === 0 && s.segs.some((seg) => (seg.pic & DEAD_BIT) === 0)) live.add('march')
+  if (s.spider.pic !== SPIDER_OFF_PIC) live.add('spider')
+  if (s.flea.v < FLEA_PARK_V && !isScorpion(s.flea.pic)) live.add('flea')
+  if (isScorpion(s.flea.pic)) live.add('scorpion')
+  return live
+}
+
+describe('cp5-1 AC4 — every sustained loop the stream opens, the stream closes', () => {
+  it('a spider on screen when the gun dies is told to STOP', () => {
+    // The reviewer's reproduction, staged rather than hunted: the spider is
+    // reset by stepDeathFrame's BUGOFF re-run (sim.ts, the respawn branch), on a
+    // frame stepPlayingFrame never sees. An edge computed in the playing frame
+    // cannot be there to notice.
+    const s = createSim(0x1234)
+    const onGun: Segment = { h: s.player.h, v: s.player.v, dh: 2, dv: 2, pic: CENT_BODY_PIC }
+    const staged = {
+      ...s,
+      segs: [onGun],
+      spider: { ...s.spider, pic: SPIDER_PIC_MIN, h: 0x40, v: 0x40 },
+    } as SimState
+
+    let cur = stepSim(staged, IDLE)
+    expect(cur.delay, 'precondition: the staged contact must kill the gun').toBe(DEATH_DELAY)
+    expect(kindsOf(cur)).toContain('player-died')
+    expect(
+      trulyAudible(staged).has('spider'),
+      'precondition: the spider must be on screen when the gun dies',
+    ).toBe(true)
+
+    // Run the pause out to the respawn, collecting every frame's stream.
+    const seen: string[] = [...kindsOf(cur)]
+    for (let i = 0; i < DEATH_DELAY * 8 && cur.delay > 0; i++) {
+      cur = stepSim(cur, IDLE)
+      seen.push(...kindsOf(cur))
+    }
+    expect(cur.delay, 'the pause must actually end within the budget').toBe(0)
+    expect(
+      trulyAudible(cur).has('spider'),
+      'precondition: the respawn must have re-parked the spider',
+    ).toBe(false)
+    expect(
+      seen,
+      'the spider went off screen across the death pause and its loop was never stopped — ' +
+        'startLoop rings until stopLoop, so the shell skitters over an empty screen',
+    ).toContain('spider-stop')
+  })
+
+  it('over a long played run, no loop is ever left open over a silent screen', () => {
+    // The general form, and the one that would have caught this without anyone
+    // guessing the death pause was the culprit: replay a real seeded run and
+    // hold the shell's belief (derived from the events ALONE) against the sim's
+    // actual state, every frame.
+    //
+    // The run starts in ATTRACT and presses START, which is how a game is
+    // actually entered. That is not incidental: an edge-driven loop only ever
+    // learns about a TRANSITION, so a shell handed a `createSim` state that is
+    // already marching would never be told to start it — there is no edge to
+    // emit. Attract is silent, so the press IS the edge, and the belief and the
+    // screen agree from the first frame.
+    let s: SimState = createAttract(0x2468)
+    let open = new Set<string>()
+    const disagreements: string[] = []
+    const moved = new Set<string>()
+
+    for (let i = 0; i < 6000; i++) {
+      const prev = trulyAudible(s)
+      s = stepSim(s, i === 0 ? { ...IDLE, start: true } : scriptedInput(i))
+      open = applyEdges(open, kindsOf(s))
+      const actual = trulyAudible(s)
+      for (const voice of prev) if (!actual.has(voice)) moved.add(voice)
+      for (const voice of actual) if (!prev.has(voice)) moved.add(voice)
+      for (const voice of new Set([...open, ...actual])) {
+        if (open.has(voice) !== actual.has(voice)) {
+          const believed = open.has(voice) ? 'ringing' : 'silent'
+          disagreements.push(
+            `frame ${i}: ${voice} ${believed} in the stream, ${actual.has(voice) ? 'on' : 'off'} screen`,
+          )
+        }
+      }
+    }
+
+    // NON-VACUITY: a run in which no loop ever opened would agree perfectly, so
+    // count the DISTINCT voices that actually moved, not raw transitions — a
+    // single voice flickering would run the counter up while leaving the other
+    // three unexercised. Measured across six seeds, ordinary play works the
+    // march, the spider and the flea; the scorpion needs waves this run does not
+    // reach, and is covered by its own staged tests.
+    expect(
+      [...moved].sort(),
+      'fewer than two sustained voices changed state — the sweep proves almost nothing',
+    ).toEqual(['flea', 'march', 'spider'])
+    expect(
+      disagreements.slice(0, 5),
+      `${disagreements.length} frames where the loop the stream opened is not the loop on screen`,
+    ).toEqual([])
+  })
+
+  it('a game ENDING stops every loop it left ringing', () => {
+    // The other exit stepPlayingFrame cannot see: the last life is spent inside
+    // stepDeathFrame, which returns phase `gameover`. A spider still skittering
+    // over the high-score screen is the same defect wearing a different hat.
+    //
+    // The spider is staged deliberately, and the assertion below leans on it:
+    // this run's centipede is DEAD by the time the game ends, so the march would
+    // have gone quiet on the death frame no matter what the phase said. The
+    // spider is the only voice here whose `-stop` the phase gate alone produces
+    // — without it this test passes over a gate that does nothing.
+    const s = createSim(0x1234)
+    const onGun: Segment = { h: s.player.h, v: s.player.v, dh: 2, dv: 2, pic: CENT_BODY_PIC }
+    const staged = {
+      ...s,
+      segs: [onGun],
+      lives: 1,
+      spider: { ...s.spider, pic: SPIDER_PIC_MIN, h: 0x40, v: 0x40 },
+    } as SimState
+    let cur = stepSim(staged, IDLE)
+    expect(kindsOf(cur), 'precondition: the gun must die').toContain('player-died')
+
+    const seen: string[] = [...kindsOf(cur)]
+    for (let i = 0; i < DEATH_DELAY * 8 && cur.phase === 'playing'; i++) {
+      cur = stepSim(cur, IDLE)
+      seen.push(...kindsOf(cur))
+    }
+    expect(cur.phase, 'precondition: the last life must end the game').toBe('gameover')
+    expect(
+      cur.spider.pic,
+      'precondition: the spider is STILL on the board at game over — the ROM never re-parks it ' +
+        'on this path, so only the end of the run can silence it',
+    ).not.toBe(SPIDER_OFF_PIC)
+
+    // Seeded with what was ACTUALLY sounding when observation began, not with
+    // an empty set: the spider and the march were both already ringing, and
+    // `delete` on a voice the set never held is a no-op — so an empty seed would
+    // make a MISSING `-stop` indistinguishable from a delivered one. (Written
+    // empty first, and it passed over a deliberately weakened phase gate.)
+    const stillOpen = applyEdges(trulyAudible(staged), seen)
+    expect(
+      [...stillOpen],
+      'the run is over and these loops were never told to stop — they ring over the high-score screen',
+    ).toEqual([])
   })
 })
 
@@ -434,6 +700,44 @@ describe('cp5-1 — the attract demo emits no gameplay cues', () => {
     // in attract"). Recorded as a Design Deviation.
     const { perFrame } = runCollecting(createAttract(0x2024), 300, () => IDLE)
     expect(perFrame.flat(), 'the attract demo must stay silent').toEqual([])
+  })
+
+  it('and it stays silent through a demo DEATH, where the sweep can award a life', () => {
+    // The demo's second exit. `stepAttractDemo` hands a pause frame straight to
+    // `stepDeathFrame`, which — since this round wired the sweep's award (see
+    // the RESTOR test above) — now EMITS. The 300-frame sweep in the test above
+    // cannot see this: it never crosses a bonus threshold, so it stayed green
+    // over a hole in the silence. Staged directly at the branch.
+    const s = createAttract(0x2024)
+    for (const [h, v] of [
+      [5, 6],
+      [8, 7],
+      [12, 3],
+      [20, 9],
+    ] as Array<[number, number]>) {
+      s.playfield.cells[h * PLYFLD_STRIDE + v] = MUSHROOM_FULL - 1
+    }
+    let cur: SimState = {
+      ...s,
+      score: BONUS_INCREMENT - SCORE_RESTORE,
+      delay: DEATH_DELAY,
+      playerExplode: PLAYER_EXPLODE_START,
+    } as SimState
+
+    const seen: string[] = []
+    let awarded = false
+    for (let i = 0; i < DEATH_DELAY * 8 && cur.delay > 0; i++) {
+      const before = cur.lives
+      cur = stepSim(cur, IDLE)
+      if (cur.lives > before) awarded = true
+      seen.push(...kindsOf(cur))
+    }
+    expect(cur.phase, 'precondition: the demo never leaves attract').toBe('attract')
+    expect(
+      awarded,
+      'precondition: the sweep must actually award a life, or there is no cue to leak',
+    ).toBe(true)
+    expect(seen, 'the attract demo must stay silent on this exit too').toEqual([])
   })
 
   it('but a STARTED game is not silent — the control that keeps the test above honest', () => {

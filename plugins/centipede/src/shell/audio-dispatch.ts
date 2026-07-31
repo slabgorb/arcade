@@ -26,6 +26,9 @@ type SoundSurface = Pick<AudioEngine, 'play' | 'startLoop' | 'stopLoop'>
  * cue's loop, `-stop` closes it, everything else is a one-shot. The naming
  * convention is the contract (`core/events.ts` pins the pairs), so a new
  * sustained voice cannot be wired up as a one-shot by accident.
+ *
+ * The return type is a closed union on purpose — it is what gives the switch
+ * below a `never` arm that the compiler can actually reach a verdict on.
  */
 function effectFor(type: GameEvent['type']): 'play' | 'startLoop' | 'stopLoop' {
   if (type.endsWith('-start')) return 'startLoop'
@@ -41,18 +44,28 @@ function effectFor(type: GameEvent['type']): 'play' | 'startLoop' | 'stopLoop' {
  */
 export function playEventSounds(audio: SoundSurface, events: readonly GameEvent[]): void {
   for (const event of events) {
-    // The exhaustiveness guard. `EVENT_SOUND` is typed
-    // `Record<GameEventKind, SoundName>`, so a kind added to core/events.ts
-    // without a cue fails to compile HERE — and the `never` below makes the
-    // same omission fail if the record is ever widened. A missing cue must be a
-    // build error, not a sound nobody notices is absent.
+    // WHERE THE EXHAUSTIVENESS GUARANTEE ACTUALLY LIVES — and it is not here.
+    // `EVENT_SOUND` is typed `Record<GameEventKind, SoundName>`, so a kind added
+    // to core/events.ts without a cue is a compile error at its DECLARATION, in
+    // shell/audio.ts (mutation-checked: TS2741 on the object literal). This
+    // lookup cannot add to that — `event.type` is already a `GameEventKind`, so
+    // TS proves the result is a `SoundName` and has nothing left to narrow.
+    //
+    // REWORK (Reviewer round 1, MEDIUM): the comment that stood here claimed the
+    // failure fired "HERE" and that a `never` cast below carried a second,
+    // independent guarantee. Both halves were false — deleting the cast produced
+    // zero tsc errors. What remains is a plain RUNTIME check, worth keeping for
+    // the one case the type system cannot see: a caller reaching this function
+    // from untyped data (the shell's own event stream is typed, but the record
+    // could also be widened to `Record<string, …>` by a later edit).
     const sound: SoundName | undefined = EVENT_SOUND[event.type]
-    if (sound === undefined) {
-      const unreachable: never = event.type as never
-      throw new Error(`unhandled GameEvent kind: ${String(unreachable)}`)
-    }
+    if (sound === undefined) throw new Error(`unhandled GameEvent kind: ${String(event.type)}`)
 
-    switch (effectFor(event.type)) {
+    // THIS `never` is real: `effectFor` returns a three-member union, the arms
+    // below narrow it to nothing, and the binding needs no cast to prove it.
+    // Drop an arm and the build fails — verified by mutation.
+    const effect = effectFor(event.type)
+    switch (effect) {
       case 'startLoop':
         audio.startLoop(sound)
         break
@@ -62,6 +75,10 @@ export function playEventSounds(audio: SoundSurface, events: readonly GameEvent[
       case 'play':
         audio.play(sound)
         break
+      default: {
+        const unreachable: never = effect
+        throw new Error(`unhandled cue effect: ${String(unreachable)}`)
+      }
     }
   }
 }

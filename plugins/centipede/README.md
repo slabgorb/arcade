@@ -17,7 +17,11 @@ input/render shell, the same architecture as its siblings
 > landed (cp5-1) and the cabinet is still silent** — `src/core/events.ts` emits
 > every gameplay moment as data, `src/shell/audio.ts` holds the SOUNDS manifest
 > and channel map, and `src/shell/audio-dispatch.ts` wires them to the shared
-> engine. What is missing is the sound itself: **no samples are baked or
+> engine. **Two** things are still missing, and the second is the easy one to
+> overlook. The shell is **not connected**: `main.ts` calls neither
+> `createAudio` nor `playEventSounds`, so the seam is unit-tested and
+> unreachable in play — deliberately, because wiring it today would buy nothing
+> but 404s. That is story `cp5-2`. And the sound itself: **no samples are baked or
 > uploaded yet**, so every cue resolves to a file that is not there and the
 > shared engine degrades silently. Baking and hosting them is owned by the open epic
 > `sprint/epic-cp5.yaml`. The acceptance test for those asset stories is a

@@ -9,8 +9,10 @@
 // buffer load/decode, voice-stealing and the silent-degrade paths, and exposes
 // `resume / play / startLoop / stopLoop / ready`. This module holds only the
 // cabinet's numbers and constructs the shared engine from them — the shape
-// `plugins/tempest/src/shell/audio.ts:1-24` established and three other games
-// already follow.
+// `plugins/tempest/src/shell/audio.ts:1-24` established and FOUR other games
+// already follow (star-wars, asteroids, battlezone, red-baron). "Three" was
+// this story's setup miscount, corrected once in the epic description and then
+// reproduced here; measured by `ls plugins/*/src/shell/audio.ts`.
 //
 // Computed specifier, same reason as audio-events.test.ts: the module does not
 // exist yet and the RED tree must stay `tsc --noEmit` clean.

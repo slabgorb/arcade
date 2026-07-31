@@ -32,7 +32,11 @@
 // It is no longer deferred. `awardBonus` below stays pure and silent — it
 // returns the new lives/threshold and nothing else — and the CUE is emitted one
 // level up, where the award is observed: sim.ts pushes the `bonus-life`
-// GameEvent when `bonus.lives` exceeds the frame's starting lives. From there
+// GameEvent when `bonus.lives` exceeds the frame's starting lives. It does that
+// at BOTH of this function's call sites, and that is worth naming because the
+// second is easy to miss: `stepPlayingFrame`'s scoring funnel, and
+// `stepDeathFrame`'s — the RESTOR sweep pays 5 a cell (:1850-1857), so a long
+// sweep can buy a life back mid-death without a single frame of play. From there
 // src/core/events.ts carries it as data, src/shell/audio.ts maps it to the
 // `bonusLife` cue, and src/shell/audio-dispatch.ts plays it — on the channel
 // named `chan4`, after the CHAN4 the ROM writes here.

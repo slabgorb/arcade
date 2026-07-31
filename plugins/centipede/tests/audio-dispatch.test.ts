@@ -19,31 +19,56 @@
 // weakened to a `default: break`. So the real check here is a runtime sweep
 // over `EVENT_KINDS` (the core's own list): every kind must produce exactly one
 // effect, and the cue it names must exist in the manifest. Add a kind without a
-// cue and that sweep goes red whether or not the `never` survived. The source
-// assertion is kept as well, but as the weaker of the two.
+// cue and that sweep goes red whether or not the `never` survived.
+//
+// The first cut of this file kept a source assertion "as the weaker of the two"
+// and it was worse than weak — it was scenery, and the Reviewer proved it by
+// deleting the guard and watching the test pass. It is now anchored to the
+// annotation that mutation shows is doing the work (`EVENT_SOUND:
+// Record<GameEventKind, SoundName>` in shell/audio.ts), not to a word that also
+// occurs in prose.
 
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+// Static, because these modules now exist. The computed specifiers below stay
+// as they are: they are what the coverage sweeps load, and they are also how a
+// deleted module reds as "cp5-1 not implemented yet" rather than as a resolve
+// error at import time.
+import type { AudioEngine, SoundName } from '../src/shell/audio'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const dispatchPath = join(repoRoot, 'src', 'shell', 'audio-dispatch.ts')
+const audioPath = join(repoRoot, 'src', 'shell', 'audio.ts')
 
-// ─── the three not-yet-existing modules ──────────────────────────────────────
+// ─── the three modules (not-yet-existing when this file was written) ─────────
 
 /** One observable playback effect, tagged by the engine method that produced
  *  it — so a one-shot `play` can be told apart from a sustained `startLoop`. */
 type Effect =
-  | { kind: 'play'; sound: string }
-  | { kind: 'startLoop'; sound: string }
-  | { kind: 'stopLoop'; sound: string }
+  | { kind: 'play'; sound: SoundName }
+  | { kind: 'startLoop'; sound: SoundName }
+  | { kind: 'stopLoop'; sound: SoundName }
 
-interface SoundSurface {
-  play(name: string): void
-  startLoop(name: string): void
-  stopLoop(name: string): void
-}
+/**
+ * The fake engine's shape, DERIVED from the real one.
+ *
+ * REWORK (Reviewer round 1, MEDIUM): this was hand-rolled as
+ * `play(name: string)` while the real surface takes the narrow `SoundName`
+ * union — justified during RED, when the module did not exist, but once it does
+ * a hand-rolled type lets the fake drift from the thing it stands in for.
+ * `Pick` from the real `AudioEngine` instead, which is exactly what the
+ * dispatch itself accepts.
+ *
+ * WHAT THIS DOES AND DOES NOT CATCH, measured rather than assumed — renaming
+ * `startLoop` on the shared engine now reds this file (TS2344 on the `Pick`);
+ * ADDING a parameter to it does not, because TypeScript assigns a function of
+ * fewer parameters to one of more, and `recordingAudio` below declares one. The
+ * cue-NAME type is the half that is fully coupled: `Effect.sound` is
+ * `SoundName`, so widening or narrowing the union lands here.
+ */
+type SoundSurface = Pick<AudioEngine, 'play' | 'startLoop' | 'stopLoop'>
 
 function recordingAudio(): SoundSurface & { calls: Effect[] } {
   const calls: Effect[] = []
@@ -129,12 +154,27 @@ describe('cp5-1 AC3 — the dispatch is an importable pure function', () => {
     expect(audio.calls).toEqual([])
   })
 
-  it('carries a `never` exhaustiveness guard in its source', async () => {
-    // The WEAKER half of AC3, kept for the compile-time claim. The runtime
-    // sweep below is what actually has teeth.
-    expect(existsSync(dispatchPath), 'cp5-1 must create src/shell/audio-dispatch.ts').toBe(true)
-    const src = readFileSync(dispatchPath, 'utf8')
-    expect(src, 'a `never`-typed default arm makes a missing cue a compile error').toMatch(/never/)
+  it('the compile-time half of AC3 is anchored where it actually fires', () => {
+    // REWORK (Reviewer round 1, HIGH). This assertion used to read the dispatch
+    // source for the bare word `never` — and `never` also appears in two of that
+    // file's COMMENTS, so deleting the whole guard left the test green. A token,
+    // not the claim.
+    //
+    // Two mutations established where the guarantee really is:
+    //   add a kind to EVENT_KINDS with no cue -> TS2741 at shell/audio.ts's
+    //     EVENT_SOUND literal.                                     <- the mechanism
+    //   delete the dispatch's `never` line    -> 0 tsc errors.     <- was scenery
+    //
+    // So this is pinned to the ANNOTATION that produces the error: drop it, or
+    // widen it to `Record<string, SoundName>`, and this test reds. The runtime
+    // sweep below covers the same claim from the other side.
+    expect(existsSync(audioPath), 'cp5-1 must create src/shell/audio.ts').toBe(true)
+    const src = readFileSync(audioPath, 'utf8')
+    expect(
+      src,
+      'EVENT_SOUND must be annotated Record<GameEventKind, SoundName> — that annotation, and ' +
+        'nothing else in this story, makes a kind with no cue a COMPILE error',
+    ).toMatch(/EVENT_SOUND\s*:\s*Record<\s*GameEventKind\s*,\s*SoundName\s*>/)
   })
 })
 
@@ -231,6 +271,17 @@ describe('cp5-1 AC4 — sustained cues are START/STOP, not repeated one-shots', 
       if (channel === undefined) continue // reported by the manifest-coverage test above
       byChannel.set(channel, [...(byChannel.get(channel) ?? []), call.sound])
     }
+    // NON-VACUITY (Reviewer round 1, MEDIUM): both `continue`s above can skip
+    // every iteration, and an empty map yields an empty `shared` that satisfies
+    // the assertion below while nothing whatever was compared. Counted over the
+    // COLLECTED cues, not over `byChannel.size` — the map's size is exactly what
+    // shrinks when cues share a channel, so guarding on it would fire in place
+    // of the real assertion and hide the finding it is protecting.
+    const collected = [...byChannel.values()].flat()
+    expect(
+      collected.length,
+      'no sustained cue reached the channel map — the check below is vacuous',
+    ).toBe(kinds.filter(isLoopStart).length)
     const shared = [...byChannel.entries()].filter(([, cues]) => new Set(cues).size > 1)
     expect(
       shared.map(([ch, cues]) => `${ch}: ${[...new Set(cues)].join(' + ')}`),
