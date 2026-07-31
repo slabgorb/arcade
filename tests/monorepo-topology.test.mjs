@@ -44,13 +44,17 @@
 //      run a bare `npm install`, keep the old commit). There is no installed
 //      package, no `#ref` and no lockfile entry, so the trap cannot occur. Its
 //      export half survives in-plugin on `@shared/synth`.
-//   4. The per-game CI callers' interior detail — the `arcade-<id>` bucket
-//      target, the push-to-main trigger, the ten-line thin-caller shape and the
-//      sibling-bucket guard (centipede, joust). Task 18 replaces all eight
-//      callers with ONE tag-triggered workflow whose bucket is `arcade-lobby`
-//      for every app; the shape being guarded no longer exists. What survives
-//      as an invariant — that there is exactly one workflow — is asserted below
-//      (todo until Task 18).
+//   4. WITHDRAWN by Task 18 — NOT a loss, though it was very nearly one. The
+//      per-game CI callers' interior detail (the `arcade-<id>` bucket target,
+//      the push-to-main trigger, the ten-line thin-caller shape and the
+//      sibling-bucket guard) was booked here as accepted on the grounds that
+//      Task 18 replaces all eight callers — and Task 18, as first written,
+//      produced workflow YAML and no test. Seven per-repo guards would have
+//      become ZERO, with two tasks each assuming the other held the invariant.
+//      The successor is the `deploy workflow` block at the bottom of this file:
+//      one bucket (`arcade-lobby`), a tag trigger, and the retired seven named
+//      as forbidden. Only the thin-caller SHAPE is genuinely gone with the
+//      thing it described.
 //   5. WITHDRAWN — NOT a loss. `vite`/`vitest` RESOLVED major versions were
 //      first booked here on the grounds that plugins have no `node_modules`.
 //      That was the wrong reading: the invariant was never about the plugins'
@@ -74,9 +78,10 @@
 // downgraded to the declarative check.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, spawnSync, execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 // tests/ → the repo root is one level up. Resolved from the file, not from cwd,
@@ -439,14 +444,318 @@ test('the root .gitignore covers dist', () => {
   assert.match(out, /\.gitignore:\d+:\/?dist\//, `git does not actually ignore built output: ${out}`);
 });
 
-test('exactly one deploy workflow exists for the whole cabinet', { todo: 'Task 18 creates .github/workflows/deploy.yml and deletes deploy-r2.yml' }, () => {
+// ===========================================================================
+// THE ONE DEPLOY WORKFLOW  (was: eight per-repo callers + the reusable
+// deploy-r2.yml, and the `CI deploy caller` describes centipede and joust each
+// removed whole — see withdrawn loss #4 in the header)
+//
+// These tests are deliberately NOT greps. A grep for `arcade-lobby` in a file
+// that obviously contains `arcade-lobby` proves close to nothing, and every
+// silent failure found during this migration passed a reading. So the workflow's
+// own shell is EXTRACTED AND EXECUTED here, with node/npm/npx replaced by shims
+// that record their argv — which makes the deployed bucket, the key prefix, the
+// dist directory, the gate steps and their ORDER all observable, and makes the
+// tag parse a behaviour rather than a claim.
+//
+// Four assertions below are unavoidably textual (the trigger, fetch-depth, the
+// secret wiring, the Node major); each names the edit that breaks it.
+// ===========================================================================
+
+const WORKFLOW = ['.github', 'workflows', 'deploy.yml'];
+
+/**
+ * Every `run:` script in a workflow file, in order and dedented — either an
+ * inline `run: npm ci` or a `run: |` literal block.
+ *
+ * A hand parse, because the repo has no YAML dependency and must not acquire one
+ * to guard its own CI. It THROWS rather than returning what it managed to
+ * understand: a parser that quietly returned `[]` would make every assertion
+ * below vacuous, which is precisely the failure this file exists to catch.
+ */
+function runScripts(text) {
+  const lines = text.split('\n');
+  const scripts = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^(\s*)(- )?run:(.*)$/.exec(lines[i]);
+    if (!m) continue;
+    const keyIndent = m[1].length + (m[2]?.length ?? 0);
+    const inline = m[3].trim();
+    if (inline !== '' && inline !== '|') {
+      scripts.push(inline);
+      continue;
+    }
+    if (inline === '') {
+      throw new Error(`deploy.yml:${i + 1}: a run: with no command and no \`|\` block`);
+    }
+    const body = [];
+    let j = i + 1;
+    for (; j < lines.length; j++) {
+      if (lines[j].trim() === '') {
+        body.push('');
+        continue;
+      }
+      if (lines[j].length - lines[j].trimStart().length <= keyIndent) break;
+      body.push(lines[j]);
+    }
+    if (body.length === 0) throw new Error(`deploy.yml:${i + 1}: empty \`run: |\` block`);
+    const pad = Math.min(...body.filter(Boolean).map((l) => l.length - l.trimStart().length));
+    scripts.push(body.map((l) => l.slice(pad)).join('\n'));
+    i = j - 1;
+  }
+  if (scripts.length === 0) throw new Error('deploy.yml declares no run: steps at all');
+  return scripts;
+}
+
+/**
+ * Run the deploy workflow's shell the way the runner would, against `tag`.
+ *
+ *  · `node`, `npm` and `npx` are replaced on PATH by shims that only append their
+ *    own name and argv to a log. Nothing installs wrangler, nothing builds and
+ *    nothing uploads; what is asserted is the COMMAND LINE the workflow composes.
+ *  · The tag-parse step runs with cwd = the REAL repo, because it asks the
+ *    filesystem whether `plugins/<app>` exists — the same question build-app.mjs's
+ *    appIds() asks. Every LATER step runs in a throwaway directory: this executes
+ *    text out of a file, and the shims only neutralise the commands we know about.
+ *  · `bash -e` is the runner's own default shell for a `run:` step.
+ *  · `$GITHUB_ENV` is a real file, read back exactly as the runner reads it, so
+ *    nothing here stands in for GitHub's own templating.
+ */
+function runWorkflow(tag, { overrides = {}, resolveOnly = false } = {}) {
+  const scripts = runScripts(read(...WORKFLOW));
+  const tmp = mkdtempSync(join(tmpdir(), 'deploy-wf-'));
+  try {
+    const bin = join(tmp, 'bin');
+    const work = join(tmp, 'work');
+    const log = join(tmp, 'argv.log');
+    const envFile = join(tmp, 'github_env');
+    mkdirSync(bin);
+    mkdirSync(work);
+    writeFileSync(log, '');
+    writeFileSync(envFile, '');
+    for (const cmd of ['node', 'npm', 'npx']) {
+      writeFileSync(
+        join(bin, cmd),
+        `#!/bin/sh\n{ printf '%s' "${cmd}"; for a in "$@"; do printf '\\t%s' "$a"; done; printf '\\n'; } >> "$ARGV_LOG"\n`,
+        { mode: 0o755 },
+      );
+    }
+    const base = { ...process.env, PATH: `${bin}:${process.env.PATH}`, ARGV_LOG: log };
+
+    const first = spawnSync('bash', ['-e', '-c', scripts[0]], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: { ...base, GITHUB_REF_NAME: tag, GITHUB_ENV: envFile },
+    });
+    const exported = Object.fromEntries(
+      readFileSync(envFile, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]),
+    );
+    const output = `${first.stdout}${first.stderr}`;
+    if (first.status !== 0 || resolveOnly) {
+      return { rejected: first.status !== 0, output, exported, commands: [], failures: [] };
+    }
+
+    const failures = [];
+    for (const script of scripts.slice(1)) {
+      const step = spawnSync('bash', ['-e', '-c', script], {
+        cwd: work,
+        encoding: 'utf8',
+        env: { ...base, ...exported, CLOUDFLARE_API_TOKEN: 'a-test-token', ...overrides },
+      });
+      if (step.status !== 0) failures.push({ script, output: `${step.stdout}${step.stderr}` });
+    }
+    const commands = readFileSync(log, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => line.split('\t'));
+    return { rejected: false, output, exported, commands, failures };
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+test('exactly one deploy workflow exists for the whole cabinet', () => {
   // Was eight ten-line per-repo callers plus the reusable deploy-r2.yml (the
-  // describes centipede and joust each removed whole). Today the directory
-  // still holds deploy-r2.yml alone; Task 18 replaces it with one tag-triggered
-  // workflow. Written now, todo-marked, so the invariant has an owner rather
-  // than a hole. Sorted: readdir order is filesystem-dependent, and this must
-  // stay a stable comparison if the directory ever holds more than one entry.
+  // describes centipede and joust each removed whole). Sorted: readdir order is
+  // filesystem-dependent, and this must stay a stable comparison if the
+  // directory ever holds more than one entry.
   assert.deepEqual(readdirSync(path('.github', 'workflows')).sort(), ['deploy.yml']);
+});
+
+test('the deploy workflow gates and ships exactly one app, in order, to one bucket', () => {
+  // The whole command plan, pinned as data. Every one of these is an invariant
+  // some other test would otherwise have to state separately: that a type check
+  // runs at all, that the orchestrator suite runs at all, that only THIS app's
+  // vitest project runs, that the build precedes the upload, that the upload
+  // names the cabinet bucket, that dist/<id> and the <id>/ key prefix agree —
+  // and the ORDER, which no `assert.match` over the file text can see.
+  const { commands, failures } = runWorkflow('tempest-v1.0.29');
+  assert.deepEqual(failures, [], `a workflow step exited non-zero: ${JSON.stringify(failures)}`);
+  assert.deepEqual(commands, [
+    ['npm', 'ci'],
+    ['npm', 'run', 'lint'],
+    ['npm', 'run', 'test:orchestrator'],
+    ['npx', 'vitest', 'run', '--project', 'tempest'],
+    ['node', 'scripts/build-app.mjs', 'tempest'],
+    ['npm', 'install', '-g', 'wrangler'],
+    ['node', 'scripts/deploy-r2.mjs', 'dist/tempest', 'arcade-lobby', 'tempest'],
+  ]);
+});
+
+test('the lobby ships to the bucket ROOT, a game under its own key prefix', () => {
+  // The one asymmetry in "one origin, one bucket, eight apps". Getting it
+  // backwards uploads the lobby's index.html over a game's, or files the whole
+  // lobby under a directory nobody links to — and both would report success.
+  const lobby = runWorkflow('lobby-v0.2.0');
+  assert.deepEqual(lobby.exported, { APP: 'lobby', PREFIX: '', DIST: 'dist' });
+  assert.deepEqual(lobby.commands.at(-1), [
+    'node', 'scripts/deploy-r2.mjs', 'dist', 'arcade-lobby', '',
+  ]);
+  // A hyphenated id, end to end, because it is the one that a naive tag parse
+  // silently truncates to `star` — a prefix no game is served under.
+  const game = runWorkflow('star-wars-v0.0.33');
+  assert.deepEqual(game.exported, {
+    APP: 'star-wars',
+    PREFIX: 'star-wars',
+    DIST: 'dist/star-wars',
+  });
+  assert.deepEqual(game.commands.at(-1), [
+    'node', 'scripts/deploy-r2.mjs', 'dist/star-wars', 'arcade-lobby', 'star-wars',
+  ]);
+});
+
+test('the workflow accepts exactly the tags scripts/release.mjs cuts, and no others', async () => {
+  // The contract between the tag maker and the tag reader, checked against the
+  // REAL isReleaseTag rather than against a restatement of it. A reader looser
+  // than the writer deploys tags the writer would never cut; a reader stricter
+  // than the writer silently deploys nothing after a real release.
+  const { tagFor, isReleaseTag } = await import('../scripts/release.mjs');
+  const { appIds } = await import('../scripts/build-app.mjs');
+  const ids = appIds();
+  const candidates = [
+    ...ids.map((id) => tagFor(id, '10.20.30')),
+    'v1.0.0', //               unprefixed: which of the eight apps would it deploy?
+    'tempest-v1.0', //         no patch — a version release.mjs would never write
+    'tempest-vector-v0.1.0', // a plausible FUTURE id, with no directory today
+    'joust-v0.0.4-rc.1', //    a prerelease suffix nextVersion refuses to produce
+    'lobby-vlatest', //        a moving tag: it names no version at all
+  ];
+  let accepted = 0;
+  for (const tag of candidates) {
+    const wanted = ids.find((id) => isReleaseTag(id, tag)) ?? null;
+    const got = runWorkflow(tag, { resolveOnly: true });
+    if (wanted) {
+      accepted++;
+      assert.equal(got.rejected, false, `${tag}: release.mjs cuts this tag; CI refused it: ${got.output}`);
+      assert.equal(got.exported.APP, wanted, `${tag} must resolve to ${wanted}`);
+    } else {
+      assert.equal(got.rejected, true, `${tag}: no app owns this tag, but CI would deploy ${got.exported.APP}`);
+      assert.match(got.output, /::error::/, `${tag}: a refusal must annotate the run, not just exit`);
+    }
+  }
+  // Anti-vacuity: a resolve step that rejected EVERYTHING would satisfy every
+  // negative above, and there must be one accepted tag per app.
+  assert.equal(accepted, ids.length, 'every app must have a tag shape CI accepts');
+});
+
+test('the deploy workflow targets the cabinet bucket, on a tag trigger', () => {
+  // Step 4b, verbatim from the brief: the successor to seven deleted per-repo
+  // `CI deploy caller` describes. Textual on purpose — it is the negative that
+  // carries the weight, and an absent string cannot be executed.
+  const wf = read(...WORKFLOW);
+  assert.match(wf, /arcade-lobby/, 'CI must upload to the cabinet bucket');
+  assert.match(wf, /tags:/, 'deploy must fire on a tag, not a push to main');
+  assert.doesNotMatch(
+    wf,
+    /arcade-(tempest|star-wars|asteroids|battlezone|red-baron|centipede|joust)\b/,
+    'the seven per-game buckets are retired — a reference to one means the prefix collapse regressed',
+  );
+  // ADDED to the brief's three: a workflow that keeps `tags:` and ALSO grows a
+  // branch trigger passes all three above, and redeploys all eight apps on every
+  // commit to main — which is the exact defect the tag trigger exists to prevent.
+  assert.doesNotMatch(wf, /^\s*branches:/m, 'main carries every app; a branch trigger redeploys all eight');
+});
+
+test('the deploy workflow clones full history and carries the Cloudflare credentials', () => {
+  const wf = read(...WORKFLOW);
+  // tempest's and red-baron's citation gates read blobs out of the commit their
+  // audit was taken against. Under a shallow clone those objects are absent and
+  // both gates fail, blocking the deploy of a perfectly good build.
+  assert.match(wf, /fetch-depth:\s*0/, 'the citation gates need real history, not a snapshot');
+  assert.match(
+    wf,
+    /CLOUDFLARE_API_TOKEN:\s*\$\{\{\s*secrets\.CLOUDFLARE_API_TOKEN\s*\}\}/,
+    'the upload step must receive the repository secret',
+  );
+  assert.match(wf, /CLOUDFLARE_ACCOUNT_ID:\s*[0-9a-f]{32}/, 'wrangler needs the account id');
+});
+
+test('an empty CLOUDFLARE_API_TOKEN stops the upload instead of authenticating as nobody', () => {
+  // Not hypothetical: `gh secret set` reading EOF stores a BLANK value, and joust
+  // shipped nothing for weeks behind one. wrangler's own error for a blank token
+  // never says "your secret is empty".
+  const { commands, failures } = runWorkflow('tempest-v1.0.29', {
+    overrides: { CLOUDFLARE_API_TOKEN: '' },
+  });
+  assert.equal(failures.length, 1, 'exactly the upload step must fail');
+  assert.match(failures[0].output, /CLOUDFLARE_API_TOKEN/, 'the failure must name the empty secret');
+  assert.ok(
+    !commands.some((c) => c.join(' ').includes('deploy-r2.mjs')),
+    'nothing may be uploaded with a blank token',
+  );
+});
+
+test('CI is the only type check in the release or deploy path', () => {
+  // MEASURED during Task 18: `grep -n "tsc" scripts/build-app.mjs` returns
+  // nothing, and `just release`'s gate is `vitest run --project <id>` plus
+  // `build-app.mjs <id>`. Vite transpiles through esbuild without checking
+  // types, so before this step a type error could be released AND deployed,
+  // reddening only in a developer's own terminal.
+  const { commands } = runWorkflow('tempest-v1.0.29');
+  const lint = commands.findIndex((c) => c.join(' ') === 'npm run lint');
+  const build = commands.findIndex((c) => c[1] === 'scripts/build-app.mjs');
+  assert.ok(lint !== -1, 'the deploy workflow must type-check');
+  assert.ok(lint < build, 'the type check must gate the build, not trail it');
+  // `npm run lint` is a type check only because package.json says so. Without
+  // this half, redefining `lint` as `echo ok` would leave CI green and the whole
+  // repo unchecked. It is repo-wide by necessity: the root tsconfig covers src,
+  // plugins, lobby and scripts together, so it cannot be scoped per app.
+  assert.equal(JSON.parse(read('package.json')).scripts.lint, 'tsc --noEmit');
+});
+
+test('CI runs the orchestrator suite — the only guard against a stale registry', () => {
+  // `gen-registry.mjs --check` exists but has NO npm script and nothing invokes
+  // it; `gen:registry` only writes. Staleness is enforced solely through
+  // tests/registry.test.mjs, which vitest does not run. A workflow that ran only
+  // vitest would let the committed registry drift from the manifests forever
+  // with CI green.
+  const { commands } = runWorkflow('tempest-v1.0.29');
+  assert.ok(
+    commands.some((c) => c.join(' ') === 'npm run test:orchestrator'),
+    'the node:test suite must run in CI',
+  );
+  const script = JSON.parse(read('package.json')).scripts['test:orchestrator'];
+  assert.match(script, /node --test/, 'test:orchestrator must be the node:test runner');
+  assert.match(script, /tests\//, 'it must glob the orchestrator tests, wherever they live');
+});
+
+test('the deploy workflow runs a Node that meets the floor package.json declares', () => {
+  // The floor is real and predates Task 14: scripts/build-app.mjs imports
+  // gen-registry.mjs, which imports src/host/contract.ts, so bare Node must
+  // strip types — on by default only from 22.18. MEASURED with
+  // `node --no-experimental-strip-types scripts/build-app.mjs tempest`:
+  // ERR_UNKNOWN_FILE_EXTENSION at load. A literal 20 here would not redden a
+  // test, it would produce no build at all.
+  const declared = JSON.parse(read('package.json')).engines.node;
+  const floor = Number(declared.replace('>=', '').split('.')[0]);
+  const pinned = /node-version:\s*'?"?(\d+)/.exec(read(...WORKFLOW));
+  assert.ok(pinned, 'the workflow must pin a Node major for setup-node');
+  assert.ok(
+    Number(pinned[1]) >= floor,
+    `deploy.yml runs Node ${pinned[1]}.x but package.json declares ${declared}`,
+  );
 });
 
 test('every plugins/ directory is a real app with an entry', () => {

@@ -1,0 +1,171 @@
+# ONE deploy workflow for the whole cabinet.
+#
+# It replaces EIGHT ten-line per-repo callers — each one a
+# `uses: slabgorb/arcade/.github/workflows/deploy-r2.yml@main` with its own
+# `bucket: arcade-<id>` — plus the reusable `deploy-r2.yml` they all called
+# (deleted with this file's first commit). Nine repos are one repo; eight buckets
+# are one bucket.
+#
+# TRIGGERED BY A TAG, NEVER BY A PUSH TO A BRANCH. `main` carries every app's
+# commits now, so a branch trigger would redeploy all eight apps on every commit —
+# seven of them re-uploading a dist/ that nothing changed. `just release <app>`
+# (scripts/release.mjs) pushes `<app>-vX.Y.Z`, and the app id is parsed back out of
+# that tag in the first step below.
+name: deploy
+
+on:
+  push:
+    # Deliberately LOOSE, and matched by a strict check in the first step rather
+    # than here. A tag that misses this glob produces NO RUN AT ALL, and silence is
+    # the worst possible answer to "I released and nothing shipped" — so anything
+    # shaped vaguely like a release tag gets a run that either deploys or says, out
+    # loud and in the Actions log, why it will not.
+    tags: ['*-v*']
+
+# Least privilege. Nothing here writes to the repo — the build only reads it, and
+# the upload authenticates to Cloudflare with its own token, not with GITHUB_TOKEN.
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # ONE QUEUE FOR THE WHOLE CABINET, on purpose.
+    #
+    # The retired workflow grouped by `github.repository`, which WAS per-app back
+    # when apps were repos. That grouping cannot be reconstructed here: a job-level
+    # `concurrency` may only read the `github` context, and GitHub's expression
+    # syntax has no way to strip `-vX.Y.Z` off `github.ref_name`. So the honest
+    # choices are one queue per TAG — which guards nothing, since a tag is pushed
+    # once — or one queue for everything.
+    #
+    # One queue is also the safer of the two now that all eight apps upload to a
+    # SINGLE bucket through a SINGLE account token: `just release-all` can push
+    # eight tags in a burst, and this serialises what would otherwise be eight
+    # concurrent wrangler upload storms into one bucket. A deploy is minutes.
+    concurrency:
+      group: deploy-arcade
+      cancel-in-progress: false
+    steps:
+      # fetch-depth: 0 is REQUIRED, not tidiness. tempest's and red-baron's ROM
+      # citation gates verify every finding against the code AS IT WAS AUDITED, by
+      # reading blobs out of the commit the audit was taken against (`git show
+      # <AUDIT_COMMIT>:<path>`, preserved as the audit/* tags). Under checkout's
+      # default fetch-depth: 1 those objects are not in the clone at all, so the
+      # gates fail and block the deploy of a perfectly good build.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Runs BEFORE setup-node/npm ci: it needs nothing but bash and the checkout,
+      # and a malformed tag should not first pay for an install.
+      - name: Resolve the app from the tag
+        run: |
+          tag="$GITHUB_REF_NAME"
+          # scripts/release.mjs's tagFor(), inverted. `%-v*` strips the SHORTEST
+          # matching suffix — everything from the LAST "-v" — which is the whole
+          # reason a hyphenated id survives: star-wars-v0.0.33 -> star-wars, where
+          # a naive cut at the FIRST "-" gives "star". `##*-v` takes the version
+          # half at the same boundary, so the two halves cannot disagree about
+          # where it is.
+          app="${tag%-v*}"
+          version="${tag##*-v}"
+          # release.mjs's isReleaseTag() is /^<id>-v\d+\.\d+\.\d+$/ — BOTH halves,
+          # not just the prefix. Checking only the prefix would accept
+          # `tempest-v1.0`: a tag that script would never cut and never recognise
+          # as tempest's own, deployed anyway.
+          if [ "$app" = "$tag" ] || ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::tag '$tag' is not <app>-vX.Y.Z — refusing to guess what to deploy"
+            exit 1
+          fi
+          # build-app.mjs's appIds(): the plugins/ directories, plus the lobby.
+          # Read off the filesystem here for the same reason it is read there — a
+          # new game becomes deployable the moment its directory exists, with no
+          # list in this file to forget to update.
+          if [ "$app" != "lobby" ] && [ ! -d "plugins/$app" ]; then
+            echo "::error::no such app '$app' — expected lobby or plugins/<app>"
+            exit 1
+          fi
+          # Exported to the JOB environment rather than as step outputs, so every
+          # command below is plain shell over "$APP" with no ${{ }} interpolation
+          # inside any run: block. Two consequences, both wanted: a tag name can
+          # never reach a shell as CODE, and tests/monorepo-topology.test.mjs can
+          # execute these scripts verbatim with nothing standing in for GitHub's
+          # templating.
+          {
+            echo "APP=$app"
+            # The lobby owns the bucket ROOT and builds into dist/; every game gets
+            # its own key prefix and its own dist/<id>/. That asymmetry IS "one
+            # origin, one bucket, eight apps" — see scripts/deploy-r2.mjs.
+            if [ "$app" = "lobby" ]; then
+              echo "PREFIX="
+              echo "DIST=dist"
+            else
+              echo "PREFIX=$app"
+              echo "DIST=dist/$app"
+            fi
+          } >> "$GITHUB_ENV"
+          echo "deploying $app v$version"
+
+      - uses: actions/setup-node@v5
+        with:
+          # 22 resolves to the latest 22.x, which is what the floor needs. The
+          # floor is REAL and it is >=22.18 (package.json `engines`, pinned against
+          # this line by tests/monorepo-topology.test.mjs): scripts/build-app.mjs
+          # imports gen-registry.mjs, which imports src/host/contract.ts, so bare
+          # Node must strip types — on by default only from 22.18. MEASURED with
+          # `node --no-experimental-strip-types scripts/build-app.mjs tempest`:
+          # ERR_UNKNOWN_FILE_EXTENSION at load. A literal 20 here would not fail at
+          # test time, it would fail with no build at all.
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # THE ONLY TYPE CHECK ANYWHERE IN THE RELEASE OR DEPLOY PATH. `just release`
+      # gates on `vitest run --project <id>` plus `build-app.mjs <id>`, and vite
+      # transpiles through esbuild without checking types — so before this step
+      # existed a type error could be released and deployed, reddening only in a
+      # developer's own terminal. `npm run lint` is `tsc --noEmit`.
+      #
+      # It cannot be scoped per-app: the root tsconfig.json covers src, plugins,
+      # lobby and scripts together. So it is one repo-wide gate that runs before
+      # the per-app one, and a type error anywhere blocks every app's deploy.
+      - run: npm run lint
+
+      # The orchestrator suite (node:test) — vitest does not run these files.
+      # It is the ONLY thing that checks the committed src/host/registry.ts still
+      # matches the plugin manifests: gen-registry.mjs's --check has no npm script
+      # and nothing else invokes it, so without this step a stale registry could
+      # drift from its manifests forever with CI green. It also holds the
+      # cabinet-wide topology invariants, including the ones that guard this file.
+      - run: npm run test:orchestrator
+
+      # Only THIS app's project. A red joust suite must not block a tempest
+      # release — that isolation is why per-app releases survived the collapse —
+      # and `--project <unknown>` is a startup error, not a silent pass.
+      - name: Unit tests for this app
+        run: npx vitest run --project "$APP"
+
+      - name: Build this app
+        run: node scripts/build-app.mjs "$APP"
+
+      - name: Upload to R2
+        run: |
+          # An EMPTY token is a failure this repo has actually had: `gh secret set`
+          # reading EOF stores a blank value, and joust shipped nothing for weeks
+          # behind one. wrangler's error for a blank token does not say that.
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is empty or unset — set it on the repo from a file or a pipe, never by typing at a prompt"
+            exit 1
+          fi
+          npm install -g wrangler
+          # <dist dir> <bucket> <key prefix> — the same script `just deploy` runs
+          # locally, so there is one uploader, not two. ONE bucket for the whole
+          # cabinet: the lobby at the root (empty prefix), every game under its own
+          # <id>/ prefix. The seven arcade-<game> buckets are retired.
+          node scripts/deploy-r2.mjs "$DIST" arcade-lobby "$PREFIX"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: a55aafa9b0691f828cd6864be28c1674

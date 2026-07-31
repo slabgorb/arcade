@@ -49,11 +49,16 @@ test('tagFor namespaces every tag by app', () => {
 });
 
 test('the deploy workflow can parse the app back out of every tag this script makes', () => {
-  // Run the REAL parameter expansion that Task 18's `.github/workflows/deploy.yml`
-  // WILL use (`app="${GITHUB_REF_NAME%-v*}"`) — the file does not exist yet —
-  // rather than a JavaScript imitation of it. The round trip is the contract
-  // between this file and that workflow, and an imitation could agree with this
-  // script while disagreeing with bash.
+  // Run the REAL parameter expansion that `.github/workflows/deploy.yml` uses
+  // (`app="${GITHUB_REF_NAME%-v*}"`) rather than a JavaScript imitation of it.
+  // The round trip is the contract between this file and that workflow, and an
+  // imitation could agree with this script while disagreeing with bash.
+  //
+  // Task 18 wrote that workflow, and the OTHER half of the contract is asserted
+  // from its side: tests/monorepo-topology.test.mjs extracts the real step out of
+  // deploy.yml, executes it, and checks the app it resolves against isReleaseTag()
+  // below. This test stays because it pins the expansion itself — it would still
+  // catch a bash whose `%` was greedy, with no workflow file in the picture.
   const parse = (tag) =>
     execFileSync('bash', ['-c', 'printf %s "${1%-v*}"', 'bash', tag], { encoding: 'utf8' });
   for (const id of appIds()) {
