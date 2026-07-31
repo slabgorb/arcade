@@ -464,6 +464,26 @@ test('the root .gitignore covers dist', () => {
 const WORKFLOW = ['.github', 'workflows', 'deploy.yml'];
 
 /**
+ * The workflow with every comment line removed — what a POSITIVE assertion about
+ * its configuration must be made against.
+ *
+ * Found by mutation, not by inspection: `assert.match(wf, /fetch-depth:\s*0/)`
+ * over the raw file SURVIVED changing the real `with:` key to 1, because the
+ * comment above it (`# fetch-depth: 0 is REQUIRED, not tidiness…`) satisfied the
+ * match on its own. The file explains itself at length, so "the string appears
+ * somewhere" and "the workflow does it" are genuinely different claims here.
+ *
+ * NEGATIVE assertions keep using the raw text: for those, the comments are extra
+ * surface to hold, not a way to cheat.
+ */
+function workflowConfig() {
+  return read(...WORKFLOW)
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('#'))
+    .join('\n');
+}
+
+/**
  * Every `run:` script in a workflow file, in order and dedented — either an
  * inline `run: npm ci` or a `run: |` literal block.
  *
@@ -665,8 +685,9 @@ test('the deploy workflow targets the cabinet bucket, on a tag trigger', () => {
   // `CI deploy caller` describes. Textual on purpose — it is the negative that
   // carries the weight, and an absent string cannot be executed.
   const wf = read(...WORKFLOW);
-  assert.match(wf, /arcade-lobby/, 'CI must upload to the cabinet bucket');
-  assert.match(wf, /tags:/, 'deploy must fire on a tag, not a push to main');
+  const cfg = workflowConfig(); // positives must hold of the CONFIG, not the prose
+  assert.match(cfg, /arcade-lobby/, 'CI must upload to the cabinet bucket');
+  assert.match(cfg, /tags:/, 'deploy must fire on a tag, not a push to main');
   assert.doesNotMatch(
     wf,
     /arcade-(tempest|star-wars|asteroids|battlezone|red-baron|centipede|joust)\b/,
@@ -679,17 +700,20 @@ test('the deploy workflow targets the cabinet bucket, on a tag trigger', () => {
 });
 
 test('the deploy workflow clones full history and carries the Cloudflare credentials', () => {
-  const wf = read(...WORKFLOW);
+  // All three read the COMMENT-STRIPPED file (see workflowConfig): the first of
+  // them survived a real mutation until it did, because this workflow explains
+  // `fetch-depth: 0` in a comment directly above the key it sets.
+  const cfg = workflowConfig();
   // tempest's and red-baron's citation gates read blobs out of the commit their
   // audit was taken against. Under a shallow clone those objects are absent and
   // both gates fail, blocking the deploy of a perfectly good build.
-  assert.match(wf, /fetch-depth:\s*0/, 'the citation gates need real history, not a snapshot');
+  assert.match(cfg, /^\s+fetch-depth:\s*0\s*$/m, 'the citation gates need real history, not a snapshot');
   assert.match(
-    wf,
+    cfg,
     /CLOUDFLARE_API_TOKEN:\s*\$\{\{\s*secrets\.CLOUDFLARE_API_TOKEN\s*\}\}/,
     'the upload step must receive the repository secret',
   );
-  assert.match(wf, /CLOUDFLARE_ACCOUNT_ID:\s*[0-9a-f]{32}/, 'wrangler needs the account id');
+  assert.match(cfg, /CLOUDFLARE_ACCOUNT_ID:\s*[0-9a-f]{32}/, 'wrangler needs the account id');
 });
 
 test('an empty CLOUDFLARE_API_TOKEN stops the upload instead of authenticating as nobody', () => {
@@ -750,7 +774,7 @@ test('the deploy workflow runs a Node that meets the floor package.json declares
   // test, it would produce no build at all.
   const declared = JSON.parse(read('package.json')).engines.node;
   const floor = Number(declared.replace('>=', '').split('.')[0]);
-  const pinned = /node-version:\s*'?"?(\d+)/.exec(read(...WORKFLOW));
+  const pinned = /node-version:\s*'?"?(\d+)/.exec(workflowConfig());
   assert.ok(pinned, 'the workflow must pin a Node major for setup-node');
   assert.ok(
     Number(pinned[1]) >= floor,
