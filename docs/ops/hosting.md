@@ -120,8 +120,15 @@ link decoration, and the one-time high-score bridge reads that cookie.
 
 > **Status when this was written (2026-07-31): the unbind-and-redirect step had NOT
 > been taken.** It is the human owner's, not an agent's. Until it happens the seven
-> game hostnames still serve their own pre-migration buckets, and re-binding a custom
-> domain is the whole of the rollback. Verify before assuming either way:
+> game hostnames are still **bound to** their own buckets, and re-binding a custom
+> domain is the whole of the rollback.
+>
+> "Bound" is a statement about **routing, not content**. The inventory above measured
+> which buckets and domains exist; nothing has measured what any of them serves, and
+> `arcade-joust` was created only 2026-07-26 — after the design spec recorded joust's
+> bucket as "known never to have been created at all" — so at least one of these
+> hostnames may answer from an empty bucket. **Do not infer a live game from a live
+> hostname; request it:**
 >
 > ```bash
 > for g in tempest star-wars asteroids battlezone red-baron centipede joust; do
@@ -129,7 +136,10 @@ link decoration, and the one-time high-score bridge reads that cookie.
 > done
 > ```
 >
-> `200` = still its own bucket. `301 -> https://arcade.slabgorb.com/<g>/` = cut over.
+> - `200` — still serving its own bucket; not cut over.
+> - `301 -> https://arcade.slabgorb.com/<g>/` — cut over.
+> - `404` — bound but the bucket is empty at that key: that game never deployed. It is
+>   a rollback target in name only, and its redirect is the *fix*, not the risk.
 
 ## Shipping: a TAG is production
 
@@ -208,10 +218,12 @@ just release tempest patch --force     # NOT `just release tempest --force`
 *"Justfile does not contain recipe `--force`"* — the third parameter exists to make the
 remedy reachable from the interface people actually use.
 
-Force is for the two files deliberately left OUT of the change set: `tsconfig.json` and
-`package-lock.json`. Nothing in the gate type-checks, so a type-only change to either
-cannot reach the build — but an esbuild-read tsconfig option, or a lock bump that moves
-a real version, can. The skip message names both.
+Force is for the two files deliberately left OUT of the change set, each for its own
+reason: `tsconfig.json` because nothing in the gate type-checks, so a type-only change
+cannot reach the build; `package-lock.json` because a lock bump that does not move an
+installed version cannot change `dist/` either, and it churns on every install. Both
+have a live exception — an esbuild-read tsconfig option, or a lock bump that *does* move
+a real version — and `--force` is the remedy for both. The skip message names them.
 
 **Manual fallback** (bypasses the tag and CI — the only way prod can diverge from a
 release):
