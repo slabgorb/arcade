@@ -1636,8 +1636,12 @@ function drawHighScoreBoard(
     // Task 20: a row migrated across the origin boundary (the ADR-0004 summary
     // cookie) carries no wave — `e.wave` is an honest `null`, not a fabricated
     // number. Render the column blank rather than `String(null)` -> 'WAVE null'.
+    // trimEnd() drops the trailing space the blank value would otherwise leave
+    // (glowText centres on layoutText().width, which counts that glyph advance —
+    // an untrimmed row would sit visibly off-centre from its neighbours).
     const wave = e.wave === null ? '' : e.wave
-    glowText(ctx, `${rank}  ${e.name}  ${pts}  WAVE ${wave}`, w / 2, y, HUD_TEXT_PX, 'center', GLOW, 6)
+    const row = `${rank}  ${e.name}  ${pts}  WAVE ${wave}`.trimEnd()
+    glowText(ctx, row, w / 2, y, HUD_TEXT_PX, 'center', GLOW, 6)
     y += 24
   }
 }

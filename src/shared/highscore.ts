@@ -18,11 +18,12 @@
 //     star-wars and asteroids record `wave`, so HighScoreEntry<'level'> and
 //     HighScoreEntry<'wave'> share every other field. The stored JSON keeps each
 //     game's real field name — no localStorage migration.
-//   - The row guard requires a FINITE score (and finite domain field). The three
-//     games split on this: tempest/star-wars used loose `typeof === 'number'`
-//     (which admits a poisoned `1e999` -> Infinity); asteroids hardened to
-//     `Number.isFinite`, and the lobby's tile read demands a finite score. One
-//     shared guard can hold only one standard, so it holds the finite one.
+//   - The row guard requires a FINITE score (and a finite domain field, or an
+//     explicit `null` — a migrated row). The three games split on this:
+//     tempest/star-wars used loose `typeof === 'number'` (which admits a
+//     poisoned `1e999` -> Infinity); asteroids hardened to `Number.isFinite`,
+//     and the lobby's tile read demands a finite score. One shared guard can
+//     hold only one standard, so it holds the finite one.
 //   - `highScoreKey` + `isHighScoreRow` are what the LOBBY imports — the same key
 //     and shape the games write — so the tile no longer re-derives them by hand.
 //
@@ -124,9 +125,10 @@ export function isHighScoreRow(value: unknown): value is HighScoreEntryBase {
 }
 
 // Builds the domain-AWARE guard a game uses: the base contract PLUS a finite
-// numeric value under the game's own domain field (`level` | `wave`). Generic
-// over the field name, so this one factory replaces the per-game
-// `Number.isFinite(row[field])` line that used to be copied into each storage.ts.
+// numeric value under the game's own domain field (`level` | `wave`), or an
+// explicit `null` (a migrated row). Generic over the field name, so this one
+// factory replaces the per-game `Number.isFinite(row[field])` line that used
+// to be copied into each storage.ts.
 export function makeHighScoreRowGuard<DomainKey extends string>(
   domainKey: DomainKey,
 ): (value: unknown) => value is HighScoreEntry<DomainKey> {

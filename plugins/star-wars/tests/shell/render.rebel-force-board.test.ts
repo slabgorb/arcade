@@ -163,4 +163,20 @@ describe('Task 20 — a migrated row (wave: null) renders blank, not the string 
     const all = texts().join('\n')
     expect(all).toContain('WAVE 4')
   })
+
+  // Review fix round 1 (Important 2): 'not "null"' alone is satisfied by ANY
+  // stand-in value, including a fabricated `e.wave ?? 0` or `e.wave ?? '?'` —
+  // both would pass every assertion above while doing exactly what this
+  // task's design ruling forbids: inventing a fact about a player's game. This
+  // pins the EXACT row string the fixed code emits (rank " 1", two-space
+  // separators, the label with no value and no trailing space — trimEnd()
+  // drops it so the centred row does not sit off-centre from its neighbours),
+  // so any value other than a true blank fails it by name.
+  it('draws the migrated row as the exact blank-wave string, not a fabricated stand-in', () => {
+    render(makeCtx(), attract(), W, H, MIGRATED_BOARD)
+    expect(
+      texts(),
+      `expected the exact row " 1  JPX  149,830  WAVE"; saw: ${JSON.stringify(texts())}`,
+    ).toContain(' 1  JPX  149,830  WAVE')
+  })
 })
