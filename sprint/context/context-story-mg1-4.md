@@ -9,7 +9,7 @@ sprint epics still route stories to per-game repos that repos.yaml no longer reg
 - **Points:** 3
 - **Priority:** p1
 - **Workflow:** tdd
-- **Repo:** .
+- **Repo:** arcade
 - **Epic:** Monorepo migration tail — the follow-ups the 2026-07-30 plugin collapse deferred, descoped or created
 
 ## Problem
