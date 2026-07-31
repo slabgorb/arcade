@@ -1226,3 +1226,8 @@ completed_stories:
     title: Incoming-fire reaction window (sw8-2 follow-up) — an idle ship died in <1s to a fireball during the sw8-4 investigation; verify a dodge/shoot window actually exists per sw8-2's acceptance and fix if homing still 'always arrives'
     points: 3
     completed: '2026-07-30'
+  - id: mg1-2
+    epic: mg1
+    title: A genuinely multi-app dev server — just serve currently serves the lobby at every path
+    points: 5
+    completed: '2026-07-31'
