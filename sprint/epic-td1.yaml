@@ -284,3 +284,12 @@ stories:
     repos: star-wars
     workflow: tdd
     type: chore
+  - id: td1-15
+    title: pf _collect_repos iterates a comma-separated repos string character by character
+    description: "Found by TEA during mg1-4's RED phase, 2026-07-31, outside that story's file list and therefore filed rather than fixed in passing. This is an UPSTREAM pennyfarthing bug, not an arcade one: the code lives in pf/core/resolver.py, and pf is installed here as an editable install resolving to /Users/slabgorb/Projects/orc-penny/pennyfarthing/pennyfarthing-dist/src/pf. resolver.py:42 reads 'for repo in epic.get(\"repos\", [])'. The default is a list, but every epic in this repo — and in pf's own test fixtures, e.g. tests/test_156_1_story_add_shards.py 'repos: pennyfarthing' — stores repos as a comma-separated STRING. Iterating a string in Python yields characters, so _collect_repos on 'repos: joust' returns ['j','o','u','s','t'] rather than ['joust'], and on a multi-repo list it returns the deduplicated alphabet of that list. It is LATENT in arcade because the only caller is the sprints.yaml registry branch of resolve_sprint_context, which this repo does not use — it falls through to current-sprint.yaml. Fixing it means normalising the field to a list at the boundary, which is also the shape mg1-4's guard assumes when it splits on commas. Route upstream to pennyfarthing rather than patching a vendored copy."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: .
+    workflow: tdd
+    type: bug
