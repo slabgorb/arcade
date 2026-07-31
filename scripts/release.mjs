@@ -205,15 +205,34 @@ export function shouldRelease({ hasPreviousTag, changedFiles, force = false }) {
  *     returns nothing, the gate is `vitest run --project <id>` plus
  *     `build-app.mjs <id>`, vite transpiles through esbuild without checking
  *     types, and module resolution goes through the vite alias map above rather
- *     than tsconfig's `paths`. Measured on asteroids: adding a type-only option
- *     (`noUnusedLocals`) and an option esbuild does read
- *     (`useDefineForClassFields`) each produced a BYTE-IDENTICAL `dist/`. So
- *     including it would not be cheap over-inclusion — it would guarantee a
- *     release of an unchanged artifact, which is the 2026-07-13 bug re-entered
- *     through a different door. (Honest limit: an esbuild-relevant option could
- *     change output for code that uses the feature; `--force` covers that.)
- *   · `package-lock.json` — the same byte-identical property in the common case,
- *     and it churns on every install.
+ *     than tsconfig's `paths`. So a TYPE-ONLY option cannot reach `dist/` at all,
+ *     and including the file would guarantee a release of an unchanged artifact —
+ *     the 2026-07-13 bug re-entered through a different door.
+ *
+ *     THE EXCEPTION IS REAL, AND ALREADY LIVE IN THIS TREE. esbuild reads a few
+ *     tsconfig options, and `useDefineForClassFields` is one. An earlier draft of
+ *     this comment cited it as measured-identical, which was a VACUOUS
+ *     measurement: `false` is already the default below `target: ES2022` and this
+ *     repo is ES2020, so setting it changes nothing by definition, and it was
+ *     measured on asteroids, which has no classes. Re-measured on
+ *     `dist/battlezone`, three ways, in this checkout:
+ *
+ *       option absent (the shipped state)  hash 0138236…
+ *       explicitly `false`                 SAME hash — it is the default; proves nothing
+ *       `true`                             DIFFERENT (cf30927…): the emitted class
+ *                                          moves from `constructor(){this.down=new Set,
+ *                                          this.pendingStart=!1,…}` to
+ *                                          `class{down=new Set;pendingStart=!1;…}`
+ *
+ *     The fleet ships exactly ONE ES class — `plugins/battlezone/src/shell/input.ts:22`,
+ *     `KeyboardTreads`. (Of ~117 `class` matches under src/ and plugins/, every
+ *     other one is prose or a test double, and tests are not bundled.) So this
+ *     option bites battlezone and nothing else, at any value. It is a live
+ *     exception, not a theoretical one — which is precisely why the exclusion is a
+ *     POLICY call rather than a correctness gate, and why `--force` exists.
+ *   · `package-lock.json` — outside for the same reason in the common case (a lock
+ *     bump that does not move an installed version cannot change `dist/`), and it
+ *     churns on every install.
  *
  * `--force` is the remedy for both, and the skip message names them.
  */
@@ -371,7 +390,8 @@ export function release(id, level = 'patch', { force = false } = {}) {
     console.log(
       `  tsconfig.json and package-lock.json are outside that set on purpose: nothing in the gate`,
     );
-    console.log(`  type-checks, so a change to either leaves dist/ byte-identical. Re-run with --force to ship one.`);
+    console.log(`  type-checks, so a type-only change to either cannot reach dist/. Re-run with --force`);
+    console.log(`  for the exceptions (an esbuild-read tsconfig option, or a lock bump that moves a version).`);
     return { id, skipped: true };
   }
 

@@ -280,10 +280,14 @@ test('changePathsFor asks about everything the app is built from, minus the regi
     );
     // Deliberately ABSENT, pinned so the next reader does not "complete the set".
     // Nothing in the gate type-checks (`grep -n tsc scripts/build-app.mjs` finds
-    // nothing), so a tsconfig-only change leaves dist/ byte-identical — measured
-    // on asteroids for both a type-only option and one esbuild reads. Including
-    // it would guarantee a release of an unchanged artifact, which is the
+    // nothing), so a TYPE-ONLY tsconfig change cannot reach dist/ and including
+    // the file would guarantee a release of an unchanged artifact — the
     // 2026-07-13 empty-release bug through a different door.
+    //
+    // Not "tsconfig can never change dist/": esbuild reads a few options, and
+    // `useDefineForClassFields: true` measurably changes dist/battlezone (the one
+    // ES class in the shipped fleet). scripts/release.mjs carries the three-way
+    // measurement and says why the exclusion is a policy call, not a proof.
     for (const out of ['tsconfig.json', 'package-lock.json']) {
       assert.ok(!paths.includes(out), `${id}: ${out} must stay out — it cannot change dist/`);
     }
