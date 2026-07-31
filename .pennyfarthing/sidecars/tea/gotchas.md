@@ -2178,3 +2178,75 @@ file on disk while `npx` goes looking. Widening the pinned set is the wrong firs
 deliberate list, and the newcomer must be provisioned before it is pinned. Worth knowing before you
 write the spawn, not after — and it is a reason to run the FULL orchestrator suite, not just your
 own file, before believing a RED is clean.
+
+---
+
+### Replay determinism CANNOT see a missing per-frame CLEAR — the stale event is carried identically in BOTH runs
+
+**Situation:** cp5-1 builds centipede's core event channel. AC2: "a fixed seed and input stream
+replay an identical event stream — the event channel is deterministic and a test pins that." The
+obvious test is two runs of the same seed, compared frame by frame.
+
+**Problem:** that test is blind to the single most likely defect in the whole story. If the sim
+APPENDS to `state.events` instead of REBUILDING it each frame, run A and run B both carry the same
+stale events forward, so the two streams still match exactly and the determinism test stays green
+while every cue re-fires forever and the array grows without bound. Determinism compares two runs to
+each other; it never asks what a single run should contain. The asteroids precedent seeds `events: []`
+at each phase entry with the comment "never carry a stale frame's forward"
+(`plugins/asteroids/src/core/sim.ts:179,194,212`) — that comment is guarding a property no
+determinism test can reach.
+
+**Prevention:** for any "the stream/log/event channel is deterministic" AC, write TWO tests, and know
+which defect each one catches:
+1. *replay identity* — same seed + same scripted input → identical per-frame streams. Catches
+   ambient randomness and wall-clock leakage.
+2. *the rebuild* — step PAST a triggering frame with input that does not re-trigger, and assert the
+   event is GONE. Catches append-instead-of-rebuild. Add the unbounded-growth mirror (a long idle
+   run must drain, not accumulate) because the same bug shows up as a leak.
+
+**And pair BOTH with a non-vacuity assertion in the same test.** Two EMPTY streams compare equal, so
+a channel that emits nothing passes replay-identity perfectly. Assert the run emitted something, and
+that it emitted more than one distinct kind, BEFORE comparing. Add a different-seed control too: if
+the streams were hard-coded, "identical" would hold for every seed and prove nothing.
+
+---
+
+### A doc assertion can pass on the UNCHANGED file three different ways — and markdown line-wrap is the one you will not see coming
+
+**Situation:** cp5-1's AC5/AC6 are documentation ACs: rewrite a deferral banner in `core/bonus.ts`,
+and stop the README advertising a gap the story closes. I wrote nine assertions across the two files.
+Six passed immediately — and three of those six were **defective**, not deliberate green guards. All
+three would have let Dev ship the story with the stale docs untouched.
+
+**The three mechanisms, all distinct:**
+1. **The token was already there.** "the banner must point at the seam" matched
+   `/…|bonus-life/`, and `bonus.ts:31` already read "is the bonus-life sound" — the assertion matched
+   the very deferral it was meant to replace.
+2. **Markdown WRAPPED the sentence across a blockquote line.** The README status block reads, to a
+   human, "there is no `src/shell/audio.ts`, no event channel and no dispatch." On disk it is
+   `…and no\n> dispatch.` — a newline AND a `> ` in the middle. A regex written against the sentence
+   as read never matches the file as stored, so `.not.toMatch(...)` passes trivially and the stale
+   claim survives. **This is the dangerous one: the assertion looks right, reads right in review, and
+   is inert.**
+3. **The positive half was built from tokens the STALE text already contains.** "the README must
+   mention the audio seam" matched `@shared/audio` — which appears in the current README only inside
+   the sentence *"It does not consume `@shared/audio`"*. The assertion was satisfied by the text it
+   was supposed to replace.
+
+**Prevention:**
+- Normalize before matching any multi-word claim in markdown:
+  `md.replace(/^\s*>\s?/gm, ' ').replace(/\s+/g, ' ')`. Never regex a wrapped sentence raw.
+- Build every POSITIVE doc assertion out of tokens you have **verified are absent today**
+  (`grep -c` each candidate first — mine returned 0 for `audio-dispatch`, `core/events`, `SOUNDS`,
+  `manifest`, `no samples`). If a token appears in the current file, it cannot discriminate.
+- Write doc ACs as PAIRS — the stale claim must be GONE and the honest one PRESENT. Neither half
+  alone is enough: deleting the sentences satisfies the negative, appending a section satisfies the
+  positive while the contradiction sits three lines above.
+- **Audit every test that passes on arrival.** Sort them into "deliberate green regression guard" and
+  "defect", and mutation-test the first group (plant the violation, require red, restore from a `cp`
+  backup — never `git checkout`, which eats uncommitted work). Five green guards here; all four
+  testable ones went red under mutation, and the control run returned to the exact pre-mutation
+  count (51 failed / 898 passed).
+
+**Corollary:** the RED count is not the metric — 48 failing looked like a complete RED, and three of
+the twelve doc assertions were inert inside it. Read the PASS list, not the fail list.
