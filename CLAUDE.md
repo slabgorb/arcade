@@ -70,11 +70,17 @@ Modules: `math3d` (the ported Atari Math Box), `rng`, `highscore`, `name-entry`,
 > dependency survives anywhere`, `tests/monorepo-topology.test.mjs`). Never import
 > from it; it is safe to delete.
 
-**Adding a game** is a directory plus three registrations: create `plugins/<id>/` with
-a `plugin.ts` manifest and an `index.html`, add the id to `games` in the `justfile` and
-to `GAMES` in `vitest.config.ts`, then `npm run gen:registry` to regenerate the
-committed `src/host/registry.ts`. `scripts/build-app.mjs` and the deploy workflow read
-the `plugins/` directory itself, so neither needs editing.
+**Adding a game** is a directory of **four** files plus three registrations. The files:
+`index.html` (the Vite entry), `plugin.ts` (the manifest), `package.json`
+(`{"name","version","private"}` — `gen-registry.mjs` reads the version out of it and
+`release.mjs` bumps it) and `tsconfig.json` (`extends: ../../tsconfig.json` — the
+orchestrator suite asserts it, and CI runs that suite before the build). Then add the id
+to `games` in the `justfile` and to `GAMES` in `vitest.config.ts`, and run
+`npm run gen:registry` to regenerate the committed `src/host/registry.ts`.
+`scripts/build-app.mjs` and the deploy workflow read the `plugins/` directory itself, so
+neither needs editing. Copy the shape from `plugins/joust/` rather than typing it —
+omitting either of the last two files fails, and not at the step you were on.
+Runbook detail: [`docs/ops/hosting.md`](./docs/ops/hosting.md) → *Adding a new game*.
 
 ## Commands
 
@@ -135,12 +141,20 @@ server can own `127.0.0.1:5270`; with that address held, however, an unpinned `h
 lets Vite bind `[::1]:5270` instead, and two dev servers share the port with no
 collision error at all. `vite.config.ts` therefore pins `host: '127.0.0.1'` on both
 the `server` and `preview` blocks (discovered on joust as jt1-3, ported fleet-wide as
-td1-1). Sibling checkouts (`a-1`, `a-2`, `a-3`) all pin the **same** 5270, so the
-first to bind it owns it and the others fail — visibly, which is the point. To serve
-your own tree alongside someone else's, take a spare port explicitly:
+td1-1).
+
+**The pin only bites when _both_ sides of a collision have it**, so the guarantee is
+per-checkout, not fleet-wide. Every checkout now races the same 5270, and one that
+predates td1-1 — or predates this migration entirely — still binds an unpinned host: it
+lands on `[::1]:5270` beside your pinned `127.0.0.1:5270` and **coexists with no
+collision error at all**, serving the whole cabinet from the wrong working tree. That
+was proven by experiment, not argued. Until every checkout serving 5270 carries the pin,
+keep proving whose server answers before you trust a screenshot:
 
 ```bash
-npx vite --port 5290 --strictPort
+PID=$(lsof -ti tcp:5270 | head -1)
+lsof -a -p "$PID" -d cwd -Fn | grep '^n'   # → n/Users/you/Projects/a-2
+npx vite --port 5290 --strictPort          # serve YOUR tree instead of killing theirs
 ```
 
 ### Production: R2 static hosting — one origin, one bucket
@@ -165,12 +179,17 @@ it the front door at `/` — and each game owns its own **`<id>/` key prefix**.
 One origin means the lobby and every game share `localStorage`, which is what retires
 the cross-origin high-score cookie of ADR-0004 (see that ADR's 2026-07-30 amendment).
 
-The seven `arcade-<game>` buckets and their `<game>.slabgorb.com` custom domains still
-exist and still serve their pre-migration builds: unbinding them and replacing them
-with Single Redirects onto `arcade.slabgorb.com/<id>/` is the **owner's** step, and it
-had not been taken when this file was written. Until it is, treat a game's own
-subdomain as live. Full architecture, the real bucket inventory and the runbook:
-[`docs/ops/hosting.md`](./docs/ops/hosting.md).
+The seven `arcade-<game>` buckets still exist and their `<game>.slabgorb.com` custom
+domains are still bound to them: unbinding those and replacing them with Single
+Redirects onto `arcade.slabgorb.com/<id>/` is the **owner's** step, and it had not been
+taken when this file was written.
+
+That is a statement about *routing*, not about content. Task 1 measured which buckets
+and domains exist; nothing has measured what any of them serves. `arcade-joust` was only
+created 2026-07-26, after the design spec recorded joust's bucket as "known never to
+have been created at all" — so joust's hostname may well answer from an empty bucket.
+**Do not infer a live game from a live hostname; request it.** Full architecture, the
+real bucket inventory and the runbook: [`docs/ops/hosting.md`](./docs/ops/hosting.md).
 
 The Cloudflare tunnel that once served the arcade is retired; [`cloudflared/`](./cloudflared/)
 is kept as history.

@@ -35,7 +35,11 @@ front door, with every game one tile away.
 | **Battlezone** | [battlezone.slabgorb.com](https://battlezone.slabgorb.com) | Faithful clone of Atari's 1980 vector arcade game — first-person 3D wireframe tank duel with dual-tread steering. | [`plugins/battlezone`](plugins/battlezone) |
 | **Red Baron** | [red-baron.slabgorb.com](https://red-baron.slabgorb.com) | Faithful clone of Atari's 1980 vector arcade game — first-person WWI biplane dogfight over a vector landscape. | [`plugins/red-baron`](plugins/red-baron) |
 | **Centipede** | [in the lobby](https://arcade.slabgorb.com) | Faithful clone of Atari's 1981 raster arcade game — trackball shooter in a mushroom field, with spider, flea and scorpion. | [`plugins/centipede`](plugins/centipede) |
-| **Joust** | [in the lobby](https://arcade.slabgorb.com) | Faithful clone of Williams' 1982 raster arcade game — flapping knight duel over a lava pit. | [`plugins/joust`](plugins/joust) |
+| **Joust** | [in the lobby](https://arcade.slabgorb.com)&nbsp;† | Faithful clone of Williams' 1982 raster arcade game — flapping knight duel over a lava pit. | [`plugins/joust`](plugins/joust) |
+
+† Joust is the newest cabinet and the only one whose deploy has never been confirmed —
+its bucket was created late in the migration, after the design spec had recorded it as
+never created at all. Its tile may not launch yet.
 
 Plus the front door: [**the lobby**](lobby), the vector-style menu that lists and
 launches every game above.

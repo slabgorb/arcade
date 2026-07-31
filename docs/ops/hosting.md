@@ -35,11 +35,26 @@ does. Provenance for the collapse itself: [`migration-manifest.md`](./migration-
   correction ADR-0004's cost estimate got wrong; see its 2026-07-30 amendment.
 - One origin also means the lobby and every game share `localStorage` again, which is
   what retires the cross-origin high-score cookie ADR-0004 introduced.
-- Uploads go through `scripts/deploy-r2.mjs <dist dir> <bucket> [key prefix]`, which
-  sets an explicit `--content-type` per file — wrangler does not auto-detect, and a
+- Uploads go through `scripts/deploy-r2.mjs <distDir> <bucket> [keyPrefix] [--lobby-only]`,
+  which sets an explicit `--content-type` per file — wrangler does not auto-detect, and a
   wrong type ships a broken site. It only ever `put`s, one object at a time, and never
-  lists, deletes or prunes, so two apps deploying at once cannot collide (their key
-  prefixes are disjoint).
+  lists, deletes or prunes, so nothing it does is destructive.
+- **`--lobby-only` is not cosmetic, and the lobby's leg must always carry it locally.**
+  The lobby's dist dir *is* `dist/`, the parent of every game's `dist/<id>/`, and the
+  lobby's build deliberately no longer empties it (emptying it deleted all seven games).
+  An unrestricted `deploy-r2.mjs dist arcade-lobby` therefore walks the games too —
+  **measured at 34 objects, 29 of them games** — republishing every game sitting on
+  disk, at whatever commit that build happened to be. That is what `just deploy-one
+  lobby` would do without the flag. The keys collide harmlessly with the prefixed legs,
+  so nothing lands in the *wrong place*; what you get is a silent republish of stale
+  builds. `just deploy` and `just deploy-one lobby` both pass it; CI does not need it,
+  because a fresh runner builds only the one app and `dist/` holds nothing else.
+- **Why concurrent deploys are safe** — and the reason is *not* prefix arithmetic. The
+  lobby's prefix is the root, which is a prefix of every other key, so disjointness
+  cannot come from the prefixes. It comes from the lobby only ever uploading its **own
+  top-level entries** (`lobbyOwnedEntries()`, enforced by `--lobby-only` locally and by
+  a lobby-only `dist/` in CI), while each game writes only under its own `<id>/`. Two
+  apps uploading at once therefore never touch the same key.
 - The Cloudflare tunnel that used to serve the arcade is **retired**;
   [`cloudflared/`](../../cloudflared/) is historical.
 
@@ -169,6 +184,35 @@ always points at exactly the commit CI deploys.
 generated registry, and the lobby's tiles read their versions from there, so one lobby
 release at the end carries every accumulated tile bump.
 
+### An app with nothing to ship skips itself — so `release-all` is re-runnable
+
+Before the gate, `release.mjs` asks whether the app has changed since its own last tag:
+`git diff --name-only <last tag> HEAD --` over `plugins/<id>/` (or `lobby/`),
+`src/shared/`, `src/host/` **minus the generated `registry.ts`**, and `vite.config.ts`.
+No change ⇒ it prints `nothing to release — … Skipped.` and returns a **no-op success**,
+so a sweep never aborts on the first app with nothing to do.
+
+That guard exists because on 2026-07-13 `just release-all` was run twice in a row and
+the second run shipped **six** releases whose entire diff was the version bump — six
+tags, six CI deploys re-uploading a byte-identical build. It is also why re-running
+`release-all` after a mid-fleet failure is the right move rather than a re-bump of
+everything that already shipped.
+
+**The escape hatch is `--force`**, and through `just` it needs the third parameter:
+
+```bash
+just release tempest patch --force     # NOT `just release tempest --force`
+```
+
+`just release tempest --force` reads `--force` as a recipe name and dies with
+*"Justfile does not contain recipe `--force`"* — the third parameter exists to make the
+remedy reachable from the interface people actually use.
+
+Force is for the two files deliberately left OUT of the change set: `tsconfig.json` and
+`package-lock.json`. Nothing in the gate type-checks, so a type-only change to either
+cannot reach the build — but an esbuild-read tsconfig option, or a lock bump that moves
+a real version, can. The skip message names both.
+
 **Manual fallback** (bypasses the tag and CI — the only way prod can diverge from a
 release):
 
@@ -177,13 +221,18 @@ just deploy              # build + upload every app from this checkout
 just deploy-one <app>    # one app (`lobby` included)
 ```
 
+Use the recipes, not `deploy-r2.mjs` by hand: they are what pass `--lobby-only` on the
+lobby's leg (see Architecture), and a hand-run upload of `dist/` without it republishes
+every game lying on disk.
+
 ## Failure modes
 
 | Symptom | What happened | Fix |
 |---------|---------------|-----|
 | Release aborts in preflight | dirty tree / not on `main` / out of sync with origin | commit-stash / checkout / pull, re-run |
 | Release aborts in gate | that app's tests or build failed | fix the app, re-run — nothing was pushed |
-| `release-all` stops mid-fleet | one app failed its preflight/gate | fix it, then release the **remaining** apps individually (`just release <app>`) — re-running `release-all` would bump the already-released ones again |
+| `release-all` stops mid-fleet | one app failed its preflight/gate | fix it, then just **re-run `just release-all`** — the apps that already shipped have no change since their tag and skip themselves (see below). Use `just release <app> patch --force` only for the exceptions |
+| `nothing to release — … Skipped.` | that app has no change under `plugins/<id>/`, `src/shared/`, `src/host/` (minus the generated `registry.ts`) or `vite.config.ts` since its last tag | usually correct — nothing to ship. `tsconfig.json` and `package-lock.json` are outside that set on purpose (nothing in the gate type-checks), so `just release <app> patch --force` is the remedy when one of those is genuinely the change |
 | Tagged and pushed, but **no Actions run at all** | the tag missed the `*-v*` glob — most likely a bare `vX.Y.Z`, which is invalid in the monorepo | delete the bad tag, re-run `just release <app>`; silence is always a tag-shape problem, never a build one |
 | Run starts, then `tag '…' is not <app>-vX.Y.Z` | the tag matched the loose glob but failed the strict check (e.g. `tempest-v1.0`) | same — the loose glob exists precisely so this fails **loudly** instead of silently |
 | Run fails at `Resolve the app from the tag` with `no such app` | the id in the tag is not `lobby` and not a `plugins/` directory | check the id; the workflow reads the filesystem, so a new game is deployable the moment its directory exists |
@@ -291,13 +340,29 @@ as nobody (wrangler's own error for a blank token does not say that), and
 No bucket, no domain, no DNS, no per-repo secret, no CI caller — the whole of it is
 in-repo now.
 
-1. Create `plugins/<name>/` with a `plugin.ts` manifest and an `index.html`; the game
-   builds at Vite base `/<name>/` through the shared `vite.config.ts` factory.
+1. Create `plugins/<name>/` with **four** files, not two — the two easy to forget are
+   the ones that break steps 2 and 3:
+   - `index.html` — the Vite entry; the game builds at base `/<name>/` through the
+     shared `vite.config.ts` factory.
+   - `plugin.ts` — the manifest (`id`, `title`, `year`, `color`, `controls`, `order`,
+     `listed`, `showcase`, and `version` as the **shorthand** imported from
+     `./package.json`; a literal version is rejected).
+   - `package.json` — `{"name","version","private"}`, nothing else. **`gen-registry.mjs`
+     reads the version out of it** (`:122`) and `release.mjs`'s `packagePathFor` (`:60`)
+     bumps it. Without it, step 2 throws and step 3 cannot find a version.
+   - `tsconfig.json` — `{"extends": "../../tsconfig.json", "include": ["src","tests"]}`.
+     `every app tsconfig extends the root, at the right depth`
+     (`tests/monorepo-topology.test.mjs`) reads it, and CI runs the orchestrator suite
+     **before** the build — so a missing one reds the deploy of an otherwise fine game.
 2. Add the id to `games` in the `justfile` and to `GAMES` in `vitest.config.ts`, then
    `npm run gen:registry` to regenerate the committed `src/host/registry.ts`.
-   `scripts/build-app.mjs` and `deploy.yml` read the `plugins/` directory itself.
+   `scripts/build-app.mjs` and `deploy.yml` read the `plugins/` directory itself, so
+   neither needs editing.
 3. `just release <name>` — the tag deploys it into `arcade-lobby` under `<name>/`, and
-   it is live at `https://arcade.slabgorb.com/<name>/`.
+   it is reachable at `https://arcade.slabgorb.com/<name>/`.
+
+Copy the shape from an existing plugin rather than typing it: `plugins/joust/` is the
+smallest complete example of all four files.
 
 ## History
 

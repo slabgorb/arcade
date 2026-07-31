@@ -15,5 +15,8 @@ repos:
     language: typescript
     framework: vite
     dev_command: just serve
+    # `<id>` is a PLACEHOLDER, not a literal: substitute an app id (a plugins/
+    # directory name, or `lobby`). There is no whole-cabinet build command —
+    # one origin does not mean one build. `just build-all` builds every app.
     build_command: node scripts/build-app.mjs <id>
     test_command: npx vitest run
