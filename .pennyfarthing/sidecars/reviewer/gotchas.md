@@ -968,3 +968,72 @@ measuring: here the player's aim does not influence the fighter's flight, so the
 runs fly identical trajectories until the branch diverges, which means only the sights bit can
 differ — the mirror positive is what makes the negative interpretable, and no fixture choice can
 change that.
+
+---
+
+### "The socket accepted the connection" is NOT "the channel works" — and on a multi-app dev server the socket that accepted may belong to a different app
+
+**Situation:** mg1-2 mounted seven per-game Vite servers under one parent. Each child defaulted to
+its own HMR websocket on port 24678; six lost and printed `Port is already in use` on every start.
+The fix — `hmr: { server: parentHttpServer }` — silenced it, and Dev verified by checking that a
+`vite-hmr` websocket upgrade was accepted. Every test was green.
+
+**Problem:** the upgrade that was accepted was the LOBBY's. All seven children share the parent's
+HTTP server, so the parent's own socket wins every upgrade and the children's messages go nowhere.
+Game HMR was entirely dead, and the session file asserted "HMR for all eight apps now rides one
+HTTP server" — a false claim about to be archived as the permanent record. A loud failure had been
+traded for a silent one, which is strictly worse.
+
+**The probe that settled it** (and the one to reach for on ANY push-based channel): don't inspect
+configuration and don't check that a connection opens. **Exercise the channel end to end** — open
+the socket, modify a real source file, and assert the message arrives. Editing
+`plugins/tempest/src/core/rules.ts` delivered nothing; editing `lobby/src/shell/tiles.ts` delivered
+`full-reload:*`. Two lines of measurement refuted a whole paragraph of claim.
+
+**Then measure the severity separately from the defect.** The follow-up question — is content
+merely un-pushed, or STALE? — decides everything. Re-fetching a game module after the edit returned
+fresh content, so the watcher was live and a manual refresh works: degraded DX, not a broken
+deliverable. That is the difference between "reject and rework the mechanism" and "keep the code,
+fix the record, file the follow-up." Ask it before assigning severity.
+
+**Generalisation:** treat any "verified X works" whose evidence is *existence* (a socket opened, a
+file is present, a route returns 200, a symbol is exported) as unverified. The evidence must be the
+BEHAVIOUR, and on a multi-tenant surface it must additionally show the RIGHT tenant answered.
+
+---
+
+### Rejecting on a MEDIUM is allowed — the blocking rule is a floor, not a ceiling
+
+**Situation:** mg1-2's three findings graded Medium, Medium, Low against the severity table
+(Critical/High block; Medium = "missing edge cases"). Every AC was met and the suite was green.
+
+**Why reject anyway:** one finding was `/tempest?x=1` silently serving the LOBBY — a *silent
+wrong-app serve*, which is the precise defect class the epic was filed to eliminate, and the same
+shape as the vacuous all-200 check that created the story. The other put a refuted claim into a
+record about to be archived. Both fixes were about ten lines total.
+
+**The rule reads "Any Critical or High = REJECT."** That FORCES rejection above a threshold; it
+does not forbid it below one. When a Medium is an instance of the exact failure the story or epic
+exists to prevent, the charter outranks the grading table — but say so explicitly in the verdict
+rather than inflating the severity to justify the outcome. Inflating it corrupts the severity
+vocabulary for every later review.
+
+---
+
+### When round 2 approves, REWRITE the verdict — the gate reads the FIRST `## Reviewer Assessment`, and an archived REJECTED next to a done story is a lie
+
+**Situation:** mg1-2 was rejected in round 1 and approved in round 2, with the same agent doing the
+rework in-session.
+
+**Problem:** appending a second `## Reviewer Assessment` leaves the gate reading round 1's
+REJECTED, and archives a session whose first verdict contradicts its outcome. Deleting round 1
+instead loses the record of what was caught and why the code has the shape it has.
+
+**What worked:** ONE assessment section, verdict APPROVED at the top with "round 2" stated, a
+per-finding verification table (`FIXED` + *how I re-verified it, independently of the fixer's
+claim*), and round 1's full table retained below under an explicit `### Round 1 — REJECTED (all
+findings now fixed; kept for the record)` heading. Re-label round 1's trailing
+`**Handoff:** Back to Dev` so only one operative handoff line remains. Verify with
+`grep -c '^## Reviewer Assessment'` → exactly 1, and check which verdict line comes first.
+
+**Related:** the same rule applies to `review_findings` in the epic YAML after a multi-round story.
