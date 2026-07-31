@@ -14,9 +14,10 @@
 // own suite is red. Those are what this file asserts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import {
   appDirFor,
   changePathsFor,
@@ -28,6 +29,7 @@ import {
   releaseSteps,
   setPackageVersion,
   shouldRelease,
+  skipReason,
   tagFor,
 } from '../scripts/release.mjs';
 import { appIds } from '../scripts/build-app.mjs';
@@ -271,7 +273,17 @@ test('changePathsFor asks about everything the app is built from, minus the regi
     'vite.config.ts',
     ':(exclude)src/host/registry.ts',
   ]);
-  assert.deepEqual(changePathsFor('lobby')[0], 'lobby');
+  // THE LOBBY IS THE EXCEPTION, and this test used to pin the opposite (it
+  // asserted every app id's paths carried the exclusion, so the suite affirmed
+  // the defect). src/host/registry.ts is the lobby's ONLY dependency on any game
+  // — the tile set, titles, colours, order, the `listed` flag and the version
+  // lobby/src/shell/tiles.ts renders as `v${game.version}` all come out of it,
+  // and it is bundled (dist/assets/main-*.js carries the literal version
+  // strings). Excluding it left the lobby with nothing "changed" after ANY game
+  // release: `just release lobby` printed "nothing to release" and exited 0, so
+  // the front door never updated. Stale tile versions were the mild case; a new
+  // game with no tile, and a removed game whose tile 404s, were the severe ones.
+  assert.deepEqual(changePathsFor('lobby'), ['lobby', 'src/shared', 'src/host', 'vite.config.ts']);
   for (const id of appIds()) {
     const paths = changePathsFor(id);
     assert.equal(paths[0], appDirFor(id), `${id}: its own directory must be first`);
@@ -281,11 +293,17 @@ test('changePathsFor asks about everything the app is built from, minus the regi
     // inputs for every app — build-app.mjs imports it. Omitting it repeats the
     // src/shared defect: a build-affecting change reading as "nothing to release".
     assert.ok(paths.includes('vite.config.ts'), `${id}: a vite config change must be visible`);
-    // The exclusion is what keeps every OTHER app's release from looking like a
-    // change to this one — every release rewrites the registry.
-    assert.ok(
+    // For a GAME the exclusion is what keeps every OTHER app's release from
+    // looking like a change to this one — every release rewrites the registry,
+    // and without it `release-all` would ship all eight apps every time.
+    // For the LOBBY that same rewrite IS the change. Asserted as one equality
+    // rather than two one-sided `ok`s, so neither half can quietly go missing.
+    assert.equal(
       paths.includes(':(exclude)src/host/registry.ts'),
-      `${id}: without the exclusion this guard can never fire again`,
+      id !== 'lobby',
+      id === 'lobby'
+        ? 'the lobby must SEE the registry — excluding it is why the front door went stale'
+        : `${id}: without the exclusion this guard can never fire again`,
     );
     // Deliberately ABSENT, pinned so the next reader does not "complete the set".
     // Nothing in the gate type-checks (`grep -n tsc scripts/build-app.mjs` finds
@@ -301,6 +319,158 @@ test('changePathsFor asks about everything the app is built from, minus the regi
       assert.ok(!paths.includes(out), `${id}: ${out} must stay out — it cannot change dist/`);
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// …and the same question asked of GIT, not of an array
+//
+// The assertions above pin the pathspec's SHAPE. Its shape is not its effect:
+// `:(exclude)src/host/registry.ts` looks harmless in a list and silently emptied
+// the lobby's entire change set, and the test above AFFIRMED that — it asserted
+// every app carried the exclusion, so the suite pinned the defect in place.
+//
+// So this one hands the real pathspec to the real `git diff --name-only` in a
+// throwaway repo laid out like this one, and asks the question the operator asks:
+// after a game's release, does the lobby have something to ship? Nothing here can
+// be satisfied by a comment, a shape, or a JavaScript imitation of git's matcher.
+// ---------------------------------------------------------------------------
+
+/** A disposable repo with this monorepo's shape. Isolated from the user's git config. */
+function sandbox() {
+  const dir = mkdtempSync(join(tmpdir(), 'arcade-release-'));
+  const env = {
+    ...process.env,
+    GIT_CONFIG_GLOBAL: '/dev/null',
+    GIT_CONFIG_SYSTEM: '/dev/null',
+    GIT_AUTHOR_NAME: 'test',
+    GIT_AUTHOR_EMAIL: 'test@example.invalid',
+    GIT_COMMITTER_NAME: 'test',
+    GIT_COMMITTER_EMAIL: 'test@example.invalid',
+  };
+  const git = (...args) => execFileSync('git', args, { cwd: dir, env, encoding: 'utf8' });
+  const write = (rel, body) => {
+    const abs = join(dir, rel);
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, body);
+  };
+  git('init', '--quiet', '-b', 'main');
+  return { dir, git, write };
+}
+
+/** The registry as gen-registry.mjs writes it: every game's version, baked in. */
+const registryOf = (versions) =>
+  `export const GAMES = [\n${Object.entries(versions)
+    .map(([id, v]) => `  { id: '${id}', version: '${v}' },`)
+    .join('\n')}\n]\n`;
+
+test('a game release leaves the LOBBY with something to ship — measured through git', (t) => {
+  const { dir, git, write } = sandbox();
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  // The shipped layout, reduced to the files the pathspec can see.
+  write('lobby/package.json', '{ "version": "0.1.0" }\n');
+  write('lobby/src/shell/tiles.ts', 'export const tile = (g) => `v${g.version}`\n');
+  write('plugins/tempest/package.json', '{ "version": "1.0.0" }\n');
+  write('plugins/asteroids/package.json', '{ "version": "0.0.1" }\n');
+  write('src/host/registry.ts', registryOf({ tempest: '1.0.0', asteroids: '0.0.1' }));
+  write('src/shared/rng.ts', 'export const rng = 1\n');
+  write('vite.config.ts', 'export default {}\n');
+  git('add', '-A');
+  git('commit', '-qm', 'base');
+  for (const tag of ['lobby-v0.1.0', 'tempest-v1.0.0', 'asteroids-v0.0.1']) git('tag', tag);
+
+  // A tempest release, exactly as release.mjs performs it: bump the app's
+  // package.json, regenerate the registry, both in one commit.
+  write('plugins/tempest/package.json', '{ "version": "1.0.1" }\n');
+  write('src/host/registry.ts', registryOf({ tempest: '1.0.1', asteroids: '0.0.1' }));
+  git('add', '--', 'plugins/tempest/package.json', 'src/host/registry.ts');
+  git('commit', '-qm', 'chore(release): tempest v1.0.1');
+  git('tag', 'tempest-v1.0.1');
+
+  const changed = (id, since) =>
+    git('diff', '--name-only', since, 'HEAD', '--', ...changePathsFor(id)).split('\n').filter(Boolean);
+
+  // THE FINDING. With `:(exclude)src/host/registry.ts` in the lobby's pathspec
+  // this returned [] and shouldRelease said false, so `just release-all`'s lobby
+  // leg skipped at exit 0 and the front door kept serving the old tile set.
+  const lobbyChanged = changed('lobby', 'lobby-v0.1.0');
+  assert.deepEqual(
+    lobbyChanged,
+    ['src/host/registry.ts'],
+    'the lobby must see a game version bump — the registry is its only dependency on any game',
+  );
+  assert.equal(
+    shouldRelease({ hasPreviousTag: true, changedFiles: lobbyChanged.length }),
+    true,
+    'the lobby has an accumulated tile bump to ship and must not skip itself',
+  );
+
+  // The other direction, and the reason the exclusion cannot simply be deleted:
+  // asteroids did not change just because tempest was released. Without the
+  // exclusion this would be ['src/host/registry.ts'] and every release-all would
+  // ship all eight apps — the 2026-07-13 empty-release bug, restored.
+  const asteroidsChanged = changed('asteroids', 'asteroids-v0.0.1');
+  assert.deepEqual(asteroidsChanged, [], 'a sibling release must not make asteroids look changed');
+  assert.equal(shouldRelease({ hasPreviousTag: true, changedFiles: asteroidsChanged.length }), false);
+
+  // Anti-vacuity: this measurement must be able to produce a positive for
+  // asteroids too, or the [] above proves only that the diff is broken.
+  write('plugins/asteroids/src/core/sim.ts', 'export const x = 1\n');
+  git('add', '-A');
+  git('commit', '-qm', 'fix(asteroids): something real');
+  assert.deepEqual(changed('asteroids', 'asteroids-v0.0.1'), ['plugins/asteroids/src/core/sim.ts']);
+
+  // And re-runnability, the property the exclusion was protecting: once the lobby
+  // HAS released, a second sweep must skip it. The registry holds games only, so
+  // a lobby release commit leaves src/host/ identical to its own tag.
+  write('lobby/package.json', '{ "version": "0.1.1" }\n');
+  git('add', '--', 'lobby/package.json');
+  git('commit', '-qm', 'chore(release): lobby v0.1.1');
+  git('tag', 'lobby-v0.1.1');
+  const after = changed('lobby', 'lobby-v0.1.1');
+  assert.deepEqual(after, [], 'a second release-all must not re-ship the lobby');
+  assert.equal(shouldRelease({ hasPreviousTag: true, changedFiles: after.length }), false);
+});
+
+test('the skip message describes the pathspec that actually ran', () => {
+  // It did not. The old message was a hand-written sentence naming "src/host/"
+  // while the pathspec excluded the only part of src/host/ that had changed — so
+  // the operator most likely to be confused ("but I just released a game, the
+  // registry DID change") was told the registry was in the set. Derived now.
+  const game = skipReason('tempest', 'tempest-v1.0.28');
+  assert.match(game, /^tempest: nothing to release/);
+  assert.match(game, /plugins\/tempest, src\/shared, src\/host, vite\.config\.ts/);
+  assert.match(game, /minus src\/host\/registry\.ts/, 'a game skips BECAUSE the registry is excluded — say so');
+  assert.match(game, /since tempest-v1\.0\.28/);
+  assert.match(game, /Skipped\.$/);
+
+  // The lobby excludes nothing, so it must not claim to.
+  const lobby = skipReason('lobby', 'lobby-v0.1.0');
+  assert.doesNotMatch(lobby, /minus/, 'the lobby has no exclusion — a "minus" clause would be a false statement');
+  assert.match(lobby, /lobby, src\/shared, src\/host, vite\.config\.ts/);
+
+  // Derived, not restated: every included path must appear verbatim, for every
+  // app, so the sentence cannot drift from changePathsFor again.
+  for (const id of appIds()) {
+    const msg = skipReason(id, 'x-v1.0.0');
+    for (const p of changePathsFor(id)) {
+      if (p.startsWith(':(exclude)')) continue;
+      assert.ok(msg.includes(p), `${id}: the skip message does not mention ${p}`);
+    }
+  }
+});
+
+test('release() prints the derived skip message, not a restated one', () => {
+  // shape != use, again: skipReason could be perfect and unreferenced. The
+  // executor cannot be reached without performing a release, so this reads the
+  // source, in the same idiom as the gate-ordering test below.
+  const source = readFileSync(path('scripts', 'release.mjs'), 'utf8');
+  const body = source.slice(source.indexOf('export function release('));
+  assert.match(body, /console\.log\(skipReason\(/, 'release() must print the derived message');
+  assert.ok(
+    !/no change under \$\{appDirFor/.test(body),
+    'the hand-written skip sentence is back — it is what named src/host/ while excluding it',
+  );
 });
 
 // ---------------------------------------------------------------------------

@@ -235,9 +235,65 @@ export function shouldRelease({ hasPreviousTag, changedFiles, force = false }) {
  *     churns on every install.
  *
  * `--force` is the remedy for both, and the skip message names them.
+ *
+ * THE EXCLUSION IS RIGHT FOR A GAME AND WRONG FOR THE LOBBY, which is why it is
+ * conditional. Read the two directions separately, because they are opposites:
+ *
+ *   · For a GAME, `src/host/registry.ts` changing means some OTHER app was
+ *     released. Nothing about tempest changed; only its neighbour's version
+ *     string moved. Without the exclusion every `release-all` would ship all
+ *     eight apps every time (verified by sandbox release during Task 17) — the
+ *     2026-07-13 empty-release bug, restored. So it is load-bearing.
+ *
+ *   · For the LOBBY, `src/host/registry.ts` changing IS the change. It is the
+ *     lobby's ONLY dependency on any game: the tile set, titles, colours, order,
+ *     the `listed` flag and the version `lobby/src/shell/tiles.ts` renders as
+ *     `v${game.version}` all come out of that one generated file, and it is
+ *     bundled — `dist/assets/main-*.js` carries the literal version strings.
+ *     Excluding it left the lobby with nothing "changed" after ANY game release,
+ *     so `just release lobby` printed `nothing to release` and exited 0. Stale
+ *     tile versions are the mild case; the severe ones are a newly added game
+ *     that gets no tile at all, and a removed game whose tile keeps pointing at
+ *     a `/<id>/` that 404s. That is precisely the drift the deleted lobby-tile
+ *     version sync existed to prevent (see this file's header: centipede's tile
+ *     read 0.0.0 long after it shipped), re-entering through change detection.
+ *     [The old routine is named in this file's header, not here: the scrubber
+ *     `tests/release.test.mjs` scans with desyncs on apostrophes inside long doc
+ *     comments and reads this region as live code — over-strict, never lax.]
+ *
+ * WHY NOT `plugins/*` + `plugins/*\/plugin.ts` FOR THE LOBBY INSTEAD. That was the
+ * other candidate and it is the worse one: it re-models the registry's INPUTS in a
+ * second place. gen-registry.mjs decides what lands in that file; a pathspec that
+ * enumerates its sources has to be edited in lockstep with it forever, and when it
+ * is not, the lobby goes stale SILENTLY — the same second-copy failure mode as the
+ * hand-maintained registry both were built to kill. Asking about the derived file
+ * itself has exactly one source of truth.
+ *
+ * Re-runnability survives, which is the property the exclusion was protecting:
+ * the registry holds games only (no lobby entry), and a lobby release commit
+ * carries the regenerated registry, so a second `release-all` diffs `lobby-vX.Y.Z`
+ * against a HEAD whose `src/host/` is identical and skips exactly as before.
  */
 export function changePathsFor(id) {
-  return [appDirFor(id), 'src/shared', 'src/host', 'vite.config.ts', `:(exclude)${REGISTRY_REL}`];
+  const paths = [appDirFor(id), 'src/shared', 'src/host', 'vite.config.ts'];
+  return id === 'lobby' ? paths : [...paths, `:(exclude)${REGISTRY_REL}`];
+}
+
+/**
+ * Pure: what an app that has nothing to ship prints.
+ *
+ * DERIVED from changePathsFor rather than restated, because the restated version
+ * lied: it named `src/host/` while the pathspec excluded the only part of
+ * `src/host/` the lobby cares about, so the one operator most likely to be
+ * confused ("but I just released a game, the registry DID change") was told the
+ * registry was in the set.
+ */
+export function skipReason(id, previous) {
+  const paths = changePathsFor(id);
+  const dirs = paths.filter((p) => !p.startsWith(':(exclude)'));
+  const dropped = paths.filter((p) => p.startsWith(':(exclude)')).map((p) => p.slice(':(exclude)'.length));
+  const set = dirs.join(', ') + (dropped.length ? ` (minus ${dropped.join(', ')}, which every release rewrites)` : '');
+  return `${id}: nothing to release — no change under ${set} since ${previous}. Skipped.`;
 }
 
 /**
@@ -384,9 +440,7 @@ export function release(id, level = 'patch', { force = false } = {}) {
   if (!shouldRelease({ hasPreviousTag: Boolean(previous), changedFiles, force })) {
     // A no-op SUCCESS, not a failure: a sweep over every app must not abort on
     // the first one that has nothing to ship.
-    console.log(
-      `${id}: nothing to release — no change under ${appDirFor(id)}/, src/shared/, src/host/ or vite.config.ts since ${previous}. Skipped.`,
-    );
+    console.log(skipReason(id, previous));
     console.log(
       `  tsconfig.json and package-lock.json are outside that set on purpose: nothing in the gate`,
     );

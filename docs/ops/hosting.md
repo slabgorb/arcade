@@ -214,9 +214,30 @@ release at the end carries every accumulated tile bump.
 
 Before the gate, `release.mjs` asks whether the app has changed since its own last tag:
 `git diff --name-only <last tag> HEAD --` over `plugins/<id>/` (or `lobby/`),
-`src/shared/`, `src/host/` **minus the generated `registry.ts`**, and `vite.config.ts`.
-No change ⇒ it prints `nothing to release — … Skipped.` and returns a **no-op success**,
-so a sweep never aborts on the first app with nothing to do.
+`src/shared/`, `src/host/` and `vite.config.ts`. No change ⇒ it prints
+`nothing to release — … Skipped.` and returns a **no-op success**, so a sweep never
+aborts on the first app with nothing to do.
+
+**For a game — and only for a game — the generated `src/host/registry.ts` is excluded
+from that set.** Every release rewrites it, so without the exclusion any one app's
+release would make all eight look changed and `release-all` would ship the whole
+cabinet every time.
+
+**The lobby has no such exclusion, and must not grow one.** That file is its only
+dependency on any game: the tile set, titles, colours, order, the `listed` flag and the
+`v0.0.0` string on each tile all come out of it, and it is bundled into
+`dist/assets/main-*.js`. Excluding it made the paragraph above — "one lobby release at
+the end carries every accumulated tile bump" — impossible: after any game release the
+lobby had nothing "changed", so `just release lobby` printed `nothing to release` and
+exited 0 while the front door kept serving the old tiles. The mild symptom was a stale
+version on a tile. The severe ones were a newly added game with **no tile at all** and a
+removed game whose tile still pointed at a `/<id>/` that 404s. Pinned by
+`a game release leaves the LOBBY with something to ship — measured through git` in
+`tests/release.test.mjs`, which performs a real release in a throwaway repo.
+
+Re-runnability survives the asymmetry: the registry holds games only, and a lobby
+release commit carries the regenerated registry, so a second sweep diffs `lobby-vX.Y.Z`
+against a `src/host/` identical to it and skips.
 
 That guard exists because on 2026-07-13 `just release-all` was run twice in a row and
 the second run shipped **six** releases whose entire diff was the version bump — six
