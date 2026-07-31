@@ -1081,3 +1081,68 @@ unreachable — which would have meant a runtime break, refuted in one request
 both would have entered the permanent record as fact. Credit where due: security caught its OWN
 false positive mid-review when plain `curl` normalised `..` client-side, and re-ran with
 `--path-as-is`.
+
+---
+
+### A story that SHIPS a source-scanning guard: attack the guard, not just the code — and the guard's own comments are the likeliest place a false claim hides
+
+**Situation:** mg1-9 (typecheck `src/shared/tests`). The implementation was genuinely clean — 22 type
+errors closed by making the Web Audio doubles `implements` the real interfaces, no cast, no `any`, no
+`@ts-` directive, production signature untouched. rule-checker swept 30 rules / 61 instances: zero
+violations. preflight re-measured four baselines: all exact. security: clean. Three specialists green
+and the diff looked approvable.
+
+**What was actually wrong lived in the guard the story shipped to enforce its own AC.** The suite's
+premise was that "tsc exits 0" is satisfiable five ways and four are worthless, so a source scanner
+banned casts/`any`/`@ts-*`. That scanner had a **true false negative**, and it took executing the
+scanner to find it:
+
+```
+const s = "quote" // contains a stray backtick ` here
+const c = ctx as unknown as AudioContext
+const t = `template`
+```
+→ `findSuppressions()` returns `[]`. The same cast alone is flagged.
+
+Two deliberate design choices interacted: the line-comment strip excludes quote characters from its
+prefix class **on purpose** (so `'http://x'` isn't eaten), which leaves a comment intact on any line
+with an earlier quote; and the backtick-literal regex is the only one of three whose class does not
+exclude `\n`, so a surviving stray backtick pairs with the OPENING backtick of a real template
+literal further down and swallows the code between. Printing what the scanner believes it is reading
+made it undeniable in one line: `const s = "" // contains a stray backtick ``template``.
+
+**The reviewing technique that works on any scanner story:**
+1. **Import the exported scanner and call it directly.** Do not reason about the regexes. Feed it a
+   real cast, then the same cast with adversarial context around it.
+2. **Print the STRIPPED text**, not just the verdict. The bug is always visible there and invisible
+   in a boolean.
+3. **Probe both directions and say which way it fails.** A false positive fails closed (a nuisance);
+   a false negative is the actual hole. Rank them accordingly — I graded the FP Low and the FN Medium.
+4. **Verify the fix is safe before demanding it.** I asked for the backtick literal to be bounded to
+   one line only after measuring that the target file has **0 multi-line template literals and 0 lines
+   with an odd backtick count**. A required fix you have not checked is a guess with a deadline.
+5. **Check whether the guard flags its own documentation.** A ban on the literal `@ts-nocheck` reddens
+   on a comment saying "never add @ts-nocheck here". mg1-9's file survived only because it happened to
+   write the glob `@ts-*`. Proven by running it, and a tighter regex (directive must sit immediately
+   after the comment opener) was verified against 3 real directives and 2 prose mentions.
+
+**And when `comment_analyzer` is disabled, own that domain explicitly.** It is off in
+`workflow.reviewer_subagents` on this project. Four of my eight findings were documentation defects —
+a claim about the guard's reach that was wrong in THREE files ("every file under src/shared/tests"
+when the test filters to `*.test.ts`), a directional error ("above" for a line 337 lines below), the
+self-flag trap, and a miscount ("the three failure messages" pointing at four recorded mutations).
+None is dangerous; together they are the jt8-6 pattern exactly — that story burned three rounds
+because every defect lived in the one domain with no specialist. On a comment-dense diff, budget for
+prose review yourself and say in the assessment that you did, rather than letting a disabled row read
+as covered.
+
+**Balance the verdict explicitly.** Say what you are NOT asking to change. This rejection touched
+zero production code, zero doubles and zero config — it was the guard file plus four comment edits —
+and stating that up front is the difference between a cheap round and a demoralised one.
+
+**One process note:** test-analyzer's first return was already complete, but it had run long enough
+that I asked for a status re-confirmation before trusting it. The second return matched item-for-item.
+Asking cost one message and would have caught a truncated report; the sw7-16 lesson (an incomplete
+subagent return is not a clean one) applies to slow returns as well as visibly-truncated ones. Then
+re-verify the headline finding yourself regardless — I reproduced the bypass and the fix's safety
+first-hand before putting either in the assessment.
