@@ -209,7 +209,15 @@ cat docs/ops/migration-manifest.md
 
 - [ ] **Step 6: Record the real Cloudflare inventory**
 
-`docs/ops/hosting.md` and `lobby/src/core/registry.ts` disagree about which buckets exist, and joust's was never created. The teardown in Task 24 must work from reality.
+`docs/ops/hosting.md` and `lobby/src/core/registry.ts` disagree about which buckets exist. The teardown in Task 24 must work from reality.
+
+**CORRECTED 2026-07-31 — this step used to say "joust's was never created", and that is now false.**
+Task 1 measured **all eight** app buckets present with **all eight** custom domains active;
+`arcade-joust` was created 2026-07-26, which is precisely why Task 1's `joust v0.0.8` release produced
+that repo's **first green CI deploy** (ledger lines 72-74). The stale sentence was relayed out of the
+design spec into `CLAUDE.md`, `docs/ops/hosting.md` **and** `README.md` before Task 22's third fix
+round caught it. Left uncorrected here it would have re-entered through the next regenerated brief —
+which is exactly how it spread the first time.
 
 ```bash
 npx wrangler r2 bucket list >> docs/ops/migration-manifest.md
@@ -3618,7 +3626,7 @@ On GitHub, Settings → Archive this repository for each of `tempest`, `star-war
 - [ ] **Step 3: Delete the old buckets**
 
 ```bash
-for b in arcade-tempest arcade-star-wars arcade-asteroids arcade-battlezone arcade-red-baron arcade-centipede; do
+for b in arcade-tempest arcade-star-wars arcade-asteroids arcade-battlezone arcade-red-baron arcade-centipede arcade-joust; do
   echo "==> $b"
   npx wrangler r2 bucket delete "$b"
 done
