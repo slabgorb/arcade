@@ -13,12 +13,16 @@ input/render shell, the same architecture as its siblings
 > primary-source dossier (cp1), the playable raster slice — playfield,
 > mushrooms, the centipede train, rendering and the trackball (cp2), the
 > ecosystem — spider, flea, scorpion (cp3), and the game structure — waves,
-> bonus lives, attract mode, high-score entry (cp4). **Audio is the known,
-> deliberate gap:** there is no `src/shell/audio.ts`, no event channel and no
-> dispatch. It is deferred by name in the source (`src/core/bonus.ts:32`, on
-> `CENTI4.MAC:1994-1995`'s bonus-life sound) and owned by the open epic
-> `sprint/epic-cp5.yaml` — deliberately not stubbed, because an empty hook
-> would be dead code pretending to be a seam.
+> bonus lives, attract mode, high-score entry (cp4). **The audio SEAM has
+> landed (cp5-1) and the cabinet is still silent** — `src/core/events.ts` emits
+> every gameplay moment as data, `src/shell/audio.ts` holds the SOUNDS manifest
+> and channel map, and `src/shell/audio-dispatch.ts` wires them to the shared
+> engine. What is missing is the sound itself: **no samples are baked or
+> uploaded yet**, so every cue resolves to a file that is not there and the
+> shared engine degrades silently. Baking and hosting them is owned by the open epic
+> `sprint/epic-cp5.yaml`. The acceptance test for those asset stories is a
+> live `200` on the hosted `.wav`, never a green vitest — because a missing
+> sample and a working one look identical to the test suite.
 
 ---
 
@@ -116,11 +120,14 @@ sibling. Two centipede-specific notes an agent will otherwise get wrong:
 
 ## Shared library
 
-centipede consumes `@shared/rng`, `@shared/highscore`, `@shared/name-entry` and
-`@shared/loop` — the in-repo library at [`src/shared/`](../../src/shared/),
-reached through the `@shared/*` path alias. It does **not** consume
-`@shared/font` (score and level digits are ROM picture tiles, by epic ruling) or
-`@shared/audio` (see the status note above).
+centipede consumes `@shared/rng`, `@shared/highscore`, `@shared/name-entry`,
+`@shared/loop` and — as of cp5-1 — `@shared/audio`, the in-repo library at
+[`src/shared/`](../../src/shared/), reached through the `@shared/*` path alias.
+`src/shell/audio.ts` holds only this cabinet's numbers (the SOUNDS manifest, the
+CHANNELS voice map and the R2 base URL) and builds the shared engine from them;
+the WebAudio machinery itself is not forked. **No samples ship yet** — see the
+status note above. It does **not** consume `@shared/font` (score and level
+digits are ROM picture tiles, by epic ruling).
 
 Two known divergences, both recorded rather than silently absorbed:
 

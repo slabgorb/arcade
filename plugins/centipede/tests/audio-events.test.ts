@@ -255,11 +255,25 @@ describe('cp5-1 AC1 — the core stays pure with events.ts in it', () => {
   it('events.ts imports nothing from shell/ — the channel is DATA, not a callback', () => {
     expect(existsSync(eventsPath), 'cp5-1 must create src/core/events.ts').toBe(true)
     const src = readFileSync(eventsPath, 'utf8')
+
+    // The IMPORT rule scans the raw text on purpose: an import specifier IS a
+    // string, so stripping strings would blind it (the cp1-1 scanner lesson).
     expect(src, 'core must never import shell code').not.toMatch(/from\s+['"][^'"]*shell\//)
+
     // A callback-shaped channel defeats the whole seam: the core would be
     // holding a function the shell handed it, and replay would depend on it.
-    expect(src, 'the event channel must be data, not an injected sink').not.toMatch(
-      /\b(play|startLoop|stopLoop|audio)\s*[:(]/i,
+    //
+    // COMMENTS ARE STRIPPED FIRST, and that is not a softening — the first cut
+    // of this assertion matched raw text and flagged the module's own prose
+    // header ("the seam between the pure core and the shell's audio: the sim
+    // appends…" — `audio:`) as a live callback. That is precisely the
+    // false-positive the centipede purity scanner was rewritten to avoid
+    // (tests/purity-scanner.test.ts). Comments come off BEFORE anything else:
+    // an apostrophe inside one ("shell's") would otherwise open a phantom
+    // string and swallow real code.
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ')
+    expect(code, 'the event channel must be data, not an injected sink').not.toMatch(
+      /\b(play|startLoop|stopLoop)\s*[:(]/i,
     )
   })
 })
