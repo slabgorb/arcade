@@ -11,7 +11,8 @@ stories:
     description: "The seam only — this story ships NO baked samples and NO R2 uploads, so it cannot be blocked by asset production. It builds the three pieces the three sibling games share, so every later cp5 story is a matter of naming a cue and baking a file. Piece one: src/core/events.ts, a discriminated union of the gameplay moments the sim already produces, emitted as DATA on the step result and never as callbacks, so the core stays pure and a fixed seed replays an identical event stream. Centipede's sim already computes every moment worth a cue — the player shot, a segment or mushroom hit, a segment reaching the bottom, the spider, flea and scorpion arriving and leaving, the player exploding, the wave clearing, and the bonus life whose sound src/core/bonus.ts:32 has been holding a place for since cp4-4. Piece two: src/shell/audio.ts with the SOUNDS manifest (logical name to filename) and the CHANNELS map giving each cue its own voice-stealing channel, pointed at the centipede prefix under arcade-assets.slabgorb.com. Piece three: src/shell/audio-dispatch.ts, the event-to-cue switch carrying a never exhaustiveness guard so a future event kind added without a cue is a COMPILE error, not a silent omission. centipede already imports rng, highscore, loop and name-entry from @shared; audio is one more import line — the 2026-07-30 monorepo collapse removed the package boundary, so there is no subpath to export, no version pin and no bump ceremony at all. The sustained cues matter for the design: the centipede's marching tick and the spider's presence are loops, not one-shots, so the channel map must express start and stop, not only play."
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-07-31'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
