@@ -170,6 +170,25 @@ describe('one-time migration from the cross-origin cookie', () => {
     expect(tempest().load(), 'and all five survive the reload').toEqual(seeded)
   })
 
+  it('seeds a DESCENDING table even from an out-of-order cookie', () => {
+    // The seed writes the rows in the order it receives them, and the table logic downstream
+    // is not order-agnostic: `qualifiesForHighScore` states a sorted-descending precondition
+    // and reads the LAST row as the lowest. A cookie is untrusted and can be hand-edited out
+    // of order, so if the decode ever stopped sorting, a migrated player's very next score
+    // would be ranked against the wrong row — silently, and only for migrated boards.
+    document.cookie = 'arcade-hi-tempest=LOW:100,TOP:99999,MID:5000; Path=/'
+
+    const seeded = tempest().load()
+    expect(seeded.map((r) => r.score)).toEqual([99999, 5000, 100])
+
+    const stored: Array<{ score: number }> = JSON.parse(
+      localStorage.getItem(highScoreKey('tempest')) ?? '[]',
+    )
+    expect(stored.map((r) => r.score), 'and it is PERSISTED in that order').toEqual([
+      99999, 5000, 100,
+    ])
+  })
+
   it('writes NOTHING when the game’s own guard would reject a migrated row', () => {
     // The seed BUILDS rows rather than merely validating them, so it is the one place
     // that can persist something the game will not read back. A guard that rejects a null

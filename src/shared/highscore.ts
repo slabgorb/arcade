@@ -283,12 +283,24 @@ function encodeRows(rows: readonly TopScoreRow[]): string | null {
 // bare-number value (`124500`, published before this story) carries no `:`, so it yields no
 // rows and the board shows its empty state until the game republishes.
 //
-// SORT highest-first on the way back, then cap at PUBLISHED_SUMMARY_DEPTH — mirroring the
-// write side (`topRowsOf`). The cookie WE write is already sorted, but an untrusted value may
-// be out of order, and both `readTopScores`' "highest first" contract and `readTopScore`'s
-// "row 0 is the max" assumption must hold against a hostile/hand-edited cookie, not just our
-// own. Sorting before the slice also means the top-N are the true top-N by score, not the
-// first N encountered. The cookie is browser-capped at 4096 B, so the row count is bounded.
+// SORT highest-first on the way back, then cap at PUBLISHED_SUMMARY_DEPTH.
+//
+// This sort used to mirror a write-side one (`topRowsOf`, in the factory); Task 21 deleted
+// that with the rest of the publish, so ordering is now enforced HERE and nowhere else —
+// and there is no longer any such thing as a cookie "we wrote". Every value reaching this
+// function is untrusted and potentially out of order: written by a pre-collapse build, by
+// any sibling subdomain, or by a player editing it. Three things depend on the order:
+//
+//   - `readTopScores`' documented "highest first" contract.
+//   - `readTopScore`'s "row 0 is the max" assumption.
+//   - the one-time SEED in `makeHighScoreStorage`, which writes these rows into the game's
+//     table in the order it receives them. `qualifiesForHighScore` states a sorted-DESCENDING
+//     precondition (see its comment above) and reads the LAST row as the lowest, so a seeded
+//     table that arrived out of order would mis-rank the player's very next score. Guarded by
+//     `seeds a DESCENDING table even from an out-of-order cookie` (highscore.dom.test.ts).
+//
+// Sorting before the slice also means the top-N are the true top-N by score, not the first N
+// encountered. The cookie is browser-capped at 4096 B, so the row count is bounded.
 function decodeRows(value: string): TopScoreRow[] {
   const rows: TopScoreRow[] = []
   for (const pair of value.split(',')) {

@@ -77,10 +77,19 @@ describe('lb2-3 source rules', () => {
     }
   })
 
-  it("does not build the refresh on a 'storage' event, which a cookie never fires", () => {
-    // The pre-ADR instinct is `addEventListener('storage', …)`. Post-ADR-0004 the score lives
-    // in a COOKIE, and cookies emit no storage event — so that listener would never fire once,
-    // while looking exactly like a working feature. The story calls this out by name.
+  it("does not build the refresh on a 'storage' event, which cannot carry this signal", () => {
+    // The instinct is `addEventListener('storage', …)`. It was inert under ADR-0004, because
+    // the score lived in a COOKIE and cookies emit no storage event at all — a listener that
+    // never fired once while looking exactly like a working feature. The story called that
+    // out by name.
+    //
+    // Task 21 moved the primary read to same-origin localStorage, which DOES emit the event —
+    // so the old one-line reason no longer covers it, and the rule needs its real one. A
+    // `storage` event never fires in the document that made the change, and the lobby's case
+    // is a BFCache-frozen page that is not running when the game writes. `pageshow` is still
+    // the only signal that reaches it. The listener would fire strictly less often than
+    // before but still not when it matters, which is a worse failure than never: it would
+    // look like it worked.
     for (const file of sourceFiles()) {
       expect(code(file), `${file} listens for a 'storage' event`).not.toMatch(
         /addEventListener\s*\(\s*['"`]storage['"`]/,

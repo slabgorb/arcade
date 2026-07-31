@@ -189,6 +189,42 @@ describe('fail-soft — persistence never breaks the game', () => {
     expect(() => storage().save(table(9000))).not.toThrow()
   })
 
+  it('a SEED that cannot be persisted still shows the board, and keeps the cookie', () => {
+    // The seed's own quota path, which no other test reaches: every quota case saves, and
+    // every seeding case has room to write. It needs a full store AND a live cookie at the
+    // same time — that combination is exactly the gap.
+    //
+    // Three things must hold, and they pull in different directions:
+    //   1. The player SEES their migrated board. The rows are valid and in hand; refusing to
+    //      show them because the disk is full would turn a storage problem into a data-loss
+    //      one for the length of the session.
+    //   2. The cookie SURVIVES, so the next load — on a browser with room — migrates for
+    //      real. This is the only copy of those scores that crossed the origin boundary.
+    //   3. It is not silent. A failed persist is not the same as a successful one, and the
+    //      warning is the only trace it leaves.
+    //
+    // Note what is NOT asserted: that storage ends up holding the rows. It cannot, and a
+    // test that demanded it would be testing the stub.
+    const jar = makeCookieJar({ [COOKIE]: 'JPX:149830,AAA:98000' })
+    installBrowser(jar, makeQuotaStorage())
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    let seeded: ReturnType<ReturnType<typeof storage>['load']> = []
+    expect(() => {
+      seeded = storage().load()
+    }).not.toThrow()
+
+    expect(seeded, 'the migrated board is shown even though it could not be written').toEqual([
+      { name: 'JPX', score: 149830, level: null },
+      { name: 'AAA', score: 98000, level: null },
+    ])
+    expect(jar.values()[COOKIE], 'the only copy that crossed still exists').toBe(
+      'JPX:149830,AAA:98000',
+    )
+    expect(warn, 'a failed persist must leave a trace').toHaveBeenCalledTimes(1)
+    warn.mockRestore()
+  })
+
   it('does not throw when there is no browser at all (node)', () => {
     vi.stubGlobal('document', undefined)
     vi.stubGlobal('localStorage', undefined)

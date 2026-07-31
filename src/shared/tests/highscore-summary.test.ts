@@ -30,11 +30,11 @@
 // guard would pass locally and fail on GitHub. The behavioural half (rows, not a number)
 // is what this file enforces; the Reviewer reads the amended ADR's prose.
 //
-// NOTE (RED, for Dev): widening the published summary to rows changes the cookie VALUE
-// from `124500` to a rows encoding. `tests/highscore-publish.test.ts` asserts the old
-// bare-number value in ~10 places and its `spyTransport` implements the old
-// `publish(gameId, number)` signature — those are EXPECTED to need migration to the rows
-// shape during GREEN. They are not a regression; they are the cost of the format change.
+// The lb2-8 RED note that stood here — about migrating `tests/highscore-publish.test.ts`'s
+// bare-number assertions and its `spyTransport` to the rows encoding — is gone with the
+// thing it described: Task 21 deleted `spyTransport` along with the injectable transport,
+// and rewrote that file around the publish's ABSENCE. Nothing in the cabinet writes this
+// cookie now, so there is no format for a future widening to migrate.
 
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { makeCookieJar, locationStub, PROD_TEMPEST, type CookieJar } from './helpers/cookie-jar'
@@ -75,7 +75,7 @@ afterEach(() => {
 // AC (data half): the published summary is a TOP-N list of name+score rows
 // ---------------------------------------------------------------------------
 
-describe('save() publishes a rows summary the board can read back', () => {
+describe('a published rows summary decodes back into the board’s ladder', () => {
   it('round-trips every row as {name, score}, highest first', () => {
     const jar = makeCookieJar()
     installBrowser(jar, makeFakeStorage())

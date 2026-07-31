@@ -18,10 +18,18 @@ import { LISTED_GAMES } from '@host/registry'
 // a refresh function by name. Where the re-read entry point lives is Dev's call; that it
 // happens, and what the player then sees, is not.
 //
-// The score source is a COOKIE (lb2-2 / ADR-0004), which is why "listen for a `storage`
-// event" is not on the table: cookies do not fire one. `readTopScore` re-reads
-// `document.cookie` on every call, so a fresh read genuinely sees a fresh score — the only
-// thing missing is something to ask for it.
+// The score source is no longer the cookie alone. Task 21 collapsed the cabinet onto one
+// origin, so `getTopScore` -> `readBestKnownScore` reads the game's SAME-ORIGIN table first
+// and consults the ADR-0004 cookie only when this browser has no table for that game. The
+// cases below drive the cookie limb — they publish a ladder and never write a table — which
+// is the pre-migration player's path and still a real one.
+//
+// What did NOT change is why `pageshow` is the signal. Both seams are re-read on every
+// `getTopScore` call, so a fresh read genuinely sees a fresh score; the only thing missing
+// is something to ask for it. And neither seam pushes: a cookie fires no event at all, and
+// a `storage` event does not fire in the document that made the change and cannot be relied
+// on to reach a BFCache-frozen page. The listener rule in refresh-rules.test.ts still holds;
+// its stated reason is now the second half of that sentence rather than the first.
 
 // MIGRATION RECORD (Task 15) — 0 cases and 0 assertions removed. The four tile selectors
 // below were rewritten from absolute subdomain hrefs to the same-origin paths the tiles
