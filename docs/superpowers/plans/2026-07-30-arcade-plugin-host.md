@@ -2716,13 +2716,28 @@ If missing, set it from a file or a pipe — `gh secret set` under this harness 
 
 - [ ] **Step 4a: Three Node facts this workflow must respect (from Task 14's review)**
 
-**The ≥22.18 floor is transitive to the ENTIRE orchestrator suite, not just the generator.**
-`tests/registry.test.mjs` imports `../scripts/gen-registry.mjs`, which imports
-`../src/host/contract.ts`. On Node < 22.18 that import fails at **module load**, and under
-`node --test 'tests/**/*.test.mjs'` a load failure takes the whole file down — so **all ~310 tests
-stop collecting**, rather than merely losing the registry ones. A wrong pin here is not a partial
-failure, it is a suite that does not run. `node-version: 22` resolves to the latest 22.x and is
-correct; a literal `20` is not.
+**The ≥22.18 floor is real, it predates Task 14, and its blast radius is 5 tests — not the suite.**
+
+*(An earlier revision of this step said a wrong pin makes "all ~310 tests stop collecting." That was
+wrong and is corrected here. It came from a reviewer's inference; the Task 14 implementer measured
+the actual behaviour and pushed back, and the measurement is what stands.)*
+
+Measured on Node without type stripping: **305 / 298 / 5**. `node --test` isolates each file, so
+`tests/registry.test.mjs` — the only file with a *top-level* import reaching a `.ts` module — dies
+alone as a single `✖` while the other 304 tests run.
+
+And **four of those five failures are pre-existing**, from Task 12b: `tests/monorepo-topology.test.mjs`
+already `await import('../vite.config.ts')` at four call sites. Those are dynamic imports inside test
+bodies, so they fail per-test rather than at load. Which means the ≥22.18 floor was **already in
+force before Task 14 existed** — `engines.node: ">=20"` was a standing lie, and Task 14's bump
+corrected it rather than introducing a constraint.
+
+`node-version: 22` resolves to the latest 22.x and is correct. A literal `20` is not.
+
+Task 14 added `the running Node meets the floor package.json declares` to
+`tests/monorepo-topology.test.mjs` — a file that still loads on old Node — so the failure names
+itself instead of surfacing as `ERR_UNKNOWN_FILE_EXTENSION`. It is the only check of `engines` in the
+repo.
 
 **CI must run `npm run test:orchestrator`, or the registry anti-rot guard never runs at all.**
 `--check` exists on the generator but has **no npm script** — `gen:registry` only writes. Staleness
@@ -2731,11 +2746,11 @@ registry can drift from the manifests forever and CI will stay green. Either inv
 `test:orchestrator` in the workflow or add a `gen:registry -- --check` step; do not assume the vitest
 run covers it.
 
-**Verify whether Node 22.x still prints `ExperimentalWarning: Type Stripping` on stderr.** Nobody has
-been able to check — every machine on this plan runs Node 25, where the output is clean. If 22.x
-still warns, both `test:orchestrator` and `gen:registry` carry warning noise on every CI run. Find
-out before locking the pin; the fix is a version bump or `--disable-warning=ExperimentalWarning`, but
-knowing beats discovering.
+**Node 22.x prints no `ExperimentalWarning` — measured, question closed.** Task 14 ran it rather than
+reasoning about it: `npx -y node@22` resolves to **v22.23.2** (what `setup-node`'s `22` gives),
+`gen-registry --check` exits 0 with **stderr 0 bytes**, a bare `.ts` import loads clean, and the full
+orchestrator suite on 22.23.2 is 310/308/0/0/2, exit 0, no warning anywhere. CI carries no noise.
+`node-version: 22` is sufficient; do not regress below 22.18.
 
 - [ ] **Step 4b: Assert the workflow's deploy target — this task owns it now**
 
