@@ -228,7 +228,11 @@ export const findSuppressions = (src) => {
   // `any` defeats the check as thoroughly as a cast does.
   if (/\bas\s+any\b/.test(code)) bad.push('`as any` cast');
   if (/:\s*any\b/.test(code)) bad.push('`: any` annotation');
-  if (/(?<![A-Za-z0-9_$])<any>/.test(code)) bad.push('`<any>` cast');
+  // No lookbehind here, unlike the WebAudio rule below. `<any>` is unwanted in EVERY
+  // position — a `<any>x` cast, a `Array<any>` type argument, a `identity<any>(x)`
+  // call — because all three are `any` defeating the checker. Round 1 briefly copied
+  // the lookbehind here too and silently stopped catching `Array<any>`.
+  if (/<any>/.test(code)) bad.push('`<any>` usage');
   for (const t of WEBAUDIO_TYPES) {
     if (new RegExp(String.raw`\bas\s+(?:unknown\s+as\s+)?${t}\b`).test(code)) {
       bad.push(`cast to ${t} — the double must satisfy it, not be asserted into it`);
@@ -275,6 +279,7 @@ test('the suppression scanner flags what it must and ignores what it must not', 
     ['const c = ctx as any', '`as any`'],
     ['function f(ctx: any) {}', '`: any` parameter'],
     ['const c = <AudioContext>ctx', 'a legacy angle-bracket cast'],
+    ['const xs: Array<any> = []', '`any` as a generic type argument'],
     // THE REVIEW-ROUND-1 BYPASS. A stray backtick inside a `//` comment on a line
     // that also carries a quote — so the comment survives the strip — used to pair
     // with the opening backtick of a real template literal below and swallow every
