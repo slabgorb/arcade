@@ -4,7 +4,7 @@ title: 'Joust — playability: enemies hunt (full pursuit AI) and eggs can be ca
 description: 'Fifth joust epic — the PLAYABILITY slice. The game boots, renders, scores and tracks lives, but is not playable: enemies never hunt (smart brains are stepped without the player at frame.ts:265, and enemy facing never changes, so they orbit at a fixed altitude) and eggs cannot be collected (collisionPass has no player-vs-egg pass; the whole egg.ts scoring ladder is pure, tested, and never called). DESIGN + RULINGS: joust/docs/superpowers/specs/2026-07-28-joust-playability-design.md (Architect, 2026-07-28). GROUND TRUTH: joust/docs/rom-study/ + reference/williams-source/joust/JOUSTRV4.SRC (red-label RV4). REUSE-FIRST: the vertical-seek brains (enemy.ts, jt2-2) and the full egg ladder (egg.ts, jt2-4) already exist and are ROM-cited — this epic is WIRING plus two cited-only additions (horizontal homing + target selection), not a new system. USER RULINGS (2026-07-28, binding): (1) FULL pursuit AI; (2) FULL TARPLY/TARTM targeting with spawn-grace timers; (3) pf TDD, ROM citations, PRs to develop; (4) egg collection faithful to PLYEGG/EGGSCR. ARCHITECTURE: all additions pure src/core; the sim gains ONE carried field (aggro state) mirroring IntelBudget/BaiterClock; no second stepping path (jt2-1 one-sim seam). OUT OF SCOPE: 1P mode (shell concern, jt5). Radix discipline (Motorola: bare DECIMAL, dollar hex); every transcribed constant carries a radix-cited claim.'
 priority: p1
 status: in_progress
-repos: joust
+repos: arcade
 stories:
   - id: jt8-1
     title: Target aggro subsystem (TARPLY/TARTM) plus wire the targeted player into the enemy step
@@ -13,7 +13,7 @@ stories:
     priority: p1
     status: done
     started: '2026-07-28'
-    repos: joust
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - core/target.ts exists as a pure module carrying TARPLY/TARPL2/TARTM1/TARTM2 aggro state, threaded onto the sim (advanced in stepDemo, no second stepping path); the purity guard sweeps it green.
@@ -29,7 +29,7 @@ stories:
     priority: p1
     status: done
     started: '2026-07-28'
-    repos: joust
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - A smart enemy horizontally offset from its target updates PFACE toward the target per the ROM throttle (copy X-vel direction, not every wake); dir follows the updated facing; pinned by a seeded test with the throttle interval cited (:3907-3945).
@@ -45,7 +45,7 @@ stories:
     points: 3
     priority: p1
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - The hunter/shadow look-ahead turns the enemy (flip PFACE plus slow) when a cliff is B2XLEN=31 px ahead in its travel direction, and does NOT turn in open air — both cases pinned against arena.groundMaskAt; the plain bounder does NOT look ahead. Claims entry (:4104-4159, B2XLEN :3969 / SHXLEN :4228).
@@ -59,7 +59,7 @@ stories:
     priority: p1
     status: done
     started: '2026-07-29'
-    repos: joust
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'collisionPass gains a player-vs-egg pass: a player overlapping an egg emits the egg score events (via egg.ts eggScoreEvents) attributed to the catching player and REMOVES the egg; pinned by test.'
@@ -74,7 +74,7 @@ stories:
     points: 2
     priority: p2
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'The SELPLY nearest-of-two metric (:4476-4514) is decoded at 6809 instruction level with evidence (emulator trace or verified hand-trace): the axis combination (min/max/Euclidean or a dominant axis) AND the exact tie direction (the CMPB 1,S / BLO strict-less at :4512-4515) are stated, not guessed.'
@@ -86,7 +86,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-29'
-    repos: joust
+    repos: arcade
     workflow: tdd
     completed: '2026-07-30'
     type: bug
@@ -97,7 +97,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
     type: bug
   - id: jt8-8
@@ -105,6 +105,6 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
     type: bug

@@ -4,7 +4,7 @@ title: Tech debt — fleet-wide fixes and carried-open items from the joust jt1 
 description: 'Cross-repo tech debt surfaced by the jt1 joust foundation epic (2026-07-19/20). Three classes: (1) FLEET-WIDE holes joust found and closed locally — the sibling repos still carry them; (2) FOLD-BACK of improvements joust proved (the AST purity scanner and its case tables); (3) CARRIED-OPEN items the jt1 reviews named honestly rather than silently shipping. Each story cites the joust story/review that found it, and where joust already shipped the fix, the joust implementation is the reference — port it rather than re-deriving.'
 priority: p2
 status: backlog
-repos: lobby,tempest,star-wars,asteroids,battlezone,red-baron,centipede,joust
+repos: arcade
 stories:
   - id: td1-1
     title: Fleet strictPort is porous — pin host 127.0.0.1 in every subrepo's vite config
@@ -13,7 +13,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-20'
-    repos: lobby,tempest,star-wars,asteroids,battlezone,red-baron,centipede
+    repos: arcade
     workflow: trivial
     acceptance_criteria:
       - "Every servable subrepo's vite.config.ts pins host: '127.0.0.1' on both server and preview blocks; just serve still launches the whole fleet."
@@ -29,7 +29,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-20'
-    repos: centipede,tempest
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - centipede and tempest each run the TS-compiler-API scanner; all six false negatives are caught in each repo, each proven red against the old scanner once.
@@ -44,7 +44,7 @@ stories:
     points: 1
     priority: p3
     status: canceled
-    repos: joust
+    repos: arcade
     workflow: trivial
     acceptance_criteria:
       - The committed demo screenshot is re-taken from the post-hotfix renderer with lsof (or equivalent) proof of 5279 ownership recorded in the story notes.
@@ -57,7 +57,7 @@ stories:
     priority: p3
     status: done
     started: '2026-07-20'
-    repos: .
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'Both failures are diagnosed and the diagnosis is recorded: environment gap vs real regression, with the evidence that distinguishes them.'
@@ -71,7 +71,7 @@ stories:
     points: 2
     priority: p3
     status: canceled
-    repos: joust
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - Every text-matching or source-scanning assertion in the joust suite is mutation-checked; vacuous ones are re-aimed at content, and the sweep result is recorded (how many checked, how many were vacuous).
@@ -93,7 +93,7 @@ stories:
     priority: p3
     status: done
     started: '2026-07-20'
-    repos: tempest
+    repos: arcade
     workflow: tdd
     completed: '2026-07-20'
     type: bug
@@ -119,7 +119,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-20'
-    repos: battlezone,red-baron,centipede,joust
+    repos: arcade
     workflow: trivial
     completed: '2026-07-20'
     type: chore
@@ -153,7 +153,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-20'
-    repos: .
+    repos: arcade
     workflow: tdd
     completed: '2026-07-20'
     type: bug
@@ -174,7 +174,7 @@ stories:
     priority: p3
     status: done
     started: '2026-07-27'
-    repos: lobby,tempest,star-wars,asteroids
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - lobby, tempest, star-wars and asteroids each gain a tests/scaffold.test.ts guarding at minimum the pinned port, base, strictPort on both blocks, and host 127.0.0.1 on both blocks.
@@ -215,7 +215,7 @@ stories:
     priority: p1
     status: done
     started: '2026-07-20'
-    repos: .
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - Every multi-repo for-loop recipe in the justfile propagates failure — a failing game in ANY position (first, middle, last) makes the recipe exit non-zero, proven for all three positions.
@@ -243,7 +243,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: tempest,.
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - A failing tempest test proves expandAlsoun/expandSeq emits the ROM's terminal [reg,0] register write, red against the current tail-truncating code.
@@ -256,7 +256,7 @@ stories:
     points: 5
     priority: p1
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
     type: bug
   - id: td1-13
@@ -268,7 +268,7 @@ stories:
     points: 3
     priority: p3
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - "The citation gate re-opens each `ours` quote against a pinned audit COMMIT (git show <commit>:<file>), not the working tree, mirroring tempest's tp1-22 checker; editing a cited file no longer reddens the gate (prove it: insert a comment line above a pinned line and the suite stays green)."
@@ -281,7 +281,7 @@ stories:
     points: 2
     priority: p2
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     type: chore
   - id: td1-15
@@ -290,6 +290,6 @@ stories:
     points: 2
     priority: p3
     status: backlog
-    repos: .
+    repos: arcade
     workflow: tdd
     type: bug

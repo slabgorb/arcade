@@ -4,7 +4,7 @@ title: Unwired features — ported-but-unconsumed mechanics found by the 2026-07
 description: 'A fleet-wide sweep on 2026-07-28 (all nine subrepos on develop) hunted for features that are built, tested and cited against ROM source but never reach the running game. Mechanical module-graph scans were roughly 95 percent false positives — the fleet is well wired: no cold GameState fields, every arcade-shared subpath consumed, every event kind emitted AND handled, every .wav in every manifest returning 200 on R2, so the sw3-5 silent-404 class is clean. The real findings came from in-source confessions (the author who left the gap signed it) and from partially-consumed catalogues. Most stories here consume tested code rather than deriving new fidelity: the port already exists and only the wiring is missing. Two exceptions are called out in their own stories — uf1-6 is a promise the docs make that the code never kept, and uf1-7 is documentation drift. The sweep''s remaining finding — centipede and joust both shipping with no audio module at all — was epic-scale rather than story-scale and now has its own epics, cp5 and jt5, each seeded with a seam story. Context that drove that split: centipede and joust both ship with no audio module at all. centipede names its own gap in src/core/bonus.ts:32 — the bonus-life sound is ''DEFERRED to cp5 with the rest of the audio, and deliberately not stubbed, an empty hook would be dead code pretending to be a seam'' — so centipede audio already has a planned epic id. joust carries no equivalent note. Both need the multi-story treatment tempest, star-wars and asteroids each received, not a single story. --- SPLIT 2026-07-31. This epic had grown a second, unrelated charter: fifteen stories filed by the 2026-07-30 monorepo migration were landing here because this is where the last sweep''s leftovers went, leaving one 78-point epic under a title describing only half of it. Those are now epic mg1 (the migration tail). Also out: shell convergence became epic sc1 on the design''s own instruction (section 4.3); uf1-17 became ad1-6 because it edits the same red-baron manifest as ad1-5; uf1-21 became sw8-20 because it is a star-wars ROM display ruling; and uf1-7 was CANCELED — the migration''s Task 22 rewrote the hosting table it existed to correct, so its deliverable no longer exists. What remains here is the original sweep only. ONE PATH NOTE for every story below: they were written against nine repos and name paths like star-wars/src/core/. The tree is plugins/<game>/src/core/ now, and mg1-4 is the sweep that fixes the repos: routing those stale paths ride in on.'
 priority: p2
 status: backlog
-repos: red-baron,joust,star-wars,lobby,.
+repos: arcade
 stories:
   - id: uf1-1
     title: red-baron enemy planes cannot shoot — wire planeFires into the calc-frame damage channel
@@ -12,7 +12,7 @@ stories:
     points: 3
     priority: p1
     status: backlog
-    repos: red-baron
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - planeFires is called from the calc-frame loop for each live plane, with its roll drawn from a seeded Rng so a given seed param replays the same fire pattern.
@@ -28,7 +28,7 @@ stories:
     status: done
     assigned_to: Keith Avery
     started: '2026-07-28'
-    repos: joust
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - difficultyValue drives at least the lava rows and the buzzard energy-and-wing rows through their real consumers, so a later wave observably differs from wave 1 on each wired dial.
@@ -48,7 +48,7 @@ stories:
     status: done
     assigned_to: Keith Avery
     started: '2026-07-29'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - A TIE destroyed this step sets the nearby-alien signal that computeStatus reads, so C_AH can be true — threaded the same way C_AG threads firedGun, not read from mutable module state.
@@ -65,7 +65,7 @@ stories:
     points: 5
     priority: p2
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - Every one of the 13 currently test-only exports has an explicit disposition — wired to a production consumer, or removed, or documented in the module header as ROM data deliberately carried without a consumer and why.
@@ -81,7 +81,7 @@ stories:
     priority: p3
     status: done
     started: '2026-07-28'
-    repos: star-wars
+    repos: arcade
     workflow: trivial
     acceptance_criteria:
       - events.ts states the correct deferred count and names the 10 untriggered lines, so the number cannot drift again without the list drifting visibly with it.
@@ -98,7 +98,7 @@ stories:
     points: 5
     priority: p2
     status: done
-    repos: lobby
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'The product ruling is recorded and delivered: the lobby ships an always-on showcase carousel that frames each opted-in game live, not an idle-triggered attract loop of its own.'
@@ -120,7 +120,7 @@ stories:
     points: 1
     priority: p3
     status: canceled
-    repos: .
+    repos: arcade
     workflow: trivial
     acceptance_criteria:
       - The CLAUDE.md production table lists centipede and joust with their live URLs and their real bucket names, verified rather than inferred.
@@ -134,7 +134,7 @@ stories:
     points: 5
     priority: p3
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
   - id: uf1-9
     title: joust DYTBL cadence rows — wire the wing-flap timer, the decision timer and the up-flight VY gates (11 rows)
@@ -142,7 +142,7 @@ stories:
     points: 5
     priority: p3
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
   - id: uf1-10
     title: joust DYTBL egg-wait and lava-troll rows — wire EGGWT/EGGWT2 and LAVTIM/LAVGRA (4 rows, blocked on the troll grip)
@@ -150,7 +150,7 @@ stories:
     points: 3
     priority: p3
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
   - id: uf1-11
     title: joust troll GRIP is production-dead — beginGrip/stepGrip/escalateGrip have zero production callers
@@ -158,7 +158,7 @@ stories:
     points: 5
     priority: p2
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
   - id: uf1-12
     title: star-wars C_PS is never derived — TCH1DZ's loiter branch is unreachable dead code
@@ -167,7 +167,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-29'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - computeStatus derives C_PS from a rule cited to WSMAIN.MAC:3930, or the absence of a portable threshold there is logged as a deviation with the chosen rule and its rationale.
@@ -183,7 +183,7 @@ stories:
     points: 2
     priority: p3
     status: backlog
-    repos: lobby
+    repos: arcade
     workflow: trivial
   - id: uf1-15
     title: star-wars C_AS's fire cone is INVENTED — the ROM's own gate is a squared screen radius (WSCPU.MAC:615-618)
@@ -191,7 +191,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     type: bug
   - id: uf1-14
@@ -200,7 +200,7 @@ stories:
     points: 3
     priority: p1
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     type: bug
   - id: uf1-18
@@ -209,7 +209,7 @@ stories:
     points: 2
     priority: p2
     status: backlog
-    repos: .
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - The showcase frame's permissions policy is a stated decision with a reason, not a default inherited from the origin collapse.

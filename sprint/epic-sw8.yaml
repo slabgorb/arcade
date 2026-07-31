@@ -4,7 +4,7 @@ title: 'Cabinet feel: the flight and combat loop — render/experiential fidelit
 description: 'Second fidelity axis after sw7. sw7 verified sim-vs-ROM (constants/opcodes/tables) and is live; this epic verifies pixels-and-feel-vs-cabinet from a playtest report + the star-wars-longplay.mov reference. Coverage gap, not a regression: the render/camera/tuning layer was never held against the cabinet the way the sim was held against the source. GAMEPLAY-first per user directive 2026-07-20 (front-of-house split to sw9). Each story RULES the divergence (bug/tuning/accepted-deviation) before fixing — many items are already ROM-authentic in code and the real culprit is camera/projection/tuning. Design: star-wars/docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md'
 priority: p1
 status: backlog
-repos: star-wars
+repos: arcade
 stories:
   - id: sw8-1
     title: 'The moving eye — port the ST.UX viewer drift so the space viewpoint MOVES: Death Star can leave frame, starfield drifts laterally instead of forward-streaming (collapses camera + starfield + DS-approach)'
@@ -12,7 +12,7 @@ stories:
     priority: p1
     status: done
     started: '2026-07-21'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-21'
     review_verdict: approved
@@ -22,7 +22,7 @@ stories:
     priority: p1
     status: done
     started: '2026-07-21'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     depends_on: sw8-1
     completed: '2026-07-21'
@@ -34,7 +34,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-24'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-24'
     review_verdict: approved
@@ -44,7 +44,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-24'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-24'
     review_verdict: approved
@@ -54,7 +54,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-26'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-26'
     review_verdict: approved
@@ -64,7 +64,7 @@ stories:
     priority: p1
     status: done
     started: '2026-07-26'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-26'
     type: bug
@@ -75,7 +75,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-26'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-26'
     type: bug
@@ -85,7 +85,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-29'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-30'
     type: bug
@@ -96,7 +96,7 @@ stories:
     priority: p2
     status: done
     started: '2026-07-28'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-28'
   - id: sw8-10
@@ -104,7 +104,7 @@ stories:
     points: 2
     priority: p3
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     type: bug
   - id: sw8-11
@@ -113,7 +113,7 @@ stories:
     priority: p3
     status: done
     started: '2026-07-27'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-27'
     type: bug
@@ -124,7 +124,7 @@ stories:
     priority: p3
     status: done
     started: '2026-07-27'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     depends_on: sw8-11
     completed: '2026-07-27'
@@ -134,7 +134,7 @@ stories:
     points: 1
     priority: p3
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     depends_on: sw8-12
     type: bug
@@ -144,7 +144,7 @@ stories:
     priority: p3
     status: done
     started: '2026-07-27'
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     completed: '2026-07-27'
     type: chore
@@ -153,7 +153,7 @@ stories:
     points: 1
     priority: p3
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: trivial
     type: chore
   - id: sw8-16
@@ -161,7 +161,7 @@ stories:
     points: 1
     priority: p3
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     type: chore
   - id: sw8-17
@@ -169,7 +169,7 @@ stories:
     points: 3
     priority: p3
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     type: bug
   - id: sw8-18
@@ -177,7 +177,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     type: chore
   - id: sw8-19
@@ -186,7 +186,7 @@ stories:
     points: 2
     priority: p3
     status: backlog
-    repos: star-wars
+    repos: arcade
     workflow: tdd
     type: bug
   - id: sw8-20
@@ -195,7 +195,7 @@ stories:
     points: 2
     priority: p2
     status: backlog
-    repos: .
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - The ten default rows encode 'no real run' as null rather than the fabricated 0, or the story records a ROM citation showing the cabinet really does display 0 for its defaults and closes as won't-fix.

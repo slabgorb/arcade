@@ -4,7 +4,7 @@ title: Centipede audio — the sound subsystem centipede shipped without
 description: "centipede has no audio module at all: no src/shell/audio.ts, no core/events.ts event channel, no dispatch, and nothing under the arcade-assets centipede prefix. The game has been playable and silent since it shipped. The gap is deliberate and already named in the source — src/core/bonus.ts:32 records that CENTI4.MAC:1994-1995 (LDA I,17. / STA CHAN4, 'BONUS LIFE SOUND') is 'DEFERRED to cp5 with the rest of the audio, and deliberately not stubbed — an empty hook would be dead code pretending to be a seam', which is why this epic carries the id cp5. Three sibling games have already walked this path and are the reference, not a re-derivation: tempest, star-wars and asteroids each define a SOUNDS manifest (logical name to baked filename), a CHANNELS map giving each cue its own POKEY-style voice-stealing channel, a DEFAULT_BASE_URL under arcade-assets.slabgorb.com, a pure core/events.ts union the sim emits as DATA, and a shell/audio-dispatch.ts switch with a never exhaustiveness guard so adding an event kind without a cue is a compile error. All three consume the shared audio engine. POST-MIGRATION (2026-07-30): that engine is no longer a package — it is src/shared/audio.ts in this repo, imported as @shared/audio through an alias declared in vite.config.ts, vitest.config.ts and tsconfig.json. There is no subpath export to add, no pin to bump and no dist/ to build; centipede already imports @shared/rng, @shared/highscore, @shared/loop and @shared/name-entry the same way. THE ACCEPTANCE TEST FOR ANY ASSET STORY IN THIS EPIC IS A LIVE 200, NOT A GREEN VITEST. The shared engine degrades silently at every failure path by design — no WebAudio, blocked autoplay, failed fetch, undecodable sample all leave the game quiet and never throw — so a 404 is indistinguishable from working code. star-wars music was wired and silently absent in production for months for exactly this reason. There is no automated upload path for the arcade-assets bucket: CI deploys each app's dist only, so samples are placed by hand with wrangler r2 object put --remote and must be curl-verified."
 priority: p2
 status: backlog
-repos: centipede
+repos: arcade
 stories:
   - id: cp5-1
     title: Centipede audio seam — core event channel, shell dispatch and the SOUNDS manifest, no samples yet
@@ -12,7 +12,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: centipede
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - core/events.ts defines the event union and the sim emits it as data; the core purity scanner still passes, so no DOM, clock or randomness entered the core.

@@ -4,7 +4,7 @@ title: Joust audio — the sound subsystem joust shipped without
 description: "joust has no audio module at all: no src/shell/audio.ts, no core/events.ts event channel, no dispatch, and nothing under an arcade-assets joust prefix. Unlike centipede, joust carries no in-source note deferring it, so this epic is also the record that the gap is known. AMENDED 2026-07-31 AFTER THE MONOREPO MIGRATION: this epic was written when joust was the fleet's outlier for consuming NOTHING from @arcade/shared, and its first story's job was to rule on whether joust adopts the shared engine or stays standalone. The 2026-07-30 collapse ANSWERS that question by dissolving it — there is no package boundary left. src/shared/ is in-tree, reached as @shared/audio through an alias declared in vite.config.ts, vitest.config.ts and tsconfig.json; there is no pin, no git-URL dependency and no version-bump ceremony. Adopting the shared engine is now the default and costs an import line. The house pattern the three sibling games share still stands: a SOUNDS manifest mapping logical name to baked filename, a CHANNELS map giving each cue its own voice-stealing channel, a base URL under arcade-assets.slabgorb.com, a pure core/events.ts union the sim emits as DATA (never callbacks, so the core stays deterministic), and a shell/audio-dispatch.ts switch with a never exhaustiveness guard. Joust is a Williams machine, not an Atari one, so the sound ground truth is a different quarry from the five vector games — establishing what JOUSTRV4.SRC and its sound board actually provide is the first story's job, not an assumption to inherit. THE ACCEPTANCE TEST FOR ANY ASSET STORY IN THIS EPIC IS A LIVE 200, NOT A GREEN VITEST: the shared engine degrades silently at every failure path by design, so a 404 is indistinguishable from working code, and there is no automated upload path for the arcade-assets bucket."
 priority: p2
 status: backlog
-repos: joust
+repos: arcade
 stories:
   - id: jt5-1
     title: Joust audio seam — the core event channel and the dispatch, no samples yet (the shared-engine ruling is moot post-migration)
@@ -12,7 +12,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: joust
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'The shared-versus-standalone question this story was written to rule on is recorded as MOOT, not re-litigated: the 2026-07-30 monorepo collapse removed the package boundary, so the engine imports @shared/audio directly with no pin, no git-URL dependency and no version bump.'
