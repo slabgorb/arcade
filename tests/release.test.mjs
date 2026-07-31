@@ -477,23 +477,69 @@ test('release() prints the derived skip message, not a restated one', () => {
 // The gate, and the two files that must never come back
 // ---------------------------------------------------------------------------
 
-test('the gate runs ONE app\'s project and ONE app\'s build', () => {
+test('the gate type-checks, then runs ONE app\'s project and ONE app\'s build', () => {
   // The claim this whole task rests on: a red joust must not block a tempest
   // release. Eight repos with eight suites became one suite with ten projects, so
   // `--project <id>` IS the isolation — an unfiltered `vitest run` would restore
   // the fleet-wide gate the collapse was supposed to survive.
+  //
+  // The TYPE CHECK is the one deliberate exception to that isolation, added
+  // because nothing in this path checked types at all: `just ci` was
+  // `test-orchestrator test-all build-all`, this gate was vitest + build, vite
+  // transpiles through esbuild, and there is no push or PR workflow. So `just ci`
+  // green -> `just release` green -> commit + tag + two pushes, ALL IRREVERSIBLE
+  // -> and CI's first step, a repo-wide tsc, could fail on another game and block
+  // the deploy with the bump already permanently on main.
   const steps = gateSteps('tempest');
-  assert.equal(steps.length, 2, 'the gate is tests + build, both of them');
-  assert.deepEqual(steps[0].args, ['vitest', 'run', '--project', 'tempest']);
-  assert.equal(steps[0].cmd, 'npx');
-  assert.deepEqual(steps[1].args, ['scripts/build-app.mjs', 'tempest']);
-  assert.equal(steps[1].cmd, process.execPath, 'the build must run under this node, not a shell lookup');
-  // Every step is the named app's, for every app — no cross-app leakage.
+  assert.equal(steps.length, 3, 'the gate is type check + tests + build, all three');
+  assert.deepEqual(steps[0].args, ['run', 'lint']);
+  assert.equal(steps[0].cmd, 'npm');
+  assert.deepEqual(steps[1].args, ['vitest', 'run', '--project', 'tempest']);
+  assert.equal(steps[1].cmd, 'npx');
+  assert.deepEqual(steps[2].args, ['scripts/build-app.mjs', 'tempest']);
+  assert.equal(steps[2].cmd, process.execPath, 'the build must run under this node, not a shell lookup');
+
+  // `npm run lint` is a type check ONLY because package.json says so; the same
+  // half-check guards the CI side in tests/monorepo-topology.test.mjs. Without it,
+  // redefining `lint` as `echo ok` would leave this gate green and unchecked.
+  assert.equal(JSON.parse(readFileSync(path('package.json'), 'utf8')).scripts.lint, 'tsc --noEmit');
+
+  // Every step is the named app's, for every app — no cross-app leakage — EXCEPT
+  // the type check, which cannot be scoped: the root tsconfig's `include` is
+  // ["src", "plugins", "lobby", "scripts"], one program over the whole cabinet,
+  // and src/shared compiles into every app. Carved out by exact command rather
+  // than by index, so a reordering cannot smuggle an unscoped step past this.
+  const REPO_WIDE = 'npm run lint';
   for (const id of appIds()) {
-    for (const step of gateSteps(id)) {
-      assert.ok(step.args.includes(id), `${id}: a gate step does not name the app being released`);
-    }
+    const unscoped = gateSteps(id).filter((s) => !s.args.includes(id));
+    assert.deepEqual(
+      unscoped.map((s) => [s.cmd, ...s.args].join(' ')),
+      [REPO_WIDE],
+      `${id}: exactly one gate step may be repo-wide, and it must be the type check`,
+    );
   }
+});
+
+test('the release gate runs the SAME type check the deploy workflow does', () => {
+  // The whole point of adding it: CI's repo-wide tsc is the first thing a tag
+  // push meets, and the tag push is irreversible. A gate that type-checked
+  // DIFFERENTLY from CI would still let a release be cut that CI then refuses,
+  // with the bump already on main. So the two must be one command.
+  const workflow = readFileSync(path('.github', 'workflows', 'deploy.yml'), 'utf8');
+  assert.match(workflow, /^\s*-\s*run:\s*npm run lint\s*$/m, 'the deploy workflow no longer runs npm run lint');
+  const gate = gateSteps('tempest').map((s) => [s.cmd, ...s.args].join(' '));
+  assert.ok(gate.includes('npm run lint'), `the gate does not run the CI type check — gate is: ${gate.join(' | ')}`);
+
+  // And `just ci`, the third caller, so a developer's own sweep cannot be greener
+  // than either. Read off the real recipe header, not a paraphrase of it.
+  const justfile = readFileSync(path('justfile'), 'utf8');
+  const ci = /^ci:(.*)$/m.exec(justfile);
+  assert.ok(ci, 'the justfile has no `ci` recipe');
+  assert.ok(
+    ci[1].trim().split(/\s+/).includes('lint'),
+    `\`just ci\` does not depend on lint — its deps are: ${ci[1].trim()}`,
+  );
+  assert.match(justfile, /^lint:\n\s+@npm run lint$/m, 'the `lint` recipe must be the same one command');
 });
 
 test('every app id names a real vitest project — the gate cannot be vacuous', async () => {

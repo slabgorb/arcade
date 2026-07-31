@@ -300,6 +300,10 @@ export function skipReason(id, previous) {
  * Pure: the GATE — the two commands that must both succeed before anything is
  * bumped, tagged or pushed.
  *
+ * Three steps: a repo-wide type check, then this app's tests, then this app's
+ * build. The type check is the only one that is not scoped to `id` — see the
+ * comment on it below; the other two are.
+ *
  * `--project <id>` is the whole of the per-app isolation that had to survive the
  * collapse: eight repos with eight suites became one suite with ten projects, and
  * without the filter a red joust would block a tempest release. It is not a
@@ -312,6 +316,27 @@ export function skipReason(id, previous) {
  */
 export function gateSteps(id) {
   return [
+    // THE TYPE CHECK, AND WHY IT IS NOT SCOPED TO `id`.
+    //
+    // Nothing in this path used to type-check anything. `just ci` was
+    // `test-orchestrator test-all build-all`; this gate was vitest + build; vite
+    // transpiles through esbuild without checking types; and there is no push or
+    // PR workflow — `.github/workflows/` holds only deploy.yml, on `tags: ['*-v*']`.
+    // So the sequence was: `just ci` green -> `just release tempest` green ->
+    // commit, tag, push main, push tag, ALL IRREVERSIBLE -> and CI's first step, a
+    // repo-wide `tsc`, fails on a type error in some other game and blocks the
+    // deploy with the version bump already permanently on main.
+    //
+    // `tsc` CANNOT be scoped per app, and nobody should try: the root
+    // tsconfig.json's `include` is ["src", "plugins", "lobby", "scripts"] — one
+    // program over the whole cabinet — and src/shared compiles into every app, so
+    // a type error there belongs to all eight. It runs FIRST because it is the
+    // cheapest step and because that is the order deploy.yml runs it in.
+    //
+    // Spelled `npm run lint` rather than `npx tsc --noEmit` so this, `just lint`
+    // and deploy.yml are literally the same command; package.json owns the one
+    // definition, pinned by tests/monorepo-topology.test.mjs.
+    { desc: 'npm run lint (repo-wide tsc --noEmit — it cannot be scoped per app)', cmd: 'npm', args: ['run', 'lint'] },
     { desc: `npx vitest run --project ${id}`, cmd: 'npx', args: ['vitest', 'run', '--project', id] },
     {
       desc: `node scripts/build-app.mjs ${id}`,

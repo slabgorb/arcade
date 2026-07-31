@@ -460,11 +460,22 @@ test('td1-8 (successor): `serve` exits 0 when the dev server shut down healthy',
 // see the header note for why that is isolation, not fakery.
 // ---------------------------------------------------------------------------
 
-const CI_RECIPES = ['test-orchestrator', 'test-all', 'build-all', 'ci'];
+const CI_RECIPES = ['lint', 'test-orchestrator', 'test-all', 'build-all', 'ci'];
 // test-orchestrator runs the orchestrator's OWN node suite — THIS suite — not the
 // cabinet sweep; a no-op stub isolates the guard under test and avoids recursion.
 // test-all and build-all are the REAL recipes, driven by the shims.
-const CI_OVERRIDES = { 'test-orchestrator': 'test-orchestrator:\n    @exit 0' };
+//
+// `lint` (`@npm run lint`) is stubbed for a different reason: it shells to npm,
+// and the fixture directory has no package.json, so the real recipe would make
+// EVERY test below red for a reason none of them is about. It is listed in
+// CI_RECIPES rather than omitted on purpose — leaving it out would make `just ci`
+// die with "unknown recipe `lint`", which is non-zero, which is exactly what two
+// of the three tests below assert. They would pass on a broken fixture. Its own
+// red path has a dedicated test at the end of this block.
+const CI_OVERRIDES = {
+  lint: 'lint:\n    @exit 0',
+  'test-orchestrator': 'test-orchestrator:\n    @exit 0',
+};
 
 test('td1-10 AC2: `ci` cannot print "CI passed!" when the test sweep is red', TO, () => {
   // The unit tests fail. `ci`'s dependency chain must abort at test-all, so
@@ -522,4 +533,31 @@ test('td1-10 AC3: `ci` still passes when the whole cabinet is green', TO, () => 
   assert.equal(r.signal, null);
   assert.equal(r.status, 0, `the whole cabinet is green, so \`just ci\` must exit 0; got ${r.status}. Output:\n${r.combined}`);
   assert.match(r.combined, /CI passed/i, `an all-green ci must still announce success. Output:\n${r.combined}`);
+});
+
+test('`ci` cannot print "CI passed!" when the TYPE CHECK is red', TO, () => {
+  // The gap this recipe was added to close: `just ci` had no type check at all, so
+  // it went green on a repo `tsc` rejects — and `just release` then cut a tag,
+  // irreversibly, whose deploy CI refuses at its very first step.
+  //
+  // The type check must also come FIRST, so nothing else pays for a doomed sweep:
+  // asserted by `built` being empty AND by npx never being invoked (test-all is
+  // the only npx caller in this chain).
+  const r = runRecipe({
+    justfileText: read('justfile'),
+    recipe: 'ci',
+    recipeNames: CI_RECIPES,
+    games: ALL_PASS,
+    overrides: { ...CI_OVERRIDES, lint: 'lint:\n    @exit 7' },
+    npxExit: 0,
+  });
+  assert.equal(r.signal, null);
+  assert.notEqual(r.status, 0, `tsc is red, so \`just ci\` must exit non-zero. Output:\n${r.combined}`);
+  assert.doesNotMatch(
+    r.combined,
+    /CI passed/i,
+    `\`just ci\` printed "CI passed!" on a repo that does not type-check. Output:\n${r.combined}`,
+  );
+  assert.deepEqual(r.built, [], `ci must abort before build-all when the type check is red. Built: ${JSON.stringify(r.built)}`);
+  assert.deepEqual(r.npxCalls, [], `ci must abort before test-all — the type check is the cheapest step. Ran: ${JSON.stringify(r.npxCalls)}`);
 });

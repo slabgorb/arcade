@@ -135,8 +135,28 @@ extract-audio game *FLAGS:
 extract-audio-all:
     @node {{root}}/scripts/extract-audio.mjs --all
 
-# Full CI sweep: orchestrator checks + every game
-ci: test-orchestrator test-all build-all
+# Type-check the whole repo — the ONE thing `just ci` had no step for.
+#
+# `npm run lint` is `tsc --noEmit` (pinned by tests/monorepo-topology.test.mjs), and
+# it is spelled that way here rather than inlined so there is ONE definition of what
+# linting means: this recipe, the release gate (scripts/release.mjs gateSteps) and
+# `.github/workflows/deploy.yml` all run the same string.
+#
+# IT CANNOT BE SCOPED PER APP, and nobody should try. The root tsconfig.json's
+# `include` is ["src", "plugins", "lobby", "scripts"] — one program covering the
+# whole cabinet — and src/shared is compiled into every app anyway, so a type error
+# there is every app's. One repo-wide check is the honest shape.
+lint:
+    @npm run lint
+
+# Full CI sweep: type check + orchestrator checks + every game
+#
+# `lint` is FIRST and it is not decoration. Before it was here, `just ci` green ->
+# `just release tempest` green -> commit, tag, push main, push tag (all
+# irreversible) -> and CI's FIRST step is a repo-wide `tsc`, which can fail on a
+# type error in a DIFFERENT game and block the deploy with the version bump already
+# permanently on main. It is also the cheapest step, so it fails fastest.
+ci: lint test-orchestrator test-all build-all
     @echo "CI passed!"
 
 # ============================================
