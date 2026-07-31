@@ -132,6 +132,10 @@ test('releaseFiles: the regenerated registry is IN the release commit', () => {
   // src/host/registry.ts bakes each game's package.json version in, and
   // tests/registry.test.mjs pins the committed file against the manifests. A
   // release that bumped without regenerating would tag — and deploy — a red tree.
+  // Literals for two apps, because `[packagePathFor(id), …]` alone would agree
+  // with itself no matter what packagePathFor returned.
+  assert.deepEqual(releaseFiles('tempest'), ['plugins/tempest/package.json', 'src/host/registry.ts']);
+  assert.deepEqual(releaseFiles('lobby'), ['lobby/package.json', 'src/host/registry.ts']);
   for (const id of appIds()) {
     assert.deepEqual(releaseFiles(id), [packagePathFor(id), 'src/host/registry.ts'], id);
   }
