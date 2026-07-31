@@ -417,33 +417,43 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
     ).not.toContain('enemy-death')
   })
 
-  it('a long quiet run drains instead of accumulating', () => {
+  it('a quiet frame emits EXACTLY nothing — not merely fewer things', () => {
+    // The crisp form of the rule, and the one that bites. A `toBeLessThan(11)`
+    // bound looks like a leak detector and is not one: an appended stream that
+    // has only gathered four events in a quiet window is still under any
+    // generous bound, so the mutation passes. `=== 0` is the actual property.
+    // Frame 200 is the frame after the kill at 199, and it is silent.
+    const g = stepGame(advanceTo(0xbeef, 200), inputsAt(200))
+    expect(streamOf(g), 'frame 200 is a quiet frame — the stream must be empty').toEqual([])
+  })
+
+  it('and a long quiet run stays empty rather than accumulating', () => {
     // The unbounded-growth shape of the same bug: an appended array grows
-    // forever and the shell replays the whole wave every frame. The bound is
-    // deliberately generous — this is a leak detector, not a cue-count pin.
+    // forever and the shell replays the whole wave every frame.
     let g = stepGame(advanceTo(0xbeef, 199), inputsAt(199))
-    for (let i = 200; i < 330; i++) g = stepGame(g, inputsAt(i))
+    expect(kindsOf(g), 'precondition: frame 199 emits the kill').toContain('enemy-death')
+    for (let i = 200; i < 213; i++) g = stepGame(g, inputsAt(i))
     expect(
-      streamOf(g).length,
+      streamOf(g),
       'the stream never drained — events are accumulating across frames',
-    ).toBeLessThan(EXPECTED_KINDS.length)
+    ).toEqual([])
   })
 
   it('the stream is NOT joust’s capped DemoState.events log wearing a new name', () => {
     // `demo.ts:1173` keeps the last 32 entries of an append-only log and nothing
-    // clears it per frame. If the cue channel were that log (or derived from it
-    // by identity, the game.ts:376 trick), a quiet frame would still report the
-    // last kill. Compare the two directly: after a quiet frame the sim log still
-    // holds the old score entries while the cue stream must be empty of them.
-    const g = stepGame(advanceTo(0xbeef, 250), inputsAt(250))
+    // clears it per frame. If the cue channel were that log — or derived from it
+    // by the reference-set delta game.ts:376 uses — a quiet frame would still
+    // report the last kill. Compare the two ON THE SAME QUIET FRAME: the sim log
+    // is still carrying its history while the cue stream must be empty.
+    const g = stepGame(advanceTo(0xbeef, 200), inputsAt(200))
     expect(
       g.sim.events.length,
       'precondition: the capped sim log really is still carrying older entries',
     ).toBeGreaterThan(0)
     expect(
-      streamOf(g).length,
+      streamOf(g),
       'the cue stream is carrying the capped log forward — it must be rebuilt per frame',
-    ).toBeLessThan(g.sim.events.length)
+    ).toEqual([])
   })
 })
 
