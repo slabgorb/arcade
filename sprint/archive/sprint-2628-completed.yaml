@@ -1236,3 +1236,8 @@ completed_stories:
     title: "Typecheck arcade-shared's tests: 22 pre-existing errors in WebAudio doubles"
     points: 3
     completed: '2026-07-31'
+  - id: mg1-4
+    epic: mg1
+    title: sprint epics still route stories to per-game repos that repos.yaml no longer registers
+    points: 3
+    completed: '2026-07-31'
