@@ -2088,3 +2088,93 @@ readable; put the fingerprint and the distinguishing detail (the `<title>`, the 
 message instead. Same for `assert.doesNotMatch` against a whole file — CLAUDE.md is 10KB, so a
 prose assertion prints the entire document containing the defect. Split the file, filter the
 matching lines, and `deepEqual` against `[]` so the message names `file:line`.
+
+---
+
+### A "make the type errors go away" story: enumerate every CHEAP fix first, because the AC's real content is which ones are banned
+
+**Situation:** mg1-9 removes a tsconfig `exclude` and fixes the 22 type errors it was hiding
+(hand-rolled `FakeAudioContext`/`FakeGain` doubles that do not satisfy the real WebAudio types).
+The ACs read like a normal spec: exclusion gone, `tsc --noEmit` exits 0, doubles satisfy the real
+types rather than being cast, no test quietly removed.
+
+**Problem:** the headline AC — "tsc exits 0" — is satisfiable by at least five moves, four of them
+worthless, and `npm run lint` cannot tell them apart. Re-exclude the file. Narrow `include`
+instead. Delete the file. `// @ts-nocheck`. `as unknown as AudioContext`. Every one exits 0. The
+story's actual content is not "make tsc pass", it is "make tsc pass **the honest way**", so the
+suite has to be built out of that enumeration:
+
+| cheap fix | what catches it |
+|---|---|
+| re-exclude / narrow `include` / delete the file | a BEHAVIOURAL check that tsc's own `--listFiles` contains every file |
+| `@ts-nocheck` / `@ts-ignore` | raw-text scan (they live in comments — do NOT strip first) |
+| `as unknown as AudioContext`, `as any`, `: any` | comment- and string-stripped scan |
+| quietly deleting a test that won't compile | a pinned `it(`/`describe(` census |
+| **weakening the PRODUCTION signature to fit the double** | assert the real seam still says `AudioContext` |
+
+That last row is the one no AC named and the one I nearly missed. `noiseBuffer(context:
+AudioContext, …)` narrowed to `Pick<AudioContext, 'sampleRate' | 'createBuffer'>` turns all 22
+errors green with the doubles **untouched**, and every other test still passes. It is the
+exclusion's own trade — buy a green check by shrinking what is checked — moved one level down,
+except now it weakens a shared library seven cabinets compile against. Write the guard, and log it
+as a deviation: it is an AC reading enforced beyond the literal text, so the Reviewer should get to
+rule on it rather than discover it.
+
+**Generalisation:** for any story whose AC is "a checker exits 0", the checker's exit code is the
+weakest assertion in the building. Ask what the checker is *looking at*, and pin THAT.
+
+---
+
+### PROVE the honest fix is reachable before you ban the dishonest ones — an uncast WebAudio double is ~135 lines, and two of its traps cost real time
+
+**Situation:** same story. Before writing a suite that bans `as`, `any` and `@ts-nocheck`, I had to
+know the alternative existed. `AudioContext` needs **38** members, `AudioBufferSourceNode` 20,
+`OscillatorNode` 18, `GainNode` 12, `AudioParam` 12, `AudioBuffer` 7 — ~107 in total. A RED that is
+unsatisfiable is worse than no RED (the "PROBE YOUR OWN CONTRACT" entry above), and "just cast it"
+is what a cornered Dev does at hour three.
+
+**Result: it IS reachable — 135 lines, zero casts, tsc clean AND constructs/runs.** Four things
+made it tractable, and the middle two are not guessable:
+
+1. `extends EventTarget` supplies `addEventListener`/`removeEventListener`/`dispatchEvent`
+   honestly, on the context and on every node — 3 members × 6 classes for one word.
+2. **`Float32Array` is generic since TS 5.7.** `new Float32Array(n)` infers
+   `Float32Array<ArrayBufferLike>`, which does NOT satisfy `AudioBuffer.getChannelData(): 
+   Float32Array<ArrayBuffer>` — it fails via `SharedArrayBuffer`. Declare
+   `Float32Array<ArrayBuffer>` and build it as `new Float32Array(new ArrayBuffer(len * 4))`. This
+   was the last error standing and reads like a compiler bug if you have not seen it.
+3. Unused members must be **lazy**: `get listener(): AudioListener { return nope() }`, never
+   `readonly listener: AudioListener = nope()`. A field initialiser runs in the constructor, so the
+   thrower fires the moment any test builds a context — tsc is perfectly happy and every test dies
+   at runtime. Members the tests DO touch (`destination`) need a real working double.
+4. `connect`/`disconnect` need their overload signatures declared before the implementation;
+   `'connect' in target` narrows `AudioNode | AudioParam` without a cast, which matters when the
+   suite you are writing bans casts.
+
+**Two process notes:** run the probe through `node --experimental-strip-types` as well as `tsc` —
+tsc cannot see trap 3, and strip-only mode additionally rejects `constructor(readonly x: T)`
+parameter properties (vitest/esbuild accepts them, so this is portability rather than a blocker).
+And keep the probe file: its findings are most of the handoff, and the ~15 minutes it costs is
+recovered the first time Dev does not have to rediscover trap 2.
+
+---
+
+### A new orchestrator test that spawns a binary trips the CI-provisioning pin — use `process.execPath` + a lockfile path, not `npx`
+
+**Situation:** mg1-9's RED needs to run `tsc` from a `tests/*.mjs` file. I wrote the obvious
+`spawnSync('npx', ['tsc', '--noEmit', '--listFiles'])`. The full orchestrator run came back with
+**three** failures when I had authored two.
+
+**Problem:** `every binary the orchestrator suite spawns is provisioned by CI, not by the developer
+machine` (monorepo-topology.test.mjs) scans `tests/**/*.mjs` for spawn targets and pins the set to
+`{bash, git, just, node}`. `npx` was a newcomer, so it reddened — correctly. That guard exists
+because sixteen tests needing a brew-installed `just` once went red on `ubuntu-latest` and blocked
+**eight** release deploys.
+
+**Prevention:** the scanner skips `process.execPath` and any target containing `/`, so
+`spawnSync(process.execPath, [join(repo, 'node_modules', 'typescript', 'lib', 'tsc.js'), …])` asks
+nothing new of CI — and is the better invocation regardless, because `npm ci` guarantees that exact
+file on disk while `npx` goes looking. Widening the pinned set is the wrong first move: it is a
+deliberate list, and the newcomer must be provisioned before it is pinned. Worth knowing before you
+write the spawn, not after — and it is a reason to run the FULL orchestrator suite, not just your
+own file, before believing a RED is clean.
