@@ -112,14 +112,19 @@ Details and runbook: [`docs/ops/hosting.md`](docs/ops/hosting.md).
 ## Working on a game
 
 ```bash
-just dev-tempest     # start tempest's dev server  (http://localhost:5273/tempest/)
-just dev-lobby       # start the lobby dev server  (http://localhost:5270/lobby/)
-just test-all        # run tests across every game
-just build-all       # build every game
-just status          # git status across orchestrator + games
+just serve                # the ONE dev server for the cabinet (see the caveat below)
+just test-all             # every project's tests, in one vitest process
+just test-one tempest     # one app's tests — what the release gate runs
+just build-all            # build every app (seven games + the lobby) into dist/
+git status                # one repo, one history — `just status` is retired
 ```
 
-star-wars, asteroids, battlezone, and red-baron don't yet have dedicated
-`dev-*`/`build-*` recipes — run their commands directly instead:
-`cd star-wars && npm run dev` (same pattern for the others). See each game's
-own README for details.
+There are no per-game `dev-*`/`test-*`/`build-*` recipes any more, and no
+`just status`/`just pull`: each was `cd <name> && npm run …` across eight
+sibling checkouts that are now one repo. Take the app id as an argument instead.
+
+⚠ **`just serve` serves the LOBBY at every path today.** The root
+`vite.config.ts` default-exports the lobby's config, so `/`, `/tempest/` and even
+a nonsense `/banana/` all return `200` with identical bytes. A screenshot taken
+at `/tempest/` is the lobby — the `/<id>/` paths are real in the R2 build, not in
+dev.
