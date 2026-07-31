@@ -2930,6 +2930,32 @@ deploy-one name:
     fi
 ```
 
+**PLAN DEFECT #21 — the lobby's upload leg publishes every game sitting in `dist/`.**
+
+Both recipes above upload the lobby with `deploy-r2.mjs {{root}}/dist arcade-lobby` — the **whole**
+`dist/` tree, unprefixed. That was harmless when the lobby's build emptied `dist/` first. It no
+longer does: Task 16 found that `emptyOutDir: true` on the lobby **deleted all seven games** and
+correctly stopped it, so after any full build the games' output is still sitting there when the
+lobby's upload leg runs.
+
+The keys collide harmlessly — `collectUploads('dist')` yields `tempest/index.html`, the same key the
+prefixed leg produces — so nothing lands in the wrong place. Two real consequences remain:
+
+- **`just deploy-one lobby` publishes every game**, from whatever build happens to be on disk. Deploy
+  one app, ship eight. Measured before this step existed: `collectUploads('dist')` returns 34
+  objects, **29 of them games**.
+- **Stale output ships.** A game removed from `{{games}}`, or built from an older commit and never
+  rebuilt, is republished by the lobby leg with nothing announcing it.
+
+Fix it the same way Task 16 fixed the clean: **the lobby leg must be limited to the lobby's own
+top-level files**, not the tree beneath them. `scripts/build-app.mjs` already has the notion of "the
+lobby's own output" from `cleanLobbyOutput` — reuse that definition rather than inventing a second
+one that can drift from it.
+
+Prove it: build every app, then run the lobby's deploy leg in dry-run and assert the upload list
+contains **no** `<game>/` key. A test that only checks the lobby's own files are present would pass
+today and pass after a regression.
+
 - [ ] **Step 4: Update the `games` and `subrepos` variables**
 
 `games` becomes the seven plugin directory names; `subrepos` no longer exists as a concept and every reference to it must go. Verify:
