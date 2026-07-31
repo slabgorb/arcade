@@ -293,3 +293,12 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: td1-16
+    title: 'pf validate context-epic passes on a stale context: existence is checked, freshness never is'
+    description: "Found by the Reviewer during mg1-4's review, 2026-07-31, outside that story's file list and therefore filed rather than fixed in passing. This is an UPSTREAM pennyfarthing gap, sibling to td1-15. sm-setup Step 4b creates a story context UNCONDITIONALLY (pf context create story {ID}) but creates an epic context only 'if the epic has no context document yet'. pf/context/generate.py:175 writes unconditionally when called, so the conditional is the whole problem: an epic context is generated once, at the first story setup in that epic, and is never rewritten afterwards. The sm-setup-exit gate's epic-context-validated check (pf validate context-epic N) asserts only that sprint/context/context-epic-N.md exists and is non-empty, so a context that has drifted from the sprint YAML it was rendered from passes the gate forever. mg1-4 demonstrated the consequence concretely: that sweep corrected every repos value in the live sprint YAML, yet context-epic-jt8.md still rendered joust, context-epic-sw8.md star-wars, context-epic-td1.md an eight-name list and context-epic-uf1.md a five-name list — four live epics with 30 open stories between them, each handing the next agent a retired repo name through a green gate. mg1-4 regenerates those four files, which fixes today; nothing prevents the next divergence. The fix is one of two: have sm-setup regenerate the epic context unconditionally, exactly as it already does for story contexts, or give epic-context-validated a content check that re-renders from the sprint YAML and compares. Route upstream to pennyfarthing rather than patching a vendored copy."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
