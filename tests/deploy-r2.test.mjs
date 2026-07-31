@@ -49,6 +49,56 @@ test('collectUploads walks a nested tree into correct keys and content-types', (
   }
 });
 
+test('collectUploads prefixes keys when a prefix is given', () => {
+  // The eight apps share ONE bucket now, each owning a key prefix. A deploy that
+  // ignored the prefix would upload tempest's index.html over the lobby's.
+  const dir = mkdtempSync(join(tmpdir(), 'deploy-r2-prefix-'));
+  try {
+    mkdirSync(join(dir, 'assets'), { recursive: true });
+    writeFileSync(join(dir, 'index.html'), '<!doctype html>');
+    writeFileSync(join(dir, 'assets', 'app.js'), 'export {}');
+
+    const uploads = collectUploads(dir, 'tempest');
+    assert.deepEqual(
+      uploads.map((u) => u.key).sort(),
+      ['tempest/assets/app.js', 'tempest/index.html'],
+    );
+    // The content type must still come from the real extension after prefixing —
+    // a prefix that swallowed the extension would ship every object as
+    // octet-stream, which is the exact breakage this file's first test guards.
+    const byKey = Object.fromEntries(uploads.map((u) => [u.key, u]));
+    assert.equal(byKey['tempest/index.html'].contentType, 'text/html; charset=utf-8');
+    assert.equal(byKey['tempest/assets/app.js'].contentType, 'text/javascript; charset=utf-8');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('collectUploads leaves keys bare when no prefix is given', () => {
+  // The lobby owns the bucket root: it passes no prefix and must not grow one.
+  const dir = mkdtempSync(join(tmpdir(), 'deploy-r2-bare-'));
+  try {
+    writeFileSync(join(dir, 'index.html'), '<!doctype html>');
+    assert.deepEqual(collectUploads(dir).map((u) => u.key), ['index.html']);
+    assert.deepEqual(collectUploads(dir, '').map((u) => u.key), ['index.html']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('collectUploads does not double the slash on a trailing-slash prefix', () => {
+  // `dist/tempest/` and `tempest/` are both natural things for a caller to pass;
+  // `tempest//index.html` is a DIFFERENT R2 key from `tempest/index.html`, and it
+  // would 404 behind the custom domain while the upload reported success.
+  const dir = mkdtempSync(join(tmpdir(), 'deploy-r2-slash-'));
+  try {
+    writeFileSync(join(dir, 'index.html'), '<!doctype html>');
+    assert.deepEqual(collectUploads(dir, 'tempest/').map((u) => u.key), ['tempest/index.html']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('collectUploads throws a friendly error on an empty dist dir', () => {
   const tmp = mkdtempSync(join(tmpdir(), 'deploy-r2-empty-'));
   try {

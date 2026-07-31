@@ -31,6 +31,16 @@ tmux.conf
 # so a bare `tempest` also swallowed reference/atari-source/tempest/ and 57
 # files of vendored ROM source vanished from `git add` without a word.
 out/audio/
+# Build output. Every app now builds into a ROOT dist/<id>/ (dist/ itself for the
+# lobby) via `node scripts/build-app.mjs <id>`. Each subrepo used to carry its own
+# `dist/` rule in its own .gitignore; those left with the per-repo tooling, so
+# until this line existed nothing ignored the build at all and a single
+# `git add -A` would have committed eight built applications.
+#
+# ANCHORED (`/dist/`, not `dist/`) per the warning above: the build output is one
+# specific directory at the root, and an unanchored rule would also swallow any
+# directory named dist at ANY depth — including vendored reference material.
+/dist/
 # Imported subrepos' own .git directories, parked here rather than deleted so the
 # pre-monorepo history stays recoverable on this machine. Safe to remove once every
 # game is imported and its GitHub remote is confirmed in sync.

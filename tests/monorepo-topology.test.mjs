@@ -424,10 +424,19 @@ test('the root .gitignore covers node_modules', () => {
   assert.match(read('.gitignore'), /^node_modules\/$/m, '.gitignore must cover node_modules');
 });
 
-test('the root .gitignore covers dist', { todo: 'Task 16 Step 5b (added by plan commit 17e69b9, placed before its first build) adds dist/ to .gitignore' }, () => {
-  // Until Task 16 lands this, `build output is never tracked` above is the only
-  // thing standing between `git add -A` and a committed build.
+// Un-todo'd by Task 16 Step 5b, which added the rule before it ran the first build.
+// Until then, `build output is never tracked` above was the only thing standing
+// between `git add -A` and a committed build — and a todo cannot stop a commit.
+test('the root .gitignore covers dist', () => {
   assert.match(read('.gitignore'), /^\/?dist\/?$/m, '.gitignore must cover dist');
+  // Declaration is not behaviour: ask git itself. A rule that landed in a
+  // `!`-negated section, or after a stray `#`, still matches the regex above.
+  // `--no-index` because dist/ need not exist for the rule to be checkable.
+  const out = execFileSync('git', ['check-ignore', '--no-index', '-v', 'dist/tempest/index.html'], {
+    cwd: repo,
+    encoding: 'utf8',
+  });
+  assert.match(out, /\.gitignore:\d+:\/?dist\//, `git does not actually ignore built output: ${out}`);
 });
 
 test('exactly one deploy workflow exists for the whole cabinet', { todo: 'Task 18 creates .github/workflows/deploy.yml and deletes deploy-r2.yml' }, () => {
@@ -462,4 +471,53 @@ test('every plugins/ directory carries a plugin manifest', () => {
   for (const g of GAMES) {
     assert.ok(existsSync(path('plugins', g, 'plugin.ts')), `plugins/${g}/plugin.ts missing`);
   }
+});
+
+// Added by Task 16 (plan defect #20). Three games ship a second HTML page and
+// NOTHING guarded the chain that carries that fact into the build: BuildSpec has
+// no runtime validator, and the reader is a text parse of a declaration `tsc` is
+// happy to see reformatted. A reader that stops matching drops a dev-tool page
+// with no error at all.
+//
+// Note what this calls: `buildEntriesFor` from scripts/build-app.mjs — the REAL
+// reader the build uses, not a copy of its regex. A restated parse would keep
+// passing while the shipped one broke, which is precisely the failure being
+// guarded. Both directions are asserted against the filesystem, so neither a
+// silent drop nor a stale declaration survives.
+test('every plugin dev-tool HTML file is declared, and every declared one exists', async () => {
+  const { buildEntriesFor } = await import('../scripts/build-app.mjs');
+  // Pinned as DATA, per game — not an aggregate count, which stays green when one
+  // game's page moves to another. Taken from the per-repo vite.config.ts files
+  // before they were deleted.
+  const EXPECTED = {
+    tempest: ['models.html'],
+    'star-wars': ['models.html', 'scenes.html'],
+    'red-baron': ['models.html'],
+    asteroids: [],
+    battlezone: [],
+    centipede: [],
+    joust: [],
+  };
+  for (const id of GAMES) {
+    const onDisk = readdirSync(path('plugins', id))
+      .filter((f) => f.endsWith('.html') && f !== 'index.html')
+      .sort();
+    // Throws rather than returning [] when it cannot read a declaration, so a
+    // mangled manifest fails here loudly instead of comparing [] against [].
+    const declared = [...buildEntriesFor(id)].sort();
+    assert.deepEqual(
+      declared,
+      onDisk,
+      `${id}: declared dev-tool entries must match the .html files on disk — a reader that ` +
+        `stops matching drops a page silently, and a stale declaration breaks the build`,
+    );
+    assert.deepEqual(declared, [...EXPECTED[id]].sort(), `${id}: dev-tool page set changed`);
+  }
+  // Anti-vacuity: three games must actually HAVE pages, or seven empty comparisons
+  // would pass with the reader returning nothing at all.
+  assert.equal(
+    GAMES.reduce((n, id) => n + buildEntriesFor(id).length, 0),
+    4,
+    'the fleet ships four dev-tool pages; zero would mean the reader is reading nothing',
+  );
 });

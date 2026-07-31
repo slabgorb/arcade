@@ -3,7 +3,9 @@
 // a broken static site (html downloads, js fails to load as a module), so every
 // object is put with an explicit --content-type derived from its extension.
 //
-// Usage: node scripts/deploy-r2.mjs <distDir> <bucket>
+// Usage: node scripts/deploy-r2.mjs <distDir> <bucket> [keyPrefix]
+//   node scripts/deploy-r2.mjs dist          arcade-lobby           # the lobby, at the root
+//   node scripts/deploy-r2.mjs dist/tempest  arcade-lobby  tempest  # one game, under its prefix
 import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -43,20 +45,32 @@ function walk(dir) {
 }
 
 // Pure: walks distDir and computes the upload set. No wrangler, no side effects.
-export function collectUploads(distDir) {
+//
+// `keyPrefix` puts a game's objects under its own key prefix in the shared bucket —
+// one origin, one bucket, per-game deploy isolation: `node scripts/deploy-r2.mjs
+// dist/tempest arcade-lobby tempest` touches only `tempest/…` keys and cannot
+// disturb a sibling game or the lobby. The lobby passes no prefix and owns the
+// root keys, which is what makes `/` the front door and `/<id>/` each game.
+export function collectUploads(distDir, keyPrefix = '') {
   if (!existsSync(distDir)) {
     throw new Error(`no files found under ${distDir} — did the build run?`);
   }
   const files = walk(distDir);
   if (files.length === 0) throw new Error(`no files found under ${distDir} — did the build run?`);
+  // Trailing slashes are stripped before the single separator is added back:
+  // `tempest/` and `tempest` are the same prefix to a caller, but `tempest//x`
+  // is a genuinely different R2 key from `tempest/x` and would 404 while the
+  // upload reported success.
+  const prefix = keyPrefix ? `${keyPrefix.replace(/\/+$/, '')}/` : '';
   return files.map((file) => {
-    const key = relative(distDir, file).split('\\').join('/'); // POSIX keys on any OS
+    const rel = relative(distDir, file).split('\\').join('/'); // POSIX keys on any OS
+    const key = `${prefix}${rel}`;
     return { key, file, contentType: contentTypeFor(key) };
   });
 }
 
-export function uploadDir(distDir, bucket) {
-  const uploads = collectUploads(distDir);
+export function uploadDir(distDir, bucket, keyPrefix = '') {
+  const uploads = collectUploads(distDir, keyPrefix);
   for (const { key, file, contentType } of uploads) {
     console.log(`  ${bucket}/${key}  (${contentType})`);
     execFileSync(
@@ -65,15 +79,15 @@ export function uploadDir(distDir, bucket) {
       { stdio: ['ignore', 'ignore', 'inherit'] },
     );
   }
-  console.log(`Uploaded ${uploads.length} objects to ${bucket}.`);
+  console.log(`Uploaded ${uploads.length} objects to ${bucket}${keyPrefix ? `/${keyPrefix}` : ''}.`);
 }
 
 // CLI entry (only when run directly, not when imported by the test).
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [distDir, bucket] = process.argv.slice(2);
+  const [distDir, bucket, keyPrefix = ''] = process.argv.slice(2);
   if (!distDir || !bucket) {
-    console.error('Usage: node scripts/deploy-r2.mjs <distDir> <bucket>');
+    console.error('Usage: node scripts/deploy-r2.mjs <distDir> <bucket> [keyPrefix]');
     process.exit(1);
   }
-  uploadDir(distDir, bucket);
+  uploadDir(distDir, bucket, keyPrefix);
 }
