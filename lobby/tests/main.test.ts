@@ -17,9 +17,15 @@ import { GAMES, LISTED_GAMES, gamePath } from '@host/registry'
 // if main.ts ever reads the unfiltered list, this file reddens rather than the lobby
 // shipping a game that was opted out on purpose.
 //
+// A second rule about main.ts lives in `tests/registry.test.ts` → "which list the lobby
+// reads": a source-text tripwire that main.ts never names the unfiltered `GAMES`. It sits
+// there because that file owns what the lobby reads out of the registry; the behavioural
+// version of the same claim is the last case in THIS file.
+//
 // MIGRATION RECORD (Task 15) — 0 cases and 0 assertions removed. `GAMES` was rewritten
 // to `LISTED_GAMES` throughout (the list main.ts actually renders), href literals were
-// rewritten to same-origin paths, and one case was ADDED for the red-baron guard.
+// rewritten to same-origin paths, and two cases were ADDED: the red-baron guard, and the
+// mocked-registry case proving an unlisted game reaches neither the grid nor the carousel.
 
 // A minimal in-memory localStorage. The lobby no longer reads a game's table out of it
 // (lb2-2 / ADR-0004 — that store belongs to another origin and the lobby can never see it),
@@ -156,6 +162,65 @@ describe('lobby bootstrap', () => {
       expect(link?.getAttribute('href')).not.toContain('slabgorb.com')
     } else {
       expect(document.getElementById('showcase')).toBeNull()
+    }
+  })
+})
+
+// The behavioural half of the `listed: false` guard.
+//
+// Everything above runs against the REAL registry, where no game combines
+// `listed: false` with `showcase: true` — so mutating main.ts's `mountShowcase` call to
+// the unfiltered `GAMES` changes nothing observable, and killed zero tests when measured.
+// `tests/registry.test.ts` covers that with a source rule; this covers it with behaviour,
+// by supplying the registry the real one does not have.
+//
+// `vi.doMock`, not `vi.mock`: the latter is hoisted to the top of the file and would
+// replace the registry for every test above, which all depend on the real six. This is
+// scoped to one case and undone in `finally`.
+describe('a game that is showcase: true but listed: false', () => {
+  it('reaches neither the grid nor the carousel', async () => {
+    // GHOST is first, so a main.ts reading GAMES would put it on screen as slide one —
+    // the carousel starts at the first `showcase: true` entry it is handed.
+    const GHOST = {
+      id: 'ghost',
+      title: 'GHOST',
+      year: 1979,
+      color: '#ff00ff',
+      controls: ['NONE'],
+      order: 1,
+      listed: false,
+      showcase: true,
+      version: '0.0.1',
+    }
+    const REAL = { ...GHOST, id: 'alpha', title: 'ALPHA', order: 2, listed: true }
+    const GAMES_ = [GHOST, REAL]
+
+    try {
+      vi.resetModules()
+      vi.doMock('@host/registry', () => ({
+        GAMES: GAMES_,
+        LISTED_GAMES: GAMES_.filter((g) => g.listed),
+        gamePath: (id: string) => `/${id}/`,
+        getGame: (id: string) => GAMES_.find((g) => g.id === id),
+      }))
+      vi.stubGlobal('localStorage', fakeStorage())
+      await import('../src/main')
+
+      // The grid: one tile, and it is not the ghost.
+      const hrefs = [...document.querySelectorAll('#games a')].map((a) => a.getAttribute('href'))
+      expect(hrefs).toEqual(['/alpha/'])
+
+      // The carousel: mounted, and showing the listed game rather than the ghost. This is
+      // the assertion the source rule cannot make — it fails on BEHAVIOUR, so a refactor
+      // that keeps the behaviour keeps it green.
+      expect(document.querySelector('#showcase iframe')?.getAttribute('src')).toBe('/alpha/')
+      expect(
+        document.querySelector('#showcase a.showcase-launch')?.getAttribute('href'),
+      ).toBe('/alpha/')
+      expect(document.getElementById('showcase')?.textContent).not.toContain('GHOST')
+    } finally {
+      vi.doUnmock('@host/registry')
+      vi.resetModules()
     }
   })
 })

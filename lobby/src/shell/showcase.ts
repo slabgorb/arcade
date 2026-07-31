@@ -11,15 +11,23 @@
 //    A warm second frame would be a second 60 Hz sim on the same main thread, which is
 //    the cost that disqualified the per-tile layout in the first place.
 //
-// 2. **allow="" is a safety property, not a tidiness one, and the origin collapse made
-//    it MORE load-bearing, not less.** The autoplay permission's default allowlist is
-//    `self` — which used to mean "a cross-origin frame never inherits it", i.e. the
-//    subdomains could not have made noise even without this attribute. Every game is now
-//    framed from the SAME origin, so `self` matches and the frame would inherit autoplay
-//    by default. The empty `allow` is now the only thing keeping the carousel
-//    structurally incapable of making noise — no muting logic, no cooperation required
-//    from six separate games. Do not delete it as redundant; it stopped being redundant
-//    the moment the cabinet became one origin.
+// 2. **allow="autoplay 'none'" is a safety property, not a tidiness one, and it has to
+//    NAME the feature.** What keeps the carousel structurally incapable of making noise
+//    is a denial written out in full — no muting logic, no cooperation required from six
+//    separate games.
+//
+//    This frame carried `allow=""` for most of its life, on the reasoning that autoplay's
+//    default allowlist is `self` and a cross-origin frame therefore never inherits it.
+//    The first half was doing all the work: the games lived on their own subdomains, so
+//    they were denied BY ORIGIN, and the attribute contributed nothing. Task 15 put every
+//    game on the SAME origin, `self` started matching, and that protection evaporated.
+//
+//    An empty `allow` does NOT replace it. `allow=""` delegates no feature at all, so
+//    every feature falls back to its default allowlist — which for autoplay is now a
+//    match. Measured in Chrome 150, reading `document.featurePolicy.allowsFeature(
+//    'autoplay')` INSIDE the frame: `allow=""` → true; attribute absent → true (byte for
+//    byte the same outcome); `allow="autoplay 'none'"` → false. Only the explicit denial
+//    denies anything, which is why the string below is the one under test.
 //
 // 3. **Total failure REMOVES the pane.** It does not hide it and it does not sit on a
 //    black rectangle. An empty bordered box is indistinguishable from a game that
@@ -73,7 +81,10 @@ function slideFor(game: GameMeta): Node[] {
   const frame = document.createElement('iframe')
   frame.className = 'showcase-frame'
   frame.src = href
-  frame.setAttribute('allow', '')
+  // NOT `allow=''` — that delegates nothing and leaves autoplay on its default `self`
+  // allowlist, which a same-origin frame matches. The feature has to be named to be
+  // denied. See point 2 in the header for the measurement.
+  frame.setAttribute('allow', "autoplay 'none'")
   frame.setAttribute('aria-hidden', 'true')
   frame.setAttribute('tabindex', '-1')
 

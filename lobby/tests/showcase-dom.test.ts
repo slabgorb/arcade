@@ -80,19 +80,25 @@ describe('showcase pane', () => {
     expect(frameSrc()).toBe(pathTo(ALPHA))
   })
 
-  // The pane must be structurally incapable of making noise. The autoplay
-  // permission's default allowlist is `self` — which used to do the work for us,
-  // because the frames were cross-origin and could never inherit it. Task 15 put
-  // every game on the SAME origin, so `self` now matches and the frame WOULD
-  // inherit autoplay by default: this attribute went from belt-and-braces to the
-  // only thing holding the line, and this assertion with it. (allow="" does not
-  // delegate any feature at all — it is not a blanket "denies everything" property
-  // for features whose default allowlist is `*`. Autoplay is the one this pane
-  // structurally depends on, so that's the claim under test here.)
+  // The pane must be structurally incapable of making noise.
+  //
+  // This assertion read `allow === ''` until Task 15's review, and it was naming a
+  // guarantee it did not hold. `allow=""` delegates NO feature, so autoplay falls back to
+  // its default allowlist `self` — which the cross-origin subdomains missed (they were
+  // denied by origin, not by this attribute) and a same-origin frame MATCHES. Measured in
+  // Chrome 150 via `document.featurePolicy.allowsFeature('autoplay')` inside the frame:
+  // `allow=""` → true, no attribute at all → true, `allow="autoplay 'none'"` → false. So
+  // the empty value was exactly equivalent to omitting the attribute, and the origin
+  // collapse turned that from harmless into a live regression on the front door.
+  //
+  // The feature has to be NAMED to be denied, and this test now pins the string that
+  // actually denies it. `allow` still delegates nothing else — this is not a blanket
+  // "denies everything" property, and autoplay is the one the pane structurally depends
+  // on, so that is the claim under test.
   it('keeps the frame from ever inheriting autoplay, and out of the tab order', () => {
     mountShowcase(section, [ALPHA])
     const f = frame() as HTMLIFrameElement
-    expect(f.getAttribute('allow')).toBe('')
+    expect(f.getAttribute('allow')).toBe("autoplay 'none'")
     expect(f.getAttribute('aria-hidden')).toBe('true')
     expect(f.getAttribute('tabindex')).toBe('-1')
     // The accessible name belongs to the launch link laid over the frame, not the

@@ -16,6 +16,13 @@ import { JSDOM } from 'jsdom'
 // junk gets between the player and the games. A full-bleed decorative layer with a
 // z-index and no `pointer-events: none` is the classic way to build a screen where
 // every tile is unclickable — and it looks perfect in a screenshot.
+//
+// MIGRATION RECORD (Task 15) — 0 cases and 0 assertions removed, and no rewrites. This
+// file imports nothing from the registry: it parses index.html and asserts on the STATIC
+// shell, whose one registry reference (line ~129, "the tiles are built from the registry
+// at runtime") is prose that stayed true when the registry moved to src/host/. The
+// `#games` container it checks is empty by design in the markup, so nothing here depends
+// on which games exist or where they link.
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')

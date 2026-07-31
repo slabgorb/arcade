@@ -288,11 +288,20 @@ deploy-assets:
 # to this recipe. The old hand-kept `for u in tempest star-wars ...` list is
 # exactly the drift this migration exists to remove.
 #
+# That list is fetched into a VARIABLE and checked before the loop, not piped
+# straight into `while read`. Reading a process substitution directly discards the
+# producer's exit status — `set -uo pipefail` without `-e` does not cover it — so a
+# failed import (registry renamed, a syntax error in the generated file, a Node
+# below 22.18 with no type-stripping) yields empty stdout, zero iterations, and
+# `exit 0`. The recipe would report success having probed NOTHING, which is worse
+# than the hardcoded list it replaced: that one always probed six URLs. The whole
+# point of this check is to not be lied to, so it fails loudly instead.
+#
 # URL scheme, and why it is not flipped yet: after the origin collapse every game
 # is served at ARCADE_ORIGIN/<id>/ — but the cutover of the live hostnames is
 # Task 23's step 4, and it is the owner's to make. Until it happens the games
 # answer on their own subdomains and NOWHERE else, so probing the single origin
-# today would report a seven-line outage that isn't one — and a check that cries
+# today would report a six-line outage that isn't one — and a check that cries
 # wolf is worse than no check, which is the reason this recipe exists at all.
 # So: subdomains by default, single origin on request. After the cutover, set
 # ARCADE_ORIGIN=https://arcade.slabgorb.com in the environment (or make it the
@@ -301,9 +310,18 @@ check-showcase:
     #!/usr/bin/env bash
     set -uo pipefail
     fail=0
+    probed=0
     origin="${ARCADE_ORIGIN:-}"
     # id + path pairs, straight from the registry's own gamePath(). LISTED_GAMES,
     # not GAMES: red-baron is `listed: false` and has no live URL to probe.
+    if ! games=$(node -e "import('{{root}}/src/host/registry.ts').then(m => console.log(m.LISTED_GAMES.map(g => g.id + ' ' + m.gamePath(g.id)).join('\n')))"); then
+      echo "check-showcase: could not read the game list from src/host/registry.ts — nothing was probed" >&2
+      exit 2
+    fi
+    if [ -z "${games//[[:space:]]/}" ]; then
+      echo "check-showcase: the registry yielded no listed games — nothing was probed" >&2
+      exit 2
+    fi
     while read -r id path; do
       if [ -n "$origin" ]; then url="$origin$path"; else url="https://$id.slabgorb.com/"; fi
       # curl already prints 000 itself via -w on a connection failure (and also
@@ -318,7 +336,14 @@ check-showcase:
       code=$(curl -sL --connect-timeout 5 --max-time 15 -o /dev/null -w "%{http_code}" "$url")
       printf "%-12s %-46s %s\n" "$id" "$url" "$code"
       [ "$code" = "200" ] || fail=1
-    done < <(node -e "import('{{root}}/src/host/registry.ts').then(m => console.log(m.LISTED_GAMES.map(g => g.id + ' ' + m.gamePath(g.id)).join('\n')))")
+      probed=$((probed + 1))
+    done <<< "$games"
+    # Belt and braces on the same failure: if the list somehow survived both guards
+    # and still produced no probe, say so rather than exiting 0 on an empty run.
+    if [ "$probed" -eq 0 ]; then
+      echo "check-showcase: zero URLs probed" >&2
+      exit 2
+    fi
     exit $fail
 
 # ============================================

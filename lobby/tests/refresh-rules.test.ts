@@ -15,6 +15,12 @@ import { fileURLToPath } from 'node:url'
 //
 // These pass on today's code. They are here to fail on tomorrow's — each one is a specific
 // wrong turn that this story's fix invites.
+//
+// MIGRATION RECORD (Task 15) — 0 cases and 0 assertions removed, and no rewrites. The
+// rules below scan `lobby/src/**` by directory walk rather than by naming files, so
+// deleting `src/core/registry.ts` changed the set they cover without changing a line
+// here. The single registry mention (line ~60) quotes a comment in tiles.ts that survived
+// the migration verbatim.
 
 const SRC_DIR = fileURLToPath(new URL('../src', import.meta.url))
 

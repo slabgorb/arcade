@@ -106,23 +106,28 @@ describe('the games the lobby lists', () => {
 })
 
 // A SOURCE rule, in the idiom tests/refresh-rules.test.ts and tests/storage.test.ts
-// already use, and for the same reason they use it: this property is not observable from
-// the rendered page today.
+// already use.
 //
-// main.ts hands `mountShowcase` the same list it hands `renderTiles`. Swap that one to
-// the unfiltered `GAMES` and nothing anywhere goes red — measured, not assumed — because
-// `createShowcase` filters on `showcase` and no game currently combines `listed: false`
-// with `showcase: true`. The day one does, an unlisted game appears in the carousel it
-// was held back from, and the first anyone would know is seeing it on the cabinet. So
-// the rule is stated where it can be checked: in the text.
+// **The behavioural guard is the primary one, and it lives elsewhere.**
+// `tests/main.test.ts` → "a game that is showcase: true but listed: false > reaches
+// neither the grid nor the carousel" mounts the real bootstrap over a MOCKED registry
+// containing the combination the real one lacks, and fails on behaviour. Verified to kill
+// the `mountShowcase(showcase, GAMES)` mutant on its own, with this rule skipped.
+//
+// This rule is kept alongside it as a cheap tripwire, because it catches the mistake one
+// step earlier — at the `import { GAMES }` that a wrong diff arrives with, before any
+// call site is touched. It is deliberately narrowed to that single claim: earlier drafts
+// also pinned the literal arguments (`renderTiles(games, LISTED_GAMES, …)`), which
+// reddened on a behaviour-preserving refactor like
+// `const shown = LISTED_GAMES; renderTiles(…, shown); mountShowcase(…, shown)`. That is a
+// test dictating shape rather than substance, so those two assertions are gone. What is
+// left cannot fire on that refactor and still fires on every route to the real mistake.
 describe('which list the lobby reads', () => {
   const source = readFileSync(fileURLToPath(new URL('../src/main.ts', import.meta.url)), 'utf8')
   /** main.ts's CODE — prose *about* GAMES is not a read of GAMES. */
   const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 
-  it('renders and showcases LISTED_GAMES, and never touches the unfiltered GAMES', () => {
-    expect(code).toMatch(/renderTiles\(\s*games,\s*LISTED_GAMES\s*,/)
-    expect(code).toMatch(/mountShowcase\(\s*showcase\s*,\s*LISTED_GAMES\s*\)/)
+  it('never names the unfiltered GAMES at all', () => {
     // `\bGAMES\b` cannot match inside `LISTED_GAMES`: `_` is a word character, so there
     // is no boundary before the `G`. This fires only on a genuinely bare `GAMES`.
     expect(code, 'main.ts reads GAMES — red-baron opted out and would appear').not.toMatch(
