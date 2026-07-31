@@ -309,3 +309,93 @@ stories:
       - A partial-failure test asserts that when an upload throws midway, no HTML entry point has been written. Asserting that the command exits non-zero is not enough - it already does that, and it is exactly what happened while the site was one object away from breaking.
       - The lobby and a prefixed game are both covered, since the lobby writes to the bucket root and a game writes under its own prefix, and only the lobby's index.html can replace the live front door.
       - The rationale is recorded in the script so the next reader does not restore alphabetical ordering as a simplification.
+  - id: uf1-24
+    title: 'Shell convergence: compositional host helpers across the seven games'
+    description: "Spec section 4.3, named as out of scope for the monorepo migration and deferred here rather than dying in an archive note. The seven games' main.ts files share almost nothing structurally even though they each do the same handful of things: mount a canvas, unlock audio on first gesture, install a pause toggle, wire a high-score store. The migration deliberately did not touch this - a Global Constraint forbade modifying any game's main.ts beyond an import-path rewrite, precisely so the collapse could not be blamed for a behaviour change. That constraint expires with the migration; this story is what it was protecting. Design compositional helpers - mountCanvas, installAudioUnlock, installPauseToggle - that each game adopts ONLY where it already does that thing. The adoption matrix in the spec is the input: this is not a mandate to give every game every helper, and a game that has no pause today must not grow one here. The hard constraint is timing fidelity: centipede and joust are ROM-cadence games whose per-wave timing is gated against original source, so a helper that changes when a frame starts or how input is sampled is a regression even if every test stays green. Land the helpers behind the games rather than in front of them, and adopt one game at a time so a cadence change has one suspect."
+    points: 8
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - Each helper is adopted only by games that already perform that behaviour, with the adoption matrix recorded so a later reader can see which omissions are deliberate rather than missed.
+      - centipede's and joust's ROM cadences are unchanged, proven by their existing determinism replays reproducing bit-for-bit rather than by the suite being green.
+      - Adoption lands one game per commit, so a timing regression has a single suspect.
+      - Each helper is proven non-vacuous by mutation - disabling it reddens a test asserting the behaviour it provides, not merely that the helper was called.
+  - id: uf1-25
+    title: Safari ITP purges the games' own high scores after 7 days
+    description: "ADR-0004 logged this as follow-up 1 and it was never filed - found while auditing that ADR during the monorepo migration's Task 22. Safari's Intelligent Tracking Prevention deletes script-writable storage, including localStorage, after 7 days without user interaction with the site. This has been universal since Safari 13.1 and applies to first-party storage, not just trackers. A player who does not come back within a week can lose their high-score table outright. This is PRE-EXISTING and entirely unaffected by the migration - the collapse to one origin changes which origin holds the table, not how long Safari keeps it. It is filed separately from the migration work for exactly that reason: fixing it is a product decision about durable storage, not a cleanup task. Note the interaction with the migration's own cookie bridge - that cookie is a 400-day document.cookie value on the registrable domain and is NOT subject to the same 7-day localStorage purge, so today it is accidentally the more durable of the two stores. Its publish side is now retired, so it will not keep itself fresh. Severity depends on uf1-26's measurement of how the interaction clock is scoped."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - The behaviour is confirmed in a real Safari, not inferred from WebKit's published policy, since that policy has already proven to differ from observed behaviour elsewhere in this area.
+      - A decision is recorded with its reasoning - accept the loss, re-seed from the surviving cookie, or move to a storage mechanism ITP does not purge - rather than leaving the gap documented and unowned.
+      - If re-seeding is chosen, it must not resurrect a table the player deliberately cleared. An EMPTY table is a real answer and must not fall through to the cookie, which is the exact bug readBestKnownScore already exists to prevent.
+      - Whatever is chosen is guarded by a test that fails if the durability assumption changes.
+  - id: uf1-26
+    title: "Empirically test Safari ITP's interaction clock: per-hostname or per-eTLD+1"
+    description: "ADR-0004 logged this as follow-up 2 and it was never filed. It decides the SEVERITY of uf1-25, which is why it is worth its own story despite being small. If ITP's 7-day interaction clock is scoped per-hostname, then before the monorepo collapse a player had seven independent clocks - playing tempest did nothing to preserve their asteroids table - and the collapse to one origin is a genuine IMPROVEMENT, because any visit to arcade.slabgorb.com now refreshes the clock for every game at once. If the clock is scoped per-eTLD+1, the behaviour was already shared and the collapse changes nothing. The migration made this measurable for the first time by putting every game on one origin. This must be measured in a real Safari rather than read out of the specification: WebKit's localStorage partitioning already contradicts its own published policy, which is precisely the trap that produced a Critical finding during this migration when iframe permission behaviour was reasoned about instead of measured and came out exactly backwards."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - The scoping is determined by observation in a real Safari - two hostnames on one registrable domain, one visited and one not - and not from documentation.
+      - The result is written into ADR-0004 as an amendment with the date and the Safari version tested, since the answer can change between releases.
+      - uf1-25's severity is updated to match the finding rather than left at its filed guess.
+  - id: uf1-27
+    title: 'Purity fence: importClosure misses side-effect and dynamic imports'
+    description: "src/shared/tests/purity.test.ts enforces ADR-0003's pure/browser split, and its strongest guard is a transitive fence - a module declared PURE must not reach a DOM global THROUGH an import either, not merely in its own source text. That fence walks the import graph with importClosure(), which matches only `from '...'` relative specifiers. A bare side-effect import (import './x.js') or a dynamic import() therefore bypasses the closure check entirely. This was found by MUTATION during the Task 4 re-review, by a reviewer trying an attack the implementer had not thought of: it made a pure module reach the DOM via a side-effect import, and the closure test stayed GREEN. Only the whole-tree backstop caught it, and that backstop only reaches the file because src/shared is currently FLAT - every module sits in one directory. The gap becomes real the moment src/shared grows subdirectories, which is the natural next step for a library this size. The regex is byte-identical to the one in the original arcade-shared repo, so this is inherited rather than introduced by the migration - which is why it is filed rather than fixed in passing."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - importClosure resolves bare side-effect imports and dynamic import() calls in addition to `from` specifiers, so a pure module cannot reach a DOM global by any import form.
+      - The fix is proven by the mutation that exposed it - a pure module reaching the DOM through a side-effect import must redden the CLOSURE test by name, not merely the whole-tree backstop.
+      - A subdirectory case is covered, since the current backstop's coverage depends on src/shared being flat and that is the condition about to change.
+      - The ESM specifier detail is preserved - the walker resolves .js specifiers back to .ts, without which it traverses nothing and passes vacuously.
+  - id: uf1-28
+    title: "Typecheck arcade-shared's tests: 22 pre-existing errors in WebAudio doubles"
+    description: "src/shared/tests is excluded from the root tsconfig, added during the migration's Task 4 to hold the pre-migration line rather than to hide new damage. The reason it was needed: arcade-shared never had a tsconfig of its own and its tests were never compiled - vitest strips types without checking them - so nobody had ever type-checked that directory. Probing it under the root config surfaced 22 real errors, almost all hand-rolled FakeAudioContext and FakeGain doubles that do not satisfy the real WebAudio types, plus possibly-undefined access and empty-tuple indexing in tests/synth.test.ts. The exclude was scoped to that one path deliberately - every game's tsconfig has always included its own tests, so a blanket exclude would have silently dropped seven games' type coverage. The cost of leaving it: these tests can assert against types that do not hold, and any test file added under src/shared/tests is untypechecked from the moment it lands. That already happened during the migration - Task 21's highscore.dom.test.ts is untypechecked today. Fix the doubles, drop the exclude."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - The exclude for src/shared/tests is removed from the root tsconfig and npx tsc --noEmit exits 0 with it gone.
+      - The WebAudio doubles satisfy the real types rather than being cast to them, since a cast reintroduces the same blindness the exclude created.
+      - No other path is added to the exclude list as part of this work - the whole point is that the exclusion was scoped to one directory and stays that way.
+      - The test suite's pass count is unchanged, so the fix is a typing change and not a quiet removal of tests that would not compile.
+  - id: uf1-29
+    title: Rename the cabinet bucket arcade-lobby to arcade-cabinet
+    description: "Spec section 6.2, deferred out of the monorepo migration. The bucket named arcade-lobby now holds the entire cabinet - the lobby at its root keys and all seven games under their own key prefixes - so its name describes what it used to be rather than what it is. Purely cosmetic, and the cost is one custom-domain rebind on arcade.slabgorb.com plus updating every reference in code and docs. Two traps worth knowing before starting. First, do NOT confuse this with the bucket named plain `arcade`, which is the ASSETS bucket behind arcade-assets.slabgorb.com - it is the one bucket in the account whose name does not match its domain, and mistaking the two produces a `specified bucket does not exist` error that reads like a permissions problem. Second, the bucket name is not in one place: it appears in the justfile's deploy recipes, in .github/workflows/deploy.yml, and is asserted by tests/monorepo-topology.test.mjs, which pins the CI deploy target by name specifically so a silent retarget cannot happen. Weigh whether the rename is worth a rebind of the live front door at all - there is a reasonable case for leaving it and documenting the name as historical."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - Every reference moves together - justfile recipes, the CI workflow, and the topology test that pins the deploy target by name - so no path can still write to the old bucket.
+      - The assets bucket named `arcade` is untouched and the distinction is stated wherever the new name is introduced, because that pair has already caused a confusing failure.
+      - The custom domain arcade.slabgorb.com serves the cabinet from the renamed bucket before the old bucket is removed, verified by a real request rather than by the rebind reporting success.
+      - If the decision is instead to keep the name, the story closes with that reasoning recorded in docs/ops/hosting.md so it is not re-opened.
+  - id: uf1-30
+    title: "One green light: run the orchestrator's node:test suite under vitest too"
+    description: "PLAN DEFECT 14 from the monorepo migration, deferred by owner ruling on 2026-07-30 - deferred, explicitly not descoped. This repo has TWO test runners and the migration spent most of its life watching only one. The files under tests/ are node:test files, run by `npm run test:orchestrator`; vitest.config.ts declares projects for shared, host, lobby and the seven games, and NONE of them is rooted at tests/. So `npx vitest run` - the command nearly every migration task used as its green light - never executed a single orchestrator test. Task 9 is where this surfaced for real: two assertions in tests/battlezone-bootstrap.test.mjs went RED while `npx vitest run` cheerfully reported 489 files and 6239 tests all passing. That is this migration's signature failure shape - an accurate report, a green suite, and a vanished guarantee - except here the guarantee had not vanished, it was simply never being looked at. Give tests/ a vitest project, or otherwise make one command cover both runners, so a red orchestrator test cannot pass unnoticed again. Note this is a real port and not a config one-liner: the .mjs files use node:test's API - test and assert imported from node:test and node:assert/strict - rather than vitest's globals."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    acceptance_criteria:
+      - One command covers both runners, so a failing orchestrator test cannot coexist with a green report from the command a developer or CI actually runs.
+      - The migration's own counterexample is the regression test - a deliberately failing assertion in a tests/*.test.mjs file must redden that single command.
+      - Both counts are reported and reconciled after the change, so no test is silently dropped or double-counted while the runners are merged.
+      - If the .mjs files are ported to vitest's API rather than adapted, the port is proven behaviour-preserving by the counts matching before and after, since node:test and vitest differ in how they treat assertion-free tests.
