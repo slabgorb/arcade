@@ -1004,3 +1004,72 @@ safe. A non-zero "lost" means a citation's quoted TEXT is gone, which is a real 
 finding `remediated_by`), not a mechanical reanchor. After `--write`, confirm the diff is only
 `"line": N` values — the tool re-serializes whole files and has previously turned `\uXXXX` escapes
 into literal unicode, burying the real change.
+
+---
+
+### Backticks in a `git commit -m "…"` message run COMMAND SUBSTITUTION — a message quoting `just serve` starts a dev server and hangs the tool call
+
+**Situation:** mg1-2's implementation commit. The message documented the change in this repo's
+usual prose style, which means it quoted commands in backticks: `` `just serve` ``,
+`` `scripts/build-app.mjs` ``. Passed inline via `git commit -m "…"` — double quotes, not single.
+
+**Problem:** bash evaluates backticks inside double quotes. The commit never ran; instead the shell
+executed `just serve`, which starts a Vite dev server and never returns, and the tool call died at
+the 2-minute timeout. `git status` afterwards showed everything STAGED but uncommitted, which reads
+like a hook rejection and sends you looking in `.git/hooks` (there are none). A stray dev server may
+also be left holding a port — check `pgrep -f vite` before retrying.
+
+**Prevention:** any commit message containing backticks goes in a FILE — `git commit -F <path>` —
+never `-m`. This repo's house style guarantees backticks in almost every message, so treat `-F` as
+the default rather than the exception. The tell is a commit that "times out" while leaving a clean
+`git log` and a fully staged index.
+
+---
+
+### Composing per-app Vite configs: mount `middlewareMode` children, don't rewrite URLs — and give them the parent's `httpServer` or six HMR sockets collide
+
+**Situation:** mg1-2 — one dev server had to serve the lobby at `/` and seven games at `/<id>/`,
+where the repo already had a `defineAppConfig(id)` factory producing a per-app config (`root` =
+that app, `base` = `/<id>/`).
+
+**What worked, in one plugin:** `createServer({ configFile: false, ...defineAppConfig({ id }),
+server: { middlewareMode: true } })` per game, held in a Map, and one
+`server.middlewares.use(...)` that dispatches on the first path segment and calls
+`child.middlewares(req, res, next)`. Each child then does its own resolution, HTML rewriting and
+`/<id>/src/…` serving exactly as it does when built — no path map, no HTML rewriting, and dev
+cannot drift from the build because ONE definition feeds both. Worked first try.
+
+**Three things that are easy to get wrong:**
+- **Install the dispatcher with a bare `use`, not a returned post-hook.** Vite's SPA-fallback
+  middleware is one of the internals; a post-hook installs after it, so the fallback answers
+  `/tempest/` before your dispatcher ever sees it — which is the exact bug being fixed.
+- **The plugin must be `apply: 'serve'` and must live ONLY in the top-level config, never inside
+  the shared factory.** A child built from a factory that includes the plugin mounts its own
+  children and recurses forever.
+- **Pass `hmr: { server: parent.httpServer }` to every child.** Otherwise each opens its own
+  websocket on Vite's default 24678 and all but the first fail, printing
+  `WebSocket server error: Port 24678 is already in use` on every start — six lines here. Every
+  test was green; it was found by reading the server's stdout while measuring startup.
+
+**Cost, measured before optimising:** seven eager children → first response 265 ms, `/tempest/` in
+6 ms. Vite does no bundling in dev, so lazy construction would have bought nothing and added a
+race. Measure before reaching for it.
+
+---
+
+### A dev-server story is not done at the HTTP layer — crawl the module graph, because a missing import returns the FALLBACK with a 200
+
+**Situation:** mg1-2's suite proved each `/<id>/` returns that game's HTML. That says nothing about
+whether the page then survives its first import, and the live risk was real: each child's `root` is
+its plugin directory, while `@shared` and `@host` resolve OUTSIDE it.
+
+**The check that closed it:** fetch the page, extract its entry module, then crawl `from "/…"`
+specifiers a few levels deep requiring every node to come back as JavaScript. A module that fails
+to resolve returns the SPA fallback — **200, `text/html`** — so status is useless and content-type
+is the discriminator. Result: 29/22/38/35 modules across four games, zero non-JS.
+
+**Then actually look at it.** Loading two games in a browser and reading the canvas
+(`getImageData` → count non-black pixels) turns "it serves" into "it renders": tempest 73.7% lit,
+joust 6.2%, no console errors. For a story whose entire point is that a render could not be
+verified locally, verifying it any other way would have been the same shape of proof-by-proxy the
+story was filed to end.
