@@ -25,7 +25,7 @@ stories:
     description: "Raised by the Task 19 implementer, 2026-07-31, and filed rather than left in a report. The monorepo plan assumed Task 19 would deliver one dev server for the whole cabinet. It does not, and the implementer measured why rather than reporting a pass: the root vite.config.ts default-exports defineAppConfig({ id: 'lobby' }), so the single dev server IS the lobby, and every other path falls through to the lobby's SPA fallback. Probed: `/`, all seven `/<id>/` paths, AND the nonsense control `/banana/` all return 200 with NINE IDENTICAL body hashes and <title>Slabcade</title>. The control is the point — an all-200 check of the seven game paths would have reported 'the cabinet serves' while proving nothing, which is this migration's recurring failure shape. The task's own brief carried exactly that vacuous check; the implementer replaced it with an assertion that CAN fail (a game path must be byte-identical to the /banana/ control, so the day a real multi-app server lands, that test reddens and tells its successor to finish the job) and wrote the truth into the recipe comment, lobby/README.md and README.md. So nothing today is false — but the capability the plan named was never built, and no task owns it. Deciding how is the work: a vite plugin resolving /<id>/ to plugins/<id>/index.html, a multi-page rollupOptions.input, or accepting one-app-at-a-time and renaming the recipe so it stops implying otherwise."
     points: 5
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-07-31'
     repos: .
     workflow: tdd
