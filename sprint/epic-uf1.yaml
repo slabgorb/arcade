@@ -225,9 +225,23 @@ stories:
     status: backlog
     repos: .
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - Every control string in plugins/red-baron/plugin.ts describes an input the game actually binds, verified against src/main.ts rather than against the docs the wrong text came from.
       - The remaining six manifests' control strings are each checked against their own main.ts bindings, and any further mismatch is fixed or filed rather than left for the next accident to find.
       - If the fix is to correct the text rather than implement the inputs, red-baron's own docs are corrected too, so the wrong strings cannot be copied forward a second time.
       - A test pins at least one control string against the real binding, so this class fails loudly instead of waiting for someone to flip listed to true.
+    type: bug
+  - id: uf1-18
+    title: the origin collapse widened the showcase iframe's default permissions beyond autoplay
+    description: "Raised by the Task 15 implementer as a deliberate scope boundary, 2026-07-30, and filed rather than left in a report. The lobby's showcase carousel frames live games. Before the monorepo migration each game sat on its own subdomain, so the pane was a CROSS-ORIGIN frame and every Permissions-Policy feature whose default allowlist is `self` was denied to it automatically, by origin, without anyone declaring anything. The single-origin collapse makes that frame SAME-ORIGIN, so every one of those features now matches by default. Task 15 found and fixed the autoplay half the hard way — it had assumed allow=\"\" denied autoplay, and measurement in real Chromium showed allow=\"\" is behaviourally identical to omitting the attribute (both grant), while allow=\"autoplay 'none'\" denies. The shipped fix names autoplay explicitly. But autoplay is not the only self-defaulted feature: fullscreen, camera, microphone, geolocation, display-capture, midi and others default to `self` too, and the same reasoning applies to all of them. No shipped game requests any of these today, so this is posture rather than an active bug — but the pane's stated purpose is to be STRUCTURALLY incapable of surprising the visitor, and it currently rests on no game ever asking. The Task 15 implementer deliberately scoped its fix to autoplay because that is the only guarantee the pane ever claimed, on the reasoning that silently widening the policy would be the same overreach in the other direction. That judgement was right and is why this is a separate story. Decide the pane's real policy and declare it: an explicit deny-list of the features a game frame has no business requesting, or a documented decision that same-origin games are trusted with them. Measure in a real browser rather than reasoning from the spec — that is exactly what went wrong the first time."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: .
+    workflow: tdd
+    type: chore
+    acceptance_criteria:
+      - The showcase frame's permissions policy is a stated decision with a reason, not a default inherited from the origin collapse.
+      - Whatever policy is chosen is verified by reading allowsFeature() INSIDE a real framed child in a real browser, not inferred from the attribute or from the specification.
+      - A test pins the shipped allow attribute so a future edit that widens it reddens, in the same shape as the autoplay guard Task 15 landed.
+      - The comment in lobby/src/shell/showcase.ts states which features are denied and which are deliberately permitted, so the next reader does not have to re-derive it.
