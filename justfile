@@ -347,31 +347,33 @@ check-showcase:
     exit $fail
 
 # ============================================
-# RELEASE (develop → main + tag → CI deploys to R2)
+# RELEASE (tag <app>-vX.Y.Z on main → CI deploys to R2)
 # ============================================
-# Cut a semver release of one subrepo: gate on tests+build, bump version on
-# develop, merge to main, tag vX.Y.Z, push. The push to main triggers the
-# repo's GitHub Actions deploy workflow (R2 upload).
+# Cut a semver release of ONE app out of the monorepo: gate on that app's vitest
+# project and its own build, bump plugins/<name>/package.json (or
+# lobby/package.json), regenerate src/host/registry.ts into the SAME commit, tag
+# <name>-vX.Y.Z and push. The TAG is the deploy trigger — main carries every app's
+# commits, so a push to main cannot say which app to ship.
+#
+# The argument is an APP ID now (`tempest`), not a subrepo path: there are no
+# subrepos, and scripts/release.mjs validates the id against plugins/ + lobby.
 # e.g. `just release tempest` (patch) or `just release tempest minor`
 release name level="patch":
-    node {{root}}/scripts/release.mjs {{root}}/{{name}} {{level}}
+    node {{root}}/scripts/release.mjs {{name}} {{level}}
 
-# Release every servable subrepo (lobby + games) at the same bump level.
-# Games release FIRST so each one's version-bump lands on the lobby's develop
-# (scripts/release.mjs syncs the tile via syncLobbyTileVersion); the lobby
-# releases LAST so a single lobby deploy ships every accumulated tile bump.
-# {{subrepos}} itself stays in launch order (lobby first) for serve/deploy —
-# only the release order is special here.
+# Release every app at the same bump level. Games first and the lobby LAST: each
+# game's bump is baked into the generated registry, and the lobby's tiles read
+# their versions from there — so one lobby release at the end ships every
+# accumulated tile bump. An app with nothing to ship skips itself.
 release-all level="patch":
     #!/usr/bin/env bash
     set -euo pipefail
-    for s in {{subrepos}}; do
-      [ "$s" = "lobby" ] && continue
-      echo "==> releasing $s"
-      node {{root}}/scripts/release.mjs {{root}}/$s {{level}}
+    for g in {{games}}; do
+      echo "==> releasing $g"
+      node {{root}}/scripts/release.mjs "$g" {{level}}
     done
-    echo "==> releasing lobby (last — ships accumulated tile-version bumps)"
-    node {{root}}/scripts/release.mjs {{root}}/lobby {{level}}
+    echo "==> releasing lobby (last — ships the accumulated tile-version bumps)"
+    node {{root}}/scripts/release.mjs lobby {{level}}
 
 # ============================================
 # tempest
