@@ -350,3 +350,83 @@ going red mid-work is the *expected* signal, not damage. Say so loudly in the co
 reads that red as a regression will restore the exclusion to make it green and fail AC1 while
 appearing to succeed. Grep the story's own id (and its pre-split id) across `tests/` at setup;
 instructions addressed to the story are usually sitting right there.
+
+---
+
+### The `sprint-<N>-completed.yaml` append conflict hides its danger in the SHARED TAIL — git conflicts only the id/title lines and silently merges `points`/`completed`
+
+**Situation:** finishing mg1-4. A sibling checkout finished mg1-9 in the ~6 minutes between my
+`pf sprint story finish` and my `git push`, so `main` had moved and both runs had appended an entry
+to the end of `sprint/archive/sprint-2628-completed.yaml`.
+
+**Problem — and this is the part worth keeping.** The two appended records are five lines each with
+an identical *shape*, so git's diff aligned the trailing two lines and conflicted only the first
+three. The hunk looked like this:
+
+```
+<<<<<<< HEAD
+  - id: mg1-9
+    epic: mg1
+    title: "Typecheck arcade-shared's tests: …"
+=======
+  - id: mg1-4
+    epic: mg1
+    title: sprint epics still route stories to per-game repos …
+>>>>>>> (mine)
+    points: 3            <-- OUTSIDE the markers, silently shared
+    completed: '2026-07-31'
+```
+
+`points`/`completed` sit *below* the closing marker and belong to whichever record ends up last. So
+the two resolutions that look obviously right are both wrong: "take both sides" yields one story
+with a full record and one with **no** `points`/`completed` at all, and "take mine" **deletes the
+sibling's completed story from sprint tracking entirely** while looking like a clean one-line
+resolution. Here both stories happened to be 3 points and both completed the same day, which would
+have masked a wrong-points resolution completely — do not let a coincidence audit your merge.
+
+**Resolution:** a union means re-typing **whole records**, not un-marking the conflicted lines.
+Write out both entries complete with their own `points`/`completed`, taking the values from the
+authoritative sources rather than from the conflicted buffer — `git show origin/main:sprint/archive/
+sprint-<N>-completed.yaml | tail` for theirs, `sprint/epic-<id>.yaml` for both. Then verify by
+parsing, not by eye:
+
+```bash
+grep -rn '^<<<<<<<\|^=======$\|^>>>>>>>' sprint/     # must be silent — markers here crash pf
+python3 -c "import yaml;rows=yaml.safe_load(open('sprint/archive/sprint-2628-completed.yaml'))['completed_stories'];\
+print(len(rows));print([ (r['id'],r.get('points'),r.get('completed')) for r in rows if r['id'] in ('mg1-4','mg1-9')])"
+```
+Each id exactly once, each carrying its own points. `git status` showing a resolved file is not
+evidence; the parse is.
+
+**Also:** the race window is now the FINISH, not just setup. The documented sibling probes protect
+the start of a story; nothing protects the gap between `story finish` and `push`. Expect the
+rejected push, and after `rebase --continue` re-run the suite **on the merged tree** — the sibling
+had edited `tests/shared-tests-typechecked.test.mjs`, so green-before-rebase proved nothing about
+green-after. (358/358 both sides here, but that was luck, not method.)
+
+---
+
+### Pre-load the round structure into the `sm-finish` preflight prompt — it is far cheaper than auditing the Impact Summary afterwards
+
+**Situation:** mg1-4 was a two-round story (round 1 REJECTED on a High, round 2 APPROVED). That is
+exactly the shape that made the preflight resurrect a closed finding as BLOCKING on sw7-16, the
+first entry in this file.
+
+**What changed:** rather than letting it scrape and then refuting its output, the spawn prompt
+stated up front — (a) there are two rounds and the session holds both, (b) round 1's High is closed,
+with the evidence I had already checked myself (all five `context-epic-*.md` render `arcade`), (c)
+attribute every finding to its round and report the FINAL state, and (d) if you still believe
+something blocks, cite the file and line so I can read it. It returned `blocking_count: 0` with the
+rounds correctly separated, and no refutation was needed.
+
+**Two bonuses worth repeating.** Telling it explicitly *"this is trunk-based, work landed on `main`,
+do NOT create a PR or attempt a merge; mark any `merge_pr` step N/A"* meant it made **zero file
+writes** — the "PHASE=preflight is not read-only" hazard never materialised because the surface that
+causes it (PR creation) was closed by instruction. And it does **not** write the Impact Summary into
+the session file; it only returns the text. Appending it yourself is a required step, not an
+optional one, since the archived session is the permanent record.
+
+**Still true, still needed:** the epic YAML's `review_findings` held round 1's rejection text sitting
+next to `review_verdict: approved`. Rewrite it with `pf sprint story update <id> --review-findings`
+(there is a real flag; never hand-edit the YAML), then confirm the write was surgical with
+`git diff --stat` — one file, one line — and re-parse all shards.
