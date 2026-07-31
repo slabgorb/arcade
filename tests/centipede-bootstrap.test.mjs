@@ -52,38 +52,45 @@
 // breakage to the task that owns it; leaving a red one would do the reverse.
 // Neither happened: `npm run test:orchestrator` is 290 pass / 0 fail / 0 skipped
 // both before and after the import.
+//
+// ===========================================================================
+// TASK 19 (one dev server, one port) — RETIRED, as the ledger above routes it
+// ===========================================================================
+// //   - `justfile \`subrepos\` lists centipede (install-all + fleet ops coverage)`  DELETED
+//   - `\`serve\` launches centipede alongside the fleet, on its pinned port`  DELETED
+//   - `justfile vars do not regress the existing games`  KEPT, `subrepos` half dropped
+//
+// Why each is gone rather than re-homed:
+//
+//   · `subrepos` is not a variable that changed value — it is a CONCEPT that
+//     stopped existing. Eight gitignored sibling checkouts are one repo; there
+//     is no per-subrepo install, test or build to iterate. `games` survives as
+//     the seven plugin directory names and is still asserted here; recipes that
+//     mean "every app" spell it `{{{{games}}}} lobby`.
+//
+//   · the `serve` assertion read scripts/serve.mjs's spawn table, and Task 19
+//     deletes that supervisor along with the eight-server fleet it existed to
+//     launch, watch and tear down. It was already stale in exactly the way this
+//     header warned — it asserted a cwd of `<root>/centipede`, a directory that
+//     stopped existing at the import — and no per-game successor is possible,
+//     because there is one dev server on one port. Its two halves survive
+//     cabinet-wide, not per game: the pin is PROVEN behaviourally by `strictPort
+//     is real, not just declared` (tests/monorepo-topology.test.mjs), and what
+//     the one server actually serves is pinned by `the dev server serves the
+//     LOBBY at every path` (tests/canonical-serve.test.mjs).
+//
+//   · the per-game pinned PORT (5278) goes with them. Its nearest successor is
+//     base-path uniqueness — `/centipede/` — asserted for all seven in
+//     tests/monorepo-topology.test.mjs.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-// td1-8 moved the fleet launch out of the justfile `serve` recipe into this module;
-// the "serve launches centipede" assertion below now reads the real spawn spec.
-import { jobsFor } from '../scripts/serve.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
-
-// Extract a `just` recipe body by name (col-0 header, indented body). Copied from
-// tests/canonical-serve.test.mjs, as the battlezone/red-baron bootstrap suites also do,
-// so every suite reads the justfile the same way. `:=` never appears in a recipe header,
-// so it screens out variable assignments. Added by td1-8's re-aim.
-function recipeBody(justfile, name) {
-  const lines = justfile.split('\n');
-  const header = new RegExp(`^${name}(\\s|:)`);
-  const isAssignment = /:=/;
-  const start = lines.findIndex((line) => header.test(line) && !isAssignment.test(line));
-  if (start === -1) return null;
-  const body = [];
-  for (let i = start + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim() === '') { body.push(line); continue; }
-    if (!/^\s/.test(line)) break;
-    body.push(line);
-  }
-  return body.join('\n');
-}
 
 // The pinned port contract: centipede owns 5278.
 const CENTIPEDE_PORT = '5278';
@@ -103,48 +110,13 @@ test('justfile `games` lists centipede (test-all/build-all fleet coverage)', () 
   assert.ok(games.includes('centipede'), '`games` must include centipede');
 });
 
-test('justfile `subrepos` lists centipede (install-all + fleet ops coverage)', () => {
-  const subrepos = justfileVar(read('justfile'), 'subrepos');
-  assert.ok(subrepos.includes('centipede'), '`subrepos` must include centipede');
-  assert.ok(subrepos.includes('lobby'), '`subrepos` must keep the lobby');
-});
-
+// The `subrepos` half of this test went with the `subrepos` variable (Task 19).
+// `games` is the whole of the fleet list now, so this is the whole of the guard.
 test('justfile vars do not regress the existing games', () => {
-  const justfile = read('justfile');
-  const games = justfileVar(justfile, 'games');
-  const subrepos = justfileVar(justfile, 'subrepos');
+  const games = justfileVar(read('justfile'), 'games');
   for (const g of EXISTING_GAMES) {
     assert.ok(games.includes(g), `\`games\` must keep ${g}`);
-    assert.ok(subrepos.includes(g), `\`subrepos\` must keep ${g}`);
   }
-});
-
-// RE-AIMED BY td1-8 (2026-07-20). Same intent, still this story's guard; only the
-// evidence moved. It used to match `{{root}}/centipede && npm run dev` and a
-// `centipede…localhost:5278` echo in the justfile. td1-8 moved the fleet launch out
-// of the `serve` recipe into scripts/serve.mjs (the recipe's bare `wait` returned 0
-// with a server dead, and it echoed all eight ready URLs BEFORE any server had bound
-// — so the banner was asserting readiness it had not observed).
-//
-// Both halves survive, and the second is now stronger than it was. The old port
-// assertion only proved the recipe ECHOED "centipede … localhost:5278"; that echo was
-// exactly the unconditional banner td1-8 deleted, and it was true whether or not
-// centipede was served there. The port is now the one the supervisor actually
-// launches on and probes for readiness before announcing it.
-test('`serve` launches centipede alongside the fleet, on its pinned port', () => {
-  const job = jobsFor('/ARCADE').find((j) => j.name === 'centipede');
-  assert.ok(job, 'centipede must be in the fleet scripts/serve.mjs launches (SERVERS)');
-  assert.equal(job.command, 'npm', 'serve must launch the centipede dev server like the sibling games');
-  assert.deepEqual(job.args, ['run', 'dev']);
-  assert.equal(job.cwd, join('/ARCADE', 'centipede'), 'centipede must be launched from its own subrepo directory');
-  assert.equal(
-    job.port,
-    Number(CENTIPEDE_PORT),
-    `serve must launch centipede on its pinned port ${CENTIPEDE_PORT}`,
-  );
-
-  const body = recipeBody(read('justfile'), 'serve') ?? '';
-  assert.match(body, /serve\.mjs/, 'the `serve` recipe must invoke scripts/serve.mjs, which launches the fleet');
 });
 
 test('CLAUDE.md port table row 5278 is live, not reserved', () => {

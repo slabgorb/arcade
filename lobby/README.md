@@ -23,14 +23,22 @@ Run these from the **repo root**, not from inside `lobby/`:
 
 ```bash
 npm install                       # installs the whole cabinet — no per-app npm install
-npx vite                          # dev server; today this serves ONLY the lobby (no
-                                   # plugins/ tree exists yet for vite to also serve)
+just serve                        # the ONE dev server (== `npx vite`, pinned :5270)
 npm test                          # vitest across every project, lobby included
 npx vitest run --project lobby    # this app's tests only
+node ../scripts/build-app.mjs lobby   # build this app → dist/
 ```
 
-(There is no working root `npm run build` yet — that lands in a later stage of
-the monorepo migration. Don't run it expecting a lobby build.)
+**The dev server serves ONLY the lobby — at every path.** Not because `plugins/`
+is missing (all seven games are imported), but because the root `vite.config.ts`
+default-exports `defineAppConfig({ id: 'lobby' })`, whose `root` is this
+directory. MEASURED: `/`, `/tempest/`, `/tempest/models.html` and the nonsense
+control `/banana/` all return `200` with byte-identical HTML and
+`<title>Slabcade</title>` — a blanket SPA fallback, not a route table. So a
+screenshot taken at `/tempest/` is **this app**, not tempest; the games' `/<id>/`
+paths are real in the R2 build, not in dev. Pinned by `the dev server serves the
+LOBBY at every path` in `tests/canonical-serve.test.mjs`, which reddens the day
+that changes.
 
 ## Structure
 

@@ -64,49 +64,58 @@
 // Ruling (PLAN DEFECT #14): each import task retires its OWN game's bootstrap
 // assertions as it lands. centipede- and joust-bootstrap.test.mjs carry the
 // identical pair and are Tasks 11-13's to retire the same way.
+//
+// ===========================================================================
+// TASK 19 (one dev server, one port) — RETIRED, as the ledger above routes it
+// ===========================================================================
+// //   - `AC: justfile \`subrepos\` variable includes red-baron (and keeps the existing subrepos)`  DELETED
+//   - `AC: canonical \`serve\` launches red-baron`  DELETED
+//   - `AC: cloudflared routes /red-baron/* to :5277, ahead of the lobby catch-all`  DELETED
+//
+// Why each is gone rather than re-homed:
+//
+//   · `subrepos` is not a variable that changed value — it is a CONCEPT that
+//     stopped existing. Eight gitignored sibling checkouts are one repo; there
+//     is no per-subrepo install, test or build to iterate. `games` survives as
+//     the seven plugin directory names and is still asserted here; recipes that
+//     mean "every app" spell it `{{{{games}}}} lobby`.
+//
+//   · the `serve` assertion read scripts/serve.mjs's spawn table, and Task 19
+//     deletes that supervisor along with the eight-server fleet it existed to
+//     launch, watch and tear down. It was already stale in exactly the way this
+//     header warned — it asserted a cwd of `<root>/red-baron`, a directory that
+//     stopped existing at the import — and no per-game successor is possible,
+//     because there is one dev server on one port. Its two halves survive
+//     cabinet-wide, not per game: the pin is PROVEN behaviourally by `strictPort
+//     is real, not just declared` (tests/monorepo-topology.test.mjs), and what
+//     the one server actually serves is pinned by `the dev server serves the
+//     LOBBY at every path` (tests/canonical-serve.test.mjs).
+//
+//   · the per-game pinned PORT (5277) goes with them. Its nearest successor is
+//     base-path uniqueness — `/red-baron/` — asserted for all seven in
+//     tests/monorepo-topology.test.mjs.
+//
+//   · the cloudflared ingress rule routed a public Host header at the per-game
+//     dev port it no longer has. The tunnel is retired (production is static R2;
+//     `cloudflared/` is kept only as history) and vite.config.ts pins the dev
+//     server to 127.0.0.1, so no external hostname can reach it at all. The rule
+//     it asserted cannot be satisfied and must not be restored.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-// td1-8 moved the fleet launch out of the justfile `serve` recipe into this module;
-// the "serve launches red-baron" assertion below now reads the real spawn spec.
-import { jobsFor } from '../scripts/serve.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
 
-// The pinned port contract: red-baron owns 5277. Every other pin belongs to a
-// live sibling (5270 lobby, 5273 tempest, 5274 star-wars, 5275 asteroids, 5276
-// battlezone) and must NOT be reused for red-baron.
-const RED_BARON_PORT = '5277';
-const SIBLING_PORTS = ['5270', '5273', '5274', '5275', '5276'];
 
 // Games expected to already be wired into the justfile vars — GREEN adds red-baron
 // WITHOUT dropping any of these (regression guard).
 const EXISTING_GAMES = ['tempest', 'star-wars', 'asteroids', 'battlezone'];
 
 // --- helpers ---------------------------------------------------------------
-
-// Extract a `just` recipe body by name (col-0 header, indented body). Copied
-// from tests/canonical-serve.test.mjs so the suites read the justfile the same
-// way. `:=` never appears in a recipe header, so it screens out variables.
-function recipeBody(justfile, name) {
-  const lines = justfile.split('\n');
-  const header = new RegExp(`^${name}(\\s|:)`);
-  const isAssignment = /:=/;
-  const start = lines.findIndex((line) => header.test(line) && !isAssignment.test(line));
-  if (start === -1) return null;
-  const body = [];
-  for (let i = start + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim() === '') { body.push(line); continue; }
-    if (!/^\s/.test(line)) break;
-    body.push(line);
-  }
-  return body.join('\n');
-}
 
 // Extract a top-level repo block (`  name:` at 2-space indent) from repos.yaml,
 // returning its 4-space-indented field lines.
@@ -158,65 +167,5 @@ test('AC: justfile `games` variable includes red-baron (and keeps the existing g
   }
 });
 
-test('AC: justfile `subrepos` variable includes red-baron (and keeps the existing subrepos)', () => {
-  const justfile = read('justfile');
-  const subrepos = justfile.match(/^subrepos\s*:=\s*"([^"]*)"/m);
-  assert.notEqual(subrepos, null, 'justfile must define a `subrepos` list');
-  assert.match(subrepos[1], /\bred-baron\b/, 'red-baron must be in the `subrepos` variable (serve/install-all iterate it)');
-  for (const g of ['lobby', ...EXISTING_GAMES]) {
-    assert.match(subrepos[1], new RegExp(`\\b${g}\\b`), `\`subrepos\` must not drop ${g} (regression guard)`);
-  }
-});
-
-// RE-AIMED BY td1-8 (2026-07-20). This assertion is unchanged in INTENT and still
-// belongs to the red-baron bootstrap story; only its evidence moved.
-//
-// It used to read `(cd {{root}}/red-baron && npm run dev) &` out of the justfile
-// `serve` recipe body. td1-8 moved the fleet launch out of that recipe and into
-// scripts/serve.mjs, because a bash recipe that backgrounds eight jobs cannot be
-// tested for whether it NOTICES one dying (the recipe's bare `wait` returned 0 with
-// a server dead). The launch invocation still exists — it is now data, produced by
-// jobsFor(), which is what the supervisor actually spawns.
-//
-// The original comment's point is preserved and, if anything, sharpened: it warned
-// that a bare `/red-baron/` match would pass even with the launch missing, because
-// the recipe also echoed a "red-baron → :5277" diagnostic. So this does NOT merely
-// check that red-baron appears in SERVERS — it asserts the real spawn spec (command,
-// args, cwd) that the launcher will execute, plus the recipe actually delegating to
-// it. A dead SERVERS entry the recipe never calls cannot pass.
-test('AC: canonical `serve` launches red-baron', () => {
-  const job = jobsFor('/ARCADE').find((j) => j.name === 'red-baron');
-  assert.ok(job, 'red-baron must be in the fleet scripts/serve.mjs launches (SERVERS)');
-  assert.equal(job.command, 'npm', 'red-baron must be LAUNCHED (not just listed)');
-  assert.deepEqual(job.args, ['run', 'dev'], 'red-baron must be launched with `npm run dev`');
-  assert.equal(job.cwd, join('/ARCADE', 'red-baron'), 'red-baron must be launched from its own subrepo directory');
-  assert.equal(job.port, Number(RED_BARON_PORT), `red-baron must be launched on its pinned port ${RED_BARON_PORT}`);
-
-  // …and the recipe must actually run that launcher, or the fleet above is a dead table.
-  const body = recipeBody(read('justfile'), 'serve') ?? '';
-  assert.match(body, /serve\.mjs/, 'the canonical `serve` recipe must invoke scripts/serve.mjs, which launches the fleet');
-});
-
 // --- AC: cloudflared ingress (/red-baron/* → :5277, ahead of lobby) ---------
 
-test('AC: cloudflared routes /red-baron/* to :5277, ahead of the lobby catch-all', () => {
-  const cf = read('cloudflared/config.yml');
-  const rbIdx = cf.indexOf('^/red-baron');
-  assert.notEqual(rbIdx, -1, 'cloudflared/config.yml must contain a path: ^/red-baron rule');
-
-  // The rule's service must be the red-baron dev server on :5277, never a sibling.
-  // Narrow to red-baron's OWN rule block (up to the next ingress rule) so the
-  // sibling-port guard doesn't bleed into the adjacent lobby catch-all (:5270).
-  const nextRuleRel = cf.slice(rbIdx).indexOf('- hostname:');
-  const ruleBlock = nextRuleRel === -1 ? cf.slice(rbIdx) : cf.slice(rbIdx, rbIdx + nextRuleRel);
-  assert.match(ruleBlock, new RegExp(`localhost:${RED_BARON_PORT}`), 'the /red-baron rule must proxy to localhost:5277');
-  for (const sibling of SIBLING_PORTS) {
-    assert.doesNotMatch(ruleBlock, new RegExp(sibling), `the /red-baron rule must NOT use the sibling port ${sibling}`);
-  }
-
-  // First-match, top-to-bottom: the per-game rule must precede the lobby catch-all
-  // (the pathless rule pointing at :5270).
-  const lobbyCatchAll = cf.indexOf('service: http://localhost:5270');
-  assert.notEqual(lobbyCatchAll, -1, 'cloudflared/config.yml must retain the lobby catch-all (:5270)');
-  assert.ok(rbIdx < lobbyCatchAll, 'the /red-baron rule must be ordered AHEAD of the lobby catch-all');
-});

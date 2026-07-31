@@ -63,44 +63,56 @@
 // Ruling (PLAN DEFECT #14): each import task retires its OWN game's bootstrap
 // assertions as it lands. centipede-, joust- and red-baron-bootstrap.test.mjs
 // carry the identical pair and are Tasks 10-13's to retire the same way.
+//
+// ===========================================================================
+// TASK 19 (one dev server, one port) — RETIRED, as the ledger above routes it
+// ===========================================================================
+// //   - `AC: justfile \`subrepos\` variable includes battlezone`  DELETED
+//   - `AC: canonical \`serve\` launches battlezone`  DELETED
+//   - `AC: cloudflared routes /battlezone/* to :5276, ahead of the lobby catch-all`  DELETED
+//   - `reconcile (SM decision #1): justfile \`games\`/\`subrepos\` also backfill star-wars`
+//     KEPT and renamed to `... justfile \`games\` also backfills star-wars`; its subject
+//     (star-wars must not be silently skipped by the fleet list) is unchanged.
+//
+// Why each is gone rather than re-homed:
+//
+//   · `subrepos` is not a variable that changed value — it is a CONCEPT that
+//     stopped existing. Eight gitignored sibling checkouts are one repo; there
+//     is no per-subrepo install, test or build to iterate. `games` survives as
+//     the seven plugin directory names and is still asserted here; recipes that
+//     mean "every app" spell it `{{{{games}}}} lobby`.
+//
+//   · the `serve` assertion read scripts/serve.mjs's spawn table, and Task 19
+//     deletes that supervisor along with the eight-server fleet it existed to
+//     launch, watch and tear down. It was already stale in exactly the way this
+//     header warned — it asserted a cwd of `<root>/battlezone`, a directory that
+//     stopped existing at the import — and no per-game successor is possible,
+//     because there is one dev server on one port. Its two halves survive
+//     cabinet-wide, not per game: the pin is PROVEN behaviourally by `strictPort
+//     is real, not just declared` (tests/monorepo-topology.test.mjs), and what
+//     the one server actually serves is pinned by `the dev server serves the
+//     LOBBY at every path` (tests/canonical-serve.test.mjs).
+//
+//   · the per-game pinned PORT (5276) goes with them. Its nearest successor is
+//     base-path uniqueness — `/battlezone/` — asserted for all seven in
+//     tests/monorepo-topology.test.mjs.
+//
+//   · the cloudflared ingress rule routed a public Host header at the per-game
+//     dev port it no longer has. The tunnel is retired (production is static R2;
+//     `cloudflared/` is kept only as history) and vite.config.ts pins the dev
+//     server to 127.0.0.1, so no external hostname can reach it at all. The rule
+//     it asserted cannot be satisfied and must not be restored.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-// td1-8 moved the fleet launch out of the justfile `serve` recipe into this module;
-// the "serve launches battlezone" assertion below now reads the real spawn spec.
-import { jobsFor } from '../scripts/serve.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relPath) => readFileSync(join(root, relPath), 'utf8');
 
-// The pinned port contract: battlezone owns 5276. 5275 belongs to asteroids
-// (epic A) and MUST NOT be reintroduced; 5270/5273/5274 are lobby/tempest/star-wars.
-const BATTLEZONE_PORT = '5276';
-const ASTEROIDS_PORT = '5275';
-
 // --- helpers ---------------------------------------------------------------
-
-// Extract a `just` recipe body by name (col-0 header, indented body). Copied
-// from tests/canonical-serve.test.mjs so the two suites read the justfile the
-// same way. `:=` never appears in a recipe header, so it screens out variables.
-function recipeBody(justfile, name) {
-  const lines = justfile.split('\n');
-  const header = new RegExp(`^${name}(\\s|:)`);
-  const isAssignment = /:=/;
-  const start = lines.findIndex((line) => header.test(line) && !isAssignment.test(line));
-  if (start === -1) return null;
-  const body = [];
-  for (let i = start + 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim() === '') { body.push(line); continue; }
-    if (!/^\s/.test(line)) break;
-    body.push(line);
-  }
-  return body.join('\n');
-}
 
 // Extract a top-level repo block (`  name:` at 2-space indent) from repos.yaml,
 // returning its 4-space-indented field lines.
@@ -147,63 +159,18 @@ test('AC: justfile `games` variable includes battlezone', () => {
   );
 });
 
-test('AC: justfile `subrepos` variable includes battlezone', () => {
-  const justfile = read('justfile');
-  const subrepos = justfile.match(/^subrepos\s*:=\s*"([^"]*)"/m);
-  assert.notEqual(subrepos, null, 'justfile must define a `subrepos` list');
-  assert.match(subrepos[1], /\bbattlezone\b/, 'battlezone must be in the `subrepos` variable (serve/install-all iterate it)');
-});
-
-// RE-AIMED BY td1-8 (2026-07-20). Same intent, still this story's guard; only the
-// evidence moved. It used to match `/battlezone/` against the justfile `serve` recipe
-// body. td1-8 moved the fleet launch out of that recipe into scripts/serve.mjs (the
-// recipe's bare `wait` returned 0 with a server dead, so the launch had to become
-// testable). The launch is now the spawn spec jobsFor() produces.
-//
-// Note the original was the WEAK form its red-baron sibling explicitly warned about —
-// a bare `/battlezone/` mention would have passed even if the launch were missing.
-// Re-aiming fixes that: this asserts the real spawn spec, not a mention.
-test('AC: canonical `serve` launches battlezone', () => {
-  const job = jobsFor('/ARCADE').find((j) => j.name === 'battlezone');
-  assert.ok(job, 'battlezone must be in the fleet scripts/serve.mjs launches (SERVERS)');
-  assert.equal(job.command, 'npm', 'battlezone must be LAUNCHED alongside lobby/tempest/star-wars');
-  assert.deepEqual(job.args, ['run', 'dev']);
-  assert.equal(job.cwd, join('/ARCADE', 'battlezone'), 'battlezone must be launched from its own subrepo directory');
-
-  const body = recipeBody(read('justfile'), 'serve') ?? '';
-  assert.match(body, /serve\.mjs/, 'the canonical `serve` recipe must invoke scripts/serve.mjs, which launches the fleet');
-});
-
-test('reconcile (SM decision #1): justfile `games`/`subrepos` also backfill star-wars', () => {
-  // star-wars is wired only in the hardcoded serve trap today — `games := "tempest"`
-  // and `subrepos := "lobby tempest"` silently skip it, so build-all/test-all/
-  // install-all never touch star-wars. AC6 says battlezone must be "reconciled
-  // with however star-wars is wired": the SM ruled we backfill star-wars into the
-  // vars in passing (logged as a Delivery Finding), not copy the drift forward.
-  const justfile = read('justfile');
-  const games = justfile.match(/^games\s*:=\s*"([^"]*)"/m);
-  const subrepos = justfile.match(/^subrepos\s*:=\s*"([^"]*)"/m);
+// The `subrepos` half went with the `subrepos` variable (Task 19); `games` is the
+// whole fleet list now, and this test's subject — that star-wars is IN it, not
+// silently skipped — is unchanged.
+test('reconcile (SM decision #1): justfile `games` also backfills star-wars', () => {
+  // star-wars was wired only in the hardcoded serve trap — `games := "tempest"`
+  // silently skipped it, so build-all/test-all never touched star-wars. AC6 says
+  // battlezone must be "reconciled with however star-wars is wired": the SM ruled
+  // we backfill star-wars into the vars in passing, not copy the drift forward.
+  const games = read('justfile').match(/^games\s*:=\s*"([^"]*)"/m);
   assert.notEqual(games, null, 'justfile must define a `games` list');
-  assert.notEqual(subrepos, null, 'justfile must define a `subrepos` list');
   assert.match(games[1], /\bstar-wars\b/, 'backfill star-wars into `games` (build-all/test-all iterate it)');
-  assert.match(subrepos[1], /\bstar-wars\b/, 'backfill star-wars into `subrepos` (install-all/serve iterate it)');
 });
 
 // --- AC: cloudflared ingress (/battlezone/* → :5276, ahead of lobby) --------
 
-test('AC: cloudflared routes /battlezone/* to :5276, ahead of the lobby catch-all', () => {
-  const cf = read('cloudflared/config.yml');
-  const bzIdx = cf.indexOf('^/battlezone');
-  assert.notEqual(bzIdx, -1, 'cloudflared/config.yml must contain a path: ^/battlezone rule');
-
-  // The rule's service must be the battlezone dev server on :5276.
-  const ruleWindow = cf.slice(bzIdx, bzIdx + 200);
-  assert.match(ruleWindow, new RegExp(`localhost:${BATTLEZONE_PORT}`), 'the /battlezone rule must proxy to localhost:5276');
-  assert.doesNotMatch(ruleWindow, new RegExp(ASTEROIDS_PORT), 'the /battlezone rule must NOT use 5275 (asteroids/epic A owns it)');
-
-  // First-match, top-to-bottom: the per-game rule must precede the lobby catch-all
-  // (the pathless rule pointing at :5270).
-  const lobbyCatchAll = cf.indexOf('service: http://localhost:5270');
-  assert.notEqual(lobbyCatchAll, -1, 'cloudflared/config.yml must retain the lobby catch-all (:5270)');
-  assert.ok(bzIdx < lobbyCatchAll, 'the /battlezone rule must be ordered AHEAD of the lobby catch-all');
-});

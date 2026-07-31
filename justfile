@@ -9,53 +9,56 @@ default:
     @just --list
 
 # ============================================
-# GAMES (subrepos registered in repos.yaml)
+# GAMES (the plugins/ directories)
 # ============================================
-# Space-separated list; add new game subrepos here.
+# Space-separated list of plugin directory names; add a new game here.
+#
+# There is no `subrepos` list any more, and no concept for one to name: the eight
+# gitignored sibling checkouts are one repo. The lobby is not in this list because
+# it is not a game — recipes that mean "every app" say `{{games}} lobby`.
 games := "tempest star-wars asteroids battlezone red-baron centipede joust"
 
-# Every servable subrepo (the lobby shell + all games), in launch order.
-# `serve` and the install recipe below iterate this; game-only recipes use {{games}}.
-subrepos := "lobby tempest star-wars asteroids battlezone red-baron centipede joust"
-
-# Install dependencies in every subrepo (lobby + games), reconciling each subrepo's
-# installed @arcade/shared against its pinned version. Uses `npm ci` where a git-dep pin
-# has drifted (plain `npm install` keeps the cached old commit) — see scripts/deps-doctor.mjs.
+# One install for the whole cabinet. The eight per-subrepo installs are gone, and
+# with them the `@arcade/shared` git-dep pin they had to be reconciled against
+# (scripts/deps-doctor.mjs, deleted): the shared library is in-tree at src/shared,
+# reached through the `@shared` alias, so there is no pin left to drift.
 install-all:
-    @node {{root}}/scripts/deps-doctor.mjs {{subrepos}}
+    @npm install
 
-# Run tests in every game. A plain `@for ... ; done` one-liner runs under just's
-# default `sh` with no `set -e` and no per-iteration tracking — a `for` loop's exit
-# status is only its LAST iteration's, so every game's failure but the last was
-# silently discarded (td1-10). Ported the `pull` recipe's pattern (below): explicit
-# per-iteration failure accumulator, run every game (a fleet sweep should report the
-# FULL set of red games, not just the first), then exit non-zero with a named summary.
+# One vitest run across every project — the whole cabinet in ONE process.
+#
+# The old recipe looped eight subrepos running `npm test` in each, which is why it
+# needed the failure accumulator below (td1-10: a `for` loop's exit status is only
+# its LAST iteration's, so six of seven red games read as green). One process has
+# one exit status; there is nothing left to mask.
+#
+# Deliberately NOT `npm test`: that is `vitest run --passWithNoTests`, which is the
+# right stance for a per-app script but the wrong one for the fleet gate — a config
+# that stopped matching any test file would sail through it.
 test-all:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    failed=""
-    for g in {{games}}; do
-      echo "==> $g"
-      if ! (cd {{root}}/$g && npm test); then
-        failed="$failed $g"
-      fi
-    done
-    if [ -n "$failed" ]; then
-      echo
-      echo "!! test-all FAILED:$failed"
-      exit 1
-    fi
-    echo
-    echo "test-all: all games passed."
+    @npx vitest run
 
-# Build every game. Same masking defect and same fix as test-all (td1-10).
+# One app's project only — what the release gate runs.
+# `--project <unknown>` is a startup error in vitest, not a silent zero-test pass.
+test-one name:
+    @npx vitest run --project {{name}}
+
+# Build every app: the seven games plus the lobby, each through the one builder
+# (scripts/build-app.mjs) that CI also runs. Unlike test-all this is still a loop —
+# one build per app is the point ("one origin does not mean one build") — so it
+# keeps td1-10's explicit per-iteration failure accumulator: every app is attempted,
+# and the summary names the FULL set of broken ones rather than only the last.
+#
+# The lobby builds LAST. Its outDir is dist/, the parent of every game's dist/<id>/,
+# so it is the app whose output the others sit inside; building it last means a
+# `just build-all` leaves a complete tree even if cleanLobbyOutput ever regressed.
 build-all:
     #!/usr/bin/env bash
     set -uo pipefail
     failed=""
-    for g in {{games}}; do
+    for g in {{games}} lobby; do
       echo "==> $g"
-      if ! (cd {{root}}/$g && npm run build); then
+      if ! node {{root}}/scripts/build-app.mjs "$g"; then
         failed="$failed $g"
       fi
     done
@@ -65,87 +68,18 @@ build-all:
       exit 1
     fi
     echo
-    echo "build-all: all games passed."
+    echo "build-all: all apps built."
 
-# Git status across orchestrator + every game. Shares test-all/build-all's masking
-# shape; fixed for consistency (td1-10) even though a `git status --short` failure
-# here is rarer (a repo missing/not-a-checkout) and no test requires it.
-status:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    failed=""
-    echo "=== arcade (orchestrator) ==="
-    if ! git -C {{root}} status --short; then
-      failed="$failed arcade"
-    fi
-    for g in {{games}}; do
-      echo "=== $g ==="
-      if ! git -C {{root}}/$g status --short; then
-        failed="$failed $g"
-      fi
-    done
-    if [ -n "$failed" ]; then
-      echo
-      echo "!! status FAILED:$failed"
-      exit 1
-    fi
-
-# Run the orchestrator's own checks (canonical-serve contract regression guard)
+# Run the orchestrator's own checks (node:test — vitest never sees these files)
 test-orchestrator:
     @node --test 'tests/**/*.test.mjs'
 
-# Pull the orchestrator + every game, each onto its OWN default branch (main here,
-# develop in the games) — never onto whatever branch happens to be checked out.
-#
-# `git pull --rebase origin develop` rebases the CURRENT branch onto origin/develop.
-# Sitting on a feature branch, that replays your commits onto develop — and if the
-# branch was already squash-merged, every file the story added returns as an add/add
-# conflict and the checkout wedges mid-rebase. Git cannot see squash containment
-# (a squash's patch-id matches none of the originals), so `git branch --merged` and
-# `--cherry-mark` both insist the shipped work is unmerged. star-wars sat exactly
-# there on 2026-07-16: feat/sw7-8-… had already shipped in v0.0.20, four files
-# conflicting with themselves.
-#
-# So: only pull when the default branch is checked out. Otherwise advance the local
-# ref with a refspec fetch (`git fetch origin develop:develop`), which updates develop
-# without touching your working tree and is fast-forward-only — a diverged local
-# develop fails loudly instead of being quietly rebased. Every repo is attempted even
-# if an earlier one fails; the recipe exits non-zero listing whatever didn't land.
-#
-# Pull orchestrator + games onto their default branches (feature branches left alone)
-pull:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    failed=""
-    pull_one() {
-      dir="$1"; name="$2"; target="$3"
-      echo "==> $name"
-      if ! cur=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null); then
-        echo "    !! not a git checkout — skipped"
-        failed="$failed $name"
-        return
-      fi
-      if [ "$cur" = "$target" ]; then
-        git -C "$dir" pull --rebase --autostash origin "$target" || failed="$failed $name"
-      else
-        echo "    on '$cur', not '$target' — your checkout is left alone; advancing $target"
-        if ! git -C "$dir" fetch origin "$target:$target"; then
-          echo "    !! could not fast-forward $target — it has diverged from origin."
-          echo "       Fetched anyway; reconcile by hand: git -C $dir log $target..origin/$target"
-          git -C "$dir" fetch origin "$target"
-          failed="$failed $name"
-        fi
-      fi
-    }
-    pull_one {{root}} "arcade (orchestrator)" main
-    for g in {{games}}; do pull_one {{root}}/$g "$g" develop; done
-    if [ -n "$failed" ]; then
-      echo
-      echo "!! pull incomplete:$failed"
-      exit 1
-    fi
-    echo
-    echo "pull complete."
+# `pull` and `status` are gone with the thing they orchestrated. Both looped
+# `git -C {{root}}/$g` over eight sibling checkouts, each with its own remote and
+# its own `develop`; there is one repo and one history now, so `git pull` and
+# `git status` are the whole of what they did. Their subtlety — never rebase a
+# feature branch onto develop, advance the ref with a refspec fetch instead —
+# was about the games' gitflow remotes, which no longer exist.
 
 # ============================================
 # VENDOR ORIGINAL SOURCE (historicalsource/*)
@@ -182,56 +116,73 @@ ci: test-orchestrator test-all build-all
 # ============================================
 # SERVE THE ARCADE (canonical dev loop)
 # ============================================
-# `just serve` is the ONE authoritative way to serve the arcade in dev. It runs
-# the whole cabinet — the lobby shell plus every game — from THIS checkout on
-# their pinned ports. Dev-only: the live arcade is R2 static hosting, updated by
-# `just release <name>` (CI deploys on merge to main) or `just deploy` (manual
-# fallback). Run `just install-all` once on a fresh checkout first.
+# ONE dev server for the cabinet, on ONE port. It replaces eight servers on eight
+# pinned ports, and with them scripts/serve.mjs — the supervisor that existed only
+# to launch, watch and tear down a fleet of them (td1-8). One process has one exit
+# status, so there is no fleet left to mask a dead member of.
 #
-# Serve the whole arcade (lobby :5270 + games) from this canonical checkout — Ctrl-C stops all.
-# The launch/supervise logic lives in scripts/serve.mjs (td1-8): it names a server that
-# fails to start, exits non-zero when one does, tears the rest down instead of hanging on
-# a bare `wait`, and only prints a ready URL once that port is observed accepting a
-# connection — see tests/serve-launcher.test.mjs for the behaviour this is required to have.
+# Dev-only. The live arcade is R2 static hosting, updated by `just release <app>`
+# (a tag triggers CI) or `just deploy` (manual fallback). `just install-all` once
+# on a fresh checkout first.
+#
+# The port and the host pin come from vite.config.ts, NOT from CLI flags, so a bare
+# `npx vite` at the repo root is pinned too — not only invocations that remember
+# `--port 5270 --strictPort`. Read the comment on that config's `server` block: the
+# pin still matters with one port, because a-1/a-2/a-3 now race THAT one, and an
+# unpinned host lets a sibling checkout bind [::1]:5270 beside your 127.0.0.1:5270
+# with no collision error and serve the whole cabinet from the wrong working tree.
+#
+# ⚠ WHAT THIS SERVES TODAY: the LOBBY, at every path. MEASURED, not assumed — the
+# root vite.config.ts default-exports `defineAppConfig({ id: 'lobby' })`, whose
+# `root` is lobby/, so /, /tempest/, /tempest/models.html and the nonsense control
+# /banana/ all return 200 with <title>Slabcade</title> and identical bytes. The
+# identical control is the proof: it is a blanket SPA fallback, not a route table.
+# So a screenshot taken at /tempest/ is the LOBBY — do not verify a game's render
+# here. Pinned by `the dev server serves the LOBBY at every path` in
+# tests/canonical-serve.test.mjs, which reddens the day the games are really wired
+# in and this paragraph has to change.
 serve:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Serving the arcade from {{root}} (the canonical checkout)"
-    # Preflight: a bumped @arcade/shared pin does not re-install under plain `npm install`,
-    # so node_modules can serve stale bytes (the lobby once 500'd this way on a missing
-    # /glow export). Reconcile installed vs pinned BEFORE launching — abort loudly on failure.
-    node {{root}}/scripts/deps-doctor.mjs {{subrepos}}
-    # No `trap ... EXIT` here on purpose: `kill 0` would SIGTERM this recipe's own
-    # shell along with the fleet, so the recipe always died of signal 15 (143) no
-    # matter what serve.mjs computed — silently re-erasing the exit code this story
-    # exists to carry. Teardown (including each server's vite grandchild) now lives
-    # in scripts/serve.mjs itself, so the code below simply propagates as this
-    # recipe's own exit status.
-    node {{root}}/scripts/serve.mjs {{root}}
+    @npx vite
 
 # ============================================
 # DEPLOY (R2 static hosting)
 # ============================================
-# Build every servable subrepo and push its dist/ to its R2 bucket
-# (arcade-<name>) with correct content-types. Requires `wrangler` logged in.
-# This is how the live arcade is updated — no local server, no tunnel.
+# MANUAL FALLBACK. It bypasses the tag and CI entirely, and is therefore the only
+# way production can diverge from a release. Prefer `just release <app>`.
+#
+# ONE bucket for the whole cabinet — `arcade-lobby`. The seven `arcade-<game>`
+# buckets are retired: the lobby owns the bucket ROOT (that is what makes it the
+# front door at /) and every game owns its own `<id>/` key prefix. Requires
+# `wrangler` logged in.
+#
+# `--lobby-only` on the lobby's leg is NOT cosmetic — see scripts/deploy-r2.mjs.
+# The lobby's dist dir IS dist/, the parent of every game's dist/<id>/, and the
+# lobby's build deliberately no longer empties it (emptying deleted all seven
+# games), so an unrestricted upload here republishes every game sitting on disk:
+# 34 objects, 29 of them games. Deploy one app, ship eight — from whatever build
+# happens to be lying around, at whatever commit.
 deploy:
     #!/usr/bin/env bash
     set -euo pipefail
-    for s in {{subrepos}}; do
-      echo "==> building $s"
-      (cd {{root}}/$s && npm run build)
-      echo "==> deploying $s -> arcade-$s"
-      node {{root}}/scripts/deploy-r2.mjs {{root}}/$s/dist "arcade-$s"
+    node {{root}}/scripts/build-app.mjs lobby
+    node {{root}}/scripts/deploy-r2.mjs {{root}}/dist arcade-lobby --lobby-only
+    for g in {{games}}; do
+      echo "==> $g"
+      node {{root}}/scripts/build-app.mjs "$g"
+      node {{root}}/scripts/deploy-r2.mjs "{{root}}/dist/$g" arcade-lobby "$g"
     done
     echo "Deploy complete."
 
-# Deploy a single subrepo (e.g. `just deploy-one tempest`)
+# Deploy a single app (e.g. `just deploy-one tempest`, `just deploy-one lobby`)
 deploy-one name:
     #!/usr/bin/env bash
     set -euo pipefail
-    (cd {{root}}/{{name}} && npm run build)
-    node {{root}}/scripts/deploy-r2.mjs {{root}}/{{name}}/dist "arcade-{{name}}"
+    node {{root}}/scripts/build-app.mjs {{name}}
+    if [ "{{name}}" = "lobby" ]; then
+      node {{root}}/scripts/deploy-r2.mjs {{root}}/dist arcade-lobby --lobby-only
+    else
+      node {{root}}/scripts/deploy-r2.mjs {{root}}/dist/{{name}} arcade-lobby {{name}}
+    fi
 
 # ============================================
 # ASSETS (the arcade-assets bucket — sfx / speech / music)
@@ -242,15 +193,24 @@ deploy-one name:
 # ⚠ THE BUCKET IS CALLED `arcade`, NOT `arcade-assets`. The public hostname is
 # arcade-assets.slabgorb.com, but the R2 bucket behind it is plain `arcade` —
 # there is no bucket named arcade-assets, and asking for one fails with the
-# gloriously unhelpful "The specified bucket does not exist". Every other bucket
-# DOES match its domain (arcade-tempest, arcade-star-wars, …), so this one is the
-# exception that will burn you.
+# gloriously unhelpful "The specified bucket does not exist". The apps' own bucket
+# now matches its domain the same way the retired per-game ones did
+# (arcade-lobby ← arcade.slabgorb.com), so this remains the one exception.
 #
-# This is NOT part of CI, and deliberately so. The deploy workflows ship each
-# app's dist/ and nothing else, so the assets bucket has always been filled by
-# hand — which is exactly how star-wars shipped a complete music path pointing at
-# four .wav files that did not exist, and stayed silent for an entire epic without
-# a single error in the console.
+# This is NOT part of CI, and deliberately so. The deploy workflow ships each app's
+# dist/ and nothing else, so the assets bucket has always been filled by hand —
+# which is exactly how star-wars shipped a complete music path pointing at four
+# .wav files that did not exist, and stayed silent for an entire epic without a
+# single error in the console.
+#
+# ⚠ THE BAKE SCRIPTS MOVED WITH THE MONOREPO IMPORT: they are under
+# plugins/star-wars/tools/, not the retired root-level star-wars/. This recipe
+# pointed at the old paths for the whole of the migration and died on `node:
+# cannot find module` before uploading anything — while its only watcher stayed
+# green, because that watcher asserted the STRING `star-wars/music` appears
+# somewhere in this file and the `mkdir -p` line below satisfies it. The guard now
+# resolves the paths this recipe actually invokes and asserts they exist on disk:
+# plugins/star-wars/tools/music-bake/deploy-assets.test.mjs.
 #
 # The bake is deterministic: re-running it re-uploads byte-identical files. The
 # staging tree mirrors the bucket keys, so deploy-r2.mjs (which keys objects by
@@ -265,9 +225,9 @@ deploy-assets:
     trap 'rm -rf "$staging"' EXIT
     mkdir -p "$staging/star-wars/music" "$staging/star-wars/sfx"
     echo "==> baking star-wars music"
-    node {{root}}/star-wars/tools/music-bake/bake-music.mjs "$staging/star-wars/music"
+    node {{root}}/plugins/star-wars/tools/music-bake/bake-music.mjs "$staging/star-wars/music"
     echo "==> baking star-wars sfx"
-    node {{root}}/star-wars/tools/pokey-bake/bake-sfx.mjs "$staging/star-wars/sfx"
+    node {{root}}/plugins/star-wars/tools/pokey-bake/bake-sfx.mjs "$staging/star-wars/sfx"
     echo "==> uploading -> {{assets_bucket}}/star-wars/{music,sfx}/  (served at arcade-assets.slabgorb.com)"
     node {{root}}/scripts/deploy-r2.mjs "$staging" {{assets_bucket}}
     echo "Done. Verify: curl -sI https://arcade-assets.slabgorb.com/star-wars/music/space_theme.wav"
@@ -382,29 +342,14 @@ release-all level="patch" force="":
     node {{root}}/scripts/release.mjs lobby {{level}} {{force}}
 
 # ============================================
-# tempest
+# PER-APP RECIPES — retired, and what replaced each one
 # ============================================
-
-# Start the tempest dev server (http://localhost:5273)
-dev-tempest:
-    cd {{root}}/tempest && npm run dev
-
-# Run tempest tests
-test-tempest:
-    cd {{root}}/tempest && npm test
-
-# Build tempest
-build-tempest:
-    cd {{root}}/tempest && npm run build
-
-# ============================================
-# lobby
-# ============================================
-
-# Start the lobby dev server (http://localhost:5270/lobby/)
-dev-lobby:
-    cd {{root}}/lobby && npm run dev
-
-# Build the lobby
-build-lobby:
-    cd {{root}}/lobby && npm run build
+# dev-tempest / dev-lobby   -> `just serve`   (one dev server for the cabinet)
+# test-tempest              -> `just test-one tempest`
+# build-tempest/build-lobby -> `node scripts/build-app.mjs <id>`, or `just build-all`
+#
+# Every one of them was `cd {{root}}/<name> && npm run …`, and each named a script
+# in a per-subrepo package.json. There are no subrepo directories and no per-app
+# scripts: the root package.json is the only one with any. Left in place they would
+# have failed on `cd` into a directory that does not exist — a per-game recipe is
+# not worth keeping alive as a synonym for a generic one that takes the id.

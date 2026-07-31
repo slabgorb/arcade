@@ -64,13 +64,15 @@
 //      installed versions, alongside the declared ranges.
 //   6. `npm run dev` and `npm run preview` (all seven games' `package.json
 //      scripts` describes asserted `dev → vite` and `preview → vite preview`).
-//      The root has NEITHER, and Task 19 does not add them: `just serve`
-//      becomes `npx vite --port 5270 --strictPort`, run from the root, and
-//      preview has no successor recipe at all. So the SCRIPTS are gone with no
-//      root equivalent — booked here rather than glossed, because the test
-//      below deliberately does not pretend to cover them. The capability they
-//      named is not gone (one dev server still serves the cabinet); the
-//      per-app npm entry points are.
+//      The root has NEITHER, and Task 19 did not add them: `just serve` is a
+//      bare `npx vite` run from the root — the port, host and strictPort come
+//      from vite.config.ts rather than CLI flags, precisely so that an
+//      invocation which forgets the flags is pinned too — and preview has no
+//      successor recipe at all. So the SCRIPTS are gone with no root
+//      equivalent — booked here rather than glossed, because the test below
+//      deliberately does not pretend to cover them. The capability they named
+//      is not gone (one dev server still serves the cabinet); the per-app npm
+//      entry points are.
 //
 // The one removal that is NOT a loss, and was nearly booked as one: joust's
 // `scaffold — strictPort is real, not just declared (AC-1, behavioural)`. See

@@ -77,4 +77,99 @@ describe('sw6-1 AC-8 — there is a way to get the .wav onto R2', () => {
       'AC-8: the upload path must target star-wars/music/ in the arcade-assets bucket',
     ).toBe(true)
   })
+
+  // =========================================================================
+  // STRENGTHENED BY TASK 19 — the guard above went GREEN over a dead recipe
+  // =========================================================================
+  // For the whole of the monorepo migration `deploy-assets` ran
+  // `node {{root}}/star-wars/tools/music-bake/bake-music.mjs`. Root-level
+  // star-wars/ stopped existing at the import — it is plugins/star-wars/ — so the
+  // recipe died on a missing module before uploading a single byte.
+  //
+  // Every assertion above stayed green through that, and the one meant to catch it
+  // is the reason why: it asserts the STRING `star-wars/music` appears somewhere in
+  // the justfile, and the recipe's own `mkdir -p "$staging/star-wars/music"` line
+  // satisfies it — a DIFFERENT line from the broken one. A substring test cannot
+  // tell a live path from a dead one.
+  //
+  // This matters more than the shape suggests: assets and code deploy
+  // independently here, this recipe is not in CI, audio.ts degrades silently on a
+  // 404, and a missing star-wars upload once hid from sw7-18 all the way to
+  // sw8-14. Losing the only watcher over the upload path is precisely the failure
+  // this epic exists to prevent.
+  //
+  // So: resolve the paths the recipe ACTUALLY invokes and require them on disk.
+  it('every script `deploy-assets` invokes exists on disk', () => {
+    const justfile = readFileSync(join(orchestrator, 'justfile'), 'utf8')
+
+    // The recipe body: a col-0 `deploy-assets:` header, indented body lines.
+    const lines = justfile.split('\n')
+    const start = lines.findIndex((l) => /^deploy-assets(\s|:)/.test(l) && !/:=/.test(l))
+    expect(start, 'no `deploy-assets` recipe in the justfile').toBeGreaterThan(-1)
+    const body = []
+    for (let i = start + 1; i < lines.length; i++) {
+      if (lines[i].trim() === '') continue
+      if (!/^\s/.test(lines[i])) break
+      body.push(lines[i])
+    }
+
+    // `node <path> …` invocations, with just's `{{root}}` resolved.
+    const invoked = body
+      .map((l) => /^\s*node\s+(\S+)/.exec(l)?.[1])
+      .filter(Boolean)
+      .map((p) => p.replace(/\{\{root\}\}/g, orchestrator).replace(/^"|"$/g, ''))
+
+    // Anti-vacuity: an empty list would satisfy a bare forEach and prove nothing.
+    // The recipe bakes music, bakes sfx and uploads — three node invocations.
+    expect(
+      invoked.length,
+      `deploy-assets must invoke node scripts; found ${JSON.stringify(invoked)}`,
+    ).toBeGreaterThanOrEqual(3)
+
+    for (const script of invoked) {
+      expect(
+        existsSync(script),
+        `deploy-assets runs \`node ${script}\`, which does not exist — the recipe dies before it ` +
+          `uploads anything, and nothing else in this repo would notice. Did the tools move?`,
+      ).toBe(true)
+    }
+
+    // And the two that matter by name, so a recipe that stopped baking at all
+    // (three invocations, none of them the bake) cannot satisfy the loop above.
+    for (const bake of ['music-bake/bake-music.mjs', 'pokey-bake/bake-sfx.mjs']) {
+      expect(
+        invoked.some((s) => s.endsWith(bake)),
+        `deploy-assets must still run ${bake}; it runs ${JSON.stringify(invoked)}`,
+      ).toBe(true)
+    }
+  })
+
+  it('bakes into, and uploads from, the star-wars/{music,sfx} prefixes', () => {
+    // The path half of the same guard. The bake scripts are handed the staging
+    // directory whose layout MIRRORS THE BUCKET KEYS (deploy-r2.mjs keys objects by
+    // their path relative to the dir it is given), so a bake written to the wrong
+    // subdirectory uploads to the wrong prefix and 404s behind the custom domain —
+    // silently, exactly like the original defect.
+    const justfile = readFileSync(join(orchestrator, 'justfile'), 'utf8')
+    const lines = justfile.split('\n')
+    const start = lines.findIndex((l) => /^deploy-assets(\s|:)/.test(l) && !/:=/.test(l))
+    const body = []
+    for (let i = start + 1; i < lines.length; i++) {
+      if (lines[i].trim() === '') continue
+      if (!/^\s/.test(lines[i])) break
+      body.push(lines[i])
+    }
+    const music = body.find((l) => /bake-music\.mjs/.test(l))
+    const sfx = body.find((l) => /bake-sfx\.mjs/.test(l))
+    expect(music, 'deploy-assets must bake the music').toBeDefined()
+    expect(sfx, 'deploy-assets must bake the sfx').toBeDefined()
+    expect(music).toMatch(/\$staging\/star-wars\/music/)
+    expect(sfx).toMatch(/\$staging\/star-wars\/sfx/)
+    // …and the staging root — not a subdirectory of it — is what gets uploaded,
+    // or the star-wars/ prefix would be stripped off every key.
+    expect(
+      body.some((l) => /deploy-r2\.mjs\s+"\$staging"/.test(l)),
+      'deploy-assets must upload the staging ROOT, so the keys keep their star-wars/ prefix',
+    ).toBe(true)
+  })
 })

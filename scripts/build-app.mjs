@@ -320,6 +320,29 @@ export function buildEntriesFor(id) {
 // ---------------------------------------------------------------------------
 
 /**
+ * THE definition of "the lobby's own output": every top-level entry of dist/ that
+ * is not a game's dist/<id>/ directory. Returned as bare entry names.
+ *
+ * ONE definition, deliberately, because two consumers need exactly the same
+ * answer and a second copy would drift from this one:
+ *   - cleanLobbyOutput below DELETES exactly these before a lobby build;
+ *   - the lobby's deploy leg UPLOADS exactly these (scripts/deploy-r2.mjs
+ *     `--lobby-only`).
+ * A disagreement between those two is a deploy that ships files the build was
+ * about to delete, or deletes files the deploy is about to ship.
+ *
+ * The game set comes from appIds() — the real plugins/ directory — so a new game
+ * is excluded the moment its directory exists, with no list here to update.
+ */
+export function lobbyOwnedEntries(distDir) {
+  if (!existsSync(distDir)) return []
+  const games = new Set(appIds().filter((id) => id !== 'lobby'))
+  return readdirSync(distDir, { withFileTypes: true })
+    .filter((entry) => !(entry.isDirectory() && games.has(entry.name)))
+    .map((entry) => entry.name)
+}
+
+/**
  * The lobby's outDir IS dist/, the parent of every game's dist/<id>/, so Vite's
  * `emptyOutDir: true` deletes all seven games when the lobby is built. MEASURED,
  * not assumed: build tempest, then build the lobby from the unmodified factory
@@ -327,15 +350,12 @@ export function buildEntriesFor(id) {
  * safety does not save it — the factory sets emptyOutDir explicitly.)
  *
  * That breaks the one rule this script exists to keep: each app builds
- * independently. So the lobby cleans only its OWN output — every top-level entry
- * of dist/ that is not a game directory — and builds with emptyOutDir off.
+ * independently. So the lobby cleans only its OWN output — see lobbyOwnedEntries
+ * — and builds with emptyOutDir off.
  */
 export function cleanLobbyOutput(distDir) {
-  if (!existsSync(distDir)) return
-  const games = new Set(appIds().filter((id) => id !== 'lobby'))
-  for (const entry of readdirSync(distDir, { withFileTypes: true })) {
-    if (entry.isDirectory() && games.has(entry.name)) continue
-    rmSync(join(distDir, entry.name), { recursive: true, force: true })
+  for (const entry of lobbyOwnedEntries(distDir)) {
+    rmSync(join(distDir, entry), { recursive: true, force: true })
   }
 }
 

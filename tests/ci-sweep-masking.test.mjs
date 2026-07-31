@@ -49,10 +49,45 @@
 // so stubbing it isolates the game-masking + "CI passed!" guard that is this story's
 // subject. Thus ci's correctness genuinely INHERITS from test-all/build-all
 // propagating failure, and is exercised through the real dependency chain.
+//
+// ===========================================================================
+// REWRITTEN BY TASK 19 (one dev server, one port) — the sweeps changed shape
+// ===========================================================================
+// The defect above was a PROPERTY OF A LOOP, so where the loop went, the tests
+// had to follow. Both sweeps used to iterate eight subrepo directories running
+// `npm test` / `npm run build` in each.
+//
+//   · `test-all` is now ONE process — `npx vitest run` across every project. One
+//     process has one exit status; there is no per-iteration status left to
+//     discard. The six position/naming tests are therefore GONE, quoted here by
+//     exact old title so the removal is auditable, not silent:
+//       - `td1-10 AC1: \`test-all\` — a FIRST-position game failure makes the sweep exit non-zero`
+//       - `td1-10 AC1: \`test-all\` — a MIDDLE-position game failure makes the sweep exit non-zero`
+//       - `td1-10 AC1: \`test-all\` — a LAST-position game failure makes the sweep exit non-zero`
+//       - `td1-10 AC3: \`test-all\` — an all-green sweep still exits 0`
+//       - `td1-10 AC2: \`test-all\` — the sweep NAMES the game that failed, not just a bad exit code`
+//       - `td1-10 AC2: \`test-all\` — MULTIPLE failures are ALL named, and a passing sibling is not`
+//     They are replaced by two tests of what the recipe must still do — carry the
+//     runner's exit status out to the caller — driven through a PATH-shimmed
+//     `npx` that exits with a code we choose. That is not a downgrade to a text
+//     assertion: the real recipe body still runs under the real `just`.
+//
+//   · `build-all` is STILL A LOOP, and deliberately so — one build per app is the
+//     point ("one origin does not mean one build") — so all six of its tests
+//     survive intact. Only the fixture moved: the stub is now a fake
+//     `scripts/build-app.mjs` (the one builder the recipe invokes) instead of a
+//     stub package.json per subrepo, because that is what the recipe calls now.
+//     It gained one assertion it could not make before: build-all must build the
+//     LOBBY too, which the old per-game loop never did.
+//
+//   · `ci` is exercised through MORE of the real chain than before. It used to
+//     stub test-orchestrator and drive a red *game*; now test-all and build-all
+//     both run for real against the shims, and only test-orchestrator (which runs
+//     this very suite) is stubbed.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -89,21 +124,40 @@ function fullRecipe(justfile, name) {
 const JUST = 'just';
 const justAvailable = spawnSync(JUST, ['--version'], { encoding: 'utf8' }).status === 0;
 
-// Stub games: each is a real dir with a package.json whose `test`/`build` scripts
-// exit with the code we choose. A passing game exits 0; a red game exits non-zero,
-// exactly like a real failing `npm test`/`npm run build` (npm propagates the code).
-function makeStubGames(dir, games) {
-  for (const g of games) {
-    const gdir = join(dir, g.name);
-    mkdirSync(gdir, { recursive: true });
-    writeFileSync(
-      join(gdir, 'package.json'),
-      JSON.stringify({
-        name: g.name,
-        scripts: { test: `exit ${g.testCode ?? 0}`, build: `exit ${g.buildCode ?? 0}` },
-      }),
-    );
-  }
+// Stub builder: a fake `{{root}}/scripts/build-app.mjs`, which is what `build-all`
+// invokes for every app. It exits with the code chosen for the id it is handed
+// (0 for anything unlisted — notably `lobby`, which build-all appends), exactly
+// like a real failing build, and appends the id to a log so a test can assert
+// WHICH apps were built and not merely that the sweep exited non-zero.
+const BUILT_LOG = 'built.log';
+function makeStubBuilder(dir, games) {
+  const codes = Object.fromEntries(games.map((g) => [g.name, g.buildCode ?? 0]));
+  mkdirSync(join(dir, 'scripts'), { recursive: true });
+  writeFileSync(
+    join(dir, 'scripts', 'build-app.mjs'),
+    `import { appendFileSync } from 'node:fs';\n` +
+      `const codes = ${JSON.stringify(codes)};\n` +
+      `const id = process.argv[2];\n` +
+      `appendFileSync(${JSON.stringify(join(dir, BUILT_LOG))}, id + '\\n');\n` +
+      `process.exit(codes[id] ?? 0);\n`,
+  );
+}
+
+// PATH shim for `npx`, which is what `test-all` invokes. `test-all` is one process
+// now, so what has to be proven is that its exit status reaches the caller — and
+// that cannot be proven by running the real vitest, which would take minutes and
+// be green by construction. The shim exits with the code we choose and records its
+// argv, so a test can also assert WHAT was run (`vitest run`, unfiltered).
+function makeNpxShim(dir, exitCode) {
+  const bin = join(dir, 'bin');
+  mkdirSync(bin, { recursive: true });
+  const log = join(dir, 'npx.log');
+  writeFileSync(
+    join(bin, 'npx'),
+    `#!/usr/bin/env bash\nprintf '%s\\n' "$*" >> ${JSON.stringify(log)}\nexit ${exitCode}\n`,
+    { mode: 0o755 },
+  );
+  return { bin, log };
 }
 
 // Assemble a fixture justfile from the REAL recipe bodies and run `just <recipe>`
@@ -114,13 +168,14 @@ function makeStubGames(dir, games) {
 //   games:        [{ name, testCode?, buildCode? }]
 //   recipeNames:  the recipes to extract into the fixture (deps first for `ci`)
 //   overrides:    { name: "full recipe text" } used instead of extracting (stubs)
-function runRecipe({ justfileText, recipe, recipeNames, games, overrides = {} }) {
+function runRecipe({ justfileText, recipe, recipeNames, games, overrides = {}, npxExit = 0 }) {
   assert.ok(
     justAvailable,
     'the `just` binary is required to test its recipes (brew install just) — these tests exercise the real recipe through the real launcher, not the justfile text',
   );
   const dir = mkdtempSync(join(tmpdir(), 'td1-10-'));
-  makeStubGames(dir, games);
+  makeStubBuilder(dir, games);
+  const npx = makeNpxShim(dir, npxExit);
 
   const parts = [`root := "${dir}"`, `games := "${games.map((g) => g.name).join(' ')}"`, ''];
   for (const name of recipeNames) {
@@ -136,14 +191,24 @@ function runRecipe({ justfileText, recipe, recipeNames, games, overrides = {} })
   const jf = join(dir, 'fixture.just');
   writeFileSync(jf, parts.join('\n'));
 
-  const res = spawnSync(JUST, ['--justfile', jf, '--working-directory', dir, recipe], {
+  // `recipe` may carry arguments (`test-one tempest`); `just` takes them as
+  // separate argv entries, not one string.
+  const invocation = recipe.trim().split(/\s+/);
+  const res = spawnSync(JUST, ['--justfile', jf, '--working-directory', dir, ...invocation], {
     encoding: 'utf8',
     timeout: 60000,
+    env: { ...process.env, PATH: `${npx.bin}:${process.env.PATH}` },
   });
+  const readLog = (file) => {
+    const path = join(dir, file);
+    return existsSync(path) ? readFileSync(path, 'utf8').trim().split('\n').filter(Boolean) : [];
+  };
   return {
     status: res.status,
     signal: res.signal,
     combined: `${res.stdout ?? ''}${res.stderr ?? ''}`,
+    built: readLog(BUILT_LOG),
+    npxCalls: readLog('npx.log'),
   };
 }
 
@@ -167,62 +232,78 @@ const ALL_PASS = [{ name: 'alpha' }, { name: 'bravo' }, { name: 'charlie' }];
 const TO = { timeout: 30000 };
 
 // ---------------------------------------------------------------------------
-// test-all — the CI-critical game test sweep
+// test-all — ONE process across every project. The masking property is gone with
+// the loop, so what is proven here is what remains provable and load-bearing:
+// the runner's exit status reaches the caller, and the run is not silently
+// narrowed. Both drive the REAL recipe body under the REAL `just`, against a
+// PATH-shimmed `npx`.
 // ---------------------------------------------------------------------------
 
-test('td1-10 AC1: `test-all` — a FIRST-position game failure makes the sweep exit non-zero', TO, () => {
-  // The case the bug most obviously drops: SM proved first-position is masked, not
-  // just middle. Today the loop's exit is joust's (the last game), so alpha's red
-  // vanishes and the sweep returns 0.
-  const r = runRecipe({ justfileText: read('justfile'), recipe: 'test-all', recipeNames: ['test-all'], games: gamesWithFail(0) });
+test('td1-10 AC1 (successor): `test-all` carries a failing run out to the caller', TO, () => {
+  const r = runRecipe({
+    justfileText: read('justfile'),
+    recipe: 'test-all',
+    recipeNames: ['test-all'],
+    games: ALL_PASS,
+    npxExit: 3,
+  });
   assert.equal(r.signal, null, `test-all must not be killed by a signal; got signal=${r.signal}`);
   assert.notEqual(
     r.status,
     0,
-    `the first game failed, but \`just test-all\` returned 0 — the for-loop discarded every failure but the last. Output:\n${r.combined}`,
+    `the test run exited 3 but \`just test-all\` returned 0 — the fleet gate is swallowing its runner's status. Output:\n${r.combined}`,
+  );
+  // Anti-vacuity: a recipe that ran NOTHING would also fail to be green, and would
+  // pass the assertion above for the wrong reason.
+  assert.deepEqual(
+    r.npxCalls,
+    ['vitest run'],
+    `test-all must invoke the runner exactly once, across every project. Calls: ${JSON.stringify(r.npxCalls)}`,
   );
 });
 
-test('td1-10 AC1: `test-all` — a MIDDLE-position game failure makes the sweep exit non-zero', TO, () => {
-  const r = runRecipe({ justfileText: read('justfile'), recipe: 'test-all', recipeNames: ['test-all'], games: gamesWithFail(1) });
-  assert.equal(r.signal, null);
-  assert.notEqual(r.status, 0, `a middle game failed but \`just test-all\` returned 0 (masked). Output:\n${r.combined}`);
-});
-
-test('td1-10 AC1: `test-all` — a LAST-position game failure makes the sweep exit non-zero', TO, () => {
-  // True today (only the last game's status survives), pinned so a fix cannot regress
-  // the one position that currently works.
-  const r = runRecipe({ justfileText: read('justfile'), recipe: 'test-all', recipeNames: ['test-all'], games: gamesWithFail(2) });
-  assert.equal(r.signal, null);
-  assert.notEqual(r.status, 0, `the last game failed and \`just test-all\` must exit non-zero. Output:\n${r.combined}`);
-});
-
-test('td1-10 AC3: `test-all` — an all-green sweep still exits 0', TO, () => {
+test('td1-10 AC3 (successor): `test-all` exits 0 on a green run', TO, () => {
   // Guards a "fix" that passes by always failing (the straw-man the RED control reds).
-  const r = runRecipe({ justfileText: read('justfile'), recipe: 'test-all', recipeNames: ['test-all'], games: ALL_PASS });
+  const r = runRecipe({
+    justfileText: read('justfile'),
+    recipe: 'test-all',
+    recipeNames: ['test-all'],
+    games: ALL_PASS,
+    npxExit: 0,
+  });
   assert.equal(r.signal, null);
-  assert.equal(r.status, 0, `every game passed, so \`just test-all\` must exit 0; got ${r.status}. Output:\n${r.combined}`);
+  assert.equal(r.status, 0, `the run passed, so \`just test-all\` must exit 0; got ${r.status}. Output:\n${r.combined}`);
 });
 
-test('td1-10 AC2: `test-all` — the sweep NAMES the game that failed, not just a bad exit code', TO, () => {
-  const r = runRecipe({ justfileText: read('justfile'), recipe: 'test-all', recipeNames: ['test-all'], games: gamesWithFail(0) });
+test('`test-all` is the WHOLE cabinet — `test-one` is the narrowed one', TO, () => {
+  // The gate must not quietly become one project's suite. `--project` narrows the
+  // run; a `test-all` that grew one would go green having skipped seven apps, and
+  // the exit-status tests above cannot see that. `--passWithNoTests` is the other
+  // half: it makes a config that matches no test file report success.
+  const all = runRecipe({
+    justfileText: read('justfile'),
+    recipe: 'test-all',
+    recipeNames: ['test-all'],
+    games: ALL_PASS,
+  });
   assert.ok(
-    namedFailed(r.combined, 'alpha'),
-    `the sweep must name the failed game (e.g. "test-all FAILED: alpha"); today only \`just\`'s recipe-level error appears, naming no game. Output:\n${r.combined}`,
+    !all.npxCalls.some((c) => /--project|--passWithNoTests/.test(c)),
+    `test-all must run every project and must not pass --passWithNoTests. Calls: ${JSON.stringify(all.npxCalls)}`,
   );
-  assert.ok(
-    !namedFailed(r.combined, 'bravo'),
-    `a passing game must not be reported as failed. Output:\n${r.combined}`,
-  );
-});
 
-test('td1-10 AC2: `test-all` — MULTIPLE failures are ALL named, and a passing sibling is not', TO, () => {
-  const games = [{ name: 'alpha', testCode: 3 }, { name: 'bravo' }, { name: 'charlie', testCode: 5 }];
-  const r = runRecipe({ justfileText: read('justfile'), recipe: 'test-all', recipeNames: ['test-all'], games });
-  assert.notEqual(r.status, 0, `two games failed; the sweep must exit non-zero. Output:\n${r.combined}`);
-  assert.ok(namedFailed(r.combined, 'alpha'), `alpha failed and must be named. Output:\n${r.combined}`);
-  assert.ok(namedFailed(r.combined, 'charlie'), `charlie failed and must be named. Output:\n${r.combined}`);
-  assert.ok(!namedFailed(r.combined, 'bravo'), `bravo passed and must not be named as failed. Output:\n${r.combined}`);
+  // …and the narrowing really is available, or the assertion above just describes
+  // a capability nobody has.
+  const one = runRecipe({
+    justfileText: read('justfile'),
+    recipe: 'test-one tempest',
+    recipeNames: ['test-one'],
+    games: ALL_PASS,
+  });
+  assert.deepEqual(
+    one.npxCalls,
+    ['vitest run --project tempest'],
+    `test-one must run exactly the named project. Calls: ${JSON.stringify(one.npxCalls)}`,
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -276,6 +357,26 @@ test('td1-10 AC2: `build-all` — MULTIPLE build failures are ALL named, and a p
   assert.ok(!namedFailed(r.combined, 'bravo'), `bravo's build passed and must not be named as failed. Output:\n${r.combined}`);
 });
 
+test('`build-all` builds the LOBBY as well as the seven games', TO, () => {
+  // NEW with Task 19, and it could not have been asked before: the old recipe
+  // looped `{{games}}` only, so the lobby — the arcade's front door, and the one
+  // app whose outDir is the parent of every other's — was never in the sweep. A
+  // regression to `for g in {{games}}` would still exit 0 on a green fleet, so no
+  // exit-status test can see it; only the log of what was actually built can.
+  const r = runRecipe({
+    justfileText: read('justfile'),
+    recipe: 'build-all',
+    recipeNames: ['build-all'],
+    games: ALL_PASS,
+  });
+  assert.equal(r.status, 0, `an all-green build-all must exit 0. Output:\n${r.combined}`);
+  assert.deepEqual(
+    r.built,
+    ['alpha', 'bravo', 'charlie', 'lobby'],
+    `build-all must build every game AND the lobby, once each. Built: ${JSON.stringify(r.built)}`,
+  );
+});
+
 // ---------------------------------------------------------------------------
 // ci — the gate that must not lie. Exercised through the REAL dependency chain
 // (`ci: test-orchestrator test-all build-all`) with only test-orchestrator stubbed;
@@ -283,31 +384,55 @@ test('td1-10 AC2: `build-all` — MULTIPLE build failures are ALL named, and a p
 // ---------------------------------------------------------------------------
 
 const CI_RECIPES = ['test-orchestrator', 'test-all', 'build-all', 'ci'];
-// test-orchestrator runs the orchestrator's OWN node suite, not the game sweep; a
-// no-op stub isolates the game-masking + "CI passed!" guard under test.
+// test-orchestrator runs the orchestrator's OWN node suite — THIS suite — not the
+// cabinet sweep; a no-op stub isolates the guard under test and avoids recursion.
+// test-all and build-all are the REAL recipes, driven by the shims.
 const CI_OVERRIDES = { 'test-orchestrator': 'test-orchestrator:\n    @exit 0' };
 
-test('td1-10 AC2: `ci` cannot print "CI passed!" — a red game exits non-zero and suppresses the banner', TO, () => {
-  // First game's test fails; today test-all masks it, so `ci` proceeds through
-  // build-all and prints "CI passed!" — the exact defect. A fixed test-all exits
-  // non-zero, `just` aborts the dependency chain, and the body never runs.
+test('td1-10 AC2: `ci` cannot print "CI passed!" when the test sweep is red', TO, () => {
+  // The unit tests fail. `ci`'s dependency chain must abort at test-all, so
+  // build-all never runs and the body — the "CI passed!" banner — never executes.
+  const r = runRecipe({
+    justfileText: read('justfile'),
+    recipe: 'ci',
+    recipeNames: CI_RECIPES,
+    games: ALL_PASS,
+    overrides: CI_OVERRIDES,
+    npxExit: 3,
+  });
+  assert.equal(r.signal, null);
+  assert.notEqual(r.status, 0, `the suite is red, so \`just ci\` must exit non-zero. Output:\n${r.combined}`);
+  assert.doesNotMatch(
+    r.combined,
+    /CI passed/i,
+    `\`just ci\` printed "CI passed!" while the suite was red — the gate reports success on a broken cabinet. Output:\n${r.combined}`,
+  );
+  assert.deepEqual(r.built, [], `ci must abort before build-all when the suite is red. Built: ${JSON.stringify(r.built)}`);
+});
+
+test('td1-10 AC2: `ci` cannot print "CI passed!" when one app fails to BUILD', TO, () => {
+  // The other half of the chain, and the one that still runs through a loop: the
+  // suite is green, alpha's build is red. build-all must accumulate that failure
+  // rather than let the last iteration's status speak for all of them.
   const r = runRecipe({
     justfileText: read('justfile'),
     recipe: 'ci',
     recipeNames: CI_RECIPES,
     games: gamesWithFail(0),
     overrides: CI_OVERRIDES,
+    npxExit: 0,
   });
   assert.equal(r.signal, null);
-  assert.notEqual(r.status, 0, `a game is red, so \`just ci\` must exit non-zero. Output:\n${r.combined}`);
+  assert.notEqual(r.status, 0, `an app failed to build, so \`just ci\` must exit non-zero. Output:\n${r.combined}`);
   assert.doesNotMatch(
     r.combined,
     /CI passed/i,
-    `\`just ci\` printed "CI passed!" while a game was red — the gate reports success on a broken fleet. Output:\n${r.combined}`,
+    `\`just ci\` printed "CI passed!" while an app's build was red. Output:\n${r.combined}`,
   );
+  assert.ok(namedFailed(r.combined, 'alpha'), `ci must name the app that failed to build. Output:\n${r.combined}`);
 });
 
-test('td1-10 AC3: `ci` still passes when the whole fleet is green', TO, () => {
+test('td1-10 AC3: `ci` still passes when the whole cabinet is green', TO, () => {
   // Guards a fix that suppresses "CI passed!" unconditionally.
   const r = runRecipe({
     justfileText: read('justfile'),
@@ -315,8 +440,9 @@ test('td1-10 AC3: `ci` still passes when the whole fleet is green', TO, () => {
     recipeNames: CI_RECIPES,
     games: ALL_PASS,
     overrides: CI_OVERRIDES,
+    npxExit: 0,
   });
   assert.equal(r.signal, null);
-  assert.equal(r.status, 0, `the whole fleet is green, so \`just ci\` must exit 0; got ${r.status}. Output:\n${r.combined}`);
+  assert.equal(r.status, 0, `the whole cabinet is green, so \`just ci\` must exit 0; got ${r.status}. Output:\n${r.combined}`);
   assert.match(r.combined, /CI passed/i, `an all-green ci must still announce success. Output:\n${r.combined}`);
 });
