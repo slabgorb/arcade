@@ -21,10 +21,21 @@
   },
   "include": ["src", "plugins", "lobby", "scripts"],
   // arcade-shared shipped with no tsconfig, so its tests were never compiled — only
-  // run through vitest, which strips types. Folding them into `src` would newly
-  // typecheck them and surface 22 pre-existing errors in test doubles. Excluded to
-  // hold the pre-migration line; the errors are a filed story, not a silent pass.
-  // NOTE: this is scoped to src/shared/tests ONLY. Every game's tests remain
-  // typechecked, exactly as they were in their own repos.
-  "exclude": ["src/shared/tests"]
+  // run through vitest, which strips types. Folding them into `src` newly
+  // typechecks them, and 22 pre-existing errors surface in ONE file's test
+  // doubles (FakeAudioContext / FakeGain standing in for the real Web Audio
+  // types). Excluded to hold the pre-migration line; the errors are filed as
+  // uf1-28, not a silent pass.
+  //
+  // ONE FILE, not the directory. Measured with `"exclude": []`: `tsc --noEmit`
+  // reports exactly 22 errors and every one of them is in
+  // src/shared/tests/synth.test.ts (14 × TS2345, 5 × TS2554, 2 × TS18048,
+  // 1 × TS2493). Excluding the whole directory took the other 26 test files down
+  // with it for no reason — including highscore.dom.test.ts, which was written
+  // during the migration and had never been typechecked at all. Narrowing the
+  // pathspec to the single offending file restores type-checking to all 26 and
+  // still exits 0. Delete this line entirely when uf1-28 lands.
+  //
+  // Every game's tests remain typechecked, exactly as they were in their own repos.
+  "exclude": ["src/shared/tests/synth.test.ts"]
 }

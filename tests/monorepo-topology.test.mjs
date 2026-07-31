@@ -252,6 +252,35 @@ test('every app tsconfig extends the root, at the right depth', () => {
     'the root config is the only place strictness is declared — every plugin stub delegates here');
 });
 
+test('the tsc exclusion is ONE file, not the src/shared/tests directory', () => {
+  // The migration folded arcade-shared into src/shared, which newly typechecked
+  // its 26 test files and surfaced 22 pre-existing errors — every one of them in
+  // src/shared/tests/synth.test.ts (FakeAudioContext / FakeGain doubles, filed as
+  // uf1-28). The exclusion written to hold that line named the whole DIRECTORY,
+  // which silently un-typechecked the other 25 files too — including
+  // highscore.dom.test.ts, written during the migration and never checked at all.
+  //
+  // Measured: with `"exclude": []` tsc reports 22 errors, all in synth.test.ts;
+  // with the file excluded it exits 0 and `tsc --listFiles` puts 27 entries from
+  // src/shared/tests/ into the program (0 under the directory exclusion). So the
+  // narrowing is not cosmetic — it is 26 files of coverage.
+  //
+  // Raw text, not JSON.parse: the root tsconfig carries `//` comments. They are
+  // STRIPPED first — the note above the exclusion quotes `"exclude": []` as the
+  // measurement it rests on, and an unstripped regex reads that quotation as the
+  // setting. (It did, on the first run of this test: `actual: []`.) A comment must
+  // never be able to satisfy or defeat this check.
+  const raw = read('tsconfig.json').replace(/^\s*\/\/.*$/gm, '');
+  const m = /"exclude"\s*:\s*\[([^\]]*)\]/.exec(raw);
+  assert.ok(m, 'the root tsconfig has no "exclude" — if uf1-28 landed, delete this test with it');
+  const entries = m[1].split(',').map((s) => s.trim().replace(/^"|"$/g, '')).filter(Boolean);
+  assert.deepEqual(
+    entries,
+    ['src/shared/tests/synth.test.ts'],
+    'the exclusion must name the ONE file whose errors it holds — a directory takes 25 innocent files with it',
+  );
+});
+
 test('the root declares the scripts and the toolchain the apps used to declare individually', () => {
   // Replaces the interior of the seven `package.json scripts` describes. Each one
   // demanded SIX scripts — dev/build/preview/test/test:watch/lint — plus
