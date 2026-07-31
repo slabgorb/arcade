@@ -59,3 +59,9 @@ out/audio/
 # pre-monorepo history stays recoverable on this machine. Safe to remove once every
 # game is imported and its GitHub remote is confirmed in sync.
 .migration-backup/
+# Persona portrait art — GENERATED OUTPUT, not source. `just portraits <theme>`
+# renders it (GPU, and `portraits-all` covers 102 themes), tmux displays it inline
+# via the Kitty/iTerm2/Sixel passthrough, and `pf init` drops a prebuilt copy in.
+# 5.9MB of images that no build, suite or sprint command consumes, all of it
+# reproducible — ignored rather than deleted, since the next `pf init` restores it.
+.pennyfarthing/personas/portraits/
