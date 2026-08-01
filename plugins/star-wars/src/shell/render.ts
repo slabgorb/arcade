@@ -278,6 +278,38 @@ const DEATH_STAR_Z_NEAR = -3500
 const DEATH_STAR_SCALE_FAR = 1
 const DEATH_STAR_SCALE_NEAR = 2.4
 
+// sw8-17: the station's own off-axis wander. On the cabinet the space-phase Death Star
+// is a fixed LANDMARK drawn at the ship-attitude transform of the world +X far point
+// (`VWDTHA`, WSMAIN.MAC:3605, "X POSITION AT FAR(4000,0,0) DISTANCE"), gated in-front
+// (:3607) and inside a ±45° pyramid (:3613/:3618) — outside the gate NOTHING is drawn.
+// Every wave-set seeds the attitude facing dead away (`$C0` "FACE BACKWARDS"
+// WSMAIN.MAC:1331; "TURN PLAYER AWAY FROM NEW DETH STAR" :1940), mid-combat the twirl
+// aims at ALIENS only (STWSP1 :2293, AIM :2311, AIMDTH :2447) and the yoke never
+// rotates the ship in space (S1MV writes only ST.UX, WSMAIN.MAC:2522-2530), so the
+// station stays un-drawn through the dogfight; the wave-clear turn then converges
+// until `M$AX ≥ $3F00` (WSMAIN.MAC:1529-1535) and the hyper keeps centering (:1568).
+// Our camera is pinned to the cockpit (sw8-8), so that view-space direction is the
+// STATION's seat. The body must also stay ahead in −Z (tests/core/death-star-body:
+// the astern seed cannot be a +z seat), so "not drawn" is expressed LATERALLY: parked
+// beyond the ±45° gate, one sweep in, inside the stop cone by the transition.
+const DEATH_STAR_PARKED_OFF_AXIS = (75 / 180) * Math.PI // beyond the gate, ahead in −Z
+const DEATH_STAR_TURN_STOP_COS = 0x3f00 / 0x4000 // PHES0G's stop, WSMAIN.MAC:1533
+const DEATH_STAR_STOP_CONE = Math.acos(DEATH_STAR_TURN_STOP_COS) // ≈ 10.14°
+const DEATH_STAR_END_OFF_AXIS = (4 / 180) * Math.PI // still converging through the hyper
+const DEATH_STAR_TURN_START_S = SPACE_PHASE_END_S - 5 // the S0G/S1G-equivalent tail
+const DEATH_STAR_IN_CONE_S = SPACE_PHASE_END_S - 1.5 // inside the $3F00 cone from here
+
+/** The station's off-axis angle at clamped phase-clock time `t` (radians). */
+function deathStarOffAxis(t: number): number {
+  if (t <= DEATH_STAR_TURN_START_S) return DEATH_STAR_PARKED_OFF_AXIS
+  if (t <= DEATH_STAR_IN_CONE_S) {
+    const q = (t - DEATH_STAR_TURN_START_S) / (DEATH_STAR_IN_CONE_S - DEATH_STAR_TURN_START_S)
+    return DEATH_STAR_PARKED_OFF_AXIS + (DEATH_STAR_STOP_CONE - DEATH_STAR_PARKED_OFF_AXIS) * q
+  }
+  const q = (t - DEATH_STAR_IN_CONE_S) / (SPACE_PHASE_END_S - DEATH_STAR_IN_CONE_S)
+  return DEATH_STAR_STOP_CONE + (DEATH_STAR_END_OFF_AXIS - DEATH_STAR_STOP_CONE) * q
+}
+
 /**
  * Where the shell seats the Death Star body — derived PURELY from sim state,
  * honouring the core/shell boundary like `surfacePlacement`/`trenchPlacement`:
@@ -285,14 +317,20 @@ const DEATH_STAR_SCALE_NEAR = 2.4
  * The space phase is TIME-boxed (sw8-11), so the approach rides the phase
  * clock: as the 21 s box runs down the ship CLOSES on the body, which slides
  * nearer (|z| ↓) AND scales up — its apparent size grows monotonically across
- * the phase, independent of kills. Pure: reads state, mutates nothing; the
- * body never enters the sim, so it cannot touch determinism or TIE hit-tests.
+ * the phase, independent of kills. The x term is the sw8-17 station wander
+ * (see `deathStarOffAxis` above): parked beyond the ROM's ±45° draw gate for
+ * the combat window, sweeping in once through the tail — which is why the body
+ * is absent mid-combat, exactly as the cabinet longplay shows. Pure: reads
+ * state, mutates nothing; the body never enters the sim, so it cannot touch
+ * determinism or TIE hit-tests.
  */
 export function deathStarPlacement(state: GameState): { pos: Vec3; scale: number } {
-  const p = Math.min(1, Math.max(0, state.phaseTime / SPACE_PHASE_END_S))
+  const t = Math.min(SPACE_PHASE_END_S, Math.max(0, state.phaseTime))
+  const p = t / SPACE_PHASE_END_S
   const z = DEATH_STAR_Z_FAR + (DEATH_STAR_Z_NEAR - DEATH_STAR_Z_FAR) * p
   const scale = DEATH_STAR_SCALE_FAR + (DEATH_STAR_SCALE_NEAR - DEATH_STAR_SCALE_FAR) * p
-  return { pos: [0, 0, z], scale }
+  const x = Math.tan(deathStarOffAxis(t)) * -z
+  return { pos: [x, 0, z], scale }
 }
 
 // sw7-15 / M-010: the picture is in raw ROM units (radius 50); scale it up so the body

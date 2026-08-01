@@ -207,19 +207,26 @@ describe('sw7-15 / X-007 — a looming-station prelim enlarges the Death Star be
   }
   const bodyFootprint = (state: GameState): number => maxStrokeRadius(bodyStrokes(state), CX, CY)
 
-  it('looms the station large — bigger than a fresh far seed — during the finale', () => {
-    // The far seed the winning kill currently warps to (phaseKills 0).
-    const farSeed = bodyFootprint({
+  it('looms the station large — bigger than the body ever draws in normal play — during the finale', () => {
+    // RE-BASED BY sw8-17: the original baseline was a fresh far seed (phaseTime 0),
+    // which rendered front-and-centre when this test was written. sw8-17 ported the
+    // station's own wander (the ROM parks it outside the ±45° draw gate through the
+    // combat window — WSMAIN.MAC:1331/:1940, VWDTHA :3605), so at the far seed the
+    // body now rightly draws NOTHING. The honest baseline for "AT VERY LARGE"
+    // (PH$DX1, WSMAIN.MAC:2171) is the LARGEST the body ever draws in normal play:
+    // the end of the approach, centred inside the $3F00 stop cone at its nearest z.
+    const approachEnd = bodyFootprint({
       ...initialState(1983),
       mode: 'playing',
       phase: 'space',
       phaseKills: 0,
+      phaseTime: 21, // SPACE_PHASE_END_S — the approach fully run down
       enemies: [],
       dyingTies: [],
       enemyShots: [],
       deathStarDestroyedAt: null,
     })
-    expect(farSeed).toBeGreaterThan(0) // sanity: the body renders
+    expect(approachEnd).toBeGreaterThan(0) // sanity: the body renders at the approach end
 
     // Drive the REAL winning kill (exhaust-port-outcome idiom): an armed run with the
     // port in the $800 window resolves on the next micro-step.
@@ -234,13 +241,18 @@ describe('sw7-15 / X-007 — a looming-station prelim enlarges the Death Star be
     expect(s.deathStarDestroyedAt).not.toBeNull() // the kill actually landed
 
     // Over the finale window, the station should LOOM: at some frame the body is
-    // drawn markedly larger than the far seed (the ROM's "AT VERY LARGE" enlarge).
+    // drawn markedly larger than it EVER is in normal play (the ROM's "AT VERY
+    // LARGE" enlarge — a loom, not just the approach seen again).
     let peak = bodyFootprint(s)
     for (let f = 0; f < 90 && s.mode === 'playing'; f++) {
       s = stepGame(s, NO_INPUT, 1 / 60)
       peak = Math.max(peak, bodyFootprint(s))
     }
-    // Today the kill snaps to the far seed and never enlarges ⇒ peak ≈ farSeed ⇒ RED.
-    expect(peak).toBeGreaterThan(farSeed * 1.5)
+    // 1.25× margin: the loom's world-space scale ratio is 4.0/2.4 ≈ 1.67×, but this
+    // screen-space footprint compresses it — the baseline is inflated by the
+    // approach-end's off-centre seat (sw8-17 stop cone) and the loom's lower half is
+    // cropped by the y ≤ 500 measurement band. 1.25× still cleanly separates a real
+    // loom (~1.4× measured) from "the approach seen again" (1.0×).
+    expect(peak).toBeGreaterThan(approachEnd * 1.25)
   })
 })

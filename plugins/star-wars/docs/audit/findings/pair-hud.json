@@ -61,7 +61,7 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 1294,
+      "line": 1332,
       "verbatim": "    glowText(ctx, 'EXHAUST PORT AHEAD', w / 2, h * 0.22, BANNER_TEXT_PX, 'center', '#dddddd', 14)"
     }
   },
@@ -78,7 +78,7 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 1334,
+      "line": 1372,
       "verbatim": "    glowText(ctx, 'DEATH STAR DESTROYED', w / 2, h * 0.45, BANNER_TEXT_PX, 'center', '#ffffff', 18)"
     }
   },
@@ -95,7 +95,7 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 1342,
+      "line": 1380,
       "verbatim": "    glowText(ctx, 'EXHAUST PORT MISSED', w / 2, h * 0.45, BANNER_TEXT_PX, 'center', '#ff5555', 16)"
     }
   },
@@ -112,7 +112,7 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 1590,
+      "line": 1628,
       "verbatim": "  glowText(ctx, 'GAME OVER', w / 2, h * 0.24, BANNER_TEXT_PX, 'center', TIE_GLOW, 24)"
     }
   },
@@ -129,7 +129,7 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 1512,
+      "line": 1550,
       "verbatim": "  glowText(ctx, 'STAR WARS', w / 2, h * 0.26, TITLE_TEXT_PX, 'center', GLOW, 28)"
     }
   },
@@ -207,7 +207,7 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 1600,
+      "line": 1638,
       "verbatim": "    glowText(ctx, 'ENTER YOUR INITIALS', w / 2, h * 0.42, HUD_TEXT_PX, 'center', BOLT_GLOW, 12)"
     },
     "recommendation": "accept",
@@ -399,7 +399,7 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 1373,
+      "line": 1411,
       "verbatim": "function drawShieldMeter(ctx: CanvasRenderingContext2D, state: GameState, w: number): void {"
     },
     "recommendation": "accept"
@@ -417,7 +417,7 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 1176,
+      "line": 1214,
       "verbatim": "const HUD_SHIELD_COLOR = '#22e600' // PROVISIONAL(findings ## HUD & framing, ## Colors & intensities) — register pinned (healthy tier only), hex matched to a cabinet screenshot"
     },
     "recommendation": "accept",
