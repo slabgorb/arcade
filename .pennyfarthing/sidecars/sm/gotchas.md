@@ -728,3 +728,60 @@ still no `--repos` flag. Fix with a surgical in-block replace — locate `  - id
 `\n  - id: `, assert the block contains exactly one `repos: pennyfarthing`, replace within that slice
 only — then verify by PARSING that no story in the epic has `repos != arcade`. A file-wide sed would
 have hit any sibling with the same wrong value and hidden the fact that it was ever wrong.
+
+---
+
+## A "no corrections needed" measurement is still worth recording — and the SIGNALS you cannot resolve should be handed over as claims, not omitted (jt5-10, 2026-08-01)
+
+**Situation:** the standing rule in this file is to measure a backlog description's falsifiable
+claims before `sm-setup`, because they get copied forward as current fact. jt5-10's description
+carried eight citations. All eight verified. The instinct is to say nothing and move on.
+
+**Say it anyway, in the session.** "No corrections" is a measurement result with a cost attached —
+the next reader who applies the rule will re-run the same eight checks unless the session records
+that they were run and what they returned. One paragraph saves the sweep.
+
+**The more useful half: what to do with an observation you cannot resolve.** While checking the
+citations I noticed two things the description leaned on as evidence and could not settle either:
+P7DEC zeroes two RUN entries, and its sixth field is `0` where the buzzards carry `PLYR3/4/5`. I
+did not know what field 6 WAS. Two bad options — omit it (TEA re-discovers it, or worse doesn't),
+or assert a meaning (a guess arrives labelled MEASURED and outranks the story, which is the
+`sm-premeasured-corrections-can-be-wrong` failure exactly).
+
+The third option is the right one: **hand it over explicitly labelled as a claim to verify, with
+the not-knowing stated.** I wrote "SM did not determine what that field is. If it is the
+animation/picture table, a 0 there is potentially decisive; if it is something else, it is noise.
+TEA should identify the field before leaning on it." TEA resolved it in ten minutes — field 6 is
+`DPLYR`, "RIDERS IMAGE", and a pterodactyl has no rider. Both signals turned out to be **refuted**,
+and both had been offered by the story as supporting evidence. Had I asserted either one, the
+refutation would have had to fight my label.
+
+**Rule of thumb:** an SM observation is worth passing on when it is cheap to check and expensive to
+miss. Pass it as a QUESTION with the check named. Never launder a guess into the Background.
+
+## Filing the follow-up is a FINISH-phase deliverable, and the story cannot close without it
+
+jt5-10's AC-4 required a follow-up story to EXIST with the finding in its description — and no
+phase agent can satisfy it, because TEA and Dev do not file backlog stories. TEA correctly raised
+it as a **blocking** Delivery Finding and the Reviewer correctly approved anyway, both noting the
+same thing: no code can close it.
+
+That combination is worth recognising on sight. **An AC that names a backlog artifact is SM's, and
+it is the one finish-phase item that must be done BEFORE `pf sprint story finish`** — afterwards
+the session is archived and the finding's detail is one directory further away. Sequence that
+worked: file → write the description → audit the auto-written fields → verify by parsing → only
+then finish.
+
+Confirmations from the same filing, all previously documented and all recurring exactly as written:
+`story add` minted `jt5-16` (**read the id from the output**), wrote **no** description, and set
+`repos: pennyfarthing` in an arcade-only monorepo for the **fourth** consecutive time. There is
+still no `--repos` flag; the surgical in-block replace plus a parse asserting no story in the epic
+has a wrong value remains the fix. `--priority` DOES exist and worked.
+
+**One judgement call worth recording: not every finding needs its own story.** The Reviewer raised
+that the citation gate cannot see line references inside claim BODIES. Rather than filing it, I
+checked whether an owner already existed — `jt5-6`'s description had been extended at jt5-5's
+finish with exactly that structural instruction. So it was routed there and the reasoning written
+into the Impact Summary. The rule "a descope must end with a filed story ID **or an existing
+owner**" is satisfied by the second clause only if you actually READ the owner's text; jt5-5's
+finish is the story where that check failed and had to be repaired.
