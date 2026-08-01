@@ -1124,71 +1124,131 @@ describe('cp5-1 AC3 — the guard is proven against mutants of the REAL source',
   })
 })
 
-describe('cp5-1 AC3 — an unmapped kind is a LOUD failure, not a silent no-op', () => {
-  // The dispatch's OTHER guard, and the only one reachable at runtime: the
-  // `sound === undefined` throw. It had no test either — the same gap as
-  // M1-r2, in the same function, found while writing M1-r2's fix.
+describe('cp5-2 AC3 — an unmapped kind DEGRADES: the frame plays on, quietly', () => {
+  // ─── THIS BLOCK WAS INVERTED BY cp5-2, ON PURPOSE ──────────────────────────
+  // It used to read "an unmapped kind is a LOUD failure, not a silent no-op" and
+  // pinned two throws. cp5-1 wrote it that way deliberately and said so: "cp5-2
+  // has to decide throw-vs-degrade, and it cannot make that decision against
+  // untested behaviour. This pins what the behaviour is TODAY so that the change
+  // reds when cp5-2 makes it deliberately." This is that change, made
+  // deliberately. The old assertions are not weakened or deleted-and-forgotten —
+  // they are turned over, and each one's mirror is asserted below.
   //
-  // It matters beyond this story. cp5-2 (wire the seam into main.ts) records
-  // this throw as a latent hazard: once `playEventSounds` is on the hot path,
-  // an uncaught throw inside requestAnimationFrame kills the frame loop and
-  // freezes the game. cp5-2 has to decide throw-vs-degrade, and it cannot make
-  // that decision against untested behaviour. This pins what the behaviour is
-  // TODAY so that the change reds when cp5-2 makes it deliberately.
+  // THE RULING (user, 2026-08-01, taken at cp5-2 setup): DEGRADE. Two reasons,
+  // neither of them taste:
+  //
+  //  1. PRECEDENT, measured. The default arm of all five games that shipped this
+  //     seam before centipede is a bare `const _exhaustive: never = event` with
+  //     NO throw — tempest:111-118, asteroids:33-37, battlezone:74-80,
+  //     red-baron:68-74, joust:70-78. joust states the reasoning outright: "At
+  //     runtime the branch stays SILENT — a stale or typo'd kind falling through
+  //     onto some other cue would be audibly wrong, which is worse than quiet."
+  //  2. CONSEQUENCE. cp5-2 puts this function inside requestAnimationFrame. An
+  //     uncaught throw there skips main.ts:183's trailing
+  //     `requestAnimationFrame(frame)` and the game freezes — a total failure
+  //     for a defect whose honest cost is one missing sound. Pinned end-to-end
+  //     in tests/audio-hot-path.test.ts, which boots the real loop and poisons a
+  //     live frame.
+  //
+  // NOTHING IS GIVEN UP AT COMPILE TIME. The exhaustiveness guarantee never
+  // lived in this throw: `EVENT_SOUND: Record<GameEventKind, SoundName>`
+  // (shell/audio.ts:113) makes a kind added without a cue a COMPILE error at the
+  // declaration — which cp5-1 established by mutation (TS2741 on the object
+  // literal) after finding that deleting the dispatch's own `never` line
+  // produced zero tsc errors. The `never` guard on the EFFECT union stays, and
+  // the whole `verdict()` sweep above still enforces it.
 
-  it('throws, naming the kind that has no cue', async () => {
+  it('does not throw on a kind with no cue', async () => {
     const play = await dispatchFn()
     const audio = recordingAudio()
-    expect(() => play(audio, [{ type: 'no-such-event-kind' }])).toThrow(/no-such-event-kind/)
-    // REWORK (Reviewer round 3, MEDIUM — M1-r3): this assertion's message used
-    // to claim that "a partial dispatch followed by a throw is worse than
-    // either" — implying the test guarded against one. It did not: the frame
-    // has ONE event, so `[]` is true by construction, and the claim is FALSE of
-    // the code. The property that actually holds is narrower, and it is the
-    // only one asserted here.
+    expect(
+      () => play(audio, [{ type: 'no-such-event-kind' }]),
+      'an unmapped kind still throws. On the hot path this exception escapes into ' +
+        'requestAnimationFrame and freezes the frame loop — see the AC3 ruling above',
+    ).not.toThrow()
+  })
+
+  it('plays nothing for the kind it cannot name — degrading is not guessing', async () => {
+    // The other way to "not throw" is to fall through onto some other cue, and
+    // that is worse than silence: the player hears the wrong thing and nothing
+    // anywhere reports a fault. joust's comment names exactly this.
+    const play = await dispatchFn()
+    const audio = recordingAudio()
+    play(audio, [{ type: 'no-such-event-kind' }])
     expect(
       audio.calls,
-      'this frame had nothing dispatchable ahead of the bad event, so nothing may ' +
-        'have reached the engine',
+      'the unmapped kind reached the engine as some other cue — a wrong sound is worse ' +
+        'than no sound',
     ).toEqual([])
   })
 
-  it('dispatches a frame UP TO the bad event, then throws — the behaviour cp5-2 inherits', async () => {
-    // The property the test above was mistakenly credited with. Measured, not
-    // assumed: `playEventSounds` loops and dispatches as it goes, so a mixed
-    // frame plays every cue ahead of the unmapped kind and only then throws.
-    //
-    // This is pinned rather than "fixed" because no AC asks for atomicity and
-    // cp5-2 explicitly owns the throw-vs-degrade decision. What this test buys
-    // cp5-2 is that the decision is made against a fact instead of an
-    // assumption — and that changing the policy reds here, deliberately, rather
-    // than silently. The hazard cp5-2 recorded (an uncaught throw inside
-    // requestAnimationFrame freezes the frame loop) is one notch worse than
-    // written down: the frame is left HALF-PLAYED as well as frozen.
+  it('dispatches the events on BOTH sides of the bad one — the frame is not truncated', async () => {
+    // This is the assertion that inverts cp5-1's "dispatches UP TO the bad event,
+    // then throws". Under the old behaviour a mixed frame was left HALF-PLAYED;
+    // under the ruling the bad event is skipped and the frame completes. The
+    // event placed AFTER the unmapped one is the whole point — it is the cue the
+    // old behaviour silently dropped, and no test could see it because the throw
+    // masked it.
     const kinds = await eventKinds()
-    const valid = kinds.find((k) => !isLoopStart(k) && !isLoopStop(k))
-    expect(valid, 'need a one-shot kind to put ahead of the bad one').toBeDefined()
+    const oneShots = kinds.filter((k) => !isLoopStart(k) && !isLoopStop(k))
+    expect(oneShots.length, 'need two one-shot kinds to bracket the bad one').toBeGreaterThan(1)
+    const [before, after] = oneShots as [string, string]
 
     const play = await dispatchFn()
     const audio = recordingAudio()
     expect(() =>
-      play(audio, [{ type: valid as string }, { type: 'no-such-event-kind' }]),
-    ).toThrow(/no-such-event-kind/)
+      play(audio, [{ type: before }, { type: 'no-such-event-kind' }, { type: after }]),
+    ).not.toThrow()
+
+    const expected: Effect[] = [...(await effectsFor(before)), ...(await effectsFor(after))]
     expect(
-      audio.calls.map((c) => c.kind),
-      'the valid event ahead of the bad one IS dispatched before the throw',
-    ).toEqual(['play'])
+      audio.calls,
+      'the cue AFTER the unmapped kind never reached the engine — the frame is still being ' +
+        'abandoned at the bad event instead of stepping over it',
+    ).toEqual(expected)
   })
 
-  it('a kind WITH a cue does not throw — the control', async () => {
-    // Without this, a `playEventSounds` that threw on absolutely everything
-    // would satisfy the test above, and the suite would be pinning a dead
-    // function as if it were a guard.
+  it('a kind WITH a cue still dispatches — the control', async () => {
+    // Retained from cp5-1, and it matters MORE under the ruling than it did
+    // under the throw. "Never throws" is trivially satisfiable by a function
+    // that does nothing at all; without this control the three tests above
+    // would all pass over a gutted dispatch.
     const kinds = await eventKinds()
     const first = kinds[0]
     expect(first, 'need at least one real kind for the control').toBeDefined()
     const play = await dispatchFn()
-    expect(() => play(recordingAudio(), [{ type: first as string }])).not.toThrow()
+    const audio = recordingAudio()
+    expect(() => play(audio, [{ type: first as string }])).not.toThrow()
+    expect(
+      audio.calls.length,
+      'a MAPPED kind produced no cue — the dispatch has been silenced wholesale rather ' +
+        'than made to skip what it cannot name',
+    ).toBeGreaterThan(0)
+  })
+
+  it('records the throw-vs-degrade decision in its own comment (AC3, literally)', () => {
+    // AC3 asks for the decision to be "made explicitly and recorded in the
+    // dispatch's own comment". The behaviour is pinned by the four tests above;
+    // this is the documentation half, and it is written as a PAIR because a
+    // one-sided doc assertion matches a TOKEN, not a CLAIM — it goes green the
+    // moment someone appends the new sentence, while the old rationale sits
+    // three lines up contradicting it (the tests/audio-seam-scope.test.ts rule).
+    const src = readFileSync(dispatchPath, 'utf8')
+    expect(
+      src,
+      'the file still carries the old "loud failure" rationale for throwing, which the ' +
+        'AC3 ruling retired',
+    ).not.toMatch(/LOUD failure|loud, not silent/i)
+    expect(
+      /degrade|degrading|silently skip|skips the cue|stays SILENT|never throws/i.test(src),
+      'the dispatch must SAY that it degrades on an unmapped kind, and why — AC3 requires ' +
+        'the decision to be recorded where the next reader meets the code',
+    ).toBe(true)
+    expect(
+      /requestAnimationFrame|frame loop|freez/i.test(src),
+      'the recorded rationale must name the consequence that decided it (a throw inside ' +
+        'requestAnimationFrame freezes the frame loop), not merely announce the choice',
+    ).toBe(true)
   })
 })
 
