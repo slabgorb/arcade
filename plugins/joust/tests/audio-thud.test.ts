@@ -609,6 +609,14 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
    * That is the ONLY staging that can tell OSTBMP's height dispatch apart from
    * OSTXTT's unconditional `JSR OSTXTP`, and it is why this story needed the
    * ROM read rather than a guess.
+   *
+   * DISCLOSED, not hidden: `airborne: true` with `plantZ: 2` is legal state but
+   * not a combination ordinary play produces, because PLANTZ=2 is the SKID and
+   * the skid is a ground state. The law under test does not depend on the
+   * staging being reachable — a tie is a tie — and the reachable half of the
+   * same law is pinned separately by the seed-0x2468 frame-189 window below,
+   * where a walking buzzard meets a standing knight with nothing synthetic
+   * about it.
    */
   const tie = (skidderAtTop: boolean): DemoProcess[] =>
     skidderAtTop
