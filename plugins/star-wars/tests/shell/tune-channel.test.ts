@@ -8,12 +8,15 @@
 //   TUNES  — logical tune -> R2 filename, under the SAME music/ prefix as the
 //            looping tracks (they are sound-board music, baked by the same
 //            tools/music-bake pipeline; see tools/music-bake/tune-data.test.mjs).
-//   playTune(name) — a ONE-SHOT on a single shared 'tune' channel. The 1983
-//            sound board has ONE tune player (SNDPM's PKDR voices): starting a
+//   playTune(name) — a ONE-SHOT on a single shared channel. The 1983 sound
+//            board has ONE tune player (SNDPM's PKDR voices): starting a
 //            tune replaces whatever tune was ringing — so all five share one
-//            channel and voice-steal each other, and that channel is NOT the
-//            looping 'music' channel (a knell must not kill the phase loop;
-//            the loop is our sw3-5 adaptation and keeps its own channel).
+//            channel and voice-steal each other. (This suite's original text
+//            went on: "and that channel is NOT the looping 'music' channel —
+//            a knell must not kill the phase loop". sw8-13 OVERTURNED that:
+//            the ROM's music entries claim the same voices 1-4 as the tunes,
+//            so tunes and music now share the ONE PM channel; the flipped pin
+//            below and tests/shell/pm-channel.test.ts carry the ruling.)
 //
 //   SOUNDS — gains the two dedicated effects the audit found aliased:
 //            deathStarBoom (AUDDF, "DETH STAR FINAL EXPLOSION", SNDAUD.MAC:1004)
@@ -137,10 +140,16 @@ describe('sw7-8 — one tune player, exactly like the cabinet (channel design)',
     expect(new Set(channels).size).toBe(1)
   })
 
-  it("the tune channel is NOT the looping 'music' channel — a knell must not kill the phase loop", () => {
+  it('the tune channel IS the music channel — one PM player, so a tune silences the loop (sw8-13)', () => {
+    // FLIPPED at sw8-13 (was: "NOT the looping 'music' channel — a knell must
+    // not kill the phase loop"). Every PM entry — music and tune alike — claims
+    // POKEY voices 1-4 via .TUNE, whose expansion opens with "JSR PKCUT'VNUM
+    // ;CLEAR OUT AND INIT THIS VOICE" (SNDPM.MAC:319-326; entries :330-405).
+    // One player, so the loop dies to a tune and a tune dies to the loop's
+    // successor. Steal behavior: tests/shell/pm-channel.test.ts.
     const tuneChannel = TUNE_CHANNELS[REQUIRED_TUNES[0]]
     for (const loopChannel of Object.values(MUSIC_CHANNELS)) {
-      expect(tuneChannel).not.toBe(loopChannel)
+      expect(tuneChannel).toBe(loopChannel)
     }
   })
 

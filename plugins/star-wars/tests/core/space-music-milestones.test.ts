@@ -54,7 +54,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { stepGame, enterPhase } from '../../src/core/sim'
-import { initialState, type GameState } from '../../src/core/state'
+import { initialState, type GameState, type Projectile } from '../../src/core/state'
 import { NO_INPUT } from '../../src/core/input'
 import { beginRunAt } from '../support/select'
 
@@ -342,5 +342,70 @@ describe('sw8-12 AC-7 — no space cue fires outside the space phase, and the cl
       expect(s1.phaseTime).toBeCloseTo(t + DT, 5)
       expect(spaceCues(s1)).toEqual([])
     }
+  })
+})
+
+// ── sw8-13: the death frame silences the walk (PHESP1 exits before it) ───────
+//
+// ROM: PHESP1 tests the shields ABOVE the milestone chain — "LDA S.GAS / LBMI
+// PHIS0D ;B EXIT WHEN PLAYER DIES" (WSMAIN.MAC:1396-1397) precedes the PH.TIM
+// ADDD/CMPD walk (:1415-1444) — so the cabinet never starts a milestone cue
+// over the death. Confirmed sw8-12 review finding ([EDGE][LOW], the session's
+// Observation 5), owned by sw8-13; reachable only when a crossing and the
+// LAST shield's fall share one 0.05s frame. Our stepper resolves the fatal
+// hit (loseShield) before the milestone block, so the gate ports as: a frame
+// whose hit takes the last shield fires no space cue.
+describe('sw8-13 — a milestone crossing on the death frame cues NOTHING', () => {
+  /** A fireball already inside the cockpit radius — the one damage source
+   *  space has (sw8-9 removed TIE-body collision), landing THIS frame. */
+  const cockpitFireball = (): Projectile => ({ pos: [0, 0, 0], vel: [0, 0, -1], ttl: 1 })
+
+  /** A parked sky whose only actor is the fatal fireball, `lives` shields
+   *  standing, clock at `phaseTime`. */
+  function dyingAt(phaseTime: number, lives: number): GameState {
+    // parkedSky clears enemyShots (it empties the sky) — the fatal fireball
+    // must be seated AFTER it, as the park's one surviving actor.
+    return { ...parkedSky(playing({ phaseTime, lives })), enemyShots: [cockpitFireball()] }
+  }
+
+  it('the last shield falling on the THEME crossing (2s) silences it', () => {
+    // Wave 1's seeded 1.95 clock crosses 2 on this very step — the head-start
+    // frame and the death coincide.
+    const out = stepGame(dyingAt(1.95, 1), NO_INPUT, DT)
+    expect(out.lives).toBe(0)
+    expect(out.gameOver).toBe(true)
+    expect(out.events).toContainEqual({ type: 'player-death', cause: 'enemy' })
+    expect(spaceCues(out)).toEqual([])
+  })
+
+  it('the last shield falling on the THEME B crossing (10s) silences it', () => {
+    const out = stepGame(dyingAt(9.97, 1), NO_INPUT, DT)
+    expect(out.lives).toBe(0)
+    expect(spaceCues(out)).toEqual([])
+  })
+
+  it('the last shield falling on the DESCENT crossing (20s) silences it — the warp window', () => {
+    // The story's own frame: descent is the cue that would otherwise start
+    // over the death and ring on across gameover.
+    const out = stepGame(dyingAt(19.97, 1), NO_INPUT, DT)
+    expect(out.lives).toBe(0)
+    expect(spaceCues(out)).toEqual([])
+  })
+
+  it('control: the SAME crossing with shields to spare still cues — the gate is the DEATH, not the hit', () => {
+    const out = stepGame(dyingAt(9.97, 6), NO_INPUT, DT)
+    expect(out.lives).toBe(5)
+    expect(out.gameOver).toBe(false)
+    expect(spaceCues(out)).toEqual(['themeB'])
+  })
+
+  it('boundary control: the hit that leaves ONE shield still cues — only the LAST shield exits the walk', () => {
+    // Pins the gate to lives reaching 0, not to "a hit landed this frame":
+    // the ROM's LBMI reads S.GAS minus (dead), and a pilot with a shield left
+    // hears the cue exactly as the cabinet would.
+    const out = stepGame(dyingAt(19.97, 2), NO_INPUT, DT)
+    expect(out.lives).toBe(1)
+    expect(out.gameOver).toBe(false)
+    expect(spaceCues(out)).toEqual(['descent'])
   })
 })
