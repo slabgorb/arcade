@@ -128,7 +128,7 @@ stories:
     workflow: tdd
     acceptance_criteria:
       - All seven EGGI rows (JOUSTI.SRC:2255-2261) are transcribed as ENTITY_RECORDS in pictures.ts — one record per ROM row, each carrying that row's own anchor line, collision mask, position word and pixel source. The existing single-row EGGI record is subsumed. No new PIXEL_BLOCKS and no new COLLISION_TABLES are introduced (all seven sources and all four masks already exist).
-      - "A pure, clock-free and RNG-free selector ports WEGG's per-frame choice (JOUSTRV4.SRC:3507-3530, with the EGFLFT/EGFRIT offset tables at :3535-3536): given an egg's velX and velY it returns the EGGI still row — near-level (|velY| <= $0080) selects row 0 CEGGUP for both directions; a fast FALL selects CEGGLF when velX < 0 and CEGGRT when velX >= 0; a fast RISE selects CEGGRT when velX < 0 and CEGGLF when velX >= 0. It adds NO new field to EggState."
+      - "A pure, clock-free and RNG-free selector ports WEGG's per-frame choice (JOUSTRV4.SRC:3507-3530, with the EGFLFT/EGFRIT offset tables at :3535-3536): given an egg's velX and velY it returns the EGGI still row — near-level (-$0080 < velY <= $0080 — the boundary is ASYMMETRIC: velY = 128 is still level because `SUBD #$0080 / BGT` fails on zero, but velY = -128 is already a fast RISE because `ADDD #$0080 / BGT` also fails on zero and falls through to WEGD3) selects row 0 CEGGUP for both directions; a fast FALL selects CEGGLF when velX < 0 and CEGGRT when velX >= 0; a fast RISE selects CEGGRT when velX < 0 and CEGGLF when velX >= 0. It adds NO new field to EggState."
       - The player-vs-egg catch pass (demo.ts:1027) runs narrowPhase after broadPhase — using the mask AC2's selector names for that egg, and the catching player's own mask — mirroring the two-phase shape the joust pass already uses at demo.ts:887-897.
       - 'A test proves the collect radius genuinely tightened: an overlap that the 16px ENTITY_BOX_H box accepts but the selected egg mask rejects is no longer a catch, AND a genuine mask overlap still collects (scores the EGGVAL rung, the mid-air bonus and the single egg-collected cue as before). Deleting the narrowPhase call must redden it.'
       - The joust core-boundary/purity scanner still passes, and the joust and shared vitest projects are green. Every new anchor satisfies the existing pictures anchor/label checks.
@@ -174,3 +174,89 @@ stories:
     repos: arcade
     workflow: trivial
     type: chore
+  - id: jt8-13
+    title: Player-vs-ptero attack is box-only too — the third pass that stops at broadPhase, and the narrowPhase X-blindness question it forces
+    description: |-
+      Filed by jt8-7, which wired narrowPhase into the player-vs-EGG catch pass and left this one alone by an explicit user ruling at setup ("Same defect family, deliberately a separate story. Do NOT widen jt8-7 to cover it.").
+
+      THE DEFECT. `collisionPass` has THREE overlap passes and only two of them consult a mask:
+        - the joust pass (demo.ts:887-897) — broadPhase THEN narrowPhase. Correct.
+        - the player-vs-egg catch (demo.ts ~:1073) — broadPhase THEN narrowPhase as of jt8-7. Correct.
+        - the player-vs-ptero attack (demo.ts ~:982) — `broadPhase(collisionBox(playerJoust), entityBox(pt.entity!))` and NOTHING ELSE.
+
+      The third one is not blocked on a missing asset the way the egg was: `collisionMaskFor` (demo.ts ~:734) ALREADY returns the real transcribed mask 'PT1RC' for a ptero, and PT1RC is a live COLLISION_TABLES entry with 13 span rows. So the mask exists, is transcribed, is claimed, is reachable through the existing helper — and the pass that most needs it (a lance-height duel resolved by `resolvePteroAttack`) never asks for it. Effect: the player's reach against a pterodactyl is the flat 16px ENTITY_BOX_H box, exactly the bug jt8-7 fixed for eggs.
+
+      MEASURED SHAPE OF THE FIX (jt8-7's, for reference — this pass will differ in the details): the catch now does
+          if (catcher.collision === null) continue
+          if (!narrowPhase({name: catcher.collision, top: catcher.posY >> 8},
+                           {name: <the other party's mask>, top: <its top>}, MASKS)) continue
+      Note the null guard is load-bearing for the TYPE checker even where it is unreachable at runtime — removing it fails `npm run lint` with TS2322, not a test.
+
+      SETTLE THIS FIRST — the question jt8-7's Reviewer raised and could not close. `narrowPhase` (joust.ts:166-183) takes `MaskRef = {name, top}`: it aligns rows by SCREEN Y and then compares COFF-unbiased SPRITE-LOCAL columns. It never sees screen X at all — `broadPhase` carries every bit of the horizontal truth. So the mask test is really "do these two shapes overlap if their origins are superimposed", and the column half still does real work (jt8-7 measured a rejection at dy=12 that is a COLUMN miss, not a row miss). Whether that matches the ROM's own collision comparison has never been established; it dates to jt2-3 and has been inherited unexamined ever since. This story makes it govern a THIRD pass, so it is the right moment to read the ROM's comparison and either confirm the port or file the correction. Do not port a third consumer onto an unverified premise without saying so.
+
+      WHY THIS IS NOT jt5-17. jt5-17 ("Measure PTEBRD and route the ptero-vs-buzzard pair") is about the PAIR LOOP's mixed-pair skip — replacing `if ((pa.kind === 'ptero') !== (pb.kind === 'ptero')) continue` with the measured PTEBRD routing so a ptero and a BUZZARD resolve at all. That is a routing question about a pair that currently resolves NOTHING. This story is about a pair that already resolves — player vs ptero, through `resolvePteroAttack` — and does so with the wrong GEOMETRY. Different loop, different routine, different failure. They are adjacent enough to be merged by a groomer who reads only the titles; they should not be.
+
+      WATCH FOR: jt8-7's fix moved four frame-exact seeded pins in tests/audio-events.test.ts because a tighter collision changes what happens when in a deterministic replay. Expect the same here, and re-baseline by SCANNING for each test's own precondition rather than nudging numbers — the method is written up in the jt8-7 session and the Dev sidecar.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt8-14
+    title: EGGTBL is the egg's animation driver — the third table in the block jt8-7 read, and the consumer of EGGI rows 3-6
+    description: |-
+      Filed by jt8-7's Reviewer. jt8-7 fixed a table that had been READ SHORT — EGGI is seven rows (JOUSTI.SRC:2255-2261) and only row 0 had been transcribed. While verifying that fix, the review found the BLOCK containing the tables jt8-7 ported had also been read short, one table further on.
+
+      WHAT WAS FOUND. Under the header `* EGG ANIMATION TABLE *` (JOUSTRV4.SRC:3533) there are THREE tables, not two:
+          EGFLFT  FCB 0,12,6      (:3535)   FALLING LEFT   <- ported by jt8-7
+          EGFRIT  FCB 0,6,12      (:3536)   FALLING RIGHT  <- ported by jt8-7
+          EGGTBL  FCB 6,6,7       (:3537)   WIGGLE LEFT    <- NOT ported
+                  FCB 0,6,3       (:3538)   WIGGLE UP
+                  FCB 12,6,7      (:3539)   WIGGLE RIGHT
+                  FCB 0,6,7+60    (:3540)   WIGGLE UP & PAUSE
+                  FCB 18,6,7      (:3541)   HATCH 1
+                  FCB 24,11,7     (:3542)   HATCH 2
+                  FCB 30,11,7     (:3543)   HATCH 3
+                  FCB 36,11,0     (:3544)   HATCH 4
+
+      The FIRST column is a byte offset into EGGI, whose rows are 6 bytes — so 0/6/12 are rows 0/1/2 (the three tumble stills WEGG already selects between) and 18/24/30/36 are rows 3/4/5/6: EGGB1, EGGB2, EGGB3 and PLY4S. EGGTBL is therefore the CONSUMER of exactly the four rows jt8-7 transcribed and described as having none. jt8-7's Dev finding "rows 3-6 have no consumer" is true of our PORT and false of the machine; this story closes that gap.
+
+      TWO INDEPENDENT THINGS THIS ALREADY BUYS US. (1) EGGTBL's maximum offset, 36 -> row 6, requires EGGI to have at least seven rows — a corroboration of jt8-7's central claim from a DIFFERENT table, which is stronger evidence than jt8-7's own reading of the table itself. (2) It explains the pre-existing claim JT8-130, which described the egg as "up/right/left + 3 hatch stages" — the dossier recorded seven frames all along while the code carried one, and nothing in the gate set can see a claim that describes more than the transcription implements.
+
+      DELIVERABLES: (1) read and claim EGGTBL and whatever drives it (the second and third columns are unmeasured — likely a height and a frame duration, `7+60` on WIGGLE UP & PAUSE being the tell; MEASURE, do not guess); (2) transcribe it beside EGF_LEFT/EGF_RIGHT in demo.ts, which already carries the row-offset idiom and the EGGI_ROW_BYTES constant; (3) drive the egg's animation from it.
+
+      BLOCKED-ISH ON jt8-15. Nothing DRAWS an egg's frames today — the shell has no egg render path at all (only audio*.ts mentions eggs), and the draw list emits a single `entityOp('EGGI', ...)`. The moment this story draws EGGB2 or EGGB3, `posOffset` (demo.ts ~:1495) will decode their POSOFF words wrongly: it does `xoff = rec.position >> 8`, which yields 255 for $FFF6 where the ROM's signed XOFF is -1, and 254 for $FEF5 where it is -2. The Y half is correct (10 and 11). jt8-15 fixes that; land it first or this story ships sprites 255px off.
+
+      METHOD NOTE, and it is the reason this story exists: jt8-7's whole defect was a table read short because its continuation rows carry no label. The same reading habit missed the next table in the same block. When porting from a labelled block, read to the NEXT header, not to the end of the table you came for.
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    type: feature
+    workflow: tdd
+  - id: jt8-15
+    title: posOffset decodes a high-bit POSOFF word as +255 instead of -1 — latent until anything draws EGGB2/EGGB3
+    description: |-
+      Filed by jt8-7's Reviewer. Latent today, guaranteed to bite jt8-14.
+
+      THE BUG. `posOffset` (plugins/joust/src/core/demo.ts ~:1495) decodes a transcribed POSOFF word:
+          return { xoff: rec.position >> 8, yoff: 256 - (rec.position & 0xff) }
+      The ROM's POSOFF macro packs `XOFF*256 + 256-YOFF` (JOUSTI.SRC:12-13) and XOFF is SIGNED — a sprite whose art hangs to the LEFT of its hot spot carries a negative XOFF. `>> 8` on the stored unsigned word yields the raw high byte, so a negative XOFF comes back as its unsigned complement.
+
+      MEASURED, on the two records jt8-7 added:
+          EGGB2  position $FFF6  ->  posOffset gives xoff=255, yoff=10   | correct XOFF is  -1
+          EGGB3  position $FEF5  ->  posOffset gives xoff=254, yoff=11   | correct XOFF is  -2
+      The Y half is right in both cases. It is only the X that breaks, and only for a word with the high bit set.
+
+      WHY IT IS LATENT AND NOT DEAD. Every one of the 44 pre-existing ENTITY_RECORDS has a position word in [237, 751] — no high bit, so no existing frame decodes wrongly. jt8-7 added the first two that do (EGGI rows 4 and 5, JOUSTI.SRC:2259-2260). They are unreachable right now: `posOffset` is only ever called from `entityOp`, and no call site can name them — the egg draw op is the literal `entityOp('EGGI', ...)`, and the other call sites pass mount/enemy/ptero/troll/dissolve frame names. So nothing is visibly broken today; it is a loaded chamber for the first story that draws a hatching egg, which is jt8-14.
+
+      FIX: sign-extend the high byte before returning it, e.g. `const hi = rec.position >> 8; xoff: hi > 127 ? hi - 256 : hi`. Keep the raw word in the record — jt8-7 deliberately stored the unsigned 16-bit word because every other record does and there was no precedent for a signed representation (that decision was reviewed and accepted); the sign belongs in the DECODER, not the data.
+
+      TEST NOTE: the natural guard is a decode test over every ENTITY_RECORD asserting `-128 <= xoff <= 127`, which reds on today's code for exactly the two new records and stays meaningful as more high-bit words arrive. jt8-7's Dev deviation flagged this hazard but named the wrong axis ("decodes these as Y-offsets must sign-extend"); the Y is fine, the X is not. That correction is recorded in jt8-7's Design Deviations under the Reviewer's stamp.
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
