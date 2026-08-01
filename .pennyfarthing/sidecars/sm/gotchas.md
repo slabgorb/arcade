@@ -926,3 +926,84 @@ was put to the user with the measurement already done, the four dispositions nam
 (repurpose / repurpose-keeping-tdd / proceed-as-filed / close-and-refile), the recommendation
 first, and the cost of the wrong branch stated for each. Answered in one click. The ruling is
 the user's — the survey is yours, and it is what makes the ruling cheap.
+
+---
+
+## The token rule is broader than `**Phase:**`, and the riskiest sentence is the one AUDITING the tokens (mg1-5, 2026-08-01)
+
+The jt8-3 and jt5-2 entries say: never write the literal `**Phase:**` / `**Branch:**` token in prose,
+because `complete-phase` and `story finish` scrape labelled tokens by pattern from anywhere in the
+file. I knew that rule, wrote it into my own setup assessment, and **broke it in the act of
+reporting compliance with it.** The sentence read "labelled tokens counted — the pointer token
+appears exactly once, `<repos-token>` once, and `<branch-token>` once as the Story Details field."
+Spelling those two out took the file from 1 occurrence each to 2 each. Backticks do not help; the
+scrapers match the raw string, and a backticked token is the same bytes.
+
+**Two things worth generalising:**
+
+1. **The audit paragraph is the highest-risk prose in the file**, because its subject *is* the token
+   set. Anywhere else you might mention a token by accident; there you will mention every one of
+   them on purpose. Name them ("the phase pointer", "the branch field") instead of spelling them.
+2. **Re-run the count AFTER writing the assessment, not just after `sm-setup` returns.** I ran it
+   post-setup (clean: 1/1/1/0), then wrote ~90 lines of assessment, and only re-ran it because the
+   assessment discussed tokens. That second run is the one that found the defect. The first run
+   proved nothing about the file that would actually be archived.
+
+Cheap form, and it belongs in the exit checklist rather than the setup checklist:
+```bash
+for t in '\*\*Phase:\*\*' '\*\*Repos:\*\*' '\*\*Branch:\*\*'; do printf "%-18s %s\n" "$t" "$(grep -c "$t" "$SESSION")"; done
+```
+Each must be 1. (`**Workflow:**` is legitimately 2 — Story Details and Workflow Tracking both carry
+it in the template.)
+
+## `sm-setup` leaves you checked out on the CLAIM BRANCH — so `git push origin main` pushes a STALE local main and the rejection mimics a sibling race
+
+Two push rejections in a row on this story, and they had **different causes**, which is what makes
+this worth recording. The first was a genuine sibling race (a third checkout had claimed sw8-21 and
+pushed `ad1-2` context while I was writing). I rebased, which reported `Successfully rebased and
+updated refs/heads/feat/mg1-5-atomic-deploy-html-last` — and I pushed again, and it was rejected
+again with the same "remote contains work you do not have" hint.
+
+**Cause of the second rejection: I was never on `main`.** `sm-setup` creates the claim branch and
+leaves HEAD there, so the claim commit landed on `feat/…` while local `main` sat 3 commits behind at
+`d5e0754`. `git push origin main` from a feature branch pushes the local `main` **ref**, not HEAD —
+so it dutifully tried to push a stale ref and was correctly refused. The hint text is identical to
+the sibling-race hint, so the diagnosis does not fall out of the error.
+
+**Tell:** read the rebase's own success line — it names the ref it updated. If that is a `feat/…`
+branch, your commit is not on `main`. Or just check first; it costs nothing:
+```bash
+git branch --show-current    # before ANY push on a trunk-based repo
+```
+**Fix on a trunk-based repo** (working tree clean, verified with `git status --short` first):
+`git checkout main && git merge --ff-only <claim-branch> && git push origin main`, then push the
+branch too so it lands back at 0 ahead and the sibling probe stays accurate. Verified afterwards
+from origin by parsing, never from the working copy: branch 0 ahead, `status: in_progress` in
+`git show origin/main:sprint/epic-<epic>.yaml`, and the context's ACs still byte-verbatim in
+`git show origin/main:sprint/context/…`.
+
+## A description that survives measurement intact still earns a paragraph — and the measurement is where the story gets SHARPER
+
+mg1-5's description was the rare one where every falsifiable claim held (upload order, content
+hashing, the already-non-zero exit). Per the jt5-10 rule I recorded the "no corrections" result so
+the next reader does not re-run the sweep. But the more useful outcome was that measuring a *true*
+description still produced three findings the story did not have:
+
+- the protection is not "alphabetical" at all — the file contains **no `.sort()`**, so the order is
+  raw `readdirSync` with no Node guarantee, and this checkout's APFS returning sorted is an accident
+  of filesystem, not of code;
+- the cabinet ships **12** HTML entry points, not one per app (star-wars alone has three), so an AC
+  saying "every HTML entry point" is plural on purpose;
+- the accident currently holds cabinet-wide (measured per game: zero non-HTML objects upload after
+  the first HTML in any of them) — which is a *stronger* statement of the story's own point, because
+  it explains why a test written against the real `dist/` cannot fail.
+
+**So the trigger for measuring is not "the description smells stale."** It is "the description
+contains a falsifiable claim", and a claim that verifies still tells you where the mechanism
+actually lives. Two of those three findings changed what the RED test has to look like.
+
+**And when the measurement runs out, hand the remainder over as a QUESTION.** CI deploys from
+`ubuntu-latest`, a different filesystem, and I could not measure readdir order there. Rather than
+asserting "CI is unprotected" (a guess arriving labelled MEASURED) or dropping it (TEA re-derives
+it), it went into the context as an open question with the check named and the not-knowing stated —
+the jt5-10 pattern, and it did not block RED because the AC's own fix moots the question either way.
