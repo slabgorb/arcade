@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, extname } from 'node:path';
 import { contentTypeFor, collectUploads } from '../scripts/deploy-r2.mjs';
 import { cleanLobbyOutput } from '../scripts/build-app.mjs';
 
@@ -374,7 +374,12 @@ function recordUploads(distDir, { bucket = 'arcade-lobby', keyPrefix = '', failO
   return { uploaded, error };
 }
 
-const isHtml = (key) => key.endsWith('.html');
+// REVIEW ROUND 1: this was `key.endsWith('.html')` — case-SENSITIVE, while the
+// implementation's predicate is case-INsensitive. They disagreed on `page.HTML`, which
+// the origin serves as text/html and the implementation orders last, but which this
+// helper called an asset — so `assertHtmlLast` found no HTML, early-returned, and passed
+// vacuously. macOS is case-insensitive, so such a filename is ordinary, not exotic.
+const isHtml = (key) => extname(key).toLowerCase() === '.html';
 
 /** The contract in one line: no non-HTML object may follow an HTML object. */
 function assertHtmlLast(keys, message) {
@@ -451,6 +456,17 @@ test('mg1-5 AC1: an HTML entry point that sorts LAST also uploads last — the r
     const { uploaded, error } = recordUploads(dir);
     assert.equal(error, null, 'a recording uploader must not fail');
     assert.equal(uploaded.length, 3, 'every object must still be uploaded — ordering, not filtering');
+    // REVIEW ROUND 1: this test must prove an HTML entry is PRESENT before leaning on
+    // assertHtmlLast, which early-returns (and silently passes) when it finds none.
+    // Its five siblings each prove presence via assertFixtureIsAdversarial; that helper
+    // cannot be used HERE, because this fixture's HTML already sorts last alphabetically
+    // and the helper would correctly fail. So the presence check is explicit instead.
+    assert.deepEqual(
+      uploaded.filter(isHtml),
+      ['zzz.html'],
+      'the page must still be uploaded — without this, an isEntryPoint regression that dropped ' +
+        'or renamed the HTML would leave assertHtmlLast with nothing to check, and it would pass',
+    );
     assertHtmlLast(uploaded, 'zzz.html must upload after every asset, whichever way the names happen to sort');
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -673,6 +689,122 @@ test('mg1-5 rule js#6: the real uploader still uses execFile-style array args, n
     !/\bexecSync\(|\bexec\(/.test(source),
     'no shell-string child_process call — an R2 key is a filename and would be interpolated into a shell',
   );
+});
+
+// ===========================================================================
+// mg1-5 REVIEW ROUND 1 — the fail-open uploader, and one definition of "a page"
+// ===========================================================================
+
+test('mg1-5 round 2: uploadDir REFUSES to run without an explicit uploader', () => {
+  // THE BLOCKING FINDING. `uploadDir` used to read `const { upload = putObject }`, so
+  // the one parameter deciding whether this function touches the LIVE production bucket
+  // defaulted to the real network call. A caller who forgot it did not get a no-op —
+  // they got a deploy. That is not theoretical: it is what took arcade.slabgorb.com down
+  // on 2026-08-01, from a unit test.
+  //
+  // ORDER MATTERS IN THIS TEST AND IT IS NOT STYLISTIC. The source assertion runs FIRST
+  // and the behavioural one is unreachable until it passes, because calling uploadDir
+  // without an uploader is precisely the dangerous act — if the default is still there,
+  // the call below would deploy this fixture to production instead of throwing. Do not
+  // reorder these, and do not "simplify" the source check away: it is the reason this
+  // test is safe to run at all, and it is also the permanent guard that the fail-open
+  // default never comes back.
+  const source = readFileSync(join(repo, 'scripts', 'deploy-r2.mjs'), 'utf8');
+  assert.ok(
+    !/\bupload\s*=\s*putObject\b/.test(source),
+    'scripts/deploy-r2.mjs still defaults `upload` to the real network call. Not calling ' +
+      'uploadDir — doing so without an uploader would PUT this fixture to the live ' +
+      'arcade-lobby bucket. Make `upload` required and pass it explicitly at the CLI entry.',
+  );
+
+  const dir = makeTree('no-uploader', { 'index.html': '<!doctype html>', 'a.js': 'export {}' });
+  try {
+    assert.throws(
+      () => uploadDir(dir, 'arcade-lobby', ''),
+      (e) => e instanceof Error && /upload/i.test(e.message),
+      'uploadDir with no uploader must FAIL CLOSED with an error naming the missing option, ' +
+        'not fall back to deploying. Fail-open is what caused the outage.',
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('mg1-5 round 2: the real CLI entry still passes the real uploader', () => {
+  // The other half of the finding above, and the reason it is safe to make `upload`
+  // required: there is exactly ONE production caller. Making the parameter mandatory
+  // without wiring it here would break every real deploy — a fix that turns a fail-open
+  // into a broken deploy is not an improvement, so this pins the wiring.
+  const source = readFileSync(join(repo, 'scripts', 'deploy-r2.mjs'), 'utf8');
+  const cli = source.slice(source.indexOf('CLI entry'));
+  assert.ok(cli.length > 0, 'the CLI entry block must still exist');
+  assert.match(
+    cli,
+    /uploadDir\([^)]*upload\s*:\s*putObject/s,
+    'the CLI entry must pass `upload: putObject` explicitly — that is the one place in the ' +
+      'codebase that should be choosing to touch production, and it should say so out loud',
+  );
+});
+
+test('mg1-5 round 2: "is a page" has ONE definition — anything served as text/html uploads last', () => {
+  // Three definitions of "is this an HTML page" existed after round 1 and they already
+  // disagreed: the content-type table (what the ORIGIN serves), the implementation's
+  // entry-point predicate, and this file's own helper. They diverged on `page.HTML` —
+  // served as text/html, ordered last by the implementation, and called an asset by the
+  // test helper, which made assertHtmlLast early-return and pass on nothing.
+  //
+  // This test binds the two that matter to each other: if the origin will serve a file as
+  // HTML, the uploader must treat it as an entry point. That is the property, and it holds
+  // no matter which extensions the TYPES table grows later — adding `.htm` or `.xhtml` as
+  // text/html without teaching the ordering about them reddens this test.
+  // `index.html.map` is the load-bearing name here and it was chosen by MEASUREMENT, not
+  // by eye: the obvious candidate `html-loader.js` does NOT discriminate, because it
+  // contains no `.html` substring at all, so a regression to `key.includes('.html')`
+  // sails past it. A sourcemap beside a page is both realistic and the actual
+  // counter-example — extension `.map`, but `.html` sits right there in the middle.
+  const names = ['index.html', 'page.HTML', 'About.Html', 'index.html.map', 'app.htm', 'z-late.js'];
+
+  // CONTROL, and it does real work: it proves the fixture actually contains a file the
+  // origin serves as HTML but whose name is NOT plain lowercase `.html`. Without this the
+  // test would still pass on an implementation that only ever handled `index.html`.
+  const servedAsHtml = names.filter((n) => contentTypeFor(n).startsWith('text/html'));
+  assert.ok(
+    servedAsHtml.some((n) => n !== 'index.html'),
+    `the fixture must contain a non-obvious page for this test to mean anything; ` +
+      `contentTypeFor says only ${JSON.stringify(servedAsHtml)} are served as HTML`,
+  );
+
+  const dir = makeTree('one-definition', Object.fromEntries(names.map((n) => [n, 'x'])));
+  try {
+    const { uploaded, error } = recordUploads(dir);
+    assert.equal(error, null);
+    assert.equal(uploaded.length, names.length, 'ordering, not filtering');
+
+    // Every object the ORIGIN would serve as HTML must come after every object it would not.
+    const lastAsset = uploaded.reduce(
+      (acc, k, i) => (contentTypeFor(k).startsWith('text/html') ? acc : i),
+      -1,
+    );
+    const firstPage = uploaded.findIndex((k) => contentTypeFor(k).startsWith('text/html'));
+    assert.ok(
+      firstPage > lastAsset,
+      `a file the origin serves as text/html is uploading before an asset.\n` +
+        `  order: ${JSON.stringify(uploaded)}\n` +
+        `  first page at ${firstPage}, last asset at ${lastAsset}\n` +
+        `  "is a page" must have ONE definition shared with contentTypeFor, not a second copy`,
+    );
+
+    // And the negative: a filename merely CONTAINING "html" is not a page. This kills a
+    // regression to `key.includes('.html')`, which would pass every other test in the file.
+    assert.ok(
+      uploaded.indexOf('index.html.map') <= lastAsset,
+      '`index.html.map` is a sourcemap, not an entry point — the predicate must match the ' +
+        'EXTENSION (`.map`), not the `.html` substring sitting in the middle of the name. ' +
+        'Verified by mutation: a regression to key.includes(".html") reddens exactly here.',
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('lobbyOwnedEntries and cleanLobbyOutput cannot disagree — one definition', () => {
