@@ -1421,3 +1421,18 @@ Reviewer-coverage evidence, restate the line as `**All received:** Yes (accounte
 parenthetical is the ground truth)` and note in it that it was restated from No. Never a bare Yes.
 The rework path (review→implement) does NOT run this gate — only approval does, which is why round 1
 closed fine with the honest No.
+
+## Review a Node CLI's self-detection line, and probe determinism ACROSS processes (jt5-2, 2026-08-01)
+
+Two cheap checks for any `tools/*.mjs` with a `process.argv[1] ===
+fileURLToPath(import.meta.url)` CLI gate: (1) that comparison goes FALSE in a
+checkout reached through a symlink (the ESM loader realpaths the module URL,
+argv[1] keeps the caller's spelling) and the tool becomes a silent no-op that
+exits 0 — under a `set -euo pipefail` recipe that reads as success. Grep for
+the idiom; the fix is comparing `realpathSync` of both sides. (2) an
+in-process "bake twice, compare" test proves less than the recipe's
+"re-running re-uploads byte-identical files" promise — module state could
+differ across processes; two separate `node` CLI runs + `diff -r` is a
+30-second probe that checks the claim in its real shape. Both found things
+worth writing on jt5-2 (one Low routed with a named owner, one VERIFIED that
+upgraded a test's claim).
