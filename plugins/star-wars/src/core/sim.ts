@@ -114,6 +114,7 @@ import { stepNameEntry } from '@shared/name-entry'
 import {
   spawnTrenchObstacles,
   streamForceFields,
+  streamWallGuns,
   TRENCH_TURRET_SCORE,
   TRENCH_SQUARE_SCORE,
   OBSTACLE_HIT_RADIUS,
@@ -1805,18 +1806,20 @@ export function enterPhase(s: GameState, phase: Phase): GameState {
     // (B-009); other phases carry no port. Seeded per-run like the obstacles below.
     exhaustPort: phase === 'trench' ? spawnPort(romWave0(s.wave), createRng(s.rng.seed)) : null,
     // ...and its wall obstacles (fidelity epic, task 3); other phases carry none.
-    // Seeded per-run variation (sw3-7): the trench chain's picked tail is drawn
-    // from the run RNG via a LOCAL cursor (createRng(s.rng.seed)), so different
-    // runs get different obstacle chains while `s.rng` stays unmutated (purity).
-    // The turret/square furniture PLUS the wedge grid's streamed wall force fields
-    // (sw7-22 / R6d) — both seeded per-run from a LOCAL RNG cursor so `s.rng` stays
-    // unmutated (purity). The force-field grid is data-driven off the wave's pie, so
-    // PIE1 (all guns) carries none until a later wave.
+    // The trench's wall content: the hand-authored square furniture plus BOTH
+    // streamed grid layers — force fields (sw7-22 / B-012) and wall guns
+    // (uf1-4 / B-017) — each walked out of the wave's wedge chain. The streams
+    // take a LOCAL RNG cursor (createRng(s.rng.seed)) so `s.rng` stays unmutated
+    // (purity); for the authored waves (BS.WAV ≤ 10) the chain ignores it
+    // (run-identical trenches, finding B-011), and per-run variation enters
+    // through the BS.WAV ≥ 11 random pie. Each layer is data-driven off the
+    // wave's pie: PIE1 (all guns) streams no force fields until a later wave.
     trenchObstacles:
       phase === 'trench'
         ? [
-            ...spawnTrenchObstacles(createRng(s.rng.seed)),
+            ...spawnTrenchObstacles(),
             ...streamForceFields(romWave0(s.wave), createRng(s.rng.seed)),
+            ...streamWallGuns(romWave0(s.wave), createRng(s.rng.seed)),
           ]
         : [],
     // The "Use the Force" clean-run tell resets on every phase entry, like

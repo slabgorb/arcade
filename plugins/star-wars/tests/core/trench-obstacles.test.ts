@@ -24,6 +24,8 @@
 import { describe, it, expect } from 'vitest'
 import {
   spawnTrenchObstacles,
+  streamForceFields,
+  streamWallGuns,
   TRENCH_OBSTACLE_STATIONS,
   TRENCH_TURRET_SCORE,
   TRENCH_SQUARE_SCORE,
@@ -38,14 +40,22 @@ import type { Vec3 } from '@shared/math3d'
 import { eyeOf, fireAt } from '../support/aim'
 
 describe('trench obstacles — spawn & scroll', () => {
-  it('enterPhase(trench) seeds the run chain from the run RNG; other phases carry none', () => {
-    const t = enterPhase(initialState(), 'trench')
-    // sw3-7: the trench chain is now SEEDED from the run RNG (fixed-head +
-    // picked-tail, ROM sub_83A4), so it equals the generator seeded with the
-    // run's own seed — no longer the static no-arg default. enterPhase must seed
-    // from a LOCAL cursor (createRng(state.rng.seed)) so the run RNG is unmutated.
-    expect(t.trenchObstacles).toEqual(spawnTrenchObstacles(createRng(initialState().rng.seed)))
-    expect(t.trenchObstacles.length).toBe(TRENCH_OBSTACLE_STATIONS.length)
+  it('enterPhase(trench) opens with the square furniture plus BOTH streamed grid layers; other phases carry none', () => {
+    // uf1-4: the entry chain is the fixed square stations plus the wave's
+    // streamed force fields (sw7-22) and wall guns (uf1-4), each walked from
+    // the wedge grid via a LOCAL cursor (createRng(state.rng.seed)) so the run
+    // RNG is unmutated. Wave 1 (PIE1) streams no force fields, so its chain is
+    // exactly squares + guns.
+    const s0 = initialState()
+    const t = enterPhase(s0, 'trench')
+    const wave0 = s0.wave - 1
+    expect(t.trenchObstacles).toEqual([
+      ...spawnTrenchObstacles(),
+      ...streamForceFields(wave0, createRng(s0.rng.seed)),
+      ...streamWallGuns(wave0, createRng(s0.rng.seed)),
+    ])
+    expect(t.trenchObstacles.filter((o) => o.kind === 'square')).toEqual(spawnTrenchObstacles())
+    expect(t.trenchObstacles.filter((o) => o.kind === 'turret').length).toBeGreaterThan(0)
     expect(enterPhase(initialState(), 'space').trenchObstacles).toEqual([])
     expect(enterPhase(initialState(), 'surface').trenchObstacles).toEqual([])
   })
@@ -180,10 +190,13 @@ describe('trench obstacles — shooting & scoring', () => {
     expect(OBSTACLE_HIT_RADIUS).toBeGreaterThan(0)
     expect(TRENCH_TURRET_SCORE).toBeGreaterThan(0)
     expect(TRENCH_SQUARE_SCORE).toBeGreaterThan(0)
-    // sw7-22: the placeholder catwalk station moved to the streamed wedge grid, so the
-    // furniture table now holds the turret/square rows only.
-    expect(TRENCH_OBSTACLE_STATIONS.length).toBeGreaterThanOrEqual(7)
-    for (const o of TRENCH_OBSTACLE_STATIONS) expect(o.pos[2]).toBeLessThan(0) // all downrange
+    // sw7-22 streamed the catwalk out of this table; uf1-4 streamed the turrets
+    // out too, so the furniture table now holds the three square rows only.
+    expect(TRENCH_OBSTACLE_STATIONS.length).toBe(3)
+    for (const o of TRENCH_OBSTACLE_STATIONS) {
+      expect(o.kind).toBe('square')
+      expect(o.pos[2]).toBeLessThan(0) // all downrange
+    }
   })
 
   it('is deterministic for a fixed seed across 20 trench steps', () => {

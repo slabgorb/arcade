@@ -11,8 +11,10 @@
 //
 // PURE DATA + PURE ASSEMBLER. This module is core: no DOM, no time, no
 // Math.random — the only randomness is the seeded Rng carried in for the random
-// pie. Rendering the panel CONTENT (catwalk collision, wall guns) is R6b/R6c and
-// deliberately NOT built here (story sw7-6 scope: data model + traversal).
+// pie. The panel CONTENT is deliberately not acted on here (story sw7-6 scope:
+// data model + traversal): trench-obstacles.ts streams it off the built chain
+// (force fields sw7-22, wall guns uf1-4), and the graze/fire behaviour lives in
+// the sim.
 //
 // SOURCE OF TRUTH: ~/Projects/star-wars-1983-source-text/WSBASE.MAC (the original
 // 1983 MACRO-11 source, LF-normalised; .RADIX 16). This file is a 1:1
@@ -30,6 +32,34 @@
 // We author each wall as its four decoded slot values [top, upperMid, lowerMid,
 // bottom] directly (the S/L/PORT helpers below), so the packing is only relevant
 // to decodePanelColumn, which reproduces it independently.
+//
+// WHAT PRODUCTION CONSUMES (uf1-4; the scan in tests/core/
+// trench-wedges-consumption.test.ts holds this section to the truth): the
+// ASSEMBLER layer — buildTrench, wedgeLength, trenchPortDistance,
+// TRENCH_PORT_OFFSET and the Wedge/PanelColumn types — feeds the sim's trench
+// entry, and two CONTENT layers are streamed off the built chain by
+// trench-obstacles.ts: PANEL_FORCEFIELD → wall force fields (sw7-22 / B-012)
+// and PANEL_GUN → wall guns (uf1-4 / B-017). Every other export is table
+// vocabulary kept for the fidelity suites, inventoried below.
+//
+// CARRIED WITHOUT A CONSUMER — exported for the test oracles; each entry says
+// why it stays:
+//   • PANEL_BLANK, PANEL_PANEL — the remaining 2-bit TD$W* slot vocabulary.
+//     PANEL_PANEL (the decorative panel, TD$WPN) has no streamed layer yet:
+//     drawing the panel content is render-fidelity scope (sw9), and reading it
+//     as the cabinet's shootable green square needs a longplay check first
+//     (routed to a uf1-4 Delivery Finding rather than assumed here).
+//     PANEL_BLANK names the zero slot so the suites never hardcode a magic 0.
+//   • decodePanelColumn — the executable inverse of the byte packing above.
+//     The tables are authored pre-decoded, so only the diff-trace suites call
+//     it; it stays so the packing law is code the tests run, not prose.
+//   • WEDGE_SHORT, WEDGE_LONG, WEDGE_END, WEDGE_PORT, WEDGE_NEXT — the TYP$*
+//     opcodes. Consumed inside this module by the spacing rule and the chain
+//     walk; exported so the table suites can assert structure per opcode.
+//   • PIES, WEDGE_GROUP_IDS, wedgeGroup — the pie table, the group-id index
+//     and the group lookup. The pies are consumed inside this module by the
+//     per-wave walk; the index and lookup exist so the suites can sweep all
+//     53 groups against WSBASE.MAC without reaching into module internals.
 
 import { createRng, nextInt, type Rng } from '@shared/rng'
 

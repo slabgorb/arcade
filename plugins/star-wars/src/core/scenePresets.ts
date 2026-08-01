@@ -8,7 +8,8 @@
 
 import { initialState, EXHAUST_PORT_DISTANCE, type GameState } from './state'
 import { enterPhase } from './sim'
-import { spawnTrenchObstacles } from './trench-obstacles'
+import { spawnTrenchObstacles, streamWallGuns } from './trench-obstacles'
+import { createRng } from '@shared/rng'
 import type { Vec3 } from '@shared/math3d'
 
 export interface ScenePreset {
@@ -35,11 +36,16 @@ export const SCENE_PRESETS: readonly ScenePreset[] = [
     state: trenchAt(-EXHAUST_PORT_DISTANCE) },
   { id: 'mid-run', label: 'MID-RUN', hint: 'port approaching',
     state: trenchAt(-1400) },
-  // Fidelity epic (task 3) — the obstacle stations shifted +600 so several
-  // turrets/squares/the catwalk sit in range on the walls for the contact sheet,
-  // rather than the far-downrange stations a stock trenchAt(-1400) would show.
+  // Fidelity epic (task 3), re-seated by uf1-4 — the square stations shifted
+  // +600 and the wave's FIRST grid-streamed wall guns (the TWDG10 intro rows,
+  // nearest at −0x6000) pulled up beside them, so turrets AND squares sit in
+  // range on the walls for the contact sheet, rather than the far-downrange
+  // content a stock trenchAt(-1400) would show.
   { id: 'turret-alley', label: 'TURRET-ALLEY', hint: 'obstacles in range',
-    state: { ...trenchAt(-1400), trenchObstacles: spawnTrenchObstacles().map((o) => ({ ...o, pos: [o.pos[0], o.pos[1], o.pos[2] + 600] as Vec3 })) } },
+    state: { ...trenchAt(-1400), trenchObstacles: [
+      ...spawnTrenchObstacles().map((o) => ({ ...o, pos: [o.pos[0], o.pos[1], o.pos[2] + 600] as Vec3 })),
+      ...streamWallGuns(0, createRng(0)).slice(0, 4).map((o) => ({ ...o, pos: [o.pos[0], o.pos[1], o.pos[2] + 0x6000 - 2000] as Vec3 })),
+    ] } },
   { id: 'port-in-sight', label: 'PORT-IN-SIGHT', hint: 'in range',
     state: trenchAt(-600) },
   // Fidelity epic (task 4) — a clean port kill's "Use the Force" banner

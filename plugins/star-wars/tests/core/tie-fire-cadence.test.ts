@@ -102,12 +102,19 @@ function windowFireRate(state: GameState, n: number): number {
   return fired / eligible
 }
 
-/** The peak number of enemy fireballs simultaneously aloft across `n` game frames. */
+/** The peak number of enemy fireballs simultaneously aloft across `n` game
+ *  frames of the SPACE phase — the phase whose §6 slot cap this suite pins.
+ *  Bounded to space (uf1-4): this fixture's run coasts into the trench at
+ *  ~frame 390, and the trench's wall guns run BSGUN's own MAX_FIREBALL_SLOTS
+ *  budget, not the space TGPROB row. Before uf1-4 the trench never actually
+ *  fired (its guns despawned pre-opening), which is the only reason an
+ *  unbounded count used to measure space alone. */
 function maxSimultaneousFireballs(state: GameState, n: number): number {
   let peak = 0
   let s = state
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < n && s.phase === 'space'; i++) {
     s = stepGame(s, NO_INPUT, TICK_DT)
+    if (s.phase !== 'space') break
     peak = Math.max(peak, s.enemyShots.length)
   }
   return peak

@@ -1,39 +1,33 @@
 // tests/core/trench-variation.test.ts
 //
-// Story sw3-7 — Trench per-run variation. RED phase.
+// Story sw3-7, RE-SEATED BY uf1-4 — trench per-run variation, on the REAL
+// mechanism.
 //
-// THE DEFECT: today `spawnTrenchObstacles()` ignores the run seed and returns
-// one static hand-authored table, so EVERY trench run is byte-identical.
-//
-// THE AUTHENTIC CONTRACT (ROM `sub_83A4`, disasm "Called when starting trench";
-// WSBASE.MAC `GNBASE` "GEN A NEW BASE PIE"): each run's trench "pie" is built as
-// a PRNG **fixed-head + picked-tail** chain —
-//   1. a FIXED HEAD is copied verbatim from a ROM skeleton (`off_7C7E` /
-//      `PIEXX` divider-panel format) — the same every run, so the trench
-//      entrance is stable; then
-//   2. a run of slots is OVERWRITTEN with random PICKS from a ROM pool
-//      (`off_7C9E` / `TWDGXX` "list of wedges to use"), indexed by a scaled PRNG
-//      byte: disasm `lda #$11; ldb PRNG; mul; asla` = `(#entries * rnd) >> 8`,
-//      i.e. the classic `nextInt(rng, #entries)` scaled pick. The tail varies by
-//      seed, so runs DIFFER instead of being byte-identical.
-//
-// PURITY (star-wars CLAUDE.md hard boundary; sim.ts:142 "Clone the RNG so the
-// step never mutates its input"): the only randomness is the seeded `Rng`
-// carried in `GameState`. No `Math.random`. Same seed -> same run; different
-// seed -> different run. These tests pin the OBSERVABLE contract (the chain that
-// `enterPhase(_, 'trench')` opens with), seam-agnostic about how the tail is
-// picked — they must accept any faithful port of the fixed-head + picked-tail
-// shape.
+// HISTORY: sw3-7 pinned a "fixed-head + picked-tail" seeded shuffle of the
+// hand-authored station table, approximating the ROM's GNBASE ("GEN A NEW BASE
+// PIE", WSBASE.MAC:162-179) before the wedge grid existed. Two later findings
+// superseded that approximation:
+//   • B-011 (docs/audit/findings/pair-trench.json): the AUTHORED pies
+//     (BS.WAV 0..10) are run-identical on the cabinet — the early trenches do
+//     NOT vary by run. The old "different seeds ⇒ different wave-1 chains"
+//     premise was variation the ROM does not have.
+//   • sw7-6 landed GNBASE itself: `buildTrench` fills the RPIE template's XX
+//     slots from the TWDGXX pool via the seeded RNG for BS.WAV ≥ 11 — the
+//     authentic fixed-head + picked-tail, on the authentic data.
+// With uf1-4 streaming the grid's guns (and sw7-22 its force fields) into the
+// entry chain, per-run variation now flows from the random pie into the
+// OBSERVABLE obstacle chain — so this suite pins the contract there, where the
+// cabinet actually has it. The purity rules are unchanged: seeded Rng only,
+// same seed ⇒ same run, `enterPhase` never mutates the caller's RNG.
 
 import { describe, it, expect } from 'vitest'
-import { createRng } from '@shared/rng'
 import { initialState, type TrenchObstacle } from '../../src/core/state'
 import { enterPhase } from '../../src/core/sim'
 import { spawnTrenchObstacles, TRENCH_OBSTACLE_STATIONS } from '../../src/core/trench-obstacles'
 
-/** The obstacle chain a fresh trench run opens with, for a given RNG seed. */
-function chainForSeed(seed: number): TrenchObstacle[] {
-  return enterPhase(initialState(seed), 'trench').trenchObstacles
+/** The obstacle chain a fresh trench run opens with, for a seed and 1-based wave. */
+function chainFor(seed: number, wave: number): TrenchObstacle[] {
+  return enterPhase({ ...initialState(seed), wave }, 'trench').trenchObstacles
 }
 
 /** A stable, comparable signature of one obstacle chain (kind + position). */
@@ -41,90 +35,72 @@ function sig(chain: readonly TrenchObstacle[]): string {
   return JSON.stringify(chain.map((o) => [o.kind, o.pos]))
 }
 
-/** Leading count of stations deep-equal across EVERY chain in the set — the
- *  "fixed head" length (0 if even the first station varies). */
-function commonPrefixLen(chains: readonly TrenchObstacle[][]): number {
-  const min = Math.min(...chains.map((c) => c.length))
-  let n = 0
-  for (; n < min; n++) {
-    const here = sig([chains[0][n]])
-    if (!chains.every((c) => sig([c[n]]) === here)) break
-  }
-  return n
-}
+/** First 1-based wave whose pie is the seeded RANDOM pie (BS.WAV 11). */
+const RANDOM_WAVE = 12
 
 // A spread wide enough that the astronomically-unlikely event of every seed
-// picking an identical tail can be ruled out, while staying cheap.
+// picking an identical random pie can be ruled out, while staying cheap.
 const SEEDS = Array.from({ length: 24 }, (_, i) => i + 1)
 
-describe('sw3-7 trench per-run variation — PRNG fixed-head + picked-tail (sub_83A4)', () => {
-  it('different seeds produce DIFFERENT obstacle chains (regression: runs are byte-identical today)', () => {
-    const signatures = SEEDS.map((s) => sig(chainForSeed(s)))
-    // RED today: the static table ignores the seed, so this set has size 1.
-    expect(new Set(signatures).size).toBeGreaterThan(1)
+describe('trench per-run variation — the GNBASE random pie (sw3-7 contract, re-seated on the grid by uf1-4)', () => {
+  it('AUTHORED waves are run-identical: every seed opens the same wave-1 chain (finding B-011)', () => {
+    // The flip of the old premise, and the deliberate one: PIE1..PIE11 are
+    // authored data, so the seed must NOT change them. A seeded shuffle
+    // sneaking back into the entry chain fails here.
+    const signatures = new Set(SEEDS.map((s) => sig(chainFor(s, 1))))
+    expect(signatures.size).toBe(1)
+    expect(chainFor(1, 1).length).toBeGreaterThan(0)
   })
 
-  it('has a FIXED HEAD and a PICKED TAIL: the seed-invariant prefix is non-empty but shorter than the chain', () => {
-    const chains = SEEDS.map(chainForSeed)
-    const cp = commonPrefixLen(chains)
-    const len = chains[0].length
-    expect(cp).toBeGreaterThan(0) // fixed head — a stable trench entrance every run
-    expect(cp).toBeLessThan(len) // picked tail — later slots vary by seed (RED today: cp === len)
+  it('the RANDOM pie varies: different seeds produce different chains at BS.WAV ≥ 11', () => {
+    const signatures = new Set(SEEDS.map((s) => sig(chainFor(s, RANDOM_WAVE))))
+    expect(signatures.size).toBeGreaterThan(1)
   })
 
   it('is DETERMINISTIC: the same seed always yields the same chain (seeded, never Math.random)', () => {
     for (const s of [0, 1, 7, 1983, 0x7fffffff]) {
-      expect(sig(chainForSeed(s))).toBe(sig(chainForSeed(s)))
+      expect(sig(chainFor(s, 1))).toBe(sig(chainFor(s, 1)))
+      expect(sig(chainFor(s, RANDOM_WAVE))).toBe(sig(chainFor(s, RANDOM_WAVE)))
     }
   })
 
-  it('chain LENGTH is seed-invariant (ROM fixed-size RPIE — only the contents vary)', () => {
-    const lengths = new Set(SEEDS.map((s) => chainForSeed(s).length))
-    expect(lengths.size).toBe(1)
-    expect([...lengths][0]).toBeGreaterThan(0)
-  })
-
-  it('entering the trench does NOT mutate the caller RNG (purity — enterPhase seeds from a local cursor)', () => {
-    const s = initialState(9)
+  it('entering the trench does NOT mutate the caller RNG (purity — enterPhase streams from a local cursor)', () => {
+    // Checked at the RANDOM wave, where the stream genuinely consumes an RNG.
+    const s = { ...initialState(9), wave: RANDOM_WAVE }
     const before = s.rng.seed
     enterPhase(s, 'trench')
     expect(s.rng.seed).toBe(before)
   })
 
   it('seed 0 is a valid, non-degenerate seed (guards `|| default` on a falsy-but-valid seed) and still varies', () => {
-    const chain0 = chainForSeed(0)
+    const chain0 = chainFor(0, RANDOM_WAVE)
     expect(chain0.length).toBeGreaterThan(0)
-    // Seed 0 must not collapse onto the same run as every nonzero seed. RED
-    // today: the seed is ignored, so seed 0 equals seeds 1..5.
-    expect([1, 2, 3, 4, 5].some((s) => sig(chainForSeed(s)) !== sig(chain0))).toBe(true)
+    expect([1, 2, 3, 4, 5].some((s) => sig(chainFor(s, RANDOM_WAVE)) !== sig(chain0))).toBe(true)
   })
 
-  it('every picked obstacle is a known kind and stays downrange (picked-tail pool sanity)', () => {
+  it('every obstacle is a known kind and stays downrange, on authored and random waves alike', () => {
     for (const s of [0, 3, 11, 99]) {
-      for (const o of chainForSeed(s)) {
-        expect(['turret', 'square', 'catwalk']).toContain(o.kind)
-        expect(o.pos[2]).toBeLessThan(0)
+      for (const wave of [1, RANDOM_WAVE]) {
+        for (const o of chainFor(s, wave)) {
+          expect(['turret', 'square', 'catwalk']).toContain(o.kind)
+          expect(o.pos[2]).toBeLessThan(0)
+        }
       }
     }
   })
 
-  it('carries NO force field of its own — they are STREAMED from the wedge grid now (sw7-22)', () => {
-    // MIGRATED (sw7-22 / R6d): force fields (B-012) used to be a single placeholder
-    // "catwalk" injected here on every run. They are now STREAMED from the wave's
-    // wedge grid (`streamForceFields`, tests/core/trench-forcefield-streaming.test.ts),
-    // so this turret/square variation table carries only shootable furniture, and the
-    // DEFAULT trench (PIE1 = all guns) genuinely has no force field until a later pie.
-    expect(spawnTrenchObstacles().some((o) => o.kind === 'catwalk')).toBe(false)
-    for (const s of [0, 5, 17, 40]) {
-      // chainForSeed opens the wave-1 (PIE1) trench, whose grid has zero force fields.
-      expect(chainForSeed(s).every((o) => o.kind !== 'catwalk')).toBe(true)
-    }
+  it('the furniture table carries squares ONLY — guns and force fields are streamed layers now', () => {
+    // sw7-22 moved the force fields to the grid; uf1-4 moved the guns. What
+    // remains hand-authored is the shootable square furniture, and the wave-1
+    // (PIE1, all guns) trench genuinely has no force field until a later pie.
+    expect(spawnTrenchObstacles().every((o) => o.kind === 'square')).toBe(true)
+    expect(chainFor(0, 1).every((o) => o.kind !== 'catwalk')).toBe(true)
   })
 
-  it('spawnTrenchObstacles(rng) is a pure function of the seed and returns fresh, unshared arrays', () => {
-    const a = spawnTrenchObstacles(createRng(42))
-    const b = spawnTrenchObstacles(createRng(42))
-    expect(sig(a)).toBe(sig(b)) // same seed -> same chain (deterministic)
+  it('spawnTrenchObstacles is deterministic and returns fresh, unshared arrays', () => {
+    const a = spawnTrenchObstacles()
+    const b = spawnTrenchObstacles()
+    expect(sig(a)).toBe(sig(b))
     // Fresh, unshared references every call: nothing aliases another spawn or
     // the readonly source table, so a scrolling run can never corrupt a later
     // spawn. Vec3 is `readonly`, so freshness is checked by identity, not by

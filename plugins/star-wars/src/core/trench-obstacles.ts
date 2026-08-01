@@ -9,8 +9,8 @@
 
 import { type TrenchObstacle } from './state'
 import { TRENCH_HALF_W, TRENCH_WALL_H } from './trench-channel'
-import { createRng, nextInt, type Rng } from '@shared/rng'
-import { buildTrench, wedgeLength, PANEL_FORCEFIELD, type Wedge } from './trench-wedges'
+import { type Rng } from '@shared/rng'
+import { buildTrench, wedgeLength, PANEL_FORCEFIELD, PANEL_GUN, type PanelColumn, type Wedge } from './trench-wedges'
 
 // --- Scores: TRUED against ## Scoring tables --------------------------------
 //
@@ -57,10 +57,12 @@ const W = TRENCH_HALF_W
 // detail is a PRNG-picked shape script, not a grid), so they are re-anchored rather than
 // re-pinned: no invented numbers are dressed up as ROM data.
 //
-// WALL furniture scales with the WALL — turret and square keep exactly the proportions of
-// its height that they had (3/16 and 3/8, i.e. the old 60/320 and 120/320). Note the pilot
-// is clamped to ±511 inside ±1024 walls, so he can never reach them: these are things he
-// SHOOTS, not things he crashes into.
+// WALL furniture scales with the WALL — the square keeps exactly the proportion of its
+// height that it had (its aim-cone re-anchor below). Note the pilot is clamped to ±511
+// inside ±1024 walls, so he can never reach them: these are things he SHOOTS, not things
+// he crashes into. (The TURRETS that used to share this table are gone: wall guns are now
+// STREAMED from the wedge grid's PANEL_GUN columns — `streamWallGuns`, uf1-4 / B-017 —
+// so their placement is the ROM's own wedge data, not a hand-tuned proportion.)
 //
 // The CATWALK is now a wall FORCE FIELD (TD$WFF, B-012): it mounts on ONE wall and is
 // SIDE-GATED — it grazes only a pilot on the wall it hangs from, within a vertical band
@@ -74,10 +76,7 @@ const W = TRENCH_HALF_W
 // sw7-22, which un-clamps the port stub; here the trench carries the one head-of-pie divider
 // catwalk, wall-mounted.) Its height need only sit within a hands-off pilot's hit band.
 
-/** Wall-mounted turret — 3/16 of the wall's height, as it was on the 320 wall. This lands it at
- *  exactly TRENCH_EYE_SEAT, so the seated pilot looks a turret dead in the eye: aim (0, 0). */
-const TURRET_Y = (TRENCH_WALL_H * 3) / 16 // 768
-/** Wall square — above the turret, but it must stay INSIDE THE PILOT'S AIM CONE from its own
+/** Wall square — it must stay INSIDE THE PILOT'S AIM CONE from its own
  *  station, or it is scenery he can see and never shoot.
  *
  *  The cone is the FOV: at range D the crosshair reaches ±D/f about the eye, with f = 1/tan(30°).
@@ -90,20 +89,18 @@ const TURRET_Y = (TRENCH_WALL_H * 3) / 16 // 768
  *  but keeping it a TARGET. */
 const SQUARE_Y = (TRENCH_WALL_H * 5) / 16 // 1280
 /**
- * Downrange stations, cockpit → far. PROVISIONAL layout: the ROM's off_7CC0 →
- * off_7B1E..7BFE records (findings ## Trench catwalks, turrets & wall squares)
- * are confirmed to be (type-byte, dx, dy) shape-script triples — type 1 =
- * catwalk cross-brace, type 2 = turret housing — but the extraction notes flag
- * it uncertain whether an off_7Bxx row encodes per-section PLACEMENT or only
- * silhouette geometry, and there is no ROM↔world-unit conversion to turn either
- * reading into station coordinates (the same gap that keeps TRENCH_HALF_W/
- * TRENCH_WALL_H provisional — see Open follow-ups #2/#3). What IS confirmed and
- * IS reflected here: turret spawn/aim (`sub_B3E9`) runs three ROM rows — left
- * wall only (param $B), right wall only (param $E), then both walls together
- * (param $C) — so this table places its four turret stations as one left-only,
- * one right-only, then a same-station left+right pair, rather than an arbitrary
- * alternation. Exact Z spacing and the square/catwalk placements remain
- * hand-authored pending a full geometry-decode pass.
+ * Downrange stations, cockpit → far. PROVISIONAL layout for the SQUARES only:
+ * the ROM's off_7CC0 → off_7B1E..7BFE records (findings ## Trench catwalks,
+ * turrets & wall squares) are confirmed to be (type-byte, dx, dy) shape-script
+ * triples, but the extraction notes flag it uncertain whether an off_7Bxx row
+ * encodes per-section PLACEMENT or only silhouette geometry, and there is no
+ * ROM↔world-unit conversion to turn either reading into station coordinates
+ * (the same gap that keeps TRENCH_HALF_W/TRENCH_WALL_H provisional — see Open
+ * follow-ups #2/#3). So the square placements remain hand-authored. The TURRET
+ * rows this table used to carry (with their sub_B3E9 left/right/pair reading)
+ * are RETIRED (uf1-4): wall guns now come from the wedge grid's own PANEL_GUN
+ * columns via `streamWallGuns` — the geometry-decode this comment used to wait
+ * for, applied per wall and per slot straight from WSBASE.MAC data.
  */
 // The stations move OUT with the walls (story sw5-6). They were spaced for a ±256 trench; the
 // pinned trench is ±1024, and a wall object 900 units downrange on a ±1024 wall subtends 48.7°
@@ -122,64 +119,31 @@ const NEAR = 2 * TRENCH_HALF_W // 2048 — the closest a wall object may stand a
 const GAP = 400
 
 export const TRENCH_OBSTACLE_STATIONS: readonly TrenchObstacle[] = [
-  { kind: 'turret', pos: [-W, TURRET_Y, -NEAR] }, // ROM row 1 ($B) — left wall only
   { kind: 'square', pos: [W, SQUARE_Y, -(NEAR + GAP)] },
-  { kind: 'turret', pos: [W, TURRET_Y, -(NEAR + 2 * GAP)] }, // ROM row 2 ($E) — right wall only
   { kind: 'square', pos: [-W, SQUARE_Y, -(NEAR + 4 * GAP)] },
   { kind: 'square', pos: [W, SQUARE_Y, -(NEAR + 5 * GAP)] },
-  { kind: 'turret', pos: [-W, TURRET_Y, -(NEAR + 6 * GAP)] }, // ROM row 3 ($C) — both walls...
-  { kind: 'turret', pos: [W, TURRET_Y, -(NEAR + 6 * GAP)] }, //  ...left+right at the same station
 ]
 
 /**
- * Per-run variation (sw3-7). The cabinet builds each trench from a PRNG
- * **fixed-head + picked-tail** "pie" (ROM `sub_83A4` "Called when starting
- * trench" → copy a fixed skeleton from `off_7C7E`, then overwrite tail slots
- * with random picks from `off_7C9E`; WSBASE.MAC `GNBASE` "GEN A NEW BASE PIE"
- * fills each wedge slot via `LDB P.RND1; MUL`). We port that shape: the leading
- * TRENCH_HEAD_COUNT stations are the fixed skeleton (a stable trench entrance,
- * incl. the catwalk divider), and each tail station keeps its fixed downrange
- * position but has its KIND picked from TRENCH_TAIL_POOL by the seeded RNG. So
- * runs DIFFER instead of being byte-identical, while the chain LENGTH stays
- * fixed (the ROM's fixed-size RPIE — only the contents vary).
+ * Fresh per-run copies of the square stations (positions mutate as they scroll —
+ * never share). Deterministic and seedless (uf1-4): the sw3-7 head/tail KIND
+ * pick that used to live here approximated the ROM's GNBASE random pie on this
+ * hand-authored table; the grid now implements GNBASE itself (`buildTrench`'s
+ * RPIE for BS.WAV ≥ 11), and finding B-011 established that the AUTHORED waves
+ * are run-identical on the cabinet — so a seeded shuffle of this table was
+ * variation the ROM does not have. Per-run variation lives in the streamed
+ * layers now; what remains here is fixed furniture.
  */
-
-/** Leading stations copied verbatim every run — the fixed pie skeleton (ROM
- *  `off_7C7E` / `PIEXX` divider format), so every run opens with the same stable
- *  entrance. The force-field ("catwalk") divider that used to sit here is no longer
- *  a placeholder station: force fields are now STREAMED from the wedge grid over the
- *  full channel (`streamForceFields`, sw7-22 / R6d), so this table carries only the
- *  shootable turret/square furniture. */
-export const TRENCH_HEAD_COUNT = 3
-
-/** Kinds the picked tail draws from — the ROM's random WEDGE pool (`off_7C9E` /
- *  `TWDGXX` "list of wedges to use"): a wall-mounted turret or square. Catwalks
- *  are structural dividers (fixed head), never a randomly-picked wedge. */
-const TRENCH_TAIL_POOL: readonly TrenchObstacle['kind'][] = ['turret', 'square']
-
-/** Seed for the no-arg (static) spawn used by scene presets and the
- *  catwalk/viewpoint fixtures — a deterministic representative run. */
-const TRENCH_DEFAULT_SEED = 1983
-
-/**
- * Fresh per-run copies (positions mutate as they scroll — never share). Pass the
- * run's `Rng` to seed the picked tail; the no-arg form yields a deterministic
- * default run. Callers thread a LOCAL cursor (`createRng(state.rng.seed)`) so the
- * run RNG is never mutated (core purity).
- */
-export function spawnTrenchObstacles(rng?: Rng): TrenchObstacle[] {
-  const gen = rng ?? createRng(TRENCH_DEFAULT_SEED)
-  return TRENCH_OBSTACLE_STATIONS.map((o, i) => {
-    const kind = i < TRENCH_HEAD_COUNT ? o.kind : TRENCH_TAIL_POOL[nextInt(gen, TRENCH_TAIL_POOL.length)]
-    return { kind, pos: [...o.pos] as TrenchObstacle['pos'] }
-  })
+export function spawnTrenchObstacles(): TrenchObstacle[] {
+  return TRENCH_OBSTACLE_STATIONS.map((o) => ({ kind: o.kind, pos: [...o.pos] as TrenchObstacle['pos'] }))
 }
 
-// --- The streamed wall force-field grid (sw7-22 / R6d, B-012) ----------------
+// --- The streamed wall grid: force fields (sw7-22 / B-012) + guns (uf1-4 / B-017) ---
 //
 // The authentic trench draws its wall content from the wedge PANEL GRID (sw7-6 /
-// B-010): each wedge carries a left- and right-wall 4-slot column, and a
-// PANEL_FORCEFIELD (TD$WFF) slot is a wall force field. `buildTrench` lays the
+// B-010): each wedge carries a left- and right-wall 4-slot column — a
+// PANEL_FORCEFIELD (TD$WFF) slot is a wall force field, a PANEL_GUN (TD$WGA)
+// slot is a wall gun. `buildTrench` lays the
 // whole chain — tens of these across the full ~327,680-unit channel — so with the
 // port un-clamped to its real BS.PLC distance (sw7-22) they finally have somewhere
 // to go. This replaces the single placeholder catwalk the 1.8s stub carried.
@@ -188,8 +152,10 @@ export function spawnTrenchObstacles(rng?: Rng): TrenchObstacle[] {
  *  bottom), as the panel grid stacks them. PROVISIONAL: the exact ROM band
  *  (`M.Z0 ± $200` top / `$400` band, WSPANL.MAC:186-215) is not yet pinned (sw7-22
  *  Delivery Finding); the four slots are spread across the wall's usable height so
- *  each lands in a band the diving/climbing pilot can meet. */
-const FORCE_FIELD_SLOT_Y: readonly number[] = [
+ *  each lands in a band the diving/climbing pilot can meet. One map for EVERY
+ *  slot type (uf1-4): a gun and a force field in the same slot hang at the same
+ *  height, because the grid stacks them in the same four wall positions. */
+const WALL_SLOT_Y: readonly number[] = [
   (TRENCH_WALL_H * 4) / 5, // slot 0 — top
   (TRENCH_WALL_H * 3) / 5,
   (TRENCH_WALL_H * 2) / 5,
@@ -197,24 +163,40 @@ const FORCE_FIELD_SLOT_Y: readonly number[] = [
 ]
 
 /**
- * Stream the wave's wedge grid into wall force-field obstacles (B-012). Walks the
- * chain `buildTrench` builds; each PANEL_FORCEFIELD slot becomes one 'catwalk'
- * obstacle — the kind the side-gated graze collision reads (sw7-19) — mounted on
- * its column's wall (left → −x, right → +x) at the slot's height, seated at the
- * wedge's −Z distance down the channel. Pure and deterministic like the chain it
- * reads; the caller threads a LOCAL RNG cursor so the run seed is never consumed.
+ * Stream one slot type out of the wave's wedge grid as obstacles. Walks the
+ * chain `buildTrench` builds; each matching slot becomes one obstacle of `kind`,
+ * mounted on its column's wall (left → −x, right → +x) at the slot's height,
+ * seated at the wedge's −Z distance down the channel. Pure and deterministic
+ * like the chain it reads; callers thread a LOCAL RNG cursor so the run seed is
+ * never consumed.
  */
-export function streamForceFields(baseWave: number, rng: Rng): TrenchObstacle[] {
-  const fields: TrenchObstacle[] = []
+function streamPanelSlots(baseWave: number, rng: Rng, slotType: number, kind: TrenchObstacle['kind']): TrenchObstacle[] {
+  const out: TrenchObstacle[] = []
   let z = 0
+  const scan = (col: PanelColumn, wallX: number) => {
+    col.forEach((slot, i) => {
+      if (slot === slotType) out.push({ kind, pos: [wallX, WALL_SLOT_Y[i], -z] })
+    })
+  }
   for (const w of buildTrench(baseWave, rng) as readonly Wedge[]) {
-    w.left.forEach((slot, i) => {
-      if (slot === PANEL_FORCEFIELD) fields.push({ kind: 'catwalk', pos: [-W, FORCE_FIELD_SLOT_Y[i], -z] })
-    })
-    w.right.forEach((slot, i) => {
-      if (slot === PANEL_FORCEFIELD) fields.push({ kind: 'catwalk', pos: [W, FORCE_FIELD_SLOT_Y[i], -z] })
-    })
+    scan(w.left, -W)
+    scan(w.right, W)
     z += wedgeLength(w.type)
   }
-  return fields
+  return out
+}
+
+/** The wave's wall force fields (B-012, sw7-22 / R6d): every PANEL_FORCEFIELD
+ *  (TD$WFF) slot becomes one 'catwalk' obstacle — the kind the side-gated graze
+ *  collision reads (sw7-19). */
+export function streamForceFields(baseWave: number, rng: Rng): TrenchObstacle[] {
+  return streamPanelSlots(baseWave, rng, PANEL_FORCEFIELD, 'catwalk')
+}
+
+/** The wave's wall guns (B-017, uf1-4): every PANEL_GUN (TD$WGA) slot becomes
+ *  one 'turret' obstacle — the kind the TGPROB fire loop and the 100-point
+ *  scoring already read — so the guns that return fire are the ROM's own wedge
+ *  data, per wall and per slot, across the full channel. */
+export function streamWallGuns(baseWave: number, rng: Rng): TrenchObstacle[] {
+  return streamPanelSlots(baseWave, rng, PANEL_GUN, 'turret')
 }
