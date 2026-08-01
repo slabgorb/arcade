@@ -19,6 +19,8 @@
 // Williams source). Every constant below carries its radix-cited anchor.
 
 import {
+  BCK_X_TABLE,
+  X_TABLE_ORIGIN,
   flap,
   stepFlight,
   tickTimeUp,
@@ -32,7 +34,7 @@ import {
   type PlayerInput,
   type WingEdge,
 } from './flight.js'
-import { applyCeiling, groundOutcome, wrapX } from './arena.js'
+import { BCK_Y_TABLE, applyCeiling, groundOutcome, wrapX } from './arena.js'
 // uf1-2 — the per-wave difficulty seam. This closes a module CYCLE (difficulty.ts
 // imports `seedBudget` from here), which is safe only because neither module calls
 // across the cycle at import time: `waveValue` is invoked per decision, and
@@ -89,14 +91,20 @@ export interface PlayerView {
  * jt8-2 — the per-enemy horizontal-homing workspace.
  *
  * ONE byte, not two. The ROM pairs `PRDIR` with `PPVELX` ("OLD PLAYERS X
- * VELOCITY", RAMDEF.SRC:209), but that second byte is written in exactly one
- * place — `BOLEV` (`LDA PVELX,X / STA PPVELX,U`, JOUSTRV4.SRC:3907-3908), on
- * entry to a level-flight episode timed by `BOLETM` ("TIME UNTIL NEXT DECISION",
- * :3909). `BOLEVB` only ever READS it. The BOLETM decision timer belongs to a
- * later story (uf1-9 owns all five "TIME UNTIL NEXT DECISION" rows), so there is
- * no moment here at which a snapshot could honestly be taken and `homingWake`
- * compares the target's LIVE index instead. Carrying an unwritten `ppvelx` would
- * read as modelled while being inert.
+ * VELOCITY", RAMDEF.SRC:209). Across the three smart brains that second byte is
+ * written at exactly THREE sites — `BOLEV` (`LDA PVELX,X / STA PPVELX,U`,
+ * JOUSTRV4.SRC:3907-3908), `B2LEV` (:4058-4059) and `SHLEP` (:4281-4282), each
+ * on entry to an episode timed by a "TIME UNTIL NEXT DECISION" row (`BOLETM`
+ * :3909, `HULETM` :4060, `SHUPTM` :4283) — and the write-set is enumerated
+ * mechanically in tests/steering-source.test.ts. (jt8-2's original note claimed
+ * "exactly one place"; that was true of the BOUNDR brain alone.) `BOLEVB` and
+ * its twins only ever READ it. The decision timers belong to a later story
+ * (uf1-9 owns the "TIME UNTIL NEXT DECISION" rows), so there is no moment here
+ * at which a snapshot could honestly be taken and `homingWake` compares the
+ * target's LIVE index instead — which is also snapshot-equivalent for SHLEP
+ * under the per-wake collapse, since a brain that re-decides every wake
+ * re-stores every wake. Carrying an unwritten `ppvelx` would read as modelled
+ * while being inert.
  */
 export interface HomingState {
   /**
@@ -229,6 +237,29 @@ export const B2UNDR_DOWN_BRAKE = 0x200
 export const LAVA_ESCAPE_Y = 0xd3
 
 /**
+ * `B2XLEN EQU 27+4` = 31 — how far ahead, in whole pixels, the hunter's cliff
+ * look-ahead samples the background mask (JOUSTRV4.SRC:3969). DECIMAL.
+ */
+export const B2XLEN = 27 + 4
+
+/**
+ * `SHXLEN EQU 27+4` = 31 — the shadow lord's copy of the same length
+ * (JOUSTRV4.SRC:4228). DECIMAL. Equal by construction in the ROM; kept as its
+ * own named constant because the ROM names it, exactly like the two DOWN-brake
+ * dials above.
+ */
+export const SHXLEN = 27 + 4
+
+/**
+ * `$D0` — SHDIR's own lava pre-check line (JOUSTRV4.SRC:4330-4334): a shadow
+ * lord AT or below this whole-pixel scanline while falling is BOLAVA's problem,
+ * not the look-ahead's. Three scanlines ABOVE the hunter's `B2DIRL` gate and
+ * the SHDN escape line (`$D3`, `LAVA_ESCAPE_Y`) — two different thresholds,
+ * deliberately not one constant. HEX.
+ */
+export const SHDIR_LAVA_Y = 0xd0
+
+/**
  * The number of velocity-MATCHED wakes between two facing flips = 129.
  *
  * DERIVED — never stated as a constant anywhere in the source. It falls out of
@@ -359,8 +390,8 @@ export function creditDeath(enemy: EnemyState, budget: IntelBudget): IntelBudget
 // (see `SeekState` and `stepEnemy`); SHORT range and null-target fly level.
 // Level flight here is the per-wake collapse "flap iff falling" — the timed
 // BOLETM-family episodes are uf1-9's rows, deliberately not modelled yet.
-// The horizontal cliff look-ahead (B2XLEN/SHXLEN) is provenance-only
-// (claims JT22-025/026); dir follows facing.
+// The horizontal cliff look-ahead (B2XLEN/SHXLEN) is `steerWake` below
+// (jt8-3 — it writes the FACING before the brain runs); dir follows facing.
 
 /** The route a bounder/hunter wake is on: a committed/long seek, or level. */
 type SeekRoute = 'down' | 'up' | 'level'
@@ -461,28 +492,39 @@ export function b2undr(enemy: EnemyState, player: PlayerView | null, wave = 1): 
 /**
  * Shadow lord (`SHADOW` :4230-4330): stateless — no DI rows, no SeekState; it
  * re-decides every wake. Null target → SHLEV (own line, per-wake collapse:
- * wings up above the lava); delta ≥ SHDNRG(wave) → SHDN, the no-flap drop
- * (`CLRB`, :4246-4248); delta ≤ SHUPRG(wave) → up-seek (flap iff not rising);
- * otherwise SHORT range → SHLEP (:4277), which tracks the PLAYER'S line with
- * NO velY gate — it flaps whenever strictly below the player's pixel Y, even
- * mid-rise (`CMPB PDIST+1,U / BLS SHLEPA`, :4293-4294). The lava escape below
- * `LAVA_ESCAPE_Y` stays in every branch. Pure.
+ * wings up, plus the protective lava flap standing in for the unmodelled
+ * BOLAVA route SHDIR's `$D0` gate diverts to, :4330-4334). Otherwise each
+ * branch carries its OWN lava term — jt8-3 retired the old blanket pre-branch
+ * flap, which fired in three places the ROM does not:
+ *   • delta ≥ SHDNRG(wave) → SHDN, the no-flap free-fall (`CLRB` :4246-4248);
+ *     its escape (:4249-4254) is `pixelY ≥ $D3` — INCLUSIVE — gated on
+ *     `PVELX ≥ 0`. The gate reads the X velocity as written; its own comment
+ *     says "FALLING?" and the comment is wrong, identically in all four
+ *     vendored revisions (RV1:4178/RV2:4213/RV3:4230/RV4:4252 — claims
+ *     JT83-008; the port pins the machine, not the prose).
+ *   • delta ≤ SHUPRG(wave) → up-seek: flap iff not already rising.
+ *   • SHORT range → SHLEP (:4277): track the player's line with NO velY gate
+ *     on the line term (`CMPB PDIST+1,U / BLS SHLEPA`, :4293-4294) — but the
+ *     lava term (:4288-4292) is FALLING-gated (`LDA PVELY,U / BPL SHFAST`),
+ *     PVELY this time, not SHDN's PVELX. Two branches, two different gates.
+ * The ROM tracks the line STORED at the SHLEP decide (:4279-4280) on the
+ * SHUPTM decision timer (:4283-4284, uf1-9's family); re-deciding every wake
+ * makes stored ≡ live, so the collapse tracks the live line. Pure.
  */
 export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {
   const enemyY = enemy.entity.posY >> 8
   const velY = enemy.entity.velY
   const dir = enemy.facing
-  // The one descent flap the shadow has: escape the lava below cliff5 ($D3).
-  if (enemyY > LAVA_ESCAPE_Y) return { dir, flap: true }
-  // SHLEV — no players here: wings up above the lava (the shipped behaviour).
-  if (player == null) return { dir, flap: false }
+  // SHLEV — no players: wings up, with the BOLAVA stand-in below the lava line.
+  if (player == null) return { dir, flap: enemyY > LAVA_ESCAPE_Y }
   const delta = player.pixelY - enemyY
-  // SHDN — long-range down: the no-flap drop (:4246-4248).
-  if (delta >= waveValue('SHDNRG', wave)) return { dir, flap: false }
+  // SHDN — the free-fall; the escape is velX-gated and inclusive at $D3.
+  if (delta >= waveValue('SHDNRG', wave))
+    return { dir, flap: enemyY >= LAVA_ESCAPE_Y && enemy.entity.velXIndex >= 0 }
   // Long-range up-seek: flap while not already rising.
   if (delta <= waveValue('SHUPRG', wave)) return { dir, flap: velY >= 0 }
-  // SHLEP — short range: track the player's LIVE line, no velY gate.
-  return { dir, flap: enemyY > player.pixelY }
+  // SHLEP — track the line; the lava term is falling-gated (velY, not velX).
+  return { dir, flap: enemyY > player.pixelY || (enemyY >= LAVA_ESCAPE_Y && velY >= 0) }
 }
 
 // ─── Horizontal homing (BODIR / BOLEVB) ─────────────────────────────────────
@@ -490,11 +532,11 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
 // The only thing that ever changes the BOUNDER's facing. (Not "a smart enemy's"
 // — the hunter and the shadow lord also AIM, via `B2DIR`'s `CLR PFACE,U  FACE
 // RIGHT` / `STA PFACE,U  FACE LEFT` at :4122/:4141 and `SHDIR`'s pair at
-// :4353/:4372. That steering is jt8-3's. What is true here, and enumerated
-// mechanically in tests/homing-source.test.ts, is that across the whole BOUNDR
-// brain :3787-3946 the COM at :3945 is the sole PFACE write.) Before jt8-2 an
-// enemy's `facing` was set at spawn and never moved, so it orbited the arena at
-// a fixed heading.
+// :4353/:4372 — `steerWake` in the section below, landed by jt8-3. What is true
+// here, and enumerated mechanically in tests/homing-source.test.ts, is that
+// across the whole BOUNDR brain :3787-3946 the COM at :3945 is the sole PFACE
+// write.) Before jt8-2 an enemy's `facing` was set at spawn and never moved, so
+// it orbited the arena at a fixed heading.
 //
 //   BOLEVB  LDA  PPVELX,U   :3939   "DO NOT COPY PLAYERS MOVES TOO OFTEN"
 //           CMPA PVELX,U    :3940   ← the ENEMY'S OWN index (U = self)
@@ -580,6 +622,97 @@ export function homingWake(enemy: EnemyState, target: PlayerView | null): EnemyS
   // `CLR PRDIR,U` (:3944) then `COM PFACE,U` (:3945). A COMplement toggles the
   // facing; it does not aim it.
   return { ...enemy, facing: enemy.facing === 1 ? -1 : 1, homing: { prdir: 0 } }
+}
+
+// ─── Cliff look-ahead steering (B2DIR / SHDIR) — jt8-3 ─────────────────────
+//
+// The first facing-writer in this port that KNOWS where it is pointing.
+// `homingWake` above is a blind complement; `B2DIR` (:4104-4159) and `SHDIR`
+// (:4330-4377) SET the facing away from a cliff detected B2XLEN/SHXLEN = 31 px
+// ahead in the travel direction — `CLR PFACE,U  FACE RIGHT` (:4122/:4353),
+// `#-1 STA PFACE  FACE LEFT` (:4140-4141/:4371-4372) — which makes the wake
+// idempotent: re-running it against the same cliff re-sets the same facing.
+//
+// WHO STEERS, ON WHICH WAKES (every route traced; the port keeps the map):
+//   hunter  — every airborne wake: the episode exits funnel through `B2DIRL`
+//             (:4097-4102 — at/below $D3 AND falling ⇒ `JMP BOLAVA`, no steer)
+//             and the level path through `B2LE11 → B2DIR` (:4089-4094);
+//   shadow  — ONLY the no-players SHLEV route (:4326-4330, `SHLEVA JMP SHDIR`
+//             :4401-4402), behind its own $D0 pre-check (:4330-4334). A
+//             HUNTING shadow never looks: SHLEP exits `SHLEPB → SHDIRA`
+//             (:4303-4310, no BCKXTB read on the whole path) and the seeks
+//             coast via `SHDIRB` (:4388-4392);
+//   bounder — never: `BODIR` (:3876-3884) reads PFACE and samples nothing.
+//
+// THE SAMPLE is the BACKGROUND-collision pair — `BCKXTB ± XLEN` ANDed with
+// `BCKYTB` at the flight line projected by (PVELY×8)'s HIGH byte (three
+// ASLB/ROLA pairs :4108-4115, then `LEAY A,Y` :4118) — a diving bird looks
+// where it is GOING, 16 px below at a $0200 fall. NOT the landing pair:
+// `groundMaskAt` is the `CKGND` analog (`LNDXTB/LNDYTB`, :6705-6706), a
+// different map with thin landing strips where BCK has tall cliff boxes.
+//
+// THE TURN slows the bird: `B2DICL`/`SHDICL` install the B2AV/SHAV episode —
+// 8 wakes of wings-up thrust on the NEW facing (:4142-4146/:4373-4377,
+// :4190-4193/:4406-4409) — and flap the turn wake itself (`LDB #1`), stepping
+// the FLYX index 2 toward the new facing through ADDFLP (:6437-6439). The
+// 8-wake PJOYT hold is the decision-timer family (uf1-9's rows); the per-wake
+// collapse keeps the turn-wake flap and lets the idempotent re-steer supply
+// the sustained brake (Design Deviation, session file). BOLAVA itself is
+// unmodelled — a gated wake falls through to its brain's existing law.
+
+/** What one steering wake did to the enemy. */
+export interface SteerResult {
+  /** The enemy after the wake — facing set AWAY from a detected cliff. */
+  readonly enemy: EnemyState
+  /** Whether a cliff was detected ahead this wake (`BEQ B2DIRA` NOT taken).
+   * A turned wake flaps (`LDB #1`) — `stepEnemyDetailed` routes that into the
+   * entity input so the FLYX index steps away from the cliff. */
+  readonly turned: boolean
+}
+
+/** `BCKXTB[x] & BCKYTB[y]` — the BACKGROUND-collision point sample the
+ * look-ahead reads (:4119-4120), indexed exactly as `landMaskAtX` indexes the
+ * landing pair; outside either table there is no background to hit. */
+function bckMaskAt(x: number, y: number): number {
+  const i = x + X_TABLE_ORIGIN
+  const col = i >= 0 && i < BCK_X_TABLE.length ? BCK_X_TABLE[i] : 0
+  return y >= 0 && y < BCK_Y_TABLE.length ? col & BCK_Y_TABLE[y] : 0
+}
+
+/**
+ * One look-ahead wake (`B2DIR` :4104-4159 / `SHDIR` :4330-4377), collapsed
+ * per-wake. Runs for the hunter on every airborne wake behind the `$D3`
+ * B2DIRL gate; for the shadow only with no target, behind the `$D0` SHDIR
+ * gate; never for the bounder, the dumb LINET, a grounded enemy, or a parked
+ * FLYX index (`LDA PVELX,U / BEQ B2DIRA`, :4104-4105 — no travel direction,
+ * no look-ahead). A solid sample turns the facing AWAY from the cliff and
+ * reports `turned`; open air holds everything. Pure — the argument is never
+ * mutated.
+ */
+export function steerWake(enemy: EnemyState, target: PlayerView | null): SteerResult {
+  const held: SteerResult = { enemy, turned: false }
+  if (!enemy.entity.airborne) return held
+  const pixelY = enemy.entity.posY >> 8
+  const velY = enemy.entity.velY
+  if (enemy.brain === 'b2undr') {
+    // B2DIRL (:4097-4102): at/below $D3 and falling is BOLAVA's territory.
+    if (pixelY >= LAVA_ESCAPE_Y && velY >= 0) return held
+  } else if (enemy.brain === 'shadow') {
+    // Only SHLEV falls into SHDIR; a hunting shadow exits SHDIRA/SHDIRB.
+    if (target !== null) return held
+    // SHDIR's own pre-check (:4330-4334): $D0, three scanlines above $D3.
+    if (pixelY >= SHDIR_LAVA_Y && velY >= 0) return held
+  } else {
+    return held
+  }
+  const vx = enemy.entity.velXIndex
+  if (vx === 0) return held
+  const dir = vx > 0 ? 1 : -1
+  const len = enemy.brain === 'shadow' ? SHXLEN : B2XLEN
+  // The (PVELY×8)>>8 projection (:4108-4118): sample where the bird is going.
+  const sampleY = pixelY + ((velY * 8) >> 8)
+  if (bckMaskAt(enemy.entity.posX + len * dir, sampleY) === 0) return held
+  return { enemy: { ...enemy, facing: dir > 0 ? -1 : 1 }, turned: true }
 }
 
 /**
@@ -718,7 +851,13 @@ export function stepEnemyDetailed(
   // jt8-2: the homing wake runs BEFORE the brain. `COM PFACE,U` (:3945) falls
   // into `JMP BODIR` (:3946), whose first instruction is `LDA PFACE,U` (:3876) —
   // so a flip already steers THIS wake's horizontal impulse, not the next one.
-  const homed = homingWake(enemy, target)
+  const flipped = homingWake(enemy, target)
+  // jt8-3: the look-ahead runs AFTER the homing flip and its write WINS — in
+  // the ROM the throttle blocks (`B2LE11`/`SHLEPB`) fall INTO the direction
+  // routine, so B2DIR/SHDIR read (and may overwrite) the freshly-COMplemented
+  // facing on the same wake.
+  const steered = steerWake(flipped, target)
+  const homed = steered.enemy
   // uf1-8: then the seek workspace advances (ground-exit → spend → exhaust →
   // re-decide/arm), so the brain reads the episode this wake is ACTUALLY in —
   // the arm wake already runs its episode's law, exactly as the ROM's decide
@@ -728,7 +867,11 @@ export function stepEnemyDetailed(
   // the ALREADY-HOMED enemy, so the wave-scaled seek and the flipped facing are
   // the same wake's decision, not two.
   const decision = runBrain(sought, target, wave)
-  const input: PlayerInput = { dir: decision.dir, flap: decision.flap, flapHeld: decision.flap }
+  // jt8-3: the turn wake FLAPS (`B2DICL`/`SHDICL` `LDB #1`, :4146/:4377) —
+  // through ADDFLP that steps the FLYX index 2 toward the new facing, which is
+  // the immediate half of the "slow down, going into a cliff" episode.
+  const wingsDown = decision.flap || steered.turned
+  const input: PlayerInput = { dir: decision.dir, flap: wingsDown, flapHeld: wingsDown }
   const edge = wingEdge(sought.entity.airborne, sought.prevFlapHeld ?? false, input)
   return {
     enemy: { ...sought, entity: stepEntity(sought.entity, input), prevFlapHeld: input.flapHeld },

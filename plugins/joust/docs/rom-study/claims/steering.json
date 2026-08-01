@@ -1,0 +1,137 @@
+[
+  {
+    "id": "JT83-001",
+    "claim": "B2XLEN, the hunter's horizontal cliff look-ahead length, is the DECIMAL expression 27+4 = 31 whole pixels. B2DIR samples the background-collision mask this many pixels ahead of the enemy in its travel direction.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3969,
+      "verbatim": "B2XLEN\tEQU\t27+4"
+    }
+  },
+  {
+    "id": "JT83-002",
+    "claim": "SHXLEN, the shadow lord's look-ahead length, is the same DECIMAL 27+4 = 31 as the hunter's B2XLEN \u2014 a separately named equate, equal by construction.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4228,
+      "verbatim": "SHXLEN\tEQU\t27+4"
+    }
+  },
+  {
+    "id": "JT83-003",
+    "claim": "B2DIRL is the hunter's lava gate on the episode exits into the look-ahead: PPOSY+1 below $D3 branches to B2DIR (steer); at or below $D3 the falling case jumps to BOLAVA (the standard lava avoid) and only a rising bird still steers. Complete write set of the gate: none \u2014 it writes no field, it only routes.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4098,
+      "verbatim": "\tCMPA\t#$D3"
+    }
+  },
+  {
+    "id": "JT83-004",
+    "claim": "B2DIR keys the look-ahead on the SIGN of PVELX, the FLYX index: zero means no travel direction and no look-ahead at all (BEQ B2DIRA), positive samples BCKXTB+B2XLEN (right), negative samples BCKXTB-B2XLEN (left). A solid sample ANDed with BCKYTB sets PFACE AWAY from the cliff \u2014 an absolute write (CLR PFACE = face right at :4122, #-1 STA PFACE = face left at :4141), not a complement, so the wake is idempotent.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4104,
+      "verbatim": "B2DIR\tLDA\tPVELX,U\t\tWHICH DIRECTION GOING?"
+    }
+  },
+  {
+    "id": "JT83-005",
+    "claim": "The look-ahead's vertical sample line is DERIVED, not transcribed: three ASLB/ROLA pairs shift PVELY left 3 (a multiply by 8) and LEAY A,Y adds the HIGH byte of that product \u2014 (PVELY x 8) >> 8 \u2014 to the sample Y, so a diving bird looks where it is going (16 px below its flight line at a $0200 fall).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4108,
+      "verbatim": "\tLDD\tPVELY,U\t\tSEEKING DESTINATION CLIFF"
+    }
+  },
+  {
+    "id": "JT83-006",
+    "claim": "B2DICL, the turn itself: installs the B2AV slow-down episode into PJOY for 8 wakes of PJOYT (the decision-timer family) and sets B = 1, so the TURN WAKE FLAPS \u2014 through ADDFLP the flap steps the FLYX index 2 toward the just-set facing, the immediate half of SLOW DOWN!!! GOING INTO A CLIFF.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4142,
+      "verbatim": "B2DICL\tLDD\t#B2AV\t\tSLOW DOWN!!! GOING INTO A CLIFF"
+    }
+  },
+  {
+    "id": "JT83-007",
+    "claim": "B2AV, the slow episode body: CLRB (wings up), thrust rides the NEW facing for the held wakes, and expiry re-decides via JMP B2UNDR. Complete write set: PJOYT (the DEC) only.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4190,
+      "verbatim": "B2AV\tCLRB"
+    }
+  },
+  {
+    "id": "JT83-008",
+    "claim": "SHDN's lava-escape gate READS PVELX \u2014 the X velocity \u2014 under a comment that says FALLING?; the comment is WRONG and the code is the shipped machine, identically in all four vendored revisions (RV1:4178, RV2:4213, RV3:4230, RV4:4252). The escape fires only at PPOSY+1 >= $D3 (inclusive, CMPA/BLO at :4250-4251) AND PVELX >= 0 (BMI skips it); a leftward-moving shadow deep over the lava keeps free-falling.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4252,
+      "verbatim": "\tLDA\tPVELX,U\t\tFALLING?"
+    }
+  },
+  {
+    "id": "JT83-009",
+    "claim": "SHLEP, the short-range player hunt, STORES its target's line (PPOSY+1,X into PDIST+1,U) and the player's velocity (PVELX,X into PPVELX,U) at the decide, on the SHUPTM 8+1-wake decision timer \u2014 re-deciding every wake, as the per-wake collapse does, makes the stored line equal the live line.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4279,
+      "verbatim": "\tLDB\tPPOSY+1,X\tPLAYERS LINE TO TRACK"
+    }
+  },
+  {
+    "id": "JT83-010",
+    "claim": "SHLEP1, the tracking loop: flap when strictly below the stored line (CMPB PDIST+1,U / BLS SHLEPA \u2014 no vertical-velocity gate on the line term), and its lava term at $D3 is gated on PVELY (ALREADY GOING UP? / BPL SHFAST) \u2014 FALLING-gated, unlike SHDN's PVELX gate. Two branches, two different lava gates.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4293,
+      "verbatim": "2$\tCMPB\tPDIST+1,U\tABOVE TRACKING LINE"
+    }
+  },
+  {
+    "id": "JT83-011",
+    "claim": "SHLEV, the no-players route, is the ONE shadow route that reaches the look-ahead: its re-arm falls straight into SHDIR (and SHLEVA jumps there explicitly at :4402). A shadow HUNTING a player never looks ahead \u2014 SHLEP exits through SHLEPB to SHDIRA with no background-mask read on the whole path.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4328,
+      "verbatim": "\tLDB\t#$01\t\tFLAP WINGS"
+    }
+  },
+  {
+    "id": "JT83-012",
+    "claim": "SHDIR's lava pre-check compares PPOSY+1 against $D0 \u2014 NOT the $D3 the hunter's B2DIRL and the SHDN/SHLEP escape terms use. Two different lava thresholds, three scanlines apart: a falling shadow at or below $D0 is routed to BOLAVA and never samples the mask, while a hunter at the same scanline still steers until $D3.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4331,
+      "verbatim": "\tCMPA\t#$D0"
+    }
+  },
+  {
+    "id": "JT83-013",
+    "claim": "SHDIR's sample mirrors B2DIR's with the shadow's own SHXLEN: BCKXTB-SHXLEN when travelling left, BCKXTB+SHXLEN when travelling right, ANDed with BCKYTB at the projected line; a solid sample sets PFACE away (CLR at :4353, #-1 STA at :4372).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4350,
+      "verbatim": "\tLDA\tBCKXTB-SHXLEN,X"
+    }
+  },
+  {
+    "id": "JT83-014",
+    "claim": "SHDICL installs SHAV \u2014 the shadow's copy of the slow-down episode \u2014 for SHCLTM (8) wakes and flaps the turn wake (LDB #1 at :4377), exactly the B2DICL shape.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4373,
+      "verbatim": "SHDICL\tLDD\t#SHAV\t\tSLOW DOWN!!! GOING INTO A CLIFF"
+    }
+  },
+  {
+    "id": "JT83-015",
+    "claim": "SHDIRB, the exit the SHDN/SHUP long-range seeks take: a MOVING shadow coasts \u2014 CLRA writes CURJOY dir = 0, no horizontal thrust and no look-ahead \u2014 and only a parked one falls through to SHDIRA's facing-based dir. The port returns dir = facing on those wakes; filed as a follow-up, not modelled by jt8-3.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4388,
+      "verbatim": "SHDIRB\tLDA\tPVELX,U"
+    }
+  }
+]
