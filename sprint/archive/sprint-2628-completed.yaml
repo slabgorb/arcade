@@ -1337,3 +1337,8 @@ completed_stories:
     title: lobby showcase carousel — close the deferred review residuals
     points: 2
     completed: '2026-08-01'
+  - id: ad1-2
+    epic: ad1
+    title: battlezone self-play attract demo — drive and duel unattended behind the attract text, then opt in
+    points: 1
+    completed: '2026-08-01'
