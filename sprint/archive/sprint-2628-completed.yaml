@@ -1292,3 +1292,8 @@ completed_stories:
     title: Does the pterodactyl reach FLAPLP/FLIPLP? P7DEC binds the enemy wing cues to a bird with no flap model
     points: 2
     completed: '2026-08-01'
+  - id: uf1-8
+    epic: uf1
+    title: joust DYTBL flight-control rows — wire the long/short range seek and the PDIST distance-to-go (10 rows)
+    points: 5
+    completed: '2026-08-01'
