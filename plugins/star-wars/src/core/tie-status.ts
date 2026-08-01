@@ -38,7 +38,7 @@
 
 import { Status } from './tie-vm'
 import { TIE_HIT_RADIUS, type Enemy, type GameState } from './state'
-import { aimDirection, beamHit, COCKPIT, toCockpit } from './gameRules'
+import { aimDirection, beamHit, COCKPIT, FOV_Y, toCockpit } from './gameRules'
 import { nextInt, type Rng } from '@shared/rng'
 import { length, dot, IDENTITY, type Vec3 } from '@shared/math3d'
 
@@ -67,15 +67,28 @@ export const PLAYER_NEAR_RANGE = 0x7c00 * 0.4 // 12697.6
 /**
  * C_PV view-pyramid depth clamps (WSMAIN.MAC:3824-3846). The alien is on the
  * player's screen when its view-space depth sits in (VIEW_NEAR, VIEW_FAR] and
- * both |lateral| and |vertical| are STRICTLY less than the depth — the ROM's
- * ±45° square pyramid (`LDD M.YPS / SUBD M.XPS / LBHS RTS1` — a ratio test,
- * so it ports unit-for-unit; BHS puts equality out of view). Near/far are the
- * ROM's own literals (`CMPD #10 / LBLE`, `CMPD #7F00 / LBHI` — the far edge
- * itself is still in view), in the same world-unit space as the $800 fire
- * floor and the $7C00 spawn depth, so every fresh spawn starts visible.
+ * both |lateral| and |vertical| are STRICTLY inside the pyramid — the ROM's
+ * ratio law (`LDD M.YPS / SUBD M.XPS / LBHS RTS1` — a ratio test, so it ports
+ * unit-for-unit; BHS puts equality out of view). Near/far are the ROM's own
+ * literals (`CMPD #10 / LBLE`, `CMPD #7F00 / LBHI` — the far edge itself is
+ * still in view), in the same world-unit space as the $800 fire floor and the
+ * $7C00 spawn depth, so every fresh spawn starts visible.
  */
 export const VIEW_NEAR = 0x10
 export const VIEW_FAR = 0x7f00
+
+/**
+ * tan of the rendered frustum's vertical half-angle — the slope C_PV's pyramid
+ * actually has on OUR glass (uf1-14). The ROM compares lateral/vertical to the
+ * depth 1:1 — a ±45° pyramid — because that is the 1983 cabinet's screen shape.
+ * Ours is `perspective(FOV_Y, aspect, NEAR, FAR)` (render.ts:451), whose glass
+ * ends at FOV_Y/2 = 30° vertically at EVERY aspect, and at
+ * atan(aspect · tan(FOV_Y/2)) horizontally. Keeping the 45° claimed a 15° band
+ * of sky the player cannot see (so off-screen TIEs passed the §6 fire gate —
+ * the defect sw7-24 meant to kill, surviving on the vertical axis) and
+ * UNDER-claimed ultrawide flanks by 8.4°, silently starving their fire.
+ */
+const TAN_HALF_FOV = Math.tan(FOV_Y / 2)
 
 /**
  * C_PS's band, as a multiple of the target's own kill radius. The cabinet
@@ -131,11 +144,21 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // register, never a camera — see the tombstone in gameRules.ts), so the
   // pyramid, the gun and the shield hit-test now share one point. In-front is
   // negative z, so the view depth is eye z minus alien z.
+  //
+  // The pyramid keeps the ROM's ratio law as its SHAPE — per-axis, strict, the
+  // edge itself out of view — but its slope is the RENDERED frustum's, not the
+  // cabinet's ±45° (uf1-14, TAN_HALF_FOV above): the vertical bound is
+  // depth · tan(FOV_Y/2), the horizontal bound scales that by the viewport
+  // aspect the frame was actually projected with — state.aspect, the uf1-12
+  // field C_PS below already reads, so the bit and the glass cannot disagree
+  // on any canvas shape.
   const eye = COCKPIT
   const depth = eye[2] - e.pos[2]
   const lat = e.pos[0] - eye[0]
   const vert = e.pos[1] - eye[1]
-  if (depth > VIEW_NEAR && depth <= VIEW_FAR && lat * lat < depth * depth && vert * vert < depth * depth) {
+  const vBound = depth * TAN_HALF_FOV
+  const hBound = vBound * state.aspect
+  if (depth > VIEW_NEAR && depth <= VIEW_FAR && lat * lat < hBound * hBound && vert * vert < vBound * vBound) {
     status |= Status.C_PV
   }
 
