@@ -200,3 +200,30 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: mg1-16
+    title: "The cabinet deploy is atomic per-APP, not per-cabinet: the lobby's front door goes live before the games"
+    description: "Raised by the Reviewer on mg1-5, which fixed ordering WITHIN one deploy-r2.mjs invocation and left the ordering BETWEEN invocations untouched. mg1-5's title says 'deploy-r2 is not atomic' and a reader will close it believing the deploy now is; it is atomic per-APP, which is a weaker and undocumented claim. MEASURED: the justfile 'deploy' recipe runs the LOBBY leg FIRST (node scripts/deploy-r2.mjs {{root}}/dist arcade-lobby --lobby-only) and only then loops the seven games, so eight separate invocations. The lobby's index.html links to /<id>/ for every game via gamePath() baked into its bundle (src/host/registry.ts), so the front door goes live BEFORE any game is uploaded. A failure during the games loop leaves exactly the 'six dead tiles on the front door' mg1-5's own description names — the scenario the story opened with and did not close. Narrow in steady state, because the games are already in the bucket from previous deploys; EXACT on a fresh bucket. CONCRETE TRIGGER: mg1-10 (rename arcade-lobby to arcade-cabinet) requires a full upload into an empty bucket, which is precisely the worst case. Note the tag-triggered CI path deploys one app per tag and does not exhibit this; it is 'just deploy' (the documented manual fallback, and the command that caused the 2026-07-31 incident) that does. Likely shape: move the lobby leg LAST in both recipes, or make the whole cabinet upload transactional. Verify with a test over the justfile's real recipe bodies — tests/deploy-r2.test.mjs already parses them for the --lobby-only guard and that reader can be reused."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: mg1-17
+    title: 'A test can still reach the real deploy: harden deploy-r2 with a dry-run and reject option-shaped filenames'
+    description: "Raised by TEA, Dev and the Reviewer on mg1-5, none of whom could close it inside that story's ACs. mg1-5 made uploadDir's 'upload' option REQUIRED, so it now fails closed: a caller with no uploader throws instead of deploying (scripts/deploy-r2.mjs:173-179), and the single production call site passes 'upload: putObject' explicitly at :197. That closed the hole that took arcade.slabgorb.com down during mg1-5's own RED phase. What remains is defence in depth, and it is cheap. (1) NO DRY RUN. putObject is now the one exported function that touches the network, so a --dry-run flag is nearly free: swap the uploader for one that logs. Any code path reaching uploadDir with a real uploader deploys, with no confirmation and no preview. (2) ARGUMENT INJECTION, CWE-88, raised by reviewer-security at low confidence. putObject passes ${bucket}/${key} and file as bare argv elements to wrangler with no check that they do not begin with '-'. This is NOT shell injection — execFileSync with array args is correct and a test pins it — but a dash-prefixed filename could be parsed by wrangler's own yargs as a flag. Unreachable today because Vite/Rollup names the output, and nothing enforces that. Cheap structural close: reject such keys in collectUploads. (3) A TEST-SIDE GUARD WEAKNESS worth folding in: tests/deploy-r2.test.mjs proves fail-closed behaviour by calling uploadDir on an EMPTY fixture, which is safe because collectUploads throws before the upload loop. That reasoning is airtight but undocumented outside a comment; consider asserting it structurally. NOT in scope: walk()'s symlink following, which is filed separately."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
+  - id: mg1-18
+    title: deploy-r2's walk() follows symlinks — a link inside dist/ uploads its target to the public bucket
+    description: "Raised by reviewer-security on mg1-5 at medium confidence, and confirmed PRE-EXISTING — 'git diff <mg1-5 base>..HEAD -- scripts/deploy-r2.mjs | grep -c statSync' returns 0, so mg1-5 neither introduced nor touched it. Filed separately from mg1-17 because it is a different mechanism. scripts/deploy-r2.mjs:38-46: walk() uses statSync(full).isDirectory(), which FOLLOWS symlinks, rather than lstatSync. If a symlink is ever present inside the dist/ tree at deploy time and points at a directory — committed under a game's public/ folder, or created by a build step — walk() recurses into whatever it resolves to and uploads those contents to the PUBLIC arcade-lobby bucket under an innocuous-looking key. Note this is NOT traversal in the R2 key: relative(distDir, file) can never emit a '..' segment because every path is derived by walking under distDir, so the key stays nominally in place. It is traversal in the FILE CONTENT that key points at. Trust boundary is commit access to plugins/*/public/, so this is defence in depth rather than urgent — but the fix is small. Likely shape: use lstatSync and either skip symlinks outright, or resolve and validate they stay within distDir (fs.realpathSync(full).startsWith(fs.realpathSync(distDir))) before following. A RED test can build a fixture with a symlink pointing outside a temp dist dir and assert the target's contents never appear in collectUploads' output. The file already documents subtle trust assumptions in comments (see the --lobby-only block); this one deserves the same treatment."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
