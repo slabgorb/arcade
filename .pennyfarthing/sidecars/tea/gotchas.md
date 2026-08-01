@@ -2789,3 +2789,64 @@ explicitly repudiating.
   satisfiable added three lines to `main.ts` and reddened all five anchors with their new numbers.
   A gate that reds on the very next legitimate edit is not scenery — but hand the next agent that
   fact in the handoff, or it reads as an obstacle rather than a service.
+
+---
+
+## When the ROM's answer is "nothing happens", the RED is the RECORD — and an absence-guard's FIXTURE is the thing most likely to be wrong (jt5-10, 2026-08-01)
+
+**Situation:** jt5-10 asked whether Joust's pterodactyl reaches the wing-cue loops. It does not —
+`PTEFLY` (`:1491-1510`) closes on an unconditional `BRA`, and the only doors into the flap machine
+are two ground-state transitions a bird clamped above the floor never makes. So the port was
+*already* correct, and the deliverable was a written, cited record rather than a behaviour.
+
+**The shape that works when the answer is a negative.** Split the suite explicitly and say which
+half is which in the file's own header:
+
+- **ORACLE groups** re-derive the chain from the vendored source. They pass on arrival — the ROM
+  already says what it says — and they are the evidence base, not the deliverable.
+- **RED groups** demand the port RECORD the finding: the comment with its `LABEL (:line)`
+  citations, and the claims-registry entries whose `verbatim` must byte-match. That record is the
+  story, and it is the only thing that can legitimately start red.
+- **One green-on-arrival guard**, with its non-vacuity proven by mutation rather than asserted.
+
+State the split in the header. A reader who finds 20 of 30 tests green at RED and no explanation
+reasonably concludes the RED phase was botched.
+
+**The expensive mistake, and it was mine: an absence-only fixture that was not absence-only.**
+The guard staged one ptero beside the knights and asserted no wing cue appeared. It failed — on
+`enemy-wing-down`, with `enemy-materialise` sitting in the same stream. `createWaveDemo` keeps
+SPAWNING the wave's buzzards as the frames run, so "the only enemy here is my subject" was true at
+frame 0 and false by frame 12, and the cue belonged to a bird that arrived while I was not looking.
+I nearly filed it as a port defect.
+
+Two rules fall out, and they generalise past joust:
+
+1. **If the cue carries no id, attribution comes from the fixture — so prove the fixture.** Park
+   everything that is not the subject, and **re-apply the parking every frame**: a process that did
+   not exist at frame 0 cannot be hushed at frame 0. A one-shot hush at setup silently decays.
+2. **Never assert an absence without a positive control in the SAME fixture.** Swap the subject for
+   something that must fire, and require it to. Without that, the day the harness stops being able
+   to produce the cue at all, the guard keeps passing and means nothing.
+
+**The genuinely surprising result: two guards for one rule were COMPLEMENTARY, not redundant.**
+I wrote a behavioural guard and a source-text pin for the same law and expected the pin to be
+belt-and-braces. Measured against one mutation each, with the source restored after:
+
+| mutation to the ptero branch | behavioural guard | source pin |
+|---|---|---|
+| `cue: 'enemy-wing-down' as never` | **RED** | green |
+| `cue: wingCue(null, 'enemy')` (returns `undefined`) | green | **RED** |
+
+Neither catches both. The behavioural guard cannot see an edit that compiles into the right shape
+but happens to emit nothing today; the source pin cannot see a cue introduced by any other spelling.
+**Verify each guard against its own mutation before calling either one redundant** — and write the
+table into the test file, or the next reviewer deletes one as duplication. `assert s.count(old)==1`
+before applying each mutation, and `git status --porcelain <file>` after restoring: a mutation that
+failed to apply looks exactly like one that was caught.
+
+**One more, cheap:** when a story hands you "signals" flagged as claims-to-verify, verify them
+early — both of jt5-10's were refuted in the first ten minutes. The decision-block field the SM
+could not identify was `DPLYR`, "RIDERS IMAGE" (`:109`), and a pterodactyl has no rider; the
+"zeroed RUN entries" reading collapsed because the skid, fall and transporter cues are equally
+unreachable and are NOT zeroed. Both were offered as supporting evidence for the answer, and
+neither survived. Killing them early stops them being quoted forward into the record.
