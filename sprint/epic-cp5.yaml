@@ -30,7 +30,8 @@ stories:
     description: "cp5-1 built the seam and deliberately stopped short of connecting it: createAudio and playEventSounds exist, are unit-tested against a recording fake, and are called by NOTHING — plugins/centipede/src/main.ts does not reference either. That was the right call for cp5-1 (wiring it then would have bought 14 guaranteed 404s, and this epic's rule is that a live 200 is the acceptance test for anything audible), but it means the epic's promise that later stories are 'a matter of naming a cue and baking a file' is not yet true. All four precedent games do reference playEventSounds/audio-dispatch from main.ts (tempest 3 sites, asteroids 3, battlezone 2, red-baron 2); centipede is the outlier. THE LATENT HAZARD, WRITTEN DOWN NOW RATHER THAN DISCOVERED LATER: playEventSounds THROWS on an event kind with no cue, and an uncaught throw inside requestAnimationFrame kills the frame loop and freezes the game. Today that is unreachable because nothing calls it. The moment main.ts calls it, a kind added to core/events.ts without a manifest entry stops being a compile error caught by CI and becomes a runtime freeze — the compile guard (EVENT_SOUND: Record<GameEventKind, SoundName> in shell/audio.ts) does hold, so this is a defence-in-depth question, not an open hole. Decide explicitly whether the dispatch should throw or degrade once it is on the hot path. Also in scope: the gesture gate (the shared engine is a no-op until the player's first interaction) and whether the attract screen — which the core keeps silent by design — needs any shell-side handling at all."
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-01'
     repos: arcade
     workflow: tdd
     depends_on: cp5-1
