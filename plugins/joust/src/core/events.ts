@@ -11,7 +11,7 @@
 // depend on what the shell passed in. `stepGame` rebuilds this list every frame
 // and the shell reads it off the returned state (`GameState.events`).
 //
-// ─── FIFTEEN MOMENTS, AND WHY EXACTLY THESE ──────────────────────────────────
+// ─── SEVENTEEN MOMENTS, AND WHY EXACTLY THESE ────────────────────────────────
 // Each kind below is a REAL Williams sound table (JOUSTRV4.SRC:8051-8131, under
 // the format header at :8045-8049) whose moment THIS port can actually reach.
 // The byte-exact citations — table row, priority byte and call site — live in
@@ -26,15 +26,24 @@
 // species — collapsing wing-down/wing-up into one name would lose the edge the
 // whole mechanic turns on. See `src/core/flight.ts`'s `wingEdge` for the law.
 //
-// The machine has 38 tables. Two families are still left out, each for a
-// measured reason, not an oversight — Delivery Findings on the jt5-1 session
-// with their ROM lines:
-//   • the THUDS (SNPTHD :8124, SNETHD :8106) need the bounce `collisionPass`
-//     computes and throws away (`if (contact.outcome.kind !== 'kill') continue`)
-//     — a thud would announce a collision the sim does not resolve.
-//   • the LAVA TROLL grab (SNTROL :8097) cannot fire: `troll.beginGrip` has zero
-//     production callers, which difficulty.ts:362-367 already records by name
-//     under owner `uf1-10`.
+// jt5-4 wires the THUDS (SNPTHD :8124, SNETHD :8106) — jt5-1 deliberately left
+// them out because `collisionPass` COMPUTED the bounce and threw it away
+// (`if (contact.outcome.kind !== 'kill') continue`, demo.ts:867 — the line jt5-1
+// cited as :837 before jt5-3 shifted it): a thud would have announced a
+// collision the sim did not resolve. jt5-4 APPLIES the bounce and cues it —
+// SNETHD for an enemy-vs-enemy contact (:4961, "NO KILL (ENEMY VS. ENEMY,
+// PTERO VS. PTERO)") and SNPTHD for any tie involving a person (:5010 "BOTH ON
+// SAME LEVEL", :8124 "AT LEAST 1 PERSON THUD'ED" — NOT "two players": a buzzard
+// tying a standing knight takes this path too). Two kinds, never a bare
+// `thud`: the two tables send the same 6-bit code $08 at different priorities
+// (020 vs 009), and a collapsed kind cannot be arbitrated by the priority
+// jt5-5 owns.
+//
+// The machine has 38 tables. One family is still left out, for a measured
+// reason, not an oversight — a Delivery Finding on the jt5-1 session with its
+// ROM lines: the LAVA TROLL grab (SNTROL :8097) cannot fire — `troll.beginGrip`
+// has zero production callers, which difficulty.ts:362-367 already records by
+// name under owner `uf1-10`.
 // A kind declared here but never emitted would sail through the manifest and
 // dispatch sweeps — they read this same tuple — and ship a cue that can never
 // sound. So the tuple names only what an emitter exists for.
@@ -61,6 +70,8 @@ export const EVENT_KINDS = [
   'player-wing-up', //     a knight released the flap — SNPLWU
   'enemy-wing-down', //    a buzzard's wings went down on its wake — SNELWD
   'enemy-wing-up', //      a buzzard's wings went up on its wake — SNELWU
+  'player-thud', //        a tie involving a person — SNPTHD (priority 020)
+  'enemy-thud', //         an enemy-vs-enemy (or ptero-vs-ptero) tie — SNETHD (priority 009)
 ] as const
 
 /** The discriminant of every event — derived from the tuple, never re-typed. */
@@ -72,7 +83,7 @@ export type GameEventKind = (typeof EVENT_KINDS)[number]
  * dispatch can narrow its default branch to `never` — which is what makes
  * adding a kind without a cue a COMPILE error instead of a silent drop.
  *
- * The members carry no payload today: every one of the fifteen cues is a bare
+ * The members carry no payload today: every one of the seventeen cues is a bare
  * one-shot, and a field nothing reads would be a promise the seam does not keep.
  */
 export type GameEvent = { readonly [K in GameEventKind]: { readonly type: K } }[GameEventKind]

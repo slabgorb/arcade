@@ -36,10 +36,14 @@
 // always steals. The two models cannot be reconciled inside a manifest, so the
 // channel map is built to keep them from CONTRADICTING: a channel per distinct
 // ROM priority, so two cues share a voice only where the machine would have let
-// either interrupt the other. Fifteen cues, eleven priorities, eleven channels
-// (jt5-3 adds two: 10 for the knight's wing pair, 6 for the buzzard's). That
-// stops the map inverting the ROM; it does not implement the arbitration, which
-// needs an optional priority on the shared engine (a jt5-1 Delivery Finding).
+// either interrupt the other. Seventeen cues, thirteen priorities, thirteen
+// channels (jt5-3 added two: 10 for the knight's wing pair, 6 for the
+// buzzard's; jt5-4 adds two more: 20 for the person-tie thud, 9 for the
+// enemy-tie thud — SNPTHD and SNETHD send the same 6-bit code $08 at those two
+// priorities, so they may NOT share a channel with each other or with anything
+// else). That stops the map inverting the ROM; it does not implement the
+// arbitration, which needs an optional priority on the shared engine (a jt5-1
+// Delivery Finding; jt5-5 owns building it).
 import {
   createAudioEngine as createSharedAudioEngine,
   type AudioEngine as SharedAudioEngine,
@@ -67,6 +71,8 @@ export type SoundName =
   | 'playerWingUp'
   | 'enemyWingDown'
   | 'enemyWingUp'
+  | 'playerThud'
+  | 'enemyThud'
 
 /**
  * joust's prefix on the shared assets host — the fleet convention (tempest's is
@@ -76,7 +82,7 @@ export type SoundName =
  */
 export const DEFAULT_BASE_URL = 'https://arcade-assets.slabgorb.com/joust/sfx/'
 
-/** Cue -> filename. One `.wav` per cue: fifteen distinct Williams tables. */
+/** Cue -> filename. One `.wav` per cue: seventeen distinct Williams tables. */
 export const SOUNDS: Readonly<Record<SoundName, string>> = {
   enemyDeath: 'enemy_death.wav',
   playerDeath: 'player_death.wav',
@@ -93,6 +99,8 @@ export const SOUNDS: Readonly<Record<SoundName, string>> = {
   playerWingUp: 'player_wing_up.wav',
   enemyWingDown: 'enemy_wing_down.wav',
   enemyWingUp: 'enemy_wing_up.wav',
+  playerThud: 'player_thud.wav',
+  enemyThud: 'enemy_thud.wav',
 }
 
 /**
@@ -103,10 +111,12 @@ export const SOUNDS: Readonly<Record<SoundName, string>> = {
  * error rather than an unroutable sound.
  */
 export const CHANNELS: Readonly<Record<SoundName, string>> = {
+  enemyThud: 'prio-9',
   enemyWingDown: 'prio-6',
   enemyWingUp: 'prio-6',
   playerWingDown: 'prio-10',
   playerWingUp: 'prio-10',
+  playerThud: 'prio-20',
   enemyDeath: 'prio-40',
   enemyMaterialise: 'prio-40',
   eggCollected: 'prio-45',
@@ -371,6 +381,39 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
       line: 5560,
       verbatim: '\tFDB\tSNELWU,SNELWD,SNEMSK,SNEMS2,SNERU1,SNERU2,SNEFAL,0,SNECRE',
     },
+  },
+  // ─── jt5-4: the THUDS — collisionPass applies the bounce it used to discard ──
+  // SNPTHD and SNETHD send the SAME 6-bit code $08 (like SNEDIE/SNPDIE's $16)
+  // and differ only in priority, so they are two sounds sharing one waveform
+  // intent, never one collapsed cue. jt5-5 owns arbitrating the two priorities;
+  // this story only records them truthfully (CHANNELS above keeps them on
+  // distinct channels for exactly that reason).
+  playerThud: {
+    kind: 'rom',
+    table: 'SNPTHD',
+    priority: 20,
+    romComment: "AT LEAST 1 PERSON THUD'ED",
+    source: {
+      file: SRC,
+      line: 8124,
+      verbatim: "SNPTHD\tFCB\t020,!N$08!+$80,30,$00,1\tAT LEAST 1 PERSON THUD'ED",
+    },
+    // The call site NAMES the table (`#SNPTHD`), unlike the two wing pairs
+    // above whose bindings are FDB tables — a direct load, same shape as
+    // enemyDeath/playerDeath's call sites.
+    callSite: { file: SRC, line: 5014, verbatim: '1$\tLDX\t#SNPTHD\t\tPLAYERS COLIDE' },
+  },
+  enemyThud: {
+    kind: 'rom',
+    table: 'SNETHD',
+    priority: 9,
+    romComment: 'ENEMIES THUD',
+    source: {
+      file: SRC,
+      line: 8106,
+      verbatim: 'SNETHD\tFCB\t009,!N$08!+$80,30,$00,1\tENEMIES THUD',
+    },
+    callSite: { file: SRC, line: 5019, verbatim: 'OSTHT2\tLDX\t#SNETHD\t\tENEMIES COLIDE' },
   },
 }
 

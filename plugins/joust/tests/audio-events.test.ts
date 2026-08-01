@@ -345,30 +345,52 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     expect(kindsOf(after)).toContain('egg-collected')
   })
 
-  it('a dying knight emits player-death (seed 0xbeef, frame 1788)', () => {
-    const before = advanceTo(0xbeef, 1788)
-    const after = stepGame(before, inputsAt(1788))
+  // ─── jt5-4 RE-STAGE (AC-7): these three moved from seed 0xbeef to 0xface ────
+  // Applying the bounce (jt5-4) makes seed 0xbeef's own first contact (frame 147,
+  // an enemy-vs-enemy tie) throw one dying enemy's egg somewhere this file's
+  // fixed 5-frame `scripted` walk never revisits. The egg has no wave tag
+  // (`eggProcess` — demo.ts:824 — carries no `waveEgg: true`, so `stepDemo`'s
+  // self-clear hatch at demo.ts:1187 never matures it — a pre-existing,
+  // documented jt4-4/jt4-5 gap, not new here), and collisionPass's own
+  // `!enemiesLeft && !processes.some(egg)` clear gate (demo.ts:1219-1222) never
+  // passes while it sits there. MEASURED: seed 0xbeef never advances past wave 1
+  // and never loses/re-enters a player again, checked out to 100,000 frames —
+  // this is not "the moment moved a few frames", it is gone for this seed under
+  // this exact script. That divergence has ZERO Dev freedom in it: the
+  // enemy-vs-enemy bounce law (`OSTBMP`'s screen-Y dispatch) is fully pinned by
+  // `audio-thud.test.ts`, so any correct jt5-4 implementation reaches the same
+  // dead end for 0xbeef. Seeds 0x2468/0x1a2b3c4d (also used elsewhere in this
+  // suite) turn out to share the same fate for the SAME reason. 0xface does not:
+  // it clears wave 1 at frame 1334 and keeps producing player-death/materialise
+  // pairs for thousands of frames after, so it is used here as the least
+  // invasive substitute — same seed for all three re-staged moments, same
+  // `scripted` script, only the seed and frame numbers changed. The stray
+  // kill-egg's missing self-maturation is filed separately; it is a real
+  // soft-lock risk in ordinary play, not only a test-fixture inconvenience.
+  it('a dying knight emits player-death (seed 0xface, frame 1532)', () => {
+    const before = advanceTo(0xface, 1532)
+    const after = stepGame(before, inputsAt(1532))
     expect(countOf(after, 'player'), 'precondition: a knight really dies on this frame').toBe(
       countOf(before, 'player') - 1,
     )
     expect(kindsOf(after)).toContain('player-death')
   })
 
-  it('the transporter re-entry emits player-materialise (seed 0xbeef, frame 1789)', () => {
+  it('the transporter re-entry emits player-materialise (seed 0xface, frame 1533)', () => {
     // The frame AFTER the death: `stepGame`'s respawn re-enters the spent knight
     // through the transporter (game.ts:425-441), which is the ROM's CREP
     // re-create — DSNCRE → SNPCR1 "PLAYER 1 RE-CREATED (TRANSPORTER)".
-    const before = advanceTo(0xbeef, 1789)
-    const after = stepGame(before, inputsAt(1789))
+    const before = advanceTo(0xface, 1533)
+    const after = stepGame(before, inputsAt(1533))
     expect(countOf(after, 'player'), 'precondition: the knight really re-enters here').toBe(
       countOf(before, 'player') + 1,
     )
     expect(kindsOf(after)).toContain('player-materialise')
   })
 
-  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xbeef, frame 1614)', () => {
-    const before = advanceTo(0xbeef, 1614)
-    const after = stepGame(before, inputsAt(1614))
+  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 1334)', () => {
+    const before = advanceTo(0xface, 1334)
+    const after = stepGame(before, inputsAt(1334))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
@@ -484,12 +506,21 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
 // AC3 — "no RNG draw and no ordering change": the FROZEN pre-story fingerprint
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// These four numbers were MEASURED against the tree as it stood before this
-// story (commit b0a1abf), with the exact `scripted` input above. They are the
-// whole content of "the event channel adds no RNG draw and no ordering change":
-// an extra `draw()` moves `rng`, and re-ordering the process list to emit
-// events moves `procs`. Both are invisible to a replay-identity test, which
-// compares a run to ITSELF.
+// These four numbers were MEASURED against the tree as it stood before jt5-1
+// (commit b0a1abf), with the exact `scripted` input above. They are the whole
+// content of "the event channel adds no RNG draw and no ordering change": an
+// extra `draw()` moves `rng`, and re-ordering the process list to emit events
+// moves `procs`. Both are invisible to a replay-identity test, which compares a
+// run to ITSELF.
+//
+// jt5-4 RE-BASELINE (AC-7, TEA-authorised — the session's determinism ruling):
+// all three are downstream of a non-killing contact (0xbeef's first at frame
+// 147, 0x2468's and 0x1a2b3c4d's at frame 189), so applying the bounce moves
+// them. `rng` is UNCHANGED on all three — the bounce draws no randomness, the
+// same law `audio-thud.test.ts`'s "it draws no randomness" pins directly — and
+// that is what still makes this group a regression guard rather than a feature
+// pin: an extra draw or a re-order would move `rng`/`procs` again, on top of
+// the one-time jt5-4 shift recorded here.
 //
 // This group is GREEN ON ARRIVAL by construction — it is a regression guard,
 // not a feature pin, and its non-vacuity comes from mutation (recorded in the
@@ -508,42 +539,56 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     }
   }
 
-  it('seed 0x1a2b3c4d, 240 frames — rng cursor, process ORDER and ledgers all unmoved', () => {
+  it('seed 0x1a2b3c4d, 240 frames — rng cursor UNMOVED; wave/procs/ledgers jt5-4 re-baselined', () => {
+    // MEASURED post-jt5-4: `rng` is bit-identical to the pre-story value above
+    // (no draw). `procs`/`scores`/`lives` moved — this seed's first non-killing
+    // contact is at frame 189, well before frame 240.
     expect(fingerprint(0x1a2b_3c4d, 240)).toEqual({
       frame: 240,
       rng: 1_928_172_029,
       wave: 1,
-      procs: 'player#1,player#2,enemy#258',
-      scores: [0, 2750],
+      procs: 'player#1,enemy#256,enemy#257,enemy#258,player#2',
+      scores: [0, 50],
+      lives: [5, 4],
+    })
+  })
+
+  it('seed 0xbeef, 2400 frames — jt5-4 re-baselined: rng UNMOVED, the wave never clears', () => {
+    // MEASURED post-jt5-4. This is the sharp one: seed 0xbeef's own first
+    // contact (frame 147, two buzzards) is an ENEMY-vs-ENEMY tie, whose OSTBMP
+    // screen-Y dispatch is fully pinned by `audio-thud.test.ts` with zero Dev
+    // freedom — so every correct jt5-4 implementation reaches the SAME place
+    // for this seed: all three of wave 1's enemies are dead by frame 251, but
+    // the last one's kill-egg (`egg#65792`) lands somewhere this file's fixed
+    // 5-frame walk never revisits. A kill-egg carries no `waveEgg` tag, so
+    // `stepDemo`'s self-clear hatch (demo.ts:1187) never matures it — a
+    // pre-existing jt4-4/jt4-5 gap this story's physics change exposes rather
+    // than causes — and the wave-clear gate (`!processes.some(egg)`,
+    // demo.ts:1221) never opens. MEASURED to hold out to 100,000 frames: no
+    // further death, respawn, or wave advance ever fires for this seed under
+    // this script again. `rng` is still bit-identical to the pre-story value.
+    // The three "ordinary play" tests that used to sit downstream of this run
+    // (player-death/materialise/wave-advance at 1788/1789/1614) are re-staged
+    // onto seed 0xface above, for the same reason.
+    expect(fingerprint(0xbeef, 2400)).toEqual({
+      frame: 2400,
+      rng: 2_006_456_271,
+      wave: 1,
+      procs: 'player#1,player#2,egg#65792',
+      scores: [750, 1750],
       lives: [5, 5],
     })
   })
 
-  it('seed 0xbeef, 2400 frames — through two wave advances, a death and a respawn', () => {
-    // The demanding one: this run crosses wave 1->2->3, kills a knight at 1788
-    // and re-enters him at 1789. The respawn APPENDS the rebuilt process, which
-    // is why `player#1` trails the enemies in the expected order — that
-    // ordering is exactly what a "tidy" re-sort during event emission would
-    // destroy, silently, with every other test still green.
-    expect(fingerprint(0xbeef, 2400)).toEqual({
-      frame: 2400,
-      rng: 2_006_456_271,
-      wave: 3,
-      procs:
-        'player#2,player#1,enemy#768,enemy#769,enemy#770,enemy#771,enemy#772,enemy#773',
-      scores: [6550, 8750],
-      lives: [4, 5],
-    })
-  })
-
-  it('seed 0x2468, 900 frames', () => {
+  it('seed 0x2468, 900 frames — jt5-4 re-baselined: rng UNMOVED', () => {
+    // MEASURED post-jt5-4. This seed's first contact is at frame 189.
     expect(fingerprint(0x2468, 900)).toEqual({
       frame: 900,
       rng: 3_436_766_652,
       wave: 1,
-      procs: 'player#1,player#2,enemy#257',
-      scores: [0, 2750],
-      lives: [5, 5],
+      procs: 'player#2,player#1,egg#65792',
+      scores: [1300, 1800],
+      lives: [4, 4],
     })
   })
 

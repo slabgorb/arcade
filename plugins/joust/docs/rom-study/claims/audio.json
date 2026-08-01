@@ -196,5 +196,50 @@
       "line": 6135,
       "verbatim": "\tJMP\tFLAST2"
     }
+  },
+  {
+    "id": "JT54-001",
+    "claim": "SNPTHD is the AT LEAST 1 PERSON THUD'ED table at priority 020 — the jt5-4 cue 'playerThud'; played from the PLAYERS COLIDE call site (JOUSTRV4.SRC:5014). It is NOT 'two players': the table's own comment says AT LEAST ONE, and OSTBO (the only door to it) is reached for buzzard-vs-player as well as player-vs-player.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8124,
+      "verbatim": "SNPTHD\tFCB\t020,!N$08!+$80,30,$00,1\tAT LEAST 1 PERSON THUD'ED"
+    }
+  },
+  {
+    "id": "JT54-002",
+    "claim": "SNETHD is the ENEMIES THUD table at priority 009 — the jt5-4 cue 'enemyThud'; played from the ENEMIES COLIDE call site (JOUSTRV4.SRC:5019). It sends the same 6-bit code $08 as SNPTHD at a lower priority, so the two are distinct sounds and not one sound reused.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8106,
+      "verbatim": "SNETHD\tFCB\t009,!N$08!+$80,30,$00,1\tENEMIES THUD"
+    }
+  },
+  {
+    "id": "JT54-003",
+    "claim": "The SNETHD path bumps through a HEIGHT TEST: OSTH11 (reached when neither party can kill the other, i.e. both enemy) calls OSTBMP, which compares the two entities' screen Y and dispatches — the physically higher bird always rises. This is the mechanism jt5-4's 'enemy-thud' branch ports as 'the smaller pixel Y takes bounceTop'.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5028,
+      "verbatim": "OSTH11\tJSR\tOSTBMP\t\tNO-ONE DIES, BUT BUMP EACH OTHER ANYWAYS"
+    }
+  },
+  {
+    "id": "JT54-004",
+    "claim": "OSTBMP's dispatch is a screen-Y compare, not a register-role pick: it loads one entity's PPOSY+1 byte, subtracts the other's, and branches PLUS (>=0, so a tie included) to OSTUTP — the fall-through takes OSTXTP. Both arms send the physically higher bird up (JT54-005/JT54-006), so height alone decides which entity takes which role.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5042,
+      "verbatim": "OSTBMP\tLDB\tPPOSY+1,X\tDETERMINATION OF WHO HAS BEEN BUMPED"
+    }
+  },
+  {
+    "id": "JT54-005",
+    "claim": "The SNPTHD path bumps with NO height test: OSTXTT (reached only from the exact lance-height tie OSTBO finds, ':5010 BEQ 1$ BR=BOTH ON SAME LEVEL') calls OSTXTP UNCONDITIONALLY and never enters OSTBMP. Which bird rises is therefore fixed by REGISTER ROLE, not by where either one is — the mechanism jt5-4's 'player-thud' branch ports as a fixed, geometry-independent role assignment (the outer loop's object always takes OSTXDN, the one it found always takes OSTXUP).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5053,
+      "verbatim": "OSTXTT\tJSR\tOSTXTP\t\tREG.X WILL BE RESTORIED"
+    }
   }
 ]

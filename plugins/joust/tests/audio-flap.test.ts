@@ -772,14 +772,18 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
     })
   }
 
-  it('seed 0xbeef, 200 frames — every bird is exactly where it was before this story', () => {
-    // MEASURED against the tree at 6d93fa2, with this exact script. Green on
-    // arrival by construction: it is a regression guard, and its non-vacuity
-    // comes from the control below plus the mutation recorded in the session.
+  it('seed 0xbeef, 200 frames — jt5-4 re-baselined: only the bounced bird moved', () => {
+    // MEASURED against the tree at 6d93fa2 (pre-jt5-4), with this exact script;
+    // re-measured post-jt5-4 (session AC-7 ruling — legitimate, this run is
+    // downstream of 0xbeef's frame-147 contact). Only `enemy#256` — one of the
+    // two buzzards in that contact — moved (`posY` 32912->34401, `velY`
+    // -8->-39); `player#1`, `player#2`, `enemy#258` and the egg are untouched,
+    // which is what keeps this a regression guard and not a blanket
+    // re-baseline: a change that moved anything ELSE here would be a bug.
     expect(entityDigest(0xbeef, 200)).toEqual([
       'player#1:40,30508,326,-4,192,161,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:267,32912,-8,-8,0,39,1',
+      'enemy#256:267,34401,-39,-8,0,39,1',
       'enemy#258:171,33298,-5,8,64,101,1',
       'egg#65793:-',
     ])

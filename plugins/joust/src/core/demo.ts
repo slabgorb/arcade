@@ -48,6 +48,9 @@ import {
   broadPhase,
   narrowPhase,
   resolveJoust,
+  bounceTop,
+  bounceBottom,
+  consumeBumpY,
   type JoustEntity,
   type JoustOutcome,
   type Facing,
@@ -772,6 +775,29 @@ function toJoustEntity(p: DemoProcess): JoustEntity | null {
   return null
 }
 
+/**
+ * Write a resolved bounce's `velY`/`posY` back onto the process that produced
+ * the `JoustEntity` (jt5-4). A bounce touches exactly these two fields — the
+ * ±2 `PBUMPY` shove is folded into `posY` immediately by `consumeBumpY` rather
+ * than parked in a register for a later frame to drain (no `EntityState` field
+ * exists for it, and the ROM's own consumer, the flight loop's
+ * `ADDA PBUMPY,U / CLR PBUMPY,U`, is one frame later than the cue this story
+ * pins to the SAME frame). Everything else on the entity — facing, plantZ,
+ * groundState, animPhase — is untouched.
+ */
+function withBounced(p: DemoProcess, resolved: JoustEntity): DemoProcess {
+  if (p.kind === 'player' && p.entity) {
+    return { ...p, entity: { ...p.entity, velY: resolved.velY, posY: resolved.posY } }
+  }
+  if (p.kind === 'enemy' && p.enemy) {
+    return {
+      ...p,
+      enemy: { ...p.enemy, entity: { ...p.enemy.entity, velY: resolved.velY, posY: resolved.posY } },
+    }
+  }
+  return p
+}
+
 function collisionBox(e: JoustEntity): CollisionBox {
   return { x: e.posX, y: e.posY >> 8, w: ENTITY_BOX_W, h: ENTITY_BOX_H }
 }
@@ -836,10 +862,15 @@ function collisionPass(processes: readonly DemoProcess[]): {
   const removed = new Set<number>()
   const spawned: DemoProcess[] = []
   const events: DemoEvent[] = []
-  // jt5-1 — this pass resolves four of the eleven cued moments. They are emitted
-  // where the outcome is DECIDED rather than reconstructed later from a process
-  // diff, so a removal can never be mistaken for the wrong kind of death.
+  // jt5-1/jt5-4 — this pass resolves six of the seventeen cued moments. They are
+  // emitted where the outcome is DECIDED rather than reconstructed later from a
+  // process diff, so a removal can never be mistaken for the wrong kind of death.
   const cues: GameEvent[] = []
+  // jt5-4 — a bounce's resolved velY/posY, keyed by process id. `resolveContacts`
+  // computes the outcome from a JoustEntity snapshot; this map is what carries
+  // the applied physics back onto the actual process at the end of the pass (the
+  // same shape as `caught` below for egg catches).
+  const bounced = new Map<number, JoustEntity>()
 
   for (let i = 0; i < eligible.length; i++) {
     for (let j = i + 1; j < eligible.length; j++) {
@@ -864,7 +895,37 @@ function collisionPass(processes: readonly DemoProcess[]): {
       if (!hit) continue
 
       const contact = resolveContacts(a, b)
-      if (contact.outcome.kind !== 'kill') continue
+      if (contact.outcome.kind === 'bounce') {
+        // ─── jt5-4: the two thud paths, applied ────────────────────────────
+        // Both-enemy (SNETHD, :4961) dispatches on SCREEN Y — OSTBMP compares
+        // the two PPOSY+1 bytes and sends the physically higher bird UP
+        // (LBPL -> OSTUTP / fall-through -> OSTXTP, :5042-5108); an exact tie
+        // still separates (LBPL branches on zero too). A tie involving a
+        // PERSON (SNPTHD, :5010 "AT LEAST 1 PERSON THUD'ED") skips OSTBMP
+        // entirely and calls OSTXTP UNCONDITIONALLY (:5053-5054) — no height
+        // test, the rise is fixed by register role. This port has no
+        // U/X registers, so the outer loop's object (`a`/`pa`) plays U (goes
+        // DOWN, OSTXDN) and the one it found (`b`/`pb`) plays X (goes UP,
+        // OSTXUP) — a fixed, geometry-independent role, exactly what
+        // `OSTXTP`'s unconditional call determines.
+        const isEnemyThud = a.party === 'enemy' && b.party === 'enemy'
+        let resolvedA: JoustEntity
+        let resolvedB: JoustEntity
+        if (isEnemyThud) {
+          const aHigher = a.posY >> 8 <= b.posY >> 8
+          resolvedA = consumeBumpY(aHigher ? bounceTop(a) : bounceBottom(a))
+          resolvedB = consumeBumpY(aHigher ? bounceBottom(b) : bounceTop(b))
+        } else {
+          resolvedA = consumeBumpY(bounceBottom(a))
+          resolvedB = consumeBumpY(bounceTop(b))
+        }
+        bounced.set(pa.id, resolvedA)
+        bounced.set(pb.id, resolvedB)
+        // SNPTHD (020) and SNETHD (009) send the same 6-bit code $08 at
+        // different priorities — two sounds, never a collapsed 'thud'.
+        cues.push({ type: isEnemyThud ? 'enemy-thud' : 'player-thud' })
+        continue
+      }
 
       const winner = contact.survivors.includes('a') ? pa : pb
       const loser = contact.survivors.includes('a') ? pb : pa
@@ -969,11 +1030,15 @@ function collisionPass(processes: readonly DemoProcess[]): {
     }
   }
 
-  if (removed.size === 0 && spawned.length === 0 && caught.size === 0)
+  if (removed.size === 0 && spawned.length === 0 && caught.size === 0 && bounced.size === 0)
     return { processes: [...processes], events, cues }
   const survivors = processes
     .filter((p) => !removed.has(p.id))
-    .map((p) => caught.get(p.id) ?? p)
+    .map((p) => {
+      const withCatch = caught.get(p.id) ?? p
+      const resolved = bounced.get(p.id)
+      return resolved ? withBounced(withCatch, resolved) : withCatch
+    })
   return { processes: [...survivors, ...spawned], events, cues }
 }
 
