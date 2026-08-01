@@ -101,7 +101,7 @@ All JavaScript error checks (#10 from JS checklist) apply, plus:
 
 **13. Fix-introduced regressions (meta-check)**
 After applying fixes for review findings, re-scan the fix diff against
-checks #1-#12 and #14-#17. Common patterns:
+checks #1-#12 and #14-#18. Common patterns:
 - Adding `as any` to silence a type error instead of fixing it
 - Adding null checks but using `||` instead of `??`
 - Adding runtime validation but not updating the type to match
@@ -194,13 +194,41 @@ paid later by whoever trusts it.
 each other; "retirement goes through next()" overreached; two of three worked
 examples in a runbook named failures that cannot produce the symptom)*
 
+**18. The defect is in the test apparatus, and it fails by PASSING**
+#15 asks whether the guard is mutation-tested. This asks the question one level
+down: whether the fixture and the helpers could distinguish a broken
+implementation at all. When they cannot, every assertion is honest, the suite is
+green, and it is measuring itself.
+- **A fixture whose value IS the expectation.** `mount([ALPHA])` then
+  `expect(name).toContain('ALPHA')` cannot tell `${game.title}` from a hardcoded
+  `'ALPHA'` — the interpolation is invisible when the only value ever passed is
+  the one asserted. Tell: the same literal appears in the fixture and the
+  expectation. Fix: a second fixture with a different value, in the same case or
+  a loop. Ask "what would the code have to get wrong for this to notice?"
+- **A test helper that REIMPLEMENTS a platform algorithm is untested code**
+  (accessible-name computation, URL resolution, CSS specificity, date maths). It
+  gets the easy shape right and the nested one wrong, and it fails toward green.
+  Mutation-test the helper itself, not just the code it inspects.
+- **One concept, two helpers.** Same name and signature in sibling test files
+  with different semantics is worse than duplication — the next reader picks the
+  wrong one. Extract on the second consumer.
+- Helpers shared across test files must not assume a runtime global: a suite can
+  span environments (`@vitest-environment jsdom` in one file, `node` plus an
+  imported `JSDOM` in another), and `instanceof Element` throws in the second
+  while the ambient DOM *types* keep the type checker quiet. Key on data
+  (`nodeType`), not on constructor identity.
+*Origin: uf1-13 round-2 review I-F1 + I-F2 + I-F3 (a name guard that could not
+fail for the defect it named, because the only game ever mounted was the one
+asserted; a helper whose shallow aria-hidden walk called a broken implementation
+healthy; and its same-named twin one file over)*
+
 If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 
 ```yaml
 GATE_RESULT:
   status: pass
   gate: typescript-review-checklist
-  message: "TypeScript self-review checklist passed (17 checks)"
+  message: "TypeScript self-review checklist passed (18 checks)"
   checks:
     - name: type-safety-escapes
       status: pass
@@ -240,7 +268,7 @@ GATE_RESULT:
       detail: "No barrel file over-imports; async fs in handlers"
     - name: fix-regressions
       status: pass
-      detail: "Fix commits re-scanned against checks #1-#12, #14-#17"
+      detail: "Fix commits re-scanned against checks #1-#12, #14-#18"
 ```
 </pass>
 
@@ -305,7 +333,7 @@ GATE_RESULT:
     - "Add Zod/io-ts validation at API boundaries; validate JSON.parse results"
     - "Use catch(e: unknown) and narrow with instanceof/type guards"
     - "Import specific exports instead of barrel; use async fs in handlers"
-    - "Re-scan fix diffs against checks #1-#12, #14-#17 before handoff"
+    - "Re-scan fix diffs against checks #1-#12, #14-#18 before handoff"
 ```
 </fail>
 
