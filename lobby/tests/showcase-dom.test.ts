@@ -51,6 +51,22 @@ function frameSrc(): string | null {
   return frame()?.getAttribute('src') ?? null
 }
 
+/** A control's accessible name, computed the way a browser does for the shapes this
+ *  file builds: an `aria-label` REPLACES everything, otherwise the name is the content
+ *  with `aria-hidden` subtrees left out. jsdom computes no accessible name of its own,
+ *  and asserting the attribute that produces one would pin the mechanism instead of the
+ *  guarantee — aria-label vs. content is precisely where those two diverge, and the
+ *  divergence is the bug this helper exists to keep out (WCAG 2.5.3 Label in Name). */
+function accessibleName(el: Element): string {
+  const label = el.getAttribute('aria-label')
+  if (label !== null) return label
+  return Array.from(el.childNodes)
+    .filter((n) => !(n instanceof Element) || n.getAttribute('aria-hidden') !== 'true')
+    .map((n) => n.textContent?.trim() ?? '')
+    .filter((t) => t !== '')
+    .join(' ')
+}
+
 // jsdom 29 does not implement matchMedia, so the shell must tolerate its absence
 // AND honour it when present. This stubs a specific answer for the reduce query.
 function stubReducedMotion(reduce: boolean): void {
@@ -201,6 +217,31 @@ describe('showcase pane', () => {
     expect(document.activeElement).toBe(link)
   })
 
+  // The hold must CANCEL the dwell it replaces, not just overwrite the slot holding
+  // it. Reached from the load-timeout callback the previous dwell is still armed —
+  // `show()` set it and only the load timer has fired — so a bare `slideTimer =
+  // setTimeout(...)` leaks a second live timer and `next` runs about twice per dwell
+  // for as long as focus is held. No load event here on purpose: the 8 s timeout is
+  // what routes into the focus-hold branch with a dwell still ticking.
+  //
+  // The count is the whole assertion. One timer is the re-armed dwell; two is the
+  // orphan alongside it. (Nothing accumulates either way — each pass arms exactly one
+  // — which is why this reads as bookkeeping rather than a leak, and why only a direct
+  // count catches it.)
+  it('cancels the dwell it is replacing when the hold is entered from a load failure', () => {
+    mountShowcase(section, [ALPHA, BRAVO])
+    const link = section.querySelector('a.showcase-launch') as HTMLAnchorElement
+    link.focus()
+    expect(document.activeElement).toBe(link)
+
+    vi.advanceTimersByTime(LOAD_TIMEOUT_MS)
+
+    // Still alpha — the hold beat the rotation, which is the case above's guarantee
+    // and the precondition for this one meaning anything.
+    expect(frameSrc()).toBe(pathTo(ALPHA))
+    expect(vi.getTimerCount()).toBe(1)
+  })
+
   // The other half: holding is not the same as stopping. Once the visitor tabs (or
   // clicks) away, the dwell timer that was re-armed while focused fires normally
   // and the carousel picks back up. (A BFCache return restores focus to the link
@@ -285,10 +326,79 @@ describe('reduced motion', () => {
     expect(reveal.type).toBe('button')
   })
 
+  // COVERAGE, not a regression guard: the arrow has always been hidden correctly, and
+  // this case is green against the pre-story tree by design — that is the whole
+  // complaint it answers. The behaviour was right and unpinned, so the refactor that
+  // breaks it looks like a tidy-up: collapse the button to a single `textContent =
+  // 'SHOW DEMO ▸'` and the span disappears with it, leaving the glyph to announce as
+  // "black right-pointing small triangle". Verified to go red under exactly that
+  // mutation.
+  it('hides the reveal arrow from assistive tech', () => {
+    stubReducedMotion(true)
+    mountShowcase(section, [ALPHA])
+    const reveal = section.querySelector('button.showcase-reveal') as HTMLButtonElement
+
+    // The glyph in its own hidden ELEMENT — not a bare text node, which would be read
+    // out, and not the button itself, which has to stay announceable.
+    const arrow = reveal.querySelector('[aria-hidden="true"]')
+    expect(arrow).not.toBeNull()
+    expect(arrow?.textContent).toBe('▸')
+    expect(reveal.hasAttribute('aria-hidden')).toBe(false)
+    expect(reveal.textContent).toContain('SHOW DEMO')
+  })
+
+  // NEW behaviour, unlike the case above. This card emits no launch anchor — a live
+  // slide's overlaid link carries "Play ALPHA", and there is no equivalent here — so
+  // the caption is the only thing naming the game, and a visitor who tabs straight to
+  // the button never reaches it: they hear "SHOW DEMO" with no idea which of six games
+  // it would show.
+  //
+  // Asserted on the composed NAME, not on the attribute that produces it, because the
+  // obvious spelling — `aria-label="Show ALPHA demo"` — is itself a defect. An
+  // aria-label replaces the content, so the name would stop containing the visible
+  // "SHOW DEMO" and a speech-input user saying "click show demo" could no longer
+  // operate the button (WCAG 2.5.3 Label in Name, Level A). `accessibleName` honours
+  // aria-label the way a browser does, so that spelling FAILS the containment
+  // assertion below rather than sailing past an attribute check.
+  it('names the game on the reveal button without renaming the button', () => {
+    stubReducedMotion(true)
+    mountShowcase(section, [ALPHA])
+    const reveal = section.querySelector('button.showcase-reveal') as HTMLButtonElement
+
+    const name = accessibleName(reveal)
+    expect(name).toContain('ALPHA')
+    // WCAG 2.5.3: the accessible name must CONTAIN the visible label, not replace it.
+    expect(name).toContain('SHOW DEMO')
+    // And the decoration stays out of it.
+    expect(name).not.toContain('▸')
+    // Added invisibly — otherwise the name could be satisfied by putting the title on
+    // screen, which is a different card than the one the design asks for. The class is
+    // the lobby's own idiom (`slideFor` names its launch link the same way) and its CSS
+    // is guarded separately in chrome.test.ts.
+    expect(reveal.querySelector('span.visually-hidden')?.textContent).toContain('ALPHA')
+  })
+
+  // The other half of that asymmetry, and the one a symmetry-minded refactor breaks:
+  // `slideFor`'s caption IS aria-hidden (it duplicates the launch link's "Play ALPHA"
+  // — pinned above in 'captions the pane with the game on screen'). This one must NOT
+  // be, because there is no launch link on the static card to duplicate; hiding it
+  // strips the game's name out of the accessibility tree entirely.
+  it('leaves the static card caption announceable, unlike the live slide caption', () => {
+    stubReducedMotion(true)
+    mountShowcase(section, [ALPHA])
+    const caption = section.querySelector('.showcase-caption') as HTMLElement
+    expect(caption.textContent).toBe('ALPHA')
+    expect(caption.hasAttribute('aria-hidden')).toBe(false)
+  })
+
   // `show()` checks `game === undefined` before `!revealed`, so retirement already
-  // beats the static card today — but only because of that ordering. A future
-  // reorder would silently render a "SHOW DEMO" card for a game that isn't there,
-  // and nothing here would fail without this case.
+  // beats the static card today — but only because of that ordering. Note what this
+  // case is and is NOT defending: swapping those two branches does not fail silently,
+  // it fails to COMPILE. `staticCardFor` takes a `GameMeta`, and in the reordered
+  // branch `game` is still `GameMeta | undefined`, so `npm run lint` (`tsc --noEmit`,
+  // which the release gate runs repo-wide) rejects it outright. The runtime assertion
+  // is the second line of defence, for a future reorder that narrows its way past the
+  // compiler and still gets the order wrong.
   it('retires instead of showing a static card when nobody opted in', () => {
     stubReducedMotion(true)
     mountShowcase(section, [OPTED_OUT])

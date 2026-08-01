@@ -29,10 +29,21 @@
 //    byte the same outcome); `allow="autoplay 'none'"` → false. Only the explicit denial
 //    denies anything, which is why the string below is the one under test.
 //
-// 3. **Total failure REMOVES the pane.** It does not hide it and it does not sit on a
-//    black rectangle. An empty bordered box is indistinguishable from a game that
-//    happens to be dark, which is precisely the silent degrade this feature exists to
-//    stop being fooled by.
+// 3. **Total failure REMOVES the pane** — as soon as it is safe to. It does not hide it
+//    and it does not sit on a black rectangle. An empty bordered box is
+//    indistinguishable from a game that happens to be dark, which is precisely the
+//    silent degrade this feature exists to stop being fooled by.
+//
+//    The exception, and it is deliberate: while the pane owns focus, `next()` HOLDS
+//    rather than advances (the WCAG note down there has the reasoning), and retirement
+//    IN THAT CASE — every game failed while the pane was up — goes through `next()`.
+//    (It is not the only route out: mounting with nobody opted in retires straight from
+//    `show()` and never enters `next()` at all.) So a carousel whose games have all
+//    failed stays on screen until the visitor tabs away, then retires on the next
+//    dwell. Removing a section out from under a focused link would drop focus to
+//    <body> mid-Tab, which is the worse of the two failures, and the pane self-heals
+//    — this is a DELAY in retirement, not a leak of one. Do not "fix" it by retiring
+//    unconditionally.
 //
 // Known limit, stated rather than papered over: `load` fires for an error page too, so
 // a game serving a broken build looks healthy from here. This USED to be undetectable in
@@ -118,17 +129,46 @@ function staticCardFor(game: GameMeta, onReveal: () => void): Node[] {
   // it's a static card next to a SHOW DEMO button, and the design (§6) only asks
   // for the game's title in its glow colour.
   caption.textContent = game.title
+  // And NO `aria-hidden`, deliberately — the asymmetry with `slideFor`'s caption is the
+  // point, not an oversight. There the caption duplicates the launch link's "Play
+  // TEMPEST" and is hidden to stop one control announcing twice; here there is no link
+  // to duplicate. This title is the card's VISIBLE label, and hiding it would leave
+  // text on the screen with no counterpart in the accessibility tree — the sighted
+  // visitor and the listening one would be looking at different cards. (The button
+  // below carries the title too, inside its accessible name; that is a second route to
+  // the same fact, not a reason to silence the one on screen.) Pinned in
+  // showcase-dom.test.ts.
 
   const reveal = document.createElement('button')
   reveal.className = 'showcase-reveal'
   reveal.type = 'button'
   reveal.append(document.createTextNode('SHOW DEMO '))
-  // aria-hidden so "▸" isn't announced as "black right-pointing small triangle" —
-  // the button's accessible name is just its text content, "SHOW DEMO".
+  // The arrow is decoration, hidden so it is not announced as "black right-pointing
+  // small triangle" — and since this button's accessible name IS its content (there is
+  // deliberately no `aria-label`; see below), hiding the glyph is also what keeps it
+  // out of the name. Both halves are pinned in showcase-dom.test.ts; collapsing this
+  // back to one `textContent = 'SHOW DEMO ▸'` assignment is the regression.
   const arrow = document.createElement('span')
   arrow.setAttribute('aria-hidden', 'true')
   arrow.textContent = '▸'
   reveal.append(arrow)
+  // This card emits NO launch anchor — unlike a live slide, where the overlaid link
+  // carries "Play TEMPEST". So the caption above is the only thing naming the game,
+  // and a visitor who tabs straight here never reaches it: the bare text content
+  // announces "SHOW DEMO" for a control that could show any of six games.
+  //
+  // The title therefore goes ON the control — as a visually-hidden span, the same way
+  // `slideFor` names its launch link above, and specifically NOT as an `aria-label`.
+  // An aria-label REPLACES the content as the accessible name, so the button would
+  // answer to "Show TEMPEST demo" while reading SHOW DEMO on screen, and a speech-input
+  // user saying "click show demo" would get nothing: Voice Control and Dragon match the
+  // accessible name, not the pixels. That is WCAG 2.5.3 Label in Name, Level A — an
+  // accessibility fix that breaks a different assistive technology. Appending composes
+  // instead: the name reads "SHOW DEMO — TEMPEST" and still CONTAINS the visible label.
+  const named = document.createElement('span')
+  named.className = 'visually-hidden'
+  named.textContent = `— ${game.title}`
+  reveal.append(named)
   reveal.addEventListener('click', onReveal)
 
   return [caption, reveal]
@@ -158,6 +198,19 @@ export function mountShowcase(section: HTMLElement, games: readonly GameMeta[]):
     section.remove()
   }
 
+  /** Arm the dwell, cancelling whatever was in the slot first. All three arming sites
+   *  go through here, which is the point: assigning over a live handle orphans a timer
+   *  that still calls `next`, and the carousel then ticks about twice per dwell. One
+   *  site provably did that (the focus-hold, entered from the load-timeout callback
+   *  while `show()`'s dwell was still ticking); a second is safe only because of an
+   *  invariant that lives in core/showcase.ts, where nothing at the call site can see
+   *  it. Cancelling unconditionally makes the distinction stop mattering — and where
+   *  the handle has already fired, `clearTimeout` is a no-op. */
+  function armSlideTimer(): void {
+    if (slideTimer !== undefined) clearTimeout(slideTimer)
+    slideTimer = setTimeout(next, SLIDE_MS)
+  }
+
   function next(): void {
     // `show()` replaces the anchor wholesale on every slide change — including one
     // forced early by a load failure — which would otherwise yank focus off a
@@ -168,7 +221,15 @@ export function mountShowcase(section: HTMLElement, games: readonly GameMeta[]):
     // still until the visitor tabs away on their own — a benign degrade, not a
     // bug to "fix" by clearing focus on restore.)
     if (section.contains(document.activeElement)) {
-      slideTimer = setTimeout(next, SLIDE_MS)
+      // Re-arm the same dwell and check again next time. The cancel inside
+      // `armSlideTimer` is load-bearing at THIS site: entered from the LOAD-TIMEOUT
+      // callback the slot is still holding a live dwell — `show()` armed it, and only
+      // the load timer has fired — so a bare assignment would orphan a timer that
+      // still calls `next`, and the hold would tick about twice per dwell for as long
+      // as focus stays. Nothing accumulated (each pass armed exactly one), which is
+      // why this was a bookkeeping defect rather than a leak, and why only a direct
+      // timer count catches it.
+      armSlideTimer()
       return
     }
 
@@ -182,7 +243,7 @@ export function mountShowcase(section: HTMLElement, games: readonly GameMeta[]):
     // something" from "nothing left", so a fully-dead carousel still falls through to
     // show() -> retire() instead of re-arming a dwell timer forever.
     if (state === before && currentGame(state) !== null) {
-      slideTimer = setTimeout(next, SLIDE_MS)
+      armSlideTimer()
       return
     }
     show()
@@ -232,7 +293,9 @@ export function mountShowcase(section: HTMLElement, games: readonly GameMeta[]):
       frame.classList.add('is-loaded')
     })
 
-    slideTimer = setTimeout(next, SLIDE_MS)
+    // `clearTimers()` above already emptied the slot, so the cancel inside is a no-op
+    // here — it costs nothing and removes the need for anyone to re-derive that.
+    armSlideTimer()
   }
 
   show()

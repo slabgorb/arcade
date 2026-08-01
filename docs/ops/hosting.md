@@ -314,6 +314,22 @@ cutover, run it against the single origin:
 
     ARCADE_ORIGIN=https://arcade.slabgorb.com just check-showcase
 
+**What that recipe measures is the HTTP status of `/<id>/`, and nothing else** — one
+`curl -sL … -w "%{http_code}"` per game, and anything but `200` fails the run. Read its
+output accordingly, because the two halves are not symmetric:
+
+- **A non-200 means the game is not being served at that path.** That is the `/<id>/`
+  404 row in the table above (the directory-index rewrite not covering nested paths),
+  or a key prefix that was never uploaded at all. The pane is reporting a symptom, not
+  a carousel bug — work back up that table before suspecting the showcase.
+- **A 200 is not a clean bill of health.** The probe never looks at the bytes, so a game
+  serving a *stale or broken* build passes it while the pane can still show a dead
+  frame. Two common cases land here and neither can ever produce a non-200: a red
+  deploy uploads nothing, leaving the last good build in place (stated at the top of
+  *Shipping*), and a stale cached build serves fine. Diagnose those by comparing what
+  the origin actually returns against the release you expect — `cf-cache-status` and
+  `last-modified`, per the cache row above — not by re-running this check.
+
 Which games appear is `showcase: true` in that game's `plugins/<id>/plugin.ts` manifest
 — not a config, a per-game product decision that flips as each game's self-play demo
 lands.
