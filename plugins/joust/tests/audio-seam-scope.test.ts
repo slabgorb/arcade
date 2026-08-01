@@ -121,25 +121,18 @@ describe('jt5-1 AC6 — no sample is committed', () => {
   })
 })
 
-describe('jt5-1 AC6 — the story says plainly that joust is still silent', () => {
-  it('the README still calls joust silent AFTER the seam lands', () => {
-    // The epic states it outright: "a green jt5-1 must NOT be read as 'joust
-    // has sound'." The status line says `silent` today and must keep saying it
-    // — this is a green guard on arrival, and it is the one that stops the next
-    // reader concluding the epic is finished.
-    expect(readme(), 'joust is still silent when this story closes').toMatch(/\bsilent\b/i)
-  })
-
-  it('and says WHY it is still silent — the seam exists, the samples do not', () => {
-    // `no samples` has grep-count 0 in the README today, so this cannot be
-    // satisfied by any existing sentence. Pairing it with the assertion above
-    // is what keeps "silent" from being read as "nothing was built".
-    expect(
-      readme(),
-      'the README must distinguish "no seam" from "seam, no samples" — they are different states',
-    ).toMatch(/no samples/i)
-  })
-})
+// ─── RE-SEATED BY jt5-2 (TEA, RED) ───────────────────────────────────────────
+// The describe that stood here — "the story says plainly that joust is still
+// silent" — required the README to keep saying `silent` and `no samples`.
+// That was jt5-1's AC6 fencing its OWN scope: true only for the period between
+// the seam landing and the samples landing, and jt5-2 is the story that ends
+// it. Its two tests are superseded by the inverse pins in
+// tools/sample-bake/deploy-assets.test.mjs (the stale claims must GO, the live
+// joust/sfx prefix must ARRIVE); keeping both suites would leave Dev unable to
+// satisfy either. The fences below are NOT retired with it: no audio binary in
+// the plugin tree and no stative hosted-claim in src/ are the hosting model,
+// not a story scope — samples are baked at deploy time into a staging dir and
+// live in the bucket, never the repo.
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AC1 / AC6 — the prose this story invalidates
