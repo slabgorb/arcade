@@ -810,3 +810,17 @@ with `--repos arcade --workflow …` and a parse confirmed every story in the ep
 the add writes NO description (follow with `story update <id> --description`), and READ the
 minted id from the output (it minted jt8-9..12 here). Run `--help` before trusting any recorded
 flag gap — the toolchain moves.
+
+## `sm-setup` stamped `in_progress` ITSELF this time — the "unconditional" rule becomes "verify, never assume either way" (jt5-2, 2026-08-01)
+
+DATED CORRECTION to the five entries above that say `sm-setup` unconditionally leaves the story
+at `status: backlog`. On jt5-2 it flipped `backlog` → `in_progress`, added `started: '2026-08-01'`,
+committed the stamp WITH the context in its claim commit, and pushed — all verified from
+`pf sprint story show` and `git log origin/main` afterwards, not from its report. Either the
+subagent moved or the prompt's explicitness did; both halves of the check stay: run
+`pf sprint story show <id> | grep -i Status` after every return, and stamp only if it did not.
+Note a re-stamp on an already-stamped story is harmless, but a skipped verify on an unstamped one
+is the same invisible-claim hole as ever. Same return also handled the push race correctly
+(rebased over a sibling's sw8-17 completion, non-overlapping) — but its context file still shipped
+the `## Technical Approach` FILLER stub even while writing a rich Background above it: the cp5-2
+rule ("check the CONTENT, fill Approach/Scope with measured pointers yourself") held exactly.

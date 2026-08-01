@@ -58,12 +58,32 @@ own "eleven" is explicitly marked stale by its own COUNT CORRECTION sentence).
    the status line off "silent" once the 200s are proven.
 
 ## Technical Approach
-_Approach hints to be refined by TEA/Dev. The story title above defines the
-intended behavior._
+
+Measured pointers only (design is TEA/Dev's):
+
+- The manifest, channel map, priorities, frame durations and `CUE_SOURCES`
+  provenance all live in `plugins/joust/src/shell/audio.ts` (`SOUNDS` at
+  `:98`, `DEFAULT_BASE_URL` at `:96`). The filenames the bucket must serve
+  are exactly the `SOUNDS` values.
+- Fleet precedent for a bake: star-wars keeps its generators in
+  `plugins/star-wars/tools/pokey-bake/bake-sfx.mjs` and
+  `plugins/star-wars/tools/music-bake/bake-music.mjs`; the `deploy-assets`
+  recipe (`justfile:274-286`) stages into a temp dir that mirrors the bucket
+  keys and hands the whole dir to `scripts/deploy-r2.mjs`, which keys
+  objects by their path relative to that dir and already knows the
+  `audio/wav` content type (per the recipe's own comment, `justfile:258-270`).
+  A joust generator under `plugins/joust/tools/` would follow that shape.
+- Verification is `curl -sI https://arcade-assets.slabgorb.com/joust/sfx/<file>`
+  per manifest entry; paste all status codes into the session (AC4).
 
 ## Scope
-- In scope: the behavior described by the story title.
-- Out of scope: unrelated changes.
+- In scope: one `.wav` per `SOUNDS` entry (17 today, derived at run time);
+  the tool or recordings that produce them; extending `just deploy-assets`
+  to stage/upload `joust/sfx/`; the upload itself; the live-200 proof; the
+  README "silent" flip.
+- Out of scope: SNPCR2 (owned by jt5-6, backlog); changes to `@shared/audio`
+  or joust's dispatch/manifest code beyond what the bake needs; CI touching
+  the assets bucket; other games' bakes.
 
 ## Acceptance Criteria
 _No acceptance criteria recorded in the sprint YAML — derived by the SM from
