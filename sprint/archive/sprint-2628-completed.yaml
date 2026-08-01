@@ -27,6 +27,7 @@ completed_epics:
   - cp4
   - sw7
   - jt2
+  - cp5
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -1275,4 +1276,9 @@ completed_stories:
     epic: sw8
     title: "Space warp tune-channel priority: the cabinet's ONE PM player lets the ground-init towers music (PM4TH, WSMAIN.MAC:1636) STEAL a still-ringing descent tune (PMDES), and any new tune silences the loop — our two-channel shell (sw3-5 adaptation) overlays them instead, so descent + towers ring together across the space→surface warp. Decide/port the steal semantics (single logical priority channel or music-starts-kill-tunes). Surfaced by sw8-12's milestone port (descent now rings ~1s into the warp overlap window)"
     points: 1
+    completed: '2026-08-01'
+  - id: cp5-2
+    epic: cp5
+    title: Wire the centipede audio seam into main.ts — the shell actually plays the stream
+    points: 2
     completed: '2026-08-01'
