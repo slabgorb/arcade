@@ -332,6 +332,19 @@ const NEUTRAL_INPUT: PlayerInput = { dir: 0, flap: false, flapHeld: false }
 const MASKS: Record<string, Array<[number, number]>> = {}
 for (const t of COLLISION_TABLES) MASKS[t.name] = t.spans
 
+// ─── The egg's per-frame mask (jt8-7, WEGG — JOUSTRV4.SRC:3507-3536) ──────────
+
+/** `EGFLFT FCB 0,12,6` — the frame offsets while velX < 0 (:3535). DECIMAL. */
+const EGF_LEFT = [0, 12, 6] as const
+/** `EGFRIT FCB 0,6,12` — the frame offsets while velX >= 0 (:3536). DECIMAL. */
+const EGF_RIGHT = [0, 6, 12] as const
+/** An EGGI row is three FDB words, so the offsets above step whole rows. */
+const EGGI_ROW_BYTES = 6
+/** `$0080` — the velY magnitude separating a level egg from a tilted one. HEX. */
+const EGG_FRAME_VEL_Y = 0x0080
+/** EGGI rows 0-2 (JOUSTI.SRC:2255-2257) — the three tumble STILLS, in row order. */
+const EGGI_STILL_MASKS = ['CEGGUP', 'CEGGLF', 'CEGGRT'] as const
+
 // ─── Wave-1 assembly ──────────────────────────────────────────────────────────
 
 /** A player's flight state at its spawn X, airborne mid-screen. */
@@ -809,6 +822,40 @@ function entityBox(e: EntityState): CollisionBox {
 }
 
 /** A broad-phase box for an EGG (jt8-4) — an egg carries no JoustEntity either. */
+/**
+ * The collision mask an egg presents this frame — WEGG (JOUSTRV4.SRC:3507-3530).
+ *
+ * The ROM keeps NO frame field on an egg: `WEGG` recomputes the picture every
+ * frame from PVELX's sign and PVELY's magnitude, then stores only the resulting
+ * pointer (`STY PPICH,U`, :3529). So this reads `velX`/`velY` — both already on
+ * `EggState` — and no new state is needed.
+ *
+ *     LDA PVELX,U / BPL WEGRIT     velX >= 0 -> EGFRIT, else EGFLFT
+ *     EGFLFT FCB 0,12,6            (:3535)   offsets are BYTES into EGGI, whose
+ *     EGFRIT FCB 0,6,12            (:3536)   rows are 6 bytes -> row 0 / 1 / 2
+ *
+ * The two edges are ASYMMETRIC, and both are a `BGT` against zero:
+ *   fall (`SUBD #$0080 / BGT`, :3516-3517) — velY 128 gives 0, BGT fails, so 128
+ *     is still LEVEL;
+ *   rise (`ADDD #$0080 / BGT`, :3524-3525) — velY -128 also gives 0 and BGT also
+ *     fails, but here the fall-through goes to WEGD3, so -128 is already a fast
+ *     RISE. The same test lands on opposite sides because one path branches
+ *     toward the level frame and the other away from it.
+ * Pure: no clock, no RNG, no ambient state.
+ */
+function eggMaskFor(egg: EggState): string {
+  const offsets = egg.velX >= 0 ? EGF_RIGHT : EGF_LEFT
+  const slot =
+    egg.velY < 0
+      ? egg.velY + EGG_FRAME_VEL_Y > 0
+        ? offsets[0]
+        : offsets[1]
+      : egg.velY - EGG_FRAME_VEL_Y > 0
+        ? offsets[2]
+        : offsets[0]
+  return EGGI_STILL_MASKS[slot / EGGI_ROW_BYTES]
+}
+
 function eggBox(e: EggState): CollisionBox {
   return { x: e.posX, y: e.posY >> 8, w: ENTITY_BOX_W, h: ENTITY_BOX_H }
 }
@@ -1025,6 +1072,20 @@ function collisionPass(processes: readonly DemoProcess[]): {
       const catcher = toJoustEntity(self)
       if (!catcher) continue
       if (!broadPhase(collisionBox(catcher), eggBox(ep.egg))) continue
+
+      // jt8-7 — NARROW phase, the same two-step the joust pass above uses. Without
+      // it the catch reach is the bare 16px `ENTITY_BOX_H` instead of CEGGUP's 7
+      // real scanlines, so an egg is collected from visibly clear of the player.
+      // The egg's mask is whichever EGGI still WEGG would be drawing this frame.
+      if (catcher.collision === null) continue
+      if (
+        !narrowPhase(
+          { name: catcher.collision, top: catcher.posY >> 8 },
+          { name: eggMaskFor(ep.egg), top: ep.egg.posY >> 8 },
+          MASKS,
+        )
+      )
+        continue
 
       const hits = bumpEggHits(self.eggHits ?? 0)
       self = { ...self, eggHits: hits }

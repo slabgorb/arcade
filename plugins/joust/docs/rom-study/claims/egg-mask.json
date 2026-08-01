@@ -1,0 +1,38 @@
+[
+  {
+    "id": "JT87-001",
+    "claim": "EGGI is a SEVEN-row frame table, not a single record. The label sits on the first row only and the six continuation rows are unlabelled, which is why a label-keyed reading stops at one: `EGGI FDB CEGGUP,$00FA,EGGUP` (:2255), then CEGGLF/$00FB/EGGLF (:2256), CEGGRT/$00FB/EGGRT (:2257), CEGGUP/$00FB/EGGB1 (:2258), CEGGMN/$FFF6/EGGB2 (:2259), CEGGMN/$FEF5/EGGB3 (:2260), CEGGMN/$00F5/PLY4S (:2261). The block's own header comment names the two halves: \"EGG STILLS & HATCHING\" (:2253). Rows 0-2 are the tumble stills, rows 3-5 the hatch stages, row 6 the dismounted standing rider. The table ends at :2261 — :2262 is a comment line, not an FDB.",
+    "source": {
+      "file": "JOUSTI.SRC",
+      "line": 2256,
+      "verbatim": "\tFDB\tCEGGLF,$00FB,EGGLF"
+    }
+  },
+  {
+    "id": "JT87-002",
+    "claim": "An egg carries NO stored frame. WEGG recomputes the picture every frame from the egg's two velocities and stores only the resulting pointer: `LDA PVELX,U / BPL WEGRIT` selects the offset table by the SIGN of the X velocity, `LDD PVELY,U` then compares the Y velocity against $0080, and WEGPAR does `LDY EGGI / LEAY A,Y / STY PPICH,U` (:3527-3529) — the chosen byte offset indexes the EGGI table and only PPICH is written. This is why porting the frame choice needs no new field on the egg's state.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3508,
+      "verbatim": "\tLDA\tPVELX,U"
+    }
+  },
+  {
+    "id": "JT87-003",
+    "claim": "EGFLFT and EGFRIT are byte offsets into EGGI and are MIRRORED. `EGFLFT FCB 0,12,6  FALLING LEFT` (:3535) and `EGFRIT FCB 0,6,12  FALLING RIGHT` (:3536): both share slot 0 (offset 0, the level frame CEGGUP) and swap slots 1 and 2. An EGGI row is three FDB words = 6 bytes, so 0/6/12 index rows 0/1/2 — CEGGUP, CEGGLF, CEGGRT. Slot 2 is the fast-FALL frame and slot 1 the fast-RISE frame, so a falling egg tilts one way and a rising egg the other.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3535,
+      "verbatim": "EGFLFT\tFCB\t0,12,6\t\tFALLING LEFT"
+    }
+  },
+  {
+    "id": "JT87-004",
+    "claim": "The level-frame boundary is ASYMMETRIC, and both edges are a BGT against zero. On the falling side `SUBD #$0080 / BGT WEGD2` (:3516-3517) means velY = 128 yields 0, BGT fails, and control falls into WEGUP — so 128 is still the LEVEL frame. On the rising side `ADDD #$0080 / BGT WEGUP` (:3524-3525) means velY = -128 also yields 0 and BGT also fails, but here the fall-through reaches WEGD3 (`LDA 1,Y`, :3526) — so -128 is already a fast RISE. The identical zero test lands on opposite sides because one path branches toward the level frame and the other away from it. A symmetric |velY| <= $0080 reading is therefore wrong at exactly -128.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3524,
+      "verbatim": "WEGVM\tADDD\t#$0080"
+    }
+  }
+]

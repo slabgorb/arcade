@@ -1696,7 +1696,28 @@ export const ENTITY_RECORDS: EntityRecord[] = [
   { name: 'PLYR3', collision: null, position: 751, source: 'PLY3R', anchor: { file: 'JOUSTI.SRC', startLine: 2106, endLine: 2106 } },
   { name: 'PLYR4', collision: null, position: 751, source: 'PLY4R', anchor: { file: 'JOUSTI.SRC', startLine: 2155, endLine: 2155 } },
   { name: 'PLYR5', collision: null, position: 751, source: 'PLY5R', anchor: { file: 'JOUSTI.SRC', startLine: 2208, endLine: 2208 } },
+  // jt8-7: the SEVEN EGGI frames (JOUSTI.SRC:2255-2261, "EGG STILLS & HATCHING").
+  // Until this story only row 0 was transcribed, anchored :2255-:2255 — the six
+  // continuation rows carry no label, so a label-keyed read sees one row and stops.
+  // Rows 0-2 are the tumble stills WEGG chooses between (see `eggMaskFor`, demo.ts);
+  // rows 3-5 are the hatch stages and row 6 the dismounted rider, transcribed for
+  // table completeness and with no consumer yet. One record per ROM row, each anchored
+  // to its own line — jt3-7's IPTERO/ILAVAT precedent. No new pixel blocks or span
+  // tables: every source and mask below already existed.
+  //
+  // Row 0 keeps the name `EGGI`: the draw list emits `entityOp('EGGI', …)` (demo.ts)
+  // and demo-source.test.ts requires it. The rest take their pixel-source names, as
+  // the pterodactyl rows do.
   { name: 'EGGI', collision: 'CEGGUP', position: 250, source: 'EGGUP', anchor: { file: 'JOUSTI.SRC', startLine: 2255, endLine: 2255 } },
+  { name: 'EGGLF', collision: 'CEGGLF', position: 251, source: 'EGGLF', anchor: { file: 'JOUSTI.SRC', startLine: 2256, endLine: 2256 } },
+  { name: 'EGGRT', collision: 'CEGGRT', position: 251, source: 'EGGRT', anchor: { file: 'JOUSTI.SRC', startLine: 2257, endLine: 2257 } },
+  { name: 'EGGB1', collision: 'CEGGUP', position: 251, source: 'EGGB1', anchor: { file: 'JOUSTI.SRC', startLine: 2258, endLine: 2258 } },
+  // $FFF6 / $FEF5 are the first transcribed position words with the high bit set
+  // (every other record is in [237, 751]). Stored as the RAW 16-bit word, like every
+  // other row — the signed reading (-10 / -267) is left to whoever needs it.
+  { name: 'EGGB2', collision: 'CEGGMN', position: 0xfff6, source: 'EGGB2', anchor: { file: 'JOUSTI.SRC', startLine: 2259, endLine: 2259 } },
+  { name: 'EGGB3', collision: 'CEGGMN', position: 0xfef5, source: 'EGGB3', anchor: { file: 'JOUSTI.SRC', startLine: 2260, endLine: 2260 } },
+  { name: 'PLY4S', collision: 'CEGGMN', position: 245, source: 'PLY4S', anchor: { file: 'JOUSTI.SRC', startLine: 2261, endLine: 2261 } },
   { name: 'ILAVAT', collision: null, position: 251, source: 'GRAB1', anchor: { file: 'JOUSTI.SRC', startLine: 2376, endLine: 2376 } },
   // jt3-7: the 6 pterodactyl FLYING frames (IPTERO POSOFF words, JOUSTI.SRC:2601-2606).
   // POSOFF word = XOFF*256+256−YOFF; without a record the live ptero/baiter would draw

@@ -334,9 +334,12 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     expect(kindsOf(after)).toContain('enemy-death')
   })
 
-  it('a collected egg emits egg-collected (seed 0xbeef, frame 516)', () => {
-    const before = advanceTo(0xbeef, 516)
-    const after = stepGame(before, inputsAt(516))
+  it('a collected egg emits egg-collected (seed 0xbeef, frame 523)', () => {
+    // jt8-7 RE-BASELINE: 516 -> 523. Same seed, same script; the mask-gated catch
+    // (the egg must now overlap CEGGUP's 7 scanlines, not just the 16px box) simply
+    // delays which egg player 2 drifts into. Measured, not guessed.
+    const before = advanceTo(0xbeef, 523)
+    const after = stepGame(before, inputsAt(523))
     expect(countOf(after, 'egg'), 'precondition: an egg really leaves on this frame').toBe(
       countOf(before, 'egg') - 1,
     )
@@ -359,34 +362,51 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   // uf1-8 RE-MEASURE (2026-08-01): the range-gated brains re-fly every smart
   // buzzard, and the jt5-4 stall narrative is PARTLY retired with them — under
   // uf1-8 the buzzards' committed dives feed the idle player 2 a steady diet
-  // of eggs (it collects one at frame 516 above) and seed 0xbeef now clears
-  // wave 1 at frame 820 (see the fingerprint below). 0xface stays the seed
-  // here — only its frames moved: wave 1 clears at 1614, and the
-  // death/materialise pair lands at 1938/1939.
-  it('a dying knight emits player-death (seed 0xface, frame 1938)', () => {
-    const before = advanceTo(0xface, 1938)
-    const after = stepGame(before, inputsAt(1938))
+  // of eggs and seed 0xbeef now clears wave 1 at frame 820 (see the
+  // fingerprint below). 0xface stays the seed here — only its frames moved.
+  //
+  // jt8-7 RE-BASELINE (2026-08-01): the egg catch gained a NARROW phase, so a
+  // player must now overlap the egg's transcribed mask (7 scanlines) rather
+  // than the bare 16px box. That changes WHICH egg is collected WHEN, and the
+  // whole seeded timeline shifts with it. Both seeds and the input script are
+  // unchanged — only the frames moved, re-measured by scanning 3000 frames of
+  // each seed for the same preconditions these tests already assert:
+  //
+  //     egg-collected      0xbeef  516  -> 523
+  //     wave advance       0xface 1614  -> 1641
+  //     player-death       0xface 1938  -> 1810
+  //     player-materialise 0xface 1939  -> 1811   (still death + 1)
+  //
+  // These are frame COORDINATES, not thresholds: each test still asserts its
+  // own precondition (an egg really leaves and really scores; a knight really
+  // dies; the wave really advances), so a re-baseline cannot quietly turn one
+  // of them vacuous — the precondition fails first if the moment is not there.
+  it('a dying knight emits player-death (seed 0xface, frame 1810)', () => {
+    // jt8-7 RE-BASELINE: 1938 -> 1810 (see the block comment above).
+    const before = advanceTo(0xface, 1810)
+    const after = stepGame(before, inputsAt(1810))
     expect(countOf(after, 'player'), 'precondition: a knight really dies on this frame').toBe(
       countOf(before, 'player') - 1,
     )
     expect(kindsOf(after)).toContain('player-death')
   })
 
-  it('the transporter re-entry emits player-materialise (seed 0xface, frame 1939)', () => {
+  it('the transporter re-entry emits player-materialise (seed 0xface, frame 1811)', () => {
     // The frame AFTER the death: `stepGame`'s respawn re-enters the spent knight
     // through the transporter (game.ts:425-441), which is the ROM's CREP
     // re-create — DSNCRE → SNPCR1 "PLAYER 1 RE-CREATED (TRANSPORTER)".
-    const before = advanceTo(0xface, 1939)
-    const after = stepGame(before, inputsAt(1939))
+    const before = advanceTo(0xface, 1811)
+    const after = stepGame(before, inputsAt(1811))
     expect(countOf(after, 'player'), 'precondition: the knight really re-enters here').toBe(
       countOf(before, 'player') + 1,
     )
     expect(kindsOf(after)).toContain('player-materialise')
   })
 
-  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 1614)', () => {
-    const before = advanceTo(0xface, 1614)
-    const after = stepGame(before, inputsAt(1614))
+  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 1641)', () => {
+    // jt8-7 RE-BASELINE: 1614 -> 1641 (see the block comment above).
+    const before = advanceTo(0xface, 1641)
+    const after = stepGame(before, inputsAt(1641))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)

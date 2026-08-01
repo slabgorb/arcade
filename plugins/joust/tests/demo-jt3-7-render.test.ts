@@ -87,11 +87,18 @@ const MENAGERIE_FRAMES = [...PTERO_FRAMES, ...TROLL_FRAMES]
  * the 6 troll hands GRAB1..GRAB6 (Dev named GRAB1 as its OWN record too, sharing
  * ILAVAT's pixel source, so the hand animates GRAB1→GRAB6 by name). 32 + 6 + 6 = 44.
  * A `>=` floor (the jt1-3 discipline) so ADDING more reads green while DROPPING one
- * reddens. The floor now EQUALS the real count (44) — the jt3-7 review (N5) closed
- * the former 1-unit slack (floor 43 vs count 44), which let a dropped un-enumerated
- * legacy record stay green; the truncation guard below now proves the floor bites.
+ * reddens. The floor EQUALS the real count — the jt3-7 review (N5) closed the former
+ * 1-unit slack (floor 43 vs count 44), which let a dropped un-enumerated legacy
+ * record stay green; the truncation guard below proves the floor bites.
+ *
+ * jt8-7 raised it 44 → 50. The six added records are EGGI's continuation rows
+ * (JOUSTI.SRC:2256-2261), which had never been transcribed. Note this bump is
+ * REQUIRED by the guard rather than tolerated by it: the truncation test asserts
+ * `ENTITY_RECORD_FLOOR >= realCount`, so leaving the floor at 44 reddens with
+ * "the floor must EQUAL the real record count — no 1-unit slack (N5)". Adding
+ * records to a transcription is exactly the event that puts slack in a floor.
  */
-const ENTITY_RECORD_FLOOR = 44
+const ENTITY_RECORD_FLOOR = 50
 
 function entity(posX: number, pixelY: number, airborne: boolean, animPhase = 0): EntityState {
   return {
@@ -252,11 +259,12 @@ describe('AC-2 — the new ptero/troll frames each carry their ROM POSOFF record
 //   length floor here reddens on any net truncation.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-2 — ENTITY_RECORDS count floor (dropping a record reddens)', () => {
-  it(`the record count is floored at ${ENTITY_RECORD_FLOOR} (32 mounts+riders + 6 ptero + 6 troll hands)`, async () => {
+  it(`the record count is floored at ${ENTITY_RECORD_FLOOR} (32 mounts+riders + 6 ptero + 6 troll hands + 6 EGGI)`, async () => {
     const pics = await loadPictures()
     expect(
       pics.ENTITY_RECORDS.length,
-      'jt2-9 left 32 records; jt3-7 consumes the ptero (6) and troll hands (GRAB1-6, +6) → floor 44',
+      'jt2-9 left 32 records; jt3-7 consumes the ptero (6) and troll hands (GRAB1-6, +6) → 44; ' +
+        'jt8-7 adds EGGI rows 1-6 (JOUSTI.SRC:2256-2261) → floor 50',
     ).toBeGreaterThanOrEqual(ENTITY_RECORD_FLOOR)
   })
 
