@@ -1176,3 +1176,64 @@ fresh ledgers whether or not it paid.
 this story moved — suite size, claim count (twice), and a whole `skipIf` reconciliation block of six
 numbers. Nothing checks any of them. Re-measure and update them in the same commit, or the next
 reader inherits a document that is confidently wrong about a thing they can verify in one command.
+
+---
+
+### A wiring story is not done at the unit seam — SERVE it, because the whole point is a code path only a real browser reaches
+
+**Situation:** cp5-2 wired centipede's audio seam into `main.ts`. TEA's RED was unusually strong (a real
+boot harness, 14 tests, a six-mutant battery), and `npx vitest run` came back 10,751/10,751 green.
+
+**Why that was not enough:** the harness stubs `AudioContext`. The story's AC4 is about the browser's
+*gesture gate* — a rule enforced by the real WebAudio implementation, not by our code — and the shared
+engine's whole failure model (silent degrade on absent WebAudio, blocked autoplay, failed fetch,
+undecodable sample) is invisible to a stub that never fails. A green suite says the call happens; it
+cannot say the browser accepted it.
+
+**What serving it actually showed, in about four minutes:**
+
+| | requests to the assets host |
+|---|---|
+| booted, attract running untouched | **0** |
+| after ONE keypress | **14**, one per manifest entry |
+
+That table IS the AC, measured. And it surfaced the thing no test asserts: the wiring turns on **14
+console 404s** the moment the player touches a key, because no sample is uploaded yet. Predicted by the
+predecessor story, accepted by the epic, invisible to every suite — and it looks exactly like a bug to
+the next person who opens devtools. It became a Delivery Finding instead of a surprise.
+
+**The technique, which needs no fixtures:** `performance.getEntriesByType('resource')` filtered to the
+asset host is a direct, cheap observation of "did the lazy engine wake up" — better evidence than trying
+to count constructor calls after the fact, because you cannot retroactively instrument a module that has
+already evaluated. Pair it with a liveness probe (`frame` delta over 1000 ms — 60 is the ROM cadence, 0
+means the loop froze) so "it didn't throw" is distinguished from "it stopped".
+
+**Two traps on the way:**
+- The Chrome extension may be down; Playwright MCP against the dev server is the documented fallback and
+  worked first try.
+- An all-`200` sweep proves nothing on this repo — the lobby's SPA fallback answers 200 for everything.
+  Compare the game path's HTML against a nonsense control and require they DIFFER before believing you
+  are looking at the game (CLAUDE.md says so; it costs one `md5`).
+
+---
+
+### When TEA hands you a deviation saying "I could not test X, it is your judgment" — do the thing the RULING says, not the thing the test list allows
+
+**Situation:** cp5-2's ruling was to drop two runtime throws. TEA pinned one of them and logged a
+deviation for the other: the second `throw` sits in a `default:` arm that is unreachable without a cast,
+so no honest runtime assertion can reach it. Removing only the first throw passes 1012/1012.
+
+**The call:** remove both. The arm is on the frame path, the ruling named it, and all five sibling games
+end that arm the same way. A test list is a floor, not a specification — and TEA's deviation was not
+permission to skip the work, it was a flag that the *verification* had a hole, which is precisely when
+the Reviewer needs the implementer to have used judgment rather than the compiler.
+
+**The discipline that keeps this from becoming scope creep:** removing the throw is in the ruling;
+restructuring the dispatch would not be. Check what the predecessor's guard REQUIRES before touching
+anything near it — cp5-1's `verdict()` demands exactly one `switch` reachable from the entry point,
+exactly one `never` binding in the default arm, and no engine call there. So `continue` was the only
+shape available for the first fix: an `if/else` wrapping a second `switch` would have reddened a passing
+cp5-1 test, and it would have read as collateral damage rather than as my mistake.
+
+**Log it as a deviation either way.** "I did MORE than the tests demanded, here is the ruling that says
+so" is exactly the kind of thing the Reviewer should get to rule on rather than discover in a diff.
