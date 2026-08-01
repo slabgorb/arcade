@@ -821,9 +821,11 @@ function entityBox(e: EntityState): CollisionBox {
   return { x: e.posX, y: e.posY >> 8, w: ENTITY_BOX_W, h: ENTITY_BOX_H }
 }
 
-/** A broad-phase box for an EGG (jt8-4) — an egg carries no JoustEntity either. */
 /**
- * The collision mask an egg presents this frame — WEGG (JOUSTRV4.SRC:3507-3530).
+ * The collision mask an egg presents this frame — the `WEGG` routine, labelled at
+ * JOUSTRV4.SRC:3507. (Every line this comment leans on is cited individually below;
+ * the routine's END line is deliberately not asserted — it is a value nothing here
+ * depends on, and line extents are the category that goes stale first.)
  *
  * The ROM keeps NO frame field on an egg: `WEGG` recomputes the picture every
  * frame from PVELX's sign and PVELY's magnitude, then stores only the resulting
@@ -856,6 +858,7 @@ function eggMaskFor(egg: EggState): string {
   return EGGI_STILL_MASKS[slot / EGGI_ROW_BYTES]
 }
 
+/** A broad-phase box for an EGG (jt8-4) — an egg carries no JoustEntity either. */
 function eggBox(e: EggState): CollisionBox {
   return { x: e.posX, y: e.posY >> 8, w: ENTITY_BOX_W, h: ENTITY_BOX_H }
 }
