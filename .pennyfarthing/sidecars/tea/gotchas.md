@@ -2999,3 +2999,79 @@ console.log([...t.matchAll(/\b(spawnSync|spawn|execFileSync|execSync)\(\s*([^,)]
 Must print `[]`. **General rule: any guard that greps source text will read your prose about the
 thing as the thing** — the same family as the sidecar's own "strip comments, then count" entry,
 arrived at from the authoring side rather than the scanning side.
+
+## A table READ SHORT is invisible to every gate that checks the row it did take (jt8-7, 2026-08-01)
+
+**Situation:** jt8-7's real defect was not a wrong constant. `EGGI` is seven 3-word rows
+(`JOUSTI.SRC:2255-2261`); `pictures.ts:1699` transcribed row 0, anchored `startLine 2255,
+endLine 2255`, and stopped. Row 0 was *correct*. Every existing gate — the dangling-source
+check, the ROM-label check, the byte gate — passed, because each one interrogates the rows
+that ARE there.
+
+**The tell, and it generalises:** a continuation row carries **no label** (`parseStatement`
+returns `label: ''`), so any reader that keys on labels sees one row and terminates. Same
+family as the SNPCR1 sound-table finding. The two are not coincidences — they are the same
+bug in two files.
+
+**What to actually test.** Re-checking the seven rows you now transcribe repeats the original
+mistake the day an eighth appears. Pin the **EXTENT from both sides**: assert the line ABOVE
+and the line BELOW both fail to parse as table rows. That is what converts "seven" from a
+guess into a measurement, and it is three lines of test.
+
+**A claim can already describe the rows the code never took.** The pre-existing claim
+`JT8-130` reads "Egg (JOUSTI.SRC:2255) · up/right/left + 3 hatch stages" — the dossier had
+recorded seven frames all along. No gate compares a claim's PROSE against the transcription's
+extent, so the knowledge sat next to the defect for six stories. Corollary for claim-coverage
+tests: a range starting at the labelled first row passes **vacuously** off the old claim.
+Scope such a test to the CONTINUATION rows. I wrote that vacuous version first and only caught
+it by asking which existing claim was satisfying it — always ask *what is making this green*
+about a claim-coverage assertion that passes on arrival.
+
+## When the seam ignores an axis, say so — `narrowPhase` compares SPRITE-LOCAL columns and never sees X
+
+`narrowPhase(a, b, masks)` takes `MaskRef = {name, top}`. Only Y is aligned; the spans it
+compares are COFF-unbiased **sprite-local** columns, so two entities 200px apart in X whose
+masks overlap in local column space "collide" as far as it is concerned. `broadPhase` is what
+carries X. Consequences worth knowing before designing fixtures: every mask-vs-box
+discriminator is **vertical**, and a test asserting "narrowPhase is wired" must ALSO keep a
+distant-in-X case, or the mutant that deletes `broadPhase` and keeps the mask sails through.
+
+## Trace the fixture through the step ORDER before trusting a staged number
+
+`stepFrame` runs BEFORE `collisionPass` (`demo.ts:1174-1175`), so for a moving egg the staged
+`posY`/`velY` are NOT the collision-time values — gravity adds 4 to velY and moves posY first.
+Measured escape hatch: `stepEgg` returns a **settled** egg completely untouched
+(`demo.ts:699`), freezing both fields across the step. So `settled: true` is the stable
+fixture for anything that needs exact numbers, and the player does not drift either.
+
+Two disciplines that came with it. (1) A frozen fixture buys precision by staging a state
+ordinary play does not produce (settled + fast-falling), so pin ONE case on a genuinely moving
+body as well, and have it **assert its own premises** (`velY` drifted by exactly GRAV; the egg
+arrived at dy=11) rather than trusting the arithmetic. (2) Do the calibration as a throwaway
+test that PRINTS positions — three minutes, and it replaced four guesses with four numbers.
+My first calibration run showed `eggTop=NaN` because the egg had been *caught*; staging it out
+of X range was what made the drift readable. A NaN in a probe is a result, not a crash.
+
+## Run the FULL suite against the throwaway — that is where the sibling breakage lives
+
+The satisfiability probe's usual job is proving the RED is not impossible (it did: 31/31). Its
+second job is worth as much: running `--project joust --project shared` **with the throwaway in
+place** surfaced five sibling failures the RED alone could never show —
+
+- a count-FLOOR guard (`demo-jt3-7-render.test.ts:277`) that goes vacuous when records are
+  added, failing with "must FAIL the >= floor (not vacuously pass)". Adding rows to a
+  transcription is exactly the event that puts slack in a floor;
+- four frame-exact SEEDED pins in `audio-events.test.ts`, because tightening a collision
+  changes *when* things happen in ordinary play and shifts the whole timeline.
+
+Both are legitimate consequences, both need Dev action, and neither is discoverable from the
+new tests. Handing them over measured — with the exact failure text — is the difference
+between a Dev hitting them mid-GREEN and a Dev expecting them. It also pre-empts the Reviewer
+reading a re-baselined seeded pin as a loosened guard.
+
+## Rank the guards by mutating the throwaway, and check the mutants are UNCOUPLED
+
+Seven mutants, seven caught. The useful signal was not the 7/7 — it was that **each boundary
+mutant reddened exactly one test** (fall edge: 1, rise edge: 1, per-row data: 1) while the two
+structural mutants reddened 7 and 11. Precise, uncoupled guards. A battery where every mutant
+reds everything is telling you the guards are coupled, not that they are strong.
