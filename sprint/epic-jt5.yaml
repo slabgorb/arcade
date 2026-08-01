@@ -48,10 +48,11 @@ stories:
     description: "Two ROM cues are blocked on physics the sim computes and throws away. SNPTHD (:8124, 'AT LEAST 1 PERSON THUD''ED', call site :5014 'PLAYERS COLIDE') and SNETHD (:8106, 'ENEMIES THUD', call site :5019 'ENEMIES COLIDE'). collisionPass computes the bounce outcome and DISCARDS it — 'if (contact.outcome.kind !== \"kill\") continue' (plugins/joust/src/core/demo.ts, the joust pair loop) — and bounceTop, bounceBottom and bounceHorizontal in joust.ts have ZERO production callers. So a non-killing collision currently does nothing at all: no push, no separation, no sound. The work is APPLYING the bounce first; the cue is the easy half and must not land without it, because a thud announcing a collision the sim does not resolve is an audible lie. Same disease as uf1-11's troll grip one layer over: a faithful, tested, cited pure core with no caller."
     points: 5
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-01'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-01'
     review_findings: "Round 3: all five round-2 items verified done — M17 (role inversion) now 5 reds including BOTH tests named for the law (was 3, none), M19 4 reds, M15 regression-clean, JT54-005 true, six pointers re-anchored correctly, four findings filed. REJECTED on one new item: audio-thud.test.ts:732-737 states the inverse of Dev's own M18 measurement — geometry-dispatch diverges in tie(true) (caught by the ABSOLUTE pair) and AGREES in tie(false); the relative assertion catches neither M17 nor M18. The comment nominates the wrong assertion as load-bearing and would license deleting the working guard. Plus LOW: jt5-13 cites demo.ts:745/:761 for bumpX:0, which is at :751/:767."
     review_verdict: approved
   - id: jt5-5

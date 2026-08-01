@@ -1266,3 +1266,8 @@ completed_stories:
     title: Past-plan TIE supply loops the set's LAST group (TWV2Z), not a bare 1A1 mook — ADASHP clamps WV.LVL to the last group and RESTARTS its loop pointer (WSCPU.MAC:1058-1090), so the endless tail is the 18-entry TWV2Z mix incl. the ±2048 corners; our waveSpawnPlan fallback (sim.ts spawnTie 'past the plan's end') invents a single '1A1' entry. Latent today (wave-1 plan 27 entries vs ≤9 spawns under the 6-kill quota) — bites if quota rises or the phase becomes time-boxed
     points: 2
     completed: '2026-08-01'
+  - id: jt5-4
+    epic: jt5
+    title: The THUDs — apply the bounce collisionPass computes and discards, then cue it
+    points: 5
+    completed: '2026-08-01'
