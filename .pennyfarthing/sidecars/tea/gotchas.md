@@ -2920,3 +2920,56 @@ replaced" survived deleting the star-wars BAKE line (its `mkdir`/upload lines st
 mutation was mis-aimed at the guard's claim, not proof of vacuity. The surviving mutant is a real,
 recorded coverage limit (token guards pin staging PRESENCE, not bake correctness; the deploy's own
 echo + the live-200 curls own that), but it is a limit to write down, not a test to force.
+
+---
+
+## A "seam" you INJECT but the code never READS is not a mock — it is a live production deploy wearing a mock's name (mg1-5, 2026-08-01)
+
+**Situation:** mg1-5's AC3 needs a partial-failure test, so the RED injects an uploader:
+`uploadDir(dist, bucket, prefix, { upload: recorder })`. `uploadDir`'s signature already ends in
+`options = {}`, so this reads as obviously safe. I ran the suite.
+
+**What actually happened:** `uploadDir` passes `options` to `onlyFor()` and nothing else. An unknown
+key is silently dropped — no throw, no warning — and the function proceeded to its real body:
+`execFileSync('wrangler', ['r2','object','put', …, '--remote', …])`. wrangler was installed,
+`CLOUDFLARE_*` was in the environment, and **every fixture object was PUT to the live
+`arcade-lobby` bucket at its real key.** The production lobby's `index.html` and tempest's were
+overwritten with a 15-byte `<!doctype html>`; `arcade.slabgorb.com/` served that stub until it was
+rebuilt and redeployed. Fifteen junk keys landed at the bucket root. Six other games survived only
+because the fixtures did not happen to name them.
+
+**The tell I had and ignored: 3997 ms for a test whose fixture is three files in a tmpdir.** Unit
+tests on a temp directory run in single-digit milliseconds. Four seconds is a network round trip.
+That number was in the first failure output and I read past it to the assertion message. **Duration
+is an assertion about what your test touched** — when a pure-computation test takes seconds, stop
+and find out who it called.
+
+**The second tell, and it is the diagnostic one:** the failure was
+`fixture has no HTML object at all` — the recorder's array was EMPTY. An empty recorder does not
+mean "the code did nothing"; it means **the code did something else**. I initially read it as a
+fixture bug. The question "if my stub was never called, what ran instead?" is the whole incident,
+and it is one grep from the answer.
+
+**Prevention — the ordering rule.** Never inject a seam and run. Prove the seam is READ first, and
+prove it from the source, because the injection site cannot tell you:
+```bash
+grep -n "options" scripts/<file>.mjs     # does anything destructure or read the key you are passing?
+```
+If the function's real body spawns a binary, a network client or a deploy tool, that check is not
+optional and it is not paranoia — an ignored option degrades to *the real thing*, which is the
+worst possible default. The general shape: **an optional injection point that does not exist yet
+fails OPEN, straight through to production.** A required parameter would have thrown; an options bag
+cannot.
+
+**Prevention — the safety fuse, and it belongs in the RED itself.** The fix committed with these
+tests is a helper that refuses to call the subject until the seam is demonstrably present in the
+source, with a comment saying Dev deletes it during GREEN and *why deleting a RED fuse is not how
+you make it pass*. Cost: fifteen lines. It also sharpens the TDD sequence honestly — eight of the
+nine tests now red at "the seam does not exist", which IS the first thing Dev must build, and they
+become live assertions the moment it lands.
+
+**Also worth stating plainly: the RED phase is not a safe sandbox.** Every other entry in this file
+treats a bad RED as wasted effort. This one cost a production outage, and the code path was a
+four-argument call to an exported function in the repo's own `scripts/`. Before a RED calls anything
+whose name contains `deploy`, `upload`, `publish`, `release` or `push`, read that function's body to
+the bottom — not its signature.
