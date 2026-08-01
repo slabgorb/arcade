@@ -1332,3 +1332,8 @@ completed_stories:
     title: star-wars trench wedge grid — 13 of 19 exports never reach production
     points: 5
     completed: '2026-08-01'
+  - id: uf1-13
+    epic: uf1
+    title: lobby showcase carousel — close the deferred review residuals
+    points: 2
+    completed: '2026-08-01'
