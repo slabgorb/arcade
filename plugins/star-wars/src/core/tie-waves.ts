@@ -146,13 +146,21 @@ export function choreoPc(choreography: string): number {
  * range check `CMPB 0(X)+ / IFHI / LDB -1(X)` CLAMPS the group index to the
  * selected set's LAST group, and `LDD B(X) / STD WV.LP` RESTARTS that group's
  * loop pointer at its first entry (WSCPU.MAC:1058-1090 — the clamp at
- * :1083-1085, the restart at :1090). Every set's last group is TWV2Z
+ * :1083-1085, the restart at :1089-1090). Every set's last group is TWV2Z
  * (:1230-1235), so the endless tail of every space wave is the 18-entry TWV2Z
  * mix — nine rows of it the ±2048 D-corners — looped entry-by-entry, forever.
  * The loop is the LAST GROUP, never the whole plan: TWV2Z schedules no RTH, so
  * Darth appears once per wave and can never re-enter from the tail.
+ *
+ * A negative or fractional index is a caller bug — no ADASHP state corresponds
+ * to one (WV.LP only ever advances from a group's start) — and throws, the same
+ * convention as tie-vm's CHERR on an unassigned opcode. Silently indexing would
+ * hand back `undefined` typed as a WaveEntry.
  */
 export function supplyEntry(spaceWave: number, spawnIndex: number): WaveEntry {
+  if (spawnIndex < 0 || !Number.isInteger(spawnIndex)) {
+    throw new Error(`tie-waves: supplyEntry spawnIndex ${spawnIndex} — caller bug, no ADASHP state corresponds (CHERR convention)`)
+  }
   const plan = waveSpawnPlan(spaceWave)
   if (spawnIndex < plan.length) return plan[spawnIndex]
   const set = selectWaveSet(spaceWave)

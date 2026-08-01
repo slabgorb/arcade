@@ -5,9 +5,9 @@
 // THE DEFECT. When the wave's TSPWAV plan runs out, the cabinet does not invent a
 // fighter — ADASHP re-arms the supply from the plan's own tail. WSCPU.MAC:1058-1090
 // (`ADASHP::`): at end-of-group it does `INC WV.LVL`, selects the wave's set, then
-// `LDB WV.LVL / CMPB 0(X)+ / IFHI / LDB -1(X) / ENDIF / STB WV.LVL` (:1083-1085 —
+// `LDB WV.LVL / CMPB 0(X)+ / IFHI / LDB -1(X) / ENDIF / STB WV.LVL` (:1082-1087 —
 // CLAMPS the group index to the set's LAST group) and `LDD B(X) / STD WV.LP`
-// (:1090 — RESTARTS that group's loop pointer at its first entry). Every TSPWAV set
+// (:1089-1090 — RESTARTS that group's loop pointer at its first entry). Every TSPWAV set
 // ends with TWV2Z (WSCPU.MAC:1230-1235), so the endless tail of every space wave is
 // the full 18-entry TWV2Z mix — 9 of its rows the ±2048 D-corner begin-locs —
 // looped entry-by-entry, forever. Our `spawnTie` (sim.ts:2129-2145) instead falls
