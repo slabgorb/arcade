@@ -1007,3 +1007,84 @@ actually lives. Two of those three findings changed what the RED test has to loo
 asserting "CI is unprotected" (a guess arriving labelled MEASURED) or dropping it (TEA re-derives
 it), it went into the context as an open question with the check named and the not-knowing stated —
 the jt5-10 pattern, and it did not block RED because the AC's own fix moots the question either way.
+
+---
+
+## A finding's "obvious owner" can be a story that structurally CANNOT hold it — read the text for the MECHANISM, not the theme (ad1-2 finish, 2026-08-01)
+
+**Situation:** routing ad1-2's finding "nothing asserts a `showcase: true` game actually RENDERS when
+framed". Grepping the epics for `showcase` surfaced **uf1-19**, titled *"pin the lobby test apparatus —
+five guards that do not bite"*. Same subsystem (the lobby), same failure family (guards that cannot
+fail), filed one story earlier by a review of the very carousel in question. It read like the owner.
+
+**It was not.** uf1-19's description is entirely about jsdom **test-apparatus fixtures** —
+`accessible-name.ts`'s recursive aria-hidden walk, its nodeType guard, `collapse()`, and
+`slideFor`'s ALPHA-only cases. Every deliverable it names is a DOM fixture. My finding is about the
+framed GAME's canvas being alive, which **jsdom cannot observe at all**. Filing it there would have
+buried a browser-harness question inside a story whose whole apparatus is headless — and it would have
+looked correctly routed forever.
+
+**The refinement on the existing rule.** jt5-5 established "check the owner story's TEXT, not just its
+existence." This adds: check that the owner's **mechanism** can express your finding, not merely that
+its **theme** matches. Themes collide constantly (both stories are "lobby guards that don't bite");
+mechanisms rarely do. The question to ask is "if someone did this story exactly as written, would my
+finding be closed?" — here the answer was plainly no, and it took one `--description` read.
+
+**Then say so IN the new story.** `uf1-20`'s description carries an explicit *"WHY THIS IS NOT
+uf1-19"* paragraph. Without it the next groomer sees two adjacent lobby-guard stories and merges
+them, re-creating the exact mistake — the reasoning has to live where the collision will be noticed,
+not only in an archived session.
+
+## A zero in a comparison can mean DELEGATION, not absence — check before filing "X does this and Y doesn't"
+
+The Reviewer generated its own strongest finding on this story and then killed it, which is worth the
+paragraph because the failure mode is subtle and the check is cheap.
+
+The lead: `plugins/battlezone/src/shell/render.ts` sets `ctx.shadowBlur = 8` at five sites;
+`plugins/tempest/src/shell/render.ts` has **zero** non-zero assignments — and tempest is the game
+whose live-`shadowBlur` GPU cost was measured and removed by tp1-40. A clean, quantified,
+precedent-backed finding: battlezone imports a known-expensive pattern into the lobby.
+
+**Invalid.** `src/shared/glow.ts` describes itself as a set-`shadowBlur`-draw-**reset** envelope — the
+shared primitive uses `shadowBlur` internally — and tempest's render calls `withGlow`/`glowPolyline`
+**20 times**. Tempest's zero means it *delegates* the blur through a helper, not that it avoids it.
+Both games pay; neither is the outlier. One grep of the shared module refuted the whole finding.
+
+**Generalise:** any metric of the form "count of pattern P in file F" silently assumes P is written
+inline. The moment a shared helper exists, a low count measures **indirection**, not behaviour — and
+it will always point at the game that hasn't adopted the helper yet, which is a refactoring
+observation dressed up as a defect. Before filing a comparative finding, open the helper the
+zero-side imports. Record the refutation rather than deleting it: the next reviewer runs the same
+grep and reaches the same wrong conclusion otherwise.
+
+## When a change forces you to edit a guard, the mutation that VINDICATES the edit is the both-sides-move one
+
+ad1-2 flipped `showcase` in a manifest and in the file generated from it, which reddened
+`src/host/registry.test.ts`'s carousel-membership guard. "The guard reddened, so I updated it" is
+indistinguishable from "the guard was inconvenient, so I loosened it" — and the story had a logged
+deviation admitting it touched a file no AC named.
+
+The mutation that settles it: make **both** sides move together (manifest AND generated registry back
+to `false` — a *consistent* opt-out). That mutation sails past the stale-registry drift guard, which
+only compares the two files against each other, and is caught **solely** by the membership guard.
+That is the proof the guard is load-bearing rather than redundant, and it converted the deviation from
+a thing to excuse into a thing to cite.
+
+Generally: for a generated-artifact pair, the drift guard covers *disagreement* and something else must
+cover *agreed-upon wrongness*. Test the second one explicitly; it is the one that looks covered and
+isn't.
+
+## Two smaller things from the same run
+
+**`pf sprint story add --repos arcade` works** — fourth confirmation of jt8-3's dated correction, and
+the old surgical-sed repair is now firmly obsolete. Both `uf1-20` and `ad1-7` came out with
+`repos: arcade`, verified by parsing every story in both epics for a wrong value. Still true: the add
+writes **no** description (follow with `story update --description`) and **mints its own id** — read
+it from the output.
+
+**Python `print()` is buffered; `subprocess.run()` writing to the same stdout is not.** A mutation
+battery's closing `git status` appeared ABOVE its per-mutation result lines, which reads exactly like
+"the tree was already dirty before the first mutation" — a genuinely alarming misreading of a clean
+run. Either capture the subprocess output and `print` it, or `flush=True`. The dirty file was in fact
+`sprint/epic-ad1.yaml`, stamped `in_review` by `complete-phase` minutes earlier: benign pipeline
+bookkeeping, not battery damage.
