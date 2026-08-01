@@ -131,7 +131,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 2145,
+      "line": 2144,
       "verbatim": "  return { pos, kind, orient: lookRotation(FACING_PLAYER), vm, firedGun: false }"
     }
   },

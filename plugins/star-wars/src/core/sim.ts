@@ -129,7 +129,7 @@ import {
   FORCE_FIELD_BAND_HALF,
   FORCE_FIELD_DEPTH,
 } from './trench-channel'
-import { waveSpawnPlan, choreoPc } from './tie-waves'
+import { supplyEntry, choreoPc } from './tie-waves'
 import { initVm, tickChoreo, program, Status, Twist, Move } from './tie-vm'
 import { computeStatus } from './tie-status'
 
@@ -2130,18 +2130,17 @@ export function spawnTie(_rng: Rng, spawnIndex: number, spaceWave: number): Enem
   const [x, y] = SPAWN_LATERALS[spawnIndex % SPAWN_LATERALS.length]
   const pos: Vec3 = [x, y, -TIE_SPAWN_DISTANCE]
   // The wave's TSPWAV plan (sw7-12) says which slot is Darth: the RTH shape spawns
-  // kind 'darth', every other slot a plain TIE. Past the plan's end (a long wave that
-  // keeps refilling its slots) fall back to a mook.
-  const entry = waveSpawnPlan(spaceWave)[spawnIndex]
-  const shape = entry?.shape ?? 'TIE'
-  const kind = shape === 'RTH' ? 'darth' : 'tie'
+  // kind 'darth', every other slot a plain TIE. Past the plan's end the supply does
+  // NOT invent a mook (sw8-10): `supplyEntry` is total — ADASHP clamps to the set's
+  // LAST group and restarts its loop pointer (WSCPU.MAC:1083-1090), so the endless
+  // tail is the 18-entry TWV2Z mix looped in order, and Darth never re-enters.
+  const entry = supplyEntry(spaceWave, spawnIndex)
+  const kind = entry.shape === 'RTH' ? 'darth' : 'tie'
   // Task 3 (sw7 TIE-VM wiring, docs 4c93855): SEAT this fighter's own choreography
-  // VM from the SAME plan entry — `entry.choreography` is the `.WV` triple's TCH
+  // VM from the SAME entry — `entry.choreography` is the `.WV` triple's TCH
   // ref (e.g. '1A1', '2D3'), resolved to a VM program index by `choreoPc`. Task 4
-  // now DRIVES flight from it (applyManeuver). Past the plan's end (no entry)
-  // default to the first mook script, '1A1' (TCH1A1) — the same fallback the
-  // `?? 'TIE'` shape above uses.
-  const vm = initVm(choreoPc(entry?.choreography ?? '1A1'))
+  // now DRIVES flight from it (applyManeuver).
+  const vm = initVm(choreoPc(entry.choreography))
   return { pos, kind, orient: lookRotation(FACING_PLAYER), vm, firedGun: false }
 }
 

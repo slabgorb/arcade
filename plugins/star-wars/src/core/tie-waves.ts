@@ -138,3 +138,24 @@ export function choreoPc(choreography: string): number {
   const slot = SLOT_INDEX[choreography[2]]
   return table === '1' ? TCH1[letter * 4 + slot] : TCH2[letter * 3 + slot]
 }
+
+/**
+ * The TOTAL spawn supply for a wave — ADASHP's rule, not just the finite plan
+ * (sw8-10). In-plan indices return the plan entry verbatim. Past the plan's end
+ * the ROM neither stops nor invents: at end-of-group ADASHP `INC WV.LVL`s, the
+ * range check `CMPB 0(X)+ / IFHI / LDB -1(X)` CLAMPS the group index to the
+ * selected set's LAST group, and `LDD B(X) / STD WV.LP` RESTARTS that group's
+ * loop pointer at its first entry (WSCPU.MAC:1058-1090 — the clamp at
+ * :1083-1085, the restart at :1090). Every set's last group is TWV2Z
+ * (:1230-1235), so the endless tail of every space wave is the 18-entry TWV2Z
+ * mix — nine rows of it the ±2048 D-corners — looped entry-by-entry, forever.
+ * The loop is the LAST GROUP, never the whole plan: TWV2Z schedules no RTH, so
+ * Darth appears once per wave and can never re-enter from the tail.
+ */
+export function supplyEntry(spaceWave: number, spawnIndex: number): WaveEntry {
+  const plan = waveSpawnPlan(spaceWave)
+  if (spawnIndex < plan.length) return plan[spawnIndex]
+  const set = selectWaveSet(spaceWave)
+  const tail = TWV_GROUPS[set[set.length - 1]]
+  return tail[(spawnIndex - plan.length) % tail.length]
+}
