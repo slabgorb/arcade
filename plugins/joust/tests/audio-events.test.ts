@@ -40,8 +40,10 @@
 //     needs its own, different test — `the stream is REBUILT each frame` below
 //     — which steps past a triggering frame and demands the event be GONE.
 //     This trap is not hypothetical here: joust's EXISTING `DemoState.events`
-//     log is append-and-cap (`[...demo.events, ...collided.events].slice(-32)`,
-//     demo.ts:1173), and `stepGame` only tells this frame's entries from last
+//     log is append-and-cap (`[...demo.events, ...collided.events]
+//     .slice(-EVENT_LOG_CAP)`, demo.ts:1318, the cap declared 32 at demo.ts:311 —
+//     this cited `:1173` and a literal `slice(-32)` from jt5-1 until jt5-4
+//     re-anchored it), and `stepGame` only tells this frame's entries from last
 //     frame's by a reference-set delta (game.ts:376-380). A cue channel built
 //     on that log inherits exactly the defect determinism cannot see.
 
@@ -350,9 +352,9 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   // an enemy-vs-enemy tie) throw one dying enemy's egg somewhere this file's
   // fixed 5-frame `scripted` walk never revisits. The egg has no wave tag
   // (`eggProcess` — demo.ts:824 — carries no `waveEgg: true`, so `stepDemo`'s
-  // self-clear hatch at demo.ts:1187 never matures it — a pre-existing,
+  // self-clear hatch at demo.ts:1194 never matures it — a pre-existing,
   // documented jt4-4/jt4-5 gap, not new here), and stepDemo's own
-  // `!enemiesLeft && !processes.some(egg)` clear gate (demo.ts:1219-1222) never
+  // `!enemiesLeft && !processes.some(egg)` clear gate (demo.ts:1226-1229) never
   // passes while it sits there. MEASURED: seed 0xbeef never advances past wave 1
   // and never loses/re-enters a player again, checked out to 100,000 frames —
   // this is not "the moment moved a few frames", it is gone for this seed under
@@ -496,7 +498,7 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
   })
 
   it('the stream is NOT joust’s capped DemoState.events log wearing a new name', () => {
-    // `demo.ts:1173` keeps the last 32 entries of an append-only log and nothing
+    // `demo.ts:1318` keeps the last EVENT_LOG_CAP (32) entries of an append-only log and nothing
     // clears it per frame. If the cue channel were that log — or derived from it
     // by the reference-set delta game.ts:376 uses — a quiet frame would still
     // report the last kill. Compare the two ON THE SAME QUIET FRAME: the sim log
@@ -572,10 +574,10 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // for this seed: all three of wave 1's enemies are dead by frame 251, but
     // the last one's kill-egg (`egg#65792`) lands somewhere this file's fixed
     // 5-frame walk never revisits. A kill-egg carries no `waveEgg` tag, so
-    // `stepDemo`'s self-clear hatch (demo.ts:1187) never matures it — a
+    // `stepDemo`'s self-clear hatch (demo.ts:1194) never matures it — a
     // pre-existing jt4-4/jt4-5 gap this story's physics change exposes rather
     // than causes — and the wave-clear gate (`!processes.some(egg)`,
-    // demo.ts:1221) never opens. MEASURED to hold out to 100,000 frames: no
+    // demo.ts:1228) never opens. MEASURED to hold out to 100,000 frames: no
     // further death, respawn, or wave advance ever fires for this seed under
     // this script again. `rng` is still bit-identical to the pre-story value.
     // The three "ordinary play" tests that used to sit downstream of this run

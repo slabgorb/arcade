@@ -686,9 +686,26 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
     expect(cuesOf(d)).toEqual([PLAYER_THUD])
   })
 
-  it('and the bounce lands on the same frame — one rises, one sinks', () => {
+  it('and the bounce lands on the same frame — the ROM sends X up and U down, never the reverse', () => {
+    // ABSOLUTE, not a count. `OSTXTP` (:5104-5108) is unconditional and names its
+    // two parties by REGISTER: `:5106 JSR OSTXDN  MOVE REG.U GUY DOWN` and
+    // `:5108 JSR OSTXUP  & REG.X GUY UP`. Which party is which is settled by the
+    // SCAN DRIVER, not by this port (`:4874 LDU PLINK,U` walks the process list
+    // into U; `:4880 LEAX ,U` / `:4881 LDX PLINK,X` starts X AT U and walks it
+    // forward), so U is always the EARLIER element of a pair — here `P1`,
+    // `eligible[0]` — and X always a LATER one — here `A`.
+    //
+    // This used to count `filter(v => v === UP_FROM_DESCENDING).length === 1` on
+    // both birds, which is symmetric by construction and CANNOT FAIL: swapping
+    // `bounceBottom(a)`/`bounceTop(b)` at demo.ts:926-927 inverted both roles and
+    // left it green. The count assertions are kept below the absolute ones —
+    // they are what catches a bounce that separates NOBODY.
     const d = stepDemo(stage(tie(true)), { [P1]: IDLE })
     expect(cuesOf(d), 'precondition: the thud really fired on this frame').toEqual([PLAYER_THUD])
+    expect(velYOf(d, A), 'A is X (eligible[1]): OSTXTP sends REG.X UP, :5108').toBe(
+      UP_FROM_DESCENDING,
+    )
+    expect(velYOf(d, P1), 'P1 is U (eligible[0]): OSTXTP sends REG.U DOWN, :5106').toBe(DESCENDING)
     const vys = [velYOf(d, P1), velYOf(d, A)]
     expect(vys.filter((v) => v === UP_FROM_DESCENDING).length, 'exactly one takes OSTXUP').toBe(1)
     expect(vys.filter((v) => v === DESCENDING).length, 'and exactly one takes OSTXDN').toBe(1)
@@ -712,6 +729,15 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
       [P1, A].filter((id) => velYOf(d, id) === UP_FROM_DESCENDING)
     expect(riser(top).length, 'precondition: A really bounced').toBe(1)
     expect(riser(bottom).length, 'precondition: B really bounced').toBe(1)
+    // Two assertions, and they catch DIFFERENT defects. The absolute pair names
+    // WHICH bird rises (`A`, register X, per `:5108`) and is the only thing that
+    // can see a role INVERSION — inverting demo.ts:926-927 moves the rise in BOTH
+    // stagings at once, so the relative assertion below stays green through it.
+    // The relative one is what catches a person tie that consults GEOMETRY, which
+    // the absolute pair alone would not: a height-dispatching implementation still
+    // sends A up in `tie(true)` and only diverges in `tie(false)`.
+    expect(riser(top), 'staging A: OSTXTP sends REG.X (=A) up, :5108').toEqual([A])
+    expect(riser(bottom), 'staging B: the SAME register, though the geometry moved').toEqual([A])
     expect(
       riser(bottom),
       'the player tie routes through OSTXTT -> OSTXTP with no height test, ' +
