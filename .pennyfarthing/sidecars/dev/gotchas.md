@@ -1124,3 +1124,55 @@ typing change and not a quiet removal of tests that would not compile." Shared c
 across 26 files and the full cabinet 10413 + 1 todo across 698 — both identical to the pre-fix
 baseline TEA recorded. A conversion this wide is exactly where a test quietly stops running, and
 "all green" would not have said so.
+
+---
+
+## An audio SEAM story: the suite cannot tell you a cue will ever fire (jt5-1, joust, 2026-07-31)
+
+A three-file audio seam (`core/events.ts` union → `shell/audio.ts` manifest → `shell/audio-dispatch.ts`
+switch) is the same shape in every cabinet, and TEA's suites for it are thorough about the WIRING.
+They are structurally unable to tell you the thing that actually matters: **that a declared kind has
+an emitter that can fire.** The manifest sweep, the dispatch sweep and the coverage check all read
+the same `EVENT_KINDS` tuple, so a kind with no emitter passes every one of them and ships a cue
+that can never sound. Going green is not the end of the job.
+
+**Drive every kind from a real code path before you claim it works.** On jt5-1 that was 3×12,000
+frames of ordinary seeded play, which surfaced **seven of eleven**. The other four each needed
+deliberate staging — a forced wave advance past the first destructive wave, a ledger parked one
+award under the extra-man threshold, an egg wave stepped far enough for an egg to mature, and a
+two-entity collision set up by hand. All four fired, but nothing in the suite would have noticed if
+they had not.
+
+**A staged probe can pass for the wrong reason, and it looks identical.** The first ptero-kill
+staging put the knight in the LOSING height band, so the frame emitted `player-death` — which is
+the *correct* cue for what actually happened. "A cue came out" was one geometry error away from
+being read as "the kill cue works". Assert the SPECIFIC kind and a corroborating state change (a
+`dissolve` process appeared), never that the list is non-empty.
+
+**Read the function you are diffing, not its name.** The cliff cue first counted
+`destroyedCliffs.length` growth — which silently assumes destruction accumulates. The doc comment on
+`applyWaveDestruction`, two lines above the call, says the opposite: destruction *reflects* the
+current wave and rebuilds cliffs whose bit is now clear. A wave rebuilding one cliff while
+destroying another leaves the count unmoved and would have gone silent. Measured across waves 1–40
+the shipped table contains rebuilds but no count-preserving swap, so the emitted count was 21 either
+way — **latent, not live**. Say so in exactly those words; "found and fixed a bug" overclaims and
+"no findings" hides a real reasoning error the data happened to cover for.
+
+**Where to emit: at the decision, not from a diff.** Reconstructing moments in the session layer by
+diffing process lists is tempting and mostly works, but telling a HATCHED egg from a COLLECTED one
+ends up leaning on an id-namespace trick (`0x40_0000 + id` reappearing as an enemy). Emitting inside
+the collision pass, where the outcome is already decided, cannot mistake one removal for another.
+The cost is a new required field on the sim state — check first that every test builds that state by
+SPREADING an existing one (they did), and note that a frozen test-contract type mirroring it may
+already be a subset and need no edit at all.
+
+**Two derivations worth stealing.** An extra-man award is counted off the ledger's own re-armed
+threshold (`(after.extraManAt − before.extraManAt) / INTERVAL`), not off `lives` — a death
+decrements lives on the same frame an award increments it and the two CANCEL. A wave bounty is
+detected by a score actually MOVING, not by object identity, because the award function returns
+fresh ledgers whether or not it paid.
+
+**Prose counts in the README are part of the diff.** joust's README carried five measured figures
+this story moved — suite size, claim count (twice), and a whole `skipIf` reconciliation block of six
+numbers. Nothing checks any of them. Re-measure and update them in the same commit, or the next
+reader inherits a document that is confidently wrong about a thing they can verify in one command.
