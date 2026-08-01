@@ -178,6 +178,21 @@ stories:
       ALSO SETTLED BY jt5-10 AND WORTH KNOWING HERE: the pterodactyl reaches neither FLAPLP nor FLIPLP, so it sounds no wing cue and needs no wing sample. Claims JT510-001..006 carry that chain.
     points: 3
     priority: p3
+    status: done
+    started: '2026-08-01'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-01'
+  - id: jt5-17
+    title: 'Measure PTEBRD and route the ptero-vs-buzzard pair: SNETHD sounds, then the ptero/bird collision resolves'
+    description: |-
+      Filed by jt5-16, which admitted the pterodactyl to collisionPass's eligible set and routed ONLY the ptero/ptero pair (enemy-thud + the ordinary bump). The mixed pair was left unbuilt on purpose: the pair loop skips any ptero/non-ptero pair, and tests/demo-jt5-16.test.ts pins that a ptero/buzzard overlap resolves NOTHING until this story lands.
+
+      WHAT THE ROM DOES (verified against the vendored JOUSTRV4.SRC during jt5-16 review). The no-kill branch (:4961) sounds SNETHD FIRST — ':5019 OSTHT2 LDX #SNETHD / :5020 JSR VSND' — then tests PID on both parties for #$80+PTEID (:5022-5027). A pair with exactly ONE pterodactyl goes to PTEBRD ('COLIDE PTERODACTYL & BIRD'): via OSTPX (:5034) when the ptero is party U, or via OSTH13's 'EXG X,U' (:5037-5038, ':5036 * REG.U IS PTERODACTYL') so the ptero is ALWAYS in U on entry. PTEBRD itself is UNMEASURED — this story's first job is to read that routine and settle what it does (who bumps, who dies, what cue beyond the already-sounded SNETHD) before porting it.
+
+      DELIVERABLES: (1) the PTEBRD read, claimed in docs/rom-study/claims (JT516-001/002 already claim OSTH12's dispatch, :5031/:5033); (2) the port: replace the pair loop's mixed-pair skip in collisionPass (demo.ts, 'a ptero pairs only with a ptero') with the measured routing, ptero-in-U orientation preserved; (3) flip the jt5-16 scope-fence test in demo-jt5-16.test.ts in place — updating it here is the point of it, exactly as jt5-16 flipped jt5-10's. Also inherit jt5-16's latent note: spawnWavePteros stacks a wave's ptero complement at one coordinate, so once mixed pairs resolve, wave entries with pteros near buzzards may cue — measure, don't guess.
+    points: 3
+    priority: p3
     status: backlog
     repos: arcade
     workflow: tdd
