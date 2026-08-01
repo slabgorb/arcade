@@ -48,12 +48,14 @@ function holdingTwist(twist: number): ChoreoVm {
  *  lone fixture is the only shooter and its homing fireballs never end the
  *  run mid-measurement. `phaseTime: 0` undoes wave 1's 1.95 s head start on
  *  the PH.TIM clock: the PH$SP2 warp ends space at 21 s (sw8-11), so a zeroed
- *  clock gives a 420-frame budget — every run below stays at ≤ 380 frames. */
+ *  clock gives a budget of 21 × TICK_HZ ≈ 430.7 frames (TICK_HZ is the IRQ÷12
+ *  246.094/12 ≈ 20.51, NOT a round 20 — sw8-16 review round 1) — every run
+ *  below stays at ≤ 380 frames. */
 function spaceWith(tie: Enemy, seed = 1983): GameState {
   return { ...initialState(seed), wave: 1, enemies: [tie], spawnTimer: 1e9, lives: 999, phaseTime: 0 }
 }
 
-/** The longest measurement any test below takes — inside the 420-frame phase
+/** The longest measurement any test below takes — inside the ≈430-frame phase
  *  budget, and long enough that a gate-open fighter statistically cannot stay
  *  silent (≈23 open cadence windows at mask 0x0F, ~50% each). */
 const RUN_FRAMES = 380
@@ -125,10 +127,13 @@ describe('TIE fire gate — the A$GLW glow lockout (WSCPU.MAC:631-632)', () => {
   })
 
   it('the lockout is a WINDOW, not a latch: fire resumes once the glow decays', () => {
-    // 4 s of glow = 80 game frames at TICK_HZ. The gate reads the INCOMING
-    // glow (the decision tick runs before the decay map), so steps 1..80 are
-    // blocked and step 81 is the first eligible tick. Assert around that
-    // boundary tolerantly — the exact resume step belongs to the mask + PRNG.
+    // 4 s of glow = 4 × TICK_HZ ≈ 82.03 game frames (TICK_HZ ≈ 20.51, not a
+    // round 20). The gate reads the INCOMING glow (the decision tick runs
+    // before the decay map), which stays a positive sliver through step 83
+    // (4 − 82×TICK_DT ≈ 0.0015), so the first eligible tick is step 84.
+    // `blockedFrames` is computed from the live constant and the bound below
+    // is deliberately a shade looser than that FP sliver; the exact resume
+    // step belongs to the mask + PRNG.
     const GLOW_SECONDS = 4
     const blockedFrames = GLOW_SECONDS * TICK_HZ
     const tie = makeTie({ pos: POST, orient: lookAtOrigin(POST), kind: 'darth', glow: GLOW_SECONDS })
