@@ -75,32 +75,32 @@ const ANCHORS: Anchor[] = [
     what: 'the ?wave= shell-only debug param the ?seed= override is modelled on',
   },
   {
-    cite: 'main.ts:106',
-    line: 106,
+    cite: 'main.ts:117',
+    line: 117,
     must: /^window\.addEventListener\('keydown', unlockAudio\)$/,
     what: "the window 'keydown' gesture binding that unlocks the audio engine",
   },
   {
-    cite: 'main.ts:108-111',
-    line: 108,
+    cite: 'main.ts:119-122',
+    line: 119,
     must: /^canvas\.addEventListener\('click', \(\) => \{$/,
     what: "the canvas 'click' listener, which calls unlockAudio() before lock.request()",
   },
   {
-    cite: 'main.ts:117-119',
-    line: 117,
+    cite: 'main.ts:128-130',
+    line: 128,
     must: /^window\.addEventListener\('keydown', \(e\) => \{$/,
     what: 'the initials keydown listener — a second window keydown, NOT a gesture binding',
   },
   {
-    cite: 'main.ts:137',
-    line: 137,
+    cite: 'main.ts:148',
+    line: 148,
     must: /createAttract\(/,
     what: 'where attract is seeded — the line the ?seed= override has to reach',
   },
   {
-    cite: 'main.ts:216',
-    line: 216,
+    cite: 'main.ts:227',
+    line: 227,
     // Two lines in main.ts read `requestAnimationFrame(frame)`. The TRAILING
     // one — the link in the chain a thrown exception breaks — is the indented
     // one inside `frame()`; the bare one at column 0 is the bootstrap that

@@ -44,9 +44,12 @@
 //    green 8 times running is not proven green, and every other centipede suite
 //    pins a literal seed. `SEED` below is that pin; it reaches main.ts through
 //    `window.location.search`, in the shape of the `?wave=` debug param the
-//    shell already parses (main.ts:36-45). **`?seed=` DOES NOT EXIST YET** —
-//    adding it is this rework's one production change, and `seedWasHonoured`
-//    is the assertion that reds until it lands.
+//    shell already parses (main.ts:36-45). `?seed=` was this rework's one
+//    production change — it did not exist when these guards were written, and
+//    `seedWasHonoured` is the assertion that reddened until it landed. Keep
+//    that assertion: without it, a `?seed=` that stops being honoured leaves
+//    every emergent claim in the three suites exactly as unproven as before,
+//    and green.
 
 import { createAttract, type SimState } from '../../src/core/sim'
 

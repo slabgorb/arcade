@@ -171,11 +171,12 @@ beforeAll(async () => {
 describe('cp5-2 AC3 — an unmapped kind must not freeze the frame loop', () => {
   it('the boot is SEEDED — "a step emitted something within 400 tries" is reproducible', () => {
     // REWORK (Reviewer round 1, MEDIUM). This file plays until a step emits an
-    // event and poisons that step, giving up after 400 tries. Against
-    // `createAttract(Date.now())` (main.ts:137) whether one arrives in time is a
-    // property of the wall clock. With the seed pinned it is a property of the
-    // game. See helpers/boot-shell.ts `seedWasHonoured` — `?seed=` does not
-    // exist yet, and this is the RED that asks for it.
+    // event and poisons that step, giving up after 400 tries. Against a
+    // wall-clock seed (main.ts:148 still falls back to `Date.now()` when no
+    // `?seed=` is given) whether one arrives in time is a property of the
+    // clock. With the seed pinned it is a property of the game. See
+    // helpers/boot-shell.ts `seedWasHonoured`, which is what stops the override
+    // from silently stopping working.
     expect(
       seedWasHonoured(bootCells),
       `main.ts did not boot the world ?seed=${SEED} asks for — it is still seeding attract ` +
@@ -220,7 +221,7 @@ describe('cp5-2 AC3 — an unmapped kind must not freeze the frame loop', () => 
       outcome.threw,
       `the unmapped kind threw out of the frame callback (${String(outcome.threwOnPoisonedFrame)}). ` +
         'In the browser this exception escapes into requestAnimationFrame, the trailing ' +
-        'requestAnimationFrame(frame) at main.ts:216 never runs, and the game freezes on the ' +
+        'requestAnimationFrame(frame) at main.ts:227 never runs, and the game freezes on the ' +
         'last drawn frame. Per the AC3 ruling the dispatch must DEGRADE — skip the cue it ' +
         'cannot name and keep going',
     ).toBe(false)

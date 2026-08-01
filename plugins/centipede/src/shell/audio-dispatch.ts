@@ -74,8 +74,10 @@ export function playEventSounds(audio: SoundSurface, events: readonly GameEvent[
     //
     // Nothing is given up at compile time — see above, the guarantee was never
     // in the throw. All five games that shipped this seam first degrade the same
-    // way: tempest:111-118, asteroids:33-37, battlezone:74-80, red-baron:68-74,
-    // joust:70-78. centipede was the outlier.
+    // way: tempest:111-119, asteroids:57-64, battlezone:74-80, red-baron:68-74,
+    // joust:70-78. centipede was the outlier. (Re-resolved on rework: the
+    // asteroids citation read :33-37, which is the INNER switch's
+    // `= event.source` arm — a real span, but the less analogous of the two.)
     const sound: SoundName | undefined = EVENT_SOUND[event.type]
     if (sound === undefined) continue
 

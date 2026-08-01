@@ -17,16 +17,23 @@ input/render shell, the same architecture as its siblings
 > landed (cp5-1) and the cabinet is still silent** — `src/core/events.ts` emits
 > every gameplay moment as data, `src/shell/audio.ts` holds the SOUNDS manifest
 > and channel map, and `src/shell/audio-dispatch.ts` wires them to the shared
-> engine. **Two** things are still missing, and the second is the easy one to
-> overlook. The shell is **not connected**: `main.ts` calls neither
-> `createAudio` nor `playEventSounds`, so the seam is unit-tested and
-> unreachable in play — deliberately, because wiring it today would buy nothing
-> but 404s. That is story `cp5-2`. And the sound itself: **no samples are baked or
-> uploaded yet**, so every cue resolves to a file that is not there and the
-> shared engine degrades silently. Baking and hosting them is owned by the open epic
+> engine. As of `cp5-2` the shell is connected too: `main.ts` builds the engine
+> with `createAudio()` behind the browser's gesture gate and calls
+> `playEventSounds` once per stepped frame, so the seam is reached in ordinary
+> play. **One** thing is still missing — the sound itself: **no samples are
+> baked or uploaded yet**, so every cue resolves to a file that is not there and
+> the shared engine degrades silently. Baking and hosting them is owned by the open epic
 > `sprint/epic-cp5.yaml`. The acceptance test for those asset stories is a
 > live `200` on the hosted `.wav`, never a green vitest — because a missing
 > sample and a working one look identical to the test suite.
+>
+> **One consequence to know before you open devtools:** the player's first
+> gesture now fires **14** requests, one per `SOUNDS` entry, and every one of
+> them is a `404` against `arcade-assets.slabgorb.com`. That is **expected**
+> until the asset stories land — the shared engine swallows a failed load by
+> design and the game runs on at a steady 60 fps. It is not a bug, and it is the
+> only wall of red in centipede's console that the missing samples explain.
+> (The `favicon.ico` 404 is a separate, pre-existing one.)
 
 ---
 

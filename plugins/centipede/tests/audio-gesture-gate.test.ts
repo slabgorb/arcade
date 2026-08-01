@@ -76,10 +76,10 @@ beforeAll(async () => {
   // span names a listener now. Both citations are re-taken against the wired
   // file, and they name where `unlockAudio` actually binds rather than which
   // listeners happened to exist first:
-  //   • main.ts:106      — `window.addEventListener('keydown', unlockAudio)`
-  //   • main.ts:108-111  — the canvas 'click' listener, which calls
+  //   • main.ts:117      — `window.addEventListener('keydown', unlockAudio)`
+  //   • main.ts:119-122  — the canvas 'click' listener, which calls
   //                        `unlockAudio()` before `lock.request()`
-  // (The third listener, the initials keydown at main.ts:117-119, is a separate
+  // (The third listener, the initials keydown at main.ts:128-130, is a separate
   // window keydown and is not a gesture binding.) These lines are pinned by
   // tests/audio-citations.test.ts so the next diff that moves them reds.
   shell.emit('canvas', 'click', {})
@@ -94,12 +94,13 @@ beforeAll(async () => {
 describe('cp5-2 AC4 — the gesture gate is respected', () => {
   it('the boot is SEEDED — this file observes a pinned world, not whatever the clock said', () => {
     // REWORK (Reviewer round 1, MEDIUM). Shared with the other two boot suites:
-    // main.ts:137 seeds attract from `Date.now()`, so "the attract screen ran 60
-    // frames and stayed silent" was an observation about one particular world.
-    // Attract silence is a core guarantee (core/events.ts:23-26) and does not
-    // depend on the seed, but the run below is only reproducible if the seed is.
-    // See helpers/boot-shell.ts `seedWasHonoured` — the `?seed=` override this
-    // asks for does not exist yet.
+    // main.ts:148 seeded attract straight from `Date.now()`, so "the attract
+    // screen ran 60 frames and stayed silent" was an observation about one
+    // particular world. Attract silence is a core guarantee
+    // (core/events.ts:23-26) and does not depend on the seed, but the run below
+    // is only reproducible if the seed is. The shell-only `?seed=` override now
+    // exists; see helpers/boot-shell.ts `seedWasHonoured`, which is what stops
+    // it from silently stopping working.
     expect(
       seedWasHonoured(bootCells),
       `main.ts did not boot the world ?seed=${SEED} asks for — it is still seeding attract ` +

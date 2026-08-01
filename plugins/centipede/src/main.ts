@@ -44,6 +44,17 @@ const params = new URLSearchParams(window.location.search)
 const rawWave = Number.parseInt(params.get('wave') ?? '', 10)
 const debugWave = Number.isFinite(rawWave) ? Math.min(Math.max(rawWave, 1), WAVE_SEED_MAX) : 1
 
+// cp5-2 rework: shell-only `?seed=N` rng seed (Design Deviation, TEA ruling),
+// the same class as `?wave` above — parsed in the SHELL and handed to the core
+// as an ordinary argument, so nothing debug-shaped enters createSim's contract.
+// Without it attract seeds from the wall clock, and the three cp5-2 boot suites
+// assert EMERGENT play (the gun cue fires, a spider loop opens and closes, some
+// step emits two events) against whatever world Date.now() happened to deal.
+// Every other centipede suite pins a literal seed; these could not, because the
+// seed was not reachable from outside the shell.
+const rawSeed = Number.parseInt(params.get('seed') ?? '', 10)
+const debugSeed = Number.isFinite(rawSeed) ? rawSeed : Date.now()
+
 // cp3-3: shell-only `?demo=ecosystem|flea` frozen-frame seed for the AC-4
 // artifact (Design Deviation, same class as cp2-13's `?wave`). Composed and
 // warmed up in the SHELL (src/shell/demo.ts); the pure core stays debug-free and
@@ -134,7 +145,7 @@ resize()
 // with an empty one on purpose, since it may not read storage itself.
 let sim: SimState = demoKind
   ? buildDemo(demoKind)
-  : { ...createAttract(Date.now()), wave: debugWave, highScoreTable: highScoreStorage.load() }
+  : { ...createAttract(debugSeed), wave: debugWave, highScoreTable: highScoreStorage.load() }
 ;(window as unknown as { __sim: () => SimState }).__sim = () => sim
 
 // cp2-13: bake the atlas from the (possibly debug-seeded) initial wave, and
