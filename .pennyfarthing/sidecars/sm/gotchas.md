@@ -676,8 +676,7 @@ empty. Verify the content is represented on `main`, then delete.
 ## With the reviewer specialists disabled, a MUTATION BATTERY is the review — and its most useful output is an EQUIVALENT MUTANT (jt5-5, 2026-08-01)
 
 **Situation:** `pf settings get workflow.reviewer_subagents` reports `preflight: true` and the other
-eight `false`. This project also stands on "do not use the Agent tool unless asked", so even
-preflight was not spawned. Nine specialist rows, zero specialists.
+eight `false` — nine specialist rows, one live specialist.
 
 **What worked:** 18 mutations against committed source, each run through
 `--project shared --project joust`, source restored after. 17 were caught. Re-reading the diff by
