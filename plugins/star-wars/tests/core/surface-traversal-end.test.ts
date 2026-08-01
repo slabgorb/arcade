@@ -279,10 +279,15 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 //
 // WHY THIS IS NOT A ONE-LINE `if` (the thing the story's "same fix shape as
 // sw8-13" phrasing hides). `const lives = surfaceHit.lives` is bound at
-// sim.ts:1128 — 131 lines BELOW the push — so `if (lives > 0)` around :996 does
-// not compile. The only binding in scope there is `state.lives`, which describes
-// a frame ENTERED dead; the dispatcher (sim.ts:185) makes that unreachable, so
-// gating on it would be a no-op. sw8-13 had the ordering for free (space:
+// sim.ts:1128 — 131 lines BELOW the push. Wrapping the push in `if (lives > 0)`
+// was compiled to check, and tsc rejects it:
+//   sim.ts(997,9): error TS2448: Block-scoped variable 'lives' used before its
+//                  declaration.
+//   sim.ts(997,9): error TS2454: Variable 'lives' is used before being assigned.
+// The only binding in scope there is `state.lives`, which describes a frame
+// ENTERED dead; the dispatcher (sim.ts:185) makes that unreachable, so gating on
+// it would be a no-op (the last test below pins that, and it reddens when the
+// gameover branch is disabled). sw8-13 had the ordering for free (space:
 // loseShield :633, gate :662). The surface stepper has them reversed, so this
 // port must RE-ORDER the decision below the shield resolution, not wrap it.
 //
@@ -293,6 +298,14 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 //   - the S-016 case has damage land and be DROPPED by the redraw window, so a
 //     fix gating on `damage > 0` silences a cue the pilot should hear.
 // Only the post-`loseShield` result satisfies all four.
+//
+// The five tests here that pass on arrival are regression guards, and each was
+// mutation-proved rather than assumed: deleting the cue push reddens all four
+// "still cues" cases, and disabling the gameover branch at sim.ts:185 reddens
+// the reachability case. The one-shot property (the cue must not repeat on
+// every frame past the threshold) is guarded by `cues exactly one finishGround
+// tune during the surface traversal` above — a single-frame test cannot see it,
+// which is why that one is named in this story's ACs as must-stay-green.
 //
 // Reachable only when the speed crossing and the LAST shield's fall share one
 // frame — the story's ~0.05 s window.
