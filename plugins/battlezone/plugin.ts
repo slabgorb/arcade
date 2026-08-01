@@ -9,6 +9,6 @@ export const meta: GameMeta = {
   controls: ['DRIVE — Arrows / E D I K', 'FIRE — Space / F'],
   order: 4,
   listed: true,
-  showcase: false,
+  showcase: true,
   version,
 }

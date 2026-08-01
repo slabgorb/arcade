@@ -157,10 +157,17 @@ describe('the generated registry', () => {
     expect(getGame('red-baron')?.listed).toBe(false)
   })
 
-  it('keeps the showcase carousel at tempest and centipede', () => {
+  it('keeps the showcase carousel at tempest, battlezone and centipede', () => {
     // showcase is required and never defaulted precisely so this set cannot change by
     // omission. If a game joins or leaves the carousel, it is because someone said so.
-    expect(GAMES.filter((g) => g.showcase).map((g) => g.id)).toEqual(['tempest', 'centipede'])
+    // battlezone said so in ad1-2: its attract mode has self-played since the bz1-10 era
+    // (core/sim.ts drives the same stepBattle real play uses through an autopilot), so
+    // the opt-in was the only work the story had left.
+    expect(GAMES.filter((g) => g.showcase).map((g) => g.id)).toEqual([
+      'tempest',
+      'battlezone',
+      'centipede',
+    ])
   })
 
   it('derives launch paths from the id on one origin', () => {
