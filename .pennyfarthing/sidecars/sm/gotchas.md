@@ -824,3 +824,16 @@ is the same invisible-claim hole as ever. Same return also handled the push race
 (rebased over a sibling's sw8-17 completion, non-overlapping) — but its context file still shipped
 the `## Technical Approach` FILLER stub even while writing a rich Background above it: the cp5-2
 rule ("check the CONTENT, fill Approach/Scope with measured pointers yourself") held exactly.
+
+## Add `- **Branch:** none` to Story Details BEFORE finish on trunk-based stories — proactive beats the jt8-3 recovery (jt5-2, 2026-08-01)
+
+Dated confirmation of the jt8-3 entry, from the prevention side: the session never contained any
+`**Branch:**` token (only `**Branch Strategy:**`, which the scraper's `**Branch:**` pattern does not
+match), the field was added proactively in the finish phase, and `pf sprint story finish` ran clean
+first try. Also confirmed: pre-loading the sm-finish preflight prompt with the round structure, the
+routed-findings dispositions AND "zero file writes, return text only" produced blocking_count 0 with
+every routing independently re-verified — third clean run of that pattern (sw7-16's resurrection
+hazard has not recurred when the prompt carries the structure). And when verifying the pushed archive,
+split compound assertions: a `count('HTTP/2 200') == 17` check failed because the Impact Summary's own
+"17×" prose mention raised the count to 19 — the archive was right and the checker's expectation was
+wrong. Anchor counts to the table's row SHAPE (`^\S+\.wav\s+HTTP/2 200`), not to a bare substring.
