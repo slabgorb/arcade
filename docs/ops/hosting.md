@@ -318,17 +318,24 @@ cutover, run it against the single origin:
 `curl -sL … -w "%{http_code}"` per game, and anything but `200` fails the run. Read its
 output accordingly, because the two halves are not symmetric:
 
-- **A non-200 means the game is not being served at that path.** That is the `/<id>/`
+- **A `404` means the game is not being served at that path.** That is the `/<id>/`
   404 row in the table above (the directory-index rewrite not covering nested paths),
-  or a key prefix that was never uploaded at all. The pane is reporting a symptom, not
-  a carousel bug — work back up that table before suspecting the showcase.
-- **A 200 is not a clean bill of health.** The probe never looks at the bytes, so a game
-  serving a *stale or broken* build passes it while the pane can still show a dead
-  frame. Two common cases land here and neither can ever produce a non-200: a red
-  deploy uploads nothing, leaving the last good build in place (stated at the top of
-  *Shipping*), and a stale cached build serves fine. Diagnose those by comparing what
-  the origin actually returns against the release you expect — `cf-cache-status` and
-  `last-modified`, per the cache row above — not by re-running this check.
+  or a key prefix that was never uploaded at all — including a game whose *first* deploy
+  went red, which leaves no previous build to fall back to. The pane is reporting a
+  symptom, not a carousel bug — work back up that table before suspecting the showcase.
+- **A `000` is not an HTTP status at all.** It is what `curl` prints when it never got a
+  response: DNS or TCP failure, or the `--connect-timeout 5` / `--max-time 15` budget
+  expiring. It fails the run like any other non-200, so read the printed code before
+  reaching for the table above — nothing in it explains a `000`, which is a
+  reachability problem (origin down, DNS, or the network between you and it).
+- **A `200` is not a clean bill of health.** The probe never looks at the bytes, so a
+  game serving a *stale or broken* build passes it while the pane can still show a dead
+  frame. Two common cases land here, and neither produces a non-200 **once that game has
+  a good build in the bucket**: a red deploy uploads nothing, leaving the last good build
+  serving (stated near the top of *Shipping*), and a stale cached build serves fine.
+  Diagnose those by comparing what the origin actually returns against the release you
+  expect — `cf-cache-status` and `last-modified`, per the cache row above — not by
+  re-running this check.
 
 Which games appear is `showcase: true` in that game's `plugins/<id>/plugin.ts` manifest
 — not a config, a per-game product decision that flips as each game's self-play demo

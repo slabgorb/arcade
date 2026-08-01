@@ -3,6 +3,11 @@ import { readFileSync, existsSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { JSDOM } from 'jsdom'
+// Shared with showcase-dom.test.ts. Note this file runs in the `node` environment and
+// builds its documents from the imported JSDOM above, so its nodes carry no global
+// `Element` to be an instance of — the helper keys on `nodeType` for exactly that
+// reason. See its header.
+import { accessibleName } from './accessible-name'
 
 // The cabinet furniture: the vector grid floor and its mirrored ceiling, the four
 // L-shaped bezel brackets, the marquee, the curvature vignette, and the footer.
@@ -55,11 +60,6 @@ beforeAll(() => {
   doc = loadIndex()
 })
 
-// The accessible name a screen reader would announce: an explicit aria-label if one
-// is given, otherwise the visible text with whitespace collapsed.
-function accessibleName(el: Element): string {
-  return (el.getAttribute('aria-label') ?? el.textContent ?? '').replace(/\s+/g, ' ').trim()
-}
 
 describe('cabinet furniture is present', () => {
   it('has the receding vector grid floor and its mirrored ceiling', () => {

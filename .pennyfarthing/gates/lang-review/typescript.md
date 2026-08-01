@@ -164,9 +164,18 @@ line under #13.
 - Assert the composed NAME, not the attribute that produces it. A test reading
   `getAttribute('aria-label')` passes for the exact spelling that breaks 2.5.3;
   a test asserting the computed name contains the visible label fails it.
+- **Scope — do not flag these.** 2.5.3 governs user-interface COMPONENTS with a
+  visible text label, so `aria-label` is correct and idiomatic on landmarks
+  (`<nav aria-label="Games">`), and anywhere the element has no visible text to
+  replace — including text that is entirely `aria-hidden` decoration, as in a
+  wordmark split into per-letter hidden spans. There is no visible label to
+  contain, so nothing can fail to contain it. The check is about controls whose
+  visible label an `aria-label` would REPLACE.
 *Origin: uf1-13 I-F1 (an `aria-label` added to name a SHOW DEMO button replaced
 "SHOW DEMO" with "Show ALPHA demo" — a Level A regression shipped as an a11y fix,
-with the story text itself prescribing the defect)*
+with the story text itself prescribing the defect). Scope note added at uf1-13
+round-2 review, which found the unqualified check condemning two correct usages
+in the same repo.*
 
 **17. Comments and docs that assert a MECHANISM nobody re-ran**
 A comment naming a failure mode, an invariant, or what happens if you do X is a

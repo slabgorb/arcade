@@ -3,6 +3,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { LOAD_TIMEOUT_MS, SLIDE_MS, mountShowcase } from '../src/shell/showcase'
 import type { GameMeta } from '@host/contract'
 import { gamePath } from '@host/registry'
+// jsdom computes no accessible name of its own. Shared with chrome.test.ts so the
+// suite has exactly one answer to "what would a screen reader call this?" — see the
+// header of that module for why it recurses and why it avoids `instanceof`.
+import { accessibleName } from './accessible-name'
 
 // Synthetic games only. jsdom does not fetch iframe subresources, so a frame here
 // never loads on its own — which is exactly right: the success path is a dispatched
@@ -49,22 +53,6 @@ function frame(): HTMLIFrameElement | null {
 /** The frame's `src` ATTRIBUTE — the literal string the shell wrote, unresolved. */
 function frameSrc(): string | null {
   return frame()?.getAttribute('src') ?? null
-}
-
-/** A control's accessible name, computed the way a browser does for the shapes this
- *  file builds: an `aria-label` REPLACES everything, otherwise the name is the content
- *  with `aria-hidden` subtrees left out. jsdom computes no accessible name of its own,
- *  and asserting the attribute that produces one would pin the mechanism instead of the
- *  guarantee — aria-label vs. content is precisely where those two diverge, and the
- *  divergence is the bug this helper exists to keep out (WCAG 2.5.3 Label in Name). */
-function accessibleName(el: Element): string {
-  const label = el.getAttribute('aria-label')
-  if (label !== null) return label
-  return Array.from(el.childNodes)
-    .filter((n) => !(n instanceof Element) || n.getAttribute('aria-hidden') !== 'true')
-    .map((n) => n.textContent?.trim() ?? '')
-    .filter((t) => t !== '')
-    .join(' ')
 }
 
 // jsdom 29 does not implement matchMedia, so the shell must tolerate its absence
@@ -360,34 +348,51 @@ describe('reduced motion', () => {
   // operate the button (WCAG 2.5.3 Label in Name, Level A). `accessibleName` honours
   // aria-label the way a browser does, so that spelling FAILS the containment
   // assertion below rather than sailing past an attribute check.
-  it('names the game on the reveal button without renaming the button', () => {
-    stubReducedMotion(true)
-    mountShowcase(section, [ALPHA])
-    const reveal = section.querySelector('button.showcase-reveal') as HTMLButtonElement
+  //
+  // Run over TWO differently-titled games on purpose. Mounted only against ALPHA — a
+  // fixture whose title is the literal string being asserted — this case could not tell
+  // `— ${game.title}` from a hardcoded `'— ALPHA'`: the interpolation is invisible when
+  // the only value ever passed is the one in the assertion. It measured the fixture, not
+  // the code. With BRAVO in the loop the hardcode fails, which is the difference between
+  // a test named "names the game" and a test that proves it.
+  for (const g of [ALPHA, BRAVO]) {
+    it(`names the game on the reveal button without renaming the button (${g.id})`, () => {
+      stubReducedMotion(true)
+      mountShowcase(section, [g])
+      const reveal = section.querySelector('button.showcase-reveal') as HTMLButtonElement
 
-    const name = accessibleName(reveal)
-    expect(name).toContain('ALPHA')
-    // WCAG 2.5.3: the accessible name must CONTAIN the visible label, not replace it.
-    expect(name).toContain('SHOW DEMO')
-    // And the decoration stays out of it.
-    expect(name).not.toContain('▸')
-    // Added invisibly — otherwise the name could be satisfied by putting the title on
-    // screen, which is a different card than the one the design asks for. The class is
-    // the lobby's own idiom (`slideFor` names its launch link the same way) and its CSS
-    // is guarded separately in chrome.test.ts.
-    expect(reveal.querySelector('span.visually-hidden')?.textContent).toContain('ALPHA')
-  })
+      const name = accessibleName(reveal)
+      expect(name).toContain(g.title)
+      // WCAG 2.5.3: the accessible name must CONTAIN the visible label, not replace it.
+      expect(name).toContain('SHOW DEMO')
+      // And the decoration stays out of it.
+      expect(name).not.toContain('▸')
+      // Added invisibly — otherwise the name could be satisfied by putting the title on
+      // screen, which is a different card than the one the design asks for. The class is
+      // the lobby's own idiom (`slideFor` names its launch link the same way) and its CSS
+      // is guarded separately in chrome.test.ts.
+      expect(reveal.querySelector('span.visually-hidden')?.textContent).toContain(g.title)
+    })
+  }
 
   // The other half of that asymmetry, and the one a symmetry-minded refactor breaks:
   // `slideFor`'s caption IS aria-hidden (it duplicates the launch link's "Play ALPHA"
   // — pinned above in 'captions the pane with the game on screen'). This one must NOT
-  // be, because there is no launch link on the static card to duplicate; hiding it
-  // strips the game's name out of the accessibility tree entirely.
+  // be. Not because it is the only thing naming the game — since the reveal button now
+  // carries the title in its accessible name, hiding this would no longer strip the name
+  // out of the tree, and an earlier draft of this comment claiming otherwise was simply
+  // false. The reason is that this caption is the card's VISIBLE label: hide it and
+  // there is text on the screen with no counterpart in the accessibility tree, so the
+  // sighted visitor and the listening one are reading different cards.
+  //
+  // Mounted against BRAVO, not ALPHA, so the caption's own interpolation is proven
+  // somewhere in this block — every other reduced-motion case uses ALPHA, and a
+  // `caption.textContent = 'ALPHA'` hardcode would sail through all of them.
   it('leaves the static card caption announceable, unlike the live slide caption', () => {
     stubReducedMotion(true)
-    mountShowcase(section, [ALPHA])
+    mountShowcase(section, [BRAVO])
     const caption = section.querySelector('.showcase-caption') as HTMLElement
-    expect(caption.textContent).toBe('ALPHA')
+    expect(caption.textContent).toBe('BRAVO')
     expect(caption.hasAttribute('aria-hidden')).toBe(false)
   })
 
