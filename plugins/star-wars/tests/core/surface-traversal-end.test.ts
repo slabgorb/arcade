@@ -272,29 +272,36 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 // twin of PHESP1's space gate that sw8-13 ported (:1396-1397); the block in
 // `space-music-milestones.test.ts` (:358) is this suite's template.
 //
-// OURS, BEFORE THIS STORY. `stepSurface` pushes the cue at sim.ts:996-998 the
-// frame the accelerating pace first crosses SURFACE_FINISH_GROUND_SPEED — with
-// no lives gate at all — and the frame's shield loss is not resolved until
-// `loseShield` at sim.ts:1127. The cue starts over the death.
+// OURS, BEFORE THIS STORY. `stepSurface` pushed the cue immediately after the
+// pace was integrated, the frame it first crossed SURFACE_FINISH_GROUND_SPEED —
+// with no lives gate at all — while the frame's shield loss was not resolved
+// until `loseShield` some 130 lines further down. The cue started over the death.
+//
+// >> Line numbers below marked (pre-fix) describe that OLD layout and will not
+// >> match the current file: the fix moved the push. Current anchors are
+// >> `const scrollSpeed` (sim.ts:983, where the crossing is computed),
+// >> `loseShield` / `const lives` (:1122-1123) and the gated push (:1145-1150).
 //
 // WHY THIS IS NOT A ONE-LINE `if` (the thing the story's "same fix shape as
-// sw8-13" phrasing hides). `const lives = surfaceHit.lives` is bound at
-// sim.ts:1128 — 131 lines BELOW the push. Wrapping the push in `if (lives > 0)`
-// was compiled to check, and tsc rejects it:
+// sw8-13" phrasing hides). `lives` is bound by `loseShield`, far below where the
+// push used to sit. Wrapping the push in `if (lives > 0)` where it stood was
+// compiled to check, and tsc rejected it:
 //   sim.ts(997,9): error TS2448: Block-scoped variable 'lives' used before its
-//                  declaration.
+//                  declaration.                                      (pre-fix)
 //   sim.ts(997,9): error TS2454: Variable 'lives' is used before being assigned.
-// The only binding in scope there is `state.lives`, which describes a frame
+// The only binding in scope there was `state.lives`, which describes a frame
 // ENTERED dead; the dispatcher (sim.ts:185) makes that unreachable, so gating on
 // it would be a no-op (the last test below pins that, and it reddens when the
 // gameover branch is disabled). sw8-13 had the ordering for free (space:
-// loseShield :633, gate :662). The surface stepper has them reversed, so this
-// port must RE-ORDER the decision below the shield resolution, not wrap it.
+// loseShield :633, gate :662). The surface stepper had them reversed, so this
+// port had to RE-ORDER the decision below the shield resolution, not wrap it.
 //
-// Two of these tests exist specifically to refute the near-misses:
-//   - the turret-bolt case puts the damage BELOW the cue site, so a fix that
-//     reads the local `damage` counter at :996 (which the terrain crash does
-//     populate before the push) still fails;
+// Two of these tests exist specifically to refute the near-misses. Both turn on
+// where the crossing is COMPUTED (`const scrollSpeed`, :983), which sits between
+// the surface's two damage sources — the terrain scrape above it (:965-969) and
+// the turret bolt's hit-test below it (:1113-1120):
+//   - the turret-bolt case lands damage BELOW that point, so a fix reading the
+//     local `damage` counter there sees 0 and still fires;
 //   - the S-016 case has damage land and be DROPPED by the redraw window, so a
 //     fix gating on `damage > 0` silences a cue the pilot should hear.
 // Only the post-`loseShield` result satisfies all four.
@@ -332,7 +339,9 @@ describe('sw8-21 — a finishGround crossing on the death frame cues NOTHING', (
   }
 
   /** Flying below MIN_SKIM_ALTITUDE scrapes the surface: one shield, no RNG, no
-   *  enemy — and the damage is counted ABOVE the cue site (sim.ts:1064-1070). */
+   *  enemy. Its `damage++` is at `sim.ts:965-969` — ABOVE where the crossing is
+   *  computed (`const scrollSpeed`, :983), which is what makes the near-miss fix
+   *  in the turret-bolt test below look plausible. */
   const scraping = { altitude: 0 }
 
   it('the fixture really does cross on step one (guards every test below)', () => {
@@ -357,9 +366,13 @@ describe('sw8-21 — a finishGround crossing on the death frame cues NOTHING', (
   })
 
   it('silences it for a TURRET BOLT too — damage that lands BELOW the cue site', () => {
-    // The bolt's hit-test is at sim.ts:1119-1123, AFTER the push at :997, so at
-    // the cue site this frame's `damage` counter is still 0. A fix that consults
-    // it there passes the terrain-crash test above and fails this one.
+    // The crossing is computed at `const scrollSpeed` (sim.ts:983), which sits
+    // BETWEEN the two surface damage sources: the terrain scrape above it
+    // (:965-969) and the bolt's hit-test below it (`liveShots`, :1113-1120).
+    // So at the moment the crossing is known, `damage` counts a scrape but is
+    // still 0 for a bolt — and a fix that gated on `damage` there would pass the
+    // scrape test above and fail this one. Only the post-`loseShield` `lives`
+    // (:1122-1123) sees both.
     const ship = surfaceShip(SKIM_ALTITUDE)
     const out = stepGame(
       atCrossing({
