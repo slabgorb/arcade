@@ -67,6 +67,8 @@
 // Without that control the group would be the "certifies its own shape" failure
 // audio-emission.test.ts was written against.
 // Group 6 pins the SNETHD finding and the scope fence the story's ruling drew.
+// (jt5-16 UPDATE: the fence half of Group 6 is flipped IN PLACE by jt5-16, the
+// story the ruling priced — updating these guards here was always their point.)
 //
 // ─── DEGRADATION (the tp1-8 collection trap) ─────────────────────────────────
 // CI has no vendored tree, so every source re-derivation is
@@ -578,11 +580,12 @@ describe('jt5-10 AC3 — a pterodactyl flies, and flying is all it does', () => 
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// GROUP 6 — the SNETHD arm is recorded, and the scope fence holds
+// GROUP 6 — the SNETHD arm is recorded; the scope fence flipped when its story came
 //
-// The story's ruling: settle the ptero-vs-ptero read HERE, FILE the collision
-// change. So the obligation in this repo is a written record plus an untouched
-// eligible set — not a mechanic.
+// jt5-10's ruling: settle the ptero-vs-ptero read there, FILE the collision
+// change. jt5-16 is that filed story, so the fence below now demands the
+// widened set instead of forbidding it. The behavioural pins live in
+// tests/demo-jt5-16.test.ts; this group keeps the record straight.
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe.skipIf(!vendoredAvailable)('jt5-10 AC4 — the ROM routes ptero-vs-ptero, verbatim', () => {
@@ -599,20 +602,27 @@ describe.skipIf(!vendoredAvailable)('jt5-10 AC4 — the ROM routes ptero-vs-pter
   })
 })
 
-describe('jt5-10 AC4/AC5 — recorded here, built elsewhere', () => {
-  it('demo.ts records why ptero-vs-ptero is unreachable in this port', () => {
+describe('jt5-10 AC4/AC5 — recorded there, built by jt5-16', () => {
+  it('demo.ts records the routing — settled by jt5-10, closed by jt5-16', () => {
     const src = readSrc('core', 'demo.ts')
-    expect(src, 'the eligible-set filter must explain its own ptero gap').toContain('OSTHT2')
-    expect(src, 'and name the story that settled it').toContain('jt5-10')
+    expect(src, 'the record must keep the ROM routing anchor').toContain('OSTHT2')
+    expect(src, 'and keep naming the story that settled the read').toContain('jt5-10')
+    expect(src, 'and name the story that closed the gap (RED until jt5-16 lands)').toContain(
+      'jt5-16',
+    )
   })
 
-  it('the eligible-set filter is UNCHANGED — this story builds no mechanic', () => {
-    // AC5's scope fence, made mechanical. Widening this filter is precisely the
-    // gameplay change the user's ruling moved to a follow-up story.
+  it('the eligible-set filter ADMITS the ptero — the jt5-10 fence, flipped by jt5-16', () => {
+    // jt5-10 forbade exactly this widening so it could not land unpriced.
+    // jt5-16 is the story that priced it, so the fence flips in place — that
+    // was always the point of it. Anchored to the declaration that does the
+    // work (lang-review #15): the quoted kind must appear inside the pair
+    // loop's eligible filter itself, not merely somewhere in the file (the
+    // nearby comments have always said "ptero" unquoted).
     const src = readSrc('core', 'demo.ts')
-    expect(src).toContain("(p.kind === 'player' || p.kind === 'enemy') && p.collisionEnabled !== false")
-    expect(src, 'no ptero may be admitted to the joust pair loop here').not.toContain(
-      "p.kind === 'player' || p.kind === 'enemy' || p.kind === 'ptero'",
-    )
+    const at = src.indexOf('const eligible = processes.filter')
+    expect(at, 'precondition: the pair-loop eligible filter exists').toBeGreaterThanOrEqual(0)
+    const filter = src.slice(at, at + 300)
+    expect(filter, "the eligible set must admit kind 'ptero' (jt5-16)").toContain("'ptero'")
   })
 })
