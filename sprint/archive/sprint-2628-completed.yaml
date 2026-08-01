@@ -1241,3 +1241,8 @@ completed_stories:
     title: sprint epics still route stories to per-game repos that repos.yaml no longer registers
     points: 3
     completed: '2026-07-31'
+  - id: jt5-1
+    epic: jt5
+    title: Joust audio seam — the core event channel and the dispatch, no samples yet (the shared-engine ruling is moot post-migration)
+    points: 3
+    completed: '2026-08-01'
