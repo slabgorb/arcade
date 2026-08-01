@@ -1256,3 +1256,8 @@ completed_stories:
     title: The FLAP — the two-edge wing cue, and the release-edge detector the core lacks
     points: 3
     completed: '2026-08-01'
+  - id: cp5-1
+    epic: cp5
+    title: Centipede audio seam — core event channel, shell dispatch and the SOUNDS manifest, no samples yet
+    points: 3
+    completed: '2026-08-01'
