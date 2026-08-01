@@ -68,7 +68,8 @@ stories:
     description: "Found for real during the monorepo cutover, 2026-07-31, not by inspection. The first `just deploy` of the whole cabinet died on its FOURTH object when Cloudflare returned 523 Origin is unreachable, a transient API-gateway fault. wrangler had already authenticated and uploaded three files; the script threw, the recipe exited 1, and the games loop never ran at all. Production survived completely intact, and the reason it survived is the problem. scripts/deploy-r2.mjs uploads whatever collectUploads() walks, which is alphabetical, so the lobby goes assets/... then favicon.png then fonts/... then index.html. index.html is the COMMIT POINT - the single object that switches the live site from the old build to the new one, because every other asset is content-hashed and therefore additive. It sorted last purely because it begins with the letter i. Had the 523 arrived one object later, the new index.html would have gone live with tiles linking to /<id>/ for seven games that had not been uploaded yet: six dead tiles on the front door, from a command that exits 1 without indicating which side of the commit point it stopped on. This is not hypothetical headroom either. Any future lobby file sorting after index.html - manifest.json, robots.txt, sw.js, a sitemap - moves the commit point permanently into the middle of the upload, and then a mid-flight failure publishes a page whose assets do not exist. The fix is to make the ordering a property rather than an accident."
     points: 3
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-01'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
