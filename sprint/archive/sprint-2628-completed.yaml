@@ -1342,3 +1342,8 @@ completed_stories:
     title: battlezone self-play attract demo — drive and duel unattended behind the attract text, then opt in
     points: 1
     completed: '2026-08-01'
+  - id: sw8-21
+    epic: sw8
+    title: 'surface finishGround death gate: port the PHEGD death exit so a last-shield fall on the crossing frame silences PMREB, as sw8-13 did for the space walk'
+    points: 1
+    completed: '2026-08-01'
