@@ -1251,3 +1251,8 @@ completed_stories:
     title: star-wars C_PV's ±45° pyramid is not the rendered frustum — off-screen TIEs pass the §6 fire gate
     points: 3
     completed: '2026-08-01'
+  - id: jt5-3
+    epic: jt5
+    title: The FLAP — the two-edge wing cue, and the release-edge detector the core lacks
+    points: 3
+    completed: '2026-08-01'

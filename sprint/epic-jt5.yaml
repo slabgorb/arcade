@@ -36,10 +36,11 @@ stories:
     description: "The flap is the sound joust is known for and jt5-1 could not wire it. It is a TWO-EDGE cue in the ROM: the PRESS plays wing-DOWN (GOFLAP -> FLAST2, 'LDX DSNWD,X', JOUSTRV4.SRC:6207-6218 -> SNPLWD :8126 for the knight / SNELWD :8108 for a buzzard) and the RELEASE plays wing-UP (GOFLIP, 'LDX DSNWU,X', :6182-6184 -> SNPLWU :8125 / SNELWU :8107). Our core sees only the press edge (input.flap, consumed at frame.ts:214 and enemy.ts:496); the release edge needs state nothing tracks today, so this story adds a held/released edge detector in src/core and two new kinds per party. WATCH THE 1982 TYPO: the ROM's own comment at :6217 reads 'GET WING UP SOUND' over the symbol DSNWD — a copy-paste error in the source. Trust the symbol, not the comment. Half a two-edge cue is worse than none, which is why jt5-1 declared neither: see its AC2 guard, which explicitly forbids the names player-flap/enemy-flap/flap until an emitter exists."
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-01'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-01'
     review_findings: "APPROVED round 1, no rework. Reviewer ran a 24-mutation battery: 21 mutations reddened, and critically M1-M4 (deleting each of the four new cue emitters in turn) reddened 13/5/5/1 — so the jt5-1 blind spot, where six of eleven declared cues could be deleted with the suite fully green, did NOT recur here. Five findings, all routed to owners with filed scope: JT53-004's priority-arbitration clause is true of the machine but false in mechanism for our port (MEDIUM, owner jt5-5, added to its description); the pre-step wasAirborne read at frame.ts:321, the never-accumulated GameState.cues at frame.ts:163-169, and stepDemo's flight-before-collision cue order at demo.ts:1109 are all correct-but-unguarded, each reddening 0/1979 (MEDIUM/LOW/LOW, owner jt5-11, filed); and the 'FLAPS2/FLIPS2 below each JSR VSND' wording is true of FLIPS2 only and propagated to nine sites (LOW, owner jt5-7, added to its description). Gates green: joust 1979/1979 across 82 files, orchestrator 358/358, lint clean, build OK."
     review_verdict: approved
   - id: jt5-4
