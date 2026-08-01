@@ -11,7 +11,7 @@ stories:
     description: "The seam only — this story ships NO baked samples and NO R2 uploads, so it cannot be blocked by asset production. It answers one open question first, then builds the same three pieces the sibling games share. THE QUESTION: joust consumes nothing from @arcade/shared today — not rng, pause, esc-overlay, highscore or name-entry — where every other game consumes between four and nine subpaths. That is either a deliberate standalone posture or an accident of joust being the newest repo, and this story records which before adopting @arcade/shared/audio. If the ruling is adopt, joust gains its first shared dependency and the usual pin-and-bump ceremony applies; if the ruling is stay standalone, the story implements the same shape locally and says why. Do not assume either. THE PIECES: src/core/events.ts, a discriminated union of gameplay moments emitted as DATA on the step result, never as callbacks, so the core stays pure and jt2's seeded determinism replays still reproduce bit-for-bit — joust's replays are a real constraint here, not a formality. The sim already produces every moment worth a cue: the flap, a lance joust won or lost, a rider unhorsed, an egg laid, collected or hatching, the buzzard, the pterodactyl arriving, the lava troll's grab, the wave clearing, a life lost. Then src/shell/audio.ts with the manifest and channel map, and src/shell/audio-dispatch.ts with a never exhaustiveness guard so a later event kind added without a cue fails the build. GROUND TRUTH IS A DIFFERENT QUARRY: joust is Williams, not Atari, so the five vector games' POKEY lineage does not carry over and neither does centipede's. Establishing what JOUSTRV4.SRC and the machine's sound board actually specify is part of this story; cite it or record explicitly that a cue is an invention pending source."
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-07-31'
     repos: arcade
     workflow: tdd
@@ -22,3 +22,52 @@ stories:
       - shell/audio-dispatch.ts maps every event kind to a cue behind a never exhaustiveness guard, so adding a kind without a cue is a compile error.
       - Each cue in the manifest either cites JOUSTRV4.SRC or the sound board, or is explicitly marked an invention pending source — no cue is silently fabricated as authentic.
       - No .wav is committed and no R2 upload is claimed by this story; the story states plainly that joust is still silent when it closes.
+  - id: jt5-2
+    title: The eleven samples — record or synthesise joust's cues, upload them, and prove a live 200
+    description: "jt5-1 built the seam and left joust SILENT: eleven ROM-cited cues, zero .wav files, nothing in the assets bucket. This story records or synthesises the eleven and uploads them. THE SOUND BOARD'S FIRMWARE IS NOT VENDORED — reference/williams-source/joust/JOUSTSND.DOC is three lines whose entire content is the pointer 'SEE [LIBRARY.SOUND]VSNDRM4.SRC', and no revision carries that file. So nothing here can bake a waveform from source the way tempest's POKEY route does; every sample is a recording or a synthesis, and the manifest's CUE_SOURCES entries say which table each is standing in for. THE ACCEPTANCE TEST IS A LIVE 200, NOT A GREEN VITEST: @shared/audio degrades silently on a 404, blocked autoplay, and undecodable data alike, so a passing suite is indistinguishable from a bucket with nothing in it — this is exactly how a star-wars .wav stayed missing from sw7-18 to sw8-14. Upload with 'just deploy-assets' (CI never touches that bucket, which is named plain 'arcade', not 'arcade-assets'), then curl each of the eleven URLs under https://arcade-assets.slabgorb.com/joust/sfx/ and paste the status codes. The filenames are already fixed by SOUNDS in plugins/joust/src/shell/audio.ts. Also flip the README status line off 'silent'."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-3
+    title: The FLAP — the two-edge wing cue, and the release-edge detector the core lacks
+    description: "The flap is the sound joust is known for and jt5-1 could not wire it. It is a TWO-EDGE cue in the ROM: the PRESS plays wing-DOWN (GOFLAP -> FLAST2, 'LDX DSNWD,X', JOUSTRV4.SRC:6207-6218 -> SNPLWD :8126 for the knight / SNELWD :8108 for a buzzard) and the RELEASE plays wing-UP (GOFLIP, 'LDX DSNWU,X', :6182-6184 -> SNPLWU :8125 / SNELWU :8107). Our core sees only the press edge (input.flap, consumed at frame.ts:214 and enemy.ts:496); the release edge needs state nothing tracks today, so this story adds a held/released edge detector in src/core and two new kinds per party. WATCH THE 1982 TYPO: the ROM's own comment at :6217 reads 'GET WING UP SOUND' over the symbol DSNWD — a copy-paste error in the source. Trust the symbol, not the comment. Half a two-edge cue is worse than none, which is why jt5-1 declared neither: see its AC2 guard, which explicitly forbids the names player-flap/enemy-flap/flap until an emitter exists."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-4
+    title: The THUDs — apply the bounce collisionPass computes and discards, then cue it
+    description: "Two ROM cues are blocked on physics the sim computes and throws away. SNPTHD (:8124, 'AT LEAST 1 PERSON THUD''ED', call site :5014 'PLAYERS COLIDE') and SNETHD (:8106, 'ENEMIES THUD', call site :5019 'ENEMIES COLIDE'). collisionPass computes the bounce outcome and DISCARDS it — 'if (contact.outcome.kind !== \"kill\") continue' (plugins/joust/src/core/demo.ts, the joust pair loop) — and bounceTop, bounceBottom and bounceHorizontal in joust.ts have ZERO production callers. So a non-killing collision currently does nothing at all: no push, no separation, no sound. The work is APPLYING the bounce first; the cue is the easy half and must not land without it, because a thud announcing a collision the sim does not resolve is an audible lie. Same disease as uf1-11's troll grip one layer over: a faithful, tested, cited pure core with no caller."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-5
+    title: Sound PRIORITY arbitration — @shared/audio steals, the machine refuses
+    description: "joust's machine has ONE sound voice arbitrated by PRIORITY, and @shared/audio has no priority notion at all. SND compares the incoming table's priority byte against the sounding one and REFUSES a lower interruption — 'CMPA SPRI  OK TO INTERUPT THIS PIRORITY SOUND? / BLO NOSND' (SYSTEM.SRC:767-768) — whereas the shared engine's channels always steal, last-write-wins. jt5-1 kept the map from INVERTING the ROM by giving each distinct ROM priority its own channel (eleven cues, nine priorities, nine channels), but that is a fence, not the mechanism: a priority-40 enemy death still cannot be refused in favour of a sounding priority-80 player death, because they sit on different channels and both simply play. Options: an optional per-sound priority in src/shared/audio.ts (it would serve any cabinet with a single-voice machine), or a joust-side wrapper that tracks the sounding priority itself. The eleven priorities are already recorded in CUE_SOURCES in plugins/joust/src/shell/audio.ts, so the data is in place."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-6
+    title: SNPCR2 — give player 2 its own transporter cue instead of P1's
+    description: The two knights have SEPARATE transporter re-create tables in the ROM and jt5-1 collapsed them onto one. SNPCR1 (:8116, 'FCB 070,!N$12!+$80,30') and SNPCR2 (:8119, the same $12 opener at a different offset — '30+13' — then !N$15! where SNPCR1 has !N$14!) are bound to P1DEC and P2DEC separately (:5552, :5556). jt5-1's player-materialise kind carries no payload, so both knights map onto SNPCR1 and its citation says so in a SCOPE comment. Splitting them needs a player id on the event, a second manifest row AND a second SAMPLE — not just a second row, which is the trap. Low value alone; worth folding into jt5-2 if the samples are being produced anyway.
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-7
+    title: Correct the jt5 epic description and joust's unguarded README counts
+    description: "Two documentation debts jt5-1 recorded rather than fixed. (1) THE EPIC DESCRIPTION IS STALE and now contradicts a landed story: sprint/epic-jt5.yaml still frames the @shared adoption question as an open ruling, quotes the REFUTED 'every other game consumes between four and nine subpaths' (measured 2026-07-31: battlezone 13, star-wars 11, tempest 10, asteroids 10, red-baron 8, centipede 5 — the range is 5-13), and says events are 'emitted as DATA on the step result' when stepGame returns a bare GameState and the stream is a field on it. It also lists the flap, the egg laid, the joust won and the wave clearing as moments 'the sim already produces' — the machine's 38-table sound set (:8051-8131) contains NO wave-clear, egg-laid or joust-won cue at all, so a future story reaching for those will find nothing to cite and should mark them inventions under AC5's escape hatch rather than hunt. (2) plugins/joust/README.md carries measured counts nothing guards — the suite size, the claim count (twice) and a six-number skipIf reconciliation block. jt5-1 re-measured and updated all of them and they will go stale again on the next story that adds a test file. Either derive them in a test or mark them indicative."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
