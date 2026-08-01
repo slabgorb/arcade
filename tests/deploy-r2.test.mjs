@@ -305,6 +305,390 @@ test('the lobby leg the JUSTFILE actually runs contains no game key', () => {
   }
 });
 
+// ===========================================================================
+// mg1-5 — the upload is not atomic: every HTML entry point must go LAST
+// ===========================================================================
+// Found for real during the 2026-07-31 cutover. The first `just deploy` of the
+// cabinet died on its FOURTH object when Cloudflare returned 523; wrangler had
+// already uploaded three. Production survived, and the reason it survived is the
+// problem: index.html is the COMMIT POINT — the one object that switches the live
+// site from the old build to the new one, because the hashed assets are additive —
+// and it went last only because it begins with the letter `i`.
+//
+// MEASURED on this checkout at RED (2026-08-01):
+//   * `scripts/deploy-r2.mjs` contains no `.sort()` at all. `walk()` returns raw
+//     `readdirSync` order, and Node guarantees NO ordering for readdirSync. macOS
+//     APFS happened to hand it back sorted. `ubuntu-latest`, where CI deploys from,
+//     is a different filesystem and was not measured.
+//   * The cabinet ships TWELVE HTML objects, not one per app: tempest and red-baron
+//     carry index.html + models.html, star-wars carries a third (scenes.html). A fix
+//     that special-cases `index.html` leaves five of the twelve unordered.
+//   * The accident currently holds fleet-wide — zero non-HTML objects upload after
+//     the first HTML in any app. Nothing is broken today, which is precisely why a
+//     test written against the real dist/ CANNOT FAIL and would be scenery. Every
+//     fixture below is therefore adversarial by construction, and each one asserts
+//     that it is adversarial before it asserts the contract.
+//
+// WHY THESE ASSERT THROUGH `uploadDir` AND NOT `collectUploads`: AC1 permits the
+// ordering to live in "collectUploads or its caller". Pinning the pure function's
+// return order would silently outlaw half of that. The observable that actually
+// protects production is the sequence of objects handed to wrangler, so that is
+// what is pinned — via an injected `upload` seam, which AC3's partial-failure test
+// needs regardless. A fix in either location satisfies every test here.
+import { uploadDir } from '../scripts/deploy-r2.mjs';
+
+/** Run uploadDir with a recording uploader. `failOn` (1-based) throws instead of
+ *  recording that object, standing in for the real 523. Returns what wrangler
+ *  would actually have been asked to put, in order, plus any error raised. */
+//
+// ⚠ SAFETY FUSE — READ BEFORE TOUCHING THIS HELPER.
+//
+// `uploadDir` does not yet honour an injected uploader: it calls
+// `execFileSync('wrangler', ['r2','object','put', …, '--remote', …])` unconditionally.
+// On a machine with wrangler installed and CLOUDFLARE_* in the environment — which is
+// this one — passing an `upload` option does NOT stub anything. Every object in the
+// fixture is PUT to the real `arcade-lobby` bucket, at the real key, over the real
+// live site. That happened during this story's RED run on 2026-08-01: the fixtures
+// below overwrote the production lobby's `index.html` and tempest's, and the arcade
+// served a 15-byte `<!doctype html>` stub until it was restored. See the session
+// file's Delivery Findings.
+//
+// The fuse below makes that impossible to repeat: the helper refuses to call
+// `uploadDir` until the seam demonstrably exists. Dev REMOVES the fuse as part of
+// GREEN, once `uploadDir` actually routes through `options.upload` — and the way to
+// prove it does is that these tests then pass without wrangler ever being spawned.
+//
+// DO NOT "fix" a red fuse by deleting it. A red fuse means the seam is still missing,
+// and deleting it re-arms a live deploy from a unit test.
+const SEAM_PROOF_KEY = '__mg1_5_seam_proof__';
+
+function assertUploadSeamExists() {
+  // A dist dir containing exactly one file, uploaded through a recorder. If the
+  // recorder sees it, the seam is real. If wrangler is spawned instead, we must
+  // never get here — so the probe itself has to be incapable of reaching wrangler.
+  const src = readFileSync(join(repo, 'scripts', 'deploy-r2.mjs'), 'utf8');
+  const routesThroughSeam =
+    /options\s*\.\s*upload|\bupload\s*[,}]|\{\s*[^}]*\bupload\b[^}]*\}\s*=/.test(src) &&
+    /upload\s*\(/.test(src);
+  assert.ok(
+    routesThroughSeam,
+    'RED (expected until GREEN): scripts/deploy-r2.mjs does not route its uploads through an ' +
+      'injectable seam, so these tests cannot run without spawning REAL wrangler against the ' +
+      'REAL arcade-lobby bucket. AC3 requires that seam. Dev: add it, then delete assertUploadSeamExists.',
+  );
+}
+
+function recordUploads(distDir, { bucket = 'arcade-lobby', keyPrefix = '', failOn = 0, ...rest } = {}) {
+  assertUploadSeamExists();
+  const uploaded = [];
+  let error = null;
+  const upload = ({ key }) => {
+    if (uploaded.length + 1 === failOn) {
+      throw new Error(`523 Origin is unreachable (simulated, object ${failOn})`);
+    }
+    uploaded.push(key);
+  };
+  try {
+    uploadDir(distDir, bucket, keyPrefix, { ...rest, upload, [SEAM_PROOF_KEY]: true });
+  } catch (e) {
+    error = e;
+  }
+  return { uploaded, error };
+}
+
+const isHtml = (key) => key.endsWith('.html');
+
+/** The contract in one line: no non-HTML object may follow an HTML object. */
+function assertHtmlLast(keys, message) {
+  const firstHtml = keys.findIndex(isHtml);
+  if (firstHtml === -1) return; // caller asserts separately that HTML is present
+  const trailing = keys.slice(firstHtml + 1).filter((k) => !isHtml(k));
+  assert.deepEqual(
+    trailing,
+    [],
+    `${message}\n  order was: ${JSON.stringify(keys)}\n  these assets would upload AFTER a page that already references them`,
+  );
+}
+
+/** ANTI-VACUITY: proves a fixture is genuinely adversarial — that plain
+ *  alphabetical order really does put an HTML object ahead of an asset. Without
+ *  this, a fixture whose names happen to be safe would pass every assertion below
+ *  while proving nothing, which is the exact trap AC2 names. It is a statement
+ *  about the FIXTURE'S NAMES, so it stays true after the fix lands. */
+function assertFixtureIsAdversarial(keys, message) {
+  const alphabetical = [...keys].sort();
+  const firstHtml = alphabetical.findIndex(isHtml);
+  assert.notEqual(firstHtml, -1, `${message}: fixture has no HTML object at all`);
+  assert.ok(
+    alphabetical.slice(firstHtml + 1).some((k) => !isHtml(k)),
+    `${message}: alphabetical order is ${JSON.stringify(alphabetical)} — the HTML already sorts ` +
+      `last here, so this fixture cannot tell a real ordering rule from the letter `+
+      `accident, and every assertion on it is scenery`,
+  );
+}
+
+function makeTree(prefix, files) {
+  const dir = mkdtempSync(join(tmpdir(), `deploy-r2-${prefix}-`));
+  for (const [rel, body] of Object.entries(files)) {
+    const full = join(dir, rel);
+    mkdirSync(join(full, '..'), { recursive: true });
+    writeFileSync(full, body);
+  }
+  return dir;
+}
+
+test('mg1-5 AC1/AC2: an HTML entry point that sorts FIRST still uploads last', () => {
+  // The fixture AC2 asks for by name. `aaa.html` beats every asset alphabetically,
+  // so the letter accident that protects the real lobby is removed. This is the
+  // test that kills the tempting one-line fix, a bare `files.sort()` — AC1 rules it
+  // out in words ("the guarantee must not depend on a letter") and this reds on it.
+  const dir = makeTree('sorts-first', {
+    'aaa.html': '<!doctype html>',
+    'mmm.css': 'body{}',
+    'zzz/zzz-app.js': 'export {}',
+  });
+  try {
+    const { uploaded, error } = recordUploads(dir);
+    assert.equal(error, null, 'a recording uploader must not fail');
+    assertFixtureIsAdversarial(uploaded, 'AC2 fixture');
+    assert.equal(uploaded.length, 3, 'every object must still be uploaded — ordering, not filtering');
+    assertHtmlLast(uploaded, 'aaa.html is the commit point and must upload after every asset it can reference');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('mg1-5 AC1: an HTML entry point that sorts LAST also uploads last — the rule is not a reversed sort', () => {
+  // The mirror of the test above, and it exists to kill a specific wrong fix.
+  // Reverse-alphabetical ordering passes the `aaa.html` fixture by coincidence
+  // (`zzz/zzz-app.js` > `aaa.html`), so that test alone would bless it. Here the
+  // HTML sorts last, so a reversed sort puts it FIRST and reds. Between the two,
+  // no pure-filename comparator in either direction survives.
+  const dir = makeTree('sorts-last', {
+    'zzz.html': '<!doctype html>',
+    'aaa/aaa-app.js': 'export {}',
+    'bbb.css': 'body{}',
+  });
+  try {
+    const { uploaded, error } = recordUploads(dir);
+    assert.equal(error, null, 'a recording uploader must not fail');
+    assert.equal(uploaded.length, 3, 'every object must still be uploaded — ordering, not filtering');
+    assertHtmlLast(uploaded, 'zzz.html must upload after every asset, whichever way the names happen to sort');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('mg1-5 AC1: EVERY HTML entry point goes last, not just index.html', () => {
+  // MEASURED: star-wars really ships index.html + models.html + scenes.html, and
+  // tempest and red-baron ship two apiece — twelve HTML objects across the cabinet.
+  // A fix keyed on the literal name `index.html` orders four of them and leaves the
+  // rest wherever the filesystem put them, so this fixture names none of them
+  // `index.html` except one and asserts on all three.
+  const dir = makeTree('every-entry', {
+    'index.html': '<!doctype html>',
+    'models.html': '<!doctype html>',
+    'scenes.html': '<!doctype html>',
+    'assets/app-abc.js': 'export {}',
+    'zzz/late-def.js': 'export {}',
+  });
+  try {
+    const { uploaded, error } = recordUploads(dir);
+    assert.equal(error, null, 'a recording uploader must not fail');
+    assertFixtureIsAdversarial(uploaded, 'multi-entry fixture');
+
+    const htmlKeys = uploaded.filter(isHtml).sort();
+    assert.deepEqual(
+      htmlKeys,
+      ['index.html', 'models.html', 'scenes.html'],
+      'all three entry points must still be uploaded',
+    );
+    assertHtmlLast(uploaded, 'models.html and scenes.html are entry points too — AC1 says EVERY one');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('mg1-5 AC1: the ordering is whole-tree, not per-directory', () => {
+  // Kills a fix that sorts within each directory as it walks. `aaa/page.html` and
+  // `zzz/late.js` are the only files in their directories, so a per-directory rule
+  // has nothing to reorder and leaves the page ahead of the asset — green on the
+  // three tests above, broken here.
+  const dir = makeTree('whole-tree', {
+    'aaa/page.html': '<!doctype html>',
+    'zzz/late.js': 'export {}',
+  });
+  try {
+    const { uploaded, error } = recordUploads(dir);
+    assert.equal(error, null, 'a recording uploader must not fail');
+    assertFixtureIsAdversarial(uploaded, 'nested fixture');
+    assert.equal(uploaded.length, 2);
+    assertHtmlLast(uploaded, 'a page in an early directory must still follow an asset in a later one');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('mg1-5 AC3: when an upload throws midway, no HTML entry point has been written', () => {
+  // The real incident, reproduced. AC3 is explicit that asserting a non-zero exit
+  // is NOT enough — the script already does that, and it did it during the outage
+  // while the site sat one object away from breaking. So this asserts what was
+  // actually written to the bucket at the moment of the failure.
+  const dir = makeTree('partial', {
+    'aaa.html': '<!doctype html>',
+    'mmm.css': 'body{}',
+    'zzz/zzz-app.js': 'export {}',
+  });
+  try {
+    const { uploaded, error } = recordUploads(dir, { failOn: 2 });
+
+    // The error must still PROPAGATE. A `try/catch` added around the upload loop to
+    // "handle" partial failure would satisfy the no-HTML assertion below by never
+    // failing at all, and would ship a deploy that reports success after uploading
+    // half a site (lang-review javascript #1, silent error swallowing).
+    assert.ok(error instanceof Error, 'the upload failure must propagate, not be swallowed');
+    assert.match(error.message, /523/, 'the underlying failure must reach the caller intact');
+
+    // FAR-SIDE GUARD. "No HTML was written" is trivially true if nothing ran at all
+    // — a fixture that failed to build, or a filter that emptied the upload set,
+    // would satisfy the real assertion below while proving nothing. This observes
+    // the CONSUMER: something genuinely reached the uploader before the throw.
+    assert.equal(
+      uploaded.length,
+      1,
+      'the failure must land mid-flight, after a real upload — otherwise this test proves nothing',
+    );
+
+    assert.deepEqual(
+      uploaded.filter(isHtml),
+      [],
+      'a page was published while the assets it references were still missing — this is the outage',
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('mg1-5 AC3 control: the same fixture DOES upload its HTML when nothing throws', () => {
+  // The other half of the anti-vacuity pair. Without this, an implementation that
+  // never uploaded HTML at all would pass the partial-failure test perfectly.
+  const dir = makeTree('partial-control', {
+    'aaa.html': '<!doctype html>',
+    'mmm.css': 'body{}',
+    'zzz/zzz-app.js': 'export {}',
+  });
+  try {
+    const { uploaded, error } = recordUploads(dir);
+    assert.equal(error, null);
+    assert.deepEqual(
+      uploaded.filter(isHtml),
+      ['aaa.html'],
+      'a complete run must still publish the page — the fix is ordering, not omission',
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('mg1-5 AC4: the LOBBY leg orders its own index.html last', () => {
+  // AC4 singles the lobby out because only its index.html can replace the live
+  // front door. The fixture is the real lobby shape (games alongside, restricted
+  // away by --lobby-only) but with an adversarial asset name: `zzz-late.js` sorts
+  // AFTER index.html, so the letter accident that protects the real lobby is gone.
+  const dist = makeFullDist();
+  try {
+    writeFileSync(join(dist, 'zzz-late.js'), 'export {}');
+    const { uploaded, error } = recordUploads(dist, { lobbyOnly: true });
+    assert.equal(error, null);
+
+    assertFixtureIsAdversarial(uploaded, 'lobby fixture');
+    assert.deepEqual(gameKeys(uploaded), [], 'the lobby leg must still publish no game key');
+    assert.ok(uploaded.includes('index.html'), "the lobby's own front door must still be uploaded");
+    assertHtmlLast(uploaded, "the lobby's index.html is the front door — it must go last of all");
+  } finally {
+    rmSync(dist, { recursive: true, force: true });
+  }
+});
+
+test('mg1-5 AC4: a PREFIXED game leg orders its entry points last too', () => {
+  // The other half of AC4. A game writes under its own `<id>/` prefix, so its
+  // index.html cannot replace the front door — but a half-uploaded game is still a
+  // dead tile on a lobby that links to it, and the prefix must not smuggle the
+  // ordering rule past a key-name check.
+  const dir = makeTree('prefixed-game', {
+    'index.html': '<!doctype html>',
+    'models.html': '<!doctype html>',
+    'zzz/late-abc.js': 'export {}',
+  });
+  try {
+    const { uploaded, error } = recordUploads(dir, { keyPrefix: 'tempest' });
+    assert.equal(error, null);
+    assert.ok(
+      uploaded.every((k) => k.startsWith('tempest/')),
+      `every key must keep its prefix: ${JSON.stringify(uploaded)}`,
+    );
+    assertFixtureIsAdversarial(uploaded, 'prefixed-game fixture');
+    assertHtmlLast(uploaded, "a game's entry points must follow its assets, under the prefix as at the root");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('mg1-5 AC5: the ordering rationale is recorded in the script, as a COMMENT', () => {
+  // AC5 exists because the fix looks like gratuitous complexity to a future reader:
+  // sorting HTML last has no visible effect on a tree whose HTML already sorts last,
+  // which is every tree in the cabinet today. Without the reason written down, the
+  // next simplification pass deletes it and restores the outage.
+  const source = readFileSync(join(repo, 'scripts', 'deploy-r2.mjs'), 'utf8');
+
+  // COMMENT LINES ONLY. Reading the rationale out of the comments rather than out
+  // of the whole file is what makes this a test for a comment: a phrase sitting in
+  // an error message or a variable name cannot satisfy it. Whitespace is collapsed
+  // so re-wrapping a comment block does not redden a passing test — a doc assertion
+  // that breaks on line-wrap gets deleted rather than fixed.
+  const flat = source
+    .split('\n')
+    .filter((line) => /^\s*(\/\/|\*|\/\*)/.test(line))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+  // Two separate claims, because only the second one does any work. A comment can
+  // restate the mechanism ("entry points upload last") and still be deleted by the
+  // next reader, who sees a sort with no visible effect on any tree in the cabinet.
+  // What stops that deletion is the CONSEQUENCE, so both are required.
+  assert.match(
+    flat,
+    /html|entry point|index\.html/,
+    'no comment in deploy-r2.mjs mentions the HTML entry points the ordering exists to protect',
+  );
+  assert.match(
+    flat,
+    /partial|midway|mid-flight|523|interrupt|fails? part|half/,
+    'the comment states the mechanism but not the CONSEQUENCE. AC5 exists because the ordering ' +
+      'has no visible effect on any tree in the cabinet today (measured: every app already ' +
+      'uploads its HTML last, by letter accident), so a reader who is told only WHAT it does and ' +
+      'not WHAT BREAKS WITHOUT IT will remove it as a simplification. Name the partial upload.',
+  );
+});
+
+test('mg1-5 rule js#6: the real uploader still uses execFile-style array args, not a shell string', () => {
+  // GREEN ON ARRIVAL BY DESIGN, and it stays green through GREEN — its job is to
+  // stop the seam AC3 requires from being introduced as a shell command. Adding an
+  // injectable uploader is a natural moment to reach for `exec(\`wrangler ... ${key}\`)`,
+  // and an R2 key comes from a filename on disk (lang-review javascript #6, command
+  // injection). This is the guard on that specific regression, not on today's code.
+  const source = readFileSync(join(repo, 'scripts', 'deploy-r2.mjs'), 'utf8');
+  assert.ok(
+    /execFileSync\(/.test(source),
+    'the uploader must keep spawning wrangler with execFile-style array args',
+  );
+  assert.ok(
+    !/\bexecSync\(|\bexec\(/.test(source),
+    'no shell-string child_process call — an R2 key is a filename and would be interpolated into a shell',
+  );
+});
+
 test('lobbyOwnedEntries and cleanLobbyOutput cannot disagree — one definition', () => {
   // They are the two halves of "the lobby's own output": one deletes it before a
   // build, the other uploads it after. A second, drifting copy of that definition
