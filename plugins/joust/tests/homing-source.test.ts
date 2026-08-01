@@ -23,62 +23,11 @@
 // every vendored read below happens INSIDE an `it()`.
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
-
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-
-/**
- * Narrow one parsed JSON value to a `Claim`. Round-2 Reviewer [LOW][SEC]/[RULE]
- * (rule #10): the old code asserted `JSON.parse(...) as Claim | Claim[]` with no
- * runtime check at all, so a malformed claims file would surface as a confusing
- * `undefined` deep inside `claimCovers` instead of naming the bad file. The
- * shape is checked, not trusted — and everything this gate reads is optional, so
- * a claim missing `source` is legal data, not an error.
- */
-function asClaim(value: unknown, file: string): Claim {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error(`claims/${file}: expected an object per claim, got ${JSON.stringify(value)}`)
-  }
-  const c = value as Record<string, unknown>
-  if (c.id !== undefined && typeof c.id !== 'string') throw new Error(`claims/${file}: \`id\` must be a string`)
-  if (c.claim !== undefined && typeof c.claim !== 'string') throw new Error(`claims/${file}: \`claim\` must be a string`)
-  if (c.source !== undefined) {
-    const s = c.source as Record<string, unknown>
-    if (typeof s?.file !== 'string' || typeof s?.line !== 'number') {
-      throw new Error(`claims/${file}: \`source\` must carry a string \`file\` and a numeric \`line\``)
-    }
-  }
-  return c as Claim
-}
-
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => {
-      const parsed: unknown = JSON.parse(readFileSync(join(claimsDir, f), 'utf8'))
-      return (Array.isArray(parsed) ? parsed : [parsed]).map((c) => asClaim(c, f))
-    })
-}
-
-const basename = (p: string): string => p.split('/').pop() ?? p
-
-/** Does some committed claim pin a line INSIDE this cited range? */
-function claimCovers(claims: readonly Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source && basename(c.source.file) === file && c.source.line >= start && c.source.line <= end,
-  )
-}
+// jt8-3 extracted the hardened claims loader (the round-2 [LOW][SEC]/[RULE]
+// `asClaim` variant this file introduced) to the shared helper — the jt8-2
+// review's own "extract at 3×" instruction. Behaviour-preserving.
+import { loadClaims, claimCovers } from './helpers/claims.js'
 
 /** The one authoritative line of the vendored source. */
 const line = (file: string, n: number): string => sourceLines(file)[n - 1] ?? ''
