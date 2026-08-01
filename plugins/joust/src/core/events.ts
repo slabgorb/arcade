@@ -27,9 +27,11 @@
 // whole mechanic turns on. See `src/core/flight.ts`'s `wingEdge` for the law.
 //
 // jt5-4 wires the THUDS (SNPTHD :8124, SNETHD :8106) — jt5-1 deliberately left
-// them out because `collisionPass` COMPUTED the bounce and threw it away
-// (`if (contact.outcome.kind !== 'kill') continue`, demo.ts:867 — the line jt5-1
-// cited as :837 before jt5-3 shifted it): a thud would have announced a
+// them out because `collisionPass` COMPUTED the bounce and threw it away with
+// `if (contact.outcome.kind !== 'kill') continue` (the line jt5-1 cited as
+// demo.ts:837, jt5-3 re-cited as :867 after a shift, and jt5-4 deleted
+// outright by replacing the discard with the applied bounce below — there is
+// no live line to point at any more): a thud would have announced a
 // collision the sim did not resolve. jt5-4 APPLIES the bounce and cues it —
 // SNETHD for an enemy-vs-enemy contact (:4961, "NO KILL (ENEMY VS. ENEMY,
 // PTERO VS. PTERO)") and SNPTHD for any tie involving a person (:5010 "BOTH ON

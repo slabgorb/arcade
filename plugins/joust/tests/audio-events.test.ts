@@ -351,7 +351,7 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   // fixed 5-frame `scripted` walk never revisits. The egg has no wave tag
   // (`eggProcess` — demo.ts:824 — carries no `waveEgg: true`, so `stepDemo`'s
   // self-clear hatch at demo.ts:1187 never matures it — a pre-existing,
-  // documented jt4-4/jt4-5 gap, not new here), and collisionPass's own
+  // documented jt4-4/jt4-5 gap, not new here), and stepDemo's own
   // `!enemiesLeft && !processes.some(egg)` clear gate (demo.ts:1219-1222) never
   // passes while it sits there. MEASURED: seed 0xbeef never advances past wave 1
   // and never loses/re-enters a player again, checked out to 100,000 frames —
@@ -365,8 +365,19 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   // pairs for thousands of frames after, so it is used here as the least
   // invasive substitute — same seed for all three re-staged moments, same
   // `scripted` script, only the seed and frame numbers changed. The stray
-  // kill-egg's missing self-maturation is filed separately; it is a real
-  // soft-lock risk in ordinary play, not only a test-fixture inconvenience.
+  // kill-egg's missing self-maturation is filed separately, but MEASURED
+  // (Reviewer, round 1): it is NOT a soft-lock. Seed 0xbeef's stranded egg
+  // settles at posX 219, pixel Y 128 — the same platform and height as the
+  // idle player 2 standing at posX 200, nineteen pixels away; driving player 2
+  // with a bare `dir: 1` collects it at frame 1535 and clears the wave at
+  // frame 1614 — the exact frame this file used to pin before the re-stage.
+  // All three seeds this story called "permanently stuck" reach wave 3 within
+  // 6000 frames once a player moves. Every settled kill-egg observed in that
+  // sweep landed at a pixel Y a player is also observed standing on. The
+  // stall is a property of THIS fixture's degenerate script — player 1 cycles
+  // `[-1, -1, 0, 1, 1]` for net-zero drift and player 2 sits IDLE forever — not
+  // of the game: over 4000 frames the closest the idle player 2 ever came to
+  // 0xbeef's stray egg was 16 px, a near miss, not an unreachable spot.
   it('a dying knight emits player-death (seed 0xface, frame 1532)', () => {
     const before = advanceTo(0xface, 1532)
     const after = stepGame(before, inputsAt(1532))

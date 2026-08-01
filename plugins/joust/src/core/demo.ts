@@ -901,13 +901,20 @@ function collisionPass(processes: readonly DemoProcess[]): {
         // the two PPOSY+1 bytes and sends the physically higher bird UP
         // (LBPL -> OSTUTP / fall-through -> OSTXTP, :5042-5108); an exact tie
         // still separates (LBPL branches on zero too). A tie involving a
-        // PERSON (SNPTHD, :5010 "AT LEAST 1 PERSON THUD'ED") skips OSTBMP
-        // entirely and calls OSTXTP UNCONDITIONALLY (:5053-5054) — no height
-        // test, the rise is fixed by register role. This port has no
-        // U/X registers, so the outer loop's object (`a`/`pa`) plays U (goes
-        // DOWN, OSTXDN) and the one it found (`b`/`pb`) plays X (goes UP,
-        // OSTXUP) — a fixed, geometry-independent role, exactly what
-        // `OSTXTP`'s unconditional call determines.
+        // PERSON (SNPTHD, :5010 "BOTH ON SAME LEVEL", :8124 "AT LEAST 1
+        // PERSON THUD'ED") skips OSTBMP entirely and calls OSTXTP
+        // UNCONDITIONALLY (:5053-5054) — no height test, the rise is fixed by
+        // register role. The SCAN DRIVER settles which party plays which
+        // register — this is a ROM fact, not a port decision: :4874
+        // `LDU PLINK,U` walks the process list into U, and :4880 `LEAX ,U` /
+        // :4881 `LDX PLINK,X` starts X AT U and walks it forward, so U is
+        // always the EARLIER element of a pair and X always a LATER one —
+        // exactly this port's `for (i) for (j = i + 1)`. So the outer loop's
+        // object (`a`/`pa`) IS U (OSTXTP sends U down, OSTXDN) and the one the
+        // inner loop found (`b`/`pb`) IS X (OSTXTP sends X up, OSTXUP), and
+        // the same a=U/b=X mapping holds above in the SNETHD branch, where
+        // OSTBMP's height compare (not the register role) decides which one
+        // rises.
         const isEnemyThud = a.party === 'enemy' && b.party === 'enemy'
         let resolvedA: JoustEntity
         let resolvedB: JoustEntity

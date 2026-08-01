@@ -21,7 +21,7 @@
 // The manifest below is a promise about an R2 key prefix, not about this repo.
 // jt5-1 commits no binary, runs no `just deploy-assets`, and checked no live
 // 200. joust stays SILENT when this story closes; a later jt5 story records or
-// synthesises the eleven files and uploads them. Read a green suite accordingly:
+// synthesises the seventeen files and uploads them. Read a green suite accordingly:
 // `@shared/audio` degrades silently on a 404, so passing tests here prove the
 // wiring and say nothing whatever about whether a knight makes a noise.
 //
@@ -149,7 +149,7 @@ export interface Citation {
  * sound exists and not that it belongs to this moment.
  *
  * `invention` is the honest escape hatch for a later story: a cue with no table
- * behind it. jt5-1 uses none — all eleven of its moments have one.
+ * behind it. jt5-1 uses none — all seventeen of its moments have one.
  *
  * The sound BOARD's firmware would say what a 6-bit code actually sounds like.
  * It was never vendored: `JOUSTSND.DOC` is three lines whose whole content is

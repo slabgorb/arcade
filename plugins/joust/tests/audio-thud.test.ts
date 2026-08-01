@@ -563,11 +563,19 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
     )
   })
 
-  it('an EXACT pixel tie still separates them — one up, one down, never both', () => {
-    // `LBPL OSTUTP` (:5044) branches on zero, so an equal-Y pair takes the
-    // OSTUTP arm rather than a horizontal-only bounce. Which of the two rises is
-    // a REGISTER role in the ROM and a port decision here, so only the
-    // separation is pinned.
+  it('an EXACT pixel tie still separates them, and the ROM sends A (register U) up — never B', () => {
+    // `LBPL OSTUTP` (:5044) branches on zero too, so an equal-Y pair still takes
+    // the OSTUTP arm rather than a horizontal-only bounce, and OSTUTP is NOT a
+    // coin flip: it unconditionally sends REG.U up (:5099) and REG.X down
+    // (:5101). This port's pair loop plays `a` (eligible[i], the OUTER object)
+    // as U and `b` (eligible[j], the one the INNER loop found) as X — settled by
+    // the SCAN DRIVER, not the bouncer (JOUSTRV4.SRC:4874 `LDU PLINK,U` walks
+    // the process list into U; :4880 `LEAX ,U` / :4881 `LDX PLINK,X` starts X AT
+    // U and walks it forward, so U is always the earlier element of a pair and
+    // X always a later one). So on an exact tie the ROM deterministically sends
+    // A up, never B — this used to be a symmetric `length === 1` count on both
+    // sides, which cannot fail: flipping the tie's `<=` to `<` sent the rise to
+    // B instead of A and the old assertion stayed green.
     const d = stepDemo(
       stage([
         enemyProcess(A, entity(100, 94, DESCENDING)),
@@ -576,12 +584,46 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
       {},
     )
     expect(cuesOf(d), 'precondition: the thud fired').toEqual([ENEMY_THUD])
-    const vys = [velYOf(d, A), velYOf(d, B)]
     expect(
-      vys.filter((v) => v === UP_FROM_DESCENDING).length,
-      'exactly one bird takes OSTXUP',
-    ).toBe(1)
-    expect(vys.filter((v) => v === DESCENDING).length, 'and exactly one takes OSTXDN').toBe(1)
+      velYOf(d, A),
+      'A is U: an exact tie is >=0, LBPL takes OSTUTP, and OSTUTP sends U up',
+    ).toBe(UP_FROM_DESCENDING)
+    expect(velYOf(d, B), 'B is X: OSTUTP sends X down; already descending, so left alone').toBe(
+      DESCENDING,
+    )
+  })
+
+  it('the tie compares the WHOLE PIXEL (PPOSY+1), not the raw sub-pixel value', () => {
+    // OSTBMP's `LDB PPOSY+1,X` (:5042) reads the PIXEL byte at offset +1 — one
+    // level coarser than the full fixed-point `posY` — so two birds sharing a
+    // pixel but differing only in sub-pixel fraction must STILL take the
+    // whole-pixel tie arm (A up, per the guard above), not whichever one
+    // happens to hold the larger raw `posY`. A sits at pixel 94 with a LARGER
+    // raw fraction than B, who also sits at pixel 94: the whole-pixel compare
+    // (94 <= 94) sends A up regardless, but a sub-pixel compare of the raw
+    // fixed-point value (A's posY > B's posY here) would send B up instead —
+    // a mistake the guard above cannot see, because entity() never gives two
+    // birds the same pixel with different fractions.
+    const higherFraction = { ...entity(100, 94, DESCENDING), posY: (94 << 8) + 200 }
+    const lowerFraction = { ...entity(104, 94, DESCENDING), posY: (94 << 8) + 50 }
+    expect(
+      higherFraction.posY >> 8,
+      'precondition: both birds share the same whole pixel',
+    ).toBe(lowerFraction.posY >> 8)
+    expect(
+      higherFraction.posY,
+      'precondition: they differ in raw sub-pixel value',
+    ).not.toBe(lowerFraction.posY)
+    const d = stepDemo(
+      stage([enemyProcess(A, higherFraction), enemyProcess(B, lowerFraction)]),
+      {},
+    )
+    expect(cuesOf(d), 'precondition: the thud fired').toEqual([ENEMY_THUD])
+    expect(
+      velYOf(d, A),
+      'the WHOLE-PIXEL tie still sends A (U) up, regardless of the sub-pixel fraction',
+    ).toBe(UP_FROM_DESCENDING)
+    expect(velYOf(d, B), 'and B (X) down').toBe(DESCENDING)
   })
 
   it('TWO disjoint pairs on one frame thud TWICE — the loop does not stop at the first', () => {
@@ -899,32 +941,36 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     })
   })
 
-  it('AFTER it, seed 0xbeef MUST have moved — an inert bounce is the failure mode', () => {
-    // The other half of the ruling, and the one that is RED today: these are the
-    // pre-story values at frame 160, thirteen frames past the first contact. If
-    // they still hold once this story lands, the bounce was computed and thrown
-    // away all over again.
-    expect(entityDigest(0xbeef, 160)).not.toEqual([
+  it('AFTER it, seed 0xbeef has moved to its frozen post-story digest — frame 160', () => {
+    // The other half of the ruling. RED-phase this was a `not.toEqual` against
+    // the pre-story (inert-bounce) values — an anti-no-op guard any change at
+    // all could satisfy, including a wrong one. Now that GREEN has landed and
+    // the post-story values are known and measured (round 1, corroborated
+    // independently by Dev and Reviewer), freeze them as an exact pin: a real
+    // regression guard, not just "something moved".
+    expect(entityDigest(0xbeef, 160)).toEqual([
       'player#1:54,20736,147,-4,64,121,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:4,33692,-78,-8,0,19,1',
-      'enemy#257:13,33051,-29,8,192,62,1',
+      'enemy#256:4,35193,-19,-8,0,19,1',
+      'enemy#257:13,31916,36,8,192,62,1',
       'enemy#258:131,33245,35,8,64,81,1',
     ])
   })
 
-  it('AFTER it, seed 0x2468 MUST have moved — the ±2 shove alone has to bite', () => {
+  it('AFTER it, seed 0x2468 has moved to its frozen post-story digest — the ±2 shove alone bit', () => {
     // This one is sharper than it looks. The 0x2468 contact is a GROUNDED knight
     // and a GROUNDED buzzard, both at velY 0, so NEITHER velocity is wrong-way
-    // and OSTXUP/OSTXDN change no velocity at all. The only thing that can move
-    // this digest is `PBUMPY` — the ±2 pixels (:5163, :5175). A story that
-    // reverses velocities and never applies the shove leaves this green.
-    expect(entityDigest(0x2468, 200)).not.toEqual([
+    // and OSTXUP/OSTXDN change no velocity at all. The only thing that could
+    // move this digest is `PBUMPY` — the ±2 pixels (:5163, :5175) — and the
+    // frozen array below shows the process ORDER changed too (enemy#256 now
+    // sits before player#2, not after): a naive copy of the pre-story shape
+    // would fail even with the right per-entity numbers.
+    expect(entityDigest(0x2468, 200)).toEqual([
       'player#1:40,30508,326,-4,192,161,1',
-      'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:205,32768,0,-4,0,1,0',
+      'enemy#256:211,31568,-96,-4,0,5,1',
       'enemy#257:264,53559,62,8,192,101,1',
       'enemy#258:171,33298,-5,8,64,101,1',
+      'player#2:200,23328,64,0,0,9,1',
     ])
   })
 
