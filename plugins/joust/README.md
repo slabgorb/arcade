@@ -10,7 +10,7 @@ the same architecture as its siblings
 [star-wars](../star-wars), [red-baron](../red-baron) and
 [centipede](../centipede).
 
-> **Status:** Live at **v0.0.8** and **silent**. Thirty-six stories are archived
+> **Status:** Live at **v0.0.8** and, since jt5-2, **audible**. Thirty-six stories are archived
 > across five epics: the scaffold and the machine-verified primary-source
 > dossier (jt1, 11); the simulation — process scheduler, enemies, the joust,
 > eggs, the wave machine, transporters and the wave-1 demo (jt2, 9); the
@@ -19,15 +19,20 @@ the same architecture as its siblings
 > scoring, extra men, wave types and bounties, game-over and the loop (jt4, 5);
 > and the in-progress playability epic (jt8, 4 so far) that makes enemies hunt
 > and eggs catchable.
-> **Audio has a seam but no samples.** jt5-1 landed the three-file wiring —
+> **Audio: seam and samples.** jt5-1 landed the three-file wiring —
 > `src/core/events.ts` (eleven ROM-cited moments, emitted as data), the
 > `src/shell/audio.ts` manifest over the shared `@shared/audio` engine, and
-> `src/shell/audio-dispatch.ts` behind a `never` exhaustiveness guard. **No
-> `.wav` is committed and nothing has been put in the assets bucket**, so the
-> game is still silent: `@shared/audio` degrades quietly on a 404, and a green
-> suite here proves the wiring and nothing about whether a knight makes a noise.
-> Recording or synthesising the eleven cues is a later `sprint/epic-jt5.yaml`
-> story.
+> `src/shell/audio-dispatch.ts` behind a `never` exhaustiveness guard — and
+> jt5-2 synthesised the samples and uploaded them: one `.wav` per manifest
+> entry, baked by `tools/sample-bake/bake-samples.mjs` (deterministic
+> stand-ins whose lengths span each table's own ROM window — the sound
+> board's firmware was never vendored, so waveform character is judgement)
+> and staged under `joust/sfx/` on the assets bucket by `just deploy-assets`,
+> with a 200 + `audio/wav` curled for every file at upload (2026-08-01). No
+> `.wav` lives in this repo — the samples' home is the bucket, and
+> `@shared/audio` still degrades quietly on a 404, so a green suite proves
+> the wiring only; if sound goes missing, re-verify with a curl, not a test
+> run.
 
 ---
 

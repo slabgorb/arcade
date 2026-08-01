@@ -206,7 +206,13 @@ describe('jt5-1 — the README’s "what joust does NOT do" section is brought t
 // the import-extension scan runs with STRINGS INTACT, because an import
 // specifier IS a string.
 
-const NEW_MODULES = ['src/core/events.ts', 'src/shell/audio.ts', 'src/shell/audio-dispatch.ts']
+const NEW_MODULES = [
+  'src/core/events.ts',
+  'src/shell/audio.ts',
+  'src/shell/audio-dispatch.ts',
+  // jt5-2: the manifest extracted for the plain-node sample bake.
+  'src/shell/audio-manifest.ts',
+]
 
 /** Source with comments removed. Block comments first, then line comments. */
 const codeOnly = (src: string): string =>

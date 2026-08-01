@@ -17,13 +17,15 @@
 // DATA and never imports this file; `audio-dispatch.ts` is what turns one into
 // the other.
 //
-// ─── THIS STORY SHIPS NO .wav ────────────────────────────────────────────────
-// The manifest below is a promise about an R2 key prefix, not about this repo.
-// jt5-1 commits no binary, runs no `just deploy-assets`, and checked no live
-// 200. joust stays SILENT when this story closes; a later jt5 story records or
-// synthesises the seventeen files and uploads them. Read a green suite accordingly:
-// `@shared/audio` degrades silently on a 404, so passing tests here prove the
-// wiring and say nothing whatever about whether a knight makes a noise.
+// ─── THE .wav FILES LIVE IN THE BUCKET, NEVER IN THIS REPO ───────────────────
+// The manifest is a promise about an R2 key prefix, not about this repo. jt5-1
+// shipped the seam silent; jt5-2 synthesised one sample per manifest entry
+// (`tools/sample-bake/bake-samples.mjs`, reading `./audio-manifest.ts`), ran
+// `just deploy-assets`, and curled a 200 per file (2026-08-01, pasted in its
+// session). Read a green suite accordingly even so: `@shared/audio` degrades
+// silently on a 404, so passing tests here prove the wiring and say nothing
+// whatever about what the bucket serves today — re-check with a curl, not a
+// test run.
 //
 // ─── ONE VOICE BY PRIORITY (jt5-5 — the mechanism, not the fence) ────────────
 // The machine has ONE sound voice arbitrated by a PRIORITY byte. `SND`
@@ -62,29 +64,13 @@ import {
 } from '@shared/audio'
 
 /**
- * The cue names the dispatch speaks in — one per `EVENT_KINDS` entry, and the
- * key of every map below. Not derived from the core's tuple on purpose: the core
- * names MOMENTS and the shell names SOUNDS, and the suite sweeps the two sets
- * against each other rather than making one a projection of the other.
+ * `SoundName` and `SOUNDS` live in `./audio-manifest.ts` since jt5-2, so the
+ * sample bake can reach them under plain node, where this file's `@shared`
+ * import cannot resolve. Re-exported here by identity: every consumer and every
+ * suite sees the one module instance the manifest defines.
  */
-export type SoundName =
-  | 'enemyDeath'
-  | 'playerDeath'
-  | 'eggCollected'
-  | 'eggHatched'
-  | 'pteroArrives'
-  | 'pteroDeath'
-  | 'playerMaterialise'
-  | 'enemyMaterialise'
-  | 'extraMan'
-  | 'waveBounty'
-  | 'cliffDestroyed'
-  | 'playerWingDown'
-  | 'playerWingUp'
-  | 'enemyWingDown'
-  | 'enemyWingUp'
-  | 'playerThud'
-  | 'enemyThud'
+import type { SoundName } from './audio-manifest.js'
+export type { SoundName }
 
 /**
  * joust's prefix on the shared assets host — the fleet convention (tempest's is
@@ -94,26 +80,8 @@ export type SoundName =
  */
 export const DEFAULT_BASE_URL = 'https://arcade-assets.slabgorb.com/joust/sfx/'
 
-/** Cue -> filename. One `.wav` per cue: seventeen distinct Williams tables. */
-export const SOUNDS: Readonly<Record<SoundName, string>> = {
-  enemyDeath: 'enemy_death.wav',
-  playerDeath: 'player_death.wav',
-  eggCollected: 'egg_collected.wav',
-  eggHatched: 'egg_hatched.wav',
-  pteroArrives: 'ptero_arrives.wav',
-  pteroDeath: 'ptero_death.wav',
-  playerMaterialise: 'player_materialise.wav',
-  enemyMaterialise: 'enemy_materialise.wav',
-  extraMan: 'extra_man.wav',
-  waveBounty: 'wave_bounty.wav',
-  cliffDestroyed: 'cliff_destroyed.wav',
-  playerWingDown: 'player_wing_down.wav',
-  playerWingUp: 'player_wing_up.wav',
-  enemyWingDown: 'enemy_wing_down.wav',
-  enemyWingUp: 'enemy_wing_up.wav',
-  playerThud: 'player_thud.wav',
-  enemyThud: 'enemy_thud.wav',
-}
+import { SOUNDS, FRAME_DURATIONS } from './audio-manifest.js'
+export { SOUNDS }
 
 /**
  * Cue -> logical channel, named for the ROM priority that decides it (see the
@@ -459,49 +427,6 @@ const PRIORITIES: Partial<Record<SoundName, number>> = (() => {
   return map
 })()
 
-/**
- * Cue -> how many frames it holds the voice: the sum of every `(code, duration)`
- * pair in its table.
- *
- * These are NOT derivable from `CUE_SOURCES`, and the reason is the one trap in
- * this file. A `CueSource` cites the single `FCB` row that DEFINES its table, but
- * the format header says a table need not end there:
- *
- *     *	 PIRORITY,SOUND,LENGTH (IF M.S.BIT SET ON SOUND, SOUND,LENGTH)
- *                                              (JOUSTRV4.SRC:8045-8049)
- *
- * A pair whose code carries `+$80` is followed by another, and the assembler is
- * free to put it on the next line. Two of these seventeen do exactly that, and
- * their cited rows parse cleanly to a number that is simply not the table's
- * length:
- *
- *   SNPCR1  :8116-8118   30 + 255 + 165 = 450   (cited row alone: 30)
- *   SNPTED  :8091-8093   15 + 15 + 7 + 7 + 90 = 134   (cited row alone: 30)
- *
- * Both rows are byte-exact, and the citation gate re-opens the quoted line only,
- * so it cannot see that a reading of it is fifteen times short. Every value below
- * therefore names its table's FULL extent, and the totals are pinned by
- * `tests/audio-priority.test.ts`.
- */
-const FRAME_DURATIONS: Readonly<Record<SoundName, number>> = {
-  enemyDeath: 20, // SNEDIE  :8104
-  playerDeath: 20, // SNPDIE  :8115
-  eggCollected: 30, // SNEGG   :8098
-  eggHatched: 30, // SNEGGH  :8099
-  pteroArrives: 60, // SNPTEI  :8094        30 + 30
-  pteroDeath: 134, // SNPTED  :8091-8093   15 + 15 + 7 + 7 + 90
-  playerMaterialise: 450, // SNPCR1  :8116-8118   30 + 255 + 165
-  enemyMaterialise: 91, // SNECRE  :8103        90 + 1
-  extraMan: 90, // SNREPL  :8089
-  waveBounty: 60, // SNBOUN  :8096
-  cliffDestroyed: 90, // SNCLIF  :8090
-  playerWingDown: 90, // SNPLWD  :8126
-  playerWingUp: 90, // SNPLWU  :8125
-  enemyWingDown: 60, // SNELWD  :8108
-  enemyWingUp: 60, // SNELWU  :8107
-  playerThud: 31, // SNPTHD  :8124        30 + 1
-  enemyThud: 31, // SNETHD  :8106        30 + 1
-}
 
 export function createAudioEngine(baseUrl: string = DEFAULT_BASE_URL): AudioEngine {
   return createSharedAudioEngine<SoundName>({
