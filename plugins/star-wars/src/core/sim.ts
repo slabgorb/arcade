@@ -989,13 +989,8 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
   // below appends three fresh pieces to this list. Rides the SAME scroll as the field.
   const groundDebris = advanceGroundDebris(state.groundDebris, dt, scrollSpeed)
 
-  // The PMREB "FINISH GROUND WITH REBEL" rider (sw7-18): the ROM fires it at
-  // PH.TIM == 14 pseudo-seconds — game-frame 224, where the per-frame speed has
-  // ramped from $100 to $1E0 (480). Fire the one-shot 'finishGround' tune the frame
-  // our accelerating rate first crosses that speed — monotonic, so exactly once.
-  if (state.surfaceScrollSpeed < SURFACE_FINISH_GROUND_SPEED && scrollSpeed >= SURFACE_FINISH_GROUND_SPEED) {
-    events.push({ type: 'tune', tune: 'finishGround' })
-  }
+  // The PMREB cue's crossing is detected from `scrollSpeed` but is NOT emitted here —
+  // it waits for the shield resolution below (sw8-21). See the block after `loseShield`.
 
   // --- Ground objects: lay the authored WSGRND maze once, then scroll it in --
   // sw4-3: the surface is the wave's fixed, hand-authored WSGRND tower maze —
@@ -1127,6 +1122,32 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
   const surfaceHit = loseShield(state.lives, state.shieldHitAt, damage, t) // S-016 window
   const lives = surfaceHit.lives
   pushFarewell(events, lives) // fatal hit → the end-of-game farewell (sw7-8, U-017)
+
+  // The PMREB "FINISH GROUND WITH REBEL" rider (sw7-18): the ROM fires it at
+  // PH.TIM == 14 pseudo-seconds — game-frame 224, where the per-frame speed has
+  // ramped from $100 to $1E0 (480). Fire the one-shot 'finishGround' tune the frame
+  // our accelerating rate first crosses that speed — monotonic, so exactly once.
+  //
+  // GATED ON THE DEATH, and that is why it sits down HERE rather than beside the
+  // `scrollSpeed` that defines the crossing (sw8-21). PHEGD tests the shields ABOVE
+  // the PH.TIM walk — `LDA S.GAS / LBMI PHIG0D ;J EXIT WHEN DEAD` (WSMAIN.MAC:1645-1646)
+  // precedes `JSR PMREB` (:1673) — so the cabinet never starts this cue over the
+  // player's death. `lives` is not bound until `loseShield` above, so the gate cannot
+  // be written at the crossing: reading the frame's `damage` counter there is not the
+  // same test, because S-016 can drop a hit (damage, but no death) and the turret
+  // hit-test has not even run yet. The post-hit `lives` is the only faithful reading.
+  // This is PHESP1's space gate (sw8-13, :662) ported to PHEGD.
+  //
+  // The crossing itself is still evaluated against the frame's own speed pair, and
+  // `surfaceScrollSpeed` is returned as `scrollSpeed` regardless — so a cue silenced by
+  // the death is LOST, not deferred, exactly as the ROM's exit leaves it.
+  if (
+    lives > 0 &&
+    state.surfaceScrollSpeed < SURFACE_FINISH_GROUND_SPEED &&
+    scrollSpeed >= SURFACE_FINISH_GROUND_SPEED
+  ) {
+    events.push({ type: 'tune', tune: 'finishGround' })
+  }
 
   // The 50,000 "cleared all towers" bonus (sw3-3 / H-021) now banks MID-PHASE,
   // decoupled from the phase length (sw7-18 / D-019): the frame the last tower
