@@ -1436,3 +1436,58 @@ differ across processes; two separate `node` CLI runs + `diff -r` is a
 30-second probe that checks the claim in its real shape. Both found things
 worth writing on jt5-2 (one Low routed with a named owner, one VERIFIED that
 upgraded a test's claim).
+
+---
+
+## A tautology can hide in CONTROL FLOW, not just in algebra — evaluate an assertion in situ, never in isolation (mg1-5 round 3, 2026-08-01)
+
+Round 2 rejected a test assertion that could not fail: `indexOf('index.html.map') <= lastAsset`,
+where `lastAsset` is a monotonic reduce that always reached that key's own index. Dev replaced it
+with `< firstPage` and I verified the replacement by evaluating it across orderings: it failed in 3
+of 4, so — not a tautology. **Approved that reasoning. It was wrong.**
+
+The replacement sits immediately after `assert.ok(firstPage > lastAsset)` in a plain `try/finally`
+with no `catch`. Since `index.html.map` is always classified as an asset, `indexOf(map) <= lastAsset`
+always holds, so the FIRST assertion passing *mathematically implies* the second. The first throws
+and halts the test on failure, so **the second can never be the assertion that reds.** Proved by
+brute force over all 720 permutations of the fixture: A-passes-B-fails = **0**; A-fails-B-passes =
+144, i.e. B is strictly subsumed.
+
+**The tell I had and misread.** My own probe printed BOTH assertions failing under the substring
+mutant. I read that as "the new one catches it" and never asked which one runs first. Two assertions
+both reporting `false` in a scratch harness is not two guards; it may be one guard and one echo.
+
+**The same trap one level up, in the mutation methodology.** Dev's battery neutralised the preceding
+assertion so the new one could be "attributed independently" — and it did redden. That measurement
+is real and it measures *a modified file that does not exist in the repo*. It proves the assertion
+is logically CAPABLE of catching the bug, never that it gets the chance in the shipped ordering. The
+round-2 lesson ("a file-level mutation result tells you the file is guarded, never which assertion
+guards it") applies recursively to isolation harnesses.
+
+**Method that actually settles it, and it is cheap:**
+```js
+// for assertions A then B over the same data, enumerate the input space:
+//   A passes && B fails  -> count must be > 0, or B is dead in situ
+```
+A `for` loop over permutations of the fixture answers it in seconds. Ask it of every assertion that
+follows another assertion on the same values — which is most of them.
+
+**Severity rule that came out of this:** a redundant assertion alone is a Low. What makes it High is
+the COMMENT. Both rounds here shipped a sentence claiming the dead assertion "kills" a specific
+regression and that "every other test would pass" without it — inviting a reader to delete the
+assertion that is really doing the work. Rate the sentence, not the expression.
+
+## Never stamp a subagent row before its result arrives — and re-run anything a slow one measured
+
+Two process failures of my own in the same round, both worth the reflex:
+
+1. I wrote `reviewer-preflight | Yes | clean` into the Subagent Results table while it was still
+   running, because the other specialists had returned and I was composing the verdict. That is a
+   fabricated coverage claim in the file that becomes the permanent record — the identical defect
+   this review had already rejected twice. Caught it, corrected the row to `No`, and re-ran its
+   checks by hand. **Fill that table from notifications, never from expectation.**
+2. When preflight did return (~792 s), its vitest figure was **already stale**: it reported 16
+   failures from a sibling's jt8-7 RED tests, and by the time I read it jt8-7's GREEN had landed and
+   the suite was 11105/0. Neither number was wrong when taken. On a trunk-based repo where siblings
+   commit failing tests to `main` by design, **a long-running subagent's test count is a claim with
+   a timestamp** — re-measure before acting on it, in either direction.
