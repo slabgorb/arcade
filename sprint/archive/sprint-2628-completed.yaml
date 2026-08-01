@@ -1307,3 +1307,8 @@ completed_stories:
     title: 'Make the pterodactyl a full collision participant: ptero-vs-ptero must reach SNETHD and the ordinary bump'
     points: 3
     completed: '2026-08-01'
+  - id: sw8-16
+    epic: sw8
+    title: "TIE fire-gate coverage: the C$T9 aim-ahead lockout and the A$GLW glow lockout are UNPINNED — mutation-proven during sw8-9 review (setting aimingAhead=false or notHit=true each leave the suite 1437/1437 green). The other two of the ROM gate's four conditions ARE pinned (removing C$PV reds 2, removing the $800 floor reds 1). Gate is WSCPU.MAC:622-633. Needs: a fighter mid-AIM_AHEAD maneuver must not fire; a glowing just-hit fighter must not fire"
+    points: 1
+    completed: '2026-08-01'

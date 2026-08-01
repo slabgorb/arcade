@@ -172,11 +172,14 @@ stories:
     title: "TIE fire-gate coverage: the C$T9 aim-ahead lockout and the A$GLW glow lockout are UNPINNED — mutation-proven during sw8-9 review (setting aimingAhead=false or notHit=true each leave the suite 1437/1437 green). The other two of the ROM gate's four conditions ARE pinned (removing C$PV reds 2, removing the $800 floor reds 1). Gate is WSCPU.MAC:622-633. Needs: a fighter mid-AIM_AHEAD maneuver must not fire; a glowing just-hit fighter must not fire"
     points: 1
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-01'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-01'
     type: chore
+    review_findings: 'Round 1: LOW comment-accuracy only — test file comments derive figures from TICK_HZ=20 but the constant is 246.094/12≈20.5078 (420-frame budget is ~430.7; 80 blocked frames is ~82.03). Code and all assertions verified correct by executed mutations. Fix three comment spans, no code changes.'
+    review_verdict: approved
   - id: sw8-17
     title: "The Death Star's off-centre wander belongs to the STATION, not the camera — port its own lateral motion into deathStarPlacement. The epic's §1 evidence anchor is a real cabinet observation (longplay ~wave 4, score 352,171: mid space-combat the Death Star is entirely out of frame) that our port cannot reproduce: deathStarPlacement seats the station at x=0 and moves it only in DEPTH. sw8-1 explained it with a viewer slide off ST.UX; sw8-8 retired that camera (ST.UX is the starfield's register — sole reader VWSTAR WSSTAR.MAC:98-102, and no space code writes the player's world position at all), so the observation is now unexplained. Find the station's OWN ROM mechanism (WSBASE.MAC / the DS site handling in WSSITE.MAC) and port it as a lateral term in deathStarPlacement. MUST NOT be re-derived from ST.UX or reintroduced as a camera slide: tests/shell/render.space-camera.test.ts pins camera-contributes-no-lateral-offset and will fail loudly on the shortcut"
     points: 3
