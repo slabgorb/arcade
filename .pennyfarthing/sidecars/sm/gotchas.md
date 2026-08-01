@@ -785,3 +785,28 @@ finish with exactly that structural instruction. So it was routed there and the 
 into the Impact Summary. The rule "a descope must end with a filed story ID **or an existing
 owner**" is satisfied by the second clause only if you actually READ the owner's text; jt5-5's
 finish is the story where that check failed and had to be repaired.
+
+---
+
+## The finish parser scrapes `**Branch:**` by PATTERN anywhere in the session — Dev's prose line broke `story finish` (jt8-3, 2026-08-01)
+
+`pf sprint story finish jt8-3` refused with "branch 'trunk-based — GREEN landed on `main`
+(`f87a318`), pushed.' cannot be verified" — it had scraped Dev's Assessment line
+`**Branch:** trunk-based — GREEN landed on main…` as the Branch FIELD and tried to verify a
+branch named the whole sentence. Same family as the `**Phase:**` token rule: the parsers match
+labelled tokens anywhere in the file, not by section. Fix that worked: reworded Dev's label to
+`**Landed on:**` (with a note saying why) and added an explicit `- **Branch:** none` to Story
+Details — the documented escape hatch for trunk-based stories whose work is already on `main`.
+Finish then ran clean. Extend the post-`complete-phase` grep habit: `**Phase:**`, `**Branch:**`
+and any other labelled token the ceremony parses must each appear exactly once, as the field.
+
+## `pf sprint story add` NOW HAS `--repos`, `--type`, `--workflow`, `--priority` — the repos-repair dance is obsolete (jt8-3 finish, 2026-08-01)
+
+DATED CORRECTION to the four entries above that say the add writes `repos: pennyfarthing`
+unconditionally and `update` has no repos flag. `pf sprint story add --help` now shows
+`--repos TEXT (default: pennyfarthing)`, `--type`, `--workflow`, `--priority`. Filed jt8-9..12
+with `--repos arcade --workflow …` and a parse confirmed every story in the epic carries
+`repos: [arcade]` — no surgical sed needed. The OTHER halves of those entries still hold:
+the add writes NO description (follow with `story update <id> --description`), and READ the
+minted id from the output (it minted jt8-9..12 here). Run `--help` before trusting any recorded
+flag gap — the toolchain moves.
