@@ -502,7 +502,15 @@ describe('jt5-5 shared audio — the STMR window decides WHETHER to compare at a
     ).toHaveLength(3)
   })
 
-  it('the window does not go negative — extra ticks on an idle voice change nothing', async () => {
+  // NAMED FOR WHAT IT PROVES (Reviewer, jt5-5): this used to be called "the window
+  // does not go negative", which it cannot check. A mutation dropping the `> 0`
+  // floor from tick() survives the whole suite, because a negative counter and a
+  // zero one are indistinguishable through the public surface — every read is
+  // `voiceFrames > 0`, and an accept reassigns it outright. The floor stays as
+  // defensive code and as a statement of intent; the property it protects is not
+  // observable, so no test should claim to observe it. What IS checkable, and what
+  // this asserts, is that over-ticking an idle voice leaves arbitration working.
+  it('over-ticking an idle voice leaves later arbitration intact', async () => {
     const { engine, created } = await mkLoadedEngine(DEATHS)
     engine.play('playerDeath')
     for (let i = 0; i < 500; i++) engine.tick()

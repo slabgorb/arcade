@@ -117,10 +117,15 @@ export const SOUNDS: Readonly<Record<SoundName, string>> = {
 
 /**
  * Cue -> logical channel, named for the ROM priority that decides it (see the
- * header). Cues sharing a channel share a priority, so the engine's
- * unconditional steal can only ever replace a sound the machine would also have
- * let through. Keyed by `SoundName`, so a cue with no channel is a compile
- * error rather than an unroutable sound.
+ * header). Keyed by `SoundName`, so a cue with no channel is a compile error
+ * rather than an unroutable sound.
+ *
+ * The channel no longer decides which cue wins. Until jt5-5 it did: every cue
+ * here is arbitrated now, so `PRIORITIES` and the engine's single voice settle
+ * every collision and a shared channel can no longer buy or deny a cue anything.
+ * What the grouping still says is TRUE and worth keeping — cues on one channel
+ * are exactly the cues at one ROM priority — and the engine continues to route
+ * by channel, so the map is live wiring, just no longer the arbitration.
  */
 export const CHANNELS: Readonly<Record<SoundName, string>> = {
   enemyThud: 'prio-9',
