@@ -72,17 +72,19 @@ export const MUSIC = {
   // Sound_24 (PMTH5) ONLY, since sw8-12: theme B (Sound_25/PMTHB) is its own
   // one-shot TUNE at the 10s milestone, so the bake no longer concatenates the
   // pair (that landed theme B ~1.67s early and would double-play it under the
-  // milestone cue). KNOWN DIVERGENCE, kept deliberately: this channel LOOPS,
-  // so the 6.3s theme repeats inside the 21s space box where the cabinet plays
-  // it once and sits silent until theme B — the loop-vs-one-shot adaptation is
-  // sw3-5's, re-ruled at sw8-12 (session Delivery Findings).
+  // milestone cue). KNOWN DIVERGENCE, kept deliberately: this entry LOOPS,
+  // so the 6.3s theme repeats where the cabinet plays it once and sits silent
+  // — though only until themeB's 10s steal cuts the loop off (sw8-13), so the
+  // window is 2s-10s, not the whole 21s box. The loop-vs-one-shot adaptation
+  // is sw3-5's, re-ruled at sw8-12 (session Delivery Findings).
   space: 'space_theme.wav',
   // Sound_20/21 (PM4TH) ONLY, since sw8-14 — the exact same split, one phase
   // later: the rebel finish (PMREB) is its own one-shot TUNE at the ground
   // phase's PH.TIM 14 milestone, so the bake no longer concatenates the pair.
   // It had been ringing twice — once per iteration of THIS loop and once from
   // the core's cue (shipped at sw7-18). Same KNOWN DIVERGENCE as space: the
-  // cabinet plays the 11s theme once at ground entry, we loop it.
+  // cabinet plays the 11s theme once at ground entry, we loop it — until the
+  // finishGround cue steals the channel (sw8-13) and the loop stays dead.
   towers: 'towers_theme.wav', // Death Star surface — Sound_20/21
   trench: 'trench_theme.wav', // trench run — Sound_22
   imperialMarch: 'imperial_march.wav', // replaces the space theme at wave>=3 odd — Sound_1D
@@ -90,16 +92,22 @@ export const MUSIC = {
 
 export type MusicName = keyof typeof MUSIC
 
-// Every track shares ONE logical channel, so starting a track voice-steals whatever
-// was looping — exactly one music loop rings at a time and a phase edge swaps it
-// (the looping music channel this story needs, per @shared/audio SH2-16).
-// Exported so the single-channel invariant (AC1) can be pinned by a test — giving
-// any track its own channel would let two loops ring at once (AC1 broken).
+// Every track shares ONE logical channel — and since sw8-13 it is the SAME
+// channel the one-shot tunes ride: the cabinet has a single PM player. Every
+// PM entry, music and tune alike, claims POKEY voices 1-4 via .TUNE, whose
+// expansion opens with "JSR PKCUT'VNUM ;CLEAR OUT AND INIT THIS VOICE"
+// (SNDPM.MAC:319-326; entries :330-405) — an unconditional clear, both
+// directions, no resume. So a new track steals a ringing tune (ground init's
+// PM4TH cuts off a descent still sounding through the warp, WSMAIN.MAC:1636)
+// exactly as it steals the previous loop. Exported so the one-PM-player
+// invariant can be pinned (tests/shell/pm-channel.test.ts) — giving any entry
+// its own channel would let two PM pieces ring at once, which the hardware
+// could not do.
 export const MUSIC_CHANNELS: Record<MusicName, string> = {
-  space: 'music',
-  towers: 'music',
-  trench: 'music',
-  imperialMarch: 'music',
+  space: 'pm',
+  towers: 'pm',
+  trench: 'pm',
+  imperialMarch: 'pm',
 }
 
 // The one-shot tunes (sw7-8, U-010..U-014; sw7-18 adds finishGround), baked by
@@ -122,20 +130,22 @@ export const TUNES = {
 
 export type TuneName = keyof typeof TUNES
 
-// ONE shared channel for every tune — the cabinet's PM driver is a single tune
-// player, so a new tune replaces whatever tune was ringing (playing the finale
-// over a still-tolling knell steals it, exactly like the hardware). Distinct
-// from the looping 'music' channel: a one-shot must never kill the phase loop
-// (the loop is our sw3-5 adaptation). Exported so both invariants are pinned
-// by tests/shell/tune-channel.test.ts.
+// The SAME shared channel as the loops (sw8-13) — the cabinet's PM driver is a
+// single player, so a new tune replaces whatever was ringing, tune OR loop:
+// the finale over a still-tolling knell, and equally the torpedo's PMSF2 over
+// the trench's repeating PMRRP (the loop dies and nothing restarts it —
+// silence until the next JSR PM*). The old two-channel split ("a one-shot
+// must never kill the phase loop") was sw3-5's adaptation, overturned at
+// sw8-13 from SNDPM.MAC's voice claims. Exported so the invariant is pinned
+// by tests/shell/pm-channel.test.ts and tune-channel.test.ts.
 export const TUNE_CHANNELS: Record<TuneName, string> = {
-  deathKnell: 'tune',
-  cantina: 'tune',
-  finale: 'tune',
-  bensTheme: 'tune',
-  descent: 'tune',
-  finishGround: 'tune',
-  themeB: 'tune',
+  deathKnell: 'pm',
+  cantina: 'pm',
+  finale: 'pm',
+  bensTheme: 'pm',
+  descent: 'pm',
+  finishGround: 'pm',
+  themeB: 'pm',
 }
 
 // TMS5220 LPC speech (story 8-7), under its own R2 prefix. AUTHENTIC re-synthesis bakes
@@ -191,15 +201,19 @@ export interface AudioEngine {
   // playing QUEUES and starts when it ends — cue order is spoken order. No-op
   // if unavailable.
   speak(name: SpeechName): void
-  // Start a looping music track on the shared `music` channel (sw3-5). Voice-steals
-  // whatever was looping, so one track rings and a phase edge swaps it. No-op until
-  // resume() has run and the track has decoded; silent when WebAudio is unavailable.
+  // Start a looping music track on the shared PM channel (sw3-5; unified with
+  // the tunes at sw8-13). Voice-steals whatever the PM player was sounding —
+  // the previous loop OR a still-ringing tune (PM4TH over PMDES at the warp).
+  // No-op until resume() has run and the track has decoded; silent when
+  // WebAudio is unavailable.
   startLoop(name: MusicName): void
   // Stop the looping music. Safe no-op when nothing is looping there.
   stopLoop(name: MusicName): void
-  // Play a one-shot tune on the single shared 'tune' channel (sw7-8): a new
-  // tune voice-steals the last, like the cabinet's one PM tune player. Same
-  // silent-degrade contract as every other engine verb.
+  // Play a one-shot tune on the same shared PM channel (sw7-8; unified at
+  // sw8-13): a new tune voice-steals whatever was ringing — the last tune OR
+  // the phase loop, which does NOT come back when the tune ends (the cabinet
+  // stays silent until the next JSR PM*). Same silent-degrade contract as
+  // every other engine verb.
   playTune(name: TuneName): void
   // True once at least one SFX sample has decoded. Mainly for tests / readiness UI.
   ready(): boolean
@@ -227,11 +241,15 @@ export function createAudioEngine(baseUrl: string = DEFAULT_BASE_URL): AudioEngi
   })
 
   // Looping music AND the one-shot tunes run through one shared-engine instance
-  // (sw3-5; tunes added by sw7-8): the same R2 prefix (music/), with loops on the
-  // single `music` channel and every tune on the single `tune` channel — so
-  // startLoop voice-steals to exactly one loop, playTune to exactly one tune,
-  // and the two never steal each other. Same silent-degrade contract as the SFX
-  // engine — a missing/undecoded track simply never plays.
+  // (sw3-5; tunes added by sw7-8), the same R2 prefix (music/), and — since
+  // sw8-13 — ONE shared 'pm' channel: the cabinet has a single PM player, so
+  // any start steals whatever was sounding, loop or tune, in both directions,
+  // and a stolen loop does not come back. (The shared engine's per-channel
+  // steal, startSource -> stopChannel, is loop/one-shot agnostic, so the maps
+  // alone carry the semantics.) SFX stay a separate engine instance — the
+  // cabinet's effect voices are other hardware and must not enter the steal.
+  // Same silent-degrade contract as the SFX engine — a missing/undecoded
+  // track simply never plays.
   const music: SharedAudioEngine<MusicName | TuneName> = createSharedAudioEngine<
     MusicName | TuneName
   >({

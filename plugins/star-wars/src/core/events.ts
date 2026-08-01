@@ -266,11 +266,12 @@ export type TuneName =
   | 'themeB' // PMTHB — the space PH.TIM 200 (10s) milestone (WSMAIN.MAC:1435, sw8-12)
 
 // A one-shot tune cue (sw7-8). Same core-owns-WHEN / shell-owns-HOW split as
-// speech and music: the shell plays it once on the single shared 'tune'
-// channel — one tune player, exactly like the cabinet's PM driver, so a new
-// tune voice-steals the last. Unlike MusicEvent this never loops: a knell that
-// looped would toll forever. 'cantina' and 'bensTheme' carry no core trigger —
-// the high-score fork lives in the shell (main.ts owns the table, SH2-13).
+// speech and music: the shell plays it once on the shared PM channel — ONE
+// player, exactly like the cabinet's PM driver, so a new tune voice-steals
+// whatever was ringing, the last tune or the phase music loop (sw8-13).
+// Unlike MusicEvent this never loops: a knell that looped would toll forever.
+// 'cantina' and 'bensTheme' carry no core trigger — the high-score fork lives
+// in the shell (main.ts owns the table, SH2-13).
 export interface TuneEvent {
   type: 'tune'
   tune: TuneName

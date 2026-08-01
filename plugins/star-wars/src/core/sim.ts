@@ -647,13 +647,22 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // integer IFEQ ports as a once-only CROSSING of the literal second marks
   // (prev < T && next >= T — the sw8-11 IFHS -> `>=` precedent; the clock is
   // monotone within a phase and enterPhase restarts it, so each mark fires at
-  // most once per space phase). A dead cockpit never reaches this stepper (the
-  // gameover branch exits first — ROM: LBMI PHIS0D precedes the walk).
+  // most once per space phase). The death silences the walk BOTH ways (ROM:
+  // "LDA S.GAS / LBMI PHIS0D ;B EXIT WHEN PLAYER DIES", WSMAIN.MAC:1396-1397,
+  // sits above the PH.TIM chain): a frame ENTERED dead never reaches this
+  // stepper (the gameover branch dispatches first), and a fatal hit resolved
+  // THIS frame — loseShield above taking the last shield — gates the pushes
+  // below, so no cue ever starts over the death (sw8-13; the [EDGE][LOW]
+  // 0.05s crossing-window case sw8-12's review confirmed). A hit that leaves
+  // shields standing does NOT gate: the ROM's LBMI reads S.GAS minus (dead),
+  // and a live pilot hears the cue.
   const phaseTime = state.phaseTime + dt
   const crossed = (mark: number): boolean => state.phaseTime < mark && phaseTime >= mark
-  if (crossed(2)) events.push({ type: 'music', track: musicTrackFor('space', state.wave) })
-  if (crossed(10)) events.push({ type: 'tune', tune: 'themeB' })
-  if (crossed(20)) events.push({ type: 'tune', tune: 'descent' })
+  if (lives > 0) {
+    if (crossed(2)) events.push({ type: 'music', track: musicTrackFor('space', state.wave) })
+    if (crossed(10)) events.push({ type: 'tune', tune: 'themeB' })
+    if (crossed(20)) events.push({ type: 'tune', tune: 'descent' })
+  }
 
   const stepped = finalizeScore(
     state,

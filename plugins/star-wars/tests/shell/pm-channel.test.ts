@@ -48,6 +48,9 @@ interface FakeSource {
   loop: boolean
   started: boolean
   stopped: boolean
+  /** True once the source rang out on its own (ringOut fired its onended) —
+   *  a finished one-shot no longer sounds, though stop() was never called. */
+  ended: boolean
   onended: (() => void) | null
   connect(): void
   disconnect(): void
@@ -78,6 +81,7 @@ class FakeAudioContext {
       loop: false,
       started: false,
       stopped: false,
+      ended: false,
       onended: null,
       connect() {},
       disconnect() {},
@@ -102,7 +106,14 @@ const fileOf = (s: FakeSource): string => s.buffer?.url.split('/').pop() ?? ''
 
 /** Files audibly ringing right now: started and neither stopped nor rung out. */
 const ringing = (): string[] =>
-  sources.filter((s) => s.started && !s.stopped).map(fileOf)
+  sources.filter((s) => s.started && !s.stopped && !s.ended).map(fileOf)
+
+/** A one-shot finishes on its own: mark it silent, then fire the engine's
+ *  onended hook — the order a real AudioBufferSourceNode delivers. */
+const ringOut = (s: FakeSource): void => {
+  s.ended = true
+  s.onended?.()
+}
 
 /** The last source carrying `file` (a retrigger makes a fresh source). */
 const srcOf = (file: string): FakeSource | undefined =>
@@ -173,7 +184,7 @@ describe('sw8-13 — the steal is symmetric, like PKCUT (behavioral pins)', () =
     engine.playTune('deathKnell')
     const knell = srcOf('death_knell.wav')
     expect(knell).toBeDefined()
-    knell?.onended?.()
+    if (knell) ringOut(knell)
     await settle()
     expect(ringing()).toEqual([])
     // ...and no fresh trench source was minted behind our back.

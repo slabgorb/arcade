@@ -233,16 +233,18 @@ const loop = createLoop(
           break
         case 'music':
           // The core swapped the phase music this frame (sw3-5). One generic arm
-          // starts the cued track on the looping `music` channel — voice-stealing
-          // means the previous loop stops and this one rings. The core owns WHEN
-          // (phase edges only), the shell owns HOW (the @shared/loop primitive).
+          // starts the cued track on the shared PM channel — voice-stealing
+          // means whatever the PM player rang (the previous loop OR a tune still
+          // sounding, sw8-13: PM4TH over PMDES at the warp) stops and this one
+          // rings. The core owns WHEN (phase edges only), the shell owns HOW.
           audio.startLoop(event.track)
           break
         case 'tune':
           // A one-shot tune the core cued this frame (sw7-8): the death knell,
           // the finale, or the descent. One generic arm plays every current AND
-          // future tune on the single shared 'tune' channel — a new tune steals
-          // the last, like the cabinet's one PM tune player.
+          // future tune on the same shared PM channel — a new tune steals
+          // whatever was ringing, the last tune or the phase loop (sw8-13),
+          // like the cabinet's one PM player.
           audio.playTune(event.tune)
           break
         case 'name-entered':

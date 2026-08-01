@@ -29,7 +29,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 2096,
+      "line": 2105,
       "verbatim": "const ROM_LATERAL_UNIT = 0x400 // 1024 — the ×$400 STARTING-LOCATION lateral step"
     }
   },
@@ -46,7 +46,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 2107,
+      "line": 2116,
       "verbatim": "  [-2 * ROM_LATERAL_UNIT, 0], // 1D1"
     }
   },
@@ -131,7 +131,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 2144,
+      "line": 2153,
       "verbatim": "  return { pos, kind, orient: lookRotation(FACING_PLAYER), vm, firedGun: false }"
     }
   },
@@ -271,7 +271,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 2130,
+      "line": 2139,
       "verbatim": "  const [x, y] = SPAWN_LATERALS[spawnIndex % SPAWN_LATERALS.length]"
     },
     "recommendation": "accept",
