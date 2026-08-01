@@ -40,7 +40,7 @@ Run everything from the **monorepo root**:
 
 ```bash
 npm install                         # once, for the whole cabinet
-npx vitest run --project joust      # joust's suite: 80 files / 1932 tests
+npx vitest run --project joust      # joust's suite: 81 files / 1944 tests
 npx vitest run                      # the whole cabinet
 npm run lint                        # tsc --noEmit across the monorepo
 npm run test:orchestrator           # the root node:test suite
@@ -80,7 +80,7 @@ this directory, not one. Six files here resolve it (`tests/helpers/joust-source.
 honours `JOUST_SOURCE_DIR` first. Get the depth wrong and nothing goes red:
 **95** `describe.skipIf(!vendoredAvailable)` / `it.skipIf(...)` guards across
 **29** test files quietly skip, the byte-for-byte citation gate degrades to
-schema-only, and the suite still reports 80 files passed. The Task 12 import
+schema-only, and the suite still reports 81 files passed. The Task 12 import
 measured that failure mode deliberately — 1280 passed | 566 skipped, fully
 green — before repairing it.
 

@@ -26,8 +26,12 @@ import type { AudioEngine, SoundName } from './audio.js'
 /** Just the slice of the engine this dispatch needs — joust never loops. */
 type SoundPlayer = Pick<AudioEngine, 'play'>
 
-/** The cue each moment sounds. Exported so `main.ts` need not re-derive it. */
-export function cueFor(event: GameEvent): SoundName | null {
+/**
+ * The cue each moment sounds. Module-private: `playEventSounds` is the only
+ * seam the shell uses, and an exported second entry point would be a second
+ * thing to keep in step with the union for no caller's benefit.
+ */
+function cueFor(event: GameEvent): SoundName | null {
   switch (event.type) {
     case 'enemy-death':
       return 'enemyDeath'

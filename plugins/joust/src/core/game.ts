@@ -442,16 +442,22 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
     const beforeBounty = players
     if (endingType === 'gladiator') {
       players = awardWaveBounty(players, 'gladiator', { alive, guards, died: [false, false] })
+      // SNBOUN "COLLECT BOUNTY" (:8096) sounds for the GLADIATOR claim and for
+      // nothing else. :4711, inside SPDGLA ("ONLY 1 GLADIATOR IN THE WAVE",
+      // :4691), is its ONLY call site in the whole ROM; the co-op (:2642-2658)
+      // and survival (:2674-2693) awards hand out the same 3,000 through
+      // SCRHUN + WAVMSG and play NOTHING. The silence in the branch below is
+      // therefore the machine, not a gap to fill later.
+      //
+      // ONE cue, and only when the claim actually PAID — a gladiator wave
+      // nobody claimed awards no one. Detected by a score MOVING rather than by
+      // ledger identity, because `awardWaveBounty` returns fresh objects either
+      // way, so identity would fire on every gladiator wave ever fought.
+      if (players.some((p, i) => p.score !== beforeBounty[i].score)) cues.push({ type: 'wave-bounty' })
     } else if (foughtClear && (endingType === 'coop' || endingType === 'survival')) {
+      // Points, no cue — see above. The machine is silent here.
       players = awardWaveBounty(players, endingType, { alive, guards, died: [false, false] })
     }
-    // SNBOUN "COLLECT BOUNTY" (:8096) — ONE cue for the award, not one per paid
-    // knight: a co-op wave pays both players from the single WCOOP branch, and
-    // the machine has one bounty sound. Detected by a score actually MOVING, so
-    // a voided co-op bonus (a partner-kill) and a gladiator wave nobody claimed
-    // stay silent — `awardWaveBounty` returns fresh ledgers either way, which is
-    // why identity is not the test.
-    if (players.some((p, i) => p.score !== beforeBounty[i].score)) cues.push({ type: 'wave-bounty' })
     guards = armWaveGuards(resolveWaveType(sim.wave, players))
   }
 

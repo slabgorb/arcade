@@ -72,7 +72,7 @@ export type SoundName =
 export const DEFAULT_BASE_URL = 'https://arcade-assets.slabgorb.com/joust/sfx/'
 
 /** Cue -> filename. One `.wav` per cue: eleven distinct Williams tables. */
-export const SOUNDS: Record<SoundName, string> = {
+export const SOUNDS: Readonly<Record<SoundName, string>> = {
   enemyDeath: 'enemy_death.wav',
   playerDeath: 'player_death.wav',
   eggCollected: 'egg_collected.wav',
@@ -93,7 +93,7 @@ export const SOUNDS: Record<SoundName, string> = {
  * let through. Keyed by `SoundName`, so a cue with no channel is a compile
  * error rather than an unroutable sound.
  */
-export const CHANNELS: Record<SoundName, string> = {
+export const CHANNELS: Readonly<Record<SoundName, string>> = {
   enemyDeath: 'prio-40',
   enemyMaterialise: 'prio-40',
   eggCollected: 'prio-45',
@@ -158,7 +158,7 @@ const SRC = 'JOUSTRV4.SRC'
  * call site really mentions it. The whole 38-table set sits at :8051-8131 under
  * the format header at :8045-8049 (priority, then (code, duration) pairs).
  */
-export const CUE_SOURCES: Record<SoundName, CueSource> = {
+export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
   enemyDeath: {
     kind: 'rom',
     table: 'SNEDIE',
@@ -271,6 +271,11 @@ export const CUE_SOURCES: Record<SoundName, CueSource> = {
     table: 'SNBOUN',
     priority: 50,
     romComment: 'COLLECT BOUNTY',
+    // SCOPE — :4711 is SNBOUN's ONLY call site in the ROM, and it sits inside
+    // SPDGLA, the gladiator claim. The co-op and survival bonuses award the
+    // same 3,000 and sound nothing. `game.ts` emits `wave-bounty` for the
+    // gladiator award alone; widening it would put this citation behind
+    // firings it does not cover.
     source: { file: SRC, line: 8096, verbatim: 'SNBOUN\tFCB\t050,!N$1C!.$7F,60\tCOLLECT BOUNTY' },
     callSite: { file: SRC, line: 4711, verbatim: '\tLDX\t#SNBOUN\t\tAWARD BOUNTY SOUND' },
   },
