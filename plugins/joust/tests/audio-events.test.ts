@@ -41,7 +41,7 @@
 //     — which steps past a triggering frame and demands the event be GONE.
 //     This trap is not hypothetical here: joust's EXISTING `DemoState.events`
 //     log is append-and-cap (`[...demo.events, ...collided.events]
-//     .slice(-EVENT_LOG_CAP)`, demo.ts:1318, the cap declared 32 at demo.ts:311 —
+//     .slice(-EVENT_LOG_CAP)`, demo.ts:1321, the cap declared 32 at demo.ts:311 —
 //     this cited `:1173` and a literal `slice(-32)` from jt5-1 until jt5-4
 //     re-anchored it), and `stepGame` only tells this frame's entries from last
 //     frame's by a reference-set delta (game.ts:376-380). A cue channel built
@@ -481,7 +481,7 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
   })
 
   it('the stream is NOT joust’s capped DemoState.events log wearing a new name', () => {
-    // `demo.ts:1318` keeps the last EVENT_LOG_CAP (32) entries of an append-only log and nothing
+    // `demo.ts:1321` keeps the last EVENT_LOG_CAP (32) entries of an append-only log and nothing
     // clears it per frame. If the cue channel were that log — or derived from it
     // by the reference-set delta game.ts:376 uses — a quiet frame would still
     // report the last kill. Compare the two ON THE SAME QUIET FRAME: the sim log

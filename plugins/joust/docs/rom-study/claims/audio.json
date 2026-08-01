@@ -304,5 +304,23 @@
       "line": 109,
       "verbatim": "DPLYR\tRMB\t2\tRIDERS IMAGE"
     }
+  },
+  {
+    "id": "JT516-001",
+    "claim": "OSTH12 is the ptero-pair dispatch inside the no-kill branch: with SNETHD already sounded (:5019-5020), OSTHT2's PID tests found the FIRST party to be a pterodactyl and branched here; OSTH12 then tests the SECOND party's PID for #$80+PTEID. Both parties pterodactyls is the QUESTION its own comment asks ('2 PTERODACTYL'S?').",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5031,
+      "verbatim": "OSTH12\tLDA\tPID,X\t\t2 PTERODACTYL'S?"
+    }
+  },
+  {
+    "id": "JT516-002",
+    "claim": "Two pterodactyls take the ORDINARY enemy bump: OSTH12's compare answering YES branches to OSTH11 ('SAME OLD COLISION'), which is JSR OSTBMP — no-one dies, the pair bumps apart by the height dispatch, and SNETHD is already playing. This is the routing jt5-16 ports: a ptero/ptero pair emits enemy-thud and resolves through the same bounce as a buzzard/buzzard pair. The unmeasured arm is the OTHER branch — a ptero/bird pair goes to PTEBRD (:5034) — which stays unbuilt in this port until its own story measures it.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5033,
+      "verbatim": "\tBEQ\tOSTH11\t\tBR=YES, SAME OLD COLISION"
+    }
   }
 ]

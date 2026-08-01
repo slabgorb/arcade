@@ -701,7 +701,7 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
     //
     // This used to count `filter(v => v === UP_FROM_DESCENDING).length === 1` on
     // both birds, which is symmetric by construction and CANNOT FAIL: swapping
-    // `bounceBottom(a)`/`bounceTop(b)` at demo.ts:926-927 inverted both roles and
+    // `bounceBottom(a)`/`bounceTop(b)` at demo.ts:929-930 inverted both roles and
     // left it green. The count assertions are kept below the absolute ones —
     // they are what catches a bounce that separates NOBODY.
     const d = stepDemo(stage(tie(true)), { [P1]: IDLE })
@@ -735,7 +735,7 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
     expect(riser(bottom).length, 'precondition: B really bounced').toBe(1)
     // The ABSOLUTE pair carries the coverage; the relative assertion below is
     // kept for its failure message, not for unique reach. MEASURED both ways:
-    //   • role INVERSION (swap bounceBottom(a)/bounceTop(b) at demo.ts:926-927)
+    //   • role INVERSION (swap bounceBottom(a)/bounceTop(b) at demo.ts:929-930)
     //     moves the rise in BOTH stagings at once, so the relative assertion
     //     stays green — only the absolute pair sees it.
     //   • GEOMETRY dispatch (make the person tie consult screen Y) diverges in

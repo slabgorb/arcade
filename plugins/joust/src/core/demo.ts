@@ -727,19 +727,20 @@ export function hatchEgg(egg: EggState): RemountEntry | null {
 /**
  * The transcribed collision-span mask a live entity presents this frame (round 2):
  * a buzzard uses a wing mask flying / a body mask on the ground; a player-on-a-bird
- * the ostrich collision tables. Only masks that EXIST in COLLISION_TABLES are used
- * (BWNG1R/BWNG2R are dangling ENTITY_RECORDS references with no table — the wing
- * mask that resolves is BWNG3R / CWNG3R). Returns null for a non-participant.
+ * the ostrich tables; a ptero (always airborne, jt5-16) its FLY1 mask PT1RC. Only
+ * masks in COLLISION_TABLES are used (BWNG1R/BWNG2R are dangling ENTITY_RECORDS
+ * references, no table). Returns null for a non-participant.
  */
 function collisionMaskFor(p: DemoProcess): string | null {
   if (p.kind === 'enemy' && p.enemy) return p.enemy.entity.airborne ? 'BWNG3R' : 'BSTNDR'
   if (p.kind === 'player' && p.entity) return p.entity.airborne ? 'CWNG3R' : 'CSTN4R'
+  if (p.kind === 'ptero' && p.entity) return 'PT1RC'
   return null
 }
 
-/** A joust participant built from a demo process, or null for a non-participant. */
+/** A joust participant from a demo process (jt5-16: pteros too), or null. */
 function toJoustEntity(p: DemoProcess): JoustEntity | null {
-  if (p.kind === 'player' && p.entity) {
+  if ((p.kind === 'player' || p.kind === 'ptero') && p.entity) {
     const e = p.entity
     return {
       posX: e.posX,
@@ -750,7 +751,7 @@ function toJoustEntity(p: DemoProcess): JoustEntity | null {
       facing: p.facing ?? 1,
       bumpX: 0,
       bumpY: 0,
-      party: 'player',
+      party: p.kind === 'player' ? 'player' : 'enemy', // the PID class bit sides a ptero with the enemies (:4961)
       collision: collisionMaskFor(p),
       groundState: e.groundState,
     }
@@ -786,7 +787,7 @@ function toJoustEntity(p: DemoProcess): JoustEntity | null {
  * groundState, animPhase — is untouched.
  */
 function withBounced(p: DemoProcess, resolved: JoustEntity): DemoProcess {
-  if (p.kind === 'player' && p.entity) {
+  if ((p.kind === 'player' || p.kind === 'ptero') && p.entity) {
     return { ...p, entity: { ...p.entity, velY: resolved.velY, posY: resolved.posY } }
   }
   if (p.kind === 'enemy' && p.enemy) {
@@ -857,14 +858,13 @@ function collisionPass(processes: readonly DemoProcess[]): {
   cues: GameEvent[]
 } {
   const eligible = processes.filter(
-    (p) => (p.kind === 'player' || p.kind === 'enemy') && p.collisionEnabled !== false,
-  ) // NO ptero here, and the ROM disagrees: OSTHT2 — see the jt5-10 note at the foot of this file
+    (p) => (p.kind === 'player' || p.kind === 'enemy' || p.kind === 'ptero') && p.collisionEnabled !== false,
+  ) // jt5-16 admits the ptero — OSTHT2's law, settled by jt5-10 (the note at the foot of this file)
   const removed = new Set<number>()
   const spawned: DemoProcess[] = []
   const events: DemoEvent[] = []
-  // jt5-1/jt5-4 — this pass resolves six of the seventeen cued moments. They are
-  // emitted where the outcome is DECIDED rather than reconstructed later from a
-  // process diff, so a removal can never be mistaken for the wrong kind of death.
+  // jt5-1/jt5-4 — cues are emitted where the outcome is DECIDED, never
+  // reconstructed from a process diff (six of the seventeen cued moments).
   const cues: GameEvent[] = []
   // jt5-4 — a bounce's resolved velY/posY, keyed by process id. `resolveContacts`
   // computes the outcome from a JoustEntity snapshot; this map is what carries
@@ -877,6 +877,9 @@ function collisionPass(processes: readonly DemoProcess[]): {
       const pa = eligible[i]
       const pb = eligible[j]
       if (removed.has(pa.id) || removed.has(pb.id)) continue
+      // jt5-16: a ptero pairs only with a ptero — player-ptero belongs to
+      // resolvePteroAttack below; ptero-buzzard is PTEBRD (:5034), unbuilt here.
+      if ((pa.kind === 'ptero') !== (pb.kind === 'ptero')) continue
 
       const a = toJoustEntity(pa)
       const b = toJoustEntity(pb)
@@ -1493,21 +1496,22 @@ export function drawList(demo: DemoState): DrawOp[] {
   return [...back, ...entities, ...fore]
 }
 
-// ─── KNOWN GAP: PTERO-VS-PTERO NEVER COLLIDES HERE (jt5-10) ──────────────────
+// ─── GAP CLOSED: PTERO-VS-PTERO COLLIDES (recorded jt5-10, built jt5-16) ─────
 //
-// `collisionPass`'s eligible set filters to `player | enemy`, and a ptero is
-// resolved only through `resolvePteroAttack` against a PLAYER. So two pteros
-// never meet in this port. The ROM does not agree, and the divergence is
-// recorded here rather than fixed: the fix is a gameplay change, and the user's
-// jt5-10 ruling moved it to its own story.
+// `collisionPass`'s eligible set once filtered to `player | enemy`, so two
+// pteros never met in this port though the ROM disagreed. jt5-10 settled the
+// ROM read and — by the user's ruling — RECORDED the divergence here and filed
+// the mechanic as its own story. jt5-16 is that story: the eligible set now
+// admits `ptero`, `toJoustEntity`/`withBounced` carry a ptero on their
+// entity-bearing arm (party `enemy` — the PID class bit, :4961), and a
+// ptero/ptero pair resolves through the SAME enemy bounce as a buzzard pair.
 //
-// Appended at the foot of the module deliberately. Inserting these lines beside
-// `collisionPass` would shift roughly a hundred `demo.ts:N` citations that other
-// suites and several ARCHIVED sessions carry, and archived sessions are
-// permanent records that cannot be corrected.
+// This note stays at the foot of the module deliberately: `demo.ts:N` citations
+// in other suites and in ARCHIVED sessions are permanent records, so the gap's
+// history is corrected here rather than deleted.
 //
-// WHAT THE ROM DOES. `OSTHT2` sounds the cue FIRST and dispatches on species
-// afterwards, so the thud is already playing before anyone knows who collided:
+// WHAT THE ROM DOES — and what this port now does. `OSTHT2` sounds the cue
+// FIRST and dispatches on species afterwards:
 //
 //   :5019  OSTHT2  LDX  #SNETHD     ENEMIES COLIDE
 //   :5020          JSR  VSND
@@ -1516,19 +1520,19 @@ export function drawList(demo: DemoState): DrawOp[] {
 //   :5031-5033  OSTH12  LDA PID,X / CMPA #$80+PTEID / BEQ OSTH11
 //   :5028       OSTH11  JSR OSTBMP  NO-ONE DIES, BUT BUMP EACH OTHER ANYWAYS
 //
-// A ptero-vs-BIRD pair goes to PTEBRD (:5034, and :5037-5038 after `EXG X,U` so
-// the ptero is in U). A ptero-vs-PTERO pair falls back to OSTH11 — the ordinary
-// bump — with SNETHD already sounded. The branch is reached from
+// A ptero/ptero pair falls back to OSTH11 — the ordinary bump — with SNETHD
+// already sounded; this port emits `enemy-thud` from the same decided moment
+// (the bounce branch above). The branch is reached from
 // `:4961  BNE OSTHT2   BR=NO KILL (ENEMY VS. ENEMY, PTERO VS. PTERO)`.
 //
-// SO THE CUE IS REACHABLE IN PRINCIPLE AND UNREACHABLE IN FACT. jt3-5's baiters
-// cap at three live (`MAX_BAITERS`, src/core/baiter.ts) — a cap on BAITERS, not on
-// pteros in total, since a wave's own pteros are counted separately — so two
-// really do coexist in ordinary play; `enemy-thud` already exists as a kind and its comment in
-// `src/core/events.ts` already names ptero-vs-ptero. Only the eligible set is
-// missing — which is exactly why widening it is a mechanic, not a cue fix.
+// ONE ARM STAYS UNBUILT, ON PURPOSE. A ptero-vs-BIRD pair goes to PTEBRD
+// (:5034, and :5037-5038 after `EXG X,U` so the ptero is in U) — an UNMEASURED
+// routine jt5-16's ruling did not price. The pair loop therefore skips mixed
+// ptero/buzzard pairs entirely (no cue, no bump) until PTEBRD's own story
+// measures it; the jt5-16 Delivery Findings demand that story's filing.
+// Player-vs-ptero is untouched: `resolvePteroAttack` (the lance-height joust)
+// remains that pair's ONLY resolver, and the pair loop skips it too.
 //
-// The ROM routing above is pinned verbatim by
-// tests/audio-ptero-wing-source.test.ts, which ALSO guards that the eligible-set
-// filter stays as it is, so this gap cannot be closed by accident in a story
-// that did not price it.
+// The routing is pinned verbatim by tests/audio-ptero-wing-source.test.ts, and
+// the behaviour (thud, ±2px bump, no deaths, both fences) by
+// tests/demo-jt5-16.test.ts.

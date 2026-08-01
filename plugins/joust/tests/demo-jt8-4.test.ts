@@ -424,7 +424,7 @@ describe('jt8-4 AC-3 — the catching player is credited; the remount is cancell
     // EGGSCR's `LDY PDIST,X` / `LDD #AUTOFF / STD PJOY,Y` (:3078-3087) sends the
     // inbound bird away when its rider is collected. Our port has no in-transit
     // riderless bird — a SETTLED wave egg matures straight into a remount enemy in
-    // the same stepDemo (demo.ts:988-992) — so the reachable analogue is this: an
+    // the same stepDemo (demo.ts:991-995) — so the reachable analogue is this: an
     // egg caught this frame must not ALSO hatch this frame.
     //
     // This is the ordering pin. collisionPass (demo.ts:974) already runs before the
