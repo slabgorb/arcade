@@ -182,11 +182,15 @@ const countOf = (g: GameState, kind: string): number =>
 //     wing kinds. The deferred guard below no longer names the flap family, and
 //     tests/audio-flap.test.ts is what pins it. (The line extent above was also
 //     wrong: `GOFLAP` is :6212 and `FLAST2` :6216, not :6207.)
-//   • the THUDS (SNPTHD :5014, SNETHD :5019) — `collisionPass` COMPUTES the
-//     bounce and throws it away (`if (contact.outcome.kind !== 'kill')
-//     continue`, demo.ts:837), and `bounceTop`/`bounceBottom`/
-//     `bounceHorizontal` have ZERO production callers. A thud would announce a
-//     collision the sim does not resolve.
+//   • the THUDS (SNPTHD :5014, SNETHD :5019) — `collisionPass` COMPUTED the
+//     bounce and threw it away (`if (contact.outcome.kind !== 'kill')
+//     continue`), and `bounceTop`/`bounceBottom` had ZERO production callers. A
+//     thud would have announced a collision the sim did not resolve.
+//     SUPERSEDED by jt5-4, which APPLIES the bounce and then cues it — SNETHD
+//     for an enemy-vs-enemy contact (:4961) and SNPTHD for any tie involving a
+//     person (:5010, ":8124 AT LEAST 1 PERSON THUD'ED"). The deferred guard
+//     below no longer names the thud family, and tests/audio-thud.test.ts is
+//     what pins it.
 //   • the LAVA TROLL grab (SNTROL, LT1GRP :1646-1647) — `troll.beginGrip` has
 //     zero production callers too, and difficulty.ts:362-367 already says so
 //     by name, owner `uf1-10`/`uf1-11`.
@@ -233,11 +237,19 @@ describe('jt5-1 AC2 — core/events.ts declares the event channel', () => {
     //
     // jt5-3 REMOVED 'player-flap', 'enemy-flap' and 'flap' from this list: it
     // builds the release-edge detector, so the flap family now has emitters and
-    // forbidding it here would make this guard a lie. What remains is jt5-4's
-    // (the thuds) and uf1-10/uf1-11's (the lava troll's grab). The list is
-    // guarded in turn by tests/audio-flap.test.ts, which reads this array as
-    // source text and fails if the flap names come back OR if the thuds leave.
-    const deferred = ['player-thud', 'enemy-thud', 'thud', 'troll-grab']
+    // forbidding it here would make this guard a lie.
+    //
+    // jt5-4 removed 'player-thud', 'enemy-thud' and 'thud' for the same reason
+    // one story later: it applies the bounce `collisionPass` used to discard, so
+    // both thuds now have emitters. ('thud' stays OUT of EVENT_KINDS all the
+    // same — SNPTHD 020 and SNETHD 009 are two sounds, and a single collapsed
+    // kind cannot be arbitrated; tests/audio-thud.test.ts pins that.)
+    //
+    // What remains is uf1-10/uf1-11's alone (the lava troll's grab). The list is
+    // guarded in turn by tests/audio-flap.test.ts and tests/audio-thud.test.ts,
+    // which read this array as source text and fail if a wired name comes back
+    // OR if 'troll-grab' leaves.
+    const deferred = ['troll-grab']
     const kinds = await eventKinds()
     for (const kind of deferred) {
       expect(

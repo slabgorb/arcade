@@ -832,12 +832,19 @@ describe('jt5-3 AC6 — the flap leaves jt5-1’s deferred list, and only the fl
   it('the guard still exists and still forbids the kinds jt5-3 does NOT wire', () => {
     const deferred = deferredNames()
     expect(deferred.length, 'an emptied guard forbids nothing').toBeGreaterThan(0)
-    for (const kind of ['player-thud', 'enemy-thud', 'thud', 'troll-grab']) {
-      expect(
-        deferred,
-        `'${kind}' belongs to jt5-4 / uf1-10 and must stay deferred — jt5-3 must not clear the guard wholesale`,
-      ).toContain(kind)
-    }
+    // jt5-3 shipped requiring 'player-thud', 'enemy-thud', 'thud' and
+    // 'troll-grab' here — its point being that jt5-3 must not clear the guard
+    // wholesale. jt5-4 has since WIRED the thuds (it applies the bounce
+    // collisionPass discarded), so requiring them would now make this guard the
+    // lie it was written to prevent; tests/audio-thud.test.ts asserts they are
+    // gone AND that both kinds are declared and emitted. 'troll-grab' is the
+    // remaining deferral (uf1-10/uf1-11) and is still required here, so this
+    // test keeps its original job: jt5-3's list may shrink only as far as the
+    // stories that own each name.
+    expect(
+      deferred,
+      "'troll-grab' belongs to uf1-10/uf1-11 and must stay deferred",
+    ).toContain('troll-grab')
   })
 
   it('no flap-family name is deferred any more — the emitters exist now', () => {
