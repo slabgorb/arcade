@@ -1246,3 +1246,8 @@ completed_stories:
     title: Joust audio seam — the core event channel and the dispatch, no samples yet (the shared-engine ruling is moot post-migration)
     points: 3
     completed: '2026-08-01'
+  - id: uf1-14
+    epic: uf1
+    title: star-wars C_PV's ±45° pyramid is not the rendered frustum — off-screen TIEs pass the §6 fire gate
+    points: 3
+    completed: '2026-08-01'
