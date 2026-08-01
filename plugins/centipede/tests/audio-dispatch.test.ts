@@ -148,19 +148,116 @@ const isLoopStop = (kind: string): boolean => kind.endsWith('-stop')
  * describing one — and this file's comments quote its own code repeatedly, so
  * that is not a hypothetical here.
  *
- * Deliberately crude: it does not understand strings or regex literals. The
- * `(^|[^:])` guard keeps a `https://` inside a string from being eaten, and
- * `stripComments` has a positive control of its own below — nothing may assert
- * against stripped source until the stripper is shown to have removed
- * something.
+ * REWORK (Reviewer round 3, LOW — L2-r3): the first cut was a two-regex
+ * `replace` that was documented as "deliberately crude". It was worse than
+ * crude — measured, `const u = 'a//b' // trailing` came back as `const u = 'a`,
+ * because the line-comment regex fired on the FIRST `//` and that one was
+ * inside a string literal. The `[^:]` guard only ever protected `https://`. A
+ * stripper that silently truncates real code is the same defect class as an
+ * anchor that matches prose, so this is now a character scanner that knows
+ * where strings are.
+ *
+ * Known limit, stated rather than discovered: it does not understand regex
+ * literals (a `/.../ ` containing `//`), and a template literal whose `${}`
+ * holds a nested backtick will confuse it. Neither appears in the file under
+ * test, and the fixture control below pins the behaviour that IS relied on.
  */
 function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+  let out = ''
+  let i = 0
+  while (i < src.length) {
+    const pair = src.slice(i, i + 2)
+    if (pair === '//') {
+      while (i < src.length && src[i] !== '\n') i++
+      continue
+    }
+    if (pair === '/*') {
+      i += 2
+      while (i < src.length && src.slice(i, i + 2) !== '*/') i++
+      i += 2
+      continue
+    }
+    const ch = src[i] as string
+    if (ch === "'" || ch === '"' || ch === '`') {
+      out += ch
+      i++
+      while (i < src.length) {
+        if (src[i] === '\\') {
+          out += src.slice(i, i + 2)
+          i += 2
+          continue
+        }
+        out += src[i]
+        const closed = src[i] === ch
+        i++
+        if (closed) break
+      }
+      continue
+    }
+    out += ch
+    i++
+  }
+  return out
 }
 
-/** The `default:` block's BODY, or `null` if the switch has no default arm. */
+/** The text between the `{` at `open` and its MATCHING `}` — brace-balanced. */
+function balancedBlock(code: string, open: number): string | null {
+  let depth = 0
+  for (let i = open; i < code.length; i++) {
+    if (code[i] === '{') depth++
+    else if (code[i] === '}') {
+      depth--
+      if (depth === 0) return code.slice(open + 1, i)
+    }
+  }
+  return null
+}
+
+/**
+ * The body of `function <name>(…)`, brace-balanced.
+ *
+ * REWORK (Reviewer round 3, HIGH — H1-r3): every assertion in the guard block
+ * below used to run against the WHOLE FILE. That is a positional anchor, not a
+ * scoped one, and the Reviewer built the mutant that proves it: gut the real
+ * switch so a future fourth effect is silently played as a one-shot, park a
+ * correct guard-shaped `switch` in dead code above it, and all 20 tests pass
+ * with `tsc` clean. It needs no decoy to bite, either — `defaultArmBody` took
+ * the FIRST `default:` in the file, so any second switch added above
+ * `playEventSounds` (cp5-2 is about to wire this module into the frame loop)
+ * would silently redirect the anchors onto the wrong arm.
+ *
+ * So the assertions now describe the function they are talking about. The
+ * parameter list is paren-balanced first, so an object type in a signature
+ * cannot be mistaken for the body's opening brace.
+ */
+function functionBody(code: string, name: string): string | null {
+  const decl = code.search(new RegExp(`function\\s+${name}\\s*\\(`))
+  if (decl === -1) return null
+  const parenOpen = code.indexOf('(', decl)
+  if (parenOpen === -1) return null
+  let depth = 0
+  let parenClose = -1
+  for (let i = parenOpen; i < code.length; i++) {
+    if (code[i] === '(') depth++
+    else if (code[i] === ')') {
+      depth--
+      if (depth === 0) {
+        parenClose = i
+        break
+      }
+    }
+  }
+  if (parenClose === -1) return null
+  const open = code.indexOf('{', parenClose)
+  return open === -1 ? null : balancedBlock(code, open)
+}
+
+/** The `default:` arm's body within `code`, brace-balanced. */
 function defaultArmBody(code: string): string | null {
-  return code.match(/default\s*:\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? null
+  const match = /default\s*:\s*\{/.exec(code)
+  if (match === null) return null
+  const open = code.indexOf('{', match.index)
+  return open === -1 ? null : balancedBlock(code, open)
 }
 
 describe('cp5-1 AC3 — the dispatch is an importable pure function', () => {
@@ -340,13 +437,33 @@ describe('cp5-1 AC3 — the EFFECT union carries its own exhaustiveness guard', 
   // pinned in source text, so the discipline moves into HOW the anchor is
   // written: anchored to the declaration, stripped of comments, and counted.
   //
-  // Every assertion below was mutation-proven (see the TEA Assessment): each
-  // one reds under the mutation it names, and the whole block goes green on the
-  // committed file and red on the working tree as handed over.
+  // ─── AND WHY IT IS SCOPED TO THE FUNCTION (Reviewer round 3, HIGH — H1-r3) ─
+  // Every assertion here used to read the whole file. The Reviewer built the
+  // tree that proves why that is not enough — real switch gutted, guard-shaped
+  // decoy parked in dead code above it — and got 20/20 green with `tsc` clean
+  // over a dispatch that would silently play a future fourth effect as a
+  // one-shot. So the anchors now describe `playEventSounds`'s OWN body, and the
+  // decoy test at the bottom of this block is the regression guard for that.
+  //
+  // Every assertion is mutation-proven (see the TEA Assessment): each reds
+  // under the mutation it names, none of them reds for a rename or a reformat.
 
   const dispatchSource = (): string => readFileSync(dispatchPath, 'utf8')
+  /** The dispatch's own body, comments gone — the subject of every anchor below. */
+  const dispatchBody = (): string | null =>
+    functionBody(stripComments(dispatchSource()), 'playEventSounds')
 
-  it('the comment stripper actually strips — the control for every anchor below', () => {
+  // The two shapes that consult the compiler about exhaustiveness. Round 3
+  // (M2-r3) widened the first from the literal name `unreachable` to any
+  // identifier, and added the second: every OTHER game in this repo writes the
+  // guard as `assertNever(...)` or names it `_exhaustive`, so harmonising
+  // centipede with the fleet must not red a guarantee that has not changed.
+  // What is still rejected is the CAST (`= effect as never`), which is round
+  // 1's L1 defect and proves nothing.
+  const NEVER_BINDING = /const\s+\w+\s*:\s*never\s*=\s*effect\s*;?\s*$/gm
+  const ASSERT_NEVER = /assertNever\s*\(\s*effect\s*\)/g
+
+  it('the comment stripper removes comments and ONLY comments — the control', () => {
     // Without this, a `stripComments` that silently returned its input would
     // make every "not in prose" claim in this block vacuous, and the block
     // would reproduce the exact defect it exists to prevent.
@@ -357,42 +474,76 @@ describe('cp5-1 AC3 — the EFFECT union carries its own exhaustiveness guard', 
       'stripComments removed nothing — the anchors below cannot tell code from prose',
     ).toBeLessThan(raw.length)
     expect(code, 'stripComments left a line comment behind').not.toMatch(/\/\/ /)
+
+    // REWORK (Reviewer round 3, LOW — L2-r3): "it got shorter" is not "it
+    // removed only comments". The previous regex stripper turned
+    // `const u = 'a//b' // trailing` into `const u = 'a` — silently truncating
+    // real code — and this control could not see it. Pin both directions.
+    const fixture = "const u = 'a//b' // trailing\n/* block */ const v = '/* not a comment */'\n"
+    const stripped = stripComments(fixture)
+    expect(stripped, 'a `//` inside a string literal must SURVIVE').toContain("'a//b'")
+    expect(stripped, 'a comment marker inside a string must survive').toContain(
+      "'/* not a comment */'",
+    )
+    expect(stripped, 'the trailing line comment must be gone').not.toContain('trailing')
+    expect(stripped, 'the block comment must be gone').not.toContain('block')
+  })
+
+  it('the anchors describe the DISPATCH itself, not just the file — the scope control', () => {
+    // H1-r3's non-vacuity guard. If `functionBody` ever stops finding the
+    // dispatch (a rename, a refactor to an arrow const), every assertion below
+    // would be reading `null` and this block would stop meaning anything. Fail
+    // loudly here instead.
+    const body = dispatchBody()
+    expect(body, 'could not locate `function playEventSounds` — the anchors below are blind').not
+      .toBeNull()
+    expect(body as string, 'the located body must contain the cue switch').toMatch(/switch\s*\(/)
+    expect(
+      (body as string).length,
+      'the located body must be a PROPER subset of the file — a whole-file match is the ' +
+        'unscoped bug H1-r3 fixed',
+    ).toBeLessThan(stripComments(dispatchSource()).length)
   })
 
   it('every effect has its OWN case arm, so `default` is genuinely unreachable', () => {
     // A `default` that does real work is not an exhaustiveness check
-    // (lang-review TS-3). The working tree's mutation deleted `case 'play'` and
-    // let the default absorb it — which compiles clean forever, and silently
-    // routes a future fade/duck/pitch-bend to a one-shot `play()`.
-    const code = stripComments(dispatchSource())
+    // (lang-review TS-3). Round 2's mutation deleted `case 'play'` and let the
+    // default absorb it — which compiles clean forever, and silently routes a
+    // future fade/duck/pitch-bend to a one-shot `play()`.
+    const body = dispatchBody() as string
     for (const effect of ['startLoop', 'stopLoop', 'play']) {
       expect(
-        code,
+        body,
         `the switch must handle '${effect}' in its own case arm — a default that ` +
           'dispatches is not an exhaustiveness guard',
-      ).toMatch(new RegExp(`case\\s+'${effect}'\\s*:`))
+      ).toMatch(new RegExp(`case\\s+['"]${effect}['"]\\s*:`)) // L1-r3: either quote style
     }
   })
 
-  it('`default` binds the discriminant to `never`, with NO cast', () => {
+  it('`default` consults the compiler about exhaustiveness, with NO cast', () => {
     // The cast is the difference between a guard and scenery, and round 1
     // shipped the scenery version (`event.type as never`, logged as L1): a cast
     // makes the assignment compile whatever the discriminant's type is, so the
     // arm proves nothing. An UNCAST binding is the mechanism — it compiles only
     // while the union is fully consumed by the arms above.
-    const body = defaultArmBody(stripComments(dispatchSource()))
+    const body = defaultArmBody(dispatchBody() as string)
     expect(body, 'the switch must carry a `default:` block — AC3 names it').not.toBeNull()
+    const guarded =
+      new RegExp(NEVER_BINDING.source, 'm').test(body as string) ||
+      new RegExp(ASSERT_NEVER.source).test(body as string)
     expect(
-      body,
+      guarded,
       'the default arm must bind the narrowed discriminant to a `never` const with no ' +
-        '`as` cast — a cast silences the compiler instead of consulting it',
-    ).toMatch(/const\s+unreachable\s*:\s*never\s*=\s*effect\s*;?\s*$/m)
+        '`as` cast (or call assertNever(effect)) — a cast silences the compiler instead ' +
+        `of consulting it. Arm was: ${JSON.stringify(body)}`,
+    ).toBe(true)
   })
 
   it('`default` is a GUARD, not a dispatch arm — it must not touch the engine', () => {
-    // The direct negation of the working tree's mutation, and the assertion
-    // that reds on it most loudly.
-    const body = defaultArmBody(stripComments(dispatchSource()))
+    // The direct negation of round 2's mutation, and the assertion that reds on
+    // it most loudly. Brace-balanced extraction (round 3) so an inner `{}`
+    // cannot truncate the arm before an `audio.` call further down it.
+    const body = defaultArmBody(dispatchBody() as string)
     expect(
       body,
       'the default arm calls the audio engine — it is dispatching, not guarding, so ' +
@@ -400,20 +551,83 @@ describe('cp5-1 AC3 — the EFFECT union carries its own exhaustiveness guard', 
     ).not.toMatch(/audio\s*\./)
   })
 
-  it('the guard is anchored to CODE — exactly one declaration survives comment-stripping', () => {
-    // The count is taken over STRIPPED source on purpose. Raw source is not
-    // asserted: this file legitimately quotes its own code in prose, and a
-    // future comment doing so must not red this test. What must never happen is
-    // the reverse — the declaration existing ONLY in prose, which is precisely
-    // how round 1's `/never/` stayed green over a deleted guard.
-    const declarations = stripComments(dispatchSource()).match(
-      /const\s+unreachable\s*:\s*never\s*=\s*effect/g,
-    )
+  it('the guard lives in the DISPATCH, exactly once, in code and not in prose', () => {
+    // Three failure modes in one count, all of them observed in this story:
+    //   0 in the body, N in the file  -> the decoy (round 3, H1-r3)
+    //   0 after stripping, 1 before   -> the comment (round 1, H2)
+    //   0 anywhere                    -> the deletion (round 2, H1-r2)
+    const body = dispatchBody() as string
+    const found =
+      (body.match(new RegExp(NEVER_BINDING.source, 'gm')) ?? []).length +
+      (body.match(new RegExp(ASSERT_NEVER.source, 'g')) ?? []).length
     expect(
-      declarations?.length ?? 0,
-      'expected exactly one `never` guard declaration in code (0 means it survives only ' +
-        'in a comment, or not at all)',
+      found,
+      'expected exactly one exhaustiveness guard inside playEventSounds (0 means it was ' +
+        'deleted, survives only in a comment, or sits in a DIFFERENT function)',
     ).toBe(1)
+  })
+
+  it('a guard-shaped DECOY elsewhere in the file does not satisfy the anchors', () => {
+    // H1-r3's regression guard, and the acceptance test the Reviewer named.
+    // This is the mutant he built, as data: a file whose real dispatch is
+    // unguarded and whose guard shape lives in a different function. Every
+    // anchor above must reject it. Run against the extraction helpers directly
+    // rather than the real file, so the check needs no source mutation.
+    const decoyed = [
+      'function __decoy(effect: Effect): void {',
+      '  switch (effect) {',
+      "    case 'startLoop':",
+      '      break',
+      "    case 'stopLoop':",
+      '      break',
+      "    case 'play':",
+      '      break',
+      '    default: {',
+      '      const unreachable: never = effect',
+      '      throw new Error(String(unreachable))',
+      '    }',
+      '  }',
+      '}',
+      '',
+      'export function playEventSounds(audio: SoundSurface, events: readonly GameEvent[]): void {',
+      '  for (const event of events) {',
+      '    const sound = EVENT_SOUND[event.type]',
+      '    switch (effectFor(event.type)) {',
+      "      case 'startLoop':",
+      '        audio.startLoop(sound)',
+      '        break',
+      "      case 'stopLoop':",
+      '        audio.stopLoop(sound)',
+      '        break',
+      '      default: {',
+      '        audio.play(sound)',
+      '      }',
+      '    }',
+      '  }',
+      '}',
+    ].join('\n')
+
+    const body = functionBody(decoyed, 'playEventSounds')
+    expect(body, 'the decoy fixture must still locate the real dispatch').not.toBeNull()
+
+    // The decoy carries a perfect guard — but not in the function that matters.
+    expect(decoyed, 'the fixture is only meaningful if the decoy guard is present').toMatch(
+      /const\s+unreachable\s*:\s*never\s*=\s*effect/,
+    )
+
+    // ...and every anchor must nonetheless reject the real dispatch.
+    expect(body as string, "the real dispatch has no `case 'play'` arm").not.toMatch(
+      /case\s+['"]play['"]\s*:/,
+    )
+    const arm = defaultArmBody(body as string)
+    expect(arm, 'the real dispatch has a default arm').not.toBeNull()
+    expect(arm as string, 'the real default arm DISPATCHES — this must be caught').toMatch(
+      /audio\s*\./,
+    )
+    const found =
+      ((body as string).match(new RegExp(NEVER_BINDING.source, 'gm')) ?? []).length +
+      ((body as string).match(new RegExp(ASSERT_NEVER.source, 'g')) ?? []).length
+    expect(found, 'the real dispatch carries NO guard, decoy notwithstanding').toBe(0)
   })
 })
 
@@ -433,11 +647,44 @@ describe('cp5-1 AC3 — an unmapped kind is a LOUD failure, not a silent no-op',
     const play = await dispatchFn()
     const audio = recordingAudio()
     expect(() => play(audio, [{ type: 'no-such-event-kind' }])).toThrow(/no-such-event-kind/)
+    // REWORK (Reviewer round 3, MEDIUM — M1-r3): this assertion's message used
+    // to claim that "a partial dispatch followed by a throw is worse than
+    // either" — implying the test guarded against one. It did not: the frame
+    // has ONE event, so `[]` is true by construction, and the claim is FALSE of
+    // the code. The property that actually holds is narrower, and it is the
+    // only one asserted here.
     expect(
       audio.calls,
-      'a kind with no cue must reach the engine as nothing at all — a partial ' +
-        'dispatch followed by a throw is worse than either',
+      'this frame had nothing dispatchable ahead of the bad event, so nothing may ' +
+        'have reached the engine',
     ).toEqual([])
+  })
+
+  it('dispatches a frame UP TO the bad event, then throws — the behaviour cp5-2 inherits', async () => {
+    // The property the test above was mistakenly credited with. Measured, not
+    // assumed: `playEventSounds` loops and dispatches as it goes, so a mixed
+    // frame plays every cue ahead of the unmapped kind and only then throws.
+    //
+    // This is pinned rather than "fixed" because no AC asks for atomicity and
+    // cp5-2 explicitly owns the throw-vs-degrade decision. What this test buys
+    // cp5-2 is that the decision is made against a fact instead of an
+    // assumption — and that changing the policy reds here, deliberately, rather
+    // than silently. The hazard cp5-2 recorded (an uncaught throw inside
+    // requestAnimationFrame freezes the frame loop) is one notch worse than
+    // written down: the frame is left HALF-PLAYED as well as frozen.
+    const kinds = await eventKinds()
+    const valid = kinds.find((k) => !isLoopStart(k) && !isLoopStop(k))
+    expect(valid, 'need a one-shot kind to put ahead of the bad one').toBeDefined()
+
+    const play = await dispatchFn()
+    const audio = recordingAudio()
+    expect(() =>
+      play(audio, [{ type: valid as string }, { type: 'no-such-event-kind' }]),
+    ).toThrow(/no-such-event-kind/)
+    expect(
+      audio.calls.map((c) => c.kind),
+      'the valid event ahead of the bad one IS dispatched before the throw',
+    ).toEqual(['play'])
   })
 
   it('a kind WITH a cue does not throw — the control', async () => {
