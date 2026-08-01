@@ -942,7 +942,7 @@ test('the lobby ships to the bucket ROOT, a game under its own key prefix', () =
   // backwards uploads the lobby's index.html over a game's, or files the whole
   // lobby under a directory nobody links to — and both would report success.
   const lobby = runWorkflow('lobby-v0.2.0');
-  assert.deepEqual(lobby.exported, { APP: 'lobby', PREFIX: '', DIST: 'dist' });
+  assert.deepEqual(lobby.exported, { APP: 'lobby', R2_PREFIX: '', DIST: 'dist' });
   assert.deepEqual(lobby.commands.at(-1), [
     'node', 'scripts/deploy-r2.mjs', 'dist', 'arcade-lobby', '',
   ]);
@@ -951,12 +951,46 @@ test('the lobby ships to the bucket ROOT, a game under its own key prefix', () =
   const game = runWorkflow('star-wars-v0.0.33');
   assert.deepEqual(game.exported, {
     APP: 'star-wars',
-    PREFIX: 'star-wars',
+    R2_PREFIX: 'star-wars',
     DIST: 'dist/star-wars',
   });
   assert.deepEqual(game.commands.at(-1), [
     'node', 'scripts/deploy-r2.mjs', 'dist/star-wars', 'arcade-lobby', 'star-wars',
   ]);
+});
+
+test('no exported job variable is a name npm reads as configuration', () => {
+  // OBSERVED IN PRODUCTION, not hypothetical: the resolve step exported the R2
+  // key prefix as `PREFIX`, and npm adopts a PREFIX environment variable as its
+  // GLOBAL PREFIX when no config file pins one (@npmcli/config lib/index.js:
+  // `if (this.env.PREFIX) { this.globalPrefix = this.env.PREFIX }`). On the
+  // runner nothing pins one, so the upload step's `npm install -g wrangler`
+  // installed into `./<app>/bin` — a RELATIVE path inside the workspace, never
+  // on PATH — and the very next spawn died with `spawnSync wrangler ENOENT`.
+  // Every game deploy since the migration failed exactly there. The lobby
+  // exports the EMPTY prefix, which is falsy, escapes the hijack, and was the
+  // one app to reach the Cloudflare API — the asymmetry that localised the bug
+  // (runs 30703378860 vs 30703475989, and the probe runs on
+  // chore/debug-wrangler-probe). A developer's machine cannot reproduce this:
+  // Homebrew's npm carries a builtin npmrc whose explicit `prefix =` outranks
+  // the env default.
+  //
+  // The ban is the CLASS, not the incident: any exported name npm treats as
+  // configuration silently reconfigures every npm/npx invocation in every later
+  // step of the job.
+  const npmSignificant = (name) =>
+    name === 'PREFIX' || name === 'DESTDIR' || /^npm_config_/i.test(name) || /^NODE_(OPTIONS|PATH)$/.test(name);
+  for (const tag of ['tempest-v1.0.29', 'lobby-v0.2.0']) {
+    const { exported } = runWorkflow(tag, { resolveOnly: true });
+    // Anti-vacuity: a resolve step that exported nothing would pass the ban
+    // while breaking the deploy; APP proves the parse ran and the file was read.
+    assert.ok(exported.APP, `${tag}: the resolve step exported nothing at all`);
+    assert.deepEqual(
+      Object.keys(exported).filter(npmSignificant),
+      [],
+      `${tag}: an exported name npm reads as configuration hijacks every later npm invocation in the job`,
+    );
+  }
 });
 
 test('the workflow accepts exactly the tags scripts/release.mjs cuts, and no others', async () => {

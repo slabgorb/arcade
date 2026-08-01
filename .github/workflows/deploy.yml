@@ -127,11 +127,25 @@ jobs:
             # The lobby owns the bucket ROOT and builds into dist/; every game gets
             # its own key prefix and its own dist/<id>/. That asymmetry IS "one
             # origin, one bucket, eight apps" — see scripts/deploy-r2.mjs.
+            #
+            # R2_PREFIX MUST NOT BE RENAMED BACK TO `PREFIX`. npm adopts a PREFIX
+            # environment variable as its GLOBAL PREFIX when no config file pins
+            # one (@npmcli/config lib/index.js: `if (this.env.PREFIX)
+            # { this.globalPrefix = this.env.PREFIX }`), and nothing on the
+            # runner pins one. Exported as `PREFIX=<app>`, the upload step's
+            # `npm install -g wrangler` installed into `./<app>/bin` — relative,
+            # never on PATH — and the next spawn died with `spawnSync wrangler
+            # ENOENT`. Every game deploy since the migration failed exactly
+            # there; the lobby's EMPTY prefix is falsy, escaped the hijack, and
+            # was the one app to reach the API. Developer machines cannot
+            # reproduce it: Homebrew npm's builtin npmrc pins `prefix =` and
+            # outranks the env default. Pinned by `no exported job variable is a
+            # name npm reads as configuration` in tests/monorepo-topology.test.mjs.
             if [ "$app" = "lobby" ]; then
-              echo "PREFIX="
+              echo "R2_PREFIX="
               echo "DIST=dist"
             else
-              echo "PREFIX=$app"
+              echo "R2_PREFIX=$app"
               echo "DIST=dist/$app"
             fi
           } >> "$GITHUB_ENV"
@@ -206,7 +220,7 @@ jobs:
           # locally, so there is one uploader, not two. ONE bucket for the whole
           # cabinet: the lobby at the root (empty prefix), every game under its own
           # <id>/ prefix. The seven arcade-<game> buckets are retired.
-          node scripts/deploy-r2.mjs "$DIST" arcade-lobby "$PREFIX"
+          node scripts/deploy-r2.mjs "$DIST" arcade-lobby "$R2_PREFIX"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: a55aafa9b0691f828cd6864be28c1674
