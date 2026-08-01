@@ -76,11 +76,6 @@ export interface ShellHarness {
   audioContexts(): number
 }
 
-export interface ShellDomOptions {
-  /** What `window.location.search` reports. Defaults to the `?seed=` pin. */
-  search?: string
-}
-
 const LOGICAL_CANVAS_W = 960
 const LOGICAL_CANVAS_H = 1024
 
@@ -90,8 +85,18 @@ const LOGICAL_CANVAS_H = 1024
  */
 export const SEED = 20260801
 
-/** The query string a seeded boot installs. See `seedWasHonoured`. */
-export const SEEDED_SEARCH = `?seed=${SEED}`
+/**
+ * The query string every boot installs as `window.location.search`.
+ *
+ * Not configurable, deliberately. The first cut took a `{ search }` option so a
+ * suite could boot unseeded — and no suite ever did, which made it dead API in a
+ * brand-new file (the same defect the Reviewer raised against the harness's
+ * unused `sim()` export in round 1). It would also have been a hole: a suite
+ * that opted out of the seed would opt out of `seedWasHonoured` with it, which
+ * is the guard the whole rework turns on. If an unseeded boot is ever genuinely
+ * needed, add it then, with a test that says why.
+ */
+const SEEDED_SEARCH = `?seed=${SEED}`
 
 /**
  * A COPY of a state's mushroom field. Take one at boot; do not hold the state.
@@ -137,9 +142,7 @@ export function seedWasHonoured(bootCells: Uint8Array): boolean {
  * MUST be called at a test file's top level — before `await import('../src/main')`,
  * which reads `document` the moment it is evaluated.
  */
-export function installShellDom(options: ShellDomOptions = {}): ShellHarness {
-  const { search = SEEDED_SEARCH } = options
-
+export function installShellDom(): ShellHarness {
   // Keyed by (target object, type) — see the REWORK note above.
   const listeners = new Map<object, Map<string, Listener[]>>()
   const listen = (owner: object) => ({
@@ -191,7 +194,7 @@ export function installShellDom(options: ShellDomOptions = {}): ShellHarness {
   g.document = documentStub
 
   const windowStub: Record<string, unknown> = {
-    location: { search },
+    location: { search: SEEDED_SEARCH },
   }
   Object.assign(windowStub, listen(windowStub))
   g.window = windowStub

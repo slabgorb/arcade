@@ -244,11 +244,14 @@ describe('cp5-2 — the README stops saying the shell is unwired, because it is 
     // The positive half — the guard against "fixing" the negatives by deleting
     // the paragraph and leaving a reader with no status at all.
     //
-    // Both alternations are built ONLY from tokens the README does not contain
-    // today (verified: "as of cp5-2", "cp5-2 wired", "cp5-2 connected" all
-    // appear 0 times — `cp5-2` occurs exactly once, in the "That is story"
-    // sentence the test above deletes). So this reds until the rewrite, rather
-    // than passing on the file as it stands.
+    // Both alternations were built ONLY from tokens the README did not contain
+    // WHEN THIS WAS WRITTEN — verified against the pre-rewrite file: "as of
+    // cp5-2", "cp5-2 wired" and "cp5-2 connected" all appeared 0 times, and
+    // `cp5-2` occurred exactly once, in the "That is story" sentence the test
+    // above deletes. That is why it reddened until the rewrite instead of
+    // passing on the file as it stood. (The rewrite has since landed, so the
+    // tokens are present now — this note records the measurement, not the
+    // current state.)
     const src = normalized(readmeSrc())
     expect(
       /as of `?cp5-2`?|cp5-2 (?:wired|connected)/i.test(src),
@@ -265,10 +268,12 @@ describe('cp5-2 — the README stops saying the shell is unwired, because it is 
     // exactly like a bug and are not, and until the asset stories land nothing
     // else explains them.
     //
-    // `\b14\b` and "expected"/"harmless" are absent from the README today
-    // (verified), so both halves red. "404" alone is NOT — the current text
-    // already says wiring "would buy nothing but 404s" — which is why the count
-    // carries this assertion and a bare /404/ would have passed vacuously.
+    // `\b14\b` and "expected"/"harmless" were absent from the pre-rewrite
+    // README (verified), so both halves reddened. "404" alone was NOT — that
+    // text already said wiring "would buy nothing but 404s" — which is why the
+    // COUNT carries this assertion and a bare /404/ would have passed
+    // vacuously. Same note as above: this records the measurement taken when
+    // the assertion was written, not the state of the file today.
     const src = normalized(readmeSrc())
     expect(
       /\b14\b[\s\S]{0,120}404|404[\s\S]{0,120}\b14\b/.test(src),

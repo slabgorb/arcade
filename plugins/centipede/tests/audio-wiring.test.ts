@@ -57,15 +57,35 @@ interface Pumped {
  * Every multi-event step composition the `?seed=SEED` run produces — measured,
  * not remembered. Sorted, deduplicated, one string per distinct shape.
  *
- * REWORK (Reviewer round 1, MEDIUM). The note that stood here offered a death
- * frame (sim.ts:693) AND a wave clear (sim.ts:723) as the causes of the
- * multi-event steps. Both lines really do concatenate onto a stream that
- * already has something in it, but the wave clear did not fire in the run at
- * all — so half of a two-part explanation was corroboration for something that
- * never happened, and the death frame covered only some of the steps. Measured
- * on the seeded run, `player-died+march-stop` is the death concatenation; the
- * other two are ordinary steps where two subsystems each emitted into the same
- * frame's stream. No wave-clear composition occurs.
+ * REWORK (Reviewer rounds 1 and 2, MEDIUM, twice). Round 1's note offered a
+ * death frame (sim.ts:693) AND a wave clear (sim.ts:723) as the causes. The
+ * wave clear did not fire in that run at all, so half the explanation was
+ * corroboration for something that never happened. Round 2's replacement was
+ * wrong differently: it called `player-died+march-stop` "the death
+ * concatenation" and the other two "two subsystems each emitting into the same
+ * stream", and both halves of THAT are also wrong.
+ *
+ * The mechanism, resolved against the source rather than guessed at. Every
+ * frame's stream is the join `[...produced, ...edges]` (sim.ts:977-982):
+ * `produced` is what the frame pushed, and `edges` are the sustained voices
+ * whose audibility CHANGED, taken by comparing the state handed in against the
+ * state handed back (`LOOP_VOICES.flatMap`, sim.ts:978 — the file's only
+ * edge-producing site). A `*-start`/`*-stop` kind can be produced nowhere else:
+ * `loopEdges` builds those names by template literal (sim.ts:390-393), so they
+ * appear as no string constant anywhere in core.
+ *
+ * So all three compositions are one thing — a loop edge landing in a frame that
+ * already had something in it:
+ *
+ *   march-start+spider-stop   `produced` EMPTY; BOTH halves are edges from the
+ *                             single sweep. Not two subsystems — one.
+ *   player-died+march-stop    `player-died` from the death concatenation
+ *                             (sim.ts:693); `march-stop` from the sweep. The
+ *                             death line supplies one half, not the pair.
+ *   shot-fired+spider-stop    `shot-fired` pushed at sim.ts:438; `spider-stop`
+ *                             from the sweep.
+ *
+ * No wave-clear composition occurs in this run.
  */
 const MEASURED_PAIR_COMPOSITIONS: string[] = [
   'march-start+spider-stop',
