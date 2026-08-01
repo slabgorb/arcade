@@ -49,6 +49,11 @@ export interface AudioEngine<N extends string> {
   // the smallest file's decode flips it long before the big music buffers land.
   // Mainly for tests / readiness UI.
   ready(): boolean
+  // Advance the priority window by ONE frame (jt5-5). Only meaningful for a
+  // manifest that declares `priorities`; inert otherwise, so the six cabinets
+  // that never call it are unaffected either way. Callers drive it from their own
+  // fixed-step loop, once per simulated frame.
+  tick(): void
 }
 
 export interface AudioManifest<N extends string> {
@@ -62,6 +67,24 @@ export interface AudioManifest<N extends string> {
   // Logical name -> logical channel (per-cabinet NUMBERS). A new sound on an
   // occupied channel steals (stops) whatever was sounding there.
   channels: Record<N, string>
+  // ─── Priority arbitration (jt5-5) — OPTIONAL, and off unless declared ──────
+  // Six of this arcade's seven cabinets are multi-voice machines whose sounds
+  // simply mix, and they pass neither map: with `priorities` absent, every path
+  // below is skipped and the engine behaves exactly as it did before this
+  // existed. The seventh, joust, is a Williams machine with ONE sound voice
+  // arbitrated by a priority byte, which is what these two describe.
+  //
+  // Names appearing in `priorities` form a SINGLE arbitrated voice — one, not one
+  // per channel, because the machine has one. A new arbitrated sound is REFUSED
+  // while a strictly higher-priority one is still inside its window; equal or
+  // higher interrupts. Names absent from the map are outside arbitration
+  // entirely and keep plain per-channel stealing.
+  priorities?: Partial<Record<N, number>>
+  // How many `tick()`s an arbitrated sound holds the voice for. A name with a
+  // priority but no duration here holds it for zero frames — it sounds, and
+  // refuses nothing. Missing is not an error: silent degrade is this engine's
+  // rule at every other failure path too.
+  frameDurations?: Partial<Record<N, number>>
 }
 
 // Resolve the AudioContext constructor, covering the legacy `webkitAudioContext`
@@ -95,6 +118,22 @@ export function createAudioEngine<N extends string>(manifest: AudioManifest<N>):
   // Files whose fetch/decode failed. A loop request against one of these must warn
   // and drop, never park forever — slow and missing are different failures.
   const failed = new Set<string>()
+  // The single arbitrated voice (jt5-5). `voiceFrames` is the machine's `STMR`:
+  // a countdown of FRAMES, decremented by tick(), and the priority comparison
+  // only happens while it is non-zero. `voiceChannel` is which channel that voice
+  // is sounding on, needed because an arbitrated sound may steal one sounding on
+  // a DIFFERENT channel — a separate channel must not buy a second voice.
+  let voicePriority = 0
+  let voiceFrames = 0
+  let voiceChannel: string | null = null
+
+  // Release the arbitrated voice: nothing is sounding, so the next sound of any
+  // priority is accepted with no comparison at all.
+  function releaseVoice(): void {
+    voicePriority = 0
+    voiceFrames = 0
+    voiceChannel = null
+  }
 
   // Start every pending loop that was waiting on `file` — the decode just landed,
   // so the remembered request plays exactly as if it had arrived now.
@@ -184,6 +223,13 @@ export function createAudioEngine<N extends string>(manifest: AudioManifest<N>):
     if (!ctx || !master) return
     const file = manifest.sounds[name]
     const channel = manifest.channels[name]
+    // The machine's `SND` routine, in order (jt5-5). `?? undefined` rather than a
+    // falsy test: 0 is the LOWEST priority, not the absence of one.
+    const priority = manifest.priorities?.[name]
+    // Refuse BEFORE anything is built. A refused sound must leave no trace —
+    // no node, no pending loop request, and above all no change to the sounding
+    // voice's window, since re-arming it on every refusal would extend it forever.
+    if (priority !== undefined && voiceFrames > 0 && priority < voicePriority) return
     const buffer = buffers.get(file)
     if (!buffer) {
       // A one-shot that arrives early is dropped for good — a laser half a second
@@ -202,6 +248,11 @@ export function createAudioEngine<N extends string>(manifest: AudioManifest<N>):
     pending.delete(channel)
     const destination = master
     stopChannel(channel)
+    // An accepted arbitrated sound takes the ONE voice, so whatever was sounding
+    // on it stops even though it is on another channel.
+    if (priority !== undefined && voiceChannel !== null && voiceChannel !== channel) {
+      stopChannel(voiceChannel)
+    }
     try {
       const source = ctx.createBufferSource()
       source.buffer = buffer
@@ -215,6 +266,15 @@ export function createAudioEngine<N extends string>(manifest: AudioManifest<N>):
       }
       source.start()
       live.set(channel, source)
+      // Claim the voice only now, having actually started. The machine's sounds
+      // are always available; ours can still be decoding or have 404'd, and a
+      // sound that never sounded must not hold a window against real audio — that
+      // would be audible silence caused by an inaudible cue.
+      if (priority !== undefined) {
+        voicePriority = priority
+        voiceFrames = manifest.frameDurations?.[name] ?? 0
+        voiceChannel = channel
+      }
     } catch {
       /* never let a single sound failure crash the frame */
     }
@@ -235,11 +295,24 @@ export function createAudioEngine<N extends string>(manifest: AudioManifest<N>):
     // after the phase that wanted it has ended.
     pending.delete(channel)
     stopChannel(channel)
+    // Silencing the arbitrated voice frees it immediately: the window describes
+    // how long a sound RINGS, so it cannot outlive one that has been stopped.
+    if (voiceChannel === channel) releaseVoice()
   }
 
   function ready(): boolean {
     return buffers.size > 0
   }
 
-  return { resume, play, startLoop, stopLoop, ready }
+  // One frame of the caller's clock. Floors at zero rather than running negative,
+  // so a loop that keeps ticking an idle voice cannot drift the counter into a
+  // state where the next sound is wrongly refused.
+  function tick(): void {
+    if (voiceFrames > 0) {
+      voiceFrames -= 1
+      if (voiceFrames === 0) releaseVoice()
+    }
+  }
+
+  return { resume, play, startLoop, stopLoop, ready, tick }
 }

@@ -154,11 +154,20 @@
   },
   {
     "id": "JT53-004",
-    "claim": "SNELWD is the ENEMIES WING DOWN SOUND table at priority 006 — the jt5-3 cue 'enemyWingDown' (JOUSTRV4.SRC:8108); below the player pair's 010, so a buzzard's wingbeat never steals the knight's own.",
+    "claim": "SNELWD is the ENEMIES WING DOWN SOUND table at priority 006 — the jt5-3 cue 'enemyWingDown' (JOUSTRV4.SRC:8108). The row states the priority; what that priority then DOES is a property of SND, claimed separately as JT55-001.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 8108,
       "verbatim": "SNELWD\tFCB\t006,!N$20!.$7F,60\tENEMIES WING DOWN SOUND"
+    }
+  },
+  {
+    "id": "JT55-001",
+    "claim": "SND refuses a strictly lower priority than the one already sounding — 'CMPA SPRI / BLO NOSND' at SYSTEM.SRC:767-768, inside the routine at SYSTEM.SRC:761-773. So SNELWD's 006 (JT53-004) being below the player wing pair's 010 means a buzzard's wingbeat never steals the knight's own. Two qualifiers the comparison itself carries: BLO is unsigned branch-if-LOWER, so an EQUAL priority DOES interrupt; and the comparison only runs while STMR is non-zero (SYSTEM.SRC:765-766), so once the sounding table's frame window has expired any priority is accepted with no comparison at all. jt5-5 implements this, so the sentence is now true of this port and not only of the machine.",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 767,
+      "verbatim": "\tCMPA\tSPRI\t\tOK TO INTERUPT THIS PIRORITY SOUND?"
     }
   },
   {

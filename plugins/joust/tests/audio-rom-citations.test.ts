@@ -85,7 +85,7 @@ type CueSource =
       kind: 'rom'
       /** The Williams table label, e.g. `SNEDIE`. */
       table: string
-      /** The table's priority byte — SND's arbitration key (SYSTEM.SRC:761-772). */
+      /** The table's priority byte — SND's arbitration key (SYSTEM.SRC:761-773). */
       priority: number
       /** Williams's own trailing comment on the table row, byte-exact. */
       romComment: string

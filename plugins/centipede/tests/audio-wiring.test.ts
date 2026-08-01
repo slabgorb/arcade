@@ -139,6 +139,12 @@ vi.mock('../src/shell/audio', async (importOriginal) => {
           rec.cues.push({ method: 'stopLoop', name })
         },
         ready: (): boolean => false,
+        // jt5-5 added `tick` to the shared engine for joust's single-voice
+        // priority arbitration. centipede declares no `priorities`, so its engine
+        // never arbitrates and the tick is inert — but the stub still has to
+        // implement the full interface, and recording the call would put a
+        // per-frame event into `rec.cues`, which every sweep here reads as cues.
+        tick: (): void => {},
       }
       rec.engines.push(engine)
       return engine

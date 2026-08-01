@@ -55,6 +55,11 @@ interface SoundSurface {
   play(name: string): void
   startLoop(name: string): void
   stopLoop(name: string): void
+  // jt5-5: the dispatch also carries the sound voice's frame clock, so the fake
+  // has to answer it. Deliberately NOT recorded as an `Effect` — every sweep
+  // below counts "one effect per event kind", and a per-frame tick is not an
+  // effect OF an event. It is asserted separately, in audio-priority.test.ts.
+  tick(): void
 }
 
 function recordingAudio(): SoundSurface & { calls: Effect[] } {
@@ -64,6 +69,7 @@ function recordingAudio(): SoundSurface & { calls: Effect[] } {
     play: (sound) => void calls.push({ kind: 'play', sound }),
     startLoop: (sound) => void calls.push({ kind: 'startLoop', sound }),
     stopLoop: (sound) => void calls.push({ kind: 'stopLoop', sound }),
+    tick: () => {},
   }
 }
 

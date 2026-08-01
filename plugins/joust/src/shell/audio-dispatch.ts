@@ -24,7 +24,7 @@ import type { GameEvent } from '../core/events.js'
 import type { AudioEngine, SoundName } from './audio.js'
 
 /** Just the slice of the engine this dispatch needs — joust never loops. */
-type SoundPlayer = Pick<AudioEngine, 'play'>
+type SoundPlayer = Pick<AudioEngine, 'play' | 'tick'>
 
 /**
  * The cue each moment sounds. Module-private: `playEventSounds` is the only
@@ -79,8 +79,21 @@ function cueFor(event: GameEvent): SoundName | null {
   }
 }
 
-/** Play one cue per moment the core emitted this frame, in the order given. */
+/**
+ * Play one cue per moment the core emitted this frame, in the order given, and
+ * carry the sound voice's frame clock (jt5-5).
+ *
+ * The tick comes FIRST, and unconditionally — even on a frame that emitted
+ * nothing. That is the machine's order, not a convenience: `EXECST`
+ * (SYSTEM.SRC:173-187) decrements `STMR` at the top of every frame, and only
+ * afterwards does game logic reach `SND` (:761-773) to queue a sound. Ticking
+ * after the cues would give every one of them an extra frame of window, and
+ * skipping the tick on a silent frame would stop the voice expiring at all
+ * during a quiet stretch. This function is called once per STEPPED frame from
+ * `pumpFrames` in `src/main.ts`, so one call is exactly one machine frame.
+ */
 export function playEventSounds(audio: SoundPlayer, events: readonly GameEvent[]): void {
+  audio.tick()
   for (const event of events) {
     // Nothing is de-duplicated: two buzzards can die on one frame, and the
     // engine's own voice-stealing is what keeps the pile-up bounded.

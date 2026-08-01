@@ -470,7 +470,9 @@ describe('jt5-4 — each thud cue cites its own Williams table', () => {
 describe('jt5-4 — the dispatch plays a distinct sound for each thud', () => {
   it('two kinds in, two DISTINCT cues out, in order', () => {
     const played: string[] = []
-    const recorder = { play: (name: string): void => void played.push(name) }
+    // `tick` is jt5-5's per-frame clock on the same seam; unrecorded because this
+    // test counts the CUES the thuds produce, and a frame tick is not one.
+    const recorder = { play: (name: string): void => void played.push(name), tick: () => {} }
     const sink = recorder as unknown as Parameters<typeof playEventSounds>[0]
     playEventSounds(sink, [asEvent(PLAYER_THUD), asEvent(ENEMY_THUD)])
     expect(played, 'a kind that falls through the switch is a silent cue').toEqual([
@@ -481,7 +483,9 @@ describe('jt5-4 — the dispatch plays a distinct sound for each thud', () => {
 
   it('the thuds are not routed onto some OTHER cue', () => {
     const played: string[] = []
-    const recorder = { play: (name: string): void => void played.push(name) }
+    // `tick` is jt5-5's per-frame clock on the same seam; unrecorded because this
+    // test counts the CUES the thuds produce, and a frame tick is not one.
+    const recorder = { play: (name: string): void => void played.push(name), tick: () => {} }
     const sink = recorder as unknown as Parameters<typeof playEventSounds>[0]
     playEventSounds(sink, [asEvent(ENEMY_THUD)])
     expect(played).toEqual(['enemyThud'])

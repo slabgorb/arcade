@@ -352,7 +352,9 @@ describe('jt5-3 AC7 — each wing cue cites its own Williams table', () => {
 describe('jt5-3 AC2 — the dispatch plays a distinct sound for each wing edge', () => {
   it('four kinds in, four DISTINCT cues out, in order', () => {
     const played: string[] = []
-    const recorder = { play: (name: string): void => void played.push(name) }
+    // `tick` is jt5-5's per-frame clock on the same seam; unrecorded here because
+    // this test counts the CUES four wing edges produce, and a frame tick is not one.
+    const recorder = { play: (name: string): void => void played.push(name), tick: () => {} }
     const sink = recorder as unknown as Parameters<typeof playEventSounds>[0]
     playEventSounds(sink, [
       asEvent(PLAYER_WING_DOWN),

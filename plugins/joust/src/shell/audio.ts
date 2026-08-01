@@ -25,25 +25,37 @@
 // `@shared/audio` degrades silently on a 404, so passing tests here prove the
 // wiring and say nothing whatever about whether a knight makes a noise.
 //
-// ─── ONE VOICE BY PRIORITY, N CHANNELS BY STEALING ───────────────────────────
-// The machine has ONE sound voice arbitrated by a PRIORITY byte: SND compares
-// the incoming table's priority against the sounding one and REFUSES a lower one
+// ─── ONE VOICE BY PRIORITY (jt5-5 — the mechanism, not the fence) ────────────
+// The machine has ONE sound voice arbitrated by a PRIORITY byte. `SND`
+// (SYSTEM.SRC:761-773) compares an incoming table's priority against the
+// sounding one and refuses a strictly lower one:
 //
 //     CMPA SPRI   OK TO INTERUPT THIS PIRORITY SOUND?
 //     BLO  NOSND                        (SYSTEM.SRC:767-768)
 //
-// The shared engine has no priority notion — a new sound on an occupied channel
-// always steals. The two models cannot be reconciled inside a manifest, so the
-// channel map is built to keep them from CONTRADICTING: a channel per distinct
-// ROM priority, so two cues share a voice only where the machine would have let
-// either interrupt the other. Seventeen cues, thirteen priorities, thirteen
-// channels (jt5-3 added two: 10 for the knight's wing pair, 6 for the
-// buzzard's; jt5-4 adds two more: 20 for the person-tie thud, 9 for the
-// enemy-tie thud — SNPTHD and SNETHD send the same 6-bit code $08 at those two
-// priorities, so they may NOT share a channel with each other or with anything
-// else). That stops the map inverting the ROM; it does not implement the
-// arbitration, which needs an optional priority on the shared engine (a jt5-1
-// Delivery Finding; jt5-5 owns building it).
+// Two details decide everything else. The comparison happens ONLY while `STMR`
+// is non-zero (:765-766) — with nothing sounding, any priority is accepted with
+// no comparison at all — and `STMR` is a countdown of FRAMES seeded from the
+// sound table's own duration, decremented once per frame by `EXECST`
+// (:173-187). So `PRIORITIES` and `FRAME_DURATIONS` below are the two halves of
+// one mechanism, and `playEventSounds` drives the clock.
+//
+// Until jt5-5 the shared engine had no priority notion and the CHANNELS map was
+// a FENCE standing in for one: a channel per distinct ROM priority, so two cues
+// could only ever steal from each other where the machine would also have let
+// them. That kept the map from inverting the ROM without implementing it — a
+// priority-40 enemy death and a priority-80 player death sat on different
+// channels and simply both played. The engine now arbitrates across channels, so
+// the fence no longer decides anything for these seventeen cues; the map is kept
+// because the shared engine still routes every sound by channel, and because a
+// channel per priority remains the honest description of which cues share a voice.
+//
+// The ROM's other branch is deliberately NOT ported. `:762`'s
+// `BMI 1$  SOUND PIRORITYS OF 128 TO 255 ARE ALWAYS SENT` skips only the
+// end-of-game mute at :763-764; it does not bypass the comparison. Joust's
+// highest cue priority is 100 (`extraMan`/`SNREPL`), so nothing in this manifest
+// can reach 128 and the branch is unreachable for this cue set. It is absent by
+// decision, not by oversight.
 import {
   createAudioEngine as createSharedAudioEngine,
   type AudioEngine as SharedAudioEngine,
@@ -161,7 +173,7 @@ export type CueSource =
       kind: 'rom'
       /** The Williams table label, e.g. `SNEDIE`. */
       table: string
-      /** The table's priority byte — SND's arbitration key (SYSTEM.SRC:761-772). */
+      /** The table's priority byte — SND's arbitration key (SYSTEM.SRC:761-773). */
       priority: number
       /** Williams's own trailing comment on the table row, byte-exact. */
       romComment: string
@@ -428,6 +440,70 @@ export type AudioEngine = SharedAudioEngine<SoundName>
  * is why constructing one in a test environment is safe and `ready()` answers
  * false there. `baseUrl` is overridable for tests; production takes the default.
  */
+/**
+ * Cue -> the ROM priority `SND` arbitrates on. DERIVED from `CUE_SOURCES` rather
+ * than retyped: the priority is already cited there against the `FCB` row that
+ * defines the table, and a second transcription is a second thing to get wrong.
+ */
+const PRIORITIES: Partial<Record<SoundName, number>> = (() => {
+  const map: Partial<Record<SoundName, number>> = {}
+  for (const name of Object.keys(CUE_SOURCES) as SoundName[]) {
+    const source = CUE_SOURCES[name]
+    if (source.kind === 'rom') map[name] = source.priority
+  }
+  return map
+})()
+
+/**
+ * Cue -> how many frames it holds the voice: the sum of every `(code, duration)`
+ * pair in its table.
+ *
+ * These are NOT derivable from `CUE_SOURCES`, and the reason is the one trap in
+ * this file. A `CueSource` cites the single `FCB` row that DEFINES its table, but
+ * the format header says a table need not end there:
+ *
+ *     *	 PIRORITY,SOUND,LENGTH (IF M.S.BIT SET ON SOUND, SOUND,LENGTH)
+ *                                              (JOUSTRV4.SRC:8045-8049)
+ *
+ * A pair whose code carries `+$80` is followed by another, and the assembler is
+ * free to put it on the next line. Two of these seventeen do exactly that, and
+ * their cited rows parse cleanly to a number that is simply not the table's
+ * length:
+ *
+ *   SNPCR1  :8116-8118   30 + 255 + 165 = 450   (cited row alone: 30)
+ *   SNPTED  :8091-8093   15 + 15 + 7 + 7 + 90 = 134   (cited row alone: 30)
+ *
+ * Both rows are byte-exact, and the citation gate re-opens the quoted line only,
+ * so it cannot see that a reading of it is fifteen times short. Every value below
+ * therefore names its table's FULL extent, and the totals are pinned by
+ * `tests/audio-priority.test.ts`.
+ */
+const FRAME_DURATIONS: Readonly<Record<SoundName, number>> = {
+  enemyDeath: 20, // SNEDIE  :8104
+  playerDeath: 20, // SNPDIE  :8115
+  eggCollected: 30, // SNEGG   :8098
+  eggHatched: 30, // SNEGGH  :8099
+  pteroArrives: 60, // SNPTEI  :8094        30 + 30
+  pteroDeath: 134, // SNPTED  :8091-8093   15 + 15 + 7 + 7 + 90
+  playerMaterialise: 450, // SNPCR1  :8116-8118   30 + 255 + 165
+  enemyMaterialise: 91, // SNECRE  :8103        90 + 1
+  extraMan: 90, // SNREPL  :8089
+  waveBounty: 60, // SNBOUN  :8096
+  cliffDestroyed: 90, // SNCLIF  :8090
+  playerWingDown: 90, // SNPLWD  :8126
+  playerWingUp: 90, // SNPLWU  :8125
+  enemyWingDown: 60, // SNELWD  :8108
+  enemyWingUp: 60, // SNELWU  :8107
+  playerThud: 31, // SNPTHD  :8124        30 + 1
+  enemyThud: 31, // SNETHD  :8106        30 + 1
+}
+
 export function createAudioEngine(baseUrl: string = DEFAULT_BASE_URL): AudioEngine {
-  return createSharedAudioEngine<SoundName>({ baseUrl, sounds: SOUNDS, channels: CHANNELS })
+  return createSharedAudioEngine<SoundName>({
+    baseUrl,
+    sounds: SOUNDS,
+    channels: CHANNELS,
+    priorities: PRIORITIES,
+    frameDurations: FRAME_DURATIONS,
+  })
 }
