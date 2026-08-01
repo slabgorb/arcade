@@ -9,7 +9,8 @@
 // wave 1 forever. `waveValue` is the seam consumers call; `ROW_DISPOSITION` at the
 // bottom of this file records, for all 28 rows, whether it is wired, dead in the
 // 1982 ROM, or waiting on a mechanic this port does not have yet. READ THAT TABLE
-// before assuming a row is available — 25 of the 28 still are not.
+// before assuming a row is available — 16 of the 28 still are not (uf1-8 wired
+// the ten seek rows).
 //
 // This module is committed DATA + a pure decoder — it never
 // re-reads the vendored source (the byte gate in tests/difficulty-source.test.ts
@@ -292,8 +293,6 @@ export type RowDisposition =
       readonly owner: string
     }
 
-const RANGE_SEEK = 'the long/short range-seek gate (no range test in smartDecision)'
-const PDIST = 'the PDIST "distance to go" budget'
 const WING = 'the PJOYT wing-flap cadence timer'
 const DECISION = 'the "time until next decision" timer'
 const UP_VY = 'the up-flight VY gate'
@@ -302,10 +301,12 @@ const UP_VY = 'the up-flight VY gate'
  * Every row's disposition, TOTAL over all 28 — data in the module, not prose in an
  * archive note, so the next sweep reads it instead of rediscovering the gap.
  *
- * uf1-2 wires 2. LAVLAV is dead in the ORIGINAL: its label appears exactly ONCE in
- * the whole of JOUSTRV4.SRC, on its own DYWORD line at :7306 — Williams shipped a
- * row nothing reads, so there is no behaviour to port and no story can wire it.
- * The remaining 25 each wait on a mechanic this clone does not have yet.
+ * uf1-2 wires 2 (the down-seek brakes); uf1-8 wires 10 more (the range-seek
+ * gates and the PDIST budgets). LAVLAV is dead in the ORIGINAL: its label
+ * appears exactly ONCE in the whole of JOUSTRV4.SRC, on its own DYWORD line at
+ * :7306 — Williams shipped a row nothing reads, so there is no behaviour to
+ * port and no story can wire it. The remaining 15 each wait on a mechanic this
+ * clone does not have yet.
  */
 export const ROW_DISPOSITION: Readonly<Record<DyRowName, RowDisposition>> = Object.freeze({
   // ─── Wired by uf1-2 — the down-seek brakes, the one live consumer chain ────
@@ -315,17 +316,17 @@ export const ROW_DISPOSITION: Readonly<Record<DyRowName, RowDisposition>> = Obje
   // ─── Dead in the 1982 source itself ───────────────────────────────────────
   LAVLAV: Object.freeze({ kind: 'dead-in-rom' }),
 
-  // ─── uf1-8 — the range-seek gate and the PDIST budget (10 rows) ───────────
-  BODNRG: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3801', missing: RANGE_SEEK, owner: 'uf1-8' }),
-  BODNDI: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3803', missing: PDIST, owner: 'uf1-8' }),
-  BOUPRG: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3844', missing: RANGE_SEEK, owner: 'uf1-8' }),
-  BOUPDI: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3851', missing: PDIST, owner: 'uf1-8' }),
-  HUDNRG: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3984', missing: RANGE_SEEK, owner: 'uf1-8' }),
-  HUDNDI: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3988', missing: PDIST, owner: 'uf1-8' }),
-  HUUPRG: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4028', missing: RANGE_SEEK, owner: 'uf1-8' }),
-  HUUPDI: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4035', missing: PDIST, owner: 'uf1-8' }),
-  SHDNRG: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4243', missing: RANGE_SEEK, owner: 'uf1-8' }),
-  SHUPRG: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4257', missing: RANGE_SEEK, owner: 'uf1-8' }),
+  // ─── Wired by uf1-8 — the range-seek gates and the PDIST budgets (10) ──────
+  BODNRG: Object.freeze({ kind: 'wired', consumer: 'enemy.boundr (the bounder down range gate, JOUSTRV4.SRC:3801)' }),
+  BODNDI: Object.freeze({ kind: 'wired', consumer: 'enemy.stepEnemy (the bounder down-seek PDIST budget, JOUSTRV4.SRC:3803)' }),
+  BOUPRG: Object.freeze({ kind: 'wired', consumer: 'enemy.boundr (the bounder up range gate, JOUSTRV4.SRC:3844)' }),
+  BOUPDI: Object.freeze({ kind: 'wired', consumer: 'enemy.stepEnemy (the bounder up-seek PDIST budget, JOUSTRV4.SRC:3851)' }),
+  HUDNRG: Object.freeze({ kind: 'wired', consumer: 'enemy.b2undr (the hunter down range gate, JOUSTRV4.SRC:3984)' }),
+  HUDNDI: Object.freeze({ kind: 'wired', consumer: 'enemy.stepEnemy (the hunter down-seek PDIST budget, JOUSTRV4.SRC:3988)' }),
+  HUUPRG: Object.freeze({ kind: 'wired', consumer: 'enemy.b2undr (the hunter up range gate, JOUSTRV4.SRC:4028)' }),
+  HUUPDI: Object.freeze({ kind: 'wired', consumer: 'enemy.stepEnemy (the hunter up-seek PDIST budget, JOUSTRV4.SRC:4035)' }),
+  SHDNRG: Object.freeze({ kind: 'wired', consumer: 'enemy.shadow (the shadow down range gate, JOUSTRV4.SRC:4243)' }),
+  SHUPRG: Object.freeze({ kind: 'wired', consumer: 'enemy.shadow (the shadow up range gate, JOUSTRV4.SRC:4257)' }),
 
   // ─── uf1-9 — the wing/decision cadences and the up-flight VY gates (11) ───
   BOUPWD: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3864', missing: WING, owner: 'uf1-9' }),

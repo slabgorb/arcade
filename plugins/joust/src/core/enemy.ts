@@ -107,6 +107,32 @@ export interface HomingState {
   readonly prdir: number
 }
 
+/**
+ * uf1-8 — the per-enemy SEEK-EPISODE workspace: `PDIST,U`, "distance to go".
+ *
+ * The ROM's bounder/hunter brains are EPISODIC, not per-wake: a LONG-range
+ * decide arms `PDIST` from the wave's DI row (`LDD BODNDI / STD PDIST,U`,
+ * JOUSTRV4.SRC:3803-3804; `BOUPDI` :3851-3852; `HUDNDI` :3986-3987; `HUUPDI`
+ * :4035-4036) and COMMITS — the episode states (`BODN1` :3811-3817, `BOUP1`
+ * :3855-3860 and their B2 twins) never re-run SELPLY. The budget's units are
+ * the port's posY subpixels: −$0E00 = 14 pixels of travel, the same DYLEN the
+ * RG rows express in whole pixels — one length, two radixes. Down budgets are
+ * NEGATIVE (exhausted at ≥ 0, `BPL BOBRAIN` :3816); up budgets POSITIVE
+ * (exhausted at < 0, `BMI` :3859). The shadow lord has NO DI rows — its
+ * episode states re-enter `SHADOW` each wake (`SHUP1 LDD #SHADOW / STD
+ * PJOY,U`, :4270-4271) — so it never carries one, and neither does LINET.
+ */
+export interface SeekState {
+  /** Which committed seek this enemy is inside: descending or climbing. */
+  readonly mode: 'down' | 'up'
+  /**
+   * `PDIST,U` — the signed distance-to-go budget, in posY subpixel units.
+   * Negative while descending (armed from BODNDI/HUDNDI), positive while
+   * climbing (armed from BOUPDI/HUUPDI).
+   */
+  readonly pdist: number
+}
+
 /** An enemy's mind riding the shared flight core (buzzards flap). */
 export interface EnemyState {
   /** The flight/ground state — stepped by the SAME flight core players use. */
@@ -125,6 +151,16 @@ export interface EnemyState {
    * matched wake seeds it. When present it is CARRIED, never re-seeded.
    */
   homing?: HomingState
+  /**
+   * uf1-8 — the committed seek episode, if one is in flight. OPTIONAL on the
+   * same precedent as `homing`: absent means "at the decide step". `stepEnemy`
+   * arms it on a long-range bounder/hunter decide, CARRIES and spends it
+   * across wakes (never re-seeds an unspent one), and clears it when the
+   * budget exhausts or the enemy grounds (`BODN1 LDD PSTATE,U / BNE BOBRAIN`,
+   * JOUSTRV4.SRC:3811-3812). A dumb `linet` enemy and the shadow lord never
+   * carry one.
+   */
+  seek?: SeekState
   /**
    * jt5-3 — the wing-edge detector's memory: the `flapHeld` LEVEL this enemy's
    * synthetic joystick carried on its LAST WAKE (`CURJOY+1`, read as the edge
@@ -310,74 +346,143 @@ export function creditDeath(enemy: EnemyState, budget: IntelBudget): IntelBudget
 
 // ─── The three smart brains (distinct, cited pursuit) ───────────────────────
 //
-// The shared skeleton: seek UP toward a player above (flap when the player's
-// line is above and the enemy is not already rising). On a DOWN-seek the brains
-// differ by their cited descent style — the bounder brakes early (BODNVY, $0100
-// on waves 1-2 and rising), the hunter tolerates a faster fall (HUDNVY, $0200 and
-// rising; above the bounder's at every wave), the shadow lord never brakes
-// (SHDN NO FLAPING WINGS, JOUSTRV4.SRC:4246) and flaps ONLY to escape the lava
-// below $D3. The horizontal cliff look-ahead (B2XLEN/SHXLEN) is provenance-only
-// this story (claims JT22-025/026); dir follows facing.
+// uf1-8 — every brain DECIDES through its RANGE GATE on the whole-pixel player
+// Y-delta (player pixelY − enemy pixelY; positive = player below), against the
+// wave's DYTBL row. The ROM reaches a gate only after `JSR SELPLY / BEQ BOLEVV
+// BR=NO PLAYERS HERE` (:3796-3797) and the down/up sign split (`LDD PPOSY,X /
+// SUBD PPOSY,U / LBLT …UP`, :3798-3800) — so a NO-TARGET bounder/hunter flies
+// LEVEL (BOLEV :3903 / B2LEV :4054) and never consults its BODNVY/HUDNVY dial.
+// The gate is strict-INCLUSIVE on the long side, both directions: delta ≥ row
+// is long DOWN (`CMPD BODNRG / BLT`, :3801-3802 — BLT exits only strictly
+// under); delta ≤ row is long UP (`CMPD BOUPRG / BGT`, :3844-3845 — BGT exits
+// only strictly over). A LONG bounder/hunter decide commits to a PDIST episode
+// (see `SeekState` and `stepEnemy`); SHORT range and null-target fly level.
+// Level flight here is the per-wake collapse "flap iff falling" — the timed
+// BOLETM-family episodes are uf1-9's rows, deliberately not modelled yet.
+// The horizontal cliff look-ahead (B2XLEN/SHXLEN) is provenance-only
+// (claims JT22-025/026); dir follows facing.
 
-interface SmartTuning {
-  /** The down-seek brake threshold; `Infinity` for a brain that never brakes. */
+/** The route a bounder/hunter wake is on: a committed/long seek, or level. */
+type SeekRoute = 'down' | 'up' | 'level'
+
+/** One brain's five wave-scaled DYTBL seek rows, read fresh per decide. */
+interface SeekRows {
+  /** The down range gate, in whole pixels — long at delta ≥ gate. */
+  readonly dnRg: number
+  /** The down episode budget, in posY subpixels (negative). */
+  readonly dnDi: number
+  /** The up range gate (negative pixels) — long at delta ≤ gate. */
+  readonly upRg: number
+  /** The up episode budget, in posY subpixels (positive). */
+  readonly upDi: number
+  /** uf1-2 — the down-seek brake VY (`SUBD BODNVY` :3819 / `HUDNVY` :4004). */
   readonly brake: number
-  /** Whether this brain flaps to escape the lava below `LAVA_ESCAPE_Y`. */
-  readonly lavaEscape: boolean
+}
+
+/** The bounder's rows: BODNRG :3801, BODNDI :3803, BOUPRG :3844, BOUPDI :3851. */
+function boundrRows(wave: number): SeekRows {
+  return {
+    dnRg: waveValue('BODNRG', wave),
+    dnDi: waveValue('BODNDI', wave),
+    upRg: waveValue('BOUPRG', wave),
+    upDi: waveValue('BOUPDI', wave),
+    brake: waveValue('BODNVY', wave),
+  }
+}
+
+/** The hunter's rows: HUDNRG :3984, HUDNDI :3988, HUUPRG :4028, HUUPDI :4035.
+ * The RG curves are IDENTICAL to the bounder's at every GA1-5 wave — the DI
+ * twins first disagree on wave 5 (cadence nibbles 2 vs 15). */
+function b2undrRows(wave: number): SeekRows {
+  return {
+    dnRg: waveValue('HUDNRG', wave),
+    dnDi: waveValue('HUDNDI', wave),
+    upRg: waveValue('HUUPRG', wave),
+    upDi: waveValue('HUUPDI', wave),
+    brake: waveValue('HUDNVY', wave),
+  }
 }
 
 /**
- * uf1-2 — the down-seek brake for a 1-based wave. `BOUNDR_DOWN_BRAKE` /
- * `B2UNDR_DOWN_BRAKE` are the WAVE-1 values (and the pre-DYTBL immediates the
- * ROM's own comments record at :3819 / :4004); every wave after the second walks
- * them up through the DYTBL row, so a late-wave buzzard tolerates a much faster
- * fall before it brakes. Waves 1-2 return the constant unchanged — the walk's
- * countdown seeds to 2, so its first step lands on wave 3.
+ * The DECIDE's routing (`BOUNDR` :3796-3803 / `B2UNDR` :3979-3990): null
+ * target → level (`BEQ BOLEVV`); sign split on the delta (:3800); then the
+ * range gate, strict-inclusive on the long side. Pure.
  */
-const brakeForWave = (name: 'BODNVY' | 'HUDNVY', wave: number): number => waveValue(name, wave)
+function rangeRoute(delta: number | null, rows: SeekRows): SeekRoute {
+  if (delta === null) return 'level'
+  if (delta >= 0) return delta >= rows.dnRg ? 'down' : 'level'
+  return delta <= rows.upRg ? 'up' : 'level'
+}
 
-function smartDecision(enemy: EnemyState, player: PlayerView | null | undefined, t: SmartTuning): Decision {
+/**
+ * One bounder/hunter wake's decision. An armed `enemy.seek` episode PRE-EMPTS
+ * the decide entirely — `BODN1`/`BOUP1` never re-run SELPLY, so mid-episode
+ * the committed mode picks the law whatever the player is doing now.
+ * Otherwise the range gate routes:
+ *   down  → the brake law — flap iff the fall has reached the wave's VY dial
+ *           (the arm wake runs it too: `SUBD BODNVY / BMI`, :3818-3820);
+ *   up    → the climb law — flap iff not already rising (:3855-3860 collapsed
+ *           per-wake: the BOUPWD/BOUPWU wing cadences are uf1-9's rows);
+ *   level → BOLEV/B2LEV (:3903/:4054) — flap iff falling, dial dark.
+ * Pure — the workspace is advanced by `stepEnemy`, never here.
+ */
+function pursue(enemy: EnemyState, player: PlayerView | null | undefined, rows: SeekRows): Decision {
+  const velY = enemy.entity.velY
+  const dir = enemy.facing
+  const route: SeekRoute =
+    enemy.seek?.mode ??
+    rangeRoute(player == null ? null : player.pixelY - (enemy.entity.posY >> 8), rows)
+  if (route === 'down') return { dir, flap: velY >= rows.brake }
+  // The climb law and the level law collapse to the same per-wake flap — kept
+  // as one expression on purpose; the episodes tell them apart, not the wings.
+  return { dir, flap: velY >= 0 }
+}
+
+/**
+ * Bounder (`BOUNDR` :3787-3946): the range-gated episodic pursuit through its
+ * own rows — BODNRG/BOUPRG gates, BODNDI/BOUPDI budgets, the BODNVY brake
+ * (JOUSTRV4.SRC:3819; $0100 on waves 1-2, walking to $0300). Moves in facing
+ * direction. Pure.
+ */
+export function boundr(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {
+  return pursue(enemy, player, boundrRows(wave))
+}
+
+/**
+ * Hunter (`B2UNDR` :3960-4200): the same episodic pursuit as the bounder
+ * through its OWN rows — HUDNRG/HUUPRG gates, HUDNDI/HUUPDI budgets, and the
+ * faster HUDNVY brake (JOUSTRV4.SRC:4004; $0200 on waves 1-2 climbing to
+ * $0380, above the bounder's at every wave). Pure.
+ */
+export function b2undr(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {
+  return pursue(enemy, player, b2undrRows(wave))
+}
+
+/**
+ * Shadow lord (`SHADOW` :4230-4330): stateless — no DI rows, no SeekState; it
+ * re-decides every wake. Null target → SHLEV (own line, per-wake collapse:
+ * wings up above the lava); delta ≥ SHDNRG(wave) → SHDN, the no-flap drop
+ * (`CLRB`, :4246-4248); delta ≤ SHUPRG(wave) → up-seek (flap iff not rising);
+ * otherwise SHORT range → SHLEP (:4277), which tracks the PLAYER'S line with
+ * NO velY gate — it flaps whenever strictly below the player's pixel Y, even
+ * mid-rise (`CMPB PDIST+1,U / BLS SHLEPA`, :4290-4291). The lava escape below
+ * `LAVA_ESCAPE_Y` stays in every branch. Pure.
+ */
+export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {
   const enemyY = enemy.entity.posY >> 8
   const velY = enemy.entity.velY
   const dir = enemy.facing
-  // The shadow lord's only descent flap: escape the lava below cliff5 ($D3).
-  if (t.lavaEscape && enemyY > LAVA_ESCAPE_Y) return { dir, flap: true }
-  // Seek up: the player's line is above and the enemy is not already rising.
-  const playerY = player?.pixelY
-  if (playerY !== undefined && playerY < enemyY && velY >= 0) return { dir, flap: true }
-  // Down-seek: brake a fall once its Y-velocity exceeds the brand's threshold.
-  if (velY >= t.brake) return { dir, flap: true }
-  return { dir, flap: false }
-}
-
-/**
- * Bounder: seek the player's altitude (flap up when the player is above, not
- * already rising); on a down-seek, actively BRAKE the descent once the fall
- * exceeds the wave's `BODNVY` (JOUSTRV4.SRC:3819) — $0100 on waves 1-2, walking
- * up to $0300, so a late-wave bounder dives markedly harder before it checks
- * itself. Moves in facing direction. Pure.
- */
-export function boundr(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {
-  return smartDecision(enemy, player, { brake: brakeForWave('BODNVY', wave), lavaEscape: false })
-}
-
-/**
- * Hunter (advanced bounder): the same pursuit as the bounder but it tolerates a
- * FASTER fall — its down-seek brake is the wave's `HUDNVY` (JOUSTRV4.SRC:4004),
- * $0200 on waves 1-2 climbing to $0380, and above the bounder's at every wave.
- * Pure.
- */
-export function b2undr(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {
-  return smartDecision(enemy, player, { brake: brakeForWave('HUDNVY', wave), lavaEscape: false })
-}
-
-/**
- * Shadow lord: the deadliest. On a down-seek it DROPS — never braking (SHDN
- * `CLRB`, JOUSTRV4.SRC:4246-4248) — flapping ONLY to escape the lava below
- * `LAVA_ESCAPE_Y`. Seeks up toward the player like the others. Pure.
- */
-export function shadow(enemy: EnemyState, player: PlayerView | null): Decision {
-  return smartDecision(enemy, player, { brake: Infinity, lavaEscape: true })
+  // The one descent flap the shadow has: escape the lava below cliff5 ($D3).
+  if (enemyY > LAVA_ESCAPE_Y) return { dir, flap: true }
+  // SHLEV — no players here: wings up above the lava (the shipped behaviour).
+  if (player == null) return { dir, flap: false }
+  const delta = player.pixelY - enemyY
+  // SHDN — long-range down: the no-flap drop (:4246-4248).
+  if (delta >= waveValue('SHDNRG', wave)) return { dir, flap: false }
+  // Long-range up-seek: flap while not already rising.
+  if (delta <= waveValue('SHUPRG', wave)) return { dir, flap: velY >= 0 }
+  // SHLEP — short range: track the player's LIVE line, no velY gate.
+  return { dir, flap: enemyY > player.pixelY }
 }
 
 // ─── Horizontal homing (BODIR / BOLEVB) ─────────────────────────────────────
@@ -488,9 +593,9 @@ export function runBrain(enemy: EnemyState, player?: PlayerView | null, wave = 1
     case 'b2undr':
       return b2undr(enemy, player ?? null, wave)
     case 'shadow':
-      // The shadow lord never brakes (SHDN `CLRB`), so no DYTBL row gates its
-      // descent — SHUPVY is its UP-flight gate and waits on uf1-9.
-      return shadow(enemy, player ?? null)
+      // uf1-8 — the shadow's SHDNRG/SHUPRG range gates are wave-scaled too;
+      // SHUPVY, its UP-flight VY gate, still waits on uf1-9.
+      return shadow(enemy, player ?? null, wave)
     default:
       return linet(enemy)
   }
@@ -551,6 +656,53 @@ export function stepEnemy(
 }
 
 /**
+ * uf1-8 — one wake of the SEEK-EPISODE workspace, run BEFORE the brain reads
+ * it (the ROM's episode states spend PDIST and fall into the flap logic of the
+ * same wake). All on ENTRY state. The laws (`BODN1` :3811-3817 / `BOUP1`
+ * :3855-3860 and their B2 twins):
+ *   • a grounded enemy exits its episode and re-decides (`BODN1 LDD PSTATE,U /
+ *     BNE BOBRAIN`, :3811-3812);
+ *   • a carried episode spends `pdist += entry velY` ONLY on a wake moving in
+ *     its direction — a rising wake in a down episode (`BMI`, :3814) and a
+ *     falling wake in an up episode (`BPL`, :3856) skip the add — and is
+ *     otherwise carried UNTOUCHED, never re-seeded while unspent;
+ *   • a spend that crosses zero (down: ≥ 0, up: < 0) exhausts the episode and
+ *     re-decides THE SAME WAKE (`BPL BOBRAIN` :3816, `BOBRAIN JMP BOUNDR`
+ *     :3842) — the fresh decide may arm a fresh episode at the FULL wave value;
+ *   • the decide arms a LONG-range route with the wave's DI row, unspent
+ *     (`LDD BODNDI / STD PDIST,U`, :3803-3804 — the arm wake performs no ADDD);
+ *   • short-range, null-target, shadow and linet wakes carry NO workspace.
+ * Pure — the argument is never mutated.
+ */
+function seekWake(enemy: EnemyState, target: PlayerView | null, wave: number): EnemyState {
+  const episodic = enemy.brain === 'boundr' || enemy.brain === 'b2undr'
+  if (!episodic) {
+    // The shadow lord (no DI rows, re-enters SHADOW each wake) and the dumb
+    // LINET never carry a workspace.
+    return enemy.seek === undefined ? enemy : { ...enemy, seek: undefined }
+  }
+  const rows = enemy.brain === 'boundr' ? boundrRows(wave) : b2undrRows(wave)
+  // The ground exit: PSTATE ≠ 0 abandons the episode and re-decides.
+  let carried = enemy.entity.airborne ? enemy.seek : undefined
+  if (carried !== undefined) {
+    const velY = enemy.entity.velY
+    // Spend the wake's ENTRY velY, only while moving with the episode.
+    const spends = carried.mode === 'down' ? velY >= 0 : velY < 0
+    const pdist = spends ? carried.pdist + velY : carried.pdist
+    const exhausted = carried.mode === 'down' ? pdist >= 0 : pdist < 0
+    if (!exhausted) return { ...enemy, seek: { mode: carried.mode, pdist } }
+    carried = undefined // BPL/BMI BOBRAIN → JMP BOUNDR: re-decide the SAME wake
+  }
+  const route = rangeRoute(
+    target === null ? null : target.pixelY - (enemy.entity.posY >> 8),
+    rows,
+  )
+  if (route === 'down') return { ...enemy, seek: { mode: 'down', pdist: rows.dnDi } }
+  if (route === 'up') return { ...enemy, seek: { mode: 'up', pdist: rows.upDi } }
+  return enemy.seek === undefined ? enemy : { ...enemy, seek: undefined }
+}
+
+/**
  * jt5-3 — `stepEnemy` PLUS the wing edge this WAKE produced (or `null`). The
  * decision (and therefore the edge) is computed from `input.flap`/`flapHeld`,
  * which only this function's internals see — `stepEnemy`'s pinned signature
@@ -562,18 +714,24 @@ export function stepEnemyDetailed(
   ctx?: { player?: PlayerView | null; wave?: number },
 ): { enemy: EnemyState; wingEdge: WingEdge } {
   const target = ctx?.player ?? null
+  const wave = ctx?.wave ?? 1
   // jt8-2: the homing wake runs BEFORE the brain. `COM PFACE,U` (:3945) falls
   // into `JMP BODIR` (:3946), whose first instruction is `LDA PFACE,U` (:3876) —
   // so a flip already steers THIS wake's horizontal impulse, not the next one.
   const homed = homingWake(enemy, target)
+  // uf1-8: then the seek workspace advances (ground-exit → spend → exhaust →
+  // re-decide/arm), so the brain reads the episode this wake is ACTUALLY in —
+  // the arm wake already runs its episode's law, exactly as the ROM's decide
+  // falls through into BODN1/BOUP1.
+  const sought = seekWake(homed, target, wave)
   // uf1-2: the brain reads its per-wave difficulty row from `wave`. It runs on
   // the ALREADY-HOMED enemy, so the wave-scaled seek and the flipped facing are
   // the same wake's decision, not two.
-  const decision = runBrain(homed, target, ctx?.wave ?? 1)
+  const decision = runBrain(sought, target, wave)
   const input: PlayerInput = { dir: decision.dir, flap: decision.flap, flapHeld: decision.flap }
-  const edge = wingEdge(homed.entity.airborne, homed.prevFlapHeld ?? false, input)
+  const edge = wingEdge(sought.entity.airborne, sought.prevFlapHeld ?? false, input)
   return {
-    enemy: { ...homed, entity: stepEntity(homed.entity, input), prevFlapHeld: input.flapHeld },
+    enemy: { ...sought, entity: stepEntity(sought.entity, input), prevFlapHeld: input.flapHeld },
     wingEdge: edge,
   }
 }

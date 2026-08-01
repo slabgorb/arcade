@@ -774,19 +774,21 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
     })
   }
 
-  it('seed 0xbeef, 200 frames — jt5-4 re-baselined: only the bounced bird moved', () => {
+  it('seed 0xbeef, 200 frames — jt5-4 then uf1-8 re-baselined: the players never move', () => {
     // MEASURED against the tree at 6d93fa2 (pre-jt5-4), with this exact script;
-    // re-measured post-jt5-4 (session AC-7 ruling — legitimate, this run is
-    // downstream of 0xbeef's frame-147 contact). Only `enemy#256` — one of the
-    // two buzzards in that contact — moved (`posY` 32912->34401, `velY`
-    // -8->-39); `player#1`, `player#2`, `enemy#258` and the egg are untouched,
-    // which is what keeps this a regression guard and not a blanket
-    // re-baseline: a change that moved anything ELSE here would be a bug.
+    // re-measured post-jt5-4 (session AC-7 ruling — only the bounced bird
+    // moved) and again post-uf1-8, whose range-gated brains re-fly BOTH smart
+    // buzzards from their first promoted wake (audio-thud.test.ts AC7 carries
+    // the uf1-8 ruling). What keeps this a regression guard and not a blanket
+    // re-baseline: `player#1`, `player#2` and the egg are bit-identical across
+    // all three trees — the flap/flight seam this suite pins is player-shared,
+    // so a change that moves a PLAYER row here is a bug whatever story it
+    // rides in on.
     expect(entityDigest(0xbeef, 200)).toEqual([
       'player#1:40,30508,326,-4,192,161,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:267,34401,-39,-8,0,39,1',
-      'enemy#258:171,33298,-5,8,64,101,1',
+      'enemy#256:171,30017,-13,8,64,101,1',
+      'enemy#258:171,33679,-20,8,64,101,1',
       'egg#65793:-',
     ])
   })

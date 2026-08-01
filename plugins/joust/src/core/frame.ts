@@ -336,17 +336,11 @@ function runBehaviour(
       next = promoted.budget
     }
     // jt8-1: the enemy now RECEIVES its target (SELPLY, computed by the caller from
-    // the aggro state + the live players). Absent aggro state → `target` is null →
-    // the vertical-seek branch stays dormant (the pre-jt8-1 behaviour, unchanged).
-    // uf1-2: and the wave it reads its DYTBL dials at — the down-seek brake. Both
-    // are live, but they OVERLAP: `smartDecision`'s seek-up clause and its brake
-    // clause return the identical `flap: true`, so the decision is their DISJUNCTION
-    // and the wave-dependent brake only CHANGES the outcome where seek-up is false —
-    // i.e. the enemy is at or above its quarry, or has none. (Not an artefact of the
-    // clause order: verified exhaustively that the two orderings are extensionally
-    // identical. The gating is the ROM's — `LBLT BOUNUP` at JOUSTRV4.SRC:3800 sends
-    // a buzzard whose quarry is above onto the up path, and BODNVY is read past it
-    // at :3819, on the down path only.)
+    // the aggro state + the live players). uf1-2: and the wave it reads its DYTBL
+    // dials at. uf1-8: the brains route the ROM's way — a null target flies LEVEL
+    // (`JSR SELPLY / BEQ BOLEVV`, JOUSTRV4.SRC:3796-3797) with the BODNVY/HUDNVY
+    // dials dark, and the dials decide only on a LONG-range down seek (the range
+    // gate at :3801/:3984) or inside a committed PDIST episode (`enemy.seek`).
     // jt5-3: `stepEnemyDetailed` runs the SAME brain + flight step `stepEnemy`
     // does (it IS stepEnemy's implementation) and additionally reports the wing
     // edge that wake produced, from the `input.flap`/`flapHeld` only it sees.

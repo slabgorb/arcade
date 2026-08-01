@@ -259,47 +259,58 @@ describe('AC-3 — no aggro state ⇒ no target ⇒ no flip (the jt2 replays hol
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Four seeds, chosen because they place the enemy that reverses on FOUR DIFFERENT
- * transporter pads (posX 23 / 113 / 127 / 231) and reverse on four different
- * frames (93 / 135 / 97 / 91).
- *
- * Round-2 review [MEDIUM][TEST] earned this list. It was `[0x1234, 0xbeef]`,
- * annotated "two seeds, so a single lucky RNG stream cannot carry the guard" —
- * and the Reviewer measured that BOTH of those spawn the reversing enemy at the
- * identical `(23, 35072)`. The diversity was asserted, not obtained. It is
- * obtained now, and the pad/frame spread above is the evidence.
+ * Four seeds, chosen (round-2 review [MEDIUM][TEST]) because they place the
+ * enemy that reverses on FOUR DIFFERENT transporter pads. It was `[0x1234,
+ * 0xbeef]`, annotated "two seeds, so a single lucky RNG stream cannot carry the
+ * guard" — and the Reviewer measured that BOTH of those spawn the reversing
+ * enemy at the identical `(23, 35072)`. The diversity was asserted, not
+ * obtained; this list obtained it. First reversals re-measured under uf1-8's
+ * chase script: frames 191 / 91 / 93 / 261 — still four distinct frames.
  */
 const PLAY_SEEDS: readonly number[] = [0x1234, 0x7, 0x63, 0xabc]
-/** Latest measured first reversal is frame 135 (seed 0x7); 600 keeps ~4x margin. */
+/** Latest measured first reversal is frame 261 (seed 0xabc); 600 keeps ~2.3x margin. */
 const PLAY_FRAMES = 600
 
 /**
- * A player wandering right, coasting, wandering left, coasting, flapping now and
- * then. Frame-derived, so the run stays deterministic.
+ * A player flying full-tilt on the buzzards' rung for 280 frames, then dropping
+ * off it and coasting. Frame-derived, so the run stays deterministic.
  *
- * ─── WHAT THIS INPUT IS AND IS NOT DOING (round-2 review correction) ─────────
- * This was documented as "a human at the cabinet, not a stick pinned to saturate
- * velocity forever", as though the input pattern were what earns the pass. The
- * Reviewer tested that and it is not: with the stick NEVER TOUCHED for the whole
- * window the guard still passes (seed 0xbeef flipped at frame 91 on a 0-vs-0
- * match, against frame 93 on a 2-vs-2 match under this input).
+ * ─── WHY A CHASE, NOT A WANDER (uf1-8 re-staging) ────────────────────────────
+ * This block used to wander the stick, and passed because jt8-1's TARTIM grace
+ * held `selectTarget` off for ~ninety frames while the null-target smart brain
+ * fell through to the DOWN-SEEK BRAKE — a state the 1982 machine never read the
+ * dial in. A braking buzzard flaps rarely, so its FLYX index was still parked
+ * on the knight's rung when the grace cleared, and the first eligible wake was
+ * a matched wake. uf1-8 retired that fall-through: a no-target buzzard now
+ * flies BOLEV (flap iff falling, JOUSTRV4.SRC:3903), which walks its index to
+ * saturation (±MAXVX) long before the grace clears — measured 0 reversals over
+ * 2,400 wandering frames on every seed here. Until uf1-9 lands the ROM's
+ * PPVELX snapshot (`BOLEV` :3907-3908) and the BOUPWD/BOUPWU wing cadences,
+ * the live-compare throttle (jt8-2's pinned deviation) only ever matches a
+ * target actually FLYING the buzzard's rung — so this guard stages exactly
+ * that: P1 saturates at +MAXVX, meets the saturated buzzard, and the mounted
+ * counter spends on the first matched wake.
  *
- * The real pass condition is pinned by `the first reversal does not depend on the
- * input pattern` below: jt8-1's TARTIM spawn grace holds `selectTarget` off for
- * roughly ninety frames, and the first wake after it clears finds the enemy and
- * its target on the SAME FLYX rung — which is a matched wake, which spends the
- * mounted seed. Varied input changes WHICH rung they meet on, not whether they
- * meet. Keeping the wander is still right (a guard for this epic should look
- * like play, and a pinned stick is the degenerate case that squeezed 2-3 flips
- * out of round 1's broken build) — it is simply not the thing under test.
+ * The drop at frame 280 is what keeps the CONTROL below honest: chasing for
+ * the whole window racks up 129+ matched wakes and a CLEARED counter would
+ * flip too. 280 covers the latest measured first reversal (261) with margin,
+ * and the control run stays at zero on every seed (measured).
  */
-function ordinaryInput(frame: number): Record<number, PlayerInput> {
-  const dir: -1 | 0 | 1 = [1, 0, -1, 0][Math.floor(frame / 37) % 4] as -1 | 0 | 1
-  const flap = frame % 23 === 0
-  return { 1: { dir, flap, flapHeld: flap }, 2: NEUTRAL }
+function chaseInput(frame: number): Record<number, PlayerInput> {
+  if (frame < 280) {
+    const flap = frame % 5 === 0
+    return { 1: { dir: 1, flap, flapHeld: flap }, 2: NEUTRAL }
+  }
+  if (frame < 304) {
+    // Walk the FLYX index back off the rung, then coast — a parked index would
+    // keep matching forever and hand the control run its 129 wakes.
+    const flap = frame % 5 === 0
+    return { 1: { dir: -1, flap, flapHeld: flap }, 2: NEUTRAL }
+  }
+  return { 1: NEUTRAL, 2: NEUTRAL }
 }
 
-/** A player who never touches the stick — the control for the paragraph above. */
+/** A player who never touches the stick — the anti-gate control below. */
 function idleInput(): Record<number, PlayerInput> {
   return { 1: NEUTRAL, 2: NEUTRAL }
 }
@@ -327,7 +338,7 @@ function stageRound1Seed(d: DemoState): DemoState {
 function reversalsInPlay(
   seed: number,
   stage?: (d: DemoState) => DemoState,
-  inputs: (frame: number) => Record<number, PlayerInput> = ordinaryInput,
+  inputs: (frame: number) => Record<number, PlayerInput> = chaseInput,
 ): number {
   let d = createWaveDemo(seed)
   if (stage) d = stage(d)
@@ -352,9 +363,10 @@ describe('AC-4 — a buzzard actually turns around in a real seeded game', () =>
     ({ value }) => {
       // The question round 1 never asked. Nothing is primed, nothing is
       // synthesised: these are the enemies `createWaveDemo` spawns, stepped by
-      // `stepDemo`, with a player wandering around. RED today — measured 0
-      // reversals over 20,000 frames because the born counter was 129 matched
-      // wakes from a flip and no enemy ever accumulates that many.
+      // `stepDemo`, with a player chasing them up the FLYX ladder (see
+      // `chaseInput` for why a wanderer no longer meets the rung). jt8-2 RED
+      // measured 0 reversals over 20,000 frames because the born counter was
+      // 129 matched wakes from a flip and no enemy ever accumulates that many.
       expect(
         reversalsInPlay(value),
         'the horizontal homing never fired in a real game — the mechanism is inert',
@@ -378,22 +390,28 @@ describe('AC-4 — a buzzard actually turns around in a real seeded game', () =>
     },
   )
 
-  it('the first reversal does not depend on the input pattern — the grace timer is the gate', () => {
-    // ROUND-2 REVIEW [MEDIUM][TEST], turned from an embarrassment into a pin.
-    // The block above used to claim its hand-built "ordinary input" was what made
-    // the mechanism fire. It is not: a player who never touches the stick gets a
-    // reversal too, because jt8-1's TARTIM spawn grace is what gates the first
-    // eligible wake and the pair are on a matching FLYX rung when it clears.
+  it('the reversal DOES depend on the player flying the rung — the live-compare gate, until uf1-9', () => {
+    // ROUND-2 REVIEW pinned the OPPOSITE here ("an untouched stick still
+    // reverses — the grace timer is the gate"), and under the pre-uf1-8 brains
+    // that was true: the null-target fall-through braked, flapped rarely, and
+    // met an idle knight's rung at grace expiry. uf1-8's BOLEV routing walks a
+    // level buzzard's FLYX index to saturation, so jt8-2's live-compare
+    // deviation now has a visible cost: an idle player never sits on the
+    // buzzard's rung and the throttle never ticks. Measured: 0 reversals over
+    // 600 idle frames on every seed (and over 2,400 wandering frames).
     //
-    // Pinning it here means the next reader learns the real mechanism instead of
-    // the flattering one — and it is a live guard, not a comment: if a change to
-    // the grace timer, the spawn velocities or the throttle ever made the first
-    // reversal depend on the player actually flying, this reds and says so.
+    // This is a KNOWN DIVERGENCE pin, the ROW_DISPOSITION discipline applied
+    // to behaviour: the 1982 machine compares a PPVELX SNAPSHOT taken at
+    // level-flight entry (`BOLEV` LDA PVELX,X / STA PPVELX,U, :3907-3908), not
+    // the live index. **uf1-9 owns the fix** (the BOLETM decision boundary the
+    // snapshot hangs on). When it lands, an idle-stick reversal may well come
+    // back — this test SHOULD then fail; rewrite it for the snapshot
+    // semantics, do not "repair" the zero.
     for (const seed of PLAY_SEEDS) {
       expect(
         reversalsInPlay(seed, undefined, idleInput),
-        `seed 0x${seed.toString(16)}: an untouched stick must still produce a reversal`,
-      ).toBeGreaterThan(0)
+        `seed 0x${seed.toString(16)}: an idle stick never meets the rung — the throttle must stay silent`,
+      ).toBe(0)
     }
   })
 

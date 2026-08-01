@@ -259,7 +259,14 @@ const withLedgers = (g: GameState, patch: Partial<PlayerLedger>): GameState => (
 describe('jt5-1 — extra-man is EMITTED when a REPLAY threshold is crossed', () => {
   it('a ledger crossing 20,000 sounds SNREPL, once per man', () => {
     // Parked just under the threshold; ordinary play then carries it across.
-    let g = withLedgers(createGame(0xbeef), { score: 19_000, extraManAt: 20_000 })
+    // uf1-8 re-stage: seed 0xbeef's idle run now KILLS a knight on the same
+    // frame its ledger first moves (a committed dive lands at frame 213), so
+    // the `gained` precondition read 0 — the award refilled the life the same
+    // frame took. Seed 0x2468's idle run scores first at frame 213 too
+    // (+500, the buzzard dies under the idle knight's lance) with NO death in
+    // the window (measured to 700 frames), and 19,990 parks every ledger one
+    // gain short of the threshold, so the first score event IS the crossing.
+    let g = withLedgers(createGame(0x2468), { score: 19_990, extraManAt: 20_000 })
     const livesBefore = g.players.map((p) => p.lives)
 
     let fired = 0

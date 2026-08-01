@@ -1237,3 +1237,34 @@ cp5-1 test, and it would have read as collateral damage rather than as my mistak
 
 **Log it as a deviation either way.** "I did MORE than the tests demanded, here is the ruling that says
 so" is exactly the kind of thing the Reviewer should get to rule on rather than discover in a diff.
+
+---
+
+### A routing change that makes the null-target path wave-invariant silently KILLS single-step demo probes — and a single `stepDemo` wake IS a null-target wake
+
+**Situation:** uf1-8 retired the null-target fall-through (a no-target buzzard now flies BOLEV — flap
+iff falling, dial dark, wave-invariant). The difficulty-wiring suite drives one-step `demoAtCounter`
+probes and compares them against `stepEnemy(probe, { player: FAR_BELOW, wave })` — TEA's re-stage
+parked knights below and *believed* the probe would see them. It cannot: `reconcileTargets` registers
+players only at the END of a step, with their TARTIM=90 grace armed, so a one-step probe reads
+`selectTarget` = null whatever sits on the island. Under the new spec the probe's wake becomes a BOLEV
+wake — which flaps at EVERY wave — so the wave-decode tests (BCD vs decimal, R2-1) would have passed
+VACUOUSLY: viaDemo equals the wave-10 reference *because both flap*, and a demo that misdecoded the
+counter would pass identically. Two other suites broke for the same root cause (game-jt4-5's killers
+flapped away; the knightless brake-window run never dives).
+
+**The fix that keeps the guards honest:** stage the regime the new spec says the dial decides in — a
+COMMITTED EPISODE (`seek: { mode: 'down', pdist: waveValue('BODNDI', wave) }`). `BODN1` never re-runs
+SELPLY, so the brake law decides target-or-none, wave-scaled — discrimination restored through the demo.
+
+**The general trap:** when a spec change makes some branch INSENSITIVE to the thing a sibling probe
+measures (here: the wave), every probe whose staging lands on that branch passes for the wrong reason.
+Grep the siblings for the branch you just made invariant, not only for the ones that go red — the red
+ones are the honest ones.
+
+**Second-order cost, logged for uf1-9:** per-wake level flight (flap every falling wake) saturates a
+buzzard's FLYX index long before the TARTIM grace clears, so jt8-2's live-compare homing throttle never
+matches an idle or wandering player — 0 reversals over 2,400 frames on every seed. The homing-wiring
+liveness guard now stages a rung-matching chase and pins the idle-stick ZERO as a known divergence;
+uf1-9's PPVELX snapshot + BOLETM boundary are what turn it back on. If your story lands those rows,
+that pin is designed to fail — rewrite it for snapshot semantics, do not "fix" the zero.

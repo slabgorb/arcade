@@ -72,6 +72,27 @@ function enemyProc(id: number, posX: number, pixelY: number): DemoProcess {
   } as unknown as DemoProcess
 }
 
+/**
+ * uf1-8 re-stage: a killer ALREADY COMMITTED to a down-seek. The two game-over
+ * probes park each killer 12 px above its knight; the game's budget promotes it
+ * on its first wake, and uf1-8's range gate routes a promoted buzzard 12 px
+ * (< BODNRG = 14) over a knight — or one with no target at all, which is what
+ * TARTIM's grace makes of these short runs — to LEVEL flight: it flaps away
+ * upward instead of dropping. Mid-episode the ROM never re-runs SELPLY
+ * (`BODN1`, JOUSTRV4.SRC:3811-3817): the brake law holds its wings under
+ * BODNVY and gravity drops it onto the knight — the exact pre-uf1-8 fall these
+ * probes were measured with, now staged explicitly.
+ */
+function divingEnemyProc(id: number, posX: number, pixelY: number): DemoProcess {
+  return {
+    id, cls: 'secondary', nap: 1, period: 1, kind: 'enemy', enemyType: 'bounder', collisionEnabled: true,
+    enemy: {
+      entity: entity({ posX, posY: pixelY << 8 }), facing: 1, pchase: 1, brain: 'boundr',
+      decision: 'boundr', seek: { mode: 'down', pdist: -3584 },
+    },
+  } as unknown as DemoProcess
+}
+
 /** A stationary pterodactyl (velX index 0 — holds its X) as a wave's lone combatant. */
 function pteroProc(id: number, posX: number, pixelY: number): DemoProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: 1, collisionEnabled: true, entity: entity({ posX, posY: pixelY << 8 }) }
@@ -170,8 +191,8 @@ describe('jt4-5 game-over — reached through REAL played deaths (hardening: not
       ...withProcesses(base, [
         playerProc(1, 100, 120, 1, 'ostrich'),
         playerProc(2, 200, 120, -1, 'stork'),
-        enemyProc(0x901, 100, 108),
-        enemyProc(0x902, 200, 108),
+        divingEnemyProc(0x901, 100, 108),
+        divingEnemyProc(0x902, 200, 108),
       ]),
       players: [{ ...base.players[0], lives: 1 }, { ...base.players[1], lives: 1 }],
     }
@@ -201,8 +222,8 @@ describe('jt4-5 game-over — reached through REAL played deaths (hardening: not
       ...withProcesses(base, [
         playerProc(1, 100, 120, 1, 'ostrich'),
         playerProc(2, 200, 120, -1, 'stork'),
-        enemyProc(0x901, 100, 108),
-        enemyProc(0x902, 200, 108),
+        divingEnemyProc(0x901, 100, 108),
+        divingEnemyProc(0x902, 200, 108),
       ]),
       players: [{ ...base.players[0], lives: 1 }, { ...base.players[1], lives: 2 }],
     }

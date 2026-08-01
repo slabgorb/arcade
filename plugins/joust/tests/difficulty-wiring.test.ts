@@ -421,9 +421,24 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
     // knightless frame. Neither probe above flips without it — which is precisely why
     // it is pinned here instead of being trusted.
     const base = knightsBelowTheBuzzards(demo.createWaveDemo(0x1234))
+    // uf1-8: a knightless wave can no longer WANDER into the brake window — a
+    // no-target buzzard flies BOLEV (flap iff falling) and never builds $0100
+    // of fall. The run therefore carries one buzzard mid-episode with a budget
+    // deep enough to outlast all 240 frames (a committed episode spends on,
+    // target or none — `BODN1` never re-runs SELPLY), so the window IS reached
+    // and the guard's refusal to count it is what is measured, not vacuity.
     const knightless: DemoState = {
       ...base,
-      sim: { ...base.sim, processes: base.sim.processes.filter((p) => p.kind !== 'player') },
+      sim: {
+        ...base.sim,
+        processes: [
+          ...base.sim.processes.filter((p) => p.kind !== 'player'),
+          enemyProcess({
+            ...fallingEnemy('boundr', 0),
+            seek: { mode: 'down', pdist: -0x8000 },
+          }),
+        ],
+      },
     }
 
     // Discriminability of THIS test: the knightless run must genuinely put a smart
@@ -755,10 +770,20 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
     )
   })
 
-  it('marks exactly the rows this story wired, and names their consumer', async () => {
+  it('marks exactly the rows the wiring stories have wired, and names their consumer', async () => {
     const d = await loadDifficulty()
     const wired = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'wired')
-    expect([...wired].sort(), 'uf1-2 wires the two down-seek brakes').toEqual([...WIRED_NAMES].sort())
+    // uf1-2 wired the two down-seek brakes; uf1-8 wired its ten seek rows (the
+    // range gates + the PDIST budgets — pinned row-by-row, with consumers, by
+    // tests/seek-wiring.test.ts AC-5). The exact set still forbids overreach:
+    // a story that quietly flips an uf1-9/uf1-10 row fails here.
+    const UF18_ROWS = [
+      'BODNRG', 'BODNDI', 'BOUPRG', 'BOUPDI', 'HUDNRG', 'HUDNDI', 'HUUPRG', 'HUUPDI',
+      'SHDNRG', 'SHUPRG',
+    ] as const
+    expect([...wired].sort(), 'the wired set is uf1-2\'s two brakes + uf1-8\'s ten seek rows').toEqual(
+      [...WIRED_NAMES, ...UF18_ROWS].sort(),
+    )
     for (const n of wired) {
       const disp = d.ROW_DISPOSITION[n]
       // A disposition that says "wired" without naming where is how a row goes dead
@@ -781,8 +806,9 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
   it('gives every unwired row a ROM line, a missing mechanic and an owner', async () => {
     const d = await loadDifficulty()
     const pending = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'no-consumer-yet')
-    // 28 rows − 2 wired − 1 dead-in-ROM = 25 genuinely waiting on a mechanic.
-    expect(pending.length, 'the tracked remainder').toBe(25)
+    // 28 rows − 12 wired (uf1-2's 2 + uf1-8's 10) − 1 dead-in-ROM = 15 genuinely
+    // waiting on a mechanic.
+    expect(pending.length, 'the tracked remainder').toBe(15)
     for (const n of pending) {
       const disp = d.ROW_DISPOSITION[n]
       if (disp.kind !== 'no-consumer-yet') throw new Error('unreachable')
@@ -905,18 +931,28 @@ const enemyProcess = (enemy: EnemyState): DemoProcess => ({
  * fall-through. uf1-8 retires that fall-through: `JSR SELPLY / BEQ BOLEVV`
  * (:3796-3797) routes a NO-TARGET buzzard to BOLEV, which never consults the
  * wired dial, so an empty world now measures the level seek instead of the
- * brake. The regime where the dial legitimately decides is a LONG-RANGE DOWN
- * seek, so these probes now keep the knights and park them 114 px below (the
- * `knightsBelowTheBuzzards` staging): long range on every wave, brake law on
- * the arm wake and every committed wake — under the shipped code AND uf1-8's.
+ * brake.
+ *
+ * AND a single-step probe IS a no-target probe, parked knights or none: the
+ * demo registers players into the aggro slots only at the END of its first
+ * step, with their TARTIM grace armed (`reconcileTargets`, demo.ts) — so the
+ * probe's one wake reads `selectTarget` = null whatever sits on the island.
+ * The regime where the dial legitimately decides in ONE wake is therefore a
+ * COMMITTED DOWN EPISODE (`enemy.seek`): `BODN1` never re-runs SELPLY and runs
+ * the brake law on every committed wake (:3811-3820), target or none — that is
+ * uf1-8's headline mechanic, and it is wave-scaled through the same seam. The
+ * probes below arm the wave's own BODNDI/HUDNDI budget, unspent; the knights
+ * stay parked below for the 240-frame runs, where the grace expires and the
+ * live decide takes over.
  *
  * The probe carries `homing: { prdir: $FF }` so the jt8-2 throttle cannot flip
- * its facing whatever the parked knight's velocity index happens to be —
+ * its facing whatever velocity index its target reads once one exists —
  * $FF − 1 = $FE keeps BMI looping (:3942-3943), the flip needs 128 more matched
  * wakes than any probe gets, and the entity comparison stays about the BRAKE.
  * One `stepDemo` on this state reproduces `stepEnemy(probe, { player:
- * FAR_BELOW, wave })` on the entity, so the assertions below compare against
- * the engine directly instead of against a hand-copied expectation.
+ * FAR_BELOW, wave })` on the entity — the committed episode runs the same
+ * brake law both sides — so the assertions below compare against the engine
+ * directly instead of against a hand-copied expectation.
  */
 const demoAtCounter = (
   demo: Awaited<ReturnType<typeof loadDemo>>,
@@ -976,7 +1012,15 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
     // reading it is over the brake and the buzzard checks itself; under the BCD
     // misreading it is under the brake and the buzzard keeps diving. One input, two
     // opposite outcomes: no implementation can satisfy both halves by accident.
-    const probe: EnemyState = { ...fallingEnemy('boundr', 0x130), homing: { prdir: 0xff } }
+    // uf1-8: committed mid-episode (the wave's own budget, unspent) so the ONE
+    // demo wake runs the brake law — a bare probe's wake is a null-target BOLEV
+    // wake (see demoAtCounter), which flaps at EVERY wave and could not tell
+    // 10 from 16 at all.
+    const probe: EnemyState = {
+      ...fallingEnemy('boundr', 0x130),
+      homing: { prdir: 0xff },
+      seek: { mode: 'down', pdist: d.waveValue('BODNDI', 10) },
+    }
     expect(probe.entity.velY, 'the probe must sit between the rungs').toBeGreaterThanOrEqual(rung10)
     expect(probe.entity.velY, 'the probe must sit between the rungs').toBeLessThan(rung16)
 
@@ -1015,7 +1059,13 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
     const rung18 = d.waveValue('HUDNVY', 18)
     expect(rung12).not.toBe(rung18)
 
-    const probe: EnemyState = { ...fallingEnemy('b2undr', 0x230), homing: { prdir: 0xff } }
+    // Committed mid-episode for the same reason as the tenth-wave probe — the
+    // hunter's OWN budget, so the twins stay apart on the workspace too.
+    const probe: EnemyState = {
+      ...fallingEnemy('b2undr', 0x230),
+      homing: { prdir: 0xff },
+      seek: { mode: 'down', pdist: d.waveValue('HUDNDI', 12) },
+    }
     expect(probe.entity.velY).toBeGreaterThanOrEqual(rung12)
     expect(probe.entity.velY).toBeLessThan(rung18)
 
@@ -1044,8 +1094,16 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
       const counter = counterAtWave(w, wave)
       const brake = d.waveValue('BODNVY', wave)
 
-      const at = steppedProbe(demoAtCounter(demo, counter, fallingEnemy('boundr', brake)), demo)
-      const under = steppedProbe(demoAtCounter(demo, counter, fallingEnemy('boundr', brake - 1)), demo)
+      // uf1-8: each probe rides a committed down episode (the wave's own armed
+      // budget, unspent) — the one regime in which a single null-target wake
+      // runs the brake law at all (see demoAtCounter). The spend this wake is
+      // the entry velY, thousands short of exhausting the budget.
+      const committed = (velY: number): EnemyState => ({
+        ...fallingEnemy('boundr', velY),
+        seek: { mode: 'down', pdist: d.waveValue('BODNDI', wave) },
+      })
+      const at = steppedProbe(demoAtCounter(demo, counter, committed(brake)), demo)
+      const under = steppedProbe(demoAtCounter(demo, counter, committed(brake - 1)), demo)
 
       // "Braked" is not a flag we can read from the entity — it is the SIGN of what
       // the frame did to the fall. A flap subtracts; gravity adds.
