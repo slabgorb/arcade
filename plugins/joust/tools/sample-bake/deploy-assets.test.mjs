@@ -129,7 +129,7 @@ describe('jt5-2 — the apparatus can fail (checklist #18: a duplicated helper i
     // importing across suites; the original carries its own inertness controls
     // and this copy must too, or a regression here turns every README
     // negative above quietly green over untouched stale prose.
-    const wrapped = '> so the\n> game is still silent: `@shared/audio` degrades quietly'
+    const wrapped = '> so the game is\n> still silent: `@shared/audio` degrades quietly'
     expect(wrapped, 'precondition: the raw form must NOT match').not.toMatch(/game is still silent/)
     expect(flatten(wrapped), 'the flattened form MUST match, or the negatives are inert').toMatch(
       /game is still silent/,
