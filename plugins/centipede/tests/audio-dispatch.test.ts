@@ -138,6 +138,31 @@ async function effectsFor(kind: string): Promise<Effect[]> {
 const isLoopStart = (kind: string): boolean => kind.endsWith('-start')
 const isLoopStop = (kind: string): boolean => kind.endsWith('-stop')
 
+/**
+ * Remove TypeScript comments, so a source anchor cannot be satisfied by PROSE.
+ *
+ * This is lang-review #15's whole lesson, and this story is where it was
+ * learned: round 1's `expect(src).toMatch(/never/)` was green over a deleted
+ * guard because the word also occurred in two comments in the file under test.
+ * An anchor that reads raw source cannot tell a declaration from a sentence
+ * describing one — and this file's comments quote its own code repeatedly, so
+ * that is not a hypothetical here.
+ *
+ * Deliberately crude: it does not understand strings or regex literals. The
+ * `(^|[^:])` guard keeps a `https://` inside a string from being eaten, and
+ * `stripComments` has a positive control of its own below — nothing may assert
+ * against stripped source until the stripper is shown to have removed
+ * something.
+ */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
+
+/** The `default:` block's BODY, or `null` if the switch has no default arm. */
+function defaultArmBody(code: string): string | null {
+  return code.match(/default\s*:\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? null
+}
+
 describe('cp5-1 AC3 — the dispatch is an importable pure function', () => {
   it('src/shell/audio-dispatch.ts exists', () => {
     expect(existsSync(dispatchPath), 'cp5-1 must create src/shell/audio-dispatch.ts').toBe(true)
@@ -287,6 +312,143 @@ describe('cp5-1 AC4 — sustained cues are START/STOP, not repeated one-shots', 
       shared.map(([ch, cues]) => `${ch}: ${[...new Set(cues)].join(' + ')}`),
       'sustained cues sharing one channel will cut each other off',
     ).toEqual([])
+  })
+})
+
+describe('cp5-1 AC3 — the EFFECT union carries its own exhaustiveness guard', () => {
+  // ─── WHY THIS BLOCK EXISTS (Reviewer round 2, MEDIUM — M1-r2) ──────────────
+  // There are TWO exhaustiveness claims in this story and they guard DIFFERENT
+  // unions. The test above pins the first: `EVENT_SOUND: Record<GameEventKind,
+  // SoundName>` in shell/audio.ts, which makes an event KIND with no cue a
+  // compile error. This block pins the second: the dispatch switch's `default`
+  // arm, which makes a new cue EFFECT with no arm a compile error.
+  //
+  // The second guard was added later, as round 1's L2 fix, and was given no
+  // assertion of its own — so it was deleted from the working tree and `tsc`,
+  // 956 centipede tests and all 10,476 repo tests stayed green over the hole.
+  // That is exactly lang-review #15's closing rule ("every guard must be
+  // mutation-tested") going unmet for the newest guard in the diff, in the
+  // story that WROTE #15.
+  //
+  // ─── WHY A SOURCE ANCHOR, WHEN THIS FILE'S HEADER ARGUES AGAINST ONE ───────
+  // The header above prefers a runtime sweep to a grep, and it is right about
+  // the kind union — that claim is observable, so the sweep can watch it. This
+  // claim is not. `effectFor` returns a closed three-member union, so no input
+  // can produce a fourth effect at runtime; and the two shapes differ only in
+  // what the COMPILER rejects, never in what the engine is asked to do. A
+  // recording fake cannot tell them apart. Compile-time-only claims can only be
+  // pinned in source text, so the discipline moves into HOW the anchor is
+  // written: anchored to the declaration, stripped of comments, and counted.
+  //
+  // Every assertion below was mutation-proven (see the TEA Assessment): each
+  // one reds under the mutation it names, and the whole block goes green on the
+  // committed file and red on the working tree as handed over.
+
+  const dispatchSource = (): string => readFileSync(dispatchPath, 'utf8')
+
+  it('the comment stripper actually strips — the control for every anchor below', () => {
+    // Without this, a `stripComments` that silently returned its input would
+    // make every "not in prose" claim in this block vacuous, and the block
+    // would reproduce the exact defect it exists to prevent.
+    const raw = dispatchSource()
+    const code = stripComments(raw)
+    expect(
+      code.length,
+      'stripComments removed nothing — the anchors below cannot tell code from prose',
+    ).toBeLessThan(raw.length)
+    expect(code, 'stripComments left a line comment behind').not.toMatch(/\/\/ /)
+  })
+
+  it('every effect has its OWN case arm, so `default` is genuinely unreachable', () => {
+    // A `default` that does real work is not an exhaustiveness check
+    // (lang-review TS-3). The working tree's mutation deleted `case 'play'` and
+    // let the default absorb it — which compiles clean forever, and silently
+    // routes a future fade/duck/pitch-bend to a one-shot `play()`.
+    const code = stripComments(dispatchSource())
+    for (const effect of ['startLoop', 'stopLoop', 'play']) {
+      expect(
+        code,
+        `the switch must handle '${effect}' in its own case arm — a default that ` +
+          'dispatches is not an exhaustiveness guard',
+      ).toMatch(new RegExp(`case\\s+'${effect}'\\s*:`))
+    }
+  })
+
+  it('`default` binds the discriminant to `never`, with NO cast', () => {
+    // The cast is the difference between a guard and scenery, and round 1
+    // shipped the scenery version (`event.type as never`, logged as L1): a cast
+    // makes the assignment compile whatever the discriminant's type is, so the
+    // arm proves nothing. An UNCAST binding is the mechanism — it compiles only
+    // while the union is fully consumed by the arms above.
+    const body = defaultArmBody(stripComments(dispatchSource()))
+    expect(body, 'the switch must carry a `default:` block — AC3 names it').not.toBeNull()
+    expect(
+      body,
+      'the default arm must bind the narrowed discriminant to a `never` const with no ' +
+        '`as` cast — a cast silences the compiler instead of consulting it',
+    ).toMatch(/const\s+unreachable\s*:\s*never\s*=\s*effect\s*;?\s*$/m)
+  })
+
+  it('`default` is a GUARD, not a dispatch arm — it must not touch the engine', () => {
+    // The direct negation of the working tree's mutation, and the assertion
+    // that reds on it most loudly.
+    const body = defaultArmBody(stripComments(dispatchSource()))
+    expect(
+      body,
+      'the default arm calls the audio engine — it is dispatching, not guarding, so ' +
+        'a new effect kind becomes a wrong sound instead of a compile error',
+    ).not.toMatch(/audio\s*\./)
+  })
+
+  it('the guard is anchored to CODE — exactly one declaration survives comment-stripping', () => {
+    // The count is taken over STRIPPED source on purpose. Raw source is not
+    // asserted: this file legitimately quotes its own code in prose, and a
+    // future comment doing so must not red this test. What must never happen is
+    // the reverse — the declaration existing ONLY in prose, which is precisely
+    // how round 1's `/never/` stayed green over a deleted guard.
+    const declarations = stripComments(dispatchSource()).match(
+      /const\s+unreachable\s*:\s*never\s*=\s*effect/g,
+    )
+    expect(
+      declarations?.length ?? 0,
+      'expected exactly one `never` guard declaration in code (0 means it survives only ' +
+        'in a comment, or not at all)',
+    ).toBe(1)
+  })
+})
+
+describe('cp5-1 AC3 — an unmapped kind is a LOUD failure, not a silent no-op', () => {
+  // The dispatch's OTHER guard, and the only one reachable at runtime: the
+  // `sound === undefined` throw. It had no test either — the same gap as
+  // M1-r2, in the same function, found while writing M1-r2's fix.
+  //
+  // It matters beyond this story. cp5-2 (wire the seam into main.ts) records
+  // this throw as a latent hazard: once `playEventSounds` is on the hot path,
+  // an uncaught throw inside requestAnimationFrame kills the frame loop and
+  // freezes the game. cp5-2 has to decide throw-vs-degrade, and it cannot make
+  // that decision against untested behaviour. This pins what the behaviour is
+  // TODAY so that the change reds when cp5-2 makes it deliberately.
+
+  it('throws, naming the kind that has no cue', async () => {
+    const play = await dispatchFn()
+    const audio = recordingAudio()
+    expect(() => play(audio, [{ type: 'no-such-event-kind' }])).toThrow(/no-such-event-kind/)
+    expect(
+      audio.calls,
+      'a kind with no cue must reach the engine as nothing at all — a partial ' +
+        'dispatch followed by a throw is worse than either',
+    ).toEqual([])
+  })
+
+  it('a kind WITH a cue does not throw — the control', async () => {
+    // Without this, a `playEventSounds` that threw on absolutely everything
+    // would satisfy the test above, and the suite would be pinning a dead
+    // function as if it were a guard.
+    const kinds = await eventKinds()
+    const first = kinds[0]
+    expect(first, 'need at least one real kind for the control').toBeDefined()
+    const play = await dispatchFn()
+    expect(() => play(recordingAudio(), [{ type: first as string }])).not.toThrow()
   })
 })
 
