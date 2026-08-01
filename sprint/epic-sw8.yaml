@@ -160,11 +160,14 @@ stories:
     title: "music-bake comment accuracy: the sw8-14 double-play prose overstates history and three catalogue counts went stale. (1) audio.ts:83 + gen-music-data.mjs:270 say REB 'had been ringing twice'/'rang once per iteration AND again from that cue' — it never did: finish_ground.wav 404s in R2, so the cue was always silent and REB rang only from the towers loop (sw8-14 Dev finding recorded the correction; the source comments did not get it). (2) events.ts:217 'The five one-shot POKEY tunes' sits above a SEVEN-member TuneName union. (3) bake-music.test.mjs:201 banner 'the five one-shot TUNES' sits above a seven-entry list. (4) bake-music.mjs CLI: --only <unknown-track> silently bakes ZERO files and exits 0, bypassing bakeTrack's own 'unknown track' throw — the file already validates unknown FLAGS, so the value gap is inconsistent"
     points: 1
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-01'
     repos: arcade
     workflow: trivial
+    completed: '2026-08-01'
     type: chore
+    review_findings: "Round 1 MEDIUM (inherited-key hole: --only guard truthiness admitted Object.prototype names — silent exit 0) — FIXED in rework round 1: Object.hasOwn(OUTPUT_FILES, only) + a __proto__ test case, mutation-proven on three axes (defect reintroduced/guard deleted/guard reordered all RED). APPROVED round 2."
+    review_verdict: approved
   - id: sw8-16
     title: "TIE fire-gate coverage: the C$T9 aim-ahead lockout and the A$GLW glow lockout are UNPINNED — mutation-proven during sw8-9 review (setting aimingAhead=false or notHit=true each leave the suite 1437/1437 green). The other two of the ROM gate's four conditions ARE pinned (removing C$PV reds 2, removing the $800 floor reds 1). Gate is WSCPU.MAC:622-633. Needs: a fighter mid-AIM_AHEAD maneuver must not fire; a glowing just-hit fighter must not fire"
     points: 1
