@@ -3,7 +3,8 @@
 // RED-phase suite for Story sw3-5 (shell side) — the looping music channel and the
 // event->music wiring. The core decides WHICH track and WHEN (a `music` GameEvent,
 // see tests/core/music-cue.test.ts); the shell owns HOW: a sustained, looping
-// sample on a dedicated `music` channel, played via @shared/audio's
+// sample on one shared logical channel ('music' then; since sw8-13 the same
+// PM channel the tunes ride — no longer dedicated), played via @shared/audio's
 // startLoop/stopLoop (SH2-16/SH2-17). Voice-stealing on that one channel means
 // exactly one music loop rings at a time and the next startLoop swaps it — the
 // looping channel the story needs, already built shared; sw3-5 only surfaces it.

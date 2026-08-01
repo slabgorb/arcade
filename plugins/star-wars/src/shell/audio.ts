@@ -207,7 +207,11 @@ export interface AudioEngine {
   // No-op until resume() has run and the track has decoded; silent when
   // WebAudio is unavailable.
   startLoop(name: MusicName): void
-  // Stop the looping music. Safe no-op when nothing is looping there.
+  // Stop the music loop. On the shared PM channel this is name-blind
+  // (sw8-13): it silences whatever the PM player is sounding — the loop OR a
+  // still-ringing tune — so it is NOT a no-op just because nothing loops.
+  // No game path calls it today (phase edges swap loops via startLoop's
+  // steal); safe no-throw like every other engine verb.
   stopLoop(name: MusicName): void
   // Play a one-shot tune on the same shared PM channel (sw7-8; unified at
   // sw8-13): a new tune voice-steals whatever was ringing — the last tune OR
