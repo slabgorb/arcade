@@ -52,7 +52,7 @@ stories:
     started: '2026-08-01'
     repos: arcade
     workflow: tdd
-    review_findings: "Round 2: 10/10 round-1 items verified fixed (M15=2 reds, M16=1 red — both were zero). REJECTED on a new blocking finding: the SNPTHD register-role law, which this rework upgrades from 'port choice' to 'ROM fact', is un-mutation-testable — M17 inverts the roles and both tests named for the law stay green (lang-review/typescript.md #15/#13). Plus: JT54-005 says ':5048-5052 with no branch in between' but :5052 is BEQ OSTXPT; four demo.ts line pointers shifted +7 by this rework's own comment growth; four 'needs a story filed' findings unfiled."
+    review_findings: "Round 3: all five round-2 items verified done — M17 (role inversion) now 5 reds including BOTH tests named for the law (was 3, none), M19 4 reds, M15 regression-clean, JT54-005 true, six pointers re-anchored correctly, four findings filed. REJECTED on one new item: audio-thud.test.ts:732-737 states the inverse of Dev's own M18 measurement — geometry-dispatch diverges in tie(true) (caught by the ABSOLUTE pair) and AGREES in tie(false); the relative assertion catches neither M17 nor M18. The comment nominates the wrong assertion as load-bearing and would license deleting the working guard. Plus LOW: jt5-13 cites demo.ts:745/:761 for bumpX:0, which is at :751/:767."
     review_verdict: rejected
   - id: jt5-5
     title: Sound PRIORITY arbitration — @shared/audio steals, the machine refuses
