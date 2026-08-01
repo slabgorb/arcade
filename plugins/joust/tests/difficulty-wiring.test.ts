@@ -65,7 +65,7 @@ import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadDifficulty, type DyRowName } from './helpers/difficulty-contract.js'
-import { loadEnemy, type EnemyState } from './helpers/enemy-contract.js'
+import { loadEnemy, type EnemyState, type PlayerView } from './helpers/enemy-contract.js'
 import { loadDemo } from './helpers/demo-contract.js'
 import type { DemoState, DemoProcess } from './helpers/demo-contract.js'
 import { loadWaveBcd } from './helpers/wave-contract.js'
@@ -140,6 +140,21 @@ const fallingEnemy = (brain: 'boundr' | 'b2undr', velY: number): EnemyState => (
   pchase: 1,
   facing: 1,
 })
+
+/**
+ * uf1-8 re-homing: the brake probes below used to stage `null as never` — no
+ * target, brake decides by fall-through. That is a state the 1982 machine does
+ * not have: `JSR SELPLY / BEQ BOLEVV` (:3796-3797) routes a no-target bounder
+ * to BOLEV, which never consults BODNVY, and uf1-8 ports that routing. The
+ * regime where the wired dial LEGITIMATELY decides is a LONG-RANGE DOWN seek —
+ * quarry ≥ BODNRG/HUDNRG pixels below (14 at wave 1, never more) — where the
+ * arm wake and every committed wake run the brake law. A knight parked on the
+ * bottom island is 114 px under the staged buzzard: long range on every wave,
+ * under both the shipped code and uf1-8's. `velXIndex: 2` against the probes'
+ * 0 keeps the jt8-2 homing throttle unticked, so no facing flip contaminates
+ * an entity comparison.
+ */
+const FAR_BELOW: PlayerView = { pixelY: 0xd2, velXIndex: 2 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROUND 3 — STAGING THE REGION WHERE THE BRAKE STILL DECIDES (the jt8-1 overlap)
@@ -288,13 +303,13 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
     expect(velY).toBeGreaterThanOrEqual(WIRED.BODNVY.start)
     expect(velY).toBeLessThan(WIRED.BODNVY.wave3)
 
-    const at = (wave: number) => e.boundr(fallingEnemy('boundr', velY), null as never, wave)
+    const at = (wave: number) => e.boundr(fallingEnemy('boundr', velY), FAR_BELOW, wave)
     expect(at(1).flap, 'wave 1: the fall exceeds the 0x100 brake → flap').toBe(true)
     expect(at(3).flap, 'wave 3: the brake has risen to 0x120 → the buzzard keeps falling').toBe(false)
 
     // Liveness — a brain hard-wired to one answer would satisfy one half above by
     // accident. Below every brake it never flaps; far above every brake it always does.
-    const far = (wave: number, v: number) => e.boundr(fallingEnemy('boundr', v), null as never, wave)
+    const far = (wave: number, v: number) => e.boundr(fallingEnemy('boundr', v), FAR_BELOW, wave)
     expect(far(3, 0).flap, 'not falling at all → no brake at any wave').toBe(false)
     expect(far(3, WIRED.BODNVY.end + 0x100).flap, 'far past every brake → always flaps').toBe(true)
   })
@@ -305,21 +320,21 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
     expect(velY).toBeGreaterThanOrEqual(WIRED.HUDNVY.start)
     expect(velY).toBeLessThan(WIRED.HUDNVY.wave3)
 
-    const at = (wave: number) => e.b2undr(fallingEnemy('b2undr', velY), null as never, wave)
+    const at = (wave: number) => e.b2undr(fallingEnemy('b2undr', velY), FAR_BELOW, wave)
     expect(at(1).flap, 'wave 1: exceeds the 0x200 brake → flap').toBe(true)
     expect(at(3).flap, 'wave 3: the brake has risen to 0x220 → keeps falling').toBe(false)
 
     // The hunter must still tolerate a faster fall than the bounder AT THE SAME WAVE —
     // kills "wire one row into both brains".
-    const bounderAt3 = e.boundr(fallingEnemy('boundr', velY), null as never, 3)
+    const bounderAt3 = e.boundr(fallingEnemy('boundr', velY), FAR_BELOW, 3)
     expect(bounderAt3.flap, 'at wave 3 the same fall still brakes the BOUNDER (0x120)').toBe(true)
   })
 
   it('changes the stepped ENTITY, not just the decision (the integration proof)', async () => {
     const e = await loadEnemy()
     const staged = fallingEnemy('boundr', 0x110)
-    const w1 = e.stepEnemy(staged, { wave: 1 })
-    const w3 = e.stepEnemy(staged, { wave: 3 })
+    const w1 = e.stepEnemy(staged, { player: FAR_BELOW, wave: 1 })
+    const w3 = e.stepEnemy(staged, { player: FAR_BELOW, wave: 3 })
 
     // Liveness first: both actually integrated (a frozen enemy would "differ" never,
     // and an exception-swallowing stub would return the input unchanged).
@@ -530,8 +545,8 @@ describe('AC-2 — the GA1 tiers seed the wired rows at the seam', () => {
     // or 0x200 (tier 2) would still "use the table" and still be wrong.
     const justUnder = (v: number, brain: 'boundr' | 'b2undr', wave: number) =>
       brain === 'boundr'
-        ? e.boundr(fallingEnemy(brain, v), null as never, wave).flap
-        : e.b2undr(fallingEnemy(brain, v), null as never, wave).flap
+        ? e.boundr(fallingEnemy(brain, v), FAR_BELOW, wave).flap
+        : e.b2undr(fallingEnemy(brain, v), FAR_BELOW, wave).flap
     expect(justUnder(0x0ff, 'boundr', 1), 'just under the tier-1 brake → no flap').toBe(false)
     expect(justUnder(0x100, 'boundr', 1), 'exactly at the tier-1 brake → flap (SUBD/BMI is >=)').toBe(true)
     expect(justUnder(0x1ff, 'b2undr', 1), 'hunter just under its tier-1 brake → no flap').toBe(false)
@@ -882,28 +897,42 @@ const enemyProcess = (enemy: EnemyState): DemoProcess => ({
 })
 
 /**
- * A demo holding NOTHING but one falling buzzard, parked at a chosen counter
- * value. No player → `clearable` is false → the wave never advances → none of the
- * td1-12 consumers runs. Measured: one `stepDemo` on this state reproduces
- * `stepEnemy(enemy, { wave })` BIT-FOR-BIT, so the assertions below can compare
- * against the engine directly instead of against a hand-copied expectation.
+ * A demo holding one falling buzzard and the wave's knights PARKED ON THE
+ * BOTTOM ISLAND, at a chosen counter value.
  *
- * Round 3: the absent player does DOUBLE duty now. jt8-1's reconcile registers only
- * live player processes, so with none the aggro slots stay empty, `selectTarget`
- * answers null, and `smartDecision`'s seek-up clause — which pre-empts the brake
- * whenever the quarry is above — never fires. These staged probes therefore isolate
- * the brake exactly as they did before jt8-1, which is why they were the nine that
- * survived the merge untouched. The two END-TO-END probes are the ones that had to
- * be re-staged; they keep the knights and put them BELOW instead (see
- * `knightsBelowTheBuzzards`).
+ * Round 3 staged these probes with NO player at all — jt8-1's reconcile left
+ * the aggro slots empty, `selectTarget` answered null, and the brake decided by
+ * fall-through. uf1-8 retires that fall-through: `JSR SELPLY / BEQ BOLEVV`
+ * (:3796-3797) routes a NO-TARGET buzzard to BOLEV, which never consults the
+ * wired dial, so an empty world now measures the level seek instead of the
+ * brake. The regime where the dial legitimately decides is a LONG-RANGE DOWN
+ * seek, so these probes now keep the knights and park them 114 px below (the
+ * `knightsBelowTheBuzzards` staging): long range on every wave, brake law on
+ * the arm wake and every committed wake — under the shipped code AND uf1-8's.
+ *
+ * The probe carries `homing: { prdir: $FF }` so the jt8-2 throttle cannot flip
+ * its facing whatever the parked knight's velocity index happens to be —
+ * $FF − 1 = $FE keeps BMI looping (:3942-3943), the flip needs 128 more matched
+ * wakes than any probe gets, and the entity comparison stays about the BRAKE.
+ * One `stepDemo` on this state reproduces `stepEnemy(probe, { player:
+ * FAR_BELOW, wave })` on the entity, so the assertions below compare against
+ * the engine directly instead of against a hand-copied expectation.
  */
 const demoAtCounter = (
   demo: Awaited<ReturnType<typeof loadDemo>>,
   counter: number,
   enemy: EnemyState,
 ): DemoState => {
-  const base = demo.createWaveDemo(0x1234)
-  return { ...base, wave: counter, sim: { ...base.sim, processes: [enemyProcess(enemy)] }, events: [] }
+  const base = knightsBelowTheBuzzards(demo.createWaveDemo(0x1234))
+  return {
+    ...base,
+    wave: counter,
+    sim: {
+      ...base.sim,
+      processes: [...base.sim.processes.filter((p) => p.kind === 'player'), enemyProcess(enemy)],
+    },
+    events: [],
+  }
 }
 
 /** The counter value the demo's OWN advance holds on its Nth wave. Never a literal. */
@@ -947,13 +976,13 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
     // reading it is over the brake and the buzzard checks itself; under the BCD
     // misreading it is under the brake and the buzzard keeps diving. One input, two
     // opposite outcomes: no implementation can satisfy both halves by accident.
-    const probe = fallingEnemy('boundr', 0x130)
+    const probe: EnemyState = { ...fallingEnemy('boundr', 0x130), homing: { prdir: 0xff } }
     expect(probe.entity.velY, 'the probe must sit between the rungs').toBeGreaterThanOrEqual(rung10)
     expect(probe.entity.velY, 'the probe must sit between the rungs').toBeLessThan(rung16)
 
     const viaDemo = steppedProbe(demoAtCounter(demo, counter, probe), demo)
-    const asWave10 = e.stepEnemy(probe, { wave: 10 })
-    const asWave16 = e.stepEnemy(probe, { wave: 16 })
+    const asWave10 = e.stepEnemy(probe, { player: FAR_BELOW, wave: 10 })
+    const asWave16 = e.stepEnemy(probe, { player: FAR_BELOW, wave: 16 })
 
     // Liveness: the reference readings genuinely differ, and the buzzard flew.
     expect(asWave10.entity.velY, 'wave 10 BRAKES the fall').toBeLessThan(probe.entity.velY)
@@ -986,16 +1015,16 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
     const rung18 = d.waveValue('HUDNVY', 18)
     expect(rung12).not.toBe(rung18)
 
-    const probe = fallingEnemy('b2undr', 0x230)
+    const probe: EnemyState = { ...fallingEnemy('b2undr', 0x230), homing: { prdir: 0xff } }
     expect(probe.entity.velY).toBeGreaterThanOrEqual(rung12)
     expect(probe.entity.velY).toBeLessThan(rung18)
 
     const viaDemo = steppedProbe(demoAtCounter(demo, counter, probe), demo)
     expect(viaDemo.entity, 'the hunter on the twelfth wave flies wave 12').toEqual(
-      e.stepEnemy(probe, { wave: 12 }).entity,
+      e.stepEnemy(probe, { player: FAR_BELOW, wave: 12 }).entity,
     )
     expect(viaDemo.entity, 'not wave 18 — the counter byte 0x12 read as decimal').not.toEqual(
-      e.stepEnemy(probe, { wave: 18 }).entity,
+      e.stepEnemy(probe, { player: FAR_BELOW, wave: 18 }).entity,
     )
   })
 

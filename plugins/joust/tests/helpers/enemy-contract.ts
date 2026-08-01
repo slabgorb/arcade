@@ -146,6 +146,52 @@ export interface HomingState {
 }
 
 /**
+ * uf1-8 — the per-enemy SEEK-EPISODE workspace: `PDIST,U`, "distance to go".
+ *
+ * The ROM's smart brains are episodic, not per-wake: the DECIDE step (`BOUNDR`
+ * :3796-3803 / `B2UNDR` :3979-3990 / `SHADOW` :4238-4245) runs SELPLY, splits
+ * down/up on the sign of the player Y-delta (`LDD PPOSY,X / SUBD PPOSY,U /
+ * LBLT …UP`, :3798-3800), and gates LONG vs SHORT range against the wave's
+ * DYTBL row. A LONG-range bounder/hunter seek then ARMS `PDIST` from its DI row
+ * (`LDD BODNDI / STD PDIST,U`, :3803-3804; `BOUPDI` :3851-3852; `HUDNDI`
+ * :3986-3987; `HUUPDI` :4035-4036) and COMMITS: the episode states (`BODN1`
+ * :3811-3817, `BOUP1` :3855-3860 and their B2 twins) never re-run SELPLY — they
+ * spend the budget until it crosses zero, and only the exhaust (`BPL BOBRAIN` /
+ * `BMI BOBRAIN`) returns to the decide, THE SAME WAKE (`BOBRAIN JMP BOUNDR`,
+ * :3842).
+ *
+ * The spend law (`LDD PVELY,U / ADDD PDIST,U / STD PDIST,U`): pdist += the
+ * wake's ENTRY velY, and ONLY on a wake moving in the episode's direction — a
+ * rising wake in a down episode (`BMI BOUP1B`, :3814) and a falling wake in an
+ * up episode (`BPL BOUP11`, :3856) skip the add entirely. Down budgets are
+ * NEGATIVE (BODNDI/HUDNDI, exhausted at ≥ 0); up budgets POSITIVE
+ * (BOUPDI/HUUPDI, exhausted at < 0). Units are the port's own posY subpixels:
+ * −$0E00 = 14 pixels of travel, the same DYLEN the RG rows express in whole
+ * pixels — one length, two radixes.
+ *
+ * SHORT range and no-target route to LEVEL FLIGHT (`BOLEV` :3903 / `B2LEV`
+ * :4054 / `SHLEP` :4277 / `SHLEV` :4312) — which is timed by the BOLETM-family
+ * "TIME UNTIL NEXT DECISION" rows, ALL owned by uf1-9. Until that story lands,
+ * level flight is a PER-WAKE decision here, so `mode` has no 'level': a level
+ * wake carries NO SeekState at all. Do not add one — an armed level episode
+ * with an invented exit cadence would pre-empt uf1-9's seam.
+ *
+ * The shadow lord has NO DI rows: its episode states re-enter `SHADOW` each
+ * wake (`SHUP1 LDD #SHADOW / STD PJOY,U`, :4270-4271), so it re-decides
+ * per-wake and never carries a SeekState either.
+ */
+export interface SeekState {
+  /** Which committed seek this enemy is inside: descending or climbing. */
+  readonly mode: 'down' | 'up'
+  /**
+   * `PDIST,U` — the signed distance-to-go budget, in posY subpixel units.
+   * Negative while descending (armed from BODNDI/HUDNDI), positive while
+   * climbing (armed from BOUPDI/HUUPDI).
+   */
+  readonly pdist: number
+}
+
+/**
  * An enemy's mind riding the shared flight core. `entity` is the very same
  * `EntityState` a player flies (buzzards flap); the rest is the enemy-specific
  * payload the tagged union carries — it does NOT grow the shared struct.
@@ -169,6 +215,15 @@ export interface EnemyState {
    * lets a test prime the counter one wake short of a flip.
    */
   homing?: HomingState
+  /**
+   * uf1-8 — the committed seek episode, if one is in flight. OPTIONAL on the
+   * same precedent as `homing`: absent means "at the decide step". `stepEnemy`
+   * arms it on a long-range bounder/hunter decide, CARRIES and spends it across
+   * wakes (never re-seeds an unspent one), and clears it when the budget
+   * exhausts or the enemy grounds (`BODN1 LDD PSTATE,U / BNE BOBRAIN`,
+   * :3811-3812). A dumb `linet` enemy and the shadow lord never carry one.
+   */
+  seek?: SeekState
 }
 
 /** An enemy process for jt2-1's scheduler — the tagged union's new `enemy` kind. */
@@ -248,27 +303,45 @@ export interface EnemyModule {
   creditDeath(enemy: EnemyState, budget: IntelBudget): IntelBudget
 
   // ─── The three smart brains (distinct, cited pursuit) ─────────────────────
+  //
+  // uf1-8 — every brain DECIDES through its range gate on the whole-pixel player
+  // Y-delta (player.pixelY − enemy pixel Y; positive = player below), against the
+  // WAVE's row via difficulty.waveValue. LONG range commits to a seek; SHORT
+  // range and a null player fly LEVEL. The decide is strict-inclusive on the
+  // long side, both directions: delta ≥ row is long DOWN (`CMPD BODNRG / BLT`,
+  // :3801-3802 — BLT exits only strictly under); delta ≤ row is long UP
+  // (`CMPD BOUPRG / BGT`, :3844-3845 — BGT exits only strictly over).
   /**
-   * Bounder: seek the player's altitude (flap up when the player is above, not
-   * already rising); on a down-seek, actively BRAKE the descent — flap once the
-   * fall exceeds `BOUNDR_DOWN_BRAKE`. Moves in facing direction (no cliff
-   * look-ahead — that is the hunter's, JOUSTRV4.SRC:3876-3884). Pure.
+   * Bounder (`BOUNDR` :3787-3946). Decide: null player → level (`BEQ BOLEVV`,
+   * :3797); delta ≥ BODNRG(wave) → down-seek, braking the fall at BODNVY(wave)
+   * (:3819); delta ≤ BOUPRG(wave) → up-seek (flap while not rising); otherwise
+   * level. LEVEL flight (`BOLEV` :3903): flap iff falling (velY ≥ 0) — the
+   * per-wake collapse of tracking the line it was on when it decided; it NEVER
+   * consults BODNVY. An armed `enemy.seek` episode pre-empts the decide
+   * entirely: mode 'down' runs the brake law, mode 'up' the climb law,
+   * whatever the player is doing now (`BODN1`/`BOUP1` never re-run SELPLY).
+   * Pure — the workspace is advanced by `stepEnemy`, not here.
    */
-  boundr(enemy: EnemyState, player: PlayerView, wave?: number): Decision
+  boundr(enemy: EnemyState, player: PlayerView | null, wave?: number): Decision
 
   /**
-   * Hunter (advanced bounder): the same pursuit as the bounder but it tolerates
-   * a FASTER fall — its down-seek brake is `B2UNDR_DOWN_BRAKE` ( > the
-   * bounder's), JOUSTRV4.SRC:4004. Pure.
+   * Hunter (`B2UNDR` :3960-4200): the same episodic pursuit as the bounder
+   * through its OWN rows — HUDNRG/HUUPRG gates (:3984, :4028), HUDNDI/HUUPDI
+   * budgets (:3986, :4035), the faster HUDNVY brake (:4004). Pure.
    */
-  b2undr(enemy: EnemyState, player: PlayerView, wave?: number): Decision
+  b2undr(enemy: EnemyState, player: PlayerView | null, wave?: number): Decision
 
   /**
-   * Shadow lord: the deadliest. On a down-seek it DROPS — never braking (SHDN
-   * `CLRB`, JOUSTRV4.SRC:4246-4248) — flapping ONLY to escape the lava below
-   * `LAVA_ESCAPE_Y`. Seeks up toward the player like the others. Pure.
+   * Shadow lord (`SHADOW` :4230-4330): stateless — no DI rows, no SeekState.
+   * Decide: null player → SHLEV (own line, per-wake: wings up above the lava);
+   * delta ≥ SHDNRG(wave) → SHDN, the no-flap drop (:4246-4248); delta ≤
+   * SHUPRG(wave) → up-seek; otherwise SHORT range → SHLEP (:4277), which tracks
+   * the PLAYER'S line with NO velY gate — it flaps whenever strictly below the
+   * player's pixel Y, even mid-rise (`CMPB PDIST+1,U / BLS SHLEPA`,
+   * :4290-4291). The lava escape below `LAVA_ESCAPE_Y` stays in every branch.
+   * Pure.
    */
-  shadow(enemy: EnemyState, player: PlayerView): Decision
+  shadow(enemy: EnemyState, player: PlayerView | null, wave?: number): Decision
 
   /**
    * Dispatch by `enemy.brain`: `linet` runs the dumb lane-track (player ignored);
@@ -277,11 +350,29 @@ export interface EnemyModule {
   runBrain(enemy: EnemyState, player?: PlayerView | null, wave?: number): Decision
 
   /**
-   * One integration step of an enemy on the flight core: run its brain, then
-   * apply the decision through the SAME flight pipeline a player uses (flap +
-   * stepFlight + ceiling/wrap/land). Returns the enemy after the step. This is
-   * what a `kind: 'enemy'` scheduler process runs on each wake; the EMYTIM
-   * divider is the process `period`, NOT anything inside this step. Pure.
+   * One integration step of an enemy on the flight core: advance the homing
+   * throttle, advance the SEEK workspace (uf1-8), run the brain, then apply the
+   * decision through the SAME flight pipeline a player uses (flap + stepFlight +
+   * ceiling/wrap/land). Returns the enemy after the step. This is what a
+   * `kind: 'enemy'` scheduler process runs on each wake; the EMYTIM divider is
+   * the process `period`, NOT anything inside this step. Pure.
+   *
+   * The uf1-8 seek-workspace laws this must obey (all on ENTRY state — the
+   * brain runs before the wake's integration, exactly as the ROM's PJOY routine
+   * writes CURJOY before the mover consumes it):
+   *   • a smart bounder/hunter deciding LONG range arms `seek` with the wave's
+   *     DI-row value, unspent (`LDD BODNDI / STD PDIST,U` :3803-3804 — the arm
+   *     wake performs no ADDD);
+   *   • a carried episode spends `pdist += entry velY` only on wakes moving in
+   *     its direction (:3813-3817 / :3855-3860), and is otherwise carried
+   *     UNTOUCHED — never re-seeded while unspent;
+   *   • a spend that crosses zero (down: ≥ 0, up: < 0) exhausts the episode and
+   *     re-decides THE SAME WAKE (`BPL BOBRAIN` :3816, `BOBRAIN JMP BOUNDR`
+   *     :3842) — the fresh decide may arm a fresh episode, at the FULL wave
+   *     value, or clear `seek` if it routes short/level;
+   *   • a grounded enemy exits its episode and re-decides (`BODN1 LDD PSTATE,U
+   *     / BNE BOBRAIN` :3811-3812);
+   *   • short-range, null-target and shadow/linet wakes carry NO `seek`.
    */
   stepEnemy(enemy: EnemyState, ctx?: { player?: PlayerView | null; wave?: number }): EnemyState
 }
