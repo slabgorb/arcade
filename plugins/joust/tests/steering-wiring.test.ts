@@ -52,10 +52,11 @@ const idle = (): Record<number, PlayerInput> => ({ 1: NEUTRAL, 2: NEUTRAL })
 
 /** The four jt8-2 round-2 seeds — four different transporter-pad layouts. */
 const PLAY_SEEDS: readonly number[] = [0x1234, 0x7, 0x63, 0xabc]
-/** Window: latest measured first steering turn across the seeds is frame 261
- * (seed 0x63, measured against the RED-phase throwaway implementation —
- * session file, TEA Assessment); 900 keeps ~3.4x margin. */
-const PLAY_FRAMES = 900
+/** Window: first steering turns measured at frames 145 / 161 / 185 / 161 on
+ * the four seeds (6-11 turns per 900-frame window; measured against the
+ * RED-phase throwaway — session file, TEA Assessment). Latest first is 185;
+ * 600 keeps ~3.2x margin. */
+const PLAY_FRAMES = 600
 
 /** The test's own BCK oracle (same indexing as landMaskAtX; out of range ⇒ 0). */
 const bckX = (x: number): number => {

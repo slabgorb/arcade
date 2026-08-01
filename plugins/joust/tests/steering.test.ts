@@ -446,11 +446,14 @@ describe('AC-1 — the turn wake slows the enemy through the real pipeline', () 
 
   it('over the following wakes the flipped facing BRAKES the old motion (B2AV collapsed)', () => {
     // The slow episode's observable: with facing −1 and rightward velocity, the
-    // brain's own flaps now step the index DOWN. Within 40 wakes of the turn
-    // the index must have left saturation and crossed zero — the hunter is no
-    // longer barrelling at the cliff.
+    // brain's own flaps step the index DOWN. The index only moves on FLAP edges
+    // (ADDFLP :6437-6439), and the turn's lift keeps this fixture CLIMBING —
+    // flapless — until gravity pays the arc off (velY crosses 0 at wake ~44);
+    // the level law then flap-hovers and spends the brake. Measured: the index
+    // first reaches 0 at wake 65 (this fixture, the RED-phase throwaway);
+    // 100 keeps ~1.5x margin.
     let e = hunterAt(CLIFF_R_RISING.x, CLIFF_R_RISING.y, 8, { velY: -0x100 })
-    for (let i = 0; i < 40; i++) e = E.stepEnemy(e, { player: null, wave: 1 })
+    for (let i = 0; i < 100; i++) e = E.stepEnemy(e, { player: null, wave: 1 })
     expect(e.facing, 'the away-facing holds while the drift decays').toBe(-1)
     expect(e.entity.velXIndex, 'the FLYX index has been braked off +8').toBeLessThanOrEqual(0)
   })
