@@ -68,6 +68,33 @@ export function normalizePrefix(keyPrefix = '') {
 // `only` restricts the walk to a set of TOP-LEVEL entry names of distDir. It
 // exists for exactly one caller — the lobby, whose distDir IS dist/, the parent
 // of every game's dist/<id>/. See the `--lobby-only` note below.
+//
+// THE RETURNED ORDER IS PART OF THE CONTRACT: every .html entry point comes last.
+// Do not "simplify" this away, and do not replace it with a plain sort.
+//
+// An upload is not atomic. It is a sequence of independent PUTs, and any one of
+// them can be the last one that happens — on 2026-07-31 the cabinet's first deploy
+// died on its FOURTH object when Cloudflare answered 523. An .html file is the
+// COMMIT POINT: it is the object that switches the live site from the old build to
+// the new one, because every other asset is content-hashed and therefore purely
+// additive. Upload a page before the assets it references and a partial, failed
+// deploy leaves that page LIVE and pointing at files that do not exist — a broken
+// front door produced by a command that exited non-zero without saying which side
+// of the commit point it stopped on.
+//
+// This used to work by accident: `index.html` sorted after `assets/` and `fonts/`
+// because `i` follows `a` and `f`. That is not a guarantee. `walk()` returns raw
+// `readdirSync` order and Node promises no ordering at all, so the protection was
+// the filesystem's habit plus one letter — and it evaporates the moment a lobby
+// grows a `manifest.json`, a `robots.txt` or a `sw.js`, or the deploy runs on a
+// filesystem that hands directories back unsorted.
+//
+// Note this is a PARTITION, not a sort: relative order within each group is
+// preserved, so the rule cannot depend on a filename's letters in either
+// direction. And it is every .html file, not `index.html` — tempest and red-baron
+// each ship a second entry point, star-wars a third.
+const isEntryPoint = (key) => extname(key).toLowerCase() === '.html';
+
 export function collectUploads(distDir, keyPrefix = '', { only } = {}) {
   if (!existsSync(distDir)) {
     throw new Error(`no files found under ${distDir} — did the build run?`);
@@ -80,11 +107,15 @@ export function collectUploads(distDir, keyPrefix = '', { only } = {}) {
   if (files.length === 0) throw new Error(`no files found under ${distDir} — did the build run?`);
   const trimmed = normalizePrefix(keyPrefix);
   const prefix = trimmed ? `${trimmed}/` : '';
-  return files.map((file) => {
+  const uploads = files.map((file) => {
     const rel = relative(distDir, file).split('\\').join('/'); // POSIX keys on any OS
     const key = `${prefix}${rel}`;
     return { key, file, contentType: contentTypeFor(key) };
   });
+  return [
+    ...uploads.filter((u) => !isEntryPoint(u.key)),
+    ...uploads.filter((u) => isEntryPoint(u.key)),
+  ];
 }
 
 // `--lobby-only`: upload the lobby's OWN output, not the whole dist/ tree.
@@ -116,15 +147,28 @@ export function parseArgs(argv) {
   return { distDir, bucket, keyPrefix, lobbyOnly: flags.includes('--lobby-only') };
 }
 
+// The one function in this file that touches the network. Kept separate from
+// uploadDir's loop so a test can substitute it — see `upload` below.
+export function putObject({ bucket, key, file, contentType }) {
+  execFileSync(
+    'wrangler',
+    ['r2', 'object', 'put', `${bucket}/${key}`, '--file', file, '--remote', '--content-type', contentType],
+    { stdio: ['ignore', 'ignore', 'inherit'] },
+  );
+}
+
+// `options.upload` replaces the network call, and it is REQUIRED for any test that
+// exercises this function. Without it every object is PUT to the real bucket at its
+// real key: a test that injected a stub this function did not read overwrote the
+// production lobby and tempest on 2026-08-01, because an ignored option degrades
+// silently to the real deploy. It is destructured here, at the top, so that
+// "uploadDir reads options.upload" is checkable by reading four lines.
 export function uploadDir(distDir, bucket, keyPrefix = '', options = {}) {
+  const { upload = putObject } = options;
   const uploads = collectUploads(distDir, keyPrefix, { only: onlyFor(distDir, options) });
   for (const { key, file, contentType } of uploads) {
     console.log(`  ${bucket}/${key}  (${contentType})`);
-    execFileSync(
-      'wrangler',
-      ['r2', 'object', 'put', `${bucket}/${key}`, '--file', file, '--remote', '--content-type', contentType],
-      { stdio: ['ignore', 'ignore', 'inherit'] },
-    );
+    upload({ bucket, key, file, contentType });
   }
   const shown = normalizePrefix(keyPrefix);
   console.log(`Uploaded ${uploads.length} objects to ${bucket}${shown ? `/${shown}` : ''}.`);

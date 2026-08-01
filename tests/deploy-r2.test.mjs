@@ -341,49 +341,23 @@ import { uploadDir } from '../scripts/deploy-r2.mjs';
  *  recording that object, standing in for the real 523. Returns what wrangler
  *  would actually have been asked to put, in order, plus any error raised. */
 //
-// ⚠ SAFETY FUSE — READ BEFORE TOUCHING THIS HELPER.
+// ⚠ EVERY TEST THAT CALLS `uploadDir` MUST GO THROUGH THIS HELPER, because this is
+// where `upload` is supplied. `uploadDir`'s `upload` option defaults to the real
+// network call, so a test that calls it directly and forgets the option does not
+// get a no-op — it PUTs every fixture object to the real `arcade-lobby` bucket at
+// its real key. That is not hypothetical: during this story's RED phase, an
+// injected stub that `uploadDir` did not yet read overwrote the production lobby's
+// and tempest's `index.html`, and the arcade served a 15-byte `<!doctype html>`
+// stub until it was rebuilt and redeployed.
 //
-// `uploadDir` does not yet honour an injected uploader: it unconditionally spawns the
-// wrangler CLI (see scripts/deploy-r2.mjs — an execFile-style call putting each object
-// with `--remote`). That call is described here rather than quoted, deliberately: the
-// CI-provisioning guard in tests/monorepo-topology.test.mjs scans this file's RAW TEXT
-// for spawn shapes and cannot tell a comment from code, so pasting the real call here
-// registers `wrangler` as a binary the suite spawns and reddens that guard.
-// On a machine with wrangler installed and CLOUDFLARE_* in the environment — which is
-// this one — passing an `upload` option does NOT stub anything. Every object in the
-// fixture is PUT to the real `arcade-lobby` bucket, at the real key, over the real
-// live site. That happened during this story's RED run on 2026-08-01: the fixtures
-// below overwrote the production lobby's `index.html` and tempest's, and the arcade
-// served a 15-byte `<!doctype html>` stub until it was restored. See the session
-// file's Delivery Findings.
-//
-// The fuse below makes that impossible to repeat: the helper refuses to call
-// `uploadDir` until the seam demonstrably exists. Dev REMOVES the fuse as part of
-// GREEN, once `uploadDir` actually routes through `options.upload` — and the way to
-// prove it does is that these tests then pass without wrangler ever being spawned.
-//
-// DO NOT "fix" a red fuse by deleting it. A red fuse means the seam is still missing,
-// and deleting it re-arms a live deploy from a unit test.
-const SEAM_PROOF_KEY = '__mg1_5_seam_proof__';
-
-function assertUploadSeamExists() {
-  // A dist dir containing exactly one file, uploaded through a recorder. If the
-  // recorder sees it, the seam is real. If wrangler is spawned instead, we must
-  // never get here — so the probe itself has to be incapable of reaching wrangler.
-  const src = readFileSync(join(repo, 'scripts', 'deploy-r2.mjs'), 'utf8');
-  const routesThroughSeam =
-    /options\s*\.\s*upload|\bupload\s*[,}]|\{\s*[^}]*\bupload\b[^}]*\}\s*=/.test(src) &&
-    /upload\s*\(/.test(src);
-  assert.ok(
-    routesThroughSeam,
-    'RED (expected until GREEN): scripts/deploy-r2.mjs does not route its uploads through an ' +
-      'injectable seam, so these tests cannot run without spawning REAL wrangler against the ' +
-      'REAL arcade-lobby bucket. AC3 requires that seam. Dev: add it, then delete assertUploadSeamExists.',
-  );
-}
-
+// A RED-phase fuse used to sit here refusing to run until the seam existed; it was
+// removed once `uploadDir` really did route through `options.upload`, and the proof
+// is that this file now runs in ~0.2s. If these tests ever start taking SECONDS,
+// stop — that is a network round trip, and it means the seam has been broken again.
+// (The wrangler call is described, never quoted: the CI-provisioning guard in
+// tests/monorepo-topology.test.mjs scans this file's RAW TEXT for spawn shapes and
+// cannot tell a comment from code, so pasting it here reddens that guard.)
 function recordUploads(distDir, { bucket = 'arcade-lobby', keyPrefix = '', failOn = 0, ...rest } = {}) {
-  assertUploadSeamExists();
   const uploaded = [];
   let error = null;
   const upload = ({ key }) => {
@@ -393,7 +367,7 @@ function recordUploads(distDir, { bucket = 'arcade-lobby', keyPrefix = '', failO
     uploaded.push(key);
   };
   try {
-    uploadDir(distDir, bucket, keyPrefix, { ...rest, upload, [SEAM_PROOF_KEY]: true });
+    uploadDir(distDir, bucket, keyPrefix, { ...rest, upload });
   } catch (e) {
     error = e;
   }
@@ -606,7 +580,15 @@ test('mg1-5 AC4: the LOBBY leg orders its own index.html last', () => {
     assert.equal(error, null);
 
     assertFixtureIsAdversarial(uploaded, 'lobby fixture');
-    assert.deepEqual(gameKeys(uploaded), [], 'the lobby leg must still publish no game key');
+    // `gameKeys` takes upload OBJECTS; `uploaded` is already the key strings the
+    // recorder saw, so the same filter is applied to them directly. Same assertion,
+    // same subject — and it is anchored by the file's existing anti-vacuity test
+    // that GAME_IDS is non-empty, without which this compares [] to [].
+    assert.deepEqual(
+      uploaded.filter((k) => GAME_IDS.some((id) => k.startsWith(`${id}/`))),
+      [],
+      'the lobby leg must still publish no game key',
+    );
     assert.ok(uploaded.includes('index.html'), "the lobby's own front door must still be uploaded");
     assertHtmlLast(uploaded, "the lobby's index.html is the front door — it must go last of all");
   } finally {
