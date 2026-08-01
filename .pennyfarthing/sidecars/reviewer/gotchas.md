@@ -1325,3 +1325,50 @@ grepping for the old model's phrases misses docs that never named it.
 then cover the domain yourself and write `All received: No` with the coverage evidence in the table
 row (sw7-10 rule). The rule-checker's mailbox reply also bounced — its report was in its TRANSCRIPT
 (the final assistant text); read `~/.claude/projects/<proj>/<agent-session>.jsonl` before re-pinging.
+
+---
+
+## Replay every assertion against the PRE-STORY tree — a guard that passed before the story cannot be guarding it (jt5-10, 2026-08-01)
+
+**Situation:** reviewing a story whose whole deliverable was a recorded ROM finding — comments and
+claims, essentially no executable code. The suite was 30 tests, all green, and the obvious reviewer
+move (read the prose carefully) had already been done twice by the agents who wrote it.
+
+**The mutation battery is what found things; re-reading found nothing new.** 13 mutations, 4
+survivors. Three survivors were weak mutations of my own (I removed a token that appeared elsewhere
+in the same file, so the `toContain` still passed) — worth saying out loud, because a survivor is
+not automatically a finding and treating it as one manufactures work. The fourth was real and was
+the best finding of the review.
+
+**The real one: `expect(src).toMatch(/ptero/i)` over a whole file that already said "ptero".** The
+test was checking that `events.ts` records a pterodactyl exclusion on its wing-cue kinds.
+`events.ts` has always declared `ptero-arrives` and `ptero-death`, so the assertion passed on the
+PRE-STORY tree and stayed green when I deleted the exclusion outright. The check that settles it is
+one command and belongs in every review:
+
+```bash
+git show <pre-story-sha>:<file> > /tmp/pre && python3 -c "..."   # run the assertion against /tmp/pre
+```
+
+If it passes there, it is not guarding this story. **Whole-file `toContain`/`toMatch` on a common
+token is the shape to distrust** — anchor the assertion to the LINE it is about instead.
+
+**The second finding, and a general rule: a hand-curated list inside a completeness sweep is a
+liability.** The suite proved "nothing enters the flap loops from outside" by grepping eleven
+hard-typed label names. Reading the labels actually DEFINED in the region turned up twelve — the
+sweep had never known about `GOTFIT`. It was harmless (its only reference is internal), but a sweep
+whose job is exhaustiveness must derive its universe from the source, not from whoever typed the
+list. **Whenever a test enumerates, ask where the enumeration came from.**
+
+**Third, and the one to carry furthest: when a claim fails twice, change what it ASSERTS.** One
+claim in this story produced three wrong statements in a row — an extent (`STFLY :6121-6135`; the
+label is `:6123`), then a five-item list of routines (two of which were branch targets, not values),
+then a four-item count of store sites (there were six). Each correction was more precise and each
+was wrong. Enumerations and extents are a category that keeps failing, and the fix is to delete the
+category: the claim now states the mechanism and no census, which is checkable by one grep and
+cannot rot. Note the structural blind spot behind it — **the citation gate re-opens the quoted line
+and never reads the claim BODY**, so every one of these shipped green.
+
+**Finally: audit the text you just wrote, with the same suspicion.** Both of my *corrections* to
+that claim were themselves wrong, and I only caught them by re-grepping the ROM after writing each
+one. Fixing a defect is not a licence to stop verifying; it is the moment you are least likely to.
