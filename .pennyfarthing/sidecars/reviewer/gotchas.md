@@ -1491,3 +1491,66 @@ Two process failures of my own in the same round, both worth the reflex:
    the suite was 11105/0. Neither number was wrong when taken. On a trunk-based repo where siblings
    commit failing tests to `main` by design, **a long-running subagent's test count is a claim with
    a timestamp** — re-measure before acting on it, in either direction.
+
+---
+
+## With the specialists disabled, run the battery against BOTH gates — a mutant can be caught one gate over (jt8-7, 2026-08-01)
+
+`pf settings get workflow.reviewer_subagents` still reports `preflight: true` and the other
+eight `false`, so the mutation battery is the review. Twelve mutants, ten caught — and the two
+survivors were the whole value of the exercise, because **neither was a coverage gap**:
+
+- **One was caught by `tsc`, not by vitest.** Removing `if (catcher.collision === null) continue`
+  left `string | null` flowing into a `string` parameter — `npm run lint` fails `TS2322`. The
+  guard is unreachable at runtime and load-bearing for the type system. My battery ran only
+  `npx vitest run`, so it scored a fully-protected line as an uncovered hole. **Run the
+  project's other gates on a survivor before filing it**, especially on a repo where the
+  typecheck is a separate CI step (here it is the only typecheck in the release path).
+- **One was a genuine EQUIVALENT MUTANT, and I proved it rather than argued it.** Widening
+  `velY < 0` to `<= 0` changes behaviour only at `velY === 0`, where both arms return the same
+  slot. Instead of reasoning that out, I ran all 5607 `(velX, velY)` pairs and got **zero**
+  differing. That is a two-line script and it converts "I think this is unobservable" into a
+  fact the next reviewer does not re-derive. Record the equivalence in the session; otherwise
+  someone re-runs the battery, sees a survivor, and files a coverage gap that cannot exist.
+
+## Adding rows to an array that is searched by `.find(r => r.name === …)` is a silent shadowing risk
+
+jt8-7 added six `ENTITY_RECORDS`, and two call sites (`main.ts`, `demo.ts`) resolve names out of
+that array with `.find()`. A new record whose name collides with an existing one would silently
+re-point a sprite, and **no test in the suite would catch it** — the render path is data-driven
+and every assertion is about the data, not the resolution. Three checks, all cheap, none of
+which the diff makes obvious:
+
+1. duplicate record names (`[]` here),
+2. dangling sources (`[]` here),
+3. whether the fallback path changes — `entitySource(name) ?? name` is only behaviour-neutral
+   because every new record has `name === source`, making the lookup an identity for exactly
+   those six. That was a naming decision, not luck, but it was undocumented as load-bearing.
+
+Whenever a diff appends to a lookup table, enumerate the table's CONSUMERS before the contents.
+
+## A wrong line EXTENT repeated in EIGHT places: correcting one copy is worse than the original
+
+The `eggMaskFor` comment said `WEGG (JOUSTRV4.SRC:3507-3530)`; the routine ends at `JMP CLIPER`
+on :3531. I fixed it — and then found `3507-3530` in the AC, the context file, the session and
+a test comment. A single corrected copy makes the story internally inconsistent, which is a
+worse defect than a one-line undercount that misleads nobody.
+
+The resolution is the jt8-6 lesson generalised: **when the wrong thing is a line EXTENT, stop
+asserting the extent.** The comment now cites the routine by its LABEL line only, and every
+line it actually leans on is cited individually and verified. Before "fixing" a stale number,
+grep how many places repeat it — the answer changes the correct fix from *edit* to *delete*.
+
+## The ROM block usually continues past the tables the story transcribed — read to the next header
+
+jt8-7 ported `EGFLFT`/`EGFRIT` (:3535-3536). Four lines further on, under the SAME
+"EGG ANIMATION TABLE" header, sits `EGGTBL` (:3537-3544) — a third table indexing the same
+EGGI rows, whose entries are labelled `WIGGLE LEFT/UP/RIGHT` and `HATCH 1..4`. It is the
+consumer of exactly the rows the story described as having none.
+
+Two things follow. First, it turned a Dev finding ("rows 3-6 have no consumer") from a
+statement about the design into a statement about our port — a real difference. Second, its
+maximum offset (36 → row 6) is an **independent corroboration of the seven-row extent from a
+different table**, which is stronger evidence than the story's own reading. For a story whose
+entire defect is "a table was read short", checking whether the BLOCK was also read short costs
+one `sed` and is the most on-point check available.
