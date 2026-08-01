@@ -1218,3 +1218,75 @@ labour to repeat: reviewer re-derives and mutates; rule-checker audits every cit
 line-numbered reads. And when rejecting round 1 on findings you prescribed exact fixes for, write
 the prescription INTO the findings table — round 2 here was a 15-minute verify because the fix
 had no design freedom left.
+
+---
+
+### A story that GROWS a file invalidates every citation pointing INTO it — including its own. Check the diff's citations against the POST-diff line numbers.
+
+**Situation:** cp5-2 added 33 lines to `main.ts` and ~42 to `shell/audio-dispatch.ts`, and its tests and
+comments cite both files heavily.
+
+**Problem:** four citations written during the story were correct when written and wrong when shipped.
+The worst was `main.ts:183`, cited twice as "the trailing `requestAnimationFrame(frame)`". After the
+diff, :183 is `const board = sim.highScoreTable` — a real, plausible line inside the same function. A
+reader who checks it does not see an obvious error; they see code and assume the claim is corroborated.
+That is the jt8-6 lesson exactly: a wrong-but-plausible citation *manufactures* corroboration, and is
+worse than an obviously broken one.
+
+**Prevention:** for every `file:line` in the diff, ask which side of the diff the number was counted on.
+Citations pointing OUTWARD (into files the story did not touch) are usually fine — all ~20 of cp5-2's
+were correct. Citations pointing INWARD, at the files the story is editing, are the ones that rot, and
+they rot silently because the author verified them before making the change. One loop settles it:
+
+```bash
+grep -rnoE '[a-zA-Z0-9_.-]+\.ts:[0-9]+' <changed files> | while read hit; do ... sed -n "<line>p" ...; done
+```
+
+**Corollary — a citation can be stale in the other direction too.** `sim.ts:723` (the wave-clear concat)
+was offered as an explanation for a measured statistic. The line exists and does what the comment says,
+but a re-run of the measurement showed **no wave-clear pair occurs at all** — the six two-event steps
+were three deaths, two loop-edge merges and one ordinary co-occurrence. The citation was real; the
+causal claim attached to it was invented. Re-run the measurement, don't re-read the line.
+
+---
+
+### When a specialist is DISABLED, its domain is yours — and on a doc-heavy diff that is where the findings are
+
+**Situation:** `pf settings get workflow.reviewer_subagents` showed 5 of 9 disabled on this project,
+including `comment_analyzer`. The diff was ~25 line citations, an AC that literally requires a comment,
+and a README the story invalidated.
+
+**Result:** four of eleven confirmed findings sat in the disabled `comment_analyzer`'s domain, and the
+single HIGH — a README asserting the opposite of the shipped code — would have been found by nothing
+else. Every ENABLED specialist came back clean or with test-infra nits. This is jt8-6 repeating
+verbatim: three rejection rounds there, every enabled check green, every defect in the one disabled
+domain.
+
+**Prevention:** run the toggle check FIRST, before reading the diff, and let the disabled list tell you
+where to spend your own attention. Then say so in the assessment — "covered by hand because the
+specialist is off" is a claim the next reviewer can audit, whereas silently inheriting a clean bill
+from a specialist that never ran is the failure `pf gates assume subagents ran` warns about.
+
+---
+
+### Verify a subagent's REASONED finding by mutation before confirming it — and be ready for it to be right
+
+**Situation:** reviewer-test-analyzer claimed (medium confidence) that the story's headline guard was
+blind to a one-step shift, because it filtered each side of its comparison independently.
+
+**What I did:** built the mutant — moved the dispatch above `stepSim` so it sends the PRIOR step's
+events — and ran the suite. **1012/1012 green.** The finding was exactly right, and the guard's own
+failure message ("array for array, the events the core emitted per step") promised a correspondence it
+did not enforce.
+
+**Why this matters both ways:** a reasoned finding about test STRENGTH is a hypothesis about a
+counterfactual, and those are the findings most often wrong — but also the ones most worth checking,
+because nobody else will. Confirming it by mutation converts "the subagent thinks" into "I measured",
+which is the difference between a finding a Dev can argue with and one they cannot. It also caught the
+complement: I mutated two VALID refactors (reordering past the high-score save, skipping empty frames)
+and both stayed green, so I could state that the guard is too permissive in one specific direction
+rather than simply "brittle" or "weak".
+
+**Cheap rule:** if a finding says "this test would still pass if X", write X and run it. If a finding
+says "this test would wrongly fail if Y", write Y and run it. Both take minutes and both belong in the
+severity table as CONFIRMED rather than PLAUSIBLE.
