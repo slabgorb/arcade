@@ -1268,3 +1268,65 @@ matches an idle or wandering player — 0 reversals over 2,400 frames on every s
 liveness guard now stages a rung-matching chase and pins the idle-stick ZERO as a known divergence;
 uf1-9's PPVELX snapshot + BOLETM boundary are what turn it back on. If your story lands those rows,
 that pin is designed to fail — rewrite it for snapshot semantics, do not "fix" the zero.
+
+## Re-baselining a SEEDED frame pin: scan for the test's OWN preconditions, never nudge the number (jt8-7, joust, 2026-08-01)
+
+**Situation:** tightening the egg catch shifted a deterministic replay, breaking four
+frame-exact pins in `audio-events.test.ts` (`egg-collected` @ seed 0xbeef frame 516, and three
+at 0xface). TEA had predicted them; the job was moving them honestly.
+
+**The method that makes it defensible.** Each pin already asserts a PRECONDITION before it
+asserts the cue — "an egg really leaves on this frame AND really scores", "a knight really
+dies", "the wave really advances AND deals a complement". So the search is not "what frame
+makes this green" but "at which frames does the precondition hold". A throwaway probe stepped
+3000 frames per seed with the same input script and recorded every frame satisfying each
+precondition; the new coordinates fell out as data. 516→523, 1614→1641, 1938→1810, 1939→1811,
+with both seeds and the script unchanged — the least invasive move.
+
+Why this matters beyond tidiness: a pin whose precondition survives **cannot be made vacuous
+by a re-baseline**, because a wrong coordinate fails the precondition before reaching the cue
+assertion. That is the sentence to put in the commit and the assessment, because "Dev edited
+the test that was failing" and "Dev re-measured a coordinate into a deterministic replay" look
+identical in a diff. Say which one it is, show the table of old→new, and name the method.
+
+Also worth knowing: this file had ALREADY been re-baselined twice (jt5-4 changed the seed,
+uf1-8 changed the frames), and both times the reasoning was left in a block comment. Extend
+that comment rather than replacing it — the history is what makes the third one credible.
+
+## A count-FLOOR guard REQUIRES the bump when you add records — that is not the same as loosening it
+
+`demo-jt3-7-render.test.ts` pins `ENTITY_RECORD_FLOOR` and separately asserts
+`ENTITY_RECORD_FLOOR >= realCount` ("no 1-unit slack"). So adding six records reds it with
+*"the floor must EQUAL the real record count"* — the guard is DEMANDING the update, and
+leaving it alone is the failure mode it exists to catch (a dropped un-enumerated record
+hiding in the slack). Read the failing assertion's own message before treating a reddened
+guard as an obstacle: here it names the required action outright.
+
+Generally: adding rows to a transcription is exactly the event that puts slack in a count
+floor, so expect this every time a table grows, and bump the floor in the same commit.
+
+## The record NAME can be load-bearing for one row of a table and free for the rest
+
+Transcribing EGGI's seven rows, the obvious move is to name each record after its pixel
+source (jt3-7's `PT1R`-the-record / `PT1R`-the-block convention — the two arrays are separate
+namespaces). But row 0's existing name `EGGI` is consumed twice: `demo.ts` emits
+`entityOp('EGGI', …)` for the egg draw op, and `demo-source.test.ts` requires the literal
+`'EGGI'` in a required-records list. Renaming it to `EGGUP` for consistency would have broken
+both, and the second one only at test time.
+
+`grep -n "'<NAME>'"` across `src/` and `tests/` before renaming any record, and expect the
+consumers to be a draw-list string and a test's required-list — neither of which a type
+checker will catch, because both are bare strings.
+
+## A "frozen fingerprint" of a seeded run can be blind to a real behaviour change
+
+`audio-events.test.ts`'s `jt5-1 AC3` fingerprint pins `frame/rng/wave/procs/scores/lives` at
+2400 frames and passed **identically before and after** a collision-geometry change that
+provably moved an egg pickup by 7 frames on the very same seed. It is not broken — its stated
+job is narrow (prove the event channel draws no RNG and changes no ordering) — but it pins
+fields that read like a general behaviour fingerprint and is not one: the shift washed out by
+the sample point.
+
+So do not cite an unchanged fingerprint as evidence a change was inert, and do not assume a
+timeline shift will redden one. Filed as a non-blocking finding rather than "fixed", because
+tightening it is a different story's call.
