@@ -258,7 +258,7 @@ export function pteroWaveSpawnCount(
 //      buzzard's loops act on that register with `TSTB` (:6168, :6195); there is
 //      no TSTB anywhere in the ptero's loop.
 //
-// COROBORATION, because a single chain deserves a second witness: the wing pair
+// CORROBORATION, because a single chain deserves a second witness: the wing pair
 // is not specially dead — P7DEC's WHOLE sound row is. Each of its nine fields is
 // read at exactly one site, and every one of those sites sits in the
 // ground/landing machine the ptero cannot enter: DSNWU :6183, DSNWD :6217,

@@ -187,28 +187,38 @@ describe.skipIf(!vendoredAvailable)('jt5-10 — the question, re-opened verbatim
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe.skipIf(!vendoredAvailable)('jt5-10 — nothing reaches the wing cues from outside', () => {
-  /** Every label whose mention would mean control entered the flap machine. */
-  const FLAP_LABELS = [
-    'FLAPLP',
-    'FLIPLP',
-    'FLAPS2',
-    'FLIPS2',
-    'FLAPST',
-    'FLIPST',
-    'GOFLIP',
-    'GOFLAP',
-    'FLAST2',
-    'WINGDN',
-    'WINGFK',
-  ] as const
+  /**
+   * Every label whose mention would mean control entered the flap machine —
+   * DERIVED FROM THE SOURCE, not typed out.
+   *
+   * The first draft hard-coded eleven names and the review found the list
+   * incomplete: `GOTFIT` (:6207) is a real entry point inside the loops and was
+   * missing, so a future `JMP GOTFIT` from outside would have walked straight
+   * past a sweep whose whole job is to prove no such jump exists. (Harmless
+   * today — GOTFIT's only reference is `BRA GOTFIT` at :6204, inside the
+   * region.) Reading the labels out of the range makes the set complete by
+   * construction instead of by vigilance.
+   *
+   * Local labels (`1$`, `20$`) are excluded deliberately: the assembler scopes
+   * them per-routine and they recur throughout the file, so they carry no
+   * information about entry from outside.
+   */
+  function flapLabels(): string[] {
+    const labels = sourceLines(ROM)
+      .slice(6163 - 1, 6226)
+      .map((l) => l.match(/^([A-Z][A-Z0-9]*)\s/)?.[1])
+      .filter((l): l is string => l !== undefined)
+    return [...new Set(labels)]
+  }
 
   /** 1-based line numbers of every line mentioning any flap label. */
   function flapLabelLines(): number[] {
+    const labels = flapLabels()
     const lines = sourceLines(ROM)
     const hits: number[] = []
     lines.forEach((line, i) => {
       if (line.startsWith('*')) return // full-line comment, not code
-      if (FLAP_LABELS.some((l) => new RegExp(`\\b${l}\\b`).test(line))) hits.push(i + 1)
+      if (labels.some((l) => new RegExp(`\\b${l}\\b`).test(line))) hits.push(i + 1)
     })
     return hits
   }
@@ -234,7 +244,7 @@ describe.skipIf(!vendoredAvailable)('jt5-10 — nothing reaches the wing cues fr
     // these appeared, the chain would have a hole in it.
     const body = sourceLines(ROM).slice(1491 - 1, 1510)
     const text = body.join('\n')
-    for (const label of [...FLAP_LABELS, 'CKGND', 'TSTB', 'DSNWU', 'DSNWD']) {
+    for (const label of [...flapLabels(), 'CKGND', 'TSTB', 'DSNWU', 'DSNWD']) {
       expect(text, `PTEFLY's body must not mention ${label}`).not.toMatch(
         new RegExp(`\\b${label}\\b`),
       )
@@ -321,12 +331,23 @@ describe('jt5-10 AC1/AC2 — the answer is written down where the ptero lives', 
     expect(src).toContain('PTESEQ')
   })
 
-  it('the audio seam points at the record, so a cue reader finds it too', () => {
+  it('the audio seam points at the record ON the wing kinds, not merely somewhere', () => {
     // events.ts is where somebody wondering "why is there no ptero wing cue?"
     // actually looks. The enemy-wing comments must not say only "a buzzard's".
+    //
+    // THIS ASSERTION USED TO BE VACUOUS AND THE MUTATION BATTERY CAUGHT IT. The
+    // first draft read `expect(src).toMatch(/ptero/i)` — which passed on the
+    // PRE-STORY tree, because events.ts has always declared `ptero-arrives` and
+    // `ptero-death`. Removing the exclusion from a wing line left it green. The
+    // check has to be anchored to the LINES it is about, so it is now made per
+    // kind: each enemy-wing declaration must itself carry the exclusion.
     const src = readSrc('core', 'events.ts')
-    expect(src, 'the seam must name the pterodactyl exclusion').toMatch(/ptero/i)
-    expect(src, 'and point at the story that settled it').toContain('jt5-10')
+    for (const kind of ['enemy-wing-down', 'enemy-wing-up']) {
+      const line = src.split('\n').find((l) => l.includes(`'${kind}'`))
+      expect(line, `${kind} must be declared`).toBeDefined()
+      expect(line, `${kind}'s comment must exclude the ptero`).toMatch(/ptero/i)
+      expect(line, `${kind}'s comment must cite the story that settled it`).toContain('jt5-10')
+    }
   })
 })
 

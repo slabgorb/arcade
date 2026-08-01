@@ -271,7 +271,7 @@
   },
   {
     "id": "JT510-003",
-    "claim": "PTEFLY is a CLOSED loop: its final instruction is an unconditional branch back to its own head, so control never falls out of the bottom into neighbouring code. The only ways out are a PJOY swap (which changes which intelligence routine runs, not the process PC) and the death path. This is the hop that makes the wing loaders unreachable.",
+    "claim": "PTEFLY is a CLOSED loop: its final instruction is an unconditional branch back to its own head, so control never falls out of the bottom into neighbouring code. Note what a PJOY swap does NOT do: storing a new intelligence address into PJOY (STD PJOY,U) changes which routine AIROVR calls on the NEXT wake, and does not touch the process PC — so the swap leaves control inside this loop rather than escaping it. This is the hop that makes the wing loaders unreachable.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 1510,
@@ -280,7 +280,7 @@
   },
   {
     "id": "JT510-004",
-    "claim": "Every reference to a flap-loop label (FLAPLP, FLIPLP, FLAPS2, FLIPS2, FLAPST, FLIPST, GOFLIP, GOFLAP, FLAST2, WINGDN, WINGFK) in the whole of JOUSTRV4.SRC lies within :6135-6226. Only three of those mentions sit outside the loop body itself, and this line is one: it is the tail of STFLY, 'START TO FLY' (:6121-6135). The other two are STFALL's BNE FLAPS2 / BRA FLIPS2 (:6156-6157). Both routines are GROUND-state transitions — taking off, and falling off a cliff — which a bird that never lands cannot make. SRCADP clamps the pterodactyl at $D3-1 and clears PVELY (:1526-1531), and PTEFLY never calls CKGND.",
+    "claim": "Every reference to a flap-loop label (FLAPLP, FLIPLP, FLAPS2, FLIPS2, FLAPST, FLIPST, GOFLIP, GOFLAP, FLAST2, WINGDN, WINGFK) in the whole of JOUSTRV4.SRC lies within :6135-6226. Only three of those mentions sit outside the loop body itself, and this line is one: it is the tail of STFLY (label at :6123, under the header comment 'START TO FLY' at :6121). The other two are STFALL's BNE FLAPS2 / BRA FLIPS2 (:6156-6157). Both routines are GROUND-state transitions — taking off, and falling off a cliff — which a bird that never lands cannot make. SRCADP clamps the pterodactyl at $D3-1 and clears PVELY (:1526-1531), and PTEFLY never calls CKGND.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 6135,

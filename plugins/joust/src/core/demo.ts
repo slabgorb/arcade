@@ -1522,8 +1522,9 @@ export function drawList(demo: DemoState): DrawOp[] {
 // `:4961  BNE OSTHT2   BR=NO KILL (ENEMY VS. ENEMY, PTERO VS. PTERO)`.
 //
 // SO THE CUE IS REACHABLE IN PRINCIPLE AND UNREACHABLE IN FACT. jt3-5's baiters
-// cap at three live pteros (`src/core/baiter.ts`), so two really do coexist in
-// ordinary play; `enemy-thud` already exists as a kind and its comment in
+// cap at three live (`MAX_BAITERS`, src/core/baiter.ts) — a cap on BAITERS, not on
+// pteros in total, since a wave's own pteros are counted separately — so two
+// really do coexist in ordinary play; `enemy-thud` already exists as a kind and its comment in
 // `src/core/events.ts` already names ptero-vs-ptero. Only the eligible set is
 // missing — which is exactly why widening it is a mechanic, not a cue fix.
 //
