@@ -1347,3 +1347,8 @@ completed_stories:
     title: 'surface finishGround death gate: port the PHEGD death exit so a last-shield fall on the crossing frame silences PMREB, as sw8-13 did for the space walk'
     points: 1
     completed: '2026-08-01'
+  - id: jt8-7
+    epic: jt8
+    title: "Egg catch is box-only — the transcribed CEGGUP mask is never consulted, so the collect radius is a bird's height instead of an egg's. collisionMaskFor (demo.ts:687) returns null for kind egg, so the catch pass stops at broadPhase (:902) while the joust pass 100 lines above does broadPhase then narrowPhase (:783-788). CEGGUP/CEGGLF/CEGGRT/CEGGMN all exist with real spans and JOUSTI.SRC anchors (pictures.ts:1799-1806) and ENTITY_RECORDS.EGGI (:1699) explicitly names CEGGUP — a ported, claimed, unconsumed asset of exactly the kind the uf1 sweep hunts. Effect: vertical reach is the 16px ENTITY_BOX_H vs CEGGUP's 7 real scanlines, so an egg can be collected from visibly clear of it. BLOCKED ON A DECISION FIRST: the ROM has four egg masks for its orientation/hatching frames and EggState carries no frame field, so the variant question must be answered before wiring — do not just hardcode CEGGUP. Filed by Reviewer on jt8-4 (R-2)"
+    points: 5
+    completed: '2026-08-01'

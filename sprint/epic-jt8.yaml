@@ -122,7 +122,7 @@ stories:
       Filed by Reviewer on jt8-4 (R-2).
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-01'
     repos: arcade
     workflow: tdd
@@ -132,7 +132,10 @@ stories:
       - The player-vs-egg catch pass (demo.ts:1027) runs narrowPhase after broadPhase — using the mask AC2's selector names for that egg, and the catching player's own mask — mirroring the two-phase shape the joust pass already uses at demo.ts:887-897.
       - 'A test proves the collect radius genuinely tightened: an overlap that the 16px ENTITY_BOX_H box accepts but the selected egg mask rejects is no longer a catch, AND a genuine mask overlap still collects (scores the EGGVAL rung, the mid-air bonus and the single egg-collected cue as before). Deleting the narrowPhase call must redden it.'
       - The joust core-boundary/purity scanner still passes, and the joust and shared vitest projects are green. Every new anchor satisfies the existing pictures anchor/label checks.
+    completed: '2026-08-01'
     type: bug
+    review_findings: 'Round 1 APPROVED. No Critical, no High. Two Low findings, both comment prose, both FIXED IN PLACE during review (eeccd7b): the jt8-4 doc comment for eggBox was orphaned by inserting eggMaskFor, and the WEGG routine extent 3507-3530 understated the routine (it ends at JMP CLIPER, :3531) — the extent assertion was DROPPED rather than corrected, because 8 other places repeat the old number and fixing one copy would be worse. Review was a 12-mutant battery (specialists 8/9 disabled): 10 caught, 1 equivalent mutant proven over 5607 input pairs, 1 caught by tsc rather than vitest. Three follow-ups filed: jt8-13, jt8-14, jt8-15.'
+    review_verdict: approved
   - id: jt8-8
     title: 'Egg score on the KILL — EGGSCR has two call sites and our port models only one. grep JSR EGGSCR in JOUSTRV4.SRC returns :3006 and :3021; jt8-4 wired :3021 (PLYEGG, the catch). The other is inside DEATH3: when a killed enemy transferred egg count decrements to zero (STA PEGG,Y / DEC PEGG,Y YOU CAN ONLY SQUEEZE SO MUCH BLOOD FROM AN EGG / BNE 1$, :3000-3002) the ROM does TFR Y,X / LDU ,S GET VICTORS WORKSPACE / BEQ 1$ / JSR EGGSCR SCORE EGG (:3003-3006), so an enemy LAST egg is scored to the victor immediately on the kill, bumping the DEGGS ladder with no catch required. Our port implements the decrement (spawnEgg eggsLeft minus 1, egg.ts:141) and treats eggsLeft zero as permadeath where hatchEgg returns null (egg.ts:273-275), but nothing ever scores it, so both the award and its ladder bump are silently dropped in play. Also makes JT84-003 incomplete, which states the collision IS the scoring trigger and there is no separate pickup step. Note the victor guard: BEQ skips when U is zero (a lava death has no victor). Filed by Reviewer on jt8-6 (round 2)'
     points: 3
@@ -233,8 +236,8 @@ stories:
     priority: p3
     status: backlog
     repos: arcade
-    type: feature
     workflow: tdd
+    type: feature
   - id: jt8-15
     title: posOffset decodes a high-bit POSOFF word as +255 instead of -1 — latent until anything draws EGGB2/EGGB3
     description: |-
