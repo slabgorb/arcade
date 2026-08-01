@@ -1,0 +1,224 @@
+<style>
+  .lb {
+    --cy: #00eaff;
+    background: #000;
+    border: 1px solid rgba(0, 234, 255, 0.35);
+    border-radius: 4px;
+    padding: 10px;
+    font-family: 'Orbitron', ui-monospace, monospace;
+    color: #dff;
+    aspect-ratio: 16 / 10;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    position: relative;
+    overflow: hidden;
+  }
+  .lb-mark {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    color: #fff;
+    text-shadow: 0 0 4px #fff, 0 0 12px var(--cy);
+    padding: 0 2px;
+    flex: none;
+  }
+  .lb-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .lb-tile {
+    border: 1px solid var(--tc, var(--cy));
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--tc, var(--cy)) 5%, #000);
+    box-shadow: 0 0 5px color-mix(in srgb, var(--tc, var(--cy)) 40%, transparent);
+    color: var(--tc, var(--cy));
+    font-size: 6.5px;
+    letter-spacing: 0.12em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px;
+    text-shadow: 0 0 4px currentColor;
+  }
+  .t1 { --tc: #00eaff; } .t2 { --tc: #ffe81f; } .t3 { --tc: #ff6a00; }
+  .t4 { --tc: #00ff41; } .t5 { --tc: #2aa358; } .t6 { --tc: #f0a828; }
+
+  /* the live game pane */
+  .lb-pane {
+    border: 1px solid rgba(0, 234, 255, 0.8);
+    border-radius: 2px;
+    background:
+      radial-gradient(60% 80% at 50% 55%, rgba(0, 234, 255, 0.13), transparent 70%),
+      #000;
+    box-shadow: 0 0 14px rgba(0, 234, 255, 0.45), inset 0 0 18px rgba(0, 234, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 3px;
+    position: relative;
+  }
+  .lb-pane::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 234, 255, 0.05) 3px 4px);
+    pointer-events: none;
+  }
+  .glyph { font-size: 20px; line-height: 1; filter: drop-shadow(0 0 6px currentColor); }
+  .pane-cap {
+    font-size: 6px;
+    letter-spacing: 0.24em;
+    color: var(--cy);
+    opacity: 0.85;
+    text-shadow: 0 0 5px currentColor;
+  }
+  .lb-foot {
+    font-size: 5.5px;
+    letter-spacing: 0.2em;
+    color: #4fb8cc;
+    text-align: center;
+    flex: none;
+    opacity: 0.75;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    padding: 2px 7px;
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    margin-bottom: 6px;
+  }
+  .cost-ok   { color: #00ff41; }
+  .cost-warn { color: #f0a828; }
+  .cost-bad  { color: #ff5566; }
+  .note { font-size: 12px; line-height: 1.5; margin: 6px 0 0; }
+  .note b { color: #dff; }
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  @media (max-width: 900px) { .cards { grid-template-columns: 1fr; } }
+</style>
+
+<h2>Where does the gameplay actually appear?</h2>
+<p class="subtitle">
+  All four framed the <em>live</em> deployed game — no assets, never stale. They differ in how much of
+  the cabinet the demo owns, and in what they cost. Cyan pane = a running game in an <code>&lt;iframe&gt;</code>.
+</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#050505">
+      <div class="lb">
+        <div class="lb-mark"><span>S</span><span>L</span><span>A</span><span>B</span><span>C</span><span>A</span><span>D</span><span>E</span></div>
+        <div class="lb-pane" style="flex:1.15">
+          <div class="glyph" style="color:#00eaff">&#9651;</div>
+          <div class="pane-cap">NOW SHOWING &middot; TEMPEST</div>
+        </div>
+        <div class="lb-tiles">
+          <div class="lb-tile t1">TEMPEST</div><div class="lb-tile t2">STAR WARS</div><div class="lb-tile t3">ASTEROIDS</div>
+          <div class="lb-tile t4">BATTLEZONE</div><div class="lb-tile t5">CENTIPEDE</div><div class="lb-tile t6">JOUST</div>
+        </div>
+        <div class="lb-foot">A FAN-MADE TRIBUTE &middot; NOT AFFILIATED</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A &middot; Showcase pane</h3>
+      <span class="badge cost-ok">1 iframe &middot; always on</span>
+      <p class="note">
+        A marquee screen between wordmark and tiles, cycling one game at a time.
+        <b>Tiles stay exactly as they are</b> — every link, focus ring and &#8984;-click survives untouched.
+        The demo is the page's centrepiece and is visible the instant you land, with no idle wait.
+        Costs vertical space the tiles currently own.
+      </p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#050505">
+      <div class="lb">
+        <div class="lb-mark"><span>S</span><span>L</span><span>A</span><span>B</span><span>C</span><span>A</span><span>D</span><span>E</span></div>
+        <div class="lb-tiles" style="flex:1;grid-auto-rows:1fr">
+          <div class="lb-pane" style="border-color:#00eaff"><div class="glyph" style="color:#00eaff;font-size:13px">&#9651;</div></div>
+          <div class="lb-pane" style="border-color:#ffe81f;box-shadow:0 0 14px rgba(255,232,31,.4)"><div class="glyph" style="color:#ffe81f;font-size:13px">&#9670;</div></div>
+          <div class="lb-pane" style="border-color:#ff6a00;box-shadow:0 0 14px rgba(255,106,0,.4)"><div class="glyph" style="color:#ff6a00;font-size:13px">&#9727;</div></div>
+          <div class="lb-pane" style="border-color:#00ff41;box-shadow:0 0 14px rgba(0,255,65,.4)"><div class="glyph" style="color:#00ff41;font-size:13px">&#9636;</div></div>
+          <div class="lb-pane" style="border-color:#2aa358;box-shadow:0 0 14px rgba(42,163,88,.4)"><div class="glyph" style="color:#2aa358;font-size:13px">&#9783;</div></div>
+          <div class="lb-pane" style="border-color:#f0a828;box-shadow:0 0 14px rgba(240,168,40,.4)"><div class="glyph" style="color:#f0a828;font-size:13px">&#9650;</div></div>
+        </div>
+        <div class="lb-foot">A FAN-MADE TRIBUTE &middot; NOT AFFILIATED</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B &middot; Every tile lives</h3>
+      <span class="badge cost-bad">6 iframes &middot; all at once</span>
+      <p class="note">
+        Each tile becomes a window onto its own game. Maximum spectacle &mdash; and two hard problems.
+        <b>Six full canvas sims at 60&nbsp;Hz in one page</b> is six independent game loops competing for one
+        main thread. And <b>a tile is an <code>&lt;a href&gt;</code></b>: an iframe inside it swallows the click,
+        so clicking the demo would stop launching the game. Both are solvable (poster frames, click-shields),
+        neither is free.
+      </p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#050505">
+      <div class="lb" style="padding:0;justify-content:center;align-items:center">
+        <div class="lb-pane" style="position:absolute;inset:0;border:none;border-radius:0">
+          <div class="glyph" style="color:#ffe81f;font-size:30px">&#9670;</div>
+          <div class="pane-cap" style="margin-top:6px">STAR WARS &middot; DEMO</div>
+        </div>
+        <div style="position:absolute;bottom:9px;left:0;right:0;text-align:center;font-size:6px;letter-spacing:.28em;color:#fff;text-shadow:0 0 6px #00eaff;z-index:2">
+          PRESS ANY KEY
+        </div>
+        <div style="position:absolute;top:7px;left:7px;width:14px;height:14px;border-top:1px solid rgba(0,234,255,.7);border-left:1px solid rgba(0,234,255,.7)"></div>
+        <div style="position:absolute;top:7px;right:7px;width:14px;height:14px;border-top:1px solid rgba(0,234,255,.7);border-right:1px solid rgba(0,234,255,.7)"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C &middot; Idle takeover</h3>
+      <span class="badge cost-ok">1 iframe &middot; only when idle</span>
+      <p class="note">
+        The lobby stays exactly as it is today. After N seconds of no mouse or key, the cabinet
+        <b>goes full-bleed into a cycling demo</b>; any input dismisses it instantly.
+        This is <b>literally what the docs promise</b> &mdash; "runs an attract-mode demo loop <em>when idle</em>" &mdash;
+        and it is the real cabinet's behaviour. Costs nothing while you are choosing.
+        The trade: a visitor who never idles never sees it.
+      </p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="d" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#050505">
+      <div class="lb">
+        <div class="lb-pane" style="position:absolute;inset:0;border:none;border-radius:0;opacity:.3">
+          <div class="glyph" style="color:#00ff41;font-size:34px">&#9636;</div>
+        </div>
+        <div class="lb-mark" style="position:relative;z-index:2"><span>S</span><span>L</span><span>A</span><span>B</span><span>C</span><span>A</span><span>D</span><span>E</span></div>
+        <div class="lb-tiles" style="position:relative;z-index:2;margin-top:auto">
+          <div class="lb-tile t1">TEMPEST</div><div class="lb-tile t2">STAR WARS</div><div class="lb-tile t3">ASTEROIDS</div>
+          <div class="lb-tile t4">BATTLEZONE</div><div class="lb-tile t5">CENTIPEDE</div><div class="lb-tile t6">JOUST</div>
+        </div>
+        <div class="lb-foot" style="position:relative;z-index:2;margin-top:auto">A FAN-MADE TRIBUTE &middot; NOT AFFILIATED</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>D &middot; Living wallpaper</h3>
+      <span class="badge cost-warn">1 iframe &middot; always on, dimmed</span>
+      <p class="note">
+        The demo plays full-bleed <b>behind</b> the tiles, dimmed to a backdrop, cycling games.
+        Atmospheric and always present without stealing layout space.
+        But it <b>competes for the same pixels as the existing cabinet chrome</b> &mdash; the vector grid
+        floor and its mirrored ceiling would have to go or fight it &mdash; and legibility of the
+        tiles over moving content is the whole risk.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:22px">
+  Click one, or tell me in the terminal. Mixing is on the table too &mdash; <b>A&nbsp;+&nbsp;C</b> (a pane that
+  goes full-bleed once you idle) is a coherent pair.
+</p>
