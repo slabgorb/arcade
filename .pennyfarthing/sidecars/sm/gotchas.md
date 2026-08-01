@@ -623,3 +623,50 @@ user picked the recommendation immediately.
 The general form: an either/or in an AC almost always has a *measurable* house answer sitting in the
 sibling games. Spend the two minutes to find it before spending the user's attention. Ask anyway —
 the ruling is theirs and the story explicitly asked for one — but ask with the census attached.
+
+---
+
+## Printing a safety count is not the same as GATING on it — and the sibling checkouts are the recovery path (jt5-5 setup, 2026-08-01)
+
+**Situation:** clearing the stale `feat/jt5-4-…` claim branch at the start of jt5-5. The rule two
+entries up is explicit: "Confirm `git rev-list --count origin/main..origin/feat/<story>` is 0, then
+`git push origin --delete`." I wrote both in one chained block:
+
+```bash
+git rev-list --count origin/main..origin/feat/jt5-4-…   # printed 2
+git push origin --delete feat/jt5-4-…                    # ran anyway
+```
+
+**Problem:** `;`-chaining makes the check decorative. The count came back **2**, not 0 — the exact
+signal that should have stopped the delete — and the delete had already executed by the time I read
+it. The check ran, the output was correct, and it protected nothing.
+
+**Fix in one character:** make the guard structural, not visual.
+```bash
+[ "$(git rev-list --count origin/main..origin/feat/<story>)" = 0 ] \
+  && git push origin --delete feat/<story> || echo "NOT EMPTY — inspect before deleting"
+```
+
+**Recovery, and this is the genuinely useful part: a deleted branch survives in the SIBLING
+checkouts.** `a-2` and `a-3` fetch the same single remote, so both still held
+`origin/feat/jt5-4-…` at `8d5da1a` in their remote-tracking refs minutes after the remote ref was
+gone. That recovered the tip instantly when nothing local could:
+
+```bash
+for d in /Users/slabgorb/Projects/a-{2,3}; do
+  git -C "$d" rev-parse origin/feat/<story> 2>/dev/null && git -C "$d" log --oneline -3 origin/feat/<story>
+done
+```
+Note what did NOT work, so you skip it next time: `git fsck --dangling`/`--unreachable` in the
+deleting checkout listed 25 unreachable commits and **none** was the branch tip; the GitHub
+`DeleteEvent` carries **no** SHA (`head`/`before` are both null); and the events API refuses
+pagination past page 1 with a 422. The sibling probe is the first thing to try, not the last.
+
+**Outcome here was benign, and worth knowing WHY** — the 2 commits were `chore(sprint): claim`
+(a status stamp jt5-4 has since moved past to `done`) and `chore(sm-setup): … context file`, whose
+`sprint/context/context-story-jt5-4.md` is **byte-identical** to main's (`git diff --stat
+<sha>:<path> origin/main:<path>` → empty). On a trunk-based repo a claim branch holds exactly the
+superseded claim commits, because the real work lands on `main` — so the count being non-zero is
+usually *expected*, not alarming. That is precisely why it must be READ rather than merely printed:
+the rule's "must be 0" is wrong for any story whose claim was pushed WITH its commits rather than
+empty. Verify the content is represented on `main`, then delete.
