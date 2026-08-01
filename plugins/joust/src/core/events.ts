@@ -11,20 +11,24 @@
 // depend on what the shell passed in. `stepGame` rebuilds this list every frame
 // and the shell reads it off the returned state (`GameState.events`).
 //
-// ─── ELEVEN MOMENTS, AND WHY EXACTLY THESE ───────────────────────────────────
+// ─── FIFTEEN MOMENTS, AND WHY EXACTLY THESE ──────────────────────────────────
 // Each kind below is a REAL Williams sound table (JOUSTRV4.SRC:8051-8131, under
 // the format header at :8045-8049) whose moment THIS port can actually reach.
 // The byte-exact citations — table row, priority byte and call site — live in
 // `src/shell/audio.ts`'s CUE_SOURCES, where the suite re-opens both sides of
 // every one of them against the vendored 1982 tree.
 //
-// The machine has 38 tables. The ones deliberately left out are left out for a
-// measured reason, not an oversight — each is a Delivery Finding on the jt5-1
-// session with its ROM lines:
-//   • the FLAP (SNPLWD/SNPLWU, SNELWD/SNELWU) is a TWO-EDGE cue: the press plays
-//     wing-DOWN (GOFLAP -> FLAST2, :6207-6218), the RELEASE plays wing-UP
-//     (GOFLIP, :6182-6184). Our core sees only the press edge, and half a
-//     two-edge cue is worse than none.
+// jt5-3 wires the FLAP (SNPLWD/SNPLWU, SNELWD/SNELWU) — a TWO-EDGE cue that
+// jt5-1 deliberately left out: the press plays wing-DOWN (GOFLAP -> FLAST2,
+// :6212-6218), the release plays wing-UP (GOFLIP, :6182-6184), and a flap
+// TAKE-OFF (STFLY, :6123-6135) jumps straight onto the wing-down cue too. Four
+// kinds, not one, because the press and release are DISTINCT sounds for EACH
+// species — collapsing wing-down/wing-up into one name would lose the edge the
+// whole mechanic turns on. See `src/core/flight.ts`'s `wingEdge` for the law.
+//
+// The machine has 38 tables. Two families are still left out, each for a
+// measured reason, not an oversight — Delivery Findings on the jt5-1 session
+// with their ROM lines:
 //   • the THUDS (SNPTHD :8124, SNETHD :8106) need the bounce `collisionPass`
 //     computes and throws away (`if (contact.outcome.kind !== 'kill') continue`)
 //     — a thud would announce a collision the sim does not resolve.
@@ -53,6 +57,10 @@ export const EVENT_KINDS = [
   'extra-man', //          a REPLAY threshold was crossed — SNREPL
   'wave-bounty', //        an end-of-wave team bounty was collected — SNBOUN
   'cliff-destroyed', //    a wave's status nibble took a cliff out — SNCLIF
+  'player-wing-down', //   a knight pressed the flap (or flap-took-off) — SNPLWD
+  'player-wing-up', //     a knight released the flap — SNPLWU
+  'enemy-wing-down', //    a buzzard's wings went down on its wake — SNELWD
+  'enemy-wing-up', //      a buzzard's wings went up on its wake — SNELWU
 ] as const
 
 /** The discriminant of every event — derived from the tuple, never re-typed. */
@@ -64,7 +72,7 @@ export type GameEventKind = (typeof EVENT_KINDS)[number]
  * dispatch can narrow its default branch to `never` — which is what makes
  * adding a kind without a cue a COMPILE error instead of a silent drop.
  *
- * The members carry no payload today: every one of the eleven cues is a bare
+ * The members carry no payload today: every one of the fifteen cues is a bare
  * one-shot, and a field nothing reads would be a promise the seam does not keep.
  */
 export type GameEvent = { readonly [K in GameEventKind]: { readonly type: K } }[GameEventKind]

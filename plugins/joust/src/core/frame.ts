@@ -38,11 +38,24 @@ import {
   stepGround,
   takeOff,
   walkOff,
+  wingEdge,
   type EntityState,
   type PlayerInput,
 } from './flight.js'
 import { applyCeiling, groundOutcome, wrapX } from './arena.js'
-import { stepEnemy, shouldPromote, promote, type EnemyState, type IntelBudget, type PlayerView } from './enemy.js'
+import {
+  stepEnemyDetailed,
+  shouldPromote,
+  promote,
+  type EnemyState,
+  type IntelBudget,
+  type PlayerView,
+} from './enemy.js'
+// jt5-3: the wing cue this frame's flight stepping produced (or none). frame.ts
+// dispatches `GameEvent`s the same way demo.ts does — as DATA on the returned
+// state — so a wing edge detected here rides `GameState.cues` up to `stepDemo`
+// exactly like collisionPass's cues already do.
+import type { GameEvent, GameEventKind } from './events.js'
 // jt8-1: the aggro subsystem. frame.ts asks it, per waking enemy, WHICH player to
 // hunt (SELPLY), then hands that PlayerView to the enemy's existing seek. target.ts
 // is a leaf core (imports nothing back), so no cycle. The `targets` state rides the
@@ -101,6 +114,15 @@ export interface ProcessSpec {
    * bare scheduler process spawned without one → treated as right-facing.
    */
   facing?: -1 | 1
+  /**
+   * jt5-3 — a PLAYER process's wing-edge memory: the `flapHeld` LEVEL it
+   * carried LAST FRAME (`CURJOY+1`, :6168-6169/:6195-6196). Lives on the
+   * process, like `facing` above and for the identical reason (demo.ts Finding
+   * #2): the shared, GENERATED `EntityState` cannot safely grow it — the
+   * scheduler.test.ts migration guard JSON-compares only `.entity` against a
+   * pre-jt5-3 reference pipeline. Undefined reads as `false`.
+   */
+  prevFlapHeld?: boolean
 }
 
 /** A scheduled process. Plain data — the behaviour is dispatched by `kind`. */
@@ -138,6 +160,15 @@ export interface GameState {
    * behaviour). The demo seeds and advances it (`DemoSim.targets`).
    */
   readonly targets?: TargetState
+  /**
+   * jt5-3 — the `GameEvent`s the most recent `stepFrame` produced (today, only
+   * the four wing cues — a player or enemy's press/release edge). The SAME
+   * shape as `woke`: empty at creation, REBUILT from scratch every step, never
+   * accumulated (`stepFrame` never READS `state.cues`, only builds a fresh
+   * one). `stepDemo` reads the RETURNED value and prepends it to its own cue
+   * stream.
+   */
+  readonly cues: readonly GameEvent[]
 }
 
 /** One drawn random plus the advanced state — the probe for the RNG stream. */
@@ -174,7 +205,14 @@ function rngNext(word: number): { value: number; next: number } {
  * entropy. No processes, RNG at the seed.
  */
 export function createState(seed: number): GameState {
-  return { frame: 0, processes: [], woke: [], rng: seed >>> 0, budget: { nsmart: 0, wsmart: 0 } }
+  return {
+    frame: 0,
+    processes: [],
+    woke: [],
+    cues: [],
+    rng: seed >>> 0,
+    budget: { nsmart: 0, wsmart: 0 },
+  }
 }
 
 /** Create a process and append it to the list (`PROCCR`/`SECCR`). Pure. */
@@ -236,10 +274,23 @@ function stepPlayerEntity(state: EntityState, input: PlayerInput, facing?: -1 | 
   return s
 }
 
+/** jt5-3 — a raw `WingEdge` plus which species produced it, as an event kind. */
+function wingCue(edge: ReturnType<typeof wingEdge>, species: 'player' | 'enemy'): GameEventKind | undefined {
+  if (edge === null) return undefined
+  return species === 'player'
+    ? edge === 'down'
+      ? 'player-wing-down'
+      : 'player-wing-up'
+    : edge === 'down'
+      ? 'enemy-wing-down'
+      : 'enemy-wing-up'
+}
+
 /**
  * Run a woken process's kind-dispatched behaviour, threading the intelligence
- * budget. Returns the new process AND the (possibly-debited) budget — only an
- * enemy promotion changes it; every other kind passes it through untouched.
+ * budget. Returns the new process, the (possibly-debited) budget — only an
+ * enemy promotion changes it; every other kind passes it through untouched —
+ * and (jt5-3) the wing cue this wake produced, for player/enemy only.
  */
 function runBehaviour(
   p: Process,
@@ -247,11 +298,15 @@ function runBehaviour(
   inputs?: Record<number, PlayerInput>,
   wave = 1,
   target?: PlayerView | null,
-): { process: Process; budget: IntelBudget } {
+): { process: Process; budget: IntelBudget; cue?: GameEventKind } {
   if (p.kind === 'player' && p.entity) {
     const input = inputs?.[p.id] ?? NEUTRAL_INPUT
     // A bare scheduler process may carry no facing → treat as right-facing.
     const facing: -1 | 1 = p.facing ?? 1
+    // jt5-3: captured BEFORE the step — the law reads the LEVEL this player
+    // carried entering this frame, never the one `stepPlayerEntity` computes.
+    const wasAirborne = p.entity.airborne
+    const prevFlapHeld = p.prevFlapHeld ?? false
     // Step FIRST with the current facing, so a ground reversal (dir against
     // facing) enters the skid chain this frame; THEN flip PFACE from input —
     // `AIROVR` sets PFACE = sign(dir) every frame the stick is pushed, holds on
@@ -260,7 +315,11 @@ function runBehaviour(
     // drive pin compares entities, and it stays bit-identical).
     const entity = stepPlayerEntity(p.entity, input, facing)
     const nextFacing: -1 | 1 = input.dir === 0 ? facing : input.dir > 0 ? 1 : -1
-    return { process: { ...p, entity, facing: nextFacing }, budget }
+    return {
+      process: { ...p, entity, facing: nextFacing, prevFlapHeld: input.flapHeld },
+      budget,
+      cue: wingCue(wingEdge(wasAirborne, prevFlapHeld, input), 'player'),
+    }
   }
   // An enemy integrates on each wake through its own brain + the shared flight
   // core (jt2-2). The EMYTIM divider is this process's `period` — the enemy is
@@ -288,7 +347,15 @@ function runBehaviour(
     // identical. The gating is the ROM's — `LBLT BOUNUP` at JOUSTRV4.SRC:3800 sends
     // a buzzard whose quarry is above onto the up path, and BODNVY is read past it
     // at :3819, on the down path only.)
-    return { process: { ...p, enemy: stepEnemy(enemy, { player: target ?? null, wave }) }, budget: next }
+    // jt5-3: `stepEnemyDetailed` runs the SAME brain + flight step `stepEnemy`
+    // does (it IS stepEnemy's implementation) and additionally reports the wing
+    // edge that wake produced, from the `input.flap`/`flapHeld` only it sees.
+    const stepped = stepEnemyDetailed(enemy, { player: target ?? null, wave })
+    return {
+      process: { ...p, enemy: stepped.enemy },
+      budget: next,
+      cue: wingCue(stepped.wingEdge, 'enemy'),
+    }
   }
   // An egg is a scheduler process too (jt2-7): each wake integrates its fall
   // through the demo's `stepEgg` (the STEGG/EGGLPA loop + the BMI EGGBCK guard).
@@ -329,6 +396,9 @@ export function stepFrame(
   const processes = state.processes
   const next: Process[] = new Array(processes.length)
   const woke: number[] = []
+  // jt5-3 — this frame's wing cues. Fresh every call, like `woke`: nothing is
+  // carried in from `state.cues`.
+  const cues: GameEvent[] = []
   let budget = state.budget
 
   // jt8-1: the live players an enemy's SELPLY may pick from, and the aggro state
@@ -372,6 +442,7 @@ export function stepFrame(
       const ran = runBehaviour(p, budget, inputs, wave, target)
       next[i] = { ...ran.process, nap: p.period }
       budget = ran.budget
+      if (ran.cue !== undefined) cues.push({ type: ran.cue })
       woke.push(p.id)
     })
   }
@@ -382,6 +453,7 @@ export function stepFrame(
     frame: state.frame + 1,
     processes: next,
     woke,
+    cues,
     rng: rngNext(state.rng).next,
     budget,
     // Carry the aggro state through untouched — the demo ticks/reconciles it.

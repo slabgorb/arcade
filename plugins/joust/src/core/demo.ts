@@ -136,6 +136,13 @@ export interface DemoProcess {
   collisionEnabled?: boolean
   /** `PFACE` for a player — the demo's home for player facing (Finding #2). */
   facing?: Facing
+  /**
+   * jt5-3 — a PLAYER process's wing-edge memory: the `flapHeld` LEVEL it
+   * carried last frame. Same home as `facing` above and for the identical
+   * reason: `EntityState` is shared, GENERATED, and cannot safely grow it.
+   * frame.ts is the writer; nothing here reads it directly.
+   */
+  prevFlapHeld?: boolean
   /** A player's MOUNT (round 2): P1 an ostrich, P2 a stork — the render draws it under the rider. */
   mount?: 'ostrich' | 'stork'
   /** The transporter materialisation window (jt2-6), while one is in progress. */
@@ -1085,7 +1092,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // them decimal-expecting, all of them wrong from the tenth wave on. That
   // PREDATES uf1-2 and is owned by **td1-12**, which will decide once whether the
   // counter stays BCD or becomes an ordinal. Only this hop is fixed here.
-  const stepped = stepFrame({ ...demo.sim, targets: tickedTargets }, inputs, {
+  const stepped = stepFrame({ ...demo.sim, targets: tickedTargets, cues: [] }, inputs, {
     wave: decimalWaveFromBcd(demo.wave),
   })
 
@@ -1096,7 +1103,10 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // jt5-1 — the frame's cue stream starts from the collision pass's four moments
   // and gathers the rest below. A FRESH array every frame: nothing is carried in
   // from `demo.cues`, which is the whole point of the channel.
-  const cues: GameEvent[] = [...collided.cues]
+  // jt5-3 — `stepped.cues` (the wing edges frame.ts's stepFrame detected, one
+  // per waking player/enemy) come FIRST: they belong to the flight-stepping
+  // phase, which runs before collisionPass ever sees this frame's processes.
+  const cues: GameEvent[] = [...stepped.cues, ...collided.cues]
   // A dissolve that reached `done` this frame (frame.ts stepped it there) is removed —
   // the body's fate is complete (JSR CPLYR, JOUSTRV4.SRC:1414-1415).
   let processes = collided.processes.filter((p) => !(p.kind === 'dissolve' && p.dissolve?.done))

@@ -36,7 +36,8 @@
 // always steals. The two models cannot be reconciled inside a manifest, so the
 // channel map is built to keep them from CONTRADICTING: a channel per distinct
 // ROM priority, so two cues share a voice only where the machine would have let
-// either interrupt the other. Eleven cues, nine priorities, nine channels. That
+// either interrupt the other. Fifteen cues, eleven priorities, eleven channels
+// (jt5-3 adds two: 10 for the knight's wing pair, 6 for the buzzard's). That
 // stops the map inverting the ROM; it does not implement the arbitration, which
 // needs an optional priority on the shared engine (a jt5-1 Delivery Finding).
 import {
@@ -62,6 +63,10 @@ export type SoundName =
   | 'extraMan'
   | 'waveBounty'
   | 'cliffDestroyed'
+  | 'playerWingDown'
+  | 'playerWingUp'
+  | 'enemyWingDown'
+  | 'enemyWingUp'
 
 /**
  * joust's prefix on the shared assets host — the fleet convention (tempest's is
@@ -71,7 +76,7 @@ export type SoundName =
  */
 export const DEFAULT_BASE_URL = 'https://arcade-assets.slabgorb.com/joust/sfx/'
 
-/** Cue -> filename. One `.wav` per cue: eleven distinct Williams tables. */
+/** Cue -> filename. One `.wav` per cue: fifteen distinct Williams tables. */
 export const SOUNDS: Readonly<Record<SoundName, string>> = {
   enemyDeath: 'enemy_death.wav',
   playerDeath: 'player_death.wav',
@@ -84,6 +89,10 @@ export const SOUNDS: Readonly<Record<SoundName, string>> = {
   extraMan: 'extra_man.wav',
   waveBounty: 'wave_bounty.wav',
   cliffDestroyed: 'cliff_destroyed.wav',
+  playerWingDown: 'player_wing_down.wav',
+  playerWingUp: 'player_wing_up.wav',
+  enemyWingDown: 'enemy_wing_down.wav',
+  enemyWingUp: 'enemy_wing_up.wav',
 }
 
 /**
@@ -94,6 +103,10 @@ export const SOUNDS: Readonly<Record<SoundName, string>> = {
  * error rather than an unroutable sound.
  */
 export const CHANNELS: Readonly<Record<SoundName, string>> = {
+  enemyWingDown: 'prio-6',
+  enemyWingUp: 'prio-6',
+  playerWingDown: 'prio-10',
+  playerWingUp: 'prio-10',
   enemyDeath: 'prio-40',
   enemyMaterialise: 'prio-40',
   eggCollected: 'prio-45',
@@ -286,6 +299,78 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
     romComment: 'CLIFF DESTROYER',
     source: { file: SRC, line: 8090, verbatim: 'SNCLIF\tFCB\t067,!N$19!.$7F,90\tCLIFF DESTROYER' },
     callSite: { file: SRC, line: 2327, verbatim: '12$\tLDX\t#SNCLIF\t\tCLIFF DESTROYING SOUND' },
+  },
+  // ─── jt5-3: the two-edge FLAP ────────────────────────────────────────────
+  // Both call sites are the DECISION-BLOCK bindings (:5544 knights, :5560
+  // buzzards), not GOFLIP/GOFLAP themselves: those two lines load through
+  // DSNWU/DSNWD (the structure OFFSETS declared at :118-119), never naming
+  // SNPLWU/SNPLWD/SNELWU/SNELWD by symbol, so citing them here would fail the
+  // "call site really mentions the table" gate. The binding lines say which
+  // species gets which table — exactly what `playerMaterialise` and
+  // `enemyMaterialise` above already cite at these same two lines.
+  playerWingDown: {
+    kind: 'rom',
+    table: 'SNPLWD',
+    priority: 10,
+    romComment: 'PLAYERS WING DOWN SOUND',
+    source: {
+      file: SRC,
+      line: 8126,
+      verbatim: 'SNPLWD\tFCB\t010,!N$20!.$7F,90\tPLAYERS WING DOWN SOUND',
+    },
+    callSite: {
+      file: SRC,
+      line: 5544,
+      verbatim: '\tFDB\tSNPLWU,SNPLWD,SNPLSK,SNPLS2,SNPRU1,SNPRU2,SNPFAL,0,SNPCR1',
+    },
+  },
+  playerWingUp: {
+    kind: 'rom',
+    table: 'SNPLWU',
+    priority: 10,
+    romComment: 'PLAYERS WING UP SOUND',
+    source: {
+      file: SRC,
+      line: 8125,
+      verbatim: 'SNPLWU\tFCB\t010,!N$21!.$7F,90\tPLAYERS WING UP SOUND',
+    },
+    callSite: {
+      file: SRC,
+      line: 5544,
+      verbatim: '\tFDB\tSNPLWU,SNPLWD,SNPLSK,SNPLS2,SNPRU1,SNPRU2,SNPFAL,0,SNPCR1',
+    },
+  },
+  enemyWingDown: {
+    kind: 'rom',
+    table: 'SNELWD',
+    priority: 6,
+    romComment: 'ENEMIES WING DOWN SOUND',
+    source: {
+      file: SRC,
+      line: 8108,
+      verbatim: 'SNELWD\tFCB\t006,!N$20!.$7F,60\tENEMIES WING DOWN SOUND',
+    },
+    callSite: {
+      file: SRC,
+      line: 5560,
+      verbatim: '\tFDB\tSNELWU,SNELWD,SNEMSK,SNEMS2,SNERU1,SNERU2,SNEFAL,0,SNECRE',
+    },
+  },
+  enemyWingUp: {
+    kind: 'rom',
+    table: 'SNELWU',
+    priority: 6,
+    romComment: 'ENEMIES WING UP SOUND',
+    source: {
+      file: SRC,
+      line: 8107,
+      verbatim: 'SNELWU\tFCB\t006,!N$21!.$7F,60\tENEMIES WING UP SOUND',
+    },
+    callSite: {
+      file: SRC,
+      line: 5560,
+      verbatim: '\tFDB\tSNELWU,SNELWD,SNEMSK,SNEMS2,SNERU1,SNERU2,SNEFAL,0,SNECRE',
+    },
   },
 }
 

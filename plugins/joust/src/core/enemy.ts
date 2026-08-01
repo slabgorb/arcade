@@ -27,8 +27,10 @@ import {
   stepGround,
   takeOff,
   walkOff,
+  wingEdge,
   type EntityState,
   type PlayerInput,
+  type WingEdge,
 } from './flight.js'
 import { applyCeiling, groundOutcome, wrapX } from './arena.js'
 // uf1-2 — the per-wave difficulty seam. This closes a module CYCLE (difficulty.ts
@@ -123,6 +125,19 @@ export interface EnemyState {
    * matched wake seeds it. When present it is CARRIED, never re-seeded.
    */
   homing?: HomingState
+  /**
+   * jt5-3 — the wing-edge detector's memory: the `flapHeld` LEVEL this enemy's
+   * synthetic joystick carried on its LAST WAKE (`CURJOY+1`, read as the edge
+   * by FLIPLP's `TSTB`/`BNE GOFLAP` and as the level by FLAPS2's `CLRB`,
+   * :6195-6196/:6170). Lives here rather than on `EntityState` for the same
+   * reason a player's `facing` lives on the demo's PROCESS and not there
+   * (demo.ts Finding #2): `EntityState` is GENERATED (flight.ts) and shared
+   * with the player, whose own migration-guard test JSON-compares only
+   * `.entity` against a pre-jt5-3 reference pipeline. OPTIONAL — absent reads
+   * as `false`, since an enemy that has never woken has never held the button
+   * either.
+   */
+  prevFlapHeld?: boolean
 }
 
 // ─── Cited constants ────────────────────────────────────────────────────────
@@ -523,11 +538,29 @@ function stepEntity(state: EntityState, input: PlayerInput): EntityState {
  * wings-held gravity of the synthetic joystick (`CURJOY`): a flapping buzzard's
  * wings are down. Returns the enemy after the step. The EMYTIM divider is the
  * scheduler `period`, NOT anything inside this step. Pure — the input untouched.
+ *
+ * A thin wrapper over `stepEnemyDetailed` (jt5-3), kept at this exact signature
+ * because `tests/helpers/enemy-contract.ts` pins it — every existing caller and
+ * test wants the enemy alone, not the wing cue riding beside it.
  */
 export function stepEnemy(
   enemy: EnemyState,
   ctx?: { player?: PlayerView | null; wave?: number },
 ): EnemyState {
+  return stepEnemyDetailed(enemy, ctx).enemy
+}
+
+/**
+ * jt5-3 — `stepEnemy` PLUS the wing edge this WAKE produced (or `null`). The
+ * decision (and therefore the edge) is computed from `input.flap`/`flapHeld`,
+ * which only this function's internals see — `stepEnemy`'s pinned signature
+ * returns `EnemyState` alone, so frame.ts calls THIS to get the cue without
+ * re-running the brain a second time. Pure — the argument is never mutated.
+ */
+export function stepEnemyDetailed(
+  enemy: EnemyState,
+  ctx?: { player?: PlayerView | null; wave?: number },
+): { enemy: EnemyState; wingEdge: WingEdge } {
   const target = ctx?.player ?? null
   // jt8-2: the homing wake runs BEFORE the brain. `COM PFACE,U` (:3945) falls
   // into `JMP BODIR` (:3946), whose first instruction is `LDA PFACE,U` (:3876) —
@@ -538,5 +571,9 @@ export function stepEnemy(
   // the same wake's decision, not two.
   const decision = runBrain(homed, target, ctx?.wave ?? 1)
   const input: PlayerInput = { dir: decision.dir, flap: decision.flap, flapHeld: decision.flap }
-  return { ...homed, entity: stepEntity(homed.entity, input) }
+  const edge = wingEdge(homed.entity.airborne, homed.prevFlapHeld ?? false, input)
+  return {
+    enemy: { ...homed, entity: stepEntity(homed.entity, input), prevFlapHeld: input.flapHeld },
+    wingEdge: edge,
+  }
 }

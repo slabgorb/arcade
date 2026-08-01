@@ -124,5 +124,77 @@
       "line": 767,
       "verbatim": "\tCMPA\tSPRI\t\tOK TO INTERUPT THIS PIRORITY SOUND?"
     }
+  },
+  {
+    "id": "JT53-001",
+    "claim": "The flap is a TWO-LOOP coroutine, not a per-frame edge test: FLIPLP's TSTB/BNE GOFLAP leaves the wings-up loop for GOFLAP only when the button reads pressed (JOUSTRV4.SRC:6195-6196); a held button re-enters at FLAPS2/FLIPS2, BELOW each JSR VSND, which is why holding never re-fires the cue.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6196,
+      "verbatim": "\tBNE\tGOFLAP\t\t BR=NO"
+    }
+  },
+  {
+    "id": "JT53-002",
+    "claim": "SNPLWD is the PLAYERS WING DOWN SOUND table at priority 010 — the jt5-3 cue 'playerWingDown' (JOUSTRV4.SRC:8126); the machine loads it at GOFLAP's tail, FLAST2 (JOUSTRV4.SRC:6217), a 1982 copy-paste comment that reads 'GET WING UP SOUND' over the DSNWD load — trust the symbol, not the comment.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8126,
+      "verbatim": "SNPLWD\tFCB\t010,!N$20!.$7F,90\tPLAYERS WING DOWN SOUND"
+    }
+  },
+  {
+    "id": "JT53-003",
+    "claim": "SNPLWU is the PLAYERS WING UP SOUND table at priority 010 — the jt5-3 cue 'playerWingUp' (JOUSTRV4.SRC:8125); the machine loads it at GOFLIP (JOUSTRV4.SRC:6183), on the button RELEASE.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8125,
+      "verbatim": "SNPLWU\tFCB\t010,!N$21!.$7F,90\tPLAYERS WING UP SOUND"
+    }
+  },
+  {
+    "id": "JT53-004",
+    "claim": "SNELWD is the ENEMIES WING DOWN SOUND table at priority 006 — the jt5-3 cue 'enemyWingDown' (JOUSTRV4.SRC:8108); below the player pair's 010, so a buzzard's wingbeat never steals the knight's own.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8108,
+      "verbatim": "SNELWD\tFCB\t006,!N$20!.$7F,60\tENEMIES WING DOWN SOUND"
+    }
+  },
+  {
+    "id": "JT53-005",
+    "claim": "SNELWU is the ENEMIES WING UP SOUND table at priority 006 — the jt5-3 cue 'enemyWingUp' (JOUSTRV4.SRC:8107).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8107,
+      "verbatim": "SNELWU\tFCB\t006,!N$21!.$7F,60\tENEMIES WING UP SOUND"
+    }
+  },
+  {
+    "id": "JT53-006",
+    "claim": "The knight's decision block binds SNPLWU/SNPLWD (JOUSTRV4.SRC:5544) — the jt5-3 call site for both player wing cues, chosen over GOFLIP/GOFLAP because those two lines load through the DSNWU/DSNWD structure OFFSETS (declared JOUSTRV4.SRC:118-119) and never name the table by symbol.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5544,
+      "verbatim": "\tFDB\tSNPLWU,SNPLWD,SNPLSK,SNPLS2,SNPRU1,SNPRU2,SNPFAL,0,SNPCR1"
+    }
+  },
+  {
+    "id": "JT53-007",
+    "claim": "The buzzard's decision block binds SNELWU/SNELWD (JOUSTRV4.SRC:5560) — the jt5-3 call site for both enemy wing cues, the same binding enemyMaterialise already cites for SNECRE on this row.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5560,
+      "verbatim": "\tFDB\tSNELWU,SNELWD,SNEMSK,SNEMS2,SNERU1,SNERU2,SNEFAL,0,SNECRE"
+    }
+  },
+  {
+    "id": "JT53-008",
+    "claim": "A flap TAKE-OFF sounds wing-down: STFLY ends with a jump straight onto FLAST2, the same wing-down cue GOFLAP reaches — so entering flight by pressing the button is NOT silent, unlike walking off a ledge (STFALL, which re-enters below both cues).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6135,
+      "verbatim": "\tJMP\tFLAST2"
+    }
   }
 ]

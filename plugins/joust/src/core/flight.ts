@@ -429,3 +429,30 @@ export function land(state: EntityState, platform: { snapY: number }): EntitySta
     groundState: FRCONV[speed],
   }
 }
+
+// ─── jt5-3: the two-edge wing cue ───────────────────────────────────────────
+//
+// FLAPLP/FLIPLP (:6163-6210) is a two-loop coroutine, not a per-frame edge
+// test: an airborne bird sounds wing-DOWN on the PRESS (GOFLAP -> FLAST2,
+// :6212-6218) and wing-UP on the RELEASE (GOFLIP, :6182-6184); holding
+// re-enters its loop BELOW the cue (FLAPS2 :6170 / FLIPS2 :6197) and stays
+// silent. A flap TAKE-OFF (STFLY, :6123-6135) jumps straight onto the
+// wing-down cue; walking off a ledge (STFALL, :6139-6157) and every other
+// grounded transition (PLYRLP, :5948-6024) has no wing sound at all — and
+// since `input.flap` (the shell's rising edge) is the ONLY thing that ever
+// calls `takeOff()` below, checking it is checking exactly the STFLY/STFALL
+// fork.
+//
+// This function is itself pure and carries no memory of its own:
+// `wasAirborne` and `prevFlapHeld` are the CALLER's record of the previous
+// frame (a player) or the previous wake (an enemy) — see frame.ts's
+// `runBehaviour` and enemy.ts's `stepEnemyDetailed`, which is also where the
+// value returned here becomes a `GameEvent`.
+export type WingEdge = 'down' | 'up' | null
+
+export function wingEdge(wasAirborne: boolean, prevFlapHeld: boolean, input: PlayerInput): WingEdge {
+  if (!wasAirborne) return input.flap ? 'down' : null
+  if (input.flapHeld && !prevFlapHeld) return 'down'
+  if (!input.flapHeld && prevFlapHeld) return 'up'
+  return null
+}
