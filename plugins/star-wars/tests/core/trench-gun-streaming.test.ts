@@ -16,9 +16,13 @@
 // MEASURED GROUND TRUTH (probe run 2026-08-01 against the committed grid, via
 // buildTrench — not invented): gun slots per wave 1..13 span 52..96; wave 1 has
 // 80, its first at exactly −Z 0x6000 (= TRENCH_GUN_FIRE_RANGE, so the intro
-// wedge's guns are in firing range AT ENTRY); force fields 0..256; decorative
-// panels 74..114; the port is constant at 327,680 (pinned by
-// trench-port-bs-plc.test.ts — run DURATION is untouched by this story).
+// wedge's guns are in firing range AT ENTRY); force fields 0..256 under the
+// probe's single seed (1983) and up to 272 across a 20,000-seed sweep of the
+// random-pie waves (review round 1); decorative panels 72..114 (floor is
+// wave 8's 72); the port is constant at 327,680 (pinned by
+// trench-port-bs-plc.test.ts — run DURATION is untouched by this story). The
+// ceilings asserted below carry real margin: max observed entry total across a
+// 3,000-seed × 13-wave sweep was 343 objects / 106 guns vs 512 / 128.
 //
 // SEAM (same rule as the sw7-22 suite): everything is pinned via OBSERVABLES
 // off the SIM state — `enterPhase(...).trenchObstacles`, kind 'turret', the
@@ -198,10 +202,12 @@ describe('uf1-4 — trench wall guns stream from the wedge grid (B-017 closes th
     expect(s2.trenchObstacles.filter((o) => o.kind === 'catwalk').length, 'fields survive the gun wiring').toBeGreaterThan(40)
     expect(turrets(s2).length, 'guns stream in the same entry state').toBe(gridGuns(2).length)
 
-    // AC-4 — sw7-19's dense-grid class: measured entry maxima across waves
-    // 1..13 (probe 2026-08-01): guns ≤ 96, fields ≤ 256, panels ≤ 114 — worst
-    // plausible entry < 470 even if every layer streams. 512 is a REGRESSION
-    // ceiling close over the measurement, not an assumed-cheap allowance.
+    // AC-4 — sw7-19's dense-grid class: measured entry maxima (2026-08-01):
+    // guns ≤ 96 and panels ≤ 114 across waves 1..13; fields ≤ 256 under seed
+    // 1983 and ≤ 272 across a 20,000-seed sweep of the random-pie waves; max
+    // OBSERVED entry total across a 3,000-seed × 13-wave sweep was 343 objects
+    // / 106 guns. 512 / 128 are REGRESSION ceilings close over those sweeps,
+    // not assumed-cheap allowances.
     for (let wave = 1; wave <= 13; wave++) {
       const s = freshTrench(wave)
       expect(s.trenchObstacles.length, `wave ${wave} entry object count`).toBeLessThanOrEqual(512)
