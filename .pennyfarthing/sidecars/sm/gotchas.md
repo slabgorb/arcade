@@ -670,3 +670,61 @@ superseded claim commits, because the real work lands on `main` — so the count
 usually *expected*, not alarming. That is precisely why it must be READ rather than merely printed:
 the rule's "must be 0" is wrong for any story whose claim was pushed WITH its commits rather than
 empty. Verify the content is represented on `main`, then delete.
+
+---
+
+## With the reviewer specialists disabled, a MUTATION BATTERY is the review — and its most useful output is an EQUIVALENT MUTANT (jt5-5, 2026-08-01)
+
+**Situation:** `pf settings get workflow.reviewer_subagents` reports `preflight: true` and the other
+eight `false`. This project also stands on "do not use the Agent tool unless asked", so even
+preflight was not spawned. Nine specialist rows, zero specialists.
+
+**What worked:** 18 mutations against committed source, each run through
+`--project shared --project joust`, source restored after. 17 were caught. Re-reading the diff by
+hand had found the same two prose defects and none of the mechanism confidence — the battery is what
+turned "the tests look thorough" into "truncating SNPCR1 to its cited row reddens exactly 2 tests".
+
+**The lesson is the SURVIVOR, and it is not the one you expect.** Removing the `> 0` floor from
+`tick()` (letting the counter run negative) killed nothing. The instinct is to write a test for it.
+That instinct is wrong: negative and zero are indistinguishable through the public surface, because
+every read is `voiceFrames > 0` and an accept reassigns the field outright. It is an **equivalent
+mutant** — no test can catch it because there is nothing to catch. The real defect was that a test
+had been NAMED `the window does not go negative`, claiming a property it could not observe. Renamed
+to what it proves, with the equivalence recorded so nobody re-derives it.
+
+So: when a mutation survives, ask "is this behaviour, or is this an unobservable internal?" before
+demanding coverage. If unobservable, the fix is the test's NAME, not the test's assertions. This is
+the same family as `guard-tests-name-uncovered-cases` in the user memory, from the opposite side —
+there a test's name over-promised its coverage, here a test's name over-promised what was knowable.
+
+**Also worth keeping: how to build the battery cheaply.** Anchor each mutation on a distinctive
+source substring, `assert s.count(old)==1` before applying, and print `ANCHOR MISS` rather than
+silently skipping — a mutation that failed to apply looks exactly like one that was caught, and
+scores the suite as safer than it is.
+
+## Gate the claim-branch delete on the count — and jt5-6-style "owner" stories need the finding WRITTEN INTO them
+
+Two follow-ups to entries above, both proved out on jt5-5's finish:
+
+**The gated delete works.** `N=$(git rev-list --count origin/main..origin/$BR)` then
+`[ "$N" = "0" ] && git push origin --delete "$BR" || echo "NOT EMPTY"`. On jt5-5 the count was 0 and
+the branch went cleanly. Never chain the check and the delete with `;`.
+
+**"Owned by <story>" is not a disposition until the owner story SAYS SO.** Three agents routed the
+multi-line-sound-table finding to jt5-6. jt5-6 existed, and its description quoted a `+$80` operand —
+so a grep for the finding's own tell returned a hit and it *looked* owned. It was not: the
+description nowhere stated the continuation RULE or that either table is multi-line, so whoever
+picked jt5-6 up would have re-derived the 15x error from scratch. Fixed at finish by appending the
+rule, both real extents, and the structural instruction to the description via
+`pf sprint story update jt5-6 --description`. **Check the owner story's TEXT, not just its
+existence** — the existing rule ("confirm the named owner actually exists") is necessary and not
+sufficient.
+
+## `pf sprint story add` wrote `repos: pennyfarthing` again — third confirmation, treat as unconditional
+
+Same as the sw8-10 entry: the add minted `jt5-15` correctly (read the id from the output, do not
+guess), wrote no description, and set `repos: pennyfarthing` in an `arcade`-only monorepo. There is
+still no `--repos` flag. Fix with a surgical in-block replace — locate `  - id: <new>` and the next
+`\n  - id: `, assert the block contains exactly one `repos: pennyfarthing`, replace within that slice
+only — then verify by PARSING that no story in the epic has `repos != arcade`. A file-wide sed would
+have hit any sibling with the same wrong value and hidden the fact that it was ever wrong.
