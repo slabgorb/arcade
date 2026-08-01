@@ -18,30 +18,60 @@
 //
 // ─── WHAT IS AND IS NOT FAKED ────────────────────────────────────────────────
 // The core sim, the atlas, the renderer, the timebase and the input adapters are
-// all REAL. Three seams are wrapped, and every wrapper DELEGATES to the genuine
+// all REAL. Four seams are wrapped, and every wrapper DELEGATES to the genuine
 // implementation rather than replacing it:
 //   • shell/audio      — `createAudio` returns a recording engine (AC2's fake).
 //   • shell/audio-dispatch — `playEventSounds` records its arguments, then calls
 //     the real dispatch, so the recording engine sees real cues.
 //   • core/sim         — `stepSim` records the events each step produced.
+//   • shell/timebase   — `pumpFrame` counts its own callback invocations. That
+//     counter is the PUMP INDEX, and the AC1 comparison below is built on it;
+//     see the REWORK note there for why a bare array-for-array compare was not
+//     enough.
 // Wrapping rather than replacing is what makes the AC1 comparison meaningful:
 // both sides of it are the production code's own values.
-//
-// EVERY ASSERTION HERE IS RED TODAY, and for one reason: main.ts contains no
-// reference to `createAudio` or `playEventSounds` at all (0 occurrences, all 185
-// lines). The mock factories are lazy, so while nothing imports them the
-// recorders simply stay empty. That makes vacuity the hazard to design against —
-// "every dispatched array is correct" is TRUE of no arrays at all. Each
-// universally-quantified assertion below is therefore paired, in the same test,
-// with a positive existence assertion that cannot pass on an empty recording.
 
 import { describe, it, expect, beforeAll, vi } from 'vitest'
-import { installShellDom, BURST_MS, ONE_STEP_MS } from './helpers/boot-shell'
+import {
+  installShellDom,
+  seedWasHonoured,
+  snapshotPlayfield,
+  BURST_MS,
+  ONE_STEP_MS,
+  SEED,
+} from './helpers/boot-shell'
 import type { GameEvent } from '../src/core/events'
+import type { SimState } from '../src/core/sim'
 // SOUNDS is read from the REAL module (the mock below spreads `...real`, so the
 // manifest is the genuine one) rather than re-listed here — a hand-kept copy of
 // a name list agrees with itself forever while the manifest drifts underneath.
-import { SOUNDS, type SoundName } from '../src/shell/audio'
+import { SOUNDS, type AudioEngine, type SoundName } from '../src/shell/audio'
+
+/** One recorded event array, tagged with the pump callback it belongs to. */
+interface Pumped {
+  pump: number
+  events: GameEvent[]
+}
+
+/**
+ * Every multi-event step composition the `?seed=SEED` run produces — measured,
+ * not remembered. Sorted, deduplicated, one string per distinct shape.
+ *
+ * REWORK (Reviewer round 1, MEDIUM). The note that stood here offered a death
+ * frame (sim.ts:693) AND a wave clear (sim.ts:723) as the causes of the
+ * multi-event steps. Both lines really do concatenate onto a stream that
+ * already has something in it, but the wave clear did not fire in the run at
+ * all — so half of a two-part explanation was corroboration for something that
+ * never happened, and the death frame covered only some of the steps. Measured
+ * on the seeded run, `player-died+march-stop` is the death concatenation; the
+ * other two are ordinary steps where two subsystems each emitted into the same
+ * frame's stream. No wave-clear composition occurs.
+ */
+const MEASURED_PAIR_COMPOSITIONS: string[] = [
+  'march-start+spider-stop',
+  'player-died+march-stop',
+  'shot-fired+spider-stop',
+]
 
 // ─── recorders ───────────────────────────────────────────────────────────────
 // `vi.mock` factories are hoisted above every import, so the arrays they close
@@ -50,12 +80,19 @@ import { SOUNDS, type SoundName } from '../src/shell/audio'
 const rec = vi.hoisted(() => ({
   /** One entry per `createAudio()` call — AC1 says main.ts constructs the engine. */
   engines: [] as unknown[],
-  /** The events array handed to each `playEventSounds` call, in call order. */
-  dispatched: [] as GameEvent[][],
+  /**
+   * How many `pumpFrame` callbacks have STARTED. See the AC1 test: this is the
+   * clock the shift defect is measured against, and it ticks at the callback
+   * BOUNDARY — which is exactly why it can see a shift that a step counter
+   * (ticking mid-callback) cannot.
+   */
+  pumps: 0,
+  /** The events array handed to each `playEventSounds` call, pump-tagged. */
+  dispatched: [] as { pump: number; events: GameEvent[] }[],
   /** The engine object each call was given — proves it is the one main.ts built. */
   dispatchedTo: [] as unknown[],
-  /** The events each `stepSim` produced, in step order. */
-  stepped: [] as GameEvent[][],
+  /** The events each `stepSim` produced, pump-tagged. */
+  stepped: [] as { pump: number; events: GameEvent[] }[],
   /** Every cue that reached the engine: `play`/`startLoop`/`stopLoop` + name. */
   cues: [] as { method: string; name: string }[],
 }))
@@ -64,8 +101,11 @@ vi.mock('../src/shell/audio', async (importOriginal) => {
   const real = await importOriginal<typeof import('../src/shell/audio')>()
   return {
     ...real,
-    createAudio: (): unknown => {
-      const engine = {
+    // Forward every parameter the real factory takes (`baseUrl`) rather than
+    // declaring none: a signature that swallows an argument makes the mock
+    // quietly stop modelling the thing it stands in for. House rule #8.
+    createAudio: (...args: Parameters<typeof real.createAudio>): AudioEngine => {
+      const engine: AudioEngine = {
         resume: (): void => {},
         play: (name: SoundName): void => {
           rec.cues.push({ method: 'play', name })
@@ -88,10 +128,11 @@ vi.mock('../src/shell/audio-dispatch', async (importOriginal) => {
   const real = await importOriginal<typeof import('../src/shell/audio-dispatch')>()
   return {
     ...real,
-    playEventSounds: (audio: never, events: readonly GameEvent[]): void => {
+    playEventSounds: (...args: Parameters<typeof real.playEventSounds>): void => {
+      const [audio, events] = args
       rec.dispatchedTo.push(audio)
-      rec.dispatched.push([...events])
-      real.playEventSounds(audio, events)
+      rec.dispatched.push({ pump: rec.pumps, events: [...events] })
+      real.playEventSounds(...args)
     },
   }
 })
@@ -100,10 +141,28 @@ vi.mock('../src/core/sim', async (importOriginal) => {
   const real = await importOriginal<typeof import('../src/core/sim')>()
   return {
     ...real,
-    stepSim: (state: never, input: never): unknown => {
-      const next = real.stepSim(state, input)
-      rec.stepped.push([...next.events])
+    stepSim: (...args: Parameters<typeof real.stepSim>): SimState => {
+      const next = real.stepSim(...args)
+      rec.stepped.push({ pump: rec.pumps, events: [...next.events] })
       return next
+    },
+  }
+})
+
+// The pump clock. `pumpFrame` calls its `step` callback once per SIM step
+// (shell/timebase.ts — `advanceFixedSteps(..., () => step(sampleStep()))`), so
+// incrementing on entry stamps every observation inside that callback with the
+// same index, whatever order the callback does its work in.
+vi.mock('../src/shell/timebase', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../src/shell/timebase')>()
+  return {
+    ...real,
+    pumpFrame: (...args: Parameters<typeof real.pumpFrame>): number => {
+      const [acc, elapsed, sampleStep, step] = args
+      return real.pumpFrame(acc, elapsed, sampleStep, (input) => {
+        rec.pumps += 1
+        step(input)
+      })
     },
   }
 })
@@ -111,16 +170,22 @@ vi.mock('../src/core/sim', async (importOriginal) => {
 const shell = installShellDom()
 
 /** Non-empty event arrays only — an empty frame is a no-op on both sides. */
-const nonEmpty = (arrays: readonly GameEvent[][]): GameEvent[][] =>
-  arrays.filter((a) => a.length > 0)
+const nonEmpty = (records: readonly Pumped[]): Pumped[] => records.filter((r) => r.events.length > 0)
+
+/** The mushroom field the shell booted with, COPIED before a frame has run. */
+let bootCells: Uint8Array
+/** How many rAF frames the run drove — the denominator of the burst check. */
+let rafFrames = 0
 
 beforeAll(async () => {
   await import('../src/main')
+  bootCells = snapshotPlayfield(shell.sim())
 
   let t = 0
   const run = (frames: number, ms: number): void => {
     for (let i = 0; i < frames; i++) {
       t += ms
+      rafFrames += 1
       shell.frame(t)
     }
   }
@@ -130,15 +195,42 @@ beforeAll(async () => {
   // START1: leave attract for a live game. The core keeps attract silent by
   // design (core/events.ts:23-26 — stepAttractDemo clears the stream), so no
   // cue can be observed until this lands.
-  shell.emit('keydown', { key: 'Enter' })
+  shell.emit('window', 'keydown', { key: 'Enter' })
   run(10, ONE_STEP_MS)
-  shell.emit('keyup', { key: 'Enter' })
+  shell.emit('window', 'keyup', { key: 'Enter' })
 
   // Hold the gun down and play. BURST_MS frames run a catch-up burst of sim
   // steps each (measured: 14), which is both the fast way to accumulate a long
   // run and the exact shape that separates a per-STEP call from a per-rAF one.
-  shell.emit('keydown', { key: ' ' })
+  shell.emit('window', 'keydown', { key: ' ' })
   run(1500, BURST_MS)
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The precondition every emergent assertion in this file rests on
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('cp5-2 — the boot is SEEDED, so what this run happens to produce is not luck', () => {
+  it('main.ts honoured the ?seed= override instead of seeding attract from the clock', () => {
+    // REWORK (Reviewer round 1, MEDIUM). main.ts:137 seeds attract with
+    // `createAttract(Date.now())`, and the assertions below this line are about
+    // EMERGENT play: that the gun cue fires, that a spider loop opens and
+    // closes, that some step emitted two events. Against a wall-clock seed
+    // those are observations about one particular afternoon — they were green
+    // eight runs running, which is evidence and not proof, and every other
+    // centipede suite pins a literal seed for exactly this reason.
+    //
+    // The fix is a shell-only `?seed=` debug override in the shape of the
+    // `?wave=` one main.ts already parses (main.ts:36-45) — parsed in the SHELL
+    // and never passed into createSim, so the pure core stays debug-free. It
+    // does not exist yet; this is the RED that asks for it.
+    expect(
+      seedWasHonoured(bootCells),
+      `main.ts did not boot the world ?seed=${SEED} asks for — it is still seeding attract ` +
+        'from Date.now(), so every emergent assertion in this file is a statement about ' +
+        'whatever the clock said. Add the shell-only ?seed= override (the ?wave= shape).',
+    ).toBe(true)
+  })
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -153,14 +245,13 @@ describe('cp5-2 AC1 — main.ts constructs the engine via createAudio()', () => 
     // working — silently, since the shared engine never throws.
     expect(
       rec.engines.length,
-      'main.ts must build the audio engine with createAudio() — it currently references neither ' +
-        'createAudio nor playEventSounds (0 occurrences in all 185 lines)',
+      'main.ts must build the audio engine with createAudio() — exactly one engine, at boot',
     ).toBe(1)
   })
 })
 
 describe('cp5-2 AC1 — the dispatch runs once per STEPPED frame, not once per rAF frame', () => {
-  it('every stepped frame that emitted events handed that whole array to the dispatch', () => {
+  it('every stepped frame that emitted events handed that whole array to the dispatch, in the SAME pump callback', () => {
     // THE CLAIM, and why it is shaped as an array-of-arrays rather than a count.
     //
     // `SimState.events` is REBUILT every step (core/events.ts:12-21) and main.ts
@@ -174,6 +265,28 @@ describe('cp5-2 AC1 — the dispatch runs once per STEPPED frame, not once per r
     // Comparing the ARRAYS, not their concatenation, also excludes AC1's other
     // named error ("not per event"): a loop calling the dispatch once per event
     // would produce singletons where the core produced a pair.
+    //
+    // ─── REWORK (Reviewer round 1, MEDIUM [TEST]): THE PUMP INDEX ────────────
+    // The first cut compared the two arrays of arrays directly, after filtering
+    // each side to its non-empty entries INDEPENDENTLY. That is blind to a
+    // one-step SHIFT, and the Reviewer proved it by mutation: hoisting
+    // `playEventSounds` ABOVE `sim = stepSim(...)` — so every frame dispatches
+    // the PREVIOUS step's cues, one step stale forever — left all 1012 tests
+    // green. Filtering both sides for emptiness deletes exactly the entries
+    // that would have exposed the offset, and what is left is two identical
+    // subsequences.
+    //
+    // A step counter cannot fix it either: it increments in the MIDDLE of the
+    // callback, so a shifted dispatch reads the neighbouring value and pairs up
+    // just as convincingly. The clock has to tick at the callback BOUNDARY.
+    // `rec.pumps` does — the timebase mock bumps it on entry to each pump
+    // callback — so a dispatch that runs before its step is stamped with the
+    // pump index of the step AFTER the one whose events it is carrying, and
+    // every single pair mismatches. Mutation-checked both ways: the hoist reds
+    // this test, and `if (sim.events.length > 0) playEventSounds(...)` — an
+    // equivalent refactor the Reviewer identified and required to stay green —
+    // still passes, because a skipped empty dispatch is a record the non-empty
+    // filter removes from the other side too.
     const emitted = nonEmpty(rec.stepped)
     const seen = nonEmpty(rec.dispatched)
 
@@ -186,28 +299,62 @@ describe('cp5-2 AC1 — the dispatch runs once per STEPPED frame, not once per r
     ).toBeGreaterThan(0)
     expect(
       seen.length,
-      'the dispatch was never called — main.ts does not call playEventSounds yet',
+      'the dispatch was never called — main.ts does not call playEventSounds',
     ).toBeGreaterThan(0)
 
     expect(
       seen,
-      'the cues the shell dispatched do not match, array for array, the events the core ' +
-        'emitted per step — a per-rAF-frame call drops every step but the last of a burst',
+      'the cues the shell dispatched do not match the events the core emitted, step for ' +
+        'step and within the same pump callback. A per-rAF-frame call drops every step but ' +
+        'the last of a burst; a call sited BEFORE the step dispatches the previous step\'s ' +
+        'cues forever. Both show up here as a pump-index mismatch',
     ).toEqual(emitted)
+  })
+
+  it('the pump clock actually ticked more than once per rAF frame — the burst is real', () => {
+    // The pump index is only a discriminator if the run contains bursts: if
+    // every rAF frame ran exactly one step, "same pump callback" and "same rAF
+    // frame" would be the same claim and the test above would be back to being
+    // shift-blind. 1500 BURST_MS frames each run the @shared/loop clamp's worth
+    // of steps, so this is a check that the harness did what it says.
+    expect(rafFrames, 'the run drove no frames').toBeGreaterThan(0)
+    expect(
+      rec.pumps / rafFrames,
+      'the pump callback averaged at most two steps per rAF frame — no catch-up burst ' +
+        'happened, so the per-step vs per-frame distinction above is not being exercised',
+    ).toBeGreaterThan(2)
   })
 
   it('at least one step emitted TWO events, so "not per event" is actually discriminated', () => {
     // Guards the test above from passing for the wrong reason. If every array in
     // the comparison were a singleton, a per-EVENT dispatch would satisfy it
     // exactly as a per-STEP one does, and AC1's "not per event" would be
-    // untested. Measured over 20,000 steps: 6 of 212 event-bearing steps carry
-    // two (a death frame concatenates, sim.ts:693; so does a wave clear, :723).
+    // untested.
+    //
+    // REWORK (Reviewer round 1, MEDIUM): the note here used to offer a death
+    // frame (sim.ts:693) AND a wave clear (sim.ts:723) as the causes, and cited
+    // a count ("6 of 212") taken from an unseeded run. The composition is now
+    // measured on the seeded run and pinned by the test below, rather than
+    // described here from memory.
     const emitted = nonEmpty(rec.stepped)
     expect(
-      emitted.some((a) => a.length >= 2),
+      emitted.some((r) => r.events.length >= 2),
       'no step in this run emitted more than one event, so the per-step vs per-event ' +
         'distinction is not exercised — lengthen the run',
     ).toBe(true)
+  })
+
+  it('the multi-event steps have exactly the compositions this seeded run was measured to produce', () => {
+    // The composition, pinned rather than described — see
+    // MEASURED_PAIR_COMPOSITIONS. This is what stops the prose above from
+    // drifting: change the sim, or the seed, and this reds with the new list in
+    // the diff, so the explanation gets re-measured instead of quietly becoming
+    // a story about a run nobody has done since.
+    const pairs = nonEmpty(rec.stepped).filter((r) => r.events.length >= 2)
+    const kinds = [...new Set(pairs.map((r) => r.events.map((e) => e.type).join('+')))].sort()
+    expect(kinds, 'the multi-event step compositions this run produces').toEqual(
+      MEASURED_PAIR_COMPOSITIONS,
+    )
   })
 
   it('hands the dispatch the SAME engine main.ts constructed', () => {

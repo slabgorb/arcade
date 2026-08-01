@@ -26,10 +26,17 @@
 // committed without the other.
 
 import { describe, it, expect, beforeAll } from 'vitest'
-import { installShellDom, ONE_STEP_MS } from './helpers/boot-shell'
+import {
+  installShellDom,
+  seedWasHonoured,
+  snapshotPlayfield,
+  ONE_STEP_MS,
+  SEED,
+} from './helpers/boot-shell'
 import { createAudio } from '../src/shell/audio'
 import { playEventSounds } from '../src/shell/audio-dispatch'
 import { EVENT_KINDS, type GameEvent } from '../src/core/events'
+
 
 const shell = installShellDom()
 
@@ -40,8 +47,12 @@ const seen = {
   afterGesture: -1,
 }
 
+/** The mushroom field the shell booted with, COPIED before a frame has run. */
+let bootCells: Uint8Array
+
 beforeAll(async () => {
   await import('../src/main')
+  bootCells = snapshotPlayfield(shell.sim())
   seen.afterBoot = shell.audioContexts()
 
   // Run the attract screen for a while with NO input whatsoever. The core keeps
@@ -56,11 +67,23 @@ beforeAll(async () => {
   seen.afterSilentFrames = shell.audioContexts()
 
   // The first interaction. Both a canvas click and a keypress are gestures the
-  // browser accepts; the precedents bind resume() to both (tempest:47-51 attaches
-  // `unlockAudio` to canvas 'click' AND window 'keydown'), and main.ts already
-  // owns listeners on both (main.ts:84-86, :92-94).
-  shell.emit('click', {})
-  shell.emit('keydown', { key: 'Enter' })
+  // browser accepts, and the precedents bind resume() to both (tempest:47-51
+  // attaches `unlockAudio` to canvas 'click' AND window 'keydown').
+  //
+  // REWORK (Reviewer round 1, MEDIUM): the note here cited "main.ts:84-86,
+  // :92-94" for the listeners main.ts "already owns". Those were the pre-wiring
+  // line numbers, and this story's own diff grew the file past them — neither
+  // span names a listener now. Both citations are re-taken against the wired
+  // file, and they name where `unlockAudio` actually binds rather than which
+  // listeners happened to exist first:
+  //   • main.ts:106      — `window.addEventListener('keydown', unlockAudio)`
+  //   • main.ts:108-111  — the canvas 'click' listener, which calls
+  //                        `unlockAudio()` before `lock.request()`
+  // (The third listener, the initials keydown at main.ts:117-119, is a separate
+  // window keydown and is not a gesture binding.) These lines are pinned by
+  // tests/audio-citations.test.ts so the next diff that moves them reds.
+  shell.emit('canvas', 'click', {})
+  shell.emit('window', 'keydown', { key: 'Enter' })
   for (let i = 0; i < 5; i++) {
     t += ONE_STEP_MS
     shell.frame(t)
@@ -69,6 +92,22 @@ beforeAll(async () => {
 })
 
 describe('cp5-2 AC4 — the gesture gate is respected', () => {
+  it('the boot is SEEDED — this file observes a pinned world, not whatever the clock said', () => {
+    // REWORK (Reviewer round 1, MEDIUM). Shared with the other two boot suites:
+    // main.ts:137 seeds attract from `Date.now()`, so "the attract screen ran 60
+    // frames and stayed silent" was an observation about one particular world.
+    // Attract silence is a core guarantee (core/events.ts:23-26) and does not
+    // depend on the seed, but the run below is only reproducible if the seed is.
+    // See helpers/boot-shell.ts `seedWasHonoured` — the `?seed=` override this
+    // asks for does not exist yet.
+    expect(
+      seedWasHonoured(bootCells),
+      `main.ts did not boot the world ?seed=${SEED} asks for — it is still seeding attract ` +
+        'from Date.now(), so this run is not reproducible. Add the shell-only ?seed= ' +
+        'override (the ?wave= shape, main.ts:36-45)',
+    ).toBe(true)
+  })
+
   it('constructs NO AudioContext at boot', () => {
     // Browsers refuse to start a context before a user gesture, and a context
     // built at module scope lands in 'suspended' and never recovers on some

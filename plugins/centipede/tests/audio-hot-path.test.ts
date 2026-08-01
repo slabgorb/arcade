@@ -17,8 +17,11 @@
 // AC3 is an either/or, and it was ruled at setup (2026-08-01): **DEGRADE**. Not
 // on taste — on precedent. The default arm of every one of the five games that
 // walked this path first is a bare `const _exhaustive: never = event` with NO
-// throw (tempest:111-118, asteroids:33-37, battlezone:74-80, red-baron:68-74,
-// joust:70-78), and joust's comment states the reasoning in the ROM's own terms:
+// throw (tempest:111-119, asteroids:57-64, battlezone:74-80, red-baron:68-74,
+// joust:70-78 — all five re-resolved on rework; the asteroids citation used to
+// read :33-37, which is the INNER switch's `= event.source` arm, a real span but
+// the less analogous of the file's two), and joust's comment states the
+// reasoning in the ROM's own terms:
 // "At runtime the branch stays SILENT — a stale or typo'd kind falling through
 // onto some other cue would be audibly wrong, which is worse than quiet."
 // centipede is the outlier in throwing, not in degrading.
@@ -31,8 +34,15 @@
 // costs a check the type system already makes; keeping it costs the frame loop.
 
 import { describe, it, expect, beforeAll, vi } from 'vitest'
-import { installShellDom, ONE_STEP_MS } from './helpers/boot-shell'
+import {
+  installShellDom,
+  seedWasHonoured,
+  snapshotPlayfield,
+  ONE_STEP_MS,
+  SEED,
+} from './helpers/boot-shell'
 import type { GameEvent } from '../src/core/events'
+import type { SimState } from '../src/core/sim'
 
 const POISON = 'cp5-2-unmapped-kind-probe'
 
@@ -64,9 +74,13 @@ vi.mock('../src/shell/audio-dispatch', async (importOriginal) => {
   const real = await importOriginal<typeof import('../src/shell/audio-dispatch')>()
   return {
     ...real,
-    playEventSounds: (audio: never, events: readonly GameEvent[]): void => {
+    // Every parameter forwarded from the real signature (house rule #8) — a
+    // wrapper that declares its own narrower list silently swallows anything
+    // added to the function it stands in for.
+    playEventSounds: (...args: Parameters<typeof real.playEventSounds>): void => {
+      const [, events] = args
       if (events.some((e) => String(e.type) === POISON)) rec.poisonDispatched = true
-      real.playEventSounds(audio, events)
+      real.playEventSounds(...args)
     },
   }
 })
@@ -79,8 +93,8 @@ vi.mock('../src/core/sim', async (importOriginal) => {
   const real = await importOriginal<typeof import('../src/core/sim')>()
   return {
     ...real,
-    stepSim: (state: never, input: never): unknown => {
-      const next = real.stepSim(state, input)
+    stepSim: (...args: Parameters<typeof real.stepSim>): SimState => {
+      const next = real.stepSim(...args)
       if (rec.injected) rec.stepsAfter += 1
       if (rec.arm && !rec.injected && next.events.length > 0) {
         rec.injected = true
@@ -94,13 +108,25 @@ vi.mock('../src/core/sim', async (importOriginal) => {
 const shell = installShellDom()
 
 const outcome = {
-  threwOnPoisonedFrame: null as Error | null,
+  /**
+   * Whatever the poisoned frame threw. `unknown`, not `Error`: a `throw` can
+   * carry anything, and the first cut of this file wrote `e as Error` — a cast
+   * out of `unknown` with no narrowing, which house rule #11 forbids precisely
+   * because it makes `.message` a lie for a thrown string. Nothing here needs
+   * the shape; the assertion is that there was no throw at all.
+   */
+  threwOnPoisonedFrame: null as unknown,
+  threw: false,
   stillScheduledAfter: false,
   framesRunAfter: 0,
 }
 
+/** The mushroom field the shell booted with, COPIED before a frame has run. */
+let bootCells: Uint8Array
+
 beforeAll(async () => {
   await import('../src/main')
+  bootCells = snapshotPlayfield(shell.sim())
 
   let t = 0
   const step = (): void => {
@@ -109,10 +135,10 @@ beforeAll(async () => {
   }
   step()
 
-  shell.emit('keydown', { key: 'Enter' })
+  shell.emit('window', 'keydown', { key: 'Enter' })
   for (let i = 0; i < 10; i++) step()
-  shell.emit('keyup', { key: 'Enter' })
-  shell.emit('keydown', { key: ' ' })
+  shell.emit('window', 'keyup', { key: 'Enter' })
+  shell.emit('window', 'keydown', { key: ' ' })
 
   // Play until a step emits something, then poison that step.
   rec.arm = true
@@ -120,7 +146,8 @@ beforeAll(async () => {
     try {
       step()
     } catch (e) {
-      outcome.threwOnPoisonedFrame = e as Error
+      outcome.threwOnPoisonedFrame = e
+      outcome.threw = true
       break
     }
   }
@@ -142,6 +169,21 @@ beforeAll(async () => {
 })
 
 describe('cp5-2 AC3 — an unmapped kind must not freeze the frame loop', () => {
+  it('the boot is SEEDED — "a step emitted something within 400 tries" is reproducible', () => {
+    // REWORK (Reviewer round 1, MEDIUM). This file plays until a step emits an
+    // event and poisons that step, giving up after 400 tries. Against
+    // `createAttract(Date.now())` (main.ts:137) whether one arrives in time is a
+    // property of the wall clock. With the seed pinned it is a property of the
+    // game. See helpers/boot-shell.ts `seedWasHonoured` — `?seed=` does not
+    // exist yet, and this is the RED that asks for it.
+    expect(
+      seedWasHonoured(bootCells),
+      `main.ts did not boot the world ?seed=${SEED} asks for — it is still seeding attract ` +
+        'from Date.now(), so the injection window below is luck rather than a fact. Add the ' +
+        'shell-only ?seed= override (the ?wave= shape, main.ts:36-45)',
+    ).toBe(true)
+  })
+
   it('the probe actually reached a live frame — the harness is not testing nothing', () => {
     // Every assertion below is about what happened to the poisoned frame. If the
     // injection never fired, they would all pass by describing an event that did
@@ -167,13 +209,21 @@ describe('cp5-2 AC3 — an unmapped kind must not freeze the frame loop', () => 
   })
 
   it('the frame carrying it does not throw out of the rAF callback', () => {
+    // REWORK (Reviewer round 1, MEDIUM [RULE]): this message cited "main.ts:183"
+    // for the trailing `requestAnimationFrame(frame)`. That was true when the
+    // file was 185 lines; wiring the seam grew it by 33 and :183 now reads
+    // `const board = sim.highScoreTable` — a real, plausible, WRONG line, which
+    // is worse than a dangling one because a reader who checks it is misled
+    // rather than stopped. The trailing call is at :216 (the bootstrap that
+    // starts the chain is :218). Pinned by tests/audio-citations.test.ts.
     expect(
-      outcome.threwOnPoisonedFrame,
-      'the unmapped kind threw out of the frame callback. In the browser this exception ' +
-        'escapes into requestAnimationFrame, the trailing requestAnimationFrame(frame) at ' +
-        'main.ts:183 never runs, and the game freezes on the last drawn frame. Per the AC3 ' +
-        'ruling the dispatch must DEGRADE — skip the cue it cannot name and keep going',
-    ).toBeNull()
+      outcome.threw,
+      `the unmapped kind threw out of the frame callback (${String(outcome.threwOnPoisonedFrame)}). ` +
+        'In the browser this exception escapes into requestAnimationFrame, the trailing ' +
+        'requestAnimationFrame(frame) at main.ts:216 never runs, and the game freezes on the ' +
+        'last drawn frame. Per the AC3 ruling the dispatch must DEGRADE — skip the cue it ' +
+        'cannot name and keep going',
+    ).toBe(false)
   })
 
   it('the loop is still scheduled afterwards', () => {

@@ -1139,16 +1139,24 @@ describe('cp5-2 AC3 — an unmapped kind DEGRADES: the frame plays on, quietly',
   //
   //  1. PRECEDENT, measured. The default arm of all five games that shipped this
   //     seam before centipede is a bare `const _exhaustive: never = event` with
-  //     NO throw — tempest:111-118, asteroids:33-37, battlezone:74-80,
-  //     red-baron:68-74, joust:70-78. joust states the reasoning outright: "At
+  //     NO throw — tempest:111-119, asteroids:57-64, battlezone:74-80,
+  //     red-baron:68-74, joust:70-78. (Re-resolved on rework: the asteroids
+  //     citation read :33-37, which is the INNER switch's `= event.source` arm.
+  //     Both arms are non-throwing so the claim held, but :57-64 is the `=
+  //     event` arm that actually corresponds to this one.) joust states the
+  //     reasoning outright: "At
   //     runtime the branch stays SILENT — a stale or typo'd kind falling through
   //     onto some other cue would be audibly wrong, which is worse than quiet."
   //  2. CONSEQUENCE. cp5-2 puts this function inside requestAnimationFrame. An
-  //     uncaught throw there skips main.ts:183's trailing
+  //     uncaught throw there skips main.ts:216's trailing
   //     `requestAnimationFrame(frame)` and the game freezes — a total failure
   //     for a defect whose honest cost is one missing sound. Pinned end-to-end
   //     in tests/audio-hot-path.test.ts, which boots the real loop and poisons a
-  //     live frame.
+  //     live frame. (Re-anchored on rework: this read main.ts:183, written when
+  //     the file was 185 lines. The wiring grew it by 33 and :183 is now
+  //     `const board = sim.highScoreTable` — a real line, so the stale citation
+  //     misled rather than dangled. tests/audio-citations.test.ts now reds when
+  //     a cited main.ts line stops saying what the citation claims.)
   //
   // NOTHING IS GIVEN UP AT COMPILE TIME. The exhaustiveness guarantee never
   // lived in this throw: `EVENT_SOUND: Record<GameEventKind, SoundName>`

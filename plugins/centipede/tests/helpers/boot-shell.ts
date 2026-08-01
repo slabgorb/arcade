@@ -25,14 +25,44 @@
 // and the REAL input adapters all run; only the browser is a stub. That is what
 // makes a frame driven through this harness an "ordinary played frame" in AC2's
 // sense rather than a staged one.
+//
+// ─── REWORK (Reviewer round 1) ───────────────────────────────────────────────
+// Two defects, both in this file, both fixed here:
+//
+//  • [LOW] The listener registry was keyed by event TYPE alone and shared across
+//    `window`, `document` and every canvas, so `emit('click')` fired listeners
+//    on any target that happened to want a 'click'. No collision existed on the
+//    current tree — window owns keydown/keyup/mousemove/blur/resize, document
+//    owns pointerlockchange and the canvas owns click — but the registry could
+//    not have told us if one appeared, and `document.createElement()` hands out
+//    a SECOND canvas (the logical backbuffer) that shares the same map. The
+//    registry is now keyed by (target, type) and `emit` names its target.
+//
+//  • [MEDIUM] The three boot suites drove an UNSEEDED sim (main.ts seeds attract
+//    from `Date.now()`) and then asserted EMERGENT gameplay — the `fire` cue, a
+//    spider loop opening AND closing, a step that emitted two events. Observed
+//    green 8 times running is not proven green, and every other centipede suite
+//    pins a literal seed. `SEED` below is that pin; it reaches main.ts through
+//    `window.location.search`, in the shape of the `?wave=` debug param the
+//    shell already parses (main.ts:36-45). **`?seed=` DOES NOT EXIST YET** —
+//    adding it is this rework's one production change, and `seedWasHonoured`
+//    is the assertion that reds until it lands.
 
-import type { SimState } from '../../src/core/sim'
+import { createAttract, type SimState } from '../../src/core/sim'
 
 type Listener = (e: unknown) => void
 
+/** The three DOM objects the shell registers listeners on. */
+export type ShellTarget = 'window' | 'document' | 'canvas'
+
 export interface ShellHarness {
-  /** Dispatch a DOM event to every listener the shell registered for `type`. */
-  emit(type: string, event?: unknown): void
+  /**
+   * Dispatch a DOM event to the listeners the shell registered for
+   * (`target`, `type`). Throws if nothing is listening — a gesture emitted at
+   * the wrong target would otherwise be a silent no-op, and a test that drives
+   * nothing passes by describing an interaction that never happened.
+   */
+  emit(target: ShellTarget, type: string, event?: unknown): void
   /** Run ONE requestAnimationFrame callback, with `t` as the wall-clock stamp (ms). */
   frame(t: number): void
   /** The live SimState, via the `window.__sim` tap main.ts installs. */
@@ -43,8 +73,60 @@ export interface ShellHarness {
   audioContexts(): number
 }
 
+export interface ShellDomOptions {
+  /** What `window.location.search` reports. Defaults to the `?seed=` pin. */
+  search?: string
+}
+
 const LOGICAL_CANVAS_W = 960
 const LOGICAL_CANVAS_H = 1024
+
+/**
+ * The seed every cp5-2 boot suite pins, and the reason they may assert on
+ * emergent play at all. Any literal would do; this one is the story's date.
+ */
+export const SEED = 20260801
+
+/** The query string a seeded boot installs. See `seedWasHonoured`. */
+export const SEEDED_SEARCH = `?seed=${SEED}`
+
+/**
+ * A COPY of a state's mushroom field. Take one at boot; do not hold the state.
+ *
+ * ⚠ `stepSim` ALIASES `playfield.cells`: the state it returns carries the very
+ * same `Uint8Array` object it was given, mutated in place. Measured —
+ * `createAttract(20260801)` sums to 2457, and after 60 idle attract steps the
+ * ORIGINAL state's array sums to 2389, with `before.playfield.cells ===
+ * after.playfield.cells` true in both attract and play. A held SimState
+ * therefore reports the CURRENT field, not its own. The first cut of the seed
+ * guard held the boot state and compared it 65 frames later, which read as
+ * "main.ts ignored the seed" when the seed had in fact been honoured exactly.
+ * (Pre-existing, wider than this story, and filed as a Delivery Finding.)
+ */
+export function snapshotPlayfield(state: SimState): Uint8Array {
+  return new Uint8Array(state.playfield.cells)
+}
+
+/**
+ * Did main.ts actually honour `?seed=SEED`, or is it still calling
+ * `createAttract(Date.now())`?
+ *
+ * The mushroom field is laid down from the seeded rng (`createSim` →
+ * `seedPlayfield(rng)`, core/sim.ts:277-279), so two seeds give two different
+ * fields and a wall-clock seed gives a different one on every run. Comparing
+ * the field the shell booted with against `createAttract(SEED)`'s is therefore
+ * a direct read of "the shell used the seed I gave it".
+ *
+ * Takes the SNAPSHOT, never the state — see `snapshotPlayfield`.
+ *
+ * This is a hard prerequisite, not a nicety: without it the emergent
+ * assertions in the three boot suites are assertions about whatever
+ * `Date.now()` happened to be.
+ */
+export function seedWasHonoured(bootCells: Uint8Array): boolean {
+  const expected = createAttract(SEED).playfield.cells
+  return bootCells.length === expected.length && bootCells.every((c, i) => c === expected[i])
+}
 
 /**
  * Install the stub browser onto `globalThis`.
@@ -52,14 +134,23 @@ const LOGICAL_CANVAS_H = 1024
  * MUST be called at a test file's top level — before `await import('../src/main')`,
  * which reads `document` the moment it is evaluated.
  */
-export function installShellDom(): ShellHarness {
-  const listeners = new Map<string, Listener[]>()
-  const on = (type: string, fn: Listener): void => {
-    listeners.set(type, [...(listeners.get(type) ?? []), fn])
-  }
-  const off = (type: string, fn: Listener): void => {
-    listeners.set(type, (listeners.get(type) ?? []).filter((f) => f !== fn))
-  }
+export function installShellDom(options: ShellDomOptions = {}): ShellHarness {
+  const { search = SEEDED_SEARCH } = options
+
+  // Keyed by (target object, type) — see the REWORK note above.
+  const listeners = new Map<object, Map<string, Listener[]>>()
+  const listen = (owner: object) => ({
+    addEventListener: (type: string, fn: Listener): void => {
+      const forOwner = listeners.get(owner) ?? new Map<string, Listener[]>()
+      forOwner.set(type, [...(forOwner.get(type) ?? []), fn])
+      listeners.set(owner, forOwner)
+    },
+    removeEventListener: (type: string, fn: Listener): void => {
+      const forOwner = listeners.get(owner)
+      if (!forOwner) return
+      forOwner.set(type, (forOwner.get(type) ?? []).filter((f) => f !== fn))
+    },
+  })
 
   // The five members the shell actually touches. Anything else the renderer
   // reaches for should fail loudly rather than be silently absorbed by a Proxy —
@@ -72,33 +163,34 @@ export function installShellDom(): ShellHarness {
     drawImage: () => {},
   })
 
-  const makeCanvas = (): Record<string, unknown> => ({
-    width: 0,
-    height: 0,
-    clientWidth: LOGICAL_CANVAS_W,
-    clientHeight: LOGICAL_CANVAS_H,
-    getContext: (): unknown => makeCtx(),
-    addEventListener: on,
-    removeEventListener: off,
-    requestPointerLock: (): Promise<void> => Promise.resolve(),
-  })
+  const makeCanvas = (): Record<string, unknown> => {
+    const el: Record<string, unknown> = {
+      width: 0,
+      height: 0,
+      clientWidth: LOGICAL_CANVAS_W,
+      clientHeight: LOGICAL_CANVAS_H,
+      getContext: (): unknown => makeCtx(),
+      requestPointerLock: (): Promise<void> => Promise.resolve(),
+    }
+    Object.assign(el, listen(el))
+    return el
+  }
 
   const canvas = makeCanvas()
   const g = globalThis as unknown as Record<string, unknown>
 
-  g.document = {
+  const documentStub: Record<string, unknown> = {
     querySelector: (): unknown => canvas,
     createElement: (): unknown => makeCanvas(),
-    addEventListener: on,
-    removeEventListener: off,
     pointerLockElement: null,
   }
+  Object.assign(documentStub, listen(documentStub))
+  g.document = documentStub
 
   const windowStub: Record<string, unknown> = {
-    location: { search: '' },
-    addEventListener: on,
-    removeEventListener: off,
+    location: { search },
   }
+  Object.assign(windowStub, listen(windowStub))
   g.window = windowStub
 
   let rafCb: ((t: number) => void) | null = null
@@ -135,9 +227,22 @@ export function installShellDom(): ShellHarness {
   // silent-degrade paths (`.catch(() => failLoad(file))`, src/shared/audio.ts:137).
   g.fetch = (): Promise<never> => Promise.reject(new Error('offline in tests'))
 
+  const targets: Record<ShellTarget, object> = {
+    window: windowStub,
+    document: documentStub,
+    canvas,
+  }
+
   return {
-    emit(type: string, event: unknown = {}): void {
-      for (const fn of listeners.get(type) ?? []) fn(event)
+    emit(target: ShellTarget, type: string, event: unknown = {}): void {
+      const fns = listeners.get(targets[target])?.get(type) ?? []
+      if (fns.length === 0) {
+        throw new Error(
+          `nothing is listening for '${type}' on ${target} — the shell never registered it, ` +
+            'so this emit would have driven nothing at all',
+        )
+      }
+      for (const fn of [...fns]) fn(event)
     },
     frame(t: number): void {
       const cb = rafCb

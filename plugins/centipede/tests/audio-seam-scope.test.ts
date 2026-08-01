@@ -175,6 +175,9 @@ describe('cp5-1 AC6 — the README stops advertising a gap that has closed', () 
   })
 
   it('does not claim centipede now HAS sound', () => {
+    // NOTE: this one is shared with cp5-2's block below — the seam being wired
+    // does not make the cabinet audible, and the README must not start saying
+    // it does just because main.ts now calls the dispatch.
     // The failure this whole AC exists to prevent: the seam landing and the
     // docs reading as though the cabinet is audible, when every cue resolves
     // to a 404 the shared engine swallows in silence.
@@ -183,5 +186,99 @@ describe('cp5-1 AC6 — the README stops advertising a gap that has closed', () 
       /\bnow (?:has|with) (?:full )?(?:sound|audio)\b/i,
     )
     expect(src).not.toMatch(/\bfully voiced\b|\bsound is live\b/i)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// cp5-2 — REWORK (Reviewer round 1, HIGH). The same guard, one story later.
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// cp5-1 spent the six tests above making the README tell the truth about a seam
+// that had just landed. cp5-2 wired that seam into main.ts and left the README
+// saying the opposite — every clause of its status block false as of 6c2bf1a:
+// "The shell is **not connected**", "`main.ts` calls neither `createAudio` nor
+// `playEventSounds`", "unreachable in play", "That is story `cp5-2`". Nothing
+// caught it, because cp5-1's tests guard cp5-1's claims and this was a new one.
+//
+// That is a bigger deal in this epic than it would be anywhere else, and the
+// reason is written at the top of this file: @shared/audio degrades SILENTLY at
+// every failure path, so a working cabinet and a broken one are
+// indistinguishable to the whole suite. The docs are the mechanism. A status
+// block that describes the wrong build is not a documentation nit here — it is
+// the safety net reading backwards.
+//
+// Same shape as above, and for the same reason: a PAIR per claim. The stale
+// sentence must be GONE and the honest one PRESENT, because a "now wired" line
+// appended under a paragraph still reading "not connected" is precisely the
+// failure being guarded against.
+
+describe('cp5-2 — the README stops saying the shell is unwired, because it is wired', () => {
+  it('no longer claims main.ts calls neither createAudio nor playEventSounds', () => {
+    // main.ts imports both (:20-21), builds the engine at :91 and dispatches at
+    // :192. Every one of these sentences is false on the shipped tree.
+    const src = normalized(readmeSrc())
+    expect(src, 'main.ts calls both — it builds the engine and dispatches per step').not.toMatch(
+      /`main\.ts` calls neither/i,
+    )
+    expect(src, 'the shell IS connected as of cp5-2').not.toMatch(
+      /The shell is \*\*not connected\*\*/i,
+    )
+    expect(src, 'the seam is reached on every stepped frame of live play').not.toMatch(
+      /unreachable in play/i,
+    )
+  })
+
+  it('no longer names cp5-2 as the future story that will do it', () => {
+    // The tell that the block was never re-read: it points forward at the story
+    // that had already shipped by the time anyone could read it.
+    const src = normalized(readmeSrc())
+    expect(src, 'cp5-2 is done — it cannot be the story that will connect the shell').not.toMatch(
+      /That is story `?cp5-2`?/i,
+    )
+    expect(src, 'with the wiring landed, only the samples are still missing').not.toMatch(
+      /\*\*Two\*\* things are still missing/i,
+    )
+  })
+
+  it('says plainly that the shell IS wired now, and as of which story', () => {
+    // The positive half — the guard against "fixing" the negatives by deleting
+    // the paragraph and leaving a reader with no status at all.
+    //
+    // Both alternations are built ONLY from tokens the README does not contain
+    // today (verified: "as of cp5-2", "cp5-2 wired", "cp5-2 connected" all
+    // appear 0 times — `cp5-2` occurs exactly once, in the "That is story"
+    // sentence the test above deletes). So this reds until the rewrite, rather
+    // than passing on the file as it stands.
+    const src = normalized(readmeSrc())
+    expect(
+      /as of `?cp5-2`?|cp5-2 (?:wired|connected)/i.test(src),
+      'the status block must say the shell is wired into main.ts, and name cp5-2 as the ' +
+        'story that did it — not merely stop denying it',
+    ).toBe(true)
+  })
+
+  it('warns that the first gesture now produces a wall of 404s, and that they are expected', () => {
+    // The cost the epic knowingly accepted, and the one thing a reader opening
+    // devtools will actually meet. There are FOURTEEN — one per SOUNDS entry
+    // (measured: SOUNDS has 14 keys, src/shell/audio.ts), fired the moment
+    // resume() opens the gate, all against arcade-assets.slabgorb.com. They look
+    // exactly like a bug and are not, and until the asset stories land nothing
+    // else explains them.
+    //
+    // `\b14\b` and "expected"/"harmless" are absent from the README today
+    // (verified), so both halves red. "404" alone is NOT — the current text
+    // already says wiring "would buy nothing but 404s" — which is why the count
+    // carries this assertion and a bare /404/ would have passed vacuously.
+    const src = normalized(readmeSrc())
+    expect(
+      /\b14\b[\s\S]{0,120}404|404[\s\S]{0,120}\b14\b/.test(src),
+      'the README must say how many 404s appear (14 — one per SOUNDS entry) so the next ' +
+        'person does not go hunting for a bug that is the missing samples',
+    ).toBe(true)
+    expect(
+      /expected|harmless|not a bug/i.test(src),
+      'the 404s must be described as expected, not merely mentioned — a console full of red ' +
+        'reads as a fault unless the docs say otherwise',
+    ).toBe(true)
   })
 })
