@@ -808,13 +808,24 @@ test('mg1-5 round 2: "is a page" has ONE definition — anything served as text/
     // ONE assertion, and the fixture is what gives it teeth.
     //
     // Every object the ORIGIN would serve as HTML must come after every object it would
-    // not. That single property covers the substring regression too, and the thing that
-    // makes it do so is `index.html.map` being IN `names` — not any separate assertion.
-    // MEASURED both ways: under `isEntryPoint = key.includes('.html')` the sourcemap is
-    // misclassified as a page and dragged into the trailing partition, so a page ends up
-    // before an asset and this reddens. Drop `index.html.map` from the fixture and the
-    // same mutant produces a correctly-ordered upload list and sails through. The fixture
-    // entry is the guard; this assertion is how it speaks.
+    // not. That single property covers the substring regression too, and what makes it do
+    // so is the FIXTURE NAMES — not any separate assertion. There are two halves and they
+    // are guarded by different names, which is why both must stay:
+    //
+    //   MEASURED: `index.html.map` guards the case-INSENSITIVE substring form
+    //   (`key.toLowerCase().includes('.html')`) — drop the sourcemap and that mutant
+    //   produces a correctly-ordered list and sails through. The case-SENSITIVE form
+    //   (`key.includes('.html')`) is already caught independently by `page.HTML` /
+    //   `About.Html`, which a case-sensitive `.includes` fails to recognise as entry
+    //   points while `contentTypeFor` does. Both names are load-bearing, for different
+    //   halves of the same regression.
+    //
+    // An earlier version of this comment named only the case-sensitive mutant and claimed
+    // dropping the sourcemap made *it* sail through. It does not — measured. That was the
+    // third false "MEASURED" claim in these five lines, and the lesson is narrower than it
+    // looks: every claim here that was checked by re-running the EXACT quoted string
+    // survived, and every one checked by running something morally equivalent did not.
+    // Paste the mutant you actually ran.
     //
     // Two earlier attempts at a separate "negative" assertion are gone, and why is worth
     // keeping. `indexOf(map) <= lastAsset` was a plain tautology — `lastAsset` is a
