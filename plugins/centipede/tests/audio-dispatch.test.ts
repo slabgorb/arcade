@@ -12,26 +12,40 @@
 // unit-testable against a recording fake without booting a canvas." Every test
 // below is exactly that — no DOM, no canvas, no AudioContext.
 //
-// ─── WHY THE EXHAUSTIVENESS TEST IS A RUNTIME SWEEP, NOT A GREP ──────────────
+// ─── THE TWO EXHAUSTIVENESS CLAIMS, AND HOW EACH IS PINNED ───────────────────
 // AC3 asks for a `never` guard "proven by a test or a deliberate compile
-// failure". A test that greps the source for the word `never` matches a TOKEN,
-// not the CLAIM — it stays green over a guard that was commented out or
-// weakened to a `default: break`. So the real check here is a runtime sweep
-// over `EVENT_KINDS` (the core's own list): every kind must produce exactly one
-// effect, and the cue it names must exist in the manifest. Add a kind without a
-// cue and that sweep goes red whether or not the `never` survived.
+// failure". There are two such claims in this story and they need different
+// instruments:
 //
-// The first cut of this file kept a source assertion "as the weaker of the two"
-// and it was worse than weak — it was scenery, and the Reviewer proved it by
-// deleting the guard and watching the test pass. It is now anchored to the
-// annotation that mutation shows is doing the work (`EVENT_SOUND:
-// Record<GameEventKind, SoundName>` in shell/audio.ts), not to a word that also
-// occurs in prose.
+//  1. every event KIND has a cue. Observable — so it is a RUNTIME sweep over
+//     `EVENT_KINDS` (the core's own list): every kind must produce exactly one
+//     effect, and the cue it names must exist in the manifest. Add a kind with
+//     no cue and that sweep reds whether or not any `never` survived.
+//
+//  2. every cue EFFECT has its own switch arm. NOT observable — `effectFor`
+//     returns a closed three-member union, so no input can produce a fourth
+//     effect at runtime, and a guarded switch and an unguarded one ask the
+//     engine for exactly the same things. A recording fake cannot tell them
+//     apart. A compile-time-only claim can only be read off the source.
+//
+// Claim 2 is where this file has been beaten four times, each round by a
+// cleverer piece of TEXT that a regex could not distinguish from code: the word
+// in a comment, a decoy in another function, a decoy nested in this one, a `}`
+// inside a string, a brace-less clause. It is no longer read with regexes at
+// all — see the AST toolkit below, which asks the compiler's own parser.
+//
+// Claim 1's companion — `EVENT_SOUND: Record<GameEventKind, SoundName>` in
+// shell/audio.ts, the annotation mutation shows is doing the work — is read the
+// same way, for the same reason.
 
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+// The compiler's own parser, used to read the source instead of scanning it.
+// Already a dependency — it is what `npm run lint` runs. See the AST toolkit
+// below for why four rounds of regexes were retired in favour of it.
+import ts from 'typescript'
 // Static, because these modules now exist. The computed specifiers below stay
 // as they are: they are what the coverage sweeps load, and they are also how a
 // deleted module reds as "cp5-1 not implemented yet" rather than as a resolve
@@ -138,126 +152,313 @@ async function effectsFor(kind: string): Promise<Effect[]> {
 const isLoopStart = (kind: string): boolean => kind.endsWith('-start')
 const isLoopStop = (kind: string): boolean => kind.endsWith('-stop')
 
+// ─── THE AST TOOLKIT (Reviewer round 4 — "stop patching the scanner") ────────
+//
+// Four rounds of hand-rolled source scanning, four defeats, each one level
+// deeper than the one before:
+//
+//   round 1  the word `never` in a COMMENT              -> anchor to the declaration
+//   round 2  the guard DELETED outright                 -> write a test at all
+//   round 3  a guard-shaped decoy ELSEWHERE in the file -> scope to the function body
+//   round 4  a decoy NESTED inside that body; a `}`     -> ...a fifth regex?
+//            inside a string; a BRACE-LESS `default:`
+//
+// No. Every one of those is a PARSING bug, and this repo already depends on the
+// parser that has none of them — `typescript` is what `npm run lint` runs. So
+// these helpers ask the compiler's own parser what the source says instead of
+// guessing at it with regexes, which retires all four defects at once rather
+// than one per round:
+//
+//   - comments are not in the tree, so round 1's defect cannot be expressed;
+//   - a node's text is syntax-accurate, so a `}` — or the characters `audio.` —
+//     inside a STRING LITERAL is a non-event, closing round 4's H2;
+//   - a `DefaultClause` has statements whether or not it wears braces, closing
+//     H3 and admitting the fleet's `default: return assertNever(x)` idiom;
+//   - and "which switch is the real one" stops being a question about text
+//     position and becomes one about the module's CALL GRAPH — see
+//     `reachableFrom`, which closes H1 and M1 together.
+//
+// Nothing here is centipede-specific; if a second game needs it, this is the
+// block to lift into a shared test util (see the Delivery Finding — not yet,
+// per CLAUDE.md's "extract only once a second game proves the duplication").
+
+type FnLike = ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration
+
+const isFnLike = (n: ts.Node): n is FnLike =>
+  ts.isFunctionDeclaration(n) ||
+  ts.isFunctionExpression(n) ||
+  ts.isArrowFunction(n) ||
+  ts.isMethodDeclaration(n)
+
+const parseTs = (src: string): ts.SourceFile =>
+  ts.createSourceFile('audio-dispatch.ts', src, ts.ScriptTarget.Latest, /* setParentNodes */ true)
+
+/** Every module-local function, keyed by the name it would be CALLED through —
+ *  `function f()` and `const f = () => …` alike. */
+function localFunctions(sf: ts.SourceFile): Map<string, FnLike> {
+  const out = new Map<string, FnLike>()
+  const visit = (n: ts.Node): void => {
+    if (ts.isFunctionDeclaration(n) && n.name !== undefined) out.set(n.name.text, n)
+    if (
+      ts.isVariableDeclaration(n) &&
+      ts.isIdentifier(n.name) &&
+      n.initializer !== undefined &&
+      isFnLike(n.initializer)
+    ) {
+      out.set(n.name.text, n.initializer)
+    }
+    ts.forEachChild(n, visit)
+  }
+  ts.forEachChild(sf, visit)
+  return out
+}
+
+/** Identifiers this function calls — `f()`, not `o.f()`, which is all the local
+ *  call graph needs. */
+function calleesOf(fn: FnLike): Set<string> {
+  const names = new Set<string>()
+  const visit = (n: ts.Node): void => {
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) names.add(n.expression.text)
+    ts.forEachChild(n, visit)
+  }
+  if (fn.body !== undefined) ts.forEachChild(fn.body, visit)
+  return names
+}
+
 /**
- * Remove TypeScript comments, so a source anchor cannot be satisfied by PROSE.
+ * Every function reachable from `root` through the module's own call graph.
  *
- * This is lang-review #15's whole lesson, and this story is where it was
- * learned: round 1's `expect(src).toMatch(/never/)` was green over a deleted
- * guard because the word also occurred in two comments in the file under test.
- * An anchor that reads raw source cannot tell a declaration from a sentence
- * describing one — and this file's comments quote its own code repeatedly, so
- * that is not a hypothetical here.
+ * This is the answer to round 4's H1 **and** M1 — which pull in opposite
+ * directions and are really the same question:
  *
- * REWORK (Reviewer round 3, LOW — L2-r3): the first cut was a two-regex
- * `replace` that was documented as "deliberately crude". It was worse than
- * crude — measured, `const u = 'a//b' // trailing` came back as `const u = 'a`,
- * because the line-comment regex fired on the FIRST `//` and that one was
- * inside a string literal. The `[^:]` guard only ever protected `https://`. A
- * stripper that silently truncates real code is the same defect class as an
- * anchor that matches prose, so this is now a character scanner that knows
- * where strings are.
+ *   H1  a decoy DECLARED INSIDE `playEventSounds` carrying a perfect guard must
+ *       NOT satisfy these assertions, because the real switch is unguarded.
+ *   M1  a `dispatchEffect(…)` helper EXTRACTED OUT of `playEventSounds` and
+ *       called from it MUST satisfy them — nothing about the guarantee changed,
+ *       and cp5-2 (wire the seam into the frame loop) is the story most likely
+ *       to make exactly that refactor.
  *
- * Known limit, stated rather than discovered: it does not understand regex
- * literals (a `/.../ ` containing `//`), and a template literal whose `${}`
- * holds a nested backtick will confuse it. Neither appears in the file under
- * test, and the fixture control below pins the behaviour that IS relied on.
+ * Position in the file cannot tell those two apart: both are "a switch in some
+ * other function", one lexically inside and one outside. What separates them is
+ * that the decoy is never CALLED and the helper is. So the subject of every
+ * assertion below is the switch owned by a function the dispatch can reach —
+ * which is also the only switch that can ever run.
  */
-function stripComments(src: string): string {
-  let out = ''
-  let i = 0
-  while (i < src.length) {
-    const pair = src.slice(i, i + 2)
-    if (pair === '//') {
-      while (i < src.length && src[i] !== '\n') i++
-      continue
+function reachableFrom(sf: ts.SourceFile, root: string): FnLike[] | null {
+  const locals = localFunctions(sf)
+  if (!locals.has(root)) return null
+  const seen = new Set<string>()
+  const stack = [root]
+  while (stack.length > 0) {
+    const name = stack.pop() as string
+    if (seen.has(name)) continue
+    seen.add(name)
+    const fn = locals.get(name)
+    if (fn === undefined) continue
+    for (const callee of calleesOf(fn)) if (locals.has(callee)) stack.push(callee)
+  }
+  const fns: FnLike[] = []
+  for (const name of seen) {
+    const fn = locals.get(name)
+    if (fn !== undefined) fns.push(fn)
+  }
+  return fns
+}
+
+/** Switches whose NEAREST enclosing function is one of `fns` — a nested
+ *  function owns its own switches, and is only itself in `fns` if it is called. */
+function ownedSwitches(fns: readonly FnLike[]): { sw: ts.SwitchStatement; owner: FnLike }[] {
+  const found: { sw: ts.SwitchStatement; owner: FnLike }[] = []
+  for (const owner of fns) {
+    const walk = (n: ts.Node): void => {
+      if (isFnLike(n) && n !== owner) return
+      if (ts.isSwitchStatement(n)) found.push({ sw: n, owner })
+      ts.forEachChild(n, walk)
     }
-    if (pair === '/*') {
-      i += 2
-      while (i < src.length && src.slice(i, i + 2) !== '*/') i++
-      i += 2
-      continue
-    }
-    const ch = src[i] as string
-    if (ch === "'" || ch === '"' || ch === '`') {
-      out += ch
-      i++
-      while (i < src.length) {
-        if (src[i] === '\\') {
-          out += src.slice(i, i + 2)
-          i += 2
-          continue
-        }
-        out += src[i]
-        const closed = src[i] === ch
-        i++
-        if (closed) break
-      }
-      continue
-    }
-    out += ch
-    i++
+    if (owner.body !== undefined) ts.forEachChild(owner.body, walk)
+  }
+  return found
+}
+
+/** The string-literal members of a union type annotation, in source order. */
+function literalMembers(type: ts.TypeNode | undefined): string[] {
+  if (type === undefined || !ts.isUnionTypeNode(type)) return []
+  const out: string[] = []
+  for (const t of type.types) {
+    if (ts.isLiteralTypeNode(t) && ts.isStringLiteral(t.literal)) out.push(t.literal.text)
   }
   return out
 }
 
-/** The text between the `{` at `open` and its MATCHING `}` — brace-balanced. */
-function balancedBlock(code: string, open: number): string | null {
-  let depth = 0
-  for (let i = open; i < code.length; i++) {
-    if (code[i] === '{') depth++
-    else if (code[i] === '}') {
-      depth--
-      if (depth === 0) return code.slice(open + 1, i)
+/**
+ * The closed union the switch narrows, READ FROM THE SOURCE rather than listed
+ * in this file.
+ *
+ * A hand-maintained `['play', 'startLoop', 'stopLoop']` in the test agrees with
+ * itself forever while the real union drifts underneath it — the same
+ * "matches a token, not the claim" failure as round 1, one level of indirection
+ * out. Derived instead from the discriminant's DECLARED type: a parameter
+ * annotation (the extracted-helper shape) or the return type of the local
+ * function it is initialised from (today's shape). Add a fourth effect to that
+ * union without a case arm and the sweep below reds — which is the AC3 claim,
+ * and which no previous round's test could see at all.
+ */
+function effectUnionType(sf: ts.SourceFile, sw: ts.SwitchStatement, owner: FnLike): ts.TypeNode | null {
+  if (!ts.isIdentifier(sw.expression)) return null
+  const disc = sw.expression.text
+
+  const param = owner.parameters.find((p) => ts.isIdentifier(p.name) && p.name.text === disc)
+  if (param !== undefined && literalMembers(param.type).length > 0) return param.type ?? null
+
+  const locals = localFunctions(sf)
+  const found: ts.TypeNode[] = []
+  const walk = (n: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(n) &&
+      ts.isIdentifier(n.name) &&
+      n.name.text === disc &&
+      n.initializer !== undefined &&
+      ts.isCallExpression(n.initializer) &&
+      ts.isIdentifier(n.initializer.expression)
+    ) {
+      const producer = locals.get(n.initializer.expression.text)
+      if (producer?.type !== undefined && literalMembers(producer.type).length > 0) {
+        found.push(producer.type)
+      }
     }
+    ts.forEachChild(n, walk)
   }
-  return null
+  if (owner.body !== undefined) ts.forEachChild(owner.body, walk)
+  return found[0] ?? null
+}
+
+const effectUnion = (sf: ts.SourceFile, sw: ts.SwitchStatement, owner: FnLike): string[] | null => {
+  const type = effectUnionType(sf, sw, owner)
+  return type === null ? null : literalMembers(type)
 }
 
 /**
- * The body of `function <name>(…)`, brace-balanced.
- *
- * REWORK (Reviewer round 3, HIGH — H1-r3): every assertion in the guard block
- * below used to run against the WHOLE FILE. That is a positional anchor, not a
- * scoped one, and the Reviewer built the mutant that proves it: gut the real
- * switch so a future fourth effect is silently played as a one-shot, park a
- * correct guard-shaped `switch` in dead code above it, and all 20 tests pass
- * with `tsc` clean. It needs no decoy to bite, either — `defaultArmBody` took
- * the FIRST `default:` in the file, so any second switch added above
- * `playEventSounds` (cp5-2 is about to wire this module into the frame loop)
- * would silently redirect the anchors onto the wrong arm.
- *
- * So the assertions now describe the function they are talking about. The
- * parameter list is paren-balanced first, so an object type in a signature
- * cannot be mistaken for the body's opening brace.
+ * The methods a default arm must not call, derived from the recording fake —
+ * which is `Pick<AudioEngine, …>`, so this list is coupled to the real engine
+ * by the compiler rather than by my memory of it.
  */
-function functionBody(code: string, name: string): string | null {
-  const decl = code.search(new RegExp(`function\\s+${name}\\s*\\(`))
-  if (decl === -1) return null
-  const parenOpen = code.indexOf('(', decl)
-  if (parenOpen === -1) return null
-  let depth = 0
-  let parenClose = -1
-  for (let i = parenOpen; i < code.length; i++) {
-    if (code[i] === '(') depth++
-    else if (code[i] === ')') {
-      depth--
-      if (depth === 0) {
-        parenClose = i
-        break
-      }
+const ENGINE_METHODS: readonly string[] = Object.entries(recordingAudio())
+  .filter(([, v]) => typeof v === 'function')
+  .map(([k]) => k)
+
+/** What the dispatch's default arm says, structurally. */
+type Reading =
+  | { ok: false; why: string }
+  | {
+      ok: true
+      owner: string
+      discriminant: string
+      union: readonly string[]
+      cases: readonly string[]
+      /** guards that CONSULT the compiler: `const x: never = <disc>` / `assertNever(<disc>)` */
+      guards: readonly string[]
+      /** `never` bindings whose initialiser is not the bare discriminant — a cast silences it */
+      casts: readonly string[]
+      /** the first engine call found in the default arm, if any */
+      engine: string | null
+    }
+
+function readDispatch(src: string): Reading {
+  const sf = parseTs(src)
+  const fns = reachableFrom(sf, 'playEventSounds')
+  if (fns === null) return { ok: false, why: 'no `function playEventSounds` in the module' }
+
+  const owned = ownedSwitches(fns)
+  if (owned.length !== 1) {
+    return {
+      ok: false,
+      why:
+        `expected exactly ONE switch reachable from playEventSounds, found ${owned.length}` +
+        ' — a second reachable switch is a deliberate decision, not a refactor',
     }
   }
-  if (parenClose === -1) return null
-  const open = code.indexOf('{', parenClose)
-  return open === -1 ? null : balancedBlock(code, open)
+  const entry = owned[0] as { sw: ts.SwitchStatement; owner: FnLike }
+  const { sw, owner } = entry
+  if (!ts.isIdentifier(sw.expression)) {
+    return {
+      ok: false,
+      why:
+        'the switch discriminant is not a plain identifier, so TypeScript has no reference to' +
+        ' narrow and no `never` guard can be written against it',
+    }
+  }
+  const union = effectUnion(sf, sw, owner)
+  if (union === null || union.length === 0) {
+    return { ok: false, why: "could not resolve the effect union from the discriminant's declared type" }
+  }
+  const def = sw.caseBlock.clauses.find(ts.isDefaultClause)
+  if (def === undefined) return { ok: false, why: 'the switch carries no `default:` clause — AC3 names it' }
+
+  const cases: string[] = []
+  for (const clause of sw.caseBlock.clauses) {
+    if (ts.isCaseClause(clause) && ts.isStringLiteral(clause.expression)) cases.push(clause.expression.text)
+  }
+
+  const disc = sw.expression.text
+  const guards: string[] = []
+  const casts: string[] = []
+  let engine: string | null = null
+  const walk = (n: ts.Node): void => {
+    if (ts.isVariableDeclaration(n) && n.type?.kind === ts.SyntaxKind.NeverKeyword) {
+      const init = n.initializer
+      if (init !== undefined && ts.isIdentifier(init) && init.text === disc) guards.push(n.getText())
+      else if (init !== undefined) casts.push(n.getText())
+    }
+    if (
+      ts.isCallExpression(n) &&
+      ts.isIdentifier(n.expression) &&
+      n.expression.text === 'assertNever'
+    ) {
+      const first = n.arguments[0]
+      if (first !== undefined && ts.isIdentifier(first) && first.text === disc) guards.push(n.getText())
+    }
+    if (engine === null && ts.isPropertyAccessExpression(n) && ENGINE_METHODS.includes(n.name.text)) {
+      engine = n.getText()
+    }
+    if (
+      engine === null &&
+      ts.isCallExpression(n) &&
+      ts.isIdentifier(n.expression) &&
+      ENGINE_METHODS.includes(n.expression.text)
+    ) {
+      engine = n.getText()
+    }
+    ts.forEachChild(n, walk)
+  }
+  ts.forEachChild(def, walk)
+
+  return { ok: true, owner: owner.name?.getText() ?? '<anonymous>', discriminant: disc, union, cases, guards, casts, engine }
 }
 
-/** The `default:` arm's body within `code`, brace-balanced. */
-function defaultArmBody(code: string): string | null {
-  const match = /default\s*:\s*\{/.exec(code)
-  if (match === null) return null
-  const open = code.indexOf('{', match.index)
-  return open === -1 ? null : balancedBlock(code, open)
+/**
+ * Every reason this source fails AC3's exhaustiveness claim — empty means it
+ * holds. One function so the mutation sweep and the named assertions below
+ * cannot drift apart: a mutant the sweep accepts is a mutant the tests accept.
+ */
+function verdict(r: Reading): string[] {
+  if (!r.ok) return [r.why]
+  const out: string[] = []
+  const missing = r.union.filter((e) => !r.cases.includes(e))
+  if (missing.length > 0) {
+    out.push(`effects with no case arm of their own: ${missing.join(', ')} (a \`default\` that dispatches is not a guard)`)
+  }
+  if (r.casts.length > 0) {
+    out.push(`the default arm CASTS instead of consulting the compiler: ${r.casts.join('; ')}`)
+  }
+  if (r.guards.length !== 1) {
+    out.push(
+      `expected exactly one exhaustiveness guard binding \`${r.discriminant}\` in the default arm, found ${r.guards.length}`,
+    )
+  }
+  if (r.engine !== null) {
+    out.push(`the default arm reaches the engine (\`${r.engine}\`) — it is dispatching, not guarding`)
+  }
+  return out
 }
 
 describe('cp5-1 AC3 — the dispatch is an importable pure function', () => {
@@ -290,13 +491,28 @@ describe('cp5-1 AC3 — the dispatch is an importable pure function', () => {
     // So this is pinned to the ANNOTATION that produces the error: drop it, or
     // widen it to `Record<string, SoundName>`, and this test reds. The runtime
     // sweep below covers the same claim from the other side.
+    //
+    // REWORK (Reviewer round 4): this was the last source-TEXT anchor in the
+    // file, and it carried round 1's defect unfixed — the string
+    // `EVENT_SOUND: Record<GameEventKind, SoundName>` written in a COMMENT
+    // satisfies the regex just as the word `never` once did. Read structurally
+    // instead, which also makes it immune to whitespace and to a re-ordered
+    // `Record<>` argument list being mistaken for the right one.
     expect(existsSync(audioPath), 'cp5-1 must create src/shell/audio.ts').toBe(true)
-    const src = readFileSync(audioPath, 'utf8')
+    const sf = parseTs(readFileSync(audioPath, 'utf8'))
+    let annotation: string | null = null
+    const walk = (n: ts.Node): void => {
+      if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.name.text === 'EVENT_SOUND') {
+        annotation = n.type === undefined ? '<none>' : n.type.getText().replace(/\s+/g, ' ')
+      }
+      ts.forEachChild(n, walk)
+    }
+    ts.forEachChild(sf, walk)
     expect(
-      src,
+      annotation,
       'EVENT_SOUND must be annotated Record<GameEventKind, SoundName> — that annotation, and ' +
         'nothing else in this story, makes a kind with no cue a COMPILE error',
-    ).toMatch(/EVENT_SOUND\s*:\s*Record<\s*GameEventKind\s*,\s*SoundName\s*>/)
+    ).toBe('Record<GameEventKind, SoundName>')
   })
 })
 
@@ -437,197 +653,474 @@ describe('cp5-1 AC3 — the EFFECT union carries its own exhaustiveness guard', 
   // pinned in source text, so the discipline moves into HOW the anchor is
   // written: anchored to the declaration, stripped of comments, and counted.
   //
-  // ─── AND WHY IT IS SCOPED TO THE FUNCTION (Reviewer round 3, HIGH — H1-r3) ─
-  // Every assertion here used to read the whole file. The Reviewer built the
-  // tree that proves why that is not enough — real switch gutted, guard-shaped
-  // decoy parked in dead code above it — and got 20/20 green with `tsc` clean
-  // over a dispatch that would silently play a future fourth effect as a
-  // one-shot. So the anchors now describe `playEventSounds`'s OWN body, and the
-  // decoy test at the bottom of this block is the regression guard for that.
+  // ─── AND WHY IT IS READ FROM THE SYNTAX TREE (Reviewer round 4) ────────────
+  // Rounds 1-4 each anchored one level better than the last and were each
+  // defeated one level deeper; the table in the AST toolkit above records the
+  // sequence. The fifth attempt is not a better regex — it is a different kind
+  // of thing, asking the compiler's own parser what the source says. See that
+  // toolkit's header for which round each parser property retires.
   //
-  // Every assertion is mutation-proven (see the TEA Assessment): each reds
-  // under the mutation it names, none of them reds for a rename or a reformat.
+  // Every assertion below reads ONE field of a single structural `Reading`, and
+  // the mutation sweep at the bottom of this block scores mutants with the same
+  // `verdict()` those assertions are made of — so a mutant the sweep accepts is
+  // by construction a mutant the named tests accept. They cannot drift apart.
 
   const dispatchSource = (): string => readFileSync(dispatchPath, 'utf8')
-  /** The dispatch's own body, comments gone — the subject of every anchor below. */
-  const dispatchBody = (): string | null =>
-    functionBody(stripComments(dispatchSource()), 'playEventSounds')
+  const reading = (): Reading => readDispatch(dispatchSource())
 
-  // The two shapes that consult the compiler about exhaustiveness. Round 3
-  // (M2-r3) widened the first from the literal name `unreachable` to any
-  // identifier, and added the second: every OTHER game in this repo writes the
-  // guard as `assertNever(...)` or names it `_exhaustive`, so harmonising
-  // centipede with the fleet must not red a guarantee that has not changed.
-  // What is still rejected is the CAST (`= effect as never`), which is round
-  // 1's L1 defect and proves nothing.
-  const NEVER_BINDING = /const\s+\w+\s*:\s*never\s*=\s*effect\s*;?\s*$/gm
-  const ASSERT_NEVER = /assertNever\s*\(\s*effect\s*\)/g
-
-  it('the comment stripper removes comments and ONLY comments — the control', () => {
-    // Without this, a `stripComments` that silently returned its input would
-    // make every "not in prose" claim in this block vacuous, and the block
-    // would reproduce the exact defect it exists to prevent.
-    const raw = dispatchSource()
-    const code = stripComments(raw)
-    expect(
-      code.length,
-      'stripComments removed nothing — the anchors below cannot tell code from prose',
-    ).toBeLessThan(raw.length)
-    expect(code, 'stripComments left a line comment behind').not.toMatch(/\/\/ /)
-
-    // REWORK (Reviewer round 3, LOW — L2-r3): "it got shorter" is not "it
-    // removed only comments". The previous regex stripper turned
-    // `const u = 'a//b' // trailing` into `const u = 'a` — silently truncating
-    // real code — and this control could not see it. Pin both directions.
-    const fixture = "const u = 'a//b' // trailing\n/* block */ const v = '/* not a comment */'\n"
-    const stripped = stripComments(fixture)
-    expect(stripped, 'a `//` inside a string literal must SURVIVE').toContain("'a//b'")
-    expect(stripped, 'a comment marker inside a string must survive').toContain(
-      "'/* not a comment */'",
-    )
-    expect(stripped, 'the trailing line comment must be gone').not.toContain('trailing')
-    expect(stripped, 'the block comment must be gone').not.toContain('block')
-  })
-
-  it('the anchors describe the DISPATCH itself, not just the file — the scope control', () => {
-    // H1-r3's non-vacuity guard. If `functionBody` ever stops finding the
-    // dispatch (a rename, a refactor to an arrow const), every assertion below
-    // would be reading `null` and this block would stop meaning anything. Fail
-    // loudly here instead.
-    const body = dispatchBody()
-    expect(body, 'could not locate `function playEventSounds` — the anchors below are blind').not
+  it('the dispatch can be located and read — the scope control', () => {
+    // Non-vacuity for the whole block. If `playEventSounds` is renamed, or
+    // refactored to a shape the reader does not understand, every assertion
+    // below would be scoring an unread file. Fail loudly and specifically here
+    // instead of passing quietly there.
+    const r = reading()
+    expect(r.ok ? null : r.why, 'the dispatch could not be read — every assertion below is blind')
       .toBeNull()
-    expect(body as string, 'the located body must contain the cue switch').toMatch(/switch\s*\(/)
+    const ok = r as Extract<Reading, { ok: true }>
+    expect(ok.discriminant, 'the switch must narrow a named reference').toBe('effect')
     expect(
-      (body as string).length,
-      'the located body must be a PROPER subset of the file — a whole-file match is the ' +
-        'unscoped bug H1-r3 fixed',
-    ).toBeLessThan(stripComments(dispatchSource()).length)
+      ok.union.length,
+      'the effect union must be derived from the source, not listed in this test',
+    ).toBeGreaterThan(1)
   })
 
-  it('every effect has its OWN case arm, so `default` is genuinely unreachable', () => {
+  it('the effect union is read from the SOURCE and matches what the engine actually sees', async () => {
+    // Ties the source-level union to observed behaviour, so neither can drift
+    // alone: every effect the recording fake sees across all EVENT_KINDS must
+    // be a member of the union the switch narrows. Without this, `effectUnion`
+    // could resolve to some unrelated union and the sweep would score the
+    // wrong claim while staying green.
+    const r = reading() as Extract<Reading, { ok: true }>
+    const observed = new Set<string>()
+    for (const kind of await eventKinds()) for (const call of await effectsFor(kind)) observed.add(call.kind)
+    expect(observed.size, 'the runtime sweep observed no effects at all').toBeGreaterThan(0)
+    expect(
+      [...observed].filter((e) => !r.union.includes(e)),
+      `effects the engine was asked for that are not in the declared union [${r.union.join(', ')}]`,
+    ).toEqual([])
+  })
+
+  it('every effect in the union has its OWN case arm, so `default` is unreachable', () => {
     // A `default` that does real work is not an exhaustiveness check
     // (lang-review TS-3). Round 2's mutation deleted `case 'play'` and let the
     // default absorb it — which compiles clean forever, and silently routes a
-    // future fade/duck/pitch-bend to a one-shot `play()`.
-    const body = dispatchBody() as string
-    for (const effect of ['startLoop', 'stopLoop', 'play']) {
-      expect(
-        body,
-        `the switch must handle '${effect}' in its own case arm — a default that ` +
-          'dispatches is not an exhaustiveness guard',
-      ).toMatch(new RegExp(`case\\s+['"]${effect}['"]\\s*:`)) // L1-r3: either quote style
-    }
+    // future fade/duck/pitch-bend to a one-shot `play()`. Because the union is
+    // now READ, adding that fourth effect without an arm reds here too; no
+    // previous round's test could see that at all.
+    const r = reading() as Extract<Reading, { ok: true }>
+    expect(
+      r.union.filter((e) => !r.cases.includes(e)),
+      'effects with no case arm of their own — a default that dispatches is not a guard',
+    ).toEqual([])
   })
 
   it('`default` consults the compiler about exhaustiveness, with NO cast', () => {
     // The cast is the difference between a guard and scenery, and round 1
     // shipped the scenery version (`event.type as never`, logged as L1): a cast
     // makes the assignment compile whatever the discriminant's type is, so the
-    // arm proves nothing. An UNCAST binding is the mechanism — it compiles only
-    // while the union is fully consumed by the arms above.
-    const body = defaultArmBody(dispatchBody() as string)
-    expect(body, 'the switch must carry a `default:` block — AC3 names it').not.toBeNull()
-    const guarded =
-      new RegExp(NEVER_BINDING.source, 'm').test(body as string) ||
-      new RegExp(ASSERT_NEVER.source).test(body as string)
+    // arm proves nothing. An UNCAST binding of the discriminant is the
+    // mechanism — it compiles only while the arms above consume the union.
+    //
+    // Structurally this is "the initialiser is the discriminant Identifier
+    // itself", which admits `= effect` and rejects `= effect as never`,
+    // `= effect!` and `= 0 as never` without enumerating them.
+    const r = reading() as Extract<Reading, { ok: true }>
+    expect(r.casts, 'the default arm casts to `never` instead of consulting the compiler').toEqual([])
     expect(
-      guarded,
-      'the default arm must bind the narrowed discriminant to a `never` const with no ' +
-        '`as` cast (or call assertNever(effect)) — a cast silences the compiler instead ' +
-        `of consulting it. Arm was: ${JSON.stringify(body)}`,
-    ).toBe(true)
-  })
-
-  it('`default` is a GUARD, not a dispatch arm — it must not touch the engine', () => {
-    // The direct negation of round 2's mutation, and the assertion that reds on
-    // it most loudly. Brace-balanced extraction (round 3) so an inner `{}`
-    // cannot truncate the arm before an `audio.` call further down it.
-    const body = defaultArmBody(dispatchBody() as string)
-    expect(
-      body,
-      'the default arm calls the audio engine — it is dispatching, not guarding, so ' +
-        'a new effect kind becomes a wrong sound instead of a compile error',
-    ).not.toMatch(/audio\s*\./)
-  })
-
-  it('the guard lives in the DISPATCH, exactly once, in code and not in prose', () => {
-    // Three failure modes in one count, all of them observed in this story:
-    //   0 in the body, N in the file  -> the decoy (round 3, H1-r3)
-    //   0 after stripping, 1 before   -> the comment (round 1, H2)
-    //   0 anywhere                    -> the deletion (round 2, H1-r2)
-    const body = dispatchBody() as string
-    const found =
-      (body.match(new RegExp(NEVER_BINDING.source, 'gm')) ?? []).length +
-      (body.match(new RegExp(ASSERT_NEVER.source, 'g')) ?? []).length
-    expect(
-      found,
-      'expected exactly one exhaustiveness guard inside playEventSounds (0 means it was ' +
-        'deleted, survives only in a comment, or sits in a DIFFERENT function)',
+      r.guards.length,
+      'expected exactly one guard binding the discriminant in the default arm — 0 means it ' +
+        'was deleted, lives only in a comment, or sits in a switch this one does not own',
     ).toBe(1)
   })
 
-  it('a guard-shaped DECOY elsewhere in the file does not satisfy the anchors', () => {
-    // H1-r3's regression guard, and the acceptance test the Reviewer named.
-    // This is the mutant he built, as data: a file whose real dispatch is
-    // unguarded and whose guard shape lives in a different function. Every
-    // anchor above must reject it. Run against the extraction helpers directly
-    // rather than the real file, so the check needs no source mutation.
-    const decoyed = [
-      'function __decoy(effect: Effect): void {',
-      '  switch (effect) {',
-      "    case 'startLoop':",
-      '      break',
-      "    case 'stopLoop':",
-      '      break',
-      "    case 'play':",
-      '      break',
-      '    default: {',
-      '      const unreachable: never = effect',
-      '      throw new Error(String(unreachable))',
-      '    }',
-      '  }',
-      '}',
-      '',
-      'export function playEventSounds(audio: SoundSurface, events: readonly GameEvent[]): void {',
-      '  for (const event of events) {',
-      '    const sound = EVENT_SOUND[event.type]',
-      '    switch (effectFor(event.type)) {',
-      "      case 'startLoop':",
-      '        audio.startLoop(sound)',
-      '        break',
-      "      case 'stopLoop':",
-      '        audio.stopLoop(sound)',
-      '        break',
-      '      default: {',
-      '        audio.play(sound)',
-      '      }',
-      '    }',
-      '  }',
-      '}',
-    ].join('\n')
+  it('`default` is a GUARD, not a dispatch arm — it must not touch the engine', () => {
+    // The direct negation of round 2's mutation. The engine's method names are
+    // derived from the recording fake rather than typed here, and the search is
+    // over syntax nodes — so round 4's H2 (a `}` inside a debug string hiding
+    // the `audio.play()` that follows it) is not expressible.
+    const r = reading() as Extract<Reading, { ok: true }>
+    expect(ENGINE_METHODS.length, 'no engine methods derived — the check below is vacuous')
+      .toBeGreaterThan(0)
+    expect(
+      r.engine,
+      'the default arm calls the audio engine — it is dispatching, not guarding, so a new ' +
+        'effect kind becomes a wrong sound instead of a compile error',
+    ).toBeNull()
+  })
 
-    const body = functionBody(decoyed, 'playEventSounds')
-    expect(body, 'the decoy fixture must still locate the real dispatch').not.toBeNull()
+  it('the committed dispatch satisfies every one of those at once', () => {
+    expect(verdict(reading()), 'the shipped dispatch fails its own exhaustiveness claim').toEqual([])
+  })
+})
 
-    // The decoy carries a perfect guard — but not in the function that matters.
-    expect(decoyed, 'the fixture is only meaningful if the decoy guard is present').toMatch(
-      /const\s+unreachable\s*:\s*never\s*=\s*effect/,
+// ─── THE MUTATION SWEEP ──────────────────────────────────────────────────────
+//
+// Reviewer round 4, *What REJECT requires* item 3: "Have the matrix built by
+// something other than the author. Twice now a self-authored matrix has
+// returned 100% while missing the live defect." He is right, and the reason is
+// worth stating plainly: a hand-written list of mutants measures the author's
+// imagination, not the guard. Round 3's matrix tested a RENAME because I
+// thought of renames, and missed the fleet's brace-less `assertNever` because I
+// did not — while citing that very idiom as the motivation.
+//
+// So the mutants are no longer written. They are GENERATED from the committed
+// source, three ways, each of which can turn up a case nobody imagined:
+//
+//   - one per CASE CLAUSE the real switch declares (grows with the union);
+//   - one per ENGINE METHOD, derived from the recording fake, each carrying a
+//     brace-in-a-string decoy so round 4's H2 is present in every row rather
+//     than being the one case nobody tried;
+//   - one per DECOY TOPOLOGY — before / after / nested — which is L2-r4's
+//     parameterisation of the fixture that previously covered only "before".
+//
+// The named shapes that remain (a cast, a commented-out guard, the three fleet
+// idioms) are edits to real nodes of the real file, not hand-typed source.
+// Every mutant asserts it CHANGED the source before it is scored, because a
+// mutation that silently failed to apply proves nothing — that is how round 3's
+// "4th effect" row would have passed while editing the wrong line.
+describe('cp5-1 AC3 — the guard is proven against mutants of the REAL source', () => {
+  type Mutant = { name: string; src: string; want: 'reject' | 'accept'; why: string }
+
+  /** Replace one node's text, by position. */
+  const cut = (src: string, node: ts.Node, text: string): string =>
+    src.slice(0, node.getStart()) + text + src.slice(node.getEnd())
+
+  /** A perfectly-guarded switch in a function nothing calls. */
+  const DECOY = [
+    "function __decoy(effect: 'a' | 'b'): void {",
+    '  switch (effect) {',
+    "    case 'a': break",
+    "    case 'b': break",
+    '    default: {',
+    '      const unreachable: never = effect',
+    '      throw new Error(String(unreachable))',
+    '    }',
+    '  }',
+    '}',
+    '',
+  ].join('\n')
+
+  /**
+   * Generation THROWS rather than asserting, and the caller catches.
+   *
+   * The generator's preconditions are properties of the committed source — a
+   * locatable dispatch, one reachable switch, a `never` binding to edit. A
+   * mutated tree can violate them, and if that were an `expect()` at collection
+   * time the whole FILE would report one opaque error and the named assertions
+   * above would never run. The defect this block exists to catch would look
+   * like a broken test file rather than like a missing guard. So failures
+   * become one legible red row (`the generator can read the committed source`)
+   * while everything else still runs.
+   */
+  function mutants(): Mutant[] {
+    const fail = (why: string): never => {
+      throw new Error(`cannot generate mutants: ${why}`)
+    }
+    const src = readFileSync(dispatchPath, 'utf8')
+    const sf = parseTs(src)
+    const fns = reachableFrom(sf, 'playEventSounds')
+    if (fns === null) fail('playEventSounds not found')
+    const owned = ownedSwitches(fns as FnLike[])
+    if (owned.length !== 1) fail(`expected exactly one reachable switch, found ${owned.length}`)
+    const { sw, owner } = owned[0] as { sw: ts.SwitchStatement; owner: FnLike }
+    const def = sw.caseBlock.clauses.find(ts.isDefaultClause)
+    if (def === undefined) fail('no default clause')
+    const arm = def as ts.DefaultClause
+    const cases = sw.caseBlock.clauses.filter(ts.isCaseClause)
+    if (owner.body === undefined) fail('the dispatch has no body')
+    const body = owner.body as ts.Block
+    if (!ts.isIdentifier(sw.expression)) fail('the discriminant is not an identifier')
+    const disc = (sw.expression as ts.Identifier).text
+
+    // ── everything below is located through the SAME reading the assertions
+    // use, never by assuming today's shape. Round 4 raised the same complaint
+    // twice (H3-r4: the matrix cited the fleet's idiom and tested something
+    // else; M1-r4: an honest extraction reds five tests), and a generator
+    // hard-coded to one topology reproduces it one level out — the property
+    // would survive a legitimate refactor while the machinery proving it went
+    // red, which trains people to weaken the machinery.
+
+    // The guard STATEMENT, whichever of the two accepted forms it wears — a
+    // `never` binding or an `assertNever(disc)` call. Replacing the statement
+    // works for both; hunting for a `never` binding only works for one.
+    const guards: ts.Node[] = []
+    const findGuard = (n: ts.Node): void => {
+      const isBinding =
+        ts.isVariableDeclaration(n) && n.type?.kind === ts.SyntaxKind.NeverKeyword
+      const isAssert =
+        ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'assertNever'
+      if (isBinding || isAssert) {
+        // the enclosing STATEMENT, so replacing it leaves valid syntax
+        let stmt: ts.Node = n
+        while (stmt.parent !== undefined && !ts.isStatement(stmt)) stmt = stmt.parent
+        guards.push(stmt)
+      }
+      ts.forEachChild(n, findGuard)
+    }
+    ts.forEachChild(arm, findGuard)
+    if (guards.length !== 1) fail(`expected one guard statement to mutate, found ${guards.length}`)
+    const guard = guards[0] as ts.Node
+
+    // The union the reader actually READS — a parameter annotation when the
+    // switch has been extracted into a helper, `effectFor`'s return type today.
+    const unionType = effectUnionType(sf, sw, owner)
+    if (unionType === null) fail('the effect union could not be located to widen')
+    const union = unionType as ts.TypeNode
+
+    const out: Mutant[] = []
+
+    // ── generated: one per case clause the switch declares ──────────────────
+    for (const clause of cases) {
+      out.push({
+        name: `delete ${clause.expression.getText()} case arm`,
+        src: cut(src, clause, ''),
+        want: 'reject',
+        why: 'the default silently absorbs that effect',
+      })
+    }
+
+    // ── generated: one per engine method, each hiding a `}` in a string ──────
+    for (const method of ENGINE_METHODS) {
+      out.push({
+        name: `default dispatches via audio.${method}() behind a brace-in-string`,
+        src: cut(
+          src,
+          arm,
+          'default: {\n        const unreachable: never = effect\n' +
+            "        console.debug('legacy}', unreachable)\n" +
+            `        audio.${method}(sound)\n      }`,
+        ),
+        want: 'reject',
+        why: 'H2-r4: the `}` in the debug string used to truncate the arm before the engine call',
+      })
+    }
+
+    // ── generated: one per decoy topology (L2-r4) ───────────────────────────
+    const gutted = cut(src, arm, 'default: {\n        audio.play(sound)\n      }')
+    const bodyOpen = body.getStart() + 1
+    const topologies: Record<string, string> = {
+      before: DECOY + gutted,
+      after: `${gutted}\n${DECOY}`,
+      nested: gutted.slice(0, bodyOpen) + `\n${DECOY}` + gutted.slice(bodyOpen),
+    }
+    for (const [where, mutated] of Object.entries(topologies)) {
+      out.push({
+        name: `real switch gutted, guard-shaped decoy ${where} it`,
+        src: mutated,
+        want: 'reject',
+        why: where === 'nested' ? 'H1-r4: the decoy lives INSIDE the dispatch' : 'round 3, H1-r3',
+      })
+    }
+
+    // ── the same three topologies with the dispatch INTACT — the control that
+    // makes the three rows above mean what they say.
+    //
+    // Found by mutating this file's own machinery rather than by thinking of
+    // it: neutering `reachableFrom` to "every function in the module" left the
+    // whole matrix GREEN, because a decoy that is merely PRESENT already
+    // produces two switches and is rejected on that count alone. So the
+    // rejections above did not depend on the call-graph reasoning they are
+    // credited to, and the mechanism the Reviewer's H1-r4/M1-r4 pair actually
+    // requires was unproven. These rows are the discriminator: dead code
+    // elsewhere in the module must not red a guard that has not changed, and
+    // only reachability can tell that from a real second switch.
+    for (const [where, mutated] of Object.entries({
+      before: DECOY + src,
+      after: `${src}\n${DECOY}`,
+      nested: src.slice(0, bodyOpen) + `\n${DECOY}` + src.slice(bodyOpen),
+    })) {
+      out.push({
+        name: `dispatch INTACT, unreachable decoy ${where} it`,
+        src: mutated,
+        want: 'accept',
+        why: 'an uncalled function elsewhere in the module changes no guarantee',
+      })
+    }
+
+    // ── named shapes, applied to real nodes ─────────────────────────────────
+    out.push(
+      {
+        name: 'guard cast: the discriminant is `as never` rather than bound',
+        src: cut(src, guard, `const unreachable: never = ${disc} as never`),
+        want: 'reject',
+        why: "round 1's L1 — a cast silences the compiler instead of consulting it",
+      },
+      {
+        name: 'guard commented out',
+        src: cut(src, guard, `// ${guard.getText().split('\n').join(' ')}`),
+        want: 'reject',
+        why: "round 1's H2 — the tree has no comments, so this cannot be missed",
+      },
+      {
+        name: 'guard deleted outright',
+        src: cut(src, guard, ''),
+        want: 'reject',
+        why: "round 2's H1-r2 — the drift the Reviewer found by hand",
+      },
+      {
+        name: 'guard binds something other than the discriminant',
+        src: cut(src, guard, 'const unreachable: never = 0 as never'),
+        want: 'reject',
+        why: 'a `never` binding that narrows nothing is scenery',
+      },
+      {
+        name: 'a fourth effect joins the union with no case arm',
+        src: cut(src, union, `${union.getText()} | 'duck'`),
+        want: 'reject',
+        why: 'THE claim AC3 makes, and the one no previous round could test',
+      },
+      {
+        name: 'default arm removed entirely',
+        src: cut(src, arm, ''),
+        want: 'reject',
+        why: 'AC3 names the default arm',
+      },
+      // ── must STAY GREEN: refactors that change no guarantee ───────────────
+      {
+        // Renames every reference at once, by position — so it applies whatever
+        // the discriminant is currently called, and cannot half-rename the way
+        // a `split().join()` over the raw text would (`effect` is a substring of
+        // `effectFor`).
+        name: `rename the discriminant \`${disc}\` throughout`,
+        src: (() => {
+          const sites: ts.Identifier[] = []
+          const collect = (n: ts.Node): void => {
+            if (ts.isIdentifier(n) && n.text === disc) sites.push(n)
+            ts.forEachChild(n, collect)
+          }
+          ts.forEachChild(sf, collect)
+          let next = src
+          for (const id of [...sites].reverse()) next = cut(next, id, 'cueEffect')
+          return next
+        })(),
+        want: 'accept',
+        why: 'a guard that reds on a rename pins the spelling, not the property',
+      },
+      {
+        // A toggle, not a one-way conversion, so it still applies to a source
+        // that has already been reformatted the other way.
+        name: 'the case labels swap quote style (a formatter change)',
+        src: cut(
+          src,
+          sw,
+          sw.getText().includes("'")
+            ? sw.getText().split("'").join('"')
+            : sw.getText().split('"').join("'"),
+        ),
+        want: 'accept',
+        why: "round 3's L1-r3",
+      },
+      // The fleet's three brace-less `assertNever` shapes. Read out of the
+      // source files this round rather than recalled — round 4's H3 was
+      // precisely a matrix row that cited these and then tested something else.
+      // Verbatim but for the discriminant's name (`kind`/`mode` -> `effect`):
+      //   plugins/tempest/src/core/sim.ts:159        default: return assertNever(kind, 'enemy kind')
+      //   plugins/tempest/src/core/sim.ts:1200-1201  default:
+      //                                                assertNever(mode, 'game mode')
+      //   plugins/red-baron/src/core/scoring.ts:125-126  default:
+      //                                                    return assertNever(kind)
+      {
+        name: "fleet idiom: `default: return assertNever(effect, 'cue effect')`",
+        src: cut(src, arm, "default: return assertNever(effect, 'cue effect')"),
+        want: 'accept',
+        why: 'tempest sim.ts:159 — brace-less, same line',
+      },
+      {
+        name: "fleet idiom: `default:` then `assertNever(effect, 'cue effect')`",
+        src: cut(src, arm, "default:\n        assertNever(effect, 'cue effect')"),
+        want: 'accept',
+        why: 'tempest sim.ts:1200-1201 — brace-less statement',
+      },
+      {
+        name: 'fleet idiom: `default:` then `return assertNever(effect)`',
+        src: cut(src, arm, 'default:\n        return assertNever(effect)'),
+        want: 'accept',
+        why: 'red-baron scoring.ts:125-126 — brace-less return, one argument',
+      },
     )
 
-    // ...and every anchor must nonetheless reject the real dispatch.
-    expect(body as string, "the real dispatch has no `case 'play'` arm").not.toMatch(
-      /case\s+['"]play['"]\s*:/,
-    )
-    const arm = defaultArmBody(body as string)
-    expect(arm, 'the real dispatch has a default arm').not.toBeNull()
-    expect(arm as string, 'the real default arm DISPATCHES — this must be caught').toMatch(
-      /audio\s*\./,
-    )
-    const found =
-      ((body as string).match(new RegExp(NEVER_BINDING.source, 'gm')) ?? []).length +
-      ((body as string).match(new RegExp(ASSERT_NEVER.source, 'g')) ?? []).length
-    expect(found, 'the real dispatch carries NO guard, decoy notwithstanding').toBe(0)
+    // Only meaningful while the switch still lives inside the dispatch; once it
+    // HAS been extracted this row would be re-extracting an extraction. Emitted
+    // conditionally rather than silently producing a no-op, and the counts
+    // control below is written to tolerate its absence.
+    const enclosing = sw.parent
+    const decl = ts.isBlock(enclosing)
+      ? enclosing.statements.find(
+          (s) =>
+            ts.isVariableStatement(s) &&
+            s.declarationList.declarations.some(
+              (d) => ts.isIdentifier(d.name) && d.name.text === disc,
+            ),
+        )
+      : undefined
+    const ownerName = owner.name !== undefined && ts.isIdentifier(owner.name) ? owner.name.text : ''
+    if (ownerName === 'playEventSounds' && decl !== undefined) {
+      const swText = sw.getText()
+      out.push({
+        name: 'the guarded switch extracted into a helper the dispatch CALLS',
+        src:
+          src.slice(0, decl.getStart()) +
+          `dispatchEffect(audio, sound, ${decl.getText().split('=').slice(1).join('=').trim()})` +
+          src.slice(sw.getEnd()) +
+          '\nfunction dispatchEffect(audio: SoundSurface, sound: SoundName, ' +
+          `${disc}: ${union.getText()}): void {\n  ${swText}\n}\n`,
+        want: 'accept',
+        why: 'M1-r4 — a behaviour-preserving refactor cp5-2 is likely to make',
+      })
+    }
+    return out
+  }
+
+  let genError: string | null = null
+  let ALL: Mutant[] = []
+  try {
+    ALL = mutants()
+  } catch (e) {
+    genError = e instanceof Error ? e.message : String(e)
+  }
+
+  it('the generator can read the committed source', () => {
+    expect(genError, 'no mutants could be generated — every row below is missing, not passing')
+      .toBeNull()
+  })
+
+  it('the generated matrix is not empty and covers both directions', () => {
+    // Without this, a `mutants()` that returned `[]` would make every row below
+    // vacuous — `it.each([])` runs zero tests and reports success.
+    const committed = readFileSync(dispatchPath, 'utf8')
+    expect(ALL.length, 'no mutants generated').toBeGreaterThan(10)
+    expect(ALL.filter((m) => m.want === 'reject').length, 'no must-RED rows').toBeGreaterThan(5)
+    // Counted over rows that actually DIFFER from the committed source: a
+    // must-ACCEPT row is allowed to no-op (see below), so counting all of them
+    // would let the green half of the matrix decay to nothing unnoticed.
+    expect(
+      ALL.filter((m) => m.want === 'accept' && m.src !== committed).length,
+      'no must-GREEN row actually changes the source',
+    ).toBeGreaterThan(3)
+    expect(new Set(ALL.map((m) => m.name)).size, 'duplicate mutant names').toBe(ALL.length)
+  })
+
+  it.each(ALL)('$want: $name', ({ src, want, why }) => {
+    // A must-REJECT row that failed to apply is scoring the COMMITTED source,
+    // which is accepted — so it would report "rejected as required" while
+    // proving nothing. That is how round 3's fourth-effect row would have
+    // passed while editing the wrong line, and it is a hard error here.
+    //
+    // A must-ACCEPT row is held to the weaker rule deliberately: "this shape is
+    // already the shape the file uses" is a true and harmless outcome, and
+    // failing it would red the suite for a refactor that changed no guarantee —
+    // the exact complaint of H3-r4 and M1-r4, reproduced in the machinery. The
+    // control above keeps the green half from decaying to no-ops.
+    if (want === 'reject') {
+      expect(src, `the mutation did not apply — it is scoring the committed source (${why})`)
+        .not.toBe(readFileSync(dispatchPath, 'utf8'))
+    }
+    const reasons = verdict(readDispatch(src))
+    if (want === 'reject') {
+      expect(reasons, `this mutant must be REJECTED — ${why}`).not.toEqual([])
+    } else {
+      expect(reasons, `this mutant must be ACCEPTED — ${why}`).toEqual([])
+    }
   })
 })
 
