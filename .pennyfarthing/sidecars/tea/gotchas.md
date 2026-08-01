@@ -4,6 +4,68 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 
 ---
 
+### Anchoring a source assertion to the DECLARATION is not enough — the declaration can be quoted in a COMMENT. Strip comments, then count.
+
+**Situation:** Pinning a COMPILE-TIME-only claim, where no runtime assertion can reach the mechanism
+(cp5-1: a `switch`'s `default: { const unreachable: never = effect }` exhaustiveness guard — the two
+shapes differ only in what `tsc` rejects, never in what the code does, so a recording fake cannot tell
+them apart).
+
+**Problem:** The project rule born from the previous round of this same story says *"anchor to the
+DECLARATION that does the work, not to the word"* — because `expect(src).toMatch(/never/)` matched the
+word `never` in two comments and stayed green over a deleted guard. So I wrote the declaration anchor,
+`/const\s+unreachable\s*:\s*never\s*=\s*effect/`. **It has the identical defect one level up.**
+Measured, not argued: rewrite the guard as `// const unreachable: never = effect` and a raw-source
+declaration anchor is still **green over a deleted guard**. Files whose comments quote their own code
+— which is most well-commented files, and certainly any file carrying a REWORK note — make this
+likely, not hypothetical.
+
+**Prevention:** Count occurrences in comment-**STRIPPED** source, never raw. Then the two obvious
+follow-on traps:
+
+1. **Give the stripper a positive control.** A `stripComments` that silently returned its input makes
+   every "not in prose" claim vacuous and rebuilds the exact defect you are preventing. Assert
+   `stripped.length < raw.length` *and* that no comment marker survives — and mutation-prove it by
+   making the helper a no-op and requiring red.
+2. **Assert the STRIPPED count, not the raw count.** Raw-count assertions red spuriously the day
+   someone legitimately quotes the code in a comment. The failure you care about is the reverse: the
+   declaration existing *only* in prose, i.e. stripped count `0`.
+
+Then prove the combination — no-op stripper **plus** comment-only guard — is still caught. If it is
+not, the block is decoration.
+
+**Corollary — reject the cast, not just the keyword.** `const x: never = effect` is a guard;
+`const x: never = effect as never` compiles whatever `effect` is and proves nothing (this was the same
+story's earlier Low). A regex ending at `effect` matches both. Anchor to end-of-statement
+(`…=\s*effect\s*;?\s*$` with the `m` flag) so the cast reds.
+
+---
+
+### The mutation-test loop needs a `cp` backup taken BEFORE the first mutation — `git checkout` cannot tell your experiment from your work
+
+**Situation:** Mutation-proving assertions (delete the mechanism, require red, restore) while your own
+new tests are written but not yet committed.
+
+**Problem:** I mutated a helper inside my own test file to prove a control was non-vacuous, then ran
+`git checkout -- <that test file>` to undo it. Both the mutation *and* ~160 lines of uncommitted new
+tests were uncommitted, so `git checkout` reverted **both** — it restored HEAD, which is the file
+without my work. The repo memory note for this is literally named
+`git-checkout-clobbers-uncommitted-mutation` and I walked into it anyway, because in the moment the
+command reads as "undo my mutation" rather than "discard everything not committed."
+
+**Prevention:** Two rules, and the first is cheap enough to be unconditional:
+
+1. `cp` the file to the scratchpad **immediately after writing it and before the first mutation** —
+   then every restore is `cp` back, and no VCS command is ever involved.
+2. **Commit the RED tests first, then mutate.** A commit makes `git checkout --` safe by construction
+   and is what you were going to do at the end of the phase anyway.
+
+**Recovery, if it happens:** rewrite from context, then **re-run the entire mutation matrix** rather
+than trusting the reconstruction — it is the only thing that proves the rebuilt file is behaviourally
+identical, and it is cheap. Do not skip it because the tests "look the same."
+
+---
+
 ### A "remove the invented constant" story: the invented number is often a REAL ROM value for a DIFFERENT mechanic — pin the mechanism you're deleting, not the number
 
 **Situation:** A BOOK_WAS_WRONG fidelity story hands you a constant to DELETE (sw7-4 / S-015:
