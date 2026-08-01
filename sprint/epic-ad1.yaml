@@ -15,11 +15,17 @@ stories:
     workflow: tdd
   - id: ad1-2
     title: battlezone self-play attract demo — drive and duel unattended behind the attract text, then opt in
-    points: 5
+    description: "REPURPOSED 2026-08-01 (user ruling at setup: 5pt tdd -> 1pt trivial). The story's substantive work already shipped in the bz1-10 era, and the epic description's claim that battlezone shows \"rotating text pages\" is REFUTED on the current tree (likely pattern-matched from star-wars at filing). Measured census: plugins/battlezone/src/core/sim.ts:10 \"Attract is a SELF-PLAYING demo (story AC)\" - attract runs the full battle step (stepGame calls stepBattle with the demoInput autopilot: patrol arc + pot-shots) including stepEnemies AND stepSaucer, so the tank drives and duels unattended, immortal, deterministic from the boot seed. plugins/battlezone/src/main.ts:307-309: \"the demo battlefield keeps playing behind the text (attract)\" - the story title's exact phrase, already a shipped comment. All 11 battlezone test files mention attract (bz1-10-era coverage). Remaining scope, and it is the whole story: (1) flip showcase: false -> true at plugins/battlezone/plugin.ts:12 (listed is already true); (2) regenerate the committed src/host/registry.ts via npm run gen:registry in the SAME commit; (3) verify in the served lobby that battlezone enters the showcase carousel and the attract demo visibly drives and duels behind the attract text. Handed over as an unverified claim, not omitted and not asserted: SM did not compare the autopilot's choreography against the 1980 ROM's actual attract behaviour; no divergence is claimed and none was measured - this epic demands existence of a self-play demo, not a choreography audit."
+    points: 1
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-01'
     repos: arcade
-    workflow: tdd
+    workflow: trivial
+    acceptance_criteria:
+      - 'plugins/battlezone/plugin.ts sets showcase: true (listed stays true; no other manifest field changes)'
+      - "src/host/registry.ts is regenerated via npm run gen:registry in the same commit, and battlezone's registry entry carries showcase: true"
+      - Verified in the served lobby that battlezone appears in the showcase carousel and its attract demo visibly drives and duels behind the attract text (the battlefield moves - not a static text page)
   - id: ad1-3
     title: asteroids self-play attract demo — put a ship in the drifting rock field, then opt in
     points: 3
