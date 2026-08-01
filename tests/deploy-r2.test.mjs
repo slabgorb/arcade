@@ -805,7 +805,27 @@ test('mg1-5 round 2: "is a page" has ONE definition — anything served as text/
     assert.equal(error, null);
     assert.equal(uploaded.length, names.length, 'ordering, not filtering');
 
-    // Every object the ORIGIN would serve as HTML must come after every object it would not.
+    // ONE assertion, and the fixture is what gives it teeth.
+    //
+    // Every object the ORIGIN would serve as HTML must come after every object it would
+    // not. That single property covers the substring regression too, and the thing that
+    // makes it do so is `index.html.map` being IN `names` — not any separate assertion.
+    // MEASURED both ways: under `isEntryPoint = key.includes('.html')` the sourcemap is
+    // misclassified as a page and dragged into the trailing partition, so a page ends up
+    // before an asset and this reddens. Drop `index.html.map` from the fixture and the
+    // same mutant produces a correctly-ordered upload list and sails through. The fixture
+    // entry is the guard; this assertion is how it speaks.
+    //
+    // Two earlier attempts at a separate "negative" assertion are gone, and why is worth
+    // keeping. `indexOf(map) <= lastAsset` was a plain tautology — `lastAsset` is a
+    // monotonic reduce and `contentTypeFor('.map')` is never text/html, so it always
+    // reached the sourcemap's own index. Replacing it with `< firstPage` looked correct
+    // and was still dead: this assertion runs FIRST and throws, and it mathematically
+    // implies the other, so the other could never be the one to red. Verified over all
+    // 720 permutations of this fixture — zero orderings where this passes and that fails.
+    // The general lesson, paid for twice: an assertion's power is a property of its
+    // POSITION, under everything that runs before it. Evaluating one in isolation, or in
+    // a harness with its predecessor removed, measures a file that does not exist.
     const lastAsset = uploaded.reduce(
       (acc, k, i) => (contentTypeFor(k).startsWith('text/html') ? acc : i),
       -1,
@@ -816,24 +836,9 @@ test('mg1-5 round 2: "is a page" has ONE definition — anything served as text/
       `a file the origin serves as text/html is uploading before an asset.\n` +
         `  order: ${JSON.stringify(uploaded)}\n` +
         `  first page at ${firstPage}, last asset at ${lastAsset}\n` +
-        `  "is a page" must have ONE definition shared with contentTypeFor, not a second copy`,
-    );
-
-    // And the negative: a filename merely CONTAINING "html" is not a page. This kills a
-    // regression to `key.includes('.html')`, which would pass every other test in the file.
-    // Compared against firstPage, NOT against lastAsset. `<= lastAsset` was a TAUTOLOGY:
-    // lastAsset is a monotonic reduce that assigns acc = i for every non-page key, and
-    // contentTypeFor('index.html.map') is 'application/json' whatever isEntryPoint does —
-    // so lastAsset always reached this key's own index and the comparison held for EVERY
-    // possible ordering, including pages-first. It could not fail, while its comment
-    // claimed mutation had proven it caught the substring regression. It had not: the
-    // mutation reddened the assertion ABOVE. A file-level mutation result tells you the
-    // file is guarded, never which assertion guards it.
-    assert.ok(
-      uploaded.indexOf('index.html.map') < firstPage,
-      '`index.html.map` is a sourcemap, not an entry point — the predicate must match the ' +
-        'EXTENSION (`.map`), not the `.html` substring sitting in the middle of the name, ' +
-        'so it must upload BEFORE the first real page.',
+        `  "is a page" must have ONE definition shared with contentTypeFor, not a second copy.\n` +
+        `  If \`index.html.map\` moved into the trailing group, the predicate is matching the\n` +
+        `  \`.html\` SUBSTRING rather than the extension.`,
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
