@@ -44,7 +44,7 @@ stories:
     description: 'The hunter/shadow navigation and the deadliest brain. B2DIR (:4104-4159) projects B2XLEN = 27+4 = 31 px ahead in the travel direction (scaled by PVELY), samples the arena solid-mask (BCKXTB plus/minus B2XLEN AND BCKYTB) — our arena.groundMaskAt is that BCKXTB/BCKYTB analog — and on a cliff ahead flips PFACE and slows (B2AV). The plain bounder lacks this look-ahead (B2XLEN :3969, SHXLEN :4228 = 31). Shadow lord (SHADOW :4230): SHDN free-fall on descent (NO FLAPING WINGS, :4246), SHLEP tracks the PLAYER line directly (:4277), flaps only to escape the lava below dollar-D3. Extend the hunter/shadow brains (enemy.ts b2undr/shadow) with the look-ahead turn and the shadow player-line track (bounder unchanged). BUILDS ON jt8-1/jt8-2. Radix-cited plus claims entries.'
     points: 3
     priority: p1
-    status: in_review
+    status: done
     started: '2026-08-01'
     repos: arcade
     workflow: tdd
@@ -53,6 +53,7 @@ stories:
       - The shadow lord free-falls on descent (no brake) and tracks the targeted player line via SHLEP; lava-escape below dollar-D3 holds; pinned plus mutation-checked (:4230-4277).
       - Radix-cited constants plus claims entries; the citations suite is green.
       - 'Determinism: a seeded hunter navigating a cliff and a shadow hunting a player replay bit-for-bit; purity guard plus npm test green.'
+    completed: '2026-08-01'
   - id: jt8-4
     title: Egg collection — the player-vs-egg catch pass (PLYEGG/EGGSCR), ladder plus 500 mid-air, cancel remount
     description: 'The missing egg pickup — PLYEGG (:3009) / EGGSCR (:3030-3095). Add a player-vs-egg pass to collisionPass (demo.ts): on a player overlapping an egg, emit the egg score events via the EXISTING egg.ts core (eggScoreEvents = the EGGVAL ladder 250/500/750/1000 by hit count capped, :3097-3104, PLUS 500 if caught mid-air with PFEET==0, :3063-3069), attribute the score to the catching player (a score/reason:egg/player event the game.ts drain already credits to the right ledger), REMOVE the egg, and cancel any incoming remount bird (AUTOFF, :3078-3087). REUSE-FIRST: the entire scoring ladder plus air bonus already exist and are tested (egg.ts, jt2-4) and game.ts already drains reason:egg — the only new code is the catch pass plus egg removal. INDEPENDENT of the enemy chain (jt8-1 to jt8-3) — the quickest standalone playability win. Radix-cited plus claims entry for PLYEGG/EGGSCR.'
@@ -109,3 +110,36 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: jt8-9
+    title: Shadow SHDIRB coast — SHDN/SHUP wakes write dir 0; our shadow() thrusts at facing (:4388-4392)
+    description: "SHDIRB (JOUSTRV4.SRC:4388-4392) is the shadow lord's no-steer exit for SHDN/SHUP wakes: it writes CURJOY dir = 0, so a moving shadow COASTS (drift decays, no horizontal thrust). Our port's shadow() returns dir = facing on those wakes — continuous thrust the ROM does not apply. Found by TEA on jt8-3 while mapping the per-route steering; real ROM behaviour, fenced out of jt8-3's scope (horizontal look-ahead + SHLEP line track). Affects plugins/joust/src/core/enemy.ts (shadow() dir channel). jt8-3's steering-source.test.ts already proves SHLEPB→SHDIRA and SHDIRB consult NO background mask — extend those structural pins rather than re-deriving the routing. Expect a determinism re-baseline on the demo replays if the shadow's drift shape changes (a claim to verify, not a measurement)."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt8-10
+    title: Port BOLAVA (:3953+) — the lava-avoid episode the lava steer gates divert to; jt8-3 suppresses instead
+    description: "BOLAVA (JOUSTRV4.SRC:3953+) is the lava-avoid episode the steering gates DIVERT to: the hunter's B2DIRL gate (:4097-4102, CMPA #$D3 / BLO B2DIR / LDA PVELY / BMI B2DIR / JMP BOLAVA) and the shadow's own SHDIR pre-check (:4330-4334, threshold $D0 — two DIFFERENT lava thresholds, do not conflate them; both re-derived by jt8-3's Reviewer). jt8-3 shipped the gates exactly but SUPPRESSES rather than diverts: gated wakes fall through to the existing brain laws, with SHLEV's protective lava flap (uf1-8) as the stand-in — a Reviewer-ACCEPTED deviation, since modelling BOLAVA inside jt8-3 would have expanded a 3pt story into the whole lava-avoid system. This story ports the episode itself and replaces the fall-through with the divert. Bounder-family mechanism per jt8-3's deviation record. Found by TEA on jt8-3 during test design; jt8-3's boundary test (both brains at their exact gate scanline) pins the gate lines themselves — build on it, do not weaken it."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt8-11
+    title: Vertical look-ahead — the overhead-cliff checks gating the UP-seek arms are unmodelled (:4030-4034, :4259-4262, :4418-4422)
+    description: "The vertical counterpart of jt8-3's horizontal B2XLEN/SHXLEN steering: the ROM gates its UP-seek arms on an overhead-cliff check — :4030-4034 (hunter), :4259-4262 and :4418-4422 (shadow) — so an enemy does not seek up into solid ground overhead. Unmodelled in the port: affects plugins/joust/src/core/enemy.ts (seekWake's up-arm). Found by TEA on jt8-3, whose scope was fenced to the HORIZONTAL look-ahead. jt8-3 shipped bckMaskAt (the BCKXTB/BCKYTB point sample, landMaskAtX-indexed) — whether the vertical checks sample the same table pair with a Y offset is TEA's to derive from the cited lines, not assumed. Coordination note: uf1-9 owns the up-flight VY gates on the same up-seek path (HUUPVY :4178 / SHUPVY :4272) — a different mechanism (velocity gates, not mask checks); coordinate if both land close together."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt8-12
+    title: 'Test-hygiene sweep: move the 27 legacy -source suites onto tests/helpers/claims.ts; comment-body line refs become symbol refs'
+    description: "Two mechanical findings from jt8-3, one sweep, joust tests only — no production code. (1) TEA: 27 legacy -source suites still carry their own pre-hardening loadClaims/claimCovers copies now that tests/helpers/claims.ts exists (jt8-2's \"3x\" note undercounted — it is 28 definitions); replace each copy with an import of the hardened loader. homing-source.test.ts is the refactor template (moved onto the helper during jt8-3, 78/78 green). (2) Reviewer: comment-body enemy.ts:<line> refs go stale every time the file grows — audio-flap.test.ts:536 (\"enemy.ts:540\") and difficulty-wiring.test.ts:27 (\"enemy.ts:115/118\") were stale BEFORE jt8-3 (verified against b84b5d4) and have drifted further; replace comment-body line refs with symbol refs. The Reviewer explicitly suggested folding (2) into the same sweep as (1)."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
