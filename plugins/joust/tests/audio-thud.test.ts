@@ -729,13 +729,19 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
       [P1, A].filter((id) => velYOf(d, id) === UP_FROM_DESCENDING)
     expect(riser(top).length, 'precondition: A really bounced').toBe(1)
     expect(riser(bottom).length, 'precondition: B really bounced').toBe(1)
-    // Two assertions, and they catch DIFFERENT defects. The absolute pair names
-    // WHICH bird rises (`A`, register X, per `:5108`) and is the only thing that
-    // can see a role INVERSION — inverting demo.ts:926-927 moves the rise in BOTH
-    // stagings at once, so the relative assertion below stays green through it.
-    // The relative one is what catches a person tie that consults GEOMETRY, which
-    // the absolute pair alone would not: a height-dispatching implementation still
-    // sends A up in `tie(true)` and only diverges in `tie(false)`.
+    // The ABSOLUTE pair carries the coverage; the relative assertion below is
+    // kept for its failure message, not for unique reach. MEASURED both ways:
+    //   • role INVERSION (swap bounceBottom(a)/bounceTop(b) at demo.ts:926-927)
+    //     moves the rise in BOTH stagings at once, so the relative assertion
+    //     stays green — only the absolute pair sees it.
+    //   • GEOMETRY dispatch (make the person tie consult screen Y) diverges in
+    //     `tie(true)` and AGREES in `tie(false)`: `tie(true)` puts P1 at pixel 92
+    //     and A at 94, so `92 <= 94` sends P1 up — wrong — while `tie(false)`
+    //     computes `94 <= 92` and sends A up, which is what the ROM does anyway.
+    //     So `staging A` below catches it and `staging B` does not, and the
+    //     relative assertion never fires at all.
+    // Both mutations therefore redden `staging A`. Do NOT trim it as duplicate
+    // of the relative check — that check catches neither.
     expect(riser(top), 'staging A: OSTXTP sends REG.X (=A) up, :5108').toEqual([A])
     expect(riser(bottom), 'staging B: the SAME register, though the geometry moved').toEqual([A])
     expect(
