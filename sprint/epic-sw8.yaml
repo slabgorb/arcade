@@ -142,6 +142,8 @@ stories:
     workflow: tdd
     depends_on: sw8-12
     type: bug
+    review_findings: "REJECTED round 1 (prose-only rework, engineering correct): [MEDIUM][DOC] audio.ts:211 stopLoop contract falsified by the unification — 'safe no-op when nothing is looping' is probe-proven false on the shared pm channel (stopLoop('space') kills a ringing tune); sat inside TEA's assigned rewrite range :194-206. [LOW][DOC] music-channel.test.ts:6 'dedicated music channel' survivor prose. Non-blocking: [RULE] finishGround death-gate gap (sim.ts:995-997 vs ROM PHEGD WSMAIN.MAC:1645-1646/:1673) filed as sw8-21. All mutations bite (6/3/3 reds), 35 citations exact, laundering zero, suite 2072/2072."
+    review_verdict: rejected
   - id: sw8-14
     title: "music-bake pipeline cannot reproduce finish_ground.wav: sw7-18's PMREB one-shot exists only in R2 — OUTPUT_FILES has no entry, so 'just deploy-assets' never re-uploads it and a bucket wipe loses it. Add finishGround (REB, TUNTAB 19-22) to gen-music-data TUNE_SPEC + bake OUTPUT_FILES and drop the carve-out in bake-music.test.mjs's manifest-agreement test (gap surfaced/documented by sw8-12)"
     points: 1
@@ -206,3 +208,12 @@ stories:
       - Whatever is chosen, the value and the reason are stated in the file so the next reader does not re-derive it — the current comment already flags 0 as a clone artifact without acting on it.
       - The board's rendering of the default rows is asserted by a test that distinguishes a blank column from the string '0' and from the string 'null'. String(null) is 'null', a truthy non-empty string, so an assertion satisfied by 'a value was drawn' is satisfied by every wrong answer.
       - The existing star-wars high-score test file is updated rather than duplicated, and the change is proven non-vacuous by mutation.
+  - id: sw8-21
+    title: 'surface finishGround death gate: port the PHEGD death exit so a last-shield fall on the crossing frame silences PMREB, as sw8-13 did for the space walk'
+    description: "Found by sw8-13's review (rule-checker #14 family sweep, ROM-verified by Reviewer). The ROM's ground-flying routine PHEGD carries the IDENTICAL death guard sw8-13 ported for space: 'LDA S.GAS / LBMI PHIG0D ;J EXIT WHEN DEAD' (WSMAIN.MAC:1645-1646) sits BEFORE the PH.TIM walk that fires 'JSR PMREB ;FINISH GROUND WITH REBEL' (:1673), so a last-shield fall on the crossing frame silences the finishGround cue on the cabinet. Our surface stepper pushes {type:'tune',tune:'finishGround'} at the speed-crossing (sim.ts:995-997, sw7-18's rider) BEFORE the frame's loseShield resolves (sim.ts:1126), with no lives gate — the cue starts over the death. Same class, same fix shape as sw8-13's 'if (lives > 0)' gate + death-frame describe (tests/core/space-music-milestones.test.ts sw8-13 block is the test template; note the surface crossing is SPEED-driven, not phaseTime, so the fixture differs). Reachable only when the crossing and the last shield share one 0.05s frame."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug

@@ -1290,3 +1290,38 @@ rather than simply "brittle" or "weak".
 **Cheap rule:** if a finding says "this test would still pass if X", write X and run it. If a finding
 says "this test would wrongly fail if Y", write Y and run it. Both take minutes and both belong in the
 severity table as CONFIRMED rather than PLAUSIBLE.
+
+---
+
+### A story that ports a ROM guard for ONE phase: grep the OTHER phase steppers for the same structural guard in the ROM — the sibling routine is the oracle (sw8-13, 2026-08-01)
+
+**Situation:** sw8-13 ported PHESP1's death exit (`LDA S.GAS / LBMI PHIS0D`, WSMAIN.MAC:1396-1397)
+as a `lives > 0` gate on the SPACE milestone pushes. Tests strong, mutations bite, 35 citations exact.
+
+**What the family sweep found:** the ROM's ground-flying routine PHEGD carries the IDENTICAL guard
+(`LDA S.GAS / LBMI PHIG0D ;J EXIT WHEN DEAD`, :1645-1646) before ITS cue call (`JSR PMREB`, :1673) —
+and our surface stepper's finishGround push (sim.ts:995-997) has no gate, sitting BEFORE the frame's
+loseShield (:1126). Same divergence class the story fixed, one phase over, invisible to every test.
+This is lang-review #14 ("one member of a family handled centrally, siblings locally") with the ROM's
+parallel routine as the oracle: when a story cites a guard in ONE phase routine, grep the ROM for the
+same instruction pair in the SIBLING phase routines (S.GAS/LBMI here appears once per phase stepper)
+and check each port-side sibling for the gate. Hard-ask the rule-checker to do exactly this — mine
+found it because the brief pointed #14 at the gate. Disposition: pre-existing + out of named scope →
+non-blocking Delivery Finding + follow-up story (sw8-21), not a block. Mirrors how sw8-13 itself was
+born (sw8-12's [EDGE][LOW] finding).
+
+**The prose survivor that DID block:** a channel-unification story falsifies the docs of EVERY verb on
+the shared seam, not just the verbs whose prose mentions the old model. Dev rewrote startLoop and
+playTune (behavior-adjacent) and skipped stopLoop between them — whose "safe no-op when nothing is
+looping there" is now false (stopChannel is name-blind: src/shared/audio.ts:231-237 stops the
+channel's occupant, tune or loop). Probe-proven in the worktree through the shipped fake-context
+idiom, 2 minutes; zero callers today, zero coverage beneath the claim — a lying contract with an
+uncovered axis. Survivor of the corrected law INSIDE TEA's named rewrite range (:194-206) → jt2-8
+precedent, REJECT round 1, prose-only green rework. Sweep recipe: after any unification/retirement,
+enumerate the seam's VERBS (start/stop/play/pause) and re-read each doc against the new model —
+grepping for the old model's phrases misses docs that never named it.
+
+**Fleet note:** reviewer-preflight stalled silently (2 tool calls, then nothing, ~20 min). One ping,
+then cover the domain yourself and write `All received: No` with the coverage evidence in the table
+row (sw7-10 rule). The rule-checker's mailbox reply also bounced — its report was in its TRANSCRIPT
+(the final assistant text); read `~/.claude/projects/<proj>/<agent-session>.jsonl` before re-pinging.
