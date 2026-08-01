@@ -1282,3 +1282,8 @@ completed_stories:
     title: Wire the centipede audio seam into main.ts — the shell actually plays the stream
     points: 2
     completed: '2026-08-01'
+  - id: jt5-5
+    epic: jt5
+    title: Sound PRIORITY arbitration — @shared/audio steals, the machine refuses
+    points: 3
+    completed: '2026-08-01'
