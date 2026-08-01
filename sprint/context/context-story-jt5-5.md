@@ -124,6 +124,23 @@ Each sound table entry is `FCB priority, sound_code_pairs…` where each pair is
 
 ## Acceptance Criteria (DERIVED — the epic YAML holds none)
 
+> ⚠ **CORRECTION (TEA, RED phase 2026-08-01) — AC3's stated METHOD is refuted for 2 of the 17 cues.**
+> The AC text below is reproduced **verbatim and has not been edited**; read this note with it.
+> AC3 says the frame durations "must come from the ROM sound-table `verbatim` strings, the ONLY
+> place they exist today". That holds for 15 cues and is **wrong for two**, silently:
+> the table format header (`JOUSTRV4.SRC:8045-8049`) states *"IF M.S.BIT SET ON SOUND,
+> SOUND,LENGTH"* — a pair whose code carries `+$80` is followed by another, which the assembler may
+> place on the **next line**. `SNPCR1` (`playerMaterialise`) runs `:8116-8118` and is
+> 30+255+165 = **450** frames; `SNPTED` (`pteroDeath`) runs `:8091-8093` and is 15+15+7+7+90 =
+> **134**. Both cited rows parse cleanly to **30**, and both are byte-perfect — the citation gate
+> re-opens the quoted line and cannot see that a reading of it is 15x short.
+> **Take durations from each table's FULL extent**, following `+$80` continuations across lines.
+> `does NOT truncate the two multi-line tables to their cited row` in
+> `plugins/joust/tests/audio-priority.test.ts` fails specifically against the verbatim-only method.
+> Full entry — with the second deviation (arbitration must span channels, not sit inside one) and
+> the third (AC4's epic-description half is review-verified rather than test-guarded) — in
+> `.session/jt5-5-session.md` → **Design Deviations → TEA (test design)**.
+
 1. **Optional priority + optional frame-duration on the shared engine's manifest, additive and backward-compatible.** `src/shared/audio.ts` adds two optional fields to the sound manifest shape: `priority?: number` and `frameDuration?: number`. These fields are optional; the six games that pass neither (tempest, asteroids, battlezone, red-baron, centipede, star-wars) keep today's always-steal behaviour, proven by a test that replays a known scenario and asserts no behaviour change. Only joust provides these fields.
 
 2. **Priority comparison gates channel occupation only while the frame window runs.** When `frameDuration` is set on a sounding cue, its frame countdown (`STMR` in the ROM, a per-frame decrement seeded from the duration) gates the priority comparison. A higher-or-EQUAL incoming priority DOES interrupt; a strictly-lower one is REFUSED. Once the frame window expires (`frameDuration` countdown reaches 0), ANY priority interrupts unconditionally — the machine's `STMR == 0` path. A test pins that a priority-40 cue running for 20 frames refuses a lower-priority sound for those 20 frames, then accepts it on frame 21.
