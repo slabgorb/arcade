@@ -2973,3 +2973,29 @@ treats a bad RED as wasted effort. This one cost a production outage, and the co
 four-argument call to an exported function in the repo's own `scripts/`. Before a RED calls anything
 whose name contains `deploy`, `upload`, `publish`, `release` or `push`, read that function's body to
 the bottom — not its signature.
+
+## …and the CI-provisioning scanner reads COMMENTS — quoting the real call registers a spawn you never make
+
+Immediate sequel to the entry above, same story. The safety fuse's comment explained the hazard by
+quoting the offending line verbatim: ``execFileSync('wrangler', ['r2','object','put', …])``. The
+full orchestrator run then failed `every binary the orchestrator suite spawns is provisioned by CI`
+with `+ 'wrangler'` — for a file that spawns nothing at all.
+
+`suiteBinaries()` (`tests/monorepo-topology.test.mjs:1309`) matches
+`/\b(spawnSync|spawn|execFileSync|execSync)\(\s*([^,)]+?)\s*[,)]/g` against each test file's **raw
+text**. No comment stripping. So a *description* of a spawn is indistinguishable from a spawn, and
+the more carefully you document a dangerous call the more likely you are to redden the guard.
+
+**Fix is the comment, not the pin.** The mg1-9 entry already says widening the pinned set is the
+wrong first move; here it would also be false — `wrangler` is installed only in the deploy job
+(`npm install -g wrangler`), never in the job that runs this suite. Describe the call instead
+("an execFile-style call putting each object with `--remote`, see scripts/deploy-r2.mjs") and say in
+the comment *why* it is described rather than quoted, so the next author does not helpfully paste it
+back in. Verify with the scanner's own regex before re-running:
+```bash
+node -e "const t=require('fs').readFileSync('tests/<f>.mjs','utf8');
+console.log([...t.matchAll(/\b(spawnSync|spawn|execFileSync|execSync)\(\s*([^,)]+?)\s*[,)]/g)].map(m=>m[2]))"
+```
+Must print `[]`. **General rule: any guard that greps source text will read your prose about the
+thing as the thing** — the same family as the sidecar's own "strip comments, then count" entry,
+arrived at from the authoring side rather than the scanning side.
