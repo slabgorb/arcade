@@ -1287,3 +1287,8 @@ completed_stories:
     title: Sound PRIORITY arbitration — @shared/audio steals, the machine refuses
     points: 3
     completed: '2026-08-01'
+  - id: jt5-10
+    epic: jt5
+    title: Does the pterodactyl reach FLAPLP/FLIPLP? P7DEC binds the enemy wing cues to a bird with no flap model
+    points: 2
+    completed: '2026-08-01'

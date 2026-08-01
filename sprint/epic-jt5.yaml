@@ -113,10 +113,11 @@ stories:
     description: "An open question jt5-3 surfaced and could not answer inside its scope: does the ROM's pterodactyl flap? THE EVIDENCE THAT IT MIGHT: the decision blocks at JOUSTRV4.SRC:5560-5576 bind the enemy sound tables, and the LAST of them, P7DEC at :5576, is the pterodactyl's — it begins 'FDB SNELWU,SNELWD,SNEMSK,SNEMS2,0,0,SNEFAL,0,SNECRE', binding the SAME wing-up and wing-down cues as the buzzards (note it zeroes the two RUN entries, which is consistent with a bird that never touches the ground). A decision block only needs DSNWU/DSNWD bound if something loads through them, and the only loaders are GOFLIP (:6183) and FLAST2 (:6217) inside the FLAPLP/FLIPLP loops. THE EVIDENCE THAT IT MIGHT NOT: our stepPteroFlight has no flap model whatsoever, and the ptero's ROM movement routine (PTERO, around :1142) may drive it on a different path that never enters those loops — in which case the binding is boilerplate copied across the enemy blocks and means nothing. This is a READ-THE-ROM story before it is a code story: settle it from the source, then either emit the existing enemy wing kinds for the ptero or record explicitly that the ptero is silent by design. WHY IT MATTERS NOW: jt5-2 bakes the samples, and if the ptero shares SNELWU/SNELWD it needs no new sample at all — but if this is never settled, a reviewer will ask the question again at bake time with less evidence to hand. Filed from TEA's RED findings on jt5-3, 2026-08-01. ADDED 2026-08-01 BY jt5-4's TEA AND REVIEWER (routed here rather than filed as its own story, because it is the same question about the same bird): SNETHD's own branch covers PTERO-VS-PTERO, not just enemy-vs-enemy — ':4961  BNE OSTHT2   BR=NO KILL (ENEMY VS. ENEMY, PTERO VS. PTERO)' — and this port cannot reach that half. collisionPass's joust pair loop (plugins/joust/src/core/demo.ts:859-861) filters to kind === 'player' || kind === 'enemy', and a ptero is resolved only through resolvePteroAttack against a PLAYER, so two pteros never meet. The ROM routes them explicitly: OSTHT2 checks PID for PTEID on BOTH parties (:5022-5027) and sends a ptero-vs-BIRD pair to PTEBRD (:5034, :5037-5038) while sending a ptero-vs-PTERO pair back to OSTH11 (:5031-5033, 'BR=YES, SAME OLD COLISION') — i.e. to the ordinary bump, with the SNETHD cue already played at :5020. jt3-5's baiters cap at three pteros on screen, so two DO coexist in ordinary play: the cue is reachable in principle and unreachable in fact. Settle it in the same read that settles P7DEC — if the ptero is a full collision participant, both this and the wing cues follow; if it is not, record that and the SNETHD ptero arm is correctly dead here."
     points: 2
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-01'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-01'
     review_verdict: approved
   - id: jt5-11
     title: Pin the three wing-cue invariants jt5-3 shipped unguarded
@@ -155,6 +156,27 @@ stories:
     title: An unarbitrated cue sharing the arbitrated voice's channel silences it without releasing its window
     description: "jt5-5 put the arbitration in src/shared/audio.ts and guarded the case where an ACCEPTED cue never starts (a 404'd or still-decoding sample must not hold a silent window). One route to the same silent-window state is left open. `stopChannel(channel)` is reached from a plain `startSource` for a cue with NO priority; if that cue's channel happens to be the one the arbitrated voice is sounding on, the voice's SOURCE is stopped but `voiceFrames`/`voiceChannel` keep holding, so lower-priority arbitrated cues go on being refused by a voice nobody can hear. `stopLoop` already handles this correctly (`if (voiceChannel === channel) releaseVoice()`); the stealing path does not, and the asymmetry is the bug. REPRODUCED at review with a probe: manifest {loud:80 ch 'v', plain:no-priority ch 'v', quiet:10 ch 'w'}; play('loud'), play('plain') -> loud's source .stopped === true; play('quiet') -> still refused. NOT REACHABLE TODAY, which is why jt5-5 shipped: joust routes all seventeen cues as arbitrated, and none of the other six games passes `priorities` at all, so no manifest in the tree can mix an unarbitrated cue onto an arbitrated channel. It is a trap for the next cabinet that does. Fix is one line — release the voice inside `stopChannel` itself (which both paths share) rather than in `stopLoop` — plus a test with the mixed manifest above. Check the reverse too: an ARBITRATED cue that steals a channel out from under an unarbitrated sound is fine and should stay fine."
     points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-16
+    title: 'Make the pterodactyl a full collision participant: ptero-vs-ptero must reach SNETHD and the ordinary bump'
+    description: |-
+      Filed by jt5-10, which settled the ROM read and was ruled (by the user, at setup) to RECORD this and not build it — the change is gameplay, not a cue, and folding it into a 2-pointer would misprice it. Everything below is verified against the vendored source; do not re-derive it.
+
+      THE ROM MAKES THE PTERODACTYL A FULL COLLISION PARTICIPANT. The no-kill branch is taken at ':4961 BNE OSTHT2  BR=NO KILL (ENEMY VS. ENEMY, PTERO VS. PTERO)'. OSTHT2 then sounds the cue BEFORE it knows who collided — ':5019 OSTHT2 LDX #SNETHD  ENEMIES COLIDE' / ':5020 JSR VSND' — and only afterwards tests PID for the pterodactyl id on BOTH parties (':5022-5027', CMPA #$80+PTEID, BEQ OSTH12 / BEQ OSTH13). A ptero-vs-BIRD pair goes to PTEBRD (':5034', and ':5037-5038' after 'EXG X,U' so the ptero is in U, per the ROM's own ':5036 * REG.U IS PTERODACTYL'). A ptero-vs-PTERO pair falls back through ':5031-5033 OSTH12 ... BEQ OSTH11  BR=YES, SAME OLD COLISION' to ':5028 OSTH11 JSR OSTBMP  NO-ONE DIES, BUT BUMP EACH OTHER ANYWAYS' — the ordinary bump, with SNETHD already playing.
+
+      THE GAP IN THIS PORT. collisionPass's pair loop filters to kind 'player' or 'enemy' (plugins/joust/src/core/demo.ts, the 'const eligible = processes.filter' line), and a ptero is resolved only through resolvePteroAttack against a PLAYER — so two pteros never meet. jt3-5's baiters cap at three live (MAX_BAITERS, src/core/baiter.ts) and a wave carries its own pteros besides, so pairs really do occur in ordinary play: the cue is reachable in principle and unreachable in fact.
+
+      WHAT IS ALREADY DONE, so this story does not redo it. The 'enemy-thud' event kind EXISTS in src/core/events.ts and its comment already names ptero-vs-ptero; jt5-4 wired SNETHD (:8106, priority 009) through the audio seam. NOTHING new is needed on the cue side. The whole of this story is reachability: admit pteros to the eligible set, route a ptero/ptero pair to the ordinary bump and emit enemy-thud, and leave ptero-vs-bird on its existing resolvePteroAttack path.
+
+      TWO GUARDS TO EXPECT TO FIGHT, both added by jt5-10 in plugins/joust/tests/audio-ptero-wing-source.test.ts and both intentional: one asserts the eligible-set filter is UNCHANGED, and one forbids the exact widened predicate this story must write. Update them here — that is the point of them. They exist so the fence could not be moved by a story that had not priced it.
+
+      WATCH THE BLAST RADIUS. Roughly a hundred 'demo.ts:N' citations across other suites and several ARCHIVED sessions point into that file, and archived sessions are permanent records that cannot be corrected. jt5-10 kept every edit to an EOF append or an equal-line-count in-place edit for exactly this reason (see the KNOWN GAP block at the foot of demo.ts). A real mechanic cannot avoid inserting lines — so budget for re-anchoring, and verify with hunk arithmetic rather than by eye.
+
+      ALSO SETTLED BY jt5-10 AND WORTH KNOWING HERE: the pterodactyl reaches neither FLAPLP nor FLIPLP, so it sounds no wing cue and needs no wing sample. Claims JT510-001..006 carry that chain.
+    points: 3
     priority: p3
     status: backlog
     repos: arcade
