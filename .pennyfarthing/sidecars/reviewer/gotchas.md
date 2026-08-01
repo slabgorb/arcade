@@ -1203,3 +1203,18 @@ because no wave in the shipped table destroys and rebuilds in the same advance. 
 right — the code it reads documents that destruction reflects rather than latches — but the green
 suite is not evidence it was needed. Write that down. "Found and fixed a bug" overclaims; silence
 lets the next reader believe coverage exists.
+
+## When a diff ADDS ROM-cited comments, hard-ask the rule-checker to sed-verify every cite EXTENT (sw8-10, 2026-08-01)
+
+Same-session review (one session wrote tests, code, and review). The two-specialist star-wars
+fleet (preflight + rule-checker) was enough for a real round-1 rejection BECAUSE the rule-checker's
+prompt included per-claim hard asks: the ROM file path plus "verify each quoted instruction
+sequence sits inside its cited range, with sed". It found a quote spanning :1082-1087 cited as
+:1083-1085 and a two-instruction pair cited by its last line only — the jt8-6 claim-extent class,
+invisible to the author because the author KNOWS what the range means. My own independent layer
+(ADASHP re-derivation + two mutation runs + spawnCount lifecycle trace) verified the LOGIC but
+missed both cite extents entirely: re-derivation checks the mechanism, not the prose. Division of
+labour to repeat: reviewer re-derives and mutates; rule-checker audits every citation extent with
+line-numbered reads. And when rejecting round 1 on findings you prescribed exact fixes for, write
+the prescription INTO the findings table — round 2 here was a 15-minute verify because the fix
+had no design freedom left.
