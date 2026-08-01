@@ -51,7 +51,7 @@
 // re-guards it from the station's side.
 
 import { describe, it, expect } from 'vitest'
-import { cameraView, deathStarPlacement } from '../../src/shell/render'
+import { cameraView, deathStarOffAxis, deathStarPlacement } from '../../src/shell/render'
 import { initialState, SPACE_PHASE_END_S, type GameState } from '../../src/core/state'
 import { transform, type Mat4 } from '@shared/math3d'
 
@@ -206,8 +206,15 @@ describe('sw8-17 — the Death Star wander belongs to the STATION', () => {
     // `state.frame`-derived lateral term IS the sw8-1 mis-port wearing a new seam.
     // The attitude mechanism is phase-driven (seeded per wave, aim-integrated),
     // which our timebox expresses through `phaseTime`.
-    const src = deathStarPlacement.toString()
-    expect(src, 'deathStarPlacement reads the frame counter — ST.UX by another name').not.toMatch(
+    //
+    // BOTH functions are scanned: `Function.prototype.toString()` returns only a
+    // function's OWN literal source, never a callee's body — so scanning the
+    // wrapper alone leaves the mechanism (`deathStarOffAxis`, where the lateral
+    // maths actually lives) unguarded. Review round 1 proved that hole by
+    // mutation: a `state.frame` read inside the helper passed the wrapper-only
+    // scan. The helper is exported for exactly this reach.
+    const src = deathStarPlacement.toString() + deathStarOffAxis.toString()
+    expect(src, 'the placement path reads the frame counter — ST.UX by another name').not.toMatch(
       /\.frame\b|ST\.?UX/,
     )
   })

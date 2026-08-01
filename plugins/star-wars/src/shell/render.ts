@@ -300,7 +300,7 @@ const DEATH_STAR_TURN_START_S = SPACE_PHASE_END_S - 5 // the S0G/S1G-equivalent 
 const DEATH_STAR_IN_CONE_S = SPACE_PHASE_END_S - 1.5 // inside the $3F00 cone from here
 
 /** The station's off-axis angle at clamped phase-clock time `t` (radians). */
-function deathStarOffAxis(t: number): number {
+export function deathStarOffAxis(t: number): number {
   if (t <= DEATH_STAR_TURN_START_S) return DEATH_STAR_PARKED_OFF_AXIS
   if (t <= DEATH_STAR_IN_CONE_S) {
     const q = (t - DEATH_STAR_TURN_START_S) / (DEATH_STAR_IN_CONE_S - DEATH_STAR_TURN_START_S)

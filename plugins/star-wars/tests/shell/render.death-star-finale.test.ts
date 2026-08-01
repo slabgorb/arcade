@@ -33,7 +33,7 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '../../src/shell/render'
 import { stepGame } from '../../src/core/sim'
-import { initialState, type GameState } from '../../src/core/state'
+import { initialState, SPACE_PHASE_END_S, type GameState } from '../../src/core/state'
 import { NO_INPUT } from '../../src/core/input'
 import type { Vec3 } from '@shared/math3d'
 import {
@@ -220,7 +220,7 @@ describe('sw7-15 / X-007 — a looming-station prelim enlarges the Death Star be
       mode: 'playing',
       phase: 'space',
       phaseKills: 0,
-      phaseTime: 21, // SPACE_PHASE_END_S — the approach fully run down
+      phaseTime: SPACE_PHASE_END_S, // the approach fully run down
       enemies: [],
       dyingTies: [],
       enemyShots: [],
