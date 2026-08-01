@@ -120,7 +120,7 @@ export interface HomingState {
  * NEGATIVE (exhausted at ≥ 0, `BPL BOBRAIN` :3816); up budgets POSITIVE
  * (exhausted at < 0, `BMI` :3859). The shadow lord has NO DI rows — its
  * episode states re-enter `SHADOW` each wake (`SHUP1 LDD #SHADOW / STD
- * PJOY,U`, :4270-4271) — so it never carries one, and neither does LINET.
+ * PJOY,U`, :4269-4270) — so it never carries one, and neither does LINET.
  */
 export interface SeekState {
   /** Which committed seek this enemy is inside: descending or climbing. */
@@ -465,7 +465,7 @@ export function b2undr(enemy: EnemyState, player: PlayerView | null, wave = 1): 
  * (`CLRB`, :4246-4248); delta ≤ SHUPRG(wave) → up-seek (flap iff not rising);
  * otherwise SHORT range → SHLEP (:4277), which tracks the PLAYER'S line with
  * NO velY gate — it flaps whenever strictly below the player's pixel Y, even
- * mid-rise (`CMPB PDIST+1,U / BLS SHLEPA`, :4290-4291). The lava escape below
+ * mid-rise (`CMPB PDIST+1,U / BLS SHLEPA`, :4293-4294). The lava escape below
  * `LAVA_ESCAPE_Y` stays in every branch. Pure.
  */
 export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {

@@ -912,8 +912,9 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
 // SMART buzzard from its first promoted wake, so uf1-8's line is not a contact
 // frame at all — every digest with a smart enemy in it moved, pre-contact
 // included. What bounds THAT re-baseline instead: the players' entities are
-// brain-free and bit-identical at every frame below (verified against the
-// jt5-4 values), and `rng` is UNMOVED everywhere (neither the brains nor the
+// brain-free and bit-identical (value-checked against jt5-4's pinned arrays at
+// frames 146/188/200; at 118 by construction — no contact has occurred in
+// either tree), and `rng` is UNMOVED everywhere (neither the brains nor the
 // bounce draw randomness). First thuds re-measured post-uf1-8:
 //
 //   seed 0xbeef      first non-killing contact at frame 119

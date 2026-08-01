@@ -177,7 +177,7 @@ export interface HomingState {
  * with an invented exit cadence would pre-empt uf1-9's seam.
  *
  * The shadow lord has NO DI rows: its episode states re-enter `SHADOW` each
- * wake (`SHUP1 LDD #SHADOW / STD PJOY,U`, :4270-4271), so it re-decides
+ * wake (`SHUP1 LDD #SHADOW / STD PJOY,U`, :4269-4270), so it re-decides
  * per-wake and never carries a SeekState either.
  */
 export interface SeekState {
@@ -338,7 +338,7 @@ export interface EnemyModule {
    * SHUPRG(wave) → up-seek; otherwise SHORT range → SHLEP (:4277), which tracks
    * the PLAYER'S line with NO velY gate — it flaps whenever strictly below the
    * player's pixel Y, even mid-rise (`CMPB PDIST+1,U / BLS SHLEPA`,
-   * :4290-4291). The lava escape below `LAVA_ESCAPE_Y` stays in every branch.
+   * :4293-4294). The lava escape below `LAVA_ESCAPE_Y` stays in every branch.
    * Pure.
    */
   shadow(enemy: EnemyState, player: PlayerView | null, wave?: number): Decision
