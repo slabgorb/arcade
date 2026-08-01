@@ -472,3 +472,49 @@ about your pattern first and the file second. Confirm a 0 with a second, dumber 
   all three. Grep for all three, not just the phase pointer.
 - **`sm-setup` STILL leaves the story at `status: backlog`** — fourth consecutive confirmation.
   `pf sprint story update <id> --status in_progress`, then verify. Treat as unconditional.
+
+---
+
+## `pf sprint story add` creates a story with NO description — the quarry dies there (jt5-1, 2026-08-01)
+
+`pf sprint story add <epic> "<title>" <points>` writes id / title / points / priority / status /
+repos / workflow and **nothing else**. No description, no acceptance criteria. So a finding filed at
+finish arrives in the backlog as a title and an empty body, and every ROM line number, call site and
+measured refutation that made the finding worth filing is gone — the next reader re-derives it or,
+worse, re-litigates it.
+
+Always follow with `pf sprint story update <id> --description "..."`. It exists, it takes the whole
+text, and it is the difference between "The FLAP — the two-edge wing cue" and a story that already
+knows GOFLAP is :6207-6218 on the press, GOFLIP :6182-6184 on the release, and that the ROM's own
+comment at :6217 is a 1982 copy-paste error you must not trust. `--add-ac` (repeatable) is there too.
+
+Escaping: the description goes through a shell string, so `$` in ROM operands needs escaping —
+`!N\$12!+\$80` — and a doubled apostrophe inside a YAML-bound quote (`THUD''ED`) survives correctly.
+
+## Filing is not optional, and "the epic owns it" is worth checking
+
+jt5 held exactly ONE story, so all seven TEA findings and three Dev findings on jt5-1 were unowned —
+"out of scope" with nowhere to go. Six became stories; the seventh (the lava troll's grab cue)
+genuinely had an owner, and I confirmed `uf1-10`/`uf1-11` exist in `sprint/epic-uf1.yaml` rather than
+taking the finding's word for it. Check the named owner actually exists before letting a finding rest
+on it.
+
+## Verify tracking by PARSING origin, not by reading your own working copy
+
+After `pf sprint story finish` + push, confirm from `git show origin/main:<path>` and parse the YAML:
+the story's status and `completed` date in the epic, the record in
+`sprint/archive/sprint-<N>-completed.yaml`, the archive file's presence AND that it still contains
+the phase assessments. The completed-file tail is the shared surface siblings race, and a silent
+merge there looks like nothing in a diff.
+
+Also: `pf sprint story finish` round-trips every epic YAML. jt5-1 had six freshly-added sibling
+stories in the same file — diff the epic afterwards and confirm the FINISHED story's own
+`acceptance_criteria` count is unchanged (6 here). The SH-1 truncation was root-fixed, but a
+one-command check is cheaper than discovering it three stories later.
+
+## Delete the empty claim branch at finish
+
+sm-setup pushes a zero-commit `feat/<story>` branch purely so a sibling's branch probe sees the
+claim. On a trunk-based repo nothing ever merges it, so it outlives the story. Confirm
+`git rev-list --count origin/main..origin/feat/<story>` is 0, then
+`git push origin --delete feat/<story>`.
