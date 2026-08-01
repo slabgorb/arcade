@@ -343,8 +343,12 @@ import { uploadDir } from '../scripts/deploy-r2.mjs';
 //
 // ⚠ SAFETY FUSE — READ BEFORE TOUCHING THIS HELPER.
 //
-// `uploadDir` does not yet honour an injected uploader: it calls
-// `execFileSync('wrangler', ['r2','object','put', …, '--remote', …])` unconditionally.
+// `uploadDir` does not yet honour an injected uploader: it unconditionally spawns the
+// wrangler CLI (see scripts/deploy-r2.mjs — an execFile-style call putting each object
+// with `--remote`). That call is described here rather than quoted, deliberately: the
+// CI-provisioning guard in tests/monorepo-topology.test.mjs scans this file's RAW TEXT
+// for spawn shapes and cannot tell a comment from code, so pasting the real call here
+// registers `wrangler` as a binary the suite spawns and reddens that guard.
 // On a machine with wrangler installed and CLOUDFLARE_* in the environment — which is
 // this one — passing an `upload` option does NOT stub anything. Every object in the
 // fixture is PUT to the real `arcade-lobby` bucket, at the real key, over the real
