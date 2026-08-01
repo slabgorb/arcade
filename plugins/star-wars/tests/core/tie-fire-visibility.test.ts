@@ -15,13 +15,21 @@
 //     LDD M.ZPS / SUBD M.XPS / LBHS RTS1     vertical² ≥ depth² → out
 //     CHSET C$PV                             ;WITHIN PLAYERS VIEW SCREEN
 //
-// A ±45° square pyramid in front of the eye — a RATIO law, so it ports unit-for-unit
+// A square pyramid in front of the eye — a RATIO law, so it ports unit-for-unit
 // (the near/far literals 0x10/0x7F00 live in the same world-unit space as the $800
 // fire floor and the 0x7C00 spawn depth the port already uses). "In front" here is
 // negative z, and the eye is the COCKPIT at the world origin — the view the player
 // actually has, so the bit cannot lie about what is on screen. (Until sw8-8 it was
 // measured from a frame-driven `spaceEye`; that camera was a mis-port of the
 // starfield's ST.UX register and is retired — see the tombstone in gameRules.ts.)
+//
+// RE-DERIVED ANGLE (uf1-14). The ROM's ±45° is the 1983 cabinet's screen shape, not
+// ours: the clone renders under perspective(FOV_Y, aspect) with FOV_Y = π/3, so the
+// glass ends at 30° vertically (every aspect) and atan(aspect · tan(FOV_Y/2))
+// horizontally. The ratio law stays as the SHAPE (strict, per-axis — BHS puts the
+// edge out); the bound is now depth · tan(half-angle) per axis, with the horizontal
+// read from state.aspect. The edge pins below use the aspect-1 bound, ≈ 0.5774 ·
+// depth; the aspect sweeps live in tie-view-frustum.test.ts.
 //
 // Today the clone's gate substitutes C_AS (alien-aims-at-player) for cond-1 and
 // never computes C_PV at all (tie-status.ts scopes the player-view bits out), so a
@@ -40,6 +48,7 @@
 import { describe, it, expect } from 'vitest'
 import { stepGame } from '../../src/core/sim'
 import { computeStatus } from '../../src/core/tie-status'
+import { FOV_Y } from '../../src/core/gameRules'
 import { Status } from '../../src/core/tie-vm'
 import { initialState, TICK_HZ, type GameState, type Enemy } from '../../src/core/state'
 import { NO_INPUT } from '../../src/core/input'
@@ -95,12 +104,15 @@ describe('sw7-24 T5b — C_PV: the view-pyramid status bit (WSMAIN.MAC:3824-3846
       computeStatus(aimedTie([0, 0, 4000]), s, rngSeed(1)) & Status.C_PV,
       'a TIE behind the eye is off screen — C$PV clear',
     ).toBe(0)
-    // The ±45° pyramid edge (lateral² < depth², WSMAIN.MAC:3834-3836): one unit
-    // inside is in view, one unit outside is not (BHS — equality is already out).
-    expect(computeStatus(aimedTie([3999, 0, -4000]), s, rngSeed(1)) & Status.C_PV).toBe(Status.C_PV)
-    expect(computeStatus(aimedTie([4001, 0, -4000]), s, rngSeed(1)) & Status.C_PV).toBe(0)
-    // Same law on the vertical axis (M.ZPS vs M.XPS, WSMAIN.MAC:3838-3840).
-    expect(computeStatus(aimedTie([0, 4001, -4000]), s, rngSeed(1)) & Status.C_PV).toBe(0)
+    // The pyramid edge (lateral² < bound², the ROM's ratio SHAPE, WSMAIN.MAC:
+    // 3834-3836): just inside is in view, just outside is not. The bound is the
+    // RENDERED frustum's (uf1-14) — depth · aspect · tan(FOV_Y/2) ≈ 2309.4 at
+    // depth 4000 on this square (aspect 1) state, not the cabinet's ±45°.
+    expect(computeStatus(aimedTie([2299, 0, -4000]), s, rngSeed(1)) & Status.C_PV).toBe(Status.C_PV)
+    expect(computeStatus(aimedTie([2320, 0, -4000]), s, rngSeed(1)) & Status.C_PV).toBe(0)
+    // Same law on the vertical axis (M.ZPS vs M.XPS, WSMAIN.MAC:3838-3840) —
+    // 30° at every aspect, because FOV_Y IS the vertical axis.
+    expect(computeStatus(aimedTie([0, 2320, -4000]), s, rngSeed(1)) & Status.C_PV).toBe(0)
   })
 
   it('ports the ROM depth clamps: in view through 0x7F00, out past it and at ≤ 0x10', () => {
@@ -126,11 +138,13 @@ describe('sw7-24 T5b — C_PV: the view-pyramid status bit (WSMAIN.MAC:3824-3846
     // slides and neither does his view pyramid. The same fixture now pins the correct law.
     //
     // The frame counter is the discriminator: a port that re-derives a moving eye reads this
-    // TIE as IN view at frame 128 (|5000 − 1024| = 3976 < depth 4200) and OUT of view at
-    // frame 0 (5000 > 4200). The cockpit-anchored law says OUT of view at both — the C_PV bit
-    // cannot depend on how long the wave has been running.
-    const pos: Vec3 = [5000, 0, -4200]
-    expect(Math.abs(pos[0]), 'fixture guard: lateral sits OUTSIDE the pyramid').toBeGreaterThan(4200)
+    // TIE as IN view at frame 128 (|3000 − 1024| = 1976 < the ≈2424.9 aspect-1 bound at depth
+    // 4200) and OUT of view at frame 0 (3000 > 2424.9). The cockpit-anchored law says OUT of
+    // view at both — the C_PV bit cannot depend on how long the wave has been running.
+    // (Fixture re-seated by uf1-14: under the frustum bound the old 5000 sat outside from
+    // BOTH eyes, which would have let a moving-eye port pass unnoticed.)
+    const pos: Vec3 = [3000, 0, -4200]
+    expect(Math.abs(pos[0]), 'fixture guard: lateral sits OUTSIDE the pyramid').toBeGreaterThan(4200 * Math.tan(FOV_Y / 2))
     for (const frame of [0, 128]) {
       const s: GameState = { ...makeSpaceState(), frame }
       expect(
@@ -140,7 +154,7 @@ describe('sw7-24 T5b — C_PV: the view-pyramid status bit (WSMAIN.MAC:3824-3846
     }
     // ...and the mirror: a TIE inside the cockpit's pyramid is in view at both frames, so the
     // inversion above is a real constraint and not just "C_PV never sets".
-    const inside: Vec3 = [3976, 0, -4200]
+    const inside: Vec3 = [2400, 0, -4200]
     for (const frame of [0, 128]) {
       const s: GameState = { ...makeSpaceState(), frame }
       expect(
