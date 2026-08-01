@@ -82,9 +82,9 @@
 // cannot start claims no window`), because it is the failure mode that would ship
 // green and be blamed on the samples.
 //
-// ─── RED audit — the EIGHT tests here that pass BEFORE the fix, and why ──────
-// 16 of these 24 fail today. The other 8 pass, and a passing test in a RED phase
-// has to justify itself or it is decoration. Five are keep-behaviour guards whose
+// ─── RED audit — the NINE tests here that pass BEFORE the fix, and why ──────
+// 18 of these 27 fail today. The other 9 pass, and a passing test in a RED phase
+// has to justify itself or it is decoration. Six are keep-behaviour guards whose
 // whole job is to still be green afterwards; three are real guards that today's
 // engine happens to satisfy by having no opinion at all. None is vacuous, and the
 // distinction is checkable — each of the last three names the specific wrong
@@ -96,6 +96,8 @@
 //     • a manifest with NO priorities never refuses, however many retriggers
 //     • independent channels still do not steal one another
 //     • an UNARBITRATED cue in a mixed manifest is never refused
+//     • keys neither new map by a bare `string` — green today only because the
+//       maps do not exist yet; it is here so the widening can never arrive.
 //
 //   PASSES NOW, BITES LATER (green today only because nothing arbitrates yet):
 //     • `an accepted cue whose sample failed to load claims no window` — fails
@@ -112,6 +114,8 @@
 //
 // RED until `src/shared/audio.ts` grows `tick()` and honours the two new maps.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 // ── Fake WebAudio surface ─────────────────────────────────────────────────────
 // Same controllable stub as audio.test.ts / audio-pending-loop.test.ts: each audio
@@ -600,6 +604,37 @@ describe('jt5-5 shared audio — 0 is a legitimate priority and a legitimate dur
       startedSources(created),
       'with no declared window nothing can be refused, so both sound',
     ).toHaveLength(2)
+  })
+})
+
+// ── TS lang-review #2 — the new maps must not widen the manifest ─────────────
+// `sounds` and `channels` are `Record<N, string>`, and audio-source-rules.test.ts
+// guards them against collapsing to `Record<string, string>` because the whole
+// point of the generic is that a typo in a cue name is a compile error. The two
+// new maps are the same idea with a number payload, and they are EASIER to widen:
+// they are optional, so `Record<string, number>` typechecks at every call site
+// and nothing complains until a misspelled cue silently never arbitrates.
+describe('jt5-5 shared audio source — the new maps stay keyed by the generic N (TS #2)', () => {
+  const src = () => readFileSync(fileURLToPath(new URL('../audio.ts', import.meta.url)), 'utf8')
+
+  it('declares an optional `priorities` map on the manifest', () => {
+    expect(src(), 'AudioManifest must accept an optional priorities map').toMatch(
+      /priorities\?\s*:/,
+    )
+  })
+
+  it('declares an optional `frameDurations` map on the manifest', () => {
+    expect(src(), 'AudioManifest must accept an optional frameDurations map').toMatch(
+      /frameDurations\?\s*:/,
+    )
+  })
+
+  it('keys neither new map by a bare `string` — a misspelt cue must not typecheck', () => {
+    expect(
+      src(),
+      'Record<string, number> would accept any key at all, so a typo in a cue name would ' +
+        'compile and simply never arbitrate. Key both by the generic N.',
+    ).not.toMatch(/Record\s*<\s*string\s*,\s*number\s*>/)
   })
 })
 
