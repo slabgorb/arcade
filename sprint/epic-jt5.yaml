@@ -48,7 +48,8 @@ stories:
     description: "Two ROM cues are blocked on physics the sim computes and throws away. SNPTHD (:8124, 'AT LEAST 1 PERSON THUD''ED', call site :5014 'PLAYERS COLIDE') and SNETHD (:8106, 'ENEMIES THUD', call site :5019 'ENEMIES COLIDE'). collisionPass computes the bounce outcome and DISCARDS it — 'if (contact.outcome.kind !== \"kill\") continue' (plugins/joust/src/core/demo.ts, the joust pair loop) — and bounceTop, bounceBottom and bounceHorizontal in joust.ts have ZERO production callers. So a non-killing collision currently does nothing at all: no push, no separation, no sound. The work is APPLYING the bounce first; the cue is the easy half and must not land without it, because a thud announcing a collision the sim does not resolve is an audible lie. Same disease as uf1-11's troll grip one layer over: a faithful, tested, cited pure core with no caller."
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-01'
     repos: arcade
     workflow: tdd
   - id: jt5-5
