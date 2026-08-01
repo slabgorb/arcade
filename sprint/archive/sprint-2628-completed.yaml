@@ -1322,3 +1322,8 @@ completed_stories:
     title: "The Death Star's off-centre wander belongs to the STATION, not the camera — port its own lateral motion into deathStarPlacement. The epic's §1 evidence anchor is a real cabinet observation (longplay ~wave 4, score 352,171: mid space-combat the Death Star is entirely out of frame) that our port cannot reproduce: deathStarPlacement seats the station at x=0 and moves it only in DEPTH. sw8-1 explained it with a viewer slide off ST.UX; sw8-8 retired that camera (ST.UX is the starfield's register — sole reader VWSTAR WSSTAR.MAC:98-102, and no space code writes the player's world position at all), so the observation is now unexplained. Find the station's OWN ROM mechanism (WSBASE.MAC / the DS site handling in WSSITE.MAC) and port it as a lateral term in deathStarPlacement. MUST NOT be re-derived from ST.UX or reintroduced as a camera slide: tests/shell/render.space-camera.test.ts pins camera-contributes-no-lateral-offset and will fail loudly on the shortcut"
     points: 3
     completed: '2026-08-01'
+  - id: jt5-2
+    epic: jt5
+    title: The samples — synthesise joust's cues, upload them, and prove a live 200 (count is whatever the manifest holds when this runs, NOT eleven)
+    points: 5
+    completed: '2026-08-01'
