@@ -2513,3 +2513,27 @@ three would have let Dev ship the story with the stale docs untouched.
 
 **Corollary:** the RED count is not the metric — 48 failing looked like a complete RED, and three of
 the twelve doc assertions were inert inside it. Read the PASS list, not the fail list.
+### A past-the-end RED should kill the WRONG fixes by name, not just the current defect — enumerate the tempting resolvers and place one test on each fork (sw8-10, 2026-08-01)
+
+**Situation:** sw8-10 replaces spawnTie's invented past-plan `'1A1'` fallback with the ROM's
+ADASHP rule (loop the selected set's LAST group, TWV2Z). "Test the wave after the last row"
+(tp1-25 entry above) got me to index 27 — but a Dev staring at that one red has THREE cheap
+green-makers: the right fix, `plan[i % plan.length]` (loop the whole plan), and
+`plan[min(i, len-1)]` (freeze on the last row).
+
+**What worked:** enumerate the candidate wrong fixes BEFORE writing tests, then check each test
+against each candidate. The boundary PAIR (index 26 → '2D3', index 27 → '2A1') kills
+clamp-to-last-row (26 and 27 must differ) AND modulo-whole-plan (SET A1's 27 % 27 = plan[0] =
+'1A1' — the modulo fix reproduces the exact defect at the exact boundary, a lovely coincidence
+worth stating in the test comment). A shape-negative on a Darth-bearing set (SETA6: tail never
+spawns 'darth') kills modulo-whole-plan on a second axis — and that test is GREEN ON ARRIVAL
+(today's fallback also says TIE), which is fine: its job is to stay green through GREEN, and the
+comment says so. Also confirmed empirically before committing: the discriminability guard
+(`choreoPc('2A1') ≠ choreoPc('1A1')`) — TCH1[0]=1 vs TCH2[0]=12 — so every "not the mook"
+assertion is real, per the tp2-1 rule.
+
+**Also re-confirmed (see "reachability BASELINE goes STALE" above):** the story's "latent today
+under the 6-kill quota" was written before sw8-11/12 time-boxed the space phase (PH.TIM, 21 s)
+and sw8-7 made kills refill next-step — the fallback is REACHABLE in a played game now. A
+description's reachability clause is a claim with a timestamp; re-derive it at RED and file the
+correction as a Delivery Finding, because the backlog priority was set on the stale claim.

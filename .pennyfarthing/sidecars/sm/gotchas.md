@@ -518,3 +518,17 @@ sm-setup pushes a zero-commit `feat/<story>` branch purely so a sibling's branch
 claim. On a trunk-based repo nothing ever merges it, so it outlives the story. Confirm
 `git rev-list --count origin/main..origin/feat/<story>` is 0, then
 `git push origin --delete feat/<story>`.
+
+## `sm-setup` can write rich session ACs and STILL emit a stub context — while reporting it "validated" (sw8-10, 2026-08-01)
+
+Handed sm-setup a full measured-facts block with citations and explicit content requirements. The
+session file came back correct (four well-derived ACs, all fields, one phase pointer) — but the
+context file was the bare `pf context create` stub: "_No description in the sprint YAML_ … _TEA to
+define during the RED phase_", with none of the measured facts. Its report claimed "Story context
+validated ✓". The two artifacts diverged and the report vouched for the wrong one.
+
+Check the CONTENT of `sprint/context/context-story-<id>.md` after every sm-setup return — `ls` and
+byte-size are not enough (the stub was a plausible 1265 bytes). A context that says "TEA to define"
+for a story you just measured is the tell. Fix: author it yourself (context is SM-owned markdown;
+mirror the session ACs verbatim, add the measured Background with citations, end with a
+do-not-regenerate line) BEFORE the claim commit, so the committed context is the good one.
