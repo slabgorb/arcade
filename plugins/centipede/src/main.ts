@@ -17,6 +17,8 @@ import { LOGICAL_W, LOGICAL_H, fitIntegerScale } from './shell/layout'
 import { pumpFrame } from './shell/timebase'
 import { createMouseAdapter, createKeyboardAdapter, createPointerLock } from './shell/input'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
+import { createAudio } from './shell/audio'
+import { playEventSounds } from './shell/audio-dispatch'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')
 if (!canvas) throw new Error('index.html must host a <canvas id="game">')
@@ -81,7 +83,30 @@ const lock = createPointerLock(
   (reason) => console.warn('[pointer-lock] request rejected — click again to bind:', reason),
 )
 
+// cp5-2: the audio engine. Built ONCE at boot — it owns the AudioContext and
+// the channel map, and a fresh engine per frame would give every cue an empty
+// channel map, so voice-stealing (the point of CHANNELS) would stop working
+// silently. Constructing it does NOT touch WebAudio: the shared engine is inert
+// until resume(), which is what makes this line safe at module scope.
+const audio = createAudio()
+
+// cp5-2: the gesture gate. Browsers forbid starting an AudioContext before a
+// user gesture, so the engine stays silent until the first click or keypress
+// unlocks it. resume() is idempotent — only the first call builds the context
+// and starts loading — so leaving both listeners attached forever makes every
+// later gesture a harmless no-op. This is tempest's shape (main.ts:45-51).
+//
+// NOTE: no sample is hosted yet, so every load 404s and the shared engine
+// swallows that in silence by design. The cabinet stays SILENT after this
+// story; a live 200 is the acceptance test for the asset stories, never a green
+// vitest.
+const unlockAudio = (): void => {
+  audio.resume()
+}
+window.addEventListener('keydown', unlockAudio)
+
 canvas.addEventListener('click', () => {
+  unlockAudio()
   lock.request()
 })
 
@@ -157,6 +182,14 @@ const frame = (now: number): void => {
       // identity is the signal — no deep compare, no save on every frame.
       const board = sim.highScoreTable
       sim = stepSim(sim, input)
+      // cp5-2: one cue per gameplay moment the core emitted THIS STEP. Sited
+      // inside the pump callback, so it runs once per SIM step — not once per
+      // rAF frame. `SimState.events` is rebuilt every step and only the newest
+      // state survives, so a call sited outside this callback would see just the
+      // final step's events and drop the rest of a catch-up burst (up to 14
+      // steps in one frame) in silence. At a steady 60 Hz the two are
+      // indistinguishable, which is exactly why it is worth stating.
+      playEventSounds(audio, sim.events)
       if (sim.highScoreTable !== board) highScoreStorage.save(sim.highScoreTable)
     })
   }

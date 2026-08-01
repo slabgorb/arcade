@@ -54,12 +54,30 @@ export function playEventSounds(audio: SoundSurface, events: readonly GameEvent[
     // REWORK (Reviewer round 1, MEDIUM): the comment that stood here claimed the
     // failure fired "HERE" and that a `never` cast below carried a second,
     // independent guarantee. Both halves were false — deleting the cast produced
-    // zero tsc errors. What remains is a plain RUNTIME check, worth keeping for
-    // the one case the type system cannot see: a caller reaching this function
-    // from untyped data (the shell's own event stream is typed, but the record
-    // could also be widened to `Record<string, …>` by a later edit).
+    // zero tsc errors. What remains is a plain RUNTIME check for the one case
+    // the type system cannot see: a caller reaching this function from untyped
+    // data (the shell's own stream is typed, but the record could be widened to
+    // `Record<string, …>` by a later edit).
+    //
+    // ─── IT DEGRADES. IT DOES NOT THROW. (cp5-2, user ruling 2026-08-01) ──────
+    // Until cp5-2 this line threw, and that was safe only because nothing called
+    // this function. cp5-2 puts it inside `requestAnimationFrame`: an uncaught
+    // throw there skips main.ts's trailing `requestAnimationFrame(frame)`, the
+    // rAF chain ends, and the game FREEZES on the last drawn frame — a total
+    // failure for a defect whose honest cost is one missing sound. So an
+    // unmapped kind is skipped and the rest of the frame plays.
+    //
+    // Skipping is also why this must not fall through onto a neighbouring cue:
+    // a stale or typo'd kind that played SOME sound would be audibly wrong with
+    // nothing anywhere reporting a fault, and wrong is worse than quiet. joust
+    // says the same thing in its own default arm (shell/audio-dispatch.ts:71-74).
+    //
+    // Nothing is given up at compile time — see above, the guarantee was never
+    // in the throw. All five games that shipped this seam first degrade the same
+    // way: tempest:111-118, asteroids:33-37, battlezone:74-80, red-baron:68-74,
+    // joust:70-78. centipede was the outlier.
     const sound: SoundName | undefined = EVENT_SOUND[event.type]
-    if (sound === undefined) throw new Error(`unhandled GameEvent kind: ${String(event.type)}`)
+    if (sound === undefined) continue
 
     // THIS `never` is real: `effectFor` returns a three-member union, the arms
     // below narrow it to nothing, and the binding needs no cast to prove it.
@@ -76,8 +94,20 @@ export function playEventSounds(audio: SoundSurface, events: readonly GameEvent[
         audio.play(sound)
         break
       default: {
+        // The COMPILE-time guard, and the whole reason this arm exists: drop a
+        // case above and `effect` no longer narrows to `never`, so the build
+        // fails. Verified by mutation (cp5-1).
+        //
+        // At RUNTIME it stays silent, for the same reason the lookup above
+        // skips: this is on the frame path, and a throw inside
+        // requestAnimationFrame freezes the game. The arm is unreachable anyway
+        // — `effectFor` returns a closed three-member union and all three are
+        // cased — so the throw could only ever have fired for a caller that had
+        // already cast its way around the compiler. This is the house form
+        // (`void _exhaustive` + no throw) all five sibling games use.
         const unreachable: never = effect
-        throw new Error(`unhandled cue effect: ${String(unreachable)}`)
+        void unreachable
+        break
       }
     }
   }
