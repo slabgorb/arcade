@@ -153,6 +153,15 @@ export interface DemoState {
   /** Console/dev-overlay events accumulated so far (kills, egg catches, beats). */
   events: readonly DemoEvent[]
   /**
+   * jt8-7: the frame's AUDIO cue stream — `stepDemo` has returned this since
+   * jt5-1 (`demo.ts:274`, built at `:1184` from the frame's and the collision
+   * pass's cues) but the contract never mirrored it, so no demo-level test
+   * could read a cue without an `any`. Mirrored STRUCTURALLY rather than by
+   * importing `GameEvent` from `src/core/events.ts`, to keep the contract an
+   * independent second entry (pictures-gate.test.ts).
+   */
+  cues: readonly { readonly type: string }[]
+  /**
    * The mutable per-run arena (jt3-2): which cliffs/bridge are currently gone.
    * `createWaveDemo` seeds it from wave 1 and `stepDemo` re-applies it on every wave
    * advance (the applyWaveDestruction call-site), so the wave-3 bridge burn flows
