@@ -2659,3 +2659,133 @@ but "restructure the dispatch" is not, and the compile-time guarantee was never 
 `EVENT_SOUND: Record<GameEventKind, SoundName>` carries it, as cp5-1 established by mutation. Read the
 predecessor's `verdict()` (or equivalent) and put its constraints in the Dev handoff; they are invisible
 from the diff Dev will be looking at.
+
+---
+
+### A one-step SHIFT is invisible to any clock that ticks INSIDE the loop body — you need one that ticks at the BOUNDARY
+
+**Situation:** cp5-2's headline AC1 guard compared "the events each step emitted" against "the events
+each dispatch was handed", array for array, filtering each side to its non-empty entries first. The
+Reviewer killed it with one mutation: hoist `playEventSounds` ABOVE `sim = stepSim(...)`, so every
+frame dispatches the PREVIOUS step's cues — one step stale, forever, in a game that would still sound
+almost right — and **1012/1012 stayed green.**
+
+**Why the obvious fixes all fail.** Filtering both sides for emptiness deletes exactly the entries
+that would expose the offset, and what remains is two identical subsequences. So:
+
+- *"Compare index for index instead of filtering"* — breaks a VALID refactor. The Reviewer had already
+  confirmed `if (sim.events.length > 0) playEventSounds(...)` is equivalent and must stay green.
+- *"Tag each side with a step counter"* — the counter increments in the MIDDLE of the callback, so a
+  dispatch sited before the step reads the neighbouring value and pairs up just as convincingly.
+  Pair `(n, E_n)` on one side, pair `(n, E_n)` on the other. Green.
+- *"Tag the events themselves in the sim mock"* — same failure, one level down: the tag travels WITH
+  the events, so both sides agree by construction. Vacuous.
+- *"Build one ordered trace and require each dispatch to follow its own step"* — also green, because
+  the shifted order is `S(E1) D(E1) S(E2) D(E2)…`. Each dispatch really is immediately preceded by the
+  step that produced its events. The shift only shows at the ENDS.
+
+**The fix, and the general rule:** a shift by one is undetectable by any observation taken at the same
+point in the cycle, because a shifted sequence is a self-consistent sequence. What separates them is a
+clock that ticks at a DIFFERENT point in the cycle than the thing under test — here, at the callback
+boundary. `shell/timebase.ts`'s `pumpFrame` calls its `step` callback once per sim step, so wrapping
+it and incrementing on ENTRY stamps every observation inside that callback with the same index
+whatever order the callback does its work in. A dispatch that runs before its step is then stamped
+with the pump index of the step AFTER the one whose events it carries, and **every** pair mismatches.
+
+    pumpFrame: (...args: Parameters<typeof real.pumpFrame>): number => {
+      const [acc, elapsed, sampleStep, step] = args
+      return real.pumpFrame(acc, elapsed, sampleStep, (input) => { rec.pumps += 1; step(input) })
+    }
+
+Re-verified by mutation both ways: the hoist reds exactly one test, and the skip-empty refactor stays
+green. Generalised: **to catch an off-by-one in ORDER, find a heartbeat that fires between iterations,
+not within one.** red-baron's `tickCountUp` note ("runs exactly ONCE per calc-frame … the cleanest
+per-calc-frame heartbeat") is the same instinct, arrived at from the other side.
+
+---
+
+### An "unseeded emergent assertion" is a hidden second story — pin the seed, and expect the PROSE around it to be wrong too
+
+**Situation:** cp5-2's three boot suites asserted the `fire` cue plays, a spider loop opens AND closes,
+and some step emits two events — all against `main.ts`'s `createAttract(Date.now())`. Green eight runs
+running. The Reviewer called it: observed is not proven, and every other centipede suite pins a
+literal seed.
+
+**What pinning it actually cost, and bought:**
+
+1. The seed has to reach the shell, which means a `?seed=` param main.ts does not have — so a
+   test-quality finding turns into a PRODUCTION change and a fresh RED. Model it on whatever debug
+   param the shell already parses (`?wave=`), so it lands inside an existing, already-ruled seam
+   rather than inventing one.
+2. The guard that the seed was HONOURED is not optional. Without it, `?seed=` being ignored leaves
+   every emergent assertion exactly as unproven as before, and green. Compare something the seed
+   determines — here the mushroom field against `createAttract(SEED)`'s.
+3. **Every measured number in the surrounding prose is now wrong**, because it was measured on a
+   different world. cp5-2's note explained its two-event steps with a death frame AND a wave clear;
+   under the seed the compositions are `march-start+spider-stop`, `player-died+march-stop`,
+   `shot-fired+spider-stop` — no wave clear at all, and two of the three not death frames either. The
+   Reviewer had independently measured a THIRD set from its own unseeded run. Three runs, three
+   answers, which is the whole argument in one line.
+
+**Prevention:** when a suite asserts emergent gameplay, pin the seed FIRST and measure afterwards, and
+pin the measurement as DATA (a sorted array the test compares against) rather than describing it in a
+comment. A pinned array reds with the new value in the diff; a comment just goes quietly stale.
+
+---
+
+### `stepSim` can hand back the SAME buffer it was given — a held state reports the CURRENT world
+
+**Situation:** the seed guard above compared the booted state's mushroom field to `createAttract(SEED)`'s
+and failed in ONE of three suites — the one that ran 65 attract frames before the assertion. The other
+two passed. Same seed, same harness, same helper.
+
+**The cause:** `stepSim` ALIASES `playfield.cells`. The state it returns carries the very same
+`Uint8Array` object, mutated in place. Measured on the real core with no mocks:
+
+    createAttract(20260801)                 -> cells sum 2457
+    …60 idle attract steps later, the ORIGINAL state -> cells sum 2389
+    before.playfield.cells === after.playfield.cells -> true   (in attract AND in play)
+
+So `booted` was never a snapshot; it was a live view. The two suites that passed did so by luck —
+they left attract on the first step, and the reseed replaced the playfield object wholesale.
+
+**Prevention:** in a core that returns new state objects, do not assume the ARRAYS inside them are new
+too. Copy anything you intend to compare later (`new Uint8Array(state.playfield.cells)`), and say why
+in the helper. And note what this does to a purity guard's guarantee: centipede's bans globals, time
+and `Math.random` in `src/core/`, and has nothing to say about mutating a caller-visible buffer. "Pure
+deterministic core" in a README is not a promise about aliasing.
+
+**Tell:** an assertion that fails in one suite and passes in two, where the failing one is the one that
+ran the most frames before asserting. That is a temporal difference, not a configuration one.
+
+---
+
+### A citation gate should RE-LOCATE the anchor, not just say "wrong" — and its scope must stop at the story's own files
+
+**Situation:** four of eleven Reviewer findings on cp5-2 were stale line citations, all self-inflicted:
+the diff grew `main.ts` from 185 lines to 218 and every `main.ts:NNN` the RED phase had written moved.
+The worst landed on a real, plausible, WRONG line, which misleads a reader who checks it instead of
+stopping them. Correcting them by hand buys one clean round and no protection.
+
+**What made the gate worth writing rather than tedious:** each entry pairs the citation AS WRITTEN with
+a pattern the cited line must match, and on failure it searches the file for that pattern and reports
+where the anchor moved to:
+
+    It is now at main.ts:109 — re-anchor the citation (and this table) to that.
+
+Re-anchoring becomes a mechanical edit instead of a hunt, which is the only way a table like this
+survives contact with the next story. Add a sweep requiring every `FILE:N` in the scanned files to be
+registered, plus a `RETIRED` list for citations the prose quotes in order to DISOWN ("this used to say
+:183, and :183 was wrong") — without that list the sweep demands an anchor for a number the file is
+explicitly repudiating.
+
+**Two things worth doing deliberately:**
+
+- **Scope it to the story's own files.** Widening the scan to the whole suite immediately reddened
+  three OLDER centipede suites carrying the same defect. Fixing those is a story; dragging them into
+  this one is scope creep of exactly the kind the story had already declined once. File them as a
+  Delivery Finding with the measured list and the one-line change that would catch them.
+- **The gate ranks itself, for free.** The throwaway implementation written to prove the RED was
+  satisfiable added three lines to `main.ts` and reddened all five anchors with their new numbers.
+  A gate that reds on the very next legitimate edit is not scenery — but hand the next agent that
+  fact in the handoff, or it reads as an obstacle rather than a service.
