@@ -1149,3 +1149,81 @@ Two things this adds to the ad1-2 entry. First, the collision was closer than us
 which is exactly the distance at which a groomer merges two stories. Second, the fix is the
 same: the new story (`jt8-13`) carries an explicit *"WHY THIS IS NOT jt5-17"* paragraph, because
 the reasoning has to live where the collision will be noticed, not only in an archived session.
+
+---
+
+## The verdict a story ends on can be reversed by ONE late specialist — budget for the fourth round, and probe rather than diagnose (mg1-5, 2026-08-01)
+
+mg1-5 took **four review rounds** on a 3-pointer. That sounds like a process failure and was not: each
+round found a real defect of the same class, and the story that shipped is materially better than the
+one approved at round 1 would have been. What is worth recording is the *shape*.
+
+**Rounds 2, 3 and 4 all died on the same error, committed by three different participants** (Dev
+twice, then the Reviewer): a claim of the form *"I measured this and it catches X"* where the thing
+measured was not the thing written down. Round 2: an assertion that could never fail, under a comment
+claiming mutation had proven it. Round 3: its replacement, dead for a subtler reason — subsumed by
+the assertion running before it, so it could never be the one to red. Round 4: a comment naming the
+case-sensitive mutant when the property belonged to the case-insensitive one. **The Reviewer verified
+round 4's claim using the wrong variant too**, i.e. reproduced the exact defect while checking it.
+
+The generalisable rule: **every claim checked by re-running the EXACT quoted string survived; every
+claim checked by running something morally equivalent did not.** When a comment says "measured", the
+mutant it names must be the mutant that was run, pasted verbatim, so the next reader can re-run the
+string rather than reconstruct the intent.
+
+**Two SM-level consequences:**
+
+1. **A late specialist can reverse a drafted verdict.** In round 2 the Reviewer had three clean
+   specialist reports, a hand-assessment of the fourth domain, and an APPROVED verdict written — and
+   the fourth specialist returned after a `SendMessage` probe with the finding that overturned it.
+   The documented pattern ("an overdue specialist is probably ALIVE — probe it, don't diagnose it,
+   and never re-dispatch, which consumes the capacity the original holds") paid for itself outright.
+   Budget wall-clock for the slowest specialist, not the median: test-analyzer ran 340-560 s across
+   rounds while the others finished in 110-290 s.
+2. **A long-running specialist's measurement can be STALE ON ARRIVAL.** Round 3's preflight ran ~792 s
+   and reported 16 vitest failures from a sibling's jt8-7 RED tests — correctly, when taken. By the
+   time it was read, jt8-7's GREEN had landed and the suite was 11105/0. On a trunk-based repo where
+   siblings commit failing tests to `main` by design, a subagent's test count is a claim with a
+   timestamp. Re-measure before acting, in either direction.
+
+## When the last finding is prose, `/pf-chore` is the exit — not a fifth TDD round
+
+Round 4 approved with one Medium outstanding: a single false sentence in a test comment. Rejecting
+would have meant TEA writing a test for a comment, Dev editing a sentence, and four specialists
+re-spawning. The Reviewer instead approved and specified the correction **with verified replacement
+text**, routed to SM as a chore; SM applied it, re-measured all four combinations, and committed it
+(`3c4ab11`) before running `story finish`.
+
+The test for whether this is legitimate rather than a shrug: **is the defect in the code/tests, or in
+prose describing them, and does any coverage gap exist?** Rounds 2 and 3 blocked because an assertion
+could not fail — the test was defective. Round 4's assertions were all load-bearing and
+mutation-proven; only a sentence was wrong. Supply the exact replacement so nothing is re-derived,
+record the trade openly (the Reviewer wrote "I am trading a small residual risk for a large process
+cost, deliberately"), and say that if the chore does not land the finding must be re-raised rather
+than quietly dropped.
+
+## Attribute a red suite BEFORE finishing — a sibling's RED phase reddens `main` for everyone
+
+At mg1-5's finish, `npm run lint` had 3 errors and `test:orchestrator` was 371/1. **None was mg1-5's**
+— all of it was a sibling's in-flight uf1-15 RED tests (`plugins/star-wars/tests/core/tie-aim-axis.test.ts`),
+and the one failing orchestrator test was `shared-tests-typechecked.test.mjs`, which asserts
+`tsc --noEmit` exits 0 and is therefore red for exactly that reason. mg1-5's own surface was 27/27
+with no lint error naming a file it touched.
+
+This is the expected steady state mid-sibling-story on a trunk-based repo, not a regression — but it
+must be **attributed in writing before finish**, both in the Impact Summary and in the `sm-finish`
+prompt. Otherwise the archive implies the story shipped red, and the preflight subagent may report a
+sibling's failures as this story's blocker. Pre-loading the attribution into the spawn prompt (along
+with the round structure and the routed findings) again produced `blocking_count: 0` with zero file
+writes and no PR attempt — fourth clean run of that pattern.
+
+## `pf sprint story add --repos arcade` works; the finish left the ACs intact
+
+Filed mg1-16/17/18 with `--repos arcade --type --priority --workflow` and a parse confirmed every
+story in the epic carries `repos: arcade` — the old surgical-sed repair is obsolete, as the jt8-3
+correction said. Still true and still worth doing: **read the minted id from the output** (it minted
+16/17/18 in sequence) and **follow with `story update --description`**, since add still writes none.
+Post-finish parse confirmed mg1-5's own `acceptance_criteria` count unchanged at 5, exactly one
+completed-sprint row carrying its own points and date, and the archived session still holding all
+four Reviewer Assessments. Note `sprint/archive/sprint-2628-completed.yaml` carries a PRE-EXISTING
+duplicate `SH2-18` — inherited, not from this finish; do not "fix" it mid-ceremony.
