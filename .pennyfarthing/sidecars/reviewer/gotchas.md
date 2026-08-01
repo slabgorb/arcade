@@ -1146,3 +1146,60 @@ Asking cost one message and would have caught a truncated report; the sw7-16 les
 subagent return is not a clean one) applies to slow returns as well as visibly-truncated ones. Then
 re-verify the headline finding yourself regardless — I reproduced the bypass and the fix's safety
 first-hand before putting either in the assessment.
+
+---
+
+## Reviewing an audio SEAM: the suite's three sweeps are one sweep (jt5-1, joust, 2026-08-01)
+
+The fleet's three-file audio seam ships with a suite that reads thorough and has a structural blind
+spot. `core/events.ts` exports an `EVENT_KINDS` tuple; the manifest sweep, the dispatch sweep and
+the coverage check all read **that same tuple**. They agree with one another whether or not a single
+event is ever emitted. A kind can be declared, mapped, dispatched, ROM-cited and stone dead.
+
+Measured by deleting one emitter at a time from the SHIPPED source: **six of eleven cues reddened
+zero of 1932 tests.** The five that were pinned were exactly the five reachable in the input script
+TEA happened to write. Do this deletion pass on any seam story — it takes ten minutes and it is the
+only thing that distinguishes "wired" from "working".
+
+Two mechanics: neutralise with `void 0` rather than a bare cut (a bare cut leaves a dangling
+`if`/`for` and the resulting `tsc` failure is your edit, not a signal), and make every mutation
+assert that it landed — one that the shell ate reports a false 0 and reads as "that guard is
+scenery".
+
+## The citation gate cannot see SCOPE, only bytes
+
+This is the sharpest finding a ROM-fidelity review can make, and it looks like nothing. jt5-1 cited
+`JOUSTRV4.SRC:4711 "LDX #SNBOUN  AWARD BOUNTY SOUND"` for its wave-bounty cue. Byte-perfect,
+correctly interpreted, gate green — and wrong, because **:4711 is that symbol's only call site in
+the entire ROM** and it sits inside `SPDGLA`, the gladiator award. The port also fired it for the
+co-op and survival bonuses, which award the same points and play *nothing*.
+
+So: **grep the whole ROM for the cited symbol and count its call sites** before accepting that a
+citation covers every path the port applies it to. Then scan upward for the routine label that OWNS
+the line — the owner's name is usually the whole finding. Where the port has a branch the machine
+does not cue, that silence is a transcription and belongs in a comment, or the next reader "fixes"
+the gap.
+
+The mirror case is real too and justifies sharing a cue: joust's `PTERST` (:1423, `CLR PCHASE`
+"NOT A BAITER") and `BAITST` (:1427) are adjacent entry points falling into one body that reaches
+`LDX #SNPTEI`, so a baiter legitimately screams. Check which shape you have; do not assume either.
+
+## Under relay, your own staging is the thing most likely to lie
+
+Writing regression tests as Reviewer, three of my first twelve failed — all three my staging, none
+the implementation. One mattered: an entity pair staged *outside* the collision box produces no
+contact at all, so `not.toContain('ptero-death')` passes because nothing happened. The control has
+to sit inside the box and outside the decision band, so a real opposite outcome occurs. Dev's
+discarded probe had made the same error in the other direction.
+
+Also: do not hardcode a wave number in staging. joust's wave counter is BCD-packed (the tenth wave
+is `0x10`), which is td1-12's open question — a test naming "wave 10" asserts against whichever side
+of that question you wrote it on. Assert the invariant per advance and let the sim supply numbers.
+
+## Say which fixes no test can pin
+
+Reverting my own cliff fix (by-name set comparison → length comparison) reddened **0** tests,
+because no wave in the shipped table destroys and rebuilds in the same advance. The fix is still
+right — the code it reads documents that destruction reflects rather than latches — but the green
+suite is not evidence it was needed. Write that down. "Found and fixed a bug" overclaims; silence
+lets the next reader believe coverage exists.
