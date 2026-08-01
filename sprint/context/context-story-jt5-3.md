@@ -65,6 +65,20 @@ At flight entry (:6154-6157), the ROM branches directly to FLAPS2 (below FLAPLP'
 
 2. **Four event kinds emitted per party.** The core emits `EventKind` discriminated union with four new values: `player-wing-down`, `player-wing-up`, `enemy-wing-down`, `enemy-wing-up`. Each is emitted ONLY on its transition (no per-frame re-emission). A test stages a flap sequence and asserts the cues appear on the exact frames of the edges.
 
+> ⚠ **AC-3 IS REFUTED — do not implement it.** TEA re-opened the ROM during RED
+> and found the opposite. `STFLY` ("START TO FLY", :6123) ends
+> `INC PACCX,U   MAKE WINGS SHOW UP (1 FRAME), THEN DOWN` (:6134) followed by
+> `JMP FLAST2` (:6135) — a jump straight onto the wing-down `JSR VSND` at
+> :6216-6218. **Taking off DOES play the wing-down cue.** The silent routine is
+> `STFALL` ("START TO FALL", :6139), whose tail at :6154-6157 branches to
+> `FLAPS2`/`FLIPS2`, the labels below each loop's `JSR VSND` — that is a bird
+> walking off a cliff, not one taking off. SM's setup brief quoted STFALL's tail
+> and mislabelled it take-off; the error is SM's, not the story's. The AC text
+> below is left unedited so the record shows what was proposed and what replaced
+> it. The binding version is in the session file's Design Deviations, and the
+> RED tests in `plugins/joust/tests/audio-flap.test.ts` encode the corrected
+> behaviour.
+
 3. **No cue on take-off.** The first frame of flight (transition from grounded to airborne) does NOT emit a wing cue, regardless of button state. A test pins that a player entering flight mid-flap generates the step result without a wing event on frame 1.
 
 4. **Four-cue emission sequence is correct.** A test sequences press → release → press → release and asserts the exact order and frames of the four cues: wing-down, wing-up, wing-down, wing-up.
