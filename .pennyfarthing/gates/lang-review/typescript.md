@@ -101,7 +101,7 @@ All JavaScript error checks (#10 from JS checklist) apply, plus:
 
 **13. Fix-introduced regressions (meta-check)**
 After applying fixes for review findings, re-scan the fix diff against
-checks #1-#12, #14 and #15. Common patterns:
+checks #1-#12 and #14-#17. Common patterns:
 - Adding `as any` to silence a type error instead of fixing it
 - Adding null checks but using `||` instead of `??`
 - Adding runtime validation but not updating the type to match
@@ -144,13 +144,54 @@ provide can be deleted while the test stays green.
 under test; a two-`continue` loop could compare nothing; `< 18` where the true
 value was 0)*
 
+**16. Accessible names built by REPLACEMENT instead of composition**
+`aria-label` and `aria-labelledby` OVERRIDE an element's content when the
+accessible name is computed — they do not add to it. Naming a control with
+`aria-label` therefore deletes its visible label from the name, and a
+speech-input user who says what they can see ("click show demo") can no longer
+operate it. That is WCAG 2.5.3 Label in Name, Level A, and it arrives most often
+INSIDE an accessibility fix, which is why it needs its own check rather than a
+line under #13.
+- `setAttribute('aria-label', …)` or `aria-label=` on a control that already
+  renders visible text — compose instead: append a `visually-hidden` span so the
+  name CONTAINS the visible label
+- A name-computation change that silently retires a sibling mechanism's job: if
+  a label now settles the name, the `aria-hidden` that used to keep a glyph out
+  of it is no longer doing that, and any comment saying it does is now false
+- Reasoning about ONE assistive technology at a time. A fix verified against
+  screen readers and never against speech input is the characteristic failure —
+  ask which OTHER AT consumes the thing you just changed
+- Assert the composed NAME, not the attribute that produces it. A test reading
+  `getAttribute('aria-label')` passes for the exact spelling that breaks 2.5.3;
+  a test asserting the computed name contains the visible label fails it.
+*Origin: uf1-13 I-F1 (an `aria-label` added to name a SHOW DEMO button replaced
+"SHOW DEMO" with "Show ALPHA demo" — a Level A regression shipped as an a11y fix,
+with the story text itself prescribing the defect)*
+
+**17. Comments and docs that assert a MECHANISM nobody re-ran**
+A comment naming a failure mode, an invariant, or what happens if you do X is a
+claim about code. It goes stale silently — or ships false on day one, because it
+was reasoned out rather than run. Unlike a wrong type, nothing fails; the cost is
+paid later by whoever trusts it.
+- Two claims added by the SAME diff that cannot both be true. A fix and the
+  comment on the code it changed are the usual pair — read them together
+- A stated failure mode the named instrument cannot observe (a status-code probe
+  cited as evidence about a stale-but-serving build, which answers 200)
+- Universal wording for a case-specific truth ("retirement goes through
+  `next()`" where one route does not) — narrow it, or name the case
+- Where the claim is cheap to run, RUN it and quote the output. Replacing a false
+  claim with a second confident one repeats the defect being fixed.
+*Origin: uf1-13 I-F4 + I-F5 + I-F2 (two comments eleven lines apart contradicted
+each other; "retirement goes through next()" overreached; two of three worked
+examples in a runbook named failures that cannot produce the symptom)*
+
 If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 
 ```yaml
 GATE_RESULT:
   status: pass
   gate: typescript-review-checklist
-  message: "TypeScript self-review checklist passed (15 checks)"
+  message: "TypeScript self-review checklist passed (17 checks)"
   checks:
     - name: type-safety-escapes
       status: pass
@@ -190,7 +231,7 @@ GATE_RESULT:
       detail: "No barrel file over-imports; async fs in handlers"
     - name: fix-regressions
       status: pass
-      detail: "Fix commits re-scanned against checks #1-#12, #14, #15"
+      detail: "Fix commits re-scanned against checks #1-#12, #14-#17"
 ```
 </pass>
 
@@ -255,7 +296,7 @@ GATE_RESULT:
     - "Add Zod/io-ts validation at API boundaries; validate JSON.parse results"
     - "Use catch(e: unknown) and narrow with instanceof/type guards"
     - "Import specific exports instead of barrel; use async fs in handlers"
-    - "Re-scan fix diffs against checks #1-#12, #14, #15 before handoff"
+    - "Re-scan fix diffs against checks #1-#12, #14-#17 before handoff"
 ```
 </fail>
 
