@@ -702,28 +702,43 @@ test('mg1-5 round 2: uploadDir REFUSES to run without an explicit uploader', () 
   // they got a deploy. That is not theoretical: it is what took arcade.slabgorb.com down
   // on 2026-08-01, from a unit test.
   //
-  // ORDER MATTERS IN THIS TEST AND IT IS NOT STYLISTIC. The source assertion runs FIRST
-  // and the behavioural one is unreachable until it passes, because calling uploadDir
-  // without an uploader is precisely the dangerous act — if the default is still there,
-  // the call below would deploy this fixture to production instead of throwing. Do not
-  // reorder these, and do not "simplify" the source check away: it is the reason this
-  // test is safe to run at all, and it is also the permanent guard that the fail-open
-  // default never comes back.
-  const source = readFileSync(join(repo, 'scripts', 'deploy-r2.mjs'), 'utf8');
-  assert.ok(
-    !/\bupload\s*=\s*putObject\b/.test(source),
-    'scripts/deploy-r2.mjs still defaults `upload` to the real network call. Not calling ' +
-      'uploadDir — doing so without an uploader would PUT this fixture to the live ' +
-      'arcade-lobby bucket. Make `upload` required and pass it explicitly at the CLI entry.',
-  );
-
-  const dir = makeTree('no-uploader', { 'index.html': '<!doctype html>', 'a.js': 'export {}' });
+  // THE EMPTY FIXTURE IS THE SAFETY MECHANISM. DO NOT GIVE IT FILES.
+  //
+  // This test has to call `uploadDir` with no uploader — that is the whole point — and
+  // that is exactly the dangerous act. An earlier version guarded it by grepping the
+  // source for the old default before daring to make the call. That guard was measured
+  // and caught only 2 of 5 ways to re-arm fail-open (`|| putObject`, `?? putObject` and
+  // a renamed destructure default all walked past it), so the call could still have
+  // deployed. The structural fix is to make the call HARMLESS instead of gated:
+  // `collectUploads` throws on a dist dir with no files, BEFORE the upload loop, so with
+  // an empty fixture **zero objects can be uploaded no matter what this function does**.
+  //
+  // Both regressions therefore fail safely and loudly here: restore the default, or
+  // delete the guard entirely, and the error becomes "no files found …" instead of the
+  // guard's message — this test reds, and nothing is PUT anywhere. That is why the
+  // fixture is empty and why the assertion matches the guard's own words rather than a
+  // loose /upload/i, which `TypeError: upload is not a function` would also satisfy.
+  //
+  // The fixture prefix must also stay free of the word "upload": the "no files found
+  // under <path>" message embeds the temp path, and a prefix containing it would let the
+  // wrong error satisfy the assertion.
+  const dir = mkdtempSync(join(tmpdir(), 'deploy-r2-guard-probe-'));
   try {
     assert.throws(
       () => uploadDir(dir, 'arcade-lobby', ''),
-      (e) => e instanceof Error && /upload/i.test(e.message),
-      'uploadDir with no uploader must FAIL CLOSED with an error naming the missing option, ' +
-        'not fall back to deploying. Fail-open is what caused the outage.',
+      (e) => e instanceof Error && /requires an `upload` function/.test(e.message),
+      'uploadDir with no uploader must FAIL CLOSED with its own guard error, not fall back ' +
+        'to deploying and not merely crash on `undefined is not a function`. Fail-open is ' +
+        'what caused the outage.',
+    );
+
+    // …and it is the MISSING uploader that is refused, not everything: a real one gets
+    // through to the next failure. Without this, the assertion above would still pass if
+    // uploadDir threw the guard error unconditionally.
+    assert.throws(
+      () => uploadDir(dir, 'arcade-lobby', '', { upload: () => {} }),
+      /did the build run/,
+      'with a valid uploader the guard must step aside and let the normal empty-dist error through',
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -735,9 +750,19 @@ test('mg1-5 round 2: the real CLI entry still passes the real uploader', () => {
   // required: there is exactly ONE production caller. Making the parameter mandatory
   // without wiring it here would break every real deploy — a fix that turns a fail-open
   // into a broken deploy is not an improvement, so this pins the wiring.
+  // Anchor on the CLI guard itself, not on the phrase "CLI entry" — that phrase appears
+  // twice (a doc-comment above uploadDir and the real block), so `indexOf` was locking
+  // onto the comment and slicing far more of the file than intended. It happened to still
+  // work; it was coincidence, not design.
   const source = readFileSync(join(repo, 'scripts', 'deploy-r2.mjs'), 'utf8');
-  const cli = source.slice(source.indexOf('CLI entry'));
-  assert.ok(cli.length > 0, 'the CLI entry block must still exist');
+  const at = source.indexOf('if (process.argv[1] ===');
+  assert.notEqual(
+    at,
+    -1,
+    'the CLI entry guard `if (process.argv[1] === …)` is gone — without it this file would ' +
+      'deploy on mere import, and the slice below would be meaningless',
+  );
+  const cli = source.slice(at);
   assert.match(
     cli,
     /uploadDir\([^)]*upload\s*:\s*putObject/s,
@@ -796,11 +821,19 @@ test('mg1-5 round 2: "is a page" has ONE definition — anything served as text/
 
     // And the negative: a filename merely CONTAINING "html" is not a page. This kills a
     // regression to `key.includes('.html')`, which would pass every other test in the file.
+    // Compared against firstPage, NOT against lastAsset. `<= lastAsset` was a TAUTOLOGY:
+    // lastAsset is a monotonic reduce that assigns acc = i for every non-page key, and
+    // contentTypeFor('index.html.map') is 'application/json' whatever isEntryPoint does —
+    // so lastAsset always reached this key's own index and the comparison held for EVERY
+    // possible ordering, including pages-first. It could not fail, while its comment
+    // claimed mutation had proven it caught the substring regression. It had not: the
+    // mutation reddened the assertion ABOVE. A file-level mutation result tells you the
+    // file is guarded, never which assertion guards it.
     assert.ok(
-      uploaded.indexOf('index.html.map') <= lastAsset,
+      uploaded.indexOf('index.html.map') < firstPage,
       '`index.html.map` is a sourcemap, not an entry point — the predicate must match the ' +
-        'EXTENSION (`.map`), not the `.html` substring sitting in the middle of the name. ' +
-        'Verified by mutation: a regression to key.includes(".html") reddens exactly here.',
+        'EXTENSION (`.map`), not the `.html` substring sitting in the middle of the name, ' +
+        'so it must upload BEFORE the first real page.',
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
