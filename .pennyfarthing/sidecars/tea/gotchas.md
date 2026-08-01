@@ -4,6 +4,45 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 
 ---
 
+### A source anchor needs the right SCOPE, not just the right pattern — and mutation-testing against your own list of failures is a mirror, not an adversary
+
+**Situation:** Any test that proves a compile-time property by reading source text — the previous two
+gotchas' territory. cp5-1 round 3: five assertions, anchored to the declaration, evaluated over
+comment-stripped source, each mutation-proven. All five read the **whole file**.
+
+**Problem:** The Reviewer built the mutant I had not imagined and it passed **20/20 with `tsc`
+clean**: gut the real `switch` so a future fourth effect is silently played as a one-shot, and park a
+correct guard-shaped `switch` in dead code above it. Worse, it needs no decoy to bite — the helper
+took the **first** `default: {` in the file, so any second switch added *above* the function under
+test silently redirects the anchors onto the wrong arm. That is ordinary growth, not sabotage.
+
+Three rounds, and the failure moved one level up each time — **token → declaration → location.** Each
+fix was correct and each left the next level exposed.
+
+**Prevention — scope first, then match:**
+
+1. **Extract the function/class body the mechanism lives in before running any anchor.** Balance the
+   parameter list's parens first, *then* braces, so an object type in a signature is not mistaken for
+   the body's opening brace. Never a single non-greedy regex: `/\{([\s\S]*?)\n\s*\}/` stops at the
+   first nested `}`, so wrapping a guard in an inner block hides everything after it.
+2. **Add a scope control.** If the extractor stops finding the body (a rename, a refactor to an arrow
+   const), every assertion silently reads `null`. Assert the body was found, that it contains the
+   construct you are describing, and that it is a PROPER SUBSET of the file.
+3. **Keep a decoy FIXTURE in the suite** — decoyed source held as data, run through the extraction
+   helpers. It proves the scoping forever and, unlike a source mutation, the suite never mutates the
+   tree it runs in.
+4. **Pin the property, not the spelling.** Add must-stay-GREEN rows to the matrix: renaming the
+   guard's identifier to the convention other modules use, or reformatting quote style, must NOT red.
+   A guard that reds on a refactor trains people to weaken it.
+
+**The meta-lesson, which is the one worth carrying:** I mutation-tested against the ways *I* thought
+the guard could break, and it passed all of them. The failure mode I did not enumerate was the one
+that shipped. **Ask someone else to build the mutant, or write the fixture that encodes the defect
+SHAPE rather than the current file** — your own list of mutations is bounded by the same imagination
+that wrote the bug.
+
+---
+
 ### Anchoring a source assertion to the DECLARATION is not enough — the declaration can be quoted in a COMMENT. Strip comments, then count.
 
 **Situation:** Pinning a COMPILE-TIME-only claim, where no runtime assertion can reach the mechanism
