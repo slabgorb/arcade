@@ -1153,10 +1153,11 @@ describe('cp5-2 AC3 — an unmapped kind DEGRADES: the frame plays on, quietly',
   //     for a defect whose honest cost is one missing sound. Pinned end-to-end
   //     in tests/audio-hot-path.test.ts, which boots the real loop and poisons a
   //     live frame. (Re-anchored on rework: this read main.ts:183, written when
-  //     the file was 185 lines. The wiring grew it by 33 and :183 is now
-  //     `const board = sim.highScoreTable` — a real line, so the stale citation
-  //     misled rather than dangled. tests/audio-citations.test.ts now reds when
-  //     a cited main.ts line stops saying what the citation claims.)
+  //     the file was 185 lines. The wiring diff grew the file past it, and
+  //     main.ts:183 then landed on `const board = sim.highScoreTable` — a real
+  //     line, so the stale citation misled rather than dangled.
+  //     tests/audio-citations.test.ts now reds when a cited main.ts line stops
+  //     saying what the citation claims.)
   //
   // NOTHING IS GIVEN UP AT COMPILE TIME. The exhaustiveness guarantee never
   // lived in this throw: `EVENT_SOUND: Record<GameEventKind, SoundName>`

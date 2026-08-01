@@ -71,8 +71,10 @@ interface Pumped {
  * whose audibility CHANGED, taken by comparing the state handed in against the
  * state handed back (`LOOP_VOICES.flatMap`, sim.ts:978 — the file's only
  * edge-producing site). A `*-start`/`*-stop` kind can be produced nowhere else:
- * `loopEdges` builds those names by template literal (sim.ts:390-393), so they
- * appear as no string constant anywhere in core.
+ * `loopEdges` builds those names by template literal (sim.ts:390-393), and no
+ * producing site spells them out — the only literal spellings in core are the
+ * kind registry itself (`EVENT_KINDS`, core/events.ts:67-77), which is data,
+ * not a push site.
  *
  * So all three compositions are one thing — a loop edge landing in a frame that
  * already had something in it:

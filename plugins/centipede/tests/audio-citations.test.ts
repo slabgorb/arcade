@@ -40,12 +40,17 @@ const mainPath = join(gameRoot, 'src', 'main.ts')
 /** main.ts, 1-indexed to match the way citations are written. */
 const mainLines = (): string[] => ['', ...readFileSync(mainPath, 'utf8').split('\n')]
 
-/** The cp5-2 files whose prose is scanned. Nothing older is in scope. */
+/** The cp5-2 files whose prose is scanned. Nothing older is in scope.
+ *  (Round 2 added audio-seam-scope.test.ts — it carried bare `:91`/`:192`
+ *  refs into main.ts that the sweep could not see, which is also why every
+ *  citation must be spelled `main.ts:N`: the bare-colon form is invisible
+ *  here and goes stale unwatched.) */
 const SCANNED = [
   'audio-wiring.test.ts',
   'audio-gesture-gate.test.ts',
   'audio-hot-path.test.ts',
   'audio-dispatch.test.ts',
+  'audio-seam-scope.test.ts',
   'helpers/boot-shell.ts',
 ]
 
@@ -107,6 +112,34 @@ const ANCHORS: Anchor[] = [
     // starts the chain. The indent is load-bearing in this pattern.
     must: /^ {2}requestAnimationFrame\(frame\)$/,
     what: 'the trailing requestAnimationFrame(frame) INSIDE frame() — the rAF chain link',
+  },
+  // ── round 2: the four refs below entered the sweep when their prose was
+  // re-spelled from the bare `:N` form (which this file cannot see) to
+  // `main.ts:N`. Their values had gone stale exactly as this file predicts.
+  {
+    cite: 'main.ts:229',
+    line: 229,
+    // The column-0 counterpart of :227 — see the indent note there.
+    must: /^requestAnimationFrame\(frame\)$/,
+    what: 'the bare bootstrap requestAnimationFrame(frame) that starts the chain',
+  },
+  {
+    cite: 'main.ts:20-21',
+    line: 20,
+    must: /^import \{ createAudio \} from '\.\/shell\/audio'$/,
+    what: 'the two imports the wiring adds — createAudio, then playEventSounds',
+  },
+  {
+    cite: 'main.ts:102',
+    line: 102,
+    must: /^const audio = createAudio\(\)$/,
+    what: 'where main.ts builds the one engine, at boot',
+  },
+  {
+    cite: 'main.ts:203',
+    line: 203,
+    must: /^ {6}playEventSounds\(audio, sim\.events\)$/,
+    what: 'the dispatch call inside the pump callback — once per stepped frame',
   },
 ]
 

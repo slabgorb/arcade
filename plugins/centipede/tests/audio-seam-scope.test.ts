@@ -214,8 +214,11 @@ describe('cp5-1 AC6 — the README stops advertising a gap that has closed', () 
 
 describe('cp5-2 — the README stops saying the shell is unwired, because it is wired', () => {
   it('no longer claims main.ts calls neither createAudio nor playEventSounds', () => {
-    // main.ts imports both (:20-21), builds the engine at :91 and dispatches at
-    // :192. Every one of these sentences is false on the shipped tree.
+    // main.ts imports both (main.ts:20-21), builds the engine at main.ts:102
+    // and dispatches at main.ts:203. Every one of these sentences is false on
+    // the shipped tree. (Round 2: the bare `:91`/`:192` forms this note first
+    // used went stale when the `?seed=` block grew main.ts by 11 lines — the
+    // prefixed spellings are the ones tests/audio-citations.test.ts re-checks.)
     const src = normalized(readmeSrc())
     expect(src, 'main.ts calls both — it builds the engine and dispatches per step').not.toMatch(
       /`main\.ts` calls neither/i,

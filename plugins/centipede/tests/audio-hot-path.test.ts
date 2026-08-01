@@ -212,11 +212,15 @@ describe('cp5-2 AC3 — an unmapped kind must not freeze the frame loop', () => 
   it('the frame carrying it does not throw out of the rAF callback', () => {
     // REWORK (Reviewer round 1, MEDIUM [RULE]): this message cited "main.ts:183"
     // for the trailing `requestAnimationFrame(frame)`. That was true when the
-    // file was 185 lines; wiring the seam grew it by 33 and :183 now reads
-    // `const board = sim.highScoreTable` — a real, plausible, WRONG line, which
-    // is worse than a dangling one because a reader who checks it is misled
-    // rather than stopped. The trailing call is at :216 (the bootstrap that
-    // starts the chain is :218). Pinned by tests/audio-citations.test.ts.
+    // file was 185 lines; the wiring diff grew it past that, and main.ts:183
+    // then read `const board = sim.highScoreTable` — a real, plausible, WRONG
+    // line, which is worse than a dangling one because a reader who checks it
+    // is misled rather than stopped. The trailing call is at main.ts:227 (the
+    // bootstrap that starts the chain is main.ts:229). Pinned by
+    // tests/audio-citations.test.ts — round 2 found the bare `:216`/`:218`
+    // forms this note first used had themselves gone stale (the `?seed=` block
+    // grew the file by 11 more lines), unseen because the sweep only matches
+    // the `main.ts:N` spelling. Hence the prefixed forms now.
     expect(
       outcome.threw,
       `the unmapped kind threw out of the frame callback (${String(outcome.threwOnPoisonedFrame)}). ` +
