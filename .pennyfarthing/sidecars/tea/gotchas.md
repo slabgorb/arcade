@@ -4,6 +4,72 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 
 ---
 
+### After the second defeat, stop patching the scanner and parse — and GENERATE the mutants instead of listing them
+
+**Situation:** The end of the road the next three gotchas walk. cp5-1 spent **four** rounds proving
+one compile-time property (a `never` exhaustiveness guard) by reading source text, and was beaten
+every round by text a regex could not tell from code:
+
+| Round | Defeated by | The fix |
+|---|---|---|
+| 1 | the word `never` in a **comment** | anchor to the declaration |
+| 2 | the guard **deleted** outright | write a test at all |
+| 3 | a guard-shaped decoy **elsewhere in the file** | scope to the function body |
+| 4 | a decoy **nested inside** that body; a `}` **inside a string**; a **brace-less** `default:` | ...a fifth regex? |
+
+**Problem:** Each fix was correct, each was mutation-proven, and each was one level short. That is
+not four mistakes — it is one mistake made four times: **a hand-rolled scanner is a partial
+TypeScript parser, and the gap is always one construct deeper than you thought to test.** Round 3's
+fix even introduced its own asymmetry (the comment stripper was made string-aware; the brace walker
+that ran after it was not), so a stray `console.debug('legacy}')` in the arm blinded the guard to the
+`audio.play()` that followed it. Nobody would review that line twice.
+
+**Prevention:**
+
+1. **Use the compiler's parser.** `typescript` is already a dependency of any TS repo — it is what
+   `tsc` runs. `ts.createSourceFile(path, src, ts.ScriptTarget.Latest, true)` plus a `forEachChild`
+   walk is ~15 lines and retires the whole table at once, by construction rather than by patch:
+   comments are not in the tree (round 1); a node's text is syntax-accurate, so a `}` or the
+   characters `audio.` inside a **string literal** are non-events (round 4's H2); a `DefaultClause`
+   has statements whether or not it wears braces (H3); and scope is a tree relation, not a text
+   offset (round 3, round 4's H1).
+2. **Assert on structure, not spelling.** "the initializer is an Identifier equal to the
+   discriminant" admits `= effect` and rejects `= effect as never`, `= effect!` and `= 0 as never`
+   without enumerating them. Quote style, whitespace and formatter runs stop mattering entirely.
+3. **Derive the expected set from the source too.** A hand-kept `['play','startLoop','stopLoop']` in
+   the test agrees with itself forever while the real union drifts — the token-not-claim failure one
+   indirection out. Read the union off the discriminant's declared type; then *adding a fourth member
+   with no case arm* reds, which is the actual claim and which no round of regexes could test at all.
+4. **Ask a call-graph question when "which one is real?" is ambiguous.** A decoy nested inside the
+   function must be rejected; a helper extracted *out* of it and called must be accepted. Position
+   cannot separate those — both are "a switch in another function". Reachability can: the decoy is
+   never called.
+5. **GENERATE the mutants from the real source; do not list them.** A hand-written matrix measures
+   the author's imagination. Round 3's returned 100% while missing the live defect, and its
+   fleet-compatibility row *cited* an idiom it never actually tested. Generate one row per case
+   clause the switch declares, one per engine method (each carrying the brace-in-string hazard, so it
+   is in every row rather than being the one case nobody tried), and one per decoy topology
+   (before / after / nested).
+6. **Every must-REJECT mutant must assert it CHANGED the source.** A mutation that silently failed to
+   apply scores the unmutated source and reports "rejected as required" while proving nothing. Hold
+   must-ACCEPT rows to the weaker rule deliberately — "this shape is already the shape" is harmless,
+   and failing it reds the suite for a refactor that changed no guarantee.
+7. **Mutate the test's own MACHINERY, not just the code under test.** This is the step that pays.
+   Neutering `verdict()` reddened 15 rows and emptying the engine-method list reddened 1 — but
+   neutering **reachability** left the matrix fully GREEN, proving the rejections credited to the
+   call-graph reasoning did not depend on it (a decoy that is merely *present* already yields two
+   switches and is rejected on that count alone). The missing row was the symmetric control:
+   *dispatch INTACT, unreachable decoy added* must be **accepted**. Only that pair can tell dead code
+   from a real second switch.
+
+**The shape of the lesson:** when a guard is defeated twice by the same *class* of input, the next
+fix should change the KIND of instrument, not its precision. And the honest test of a guard is not
+"does it catch the mutants I wrote" but "does it still hold when I break the guard itself".
+
+*Origin: cp5-1 rounds 1-5 (Reviewer's REJECT: "stop patching the scanner").*
+
+---
+
 ### A source anchor needs the right SCOPE, not just the right pattern — and mutation-testing against your own list of failures is a mirror, not an adversary
 
 **Situation:** Any test that proves a compile-time property by reading source text — the previous two
