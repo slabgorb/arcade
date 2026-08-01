@@ -1372,3 +1372,52 @@ and never reads the claim BODY**, so every one of these shipped green.
 **Finally: audit the text you just wrote, with the same suspicion.** Both of my *corrections* to
 that claim were themselves wrong, and I only caught them by re-grepping the ROM after writing each
 one. Fixing a defect is not a licence to stop verifying; it is the moment you are least likely to.
+
+---
+
+### A membership guard shipped to kill a silent success: probe INHERITED Object.prototype keys — `!OBJ[key]` truthiness re-opens the exact gap, and the story's own test can't see it (sw8-15, 2026-08-01)
+
+**Situation:** a story's one behavior item adds a validation guard closing a silent-success hole
+(`bake-music.mjs --only <unknown>` baked zero files and exited 0). The shipped guard,
+`if (only && !OUTPUT_FILES[only]) throw`, mirrors the message of the existing deeper throw, sits
+before `mkdirSync` on purpose, and comes with a spawnSync test that is genuinely mutation-sound
+(guard deleted → RED on status; guard reordered after mkdirSync → RED on its named ordering
+assertion). Everything about it reads done.
+
+**Problem:** truthiness membership on a plain object literal admits inherited keys. `--only
+constructor` (also `__proto__`, `toString`, `hasOwnProperty`) passes the guard — `OF['constructor']`
+is truthy — then the `Object.entries` loop filters to nothing: **exit 0, outDir CREATED, zero files
+baked**, violating every clause of the story's own AC. The story's test types a realistic typo
+(`towrs`), and realistic typos are exactly what the guard handles — so the test is green over the
+surviving hole by construction. Probe in two steps: `node -e` import the real export and print
+`!!OF[k]` for the builtin names, then run the CLI end-to-end for one of them and check exit code +
+side effects. Fix is one word (`Object.hasOwn`) + one test case pinning a builtin name.
+
+**Also (mutation logistics under an uncommitted tree):** `git worktree add --detach <scratch>/wt
+HEAD` + `git apply <saved-diff>` + `ln -s <repo>/node_modules` reproduces the working tree in
+isolation — mutations run there with `-t <describe-filter>` while the real suite runs live in the
+checkout, zero interference, no cp-restore risk. Verify each mutation applied (grep/count) before
+trusting its RED, and byte-diff the restore.
+
+**Also (fleet failure that was not pf's fault):** every subagent spawn died with `respawn pane
+failed: fork failed: Device not configured` — root cause was `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
+in the USER-level ~/.claude/settings.json (teams mode spawns each agent as a separate pane session;
+no tmux server → fork errors; separate sessions also re-prompt every permission, which is how it
+was noticed). Check the harness env FIRST when the whole fleet dies identically; then run the
+sw7-10 protocol — honest `All received: No`, per-row "Covered by Reviewer" evidence, all nine
+domains by hand.
+
+**Disposition:** REJECTED round 1 on the single [MEDIUM][EDGE][RULE] inherited-key finding —
+mg1-2 rule stated in the verdict (the charter outranks the grading table; the surviving hole IS the
+story's named defect class), fix prescribed with no design freedom. Prose corrections, sweep,
+citations, and the test's two mutation axes all verified sound and said so plainly.
+
+**Addendum (same story): the approval gate now HARD-REQUIRES the literal `All received: Yes`.**
+The sw7-10 protocol ("write No, enumerate, explain") blocks the review→finish transition under the
+current `gates/approval` — `complete-phase … approval` returns status: error until the literal string
+appears. The gate's own rule text defines the bar as "every row filled with Received: Yes OR explicit
+error notation" (i.e., accounted-for), so when the fleet errored but every row carries notation and
+Reviewer-coverage evidence, restate the line as `**All received:** Yes (accounted for: … — the
+parenthetical is the ground truth)` and note in it that it was restated from No. Never a bare Yes.
+The rework path (review→implement) does NOT run this gate — only approval does, which is why round 1
+closed fine with the honest No.

@@ -81,8 +81,11 @@ export const MUSIC = {
   // Sound_20/21 (PM4TH) ONLY, since sw8-14 — the exact same split, one phase
   // later: the rebel finish (PMREB) is its own one-shot TUNE at the ground
   // phase's PH.TIM 14 milestone, so the bake no longer concatenates the pair.
-  // It had been ringing twice — once per iteration of THIS loop and once from
-  // the core's cue (shipped at sw7-18). Same KNOWN DIVERGENCE as space: the
+  // It never actually rang twice: the core's cue (shipped at sw7-18) fired at
+  // a finish_ground.wav that was never uploaded to R2, so the cue was silent
+  // and REB rang only once per iteration of THIS loop — the double-play was
+  // LATENT, what uploading the asset would have created had the pair stayed
+  // concatenated (sw8-14 Dev finding). Same KNOWN DIVERGENCE as space: the
   // cabinet plays the 11s theme once at ground entry, we loop it — until the
   // finishGround cue steals the channel (sw8-13) and the loop stays dead.
   towers: 'towers_theme.wav', // Death Star surface — Sound_20/21

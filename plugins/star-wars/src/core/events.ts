@@ -253,9 +253,10 @@ export interface MusicEvent {
   track: MusicTrack
 }
 
-// The five one-shot POKEY tunes (sw7-8, audit U-010..U-014). A string-literal
-// union like MusicTrack, and for the same reason. Names follow the callers in
-// the 1983 source, never the entry-point labels (the PMBEN lesson):
+// The seven one-shot POKEY tunes (five at sw7-8, audit U-010..U-014; themeB
+// added at sw8-12, finishGround at sw8-14). A string-literal union like
+// MusicTrack, and for the same reason. Names follow the callers in the 1983
+// source, never the entry-point labels (the PMBEN lesson):
 export type TuneName =
   | 'deathKnell' // PMSF2 — the proton torpedo is FIRED (WSGUNS.MAC:1220 FRPTGN)
   | 'cantina' // PMCNT — the enter-initials screen opens (WSMAIN.MAC:1164 PHIENT)

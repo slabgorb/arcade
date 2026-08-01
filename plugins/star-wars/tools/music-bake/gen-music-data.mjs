@@ -88,7 +88,7 @@ function parseTuntab() {
 // `8F,00`, whose second byte is also 0 — but its first byte has the high bit set,
 // so it is an opcode, not a terminator.
 //
-// FLATTENING (sw7-8): the five one-shot tunes use subroutine machinery the four
+// FLATTENING (sw7-8): the one-shot tunes use subroutine machinery the four
 // loops never touched, and we resolve it HERE so the emitted streams stay pure
 // 2-byte pairs and the player's `,X++` walk survives untouched:
 //
@@ -267,8 +267,10 @@ function parseEnvelope(label, length) {
 // `LDA PH.TIM / CMPA #14. / IFEQ` (PHEGD, WSMAIN.MAC:1673). sw6-1 concatenated
 // them only because the engine then had no timed one-shot — a premise sw7-18
 // retired when it shipped the `finishGround` cue in src/core/sim.ts. Left
-// concatenated, REB rang once per iteration of the LOOPING towers track AND
-// again from that cue. REB is a one-shot below.
+// concatenated, REB rang once per iteration of the LOOPING towers track — and
+// only from there: the cue fired at a finish_ground.wav never uploaded to R2,
+// so it was silent and the double-play stayed LATENT, armed to go live the
+// moment the asset shipped (sw8-14 Dev finding). REB is a one-shot below.
 //
 // Each PM* entry issues four `.TUNE voice,index` calls; the indices are DECIMAL.
 const TRACK_SPEC = {

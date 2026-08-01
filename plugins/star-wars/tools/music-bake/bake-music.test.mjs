@@ -8,7 +8,9 @@
 //   bake-music.mjs                  the headless CLI that writes the four .wav
 // ─────────────────────────────────────────────────────────────────────────────
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { join, dirname } from 'node:path'
 
@@ -198,7 +200,7 @@ describe('sw6-1 AC-7 — the bake is headless and reproducible', () => {
   }, SLOW)
 })
 
-// ── sw7-8 (review R-3) — the five one-shot TUNES bake through the same gate ──
+// ── sw7-8 (review R-3) — the one-shot TUNES bake through the same gate ──────
 //
 // The CATALOGUE was widened so the tunes ride the render path — but nothing
 // exercised it: a silent (or clipped, or nondeterministic) death_knell.wav
@@ -257,4 +259,42 @@ describe('sw7-8 — every one-shot tune bakes to real audio, not silence', () =>
       }
     }
   }, SLOW)
+})
+
+// ── sw8-15 — the CLI validates --only VALUES like it validates flags ─────────
+//
+// `--only <track>` filters OUTPUT_FILES; before sw8-15 a value matching no
+// track baked ZERO files and exited 0 — a typo'd name "succeeded" silently,
+// while an unknown FLAG already threw.
+describe('sw8-15 — the CLI rejects an unknown --only track', () => {
+  it('exits nonzero naming the track, and creates nothing', () => {
+    const outDir = join(tmpdir(), 'bake-music-sw8-15-only-guard')
+    rmSync(outDir, { recursive: true, force: true })
+
+    const r = spawnSync(process.execPath, [here('./bake-music.mjs'), outDir, '--only', 'towrs'], {
+      encoding: 'utf8',
+    })
+
+    // A real failure exit — not 0, and not null (a signal kill).
+    expect(r.status).toBeGreaterThan(0)
+    expect(r.stderr).toContain('unknown track')
+    expect(r.stderr).toContain('towrs')
+    expect(existsSync(outDir), 'guard precedes mkdirSync — no outDir side effect').toBe(false)
+  })
+
+  // Inherited Object.prototype names are truthy under OUTPUT_FILES[only], so a
+  // truthiness guard silently accepts them — the review R-1 hole. Pins hasOwn.
+  it('rejects an inherited Object.prototype name the same way', () => {
+    const outDir = join(tmpdir(), 'bake-music-sw8-15-proto-guard')
+    rmSync(outDir, { recursive: true, force: true })
+
+    const r = spawnSync(process.execPath, [here('./bake-music.mjs'), outDir, '--only', '__proto__'], {
+      encoding: 'utf8',
+    })
+
+    expect(r.status).toBeGreaterThan(0)
+    expect(r.stderr).toContain('unknown track')
+    expect(r.stderr).toContain('__proto__')
+    expect(existsSync(outDir), 'guard precedes mkdirSync — no outDir side effect').toBe(false)
+  })
 })

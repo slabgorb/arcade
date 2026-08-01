@@ -282,10 +282,12 @@ describe('sw6-1 AC-6 — SEGMENTS: one flattened loop per phase, in ROM order', 
   // Two `JSR PM*` sites, two different moments — a phase-entry cue and a timed
   // milestone cue, exactly like TH5/THB. The "no notion of a timed one-shot
   // follow-on" clause above stopped being true at sw7-18, which shipped that very
-  // cue in `src/core/sim.ts` (the `finishGround` tune event). So REB has been
-  // ringing TWICE: once from the core's one-shot, and once per iteration of the
-  // LOOPING towers track — the double-play sw8-12 removed for THB, left live for
-  // REB. Baking it into towers_theme.wav would make that reproducible.
+  // cue in `src/core/sim.ts` (the `finishGround` tune event). So REB had TWO
+  // homes: the core's one-shot and every iteration of the LOOPING towers track
+  // — the same double-play sw8-12 removed for THB, but for REB it was LATENT,
+  // not live: the cue fired at a finish_ground.wav never uploaded to R2, so
+  // only the loop ever rang (sw8-14 Dev finding). Keeping REB baked into
+  // towers_theme.wav would have made it real the moment the asset shipped.
   it('gives space ONE segment — the main theme; theme B is the themeB tune (sw8-12)', () => {
     expect(segmentsOf('space').map((s) => s.tune)).toEqual(['TH5'])
   })

@@ -163,7 +163,7 @@
     },
     "ours": {
       "file": "src/shell/audio.ts",
-      "line": 106,
+      "line": 109,
       "verbatim": "export const MUSIC_CHANNELS: Record<MusicName, string> = {"
     },
     "recommendation": "accept"
@@ -403,7 +403,7 @@
     },
     "ours": {
       "file": "src/shell/audio.ts",
-      "line": 165,
+      "line": 168,
       "verbatim": "export const SPEECH = {"
     }
   },

@@ -236,6 +236,14 @@ if (process.argv[1] && process.argv[1].endsWith('bake-music.mjs')) {
   const { only, suffix, clockCorrect } = opts
   const outDir = positionals[0] || join(__dirname, 'out')
 
+  // Validated like the flags above (sw8-15): an unmatched --only value would
+  // filter the loop below to NOTHING — zero files baked, exit 0 — never
+  // reaching bakeTrack's own unknown-track throw. Before mkdirSync on purpose:
+  // a rejected invocation leaves no half-made outDir behind. hasOwn, not
+  // truthiness: OUTPUT_FILES[only] is truthy for inherited names like
+  // 'constructor', which are exactly as unknown as any other typo (review R-1).
+  if (only && !Object.hasOwn(OUTPUT_FILES, only)) throw new Error(`bake-music: unknown track ${JSON.stringify(only)}`)
+
   mkdirSync(outDir, { recursive: true })
 
   for (const [track, file] of Object.entries(OUTPUT_FILES)) {
