@@ -837,3 +837,92 @@ hazard has not recurred when the prompt carries the structure). And when verifyi
 split compound assertions: a `count('HTTP/2 200') == 17` check failed because the Impact Summary's own
 "17×" prose mention raised the count to 19 — the archive was right and the checker's expectation was
 wrong. Anchor counts to the table's row SHAPE (`^\S+\.wav\s+HTTP/2 200`), not to a bare substring.
+
+---
+
+## The falsifiable claim can live in the EPIC description and be wrong for only ONE of the games it names — and the STORY TITLE can carry it too (ad1-2, 2026-08-01)
+
+**Situation:** `/pf-work ad1-2`, "battlezone self-play attract demo — drive and duel
+unattended behind the attract text, then opt in". 5 points, `tdd`, nothing parked. The
+standing rule (measure a description's falsifiable claims before `sm-setup`) applied — but
+the story's OWN description was empty. The claim was one clause in the **epic** description,
+which covers six stories: "star-wars and battlezone show rotating text pages".
+
+**Problem:** false for battlezone. `plugins/battlezone/src/core/sim.ts:10` already reads
+"Attract is a SELF-PLAYING demo (story AC)"; the attract branch of `stepGame` runs the same
+`stepBattle` real play does, with an autopilot driver, through `stepEnemies` AND
+`stepSaucer`; `main.ts:307-309` already says "the demo battlefield keeps playing behind the
+text". Three of the title's four clauses were shipped. Only the opt-in flip remained — 1
+point of work carrying a 5-point estimate, on a `tdd` workflow whose RED would have been
+vacuous on arrival against 11 attract-aware test files.
+
+**Two things this adds to the existing rule.**
+
+1. **Look up a level.** A story with an empty `description` is not a story with no claims —
+   its epic's description is what `sm-setup` and every reader will lean on. Measure that
+   instead. The tell is the same (a falsifiable statement about a file's current state),
+   only the file it lives in changed.
+
+2. **A shared description can be wrong for ONE member and right for the rest, and the fix is
+   then NOT to correct it.** That sentence names star-wars too, where it is accurate —
+   `ad1-1` is unaffected and its premise stands. Editing the epic description to satisfy
+   ad1-2 would have broken ad1-1's Background. Correct it in the STORY (description + ACs +
+   session assessment) and leave the epic text alone with a note saying which came first.
+   The likely origin is worth naming in the session as well: this looked pattern-matched
+   from the sibling game in the same sentence, which is a repeatable way for epic prose to
+   be half-true.
+
+**The title is a claim surface too.** The user ruled repurpose-without-retitle (as on
+jt8-6), so the board still advertises "self-play attract demo — drive and duel unattended".
+Say so explicitly in the assessment: a reader who trusts the title will re-litigate work
+that shipped in the bz1-10 era.
+
+## Check who owns the dev port at SETUP, not at verification — and put the result in the handoff
+
+The user memory `dev-port-owned-by-sibling-checkout` describes discovering mid-verification
+that a screenshot came from another checkout. Doing the probe at setup costs two commands
+and turns it into a handoff line instead of a debugging session:
+
+```bash
+PID=$(lsof -ti tcp:5270 | head -1)
+lsof -a -p "$PID" -d cwd -Fn | grep '^n'      # → n/Users/slabgorb/Projects/a-2
+```
+
+Here 5270 was held by a-2, which had landed `uf1-13` minutes earlier. ad1-2's AC3 is a
+served-lobby visual check, so without the warning Dev's most natural action — `just serve`,
+open 5270 — either fails on `strictPort` or shows a tree without the flip, and a carousel
+missing battlezone would be a TRUE observation about the WRONG working copy. Handed over
+with `npx vite --port 5290 --strictPort` and "do not kill a-2's server".
+
+**Related: a recipe that sounds like the AC's check may measure something else entirely.**
+`just check-showcase` (shipped by uf1-13, documented at `docs/ops/hosting.md:296-330`) probes
+the **production** subdomains for HTTP 200. It says nothing about the carousel's contents or
+whether a demo moves, so it cannot satisfy an AC about the local lobby. Name the tool in the
+handoff along with why it is the wrong one — otherwise Dev finds it, runs it, and it passes.
+
+## DATED CORRECTIONS: `sm-setup` behaved on all three counts this run
+
+Against `cp5-1` ("will EDIT an AC you told it to copy verbatim"), `cp5-2` ("writes your
+corrections into the SESSION and leaves the CONTEXT raw"), and the five entries saying it
+leaves `status: backlog`:
+
+- **ACs were byte-exact** in the session AND the context. Verified by the cp5-2 method — a
+  `python3` `in` test against `yaml.safe_load`'s `acceptance_criteria`, not a grep. Use it;
+  it is immune to both the `grep -Eci` alternation trap and your own prose quoting an AC.
+- **The context file carried real content** — no `_Approach hints to be refined by TEA/Dev_`
+  filler, and the refuted epic claim appeared only inside its refutation sentence.
+- **It stamped `in_progress` and `started` itself** (second confirmation after jt5-2).
+
+The lesson is not "it is fixed" — it is that the checks are cheap and the outcome now varies
+run to run. Keep running all three; assume neither outcome. One habit plausibly responsible:
+the spawn prompt stated the ACs were JUST rewritten and were authoritative, named the exact
+filler strings to replace, and listed the required header fields including
+`- **Branch:** none`. Both labelled tokens came back with a count of exactly 1.
+
+## Attach the census to the either/or BEFORE asking — third clean run
+
+Same pattern as cp5-2's audio-dispatch survey. The question here ("what should ad1-2 become?")
+was put to the user with the measurement already done, the four dispositions named
+(repurpose / repurpose-keeping-tdd / proceed-as-filed / close-and-refile), the recommendation
+first, and the cost of the wrong branch stated for each. Answered in one click. The ruling is
+the user's — the survey is yours, and it is what makes the ruling cheap.
