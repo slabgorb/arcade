@@ -1,0 +1,70 @@
+// src/core/events.ts
+//
+// Story jt5-1 (GREEN, Bicycle Repair Man / Dev) — the CORE half of the joust
+// audio seam: a discriminated union of the gameplay moments the sim already
+// resolves, carried as DATA on the state the shell already steps.
+//
+// CORE: pure data. No DOM, no clock, no ambient entropy, no shell import — the
+// jt1-7 purity scanner sweeps this file like every other `src/core` module. The
+// channel is deliberately DATA and never a callback: a sink handed down from the
+// shell would put a function inside the sim, and a seeded replay would then
+// depend on what the shell passed in. `stepGame` rebuilds this list every frame
+// and the shell reads it off the returned state (`GameState.events`).
+//
+// ─── ELEVEN MOMENTS, AND WHY EXACTLY THESE ───────────────────────────────────
+// Each kind below is a REAL Williams sound table (JOUSTRV4.SRC:8051-8131, under
+// the format header at :8045-8049) whose moment THIS port can actually reach.
+// The byte-exact citations — table row, priority byte and call site — live in
+// `src/shell/audio.ts`'s CUE_SOURCES, where the suite re-opens both sides of
+// every one of them against the vendored 1982 tree.
+//
+// The machine has 38 tables. The ones deliberately left out are left out for a
+// measured reason, not an oversight — each is a Delivery Finding on the jt5-1
+// session with its ROM lines:
+//   • the FLAP (SNPLWD/SNPLWU, SNELWD/SNELWU) is a TWO-EDGE cue: the press plays
+//     wing-DOWN (GOFLAP -> FLAST2, :6207-6218), the RELEASE plays wing-UP
+//     (GOFLIP, :6182-6184). Our core sees only the press edge, and half a
+//     two-edge cue is worse than none.
+//   • the THUDS (SNPTHD :8124, SNETHD :8106) need the bounce `collisionPass`
+//     computes and throws away (`if (contact.outcome.kind !== 'kill') continue`)
+//     — a thud would announce a collision the sim does not resolve.
+//   • the LAVA TROLL grab (SNTROL :8097) cannot fire: `troll.beginGrip` has zero
+//     production callers, which difficulty.ts:362-367 already records by name
+//     under owner `uf1-10`.
+// A kind declared here but never emitted would sail through the manifest and
+// dispatch sweeps — they read this same tuple — and ship a cue that can never
+// sound. So the tuple names only what an emitter exists for.
+
+/**
+ * Every event kind, as a runtime TUPLE. This is a VALUE on purpose: the shell's
+ * manifest and dispatch are swept against it, so "every kind has a cue" is
+ * mechanically true rather than merely maintained. The union below is DERIVED
+ * from it, so the tuple and the type cannot drift apart.
+ */
+export const EVENT_KINDS = [
+  'enemy-death', //        an enemy lost the joust and became an egg — SNEDIE
+  'player-death', //       a knight was unhorsed — SNPDIE
+  'egg-collected', //      a knight caught an egg — SNEGG
+  'egg-hatched', //        a settled wave egg matured into a remount buzzard — SNEGGH
+  'ptero-arrives', //      a pterodactyl (or an anti-stall baiter) entered — SNPTEI
+  'ptero-death', //        a pterodactyl took a lance and dissolved — SNPTED
+  'player-materialise', // a spent knight re-entered by transporter — SNPCR1
+  'enemy-materialise', //  a wave's complement materialised on the pads — SNECRE
+  'extra-man', //          a REPLAY threshold was crossed — SNREPL
+  'wave-bounty', //        an end-of-wave team bounty was collected — SNBOUN
+  'cliff-destroyed', //    a wave's status nibble took a cliff out — SNCLIF
+] as const
+
+/** The discriminant of every event — derived from the tuple, never re-typed. */
+export type GameEventKind = (typeof EVENT_KINDS)[number]
+
+/**
+ * One gameplay moment worth a sound. A discriminated union (one member per
+ * `EVENT_KINDS` entry) rather than `{ type: GameEventKind }`, so the shell's
+ * dispatch can narrow its default branch to `never` — which is what makes
+ * adding a kind without a cue a COMPILE error instead of a silent drop.
+ *
+ * The members carry no payload today: every one of the eleven cues is a bare
+ * one-shot, and a field nothing reads would be a promise the seam does not keep.
+ */
+export type GameEvent = { readonly [K in GameEventKind]: { readonly type: K } }[GameEventKind]

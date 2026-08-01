@@ -43,6 +43,7 @@ import {
 } from './demo.js'
 import { dispatchWaveType, waveRowAt, type ResolvedWaveType, type PlayersAlive } from './wave.js'
 import type { PlayerInput } from './flight.js'
+import type { GameEvent } from './events.js'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,16 @@ export interface GameState {
   wave: number
   /** The wrapped deterministic sim (createWaveDemo / stepDemo). */
   sim: DemoState
+  /**
+   * jt5-1 — THIS FRAME's audio cues: the sim's own stream (`sim.cues`) followed
+   * by the moments only the SESSION layer resolves (the extra man, the wave
+   * bounty, the transporter re-entry). REBUILT every frame, so the shell can
+   * dispatch the whole list unconditionally and a quiet frame plays nothing.
+   *
+   * This is the seam the shell reads. It is DATA — the core never calls back
+   * into an audio engine, which is what keeps a seeded replay identical.
+   */
+  events: readonly GameEvent[]
   /**
    * jt4-3 — the two per-player partner-kill counters PLYG1 / PLYG2 (the polarity
    * trap). Seeded to `{ plyg1: 0, plyg2: 0 }` at game start — the PATC11 "GAME START
@@ -321,7 +332,21 @@ export function createGame(seed: number, playerCount: number = DEFAULT_PLAYER_CO
   //                                        behind a ******** comment (RV4 convention). It is
   //                                        the message-erase seam, not a boot-state concern,
   //                                        so createGame transcribes the CLRs only.
-  return { players, gover: GOVER_RUNNING, wave: sim.wave, sim, guards: { plyg1: 0, plyg2: 0 } }
+  return { players, gover: GOVER_RUNNING, wave: sim.wave, sim, events: [], guards: { plyg1: 0, plyg2: 0 } }
+}
+
+/**
+ * jt5-1 — how many extra men a ledger was awarded across one step. `awardExtraMen`
+ * re-arms `extraManAt` by exactly one REPLAY_INTERVAL per award (SCRLEV's
+ * re-check loop, JOUSTRV4.SRC:7382-7411), so the threshold's own movement counts
+ * them — including the several-at-once case a single big jump can produce. Read
+ * off the threshold rather than `lives`, because a death decrements lives on the
+ * same frame an award could increment it and the two would cancel. Pure.
+ */
+function extraMenAwarded(before: PlayerLedger, after: PlayerLedger): number {
+  const from = before.extraManAt ?? REPLAY_INTERVAL
+  const to = after.extraManAt ?? REPLAY_INTERVAL
+  return Math.max(0, Math.round((to - from) / REPLAY_INTERVAL))
 }
 
 /**
@@ -373,6 +398,10 @@ function playersAliveTuple(players: readonly PlayerLedger[]): [boolean, boolean]
  */
 export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>): GameState {
   const sim = stepDemo(game.sim, inputs)
+  // jt5-1 — the SESSION layer's own cues. The sim's stream (`sim.cues`) is
+  // prepended at the end; these are the three moments `stepDemo` cannot see,
+  // because the ledgers and the respawn live up here.
+  const cues: GameEvent[] = []
   const prior = new Set<DemoEvent>(game.sim.events)
   // A type-predicate filter narrows to the score variant without a cast, so a future
   // DemoEvent-shape drift is a compile error rather than a silent runtime assumption.
@@ -410,11 +439,19 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
   if (sim.wave !== game.sim.wave) {
     const endingType = resolveWaveType(game.sim.wave, players)
     const alive = playersAliveTuple(players)
+    const beforeBounty = players
     if (endingType === 'gladiator') {
       players = awardWaveBounty(players, 'gladiator', { alive, guards, died: [false, false] })
     } else if (foughtClear && (endingType === 'coop' || endingType === 'survival')) {
       players = awardWaveBounty(players, endingType, { alive, guards, died: [false, false] })
     }
+    // SNBOUN "COLLECT BOUNTY" (:8096) — ONE cue for the award, not one per paid
+    // knight: a co-op wave pays both players from the single WCOOP branch, and
+    // the machine has one bounty sound. Detected by a score actually MOVING, so
+    // a voided co-op bonus (a partner-kill) and a gladiator wave nobody claimed
+    // stay silent — `awardWaveBounty` returns fresh ledgers either way, which is
+    // why identity is not the test.
+    if (players.some((p, i) => p.score !== beforeBounty[i].score)) cues.push({ type: 'wave-bounty' })
     guards = armWaveGuards(resolveWaveType(sim.wave, players))
   }
 
@@ -437,12 +474,33 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
     const id = i + 1
     if (p.lives > 0 && !p.out && !survivingIds.has(id) && !priorLive.has(id)) {
       processes = [...processes, respawnPlayerProcess(id)]
+      // SNPCR1 "PLAYER 1 RE-CREATED (TRANSPORTER)" (:8116) — the CREP re-create
+      // this block IS. P2 has its own table, SNPCR2 (:8119, the same $12 opener
+      // at a different offset); both knights map onto SNPCR1 here, so splitting
+      // them later needs a second sample, not just a second manifest row.
+      cues.push({ type: 'player-materialise' })
     }
   })
   const finalSim: DemoState =
     processes === sim.sim.processes ? sim : { ...sim, sim: { ...sim.sim, processes } }
 
-  return { players: settled.players, gover: settled.gover, wave: sim.wave, sim: finalSim, guards }
+  // SNREPL "EXTRA MAN" (:8089) — one cue per man awarded, counted off the ledger
+  // thresholds across the WHOLE frame, so an award from a kill, an egg, the
+  // 50-for-dying and the wave bounty all land here rather than at four sites.
+  for (const [i, p] of settled.players.entries()) {
+    for (let n = extraMenAwarded(game.players[i], p); n > 0; n--) cues.push({ type: 'extra-man' })
+  }
+
+  return {
+    players: settled.players,
+    gover: settled.gover,
+    wave: sim.wave,
+    sim: finalSim,
+    // The sim's moments first, then the session's — the order the frame resolved
+    // them in. The shell dispatches the list as given (jt5-1 AC4).
+    events: [...finalSim.cues, ...cues],
+    guards,
+  }
 }
 
 /** The set of live player process ids in a sim frame (GameState.sim is a DemoState). */

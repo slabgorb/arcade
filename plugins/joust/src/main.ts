@@ -26,6 +26,8 @@ import {
   viewport,
 } from './shell/render.js'
 import { mapPlayer1, mapPlayer2 } from './shell/input.js'
+import { createAudioEngine } from './shell/audio.js'
+import { playEventSounds } from './shell/audio-dispatch.js'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')
 if (!canvas) throw new Error('index.html must host a <canvas id="game">')
@@ -159,8 +161,17 @@ const [player1Id, player2Id] = game.sim.sim.processes.filter((p) => p.kind === '
 let prevFlap1 = false
 let prevFlap2 = false
 
+// jt5-1 — the audio seam. The engine is inert until a user gesture unlocks the
+// context (browsers refuse an AudioContext before one) and inert forever where
+// WebAudio is absent, so `resume()` on every keydown is the cheap, correct hook:
+// only the first call does work. The eleven `.wav` files it will fetch are NOT
+// in this repo and nothing has put them in the bucket yet — jt5-1 ships the seam
+// and joust stays quiet, because a failed fetch degrades silently by design.
+const audio = createAudioEngine()
+
 const held = new Set<string>()
 window.addEventListener('keydown', (e) => {
+  audio.resume()
   held.add(e.code)
   if (e.code === 'Space') e.preventDefault()
 })
@@ -182,6 +193,9 @@ const frame = (now: number): void => {
       const in1 = mapPlayer1(held, prevFlap1)
       const in2 = mapPlayer2(held, prevFlap2)
       game = stepGame(game, { [player1Id]: in1, [player2Id]: in2 })
+      // The core emitted this frame's moments as DATA; the shell turns them into
+      // cues. Inside the pump, so a catch-up frame's moments are not dropped.
+      playEventSounds(audio, game.events)
       prevFlap1 = in1.flapHeld
       prevFlap2 = in2.flapHeld
     })

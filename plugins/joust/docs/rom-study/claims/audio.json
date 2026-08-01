@@ -1,0 +1,128 @@
+[
+  {
+    "id": "JT51-001",
+    "claim": "The sound tables are priority-then-(code,length) rows: the format header states 'PIRORITY,SOUND,LENGTH', which is what licenses reading the first FCB operand of every table below as its arbitration priority (JOUSTRV4.SRC:8046).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8046,
+      "verbatim": "*\t PIRORITY,SOUND,LENGTH (IF M.S.BIT SET ON SOUND, SOUND,LENGTH)"
+    }
+  },
+  {
+    "id": "JT51-002",
+    "claim": "A sound CODE in the range 01-3E is what is sent to the sound board; the board's own firmware (what a code sounds like) is not in the vendored tree, so every jt5 sample is a recording or a synthesis, never a bake from source (JOUSTRV4.SRC:8049).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8049,
+      "verbatim": "*\t\tSOUND !N$xx (RANGE 01-3E) SENDS THE CORRESPONDING SOUND"
+    }
+  },
+  {
+    "id": "JT51-003",
+    "claim": "SNEDIE is the ENEMY DIES table at priority 040 — the jt5-1 cue 'enemyDeath' (JOUSTRV4.SRC:8104); played at the enemy-death call site (JOUSTRV4.SRC:2960).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8104,
+      "verbatim": "SNEDIE\tFCB\t040,!N$16!.$7F,20\tENEMY DIES"
+    }
+  },
+  {
+    "id": "JT51-004",
+    "claim": "SNPDIE is the PLAYER DIES table at priority 080 — the jt5-1 cue 'playerDeath' (JOUSTRV4.SRC:8115). It sends the same 6-bit code $16 as SNEDIE at double the priority, so the two are distinct sounds and not one sound reused.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8115,
+      "verbatim": "SNPDIE\tFCB\t080,!N$16!.$7F,20\tPLAYER DIES"
+    }
+  },
+  {
+    "id": "JT51-005",
+    "claim": "SNEGG is the PLAYER HITS EGG SOUND table at priority 045 — the jt5-1 cue 'eggCollected' (JOUSTRV4.SRC:8098); played from the EGGSCR collision path (JOUSTRV4.SRC:3031).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8098,
+      "verbatim": "SNEGG\tFCB\t045,!N$03!.$7F,30\tPLAYER HITS EGG SOUND"
+    }
+  },
+  {
+    "id": "JT51-006",
+    "claim": "SNEGGH is the EGG HATCHING SOUND table at priority 045 — the jt5-1 cue 'eggHatched' (JOUSTRV4.SRC:8099); played where a settled egg matures (JOUSTRV4.SRC:3243).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8099,
+      "verbatim": "SNEGGH\tFCB\t045,!N$02!.$7F,30\tEGG HATCHING SOUND"
+    }
+  },
+  {
+    "id": "JT51-007",
+    "claim": "SNPTEI is the PTERODACTYL INTRODUCTION SCREAM table at priority 065 — the jt5-1 cue 'pteroArrives' (JOUSTRV4.SRC:8094); played on the pterodactyl's introduction (JOUSTRV4.SRC:1467).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8094,
+      "verbatim": "SNPTEI\tFCB\t065,!N$24!+$80,30,!N$25!.$7F,30\tPTERODACTYL INTRODUCTION SCREAM"
+    }
+  },
+  {
+    "id": "JT51-008",
+    "claim": "SNPTED is the PTERODACTYL DYING SOUND table at priority 066 — the jt5-1 cue 'pteroDeath' (JOUSTRV4.SRC:8091); played on the ptero kill (JOUSTRV4.SRC:2946).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8091,
+      "verbatim": "SNPTED\tFCB\t066,!N$16!+$80,15,!N$16!+$80,15\tPTERODACTYL DYING SOUND"
+    }
+  },
+  {
+    "id": "JT51-009",
+    "claim": "SNPCR1 is the PLAYER 1 RE-CREATED (TRANSPORTER) table at priority 070 — the jt5-1 cue 'playerMaterialise' (JOUSTRV4.SRC:8116). It is bound to the knight through P1DEC's decision block rather than a direct load (JOUSTRV4.SRC:5544); P2 carries its own table SNPCR2 (:8119), which jt5-1 collapses onto this one.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8116,
+      "verbatim": "SNPCR1\tFCB\t070,!N$12!+$80,30\tPLAYER 1 RE-CREATED (TRANSPORTER)"
+    }
+  },
+  {
+    "id": "JT51-010",
+    "claim": "SNECRE is the ENEMY RE-CREATED (TRANSPORTER) table at priority 040 — the jt5-1 cue 'enemyMaterialise' (JOUSTRV4.SRC:8103); bound through the enemy decision block (JOUSTRV4.SRC:5560).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8103,
+      "verbatim": "SNECRE\tFCB\t040,!N$07!+$80,90,$00,1\tENEMY RE-CREATED (TRANSPORTER)"
+    }
+  },
+  {
+    "id": "JT51-011",
+    "claim": "SNREPL is the EXTRA MAN table at priority 100 — the highest priority in the whole sound set, and the jt5-1 cue 'extraMan' (JOUSTRV4.SRC:8089); played from the REPLAY award (JOUSTRV4.SRC:7406).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8089,
+      "verbatim": "SNREPL\tFCB\t100,!N$0B!.$7F,90\tEXTRA MAN"
+    }
+  },
+  {
+    "id": "JT51-012",
+    "claim": "SNBOUN is the COLLECT BOUNTY table at priority 050 — the jt5-1 cue 'waveBounty' (JOUSTRV4.SRC:8096); played on the bounty award (JOUSTRV4.SRC:4711).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8096,
+      "verbatim": "SNBOUN\tFCB\t050,!N$1C!.$7F,60\tCOLLECT BOUNTY"
+    }
+  },
+  {
+    "id": "JT51-013",
+    "claim": "SNCLIF is the CLIFF DESTROYER table at priority 067 — the jt5-1 cue 'cliffDestroyed' (JOUSTRV4.SRC:8090); played where a cliff is destroyed (JOUSTRV4.SRC:2327).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 8090,
+      "verbatim": "SNCLIF\tFCB\t067,!N$19!.$7F,90\tCLIFF DESTROYER"
+    }
+  },
+  {
+    "id": "JT51-014",
+    "claim": "The single-voice PRIORITY arbitration jt5-1's channel map is built around: SND refuses a lower-priority interruption, comparing the incoming priority against the sounding one and branching away (SYSTEM.SRC:767).",
+    "source": {
+      "file": "SYSTEM.SRC",
+      "line": 767,
+      "verbatim": "\tCMPA\tSPRI\t\tOK TO INTERUPT THIS PIRORITY SOUND?"
+    }
+  }
+]

@@ -1,0 +1,74 @@
+// src/shell/audio-dispatch.ts
+//
+// Story jt5-1 (GREEN, Bicycle Repair Man / Dev) — the event -> cue wiring, as a
+// pure importable function rather than a switch buried in `main.ts`, so the map
+// is unit-testable against a recording fake without booting a canvas or an
+// AudioContext. The tempest/asteroids/battlezone shape; star-wars dispatches
+// inline and its map cannot be tested at all.
+//
+// The `never` in the default branch is the point of the file: every `GameEvent`
+// discriminant is handled above it, so the parameter narrows to `never` there.
+// Add a kind to `core/events.ts` without a case here and this stops compiling —
+// a new moment cannot ship silently.
+//
+// joust's cues are ALL one-shots, and that is a fact about the machine rather
+// than a simplification. Every one of its 38 sound tables is a priority byte
+// followed by bounded (code, duration) pairs, and the format header names the
+// only three escapes: `!N$00` extends the timer, `!N$FF` kills the sound,
+// `!N$xx` (01-3E) sends one (JOUSTRV4.SRC:8045-8049). A table runs for its own
+// duration and stops itself; there is no ring-until-told-otherwise voice here,
+// so `startLoop`/`stopLoop` would be an invention. The nearest thing to a stop
+// is the `!N$FF` KILL table, and all three of those belong to the skid/fall
+// chain this story does not wire.
+import type { GameEvent } from '../core/events.js'
+import type { AudioEngine, SoundName } from './audio.js'
+
+/** Just the slice of the engine this dispatch needs — joust never loops. */
+type SoundPlayer = Pick<AudioEngine, 'play'>
+
+/** The cue each moment sounds. Exported so `main.ts` need not re-derive it. */
+export function cueFor(event: GameEvent): SoundName | null {
+  switch (event.type) {
+    case 'enemy-death':
+      return 'enemyDeath'
+    case 'player-death':
+      return 'playerDeath'
+    case 'egg-collected':
+      return 'eggCollected'
+    case 'egg-hatched':
+      return 'eggHatched'
+    case 'ptero-arrives':
+      return 'pteroArrives'
+    case 'ptero-death':
+      return 'pteroDeath'
+    case 'player-materialise':
+      return 'playerMaterialise'
+    case 'enemy-materialise':
+      return 'enemyMaterialise'
+    case 'extra-man':
+      return 'extraMan'
+    case 'wave-bounty':
+      return 'waveBounty'
+    case 'cliff-destroyed':
+      return 'cliffDestroyed'
+    default: {
+      // Exhaustiveness guard: every kind is handled above, so `event` narrows to
+      // `never` here and a new kind without a case is a COMPILE error. At
+      // runtime the branch stays SILENT — a stale or typo'd kind falling through
+      // onto some other cue would be audibly wrong, which is worse than quiet.
+      const _exhaustive: never = event
+      void _exhaustive
+      return null
+    }
+  }
+}
+
+/** Play one cue per moment the core emitted this frame, in the order given. */
+export function playEventSounds(audio: SoundPlayer, events: readonly GameEvent[]): void {
+  for (const event of events) {
+    // Nothing is de-duplicated: two buzzards can die on one frame, and the
+    // engine's own voice-stealing is what keeps the pile-up bounded.
+    const cue = cueFor(event)
+    if (cue !== null) audio.play(cue)
+  }
+}

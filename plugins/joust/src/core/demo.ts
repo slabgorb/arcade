@@ -27,6 +27,7 @@
 //      suite stays honest by construction.
 
 import { createState, stepFrame, type ProcessClass } from './frame.js'
+import type { GameEvent } from './events.js'
 import { GRAV, groundMaskAt, type EntityState, type PlayerInput } from './flight.js'
 import { groundOutcome } from './arena.js'
 import { applyWaveDestruction, initialArenaState, type ArenaState } from './arena-state.js'
@@ -248,6 +249,19 @@ export interface DemoState {
    * cliff destruction flow through the arena-state seam, not the frozen exports.
    */
   arena: ArenaState
+  /**
+   * jt5-1 — THIS FRAME's audio cue stream, and nothing else's. Rebuilt from
+   * scratch by every `stepDemo`, so a moment that stopped happening stops
+   * sounding on the very next frame.
+   *
+   * Deliberately NOT the `events` log above, which is a different thing wearing
+   * a similar name: that one is APPEND-AND-CAP (the last EVENT_LOG_CAP entries
+   * of the whole run) and is drained by `game.ts` through a reference-set delta.
+   * A cue channel built on it would re-fire every sound in the window on every
+   * quiet frame — a defect a replay-identity test cannot see, because a stale
+   * carry-forward is carried forward identically in both runs.
+   */
+  cues: readonly GameEvent[]
   /**
    * The BAITER send-off clock (jt3-5): the anti-stall pterodactyl schedule. Seeded
    * per wave from BAITBL and advanced on the EMYOK nap cadence (once per NAP_FRAMES
@@ -655,7 +669,11 @@ export function createWaveDemo(seed: number): DemoState {
 
   const arena = applyWaveDestruction(initialArenaState(), 1, row.status)
 
-  return { sim, wave: 1, events, arena, baiterClock: seedBaiterClock(1) }
+  // A fresh demo has not stepped yet, so nothing has happened to cue. The wave-1
+  // complement is assembled here rather than arriving through the wave-advance
+  // path, and a sound on the frame before the first step would be a sound the
+  // shell has no gesture-unlocked context for anyway.
+  return { sim, wave: 1, events, cues: [], arena, baiterClock: seedBaiterClock(1) }
 }
 
 // ─── The egg fall loop (STEGG/EGGLPA) with the BMI EGGBCK guard ────────────────
@@ -803,6 +821,7 @@ function dissolveProcess(ptero: DemoProcess): DemoProcess {
 function collisionPass(processes: readonly DemoProcess[]): {
   processes: DemoProcess[]
   events: DemoEvent[]
+  cues: GameEvent[]
 } {
   const eligible = processes.filter(
     (p) => (p.kind === 'player' || p.kind === 'enemy') && p.collisionEnabled !== false,
@@ -810,6 +829,10 @@ function collisionPass(processes: readonly DemoProcess[]): {
   const removed = new Set<number>()
   const spawned: DemoProcess[] = []
   const events: DemoEvent[] = []
+  // jt5-1 — this pass resolves four of the eleven cued moments. They are emitted
+  // where the outcome is DECIDED rather than reconstructed later from a process
+  // diff, so a removal can never be mistaken for the wrong kind of death.
+  const cues: GameEvent[] = []
 
   for (let i = 0; i < eligible.length; i++) {
     for (let j = i + 1; j < eligible.length; j++) {
@@ -839,6 +862,10 @@ function collisionPass(processes: readonly DemoProcess[]): {
       const winner = contact.survivors.includes('a') ? pa : pb
       const loser = contact.survivors.includes('a') ? pb : pa
       removed.add(loser.id)
+      // The loser's OWN kind picks the cue: SNEDIE "ENEMY DIES" (:8104) or SNPDIE
+      // "PLAYER DIES" (:8115). Both tables send the same 6-bit code $16 at
+      // different priorities, so they are two sounds, never one.
+      cues.push({ type: loser.kind === 'player' ? 'player-death' : 'enemy-death' })
       // The egg rides its own id namespace so it never collides with a live process.
       if (contact.egg) spawned.push(eggProcess(0x1_0000 + loser.id, contact.egg))
       if (contact.score > 0) {
@@ -885,9 +912,11 @@ function collisionPass(processes: readonly DemoProcess[]): {
         // The killing player `pl` gets the 1000 (jt4-1 attribution); pteroScoreEvent
         // stays the jt3-4 value source (unchanged — the module test still pins it).
         events.push({ ...pteroScoreEvent(), player: pl.id })
+        cues.push({ type: 'ptero-death' })
       } else {
         // pteroWins (the OSTBO fallback the epic ruled the ptero wins): the player dies.
         removed.add(pl.id)
+        cues.push({ type: 'player-death' })
       }
     }
   }
@@ -926,15 +955,19 @@ function collisionPass(processes: readonly DemoProcess[]): {
       const bonus = airCatchBonus(ep.egg.pfeet)
       if (bonus > 0) events.push({ kind: 'score', value: bonus, reason: 'egg', player: pl.id })
       removed.add(ep.id)
+      // ONE cue per egg caught, not one per score event: a mid-air catch surfaces
+      // the ladder rung AND the 500 bonus, and SNEGG "PLAYER HITS EGG SOUND"
+      // (:8098) is a single sound either way.
+      cues.push({ type: 'egg-collected' })
     }
   }
 
   if (removed.size === 0 && spawned.length === 0 && caught.size === 0)
-    return { processes: [...processes], events }
+    return { processes: [...processes], events, cues }
   const survivors = processes
     .filter((p) => !removed.has(p.id))
     .map((p) => caught.get(p.id) ?? p)
-  return { processes: [...survivors, ...spawned], events }
+  return { processes: [...survivors, ...spawned], events, cues }
 }
 
 /**
@@ -1060,6 +1093,10 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   const collided = collisionPass(materialised)
 
   let wave = demo.wave
+  // jt5-1 — the frame's cue stream starts from the collision pass's four moments
+  // and gathers the rest below. A FRESH array every frame: nothing is carried in
+  // from `demo.cues`, which is the whole point of the channel.
+  const cues: GameEvent[] = [...collided.cues]
   // A dissolve that reached `done` this frame (frame.ts stepped it there) is removed —
   // the body's fate is complete (JSR CPLYR, JOUSTRV4.SRC:1414-1415).
   let processes = collided.processes.filter((p) => !(p.kind === 'dissolve' && p.dissolve?.done))
@@ -1071,11 +1108,14 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // check below (a hatched enemy holds the wave open) and BEFORE the wave-advance spawn (so a
   // freshly-entered wave egg is not hatched on its entry frame). Only WAVE eggs mature — a
   // DEATH3 kill-egg keeps its jt2-4 lifecycle (this closes only the egg-WAVE clear jt4-4 gaps).
-  processes = processes.flatMap((p) =>
-    p.kind === 'egg' && p.waveEgg === true && p.egg?.settled === true && willHatch(p.egg)
-      ? [remountEnemyProcess(0x40_0000 + p.id, p.egg)]
-      : [p],
-  )
+  processes = processes.flatMap((p) => {
+    if (!(p.kind === 'egg' && p.waveEgg === true && p.egg?.settled === true && willHatch(p.egg)))
+      return [p]
+    // SNEGGH "EGG HATCHING SOUND" (:8099) — the maturing egg, not the remount
+    // bird's flight in. One cue per egg that matured this frame.
+    cues.push({ type: 'egg-hatched' })
+    return [remountEnemyProcess(0x40_0000 + p.id, p.egg)]
+  })
 
   let budget = stepped.budget
   let arena = demo.arena
@@ -1133,8 +1173,26 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     // The wave EVENT: burn the bridge on wave 3 and reflect this wave's cliff
     // destruction into the mutable arena (jt3-2) — latching bridge, reflecting cliffs.
     // Applied BEFORE the troll gate so the spawn reads THIS wave's burned bridge.
+    const standing = new Set(arena.destroyedCliffs)
     arena = applyWaveDestruction(arena, wave, waveRowAt(wave).status)
-    processes = [...processes, ...spawnWaveEnemies(wave, stepped.rng)]
+    // SNCLIF "CLIFF DESTROYER" (:8090) — one cue per cliff this wave's status
+    // nibble NEWLY took out. Compared by NAME, not by count: cliff destruction
+    // reflects the current wave rather than accumulating (the WCLFEW create path
+    // rebuilds one whose bit is now clear), so a wave that rebuilds CLIF1L while
+    // destroying CLIF2 leaves the count unmoved and must still sound.
+    for (const cliff of arena.destroyedCliffs) {
+      if (!standing.has(cliff)) cues.push({ type: 'cliff-destroyed' })
+    }
+    const arrivals = spawnWaveEnemies(wave, stepped.rng)
+    // SNECRE "ENEMY RE-CREATED (TRANSPORTER)" (:8103) per buzzard on the pads,
+    // and SNPTEI, the introduction scream (:8094), per pterodactyl. An EGG wave
+    // enters its complement as settled eggs instead — the machine's table has no
+    // egg-laid sound, so those arrive silently.
+    for (const p of arrivals) {
+      if (p.kind === 'enemy') cues.push({ type: 'enemy-materialise' })
+      else if (p.kind === 'ptero') cues.push({ type: 'ptero-arrives' })
+    }
+    processes = [...processes, ...arrivals]
     // Once the bridge has burned and the troll wave (4) is reached, the lava troll
     // grabs off CLIF5 — the full menagerie (jt3-3 trollSpawnable, consumed live).
     // Only ONE live troll at a time: nothing removes a troll placeholder yet, so
@@ -1151,7 +1209,12 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     // removal is deferred (jt4): nbait settles at MAX_BAITERS and the swarm holds.
     const beat = stepBaiterClock(baiterClock)
     baiterClock = beat.clock
-    if (beat.spawned) processes = [...processes, baiterProcess(0x30_0000 + stepped.frame)]
+    if (beat.spawned) {
+      processes = [...processes, baiterProcess(0x30_0000 + stepped.frame)]
+      // A baiter IS a pterodactyl (PCHASE ≠ 0) and enters the same way, so it
+      // gets the same introduction scream.
+      cues.push({ type: 'ptero-arrives' })
+    }
   }
 
   // jt8-1: reconcile the target slots against the FINAL live players — drop a slot
@@ -1171,7 +1234,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // Cap the log to its most recent entries — the append-only history would
   // otherwise grow unbounded (nothing drains it until the jt4 score display).
   const events = [...demo.events, ...collided.events].slice(-EVENT_LOG_CAP)
-  return { sim, wave, events, arena, baiterClock }
+  return { sim, wave, events, cues, arena, baiterClock }
 }
 
 // ─── Round 2: pure render-SELECTION seams (routing≠geometry) ──────────────────

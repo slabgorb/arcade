@@ -19,10 +19,15 @@ the same architecture as its siblings
 > scoring, extra men, wave types and bounties, game-over and the loop (jt4, 5);
 > and the in-progress playability epic (jt8, 4 so far) that makes enemies hunt
 > and eggs catchable.
-> **Audio is the known gap:** there is no `src/shell/audio.ts`, no
-> `src/core/events.ts` channel and no dispatch. Unlike centipede, joust carries
-> **no in-source note deferring it** — `sprint/epic-jt5.yaml` is the only record
-> that the gap is known, which is precisely why it is said here too.
+> **Audio has a seam but no samples.** jt5-1 landed the three-file wiring —
+> `src/core/events.ts` (eleven ROM-cited moments, emitted as data), the
+> `src/shell/audio.ts` manifest over the shared `@shared/audio` engine, and
+> `src/shell/audio-dispatch.ts` behind a `never` exhaustiveness guard. **No
+> `.wav` is committed and nothing has been put in the assets bucket**, so the
+> game is still silent: `@shared/audio` degrades quietly on a 404, and a green
+> suite here proves the wiring and nothing about whether a knight makes a noise.
+> Recording or synthesising the eleven cues is a later `sprint/epic-jt5.yaml`
+> story.
 
 ---
 
@@ -35,11 +40,11 @@ Run everything from the **monorepo root**:
 
 ```bash
 npm install                         # once, for the whole cabinet
-npx vitest run --project joust      # joust's suite: 75 files / 1846 tests
+npx vitest run --project joust      # joust's suite: 80 files / 1932 tests
 npx vitest run                      # the whole cabinet
 npm run lint                        # tsc --noEmit across the monorepo
 npm run test:orchestrator           # the root node:test suite
-node plugins/joust/tools/audit/check-citations.mjs   # → "checked 883 claim(s)"
+node plugins/joust/tools/audit/check-citations.mjs   # → "checked 897 claim(s)"
 ```
 
 > **There is no way to open joust in a browser from this repo right now.** The
@@ -73,19 +78,19 @@ node plugins/joust/tools/audit/check-citations.mjs   # → "checked 883 claim(s)
 this directory, not one. Six files here resolve it (`tests/helpers/joust-source.ts`,
 `tests/audit/citations.test.ts` and the four tools), and every one of them
 honours `JOUST_SOURCE_DIR` first. Get the depth wrong and nothing goes red:
-**94** `describe.skipIf(!vendoredAvailable)` / `it.skipIf(...)` guards across
-**28** test files quietly skip, the byte-for-byte citation gate degrades to
-schema-only, and the suite still reports 75 files passed. The Task 12 import
+**95** `describe.skipIf(!vendoredAvailable)` / `it.skipIf(...)` guards across
+**29** test files quietly skip, the byte-for-byte citation gate degrades to
+schema-only, and the suite still reports 80 files passed. The Task 12 import
 measured that failure mode deliberately — 1280 passed | 566 skipped, fully
 green — before repairing it.
 
-> Count it the way this says, or you will get a different number. **94 is the
+> Count it the way this says, or you will get a different number. **95 is the
 > executable call sites.** The literal string `skipIf(!vendoredAvailable)`
-> occurs **110** times in `tests/`, but **16** of those are inside comments
+> occurs **111** times in `tests/`, but **16** of those are inside comments
 > (`// re-derivation SKIPS there (describe.skipIf(!vendoredAvailable))…`), and
 > a comment-inclusive line count via `grep -rn '\.skipIf('` gives a third
-> answer, 108. 94 + 16 = 110 reconciles exactly. The file figure moves too:
-> 29 files *mention* the guard, 28 actually *carry* one —
+> answer, 109. 95 + 16 = 111 reconciles exactly. The file figure moves too:
+> 30 files *mention* the guard, 29 actually *carry* one —
 > `tests/helpers/transporter-contract.ts` only talks about it.
 
 The vendored tree **is committed to this monorepo** (49 files), so the
@@ -100,8 +105,8 @@ checkout-local `reference/` for scratch work, which is a different directory.
 - `src/core/` — pure deterministic simulation. No DOM, no Canvas, no time,
   no `Math.random`. 18 modules (`flight`, `arena`, `enemy`, `egg`, `wave`,
   `target`, `pictures`, …), guarded by `tests/purity.test.ts`.
-- `src/shell/` — render / input / timebase. Three modules; **no audio and no
-  storage**, both deliberately.
+- `src/shell/` — render / input / timebase / audio (manifest + dispatch). Five
+  modules since jt5-1; **no storage**, deliberately.
 
 That boundary is the single most important rule in this repo, as in every
 sibling.
@@ -111,19 +116,22 @@ sibling.
 - **It persists no high scores.** No `localStorage`, no storage module, no
   `@shared/highscore` — like red-baron, unlike centipede. This is not an
   oversight.
-- **It consumes nothing from `@shared`.** joust is the fleet's outlier: every
-  other game consumes between four and nine subpaths. Its mulberry32 is lifted
+- **It consumes exactly one `@shared` subpath: `@shared/audio`.** jt5-1 landed
+  it, ending joust's run as the fleet's zero-consumption outlier — the others
+  take between five and thirteen subpaths (centipede 5, red-baron 8, asteroids
+  and tempest 10, star-wars 11, battlezone 13). Its mulberry32 is still lifted
   **byte-for-byte** into `src/core/frame.ts` rather than imported (the comments
-  there naming `@arcade/shared/rng` are provenance, not a dependency). Whether
-  joust adopts the shared library is an open ruling owned by `sprint/epic-jt5.yaml`,
-  not something to settle by adding an import.
+  there naming `@arcade/shared/rng` are provenance, not a dependency). There was
+  no adoption ruling left to make: the 2026-07-30 monorepo collapse put
+  `src/shared/` in-tree behind the `@shared/*` alias, so an import costs a line
+  and nothing is pinned, git-URL'd or version-bumped.
 - **The citation gate cannot pass over an empty CLAIM SET.** With
   `docs/rom-study/claims/` missing or empty the checker refuses to report
   success and exits non-zero, rather than announcing victory over nothing.
   **That guard does not extend to a missing SOURCE TREE**, and the distinction
   is the whole of the path-depth warning above: with the tree absent the gate
   degrades *by design* to a schema-only check and still prints
-  `checked 883 claim(s) / all claims verified`, exit 0 —
+  `checked 897 claim(s) / all claims verified`, exit 0 —
   `JOUST_SOURCE_DIR=/nonexistent node plugins/joust/tools/audit/check-citations.mjs`
   demonstrates it in one command. Byte-for-byte re-opening is therefore a
   property of *having the tree wired up correctly*, not something the gate can
