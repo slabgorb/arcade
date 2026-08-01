@@ -137,13 +137,15 @@ stories:
     title: "Space warp tune-channel priority: the cabinet's ONE PM player lets the ground-init towers music (PM4TH, WSMAIN.MAC:1636) STEAL a still-ringing descent tune (PMDES), and any new tune silences the loop — our two-channel shell (sw3-5 adaptation) overlays them instead, so descent + towers ring together across the space→surface warp. Decide/port the steal semantics (single logical priority channel or music-starts-kill-tunes). Surfaced by sw8-12's milestone port (descent now rings ~1s into the warp overlap window)"
     points: 1
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-01'
     repos: arcade
     workflow: tdd
     depends_on: sw8-12
+    completed: '2026-08-01'
     type: bug
     review_findings: "REJECTED round 1 (prose-only rework, engineering correct): [MEDIUM][DOC] audio.ts:211 stopLoop contract falsified by the unification — 'safe no-op when nothing is looping' is probe-proven false on the shared pm channel (stopLoop('space') kills a ringing tune); sat inside TEA's assigned rewrite range :194-206. [LOW][DOC] music-channel.test.ts:6 'dedicated music channel' survivor prose. Non-blocking: [RULE] finishGround death-gate gap (sim.ts:995-997 vs ROM PHEGD WSMAIN.MAC:1645-1646/:1673) filed as sw8-21. All mutations bite (6/3/3 reds), 35 citations exact, laundering zero, suite 2072/2072."
-    review_verdict: rejected
+    review_verdict: approved
   - id: sw8-14
     title: "music-bake pipeline cannot reproduce finish_ground.wav: sw7-18's PMREB one-shot exists only in R2 — OUTPUT_FILES has no entry, so 'just deploy-assets' never re-uploads it and a bucket wipe loses it. Add finishGround (REB, TUNTAB 19-22) to gen-music-data TUNE_SPEC + bake OUTPUT_FILES and drop the carve-out in bake-music.test.mjs's manifest-agreement test (gap surfaced/documented by sw8-12)"
     points: 1
