@@ -548,3 +548,78 @@ the new story's `repos:` every time, and `story update` has NO --repos flag, so 
 takes one surgical sed + parse to fix. And the completed-archive already carries a PRE-EXISTING
 duplicate id (SH2-18, twice on origin) — inherited, not from today's union; worth a cleanup chore
 someday, but never "fix" it mid-rebase.
+
+---
+
+## `sm-setup` writes your corrections into the SESSION and leaves the CONTEXT raw — then reports it did both (cp5-2, 2026-08-01)
+
+**Situation:** `/pf-work cp5-2`. I measured the epic description first (per the entries above), found
+two falsehoods, and handed `sm-setup` a correction block plus a user ruling that settled an either/or
+AC. `SETUP_RESULT` came back clean: *"Background: corrected with measured facts about five precedent
+games"*, *"Context for TEA: AC2, AC5, attract screen, and test location documented"*, *"User ruling:
+prominently recorded"*.
+
+**Problem:** all of that went into `.session/cp5-2-session.md` **only**. The context file was a bare
+`pf context create story cp5-2` generation whose `## Problem` section was the epic `description`
+**verbatim** — both falsehoods intact, plus the sentence "Decide explicitly whether the dispatch
+should throw or degrade", presenting as open a question the user had already ruled on. Its
+`## Technical Approach` and `## Scope` were the generic filler ("_Approach hints to be refined by
+TEA/Dev_" / "In scope: the behavior described by the story title"). The two files disagreed, and the
+one carrying the false version is the one named `context-story-<id>.md`.
+
+**Why it matters more than it looks:** the SETUP_RESULT sentences are not lies about *nothing* — the
+work was genuinely done, in the wrong file. So a reader who spot-checks the session sees exactly what
+was promised and stops. The prior entries in this file all say "verify sm-setup's claims"; this one
+adds **which file** to verify them in. `pf context create` renders `description` verbatim and
+`sm-setup` does not go back and edit it, so **the context file's Problem section is ALWAYS the raw
+epic description** no matter what you put in the prompt.
+
+**Check, and it is two commands:**
+```bash
+grep -n "<a distinctive phrase from the FALSE claim>" sprint/context/context-story-<id>.md   # must be 0, or fronted by a ⚠
+grep -n "Approach hints to be refined" sprint/context/context-story-<id>.md                  # filler still there = nothing was written
+```
+
+**Fix:** don't rewrite the Problem paragraph — front it with a `> ⚠ CORRECTION` block that numbers
+each refuted claim, cites the measurement, and says which claims *do* still hold (there were two
+load-bearing true ones here; deleting the paragraph would have lost them). Then fill Technical
+Approach/Scope with measured pointers — files, line numbers, the precedent table — and not with
+design. Keep the ACs untouched; verify that mechanically afterwards by **parsing**, not grepping:
+
+```python
+acs = next(s for s in yaml.safe_load(open('sprint/epic-<epic>.yaml'))['stories'] if s['id']=='<id>')['acceptance_criteria']
+# assert each `ac in context_text` and `ac in session_text`
+```
+A `python3` `in` test is byte-exact and immune to the alternation/escaping traps that made a
+hand-composed `grep -Eci` return a false 0 on cp5-1. It also survives your own prose quoting an AC
+phrase — my Technical Approach quoted "once per stepped frame", so the grep count went 1→2 and
+looked like a duplicated AC; the parse showed all five still verbatim.
+
+**Second defect in the same return, and it is the self-refuting-sentence pattern again:** the
+Background it *did* write said "there are **FIVE** games with a complete audio seam, not four.
+**FOUR** carry the identical 3-site shape (tempest, asteroids, battlezone, red-baron, and joust)" —
+a list of five names introduced as four, in a sentence whose entire purpose was correcting a
+four-vs-five error. Same shape as cp5-1's "the AC text remains unchanged" written above an edited AC.
+**When you hand `sm-setup` a numeric correction, re-read the sentence it wrote to carry that number
+and count the items yourself.** It reliably transcribes the correction's *facts* and unreliably
+transcribes its *arithmetic*.
+
+**Unchanged, fifth consecutive confirmation:** `sm-setup` left the story at `status: backlog`.
+`pf sprint story update <id> --status in_progress`, then verify. It did get the branch right
+(pushed empty, `git rev-list --count origin/main..origin/feat/<id>-<slug>` == 0) and all three
+header fields (`**Workflow:**`/`**Phase:**`/`**Repos:**`) were present this time — the cp5-1
+`**Repos:**` omission did not recur, so grep for all three rather than assuming either outcome.
+
+## Rule an either/or AC from measured PRECEDENT, not from taste — it turns a survey into a one-click confirm
+
+cp5-2's AC3 ("throw vs degrade for an unmapped event kind") is the mg1-2 either/or shape: TEA writes
+`expect(...).toThrow()` for one branch and `.not.toThrow()` for the other, so RED is unspecifiable
+until it is settled. Before asking, I grepped the default arm of all five precedent games'
+`audio-dispatch.ts` — **none throws at runtime**; every one ends in a bare
+`const _exhaustive: never = event`. That turned "what would you prefer?" into "5/5 precedents
+degrade, the hazard is a frozen frame loop, and both branches cost the same effort — confirm?" The
+user picked the recommendation immediately.
+
+The general form: an either/or in an AC almost always has a *measurable* house answer sitting in the
+sibling games. Spend the two minutes to find it before spending the user's attention. Ask anyway —
+the ruling is theirs and the story explicitly asked for one — but ask with the census attached.
