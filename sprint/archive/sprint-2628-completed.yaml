@@ -1327,3 +1327,8 @@ completed_stories:
     title: The samples — synthesise joust's cues, upload them, and prove a live 200 (count is whatever the manifest holds when this runs, NOT eleven)
     points: 5
     completed: '2026-08-01'
+  - id: uf1-4
+    epic: uf1
+    title: star-wars trench wedge grid — 13 of 19 exports never reach production
+    points: 5
+    completed: '2026-08-01'

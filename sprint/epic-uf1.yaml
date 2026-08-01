@@ -64,7 +64,8 @@ stories:
     description: "Of the 19 exports in star-wars/src/core/trench-wedges.ts, only 6 reach production code — buildTrench, wedgeLength, trenchPortDistance, TRENCH_PORT_OFFSET, PANEL_FORCEFIELD and the Wedge type. The other 13 are referenced by tests and by nothing else: the panel-column vocabulary (PANEL_BLANK, PANEL_PANEL, PANEL_GUN, PanelColumn, decodePanelColumn), the five wedge-type opcodes (WEDGE_SHORT, WEDGE_LONG, WEDGE_END, WEDGE_PORT, WEDGE_NEXT), and the pie and group layer (PIES, WEDGE_GROUP_IDS, wedgeGroup). This is the sw7-6 gap, now half closed: sw7-22 landed streamForceFields (trench-obstacles.ts:207, called from sim.ts:1763), so PANEL_FORCEFIELD alone graduated from the grid into the running trench. Wall guns did not — trench gun behaviour still lands on legacy TrenchObstacle entities via TRENCH_GUN_FIRE_MASK (sim.ts:1306), not on the grid's PANEL_GUN columns. Two honest outcomes and the story should pick one per symbol rather than assuming: WIRE the remaining grid layer so guns, panels and pies are streamed from the decoded wedge data the way force fields now are, or RETIRE what the port genuinely does not consume and say so in the module header. Do not leave a third state where the data sits tested and unread — that is what this story exists to end. streamForceFields is the reference implementation for the wiring direction."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-01'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -74,7 +75,8 @@ stories:
       - "The run-duration and object-count ceilings that blocked sw7-19's dense grid are respected: any newly streamed layer is measured empirically, not assumed cheap."
       - No symbol in trench-wedges.ts is left referenced only by tests when the story closes; a repeat of the sweep's export scan over this module returns clean.
       - The module header states which layers of the wedge grid production consumes, so the next reader does not have to re-derive it.
-    review_verdict: rejected
+    completed: '2026-08-01'
+    review_verdict: approved
   - id: uf1-5
     title: star-wars speech catalogue — correct the stale deferred-count comment and inventory the 10 untriggered lines
     description: "star-wars/src/core/events.ts:154 says of the speech catalogue: 'Only lines with a reachable trigger in the current sim are listed; the shell's SPEECH map holds the full 23-line cabinet catalogue (the other 19 are deferred — they need mechanics the sim lacks: R2 damage, Vader-on-tail, wingmen).' The count is stale. SpeechLine now admits 13 lines and the core cues all 13 — 10 through explicit line: cues in sim.ts plus 3 through ENTER_PHASE_SPEECH (redFiveImGoingIn, lookAtTheSizeOfThatThing, useTheForceLuke). Deferred is therefore 10, not 19: imOnTheLeader, r2TryAndIncreaseThePower, vaderBreathing, yahoo, iHaveYouNow, stayInAttackFormation, tieFighter, imHitButNotBadR2SeeWhatYouCanDoWithIt, iveLostR2, iCantShakeHim. Every one of the 10 is baked and returns 200 on R2, so this is dead weight in the catalogue, not a broken asset — the sw3-5 silent-404 class is clean here. Same shape as sw8-15 (music-bake comment accuracy). Note the second stale marker in the same neighbourhood: shell/audio.ts:147 says 'Lines the CORE currently cues are marked [wired]' but only 4 of the 13 actually cued lines carry the marker, so 9 correct wirings read as unwired. This story is prose and inventory only — it wires no new line and needs no new mechanic. Per the wrong-prose rule, grep every SYNONYM of the corrected claim, not just the named string: the count appears in the source comment, and any epic or context mirror that quotes it carries both a description and a separate acceptance-criteria list."
