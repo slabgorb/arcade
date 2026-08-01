@@ -27,11 +27,24 @@
 //     life — there is no catch-up loop. (Unreachable in play: the largest
 //     single award is far under the increment.)
 //
-// ─── THE ONE THING THAT IS *NOT* HERE ───────────────────────────────────────
+// ─── THE SOUND: WIRED, AS OF cp5-1 ──────────────────────────────────────────
 // :1994-1995 "LDA I,17. / STA CHAN4 ;BONUS LIFE SOUND" is the bonus-life sound.
-// It is DEFERRED to cp5 with the rest of the audio, and deliberately not stubbed
-// — an empty hook would be dead code pretending to be a seam. When cp5 lands it
-// hangs off the award below.
+// It is no longer deferred. `awardBonus` below stays pure and silent — it
+// returns the new lives/threshold and nothing else — and the CUE is emitted one
+// level up, where the award is observed: sim.ts pushes the `bonus-life`
+// GameEvent when `bonus.lives` exceeds the frame's starting lives. It does that
+// at BOTH of this function's call sites, and that is worth naming because the
+// second is easy to miss: `stepPlayingFrame`'s scoring funnel, and
+// `stepDeathFrame`'s — the RESTOR sweep pays 5 a cell (:1850-1857), so a long
+// sweep can buy a life back mid-death without a single frame of play. From there
+// src/core/events.ts carries it as data, src/shell/audio.ts maps it to the
+// `bonusLife` cue, and src/shell/audio-dispatch.ts plays it — on the channel
+// named `chan4`, after the CHAN4 the ROM writes here.
+//
+// The seam exists; the SOUND does not yet. No `.wav` is committed or uploaded
+// by cp5-1 — the manifest names a file a later cp5 story bakes, and the shared
+// engine degrades silently when a sample is missing, so nothing breaks and
+// nothing is audible. Do not read a green suite as "centipede has sound".
 //
 // Also NOT here, and easy to conflate: :1958-1966 (COUNT3 -= 2 ";INCREASE
 // FREQUENCY OF NEW HEADS" plus the SCORE2 carry) fires on the SAME 10,000-point

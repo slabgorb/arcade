@@ -101,10 +101,48 @@ All JavaScript error checks (#10 from JS checklist) apply, plus:
 
 **13. Fix-introduced regressions (meta-check)**
 After applying fixes for review findings, re-scan the fix diff against
-checks #1-#12. Common patterns:
+checks #1-#12, #14 and #15. Common patterns:
 - Adding `as any` to silence a type error instead of fixing it
 - Adding null checks but using `||` instead of `??`
 - Adding runtime validation but not updating the type to match
+
+**14. Derived EDGES computed inside one branch of a state machine**
+A value defined as a TRANSITION (`was !== now`) — a loop start/stop, an
+enter/exit hook, a "became dirty" flag, a diff emitted to a subscriber — must be
+computed where EVERY path that can move it is visible, normally the single exit
+of the step function. Computed inside one branch, it silently misses every
+transition another branch causes, and the failure is a MISSING output, which no
+snapshot or replay test can see.
+- `if (was !== now)` / `prev !== next` inside a conditional branch, an early
+  return, or one arm of a phase/mode switch
+- A reset or teardown that happens on a DIFFERENT path from where the edge is
+  taken (a pause exit, a teardown, an error branch, a phase change)
+- One member of a family handled centrally and its siblings handled locally —
+  the central one is usually the correct model, and the comment explaining why
+  it is "special" is usually wrong
+- Ask: which functions can change this value? If more than one, and the edge is
+  not taken at their common exit, it leaks.
+*Origin: cp5-1 I-H1 + I-M1 (creature loop `-stop` dropped at the death pause;
+`bonus-life` emitted from one of two award paths)*
+
+**15. Source-text assertions that match a TOKEN, not the CLAIM**
+A test that greps a source file for a keyword passes on the keyword appearing in
+a COMMENT, a string, or an unrelated identifier — so the guard it claims to
+provide can be deleted while the test stays green.
+- `expect(src).toMatch(/never/)` / `toContain('readonly')` / any bare-keyword
+  regex over source text — anchor to the DECLARATION that does the work
+  (`/EVENT_SOUND\s*:\s*Record<\s*Kind\s*,\s*Name\s*>/`), not to the word
+- Assertions whose subject file is not the file where the mechanism lives —
+  establish where the error actually fires by mutation before writing the anchor
+- Universally-quantified loops (`for (…) { if (…) continue; expect(…) }`) whose
+  `continue`s can skip every iteration — assert the collected count FIRST, and
+  pick a counter that does not shrink under the very defect being guarded
+- Bounds far looser than the measured value (`toBeLessThan(18)` where the real
+  number is 0) — a leak of a small constant passes forever; pin the number
+- **Every guard must be mutation-tested: delete the mechanism and require red.**
+*Origin: cp5-1 I-H2 + I-M5 + I-M6 (`/never/` matched two comments in the file
+under test; a two-`continue` loop could compare nothing; `< 18` where the true
+value was 0)*
 
 If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 
@@ -112,7 +150,7 @@ If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 GATE_RESULT:
   status: pass
   gate: typescript-review-checklist
-  message: "TypeScript self-review checklist passed (13 checks)"
+  message: "TypeScript self-review checklist passed (15 checks)"
   checks:
     - name: type-safety-escapes
       status: pass
@@ -152,7 +190,7 @@ GATE_RESULT:
       detail: "No barrel file over-imports; async fs in handlers"
     - name: fix-regressions
       status: pass
-      detail: "Fix commits re-scanned against checks #1-#12"
+      detail: "Fix commits re-scanned against checks #1-#12, #14, #15"
 ```
 </pass>
 
@@ -217,7 +255,7 @@ GATE_RESULT:
     - "Add Zod/io-ts validation at API boundaries; validate JSON.parse results"
     - "Use catch(e: unknown) and narrow with instanceof/type guards"
     - "Import specific exports instead of barrel; use async fs in handlers"
-    - "Re-scan fix diffs against checks #1-#12 before handoff"
+    - "Re-scan fix diffs against checks #1-#12, #14, #15 before handoff"
 ```
 </fail>
 

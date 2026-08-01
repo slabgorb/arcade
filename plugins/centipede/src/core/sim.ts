@@ -52,6 +52,7 @@ import {
   stepSpiderExplosion,
   stepSpiderKillTimer,
   SPIDER_EXPLODE_PIC,
+  SPIDER_OFF_PIC,
   type Spider,
 } from './spider'
 import {
@@ -60,11 +61,13 @@ import {
   resolveFleaShotHit,
   stepFleaExplosion,
   FLEA_EXPLODE_PIC,
+  FLEA_PARK_V,
   CENTIN_INIT,
   type Flea,
 } from './flea'
-import { stepScorp, resolveScorpionShotHit } from './scorpion'
+import { stepScorp, resolveScorpionShotHit, isScorpion } from './scorpion'
 import { awardBonus, BONUS_INCREMENT } from './bonus'
+import { event, type GameEvent } from './events'
 import { qualifiesForHighScore, insertHighScore, type HighScoreTable } from '@shared/highscore'
 import { stepNameEntry } from '@shared/name-entry'
 
@@ -258,6 +261,14 @@ export interface SimState {
    *  carried across every state so the sweep survives the demo's immortal loop. */
   readonly attractDirH: number
   readonly attractDirV: number
+  /** cp5-1: the gameplay moments THIS frame produced, for the shell's audio.
+   *  DATA, not callbacks — the core never learns whether anything is audible,
+   *  so `stepSim` stays a pure function of (state, input) and a fixed seed
+   *  replays an identical stream. REBUILT every frame, never appended across
+   *  frames: a carried-forward event would re-fire its cue forever and grow the
+   *  array without bound, and a replay test cannot see it (both runs carry the
+   *  same staleness). See src/core/events.ts. */
+  readonly events: readonly GameEvent[]
 }
 
 /** Seed the playfield (CENTI4.MAC:1220 "PUT UP OBSTACLES") through a fresh
@@ -303,6 +314,7 @@ export function createSim(seed: number): SimState {
     centis: CENTIS_INIT, // INIT :1174-1176 "LDA I,02 ;FAST TO START WITH"
     attractDirH: ATTRACT_DIR_INIT, // cp4-7: PLAYDH/PLAYDV sweep seeds
     attractDirV: ATTRACT_DIR_INIT,
+    events: [], // cp5-1: nothing has happened yet
   }
 }
 
@@ -355,9 +367,78 @@ function stepNewhd(state: SimState): SimState {
  *  (only against a still-live shot — the mushroom took priority in stepShot
  *  itself), MOTION, EXPLOD, then PLAY's player-collision check and the
  *  wave-clear test. */
+// ─── cp5-1: the sustained voices ─────────────────────────────────────────────
+//
+// A looping cue is signalled by its EDGES — one `-start` when the thing becomes
+// audible and one `-stop` when it stops — never by re-emitting a one-shot every
+// frame. The shell answers them with `startLoop`/`stopLoop` on a channel of the
+// cue's own, so a loop rings until it is told to stop.
+//
+// EVERY voice's edge is taken ONCE, in `stepSim`, against the whole frame's
+// transition — never inside `stepPlayingFrame`.
+//
+// REWORK (Reviewer round 1, HIGH): the march was already central but the three
+// creatures were not, and that was a real leak, not a tidiness point. A creature
+// on screen when the gun dies is reset by `stepDeathFrame` (the BUGOFF/ANTPC
+// re-run at the pause's end), which is not a playing frame — so its `-stop` was
+// never computed and `startLoop` kept ringing over a creature that is gone.
+// Measured on seed 0x2468: 2 dropped spider edges, 192 frames of phantom loop.
+// "Is this voice audible?" is a whole-frame property, exactly like the march.
+type LoopVoice = 'march' | 'spider' | 'flea' | 'scorpion'
+
+/** The edge, if any, between two frames of one sustained voice. */
+function loopEdges(voice: LoopVoice, was: boolean, now: boolean): GameEvent[] {
+  if (was === now) return []
+  return [event(now ? `${voice}-start` : `${voice}-stop`)]
+}
+
+/** Can ANY sustained voice be heard in this state? Only during play. The
+ *  attract demo runs a full playing frame and discards its stream, and a run
+ *  that has ended must not be left ringing — the `gameover` transition is the
+ *  frame every open loop is told to stop on. */
+const inPlay = (s: SimState): boolean => s.phase === 'playing'
+
+/** Is the centipede's marching tick audible? Four different functions move it —
+ *  a wave clearing, the gun dying, the pause ending, a fresh game starting. */
+const marchAudible = (s: SimState): boolean =>
+  inPlay(s) && s.delay === 0 && s.segs.some((seg) => (seg.pic & DEAD_BIT) === 0)
+
+/** "No spider on screen" is a PICTURE, not an absent object (SP-1) — slot 13
+ *  always holds one, parked at SPIDER_OFF_PIC. */
+const spiderAudible = (s: SimState): boolean => inPlay(s) && s.spider.pic !== SPIDER_OFF_PIC
+
+/** Slot 12 is shared by the flea and the scorpion, and "no flea" is a POSITION
+ *  (parked at FLEA_PARK_V), so the flea is here only when it is off the parked
+ *  row AND the slot is not currently holding a scorpion. */
+const fleaAudible = (s: SimState): boolean =>
+  inPlay(s) && s.flea.v < FLEA_PARK_V && !isScorpion(s.flea.pic)
+
+/** The other half of slot 12 — the scorpion's crossing. */
+const scorpionAudible = (s: SimState): boolean => inPlay(s) && isScorpion(s.flea.pic)
+
+/** Every sustained voice and the predicate that says whether it is ringing.
+ *  One table, so a voice cannot be added to `EVENT_KINDS` and wired up in some
+ *  other function that does not see every transition. */
+const LOOP_VOICES: readonly (readonly [LoopVoice, (s: SimState) => boolean])[] = [
+  ['march', marchAudible],
+  ['spider', spiderAudible],
+  ['flea', fleaAudible],
+  ['scorpion', scorpionAudible],
+]
+
 function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
+  // cp5-1: this frame's cue stream, built as the frame resolves and returned on
+  // the new state. A FRESH array every frame — see SimState.events.
+  const events: GameEvent[] = []
+
   const player = movePlayer(state.player, input, state.playfield)
   const stepped = stepShot(state.shot, player, state.playfield, input.fire)
+  // RSHOT1: the launch is the rest->live transition, so holding fire while a
+  // shot is already in the air is silent (one cue per shot, not per frame).
+  if (!state.shot.live && input.fire) events.push(event('shot-fired'))
+  // stepShot scores only when the shot ate a mushroom (OBSTAC) — the segments
+  // are resolved further down, by SHOOT.
+  if (stepped.scored > 0) events.push(event('mushroom-destroyed'))
   let shot = stepped.shot
   let score = state.score + stepped.scored
 
@@ -461,6 +542,7 @@ function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
       spider = spiderHit.spider
       shot = spiderHit.shot
       score += spiderHit.scored
+      if (spiderHit.scored > 0) events.push(event('spider-killed'))
     }
     // SHOOT's tail (:2304-2314) runs every frame regardless of the shot: it is
     // the ONLY thing that brings a killed spider back, because BUGMV freezes
@@ -491,12 +573,16 @@ function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
       flea = scorpHit.slot
       shot = scorpHit.shot
       score += scorpHit.scored
+      if (scorpHit.scored > 0) events.push(event('scorpion-killed'))
     }
     if (shot.live) {
       const fleaHit = resolveFleaShotHit(shot, flea)
       flea = fleaHit.flea
       shot = fleaHit.shot
       score += fleaHit.scored
+      // The flea takes TWO hits and the first scores nothing (:2169) — keying
+      // the cue on `scored` rather than `hit` fires it on the kill only.
+      if (fleaHit.scored > 0) events.push(event('flea-killed'))
     }
     // cp2-15: the segments are the scan's TAIL (slots 11..0, :2211-2212 "CPX
     // I,12. / BCC 142$") — a shot the spider or slot 12 already took never
@@ -507,6 +593,7 @@ function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
       segs = hit.segs
       shot = hit.shot
       score += hit.scored
+      if (hit.scored > 0) events.push(event('segment-killed'))
     }
     // SCORP (:36). Its `poisoned` flag is deliberately unused here: the poisoned
     // cell is already written through the shared Playfield, and poisoning awards
@@ -569,6 +656,18 @@ function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
   // PLAY/the wave-clear test decide afterward.
   const newd = state.newd || segs.some((seg) => seg.pic < NEWD_ARM_PIC_MAX && seg.v <= CENT_BOTTOM_V)
 
+  // cp5-1 — the bonus-life cue SCORNG's tail has been holding a place for:
+  // :1994-1995 "LDA I,17. / STA CHAN4 ;BONUS LIFE SOUND". One award, one cue.
+  if (bonus.lives > state.lives) events.push(event('bonus-life'))
+  // CT-23/89: the factory arming is a one-time edge per wave, not a level.
+  if (!state.newd && newd) events.push(event('head-reached-bottom'))
+
+  // cp5-1 — NO sustained-voice edge is taken here. Every loop (the march AND
+  // the three creatures) is a whole-frame property, and `stepSim` takes all four
+  // at the one exit; see LOOP_VOICES. A creature reset by the death pause never
+  // reaches this function, so an edge computed here would silently drop its
+  // `-stop` and leave the loop ringing.
+
   // PLAY is ONE routine: every caller's box lives inside checkPlayerContact /
   // playerContactIndex, and every kill funnels to this single branch — the
   // stamps landed at each caller's own site above (MOTION, BUGMV, ANTMV), but
@@ -591,6 +690,7 @@ function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
       newd,
       delay: DEATH_DELAY,
       playerExplode: PLAYER_EXPLODE_START,
+      events: [...events, event('player-died')],
     }
   }
 
@@ -620,6 +720,7 @@ function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
       newd,
       delay: WAVE_DELAY,
       centis: state.centis + 1,
+      events: [...events, event('wave-cleared')],
     }
   }
 
@@ -640,6 +741,7 @@ function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
     newd: factory.newd,
     count1: factory.count1,
     count3: factory.count3,
+    events,
   }
 }
 
@@ -666,6 +768,18 @@ function stepDeathFrame(state: SimState): SimState {
   // long sweep can carry the player across a threshold mid-death.
   const bonus = awardBonus({ score, lives: state.lives, bonusLevel: state.bonusLevel })
 
+  // cp5-1 REWORK (Reviewer round 1, MEDIUM): the award above is REAL — the
+  // sweep's 5-a-cell can cross the threshold mid-death, which is exactly why
+  // tests/bonus-lives.test.ts:314 exists — so it carries the same cue the play
+  // frame's award does (:1994-1995 "LDA I,17. / STA CHAN4"). One award, one cue,
+  // on whichever of this function's four exits the frame takes.
+  //
+  // `state.events` (rather than a fresh []) when nothing was awarded: the empty
+  // case must keep the array IDENTITY that tells stepSim this frame produced
+  // nothing. See stepSim's exit.
+  const events: readonly GameEvent[] =
+    bonus.lives > state.lives ? [event('bonus-life')] : state.events
+
   let delay = state.delay
   if (restorMem === RESTOR_END) delay -= 1 // CT-64: hold while the sweep is armed
 
@@ -679,6 +793,7 @@ function stepDeathFrame(state: SimState): SimState {
       delay,
       playerExplode,
       restorMem,
+      events,
     }
   }
 
@@ -708,6 +823,9 @@ function stepDeathFrame(state: SimState): SimState {
         bonusLevel: bonus.bonusLevel,
         phase: 'gameover',
         gameOver: true,
+        // A last-gasp bonus life is still a bonus life; and stepSim's `inPlay`
+        // gate turns this same transition into every open loop's `-stop`.
+        events,
         // cp4-6 — the clone's UPDATE (:2534) moment: take the verdict against
         // the board as it stands NOW and open the entry. An entry object is
         // opened either way so the screen can report the outcome; `qualifies`
@@ -724,6 +842,13 @@ function stepDeathFrame(state: SimState): SimState {
     const player = createPlayer()
     const shot = createShot(player)
     return {
+      // cp5-1: the respawn re-lay produces no one-shot of its own beyond a
+      // bonus the sweep may just have paid — but it is the frame the march
+      // resumes on AND the frame BUGOFF/ANTPC re-park the spider and the flea
+      // (below), so it is the frame their `-stop` edges are due. stepSim takes
+      // all of that centrally, by comparing this state against the one it was
+      // handed; nothing here has to know it happened.
+      events,
       playfield: state.playfield,
       player,
       shot,
@@ -798,6 +923,7 @@ function stepDeathFrame(state: SimState): SimState {
     newd: false, // CT-90: CENTPC clears NEWD on every re-lay
     centin: cadence.centin,
     centis: cadence.centis,
+    events,
   }
 }
 
@@ -826,7 +952,34 @@ export function stepSim(state: SimState, input: InputCounts): SimState {
   // the invariant at one exit is what makes it hold for every branch below.
   const held = input.start === true
   const next = stepPhase(state, input, held && !state.startPrev)
-  return next.startPrev === held ? next : { ...next, startPrev: held }
+  const stamped = next.startPrev === held ? next : { ...next, startPrev: held }
+
+  // ─── cp5-1: finish this frame's cue stream ─────────────────────────────────
+  //
+  // Two things happen here, and both have to happen at the ONE exit, for the
+  // same reason the startPrev invariant above does — every branch below must
+  // hold them and there are five of them.
+  //
+  // 1. CLEAR A STALE STREAM. Only `stepPlayingFrame` builds events; every other
+  //    path (the death pause, the entry countdown, a refused press, attract)
+  //    returns `{ ...state }` or `state` itself and would therefore carry the
+  //    PREVIOUS frame's cues forward — re-firing them forever. The array
+  //    IDENTITY is the discriminator: a path that produced cues built a fresh
+  //    array, so a stream that is still the same object as the one we were
+  //    handed did not come from this frame and is dropped.
+  //
+  // 2. TAKE EVERY SUSTAINED VOICE'S EDGE. Whether a loop is audible is a
+  //    whole-frame property that five different functions move — a wave
+  //    clearing, the gun dying, the pause ENDING (which re-parks the spider and
+  //    the flea), a fresh game starting, a run ending at game over. Only a
+  //    comparison of the state we were handed against the state we return sees
+  //    all of them, which is why none of these edges is taken downstream.
+  const produced = stamped.events === state.events ? [] : stamped.events
+  const edges = LOOP_VOICES.flatMap(([voice, audible]) =>
+    loopEdges(voice, audible(state), audible(stamped)),
+  )
+  if (produced === stamped.events && edges.length === 0) return stamped
+  return { ...stamped, events: [...produced, ...edges] }
 }
 
 function stepPhase(state: SimState, input: InputCounts, pressed: boolean): SimState {
@@ -882,7 +1035,10 @@ function stepPhase(state: SimState, input: InputCounts, pressed: boolean): SimSt
  *  demo never ends — it just loops. Pure: no rng or wall clock in the steering. */
 function stepAttractDemo(state: SimState): SimState {
   // A death/wave pause animates like any other; stepDeathFrame keeps the phase.
-  if (state.delay > 0) return stepDeathFrame(state)
+  // cp5-1: and it EMITS — the RESTOR sweep can award a bonus life mid-pause — so
+  // the demo's stream is discarded on this exit exactly as it is on the one
+  // below. Both of the demo's exits, or the silence has a hole in it.
+  if (state.delay > 0) return { ...stepDeathFrame(state), events: [] }
 
   let h = state.player.h
   let v = state.player.v
@@ -909,7 +1065,13 @@ function stepAttractDemo(state: SimState): SimState {
   }
   // Hold fire (RSHOT1, :212). dh/dv are 0 — the gun is already positioned above,
   // so movePlayer keeps it there and the shot launches from the swept spot.
-  return stepPlayingFrame(steered, { dh: 0, dv: 0, fire: true })
+  //
+  // cp5-1: the demo genuinely shoots, kills and dies, so the playing frame
+  // below produces a full cue stream — and it is DISCARDED. The lobby's attract
+  // screen must not play the whole game aloud. asteroids does the same
+  // (plugins/asteroids/src/core/sim.ts:179 "no gameplay-audio events in
+  // attract"). Deliberate, and pinned by tests/audio-events.test.ts.
+  return { ...stepPlayingFrame(steered, { dh: 0, dv: 0, fire: true }), events: [] }
 }
 
 /** cp4-6 — run the initials screen's countdown for one frame.
@@ -970,6 +1132,10 @@ export function cloneState(state: SimState): SimState {
     player: { ...state.player },
     shot: { ...state.shot },
     rng: { seed: state.rng.seed },
+    // cp5-1: a fresh array with the same contents — a clone that ALIASED the
+    // original's stream would be the same coupling the rng comment above warns
+    // about, one frame of cues wide.
+    events: [...state.events],
     frame: state.frame,
     score: state.score,
     segs: state.segs.map((seg) => ({ ...seg })),

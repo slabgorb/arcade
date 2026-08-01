@@ -4,6 +4,173 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 
 ---
 
+### After the second defeat, stop patching the scanner and parse — and GENERATE the mutants instead of listing them
+
+**Situation:** The end of the road the next three gotchas walk. cp5-1 spent **four** rounds proving
+one compile-time property (a `never` exhaustiveness guard) by reading source text, and was beaten
+every round by text a regex could not tell from code:
+
+| Round | Defeated by | The fix |
+|---|---|---|
+| 1 | the word `never` in a **comment** | anchor to the declaration |
+| 2 | the guard **deleted** outright | write a test at all |
+| 3 | a guard-shaped decoy **elsewhere in the file** | scope to the function body |
+| 4 | a decoy **nested inside** that body; a `}` **inside a string**; a **brace-less** `default:` | ...a fifth regex? |
+
+**Problem:** Each fix was correct, each was mutation-proven, and each was one level short. That is
+not four mistakes — it is one mistake made four times: **a hand-rolled scanner is a partial
+TypeScript parser, and the gap is always one construct deeper than you thought to test.** Round 3's
+fix even introduced its own asymmetry (the comment stripper was made string-aware; the brace walker
+that ran after it was not), so a stray `console.debug('legacy}')` in the arm blinded the guard to the
+`audio.play()` that followed it. Nobody would review that line twice.
+
+**Prevention:**
+
+1. **Use the compiler's parser.** `typescript` is already a dependency of any TS repo — it is what
+   `tsc` runs. `ts.createSourceFile(path, src, ts.ScriptTarget.Latest, true)` plus a `forEachChild`
+   walk is ~15 lines and retires the whole table at once, by construction rather than by patch:
+   comments are not in the tree (round 1); a node's text is syntax-accurate, so a `}` or the
+   characters `audio.` inside a **string literal** are non-events (round 4's H2); a `DefaultClause`
+   has statements whether or not it wears braces (H3); and scope is a tree relation, not a text
+   offset (round 3, round 4's H1).
+2. **Assert on structure, not spelling.** "the initializer is an Identifier equal to the
+   discriminant" admits `= effect` and rejects `= effect as never`, `= effect!` and `= 0 as never`
+   without enumerating them. Quote style, whitespace and formatter runs stop mattering entirely.
+3. **Derive the expected set from the source too.** A hand-kept `['play','startLoop','stopLoop']` in
+   the test agrees with itself forever while the real union drifts — the token-not-claim failure one
+   indirection out. Read the union off the discriminant's declared type; then *adding a fourth member
+   with no case arm* reds, which is the actual claim and which no round of regexes could test at all.
+4. **Ask a call-graph question when "which one is real?" is ambiguous.** A decoy nested inside the
+   function must be rejected; a helper extracted *out* of it and called must be accepted. Position
+   cannot separate those — both are "a switch in another function". Reachability can: the decoy is
+   never called.
+5. **GENERATE the mutants from the real source; do not list them.** A hand-written matrix measures
+   the author's imagination. Round 3's returned 100% while missing the live defect, and its
+   fleet-compatibility row *cited* an idiom it never actually tested. Generate one row per case
+   clause the switch declares, one per engine method (each carrying the brace-in-string hazard, so it
+   is in every row rather than being the one case nobody tried), and one per decoy topology
+   (before / after / nested).
+6. **Every must-REJECT mutant must assert it CHANGED the source.** A mutation that silently failed to
+   apply scores the unmutated source and reports "rejected as required" while proving nothing. Hold
+   must-ACCEPT rows to the weaker rule deliberately — "this shape is already the shape" is harmless,
+   and failing it reds the suite for a refactor that changed no guarantee.
+7. **Mutate the test's own MACHINERY, not just the code under test.** This is the step that pays.
+   Neutering `verdict()` reddened 15 rows and emptying the engine-method list reddened 1 — but
+   neutering **reachability** left the matrix fully GREEN, proving the rejections credited to the
+   call-graph reasoning did not depend on it (a decoy that is merely *present* already yields two
+   switches and is rejected on that count alone). The missing row was the symmetric control:
+   *dispatch INTACT, unreachable decoy added* must be **accepted**. Only that pair can tell dead code
+   from a real second switch.
+
+**The shape of the lesson:** when a guard is defeated twice by the same *class* of input, the next
+fix should change the KIND of instrument, not its precision. And the honest test of a guard is not
+"does it catch the mutants I wrote" but "does it still hold when I break the guard itself".
+
+*Origin: cp5-1 rounds 1-5 (Reviewer's REJECT: "stop patching the scanner").*
+
+---
+
+### A source anchor needs the right SCOPE, not just the right pattern — and mutation-testing against your own list of failures is a mirror, not an adversary
+
+**Situation:** Any test that proves a compile-time property by reading source text — the previous two
+gotchas' territory. cp5-1 round 3: five assertions, anchored to the declaration, evaluated over
+comment-stripped source, each mutation-proven. All five read the **whole file**.
+
+**Problem:** The Reviewer built the mutant I had not imagined and it passed **20/20 with `tsc`
+clean**: gut the real `switch` so a future fourth effect is silently played as a one-shot, and park a
+correct guard-shaped `switch` in dead code above it. Worse, it needs no decoy to bite — the helper
+took the **first** `default: {` in the file, so any second switch added *above* the function under
+test silently redirects the anchors onto the wrong arm. That is ordinary growth, not sabotage.
+
+Three rounds, and the failure moved one level up each time — **token → declaration → location.** Each
+fix was correct and each left the next level exposed.
+
+**Prevention — scope first, then match:**
+
+1. **Extract the function/class body the mechanism lives in before running any anchor.** Balance the
+   parameter list's parens first, *then* braces, so an object type in a signature is not mistaken for
+   the body's opening brace. Never a single non-greedy regex: `/\{([\s\S]*?)\n\s*\}/` stops at the
+   first nested `}`, so wrapping a guard in an inner block hides everything after it.
+2. **Add a scope control.** If the extractor stops finding the body (a rename, a refactor to an arrow
+   const), every assertion silently reads `null`. Assert the body was found, that it contains the
+   construct you are describing, and that it is a PROPER SUBSET of the file.
+3. **Keep a decoy FIXTURE in the suite** — decoyed source held as data, run through the extraction
+   helpers. It proves the scoping forever and, unlike a source mutation, the suite never mutates the
+   tree it runs in.
+4. **Pin the property, not the spelling.** Add must-stay-GREEN rows to the matrix: renaming the
+   guard's identifier to the convention other modules use, or reformatting quote style, must NOT red.
+   A guard that reds on a refactor trains people to weaken it.
+
+**The meta-lesson, which is the one worth carrying:** I mutation-tested against the ways *I* thought
+the guard could break, and it passed all of them. The failure mode I did not enumerate was the one
+that shipped. **Ask someone else to build the mutant, or write the fixture that encodes the defect
+SHAPE rather than the current file** — your own list of mutations is bounded by the same imagination
+that wrote the bug.
+
+---
+
+### Anchoring a source assertion to the DECLARATION is not enough — the declaration can be quoted in a COMMENT. Strip comments, then count.
+
+**Situation:** Pinning a COMPILE-TIME-only claim, where no runtime assertion can reach the mechanism
+(cp5-1: a `switch`'s `default: { const unreachable: never = effect }` exhaustiveness guard — the two
+shapes differ only in what `tsc` rejects, never in what the code does, so a recording fake cannot tell
+them apart).
+
+**Problem:** The project rule born from the previous round of this same story says *"anchor to the
+DECLARATION that does the work, not to the word"* — because `expect(src).toMatch(/never/)` matched the
+word `never` in two comments and stayed green over a deleted guard. So I wrote the declaration anchor,
+`/const\s+unreachable\s*:\s*never\s*=\s*effect/`. **It has the identical defect one level up.**
+Measured, not argued: rewrite the guard as `// const unreachable: never = effect` and a raw-source
+declaration anchor is still **green over a deleted guard**. Files whose comments quote their own code
+— which is most well-commented files, and certainly any file carrying a REWORK note — make this
+likely, not hypothetical.
+
+**Prevention:** Count occurrences in comment-**STRIPPED** source, never raw. Then the two obvious
+follow-on traps:
+
+1. **Give the stripper a positive control.** A `stripComments` that silently returned its input makes
+   every "not in prose" claim vacuous and rebuilds the exact defect you are preventing. Assert
+   `stripped.length < raw.length` *and* that no comment marker survives — and mutation-prove it by
+   making the helper a no-op and requiring red.
+2. **Assert the STRIPPED count, not the raw count.** Raw-count assertions red spuriously the day
+   someone legitimately quotes the code in a comment. The failure you care about is the reverse: the
+   declaration existing *only* in prose, i.e. stripped count `0`.
+
+Then prove the combination — no-op stripper **plus** comment-only guard — is still caught. If it is
+not, the block is decoration.
+
+**Corollary — reject the cast, not just the keyword.** `const x: never = effect` is a guard;
+`const x: never = effect as never` compiles whatever `effect` is and proves nothing (this was the same
+story's earlier Low). A regex ending at `effect` matches both. Anchor to end-of-statement
+(`…=\s*effect\s*;?\s*$` with the `m` flag) so the cast reds.
+
+---
+
+### The mutation-test loop needs a `cp` backup taken BEFORE the first mutation — `git checkout` cannot tell your experiment from your work
+
+**Situation:** Mutation-proving assertions (delete the mechanism, require red, restore) while your own
+new tests are written but not yet committed.
+
+**Problem:** I mutated a helper inside my own test file to prove a control was non-vacuous, then ran
+`git checkout -- <that test file>` to undo it. Both the mutation *and* ~160 lines of uncommitted new
+tests were uncommitted, so `git checkout` reverted **both** — it restored HEAD, which is the file
+without my work. The repo memory note for this is literally named
+`git-checkout-clobbers-uncommitted-mutation` and I walked into it anyway, because in the moment the
+command reads as "undo my mutation" rather than "discard everything not committed."
+
+**Prevention:** Two rules, and the first is cheap enough to be unconditional:
+
+1. `cp` the file to the scratchpad **immediately after writing it and before the first mutation** —
+   then every restore is `cp` back, and no VCS command is ever involved.
+2. **Commit the RED tests first, then mutate.** A commit makes `git checkout --` safe by construction
+   and is what you were going to do at the end of the phase anyway.
+
+**Recovery, if it happens:** rewrite from context, then **re-run the entire mutation matrix** rather
+than trusting the reconstruction — it is the only thing that proves the rebuilt file is behaviourally
+identical, and it is cheap. Do not skip it because the tests "look the same."
+
+---
+
 ### A "remove the invented constant" story: the invented number is often a REAL ROM value for a DIFFERENT mechanic — pin the mechanism you're deleting, not the number
 
 **Situation:** A BOOK_WAS_WRONG fidelity story hands you a constant to DELETE (sw7-4 / S-015:
@@ -2274,3 +2441,75 @@ AC offering "cite the ROM **or the sound board**" has only one of its two option
 citation must come from the game side, and no claim about what a sound CODE actually sounds like is
 supportable. Pin the absence in a test, so a later story cannot quietly cite a listing that is not
 there.
+
+---
+
+### Replay determinism CANNOT see a missing per-frame CLEAR — the stale event is carried identically in BOTH runs
+
+**Situation:** cp5-1 builds centipede's core event channel. AC2: "a fixed seed and input stream
+replay an identical event stream — the event channel is deterministic and a test pins that." The
+obvious test is two runs of the same seed, compared frame by frame.
+
+**Problem:** that test is blind to the single most likely defect in the whole story. If the sim
+APPENDS to `state.events` instead of REBUILDING it each frame, run A and run B both carry the same
+stale events forward, so the two streams still match exactly and the determinism test stays green
+while every cue re-fires forever and the array grows without bound. Determinism compares two runs to
+each other; it never asks what a single run should contain. The asteroids precedent seeds `events: []`
+at each phase entry with the comment "never carry a stale frame's forward"
+(`plugins/asteroids/src/core/sim.ts:179,194,212`) — that comment is guarding a property no
+determinism test can reach.
+
+**Prevention:** for any "the stream/log/event channel is deterministic" AC, write TWO tests, and know
+which defect each one catches:
+1. *replay identity* — same seed + same scripted input → identical per-frame streams. Catches
+   ambient randomness and wall-clock leakage.
+2. *the rebuild* — step PAST a triggering frame with input that does not re-trigger, and assert the
+   event is GONE. Catches append-instead-of-rebuild. Add the unbounded-growth mirror (a long idle
+   run must drain, not accumulate) because the same bug shows up as a leak.
+
+**And pair BOTH with a non-vacuity assertion in the same test.** Two EMPTY streams compare equal, so
+a channel that emits nothing passes replay-identity perfectly. Assert the run emitted something, and
+that it emitted more than one distinct kind, BEFORE comparing. Add a different-seed control too: if
+the streams were hard-coded, "identical" would hold for every seed and prove nothing.
+
+---
+
+### A doc assertion can pass on the UNCHANGED file three different ways — and markdown line-wrap is the one you will not see coming
+
+**Situation:** cp5-1's AC5/AC6 are documentation ACs: rewrite a deferral banner in `core/bonus.ts`,
+and stop the README advertising a gap the story closes. I wrote nine assertions across the two files.
+Six passed immediately — and three of those six were **defective**, not deliberate green guards. All
+three would have let Dev ship the story with the stale docs untouched.
+
+**The three mechanisms, all distinct:**
+1. **The token was already there.** "the banner must point at the seam" matched
+   `/…|bonus-life/`, and `bonus.ts:31` already read "is the bonus-life sound" — the assertion matched
+   the very deferral it was meant to replace.
+2. **Markdown WRAPPED the sentence across a blockquote line.** The README status block reads, to a
+   human, "there is no `src/shell/audio.ts`, no event channel and no dispatch." On disk it is
+   `…and no\n> dispatch.` — a newline AND a `> ` in the middle. A regex written against the sentence
+   as read never matches the file as stored, so `.not.toMatch(...)` passes trivially and the stale
+   claim survives. **This is the dangerous one: the assertion looks right, reads right in review, and
+   is inert.**
+3. **The positive half was built from tokens the STALE text already contains.** "the README must
+   mention the audio seam" matched `@shared/audio` — which appears in the current README only inside
+   the sentence *"It does not consume `@shared/audio`"*. The assertion was satisfied by the text it
+   was supposed to replace.
+
+**Prevention:**
+- Normalize before matching any multi-word claim in markdown:
+  `md.replace(/^\s*>\s?/gm, ' ').replace(/\s+/g, ' ')`. Never regex a wrapped sentence raw.
+- Build every POSITIVE doc assertion out of tokens you have **verified are absent today**
+  (`grep -c` each candidate first — mine returned 0 for `audio-dispatch`, `core/events`, `SOUNDS`,
+  `manifest`, `no samples`). If a token appears in the current file, it cannot discriminate.
+- Write doc ACs as PAIRS — the stale claim must be GONE and the honest one PRESENT. Neither half
+  alone is enough: deleting the sentences satisfies the negative, appending a section satisfies the
+  positive while the contradiction sits three lines above.
+- **Audit every test that passes on arrival.** Sort them into "deliberate green regression guard" and
+  "defect", and mutation-test the first group (plant the violation, require red, restore from a `cp`
+  backup — never `git checkout`, which eats uncommitted work). Five green guards here; all four
+  testable ones went red under mutation, and the control run returned to the exact pre-mutation
+  count (51 failed / 898 passed).
+
+**Corollary:** the RED count is not the metric — 48 failing looked like a complete RED, and three of
+the twelve doc assertions were inert inside it. Read the PASS list, not the fail list.
