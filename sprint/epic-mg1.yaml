@@ -189,3 +189,11 @@ stories:
       - "A test covers HMR end to end for at least one game AND the lobby - connect a vite-hmr websocket, touch a real source file, assert the update arrives. Asserting that a websocket UPGRADE is accepted is explicitly insufficient: that check passed while game HMR was entirely dead, because the socket that accepted was the lobby's."
       - The warning comment in vite.config.ts and any doc describing the limitation are removed or corrected in the same change, so nothing is left claiming a gap that no longer exists.
     type: bug
+  - id: mg1-15
+    title: Evaluate noUncheckedIndexedAccess repo-wide — the tsconfig blind spot that let an undefined-typed-as-WaveEntry indexed access through tsc
+    description: "Filed from sw8-10's review (Reviewer Improvement, 2026-08-01). tsconfig.json has strict:true but NOT noUncheckedIndexedAccess, so tsc cannot see that plan[i] on a readonly array returns undefined for an out-of-range index while the expression is typed as the element. sw8-10's round-1 MEDIUM (supplyEntry returning undefined-typed-as-WaveEntry for a negative spawnIndex, then dereferenced unguarded in spawnTie) shipped past tsc for exactly this reason and was caught only by the reviewer-rule-checker; the fix was a guard-throw (tie-vm CHERR convention, plugins/star-wars/src/core/tie-waves.ts supplyEntry). The same blind spot covers EVERY table lookup in every game (waveParams, TWV_GROUPS, TBG, TCH1/TCH2, tempest WTABLE ports, ...). Scope: measure the one-time cost (npx tsc --noEmit with the flag enabled in a scratch tsconfig; count errors per app), decide enable-repo-wide vs per-project vs decline-with-rationale, and if enabled fix or annotate the sites. This is an evaluation+decision story: the DECISION with measured numbers is the deliverable; a fleet-wide annotation sweep, if chosen, should be split into follow-ups per app."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
