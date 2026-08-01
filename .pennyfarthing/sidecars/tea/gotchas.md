@@ -2537,3 +2537,125 @@ under the 6-kill quota" was written before sw8-11/12 time-boxed the space phase 
 and sw8-7 made kills refill next-step — the fallback is REACHABLE in a played game now. A
 description's reachability clause is a claim with a timestamp; re-derive it at RED and file the
 correction as a Delivery Finding, because the backlog priority was set on the stale claim.
+
+---
+
+### "It can't be tested behaviourally in this env" is a CLAIM in a comment — re-measure it, because the DOM surface is usually five members
+
+**Situation:** cp5-2 AC2 outlawed the idiom centipede has always used on `main.ts`: *"A test proves the
+wiring is LIVE, not merely present... A grep for the import is not the test."* Every existing pin
+(`main-loop.test.ts`, `highscore-entry.test.ts`) reads `../src/main.ts?raw` and matches source text, and
+`main-loop.test.ts:4-8` says why: *"The boot loop touches requestAnimationFrame, canvas, and pointer-lock
+— none of which exist in the node vitest env."* Five stories had accepted that sentence.
+
+**Problem:** it is false, and one grep says so:
+```bash
+grep -rhoE "\b(ctx|logicalCtx)\.[a-zA-Z]+" src/shell/*.ts src/main.ts | sort -u
+# -> clearRect, drawImage, fillRect, fillStyle, imageSmoothingEnabled
+```
+Five canvas members, plus `document.querySelector`/`createElement`, `window.addEventListener`,
+`window.location` and a bare `requestAnimationFrame`. A ~140-line stub boots the whole game — real core,
+real atlas, real renderer, real input adapters — under `environment: 'node'`, no jsdom. red-baron had
+been doing exactly this for six stories (`tests/hud-wiring.test.ts:76`), in the same repo.
+
+**Prevention:** treat "this cannot be tested" in a test header as a measurement with a timestamp, exactly
+like a stale story description. Census the DOM surface before believing it. Two things make the census
+cheap and the harness honest: (1) stub ONLY the members the census found — a Proxy that answers every
+question cannot tell you the shell grew a dependency; (2) mock nothing else, so an observed frame is an
+ordinary frame rather than a staged one. Grep the fleet first (`grep -rln "await import('../src/main')"`)
+— somebody has usually already paid for this.
+
+**Corollary — a `?raw` scan and a boot answer different questions.** The scan cannot distinguish a call
+from a mention: the token inside a string, a comment, or a disabled block satisfies it. When an AC says
+"prove it is LIVE", that is the distinction it is drawing, and only booting closes it.
+
+---
+
+### The vacuity trap has a whole-FILE form: a hazard-injection suite can go green because the hazard is never reached
+
+**Situation:** cp5-2's `audio-hot-path.test.ts` boots the real rAF loop, injects an unmapped event kind
+into a live frame, and asserts the loop survives — the end-to-end form of "a throw inside
+requestAnimationFrame freezes the game". Four assertions, each with a message naming a real failure.
+
+**Problem:** it went **GREEN on its first run**, alone among the three new suites, and for a reason no
+individual assertion could show: on the unwired tree `main.ts` never calls the dispatch, so the poisoned
+frame sails through a loop that never looks at it. Nothing threw, the loop stayed scheduled, the sim kept
+stepping — every assertion true, and every one of them a statement about a code path that did not run. I
+had even written a non-vacuity guard (`injected`) and it passed: the injection DID happen. It proved the
+poison was created, not that anything consumed it.
+
+**Prevention:** for an injection/fault suite, the guard must observe the CONSUMER, not the injection.
+A second tap on the seam under test (`playEventSounds` here) flipping a `poisonDispatched` flag is the
+whole fix, and it is the assertion that reds until the wiring lands. Generalised: **the non-vacuity guard
+has to sit on the far side of the thing you are testing.** "I created the hazard" and "the code met the
+hazard" are different claims, and only the second makes the suite mean anything.
+
+**Tell:** a new RED file that passes on first run. Do not explain it — instrument it. The other two files
+in the same story reddened immediately; the odd one out was the one testing an integration that did not
+exist yet, which is precisely when this shape bites.
+
+---
+
+### Prove the RED is SATISFIABLE with a throwaway implementation, then rank every guard by mutating it — six mutants cost ~10 minutes
+
+**Situation:** cp5-2's RED spanned four ACs and four files, including an array-of-arrays comparison whose
+failure mode ("a per-rAF-frame call drops every step but the last of a burst") is invisible at 60 Hz.
+
+**What the battery bought, beyond confidence:**
+
+| mutant | red | what it established |
+|---|---|---|
+| correct wiring | **0 — all 1012 green** | the RED is satisfiable at all; no assertion is impossible |
+| dispatch hoisted to per-rAF | 1 | the burst construction actually discriminates — the headline claim |
+| dispatch per EVENT | 1 | AC1's "not per event" is genuinely tested, not just worded |
+| the throw restored | 7 | the freeze is REAL and observable end-to-end, not a theory |
+| `resume()` at module scope | 2 | AC4's negatives bite once wiring exists (they pass vacuously today) |
+| dispatch into a second engine | 5 | the identity check closes a hole every count assertion misses |
+
+The first row is the one people skip and the one that matters most: an unsatisfiable RED is worse than no
+RED, and you cannot know it is satisfiable by reading it. The fifth row is the one that justified
+committing two assertions that pass today — it is the evidence that they are not scenery.
+
+**Discipline that made it safe:** `cp` the source files to the scratchpad BEFORE the first mutation, restore
+with `cp`, and verify with `md5` + `git status --short` showing **no `src/` file modified**. Never
+`git checkout` — the repo memory note for that is `git-checkout-clobbers-uncommitted-mutation` and the
+command reads as "undo my mutation" in the moment. Commit the RED first if you can; then both are true.
+
+**Also worth noting:** a mutant that reds ONE test is a good result, not a weak one. Mutant A reddened
+exactly the per-stepped-frame assertion and left AC2/AC4 green — correct, since a per-rAF dispatch still
+plays cues and still respects the gate. A mutant that reds everything usually means the guards are
+coupled, not that they are strong.
+
+---
+
+### When a PREDECESSOR story pinned the behaviour you are about to change, it probably said so — grep its tests for your own story id before designing anything
+
+**Situation:** cp5-2's AC3 flips an unmapped event kind from throwing to degrading. cp5-1 had built the
+dispatch.
+
+**What was sitting there:** `tests/audio-dispatch.test.ts:1127-1137`, a describe block whose comment reads
+*"cp5-2 (wire the seam into main.ts) records this throw as a latent hazard... cp5-2 has to decide
+throw-vs-degrade, and it cannot make that decision against untested behaviour. This pins what the
+behaviour is TODAY so that the change reds when cp5-2 makes it deliberately."* Two `toThrow` assertions,
+written specifically to red on my story, with instructions.
+
+**Why it matters:** those two tests are green today and would have gone red the moment Dev implemented the
+ruling — and Dev cannot fix them, because Dev makes tests pass and does not move another story's
+goalposts. Inverting them is TEA's job (the sw3-15 "re-seat sibling tests in RED" rule), and doing it in
+place — turning each assertion over, keeping the control, recording the ruling and its evidence in the
+block's own header — is better than adding a parallel degrade block, which would leave the suite asserting
+both policies at once.
+
+**Prevention:** `grep -rn "<your-story-id>" plugins/<game>/tests/ src/ docs/` before writing a line. The
+predecessor's TEA often leaves the successor a note, a pinned baseline, or an explicit hand-off, and it
+lands in the one place nobody greps: a comment inside a passing test. Related and identical in shape: the
+SM-side rule about a guard test whose correct fate is DELETION (mg1-9), where the orchestrator suite going
+red mid-story is the expected signal rather than damage.
+
+**Corollary — check what the predecessor's guard actually REQUIRES before you scope the change.** cp5-1's
+`readDispatch` demands *exactly one* `switch` reachable from `playEventSounds` and *exactly one* `never`
+binding in its default arm, and forbids that arm from touching the engine. So "remove the throw" is safe
+but "restructure the dispatch" is not, and the compile-time guarantee was never in the throw at all —
+`EVENT_SOUND: Record<GameEventKind, SoundName>` carries it, as cp5-1 established by mutation. Read the
+predecessor's `verdict()` (or equivalent) and put its constraints in the Dev handoff; they are invisible
+from the diff Dev will be looking at.
