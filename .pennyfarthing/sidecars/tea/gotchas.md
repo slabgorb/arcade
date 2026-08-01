@@ -2893,3 +2893,30 @@ the unstaged bounders-only run asserted to count ZERO — green before and after
 the filter starts counting some third mechanism. Wave-1 demos spawn bounders only, so the guard
 STAGES hunter typing per-frame (jt5-10's re-apply rule: late materialisations must be staged
 too) — retype brains at the process map, never prime counters or positions.
+
+## Two runners, one contract: an identity assertion and a plain-node CLI can be JOINTLY unsatisfiable — probe with a temp refactor before handoff (jt5-2, 2026-08-01)
+
+**Situation:** the bake-tool RED wanted two guards at once: `expect(bake.SOUNDS).toBe(shell.SOUNDS)`
+(AC "derived, never hardcoded" made structural — a transcribed copy deep-equals today and silently
+misses jt5-6's SNPCR2 tomorrow) and `spawnSync(process.execPath, [tool, dir])` exits 0 (the justfile
+invokes bakes under PLAIN node, where the `@shared` alias in audio.ts's import chain does not
+resolve — a vitest-only bake dies at deploy time, and the engine's silent degrade hides it).
+Individually both are right; together no implementation importing audio.ts can satisfy them.
+
+**What worked:** prove joint satisfiability BEFORE handoff with a fifteen-minute probe — cp-backup
+audio.ts, extract SOUNDS+SoundName into a dependency-free `src/shell/audio-manifest.ts`, re-export
+from audio.ts (identity survives because vitest sees one module instance), point the throwaway bake
+at the manifest with an explicit `.ts` specifier (node 22.18 type stripping), run the FULL project.
+92 files green, zero sibling breaks, tsc clean — which also turns "Dev could maybe extract it" into
+a measured design note. Restore by cp + md5, never `git checkout` (uncommitted RED was present).
+This is the "PROBE YOUR OWN CONTRACT" rule with a sharper trigger: any suite asserting both a
+MODULE-GRAPH property (identity, instanceof, shared state) and an ALTERNATE-RUNNER property (plain
+node, a worker, a browser) is a joint-satisfiability suspect, because the two properties are
+satisfied in different module graphs.
+
+**Also, from the green-guard battery:** mutate the failure class the guard NAMES. "extended, not
+replaced" survived deleting the star-wars BAKE line (its `mkdir`/upload lines still carry the
+`star-wars/music` token) and correctly reddened on a wholesale joust-only rewrite — the first
+mutation was mis-aimed at the guard's claim, not proof of vacuity. The surviving mutant is a real,
+recorded coverage limit (token guards pin staging PRESENCE, not bake correctness; the deploy's own
+echo + the live-200 curls own that), but it is a limit to write down, not a test to force.
