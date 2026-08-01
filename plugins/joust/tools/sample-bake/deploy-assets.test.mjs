@@ -122,3 +122,21 @@ describe('jt5-2 AC5 — the README stops claiming silence, and says where the so
     expect(readme(), 'AC5: say where the sound actually lives').toMatch(/joust\/sfx/)
   })
 })
+
+describe('jt5-2 — the apparatus can fail (checklist #18: a duplicated helper is untested code)', () => {
+  it('flatten() un-wraps a blockquote-wrapped silence claim', () => {
+    // This file DUPLICATES audio-seam-scope.test.ts's flatten() rather than
+    // importing across suites; the original carries its own inertness controls
+    // and this copy must too, or a regression here turns every README
+    // negative above quietly green over untouched stale prose.
+    const wrapped = '> so the\n> game is still silent: `@shared/audio` degrades quietly'
+    expect(wrapped, 'precondition: the raw form must NOT match').not.toMatch(/game is still silent/)
+    expect(flatten(wrapped), 'the flattened form MUST match, or the negatives are inert').toMatch(
+      /game is still silent/,
+    )
+  })
+
+  it('flatten() leaves ordinary prose intact', () => {
+    expect(flatten('a  b\n c')).toBe('a b c')
+  })
+})
