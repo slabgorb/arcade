@@ -85,7 +85,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 7,
     listed: false,
     showcase: false,
-    version: '0.0.25',
+    version: '0.0.26',
   },
 ]
 
