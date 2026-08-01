@@ -175,9 +175,13 @@ const countOf = (g: GameState, kind: string): number =>
 // What is deliberately NOT here, and why — each is a Delivery Finding with its
 // ROM lines, not an oversight:
 //   • the FLAP (SNPLWD/SNPLWU, SNELWD/SNELWU) — a TWO-EDGE cue in the ROM
-//     (GOFLAP→FLAST2 :6207-6218 on the press, GOFLIP :6182-6184 on the
+//     (GOFLAP→FLAST2 :6212-6218 on the press, GOFLIP :6182-6184 on the
 //     RELEASE). Our core sees only the press edge (`input.flap`); the release
 //     edge needs state nothing tracks. Half a two-edge cue is worse than none.
+//     SUPERSEDED by jt5-3, which adds the release-edge detector and the four
+//     wing kinds. The deferred guard below no longer names the flap family, and
+//     tests/audio-flap.test.ts is what pins it. (The line extent above was also
+//     wrong: `GOFLAP` is :6212 and `FLAST2` :6216, not :6207.)
 //   • the THUDS (SNPTHD :5014, SNETHD :5019) — `collisionPass` COMPUTES the
 //     bounce and throws it away (`if (contact.outcome.kind !== 'kill')
 //     continue`, demo.ts:837), and `bounceTop`/`bounceBottom`/
@@ -222,11 +226,18 @@ describe('jt5-1 AC2 — core/events.ts declares the event channel', () => {
   })
 
   it('names no kind this story deliberately deferred — an unreachable cue can never be proven', async () => {
-    // The three deferred families above. A kind declared here but never emitted
-    // would sail through the manifest and dispatch sweeps (they read the same
-    // tuple) and ship as a cue that cannot fire — exactly the "certifies its own
-    // shape" failure. Each is owned by a Delivery Finding with its ROM lines.
-    const deferred = ['player-flap', 'enemy-flap', 'flap', 'player-thud', 'enemy-thud', 'thud', 'troll-grab']
+    // The deferred families above. A kind declared here but never emitted would
+    // sail through the manifest and dispatch sweeps (they read the same tuple)
+    // and ship as a cue that cannot fire — exactly the "certifies its own shape"
+    // failure. Each is owned by a Delivery Finding with its ROM lines.
+    //
+    // jt5-3 REMOVED 'player-flap', 'enemy-flap' and 'flap' from this list: it
+    // builds the release-edge detector, so the flap family now has emitters and
+    // forbidding it here would make this guard a lie. What remains is jt5-4's
+    // (the thuds) and uf1-10/uf1-11's (the lava troll's grab). The list is
+    // guarded in turn by tests/audio-flap.test.ts, which reads this array as
+    // source text and fails if the flap names come back OR if the thuds leave.
+    const deferred = ['player-thud', 'enemy-thud', 'thud', 'troll-grab']
     const kinds = await eventKinds()
     for (const kind of deferred) {
       expect(
