@@ -157,14 +157,26 @@ export function putObject({ bucket, key, file, contentType }) {
   );
 }
 
-// `options.upload` replaces the network call, and it is REQUIRED for any test that
-// exercises this function. Without it every object is PUT to the real bucket at its
-// real key: a test that injected a stub this function did not read overwrote the
-// production lobby and tempest on 2026-08-01, because an ignored option degrades
-// silently to the real deploy. It is destructured here, at the top, so that
-// "uploadDir reads options.upload" is checkable by reading four lines.
+// `options.upload` IS REQUIRED AND HAS NO DEFAULT. THIS IS DELIBERATE — DO NOT ADD ONE.
+//
+// It decides whether this function touches the live bucket, and a default would make
+// the dangerous choice the silent one. That is not a hypothetical: on 2026-08-01 a test
+// passed a stub to a version of this function that ignored it, every fixture object was
+// PUT to the real `arcade-lobby` bucket, and arcade.slabgorb.com served a 15-byte stub
+// until it was rebuilt. Restoring `= putObject` here re-arms exactly that: any caller who
+// forgets the option gets a production deploy instead of an error.
+//
+// So it fails CLOSED. Callers that mean to deploy say so — see the CLI entry at the
+// bottom, which is the one place in this repo that passes `upload: putObject`, and the
+// one place that should be making that choice out loud.
 export function uploadDir(distDir, bucket, keyPrefix = '', options = {}) {
-  const { upload = putObject } = options;
+  const { upload } = options;
+  if (typeof upload !== 'function') {
+    throw new Error(
+      'uploadDir requires an `upload` function in its options — it has no default, on purpose. ' +
+        'Pass `{ upload: putObject }` to really deploy, or a stub to record what would be uploaded.',
+    );
+  }
   const uploads = collectUploads(distDir, keyPrefix, { only: onlyFor(distDir, options) });
   for (const { key, file, contentType } of uploads) {
     console.log(`  ${bucket}/${key}  (${contentType})`);
@@ -181,5 +193,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error('Usage: node scripts/deploy-r2.mjs <distDir> <bucket> [keyPrefix] [--lobby-only]');
     process.exit(1);
   }
-  uploadDir(distDir, bucket, keyPrefix, { lobbyOnly });
+  // `upload: putObject` is the explicit, and only, opt-in to touching the live bucket.
+  uploadDir(distDir, bucket, keyPrefix, { lobbyOnly, upload: putObject });
 }
