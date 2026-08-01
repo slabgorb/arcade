@@ -7,16 +7,18 @@
 // this plan — so this suite is the only thing exercising it.
 
 import { describe, it, expect } from 'vitest'
-import { computeStatus, FIRE_CONE_COS, PLAYER_NEAR_RANGE } from '../../src/core/tie-status'
+import { computeStatus, PLAYER_NEAR_RANGE } from '../../src/core/tie-status'
 import { Status } from '../../src/core/tie-vm'
 import { makeSpaceState, makeTie, lookAtOrigin, lookAway, rngSeed } from './helpers/space'
 
 describe('computeStatus — the 6 gated bits', () => {
-  it('FIRE_CONE_COS is a plausible narrow-cone cosine threshold (TODO(playtest) 12°)', () => {
-    // cos(12°) ≈ 0.978 — close to 1 (a narrow cone), never a full hemisphere or wider.
-    expect(FIRE_CONE_COS).toBeGreaterThan(0.9)
-    expect(FIRE_CONE_COS).toBeLessThan(1)
-  })
+  // The FIRE_CONE_COS test that stood here asserted only 0.9 < cos < 1 — a band wide
+  // enough to hold every angle from 0° to 25°, so it pinned the INVENTED 12° about as
+  // loosely as a test can while still looking like coverage. uf1-15 retired the constant
+  // (C$AS is a fixed axis radius, not an angle) and moved its coverage to
+  // tie-aim-axis.test.ts, which pins the number instead of a range and derives it from
+  // WSCPU.MAC:615-618 + SWMP.DOC's PRE2. The two behavioural C_AS cases below still hold
+  // under the new law and stay here as the by-bit smoke tests they always were.
 
   it('sets C_AS when the cockpit (origin) is inside the TIE fire-cone', () => {
     // TIE on -Z looking at the origin: player dead ahead → in sights.
