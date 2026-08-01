@@ -1087,3 +1087,65 @@ battery's closing `git status` appeared ABOVE its per-mutation result lines, whi
 run. Either capture the subprocess output and `print` it, or `flush=True`. The dirty file was in fact
 `sprint/epic-ad1.yaml`, stamped `in_review` by `complete-phase` minutes earlier: benign pipeline
 bookkeeping, not battery damage.
+
+## A story's own "BLOCKED ON A DECISION FIRST" can be an assumption about WHO decides — measure the blocker's premise, not just its claims (jt8-7, 2026-08-01)
+
+**Situation:** jt8-7 arrived with an explicit instruction in its description: *"BLOCKED ON A
+DECISION FIRST: the ROM has four egg masks … and EggState carries no frame field, so the
+variant question must be answered before wiring — do not just hardcode CEGGUP."* Every clause
+of that was TRUE. Four masks exist; `EggState` really has no frame field.
+
+**And the blocker still dissolved.** The sentence assumes the variant choice is a PORT DESIGN
+decision, i.e. ours to make. It is not: `WEGG` (JOUSTRV4.SRC:3507) recomputes the egg's frame
+every single frame from `PVELX`'s sign and `PVELY` against `$0080` and stores only the
+resulting pointer. The ROM keeps no frame field *either* — which is precisely why our not
+having one is not a blocker. Both inputs were already on `EggState` as `velX`/`velY`.
+
+**The generalisation, and it extends the existing rules in this file.** The standing rule is
+"re-verify a parked story's blockers" and "measure a description's falsifiable claims". This
+adds a third shape: **a blocker can be built entirely from TRUE claims and still be false,
+because the false part is the implicit premise joining them.** The tell here was the phrase
+"the variant question must be answered" — a question is only ours to answer if the machine
+does not already answer it. So when a story says "decide X first", the first move is not to
+schedule the decision, it is to check whether the ROM decides X. That took ~15 minutes of
+reading and turned a parked-shaped 3-pointer into a specified 5-pointer.
+
+**What still went to the user:** the *scope* question (three still rows vs the full seven-row
+table), with the census attached — the four rows enumerated, the selector's truth table
+derived, the additive-ness verified by counting every source and mask, and the jt3-7 precedent
+located. Answered in one click. Fifth clean run of "attach the measurement, then ask".
+
+## A sidecar entry can assert a PROJECT FACT that is in no config file — and every later agent inherits it
+
+**Situation:** the SM sidecar's jt5-5 entry said *"This project also stands on 'do not use the
+Agent tool unless asked', so even preflight was not spawned."* Stated as settled project
+policy, in the file every SM reads before acting.
+
+**Problem:** the user challenged it, and a search found it in **no** config on disk — not
+`~/.claude/settings.json`, not the project `settings.json` or `settings.local.json`, not
+`CLAUDE.md`, not managed settings, not the launch args. The constraint the entry describes does
+exist in the session instructions, but the entry presented it as a property of *this repo*,
+which nothing on disk supports. It had been read forward as established practice.
+
+**Prevention:** sidecar entries are unguarded prose — no gate checks them, and the next agent
+treats them as measured. When writing one that asserts a PROJECT-WIDE fact (a policy, a
+setting, a convention), cite the file and line that establishes it, exactly as we require of a
+ROM claim. If you cannot cite one, write it as an observation about that session ("this run did
+not spawn subagents") rather than about the project. Same family as the user memory
+`prose-claims-are-the-unguarded-surface`, one level up: there the false sentence was in a code
+comment, here it was in the institutional memory itself, where it propagates further and faster.
+
+## Check the owner's MECHANISM, not its theme — third confirmation, and this time the near-miss was one loop away
+
+Routing jt8-7's ptero finding, `jt5-17` looked like the owner: same game, same subsystem
+(collision), same creature (pterodactyl), `status: backlog`. Reading its description settled it
+in one minute — jt5-17 owns the **pair loop's** mixed-pair skip (`PTEBRD` routing so a ptero and
+a BUZZARD resolve at all, a pair that currently resolves *nothing*), while the finding is the
+**player↔ptero** pass, which already resolves via `resolvePteroAttack` and does so with the
+wrong geometry. Different loop, different routine, different failure.
+
+Two things this adds to the ad1-2 entry. First, the collision was closer than usual — not
+"same theme, different subsystem" but "same subsystem, adjacent loops in the same function",
+which is exactly the distance at which a groomer merges two stories. Second, the fix is the
+same: the new story (`jt8-13`) carries an explicit *"WHY THIS IS NOT jt5-17"* paragraph, because
+the reasoning has to live where the collision will be noticed, not only in an archived session.
