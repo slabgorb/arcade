@@ -296,11 +296,13 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 // loseShield :633, gate :662). The surface stepper had them reversed, so this
 // port had to RE-ORDER the decision below the shield resolution, not wrap it.
 //
-// Two of these tests exist specifically to refute the near-misses. Both turn on
-// where the crossing is COMPUTED (`const scrollSpeed`, :983), which sits between
-// the surface's two damage sources — the terrain scrape above it (:965-969) and
-// the turret bolt's hit-test below it (:1113-1120):
-//   - the turret-bolt case lands damage BELOW that point, so a fix reading the
+// Two of these tests exist specifically to refute the near-misses, and both turn
+// on the same structural fact: the surface accrues `damage` at SEVERAL points,
+// some above where the crossing is computed (`const scrollSpeed`, :983) and some
+// below it, while `loseShield` (:1122) is the ONE place damage becomes death.
+// That is why the gate must read `loseShield`'s result and not any earlier proxy
+// — and it stays true however many damage sources the stepper grows:
+//   - the turret-bolt case lands damage BELOW the crossing, so a fix reading the
 //     local `damage` counter there sees 0 and still fires;
 //   - the S-016 case has damage land and be DROPPED by the redraw window, so a
 //     fix gating on `damage > 0` silences a cue the pilot should hear.
@@ -366,13 +368,13 @@ describe('sw8-21 — a finishGround crossing on the death frame cues NOTHING', (
   })
 
   it('silences it for a TURRET BOLT too — damage that lands BELOW the cue site', () => {
-    // The crossing is computed at `const scrollSpeed` (sim.ts:983), which sits
-    // BETWEEN the two surface damage sources: the terrain scrape above it
-    // (:965-969) and the bolt's hit-test below it (`liveShots`, :1113-1120).
-    // So at the moment the crossing is known, `damage` counts a scrape but is
-    // still 0 for a bolt — and a fix that gated on `damage` there would pass the
-    // scrape test above and fail this one. Only the post-`loseShield` `lives`
-    // (:1122-1123) sees both.
+    // The bolt's hit-test (`liveShots`, sim.ts:1113-1120) runs BELOW the point
+    // where the crossing is computed (`const scrollSpeed`, :983), so at that
+    // point this frame's `damage` counter has not yet seen the bolt — whereas
+    // the terrain scrape above it (:965-969) has already been counted. A fix
+    // that gated on `damage` at the crossing would therefore pass the scrape
+    // test above and fail this one. Only the post-`loseShield` `lives`
+    // (:1122-1123) sees every source, whatever they are.
     const ship = surfaceShip(SKIM_ALTITUDE)
     const out = stepGame(
       atCrossing({
