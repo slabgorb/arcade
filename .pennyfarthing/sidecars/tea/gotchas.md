@@ -2850,3 +2850,46 @@ could not identify was `DPLYR`, "RIDERS IMAGE" (`:109`), and a pterodactyl has n
 "zeroed RUN entries" reading collapsed because the skid, fall and transporter cues are equally
 unreachable and are NOT zeroed. Both were offered as supporting evidence for the answer, and
 neither survived. Killing them early stops them being quoted forward into the record.
+
+## Joust has TWO (x,y)→mask table pairs, and story prose WILL conflate them — place fixtures where the pairs disagree (jt8-3, 2026-08-01)
+
+**Situation:** jt8-3's description and AC-1 said "our arena.groundMaskAt is that BCKXTB/BCKYTB
+analog — both cases pinned against arena.groundMaskAt." It is not: `groundMaskAt` is the LANDING
+pair (`CKGND LDA LNDXTB,X / ANDA LNDYTB,Y`, :6705-6706, thin 4-scanline landing strips), while
+`B2DIR`/`SHDIR` sample the BACKGROUND-collision pair (`BCKXTB±B2XLEN / BCKYTB`, :4119-4120, tall
+box broad-phase) — transcribed separately as `BCK_X_TABLE` (flight.ts) and `BCK_Y_TABLE`
+(arena.ts). A look-ahead built on the landing pair would almost never fire (the thin bands) and
+every test staged "at a cliff" would quietly measure the wrong map.
+
+**Prevention:** when a mechanic samples "the arena mask," ask WHICH of the two maps the cited
+lines index before trusting any port-side symbol the story names. Then make the choice mechanical:
+probe the transcribed tables for coordinates where one pair is solid and the other reads zero, and
+assert BOTH facts as fixture premises inside the test (`bck(x+31,y) ≠ 0` AND `groundMaskAt(x+31,y)
+=== 0`). The M1 mutant (swap the sampler) reddened 12 tests because every fixture sat in the
+disagreement zone; on agreeing coordinates it would have survived. Deviate the AC's letter in the
+session file — do not silently "interpret" it.
+
+## An index that only moves on FLAP EDGES makes "it slows down" a two-phase observable — measure the arc before pinning a window
+
+jt8-3's brake ("the turn thrusts against the old motion") looked immediate: the turn wake flaps,
+FLYX 8→6. But the index ONLY changes on flap edges (`ADDFLP` :6437-6439), and the turn's own lift
+put the fixture into a ~44-wake flapless CLIMB (gravity 8/wake against velY −348) before the
+level law's flap-hover could spend the rest. A 40-wake window asserted `≤ 0` and measured 6; the
+truth was first-zero at wake 65. Two rules: (1) any "decays over time" assertion on a flap-edge
+quantity must budget the flapless half of the arc — trace the trajectory first, then set the
+window from the measured crossing with margin, and write the measured number into the comment;
+(2) the sharp per-wake pin (facing flipped AND index stepped −2 ON the turn wake, staged RISING
+so the brain's own law contributes no flap) is the discriminating assert — the long window only
+proves the drift reverses eventually.
+
+## In-play attribution without an event id: a mechanism that DOESN'T touch a field is identified by that field's stillness
+
+jt8-3's in-play guard had to count look-ahead turns in a demo where jt8-2's homing ALSO flips
+facing. No turn carries a cause tag — but every homing flip rewrites `homing` (`CLR PRDIR,U` ⇒
+`{prdir: 0}` from a pre-flip value in [1,$80]), and steering touches facing alone. So "facing
+changed AND `homing` structurally unchanged AND same-physical-bird (airborne both frames, |Δx| ≤
+8 — an id reused by a respawn teleports)" is a sound steering signature. The soundness CONTROL is
+the unstaged bounders-only run asserted to count ZERO — green before and after, it fails the day
+the filter starts counting some third mechanism. Wave-1 demos spawn bounders only, so the guard
+STAGES hunter typing per-frame (jt5-10's re-apply rule: late materialisations must be staged
+too) — retype brains at the process map, never prime counters or positions.
