@@ -250,5 +250,59 @@
       "line": 5053,
       "verbatim": "OSTXTT\tJSR\tOSTXTP\t\tREG.X WILL BE RESTORIED"
     }
+  },
+  {
+    "id": "JT510-001",
+    "claim": "P7DEC, the pterodactyl's decision block, binds the SAME wing-up/wing-down tables as every buzzard block (SNELWU, SNELWD in slots 1 and 2). The row is COMPLETE on its own line: its nine FDB words map one-for-one onto the nine sound offsets DSNWU through DSNCRE declared at JOUSTRV4.SRC:118-126, so no continuation line extends it. This binding is the QUESTION jt5-10 answers, not the answer: a decision block's sound field means nothing unless something loads through it.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5576,
+      "verbatim": "\tFDB\tSNELWU,SNELWD,SNEMSK,SNEMS2,0,0,SNEFAL,0,SNECRE"
+    }
+  },
+  {
+    "id": "JT510-002",
+    "claim": "A pterodactyl is created by PTERST (JOUSTRV4.SRC:1423) / BAITST (:1427), and creation ends by branching to PTESTF — a label INSIDE the body of the PTEFLY flight loop (:1491-1510). So the bird begins life in its own loop and never passes through the knight/buzzard ground-and-flight state machine that owns the wing cues.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1487,
+      "verbatim": "\tBRA\tPTESTF"
+    }
+  },
+  {
+    "id": "JT510-003",
+    "claim": "PTEFLY is a CLOSED loop: its final instruction is an unconditional branch back to its own head, so control never falls out of the bottom into neighbouring code. The only ways out are a PJOY swap (which changes which intelligence routine runs, not the process PC) and the death path. This is the hop that makes the wing loaders unreachable.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1510,
+      "verbatim": "\tBRA\tPTEFLY"
+    }
+  },
+  {
+    "id": "JT510-004",
+    "claim": "Every reference to a flap-loop label (FLAPLP, FLIPLP, FLAPS2, FLIPS2, FLAPST, FLIPST, GOFLIP, GOFLAP, FLAST2, WINGDN, WINGFK) in the whole of JOUSTRV4.SRC lies within :6135-6226. Only three of those mentions sit outside the loop body itself, and this line is one: it is the tail of STFLY, 'START TO FLY' (:6121-6135). The other two are STFALL's BNE FLAPS2 / BRA FLIPS2 (:6156-6157). Both routines are GROUND-state transitions — taking off, and falling off a cliff — which a bird that never lands cannot make. SRCADP clamps the pterodactyl at $D3-1 and clears PVELY (:1526-1531), and PTEFLY never calls CKGND.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6135,
+      "verbatim": "\tJMP\tFLAST2"
+    }
+  },
+  {
+    "id": "JT510-005",
+    "claim": "AIROVR ends by returning the joystick word in registers A and B, so a pterodactyl is handed the flap bit on every wake exactly as a buzzard is. The buzzard's loops act on that register with TSTB (:6168, :6195); PTEFLY contains no TSTB and no reference to DSNWU or DSNWD, so the value is discarded. Being given the bit and ignoring it is what distinguishes a bird with no wing cue from a bird that was never offered one.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6480,
+      "verbatim": "\tLDD\tCURJOY\t\tGIVE BACK JOYSTICK POSITION"
+    }
+  },
+  {
+    "id": "JT510-006",
+    "claim": "The sixth word of P7DEC's first row is 0 where the buzzard blocks carry PLYR3/PLYR4/PLYR5, which invites the reading that a pterodactyl has no animation table. The decision-block offset map refutes it: field 6 is DPLYR, the RIDER'S image. A pterodactyl carries no rider, so the zero is expected and says nothing about flapping. The bird's wing ANIMATION is real and lives elsewhere — PTESEQ (:1580-1583) cycles FLY1, FLY2, FLY3, FLY2 on an 8-tick hold driven by the frame timer in PTESTF (:1493-1503), with no flap bit involved.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 109,
+      "verbatim": "DPLYR\tRMB\t2\tRIDERS IMAGE"
+    }
   }
 ]

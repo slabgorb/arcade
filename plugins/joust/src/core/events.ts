@@ -70,8 +70,8 @@ export const EVENT_KINDS = [
   'cliff-destroyed', //    a wave's status nibble took a cliff out — SNCLIF
   'player-wing-down', //   a knight pressed the flap (or flap-took-off) — SNPLWD
   'player-wing-up', //     a knight released the flap — SNPLWU
-  'enemy-wing-down', //    a buzzard's wings went down on its wake — SNELWD
-  'enemy-wing-up', //      a buzzard's wings went up on its wake — SNELWU
+  'enemy-wing-down', //    a buzzard's wings went down — SNELWD. NEVER a ptero (jt5-10)
+  'enemy-wing-up', //      a buzzard's wings went up — SNELWU. NEVER a ptero (jt5-10)
   'player-thud', //        a tie involving a person — SNPTHD (priority 020)
   'enemy-thud', //         an enemy-vs-enemy (or ptero-vs-ptero) tie — SNETHD (priority 009)
 ] as const

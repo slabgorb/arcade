@@ -858,7 +858,7 @@ function collisionPass(processes: readonly DemoProcess[]): {
 } {
   const eligible = processes.filter(
     (p) => (p.kind === 'player' || p.kind === 'enemy') && p.collisionEnabled !== false,
-  )
+  ) // NO ptero here, and the ROM disagrees: OSTHT2 — see the jt5-10 note at the foot of this file
   const removed = new Set<number>()
   const spawned: DemoProcess[] = []
   const events: DemoEvent[] = []
@@ -1492,3 +1492,42 @@ export function drawList(demo: DemoState): DrawOp[] {
 
   return [...back, ...entities, ...fore]
 }
+
+// ─── KNOWN GAP: PTERO-VS-PTERO NEVER COLLIDES HERE (jt5-10) ──────────────────
+//
+// `collisionPass`'s eligible set filters to `player | enemy`, and a ptero is
+// resolved only through `resolvePteroAttack` against a PLAYER. So two pteros
+// never meet in this port. The ROM does not agree, and the divergence is
+// recorded here rather than fixed: the fix is a gameplay change, and the user's
+// jt5-10 ruling moved it to its own story.
+//
+// Appended at the foot of the module deliberately. Inserting these lines beside
+// `collisionPass` would shift roughly a hundred `demo.ts:N` citations that other
+// suites and several ARCHIVED sessions carry, and archived sessions are
+// permanent records that cannot be corrected.
+//
+// WHAT THE ROM DOES. `OSTHT2` sounds the cue FIRST and dispatches on species
+// afterwards, so the thud is already playing before anyone knows who collided:
+//
+//   :5019  OSTHT2  LDX  #SNETHD     ENEMIES COLIDE
+//   :5020          JSR  VSND
+//   :5022-5027     LDA PID,U / CMPA #$80+PTEID / BEQ OSTH12
+//                  LDA PID,X / CMPA #$80+PTEID / BEQ OSTH13
+//   :5031-5033  OSTH12  LDA PID,X / CMPA #$80+PTEID / BEQ OSTH11
+//   :5028       OSTH11  JSR OSTBMP  NO-ONE DIES, BUT BUMP EACH OTHER ANYWAYS
+//
+// A ptero-vs-BIRD pair goes to PTEBRD (:5034, and :5037-5038 after `EXG X,U` so
+// the ptero is in U). A ptero-vs-PTERO pair falls back to OSTH11 — the ordinary
+// bump — with SNETHD already sounded. The branch is reached from
+// `:4961  BNE OSTHT2   BR=NO KILL (ENEMY VS. ENEMY, PTERO VS. PTERO)`.
+//
+// SO THE CUE IS REACHABLE IN PRINCIPLE AND UNREACHABLE IN FACT. jt3-5's baiters
+// cap at three live pteros (`src/core/baiter.ts`), so two really do coexist in
+// ordinary play; `enemy-thud` already exists as a kind and its comment in
+// `src/core/events.ts` already names ptero-vs-ptero. Only the eligible set is
+// missing — which is exactly why widening it is a mechanic, not a cue fix.
+//
+// The ROM routing above is pinned verbatim by
+// tests/audio-ptero-wing-source.test.ts, which ALSO guards that the eligible-set
+// filter stays as it is, so this gap cannot be closed by accident in a story
+// that did not price it.

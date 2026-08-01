@@ -218,3 +218,73 @@ export function pteroWaveSpawnCount(
 ): number {
   return dispatchWaveType(status, players) === 'ptero' ? pterodactyls : 0
 }
+
+// ─── THE WING-CUE QUESTION, SETTLED (jt5-10) ─────────────────────────────────
+//
+// THE ANSWER: the pterodactyl NEVER reaches FLAPLP/FLIPLP, so it sounds NO wing
+// cue. It is silent by design, not by omission, and jt5-2 needs no ptero wing
+// sample. This section is appended at the foot of the module rather than added
+// to its header on purpose: inserting lines above would shift every `ptero.ts:N`
+// citation in the ARCHIVED jt3-4/jt3-5/jt3-7 sessions, which are permanent
+// records and cannot be corrected.
+//
+// THE QUESTION, because the answer is worthless without it. P7DEC — the ptero's
+// decision block — binds the buzzards' wing cues exactly as every enemy block
+// does (`FDB SNELWU,SNELWD,SNEMSK,SNEMS2,0,0,SNEFAL,0,SNECRE`, JOUSTRV4.SRC:5576).
+// A block only needs DSNWU/DSNWD bound if something loads through them, and the
+// two and only two loaders are GOFLIP (JOUSTRV4.SRC:6183) and FLAST2
+// (JOUSTRV4.SRC:6217), both inside the FLAPLP/FLIPLP loops. So the binding poses
+// the question; it does not answer it.
+//
+// THE REFUTED BRANCH, named so nobody re-opens this with less evidence: "the
+// ptero runs the same FLAPLP/FLIPLP loops as the buzzard, therefore it flaps
+// audibly and the port is missing a cue." It does not, and here is the chain:
+//
+//   1. A ptero is created by PTERST (JOUSTRV4.SRC:1423) / BAITST (:1427), which
+//      ends `BRA PTESTF` (:1487) — landing INSIDE its own flight loop's body,
+//      never in the knight/buzzard state machine.
+//   2. PTEFLY (:1491) is closed: its last instruction is `BRA PTEFLY` (:1510),
+//      unconditional. Control does not fall out of the bottom.
+//   3. Every mention of a flap-loop label in the whole file lies within
+//      :6135-6226. The only mentions OUTSIDE the loop body are STFLY's
+//      `JMP FLAST2` (:6135, "START TO FLY") and STFALL's `BNE FLAPS2` /
+//      `BRA FLIPS2` (:6156-6157, "START TO FALL") — both ground-state
+//      transitions belonging to a bird that lands.
+//   4. A ptero makes neither. PTEFLY never calls CKGND, and SRCADP clamps it at
+//      `$D3-1` while clearing PVELY (:1526-1531), so it never lands and never
+//      falls out of the world.
+//   5. AIROVR hands the flap bit back in register B (`LDD CURJOY`, :6480) to a
+//      ptero exactly as it does to a buzzard — and PTEFLY DISCARDS it. The
+//      buzzard's loops act on that register with `TSTB` (:6168, :6195); there is
+//      no TSTB anywhere in the ptero's loop.
+//
+// COROBORATION, because a single chain deserves a second witness: the wing pair
+// is not specially dead — P7DEC's WHOLE sound row is. Each of its nine fields is
+// read at exactly one site, and every one of those sites sits in the
+// ground/landing machine the ptero cannot enter: DSNWU :6183, DSNWD :6217,
+// DSNSK :7238, DSNSK2 :5987, DSNFAL :6142, DSNTREF :5893, DSNCRE :5718 (DSNRU1
+// and DSNRU2 are the two entries P7DEC zeroes). The pterodactyl's entire sound
+// repertoire in its own code is two immediates that never touch PDECSN:
+// SNPTEI (:1467, the introduction) and SNPTE (:1173, the attack call).
+//
+// THE TRAP THIS DISARMS: the ptero DOES animate its wings. PTESEQ (:1580-1583)
+// cycles FLY1, FLY2, FLY3, FLY2 on an 8-tick hold, driven by the frame timer in
+// PTESTF (:1493-1503) with no flap bit involved. It beats its wings visibly and
+// silently, on a clock. Seeing four wing frames and inferring a cue is precisely
+// the mistake jt5-10 was filed to prevent.
+//
+// TWO READINGS THAT LOOK LIKE EVIDENCE AND ARE NOT, both refuted here so they
+// are not quoted forward:
+//   • "P7DEC zeroes the two RUN entries, consistent with a bird that never
+//     touches the ground." True textually, and not a discriminator: if never
+//     landing were the principle, SNEMSK (skid), SNEMS2 (skid end) and SNEFAL
+//     (falling) would be zeroed too. They are not. The row is boilerplate
+//     carrying two arbitrary zeros.
+//   • "P7DEC's sixth field is 0 where the buzzards carry PLYR3/4/5 — perhaps an
+//     animation table." It is DPLYR, "RIDERS IMAGE" (JOUSTRV4.SRC:109). A
+//     pterodactyl has no rider. Noise, not evidence.
+//
+// Pinned by tests/audio-ptero-wing-source.test.ts, which re-derives every hop
+// above with the independent reader and guards the silence two ways — a staged
+// flight that must emit no wing cue, and a source pin on frame.ts's ptero
+// branch. The claims are JT510-001..006.
