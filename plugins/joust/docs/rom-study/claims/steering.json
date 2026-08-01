@@ -19,7 +19,7 @@
   },
   {
     "id": "JT83-003",
-    "claim": "B2DIRL is the hunter's lava gate on the episode exits into the look-ahead: PPOSY+1 below $D3 branches to B2DIR (steer); at or below $D3 the falling case jumps to BOLAVA (the standard lava avoid) and only a rising bird still steers. Complete write set of the gate: none \u2014 it writes no field, it only routes.",
+    "claim": "B2DIRL is the hunter's lava gate on the episode exits into the look-ahead. Numerically: PPOSY+1 < $D3 branches to B2DIR and steers; PPOSY+1 >= $D3 with the bird falling (PVELY >= 0) jumps to BOLAVA, the standard lava avoid, and only a rising bird still steers. Both comparisons are BLO-inclusive at the line itself \u2014 $D3 exactly is the BOLAVA side. Complete write set of the gate: none \u2014 it writes no field, it only routes.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 4098,

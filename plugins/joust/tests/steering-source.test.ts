@@ -158,10 +158,10 @@ describe.skipIf(!vendoredAvailable)('the steering laws are really in the 1982 so
   })
 
   it('PPVELX is written at exactly THREE brain sites — :3908 (BOLEV), :4059 (B2LEV), :4282 (SHLEP)', () => {
-    // The complete write set across the smart-brain region. enemy.ts:91-93
-    // currently claims "written in exactly one place — BOLEV"; that universal is
-    // FALSE (it was true of the BOUNDER brain alone, jt8-2's scope) and the
-    // GREEN phase must reword it. This enumeration is the evidence.
+    // The complete write set across the smart-brain region. jt8-2's HomingState
+    // doc claimed "written in exactly one place — BOLEV" — a false universal
+    // (true of the BOUNDER brain alone); jt8-3's GREEN reworded it to the three
+    // enumerated sites. This enumeration is the evidence that rewording holds.
     const writes = sourceLines('JOUSTRV4.SRC')
       .slice(3786, 4320) // :3787-4320, the three smart brains
       .map((l, i) => ({ l, n: 3787 + i }))

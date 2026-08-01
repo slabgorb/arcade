@@ -270,6 +270,20 @@ describe('AC-1 — the hunter’s lava gate is $D3 (B2DIRL :4097-4102), the shad
     expect(r.turned, '207 < $D0 — SHDIR proceeds to the look-ahead').toBe(true)
     expect(r.enemy.facing).toBe(-1)
   })
+
+  it('both gates are INCLUSIVE at their own scanline — $D3 exactly gates the hunter, $D0 exactly gates the shadow', () => {
+    // Review round 1: both `>`-for-`>=` mutants survived the whole suite —
+    // 207/209/212 fixtures behave identically under either comparison, so the
+    // boundary scanline itself was unguarded. The ROM's BLO branches make both
+    // gates inclusive: CMPA #$D3 / BLO B2DIR (:4098-4099) and CMPA #$D0 / BLO
+    // 1$ (:4331-4332) steer strictly BELOW the compare value only.
+    expect(bck(LAVA_X + XLEN, 0xd3 + 16), 'premise: the hunter boundary dive samples solid').not.toBe(0)
+    expect(bck(LAVA_X + XLEN, 0xd0 + 16), 'premise: the shadow boundary dive samples solid').not.toBe(0)
+    const hunterAtLine = S.steerWake(hunterAt(LAVA_X, 0xd3, 8, { velY: 0x200 }), null)
+    expect(hunterAtLine.turned, 'at $D3 exactly, falling ⇒ BOLAVA, not B2DIR').toBe(false)
+    const shadowAtLine = S.steerWake(shadowAt(LAVA_X, 0xd0, 8, { velY: 0x200 }), null)
+    expect(shadowAtLine.turned, 'at $D0 exactly, falling ⇒ BOLAVA, not SHDIR').toBe(false)
+  })
 })
 
 describe('AC-1/AC-2 — the shadow looks ahead ONLY on the no-players route (SHLEV → SHDIR)', () => {
