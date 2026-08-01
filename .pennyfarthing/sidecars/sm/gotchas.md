@@ -532,3 +532,19 @@ byte-size are not enough (the stub was a plausible 1265 bytes). A context that s
 for a story you just measured is the tell. Fix: author it yourself (context is SM-owned markdown;
 mirror the session ACs verbatim, add the measured Background with citations, end with a
 do-not-regenerate line) BEFORE the claim commit, so the committed context is the good one.
+
+## `pf sprint story add` mints its OWN id — read it from the output before the follow-up `--description` update, and audit the `repos:` it auto-writes (sw8-10 finish, 2026-08-01)
+
+Filed the sw8-10 follow-up with `story add mg1 …` and immediately ran `story update mg1-11
+--description …` on a GUESSED id. The add had minted `mg1-15`; mg1-11 was an existing 5-point
+story whose real description ("PLAN DEFECT 14…, two test runners") got silently replaced — pf
+reports "Updated story mg1-11" either way. Caught only because the epic diff was read before
+committing. Recovery: restore the original text verbatim via `story update` (heredoc with a
+quoted delimiter — the text carried backticks) and verify with a parse asserting the old text is
+back AND the new story's fields are right.
+
+Two more facts from the same filing: the add wrote `repos: pennyfarthing` (not `arcade`) — audit
+the new story's `repos:` every time, and `story update` has NO --repos flag, so a wrong value
+takes one surgical sed + parse to fix. And the completed-archive already carries a PRE-EXISTING
+duplicate id (SH2-18, twice on origin) — inherited, not from today's union; worth a cleanup chore
+someday, but never "fix" it mid-rebase.
