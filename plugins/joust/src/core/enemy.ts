@@ -447,6 +447,24 @@ export function promote(
         '(JOUSTRV4.SRC:3766)',
     )
   }
+  // jt9-1 (review R-4): the same class of impossible state, one field over.
+  // AC6 removed this function's `pjoy: undefined` because a dumb bird's PJOY is
+  // only ever absent or a glide — and a glide can no longer reach here at all,
+  // since `frame.ts` skips the promotion check while one is pending. That is
+  // true of production (both spawn sites pair `pchase: 0` with `brain: 'linet'`,
+  // `demo.ts:425` and `:654`, and nothing demotes) but nothing ENFORCED it, so
+  // the deletion rested on an argued invariant rather than a checked one.
+  // Constructed and measured during review: a `{pchase: 0, brain: 'boundr',
+  // pjoy: {kind:'interval'}}` enemy carried that interval straight through into
+  // its smart brain. Refuse it here, where the neighbouring invariant is already
+  // refused, rather than re-adding a clear that would silently paper over it.
+  if (enemy.pjoy !== undefined) {
+    throw new Error(
+      `a dumb enemy reaching promotion carries no PJOY state — got ${enemy.pjoy.kind}. ` +
+        'A glide cannot reach LNTSMT (JOUSTRV4.SRC:3722-3724, skipped by a wake ' +
+        'entering at :3759) and the smart cadences never run on a linet bird.',
+    )
+  }
   // jt9-1 (AC6): `pjoy` is NOT cleared here any more, because it cannot be set.
   // Promotion is now gated on the glide (`frame.ts`), and a dumb `linet` bird's
   // `pjoy` is only ever absent or a glide — never `interval`/`wing`, which

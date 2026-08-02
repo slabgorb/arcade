@@ -174,6 +174,31 @@ describe('AC-1/AC-2 — promotion switches the enemy onto its smart brain', () =
     const alreadySmart = enemyAt(0x80, { brain: 'boundr', pchase: 1, decision: 'boundr' })
     expect(() => e.promote(alreadySmart, { nsmart: 1, wsmart: 4 })).toThrow()
   })
+
+  it('REFUSES an enemy that arrives carrying PJOY state — the invariant AC6 rests on', async () => {
+    // jt9-1 (review R-4). AC6 deleted this function's `pjoy: undefined` clear
+    // because nothing can reach it carrying state: a glide cannot, since
+    // `frame.ts` skips the promotion check while one is pending; and the smart
+    // cadences (`interval`/`wing`/`dwell`) never run on a `linet` bird. That is
+    // true of production — both spawn sites pair `pchase: 0` with
+    // `brain: 'linet'` and nothing demotes — but it was ARGUED, not checked, and
+    // measured during review the deleted clear really did let a constructed
+    // `{pchase: 0, brain: 'boundr', pjoy: {kind:'interval'}}` carry its interval
+    // into the smart brain. The guard belongs beside the PCHASE one above.
+    const e = await loadEnemy()
+    const carrying = enemyAt(0x80, {
+      brain: 'boundr',
+      pchase: 0,
+      decision: 'boundr',
+      pjoy: { kind: 'interval', timer: 9 },
+    })
+    expect(() => e.promote(carrying, { nsmart: 0, wsmart: 4 })).toThrow(/carries no PJOY state/)
+
+    // CONTROL — the same enemy without the state promotes cleanly, so the throw
+    // above is about the PJOY and not about anything else in the fixture.
+    const clean = enemyAt(0x80, { brain: 'linet', pchase: 0, decision: 'boundr' })
+    expect(() => e.promote(clean, { nsmart: 0, wsmart: 4 })).not.toThrow()
+  })
 })
 
 // ═════════════════════════════════════════════════════════════════════════════

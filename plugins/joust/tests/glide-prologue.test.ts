@@ -28,7 +28,7 @@ import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { linet, promote, seedBudget, stepEnemyDetailed, type EnemyState } from '../src/core/enemy.js'
 import type { PlayerInput } from '../src/core/flight.js'
 import { waveValue } from '../src/core/difficulty.js'
-import { createWaveDemo, stepDemo, type DemoState } from '../src/core/demo.js'
+import { createWaveDemo, stepDemo, type DemoState, type DemoProcess } from '../src/core/demo.js'
 
 // ─── the two harnesses, named so the difference is impossible to lose ────────
 
@@ -355,19 +355,34 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
     return d
   }
 
-  it('CONTROL — a troll really does spawn, so the claim below has a subject', () => {
-    // Measured at setup: in NATURAL play the looker is unreachable — zero
-    // troll-present frames across three seeds x 6000 frames x both harnesses,
-    // because `trollSpawnable` needs `bridgeBurned && wave >= 4` and seeded play
-    // reaches only wave 1-3. Forcing the wave is therefore the only way to
-    // observe the arrangement at all, and saying so is the point of this control.
+  it('the troll precedes the enemy it was inserted at — BEFORE, not after', () => {
+    // Review R-2: the first form asserted `procs[at + 1].kind === 'enemy'`, which
+    // is true whether the troll is placed BEFORE or AFTER its victim — six
+    // enemies exist at the troll wave, so the kind repeats and the ordering claim
+    // evaporated. Mutation-proven: inverting the placement passed all 2496 tests.
+    //
+    // `:6778  LDU PPREV  AFTER PREVIOUS PROCESS (BEFORE THIS ONE)` — the word
+    // under test is BEFORE, so the assertion has to be POSITIONAL against the
+    // insertion point. `insertTroll` splices at the first enemy, so a correct
+    // insertion leaves that enemy at the troll's index + 1; an inverted one
+    // leaves it at the troll's index − 1. Comparing the two indices tells them
+    // apart; comparing kinds cannot.
     const d = atTrollWave(0x1234)
-    expect(d.wave, 'the troll wave').toBeGreaterThanOrEqual(4)
-    expect(d.sim.processes.filter((p) => p.kind === 'troll').length, 'exactly one troll').toBe(1)
-    expect(d.sim.processes.some((p) => p.kind === 'enemy'), 'and enemies to look behind them').toBe(true)
+    const procs = d.sim.processes
+    const t = procs.findIndex((p) => p.kind === 'troll')
+    const firstEnemy = procs.findIndex((p) => p.kind === 'enemy')
+    expect(t, 'floor — the troll spawned').toBeGreaterThanOrEqual(0)
+    expect(firstEnemy, 'floor — there is an enemy to insert in front of').toBeGreaterThanOrEqual(0)
+    expect(firstEnemy, 'the first enemy sits DIRECTLY AFTER the troll').toBe(t + 1)
+    // Said the other way, so an inverted splice cannot satisfy it by symmetry:
+    // nothing of kind `enemy` may precede the troll.
+    expect(
+      procs.slice(0, t).filter((p) => p.kind === 'enemy'),
+      'no enemy may precede the troll — that is what "BEFORE THIS ONE" forbids',
+    ).toEqual([])
   })
 
-  it('RED — the troll is inserted BEFORE an enemy, not appended at the list end', () => {
+  it('the troll is not appended at the list end', () => {
     // :6778 `LDU PPREV  AFTER PREVIOUS PROCESS (BEFORE THIS ONE)` — the ROM
     // creates the troll immediately before its victim, and that placement is the
     // ONLY reason `LDX PPREV / LDA PID,X / CMPA #LAVID` can ever be true. Our
@@ -382,17 +397,7 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
     expect(procs[at + 1]?.kind, 'the process immediately after the troll is its victim').toBe('enemy')
   })
 
-  it('RED — the looker channel is fed from real adjacency, not hard-coded', () => {
-    // The law that makes the previous test matter: `lavaBehind` must come from
-    // the scheduler's own wake order, and the countdown must be live on the
-    // birds that run LINET.
-    //
-    // SCOPE, stated because the obvious stronger assertion is wrong: this does
-    // NOT require the troll's immediate neighbour to carry a countdown. At the
-    // troll wave that neighbour is often an ALREADY-PROMOTED bird, and the smart
-    // brains' lookers — the same eight instructions at :3787 (BOUNDR), :3971
-    // (B2UNDR) and :4230 (SHADOW) — are deliberately not ported here, because
-    // only LINET's sits in a skipped prologue. They are filed as a follow-up.
+  it('the looker channel is fed from real adjacency, not hard-coded', () => {
     const d = atTrollWave(0x1234)
     const stepped = stepDemo(d)
     const procs = stepped.sim.processes
@@ -400,16 +405,95 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
     expect(dumb.length, 'floor — there must be dumb birds to carry a countdown').toBeGreaterThan(0)
     for (const p of dumb) {
       expect(
-        typeof (p.enemy as { plavt?: number } | undefined)?.plavt,
+        (p.enemy as { plavt?: number } | undefined)?.plavt,
         'every LINET bird carries a live looker countdown',
-      ).toBe('number')
+      ).toBe(waveValue('LAVLAV', stepped.wave))
     }
-    // And it is the wave-scaled DYTBL value, not a constant — the channel reads
-    // the row rather than inventing a period.
-    const expected = waveValue('LAVLAV', stepped.wave)
+  })
+
+  it("PPREV is COMPUTED: the scheduler reports the troll to the process that follows it", () => {
+    // Review R-3 (HIGH). Every other looker test INJECTS `lavaBehind` straight
+    // into `stepEnemyDetailed`, which proves the consumer and says nothing about
+    // the producer — mutation-proven: hard-wiring `lavaBehind` to `false` passed
+    // all 2496 tests, so `frame.ts`'s whole `lastRanKind` computation was
+    // unguarded.
+    //
+    // This drives the REAL scheduler and asks whether the answer differs by
+    // POSITION. A dumb bird whose lane declines, its countdown due, is stepped
+    // twice: once with a troll immediately before it, once with that same troll
+    // moved behind it. If `PPREV` is computed, only the first flaps.
+    const enemy: EnemyState = {
+      entity: entityAt(0x85, -0x200, 100),
+      facing: 1,
+      pchase: 1, // smart flag set so the scheduler cannot promote it out from under us…
+      brain: 'linet', // …while it still runs LINET, which is the brain under test
+      decision: 'boundr',
+      plavt: 1, // due THIS wake
+    }
+    expect(linet(enemy).flap, 'precondition: the lane decision declines').toBe(false)
+
+    const troll: DemoProcess = {
+      id: 0xc0,
+      cls: 'secondary',
+      nap: 1,
+      period: 1,
+      kind: 'troll',
+      facing: 1,
+      collisionEnabled: false,
+      entity: entityAt(0xa0, 0, 0),
+    } as DemoProcess
+    const bird = {
+      id: 0x900,
+      cls: 'secondary' as const,
+      nap: 1,
+      period: 1,
+      kind: 'enemy' as const,
+      enemy,
+      collisionEnabled: false,
+    }
+
+    const run = (processes: readonly unknown[]): string | undefined => {
+      const g = createGame(0xbeef)
+      const sim = g.sim.sim
+      const staged = {
+        ...g,
+        sim: { ...g.sim, sim: { ...sim, processes } },
+      } as GameState
+      const after = stepGame(staged, idleInputs())
+      return after.sim.sim.processes.find((p) => p.id === 0x900)?.enemy?.pjoy?.kind
+    }
+
+    expect(run([troll, bird]), 'troll BEFORE the bird → the looker forces the flapping wake').toBe(
+      'glide',
+    )
     expect(
-      (dumb[0]?.enemy as { plavt?: number } | undefined)?.plavt,
-      'seeded from LNTLAV at this wave',
-    ).toBe(expected)
+      run([bird, troll]),
+      'the SAME troll after the bird → nothing precedes it, so the lane decision stands',
+    ).toBeUndefined()
+  })
+
+  it('a GLIDE wake does not tick the countdown — the prologue is skipped whole', () => {
+    // Review R-1. `DEC PLAVT,U` is at :3725, above `LNTOFP` at :3759, so a wake
+    // that resumes at the glide entry never executes it. Mutation-proven
+    // necessary: making the glide branch tick `plavt` passed all 2496 tests, so
+    // this story's central claim — "every instruction ABOVE it is skipped" — had
+    // no guard on its looker half, only prose.
+    const gliding: EnemyState = {
+      entity: entityAt(0x85, -0x200, 100),
+      facing: 1,
+      pchase: 0,
+      brain: 'linet',
+      decision: 'boundr',
+      plavt: 5,
+      pjoy: { kind: 'glide' },
+    }
+    const after = stepEnemyDetailed(gliding, { wave: 1, lavaBehind: true } as never)
+    expect(after.enemy.plavt, 'the countdown is untouched by a glide wake').toBe(5)
+    expect(after.enemy.pjoy, 'and LNTOFP still hands the pointer back to LINET').toBeUndefined()
+
+    // CONTROL — the very next wake, entering at LINET, DOES tick it. Without this
+    // the assertion above passes for a countdown that never moves at all.
+    const next = stepEnemyDetailed(after.enemy, { wave: 1, lavaBehind: false } as never)
+    expect(next.enemy.plavt, 'a LINET wake ticks it').toBe(4)
   })
 })
