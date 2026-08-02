@@ -1554,3 +1554,56 @@ maximum offset (36 → row 6) is an **independent corroboration of the seven-row
 different table**, which is stronger evidence than the story's own reading. For a story whose
 entire defect is "a table was read short", checking whether the BLOCK was also read short costs
 one `sed` and is the most on-point check available.
+
+## A REJECT routes to `finish` unless you pass TO_PHASE explicitly — `complete-phase` takes it as an argument (uf1-9, 2026-08-02)
+
+The user memory `trivial-workflow-reject-misroute` says a REJECTED verdict walks forward into
+`finish` because nothing machine-reads `**Verdict:**`. Confirmed again on tdd, and this time with
+the fix. `pf handoff resolve-gate` returned `next_phase: finish, next_agent: sm` **while its own
+`recovery_config` said `reviewer-verdict: {action: rework, target_phase: green}`** — the recovery
+config is advertised and not applied.
+
+`pf handoff complete-phase --help` shows it accepts positional `[STORY_ID] [WORKFLOW] [FROM_PHASE]
+[TO_PHASE] [GATE_TYPE]`, all normally inferred. So the rejection is routed by naming the target:
+
+```bash
+pf handoff complete-phase <story> tdd review green approval   # NOT the bare form
+grep -n '\*\*Phase:\*\*' .session/<story>-session.md          # must read green, then fix Phase Owner
+```
+
+The bare `pf handoff complete-phase` would have stamped `finish` and handed an unfixed HIGH to SM.
+Check the phase after every rejection — and note `Phase Owner` is NOT updated by the transition, so
+correct it by hand or the next agent's phase-check disagrees with the pointer.
+
+## The `## Subagent Results` gate demands a table when 8 of 9 specialists are DISABLED — write the true one
+
+`complete-phase` fails with a template dump until the session carries a `## Subagent Results` table
+and the literal `All received: Yes`. With `workflow.reviewer_subagents` reporting eight `false`, the
+tempting move is to type the literal and move on — which asserts nine dispatches that never
+happened, in the one file that becomes the permanent record.
+
+The honest form satisfies the gate without lying: keep all nine rows, mark each disabled one
+`DISABLED (`<key>: false`)`, and make the phrase true in context — *"accounted for exhaustively:
+none was dispatched, none is outstanding, and the verification each would have performed was done
+inline"* — then say per row WHERE that coverage lives (which mutation, which sweep). That converts a
+compliance ritual into a real map of what was and was not checked, and it is the row-by-row version
+of the reviewer sidecar's standing complaint that a disabled specialist leaves a domain unexamined.
+
+## The mutation battery's SURVIVORS clustered by SUBSYSTEM — that pattern is the finding
+
+18 mutations, 12 caught, 6 survived — and five of the six survivors were the shadow lord and hunter
+paths (the shadow's cliff dwell never armed, its arming condition unguarded, SHLETM never read, the
+hunter's frozen dwell interchangeable with a row). One survivor in isolation reads as a missing test.
+**Five in one subsystem reads as "this subsystem is not exercised at all"** — and it was: the wave
+table introduces hunters at wave 4, and no test's play reaches it.
+
+So when tabulating a battery, sort the survivors by the code region they touch before writing them
+up. A flat list invites five separate "add a test" findings; the clustered view produced one accurate
+structural finding (the row is stamped `wired` and nothing can tell the consumer from a no-op) plus
+the measured reason.
+
+**And check the reach claim against the REAL entry point.** My first probe used `createWaveDemo`,
+which hardcodes wave 1's enemy complement — it showed zero hunters and would have supported a far
+stronger, WRONG claim ("the port never runs these brains"). Re-running through `createGame`/`stepGame`
+across 6000 frames and three seeds showed the runs simply never reach wave 4. Same zero, completely
+different meaning — the `zero-count-can-mean-delegation` trap wearing a fixture's clothes.
