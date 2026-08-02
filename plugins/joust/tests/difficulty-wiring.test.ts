@@ -24,7 +24,9 @@
 //     JOUSTRV4.SRC:3894           LDA   BOUPWU   #8
 //     JOUSTRV4.SRC:3801   BOUNDN  CMPD  BODNRG   #DYLEN    LONG OR SHORT RANGE SEEK
 //
-// and enemy.ts:115/118 hardcode 0x100 / 0x200 — the wave-1 values, correct for wave
+// and enemy.ts's BOUNDR_DOWN_BRAKE / B2UNDR_DOWN_BRAKE hardcode 0x100 / 0x200 —
+// named rather than line-cited, because uf1-9 grew that file and the numbers
+// moved (:115/:118 → :266/:273). The wave-1 values, correct for wave
 // 1 and wrong for every wave after it. That is the whole defect in one line: the
 // clone is a cabinet permanently stuck on wave 1's difficulty.
 //

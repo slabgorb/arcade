@@ -464,3 +464,281 @@ describe('AC7 — the sim stays deterministic across the cadence change', () => 
     expect(w7.trace, 'wave 7 climbs on a different wing cadence from wave 1').not.toBe(w1.trace)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ROUND 2 — the review's mutation battery found six survivors. These close the
+// four that were real gaps (R1-1 … R1-4); M8 is an equivalent mutant and is
+// recorded in the assessment rather than tested.
+//
+// The cliff coordinates are steering.test.ts's, re-asserted as premises here so
+// this file does not inherit an unstated dependency: at (204, 75) the BACKGROUND
+// pair is solid 31 px to the right and clear at the bird itself.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('R1-1/R1-2 — the cliff dwell is SHCLTM wakes of SHAV/B2AV, and it never flaps', () => {
+  /** A brain parked at the cliff, travelling right into it (`velXIndex` 8). */
+  const atCliff = (brain: 'b2undr' | 'shadow'): EnemyState => ({
+    ...airborneEnemy(brain, 0),
+    entity: {
+      ...airborneEnemy(brain, 0).entity,
+      posX: 204,
+      posY: 75 << 8,
+      velXIndex: 8,
+      velY: 0,
+    },
+  })
+
+  it('fixture premise: the staged coordinate really turns the brain', async () => {
+    const e = await loadEnemy()
+    // Without this the dwell tests would pass vacuously on a bird that never
+    // turned — nothing would arm a dwell and nothing would flap either.
+    expect(e.steerWake(atCliff('shadow'), null).turned, 'the shadow turns here').toBe(true)
+    expect(e.steerWake(atCliff('b2undr'), null).turned, 'the hunter turns here').toBe(true)
+  })
+
+  it('holds the SHADOW for SHCLTM wakes after a cliff turn, wings UP throughout', async () => {
+    const e = await loadEnemy()
+    const d = await loadDifficulty()
+    const dwell = d.waveValue('SHCLTM', 1)
+    // The discriminating neighbour: SHUPTM is 10 at wave 1 where SHCLTM is 8, so
+    // a dwell wired to the wrong row is visible in the run length.
+    expect([dwell, d.waveValue('SHUPTM', 1)], 'SHCLTM vs its neighbour at wave 1').toEqual([8, 10])
+
+    // The turn wake itself flaps (`LDB #1`, :4377) and arms the dwell.
+    let r = e.stepEnemyDetailed(atCliff('shadow'), { player: null, wave: 1 })
+    expect(r.enemy.pjoy, 'the turn arms a dwell').toEqual({ kind: 'dwell', timer: dwell })
+    expect(r.enemy.prevFlapHeld, 'the turn wake itself flaps').toBe(true)
+
+    // Then SHCLTM wakes of wings-UP. The bird is carried with `velXIndex: 0`
+    // from here on: `steerWake` returns early when the horizontal index is zero
+    // (:924-925), so it cannot turn AGAIN and re-arm the dwell to full length on
+    // every wake — which is faithful behaviour at a cliff, and makes the decay
+    // unobservable. Staging the turn once and then holding still is what lets the
+    // countdown be read at all.
+    const timers: Array<number | undefined> = []
+    const heldAfter: boolean[] = []
+    for (let i = 0; i < dwell + 1; i++) {
+      const carried: EnemyState = {
+        ...r.enemy,
+        entity: { ...r.enemy.entity, posX: 204, posY: 75 << 8, velXIndex: 0, velY: 0 },
+      }
+      r = e.stepEnemyDetailed(carried, { player: null, wave: 1 })
+      timers.push(r.enemy.pjoy?.kind === 'dwell' ? r.enemy.pjoy.timer : undefined)
+      heldAfter.push(r.enemy.prevFlapHeld ?? false)
+    }
+    // It counts DOWN one per wake from SHCLTM−1 and then clears — the dwell is a
+    // real countdown of the row's length, not a flag.
+    expect(timers.slice(0, dwell - 1), 'SHCLTM wakes, counted down').toEqual(
+      Array.from({ length: dwell - 1 }, (_, i) => dwell - 1 - i),
+    )
+    expect(timers[dwell - 1], 'and then it is cleared — JMP SHADOW re-decides').toBeUndefined()
+    // Wings stay UP for every wake of it. Kills "the dwell is a wing-DOWN hold"
+    // and "the dwell flaps on expiry".
+    expect(heldAfter.slice(0, dwell - 1), 'the dwell holds the wings up').toEqual(
+      new Array(dwell - 1).fill(false),
+    )
+  })
+
+  it('gives the HUNTER a dwell of its own frozen 8 — never the SHCLTM row', async () => {
+    const e = await loadEnemy()
+    const d = await loadDifficulty()
+    // At wave 3 SHCLTM has walked to 7 while `B2DICL`'s `LDA #8` (:4144) has not
+    // moved. That gap is the whole assertion — at wave 1 both read 8 and a
+    // wrongly-wired dwell would be invisible.
+    expect(d.waveValue('SHCLTM', 3), 'SHCLTM walks').toBe(7)
+    expect(e.HUNTER_CLIFF_DWELL, 'the hunter dwell is frozen').toBe(8)
+
+    const r = e.stepEnemyDetailed(atCliff('b2undr'), { player: null, wave: 3 })
+    expect(r.enemy.pjoy, 'the hunter dwells on its own constant, not the row').toEqual({
+      kind: 'dwell',
+      timer: e.HUNTER_CLIFF_DWELL,
+    })
+  })
+
+  it('re-decides on dwell expiry instead of flapping — B2AV/SHAV JMP, never LDB #1', async () => {
+    const e = await loadEnemy()
+    const d19 = await loadDifficulty()
+    // R1-2's actual defect: the hunter's dwell used to share a shape with the
+    // wing cadence, so its expiry ran the wing law and FLAPPED. `B2AV`
+    // (:4190-4193) is `CLRB / DEC PJOYT,U / BGT B2DIRA / JMP B2UNDR`.
+    // `velXIndex: 0` so the staged dwell is not overwritten by a fresh turn, and
+    // RISING so the re-decided state's own law says no-flap. That isolates the
+    // thing under test: any wing-down edge on this wake could only come from the
+    // dwell being mis-read as a wing hold. (At velY 0 the level law flaps by
+    // itself — `B2LEV1`'s "FALLING?" — which would mask the defect entirely.)
+    let enemy: EnemyState = {
+      ...atCliff('b2undr'),
+      pjoy: { kind: 'dwell', timer: 1 },
+      entity: { ...atCliff('b2undr').entity, velXIndex: 0, velY: -0x100 },
+    }
+    const r = e.stepEnemyDetailed(enemy, { player: null, wave: 1 })
+    // The expiry RE-DECIDES on the same wake — `JMP B2UNDR` (:4193) falls into
+    // `BEQ B2LEVV` with no players, so the hunter arrives in level flight and
+    // arms HULETM. What must NOT happen is the dwell becoming a wing phase, or
+    // the expiry pressing the button.
+    expect(r.enemy.pjoy?.kind, 'the expiry re-decides, it does not become a wing hold').toBe(
+      'interval',
+    )
+    expect(r.enemy.pjoy, 'and the re-decide armed the level interval').toEqual({
+      kind: 'interval',
+      timer: d19.waveValue('HULETM', 1),
+    })
+    expect(r.wingEdge, 'the expiry does not press the button').not.toBe('down')
+
+    // …and the dwell is honoured on the DOWN route too, which the pre-fix code
+    // ignored outright because that branch re-tested the brake and never read
+    // the timer.
+    enemy = {
+      ...atCliff('b2undr'),
+      seek: { mode: 'down', pdist: -0x4000 },
+      pjoy: { kind: 'dwell', timer: 4 },
+      entity: { ...atCliff('b2undr').entity, velY: 0x400, velXIndex: 0 },
+    }
+    const down = e.stepEnemyDetailed(enemy, { player: FAR_BELOW, wave: 1 })
+    expect(down.enemy.pjoy, 'a down-route dwell still counts down').toEqual({
+      kind: 'dwell',
+      timer: 3,
+    })
+    expect(down.enemy.prevFlapHeld, 'and holds the wings up despite the brake').toBe(false)
+  })
+})
+
+describe('R1-3 — the shadow reads SHLETM with no target and SHUPTM with one', () => {
+  it('arms SHLETM (its OWN line) when SELPLY finds nobody', async () => {
+    const e = await loadEnemy()
+    const d = await loadDifficulty()
+    // SHLEV :4312-4317 tracks its own line on SHLETM; SHLEP :4277-4284 tracks the
+    // PLAYER's on SHUPTM. They differ 21 vs 10 at wave 1, so this discriminates.
+    expect([d.waveValue('SHLETM', 1), d.waveValue('SHUPTM', 1)], 'the two shadow rows').toEqual([
+      21, 10,
+    ])
+    const noTarget = e.stepEnemy(airborneEnemy('shadow', 0), { player: null, wave: 1 })
+    expect(noTarget.pjoy, 'a shadow with no players holds SHLEV/SHLETM').toEqual({
+      kind: 'interval',
+      timer: d.waveValue('SHLETM', 1),
+    })
+  })
+
+  it('arms SHUPTM when it has a quarry at short range', async () => {
+    const e = await loadEnemy()
+    const d = await loadDifficulty()
+    const targeted = e.stepEnemy(airborneEnemy('shadow', 0), { player: SAME_LINE, wave: 1 })
+    expect(targeted.pjoy, 'a hunting shadow holds SHLEP/SHUPTM').toEqual({
+      kind: 'interval',
+      timer: d.waveValue('SHUPTM', 1),
+    })
+  })
+})
+
+describe('R1-4 — the down-seek arms NO wing-up reload', () => {
+  it('keeps every wings-UP run to a single wake, at every wave', async () => {
+    // `BODN2`'s expiry is `LDD #BODN1 / STD PJOY,U / CLRB` (:3837-3839) — it
+    // stores NOTHING into PJOYT, so the wings-up side is re-decided by the brake
+    // on the very next wake. TEA's original down-seek test filtered the
+    // wings-DOWN runs only, so a BOUPWU-length hold here went unnoticed (M4).
+    const e = await loadEnemy()
+    for (const wave of [1, 7]) {
+      let enemy: EnemyState = {
+        ...airborneEnemy('boundr', 0x300),
+        seek: { mode: 'down', pdist: -0x4000 },
+      }
+      const seen: boolean[] = []
+      for (let i = 0; i < 30; i++) {
+        const stepped = e.stepEnemy(enemy, { player: FAR_BELOW, wave })
+        seen.push(stepped.prevFlapHeld ?? false)
+        enemy = {
+          ...stepped,
+          seek: { mode: 'down', pdist: -0x4000 },
+          entity: {
+            ...stepped.entity,
+            posY: 0x60 << 8,
+            velY: 0x300,
+            airborne: true,
+            posX: 100,
+            velXIndex: 0,
+            velXFrac: 0,
+          },
+        }
+      }
+      const upRuns = completeRuns(seen)
+        .filter(([lvl]) => !lvl)
+        .map(([, n]) => n)
+      expect(upRuns.length, `w${wave}: wings-up runs observed`).toBeGreaterThanOrEqual(2)
+      for (const n of upRuns) expect(n, `w${wave}: the brake re-decides every wake`).toBe(1)
+    }
+  })
+})
+
+describe('R1-3b — a running shadow interval HOLDS the level branch', () => {
+  it('ignores a quarry that wanders into climb range until the interval expires', async () => {
+    // Found by mutation M17: before this the interval was armed from the right
+    // row, ticked correctly, and gated NOTHING — `shadow()` re-ran its range gate
+    // every wake, so SHUPTM/SHLETM were read and inert. `SHLEP1`/`SHLEV1` spend
+    // the countdown and only its expiry returns to SHADOW (:4286-4287, :4319-4320).
+    const e = await loadEnemy()
+    const d = await loadDifficulty()
+    const interval = d.waveValue('SHUPTM', 1)
+
+    // Establish the level episode with a short-range quarry…
+    let enemy: EnemyState = airborneEnemy('shadow', -0x100)
+    enemy = e.stepEnemy(enemy, { player: SAME_LINE, wave: 1 })
+    expect(enemy.pjoy, 'a short-range shadow holds SHLEP/SHUPTM').toEqual({
+      kind: 'interval',
+      timer: interval,
+    })
+
+    // …then put the quarry far ABOVE, which is long-range CLIMB — and stage the
+    // shadow RISING FASTER than SHUPVY (−$600 vs the wave-1 gate −$200). That is
+    // the one geometry where the two branches disagree: the climb branch refuses
+    // the flap (`CMPD SHUPVY / BLT SHUP0`) while SHLEP flaps because the shadow
+    // sits below its quarry (`enemyY > player.pixelY`). With a slower rise BOTH
+    // branches flap and the hold is unobservable — the first draft of this test
+    // staged −$100 and passed for that reason.
+    const RISING_FAST = -0x600
+    expect(RISING_FAST, 'premise: faster than the wave-1 SHUPVY gate').toBeLessThan(
+      d.waveValue('SHUPVY', 1),
+    )
+    const flaps: boolean[] = []
+    for (let i = 0; i < interval - 2; i++) {
+      const held: EnemyState = {
+        ...enemy,
+        entity: { ...enemy.entity, posY: 0x60 << 8, velY: RISING_FAST, airborne: true },
+      }
+      flaps.push(e.shadow(held, FAR_ABOVE, 1).flap)
+      enemy = e.stepEnemy(held, { player: FAR_ABOVE, wave: 1 })
+    }
+    // Every mid-interval wake takes SHLEP (flap), not the climb (no flap).
+    expect(flaps.every((f) => f), 'the level branch is held for the whole interval').toBe(true)
+    // The control: with no interval running, the SAME state takes the climb.
+    const fresh: EnemyState = {
+      ...airborneEnemy('shadow', RISING_FAST),
+      entity: { ...airborneEnemy('shadow', RISING_FAST).entity, velY: RISING_FAST },
+    }
+    expect(e.shadow(fresh, FAR_ABOVE, 1).flap, 'unheld, the climb branch refuses the flap').toBe(
+      false,
+    )
+  })
+
+  it('re-decides once the interval elapses — the hold is a timer, not a freeze', async () => {
+    const e = await loadEnemy()
+    const d = await loadDifficulty()
+    const interval = d.waveValue('SHUPTM', 1)
+    let enemy: EnemyState = e.stepEnemy(airborneEnemy('shadow', -0x100), {
+      player: SAME_LINE,
+      wave: 1,
+    })
+    let cleared: number | null = null
+    for (let i = 0; i < interval * 2; i++) {
+      enemy = e.stepEnemy(
+        { ...enemy, entity: { ...enemy.entity, posY: 0x60 << 8, velY: -0x100, airborne: true } },
+        { player: FAR_ABOVE, wave: 1 },
+      )
+      // On expiry it re-decides: the quarry is far above, which is the CLIMB
+      // branch, and the climb carries no countdown at all (SHUP1 :4269-4275).
+      if (cleared === null && enemy.pjoy === undefined) cleared = i + 1
+    }
+    expect(cleared, 'the interval must end').not.toBeNull()
+    expect(cleared!, 'and end at its own length, not immediately or never').toBeGreaterThanOrEqual(
+      interval - 2,
+    )
+  })
+})

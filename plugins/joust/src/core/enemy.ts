@@ -216,15 +216,20 @@ export interface EnemyState {
  *     The hunter's identically-shaped dwell (`B2DICL` :4142-4145) is a hardcoded
  *     8 and must NOT read SHCLTM.
  */
-export interface PjoyState {
-  /** `PJOYT,U` — wakes remaining in the current state. */
-  readonly timer: number
+export type PjoyState =
+  /** A seek episode's wing cadence: which phase, and the wakes left in it. */
+  | { readonly kind: 'wing'; readonly timer: number; readonly wings: 'down' | 'up' }
+  /** A level-flight decide holding its "time until next decision" interval. */
+  | { readonly kind: 'interval'; readonly timer: number }
   /**
-   * `PJOY,U` — the wing phase of a seek episode. ABSENT during a level-flight
-   * decide, where the countdown is the decision interval rather than a wing hold.
+   * A cliff-avoidance dwell — `B2AV` (:4190-4193) / `SHAV` (:4406-4409). Wings
+   * stay UP for the whole dwell and its expiry RE-DECIDES (`JMP B2UNDR` /
+   * `JMP SHADOW`); it never flaps. Round 1 review (R1-2) caught this sharing a
+   * shape with the wing cadence, which made the hunter's dwell flap on expiry
+   * and be ignored entirely on the down route. Distinct `kind` makes that
+   * unrepresentable rather than merely fixed.
    */
-  readonly wings?: 'down' | 'up'
-}
+  | { readonly kind: 'dwell'; readonly timer: number }
 
 // ─── Cited constants ────────────────────────────────────────────────────────
 
@@ -587,7 +592,7 @@ function currentRoute(
   rows: SeekRows,
 ): SeekRoute {
   if (enemy.seek !== undefined) return enemy.seek.mode
-  if (enemy.pjoy !== undefined && enemy.pjoy.wings === undefined) return 'level'
+  if (enemy.pjoy?.kind === 'interval') return 'level'
   return rangeRoute(player == null ? null : player.pixelY - (enemy.entity.posY >> 8), rows)
 }
 
@@ -598,7 +603,9 @@ function pursue(enemy: EnemyState, player: PlayerView | null | undefined, rows: 
   // uf1-9: inside a seek episode the WINGS are a latched state, not a per-wake
   // test — `pjoyWake` has already advanced `PJOY`/`PJOYT` for this wake, so the
   // brain just reads the phase it is in. `LDB #$01` / `CLRB` in the ROM.
-  if (route !== 'level' && enemy.pjoy?.wings !== undefined) {
+  // A cliff dwell holds the wings UP and never flaps (`B2AV`/`SHAV` `CLRB`).
+  if (enemy.pjoy?.kind === 'dwell') return { dir, flap: false }
+  if (route !== 'level' && enemy.pjoy?.kind === 'wing') {
     return { dir, flap: enemy.pjoy.wings === 'down' }
   }
   // No episode armed (a bare `boundr(e, p, w)` call, or a level route): the
@@ -636,11 +643,12 @@ function wingWake(
   brake: number,
   wave: number,
 ): PjoyState | undefined {
-  const brain = enemy.brain === 'linet' ? null : (enemy.brain as SmartBrain)
+  const brain = enemy.brain === 'linet' ? null : enemy.brain
   if (brain === null || route === 'level') return undefined
   const velY = enemy.entity.velY
-  const held = enemy.pjoy?.wings
-  const remaining = held === undefined ? 0 : enemy.pjoy!.timer - 1
+  const phase = enemy.pjoy?.kind === 'wing' ? enemy.pjoy : undefined
+  const held = phase?.wings
+  const remaining = phase === undefined ? 0 : phase.timer - 1
 
   if (route === 'up') {
     const rows = wingRows(brain, wave)
@@ -655,23 +663,23 @@ function wingWake(
     // climbing toward a quarry above it.
     if (held === undefined) {
       return brain === 'boundr'
-        ? { timer: rows.down, wings: 'down' }
-        : { timer: rows.up, wings: 'up' }
+        ? { kind: 'wing', timer: rows.down, wings: 'down' }
+        : { kind: 'wing', timer: rows.up, wings: 'up' }
     }
-    if (remaining > 0) return { timer: remaining, wings: held }
-    if (held === 'down') return { timer: rows.up, wings: 'up' }
+    if (remaining > 0) return { kind: 'wing', timer: remaining, wings: held }
+    if (held === 'down') return { kind: 'wing', timer: rows.up, wings: 'up' }
     // The wings-up hold has expired: flap, unless the up-flight VY gate refuses.
-    if (rows.upVy !== null && velY < rows.upVy) return { timer: 1, wings: 'up' }
-    return { timer: rows.down, wings: 'down' }
+    if (rows.upVy !== null && velY < rows.upVy) return { kind: 'wing', timer: 1, wings: 'up' }
+    return { kind: 'wing', timer: rows.down, wings: 'down' }
   }
 
   // route === 'down'
   if (held === 'down') {
-    if (remaining > 0) return { timer: remaining, wings: 'down' }
-    return { timer: 0, wings: 'up' }
+    if (remaining > 0) return { kind: 'wing', timer: remaining, wings: 'down' }
+    return { kind: 'wing', timer: 0, wings: 'up' }
   }
-  if (velY >= brake) return { timer: DOWN_SEEK_WING_HOLD, wings: 'down' }
-  return { timer: 0, wings: 'up' }
+  if (velY >= brake) return { kind: 'wing', timer: DOWN_SEEK_WING_HOLD, wings: 'down' }
+  return { kind: 'wing', timer: 0, wings: 'up' }
 }
 
 /**
@@ -723,12 +731,20 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
   // uf1-9 — `SHAV`, the cliff-avoidance dwell armed by `SHDICL` for SHCLTM
   // wakes: `CLRB` (:4406) holds the wings UP for the whole dwell and the brain
   // does not re-decide until it expires.
-  if (enemy.pjoy?.wings === 'up') return { dir, flap: false }
+  if (enemy.pjoy?.kind === 'dwell') return { dir, flap: false }
   // SHLEV — no players: wings up, with the BOLAVA stand-in below the lava line.
   if (player == null) return { dir, flap: enemyY > LAVA_ESCAPE_Y }
   const delta = player.pixelY - enemyY
+  // uf1-9 round 2 (R1-2's sibling, found by mutation M17) — A RUNNING DECISION
+  // INTERVAL HOLDS THE LEVEL BRANCH. `SHLEP1`/`SHLEV1` spend the countdown
+  // (`DEC PJOYT,U / LBLE SHBRA2`, :4286-4287 and :4319-4320) and only that expiry
+  // returns to `SHADOW` to re-run the range gate, so a quarry that wanders into
+  // free-fall or climb range mid-interval changes nothing. Without this the row
+  // was READ and stored and then gated nothing at all — armed, ticked, and inert,
+  // which is the shape round 1 rejected for SHCLTM.
+  const holding = enemy.pjoy?.kind === 'interval'
   // SHDN — the free-fall; the escape is velX-gated and inclusive at $D3.
-  if (delta >= waveValue('SHDNRG', wave))
+  if (!holding && delta >= waveValue('SHDNRG', wave))
     return { dir, flap: enemyY >= LAVA_ESCAPE_Y && enemy.entity.velXIndex >= 0 }
   // Long-range up-seek (`SHUP1` :4269-4275): flap unless already climbing FASTER
   // than the SHUPVY gate. uf1-9 — before this the port compared against a bare 0,
@@ -738,7 +754,8 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
   // HUUPVY (:4174-4179) it is consulted on every entry to SHUP1, which is why it
   // lives in this per-wake law and not in `wingWake`. `CMPD SHUPVY / BLT SHUP0`
   // is strict, so velY EQUAL to the gate still flaps.
-  if (delta <= waveValue('SHUPRG', wave)) return { dir, flap: velY >= waveValue('SHUPVY', wave) }
+  if (!holding && delta <= waveValue('SHUPRG', wave))
+    return { dir, flap: velY >= waveValue('SHUPVY', wave) }
   // SHLEP — track the line; the lava term is falling-gated (velY, not velX).
   return { dir, flap: enemyY > player.pixelY || (enemyY >= LAVA_ESCAPE_Y && velY >= 0) }
 }
@@ -1023,9 +1040,24 @@ export function stepEnemy(
  *   • short-range, null-target, shadow and linet wakes carry NO workspace.
  * Pure — the argument is never mutated.
  */
-function seekWake(enemy: EnemyState, target: PlayerView | null, wave: number): EnemyState {
-  const episodic = enemy.brain === 'boundr' || enemy.brain === 'b2undr'
-  if (!episodic) {
+function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number): EnemyState {
+  let enemy = enemyIn
+  // R1-2 — THE CLIFF DWELL PRE-EMPTS THE DECIDE, and it is ticked HERE (before
+  // any routing) because `B2AV`/`SHAV` are states the brain sits IN: while the
+  // countdown runs, `B2UNDR`/`SHADOW` are never re-entered, so no route is
+  // chosen and no interval is armed. On expiry the ROM's `JMP B2UNDR` re-decides
+  // on the SAME wake, which is what falling through from here reproduces. Ticking
+  // it later (in `withWingCadence`) let this decide clobber the dwell first.
+  const dwell = enemy.pjoy?.kind === 'dwell' ? enemy.pjoy : undefined
+  if (dwell !== undefined) {
+    const remaining = dwell.timer - 1
+    if (remaining > 0) return { ...enemy, pjoy: { kind: 'dwell', timer: remaining } }
+    enemy = { ...enemy, pjoy: undefined }
+  }
+  // Narrowed with an inline test rather than a boolean const: TS carries the
+  // narrowing through the rest of the function, which is what lets
+  // `decideInterval(enemy.brain, …)` below take a SmartBrain with no cast (R1-6).
+  if (enemy.brain !== 'boundr' && enemy.brain !== 'b2undr') {
     // The shadow lord has no DI rows (it re-enters SHADOW each wake, :4269-4270)
     // so it never carries a seek episode — but it DOES carry a countdown: the
     // SHLEP/SHLEV decision interval and the SHDICL cliff dwell.
@@ -1054,11 +1086,11 @@ function seekWake(enemy: EnemyState, target: PlayerView | null, wave: number): E
   // SELPLY. So while the interval is running the route is HELD, however the
   // quarry moves. A level decide is the only route with no wing phase, which is
   // what `wings: undefined` marks.
-  const holding = enemy.pjoy !== undefined && enemy.pjoy.wings === undefined
-  if (holding) {
-    const remaining = enemy.pjoy!.timer - 1
+  const interval = enemy.pjoy?.kind === 'interval' ? enemy.pjoy : undefined
+  if (interval !== undefined) {
+    const remaining = interval.timer - 1
     if (remaining > 0) {
-      const carried = { ...enemy, pjoy: { timer: remaining } }
+      const carried: EnemyState = { ...enemy, pjoy: { kind: 'interval', timer: remaining } }
       return carried.seek === undefined ? carried : { ...carried, seek: undefined }
     }
     // Expired — fall through and re-decide THIS wake.
@@ -1071,7 +1103,8 @@ function seekWake(enemy: EnemyState, target: PlayerView | null, wave: number): E
   if (route === 'up') return { ...enemy, seek: { mode: 'up', pdist: rows.upDi }, pjoy: undefined }
   // A level decide arms its interval; the brain is `boundr`/`b2undr` here.
   const armed: PjoyState = {
-    timer: decideInterval(enemy.brain as SmartBrain, wave, target !== null),
+    kind: 'interval',
+    timer: decideInterval(enemy.brain, wave, target !== null),
   }
   return { ...enemy, seek: undefined, pjoy: armed }
 }
@@ -1160,15 +1193,16 @@ export function stepEnemyDetailed(
  */
 function withCliffDwell(enemy: EnemyState, wave: number): EnemyState {
   if (enemy.brain === 'linet') return enemy
-  const timer = cliffDwell(enemy.brain, wave)
-  return { ...enemy, pjoy: { timer, wings: 'up' } }
+  return { ...enemy, pjoy: { kind: 'dwell', timer: cliffDwell(enemy.brain, wave) } }
 }
 
 function shadowDwellWake(enemy: EnemyState, target: PlayerView | null, wave: number): EnemyState {
   const running = enemy.pjoy
+  // A cliff dwell is `withWingCadence`'s to tick (one law, both brains) — leave it.
+  if (running?.kind === 'dwell') return enemy
   if (running !== undefined) {
     const remaining = running.timer - 1
-    if (remaining > 0) return { ...enemy, pjoy: { ...running, timer: remaining } }
+    if (remaining > 0) return { ...enemy, pjoy: { kind: 'interval', timer: remaining } }
     // Expired — `JMP SHADOW` / `SHBRA2`: fall through and re-decide this wake.
   }
   // Re-decide. A level branch arms its interval; anything else carries none.
@@ -1178,7 +1212,10 @@ function shadowDwellWake(enemy: EnemyState, target: PlayerView | null, wave: num
     delta === null ||
     (delta < waveValue('SHDNRG', wave) && delta > waveValue('SHUPRG', wave))
   if (!level) return enemy.pjoy === undefined ? enemy : { ...enemy, pjoy: undefined }
-  return { ...enemy, pjoy: { timer: decideInterval('shadow', wave, target !== null) } }
+  return {
+    ...enemy,
+    pjoy: { kind: 'interval', timer: decideInterval('shadow', wave, target !== null) },
+  }
 }
 
 /**
@@ -1188,6 +1225,11 @@ function shadowDwellWake(enemy: EnemyState, target: PlayerView | null, wave: num
  */
 function withWingCadence(enemy: EnemyState, target: PlayerView | null, wave: number): EnemyState {
   if (enemy.brain === 'linet') return enemy.pjoy === undefined ? enemy : { ...enemy, pjoy: undefined }
+  // A dwell still running was already decremented by `seekWake` and pre-empts the
+  // cadence entirely — `B2AV`/`SHAV` hold the wings up and re-decide on expiry,
+  // never flapping. Leaving it untouched here is what stops the hunter's dwell
+  // being re-read as a wing-UP phase (round 1, R1-2).
+  if (enemy.pjoy?.kind === 'dwell') return enemy
   const brain = enemy.brain
   // The shadow lord has no DI rows and re-enters SHADOW every wake (:4269-4270),
   // so it runs no wing cadence — its climb gate (SHUPVY) is a per-wake law in

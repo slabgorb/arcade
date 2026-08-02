@@ -247,7 +247,10 @@ export interface EnemyState {
    * `wings` absent   → a level-flight decide is holding its "time until next
    * decision" interval (BOLETM / HULETM / SHUPTM / SHLETM).
    */
-  pjoy?: { readonly timer: number; readonly wings?: 'down' | 'up' }
+  pjoy?:
+    | { readonly kind: 'wing'; readonly timer: number; readonly wings: 'down' | 'up' }
+    | { readonly kind: 'interval'; readonly timer: number }
+    | { readonly kind: 'dwell'; readonly timer: number }
 }
 
 /** An enemy process for jt2-1's scheduler — the tagged union's new `enemy` kind. */
@@ -413,6 +416,20 @@ export interface EnemyModule {
     enemy: EnemyState,
     ctx?: { player?: PlayerView | null; wave?: number },
   ): { enemy: EnemyState; wingEdge: 'down' | 'up' | null }
+
+  /**
+   * jt8-3 — the cliff look-ahead that may flip `facing` BEFORE the brain runs.
+   * Declared by uf1-9 round 2: it has existed in `src/core/enemy.ts` since jt8-3
+   * and never in this contract (the same one-directional drift that hid
+   * `stepEnemyDetailed`), and a cliff turn is the only way to arm a dwell.
+   */
+  steerWake(enemy: EnemyState, target: PlayerView | null): { enemy: EnemyState; turned: boolean }
+
+  /** uf1-9 — `LDA #2` (:3823/:4008), the DOWN-seek's frozen wing-down hold. */
+  DOWN_SEEK_WING_HOLD: number
+
+  /** uf1-9 — `LDA #8` (:4144), `B2DICL`'s frozen dwell. NOT the SHCLTM row. */
+  HUNTER_CLIFF_DWELL: number
 }
 
 /**

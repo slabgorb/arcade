@@ -44,8 +44,9 @@
 // The machine has 38 tables. One family is still left out, for a measured
 // reason, not an oversight — a Delivery Finding on the jt5-1 session with its
 // ROM lines: the LAVA TROLL grab (SNTROL :8097) cannot fire — `troll.beginGrip`
-// has zero production callers, which difficulty.ts:362-367 already records by
-// name under owner `uf1-10`.
+// has zero production callers, which `ROW_DISPOSITION.LAVGRA` in difficulty.ts
+// already records by name under owner `uf1-10`. (Named, not line-cited: uf1-9
+// rewrote that table and the entry moved.)
 // A kind declared here but never emitted would sail through the manifest and
 // dispatch sweeps — they read this same tuple — and ship a cue that can never
 // sound. So the tuple names only what an emitter exists for.

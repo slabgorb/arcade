@@ -194,8 +194,9 @@ const countOf = (g: GameState, kind: string): number =>
 //     below no longer names the thud family, and tests/audio-thud.test.ts is
 //     what pins it.
 //   • the LAVA TROLL grab (SNTROL, LT1GRP :1646-1647) — `troll.beginGrip` has
-//     zero production callers too, and difficulty.ts:362-367 already says so
-//     by name, owner `uf1-10`/`uf1-11`.
+//     zero production callers too, and `ROW_DISPOSITION.LAVGRA` in difficulty.ts
+//     already says so by name, owner `uf1-10`/`uf1-11`. (Named, not line-cited —
+//     uf1-9 rewrote that table and the entry moved.)
 const EXPECTED_KINDS: readonly string[] = [
   'enemy-death',
   'player-death',

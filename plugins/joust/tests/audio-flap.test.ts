@@ -533,11 +533,19 @@ describe('jt5-3 AC3 — entering flight: STFLY sounds, STFALL does not', () => {
 // AC5 — HAZARD A: the buzzard's wings
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// `enemy.ts:540` builds the synthetic joystick as
-// `{ dir, flap: decision.flap, flapHeld: decision.flap }` — ONE bit doing both
-// jobs. That is the ROM's shape, not a bug: the machine has one bit too
+// `stepEnemyDetailed` (enemy.ts) builds the synthetic joystick. UPDATED BY uf1-9,
+// which changed both halves of what this paragraph used to say — it is kept
+// because the ROM reading is still the point, and corrected because the port has
+// moved underneath it.
+//
+// It USED to read `{ dir, flap: decision.flap, flapHeld: decision.flap }` — ONE
+// bit doing both jobs — and this comment said the LATCH was what the ROM adds and
+// the port lacked. uf1-9 added that latch: the joystick is now
+// `{ dir, flap: pressed, flapHeld: held }`, where `held` is the wing phase the
+// PJOYT cadence is holding and `pressed` is its rising edge. The machine's own
+// shape is unchanged and is still the reason this is not a bug: one bit
 // (`CURJOY+1`, register B), read as the edge by FLIPLP's `TSTB / BNE GOFLAP` and
-// as the level by FLAPS2's `CLRB`. What the ROM adds is a LATCH — LINET holds B
+// as the level by FLAPS2's `CLRB`. The latch it adds — LINET holds B
 // for exactly one wake (LNTUP -> LNTOFP), BOUNDR for `BOUPWD` wakes (PJOYT, "WING
 // DOWN TIME"). So a wing-down followed by a wing-up on the next WAKE is the
 // machine's own wingbeat, and the thing that must never happen is a second
