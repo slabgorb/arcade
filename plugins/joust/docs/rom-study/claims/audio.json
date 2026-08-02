@@ -127,7 +127,7 @@
   },
   {
     "id": "JT53-001",
-    "claim": "The flap is a TWO-LOOP coroutine, not a per-frame edge test: FLIPLP's TSTB/BNE GOFLAP leaves the wings-up loop for GOFLAP only when the button reads pressed (JOUSTRV4.SRC:6195-6196); a held button re-enters at FLAPS2/FLIPS2, BELOW each JSR VSND, which is why holding never re-fires the cue.",
+    "claim": "The flap is a TWO-LOOP coroutine, not a per-frame edge test: FLIPLP's TSTB/BNE GOFLAP leaves the wings-up loop for GOFLAP only when the button reads pressed (JOUSTRV4.SRC:6195-6196); a held button re-enters at FLAPS2/FLIPS2, the labels that BYPASS each JSR VSND, which is why holding never re-fires the cue. The two bypasses are not symmetric: FLIPS2 (:6197) does sit below the wing-up cue, since GOFLIP plays it and then falls on via BRA FLIPS2 (:6186), but FLAPS2 (:6170) sits ABOVE the wing-down cue (:6218) and the cue path never reaches it at all — GOFLAP exits through TSTB (:6223) to WINGDN (:6176) or WINGFK (:6177). FLAPS2 is the fall-through the held path drops into from FLAPLP's TSTB/BEQ GOFLIP (:6168-6169).",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 6196,
@@ -199,7 +199,7 @@
   },
   {
     "id": "JT53-008",
-    "claim": "A flap TAKE-OFF sounds wing-down: STFLY ends with a jump straight onto FLAST2, the same wing-down cue GOFLAP reaches — so entering flight by pressing the button is NOT silent, unlike walking off a ledge (STFALL, which re-enters below both cues).",
+    "claim": "A flap TAKE-OFF sounds wing-down: STFLY ends with a jump straight onto FLAST2, the same wing-down cue GOFLAP reaches — so entering flight by pressing the button is NOT silent, unlike walking off a ledge (STFALL, which ends BNE FLAPS2 / BRA FLIPS2 at :6156-6157 and so re-enters at the two bypass labels, skipping both cues).",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 6135,

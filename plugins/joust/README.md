@@ -20,7 +20,7 @@ the same architecture as its siblings
 > and the in-progress playability epic (jt8, 4 so far) that makes enemies hunt
 > and eggs catchable.
 > **Audio: seam and samples.** jt5-1 landed the three-file wiring —
-> `src/core/events.ts` (eleven ROM-cited moments, emitted as data), the
+> `src/core/events.ts` (17 ROM-cited moments, emitted as data), the
 > `src/shell/audio.ts` manifest over the shared `@shared/audio` engine, and
 > `src/shell/audio-dispatch.ts` behind a `never` exhaustiveness guard — and
 > jt5-2 synthesised the samples and uploaded them: one `.wav` per manifest
@@ -45,22 +45,30 @@ Run everything from the **monorepo root**:
 
 ```bash
 npm install                         # once, for the whole cabinet
-npx vitest run --project joust      # joust's suite: 81 files / 1944 tests
+npx vitest run --project joust      # 102 files (derived + guarded); ~2460 tests, indicative
 npx vitest run                      # the whole cabinet
 npm run lint                        # tsc --noEmit across the monorepo
 npm run test:orchestrator           # the root node:test suite
-node plugins/joust/tools/audit/check-citations.mjs   # → "checked 897 claim(s)"
+node plugins/joust/tools/audit/check-citations.mjs   # → "checked 938 claim(s)"
 ```
 
-> **There is no way to open joust in a browser from this repo right now.** The
-> root `npx vite` serves the **lobby** at every path — probed on a spare port
-> (5296), `/`, `/joust/` and a nonsense control `/banana/` all return 200 with
-> the same `<title>Slabcade</title>` page. That is a blanket SPA fallback, not
-> routing. Do not screenshot `/joust/` and report it as joust. The per-plugin
-> dev server, the port pin (joust owned 5279) and `npm run build` were all
-> removed by the monorepo migration; the root build and the plugin router are
-> still being wired up. The **shipped** game is unaffected and still live at
-> [joust.slabgorb.com](https://joust.slabgorb.com/).
+> **Open joust in a browser with `just serve`, from the monorepo root.** One
+> Vite dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the
+> lobby at `/` and this game at `/joust/`, served from these plugin sources, so
+> a dev URL and a production URL differ only in origin. mg1-2 landed that; the
+> per-plugin dev server and joust's old private port are gone with it.
+>
+> Unknown paths still fall back to the lobby's SPA shell, which is why an
+> all-`200` sweep proves nothing — a fallback answers 200 to everything. A check
+> that means something compares a game path against a nonsense control and
+> asserts they DIFFER, which is what `tests/canonical-serve.test.mjs` pins.
+> Hot reload does not reach the games; refresh the browser (mg1-14).
+>
+> The **shipped** game was MEASURED live on 2026-08-02, not inferred from a
+> hostname — CLAUDE.md's rule is to request it, with a control:
+> `arcade.slabgorb.com/joust/` and `joust.slabgorb.com/` each served
+> `<title>Joust</title>`, while `/banana-control/` on each served `Not Found`.
+> The single-origin path is the canonical one.
 
 ---
 
@@ -83,19 +91,28 @@ node plugins/joust/tools/audit/check-citations.mjs   # → "checked 897 claim(s)
 this directory, not one. Six files here resolve it (`tests/helpers/joust-source.ts`,
 `tests/audit/citations.test.ts` and the four tools), and every one of them
 honours `JOUST_SOURCE_DIR` first. Get the depth wrong and nothing goes red:
-**95** `describe.skipIf(!vendoredAvailable)` / `it.skipIf(...)` guards across
-**29** test files quietly skip, the byte-for-byte citation gate degrades to
-schema-only, and the suite still reports 81 files passed. The Task 12 import
-measured that failure mode deliberately — 1280 passed | 566 skipped, fully
-green — before repairing it.
+every `describe.skipIf(!vendoredAvailable)` / `it.skipIf(...)` guard in the
+suite quietly skips, the byte-for-byte citation gate degrades to schema-only,
+and the run still reports every file passed. The Task 12 import measured that
+failure mode deliberately — 1280 passed | 566 skipped, fully green — before
+repairing it.
 
-> Count it the way this says, or you will get a different number. **95 is the
+> **The numbers in this block are INDICATIVE, measured 2026-08-02, and nothing
+> guards them.** That is a deliberate choice, not an oversight: the block is
+> **self-referential**. A test that counted how many times
+> `skipIf(!vendoredAvailable)` occurs under `tests/` would itself be a file
+> under `tests/` containing that literal, so writing the guard would change the
+> number it guards. jt5-7 demonstrated exactly that — the comment added to
+> *explain* this took the count from 143 to 144. Re-measure before quoting;
+> do not add a guard.
+>
+> Count it the way this says, or you will get a different number. **130 is the
 > executable call sites.** The literal string `skipIf(!vendoredAvailable)`
-> occurs **111** times in `tests/`, but **16** of those are inside comments
+> occurs **149** times in `tests/`, but **19** of those are inside comments
 > (`// re-derivation SKIPS there (describe.skipIf(!vendoredAvailable))…`), and
 > a comment-inclusive line count via `grep -rn '\.skipIf('` gives a third
-> answer, 109. 95 + 16 = 111 reconciles exactly. The file figure moves too:
-> 30 files *mention* the guard, 29 actually *carry* one —
+> answer, 145. 130 + 19 = 149 reconciles exactly. The file figure moves too:
+> 41 files *mention* the guard, 39 actually *carry* one —
 > `tests/helpers/transporter-contract.ts` only talks about it.
 
 The vendored tree **is committed to this monorepo** (49 files), so the
@@ -136,7 +153,7 @@ sibling.
   **That guard does not extend to a missing SOURCE TREE**, and the distinction
   is the whole of the path-depth warning above: with the tree absent the gate
   degrades *by design* to a schema-only check and still prints
-  `checked 897 claim(s) / all claims verified`, exit 0 —
+  `checked 938 claim(s) / all claims verified`, exit 0 —
   `JOUST_SOURCE_DIR=/nonexistent node plugins/joust/tools/audit/check-citations.mjs`
   demonstrates it in one command. Byte-for-byte re-opening is therefore a
   property of *having the tree wired up correctly*, not something the gate can

@@ -435,8 +435,15 @@ export function land(state: EntityState, platform: { snapY: number }): EntitySta
 // FLAPLP/FLIPLP (:6163-6210) is a two-loop coroutine, not a per-frame edge
 // test: an airborne bird sounds wing-DOWN on the PRESS (GOFLAP -> FLAST2,
 // :6212-6218) and wing-UP on the RELEASE (GOFLIP, :6182-6184); holding
-// re-enters its loop BELOW the cue (FLAPS2 :6170 / FLIPS2 :6197) and stays
-// silent. A flap TAKE-OFF (STFLY, :6123-6135) jumps straight onto the
+// re-enters its loop at a label that BYPASSES the cue and stays silent. The
+// two bypasses are NOT symmetric, and one sentence covering both was wrong
+// for half of it (jt5-7): FLIPS2 (:6197) does sit below the wing-up cue,
+// because GOFLIP plays it and then falls on via BRA FLIPS2 (:6186); but
+// FLAPS2 (:6170) sits ABOVE the wing-down cue (:6218), which the cue path
+// never reaches at all — GOFLAP leaves through TSTB (:6223) to WINGDN
+// (:6176) or WINGFK (:6177). FLAPS2 is the fall-through the held path drops
+// into from FLAPLP's TSTB / BEQ GOFLIP (:6168-6169).
+// A flap TAKE-OFF (STFLY, :6123-6135) jumps straight onto the
 // wing-down cue; walking off a ledge (STFALL, :6139-6157) and every other
 // grounded transition (PLYRLP, :5948-6024) has no wing sound at all — and
 // since `input.flap` (the shell's rising edge) is the ONLY thing that ever

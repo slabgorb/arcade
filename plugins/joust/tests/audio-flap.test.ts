@@ -17,8 +17,14 @@
 //     LDX PDECSN,U / LDX DSNWD,X / JSR VSND             ← WING DOWN sounds here
 //
 // So PRESS = wing DOWN, RELEASE = wing UP, and a HELD button re-enters its loop
-// at `FLAPS2`/`FLIPS2` (:6170 / :6197) — the labels BELOW each `JSR VSND` —
-// which is precisely why holding the button does not machine-gun the cue.
+// at `FLAPS2`/`FLIPS2` (:6170 / :6197) — the labels that BYPASS each
+// `JSR VSND` — which is precisely why holding the button does not
+// machine-gun the cue. The two bypasses are NOT symmetric (jt5-7): FLIPS2
+// does sit below the wing-up cue (:6184), since GOFLIP plays it then falls
+// on via `BRA FLIPS2` (:6186); FLAPS2 sits ABOVE the wing-down cue (:6218),
+// which the cue path never reaches — GOFLAP exits via `TSTB` (:6223) to
+// WINGDN (:6176) / WINGFK (:6177). FLAPS2 is the fall-through the held path
+// drops into from FLAPLP's `TSTB` / `BEQ GOFLIP` (:6168-6169).
 //
 // Trust the SYMBOL, not the comment: :6217 reads `LDX DSNWD,X  GET WING UP
 // SOUND`, a 1982 copy-paste of :6183's comment. `DSNWD` ("SOUND OF WINGS GOING
@@ -37,7 +43,8 @@
 //                               ends `BNE FLAPS2` / `BRA FLIPS2` ← SILENT
 //
 //     A flap take-off jumps straight AT the wing-down cue; walking off a ledge
-//     enters both loops BELOW their cues. Both are pinned below.
+//     enters both loops at their BYPASS labels, skipping each cue. Both are
+//     pinned in the groups that follow.
 //  2. THE CORE IS NOT THE ONLY THING MISSING A PREVIOUS LEVEL. The ROM keeps one
 //     on the ground, in PTIMUP: `TST PTIMUP,U / BNE PLNFLY / TSTB / LBNE STFLY`
 //     then `PLNFLY STB PTIMUP,U  WAIT UNTIL BUTTON RELEASED` (:5963-5967). A
@@ -192,12 +199,12 @@ describe.skipIf(!vendoredAvailable)('jt5-3 — the two-edge law re-opens in JOUS
     expect(vendoredLine('JOUSTRV4.SRC', 119)).toBe('DSNWD\tRMB\t2\tSOUND OF WINGS GOING DOWN')
   })
 
-  it('a HELD button re-enters BELOW the cue — which is why holding is silent', () => {
+  it('a HELD button re-enters at the BYPASS label — which is why holding is silent', () => {
     expect(vendoredLine('JOUSTRV4.SRC', 6170)).toBe('FLAPS2\tCLRB\t\t\tNO OFFSET TO GRAVITY')
     expect(vendoredLine('JOUSTRV4.SRC', 6197)).toBe('FLIPS2\tLDB\t#$04\t\tOFFSET TO GRAVITY')
   })
 
-  it('STFLY jumps AT the wing-down cue; STFALL enters BELOW both cues', () => {
+  it('STFLY jumps AT the wing-down cue; STFALL bypasses both cues', () => {
     // The correction to the derived AC3. These two lines are the whole of it.
     expect(vendoredLine('JOUSTRV4.SRC', 6123)).toBe('STFLY\tJSR\tCPLYR\t\tERASE PLAYER')
     expect(vendoredLine('JOUSTRV4.SRC', 6135)).toBe('\tJMP\tFLAST2')
@@ -384,7 +391,7 @@ describe('jt5-3 AC4 — press sounds DOWN, release sounds UP, and holding is sil
   const SCRIPT: readonly { input: PlayerInput; expect: string[]; why: string }[] = [
     { input: IDLE, expect: [], why: 'the button has never been touched' },
     { input: btn(true, true), expect: [PLAYER_WING_DOWN], why: 'PRESS — GOFLAP -> FLAST2' },
-    { input: btn(false, true), expect: [], why: 'HELD — FLAPLP re-enters at FLAPS2, below the cue' },
+    { input: btn(false, true), expect: [], why: 'HELD — FLAPLP falls through to FLAPS2, bypassing the cue' },
     { input: btn(false, false), expect: [PLAYER_WING_UP], why: 'RELEASE — GOFLIP' },
     { input: IDLE, expect: [], why: 'still released — FLIPLP re-enters at FLIPS2' },
     { input: btn(true, true), expect: [PLAYER_WING_DOWN], why: 'PRESS again' },
@@ -480,7 +487,7 @@ describe('jt5-3 AC3 — entering flight: STFLY sounds, STFALL does not', () => {
     expect(kindsOf(off)).toEqual([PLAYER_WING_DOWN])
   })
 
-  it('WALKING off a ledge is silent — STFALL enters below both cues', () => {
+  it('WALKING off a ledge raises no WING cue — STFALL bypasses both', () => {
     const ground = knightOnTheGround()
     const stillOn = stepGame(ground, { 1: LEFT, 2: IDLE })
     expect(airborne(stillOn, 1), 'precondition: one more step is still on the cliff').toBe(false)
@@ -633,7 +640,7 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
   it('wings HELD across many wakes sound ONCE — the edge, never the level', () => {
     // timeUp 255 spends the impulse down to -1, so the bird keeps sinking and
     // LINET keeps asking for a flap on every wake. The ROM's FLAPLP loops on
-    // that condition and re-enters at FLAPS2, BELOW the `JSR VSND`.
+    // that condition and falls through to FLAPS2, BYPASSING the `JSR VSND`.
     let d = stageBuzzard(enemyEntity(0x90, -1, 255), 1)
     const before = stepDemo(d, {})
     expect(simKindsOf(before), 'precondition: the first wake is the silent rising one').toEqual([])
