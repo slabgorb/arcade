@@ -284,3 +284,43 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: sw8-23
+    title: 'Harden the comment-citation guard: it cannot see its own directory, its opt-out fires on a MENTION, and its stated limits omit the two biggest ones (sw8-18 review findings 3, 4, 5, 7)'
+    description: |-
+      Four findings from sw8-18's review, all in plugins/star-wars/tools/audit/check-comment-citations.mjs, all the same shape: the guard has gaps it does not disclose.
+
+      (1) IT CANNOT SEE ITS OWN DIRECTORY. checkTree walks src, tests and docs/superpowers/specs — never tools/. So the guard does not check its own citations, nor those of check-citations.mjs, reanchor-citations.mjs or linked-modules.mjs. This is not hypothetical: at review the module's own header cited design.md:45-46 for the longplay observation that sits at :47-48, i.e. the exact defect class the tool exists to catch, inside the tool, invisible by construction. (That one citation was corrected in sw8-18's chore; the scope gap was not.) Adding tools/ will surface a fresh count — measure it before promising green.
+
+      (2) THE OPT-OUT FIRES ON A MENTION. checkCitations gates on `raw.includes(IGNORE_PRAGMA)` with no anchoring, so any file containing the string `citation-guard: ignore-file` — including inside a backticked example, or in prose describing the pragma — silently drops out of the scan entirely. VERIFIED at review: a fixture with one stale citation reports 1 error; the same fixture with the sentence "The guard honours a citation-guard: ignore-file pragma" above it reports 0. Nothing trips it accidentally today (only the two sw8-18 test files carry it deliberately), but docs/superpowers/specs IS in scope, so the first spec that documents this guard retires itself. Anchor it — leading comment only, or first N lines, or an exact-line match — and LOG when it fires. A silent whole-file skip is the worst failure mode a completeness tool can have.
+
+      (3) UNCATCHABLE OMITS THE TWO BIGGEST LIMITATIONS. AC7 of sw8-18 was met to its letter (the nine prose items are named), but measured over the scanned tree: 744 of 1000 line-span citations — 74% — get existence/range checking ONLY, because no usable quote is adjacent to them; and a citation whose adjacent quote is a single token is never verbatim-checked at all (mutant `(`TGPROB:`, WSCPU.MAC:999)` -> MISSED). Both are consequences of rules that are individually correct — a quote must contain whitespace or our own identifiers get checked against the ROM. The problem is that a reader seeing a green run infers "the citations are true" when three-quarters were only checked for "the file exists and the number is in range". Say so in UNCATCHABLE.
+
+      (4) `fromFile` IS DEAD. CheckOptions.fromFile is declared in the .d.mts, passed by checkTree and by six test call sites, and never read anywhere in the implementation. sw8-18's item-7 mutation test varies it specifically to simulate the citation living in a different file, and that variation has no effect — so the suite reads as covering citing-file-relative resolution that nothing implements. Either wire it into resolve() (relative paths resolved against the citing file, before the basename index) or drop it from the interface and the call sites.
+
+      OPEN QUESTION, deliberately not settled here: should the guard run cabinet-wide? Every other game carries the same comment style and the same <file>:<span> habit and none has any citation gate. Answering it needs the resolver taught about @shared and the monorepo root first (already done for star-wars), then a measured count per game. Raise it with numbers, not a guess.
+
+      NOT td1-14: that story owns the non-unique-verbatim guard clause for the relocation search, in both tools. This one is about scope, the opt-out, the docs and a dead parameter — no overlap.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
+  - id: sw8-24
+    title: Sweep the ~35 stale citations the comment-citation guard reports across plugins/star-wars, then lower its ratchet (sw8-18 TEA finding)
+    description: |-
+      The comment-citation guard sw8-18 shipped reports 35 stale citations across plugins/star-wars beyond the twelve that story fixed. sw8-18 hard-gated only its own 11 files and left the rest under a ratchet; this story closes them and tightens the ratchet to whatever remains.
+
+      WHAT THE 35 ARE. Run `node plugins/star-wars/tools/audit/check-comment-citations.mjs` for the live list. The guard RE-LOCATES every anchor it rejects ("it is now at <file>:<N>; re-anchor the citation to that"), so most of these are a one-number edit rather than a hunt. Do NOT apply a hint blindly: the search is first-occurrence, so a non-unique verbatim can name the wrong routine — sw8-18 hit exactly that with `ADDD M$TX+M.S1`, where the hint said WSMAIN.MAC:2539 (S1MVGD) and the answer was :2656 (S1MVBS). td1-14 is the story that adds the refuse-to-guess clause; if it lands first this sweep gets safer.
+
+      MEASURED SHAPE (sw8-18, and re-measure before starting — siblings move these). Several are one migration artefact rather than 35 independent defects: `math3d.ts:607-618`-style spans point at a pre-migration file that no longer exists at that size, and references to `context-story-8-3.md` / `.session/8-6-session.md` paths moved when the nine repos collapsed into this one. Grouping those may make the sweep much smaller than the count suggests. The rest are genuine off-by-N drift of the kind sw8-18 corrected by hand.
+
+      THE RATCHET. tests/audit/comment-citations.test.ts carries `expect(checkTree(...).length).toBeLessThanOrEqual(35)`. It was tightened from 146 to 35 during sw8-18's review, because at 146 it could not have failed until 111 new stale citations landed — a guard with that much slack does not bite, which is the exact thing sw8-18 existed to retire. Lower it again in the SAME commit as the sweep, to whatever the tree actually reports. If the number cannot reach 0, say in the test comment which residue is deliberate and why.
+
+      CAUTION: editing comments in cited files moves the audit's `ours` pins, which tests/audit/citations.test.ts re-opens against the WORKING TREE. sim.ts carries 22 live pins, state.ts 14, render.ts 13. Run `node tools/audit/reanchor-citations.mjs --write` from plugins/star-wars afterwards and confirm "0 lost".
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
