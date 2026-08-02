@@ -28,11 +28,19 @@ fact every duration in this document rests on: one `SOUNDS` pass is one video
 frame, so a countdown of N is N frames at `FRAME_HZ`, which lives as a named
 constant at `src/shell/timebase.ts:20` and is deliberately not restated here.
 
-The machine drives **seven countdown variables over four POKEY voices**. It says
-so itself, in a header comment: `CENTI4.MAC:2325`, `CENTI4.MAC:2326`,
-`CENTI4.MAC:2327`, `CENTI4.MAC:2328`. Each pass, `SOUNDS` walks the channels that
-are non-zero, indexes a frequency table by the countdown, writes `AUDF`/`AUDC`,
-and decrements.
+The machine drives **seven countdown variables over four POKEY voices**, and the
+header comment is only half of that. It names four channels and no voices at all:
+CHAN0 all explosions (`CENTI4.MAC:2325`), CHAN1 the bonus, centipede, ant and
+scorpion sounds (`CENTI4.MAC:2326`), CHAN2 the shot (`CENTI4.MAC:2327`), CHAN3
+the spider (`CENTI4.MAC:2328`). The other three are undocumented and have to be
+read out of the routine — CHAN4 the bonus countdown (`CENTI4.MAC:2373`), CHAN5
+the player explosion (`CENTI4.MAC:2436`), CHAN6 the scorpion
+(`CENTI4.MAC:2386`) — which is the first sign that the header is a note to a
+colleague rather than a specification. The four voices are the four `AUDF`
+registers those seven channels write: `AUDF0` (`CENTI4.MAC:2423`), `AUDF1`
+(`CENTI4.MAC:2433`), `AUDF2` (`CENTI4.MAC:2357`) and `AUDF3`
+(`CENTI4.MAC:2349`). Each pass, `SOUNDS` walks the channels that are non-zero,
+indexes a frequency table by the countdown, writes `AUDF`/`AUDC`, and decrements.
 
 **Attract is silent by ROM design, not by our omission.** `SOUNDS` opens by
 testing `MODE` (`CENTI4.MAC:2329`), zeroes all four `AUDC` registers

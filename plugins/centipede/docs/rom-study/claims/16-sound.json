@@ -934,5 +934,14 @@
       "line": 2445,
       "verbatim": "\tSTA AUDF0"
     }
+  },
+  {
+    "id": "SND-105",
+    "claim": "CHAN5 is the player-explosion countdown, read at label 53$ — one of the three channels the SOUNDS header comment never mentions. The header names CHAN0 through CHAN3 only, so a reader who took it for the channel inventory would miss three of the seven.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2436,
+      "verbatim": "53$:\tLDY CHAN5"
+    }
   }
 ]

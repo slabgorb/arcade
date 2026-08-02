@@ -101,7 +101,7 @@ All JavaScript error checks (#10 from JS checklist) apply, plus:
 
 **13. Fix-introduced regressions (meta-check)**
 After applying fixes for review findings, re-scan the fix diff against
-checks #1-#12 and #14-#18. Common patterns:
+checks #1-#12 and #14-#19. Common patterns:
 - Adding `as any` to silence a type error instead of fixing it
 - Adding null checks but using `||` instead of `??`
 - Adding runtime validation but not updating the type to match
@@ -222,13 +222,41 @@ fail for the defect it named, because the only game ever mounted was the one
 asserted; a helper whose shallow aria-hidden walk called a broken implementation
 healthy; and its same-named twin one file over)*
 
+**19. The POPULATION is filtered by a neighbouring field, so the case under test
+is excluded by construction**
+#15 asks whether a loop's `continue`s could skip every iteration. This asks the
+question one step earlier: whether the collection the loop walks was already
+narrowed by a predicate on a DIFFERENT field from the one the body asserts on.
+The floor passes, the loop runs, every assertion is honest — and the one entry
+that mattered was never in the set.
+- A helper NAMED for the population (`tableCues()`, `activeUsers()`) whose filter
+  keys on field A while its call sites assert on field B. Filter on the field the
+  body actually reads, in the body's own line of sight — or pass the whole set
+  and skip explicitly, with the reason in the skip
+- A sweep that enumerates one REGION of a structure (`Object.entries(fixture.cues)`)
+  when sibling regions carry the same kind of data. Walk the structure, not the
+  region you had in mind while writing it
+- Data declared in NO type. A block absent from the interface is absent from every
+  sweep that derives its fields from that interface, and the type checker cannot
+  miss it because it was never asked
+- The tell is that the population floor PASSES: the floor counts what the filter
+  admitted, so it can never see what the filter excluded. Mutation-test the
+  EXCLUDED case — mutate the entry you believe the sweep does not reach and
+  require red. "N of N mutations caught" from a battery aimed at the fields you
+  were thinking about is a statement about the battery's aim, not the coverage.
+*Origin: cp6-1 I-H4 + I-M1 (the control-byte sweep ran over `tableCues()`, filtered
+on `freqTable !== null`, so the single cue whose frequency the ROM COMPUTES carried
+an uncited control byte nothing checked — `"0xA4"` → `"0xFF"` left 1075/1075 green;
+and the `voiceArbitration` block, declared in no interface and walked by no sweep,
+held six wrong citations and the ruling that shipped wrong)*
+
 If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 
 ```yaml
 GATE_RESULT:
   status: pass
   gate: typescript-review-checklist
-  message: "TypeScript self-review checklist passed (18 checks)"
+  message: "TypeScript self-review checklist passed (19 checks)"
   checks:
     - name: type-safety-escapes
       status: pass
@@ -268,7 +296,7 @@ GATE_RESULT:
       detail: "No barrel file over-imports; async fs in handlers"
     - name: fix-regressions
       status: pass
-      detail: "Fix commits re-scanned against checks #1-#12, #14-#18"
+      detail: "Fix commits re-scanned against checks #1-#12, #14-#19"
 ```
 </pass>
 
@@ -333,7 +361,7 @@ GATE_RESULT:
     - "Add Zod/io-ts validation at API boundaries; validate JSON.parse results"
     - "Use catch(e: unknown) and narrow with instanceof/type guards"
     - "Import specific exports instead of barrel; use async fs in handlers"
-    - "Re-scan fix diffs against checks #1-#12, #14-#18 before handoff"
+    - "Re-scan fix diffs against checks #1-#12, #14-#19 before handoff"
 ```
 </fail>
 
