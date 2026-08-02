@@ -1372,3 +1372,8 @@ completed_stories:
     title: SNPCR2 — give player 2 its own transporter cue instead of P1's
     points: 5
     completed: '2026-08-02'
+  - id: uf1-15
+    epic: uf1
+    title: star-wars C_AS's fire cone is INVENTED — the ROM's own gate is a squared screen radius (WSCPU.MAC:615-618)
+    points: 3
+    completed: '2026-08-02'

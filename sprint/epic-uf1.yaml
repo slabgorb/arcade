@@ -214,11 +214,12 @@ stories:
       of a fighter pointed directly AWAY."
     points: 3
     priority: p2
-    status: in_review
+    status: done
     assigned_to: Keith Avery
     started: '2026-08-01'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-02'
     type: bug
     review_findings: "2 HIGH: AIM_DEPTH_MAX has no real test (only assertion is a tautology restating its own declaration) and its boundary survives mutation (< -> <=, 2113/2113 green); front-sign boundary >= 0 -> > 0 also survives (2113/2113 green). 5 MEDIUM: mathbox.md cited 170-175 but the quoted text is at 176 (correct span 171-176, which TEA already had - the Dev delivery finding inverts this and would corrupt the correct citation); WSCPU.MAC:612 is wrong (SUBD/BGE at 610-611, 612 is the C$AV setter); a fixture comment claims play-cube reachability for a position outside PLAY_CUBE_MAX; 'spawnTie and aimOrient are its callers' - spawnTie is not; psb2SquaredToWorld returns silent NaN on negative input. ROM analysis, unit chain, shape change, loiter re-seat and T4c re-aim all VERIFIED CORRECT and accepted - round 2 should be short."
     review_verdict: approved
