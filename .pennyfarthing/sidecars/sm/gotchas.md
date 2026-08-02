@@ -1398,3 +1398,54 @@ asserting unciteable project facts).
 
 **One thing the hand path must not skip:** the labelled-token count, re-run AFTER the assessment
 is written, not just after the files are created. Ran clean here (1/1/1/2) on both passes.
+
+## The user's backlog ruling is a FINISH deliverable with a deadline — and the re-scope must rewrite the TITLE too (uf1-9, 2026-08-02)
+
+The setup ruling ("uf1-9 owns the PJOYT latch; jt5-8 gets re-scoped at finish") is the jt5-10 shape:
+an obligation no phase agent can discharge, due BEFORE `pf sprint story finish` archives the session
+that explains it. Done here in the right order — re-scope, file, verify, then finish.
+
+Two refinements on the existing entries.
+
+**Rewrite the title, not just the description.** jt5-8 was titled "The enemy's wing-down LATCH — our
+brains recompute each wake and latch nothing". uf1-9 built that latch, so the board was advertising
+shipped work. The jt8-6 and ad1-2 entries in this file record the *opposite* case (the user rules
+repurpose-WITHOUT-retitle, and the stale title must then be disclosed) — the distinction is who
+decided: there the user chose to keep it, here the ruling was to re-scope, and a re-scope that leaves
+the title advertising the old scope is half a re-scope. `pf sprint story update --title` exists.
+
+**A re-scoped story needs an explicit ALREADY-SHIPPED, DO-NOT-REBUILD paragraph.** Not just "what
+remains" — the next picker's real risk is re-deriving the part that landed. jt5-8's rewrite names the
+`PjoyState` union, the asymmetric entry, the frozen down-seek hold and the flap/flapHeld split as
+done, then states the remainder (`LNTUP`/`LNTOFP` and the player-side `flapHeld`) and why it is
+genuinely separate: neither is a DYTBL row. That sentence is what stops the next groomer merging it
+back.
+
+## Prose defects the review found: fix in place, but say so in the Impact Summary
+
+Two false universals were fixed at finish rather than filed — `difficulty-wiring.test.ts`'s "Every
+DYWORD row's GA1 column 1 reproduces EXACTLY the immediate" (false for two rows, which is this very
+story's AC6) and `audio-flap.test.ts`'s "ONE bit doing both jobs" (which the story made false by
+splitting them). Neither is asserted by any test, which is exactly why they survive; filing them
+would have parked a known-false sentence in the tree for a sprint.
+
+The rule that keeps this honest: an in-place prose fix must appear in the **Impact Summary** as a
+fix, with the reason it was not filed. Otherwise the archived record shows a clean finish and the
+next reader cannot tell a corrected claim from one that was always right. Same for the three stale
+line-citations — repairing them as NAMED references (`BOUNDR_DOWN_BRAKE`, `ROW_DISPOSITION.LAVGRA`)
+rather than corrected line numbers is the durable fix, because the next story that grows the file
+breaks the numbers again.
+
+## Filing three follow-ups: check the MECHANISM of every candidate owner, and expect none
+
+Searched every open story in jt5/jt8/uf1 for `B2UP3`, `SHUP3`, `PPVELX`, `BOLEV2`, `BOFAST` before
+filing — zero hits, so all three findings were genuinely unowned. Worth doing even when you expect
+that answer: the ad1-2 and jt8-7 entries in this file are both cases where a plausible owner existed
+and was WRONG, and one grep is cheaper than either mistake.
+
+`pf sprint story add --repos arcade --workflow --priority` behaved (fifth confirmation), still writes
+no description, and still mints its own id — jt5-18, jt5-19, jt8-16 were read from the output, not
+guessed. The one that would have bitten: jt8-16 exists only because jt8-2's own source comment
+DEFERRED `PPVELX` to uf1-9 by name, and uf1-9 did not do it. A deferral written into a code comment
+is invisible to every backlog grep; when a story's module carries "this belongs to <story>", check at
+that story's finish whether it actually landed.
