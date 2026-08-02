@@ -16,7 +16,7 @@
 // The cabinet gives music FOUR voices, each 16-BIT (`.TVC 1,PKFL1,16`), so each one
 // occupies a JOINED CHANNEL PAIR: the driver writes the divisor's low byte to 0(X),
 // its high byte to 2(X), and the amplitude to 3(X) — "AMPLITUDE GOES IN SECOND
-// CHANNEL FOR 16 BIT" (SNDPM.MAC:919). Four voices x 2 channels = 8 channels = the
+// CHANNEL FOR 16 BIT" (SNDPM.MAC:605). Four voices x 2 channels = 8 channels = the
 // board's two POKEYs, at 0x1810 and 0x1818:
 //
 //     voice 1 -> PKFL1 = POKEY2+0   chip B, channels 1+2

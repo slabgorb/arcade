@@ -204,7 +204,7 @@ const segmentsOf = (t) => TRACKS[t].segments
 const allVoices = () => trackNames().flatMap((t) => segmentsOf(t).flatMap((s) => s.voices))
 
 describe('sw6-1 AC-1 — PROVENANCE: the tune data is GENERATED from SWMUS.MAC', () => {
-  // The story says "mirror tools/speech-bake/gen-speech-data.mjs". That file does not
+  // The story says "mirror RETIRED:tools/speech-bake/gen-speech-data.mjs". That file does not
   // exist: speech-data.mjs's header credits a generator that was never committed. The
   // exemplar therefore cannot be mirrored literally — and mirroring it literally is
   // precisely the sin (a data module nobody can reproduce). The generator must SHIP.
@@ -275,7 +275,7 @@ describe('sw6-1 AC-6 — SEGMENTS: one flattened loop per phase, in ROM order', 
   //
   //   WSMAIN.MAC:1636  PHIGD (ground INIT, PH.TIM just zeroed):
   //                      JSR PM4TH   ";BATTLE MUSIC IN FOURTHS"
-  //   WSMAIN.MAC:1673  PHEGD (the PER-FRAME ground handler), guarded by
+  //   PHEGD  WSMAIN.MAC:1673 (the PER-FRAME ground handler), guarded by
   //                    `LDA PH.TIM / CMPA #14. / IFEQ`:
   //                      JSR PMREB   ";FINISH GROUND WITH REBEL"
   //

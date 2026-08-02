@@ -84,7 +84,7 @@ function parseTuntab() {
 // Each instruction is a 2-byte pair: the driver fetches with `LDB ,X++` (6809
 // post-increment BY TWO — SNDPM.MAC:699), so opcode/note and operand/duration are
 // always read together. End of tune is a DURATION byte of 0 on a note
-// (SNDPM.MAC:737 `LDA -1(X) / BNE 30$` → else re-init the voice). `.ENDL` is
+// (SNDPM.MAC:738-739 `LDA -1(X) / BNE 30$` → else re-init the voice). `.ENDL` is
 // `8F,00`, whose second byte is also 0 — but its first byte has the high bit set,
 // so it is an opcode, not a terminator.
 //

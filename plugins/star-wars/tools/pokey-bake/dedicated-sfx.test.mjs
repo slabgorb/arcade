@@ -17,7 +17,7 @@
 //          `.S 2,144.,<v>.,0` with v = 70,71,72,73,75,76,77,78 (DECIMAL, dotted
 //          — and the author SKIPPED 74: a transcription that "fixes" the gap
 //          fabricates a note the ROM never played). All eight share one volume
-//          chain (DF1C..DF8C fall through to one list, :323-347).
+//          chain (DF1C..DF8C fall through to one list, SNDAUD.MAC:323-347).
 //   AUDSS: ONE channel. freq `.S 1,14.,8,0`; vol (1,2,$41,0) (7,1,$42,1)
 //          (3,1,$4A,2) (1,2,$4F,0) — a short rising crackle.
 //

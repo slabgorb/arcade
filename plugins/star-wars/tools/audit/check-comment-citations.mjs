@@ -22,8 +22,17 @@
 // from the cited file, so a guard built on them can never go green. Only immediate
 // adjacency is tractable — and it is the shape the codebase already writes:
 //
-//     (`LDD FRAME / JSR LSLD7 / STD ST.UX`, WSMAIN.MAC:2525-2528)
-//     "…the Death Star is entirely out of frame" (`…design.md:47-48`)
+//     (`LDD FRAME / JSR LSLD7 / STD ST.UX`, RETIRED:WSMAIN.MAC:2525-2528)
+//     "…the Death Star is entirely out of frame" (RETIRED:design.md:47-48)
+//
+// Both examples above are DISOWNED with the `RETIRED:` marker, and every other citation
+// in this file is too. That is deliberate and it must stay: a file that teaches the
+// citation format by exhibiting it is full of citation-SHAPED text that asserts nothing.
+// Now that `tools/` is in scope this file is scanned like any other, and re-anchoring
+// those exhibits to whatever currently happens to be true would delete the very thing
+// they illustrate. Note the marker must sit IMMEDIATELY before the filename: writing an
+// elision between the two puts an ellipsis where the parser expects the name, and the
+// disowning silently fails, so the full name is spelled out above.
 //
 // Usage:  node tools/audit/check-comment-citations.mjs [rootDir]
 // Exits non-zero and prints every stale citation, each with the line it moved to.
@@ -37,11 +46,46 @@ import { fileURLToPath } from 'node:url'
  *  and can never be green. */
 export const IGNORE_PRAGMA = 'citation-guard: ignore-file'
 
+/**
+ * Does `raw` opt itself out? The pragma must OPEN a leading comment.
+ *
+ * This used to be a bare `raw.includes(IGNORE_PRAGMA)`, which fired on any MENTION —
+ * inside a backticked example, or in prose describing the pragma — and silently dropped
+ * the whole file from the scan. `docs/**\/specs` is in scope, so the first spec that
+ * documented this guard would have retired it. A silent whole-file skip is the worst
+ * failure mode a completeness tool has.
+ *
+ * "In a leading comment" is NOT tight enough, and the counter-example is the exact
+ * sentence above: `// The guard honours a citation-guard: ignore-file pragma.` is itself
+ * a leading comment. So the pragma must be the first thing the comment SAYS, once the
+ * leader is stripped — which is how both files that legitimately opt out already write
+ * it. Scanning only the head also means a trailing comment cannot mute a whole file.
+ */
+export function hasPragma(raw) {
+  for (const line of raw.split('\n').slice(0, PRAGMA_HEAD_LINES)) {
+    const t = line.trim()
+    if (t === '') continue
+    const body = t.replace(/^(?:\/\/+|\/\*+|\*|#|>)\s*/, '')
+    // A non-comment line ends the header: code above the pragma means it is not leading.
+    if (body === t) return false
+    if (body.startsWith(IGNORE_PRAGMA)) return true
+  }
+  return false
+}
+
+/** How far into a file the opt-out may sit. Enough for a shebang or a title line to
+ *  precede it, far too few for the pragma to hide at the bottom of a module. */
+const PRAGMA_HEAD_LINES = 5
+
 /** Prose sometimes quotes a citation in order to DISOWN it ("this used to say X, and X
  *  was wrong"). Re-opening those would redden the very edit that retires them. */
 const RETIRED_MARK = 'RETIRED:'
 
-const SCAN_EXT = ['.ts', '.tsx', '.mjs', '.md']
+/** Exported so a test can assert the scanned surface rather than assume it. `.mts` is
+ *  here because `extname('check-comment-citations.d.mts')` is `.mts`, not `.ts` — without
+ *  it this tool's own type declarations stay invisible even once `tools/` is in scope,
+ *  and one of them is where the dead `fromFile` option was declared. */
+export const SCAN_EXT = ['.ts', '.tsx', '.mjs', '.md', '.mts']
 
 /** Comment leaders and blockquote markers break a quote across lines. Matching the
  *  stored bytes therefore misses the sentence a human reads, the assertion silently
@@ -82,7 +126,20 @@ function delimitedSpans(text) {
 
 const isRomFile = (f) => /\.(MAC|XXX)$/i.test(f)
 
-const FILE_RE = String.raw`[A-Za-z0-9_./-]*[A-Za-z0-9_-]\.(?:MAC|XXX|ts|tsx|mjs|md)`
+// A filename needs a non-empty STEM, and it may not begin mid-token. Both halves are
+// required and neither works alone — this cost two attempts, so the reasoning is kept:
+//
+//   without the leading class   a GLOB is a citation: `**/*.test.mjs` yields the
+//                               stem-less name `.test.mjs`, which resolves to nothing
+//                               and is reported as a dangling reference
+//   without the lookbehind      the class just re-anchors one character right and
+//                               yields the same name minus its dot — still a phantom,
+//                               only the error message changes
+//   with only the lookbehind    a SPACE-preceded bare extension survives, which is what
+//                               a comment-wrapped sentence leaves at its next line start
+//
+// Six such phantoms existed across the tree, none of them a citation anybody wrote.
+const FILE_RE = String.raw`(?<![.*\w])[A-Za-z0-9_-][A-Za-z0-9_./-]*[A-Za-z0-9_-]\.(?:MAC|XXX|ts|tsx|mjs|md)`
 const CITE_RE = new RegExp(
   String.raw`(${RETIRED_MARK}\s*\`?)?(${FILE_RE})(?::(\d+)(?:-(\d+))?)?` +
     String.raw`|(${RETIRED_MARK}\s*\`?):?(\d+)-(\d+)`,
@@ -94,7 +151,7 @@ const CITE_RE = new RegExp(
  *
  * Three forms, because the sw8-18 defects used all three: a qualified `<file>:<span>`,
  * a BARE `:<span>` that inherits the nearest preceding filename (gameRules.ts wrote
- * "`.REPT 0`, :2273-2290" with `WSMAIN.MAC` on the line above), and a bare `<file>`
+ * "`.REPT 0`, RETIRED::2273-2290" with `WSMAIN.MAC` on the line above), and a bare `<file>`
  * with no line at all (a reference to a test file that had been deleted).
  */
 export function extractCitations(raw) {
@@ -127,20 +184,28 @@ export function extractCitations(raw) {
   // `?.text` yields undefined, not null, when no span is adjacent — so this guards on
   // presence rather than on `!== null`.
   const isFragment = (s) => typeof s === 'string' && /\s/.test(s.trim())
+  // Returns BOTH the usable quote and the one that was rejected. Reporting only the
+  // former collapses two different situations — "nothing was adjacent" and "something
+  // was adjacent and we declined to check it" — into an identical `null`, so nothing
+  // downstream can tell them apart. That is why the single-token blind spot reads as a
+  // separate limitation from the range-only class when it is a SUBSET of it (see
+  // UNCATCHABLE), and why no census could measure the two independently.
   const quoteFor = (index, len) => {
     const before = spans.find((sp) => sp.end <= index && index - sp.end <= 4 && gapOk(text.slice(sp.end, index)))?.text
-    if (isFragment(before)) return before
+    if (isFragment(before)) return { quote: before, dropped: null }
     const after = spans.find(
       (sp) => sp.start >= index + len && sp.start - (index + len) <= 4 && gapOk(text.slice(index + len, sp.start)),
     )?.text
-    return isFragment(after) ? after : null
+    if (isFragment(after)) return { quote: after, dropped: null }
+    const adjacent = typeof before === 'string' ? before : typeof after === 'string' ? after : null
+    return { quote: null, dropped: adjacent }
   }
 
   let lastRom = null
   const romsSeen = []
   for (const c of [...qualified, ...bare].sort((a, b) => a.index - b.index)) {
     let file, isBare = false
-    const quote = quoteFor(c.index, c.len)
+    const { quote, dropped } = quoteFor(c.index, c.len)
     if (c.file) {
       file = c.file
       lastFile = file
@@ -164,6 +229,7 @@ export function extractCitations(raw) {
       start: c.start ? Number(c.start) : null,
       end: c.start ? Number(c.end ?? c.start) : null,
       quote,
+      droppedQuote: dropped,
       bare: isBare,
       retired: c.retired,
       index: c.index,
@@ -249,7 +315,7 @@ const tokensOf = (q) =>
  */
 export function checkCitations(raw, opts) {
   const errs = []
-  if (raw.includes(IGNORE_PRAGMA)) return errs
+  if (hasPragma(raw)) return errs
 
   for (const c of extractCitations(raw)) {
     if (c.retired) continue
@@ -339,9 +405,33 @@ export function checkCitations(raw, opts) {
   return errs
 }
 
-/** Scan the plugin's sources, tests and design specs. */
-export function checkTree({ swRoot, romDir, repoRoot, roots }) {
-  const dirs = roots ?? [join(swRoot, 'src'), join(swRoot, 'tests'), join(swRoot, 'docs', 'superpowers', 'specs')]
+/**
+ * The scanned surface, exported so it can be asserted rather than assumed.
+ *
+ * `tools` is here because this checker could not see its OWN directory: not its own
+ * citations, nor those of `check-citations.mjs`, `reanchor-citations.mjs` or
+ * `linked-modules.mjs`. That was not hypothetical — at sw8-18's review the module header
+ * cited a design spec two lines off, i.e. the exact defect class the tool exists to
+ * catch, sitting inside the tool, invisible by construction.
+ */
+export function defaultRoots(swRoot) {
+  return [
+    join(swRoot, 'src'),
+    join(swRoot, 'tests'),
+    join(swRoot, 'docs', 'superpowers', 'specs'),
+    join(swRoot, 'tools'),
+  ]
+}
+
+/**
+ * Scan the plugin's sources, tests, design specs and tooling.
+ *
+ * `onSkip` is called with every file the opt-out pragma drops. It defaults to writing to
+ * stderr rather than to nothing: a file that silently vanishes from a completeness check
+ * is indistinguishable from a file that passed it.
+ */
+export function checkTree({ swRoot, romDir, repoRoot, roots, onSkip }) {
+  const dirs = roots ?? defaultRoots(swRoot)
   const files = []
   const walk = (d) => {
     if (!existsSync(d)) return
@@ -354,9 +444,17 @@ export function checkTree({ swRoot, romDir, repoRoot, roots }) {
   }
   dirs.forEach(walk)
 
+  const notify = onSkip ?? ((f) => console.error(`citation-guard: skipping ${relative(swRoot, f)} (opt-out pragma)`))
   const errs = []
   for (const f of files) {
-    for (const e of checkCitations(readFileSync(f, 'utf8'), { swRoot, romDir, repoRoot, fromFile: f })) {
+    const raw = readFileSync(f, 'utf8')
+    // Hoisted out of checkCitations so the skip can be ANNOUNCED. Left inside, the only
+    // caller that knows a filename never learns the file was dropped.
+    if (hasPragma(raw)) {
+      notify(f)
+      continue
+    }
+    for (const e of checkCitations(raw, { swRoot, romDir, repoRoot })) {
       errs.push(`${relative(swRoot, f)}: ${e}`)
     }
   }
@@ -380,6 +478,17 @@ export const UNCATCHABLE = [
   'the sentence wrapped around it is false. It also cannot see a span that brackets the right',
   'text for the wrong reason. Read a green run as "cited spans resolve and their adjacent',
   'quotes are still inside them", never as "the citations are true".',
+  'THE TWO BIGGEST LIMITS ARE NOT ON THAT LIST, and they are much larger than it.',
+  'Measured over the scanned tree, 73.4% of line-span citations get existence and range',
+  'checking ONLY — no verbatim is ever compared, because no usable quote sits adjacent to',
+  'them. So three quarters of a green run means "the file exists and the number is inside',
+  'it", nothing more. The single-token case is a SUBSET of that same population rather',
+  'than an additional limitation: an adjacent quote of one bare token (`TGPROB`) is',
+  'rejected as one of OUR identifiers rather than a fragment of the cited file, and the',
+  'citation then falls into the range-only class. Counting the two separately overstates',
+  'what is blind. Both follow from rules that are individually correct — a quote must',
+  'contain whitespace or our own symbol names get checked against the ROM — which is why',
+  'they are limits to disclose rather than bugs to fix.',
 ].join(' ')
 
 // CLI: `node tools/audit/check-comment-citations.mjs`

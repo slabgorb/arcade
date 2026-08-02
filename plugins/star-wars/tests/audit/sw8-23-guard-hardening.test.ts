@@ -72,12 +72,13 @@
 // Pure text analysis. No DOM, no sim, no time.
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { readFileSync, writeFileSync, unlinkSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdtempSync, rmSync } from 'node:fs'
 import { join, dirname, extname, relative } from 'node:path'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import * as guard from '../../tools/audit/check-comment-citations.mjs'
 
-const { extractCitations, checkCitations, checkTree, UNCATCHABLE, IGNORE_PRAGMA } = guard
+const { extractCitations, checkCitations, checkTree, UNCATCHABLE, IGNORE_PRAGMA, SCAN_EXT, defaultRoots } = guard
 
 const here = dirname(fileURLToPath(import.meta.url))
 const swRoot = join(here, '..', '..')
@@ -122,37 +123,56 @@ describe('sw8-23 AC1 — the guard can see its own directory and its own declara
     expect(roots).toContain(join('docs', 'superpowers', 'specs'))
   })
 
-  // The exported lists above are a claim ABOUT the walk. These two plant a real file
-  // and require the DEFAULT scan to find it — the walk itself, not its description.
-  const plant = (name: string, body: string, run: () => void) => {
-    const p = join(TOOLS, name)
-    // Never clobber: a collision means the probe name leaked into the repo.
-    expect(existsSync(p)).toBe(false)
+  // The exported lists above are a claim ABOUT the walk. These plant real files and
+  // require the walk to find them — the mechanism, not its description.
+  //
+  // They plant into a TEMP directory rather than into `tools/` itself. An earlier draft
+  // wrote the probe into the live tree and passed when this file ran alone, but vitest
+  // runs test FILES in parallel and they share one filesystem: sw8-18's tree-wide ratchet
+  // scanned the probe mid-flight and counted it, so the pair failed together and passed
+  // apart. A test that mutates the tree another suite is measuring is flaky by
+  // construction, and the flake lands on the OTHER suite where nothing explains it.
+  const plant = (name: string, run: (root: string) => void) => {
+    const root = mkdtempSync(join(tmpdir(), 'sw8-23-scope-'))
     try {
-      writeFileSync(p, body)
-      run()
+      writeFileSync(join(root, name), `${CANARY}\n`)
+      run(root)
     } finally {
-      if (existsSync(p)) unlinkSync(p)
+      rmSync(root, { recursive: true, force: true })
     }
   }
 
-  it('a stale citation planted under tools/ is reported by the DEFAULT scan', () => {
-    plant('__sw8-23-scope-probe.mjs', `${CANARY}\n`, () => {
-      const errs = checkTree({ swRoot, romDir })
-      expect(errs.some((e) => e.includes('__sw8-23-scope-probe.mjs'))).toBe(true)
+  it('the walk descends into a root and reports a stale citation there', () => {
+    plant('probe.mjs', (root) => {
+      const errs = checkTree({ swRoot, romDir, roots: [root] })
+      expect(errs.some((e) => e.includes('probe.mjs'))).toBe(true)
     })
   })
 
-  it('...and so is one planted in a `.d.mts`, which SCAN_EXT omits today', () => {
-    plant('__sw8-23-scope-probe.d.mts', `${CANARY}\n`, () => {
-      const errs = checkTree({ swRoot, romDir })
-      expect(errs.some((e) => e.includes('__sw8-23-scope-probe.d.mts'))).toBe(true)
+  it('...and it reads a `.d.mts`, an extension SCAN_EXT omits today', () => {
+    plant('probe.d.mts', (root) => {
+      const errs = checkTree({ swRoot, romDir, roots: [root] })
+      expect(errs.some((e) => e.includes('probe.d.mts'))).toBe(true)
     })
   })
 
-  it('the probe leaves no trace — the planted files are gone', () => {
-    expect(existsSync(join(TOOLS, '__sw8-23-scope-probe.mjs'))).toBe(false)
-    expect(existsSync(join(TOOLS, '__sw8-23-scope-probe.d.mts'))).toBe(false)
+  it('omitting `roots` really does use defaultRoots — same scan, same result', () => {
+    // Closes the gap the temp-dir rewrite opens: the two tests above prove the walk
+    // handles any root, and `defaultRoots` proves the intended list. This proves the
+    // default path uses THAT list, so `tools/` is genuinely scanned in the real run.
+    const implicit = checkTree({ swRoot, romDir, onSkip: () => {} })
+    const explicit = checkTree({ swRoot, romDir, roots: defaultRoots(swRoot), onSkip: () => {} })
+    expect(implicit).toEqual(explicit)
+    expect(explicit.length).toBeGreaterThanOrEqual(0)
+  })
+
+  it('the real tools/ tree is genuinely walked, not merely listed', () => {
+    // A file that exists only under `tools/`. If the walk skipped the directory this
+    // would be unreachable and the assertion could not distinguish it from a clean file.
+    const probe = join(TOOLS, 'audit', 'check-comment-citations.d.mts')
+    expect(existsSync(probe)).toBe(true)
+    expect(SCAN_EXT).toContain(extname(probe))
+    expect(defaultRoots(swRoot).some((r) => probe.startsWith(r))).toBe(true)
   })
 })
 
@@ -186,6 +206,20 @@ describe('sw8-23 AC3 — the opt-out is ANCHORED, not a substring search', () =>
     // comment at the bottom of a 400-line file still mutes the whole thing.
     const text = [CANARY, 'const x = 1', `// ${IGNORE_PRAGMA}`].join('\n')
     expect(checkCitations(text, opts)).toHaveLength(1)
+  })
+
+  it('the pragma DEEP inside a long opening comment block does not opt out', () => {
+    // Found by a surviving mutant: removing the head-line cap from `hasPragma` broke no
+    // test. It is not an equivalent mutation — the loop only stops early at the first
+    // NON-comment line, so a file that opens with a long prose block (every design spec
+    // in `docs/**/specs`, and this guard's own 90-line header) would hand the pragma
+    // opt-out authority anywhere in that block. That is the AC3 hazard wearing a hat:
+    // the first spec that documents the pragma on its own line retires the spec.
+    const longHeader = Array.from({ length: 12 }, (_, i) => `// prose line ${i}`).join('\n')
+    const buried = `${longHeader}\n// ${IGNORE_PRAGMA}\n${CANARY}`
+    expect(checkCitations(buried, opts)).toHaveLength(1)
+    // ...while the same pragma at the top of the same file still works.
+    expect(checkCitations(`// ${IGNORE_PRAGMA}\n${longHeader}\n${CANARY}`, opts)).toEqual([])
   })
 
   it('both files that deliberately opt out are STILL opted out', () => {
@@ -460,10 +494,10 @@ describe('sw8-23 AC2 — the fresh count, and the extractor defect underneath tw
 
   it('the widened scan does not RISE above the baseline sw8-18 delivered', () => {
     // The forcing function for this AC. sw8-18 tightened its ratchet to 35 over
-    // src+tests+specs. MEASURED at this RED with tools/ added: 45 (35 + 10). Once the
-    // extractor defect above is fixed (-6) and the eight real tools/ citations are
-    // re-anchored or disowned, the widened scan lands at ~31 — below the number the
-    // plugin already lives with, so widening the scope costs the tree nothing.
+    // src+tests+specs. MEASURED at RED with tools/ added: 45 (35 + 10). DELIVERED: 29 —
+    // the extractor defect cleared six phantoms (two in tools/, four already in the
+    // baseline) and the eight real tools/ citations were re-anchored or disowned. So the
+    // scanned surface GREW and the count FELL, which is the claim this AC actually makes.
     //
     // The scope is passed EXPLICITLY here rather than relying on the default. Calling
     // the default today measures the UN-widened tree and reports 35 <= 35 — a green
@@ -475,16 +509,15 @@ describe('sw8-23 AC2 — the fresh count, and the extractor defect underneath tw
       join(swRoot, 'docs', 'superpowers', 'specs'),
       TOOLS,
     ]
-    expect(checkTree({ swRoot, romDir, roots: widened }).length).toBeLessThanOrEqual(35)
+    expect(checkTree({ swRoot, romDir, roots: widened }).length).toBeLessThanOrEqual(29)
   })
 
   it('...and the DEFAULT scan, once it covers tools/, stays under it too', () => {
     // Guards the seam between AC1 and AC2: widening the default without remediating
     // would satisfy AC1's scope tests while pushing the tree-wide count up.
     //
-    // Dev: after GREEN, tighten BOTH this and sw8-18's ratchet to the achieved count in
-    // the same commit. A ratchet with slack is the "guard that does not bite" these two
-    // stories exist to retire.
-    expect(checkTree({ swRoot, romDir }).length).toBeLessThanOrEqual(35)
+    // Tightened to the achieved count in the same commit, alongside sw8-18's. A ratchet
+    // with slack is the "guard that does not bite" these two stories exist to retire.
+    expect(checkTree({ swRoot, romDir }).length).toBeLessThanOrEqual(29)
   })
 })

@@ -70,7 +70,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 const swRoot = join(here, '..', '..')
 const repoRoot = join(swRoot, '..', '..')
 const romDir = join(repoRoot, 'reference', 'atari-source', 'star-wars-1983')
-const opts = { fromFile: join(swRoot, 'src', 'core', 'fixture.ts'), swRoot, romDir }
+const opts = { swRoot, romDir }
 
 describe('sw8-18 AC5 — the three citation forms', () => {
   it('extracts a plain `<file>:<line>`', () => {
@@ -240,9 +240,23 @@ describe('sw8-18 AC6 — mutation proof, each item caught INDEPENDENTLY', () => 
   })
 
   it('item 7 mutant — the spec span that no longer holds the longplay quote reddens', () => {
-    const errs = checkCitations(M7, { ...opts, fromFile: join(swRoot, 'tests', 'shell', 'x.test.ts') })
+    const errs = checkCitations(M7, opts)
     expect(errs).toHaveLength(1)
     expect(errs[0]).toMatch(/26-30/)
+  })
+
+  it('...and it is the ROOTS that resolve it — varying them changes the verdict (sw8-23 AC7)', () => {
+    // This replaces a variation that did nothing. Until sw8-23 the test above was run a
+    // second time with a `fromFile` option "to simulate the citation living in a
+    // different file" — but nothing ever read `fromFile`, so the two runs were the same
+    // call twice and the suite read as covering citing-file-relative resolution that no
+    // line of the implementation performed. Resolution is a function of the CITED name
+    // and the roots, so the roots are what a real mutation has to move.
+    const narrowed = { swRoot: join(swRoot, 'src'), romDir, repoRoot: join(swRoot, 'src') }
+    expect(checkCitations(M7, narrowed)[0]).toMatch(/does not exist/)
+    // ...and the same input under the real roots fails for the SPAN, not the file —
+    // which is what makes the difference attributable to resolution rather than to noise.
+    expect(checkCitations(M7, opts)[0]).toMatch(/26-30/)
   })
 
   it('item 8 mutant — the bare-colon `.REPT 0` span reddens', () => {
@@ -256,7 +270,7 @@ describe('sw8-18 AC6 — mutation proof, each item caught INDEPENDENTLY', () => 
     // A guard that fired on all three from one mechanism would look 3x stronger than
     // it is. Each mutant must be caught by its own rule and be clean of the others.
     const e4 = checkCitations(M4, opts).join('\n')
-    const e7 = checkCitations(M7, { ...opts, fromFile: join(swRoot, 'tests', 'shell', 'x.test.ts') }).join('\n')
+    const e7 = checkCitations(M7, opts).join('\n')
     const e8 = checkCitations(M8, opts).join('\n')
     expect(e4).not.toMatch(/26-30|2273-2290/)
     expect(e7).not.toMatch(/bounded-eye-combat|2273-2290/)
@@ -278,7 +292,7 @@ describe('sw8-18 AC6 — mutation proof, each item caught INDEPENDENTLY', () => 
     const at = spec.findIndex((l) => /Death Star is entirely out/.test(l)) + 1
     expect(at).toBeGreaterThan(0)
     const fixed = M7.replace('design.md:26-30', `design.md:${at}-${at + 1}`)
-    expect(checkCitations(fixed, { ...opts, fromFile: join(swRoot, 'tests', 'shell', 'x.test.ts') })).toEqual([])
+    expect(checkCitations(fixed, opts)).toEqual([])
   })
 })
 
@@ -344,7 +358,7 @@ describe('sw8-18 AC5 — the real tree scans clean', () => {
     '%s carries no stale citation',
     (_label, parts) => {
       const f = join(swRoot, ...parts)
-      expect(checkCitations(readFileSync(f, 'utf8'), { swRoot, romDir, fromFile: f })).toEqual([])
+      expect(checkCitations(readFileSync(f, 'utf8'), { swRoot, romDir })).toEqual([])
     },
   )
 
@@ -357,11 +371,11 @@ describe('sw8-18 AC5 — the real tree scans clean', () => {
     //   state.ts       WSBASE.MAC:1330       `SUBD #6000 ;FURTHEST AWAY FIRING BUNKER` -> :1340
     //   state.ts       WSMAIN.MAC:2654       `ADDD M$TX+M.S1`                          -> :2656
     const state = join(swRoot, 'src', 'core', 'state.ts')
-    const errs = checkCitations(readFileSync(state, 'utf8'), { swRoot, romDir, fromFile: state })
+    const errs = checkCitations(readFileSync(state, 'utf8'), { swRoot, romDir })
     expect(errs.filter((e) => /WSBASE\.MAC:1330|WSMAIN\.MAC:2654/.test(e))).toEqual([])
   })
 
-  it('does not let the tree-wide count RISE above the delivered baseline of 35', () => {
+  it('does not let the tree-wide count RISE above the delivered baseline of 29', () => {
     // A ratchet, not a gate. If this fails, the change added new stale citations.
     // If it passes with room to spare, lower the number in the same commit.
     //
@@ -371,6 +385,13 @@ describe('sw8-18 AC5 — the real tree scans clean', () => {
     // rest was calibration). Left at 146 this could not have failed until 111 new stale
     // citations landed — a ratchet with that much slack is the exact "guard that does
     // not bite" this story exists to retire.
-    expect(checkTree({ swRoot, romDir }).length).toBeLessThanOrEqual(35)
+    //
+    // TIGHTENED AGAIN, 35 -> 29, by sw8-23 — and note the scanned surface GREW in the
+    // same commit. `tools/` and `.mts` joined the scan (+11 raw), six phantom "dangling"
+    // reports turned out to be globs and wrapped-sentence remnants rather than citations
+    // (-6), and the eight real stale citations the widened scan found were re-anchored
+    // or disowned (-8). Widening the scope therefore cost the tree nothing and left it
+    // six better off. Mutation-proven at that value: adding one stale citation reddens.
+    expect(checkTree({ swRoot, romDir }).length).toBeLessThanOrEqual(29)
   })
 })

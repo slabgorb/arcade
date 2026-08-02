@@ -212,13 +212,13 @@ class Voice {
           this.ampEnv = arg
           break
         case OP.VC:
-          // PKCON (SNDPM.MAC:1031): `STA VAC` — the voice-control byte (POKEY
+          // PKCON (SNDPM.MAC:553): `STA VAC` — the voice-control byte (POKEY
           // distortion bits + volume nibble mask). The knell's setup subroutine
           // sets $A0 (pure tones) explicitly.
           this.vac = arg & 0xff
           break
         case OP.SYN:
-          // PKSYN (SNDPM.MAC:1040): `STA VSF` — the synth-mode flag. The flag is
+          // PKSYN (SNDPM.MAC:564): `STA VSF` — the synth-mode flag. The flag is
           // RECORDED but the audible glide (the ROM slides VSA, the old→new note
           // delta, across each note) is not modelled yet; the knell still tolls
           // its 48 discrete descending steps. Deferred with a Delivery Finding —
