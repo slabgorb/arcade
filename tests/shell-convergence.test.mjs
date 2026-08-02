@@ -53,14 +53,56 @@ const HELPERS = ['mountCanvas', 'installAudioUnlock', 'installPauseToggle'];
 const REASON_CODES = ['behaviour-absent', 'rom-cadence', 'own-implementation'];
 const CELL_VALUES = ['adopted', ...REASON_CODES];
 
-const mainSrc = (game) => readFileSync(join(ROOT, 'plugins', game, 'src', 'main.ts'), 'utf8');
+/**
+ * Source with comments removed.
+ *
+ * EVERY source-text assertion in this file goes through this. Without it a guard
+ * cannot tell code from prose ABOUT code, so commenting a line out leaves the
+ * guard green — the mechanism is gone and nothing says so. This is not
+ * hypothetical here: three separate guards in this story were defeated exactly
+ * that way (a `15750/263` check the file's own explanatory comment kept alive; a
+ * mutation that hit `host-helpers.ts`'s doc comment instead of its code; and the
+ * joust input seam below, where commenting out `held.add(e.code)` left all eight
+ * tests passing). The repo already had the idiom in
+ * `plugins/centipede/tests/audio-citations.test.ts`, which pins whole lines.
+ *
+ * Block comments first, then line comments. The `//` pattern is anchored to
+ * start-of-line-or-whitespace so it cannot eat the `//` inside a `https://` URL.
+ */
+const stripComments = (src) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
+
+const mainSrc = (game) => stripComments(readFileSync(join(ROOT, 'plugins', game, 'src', 'main.ts'), 'utf8'));
+
+/** A game's main.ts as it stood at the recorded baseline — BEFORE any adoption. */
+const mainSrcAt = (baseline, game) =>
+  stripComments(
+    execFileSync('git', ['show', `${baseline}:plugins/${game}/src/main.ts`], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    }),
+  );
 
 // ─── The behaviour census, DERIVED — never recorded ─────────────────────────
-// Each predicate deliberately matches BOTH the hand-wired spelling and the
-// post-adoption spelling, so it answers "does this game do this at all?" the same
-// way before and after the helper lands. A predicate that only matched the
-// hand-wired form would flip to false the moment a game adopted, and the AC-1
-// check below would then read every adopted game as one that grew a behaviour.
+// "Does this game do this at all?" — answered from source, never written down,
+// so there is no census to go stale.
+//
+// ── READ THIS BEFORE CHANGING WHERE THESE ARE EVALUATED ─────────────────────
+// These run against the BASELINE commit, not the working tree, and that is the
+// whole correctness of the AC-1 growth check. The first cut evaluated them
+// against the tree, and because each predicate also matches the helper's own
+// call site (`\binstallPauseToggle\s*\(` …), an `adopted` cell made its own
+// predicate true: the check "a helper is adopted only where the behaviour
+// already exists" became tautological and could never fail, for any of the three
+// helpers. It was reproduced end-to-end — joust, a game with no pause, was given
+// a real import and call and its cell flipped to `adopted`, and all eight tests
+// stayed green. That is verbatim what the epic forbids ("a game that has no
+// pause today must not grow one here").
+//
+// A question about what a game did BEFORE the story can only be answered by the
+// tree as it was BEFORE the story. The call-site alternations are kept because
+// they cost nothing at the baseline (no game had adopted yet) and keep the
+// predicates honest if a later story moves the baseline forward.
 const PERFORMS = {
   mountCanvas: (src) => /#game|getElementById\(\s*['"]game['"]\s*\)|\bmountCanvas\s*\(/.test(src),
   installAudioUnlock: (src) => /\bresume\b|\binstallAudioUnlock\s*\(/.test(src),
@@ -135,15 +177,27 @@ test('AC-1: `adopted` means the game actually imports that helper', () => {
     for (const helper of HELPERS) {
       if (rows[game][helper] !== 'adopted') continue;
       checked++;
-      assert.match(
-        src,
-        new RegExp(`\\b${helper}\\b`),
-        `${game} is recorded as adopting ${helper} but its main.ts never mentions it`,
+      // Anchored to the IMPORT of @shared/host-helpers AND to a call site.
+      //
+      // The first cut asserted a bare `\b<helper>\b` plus "some `@shared/` import
+      // exists", and verified neither thing it claimed: the bare name is
+      // satisfied by a COMMENT, and every adopting game already imports
+      // @shared/highscore or @shared/view, so the second half was unconditionally
+      // true and discriminated nothing. Reproduced: tempest's mountCanvas import
+      // was replaced by a LOCAL shadow reimplementing the exact pre-story
+      // anti-pattern (`as HTMLCanvasElement` + `getContext('2d')!`) and this test
+      // still passed it as "adopted" — tsc could not object either, because the
+      // local function is used.
+      // Asserted as BOOLEANS: `assert.match` against a whole main.ts dumps the
+      // entire file into the failure output (red-baron's is 916 lines) and buries
+      // the message that says what to do about it.
+      assert.ok(
+        new RegExp(`import\\s*\\{[^}]*\\b${helper}\\b[^}]*\\}\\s*from\\s*['"]@shared/host-helpers['"]`).test(src),
+        `${game} is recorded as adopting ${helper} but does not import it from @shared/host-helpers`,
       );
-      assert.match(
-        src,
-        /from\s+['"]@shared\//,
-        `${game} adopted ${helper} but imports nothing from @shared`,
+      assert.ok(
+        new RegExp(`\\b${helper}\\s*\\(`).test(src),
+        `${game} imports ${helper} but never calls it`,
       );
     }
   }
@@ -157,16 +211,20 @@ test('AC-1: `adopted` means the game actually imports that helper', () => {
 
 test('AC-1: no game GROWS a behaviour — a helper is adopted only where the behaviour already exists', () => {
   // "a game that has no pause today must not grow one here" — the epic's words.
-  const { rows } = readMatrix();
+  const { rows, baseline } = readMatrix();
   let checked = 0;
   for (const game of GAMES) {
-    const src = mainSrc(game);
+    // The BASELINE tree, not the working tree — see the PERFORMS note above.
+    // Asking "did this game already do this?" of a tree that has already adopted
+    // is asking the question after the answer has been overwritten.
+    const before = mainSrcAt(baseline, game);
     for (const helper of HELPERS) {
       if (rows[game][helper] !== 'adopted') continue;
       checked++;
       assert.ok(
-        PERFORMS[helper](src),
-        `${game} adopted ${helper} but does not perform that behaviour — AC-1 forbids growing it here`,
+        PERFORMS[helper](before),
+        `${game} adopted ${helper} but did NOT perform that behaviour at ${baseline} — ` +
+          `AC-1 forbids growing it here ("a game that has no pause today must not grow one")`,
       );
     }
   }
@@ -179,10 +237,15 @@ test('AC-1: a `behaviour-absent` cell is refuted by the tree if the game DOES pe
   // single one that can be checked — and it is checked against the tree, not
   // against a remembered census.
   const { rows } = readMatrix();
+  let checked = 0;
   for (const game of GAMES) {
+    // Evaluated on the WORKING TREE deliberately, unlike the growth check above.
+    // `behaviour-absent` is a claim about the code as it stands NOW ("this game
+    // does not do this"), so the live tree is the right thing to refute it with.
     const src = mainSrc(game);
     for (const helper of HELPERS) {
       if (rows[game][helper] !== 'behaviour-absent') continue;
+      checked++;
       assert.ok(
         !PERFORMS[helper](src),
         `${game}/${helper} is recorded \`behaviour-absent\`, but ${game}'s main.ts performs it — ` +
@@ -190,6 +253,15 @@ test('AC-1: a `behaviour-absent` cell is refuted by the tree if the game DOES pe
       );
     }
   }
+  // The count guard its two siblings already carried. Proven necessary, not
+  // theoretical: flipping the two live `behaviour-absent` cells to another valid
+  // code left this test green while it compared ZERO things (TS lang-review #15,
+  // "assert the collected count FIRST").
+  assert.ok(
+    checked > 0,
+    'the matrix records no `behaviour-absent` cell, so this test compared nothing — ' +
+      'either a cell is miscoded, or this guard needs retiring rather than passing silently',
+  );
 });
 
 test('AC-1: the stale spec matrix is corrected, not silently superseded', () => {
@@ -276,12 +348,16 @@ test('AC-3: adoption lands one game per commit, so a timing regression has one s
 // What CAN see a cadence regression is pinned below: the frame clock itself, and
 // the input-sampling seam that the helper is most likely to disturb.
 test('AC-2: centipede keeps the ROM frame clock (15750/263 Hz), not a rounded stand-in', () => {
-  const timebase = readFileSync(join(ROOT, 'plugins', 'centipede', 'src', 'shell', 'timebase.ts'), 'utf8');
-  // Anchored to the DECLARATION, not to the ratio. The first cut of this guard
-  // asserted a bare /15750\s*\/\s*263/ and was VACUOUS: timebase.ts:5 explains
-  // the clock in a comment ("FRAME_HZ = 15750/263 = 59.88593 Hz"), so rewriting
-  // the real constant on :20 to `60` left the guard green. Proven by mutation —
-  // it reddened 0 tests until this line named `export const FRAME_HZ`.
+  // Comments stripped, then anchored to the DECLARATION rather than the ratio.
+  // Both halves were earned by mutation. The first cut asserted a bare
+  // /15750\s*\/\s*263/ and was VACUOUS: timebase.ts:5 explains the clock in a
+  // comment ("FRAME_HZ = 15750/263 = 59.88593 Hz"), so rewriting the real
+  // constant on :20 to `60` left it green. Naming `export const FRAME_HZ` fixed
+  // that; stripping comments closes the remaining hole, where COMMENTING OUT the
+  // declaration would have left its text in the file and the guard still green.
+  const timebase = stripComments(
+    readFileSync(join(ROOT, 'plugins', 'centipede', 'src', 'shell', 'timebase.ts'), 'utf8'),
+  );
   assert.match(
     timebase,
     /export\s+const\s+FRAME_HZ\s*=\s*15750\s*\/\s*263\b/,
@@ -302,6 +378,13 @@ test('AC-2: joust keeps its per-frame input sampling — the unlock must not swa
   // precise hazard the epic names ("a helper that changes when a frame starts or
   // how input is sampled is a regression even if every test stays green"). The
   // helper must be added ALONGSIDE this handler, never by replacing it.
+  //
+  // `mainSrc` strips comments, and that is load-bearing here rather than tidy.
+  // The first cut matched raw source, so all three assertions below survived
+  // COMMENTING OUT the very lines they guard — `// held.add(e.code)` still
+  // contains the text `held.add(e.code)`. The sampling could have been disabled
+  // outright with the suite green, on the one guard this file calls the
+  // load-bearing proof for the riskiest cadence-sensitive game.
   const src = mainSrc('joust');
   assert.match(src, /held\.add\(\s*e\.code\s*\)/, "joust must still sample held keys into `held`");
   assert.match(src, /held\.delete\(\s*e\.code\s*\)/, 'joust must still release held keys on keyup');

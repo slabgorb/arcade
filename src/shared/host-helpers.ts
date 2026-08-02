@@ -74,6 +74,15 @@ export interface GestureTarget {
  * The gestures that count as "the player has interacted", and so may start audio.
  * `pointerdown` rather than `click`: it fires earlier and covers pen and touch,
  * and the games that used `click` gain nothing from waiting for the button release.
+ *
+ * Note the other half of the change, because it is a real widening and easy to
+ * miss: the adopting games bound their gesture to the CANVAS and now pass
+ * `window`, so a pointer anywhere on the page unlocks audio rather than only one
+ * on the playfield. Verified inert rather than assumed — `<canvas id="game">` is
+ * the only element in each adopting game's `<body>`, so there is nothing else to
+ * point at. A game that later grows a sibling element (an overlay, a menu) gets
+ * a slightly earlier unlock, never a wrong one: `resume()` is idempotent and a
+ * gesture is a gesture whatever it lands on.
  */
 export const UNLOCK_GESTURES = ['keydown', 'pointerdown'] as const
 

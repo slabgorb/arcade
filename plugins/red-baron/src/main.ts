@@ -66,8 +66,12 @@ import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/hos
 import { drawEscOverlay } from '@shared/esc-overlay'
 
 // sc1-1: the checked mount. This file previously cast the element and then used a
-// NULLABLE ctx — every draw site carries an `&& ctx` guard because of it. The mount
-// now proves the context exists at boot instead of at each call site.
+// NULLABLE ctx, which is why draw sites guard with `!ctx`/`&& ctx`. The mount now
+// proves the context at boot, so those guards can no longer fire — but they are
+// still THERE, at :149, :203 and :890. Only the pause overlay's guard was removed
+// (it had to be, since the `paused` flag it was fused with moved into the helper).
+// Three unreachable guards left standing is not a cleanup; retiring them is a
+// separate change, and this comment says so rather than implying it was done.
 const { canvas, ctx } = mountCanvas(document)
 
 // ─── NO GEOMETRY IS AUTHORED IN THIS FILE (rb4-1 REWORK 3 — read this before adding any) ───
