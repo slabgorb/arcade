@@ -146,7 +146,7 @@ describe('sw7-23 T4c — toCockpit is a single shared helper, not two copies', (
     // normalized DIRECTION `toCockpit` returns is no longer a term in the expression and
     // this file imports the shared `COCKPIT` constant instead. `toCockpit` itself is
     // untouched and does not become dead: `aimOrient` (sim.ts:2020) still calls it. That is
-    // its ONE live caller — `spawnTie` returns `lookRotation(FACING_PLAYER)` and sim.ts:2153
+    // its one live caller in `src/` — `spawnTie` returns `lookRotation(FACING_PLAYER)` and sim.ts:2153
     // records that it deliberately does NOT use `lookRotation(toCockpit(pos))`.
     //
     // T4c's actual invariant is unchanged and still pinned here: whatever tie-status.ts
