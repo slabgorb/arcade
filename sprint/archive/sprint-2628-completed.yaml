@@ -1387,3 +1387,8 @@ completed_stories:
     title: What ARE G1DEC/G2DEC? CUE_SOURCES now cites two decision-block families with no model of either
     points: 3
     completed: '2026-08-02'
+  - id: jt5-7
+    epic: jt5
+    title: Make the jt5 epic YAML truthful (epic opener, jt5-1, jt5-3) and fix joust's unguarded README counts
+    points: 3
+    completed: '2026-08-02'
