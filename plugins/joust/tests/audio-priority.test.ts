@@ -114,6 +114,11 @@ const ROM: Record<SoundName, { priority: number; frames: number; lines: string }
   pteroArrives: { priority: 65, frames: 60, lines: '8094' },
   pteroDeath: { priority: 66, frames: 134, lines: '8091-8093' },
   playerMaterialise: { priority: 70, frames: 450, lines: '8116-8118' },
+  // jt5-6 — player 2's own table. Same priority and the same 450-frame window,
+  // reached differently: `30+13` on the opener and `165-13` on the silent tail,
+  // so the 13 frames are MOVED head-ward rather than added. A transcription
+  // that read the digits instead of the expressions would land on 450 by luck.
+  player2Materialise: { priority: 70, frames: 450, lines: '8119-8121' },
   enemyMaterialise: { priority: 40, frames: 91, lines: '8103' },
   extraMan: { priority: 100, frames: 90, lines: '8089' },
   waveBounty: { priority: 50, frames: 60, lines: '8096' },

@@ -275,7 +275,19 @@ function stepPlayerEntity(state: EntityState, input: PlayerInput, facing?: -1 | 
 }
 
 /** jt5-3 — a raw `WingEdge` plus which species produced it, as an event kind. */
-function wingCue(edge: ReturnType<typeof wingEdge>, species: 'player' | 'enemy'): GameEventKind | undefined {
+/**
+ * The four WING kinds — the only moments `runBehaviour` can raise. Narrowed
+ * away from the full `GameEventKind` since jt5-6: `player-materialise` now
+ * carries a required player id, so a bare `{ type: kind }` is no longer a valid
+ * `GameEvent` for every kind, and this is where that would have been papered
+ * over with a cast. Stating the real range instead makes the compiler agree
+ * with what the function already does — a behaviour pass raises wing edges and
+ * nothing else; the transporter re-entry is `game.ts`'s respawn loop, which is
+ * the only place the knight's id is in scope.
+ */
+type WingCue = Extract<GameEventKind, `${'player' | 'enemy'}-wing-${'up' | 'down'}`>
+
+function wingCue(edge: ReturnType<typeof wingEdge>, species: 'player' | 'enemy'): WingCue | undefined {
   if (edge === null) return undefined
   return species === 'player'
     ? edge === 'down'
@@ -298,7 +310,7 @@ function runBehaviour(
   inputs?: Record<number, PlayerInput>,
   wave = 1,
   target?: PlayerView | null,
-): { process: Process; budget: IntelBudget; cue?: GameEventKind } {
+): { process: Process; budget: IntelBudget; cue?: WingCue } {
   if (p.kind === 'player' && p.entity) {
     const input = inputs?.[p.id] ?? NEUTRAL_INPUT
     // A bare scheduler process may carry no facing → treat as right-facing.

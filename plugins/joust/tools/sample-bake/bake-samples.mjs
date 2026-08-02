@@ -31,7 +31,7 @@
 // Determinism: the only randomness is mulberry32 (the same generator the core
 // lifted into frame.ts) seeded from each cue's NAME — two runs are
 // byte-identical, which is what makes the recipe's re-uploads idempotent.
-import { writeFileSync } from 'node:fs'
+import { realpathSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import process from 'node:process'
@@ -185,6 +185,17 @@ const SPECS = {
       attack: 0.03,
       decay: 1.2,
     }),
+  // SNPCR2 (full 450-frame extent) — player 2's OWN transporter table, not a
+  // copy of player 1's. The ROM makes them different sounds twice over: the
+  // opener runs `30+13` where SNPCR1's runs `30`, and the fade code is `!N$15!`
+  // against SNPCR1's `!N$14!`. Same shimmer family, same 450-frame window, but
+  // a different scale degree set and a slower step, so two knights re-entering
+  // in the same wave are told apart by ear.
+  player2Materialise: (n) =>
+    env(arpeggio(n, { notes: [247, 294, 370, 494, 587, 740], noteSeconds: 0.105, gain: 0.45 }), {
+      attack: 0.03,
+      decay: 1.2,
+    }),
   // SNECRE — the enemy's materialise: same family, darker and detuned.
   enemyMaterialise: (n) =>
     env(arpeggio(n, { notes: [110, 139, 165, 220, 208], noteSeconds: 0.11, gain: 0.4 }), {
@@ -316,7 +327,33 @@ export async function bakeSamples(outDir) {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+/**
+ * Is this module the script node was asked to run?
+ *
+ * The obvious `process.argv[1] === fileURLToPath(import.meta.url)` is WRONG in a
+ * checkout reached through a symlink: the ESM loader realpaths the module URL
+ * while `argv[1]` keeps whatever spelling the caller used, so the two differ,
+ * the guard goes false, and the CLI exits 0 having baked nothing. That is the
+ * worst failure available to a deploy step — `just deploy-assets` runs under
+ * `set -euo pipefail`, which cannot see a successful no-op, so the recipe
+ * reports success while the bucket keeps serving last-good.
+ *
+ * Comparing realpaths on BOTH sides fixes it. `realpathSync` throws if the path
+ * does not exist, so fall back to raw equality rather than letting an import of
+ * this module blow up.
+ */
+function invokedAsScript() {
+  const invoked = process.argv[1]
+  if (typeof invoked !== 'string') return false
+  const here = fileURLToPath(import.meta.url)
+  try {
+    return realpathSync(invoked) === realpathSync(here)
+  } catch {
+    return invoked === here
+  }
+}
+
+if (invokedAsScript()) {
   const dir = process.argv[2]
   if (!dir) {
     console.error('usage: node bake-samples.mjs <outDir>')

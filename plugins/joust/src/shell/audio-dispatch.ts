@@ -46,7 +46,19 @@ function cueFor(event: GameEvent): SoundName | null {
     case 'ptero-death':
       return 'pteroDeath'
     case 'player-materialise':
-      return 'playerMaterialise'
+      // The one moment whose cue depends on WHO, not just what. The knights
+      // have separate ROM tables — SNPCR1 (:8116-8118) bound at P1DEC :5552,
+      // SNPCR2 (:8119-8121) at P2DEC :5556 — and they are different sounds:
+      // SNPCR2 opens 13 frames later and uses fade code `!N$15!` where SNPCR1
+      // uses `!N$14!`.
+      //
+      // Anything that is not knight 2 falls to knight 1's table. The TYPE
+      // already makes `player` required, so a core that forgets it cannot
+      // compile; this is the runtime half, and it degrades rather than throwing
+      // for the same reason the default branch below stays silent — this runs
+      // inside the frame loop, where a throw freezes the game instead of
+      // dropping a sound. Every sibling game's dispatch degrades the same way.
+      return event.player === 2 ? 'player2Materialise' : 'playerMaterialise'
     case 'enemy-materialise':
       return 'enemyMaterialise'
     case 'extra-man':

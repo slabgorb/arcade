@@ -64,7 +64,7 @@ export const EVENT_KINDS = [
   'egg-hatched', //        a settled wave egg matured into a remount buzzard — SNEGGH
   'ptero-arrives', //      a pterodactyl (or an anti-stall baiter) entered — SNPTEI
   'ptero-death', //        a pterodactyl took a lance and dissolved — SNPTED
-  'player-materialise', // a spent knight re-entered by transporter — SNPCR1
+  'player-materialise', // a spent knight re-entered by transporter — SNPCR1/SNPCR2 (carries `player`)
   'enemy-materialise', //  a wave's complement materialised on the pads — SNECRE
   'extra-man', //          a REPLAY threshold was crossed — SNREPL
   'wave-bounty', //        an end-of-wave team bounty was collected — SNBOUN
@@ -80,13 +80,29 @@ export const EVENT_KINDS = [
 /** The discriminant of every event — derived from the tuple, never re-typed. */
 export type GameEventKind = (typeof EVENT_KINDS)[number]
 
+/** Which knight a moment belongs to — 1-based, matching the player ids the sim
+ *  uses for its processes and ledgers. */
+export type PlayerId = 1 | 2
+
 /**
  * One gameplay moment worth a sound. A discriminated union (one member per
  * `EVENT_KINDS` entry) rather than `{ type: GameEventKind }`, so the shell's
  * dispatch can narrow its default branch to `never` — which is what makes
  * adding a kind without a cue a COMPILE error instead of a silent drop.
  *
- * The members carry no payload today: every one of the seventeen cues is a bare
- * one-shot, and a field nothing reads would be a promise the seam does not keep.
+ * SIXTEEN of the seventeen carry no payload, and that is still deliberate: a
+ * field nothing reads would be a promise the seam does not keep.
+ *
+ * `player-materialise` is the exception, since jt5-6. The two knights have
+ * SEPARATE re-create tables in the ROM — SNPCR1 (:8116-8118) is bound to
+ * player 1 at P1DEC :5552 and SNPCR2 (:8119-8121) to player 2 at P2DEC :5556 —
+ * so which knight re-entered decides which sound the machine makes, and jt5-1's
+ * payload-free moment could only ever map both onto one cue. The field is
+ * REQUIRED, not optional: the emitter has the id in scope, and an optional one
+ * would let a future call site drop it and silently collapse the two again.
  */
-export type GameEvent = { readonly [K in GameEventKind]: { readonly type: K } }[GameEventKind]
+export type GameEvent = {
+  readonly [K in GameEventKind]: K extends 'player-materialise'
+    ? { readonly type: K; readonly player: PlayerId }
+    : { readonly type: K }
+}[GameEventKind]

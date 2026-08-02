@@ -43,7 +43,7 @@ import {
 } from './demo.js'
 import { dispatchWaveType, waveRowAt, type ResolvedWaveType, type PlayersAlive } from './wave.js'
 import type { PlayerInput } from './flight.js'
-import type { GameEvent } from './events.js'
+import type { GameEvent, PlayerId } from './events.js'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -480,11 +480,13 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
     const id = i + 1
     if (p.lives > 0 && !p.out && !survivingIds.has(id) && !priorLive.has(id)) {
       processes = [...processes, respawnPlayerProcess(id)]
-      // SNPCR1 "PLAYER 1 RE-CREATED (TRANSPORTER)" (:8116) — the CREP re-create
-      // this block IS. P2 has its own table, SNPCR2 (:8119, the same $12 opener
-      // at a different offset); both knights map onto SNPCR1 here, so splitting
-      // them later needs a second sample, not just a second manifest row.
-      cues.push({ type: 'player-materialise' })
+      // The CREP re-create this block IS. Each knight has its OWN table —
+      // SNPCR1 "PLAYER 1 RE-CREATED (TRANSPORTER)" (:8116-8118, bound at P1DEC
+      // :5552) and SNPCR2 "PLAYER 2 RE-CREATED (TRANSPORTER)" (:8119-8121,
+      // bound at P2DEC :5556) — so the moment carries WHICH knight and the
+      // shell's dispatch picks the table. `id` is this loop's 1-based ledger
+      // index; a constant here would re-collapse the two cues jt5-6 split.
+      cues.push({ type: 'player-materialise', player: id as PlayerId })
     }
   })
   const finalSim: DemoState =
