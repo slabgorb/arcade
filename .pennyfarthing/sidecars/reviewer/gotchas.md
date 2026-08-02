@@ -1751,3 +1751,86 @@ The gate only reads `All received: Yes`. It cannot tell coverage from accounting
 has to, and every hand-assessed row needs a command in the transcript behind it. Four of the eight
 findings came from those hand-worked domains, which is the argument for doing them rather than
 recording the skip and moving on.
+
+---
+
+## When a story WIDENS a guard's scope and then loosens the guard, diff the ERROR SETS — the rationale is always available, the measurement is not (sw8-23, 2026-08-02)
+
+**Situation:** sw8-23 added `tools/` to a citation guard's scan (+10 raw errors), tightened
+the extractor so six reported "dangling citations" stopped being reported, remediated eight
+real ones, and moved the ratchet from 35 to 29. Every step carried a reasoned comment.
+
+**Why that shape deserves the hardest look you have:** from a distance it is indistinguishable
+from *tuning the guard until the number came out under the line*. Scope grows, the extractor
+gets more permissive about what it ignores, the count lands below the threshold, the threshold
+moves down, and the story reports "the surface grew and the count fell". If the extractor
+change had eaten **one real citation** along with the phantoms, every one of those sentences
+would still be true and the guard would be quietly weaker while advertising the opposite.
+
+**The check that settles it, and it is two commands:** build a worktree at the pre-story
+commit, run the guard from both trees, and `comm` the sorted error sets.
+
+```bash
+W=$(mktemp -d); git worktree add -q "$W" <pre-story-sha>
+comm -23 <(sort old-errs.txt) <(sort new-errs.txt)   # gone — each must be a phantom or a fix
+comm -13 <(sort old-errs.txt) <(sort new-errs.txt)   # new
+```
+
+Here it held: 5 errors disappeared (four glob/wrapped-sentence phantoms plus one wrapped
+identifier), and the single real error whose *path spelling* changed was **still reported**
+under the new spelling. Zero real errors lost. I also diffed the extracted-name sets and
+checked that **no name was seen fewer times than before** — 43 names changed shape and every
+loss collapsed into a name already present, which is what distinguishes a rename from a
+blinding.
+
+**Note how close it ran.** The session's own explanation covered four of the five removed
+baseline errors; the fifth was killed by a mechanism nobody had written down. Reading the
+explanation would have passed it. Comparing the sets is what found the gap.
+
+## A ratchet's COMMENT is the part most likely to be false, because the number was re-measured and the prose was not
+
+The story's own TEA assessment said, in writing, that these counts are "claims with a
+timestamp" and instructed Dev to re-measure before calling GREEN. Dev re-measured the count.
+The **sentence explaining the count** kept the RED-phase numbers, and its arithmetic did not
+close: `35 + 11 - 6 - 8 = 32` against a stated 29. Re-measured from the actual commit, the
+pre-story baseline was 34 and the widened pre-story count 44 — a sibling story had landed in
+between, exactly as TEA predicted.
+
+**Two things to take from it:**
+
+1. **Check the arithmetic in any decomposition you are shown.** It costs one `python3 -c`.
+   A decomposition that does not close is a claim nobody re-read, and it sits in the one
+   comment the ratchet actively invites the next reader to check ("if it passes with room to
+   spare, lower the number").
+2. **Prefer endpoints to decompositions when the changes INTERACT.** Widening the scope,
+   fixing the extractor and remediating citations all move the same number and are not
+   independently attributable after the fact. Two reproducible endpoints plus "do not
+   decompose this further" is honest; a five-term subtraction is a fiction with a plausible
+   shape.
+
+## A test helper that reimplements the predicate the story just REPLACED is the sharpest kind of vacuity
+
+The story's headline fix replaced an unanchored `raw.includes(PRAGMA)` opt-out with an
+anchored `hasPragma()`. Its own new suite then computed a tree-wide census filtered by
+`if (raw.includes(IGNORE_PRAGMA)) continue` — the deleted predicate, reimplemented inside the
+suite that deletes it.
+
+It was green, and green for a coincidence: the only files that *mention* the pragma are the
+files that *declare* it, so the two predicates agree today. The first scanned file that
+mentions it without declaring it — the exact case the fix exists for — is scanned by the tool
+and silently dropped by the census, and the assertion comparing the tool's published
+percentage against that census starts comparing two different populations.
+
+**Generalise:** when a diff changes a predicate, grep the diff's own tests for the OLD
+predicate's shape. A suite that reimplements what it is testing will agree with itself
+forever. This is the lang-review "test apparatus fails by PASSING" check, sharpened: the
+apparatus is not merely untested, it encodes the defect.
+
+## Your own VERIFIED list is where to look for what you did not check
+
+Writing "no real citation was lost" as a VERIFIED forced the error-set diff that became this
+review's most valuable fact. Writing "the ratchet bites" forced actually prepending a stale
+citation and watching four tests redden (at the old threshold: none). Both were things I
+believed before I checked, and one of them — the phantom count — turned out wrong in the
+believing. **Every VERIFIED you cannot attach a command and an output to is a finding you
+have not made yet.**

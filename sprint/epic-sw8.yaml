@@ -304,7 +304,7 @@ stories:
       NOT td1-14: that story owns the non-unique-verbatim guard clause for the relocation search, in both tools. This one is about scope, the opt-out, the docs and a dead parameter — no overlap.
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-02'
     repos: arcade
     workflow: tdd
@@ -317,6 +317,8 @@ stories:
       - 'AC6 UNCATCHABLE NAMES THE TWO BIGGEST LIMITS, WITH THE MEASURED PARTITION — of 1000 line-span citations in the scanned tree, 744 (74.4%) receive existence/range checking ONLY. Critically these are ONE population, not two: 698 have no adjacent delimited span at all, and 46 have one that isFragment drops to null because it is a single token (measured samples: TGPROB, FIRE_MASK, SCRSHLD, SCRWAV, CPHTSA). UNCATCHABLE states the percentage, states that the single-token case is a SUBSET of it rather than an additional limitation, and a test asserts both facts are present.'
       - "AC7 fromFile IS GONE — USER RULING 2026-08-02, drop rather than wire. Removed from CheckOptions in check-comment-citations.d.mts, from checkTree's call site, and from all six call sites in tests/audit/comment-citations.test.ts (lines 73, 243, 259, 281, 347, 360). Census backing the ruling: ZERO relative-path citations exist in the scanned tree, and the 8 basename collisions are already covered by the documented path-qualified rule. sw8-18's item-7 mutation test currently varies fromFile and provably has NO effect — it is rewritten to vary something the implementation actually reads, and that new mutation is proven to redden."
     type: chore
+    review_findings: "Round 1 REJECTED. Mechanism verified sound: the FILE_RE tightening was proven not to blind the guard (error-set diff pre/post = 5 phantoms removed, 1 real error preserved under a renamed path, 0 real errors lost); ratchet at 29 mutation-proven to bite; 13/13 mutants caught; no blast radius. 6 findings, all in the claim-prose class this story exists to eliminate. HIGH: the ratchet comment's decomposition is arithmetically false (35+11-6-8=32, not 29) and every term is measured against a tree that had already moved - the verified endpoints are 34 pre-story, 44 pre-story-with-tools, 29 delivered. MEDIUM: the census helper filters with raw.includes(IGNORE_PRAGMA), the exact unanchored predicate AC3 deletes, so it measures a different population than checkTree. MEDIUM: the suite header says the lookbehind alone fixed FILE_RE while the implementation says both halves are required - same commit, flatly contradictory. Three LOW: markdown blockquote opt-out, blank lines exhausting the head window, an unnecessary readonly cast."
+    review_verdict: rejected
   - id: sw8-24
     title: Sweep the ~35 stale citations the comment-citation guard reports across plugins/star-wars, then lower its ratchet (sw8-18 TEA finding)
     description: |-
