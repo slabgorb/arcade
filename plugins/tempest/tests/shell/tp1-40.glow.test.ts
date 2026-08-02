@@ -80,41 +80,40 @@ describe('tp1-40 AC-4 — cappedDpr', () => {
 
 // ── glowStrokePasses (AC-3) ──────────────────────────────────────────────────
 
-describe('tp1-40 AC-3 — glowStrokePasses layers the halo without blur', () => {
+// AC-3's halo contracts were INVERTED when the owner removed the glow
+// (2026-08-02, out of band). tp1-40's mechanism claim — "the halo is layered
+// unblurred passes, never a canvas shadow" — is now moot from the far side: there
+// is no halo. What survives, and is worth more than the halo shape ever was, is
+// that the CORE is untouched (the caller's width at full alpha) and that the blur
+// radius still flowing from ~30 render.ts call sites produces nothing. Those are
+// the two ways a de-glow silently goes wrong: strokes vanish, or the bloom
+// creeps back.
+
+describe('AC-3 (de-glowed) — glowStrokePasses draws the crisp core alone', () => {
   it('blur 0 is a single crisp core pass (no halo, no waste)', () => {
     expect(glowStrokePasses(0, 2)).toEqual([{ width: 2, alpha: 1 }])
   })
 
-  it('a glowing stroke is ≥2 halo passes + the crisp core last (the glowTrace structure)', () => {
-    const passes = glowStrokePasses(14, 2)
-    expect(passes.length).toBeGreaterThanOrEqual(3)
-    const core = passes[passes.length - 1]
-    expect(core).toEqual({ width: 2, alpha: 1 })
+  it('a NON-ZERO blur is also a single crisp core pass — the halo is gone', () => {
+    expect(glowStrokePasses(14, 2)).toEqual([{ width: 2, alpha: 1 }])
   })
 
-  it('halo passes are WIDER and DIMMER than the core', () => {
-    const passes = glowStrokePasses(14, 2)
-    const halos = passes.slice(0, -1)
-    expect(halos.length).toBeGreaterThanOrEqual(2)
-    for (const h of halos) {
-      expect(h.width).toBeGreaterThan(2)
-      expect(h.alpha).toBeGreaterThan(0)
-      // Low-alpha is the point: an opaque halo pass is just a fat line.
-      expect(h.alpha).toBeLessThanOrEqual(0.6)
+  it('no blur any call site passes can produce a halo pass', () => {
+    // The live radii in render.ts span 6..26 (streak fades reach ~18, the title
+    // logo 8..28). Sweep past both ends: none of them may add a second pass.
+    for (const blur of [0, 6, 8, 10, 12, 14, 16, 18, 20, 22, 26, 28, 100]) {
+      const passes = glowStrokePasses(blur, 2)
+      expect(passes, `blur ${blur} must not layer a halo`).toEqual([{ width: 2, alpha: 1 }])
     }
   })
 
-  it('passes narrow toward the core (widest halo first)', () => {
-    const passes = glowStrokePasses(18, 3.5)
-    for (let i = 1; i < passes.length; i++) {
-      expect(passes[i].width).toBeLessThan(passes[i - 1].width)
+  it('the core keeps the caller’s exact line width at full alpha', () => {
+    // The de-glow must not thin, fatten or dim the line itself — that would be a
+    // fidelity change, not a glow removal. Widths taken from real call sites:
+    // spokes 2, far ring 1.2, near ring 3.5, warp streaks 1 + t*2.5.
+    for (const w of [1, 1.2, 2, 2.5, 3.5, 6]) {
+      expect(glowStrokePasses(12, w)).toEqual([{ width: w, alpha: 1 }])
     }
-  })
-
-  it('halo reach scales with the requested blur (big glow stays bigger than small glow)', () => {
-    const small = glowStrokePasses(6, 2)
-    const big = glowStrokePasses(24, 2)
-    expect(big[0].width).toBeGreaterThan(small[0].width)
   })
 
   it('is deterministic and returns finite positive geometry', () => {
@@ -171,26 +170,37 @@ function makeDotCtx(): {
   return { ctx: rec as unknown as CanvasRenderingContext2D, counts }
 }
 
-describe('tp1-40 AC-2 — blitGlowDot draws every glowing dot without blur', () => {
+describe('AC-2 (de-glowed) — blitGlowDot draws every dot hard-edged', () => {
   it('is node-safe: draws a dot with no document present, without throwing', () => {
     const { ctx, counts } = makeDotCtx()
     expect(() => blitGlowDot(ctx, '#ffe600', 10, 20, 6)).not.toThrow()
-    expect(
-      counts.drawImages + counts.fills,
-      'the dot must actually be drawn (sprite blit or unblurred fill fallback)',
-    ).toBeGreaterThan(0)
+    expect(counts.drawImages + counts.fills, 'the dot must actually be drawn').toBeGreaterThan(0)
   })
 
-  it('the node fallback carries the dot COLOUR through fillStyle', () => {
+  it('carries the dot COLOUR through fillStyle', () => {
     // Existing fidelity suites (tp1-15 spike sparkle, tp1-30 starfield palette)
     // identify dots by the fillStyle recorded at fill() — "what colour, how
-    // many". The DOM sprite cache cannot exist in the node env, so the fallback
-    // is the path those suites will observe: it must fill with the requested
-    // colour, or every colour-counting contract in the repo goes blind.
+    // many". Under tp1-40 this arc fill was the node-only fallback beneath a DOM
+    // sprite cache; the de-glow (2026-08-02) removed the cache, so it is now the
+    // only path and what those suites observe in node is what the browser draws.
     const { ctx, counts } = makeDotCtx()
     blitGlowDot(ctx, '#ffe600', 10, 20, 6)
     expect(counts.fills).toBeGreaterThan(0)
     expect(counts.fillStyles).toContain('#ffe600')
+  })
+
+  it('draws the dot by fill, on the only path this env can reach', () => {
+    const { ctx, counts } = makeDotCtx()
+    blitGlowDot(ctx, '#39ff14', 3, 4, 2)
+    expect(counts.fills).toBe(1)
+    // NOT a guard against the sprite halo coming back. Vitest runs node, where
+    // `document` is undefined, so a reintroduced `if (typeof document !==
+    // 'undefined') drawImage(...)` branch would be UNREACHABLE here and this
+    // suite would stay green through it — measured, not assumed (mutation run
+    // 2026-08-02: restoring the sprite path left all 1742 tests passing). The
+    // rule that actually bites is a source-text one, in
+    // tp1-40.glow-tax-sources.test.ts → "no sprite halo in the dot helper".
+    expect(counts.drawImages).toBe(0)
   })
 
   it('never sets a non-zero shadow blur (that is the whole tax)', () => {

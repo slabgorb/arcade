@@ -245,27 +245,34 @@ describe('drawTube depth preserved — far->near gradient + element identity', (
     ).toBe(true)
   })
 
-  it('layers a halo: wider, dimmer passes accompany the cores', () => {
+  it('draws NO halo: every tube stroke is a full-alpha core, none widened', () => {
+    // Inverted from tp1-40's "layers a halo" contract when the owner removed the
+    // glow (2026-08-02). Same observation, opposite expectation: the tube is
+    // drawn crisp. A halo pass is recognisable as a dimmed, widened stroke, and
+    // there must not be one — this is the door a re-introduced bloom comes back
+    // through, so it is asserted rather than merely no longer checked.
     const rec = drawTestTube()
-    // The glow is layered strokes now. Floor: each tube element (4 spokes, far
-    // ring, near ring) contributes at least one wider-than-core low-alpha pass.
     const halos = rec.strokes.filter((s) => s.globalAlpha < 1 && s.lineWidth > SPOKE_CORE_WIDTH)
-    expect(
-      halos.length,
-      'a tube with no wide low-alpha passes has lost its neon halo entirely',
-    ).toBeGreaterThanOrEqual(6)
-    // And specifically the near rim still BLOOMS (its old blur-18 halo was the
-    // brightest thing on screen): a pass wider than its 3.5 core, dimmed.
+    expect(halos, 'a de-glowed tube must draw no wide low-alpha halo passes').toEqual([])
+    // The near rim is where the old bloom was brightest (blur 18) — pin it by name.
     expect(
       rec.strokes.some((s) => s.lineWidth > NEAR_RING_CORE_WIDTH && s.globalAlpha < 1),
-    ).toBe(true)
+    ).toBe(false)
+    // Not vacuous: the tube really did stroke, and every stroke it made is a core
+    // at one of the three element widths. (A no-op renderer would pass the two
+    // assertions above; it cannot pass this one.)
+    expect(rec.strokes.length).toBeGreaterThanOrEqual(6)
+    for (const s of rec.strokes) {
+      expect(s.globalAlpha).toBe(1)
+      expect([SPOKE_CORE_WIDTH, FAR_RING_CORE_WIDTH, NEAR_RING_CORE_WIDTH]).toContain(s.lineWidth)
+    }
   })
 
-  it('still draws the rim dots + vanishing glow, all blur-free (tp1-40 AC-2)', () => {
+  it('still draws the rim dots + vanishing point, all blur-free (tp1-40 AC-2)', () => {
     const rec = drawTestTube()
-    // 4 rim vertex sparks + the closed-tube vanishing-point glow: ≥5 dot draws,
-    // by sprite blit (drawImage) or unblurred fill — either is acceptable here;
-    // the sprite cache is pinned behaviourally in tp1-40.glow.test.ts.
+    // 4 rim vertex sparks + the closed-tube vanishing-point dot: ≥5 dot draws.
+    // Since the de-glow these are plain fills (the sprite blit is gone); the
+    // drawImage term is kept so this stays a count of DOTS, however drawn.
     expect(rec.dots.fills + rec.dots.drawImages).toBeGreaterThanOrEqual(5)
   })
 })

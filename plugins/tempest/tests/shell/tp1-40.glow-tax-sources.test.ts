@@ -146,6 +146,82 @@ describe('tp1-40 AC-4 — the scene dpr cap is wired, not decorative', () => {
   it('render.ts routes its glow through the tempest-local helper (glowStrokePasses + blitGlowDot)', () => {
     const code = stripComments(read('src/shell/render.ts'))
     expect(code, 'strokes/text must take the layered-pass helper').toMatch(/\bglowStrokePasses\s*\(|\bfrom\s*['"].\/glow['"]/)
-    expect(code, 'dots must take the sprite-blit helper').toMatch(/\bblitGlowDot\s*\(/)
+    expect(code, 'dots must take the one dot helper').toMatch(/\bblitGlowDot\s*\(/)
+  })
+})
+
+// ── The de-glow (2026-08-02, out of band) ────────────────────────────────────
+//
+// The owner removed the halo itself: crisp strokes, hard-edged dots, no phosphor
+// trail. The stroke half of that is held behaviourally (glowStrokePasses returns
+// one pass — tp1-40.glow.test.ts, and drawTube's strokes — render.tube-glow.test.ts).
+//
+// The DOT half cannot be held behaviourally, and that is the whole reason this
+// block exists. The halo it replaced was a radial-gradient sprite drawn only when
+// `document` exists; vitest runs the node env, so a reintroduced sprite branch is
+// UNREACHABLE from a test and every dot suite stays green through it. Measured,
+// not assumed: restoring the sprite path during the de-glow's mutation battery
+// left all 1742 tests passing. Only a source rule sees it.
+//
+// Scoped to glow.ts deliberately. The rule is "the dot helper builds and blits no
+// sprite", not "the shell owns no radial gradient" — render.ts's full-screen
+// background vignette (render.ts:1020) is a legitimate radial gradient and is NOT
+// a vector halo, so a shell-wide rule would be wrong, not merely noisy.
+
+describe('de-glow — no sprite halo in the dot helper', () => {
+  const DOT_HELPER = 'src/shell/glow.ts'
+
+  // The three moving parts of a cached sprite halo: build a canvas, paint a
+  // radial falloff into it, blit it. Any one of them returning to this module is
+  // the halo coming back.
+  const SPRITE_MECHANISMS: ReadonlyArray<readonly [string, RegExp]> = [
+    ['an offscreen sprite canvas', /createElement\s*\(\s*['"]canvas['"]\s*\)/],
+    ['a radial falloff', /\bcreateRadialGradient\s*\(/],
+    ['a sprite blit', /\bdrawImage\s*\(/],
+  ]
+
+  for (const [what, re] of SPRITE_MECHANISMS) {
+    it(`${DOT_HELPER} does not build or blit ${what}`, () => {
+      expect(
+        re.test(stripComments(read(DOT_HELPER))),
+        `${DOT_HELPER} is the one door every dot goes through; ${what} there is the ` +
+          'sprite halo returning, and no behavioural test in the node env can see it.',
+      ).toBe(false)
+    })
+  }
+
+  // The phosphor trail went with the halos, and it is a LONE CONSTANT: render()
+  // needs a real DOM canvas, so no behavioural test reaches the composite and the
+  // value can drift back to 0.55 completely green (measured in the same mutation
+  // battery). Read the number, don't just ban the old spelling — a guard that
+  // only refuses `0.55` passes on `0.4`, which is still a trail.
+  it('render.ts sets PHOSPHOR_DECAY to 0 — the afterglow stays off', () => {
+    const code = stripComments(read('src/shell/render.ts'))
+    const m = /\bconst\s+PHOSPHOR_DECAY\s*=\s*([^\s;/]+)/.exec(code)
+    expect(m, 'PHOSPHOR_DECAY must still be a const in render.ts').not.toBeNull()
+    expect(
+      Number(m![1]),
+      'a non-zero retention is the vector trail returning; phosphorAlpha(decay, dt) ' +
+        'only wipes the accumulator each frame at decay 0',
+    ).toBe(0)
+  })
+
+  // POSITIVE CONTROL. Every assertion above is an "expect nothing", the failure
+  // mode that let the @shared/glow regex go blind higher up this file. Prove each
+  // pattern still bites the code it names — and that comments are exempt, since
+  // glow.ts's header narrates the sprite cache it removed.
+  it('the sprite patterns still match the code they describe, and skip prose', () => {
+    const [, canvasRe] = SPRITE_MECHANISMS[0]
+    const [, gradRe] = SPRITE_MECHANISMS[1]
+    const [, blitRe] = SPRITE_MECHANISMS[2]
+    expect(canvasRe.test(stripComments("const spr = document.createElement('canvas')"))).toBe(true)
+    expect(gradRe.test(stripComments('const g = c.createRadialGradient(r, r, 0, r, r, r)'))).toBe(true)
+    expect(blitRe.test(stripComments('ctx.drawImage(spr, x, y, d, d)'))).toBe(true)
+    // phosphor.ts genuinely blits (its accumulator) — proof the patterns match
+    // real code in this repo, and proof the rule is scoped, not repo-wide.
+    expect(blitRe.test(stripComments(read('src/shell/phosphor.ts')))).toBe(true)
+    // Prose describing the removed sprite must not trip the rule.
+    expect(gradRe.test(stripComments('// the old cache used createRadialGradient(...)'))).toBe(false)
+    expect(blitRe.test(stripComments('/* particles used to ctx.drawImage(spr, …) */'))).toBe(false)
   })
 })

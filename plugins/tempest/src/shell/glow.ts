@@ -1,30 +1,36 @@
 // src/shell/glow.ts
 //
-// The tempest-local glow kernel (story tp1-40, THE GLOW TAX). Every glowing
-// stroke and dot in the scene used to be a live canvas shadow-blur — a
-// per-primitive GPU Gaussian pass at device resolution, ~100+ per gameplay
-// frame, which saturated the GPU process and dropped production to 8-34 fps
-// (session tp1-40: user trace + A/B evidence). This module is the replacement:
+// The tempest-local glow kernel (story tp1-40, THE GLOW TAX) — now a DE-GLOWED
+// kernel. Two rewrites have passed through here:
 //
-//   • glowStrokePasses — a stroke's halo as LAYERED, wider, low-alpha,
-//     UNBLURRED passes under the 'lighter' blend, crisp core last. Same
-//     structure glowTrace always had; the Gaussian is gone.
-//   • blitGlowDot / glowSprite — every glowing dot goes through the cached
-//     additive sprite pattern that already rescued the particles
-//     (render.ts:509 in the blurred era). Node-safe: the DOM cache builds
-//     lazily and degrades to a plain colour-carrying fill when `document`
-//     is absent (the vitest env), mirroring phosphor's lazy-DOM discipline —
-//     the fill fallback MUST set fillStyle to the dot colour because the
-//     tp1-15/tp1-30 fidelity suites identify dots by fillStyle at fill().
-//   • RENDER_DPR_CAP / cappedDpr — the scene-buffer resolution cap. The
-//     shared resizeToDisplay already guards Math.min(2, devicePixelRatio||1)
-//     at the canvas; this composes ON TOP for the phosphor scene buffers,
-//     where the production trace showed the GPU saturating at dpr 1.75.
+//   1. tp1-40 replaced every live canvas shadow-blur (a per-primitive GPU
+//      Gaussian pass at device resolution, ~100+ per gameplay frame, which
+//      saturated the GPU process and dropped production to 8-34 fps) with
+//      layered unblurred halo passes and a cached additive dot sprite.
+//   2. This change removes the halo ITSELF, by owner request (2026-08-02,
+//      out of band): tempest's vectors are now drawn crisp — one stroke pass
+//      per line, one hard-edged fill per dot, no bloom of any kind. The
+//      phosphor afterglow went with it (render.ts PHOSPHOR_DECAY = 0).
 //
-// Deliberately NOT @shared/glow: that envelope's whole contract is
-// "set the shadow blur, draw, reset" — the exact tax this story removes. The
-// story is scoped tempest-local; promote a layered variant to the library
-// only when a second game proves the need.
+// The module keeps its seams rather than being deleted, because they are what
+// makes the glow restorable in one place:
+//
+//   • glowStrokePasses — still the single door every stroke's pass list comes
+//     from, and still takes a `blur` radius from the ~30 call sites in
+//     render.ts. It now IGNORES that radius and returns the crisp core alone.
+//     Restoring the neon look is a change to this function and nothing else.
+//   • blitGlowDot — still the one door every dot goes through. Now always the
+//     plain colour-carrying arc fill that was previously the node-only
+//     fallback, on every platform. It MUST keep setting fillStyle to the dot
+//     colour: the tp1-15/tp1-30 fidelity suites identify dots by the fillStyle
+//     recorded at fill().
+//   • RENDER_DPR_CAP / cappedDpr — the scene-buffer resolution cap, untouched.
+//     Still load-bearing for the phosphor scene buffers, where the production
+//     trace showed the GPU saturating at dpr 1.75.
+//
+// Still deliberately NOT @shared/glow: that envelope's whole contract is
+// "set the shadow blur, draw, reset" — the tax tp1-40 removed. Importing it
+// here would smuggle live blur past tp1-40.glow-tax-sources.test.ts.
 
 /**
  * Ceiling for the dpr the SCENE (phosphor) buffers render at. The main canvas
@@ -56,82 +62,36 @@ export interface GlowPass {
 }
 
 /**
- * The layered-stroke halo for a glow of the given blur radius: an outer bloom
- * reaching ~the old shadow-blur distance, a tighter inner glow, then the crisp
- * core (always last, always full alpha, always the caller's line width).
+ * The stroke passes for a vector line: the crisp core, alone.
  *
- * Stroke the SAME path once per pass, widest first, under 'lighter' blending —
- * the alphas add up brightest at the line and fall off outward, which is the
- * neon look the Gaussian used to buy. blur <= 0 is a single crisp pass so
- * non-glow strokes pay nothing.
+ * `blur` is the halo reach every call site still asks for, and is deliberately
+ * IGNORED — tempest's vectors are drawn without bloom (see the header). The
+ * radius stays in the signature because it is the tuning surface: putting the
+ * glow back means returning wider, dimmer passes ahead of the core again, here
+ * and nowhere else.
  *
- * The exact reach/alpha shaping is a tuning surface (verified by eye against
- * the blurred-era look); the STRUCTURE — wider+dimmer halos, core last — is
- * pinned by tests/shell/tp1-40.glow.test.ts.
+ * The core is always last, always full alpha, always the caller's line width;
+ * withGlow strokes the same path once per returned pass, and blends every pass
+ * but the last under 'lighter'. Returning exactly one pass is therefore also
+ * what keeps a stroke off the additive path.
  */
-export function glowStrokePasses(blur: number, lineWidth: number): readonly GlowPass[] {
-  if (!(blur > 0)) return [{ width: lineWidth, alpha: 1 }]
-  return [
-    { width: lineWidth + blur * 2, alpha: 0.08 }, // outer bloom (~the blur reach)
-    { width: lineWidth + blur * 0.75, alpha: 0.18 }, // inner glow
-    { width: lineWidth, alpha: 1 }, // crisp core
-  ]
+export function glowStrokePasses(_blur: number, lineWidth: number): readonly GlowPass[] {
+  return [{ width: lineWidth, alpha: 1 }]
 }
 
-// ── The cached additive dot sprite ───────────────────────────────────────────
-// One offscreen canvas per colour: an opaque core out to 25% radius fading to a
-// transparent edge — bright centre, soft halo, exactly the blurred-dot look
-// under 'lighter'. The palette is a small fixed set (glyph hexes, well colours),
-// so the cache never grows unbounded. Built lazily so importing this module
-// never touches the DOM (node test env).
-
-const GLOW_SPRITE_SIZE = 64 // offscreen sprite resolution; scaled down on draw
-const spriteCache = new Map<string, HTMLCanvasElement>()
-
 /**
- * The cached radial glow sprite for `color`, or null when no DOM is available
- * (vitest's node env) — callers fall back to a plain unblurred fill.
- */
-export function glowSprite(color: string): HTMLCanvasElement | null {
-  if (typeof document === 'undefined') return null
-  const cached = spriteCache.get(color)
-  if (cached) return cached
-  const s = GLOW_SPRITE_SIZE
-  const r = s / 2
-  const spr = document.createElement('canvas')
-  spr.width = s
-  spr.height = s
-  const g = spr.getContext('2d')!
-  const grad = g.createRadialGradient(r, r, 0, r, r, r)
-  grad.addColorStop(0, color)
-  grad.addColorStop(0.25, color)
-  grad.addColorStop(1, 'rgba(0,0,0,0)')
-  g.fillStyle = grad
-  g.fillRect(0, 0, s, s)
-  spriteCache.set(color, spr)
-  return spr
-}
-
-// The sprite's opaque core spans 25% of its radius, so blitting it at 4x the
-// dot's core radius keeps the solid centre the size the old arc drew, with the
-// halo reaching ~3 core-radii beyond — the blurred-dot silhouette.
-const DOT_HALO_SCALE = 4
-
-/**
- * Draw one glowing dot: core radius `size` at (x, y) in `color`, halo included.
- * Honours the ambient globalAlpha/composite mode. With a DOM: a near-free
- * bitmap blit of the cached sprite. Without one (node tests): a plain arc fill
- * in the dot's colour — no shadow blur on either path, ever.
+ * Draw one dot: a hard-edged fill of radius `size` at (x, y) in `color`, no
+ * halo. Honours the ambient globalAlpha/composite mode.
+ *
+ * fillStyle carries the colour because the tp1-15 spike-sparkle and tp1-30
+ * starfield-palette suites identify dots by the fillStyle recorded at fill() —
+ * "what colour, how many". This was the node-only fallback under tp1-40's
+ * sprite cache; it is now the only path, so what those suites observe in node
+ * is what the browser draws.
  */
 export function blitGlowDot(
   ctx: CanvasRenderingContext2D, color: string, x: number, y: number, size: number,
 ): void {
-  const spr = glowSprite(color)
-  if (spr) {
-    const d = size * DOT_HALO_SCALE * 2
-    ctx.drawImage(spr, x - d / 2, y - d / 2, d, d)
-    return
-  }
   ctx.fillStyle = color
   ctx.beginPath()
   ctx.arc(x, y, size, 0, Math.PI * 2)

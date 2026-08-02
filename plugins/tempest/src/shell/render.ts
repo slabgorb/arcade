@@ -1,7 +1,7 @@
 // src/shell/render.ts
 import { GameState, Enemy } from '../core/state'
 import type { HighScoreTable } from '@shared/highscore'
-import { glowStrokePasses, blitGlowDot, glowSprite, cappedDpr } from './glow'
+import { glowStrokePasses, blitGlowDot, cappedDpr } from './glow'
 import { Tube, Point, currentLane, project, laneWidth, flipPivot, clawTransform, warpDiveTube, warpDescentTube, warpEyeClipDepth, WARP_EYE_CLIP_MARGIN, warpEyeDest } from '../core/geometry'
 import { isJumping, jumpProgress } from '../core/enemies/interpreter'
 import { Fx, EnemyBurst, PlayerSplat, PlayerSpark, FuseScorePop } from './fx'
@@ -36,8 +36,20 @@ const TITLE_BASE_PX = 112
 const LOGO_RAINBOW_SPEED = 0.9
 
 // Phosphor afterglow retention per 1/60 s frame (0 = instant clear, 1 = never
-// fades). 0.55 ≈ the authentic Color-XY short glow; tune by eye while running.
-const PHOSPHOR_DECAY = 0.55
+// fades). 0.55 ≈ the authentic Color-XY short glow; 0 turns the trail OFF, which
+// is where the owner set it (2026-08-02, with the stroke and dot halos) — a
+// moving vector now leaves nothing behind it.
+//
+// The scene still routes through the phosphor buffers rather than drawing
+// straight to the canvas: they also own the scene transform, the additive blend
+// and the screen shake. At decay 0 the accumulator is wiped and re-filled with
+// this frame's scene every frame (phosphorAlpha(0, dt) === 1), so it composites
+// the scene through unchanged. Restore the afterglow by putting 0.55 back here.
+//
+// Pinned by tests/shell/tp1-40.glow-tax-sources.test.ts — the value is a lone
+// number no behavioural test can reach (render() needs a real DOM canvas), so
+// only a source rule keeps the trail from drifting back.
+const PHOSPHOR_DECAY = 0
 
 // Neon hues for the authentic-glyph palette colours (Story 6-8). The glyph
 // library names colours semantically; this is the one place they become pixels.
@@ -538,20 +550,19 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, s: GameState): void {
   ctx.globalAlpha = 1
 }
 
-// Particles blit the cached additive glow sprite — the pattern that first
-// proved live shadow-blur was the lag (it ran 100+ Gaussian fills a frame
-// during bursts before being baked). tp1-40 moved the sprite cache to ./glow
-// and extended it to EVERY glowing dot in the scene; particles keep their own
-// sizing curve here (they shrink as they fade).
+// Particles go through blitGlowDot like every other dot in the scene, so the
+// de-glow reaches them too. They keep their own sizing curve (they shrink as
+// they fade) and their own alpha ramp.
+//
+// The radius is the SOLID CORE the cached sprite used to draw: that sprite was
+// blitted at diameter `6 + t*14` with an opaque centre spanning 25% of its
+// radius, i.e. a core radius of diameter/8. Dropping the halo therefore leaves
+// the particle exactly the size it always looked, without the bloom around it.
 function drawParticles(ctx: CanvasRenderingContext2D, fx: Fx): void {
   for (const p of fx.particles) {
     const t = Math.max(0, p.life / p.max)
-    // Blit the cached glow scaled to roughly the old footprint (core 1.4–3.2px +
-    // a ~10-unit glow reach), shrinking as the particle fades.
-    const size = 6 + t * 14
     ctx.globalAlpha = t
-    const spr = glowSprite(p.color)
-    if (spr) ctx.drawImage(spr, p.x - size / 2, p.y - size / 2, size, size)
+    blitGlowDot(ctx, p.color, p.x, p.y, (6 + t * 14) / 8)
   }
   ctx.globalAlpha = 1
 }
