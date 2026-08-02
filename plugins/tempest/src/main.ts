@@ -9,16 +9,19 @@ import { playEventSounds } from './shell/audio-dispatch'
 import { render, advanceStarfield } from './shell/render'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { resizeToDisplay } from '@shared/view'
-import { INITIAL_PAUSED, isPauseKey, togglePaused } from '@shared/pause'
+import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { drawEscOverlay } from '@shared/esc-overlay'
+import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
 
 // tempest records the `level` reached; the shared factory binds load/save to the
 // 'tempest-high-scores' localStorage key and validates each row's finite score +
 // level (the lobby reads the same key + shape — SH-4).
 const highScores = makeHighScoreStorage('tempest', makeHighScoreRowGuard('level'), 'level')
 
-const canvas = document.getElementById('game') as HTMLCanvasElement
-const ctx = canvas.getContext('2d')!
+// sc1-1: the checked mount. Was `getElementById('game') as HTMLCanvasElement`
+// followed by `getContext('2d')!` — two unchecked assertions whose failure mode
+// was a bare TypeError naming neither the selector nor the fix.
+const { canvas, ctx } = mountCanvas(document)
 
 // The DPR-resize + CSS-box sizing is @shared/view's resizeToDisplay (SH2-10),
 // which owns the Math.min(2, devicePixelRatio||1) cap+guard every cabinet hand-rolled.
@@ -41,14 +44,12 @@ const audio = createAudioEngine()
 let lastDraw = performance.now()
 
 // Browsers forbid starting an AudioContext before a user gesture, so the engine
-// stays inert until the first click/keypress unlocks it. resume() is idempotent
-// (only the first call builds the context and loads samples), so leaving both
-// listeners attached makes every later gesture a harmless no-op.
-function unlockAudio(): void {
-  audio.resume()
-}
-canvas.addEventListener('click', unlockAudio)
-window.addEventListener('keydown', unlockAudio)
+// stays inert until the first keypress/pointer unlocks it. resume() is idempotent
+// (only the first call builds the context and loads samples), so leaving the
+// listeners attached makes every later gesture a harmless no-op. sc1-1: the
+// canvas `click` became a window `pointerdown`, which fires earlier and covers
+// pen and touch; a click on the canvas still bubbles, so nothing is lost.
+installAudioUnlock(() => audio.resume(), window)
 
 // Seed the in-memory high-score table from persisted storage so saved scores
 // appear on the attract screen immediately at boot.
@@ -59,10 +60,7 @@ initial.highScoreTable = highScores.load()
 // cabinet-wide VERB. Edge, not level (guard e.repeat) so a held key can't
 // machine-gun the toggle. The freeze itself is the loop's stepUnlessPaused gate,
 // which polls the isPaused accessor passed to createLoop below.
-let paused = INITIAL_PAUSED
-window.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (!e.repeat && isPauseKey(e.key.toLowerCase())) paused = togglePaused(paused)
-})
+const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
 
 // Per-cabinet NUMBERS for the pause card: tempest's keybinds, its authentic 1981
 // green banner colour (#39ff14, the BONUS/TIME face), and the dim alpha. Copy /
@@ -100,7 +98,7 @@ const loop = createLoop(
     // SH2-14: the pause overlay dims the frozen tube and draws the keybind card
     // over it. render() leaves the ctx in its phosphor-composited state, so set
     // the dpr transform explicitly to draw the card in CSS-pixel space (W, H).
-    if (paused) {
+    if (pause.isPaused()) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       drawEscOverlay(ctx, W, H, TEMPEST_PAUSE)
     }
@@ -115,7 +113,7 @@ const loop = createLoop(
     if (oldMode === 'highscore') highScores.save(loop.getState().highScoreTable)
   },
   // SH2-14: the loop polls this each sub-step; a paused sub-step freezes the sim.
-  () => paused,
+  () => pause.isPaused(),
   // tp1-1: everything that must run on the GAME's clock rather than the display's
   // hangs off this hook. It fires once per sub-step that actually advanced the sim,
   // with the sim's own dt — so a paused or stalled game advances none of it.
