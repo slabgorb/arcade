@@ -1449,3 +1449,97 @@ guessed. The one that would have bitten: jt8-16 exists only because jt8-2's own 
 DEFERRED `PPVELX` to uf1-9 by name, and uf1-9 did not do it. A deferral written into a code comment
 is invisible to every backlog grep; when a story's module carries "this belongs to <story>", check at
 that story's finish whether it actually landed.
+
+---
+
+## A completed-sprint conflict can have SHARED trailing fields — a marker-strip silently robs the sibling's row (sw8-18 finish, 2026-08-02)
+
+The finish raced a sibling's and both appended a row to `sprint/archive/sprint-2628-completed.yaml`.
+The conflict looked like the usual add/add:
+
+```
+<<<<<<< HEAD
+  - id: uf1-9
+    epic: uf1
+    title: …
+=======
+  - id: sw8-18
+    epic: sw8
+    title: …
+>>>>>>> 8c00d7b
+    points: 5
+    completed: '2026-08-02'
+```
+
+**Look at where `points` and `completed` are: OUTSIDE the markers.** Git found the two rows'
+trailing fields identical and left them unconflicted, so they belong to *whichever row ends up
+last*. The union-resolve reflex used everywhere else in this file — strip the three marker lines,
+keep both sides — produces a `uf1-9` row with **no points and no completion date**, and a valid
+YAML file that parses, commits and pushes clean. Nobody would see it until someone totted up the
+sprint.
+
+**Prevention:** on any conflict inside a LIST OF RECORDS, do not resolve by deleting markers.
+Reconstruct each record whole, taking its authoritative fields from the two sides:
+`git show origin/main:<file>` for theirs, `git show <your-sha>:<file>` for yours. Then assert both
+records are complete before continuing:
+
+```bash
+python3 -c "import yaml;rows=yaml.safe_load(open(F))['completed_stories'];
+print([ (r['id'],r.get('points'),r.get('completed')) for r in rows if r['id'] in (A,B) ])"
+```
+
+The tell that you are in this case: the conflict block ends and the next line is still indented as
+a field rather than starting a new `- id:`. Same family as the existing entry on union-resolving
+sidecar files, but the opposite conclusion — sidecars are prose and union is right; record lists
+are structured and union is a data-loss bug.
+
+## EXTEND the existing story when the MECHANISM is literally the same clause
+
+The ad1-2 and jt8-7 entries say: check whether an existing story's mechanism can express your
+finding, and if not, file a new one with a "WHY THIS IS NOT X" paragraph. This run hit the other
+side of that test and it is worth recording, because the reflex by now is to file.
+
+The Reviewer found that the new guard's relocation hint is first-occurrence and can name the wrong
+routine. `td1-14` already owned exactly that defect — "count occurrences of the verbatim; if > 1,
+refuse to guess" — for a *different* tool (`reanchor-citations.mjs`). Different tool, different
+artifact, and different blast radius (that one silently WRITES a wrong anchor; the new one only
+PRINTS a wrong suggestion). By the strict mechanism test they are separate stories.
+
+**But the mechanism here is a four-line guard clause, identical in both call sites.** Filing a
+second story would have produced two adjacent stories a groomer merges on sight — the exact
+outcome the "WHY THIS IS NOT X" paragraph exists to prevent. So: extended td1-14's description to
+name the second tool and its measured near-miss, and bumped 2pt → 3pt.
+
+**The refinement:** the question is not "same theme or same mechanism" but **"would one edit close
+both?"** If yes, extend and say what you added and why the points moved. If the two need different
+code in different places, file separately. Splitting one clause across two stories invites one of
+them to drift.
+
+## Verify the Reviewer's numbers before applying the chore they route to you
+
+The Reviewer rejected a headline metric as false and handed me exact replacement text. The
+standing rule says a subagent's status claims are unsourced — that applies to the Reviewer too,
+and the chore was about to write a *correction* into the permanent record, where being wrong twice
+is worse than being wrong once.
+
+Re-ran it: throwaway worktree at the pre-story SHA, final checker against it → **49**, current
+tree → **35**. The Reviewer's decomposition held exactly. Cost: two commands. Had it not held I
+would have been about to commit a false correction of a false claim.
+
+Same for the other two items — I re-opened the guard's own header citation and confirmed the
+observation had moved, and re-ran the ratchet against the live count before tightening it. All
+three stood. **Verifying a correction is cheap and the failure mode is recursive.**
+
+## Chore-as-exit, third clean run — and this time the chore MUTATION-PROVED itself
+
+mg1-5 established that a prose-only finding exits via `/pf-chore` rather than another TDD round.
+This story extended it: one of the two required corrections was a *test* change (a ratchet from
+146 to 35), which is not prose. It still belonged in the chore, because the test for whether a
+finding needs a round is "does anything need to be re-derived?" — and here nothing did: the
+Reviewer supplied the number, the measurement was already in the transcript, and the change is one
+token.
+
+What made it safe was proving the tightened guard now bites: adding one stale citation reddens
+both the ratchet and the per-file gate, where at 146 it reddened neither. **A chore that changes a
+threshold must mutation-prove the new threshold**, or you have swapped one unfalsifiable assertion
+for another and called it a fix.
