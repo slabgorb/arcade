@@ -1940,3 +1940,73 @@ enforces. And the cheap fix was already sitting two lines above: `promote()` **a
 the adjacent impossible state (`pchase !== 0`). **When you delete a defence because "that input
 cannot happen", look for an existing guard that says the same thing about a neighbouring input —
 if one exists, extending it costs nothing and converts an argued invariant into a checked one.**
+
+---
+
+### On a ROM ruling, the SIBLING channel is the oracle — and test the reading against its ALTERNATIVE, not just for internal consistency (cp6-1 round 3, centipede, 2026-08-02)
+
+**Situation:** approving round 3 of a dossier story whose deliverable is a RULING (prose +
+fixture + claims) about what the ROM's sound routine does. Rounds 1 and 2 were both rejected
+for false statements about the machine. Round 3's delta was three doc/data files, and the
+obvious move — re-read the corrected sentences — was already done twice by the agents who
+wrote them.
+
+**What found the best finding: reading the ROM PAST the range the story cited.** The story
+ruled that POKEY voice 1 is contended four ways and the bonus preempts, anchored on
+`CENTI4.MAC:2374 BEQ 48$ ;IF NO BONUS SOUND`. Sixty lines further on sits
+`:2437 BEQ 52$ ;IF NO PLAYER EXPLOSION` — the same instruction shape, the same comment form,
+one voice apart. Voice 0 is contended too: `STA AUDF0` has exactly two sites (`:2423` the four
+kill cues, `:2445` the player explosion), label `52$` has exactly ONE referent in the whole
+routine, and `:2416 BNE 50$ ;ALWAYS` blocks fall-through into it — so a live player explosion
+preempts all four kills outright. The dossier recorded both writers as separate claims and
+never joined them. This is lang-review #14 / the sw8-13 lesson with the ROM's own parallel
+branch as oracle: **when a story rules on ONE channel's arbitration, grep the routine for the
+same `BEQ <label> ;IF NO <thing>` shape on the siblings and ask whether each was ruled on.**
+
+**And a ruling is tested against its ALTERNATIVE, not for internal consistency.** The story's
+central claim was that the `SOUNDS` header enumerates POKEY VOICES, not the `CHAN0..CHAN6`
+variables, argued from one line (`CENDE4.MAC:194` declares CHAN1 as the centipede alone while
+the header's CHAN 1 line names four cues). Checking that claim by re-reading it proves nothing.
+Checking it by scoring BOTH readings against all four header lines settles it in one pass: under
+the voice reading every line holds exactly (voice 2 has one `STA AUDF2`, voice 3 one, voice 1
+exactly four matching BONUS/CENTIPEDE/ANT/SCORPION one-for-one, voice 0 two — which is precisely
+why that line says ALL EXPLOSIONS, plural, where the CHAN0 *variable* says "EXPLOSION SOUND"
+singular); under the variable reading it fails on TWO lines, not one. The ruling was right and
+**stronger than the story knew** — its second-best proof was sitting unused in its own claim set.
+Say that in the verdict; a review that only ever subtracts reads as hostile.
+
+**When a prior round names "N artifacts", the fix will close exactly N.** Round 2's finding said
+the branch sense was backwards "in three artifacts" and listed them. Round 3 fixed those three
+perfectly — and a FOURTH survived in `sound-dossier.test.ts:1246`'s assertion label, because the
+diff was doc-only and the round-2 reviewer had never grepped the test files. **The reviewer's
+enumeration silently becomes the fix's scope**, so enumerate with a grep across the whole plugin
+(code, tests, sprint YAML, sidecars), not across the files you happened to be reading. Note the
+shape here: the block comment above that assertion was CORRECT and only the failure message
+inverted — the worst place for it, since it is read at the exact moment someone is reasoning
+about that branch.
+
+**Check whether the session file is GITIGNORED before deciding where the record lives.** Here
+`.gitignore:11` covers `.session/`, so the meticulous assessment I wrote into the session file
+reaches no commit at all — the epic YAML's `review_findings` is the only durable trace. `pf
+sprint story update --review-verdict approved` flips the verdict and leaves `review_findings`
+carrying the PREVIOUS round's "ROUND 2 REJECTED" narrative, so an approved story archives beside
+a rejection record. Pass `--review-findings` with the full current verdict on every terminal
+round, and verify with a YAML parse afterwards.
+
+**Approving a story rejected twice: name the standard it was held to.** Rounds 1 and 2 were
+rejected because the dossier told its reader something FALSE. Three independent passes (mine
+from the vendored source, comment-analyzer, rule-checker's FILE/LINE/EXTENT sweep) could not
+find a false statement in round 3, and that is the bar clearing — not "the findings got smaller".
+The residue was an omission (voice 0), a test's failure message, a distance error, and a
+disclosed guard gap. The decisive argument against a fourth round was measured, not felt: this
+review proved the dossier's CONCLUSIONS are unguarded English (both headline fixes revert with
+1087/1087 green), so another prose round could only be verified by another careful reading. Route
+the finding to where it becomes CODE — cp6-2 wires `playerDeath` on a different channel from the
+kills, and there a test can finally pin it.
+
+**Verify what the specialists hand you, in both directions.** `reviewer-preflight` reported that
+Dev's "orchestrator 389/390" claim was "factually incorrect" because it measured 390/390. It had
+read the Dev Assessment and not the Delivery Finding four lines below, where Dev had ALREADY
+recorded the fix (`4172a95`, landed six minutes after their measurement) and the 390/390. A
+subagent's contradiction of an author is a claim with a timestamp too — resolve it against the
+whole record before putting it in the permanent one, and retract loudly when it was yours.
