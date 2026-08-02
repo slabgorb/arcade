@@ -270,7 +270,7 @@ stories:
       NOT MEASURED BY SM, handed over as an open question: the port has a 1602-line core/demo.ts that emits its own cue stream, and SNPTREF is modelled by NO cue at all (it appears only inside verbatim strings). So there is no CURRENT audible G/P divergence - but whether demo.ts's cue stream should cite the G-family is a real question this story does not close. TEA should decide whether it is in scope or gets filed.
     points: 3
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-08-02'
     repos: arcade
     workflow: tdd
@@ -281,3 +281,5 @@ stories:
       - playerWingUp and playerWingDown re-anchor their callSite from line 5544 (G1DEC, the attract-demo binding) to line 5552 (P1DEC, real play), so CUE_SOURCES cites ONE decision-block family for every knight cue. A test asserts both cues cite the P-family row and that the row really opens with SNPLWU,SNPLWD.
       - The false claim in the shipped jt5-3 comment at audio-manifest.ts:326 - These four cite the G-BLOCK row (:5544) - is corrected. Only playerWingUp and playerWingDown ever cited :5544; enemyWingUp and enemyWingDown cite :5560, which is P3DEC's sound row and has no G-variant at all. The count of cues affected by the G/P question is two, not four.
       - The recorded rationale explains why the pre-jt5-23 citation was ALSO true - SNPLWU,SNPLWD open all four knight rows (:5544, :5548, :5552, :5556) identically - so the re-anchor reads as a precision gain and not as the correction of a wrong citation.
+    review_findings: "REJECTED round 1 — 1 High, 2 Medium, 1 Low, all in the record's PROSE. HIGH: the G1JOY/G2JOY corroboration in audio-manifest.ts:344-345 is wrong in both halves — the extent (:601-616) starts inside the unrelated L2EGG routine and stops ten lines before STD CURJOY (:625), the only line that makes 'compute a joystick' true; and 'sit in the attract region beside ATTRCT (:712)' is false, since the routine ends at :626 with GAMOVR in between and the ROM files it under its own header at :613, 'GAME SIMULATION PLAYER COMMANDS' — the decisive evidence, uncited. Present in 4 places including two test-file locations. Unguarded: the suite is 2934/2934 green with the falsehood in place. MEDIUM: 'a buzzard has no joystick' — PDECSN is populated for buzzards (P3DEC opens AUTOFF,AUTOFF) and the ROM calls it INTELLIGENCE at :644. MEDIUM: AC3's resolution guard filters to the :1025-1029 window, leaving four of five citation groups unverified — which is how the High shipped green. LOW: a quoted ROM comment collapses a double space. Verified replacement text supplied for each. The mechanism, census, slot-8 explanation and the AC4 re-anchor are all independently verified CORRECT."
+    review_verdict: rejected
