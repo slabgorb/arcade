@@ -3252,3 +3252,78 @@ routine and same defect as a filed item, found in one file and missed in its nei
 guard bites on arrival rather than being scenery, and it is far stronger evidence than any
 synthetic fixture. List them in the test comment with the corrected number so Dev corrects
 rather than hunts.
+
+---
+
+## The throwaway falsified my own RED design — build it BEFORE trusting the AC's mechanism, not just to prove satisfiability (sw8-23, 2026-08-02)
+
+**Situation:** sw8-23 hardens sw8-18's comment-citation guard. AC3 says "anchor the opt-out
+pragma — leading comment only, or first N lines, or an exact-line match". I wrote the RED
+against "leading comment", built the throwaway to prove satisfiability, and the test that
+mattered most **still failed**.
+
+**Why:** the fixture that must NOT silence the file is
+`// The guard honours a citation-guard: ignore-file pragma.` — and that *is* a leading
+comment. Every option the AC offered except "exact-line match" fails on its own example. The
+rule that works is narrower than any of them: **the pragma must OPEN the comment body once
+the leader is stripped**, which is how both files that legitimately opt out already write it.
+
+**The generalisation, and it extends the standing "prove the RED is satisfiable" rule:** the
+throwaway's job is usually to answer *can this be built?*. Here it answered *is the specified
+mechanism the right one?* — and the answer was no, discovered in ten minutes instead of in
+Dev's second review round. **When an AC offers a menu of mechanisms ("X, or Y, or Z"), that
+menu is a guess. Build the cheapest one and run the AC's own fixture against it.** A menu in
+an AC is a tell that nobody has run it.
+
+**Two more requirements the same throwaway produced, both invisible to reading:**
+
+- **A regex fix can re-anchor one character right and look fixed.** The glob `**/*.test.mjs`
+  extracts as the filename `.test.mjs`. Adding a leading character class to `FILE_RE` made it
+  extract `test.mjs` — still a citation, still dangling, and the error message changes just
+  enough to look like progress. A lookbehind `(?<![.*\w])` is what actually works. **Check
+  what a rejected match becomes, not just that it changed.**
+- **A disowning marker has an ADJACENCY requirement nobody documents.** `RETIRED:` is matched
+  as `` RETIRED:\s*`? `` immediately before the filename, so it silently fails to disown an
+  ELIDED citation (`RETIRED:`…design.md:47-48``). The marker was present, the citation still
+  reddened, and nothing said why.
+
+## Audit the pass list by ASKING WHAT WOULD MAKE EACH GREEN — three of eleven were green for the wrong reason
+
+The standing rule is "check the pass list for vacuity". This run gives the mechanical form of
+the question: for each green, name the condition that makes it green **today**, and check that
+it is the same condition that makes it green **after** the story.
+
+- Two AC5 mutation tests asserted only a floor on the mutated count (`>= 1` errors after
+  stripping the marker). That passes on a file that was **never clean** — which was exactly
+  the state at RED. The fix is to assert the **delta**: clean before, red after. A one-sided
+  mutation assertion is not a mutation test.
+- The ratchet called `checkTree` with its DEFAULT roots, under the name "the widened scan
+  does not rise". The default did not yet include the new directory, so it measured the
+  *un-widened* tree and reported `35 <= 35`. It would have stayed green through a story that
+  widened nothing at all. Naming the roots explicitly made it red at RED.
+
+**The tell for the second one is worth generalising: a test whose subject is a CONFIG CHANGE
+must not read the config it is asking you to change.** It has to name the new value itself,
+or it measures the old world and calls it proof. Same family as the existing "a mutation that
+DIDN'T APPLY is indistinguishable from a guard that doesn't bite" entry, one level up — here
+the *assertion* silently applied to the wrong scope rather than the mutation failing to land.
+
+**And say so in place when a green is knowingly weak.** One test here ("the guard scans clean
+over its own implementation") is green at RED *because the file opts itself out* — the very
+defect the story fixes. Rather than delete it, it carries a comment saying it is green for
+the wrong reason and that its non-vacuity comes entirely from the mutation test beside it.
+A reader who greps the pass list must not be able to mistake it for evidence.
+
+## Classify a handed-over "I could not settle this" BEFORE treating it as work
+
+SM handed over two errors it could not classify — bare `.test.mjs` "cited file does not
+exist" — with the check named, explicitly refusing to guess. Ten minutes of grep settled it:
+the sources are a **glob** (`` `**/*.test.mjs` discovery ``) and a comment-wrapped sentence
+remnant. Nothing was ever cited, so nothing could be "re-anchored", and the four analogous
+entries already in the baseline were the same artifact.
+
+Had I treated them as citations, the honest options would have been to invent an anchor or to
+mark six non-citations `RETIRED:` — both of which write a false record into the tree the story
+exists to make truthful. **A handed-over uncertainty is cheaper to resolve than to route
+around; resolve it first and let the answer set the scope.** The result here added a
+three-line fix to the story and removed six errors, four of them pre-existing.
