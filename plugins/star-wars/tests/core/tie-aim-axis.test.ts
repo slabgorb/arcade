@@ -84,13 +84,27 @@ import {
   AIM_DEPTH_MAX,
 } from '../../src/core/tie-status'
 import { Status } from '../../src/core/tie-vm'
-import { IDENTITY, type Mat4 } from '@shared/math3d'
-import { makeSpaceState, makeTie, lookAway, rngSeed } from './helpers/space'
+import { PLAY_CUBE_MAX } from '../../src/core/state'
+import { IDENTITY, type Mat4, type Vec3 } from '@shared/math3d'
+import { makeSpaceState, makeTie, lookAtOrigin, lookAway, rngSeed } from './helpers/space'
 
 /** Does this TIE have the player in its sights? */
-function hasSights(pos: [number, number, number], orient: Mat4 = IDENTITY): boolean {
+function hasSights(pos: Vec3, orient: Mat4 = IDENTITY): boolean {
   const e = makeTie({ pos, orient })
   return (computeStatus(e, makeSpaceState(), rngSeed(1)) & Status.C_AS) !== 0
+}
+
+/**
+ * A TIE at `[-lat, 0, -lat]` with its nose pointed AT the cockpit, so its nose-depth is
+ * exactly the range `lat·√2` and its off-axis distance is zero.
+ *
+ * This is how a fighter legitimately gets further from the pilot than either axis allows
+ * on its own: the play cube pins each axis at ±`PLAY_CUBE_MAX` independently
+ * (`state.ts:596`, clamped per-axis at `sim.ts:2050-2052`), so a corner is √3 ≈ 1.7× as far
+ * as a face. Every position built here is asserted legal below before it is used.
+ */
+function diagonalAt(lat: number): Vec3 {
+  return [-lat, 0, -lat]
 }
 
 /**
@@ -102,7 +116,7 @@ function hasSights(pos: [number, number, number], orient: Mat4 = IDENTITY): bool
  * the nose is `depth` and its perpendicular component is `perp`, by construction. Both are
  * exact — no trig, nothing for a fixture bug to round away.
  */
-function tieAt(depth: number, perp: number): [number, number, number] {
+function tieAt(depth: number, perp: number): Vec3 {
   return [-perp, 0, -depth]
 }
 
@@ -117,18 +131,32 @@ describe('uf1-15 — the M$PSB2 unit chain, pinned from primary source', () => {
 
   it('converts C$AS\'s own literal $20 to 1024·√2 world units', () => {
     // WSCPU.MAC:617 `CMPD #20`. Pinned to the number, not to a range: a range would let a
-    // retune drift inside it forever.
+    // retune drift inside it forever. `AIM_AXIS_RADIUS` is NOT compared to
+    // `psb2SquaredToWorld(0x20)` here — that is its own declaration (tie-status.ts:100) and
+    // the comparison could not fail; the literal below is what actually pins it.
     expect(psb2SquaredToWorld(0x20)).toBe(1024 * Math.SQRT2)
-    expect(AIM_AXIS_RADIUS).toBe(psb2SquaredToWorld(0x20))
     expect(AIM_AXIS_RADIUS).toBeCloseTo(1448.1546878700494, 10)
   })
 
   it('doubles the LINEAR depth bound too — PRE2 halves every axis, not just the squared ones', () => {
-    // WSCPU.MAC:612 `SUBD #4000 / BGE 140$` compares M.XP, which PRE2 halved on the way in,
-    // so the true-world bound is twice the literal. $8000 = 32768 sits just past the $7C00
-    // = 31744 spawn depth, which is why this gate is a play-cube-corner case rather than a
-    // routine one — and exactly why it must not be invented smaller.
-    expect(AIM_DEPTH_MAX).toBe(0x8000)
+    // WSCPU.MAC:610-611 `SUBD #4000 / BGE 140$` compares M.XP, which PRE2 halved on the way
+    // in, so the true-world bound is twice the literal. (:612 is `LDD A$CHST(X) ;SET PLAYER
+    // IN ALIENS VIEW`, the start of the unrelated C$AV setter — not this gate.)
+    //
+    // Asserted as the DERIVATION, not as the answer. `toBe(0x8000)` restates the constant's
+    // own declaration (tie-status.ts:110) and stays green if the ×2 is dropped and the
+    // literal retyped to match; multiplying the ROM operand here does not.
+    const ROM_DEPTH_OPERAND = 0x4000 // the `#4000` in `SUBD #4000`, verbatim
+    expect(AIM_DEPTH_MAX).toBe(2 * ROM_DEPTH_OPERAND)
+    expect(AIM_DEPTH_MAX).not.toBe(ROM_DEPTH_OPERAND) // the halved-unit port this replaced
+  })
+
+  it('rejects a negative squared input instead of returning a silent NaN', () => {
+    // The argument is a SQUARED ROM literal, so it cannot be negative. Today the function
+    // returns NaN for one, and every NaN comparison in `computeStatus` is false — so a bad
+    // call would disable C_AS permanently and never raise anything. Fail loud instead.
+    expect(() => psb2SquaredToWorld(-1)).toThrow()
+    expect(psb2SquaredToWorld(0)).toBe(0) // the domain edge that IS legal, still allowed
   })
 })
 
@@ -177,15 +205,48 @@ describe('uf1-15 — the gates C_AS is nested inside (WSCPU.MAC:611-614)', () =>
   })
 
   it('clears the bit past AIM_DEPTH_MAX even with the nose dead on', () => {
-    // Perfect aim, out of range: `SUBD #4000 / BGE 140$`. Reachable inside the ±$7CFF play
-    // cube only on a diagonal — [-25000,0,-25000] is 35355 units out, both axes legal — so
-    // this fixture is a state the game can actually be in, not a synthetic one.
-    expect(hasSights(tieAt(35355.339059327378, 0))).toBe(false)
+    // Perfect aim, out of range: `SUBD #4000 / BGE 140$` (WSCPU.MAC:610-611). A fighter
+    // gets this far from the pilot only on a DIAGONAL, so the fixture is built as one and
+    // its legality is asserted rather than asserted-about: each axis is inside the cube,
+    // and the resulting nose-depth (25000·√2 = 35355) is past the 32768 bound.
+    const pos = diagonalAt(25000)
+    expect(Math.max(...pos.map(Math.abs))).toBeLessThanOrEqual(PLAY_CUBE_MAX)
+    expect(25000 * Math.SQRT2).toBeGreaterThan(AIM_DEPTH_MAX)
+    expect(hasSights(pos, lookAtOrigin(pos))).toBe(false)
   })
 
   it('sets it at the same aim just INSIDE the range bound', () => {
     // The paired control: without it, the test above could pass for any unrelated reason.
-    expect(hasSights(tieAt(28284.271247461902, 0))).toBe(true)
+    // Same construction, same legality check, 20000·√2 = 28284 — inside 32768.
+    const pos = diagonalAt(20000)
+    expect(Math.max(...pos.map(Math.abs))).toBeLessThanOrEqual(PLAY_CUBE_MAX)
+    expect(20000 * Math.SQRT2).toBeLessThan(AIM_DEPTH_MAX)
+    expect(hasSights(pos, lookAtOrigin(pos))).toBe(true)
+  })
+
+  it('excludes the range bound ITSELF, as BGE does', () => {
+    // `SUBD #4000 / BGE 140$` skips when the difference is >= 0, so a fighter exactly AT the
+    // bound is out and one unit inside is in. The radius gate has this pair already
+    // (`BHI`, inclusive); the range gate did not, and `<` survived mutation to `<=` with the
+    // whole 2113-test suite green until this test existed.
+    //
+    // On-axis and therefore EXACT — `tieAt` builds nose-depth by construction with no trig
+    // and no square root. That puts it outside the play cube, which is deliberate and is
+    // the opposite of the two tests above: this one probes the COMPARISON OPERATOR, where
+    // exactness is the whole point, and makes no claim about reachability.
+    expect(hasSights(tieAt(AIM_DEPTH_MAX, 0))).toBe(false)
+    expect(hasSights(tieAt(AIM_DEPTH_MAX - 1, 0))).toBe(true)
+  })
+
+  it('sets the bit at exactly ZERO nose-depth, as BMI does — zero is not minus', () => {
+    // `LDD M.XP / BMI 140$` (WSCPU.MAC:607-608) branches on the sign bit alone, so a
+    // fighter exactly abeam — the player neither in front of nor behind its nose — falls
+    // through and keeps the bit. `>= 0` survived mutation to `> 0` with the whole suite
+    // green until this test existed, so the boundary the comment explains was unenforced.
+    //
+    // 500 is well inside the 1448-unit radius, so only the sign gate decides these.
+    expect(hasSights(tieAt(0, 500))).toBe(true)
+    expect(hasSights(tieAt(-1, 500))).toBe(false)
   })
 })
 
