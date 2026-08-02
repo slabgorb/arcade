@@ -35,7 +35,8 @@ import { attractLines, gameOverLines, entryLines } from './core/screens'
 import { inGameAlert, alertFlashOn } from './core/alerts'
 import { MESSAGES } from './core/text'
 import { KeyboardTreads } from './shell/input'
-import { INITIAL_PAUSED, isPauseKey, togglePaused, stepUnlessPaused } from './shell/pause'
+import { INITIAL_PAUSED, isPauseKey, stepUnlessPaused } from './shell/pause'
+import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
 import { makeHighScoreStorage, isHighScoreRow } from '@shared/highscore'
 import { createAudioEngine } from './shell/audio'
 import { playEventSounds, updateContinuousSounds } from './shell/audio-dispatch'
@@ -73,8 +74,8 @@ const HOSTILE_MODEL: Readonly<Record<HostileKind, Model3D>> = {
  */
 const VOLCANO_HEIGHT_SCALE = 0.002
 
-const canvas = document.getElementById('game') as HTMLCanvasElement
-const ctx = canvas.getContext('2d')!
+// sc1-1: the checked mount replaces `as HTMLCanvasElement` + `getContext('2d')!`.
+const { canvas, ctx } = mountCanvas(document)
 
 // SH-1: first consumer of the shared library (ADR-0001). Stamp the shared-lib
 // version this build was compiled against onto the document for diagnostics — a
@@ -101,11 +102,7 @@ const treads = new KeyboardTreads()
 // every plausible first gesture; repeats are harmless no-ops (sibling
 // convention: star-wars pointerdown/keydown).
 const audio = createAudioEngine()
-function unlockAudio(): void {
-  audio.resume()
-}
-canvas.addEventListener('pointerdown', unlockAudio)
-window.addEventListener('keydown', unlockAudio)
+installAudioUnlock(() => audio.resume(), window)
 
 // SH-6: the high-score persistence seam is now the shared factory (the same
 // module + `battlezone-high-scores` key the lobby reads). battlezone records no
@@ -122,14 +119,14 @@ const highScoreStorage = makeHighScoreStorage('battlezone', isHighScoreRow, '')
 // stepGame returns each frame. mutable → readonly is a safe widening.
 let game: GameState = { ...initGame(Date.now() >>> 0), highScores: highScoreStorage.load() }
 let wasAttract = true
-let paused = INITIAL_PAUSED
 
 // bz2-5: Escape toggles pause. Edge, not level (guard e.repeat) so a held key
 // can't machine-gun the toggle — the same one-press-one-event discipline as the
 // bz1-10 start latch (shell/input.ts). The freeze itself lives in stepUnlessPaused.
-window.addEventListener('keydown', (e) => {
-  if (!e.repeat && isPauseKey(e.key.toLowerCase())) paused = togglePaused(paused)
-})
+// sc1-1: the toggle is the shared helper, fed battlezone's OWN isPauseKey (which
+// shell/pause re-exports verbatim from @shared/pause). The 4-arg stepUnlessPaused
+// gate and the local drawPauseOverlay stay battlezone's — only the listener moved.
+const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
 
 // Initials entry (SH2-13): typed letters and Backspace are edge events, not
 // held state, so they bypass the per-frame tread sample and feed the core's
@@ -152,7 +149,7 @@ function stepFrame(dt: number): void {
   frameInput = treads.read()
   framePrevPose = game.player // pre-step pose — a blocked translation leaves it unchanged
   const prev = game
-  game = stepUnlessPaused(game, frameInput, dt, paused)
+  game = stepUnlessPaused(game, frameInput, dt, pause.isPaused())
 
   // bz2-5: a paused sub-step is frozen (game === prev) — the sim did not advance,
   // so the shell side-effects must NOT fire. Replaying the held step's one-shot
@@ -319,7 +316,7 @@ function renderFrame(): void {
 
   // bz2-5: the pause overlay sits above the whole scene — the frozen world shows
   // dimmed behind the keybind card. Drawn last so nothing paints over it.
-  if (paused) drawPauseOverlay(ctx, w, h)
+  if (pause.isPaused()) drawPauseOverlay(ctx, w, h)
 }
 
 const loop = createLoop(stepFrame, renderFrame)
