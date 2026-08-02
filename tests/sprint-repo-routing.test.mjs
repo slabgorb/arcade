@@ -521,39 +521,65 @@ test('context scope follows the archive rule — completed work is left as a rec
     assert.equal(typeof f.text, 'string', `${f.path}: file text must be decoded, not a Buffer`);
   }
 
-  // A context belonging to a story that is `done` must NOT be scanned. sw8-11 is
-  // done and its context names star-wars; if it appears here the guard has adopted a
-  // scope its own policy rejects, and it will be red for reasons no one can fix.
-  assert.ok(
-    !scanned.includes('sprint/context/context-story-sw8-11.md'),
-    'a completed story\'s context is a record, not live routing — see ARCHIVE_POLICY',
-  );
+  // Both directions below are DERIVED from the sprint files, and that is a fix rather
+  // than a flourish. This test used to pin its live example by name — "jt8 has 4 open
+  // stories at the time of writing" — and it went red the moment jt8's last story
+  // closed, which is a guard failing for a reason nobody can act on. Every id nameable
+  // here eventually completes, so pinning a different epic would only move the expiry
+  // date. Sprint progress must not be able to redden this file.
+  //
+  // Liveness is recomputed here from the YAML rather than by calling the helper's
+  // liveScope(): asking the implementation under test which files it ought to scan
+  // would turn both assertions into restatements of its answer. The RULE is shared —
+  // a story block carrying no `status: done` is open, which is ARCHIVE_POLICY — but
+  // the walk is this file's own, so a bug in the helper's globbing, its filename
+  // parsing or its epic/story split still reddens.
+  const storyBlocks = (text) => text.split(/^ {2}- id: /m).slice(1);
+  const isDone = (block) => /^ {4}status: done\s*$/m.test(block);
+  const idOf = (block) => block.split('\n')[0].trim();
 
-  // And an epic that still has open stories MUST be scanned, or the guard is scoped
-  // into vacuity.
-  //
-  // This exemplar was `jt8`, which had 4 open stories when the assertion was
-  // written. The 2026-08-02 jt9 cut moved every remaining joust story out of jt5
-  // and jt8, so jt8 is now 6/6 done and correctly OUT of scope — the assertion
-  // started failing on an epic that had simply finished, which is the guard
-  // working, not breaking. Re-pointed at jt9 (28 stories, 27 still open).
-  //
-  // Anti-staleness: rather than trust the name, this asserts the PROPERTY the
-  // scope rule is about — pick whichever epic actually has open stories, and
-  // require that one to be scanned. A future cut then re-points it for free.
-  const liveEpics = guardedContextFiles(repo)
-    .map((f) => f.path)
-    .filter((p) => /context-epic-/.test(p));
+  const contextFiles = new Set(readdirSync(path('sprint', 'context')));
+  const epicId = (p) => /epic-(.+)\.yaml$/.exec(p)[1];
+  const rendered = (kind, ids) =>
+    [...new Set(ids)].filter((id) => contextFiles.has(`context-${kind}-${id}.md`))
+      .map((id) => `sprint/context/context-${kind}-${id}.md`)
+      .sort();
+  const scannedOf = (kind) => scanned.filter((p) => p.startsWith(`sprint/context/context-${kind}-`)).sort();
+
+  // Stated as an EQUALITY in both directions rather than two inclusions, because the
+  // two ways to get this wrong are opposites and each hides the other's test. Scanning
+  // too little silently drops live routing; scanning too much reddens the guard over a
+  // record nobody can be routed from, which is the failure ARCHIVE_POLICY exists to
+  // prevent. An equality needs no third example and cannot go vacuous from one side.
+  const liveEpics = rendered(
+    'epic',
+    epicFiles().filter(({ text }) => storyBlocks(text).some((b) => !isDone(b))).map(({ path: p }) => epicId(p)),
+  );
   assert.ok(
     liveEpics.length > 0,
-    'at least one epic with open stories must be in scope, or the guard is vacuous',
+    'no epic has BOTH open stories and a context document, so the comparison below would compare ' +
+      'nothing against nothing — the shape of a green gate that measures itself',
+  );
+  assert.deepEqual(
+    scannedOf('epic'),
+    liveEpics,
+    'the epic contexts in scope must be exactly those whose epic still has open stories. Extra ' +
+      'entries are completed work the guard would redden over; missing ones are live routing it ' +
+      'would let drift.',
+  );
+
+  const openStories = rendered(
+    'story',
+    epicFiles().flatMap(({ text }) => storyBlocks(text).filter((b) => !isDone(b)).map(idOf)),
   );
   assert.ok(
-    scanned.includes('sprint/context/context-epic-jt9.md'),
-    'an epic with open stories (jt9: 27 of 28 open) is live routing and must be in scope',
+    openStories.length > 0,
+    'no open story has a context document, so the comparison below would compare nothing against nothing',
   );
-  assert.ok(
-    !scanned.includes('sprint/context/context-epic-jt8.md'),
-    'jt8 is 6/6 done since the jt9 cut — a completed epic is a record, not live routing',
+  assert.deepEqual(
+    scannedOf('story'),
+    openStories,
+    'the story contexts in scope must be exactly those whose story is not done — a completed ' +
+      "story's context is a record, not live routing (see ARCHIVE_POLICY)",
   );
 });
