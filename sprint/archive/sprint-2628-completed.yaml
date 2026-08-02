@@ -29,6 +29,8 @@ completed_epics:
   - jt2
   - cp5
   - sc1
+  - jt5
+  - jt8
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -1401,5 +1403,10 @@ completed_stories:
   - id: sc1-1
     epic: sc1
     title: 'Shell convergence: compositional host helpers across the seven games'
+    points: 8
+    completed: '2026-08-02'
+  - id: jt9-1
+    epic: jt9
+    title: "PJOY,U is an ENTRY ADDRESS: a glide wake skips LINET's promotion check and its lava-troll looker"
     points: 8
     completed: '2026-08-02'

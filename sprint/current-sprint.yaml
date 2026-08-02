@@ -11,8 +11,6 @@ epics:
   - td1
   - sw8
   - uf1
-  - jt5
-  - jt8
   - ad1
   - mg1
   - cp6

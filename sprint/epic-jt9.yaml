@@ -49,9 +49,17 @@ stories:
         * R-2 (MEDIUM) -- the Reviewer wrote "file with R-1" and it was filed nowhere. AC3's promotion fence cannot fail: deleting `pjoy: undefined` from promote() (plugins/joust/src/core/enemy.ts:439, still present) left all 2463 joust tests green under mutation. This story DISPOSES of it rather than fencing it: SM measured that every promotion in all four harnesses entered carrying `none` or `glide` and NEVER 'interval'/'wing', so a dumb linet bird's pjoy is only ever those two -- once promotion is gated on the glide, `pjoy: undefined` in promote() is unreachable BY CONSTRUCTION. Delete it or re-comment it to say exactly that; do not build a fence for a branch that cannot be taken.
         * R-4 (LOW, and it is LIVE PROSE this story's own re-baseliner will read) -- audio-thud.test.ts:900-901 still says the person-thud seed scan found "0x2221 (f=1241), 0x2332, 0x310f and 0x3442 (all f=973) are the only hits". R-4 measured 36 of 400 seeds in [0x2200,0x2390) produce a player-thud, 20 of them at frame 973 -- ~9%, not four. The four named seeds are each individually correct and 0x2332 remains valid; the RARITY NARRATIVE is what is false, and this story is the one that re-opens that pin. Reword to what was actually swept, or drop the count. (jt9-2 is not the owner: its mechanism is line-ref -> symbol-ref conversion, which would not touch a false census claim.)
       R-5 needs no work: its only wrong text is in the archived jt5-8 Dev Assessment (dead history); the live pin at dumb-wingbeat.test.ts:491-493 already carries the correct 0xface 154/153.
-    points: 5
+
+      === MEASURED AT COMPLETION (2026-08-02) — TWO CLAIMS ABOVE ARE FALSE ===
+
+      (A) THE DETERMINISM WARNING WAS WRONG. This story budgeted for "the same 20-assertion, 4-file blast radius jt5-8 just re-baselined". ZERO pins moved — not one fingerprint, frame anchor or entity digest. Measured delta: exactly ONE promotion shifted, seed 0x2468 process 514, frame 2688 -> 2690 (one wake at EMYTIM_SLOW), and that seed's audio anchors sit at frames 188/755/900, all ahead of it. The warning was reasoned by ANALOGY to jt5-8, which changed the wingbeat and so perturbed every dumb bird on every wake; this story changes only which wake a promotion lands on, and only when a glide is pending at that instant — once in 3000 frames across three seeds. Do not inherit "same subsystem, therefore same blast radius" from this story. (Checked at finish: jt9-18 is the only sibling using similar language and its expectation is CORRECT — it is a wingbeat change, jt5-8's shape.)
+
+      (B) "IT SITS IN THE SAME SKIPPED PROLOGUE, WHICH IS WHY THE TWO BELONG IN ONE STORY" is true of LINET and hid that the looker is a FOUR-brain mechanism. The same eight instructions run in BOUNDR (:3787), B2UNDR (:3971) and SHADOW (:4230). LINET's looker shipped here correct, wired and mutation-guarded — and it CANNOT FIRE IN PLAY, because the troll's victim runs the dumb brain for one frame in 600 before promoting into a brain whose looker is unported. Filed as jt9-29, which is a blocker for this story's behaviour rather than completeness work.
+
+      ALSO CORRECTED HERE, and not in the filing: LNTLAV is DYTBL row 3, which the port recorded as `dead-in-rom` on the reasoning that "its label appears exactly ONCE in JOUSTRV4.SRC" — true of the LABEL, false of the ROW. The DYTBL initialiser walks the table and the RAM block positionally (:939-950) and never reads a name, so row 3 fills the slot RAMDEF.SRC:391 calls LNTLAV, which four brains load. Two shipped tests were guarding the false claim. The dead-in-ROM category is now empty and a guard asserts it.
+    points: 8
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-02'
     repos: arcade
     workflow: tdd
@@ -63,6 +71,7 @@ stories:
       - "jt5-8's three LOW test leftovers are closed: non-vacuity floors added ahead of dumb-wingbeat-source.test.ts:126 and :155 (both verified still floorless at setup), the glide variant added to the THREE-variant pjoy union at tests/helpers/enemy-contract.ts:250-253, and audio-flap.test.ts:707-708's `entity: e!` replaced by a real defined-check."
       - "R-2 is DISPOSED OF, not fenced: with promotion gated on the glide, `pjoy: undefined` in promote() (plugins/joust/src/core/enemy.ts:439) is unreachable by construction - SM measured that a dumb linet bird's pjoy is only ever absent or 'glide', never 'interval'/'wing', across all four sweep harnesses. It is deleted, or kept with a comment that says plainly it cannot be reached and why. No test is written to fence a branch that cannot be taken."
       - "R-4's false rarity narrative is corrected in place: audio-thud.test.ts:900-901 currently claims four named seeds 'are the only hits' when ~9% of seeds in the scanned band produce a player-thud (36 of 400, 20 of them at frame 973). Reworded to what was actually swept or the count dropped - this story is the one that re-opens that pin, so its own re-baseliner is the reader being misled."
+    completed: '2026-08-02'
     type: bug
   - id: jt9-2
     title: 'Test-hygiene sweep: move the 27 legacy -source suites onto tests/helpers/claims.ts; comment-body line refs become symbol refs'
@@ -140,7 +149,12 @@ stories:
     type: bug
   - id: jt9-11
     title: joust troll GRIP is production-dead — beginGrip/stepGrip/escalateGrip have zero production callers
-    description: "joust/src/core/troll.ts implements the lava troll's grip — the PATCH1/2/3 escalation the 1982 source added in 'VERSION 3 SOFTWARE' — and NONE of it runs. beginGrip, stepGrip, escalateGrip, escapeScoreEvent and the TrollGrip type have ZERO references in src/ outside troll.ts itself; only trollSpawnable is live (demo.ts:961). demo.ts:420 admits it in its own words: '(stepGrip) is a pure core exercised directly; wiring the live grab off the LNDB7 …'. So a troll spawns, and can never actually grab anyone: the grace timer (LAVKLL 30*60, :6393), the +1/frame pull escalation to the $500 cap (:6374-6386), the -$0180 break-free threshold (:6616), the 50-point escape award (:6668) and the pull into the lava are all unreachable. This is the same disease as uf1-2 one layer down — a faithful, tested, cited pure core with no caller — and it BLOCKS uf1-10 (now jt9-12)'s LAVGRA half, which has nothing to feed until the grab is live. The missing piece is the GRAB itself: the LNDB7 hand-out/hand-grab detection that repoints the victim's gravity vector from ADDGRA to ADDLAV (PADGRA, :1651-1652). Found by TEA during uf1-2 test design while tracing which DYTBL rows had a live consumer chain."
+    description: |-
+      joust/src/core/troll.ts implements the lava troll's grip — the PATCH1/2/3 escalation the 1982 source added in 'VERSION 3 SOFTWARE' — and NONE of it runs. beginGrip, stepGrip, escalateGrip, escapeScoreEvent and the TrollGrip type have ZERO references in src/ outside troll.ts itself; only trollSpawnable is live (demo.ts:961). demo.ts:420 admits it in its own words: '(stepGrip) is a pure core exercised directly; wiring the live grab off the LNDB7 …'. So a troll spawns, and can never actually grab anyone: the grace timer (LAVKLL 30*60, :6393), the +1/frame pull escalation to the $500 cap (:6374-6386), the -$0180 break-free threshold (:6616), the 50-point escape award (:6668) and the pull into the lava are all unreachable. This is the same disease as uf1-2 one layer down — a faithful, tested, cited pure core with no caller — and it BLOCKS uf1-10 (now jt9-12)'s LAVGRA half, which has nothing to feed until the grab is live. The missing piece is the GRAB itself: the LNDB7 hand-out/hand-grab detection that repoints the victim's gravity vector from ADDGRA to ADDLAV (PADGRA, :1651-1652). Found by TEA during uf1-2 test design while tracing which DYTBL rows had a live consumer chain.
+
+      ADDED BY jt9-1 (TEA, 2026-08-02) — HOW THE TROLL KNOWS WHO IT GRABBED, which this story needs before beginGrip can have a caller. PJOY has a THIRD meaning nobody has catalogued: at :6781 the newly-created troll's own workspace gets `STU PJOY,Y  FINGER PRINT THIS PROCESS FOR THE LAVA TROLL` — the VICTIM's workspace ADDRESS, stored as data. That is neither an entry address (jt9-1's subject, `JSR [PJOY,U]` at :5830/:5951/:6456) nor a wing state (jt5-8/uf1-9's). It is the victim binding, and it is read back at :1712 (`LAVVI2 CMPY PJOY,U`). Our trollProcess() carries no victim reference at all, which is why the grip has nowhere to attach.
+
+      Related, and already shipped by jt9-1 so do not rebuild it: demo.ts's insertTroll() now places a spawned troll IMMEDIATELY BEFORE an enemy rather than appending it, per :6778 `LDU PPREV  AFTER PREVIOUS PROCESS (BEFORE THIS ONE)`. That is the placement half of the same binding; this story owns the identity half. Note the port currently picks "the first enemy" because there is no grabbed victim to pick — once this story gives the troll a real victim, insertTroll should place it in front of THAT process, and jt9-1's positional test in glide-prologue.test.ts is the guard to update.
     points: 5
     priority: p2
     status: backlog
@@ -365,3 +379,30 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+  - id: jt9-29
+    title: The lava-troll looker in the three SMART brains — BOUNDR/B2UNDR/SHADOW, and why jt9-1's looker cannot fire without them
+    description: |-
+      The lava-troll looker is not LINET's alone, and porting only LINET's leaves it unable to fire. Found by TEA during jt9-1's RED and upgraded from "three more gaps" to "the blocker" by Dev's measurement at GREEN.
+
+      THE SHAPE. The SAME eight instructions run in four brains, byte for byte, differing only in the branch target:
+        LINET   :3725-3732  BEQ LNTUP     (ported by jt9-1)
+        BOUNDR  :3787-3794  BEQ BODN1A
+        B2UNDR  :3971-3978  BEQ B2DN1A
+        SHADOW  :4230-4237  BEQ SHUPST
+      In the three SMART brains it is the brain's FIRST instruction; only in LINET does a promotion check sit above it. That asymmetry is why jt9-1 scoped to LINET (only LINET's sits in a wake-skipped prologue) and it is the reason these three are separate work: each branches into a different brain STATE, not into a shared flap. All four blocks re-derived and pinned in plugins/joust/tests/glide-prologue-source.test.ts.
+
+      WHY THIS IS A BLOCKER, NOT COMPLETENESS WORK - measured, not argued. jt9-1 shipped LINET's looker correct, wired to real scheduler adjacency (PPREV), and mutation-guarded. It still cannot fire in play. The troll's victim runs the dumb brain for ONE FRAME OUT OF 600 before promoting (wave 4 has budget room), and frame.ts promotes BEFORE the brain steps, so on the single wake its looker would first come due it is already running a smart brain whose looker is unported. Dev's differential: stepping the same demo with the troll in its ROM position versus at the list end produced byte-identical enemy state for 300 frames across three seeds.
+
+      THE ROM ALREADY ANSWERS THE OBVIOUS OBJECTION. PLAVT,U survives promotion by design - LNTSMT (:3764-3775) writes NSMART, PCHASE, PDECSN->DSMART and STX PJOY,U, and NOTHING ELSE. So the machine keeps one countdown running across the promotion boundary this port currently drops it at. jt9-1 pinned that fact in dumb-wingbeat.test.ts (the promoted-vs-fresh reference carries plavt).
+
+      ALREADY SHIPPED, DO NOT REBUILD: EnemyState.plavt, lavaTrollLooker() and its wave-scaled LNTLAV reload (DYTBL row 3, wired by jt9-1 after correcting a 'dead-in-rom' misreading that two tests had been guarding), the PPREV channel in frame.ts (lastRanKind), and insertTroll() in demo.ts placing a spawned troll before its victim per :6778. This story adds the three CALL SITES and their branch targets, nothing else.
+
+      EXPECT A DETERMINISM RE-BASELINE HERE, unlike jt9-1. jt9-1 moved exactly one promotion by one wake and no pin at all; this one makes a real behaviour reachable in play, which is a different shape. Read sprint/archive/jt9-1-session.md for the method - and for the discipline it cost most to learn: put a POSITIVE CONTROL beside any "the count is zero" assertion, and when a phase threads a new argument from a producer into a pure consumer, mutate the producer (hard-wire the argument to its default) or the wiring goes unguarded no matter how good the unit tests look.
+
+      ALSO NOTE the frame-boundary deviation jt9-1 logged: lastRanKind is re-initialised per stepFrame, while the ROM's PPREV is persistent RAM that carries across frames (RAMDEF.SRC:240). Unobservable today because insertTroll guarantees an enemy follows the troll; widening the set of processes that read PPREV is exactly what would make it observable, so re-assess it here.
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug

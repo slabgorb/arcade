@@ -35,7 +35,32 @@ import { resolve, join } from 'node:path';
 const repo = resolve(import.meta.dirname, '..');
 const read = (...p) => readFileSync(join(repo, ...p), 'utf8');
 
-const epicText = () => read('sprint', 'epic-jt5.yaml');
+/**
+ * jt9-1: epic jt5 went 100% done and `pf sprint story finish` ARCHIVED it, moving
+ * the file to `sprint/archive/`. This guard is about the epic's PROSE — the claims
+ * jt5-7 refuted — and that prose is exactly as worth guarding once the epic is a
+ * record as it was while the epic was live. So resolve either location rather than
+ * pinning the live path, which turned an ordinary archival into eight red tests.
+ *
+ * Ordering is live-first: if an epic id is ever reused, the live file is the one
+ * whose claims can still mislead someone being routed.
+ */
+const EPIC_CANDIDATES = [
+  ['sprint', 'epic-jt5.yaml'],
+  ['sprint', 'archive', 'epic-jt5.yaml'],
+];
+
+const epicPath = () => {
+  const found = EPIC_CANDIDATES.find((p) => existsSync(join(repo, ...p)));
+  if (found === undefined) {
+    throw new Error(
+      `epic-jt5.yaml found in neither ${EPIC_CANDIDATES.map((p) => p.join('/')).join(' nor ')}`,
+    );
+  }
+  return found;
+};
+
+const epicText = () => read(...epicPath());
 
 /**
  * One story's YAML block as raw text, by id.
@@ -84,7 +109,7 @@ const romSpan = (a, b) => romLines().slice(a - 1, b).join('\n');
 // ═════════════════════════════════════════════════════════════════════════════
 
 test('PREMISE: the epic YAML and the vendored ROM are both readable', () => {
-  assert.ok(epicText().length > 1000, 'sprint/epic-jt5.yaml is missing or truncated');
+  assert.ok(epicText().length > 1000, `${epicPath().join('/')} is missing or truncated`);
   assert.ok(existsSync(join(repo, ROM)), `${ROM} is tracked in git and must be present`);
   assert.equal(
     romSpan(6216, 6216).replace(/\s+/g, ' ').trim(),
