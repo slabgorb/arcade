@@ -1607,6 +1607,53 @@ which hardcodes wave 1's enemy complement — it showed zero hunters and would h
 stronger, WRONG claim ("the port never runs these brains"). Re-running through `createGame`/`stepGame`
 across 6000 frames and three seeds showed the runs simply never reach wave 4. Same zero, completely
 different meaning — the `zero-count-can-mean-delegation` trap wearing a fixture's clothes.
+
+## Round 2's best finding came from MIRRORING the round-1 fix onto the other side (uf1-9, 2026-08-02)
+
+Dev closed my round-1 finding about the hunter's cliff dwell and, doing it, wrote a test staged at
+**wave 3** — correctly, because SHCLTM has walked to 7 there while the hunter's hardcoded 8 has not
+moved. Their SHADOW dwell test, written in the same sitting, ran at **wave 1**, where SHCLTM is 8 and
+the frozen constant is 8. So the shadow's dwell could have been wired to the wrong one invisibly.
+
+The finding cost one mutation (`return HUNTER_CLIFF_DWELL` for both brains) and it survived. What
+makes it worth recording is where it came from: **not from re-reading the fix, but from taking the
+fix's own discriminating insight and asking whether it was applied on both sides of the mirror.** A
+rework fixes the thing that was named; the sibling case is exactly what nobody re-checks, and the
+author is least able to see it because they just proved they understand the distinction.
+
+So in a round-2 verify: for every asymmetric pair the story handles (bounder/hunter, hunter/shadow,
+armed/frozen), check that the discriminating fixture was chosen on BOTH sides. Grep the new tests for
+the wave (or seed, or coordinate) each uses and compare against the values it is meant to separate.
+
+**And fix it in review when the fix has zero design freedom.** One wave number in a test, in a story
+whose entire subject is row identity, is not worth a third cycle — but it must be RECORDED as a
+finding and RE-VERIFIED by re-running the mutation, or "reviewer edited the tests" is
+indistinguishable from "reviewer made the red go away".
+
+## A rework that goes BEYOND the finding is a scope audit, not a bonus — and here it was right twice
+
+Dev made two changes I had not required: the discriminated union (which I had explicitly marked
+non-blocking) and making the shadow's decision interval actually gate its branch. Both had to be
+audited rather than welcomed.
+
+The second is the interesting one. Dev went to write the test I prescribed for a MEDIUM finding,
+discovered via their own mutation that the row was armed, ticked and **inert**, and fixed that
+instead of shipping the test. That is the same defect I had rejected round 1 for a different row —
+found on the other side of the story, by the person fixing it. The tell that it was genuine and not
+scope creep: it came with a mutation that now catches it, and with a stated forward impact.
+
+The audit question that settled it: *"does this change make a previously-unfalsifiable claim
+falsifiable?"* Both did. A rework change that only moves code around, or that makes a test pass
+without making a mutation fail, is the one to push back on.
+
+## Zero moved digests after a behavioural change is a claim to CHECK, not a relief
+
+The shadow-interval change altered branch selection and moved no seeded digest at all. That pattern
+normally means "unreachable", which for a wiring epic is the defect itself. It was explained here —
+I had measured in round 1 that the shadow brain first spawns past wave 3 and no test's play reaches
+wave 4 — so the honest reading is "unexercised end-to-end", recorded as a Delivery Finding, with the
+unit-level mutations proving the code is live. Do not accept silence as confirmation; go and find the
+measurement that explains it, or make one.
 ---
 
 ## Re-run the story's own HEADLINE METRIC against the pre-story tree — the decomposition is where the false claim hides (sw8-18, star-wars, 2026-08-02)

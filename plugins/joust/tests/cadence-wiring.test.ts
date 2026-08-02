@@ -498,13 +498,23 @@ describe('R1-1/R1-2 — the cliff dwell is SHCLTM wakes of SHAV/B2AV, and it nev
   it('holds the SHADOW for SHCLTM wakes after a cliff turn, wings UP throughout', async () => {
     const e = await loadEnemy()
     const d = await loadDifficulty()
-    const dwell = d.waveValue('SHCLTM', 1)
-    // The discriminating neighbour: SHUPTM is 10 at wave 1 where SHCLTM is 8, so
-    // a dwell wired to the wrong row is visible in the run length.
-    expect([dwell, d.waveValue('SHUPTM', 1)], 'SHCLTM vs its neighbour at wave 1').toEqual([8, 10])
+    // WAVE 3, NOT WAVE 1 — round-2 review (N1). At wave 1 SHCLTM reads 8 and so
+    // does the hunter's hardcoded `HUNTER_CLIFF_DWELL`, so a shadow dwell wired
+    // to the frozen constant instead of the row was invisible here: the mirror of
+    // the gap the hunter test below already closes by running at wave 3. SHCLTM
+    // walks to 7 at wave 3 while the frozen 8 does not move, which separates them.
+    const wave = 3
+    const dwell = d.waveValue('SHCLTM', wave)
+    expect(dwell, 'SHCLTM has walked off the frozen constant by wave 3').toBe(7)
+    expect(dwell, 'and is therefore distinguishable from the hunter dwell').not.toBe(
+      e.HUNTER_CLIFF_DWELL,
+    )
+    // The other neighbour: SHUPTM is 9 at wave 3, so a dwell wired to the shadow's
+    // DECISION row is visible in the run length too.
+    expect(d.waveValue('SHUPTM', wave), 'SHUPTM at wave 3').toBe(9)
 
     // The turn wake itself flaps (`LDB #1`, :4377) and arms the dwell.
-    let r = e.stepEnemyDetailed(atCliff('shadow'), { player: null, wave: 1 })
+    let r = e.stepEnemyDetailed(atCliff('shadow'), { player: null, wave })
     expect(r.enemy.pjoy, 'the turn arms a dwell').toEqual({ kind: 'dwell', timer: dwell })
     expect(r.enemy.prevFlapHeld, 'the turn wake itself flaps').toBe(true)
 
@@ -521,7 +531,7 @@ describe('R1-1/R1-2 — the cliff dwell is SHCLTM wakes of SHAV/B2AV, and it nev
         ...r.enemy,
         entity: { ...r.enemy.entity, posX: 204, posY: 75 << 8, velXIndex: 0, velY: 0 },
       }
-      r = e.stepEnemyDetailed(carried, { player: null, wave: 1 })
+      r = e.stepEnemyDetailed(carried, { player: null, wave })
       timers.push(r.enemy.pjoy?.kind === 'dwell' ? r.enemy.pjoy.timer : undefined)
       heldAfter.push(r.enemy.prevFlapHeld ?? false)
     }
