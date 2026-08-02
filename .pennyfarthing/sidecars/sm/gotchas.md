@@ -1227,3 +1227,100 @@ Post-finish parse confirmed mg1-5's own `acceptance_criteria` count unchanged at
 completed-sprint row carrying its own points and date, and the archived session still holding all
 four Reviewer Assessments. Note `sprint/archive/sprint-2628-completed.yaml` carries a PRE-EXISTING
 duplicate `SH2-18` — inherited, not from this finish; do not "fix" it mid-ceremony.
+
+---
+
+## TWO BACKLOG STORIES CAN OWN THE SAME BUILD — and the deciding question is "can it be descoped?", asked before you offer the split (uf1-9 setup, 2026-08-02)
+
+**Situation:** `/pf-work uf1-9` ("joust DYTBL cadence rows … 11 rows", uf1, 5pt, p3, tdd). Board
+was clean by every probe: no remote branch, no sibling session, prerequisites all `done`. While
+measuring the description I grepped `BOUPWD` across the epics and hit **`jt5-8`** ("The enemy's
+wing-down LATCH", jt5, 5pt, p3, tdd, `backlog`) — which cites `BOUPWD :3864-3865`, `BOUPWU :3894`
+and `DYTBL :7314-7315` **by line** and names the identical risk ("MOVES EVERY jt2 SEEDED-REPLAY
+FINGERPRINT" vs uf1-9's "a real determinism blast radius on the demo replays").
+
+**What is new here.** The existing entries in this file are about routing a *finding* to an owner
+story (ad1-2, jt5-5, jt8-7: "check the owner's MECHANISM, not its theme"). This is the other
+direction — **two unstarted stories, in different epics, that both build the same thing.** Neither
+is a finding needing a home; both are funded work. Nothing in the tracking system objects, because
+each is individually well-formed. The tell was cheap and worth making a reflex: when a story names
+a ROM routine or symbol as its central build, **grep that symbol across `sprint/epic-*.yaml`**, not
+just across the code. Same points, same priority, same workflow and the same cited lines is not a
+coincidence.
+
+**The move that made the user's ruling one click.** The obvious offer is a clean split — "let jt5-8
+own the latch, uf1-9 wires rows on top". I nearly offered it. Measuring first killed it: **all nine
+of uf1-9's timer rows write `PJOYT`** — the four wing rows *and* all five decision timers (`STA
+PJOYT,U` at `:3910`, `:4061`, `:4284`, `:4317`, `:4376`), which I only knew because I had read each
+cited line's *next* line. So uf1-9 needs the latch regardless of who owns it, and the clean split
+was never available. Offering it would have handed the user a choice that did not exist.
+
+**Generalise:** before presenting an ownership either/or, check whether the shared component is
+reachable from *both* stories' remaining scope. If it is, the only real options are ordering and
+merging — say so, and do not pad the question with a split you have not verified is possible. This
+is the "attach the census" rule (cp5-2, ad1-2, jt8-7) applied to the option list itself rather than
+to the recommendation: the census should prune options, not just rank them.
+
+**Disposition recorded in three places** so it cannot be lost: the ruling paragraph in the session,
+a `🔨 USER RULING` block in the context naming jt5-8 as **not the phase agents' to edit**, and a
+finish-phase obligation to re-scope jt5-8 to what actually remains (the dumb brain's wingbeat
+`LNTUP :3746-3748`/`LNTOFP :3759-3762`, which is not a DYTBL row). That last one is the jt5-10
+shape — an obligation no phase agent can discharge — so it must happen **before** `story finish`.
+
+## A story's own PREREQUISITE can invalidate its description's identifiers — `git log -S` names the commit
+
+uf1-9's description names `smartDecision` four times as the function to change. It does not exist:
+`uf1-8` — listed in uf1-9's own description as the story that shipped the seam — **deleted it**,
+splitting it into `boundr`/`b2undr`/`shadow` behind a `runBrain` dispatcher. `git log --oneline -S
+smartDecision -- plugins/joust/src/core/enemy.ts` named the commit (`2346bed feat(uf1-8): GREEN`) in
+one call.
+
+The existing rule says measure a description's falsifiable claims. This sharpens *where to look
+first*: *if the description credits a prerequisite that has since shipped, every identifier the
+description names is suspect*, because that prerequisite is exactly the change most likely to have
+renamed them. The trap is that the story reads as *more* trustworthy for citing its prerequisite.
+Note also what survived the rename — `tests/difficulty-wiring.test.ts`'s `knightsBelowTheBuzzards`
+and `brakeDecidingFrames` are still there, so the staging *advice* was good and only the *mechanism
+sentence* around it had rotted. Correct the identifier, keep the advice.
+
+## "each of these five" is a claim about EVERY member — and it was false for one, twice, in one story
+
+Two independent instances in a single description, both caught only by checking every member:
+
+- "the DECISION timer BOLETM, HULETM, SHLETM, SHUPTM, SHCLTM (**each** 'TIME UNTIL NEXT DECISION')"
+  — four carry that ROM comment. **SHCLTM `:4375` carries a bare `#8`** and sits under `SHDICL …
+  SLOW DOWN!!! GOING INTO A CLIFF`: a cliff-avoidance brake dwell, a different mechanism. The
+  misgrouping had already propagated into shipped code — `ROW_DISPOSITION` labels it
+  `missing: DECISION`.
+- "**Each** row's GA1 column 1 equals the pre-DYTBL immediate in its own ROM comment … a free
+  check" — true for **nine of eleven**. SHLETM is `$0015` (21) against a comment of `8+1` (9);
+  SHUPTM is `$000A` (10) against `8+1` (9). A blanket eleven-row sweep reddens on two *correctly
+  ported* rows, so the AC now requires the two be excluded **by name** with the divergence recorded.
+
+Both were confirmed from two independent sources before being written down (the vendored `.SRC` and
+the already-decoded table in `difficulty.ts`, which agree) — the
+`sm-premeasured-corrections-can-be-wrong` guard, since these arrive labelled MEASURED and outrank
+the story. The cost of checking all members is one `awk` over the cited lines; the cost of trusting
+the quantifier is a RED phase built on a false universal. Related but distinct from the user memory
+`rom-table-continuation-bit`: there the *extent* of a table was under-read; here the *predicate* was
+over-generalised across members that were all correctly enumerated.
+
+## Small confirmations from the same setup
+
+**Push the beacon without checking out.** `git push origin main:refs/heads/feat/<id>-<slug>` creates
+the zero-commit claim branch while leaving HEAD on `main`, which structurally prevents the mg1-5
+stale-ref trap (there, `sm-setup` left HEAD on the claim branch and `git push origin main` pushed a
+stale ref while the error text mimicked a sibling race). Verified 0 ahead afterwards.
+
+**The push race is now routine, and the rebase can touch your own file.** The rejection here was a
+genuine sibling (`a-3` landing `uf1-15`) — and `uf1-15` lives in the **same epic YAML** I had just
+edited. It rebased with no conflict, but that was luck: verify afterwards by parsing that both
+stories survived with their own field values, plus the conflict-marker grep over `sprint/`. Read the
+rebase's success line for the ref it updated (`refs/heads/main` here) before pushing again.
+
+**Authoring the context beats correcting it.** With `acceptance_criteria: null` and five defects in
+the description, the documented `sm-setup` failure modes (stub context, edited-AC-plus-a-note-saying-
+it-was-not-edited, corrections written to the session only) were all live at once. Writing both files
+directly avoided every one of them; the verification that matters is unchanged — a `python3` `in`
+test of each AC against `yaml.safe_load`, and the labelled-token count re-run **after** the
+assessment prose was written, not just after setup.
