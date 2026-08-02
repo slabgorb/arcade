@@ -36,11 +36,14 @@
 // eight ways (all eight caught, no survivors), then deleted. Its FAILURES are the more
 // valuable output; each below is a requirement the obvious fix does not meet.
 //
-// 1. THE GLOB FIX NEEDS A LOOKBEHIND, NOT A LEADING CHARACTER CLASS. Rewriting
-//    `FILE_RE` as `[A-Za-z0-9_-][A-Za-z0-9_./-]*…` re-anchors one character to the
-//    right: ``**/*.test.mjs`` stops yielding `.test.mjs` and starts yielding
-//    `test.mjs`, which is still extracted and still dangles. `(?<![.*\w])` in front of
-//    the existing pattern is what actually works, and it keeps `foo.test.ts`.
+// 1. THE GLOB FIX NEEDS BOTH A LOOKBEHIND AND A STEM CLASS — neither alone.
+//    CORRECTED after GREEN; the RED draft of this note said the lookbehind alone was
+//    sufficient and explicitly rejected the character class, and that was wrong. A
+//    leading class alone re-anchors one character right and yields a stem-less name
+//    that still dangles; a lookbehind alone still admits a space-preceded bare
+//    extension, which is exactly what a comment-wrapped sentence leaves at the start of
+//    its next line. The delivered `FILE_RE` carries both, and the implementation
+//    comment beside it records the same three-case reasoning.
 //
 // 2. "A LEADING COMMENT" IS NOT A TIGHT ENOUGH PRAGMA ANCHOR. The mention that must
 //    NOT silence — `// The guard honours a citation-guard: ignore-file pragma.` — is
@@ -54,11 +57,12 @@
 //    so the disowning silently does not apply. Either place the marker differently or
 //    teach the extractor about the elision; do not "fix" the example.
 //
-// 4. EXPECT ~5 DISOWN SITES IN tools/audit/, NOT 3. SM measured 2 in the `.mjs` by
-//    masking the pragma literal; the real widened scan reports 4 there (the elided
-//    `design.md`, a bare `:2273-2290` that inherits `gameRules.ts`, `math3d.ts:171-186`
-//    and `src/shell/input.ts:45` — all of them format examples) plus 1 in the `.d.mts`.
-//    The mutation assertions below use `>=`, so they hold at either count.
+// 4. EXPECT MORE DISOWN SITES THAN SM MEASURED. SM found 2 in the `.mjs` by masking
+//    the pragma literal; the delivered file carries 5 `RETIRED:` markers there and 2 in
+//    the `.d.mts`. CORRECTED after GREEN: this note also predicted that
+//    `math3d.ts:171-186` and `src/shell/input.ts:45` would need disowning, and they did
+//    not — the `FILE_RE` change made both resolve correctly. The mutation assertions
+//    below use `>=` precisely because the count was not knowable in advance.
 //
 // 5. THE RELOCATOR CANNOT RELOCATE A SINGLE-LINE CITATION OF A MULTI-INSTRUCTION RUN.
 //    `holds()` widens a single-line citation by `runLen` (the `/`-joined instruction
@@ -78,7 +82,8 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import * as guard from '../../tools/audit/check-comment-citations.mjs'
 
-const { extractCitations, checkCitations, checkTree, UNCATCHABLE, IGNORE_PRAGMA, SCAN_EXT, defaultRoots } = guard
+const { extractCitations, checkCitations, checkTree, UNCATCHABLE, IGNORE_PRAGMA, SCAN_EXT, defaultRoots, hasPragma } =
+  guard
 
 const here = dirname(fileURLToPath(import.meta.url))
 const swRoot = join(here, '..', '..')
@@ -355,7 +360,7 @@ describe('sw8-23 AC6 — UNCATCHABLE states the two biggest limits, and their re
         if (e === 'node_modules') continue
         const p = join(d, e)
         if (statSync(p).isDirectory()) walk(p)
-        else if ((guard.SCAN_EXT as string[]).includes(extname(p))) files.push(p)
+        else if (SCAN_EXT.includes(extname(p))) files.push(p)
       }
     }
     guard.defaultRoots(swRoot).forEach(walk)
@@ -365,7 +370,14 @@ describe('sw8-23 AC6 — UNCATCHABLE states the two biggest limits, and their re
     let singleToken = 0
     for (const f of files) {
       const raw = read(f)
-      if (raw.includes(IGNORE_PRAGMA)) continue
+      // `hasPragma`, NOT `raw.includes(IGNORE_PRAGMA)`. The census must skip exactly the
+      // files `checkTree` skips, and the unanchored form is the predicate AC3 deletes —
+      // reimplementing it here would make this census measure a DIFFERENT population
+      // from the tool whose published percentage it checks. The two agree today only
+      // because every file that mentions the pragma also declares it; the first file
+      // that mentions it without declaring it is scanned by the guard and would be
+      // dropped here, silently.
+      if (hasPragma(raw)) continue
       for (const c of extractCitations(raw)) {
         if (c.start === null) continue
         spanned++

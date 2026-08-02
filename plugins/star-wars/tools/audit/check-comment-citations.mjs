@@ -74,7 +74,21 @@ export function hasPragma(raw) {
 }
 
 /** How far into a file the opt-out may sit. Enough for a shebang or a title line to
- *  precede it, far too few for the pragma to hide at the bottom of a module. */
+ *  precede it, far too few for the pragma to hide at the bottom of a module.
+ *
+ *  Two edges worth knowing, both measured rather than reasoned:
+ *
+ *  - It counts LINES, not comment lines, and blanks are counted. A file whose first five
+ *    lines are blank cannot opt out at all. Deliberate — the window is meant to be the
+ *    top of the file, not the top of its first comment block, so that a long opening
+ *    prose block cannot carry opt-out authority throughout (see the test named "the
+ *    pragma DEEP inside a long opening comment block does not opt out").
+ *  - `>` counts as a comment leader, so a markdown BLOCKQUOTE within the window opts a
+ *    `.md` file out. `docs/**​/specs` is scanned, so a spec that exhibits the pragma as a
+ *    blockquote example in its first five lines retires itself — a much narrower survival
+ *    of the defect this anchoring exists to kill, but not zero. A fenced code block is
+ *    safe: the fence line carries no leader, so the scan stops there. If a spec ever
+ *    needs to show the pragma near its top, indent it or fence it. */
 const PRAGMA_HEAD_LINES = 5
 
 /** Prose sometimes quotes a citation in order to DISOWN it ("this used to say X, and X

@@ -386,12 +386,28 @@ describe('sw8-18 AC5 — the real tree scans clean', () => {
     // citations landed — a ratchet with that much slack is the exact "guard that does
     // not bite" this story exists to retire.
     //
-    // TIGHTENED AGAIN, 35 -> 29, by sw8-23 — and note the scanned surface GREW in the
-    // same commit. `tools/` and `.mts` joined the scan (+11 raw), six phantom "dangling"
-    // reports turned out to be globs and wrapped-sentence remnants rather than citations
-    // (-6), and the eight real stale citations the widened scan found were re-anchored
-    // or disowned (-8). Widening the scope therefore cost the tree nothing and left it
-    // six better off. Mutation-proven at that value: adding one stale citation reddens.
+    // TIGHTENED AGAIN, 34 -> 29 by sw8-23, and the scanned surface GREW in the same
+    // commit: `tools/` and `.mts` joined the scan. Two endpoints, each one command:
+    //
+    //   pre-story  (at aeb013d~1)  old scope                    34
+    //   pre-story  (at aeb013d~1)  same tree, tools/ added      44
+    //   delivered  (this tree)     default scan, covers tools/  29
+    //
+    // So the guard now reads MORE of the plugin and reports FIVE FEWER problems than
+    // before the story. Two things account for the drop: six reported "dangling
+    // citations" were globs and comment-wrapped sentence remnants that nobody ever
+    // wrote as citations, and the eight real stale ones the widened scan surfaced were
+    // re-anchored or disowned.
+    //
+    // Deliberately NOT decomposed further. The scope change, the extractor fix and the
+    // remediation all move this number and are not independently attributable after the
+    // fact — an earlier version of this comment tried, and its arithmetic did not close
+    // (it also quoted 35/45, which were true during RED and stale by the time the commit
+    // landed, because a sibling story shipped in between). If you need the split, re-run
+    // the two endpoints above rather than trusting a subtraction.
+    //
+    // Mutation-proven at 29: prepending one stale citation to a scanned file reddens
+    // four tests. At the old 35 the same mutation reddened none.
     expect(checkTree({ swRoot, romDir }).length).toBeLessThanOrEqual(29)
   })
 })
