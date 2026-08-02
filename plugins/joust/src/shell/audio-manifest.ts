@@ -219,8 +219,9 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
   // binds each table in a G-block (G1DEC :5544, G2DEC :5548) whose rows differ
   // in the joystick source and in the 8th sound slot (`0` vs `SNPTREF`); jt5-1
   // cited :5544 here while the comment claimed P1DEC, which is the
-  // misattribution jt5-6 corrects. Nothing in this port models the G/P
-  // distinction — see the session's Delivery Findings.
+  // misattribution jt5-6 corrects. What the two families ARE was unrecorded
+  // until jt5-23 — the model is with the wing cues below, and it is why the
+  // 8th slot differs at all.
   playerMaterialise: {
     kind: 'rom',
     table: 'SNPCR1',
@@ -323,13 +324,47 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
   // "call site really mentions the table" gate. The binding lines say which
   // species gets which table.
   //
-  // These four cite the G-BLOCK row (:5544) while the two transporter cues
-  // above cite their P-block rows — they are no longer "these same two lines",
-  // as this comment said before jt5-6. The wings are identical in both families
-  // (`SNPLWU,SNPLWD` open every one of the four rows), so :5544 is a true
-  // citation for them and re-anchoring it would claim a precision this story
-  // did not measure. The transporter cues had to move because SNPCR1/SNPCR2 are
-  // exactly where the two families DIFFER.
+  // ─── jt5-23: WHAT THE TWO DECISION-BLOCK FAMILIES ARE ────────────────────
+  // The ROM binds each knight's sound tables TWICE, and until jt5-23 this file
+  // cited both families without saying what either one is. It is not a
+  // duplicate: JOUSTRV4.SRC:1025-1029 chooses between them when the player
+  // process is created, mirrored for the second knight at :1041-1045.
+  //
+  //     LDX  #G1DEC       ASSUME GAME SIMULATION
+  //     LDA  GOVER        GAME SIMULATION?
+  //     BGT  30$           BR=YES              <- keeps G1DEC
+  //     LDX  #P1DEC                            <- else swaps to P1DEC
+  // 30$ STX  PDECSN,Y     PLAYER 1'S JOYSTICK
+  //
+  // `GOVER` above zero selects the G-block, so **G1DEC/G2DEC are the
+  // attract-mode self-playing demo and P1DEC/P2DEC are real play**, and the
+  // chosen block becomes the knight's `PDECSN` — its joystick. Two independent
+  // corroborations, because the ROM's own "GAME SIMULATION" comment is one
+  // witness: `P1JOY` (:7247) opens `LDA WCPIAB` "SELECT HALF OF MUX", the
+  // hardware panel read, while `G1JOY`/`G2JOY` (:601-616) compute a joystick
+  // and sit in the attract region beside `ATTRCT CLR GOVER` (:712).
+  //
+  // That one fact explains BOTH ways the rows differ. The joystick source is
+  // the obvious one. The 8th sound slot is the other: it is `SNPTREF`, "PLAYER
+  // ABORTED FADING IN (TRANSPORTER)" (:8122), in the P rows and a bare `0` in
+  // the G rows — nobody can abort a demo's transporter, so the demo has no
+  // sound to play there. For the same knight, that slot is the ONLY sound the
+  // two families disagree on.
+  //
+  // KNIGHTS ONLY, and this is the part a summary gets wrong. The ROM defines
+  // exactly two G-blocks against seven P-blocks (P1DEC :5550 through P7DEC
+  // :5574), so the `P` prefix on P3DEC-P7DEC — the buzzards and the
+  // pterodactyl — does NOT mean "real play". Those five have no G-variant at
+  // all: a buzzard has no joystick and no attract counterpart.
+  //
+  // Which is why these two cues MOVED in jt5-23. They cited the G row :5544,
+  // and that citation was TRUE — `SNPLWU,SNPLWD` open all four knight rows
+  // (:5544, :5548, :5552, :5556) identically — but it named the DEMO's binding
+  // for a sound a human fires, so they now cite P1DEC :5552 and this file
+  // cites one family throughout. A precision gain, not a correction: :5544
+  // still says what audio-flap.test.ts quotes it as saying. Only these two
+  // knight cues were ever G-cited; `enemyWingDown`/`enemyWingUp` cite :5560,
+  // which is P3DEC's row and has no G-variant to choose between.
   playerWingDown: {
     kind: 'rom',
     table: 'SNPLWD',
@@ -343,8 +378,8 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
     continuation: [],
     callSite: {
       file: SRC,
-      line: 5544,
-      verbatim: '\tFDB\tSNPLWU,SNPLWD,SNPLSK,SNPLS2,SNPRU1,SNPRU2,SNPFAL,0,SNPCR1',
+      line: 5552,
+      verbatim: '\tFDB\tSNPLWU,SNPLWD,SNPLSK,SNPLS2,SNPRU1,SNPRU2,SNPFAL,SNPTREF,SNPCR1',
     },
   },
   playerWingUp: {
@@ -360,8 +395,8 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
     continuation: [],
     callSite: {
       file: SRC,
-      line: 5544,
-      verbatim: '\tFDB\tSNPLWU,SNPLWD,SNPLSK,SNPLS2,SNPRU1,SNPRU2,SNPFAL,0,SNPCR1',
+      line: 5552,
+      verbatim: '\tFDB\tSNPLWU,SNPLWD,SNPLSK,SNPLS2,SNPRU1,SNPRU2,SNPFAL,SNPTREF,SNPCR1',
     },
   },
   enemyWingDown: {

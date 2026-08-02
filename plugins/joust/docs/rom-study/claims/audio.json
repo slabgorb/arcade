@@ -181,7 +181,7 @@
   },
   {
     "id": "JT53-006",
-    "claim": "The knight's decision block binds SNPLWU/SNPLWD (JOUSTRV4.SRC:5544) — the jt5-3 call site for both player wing cues, chosen over GOFLIP/GOFLAP because those two lines load through the DSNWU/DSNWD structure OFFSETS (declared JOUSTRV4.SRC:118-119) and never name the table by symbol.",
+    "claim": "The knight's decision block binds SNPLWU/SNPLWD (JOUSTRV4.SRC:5544, the G1DEC row) — a decision-block binding is the call site for both player wing cues, chosen over GOFLIP/GOFLAP because those two lines load through the DSNWU/DSNWD structure OFFSETS (declared JOUSTRV4.SRC:118-119) and never name the table by symbol. All four knight rows (:5544, :5548, :5552, :5556) open with these same two tables, so :5544 is a true citation for them; jt5-23 re-anchored the manifest to the real-play row P1DEC :5552 because :5544 is the attract-demo binding (G1DEC), selected when GOVER is above zero at :1025-1029.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 5544,
