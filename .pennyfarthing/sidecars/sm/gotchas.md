@@ -1845,3 +1845,42 @@ removing.
 sweep finds candidates; the mechanism decides. Same rule as routing findings to owner stories, in
 the opposite direction — and the failure mode here is worse, because a wrong correction arrives
 labelled MEASURED and outranks the story.
+
+---
+
+### Second occurrence of the archive-epics breakage (cp6-1, 2026-08-02) — four things the jt9-1 entry above does not cover
+
+The entry above is from jt9-1. cp6-1's finish reproduced it **independently and identically**:
+pre-finish 390/0, post-finish 382/8, all eight in `tests/jt5-7-epic-yaml-truth.test.mjs`, same
+`archive_epics` sweep of jt5 and jt8. Two stories, same trap, one day apart — so treat it as
+structural, not anecdotal. Four additions:
+
+**1. Catch it BEFORE the finish, not after.** The post-finish gate run is the safety net; the
+cheap pre-check is one command, and it tells you whether this finish will break anything:
+`grep -rn "sprint/epic-" tests/*.mjs`, then compare the hardcoded epic ids against the epics
+that are about to be swept (any epic whose stories are all `done`).
+
+**2. Demand a MUTATION PROOF on a path fix specifically.** This is the part most likely to be
+skipped, because a path repair "obviously" works when the suite goes green — but green is
+exactly what a broken read looks like once the ENOENT stops throwing. A fix that silently
+resolved to an empty or wrong file passes just as loudly. Require: corrupt the ARCHIVED file in
+a way one of the assertions must catch, show the red, restore, byte-compare.
+
+**3. `git checkout --` cannot restore the archived file.** At that moment the archived YAML is
+newly-added/untracked, so checkout has nothing to restore from and will not error usefully. Use
+a `cp` backup and `cmp` to verify the restore — the same rule the Dev sidecar records for
+mutating an uncommitted deliverable.
+
+**4. The Impact Summary defect fires in the same ceremony, and it is SILENT.** cp6-1's finish
+emitted **no** Impact Summary at all — no warning, no error, just an absent section. Always
+`grep -n 'Impact Summary' sprint/archive/<id>-session.md` after a finish and rebuild it by hand
+if it is missing or stale, saying in the text that it was hand-written. This matters more than
+it looks: `.session/` is gitignored here (`.gitignore:11`), so the archived session and the epic
+YAML's `review_findings` are the ONLY durable trace of the whole story. Note `pf sprint story
+update --review-verdict` flips the verdict but leaves `review_findings` carrying the PREVIOUS
+round's text, so a multi-round story archives "approved" beside a rejection narrative unless you
+pass `--review-findings` too.
+
+**5. Routing, not doing.** The fix is a test-file edit, which SM does not make. Route it to Dev
+with the constraint written out ("resolve by existence, live-first; do not weaken any assertion;
+mutation-prove it"), then verify the diff and re-run the suite yourself.
