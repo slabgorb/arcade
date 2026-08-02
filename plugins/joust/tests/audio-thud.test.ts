@@ -897,9 +897,23 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     // seeds now resolves as a kill or as enemy-vs-enemy. AC5 of this story
     // anticipates exactly this case (a pin whose precondition has an EMPTY
     // solution set on the old seed) and requires it be re-found by sweeping, not
-    // by relaxing the assertion. So a seed scan was run instead: 0x2221 (f=1241),
-    // 0x2332, 0x310f and 0x3442 (all f=973) are the only hits, and 0x2332 is the
-    // earliest. Verified enemy-vs-PLAYER, not player-vs-player, from the process
+    // by relaxing the assertion. So a seed scan was run instead, and 0x2332 was
+    // taken from it.
+    //
+    // jt9-1 (R-4) CORRECTS WHAT THAT SCAN PROVED. The line here used to say
+    // 0x2221 (f=1241), 0x2332, 0x310f and 0x3442 (all f=973) "are the only
+    // hits". They are each individually correct and 0x2332 remains a valid
+    // choice — but they were never the only ones, and a future re-baseliner who
+    // reads that sentence goes looking for a needle that is not rare. Two
+    // independent censuses of the 400 seeds in [0x2200,0x2390) both refute it
+    // and DISAGREE with each other on the number: the jt5-8 review counted 36
+    // seeds producing a player-thud (20 at frame 973); a jt9-1 re-run counting
+    // each seed's FIRST thud within 1100 frames found 62, none of them at 973.
+    // Neither is wrong — they count different things — which is exactly why a
+    // bare census number does not belong in this comment. What survives both
+    // methods is the only claim worth making: SUCH SEEDS ARE COMMON, so if this
+    // pin has to move again, scan and take the earliest rather than assuming
+    // scarcity. Verified enemy-vs-PLAYER, not player-vs-player, from the process
     // positions: at the moment of contact player#1 is at (145,162) with
     // enemy#256 at (128,162) — the same row — while player#2 has never left its
     // spawn perch at (200,128), 55 px away. The stream is now EXACTLY the person

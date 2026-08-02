@@ -251,6 +251,23 @@ export interface EnemyState {
     | { readonly kind: 'wing'; readonly timer: number; readonly wings: 'down' | 'up' }
     | { readonly kind: 'interval'; readonly timer: number }
     | { readonly kind: 'dwell'; readonly timer: number }
+    /**
+     * jt5-8's DUMB-brain forced glide (`LNTOFP` parked in `PJOY,U`,
+     * JOUSTRV4.SRC:3746-3747). Added by jt9-1 (R-6): the contract shipped three
+     * variants while production carried four, so an exhaustive `switch` written
+     * against THIS type compiled clean while missing the case. It carries no
+     * `timer` — the alternation has no countdown, which is the model rather than
+     * an omission.
+     */
+    | { readonly kind: 'glide' }
+
+  /**
+   * `PLAVT,U` — jt9-1's lava-troll looker countdown (`DEC PLAVT,U / BGT`,
+   * JOUSTRV4.SRC:3725-3726). OPTIONAL on the `homing`/`seek` precedent: absent
+   * means the countdown has not been seeded and the first wake seeds it from
+   * LNTLAV (DYTBL row 3, wave-scaled).
+   */
+  plavt?: number
 }
 
 /** An enemy process for jt2-1's scheduler — the tagged union's new `enemy` kind. */

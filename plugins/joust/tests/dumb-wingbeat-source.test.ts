@@ -125,7 +125,12 @@ describe.skipIf(!vendoredAvailable)('ORACLE — the glide wake is UNCONDITIONAL 
 
   it('NOTHING in it tests anything — no compare, no test, no conditional branch', () => {
     const lines = sourceLines(SRC)
-    for (const i of insnsIn(lines, 3759, 3762)) {
+    const body = insnsIn(lines, 3759, 3762)
+    // jt9-1 (R-3): the non-vacuity floor. Every assertion below lives INSIDE the
+    // loop, so an empty parse — a moved span, a reader that stops matching —
+    // would satisfy this test by iterating nothing at all.
+    expect(body.length, 'an empty parse would make every claim below vacuous').toBe(4)
+    for (const i of body) {
       expect(i.op, `${i.op} at :${i.line} is a comparison inside the glide wake`).not.toMatch(
         /^(CMP|TST|SUB|BIT)/,
       )
@@ -154,7 +159,12 @@ describe.skipIf(!vendoredAvailable)('ORACLE — the glide wake is UNCONDITIONAL 
 describe.skipIf(!vendoredAvailable)('ORACLE — there is NO TIMER in this alternation', () => {
   it('PJOYT — the wing/interval countdown — is never named in LINET', () => {
     const lines = sourceLines(SRC)
-    const timers = insnsIn(lines, LINET_FIRST, LINET_LAST).filter((i) => i.operand.includes('PJOYT'))
+    const scanned = insnsIn(lines, LINET_FIRST, LINET_LAST)
+    // jt9-1 (R-3): the non-vacuity floor. The claim is that a FILTER comes back
+    // empty; an empty input satisfies it just as well as an absent PJOYT, so the
+    // population being filtered has to be pinned first.
+    expect(scanned.length, 'the routine must have been read at all').toBeGreaterThan(20)
+    const timers = scanned.filter((i) => i.operand.includes('PJOYT'))
     expect(
       timers.map((i) => `:${i.line} ${i.op} ${i.operand}`),
       'a PJOYT reference here would make the wingbeat a countdown',

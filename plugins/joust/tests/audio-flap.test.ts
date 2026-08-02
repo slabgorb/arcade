@@ -705,7 +705,13 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
       // or the alternation below could be the bird having simply stopped asking
       // — the natural-glide trap, in this file's own fixture vocabulary.
       const e = buzzardOf(d)?.enemy?.entity
-      expect(linet({ entity: e!, facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' }).flap,
+      // jt9-1 (R-7): `e` is genuinely `EntityState | undefined` — it is reached
+      // through two optional chains, and the `buzzardStepped` precondition above
+      // establishes that the buzzard MOVED, not that this lookup resolved. A
+      // missing buzzard used to throw from inside `linet()`; now it fails here,
+      // naming what actually went wrong.
+      expect(e, `the buzzard's entity must resolve on wake ${i}`).toBeDefined()
+      expect(linet({ entity: e as NonNullable<typeof e>, facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' }).flap,
         `precondition: the lane decision still wants a flap on wake ${i}`).toBe(true)
       rest.push(simKindsOf(d))
     }
