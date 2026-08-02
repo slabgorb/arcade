@@ -27,18 +27,20 @@
 // byte-verification block SKIPS and the suite is green (AC-3).
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
-import { join, dirname, basename } from 'node:path'
+import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import type { Claim } from '../../tools/audit/check-citations.mjs'
+// cp6-1 (AC-7): the coverage sweep lives in ONE module so it can be mutation-tested.
+import { DOSSIER_FILES, allProseCitations, loadClaims, romStudyDir, uncoveredCitations } from './dossier-sweep'
 
 type CheckClaims = (claims: Claim[], opts: { vendoredRoot: string | null }) => string[]
 
 // tests/audit/citations.test.ts → the plugin root is two levels up.
+// (romStudyDir / claimsDir now come from ./dossier-sweep, which computes them the
+// same way from the same directory — cp6-1 moved them so the sweep is one module.)
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
-const romStudyDir = join(repoRoot, 'docs', 'rom-study')
-const claimsDir = join(romStudyDir, 'claims')
 
 // The vendored 1981 source lives at the MONOREPO root — two levels above this
 // plugin (plugins/centipede/../.. ), not one. MIGRATION: it was one level up
@@ -401,75 +403,31 @@ describe.skipIf(!vendoredAvailable)('citation checker — resolves root rev-1 AN
 // BYTE-verification of those claims is the vendored-tree block below.
 // ───────────────────────────────────────────────────────────────────────────────
 
-/** A primary-source line citation extracted from the dossier prose. */
-interface ProseCitation {
-  file: string // bare filename as written, e.g. "CENTI4.MAC"
-  start: number
-  end: number
-  raw: string // e.g. "CENIRQ.MAC:264-265"
-}
-
-/**
- * Extract every backtick-wrapped primary-source citation `FILE:LINESPEC` from the
- * dossier, where FILE ends .MAC/.DOC/.MAP and LINESPEC is a comma list of N or N-M.
- * Excludes: MAME (`centiped.cpp:*` — secondary, external), bare file mentions
- * (no `:line`), and globs (`CENTI*.MAC`, `*.DOC` — the `*` fails the file class).
- */
-function extractProseCitations(md: string): ProseCitation[] {
-  const out: ProseCitation[] = []
-  const re = /`([\w./]+\.(?:MAC|DOC|MAP)):([\d,\-]+)`/g
-  for (const m of md.matchAll(re)) {
-    const file = basename(m[1]) // normalise any revision.v4/ prefix away
-    for (const part of m[2].split(',')) {
-      const range = part.match(/^(\d+)-(\d+)$/)
-      if (range) out.push({ file, start: +range[1], end: +range[2], raw: `${m[1]}:${part}` })
-      else if (/^\d+$/.test(part)) out.push({ file, start: +part, end: +part, raw: `${m[1]}:${part}` })
-    }
-  }
-  return out
-}
-
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
+// cp6-1 (AC-7) — the sweep's extractor, claim loader and coverage predicate moved
+// to ./dossier-sweep so there is ONE implementation, callable both by this gate
+// and by cp6-1's mutation proof. The hardcoded brief.md + glossary.md pair that
+// used to live here is now DOSSIER_FILES in that module, generalised to joust's
+// shape (plugins/joust/tests/audit/citations.test.ts:603) and carrying cp6-1's
+// sound.md. Behaviour is otherwise unchanged: same regex, same coverage rule.
 
 describe('AC-2 — every dossier citation is pinned by a claim', () => {
-  const briefPath = join(romStudyDir, 'brief.md')
-  const glossaryPath = join(romStudyDir, 'glossary.md')
-
-  it('the dossier files exist (fixture sanity)', () => {
-    expect(existsSync(briefPath) && existsSync(glossaryPath)).toBe(true)
+  it('every enrolled dossier file exists (fixture sanity)', () => {
+    const missing = DOSSIER_FILES.filter((f) => !existsSync(join(romStudyDir, f)))
+    expect(
+      missing,
+      `docs/rom-study/ is missing enrolled dossier file(s): ${missing.join(', ')} — ` +
+        'a file listed in DOSSIER_FILES but absent means the sweep is scanning nothing for it',
+    ).toEqual([])
   })
 
   it('extracts a non-trivial set of primary-source citations from the dossier (the sweep has teeth)', () => {
-    const prose = [
-      ...extractProseCitations(readFileSync(briefPath, 'utf8')),
-      ...extractProseCitations(readFileSync(glossaryPath, 'utf8')),
-    ]
-    expect(prose.length, 'the coverage check must actually scan citations').toBeGreaterThan(20)
+    // A sweep that silently matched nothing would make the coverage test below
+    // pass vacuously — the exact way a green gate can mean nothing at all.
+    expect(allProseCitations().length, 'the coverage check must actually scan citations').toBeGreaterThan(20)
   })
 
-  it('every primary-source citation in brief.md + glossary.md has a covering claim', () => {
-    const claims = loadClaims()
-    const prose = [
-      ...extractProseCitations(readFileSync(briefPath, 'utf8')),
-      ...extractProseCitations(readFileSync(glossaryPath, 'utf8')),
-    ]
-    const covers = (c: ProseCitation): boolean =>
-      claims.some(
-        (cl) =>
-          cl.source &&
-          basename(cl.source.file) === c.file &&
-          cl.source.line >= c.start &&
-          cl.source.line <= c.end,
-      )
-    const uncovered = prose.filter((c) => !covers(c))
-    // Dedupe the report for readability.
-    const missing = [...new Set(uncovered.map((c) => c.raw))]
+  it('every primary-source citation in the enrolled dossier files has a covering claim', () => {
+    const missing = uncoveredCitations(loadClaims())
     expect(
       missing,
       `these dossier citations have no claims/*.json entry (GREEN converts the dossier):\n  ${missing.join(
