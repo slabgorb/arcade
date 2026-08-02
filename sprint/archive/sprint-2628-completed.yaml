@@ -1377,3 +1377,8 @@ completed_stories:
     title: star-wars C_AS's fire cone is INVENTED — the ROM's own gate is a squared screen radius (WSCPU.MAC:615-618)
     points: 3
     completed: '2026-08-02'
+  - id: sw8-23
+    epic: sw8
+    title: 'Harden the comment-citation guard: it cannot see its own directory, its opt-out fires on a MENTION, and its stated limits omit the two biggest ones (sw8-18 review findings 3, 4, 5, 7)'
+    points: 3
+    completed: '2026-08-02'
