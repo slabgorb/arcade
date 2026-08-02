@@ -245,6 +245,22 @@ function fixtureCitations(): { cite: string; where: string }[] {
   return out
 }
 
+/**
+ * lang-review #15: a universally-quantified sweep whose every iteration can
+ * `continue` asserts nothing at all, and it fails by PASSING. Every loop below
+ * therefore states the population it must actually have visited, and the floor
+ * is chosen not to shrink under the defect the loop guards: the ROM drives seven
+ * channels and defines six frequency tables, so a ruling that visits fewer has
+ * lost cues rather than found fewer.
+ */
+function expectPopulated(n: number, floor: number, what: string): void {
+  expect(
+    n,
+    `${what}: this sweep would have examined ${n} entries (floor ${floor}) — below that it passes ` +
+      'without checking anything, which is the shape of a green gate that measures itself',
+  ).toBeGreaterThanOrEqual(floor)
+}
+
 async function loadChecker(): Promise<CheckClaims> {
   const mod = (await import('../../tools/audit/check-citations.mjs')) as { checkClaims: CheckClaims }
   return mod.checkClaims
@@ -261,6 +277,79 @@ function loadSoundClaims(): Claim[] {
   const parsed = JSON.parse(readFileSync(soundClaimsPath, 'utf8')) as Claim | Claim[]
   return ([] as Claim[]).concat(parsed)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE ROM READERS ARE THEMSELVES PINNED (lang-review #18).
+// countByteOperands and decodeImmediate reimplement two things the MACRO
+// assembler did in 1981: counting `.BYTE` operands and deciding a literal's
+// radix. A test helper that reimplements an algorithm is untested code — it gets
+// the easy shape right, the awkward one wrong, and it fails toward GREEN. So
+// both are pinned against values read out of CENTI4.MAC by hand this session,
+// BEFORE anything downstream is allowed to trust them.
+// ─────────────────────────────────────────────────────────────────────────────
+describe.skipIf(!vendoredAvailable)('the ROM readers this suite depends on', () => {
+  it('countByteOperands counts each of the six tables as hand-verified', () => {
+    const lines = centi4()
+    // [label, start, end, operands] — read off the vendored file by hand.
+    // FREQ4 is the only table that spans two lines (8 then 9), which is exactly
+    // the case a single-line counter would get wrong and never be told about.
+    const TABLES: [string, number, number, number][] = [
+      ['FREQ0', 2455, 2455, 19],
+      ['CONT0', 2456, 2456, 19],
+      ['FREQ1', 2457, 2457, 7],
+      ['CONT1', 2458, 2458, 7],
+      ['FREQ2', 2459, 2459, 11],
+      ['FREQ3', 2461, 2461, 20],
+      ['CONT3', 2462, 2462, 20],
+      ['FREQ4', 2463, 2464, 17],
+      ['FREQ6', 2465, 2465, 20],
+    ]
+    for (const [label, start, end, want] of TABLES) {
+      expect(lines[start], `fixture drift: CENTI4.MAC:${start} is no longer ${label}`).toMatch(
+        new RegExp(`^${label}:`),
+      )
+      expect(countByteOperands(lines, start, end), `${label} at :${start}-${end}`).toBe(want)
+    }
+    // The trailing `;EXPLOSION SOUND` comment must not be counted as an operand.
+    expect(lines[2455]).toContain(';')
+  })
+
+  it('there is no FREQ5 — the player explosion is FREQ0 made louder, not a table', () => {
+    // A reader who assumed FREQ0..FREQ6 were contiguous would invent a table the
+    // machine does not have and bake a sound nobody wrote.
+    const src = centi4().slice(2450, 2470).join('\n')
+    expect(src, 'FREQ5 must not exist anywhere in the table block').not.toMatch(/^FREQ5:/m)
+    expect(centi4()[2449], 'the player explosion instead adds hex 02 to CONT0 to increase volume')
+      .toMatch(/ADC\s+I,02/)
+  })
+
+  it('decodeImmediate reads each channel seed in the radix the ROM spells', () => {
+    const lines = centi4()
+    // [channel, seed start, seed end, decoded value]. Two of the seven carry a
+    // trailing period and are DECIMAL; the rest are hex. Read all seven one way
+    // and CHAN4 becomes 23 against a 17-byte table, CHAN6 becomes 32 against a
+    // 20-byte one — the systematic misread, not a typo.
+    const SEEDS: [string, number, number, number][] = [
+      ['CHAN0 (kill)', 2299, 2300, 19], // LDA I,13   — hex
+      ['CHAN0 (segment)', 1881, 1882, 19], // LDA I,13   — hex
+      ['CHAN1', 1288, 1289, 7], // LDA I,07   — hex
+      ['CHAN2', 2133, 2134, 11], // LDA I,0B   — hex
+      ['CHAN3', 430, 431, 20], // LDA I,14   — hex
+      ['CHAN4', 1994, 1995, 17], // LDA I,17.  — DECIMAL
+      ['CHAN5', 1811, 1812, 19], // LDA I,13   — hex
+      ['CHAN6', 2024, 2025, 20], // LDA I,20.  — DECIMAL
+    ]
+    for (const [label, start, end, want] of SEEDS) {
+      expect(decodeImmediate(lines, start, end), `${label} seed at :${start}-${end}`).toEqual({
+        line: start,
+        value: want,
+      })
+    }
+    // The discriminator: the two decimal seeds must NOT read as hex.
+    expect(parseInt('17', 16), 'if :1994 were read as hex it would be 23, not 17').toBe(23)
+    expect(parseInt('20', 16), 'if :2024 were read as hex it would be 32, not 20').toBe(32)
+  })
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-5 — THIS STORY RULES, IT DOES NOT EDIT.
@@ -376,7 +465,9 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
   })
 
   it('every cue declares an origin and carries a non-empty ruling note', () => {
-    for (const [name, cue] of Object.entries(loadFixture().cues)) {
+    const all = Object.entries(loadFixture().cues)
+    expectPopulated(all.length, 14, 'origin/note sweep')
+    for (const [name, cue] of all) {
       expect(cue.origin, `cues.${name}.origin must be "rom" or "invention"`).toMatch(/^(rom|invention)$/)
       expect(typeof cue.note, `cues.${name}.note must be a string`).toBe('string')
       expect(cue.note.trim(), `cues.${name}.note must say what the ruling IS — a blank note is a silent claim`)
@@ -385,6 +476,7 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
   })
 
   it('every ROM-sourced cue names its channel and cites primary source — a table OR a computation', () => {
+    expectPopulated(romCues().length, 7, 'ROM-sourced cue sweep')
     for (const [name, cue] of romCues()) {
       expect(cue.pokeyVoice, `cues.${name}.pokeyVoice must be the POKEY voice 0..3`).toBeGreaterThanOrEqual(0)
       expect(cue.pokeyVoice, `cues.${name}.pokeyVoice must be the POKEY voice 0..3`).toBeLessThanOrEqual(3)
@@ -427,6 +519,24 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
     }
   })
 
+  it('the ruling transcribes all SIX frequency tables the ROM defines — and never a seventh', () => {
+    // A count of table-backed cues is not enough: six cues could all point at
+    // FREQ0 and leave five tables unclaimed, which is a sound engine half
+    // transcribed. The tables are the deliverable, so enumerate them.
+    // There is deliberately no FREQ5 — the player explosion replays FREQ0 with
+    // `ADC I,02`, so a cue naming FREQ5 has invented a table the machine lacks.
+    const ROM_TABLES = ['FREQ0', 'FREQ1', 'FREQ2', 'FREQ3', 'FREQ4', 'FREQ6']
+    const named = new Set(tableCues().map(([, c]) => c.freqTable))
+    expect(
+      ROM_TABLES.filter((t) => !named.has(t)),
+      'these ROM frequency tables are transcribed by NO cue — the ruling covers part of the engine',
+    ).toEqual([])
+    expect(
+      [...named].filter((t) => t !== null && !ROM_TABLES.includes(t)),
+      'these tables do not exist in CENTI4.MAC — note there is no FREQ5, so naming one is an invention',
+    ).toEqual([])
+  })
+
   it('the ruling accounts for all SEVEN ROM channels, not just the ones with obvious cues', () => {
     // The machine drives seven countdown variables over four POKEY voices
     // (header CENTI4.MAC:2325-2328). A ruling that mapped fourteen cues onto
@@ -439,6 +549,7 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
 
   it.skipIf(!vendoredAvailable)('a cue claiming a table cites the line that DEFINES that table', () => {
     const lines = centi4()
+    expectPopulated(tableCues().length, 6, 'table-definition sweep')
     for (const [name, cue] of tableCues()) {
       const { start } = parseCite(cue.tableCite as string, `cues.${name}.tableCite`)
       expect(
@@ -451,8 +562,9 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
 
   it.skipIf(!vendoredAvailable)('a cue\'s channelCite and seedCite really touch that channel', () => {
     const lines = centi4()
-    for (const [name, cue] of romCues()) {
-      if (cue.channel === null) continue // the computed ant/flea voice rides no CHANn
+    const channelled = romCues().filter(([, c]) => c.channel !== null)
+    expectPopulated(channelled.length, 7, 'channel/seed citation sweep')
+    for (const [name, cue] of channelled) {
       const ch = cue.channel
       const { start } = parseCite(cue.channelCite as string, `cues.${name}.channelCite`)
       expect(lines[start] ?? '', `cues.${name}.channelCite → CENTI4.MAC:${start} does not mention ${ch}`)
@@ -482,9 +594,10 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
     const lines = centi4()
     const claims = loadClaims()
     const unpinned: string[] = []
-    for (const [name, cue] of romCues()) {
-      if (cue.seedCite === null) continue
-      const seed = parseCite(cue.seedCite, `cues.${name}.seedCite`)
+    const seeded = romCues().filter(([, c]) => c.seedCite !== null)
+    expectPopulated(seeded.length, 7, 'seed-constant claim sweep')
+    for (const [name, cue] of seeded) {
+      const seed = parseCite(cue.seedCite as string, `cues.${name}.seedCite`)
       const imm = decodeImmediate(lines, seed.start, seed.end)
       if (!imm) continue // reported by the test above
       const pinning = claims.filter((c) => c.source && basename(c.source.file) === seed.file && c.source.line === imm.line)
@@ -525,8 +638,9 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
   })
 
   it('lengthSeconds is exactly lengthFrames x frameGate / FRAME_HZ', () => {
-    for (const [name, cue] of romCues()) {
-      if (cue.lengthFrames === null) continue // computed voices need not have a countdown window
+    const timed = romCues().filter(([, c]) => c.lengthFrames !== null)
+    expectPopulated(timed.length, 7, 'lengthSeconds derivation sweep')
+    for (const [name, cue] of timed) {
       expect(typeof cue.lengthFrames, `cues.${name}.lengthFrames must be a number`).toBe('number')
       expect(typeof cue.frameGate, `cues.${name}.frameGate must be a number`).toBe('number')
       const expected = (Number(cue.lengthFrames) * Number(cue.frameGate)) / FRAME_HZ
@@ -545,8 +659,9 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
     // misread radix, because the two numbers are written in DIFFERENT radices
     // (CHAN0 `LDA I,13` is hex; CHAN4 `LDA I,17.` is decimal) and only the
     // correct reading of each makes them match.
-    for (const [name, cue] of tableCues()) {
-      if (cue.lengthFrames === null) continue
+    const timed = tableCues().filter(([, c]) => c.lengthFrames !== null)
+    expectPopulated(timed.length, 6, 'seed-vs-table-length sweep')
+    for (const [name, cue] of timed) {
       expect(
         cue.lengthFrames,
         `cues.${name}: the countdown seed (${cue.lengthFrames}) and ${cue.freqTable}'s byte count ` +
@@ -557,6 +672,7 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
   })
 
   it('a looping cue quotes the ROM saying so; a one-shot claims no such line', () => {
+    expectPopulated(romCues().length, 7, 'loop-citation sweep')
     for (const [name, cue] of romCues()) {
       if (cue.loop) {
         expect(
@@ -588,9 +704,10 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
     // stops matching, which is the systematic misread the story warns about
     // rather than a typo in one place.
     const lines = centi4()
-    for (const [name, cue] of romCues()) {
-      if (cue.seedCite === null || cue.lengthFrames === null) continue
-      const seed = parseCite(cue.seedCite, `cues.${name}.seedCite`)
+    const seeded = romCues().filter(([, c]) => c.seedCite !== null && c.lengthFrames !== null)
+    expectPopulated(seeded.length, 7, 'seed-radix recovery sweep')
+    for (const [name, cue] of seeded) {
+      const seed = parseCite(cue.seedCite as string, `cues.${name}.seedCite`)
       const imm = decodeImmediate(lines, seed.start, seed.end)
       if (!imm) continue // reported by the AC-1 seed-span test
       expect(
@@ -604,6 +721,7 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
 
   it.skipIf(!vendoredAvailable)('tableLengthBytes equals the operands actually on the cited .BYTE line(s)', () => {
     const lines = centi4()
+    expectPopulated(tableCues().length, 6, '.BYTE operand-count sweep')
     for (const [name, cue] of tableCues()) {
       const { start, end } = parseCite(cue.tableCite as string, `cues.${name}.tableCite`)
       const counted = countByteOperands(lines, start, end)
@@ -618,6 +736,7 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
 
   it.skipIf(!vendoredAvailable)('the control byte resolves to a real CONT table or a real immediate', () => {
     const lines = centi4()
+    expectPopulated(tableCues().length, 6, 'control-byte sweep')
     for (const [name, cue] of tableCues()) {
       const hasTable = cue.contTable !== null
       const hasImm = cue.contImmediate !== null
@@ -654,6 +773,7 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
 // ─────────────────────────────────────────────────────────────────────────────
 describe('cp6-1 AC-4 — the non-uniform frame gating is recorded per cue', () => {
   it('every ROM cue carries a gate of 1, 2, 4 or 8', () => {
+    expectPopulated(romCues().length, 7, 'frame-gate sweep')
     for (const [name, cue] of romCues()) {
       expect([1, 2, 4, 8], `cues.${name}.frameGate is ${cue.frameGate}; SOUNDS gates on FRAME only by 2, 4 or 8`)
         .toContain(cue.frameGate)
@@ -671,6 +791,7 @@ describe('cp6-1 AC-4 — the non-uniform frame gating is recorded per cue', () =
   })
 
   it('a gated cue cites its mask; an ungated one claims no mask', () => {
+    expectPopulated(romCues().length, 7, 'gate-citation sweep')
     for (const [name, cue] of romCues()) {
       if (cue.frameGate === 1) {
         expect(
@@ -701,9 +822,10 @@ describe('cp6-1 AC-4 — the non-uniform frame gating is recorded per cue', () =
       4: /AND\s+I,0?3\b/,
       8: /AND\s+I,0?7\b/,
     }
-    for (const [name, cue] of romCues()) {
-      if (cue.frameGate === 1 || cue.frameGateCite === null) continue
-      const { start, end } = parseCite(cue.frameGateCite, `cues.${name}.frameGateCite`)
+    const gated = romCues().filter(([, c]) => c.frameGate !== 1 && c.frameGateCite !== null)
+    expectPopulated(gated.length, 3, 'gate-mask sweep')
+    for (const [name, cue] of gated) {
+      const { start, end } = parseCite(cue.frameGateCite as string, `cues.${name}.frameGateCite`)
       const span = lines.slice(start, end + 1)
       expect(
         span.some((l) => /LDA\s+FRAME/.test(l)),
@@ -784,6 +906,7 @@ describe('cp6-1 AC-2 — every transcribed constant is radix-cited and byte-veri
     // much as the prose's. Routing them through a claim puts them under the byte
     // gate above instead of leaving them as unwatched JSON.
     const claims = loadClaims()
+    expectPopulated(fixtureCitations().length, 20, 'fixture-citation sweep')
     const missing = fixtureCitations().filter(({ cite, where }) => {
       const { file, start, end } = parseCite(cite, where)
       const c: ProseCitation = { file, start, end, raw: cite, from: 'sound.fixture.json' }
