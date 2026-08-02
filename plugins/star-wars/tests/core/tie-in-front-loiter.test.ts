@@ -57,9 +57,11 @@
 //
 // There is NO aim-cone test. C$AS ("PLAYER IN ALIENS SITES") is set a few lines earlier for the
 // CHOREOGRAPHY to branch on (`.CUNTIL C$AS`) and is never consulted by the gate. Ours additionally
-// required the fighter's nose within FIRE_CONE_COS = 12° of the pilot — which is exactly a
-// sniper's firing condition: rare, and perfectly lined up every time (measured: 2 shots in 19 s of
-// wave). AC-2 is therefore re-pinned onto the divergence that is real.
+// required the fighter's nose within 12° of the pilot — the `FIRE_CONE_COS` this file's history
+// names, itself since retired by uf1-15, which found C$AS to be a fixed radius about the nose axis
+// rather than a half-angle at all — which is exactly a sniper's firing condition: rare, and
+// perfectly lined up every time (measured: 2 shots in 19 s of wave). AC-2 is therefore re-pinned
+// onto the divergence that is real.
 //
 // Sacred boundary: drives the public `stepGame` on the pure core — no DOM, no time except `dt`,
 // no randomness except the seeded RNG carried in state.

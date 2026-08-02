@@ -38,21 +38,76 @@
 
 import { Status } from './tie-vm'
 import { TIE_HIT_RADIUS, type Enemy, type GameState } from './state'
-import { aimDirection, beamHit, COCKPIT, FOV_Y, toCockpit } from './gameRules'
+import { aimDirection, beamHit, COCKPIT, FOV_Y } from './gameRules'
 import { nextInt, type Rng } from '@shared/rng'
-import { length, dot, IDENTITY, type Vec3 } from '@shared/math3d'
+import { length, dot, sub, scale, IDENTITY, type Vec3 } from '@shared/math3d'
 
 /**
- * C_AS's fire-cone half-angle, as a cosine threshold. The ROM's own C$AS gate
- * (WSCPU.MAC:604-620: `CHSET C$AS` once the alien's math-box view of the
- * player — M.YPS+M.ZPS after the M$PSB2 view transform — falls inside a
- * narrow projected-space window, "AIMING NEAR SHIP") is a SCREEN-SPACE test
- * in per-shape math-box units, not a world-space half-angle — there is no
- * direct unit conversion to a cosine threshold. TODO(playtest): this 12° is
- * INFERRED (the design spec's §6 gives only "bit $10 set", not the angle);
- * retune once the VM is wired and firing is observable.
+ * Convert one of the ROM's SQUARED M$PSB2 thresholds — a literal exactly as it
+ * appears in a `CMPD`/`CMPU` against `M.xPS` — into world units.
+ *
+ * M$PSB2 is math box PC $67 (WSGLOB.MAC:177, `M$PSB2 ==19C/4`), and Jed Margolin
+ * documents that program himself at SWMP.DOC:140-158 ("PRE2"): translate and HALVE
+ * each axis (`XT = (XIND-XT1)/2`; the constant is `HALF=$E000`, "actually -1/2",
+ * SWMP.DOC:307), rotate into the viewer's frame, then square (`XPS = XP*XP` …).
+ * Two scalings therefore sit between the literal and the world:
+ *
+ *   the halving     XP,YP,ZP are HALF the true offsets                → ×2 the radius
+ *   the multiplier  SWMP.DOC:17 "In the Multiplier, 4000H * 4000H = 4000H" → a·b/$4000
+ *
+ *   ⇒ world = 2 · sqrt(S · $4000)
+ *
+ * CROSS-VALIDATED, not asserted. WSMAIN.MAC:3772-3788 pushes the identical PRE2
+ * output through the identical squaring for two OTHER thresholds, and this chain
+ * lands both on exact round hex — $900 ("PLAYER MIDDLE DISTANCE") → $3000, $100
+ * ("PLAYER NEAR") → $1000. A chain missing either scaling misses both; the pair is
+ * run, not reasoned about, in tie-aim-axis.test.ts.
+ *
+ * Radix is hex (WSCOMN.MAC:5 `.RADIX 16`), and raw ROM units ARE our world units,
+ * so nothing further scales the result.
  */
-export const FIRE_CONE_COS = Math.cos((12 * Math.PI) / 180)
+export function psb2SquaredToWorld(squared: number): number {
+  return 2 * Math.sqrt(squared * 0x4000)
+}
+
+/**
+ * C_AS's aim CYLINDER — the perpendicular distance from the alien's nose axis
+ * within which the player counts as "in its sights".
+ *
+ * The gate is WSCPU.MAC:604-618: `LDA #M$PSB2 / JSR MGOWT ;VIEW PLAYERS SHIP`, then
+ * `LDD M.YPS / ADDD M.ZPS / CMPD #20 ;?AIMING NEAR SHIP? / BHI 140$` (:615-618).
+ * That is neither a screen-space test nor a cone, and both halves of that were read
+ * off primary source rather than argued (uf1-15):
+ *
+ *   - NO PERSPECTIVE DIVIDE RUNS. PRE2 (PC $67) rotates and squares and stops; the
+ *     perspective multiply is a different program — "PERS", PC $86, SWMP.DOC:180-186,
+ *     "YP = YP * XP (SCREEN X)" — which this path never calls. docs/mathbox.md:170-175
+ *     says the same from the disassembly side: $67 is the view transform "plus
+ *     Reg38=X²,Reg39=Y²,Reg3A=Z²", while "the perspective divide … that yields screen
+ *     coordinates the AVG can draw" is a separate $AE/$B0. So M.YPS/M.ZPS are squares
+ *     of VIEW-space offsets, not of screen coordinates.
+ *   - THE TEST CARRIES NO DEPTH TERM. `M.YPS + M.ZPS` is compared against a CONSTANT.
+ *     The sibling ratio tests do divide by depth, by subtracting it — `LDD M.YPS /
+ *     SUBD M.XPS` (WSMAIN.MAC:3834-3841 for C$PV, WSSTAR.MAC:135-139 for the
+ *     starfield) — and THOSE are the ±45° cones. C$AS is not one of them.
+ *
+ * A lateral+vertical bound with no depth term is a cylinder about the nose axis, so
+ * there is no half-angle to convert to at any scale: the `Math.cos(12°)` threshold
+ * this replaces had the wrong SHAPE, not merely an unmeasured number. $20 = 32 comes
+ * out irrational (1024·√2) only because 32 is not a perfect square, where its two
+ * round siblings $900 = 48² and $100 = 16² are — the author picked round squares.
+ */
+export const AIM_AXIS_RADIUS = psb2SquaredToWorld(0x20)
+
+/**
+ * C_AS's range bound. `LDD M.XP / … / SUBD #4000 / BGE 140$` (WSCPU.MAC:607-611,
+ * ";IGNORE GUN IF TOO FAR AWAY") compares the LINEAR depth along the alien's nose,
+ * and PRE2 halves every axis on the way in — not only the ones it squares — so the
+ * true-world bound is twice the literal. $8000 = 32768 sits just past the $7C00 =
+ * 31744 spawn depth, so this gate bites at the play cube's diagonal corners rather
+ * than in routine play.
+ */
+export const AIM_DEPTH_MAX = 0x8000
 
 /**
  * C_PN's range threshold. The ROM sets C$PN from a squared math-box-VIEW
@@ -116,18 +171,42 @@ export const SIGHTS_BAND_FACTOR = 2
 export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   let status = 0
 
-  // C_AS (0x04) — "ALIEN HAS PLAYER IN SITES" (WSCPU.MAC:29,604-620). The
-  // TIE's nose axis — model +Z mapped through e.orient, the same column
-  // lookRotation writes forward into (math3d.ts:171-186) — dotted with the
-  // unit direction from the TIE to the cockpit (origin) clears the cone.
+  // C_AS (0x04) — "ALIEN HAS PLAYER IN SITES" (WSCPU.MAC:29,604-621). Three
+  // conditions, in the ROM's own order, all measured on the offset from the fighter
+  // to the cockpit resolved about its nose axis — model +Z mapped through e.orient,
+  // the same column lookRotation writes forward into (math3d.ts:171-186):
+  //
+  //   :607-608  `LDD M.XP / BMI 140$`   ;?PLAYER IN FRONT?  — the sign of the depth
+  //   :610-611  `SUBD #4000 / BGE 140$` ;IGNORE GUN IF TOO FAR AWAY
+  //   :615-618  `LDD M.YPS / ADDD M.ZPS / CMPD #20 / BHI`   ;?AIMING NEAR SHIP?
+  //
+  // The last one is the cylinder (AIM_AXIS_RADIUS above), and the first two are what
+  // make it a half-line rather than an infinite one: a fighter pointed directly AWAY
+  // has its nose axis running straight through the cockpit, so perpendicular distance
+  // alone would put the player in its sights. `BHI` skips on strictly greater, so the
+  // radius itself is inside; `BGE` skips at the bound, so the range is strict.
+  //
+  // The radius test stays SQUARED, as the ROM's `CMPD` is, and the perpendicular is
+  // taken as the vector REJECTION rather than via Pythagoras on the range — recovering
+  // a small square by subtracting two large ones loses the boundary case to rounding
+  // (measured: the exactly-on-the-radius fixture flips).
+  //
   // Minimal collision/spawn fixtures build a TIE without `orient`; the §6 fire gate
   // now status-computes EVERY live enemy (sim.ts's decision tick), so tolerate a
   // missing matrix by defaulting to IDENTITY (nose = model +Z), exactly as
   // `applyManeuver` does, rather than reading off `undefined[2]`.
   const orient = e.orient ?? IDENTITY
   const nose: Vec3 = [orient[2], orient[6], orient[10]]
-  const toCockpitDir = toCockpit(e.pos)
-  if (dot(nose, toCockpitDir) >= FIRE_CONE_COS) status |= Status.C_AS
+  const toCockpitOffset = sub(COCKPIT, e.pos)
+  const noseDepth = dot(nose, toCockpitOffset) // M.XP
+  const offAxis = sub(toCockpitOffset, scale(nose, noseDepth)) // (M.YP, M.ZP)
+  if (
+    noseDepth >= 0 &&
+    noseDepth < AIM_DEPTH_MAX &&
+    dot(offAxis, offAxis) <= AIM_AXIS_RADIUS * AIM_AXIS_RADIUS
+  ) {
+    status |= Status.C_AS
+  }
 
   // C_PN (0x400) — "PLAYER IS NEAR THE ALIEN" (WSCPU.MAC:35; CHSET C$PN at
   // WSMAIN.MAC:3787). The TIE is within PLAYER_NEAR_RANGE of the cockpit.

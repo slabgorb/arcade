@@ -139,19 +139,40 @@ describe('sw7-23 T4c — toCockpit is a single shared helper, not two copies', (
     expect(tieStatusSrc).not.toMatch(/normalize\s*\(\s*sub\s*\(\s*COCKPIT/)
   })
 
-  it('tie-status.ts imports the shared `toCockpit` helper instead of hand-rolling it', () => {
-    // Match a real `import { … toCockpit … } from '…'` statement — NOT the inline
-    // `const toCockpit = …` (this repo omits semicolons, so a loose `import[^;]*toCockpit`
-    // would span the whole file and match that const vacuously).
-    expect(tieStatusSrc).toMatch(/import\s*\{[^}]*\btoCockpit\b[^}]*\}\s*from/)
+  it('tie-status.ts takes the cockpit from the shared core definition, never a local copy', () => {
+    // RE-AIMED by uf1-15, which changed WHAT C_AS needs rather than where it comes from.
+    // The ROM's gate resolves the OFFSET from the fighter to the cockpit about its own
+    // nose axis (WSCPU.MAC:607-618 — a sign, a range and a perpendicular radius), so the
+    // normalized DIRECTION `toCockpit` returns is no longer a term in the expression and
+    // this file imports the shared `COCKPIT` constant instead. `toCockpit` itself is
+    // untouched and still shared — sim.ts's `spawnTie` and `aimOrient` are its callers.
+    //
+    // T4c's actual invariant is unchanged and still pinned here: whatever tie-status.ts
+    // measures the cockpit with comes from gameRules' ONE definition, never from a local
+    // re-derivation and never from a hand-written origin (sw7-16's rule, and the
+    // documented hazard — a retargeted cockpit silently breaks space).
+    //
+    // Match a real `import { … COCKPIT … } from '…'` statement; the negatives are on the
+    // comment-stripped source so a docstring naming the old helper cannot mask a
+    // declaration (this repo omits semicolons, so a loose `import[^;]*` would span the
+    // whole file and match vacuously).
+    expect(tieStatusSrc).toMatch(/import\s*\{[^}]*\bCOCKPIT\b[^}]*\}\s*from/)
+    expect(tieStatusSrc, 'no local copy of the helper or the constant').not.toMatch(
+      /\bconst\s+(toCockpit|COCKPIT)\s*[:=]/,
+    )
+    expect(tieStatusSrc, 'no hand-written origin standing in for the cockpit').not.toMatch(
+      /\[\s*0\s*,\s*0\s*,\s*0\s*\]/,
+    )
   })
 
   it('the shared helper keeps the SPACE-ONLY origin semantics (C_AS geometry unchanged)', () => {
-    // computeStatus derives C_AS from the direction to the cockpit. The extracted helper
-    // must still treat the cockpit as the ORIGIN (the documented hazard: retargeting it
-    // silently breaks space). A TIE dead ahead with its nose ON the cockpit is in the
-    // fire cone; the same TIE turned 180° away is not. Green before and after — a
-    // regression net around the refactor.
+    // computeStatus measures C_AS from the fighter to the cockpit, and must still treat
+    // the cockpit as the ORIGIN (the documented hazard: retargeting it silently breaks
+    // space). A TIE dead ahead with its nose ON the cockpit has the player in its sights;
+    // the same TIE turned 180° away does not — under uf1-15's cylinder for the same
+    // reason it did under the 12° cone it replaced, since the ROM's "?PLAYER IN FRONT?"
+    // sign test (WSCPU.MAC:607-608) is what rules the second one out. Green before and
+    // after — a regression net around the refactor.
     const st = initialState(1)
     const pos: Vec3 = [0, 0, -5000]
     const towardCockpit = normalize(sub([0, 0, 0], pos)) // ROM/ref math, independent of the helper

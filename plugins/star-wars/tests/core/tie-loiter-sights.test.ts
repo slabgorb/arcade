@@ -175,11 +175,23 @@ describe('uf1-12 — in play: a fighter held under the crosshair breaks into 20$
     // target. With the pilot back at the cockpit that is no longer true, and it is not a
     // fixture quirk: a fighter beelining the cockpit is in the parked crosshair BY
     // CONSTRUCTION, because the crosshair and the fighters' target are now the same point.
-    // Measured: at 1,500 and 3,000 lateral the loiter weave still carries it into the parked
-    // band inside 900 frames. At 6,000 (45 deg off at this depth, the edge of the C_PV
-    // pyramid) it stays wide, so the yoke is what brings it in — which is the property this
-    // test is actually about.
-    const seat: Vec3 = [6000, 0, -6000]
+    // So the seat has to be WIDE — far enough off-axis that the parked reticle never
+    // catches it and the yoke is what brings it in, which is the property this test is
+    // actually about.
+    //
+    // RE-MEASURED by uf1-15, and the lateral offset moved 6,000 → 4,000. The seat is an
+    // EMPIRICAL constant, and what it is empirical about is the loiter TRAJECTORY: TWO of
+    // TCH1DZ's gates release on C$AS — `.CUNTIL C$AS+C$AG` (:1633) in the first half and
+    // `.CUNTIL C$AS+C$AG+C$PS` (:1641) in the second — so uf1-15 changing C_AS from a 12°
+    // cone to the ROM's fixed axis radius (WSCPU.MAC:615-618) moves the frame each of them
+    // fires on, and the whole weave downstream of it. The
+    // fighter is culled at frame 391 either way, so 900 is just "until it leaves".
+    // Measured at 6,000 depth under the new law: 4,000 lateral enters 20$ at frame 99 and
+    // never enters with the yoke parked; the old 6,000 seat now enters under neither, so
+    // it had stopped discriminating rather than started failing. 4,000 at this depth is
+    // 33.7° off the nose — still outside the ±30° glass, so the parked half holds for the
+    // same reason it did before.
+    const seat: Vec3 = [4000, 0, -6000]
 
     /** Fly the loiter script for `frames`, tracking the fighter with the yoke (or not),
      *  and report whether the VM ever entered 20$. */
