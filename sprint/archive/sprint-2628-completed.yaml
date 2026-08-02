@@ -1367,3 +1367,8 @@ completed_stories:
     title: "Correct the sw8 ST.UX citation and prose defects from sw8-8 review rounds 2+3 -- 11 filed (4 since drifted) plus a 12th created by sw8-17 -- and add the comment-citation guard for the three a mechanical checker can catch"
     points: 5
     completed: '2026-08-02'
+  - id: jt5-6
+    epic: jt5
+    title: SNPCR2 — give player 2 its own transporter cue instead of P1's
+    points: 5
+    completed: '2026-08-02'
