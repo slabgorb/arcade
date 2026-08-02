@@ -1,0 +1,839 @@
+[
+  {
+    "id": "SND-001",
+    "claim": "SOUNDS is called once per VIDEO frame from MAIN, after the loop has spun on SYNC waiting for VBLANK — so one SOUNDS pass is one video frame and every countdown below is measured in video frames.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 24,
+      "verbatim": "\tJSR SOUNDS\t\t;PROCESS SOUNDS"
+    }
+  },
+  {
+    "id": "SND-002",
+    "claim": "MAIN's frame loop waits on SYNC before doing any per-frame work, which is what makes the SOUNDS call rate the video frame rate.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 17,
+      "verbatim": "1$:\tLSR SYNC"
+    }
+  },
+  {
+    "id": "SND-003",
+    "claim": "The channel allocation header, written by the machine: CHAN 0 carries all explosions.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2325,
+      "verbatim": ";CHAN 0=ALL EXPLOSIONS"
+    }
+  },
+  {
+    "id": "SND-004",
+    "claim": "CHAN 1 carries the bonus, centipede, ant and scorpion sounds — four cues over one POKEY voice.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2326,
+      "verbatim": ";CHAN 1=BONUS, CENTIPEDE, ANT AND SCORPION SOUNDS"
+    }
+  },
+  {
+    "id": "SND-005",
+    "claim": "CHAN 2 is the shot sound.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2327,
+      "verbatim": ";CHAN 2=SHOT SOUND"
+    }
+  },
+  {
+    "id": "SND-006",
+    "claim": "CHAN 3 is the spider sound.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2328,
+      "verbatim": ";CHAN 3=SPIDER SOUND"
+    }
+  },
+  {
+    "id": "SND-007",
+    "claim": "SOUNDS opens by testing MODE — the attract check comes before any sound work.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2329,
+      "verbatim": "SOUNDS:\tLDX MODE"
+    }
+  },
+  {
+    "id": "SND-008",
+    "claim": "In attract, SOUNDS loads hex 0 (decimal 0) and stores it to all four AUDC registers, silencing the machine.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2331,
+      "verbatim": "\tLDX I,0\t\t\t;TURN OFF SOUNDS"
+    }
+  },
+  {
+    "id": "SND-009",
+    "claim": "The attract path RTSes here, so attract mode is silent BY ROM DESIGN and not by our omission. Line 2337 is blank; 2338 begins the in-scope frame gate.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2336,
+      "verbatim": "\tRTS"
+    }
+  },
+  {
+    "id": "SND-010",
+    "claim": "The spider's every-other-frame gate begins by loading FRAME.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2338,
+      "verbatim": "5$:\tLDA FRAME"
+    }
+  },
+  {
+    "id": "SND-011",
+    "claim": "LSR shifts FRAME bit 0 into carry, which is the divide-by-decimal-2 that gates the spider block.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2339,
+      "verbatim": "\tLSR"
+    }
+  },
+  {
+    "id": "SND-012",
+    "claim": "On an even FRAME the carry is clear and the branch skips the whole CHAN3 block — the spider advances every OTHER frame while everything below advances every frame.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2340,
+      "verbatim": "\tBCC 30$\t\t\t;EVERY OTHER FRAME CHANGE BUG SOUND"
+    }
+  },
+  {
+    "id": "SND-013",
+    "claim": "The bonus life's gate loads FRAME.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2375,
+      "verbatim": "\tLDA FRAME"
+    }
+  },
+  {
+    "id": "SND-014",
+    "claim": "The bonus gate masks FRAME with hex 07 (decimal 7), so CHAN4 advances only when the low decimal 3 bits are zero — one pass in decimal 8. This is the only AND I,07 in the SOUNDS routine.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2376,
+      "verbatim": "\tAND I,07"
+    }
+  },
+  {
+    "id": "SND-015",
+    "claim": "When the bonus mask is non-zero the routine branches away and the bonus cue simply continues its last sound, which is what makes the gate a divisor rather than a skip.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2377,
+      "verbatim": "\tBNE 53$\t\t\t;CONTINUE LAST SOUND"
+    }
+  },
+  {
+    "id": "SND-016",
+    "claim": "The player explosion's gate loads FRAME.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2438,
+      "verbatim": "\tLDA FRAME"
+    }
+  },
+  {
+    "id": "SND-017",
+    "claim": "The player-explosion gate masks FRAME with hex 3 (decimal 3), so CHAN5 advances one pass in decimal 4.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2439,
+      "verbatim": "\tAND I,3"
+    }
+  },
+  {
+    "id": "SND-083",
+    "claim": "The 15-second alarm begins here by testing the score/timer word. It belongs to the TIMED-play DIP option, which cp1 ruled is not modelled, so it is OUT OF SCOPE — recorded so a reader finds it declined rather than missed.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2360,
+      "verbatim": "\tLDA SCORE2+1"
+    }
+  },
+  {
+    "id": "SND-084",
+    "claim": "The alarm's own comment names it: SET WARNING AT 15 SECONDS.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2361,
+      "verbatim": "\tBNE 42$\t\t\t;SET WARNING AT 15 SECONDS"
+    }
+  },
+  {
+    "id": "SND-085",
+    "claim": "The alarm masks FRAME with hex 04 (decimal 4) — a FOURTH frame mask inside SOUNDS, and the only one this dossier does NOT record as a cue gate, because the cue it gates is out of scope.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2368,
+      "verbatim": "\tAND I,04"
+    }
+  },
+  {
+    "id": "SND-086",
+    "claim": "The alarm alternates its tone between off and on, which is what its FRAME mask is for.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2369,
+      "verbatim": "\tBEQ 44$\t\t\t;ALTERNATE TONE BETWEEN OFF AND ON"
+    }
+  },
+  {
+    "id": "SND-087",
+    "claim": "The alarm ends here at 2371 — the range is 2360 to 2371, and it deliberately does NOT include the shot cue's own control byte at 2358 to 2359, which an earlier spelling of this story wrongly fenced out.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2371,
+      "verbatim": "\tBNE 44$\t\t\t;ALWAYS"
+    }
+  },
+  {
+    "id": "SND-018",
+    "claim": "CHAN3 is decremented once per gated pass — the spider countdown.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2344,
+      "verbatim": "\tDEC CHAN3"
+    }
+  },
+  {
+    "id": "SND-019",
+    "claim": "When CHAN3 reaches zero the spider RESETS to hex 14, which is decimal 20 — the same decimal value as the scorpion loop reseed at 2389, but reached by a different radix. Read as decimal 14 it would run the spider table only decimal 14 of its decimal 20 entries.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2346,
+      "verbatim": "\tLDA I,14"
+    }
+  },
+  {
+    "id": "SND-020",
+    "claim": "The reset is stored straight back into CHAN3, which is what makes the spider cue repeat rather than end.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2347,
+      "verbatim": "\tSTA CHAN3\t\t;RESET TO START OF SOUND"
+    }
+  },
+  {
+    "id": "SND-021",
+    "claim": "CHAN2 is decremented once per SOUNDS pass — the shot countdown, ungated.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2355,
+      "verbatim": "\tDEC CHAN2"
+    }
+  },
+  {
+    "id": "SND-022",
+    "claim": "The shot's control/volume byte is the immediate hex 64 (decimal 100), not a table lookup — FREQ2 has no CONT2 companion.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2358,
+      "verbatim": "\tLDA I,64"
+    }
+  },
+  {
+    "id": "SND-023",
+    "claim": "The shot's control byte is written to AUDC2, POKEY voice 2.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2359,
+      "verbatim": "40$:\tSTA AUDC2"
+    }
+  },
+  {
+    "id": "SND-024",
+    "claim": "CHAN4 is decremented once per gated pass — the bonus life countdown.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2378,
+      "verbatim": "\tDEC CHAN4"
+    }
+  },
+  {
+    "id": "SND-025",
+    "claim": "The bonus life's control byte is the immediate hex 0A4 (decimal 164).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2383,
+      "verbatim": "\tLDA I,0A4"
+    }
+  },
+  {
+    "id": "SND-026",
+    "claim": "CHAN6 indexes the scorpion table — the scorpion countdown, ungated.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2386,
+      "verbatim": "45$:\tLDY CHAN6\t\t;INDEX FOR"
+    }
+  },
+  {
+    "id": "SND-027",
+    "claim": "The scorpion's CONTINOUS LOOP: while CHAN6 has not reached zero the routine keeps stepping the table, and when it does the next line reseeds it.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2388,
+      "verbatim": "\tBNE 46$\t\t\t;CONTINOUS LOOP"
+    }
+  },
+  {
+    "id": "SND-028",
+    "claim": "The scorpion loop reseeds with DECIMAL 20 — the trailing period makes it decimal, not hex 20 which would be decimal 32 and would run past the end of FREQ6.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2389,
+      "verbatim": "\tLDY I,20."
+    }
+  },
+  {
+    "id": "SND-029",
+    "claim": "The scorpion's control byte is the immediate hex 0A4 (decimal 164), the same value the bonus uses.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2393,
+      "verbatim": "\tLDA I,0A4"
+    }
+  },
+  {
+    "id": "SND-030",
+    "claim": "CHAN0 is decremented once per SOUNDS pass — the explosion countdown, ungated.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2421,
+      "verbatim": "\tDEC CHAN0"
+    }
+  },
+  {
+    "id": "SND-031",
+    "claim": "CHAN1 is decremented once per SOUNDS pass — the little feet countdown, ungated.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2431,
+      "verbatim": "\tDEC CHAN1"
+    }
+  },
+  {
+    "id": "SND-032",
+    "claim": "CHAN5 is decremented once per gated pass — the player explosion countdown.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2441,
+      "verbatim": "\tDEC CHAN5"
+    }
+  },
+  {
+    "id": "SND-033",
+    "claim": "The player explosion reads FREQ0 — the SAME table as the general explosion, not one of its own.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2444,
+      "verbatim": "\tLDA Y,FREQ0-1"
+    }
+  },
+  {
+    "id": "SND-034",
+    "claim": "The player explosion adds hex 02 (decimal 2) to the control byte to INCREASE VOLUME, which is the only thing distinguishing it from the general explosion. That is why there is no FREQ5.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2449,
+      "verbatim": "\tADC I,02\t\t;INCREASE VOLUME"
+    }
+  },
+  {
+    "id": "SND-035",
+    "claim": "A zero control byte is left alone, leaving a delay between explosions rather than adding volume to silence.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2447,
+      "verbatim": "\tBEQ 64$\t\t\t;LEAVE A DELAY BETWEEN EXPLOSIONS"
+    }
+  },
+  {
+    "id": "SND-036",
+    "claim": "A picture at or above hex 20 (decimal 32) is the SCORPION and branches to the CHAN6 table loop; below it is the ant (flea), which falls through to the computed path.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2408,
+      "verbatim": "\tBCS 45$\t\t\t;IF THE SCORPION"
+    }
+  },
+  {
+    "id": "SND-037",
+    "claim": "The ant/flea voice loads ANTV — the creature's VERTICAL POSITION — instead of indexing a table.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2409,
+      "verbatim": "\tLDA ANTV"
+    }
+  },
+  {
+    "id": "SND-038",
+    "claim": "The ant/flea frequency is forced to hex 80 (decimal 128) or above to USE LOWER FREQUENCIES, so the flea sound falls in pitch as it descends. This cue has no table and no countdown variable.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2413,
+      "verbatim": "\tORA I,80\t\t;USE LOWER FREQUENCIES"
+    }
+  },
+  {
+    "id": "SND-039",
+    "claim": "The computed ant/flea frequency is written to AUDF1, POKEY voice 1 — shared with the march, the bonus and the scorpion.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2414,
+      "verbatim": "\tSTA AUDF1"
+    }
+  },
+  {
+    "id": "SND-088",
+    "claim": "Label 48$ begins the arbitration for POKEY voice 1. Everything below decides whether voice 1 carries the ant/flea, the scorpion, or the centipede march — they cannot sound together on the machine.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2396,
+      "verbatim": "48$:\tLDA ANTV"
+    }
+  },
+  {
+    "id": "SND-089",
+    "claim": "The march (49$) is reached only when the ant or scorpion is OFF SCREEN. A live flea or scorpion takes voice 1 instead.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2399,
+      "verbatim": "\tBCS 49$\t\t\t;IF ANT OR SCORPION OFF SCREEN"
+    }
+  },
+  {
+    "id": "SND-090",
+    "claim": "The march is also reached when the player is exploding or dead — the creature voice yields during the death sequence.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2402,
+      "verbatim": "\tBNE 49$\t\t\t;IF PLAYER IS EXPLODING OR DEAD"
+    }
+  },
+  {
+    "id": "SND-091",
+    "claim": "And when the ant or scorpion is exploding (the ROM misspells EXPLODNG). Those three conditions are the ONLY ways the march block is entered.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2406,
+      "verbatim": "\tBCS 49$\t\t\t;IF ANT OR SCORPION IS EXPLODNG"
+    }
+  },
+  {
+    "id": "SND-092",
+    "claim": "The march block itself. Because it sits behind the three tests above, the centipede march is PREEMPTED by a live flea or scorpion on the real machine — it is not a voice of its own.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2428,
+      "verbatim": "49$:\tLDY CHAN1"
+    }
+  },
+  {
+    "id": "SND-093",
+    "claim": "All three voice-1 candidates converge on this single AUDC1 write, which is the mechanical reason only one of them can sound at a time.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2435,
+      "verbatim": "50$:\tSTA AUDC1"
+    }
+  },
+  {
+    "id": "SND-040",
+    "claim": "FREQ0 is the EXPLOSION SOUND frequency table: decimal 19 bytes, every literal hex (0F0 down to 10, after four leading hex 0 entries).",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2455,
+      "verbatim": "FREQ0:\t.BYTE 0,0,0,0,0F0,0E0,0D0,0C0,0B0,0A0,90,80,70,60,50,40,30,20,10\t;EXPLOSION SOUND"
+    }
+  },
+  {
+    "id": "SND-041",
+    "claim": "CONT0 is the explosion control/volume table: decimal 19 bytes matching FREQ0 one for one, hex 81 rising to hex 84.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2456,
+      "verbatim": "CONT0:\t.BYTE 0,0,0,0,81,81,81,82,82,82,82,83,83,83,83,84,84,84,84"
+    }
+  },
+  {
+    "id": "SND-042",
+    "claim": "FREQ1 is the SOUND OF LITTLE FEET: decimal 7 hex bytes.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2457,
+      "verbatim": "FREQ1:\t.BYTE 70,0,0,0A0,0,0C0,0E0\t\t;SOUND OF LITTLE FEET"
+    }
+  },
+  {
+    "id": "SND-043",
+    "claim": "CONT1 carries the ROM's own instruction that this cue MUST BE REPEATED: decimal 7 hex bytes. This is the ROM stating the march loops rather than one-shots.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2458,
+      "verbatim": "CONT1:\t.BYTE 0A1,0,0,0A2,0,0A2,0A4\t;MUST BE REPEATED"
+    }
+  },
+  {
+    "id": "SND-044",
+    "claim": "FREQ2 is the SHOT SOUND: decimal 11 hex bytes falling from hex 0F0 to hex 50. It has no CONT2 companion — the control byte is the immediate at 2358.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2459,
+      "verbatim": "FREQ2:\t.BYTE 0F0,0E0,0D0,0C0,0B0,0A0,90,80,70,60,50\t\t;SHOT SOUND"
+    }
+  },
+  {
+    "id": "SND-045",
+    "claim": "FREQ3 is the spider frequency table: decimal 20 hex bytes.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2461,
+      "verbatim": "FREQ3:\t.BYTE 05,05,20,20,30,30,35,35,30,30,20,20,05,05,20,20,30,30,35,35"
+    }
+  },
+  {
+    "id": "SND-046",
+    "claim": "CONT3 carries the ROM's own words WELL REPEAT UNTIL TURNED OFF: decimal 20 hex bytes. This is the ROM stating the spider loops.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2462,
+      "verbatim": "CONT3:\t.BYTE 0A1,0,0A2,0,0A3,0,0A4,0,0A3,0,0A2,0,0A1,0,0A2,0,0A3,0,0A2,0\t;WELL REPEAT UNTIL TURNED OFF"
+    }
+  },
+  {
+    "id": "SND-047",
+    "claim": "FREQ4 begins the bonus life table with decimal 8 hex bytes.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2463,
+      "verbatim": "FREQ4:\t.BYTE 28,28,30,28,28,30,3C,51"
+    }
+  },
+  {
+    "id": "SND-048",
+    "claim": "FREQ4 continues on a second line with decimal 9 more hex bytes, decimal 17 in total — the only table in this engine that spans two lines, and the count that the decimal 17 seed matches.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2464,
+      "verbatim": "\t.BYTE 50,50,60,50,50,60,74,0A2,0"
+    }
+  },
+  {
+    "id": "SND-049",
+    "claim": "FREQ6 is the scorpion frequency table: decimal 20 hex bytes. There is no FREQ5 — the numbering skips it because the player explosion reuses FREQ0.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2465,
+      "verbatim": "FREQ6:\t.BYTE 60,60,70,70,60,60,60,70,70,70,50,50,80,80,50,50,50,80,80,80"
+    }
+  },
+  {
+    "id": "SND-050",
+    "claim": "The shot cue is seeded with hex 0B, decimal 11 — exactly the decimal 11 bytes of FREQ2.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2133,
+      "verbatim": "10$:\tLDA I,0B"
+    }
+  },
+  {
+    "id": "SND-051",
+    "claim": "The shot seed is stored when the fire switch is pushed, so the cue is raised once per shot.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2134,
+      "verbatim": "\tSTA CHAN2\t\t;SHOT SOUND"
+    }
+  },
+  {
+    "id": "SND-052",
+    "claim": "The explosion cue is seeded with hex 13, decimal 19 — exactly the decimal 19 bytes of FREQ0.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2299,
+      "verbatim": "19$:\tLDA I,13"
+    }
+  },
+  {
+    "id": "SND-053",
+    "claim": "Label 19$ is the single convergence point for EVERY creature kill: the centipede segment path reaches it by JMP 19$ at 2289, and the spider, ant and scorpion paths reach it by falling through 18$ at 2296. One trigger, one table, four of our cue names.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2300,
+      "verbatim": "\tSTA CHAN0\t\t;EXPLOSION SOUND"
+    }
+  },
+  {
+    "id": "SND-054",
+    "claim": "The scoring call immediately above 19$ names the three creatures that share the path — spider, ant and scorpion — which is the ROM stating the collapse itself.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2298,
+      "verbatim": "\tJSR SCORN1\t\t;SCORES FOR SPIDER,ANT, OR SCORPION"
+    }
+  },
+  {
+    "id": "SND-055",
+    "claim": "The centipede segment kill jumps to 19$, joining the same explosion cue the spider, flea and scorpion use.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2289,
+      "verbatim": "\tJMP 19$"
+    }
+  },
+  {
+    "id": "SND-056",
+    "claim": "The shot-hits-mushroom path jumps to 20$, which is the line AFTER the 19$ explosion seed — so a mushroom hit deliberately BYPASSES the sound that a creature kill raises. The two labels are three lines apart and the mushroom path steps over the sound.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2169,
+      "verbatim": "108$:\tJMP 20$\t\t\t;ALWAYS"
+    }
+  },
+  {
+    "id": "SND-057",
+    "claim": "Label 20$ repositions the shot without touching any CHANn — this is where the mushroom path lands, and it is why there is no mushroom-hit cue in the machine.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2303,
+      "verbatim": "20$:\tJSR RSHOT\t\t;POSITION SHOT"
+    }
+  },
+  {
+    "id": "SND-058",
+    "claim": "The little feet cue is seeded with hex 07, decimal 7 — exactly the decimal 7 bytes of FREQ1.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1288,
+      "verbatim": "\tLDA I,07"
+    }
+  },
+  {
+    "id": "SND-059",
+    "claim": "The march is re-seeded inside MOTION, so it restarts for as long as the centipede is moving.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1289,
+      "verbatim": "\tSTA CHAN1\t\t;START LITTLE FEET NOISE"
+    }
+  },
+  {
+    "id": "SND-060",
+    "claim": "The march re-seed is gated by masking FRAME with hex 0F (decimal 15), so it re-arms once every decimal 16 frames — the ROM calls that a 1/4 SECOND BOUNDARY. The cue itself is decimal 7 passes long, so it rings for 7 of every 16 frames.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1286,
+      "verbatim": "\tAND I,0F"
+    }
+  },
+  {
+    "id": "SND-061",
+    "claim": "The spider cue is seeded with hex 14, decimal 20 — exactly the decimal 20 bytes of FREQ3.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 430,
+      "verbatim": "\tLDA I,14"
+    }
+  },
+  {
+    "id": "SND-062",
+    "claim": "The spider sound is turned on at each direction change, inside the spider's own movement code.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 431,
+      "verbatim": "\tSTA CHAN3\t\t;TURN ON SOUND"
+    }
+  },
+  {
+    "id": "SND-063",
+    "claim": "The spider sound is turned OFF when the spider is shot — the loop needs an explicit stop, which is what CONT3 WELL REPEAT UNTIL TURNED OFF means in practice.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2255,
+      "verbatim": "\tSTA CHAN3\t\t;TURN OFF SOUND"
+    }
+  },
+  {
+    "id": "SND-064",
+    "claim": "The spider sound is also turned off by BUGOFF when the spider leaves the screen.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 282,
+      "verbatim": "\tSTA CHAN3\t\t;TURN OFF SOUND"
+    }
+  },
+  {
+    "id": "SND-065",
+    "claim": "The bonus life cue is seeded with DECIMAL 17 — the trailing period is load-bearing. FREQ4 carries decimal 17 bytes; read as hex 17 the seed would be decimal 23 and would run six entries past the end of the table.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1994,
+      "verbatim": "\tLDA I,17."
+    }
+  },
+  {
+    "id": "SND-066",
+    "claim": "The bonus life cue is raised where the extra life is awarded.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1995,
+      "verbatim": "\tSTA CHAN4\t\t;BONUS LIFE SOUND"
+    }
+  },
+  {
+    "id": "SND-067",
+    "claim": "The line above the bonus seed adds the life, so the cue is raised exactly once per bonus life.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1993,
+      "verbatim": "\tINC X,LIVES-1\t\t;ADD A LIFE AS A BONUS"
+    }
+  },
+  {
+    "id": "SND-068",
+    "claim": "The scorpion cue is seeded with DECIMAL 20 — exactly the decimal 20 bytes of FREQ6, and the second of the two decimal literals in this engine.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2024,
+      "verbatim": "\tLDA I,20."
+    }
+  },
+  {
+    "id": "SND-069",
+    "claim": "The scorpion sound is turned on when the scorpion randomly enters.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2025,
+      "verbatim": "\tSTA CHAN6\t\t;TURN ON SOUND"
+    }
+  },
+  {
+    "id": "SND-070",
+    "claim": "The scorpion sound is turned off when the ant (flea) is set up — the two share creature slot 12, so arming the flea silences the scorpion.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 155,
+      "verbatim": "\tSTA CHAN6\t\t;NO SCORPION SOUND"
+    }
+  },
+  {
+    "id": "SND-071",
+    "claim": "The player explosion is seeded with hex 13, decimal 19 — the same decimal 19 as the general explosion, because it replays the same FREQ0 table.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1811,
+      "verbatim": "\tLDA I,13"
+    }
+  },
+  {
+    "id": "SND-072",
+    "claim": "The player explosion cue is raised inside PLAYEX, and only when not in attract.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1812,
+      "verbatim": "\tSTA CHAN5\t\t;EXPLOSION SOUND FOR PLAYER"
+    }
+  },
+  {
+    "id": "SND-073",
+    "claim": "Player death then loads hex 0 (decimal 0) and clears CHAN0, CHAN1, CHAN2, CHAN3 and CHAN6 — NO OTHER SOUNDS. The player explosion plays alone.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1813,
+      "verbatim": "35$:\tLDA I,0\t\t\t;NO OTHER SOUNDS"
+    }
+  },
+  {
+    "id": "SND-074",
+    "claim": "The last of the five channels player death silences, so both loops (spider and scorpion) stop when the player dies.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1818,
+      "verbatim": "\tSTA CHAN6"
+    }
+  },
+  {
+    "id": "SND-075",
+    "claim": "RESTOR seeds the explosion cue with hex 13, decimal 19, once per mushroom it restores between waves.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1881,
+      "verbatim": "25$:\tLDA I,13"
+    }
+  },
+  {
+    "id": "SND-076",
+    "claim": "The eighth and last sound-raising site in the ROM: the between-wave mushroom RESTORE explosion. It reuses CHAN0 and FREQ0, and NO cue in our manifest names it — see the open item in the dossier.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1882,
+      "verbatim": "\tSTA CHAN0"
+    }
+  },
+  {
+    "id": "SND-077",
+    "claim": "The routine that owns the eighth site is RESTOR, which restores partially-eaten mushrooms between waves.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1826,
+      "verbatim": "\t.SBTTL\tRESTOR-RESTORE MUSHROOMS"
+    }
+  },
+  {
+    "id": "SND-078",
+    "claim": "RESTOR awards 5 points per restored mushroom, confirming the 1882 explosion is the restore sweep and not a kill.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1857,
+      "verbatim": "\tJSR SCORN1\t\t;AWARD 5 PTS. FOR RESTORED MUSHROOMS"
+    }
+  },
+  {
+    "id": "SND-079",
+    "claim": "A head reaching the bottom row sets NEWD and nothing else — there is no CHANn write anywhere on this path, so the machine raises no cue when a head reaches the bottom.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1310,
+      "verbatim": "\tSTY NEWD\t\t;START ADDING NEW HEADS"
+    }
+  },
+  {
+    "id": "SND-080",
+    "claim": "Clearing a wave sets DELAY and nothing else — no CHANn write, so the machine raises no wave-clear cue.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2319,
+      "verbatim": "\tSTA DELAY\t\t;DELAY BEFORE NEXT WAVE"
+    }
+  },
+  {
+    "id": "SND-081",
+    "claim": "OBSTAC — the routine our manifest names for the mushroom cue — is a pure playfield-address lookup that returns without touching any sound register.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1739,
+      "verbatim": "20$:\tRTS"
+    }
+  },
+  {
+    "id": "SND-082",
+    "claim": "OBSTAC begins here; the whole routine from 1701 to 1739 contains no CHANn or AUDx write of any kind.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1701,
+      "verbatim": "OBSTAC:\tLSR"
+    }
+  }
+]
