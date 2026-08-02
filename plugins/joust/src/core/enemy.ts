@@ -230,6 +230,20 @@ export type PjoyState =
    * unrepresentable rather than merely fixed.
    */
   | { readonly kind: 'dwell'; readonly timer: number }
+  /**
+   * jt5-8 — the DUMB brain's forced glide: `LNTOFP` parked in `PJOY,U` by a
+   * flapping `LINET` wake (`LDD #LNTOFP / STD PJOY,U`, JOUSTRV4.SRC:3746-3747).
+   * The next wake enters at `LNTOFP` instead of at `LINET`, which restores
+   * `#LINET` and clears the flap bit UNCONDITIONALLY (:3759-3762) — so the lane
+   * decision is never re-run on it, and the machine cannot flap on two
+   * consecutive wakes.
+   *
+   * It carries NO `timer`, and that absence is the model, not an omission: the
+   * ROM's alternation is two routine pointers and nothing else — no `PJOYT`
+   * write, no DYTBL row, so it does not scale with the wave the way every other
+   * variant here does. `dumbWingbeat` is the only reader and writer.
+   */
+  | { readonly kind: 'glide' }
 
 // ─── Cited constants ────────────────────────────────────────────────────────
 
@@ -396,6 +410,20 @@ export function shouldPromote(budget: IntelBudget): boolean {
  * (PDECSN → DSMART, JOUSTRV4.SRC:3772-3773). Throws if the enemy is already
  * smart — the "PCHASE … BETTER BE ZERO" invariant (JOUSTRV4.SRC:3766); an
  * already-smart enemy is NEVER re-promoted. Pure — inputs untouched.
+ *
+ * jt5-8 — it also DISCARDS the `PJOY` workspace, because `LNTSMT` writes the new
+ * smart routine over that very cell (`LDX DSMART,X / STX PJOY,U / JMP ,X`,
+ * :3773-3775). The only thing a dumb enemy can have parked there is the LNTOFP
+ * glide.
+ *
+ * BELT AND BRACES, and said plainly rather than left to read as load-bearing: a
+ * leaked glide could not survive anyway. A freshly promoted enemy carries no
+ * `seek`, so its first smart wake always reaches `seekWake`'s decide, and every
+ * route there writes `pjoy` (undefined on the up/down seeks, a fresh interval on
+ * level). Measured, not reasoned: deleting this clear leaves all 34 of
+ * tests/dumb-wingbeat.test.ts green. It is kept because AC3's mechanism IS this
+ * store, and stating it here makes promotion's contract local instead of a
+ * property of a function three calls away.
  */
 export function promote(
   enemy: EnemyState,
@@ -408,7 +436,7 @@ export function promote(
     )
   }
   return {
-    enemy: { ...enemy, pchase: 1, brain: enemy.decision },
+    enemy: { ...enemy, pchase: 1, brain: enemy.decision, pjoy: undefined },
     budget: { ...budget, nsmart: budget.nsmart + 1 },
   }
 }
@@ -1063,6 +1091,10 @@ function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number):
     // SHLEP/SHLEV decision interval and the SHDICL cliff dwell.
     const cleared = enemy.seek === undefined ? enemy : { ...enemy, seek: undefined }
     if (enemy.brain !== 'shadow') {
+      // jt5-8 — one exception to "a linet wake carries NO workspace": the LNTOFP
+      // glide lives in `PJOY,U` too, and this wake is the one that spends it.
+      // Everything else on a dumb bird is still wiped, so uf1-9's law holds.
+      if (cleared.pjoy?.kind === 'glide') return cleared
       return cleared.pjoy === undefined ? cleared : { ...cleared, pjoy: undefined }
     }
     return shadowDwellWake(cleared, target, wave)
@@ -1147,7 +1179,13 @@ export function stepEnemyDetailed(
   // uf1-2: the brain reads its per-wave difficulty row from `wave`. It runs on
   // the ALREADY-HOMED enemy, so the wave-scaled seek and the flipped facing are
   // the same wake's decision, not two.
-  const decision = runBrain(cadenced, target, wave)
+  const decided = runBrain(cadenced, target, wave)
+  // jt5-8: LINET's two-state wingbeat sits AROUND the lane decision, not inside
+  // it — `linet()` stays the pure decision the ROM reaches at :3733, and this is
+  // the `PJOY,U` dispatch that decides whether the wake entered there at all.
+  const beat = dumbWingbeat(cadenced, decided)
+  const settled = beat.enemy
+  const decision = beat.decision
   // jt8-3: the turn wake FLAPS (`B2DICL`/`SHDICL` `LDB #1`, :4146/:4377) —
   // through ADDFLP that steps the FLYX index 2 toward the new facing, which is
   // the immediate half of the "slow down, going into a cliff" episode.
@@ -1158,13 +1196,49 @@ export function stepEnemyDetailed(
   // Before this they were the same value, so a two-wake wing-down hold spent
   // two impulses instead of one.
   const held = wingsDown
-  const pressed = held && !(cadenced.prevFlapHeld ?? false)
+  const pressed = held && !(settled.prevFlapHeld ?? false)
   const input: PlayerInput = { dir: decision.dir, flap: pressed, flapHeld: held }
-  const edge = wingEdge(cadenced.entity.airborne, cadenced.prevFlapHeld ?? false, input)
+  const edge = wingEdge(settled.entity.airborne, settled.prevFlapHeld ?? false, input)
   return {
-    enemy: { ...cadenced, entity: stepEntity(cadenced.entity, input), prevFlapHeld: input.flapHeld },
+    enemy: { ...settled, entity: stepEntity(settled.entity, input), prevFlapHeld: input.flapHeld },
     wingEdge: edge,
   }
+}
+
+/**
+ * jt5-8 — LINET's wingbeat: a two-state alternation with NO timer in it.
+ *
+ * `PJOY,U` holds the routine the next wake enters at, and LINET writes it twice:
+ *
+ *   • `LNTUP` (JOUSTRV4.SRC:3746-3748) — reached only when the lane decision
+ *     wants a flap — parks `#LNTOFP` and sets `LDB #1` (flap).
+ *   • `LNTOFP` (:3759-3762) — where that next wake therefore begins — restores
+ *     `#LINET`, `CLRB`, and `BRA LNTFLP`.
+ *
+ * Two consequences, and both are the point. The glide wake is UNCONDITIONAL:
+ * entering at `LNTOFP` means the lane decision at :3733-3745 is never executed,
+ * so a bird still sunk below its lane and still falling glides anyway. And the
+ * glide wake still STEERS — `LNTFLP` (:3749) is the shared tail both paths reach
+ * — so it is a wings-up wake, not a dead one.
+ *
+ * Modelled here rather than inside `linet()` because `linet()` IS the code at
+ * :3733, and the whole content of "unconditional" is that a glide wake does not
+ * run it. Pure — the arguments are never mutated.
+ */
+function dumbWingbeat(
+  enemy: EnemyState,
+  decision: Decision,
+): { enemy: EnemyState; decision: Decision } {
+  if (enemy.brain !== 'linet') return { enemy, decision }
+  if (enemy.pjoy?.kind === 'glide') {
+    // LNTOFP: hand the pointer back to LINET and clear the flap bit. `dir` is
+    // untouched, which is the `BRA LNTFLP` fall-through.
+    return { enemy: { ...enemy, pjoy: undefined }, decision: { ...decision, flap: false } }
+  }
+  // LNTUP: only a FLAPPING wake parks the glide. A wake that declined to flap
+  // fell through `LNTTRK`'s `BPL`/`BMI` straight to `LNTFLP` and wrote nothing.
+  if (decision.flap) return { enemy: { ...enemy, pjoy: { kind: 'glide' } }, decision }
+  return { enemy, decision }
 }
 
 /**
@@ -1200,7 +1274,10 @@ function shadowDwellWake(enemy: EnemyState, target: PlayerView | null, wave: num
   const running = enemy.pjoy
   // A cliff dwell is `withWingCadence`'s to tick (one law, both brains) — leave it.
   if (running?.kind === 'dwell') return enemy
-  if (running !== undefined) {
+  // jt5-8 — a `glide` is LINET's, and `dumbWingbeat` is its only writer, so the
+  // shadow lord cannot be in one. Excluded by narrowing rather than by comment:
+  // the countdown below is the SHLEP/SHLEV interval, and a glide has none.
+  if (running !== undefined && running.kind !== 'glide') {
     const remaining = running.timer - 1
     if (remaining > 0) return { ...enemy, pjoy: { kind: 'interval', timer: remaining } }
     // Expired — `JMP SHADOW` / `SHBRA2`: fall through and re-decide this wake.
@@ -1224,7 +1301,14 @@ function shadowDwellWake(enemy: EnemyState, target: PlayerView | null, wave: num
  * brain's own rows) stays next to the cadence law rather than in the pipeline.
  */
 function withWingCadence(enemy: EnemyState, target: PlayerView | null, wave: number): EnemyState {
-  if (enemy.brain === 'linet') return enemy.pjoy === undefined ? enemy : { ...enemy, pjoy: undefined }
+  if (enemy.brain === 'linet') {
+    // jt5-8 — LINET runs no wing CADENCE (there is no `PJOYT` anywhere in its
+    // alternation), but it does park LNTOFP in the same `PJOY` cell. Carry that
+    // one state through to the brain step, which is what spends it; keep wiping
+    // every other, which is uf1-9's "the dumb brain has no workspace".
+    if (enemy.pjoy === undefined || enemy.pjoy.kind === 'glide') return enemy
+    return { ...enemy, pjoy: undefined }
+  }
   // A dwell still running was already decremented by `seekWake` and pre-empts the
   // cadence entirely — `B2AV`/`SHAV` hold the wings up and re-decide on expiry,
   // never flapping. Leaving it untouched here is what stops the hunter's dwell

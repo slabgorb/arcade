@@ -76,7 +76,7 @@ import { EVENT_KINDS, type GameEvent } from '../src/core/events.js'
 import { CHANNELS, CUE_SOURCES, SOUNDS, type CueSource } from '../src/shell/audio.js'
 import { playEventSounds } from '../src/shell/audio-dispatch.js'
 import type { EntityState, PlayerInput } from '../src/core/flight.js'
-import type { EnemyState } from '../src/core/enemy.js'
+import { linet, type EnemyState } from '../src/core/enemy.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const vendoredRoot =
@@ -552,11 +552,22 @@ describe('jt5-3 AC3 — entering flight: STFLY sounds, STFALL does not', () => {
 // PJOYT cadence is holding and `pressed` is its rising edge. The machine's own
 // shape is unchanged and is still the reason this is not a bug: one bit
 // (`CURJOY+1`, register B), read as the edge by FLIPLP's `TSTB / BNE GOFLAP` and
-// as the level by FLAPS2's `CLRB`. The latch it adds — LINET holds B
-// for exactly one wake (LNTUP -> LNTOFP), BOUNDR for `BOUPWD` wakes (PJOYT, "WING
-// DOWN TIME"). So a wing-down followed by a wing-up on the next WAKE is the
-// machine's own wingbeat, and the thing that must never happen is a second
-// wing-down while the bit is still set.
+// as the level by FLAPS2's `CLRB`. The latch it adds — BOUNDR holds B for
+// `BOUPWD` wakes (PJOYT, "WING DOWN TIME"). So a wing-down followed by a wing-up
+// on the next WAKE is the machine's own wingbeat, and the thing that must never
+// happen is a second wing-down while the bit is still set.
+//
+// CORRECTED BY jt5-8. This paragraph also said "LINET holds B for exactly one
+// wake (LNTUP -> LNTOFP)" alongside the BOUNDR clause, as though uf1-9 had built
+// both. It had not: uf1-9 explicitly denied the DUMB brain a PJOY workspace, so
+// as a claim about the port that sentence was false for the whole of uf1-9's
+// life. jt5-8 is what makes it true, and it is a different mechanism from the
+// one beside it — LINET's is two routine pointers with NO timer (`LNTUP` parks
+// `#LNTOFP`, :3746-3747; `LNTOFP` restores `#LINET` and `CLRB`s, :3759-3762),
+// where BOUNDR's is a DYTBL-scaled countdown. Both halves of the port are pinned
+// in tests/dumb-wingbeat.test.ts, whose AC2 group is precisely the control that
+// tells the two apart (the dumb alternation is identical at waves 1, 7 and 16;
+// the smart cadence is not).
 //
 // The fixture is a dumb LINET buzzard with the intelligence budget exhausted (so
 // it is not promoted out of LINET on its first wake) and its first wake staged
@@ -611,8 +622,17 @@ const buzzardStepped = (before: DemoState, after: DemoState): boolean =>
 describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun them', () => {
   it('one flapping wake, then one not: DOWN on the first, UP on the second', () => {
     // timeUp 1 makes the flap impulse a full -96, so the bird is rising on the
-    // wake after it flaps and LINET stops asking. That is a whole wingbeat, and
-    // it is exactly LINET's LNTUP -> LNTOFP one-shot in the ROM.
+    // wake after it flaps and LINET stops asking. That is a whole wingbeat.
+    //
+    // CORRECTED BY jt5-8: this comment used to end "and it is exactly LINET's
+    // LNTUP -> LNTOFP one-shot in the ROM", which attributed the silence to a
+    // mechanism the port did not have. The alternation seen HERE is the flap
+    // IMPULSE — at low `timeUp` a full -96 leaves the bird rising, so the lane
+    // decision declines on its own and this fixture reads the same with the
+    // latch absent. jt5-8 adds the real LNTUP/LNTOFP one-shot, and this fixture
+    // is exactly the one that CANNOT tell you so: it is kept as the named
+    // natural-glide control in tests/dumb-wingbeat.test.ts (`NATURAL_GLIDE`),
+    // beside the `SUNK_AND_SINKING` fixture that can.
     let d = stageBuzzard(enemyEntity(0x90, -1, 1), 1)
     const expected: string[][] = [
       [], //  wake 0 — rising, LINET does not flap: establishes wings-UP
@@ -637,10 +657,36 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
     seen.forEach((got, i) => expect(got, `wake ${i}`).toEqual(expected[i]))
   })
 
-  it('wings HELD across many wakes sound ONCE — the edge, never the level', () => {
-    // timeUp 255 spends the impulse down to -1, so the bird keeps sinking and
-    // LINET keeps asking for a flap on every wake. The ROM's FLAPLP loops on
-    // that condition and falls through to FLAPS2, BYPASSING the `JSR VSND`.
+  it('a sinking buzzard ALTERNATES down/up — it cannot hold its wings at all (jt5-8)', () => {
+    // jt5-8 RE-STAGE, and this one is a change of LAW-HOLDER, not a moved number
+    // — read this before treating it as an ordinary re-baseline.
+    //
+    // This test used to be `wings HELD across many wakes sound ONCE — the edge,
+    // never the level`, staged right here on a dumb buzzard: timeUp 255 spends
+    // the impulse down to -1, so the bird keeps sinking and LINET keeps asking
+    // for a flap on every wake, and the assertion was that the twelve wakes
+    // after the press edge are SILENT.
+    //
+    // jt5-8 makes that staging impossible. LNTOFP (JOUSTRV4.SRC:3759-3762)
+    // forbids a dumb bird from flapping on two consecutive wakes at all, so it
+    // can no longer hold its wings down across wakes — the actor is gone, and
+    // re-baselining this test to the alternating stream WITHOUT saying so would
+    // have quietly deleted jt5-3's machine-gun guard. It did not: the law is
+    // re-staged, before this edit, on the two actors that CAN still hold, in
+    // tests/dumb-wingbeat.test.ts →
+    //   `GUARD — a HELD wing still sounds once, on the actors that can still
+    //    hold one`  (the knight, holding the button for 14 frames → exactly one
+    //    `player-wing-down`; and a SMART bird, whose PJOYT cadence holds the
+    //    wings down for two wakes → `down` then `null`).
+    //
+    // What is pinned HERE instead is the thing that replaced it, through the
+    // whole `stepDemo` pipeline rather than through `stepEnemyDetailed` alone:
+    // the ROM's alternation, wake after wake, for as long as the bird keeps
+    // asking. Each `down` is still an EDGE — the level falls between them —
+    // which is why a machine-gun would fail this test too: it would put a `down`
+    // where every `up` is. The bypass jt5-7 corrected (FLAPLP falls through to
+    // FLAPS2, BYPASSING the `JSR VSND`) is still the reason a held level is
+    // silent; what jt5-8 removes is this brain's ability to hold one.
     let d = stageBuzzard(enemyEntity(0x90, -1, 255), 1)
     const before = stepDemo(d, {})
     expect(simKindsOf(before), 'precondition: the first wake is the silent rising one').toEqual([])
@@ -650,14 +696,34 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
       ENEMY_WING_DOWN,
     ])
 
-    const rest: string[] = []
+    const rest: string[][] = []
     for (let i = 0; i < 12; i++) {
       const prev = d
       d = stepDemo(d, {})
       expect(buzzardStepped(prev, d), `precondition: the buzzard is still waking (${i})`).toBe(true)
-      rest.push(...simKindsOf(d))
+      // The lane decision must still WANT a flap on every one of these wakes,
+      // or the alternation below could be the bird having simply stopped asking
+      // — the natural-glide trap, in this file's own fixture vocabulary.
+      const e = buzzardOf(d)?.enemy?.entity
+      expect(linet({ entity: e!, facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' }).flap,
+        `precondition: the lane decision still wants a flap on wake ${i}`).toBe(true)
+      rest.push(simKindsOf(d))
     }
-    expect(rest, 'a wing-down per wake is a machine-gun, not a wingbeat').toEqual([])
+    expect(rest.flat().length, 'nothing was emitted — the rows below are vacuous').toBeGreaterThan(0)
+    expect(rest).toEqual([
+      [ENEMY_WING_UP],
+      [ENEMY_WING_DOWN],
+      [ENEMY_WING_UP],
+      [ENEMY_WING_DOWN],
+      [ENEMY_WING_UP],
+      [ENEMY_WING_DOWN],
+      [ENEMY_WING_UP],
+      [ENEMY_WING_DOWN],
+      [ENEMY_WING_UP],
+      [ENEMY_WING_DOWN],
+      [ENEMY_WING_UP],
+      [ENEMY_WING_DOWN],
+    ])
   })
 
   it('a frame the buzzard does not WAKE on is silent', () => {
@@ -676,9 +742,22 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
       'precondition: the staged period really does skip alternate frames',
     ).toEqual([true, false, true, false, true, false])
     expect(emitted[2].cues, 'the press edge lands on the WAKE').toEqual([ENEMY_WING_DOWN])
-    for (const i of [0, 1, 3, 4, 5]) {
+    // CORRECTED BY jt5-8. This loop used to run over [0, 1, 3, 4, 5] under the
+    // message "frame N is not this buzzard's wake" — but the precondition
+    // directly above says frames 0 and 4 ARE wakes, so two of the five were
+    // riding along under a false label and the per-frame-vs-per-wake law was
+    // only ever carried by 1, 3 and 5. Split, so each index is asserted for
+    // what it actually is:
+    for (const i of [1, 3, 5]) {
       expect(emitted[i].cues, `frame ${i} is not this buzzard's wake`).toEqual([])
     }
+    //   • frame 0 IS a wake, and is silent because the bird is still rising —
+    //     LINET declines to flap, which is what establishes the wings-up level.
+    expect(emitted[0].cues, 'the first wake is the silent rising one').toEqual([])
+    //   • frame 4 IS a wake, and jt5-8 is what moved it: it is LNTOFP's forced
+    //     glide (:3759-3762), so the wings come UP. Under the held-level port it
+    //     was silent, which is the one index in this test the story touches.
+    expect(emitted[4].cues, "the glide wake raises the buzzard's wings").toEqual([ENEMY_WING_UP])
   })
 
   it('a buzzard cue is never a KNIGHT cue', () => {
@@ -807,12 +886,20 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
     // `enemy#258` is elsewhere. The egg can no longer be cited as an unchanged
     // row — it is downstream of a KILL, and kill timing is exactly what a flap
     // cadence moves.
+    //
+    // jt5-8 RE-BASELINE, and the invariant survives a FIFTH tree: `player#1`,
+    // `player#2` AND `enemy#256` are byte-for-byte what they were — a change
+    // that moves a player row here is still a bug whatever story it rides in on.
+    // The dumb wingbeat swings the kill the other way: `enemy#257` dies at frame
+    // 199 (it was alive at 200 under uf1-9, dead under uf1-8), so `egg#65793` is
+    // back in the list and `enemy#258` is elsewhere again. Which enemy row moves
+    // is not the claim; that no PLAYER row does, is.
     expect(entityDigest(0xbeef, 200)).toEqual([
       'player#1:40,30508,326,-4,192,161,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:171,30017,-13,8,64,101,1',
-      'enemy#257:34,35072,0,2,0,1,0',
-      'enemy#258:171,38715,178,8,64,101,1',
+      'enemy#258:171,33756,-20,8,64,101,1',
+      'egg#65793:-',
     ])
   })
 

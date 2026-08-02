@@ -711,11 +711,23 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // Precondition for the two payload tests. Green today: it reads only
     // process ids, never the event stream, so it proves the staging is real
     // before the payload exists to carry it.
+    // jt5-8 RE-BASELINE. The dumb brain's LNTUP/LNTOFP alternation re-flies every
+    // unpromoted buzzard, so the knights meet them elsewhere and the re-entry
+    // frames move with the deaths that cause them. Re-found by sweeping 2600
+    // frames of each seed for THIS test's own precondition — a player id
+    // appearing in the process list that was not there the frame before — never
+    // by nudging a number:
+    //   0xbeef re-entries: 214→2, 340→1, 540→2, 820→2, 1122→2, 1784→1
+    //   0xface re-entries: 622→1, 950→1, 1395→1, 2063→2, 2233→2, 2245→1, 2535→2
+    // 214 is UNMOVED. 372 → 340, the same knight (1) and still this seed's first
+    // player-1 re-entry. 1889 → 2063, chosen from 0xface's list because the
+    // coupling below requires knight TWO and it is the earliest that re-enters
+    // knight 2; audio-events.test.ts stages the same frame, as it did before.
     expect(materialisedIdsAt(0xbeef, 214), 'seed 0xbeef frame 214 re-enters knight 2').toEqual([2])
-    expect(materialisedIdsAt(0xbeef, 372), 'seed 0xbeef frame 372 re-enters knight 1').toEqual([1])
+    expect(materialisedIdsAt(0xbeef, 340), 'seed 0xbeef frame 340 re-enters knight 1').toEqual([1])
     expect(
-      materialisedIdsAt(0xface, 1889),
-      'seed 0xface frame 1889 — the frame audio-events.test.ts:404 already stages — re-enters ' +
+      materialisedIdsAt(0xface, 2063),
+      'seed 0xface frame 2063 — the frame audio-events.test.ts already stages — re-enters ' +
         'knight TWO. Its comment there calls this "SNPCR1 PLAYER 1 RE-CREATED", which is the ' +
         'same misattribution AC5 fixes on the citation, arrived at from the emitter side.',
     ).toEqual([2])
@@ -728,14 +740,14 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // measured frames rather than by reading events.ts, because a type can
     // declare a field the emitter never fills.
     expect(materialiseEventsAt(0xbeef, 214).map((e) => e.player)).toEqual([2])
-    expect(materialiseEventsAt(0xbeef, 372).map((e) => e.player)).toEqual([1])
+    expect(materialiseEventsAt(0xbeef, 340).map((e) => e.player)).toEqual([1])
   })
 
   it('the payload is the LOOP’s id, not a constant — the two frames disagree', async () => {
     // The control that kills the cheapest green: `player: 1` hardcoded at the
     // emit site satisfies the player-1 frame and every dispatch test below.
     const two = materialiseEventsAt(0xbeef, 214).map((e) => e.player)
-    const one = materialiseEventsAt(0xbeef, 372).map((e) => e.player)
+    const one = materialiseEventsAt(0xbeef, 340).map((e) => e.player)
     expect(two, 'precondition: both frames emit').toHaveLength(1)
     expect(one).toHaveLength(1)
     expect(two[0], 'a constant would make these equal').not.toBe(one[0])
@@ -743,8 +755,8 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
 
   it('the frame the suite already stages sounds SNPCR2 — today it sounds SNPCR1', async () => {
     // The headline defect, end to end, at a fixture that predates this story.
-    const events = materialiseEventsAt(0xface, 1889)
-    expect(events, 'precondition: frame 1889 still emits the moment').toHaveLength(1)
+    const events = materialiseEventsAt(0xface, 2063)
+    expect(events, 'precondition: frame 2063 still emits the moment').toHaveLength(1)
     expect(await cuesFor({ ...events[0]! })).toEqual(['player2Materialise'])
   })
 
