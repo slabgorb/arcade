@@ -1382,3 +1382,8 @@ completed_stories:
     title: 'Harden the comment-citation guard: it cannot see its own directory, its opt-out fires on a MENTION, and its stated limits omit the two biggest ones (sw8-18 review findings 3, 4, 5, 7)'
     points: 3
     completed: '2026-08-02'
+  - id: jt5-23
+    epic: jt5
+    title: What ARE G1DEC/G2DEC? CUE_SOURCES now cites two decision-block families with no model of either
+    points: 3
+    completed: '2026-08-02'

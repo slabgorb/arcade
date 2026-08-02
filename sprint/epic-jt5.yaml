@@ -270,7 +270,7 @@ stories:
       NOT MEASURED BY SM, handed over as an open question: the port has a 1602-line core/demo.ts that emits its own cue stream, and SNPTREF is modelled by NO cue at all (it appears only inside verbatim strings). So there is no CURRENT audible G/P divergence - but whether demo.ts's cue stream should cite the G-family is a real question this story does not close. TEA should decide whether it is in scope or gets filed.
     points: 3
     priority: p1
-    status: in_review
+    status: done
     started: '2026-08-02'
     repos: arcade
     workflow: tdd
@@ -281,6 +281,7 @@ stories:
       - playerWingUp and playerWingDown re-anchor their callSite from line 5544 (G1DEC, the attract-demo binding) to line 5552 (P1DEC, real play), so CUE_SOURCES cites ONE decision-block family for every knight cue. A test asserts both cues cite the P-family row and that the row really opens with SNPLWU,SNPLWD.
       - The false claim in the shipped jt5-3 comment at audio-manifest.ts:326 - These four cite the G-BLOCK row (:5544) - is corrected. Only playerWingUp and playerWingDown ever cited :5544; enemyWingUp and enemyWingDown cite :5560, which is P3DEC's sound row and has no G-variant at all. The count of cues affected by the G/P question is two, not four.
       - The recorded rationale explains why the pre-jt5-23 citation was ALSO true - SNPLWU,SNPLWD open all four knight rows (:5544, :5548, :5552, :5556) identically - so the re-anchor reads as a precision gain and not as the correction of a wrong citation.
+    completed: '2026-08-02'
     review_findings: "APPROVED at round 2 (round 1 REJECTED on 1 High). All four round-1 findings verified CLOSED against the ROM, not against the assessment: (1) HIGH — the G1JOY/G2JOY corroboration cited :601-616 (a span starting inside the unrelated L2EGG routine and stopping ten lines before STD CURJOY :625) and claimed adjacency to ATTRCT :712 that does not exist. Now cites :615-626, names STD CURJOY :625, and cites the ROM's own header at :613 'GAME SIMULATION PLAYER COMMANDS'; the ATTRCT clause was deleted rather than repaired and :712 now appears nowhere in the file. Fixed in all four locations including two in the test file. (2) MEDIUM — 'a buzzard has no joystick' replaced: the decision field IS populated for creatures (AUTOFF at P3DEC :5558, LINET/BOUNDR at P4DEC :5562, same slots as P1DEC's P1JOY), and what a creature lacks is a PANEL read. (3) MEDIUM — the resolution guard covered one citation group of five, which is how the High shipped green; four new guards added, each mutation-proven in TWO independent batteries with two CONTROL mutations that correctly stay green. (4) LOW — the re-spaced quotation lost its quote marks. Round 2's own two NEW universal claims were also verified: no panel read exists anywhere in :615-626, and AUTOFF/LINET/BOUNDR are all position/state AI. Two LOW observations recorded and not blocking: guard 1 is existential over ranges, and guard 3 scans whole comment text. Suite 2939/2939, lint clean, orchestrator 372/372."
     review_verdict: approved
   - id: jt5-24
