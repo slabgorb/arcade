@@ -3327,3 +3327,87 @@ mark six non-citations `RETIRED:` — both of which write a false record into th
 exists to make truthful. **A handed-over uncertainty is cheaper to resolve than to route
 around; resolve it first and let the answer set the scope.** The result here added a
 three-line fix to the story and removed six errors, four of them pre-existing.
+
+---
+
+## A "dead in the ROM" verdict can rest on a LABEL-keyed read — check whether the row is reached POSITIONALLY (jt9-1, 2026-08-02)
+
+**Situation:** AC3 said a countdown "reloads from LNTLAV", so I had to identify that symbol.
+`difficulty.ts` records the matching DYTBL row as `{ kind: 'dead-in-rom' }` with a confident,
+checkable reason: *"its label appears exactly ONCE in the whole of JOUSTRV4.SRC, on its own DYWORD
+line at :7306 — Williams shipped a row nothing reads, so there is no behaviour to port and no story
+can wire it."* Two shipped tests guard it, one of them re-stating the reasoning in a comment.
+
+**The label claim is TRUE. The row claim is FALSE.** The DYTBL's trailing label is a comment, not an
+operand; the initialiser never reads a name. It walks the table and the RAM block in lockstep —
+`LDX #DYTBL / LDY #DYNADJ … LEAX DYWLEN,X / LEAY 3,Y / CMPX #DYEND` — so row *n* fills RAM slot *n*.
+Slot 3 is declared `LNTLAV` in RAMDEF and commented `LAVLAV` in the table. Same row, two spellings,
+and the real name is read at four sites.
+
+**How I proved it rather than argued it:** parsed both blocks and compared all 28. Every RAM slot is
+exactly 3 bytes (which is what `LEAY 3,Y` requires — an independent check that my slot-splitting was
+right), and 27 of 28 names match. **The alignment evidence is what makes the one mismatch mean
+"typo", instead of "my parse is off by one."** One mismatch out of 28 with perfect sizes is a
+spelling; three scattered mismatches would have been a broken reader.
+
+**Generalise — the tell is a symbol reached by POSITION.** Jump tables, `RMB` blocks, DYWORD tables,
+struct offsets, `FCB` rows indexed by an enum: none of them mention the name at the point of use. A
+`grep <LABEL>` census over those is measuring the wrong thing, and it fails in the direction that
+looks like a finding ("nothing reads this — it's dead"). Before believing any "unused / dead /
+no-consumer" verdict about table data, ask **how the consumer addresses it**. If the answer is an
+offset, the label census proves nothing at all.
+
+**Corollary:** the port's claim was not sloppy — it named its evidence, and that is why it was
+falsifiable in ten minutes. Prefer that shape even when it turns out wrong.
+
+## The most useful mutant is the one that turns the story's CENTRAL assertion green
+
+The battery's second mutant blinded the promotion sweep to glides (`pjoy: 'none'` unconditionally).
+Result: `AC2 — on the IDLE-input replay, zero promotions carry a glide` **PASSED**, and the only
+failure was the positive control sitting beside it.
+
+That is the whole argument for the control, demonstrated instead of asserted. An AC phrased as
+"sweep for X and the count is ZERO" is satisfied just as well by a probe that cannot see X — so
+**breaking the instrument is indistinguishable from fixing the bug**, and it is the cheaper of the
+two. Whenever an AC's success condition is an EMPTY result, the mutant to run is not "delete the
+mechanism" but "blind the observer", and the guard is a control asserting the observer still
+registers the phenomenon somewhere it is known to occur (here: 132-466 glide-carrying enemy-frames
+per harness, in every harness including the ones with zero glide-carrying promotions).
+
+## Reachability is worth measuring BEFORE designing the pin — and "zero" can be structural
+
+The story asked for a behaviour keyed on "a lava troll immediately behind this bird". Rather than
+design the fixture first, I swept: **zero troll-present frames** across 3 seeds x 6000 frames x two
+input harnesses. Not rare — structurally absent, because the spawn gate needs `bridgeBurned &&
+wave >= 4` and seeded play reaches wave 1-3.
+
+Two things followed that would have been expensive to discover later:
+
+1. **The end-to-end pin had to be a forced wave advance**, disclosed in a CONTROL that states the
+   measurement, rather than a seeded sweep that would have been permanently vacuous.
+2. **A second defect surfaced that no AC named.** The ROM's test only ever fires because the troll
+   is CREATED immediately before its victim; our port appends it at the list end. Modelling the
+   behaviour without that would have shipped a correct pure function whose production input is
+   `false` forever — this repo's named failure mode, and the Reviewer would rightly have called it.
+
+**The rule: when an AC is conditioned on some entity being adjacent/present/attached, measure how
+often that condition holds in production BEFORE writing the fixture.** A zero tells you whether you
+are writing a unit pin or an integration pin, and it frequently exposes the wiring defect that makes
+it zero.
+
+## Re-measuring a prose correction can DISAGREE with the finding and still confirm it
+
+R-4 said a test comment's "these four seeds are the only hits" was false: 36 of 400 seeds in the
+band produce the event, 20 at frame 973. Standing rule says re-measure rather than transcribe, so I
+did — and got **62 of 400, none at frame 973.**
+
+Not a contradiction: I counted each seed's FIRST event within 1100 frames; the original counted
+events at any frame. Different populations, both refuting "the only hits". **I nearly published my
+number as a correction to theirs**, which would have replaced one confident count with another by a
+method nobody could reconstruct from the comment.
+
+What went in instead: both censuses, both methods named, the disagreement stated, and the conclusion
+that survives either — *such seeds are common, so scan and take the earliest rather than assuming
+scarcity*. **When two honest measurements of a "how rare is this" claim disagree because they count
+different things, that disagreement is the evidence that a bare count does not belong in the comment
+at all.** Fixing the number would have re-created the defect one layer up.
