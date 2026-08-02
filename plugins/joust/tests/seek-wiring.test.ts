@@ -541,7 +541,10 @@ describe('AC-5 — ROW_DISPOSITION records the wiring', () => {
     const d = await loadDifficulty()
     expect(d.ROW_DISPOSITION.BODNVY.kind, 'uf1-2 wiring stands').toBe('wired')
     expect(d.ROW_DISPOSITION.HUDNVY.kind, 'uf1-2 wiring stands').toBe('wired')
-    expect(d.ROW_DISPOSITION.LAVLAV.kind, 'Williams shipped a row nothing reads').toBe('dead-in-rom')
+    // jt9-1: was `dead-in-rom` on a label-keyed reading of the source. The row is
+    // read four times under its RAM name (LNTLAV); this guard's job — stopping a
+    // seek story reaching into rows it does not own — is unchanged.
+    expect(d.ROW_DISPOSITION.LAVLAV.kind, "jt9-1's looker owns this row").toBe('wired')
     // uf1-9 HAS NOW LANDED, so these eleven are wired rather than pending. The
     // guard's job is unchanged — it stops a seek story reaching into rows it does
     // not own — so it still names them, and now requires the wiring to be REAL

@@ -310,6 +310,7 @@ function runBehaviour(
   inputs?: Record<number, PlayerInput>,
   wave = 1,
   target?: PlayerView | null,
+  lavaBehind = false,
 ): { process: Process; budget: IntelBudget; cue?: WingCue } {
   if (p.kind === 'player' && p.entity) {
     const input = inputs?.[p.id] ?? NEUTRAL_INPUT
@@ -342,7 +343,15 @@ function runBehaviour(
   if (p.kind === 'enemy' && p.enemy) {
     let enemy = p.enemy
     let next = budget
-    if (enemy.pchase === 0 && shouldPromote(next)) {
+    // jt9-1: …and PJOY,U is an ENTRY ADDRESS, so a bird with a pending LNTOFP
+    // obligation resumes at :3759 and never executes `LDA NSMART / CMPA WSMART
+    // / BLO LNTSMT` (:3722-3724). LNTSMT has exactly two references in the whole
+    // source — that branch and its own label — so those three instructions are
+    // the ONLY route into promotion, and a glide wake cannot reach it. The
+    // promotion is DEFERRED, not cancelled: the glide wake clears the obligation
+    // itself, so the very next wake enters at LINET and takes it.
+    const gliding = enemy.pjoy?.kind === 'glide'
+    if (enemy.pchase === 0 && !gliding && shouldPromote(next)) {
       const promoted = promote(enemy, next)
       enemy = promoted.enemy
       next = promoted.budget
@@ -356,7 +365,7 @@ function runBehaviour(
     // jt5-3: `stepEnemyDetailed` runs the SAME brain + flight step `stepEnemy`
     // does (it IS stepEnemy's implementation) and additionally reports the wing
     // edge that wake produced, from the `input.flap`/`flapHeld` only it sees.
-    const stepped = stepEnemyDetailed(enemy, { player: target ?? null, wave })
+    const stepped = stepEnemyDetailed(enemy, { player: target ?? null, wave, lavaBehind })
     return {
       process: { ...p, enemy: stepped.enemy },
       budget: next,
@@ -427,6 +436,11 @@ export function stepFrame(
     }
   }
 
+  // jt9-1: the running PPREV. Seeded empty — the first process of the frame has
+  // no predecessor, which is the `LDX PPREV` the ROM leaves pointing at whatever
+  // ran last; modelling that as "nothing" is the conservative reading and keeps
+  // the frame boundary deterministic.
+  let lastRanKind: string | undefined
   const pass = (cls: ProcessClass): void => {
     processes.forEach((p, i) => {
       if (p.cls !== cls) return
@@ -445,7 +459,14 @@ export function stepFrame(
               players,
             )
           : null
-      const ran = runBehaviour(p, budget, inputs, wave, target)
+      // jt9-1: `PPREV` — "ADDR OF PREVIOUSLY EXECUTED PROCESS BLOCK"
+      // (RAMDEF.SRC:240). It is a GLOBAL the scheduler keeps, not a field of any
+      // workspace, so it is the id of whichever process last actually RAN this
+      // frame — across both passes, and skipping napped processes, because a
+      // napped process does not execute.
+      const lavaBehind = lastRanKind === 'troll'
+      const ran = runBehaviour(p, budget, inputs, wave, target, lavaBehind)
+      lastRanKind = p.kind
       next[i] = { ...ran.process, nap: p.period }
       budget = ran.budget
       if (ran.cue !== undefined) cues.push({ type: ran.cue })

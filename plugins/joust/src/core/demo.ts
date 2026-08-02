@@ -528,6 +528,33 @@ function trollEntity(): EntityState {
   }
 }
 
+/**
+ * jt9-1 — place a spawned troll where the ROM places it: immediately BEFORE the
+ * process it attaches to, not at the end of the list.
+ *
+ * `VCUPROC` creates a process relative to the workspace in U, and the troll's
+ * creation site loads that workspace from `PPREV`:
+ *
+ *     :6775  LDA  #LAVID          LAVATROLL I.D.
+ *     :6778  LDU  PPREV           AFTER PREVIOUS PROCESS (BEFORE THIS ONE)
+ *
+ * The 1982 comment states the geometry outright, and it is the ONLY reason the
+ * lava-troll looker can ever fire: every brain's looker asks `LDX PPREV / LDA
+ * PID,X / CMPA #LAVID` — "did a lava troll execute immediately before me?" — and
+ * a troll appended after every enemy is a troll no enemy can ever see.
+ *
+ * We have no victim to attach to (the grip that would choose one is unwired —
+ * jt9-11), so the placement is in front of the FIRST ground enemy, which is the
+ * closest honest reading of "before this one". If there is no enemy at all the
+ * troll goes at the end, exactly as before: with nobody to look behind them the
+ * position is unobservable.
+ */
+function insertTroll(processes: readonly DemoProcess[], troll: DemoProcess): DemoProcess[] {
+  const victim = processes.findIndex((p) => p.kind === 'enemy')
+  if (victim < 0) return [...processes, troll]
+  return [...processes.slice(0, victim), troll, ...processes.slice(victim)]
+}
+
 /** A lava-troll process — the hand grabbing off CLIF5 once the bridge has burned
  * (trollSpawnable, jt3-3). Its id rides a per-wave namespace clear of the ground
  * enemies (< $80) and the pteros ($80+). */
@@ -1347,7 +1374,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     // Only ONE live troll at a time: nothing removes a troll placeholder yet, so
     // without this dedup guard a troll would stack one-per-wave-clear (jt3-7 N2).
     if (trollSpawnable(arena, wave) && !processes.some((p) => p.kind === 'troll'))
-      processes = [...processes, trollProcess(wave)]
+      processes = insertTroll(processes, trollProcess(wave))
     budget = seedWaveBudget(waveRowAt(wave))
     // WBEGIN re-seeds the baiter schedule each wave (JOUSTRV4.SRC:2081-2089).
     baiterClock = seedBaiterClock(wave)

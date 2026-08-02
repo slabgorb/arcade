@@ -530,9 +530,30 @@ test('context scope follows the archive rule — completed work is left as a rec
   );
 
   // And an epic that still has open stories MUST be scanned, or the guard is scoped
-  // into vacuity. jt8 has 4 open stories at the time of writing.
+  // into vacuity.
+  //
+  // This exemplar was `jt8`, which had 4 open stories when the assertion was
+  // written. The 2026-08-02 jt9 cut moved every remaining joust story out of jt5
+  // and jt8, so jt8 is now 6/6 done and correctly OUT of scope — the assertion
+  // started failing on an epic that had simply finished, which is the guard
+  // working, not breaking. Re-pointed at jt9 (28 stories, 27 still open).
+  //
+  // Anti-staleness: rather than trust the name, this asserts the PROPERTY the
+  // scope rule is about — pick whichever epic actually has open stories, and
+  // require that one to be scanned. A future cut then re-points it for free.
+  const liveEpics = guardedContextFiles(repo)
+    .map((f) => f.path)
+    .filter((p) => /context-epic-/.test(p));
   assert.ok(
-    scanned.includes('sprint/context/context-epic-jt8.md'),
-    'an epic with open stories is live routing and must be in scope',
+    liveEpics.length > 0,
+    'at least one epic with open stories must be in scope, or the guard is vacuous',
+  );
+  assert.ok(
+    scanned.includes('sprint/context/context-epic-jt9.md'),
+    'an epic with open stories (jt9: 27 of 28 open) is live routing and must be in scope',
+  );
+  assert.ok(
+    !scanned.includes('sprint/context/context-epic-jt8.md'),
+    'jt8 is 6/6 done since the jt9 cut — a completed epic is a record, not live routing',
   );
 });

@@ -298,19 +298,36 @@ export type RowDisposition =
  * archive note, so the next sweep reads it instead of rediscovering the gap.
  *
  * uf1-2 wires 2 (the down-seek brakes); uf1-8 wires 10 more (the range-seek
- * gates and the PDIST budgets). LAVLAV is dead in the ORIGINAL: its label
- * appears exactly ONCE in the whole of JOUSTRV4.SRC, on its own DYWORD line at
- * :7306 — Williams shipped a row nothing reads, so there is no behaviour to
- * port and no story can wire it. The remaining 15 each wait on a mechanic this
- * clone does not have yet.
+ * gates and the PDIST budgets); uf1-9 wires 11; jt9-1 wires LAVLAV.
+ *
+ * jt9-1 CORRECTS A STANDING ERROR HERE. This block used to record LAVLAV as
+ * `dead-in-rom`, reasoning that "its label appears exactly ONCE in the whole of
+ * JOUSTRV4.SRC, on its own DYWORD line at :7306 — Williams shipped a row nothing
+ * reads". The LABEL claim is true and the ROW claim is false. A DYWORD's
+ * trailing label is a COMMENT, not an operand: the initialiser never reads a
+ * name, it walks the table and the RAM block positionally (`LDX #DYTBL /
+ * LDY #DYNADJ … LEAX DYWLEN,X / LEAY 3,Y / CMPX #DYEND`, :939-950), three RAM
+ * bytes per row. Row 3 therefore fills the third DYNADJ slot, which RAMDEF.SRC
+ * declares as **LNTLAV** — "TIME INCREMENTS TO LOOK FOR A LAVA TROLL"
+ * (RAMDEF.SRC:391). One row, two spellings; the alignment is checkable, and 27
+ * of the 28 names agree (`glide-prologue-source.test.ts`).
+ *
+ * Under its real name the row is read FOUR times — `LDA LNTLAV` at :3727
+ * (LINET), :3789 (BOUNDR), :3973 (B2UNDR) and :4232 (SHADOW), the lava-troll
+ * looker in each brain. jt9-1 ports LINET's; the other three are filed.
+ *
+ * The remaining 4 each wait on a mechanic this clone does not have yet.
  */
 export const ROW_DISPOSITION: Readonly<Record<DyRowName, RowDisposition>> = Object.freeze({
   // ─── Wired by uf1-2 — the down-seek brakes, the one live consumer chain ────
   BODNVY: Object.freeze({ kind: 'wired', consumer: 'enemy.boundr (the bounder down-seek brake)' }),
   HUDNVY: Object.freeze({ kind: 'wired', consumer: 'enemy.b2undr (the hunter down-seek brake)' }),
 
-  // ─── Dead in the 1982 source itself ───────────────────────────────────────
-  LAVLAV: Object.freeze({ kind: 'dead-in-rom' }),
+  // ─── Wired by jt9-1 — the lava-troll looker's countdown period ────────────
+  LAVLAV: Object.freeze({
+    kind: 'wired',
+    consumer: "enemy.dumbWingbeat (LINET's lava-troll looker reload, JOUSTRV4.SRC:3727)",
+  }),
 
   // ─── Wired by uf1-8 — the range-seek gates and the PDIST budgets (10) ──────
   BODNRG: Object.freeze({ kind: 'wired', consumer: 'enemy.boundr (the bounder down range gate, JOUSTRV4.SRC:3801)' }),

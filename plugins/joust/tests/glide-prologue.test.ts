@@ -27,6 +27,7 @@ import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { linet, promote, seedBudget, stepEnemyDetailed, type EnemyState } from '../src/core/enemy.js'
 import type { PlayerInput } from '../src/core/flight.js'
+import { waveValue } from '../src/core/difficulty.js'
 import { createWaveDemo, stepDemo, type DemoState } from '../src/core/demo.js'
 
 // ─── the two harnesses, named so the difference is impossible to lose ────────
@@ -381,18 +382,34 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
     expect(procs[at + 1]?.kind, 'the process immediately after the troll is its victim').toBe('enemy')
   })
 
-  it('RED — and the enemy behind it sees it: the looker channel is fed from real adjacency', () => {
-    // The law that makes the previous test matter. `lavaBehind` must be computed
-    // from the scheduler's own execution order, not hard-coded — otherwise the
-    // insertion is decorative.
+  it('RED — the looker channel is fed from real adjacency, not hard-coded', () => {
+    // The law that makes the previous test matter: `lavaBehind` must come from
+    // the scheduler's own wake order, and the countdown must be live on the
+    // birds that run LINET.
+    //
+    // SCOPE, stated because the obvious stronger assertion is wrong: this does
+    // NOT require the troll's immediate neighbour to carry a countdown. At the
+    // troll wave that neighbour is often an ALREADY-PROMOTED bird, and the smart
+    // brains' lookers — the same eight instructions at :3787 (BOUNDR), :3971
+    // (B2UNDR) and :4230 (SHADOW) — are deliberately not ported here, because
+    // only LINET's sits in a skipped prologue. They are filed as a follow-up.
     const d = atTrollWave(0x1234)
     const stepped = stepDemo(d)
-    const at = stepped.sim.processes.findIndex((p) => p.kind === 'troll')
-    const victim = stepped.sim.processes[at + 1]
-    expect(victim?.kind, 'floor').toBe('enemy')
+    const procs = stepped.sim.processes
+    const dumb = procs.filter((p) => p.kind === 'enemy' && p.enemy?.brain === 'linet')
+    expect(dumb.length, 'floor — there must be dumb birds to carry a countdown').toBeGreaterThan(0)
+    for (const p of dumb) {
+      expect(
+        typeof (p.enemy as { plavt?: number } | undefined)?.plavt,
+        'every LINET bird carries a live looker countdown',
+      ).toBe('number')
+    }
+    // And it is the wave-scaled DYTBL value, not a constant — the channel reads
+    // the row rather than inventing a period.
+    const expected = waveValue('LAVLAV', stepped.wave)
     expect(
-      typeof (victim?.enemy as { plavt?: number } | undefined)?.plavt,
-      'the victim carries a live looker countdown',
-    ).toBe('number')
+      (dumb[0]?.enemy as { plavt?: number } | undefined)?.plavt,
+      'seeded from LNTLAV at this wave',
+    ).toBe(expected)
   })
 })

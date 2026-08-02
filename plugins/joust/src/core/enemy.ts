@@ -170,6 +170,18 @@ export interface EnemyState {
    */
   seek?: SeekState
   /**
+   * jt9-1 — `PLAVT,U`, the lava-troll looker's countdown (`DEC PLAVT,U / BGT`,
+   * JOUSTRV4.SRC:3725-3726). OPTIONAL on the `homing`/`seek` precedent: absent
+   * means the countdown has never been seeded, which behaves exactly as the
+   * machine's zero-initialised byte does (`STA PLAVT,U  INITIAL DELAY = NO
+   * TIME`, :3345) — `DEC` takes it negative, `BGT` fails, and the first wake
+   * reloads it from LNTLAV.
+   *
+   * It lives in the prologue a GLIDE wake skips, so it does NOT tick on a glide
+   * wake. That is the model, not an oversight.
+   */
+  plavt?: number
+  /**
    * jt5-3 — the wing-edge detector's memory: the `flapHeld` LEVEL this enemy's
    * synthetic joystick carried on its LAST WAKE (`CURJOY+1`, read as the edge
    * by FLIPLP's `TSTB`/`BNE GOFLAP` and as the level by FLAPS2's `CLRB`,
@@ -435,8 +447,16 @@ export function promote(
         '(JOUSTRV4.SRC:3766)',
     )
   }
+  // jt9-1 (AC6): `pjoy` is NOT cleared here any more, because it cannot be set.
+  // Promotion is now gated on the glide (`frame.ts`), and a dumb `linet` bird's
+  // `pjoy` is only ever absent or a glide — never `interval`/`wing`, which
+  // belong to the smart brains' cadences and are fenced off `linet` by
+  // `withWingCadence` and `withCliffDwell`. So every enemy that reaches this
+  // function arrives carrying nothing, and jt5-8's belt-and-braces clear was a
+  // branch no input could take (its Reviewer's R-2: deleting it left all 2463
+  // tests green, because two independent routes already guaranteed it).
   return {
-    enemy: { ...enemy, pchase: 1, brain: enemy.decision, pjoy: undefined },
+    enemy: { ...enemy, pchase: 1, brain: enemy.decision },
     budget: { ...budget, nsmart: budget.nsmart + 1 },
   }
 }
@@ -1150,10 +1170,14 @@ function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number):
  */
 export function stepEnemyDetailed(
   enemy: EnemyState,
-  ctx?: { player?: PlayerView | null; wave?: number },
+  ctx?: { player?: PlayerView | null; wave?: number; lavaBehind?: boolean },
 ): { enemy: EnemyState; wingEdge: WingEdge } {
   const target = ctx?.player ?? null
   const wave = ctx?.wave ?? 1
+  // jt9-1: `PPREV` — did a lava troll execute immediately before this process
+  // this frame? Only the scheduler knows its own wake order, so it is threaded
+  // in exactly as `player` (jt8-1) and `wave` (uf1-2) are.
+  const lavaBehind = ctx?.lavaBehind ?? false
   // jt8-2: the homing wake runs BEFORE the brain. `COM PFACE,U` (:3945) falls
   // into `JMP BODIR` (:3946), whose first instruction is `LDA PFACE,U` (:3876) —
   // so a flip already steers THIS wake's horizontal impulse, not the next one.
@@ -1183,7 +1207,7 @@ export function stepEnemyDetailed(
   // jt5-8: LINET's two-state wingbeat sits AROUND the lane decision, not inside
   // it — `linet()` stays the pure decision the ROM reaches at :3733, and this is
   // the `PJOY,U` dispatch that decides whether the wake entered there at all.
-  const beat = dumbWingbeat(cadenced, decided)
+  const beat = dumbWingbeat(cadenced, decided, wave, lavaBehind)
   const settled = beat.enemy
   const decision = beat.decision
   // jt8-3: the turn wake FLAPS (`B2DICL`/`SHDICL` `LDB #1`, :4146/:4377) —
@@ -1228,17 +1252,75 @@ export function stepEnemyDetailed(
 function dumbWingbeat(
   enemy: EnemyState,
   decision: Decision,
+  wave: number,
+  lavaBehind: boolean,
 ): { enemy: EnemyState; decision: Decision } {
   if (enemy.brain !== 'linet') return { enemy, decision }
   if (enemy.pjoy?.kind === 'glide') {
-    // LNTOFP: hand the pointer back to LINET and clear the flap bit. `dir` is
-    // untouched, which is the `BRA LNTFLP` fall-through.
+    // LNTOFP (:3759-3762): hand the pointer back to LINET and clear the flap
+    // bit. `dir` is untouched, which is the `BRA LNTFLP` fall-through.
+    //
+    // jt9-1: this returns BEFORE the looker, and that is the whole story. The
+    // wake resumed at :3759, so every instruction above it — the promotion
+    // check AND the looker — was skipped. `plavt` therefore does not tick here.
     return { enemy: { ...enemy, pjoy: undefined }, decision: { ...decision, flap: false } }
   }
-  // LNTUP: only a FLAPPING wake parks the glide. A wake that declined to flap
-  // fell through `LNTTRK`'s `BPL`/`BMI` straight to `LNTFLP` and wrote nothing.
-  if (decision.flap) return { enemy: { ...enemy, pjoy: { kind: 'glide' } }, decision }
-  return { enemy, decision }
+  // The wake entered at LINET, so the prologue runs. The promotion check is the
+  // scheduler's half (`frame.ts`); this is the second half.
+  const looked = lavaTrollLooker(enemy, decision, wave, lavaBehind)
+  // LNTUP: only a FLAPPING wake parks the glide — whether the flap came from
+  // the lane decision falling through :3745, or from the looker's `BEQ LNTUP`.
+  // Both entries reach the same two instructions.
+  if (looked.decision.flap) {
+    return { enemy: { ...looked.enemy, pjoy: { kind: 'glide' } }, decision: looked.decision }
+  }
+  return looked
+}
+
+/**
+ * jt9-1 — `LINET`'s LAVA TROLL LOOKER (JOUSTRV4.SRC:3725-3732), the SECOND
+ * entry into the flapping wake:
+ *
+ *     DEC  PLAVT,U
+ *     BGT  1$            ; still counting — the lane decision governs
+ *     LDA  LNTLAV        ; expired: reload the period…
+ *     STA  PLAVT,U
+ *     LDX  PPREV         ; …and ask "LAVA TROLL AFTER ME?"
+ *     LDA  PID,X
+ *     CMPA #LAVID
+ *     BEQ  LNTUP         ; yes → flap, whatever the lane wanted
+ *
+ * `PPREV` is a GLOBAL — "ADDR OF PREVIOUSLY EXECUTED PROCESS BLOCK"
+ * (RAMDEF.SRC:240) — so the question is "did a lava troll run immediately
+ * before me this frame?", not "is one adjacent in some list". `lavaBehind` is
+ * the caller's answer; the scheduler computes it from its own wake order.
+ *
+ * The reload comes from `LNTLAV`, which is DYTBL **row 3** — wave-scaled, 16
+ * down to 4 with a floor of 1. The table's own trailing comment spells that row
+ * `LAVLAV` while the RAM variable every brain reads is `LNTLAV`; they are one
+ * slot, because the initialiser walks DYTBL and DYNADJ positionally
+ * (`LEAX DYWLEN,X` / `LEAY 3,Y`, :939-950) and never reads a name.
+ *
+ * Pure — the arguments are never mutated.
+ */
+function lavaTrollLooker(
+  enemy: EnemyState,
+  decision: Decision,
+  wave: number,
+  lavaBehind: boolean,
+): { enemy: EnemyState; decision: Decision } {
+  // `DEC` then `BGT`: an absent countdown behaves as the machine's
+  // zero-initialised byte — it goes negative and reloads on this very wake.
+  const ticked = (enemy.plavt ?? 0) - 1
+  if (ticked > 0) return { enemy: { ...enemy, plavt: ticked }, decision }
+  // Expired. The reload happens whether or not a troll is behind — `STA PLAVT,U`
+  // sits ABOVE the `CMPA #LAVID` test, so the period restarts either way.
+  const reloaded: EnemyState = { ...enemy, plavt: waveValue('LAVLAV', wave) }
+  if (!lavaBehind) return { enemy: reloaded, decision }
+  // `BEQ LNTUP` — into the flapping wake, skipping the lane decision entirely.
+  // Both paths converge on `LNTFLP`, which sets `dir` from PFACE, so forcing the
+  // flap bit is the whole observable difference.
+  return { enemy: reloaded, decision: { ...decision, flap: true } }
 }
 
 /**

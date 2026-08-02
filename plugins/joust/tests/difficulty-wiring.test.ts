@@ -797,8 +797,11 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
     ] as const
     expect(
       [...wired].sort(),
-      "the wired set is uf1-2's two brakes + uf1-8's ten seek rows + uf1-9's eleven cadence rows",
-    ).toEqual([...WIRED_NAMES, ...UF18_ROWS, ...UF19_ROWS].sort())
+      "the wired set is uf1-2's two brakes + uf1-8's ten seek rows + uf1-9's eleven cadence rows + jt9-1's LAVLAV",
+    ).toEqual(
+      [...WIRED_NAMES, ...UF18_ROWS, ...UF19_ROWS,
+        'LAVLAV',
+      ].sort())
     for (const n of wired) {
       const disp = d.ROW_DISPOSITION[n]
       // A disposition that says "wired" without naming where is how a row goes dead
@@ -807,22 +810,40 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
     }
   })
 
-  it('records LAVLAV as dead in the 1982 ROM, not merely unwired here', async () => {
+  it('records LAVLAV as WIRED — the "dead in the ROM" reading was a label-keyed miss', async () => {
     const d = await loadDifficulty()
-    // LAVLAV's label appears EXACTLY ONCE in JOUSTRV4.SRC — on its own DYWORD line
-    // at :7306. Williams shipped a row nothing reads. It is not a porting gap and no
-    // future story can "wire" it; the distinction has to survive in the inventory or
-    // the next sweep files a phantom.
-    expect(d.ROW_DISPOSITION.LAVLAV.kind, 'LAVLAV has no consumer in the ORIGINAL').toBe(
-      'dead-in-rom',
-    )
+    // This test used to assert `dead-in-rom`, on the reasoning that "LAVLAV's
+    // label appears EXACTLY ONCE in JOUSTRV4.SRC — on its own DYWORD line at
+    // :7306. Williams shipped a row nothing reads."
+    //
+    // jt9-1: the LABEL claim is true; the ROW claim is false. A DYWORD's
+    // trailing label is a COMMENT. The initialiser reads no names — it walks
+    // DYTBL and DYNADJ positionally (:939-950), three RAM bytes per row — so
+    // row 3 fills the slot RAMDEF.SRC:391 declares as LNTLAV, which four brains
+    // load. The alignment is re-derived from the source, and the row's four
+    // read sites enumerated, in tests/glide-prologue-source.test.ts.
+    //
+    // NO ROW IS DEAD IN THE ROM ANY MORE. The category still exists in the type
+    // because it is a real distinction; it simply has no members, and this
+    // assertion is what would catch a future story re-inventing one without
+    // checking how its consumer addresses the table.
+    const disp = d.ROW_DISPOSITION.LAVLAV
+    expect(disp.kind, 'LAVLAV is read by LINET, BOUNDR, B2UNDR and SHADOW').toBe('wired')
+    expect(
+      disp.kind === 'wired' && disp.consumer,
+      'and the disposition names the looker that reads it',
+    ).toMatch(/looker/i)
+    const dead = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'dead-in-rom')
+    expect(dead, 'the dead-in-ROM category is now empty').toEqual([])
   })
 
   it('gives every unwired row a ROM line, a missing mechanic and an owner', async () => {
     const d = await loadDifficulty()
     const pending = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'no-consumer-yet')
-    // 28 rows − 23 wired (uf1-2's 2 + uf1-8's 10 + uf1-9's 11) − 1 dead-in-ROM = 4
-    // genuinely waiting on a mechanic: uf1-10's EGGWT/EGGWT2/LAVTIM/LAVGRA.
+    // 28 rows − 24 wired (uf1-2's 2 + uf1-8's 10 + uf1-9's 11 + jt9-1's LAVLAV)
+    // − 0 dead-in-ROM = 4 genuinely waiting on a mechanic: uf1-10's
+    // EGGWT/EGGWT2/LAVTIM/LAVGRA. jt9-1 moved the dead term to zero; the
+    // remainder is unchanged, which is why this number did not have to move.
     expect(pending.length, 'the tracked remainder').toBe(4)
     for (const n of pending) {
       const disp = d.ROW_DISPOSITION[n]

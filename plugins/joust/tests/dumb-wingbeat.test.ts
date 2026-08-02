@@ -348,18 +348,134 @@ describe('AC2 — the glide wake does not re-run the lane decision', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('AC3 — a newly promoted enemy carries no leftover glide obligation', () => {
-  it('a bird promoted mid-glide flies its first smart wake exactly like a fresh one', () => {
-    // Arm the obligation the only way production can: run a dumb wake that flaps.
+  // ───────────────────────────────────────────────────────────────────────────
+  // jt9-1 RE-STAGED THIS GROUP. The law is unchanged; its ACTOR is gone.
+  //
+  // jt5-8 asserted the law by CONSTRUCTING a bird promoted mid-glide and showing
+  // it flew like a fresh one — the obligation cleared by `promote()`. jt9-1 makes
+  // that fixture unreachable: `PJOY,U` is an entry address, so a gliding bird
+  // resumes at `LNTOFP` (:3759) and never executes `LDA NSMART / CMPA WSMART /
+  // BLO LNTSMT` (:3722-3724). The machine cannot promote mid-glide at all.
+  //
+  // So `promote()` no longer clears `pjoy` — there is nothing to clear (jt9-1
+  // AC6, closing this suite's own R-2, which measured that the clear was a branch
+  // no input could take). Re-baselining the old test to the new output would have
+  // deleted the law silently. It is re-staged instead, on the guarantee that
+  // actually holds now: the obligation cannot LEAK because promotion cannot be
+  // REACHED while one is pending.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const IDLE_INPUT: PlayerInput = { dir: 0, flap: false, flapHeld: false }
+
+  /** One scheduler frame over a single dumb process, with room in the budget. */
+  const schedule = (enemy: EnemyState): { pchase: number; nsmart: number; pjoy?: string } => {
+    const g = createGame(0xbeef)
+    const sim = g.sim.sim
+    const seeded = {
+      ...g,
+      sim: {
+        ...g.sim,
+        sim: {
+          ...sim,
+          budget: { nsmart: 0, wsmart: 3 },
+          processes: [
+            {
+              id: 0x900,
+              cls: 'secondary' as const,
+              nap: 1,
+              period: 1,
+              kind: 'enemy' as const,
+              enemy,
+              collisionEnabled: false,
+            },
+          ],
+        },
+      },
+    } as GameState
+    const after = stepGame(seeded, { 1: IDLE_INPUT, 2: IDLE_INPUT })
+    const p = after.sim.sim.processes.find((q) => q.id === 0x900)
+    return {
+      pchase: p?.enemy?.pchase ?? -1,
+      nsmart: after.sim.sim.budget.nsmart,
+      pjoy: p?.enemy?.pjoy?.kind,
+    }
+  }
+
+  it('the obligation cannot LEAK through promotion, because promotion cannot be REACHED', () => {
+    // Arm the obligation the only way production can: a dumb wake that flaps.
     const armed = wake(SUNK_AND_SINKING())
     expect(armed.flapped, 'precondition: the dumb wake must have flapped').toBe(true)
+    expect(armed.next.pjoy?.kind, 'precondition: and parked the glide').toBe('glide')
 
-    // frame.ts:345-349 promotes on the wake, THEN steps — this is that order.
-    const promoted = promote(armed.next, { nsmart: 0, wsmart: 3 }).enemy
+    const gliding = schedule(armed.next)
+    expect(gliding.pchase, 'a glide wake never reaches LNTSMT').toBe(0)
+    expect(gliding.nsmart, 'and NSMART is not debited').toBe(0)
+    expect(gliding.pjoy, 'LNTOFP hands the pointer back to LINET on that same wake').toBeUndefined()
+  })
+
+  it('CONTROL — the identical bird WITHOUT the obligation does promote, so the fence is not vacuous', () => {
+    // Without this the test above passes for a bird that could never promote
+    // under any circumstances — a budget typo, a stray guard, a broken fixture.
+    const armed = wake(SUNK_AND_SINKING())
+    const { pjoy: _dropped, ...withoutObligation } = armed.next
+    const promoted = schedule(withoutObligation as EnemyState)
+    expect(promoted.pchase, 'the same bird, obligation removed, promotes').toBe(1)
+    expect(promoted.nsmart, 'and debits the budget').toBe(1)
+  })
+
+  it('promotion is DEFERRED by exactly one wake, not cancelled', () => {
+    // The ROM does not decline a promotion; it never offered one. The glide wake
+    // clears the obligation itself, so the wake after it enters at LINET and
+    // takes the promotion normally. A fix that suppressed promotion for gliding
+    // birds permanently would pass both tests above and fail this one.
+    const armed = wake(SUNK_AND_SINKING())
+    const g = createGame(0xbeef)
+    const sim = g.sim.sim
+    let state = {
+      ...g,
+      sim: {
+        ...g.sim,
+        sim: {
+          ...sim,
+          budget: { nsmart: 0, wsmart: 3 },
+          processes: [
+            {
+              id: 0x900,
+              cls: 'secondary' as const,
+              nap: 1,
+              period: 1,
+              kind: 'enemy' as const,
+              enemy: armed.next,
+              collisionEnabled: false,
+            },
+          ],
+        },
+      },
+    } as GameState
+    state = stepGame(state, { 1: IDLE_INPUT, 2: IDLE_INPUT })
+    expect(state.sim.sim.processes[0]?.enemy?.pchase, 'the glide wake defers').toBe(0)
+    state = stepGame(state, { 1: IDLE_INPUT, 2: IDLE_INPUT })
+    expect(state.sim.sim.processes[0]?.enemy?.pchase, 'the next wake promotes').toBe(1)
+  })
+
+  it('and a bird that DOES promote flies exactly like a fresh one — the original law, on a reachable input', () => {
+    // jt5-8's assertion, kept, with its fixture moved to the only state that can
+    // now reach `promote()`: no obligation pending. Three quarries, so the fence
+    // is not satisfied by the luck of ONE route.
+    const armed = wake(SUNK_AND_SINKING())
+    const { pjoy: _dropped, ...reachable } = armed.next
+    const promoted = promote(reachable as EnemyState, { nsmart: 0, wsmart: 3 }).enemy
     expect(promoted.brain).toBe('boundr')
 
     // The reference is built from the contract's public fields only, so this
-    // says nothing about WHERE the obligation lives — only that whatever it is,
-    // LNTSMT's wholesale `STX PJOY,U` (:3774) has cleared it.
+    // says nothing about WHERE an obligation would live — only that whatever it
+    // is, promotion does not carry one.
+    //
+    // `plavt` IS carried, deliberately. `LNTSMT` (:3764-3775) writes NSMART,
+    // PCHASE, PDECSN→DSMART and `STX PJOY,U` — and nothing else. `PLAVT,U` is
+    // untouched by promotion, which is precisely why the three smart brains'
+    // lookers (:3787, :3971, :4230) resume the SAME countdown the dumb bird was
+    // running. Omitting it here would assert the opposite.
     const fresh: EnemyState = {
       entity: armed.next.entity,
       facing: armed.next.facing,
@@ -367,11 +483,9 @@ describe('AC3 — a newly promoted enemy carries no leftover glide obligation', 
       brain: promoted.brain,
       decision: promoted.decision,
       prevFlapHeld: armed.next.prevFlapHeld,
+      plavt: promoted.plavt,
     }
 
-    // Three quarries, so the fence is not satisfied by the luck of ONE route:
-    // the up-seek clears the workspace on its decide, the level route arms an
-    // interval in it, and a null quarry flies level with no quarry at all.
     const ROUTES: Array<[string, PlayerView | null]> = [
       ['up-seek', FAR_ABOVE],
       ['level', { pixelY: armed.next.entity.posY >> 8, velXIndex: 0 }],
