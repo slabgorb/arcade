@@ -380,8 +380,19 @@ describe('jt5-7 AC5 — the README’s counts are DERIVED, not transcribed', () 
     // never track reality.
     expect(derived, 'the derivation found no test files at all').toBeGreaterThan(50)
 
-    const stated = readmeRaw().match(/(\d+)\s+files/)
-    expect(stated, 'the README must state a file count for this guard to check').not.toBeNull()
+    // ANCHORED to the vitest command line, not a bare /(\d+) files/ scan.
+    // Measured: the README contains THREE "N files" strings (the quick-start
+    // command, the skipIf block's file tally, and the vendored tree's 49). A
+    // first-match rule reads whichever comes first, so a later reorder — or a
+    // new sentence mentioning a file count above the quick start — would let
+    // the real number go stale with this guard green. Proven: with a decoy
+    // "102 files" inserted above and the command line reading 999, the
+    // unanchored form passed.
+    const stated = readmeRaw().match(/--project joust[^\n]*?(\d+)\s+files/)
+    expect(
+      stated,
+      'the README must state the file count on the `--project joust` command line',
+    ).not.toBeNull()
     expect(
       Number(stated?.[1]),
       `README says ${stated?.[1]} test files; vitest discovers ${derived}. ` +
@@ -414,11 +425,40 @@ describe('jt5-7 AC5 — the README’s counts are DERIVED, not transcribed', () 
     // remove. A static import makes the derivation compile-checked instead.
     expect(EVENT_KINDS.length, 'EVENT_KINDS collapsed to empty').toBeGreaterThan(0)
 
+    // The stale WORD must go — it is the form the defect shipped in.
     expect(
       readme(),
-      `the README calls the channel "eleven ROM-cited moments"; EVENT_KINDS holds ${EVENT_KINDS.length}. ` +
-        'jt5-3 added four wing cues, jt5-4 two THUDs and jt5-6 split player-materialise.',
+      'the README called the channel "eleven ROM-cited moments"; that spelling is the stale one',
     ).not.toMatch(/eleven ROM-cited moments/i)
+
+    // …and the NUMBER must actually agree. Banning the word alone is not a
+    // derivation: measured during review, writing "3 ROM-cited moments" passed
+    // the word-ban cleanly, so AC5's third count was transcribed rather than
+    // derived despite this test's name. Compare the digits.
+    const stated = readme().match(/\((\d+) ROM-cited moments/)
+    expect(
+      stated,
+      'the README must state the moment count as a digit beside `src/core/events.ts`',
+    ).not.toBeNull()
+    expect(
+      Number(stated?.[1]),
+      `README says ${stated?.[1]} ROM-cited moments; EVENT_KINDS holds ${EVENT_KINDS.length}.`,
+    ).toBe(EVENT_KINDS.length)
+  })
+
+  it('every cue the README calls ROM-cited really is one', () => {
+    // The adjective, not just the count. CUE_SOURCES carries an `invention`
+    // escape hatch for cues with no ROM table (jt5-1 AC5), and if any shipped
+    // cue used it, "ROM-cited" would overstate the dossier. Measured today:
+    // 18 `kind: 'rom'` instances and zero inventions — but nothing pinned that,
+    // so the README's adjective could silently go false the first time a cue
+    // ships without a table.
+    const manifest = readFileSync(join(root, 'src/shell/audio-manifest.ts'), 'utf8')
+    const inventions = manifest.match(/kind: 'invention',/g) ?? []
+    expect(
+      inventions,
+      'a cue ships as an invention, so the README may not call every moment ROM-cited',
+    ).toEqual([])
   })
 })
 

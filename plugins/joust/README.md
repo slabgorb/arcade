@@ -140,7 +140,7 @@ sibling.
   oversight.
 - **It consumes exactly one `@shared` subpath: `@shared/audio`.** jt5-1 landed
   it, ending joust's run as the fleet's zero-consumption outlier — the others
-  take between five and thirteen subpaths (centipede 5, red-baron 8, asteroids
+  take between six and thirteen subpaths (centipede 6, red-baron 8, asteroids
   and tempest 10, star-wars 11, battlezone 13). Its mulberry32 is still lifted
   **byte-for-byte** into `src/core/frame.ts` rather than imported (the comments
   there naming `@arcade/shared/rng` are provenance, not a dependency). There was
