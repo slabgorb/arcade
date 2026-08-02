@@ -224,6 +224,18 @@ export interface EnemyState {
    * :3811-3812). A dumb `linet` enemy and the shadow lord never carry one.
    */
   seek?: SeekState
+  /**
+   * jt5-3 — the wing-edge detector's memory: the `flapHeld` LEVEL this enemy's
+   * synthetic joystick carried on its LAST wake (`CURJOY+1`). OPTIONAL; absent
+   * reads as `false`, since an enemy that has never woken has never held the
+   * button either.
+   *
+   * Declared here by uf1-9. jt5-3 added it to `src/core/enemy.ts` and to
+   * `stepEnemyDetailed`'s return, but never to this contract — so the held wing
+   * LEVEL, which is the whole observable of a wing-cadence LATCH, was invisible
+   * to any test written against the contract. See the TEA assessment.
+   */
+  prevFlapHeld?: boolean
 }
 
 /** An enemy process for jt2-1's scheduler — the tagged union's new `enemy` kind. */
@@ -375,6 +387,20 @@ export interface EnemyModule {
    *   • short-range, null-target and shadow/linet wakes carry NO `seek`.
    */
   stepEnemy(enemy: EnemyState, ctx?: { player?: PlayerView | null; wave?: number }): EnemyState
+
+  /**
+   * jt5-3 — `stepEnemy` PLUS the wing EDGE this wake produced (or `null`).
+   * frame.ts calls this to get the flap cue without re-running the brain.
+   *
+   * Declared here by uf1-9 for the same reason as `prevFlapHeld` above: a
+   * cadence is only observable through the level and its edges, and neither was
+   * reachable from the contract. `wingEdge` is `'down'` on the wake the wings
+   * go down, `'up'` on the wake they come back up, `null` otherwise.
+   */
+  stepEnemyDetailed(
+    enemy: EnemyState,
+    ctx?: { player?: PlayerView | null; wave?: number },
+  ): { enemy: EnemyState; wingEdge: 'down' | 'up' | null }
 }
 
 /**
