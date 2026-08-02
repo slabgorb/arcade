@@ -173,6 +173,18 @@ this is "exactly what all seven games' `main.ts` files repeat today."
 **That premise was false**, and it was drawn from tempest's `main.ts` on the assumption the
 fleet followed it. Measured across all seven:
 
+> ⚠ **The table below is a snapshot of 2026-07-30 and two of its cells are now wrong.**
+> It records centipede and joust as having no audio unlock; both gained one within
+> 48 hours of it being written (joust `2cafac2`, jt5-1, 2026-07-31; centipede
+> `6c2bf1a`, cp5-2, 2026-08-01). It is kept as the record of what was measured when
+> the deferral was decided — the reasoning below rests on it and stands.
+>
+> **For what the fleet does today, and which helper each game adopts, read
+> [`docs/ops/shell-adoption-matrix.md`](../../ops/shell-adoption-matrix.md)** — the live
+> table sc1-1 landed, which records only the adoption DECISION and derives the
+> behaviour census from the tree on every test run, precisely so it cannot rot the
+> way this one did.
+
 | game | resize | audio unlock | Esc pause | high scores | loop |
 |---|---|---|---|---|---|
 | tempest | `resizeToDisplay` | ✅ | ✅ | shared factory | **own** `shell/loop` |

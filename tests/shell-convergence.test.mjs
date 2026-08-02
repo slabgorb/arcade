@@ -81,8 +81,22 @@ function readMatrix() {
     'the matrix must carry a `Baseline: <commit-sha>` line — AC-3 measures adoption commits after it',
   );
 
+  // Read ONLY the delimited block. The first cut of this parser scanned every
+  // markdown row in the file whose first cell was a game name, and the document
+  // that satisfied it immediately broke it: the section explaining how the old
+  // matrix rotted carries a second table keyed by game
+  // (`| centipede | 2026-08-01 | cp5-2 | ...`), which parsed as a matrix row and
+  // silently OVERWROTE the real one. A file about seven games will keep growing
+  // tables about those seven games, so the block is delimited explicitly rather
+  // than inferred. Missing markers is a loud failure, not an empty scan.
+  const block = /<!--\s*adoption-matrix:start\s*-->([\s\S]*?)<!--\s*adoption-matrix:end\s*-->/.exec(text);
+  assert.ok(
+    block,
+    'the matrix table must sit between <!-- adoption-matrix:start --> and <!-- adoption-matrix:end -->',
+  );
+
   const rows = {};
-  for (const line of text.split('\n')) {
+  for (const line of block[1].split('\n')) {
     const m = /^\|\s*([a-z-]+)\s*\|(.+)\|\s*$/.exec(line.trim());
     if (!m) continue;
     const game = m[1];
