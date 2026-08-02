@@ -56,12 +56,14 @@ import { SOUNDS, CHANNELS } from '../../src/shell/audio'
 import { FRAME_HZ } from '../../src/shell/timebase'
 import {
   DOSSIER_FILES,
+  allMalformedCitations,
   claimCovers,
   extractProseCitations,
   loadClaims,
   pluginRoot,
   readDossier,
   romStudyDir,
+  scanProseCitations,
   uncoveredCitations,
   type ProseCitation,
 } from './dossier-sweep'
@@ -115,6 +117,18 @@ interface CueRuling {
   channel: string | null
   /** Which POKEY voice (0..3) the cue is written to. */
   pokeyVoice: number | null
+  /**
+   * `CENTI4.MAC:N` — the `ST[AXY] AUD[FC]n` write that PUTS this cue on
+   * `pokeyVoice`. Required for every rom cue.
+   *
+   * cp6-1 round 2. Until this existed, `pokeyVoice` was the only transcribed
+   * field in the fixture with no citation and no ROM cross-check — it was
+   * range-checked 0..3 and nothing more, so `segmentKill` could claim voice 3
+   * while the ROM wrote `AUDF0`, and the suite stayed green. That hole is not
+   * academic: it is why the voice-1 arbitration ruling shipped naming three
+   * contenders when this file's own `pokeyVoice` fields name four.
+   */
+  voiceCite: string | null
   /** `CENTI4.MAC:N` or `:N-M` — the line(s) DEFINING freqTable. */
   tableCite: string | null
   /** `CENTI4.MAC:N` — where contTable is defined, or the immediate is loaded. */
@@ -148,11 +162,32 @@ interface CueRuling {
   cp62Decision: string | null
 }
 
+/**
+ * The contention ruling for POKEY voice 1.
+ *
+ * cp6-1 round 2: this block already existed, but it was declared NOWHERE — not
+ * in this interface and not in `fixtureCitations()` — so neither its prose nor
+ * its citations were swept by anything, and the ruling inside it was wrong.
+ * Declaring it here is half the fix; the tests below are the other half.
+ */
+interface VoiceArbitration {
+  /**
+   * The cue keys that contend for the voice, as fixture keys — NOT prose. The
+   * ROM decides this set and the tests recover it: every cue whose `voiceCite`
+   * writes `AUD[FC]1` is a contender, and nothing else is.
+   */
+  contenders: string[]
+  note: string
+  ourShellDiffers: string
+  cites: string[]
+}
+
 interface SoundFixture {
   /** Must name src/shell/timebase.ts's FRAME_HZ — AC-3 forbids re-deriving it. */
   frameHzSource: string
   /** How lengthSeconds is obtained. Written down so cp6-2 reads a number. */
   derivation: string
+  voiceArbitration: VoiceArbitration
   cues: Record<string, CueRuling>
 }
 
@@ -181,8 +216,27 @@ function tableCues(): [string, CueRuling][] {
   return romCues().filter(([, c]) => c.freqTable !== null)
 }
 
-/** Parse `CENTI4.MAC:2463-2464` → { file, start, end }; throws on anything else. */
-function parseCite(cite: string, where: string): { file: string; start: number; end: number } {
+/**
+ * Parse `CENTI4.MAC:2463-2464` → { file, start, end }; throws on anything else.
+ *
+ * Accepts null/undefined deliberately, and names the field when it gets one.
+ * Every caller reaches a `*Cite` field whose nullability the surrounding filter
+ * does not always guarantee — `tableCues()` filters on `freqTable`, not on
+ * `tableCite` — and the old signature took `string`, so those calls were made
+ * through an `as string` cast. The cast did not make the value a string: it
+ * only silenced the checker, and a missing citation arrived as
+ * `Cannot read properties of undefined (reading 'match')` with no field name in
+ * it. A gate whose failure mode is an unattributed TypeError is a gate nobody
+ * can act on.
+ */
+function parseCite(cite: string | null | undefined, where: string): { file: string; start: number; end: number } {
+  if (typeof cite !== 'string' || cite.trim() === '') {
+    throw new Error(
+      `${where}: no citation recorded (${cite === undefined ? 'field absent from the fixture' : JSON.stringify(cite)}). ` +
+        'Every fact this fixture states about the machine must name the line it came from — ' +
+        'an uncited constant cannot fail a gate, it can only read plausibly.',
+    )
+  }
   const m = cite.match(/^([\w.]+\.(?:MAC|DOC|MAP)):(\d+)(?:-(\d+))?$/)
   if (!m) {
     throw new Error(
@@ -224,16 +278,27 @@ function countByteOperands(lines: string[], start: number, end: number): number 
   return n
 }
 
-/** Every `CENTI4.MAC:N[-M]` citation the fixture carries, with where it came from. */
+/**
+ * Every `CENTI4.MAC:N[-M]` citation the fixture carries, with where it came from.
+ *
+ * cp6-1 round 2: this used to walk `.cues` ONLY, which meant the top-level
+ * `voiceArbitration.cites` — six citations backing the least obvious ruling in
+ * the document — were swept by nothing at all. Replacing them with six wrong
+ * line numbers left the whole suite green. The fixture's citations are now
+ * enumerated from BOTH places, so a citation cannot escape the AC-2 sweep by
+ * living outside the cue map.
+ */
 function fixtureCitations(): { cite: string; where: string }[] {
   const out: { cite: string; where: string }[] = []
-  for (const [name, cue] of Object.entries(loadFixture().cues)) {
+  const fixture = loadFixture()
+  for (const [name, cue] of Object.entries(fixture.cues)) {
     const fields: (keyof CueRuling)[] = [
       'tableCite',
       'contCite',
       'computedCite',
       'channelCite',
       'seedCite',
+      'voiceCite',
       'frameGateCite',
       'loopCite',
     ]
@@ -241,6 +306,12 @@ function fixtureCitations(): { cite: string; where: string }[] {
       const v = cue[f]
       if (typeof v === 'string' && v !== '') out.push({ cite: v, where: `cues.${name}.${String(f)}` })
     }
+  }
+  const arb = fixture.voiceArbitration
+  if (arb && Array.isArray(arb.cites)) {
+    arb.cites.forEach((cite, i) => {
+      if (typeof cite === 'string' && cite !== '') out.push({ cite, where: `voiceArbitration.cites[${i}]` })
+    })
   }
   return out
 }
@@ -507,6 +578,11 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
   })
 
   it('every INVENTED cue is labelled as one and handed to cp6-2 as a named decision', () => {
+    // cp6-1 round 2: the only loop in this file that carried no population floor,
+    // against the rule stated at the top of it. Relabel all fourteen cues "rom"
+    // and every assertion below would stop executing while the test stayed green.
+    const inventions = Object.values(loadFixture().cues).filter((c) => c.origin === 'invention')
+    expectPopulated(inventions.length, 3, 'invention sweep')
     for (const [name, cue] of Object.entries(loadFixture().cues)) {
       if (cue.origin !== 'invention') continue
       expect(cue.freqTable, `cues.${name} is an invention — it must not name a ROM table`).toBeNull()
@@ -551,7 +627,7 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
     const lines = centi4()
     expectPopulated(tableCues().length, 6, 'table-definition sweep')
     for (const [name, cue] of tableCues()) {
-      const { start } = parseCite(cue.tableCite as string, `cues.${name}.tableCite`)
+      const { start } = parseCite(cue.tableCite, `cues.${name}.tableCite`)
       expect(
         lines[start] ?? '',
         `cues.${name} says it transcribes ${cue.freqTable}, but CENTI4.MAC:${start} does not define it — ` +
@@ -566,7 +642,7 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
     expectPopulated(channelled.length, 7, 'channel/seed citation sweep')
     for (const [name, cue] of channelled) {
       const ch = cue.channel
-      const { start } = parseCite(cue.channelCite as string, `cues.${name}.channelCite`)
+      const { start } = parseCite(cue.channelCite, `cues.${name}.channelCite`)
       expect(lines[start] ?? '', `cues.${name}.channelCite → CENTI4.MAC:${start} does not mention ${ch}`)
         .toContain(ch)
       if (cue.seedCite === null) continue
@@ -597,7 +673,7 @@ describe('cp6-1 AC-1 — every SOUNDS cue is ruled on, and nothing is silently a
     const seeded = romCues().filter(([, c]) => c.seedCite !== null)
     expectPopulated(seeded.length, 7, 'seed-constant claim sweep')
     for (const [name, cue] of seeded) {
-      const seed = parseCite(cue.seedCite as string, `cues.${name}.seedCite`)
+      const seed = parseCite(cue.seedCite, `cues.${name}.seedCite`)
       const imm = decodeImmediate(lines, seed.start, seed.end)
       if (!imm) continue // reported by the test above
       const pinning = claims.filter((c) => c.source && basename(c.source.file) === seed.file && c.source.line === imm.line)
@@ -707,7 +783,7 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
     const seeded = romCues().filter(([, c]) => c.seedCite !== null && c.lengthFrames !== null)
     expectPopulated(seeded.length, 7, 'seed-radix recovery sweep')
     for (const [name, cue] of seeded) {
-      const seed = parseCite(cue.seedCite as string, `cues.${name}.seedCite`)
+      const seed = parseCite(cue.seedCite, `cues.${name}.seedCite`)
       const imm = decodeImmediate(lines, seed.start, seed.end)
       if (!imm) continue // reported by the AC-1 seed-span test
       expect(
@@ -723,7 +799,7 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
     const lines = centi4()
     expectPopulated(tableCues().length, 6, '.BYTE operand-count sweep')
     for (const [name, cue] of tableCues()) {
-      const { start, end } = parseCite(cue.tableCite as string, `cues.${name}.tableCite`)
+      const { start, end } = parseCite(cue.tableCite, `cues.${name}.tableCite`)
       const counted = countByteOperands(lines, start, end)
       expect(counted, `cues.${name}.tableCite spans no .BYTE operands at all`).toBeGreaterThan(0)
       expect(
@@ -736,8 +812,15 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
 
   it.skipIf(!vendoredAvailable)('the control byte resolves to a real CONT table or a real immediate', () => {
     const lines = centi4()
-    expectPopulated(tableCues().length, 6, 'control-byte sweep')
-    for (const [name, cue] of tableCues()) {
+    // cp6-1 round 2 (Reviewer H4): this swept tableCues() — romCues() filtered on
+    // `freqTable !== null` — which excluded the ONE cue whose frequency the ROM
+    // computes. `fleaLoop` therefore carried `contImmediate: "0xA4"` with
+    // `contCite: null` and was never checked against anything: rewriting it to
+    // "0xFF" left all 1075 centipede tests green. Every rom cue writes an AUDC
+    // byte, so every rom cue is swept here now, and the `.filter` below is on the
+    // field this loop actually reads rather than on a neighbouring one.
+    expectPopulated(romCues().length, 7, 'control-byte sweep')
+    for (const [name, cue] of romCues()) {
       const hasTable = cue.contTable !== null
       const hasImm = cue.contImmediate !== null
       expect(
@@ -745,7 +828,14 @@ describe('cp6-1 AC-3 — per-cue length and loop are derived from the ROM', () =
         `cues.${name}: give it EITHER contTable (the ROM indexes a CONTn table) OR contImmediate ` +
           "(the ROM writes a fixed control byte, e.g. FREQ2's `LDA I,64`), never both and never neither",
       ).toBe(true)
-      const { start, end } = parseCite(cue.contCite as string, `cues.${name}.contCite`)
+      expect(
+        cue.contCite,
+        `cues.${name} records a control byte but cites nowhere for it. AC-2: every transcribed ` +
+          'constant carries a claims entry the gate re-opens, and a value with no line number ' +
+          'cannot fail — it can only read plausibly. The flea path loads its byte at ' +
+          'CENTI4.MAC:2415.',
+      ).not.toBeNull()
+      const { start, end } = parseCite(cue.contCite, `cues.${name}.contCite`)
       const src = lines[start] ?? ''
       if (hasTable) {
         expect(src, `cues.${name}.contCite → CENTI4.MAC:${start} does not define ${cue.contTable}`).toMatch(
@@ -825,7 +915,7 @@ describe('cp6-1 AC-4 — the non-uniform frame gating is recorded per cue', () =
     const gated = romCues().filter(([, c]) => c.frameGate !== 1 && c.frameGateCite !== null)
     expectPopulated(gated.length, 3, 'gate-mask sweep')
     for (const [name, cue] of gated) {
-      const { start, end } = parseCite(cue.frameGateCite as string, `cues.${name}.frameGateCite`)
+      const { start, end } = parseCite(cue.frameGateCite, `cues.${name}.frameGateCite`)
       const span = lines.slice(start, end + 1)
       expect(
         span.some((l) => /LDA\s+FRAME/.test(l)),
@@ -1007,6 +1097,274 @@ describe('cp6-1 AC-7 — sound.md is swept, and the sweep is proved to have teet
       [...new Set(bareColon)],
       'these bare-colon references inherit their file from surrounding prose, which no gate can ' +
         'resolve. Spell them in full, e.g. `CENTI4.MAC:2455`:\n  ' + [...new Set(bareColon)].join('\n  '),
+    ).toEqual([])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROUND 2 — WHAT THE REVIEWER PROVED THE FIRST PASS COULD NOT SEE.
+//
+// The first RED built a suite that re-derives lengths, tables, radices and gates
+// from the ROM, and those guards hold. It left one transcribed field with NO
+// cross-check at all — `pokeyVoice` — and swept the control byte only over cues
+// that own a frequency TABLE, which excluded the one cue the ROM computes.
+//
+// Both holes were proved by mutation against the COMMITTED artifacts, not argued:
+//
+//   • `segmentKill.pokeyVoice` 0 → 3, while the ROM writes AUDF0 at :2423 …… 42/42 GREEN
+//   • `fleaLoop.contImmediate` "0xA4" → "0xFF", uncited entirely ………………… 1075/1075 GREEN
+//
+// And the cost of the first hole was not hypothetical. `voiceArbitration` rules
+// that three cues contend for POKEY voice 1. The ROM has FOUR `STA AUDF1`, and
+// this same fixture already marks four cues `pokeyVoice: 1`. Nothing could see
+// the contradiction because nothing read `pokeyVoice` against the machine.
+//
+// So the rule these tests encode is one rule, applied twice: A TRANSCRIBED FIELD
+// THAT CITES NOTHING IS A GUESS WITH A LINE NUMBER'S AUTHORITY. Every fact the
+// fixture states about the machine must name the instruction it came from, and
+// the instruction must say it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The `ST[AXY] AUD[FC]n` writes inside SOUNDS, excluding the attract-mode mute. */
+function audfWriters(lines: string[], voice: number): number[] {
+  const out: number[] = []
+  // SOUNDS runs :2322-2451. The attract path zeroes all four AUDC with STX at
+  // :2332-2335 before returning — that silences every voice and belongs to no
+  // cue, so it is not a writer. Keying on STA excludes it by opcode.
+  for (let i = 2322; i <= 2451; i++) {
+    if (new RegExp(`STA\\s+AUDF${voice}\\b`).test(lines[i] ?? '')) out.push(i)
+  }
+  return out
+}
+
+describe('cp6-1 round 2 — pokeyVoice is recovered from the ROM, not asserted', () => {
+  it.skipIf(!vendoredAvailable)('every ROM cue cites the register write that puts it on its voice', () => {
+    const lines = centi4()
+    expectPopulated(romCues().length, 7, 'voice-citation sweep')
+    const missing = romCues()
+      .filter(([, c]) => typeof c.voiceCite !== 'string' || c.voiceCite === '')
+      .map(([n]) => n)
+    expect(
+      missing,
+      'these ROM cues record a pokeyVoice but cite nothing for it. pokeyVoice says which POKEY ' +
+        'voice the cue occupies — the fact cp6-2 needs in order to know what can sound at once — ' +
+        'so it must cite the `STA AUDFn` that does it. The eight writes are CENTI4.MAC:2349 ' +
+        '(spider), :2357 (shot), :2382 (bonus), :2392 (scorpion), :2414 (flea), :2423 ' +
+        '(explosions), :2433 (march), :2445 (player explosion). Missing: ' +
+        `${missing.join(', ')}`,
+    ).toEqual([])
+    for (const [name, cue] of romCues()) {
+      const { start } = parseCite(cue.voiceCite, `cues.${name}.voiceCite`)
+      expect(
+        lines[start] ?? '',
+        `cues.${name}.voiceCite → CENTI4.MAC:${start} is not a POKEY register write`,
+      ).toMatch(/ST[AXY]\s+AUD[FC][0-3]\b/)
+    }
+  })
+
+  it.skipIf(!vendoredAvailable)('pokeyVoice EQUALS the voice the cited write targets', () => {
+    // The mutation this exists to kill: set any cue's pokeyVoice to a number the
+    // ROM does not write and require red. Before this test, segmentKill could
+    // claim voice 3 against `STA AUDF0` and nothing objected.
+    const lines = centi4()
+    const voiced = romCues().filter(([, c]) => typeof c.voiceCite === 'string' && c.voiceCite !== '')
+    expectPopulated(voiced.length, 7, 'pokeyVoice cross-check')
+    for (const [name, cue] of voiced) {
+      const { start } = parseCite(cue.voiceCite, `cues.${name}.voiceCite`)
+      const m = (lines[start] ?? '').match(/ST[AXY]\s+AUD[FC]([0-3])\b/)
+      expect(m, `cues.${name}.voiceCite → CENTI4.MAC:${start} writes no AUD register`).not.toBeNull()
+      expect(
+        Number((m as RegExpMatchArray)[1]),
+        `cues.${name}.pokeyVoice is ${cue.pokeyVoice}, but CENTI4.MAC:${start} writes ` +
+          `${(m as RegExpMatchArray)[0].trim()} — voice ${(m as RegExpMatchArray)[1]}`,
+      ).toBe(cue.pokeyVoice)
+    }
+  })
+})
+
+describe('cp6-1 round 2 — the voice-1 contention ruling is recovered from the ROM', () => {
+  it.skipIf(!vendoredAvailable)('the ROM has exactly FOUR writers of POKEY voice 1', () => {
+    // Recovered, not restated. If this number ever changes the ruling below is
+    // stale by construction, and the failure names the lines rather than a count.
+    const writers = audfWriters(centi4(), 1)
+    expect(
+      writers,
+      'SOUNDS should contain exactly four `STA AUDF1` — the bonus (:2382), the scorpion (:2392), ' +
+        'the computed flea (:2414) and the march (:2433), all converging on the single ' +
+        '`STA AUDC1` at :2435',
+    ).toEqual([2382, 2392, 2414, 2433])
+  })
+
+  it.skipIf(!vendoredAvailable)('voiceArbitration.contenders is EXACTLY the set of cues on voice 1', () => {
+    const lines = centi4()
+    const writers = new Set(audfWriters(lines, 1))
+    const onVoice1 = romCues()
+      .filter(([, c]) => typeof c.voiceCite === 'string' && c.voiceCite !== '')
+      .filter(([, c]) => writers.has(parseCite(c.voiceCite, 'voiceCite').start))
+      .map(([n]) => n)
+      .sort()
+    expectPopulated(onVoice1.length, 4, 'voice-1 contender recovery')
+
+    const declared = [...(loadFixture().voiceArbitration?.contenders ?? [])].sort()
+    expect(
+      declared,
+      'voiceArbitration.contenders must name every cue whose voiceCite writes AUDF1 and no other. ' +
+        'The ruling as first written named three (march, flea, scorpion) and omitted `bonusLife`, ' +
+        'while listing `spiderLoop` — which writes AUDF3 at :2349 and never contends for this ' +
+        'voice at all. The ROM says the contenders are: ' +
+        `${onVoice1.join(', ')}.`,
+    ).toEqual(onVoice1)
+  })
+
+  it('every cue the fixture marks pokeyVoice 1 is a declared contender', () => {
+    // The contradiction that shipped: FOUR cues carried pokeyVoice 1 while the
+    // arbitration note named three. Two statements in one file that cannot both
+    // be right, and nothing compared them.
+    const fixture = loadFixture()
+    const marked = Object.entries(fixture.cues)
+      .filter(([, c]) => c.pokeyVoice === 1)
+      .map(([n]) => n)
+      .sort()
+    expectPopulated(marked.length, 4, 'pokeyVoice-1 membership')
+    expect(
+      [...(fixture.voiceArbitration?.contenders ?? [])].sort(),
+      `these cues carry pokeyVoice: 1 — ${marked.join(', ')} — so they contend by this file's own ` +
+        'account. voiceArbitration must say the same thing the cue map says.',
+    ).toEqual(marked)
+  })
+
+  it.skipIf(!vendoredAvailable)('the ruling cites the gate that decides the PRIORITY, not just the writers', () => {
+    // Naming the four contenders is half a ruling. The other half is which one
+    // wins, and that is decided before the arbitration block is ever reached:
+    // `LDY CHAN4 / BEQ 48$` at :2373-2374 means a live bonus tone skips the
+    // whole of 48$, so bonus preempts scorpion, flea and march alike. A ruling
+    // that cites only :2396-2435 has recorded the contenders and missed the
+    // outcome — which is exactly how "priority runs scorpion, flea, march" got
+    // written down.
+    const lines = centi4()
+    expect(lines[2373] ?? '', 'CENTI4.MAC:2373 should read the bonus countdown').toMatch(/LDY\s+CHAN4\b/)
+    expect(lines[2374] ?? '', 'CENTI4.MAC:2374 should branch past the arbitration').toMatch(/BEQ\s+48\$/)
+
+    const cites = loadFixture().voiceArbitration?.cites ?? []
+    const covers = cites.some((c) => {
+      const { start, end } = parseCite(c, 'voiceArbitration.cites')
+      return start <= 2374 && end >= 2373
+    })
+    expect(
+      covers,
+      'voiceArbitration.cites must include the CHAN4 preemption test at CENTI4.MAC:2373-2374. ' +
+        `Cited today: ${cites.join(', ') || '(nothing)'}`,
+    ).toBe(true)
+  })
+
+  it('the prose names the same contenders the fixture does', () => {
+    // The fixture is what cp6-2 consumes, but the prose is what a human reads,
+    // and they disagreed: §2.5 listed `spiderLoop` among the cues that "ring
+    // simultaneously" where the cabinet would not, though it is on voice 3 and
+    // rings alongside voice 1 on the cabinet too.
+    const md = readDossier(SOUND_DOC)
+    const heading = md.split('\n').findIndex((l) => /^#{2,4}\s.*voice\s*1/i.test(l))
+    expect(heading, `${SOUND_DOC} must carry a section about POKEY voice 1 contention`).toBeGreaterThan(-1)
+    const rest = md.split('\n').slice(heading + 1)
+    const endRel = rest.findIndex((l) => /^#{2,4}\s/.test(l))
+    const section = (endRel === -1 ? rest : rest.slice(0, endRel)).join('\n')
+
+    const contenders = new Set(loadFixture().voiceArbitration?.contenders ?? [])
+    const cueNames = Object.keys(loadFixture().cues)
+    const named = cueNames.filter((n) => new RegExp('`' + n + '`').test(section))
+    expectPopulated(named.length, 4, 'prose contender sweep')
+    expect(
+      named.filter((n) => !contenders.has(n)),
+      'the voice-1 section names these cues as if they contended, but voiceArbitration.contenders ' +
+        'does not list them. A cue on another POKEY voice is not preempted and must not be ' +
+        'described as though it were.',
+    ).toEqual([])
+    expect(
+      [...contenders].filter((n) => !named.includes(n)),
+      'these declared contenders are never named in the voice-1 section — the prose and the ' +
+        'fixture must rule the same way',
+    ).toEqual([])
+  })
+})
+
+describe('cp6-1 round 2 — the sweep reports what it cannot parse', () => {
+  it('a malformed linespec is REPORTED, never silently dropped', () => {
+    // Proof the detector bites, on synthetic input, before it is pointed at the
+    // real docs — otherwise "no malformed citations" is indistinguishable from
+    // "the detector never fires".
+    const scan = scanProseCitations('see `CENTI4.MAC:2463-24-64` and `CENTI4.MAC:2455` and `CENTI4.MAC:2465-2455`')
+    expect(scan.citations.map((c) => c.raw), 'the well-formed citation must still be extracted').toEqual([
+      'CENTI4.MAC:2455',
+    ])
+    expect(
+      scan.malformed,
+      'a linespec the grammar cannot parse must surface, not vanish — a dropped citation is one ' +
+        'nothing re-checks, and the coverage sweep would call the doc fully covered',
+    ).toEqual(['CENTI4.MAC:2463-24-64', 'CENTI4.MAC:2465-2455'])
+  })
+
+  it('no enrolled dossier file carries a malformed citation', () => {
+    const bad = allMalformedCitations()
+    expect(bad, `these citations look like line references but cannot be parsed:\n  ${bad.join('\n  ')}`).toEqual([])
+  })
+
+  it('EVERY enrolled dossier file carries citations of its own, not just the set as a whole', () => {
+    // The aggregate floor in citations.test.ts is >20 across all three files.
+    // brief.md and glossary.md contribute 32 and 24 today, so either could be
+    // rewritten into total invisibility and the total would still clear the bar
+    // on the strength of the other two. A floor that a file can fall to zero
+    // beneath is a floor for the wrong thing.
+    const empty = DOSSIER_FILES.filter((f) => extractProseCitations(readDossier(f), f).length === 0)
+    expect(
+      empty,
+      `these enrolled dossier files contribute NO citations, so the coverage sweep proves nothing ` +
+        `about them: ${empty.join(', ')}`,
+    ).toEqual([])
+    for (const f of DOSSIER_FILES) {
+      expect(
+        extractProseCitations(readDossier(f), f).length,
+        `${f} is enrolled in DOSSIER_FILES but carries almost no citations — an enrolled doc that ` +
+          'cites nothing passes coverage vacuously',
+      ).toBeGreaterThanOrEqual(10)
+    }
+  })
+})
+
+describe('cp6-1 round 2 — the prose quotes the machine accurately', () => {
+  it.skipIf(!vendoredAvailable)('every ROM comment sound.md quotes is REAL and sits on a cited line', () => {
+    // The doc quotes the 1981 comments as evidence, in backticks, leading `;`.
+    // Two things can go wrong and both did somewhere in this repo's history: the
+    // quote can be a paraphrase the machine never wrote, or it can be real but
+    // attributed to a neighbouring line. `;1/4 SECOND BOUNDARY` was both — the
+    // ROM says `;IF NOT 1/4 SECOND BOUNDARY` at :1287, and the prose cited
+    // :1286 and :1289 around it.
+    const md = readDossier(SOUND_DOC)
+    const lines = centi4()
+    const norm = (s: string): string => s.split(/\s+/).join(' ').trim()
+    const cited = new Set<number>()
+    for (const c of extractProseCitations(md, SOUND_DOC)) {
+      for (let i = c.start; i <= c.end; i++) cited.add(i)
+    }
+    const quotes = [...new Set([...md.matchAll(/`(;[^`]+)`/g)].map((m) => norm(m[1])))]
+    expectPopulated(quotes.length, 5, 'ROM comment-quote sweep')
+
+    const notInRom: string[] = []
+    const uncited: string[] = []
+    for (const q of quotes) {
+      const hits: number[] = []
+      for (let i = 1; i < lines.length; i++) if (norm(lines[i]).includes(q)) hits.push(i)
+      if (!hits.length) notInRom.push(q)
+      else if (!hits.some((h) => cited.has(h))) uncited.push(`${q} (ROM lines ${hits.join(', ')})`)
+    }
+    expect(
+      notInRom,
+      'these strings are quoted as the ROM\'s own words but appear nowhere in CENTI4.MAC. Quote ' +
+        'the comment as written or stop presenting it as a quotation:\n  ' + notInRom.join('\n  '),
+    ).toEqual([])
+    expect(
+      uncited,
+      'these ROM comments are quoted accurately but the line carrying each one is never cited, so ' +
+        'the claim gate never re-opens it:\n  ' + uncited.join('\n  '),
     ).toEqual([])
   })
 })

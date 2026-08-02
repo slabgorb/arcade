@@ -33,7 +33,15 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import type { Claim } from '../../tools/audit/check-citations.mjs'
 // cp6-1 (AC-7): the coverage sweep lives in ONE module so it can be mutation-tested.
-import { DOSSIER_FILES, allProseCitations, loadClaims, romStudyDir, uncoveredCitations } from './dossier-sweep'
+import {
+  DOSSIER_FILES,
+  allProseCitations,
+  extractProseCitations,
+  loadClaims,
+  readDossier,
+  romStudyDir,
+  uncoveredCitations,
+} from './dossier-sweep'
 
 type CheckClaims = (claims: Claim[], opts: { vendoredRoot: string | null }) => string[]
 
@@ -424,6 +432,21 @@ describe('AC-2 — every dossier citation is pinned by a claim', () => {
     // A sweep that silently matched nothing would make the coverage test below
     // pass vacuously — the exact way a green gate can mean nothing at all.
     expect(allProseCitations().length, 'the coverage check must actually scan citations').toBeGreaterThan(20)
+  })
+
+  it('each enrolled file clears the floor on its OWN, not on the strength of its siblings', () => {
+    // cp6-1 round 2: the floor above is an AGGREGATE. brief.md and glossary.md
+    // contribute 32 and 24 citations today, so either could be rewritten into a
+    // spelling the extractor cannot see, fall to zero, and the total would still
+    // clear 20 on the strength of the other two — with every citation in the
+    // silenced file rotting unwatched behind a green gate.
+    const perFile = DOSSIER_FILES.map((f) => [f, extractProseCitations(readDossier(f), f).length] as const)
+    const starved = perFile.filter(([, n]) => n === 0).map(([f]) => f)
+    expect(
+      starved,
+      `these enrolled dossier files contribute no citations at all, so the coverage sweep is not ` +
+        `watching them: ${starved.join(', ')}`,
+    ).toEqual([])
   })
 
   it('every primary-source citation in the enrolled dossier files has a covering claim', () => {

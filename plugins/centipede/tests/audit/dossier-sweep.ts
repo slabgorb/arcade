@@ -59,6 +59,13 @@ export interface ProseCitation {
   from: string
 }
 
+/** What one pass over a dossier file found: the citations, and the wreckage. */
+export interface CitationScan {
+  citations: ProseCitation[]
+  /** Backtick-wrapped `FILE:LINESPEC` forms the linespec grammar cannot parse. */
+  malformed: string[]
+}
+
 /**
  * Extract every backtick-wrapped primary-source citation `FILE:LINESPEC` from a
  * dossier file, where FILE ends .MAC/.DOC/.MAP and LINESPEC is a comma list of
@@ -74,18 +81,40 @@ export interface ProseCitation {
  * cannot see is a citation nothing re-checks. sound-dossier.test.ts asserts
  * sound.md carries neither spelling.
  */
-export function extractProseCitations(md: string, from = ''): ProseCitation[] {
-  const out: ProseCitation[] = []
+export function scanProseCitations(md: string, from = ''): CitationScan {
+  const citations: ProseCitation[] = []
+  const malformed: string[] = []
   const re = /`([\w./]+\.(?:MAC|DOC|MAP)):([\d,\-]+)`/g
   for (const m of md.matchAll(re)) {
     const file = basename(m[1]) // normalise any revision.vN/ prefix away
     for (const part of m[2].split(',')) {
       const range = part.match(/^(\d+)-(\d+)$/)
-      if (range) out.push({ file, start: +range[1], end: +range[2], raw: `${m[1]}:${part}`, from })
-      else if (/^\d+$/.test(part)) out.push({ file, start: +part, end: +part, raw: `${m[1]}:${part}`, from })
+      if (range && +range[1] <= +range[2]) {
+        citations.push({ file, start: +range[1], end: +range[2], raw: `${m[1]}:${part}`, from })
+      } else if (/^\d+$/.test(part)) {
+        citations.push({ file, start: +part, end: +part, raw: `${m[1]}:${part}`, from })
+      } else {
+        // cp6-1 round 2 (Reviewer M3): the OUTER regex accepts any run of digits,
+        // commas and dashes, but only `N` and `N-M` mean anything. A part that
+        // matches neither used to fall off the end of this loop with no record —
+        // so `CENTI4.MAC:2463-24-64` produced ZERO citations, and a coverage sweep
+        // over an empty set is vacuously green. A reversed range (`2465-2455`)
+        // lands here too: it parses, but no claim line can ever fall inside it.
+        malformed.push(`${m[1]}:${part}`)
+      }
     }
   }
-  return out
+  return { citations, malformed }
+}
+
+/**
+ * Every well-formed citation in `md`. The malformed ones are dropped HERE and
+ * reported by {@link allMalformedCitations} — one scanner, two views, so the
+ * two can never disagree about what "well-formed" means (lang-review #18: one
+ * concept must not grow two helpers).
+ */
+export function extractProseCitations(md: string, from = ''): ProseCitation[] {
+  return scanProseCitations(md, from).citations
 }
 
 /**
@@ -106,6 +135,19 @@ export function allProseCitations(files: readonly string[] = DOSSIER_FILES): Pro
   return files.flatMap((f) => extractProseCitations(readDossier(f), f))
 }
 
+/**
+ * Every citation across `files` that LOOKS like one and cannot be parsed as one.
+ *
+ * The gate asserts this is empty. Without it a single mistyped dash removes a
+ * citation from the coverage sweep, from the citation-count floor and from the
+ * `spells every citation in the form the sweep can SEE` check simultaneously —
+ * that last one strips every backticked span before it looks for bad spellings,
+ * so a malformed-but-backticked linespec is invisible to it by construction.
+ */
+export function allMalformedCitations(files: readonly string[] = DOSSIER_FILES): string[] {
+  return files.flatMap((f) => scanProseCitations(readDossier(f), f).malformed.map((raw) => `${raw} (in ${f})`))
+}
+
 /** Every claim in docs/rom-study/claims/*.json, flattened across files. */
 export function loadClaims(): Claim[] {
   if (!existsSync(claimsDir)) return []
@@ -116,7 +158,7 @@ export function loadClaims(): Claim[] {
 }
 
 /** Does this claim pin a line inside the cited range? */
-export function claimCovers(claim: Claim, c: ProseCitation): boolean {
+export function claimCovers(claim: Readonly<Claim>, c: Readonly<ProseCitation>): boolean {
   return (
     !!claim.source &&
     basename(claim.source.file) === c.file &&
@@ -126,7 +168,7 @@ export function claimCovers(claim: Claim, c: ProseCitation): boolean {
 }
 
 /** Is any of `claims` covering this citation? */
-export function coveredBy(claims: Claim[], c: ProseCitation): boolean {
+export function coveredBy(claims: readonly Claim[], c: Readonly<ProseCitation>): boolean {
   return claims.some((cl) => claimCovers(cl, c))
 }
 
@@ -138,6 +180,6 @@ export function coveredBy(claims: Claim[], c: ProseCitation): boolean {
  * mutation proof calls with a claim removed. One implementation, two callers —
  * which is the whole reason this module exists.
  */
-export function uncoveredCitations(claims: Claim[], files: readonly string[] = DOSSIER_FILES): string[] {
+export function uncoveredCitations(claims: readonly Claim[], files: readonly string[] = DOSSIER_FILES): string[] {
   return [...new Set(allProseCitations(files).filter((c) => !coveredBy(claims, c)).map((c) => c.raw))]
 }
