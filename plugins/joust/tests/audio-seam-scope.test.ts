@@ -38,6 +38,7 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, relative } from 'node:path'
+import { EVENT_KINDS } from '../src/core/events'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const readmePath = join(root, 'README.md')
@@ -306,5 +307,210 @@ describe('jt5-1 — the doc assertions above are not inert', () => {
 
   it('flatten() leaves ordinary prose intact', () => {
     expect(flatten('a  b\n c')).toBe('a b c')
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Story jt5-7 — RED phase (Mr. Praline / TEA). AC5, AC6, AC7, AC8.
+//
+// The README carries measured numbers that nothing guards, plus two paragraphs
+// that landed stories refuted. These guards live HERE, beside jt5-1's README
+// assertions, so that every "the README's claims are true" check sits in one
+// file — and so they inherit `flatten()`, which is what makes a prose assertion
+// against this blockquote-heavy, hard-wrapped file honest at all.
+//
+// ─── WHAT IS DERIVED, WHAT IS ONLY STAMPED, AND WHY ──────────────────────────
+// The user's ruling (2026-08-02) was to SPLIT: derive the counts that can be
+// derived, mark the rest indicative. Measurement decided which is which, and it
+// moved one item out of the "derive" column that the story had put in:
+//
+//   DERIVABLE, and derived below:
+//     · test-FILE count  — `walk()` + the vitest include pattern gives 100,
+//       matching `vitest run --project joust` exactly (measured 2026-08-02).
+//       Note the two `.mjs` files under tools/sample-bake/ — a bare
+//       `tests/*.test.ts` glob gives 96 and a `find` gives 97; only the full
+//       pattern reproduces vitest. That mismatch is why this is derived rather
+//       than transcribed.
+//     · CLAIM count — the claims JSON is the same set `check-citations.mjs`
+//       counts; both print 938 today, in normal AND in degraded (schema-only)
+//       mode, so one derivation covers both README sites.
+//     · EVENT_KINDS — IMPORTED from source, 17 today, against the README's
+//       "eleven". Imported rather than scanned on purpose: a regex over the
+//       tuple gave 19 during design. Static analysis of source is exactly the
+//       transcription error this AC exists to remove, so the guard must not
+//       commit it while checking for it.
+//
+//   NOT DERIVABLE — moved to the indicative column by measurement:
+//     · the TEST count. Static analysis cannot reproduce it: 2001 `it(`/`test(`
+//       call sites against vitest's 2418, because 32 `it.each` sites each
+//       expand to N tests. A guard that cannot go green is not a deliverable,
+//       so the README must stop stating a bare test count as fact.
+//     · the six-number skipIf block. SELF-REFERENTIAL: a test counting how many
+//       times `skipIf(!vendoredAvailable)` occurs under `tests/` is itself a
+//       file under `tests/` carrying that literal, so writing the guard changes
+//       the number it guards.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** The README exactly as stored — for assertions about numbers, which do not wrap. */
+const readmeRaw = (): string => readFileSync(readmePath, 'utf8')
+
+/** Test files as vitest discovers them: its include pattern, over the plugin root. */
+const derivedTestFileCount = (): number =>
+  walk(root).filter((f) => /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/.test(f)).length
+
+/** Claims across the dossier — the set `check-citations.mjs` reports on. */
+function derivedClaimCount(): number {
+  const dir = join(root, 'docs/rom-study/claims')
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.json'))
+    .reduce((n, f) => {
+      const parsed: unknown = JSON.parse(readFileSync(join(dir, f), 'utf8'))
+      const list = Array.isArray(parsed)
+        ? parsed
+        : ((parsed as { claims?: unknown[] }).claims ?? [])
+      return n + list.length
+    }, 0)
+}
+
+describe('jt5-7 AC5 — the README’s counts are DERIVED, not transcribed', () => {
+  it('the suite FILE count matches what vitest actually discovers', () => {
+    const derived = derivedTestFileCount()
+    // Non-vacuity: a derivation that returned 0 would make any README number
+    // "wrong" for the wrong reason, and one that returned a constant would
+    // never track reality.
+    expect(derived, 'the derivation found no test files at all').toBeGreaterThan(50)
+
+    const stated = readmeRaw().match(/(\d+)\s+files/)
+    expect(stated, 'the README must state a file count for this guard to check').not.toBeNull()
+    expect(
+      Number(stated?.[1]),
+      `README says ${stated?.[1]} test files; vitest discovers ${derived}. ` +
+        'Update the README — this number is derived and will redden whenever it drifts.',
+    ).toBe(derived)
+  })
+
+  it('the CLAIM count matches the dossier, at every site that states it', () => {
+    const derived = derivedClaimCount()
+    expect(derived, 'the claim derivation collapsed to zero').toBeGreaterThan(100)
+
+    const stated = [...readmeRaw().matchAll(/checked\s+(\d+)\s+claim\(s\)/g)].map((m) => Number(m[1]))
+    // Measured: the README states this number TWICE (the quick-start command at
+    // :52 and the degraded-mode demonstration at :139). Both must be right —
+    // the checker prints the same 938 in either mode, so there is no honest
+    // reason for them to differ.
+    expect(stated.length, 'the README must state the claim count where it quotes the checker').toBe(2)
+    for (const n of stated) {
+      expect(
+        n,
+        `README quotes "checked ${n} claim(s)"; the dossier holds ${derived}`,
+      ).toBe(derived)
+    }
+  })
+
+  it('the event-channel count matches EVENT_KINDS in source', () => {
+    // Statically imported, not `await import(...) as {...}`: the cast form
+    // needed a hand-written shape that would go stale silently if the tuple
+    // were renamed, which is the transcription failure this AC exists to
+    // remove. A static import makes the derivation compile-checked instead.
+    expect(EVENT_KINDS.length, 'EVENT_KINDS collapsed to empty').toBeGreaterThan(0)
+
+    expect(
+      readme(),
+      `the README calls the channel "eleven ROM-cited moments"; EVENT_KINDS holds ${EVENT_KINDS.length}. ` +
+        'jt5-3 added four wing cues, jt5-4 two THUDs and jt5-6 split player-materialise.',
+    ).not.toMatch(/eleven ROM-cited moments/i)
+  })
+})
+
+describe('jt5-7 AC6 — what cannot be derived is marked INDICATIVE, with its reason', () => {
+  it('the bare stale test count is gone', () => {
+    // 1944 was true when written and is not now (2418). It is not statically
+    // derivable, so it must not stand as an unqualified fact.
+    expect(readmeRaw(), 'the stale test count must not survive').not.toMatch(/1944/)
+  })
+
+  it('the skipIf reconciliation block is labelled indicative and dated', () => {
+    const md = readme()
+    // Both tokens verified grep-count 0 in the README today, so neither
+    // assertion can pass on the unchanged file.
+    expect(md, 'the unguarded counts must be marked indicative').toMatch(/indicative/i)
+    expect(md, 'an indicative count needs the date it was measured').toMatch(
+      /measured\s+2026-08-\d\d/i,
+    )
+  })
+
+  it('the README says WHY that block is not derived', () => {
+    // Without the reason, the next reader's obvious improvement is to "fix" it
+    // by writing the guard — which changes the number it guards. The reason is
+    // the load-bearing half of the decision.
+    expect(readme(), 'state the self-reference, or the decision looks like laziness').toMatch(
+      /self-referential|counts itself|would change the number it guards/i,
+    )
+  })
+})
+
+describe('jt5-7 AC7 — the quick-start describes the cabinet server that mg1-2 landed', () => {
+  it('no longer claims joust cannot be opened in a browser', () => {
+    const md = readme()
+    // Each negative was verified to MATCH the unchanged README before being
+    // written, per this file's standing rule.
+    expect(md, 'just serve serves the real plugin at /joust/ since mg1-2').not.toMatch(
+      /There is no way to open joust in a browser/i,
+    )
+    expect(md, 'the do-not-screenshot warning describes the retired SPA fallback').not.toMatch(
+      /Do not screenshot/i,
+    )
+    expect(md, 'the per-plugin port pin is gone, not merely "removed by the migration"').not.toMatch(
+      /5279/,
+    )
+  })
+
+  it('names the cabinet server and the guard that pins it', () => {
+    const md = readme()
+    // Positives built only from tokens absent today (`just serve`, `5270` and
+    // `canonical-serve` are each grep-count 0), so none can pass on the stale
+    // text. `banana` is deliberately NOT used: the refuted paragraph already
+    // contains it, so an assertion on it would be inert.
+    expect(md, 'the README must name the one canonical dev command').toMatch(/just serve/)
+    expect(md, 'the cabinet serves joust at its own path').toMatch(/\/joust\//)
+    expect(md, 'cite the guard that proves it is not a blanket fallback').toMatch(
+      /canonical-serve/,
+    )
+  })
+})
+
+describe('jt5-7 AC8 — liveness is a MEASUREMENT, not an inference from a hostname', () => {
+  it('does not assert the game is live without saying how that was checked', () => {
+    const md = readme()
+    // CLAUDE.md: "do not infer a live game from a live hostname; request it."
+    // The stale sentence reads "The shipped game is unaffected and still live
+    // at joust.slabgorb.com" — an unmeasured claim in a doc that elsewhere
+    // insists on curling.
+    expect(md, 'an unqualified liveness claim is exactly what CLAUDE.md forbids').not.toMatch(
+      /still live at \[?joust\.slabgorb\.com/i,
+    )
+  })
+
+  it('records the date and the control the measurement used', () => {
+    const md = readme()
+    // Measured 2026-08-02: joust.slabgorb.com/ served <title>Joust</title>
+    // while /banana-control/ served "Not Found", and arcade.slabgorb.com/joust/
+    // behaved identically. A 200 alone proves nothing — the lobby's SPA
+    // fallback answers 200 for every path — so the control is the evidence.
+    //
+    // PROXIMITY, not mere presence. AC6 also requires a "measured 2026-08-.."
+    // stamp elsewhere in this README, so a bare /2026-08-\d\d/ here would be
+    // satisfied by THAT stamp and assert nothing about liveness. The date must
+    // sit in the same neighbourhood as the hostname it dates.
+    const near = md.match(/[\s\S]{0,320}slabgorb\.com[\s\S]{0,320}/)
+    expect(near, 'the README must still name the host it is making a claim about').not.toBeNull()
+    expect(
+      near?.[0] ?? '',
+      'a liveness measurement needs its date beside the claim, not elsewhere in the file',
+    ).toMatch(/2026-08-\d\d/)
+    expect(
+      md,
+      'name the single-origin path — it is the canonical URL after the collapse',
+    ).toMatch(/arcade\.slabgorb\.com\/joust/)
   })
 })
