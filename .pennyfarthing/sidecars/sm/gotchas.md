@@ -1620,3 +1620,83 @@ the story. It went to TEA as "classify these before treating them as remediation
 an extractor defect it is arguably out of scope and should be filed." Same shape as the jt5-10
 `PLYR3/4/5` field-6 hand-over, and the reason it is cheap: the check is named, so resolving it is
 minutes rather than a re-derivation.
+
+---
+
+## An OWNER story's number goes stale when your story changes the thing it counts — re-measure it at finish, and rewrite its TITLE (sw8-23 finish, 2026-08-02)
+
+**Situation:** routing sw8-23's findings, `sw8-24` was the obvious owner of the tree-wide
+sweep — it exists solely to close what this guard reports. Its mechanism fit perfectly, so by
+the standing rule ("check the owner's MECHANISM, not its theme") it was a clean route.
+
+**What the rule does not cover:** sw8-24's *description* was built on measurements my story had
+just invalidated. It said "35 stale citations", planned the work around a migration-artefact
+grouping (`math3d.ts:607-618`, `context-story-8-3.md`, `.session/8-6-session.md`), and promised
+"grouping those may make the sweep much smaller than the count suggests." Measured at finish:
+the count is **29**, over a **wider** surface, and **none** of the three worked examples is
+reported any more. A picker following that description would plan around a grouping that no
+longer exists and be surprised by a different 29.
+
+**The addition to the rule: a story that changes what an owner story MEASURES owes that owner a
+re-measurement, not just a routed finding.** The tell is mechanical — if your story moves a
+number, `grep` the epics for that number and for the tool that produces it. Cost: one command
+and one `--description` update. Cost of skipping: the next picker re-derives the whole shape,
+or worse, trusts it.
+
+**And rewrite the TITLE.** sw8-24's title carried "~35" on the board. `--title` exists; a
+re-scope that leaves the title advertising the old number is half a re-scope (same conclusion
+as uf1-9's jt5-8 rewrite, arrived at from the measurement side rather than the scope side).
+
+## "Would one edit close both?" resolves EXTEND-vs-FILE — and it can answer differently for two findings from the same review
+
+Three routing decisions on one story, all using the same test, landing in three different places:
+
+- **EXTEND `td1-14`** with the relocator's window defect. Strictly, one edit does *not* close
+  both clauses (one adds a uniqueness check, the other changes a window seed). But both live in
+  the **same six-line loop**, and shipping them separately means two stories editing the same
+  lines — the drift hazard the rule exists to prevent. Extended, points 3→5, second clause named
+  explicitly.
+- **FILE `sw8-25`** for the association rule binding a quote to the wrong citation. Same file,
+  same theme (relocation accuracy), and I nearly folded it into td1-14 — but it is **upstream**:
+  the wrong quote is chosen *before* any relocation search runs, so td1-14's fixes would
+  faithfully relocate a quote that was never that citation's. Different function, different edit.
+- **FILE `sw8-26`** for two findings at once (a failed opt-out is invisible; one unreadable file
+  aborts the scan). Different symptoms, but one claim — *a green run means every file was
+  checked* — and both fixes touch the same function.
+
+The refinement worth keeping: when two findings sit in one file, ask **where in the pipeline**
+each one fires. "Same file" and even "same subsystem" routinely hide an upstream/downstream
+split, and the downstream story silently assumes the upstream one is correct.
+
+## Verify the routed chore's NUMBER by the method that would have caught the original error
+
+The Reviewer routed two corrections with replacement text. The standing rule says verify them —
+I did, and one needed a *different verification method* than the one that produced it.
+
+The claim was "seven phantoms, not six". My first re-derivation classified each vanished error
+by asking "would the new extractor produce this name?" in a synthetic one-line fixture. That
+returned **six** — agreeing with the number under correction, and looking authoritative. The
+seventh (`Sheet.ts`) passes in isolation and is rejected only **in situ**, because the mechanism
+rejecting it is a lookbehind on the preceding character. A classifier that re-creates the
+context destroys exactly the cases whose defect *is* the context.
+
+Re-derived from the real vanished-error set instead: 7 phantoms, 9 real, and the accounting
+closed (`44 − 16 + 1 = 29`). **When a correction is about a count, verify it against the real
+before/after sets, never against a reconstruction of the cases** — and treat agreement with the
+number you are correcting as a warning sign rather than a confirmation.
+
+## Two things the finish surfaced that are NOT this story's to fix
+
+- **`sprint/archive/sprint-2628-completed.yaml` has six rows missing `points` and/or
+  `completed`** — `tp1-2`, `tp1-20`, `cp4-3`, `sw8-2`, `jt4-4`, `sw8-12`. That is the
+  shared-trailing-field data-loss bug this file already documents, with six historical victims.
+  Mine landed complete (`sw8-23, 3, 2026-08-02`). Do not repair them mid-ceremony; worth a
+  dedicated cleanup chore, and worth a parse (not an eyeball) after every finish — the check is
+  `[r for r in rows if r.get('points') is None or r.get('completed') is None]`.
+- **A finding can be a CONFIGURATION choice rather than work.** `comment_analyzer` is disabled
+  in `workflow.reviewer_subagents`, and it is the specialist whose domain held four of round
+  one's six findings — across two consecutive stories in this epic whose only real defects were
+  claim prose. That is strong measured evidence, but it is a setting the user chose. Filing it as
+  a backlog story would queue someone else's decision; it belongs in the report to the user with
+  the numbers attached. **Not every finding wants a story — some want a sentence to the person
+  who can change it.**
