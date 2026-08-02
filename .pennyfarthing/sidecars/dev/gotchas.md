@@ -1501,3 +1501,80 @@ Confirms the existing entry. Any comment insertion moves the audit's `ours` pins
 
 **Check the live-vs-frozen split before panicking at the count:** 41 of star-wars's pins carry
 `remediated_by` and are deliberately frozen; the tool already skips them.
+
+---
+
+## A test that writes into the tree another suite MEASURES is flaky by construction — and the flake lands on the innocent suite (sw8-23, 2026-08-02)
+
+**Situation:** sw8-23 widened a citation guard's scan to include `tools/`. TEA proved the walk
+really reaches the directory by planting a probe file there and asserting the default scan
+reported it, cleaning up in a `finally`. Sound-looking, and it passed when that file ran alone.
+
+**Problem:** vitest runs test FILES in parallel and they share one filesystem. A sibling suite
+holds a tree-wide ratchet (`checkTree(...).length <= N`), and it was scanning while the probe
+existed — so the ratchet counted a file that lives for 40ms. `npx vitest run <one file>` was
+green; `npx vitest run audit` was red. **The failure surfaced on the OTHER suite**, where
+nothing in the diff, the story or the test name explains it, and the obvious diagnosis
+("my change added a stale citation") is wrong.
+
+**Fix that keeps all three proofs:** plant into `mkdtempSync(tmpdir())` and pass it via the
+`roots` option; assert the exported default list contains the directory; then close the gap
+between them with `checkTree({roots: defaultRoots(r)})` deep-equals `checkTree({})`. Same three
+claims — the walk descends, the extension is read, the default list is the one actually used —
+with no shared state.
+
+**Generalise:** before writing a test that touches the filesystem inside the repo, ask *what
+else measures this tree?* Aggregate assertions (counts, ratchets, lint sweeps, "no file
+matches X") are the victims, and they are exactly the tests whose failure looks like a real
+regression. If a test needs a file in a scanned location, the production code almost always
+already accepts an injectable root — use it. Corollary for diagnosis: **a test that passes
+alone and fails in a group is a shared-resource bug, not a logic bug** — run the suspect file
+solo first; it takes ten seconds and names the class of problem immediately.
+
+## Re-run the mutation battery against the DELIVERED code — the RED battery scored a different program
+
+TEA ran 8 mutants against a throwaway and caught all 8. I re-ran 13 against the real
+implementation: 11 caught, **1 survived**, 1 anchor-missed.
+
+- **The survivor was real coverage, not an equivalent mutant.** Removing the head-line cap
+  from the pragma scan broke nothing. The tempting read is "unobservable internal, rename the
+  test". Wrong here: the scan loop only stops early at the first NON-comment line, so any file
+  opening with a long prose block — every design spec in the scanned docs tree, and the tool's
+  own 90-line header — would grant opt-out authority anywhere inside it. That is the story's
+  headline hazard wearing a second costume. Added the test.
+- **An ANCHOR MISS is not a caught mutant.** Two mutations failed to apply because I had
+  reworded the target string while implementing. The battery prints `ANCHOR MISS`, and it
+  scrolls past looking like just another row. Re-run every miss with the corrected string —
+  both were caught, but I would have shipped claiming 13/13 having actually tested 11.
+
+**The rule:** the RED battery scores TEA's throwaway. Yours is a different program with
+different internals; its guards deserve their own battery, and the interesting output is the
+same as ever — the survivors.
+
+## When your own edit is the thing under test, re-run the tool after every edit
+
+This story hardened a guard that scans source comments — including its own file. Writing the
+implementation comments explaining the fix produced **three fresh phantom citations**, because
+prose about the citation format contains citation-shaped text. Each appeared only after
+re-running the tool, none was visible while writing, and one was inside the very sentence
+explaining why phantoms are a problem.
+
+Any self-scanning tool has this property: linters with rule names in their own docs,
+secret-scanners with example secrets, dependency-cycle checkers that import for a fixture.
+**Budget a re-run per edit rather than one at the end**, and expect the file's own
+documentation to be the noisiest part of the diff.
+
+## A guard reporting a CORRECT citation is a guard finding, not a citation to fix
+
+One reported "stale" citation was correct: `JSR PMREB` really is at the cited line. The report
+came from the association rule — the comment is a columnar table of citation/quote pairs, and
+after the line-joining pass the PREVIOUS row's trailing quote falls inside the NEXT citation's
+adjacency window, so the guard checked the wrong pair and helpfully named the previous row as
+"where it moved to".
+
+"Correct" the citation and you write a false record into the tree the story exists to make
+truthful — and you make the guard's most confident output (a specific relocation line number)
+into a lie. The right move was to reformat the comment so the pairs are unambiguous, leave the
+citation untouched, and file the association bug. **Before acting on any guard's finding,
+verify the finding against the primary source.** Every ROM anchor here was opened before being
+trusted, precisely because the tool producing the suggestions was the thing under test.
