@@ -1700,3 +1700,91 @@ number you are correcting as a warning sign rather than a confirmation.
   a backlog story would queue someone else's decision; it belongs in the report to the user with
   the numbers attached. **Not every finding wants a story — some want a sentence to the person
   who can change it.**
+
+---
+
+## A filed repro can be EXACTLY right and reproduce on only ONE of four harnesses — the filing names the seed and forgets the fixture (jt9-1 setup, 2026-08-02)
+
+**Situation:** jt9-1's headline evidence was "REPRODUCED in real seeded play, not argued: seed
+0x2468, frame 2688, process 514 promotes to boundr while carrying `{kind:'glide'}` — 1 of 11
+promotions across 0xbeef/0x2468/0xface at 3000 frames." Six independent particulars, all
+falsifiable, filed by a Reviewer who had actually run it. The sw8-23 rule said run it rather than
+read it, so I did.
+
+**Every particular was correct — and it reproduced on one harness of the four I tried.**
+
+| harness | promotions | glide-carrying |
+|---|---|---|
+| `createGame` + both players **IDLE** | **11** | **1** — 0x2468 f=2688 proc 514 ✓ |
+| `createGame` + the plugin's `scripted` inputs | 14 | **0** |
+| `createWaveDemo` + `scripted` | 6 | 0 |
+| `createWaveDemo` + idle | 10 | 0 |
+
+The filing named no harness, and the harness it did *not* use is the one anyone would reach for:
+`scripted`/`inputsAt` is the shared jt5-1/jt5-3 script, the vocabulary of every audio test in the
+plugin, and the coordinate system of all four files the same story's determinism warning names.
+On it, the cited process promotes at frame **1792** carrying nothing. **A TEA taking the obvious
+path measures zero and concludes the finding is stale.**
+
+**Generalise — the missing axis is not the number, it is the SETUP.** The existing entries in this
+file cover claims that are wrong (re-measure) and counts that go stale (re-measure at fix time).
+This is a third shape: the claim is *right*, reproducible, and honestly reported, but it is
+conditioned on an unstated experimental setup, and the default setup falsifies it. The tell is
+mechanical — **a repro citing a seed and a frame but no harness, input script, or entry point is
+under-specified.** Ask "what would I have to type to see this?" and if more than one answer is
+plausible in the repo's own vocabulary, run all of them.
+
+**Corollary: a rare effect needs its control filed alongside the fixture.** The effect here is
+1 promotion in 11, so the post-fix AC ("sweep for a glide-carrying promotion, assert the count is
+ZERO") is a hair from vacuous — a broken sweep passes it forever. I measured the control in the
+same run: glide is carried on 132–466 enemy-frames in *every* harness including the ones with zero
+glide-carrying promotions. That number is what makes a zero an observed zero, and it went into the
+AC. **When you hand forward a "count is zero" criterion, hand forward the positive control that
+proves the sweep can see the thing.**
+
+## The Reviewer's own "file this with X" line is a routing instruction nobody executes
+
+jt5-8's Reviewer filed seven findings. The story carried three forward. **R-2's disposition column
+literally read "file with R-1" — and it was filed nowhere**, in any epic. R-4's said "reword or
+drop the count" and its target comment is still on disk, word for word, ten commits later.
+
+The existing entry says filing a follow-up is a FINISH deliverable. This adds the audit that
+catches the miss: **at SETUP, open the predecessor's findings table and check off every row against
+the board, not just the rows your story's description mentions.** The description is a *summary* of
+the handover and summaries drop rows. Cost: one `grep` of the epic per finding id. Both misses here
+were found that way in under a minute, and one was a MEDIUM.
+
+**And check the leftovers for staleness in both directions** — R-5 was real when filed and is now
+moot (its only wrong text is in an archived session; the live pin already carries the corrected
+number). Reporting "R-5 needs no work, and here is why" is worth the same sentence as filing it.
+
+## When your story makes a finding's SUBJECT unreachable, dispose of it — do not fence it
+
+R-2 said a promotion fence "cannot fail": deleting `pjoy: undefined` from `promote()` left all 2463
+tests green under mutation. The reflex is to write the test that would have failed.
+
+The sweep answered it better. Every promotion in all four harnesses entered carrying `none` or
+`glide` — **never** the other two variants — so a dumb bird's state is only ever absent-or-glide.
+Once this story gates promotion on the glide, that clear is unreachable **by construction**, not
+merely redundant. So the right AC is "delete it, or comment it as unreachable and say why", and
+explicitly **no test**. Building a fence around a branch that cannot be taken is the exact mistake
+R-2 caught the first time.
+
+**The tell:** if your change narrows the input domain of a function, re-ask whether the finding's
+subject survives the narrowing at all. A finding filed against the wide domain may have no referent
+in the narrow one — and the honest close is a deletion plus a sentence, not a new test.
+
+## Attribute a red `main` by BISECTION, and expect one of the failures to be the port
+
+The existing entry says attribute a red suite before finishing. Doing it properly here took two
+runs and split 9 failures three ways:
+
+- Ran the orchestrator at the **sibling's tip** (`git checkout <their-sha>`) as well as at mine:
+  **8 fail there, 9 fail here.** The 8 are their in-flight RED, landed straight on `main`. Naming
+  the delta is what makes "not mine" evidence instead of an assertion.
+- The 9th — `canonical-serve.test.mjs` — failed only in the *full* run. Alone: **15 pass / 0 fail**.
+  `lsof -a -p <pid> -d cwd` showed the port held by a **different checkout** (`a-2`). That is the
+  documented dev-port gotcha showing up as a phantom regression in someone else's suite, and it is
+  worth writing into the handoff by name, because the next agent will otherwise burn the time.
+- Net: zero attributable to this story, and `--project joust` all-green — which is the baseline the
+  next phase actually inherits and the only number worth stating without a caveat.
