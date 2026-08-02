@@ -1834,3 +1834,51 @@ citation and watching four tests redden (at the old threshold: none). Both were 
 believed before I checked, and one of them — the phantom count — turned out wrong in the
 believing. **Every VERIFIED you cannot attach a command and an output to is a finding you
 have not made yet.**
+
+## The correction repeats the defect unless the number is RE-DERIVED, not carried over (sw8-23 round 2, 2026-08-02)
+
+Round 1 rejected a ratchet comment whose decomposition was arithmetically false. I supplied
+verified replacement text. Round 2 found that the replacement **still said "six phantoms"
+where seven is measured** — and my own round-1 finding had explicitly named the seventh
+(`Sheet.ts`, a comment-wrapped identifier killed by the lookbehind rather than the leading-dot
+filter). I had identified it, written it down in the deviation audit, and then copied the old
+number into the fix.
+
+**Why it happens:** a correction feels like an edit, so the number travels with the sentence
+being repaired while attention goes to the part that was obviously wrong. The arithmetic got
+re-derived; the category count did not.
+
+**The rule:** when you supply replacement text containing a measurement, re-run **that
+measurement**, not the one that exposed the defect. They are usually different queries — here
+"does 35+11−6−8 equal 29?" and "how many of the vanished errors are phantoms?" are unrelated
+commands, and only the first was run.
+
+**And beware the isolation probe.** My first phantom count classified each name by asking
+"would the new extractor produce this name?" in a synthetic one-line fixture. That returned
+**six** and looked authoritative. `Sheet.ts` passes in isolation and is rejected only *in
+situ*, because the rejecting mechanism is a lookbehind on the preceding character. A
+classifier that re-creates the context loses exactly the cases whose defect IS the context.
+Diff the real before/after sets instead — `44 − 16 + 1 = 29` closed the accounting and named
+all seven.
+
+## A fix for a comment can introduce an INVISIBLE load-bearing character — check the bytes, not the render
+
+The round-1 fix for a documentation finding added `docs/**​/specs` inside a JSDoc block, where
+a literal `*/` would terminate the comment. The workaround chosen was a **U+200B ZERO WIDTH
+SPACE**. It reads correctly, compiles, and passes every test.
+
+Delete it — as a whitespace cleanup, a trim-on-save, or a copy through a tool that strips
+zero-width characters would — and the module fails to parse with `Unexpected identifier
+'extname'`, pointing a hundred lines from the cause. The same file already solved the same
+problem 33 lines earlier with a visible backslash escape (`docs/**\/specs`), so the diff also
+left two workarounds for one problem in one file.
+
+**Add to the review sweep, it is one command:**
+```python
+bad={'​':'ZWSP','‌':'ZWNJ','‍':'ZWJ','﻿':'BOM',' ':'NBSP'}
+[(i+1,n) for i,l in enumerate(open(P,encoding='utf-8')) for c,n in bad.items() if c in l]
+```
+Run it on any diff that edits comments containing glob patterns, regex literals, or anything
+with `*/`, `${`, or a backtick. And when you find one, ask the second question: **does the
+file already handle this case somewhere else, differently?** Two answers to one problem is the
+more durable defect — the invisible character is at least caught by the parser.
