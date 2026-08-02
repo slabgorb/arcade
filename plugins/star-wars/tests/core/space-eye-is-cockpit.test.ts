@@ -3,17 +3,20 @@
 // sw8-2 AC9/AC11, re-pinned by sw8-8 — the space eye IS the cockpit, so incoming fire stays
 // answerable all the way in.
 //
-// This file was `bounded-eye-combat.test.ts`. It asserted that sw8-1's MOVING space camera stayed
+// This file was RETIRED:`bounded-eye-combat.test.ts` (the `RETIRED:` marker tells the
+// comment-citation guard this name is a historical record, not a live reference). It asserted that sw8-1's MOVING space camera stayed
 // BOUNDED (`|eye| < 33,000`, the ROM ST.UX 16-bit range) so that combat at a FIXED depth stayed
 // inside the yoke's reach. sw8-8 retired that camera outright — `ST.UX` is the starfield's
-// register, never a viewer (its only reader in the 1983 tree is the star generator, `WSSTAR.MAC:98`
+// register, never a camera (its only CONSUMER in the 1983 tree is the star generator, `WSSTAR.MAC:98`
 // `LDD ST.UX ;STARS RELATIVE MOVEMENT`; the full case is the tombstone in `src/core/gameRules.ts`).
 //
 // WHY IT HAD TO BE REWRITTEN, NOT LEFT GREEN. Two reasons, and the second is the serious one.
 //
 // 1. Its premise is gone. `cameraView`'s space arm now returns the cockpit constant, so `eyeOf(s)`
-//    is `[0,0,0]` in EVERY fixture here — including the `frame: 50_000` and `advance(…, 1600)`
-//    states built specifically to exercise drift. Its last assertion reduced to
+//    is `[0,0,0]` for every fixture still in SPACE — including the `frame: 50_000` state built
+//    specifically to exercise drift. (The old `advance(…, 1600)` fixture had stopped measuring
+//    space at all: sw8-11 made the phase TIME-boxed, so by frame 1,600 it was in the TRENCH and
+//    `eyeOf` read `[0, 768, 0]` — see the advance() doc below.) Its last assertion reduced to
 //    `Math.hypot(0,0,0) < 33_000`. It could not fail under any regression, while its name and
 //    header advertised it as the guard for this very invariant.
 //

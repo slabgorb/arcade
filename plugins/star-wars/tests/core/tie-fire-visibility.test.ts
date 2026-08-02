@@ -134,7 +134,7 @@ describe('sw7-24 T5b — C_PV: the view-pyramid status bit (WSMAIN.MAC:3824-3846
     // frame-driven `spaceEye` (at frame 128 the ST.UX sawtooth put it at x = 1024), and it
     // staged a TIE 3,976 off THAT eye so an origin-anchored port would read the fixture
     // backwards. The premise was wrong: `ST.UX` is the starfield's register, not a camera
-    // (WSSTAR.MAC:98 is its only reader — see the tombstone in gameRules.ts), so the pilot never
+    // (WSSTAR.MAC:98 is its only CONSUMER — see the tombstone in gameRules.ts), so the pilot never
     // slides and neither does his view pyramid. The same fixture now pins the correct law.
     //
     // The frame counter is the discriminator: a port that re-derives a moving eye reads this

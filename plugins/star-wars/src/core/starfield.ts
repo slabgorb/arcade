@@ -53,7 +53,7 @@ export const STAR_SPEED = 0x40 * (246.094 / 12)
 /**
  * Lateral viewer drift — the ST.UX slide (sw8-1), ported the same per-game-frame × TICK_HZ
  * way as STAR_SPEED. In space flight the cabinet drives ST.UX STRAIGHT off the frame counter
- * (`S1MV: LDD FRAME / JSR LSLD7 / STD ST.UX`, WSMAIN.MAC:2529-2531 — a viewer *translation*
+ * (`S1MV: LDD FRAME / JSR LSLD7 / STD ST.UX`, WSMAIN.MAC:2525-2528 — a viewer *translation*
  * labelled "STARS RELATIVE MOVEMENT", NOT a rotation; that is the sw8-1 AC1 ruling), so the
  * whole field slides one way past the moving eye. The authentic slope is FRAME<<7 = 0x80 raw
  * units/game-frame; that sweeps our ±STAR_SPREAD band in ~1 s, so the rate here is tuned DOWN

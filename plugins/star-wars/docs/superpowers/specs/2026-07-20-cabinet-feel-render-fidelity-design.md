@@ -30,17 +30,19 @@ against the ROM.
 > out of frame, and our port cannot. The *inference* — "therefore the cabinet flies a
 > moving viewpoint, and `ST.UX` is it" — does not survive the source. `ST.UX` is declared
 > inside the RAM block headed `;STARS` (`WSGLOB.MAC:458-466`); its siblings are named
-> `;PLAYERS UNIVERSE Y FOR STARS` / `...Z FOR STARS` (`:752-753`); its only reader in the
-> entire tree is the star generator `VWSTAR` (`WSSTAR.MAC:98-102`); every writer sits under
+> `;PLAYERS UNIVERSE Y FOR STARS` / `...Z FOR STARS` (`:752-753`); its only CONSUMER in the
+> entire tree is the star generator `VWSTAR` (`WSSTAR.MAC:98-102`) — the WSMAIN reads are the
+> writers' own increments; the starfield writers sit under
 > `.SBTTL MOVE STARS IN SOME DIRECTION`; and, decisively, the space "MOVE PLAYER" routine
 > `SMVSP1/S1MV` (`WSMAIN.MAC:2522-2530`) is *entirely* `LDD FRAME / JSR LSLD7 / STD ST.UX` —
 > no space code writes the player's world position at all. **In the cabinet the space pilot
 > is fixed at the origin.** Driving `cameraView` off `ST.UX` put the pilot's eye and gun
 > somewhere his shield was not, and every incoming fireball left his reachable arc before
 > impact (measured: 0 % answerable at impact, sw8-8). That camera is retired.
-> **The Death Star's wandering therefore belongs to the STATION, not the viewer** — it must
-> be re-derived from its own ROM mechanism into `deathStarPlacement`, which is story
-> **sw8-17**. Read §5 sw8-1 below with the same amendment applied.
+> **The Death Star's wandering therefore belongs to the STATION, not the viewer** — re-derived
+> from its own ROM mechanism into `deathStarPlacement` by story **sw8-17**, which has SHIPPED:
+> the station is seated off-axis through `deathStarOffAxis`. Read §5 sw8-1 below with the same
+> amendment applied.
 
 Longplay ~wave 4 (score 352,171): mid space-combat, the **Death Star is entirely out
 of frame**, only starfield + one TIE + the cockpit frame on screen. Our space camera is

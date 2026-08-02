@@ -16,10 +16,11 @@ export const FOV_Y = Math.PI / 3
 /** The player's cockpit in SPACE — the world origin.
  *
  * EXPORTED since sw8-8: it is now the space eye as well as the space gun and homing target, so
- * `render.ts cameraView` and `tie-status.ts`'s C_PV pyramid both need it. Neither can read
- * `sim.ts shipPoint` for it — `tie-status ← sim` is a core import cycle, the same reason `spaceEye`
- * lived here — and a hand-written `[0,0,0]` standing in for the cockpit is exactly what sw7-16 set
- * out to stop. `sim.ts`'s own private copy was folded into this one at the same time, so this is
+ * `render.ts cameraView` and `tie-status.ts`'s C_PV pyramid both need it. `tie-status` cannot read
+ * it from `sim.ts` — `tie-status ← sim` is a core import cycle, the same reason `spaceEye` lived
+ * here. (`render.ts` is a shell module and does import `sim.ts`, for `surfaceShip`; the cycle is a
+ * core-only constraint.) A hand-written `[0,0,0]` standing in for the cockpit is exactly what
+ * sw7-16 set out to stop. `sim.ts`'s own private copy was folded into this one at the same time, so this is
  * the single definition the whole core and the space camera share. */
 export const COCKPIT: Vec3 = [0, 0, 0]
 
@@ -130,7 +131,7 @@ function clamp(v: number, lo: number, hi: number): number {
  * (the perspective divide would otherwise fold them onto the reticle), and `maxRange` is the
  * beam's far endpoint: infinite in space and on the ground, but $7000 = 28,672 in the trench,
  * where CLBLZ builds the beam against a fixed forward line (`LDD #7000 ;FARTHEST FORWARD
- * POINT`, WSLAZR.MAC:417).
+ * POINT`, WSLAZR.MAC:418).
  *
  * Pure Math Box (dot/sub/add/scale/length) — no ad-hoc trig, no screen pixels.
  */
@@ -229,17 +230,28 @@ export function waveParams(wave: number): WaveParams {
 // They ported `ST.UX` as a global space CAMERA. `ST.UX` is not a camera: it is the STARFIELD's
 // register, and the 1983 source says so at every site.
 //
-//   * Its ONLY reader in the whole tree is the star generator, which loads ST.UX/UY/UZ straight
-//     into the Math Box translation registers and immediately emits star points —
-//     `WSSTAR.MAC:98-102`, `LDD ST.UX ;STARS RELATIVE MOVEMENT`.
+//   * Its only CONSUMER is the star generator, which loads ST.UX/UY/UZ straight into the Math
+//     Box translation registers and immediately emits star points — `WSSTAR.MAC:98-102`,
+//     `LDD ST.UX ;STARS RELATIVE MOVEMENT`. The other reads are the writers' own
+//     read-modify-write increments, of which two run: `SMVBNR` (`;PLAYER 1 MOVE DURING BANNER`)
+//     and `SMVHIS` (`;STAR MOVEMENT DURING HIGH SCORE DISPLAY`). Nothing reads it to place
+//     an object.
 //   * Its sibling registers say what they are for outright: `WSGLOB.MAC:752-753`,
 //     `ST.UY:: ;PLAYERS UNIVERSE Y FOR STARS` / `ST.UZ:: ;PLAYERS UNIVERSE Z FOR STARS`.
 //     (`ST.UX::`'s own `;VIEWER X POSITION` names the QUANTITY, not a consumer.)
-//   * Every writer sits under `WSMAIN.MAC` `.SBTTL MOVE STARS IN SOME DIRECTION` and is an
-//     `SMV*` routine — banner, instructions, scoring screen, high scores. The Death-Star ones
-//     are assembled OUT (`.REPT 0`, :2273-2290; call sites :2186/:2216/:2233 commented out).
-//   * The space-wave writer is `WSMAIN.MAC:2523-2531` — `SMVSP1/SMVSP2/SMVNXT/S1MV:`
-//     `LDD FRAME / JSR LSLD7 / STD ST.UX ;STARS RELATIVE MOVEMENT`.
+//   * The starfield writers sit under `WSMAIN.MAC` `.SBTTL MOVE STARS IN SOME DIRECTION` and are
+//     `SMV*` routines — banner, instructions, scoring screen, high scores. The Death-Star ones
+//     are assembled OUT (`.REPT 0`, `WSMAIN.MAC:2271-2290`; call sites :2186/:2216/:2233
+//     commented out), which is also why their three `LDD ST.UX` reads do not run.
+//   * But NOT every writer sits there, and the exception strengthens the ruling rather than
+//     weakening it. The space-wave writer is filed under `.SBTTL MOVE THE PLAYER`
+//     (`WSMAIN.MAC:2292`) and `S1MV` is not an `SMV*` name at all:
+//     `WSMAIN.MAC:2522-2530`, `SMVSP1/SMVSP2/SMVNXT/S1MV:`
+//     `LDD FRAME / JSR LSLD7 / STD ST.UX ;STARS RELATIVE MOVEMENT`. The routine the ROM files
+//     under "MOVE THE PLAYER" writes nothing but ST.UX — it does not touch the player's world
+//     position, which is the whole case in one routine.
+//   * The second MOVE-THE-PLAYER writer is `S1MVHP` (`;MOVE DURING HYPER`,
+//     `WSMAIN.MAC:2531-2536`) — `LDD FRAME / JSR LSLD8 / STD ST.UX`. Same shape, same conclusion.
 //
 // Nothing in the ROM draws a TIE, the Death Star, a fireball or the gun through ST.UX. sw8-1 read
 // `S1MV` correctly and then ported it TWICE — faithfully into the starfield, and again as this

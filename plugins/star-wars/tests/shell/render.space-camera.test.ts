@@ -2,7 +2,8 @@
 //
 // sw8-8 — the space camera IS the cockpit; the lateral drift belongs to the STARFIELD.
 //
-// This file was `render.moving-eye.test.ts` (sw8-1), and it asserted the opposite: that the space
+// This file was RETIRED:`render.moving-eye.test.ts` (sw8-1) — a historical name, marked so the
+// comment-citation guard does not re-open it — and it asserted the opposite: that the space
 // view matrix drifts with the frame counter and carries the Death Star off screen centre. sw8-8
 // retired that camera, so three of its four tests are INVERTED here rather than deleted — the
 // inversion is what stops the mis-port being re-derived a third time.
@@ -10,7 +11,7 @@
 // WHY THE ORIGINAL WAS WRONG. sw8-1's header read `VWSTAR` (WSSTAR.MAC:96-103) as loading the
 // viewer translation "so the whole world slides past the eye". `VWSTAR` is the STAR GENERATOR: it
 // loads ST.UX/UY/UZ into the Math Box translation registers and immediately emits star points, and
-// it is the ONLY reader of those registers in the entire 1983 tree (`LDD ST.UX ;STARS RELATIVE
+// it is the ONLY CONSUMER of those registers in the entire 1983 tree (`LDD ST.UX ;STARS RELATIVE
 // MOVEMENT`, WSSTAR.MAC:98). The sibling registers say so outright — `ST.UY:: ;PLAYERS UNIVERSE Y
 // FOR STARS`, `ST.UZ:: ;PLAYERS UNIVERSE Z FOR STARS` (WSGLOB.MAC:752-753) — and every writer sits
 // under `.SBTTL MOVE STARS IN SOME DIRECTION`. Nothing in the ROM draws a TIE, the Death Star, a
@@ -82,16 +83,19 @@ describe('sw8-8 — the space camera is the cockpit', () => {
     // ROM case retires the CAMERA drift; it says nothing about whether the STATION moves — and our
     // own primary evidence says it does. The epic's design spec records a direct cabinet
     // observation: "Longplay ~wave 4 (score 352,171): mid space-combat, the Death Star is entirely
-    // out of frame" (`docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md:26-30`).
-    // That is established, not hypothetical. Our port cannot reproduce it today —
-    // `deathStarPlacement` seats the station at x = 0 and moves it only in DEPTH — and closing that
-    // gap is sw8-17, which must port the station's own lateral motion from its own ROM mechanism.
+    // out of frame" (`docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md:47-48`).
+    // That is established, not hypothetical. (The citation formerly read RETIRED:`:26-30`, which was
+    // correct when written and was invalidated by sw8-8's own commit: the 31-line amendment it added
+    // to that anchor in the SAME commit pushed the observation down the file, so the old span landed
+    // a reader on the paragraph REINTERPRETING the observation instead of the observation itself.)
+    // sw8-17 has since ported the station's own lateral motion, so `deathStarPlacement` now seats it
+    // off-axis through `deathStarOffAxis` and the port DOES reproduce the observation.
     // Pinning "the station holds the axis" would have made sw8-17 start by deleting this test.
     //
     // What must NOT come back is the shortcut: re-deriving the wandering from `ST.UX` and sliding
     // the CAMERA to fake it. That is what put the pilot's eye and gun somewhere his shield was not
     // and broke fire fairness, and this assertion fails loudly on it — for any camera offset, at
-    // any station position, including the x = 0 the station has today.
+    // any station position, including the off-axis ones sw8-17 now produces.
     let s = initialState(1983)
     for (let c = 0; c < 12; c++) {
       s = advance(s, 60) // ~one second of frames per checkpoint

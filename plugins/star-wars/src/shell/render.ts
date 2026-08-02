@@ -58,9 +58,9 @@ import {
 import { surfaceGrid } from '../core/surface-grid'
 import { trenchChannel } from '../core/trench-channel'
 import { trenchWallDetail, trenchFarEnd } from '../core/trench-detail'
-import { crosshairNdc, FOV_Y } from '../core/gameRules'
+// COCKPIT: the space eye = the cockpit (sw8-8), not a literal
+import { crosshairNdc, FOV_Y, COCKPIT } from '../core/gameRules'
 import { surfaceShip } from '../core/sim' // the ship point (sw7-16), not a copy
-import { COCKPIT } from '../core/gameRules' // the space eye = the cockpit (sw8-8), not a literal
 import {
   perspective,
   multiply,
@@ -280,7 +280,7 @@ const DEATH_STAR_SCALE_NEAR = 2.4
 
 // sw8-17: the station's own off-axis wander. On the cabinet the space-phase Death Star
 // is a fixed LANDMARK drawn at the ship-attitude transform of the world +X far point
-// (`VWDTHA`, WSMAIN.MAC:3605, "X POSITION AT FAR(4000,0,0) DISTANCE"), gated in-front
+// (`VWDTHA`, WSMAIN.MAC:3606, "X POSITION AT FAR(4000,0,0) DISTANCE"), gated in-front
 // (:3607) and inside a ±45° pyramid (:3613/:3618) — outside the gate NOTHING is drawn.
 // Every wave-set seeds the attitude facing dead away (`$C0` "FACE BACKWARDS"
 // WSMAIN.MAC:1331; "TURN PLAYER AWAY FROM NEW DETH STAR" :1940), mid-combat the twirl
@@ -392,8 +392,9 @@ export function cameraView(state: GameState): Mat4 {
     // `trenchView` IS the eye: lateral offset, height above the y=0 trench floor (sw5-6).
     return viewMatrix(state.trenchView, IDENTITY)
   // space: the eye IS the cockpit at the world origin (sw8-8). sw8-1 drove this camera off
-  // `ST.UX`, but `ST.UX` is the STARFIELD's register — its only reader in the 1983 tree is the
-  // star generator (`WSSTAR.MAC:98`, `LDD ST.UX ;STARS RELATIVE MOVEMENT`), and the full case is
+  // `ST.UX`, but `ST.UX` is the STARFIELD's register — its only CONSUMER in the 1983 tree is the
+  // star generator (`WSSTAR.MAC:98`, `LDD ST.UX ;STARS RELATIVE MOVEMENT`); the WSMAIN reads are
+  // the starfield writers' own increments, not a placement. The full case is
   // in the tombstone in `core/gameRules.ts`. Sliding the camera off the cockpit put the pilot's
   // view and gun somewhere his shield was not, so incoming fire left his reachable arc before it
   // hit him. The world is therefore drawn from the same point the gun fires from and the fireball
@@ -1335,7 +1336,7 @@ function drawTrenchBanners(ctx: CanvasRenderingContext2D, state: GameState, w: n
     // "<amount> FOR USING THE FORCE" is the confirmed authentic cabinet banner
     // wording — findings ## HUD & framing / Open follow-ups #7 cites a real
     // cabinet screenshot reading "5,000 FOR USING THE FORCE"
-    // (docs/star-wars-1983-source-findings.md:655); the plain "USE THE FORCE"
+    // (docs/star-wars-1983-source-findings.md:700); the plain "USE THE FORCE"
     // string listed earlier in the same item is a shorter ROM string-table
     // fragment, not the full banner text.
     // sw7-4 / S-012: the banner shows the WAVE-scaled amount (TSCFRC), not a flat 5,000.

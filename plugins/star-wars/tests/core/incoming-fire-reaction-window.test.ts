@@ -37,15 +37,17 @@
 // and FAILS for a shot closing to zero depth. ANY non-zero eye offset produces a blind tail —
 // bounding it, as sw8-2 did, only changes how early the tail starts.
 //
-// WHY NO EXISTING SUITE CAUGHT IT: `bounded-eye-combat.test.ts` (sw8-2 AC9) checks reachability
-// against a STATIC hand-placed position, `incomingFireball = [1200, 0, -8000]`, with
-// `enemyShots: []` — a fireball that never closes. Reachability at a fixed depth is a strictly
-// weaker property than reachability through impact, and the gap between them is this story.
+// WHY NO EXISTING SUITE CAUGHT IT: the sw8-2 AC9 reachability suite (deleted by sw8-8) checked
+// a STATIC hand-placed position, `incomingFireball = [1200, 0, -8000]`, with `enemyShots: []` —
+// a fireball that never closes. Reachability at a fixed depth is a strictly weaker property than
+// reachability through impact, and the gap between them is this story.
 //
-// WHAT THESE TESTS PIN — the OBSERVABLE, not a mechanism. Dev may close the eye/cockpit split
-// from either side (seat the pilot at `spaceEye`, or home the shot and the hit sphere at the eye);
-// both satisfy every assertion here. The two controls at the bottom fence off the two fixes that
-// would pass by destroying something else: slowing the fireball, and parking the eye.
+// WHAT THESE TESTS PIN — the OBSERVABLE, not a mechanism. The split was closed by seating the
+// pilot's eye, gun and hit sphere together at the cockpit; sw8-8 then retired the moving eye
+// outright, so "seat the pilot at `spaceEye`" is no longer an available fix and the tombstone in
+// gameRules.ts forbids reviving it. The two controls at the bottom still fence off the fixes that
+// would pass by destroying something else: slowing the fireball, and — before the eye was retired
+// — parking it.
 //
 // Sacred boundary: drives the public `stepGame`; no DOM, no time except `dt`, no randomness except
 // the seeded RNG carried in state.
@@ -272,7 +274,7 @@ describe('sw8-8 — the incoming-fire reaction window', () => {
     // RE-SEATED onto the starfield (sw8-8 GREEN), which is what this control was always reaching
     // for. As written in RED it watched `eyeOf`, because at that point the drift lived in the
     // space CAMERA and the cheap fix was to park that camera. The ruling moved the subject: ST.UX
-    // is the starfield's register — its only reader in the 1983 tree is the star generator
+    // is the starfield's register — its only CONSUMER in the 1983 tree is the star generator
     // (`WSSTAR.MAC:98`, `LDD ST.UX ;STARS RELATIVE MOVEMENT`) — so the camera was never the right
     // thing to watch, and it is now correctly frame-invariant.
     //

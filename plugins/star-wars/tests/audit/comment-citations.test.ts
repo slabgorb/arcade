@@ -264,9 +264,20 @@ describe('sw8-18 AC6 — mutation proof, each item caught INDEPENDENTLY', () => 
   })
 
   it('the item-7 mutant is caught for the RIGHT reason — the correct span passes', () => {
-    // If :45-46 also reddened, the guard would be rejecting the spec file wholesale
-    // rather than checking the span, and item 7's "fix" could never go green.
-    const fixed = M7.replace('design.md:26-30', 'design.md:45-46')
+    // If the correct span also reddened, the guard would be rejecting the spec file
+    // wholesale rather than checking the span, and item 7's fix could never go green.
+    //
+    // The span is DERIVED, not written down. It was `:45-46` when this test was drafted
+    // and `:47-48` an hour later, because closing the twelfth item edited the spec three
+    // lines above the observation. A literal here would rot exactly the way the citation
+    // it is testing rotted — which is the whole subject of this story.
+    const spec = readFileSync(
+      join(swRoot, 'docs', 'superpowers', 'specs', '2026-07-20-cabinet-feel-render-fidelity-design.md'),
+      'utf8',
+    ).split('\n')
+    const at = spec.findIndex((l) => /Death Star is entirely out/.test(l)) + 1
+    expect(at).toBeGreaterThan(0)
+    const fixed = M7.replace('design.md:26-30', `design.md:${at}-${at + 1}`)
     expect(checkCitations(fixed, { ...opts, fromFile: join(swRoot, 'tests', 'shell', 'x.test.ts') })).toEqual([])
   })
 })

@@ -2190,12 +2190,9 @@ export function surfaceShip(altitude: number): Vec3 {
   return [0, altitude, 0]
 }
 
-// THE SPACE MOVING EYE (sw8-1/sw8-2) lives in gameRules.ts since sw7-24: `computeStatus`
-// (tie-status.ts) derives the C_PV view bit from the same eye, and tie-status ← sim would
-// be a core import cycle. Re-exported here so the shell's camera (render.ts cameraView)
-// and every existing caller keep their import path — the sw7-16 "one eye, one gun"
-// invariant still routes through the single function.
-// (sw8-8 retired the `spaceEye` re-export with the eye itself — see the tombstone in gameRules.ts.)
+// sw8-8 retired the `spaceEye` re-export along with the eye itself — the space camera is the
+// cockpit at the world origin, so there is no moving eye left to re-export. See the tombstone in
+// gameRules.ts for the source case.
 
 /**
  * THE SHIP — the one point the pilot's eye, his gun, and everything aimed at him all share, in

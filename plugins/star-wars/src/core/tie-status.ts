@@ -11,7 +11,7 @@
 // loop gates on it in four places. BOTH are measured from the COCKPIT as of
 // sw8-8: uf1-12 landed while sw8-8 was in review and built C_PS on the
 // `spaceEye` camera copy, which sw8-8 then retired (ST.UX is the starfield's
-// register, never a viewer — see the tombstone in gameRules.ts). The player's
+// register, never a camera — see the tombstone in gameRules.ts). The player's
 // view, his crosshair, his gun and his hit sphere are one point.
 //
 // The three bits still absent are correctly absent, and for TWO different
@@ -136,7 +136,7 @@ export const VIEW_FAR = 0x7f00
  * tan of the rendered frustum's vertical half-angle — the slope C_PV's pyramid
  * actually has on OUR glass (uf1-14). The ROM compares lateral/vertical to the
  * depth 1:1 — a ±45° pyramid — because that is the 1983 cabinet's screen shape.
- * Ours is `perspective(FOV_Y, aspect, NEAR, FAR)` (render.ts:451), whose glass
+ * Ours is `perspective(FOV_Y, aspect, NEAR, FAR)` (render.ts:490), whose glass
  * ends at FOV_Y/2 = 30° vertically at EVERY aspect, and at
  * atan(aspect · tan(FOV_Y/2)) horizontally. Keeping the 45° claimed a 15° band
  * of sky the player cannot see (so off-screen TIEs passed the §6 fire gate —

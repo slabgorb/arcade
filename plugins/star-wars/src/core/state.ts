@@ -468,7 +468,7 @@ export const TRENCH_GUN_FIRE_THRESHOLD: readonly number[] = [
   0x80, 0x60, 0x40, 0x20, 0x60, 0x20, 0x60, 0x20,
 ]
 /** How far downrange a wall gun can still fire at the player — the ROM's BSGUN
- *  loop terminator `SUBD #6000 ;FURTHEST AWAY FIRING BUNKER` (WSBASE.MAC:1330). A
+ *  loop terminator `SUBD #6000 ;FURTHEST AWAY FIRING BUNKER` (WSBASE.MAC:1340). A
  *  gun scrolls through this approach range and fires while inside it; its slow
  *  (ENEMY_SHOT_SPEED) shot only reaches the cockpit when fired near abreast. */
 export const TRENCH_GUN_FIRE_RANGE = 0x6000
@@ -788,7 +788,7 @@ export const TRENCH_BONUS = 25000
  * How fast the whole trench scrolls toward the cockpit (units/second) — finding
  * B-008. The ROM sets the forward speed once at trench entry (PHIBS `LDD #300
  * ;INITIAL PLAYER SPEED`, WSMAIN.MAC:1834 → $300 = 768) and integrates it ONCE PER
- * GAME-FRAME by the single caller S1MVBS (`ADDD M$TX+M.S1`, WSMAIN.MAC:2654). So
+ * GAME-FRAME by the single caller S1MVBS (`ADDD M$TX+M.S1`, WSMAIN.MAC:2654-2656). So
  * the per-second rate is that immediate times the game-frame rate — 768 × TICK_HZ
  * ≈ 15,750 u/s, 31.5× the old invented 500. Frame-true like every other sw7 speed
  * constant (ENEMY_SHOT_TTL, DARTH_GLOW_SECONDS …): derived from the timebase, not
@@ -887,7 +887,7 @@ export function forceBonusForWave(wave: number): number {
 }
 
 /** Points per SURVIVING shield unit, banked once at the end of a won run
- *  (sw7-4 / S-013). ROM `TSCSHL` (WSGAS.MAC:519) `.BYTE 00,50,00` = 5,000 (BCD),
+ *  (sw7-4 / S-013). ROM `TSCSHL` (WSGAS.MAC:509) `.BYTE 00,50,00` = 5,000 (BCD),
  *  added once per remaining shield by `SCRSHLD` (WSGAS.MAC:375-391). Awarded on ANY
  *  win — NOT clean-gated, unlike the Force bonus. */
 export const SHIELD_BONUS_PER_UNIT = 5000

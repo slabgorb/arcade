@@ -189,8 +189,9 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     // opposite — that the sights ray starts at a frame-driven `spaceEye` (at frame 128 the
     // ST.UX sawtooth put it at x = 1024) — and it staged a TIE 1,024 off the origin so an
     // origin-anchored port would read the fixture backwards. The premise was wrong: `ST.UX`
-    // is the starfield's register, not a camera (`WSSTAR.MAC:98` is its only reader — see the
-    // tombstone in gameRules.ts), so the pilot never slides and neither does his crosshair.
+    // is the starfield's register, not a camera (`WSSTAR.MAC:98` is its only CONSUMER; the WSMAIN
+    // reads are the writers' own increments — see the tombstone in gameRules.ts), so the pilot
+    // never slides and neither does his crosshair.
     //
     // This bit matters more than C_PV did: C_PS gates a LOITER BREAK (TCH1DZ, four gates), so
     // an eye offset would have fighters peeling off at a crosshair the player is not looking
@@ -224,7 +225,7 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
 
   it('measures against the SAME ray the gun uses — viewport aspect included (AC-6)', () => {
     // The shell supplies a real aspect every frame (src/shell/input.ts:45), and the gun
-    // inverts the projection WITH it (sim.ts:298, `aimDirection(aimX, aimY, input.aspect)`)
+    // inverts the projection WITH it (sim.ts:313, `aimDirection(aimX, aimY, input.aspect)`)
     // so the bolt goes where the crosshair is drawn. A sights bit computed at the default
     // unit aspect is therefore testing a DIFFERENT RAY, and not by a little: at 16:9 and
     // depth 6000 the two rays are 539 u apart at yoke 0.2 and 2694 u apart at full
