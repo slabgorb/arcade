@@ -369,3 +369,27 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+  - id: jt5-27
+    title: "PJOY,U is an ENTRY ADDRESS: a glide wake skips LINET's promotion check and its lava-troll looker"
+    description: |-
+      Two ROM behaviours live in the region of LINET that a GLIDE wake never executes, and jt5-8 made that region reachable. The scheduler enters a process with JSR [PJOY,U] (JOUSTRV4.SRC:5830, :5951, :6456), so PJOY,U is an ENTRY ADDRESS, not merely state: after LNTUP parks #LNTOFP (:3746-3747), the next wake begins at :3759 and every instruction ABOVE it is skipped. jt5-8 modelled the state and the lane-decision bypass faithfully, but the port still runs the whole skipped prologue every wake.
+
+      (1) THE PROMOTION CHECK. LNTSMT is reachable ONLY from LINET's own first three instructions (LDA NSMART / CMPA WSMART / BLO LNTSMT, :3722-3724). A wake entering at LNTOFP never executes them, so the machine CANNOT promote a dumb bird on its glide wake. The port promotes at plugins/joust/src/core/frame.ts:345 on every enemy wake regardless of pjoy. REPRODUCED in real seeded play, not argued: seed 0x2468, frame 2688, process 514 promotes to boundr while carrying {kind:'glide'} — 1 of 11 promotions across 0xbeef/0x2468/0xface at 3000 frames. Found by Reviewer on jt5-8 (finding R-1).
+
+      (2) THE LAVA-TROLL LOOKER. :3725-3732 (DEC PLAVT,U / BGT / LDA LNTLAV / STA PLAVT,U / LDX PPREV / LDA PID,X / CMPA #LAVID / BEQ LNTUP) is a SECOND entry into the flapping wake: every LNTLAV wakes, a dumb bird with a lava troll immediately behind it in the process list flaps regardless of its lane. linet() implements only the lane decision at :3733-3757 and models none of this. It sits in the same skipped prologue, which is why the two belong in one story. Found by TEA on jt5-8; already pinned as an ORACLE test in plugins/joust/tests/dumb-wingbeat-source.test.ts so it cannot be re-discovered from scratch.
+
+      DETERMINISM WARNING, and it is the expensive half. Both changes alter which frame a bird flaps or promotes on, so this WILL move the jt2 seeded-replay pins again — the same 20-assertion, 4-file blast radius jt5-8 just re-baselined (audio-events, audio-thud, audio-flap, audio-transporter-split). Budget for it, and re-find every moved pin by sweeping for its OWN precondition, never by nudging a number toward the new output. sprint/archive/jt5-8-session.md records the method and the full moved-pin table; read it before starting. Do NOT land this together with jt5-9, which moves the same fingerprints for a different reason.
+
+      ALSO WORTH FOLDING IN (Reviewer findings R-3, R-6, R-7 from jt5-8, all LOW, all cheap): dumb-wingbeat-source.test.ts:126 and :155 are negative claims with no non-vacuity floor (an empty parse passes both); tests/helpers/enemy-contract.ts:250-253 still declares a THREE-variant pjoy and never gained the glide variant; audio-flap.test.ts:707-708 uses a non-null assertion whose stated precondition does not establish it.
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "A dumb (linet) enemy cannot promote on a GLIDE wake: with a pending LNTOFP obligation, the promotion gate at frame.ts:345 is skipped and promotion happens on the next non-glide wake instead — because LNTSMT is reachable only from LINET's own LDA NSMART / CMPA WSMART / BLO LNTSMT (JOUSTRV4.SRC:3722-3724), which a wake entering at :3759 never executes."
+      - 'The regression is pinned end-to-end, not only at the unit: a seeded replay is swept for a promotion occurring while pjoy is a glide, and the count is ZERO. Seed 0x2468 at 3000 frames reproduced exactly one such promotion before the fix (frame 2688, process 514) and is the natural fixture.'
+      - "LINET's lava-troll looker (:3725-3732) is modelled: the PLAVT countdown reloads from LNTLAV, and on a wake where it expires, a dumb bird whose PPREV process carries LAVID enters the flapping wake regardless of its lane decision. The existing ORACLE tests in dumb-wingbeat-source.test.ts already state this law and must go from documenting-only to backing a live behaviour."
+      - 'The jt2 seeded-replay pins are re-baselined deliberately and the bound is stated: every moved pin re-found by sweeping for its own precondition, never by nudging a number toward the new output, with any pin that had to change seed or anchor called out and justified. rng and every PLAYER row are expected to stay bit-identical at every anchor; a move there is a regression, not a re-baseline.'
+      - "jt5-8's three LOW leftovers are closed: non-vacuity floors added ahead of dumb-wingbeat-source.test.ts:126 and :155, the glide variant added to the pjoy union in tests/helpers/enemy-contract.ts, and audio-flap.test.ts:707-708's non-null assertion replaced by a real defined-check."
+    type: bug
