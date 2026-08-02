@@ -1357,3 +1357,8 @@ completed_stories:
     title: 'deploy-r2 is not atomic: index.html must upload LAST, or a failed deploy leaves a live page pointing at absent assets'
     points: 3
     completed: '2026-08-01'
+  - id: uf1-9
+    epic: uf1
+    title: joust DYTBL cadence rows — wire the wing-flap timer, the decision timer and the up-flight VY gates (11 rows)
+    points: 5
+    completed: '2026-08-02'
