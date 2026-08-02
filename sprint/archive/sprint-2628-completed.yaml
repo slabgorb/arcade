@@ -1392,3 +1392,8 @@ completed_stories:
     title: Make the jt5 epic YAML truthful (epic opener, jt5-1, jt5-3) and fix joust's unguarded README counts
     points: 3
     completed: '2026-08-02'
+  - id: jt5-8
+    epic: jt5
+    title: The DUMB brain's wingbeat — linet recomputes every wake, and LNTOFP's forced glide is missing
+    points: 5
+    completed: '2026-08-02'

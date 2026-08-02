@@ -155,7 +155,7 @@ stories:
       Filed from TEA's RED findings on jt5-3, 2026-08-01; re-scoped 2026-08-02 at uf1-9's finish and again 2026-08-02 at setup.
     points: 5
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-02'
     repos: arcade
     workflow: tdd
@@ -167,6 +167,8 @@ stories:
       - 'The jt2 seeded-replay determinism pins are DELIBERATELY re-baselined and recorded as intended: every moved pin is re-found by sweeping for its own precondition, NEVER by nudging a number toward the new output, and the bound is stated explicitly — which digests moved, which did not, and any pin that had to change seed because its precondition has an empty solution set on the old one (uf1-9 moved 21 pins this way; two changed seed).'
       - 'The change to the enemy wing-flap CUE cadence is measured and stated, not discovered: the cue derives from the flapHeld transition (enemy.ts:1163), so forcing a glide wake after every dumb flap changes how often dumb enemies emit a wing sound. Whatever moves in the audio suite is explained as intended or shown to be untouched.'
       - "The player-side flapHeld is OUT OF SCOPE and stays green: shell/input.ts, main.ts's prevFlap threading and tests/shell-input.test.ts:74-91 are untouched, and the non-vacuity of that guard is preserved (mutating input.ts:45 to flapHeld := flapHeld && !prevFlap must still redden it). A regression there is a failure of this story, not a re-baseline."
+    completed: '2026-08-02'
+    review_verdict: approved
   - id: jt5-9
     title: PTIMUP clears at BOTH wing transitions — a release restores flap lift and our flight.ts never does
     description: "A second thing jt5-3 found and could not take. The ROM clears PTIMUP at BOTH wing transitions — 'CLR PTIMUP,U  RE-INIT BUTTON PRESSES' at JOUSTRV4.SRC:6185 (the GOFLIP path, i.e. the RELEASE edge) and 'CLR PTIMUP,U' at :6219 (the GOFLAP/FLAST2 path, the PRESS edge). PTIMUP is the flap-lift budget, so on the real machine RELEASING the button restores your lift. Our plugins/joust/src/core/flight.ts tracks timeUp (tickTimeUp, called from stepPlayerEntity in frame.ts and stepEntity in enemy.ts) but NEVER resets it in flight — it only decays. The gameplay consequence is real and it is the one every Joust player knows: rapid tapping should climb better than holding, and on our port it does not, because only the press edge is modelled. Now that jt5-3 has landed a release-edge detector in the core, the edge this needs EXISTS — that was the blocker, and it is gone. WATCH THE SAME TRAP AS jt5-8: changing when timeUp resets moves every jt2 seeded-replay fingerprint, so budget for re-baselining the determinism digests. Do not land this and jt5-8 in the same commit; two fingerprint-moving changes at once make the re-baseline unreviewable. Filed from TEA's RED findings on jt5-3, 2026-08-01."
