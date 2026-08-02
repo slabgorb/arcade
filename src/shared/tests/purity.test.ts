@@ -37,7 +37,20 @@ const PURE_SUBPATHS = ['math3d', 'rng', 'loop', 'font', 'name-entry', 'pause'] a
 // list got this wrong (included 'font', a PURE subpath; omitted 'highscore' and
 // 'synth', both genuinely browser-exempt: highscore writes document.cookie per
 // ADR-0004, synth builds an AudioContext).
-const BROWSER_SUBPATHS = ['esc-overlay', 'glow', 'view', 'audio', 'highscore', 'synth'] as const
+// sc1-1 adds `host-helpers`: it mounts a canvas, attaches gesture listeners and
+// reads KeyboardEvent, so it is browser-exempt by construction rather than by
+// concession — the whole module is the imperative DOM wiring the games used to
+// hand-write. Classified here, not exempted: the guard below still scans it for
+// nothing, because being in this list is what says "this file is allowed a DOM".
+const BROWSER_SUBPATHS = [
+  'esc-overlay',
+  'glow',
+  'view',
+  'audio',
+  'highscore',
+  'synth',
+  'host-helpers',
+] as const
 
 const srcPath = (name: string) => join(SHARED_ROOT, `${name}.ts`)
 
@@ -142,8 +155,15 @@ describe('purity guard — classification is honest, not just a Set literal', ()
     // If a future pure-subpath violation ever gets "fixed" by adding its name here
     // instead of removing the DOM reference, this fails immediately — the exemption
     // set can't silently grow to make a red guard go green.
+    //
+    // `host-helpers` added deliberately by sc1-1, and this pin updated in the same
+    // commit as the list so the addition is reviewed rather than absorbed. It is not
+    // a pure module that leaked a DOM reference — the DOM wiring IS the module:
+    // mountCanvas resolves a <canvas> and its 2d context, installAudioUnlock and
+    // installPauseToggle attach listeners. There is no version of it that belongs in
+    // PURE_SUBPATHS, which is the distinction this guard exists to police.
     expect([...BROWSER_SUBPATHS].sort()).toEqual(
-      ['audio', 'esc-overlay', 'glow', 'highscore', 'synth', 'view'].sort(),
+      ['audio', 'esc-overlay', 'glow', 'highscore', 'host-helpers', 'synth', 'view'].sort(),
     )
   })
 
