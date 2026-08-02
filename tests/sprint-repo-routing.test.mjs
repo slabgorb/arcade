@@ -572,14 +572,37 @@ test('context scope follows the archive rule — completed work is left as a rec
     'story',
     epicFiles().flatMap(({ text }) => storyBlocks(text).filter((b) => !isDone(b)).map(idOf)),
   );
+
+  // The story half's expected set legitimately EMPTIES, and the epic half's does not.
+  // A story context is written by setup when its story starts and left behind as a
+  // record when it finishes, so between stories — after a finish, before the next
+  // setup — no open story has a context document. That is the sprint's ordinary
+  // resting state, not a vacuity bug, and the equality below is NOT vacuous there:
+  // it pins scannedOf('story') to [], which is exactly the "scanning too much"
+  // direction — no completed story's record may be in scope. (An epic context, by
+  // contrast, lives as long as its epic and is deleted at archive, so liveEpics only
+  // empties when the whole sprint drains of open work; its guard stays unconditional.)
+  //
+  // The vacuity guard therefore demands non-emptiness only when there is in-flight
+  // work to be non-empty about. A story that is in_progress or in_review has had
+  // setup run, and setup writes its story context unconditionally — so in-flight
+  // work beside an empty expected set means the derivation (or the sprint tree) is
+  // broken, and the comparison below really would measure nothing while live routing
+  // existed. Status vocabulary, measured across the epic files' whole git history:
+  // backlog, in_progress, in_review, done, canceled.
+  const isInFlight = (block) => /^ {4}status: (in_progress|in_review)\s*$/m.test(block);
+  const inFlight = epicFiles().flatMap(({ text }) => storyBlocks(text).filter(isInFlight).map(idOf));
   assert.ok(
-    openStories.length > 0,
-    'no open story has a context document, so the comparison below would compare nothing against nothing',
+    inFlight.length === 0 || openStories.length > 0,
+    `stories are in flight (${inFlight.join(', ')}) yet no open story has a context document — ` +
+      'setup writes one unconditionally, so the comparison below would compare nothing against ' +
+      'nothing while live routing exists',
   );
   assert.deepEqual(
     scannedOf('story'),
     openStories,
     'the story contexts in scope must be exactly those whose story is not done — a completed ' +
-      "story's context is a record, not live routing (see ARCHIVE_POLICY)",
+      "story's context is a record, not live routing (see ARCHIVE_POLICY). This holds even when " +
+      'the expected set is empty: between stories it asserts that NO story context is in scope.',
   );
 });
