@@ -1607,3 +1607,100 @@ which hardcodes wave 1's enemy complement — it showed zero hunters and would h
 stronger, WRONG claim ("the port never runs these brains"). Re-running through `createGame`/`stepGame`
 across 6000 frames and three seeds showed the runs simply never reach wave 4. Same zero, completely
 different meaning — the `zero-count-can-mean-delegation` trap wearing a fixture's clothes.
+---
+
+## Re-run the story's own HEADLINE METRIC against the pre-story tree — the decomposition is where the false claim hides (sw8-18, star-wars, 2026-08-02)
+
+Dev's banner number was "the guard's tree-wide count fell **146 → 35**, and not one of that drop
+was a comment edit" — i.e. *all* of it was the checker learning to read the codebase. It is a
+great line, it was in the commit message, the assessment, a Delivery Finding and the **Dev
+sidecar**, and it is false.
+
+**The check took one command and a throwaway worktree:** run the FINAL tool against the
+PRE-STORY tree.
+
+```bash
+git worktree add -q --detach /tmp/base <base-sha>
+node -e "import('<current>/tool.mjs').then(m=>console.log(m.checkTree({swRoot:'/tmp/base/...'}).length))"
+```
+
+It reported **49**, not 146. So calibration was 146 → 49 and the edits were 49 → 35. Fourteen of
+the drop *was* comment edits.
+
+**The generalisable move:** when a story reports "X fell from A to B because of C", the claim is
+an ATTRIBUTION, and attribution is exactly what a single end-state measurement cannot support.
+Two runs decompose it — old-tool/old-tree is A, **new-tool/old-tree** is the pivot nobody
+measures, new-tool/new-tree is B. The pivot is one worktree away and it is where the claim lives
+or dies. Same shape as the Dev-sidecar rule "measure it" for line-count claims, one level up.
+
+Note also *where* it had spread: four surfaces, including the institutional sidecar. A false
+metric in a gotchas file is worse than one in a commit message, because the next agent inherits it
+as measured fact and will not re-derive it.
+
+## A RATCHET shipped far above the true count is a guard that cannot bite — check the slack, not the syntax
+
+The story's own thesis was "guards that do not bite". It shipped
+`expect(checkTree(...).length).toBeLessThanOrEqual(146)` against a tree standing at **35**: 111
+citations of slack before the assertion can ever fire.
+
+A ratchet is a good pattern — it makes a tool load-bearing tree-wide without demanding a sweep —
+but its whole value is the tightness of the bound. **Whenever you see a `toBeLessThanOrEqual(N)`
+or a floor/ceiling constant, run the thing and compare N to reality.** The syntax always looks
+fine; only the gap tells you whether it is a gate or a decoration. Here the author had even filed
+the gap as a Delivery Finding and then left the number — filing is not fixing.
+
+## A checker that does not scan its own directory will carry the defect it exists to catch
+
+`checkTree` walked `src`, `tests` and `docs/superpowers/specs` — never `tools/`, where the checker
+itself lives. Its own header cited `design.md:45-46` for an observation that had moved to `:47`
+during the same story. The tool could not see it, by construction.
+
+**Ask of any linter/guard: does it run on itself, and on its siblings?** Three other audit tools
+sit in that directory unwatched for the same reason. Self-exclusion is usually accidental — the
+author lists the "product" directories and forgets the tool is also source.
+
+## An unanchored `text.includes(PRAGMA)` opt-out fires on any MENTION, including a quoted example
+
+The guard let a file opt out with `// citation-guard: ignore-file`, implemented as
+`raw.includes(IGNORE_PRAGMA)`. Verified by construction: a file with one stale citation reports 1
+error; the same file with the sentence *"The guard honours a citation-guard: ignore-file pragma"*
+above it reports **0**, and so does one with the pragma inside backticks.
+
+So the first document that *documents the guard* silently retires itself from the scan — and
+`docs/**` was in scope. **Any escape hatch matched as a bare substring is triggerable by prose
+about the escape hatch.** Anchor it (leading comment, first N lines, exact-line match) and log
+when it fires; a silent whole-file skip is the worst possible failure mode for a completeness
+tool.
+
+## Two of my own mutants read as NOT-CAUGHT and both were mine failing to land
+
+The battery printed `*** NOT CAUGHT ***` twice. Neither was a guard failure:
+
+1. I wrote the mutant text with a **typographic apostrophe** (`shell’s`) while the assertion used
+   a straight one — the string never matched, so the file changed but the *targeted claim* did not.
+2. The other mutant was **too narrow**: I flipped one `[0, 768, 0]` token, but the file contains
+   that value twice and the positive assertion was satisfied by the untouched second occurrence.
+   Restoring the whole pre-story block reddened it correctly.
+
+The existing rule "make the mutation assert its own landing" is necessary but not sufficient —
+mutant #2 *did* land, it just did not land on the property. **Assert that the mutation changed the
+thing the assertion reads**, not merely that bytes changed. Cheapest form: diff-restore the exact
+pre-story block from `git show <base>:<file>` rather than hand-authoring a mutant, which cannot
+miss the property by construction.
+
+**And #2 still produced a real finding:** the positive half of that assertion pair *is* inert,
+satisfied by text that predates the story. The pair as a whole bites, on the negative half. Report
+that distinction rather than filing it as either "vacuous" or "fine".
+
+## When the specialists are disabled or unavailable, say which domains you hand-worked and cite the command
+
+Five specialists were off via settings and four could not be spawned (session instructions bar the
+Agent tool unless the user asks). Nine rows, zero spawns. The honest table marks the disabled ones
+`Skipped / disabled` and the rest `Yes (accounting)` with the *actual work* named per row —
+mutation battery for test-analyzer, adversarial mutants for edge-hunter, the `continue`-path probe
+for silent-failure-hunter, an export-by-export `.d.mts`-vs-implementation diff for type-design.
+
+The gate only reads `All received: Yes`. It cannot tell coverage from accounting — so the prose
+has to, and every hand-assessed row needs a command in the transcript behind it. Four of the eight
+findings came from those hand-worked domains, which is the argument for doing them rather than
+recording the skip and moving on.
