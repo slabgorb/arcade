@@ -1578,3 +1578,77 @@ into a lie. The right move was to reformat the comment so the pairs are unambigu
 citation untouched, and file the association bug. **Before acting on any guard's finding,
 verify the finding against the primary source.** Every ROM anchor here was opened before being
 trusted, precisely because the tool producing the suggestions was the thing under test.
+
+---
+
+## A story's DETERMINISM WARNING can be reasoned by ANALOGY and be false — measure the delta, don't budget for it (jt9-1, 2026-08-02)
+
+**Situation:** jt9-1's description carried a loud, specific warning: *"this WILL move the jt2
+seeded-replay pins again — the same 20-assertion, 4-file blast radius jt5-8 just re-baselined.
+Budget for it."* SM and TEA both propagated it. It was the story's expensive half.
+
+**Zero pins moved.** Full fleet green on the first run after the gate landed.
+
+**Why the analogy failed, and the shape is general.** jt5-8 changed the dumb brain's *wingbeat* — a
+perturbation applied to every dumb bird on every wake. jt9-1 changes only *which wake a promotion
+lands on*, and only when a specific state is pending at that instant: measured, **once in 3000
+frames across three seeds**. Continuous perturbation versus a single point event. Both are
+"determinism-affecting" and the phrase hides the difference completely.
+
+**What to do instead of budgeting:** measure the behavioural delta directly, before touching a
+pin. I swept promotion frames before and after and got a one-line answer — `0x2468 proc 514, frame
+2688 → 2690`, everything else identical — and could then check that seed's anchors sit at 188/755/900,
+all ahead of it. That is five minutes and it replaces a day of expected re-baselining with a fact.
+
+**And report the correction.** A false warning left in the epic gets inherited by every sibling story
+that reasons "same subsystem, same blast radius". It is worth a Delivery Finding in its own right.
+
+## GREEN plus "no pins moved" is exactly when to prove the change is LIVE
+
+The same run that vindicated the above is the one that should have worried me: an all-green suite
+after a change that was supposed to be disruptive is indistinguishable from a change that does
+nothing. So I proved liveness two ways rather than trusting the suite:
+
+1. **Positive:** the promotion sweep shows the one glide-carrying promotion moved by exactly one wake
+   and now enters carrying nothing. The gate demonstrably fires.
+2. **Differential:** stepping the same demo with the troll in its new ROM position versus its old
+   one produced **byte-identical enemy state for 300 frames on three seeds** — so the *other* half
+   of the change, the insertion, was NOT observable.
+
+The second is the useful one, and it is a technique worth reusing: **when a change is a repositioning
+or a re-ordering, the test is whether the old and new arrangements diverge at all.** If they do not,
+you have shipped a correct mechanism nobody can reach, and the suite will never tell you.
+
+## "Make it reachable" can be blocked by a mechanism NOT in your scope — measure the block, don't quietly widen
+
+The user's ruling was "model it AND make it reachable", so I fixed the troll's insertion position to
+the ROM's. It is still not reachable, and the reason took one measurement: the troll's victim runs
+the dumb brain for **1 frame out of 600** before promoting, and the scheduler promotes BEFORE the
+brain steps — so on the one wake its looker would first come due, it is already running a smart
+brain whose own looker is one of three this story deliberately does not port.
+
+Two things follow that are worth generalising:
+
+- **Report the gap with its measurement instead of expanding scope to close it.** Porting the other
+  three lookers means three different brain STATES and a real determinism risk. Widening unasked
+  would have been worse than shipping a documented gap.
+- **The measurement changes the follow-up's priority, which is the actual deliverable.** "Three more
+  brains have this too" reads as completeness work. "Three more brains are why this one cannot fire"
+  is a blocker. Same finding, and only the second one gets picked up.
+
+## Re-STAGE a guard whose fixture your change made unreachable — and the re-staging finds things
+
+jt5-8's AC3 fence constructed a bird promoted mid-glide. jt9-1 makes that state impossible, so the
+group failed. Deleting it or re-baselining it to the new output would both have removed a law
+silently.
+
+Re-staged instead: the law is now guaranteed structurally (promotion cannot be REACHED with an
+obligation pending), so the group asserts that — **plus a control proving the identical bird with the
+obligation removed still promotes.** Without the control the fence passes for a bird that could never
+promote for any reason at all: a budget typo, a stray guard, a broken fixture.
+
+**The re-staging paid for itself.** Its reference fixture had to gain the new `plavt` field, because
+promotion CARRIES it — `LNTSMT` (:3764-3775) writes NSMART, PCHASE and `STX PJOY,U` and nothing else.
+Omitting it would have asserted the opposite of the ROM in the very test I was correcting. **When a
+re-staged guard suddenly disagrees with your implementation, check the source before "fixing" either
+one** — the disagreement is where the new field's real semantics get decided.
