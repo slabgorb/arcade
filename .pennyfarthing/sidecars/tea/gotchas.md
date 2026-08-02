@@ -3149,3 +3149,106 @@ Not a blocker (the path is legitimately reachable and jt8-1 made the targeting l
 re-baseline pressure Dev should expect comes from the DECISION timers and the down-seek frozen hold —
 both on paths that DO fire — and not from the wing rows. Measuring which of your subject's paths
 production actually reaches is a ten-minute probe and it changes what the story's risk section says.
+---
+
+## A suite about STALE CITATIONS must not pin line numbers — assert by RESOLUTION or you rebuild the defect one layer up (sw8-18, 2026-08-02)
+
+sw8-18's deliverable is correcting twelve rotted `file:line` citations. The obvious RED is
+`expect(comment).toMatch(/WSMAIN\.MAC:2522-2530/)` — and it is **the same defect**: the next
+legitimate edit to the ROM or the spec makes the TEST the stale citation, and it fails for a
+change that was correct.
+
+The shape that works: open the cited span and assert its CONTENT.
+
+    const spans = citedSpans(gameRules(), 'WSMAIN.MAC').filter((s) => s.includes('STD ST.UX'))
+    expect(spans.some((s) => s.includes('SMVSP1:'))).toBe(true)   // opens on the label
+    expect(spans.every((s) => !s.includes('S1MVHP:'))).toBe(true) // stops before the next routine
+
+That survives a legitimate renumber and fails the moment a comment stops pointing at its
+subject — which is the property the story actually wants. Line numbers then appear in the
+suite only inside `RETIRED:` markers, as the record of what a comment used to say.
+
+## An auto-association rule between a QUOTE and a CITATION is the whole design — measure three candidates before writing a line of test
+
+A verbatim checker has to decide which quote belongs to a citation. Measured on star-wars:
+
+| rule | candidates | mismatches |
+|---|---|---|
+| nearest quoted string within 240 chars | 267 | 184 |
+| nearest backticked fragment within 200 chars | 265 | 116 |
+| IMMEDIATELY adjacent (≤4 punctuation chars) | 129 | **17** |
+
+The loose rules capture the AUTHOR'S OWN PROSE, not a quote from the cited file, so a guard
+built on them can never go green. **A guard that cannot go green is not a deliverable** — this
+is the cheapest possible check and it decides whether the AC is satisfiable at all.
+
+Underneath it sits a bug worth knowing: a naive ``/`([^`]+)`/`` pairs the CLOSING backtick of
+one identifier with the OPENING of the next, so ``​`ST.UX` is the STARFIELD's register`` reads
+as a quote. Scan delimiter PAIRS from the start of the text instead. That one fix removed most
+of the residual noise.
+
+## Two ACs can be JOINTLY unsatisfiable when one says "scan tests/" and the other says "put deliberately-broken fixtures in tests/"
+
+AC5 told the guard to scan `tests/`. AC6 required mutation fixtures — which ARE broken
+citations — and they live in `tests/`. Unscoped, the guard reported its own suite 14 times and
+could never be green. The conflict is invisible in prose and obvious the first time you run it.
+
+Resolution: a file-level opt-out pragma, and **two** tests for it — that it silences the
+declaring file, AND that it does not leak to any other file. An opt-out with no leak test is a
+global mute waiting to happen. Same family as the existing "probe your own contract before
+handoff" entry, but the collision here is between two ACs of the SAME story rather than
+between a suite and an implementation.
+
+## When a tree-wide gate is out of reach, ship a RATCHET, not a narrowed scope
+
+The specced scan reported **146** errors across seven years of comments. Two bad options:
+demand the sweep (a much bigger story) or quietly narrow the scan (the guard stops watching
+the tree). The third: hard-gate the story's own files, and pin the tree-wide TOTAL at the
+measured baseline with `toBeLessThanOrEqual`. It may fall, never rise. The guard is
+load-bearing plugin-wide on day one, no sweep is demanded, and new rot cannot enter.
+
+Two things make it honest rather than a fudge: the number is a MEASURED baseline recorded in
+the test comment with its class breakdown, and the residue is filed as a Delivery Finding with
+those counts. Also check the classes before believing the total — a large share of the 57
+"dangling" were RESOLVER gaps (`math3d.ts`/`loop.ts`/`rng.ts` are `@shared/*` at `src/shared`,
+`vite.config.ts` is at the monorepo root), and the plugin's own CLAUDE.md said so outright.
+
+## The throwaway pays twice: satisfiability, AND its bugs are the design requirements
+
+Standard practice here is to prove a RED is satisfiable with a throwaway. On this story the
+throwaway's own failures were the more valuable output — each was a real requirement the tests
+now pin:
+
+- **Markdown emphasis sits INSIDE quoted prose.** The spec reads `the **Death Star is entirely
+  out of frame**`; the author quoted it without the asterisks. A raw substring test never
+  matches. Strip `*`/`_` before comparing.
+- **Re-location must report the matching LINE, not the first window containing it.** Scanning
+  `i` before `w` matched an 18-line window whose start was 17 rows above the real anchor and
+  reported that start — sending the next reader to the wrong row, i.e. committing the exact
+  defect the guard exists to prevent. Put WIDTH in the outer loop.
+- **Assembler directives start with `.`** — a token filter anchored on `[A-Z]` silently drops
+  `.REPT`, leaving the quote with too few tokens to check, so item 8 sailed through.
+
+Then run the FULL suite against it (197/199 files, no sibling breakage) and DELETE it.
+
+## The pass list caught an inert assertion that `[^.]*` made unfalsifiable
+
+Six of 36 passed on arrival: four deliberate oracles, two green regression guards (both
+mutation-proven with `cp` backups, never `git checkout`). The seventh was a defect:
+
+    expect(t).not.toMatch(/Every writer sits under[^.]*MOVE STARS IN SOME DIRECTION/)
+
+The real sentence has ``​`WSMAIN.MAC`​`` between the halves. `[^.]*` cannot cross those dots, so
+it passed against the exact text it targets and would have let the false claim ship untouched.
+**A negated regex with a bounded gap class is a trap whenever the gap can contain a filename** —
+filenames are the one thing guaranteed to appear near a citation. Use `[\s\S]{0,N}`.
+
+## A guard's best RED-phase output is the defects it finds that nobody filed
+
+Run the guard over the tree before handoff. This one surfaced four off-by-N citations in files
+no AC named — `starfield.ts` citing `WSMAIN.MAC:2529-2531` for a quote at :2525-2528 (the same
+routine and same defect as a filed item, found in one file and missed in its neighbour),
+`WSLAZR.MAC:417`→:418, `WSBASE.MAC:1330`→:1340, `WSMAIN.MAC:2654`→:2656. That is the proof the
+guard bites on arrival rather than being scenery, and it is far stronger evidence than any
+synthetic fixture. List them in the test comment with the corrected number so Dev corrects
+rather than hunts.
