@@ -18,8 +18,20 @@
 // from the ROM's own comment alone, because a comment is one witness:
 //   • P1JOY (:7247) opens `LDA WCPIAB` — "SELECT HALF OF MUX", the real
 //     hardware joystick. Only a human-driven block reads the panel.
-//   • G1JOY/G2JOY (:601-616) sit in the attract region, immediately beside
-//     `ATTRCT CLR GOVER  STATE OF GAME = OVER` (:712).
+//   • G1JOY/G2JOY (:615-626) compute the commands in software — `STD CURJOY`
+//     at :625, no panel read anywhere in the routine — and the ROM files them
+//     under its own header `* GAME SIMULATION PLAYER COMMANDS` at :613.
+//
+// CORRECTED IN ROUND 2. Round 1 of this file cited "(:601-616) … immediately
+// beside `ATTRCT` (:712)" and both halves were false. :601 is a `BNE G2JOY`
+// branch inside L2EGG (:597), a different routine, and :616 stops ten lines
+// short of `STD CURJOY` — the only line that makes "computes a joystick" true.
+// The routine ends at `RTS` :626, and `* GAME OVER`/`GAMOVR` (:628/:630) sits
+// between it and `ATTRCT` (:712), so the adjacency never existed. The header at
+// :613 is the decisive corroboration and was the one thing not cited. A
+// truncated extent is worse than a wrong fact: a reader who opens :601-616 sees
+// the labels and believes the claim without ever learning the span was chosen
+// wrongly. The guards in the AC3 group below now enforce all of this.
 //
 // So: G-blocks are the ATTRACT-MODE SELF-PLAYING DEMO; P-blocks are real play.
 // That single fact explains BOTH differences the story enumerated at once —
@@ -223,7 +235,7 @@ describe.skipIf(!vendoredAvailable)('jt5-23 ORACLE — the ROM selection site sa
     expect(l[1044]).toBe("40$\tSTX\tPDECSN,Y\tPLAYER 2'S JOYSTICK")
   })
 
-  it('the corroboration: P-blocks read the PANEL, G-blocks live in the attract region', () => {
+  it('the corroboration: P-blocks read the PANEL, G-blocks compute in software', () => {
     // The ROM's own "ASSUME GAME SIMULATION" comment is one witness. These are
     // the other two, and they are independent of it.
     const l = vendoredLines(SRC)
@@ -231,8 +243,21 @@ describe.skipIf(!vendoredAvailable)('jt5-23 ORACLE — the ROM selection site sa
       'P1JOY\tLDA\tWCPIAB\t\tSELECT HALF OF MUX',
     )
     expect(l[7252], 'P2JOY likewise').toContain('WCPIAB')
-    expect(l[615], 'G1JOY is a computed joystick — no PIA read').toBe('G1JOY\tTFR\tU,X')
-    expect(l[711], 'and it sits in the attract routine').toBe(
+    expect(l[615], 'G1JOY is the routine entry').toBe('G1JOY\tTFR\tU,X')
+    expect(l[624], 'and THIS is what makes it a joystick at all').toBe('\tSTD\tCURJOY')
+    expect(l[612], "the ROM's own header for the routine").toBe(
+      '*\tGAME SIMULATION PLAYER COMMANDS',
+    )
+    // The routine is self-contained: entry :615/:616, RTS :626. Pinned because
+    // round 1 cited :601-616 — a span that starts in the PREVIOUS routine and
+    // ends before the evidence.
+    expect(l[625], 'the routine ends here').toBe('\tRTS')
+    expect(l[596], ':601 belongs to L2EGG, not to the G-joystick routine').toBe(
+      'L2EGG\tLDA\tPJOYT,U',
+    )
+    // And it is NOT adjacent to ATTRCT: a whole routine sits between them.
+    expect(l[629], 'GAMOVR stands between the G-joystick routine and ATTRCT').toContain('GAMOVR')
+    expect(l[711], 'ATTRCT is 86 lines further on, under its own header').toBe(
       'ATTRCT\tCLR\tGOVER\t\tSTATE OF GAME = OVER',
     )
   })
@@ -533,5 +558,141 @@ describe('jt5-23 AC6 — the record keeps WHY the old citation was also true', (
       .filter(([, s]) => s.callSite.line === 5544)
       .map(([n]) => n)
     expect(citing, 'discussing the row is fine; citing it as a call site is not').toEqual([])
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ROUND 2 — every corroboration the record cites must RE-OPEN to what it is
+// cited FOR.
+//
+// Round 1's AC3 guard filtered cited numbers to the `:1025-1029` / `:1041-1045`
+// selection window and re-opened only those. The record makes four other
+// citation groups, and none of them was verified by anything — which is exactly
+// how a false corroboration shipped with the suite green at 2934/2934.
+//
+// The defect it let through: the record cited the G-joystick routine as
+// "(:601-616) … beside `ATTRCT` (:712)". `:601` is a `BNE G2JOY` branch inside
+// L2EGG (:597); the routine itself runs :615-:626 under the ROM's own header at
+// :613; and `GAMOVR` (:630) sits between it and `ATTRCT` (:712), so there is no
+// adjacency. A truncated extent MANUFACTURES corroboration — the reader who
+// opens the cited span sees the labels and never learns the span was wrong.
+//
+// These guards are deliberately about the SHAPE of a citation, not its wording.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** Comment lines, as a list — proximity is what these guards turn on. */
+function commentLines(): string[] {
+  return manifestComments().split('\n')
+}
+
+/** The `n`-line window of comment text starting at the first line matching
+ *  `anchor`. Returns '' when the anchor is absent, which the callers assert on
+ *  explicitly rather than letting it pass as a vacuous ''. */
+function windowAt(anchor: RegExp, n: number): string {
+  const lines = commentLines()
+  const i = lines.findIndex((l) => anchor.test(l))
+  return i < 0 ? '' : lines.slice(i, i + n).join('\n')
+}
+
+describe('jt5-23 round 2 — the corroboration citations resolve', () => {
+  it('the G-joystick citation names the ROUTINE and reaches the evidence', () => {
+    // Three mechanical properties, each corresponding to a real defect:
+    //   1. it is a RANGE (a routine is a span, not a point)
+    //   2. it STARTS on the routine — :613 (the ROM's header), :615 or :616
+    //      (the entry). Anything earlier is in a different routine.
+    //   3. it REACHES :625, `STD CURJOY` — the only line in the ROM that makes
+    //      "computes a joystick" true. :616 stops ten lines short of it.
+    const w = windowAt(/G1JOY|G2JOY/, 4)
+    expect(w, 'precondition: the record discusses the G-joystick routine').not.toBe('')
+
+    const ranges = [...w.matchAll(/:(\d{3,4})-(\d{3,4})\b/g)].map((m) => [Number(m[1]), Number(m[2])])
+    expect(
+      ranges.length,
+      'the G-joystick corroboration must cite the routine as a RANGE',
+    ).toBeGreaterThan(0)
+
+    const good = ranges.filter(([a, b]) => a >= 613 && a <= 616 && b >= 625)
+    expect(
+      good.length > 0,
+      `cite the routine, not a branch that mentions it: the span must START at :613 ` +
+        `(header), :615 or :616 (entry) and REACH :625 (STD CURJOY). Got ` +
+        `${JSON.stringify(ranges)}. :601 is a BNE inside L2EGG (:597); :616 stops before ` +
+        `the only line that makes "computes a joystick" true.`,
+    ).toBe(true)
+  })
+
+  it('the record does not place the G-joystick routine beside ATTRCT', () => {
+    // The false adjacency, as a proximity rule rather than a banned phrase:
+    // :712 may be cited for what GOVER means, but not as evidence for where
+    // G1JOY LIVES. `GAMOVR` (:630) stands between them.
+    const w = windowAt(/G1JOY|G2JOY/, 4)
+    expect(w, 'precondition: the record discusses the G-joystick routine').not.toBe('')
+    expect(
+      /:712\b/.test(w),
+      'ATTRCT (:712) is not evidence about where the G-joystick routine sits — the ' +
+        'routine ends at RTS :626 and GAMOVR (:630) lies between. Cite the ROM header ' +
+        'at :613 instead; it states the point outright.',
+    ).toBe(false)
+  })
+
+  it('the knights-only reason names what a creature block actually carries', () => {
+    // "a buzzard has no joystick" is false: PDECSN is populated for every
+    // creature — P3DEC (:5558) opens AUTOFF,AUTOFF and P4DEC (:5562) opens
+    // LINET,BOUNDR, in the same slots where P1DEC carries P1JOY,P1JOY. The ROM
+    // calls that field INTELLIGENCE at :644. The true statement is that the
+    // field holds an AI routine rather than a panel read, and you cannot make
+    // it without naming one of those routines.
+    const t = manifestComments()
+    expect(
+      /\bAUTOFF\b|\bBOUNDR\b|\bLINET\b/.test(t),
+      'the record must name a creature decision routine (AUTOFF / LINET / BOUNDR) — ' +
+        'a buzzard does have a PDECSN entry; what it lacks is a panel read',
+    ).toBe(true)
+  })
+
+  it('a ROM comment is not presented as a verbatim QUOTATION when it is not one', () => {
+    // The first draft of this guard was VACUOUS and the battery did not catch
+    // it — I did, by reading why it passed. It asked "does the record contain
+    // the two-space form?", bailing early if the phrase was absent. The phrase
+    // IS present, but the record wraps it across two comment lines, so
+    // `/PLAYER ABORTED FADING IN/` never matched the newline between "PLAYER"
+    // and "ABORTED" and the test returned green having checked nothing.
+    //
+    // That failure is also the lesson: internal spacing is NOT PRESERVED by
+    // line-wrapped prose, so "is this quotation byte-exact?" has no well-defined
+    // answer here and any guard asserting it would be theatre. What IS
+    // well-defined is the narrower rule — do not wrap a string in quotation
+    // marks while altering its bytes. JOUSTRV4.SRC:8122 has TWO spaces before
+    // "(TRANSPORTER)"; the record shows one, inside quotes.
+    //
+    // Either fix passes: drop the quotation marks (paraphrase), or keep the
+    // quoted form intact on one line.
+    const t = manifestComments()
+    expect(
+      /"PLAYER\s+ABORTED FADING IN \(TRANSPORTER\)"/.test(t),
+      'the record presents a re-spaced string as a quotation — JOUSTRV4.SRC:8122 has two ' +
+        'spaces before "(TRANSPORTER)". Either quote it exactly on one line, or drop the ' +
+        'quotation marks and paraphrase.',
+    ).toBe(false)
+  })
+})
+
+describe.skipIf(!vendoredAvailable)('jt5-23 round 2 — the ORACLE for the corroboration lines', () => {
+  it('every line the round-2 guards reason about says what they assume', () => {
+    // Without this the guards above are arithmetic over numbers nobody checked.
+    const l = vendoredLines(SRC)
+    expect(l[596], 'L2EGG owns :601').toBe('L2EGG\tLDA\tPJOYT,U')
+    expect(l[600], ':601 is a branch REFERENCE to the label, not the routine').toBe('\tBNE\tG2JOY')
+    expect(l[612]).toBe('*\tGAME SIMULATION PLAYER COMMANDS')
+    expect(l[614], 'G2JOY falls through into G1JOY — one entry, two names').toBe('G2JOY')
+    expect(l[615]).toBe('G1JOY\tTFR\tU,X')
+    expect(l[624], 'the joystick is WRITTEN here').toBe('\tSTD\tCURJOY')
+    expect(l[625]).toBe('\tRTS')
+    expect(l[629], 'a different routine begins before ATTRCT').toContain('GAMOVR')
+    expect(l[8121], 'the SNPTREF row, two spaces and all').toBe(
+      'SNPTREF\tFCB\t070,!N$FF!.$7F,1\tPLAYER ABORTED FADING IN  (TRANSPORTER)',
+    )
+    // Discriminating: the helper is not echoing what it is compared against.
+    expect(l[612]).not.toBe(l[615])
   })
 })
