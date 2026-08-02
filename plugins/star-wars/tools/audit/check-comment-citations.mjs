@@ -23,7 +23,7 @@
 // adjacency is tractable — and it is the shape the codebase already writes:
 //
 //     (`LDD FRAME / JSR LSLD7 / STD ST.UX`, WSMAIN.MAC:2525-2528)
-//     "…the Death Star is entirely out of frame" (`…design.md:45-46`)
+//     "…the Death Star is entirely out of frame" (`…design.md:47-48`)
 //
 // Usage:  node tools/audit/check-comment-citations.mjs [rootDir]
 // Exits non-zero and prints every stale citation, each with the line it moved to.

@@ -310,7 +310,7 @@ describe('sw8-18 AC5 — the real tree scans clean', () => {
   // == WHY THIS IS NOT A TREE-WIDE GREEN GATE =====================================
   //
   // AC5 asks for a scan "across plugins/star-wars (src, tests, and docs/…/specs)".
-  // MEASURED at RED, an unrestricted scan of that scope reports 146 errors:
+  // MEASURED at RED, an unrestricted scan of that scope reported 146 errors:
   //
   //     57  dangling file reference   (many are resolver gaps — `math3d.ts`, `loop.ts`
   //                                    and `rng.ts` are `@shared/*` at src/shared, and
@@ -361,9 +361,16 @@ describe('sw8-18 AC5 — the real tree scans clean', () => {
     expect(errs.filter((e) => /WSBASE\.MAC:1330|WSMAIN\.MAC:2654/.test(e))).toEqual([])
   })
 
-  it('does not let the tree-wide count RISE above the RED baseline of 146', () => {
+  it('does not let the tree-wide count RISE above the delivered baseline of 35', () => {
     // A ratchet, not a gate. If this fails, the change added new stale citations.
     // If it passes with room to spare, lower the number in the same commit.
-    expect(checkTree({ swRoot, romDir }).length).toBeLessThanOrEqual(146)
+    //
+    // TIGHTENED at finish from 146 to 35. The RED baseline of 146 was measured with an
+    // early, under-calibrated checker; the delivered one reports 35 against this tree
+    // (and 49 against the pre-story tree, so 14 of the drop was the corrections and the
+    // rest was calibration). Left at 146 this could not have failed until 111 new stale
+    // citations landed — a ratchet with that much slack is the exact "guard that does
+    // not bite" this story exists to retire.
+    expect(checkTree({ swRoot, romDir }).length).toBeLessThanOrEqual(35)
   })
 })

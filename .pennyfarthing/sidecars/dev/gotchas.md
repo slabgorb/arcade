@@ -1416,8 +1416,14 @@ starts lying — and the inventory is what the next sweep trusts instead of re-d
 A guard that re-opens `<file>:<span>` citations written in source comments sounds like an
 afternoon. The checker was quick; **calibrating it was the story.** The first working version
 reported **146** stale citations across star-wars and the great majority were correct citations
-the matcher could not read. Final count **35 — and not one of that drop was an edit to a
-comment.**
+the matcher could not read. Final count **35 — of which calibration accounts for 146 → 49 and
+the actual comment edits for 49 → 35.**
+
+> **Corrected in review.** The first draft of this entry claimed *none* of the drop was a comment
+> edit. That was false, and the check that caught it is the reusable part: run the FINAL tool
+> against the PRE-STORY tree (`git worktree add --detach /tmp/base <base-sha>`). Old-tool/old-tree
+> and new-tool/new-tree cannot decompose an attribution; **new-tool/old-tree** is the pivot, and it
+> is one command away. See the Reviewer sidecar entry on decomposing a headline metric.
 
 Six rules, each added only after opening the cited ROM lines and confirming the comment was
 RIGHT. They generalise to any tool that matches quoted text against a source:
