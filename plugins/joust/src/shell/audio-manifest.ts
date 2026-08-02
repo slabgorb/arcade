@@ -341,21 +341,28 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
   // chosen block becomes the knight's `PDECSN` — its joystick. Two independent
   // corroborations, because the ROM's own "GAME SIMULATION" comment is one
   // witness: `P1JOY` (:7247) opens `LDA WCPIAB` "SELECT HALF OF MUX", the
-  // hardware panel read, while `G1JOY`/`G2JOY` (:601-616) compute a joystick
-  // and sit in the attract region beside `ATTRCT CLR GOVER` (:712).
+  // hardware panel read, while `G1JOY`/`G2JOY` (:615-626) compute the knight's
+  // commands in software — `STD CURJOY` at :625, and no panel read anywhere in
+  // the routine. The ROM files them under its own header at :613,
+  // `* GAME SIMULATION PLAYER COMMANDS`, which states the point outright.
   //
   // That one fact explains BOTH ways the rows differ. The joystick source is
-  // the obvious one. The 8th sound slot is the other: it is `SNPTREF`, "PLAYER
-  // ABORTED FADING IN (TRANSPORTER)" (:8122), in the P rows and a bare `0` in
-  // the G rows — nobody can abort a demo's transporter, so the demo has no
-  // sound to play there. For the same knight, that slot is the ONLY sound the
-  // two families disagree on.
+  // the obvious one. The 8th sound slot is the other: it is `SNPTREF` (:8122),
+  // whose ROM comment marks it the player-aborted-fading-in transporter sound,
+  // in the P rows and a bare `0` in the G rows — nobody can abort a demo's
+  // transporter, so the demo has no sound to play there. For the same knight,
+  // that slot is the ONLY sound the two families disagree on.
   //
   // KNIGHTS ONLY, and this is the part a summary gets wrong. The ROM defines
   // exactly two G-blocks against seven P-blocks (P1DEC :5550 through P7DEC
   // :5574), so the `P` prefix on P3DEC-P7DEC — the buzzards and the
   // pterodactyl — does NOT mean "real play". Those five have no G-variant at
-  // all: a buzzard has no joystick and no attract counterpart.
+  // all, and the reason is NOT that the decision field is empty for them: a
+  // buzzard's field holds an AI routine — `AUTOFF` at P3DEC (:5558),
+  // `LINET`/`BOUNDR` at P4DEC (:5562) — sitting in the same slots where P1DEC
+  // carries `P1JOY,P1JOY`. What a creature lacks is a PANEL read, so there is
+  // no human input for an attract variant to substitute. The ROM's comment at
+  // :644 calls what lives there the creature's INTELLIGENCE.
   //
   // Which is why these two cues MOVED in jt5-23. They cited the G row :5544,
   // and that citation was TRUE — `SNPLWU,SNPLWD` open all four knight rows
