@@ -835,5 +835,104 @@
       "line": 1701,
       "verbatim": "OBSTAC:\tLSR"
     }
+  },
+  {
+    "id": "SND-094",
+    "claim": "MOTION re-arms the little-feet tick only on a 1/4-second boundary, and this is the machine's own test in its own words: the comment reads `;IF NOT 1/4 SECOND BOUNDARY`. It is a branch AWAY from the seed, not a label on it — the FRAME mask on the line above and the CHAN1 seed on the two lines below are the halves this line joins.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1287,
+      "verbatim": "\tBNE 5$\t\t\t;IF NOT 1/4 SECOND BOUNDARY"
+    }
+  },
+  {
+    "id": "SND-095",
+    "claim": "The spider cue is written to POKEY voice 3: this STA is what puts spiderLoop on AUDF3, and it is the only write to that register in SOUNDS. The spider therefore owns voice 3 outright and contends with nothing.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2349,
+      "verbatim": "\tSTA AUDF3\t\t;SET FRQUENCY"
+    }
+  },
+  {
+    "id": "SND-096",
+    "claim": "The shot cue is written to POKEY voice 2: this STA is what puts the fire cue on AUDF2, and it is the only write to that register in SOUNDS.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2357,
+      "verbatim": "\tSTA AUDF2"
+    }
+  },
+  {
+    "id": "SND-097",
+    "claim": "The voice-1 priority is decided HERE, before the arbitration block is ever reached: at label 42$ SOUNDS reads the bonus countdown CHAN4 first, ahead of the scorpion, the flea and the march.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2373,
+      "verbatim": "42$:\tLDY CHAN4"
+    }
+  },
+  {
+    "id": "SND-098",
+    "claim": "The bonus countdown branches past the WHOLE ant/scorpion/march arbitration at 48$ when CHAN4 is zero. Read the other way round: while a bonus tone is running that arbitration is never entered at all, so the bonus preempts scorpion, flea and march alike. This is the line that decides the outcome the four writers only contend for.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2374,
+      "verbatim": "\tBEQ 48$\t\t\t;IF NO BONUS SOUND"
+    }
+  },
+  {
+    "id": "SND-099",
+    "claim": "The bonus life's frequency byte is written to POKEY voice 1 at label 44$ — the first of the ROM's four STA AUDF1, and the reason bonusLife contends for the same voice as the march.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2382,
+      "verbatim": "44$:\tSTA AUDF1"
+    }
+  },
+  {
+    "id": "SND-100",
+    "claim": "The scorpion loop's frequency byte is written to POKEY voice 1 — the second of the ROM's four STA AUDF1.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2392,
+      "verbatim": "\tSTA AUDF1"
+    }
+  },
+  {
+    "id": "SND-101",
+    "claim": "The flea voice's control byte is the immediate hex A4, loaded straight after the computed AUDF1 write. The flea indexes no CONT table: it takes the same hex A4 control byte the bonus and the scorpion load, which is why its ruling records an immediate rather than a table.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2415,
+      "verbatim": "\tLDA I,0A4"
+    }
+  },
+  {
+    "id": "SND-102",
+    "claim": "The explosion cue's frequency byte is written to POKEY voice 0 — the register that carries every creature kill, and the write that fixes segmentKill, spiderKill, fleaKill and scorpionKill on voice 0.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2423,
+      "verbatim": "\tSTA AUDF0"
+    }
+  },
+  {
+    "id": "SND-103",
+    "claim": "The march's frequency byte is written to POKEY voice 1 — the last of the ROM's four STA AUDF1, and the one reached only when nothing else has taken the voice.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2433,
+      "verbatim": "\tSTA AUDF1"
+    }
+  },
+  {
+    "id": "SND-104",
+    "claim": "The player explosion writes its frequency byte to POKEY voice 0 as well, from its own path below label 53$ — a second AUDF0 writer, replaying FREQ0 with the volume raised rather than a table of its own.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2445,
+      "verbatim": "\tSTA AUDF0"
+    }
   }
 ]

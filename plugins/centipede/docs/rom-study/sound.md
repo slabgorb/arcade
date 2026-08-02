@@ -125,30 +125,48 @@ A picture at or above `hex 20` takes the scorpion branch instead
 (`CENTI4.MAC:2408`) — flea and scorpion share creature slot 12, which is also why
 arming the flea silences the scorpion (`CENTI4.MAC:155`).
 
-### 2.5 POKEY voice 1 is contended, and the march loses
+### 2.5 POKEY voice 1 is contended four ways, and the march loses
 
 This is the least obvious ruling in the document and the one most likely to be
 missed by a reader who goes table by table.
 
-The march, the computed flea voice and the scorpion loop **all write `AUDF1`**,
-and all three converge on a single `AUDC1` write (`CENTI4.MAC:2435`). At most one
-of them sounds at a time. The arbitration begins at `CENTI4.MAC:2396`, and the
-march block (`CENTI4.MAC:2428`) is entered on only three conditions:
+The ROM writes `AUDF1` in exactly **four** places in the whole of `SOUNDS`, and
+they are four different cues: the bonus life (`CENTI4.MAC:2382`), the scorpion
+loop (`CENTI4.MAC:2392`), the computed flea voice (`CENTI4.MAC:2414`) and the
+march (`CENTI4.MAC:2433`). All four converge on a single `AUDC1` write
+(`CENTI4.MAC:2435`). So `bonusLife`, `scorpionLoop`, `fleaLoop` and `march` are
+one voice, not four, and at most one of them sounds at a time.
+
+**The priority is decided before the arbitration is reached.** `CENTI4.MAC:2373`
+reads the bonus countdown `CHAN4` and `CENTI4.MAC:2374` branches past the whole
+of `48$` when it is zero. Read the other way round: while a bonus tone is
+running, that arbitration is never entered at all — on the eighth frame the bonus
+takes the `AUDF1` write itself, and on the other seven it branches away to the
+player-explosion tail (`CENTI4.MAC:2377`). **A bonus life silences the other
+three outright.**
+
+With no bonus sounding, arbitration begins at `CENTI4.MAC:2396`, and the march
+block (`CENTI4.MAC:2428`) is entered on only three conditions:
 
 - the ant or scorpion is **off screen** (`CENTI4.MAC:2399`), or
 - the player is exploding or dead (`CENTI4.MAC:2402`), or
 - the ant or scorpion is **exploding** (`CENTI4.MAC:2406`).
 
-So on the real cabinet, **a live flea or scorpion silences the marching tick**.
-Priority runs scorpion, then flea, then march.
+So on the real cabinet, **a live flea or scorpion silences the marching tick**
+too. The full order is bonus, then scorpion, then flea, then march — and the
+scorpion and the flea share creature slot 12, so they can never both be live.
 
-Our `CHANNELS` map gives `march`, `spiderLoop`, `fleaLoop` and `scorpionLoop`
-four separate channels so they can ring simultaneously — a cp5-1 decision made
+Our `CHANNELS` map gives all four contenders a channel of their own —
+`bonusLife`, `march`, `fleaLoop` and `scorpionLoop` — so all four can ring
+together where the cabinet allows exactly one. That is a cp5-1 decision made
 before this ruling existed, and a deliberate departure. The consequence is that
-the clone will sound **fuller** than the cabinet whenever a flea or scorpion is
-on screen. AC-5 forbids this story from changing the map, so the divergence is
-recorded rather than fixed: it is now a decision, not a surprise. The spider
-(`CHAN3`) is unaffected — it owns POKEY voice 3 outright.
+the clone will sound **fuller** than the cabinet whenever a flea, scorpion or
+bonus is live. AC-5 forbids this story from changing the map, so the divergence
+is recorded rather than fixed: it is now a decision, not a surprise.
+
+The spider is not one of the contenders and its own channel is faithful: it
+writes `AUDF3` (`CENTI4.MAC:2349`), owns POKEY voice 3 outright, and rings
+alongside voice 1 on the cabinet exactly as it does here.
 
 ---
 
@@ -205,11 +223,13 @@ times too fast.
 ### 3.2 Which cues loop, in the ROM's own words
 
 - `march` — `CONT1` says `;MUST BE REPEATED` (`CENTI4.MAC:2458`). The repeat is
-  mechanical rather than internal: `MOTION` re-seeds `CHAN1` every 16 frames
-  (`CENTI4.MAC:1286`, `CENTI4.MAC:1289` — the ROM calls it a `;1/4 SECOND
-  BOUNDARY`) while the cue is only 7 passes long. **It rings for 7 frames of
-  every 16** — a tick, not a drone. This matters for cp6-2: baking a 16-frame
-  looping sample would be wrong; the sample is 7 frames and the silence is real.
+  mechanical rather than internal: `MOTION` masks `FRAME` (`CENTI4.MAC:1286`) and
+  re-seeds `CHAN1` (`CENTI4.MAC:1288`, `CENTI4.MAC:1289`) every 16 frames, while
+  the cue is only 7 passes long. The machine's own words for that test are
+  `;IF NOT 1/4 SECOND BOUNDARY` (`CENTI4.MAC:1287`) — a branch *away* from the
+  seed, not a label on it. **It rings for 7 frames of every 16** — a tick, not a
+  drone. This matters for cp6-2: baking a 16-frame looping sample would be wrong;
+  the sample is 7 frames and the silence is real.
 - `spiderLoop` — `CONT3` says `;WELL REPEAT UNTIL TURNED OFF`
   (`CENTI4.MAC:2462`), and `SOUNDS` reseeds `CHAN3` in place
   (`CENTI4.MAC:2346`, `CENTI4.MAC:2347`). It needs an explicit stop, which
