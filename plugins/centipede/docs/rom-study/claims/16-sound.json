@@ -874,7 +874,7 @@
   },
   {
     "id": "SND-098",
-    "claim": "The bonus countdown branches past the WHOLE ant/scorpion/march arbitration at 48$ when CHAN4 is zero. Read the other way round: while a bonus tone is running that arbitration is never entered at all, so the bonus preempts scorpion, flea and march alike. This is the line that decides the outcome the four writers only contend for.",
+    "claim": "The bonus wins the voice by NOT branching. `BEQ 48$` is taken when CHAN4 is ZERO, and 48$ is the ant/scorpion/march arbitration — so a zero countdown means the arbitration RUNS. While a bonus tone is live CHAN4 is non-zero, the branch falls through into the bonus block, and 48$ is never reached: the bonus preempts scorpion, flea and march by occupying the path rather than by jumping over them. The one exception is the expiry tick, where DEY / BEQ 48$ two lines below drops into the arbitration as the tone ends.",
     "source": {
       "file": "CENTI4.MAC",
       "line": 2374,
@@ -937,11 +937,38 @@
   },
   {
     "id": "SND-105",
-    "claim": "CHAN5 is the player-explosion countdown, read at label 53$ — one of the three channels the SOUNDS header comment never mentions. The header names CHAN0 through CHAN3 only, so a reader who took it for the channel inventory would miss three of the seven.",
+    "claim": "CHAN5 is the player-explosion countdown, read at label 53$. It is one of the seven countdown variables declared in CENDE4.MAC, and its absence from the SOUNDS header comment is not an omission: that header enumerates the four POKEY VOICES, and CHAN5 is a variable, not a voice.",
     "source": {
       "file": "CENTI4.MAC",
       "line": 2436,
       "verbatim": "53$:\tLDY CHAN5"
+    }
+  },
+  {
+    "id": "SND-106",
+    "claim": "The machine's own count of the countdown variables: NCHAN is 6, and the comment spells out that this means CHAN0 through CHAN6 — seven one-byte indices, not six. The value is 6 in either radix, so nothing here turns on the .RADIX 16 reading; the seven declarations below it are the enumeration.",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 121,
+      "verbatim": "NCHAN\t=6\t\t\t;NUMBER OF SOUNDS (SEE CHAN0 THRU CHAN 6)"
+    }
+  },
+  {
+    "id": "SND-107",
+    "claim": "THE LINE THAT SETTLES WHAT THE SOUNDS HEADER MEANS. The CHAN1 variable is the index for the CENTIPEDE sound and nothing else. The header comment at CENTI4.MAC:2326 assigns CHAN 1 four cues — bonus, centipede, ant and scorpion — which one one-byte index cannot hold. So the header enumerates POKEY VOICES, and read that way it is complete (POKEY has four) and it is the ROM's own statement of the voice-1 contention this dossier recovers from the four STA AUDF1 writes.",
+    "source": {
+      "file": "CENDE4.MAC",
+      "line": 194,
+      "verbatim": "CHAN1:\t.BLKB 1\t\t\t;INDEX FOR CENTIPEDE SOUND"
+    }
+  },
+  {
+    "id": "SND-108",
+    "claim": "The one frame in which a live bonus does NOT preempt the arbitration: when the countdown reaches zero on a gate frame, this BEQ drops into 48$ as the tone ends. It is why 'a bonus silences the other three' is true for the duration of the tone and false on its last tick.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2380,
+      "verbatim": "\tBEQ 48$\t\t\t;IF END OF SOUND"
     }
   }
 ]

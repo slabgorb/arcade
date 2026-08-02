@@ -28,19 +28,35 @@ fact every duration in this document rests on: one `SOUNDS` pass is one video
 frame, so a countdown of N is N frames at `FRAME_HZ`, which lives as a named
 constant at `src/shell/timebase.ts:20` and is deliberately not restated here.
 
-The machine drives **seven countdown variables over four POKEY voices**, and the
-header comment is only half of that. It names four channels and no voices at all:
-CHAN0 all explosions (`CENTI4.MAC:2325`), CHAN1 the bonus, centipede, ant and
-scorpion sounds (`CENTI4.MAC:2326`), CHAN2 the shot (`CENTI4.MAC:2327`), CHAN3
-the spider (`CENTI4.MAC:2328`). The other three are undocumented and have to be
-read out of the routine — CHAN4 the bonus countdown (`CENTI4.MAC:2373`), CHAN5
-the player explosion (`CENTI4.MAC:2436`), CHAN6 the scorpion
-(`CENTI4.MAC:2386`) — which is the first sign that the header is a note to a
-colleague rather than a specification. The four voices are the four `AUDF`
-registers those seven channels write: `AUDF0` (`CENTI4.MAC:2423`), `AUDF1`
-(`CENTI4.MAC:2433`), `AUDF2` (`CENTI4.MAC:2357`) and `AUDF3`
-(`CENTI4.MAC:2349`). Each pass, `SOUNDS` walks the channels that are non-zero,
-indexes a frequency table by the countdown, writes `AUDF`/`AUDC`, and decrements.
+The machine drives **seven countdown variables over four POKEY voices**, and it
+says both — in two different files. Reading one of those statements as the other
+is the single easiest mistake to make in this routine, and this document made it
+once.
+
+**The seven** are declared a byte apiece at `CENDE4.MAC:193-199`, and the count
+is the machine's own: `NCHAN	=6			;NUMBER OF SOUNDS (SEE CHAN0 THRU CHAN 6)`
+(`CENDE4.MAC:121`).
+
+**The four** are the subject of the `SOUNDS` header comment (`CENTI4.MAC:2325`,
+`CENTI4.MAC:2326`, `CENTI4.MAC:2327`, `CENTI4.MAC:2328`) — and that header is
+about POKEY **voices**, not about those seven variables. One line proves it:
+`CENDE4.MAC:194` declares `CHAN1:	.BLKB 1			;INDEX FOR CENTIPEDE SOUND` — the
+centipede alone — while the header's CHAN 1 line reads BONUS, CENTIPEDE, ANT AND
+SCORPION SOUNDS. Four cues cannot be one one-byte index. Read as the voice it is,
+the header is exact and it is COMPLETE: POKEY has four voices, the header names
+four, and its CHAN 1 line lists precisely the four cues §2.5 recovers from the
+four `STA AUDF1` writes. **The machine documented the voice-1 contention in 1981.**
+This dossier rediscovered it the long way round and, in one earlier spelling,
+denied the comment said anything of the kind.
+
+The remaining three variables are missing from that header for the same reason —
+they are not voices. `CHAN4` is the bonus countdown (`CENTI4.MAC:2373`), `CHAN5`
+the player explosion (`CENTI4.MAC:2436`), `CHAN6` the scorpion
+(`CENTI4.MAC:2386`). The four voices are the four `AUDF` registers those seven
+variables write: `AUDF0` (`CENTI4.MAC:2423`), `AUDF1` (`CENTI4.MAC:2433`),
+`AUDF2` (`CENTI4.MAC:2357`) and `AUDF3` (`CENTI4.MAC:2349`). Each pass, `SOUNDS`
+walks the channels that are non-zero, indexes a frequency table by the countdown,
+writes `AUDF`/`AUDC`, and decrements.
 
 **Attract is silent by ROM design, not by our omission.** `SOUNDS` opens by
 testing `MODE` (`CENTI4.MAC:2329`), zeroes all four `AUDC` registers
@@ -138,20 +154,26 @@ arming the flea silences the scorpion (`CENTI4.MAC:155`).
 This is the least obvious ruling in the document and the one most likely to be
 missed by a reader who goes table by table.
 
-The ROM writes `AUDF1` in exactly **four** places in the whole of `SOUNDS`, and
-they are four different cues: the bonus life (`CENTI4.MAC:2382`), the scorpion
-loop (`CENTI4.MAC:2392`), the computed flea voice (`CENTI4.MAC:2414`) and the
-march (`CENTI4.MAC:2433`). All four converge on a single `AUDC1` write
+The ROM writes `AUDF1` in exactly **four** places in the whole of `SOUNDS`, one
+per cue: the bonus life (`CENTI4.MAC:2382`), the scorpion loop
+(`CENTI4.MAC:2392`), the computed flea voice (`CENTI4.MAC:2414`) and the march
+(`CENTI4.MAC:2433`). All four converge on a single `AUDC1` write
 (`CENTI4.MAC:2435`). So `bonusLife`, `scorpionLoop`, `fleaLoop` and `march` are
-one voice, not four, and at most one of them sounds at a time.
+one voice, not four, and at most one of them sounds at a time. (The first of
+those write sites is shared: label `44$` is also where the declined 15-second
+alarm lands — `CENTI4.MAC:2369`, `CENTI4.MAC:2371` — so `CENTI4.MAC:2382` serves
+a fifth claimant this ruling puts out of scope. See §4.)
 
-**The priority is decided before the arbitration is reached.** `CENTI4.MAC:2373`
-reads the bonus countdown `CHAN4` and `CENTI4.MAC:2374` branches past the whole
-of `48$` when it is zero. Read the other way round: while a bonus tone is
-running, that arbitration is never entered at all — on the eighth frame the bonus
-takes the `AUDF1` write itself, and on the other seven it branches away to the
-player-explosion tail (`CENTI4.MAC:2377`). **A bonus life silences the other
-three outright.**
+**The priority is decided before the arbitration is reached, and the bonus wins
+by NOT branching.** `CENTI4.MAC:2373` reads the bonus countdown `CHAN4` and
+`CENTI4.MAC:2374` is `BEQ 48$`: when `CHAN4` is **zero** control goes TO `48$`
+and the ant/scorpion/march arbitration runs. When a bonus tone is live, `CHAN4`
+is non-zero, the branch is not taken, and the bonus block runs instead — on the
+eighth frame it takes the `AUDF1` write itself, and on the other seven it leaves
+for the player-explosion tail at `CENTI4.MAC:2377`. Either way `48$` is skipped.
+**A bonus life silences the other three outright**, with one frame's exception:
+on the tick the countdown expires, `CENTI4.MAC:2379-2380` (`DEY / BEQ 48$`) drops
+into the arbitration as the tone ends.
 
 With no bonus sounding, arbitration begins at `CENTI4.MAC:2396`, and the march
 block (`CENTI4.MAC:2428`) is entered on only three conditions:
@@ -270,6 +292,13 @@ appear in §3.1. Its low end is also the one place an earlier spelling of this
 story went dangerously wrong: the alarm begins at `CENTI4.MAC:2360`, not at
 2358, and `CENTI4.MAC:2358` / `CENTI4.MAC:2359` are the **shot cue's own**
 control byte, which cp6-2 needs.
+
+It also takes POKEY voice 1, which makes it a fifth claimant on the contended
+voice rather than a separate tone: both of its exits (`CENTI4.MAC:2369`,
+`CENTI4.MAC:2371`) jump to label `44$`, the bonus life's own `STA AUDF1` at
+`CENTI4.MAC:2382`. Out of scope here because TIMED play is not modelled — but if
+a later story ever models it, §2.5's arbitration gains a member, and it enters
+above the bonus rather than below it.
 
 **The manifest is unchanged.** Per AC-5 this story ruled and did not edit.
 `SOUNDS` and `CHANNELS` in `src/shell/audio.ts` are exactly as cp5-1 left them,
