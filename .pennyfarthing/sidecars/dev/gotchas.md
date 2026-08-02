@@ -1409,3 +1409,89 @@ there was no cliff-dwell consumer at all. The fix was to build the two consumers
 SHLEP-vs-SHLEV split on `hasTarget`, and `withCliffDwell`), not to soften the strings. If a
 disposition string is easier to write than the wiring it describes, that is the moment the inventory
 starts lying — and the inventory is what the next sweep trusts instead of re-deriving.
+---
+
+## Building a CITATION checker: the first working version reports mostly CORRECT citations, and every rule you add must be earned by opening the cited line (sw8-18, star-wars, 2026-08-02)
+
+A guard that re-opens `<file>:<span>` citations written in source comments sounds like an
+afternoon. The checker was quick; **calibrating it was the story.** The first working version
+reported **146** stale citations across star-wars and the great majority were correct citations
+the matcher could not read. Final count **35 — and not one of that drop was an edit to a
+comment.**
+
+Six rules, each added only after opening the cited ROM lines and confirming the comment was
+RIGHT. They generalise to any tool that matches quoted text against a source:
+
+1. **Pair delimiters by SCANNING, never by regex from a position.** ``/`([^`]+)`/`` pairs the
+   CLOSING backtick of one identifier with the OPENING of the next, so
+   ``​`ST.UX` is the STARFIELD's register`` is read as a quote. This single bug produced most of
+   the false positives.
+2. **A quote is a FRAGMENT — require whitespace.** `state.ts \`FIRE_MASK\`, WSCPU.MAC:736` put a
+   TypeScript identifier up against the ROM. `WSCPU.MAC:736` is `TGPROB:` and was always correct.
+3. **Split the rule on the CITED FILE, not on the quote.** A ROM verbatim must be predominantly
+   assembler (else `gdSeq >= seq` gets checked against WSGRND); a markdown verbatim is legitimate
+   English prose. One rule for both is unsatisfiable in one direction or blind in the other.
+4. **Markdown emphasis-stripping is wrong for assembler.** You need it — the spec stores
+   `the **Death Star is entirely out of frame**` and the comment quotes it without asterisks — but
+   `*` is the assembler's MULTIPLY operator, and stripping it turns `SUBD #6*120.*2` into
+   `6120.2`. Key the normalisation to the target's file type.
+5. **A single-line citation conventionally anchors the START of a run.** `LDA BS.WAV / LSRA /
+   IFCC`, `WSMAIN.MAC:1868` cites three consecutive instructions by their first line. Demanding
+   the whole run inside one line flags a whole codebase's convention as broken.
+6. **"Nearest preceding filename" is wrong the moment prose names a second file.** A bare
+   `:607-608` belonged to a `WSCPU.MAC` three lines up, with `math3d.ts:171-186` in between.
+   Resolve a bare span against the nearest preceding candidate that actually VERIFIES the quote —
+   verification beats proximity, and it terminates the guessing.
+
+**The discipline that matters:** every one of those was found by reading the ROM, not by watching
+a count. The failure mode available at each step was to "fix" a correct citation to silence the
+tool — which would have written a NEW false claim into the exact comments the story convened to
+make true.
+
+## A relocation hint is FIRST-OCCURRENCE, so it can name the wrong routine
+
+The guard reports "it is now at X:N — re-anchor to that", which is what makes it usable. But it
+finds the first match: `state.ts` cites `ADDD M$TX+M.S1` for `S1MVBS` and the hint said **:2539**,
+which is `S1MVGD` — a different routine containing the identical instruction. Correct answer
+:2656. Same family as the existing `check-citations.mjs` trap where `damage++` occurs three times
+in `sim.ts` and a mis-anchored pin reads green forever.
+
+**Treat the hint as a lead.** When the quoted text is not unique, cite the routine SPAN
+(`:2654-2656`) so the label and the instruction are both inside it — that is self-describing and
+survives the next insertion better than a bare line.
+
+## Not every "dangling file" is a defect — a rename record is the opposite of one
+
+The guard flagged `bounded-eye-combat.test.ts` and `render.moving-eye.test.ts` as missing. Both
+sit in comments reading *"This file was `<old name>`"* — a true, past-tense record of the file's
+own rename, and the only place the old name survives.
+
+The defect this story existed to fix was a PRESENT-tense reference to a deleted suite as though it
+still ran. Deleting a rename record to satisfy a checker destroys history to make a tool quiet.
+Mark it retired (this guard has a `RETIRED:` marker for exactly the citations prose quotes in
+order to disown) and the record stays.
+
+**Generally: before making a checker green, ask whether the thing it flagged is a claim about the
+present or a record of the past.** Only the first can be stale.
+
+## A hardcoded span in the suite that polices hardcoded spans — and it rotted inside the story
+
+TEA's mutation fixture wrote `design.md:45-46` as "the correct span". Closing a different AC edited
+that spec three lines above the observation, and the fixture broke — **the test that proves the
+guard catches stale spans went stale, during the same story.** Fixed by deriving the span at run
+time (`findIndex` on the observation, build the range from it).
+
+Worth logging as a deviation and worth generalising: when a suite's subject is "pointers rot",
+every literal pointer inside it is a latent failure. TEA's own header said assertions should
+resolve rather than pin; the one place it didn't follow its own rule is the one place that broke.
+
+## Re-anchoring after comment edits: the repo's tool, and 22 pins hide in one file
+
+Confirms the existing entry. Any comment insertion moves the audit's `ours` pins, which
+`citations.test.ts` re-opens against the WORKING TREE. This story's prose edits moved **14** pins;
+`sim.ts` alone carries 22 live ones, `state.ts` 14, `render.ts` 13. `tools/audit/reanchor-citations.mjs
+--write` did it in one command (82 correct, 14 moved, 0 lost) and the diff was 14 surgical
+`"line": N` changes — no re-serialization damage this time.
+
+**Check the live-vs-frozen split before panicking at the count:** 41 of star-wars's pins carry
+`remediated_by` and are deliberately frozen; the tool already skips them.
