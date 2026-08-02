@@ -22,10 +22,13 @@ input/render shell, the same architecture as its siblings
 > `playEventSounds` once per stepped frame, so the seam is reached in ordinary
 > play. **One** thing is still missing — the sound itself: **no samples are
 > baked or uploaded yet**, so every cue resolves to a file that is not there and
-> the shared engine degrades silently. Baking and hosting them is owned by the open epic
-> `sprint/epic-cp5.yaml`. The acceptance test for those asset stories is a
-> live `200` on the hosted `.wav`, never a green vitest — because a missing
-> sample and a working one look identical to the test suite.
+> the shared engine degrades silently. Epic cp5 closed on 2026-08-01 having
+> shipped the seam and the wiring only — it never filed the asset story it was
+> deferring to, so baking and hosting the samples is owned by
+> `sprint/epic-cp6.yaml`, which exists to repair exactly that gap. The
+> acceptance test for those asset stories is a live `200` on the hosted `.wav`,
+> never a green vitest — because a missing sample and a working one look
+> identical to the test suite.
 >
 > **One consequence to know before you open devtools:** the player's first
 > gesture now fires **14** requests, one per `SOUNDS` entry, and every one of
