@@ -228,3 +228,16 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: mg1-19
+    title: Epic archival breaks jt5-7's truth test — sprint/epic-jt5.yaml is pinned to a live path the finish lifecycle moves
+    description: "Found while finishing sc1-1. pf sprint story finish runs an archive_epics step that moves every 100%-done epic out of sprint/ into sprint/archive/. jt5 and jt8 are both fully done (11/11 and 6/6), so ANY story finish now archives them - and tests/jt5-7-epic-yaml-truth.test.mjs reads sprint/epic-jt5.yaml through a hardcoded live path (line 38, read('sprint','epic-jt5.yaml')). The move therefore reddens 8 orchestrator tests, all of them jt5-7's own prose-correction guards, with the misleading failure 'PREMISE: the epic YAML and the vendored ROM are both readable'. Measured at sc1-1 finish: the suite went 390/390 to 382/390 the moment the ceremony ran, and back to 390/390 when jt5 and jt8 were restored to the live board by hand. That restore is a WORKAROUND, not a fix: both epics are genuinely complete and belong in the archive, and the next finish anyone runs will archive them again and redden the same 8 tests. The test's subject is the epic's CONTENT - that jt5-7 rewrote prose the ROM refuted - and that content is equally true in sprint/archive/epic-jt5.yaml. Resolve the path from either location rather than pinning the live one, then let the archival proceed."
+    points: 1
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    acceptance_criteria:
+      - tests/jt5-7-epic-yaml-truth.test.mjs resolves epic-jt5.yaml from sprint/ OR sprint/archive/, whichever exists, and fails loudly if neither does rather than reporting the ROM as unreadable.
+      - With jt5 and jt8 archived (the state pf itself produces), the full orchestrator suite is green - proven by actually running the archival, not by reasoning about it.
+      - 'jt5 and jt8 end up archived: current-sprint.yaml drops them, completed_epics gains them, and the epic YAMLs plus their context files live under sprint/archive/.'
+    type: bug

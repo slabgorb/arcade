@@ -3,7 +3,7 @@ type: epic
 title: 'Joust — playability: enemies hunt (full pursuit AI) and eggs can be caught'
 description: 'Fifth joust epic — the PLAYABILITY slice. The game boots, renders, scores and tracks lives, but is not playable: enemies never hunt (smart brains are stepped without the player at frame.ts:265, and enemy facing never changes, so they orbit at a fixed altitude) and eggs cannot be collected (collisionPass has no player-vs-egg pass; the whole egg.ts scoring ladder is pure, tested, and never called). DESIGN + RULINGS: joust/docs/superpowers/specs/2026-07-28-joust-playability-design.md (Architect, 2026-07-28). GROUND TRUTH: joust/docs/rom-study/ + reference/williams-source/joust/JOUSTRV4.SRC (red-label RV4). REUSE-FIRST: the vertical-seek brains (enemy.ts, jt2-2) and the full egg ladder (egg.ts, jt2-4) already exist and are ROM-cited — this epic is WIRING plus two cited-only additions (horizontal homing + target selection), not a new system. USER RULINGS (2026-07-28, binding): (1) FULL pursuit AI; (2) FULL TARPLY/TARTM targeting with spawn-grace timers; (3) pf TDD, ROM citations, PRs to develop; (4) egg collection faithful to PLYEGG/EGGSCR. ARCHITECTURE: all additions pure src/core; the sim gains ONE carried field (aggro state) mirroring IntelBudget/BaiterClock; no second stepping path (jt2-1 one-sim seam). OUT OF SCOPE: 1P mode (shell concern, jt5). Radix discipline (Motorola: bare DECIMAL, dollar hex); every transcribed constant carries a radix-cited claim.'
 priority: p1
-status: in_progress
+status: done
 repos: arcade
 stories:
   - id: jt8-1
@@ -124,3 +124,4 @@ stories:
     type: bug
     review_findings: 'Round 1 APPROVED. No Critical, no High. Two Low findings, both comment prose, both FIXED IN PLACE during review (eeccd7b): the jt8-4 doc comment for eggBox was orphaned by inserting eggMaskFor, and the WEGG routine extent 3507-3530 understated the routine (it ends at JMP CLIPER, :3531) — the extent assertion was DROPPED rather than corrected, because 8 other places repeat the old number and fixing one copy would be worse. Review was a 12-mutant battery (specialists 8/9 disabled): 10 caught, 1 equivalent mutant proven over 5607 input pairs, 1 caught by tsc rather than vitest. Three follow-ups filed: jt8-13, jt8-14, jt8-15.'
     review_verdict: approved
+completed: '2026-08-02'

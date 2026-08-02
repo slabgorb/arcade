@@ -28,6 +28,7 @@ completed_epics:
   - sw7
   - jt2
   - cp5
+  - sc1
 completed_stories:
   - id: sw5-1
     epic: sw5
@@ -1396,4 +1397,9 @@ completed_stories:
     epic: jt5
     title: The DUMB brain's wingbeat — linet recomputes every wake, and LNTOFP's forced glide is missing
     points: 5
+    completed: '2026-08-02'
+  - id: sc1-1
+    epic: sc1
+    title: 'Shell convergence: compositional host helpers across the seven games'
+    points: 8
     completed: '2026-08-02'
