@@ -65,8 +65,16 @@ import { length, dot, sub, scale, IDENTITY, type Vec3 } from '@shared/math3d'
  *
  * Radix is hex (WSCOMN.MAC:5 `.RADIX 16`), and raw ROM units ARE our world units,
  * so nothing further scales the result.
+ *
+ * The argument is a SQUARED quantity, so it cannot be negative. Guarded rather than
+ * trusted: `Math.sqrt` of a negative returns NaN, every NaN comparison in `computeStatus`
+ * is false, and C_AS would then be permanently unset with nothing raised anywhere. The
+ * `!(… >= 0)` spelling rejects NaN as well, which a bare `< 0` would let through.
  */
 export function psb2SquaredToWorld(squared: number): number {
+  if (!(squared >= 0)) {
+    throw new RangeError(`psb2SquaredToWorld expects a squared (non-negative) value, got ${squared}`)
+  }
   return 2 * Math.sqrt(squared * 0x4000)
 }
 
@@ -80,16 +88,17 @@ export function psb2SquaredToWorld(squared: number): number {
  * off primary source rather than argued (uf1-15):
  *
  *   - NO PERSPECTIVE DIVIDE RUNS. PRE2 (PC $67) rotates and squares and stops; the
- *     perspective multiply is a different program — "PERS", PC $86, SWMP.DOC:180-186,
- *     "YP = YP * XP (SCREEN X)" — which this path never calls. docs/mathbox.md:170-175
+ *     perspective multiply is a different program — "PERS", PC $86, SWMP.DOC:180-187,
+ *     "YP = YP * XP (SCREEN X)" — which this path never calls. docs/mathbox.md:171-176
  *     says the same from the disassembly side: $67 is the view transform "plus
  *     Reg38=X²,Reg39=Y²,Reg3A=Z²", while "the perspective divide … that yields screen
  *     coordinates the AVG can draw" is a separate $AE/$B0. So M.YPS/M.ZPS are squares
  *     of VIEW-space offsets, not of screen coordinates.
  *   - THE TEST CARRIES NO DEPTH TERM. `M.YPS + M.ZPS` is compared against a CONSTANT.
  *     The sibling ratio tests do divide by depth, by subtracting it — `LDD M.YPS /
- *     SUBD M.XPS` (WSMAIN.MAC:3834-3841 for C$PV, WSSTAR.MAC:135-139 for the
- *     starfield) — and THOSE are the ±45° cones. C$AS is not one of them.
+ *     SUBD M.XPS` (WSMAIN.MAC:3834-3835 for C$PV, and again on Z at :3840-3841;
+ *     WSSTAR.MAC:135-139 for the starfield) — and THOSE are the ±45° cones. C$AS is
+ *     not one of them.
  *
  * A lateral+vertical bound with no depth term is a cylinder about the nose axis, so
  * there is no half-angle to convert to at any scale: the `Math.cos(12°)` threshold
