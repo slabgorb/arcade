@@ -229,9 +229,23 @@ describe('jt5-1 AC4 — the manifest and the union agree', () => {
     // weight in the bake) and a kind cannot exist with no cue (a silent moment).
     const [kinds, sounds] = await Promise.all([eventKinds(), need('SOUNDS')])
     expect(kinds.length, 'precondition: the union is not empty').toBeGreaterThan(0)
+    // RE-SEATED by jt5-6 (Mr. Praline / TEA). This asserted
+    // `Object.keys(sounds).length === kinds.length` — one cue per kind, exactly.
+    // That stopped being the invariant when `player-materialise` gained a player
+    // id and began reaching TWO cues (SNPCR1 for knight 1, SNPCR2 for knight 2),
+    // making the manifest 18 against a 17-entry tuple. The count was never the
+    // real property anyway; REACHABILITY was, and a count cannot see it — a cue
+    // named for no kind and a kind with no cue cancel out perfectly.
+    //
+    // The strong form needs the dispatch, so it lives with it:
+    // `every cue in the manifest is reachable from some event` in
+    // tests/audio-transporter-split.test.ts sweeps EVENT_KINDS against the real
+    // dispatch (payloads included) and asserts the played set IS this manifest.
+    // What survives here is the half that needs no dispatch, stated so it still
+    // bites: a manifest may not shrink below the union it serves.
     expect(
       Object.keys(sounds).length,
-      'one cue per event kind — no cue without a kind, no kind without a cue',
-    ).toBe(kinds.length)
+      'every kind still needs a cue — the manifest cannot be smaller than the union',
+    ).toBeGreaterThanOrEqual(kinds.length)
   })
 })

@@ -404,7 +404,17 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   it('the transporter re-entry emits player-materialise (seed 0xface, frame 1889)', () => {
     // The frame AFTER the death: `stepGame`'s respawn re-enters the spent knight
     // through the transporter (game.ts:425-441), which is the ROM's CREP
-    // re-create — DSNCRE → SNPCR1 "PLAYER 1 RE-CREATED (TRANSPORTER)".
+    // re-create — DSNCRE → the re-created player's own transporter table.
+    //
+    // CORRECTED 2026-08-02 (jt5-6 TEA). This comment used to name
+    // SNPCR1 "PLAYER 1 RE-CREATED (TRANSPORTER)". Measured: the knight who
+    // re-enters on this frame is player TWO, so the machine's table here is
+    // SNPCR2 (:8119-8121), not SNPCR1 (:8116-8118). The attribution was
+    // harmless while jt5-1's payload-free moment mapped both knights onto one
+    // cue, and it is exactly the collapse jt5-6 removes — see
+    // `the frame the suite already stages sounds SNPCR2` in
+    // tests/audio-transporter-split.test.ts, which pins the id off the
+    // processes rather than trusting either comment.
     const before = advanceTo(0xface, 1889)
     const after = stepGame(before, inputsAt(1889))
     expect(countOf(after, 'player'), 'precondition: the knight really re-enters here').toBe(
