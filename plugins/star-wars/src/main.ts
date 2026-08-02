@@ -15,7 +15,8 @@ import {
 } from '@shared/highscore'
 import { createInputController } from './shell/input'
 import { createLoop } from '@shared/loop'
-import { INITIAL_PAUSED, isPauseKey, togglePaused, stepUnlessPaused } from '@shared/pause'
+import { INITIAL_PAUSED, isPauseKey, stepUnlessPaused } from '@shared/pause'
+import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
 import { drawEscOverlay } from '@shared/esc-overlay'
 import { createAudioEngine } from './shell/audio'
 import { render } from './shell/render'
@@ -29,8 +30,8 @@ import { resizeToDisplay } from '@shared/view'
 // font, a synchronous glyph table with no async asset to load.)
 const highScoreStorage = makeHighScoreStorage('star-wars', makeHighScoreRowGuard('wave'), 'wave')
 
-const canvas = document.getElementById('game') as HTMLCanvasElement
-const ctx = canvas.getContext('2d')!
+// sc1-1: the checked mount replaces `as HTMLCanvasElement` + `getContext('2d')!`.
+const { canvas, ctx } = mountCanvas(document)
 
 // The DPR-resize + CSS-box sizing is @shared/view's resizeToDisplay (SH2-10),
 // which owns the Math.min(2, devicePixelRatio||1) cap+guard every cabinet hand-rolled.
@@ -54,11 +55,7 @@ const audio = createAudioEngine()
 // stays inert until the first click/keypress unlocks it. resume() is idempotent
 // (only the first call builds the context and loads samples), so every later
 // gesture is a harmless no-op.
-function unlockAudio(): void {
-  audio.resume()
-}
-canvas.addEventListener('pointerdown', unlockAudio)
-window.addEventListener('keydown', unlockAudio)
+installAudioUnlock(() => audio.resume(), window)
 // The cabinet boots on the attract/title screen, not mid-run (story 8-6). The
 // pure core's initialState() is a fresh PLAYING run; the shell frames it.
 let state: GameState = { ...initialState(), mode: 'attract' }
@@ -116,10 +113,7 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
 // SH2-14: Escape toggles pause via the shared @shared/pause gate — the
 // cabinet-wide VERB. Edge, not level (guard e.repeat) so a held key can't
 // machine-gun the toggle. The freeze itself is stepUnlessPaused in the loop below.
-let paused = INITIAL_PAUSED
-window.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (!e.repeat && isPauseKey(e.key.toLowerCase())) paused = togglePaused(paused)
-})
+const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
 
 // Per-cabinet NUMBERS for the pause card: star-wars' yoke keybinds, its green
 // cockpit-HUD chrome, and the dim alpha. Copy/colour/opacity are playtest-tunable.
@@ -143,7 +137,7 @@ const loop = createLoop(
     // no input sample) and stepUnlessPaused returns the prior state reference, so
     // resume is deterministic. A frozen frame skips the event pump + gameover edge
     // below (they must not re-fire against a stale, un-advanced state).
-    state = stepUnlessPaused(() => stepGame(state, input.sample(), dt), state, paused)
+    state = stepUnlessPaused(() => stepGame(state, input.sample(), dt), state, pause.isPaused())
     if (state === prev) return
     // Play one sound per gameplay event the core emitted this frame. The pump
     // lives here (not loop.ts) because the game state — and its `events` channel
@@ -299,7 +293,7 @@ const loop = createLoop(
     if (import.meta.env.DEV && debugOverlay) drawDebugOverlay(ctx, state, W, H)
     // SH2-14: the pause overlay dims the frozen cockpit and draws the keybind card
     // over it — inside the dpr-scaled block so it shares render()'s CSS-pixel space.
-    if (paused) drawEscOverlay(ctx, W, H, STAR_WARS_PAUSE)
+    if (pause.isPaused()) drawEscOverlay(ctx, W, H, STAR_WARS_PAUSE)
     ctx.restore()
   },
 )

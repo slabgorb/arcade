@@ -46,7 +46,7 @@
     },
     "ours": {
       "file": "src/main.ts",
-      "line": 156,
+      "line": 150,
       "verbatim": "          audio.play('fire')"
     }
   },

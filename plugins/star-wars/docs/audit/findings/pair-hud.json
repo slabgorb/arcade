@@ -228,7 +228,7 @@
     },
     "ours": {
       "file": "src/main.ts",
-      "line": 113,
+      "line": 110,
       "verbatim": "  if (/^[a-zA-Z]$/.test(e.key) || e.key === 'Backspace') state = enterInitial(state, e.key)"
     },
     "recommendation": "accept"
@@ -246,7 +246,7 @@
     },
     "ours": {
       "file": "src/main.ts",
-      "line": 30,
+      "line": 31,
       "verbatim": "const highScoreStorage = makeHighScoreStorage('star-wars', makeHighScoreRowGuard('wave'), 'wave')"
     }
   },
