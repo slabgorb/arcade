@@ -1882,3 +1882,61 @@ Run it on any diff that edits comments containing glob patterns, regex literals,
 with `*/`, `${`, or a backtick. And when you find one, ask the second question: **does the
 file already handle this case somewhere else, differently?** Two answers to one problem is the
 more durable defect — the invisible character is at least caught by the parser.
+
+---
+
+## Reviewing your own work: the battery is the ONLY instrument that finds anything (jt9-1, 2026-08-02)
+
+I had been SM, TEA and Dev on this story. Re-reading the diff produced **zero** findings — as it
+always does, because the reader and the author share every assumption. Eight mutants produced
+**three survivors**, all on the story's primary AC:
+
+- `plavt` ticking on a wake the whole story says is skipped — 2496 tests pass
+- the troll placed AFTER its victim instead of before — 2496 tests pass
+- the entire production channel severed (`lavaBehind` hard-wired false) — 2496 tests pass
+
+**The pattern in all three: the unit tests INJECT the value the scheduler is supposed to compute.**
+`stepEnemyDetailed(enemy, { lavaBehind: true })` proves the consumer is correct and says nothing
+about the producer. Whenever a phase threads a new argument from a producer into a pure consumer,
+the consumer gets thorough tests for free and the producer gets none — so **the mutant to write
+first is "hard-wire the threaded argument to its default"**. If the suite survives, the wiring is
+decorative no matter how good the unit tests look.
+
+**Second pattern, subtler and worth its own note: an assertion that is true of BOTH the correct and
+the inverted arrangement.** The insertion test read
+`expect(procs[at + 1]?.kind).toBe('enemy')`. Placing the troll before its victim and placing it
+after both leave an enemy at `at + 1`, because six enemies exist. The test looked like it pinned
+"BEFORE THIS ONE" and pinned only "somewhere among the enemies". **When a change is about ORDER,
+assert against a captured IDENTITY (the victim's id, taken before the mutation), never against a
+kind or a type — kinds repeat, and repetition is what makes an ordering assertion vacuous.**
+
+## Three surviving mutants on the AC's own deliverable is a HIGH, not three MEDIUMs
+
+The severity table says Critical/High blocks and Medium does not, so the arithmetic answer was
+"four Mediums → APPROVE". That would have been wrong, and the reason generalises.
+
+Individually each survivor is a missing guard on correct code — textbook MEDIUM. But R-3's mutant
+severs the **production wiring the AC exists to build**, and AC3's deliverable IS that wiring. A
+guard gap on a nice-to-have is Medium; a guard gap that makes the AC's own deliverable unfalsifiable
+is High, because "we built it" and "we cannot tell whether we built it" are the same state to
+everyone downstream.
+
+**And weigh the story's own subject.** jt9-1 was filed to fix unguarded claims — it folded in R-3
+(two missing non-vacuity floors) and R-4 (false prose that shipped green). Approving it with three
+unguarded central claims, and filing them as a follow-up, would have reproduced the exact defect
+the story was created to remove. **When a story's theme is a defect class, findings in that class
+inside that story carry extra weight — routing them forward is how the class survives.**
+
+## Verify the invariant a DELETION now rests on, by constructing the state it forbids
+
+AC6 deleted a defensive clear on the reasoning that its input was unreachable. The reasoning was
+sound and I checked it holds (two spawn sites, both pairing `pchase: 0` with `brain: 'linet'`; no
+demotion path anywhere). The useful step was the next one: **build the forbidden state anyway and
+run the function.** `promote({pchase: 0, brain: 'boundr', pjoy: {kind: 'interval'}})` now returns
+the enemy still carrying the interval, where the old code returned `undefined`.
+
+That does not make the deletion wrong — it makes the deletion's safety rest on an invariant nothing
+enforces. And the cheap fix was already sitting two lines above: `promote()` **already throws** on
+the adjacent impossible state (`pchase !== 0`). **When you delete a defence because "that input
+cannot happen", look for an existing guard that says the same thing about a neighbouring input —
+if one exists, extending it costs nothing and converts an argued invariant into a checked one.**
