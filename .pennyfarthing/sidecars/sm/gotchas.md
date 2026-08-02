@@ -1788,3 +1788,60 @@ runs and split 9 failures three ways:
   worth writing into the handoff by name, because the next agent will otherwise burn the time.
 - Net: zero attributable to this story, and `--project joust` all-green — which is the baseline the
   next phase actually inherits and the only number worth stating without a caveat.
+
+---
+
+## The completed-file race, worst case: the sibling's number EQUALLED mine (jt9-1 finish, 2026-08-02)
+
+This file already documents the shared-trailing-field conflict in `sprint-2628-completed.yaml`. This
+run produced its nastiest form and it is worth recording precisely.
+
+The conflict was the documented shape — `points:` and `completed:` sitting BELOW the `>>>>>>>`
+marker, so they attach to whichever row survives a marker-strip. What was new: **the sibling's story
+was also 8 points.** A lazy resolution keeping both rows and stripping markers would have produced a
+file that was *correct by accident*, parsed clean, and told me nothing about whether I had robbed
+them. The existing rule ("re-type whole records, parse to verify") saved nothing visible here — and
+that is exactly why it has to be unconditional rather than applied when the diff looks risky.
+
+**The step that made it verifiable:** read the sibling's row from `origin/main` and re-type it from
+that, rather than reconstructing it from the conflict hunk. `git show origin/main:<path> | python -c
+"yaml.safe_load..."`. The conflict hunk is missing the fields under dispute — by definition — so it
+is the one source that cannot settle them.
+
+Second conflict in the same file, easier but worth naming: `completed_epics` wanted BOTH sides
+(`sc1` from them, `jt5`/`jt8` from my finish's epic archival). A "take mine" or "take theirs"
+resolution silently loses an archived epic, and nothing downstream ever complains.
+
+## `pf sprint story finish` ARCHIVES completed epics — and that moves files out from under tests
+
+Unadvertised side effect, and it reddened the orchestrator suite **after** a clean pre-finish run.
+`archive_epics` moved `sprint/epic-jt5.yaml` and `sprint/epic-jt8.yaml` (both 100% done) into
+`sprint/archive/`. `tests/jt5-7-epic-yaml-truth.test.mjs` reads `sprint/epic-jt5.yaml` by literal
+path — eight tests red, none of them related to the story that had just landed.
+
+**So the finish ceremony is not gate-neutral: re-run the gates AFTER `story finish`, not only
+before.** My pre-finish run was 390/0 and my post-finish run was 382/8.
+
+The fix worth copying: the guard is about the epic's PROSE, which is as worth guarding once the epic
+is a record as while it was live — so it now resolves **live path first, then archive**, instead of
+pinning one location. Same shape as the `sprint-repo-routing` exemplar fix earlier in this story:
+**a test that names a sprint artefact by path or by id has a lifecycle bug waiting, because epics
+finish.** Prefer resolving a candidate list, or asserting the property (an epic with open stories)
+rather than the name.
+
+## Check whether a sibling inherits your false claim — then check whether it is false FOR THEM
+
+Dev measured that this story's determinism warning was wrong (zero pins moved, one promotion shifted
+by one wake). The obvious next move is to sweep the epic for stories that inherited the same
+language and correct them.
+
+I did the sweep — two stories used "blast radius" — and then did the step that matters: **read the
+sibling's mechanism before correcting it.** jt9-18 changes level flight to flap every other wake,
+which perturbs every level-flying enemy on every wake. That is jt5-8's shape, not jt9-1's, so its
+re-baseline expectation is CORRECT and "correcting" it would have introduced the error I was
+removing.
+
+**Generalise: a claim being false for your story is not evidence it is false for theirs.** The
+sweep finds candidates; the mechanism decides. Same rule as routing findings to owner stories, in
+the opposite direction — and the failure mode here is worse, because a wrong correction arrives
+labelled MEASURED and outranks the story.
