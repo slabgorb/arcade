@@ -1330,3 +1330,82 @@ the sample point.
 So do not cite an unchanged fingerprint as evidence a change was inert, and do not assume a
 timeline shift will redden one. Filed as a non-blocking finding rather than "fixed", because
 tightening it is a different story's call.
+
+## The ENTRY into a state machine is a separate ROM fact from the state machine — and assuming symmetry between two brains cost the bounder its climb (uf1-9, joust, 2026-08-02)
+
+**Situation:** wiring joust's PJOYT wing latch. The two-phase cadence itself was easy to read out of
+the source — wings down for BOUPWD wakes, up for BOUPWU — and my implementation reproduced it
+exactly. Every one of TEA's thirteen new behavioural tests went green.
+
+**And two OTHER suites went red:** `homing.test.ts` ("the flip is applied BEFORE the wake's step")
+and `target-wiring.test.ts` ("a promoted bounder below a targetable player gains upward velocity").
+The bounder had stopped climbing.
+
+**Cause: I seeded the latch's starting phase by assuming the two brains matched.** They do not, and
+the ROM says so in one instruction each. The bounder's up-seek decide ends `BRA BOUP1A` (:3853) —
+which is the FLAP branch, so it enters wings DOWN and commits a flap on the arm wake. The hunter's
+ends `BRA B2UP2D` (:4037) — `LDA HUUPWU / … / CLRB`, so it enters wings UP and glides a full hold
+first. I gave both the hunter's entry, which silently cost the bounder its first flap and left it
+sinking toward a quarry it was supposed to climb to.
+
+**Two things worth generalising.**
+
+1. **A cadence has three ROM facts, not one: the hold lengths, the transition rule, and the ENTRY.**
+   The first two are in the state bodies and are what you naturally read; the entry is at the
+   *branch target of the decide*, often lines away, and it is the one a test of the steady-state
+   cycle cannot see. TEA's suite deliberately pinned "period, not phase" (the right call — phase is
+   a design choice for most ports), so the entry bug was invisible to every new test and was caught
+   only by two OLD suites about something else entirely.
+2. **When two objects share a mechanic, find the ROM line where each ENTERS it before sharing code
+   between them.** The asymmetry here was one `BRA` target apart. This is the same family as the
+   sidecar's `narrowPhase` and two-mask-table entries: the difference between two things that look
+   like a pair is usually a single instruction, and it is never in the part you read first.
+
+**The reason this ended well is worth naming too:** the fix made two failing sibling suites pass,
+which is the signature of a real bug fixed rather than a guard re-baselined. Before touching a
+single expectation in a story that expects a re-baseline, sort the failures into "moved because the
+sim legitimately changed" and "moved because I got it wrong" — and treat *any* failure that a
+correction makes GREEN AGAIN as proof it was in the second pile.
+
+## Re-baselining that changes the SEED: sweep before you conclude a coordinate merely moved
+
+The jt8-7 rule is to re-find each pin by sweeping for its own PRECONDITION rather than nudging the
+number. uf1-9 needed the next step out: **two pins had no satisfying frame on their seed at all.**
+
+- `audio-events`' egg pin asserts *player 2's* score rises. Swept 2500 frames of seed 0xbeef: every
+  `egg-collected` now scores player ONE. Not a moved coordinate — an empty solution set.
+- `audio-thud`'s person-thud pin needs a buzzard to bump a knight. Swept 1200 frames of all three
+  seeds the file uses: 0x2468 and 0xbeef now produce enemy-vs-enemy thuds only.
+
+Both moved seed (to 0x2468 f230 and 0xface f260), keeping the script and every assertion. **So the
+sweep must record which seeds satisfy the precondition, not just which frames on the seed you
+started from** — otherwise the honest conclusion "this seed can no longer express this test" reads
+as "I could not find the frame" and the temptation is to weaken the assertion instead.
+
+Cheap trick that paid: when a precondition is a conjunction, print the near-misses too. Tagging each
+`egg-collected` with whether p1 or p2 scored (`230.2` vs `205.1`) turned "0xbeef has none" into
+"0xbeef has six, all scoring the wrong player" — which is the sentence that belongs in the comment.
+
+## Distinguish "the guard's claim survived" from "the guard's numbers survived" — and say which in the comment
+
+Three of the re-baselined digests carry a claim in prose about WHY they are a regression guard and
+not a blanket pin: *"`player#1`, `player#2` and the egg are bit-identical across all three trees."*
+After uf1-9 the player rows were still bit-identical (the claim's load-bearing half held, and that
+is the real finding) — but **the egg was gone**, because `enemy#257` now survives to frame 200 and
+the egg it used to become never exists. Updating the numbers and leaving that sentence would have
+shipped a false claim inside the very comment that exists to make the pin trustworthy.
+
+So when re-baselining a pin whose comment asserts an invariant: re-check the INVARIANT, not just the
+values, and amend the sentence in the same edit. Here the honest version is narrower and more useful
+— the players are the invariant; the egg never was, because it is downstream of a KILL and kill
+timing is exactly what a flap cadence moves.
+
+## A `wired` disposition string names a function that must actually read the row
+
+Flipping ROW_DISPOSITION's eleven entries to `wired` needs a `consumer` string, and it is unguarded
+prose — no test checks that the named function reads the named row. Two of mine (SHLETM, SHCLTM)
+would have been false when I first wrote them: `decideInterval` read SHUPTM for every shadow, and
+there was no cliff-dwell consumer at all. The fix was to build the two consumers (the shadow's
+SHLEP-vs-SHLEV split on `hasTarget`, and `withCliffDwell`), not to soften the strings. If a
+disposition string is easier to write than the wiring it describes, that is the moment the inventory
+starts lying — and the inventory is what the next sweep trusts instead of re-deriving.
