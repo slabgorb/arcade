@@ -213,7 +213,7 @@ stories:
       EXTENSION POINT, NOT GREENFIELD. plugins/star-wars/tools/audit/check-citations.mjs + tests/audit/citations.test.ts already re-open citations, but only from structured findings in docs/audit/findings/*.json ({file, line, verbatim}). Nothing walks ordinary source comments. The root-cause claim is confirmed; reuse the verbatim-matching machinery rather than writing a second one.
     points: 5
     priority: p2
-    status: in_progress
+    status: in_review
     assigned_to: Keith Avery
     started: '2026-08-02'
     repos: arcade
