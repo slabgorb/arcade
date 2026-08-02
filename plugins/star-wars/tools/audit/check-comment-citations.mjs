@@ -84,7 +84,7 @@ export function hasPragma(raw) {
  *    prose block cannot carry opt-out authority throughout (see the test named "the
  *    pragma DEEP inside a long opening comment block does not opt out").
  *  - `>` counts as a comment leader, so a markdown BLOCKQUOTE within the window opts a
- *    `.md` file out. `docs/**​/specs` is scanned, so a spec that exhibits the pragma as a
+ *    `.md` file out. `docs/**\/specs` is scanned, so a spec that exhibits the pragma as a
  *    blockquote example in its first five lines retires itself — a much narrower survival
  *    of the defect this anchoring exists to kill, but not zero. A fenced code block is
  *    safe: the fence line carries no leader, so the scan stops there. If a spec ever

@@ -394,10 +394,15 @@ describe('sw8-18 AC5 — the real tree scans clean', () => {
     //   delivered  (this tree)     default scan, covers tools/  29
     //
     // So the guard now reads MORE of the plugin and reports FIVE FEWER problems than
-    // before the story. Two things account for the drop: six reported "dangling
-    // citations" were globs and comment-wrapped sentence remnants that nobody ever
-    // wrote as citations, and the eight real stale ones the widened scan surfaced were
-    // re-anchored or disowned.
+    // before the story. Two things account for the drop, and both counts were derived
+    // from the vanished-error set IN SITU rather than by subtraction: SEVEN reported
+    // "dangling citations" were globs, comment-wrapped sentence remnants or a
+    // comment-wrapped identifier — none of them a citation anybody wrote — and the
+    // EIGHT real stale ones the widened scan surfaced were re-anchored or disowned.
+    // (Accounting: 44 pre-story-widened - 16 vanished + 1 re-reported under a renamed
+    // path = 29. The seventh phantom is `Sheet.ts` in tests/shell/font-migration.test.ts,
+    // a wrapped `contactSheet.ts`; it is caught by the lookbehind rather than the stem
+    // class, which is why an earlier draft of this sentence counted six.)
     //
     // Deliberately NOT decomposed further. The scope change, the extractor fix and the
     // remediation all move this number and are not independently attributable after the
