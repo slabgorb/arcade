@@ -3075,3 +3075,77 @@ Seven mutants, seven caught. The useful signal was not the 7/7 — it was that *
 mutant reddened exactly one test** (fall edge: 1, rise edge: 1, per-row data: 1) while the two
 structural mutants reddened 7 and 11. Precise, uncoupled guards. A battery where every mutant
 reds everything is telling you the guards are coupled, not that they are strong.
+
+## Write the quantifier as a WHOLE-FILE census and it will redden on you — that redness is the finding (uf1-9, 2026-08-02)
+
+**Situation:** uf1-9's ACs rested on a correction the SM had measured: "four of the five named rows
+carry `TIME UNTIL NEXT DECISION`, SHCLTM does not". I wrote the obvious oracle — assert the four
+named rows carry it, assert SHCLTM does not — and then, on the principle that a quantifier is a
+claim about every member, added a third test that greps the WHOLE source for the phrase and
+compares the result set against the four.
+
+**It failed.** There are **six** bearers. `B2UP3` (:4199) and `SHUP3` (:4415) — the "LEVEL FLIGHT,
+READY TO GO UP" states — carry a hardcoded `#20+1` that the 1982 authors never migrated to DYTBL.
+Pulling that thread gave the real shape of the mechanic: `PJOYT` is armed at **fourteen** sites in
+the enemy brains and only **nine** are DYTBL rows. Wiring "the eleven rows" covers nine of fourteen
+arming sites, and a port that models "the decision timer" as one wave-scaled quantity would scale
+five sites the machine keeps constant — a divergence that only opens at wave 3, where nothing looks.
+
+**The generalisation.** Both my first two tests were correct and both were spot-checks against a
+list I had been handed. The census test is the only one that could discover anything, because it
+is the only one whose subject is the SOURCE rather than the list. So: when a story hands you a set
+("these five rows", "these three call sites"), write one assertion that re-derives the set from the
+file and compares. Cost: four lines. It is the same instinct as pinning a table's extent from both
+sides (jt8-7), moved from "how long is this table" to "who else is in this family".
+
+**Corollary that mattered more than the census itself: the rows are NARROWER than their names.**
+`BOUPWD`/`HUUPWD` read like "the bounder/hunter wing-down time". They are the **UP-seek** hold only
+(`BOUP1`/`B2UP1` are the climb states). The DOWN-seek arms its own hardcoded `LDA #2` (:3823, :4008)
+and — the part no one would guess — has **no wing-up reload at all**: `BODN2`'s expiry returns to
+`BODN1` with `CLRB` and arms nothing, so the wings-up duration is decided by the `BODNVY` brake
+every wake, which the port ALREADY does correctly. Both paths are 2 at wave 1, so wiring the row to
+both looks right until wave 3 and is wrong forever after. Before wiring a row named for a mechanic,
+find every state that arms the same register and ask which one the row is actually in.
+
+## A "seam" the CONTRACT cannot see is untestable even though the module exports it
+
+`stepEnemyDetailed` and `EnemyState.prevFlapHeld` have existed in `src/core/enemy.ts` since jt5-3.
+Neither was ever added to `tests/helpers/enemy-contract.ts`. Since the held wing LEVEL is the entire
+observable of a wing-cadence latch, the thing uf1-9 exists to build was invisible to any test
+written against the contract — `tsc` refused both accesses and the natural reading of that error is
+"the module does not have this yet", which for a RED phase is a *completely plausible* and
+completely wrong conclusion.
+
+**Check the contract before concluding the module lacks a member** — `grep -n <name> src/core/<mod>.ts`
+against `grep -n <name> tests/helpers/<mod>-contract.ts`. A double-entry contract drifts silently in
+exactly one direction: implementation gains members, the contract does not, because nothing fails
+when a contract is merely incomplete. Declaring the two missing members was a three-line edit and is
+properly TEA's, since the contract is test-owned.
+
+## The end-to-end probe that compared `'[]'` to `'[]'` — liveness guards are not optional garnish
+
+My first full-cabinet test called `createWaveDemo(seed, wave)` and read `state.enemies`. The function
+takes ONE argument (the wave is a field on `DemoState`, set as `{...base, wave}`) and enemies live in
+`sim.processes`. So it compared two empty strings and failed with
+`expected '[]' not to be '[]'` — which, had the sign of the assertion been the other way, would have
+PASSED and proven nothing. The neighbouring uf1-2 test had a liveness guard for exactly this reason
+and I did not copy it. Copy it: assert the fixture produced the thing you are about to compare,
+before comparing it.
+
+## Re-apply the staging EVERY frame — and when the staged path is unreachable, that is itself the finding
+
+The jt5-10 rule ("a one-shot hush at setup decays") bit again, from the fixture side. I parked both
+knights at the top of the arena to route the buzzards onto the UP-seek path, stepped 240 frames, and
+measured **zero** up-seek frames. The knights had simply fallen: gravity, and the targeting grace is
+~90 frames, so by the time enemies could lock on the staging was long gone. Re-parking every frame
+gave 149 up-seek frames.
+
+**But the natural run measures zero too, and that is worth reporting rather than fixing.** Four of
+this story's rows (the wing cadences) plus HUUPVY live ONLY on the up-seek path, and production play
+on this seed never enters it — buzzards climb toward a quarry ABOVE them and knights do not stay
+above them. So those five rows will be wired onto a path the running game does not currently reach,
+which is the "wiring one dead module to another" hazard uf1-10's own description calls *theatre*.
+Not a blocker (the path is legitimately reachable and jt8-1 made the targeting live), but the
+re-baseline pressure Dev should expect comes from the DECISION timers and the down-seek frozen hold —
+both on paths that DO fire — and not from the wing rows. Measuring which of your subject's paths
+production actually reaches is a ten-minute probe and it changes what the story's risk section says.
