@@ -1,0 +1,352 @@
+id: jt9
+type: epic
+title: 'Joust — the remainder, re-ordered: apparatus, gameplay, geometry, brains, dossier'
+description: |-
+  Sixth joust epic, and the first that is purely a RE-ORDERING: it holds every joust story left unfinished on 2026-08-02, pulled out of jt5 (audio/fidelity), jt8 (playability) and uf1 (unwired features) and resequenced into one dependency-ordered plan. 28 stories, 82 points. NOTHING WAS RE-SCOPED, RE-POINTED OR RE-WRITTEN in the move — every description, acceptance criterion and ROM citation is the text its filing story shipped with. DELIBERATELY LEFT BEHIND: ad1-4 (joust attract simulation, GOVER_ATTRACT) stays in ad1 on the user's ruling — it belongs with the other six games' attract demos and the lobby carousel that consumes them, not with joust's fidelity work. uf1 keeps its red-baron, star-wars and lobby stories; jt5 and jt8 are now fully done and archivable.
+
+  THE IDS CHANGED AND CROSS-REFERENCES DID NOT. pf renumbers on move, so a description here that names a jt5-NN or jt8-NN or uf1-NN id may mean either a DONE story (id unchanged, reference still valid) or a story that moved into this epic (id now jt9-NN). The map, in this epic's order: jt9-1 was jt5-27, jt9-2 was jt8-12, jt9-3 was jt5-11, jt9-4 was jt5-21, jt9-5 was jt5-22, jt9-6 was jt5-15, jt9-7 was jt5-20, jt9-8 was jt5-9, jt9-9 was jt5-12, jt9-10 was jt8-8, jt9-11 was uf1-11, jt9-12 was uf1-10, jt9-13 was jt8-15, jt9-14 was jt8-13, jt9-15 was jt5-17, jt9-16 was jt5-14, jt9-17 was jt5-13, jt9-18 was jt5-18, jt9-19 was jt8-16, jt9-20 was jt8-9, jt9-21 was jt8-11, jt9-22 was jt8-10, jt9-23 was jt5-19, jt9-24 was jt8-5, jt9-25 was jt8-14, jt9-26 was jt5-24, jt9-27 was jt5-25, jt9-28 was jt5-26. Every OTHER joust id named in a description (jt1-x through jt4-x, jt5-1..jt5-8, jt5-10, jt5-16, jt5-23, jt8-1..jt8-4, jt8-6, jt8-7, uf1-2, uf1-8, uf1-9) is DONE and unmoved, so those references are still literal.
+
+  THE STANDING RULE THIS EPIC IS ORDERED AROUND: roughly half these stories move the jt2 seeded-replay fingerprints, and two of them say in their own text that a fingerprint-moving change must not share a commit with another (jt9-8 about jt5-8, jt9-1 about jt9-8). One story per commit satisfies that; BATCHING TWO OF THEM DOES NOT, and the re-baseline stops being reviewable. The method is written up in sprint/archive/jt5-8-session.md and sprint/archive/uf1-9-session.md: re-find every moved pin by sweeping for its OWN precondition, never by nudging a number toward the new output, and state which digests moved and why. Read the nearer of those two sessions before starting any story marked as a fingerprint mover.
+
+  THE FIVE BLOCKS, AND WHY THE ORDER IS THIS ORDER.
+
+  BLOCK A, jt9-1 to jt9-7 (18 pts): ride the fresh re-baseline, then harden the apparatus. jt9-1 is first because it is jt5-8's direct successor, filed out of jt5-8's own review, and jt5-8's session — with its 20-assertion moved-pin table and the method that produced it — was archived hours before this epic was cut. That context is never cheaper than now. jt9-2 follows because it is a mechanical 27-file test sweep onto tests/helpers/claims.ts: done here it is one large diff and every later story writes against the hardened loader; done later it is the same diff plus however many new copies the intervening stories added. jt9-3 through jt9-7 then pin the apparatus the rest of the epic leans on — three wing-cue behaviours currently held by prose alone, the bake gate that stops an unbaked cue reaching the bucket, the manifest decoder's edge cases, the shared-audio voice-release asymmetry, and the ruling on whether CHANNELS routes anything. None of the six moves a fingerprint, so they form a clean buffer behind jt9-1.
+
+  BLOCK B, jt9-8 to jt9-12 (17 pts): the gameplay a player can actually feel, hardest-hitting first. Rapid tapping should out-climb holding and on this port it does not (jt9-8). An uncollected kill-egg never matures, so the wave-clear gate stays shut on it (jt9-9). An enemy last egg is scored to the victor on the kill and our port drops the award and its ladder bump silently (jt9-10). The lava troll can never grab anyone, because the whole PATCH1/2/3 grip escalation has zero production callers (jt9-11) — and jt9-12's LAVGRA half is theatre until it does, which is the one hard ordering constraint inside this block.
+
+  BLOCK C, jt9-13 to jt9-17 (16 pts): collision geometry — settle the premise, then fix the passes. jt9-13 is a two-point sign-extension fix that is latent today and is a loaded chamber for jt9-25, so it goes early and cheap. jt9-14 comes next not only for its own defect (the player's reach against a pterodactyl is a flat box) but because it is the story that must rule on whether narrowPhase's screen-X blindness matches the machine at all — a premise inherited unexamined since jt2-3 that jt9-15 and jt9-17 both build on. jt9-16 wants a three-or-more body pile-up to be observable and gets one more easily once jt9-15 makes mixed ptero pairs resolve. jt9-17 is last in the block and the largest: it gives EntityState a real horizontal velocity and a PBUMPX home, which is the biggest structural change left in the core, and it should land on geometry that has stopped moving.
+
+  BLOCK D, jt9-18 to jt9-23 (19 pts): the enemy brains. jt9-18 is the level-flight twin of jt9-1's dumb-brain glide — same forced-glide shape, cheapest while that shape is fresh. jt9-19's precondition was built by uf1-9 and its note about SHLEP equivalence is now stale, so it needs re-deriving rather than inheriting. jt9-20 through jt9-22 are the remaining steering gaps, smaller before larger. jt9-23 is deliberately LAST AND DELIBERATELY AT RISK: uf1-9 measured that the up-seek path it serves is entered on ZERO frames of natural play across three seeds and 6000 frames, and the story's own first instruction is to rule on whether the climb-preparation state is reachable in this port at all. If the answer is no, cancel it rather than build two states nothing reaches.
+
+  BLOCK E, jt9-24 to jt9-28 (12 pts): the decode, the animation, and dossier precision. jt9-24 may confirm the shipped approximation rather than replace it, which is a fine outcome and the reason it is not urgent. jt9-25 draws the egg's hatch frames and needs jt9-13 from Block C. jt9-26 to jt9-28 are citation and README corrections that change no behaviour: real defects of the class jt5-7 was filed for, but nothing a player or a later story trips over, so they go last.
+
+  GROUND TRUTH throughout: plugins/joust/docs/rom-study/ and reference/williams-source/joust/JOUSTRV4.SRC (red-label RV4), with JOUSTI.SRC for the sprite and table records. Radix discipline is Motorola — bare decimal, dollar hex — and every transcribed constant carries a radix-cited claim.
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: jt9-1
+    title: "PJOY,U is an ENTRY ADDRESS: a glide wake skips LINET's promotion check and its lava-troll looker"
+    description: |-
+      Two ROM behaviours live in the region of LINET that a GLIDE wake never executes, and jt5-8 made that region reachable. The scheduler enters a process with JSR [PJOY,U] (JOUSTRV4.SRC:5830, :5951, :6456), so PJOY,U is an ENTRY ADDRESS, not merely state: after LNTUP parks #LNTOFP (:3746-3747), the next wake begins at :3759 and every instruction ABOVE it is skipped. jt5-8 modelled the state and the lane-decision bypass faithfully, but the port still runs the whole skipped prologue every wake.
+
+      (1) THE PROMOTION CHECK. LNTSMT is reachable ONLY from LINET's own first three instructions (LDA NSMART / CMPA WSMART / BLO LNTSMT, :3722-3724). A wake entering at LNTOFP never executes them, so the machine CANNOT promote a dumb bird on its glide wake. The port promotes at plugins/joust/src/core/frame.ts:345 on every enemy wake regardless of pjoy. REPRODUCED in real seeded play, not argued: seed 0x2468, frame 2688, process 514 promotes to boundr while carrying {kind:'glide'} — 1 of 11 promotions across 0xbeef/0x2468/0xface at 3000 frames. Found by Reviewer on jt5-8 (finding R-1).
+
+      (2) THE LAVA-TROLL LOOKER. :3725-3732 (DEC PLAVT,U / BGT / LDA LNTLAV / STA PLAVT,U / LDX PPREV / LDA PID,X / CMPA #LAVID / BEQ LNTUP) is a SECOND entry into the flapping wake: every LNTLAV wakes, a dumb bird with a lava troll immediately behind it in the process list flaps regardless of its lane. linet() implements only the lane decision at :3733-3757 and models none of this. It sits in the same skipped prologue, which is why the two belong in one story. Found by TEA on jt5-8; already pinned as an ORACLE test in plugins/joust/tests/dumb-wingbeat-source.test.ts so it cannot be re-discovered from scratch.
+
+      DETERMINISM WARNING, and it is the expensive half. Both changes alter which frame a bird flaps or promotes on, so this WILL move the jt2 seeded-replay pins again — the same 20-assertion, 4-file blast radius jt5-8 just re-baselined (audio-events, audio-thud, audio-flap, audio-transporter-split). Budget for it, and re-find every moved pin by sweeping for its OWN precondition, never by nudging a number toward the new output. sprint/archive/jt5-8-session.md records the method and the full moved-pin table; read it before starting. Do NOT land this together with jt5-9 (now jt9-8), which moves the same fingerprints for a different reason.
+
+      ALSO WORTH FOLDING IN (Reviewer findings R-3, R-6, R-7 from jt5-8, all LOW, all cheap): dumb-wingbeat-source.test.ts:126 and :155 are negative claims with no non-vacuity floor (an empty parse passes both); tests/helpers/enemy-contract.ts:250-253 still declares a THREE-variant pjoy and never gained the glide variant; audio-flap.test.ts:707-708 uses a non-null assertion whose stated precondition does not establish it.
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "A dumb (linet) enemy cannot promote on a GLIDE wake: with a pending LNTOFP obligation, the promotion gate at frame.ts:345 is skipped and promotion happens on the next non-glide wake instead — because LNTSMT is reachable only from LINET's own LDA NSMART / CMPA WSMART / BLO LNTSMT (JOUSTRV4.SRC:3722-3724), which a wake entering at :3759 never executes."
+      - 'The regression is pinned end-to-end, not only at the unit: a seeded replay is swept for a promotion occurring while pjoy is a glide, and the count is ZERO. Seed 0x2468 at 3000 frames reproduced exactly one such promotion before the fix (frame 2688, process 514) and is the natural fixture.'
+      - "LINET's lava-troll looker (:3725-3732) is modelled: the PLAVT countdown reloads from LNTLAV, and on a wake where it expires, a dumb bird whose PPREV process carries LAVID enters the flapping wake regardless of its lane decision. The existing ORACLE tests in dumb-wingbeat-source.test.ts already state this law and must go from documenting-only to backing a live behaviour."
+      - 'The jt2 seeded-replay pins are re-baselined deliberately and the bound is stated: every moved pin re-found by sweeping for its own precondition, never by nudging a number toward the new output, with any pin that had to change seed or anchor called out and justified. rng and every PLAYER row are expected to stay bit-identical at every anchor; a move there is a regression, not a re-baseline.'
+      - "jt5-8's three LOW leftovers are closed: non-vacuity floors added ahead of dumb-wingbeat-source.test.ts:126 and :155, the glide variant added to the pjoy union in tests/helpers/enemy-contract.ts, and audio-flap.test.ts:707-708's non-null assertion replaced by a real defined-check."
+    type: bug
+  - id: jt9-2
+    title: 'Test-hygiene sweep: move the 27 legacy -source suites onto tests/helpers/claims.ts; comment-body line refs become symbol refs'
+    description: "Two mechanical findings from jt8-3, one sweep, joust tests only — no production code. (1) TEA: 27 legacy -source suites still carry their own pre-hardening loadClaims/claimCovers copies now that tests/helpers/claims.ts exists (jt8-2's \"3x\" note undercounted — it is 28 definitions); replace each copy with an import of the hardened loader. homing-source.test.ts is the refactor template (moved onto the helper during jt8-3, 78/78 green). (2) Reviewer: comment-body enemy.ts:<line> refs go stale every time the file grows — audio-flap.test.ts:536 (\"enemy.ts:540\") and difficulty-wiring.test.ts:27 (\"enemy.ts:115/118\") were stale BEFORE jt8-3 (verified against b84b5d4) and have drifted further; replace comment-body line refs with symbol refs. The Reviewer explicitly suggested folding (2) into the same sweep as (1)."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
+  - id: jt9-3
+    title: Pin the three wing-cue invariants jt5-3 shipped unguarded
+    description: "jt5-3's Reviewer ran a 24-mutation battery. Twenty-one mutations reddened something; THREE reddened NOTHING across all 1979 joust tests, which means three behaviours the story deliberately chose are held in place by prose alone. The shipped code is CORRECT in all three cases — this story does not change behaviour, it pins it. (1) THE PRE-STEP wasAirborne READ, plugins/joust/src/core/frame.ts:321. Reading wasAirborne AFTER the step instead of before reddens 0/1979 and yet genuinely changes the emitted stream: over 3000 frames of a hold-3/release-4 script at seed 0xbeef the wing-cue count goes 1610 to 1609, with player-wing-up vanishing at frames 633 and 1732 and appearing at 2656 — the divergence is exactly the frames where airborne flips INSIDE the step. That measurement is the test: stage a frame where the entity becomes airborne mid-step and assert which cue is emitted. (2) GameState.cues IS NEVER ACCUMULATED across frames — frame.ts:163-169 says so in a comment and nothing enforces it. Mutating stepFrame to accumulate reddens 0. Assert a fresh array per frame, not merely that the field exists. (3) stepDemo EMITS FLIGHT CUES BEFORE COLLISION CUES — demo.ts:1109 documents the order and flipping it reddens 0. Assert the relative order in a frame that produces both. WHY THIS IS ITS OWN STORY AND NOT A NOTE: this is the exact shape jt5-1 shipped and jt5-3 measured — a seam whose sweeps all read the same EVENT_KINDS tuple and therefore agree with each other whether or not anything is right. Six of jt5-1's eleven cues could be deleted with the suite fully green. A guard that cannot fail is not a guard. Verify each new test by mutation before calling it done: make the change the test forbids, watch it redden, revert. Filed from the Reviewer's mutation battery on jt5-3, 2026-08-01."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
+  - id: jt9-4
+    title: The bake's synth-spec gate is itself unguarded — only the missing-outDir throw is pinned
+    description: 'bakeSamples throws `no synth spec for manifest cue <name> — a new cue must arrive with its own sound` (plugins/joust/tools/sample-bake/bake-samples.mjs:305-306) and `no FRAME_DURATIONS entry for <name>` (:311). That gate is what makes `just deploy-assets` abort under set -euo pipefail rather than silently ship a manifest row with no audio — jt5-6 AC4 leaned on it directly. It is UNGUARDED: bake-samples.test.mjs:119 pins ONLY the missing-outDir throw (`await expect(bakeSamples()).rejects.toThrow()`), and nothing anywhere asserts the missing-spec or missing-duration throws. So the gate could be removed or weakened and every suite would stay green, while the next cue ships an unbaked .wav name into the bucket. Found by jt5-6 TEA, who could not pin it in that story: SOUNDS and SPECS are both module-scope consts in bake-samples.mjs, so exercising the throw needs an injectable manifest — either bakeSamples taking its manifest as an argument, or exporting SPECS. That refactor is this story. Prove it with a test that adds a cue with no spec and asserts the SPECIFIC message, not just that something threw.'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-5
+    title: 'framesFor edge cases: an odd token count is silently dropped, and an invention cue reports the wrong bake error'
+    description: 'Two edge cases in the jt5-6 derivation in plugins/joust/src/shell/audio-manifest.ts, both currently unreachable but both real. (1) framesInRow loops `for (let i = 0; i + 1 < pairs.length; i += 2)`, so a row with an ODD token count — a sound code with no duration operand — has its tail SILENTLY dropped and the cue window comes out short with no error. It is defended today only INDIRECTLY: every defining row is re-opened byte-exact by tests/audio-rom-citations.test.ts and every continuation row by tests/audio-transporter-split.test.ts, so a malformed row cannot match the vendored file. The defence is a different mechanism from the failure, which is why it is worth closing directly — throw on an odd count. (2) framesFor opens `if (source.kind !== rom) return 0` (:525), so an `invention` cue gets FRAME_DURATIONS 0; bake-samples.mjs:310-312 then tests `if (!(frames > 0))` and throws `no FRAME_DURATIONS entry` — but there IS an entry, it is 0 because the cue has no ROM table to size it. All 18 cues are kind:rom today so neither fires, but the invention arm exists precisely so a later story can use it, and that story hits a misleading error. Found by jt5-6 Reviewer.'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-6
+    title: An unarbitrated cue sharing the arbitrated voice's channel silences it without releasing its window
+    description: "jt5-5 put the arbitration in src/shared/audio.ts and guarded the case where an ACCEPTED cue never starts (a 404'd or still-decoding sample must not hold a silent window). One route to the same silent-window state is left open. `stopChannel(channel)` is reached from a plain `startSource` for a cue with NO priority; if that cue's channel happens to be the one the arbitrated voice is sounding on, the voice's SOURCE is stopped but `voiceFrames`/`voiceChannel` keep holding, so lower-priority arbitrated cues go on being refused by a voice nobody can hear. `stopLoop` already handles this correctly (`if (voiceChannel === channel) releaseVoice()`); the stealing path does not, and the asymmetry is the bug. REPRODUCED at review with a probe: manifest {loud:80 ch 'v', plain:no-priority ch 'v', quiet:10 ch 'w'}; play('loud'), play('plain') -> loud's source .stopped === true; play('quiet') -> still refused. NOT REACHABLE TODAY, which is why jt5-5 shipped: joust routes all seventeen cues as arbitrated, and none of the other six games passes `priorities` at all, so no manifest in the tree can mix an unarbitrated cue onto an arbitrated channel. It is a trap for the next cabinet that does. Fix is one line — release the voice inside `stopChannel` itself (which both paths share) rather than in `stopLoop` — plus a test with the mixed manifest above. Check the reverse too: an ARBITRATED cue that steals a channel out from under an unarbitrated sound is fine and should stay fine."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-7
+    title: CHANNELS is vestigial for arbitrated cues — three stories have now fed a map that routes nothing
+    description: "joust CHANNELS maps every cue to a `prio-N` string, but since jt5-5 the shared engine arbitrates ALL of joust's cues on ONE voice by priority, so the channel decides nothing for them. THREE stories have now had to feed it: jt5-5's Dev and TEA both raised it, and jt5-6 added an eighteenth entry (player2Materialise: prio-70) that routes nothing, purely to satisfy the test `CHANNELS gives every SOUNDS entry a voice` in tests/audio-manifest.test.ts. It is kept because the shared engine still routes every UNARBITRATED name by channel and because a channel-per-priority is an honest description of which cues share a voice — but a reader takes it for live routing. Decide: delete joust's map and let the engine default, or keep it and make the test assert what it actually guarantees. Affects plugins/joust/src/shell/audio.ts (CHANNELS, and the header comment at :86-97 which still describes the fence in the present tense) and tests/audio-manifest.test.ts. NOTE the constraint before deleting: src/shared/audio.ts routes by channel for every name NOT in `priorities`, so removing the map is only safe while all 18 joust cues carry a priority."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-8
+    title: PTIMUP clears at BOTH wing transitions — a release restores flap lift and our flight.ts never does
+    description: "A second thing jt5-3 found and could not take. The ROM clears PTIMUP at BOTH wing transitions — 'CLR PTIMUP,U  RE-INIT BUTTON PRESSES' at JOUSTRV4.SRC:6185 (the GOFLIP path, i.e. the RELEASE edge) and 'CLR PTIMUP,U' at :6219 (the GOFLAP/FLAST2 path, the PRESS edge). PTIMUP is the flap-lift budget, so on the real machine RELEASING the button restores your lift. Our plugins/joust/src/core/flight.ts tracks timeUp (tickTimeUp, called from stepPlayerEntity in frame.ts and stepEntity in enemy.ts) but NEVER resets it in flight — it only decays. The gameplay consequence is real and it is the one every Joust player knows: rapid tapping should climb better than holding, and on our port it does not, because only the press edge is modelled. Now that jt5-3 has landed a release-edge detector in the core, the edge this needs EXISTS — that was the blocker, and it is gone. WATCH THE SAME TRAP AS jt5-8: changing when timeUp resets moves every jt2 seeded-replay fingerprint, so budget for re-baselining the determinism digests. Do not land this and jt5-8 in the same commit; two fingerprint-moving changes at once make the re-baseline unreviewable. Filed from TEA's RED findings on jt5-3, 2026-08-01."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-9
+    title: 'Hatch the kill-egg: an uncollected joust egg never matures, only a WAVE egg does'
+    description: "A joust kill spawns an egg through eggProcess (plugins/joust/src/core/demo.ts:824, spawned at :945) and that egg carries NO waveEgg: true tag. stepDemo's self-clear hatch (demo.ts:1194, jt4-5) matures ONLY wave eggs, so an uncollected kill-egg sits SETTLED with willHatch === true forever and the wave-clear gate (!enemiesLeft && !processes.some(egg), demo.ts:1226-1229) never opens while it lives. THIS IS A FIDELITY GAP, NOT A SOFT-LOCK — the distinction was measured twice on jt5-4 and the soft-lock reading is WRONG: at seed 0xbeef the stray egg settles at posX 219, pixel Y 128, the same platform and height as the idle player 2 nineteen pixels away; driving player 2 with a bare dir: 1 collects it at frame 1535 and clears the wave at frame 1614. All three seeds jt5-4's Dev called permanently stuck (0xbeef, 0x2468, 0x1a2b3c4d) reach wave 3 within 6000 frames once a player moves, and every settled kill-egg observed landed at a pixel Y a player is also observed standing on. So a moving player always CAN collect it; the gap is that the ROM does not require them to. Nothing in JOUSTRV4.SRC privileges a wave egg's maturation over a kill egg's — in the machine an uncollected egg hatches into a remounting buzzard regardless of provenance — so the restriction to waveEgg === true is the port's invention. KNOW THE BLAST RADIUS BEFORE STARTING: closing this turns FIVE pinned numbers red at once, all of them legitimate re-baselines and not regressions — fingerprint(0xbeef, 2400) and fingerprint(0x2468, 900) in plugins/joust/tests/audio-events.test.ts (both of which jt5-4 re-baselined onto runs that STALL at wave 1, so they currently certify a stalled run as expected), the third jt5-4 re-baseline in the same file, and entityDigest(0xbeef, 160) / entityDigest(0x2468, 200) in plugins/joust/tests/audio-thud.test.ts, which jt5-4's Reviewer froze from not.toEqual into exact toEqual pins. Re-baseline them deliberately and say so; do not treat the reds as a defect. ALSO NOTE: entityDigest(0x2468, 200) is currently one of only three guards on the SNPTHD register-role law, so re-baselining it removes a guard — check that plugins/joust/tests/audio-thud.test.ts's absolute 'OSTXTP sends REG.X up' assertions (added in jt5-4's rework round 2) are still present and still redden a role inversion before you touch the digest. Filed from jt5-4's Dev and Reviewer Delivery Findings, 2026-08-01."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-10
+    title: 'Egg score on the KILL — EGGSCR has two call sites and our port models only one. grep JSR EGGSCR in JOUSTRV4.SRC returns :3006 and :3021; jt8-4 wired :3021 (PLYEGG, the catch). The other is inside DEATH3: when a killed enemy transferred egg count decrements to zero (STA PEGG,Y / DEC PEGG,Y YOU CAN ONLY SQUEEZE SO MUCH BLOOD FROM AN EGG / BNE 1$, :3000-3002) the ROM does TFR Y,X / LDU ,S GET VICTORS WORKSPACE / BEQ 1$ / JSR EGGSCR SCORE EGG (:3003-3006), so an enemy LAST egg is scored to the victor immediately on the kill, bumping the DEGGS ladder with no catch required. Our port implements the decrement (spawnEgg eggsLeft minus 1, egg.ts:141) and treats eggsLeft zero as permadeath where hatchEgg returns null (egg.ts:273-275), but nothing ever scores it, so both the award and its ladder bump are silently dropped in play. Also makes JT84-003 incomplete, which states the collision IS the scoring trigger and there is no separate pickup step. Note the victor guard: BEQ skips when U is zero (a lava death has no victor). Filed by Reviewer on jt8-6 (round 2)'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt9-11
+    title: joust troll GRIP is production-dead — beginGrip/stepGrip/escalateGrip have zero production callers
+    description: "joust/src/core/troll.ts implements the lava troll's grip — the PATCH1/2/3 escalation the 1982 source added in 'VERSION 3 SOFTWARE' — and NONE of it runs. beginGrip, stepGrip, escalateGrip, escapeScoreEvent and the TrollGrip type have ZERO references in src/ outside troll.ts itself; only trollSpawnable is live (demo.ts:961). demo.ts:420 admits it in its own words: '(stepGrip) is a pure core exercised directly; wiring the live grab off the LNDB7 …'. So a troll spawns, and can never actually grab anyone: the grace timer (LAVKLL 30*60, :6393), the +1/frame pull escalation to the $500 cap (:6374-6386), the -$0180 break-free threshold (:6616), the 50-point escape award (:6668) and the pull into the lava are all unreachable. This is the same disease as uf1-2 one layer down — a faithful, tested, cited pure core with no caller — and it BLOCKS uf1-10 (now jt9-12)'s LAVGRA half, which has nothing to feed until the grab is live. The missing piece is the GRAB itself: the LNDB7 hand-out/hand-grab detection that repoints the victim's gravity vector from ADDGRA to ADDLAV (PADGRA, :1651-1652). Found by TEA during uf1-2 test design while tracing which DYTBL rows had a live consumer chain."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-12
+    title: joust DYTBL egg-wait and lava-troll rows — wire EGGWT/EGGWT2 and LAVTIM/LAVGRA (4 rows, blocked on the troll grip)
+    description: "Four DYTBL rows whose consumers do not exist in the clone. THE EGG PAIR: EGGWT (JOUSTRV4.SRC:3224, 'EGGLND LDA EGGWT  GET CURRENT WAIT TIME' — the settled egg's wait before it hatches) and EGGWT2 (:2761, 'LDB EGGWT2  INITIAL EGG WAITING TIME'). joust/src/core/egg.ts models the fall, the settle, the hatch and the remount but carries NO wait timer of any kind, so per-wave egg-hatch pressure — the ROM walks EGGWT from $40 down to $10, so late-wave eggs hatch four times sooner — never reaches the player. THE TROLL PAIR: LAVTIM (:1611, 'LDA LAVTIM  RESET TIMER' — the lava troll's hand-animation frame timer) and LAVGRA (:6395, PATCH1 'LDD LAVGRA  GIVE CURRENT LAVA TROLL GRAVITY' seeding CLVGRA). LAVGRA's designated consumer ALREADY EXISTS as troll.beginGrip(baseGravity) — but is BLOCKED: uf1-11 (now jt9-11) found beginGrip/stepGrip/escalateGrip have zero production callers, so wiring LAVGRA into beginGrip today connects one dead module to another and changes nothing a player can see. DO uf1-11 (now jt9-11) FIRST or this half is theatre. NOT IN SCOPE and never will be: LAVLAV, the fifth 'lava' row — its label appears exactly ONCE in the whole of JOUSTRV4.SRC, on its own DYWORD line at :7306. Williams shipped a row nothing reads; uf1-2 recorded it as dead-in-rom in ROW_DISPOSITION so no future sweep re-files it as a porting gap."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-13
+    title: posOffset decodes a high-bit POSOFF word as +255 instead of -1 — latent until anything draws EGGB2/EGGB3
+    description: |-
+      Filed by jt8-7's Reviewer. Latent today, guaranteed to bite jt8-14 (now jt9-25).
+
+      THE BUG. `posOffset` (plugins/joust/src/core/demo.ts ~:1495) decodes a transcribed POSOFF word:
+          return { xoff: rec.position >> 8, yoff: 256 - (rec.position & 0xff) }
+      The ROM's POSOFF macro packs `XOFF*256 + 256-YOFF` (JOUSTI.SRC:12-13) and XOFF is SIGNED — a sprite whose art hangs to the LEFT of its hot spot carries a negative XOFF. `>> 8` on the stored unsigned word yields the raw high byte, so a negative XOFF comes back as its unsigned complement.
+
+      MEASURED, on the two records jt8-7 added:
+          EGGB2  position $FFF6  ->  posOffset gives xoff=255, yoff=10   | correct XOFF is  -1
+          EGGB3  position $FEF5  ->  posOffset gives xoff=254, yoff=11   | correct XOFF is  -2
+      The Y half is right in both cases. It is only the X that breaks, and only for a word with the high bit set.
+
+      WHY IT IS LATENT AND NOT DEAD. Every one of the 44 pre-existing ENTITY_RECORDS has a position word in [237, 751] — no high bit, so no existing frame decodes wrongly. jt8-7 added the first two that do (EGGI rows 4 and 5, JOUSTI.SRC:2259-2260). They are unreachable right now: `posOffset` is only ever called from `entityOp`, and no call site can name them — the egg draw op is the literal `entityOp('EGGI', ...)`, and the other call sites pass mount/enemy/ptero/troll/dissolve frame names. So nothing is visibly broken today; it is a loaded chamber for the first story that draws a hatching egg, which is jt8-14 (now jt9-25).
+
+      FIX: sign-extend the high byte before returning it, e.g. `const hi = rec.position >> 8; xoff: hi > 127 ? hi - 256 : hi`. Keep the raw word in the record — jt8-7 deliberately stored the unsigned 16-bit word because every other record does and there was no precedent for a signed representation (that decision was reviewed and accepted); the sign belongs in the DECODER, not the data.
+
+      TEST NOTE: the natural guard is a decode test over every ENTITY_RECORD asserting `-128 <= xoff <= 127`, which reds on today's code for exactly the two new records and stays meaningful as more high-bit words arrive. jt8-7's Dev deviation flagged this hazard but named the wrong axis ("decodes these as Y-offsets must sign-extend"); the Y is fine, the X is not. That correction is recorded in jt8-7's Design Deviations under the Reviewer's stamp.
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt9-14
+    title: Player-vs-ptero attack is box-only too — the third pass that stops at broadPhase, and the narrowPhase X-blindness question it forces
+    description: |-
+      Filed by jt8-7, which wired narrowPhase into the player-vs-EGG catch pass and left this one alone by an explicit user ruling at setup ("Same defect family, deliberately a separate story. Do NOT widen jt8-7 to cover it.").
+
+      THE DEFECT. `collisionPass` has THREE overlap passes and only two of them consult a mask:
+        - the joust pass (demo.ts:887-897) — broadPhase THEN narrowPhase. Correct.
+        - the player-vs-egg catch (demo.ts ~:1073) — broadPhase THEN narrowPhase as of jt8-7. Correct.
+        - the player-vs-ptero attack (demo.ts ~:982) — `broadPhase(collisionBox(playerJoust), entityBox(pt.entity!))` and NOTHING ELSE.
+
+      The third one is not blocked on a missing asset the way the egg was: `collisionMaskFor` (demo.ts ~:734) ALREADY returns the real transcribed mask 'PT1RC' for a ptero, and PT1RC is a live COLLISION_TABLES entry with 13 span rows. So the mask exists, is transcribed, is claimed, is reachable through the existing helper — and the pass that most needs it (a lance-height duel resolved by `resolvePteroAttack`) never asks for it. Effect: the player's reach against a pterodactyl is the flat 16px ENTITY_BOX_H box, exactly the bug jt8-7 fixed for eggs.
+
+      MEASURED SHAPE OF THE FIX (jt8-7's, for reference — this pass will differ in the details): the catch now does
+          if (catcher.collision === null) continue
+          if (!narrowPhase({name: catcher.collision, top: catcher.posY >> 8},
+                           {name: <the other party's mask>, top: <its top>}, MASKS)) continue
+      Note the null guard is load-bearing for the TYPE checker even where it is unreachable at runtime — removing it fails `npm run lint` with TS2322, not a test.
+
+      SETTLE THIS FIRST — the question jt8-7's Reviewer raised and could not close. `narrowPhase` (joust.ts:166-183) takes `MaskRef = {name, top}`: it aligns rows by SCREEN Y and then compares COFF-unbiased SPRITE-LOCAL columns. It never sees screen X at all — `broadPhase` carries every bit of the horizontal truth. So the mask test is really "do these two shapes overlap if their origins are superimposed", and the column half still does real work (jt8-7 measured a rejection at dy=12 that is a COLUMN miss, not a row miss). Whether that matches the ROM's own collision comparison has never been established; it dates to jt2-3 and has been inherited unexamined ever since. This story makes it govern a THIRD pass, so it is the right moment to read the ROM's comparison and either confirm the port or file the correction. Do not port a third consumer onto an unverified premise without saying so.
+
+      WHY THIS IS NOT jt5-17 (now jt9-15). jt5-17 (now jt9-15) ("Measure PTEBRD and route the ptero-vs-buzzard pair") is about the PAIR LOOP's mixed-pair skip — replacing `if ((pa.kind === 'ptero') !== (pb.kind === 'ptero')) continue` with the measured PTEBRD routing so a ptero and a BUZZARD resolve at all. That is a routing question about a pair that currently resolves NOTHING. This story is about a pair that already resolves — player vs ptero, through `resolvePteroAttack` — and does so with the wrong GEOMETRY. Different loop, different routine, different failure. They are adjacent enough to be merged by a groomer who reads only the titles; they should not be.
+
+      WATCH FOR: jt8-7's fix moved four frame-exact seeded pins in tests/audio-events.test.ts because a tighter collision changes what happens when in a deterministic replay. Expect the same here, and re-baseline by SCANNING for each test's own precondition rather than nudging numbers — the method is written up in the jt8-7 session and the Dev sidecar.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt9-15
+    title: 'Measure PTEBRD and route the ptero-vs-buzzard pair: SNETHD sounds, then the ptero/bird collision resolves'
+    description: |-
+      Filed by jt5-16, which admitted the pterodactyl to collisionPass's eligible set and routed ONLY the ptero/ptero pair (enemy-thud + the ordinary bump). The mixed pair was left unbuilt on purpose: the pair loop skips any ptero/non-ptero pair, and tests/demo-jt5-16.test.ts pins that a ptero/buzzard overlap resolves NOTHING until this story lands.
+
+      WHAT THE ROM DOES (verified against the vendored JOUSTRV4.SRC during jt5-16 review). The no-kill branch (:4961) sounds SNETHD FIRST — ':5019 OSTHT2 LDX #SNETHD / :5020 JSR VSND' — then tests PID on both parties for #$80+PTEID (:5022-5027). A pair with exactly ONE pterodactyl goes to PTEBRD ('COLIDE PTERODACTYL & BIRD'): via OSTPX (:5034) when the ptero is party U, or via OSTH13's 'EXG X,U' (:5037-5038, ':5036 * REG.U IS PTERODACTYL') so the ptero is ALWAYS in U on entry. PTEBRD itself is UNMEASURED — this story's first job is to read that routine and settle what it does (who bumps, who dies, what cue beyond the already-sounded SNETHD) before porting it.
+
+      DELIVERABLES: (1) the PTEBRD read, claimed in docs/rom-study/claims (JT516-001/002 already claim OSTH12's dispatch, :5031/:5033); (2) the port: replace the pair loop's mixed-pair skip in collisionPass (demo.ts, 'a ptero pairs only with a ptero') with the measured routing, ptero-in-U orientation preserved; (3) flip the jt5-16 scope-fence test in demo-jt5-16.test.ts in place — updating it here is the point of it, exactly as jt5-16 flipped jt5-10's. Also inherit jt5-16's latent note: spawnWavePteros stacks a wave's ptero complement at one coordinate, so once mixed pairs resolve, wave entries with pteros near buzzards may cue — measure, don't guess.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-16
+    title: The two thud paths return OPPOSITE carry — the ROM's collision scan continues after SNETHD and ABORTS after SNPTHD
+    description: "The ROM's two thud continuations return OPPOSITE carry, and this port's pair loop models neither. SNETHD's path ends OSTH11 -> 'JMP HITEM2' (JOUSTRV4.SRC:5029), and HITEM2 clears carry with 'ANDCC #$FE' (:4947). SNPTHD's path ends OSTXTT -> 'BRA OSTX12' (:5054), and OSTX12 SETS carry with 'ORCC #$01' (:5059), commented 'REG.U GUY IS DEAD, GET NEXT REG.U GUY'. The scan driver reads that carry at ':4886 BCS 20$' and restarts the outer walk. So on the machine the collision scan for the current object CONTINUES after an enemy thud and ABORTS after a person-involved tie — the tie consumes the object's whole remaining scan even though NOBODY DIED, which is the surprising part and the reason this is worth porting rather than dismissing. Our inner loop (plugins/joust/src/core/demo.ts, 'for (let j = i + 1; j < eligible.length; j++)') does neither: it always continues, for both cues. OBSERVABILITY: only a three-or-more entity pile-up can tell the two apart — with exactly two eligible entities the inner loop has nothing left to visit either way — so a fixture needs a person tie plus a third body still overlapping the same object on the same frame. A wave-6 swarm reaches that in ordinary play; jt5-4's two-body fixtures could not, which is why it was descoped rather than guessed. VERIFY THE PORT DIRECTION BEFORE IMPLEMENTING: read :4885-4886 and :4867-4890 to confirm 'BCS 20$' restarts at the OUTER walk (20$, a fresh 'LDU PLINK,U' at :4874) and not the inner one, because a break of the inner loop and a restart of the outer are different behaviours and only one of them is the machine's. EXPECT A DETERMINISM RE-BASELINE if the abort turns out to suppress contacts that currently resolve. Filed from jt5-4's TEA Delivery Finding, 2026-08-01."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-17
+    title: 'Port OSTLR: the horizontal half of the bounce has no PBUMPX home and bounceHorizontal models a quarter of it'
+    description: "jt5-4 applied the VERTICAL half of the ROM's non-killing bounce (OSTXUP :5163-5173 / OSTXDN :5175-5185, the +/-2 PBUMPY shove and the wrong-way velocity halving) and struck the HORIZONTAL half from its AC-1 as undeliverable. This story owns that half. WHAT THE ROM DOES: OSTLR (JOUSTRV4.SRC:5110-5159) runs after every vertical arm (OSTUTP falls into it at :5102, OSTXTP at :5109). It is gated on COLDX — 'BEQ OSTNLR' (:5112) means a dead-centre collision gets NO horizontal bounce at all — then splits on 'BPL OSTURT' (:5113) into two arms, OSTXLF (:5114) and OSTURT (:5137). Each arm reverses BOTH parties, each store guarded by BLE 1$ / BGE 1$ (:5115, :5126, :5138, :5148) so a bird already moving away is left alone, and each also writes PFACE (:5123-5124, :5134, :5146, :5156-5157) — the bounce turns the birds around as well as pushing them. WHY IT COULD NOT BE WIRED IN jt5-4, all measured: (1) bounceHorizontal in plugins/joust/src/core/joust.ts models ONE QUARTER of this — its 'selfVelX: -velX + 2, otherBumpX: velX >> 1' is the arithmetic of the RIGHTWARD-moving party only; the other party's is -v - 2 with PBUMPX = -(v + 2) >> 1, which the signature cannot express, and it returns nothing for PFACE. (2) EntityState carries velXIndex/velXFrac — the FLYX ladder, :7150-7158 — and no velX at all, and toJoustEntity hard-codes velX: 0 (demo.ts:748, :764) and bumpX: 0 (demo.ts:751, :767), so there is nothing to reverse. (3) drainBumpX (WRAPX :7270-7288) has ZERO production callers, so there is no PBUMPX home and no drain. So this is three pieces of work, not one: give EntityState a real horizontal velocity the FLYX ladder can round-trip, give it a PBUMPX field that drainBumpX actually drains each frame, then rewrite bounceHorizontal to return both parties' velocities AND both PFACE writes and call it from collisionPass's bounce fork (demo.ts:918-934) after the vertical arm, gated on the COLDX equivalent. EXPECT A DETERMINISM RE-BASELINE, for the same reason jt5-4 had one: a horizontal shove moves entities, so every seeded replay whose script produces a non-killing contact diverges. Filed from jt5-4's TEA Delivery Finding and its Design Deviation striking bounceHorizontal from AC-1, 2026-08-01. ALSO OWNED HERE (routed from jt8-3's TEA, 2026-08-01): the DIRECTION routines' bump-facing arms — B2DIRA (:4148-4150) and SHDIRA (:4379-4381) turn the enemy to face along PBUMPX after a collision shove, collision-driven facing that jt8-3's steering left unmodelled. Those write sites are already ENUMERATED in jt8-3's steering-source.test.ts write-set tests (PFACE write-set), so extend that enumeration's pins rather than re-deriving. They belong to this story because they consume the PBUMPX field this story creates: until EntityState has a real PBUMPX home and drainBumpX drains it, the bump-facing arms have nothing to read."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-18
+    title: joust level flight flaps every falling wake — the ROM forces a glide wake after each level flap
+    description: "Found by Dev during uf1-9's GREEN, confirmed by the Reviewer. joust's LEVEL flight flaps on every falling wake; the ROM cannot. BOFAST (JOUSTRV4.SRC:3931-3934) raises the flap bit AND sets PJOY to BOLEV2 — and BOLEV2 (:3936-3938) does nothing except point PJOY back at BOLEV1 and fall through into BOLEVA's CLRB. So the wake AFTER a level flap is a FORCED GLIDE, and the fastest a level-flying bounder can beat its wings is every other wake. The port's level law is a plain per-wake test — 'flap iff falling' in pursue()'s fallthrough, plugins/joust/src/core/enemy.ts — with no such state, so a bird that keeps falling flaps every single wake. WHY IT WAS LEFT: uf1-9 owned the eleven DYTBL cadence rows and this is not one of them (BOLEV2 is a state, not a row; the only row in that block is BOLETM, which uf1-9 wired as the DECISION interval and which is now correct). Building it inside uf1-9 would have widened that story's determinism blast radius for no AC. THE TWINS ARE B2LEV2 and the shadow's SHLEV/SHLEP equivalents — enumerate them before assuming this is one branch; uf1-9's census found the analogous decision-timer family had SIX sites where the story claimed four. EXPECT A RE-BASELINE: halving a level flyer's flap rate moves the jt2 seeded replays. uf1-9 re-baselined 21 pins by sweeping for each test's OWN precondition rather than nudging numbers, and two had to change SEED because the precondition had an empty solution set on the old one — read sprint/archive/uf1-9-session.md before starting."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-19
+    title: joust PPVELX — homingWake compares the LIVE velocity index where the ROM snapshots it at the decide
+    description: "Filed at uf1-9's finish; the gap was OPENED deliberately by jt8-2 and uf1-9 is what closes its precondition. plugins/joust/src/core/enemy.ts's HomingState doc says it plainly: 'The decision timers belong to a later story (uf1-9 owns the TIME UNTIL NEXT DECISION rows), so there is no moment here at which a snapshot could honestly be taken and homingWake compares the target's LIVE index instead.' That reasoning was correct at the time and is now spent — uf1-9 built the decision intervals, so the moment exists. THE ROM: PPVELX ('OLD PLAYERS X VELOCITY', RAMDEF.SRC:209) is written at exactly THREE sites across the smart brains — BOLEV (LDA PVELX,X / STA PPVELX,U, JOUSTRV4.SRC:3907-3908), B2LEV (:4058-4059) and SHLEP (:4281-4282) — and each sits IMMEDIATELY BEFORE that brain's decision-timer load (BOLETM :3909, HULETM :4060, SHUPTM :4283). So the snapshot is taken once per level-flight decide and then READ, never rewritten, by BOLEVB's throttle (LDA PPVELX,U / CMPA PVELX,U, :3939-3940) until the interval expires. The port instead compares the target's live velXIndex every wake. WHAT TO CHECK FIRST, because it may be a no-op for one brain: jt8-2's note argues the live read is snapshot-EQUIVALENT for SHLEP under the per-wake collapse, since a brain that re-decides every wake re-stores every wake. uf1-9 changed that premise too — the shadow's level branch is now HELD for its SHUPTM interval rather than re-decided each wake — so re-derive the equivalence rather than inheriting it. The bounder and hunter were never equivalent: their intervals are 21 wakes at wave 1, which is 21 wakes of comparing against a value the ROM froze. EXPECT the jt2 seeded replays to move; the throttle decides PRDIR, which decides facing flips. Read sprint/archive/uf1-9-session.md for the re-baseline method."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-20
+    title: Shadow SHDIRB coast — SHDN/SHUP wakes write dir 0; our shadow() thrusts at facing (:4388-4392)
+    description: "SHDIRB (JOUSTRV4.SRC:4388-4392) is the shadow lord's no-steer exit for SHDN/SHUP wakes: it writes CURJOY dir = 0, so a moving shadow COASTS (drift decays, no horizontal thrust). Our port's shadow() returns dir = facing on those wakes — continuous thrust the ROM does not apply. Found by TEA on jt8-3 while mapping the per-route steering; real ROM behaviour, fenced out of jt8-3's scope (horizontal look-ahead + SHLEP line track). Affects plugins/joust/src/core/enemy.ts (shadow() dir channel). jt8-3's steering-source.test.ts already proves SHLEPB→SHDIRA and SHDIRB consult NO background mask — extend those structural pins rather than re-deriving the routing. Expect a determinism re-baseline on the demo replays if the shadow's drift shape changes (a claim to verify, not a measurement)."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-21
+    title: Vertical look-ahead — the overhead-cliff checks gating the UP-seek arms are unmodelled (:4030-4034, :4259-4262, :4418-4422)
+    description: "The vertical counterpart of jt8-3's horizontal B2XLEN/SHXLEN steering: the ROM gates its UP-seek arms on an overhead-cliff check — :4030-4034 (hunter), :4259-4262 and :4418-4422 (shadow) — so an enemy does not seek up into solid ground overhead. Unmodelled in the port: affects plugins/joust/src/core/enemy.ts (seekWake's up-arm). Found by TEA on jt8-3, whose scope was fenced to the HORIZONTAL look-ahead. jt8-3 shipped bckMaskAt (the BCKXTB/BCKYTB point sample, landMaskAtX-indexed) — whether the vertical checks sample the same table pair with a Y offset is TEA's to derive from the cited lines, not assumed. Coordination note: uf1-9 owns the up-flight VY gates on the same up-seek path (HUUPVY :4178 / SHUPVY :4272) — a different mechanism (velocity gates, not mask checks); coordinate if both land close together."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-22
+    title: Port BOLAVA (:3953+) — the lava-avoid episode the lava steer gates divert to; jt8-3 suppresses instead
+    description: "BOLAVA (JOUSTRV4.SRC:3953+) is the lava-avoid episode the steering gates DIVERT to: the hunter's B2DIRL gate (:4097-4102, CMPA #$D3 / BLO B2DIR / LDA PVELY / BMI B2DIR / JMP BOLAVA) and the shadow's own SHDIR pre-check (:4330-4334, threshold $D0 — two DIFFERENT lava thresholds, do not conflate them; both re-derived by jt8-3's Reviewer). jt8-3 shipped the gates exactly but SUPPRESSES rather than diverts: gated wakes fall through to the existing brain laws, with SHLEV's protective lava flap (uf1-8) as the stand-in — a Reviewer-ACCEPTED deviation, since modelling BOLAVA inside jt8-3 would have expanded a 3pt story into the whole lava-avoid system. This story ports the episode itself and replaces the fall-through with the divert. Bounder-family mechanism per jt8-3's deviation record. Found by TEA on jt8-3 during test design; jt8-3's boundary test (both brains at their exact gate scanline) pins the gate lines themselves — build on it, do not weaken it."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-23
+    title: joust B2UP3/SHUP3 — the two climb-preparation states, and the four PJOYT sites no DYTBL row covers
+    description: "Found by TEA during uf1-9's RED, via a whole-file census rather than a spot check. PJOYT is armed at FOURTEEN sites across joust's enemy brains and only NINE are DYTBL rows; uf1-9 wired those nine. The other five are hardcoded immediates the 1982 authors never migrated, and two of them belong to STATES this port does not have at all: B2UP3 (JOUSTRV4.SRC:4195-4200) and SHUP3 (:4411-4416), both labelled 'LEVEL FLIGHT, READY TO GO UP', each storing the line to track into PDIST and then loading a hardcoded 'LDA #20+1' decision interval — the ROM's own comment on both is TIME UNTIL NEXT DECISION, which is why the census found SIX sites carrying that comment where the backlog claimed four. Their bodies (B2UP3A :4202-4210, SHUP3A :4418-4425) sample the background pair for a cliff and gate on PVELY. THE OTHER THREE FROZEN SITES ARE ALREADY MODELLED and must not be re-derived: the down-seek's 2-wake wing hold (LDA #2 at :3823 and :4008) is enemy.DOWN_SEEK_WING_HOLD, and the hunter's cliff dwell (LDA #8 at :4144) is enemy.HUNTER_CLIFF_DWELL — both deliberately NOT wave-scaled, because their shadow-lord counterpart SHCLTM is a row and these are not. THE POINT OF THIS STORY is the two missing STATES, not the constants: wiring a row into a state that does not exist is impossible, which is why uf1-9 stopped here. Their extents are pinned by the FROZEN group in plugins/joust/tests/cadence-source.test.ts, which passes today and will keep passing — it asserts the ROM shape, not the port's. Start by deciding whether the climb-preparation state is reachable in this port at all: uf1-9 measured that the up-seek path itself is entered on ZERO frames of natural play across three seeds and 6000 frames, because hunters first spawn at wave 4 and no test's play reaches it."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-24
+    title: Decode the exact SELPLY nearest-target metric (:4476-4514) and retire the min-of-axes approximation
+    description: 'jt8-1 shipped an HONEST APPROXIMATION for SELPLY''s nearest-of-two tiebreak: target.ts coordDistance/nearer picks the smaller min(|dx|,|dy|), tie keeps the primary (cited JT81-003, pinned by the DISCRIMINATING case in tests/target.test.ts). Three independent jt8-1 analyses (TEA, reviewer test-analyzer, reviewer comment-analyzer) each FAILED to hand-decode the actual 6809 sequence — a 16-bit two''s-complement negate with an overflow-guarded per-axis compare (TSTA/BNE :4487/:4505) and a final CMPB 1,S / BLO :4512-4515 (a STRICT less-than that appears to fall through to LDX TARPL2, favouring the SECONDARY, the OPPOSITE of the shipped primary-tie). The metric may be Chebyshev / Y-dominant, not min-of-axes. This story decodes :4476-4514 at INSTRUCTION level (emulator trace or a verified 6809 hand-trace), then either replaces coordDistance/nearer with the true metric+tie or CONFIRMS the approximation faithful — do NOT hand-guess (the jt8-1 ruling). BUILDS ON jt8-1; independent of jt8-2/jt8-3/jt8-4.'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'The SELPLY nearest-of-two metric (:4476-4514) is decoded at 6809 instruction level with evidence (emulator trace or verified hand-trace): the axis combination (min/max/Euclidean or a dominant axis) AND the exact tie direction (the CMPB 1,S / BLO strict-less at :4512-4515) are stated, not guessed.'
+      - target.ts coordDistance/nearer is replaced with the decoded metric+tie (or the current min-of-axes + primary-tie is CONFIRMED faithful and the ⚠ docstrings/JT81-003 downgraded from "approximation" to "verified"); the discriminating case in tests/target.test.ts is updated to pin the decoded choice and is mutation-checked.
+      - 'Determinism: the corrected selection replays bit-for-bit under a fixed seed; the purity guard, the citation suite, and npm test are all green.'
+  - id: jt9-25
+    title: EGGTBL is the egg's animation driver — the third table in the block jt8-7 read, and the consumer of EGGI rows 3-6
+    description: |-
+      Filed by jt8-7's Reviewer. jt8-7 fixed a table that had been READ SHORT — EGGI is seven rows (JOUSTI.SRC:2255-2261) and only row 0 had been transcribed. While verifying that fix, the review found the BLOCK containing the tables jt8-7 ported had also been read short, one table further on.
+
+      WHAT WAS FOUND. Under the header `* EGG ANIMATION TABLE *` (JOUSTRV4.SRC:3533) there are THREE tables, not two:
+          EGFLFT  FCB 0,12,6      (:3535)   FALLING LEFT   <- ported by jt8-7
+          EGFRIT  FCB 0,6,12      (:3536)   FALLING RIGHT  <- ported by jt8-7
+          EGGTBL  FCB 6,6,7       (:3537)   WIGGLE LEFT    <- NOT ported
+                  FCB 0,6,3       (:3538)   WIGGLE UP
+                  FCB 12,6,7      (:3539)   WIGGLE RIGHT
+                  FCB 0,6,7+60    (:3540)   WIGGLE UP & PAUSE
+                  FCB 18,6,7      (:3541)   HATCH 1
+                  FCB 24,11,7     (:3542)   HATCH 2
+                  FCB 30,11,7     (:3543)   HATCH 3
+                  FCB 36,11,0     (:3544)   HATCH 4
+
+      The FIRST column is a byte offset into EGGI, whose rows are 6 bytes — so 0/6/12 are rows 0/1/2 (the three tumble stills WEGG already selects between) and 18/24/30/36 are rows 3/4/5/6: EGGB1, EGGB2, EGGB3 and PLY4S. EGGTBL is therefore the CONSUMER of exactly the four rows jt8-7 transcribed and described as having none. jt8-7's Dev finding "rows 3-6 have no consumer" is true of our PORT and false of the machine; this story closes that gap.
+
+      TWO INDEPENDENT THINGS THIS ALREADY BUYS US. (1) EGGTBL's maximum offset, 36 -> row 6, requires EGGI to have at least seven rows — a corroboration of jt8-7's central claim from a DIFFERENT table, which is stronger evidence than jt8-7's own reading of the table itself. (2) It explains the pre-existing claim JT8-130, which described the egg as "up/right/left + 3 hatch stages" — the dossier recorded seven frames all along while the code carried one, and nothing in the gate set can see a claim that describes more than the transcription implements.
+
+      DELIVERABLES: (1) read and claim EGGTBL and whatever drives it (the second and third columns are unmeasured — likely a height and a frame duration, `7+60` on WIGGLE UP & PAUSE being the tell; MEASURE, do not guess); (2) transcribe it beside EGF_LEFT/EGF_RIGHT in demo.ts, which already carries the row-offset idiom and the EGGI_ROW_BYTES constant; (3) drive the egg's animation from it.
+
+      BLOCKED-ISH ON jt8-15 (now jt9-13). Nothing DRAWS an egg's frames today — the shell has no egg render path at all (only audio*.ts mentions eggs), and the draw list emits a single `entityOp('EGGI', ...)`. The moment this story draws EGGB2 or EGGB3, `posOffset` (demo.ts ~:1495) will decode their POSOFF words wrongly: it does `xoff = rec.position >> 8`, which yields 255 for $FFF6 where the ROM's signed XOFF is -1, and 254 for $FEF5 where it is -2. The Y half is correct (10 and 11). jt8-15 (now jt9-13) fixes that; land it first or this story ships sprites 255px off.
+
+      METHOD NOTE, and it is the reason this story exists: jt8-7's whole defect was a table read short because its continuation rows carry no label. The same reading habit missed the next table in the same block. When porting from a labelled block, read to the NEXT header, not to the end of the table you came for.
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: feature
+  - id: jt9-26
+    title: JT51-009 misattributes SNPCR1's binding and still says jt5-1 collapsed the two knights
+    description: "TWO false clauses in one claim, both PRE-EXISTING and both shipping GREEN. plugins/joust/docs/rom-study/claims/audio.json, claim JT51-009. (1) It says SNPCR1 'is bound to the knight through P1DEC's decision block rather than a direct load (JOUSTRV4.SRC:5544)'. :5544 is G1DEC's sound row; P1DEC's is :5552. The claim pairs the right LABEL with the wrong LINE — the identical misattribution jt5-6 corrected in audio-manifest.ts and left uncorrected in the dossier. (2) It says 'P2 carries its own table SNPCR2 (:8119), which jt5-1 collapses onto this one'. jt5-6 UN-collapsed that: player2Materialise now exists in CUE_SOURCES and cites SNPCR2 :8119 itself, so the clause describes a port that no longer exists. WHY IT SHIPS GREEN: the citation gate verifies a claim's source (file, line, verbatim) and NEVER reads the claim prose — tools/audit/check-citations.mjs:36-42 states that limit about itself. The source here is byte-valid, so nothing fails. SUGGESTED FIX, verified against the ROM during jt5-23: replace \"P1DEC's decision block rather than a direct load (JOUSTRV4.SRC:5544)\" with \"a decision-block binding rather than a direct load (P1DEC :5552)\", and delete the 'which jt5-1 collapses onto this one' clause. Leave the source block untouched. CONTEXT NOW AVAILABLE: jt5-23 recorded what the G and P families ARE (attract demo vs real play, selected by GOVER at JOUSTRV4.SRC:1025-1029) in audio-manifest.ts — read that record first; it explains why a G-row citation under a P-label is wrong rather than merely imprecise. Found by Dev during jt5-23 implementation, independently re-verified by its Reviewer."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: bug
+  - id: jt9-27
+    title: demo.ts cites the REAL-PLAY block for EGGS1/EGGS2 from the module that IS the demo
+    description: "plugins/joust/src/core/demo.ts:183 and :1310 cite P1DEC/P2DEC (:5551, :5555) for the EGGS1/EGGS2 cells — the REAL-PLAY blocks, cited from the module that IS the demo. NOTHING IS BROKEN AND NO TEST FAILS: measured during jt5-23, :5543 and :5551 are BYTE-IDENTICAL (both 'FDB DEATH1,EGGS1,STPLY1,SCRHUN,PLYG1,PLYTIM'), as are :5547 and :5555, so both citations are TRUE. This is a precision story, not a bug. WHY IT IS WORTH DOING: jt5-23 established that G1DEC/G2DEC are the attract-mode self-playing demo and P1DEC/P2DEC are real play (selected by GOVER at :1025-1029), and re-anchored the two knight wing cues off the G row for exactly this reason — a citation that names the wrong family reads as an inconsistency to anyone who now knows what the families mean. demo.ts is the one place where citing the DEMO's block would arguably be more apt than citing real play's. DECIDE, do not assume: the right outcome may be to re-anchor to G1DEC :5543 / G2DEC :5547, or to note explicitly that the cells are family-independent and the citation is therefore free. Either is defensible; what is not defensible is leaving it unexplained now that the distinction is documented. Read the jt5-23 record in plugins/joust/src/shell/audio-manifest.ts before choosing. Found by TEA during jt5-23 test design."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
+  - id: jt9-28
+    title: 'The README counts jt5-7 did not own: story tallies, the @shared subpath range, and one historical measurement'
+    description: |-
+      jt5-7 derived three of joust's README counts (test files, claims, event kinds) and stamped two families as indicative (the test total, the six-number skipIf block). THREE COUNT FAMILIES WERE LEFT UNTOUCHED AND ARE ALREADY WRONG OR ROTTING.
+
+      (1) THE STATUS BLOCK'S STORY TALLIES, README.md:13-21 — "Thirty-six stories are archived across five epics", with per-epic counts (jt1 11, jt2 9, jt3 7, jt4 5, jt8 4). Found by jt5-7's Dev. These are hand-maintained and drift on every story that closes; sprint/archive/ is the authority and is trivially countable. Derive them, or mark them indicative with a date the way jt5-7 marked the skipIf block. Note the archive holds stories from every game, so the count must be filtered to joust's epics — a naive `ls sprint/archive | wc -l` is the wrong number and would ship a new false one.
+
+      (2) THE @shared SUBPATH RANGE, README.md:143 and the same sentence in jt5-1's description in sprint/epic-jt5.yaml. jt5-7's Reviewer corrected this from "between five and thirteen (centipede 5, ...)" to "six and thirteen (centipede 6, ...)" — centipede gained @shared/audio in cp5-1 (6122ae0) and the 2026-07-31 figure went stale. Measured 2026-08-02 with `grep -rhoE '@shared/[a-z0-9-]+' plugins/<game>/src | sort -u | wc -l`, which agrees on src-only and src+tests: centipede 6, red-baron 8, asteroids 10, tempest 10, star-wars 11, battlezone 13, joust 1. IT IS CLEANLY DERIVABLE — the grep above IS the derivation — and it rots every time any game adopts a shared module, which is a routine event. This is the strongest remaining candidate for a guard.
+
+      (3) THE HISTORICAL MEASUREMENT AT README.md:96 — "The Task 12 import measured that failure mode deliberately — 1280 passed | 566 skipped". Raised as a question by jt5-7's Dev and deliberately left: it reads as a record of a specific past event rather than a live claim, so it may be correct as history. Rule on it — either mark it explicitly historical with its date, or re-measure. Do not leave it ambiguous, because a reader cannot currently tell which it is.
+
+      WHY THIS IS ONE STORY: all three are the same defect class jt5-7 was filed for, in the same file, and (2) is the one with a real derivation available. The shape to copy is jt5-7's split — DERIVE what can be derived, stamp the rest INDICATIVE with a date and a stated reason — and the guard belongs beside the others in plugins/joust/tests/audio-seam-scope.test.ts, which already reads the README through flatten(). Read jt5-7's archived session before starting: it records why the test total and the skipIf block are NOT derivable (32 it.each sites expand; the skipIf block is self-referential), so do not re-litigate those two.
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
