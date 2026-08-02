@@ -14,9 +14,15 @@
 // rows of the ROM's per-wave escalation were unreachable from the running game.
 //
 // ─── THE SMOKING GUN: THE CLONE FROZE THE WAVE-1 VALUE ───────────────────────
-// Every DYWORD row's GA1 column 1 (the shipped GA1=5 tier) reproduces EXACTLY the
+// MOST DYWORD rows' GA1 column 1 (the shipped GA1=5 tier) reproduce EXACTLY the
 // immediate the 1982 source hardcoded before DYTBL existed — the ROM's own trailing
-// comments record the migration:
+// comments record the migration. (This paragraph said "Every" until uf1-9 measured
+// it: SHLETM's column 1 is $0015 = 21 against a comment of 8+1 = 9, and SHUPTM's is
+// $000A = 10 against the same 8+1. Nine of that story's eleven rows match and two do
+// not, so a blanket sweep reddens on correctly-ported rows — the exceptions are
+// asserted BY NAME in tests/cadence-source.test.ts. Corrected here rather than left
+// standing because no test asserts this comment, which is exactly how a false
+// universal survives.)
 //
 //     JOUSTRV4.SRC:3819   BODN11  SUBD  BODNVY   #$0100    FALLING NOT TOO FAST?
 //     JOUSTRV4.SRC:4004   B2DN11  SUBD  HUDNVY   #$0200    FALLING NOT TOO FAST?

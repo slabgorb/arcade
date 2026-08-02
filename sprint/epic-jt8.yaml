@@ -263,3 +263,11 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: jt8-16
+    title: joust PPVELX — homingWake compares the LIVE velocity index where the ROM snapshots it at the decide
+    description: "Filed at uf1-9's finish; the gap was OPENED deliberately by jt8-2 and uf1-9 is what closes its precondition. plugins/joust/src/core/enemy.ts's HomingState doc says it plainly: 'The decision timers belong to a later story (uf1-9 owns the TIME UNTIL NEXT DECISION rows), so there is no moment here at which a snapshot could honestly be taken and homingWake compares the target's LIVE index instead.' That reasoning was correct at the time and is now spent — uf1-9 built the decision intervals, so the moment exists. THE ROM: PPVELX ('OLD PLAYERS X VELOCITY', RAMDEF.SRC:209) is written at exactly THREE sites across the smart brains — BOLEV (LDA PVELX,X / STA PPVELX,U, JOUSTRV4.SRC:3907-3908), B2LEV (:4058-4059) and SHLEP (:4281-4282) — and each sits IMMEDIATELY BEFORE that brain's decision-timer load (BOLETM :3909, HULETM :4060, SHUPTM :4283). So the snapshot is taken once per level-flight decide and then READ, never rewritten, by BOLEVB's throttle (LDA PPVELX,U / CMPA PVELX,U, :3939-3940) until the interval expires. The port instead compares the target's live velXIndex every wake. WHAT TO CHECK FIRST, because it may be a no-op for one brain: jt8-2's note argues the live read is snapshot-EQUIVALENT for SHLEP under the per-wake collapse, since a brain that re-decides every wake re-stores every wake. uf1-9 changed that premise too — the shadow's level branch is now HELD for its SHUPTM interval rather than re-decided each wake — so re-derive the equivalence rather than inheriting it. The bounder and hunter were never equivalent: their intervals are 21 wakes at wave 1, which is 21 wakes of comparing against a value the ROM froze. EXPECT the jt2 seeded replays to move; the throttle decides PRDIR, which decides facing flips. Read sprint/archive/uf1-9-session.md for the re-baseline method."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
