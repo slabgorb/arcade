@@ -27,7 +27,7 @@ stories:
       RADIX DISCIPLINE IS NOT OPTIONAL: .RADIX 16 is inherited from CENDE4, so bare literals are hex and only a trailing period means decimal — 'LDY I,20.' :2389 is decimal 20 while 'LDA I,14' :2346 (the CHAN3 spider reset) is decimal 20 as well, by a different route, and that pair is exactly the kind of coincidence that hides a systematic misread. Every constant recorded here carries a radix-cited comment.
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-02'
     repos: arcade
     workflow: tdd
