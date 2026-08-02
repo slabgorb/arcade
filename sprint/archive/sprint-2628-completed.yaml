@@ -1362,3 +1362,8 @@ completed_stories:
     title: joust DYTBL cadence rows — wire the wing-flap timer, the decision timer and the up-flight VY gates (11 rows)
     points: 5
     completed: '2026-08-02'
+  - id: sw8-18
+    epic: sw8
+    title: "Correct the sw8 ST.UX citation and prose defects from sw8-8 review rounds 2+3 -- 11 filed (4 since drifted) plus a 12th created by sw8-17 -- and add the comment-citation guard for the three a mechanical checker can catch"
+    points: 5
+    completed: '2026-08-02'
