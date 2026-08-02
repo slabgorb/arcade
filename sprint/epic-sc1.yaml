@@ -20,3 +20,4 @@ stories:
       - centipede's and joust's ROM cadences are unchanged, proven by their existing determinism replays reproducing bit-for-bit rather than by the suite being green.
       - Adoption lands one game per commit, so a timing regression has a single suspect.
       - Each helper is proven non-vacuous by mutation - disabling it reddens a test asserting the behaviour it provides, not merely that the helper was called.
+    review_verdict: rejected
