@@ -320,20 +320,74 @@ stories:
     review_findings: "Round 2 APPROVED (round 1 REJECTED, six findings, all fixed). Every round-1 fix verified by re-running its exact claim: F1's three endpoints reproduce (34 old scope / 44 same tree with tools/ / 29 delivered) and the full accounting closes at 44-16+1=29; F2 proven load-bearing (the unanchored-opt-out mutant now reddens 5 tests, was 4); F3's contradiction gone; F4's four claims all re-run; F5's cast removed with tsc clean. Mechanism checked three independent ways - error-set diff pre/post (no real error lost, the one renamed error still reported), 13-mutant battery 13/13 caught, and a live ratchet mutation reddening at 29 where 35 caught nothing. Two new non-blocking findings routed to SM as a chore with verified replacement text: LOW, the corrected ratchet comment says six phantoms where seven is measured (the seventh, Sheet.ts, is a comment-wrapped identifier fitting neither named category); MEDIUM, the round-1 F4 fix introduced a load-bearing U+200B zero-width space at check-comment-citations.mjs:87 whose removal breaks the parse, where the same file already uses a visible backslash escape 33 lines above."
     review_verdict: approved
   - id: sw8-24
-    title: Sweep the ~35 stale citations the comment-citation guard reports across plugins/star-wars, then lower its ratchet (sw8-18 TEA finding)
+    title: Sweep the 29 stale citations the comment-citation guard reports across plugins/star-wars, then lower its ratchet (sw8-18 TEA finding; re-measured at sw8-23)
     description: |-
-      The comment-citation guard sw8-18 shipped reports 35 stale citations across plugins/star-wars beyond the twelve that story fixed. sw8-18 hard-gated only its own 11 files and left the rest under a ratchet; this story closes them and tightens the ratchet to whatever remains.
+      The comment-citation guard sw8-18 shipped reports stale citations across plugins/star-wars beyond the twelve that story fixed. sw8-18 hard-gated only its own 11 files and left the rest under a ratchet; this story closes them and tightens the ratchet to whatever remains.
 
-      WHAT THE 35 ARE. Run `node plugins/star-wars/tools/audit/check-comment-citations.mjs` for the live list. The guard RE-LOCATES every anchor it rejects ("it is now at <file>:<N>; re-anchor the citation to that"), so most of these are a one-number edit rather than a hunt. Do NOT apply a hint blindly: the search is first-occurrence, so a non-unique verbatim can name the wrong routine — sw8-18 hit exactly that with `ADDD M$TX+M.S1`, where the hint said WSMAIN.MAC:2539 (S1MVGD) and the answer was :2656 (S1MVBS). td1-14 is the story that adds the refuse-to-guess clause; if it lands first this sweep gets safer.
+      RE-MEASURED AT sw8-23's FINISH (2026-08-02) — the old numbers and worked examples in this description were stale and are replaced. The count is now 29, NOT 35, and the scanned surface is WIDER than when the 35 was taken: sw8-23 added tools/ and .mts to the scan, fixed an extractor defect that was reporting six globs and comment-wrapped remnants as dangling citations, and remediated the eight real ones under tools/. So 29 is a smaller number over a bigger tree.
 
-      MEASURED SHAPE (sw8-18, and re-measure before starting — siblings move these). Several are one migration artefact rather than 35 independent defects: `math3d.ts:607-618`-style spans point at a pre-migration file that no longer exists at that size, and references to `context-story-8-3.md` / `.session/8-6-session.md` paths moved when the nine repos collapsed into this one. Grouping those may make the sweep much smaller than the count suggests. The rest are genuine off-by-N drift of the kind sw8-18 corrected by hand.
+      MEASURED CLASS BREAKDOWN of the live 29: 24 'verbatim not in the cited span', 5 'cited file does not exist', 0 'span out of range'. The migration-artefact grouping the previous version of this description promised is GONE — math3d.ts:607-618, context-story-8-3.md and .session/8-6-session.md are no longer reported at all, so do not plan the sweep around them. Expect 24 genuine off-by-N drifts and 5 references to files that no longer exist (findings.md, shootable-fireballs.ts, tie-peel-away.test.ts, trench-catwalk-hazard.test.ts, fragments.test.ts — each needs a judgement call: re-point, or disown with the RETIRED: marker if the prose is describing something historical).
 
-      THE RATCHET. tests/audit/comment-citations.test.ts carries `expect(checkTree(...).length).toBeLessThanOrEqual(35)`. It was tightened from 146 to 35 during sw8-18's review, because at 146 it could not have failed until 111 new stale citations landed — a guard with that much slack does not bite, which is the exact thing sw8-18 existed to retire. Lower it again in the SAME commit as the sweep, to whatever the tree actually reports. If the number cannot reach 0, say in the test comment which residue is deliberate and why.
+      WHAT TO RUN. 'node plugins/star-wars/tools/audit/check-comment-citations.mjs' for the live list; it exits 1 and prints every stale citation. It also announces every file it SKIPS via the opt-out pragma (sw8-23 AC4), so you can see the whole surface it covered.
 
-      CAUTION: editing comments in cited files moves the audit's `ours` pins, which tests/audit/citations.test.ts re-opens against the WORKING TREE. sim.ts carries 22 live pins, state.ts 14, render.ts 13. Run `node tools/audit/reanchor-citations.mjs --write` from plugins/star-wars afterwards and confirm "0 lost".
+      DO NOT APPLY A HINT BLINDLY. The guard RE-LOCATES every anchor it rejects ('it is now at <file>:<N>'), which makes most of these a one-number edit — but the search is FIRST-OCCURRENCE, so a non-unique verbatim can name the wrong routine. sw8-18 hit exactly that with 'ADDD M$TX+M.S1' (hint said WSMAIN.MAC:2539 / S1MVGD, the answer was :2656 / S1MVBS), and that pair is STILL in the live list today, inverted: trench-traversal-speed.test.ts now cites :2654 and the hint says :2539. td1-14 adds the refuse-to-guess clause to this tool; if it lands first this sweep gets materially safer, and it now also fixes a second relocation defect (a single-line citation of a multi-instruction run cannot be relocated at all).
+
+      THE RATCHET. Two assertions pin the tree-wide count at 29 — 'does not let the tree-wide count RISE above the delivered baseline of 29' in tests/audit/comment-citations.test.ts and its pair in tests/audit/sw8-23-guard-hardening.test.ts. Lower BOTH to whatever remains, in the same commit, and mutation-prove the new value (prepend one stale citation to a scanned file and require red) — sw8-23 established that a threshold changed without that proof is just a different unfalsifiable assertion.
     points: 5
     priority: p3
     status: backlog
     repos: arcade
     workflow: tdd
     type: chore
+  - id: sw8-25
+    title: The guard's association rule binds a quote to the WRONG citation in a columnar table — it reports a correct citation as stale and names the previous entry's line
+    description: |-
+      Found by Dev during sw8-23's GREEN phase, worked around rather than fixed, and the workaround is itself the reproduction.
+
+      THE DEFECT. checkCitations' association rule takes the delimited span IMMEDIATELY adjacent to a citation (within 4 characters of punctuation) as that citation's verbatim. 'unwrap' first rejoins comment-continuation lines into one string. Together, those two rules mis-pair whenever a comment lays out citation/quote pairs in a COLUMN — a very common shape in this codebase:
+
+        //   WSMAIN.MAC:1636  PHIGD (ground INIT, PH.TIM just zeroed):
+        //                      JSR PM4TH   ";BATTLE MUSIC IN FOURTHS"
+        //   WSMAIN.MAC:1673  PHEGD (the PER-FRAME ground handler), guarded by
+
+      After unwrap, the closing quote of entry 1 is separated from entry 2's citation by a single space. gapOk accepts it, so ';BATTLE MUSIC IN FOURTHS' — which belongs to :1636 — is bound to :1673 as its 'before' quote. The guard then reports WSMAIN.MAC:1673 as stale and helpfully names :1636 as where it 'moved to'.
+
+      WHY THIS IS THE WORST OUTPUT SHAPE. The citation is CORRECT (JSR PMREB really is at :1673). The tool does not merely miss a defect — it manufactures one, and attaches a specific, plausible, wrong line number to it. A reader who trusts the hint 'fixes' a correct citation into a wrong one, and the guard then goes green on the corruption. This is the same family as td1-14's first-occurrence defect but arrives from the opposite direction: there the quote is right and the line is ambiguous; here the line is right and the quote belongs to someone else.
+
+      REPRODUCTION, exact. Take plugins/star-wars/tools/music-bake/music-data.test.mjs at commit ac7eb34~1 (before sw8-23's workaround), run the guard, and it reports 'WSMAIN.MAC:1673: quoted verbatim is not in the cited span — it is now at WSMAIN.MAC:1636'. sw8-23 worked around it by leading the line with the routine name ('PHEGD  WSMAIN.MAC:1673 …') so a non-punctuation token separates the two entries — the citation was never touched, because touching it would have written a false record into the tree.
+
+      DIRECTION FOR A FIX (not prescriptive). Bound the 'before' search so it cannot cross another citation: if any citation lies between a candidate quote and this one, the quote is not ours. That is checkable from the already-sorted citation list in extractCitations. Whatever the mechanism, the RED must include the columnar fixture above and must assert the correct citation stays CLEAN, not merely that some error changes.
+
+      NOT sw8-26: that story is about the guard being silent on what it did not cover (a failed opt-out, an unreadable file). This one is about the guard being LOUD and WRONG about something it did cover. Different failure direction, different code — quoteFor's adjacency window versus checkTree's reporting.
+
+      NOT td1-14: that story owns the relocation SEARCH (refuse to guess between duplicate verbatims; widen the window for a multi-instruction run). This one is upstream of it — the wrong quote is chosen before any search happens, so td1-14's fixes would faithfully relocate a quote that was never this citation's.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: sw8-26
+    title: 'The comment-citation guard is silent about what it did NOT cover: a failed opt-out looks identical to a skip, and one unreadable file aborts the whole scan'
+    description: |-
+      Two findings from sw8-23's review, both instances of one mechanism: the scan's report does not distinguish what it COVERED from what it silently did not.
+
+      (1) A FAILED OPT-OUT IS INVISIBLE. sw8-23 replaced an unanchored 'raw.includes(pragma)' opt-out with hasPragma(), which requires the pragma to OPEN a leading comment within the first five lines. That fixed a real hazard — any mention anywhere in a file used to drop it from the scan silently. But the new rule is documented only inside the function's own docstring, and it fails CLOSED with no signal: a contributor who writes '// this file opts out — citation-guard: ignore-file', or who puts it on line six, or after five blank lines, gets no error, no warning and no skip notice, and will reasonably conclude the file was skipped when it was scanned. checkTree announces every SUCCESSFUL skip by name (sw8-23 AC4); nothing announces a FAILED one.
+
+      Proposed: warn when a file contains the pragma TEXT but hasPragma returns false. That is exactly the ambiguous set, it is one extra string test on files already read, and it converts a silent misunderstanding into a line of output. Pairs with a related disclosed edge — '>' counts as a comment leader, so a markdown spec that exhibits the pragma un-indented and un-fenced in its first five lines opts ITSELF out; docs/**/specs is in scope. sw8-23 disclosed that on PRAGMA_HEAD_LINES with the workaround (indent or fence it) rather than closing it, because requiring a code-comment leader would stop markdown opting out at all. A warning on the ambiguous set covers this case too.
+
+      (2) ONE UNREADABLE FILE ABORTS THE WHOLE SCAN. checkTree readFileSync's every scanned file and resolve() readFileSync's every cited target, with no try/catch anywhere. A permission error, a dangling symlink or a deleted-mid-run file throws out of the entire scan rather than reporting that one file. Pre-existing, but sw8-23 grew the blast radius by adding tools/ to the default roots — a directory that holds generated output and, in some checkouts, symlinks. A completeness tool that dies on one bad file reports NOTHING about the other 240, and the failure looks like a crash rather than a finding.
+
+      Proposed: catch per file, emit it as an error row ('<file>: unreadable — <code>') so it counts toward the ratchet like any other problem, and keep scanning.
+
+      WHY BOTH IN ONE STORY. They are the same claim: a green run means 'every file was checked', and today it can also mean 'a file quietly opted itself out' or 'the scan stopped early'. One story, one mechanism — make the scan honest about its own coverage — and the two fixes touch the same function.
+
+      NOT sw8-25: that one is the guard being loud and WRONG about a citation it did check. This is the guard being SILENT about files it did not.
+
+      MEASURED CONTEXT: the delivered guard skips exactly three files today (the two sw8-18 suites and sw8-23's own), all legitimately, all announced by name. The failure modes above are latent, not currently firing — which is why they need a test rather than a bug report.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
