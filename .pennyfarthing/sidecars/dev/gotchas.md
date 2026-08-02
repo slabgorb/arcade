@@ -1652,3 +1652,34 @@ promotion CARRIES it — `LNTSMT` (:3764-3775) writes NSMART, PCHASE and `STX PJ
 Omitting it would have asserted the opposite of the ROM in the very test I was correcting. **When a
 re-staged guard suddenly disagrees with your implementation, check the source before "fixing" either
 one** — the disagreement is where the new field's real semantics get decided.
+
+---
+
+## Your own mutation battery tests your model of the artifact, not its coverage
+
+cp6-1 GREEN round 1 applied eleven mutations to the real dossier and caught eleven. The
+Reviewer then killed it with two mutations that survived — one on `pokeyVoice`, one on the
+single cue a `.filter()` excluded from a sweep. Both survivors were fields the author was not
+thinking about, which is exactly the set the author's own battery cannot contain.
+
+So pick mutations from **the filter predicates and the fields nothing reads**, not from the
+ruling you just wrote. Concretely: list every field of the artifact, cross off the ones a test
+names, and mutate what is left. The uncrossed ones are the whole risk. A field can be *correct*
+and still be a defect — cp6-1's eleven `pokeyVoice` values were all right, and the wrong ruling
+built on top of them shipped anyway, because nothing could contradict them.
+
+## Restore mutations from a `cp` backup when the deliverable is UNCOMMITTED
+
+The obvious restore — `git checkout -- <file>` — reverts to HEAD, and during GREEN, HEAD does
+not yet contain the artifact you are mutating. It silently throws the deliverable away and the
+next run is green for the wrong reason. `cp` the files to a scratch dir first and restore from
+there; run the baseline once before the battery and assert it is green, so a botched restore
+fails loudly instead of flattering the next mutation.
+
+## A mutation that "survives" may just be a no-op — grep for the string you changed
+
+Both this story's rounds hit this. Round 1's malformed-linespec mutant edited a string that
+appears in the fixture but not in the prose the guard reads. Before recording a survivor,
+confirm the mutated bytes are actually in the file the test opens, and that the value you
+changed is one the test path reaches. Otherwise you file a coverage gap that does not exist —
+or worse, add a test for a hole that was never open.
