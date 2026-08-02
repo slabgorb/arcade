@@ -1543,3 +1543,80 @@ What made it safe was proving the tightened guard now bites: adding one stale ci
 both the ratchet and the per-file gate, where at 146 it reddened neither. **A chore that changes a
 threshold must mutation-prove the new threshold**, or you have swapped one unfalsifiable assertion
 for another and called it a fix.
+
+---
+
+## When the story's deliverable is a MEASUREMENT TOOL, RUN it — reading the source verified the filing, running it produced three findings the filing did not have (sw8-23 setup, 2026-08-02)
+
+**Situation:** `/pf-work sw8-23`, four review findings against
+`plugins/star-wars/tools/audit/check-comment-citations.mjs`. Every claim was a statement about
+that file's behaviour, so the cheap path was to read the four cited line numbers and confirm
+them. That path works: all four findings verified exactly as filed, including both numeric ones
+(744/1000 = 74.4%, six `fromFile` call sites). A "no corrections needed" setup.
+
+**The three findings that only appeared once the tool was EXECUTED** — importing `checkTree` /
+`checkCitations` / `extractCitations` into a scratch script and running them against the real
+tree — are each larger than anything reading found:
+
+1. **The guard opts ITSELF out.** It *defines* the pragma as a string literal
+   (`export const IGNORE_PRAGMA = 'citation-guard: ignore-file'`), and a separate finding says
+   the opt-out gates on an unanchored `raw.includes`. Independently filed, mechanically coupled:
+   `checkCitations(<the guard's own source>) -> 0 errors`, so the finding "it cannot see its own
+   directory" survives its own fix. **A test asserting "the guard now checks itself" passes
+   vacuously unless the opt-out is anchored first.** Neither finding mentions the other.
+2. **Two stated limitations were ONE population.** The filing read "744 of 1000 get range-checking
+   only … *and* a single-token adjacent quote is never verbatim-checked", which a reader totals.
+   Re-running the adjacency scan without the `isFragment` filter gave 744 = **698** with nothing
+   adjacent + **46** single-token, i.e. a subset, because the filter nulls a non-fragment and
+   downstream that is indistinguishable from "no quote". Writing both into the tool's honest-scope
+   paragraph would over-claim its blindness — the same defect class the tool exists to catch.
+3. **Widening a guard's scope to include its own source surfaces its DOCUMENTATION as defects.**
+   Three errors appeared inside `tools/audit/`, all correct as written: an elided `…design.md:47-48`
+   in a format example, a deliberately-historical span the header preserves to explain the
+   bare-colon case (the live citation it describes is already corrected), and a `.d.mts` doc
+   comment whose bare span inherits the wrong filename. **Audit tooling documents its format by
+   exhibiting it.** Fixing them into currently-true citations destroys what they document; the
+   module already shipped the mechanism (a `RETIRED:` marker for prose that quotes a citation in
+   order to disown it).
+
+**Generalise:** the standing rule is "measure the description's falsifiable claims." This adds
+*how* to measure when the subject is executable: **import it and run it, do not read it.** Reading
+confirms the claims that were filed; running finds the ones nobody thought to file — interactions
+between findings, populations that turn out to overlap, and what the change will do on arrival.
+Budget for it: three scratch scripts, ~15 minutes, and it is also the only way to satisfy a
+description that says "measure the fresh count before promising green".
+
+**Corollary for scope-widening stories generally** (a linter, a gate, a typecheck exclusion, a
+CI matrix): the first thing a widened scope hits is the tool's own tree. Measure that specifically
+and separately from the headline count — here it was 10 fresh errors in unrelated bake tools
+versus 3 inside the audit tooling itself, and only the second group needed a design decision.
+
+## A census can PRUNE the option list, not just rank it — and one of the two questions then answers itself
+
+Both either/ors went to the user with the measurement attached (the documented pattern), but they
+behaved differently and the difference is worth keeping.
+
+- **`fromFile`: wire it or drop it.** The census — **zero** relative-path citations exist anywhere
+  in the scanned tree, so the feature has no users; and the 8 real basename collisions are already
+  covered by a path-qualified rule the tool's own header documents — did not merely favour "drop",
+  it removed the argument for "wire". One click.
+- **The `.mts` scan gap** (SM-found, not in the filing: `extname('x.d.mts') === '.mts'` and
+  `SCAN_EXT` lacks it, so both type declarations stay invisible even after the directory is added).
+  Genuinely a scope call — fold in, or file a follow-up about a one-token array edit. The user
+  folded it in.
+
+**The tell for which kind you have:** if the census can make one branch *pointless* rather than
+merely *worse*, say so in the question. If it can only make one branch bigger, it is a real scope
+call and the user is choosing sprint shape, not correctness. Do not dress the second up as the
+first — and do not skip asking the first just because the answer looks obvious once measured.
+
+## Not every SM observation resolves — hand the unresolved one over with the check named
+
+Two of the ten fresh errors are bare `.test.mjs` "cited file does not exist" entries with no
+filename stem, and the same shape appears **five times in the existing baseline**. `FILE_RE`
+accepts a leading `.`, so this may be an extractor defect rather than ten citations to re-anchor.
+I did not determine which, and asserting either would have arrived labelled MEASURED and outranked
+the story. It went to TEA as "classify these before treating them as remediation work — if it is
+an extractor defect it is arguably out of scope and should be filed." Same shape as the jt5-10
+`PLYR3/4/5` field-6 hand-over, and the reason it is cheap: the check is named, so resolving it is
+minutes rather than a re-derivation.
