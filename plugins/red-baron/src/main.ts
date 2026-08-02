@@ -68,8 +68,12 @@ import { drawEscOverlay } from '@shared/esc-overlay'
 // sc1-1: the checked mount. This file previously cast the element and then used a
 // NULLABLE ctx, which is why draw sites guard with `!ctx`/`&& ctx`. The mount now
 // proves the context at boot, so those guards can no longer fire — but they are
-// still THERE, at :149, :203 and :890. Only the pause overlay's guard was removed
-// (it had to be, since the `paused` flag it was fused with moved into the helper).
+// still THERE: two `if (!ctx) return` early exits in the draw helpers, and one
+// `gameOver && ctx` in frame(). (Named rather than cited by line, because the
+// first spelling of this comment gave line numbers and its own four added lines
+// shifted them by four before it was ever read.) Only the pause overlay's guard
+// was removed — it had to be, since the `paused` flag it was fused with moved
+// into the helper.
 // Three unreachable guards left standing is not a cleanup; retiring them is a
 // separate change, and this comment says so rather than implying it was done.
 const { canvas, ctx } = mountCanvas(document)
