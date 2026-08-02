@@ -99,7 +99,9 @@ export async function bootCockpit(width: number, height: number, seedMs: number)
   const keydownHandlers: Array<(e: unknown) => void> = []
   const keyupHandlers: Array<(e: unknown) => void> = []
   let rafCallback: ((nowMs: number) => void) | null = null
-  vi.stubGlobal('document', { getElementById: () => canvas })
+  // sc1-1: `querySelector` alongside `getElementById` — main.ts mounts through
+  // @shared/host-helpers' mountCanvas, which takes a selector.
+  vi.stubGlobal('document', { getElementById: () => canvas, querySelector: () => canvas })
   vi.stubGlobal('window', {
     innerWidth: width,
     innerHeight: height,

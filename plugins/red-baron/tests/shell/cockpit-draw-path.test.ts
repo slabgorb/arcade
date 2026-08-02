@@ -424,7 +424,12 @@ const windowStub = {
 // Installed at module scope, BEFORE main.ts is dynamically imported below — main.ts reaches for
 // `document` on its very first line, which is exactly why nobody had ever run it under a test.
 const g = globalThis as unknown as Record<string, unknown>
-g.document = { getElementById: (): unknown => canvasStub }
+g.document = {
+  // sc1-1: querySelector alongside getElementById — main.ts mounts through
+  // @shared/host-helpers' mountCanvas, which takes a selector.
+  getElementById: (): unknown => canvasStub,
+  querySelector: (): unknown => canvasStub,
+}
 g.window = windowStub
 
 /**

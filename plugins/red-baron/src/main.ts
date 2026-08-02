@@ -61,11 +61,14 @@ import { playEventSounds, updateContinuousSounds } from './shell/audio-dispatch'
 import { hudTextSegments } from './core/hud-font'
 import { multiply, type Mat4, type Vec3 } from '@shared/math3d'
 import { createRng, nextFloat } from '@shared/rng'
-import { INITIAL_PAUSED, isPauseKey, togglePaused } from '@shared/pause'
+import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
+import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
 import { drawEscOverlay } from '@shared/esc-overlay'
 
-const canvas = document.getElementById('game') as HTMLCanvasElement
-const ctx = canvas.getContext('2d')
+// sc1-1: the checked mount. This file previously cast the element and then used a
+// NULLABLE ctx — every draw site carries an `&& ctx` guard because of it. The mount
+// now proves the context exists at boot instead of at each call site.
+const { canvas, ctx } = mountCanvas(document)
 
 // ─── NO GEOMETRY IS AUTHORED IN THIS FILE (rb4-1 REWORK 3 — read this before adding any) ───
 //
@@ -356,17 +359,12 @@ window.addEventListener('keyup', (e) => held.delete(e.key))
 // gesture, so the engine stays inert until the pilot touches a key (or clicks) —
 // resume() is idempotent, so wiring it to EVERY gesture is safe and costs nothing.
 const audio = createAudioEngine()
-const unlockAudio = (): void => audio.resume()
-window.addEventListener('keydown', unlockAudio)
-window.addEventListener('pointerdown', unlockAudio)
+installAudioUnlock(() => audio.resume(), window)
 
 // SH2-14: Escape toggles pause via the shared @shared/pause gate — the
 // cabinet-wide VERB. Edge, not level (guard e.repeat) so a held key can't
 // machine-gun the toggle. The freeze itself is the frame loop's pause guard below.
-let paused = INITIAL_PAUSED
-window.addEventListener('keydown', (e) => {
-  if (!e.repeat && isPauseKey(e.key.toLowerCase())) paused = togglePaused(paused)
-})
+const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
 
 // Per-cabinet NUMBERS for the pause card: red-baron's yoke keybinds (letter
 // alternates so no arrow glyphs the ROM font lacks), the cabinet green, and the
@@ -638,7 +636,7 @@ function frame(nowMs: number): void {
   // so the freeze is realised as this loop guard rather than the shared single-state
   // stepUnlessPaused thunk — see the SH2-14 deviation note; the shared pause VERB is
   // still the isPauseKey/togglePaused edge above.)
-  if (paused) accumulator %= SIM_TIMESTEP_S
+  if (pause.isPaused()) accumulator %= SIM_TIMESTEP_S
   while (accumulator >= SIM_TIMESTEP_S) {
     // rb4-4: the pre-motion block — EOLSEQ, SCOREM, ENDLFE and the GREND check,
     // one call per calc frame (see preMotionFrame). It returns true only when
@@ -877,7 +875,7 @@ function frame(nowMs: number): void {
   // from live state. A paused game falls silent.
   playEventSounds(audio, events)
   updateContinuousSounds(audio, {
-    playing: !paused,
+    playing: !pause.isPaused(),
     gunFiring: fireHeld && !guns.overheated,
     enemyFiring, // rb4-10 / SN-017: an enemy shell fired this frame rattles the gun
     nearestDepth: nearestDepth(enemies),
@@ -912,7 +910,7 @@ function frame(nowMs: number): void {
   // SH2-14: the pause overlay dims the frozen scene and draws the keybind card over
   // it — drawn last (over the whole world) and only while paused. red-baron draws in
   // device pixels (no dpr pre-scale), so it takes canvas.width/height directly.
-  if (paused && ctx) drawEscOverlay(ctx, canvas.width, canvas.height, RED_BARON_PAUSE)
+  if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, RED_BARON_PAUSE)
   window.requestAnimationFrame(frame)
 }
 window.requestAnimationFrame(frame)

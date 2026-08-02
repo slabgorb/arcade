@@ -243,7 +243,10 @@ async function bootCockpit(width: number, height: number, seedMs: number): Promi
   }
 
   let rafCallback: ((nowMs: number) => void) | null = null
-  vi.stubGlobal('document', { getElementById: () => canvas })
+  // sc1-1: `querySelector` alongside `getElementById` — main.ts now mounts through
+  // @shared/host-helpers' mountCanvas, which takes a selector. The double models
+  // the method the production code calls; the assertions below are unchanged.
+  vi.stubGlobal('document', { getElementById: () => canvas, querySelector: () => canvas })
   vi.stubGlobal('window', {
     innerWidth: width,
     innerHeight: height,

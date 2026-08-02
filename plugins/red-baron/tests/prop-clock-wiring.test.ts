@@ -125,7 +125,12 @@ const windowStub = {
   requestAnimationFrame: (cb: (t: number) => void): number => { rafCb = cb; return 1 },
 }
 const g = globalThis as unknown as Record<string, unknown>
-g.document = { getElementById: (): unknown => canvasStub }
+g.document = {
+  // sc1-1: querySelector alongside getElementById — main.ts mounts through
+  // @shared/host-helpers' mountCanvas, which takes a selector.
+  getElementById: (): unknown => canvasStub,
+  querySelector: (): unknown => canvasStub,
+}
 g.window = windowStub
 
 // Pin the clock: main.ts seeds its RNGs off Date.now(), so this fixes the whole sky —

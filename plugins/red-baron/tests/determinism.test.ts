@@ -121,7 +121,9 @@ async function bootRun(opts: { seed: number; nowMs: number; frames: number }): P
   const keydownHandlers: Array<(e: unknown) => void> = []
   const keyupHandlers: Array<(e: unknown) => void> = []
   let rafCallback: ((nowMs: number) => void) | null = null
-  vi.stubGlobal('document', { getElementById: () => canvas })
+  // sc1-1: `querySelector` alongside `getElementById` — main.ts mounts through
+  // @shared/host-helpers' mountCanvas, which takes a selector.
+  vi.stubGlobal('document', { getElementById: () => canvas, querySelector: () => canvas })
   vi.stubGlobal('location', location)
   vi.stubGlobal('window', {
     innerWidth: width,
