@@ -86,7 +86,7 @@ stories:
       ADDED 2026-08-01 BY jt5-2 (Reviewer and SM routed three operational facts here, since this is the next story that touches the bake): (A) THE SAMPLE HALF NOW HAS A CONCRETE HOME. jt5-2 moved SOUNDS/SoundName/FRAME_DURATIONS into the dependency-free plugins/joust/src/shell/audio-manifest.ts (audio.ts re-exports them by identity), and the synthesiser is plugins/joust/tools/sample-bake/bake-samples.mjs with one SPECS entry per cue. SNPCR2's manifest row, its 450-frame extent and its synth spec all go in those two files — audio.ts needs no edit. (B) EXPECT THE DEPLOY TO ABORT UNTIL THE SPEC EXISTS, BY DESIGN: bakeSamples throws on any manifest cue with no SPECS entry ('a new cue must arrive with its own sound'), and `just deploy-assets` runs under set -euo pipefail, so adding the manifest row without the spec aborts the WHOLE recipe — star-wars staging included (nothing uploads; the bucket keeps last-good). Add the spec, re-run, and curl the new URL — the upload is idempotent (byte-identical re-runs, proven cross-process). (C) WHILE IN THE BAKE, FIX THE ONE KNOWN EDGE: the CLI gate `process.argv[1] === fileURLToPath(import.meta.url)` goes false in a checkout reached through a symlink (the ESM loader realpaths the module URL, argv[1] keeps the caller's spelling), turning the CLI into a silent exit-0 no-op. Compare realpathSync of both sides — one line.
     points: 5
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-02'
     repos: arcade
     workflow: tdd
@@ -226,6 +226,38 @@ stories:
     description: "Found by TEA during uf1-9's RED, via a whole-file census rather than a spot check. PJOYT is armed at FOURTEEN sites across joust's enemy brains and only NINE are DYTBL rows; uf1-9 wired those nine. The other five are hardcoded immediates the 1982 authors never migrated, and two of them belong to STATES this port does not have at all: B2UP3 (JOUSTRV4.SRC:4195-4200) and SHUP3 (:4411-4416), both labelled 'LEVEL FLIGHT, READY TO GO UP', each storing the line to track into PDIST and then loading a hardcoded 'LDA #20+1' decision interval — the ROM's own comment on both is TIME UNTIL NEXT DECISION, which is why the census found SIX sites carrying that comment where the backlog claimed four. Their bodies (B2UP3A :4202-4210, SHUP3A :4418-4425) sample the background pair for a cliff and gate on PVELY. THE OTHER THREE FROZEN SITES ARE ALREADY MODELLED and must not be re-derived: the down-seek's 2-wake wing hold (LDA #2 at :3823 and :4008) is enemy.DOWN_SEEK_WING_HOLD, and the hunter's cliff dwell (LDA #8 at :4144) is enemy.HUNTER_CLIFF_DWELL — both deliberately NOT wave-scaled, because their shadow-lord counterpart SHCLTM is a row and these are not. THE POINT OF THIS STORY is the two missing STATES, not the constants: wiring a row into a state that does not exist is impossible, which is why uf1-9 stopped here. Their extents are pinned by the FROZEN group in plugins/joust/tests/cadence-source.test.ts, which passes today and will keep passing — it asserts the ROM shape, not the port's. Start by deciding whether the climb-preparation state is reachable in this port at all: uf1-9 measured that the up-seek path itself is entered on ZERO frames of natural play across three seeds and 6000 frames, because hunters first spawn at wave 4 and no test's play reaches it."
     points: 5
     priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-20
+    title: CHANNELS is vestigial for arbitrated cues — three stories have now fed a map that routes nothing
+    description: "joust CHANNELS maps every cue to a `prio-N` string, but since jt5-5 the shared engine arbitrates ALL of joust's cues on ONE voice by priority, so the channel decides nothing for them. THREE stories have now had to feed it: jt5-5's Dev and TEA both raised it, and jt5-6 added an eighteenth entry (player2Materialise: prio-70) that routes nothing, purely to satisfy the test `CHANNELS gives every SOUNDS entry a voice` in tests/audio-manifest.test.ts. It is kept because the shared engine still routes every UNARBITRATED name by channel and because a channel-per-priority is an honest description of which cues share a voice — but a reader takes it for live routing. Decide: delete joust's map and let the engine default, or keep it and make the test assert what it actually guarantees. Affects plugins/joust/src/shell/audio.ts (CHANNELS, and the header comment at :86-97 which still describes the fence in the present tense) and tests/audio-manifest.test.ts. NOTE the constraint before deleting: src/shared/audio.ts routes by channel for every name NOT in `priorities`, so removing the map is only safe while all 18 joust cues carry a priority."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-21
+    title: The bake's synth-spec gate is itself unguarded — only the missing-outDir throw is pinned
+    description: 'bakeSamples throws `no synth spec for manifest cue <name> — a new cue must arrive with its own sound` (plugins/joust/tools/sample-bake/bake-samples.mjs:305-306) and `no FRAME_DURATIONS entry for <name>` (:311). That gate is what makes `just deploy-assets` abort under set -euo pipefail rather than silently ship a manifest row with no audio — jt5-6 AC4 leaned on it directly. It is UNGUARDED: bake-samples.test.mjs:119 pins ONLY the missing-outDir throw (`await expect(bakeSamples()).rejects.toThrow()`), and nothing anywhere asserts the missing-spec or missing-duration throws. So the gate could be removed or weakened and every suite would stay green, while the next cue ships an unbaked .wav name into the bucket. Found by jt5-6 TEA, who could not pin it in that story: SOUNDS and SPECS are both module-scope consts in bake-samples.mjs, so exercising the throw needs an injectable manifest — either bakeSamples taking its manifest as an argument, or exporting SPECS. That refactor is this story. Prove it with a test that adds a cue with no spec and asserts the SPECIFIC message, not just that something threw.'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-22
+    title: 'framesFor edge cases: an odd token count is silently dropped, and an invention cue reports the wrong bake error'
+    description: 'Two edge cases in the jt5-6 derivation in plugins/joust/src/shell/audio-manifest.ts, both currently unreachable but both real. (1) framesInRow loops `for (let i = 0; i + 1 < pairs.length; i += 2)`, so a row with an ODD token count — a sound code with no duration operand — has its tail SILENTLY dropped and the cue window comes out short with no error. It is defended today only INDIRECTLY: every defining row is re-opened byte-exact by tests/audio-rom-citations.test.ts and every continuation row by tests/audio-transporter-split.test.ts, so a malformed row cannot match the vendored file. The defence is a different mechanism from the failure, which is why it is worth closing directly — throw on an odd count. (2) framesFor opens `if (source.kind !== rom) return 0` (:525), so an `invention` cue gets FRAME_DURATIONS 0; bake-samples.mjs:310-312 then tests `if (!(frames > 0))` and throws `no FRAME_DURATIONS entry` — but there IS an entry, it is 0 because the cue has no ROM table to size it. All 18 cues are kind:rom today so neither fires, but the invention arm exists precisely so a later story can use it, and that story hits a misleading error. Found by jt5-6 Reviewer.'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt5-23
+    title: What ARE G1DEC/G2DEC? CUE_SOURCES now cites two decision-block families with no model of either
+    description: 'The ROM binds each creature sound table TWICE, in two families of decision block, and joust models neither. Measured in jt5-6 (JOUSTRV4.SRC): G1DEC (label :5542, row :5544) and G2DEC (:5546, row :5548) versus P1DEC (:5550, row :5552) and P2DEC (:5554, row :5556). The rows differ in exactly two places — the joystick source (G1JOY/G2JOY vs P1JOY/P2JOY) and the 8th sound slot, which is a bare `0` in the G-blocks and SNPTREF ("PLAYER ABORTED FADING IN (TRANSPORTER)", :8122) in the P-blocks. Nothing in the port knows the difference. jt5-6 moved playerMaterialise/player2Materialise onto the P-blocks (:5552/:5556) because SNPCR1/SNPCR2 are exactly where the families differ and those are the rows the story cited, but LEFT the four wing cues citing G1DEC :5544 — correct for them, since SNPLWU/SNPLWD open every one of the four rows identically, but the result is that CUE_SOURCES now cites BOTH families with no recorded reason a reader could check. Establish what the G-blocks are (attract/demo? a two-player-game variant? grep the FDB consumers of each label and the DECSN/PDECSN selection), record it, and rule whether the wing citations should follow. Do this BEFORE another story cites either family. Found by jt5-6 TEA and confirmed by its Reviewer.'
+    points: 3
+    priority: p1
     status: backlog
     repos: arcade
     workflow: tdd

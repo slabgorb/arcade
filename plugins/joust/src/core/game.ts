@@ -43,7 +43,7 @@ import {
 } from './demo.js'
 import { dispatchWaveType, waveRowAt, type ResolvedWaveType, type PlayersAlive } from './wave.js'
 import type { PlayerInput } from './flight.js'
-import type { GameEvent, PlayerId } from './events.js'
+import type { GameEvent } from './events.js'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -486,7 +486,15 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
       // bound at P2DEC :5556) — so the moment carries WHICH knight and the
       // shell's dispatch picks the table. `id` is this loop's 1-based ledger
       // index; a constant here would re-collapse the two cues jt5-6 split.
-      cues.push({ type: 'player-materialise', player: id as PlayerId })
+      //
+      // Narrowed explicitly rather than cast. `id` is `number` — `createGame`
+      // takes an unclamped `playerCount`, so nothing in the TYPE stops a third
+      // ledger existing and `id as PlayerId` would have asserted a range the
+      // signature does not guarantee. The machine has exactly two knight tables
+      // (SNPCR1/SNPCR2, bound at P1DEC/P2DEC), so anything that is not knight 2
+      // sounds knight 1's — the same fallback the dispatch documents, stated
+      // where it is decided instead of hidden behind an `as`.
+      cues.push({ type: 'player-materialise', player: id === 2 ? 2 : 1 })
     }
   })
   const finalSim: DemoState =
