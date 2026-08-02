@@ -824,21 +824,35 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('jt5-6 AC4 — the new cue is baked, and it is a genuinely different sound', () => {
-  it('the bake refuses to run without a spec for it — the deploy aborts by design', async () => {
-    // jt5-2 built this gate for exactly this story. Asserting it here means a
-    // manifest row added without a sound cannot reach `just deploy-assets`,
-    // where it would abort the WHOLE recipe under `set -euo pipefail` and take
-    // star-wars' staging down with it.
-    const bake = await load<{ SPECS?: Record<string, unknown> }>(['..', 'tools', 'sample-bake', 'bake-samples.mjs'])
-    const specs = bake.SPECS
-    if (specs === undefined) {
-      // SPECS is module-private today. Fall back to the source text, which is
-      // what the bake's own throw reads at runtime.
-      const text = readFileSync(join(root, 'tools', 'sample-bake', 'bake-samples.mjs'), 'utf8')
-      expect(text, 'SPECS needs a player2Materialise entry').toMatch(/\bplayer2Materialise\s*:/)
-      return
+  it('the new cue has a synth spec — proven by the bake completing, not by grepping for one', async () => {
+    // jt5-2 built the gate this leans on: `bakeSamples` throws
+    // `no synth spec for manifest cue '<name>'` for any manifest entry without
+    // a SPECS row, and `just deploy-assets` runs under `set -euo pipefail`, so
+    // a manifest row added without a sound aborts the WHOLE recipe — star-wars'
+    // staging included. Running the bake to completion is therefore a stronger
+    // statement than any source-text match: a `player2Materialise:` grep would
+    // pass on the identifier appearing in a COMMENT (bake-samples.mjs already
+    // names this story twice in comments, at :27 and :142), which is exactly
+    // the token-not-claim trap. SPECS is module-private, so behaviour is also
+    // the only honest reach.
+    //
+    // GREEN ON ARRIVAL, and say so: today's seventeen cues all have specs, so
+    // the bake completes. It bites the moment `player2Materialise` enters
+    // SOUNDS without a SPECS row — which is the half-done state, and the one
+    // that would abort `just deploy-assets` in front of a human rather than in
+    // front of a test. `the manifest names a second transporter cue` (red
+    // today) is what forces the manifest entry that arms this. Non-vacuity by
+    // mutation, M10.
+    const bakeSamples = await bakeFn()
+    const dir = mkdtempSync(join(tmpdir(), 'jt5-6-spec-'))
+    try {
+      await expect(
+        bakeSamples(dir),
+        "the bake must not throw `no synth spec for manifest cue 'player2Materialise'`",
+      ).resolves.toBeUndefined()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
     }
-    expect(Object.keys(specs)).toContain('player2Materialise')
   })
 
   it('baking writes exactly the manifest’s filenames, including the new one', async () => {
@@ -942,17 +956,24 @@ describe('jt5-6 AC5 — playerMaterialise cites P1DEC, the block its comment alr
   })
 
   it('the "both knights map here" scope comment is gone — they no longer do', async () => {
+    // Deliberately broader than the exact sentence. The two files phrase the
+    // same claim differently — audio.ts:246 "both knights map here for now",
+    // game.ts:485 "both knights map onto SNPCR1 here" — so an exact-phrase
+    // match would let a reword survive while the claim stayed false. The
+    // alternation covers the claim, not one spelling of it.
+    const stale = /both knights map|both knights onto|map onto SNPCR1/i
     const text = readFileSync(join(root, 'src', 'shell', 'audio.ts'), 'utf8')
     expect(
       text,
       'AC5: the sentence must go once it stops being true. A stale SCOPE comment is worse ' +
         'than none — it tells the next reader the split has not happened.',
-    ).not.toMatch(/both knights map/i)
+    ).not.toMatch(stale)
   })
 
   it('the core’s emit-site comment stops saying the same thing', async () => {
+    const stale = /both knights map|both knights onto|map onto SNPCR1/i
     const text = readFileSync(join(root, 'src', 'core', 'game.ts'), 'utf8')
-    expect(text, 'game.ts carries its own copy of the claim').not.toMatch(/both knights map/i)
+    expect(text, 'game.ts carries its own copy of the claim').not.toMatch(stale)
   })
 })
 
