@@ -293,10 +293,6 @@ export type RowDisposition =
       readonly owner: string
     }
 
-const WING = 'the PJOYT wing-flap cadence timer'
-const DECISION = 'the "time until next decision" timer'
-const UP_VY = 'the up-flight VY gate'
-
 /**
  * Every row's disposition, TOTAL over all 28 — data in the module, not prose in an
  * archive note, so the next sweep reads it instead of rediscovering the gap.
@@ -328,18 +324,35 @@ export const ROW_DISPOSITION: Readonly<Record<DyRowName, RowDisposition>> = Obje
   SHDNRG: Object.freeze({ kind: 'wired', consumer: 'enemy.shadow (the shadow down range gate, JOUSTRV4.SRC:4243)' }),
   SHUPRG: Object.freeze({ kind: 'wired', consumer: 'enemy.shadow (the shadow up range gate, JOUSTRV4.SRC:4257)' }),
 
-  // ─── uf1-9 — the wing/decision cadences and the up-flight VY gates (11) ───
-  BOUPWD: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3864', missing: WING, owner: 'uf1-9' }),
-  BOUPWU: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3894', missing: WING, owner: 'uf1-9' }),
-  HUUPWD: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4182', missing: WING, owner: 'uf1-9' }),
-  HUUPWU: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4047', missing: WING, owner: 'uf1-9' }),
-  BOLETM: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:3909', missing: DECISION, owner: 'uf1-9' }),
-  HULETM: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4060', missing: DECISION, owner: 'uf1-9' }),
-  SHUPTM: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4283', missing: DECISION, owner: 'uf1-9' }),
-  SHLETM: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4316', missing: DECISION, owner: 'uf1-9' }),
-  SHCLTM: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4375', missing: DECISION, owner: 'uf1-9' }),
-  HUUPVY: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4178', missing: UP_VY, owner: 'uf1-9' }),
-  SHUPVY: Object.freeze({ kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:4272', missing: UP_VY, owner: 'uf1-9' }),
+  // ─── Wired by uf1-9 — the wing/decision cadences and the up-flight VY gates (11) ───
+  //
+  // TWO THINGS THE ROW NAMES DO NOT SAY, both measured against the source and
+  // pinned by tests/cadence-source.test.ts:
+  //
+  // (1) The wing rows are the UP-SEEK holds ONLY. The DOWN-seek arms a HARDCODED
+  //     2-wake hold (`LDA #2`, :3823 and :4008 — `enemy.DOWN_SEEK_WING_HOLD`) and
+  //     has no wing-up reload at all. Both read 2 at wave 1, so wiring a row to
+  //     the down path looks correct until wave 3.
+  // (2) "TIME UNTIL NEXT DECISION" labels SIX sites in the ROM and only FOUR are
+  //     rows: `B2UP3` (:4199) and `SHUP3` (:4415) carry a hardcoded `#20+1` that
+  //     was never migrated to DYTBL. SHCLTM is NOT one of the decision family at
+  //     all — see its entry.
+  BOUPWD: Object.freeze({ kind: 'wired', consumer: 'enemy.wingWake (the bounder UP-seek wing-DOWN hold, JOUSTRV4.SRC:3864)' }),
+  BOUPWU: Object.freeze({ kind: 'wired', consumer: 'enemy.wingWake (the bounder UP-seek wing-UP hold, JOUSTRV4.SRC:3894)' }),
+  HUUPWD: Object.freeze({ kind: 'wired', consumer: 'enemy.wingWake (the hunter UP-seek wing-DOWN hold, JOUSTRV4.SRC:4182)' }),
+  HUUPWU: Object.freeze({ kind: 'wired', consumer: 'enemy.wingWake (the hunter UP-seek wing-UP hold, JOUSTRV4.SRC:4047)' }),
+  BOLETM: Object.freeze({ kind: 'wired', consumer: 'enemy.seekWake (the bounder level-flight decision interval, JOUSTRV4.SRC:3909)' }),
+  HULETM: Object.freeze({ kind: 'wired', consumer: 'enemy.seekWake (the hunter level-flight decision interval, JOUSTRV4.SRC:4060)' }),
+  SHUPTM: Object.freeze({ kind: 'wired', consumer: 'enemy.seekWake (the shadow SHLEP decision interval, JOUSTRV4.SRC:4283)' }),
+  SHLETM: Object.freeze({ kind: 'wired', consumer: 'enemy.decideInterval (the shadow SHLEV own-line decision interval, JOUSTRV4.SRC:4316)' }),
+  // NOT a decision timer, whatever the backlog said. Its ROM comment is a bare
+  // `#8` and it sits under `SHDICL LDD #SHAV  SLOW DOWN!!! GOING INTO A CLIFF`
+  // (:4373-4376): the shadow lord's cliff-avoidance dwell. The hunter's
+  // identically-shaped dwell (`B2DICL`, :4144) is a hardcoded 8 and must never
+  // read this row — `enemy.HUNTER_CLIFF_DWELL`.
+  SHCLTM: Object.freeze({ kind: 'wired', consumer: 'enemy.cliffDwell (the shadow SHDICL/SHAV cliff-avoidance dwell, JOUSTRV4.SRC:4375)' }),
+  HUUPVY: Object.freeze({ kind: 'wired', consumer: 'enemy.wingWake (the hunter up-flight VY gate at wing-timer expiry, with the INC re-arm, JOUSTRV4.SRC:4178)' }),
+  SHUPVY: Object.freeze({ kind: 'wired', consumer: 'enemy.shadow (the shadow up-flight VY gate, consulted every wake, JOUSTRV4.SRC:4272)' }),
 
   // ─── uf1-10 — the egg wait and the lava troll (4 rows) ────────────────────
   EGGWT: Object.freeze({

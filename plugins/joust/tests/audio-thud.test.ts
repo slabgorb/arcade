@@ -868,14 +868,22 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     expect(thudsOf(eventsOf(fired))).toEqual([ENEMY_THUD])
   })
 
-  it('seed 0x2468, frame 611: a buzzard bumps a knight — a PERSON thud', () => {
+  it('seed 0xface, frame 260: a buzzard bumps a knight — a PERSON thud', () => {
     // The case derived AC3 would have left silent: enemy-vs-player, not
-    // player-vs-player. Measured — frame 610 emits NOTHING at all, so both
+    // player-vs-player. Measured — the frame before emits NOTHING at all, so both
     // streams can be asserted exactly: the thud arrives with the knight's own
     // wing-down cue (the scripted flap on a %13 frame), and nothing else.
-    const before = stepGame(advanceTo(0x2468, 610), inputsAt(610))
+    //
+    // uf1-9 RE-BASELINE: seed 0x2468 frame 611 -> seed 0xface frame 260, and the
+    // SEED had to move. Swept 1200 frames of all three seeds this file uses: with
+    // the ROM wing cadence the knights are no longer bumped by a buzzard on either
+    // 0x2468 or 0xbeef at all (both produce enemy-vs-enemy thuds only), so no
+    // frame on those seeds can satisfy this test's precondition. 0xface frame 260
+    // reproduces the shape exactly — a silent frame before, and a stream of
+    // precisely `player-wing-down` + the person thud. Every assertion is unchanged.
+    const before = stepGame(advanceTo(0xface, 259), inputsAt(259))
     expect(eventsOf(before), 'the frame BEFORE emits nothing at all').toEqual([])
-    const fired = stepGame(advanceTo(0x2468, 611), inputsAt(611))
+    const fired = stepGame(advanceTo(0xface, 260), inputsAt(260))
     expect(eventsOf(fired)).toEqual(['player-wing-down', PLAYER_THUD])
     expect(eventsOf(fired), 'this is the SNPTHD path, not the SNETHD one').not.toContain(ENEMY_THUD)
   })
@@ -953,11 +961,18 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // MEASURED post-uf1-8 (the first thud is now frame 119, so the pre-contact
     // anchor moved back from 146). The player rows are bit-identical to the
     // jt5-4 tree — a change that moves THEM is a regression whatever it claims.
+    //
+    // uf1-9 RE-BASELINE, and the guard's own claim survives intact: `player#1`,
+    // `player#2`, `enemy#256`, `enemy#258` and every fingerprint field including
+    // `rng` are BIT-IDENTICAL. Only `enemy#257` moved — the wing cadence changes
+    // how a buzzard flies from its first wake, so a "pre-contact" window is not a
+    // pre-CHANGE window for the enemies. It still is for the players, which is
+    // what this test asserts.
     expect(entityDigest(0xbeef, 118)).toEqual([
       'player#1:69,16967,-5,-2,0,79,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:89,32725,-62,8,64,60,1',
-      'enemy#257:274,33035,-38,8,192,41,1',
+      'enemy#257:259,35036,116,2,128,41,1',
       'enemy#258:89,33219,18,8,64,60,1',
     ])
     expect(fingerprint(0xbeef, 118)).toEqual({
@@ -974,12 +989,14 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // Post-uf1-8 this whole window is contact-free (first thud: frame 611), so
     // frame 188 is still strictly pre-contact. `rng`, procs order, scores and
     // lives are all bit-identical to the jt5-4 pin — only the smart buzzards'
-    // rows moved, which is exactly uf1-8's measured line.
+    // rows moved, which is exactly uf1-8's measured line. uf1-9 re-baseline: the
+    // same two smart rows moved again and `rng`, procs, scores, lives and both
+    // player rows stayed bit-identical.
     expect(entityDigest(0x2468, 188)).toEqual([
       'player#1:45,26830,272,-2,0,149,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:64,29447,4,8,64,95,1',
-      'enemy#257:252,53307,14,8,192,95,1',
+      'enemy#256:64,29333,-1,8,64,95,1',
+      'enemy#257:253,53760,0,8,0,1,0',
       'enemy#258:159,33196,10,8,64,95,1',
     ])
     expect(fingerprint(0x2468, 188)).toEqual({
@@ -998,13 +1015,14 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // all could satisfy, including a wrong one. The post-story values are
     // frozen as an exact pin: a real regression guard, not just "something
     // moved". Re-measured at uf1-8 (frame 160 is downstream of the frame-119
-    // thud AND of the re-flown smart buzzards).
+    // thud AND of the re-flown smart buzzards), and again at uf1-9, where the two
+    // smart buzzards fly the ROM's wing cadence. Both PLAYER rows are unchanged.
     expect(entityDigest(0xbeef, 160)).toEqual([
       'player#1:54,20736,147,-4,64,121,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:131,30547,-40,8,64,81,1',
-      'enemy#257:13,33051,-29,8,192,62,1',
-      'enemy#258:131,34170,-49,8,64,81,1',
+      'enemy#257:-6,35072,0,2,0,1,0',
+      'enemy#258:131,35915,98,8,64,81,1',
     ])
   })
 
@@ -1016,11 +1034,15 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // death/respawn pair it precipitates at 612/613 (measured), which is why
     // the process list below carries a respawned player#2 at the tail and no
     // enemy#258 (killed long before). An exact frozen pin, same as 0xbeef's.
+    //
+    // uf1-9 re-baseline: with the ROM cadence this seed's play diverges hard by
+    // frame 620 — the knights fare better, so the death/respawn pair at 612/613
+    // no longer happens in this window, player#2 is still on its spawn perch and
+    // enemy#256 is dead instead. Re-measured, not nudged.
     expect(entityDigest(0x2468, 620)).toEqual([
-      'player#1:91,38874,239,2,0,139,1',
-      'enemy#256:193,32048,-54,8,64,255,1',
-      'enemy#257:79,53504,32,8,0,43,1',
-      'player#2:200,23208,48,0,0,7,1',
+      'enemy#257:79,53760,0,8,0,1,0',
+      'player#2:200,32768,0,0,0,1,0',
+      'player#1:81,47916,450,-2,128,170,1',
     ])
   })
 

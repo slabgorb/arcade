@@ -775,15 +775,22 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
     const wired = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'wired')
     // uf1-2 wired the two down-seek brakes; uf1-8 wired its ten seek rows (the
     // range gates + the PDIST budgets — pinned row-by-row, with consumers, by
-    // tests/seek-wiring.test.ts AC-5). The exact set still forbids overreach:
-    // a story that quietly flips an uf1-9/uf1-10 row fails here.
+    // tests/seek-wiring.test.ts AC-5); uf1-9 wired its eleven cadence rows (the
+    // wing latch, the decision intervals, the cliff dwell and the two up-flight
+    // VY gates — pinned by tests/cadence-wiring.test.ts). The exact set still
+    // forbids overreach: a story that quietly flips an uf1-10 row fails here.
     const UF18_ROWS = [
       'BODNRG', 'BODNDI', 'BOUPRG', 'BOUPDI', 'HUDNRG', 'HUDNDI', 'HUUPRG', 'HUUPDI',
       'SHDNRG', 'SHUPRG',
     ] as const
-    expect([...wired].sort(), 'the wired set is uf1-2\'s two brakes + uf1-8\'s ten seek rows').toEqual(
-      [...WIRED_NAMES, ...UF18_ROWS].sort(),
-    )
+    const UF19_ROWS = [
+      'BOUPWD', 'BOUPWU', 'HUUPWD', 'HUUPWU', 'BOLETM', 'HULETM', 'SHUPTM', 'SHLETM', 'SHCLTM',
+      'HUUPVY', 'SHUPVY',
+    ] as const
+    expect(
+      [...wired].sort(),
+      "the wired set is uf1-2's two brakes + uf1-8's ten seek rows + uf1-9's eleven cadence rows",
+    ).toEqual([...WIRED_NAMES, ...UF18_ROWS, ...UF19_ROWS].sort())
     for (const n of wired) {
       const disp = d.ROW_DISPOSITION[n]
       // A disposition that says "wired" without naming where is how a row goes dead
@@ -806,9 +813,9 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
   it('gives every unwired row a ROM line, a missing mechanic and an owner', async () => {
     const d = await loadDifficulty()
     const pending = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'no-consumer-yet')
-    // 28 rows − 12 wired (uf1-2's 2 + uf1-8's 10) − 1 dead-in-ROM = 15 genuinely
-    // waiting on a mechanic.
-    expect(pending.length, 'the tracked remainder').toBe(15)
+    // 28 rows − 23 wired (uf1-2's 2 + uf1-8's 10 + uf1-9's 11) − 1 dead-in-ROM = 4
+    // genuinely waiting on a mechanic: uf1-10's EGGWT/EGGWT2/LAVTIM/LAVGRA.
+    expect(pending.length, 'the tracked remainder').toBe(4)
     for (const n of pending) {
       const disp = d.ROW_DISPOSITION[n]
       if (disp.kind !== 'no-consumer-yet') throw new Error('unreachable')
@@ -1157,6 +1164,17 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
     const tenth = trajectory(counterAtWave(w, 10))
     const eleventh = trajectory(counterAtWave(w, 11))
     const first = trajectory(counterAtWave(w, 1))
+    // uf1-9 re-based the SAME-RUNG partner and changed no expectation's meaning.
+    // When this was written the only live dials were the two brakes, which plateau
+    // by wave 3, so wave 3 and wave 10 were on one rung and the equality below
+    // read `tenth === third`. uf1-9 makes eleven more rows live and several are
+    // still WALKING at wave 3 (BOUPWU 7→6 at wave 7, BOLETM 20→19), so waves 3 and
+    // 10 are genuinely different rungs now and that equality would assert a
+    // falsehood. Wave 9 is wave 10's same-rung partner across every live row, so
+    // the misread this guards — wave 10 looked up as the byte 0x10, i.e. 16 —
+    // still diverges and is still caught.
+    const ninth = trajectory(counterAtWave(w, 9))
+    const sixteenth = trajectory(counterAtWave(w, 16))
 
     // Discriminability BEFORE the comparisons: every run must actually reach the
     // brake window with a live knight at or below the buzzard. Without this, a
@@ -1189,8 +1207,14 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
 
     expect(
       tenth.signature,
-      "the cabinet's tenth wave plays its own rung, not the byte 0x10 read as 16",
-    ).toBe(third.signature)
+      "the cabinet's tenth wave plays its own rung — identical to wave 9, its same-rung partner",
+    ).toBe(ninth.signature)
+    // …and the misread itself, asserted directly rather than implied: a wave 10
+    // resolved as the byte 0x10 would play wave SIXTEEN's rung.
+    expect(
+      tenth.signature,
+      'wave 10 must NOT play wave 16 — that is the 0x10-read-as-16 misread',
+    ).not.toBe(sixteenth.signature)
   })
 })
 

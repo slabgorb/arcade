@@ -236,6 +236,18 @@ export interface EnemyState {
    * to any test written against the contract. See the TEA assessment.
    */
   prevFlapHeld?: boolean
+  /**
+   * uf1-9 — the `PJOY`/`PJOYT` workspace: the wing phase the brain is in and the
+   * wakes left in it. OPTIONAL on the `homing`/`seek` precedent; absent means no
+   * episode is armed and the next decide arms one.
+   *
+   * `wings` present  → a seek episode's wing cadence is running (BOUPWD/BOUPWU
+   * and their hunter twins on the UP route; a frozen 2-wake hold on the DOWN
+   * route), or, for the shadow lord, its SHCLTM cliff dwell.
+   * `wings` absent   → a level-flight decide is holding its "time until next
+   * decision" interval (BOLETM / HULETM / SHUPTM / SHLETM).
+   */
+  pjoy?: { readonly timer: number; readonly wings?: 'down' | 'up' }
 }
 
 /** An enemy process for jt2-1's scheduler — the tagged union's new `enemy` kind. */

@@ -240,7 +240,17 @@ describe('AC-2 — the range gate routes long vs short seek', () => {
     // — a shadow below its quarry flaps whether or not it is already rising.
     // The long-range up-seek DOES gate on the rise, so the range boundary is
     // visible exactly there, and it moves with the wave (SHUPRG −32 → −31).
-    const rising = smartEnemy('shadow', { velY: -0x50 })
+    // uf1-9 re-staged this rise, and did NOT touch an expectation. The four
+    // assertions and their meanings are unchanged; only the fixture's speed
+    // moved, because the long-range branch's gate did. When this was written the
+    // shadow's up-seek was approximated as `flap: velY >= 0`, so ANY rise
+    // suppressed the flap and −$50 was enough. uf1-9 wired the row the ROM
+    // actually compares (`CMPD SHUPVY / BLT SHUP0`, :4271-4273): the gate is
+    // −$200 at wave 1 and −$400 at wave 3, so a −$50 rise is INSIDE it and flaps
+    // on both sides of the range boundary — which would leave this test unable to
+    // see the SHUPRG boundary at all. −$600 clears the gate at both waves, so the
+    // long branch stays wings-up and the boundary is visible exactly where it was.
+    const rising = smartEnemy('shadow', { velY: -0x600 })
     expect(
       e.shadow(rising, at(-31), 1).flap,
       'wave 1: −31 > SHUPRG(1) = −32 → SHORT → SHLEP flaps below the player, even rising',
@@ -527,19 +537,25 @@ describe('AC-5 — ROW_DISPOSITION records the wiring', () => {
     }
   })
 
-  it('leaves the other eighteen dispositions untouched — no overreach into uf1-9/uf1-10', async () => {
+  it('leaves the remaining dispositions untouched — no overreach into uf1-10', async () => {
     const d = await loadDifficulty()
     expect(d.ROW_DISPOSITION.BODNVY.kind, 'uf1-2 wiring stands').toBe('wired')
     expect(d.ROW_DISPOSITION.HUDNVY.kind, 'uf1-2 wiring stands').toBe('wired')
     expect(d.ROW_DISPOSITION.LAVLAV.kind, 'Williams shipped a row nothing reads').toBe('dead-in-rom')
+    // uf1-9 HAS NOW LANDED, so these eleven are wired rather than pending. The
+    // guard's job is unchanged — it stops a seek story reaching into rows it does
+    // not own — so it still names them, and now requires the wiring to be REAL
+    // (a named consumer) rather than merely re-labelled.
     const uf19 = [
       'BOUPWD', 'BOUPWU', 'HUUPWD', 'HUUPWU', 'BOLETM', 'HULETM', 'SHUPTM', 'SHLETM', 'SHCLTM',
       'HUUPVY', 'SHUPVY',
     ] as const
     for (const name of uf19) {
       const row = d.ROW_DISPOSITION[name]
-      expect(row.kind, `${name} waits on uf1-9's mechanics`).toBe('no-consumer-yet')
-      if (row.kind === 'no-consumer-yet') expect(row.owner).toBe('uf1-9')
+      expect(row.kind, `${name} was wired by uf1-9`).toBe('wired')
+      if (row.kind === 'wired') {
+        expect(row.consumer, `${name} must NAME its consumer`).toMatch(/\S/)
+      }
     }
     const uf110 = ['EGGWT', 'EGGWT2', 'LAVTIM', 'LAVGRA'] as const
     for (const name of uf110) {

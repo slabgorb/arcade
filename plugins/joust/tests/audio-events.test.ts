@@ -325,21 +325,30 @@ describe('jt5-1 AC2 — stepGame carries the stream on the state it returns', ()
 // precondition fails first and says so, instead of the event assertion failing
 // for a reason that has nothing to do with the seam.
 describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fixtures', () => {
-  it('a killed enemy emits enemy-death (seed 0xbeef, frame 199)', () => {
-    const before = advanceTo(0xbeef, 199)
-    const after = stepGame(before, inputsAt(199))
+  it('a killed enemy emits enemy-death (seed 0xbeef, frame 204)', () => {
+    const before = advanceTo(0xbeef, 204)
+    const after = stepGame(before, inputsAt(204))
     expect(countOf(after, 'enemy'), 'precondition: an enemy really dies on this frame').toBe(
       countOf(before, 'enemy') - 1,
     )
     expect(kindsOf(after)).toContain('enemy-death')
   })
 
-  it('a collected egg emits egg-collected (seed 0xbeef, frame 523)', () => {
+  it('a collected egg emits egg-collected (seed 0x2468, frame 230)', () => {
     // jt8-7 RE-BASELINE: 516 -> 523. Same seed, same script; the mask-gated catch
     // (the egg must now overlap CEGGUP's 7 scanlines, not just the 16px box) simply
     // delays which egg player 2 drifts into. Measured, not guessed.
-    const before = advanceTo(0xbeef, 523)
-    const after = stepGame(before, inputsAt(523))
+    //
+    // uf1-9 RE-BASELINE: seed 0xbeef -> 0x2468, frame 523 -> 230. The wing cadence
+    // changes which enemies the knights reach and therefore where the eggs fall, and
+    // the SEED had to move as well as the frame: swept 2500 frames of 0xbeef and
+    // every `egg-collected` there now scores player ONE, so no frame can satisfy
+    // this test's "player 2's score rises" precondition on that seed at all. 0x2468
+    // is already this file's third seed (the AC3 fingerprint below uses it) and its
+    // frames 230 and 612 both score player 2; 230 is the earliest. The script and
+    // every assertion are unchanged.
+    const before = advanceTo(0x2468, 230)
+    const after = stepGame(before, inputsAt(230))
     expect(countOf(after, 'egg'), 'precondition: an egg really leaves on this frame').toBe(
       countOf(before, 'egg') - 1,
     )
@@ -381,32 +390,32 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   // own precondition (an egg really leaves and really scores; a knight really
   // dies; the wave really advances), so a re-baseline cannot quietly turn one
   // of them vacuous — the precondition fails first if the moment is not there.
-  it('a dying knight emits player-death (seed 0xface, frame 1810)', () => {
+  it('a dying knight emits player-death (seed 0xface, frame 1888)', () => {
     // jt8-7 RE-BASELINE: 1938 -> 1810 (see the block comment above).
-    const before = advanceTo(0xface, 1810)
-    const after = stepGame(before, inputsAt(1810))
+    const before = advanceTo(0xface, 1888)
+    const after = stepGame(before, inputsAt(1888))
     expect(countOf(after, 'player'), 'precondition: a knight really dies on this frame').toBe(
       countOf(before, 'player') - 1,
     )
     expect(kindsOf(after)).toContain('player-death')
   })
 
-  it('the transporter re-entry emits player-materialise (seed 0xface, frame 1811)', () => {
+  it('the transporter re-entry emits player-materialise (seed 0xface, frame 1889)', () => {
     // The frame AFTER the death: `stepGame`'s respawn re-enters the spent knight
     // through the transporter (game.ts:425-441), which is the ROM's CREP
     // re-create — DSNCRE → SNPCR1 "PLAYER 1 RE-CREATED (TRANSPORTER)".
-    const before = advanceTo(0xface, 1811)
-    const after = stepGame(before, inputsAt(1811))
+    const before = advanceTo(0xface, 1889)
+    const after = stepGame(before, inputsAt(1889))
     expect(countOf(after, 'player'), 'precondition: the knight really re-enters here').toBe(
       countOf(before, 'player') + 1,
     )
     expect(kindsOf(after)).toContain('player-materialise')
   })
 
-  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 1641)', () => {
+  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 1726)', () => {
     // jt8-7 RE-BASELINE: 1614 -> 1641 (see the block comment above).
-    const before = advanceTo(0xface, 1641)
-    const after = stepGame(before, inputsAt(1641))
+    const before = advanceTo(0xface, 1726)
+    const after = stepGame(before, inputsAt(1726))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
@@ -456,9 +465,9 @@ describe('jt5-1 AC3 — a fixed seed and input stream replay an identical stream
   })
 
   it('re-stepping the SAME state object twice gives the same stream', () => {
-    const start = advanceTo(0xbeef, 199)
-    expect(kindsOf(stepGame(start, inputsAt(199)))).toEqual(
-      kindsOf(stepGame(start, inputsAt(199))),
+    const start = advanceTo(0xbeef, 204)
+    expect(kindsOf(stepGame(start, inputsAt(204)))).toEqual(
+      kindsOf(stepGame(start, inputsAt(204))),
     )
   })
 })
@@ -468,8 +477,8 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
     // THE test replay determinism cannot make. A stale carry-forward is carried
     // identically in BOTH runs, so the comparison above still passes with the
     // bug in. This one steps past the triggering frame and demands it be gone.
-    const fired = stepGame(advanceTo(0xbeef, 199), inputsAt(199))
-    expect(kindsOf(fired), 'precondition: frame 199 must emit the kill').toContain('enemy-death')
+    const fired = stepGame(advanceTo(0xbeef, 204), inputsAt(204))
+    expect(kindsOf(fired), 'precondition: frame 204 must emit the kill').toContain('enemy-death')
 
     const next = stepGame(fired, inputsAt(200))
     expect(
@@ -483,7 +492,7 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
     // bound looks like a leak detector and is not one: an appended stream that
     // has only gathered four events in a quiet window is still under any
     // generous bound, so the mutation passes. `=== 0` is the actual property.
-    // Frame 200 is the frame after the kill at 199, and it is silent.
+    // Frame 205 is the frame after the kill at 204, and it is silent.
     const g = stepGame(advanceTo(0xbeef, 200), inputsAt(200))
     expect(streamOf(g), 'frame 200 is a quiet frame — the stream must be empty').toEqual([])
   })
@@ -491,8 +500,8 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
   it('and a long quiet run stays empty rather than accumulating', () => {
     // The unbounded-growth shape of the same bug: an appended array grows
     // forever and the shell replays the whole wave every frame.
-    let g = stepGame(advanceTo(0xbeef, 199), inputsAt(199))
-    expect(kindsOf(g), 'precondition: frame 199 emits the kill').toContain('enemy-death')
+    let g = stepGame(advanceTo(0xbeef, 204), inputsAt(204))
+    expect(kindsOf(g), 'precondition: frame 204 emits the kill').toContain('enemy-death')
     for (let i = 200; i < 213; i++) g = stepGame(g, inputsAt(i))
     expect(
       streamOf(g),
@@ -582,26 +591,38 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // gone) and player 1 is on its last man with wave 2's three buzzards
     // still up. `rng` is bit-identical through both re-baselines — the law
     // this group pins.
+    //
+    // RE-MEASURED post-uf1-9, and the headline is the field that did NOT move:
+    // `rng` is STILL 2_006_456_271 and `wave` still 2. The wing cadence changes
+    // how the birds fly, not how many numbers the sim draws, which is exactly
+    // the invariant this group exists to pin. The play-dependent fields moved a
+    // long way — with the buzzards flapping on the ROM's cadence the knights
+    // survive far better: both are still alive on 3 lives at frame 2400 (was
+    // 1 and 0, with player 2 out) and the arena holds an egg rather than three
+    // grown buzzards.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
       wave: 2,
-      procs: 'enemy#512,enemy#513,enemy#514,player#1',
-      scores: [2200, 3000],
-      lives: [1, 0],
+      procs: 'player#2,player#1,egg#66048',
+      scores: [8600, 100],
+      lives: [3, 3],
     })
   })
 
   it('seed 0x2468, 900 frames — uf1-8 re-baselined: rng UNMOVED', () => {
     // MEASURED post-jt5-4, re-measured post-uf1-8 (this seed's first contact
     // moved from frame 189 out to the frame-611 player thud and its respawn).
+    // RE-MEASURED post-uf1-9: `rng` is again bit-identical — the law this group
+    // pins — while the play moved on. This seed now CLEARS wave 1 inside 900
+    // frames (it did not before) and is part-way through wave 2's complement.
     expect(fingerprint(0x2468, 900)).toEqual({
       frame: 900,
       rng: 3_436_766_652,
-      wave: 1,
-      procs: 'player#1,enemy#256,enemy#257,player#2',
-      scores: [0, 1300],
-      lives: [5, 4],
+      wave: 2,
+      procs: 'player#1,enemy#512,enemy#513,enemy#514,enemy#515,player#2',
+      scores: [1300, 2600],
+      lives: [4, 3],
     })
   })
 

@@ -93,6 +93,15 @@ function runs(seq: readonly boolean[]): Array<[boolean, number]> {
  * brake/climb tests cannot change their answer, and the episode is re-armed
  * unspent so `seekWake` cannot exhaust it and re-decide. Everything else —
  * including whatever latch state the implementation adds — rides forward.
+ *
+ * THE HORIZONTAL STATE IS FROZEN TOO, and it is not optional. `stepEnemyDetailed`
+ * computes `wingsDown = decision.flap || steered.turned`, so jt8-3's cliff
+ * look-ahead can force the wings down mid-hold. Measured while implementing:
+ * every flap steps the FLYX index toward the facing, the bird drifts (posX 100 →
+ * 65 over 40 wakes), reaches a cliff at wake 41, turns, and `turned` splits a
+ * 7-wake wings-up run into 6 + 1. The cadence was correct; the fixture was
+ * measuring a turn. Pinning `posX`/`velXIndex`/`velXFrac` keeps the latch the
+ * only thing that moves — which is what a run-length reading requires.
  */
 async function heldLevels(
   brain: 'boundr' | 'b2undr',
@@ -109,7 +118,7 @@ async function heldLevels(
     enemy = {
       ...stepped,
       seek: { mode: 'up', pdist: 0x4000 },
-      entity: { ...stepped.entity, posY: 0x60 << 8, velY, airborne: true },
+      entity: { ...stepped.entity, posY: 0x60 << 8, velY, airborne: true, posX: 100, velXIndex: 0, velXFrac: 0 },
     }
   }
   return seen
@@ -190,7 +199,7 @@ describe('AC1/AC2 — the up-seek wing cadence is a LATCH, not a per-wake recomp
       enemy = {
         ...r.enemy,
         seek: { mode: 'up', pdist: 0x4000 },
-        entity: { ...r.enemy.entity, posY: 0x60 << 8, velY: -0x180, airborne: true },
+        entity: { ...r.enemy.entity, posY: 0x60 << 8, velY: -0x180, airborne: true , posX: 100, velXIndex: 0, velXFrac: 0 },
       }
     }
     // 40 wakes at a period of BOUPWD+BOUPWU = 10 ⇒ 4 cycles, so 3-4 complete
@@ -224,7 +233,7 @@ describe('AC1 — the down-seek keeps its frozen hold and its brake-decided wing
         enemy = {
           ...stepped,
           seek: { mode: 'down', pdist: -0x4000 },
-          entity: { ...stepped.entity, posY: 0x60 << 8, velY: 0x300, airborne: true },
+          entity: { ...stepped.entity, posY: 0x60 << 8, velY: 0x300, airborne: true , posX: 100, velXIndex: 0, velXFrac: 0 },
         }
       }
       const downRuns = completeRuns(seen)
@@ -357,7 +366,7 @@ describe('AC5 — SHUPVY is consulted every wake; HUUPVY only at expiry, and re-
       enemy = {
         ...r.enemy,
         seek: { mode: 'up', pdist: 0x4000 },
-        entity: { ...r.enemy.entity, posY: 0x60 << 8, velY: -0x400, airborne: true },
+        entity: { ...r.enemy.entity, posY: 0x60 << 8, velY: -0x400, airborne: true , posX: 100, velXIndex: 0, velXFrac: 0 },
       }
     }
     expect(refusedWakes, 'a hunter climbing faster than HUUPVY never flaps').toBe(0)

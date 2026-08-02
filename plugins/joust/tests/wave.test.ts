@@ -479,7 +479,19 @@ describe('CARRIED SEAM — in-scheduler promotion via the GameState budget', () 
     // And the dispatch really runs b2undr: at velY $180 (between the bounder brake
     // $100 and the hunter brake $200) with the player below, b2undr tolerates the
     // fall (no flap) where boundr would brake (flap) — so runBrain ≠ boundr.
-    const downSeek: EnemyState = { ...promoted, entity: airborneEntity(0x81, { velY: 0x180 }) }
+    //
+    // uf1-9: `promoted` has been through a real `stepFrame`, and that step had no
+    // target — so the brain took the ROM's no-players route (`BEQ BOLEVV` → BOLEV)
+    // and armed a level-flight DECISION INTERVAL, which by design pre-empts the
+    // range gate until it expires. Carrying it here would put BOTH brains on the
+    // level law and the brake comparison below could not discriminate them at all.
+    // Clearing it returns the enemy to a fresh decide, which is the state this
+    // test means to exercise. No expectation changed.
+    const downSeek: EnemyState = {
+      ...promoted,
+      pjoy: undefined,
+      entity: airborneEntity(0x81, { velY: 0x180 }),
+    }
     const playerBelow: PlayerView = { pixelY: 0xc0, velXIndex: 0 }
     expect(e.runBrain(downSeek, playerBelow)).toEqual(e.b2undr(downSeek, playerBelow))
     expect(e.runBrain(downSeek, playerBelow), 'b2undr ≠ boundr at $180').not.toEqual(

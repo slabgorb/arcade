@@ -780,16 +780,24 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
     // moved) and again post-uf1-8, whose range-gated brains re-fly BOTH smart
     // buzzards from their first promoted wake (audio-thud.test.ts AC7 carries
     // the uf1-8 ruling). What keeps this a regression guard and not a blanket
-    // re-baseline: `player#1`, `player#2` and the egg are bit-identical across
-    // all three trees — the flap/flight seam this suite pins is player-shared,
-    // so a change that moves a PLAYER row here is a bug whatever story it
-    // rides in on.
+    // re-baseline: `player#1` and `player#2` are bit-identical across all FOUR
+    // trees — the flap/flight seam this suite pins is player-shared, so a change
+    // that moves a PLAYER row here is a bug whatever story it rides in on.
+    //
+    // uf1-9 RE-BASELINE, and the EGG left the invariant. Both player rows are
+    // byte-for-byte what they were, and so is `enemy#256` — that is the
+    // assertion that matters. The rest moved because the wing cadence is now the
+    // ROM's: `enemy#257` is still ALIVE at frame 200 where it used to be dead, so
+    // the egg it used to have become (`egg#65793`) does not exist yet and
+    // `enemy#258` is elsewhere. The egg can no longer be cited as an unchanged
+    // row — it is downstream of a KILL, and kill timing is exactly what a flap
+    // cadence moves.
     expect(entityDigest(0xbeef, 200)).toEqual([
       'player#1:40,30508,326,-4,192,161,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:171,30017,-13,8,64,101,1',
-      'enemy#258:171,33679,-20,8,64,101,1',
-      'egg#65793:-',
+      'enemy#257:34,35072,0,2,0,1,0',
+      'enemy#258:171,38715,178,8,64,101,1',
     ])
   })
 
