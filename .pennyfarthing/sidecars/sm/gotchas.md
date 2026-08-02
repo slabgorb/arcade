@@ -1324,3 +1324,77 @@ it-was-not-edited, corrections written to the session only) were all live at onc
 directly avoided every one of them; the verification that matters is unchanged — a `python3` `in`
 test of each AC against `yaml.safe_load`, and the labelled-token count re-run **after** the
 assessment prose was written, not just after setup.
+
+---
+
+## A story whose DELIVERABLE is citations must have its own citations measured — four of sw8-18's eleven had already rotted (sw8-18 setup, 2026-08-02)
+
+The standing rule is "measure a description's falsifiable claims." This story is the case that
+shows *when the rule is not optional*: sw8-18's entire body is twelve file:line claims, and its
+deliverable is correcting file:line claims. If its own pointers have drifted, every correction
+lands in the wrong place — and four had (item 9 by +32 lines, item 10's three anchors by +38,
++13, +3). The claims survived at the corrected lines; only the pointers rotted, which is the
+story's own thesis demonstrated on itself.
+
+**The ROM, by contrast, held perfectly** — ten premises verified line-exact. That asymmetry is
+the reusable finding: **vendored ROM source is immutable and its citations never rot; in-repo
+citations rot continuously.** Spend the measurement budget on the in-repo half.
+
+## The sharpest finding was that the story's ROOT CAUSE was false, and it arrived labelled as a root cause
+
+sw8-18's title promised "the mechanical guard that would have caught them" and its root cause
+explained that its absence was why all eleven survived. Both false. Classifying each item against
+the guard's own spec — extract `<file>:<line-span>` from source comments and re-open them — gave:
+
+- **item 7 only** is caught as specced. Item 8's citation is the bare-colon form `:2273-2290`
+  (no filename — the known `bare-colon-citations-evade-gates` trap); item 4's is a bare filename
+  with no line; item 2's span still *contains* its quoted verbatim, so verbatim-matching passes it.
+- **item 10's span is CORRECT** (`WSSTAR.MAC:98`). The false part is the prose around it. No
+  span-checker can ever see that class.
+
+Three of twelve, once widened. Unmeasured, TEA would have written an unfalsifiable AC or a
+Reviewer would have bounced a correctly-built guard for missing items it structurally cannot see.
+
+**Generalise:** a "root cause" paragraph is the highest-status prose in a filing and the least
+likely to have been checked — it is written last, when the finder is certain. Classify each item
+against the proposed fix *individually* before accepting that the fix addresses the class. The
+test is mechanical: for each item, ask "would the proposed guard have fired?" and count.
+
+## Two counting errors, both mine, both caught by re-measuring rather than by thinking harder
+
+1. **The over-count.** Item 10 cited five `LDD ST.UX` sites to refute sole readership. Three sit
+   inside the `.REPT 0` block — assembled OUT, as the very same bullet list already correctly
+   says, and that block is *item 8's own subject*. Only two are live. The refutation survives on
+   two, but a fix citing five would reintroduce the defect class inside the correction.
+   **Adjacent items in one filing can share a mechanism and contradict each other; read them as
+   a set, not a list.**
+2. **The under-count.** My condensation sweep used a case-sensitive `only reader` and missed a
+   site writing `ONLY reader`. Count went 9 → 10. The AC now mandates a case-INSENSITIVE check,
+   because the obvious verification passes while a site survives. Same family as
+   `measured-claims-need-exact-strings`: the check that feels equivalent is not.
+
+## Predicting a sibling collision, then watching it land inside the same setup
+
+I filed a Delivery Finding that uf1-15 (RED committed to `main`, story `in_progress`) would move
+this story's `tie-status.ts` anchors. Its GREEN landed ~15 minutes later, in the sibling race that
+rejected my first push, moving the anchor **+79 lines**. Re-measured after `5a15f21`, rewrote the
+ACs against the new numbers, and converted the finding from prediction to fact with both commit
+SHAs in it.
+
+**The baseline number changed twice, in both directions.** First measurement: 2103/10 failed, all
+ten attributable to uf1-15's RED. At handoff: **2113/2113 green**, because its GREEN closed them.
+Attribution was correct *and* re-measuring was still necessary — handing off the first number
+would have started TEA reproducing a red suite that no longer exists. The existing entry says a
+subagent's test count is a claim with a timestamp; this extends it to **your own** count.
+
+## `sm-setup` was not spawned at all, and the setup was stronger for it
+
+Session instructions bar the Agent tool unless the user asks. So context, session and ACs were
+hand-written. Given this file's rap sheet against `sm-setup` — stub contexts reported as
+validated, corrections written to the session but not the context, ACs edited while asserting
+they were not — the hand path cost one extra pass and removed an entire class of verification.
+State this as what happened on this run, not as project policy (per the entry on sidecar entries
+asserting unciteable project facts).
+
+**One thing the hand path must not skip:** the labelled-token count, re-run AFTER the assessment
+is written, not just after the files are created. Ran clean here (1/1/1/2) on both passes.

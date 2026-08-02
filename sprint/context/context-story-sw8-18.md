@@ -57,7 +57,7 @@ The defect the story exists to fix, committed by the story. Use the right-hand c
 | Filing says | Actually at | Drift |
 |---|---|---|
 | item 9 — sim.ts:2161-2165 prose, :2166 retirement | sim.ts:2193-2197, :2198 | +32 |
-| item 10 — tie-status.ts:130-131 "never a camera" | tie-status.ts:143-144 | +13 |
+| item 10 — tie-status.ts:130-131 "never a camera" | tie-status.ts:223 | +93 |
 | item 10 — render.ts:357-358 condensed form | render.ts:395-396 | +38 |
 | item 10 — tie-sights-status.test.ts:189 "only READER" | tie-sights-status.test.ts:192 | +3 |
 
@@ -86,21 +86,32 @@ the condensation ("Its ONLY reader in the whole tree is the star generator"); th
 discloses the WSMAIN writers is :238-240, which is items 1 and 8's defect. So the survival
 argument only becomes true once 1 and 8 are fixed. Sequencing matters.
 
-### 3. The condensation is at NINE sites, not the three filed
+### 3. The condensation is at TEN locations, not the three filed
 
 The same false "only reader" claim, found by grepping the claim rather than the filed list:
 
-- `src/core/gameRules.ts:232-234` — the tombstone itself
-- `src/core/tie-status.ts:13-14` ("never a viewer") and `:143-144` ("never a camera")
-- `src/shell/render.ts:395-396`
-- `tests/core/tie-sights-status.test.ts:192`
-- `tests/core/space-eye-is-cockpit.test.ts:9`
-- `tests/core/incoming-fire-reaction-window.test.ts:275-276`
-- `tests/core/tie-fire-visibility.test.ts:137`
-- `docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md:33-34`
+**Eight sites carry the sole-readership claim:**
 
-Fixing three of nine copies of one false sentence is not a shippable deliverable, so AC2
-covers all nine. SM ruled this rather than asking; if TEA disagrees, say so in the RED handoff.
+- `src/core/gameRules.ts:232` — the tombstone itself
+- `src/shell/render.ts:395`
+- `tests/core/tie-sights-status.test.ts:192`
+- `tests/core/space-eye-is-cockpit.test.ts:9` — also carries "never a viewer", so a double defect
+- `tests/core/incoming-fire-reaction-window.test.ts:275`
+- `tests/core/tie-fire-visibility.test.ts:137`
+- `tests/shell/render.space-camera.test.ts:13` — **capitalised "ONLY reader"**
+- `docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md:33`
+
+**Two more state one claim in two phrasings** (item 10's other half):
+
+- `src/core/tie-status.ts:14` ("never a viewer") and `:223` ("never a camera")
+
+Ten locations. Sweep case-INSENSITIVELY: the first pass here used a case-sensitive
+`only reader` and missed `render.space-camera.test.ts:13` entirely, which is the same
+class of miss the story exists to fix. `src/core/sim.ts:307` says "never a camera" and is
+CORRECT as written — leave it.
+
+Fixing three of ten copies of one false sentence is not a shippable deliverable, so AC2
+covers all ten. SM ruled this rather than asking; if TEA disagrees, say so in the RED handoff.
 
 Separately: the "never a viewer" wording at tie-status.ts:13-14 has to reconcile with
 `WSGLOB.MAC:465`, which literally reads `;VIEWER X POSITION`. The tombstone's own line
@@ -153,7 +164,7 @@ it catches; document what it does not, so no later reader treats the class as cl
 
 1. gameRules.ts:232-241 is corrected as ONE edit (filing items 1, 8, 10): the tombstone no longer claims WSSTAR.MAC:98 is ST.UX's sole reader -- WSMAIN.MAC:2245 (SMVBNR) and :2266 (SMVHIS) are live read-modify-write increments, and if :2273/:2279/:2285 are named at all they are disclosed as sitting inside the assembled-out `.REPT 0`; :238-239's `.SBTTL MOVE STARS IN SOME DIRECTION` / `SMV*` attribution is replaced by the measured fact that the space-wave writer `SMVSP1/SMVSP2/SMVNXT/S1MV:` (WSMAIN.MAC:2522-2530) sits under `.SBTTL MOVE THE PLAYER` (:2292) and `S1MV` is not an `SMV*` name; :240's `.REPT 0` start is corrected from :2273 to :2271 (`.ENDR` :2290 stands); :241's span is corrected from :2523-2531 to :2522-2530; and the enumeration gains the second MOVE-THE-PLAYER writer `S1MVHP` (`;MOVE DURING HYPER`, `JSR LSLD8`, WSMAIN.MAC:2531-2536).
 
-2. No site in plugins/star-wars asserts that WSSTAR.MAC:98 is ST.UX's only reader. All NINE known sites are corrected, not the three filed: gameRules.ts:232-234, tie-status.ts:13-14, tie-status.ts:143-144, render.ts:395-396, tie-sights-status.test.ts:192, space-eye-is-cockpit.test.ts:9, incoming-fire-reaction-window.test.ts:275-276, tie-fire-visibility.test.ts:137, and docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md:33-34. A repo-wide grep for the claim returns no surviving instance. Any site saying ST.UX is 'never a viewer' reconciles that wording with WSGLOB.MAC:465 `;VIEWER X POSITION`.
+2. No site in plugins/star-wars asserts that WSSTAR.MAC:98 is ST.UX's only reader. All TEN known locations are corrected, not the three filed -- EIGHT carrying the sole-readership claim: gameRules.ts:232, render.ts:395, tie-sights-status.test.ts:192, space-eye-is-cockpit.test.ts:9, incoming-fire-reaction-window.test.ts:275, tie-fire-visibility.test.ts:137, render.space-camera.test.ts:13 (capitalised 'ONLY reader', missed by a case-sensitive sweep), and docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md:33; plus the TWO tie-status.ts sites that state one claim in two phrasings, :14 ('never a viewer') and :223 ('never a camera'). A case-INSENSITIVE repo-wide grep for the claim returns no surviving instance. Any site saying ST.UX is 'never a viewer' reconciles that wording with WSGLOB.MAC:465 `;VIEWER X POSITION` -- reuse gameRules.ts:237's existing formulation ('names the QUANTITY, not a consumer') rather than inventing a second.
 
 3. The remaining prose defects are fixed at their CURRENT lines, re-verified before editing: sim.ts:2193-2197's five-line present-tense re-export paragraph is DELETED rather than appended to, keeping :2198's retirement note; incoming-fire-reaction-window.test.ts:40 no longer refers in present tense to the deleted bounded-eye-combat.test.ts, :45-46 no longer offers 'seat the pilot at spaceEye' as a live option, and :47-48 no longer describes the shipped design as a fenced-off failure mode; space-eye-is-cockpit.test.ts:14-15's `[0,0,0]` is corrected to `[0,768,0]` so it agrees with its own advance() doc at :70-77; render.ts:61 and :63's duplicate `../core/gameRules` import is merged; gameRules.ts:19-20's 'Neither can read sim.ts shipPoint' is reconciled with render.ts:62, which already imports sim.ts.
 
@@ -197,7 +208,7 @@ record — not necessarily to fix in this story. Say which you did in the handof
 ## Scope
 
 **In scope:** the twelve items (eleven filed + the sw8-17 staleness), re-anchored to their
-current lines; the condensation at all nine sites; the comment-citation guard for the three
+current lines; the condensation at all ten locations; the comment-citation guard for the three
 forms above, mutation-proven; and the guard's honest documented limits.
 
 **Out of scope:** running the guard cabinet-wide over the other six games and the lobby
