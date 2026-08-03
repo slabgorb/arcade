@@ -36,25 +36,26 @@ const baiterSrc = join(repoRoot, 'src', 'core', 'baiter.ts')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Claims plumbing: the loader is `./helpers/claims.js` (jt9-2). Only the
-// jt3-5-specific id filter and its `basename` stayed local.
+// jt3-5-specific id filter stayed local.
 // ─────────────────────────────────────────────────────────────────────────────
-/** Still local: `jt35Covers` below needs it, and the shared helper keeps its own private copy. */
-const basename = (p: string): string => p.split('/').pop() ?? p
-
 /**
  * As claimCovers, but only counts a jt3-5 (JT35-*) claim. The crux lines are
  * ALREADY pinned by jt1-8's qualified citations (JT8-015 :2150, JT8-094 :2135), so a
  * bare claimCovers would go vacuously green; these two pins must force jt3-5 to cite
  * the collapse and the ******** provenance with ITS OWN claim.
+ *
+ * Narrows, then DELEGATES the range match — the same shape as
+ * `claimCoversWithPrefix` in transporter-source.test.ts, so the coverage rule
+ * itself lives only in `helpers/claims.ts`. The filter is a strict `JT35-<digits>`
+ * regex rather than a `startsWith`, deliberately: `startsWith('JT35')` would also
+ * admit a hypothetical `JT350-*` namespace.
  */
-function jt35Covers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) =>
-      /^JT35-\d+$/.test(c.id ?? '') &&
-      c.source &&
-      basename(c.source.file) === file &&
-      c.source.line >= start &&
-      c.source.line <= end,
+function jt35Covers(claims: readonly Claim[], file: string, start: number, end: number): boolean {
+  return claimCovers(
+    claims.filter((c) => /^JT35-\d+$/.test(c.id ?? '')),
+    file,
+    start,
+    end,
   )
 }
 
