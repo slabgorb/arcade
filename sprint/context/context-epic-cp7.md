@@ -1,0 +1,30 @@
+# Epic cp7 Context
+
+## Title
+Centipede playtest followups — four shell defects on a byte-correct core, one unwired DIP, and the pause the cabinet never had
+
+## Overview
+PLAYTEST FOLLOWUPS, MEASURED 2026-08-03. Five defects reported from a live play of centipede at v0.0.6 (playable and audible, cp1-cp6 shipped), plus one house feature the cabinet is missing. Every finding below was traced end-to-end against the vendored ROM before this epic was filed, and the measurements are recorded per story so no Dev re-derives them.
+
+THE HEADLINE, AND THE REASON THIS IS ONE EPIC RATHER THAN FIVE LOOSE BUGS: FOUR OF THE FIVE DEFECTS SIT ON TOP OF A BYTE-CORRECT CORE. The simulation constants the playtester appeared to be complaining about are each cited, byte-verified and RIGHT — CENT_ENTER_V = 0xF8 (core/centipede.ts:64, cited CENTI4.MAC:489), SPIDER_DV_FAST = 2 / SLOW = 1 (core/spider.ts:47-48, cited CENTI4.MAC:255 and :263), the flea start/stop edges (core/sim.ts:426-429), the PTS picture codes 0xB6/0xB7/0xB8 (core/spider.ts:116-118, cited CENTI4.MAC:2236-2249). The bugs are in the SHELL: a render that paints where the ROM says off-screen, a formatter that pads where the ROM suppresses, an atlas bake that drops the hardware flip bits, and a baked sample shorter than the event it scores. THE STANDING INSTRUCTION FOR EVERY STORY HERE IS THEREFORE: do not "fix" a core constant to make a symptom go away. Each story names the constants that are proven correct and off-limits, and a change to one of them is a review rejection, not a judgement call. This is the fifth epic on this game and the citation gate is live — a laundered constant reddens the audit, but only after it has already shipped a wrong number into the dossier's credibility.
+
+THE FIFTH DEFECT INVERTS THAT PATTERN AND IS THE MOST INTERESTING ONE. The spider is genuinely too fast, and the velocity byte is not why. Both cheap hypotheses were refuted at filing: the decimal-versus-hex trap that has bitten this repo before does not apply (LDY I,2 and LDY I,1 are identical in both radixes), and there is no missing frame gate (BUGMV's only FRAME test at CENTI4.MAC:303-305 gates the walking FACE, and its branch target falls through to the unconditional move at :342). What is actually wrong is that the OPTNS difficulty DIP is not modelled: SpiderOptions.easy (core/spider.ts:151-157) is declared and NEVER PASSED BY ANY CALLER, so the clone permanently runs the HARD branch. That is a live instance of the dead-feature signature this project has already recorded twice — a correct, unit-tested pure function whose input field every producer hard-codes, so only one branch runs in play. The symptom the player felt is real; the cause is an unwired option, not a wrong number, and cp7-5 exists to wire it rather than to slow anything down.
+
+TWO FINDINGS ARE THE CODE CONTRADICTING OUR OWN DOSSIER, WHICH IS THE CHEAPEST CLASS OF BUG IN THIS REPO AND THE MOST EMBARRASSING. (1) The score formatter zero-PADS to six digits (shell/render.ts:129-133) while claim CL-13 (docs/rom-study/claims/08-render-color.json:137) already states the ROM's rule correctly — SEC zero-suppression on the first two BCD bytes, CLC on the last so its two digits always draw (CENTI4.MAC:2638-2645, DIGIT2/DIGITZ at CENIR4.MAC:227-247). The cabinet shows four blanks and 00; we show 000000. The claim was right and the code never matched it. (2) The flea's repeating sound was PREDICTED IN WRITING by cp6-1's own fixture: sound.fixture.json's cp62Decision for fleaLoop says to bake a descending sweep across the ANTV range or drive playbackRate from the flea's position, and cp6-2 baked a fixed 0.6s sweep against a descent that lasts about 2.03s. A recorded decision that was not acted on is indistinguishable from an unrecorded one once the samples are live.
+
+WHAT THE CITATION GATE WILL AND WILL NOT CATCH HERE, BECAUSE IT MATTERS FOR HOW THESE STORIES ARE TESTED. centipede's gate byte-verifies every claim in docs/rom-study/claims/*.json against the vendored source and sweeps the DOSSIER_FILES prose list (generalised by cp6-1). It cannot see a render that draws the right sprite in the wrong place, a formatter that disagrees with the claim describing it, an atlas that bakes the right pixels in the wrong handedness, or an option field nobody passes. Every one of those is this epic. The tests these stories need are BEHAVIOURAL and shell-side, and where a story's subject is an orientation or a length, the assertion must pin the property and not a proxy for it — cp6-4 spent two review rounds on exactly that distinction and both rejections were about CLAIMS, not code.
+
+SCOPE FENCE. src/core/pictures.ts is byte-gated by SHA-256 (tests/pictures.test.ts) and stays untouched by every story here; all four render-side fixes are shell-side, the policy atlas.ts:9-10 already states. cp7-1's investigation surfaced an ADJACENT and UNPROVEN risk that is explicitly NOT in this epic's scope and is filed as a note rather than fixed: the same bit-6/7 confusion means pictures.ts's offset formula disagrees with the hardware for any code with bit 6 set (0xFF decodes to 0x7F0 by the formula, 0x5F0 on hardware), and the renderer sidesteps it for explosions by mapping through segmentStamp(pic & 0x0F) rather than the formula — so the explosion pool MAY be drawing wrong sprites. Nobody has looked. Whoever takes cp7-1 will be closest to it and should file what they find, not fix it inline.
+
+THE SIXTH STORY IS NOT A PLAYTEST DEFECT. cp7-6 adopts the shared pause feature, which centipede has never had. It carries NO fidelity claim — a 1980 coin-op has no player pause, and grep over the whole vendored tree returns zero hits for the word — so it is a house cabinet feature that five of the seven games already have and centipede and joust do not.
+
+## Metadata
+- **Epic ID:** cp7
+- **Repo:** arcade
+
+## Background
+_Cross-story constraints and guardrails to be filled in as the epic
+progresses._
+
+---
+_Generated by `pf context create epic cp7` from the sprint YAML._
