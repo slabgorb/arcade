@@ -69,7 +69,7 @@ const tie = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
  *  sw7-17: this used to put a player BOLT on the in-window port. It cannot any more, and
  *  not merely because the gun stopped spawning bolts — inside the $800 window the port
  *  sits 43.8° below the pilot, past the 30° the FOV allows, so there is NO yoke position
- *  that points at it (sim.ts:954-965). The ROM's own answer is that the shot is EARNED
+ *  that points at it (sim.ts:978-989). The ROM's own answer is that the shot is EARNED
  *  EARLY, out where the port is still reachable, and RESOLVES LATE at the wall: the beam
  *  sets the `portTorpedoArmed` latch (PT.LZF) and the torpedo cannot miss. So the armed
  *  latch IS the honest stand-in for the old bolt-on-the-port, and it is a state a real run

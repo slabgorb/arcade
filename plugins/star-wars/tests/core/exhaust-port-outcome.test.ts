@@ -8,7 +8,7 @@
 // distinct "you missed" indication; the port slipping past reads as a generic
 // crash. The climactic beat of the game currently has no payoff.
 //
-// Today (`stepTrench`, src/core/sim.ts:503-544) the port-hit branch emits only
+// Today (`stepTrench`, src/core/sim.ts:524-565) the port-hit branch emits only
 // `force-bonus` (clean runs), `speech`, and `level-clear`, then `clearRun` warps
 // to space — there is NO dedicated "Death Star destroyed / explosion" cue. The
 // only miss path is the port reaching the cockpit → `terrain-crash` + a fresh

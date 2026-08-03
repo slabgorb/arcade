@@ -100,7 +100,7 @@ function hasSights(pos: Vec3, orient: Mat4 = IDENTITY): boolean {
  *
  * This is how a fighter legitimately gets further from the pilot than either axis allows
  * on its own: the play cube pins each axis at ±`PLAY_CUBE_MAX` independently
- * (`state.ts:596`, clamped per-axis at `sim.ts:2093-2095`), so a corner is √3 ≈ 1.7× as far
+ * (`state.ts:596`, clamped per-axis at `sim.ts:2117-2119`), so a corner is √3 ≈ 1.7× as far
  * as a face. Every position built here is asserted legal below before it is used.
  */
 function diagonalAt(lat: number): Vec3 {

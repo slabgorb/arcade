@@ -146,7 +146,7 @@ const sights = (pos: Vec3, aspect: number): number => {
  * so nothing but the player's own trigger can change the lists.
  *
  * `firePrev: false` and `fireCooldown: 0` are load-bearing — the trigger is EDGE-triggered
- * (`fireEdge = input.fire && !state.firePrev`, sim.ts:280) and gated on the cooldown, so
+ * (`fireEdge = input.fire && !state.firePrev`, sim.ts:296) and gated on the cooldown, so
  * without both the beam never arms and every negative below passes for the wrong reason.
  */
 const spaceRun = (over: Partial<GameState> = {}): GameState => ({
@@ -884,11 +884,27 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
     // hands the frustum a number nobody measured.
     //
     // AND IT MUST REACH TWO CALL SITES, which is what the last block below is for. `stepGame`
-    // shadows the viewport onto the state at `sim.ts:179`, and the preamble above that line
-    // says "this one line reaches every exit path" — but `beamDir` is built at `sim.ts:333`
-    // from `input.aspect` RAW, not from the shadowed `state.aspect`. Today they agree; a guard
-    // written at :179 alone would make them disagree, and the beam would go on inverting the
-    // projection with the very viewport the gate had just rejected.
+    // shadows the viewport onto the state at `sim.ts:193-195`, and the preamble above that line
+    // says "this one line reaches every exit path" — but `beamDir` is built at `sim.ts:354`
+    // from `input.aspect` RAW, not from the shadowed `state.aspect` — that is how it stood when
+    // this test was written. A guard added at the shadow ALONE would have made the two disagree,
+    // and the beam would have gone on inverting the projection with the very viewport the gate
+    // had just rejected. GREEN moved that line onto `state.aspect`, so the two agree again for a
+    // reason rather than by luck.
+    //
+    // VERBATIM MUTANTS this kills, both line-preserving, both in `sim.ts`:
+    //
+    //   the sanitiser itself —
+    //     const aspect = rawAspect
+    //   MEASURED at GREEN: reddens exactly 1 test — this one.
+    //
+    //   the second call site put back the way it was, i.e. a state-only fix —
+    //     const beamDir: Vec3 = aimDirection(aimX, aimY, input.aspect)
+    //   MEASURED at GREEN: reddens 5, of which ONE is behavioural — this test. The other four
+    //   are the citation guards, and for a different reason from the line-count artefact noted
+    //   in group C: this mutant changes the CONTENT of a line `tie-sights-status.test.ts` quotes
+    //   verbatim, so the quote stops matching its own citation. Two independent ways for a
+    //   mutant's count to overstate its blast radius in this repo, and neither is the code.
     const deadAhead: Vec3 = [0, 0, -3000]
     expect(
       tieDied(stepGame(spaceRun({ aspect: 1, enemies: [tieAt(deadAhead)] }), restTrigger(1), DT)),
@@ -930,7 +946,7 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
 
     // THE SECOND CALL SITE. Seat a fighter on the ray the yoke describes AT THE FALLBACK
     // ASPECT, then send the degenerate one. A fix applied only where `state.aspect` is set
-    // leaves `sim.ts:333` building `aimDirection(aimX, aimY, 0)`, whose x term is multiplied to
+    // leaves `sim.ts:354` building `aimDirection(aimX, aimY, 0)`, whose x term is multiplied to
     // zero: the beam flies straight ahead while the crosshair is deflected, and this fighter
     // lives through a shot that is on it.
     const YOKE = 0.5
@@ -954,7 +970,7 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
       tieDied(
         stepGame(spaceRun({ enemies: [tieAt(onDeflectedRay)] }), { aimX: YOKE, aimY: 0, fire: true, aspect: 0 }, DT),
       ),
-      'aspect zero: the BEAM must fall back too — a state-only guard leaves sim.ts:333 raw',
+      'aspect zero: the BEAM must fall back too — a state-only guard leaves sim.ts:354 raw',
     ).toBe(true)
   })
 
@@ -975,6 +991,18 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
     // Pin the contract at the seam that made the claim: `siteOffset` returns null when it
     // cannot answer, which is what its `| null` already promises and what makes its docstring
     // true again.
+    //
+    // VERBATIM MUTANT this kills — `siteOffset`'s guard line in `gameRules.ts`, replaced by a
+    // comment so the line count holds:
+    //   // MUTANT: the whole non-finite guard removed (line-preserving)
+    // MEASURED at GREEN: reddens exactly 1 test — this one.
+    //
+    // (The FIRST attempt at this mutant was equivalent and scored 0, which is the lesson worth
+    // keeping. Neutralising only the first conjunct — `if (false && !Number.isFinite(dx) ||
+    // !Number.isFinite(dy))` — reads as a disabled guard and is not one: `&&` binds tighter
+    // than `||`, so the whole thing collapses to `!Number.isFinite(dy)` and the guard still
+    // fires on every input here, dy being NaN in all three. A survivor is a question about the
+    // MUTANT before it is a question about the tests.)
     for (const [label, aimX, aimY] of [
       ['+Infinity on x', Infinity, 0],
       ['-Infinity on x', -Infinity, 0],

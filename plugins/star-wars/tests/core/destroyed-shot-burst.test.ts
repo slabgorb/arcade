@@ -5,7 +5,7 @@
 //
 // Today a fireball the player shoots down is a SILENT-DELETE at the *visual* level:
 // sim.ts removes it from `enemyShots`, scores FIREBALL_SCORE and emits a positioned
-// `fireball-destroyed` event (sim.ts:509) — but nothing lingers on screen. The
+// `fireball-destroyed` event (sim.ts:530) — but nothing lingers on screen. The
 // playtest report (epic sw8, observation #8, "Fireball leaves no lingering image")
 // wants a brief sparkle where the fireball dies, exactly as the ROM's alien-gun-shot
 // sparkle (GNB/GNT, WSVROM.MAC) reads on the cabinet.

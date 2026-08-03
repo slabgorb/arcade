@@ -16,7 +16,7 @@
 //   globe  16 / 20.508 = 0.780 s
 //
 // Ours today (state.ts:263) is a single flat `TIE_DEATH_SECONDS = 0.7` — an
-// avowed "eyeball tunable" — used for all three pieces (sim.ts:318 cull,
+// avowed "eyeball tunable" — used for all three pieces (sim.ts:334 cull,
 // render.ts:390 spread). So our wings vanish ~40% too early and, worse, never
 // outlive the globe: the whole "wings persist, globe pops first" tell is gone.
 //

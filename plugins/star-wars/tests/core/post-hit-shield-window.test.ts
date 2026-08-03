@@ -4,7 +4,7 @@
 // per gauge-redraw cycle: a hit that lands while the shield gauge is still
 // animating the previous loss is DROPPED, not stacked (audit S-016: "no post-hit
 // invulnerability window"). Today every colliding TIE/fireball does `damage++`
-// and the sim subtracts the sum (sim.ts:431-449), so two hits in one frame cost
+// and the sim subtracts the sum (sim.ts:452-470), so two hits in one frame cost
 // two shields.
 //
 // PRIMARY SOURCE — Warp Speed (.RADIX 16):

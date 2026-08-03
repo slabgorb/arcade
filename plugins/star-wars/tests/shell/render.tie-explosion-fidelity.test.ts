@@ -5,7 +5,7 @@
 //
 // X-002 (lifetimes). The two wings (0x18 = 24 frames = 1.170 s) must OUTLIVE the
 //   centre globe (0x10 = 16 frames = 0.780 s). Today all three share one flat
-//   TIE_DEATH_SECONDS = 0.7 s (sim.ts:318 cull, render.ts:389-397), so the globe
+//   TIE_DEATH_SECONDS = 0.7 s (sim.ts:334 cull, render.ts:389-397), so the globe
 //   never pops first and the whole cue is gone by 0.7 s.
 //
 // X-003 (colour). Each piece colours itself from its own countdown timer

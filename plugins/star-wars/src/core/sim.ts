@@ -162,21 +162,37 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // `TMPOCT`, off one `LZ.CX/LZ.CY` cursor sample, twelve lines apart in the same pass
   // (WSMAIN.MAC:3881-3930) — they cannot disagree there. Reading `stateIn`'s aim would
   // make the sights bit one frame stale while the gun below fires down `input`: measured
-  // at depth 6000 on 16:9, a single-frame yoke move of 0.1 separates the two rays by 613 u
-  // against a 500 u band, so the laser kills fighters the bit says are not there. Dropping
-  // the aspect does the same thing statically (539 u at yoke 0.2).
+  // at depth 6000 on 16:9, a single-frame yoke move of 0.1 separates the two rays by 613 u,
+  // against a warning band that reaches 3 · TIE_HIT_RADIUS = 750 u on the axis — so the
+  // laser kills fighters the bit says are not there. Dropping the aspect does the same thing
+  // statically (539 u at yoke 0.2).
   //
-  // That failure mode is about AIM FRESHNESS, and it is the only one this paragraph
-  // describes. A SECOND, unrelated way for the gun and the bit to disagree is now shipped
-  // ON PURPOSE: since sw8-19, C_PS is gated on C_PV, so an off-glass fighter is not
-  // sighted — while `beamHit` below still resolves it, because the cabinet's own view
-  // gate sits on the laser-hit block too (WSMAIN.MAC:3898-3918, under the same four
-  // `RTS1` exits) and porting it would change what the player can shoot. So "the laser
-  // kills a fighter the bit says is not there" is a BUG when the cause is a stale ray and
-  // the DESIGNED behaviour when the cause is visibility. Closing the second one is filed
-  // separately, and it is not a change to `beamHit` — the helper is shared with the trench
-  // and ground phases, which have no C_PV notion at all.
-  const state: GameState = { ...stateIn, aimX: input.aimX, aimY: input.aimY, aspect: input.aspect ?? 1 }
+  // AIM FRESHNESS IS NOW THE ONLY DIVERGENCE THIS PREAMBLE DESCRIBES. There used to be a
+  // second one, and this paragraph used to call it deliberate: C_PS was gated on C_PV while
+  // the gun was not, so the player could kill an off-glass fighter the sights bit said was
+  // not there. sw8-27 closed it at BOTH space-arm call sites — the fighters and the
+  // fireballs — and the gun no longer goes through `beamHit` at all. It resolves its own
+  // hits through `spaceSiteHit` below, which applies `inPlayerView` and then the cabinet's
+  // own box-and-octagon. The cabinet gates both blocks the same way (WSMAIN.MAC:3898-3918
+  // under `S2VW`'s four `RTS1` exits; WSGUNS.MAC:906-948 under `VWGUN`'s own four), so what
+  // was described here as a shipped design choice was a fidelity gap, and it is closed.
+  //
+  // `beamHit` is still view-blind, still deliberately, and still shared with the surface and
+  // the trench — which have no C_PV notion in the cabinet either. That is AC3, and it is why
+  // closing this did not touch the helper.
+  //
+  // THE VIEWPORT IS SANITISED HERE, at the boundary, rather than inside the frustum math.
+  // `Input.aspect` is whatever the shell measured, and `?? 1` only catches the MISSING case:
+  // a zero-width canvas yields exactly 0, which is not nullish, and 0 collapses
+  // `inPlayerView`'s lateral bound so that NOTHING is visible — including a fighter dead
+  // ahead. Since sw8-27 that gates the gun too, so the player's laser would silently hit
+  // nothing for the whole frame. A non-finite aspect fails the other way, unbounding the
+  // lateral test and re-admitting fighters that were never drawn. Falling back to SQUARE is
+  // what the core already does for a viewport the shell has not supplied; this extends it to
+  // one the shell supplied and that cannot be used.
+  const rawAspect = input.aspect ?? 1
+  const aspect = Number.isFinite(rawAspect) && rawAspect > 0 ? rawAspect : 1
+  const state: GameState = { ...stateIn, aimX: input.aimX, aimY: input.aimY, aspect }
   const t = state.t + dt
   const aimX = input.aimX
   const aimY = input.aimY
@@ -330,7 +346,12 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // gun sat off the cockpit, incoming fire homed at a point the pilot was not looking from, so it
   // left his reachable arc before it landed and could not be shot down.
   const beamOrigin: Vec3 = shipPoint(state)
-  const beamDir: Vec3 = aimDirection(aimX, aimY, input.aspect)
+  // `state.aspect`, NOT `input.aspect`. The preamble's claim that shadowing the viewport onto
+  // the state "reaches every exit path" was never true of this line, and it stopped being
+  // harmless the moment that shadow started sanitising: reading the raw input here would build
+  // the beam from a viewport `inPlayerView` has already rejected, so the crosshair and the
+  // laser would point at different things on exactly the frames the guard exists to handle.
+  const beamDir: Vec3 = aimDirection(aimX, aimY, state.aspect)
 
   // Enemy fire advances & expires each step. SPACE-phase TIE fireballs HOME on the
   // cockpit (ROM sub_A875, story sw4-2 / spec §B): their position decays 7/8 per
@@ -555,8 +576,9 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   //      CL.ADS/CL.AP) sits below `S2VW`'s four exits to `RTS1` — :3825-3826 near, :3827-3828
   //      far, :3834-3836 and :3840-3842 the ratio tests — with no label between :3846 and
   //      :3898 for anything to branch into. The FIREBALL hit block (WSGUNS.MAC:906-948,
-  //      writing CL.GDS/CL.GP) sits below `VWGUN`'s own four — :885, :887, :896, :903 — and
-  //      its `;GUN SHOT IS VISIBLE` marker at :904. So the cabinet cannot resolve a hit on
+  //      writing CL.GDS/CL.GP) sits below `VWGUN`'s own four — :884-885, :886-887, :895-896
+  //      and :902-903, each a compare-and-branch PAIR the way `S2VW`'s are — and below its
+  //      `;GUN SHOT IS VISIBLE` marker at :904. So the cabinet cannot resolve a hit on
   //      EITHER kind of object it did not draw, and both loops below are gated.
   //   2. THE REGION IS A BOX INTERSECTED WITH AN OCTAGON, not a disc. `|dx| <= TMPSIZ` and
   //      `|dy| <= TMPSIZ` (:3898-3903 — a BARE TMPSIZ, note, not 1.5·), then
@@ -566,9 +588,11 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // NEITHER belongs in `beamHit`. That helper is shared with the surface and the trench, and
   // in the cabinet those passes have neither property: `GRLZCL` runs unconditionally straight
   // after `BJGDRW` (WSGRND.MAC:978-979, no branch skips one without the other), and the ground
-  // objects use a different collision shape entirely — an unrotated width/height box with a
-  // `+10.` site fudge and no octagon term (WSGRND.MAC:1076-1132). Measured: `TMPOCT` appears
-  // in exactly two ROM modules, WSMAIN.MAC and WSGUNS.MAC, which are these two loops.
+  // objects use a different collision shape entirely — an unrotated box measured against the
+  // object's own collision width and height, with no octagon term (WSGRND.MAC:1076-1132).
+  // Measured: `TMPOCT` appears in exactly two ROM modules, WSMAIN.MAC and WSGUNS.MAC, which
+  // are these two loops. (The `+10.` cursor fudge used to be listed here as part of what makes
+  // the ground different. It is not — all three passes add it; see `gameRules.ts`.)
   //
   // The RANGE still ranks on the same quantity CL.ADS/CL.GDS do — `M.XT`, the depth along the
   // beam, which is `siteOffset`'s `along`.

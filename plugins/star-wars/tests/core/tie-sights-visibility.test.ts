@@ -300,26 +300,29 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // the gate is not being smuggled into the ray: at depth 400 the pyramid's vertical
     // bound is 230.9, so vert 240 is off-screen while sitting 240 u from the ray — inside
     // TIE_HIT_RADIUS. A view clamp added to `beamHit` would silently change what the player
-    // can shoot in the phases that still call it: the surface turrets (`sim.ts:1137`) and
-    // the trench's exhaust port and obstacles (`:1366`, `:1382`). The cabinet gates none of
+    // can shoot in the phases that still call it: the surface turrets (`sim.ts:1161`) and
+    // the trench's exhaust port and obstacles (`:1390`, `:1406`). The cabinet gates none of
     // those — `GRLZCL` runs unconditionally straight after `BJGDRW` (WSGRND.MAC:978-979).
     //
     // (CITATION HISTORY, and it is worth keeping because both of this story's attempts at it
     // were wrong in instructive ways. It began as `sim.ts:535`, went stale by +11 when
     // sw8-19's finish chore inserted a comment block at `sim.ts:168`, and sw8-27 re-anchored
     // it to `:546` — a number measured against the PRE-story file, which the story's own
-    // +43-line insertion then invalidated in the same commit. `:546` now lands on
-    // `const darthScored = new Set<number>()`. The mechanical +9 shift would have been right
-    // where the hand-measured number was not, which is the lesson: an AC that hard-codes a
-    // line into a story that GROWS the file is a booby trap, because the AC is written before
-    // the insertion exists. Neither number was ever reported by the comment-citation guard —
-    // with no verbatim quote adjacent it range-checks only, and every one of 535, 544 and 546
-    // was a valid line — so this citation sat in neither the guard's 29 nor sw8-24's sweep.
-    // Anchored on SYMBOLS above rather than on a third line number.)
+    // +43-line insertion then invalidated in the same commit, landing it on the Darth-scoring
+    // set. The mechanical +9 shift would have been right where the hand-measured number was
+    // not, which is the lesson: an AC that hard-codes a line into a story that GROWS the file
+    // is a booby trap, because the AC is written before the insertion exists. Neither number
+    // was ever reported by the comment-citation guard — with no verbatim quote adjacent it
+    // range-checks only, and every one of 535, 544 and 546 was a valid line — so this citation
+    // sat in neither the guard's 29 nor sw8-24's sweep.
+    //
+    // The three numbers in this paragraph are HISTORY and must not be re-anchored: they say
+    // where the citation stood in earlier trees, not where anything is now. The live anchors
+    // are the SYMBOLS above and the two below.)
     //
     // WHAT THIS ASSERTION PINS, RESTATED FOR THE POST-sw8-27 TREE. It is not retired, and
     // sw8-27's AC3 is why: the space arm resolves its own hits through `spaceSiteHit`
-    // (`sim.ts:589` for fighters, `:597` for fireballs) and no longer calls `beamHit` at all,
+    // (`sim.ts:613` for fighters, `:621` for fireballs) and no longer calls `beamHit` at all,
     // so this direct `beamHit` probe is now the ONLY thing standing between the shared helper
     // and a well-meant "just clamp it in one place" refactor. It stays green precisely because
     // it calls the helper directly.

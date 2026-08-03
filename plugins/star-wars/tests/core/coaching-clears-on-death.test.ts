@@ -8,7 +8,7 @@
 // by reading:
 //
 //   * Production signals death with `gameOver: true` while `mode` stays `'playing'`
-//     (`sim.ts:546`, `:937`, `:1185`, `:1344`). NOTHING in `src/` ever assigns
+//     (`sim.ts:567`, `:937`, `:1185`, `:1344`). NOTHING in `src/` ever assigns
 //     `mode: 'gameover'` — only test fixtures do.
 //   * `sim.ts:172` (`if (state.mode === 'gameover' || state.gameOver)`) returns EARLY,
 //     without calling `finalizeFrame` — the only place `coaching` is re-derived.

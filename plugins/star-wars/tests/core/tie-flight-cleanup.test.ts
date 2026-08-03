@@ -19,7 +19,7 @@
 //   T4c `toCockpit(pos) = normalize(sub(COCKPIT, pos))` is duplicated: a named function
 //        in sim.ts and an INLINE copy in tie-status.ts (computeStatus). Extract ONE shared
 //        core helper. ⚠ SPACE-ONLY semantics: the cockpit IS the world origin here;
-//        retargeting it breaks space (sim.ts:1931-1945) — the C_AS guard below pins that.
+//        retargeting it breaks space (sim.ts:1955-1969) — the C_AS guard below pins that.
 //
 // These are the RED drivers (they FAIL against today's tree and pass once Dev applies
 // the cleanup) plus preservation guards (green both before and after — they prove the
@@ -145,8 +145,8 @@ describe('sw7-23 T4c — toCockpit is a single shared helper, not two copies', (
     // nose axis (WSCPU.MAC:607-618 — a sign, a range and a perpendicular radius), so the
     // normalized DIRECTION `toCockpit` returns is no longer a term in the expression and
     // this file imports the shared `COCKPIT` constant instead. `toCockpit` itself is
-    // untouched and does not become dead: `aimOrient` (sim.ts:2063) still calls it. That is
-    // its one live caller in `src/` — `spawnTie` returns `lookRotation(FACING_PLAYER)` and sim.ts:2196
+    // untouched and does not become dead: `aimOrient` (sim.ts:2087) still calls it. That is
+    // its one live caller in `src/` — `spawnTie` returns `lookRotation(FACING_PLAYER)` and sim.ts:2220
     // records that it deliberately does NOT use `lookRotation(toCockpit(pos))`.
     //
     // T4c's actual invariant is unchanged and still pinned here: whatever tie-status.ts

@@ -27,7 +27,7 @@ import { STAR_COUNT } from '../../src/core/starfield'
 const DT = 1 / 60
 
 /** Step the real sim `steps` render frames on neutral input — the field slides every
- *  frame regardless of phase (sim.ts:632, finalizeFrame). `stepStarfield` maps in place
+ *  frame regardless of phase (sim.ts:656, finalizeFrame). `stepStarfield` maps in place
  *  by index, so star i in the result is the same star i that started. */
 function advance(s0: GameState, steps: number): GameState {
   let s = s0

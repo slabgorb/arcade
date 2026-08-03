@@ -118,8 +118,14 @@ function clamp(v: number, lo: number, hi: number): number {
 //
 //   space aliens  WSMAIN.MAC:3898-3908   |dx| <= T && |dy| <= T && |dx| + |dy| <= 1.5·T
 //   fireballs     WSGUNS.MAC:926-941     the same three terms
-//   ground/towers WSGRND.MAC:1076-1132   a DIFFERENT test — an unrotated width/height box
-//                                        with a `+10.` site fudge and NO octagon term at all
+//   ground/towers WSGRND.MAC:1076-1132   a DIFFERENT test — an UNROTATED box measured against
+//                                        the object's own collision width and height, and NO
+//                                        octagon term at all
+//
+// (The `+10.` site fudge is NOT one of the differences, though this comment used to offer it as
+// one. Every pass adds it, because it is the cursor's own size being added to the object's
+// projected size: WSMAIN.MAC:3881 `ADDD #10. ;ADDIN CURSOR SIZE`, WSGUNS.MAC:918 the same
+// instruction commented `;SIZE OF CURSOR`, and WSGRND.MAC:1078 `;SITE RADIUS FOR FUDGE`.)
 //
 // (Note the box threshold is a bare TMPSIZ; only the octagon is 1.5·. An older version of this
 // comment cited `WSGUNS.MAC:938-948` as how "each object" records being under the site, which
@@ -197,7 +203,17 @@ export const SPACE_HIT_OCTAGON = 1.5
  * This also removes a degeneracy rather than guarding one. Building a basis as
  * `normalize(cross(dir, worldUp))` blows up when the ray is vertical; this cannot, because
  * `aimDirection` puts a literal `-1` in z before normalising, so `dir[2] < 0` for every ray it can
- * return and the ray meets every depth plane in front of the eye exactly once.
+ * return from a FINITE yoke, and the ray meets every depth plane in front of the eye exactly once.
+ *
+ * That qualifier is load-bearing and this docstring used to omit it. `aimDirection(Infinity, 0, 1)`
+ * returns `[NaN, 0, -0]`, whose z is neither negative nor usable as a divisor — so the invariant
+ * holds over the yoke's real domain and not over its type. The final guard below is what makes the
+ * function honour its own `| null` instead of relying on it: every comparison against NaN is false,
+ * so a NaN offset would clear a caller's `> radius` rejection and be reported as a HIT. `beamHit`
+ * accepts with `<= radius` and therefore fails closed on the same input; the two must not disagree
+ * about which way they fail. (Nothing observable depended on this before sw8-27 — the space arm's
+ * `range < bestRange` also discards NaN — but that mask lives in a different function, and a single
+ * target, an early return or any rewrite of that loop would remove it.)
  */
 export function siteOffset(
   eye: Vec3,
@@ -206,14 +222,14 @@ export function siteOffset(
 ): { along: number; dx: number; dy: number } | null {
   const along = dot(sub(pos, eye), dir)
   if (along <= 0) return null // behind the gun — never under the site
-  // Where the ray crosses this object's depth plane. `dir[2]` is strictly negative (see above),
-  // so this never divides by zero and `t` is always positive for an object in front.
+  // Where the ray crosses this object's depth plane. `dir[2]` is strictly negative for any ray
+  // `aimDirection` builds from a finite yoke, so this divides by zero only in the degenerate case
+  // the guard below rejects, and `t` is otherwise positive for an object in front.
   const t = (eye[2] - pos[2]) / -dir[2]
-  return {
-    along,
-    dx: Math.abs(pos[0] - (eye[0] + dir[0] * t)),
-    dy: Math.abs(pos[1] - (eye[1] + dir[1] * t)),
-  }
+  const dx = Math.abs(pos[0] - (eye[0] + dir[0] * t))
+  const dy = Math.abs(pos[1] - (eye[1] + dir[1] * t))
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) return null // no answer, rather than a NaN one
+  return { along, dx, dy }
 }
 
 // --- Difficulty ramp across waves -------------------------------------------

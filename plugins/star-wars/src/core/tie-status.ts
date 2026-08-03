@@ -292,11 +292,20 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // (WSCPU.MAC:1639,1641,1643,1646 → tie-vm.ts:341-342), so a loitering
   // fighter breaks off its weave once the crosshair settles on it. (uf1-12)
   //
-  // Ported as the AIM RAY passing within SIGHTS_BAND_FACTOR × the target's hit
-  // radius — the doctrine gameRules.ts already states for this exact ROM
-  // octagon ("an object is under the site exactly when the AIM RAY passes
-  // within its hit radius … reuses the hit radii the game already has instead
-  // of inventing a reticle size"), just at twice the radius. Keeping the bit on
+  // Ported as the cabinet's own L1 OCTAGON on the site offsets —
+  // `|dx| + |dy| <= SIGHTS_OCTAGON × the target's hit radius`, with no box term
+  // at all (WSMAIN.MAC:3920-3924). It reaches 3 × the hit radius on each axis
+  // and 1.5 × per axis on the diagonal, which is 2.121 × radially, and it has
+  // no radius of its own to state. (Until sw8-27 this paragraph described the bit
+  // as a DISC — the aim ray passing within some multiple of the hit radius — which
+  // was the retired model and contradicted this file's own account of the octagon
+  // 85 lines below. The phrasing is not reproduced here on purpose: the retirement
+  // guard in `tests/audit/sw8-27-remediation.test.ts` matches the claim as a
+  // string, and it cannot tell a quotation from a statement.) The doctrine
+  // `gameRules.ts` states still applies to
+  // what the offsets MEAN — they reuse the hit radii the game already has
+  // instead of inventing a reticle size — it is the region's SHAPE that moved.
+  // Keeping the bit on
   // the SAME predicate as the gun is what stops the sights and the laser
   // disagreeing about a target — so this must be the gun's ray exactly, not one
   // like it. All three terms match `beamDir`/`beamOrigin` in sim.ts: the same
@@ -310,9 +319,9 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // C_PS than for the gun: the sights bit gates a LOITER break, so an eye
   // offset would have TIEs breaking off at a crosshair the player is not
   // looking down. Reading a stale aim reintroduces the divergence AC-6 exists to
-  // close: 613 u of separation on a one-frame flick of 0.1, against a 500 u
-  // band. The cabinet has no such gap — it builds both tests from one cursor
-  // sample in one pass (WSMAIN.MAC:3881-3930).
+  // close: 613 u of separation on a one-frame flick of 0.1, against a band that
+  // reaches 750 u on the axis. The cabinet has no such gap — it builds both
+  // tests from one cursor sample in one pass (WSMAIN.MAC:3881-3930).
   //
   // One ROM guard comes free: `?ALIVE?` (`CMPA #1 / BNE 86$`, WSMAIN.MAC:3926-3928)
   // needs no port — `state.enemies` holds only live fighters, a killed one moves
@@ -363,8 +372,9 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // THE GUN CARRIES THIS GATE TOO, as of sw8-27 — both space-arm resolutions in
   // `sim.ts` (fighters and fireballs) are gated on `inPlayerView` at their own call
   // sites, because the cabinet gates BOTH: the alien hit block sits under `S2VW`'s
-  // four exits and the fireball hit block under `VWGUN`'s own four (WSGUNS.MAC:885,
-  // :887, :896, :903, all before `;GUN SHOT IS VISIBLE` at :904). The gate is NOT in
+  // four exits and the fireball hit block under `VWGUN`'s own four — each a
+  // compare-and-branch pair, WSGUNS.MAC:884-885, :886-887, :895-896 and :902-903,
+  // all before `;GUN SHOT IS VISIBLE` at :904. The gate is NOT in
   // `beamHit`, which is shared with the surface and trench — neither of which has a
   // C_PV notion in the cabinet either (`GRLZCL` runs unconditionally after `BJGDRW`,
   // WSGRND.MAC:978-979).

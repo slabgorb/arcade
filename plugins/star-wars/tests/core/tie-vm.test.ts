@@ -7,7 +7,7 @@
 // records, an 8-slot jump table (TCHOP, WSCPU.MAC:862–868) dispatches on the
 // low 3 opcode bits (`ANDA #7`, "JMP @A(U)"), a one-deep call stack (A$CHRT)
 // serves GOSUB/RETURN, and `.CT time,twist,move` (TWIRL) maneuvers run on a
-// game-frame countdown. Our `moveEnemy` (sim.ts:1179) is a 2-state hand machine
+// game-frame countdown. Our `moveEnemy` (sim.ts:1203) is a 2-state hand machine
 // with none of this. This suite pins the VM ENGINE contract and is EXPECTED TO
 // FAIL until GREEN creates `src/core/tie-vm.ts`.
 //

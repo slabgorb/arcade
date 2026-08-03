@@ -13,7 +13,7 @@
 //
 //   AC-2  the authentic CLSLZ hitscan (`beamHit`, sw7-17) is a SEPARATE code path
 //         and MUST survive. The ring's test is an NDC-circle around the reticle;
-//         CLSLZ = min(CL.GDS, CL.ADS) is a 3D ray cast down the site (sim.ts:335).
+//         CLSLZ = min(CL.GDS, CL.ADS) is a 3D ray cast down the site (sim.ts:356).
 //         The cabinet computes "nearest under the site" — it just never draws a
 //         circle around it. These guards pass today and must STAY green: they are
 //         the "preserve" contract in one place, so a dev cannot mistake beamHit
