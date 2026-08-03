@@ -202,3 +202,19 @@ stories:
     repos: arcade
     workflow: trivial
     type: chore
+  - id: cp6-5
+    title: centipede's claim ledger cannot re-run a COUNT — SND-114 shipped 'five other routines' when it is four, and the corrected number is just as unguarded
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
+  - id: cp6-6
+    title: "two loose pins in centipede's audit suite: a citation floor of 20 against a population of 86, and bake-sfx.test.mjs's stale ':25-28' span for the @shared/audio import"
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
