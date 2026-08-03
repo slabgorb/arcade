@@ -297,6 +297,24 @@ describe('jt5-2 — the bake is deterministic and the cues are distinct', () => 
 //   · `no FRAME_DURATIONS entry for '<name>' — the ROM window sizes the file`
 //     (bakeSamples, the `if (!(frames > 0))` arm)
 //
+// jt9-5 SPLIT THE SECOND OF THOSE IN TWO, because it was a lie about half its
+// own domain: `!(frames > 0)` fires on an ABSENT entry and on a PRESENT-but-zero
+// one alike, and "no FRAME_DURATIONS entry" is false of the second. The gates are
+// now, in order:
+//
+//   · `no FRAME_DURATIONS entry for '<name>' — the ROM window sizes the file`
+//     (the `!Object.hasOwn(frameDurations, name)` arm — an OWN-property check,
+//     matching the `Object.hasOwn(SPECS, name)` one line above it, so an
+//     inherited `Object.prototype` member is an absence rather than an entry)
+//   · `FRAME_DURATIONS entry for '<name>' is <value>, not a positive frame
+//     window — a zero-length bake writes a header with no audio in it`
+//     (the `if (!(frames > 0))` arm, now reached only with the key present)
+//
+// jt9-4 pinned the old message with `toBe` and left a nine-line note here saying
+// jt9-5 would have to edit it. It did — though NOT for the reason that note
+// predicted, and the difference is the whole of jt9-5's ruling. See the
+// zero-window test below.
+//
 // Cited by SYMBOL, not by line: those two throws have moved THREE times since
 // jt5-6 filed this story (:305-306/:311 → :316-318/:322 → :330-332/:336), and
 // jt9-30 exists to convert this repo's line refs wholesale. The third move is
@@ -362,6 +380,11 @@ describe('jt5-2 — the bake is deterministic and the cues are distinct', () => 
 //   M13 `for (const name of Object.keys(sounds))`→ `... Object.keys(SOUNDS))`
 //   M14 `if (!spec) {`                          →  `if (spec === null) {` permissive
 //   M15 `if (!(frames > 0)) {`                  →  `if (frames === undefined) {`
+//         (jt9-5 NOTE: this mutant's DESCRIPTION no longer matches the code. The
+//         presence check M15 substituted is now a real, separate gate one line
+//         above, so re-running M15 verbatim today makes the two gates identical
+//         rather than swapping one for the other. jt9-5's own battery is N1-N…
+//         below and supersedes it for this arm.)
 //   M16 `opts.sounds ?? SOUNDS`                 →  `opts.sounds ?? {}`
 //   M17 `bakeSamples(outDir, opts = {})`        →  `bakeSamples(outDir, opts)`
 //   M18 `opts.frameDurations ?? FRAME_DURATIONS`→  `opts.frameDurations ?? {}`
@@ -497,25 +520,94 @@ describe('jt9-4 — a manifest cue with no ROM window throws, and says which cue
       )
     }))
 
-  it('a window of ZERO frames is refused too, not silently baked as an empty file', () =>
+  it('a window of ZERO frames is refused too, and told apart from a MISSING one', () =>
     withTempDir(async (dir) => {
       // `if (!(frames > 0))`, not `if (frames === undefined)`. A 0 would make
       // `Math.round((0 / FRAME_HZ) * RATE)` zero samples and write a 44-byte
       // header with no audio in it — a file that 200s and plays nothing, the
       // failure mode `@shared/audio`'s silent degrade cannot distinguish.
       //
-      // jt9-5 OWNS THE FOLLOW-UP AND WILL HAVE TO EDIT THIS LINE. framesFor()
-      // returns 0 for any cue whose source kind is `invention`, so the first
-      // invention cue gets an entry of 0 and this message ("no FRAME_DURATIONS
-      // entry") becomes a lie — there IS an entry. That is jt9-5's finding, not
-      // this story's fix; pinning the message here is what makes jt9-5's change
-      // arrive as a red test rather than as prose nobody re-reads.
-      // Reddened by: M2, M3, M5, M6, M12, M15, M16 — M15 (a presence check
-      // instead of `> 0`) is seen by THIS test and by nothing else.
+      // jt9-5 EDITED THIS LINE, AND NOT FOR THE REASON jt9-4 PREDICTED. jt9-4's
+      // note here said framesFor() returns 0 for any `invention` cue, so the
+      // first invention cue would get an entry of 0 and this message would
+      // become a lie — and that pinning it was what would make jt9-5's fix
+      // arrive as a red test. Both halves of that turned out to be true only in
+      // part, and the difference is jt9-5's ruling:
+      //
+      //   · jt9-5 fixed the invention case by KIND, in `framesFor`, because the
+      //     bake receives a Record<string, number> and cannot see a cue's kind —
+      //     it could never have written a truthful message about invention-ness.
+      //     An invention cue now carries its own `frames` window and never
+      //     reaches this gate with a 0 at all. `enemyThud` is still `kind:
+      //     'rom'`, so THAT fix leaves this test untouched, exactly green. The
+      //     chamber did not fire on it. Pinned next door by `an invention cue no
+      //     longer reports a window of ZERO` (tests/audio-frames-edge-cases.test.ts),
+      //     which is what machine-checks the premise this comment used to state
+      //     in prose alone.
+      //   · What DID fire is smaller and independently true: the old message was
+      //     a lie about THIS TEST'S OWN PROBE. The probe injects
+      //     `{ ...FRAME_DURATIONS, enemyThud: 0 }` — an entry that exists and is
+      //     zero — and the bake said the entry was missing. A present 0 and an
+      //     absent key are different faults; they now get different messages.
+      //
+      // The value is interpolated, and the sibling below probes -5 for exactly
+      // the reason jt9-4 gave for using two different cue names: a message that
+      // hardcoded `0` would satisfy this test alone.
+      // Reddened by: see the jt9-5 battery (N-series) recorded above.
       expect(ZEROED_CUE in BAKE_SOUNDS, 'the probe cue must be a shipped cue').toBe(true)
       const err = await bakeFailure(dir, {
         frameDurations: { ...FRAME_DURATIONS, [ZEROED_CUE]: 0 },
       })
+      expect(err.message).toBe(
+        "FRAME_DURATIONS entry for 'enemyThud' is 0, not a positive frame window — " +
+          'a zero-length bake writes a header with no audio in it',
+      )
+    }))
+
+  it('a NEGATIVE window is refused by the same gate, and the message says which value', () =>
+    withTempDir(async (dir) => {
+      // jt9-5. A different cue AND a different value from the test above, on
+      // purpose: the two probes together are what pin `'${name}'` and `${frames}`
+      // as interpolations rather than literals. -5 is not reachable from
+      // `framesFor` — every arm of it returns a non-negative number or throws —
+      // so this is constructed to pin the GATE's domain, which is "not a
+      // positive frame window", not "zero".
+      const err = await bakeFailure(dir, {
+        frameDurations: { ...FRAME_DURATIONS, [DROPPED_CUE]: -5 },
+      })
+      expect(err.message).toBe(
+        "FRAME_DURATIONS entry for 'playerWingUp' is -5, not a positive frame window — " +
+          'a zero-length bake writes a header with no audio in it',
+      )
+    }))
+
+  it('an INHERITED duration is not an entry — this gate reads OWN properties', () =>
+    withTempDir(async (dir) => {
+      // jt9-5. CONSTRUCTED: the shipped record minus `enemyThud`, on a prototype
+      // that supplies `enemyThud: 42`. A bracket read finds 42 and the bake
+      // proceeds; `Object.hasOwn` finds nothing and reports the absence.
+      //
+      // TODAY this bakes CLEAN — 42 is a perfectly good positive number — so
+      // this test is red until the missing-entry gate becomes an own-property
+      // check. That check is not decoration: it is the SAME hardening jt9-4 put
+      // on `SPECS[name]` one line above (javascript.md check 3, "bracket
+      // notation with user input — prototype access"), and splitting the old
+      // single gate in two forced a choice of how "missing" is detected.
+      // `=== undefined` would have introduced the very inconsistency jt9-4
+      // removed: with it, a cue named `toString` inherits a FUNCTION here, is
+      // not `undefined`, and falls through to the value gate — the right cue
+      // name on the wrong diagnosis, one gate later than jt9-4 found it.
+      //
+      // The prototype value is 42 rather than a function because a function
+      // would also be caught by `!(frames > 0)`; 42 is the value that separates
+      // the two implementations and nothing else does.
+      const inherited = Object.assign(Object.create({ [ZEROED_CUE]: 42 }), without(ZEROED_CUE))
+      expect(inherited[ZEROED_CUE], 'precondition: the value IS reachable by a bracket read').toBe(42)
+      expect(
+        Object.hasOwn(inherited, ZEROED_CUE),
+        'precondition: and it is NOT an own property',
+      ).toBe(false)
+      const err = await bakeFailure(dir, { frameDurations: inherited })
       expect(err.message).toBe(
         "no FRAME_DURATIONS entry for 'enemyThud' — the ROM window sizes the file",
       )
