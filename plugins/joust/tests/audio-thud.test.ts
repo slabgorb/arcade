@@ -1255,7 +1255,6 @@ describe('jt5-4 — the thuds leave jt5-1’s deferred list, and only the thuds'
   })
 })
 
-
 // ═════════════════════════════════════════════════════════════════════════════
 // jt9-3 — THE THIRD jt5-3 INVARIANT THAT SHIPPED HELD BY PROSE ALONE
 //

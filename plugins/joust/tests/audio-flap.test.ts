@@ -72,10 +72,12 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
-// jt9-3 — the RAW scheduler seam. Two of jt5-3's three unguarded invariants are
-// invisible from `stepGame`, and one of them is invisible BY CONSTRUCTION (see
-// the jt9-3 block at the foot of this file), so their guards call `stepFrame`
-// directly. `GameState` is aliased because game.ts already owns that name here.
+// jt9-3 — the RAW scheduler seam. ONE of jt5-3's three unguarded invariants is
+// invisible from `stepGame`, BY CONSTRUCTION: the accumulation one (see the
+// jt9-3 block at the foot of this file), so its guards call `stepFrame`
+// directly. The pre-step `wasAirborne` invariant is NOT in that position — it
+// is reachable either way, and the walk-off guard below reaches it through
+// `stepGame`. `GameState` is aliased because game.ts already owns that name here.
 import { createState, spawn, stepFrame, type GameState as SimState } from '../src/core/frame.js'
 import { EVENT_KINDS, type GameEvent } from '../src/core/events.js'
 import { CHANNELS, CUE_SOURCES, SOUNDS, type CueSource } from '../src/shell/audio.js'
@@ -884,9 +886,10 @@ describe('jt5-3 AC1 — the edge memory is carried by the state the shell steps'
 // its mutation applied (red), then reverted (green), and the diff that produced
 // the red is written out so the battery can be repeated by anyone.
 //
-// ─── WHY THESE TWO USE THE RAW `stepFrame` SEAM ──────────────────────────────
-// Not preference — necessity, and for the accumulation invariant it is a
-// STRUCTURAL necessity worth stating: `stepDemo` calls
+// ─── WHY THE ACCUMULATION GUARDS USE THE RAW `stepFrame` SEAM ────────────────
+// For the ACCUMULATION invariant this is not preference but a STRUCTURAL
+// necessity, and the two invariants differ here — see the correction at the
+// foot of this block. `stepDemo` calls
 //
 //     stepFrame({ ...demo.sim, targets: tickedTargets, cues: [] }, …)
 //
@@ -895,6 +898,16 @@ describe('jt5-3 AC1 — the edge memory is carried by the state the shell steps'
 // precisely why the accumulate mutation reddened nothing, and why the
 // "the stream is REBUILT per frame" test immediately above, which goes through
 // `stepGame`, cannot see it. It tests the DEMO's rebuild, not the scheduler's.
+//
+// THE `wasAirborne` GROUP IS A DIFFERENT CASE — corrected by the Reviewer,
+// 2026-08-03, because the first draft of this block claimed the necessity for
+// BOTH and that is false. The pre-step read IS observable through `stepGame`,
+// and this story's own `WALKING off a ledge…` guard observes it that way: it
+// plays three `stepGame` frames and reddens under the M1 mutation. Its three
+// siblings use the raw seam only because staging a one-step landing is cheaper
+// there than playing one out — preference, not necessity. The distinction
+// matters to anyone extending these guards: only the accumulation invariant
+// FORCES the raw seam.
 // ═════════════════════════════════════════════════════════════════════════════
 
 const RAW_PID = 1

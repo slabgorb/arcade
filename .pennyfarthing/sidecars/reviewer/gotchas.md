@@ -2077,3 +2077,52 @@ re-sloped analogue exists, which invites a later reader to "restore fidelity" an
 **Generalise:** when a port's justification is "the ROM does X, so we do X", check both legs —
 that the ROM does X, and that the thing we call X is the same thing. Citation gates verify the
 first and structurally cannot see the second.
+
+---
+
+# jt9-3 — reviewing a story whose whole deliverable is guards
+
+## Two agents agreeing on a battery is one battery run twice
+
+TEA ran three mutations; Dev re-ran the same three and matched every count and test name. That
+reads like independent confirmation and is not — it is the same experiment repeated, and it can
+only confirm what the experiment was already pointed at. The three mutations were each authored
+alongside the guard meant to catch them, so of course each one reddened.
+
+**The question they cannot answer is the one about the OTHER tests.** Eleven guards shipped;
+the three headline mutations redden only SEVEN of them. The other four stay green by design —
+two are declared controls (fine, that is what a control is), but two were justified as guarding
+"a different defect" **with no mutation ever demonstrating that defect**. Those two were the
+whole risk of the story, and neither prior agent's battery could see them, because a battery
+built from the guards' own comments never asks about the guards the comments do not mention.
+
+**Reviewing a guard story: tabulate which guards each existing mutation reddens, and treat every
+guard NOT in that table as unproven until you invent a mutation for it.** Here that meant
+inventing the module-scoped-accumulator and the alias mutation (which reddened "two steps of one
+state do not share a cue array") and the two drop-a-cue-source mutations (which reddened "the
+fixture is real"). Both survived — but they were assertions until I ran them, and the file's own
+standard says "a guard nobody has watched FAIL is not a guard."
+
+## The prose that justifies test placement is load-bearing and unguarded
+
+The guards were correct. The comment explaining WHY they were written that way was not: it said
+"two of the three invariants are invisible from `stepGame` ... so their guards call `stepFrame`
+directly", and one of those two is plainly visible from `stepGame` — the story's OWN walk-off
+guard reaches it that way, in three `stepGame` calls, and reddens under the mutation. The author
+knew the cases differed (the same block hedges correctly one sentence later, "and for the
+accumulation invariant it is a STRUCTURAL necessity") and still wrote the blanket claim above it.
+
+This is `prose-claims-are-the-unguarded-surface` landing on the METHODOLOGY rather than on a ROM
+constant, and it is the more dangerous position: a false claim about which seam an invariant is
+reachable through tells the next author to skip a seam that actually works. **A cheap and
+reliable check: for every "X can only be tested through Y" claim, grep the story's own new tests
+for a call that is not Y.** It took one grep here and the counter-example was inside the same diff.
+
+## `git status --porcelain` is the mutation battery's only safety rail — and it must be SOLO
+
+Dev hit a false regression by running two `testing-runner` subagents in parallel against one
+working tree; the second sampled the tree mid-mutation and reported the first's mutation as a
+live defect. Confirmed as a race, not an intermittent. The battery driver must assert the tree is
+clean BEFORE it starts and AFTER every revert (mine does, and it caught nothing only because
+nothing else was running). **Never run a mutation battery concurrently with anything else that
+touches the tree — including your own verification run.**
