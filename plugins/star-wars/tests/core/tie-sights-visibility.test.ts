@@ -1,0 +1,413 @@
+// tests/core/tie-sights-visibility.test.ts
+//
+// sw8-19 — C_PS may only be set for a fighter the player can actually SEE.
+//
+// THE ROM GATE IS CONTROL FLOW, NOT ADJACENCY. The filed finding described the gate as
+// implicit — the sole `CHSET C$PS` "sits inside the object draw pass, so an object the
+// cabinet does not draw cannot receive the sights bit". True, and much weaker than what
+// the source says. `S2VW` (WSMAIN.MAC:3755) is one straight-line routine, and it has
+// EXACTLY FOUR exits before it sets C$PV — every one of them a long branch to `RTS1`,
+// whose body is a bare `RTS` at :3754:
+//
+//     12$:  LDD M.XP / CMPD #10   / LBLE RTS1      :3824-3826   near clamp
+//           CMPD #7F00            / LBHI RTS1      :3827-3828   far clamp
+//     19$:  LDD M.YPS / SUBD M.XPS / LBHS RTS1     :3834-3836   ratio test  ;B OUT OF VIEW
+//     28$:  LDD M.ZPS / SUBD M.XPS / LBHS RTS1     :3840-3842   ratio test
+//     31$:  LDX S2.PRM / LDD A$CHST(X)
+//           CHSET C$PV            ;WITHIN PLAYERS VIEW SCREEN   :3846
+//           ... IS2UV / OBJCEN ... ;SHIP 2 VISIBLE              :3870-3873
+//           ... TMPSIZ / TMPOCT / the laser hit ...             :3875-3918
+//           CHSET C$PS            ;STATUS: ALIEN IN PLAYER SITES :3930
+//
+// Those four tests ARE C_PV's definition. `CHSET C$PV` is :3846, the tree's sole
+// `CHSET C$PS` is :3930, and the only branch target between them is the FORWARD local
+// label `86$` at :3933. So :3930 is UNREACHABLE unless :3846 executed, on the same
+// object, in the same pass. Gating C_PS on C_PV is a transcription of the cabinet's
+// control flow, not an inference from proximity.
+//
+// Nothing else in that span gates: `IS2UV`/`OBJCEN` (:3870-3873) are `JSR`s, and a JSR
+// returns to :3875 — it cannot skip the caller's remaining code. The laser-hit block's
+// four `ENDIF`s all close at :3915-3918, BEFORE the `;---` at :3919, so the sights test
+// is a sibling of the hit test and not nested inside its conditions. The one other guard
+// in the C_PS block, `?ALIVE?` (`LDA A$TYP(X) / CMPA #1 / BNE 86$`, :3926-3928), is
+// already ported: `state.enemies` holds only live fighters.
+//
+// WHAT THE PORT DOES TODAY. `computeStatus` derives C_PV from the RENDERED frustum
+// (uf1-14) and derives C_PS from `beamHit` alone — and `beamHit` (gameRules.ts:138-150)
+// carries NO view test whatsoever, only `along <= 0` (behind the gun) and a `maxRange`
+// that is `Infinity` in space. So the two bits are independent, and C_PS can be set for a
+// fighter that is off the glass.
+//
+// MEASURED, IN PLAY, NOT ARGUED. The shipped uf1-12 loiter fixture — a D-group fighter
+// seated at [4000, 0, -6000] and tracked with the yoke — spends 30 of its 391 flight
+// frames with C_PS set and C_PV clear, starting at frame 0. `tie-loiter-sights.test.ts`
+// already notices the geometry in its own comment ("4,000 at this depth is 33.7° off the
+// nose — still outside the ±30° glass") without recognising it as this defect.
+//
+// WHY THE DIVERGENCE IS BIGGER THAN THE FILING SAYS. The filing calls it "behaviourally
+// small (the fighter is about to collide)", which is true of the single seat it chose and
+// false of the region. The C_PS band is a fixed 500 u (2 × TIE_HIT_RADIUS) while the
+// pyramid's half-width GROWS with depth, so the two cross over at
+// `band / tan(FOV_Y/2)` = 500 / 0.57735 = 866 u. Below that depth a fighter can be inside
+// the band and outside the glass. At depth 800 it is ~925 u from the cockpit — 3.7 × its
+// own kill radius, nowhere near collision.
+//
+// And uf1-14 made the region BIGGER, which is why the story's dependency ordering
+// mattered: at the retired ±45° pyramid the crossover was 500/1.0 = 500; at the rendered
+// 30° vertical it is 866. Horizontally it scales with the canvas (`hBound = vBound ×
+// aspect`), so the SAME seat can be off-glass on a square canvas and on-glass at 16:9 —
+// pinned below, because that pair is what proves the gate reads the real viewport rather
+// than a constant.
+//
+// RED until computeStatus gates C_PS on C_PV.
+//
+// The sacred boundary holds: no DOM, no time except dt, no randomness except the seeded
+// RNG carried in state.
+
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { computeStatus, VIEW_NEAR, VIEW_FAR, SIGHTS_BAND_FACTOR } from '../../src/core/tie-status'
+import { ChoreoOp, Status, initVm, program } from '../../src/core/tie-vm'
+import { choreoPc } from '../../src/core/tie-waves'
+import { COCKPIT, FOV_Y, aimDirection, beamHit } from '../../src/core/gameRules'
+import { stepGame } from '../../src/core/sim'
+import { initialState, TICK_HZ, TIE_HIT_RADIUS, TIE_SPAWN_DISTANCE, type GameState } from '../../src/core/state'
+import type { Vec3 } from '@shared/math3d'
+import { makeSpaceState, makeTie, lookAtOrigin, rngSeed } from './helpers/space'
+
+const TICK_DT = 1 / TICK_HZ
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
+
+/** The rendered frustum's vertical slope — `perspective(FOV_Y, aspect, …)` in render.ts.
+ *  Recomputed here from the shared constant rather than copied, so a change to FOV_Y
+ *  moves the fixtures and the machine together instead of silently splitting them. */
+const TAN_HALF = Math.tan(FOV_Y / 2)
+
+/** The full status word for a TIE at `pos` on a canvas of shape `aspect`, yoke at rest. */
+function statusAt(pos: Vec3, aspect: number, seed = 1): number {
+  const s: GameState = { ...makeSpaceState(), aspect }
+  return computeStatus(makeTie({ pos }), s, rngSeed(seed))
+}
+
+const sights = (pos: Vec3, aspect: number) => statusAt(pos, aspect) & Status.C_PS
+const inView = (pos: Vec3, aspect: number) => statusAt(pos, aspect) & Status.C_PV
+
+/**
+ * Fixture guard used by every negative seat below. Asserts — with the SAME machinery the
+ * assertions use — that the seat really is the case we mean: strictly inside the sights
+ * band measured off the at-rest aim ray, and strictly outside the rendered view pyramid.
+ *
+ * Without this a "C_PS is clear" assertion passes for the wrong reason the moment a seat
+ * drifts out of the band, and the suite scores itself as protecting something it does not.
+ */
+function assertSeatIsInBandAndOffGlass(pos: Vec3, aspect: number, label: string): void {
+  const ray = aimDirection(0, 0, aspect)
+  expect(
+    beamHit(COCKPIT, ray, pos, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS),
+    `${label}: fixture guard — the seat is INSIDE the sights band (so C_PS would set today)`,
+  ).not.toBeNull()
+  expect(
+    inView(pos, aspect),
+    `${label}: fixture guard — the seat is OUTSIDE the rendered view pyramid (C_PV clear)`,
+  ).toBe(0)
+}
+
+describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit for an unseen fighter', () => {
+  it('anchors the geometry the seats below are built from', () => {
+    // Absolute anchors. Every seat is chosen relative to these, so if one is retuned the
+    // failure lands here — naming the cause — instead of scattering across the negatives.
+    expect(TIE_HIT_RADIUS, 'the established TIE kill radius').toBe(250)
+    expect(SIGHTS_BAND_FACTOR, 'the ROM doubling, 3·TMPSIZ over 1.5·TMPSIZ').toBe(2)
+    expect(VIEW_NEAR, "the ROM's near clamp, CMPD #10 at WSMAIN.MAC:3825").toBe(0x10)
+    expect(VIEW_FAR, "the ROM's far clamp, CMPD #7F00 at WSMAIN.MAC:3827").toBe(0x7f00)
+    // The crossover depth below which band-but-off-glass is reachable at all.
+    expect((SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS) / TAN_HALF).toBeCloseTo(866.0, 1)
+  })
+
+  it("the NEAR-clamp exit (LBLE RTS1, :3826): the filing's own worked example", () => {
+    // A TIE at [400, 0, -10]: perpendicular distance 400 against the 500 u band, so the
+    // beam test passes — while its view depth of 10 is under VIEW_NEAR (0x10 = 16), so the
+    // cabinet would have returned at :3826 and never reached :3930.
+    const seat: Vec3 = [400, 0, -10]
+    assertSeatIsInBandAndOffGlass(seat, 16 / 9, 'near-clamp seat')
+    expect(
+      sights(seat, 16 / 9),
+      'the ROM returns at :3826 before CHSET C$PV, so C$PS is unreachable for this object',
+    ).toBe(0)
+  })
+
+  it('a RATIO exit (LBHS RTS1, :3836/:3842): off the pyramid edge at depth 800, nowhere near collision', () => {
+    // The non-degenerate case the filing does not have. This fighter is a hair outside the
+    // pyramid's vertical bound (800 · tan30° = 461.9) and ~925 u from the cockpit — 3.7 ×
+    // its own kill radius — so "it is about to collide anyway" does not apply.
+    const seat: Vec3 = [0, 462.3, -800]
+    assertSeatIsInBandAndOffGlass(seat, 16 / 9, 'vertical-edge seat')
+    const range = Math.hypot(seat[0], seat[1], seat[2])
+    expect(range / TIE_HIT_RADIUS, 'this seat is far outside collision range').toBeGreaterThan(3)
+    expect(sights(seat, 16 / 9), 'off the glass ⇒ no sights bit').toBe(0)
+  })
+
+  it('the OTHER ratio exit: off the pyramid edge laterally at 16:9, depth 400', () => {
+    // The two ratio tests are separate exits in the ROM (:3836 and :3842) and separate
+    // terms in the port, so a fix that gates on only one of them survives the seat above.
+    const seat: Vec3 = [450, 0, -400]
+    assertSeatIsInBandAndOffGlass(seat, 16 / 9, 'lateral-edge seat')
+    expect(sights(seat, 16 / 9), 'off the glass laterally ⇒ no sights bit').toBe(0)
+  })
+
+  it('follows the REAL viewport: one seat, two canvases, opposite answers', () => {
+    // The strongest single discriminator in this file, and the one a hard-coded cone
+    // cannot pass. `hBound = depth · tan(FOV_Y/2) · aspect`, so at depth 800 the lateral
+    // bound is 461.9 on a square canvas and 821.1 at 16:9. A TIE at x = 480 is therefore
+    // OFF the glass at 1:1 and ON it at 16:9 — while sitting inside the 500 u band at
+    // both, so the sights band alone cannot explain the difference.
+    const seat: Vec3 = [480, 0, -800]
+
+    assertSeatIsInBandAndOffGlass(seat, 1, 'square-canvas seat')
+    expect(sights(seat, 1), 'square canvas: the fighter is off the glass, so no sights bit').toBe(0)
+
+    // The positive half of the same pair — this is what makes the negative meaningful
+    // rather than "C_PS never sets at this position".
+    expect(inView(seat, 16 / 9), 'at 16:9 the very same seat IS on the glass').toBe(Status.C_PV)
+    expect(
+      sights(seat, 16 / 9),
+      'at 16:9 the fighter is visible and in the band, so the sights bit stands',
+    ).toBe(Status.C_PS)
+  })
+
+  it('holds as a UNIVERSAL across depth, offset and canvas shape — C_PS ⇒ C_PV', () => {
+    // The law itself, swept rather than sampled. Both counters are asserted non-zero
+    // afterwards: without them a derivation that killed C_PS outright would sail through
+    // every implication in the sweep, since a false antecedent proves anything.
+    let sighted = 0
+    let inBandOffGlass = 0
+    for (const aspect of [1, 4 / 3, 16 / 9, 21 / 9]) {
+      for (const depth of [20, 100, 400, 800, 1500, 6000, 20000]) {
+        for (const lat of [0, 120, 300, 460, 480, 700]) {
+          for (const vert of [0, 300, 480]) {
+            const pos: Vec3 = [lat, vert, -depth]
+            const st = statusAt(pos, aspect)
+            const ps = st & Status.C_PS
+            const pv = st & Status.C_PV
+            if (ps) {
+              sighted++
+              expect(
+                pv,
+                `C_PS set at aspect ${aspect.toFixed(3)}, depth ${depth}, lat ${lat}, vert ${vert} — but C_PV clear`,
+              ).toBe(Status.C_PV)
+            }
+            const ray = aimDirection(0, 0, aspect)
+            if (!pv && beamHit(COCKPIT, ray, pos, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS) !== null) {
+              inBandOffGlass++
+            }
+          }
+        }
+      }
+    }
+    expect(sighted, 'positive control: the sweep DID contain sighted fighters').toBeGreaterThan(0)
+    expect(
+      inBandOffGlass,
+      'positive control: the sweep DID contain in-band, off-glass seats — the case under test',
+    ).toBeGreaterThan(0)
+  })
+})
+
+describe('sw8-19 — the gate must not cost anything it was not asked to change', () => {
+  it('leaves a visible fighter in the band fully sighted (the positive control)', () => {
+    // The whole suite above is negatives. If a fix simply stopped deriving C_PS, every one
+    // of them would pass. This is the assertion that forbids it.
+    const s = makeSpaceState()
+    const onRay: Vec3 = [0, 0, -6000]
+    expect(inView(onRay, 16 / 9), 'dead ahead at 6000 is plainly on the glass').toBe(Status.C_PV)
+    expect(sights(onRay, 16 / 9), 'and therefore still in the sights').toBe(Status.C_PS)
+    // Inside the band but off the ray, still well within the pyramid at this depth.
+    const offset: Vec3 = [SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS - 1, 0, -6000]
+    expect(sights(offset, 16 / 9), 'one unit inside the band, and visible').toBe(Status.C_PS)
+    expect(s.aspect, 'a fresh state is square until the shell says otherwise').toBe(1)
+  })
+
+  it('does NOT change the GUN — beamHit still has no view test', () => {
+    // Kills the tempting wrong fix by name. Clamping `beamHit` to the frustum would make
+    // every negative above pass, and would silently move the player's laser: the gun is
+    // hitscan and its reach is the doctrine gameRules.ts states. The ROM does not gate the
+    // HIT on visibility either — the laser block at WSMAIN.MAC:3898-3918 sits under the same
+    // C$PV exits, so the cabinet expresses that gate once, structurally, and never inside its
+    // hit test. C_PS is what moves; `beamHit` is not.
+    //
+    // (The citation above is spelled with its filename deliberately. Written bare as
+    // `:3898-3918` the comment-citation guard binds it to the nearest preceding filename —
+    // `gameRules.ts`, 272 lines — and reports a span out of range. That is sw8-25's
+    // association defect reproduced by accident while writing this file, and the
+    // documented spelling is what avoids it.)
+    const ray = aimDirection(0, 0, 16 / 9)
+    const offGlass: Vec3 = [0, 462.3, -800]
+    expect(inView(offGlass, 16 / 9), 'fixture guard: this seat is off the glass').toBe(0)
+    expect(
+      beamHit(COCKPIT, ray, offGlass, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS),
+      'beamHit still reports the off-glass target — the gate belongs to C_PS, not to the ray',
+    ).not.toBeNull()
+
+    // A closer seat, off the glass AND inside the kill radius. This is the one that shows
+    // the gate is not being smuggled into the ray: at depth 400 the pyramid's vertical
+    // bound is 230.9, so vert 240 is off-screen while sitting 240 u from the ray — inside
+    // TIE_HIT_RADIUS. `sim.ts:535` resolves the player's laser through exactly this call,
+    // so a view clamp added here would silently change what the player can shoot.
+    // (That the clone's GUN diverges from the cabinet the same way C_PS does is real and
+    // is filed as a Delivery Finding — it is deliberately NOT fixed by this story.)
+    const killableOffGlass: Vec3 = [0, 240, -400]
+    expect(inView(killableOffGlass, 16 / 9), 'fixture guard: also off the glass').toBe(0)
+    expect(
+      beamHit(COCKPIT, ray, killableOffGlass, TIE_HIT_RADIUS),
+      'the kill radius still resolves off-glass — this story does not touch the gun',
+    ).not.toBeNull()
+  })
+
+  it('keeps the band at exactly twice the kill radius — the fix is a gate, not a narrowing', () => {
+    // The other tempting wrong fix: shrink SIGHTS_BAND_FACTOR until the reported seats stop
+    // reproducing. That would break the ROM's unit-free 3 ÷ 1.5 = 2 and silently retune the
+    // loiter break. Pin the factor and pin a seat that only survives at 2×.
+    expect(SIGHTS_BAND_FACTOR).toBe(2)
+    const justOutsideKill: Vec3 = [TIE_HIT_RADIUS + 1, 0, -6000]
+    expect(
+      sights(justOutsideKill, 16 / 9),
+      'just outside the kill radius but inside the warning band, and visible',
+    ).toBe(Status.C_PS)
+  })
+
+  it('records that the FAR exit (:3828) is unreachable in space rather than leaving it untested', () => {
+    // There is no seat to write for the far clamp: a TIE spawns at 0x7C00 and the play cube
+    // clamps inside 0x7F00, so view depth never exceeds VIEW_FAR. Asserting the ordering is
+    // the honest substitute — if either constant ever moves, this says so instead of a
+    // missing test quietly implying the case was covered.
+    expect(TIE_SPAWN_DISTANCE, 'TBG* spawn depth').toBe(0x7c00)
+    expect(VIEW_FAR).toBeGreaterThan(TIE_SPAWN_DISTANCE)
+  })
+})
+
+describe('sw8-19 — in play: the shipped loiter fixture never sights an off-glass fighter', () => {
+  /** Index of the program's only `.CIF C$PS` (WSCPU.MAC:1646), located structurally. */
+  function sightsBranch(): number {
+    const hits: number[] = []
+    program.forEach((instr, i) => {
+      if (instr.op === ChoreoOp.IF && instr.mask === Status.C_PS) hits.push(i)
+    })
+    expect(hits, 'exactly one .CIF C$PS in the assembled program').toHaveLength(1)
+    return hits[0]
+  }
+
+  /** The yoke that puts the crosshair on a world point, clamped to real ±1 travel —
+   *  the same inversion `tie-loiter-sights.test.ts` flies this fixture with. */
+  function aimAt(pos: Vec3): { aimX: number; aimY: number } {
+    const f = 1 / Math.tan(FOV_Y / 2)
+    const dz = pos[2] - COCKPIT[2]
+    if (dz >= 0) return { aimX: 0, aimY: 0 }
+    const c = (v: number) => Math.max(-1, Math.min(1, v))
+    return { aimX: c((f * (pos[0] - COCKPIT[0])) / -dz), aimY: c((f * (pos[1] - COCKPIT[1])) / -dz) }
+  }
+
+  it('flies the uf1-12 seat and counts frames where the sights bit outlives visibility', () => {
+    // Synthetic seats prove transcription; this proves the bit is wrong in ORDINARY PLAY.
+    // The fixture is not invented for this story — it is the seat uf1-12 shipped and
+    // uf1-15 re-measured, flown exactly as its own suite flies it.
+    // Narrow with a throw rather than an `expect`: a matcher does not narrow the union
+    // for tsc, and `ChoreoInstr` only carries `target` on the GOTO arm.
+    const target = program[sightsBranch() + 1]
+    if (target.op !== ChoreoOp.GOTO) throw new Error('tie-vm: .CIF C$PS is not followed by a .CGOTO')
+    const entry = target.target
+    const seat: Vec3 = [4000, 0, -6000]
+
+    let s: GameState = {
+      ...initialState(1983),
+      enemies: [makeTie({ pos: [...seat] as Vec3, orient: lookAtOrigin(seat), vm: initVm(choreoPc('1DZ')) })],
+      spawnTimer: 1e9,
+      lives: 999,
+    }
+
+    let offGlassSighted = 0
+    let visibleSighted = 0
+    let enteredTwenty = false
+    let frames = 0
+    for (let i = 0; i < 900; i++) {
+      const e = s.enemies[0]
+      if (!e) break
+      frames++
+      const aim = aimAt(e.pos)
+      const st = computeStatus(e, { ...s, ...aim }, rngSeed(1))
+      if (st & Status.C_PS) {
+        if (st & Status.C_PV) visibleSighted++
+        else offGlassSighted++
+      }
+      s = stepGame(s, { ...aim, fire: false }, TICK_DT)
+      const pc = s.enemies[0]?.vm?.pc
+      if (pc !== undefined && pc > entry && pc <= entry + 6) enteredTwenty = true
+    }
+
+    // Positive controls FIRST, so a run that stopped flying — or a derivation that killed
+    // C_PS outright — fails here and cannot be mistaken for the fix working.
+    expect(frames, 'the fixture actually flew').toBeGreaterThan(100)
+    expect(
+      visibleSighted,
+      'positive control: the fighter IS sighted while visible on plenty of frames',
+    ).toBeGreaterThan(0)
+    expect(
+      enteredTwenty,
+      'positive control: held in the sights, the loiter loop still breaks into 20$ (uf1-12)',
+    ).toBe(true)
+
+    // The story. Measured at 30 before the gate lands.
+    expect(
+      offGlassSighted,
+      'no frame may carry C_PS for a fighter the player cannot see',
+    ).toBe(0)
+  })
+})
+
+describe('sw8-19 — the comment must state the gate the ROM actually has', () => {
+  const flat = (p: string) => readFileSync(p, 'utf8').replace(/\s+/g, ' ')
+  const core = flat(join(repoRoot, 'src', 'core', 'tie-status.ts'))
+  const suite = flat(join(repoRoot, 'tests', 'core', 'tie-sights-status.test.ts'))
+
+  it('names C_PV as the gate and cites the RTS1 exits that make :3930 unreachable', () => {
+    // Load-bearing first: the code must really carry the gate, or the prose checks below
+    // pass on a file that only had its comment rewritten.
+    expect(
+      readFileSync(join(repoRoot, 'src', 'core', 'tie-status.ts'), 'utf8'),
+      'the C_PS derivation is gated on C_PV',
+    ).toMatch(/C_PV[\s\S]{0,200}Status\.C_PS|Status\.C_PS[\s\S]{0,200}C_PV/)
+    // The four exits are the evidence for the gate. Vendored ROM source is immutable, so
+    // unlike an in-repo citation these spans cannot rot.
+    for (const line of ['3826', '3828', '3836', '3842']) {
+      expect(core, `the comment cites the RTS1 exit at WSMAIN.MAC:${line}`).toMatch(
+        new RegExp(`\\b${line}\\b`),
+      )
+    }
+    expect(core, 'and names the routine those exits leave').toMatch(/S2VW|RTS1/)
+  })
+
+  it('no longer offers beamHit as the "must be drawn" gate — in EITHER file', () => {
+    // The understatement this story corrects exists in two places, stated the same way:
+    // `tie-status.ts` ("the 'must be drawn' gate the CHSET inherits from sitting in the
+    // draw pass is `beamHit` refusing anything behind the gun") and the header of
+    // `tie-sights-status.test.ts`, which says it "comes free from `beamHit`". Fixing one
+    // copy and leaving the other is how a corrected claim goes on being wrong in the tree.
+    for (const [name, text] of [['tie-status.ts', core], ['tie-sights-status.test.ts', suite]] as const) {
+      for (const m of text.matchAll(/must be drawn|comes free from|inherits from sitting/gi)) {
+        const at = m.index ?? 0
+        const window = text.slice(Math.max(0, at - 260), at + 260)
+        expect(
+          window,
+          `${name}: "${m[0]}" must no longer name beamHit as the visibility gate`,
+        ).not.toMatch(/beamHit/)
+      }
+    }
+  })
+
+  it('still describes beamHit truthfully — a separate, weaker guard that survives', () => {
+    // Not a licence to delete the sentence: `beamHit`'s behind-the-gun refusal is real and
+    // still runs. It is simply not the ported gate.
+    expect(core, 'beamHit is still documented').toMatch(/beamHit/)
+    expect(core, 'and so is what it actually refuses').toMatch(/behind the gun/i)
+  })
+})
