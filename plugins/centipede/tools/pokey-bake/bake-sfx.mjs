@@ -398,8 +398,25 @@ export async function bakeSfx(outDir, opts = {}) {
   // Pass 1 — render everything, unscaled.
   const rendered = []
   for (const cue of Object.keys(sounds)) {
-    const known = FIXTURE.cues[cue]
-    const standIn = STAND_IN_SPECS[cue]
+    // OWN properties only, and this is not decoration. A bare bracket read
+    // resolves `toString`, `constructor` and `valueOf` through Object.prototype
+    // and hands back something TRUTHY, after which every gate downstream reads
+    // the inherited value as PRESENT — because each of them spells "missing" as
+    // a comparison against null. `undefined !== null` classifies the cue as
+    // transcribed; romEvents' `contImmediate === null` is false so the
+    // invent-a-control-byte throw stays quiet; `undefined !== undefined` is
+    // false so its length-disagreement throw does too; and `i < undefined` runs
+    // its render loop zero times. MEASURED (cp6-4): the bake COMPLETED and wrote
+    // a 44-byte header-only wav, which `just deploy-assets` would have uploaded
+    // as silence under a real cue's name. The count of guards on this path was
+    // never the thing protecting it.
+    //
+    // Hardening here is sufficient: romEvents and standInEvents are reachable
+    // only once this gate has passed. Same fix as joust's jt9-4/jt9-5, one
+    // directory over — but joust's shape merely misdiagnosed, and this one
+    // shipped a clean bake.
+    const known = Object.hasOwn(FIXTURE.cues, cue) ? FIXTURE.cues[cue] : undefined
+    const standIn = Object.hasOwn(STAND_IN_SPECS, cue) ? STAND_IN_SPECS[cue] : undefined
     const transcribed = known && known.freqTable !== null
     if (!transcribed && !standIn) {
       throw new Error(

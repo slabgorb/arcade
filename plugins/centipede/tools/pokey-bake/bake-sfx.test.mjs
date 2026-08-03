@@ -117,6 +117,37 @@ function readWav(buf) {
   return { ...fmt, frames, seconds: frames / fmt.rate }
 }
 
+/**
+ * The bake's rejection, with the rejection itself asserted FIRST.
+ *
+ * cp6-4. `.rejects.toThrow(/someCueName/)` is satisfied by ANY throw whose
+ * message happens to contain that name, so it pins the interpolation and not the
+ * diagnosis — reword the operator's error wholesale and the test stays green.
+ * Worse, a promise that RESOLVES makes a message assertion moot rather than
+ * loud. This helper separates the two failures: it proves an Error was thrown,
+ * and its callers then assert the WHOLE message with `toBe`. joust's twin
+ * settled on the same shape (tools/sample-bake/bake-samples.test.mjs:100-112).
+ */
+async function bakeFailure(outDir, opts) {
+  const b = await loadBaker()
+  let err = null
+  try {
+    await b.bakeSfx(outDir, opts)
+  } catch (e) {
+    err = e
+  }
+  expect(
+    err,
+    'the bake RESOLVED — the gate this test exists to pin never fired, so the message assertion below would not have run',
+  ).toBeInstanceOf(Error)
+  return err
+}
+
+/** A throwaway staging directory, so a bake that should NOT write cannot pollute `staging`. */
+function scratchDir(label) {
+  return mkdtempSync(join(tmpdir(), `cp6-4-${label}-`))
+}
+
 let bake, manifest, staging
 
 beforeAll(() => {
@@ -197,11 +228,73 @@ describe('cp6-2 AC3 — the manifest the baker can actually reach', () => {
       typeof bake.bakeSfx,
       'AC3: export bakeSfx(outDir) so the recipe and this suite call the same entry point',
     ).toBe('function')
+    //
+    // cp6-4: this asserted `.rejects.toThrow(/aCueNobodyBaked/)` — a regex on
+    // the INTERPOLATED CUE NAME. MEASURED: rewording the diagnostic wholesale
+    // while keeping `${cue}` in it left this file 25/25 green, and only deleting
+    // `${cue}` reddened it. The guard pinned the interpolation and nothing else,
+    // so the operator's error message could rot entirely unnoticed. `toBe` on
+    // the whole string, which is what joust's twin has always done.
     const rogue = { ...bake.SOUNDS, aCueNobodyBaked: 'a_cue_nobody_baked.wav' }
-    await expect(
-      (async () => bake.bakeSfx(staging, { sounds: rogue }))(),
-      'a cue with no spec must throw, naming the cue',
-    ).rejects.toThrow(/aCueNobodyBaked/)
+    const err = await bakeFailure(scratchDir('rogue'), { sounds: rogue })
+    expect(err.message).toBe(
+      "no bake spec for manifest cue 'aCueNobodyBaked' — every cue must transcribe a ROM " +
+        'table or declare a stand-in; a new cue must arrive with its own sound',
+    )
+  })
+
+  it('an INHERITED spec is not a spec — this gate reads OWN properties', async () => {
+    // cp6-4. `FIXTURE.cues[cue]` and `STAND_IN_SPECS[cue]` are bracket reads on
+    // plain objects, so a cue named `toString`, `constructor` or `valueOf`
+    // resolves through Object.prototype and comes back truthy.
+    //
+    // joust hit the same shape in jt9-4 and got the right cue name beside the
+    // WRONG diagnosis. centipede's was worse, and this is the number that made
+    // it an AC rather than a footnote: MEASURED before the fix, this bake
+    // COMPLETED — `bakeSfx` returned 15 where the shipped manifest returns 14,
+    // and wrote a 44-byte header-only wav. Nothing threw, so `just
+    // deploy-assets` would have uploaded silence under a real cue's name, which
+    // is the exact outcome the test above exists to make impossible.
+    //
+    // `toString` rather than a hand-built prototype (joust's construction) on
+    // purpose: the hole here is reachable through the SHIPPED objects, with no
+    // injection at all, so the fixture that proves it should not need one.
+    const PROTO_CUE = 'toString'
+    bake = await loadBaker()
+    expect(
+      Boolean(bake.STAND_IN_SPECS[PROTO_CUE]),
+      'precondition: the value IS reachable by a bracket read',
+    ).toBe(true)
+    expect(
+      Object.hasOwn(bake.STAND_IN_SPECS, PROTO_CUE),
+      'precondition: and it is NOT an own property',
+    ).toBe(false)
+    const rogue = { ...bake.SOUNDS, [PROTO_CUE]: 'to_string.wav' }
+    const dir = scratchDir('proto')
+    const err = await bakeFailure(dir, { sounds: rogue })
+    expect(err.message).toBe(
+      "no bake spec for manifest cue 'toString' — every cue must transcribe a ROM table " +
+        'or declare a stand-in; a new cue must arrive with its own sound',
+    )
+    // And it must fail BEFORE writing: pass 1 renders, pass 2 writes, so a throw
+    // from the gate leaves the staging directory empty. A 44-byte wav here means
+    // the gate moved below the write.
+    expect(readdirSync(dir), 'the gate must fire before anything is written').toEqual([])
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('POSITIVE CONTROL: the shipped manifest, passed EXPLICITLY, bakes clean', async () => {
+    // Same override path, same shape of argument, nothing added. If this reds,
+    // the two tests above are throwing because of the `{ sounds }` injection
+    // itself and prove nothing about the gate.
+    bake = await loadBaker()
+    manifest = await loadManifest()
+    const dir = scratchDir('control')
+    const count = await bake.bakeSfx(dir, { sounds: manifest.SOUNDS })
+    expect(count, 'every shipped cue bakes, and no more than the shipped cues').toBe(
+      Object.keys(manifest.SOUNDS).length,
+    )
+    rmSync(dir, { recursive: true, force: true })
   })
 
   it('refuses to run without an explicit output directory', async () => {
