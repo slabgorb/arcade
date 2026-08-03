@@ -554,22 +554,35 @@ describe('sw8-27 AC5 — the space kill region is the cabinet box ∩ octagon, n
     // the ROM box at 250 rejects it) but only 236.6 from the ray PERPENDICULARLY (so a
     // perpendicular measure would accept it). It must MISS.
     //
-    // VERBATIM MUTANT this kills, replacing `siteOffset`'s `const t` line and its return —
-    // six lines for six, so nothing in the file moves:
+    // VERBATIM MUTANT this kills. It replaces the last FIVE lines of `siteOffset`
+    // (`gameRules.ts`) — the `const t` line through the return — with five others, so no
+    // line count moves:
     //   const c = add(eye, scale(dir, along))
-    //   return {
-    //     along,
-    //     dx: Math.abs(pos[0] - c[0]),
-    //     dy: Math.abs(pos[1] - c[1]),
-    //   }
+    //   const dx = Math.abs(pos[0] - c[0])
+    //   const dy = Math.abs(pos[1] - c[1])
+    //   if (!Number.isFinite(dx) || !Number.isFinite(dy)) return null // guard preserved
+    //   return { along, dx, dy }
     //
-    // MEASURED at the round-1 rework: reddens exactly 1 test — this one.
+    // MEASURED against HEAD at the round-2 rework: reddens exactly 1 test — this one.
     //
-    // (RE-FOLDED there from a two-line form. Collapsing the object literal shortens
-    // `gameRules.ts` by four lines, and `citations.test.ts` re-opens each finding's `ours`
-    // citation against the WORKING TREE — so the two-line version reddened it twice on top of
-    // this test, and a reader would have recorded a blast radius of 3 for a change that moves
-    // one behaviour. Any mutant published here must preserve line count.)
+    // R4 (round-2 review), and it is worth reading before publishing the next mutant here.
+    // The string above USED to be a six-line replacement, and it was correct on the day it
+    // was written: the RED commit's `siteOffset` ended in six lines. The GREEN commit in the
+    // same diff restructured it to five — hoisting `dx`/`dy` out of the object literal to
+    // add the `Number.isFinite` guard — and this comment was not reconciled. Applied
+    // literally against the delivered tree the published string was six-for-five (so the
+    // file DID move, reddening `citations.test.ts` twice) and it silently dropped the
+    // finite guard (so it reddened F8 as well): 4 tests across 2 files, not the recorded 1.
+    // The battery had actually run a different, correct 3-for-3 mutant, so the record was a
+    // statement about a string nobody published. A mutant is a claim about the CURRENT tree
+    // and must be re-read from it after the last edit — checklist #20 and #23.
+    //
+    // (An earlier RE-FOLD, kept because the hazard is separate and still live. Collapsing
+    // the object literal shortens `gameRules.ts`, and `citations.test.ts` re-opens each
+    // finding's `ours` citation against the WORKING TREE — so a line-count-changing version
+    // reddens it on top of this test, and a reader would record a blast radius of 3 for a
+    // change that moves one behaviour. Any mutant published here must preserve line count,
+    // and must keep every clause the original had.)
     const AIM_Y = 0.6
     const DEEP = 2000
     const rayY = (AIM_Y / (1 / Math.tan(FOV_Y / 2))) * DEEP // where the deflected ray sits at that depth

@@ -60,17 +60,18 @@
 // seeded RNG carried in state.
 
 import { describe, it, expect } from 'vitest'
-import { computeStatus } from '../../src/core/tie-status'
+import { computeStatus, SIGHTS_BAND_FACTOR, SIGHTS_OCTAGON } from '../../src/core/tie-status'
 import { Status } from '../../src/core/tie-vm'
 import { aimDirection, beamHit, COCKPIT, FOV_Y, siteOffset } from '../../src/core/gameRules'
 import { TIE_HIT_RADIUS, type GameState } from '../../src/core/state'
 import { add, scale, type Vec3 } from '@shared/math3d'
 import { makeSpaceState, makeTie, lookAtOrigin, lookAway, rngSeed } from './helpers/space'
 
-/** The ROM's doubling: `ADDD TMPSIZ / ADDD TMPSIZ` (3×) over `LSRD / ADDD TMPSIZ`
- *  (1.5×), WSMAIN.MAC:3920-3922 vs :3904-3906. Written as the literal the ROM
- *  arithmetic yields, never re-derived from the value under test. */
-const SIGHTS_FACTOR = 2
+// The ROM's doubling — `ADDD TMPSIZ / ADDD TMPSIZ` (3×) over `LSRD / ADDD TMPSIZ` (1.5×),
+// WSMAIN.MAC:3920-3922 vs :3904-3906 — used to live here as a file-local `SIGHTS_FACTOR = 2`.
+// R3 retired it: two test-local terms compared against a third proved nothing about the
+// machine. `SIGHTS_BAND_FACTOR` and `SIGHTS_OCTAGON` are imported above and compared to each
+// other instead, so a drift between them fails rather than cancelling out.
 
 /** A point exactly `depth` along the aim ray the given state is holding, pushed
  *  `offset` units broadside (world +X, which is perpendicular to the at-rest ray).
@@ -117,9 +118,9 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
 
   it('opens the band as the ROM L1 OCTAGON at 3·TMPSIZ — not as a disc at 2×', () => {
     // REWRITTEN by sw8-27, not relaxed. The old version asserted a DISC boundary at
-    // `SIGHTS_FACTOR × TIE_HIT_RADIUS` and was right about the only number it could see.
+    // `SIGHTS_BAND_FACTOR × TIE_HIT_RADIUS` and was right about the only number it could see.
     //
-    // What it could not see: `SIGHTS_FACTOR = 2` is the ratio of the two OCTAGON terms
+    // What it could not see: `SIGHTS_BAND_FACTOR = 2` is the ratio of the two OCTAGON terms
     // (3 ÷ 1.5), and it is genuinely 2 — but the cabinet never tests a radius. C_PS is
     // `LDD TMPSIZ / ADDD TMPSIZ / ADDD TMPSIZ / SUBD TMPOCT / IFHS` (WSMAIN.MAC:3920-3924),
     // i.e. `|dx| + |dy| <= 3·TMPSIZ`, with NO box term at all — an L1 octagon, not a circle.
@@ -135,11 +136,25 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     // Absolute anchor, so the boundary probes below cannot go vacuous if the
     // established hit radius is ever retuned without revisiting this law.
     expect(TIE_HIT_RADIUS, 'fixture anchor: the established TIE kill radius').toBe(250)
-    // The ratio `SIGHTS_FACTOR` names, pinned as a ratio and nothing more: the warning
+    // And the anchor that ties `OCT`'s literal 3 to the constant the machine reads. Without
+    // it the probes below measure a number this file made up: halving the shipped band
+    // (`SIGHTS_OCTAGON` 3 → 1.5) would move the code and not the fixture, and every seat
+    // would still be scored against 750.
+    expect(SIGHTS_OCTAGON, 'the shipped warning octagon, WSMAIN.MAC:3920-3923').toBe(3)
+    // The ratio `SIGHTS_BAND_FACTOR` names, pinned as a ratio and nothing more: the warning
     // octagon over the kill octagon, 3 ÷ 1.5. It is the one term in the whole expression
     // that is unit-free, and it is what survives of the retired disc model — the shape
     // probes below, not this line, are what pin the region.
-    expect(OCT / (1.5 * T), 'the ROM doubling: 3·TMPSIZ over 1.5·TMPSIZ').toBe(SIGHTS_FACTOR)
+    //
+    // R3 (round-2 review): this line was a TAUTOLOGY. It read
+    // `expect(OCT / (1.5 * T)).toBe(SIGHTS_FACTOR)` against a file-local `SIGHTS_FACTOR = 2`,
+    // with `OCT = 3 * T` and `T = TIE_HIT_RADIUS` — three test-local values, and
+    // `(3T)/(1.5T) ≡ 2` for every non-zero T. No mutation of production code could fail it,
+    // and it existed only because `SIGHTS_FACTOR` had gone unused and `noUnusedLocals` is on.
+    // Both terms are now imported from the module under test, which is what the sibling line
+    // at `tie-sights-visibility.test.ts:172` does — so the two constants drifting apart
+    // reddens here instead of passing.
+    expect(SIGHTS_OCTAGON / 1.5, 'the ROM doubling: 3·TMPSIZ over 1.5·TMPSIZ').toBe(SIGHTS_BAND_FACTOR)
 
     // ON THE AXIS the octagon reaches 3·T. A disc at 2·T stops at 500 and reddens here.
     expect(
@@ -300,8 +315,12 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     // negative assertion below could pass on a correct implementation by luck.
     const gunDir = aimDirection(aimX, 0, s.aspect)
     // Measured against the band the game actually tests — the L1 octagon at 3 · TMPSIZ,
-    // written as the ROM literal rather than imported from the value under test, the way
-    // `SIGHTS_FACTOR` above is. Until sw8-27's rework this guard asked `beamHit` for a
+    // written as the ROM literal rather than imported from the value under test, and that is
+    // deliberate: a fixture bound that tracked `SIGHTS_OCTAGON` would move WITH a mutation of
+    // it and score every seat against the mutated band. The `SIGHTS_OCTAGON === 3` anchor in
+    // the octagon test above is what ties this literal to the shipped constant; the two
+    // together are what R3 replaced a self-cancelling ratio with.
+    // Until sw8-27's rework this guard asked `beamHit` for a
     // 2 · TIE_HIT_RADIUS DISC, which is strictly inside that octagon, so it could not
     // actually establish the sentence it asserts.
     const blindSite = siteOffset(eye, gunDir, onBlindRay)

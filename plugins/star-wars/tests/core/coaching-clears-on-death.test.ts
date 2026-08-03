@@ -7,13 +7,11 @@
 // so it cannot get stuck on screen." That claim is FALSE, and it was proven by probe, not
 // by reading:
 //
-//   * Production signals death with `gameOver: true` while `mode` stays `'playing'`
-//     (`sim.ts:567`, `:937`, `:1185`, `:1344`). NOTHING in `src/` ever assigns
-//     `mode: 'gameover'` — only test fixtures do.
-//   * `sim.ts:172` (`if (state.mode === 'gameover' || state.gameOver)`) returns EARLY,
-//     without calling `finalizeFrame` — the only place `coaching` is re-derived.
-//   * `render.ts` dispatches on `mode`, so with `mode === 'playing'` it falls to the
-//     `else` branch and calls `drawCoaching` regardless.
+//   * `coaching` is a STORED field, re-derived in exactly one place — `finalizeFrame`.
+//   * The game-over branch (`sim.ts:221`, `if (state.mode === 'gameover' || state.gameOver)`)
+//     returns EARLY, so that one place never runs and whatever string was live at the
+//     moment of death stays on the state untouched.
+//   * `render.ts` draws whatever the state carries, so it goes on screen.
 //
 // Net: die on wave 1 and "SHOOT FIREBALLS" freezes on screen over a frozen battlefield,
 // permanently, until the player presses start. Measured: 120 frames after death the hint
@@ -25,6 +23,27 @@
 //
 // The fix is Dev's to choose (clear `coaching` on the game-over branch, or run the frame
 // finalizer there too). These tests pin the OBSERVABLE, not the mechanism.
+//
+// == CORRECTED at sw8-27 round 2 (review finding R6) =================================
+//
+// The three bullets above used to open on a different mechanism: that production "signals
+// death with `gameOver: true` while `mode` stays `'playing'`", citing `sim.ts:567`, `:937`,
+// `:1185` and `:1344`, and asserting that NOTHING in `src/` ever assigns `mode: 'gameover'`
+// — only test fixtures do.
+//
+// All of that is false, and none of the four line numbers landed on gameOver-related code
+// (they were a `Set` construction, a docstring, a closing brace and an `events` field).
+// `sim.ts` assigns `mode: lives <= 0 ? 'gameover' : …` at FOUR sites, each in the same
+// object literal as its `gameOver:` sibling — so the two move together and the mode does
+// not stay `'playing'`. The four sites are present in the monorepo import commit
+// (`0070e26`), so the claim was already false before sw8-27 opened the file; whether it was
+// false when sw7-10 wrote it is in the archived star-wars history, which this repo squashed.
+//
+// Nothing in the suite below changes, because the freeze never depended on the mode: it
+// depends on the early return skipping the re-derivation, which is what the bullets now
+// say. The mirror of this paragraph in `src/core/coaching.ts` is RED for Dev, guarded by
+// `tests/audit/sw8-27-remediation.test.ts` — which also re-opens every `sim.ts:N` the
+// paragraph cites, so the next stale anchor fails instead of being re-shifted.
 import { describe, it, expect } from 'vitest'
 import { initialState, type GameState } from '../../src/core/state'
 import { stepGame } from '../../src/core/sim'
@@ -42,9 +61,21 @@ function coached(): GameState {
   return s
 }
 
-/** Kill the player the way production does: lives 0 + gameOver, mode UNTOUCHED. */
+/** Death with the mode LEFT ALONE — deliberately NOT the shape production writes.
+ *
+ *  Production sets `mode: 'gameover'` in the same literal as `gameOver: true`, so this
+ *  fixture is a state the game never actually reaches. That is the point, and the
+ *  implication runs the safe way: with the mode still `'playing'` the only thing that can
+ *  end the run is `gameOver`, so nothing below can pass because a mode check cleared the
+ *  hint for it. A suite that clears here clears for production too. `killedAsShipped`
+ *  is the control that proves the real shape is not somehow WORSE. */
 function killed(s: GameState): GameState {
   return { ...s, lives: 0, gameOver: true }
+}
+
+/** Death exactly as `sim.ts` writes it — both fields, in one literal. */
+function killedAsShipped(s: GameState): GameState {
+  return { ...s, lives: 0, gameOver: true, mode: 'gameover' }
 }
 
 describe('sw7-10 F3 — the coaching hint clears when the run ends', () => {
@@ -60,6 +91,18 @@ describe('sw7-10 F3 — the coaching hint clears when the run ends', () => {
   it('clears on the very first step after death, not eventually', () => {
     const s = stepGame(killed(coached()), NO_INPUT, DT)
     expect(s.coaching, 'the hint must clear immediately, not linger for a frame').toBeNull()
+  })
+
+  it('CONTROL — and it clears for the shape production actually writes, mode included', () => {
+    // Added at sw8-27 round 2 alongside R6. Every seat above kills with the mode left at
+    // `'playing'`, which is not a state `sim.ts` produces — it writes `mode: 'gameover'` in
+    // the same literal as `gameOver: true`. The conservative seat is the right default
+    // (see `killed`), but a fixture production never writes needs a control that says so,
+    // or the suite is a statement about a hypothetical state machine.
+    let s = killedAsShipped(coached())
+    expect(s.mode, 'fixture: this is the literal shape sim.ts writes on the last life').toBe('gameover')
+    for (let i = 0; i < 120; i++) s = stepGame(s, NO_INPUT, DT)
+    expect(s.coaching, 'the hint must not outlive the run in the real shape either').toBeNull()
   })
 
   it('the docstring promise holds: the hint is never ACCUMULATED across the death boundary', () => {
