@@ -541,7 +541,7 @@ stories:
       MEASURED BY THE jt9-5 REVIEWER (2026-08-03), which is the argument for raising this above p2 when it is picked up. The swallow was re-run against a real import-time throw — TEA's N27, the trailing operand dropped from SNEDIE's shipped defining row — and the whole joust project run counted. Result: 11 files fail, 53 tests fail, suite 2533 to 2392. Of those 53 test-level failures, ZERO carry the manifest's real message. Every one reports a "must export" line instead, across nine variants - CUE_SOURCES (26), SOUNDS (10), bakeSamples (5), framesFor (3), FRAME_DURATIONS (2), CHANNELS (2), createAudioEngine (1), DEFAULT_BASE_URL (1). The real diagnosis survives ONLY in the five suite-level collection errors, whose files report `(0 test)`. So the reader's first fifty-three signals all point at a missing export that is not missing, and the correct one is below them in a different section of the report. That is worse than a silent failure, because it is a confident wrong answer.
       RELATED, do not conflate: jt9-32 pins what the bake PRODUCES; jt9-30 converts stale line refs to symbol refs. This story is about one helper's error handling in one test file.
     points: 2
-    priority: p2
+    priority: p1
     status: backlog
     repos: arcade
     workflow: tdd
