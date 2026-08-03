@@ -101,7 +101,7 @@ All JavaScript error checks (#10 from JS checklist) apply, plus:
 
 **13. Fix-introduced regressions (meta-check)**
 After applying fixes for review findings, re-scan the fix diff against
-checks #1-#12 and #14-#19. Common patterns:
+checks #1-#12 and #14-#20. Common patterns:
 - Adding `as any` to silence a type error instead of fixing it
 - Adding null checks but using `||` instead of `??`
 - Adding runtime validation but not updating the type to match
@@ -250,13 +250,38 @@ an uncited control byte nothing checked — `"0xA4"` → `"0xFF"` left 1075/1075
 and the `voiceArbitration` block, declared in no interface and walked by no sweep,
 held six wrong citations and the ruling that shipped wrong)*
 
+**20. A quantity measured from an artifact the SAME diff changes**
+#17 asks whether a comment's mechanism was re-run. This asks it of numbers, and
+adds the case #17 does not reach: a figure that was **true when it was typed and
+false by the time the commit closed**, because the diff carrying it also moved
+the thing it measures. Nothing goes stale later — it ships wrong, in the same
+commit, next to a sentence saying it was measured.
+- **A size, count or duration quoted next to code that edits its subject.** A
+  bundle figure in a module that adds an import; "the fixture has N cues" in the
+  commit that adds one; a test-count baseline in the commit that adds tests. Take
+  the figure LAST, after the final edit, not while writing the paragraph
+- **A "before" number taken by simulating the before-state** (stubbing the new
+  import out of the post-change tree) instead of building the base commit. It
+  answers a different question and looks identical
+- **A number taken at a ref that later moved.** `git worktree add … <SHA>
+  --detach` and `rev-parse` it; "at HEAD" in a permanent record is a claim about
+  a moving ref, and a rebase falsifies it silently
+- Name the command and the SHAs in the comment. "MEASURED, not waved at" tells the
+  next reader not to check; a reproducible recipe invites them to
+*Origin: cp6-3 round-2 rework (five figures wrong in a paragraph asserting they
+were measured — the before-size was taken by stubbing the import out of the post-
+change tree, and the sibling-game figure at a pre-rebase commit. Correcting them
+surfaced a SIXTH the review had not caught: "the whole 19 kB file inlines" was
+true at the base and false at HEAD, because this story's own new fixture record
+grew the file to 23 kB)*
+
 If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 
 ```yaml
 GATE_RESULT:
   status: pass
   gate: typescript-review-checklist
-  message: "TypeScript self-review checklist passed (19 checks)"
+  message: "TypeScript self-review checklist passed (20 checks)"
   checks:
     - name: type-safety-escapes
       status: pass
@@ -361,7 +386,7 @@ GATE_RESULT:
     - "Add Zod/io-ts validation at API boundaries; validate JSON.parse results"
     - "Use catch(e: unknown) and narrow with instanceof/type guards"
     - "Import specific exports instead of barrel; use async fs in handlers"
-    - "Re-scan fix diffs against checks #1-#12, #14-#19 before handoff"
+    - "Re-scan fix diffs against checks #1-#12, #14-#20 before handoff"
 ```
 </fail>
 
