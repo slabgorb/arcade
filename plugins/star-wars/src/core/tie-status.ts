@@ -38,7 +38,7 @@
 
 import { Status } from './tie-vm'
 import { TIE_HIT_RADIUS, type Enemy, type GameState } from './state'
-import { aimDirection, beamHit, COCKPIT, FOV_Y } from './gameRules'
+import { aimDirection, COCKPIT, FOV_Y, siteOffset } from './gameRules'
 import { nextInt, type Rng } from '@shared/rng'
 import { length, dot, sub, scale, IDENTITY, type Vec3 } from '@shared/math3d'
 
@@ -172,6 +172,47 @@ const TAN_HALF_FOV = Math.tan(FOV_Y / 2)
 export const SIGHTS_BAND_FACTOR = 2
 
 /**
+ * The sights octagon, as a multiple of the target's kill radius: `|dx| + |dy| <= 3·TMPSIZ`
+ * (WSMAIN.MAC:3920-3923, `ADDD TMPSIZ / ADDD TMPSIZ ;ALLOW LARGER WARNING AREA`). The cabinet
+ * tests the SUM and nothing else here — no box term, which is the one structural difference
+ * between this block and the laser-hit block above it.
+ */
+export const SIGHTS_OCTAGON = 3
+
+/**
+ * IS THIS POINT DRAWN? — the C_PV pyramid as a predicate, so the gun can ask it too (sw8-27).
+ *
+ * Extracted from `computeStatus`'s C_PV block, which is now its only other caller. The extraction
+ * is what makes the gun's gate possible at all: FIREBALLS carry no status word, so the space arm
+ * cannot read C_PV off an enemy for them, and a second inline copy of this arithmetic is exactly
+ * how the bit and the glass drift apart.
+ *
+ * Pure function of position and viewport. It does NOT depend on where the yoke points — the pilot
+ * sees what the pilot sees — which is what lets a target be off the glass and under the crosshair
+ * at the same time, the case this whole story is about.
+ *
+ * ROM: `CHSET C$PV` is WSMAIN.MAC:3846, and the four exits of `S2VW` that guard it are
+ * WSMAIN.MAC:3825-3826 (near clamp), WSMAIN.MAC:3827-3828 (far clamp), and WSMAIN.MAC:3834-3836
+ * and WSMAIN.MAC:3840-3842 (the per-axis ratio tests). The near/far literals are the cabinet's;
+ * the SLOPE is our rendered frustum's rather than the cabinet's ±45° (uf1-14).
+ *
+ * (Every span above is spelled with its filename, and the setter's own citation sits next to the
+ * quoted `CHSET C$PV` rather than after a list. Written the compact way — one filename then bare
+ * spans — the comment-citation guard binds the quote to the FIRST citation it sees and reports
+ * `WSMAIN.MAC:3825-3826` as not containing it. That is sw8-25's association defect, and it fired
+ * on this very docstring while it was being written.)
+ */
+export function inPlayerView(pos: Vec3, aspect: number): boolean {
+  const eye = COCKPIT
+  const depth = eye[2] - pos[2]
+  const lat = pos[0] - eye[0]
+  const vert = pos[1] - eye[1]
+  const vBound = depth * TAN_HALF_FOV
+  const hBound = vBound * aspect
+  return depth > VIEW_NEAR && depth <= VIEW_FAR && lat * lat < hBound * hBound && vert * vert < vBound * vBound
+}
+
+/**
  * OR together the 8 status bits this file derives: C_AS, C_PN, C_PV, C_PS,
  * C_AG, C_AH, C_R1, C_R2. Pure — identical (e, state, rng.seed) yields
  * identical bits, modulo the Rng's own documented mutation (nextInt advances
@@ -241,12 +282,7 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // field C_PS below already reads, so the bit and the glass cannot disagree
   // on any canvas shape.
   const eye = COCKPIT
-  const depth = eye[2] - e.pos[2]
-  const lat = e.pos[0] - eye[0]
-  const vert = e.pos[1] - eye[1]
-  const vBound = depth * TAN_HALF_FOV
-  const hBound = vBound * state.aspect
-  if (depth > VIEW_NEAR && depth <= VIEW_FAR && lat * lat < hBound * hBound && vert * vert < vBound * vBound) {
+  if (inPlayerView(e.pos, state.aspect)) {
     status |= Status.C_PV
   }
 
@@ -317,14 +353,21 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // WSMAIN.MAC:3915-3918, before the `;---` at :3919, so the sights test is that
   // block's SIBLING and not nested inside its conditions.
   //
-  // `beamHit` still refuses anything behind the gun (`along <= 0`), and that
+  // `siteOffset` still refuses anything behind the gun (`along <= 0`), and that
   // refusal is real and still runs — but it is a weaker, separate guard, not the
   // ported gate: it says nothing about the frustum, so before this gate a fighter
   // off the top of the glass, or nearer than VIEW_NEAR, could take the sights bit
   // while the player could not see it. Measured on the shipped uf1-12 loiter seat:
-  // 30 of its 391 flight frames. The gun is deliberately NOT changed here — the
-  // clone's laser resolves through the same helper and carries the same divergence
-  // from the cabinet, which is a separate story.
+  // 30 of its 391 flight frames.
+  //
+  // THE GUN CARRIES THIS GATE TOO, as of sw8-27 — both space-arm resolutions in
+  // `sim.ts` (fighters and fireballs) are gated on `inPlayerView` at their own call
+  // sites, because the cabinet gates BOTH: the alien hit block sits under `S2VW`'s
+  // four exits and the fireball hit block under `VWGUN`'s own four (WSGUNS.MAC:885,
+  // :887, :896, :903, all before `;GUN SHOT IS VISIBLE` at :904). The gate is NOT in
+  // `beamHit`, which is shared with the surface and trench — neither of which has a
+  // C_PV notion in the cabinet either (`GRLZCL` runs unconditionally after `BJGDRW`,
+  // WSGRND.MAC:978-979).
   //
   // ORDERING IS LOAD-BEARING: this block reads `status`, so the C_PV block above
   // MUST stay above it. Move C_PS up, or hoist C_PV down in a refactor, and the
@@ -333,11 +376,18 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // the gate always-false reddens 16 tests, and `tie-sights-visibility.test.ts`
   // asserts its positive controls before the zero it exists to check), but
   // nothing in the code says so, which is why it says so here.
+  //
+  // THE BAND IS AN L1 OCTAGON, NOT A DISC (sw8-27). The cabinet tests
+  // `LDD TMPSIZ / ADDD TMPSIZ / ADDD TMPSIZ / SUBD TMPOCT / IFHS` (WSMAIN.MAC:3920-3924)
+  // where TMPOCT is `|dx| + |dy|` — the SUM, with no box term, unlike the kill test
+  // twenty lines above it. A disc of radius 2·TMPSIZ is a strict subset of that
+  // octagon: they agree nowhere but by accident, the octagon reaching 3·T on the axes
+  // and 2.121·T on the diagonals against a flat 2·T. `SIGHTS_BAND_FACTOR` is retained
+  // and still correct about what it describes — 3 ÷ 1.5 = 2 is the ratio of the two
+  // OCTAGON thresholds — but it is not the band's radius, because the band has none.
   const sightsRay = aimDirection(state.aimX, state.aimY, state.aspect)
-  if (
-    (status & Status.C_PV) !== 0 &&
-    beamHit(eye, sightsRay, e.pos, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS) !== null
-  ) {
+  const site = siteOffset(eye, sightsRay, e.pos)
+  if ((status & Status.C_PV) !== 0 && site !== null && site.dx + site.dy <= SIGHTS_OCTAGON * TIE_HIT_RADIUS) {
     status |= Status.C_PS
   }
 

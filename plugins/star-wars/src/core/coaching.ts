@@ -52,7 +52,7 @@ const ALTERNATE_MASK = 0x10
 export function coachingFor(s: GameState): string | null {
   if (s.mode !== 'playing') return null
   // The run being OVER is not the same fact as the mode having changed: production
-  // signals death with `gameOver: true` while `mode` stays `'playing'` (sim.ts:537,
+  // signals death with `gameOver: true` while `mode` stays `'playing'` (sim.ts:546,
   // :937, :1185, :1344) and nothing in `src/` ever assigns `mode: 'gameover'`. Gating
   // on the mode alone left the hint frozen on screen for the whole end-of-run hold —
   // a dead pilot cannot SHOOT FIREBALLS (sw7-10 rework, finding F3).

@@ -12,7 +12,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 1999,
+      "line": 2042,
       "verbatim": "  const decay = Math.pow(7 / 8, dt * TICK_HZ)"
     },
     "verdict": "CONFIRMED",
@@ -91,7 +91,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 1323,
+      "line": 1366,
       "verbatim": "      ? beamHit(beamOrigin, beamDir, portPos, PORT_HIT_RADIUS, TRENCH_FAR)"
     },
     "recommendation": "accept"
@@ -151,7 +151,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 636,
+      "line": 679,
       "verbatim": "    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {"
     },
     "recommendation": "accept",
@@ -191,7 +191,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 436,
+      "line": 445,
       "verbatim": "          enemyShots.push({ pos: [...e.pos] as Vec3, vel: [0, 0, 0], ttl: ENEMY_SHOT_TTL })"
     }
   },

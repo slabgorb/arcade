@@ -30,7 +30,7 @@
 // leaves by retreating at wave end rather than by dying.
 //
 // WHY THESE FAIL TODAY: `Enemy.kind` is the literal `'tie'` only (state.ts:46) and
-// the player-bolt loop (sim.ts:266-278) is a flat one-hit kill that always adds
+// the player-bolt loop (sim.ts:275-287) is a flat one-hit kill that always adds
 // TIE_SCORE and removes the enemy — there is no Darth, no survival rule, and
 // VADER_SCORE (state.ts:153) is awarded by nothing. GREEN must:
 //   1. widen `Enemy.kind` to include the Darth enemy (these fixtures name it
@@ -261,7 +261,7 @@ describe('sw7-13 A-016 — the RTH wave slot spawns a live Darth', () => {
   it('a non-TIE fighter is spawned across the Darth-scheduled space waves', () => {
     // SET A1 (the first space wave) carries no RTH; every later set does
     // (tie-waves.ts TSPWAV, WSCPU.MAC:1230-1235). Today spawnTie() hard-codes
-    // kind:'tie' (sim.ts:1299), so no Darth ever appears. Force a spawn every
+    // kind:'tie' (sim.ts:1342), so no Darth ever appears. Force a spawn every
     // frame (empty slot + spawnTimer 0) across waves 1-6 so spawnCount walks the
     // whole plan, and assert a non-'tie' fighter reaches the field.
     const kindsSeen = new Set<string>()

@@ -30,7 +30,7 @@
 //
 // -- OURS TODAY: the trench carries no fire ----------------------------------
 //
-// `stepTrench` (sim.ts) never touches `enemyShots`; sim.ts:258 states it outright:
+// `stepTrench` (sim.ts) never touches `enemyShots`; sim.ts:267 states it outright:
 // "fire still flies straight … the trench carries no fire." The turrets already in
 // the channel (`kind:'turret'`, the WGA wall guns) are shoot-for-SCORE targets
 // only — the entire return-fire subsystem is absent. Every core assertion below is
@@ -42,7 +42,7 @@
 // re-skins as `.WP WGA`. On a difficulty-gated opening an in-range gun fires an
 // `enemyShots` Projectile AIMED AT THE SHIP POINT (`trenchView`, per sw7-16 — the
 // flying ship, NOT a detached floor origin, exactly the surface-fire lesson at
-// sim.ts:807-810) and emits an `enemy-fire` event (the established vocabulary of
+// sim.ts:850-853) and emits an `enemy-fire` event (the established vocabulary of
 // the space and surface fire paths). A shot that reaches the cockpit costs a
 // shield (a real hit — UNLIKE the force-field GRAZE of sw7-19, which costs none)
 // and fires `player-death`. The EXACT TGPROB literals, the in-range window, and

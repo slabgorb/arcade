@@ -134,7 +134,7 @@ const surface = (over: Partial<GameState> = {}): GameState => ({
 
 /**
  * A trench run with nothing in it but what the fixture places. `enterPhase(…, 'trench')` SPAWNS
- * a fresh obstacle field (`sim.ts:1137`), so both overrides are load-bearing: without them the
+ * a fresh obstacle field (`sim.ts:1180`), so both overrides are load-bearing: without them the
  * spawner's own squares sit under the site and shadow the probe.
  */
 const trench = (over: Partial<GameState> = {}): GameState => ({
@@ -163,7 +163,7 @@ const towerDied = (s: GameState): boolean =>
  * Every tower fixture below is seated at the PILOT'S OWN HEIGHT rather than on the floor.
  *
  * That is deliberate and it is not cosmetic: on the surface the yoke's vertical axis is also the
- * THROTTLE (`altitude += aimY · ALTITUDE_RATE · dt`, sim.ts:490). Aiming DOWN at a floor-level
+ * THROTTLE (`altitude += aimY · ALTITUDE_RATE · dt`, sim.ts:499). Aiming DOWN at a floor-level
  * tower therefore flies the ship while the shot is being measured, and at the floor of the band
  * it trips the terrain-crash bump. Level with the pilot, dead-on aim is purely lateral, `aimY`
  * stays 0, and the ship cannot move during the measurement — so what is measured is the gun.
@@ -361,7 +361,7 @@ describe('sw7-17 — the beam is cast from the ship point, not the world origin'
 
 describe('sw7-17 — enemy fire is still a real travelling object', () => {
   // GREEN TODAY, and the whole point is that it stays that way. The ROM's fireballs ARE
-  // travelling objects; only the player's laser is hitscan. `advance()` (sim.ts:1223) is shared
+  // travelling objects; only the player's laser is hitscan. `advance()` (sim.ts:1266) is shared
   // between the player's bolts and surface/trench enemy fire, so deleting the player projectile
   // is a CALLER deletion — the function itself must survive. These are the tests that notice if
   // it does not.
@@ -422,7 +422,7 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
   })
 
   it('a space TIE fireball still HOMES by the 7/8-per-tick decay (sw4-2 stands)', () => {
-    // The space fireball's motion is not `advance` at all but `homeShots` (sim.ts:1244) — the
+    // The space fireball's motion is not `advance` at all but `homeShots` (sim.ts:1287) — the
     // ROM's decay law. Pinned here because "make the player laser hitscan" is the kind of change
     // that invites a sweep through everything in the file that looks like a shot.
     const s0: GameState = {
@@ -485,7 +485,7 @@ describe('sw7-17 — the trench beam is clipped to 28,672 units forward (CLBLZ)'
     // 28,272 probe dies at t = 2.25 s and the 29,072 one never dies at all. The old bolt has
     // ~36,000 units of reach and comfortably covers both, so the difference is not range. It is
     // ALIASING: the bolt advances 200 units per frame (12,000 u/s × 1/60) and is tested as a
-    // POINT against a 90-unit sphere (`collides`, sim.ts:750), so whether it registers depends
+    // POINT against a 90-unit sphere (`collides`, sim.ts:793), so whether it registers depends
     // on where the frame grid happens to land relative to the target. At range that is a coin
     // flip — which is its own pre-existing defect, recorded as a Delivery Finding on the session
     // and incidentally cured by hitscan, since an exact ray cannot alias.

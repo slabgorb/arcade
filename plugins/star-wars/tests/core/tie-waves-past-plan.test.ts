@@ -10,15 +10,15 @@
 // (:1089-1090 — RESTARTS that group's loop pointer at its first entry). Every TSPWAV set
 // ends with TWV2Z (WSCPU.MAC:1230-1235), so the endless tail of every space wave is
 // the full 18-entry TWV2Z mix — 9 of its rows the ±2048 D-corner begin-locs —
-// looped entry-by-entry, forever. Our `spawnTie` (sim.ts:2129-2145) instead falls
+// looped entry-by-entry, forever. Our `spawnTie` (sim.ts:2172-2188) instead falls
 // back past the plan's end to `entry?.shape ?? 'TIE'` / `choreoPc(entry?.
 // choreography ?? '1A1')`: a single invented mook, repeated, off-table.
 //
 // REACHABILITY (measured in RED — the story's "latent under the 6-kill quota"
 // framing is STALE): the space phase is TIME-boxed now, not quota'd — phaseCleared
-// reads `s.phaseTime >= SPACE_PHASE_END_S` (sim.ts:1620, state.ts:929 = 21s,
+// reads `s.phaseTime >= SPACE_PHASE_END_S` (sim.ts:1663, state.ts:929 = 21s,
 // sw8-11/12) — and a killed TIE frees a slot that refills on the NEXT step
-// (sw8-7, sim.ts:474-487), so spawnCount = 3 + kills. 25+ kills inside 21s walks
+// (sw8-7, sim.ts:483-496), so spawnCount = 3 + kills. 25+ kills inside 21s walks
 // spawnIndex past SET A1's 27 entries in a legitimately played game.
 //
 // GROUND TRUTH is WSCPU.MAC in the 1983 Atari source (in-repo copy:
@@ -29,7 +29,7 @@
 // the table ENDS. (TEA sidecar: "the bug lives where the table ends" — the test
 // set is the boundary PLUS the first value past it.)
 //
-// SEAM. `spawnTie` is the wired supply (sim.ts:479 passes the per-wave spawnCount
+// SEAM. `spawnTie` is the wired supply (sim.ts:488 passes the per-wave spawnCount
 // and `state.wave - 1`), and it seats the choreography as `initVm(choreoPc(...))`,
 // so a spawned fighter's `vm.pc` IS its observable choreography identity, and
 // `kind` its shape. The tests below never reach into the implementation's choice

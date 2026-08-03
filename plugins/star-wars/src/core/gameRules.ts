@@ -111,16 +111,30 @@ function clamp(v: number, lo: number, hi: number): number {
 // travelling player shot and no lifetime anywhere in WSLAZR.MAC.
 //
 // "Under the site" is recorded during the object DRAW: each object tests the site against its
-// own projected size and keeps the nearest (WSGUNS.MAC:938-948 — a box test, then `LDD TMPSIZ /
-// LSRD / ADDD TMPSIZ ;MAKE 1.5 FOR OCTAGON`, then `LDD M.XT ;THEN SEE IF WE ARE THE CLOSEST
-// ALIEN / CMPD CL.GDS / IFLO / STD CL.GDS`).
+// own projected size and keeps the nearest.
 //
-// Screen-space is the cabinet's way of saying a world-space thing, and we say it directly: an
-// object is under the site exactly when the AIM RAY passes within its hit radius. That is the
-// same predicate — a cone through the object's projected size IS a ray within its radius at that
-// depth — and it keeps the test in world space, where this core does all its collision. It also
-// reuses the hit radii the game already has (TIE_HIT_RADIUS &c.) instead of inventing a reticle
-// size, so the beam and the sphere can never disagree about how big a target is.
+// THE SHAPE OF THAT TEST IS PER-PASS, NOT UNIVERSAL (measured at sw8-27 by grepping every ROM
+// module for `TMPOCT`, the octagon accumulator). It appears in exactly two files:
+//
+//   space aliens  WSMAIN.MAC:3898-3908   |dx| <= T && |dy| <= T && |dx| + |dy| <= 1.5·T
+//   fireballs     WSGUNS.MAC:926-941     the same three terms
+//   ground/towers WSGRND.MAC:1076-1132   a DIFFERENT test — an unrotated width/height box
+//                                        with a `+10.` site fudge and NO octagon term at all
+//
+// (Note the box threshold is a bare TMPSIZ; only the octagon is 1.5·. An older version of this
+// comment cited `WSGUNS.MAC:938-948` as how "each object" records being under the site, which
+// over-generalised the FIREBALL recorder to every pass — the ground does not work that way.)
+//
+// So the box-and-octagon is a property of the SPACE draw pass, not of "a hit" in this machine,
+// and it lives at the space arm's own call sites in `sim.ts` — never in `beamHit`, which is
+// shared with the surface and trench. `siteOffset` below is the geometry those call sites need;
+// `beamHit` keeps the rotationally-symmetric radius the other phases are built on.
+//
+// Screen-space is the cabinet's way of saying a world-space thing, and for a symmetric radius we
+// can say it directly: an object is under the site exactly when the AIM RAY passes within its hit
+// radius — a cone through the object's projected size IS a ray within its radius at that depth.
+// That keeps the test in world space, where this core does all its collision, and reuses the hit
+// radii the game already has (TIE_HIT_RADIUS &c.) instead of inventing a reticle size.
 
 /**
  * How far along the beam it strikes a sphere at `pos`, or `null` if it misses.
@@ -147,6 +161,59 @@ export function beamHit(
   if (along > maxRange) return null // past the beam's far endpoint
   const closest = add(eye, scale(dir, along))
   return length(sub(pos, closest)) <= radius ? along : null
+}
+
+/**
+ * The SPACE pass's hit octagon, as a multiple of the target's hit radius:
+ * `LDD TMPSIZ / LSRD / ADDD TMPSIZ ;MAKE 1.5 FOR OCTAGON` (WSMAIN.MAC:3904-3906, and the same
+ * three instructions at WSGUNS.MAC:937-939 for fireballs).
+ *
+ * It is intersected with a BOX at a bare `TMPSIZ` — 1.0, not 1.5 — which is why there is no
+ * matching `SPACE_HIT_BOX` constant here: the box threshold IS the hit radius the caller already
+ * passes, and giving it a second name would invite the two drifting apart.
+ *
+ * Space and fireballs only. The ground pass uses a different test (see the header above), so
+ * this constant has no business anywhere near `beamHit`.
+ */
+export const SPACE_HIT_OCTAGON = 1.5
+
+/**
+ * The object's offset from the SITE, resolved onto the screen's own axes, or `null` if it is
+ * behind the gun. `null` and a large offset are different answers and callers must not conflate
+ * them — the cabinet's near clamp is a separate exit from its box test.
+ *
+ * WHY SCREEN AXES AND NOT A RAY-RELATIVE FRAME. The cabinet measures `TMPXD`/`TMPYD` as
+ * differences of PROJECTED coordinates — `BJ.CX - LZ.CX` and `BJ.CY - LZ.CY` (WSMAIN.MAC:3883-3895)
+ * — so its dx and dy are screen deltas against the fixed screen axes, which do not rotate when
+ * the yoke moves. The crosshair slides across a stationary screen. Every phase's view matrix here
+ * is IDENTITY-oriented (`cameraView` is a pure translation), so those screen axes ARE world +X and
+ * world +Y, and the faithful port needs no basis construction at all.
+ *
+ * The offsets are taken in the object's own DEPTH PLANE, which is the exact world-space image of a
+ * screen delta: a screen delta at depth d corresponds to a world offset of (delta · d / f). Taking
+ * the perpendicular distance to the ray instead would be a different quantity once the yoke is
+ * deflected — shorter by the cosine of the deflection — and it has no screen-space meaning.
+ *
+ * This also removes a degeneracy rather than guarding one. Building a basis as
+ * `normalize(cross(dir, worldUp))` blows up when the ray is vertical; this cannot, because
+ * `aimDirection` puts a literal `-1` in z before normalising, so `dir[2] < 0` for every ray it can
+ * return and the ray meets every depth plane in front of the eye exactly once.
+ */
+export function siteOffset(
+  eye: Vec3,
+  dir: Vec3,
+  pos: Vec3,
+): { along: number; dx: number; dy: number } | null {
+  const along = dot(sub(pos, eye), dir)
+  if (along <= 0) return null // behind the gun — never under the site
+  // Where the ray crosses this object's depth plane. `dir[2]` is strictly negative (see above),
+  // so this never divides by zero and `t` is always positive for an object in front.
+  const t = (eye[2] - pos[2]) / -dir[2]
+  return {
+    along,
+    dx: Math.abs(pos[0] - (eye[0] + dir[0] * t)),
+    dy: Math.abs(pos[1] - (eye[1] + dir[1] * t)),
+  }
 }
 
 // --- Difficulty ramp across waves -------------------------------------------

@@ -56,7 +56,7 @@ const gameRules = () => read('src', 'core', 'gameRules.ts')
 describe('sw8-18 AC1 — the gameRules ST.UX tombstone, corrected as one edit', () => {
   it('no longer claims EVERY ST.UX writer sits under `MOVE STARS IN SOME DIRECTION`', () => {
     // FALSE as filed: that SBTTL runs WSMAIN.MAC:2243-2291, but the space-wave writer
-    // is at :2522, under `.SBTTL MOVE THE PLAYER` (:2292).  RETIRED:`gameRules.ts:238-239`
+    // is at :2522, under `.SBTTL MOVE THE PLAYER` (:2292).  RETIRED:`gameRules.ts:305-306`
     //
     // NOTE: this assertion was INERT on its first draft. It used `[^.]*` as the gap,
     // and the real sentence has `` `WSMAIN.MAC` `` between the two halves — a dotted

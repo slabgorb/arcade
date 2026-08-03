@@ -108,7 +108,16 @@ import {
   type Vec3,
   type Mat4,
 } from '@shared/math3d'
-import { aimDirection, beamHit, COCKPIT, collides, toCockpit, waveParams } from './gameRules'
+import {
+  aimDirection,
+  beamHit,
+  COCKPIT,
+  collides,
+  siteOffset,
+  SPACE_HIT_OCTAGON,
+  toCockpit,
+  waveParams,
+} from './gameRules'
 import { createRng, nextInt, type Rng } from '@shared/rng'
 import { stepNameEntry } from '@shared/name-entry'
 import {
@@ -132,7 +141,7 @@ import {
 } from './trench-channel'
 import { supplyEntry, choreoPc } from './tie-waves'
 import { initVm, tickChoreo, program, Status, Twist, Move } from './tie-vm'
-import { computeStatus } from './tie-status'
+import { computeStatus, inPlayerView } from './tie-status'
 
 const ZERO: Vec3 = [0, 0, 0]
 
@@ -538,12 +547,46 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   const killedShot = new Set<number>()
   const spawnedBursts: DestroyedShot[] = []
 
+  // THE SPACE ARM RESOLVES ITS OWN HITS (sw8-27), and does NOT go through `beamHit`.
+  //
+  // Two cabinet facts, both transcribed rather than inferred, and both PER-PASS:
+  //
+  //   1. THE HIT IS GATED ON VISIBILITY. The alien hit block (WSMAIN.MAC:3898-3918, writing
+  //      CL.ADS/CL.AP) sits below `S2VW`'s four exits to `RTS1` — :3825-3826 near, :3827-3828
+  //      far, :3834-3836 and :3840-3842 the ratio tests — with no label between :3846 and
+  //      :3898 for anything to branch into. The FIREBALL hit block (WSGUNS.MAC:906-948,
+  //      writing CL.GDS/CL.GP) sits below `VWGUN`'s own four — :885, :887, :896, :903 — and
+  //      its `;GUN SHOT IS VISIBLE` marker at :904. So the cabinet cannot resolve a hit on
+  //      EITHER kind of object it did not draw, and both loops below are gated.
+  //   2. THE REGION IS A BOX INTERSECTED WITH AN OCTAGON, not a disc. `|dx| <= TMPSIZ` and
+  //      `|dy| <= TMPSIZ` (:3898-3903 — a BARE TMPSIZ, note, not 1.5·), then
+  //      `LDD TMPSIZ / LSRD / ADDD TMPSIZ ;MAKE 1.5 FOR OCTAGON / SUBD TMPOCT / IFGE`
+  //      (:3904-3908) against `TMPOCT = |dx| + |dy|`.
+  //
+  // NEITHER belongs in `beamHit`. That helper is shared with the surface and the trench, and
+  // in the cabinet those passes have neither property: `GRLZCL` runs unconditionally straight
+  // after `BJGDRW` (WSGRND.MAC:978-979, no branch skips one without the other), and the ground
+  // objects use a different collision shape entirely — an unrotated width/height box with a
+  // `+10.` site fudge and no octagon term (WSGRND.MAC:1076-1132). Measured: `TMPOCT` appears
+  // in exactly two ROM modules, WSMAIN.MAC and WSGUNS.MAC, which are these two loops.
+  //
+  // The RANGE still ranks on the same quantity CL.ADS/CL.GDS do — `M.XT`, the depth along the
+  // beam, which is `siteOffset`'s `along`.
+  const spaceSiteHit = (pos: Vec3, radius: number): number | null => {
+    if (!inPlayerView(pos, state.aspect)) return null
+    const site = siteOffset(beamOrigin, beamDir, pos)
+    if (site === null) return null // behind the gun
+    if (site.dx > radius || site.dy > radius) return null // the box, WSMAIN.MAC:3898-3903
+    if (site.dx + site.dy > SPACE_HIT_OCTAGON * radius) return null // the octagon, WSMAIN.MAC:3904-3908
+    return site.along
+  }
+
   if (laserOn) {
     let bestRange = Infinity
     let hitTie = -1
     let hitShot = -1
     for (let ei = 0; ei < enemies.length; ei++) {
-      const range = beamHit(beamOrigin, beamDir, enemies[ei].pos, TIE_HIT_RADIUS)
+      const range = spaceSiteHit(enemies[ei].pos, TIE_HIT_RADIUS)
       if (range !== null && range < bestRange) {
         bestRange = range
         hitTie = ei
@@ -551,7 +594,7 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
       }
     }
     for (let si = 0; si < enemyShots.length; si++) {
-      const range = beamHit(beamOrigin, beamDir, enemyShots[si].pos, ENEMY_SHOT_HIT_RADIUS)
+      const range = spaceSiteHit(enemyShots[si].pos, ENEMY_SHOT_HIT_RADIUS)
       if (range !== null && range < bestRange) {
         bestRange = range
         hitShot = si

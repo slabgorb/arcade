@@ -14,7 +14,7 @@
 //     HIS `PH.TIM=#0100` (256) (WSMAIN.MAC:883-884); BANNER threshold BN.CNT>=#0200.
 //     So the HI-SCORE page dwells for HALF as long as the others.
 //
-// Today's clone attract branch (sim.ts:147-149) just advances `t` — one static page.
+// Today's clone attract branch (sim.ts:156-158) just advances `t` — one static page.
 // So a swept attract never leaves its start page → red. `state.attract` is undefined
 // until Dev lands it (see tests/support/sw710-contract.ts).
 import { describe, it, expect } from 'vitest'

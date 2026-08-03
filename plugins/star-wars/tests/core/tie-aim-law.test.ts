@@ -9,7 +9,7 @@
 // TIE steers toward the player a little each frame; combined with roll it visibly SPINS as it
 // tracks across the field.
 //
-// Today `applyManeuver` (src/core/sim.ts:1806) applies AIM_PLAYER/AIM_AHEAD as
+// Today `applyManeuver` (src/core/sim.ts:1849) applies AIM_PLAYER/AIM_AHEAD as
 // `aimOrient(e) = lookRotation(toCockpit(e.pos))` — a FULL RE-POINT that ignores the TIE's
 // current orientation and snaps the nose straight onto the cockpit in a single tick (the code's
 // own comment calls the exact `$67` law "a deferred refinement"). A snap cannot spin and reads

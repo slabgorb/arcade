@@ -39,11 +39,16 @@
 // in the C_PS block, `?ALIVE?` (`LDA A$TYP(X) / CMPA #1 / BNE 86$`, :3926-3928), is
 // already ported: `state.enemies` holds only live fighters.
 //
-// WHAT THE PORT DOES TODAY. `computeStatus` derives C_PV from the RENDERED frustum
-// (uf1-14) and derives C_PS from `beamHit` alone — and `beamHit` (gameRules.ts:138-150)
-// carries NO view test whatsoever, only `along <= 0` (behind the gun) and a `maxRange`
-// that is `Infinity` in space. So the two bits are independent, and C_PS can be set for a
-// fighter that is off the glass.
+// WHAT THE PORT DID BEFORE THIS STORY. `computeStatus` derived C_PV from the RENDERED
+// frustum (uf1-14) and derived C_PS from `beamHit` alone — and `beamHit`
+// (gameRules.ts:152-164) carries NO view test whatsoever, only `along <= 0` (behind the
+// gun) and a `maxRange` that is `Infinity` in space. So the two bits were independent, and
+// C_PS could be set for a fighter that is off the glass.
+//
+// (Updated at sw8-27, which changed the second half of that sentence: C_PS no longer goes
+// through `beamHit` at all — it uses `siteOffset` against the ROM's L1 warning octagon. The
+// first half still holds and is still the point of this file, and `beamHit`'s view-blindness
+// is still true and still deliberate, which is what the GUN test at the bottom pins.)
 //
 // MEASURED, IN PLAY, NOT ARGUED. The shipped uf1-12 loiter fixture — a D-group fighter
 // seated at [4000, 0, -6000] and tracked with the yoke — spends 30 of its 391 flight
@@ -270,8 +275,8 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // TIE_HIT_RADIUS. `sim.ts:546` resolves the player's laser through exactly this call,
     // so a view clamp added here would silently change what the player can shoot.
     //
-    // (RE-ANCHORED by sw8-27, from `sim.ts:535` to `:546`. The shift is exactly +11 — the
-    // comment block sw8-19's OWN finish chore inserted at `sim.ts:159`. The
+    // (RE-ANCHORED by sw8-27, from `sim.ts:544` to `:546`. The shift is exactly +11 — the
+    // comment block sw8-19's OWN finish chore inserted at `sim.ts:168`. The
     // comment-citation guard never reported it: with no verbatim quote adjacent it
     // range-checks only, and 535 was still a valid line, so this citation sat in neither
     // the guard's 29 nor sw8-24's sweep of them. It pointed at a comment about Darth

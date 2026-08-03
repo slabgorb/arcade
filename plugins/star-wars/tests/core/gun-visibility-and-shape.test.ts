@@ -125,7 +125,7 @@ const sights = (pos: Vec3, aspect: number): number => {
  * so nothing but the player's own trigger can change the lists.
  *
  * `firePrev: false` and `fireCooldown: 0` are load-bearing — the trigger is EDGE-triggered
- * (`fireEdge = input.fire && !state.firePrev`, sim.ts:271) and gated on the cooldown, so
+ * (`fireEdge = input.fire && !state.firePrev`, sim.ts:280) and gated on the cooldown, so
  * without both the beam never arms and every negative below passes for the wrong reason.
  */
 const spaceRun = (over: Partial<GameState> = {}): GameState => ({
@@ -326,7 +326,7 @@ describe('sw8-27 AC2 — the player cannot shoot down a fireball the cabinet wou
 // ---------------------------------------------------------------------------
 
 describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
-  it('a SURFACE turret far outside the space pyramid still dies', () => {
+  it('a SURFACE turret the space gate would refuse still dies', () => {
     // MUTANT G6/M6 BY NAME: clamping `beamHit` to the frustum is the tempting one-line fix,
     // and it would satisfy every assertion in groups A and B. It is wrong twice over — the
     // ROM's ground pass has no view gate on its collision at all (`GRLZCL` is called at
@@ -334,8 +334,13 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // one without skipping the other), and the ground objects do not even use the same hit
     // SHAPE (WSGRND.MAC:1076-1132 is a width/height box with no octagon term).
     //
-    // This tower sits at vert 4000 against a pyramid bound of 400 · tan30° = 230.9 — which is
-    // to say, hopelessly off the SPACE glass — and must die anyway.
+    // CORRECTED at GREEN. This comment used to say the tower "sits at vert 4000 against a
+    // pyramid bound of 230.9 — hopelessly off the SPACE glass". SKIM_ALTITUDE is 128, which is
+    // INSIDE that bound, so the seat was never off the glass and this test did not bite the
+    // mutant it named: measured, hoisting the C_PV gate into `beamHit` leaves this test GREEN.
+    // What does catch that mutant is `hitscan-laser.test.ts`'s 6,000-off-axis tower (and the
+    // direct `beamHit` probe below), so the property was covered — by a different test than
+    // this one claimed. Kept as ordinary surface-still-fires cover, named for what it does.
     const tower: Vec3 = [0, SKIM_ALTITUDE, -400]
     const s0: GameState = {
       ...enterPhase(initialState(1983), 'surface'),
@@ -354,6 +359,61 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
       'the surface phase has no C_PV notion — a view clamp in beamHit would break it',
     ).toBe(true)
     expect(TURRET_HIT_RADIUS, 'anchor: the surface probe is measured against its own radius').toBeGreaterThan(0)
+  })
+
+  it('the ROM SHAPE does not leak into the helper either — the surface keeps its disc', () => {
+    // ADDED at GREEN, because nothing caught this. The gate leaking into `beamHit` is caught
+    // (measured: 6 tests, including the probe below). The SHAPE leaking into it was caught by
+    // NOTHING — every surface and trench fixture seats its target essentially on the ray, where
+    // a disc and the ROM's box∩octagon agree, so the two models are indistinguishable there.
+    //
+    // The discriminator has to sit where they differ, and they differ in one place: the octagon
+    // CORNER. Today's disc is a strict subset of the ROM region, so hoisting the ROM shape into
+    // the helper can only ADD hits — never remove them. The seat below is therefore one the
+    // surface must keep MISSING: at 26.57° off the ray and 212 units out, it is outside
+    // TURRET_HIT_RADIUS (200) but inside the ROM box (189.6, 94.8 both ≤ 200) and inside the
+    // ROM octagon (284.4 ≤ 300). If the space shape ever reaches `beamHit`, this tower starts
+    // dying and this test reddens.
+    //
+    // VERBATIM MUTANT this kills, applied to `beamHit`'s body:
+    //   const s = siteOffset(eye, dir, pos)
+    //   if (s === null) return null
+    //   if (s.dx > radius || s.dy > radius) return null
+    //   if (s.dx + s.dy > SPACE_HIT_OCTAGON * radius) return null
+    //   return along
+    const corner: Vec3 = [189.6, SKIM_ALTITUDE + 94.8, -3000]
+    expect(Math.hypot(189.6, 94.8), 'fixture guard: OUTSIDE the disc the surface uses').toBeGreaterThan(
+      TURRET_HIT_RADIUS,
+    )
+    expect(189.6 + 94.8, 'fixture guard: INSIDE the ROM octagon, so a leak would accept it').toBeLessThanOrEqual(
+      1.5 * TURRET_HIT_RADIUS,
+    )
+    const surfaceAt = (pos: Vec3): GameState => ({
+      ...enterPhase(initialState(1983), 'surface'),
+      mode: 'playing',
+      altitude: SKIM_ALTITUDE,
+      turrets: [{ pos: [...pos] as Vec3, age: 0 }],
+      surfaceMazeLaid: true,
+      projectiles: [],
+      enemyShots: [],
+      firePrev: false,
+      fireCooldown: 0,
+    })
+    const turretDied = (s: GameState) => s.events.some((e) => e.type === 'enemy-death' && e.enemyType === 'turret')
+
+    expect(
+      turretDied(stepGame(surfaceAt(corner), restTrigger(WIDE), DT)),
+      'the octagon corner is a MISS on the surface — the ROM shape is space-only',
+    ).toBe(false)
+
+    // The positive control, without which the assertion above passes for any broken fixture:
+    // the same bearing, just inside the disc, still dies.
+    const inside: Vec3 = [170, SKIM_ALTITUDE + 85, -3000]
+    expect(Math.hypot(170, 85), 'fixture guard: inside the disc').toBeLessThan(TURRET_HIT_RADIUS)
+    expect(
+      turretDied(stepGame(surfaceAt(inside), restTrigger(WIDE), DT)),
+      'positive control: the surface gun still works on this bearing',
+    ).toBe(true)
   })
 
   it('`beamHit` itself still resolves a target outside the space pyramid', () => {
@@ -436,6 +496,49 @@ describe('sw8-27 AC5 — the space kill region is the cabinet box ∩ octagon, n
     expect(195 + 195, 'and it is outside the octagon').toBeGreaterThan(OCTAGON * TIE_HIT_RADIUS)
 
     expect(tieDied(shootAt(seat)), 'the cabinet returns at the octagon test, so no kill').toBe(false)
+  })
+
+  it('measures dx/dy in the target DEPTH PLANE, the way a screen delta does — not perpendicular to the ray', () => {
+    // ADDED at GREEN, because nothing caught this either. Every other seat in this file is
+    // measured with the yoke AT REST, where the ray is [0,0,-1] and the two candidate measures
+    // are identical — so the choice between them was invisible to all 2274 tests.
+    //
+    // The cabinet's dx/dy are differences of PROJECTED coordinates (`BJ.CX - LZ.CX`,
+    // WSMAIN.MAC:3883-3895), i.e. screen deltas. The world-space image of a screen delta is the
+    // offset taken in the target's own depth plane. The perpendicular distance to the ray is a
+    // DIFFERENT quantity once the yoke is deflected — shorter by the cosine of the deflection —
+    // and it has no screen-space meaning.
+    //
+    // The two therefore disagree, and this seat is where. Yoke at aimY = 0.6, target at depth
+    // 2000: the ray is 692.8 up at that depth, the target 265 above the ray IN THE PLANE (so
+    // the ROM box at 250 rejects it) but only 236.6 from the ray PERPENDICULARLY (so a
+    // perpendicular measure would accept it). It must MISS.
+    //
+    // VERBATIM MUTANT this kills, replacing `siteOffset`'s return:
+    //   const c = add(eye, scale(dir, along))
+    //   return { along, dx: Math.abs(pos[0] - c[0]), dy: Math.abs(pos[1] - c[1]) }
+    const AIM_Y = 0.6
+    const DEEP = 2000
+    const rayY = (AIM_Y / (1 / Math.tan(FOV_Y / 2))) * DEEP // where the deflected ray sits at that depth
+    const deflected: Input = { aimX: 0, aimY: AIM_Y, fire: true, aspect: WIDE }
+
+    const beyond: Vec3 = [0, rayY + 265, -DEEP]
+    expect(inView(beyond, WIDE), 'fixture guard: still on the glass, so the gate cannot explain a miss').toBe(
+      Status.C_PV,
+    )
+    expect(
+      tieDied(stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(beyond)] }), deflected, DT)),
+      '265 in the depth plane is outside the ROM box — a perpendicular measure would call it 236.6 and hit',
+    ).toBe(false)
+
+    // Positive control on the SAME deflected ray, without which the miss above proves nothing:
+    // a seat inside the box in plane terms still dies.
+    const within: Vec3 = [0, rayY + 237.5, -DEEP]
+    expect(inView(within, WIDE), 'fixture guard: also on the glass').toBe(Status.C_PV)
+    expect(
+      tieDied(stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(within)] }), deflected, DT)),
+      'positive control: the deflected gun still kills inside the box',
+    ).toBe(true)
   })
 
   it('the change is PURELY ADDITIVE — nothing killable today stops being killable', () => {

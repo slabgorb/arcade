@@ -91,7 +91,7 @@ describe('sw8-18 AC5 — the three citation forms', () => {
   })
 
   it('resolves a BARE-COLON span against the nearest preceding filename — item 8 form', () => {
-    // gameRules.ts:240 as filed: the filename is on the line above, the span is bare.
+    // gameRules.ts:307 as filed: the filename is on the line above, the span is bare.
     const text = [
       '//   * Every writer sits under `WSMAIN.MAC` `.SBTTL MOVE STARS IN SOME DIRECTION`',
       '//     are assembled OUT (`.REPT 0`, :2273-2290; call sites :2186 commented out).',
