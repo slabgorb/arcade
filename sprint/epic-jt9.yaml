@@ -144,7 +144,7 @@ stories:
     description: 'joust CHANNELS maps every cue to a `prio-N` string, but since jt5-5 the shared engine arbitrates ALL of joust''s cues on ONE voice by priority, so the channel decides nothing for them. THREE stories have now had to feed it: jt5-5''s Dev and TEA both raised it, and jt5-6 added an eighteenth entry (player2Materialise: prio-70) that routes nothing, purely to satisfy the test `CHANNELS gives every SOUNDS entry a voice` in tests/audio-manifest.test.ts. It is kept because the shared engine still routes every UNARBITRATED name by channel and because a channel-per-priority is an honest description of which cues share a voice — but a reader takes it for live routing. Decide: delete joust''s map and let the engine default, or keep it and make the test assert what it actually guarantees. Affects plugins/joust/src/shell/audio.ts (CHANNELS, and the header comment at :86-97 which still describes the fence in the present tense) and tests/audio-manifest.test.ts. NOTE the constraint before deleting: src/shared/audio.ts routes by channel for every name NOT in `priorities`, so removing the map is only safe while all 18 joust cues carry a priority.'
     points: 2
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-08-03'
     repos: arcade
     workflow: tdd
