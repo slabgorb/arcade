@@ -33,7 +33,8 @@ import { loadGame } from './helpers/game-contract.js'
 import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Claims plumbing (the ptero-source.test.ts / troll-source.test.ts pattern).
+// Claims plumbing: the loader is `./helpers/claims.js` (jt9-2). Only this
+// story's claim-id namespace filter stayed local.
 // ─────────────────────────────────────────────────────────────────────────────
 function jt41Claims(claims: Claim[]): Claim[] {
   return claims.filter((c) => (c.id ?? '').startsWith('JT41-'))

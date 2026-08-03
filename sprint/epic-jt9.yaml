@@ -442,3 +442,36 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+  - id: jt9-31
+    title: The claims loader's asClaim hardening has ZERO coverage — gutting it to a passthrough leaves all 2499 joust tests green, and jt9-2 took its dependents from 2 files to 29
+    description: |-
+      Found by the Reviewer during jt9-2 (2026-08-02) with a mutation, not by reading.
+
+      plugins/joust/tests/helpers/claims.ts exports asClaim(), which is the ENTIRE reason the file calls itself "the HARDENED variant". It was jt8-2's round-2 [LOW][SEC]/[RULE] repair: every parsed JSON value is shape-checked before use, so a malformed claims file names itself instead of surfacing as a confusing `undefined` deep inside claimCovers. It throws on a non-object, a non-string `id`, a non-string `claim`, and a `source` missing a string `file` or a numeric `line`.
+
+      NOTHING TESTS ANY OF IT.
+
+      MEASURED — mutation M8, run from the repo root on commit 72344a4:
+        inject `return value as Claim` as the first statement of asClaim (every check dead)
+        npx vitest run --project joust
+        -> Test Files 104 passed (104) / Tests 2499 passed (2499)
+      The whole narrowing can be deleted and the suite does not notice. `asClaim` appears in exactly two other files (arena-destruction-source.test.ts:37, homing-source.test.ts:28) and BOTH are comments — no test ever calls it, and no test feeds the loader a malformed claim.
+
+      WHY IT MATTERS MORE NOW THAN IT DID. This gap is pre-existing — jt8-3 shipped asClaim untested — so it is NOT a defect jt9-2 introduced, and jt9-2 was correctly approved with it outstanding. But jt9-2 moved 27 suites onto this loader, taking its dependents from 2 files to 29. An unexercised narrowing that guarded 2 files is now the single unguarded chokepoint for every claims assertion in the joust suite: if asClaim's shape checks are wrong, or someone "simplifies" them away, 29 files silently lose their error reporting and nothing reddens.
+
+      WHAT THIS STORY SHOULD DO. Give asClaim a real unit suite, driven by mutation rather than by reading the implementation:
+      - a non-object, an array, and null each throw and the message NAMES THE FILE (that is the whole point of the repair — the error must be self-locating)
+      - a non-string `id` throws; a non-string `claim` throws
+      - a `source` with a non-string `file` throws; with a non-numeric `line` throws
+      - a claim with NO `source` is LEGAL DATA and must NOT throw (the current doc-comment says so explicitly — this is the control that stops an over-strict "fix")
+      - loadClaims() surfaces the throw rather than swallowing it
+
+      THE ACCEPTANCE BAR IS A MUTATION, NOT A GREEN RUN. For each check removed from asClaim one at a time, the new suite must go RED. A suite that passes while the narrowing is gutted has re-created exactly the gap this story exists to close. Also keep a positive control: the unmutated helper must stay green, and the full joust suite must remain at its current count.
+
+      NOTE the loader also has an untested `if (!existsSync(claimsDir)) return []` path, which jt9-2 made reachable for demo-jt8-7-source (its local copy had no such guard and threw instead). Worth covering in the same suite.
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore

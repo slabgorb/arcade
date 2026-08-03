@@ -106,9 +106,6 @@ function refExpandAshFrames(bytes: readonly number[]): ExpandedImage[] {
   return frames
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Claims plumbing (the ptero-source.test.ts pattern).
-// ─────────────────────────────────────────────────────────────────────────────
 function jline(n: number): string {
   return sourceLines('JOUSTRV4.SRC')[n - 1] ?? ''
 }

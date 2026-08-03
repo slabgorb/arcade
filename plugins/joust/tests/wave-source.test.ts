@@ -42,9 +42,6 @@ import { loadWave, type WaveRow } from './helpers/wave-contract.js'
 // loader jt8-3 extracted. Behaviour-preserving.
 import { loadClaims, claimCovers } from './helpers/claims.js'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Claims plumbing (the enemy-source.test.ts pattern).
-// ─────────────────────────────────────────────────────────────────────────────
 const line = (file: string, n: number): string => sourceLines(file)[n - 1] ?? ''
 
 // ─────────────────────────────────────────────────────────────────────────────

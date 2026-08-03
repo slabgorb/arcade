@@ -35,7 +35,8 @@ import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
 // `claimCovers` — same body, so the call sites below just take the shared name.
 import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
-// ─── Claims plumbing (the game-loop-source.test.ts pattern) ──────────────────
+// ─── Claims: the loader is `./helpers/claims.js` (jt9-2) ─────────────────────
+// Only the JT45- id namespace filter is local to this file.
 function jt45Claims(claims: Claim[]): Claim[] {
   return claims.filter((c) => (c.id ?? '').startsWith('JT45-'))
 }

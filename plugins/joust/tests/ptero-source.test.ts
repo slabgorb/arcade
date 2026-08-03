@@ -34,10 +34,6 @@ import { loadClaims, claimCovers } from './helpers/claims.js'
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const pteroSrc = join(repoRoot, 'src', 'core', 'ptero.ts')
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Claims plumbing (the troll-source.test.ts pattern).
-// ─────────────────────────────────────────────────────────────────────────────
-
 // Raw-line reader for INSTRUCTION lines (the joust-source reader parses only
 // FCB/FDB). Pulls the operand off a `<label?> <OP> #<operand> …` line.
 function line(n: number): string {

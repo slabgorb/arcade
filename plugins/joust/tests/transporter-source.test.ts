@@ -38,7 +38,8 @@ import { loadTransporter, type PadId } from './helpers/transporter-contract.js'
 import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Claims plumbing (the wave-source.test.ts pattern).
+// Claims plumbing: the loader is `./helpers/claims.js` (jt9-2). Only the
+// jt2-6 prefix narrowing stayed local — it extends the shared rule.
 // ─────────────────────────────────────────────────────────────────────────────
 /**
  * Covered by a claim in [start,end] whose id carries `prefix`.

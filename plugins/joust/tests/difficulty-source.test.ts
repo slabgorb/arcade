@@ -43,10 +43,6 @@ import { loadClaims, claimCovers } from './helpers/claims.js'
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const coreDir = join(repoRoot, 'src', 'core')
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Claims plumbing (the wave-source.test.ts pattern).
-// ─────────────────────────────────────────────────────────────────────────────
-
 const line = (file: string, n: number): string => sourceLines(file)[n - 1] ?? ''
 
 // ─────────────────────────────────────────────────────────────────────────────

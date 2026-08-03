@@ -35,7 +35,8 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const baiterSrc = join(repoRoot, 'src', 'core', 'baiter.ts')
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Claims plumbing (the ptero-source.test.ts pattern).
+// Claims plumbing: the loader is `./helpers/claims.js` (jt9-2). Only the
+// jt3-5-specific id filter and its `basename` stayed local.
 // ─────────────────────────────────────────────────────────────────────────────
 /** Still local: `jt35Covers` below needs it, and the shared helper keeps its own private copy. */
 const basename = (p: string): string => p.split('/').pop() ?? p

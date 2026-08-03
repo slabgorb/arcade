@@ -40,7 +40,8 @@ import { loadGameLoop } from './helpers/game-contract.js'
 // `claimCovers` — same body, so the call sites below just take the shared name.
 import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
-// ─── Claims plumbing (the game-bounty-source.test.ts pattern) ────────────────
+// ─── Claims: the loader is `./helpers/claims.js` (jt9-2) ─────────────────────
+// Only the JT44- id namespace filter is local to this file.
 function jt44Claims(claims: Claim[]): Claim[] {
   return claims.filter((c) => (c.id ?? '').startsWith('JT44-'))
 }

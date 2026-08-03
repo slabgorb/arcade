@@ -32,9 +32,6 @@ import { loadClaims, claimCovers } from './helpers/claims.js'
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const trollSrc = join(repoRoot, 'src', 'core', 'troll.ts')
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Claims plumbing (the arena-destruction-source.test.ts pattern).
-// ─────────────────────────────────────────────────────────────────────────────
 // Raw-line reader for INSTRUCTION lines (the joust-source reader parses only
 // FCB/FDB). Pulls the operand off a `<label?> <OP> #<operand> …` line.
 function line(n: number): string {
