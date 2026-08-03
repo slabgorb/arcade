@@ -1743,3 +1743,75 @@ is "gate `beamHit` the same way". It is not: `beamHit` is called from the trench
 too (`sim.ts:1083`, `:1312`, `:1328`), which have no `C_PV` notion at all. The fix there has to be
 a caller-side gate on the space arm. Worth writing INTO the finding — a follow-up filed as "do
 what sw8-19 did" would send its Dev to the wrong file and the wrong shape.
+
+---
+
+## `export type { X } from './m.js'` does NOT create a local binding — and vitest will not tell you (cp6-2 GREEN, 2026-08-03)
+
+Splitting centipede's SOUNDS manifest out of `audio.ts`, I wrote the re-export pair:
+```ts
+export { SOUNDS } from './audio-manifest.js'
+export type { SoundName } from './audio-manifest.js'
+```
+`audio.ts` still *names* `SoundName` in four signatures. `export … from` is a pure re-export: it
+forwards the name to consumers and creates **nothing** in the local scope, so those four
+signatures referenced an undefined type.
+
+**The whole centipede suite was green — 1118/1118 — because vitest does not typecheck.** Only
+`npm run lint` (`tsc --noEmit`) caught it, with four `TS2304: Cannot find name 'SoundName'`. And
+because the orchestrator suite has a test asserting `tsc --noEmit` exits 0, the failure surfaced
+*there* too, one suite removed from the file that caused it.
+
+Fix is to do both: `export type { X } from …` for consumers **and** `import type { X } from …`
+for yourself. joust's `audio.ts` already does exactly that (`:72` imports, `:131` re-exports) —
+worth copying the shape rather than reasoning about it.
+
+**The generalisable half: on this repo a green vitest says nothing about types.** After any change
+to imports, exports or type-only declarations, run `npm run lint` before believing the suite. It is
+the only typecheck in the whole release path.
+
+## A predecessor's scope fences can assert that YOUR story has not happened — and their failure messages name you
+
+TEA inverted four cp5 guards that asserted centipede was silent. GREEN then hit **two more**, in a
+file TEA had not scanned: `tests/audit/sound-dossier.test.ts` carried cp6-1's `AC-6` block
+asserting `plugins/centipede/tools/pokey-bake/` does **not** exist and that `deploy-assets` does
+**not** name centipede.
+
+The tell is unmissable once seen — their own failure messages were *"belongs to cp6-2, not cp6-1"*
+and *"adding centipede to deploy-assets is cp6-2"*. A story that fences its scope names the story
+that lifts the fence, so:
+
+**At GREEN, grep the test tree for your own story id before assuming a red is yours to fix.**
+```bash
+grep -rn "cp6-2" plugins/<game>/tests/ plugins/<game>/tools/
+```
+Retire rather than invert when the guard's subject is "the thing does not exist yet" — a guard
+reading "the baker exists" belongs to the story that built it, and its real coverage is the baker's
+own suite. Keep any sibling guard whose premise survives: cp6-1's third test (its dossier's
+truth-in-reporting clause) was untouched, because cp6-2 does not touch the dossier.
+
+## Correcting prose in one place leaves it false in another — grep the CLAIM, not the sentence
+
+Rewrote the README's status block off "playable and **silent**" and the guard still failed. A
+second, identically-false claim sat **130 lines further down** in the shared-library section:
+"**No samples ship yet** — see the status note above." Same claim, different words, different
+section, and the status note it pointed at now said the opposite.
+
+This is the documented wrong-prose rule from the SM side, met from the implementation side. When a
+story's deliverable is *making a document true*, the unit of work is the CLAIM, not the paragraph
+you were shown. Grep every synonym before declaring it done — and note that the failing test named
+the regex that matched, which located the survivor in one command.
+
+## When a transcription is right, the OUTPUT proves it in ways no assertion asked for
+
+Ten of centipede's fourteen cues are transcribed from the ROM's FREQ/CONT tables. After baking, the
+four kill cues came out **byte-identical** (same md5) without anything in the baker special-casing
+them — because `segmentKill`, `spiderKill`, `fleaKill` and `scorpionKill` all resolve to CHAN0's
+single `;EXPLOSION SOUND` table, exactly as cp6-1's dossier ruled from the assembler months of
+work earlier.
+
+Nothing asserted that. It is emergent agreement between an independent reading of the ROM (the
+dossier) and a mechanical transcription of it (the bake), and it is stronger evidence than any test
+I could have written — a hand-tuned "explosion" per creature would have produced four different
+files and passed every check in the suite. **When implementing from primary source, look for
+coincidences the spec did not demand; they are the cheapest fidelity signal available.**
