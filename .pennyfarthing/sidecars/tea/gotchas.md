@@ -3857,3 +3857,94 @@ and redundancy usually arises from one asserted term IMPLYING another. When a mu
 try the same mutation at a different SCALE before concluding either "gap" or "equivalent" — the
 scale sweep is what tells you which, and it converts a shrug into a documented boundary. Then
 fix the comment, record the equivalence, and say explicitly that no test should be added.
+
+---
+
+### A file that stops COLLECTING prints zero reds — which is the same output as a clean survivor (jt9-5 RED, 2026-08-03)
+
+**Situation:** after rewording a pinned error message I re-ran four message decoys to confirm
+their annotations still held. All four printed `reds: []`. Four survivors, apparently — a
+disaster for a battery whose whole claim is that those decoys are caught.
+
+**They were not survivors.** The reword had broken a string concatenation in the test file
+(a `+` dropped between two adjacent string literals), so the file no longer parsed and vitest
+collected **nothing** from it. The suite line said `Test Files 1 failed | 104 passed` and
+`Tests 2521 passed (2521)` — no failures, twelve tests silently gone.
+
+**The same mechanism poisons a whole class of mutant.** Mutants N1 and N17 each "reddened 53
+tests" and reddened **none of my guards**: both make the manifest throw while a module-level
+constant is built, so every file importing it fails to COLLECT and its tests never run. A
+red list is not evidence about a guard when the guard did not execute.
+
+**The fix is one line in the harness:** parse the totals and assert the COLLECTED COUNT is
+unchanged before believing any red list.
+
+```python
+tot = re.search(r'Tests\s+(?:(\d+) failed \| )?(\d+) passed \((\d+)\)', out)
+ok = tot and tot.group(3) == BASELINE_COLLECTED   # else: result not trustworthy
+```
+
+**Generalise:** `mutation-direction-must-be-restrictive` says a permissive mutant's survival
+proves nothing. This is the sharper sibling — **a mutant whose result was produced by a
+different test population proves nothing either, in EITHER direction.** "No test saw it" and
+"no test ran" are byte-identical on stdout and opposite in meaning. Verifying the mutation
+applied (which I did) is only half; verify the SUITE SHAPE too.
+
+### A guard about "the module fails to load" cannot live in a file that imports that module
+
+**Situation:** jt9-5 adds a throw inside a function called while a module-level constant is
+built, so bad data takes the module down at import. I wrote a guard that re-derives the same
+property from the data and commented it as the thing that would "name the cue and the row"
+where the bare throw would just point at the importer.
+
+**Mutant N27 (land the bad data on a real shipped record) refuted both halves.**
+`tests/audio-frames-edge-cases.test.ts (0 test)` — my file's own top-level import is what
+fails, so the guard does not run in the one scenario it is named after. And the collection
+error is the throw's own message, quoting the offending row byte-for-byte with a stack into
+the function: a better diagnosis than the guard would have given.
+
+**Generalise:** this is `guard-tests-name-uncovered-cases` with a mechanical cause rather than
+a sloppy name. **Any guard whose scenario is "the import throws" is vacuous inside a file
+that statically imports it** — there is no ordering that saves it. Either move it to a file
+that reads the source as TEXT, or keep it for its GREEN-tree value (proving the precondition
+holds, and that the sweep visited everything) and say so. What is not allowed is the comment
+I first wrote, which sold the vacuous reading.
+
+**Corollary that paid for itself twice here:** assert the sweep's EXTENT, not just an empty
+offender list. `expect(rows).toBe(24)` caught my own header comment claiming 5 continuation
+rows when there are 6 — an empty `odd` array is green over a sweep that visited nothing.
+
+### When two layers could host a fix, the one that HAS the information wins — before taste
+
+**Situation:** SM's dispatch asked me to rule first on whether a "0 means no window" fix should
+key on the VALUE (in the bake) or on the CUE'S KIND (in the manifest), and warned that the
+predecessor's loaded chamber only fires under the first.
+
+**The question answered itself once I asked which layer can see what.** The bake receives a
+`Record<string, number>`. It cannot see `kind`. So a message saying "this cue is an invention
+and has no ROM table behind it" is *not writable there* without duplicating the manifest's
+knowledge. Keyed on the value, the bake can only ever say "the window is zero" — never why.
+Information locality decided it; the aesthetics of "which zero means what" only confirmed it.
+
+**Two things follow that are worth carrying:**
+
+1. **When the ruling means a predecessor's chamber will NOT fire, you owe the guard it was
+   going to be.** The chamber's nine-line comment stated a premise this story falsifies. A
+   comment is the unguarded surface, so the discharge is a TEST asserting that premise's
+   negation — not a note saying the comment is now stale.
+2. **An error whose remedy is impossible is worse than the one it replaces.** The cheap fix
+   (throw for the unsupported kind) would have left the next story a clear message and no way
+   forward, when the type's own doc called that arm "the honest escape hatch for a later
+   story". Making the arm WORK — a required field it must declare, refused if non-positive —
+   costs one word in a type and closes the defect instead of relocating it. Check whether a
+   proposed throw is a diagnosis or a dead end.
+
+### Before claiming a `skipIf` guard is dead on CI, ask whether the fixture is COMMITTED
+
+I drafted "both citation defences are `skipIf(!vendoredAvailable)`, so they skip on CI and
+there is no defence there" — a satisfying sharpening of the story's argument, and false. One
+`git ls-files reference/williams-source/joust` returned 49 tracked files, nothing gitignores
+them, and the plugin README says so in a sentence I had already read. **A `skipIf` on a
+fixture path tells you the test is CONDITIONAL, not that the condition is ever false here.**
+Cost of checking: one command. Cost of not checking: a false sentence in a file header,
+shipped green, in a repo whose standing lesson is that prose is the unguarded surface.
