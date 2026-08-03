@@ -538,8 +538,30 @@ stories:
 
       VERIFY BY MUTATION, both directions. Make the imported module throw and assert the suite reports THAT error rather than an undefined field; then confirm the legitimately-absent path (if it is real) still behaves. Per the standing rule, a guard nobody has watched fail is not a guard — and per this epic's repeated lesson, assert that N tests RAN, not merely that none failed.
 
+      MEASURED BY THE jt9-5 REVIEWER (2026-08-03), which is the argument for raising this above p2 when it is picked up. The swallow was re-run against a real import-time throw — TEA's N27, the trailing operand dropped from SNEDIE's shipped defining row — and the whole joust project run counted. Result: 11 files fail, 53 tests fail, suite 2533 to 2392. Of those 53 test-level failures, ZERO carry the manifest's real message. Every one reports a "must export" line instead, across nine variants - CUE_SOURCES (26), SOUNDS (10), bakeSamples (5), framesFor (3), FRAME_DURATIONS (2), CHANNELS (2), createAudioEngine (1), DEFAULT_BASE_URL (1). The real diagnosis survives ONLY in the five suite-level collection errors, whose files report `(0 test)`. So the reader's first fifty-three signals all point at a missing export that is not missing, and the correct one is below them in a different section of the report. That is worse than a silent failure, because it is a confident wrong answer.
       RELATED, do not conflate: jt9-32 pins what the bake PRODUCES; jt9-30 converts stale line refs to symbol refs. This story is about one helper's error handling in one test file.
     points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
+  - id: jt9-34
+    title: "audio-manifest's two new throws are pinned only as SUBSTRINGS - vitest's toThrowError(string) is includes(), so appended text ships green"
+    description: |-
+      Filed by the jt9-5 Reviewer (2026-08-03), from two measured mutation survivors that neither TEA's 27-mutant battery nor Dev's independent 12 contained. Non-blocking, which is why jt9-5 was approved rather than rejected - but it is a real hole in the assertion on this story's own primary deliverable.
+
+      THE MECHANISM. `expect(fn).toThrowError("some string")` in vitest asserts that the thrown message CONTAINS the string. It is not an equality check. `plugins/joust/tests/audio-frames-edge-cases.test.ts` pins both of jt9-5's new messages that way - the AC-1 pairing throw in three tests, and the AC-3 invention throw in two - while the sibling half of the same story pins the bake's two messages with `expect(err.message).toBe(...)`, which IS exact. Same story, same kind of deliverable, two different standards of rigour.
+
+      MEASURED, both survivors, full project run each time with the mutation diffed against a pristine snapshot before running.
+        R4  `pairs: '${verbatim}'` -> `pairs: '${verbatim}' - AND THE WINDOW WAS SILENTLY HALVED`   SURVIVED, 105 files / 2533 passed
+        R5  `whole number of frames` -> `whole number of frames - jt9-5 APPENDED THIS AND NOTHING NOTICED`   SURVIVED, 105 files / 2533 passed
+      The interpolated CONTENT is well pinned - TEA's decoys N3/N4/N5/N6/N13/N14 all change an interpolation and all redden, because changing a substring breaks containment. Only the APPEND direction (and equally a prepend) is unguarded. This is the same shape jt9-4's Reviewer found in a test named "refuses LOUDLY" that checked only a non-zero exit status - a guard whose name promises more than its assertion delivers.
+
+      THE FIX is small. `toThrowError(new Error(msg))` compares the message for equality, or an anchored `/^...$/` regex does. Five assertions in one file. Do NOT hand-write the expected strings a second time - read them off the current source so the fix does not become its own transcription (`correction-is-itself-a-transcription`).
+
+      VERIFY BY MUTATION. Re-run R4 and R5 above verbatim and confirm both now REDDEN, and re-run one of the interpolation decoys (N3, `an odd operand count (${pairs.length})` -> `... (5)`) to confirm it still reddens - a fix that traded one blind spot for another would look identical from the exit code. Assert the suite SHAPE (105 files, 2533 collected) alongside the red list, per this epic's standing lesson that "no test saw it" and "no test ran" print the same way.
+    points: 1
     priority: p2
     status: backlog
     repos: arcade

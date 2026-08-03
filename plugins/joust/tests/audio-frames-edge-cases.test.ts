@@ -405,9 +405,13 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     //   12.5  `Math.round((frames / FRAME_HZ) * RATE)` would accept it and the
     //         window would silently not be the frame count anyone declared.
     //   NaN / Infinity   BOTH pass a bare `frames > 0`? No — NaN fails it and
-    //         Infinity PASSES it, and `Buffer.alloc(Infinity * 2)` in the bake
-    //         is the obscure crash that follows. `Number.isInteger` is what
-    //         refuses Infinity, and that is why the check is not just `> 0`.
+    //         Infinity PASSES it, and `new Float32Array(Infinity)` inside the
+    //         bake's synth spec is the obscure crash that follows —
+    //         `RangeError: Invalid typed array length: Infinity`. (This note
+    //         and the manifest's said `Buffer.alloc(Infinity * 2)`; the jt9-5
+    //         Reviewer ran it and encodeWav is never reached. Both corrected.)
+    //         `Number.isInteger` is what refuses Infinity, and that is why the
+    //         check is not just `> 0`.
     //   undefined   the field is required by the type, so this is unreachable
     //         through TypeScript — and reachable through anything that hands the
     //         manifest a value it did not type-check.
@@ -505,12 +509,25 @@ describe('jt9-5 AC5 — the eighteen shipped windows are unchanged, by value', (
     // knows the rule.
     //
     // It stays, with the claim corrected, for two reasons that ARE true:
-    //   · nothing is lost by its absence. The collection error IS the throw's
-    //     message — `sound-table row has an unpaired sound code — 1 operands
-    //     after the priority byte cannot form (code, duration) pairs: 'SNEDIE
-    //     <TAB>FCB<TAB>040,!N$16!.$7F<TAB>ENEMY DIES'` — with a stack through
-    //     framesInRow, on all 58 failures across 11 files. The diagnosis is
-    //     better than this test's would have been.
+    //   · little is lost by its absence. The collection error IS the throw's
+    //     message — `sound-table row has an unpaired sound code — an odd
+    //     operand count (1) after the priority byte cannot form (code,
+    //     duration) pairs: 'SNEDIE<TAB>FCB<TAB>040,!N$16!.$7F<TAB>ENEMY DIES'`
+    //     — with a stack through framesInRow. TWO CORRECTIONS, both measured by
+    //     the jt9-5 Reviewer re-running N27, and both of the shape this file
+    //     keeps hitting. (a) The quotation above was the PRE-REWORD wording
+    //     ("1 operands"); commit 7d11cf8 reworded the message and updated the
+    //     three assertions and N3's entry, but not this quotation of the
+    //     measured output — `correction-is-itself-a-transcription`. (b) It does
+    //     NOT reach "all 58 failures across 11 files", which is what this said.
+    //     Measured: it reaches the FIVE suite-level collection errors (five
+    //     files report `(0 test)` — this one, audio-priority, audio-flap,
+    //     audio-thud and bake-samples). The other 53 are test-level failures
+    //     reporting "audio-manifest.ts must export CUE_SOURCES" and eight
+    //     other "must export" variants, because audio-transporter-split's
+    //     `load()` swallows the import — jt9-33, and this is the measurement of
+    //     how loud it is. Those five suite errors are still a better diagnosis
+    //     than this test's would have been; the other 53 are actively worse.
     //   · on a GREEN tree it is the standing proof that the throw's
     //     precondition holds and that all 24 rows were visited, which is the
     //     only form in which this fact is checkable at all.

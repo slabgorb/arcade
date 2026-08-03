@@ -595,8 +595,12 @@ export function framesFor(source: CueSource): number {
     // jt9-5. Not `return 0`: a 0 here becomes a FRAME_DURATIONS entry of 0, and
     // the bake's `!(frames > 0)` then says the entry is MISSING, which is false.
     // `Number.isInteger` rather than a bare `> 0` because Infinity passes `> 0`
-    // and `Math.round((Infinity / FRAME_HZ) * RATE)` reaches `Buffer.alloc` in
-    // the bake, where it fails as something unrecognisable.
+    // and `Math.round((Infinity / FRAME_HZ) * RATE)` is Infinity, which the bake
+    // hands straight to `spec(n, rng)` — every synth primitive opens with
+    // `new Float32Array(n)`, so it dies there with `RangeError: Invalid typed
+    // array length: Infinity`. (This sentence said `Buffer.alloc` until the
+    // jt9-5 Reviewer ran it: `encodeWav`'s Buffer.alloc is one step further on
+    // and is never reached. The conclusion was right, the site was not.)
     if (!Number.isInteger(source.frames) || source.frames <= 0) {
       throw new Error(
         `invented cue '${source.note}' declares a frames window of ${source.frames} — ` +
