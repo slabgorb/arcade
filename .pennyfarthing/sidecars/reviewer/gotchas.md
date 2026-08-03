@@ -2727,3 +2727,53 @@ bare `wt`, whenever the review dispatches specialists that may mutate. And note 
 behaviour worth copying: the rule-checker's tell that something was wrong was *reading back
 a file it had just written and not recognising the contents*. That check costs nothing and
 it is the only thing standing between a shared worktree and a fabricated mutation result.
+
+## A specialist SPLIT on one claim is evidence the claim is AMBIGUOUS, not that someone is wrong (cp6-4 round 2, 2026-08-03)
+
+Round 2's only surviving finding was the `ownSpec` docblock's "Every by-name lookup now goes
+through here." comment-analyzer called it FALSE, naming `sounds[cue]` in the pass-2 write
+loop. security enumerated six by-name lookups and did not count that one. rule-checker ran
+the same grep as its hard ask and returned **CONFIRMED TRUE**.
+
+Two against one, and my instinct was to go with the majority. That is the wrong operation.
+All three greps were correct; they disagreed about what "by-name lookup" *means* — whether a
+filename lookup keyed by a cue name is one. **When competent readers split on whether a
+sentence is true, the defect is the sentence.** The fix is not to pick a side, it is one
+qualifying word ("every cue-record lookup"), and the split is the evidence that the word is
+missing.
+
+This also settles the severity honestly. A claim that half your reviewers read correctly is
+not the same defect as round 1's, which every reader agreed was flatly false the moment they
+ran one probe. Round 1 was a REJECT; this is a LOW routed to a finish chore. **Grade a
+comment finding by whether readers DISAGREE about it or CONVERGE on it** — convergence means
+wrong, divergence means ambiguous, and only the first is worth a round trip.
+
+## Round 2's most useful number was a ONE, not a zero
+
+Mutant N2 deleted `romEvents`' new gate and reddened **exactly one test** — the new
+`audcStreamFor` one — because `bakeSfx`'s pass-1 gate still catches the same cue first.
+
+That single digit is the whole explanation of round 1's defect, and it is more informative
+than any of the larger red counts in either battery. It says: before this test existed,
+nothing in a 27-test file could distinguish "the gate is in the lookup" from "the gate is in
+the one caller I happened to check." The author's comment read as true because every
+available measurement was consistent with it.
+
+**When a review rejects a claim about reachability, ask for the mutant that isolates the
+un-checked path, and expect its red count to be 1.** A larger count means the mutant is
+hitting the path everyone already knew about; a zero means the new test is not pulling its
+weight. One is the number that proves a genuinely new discriminator was added.
+
+## Approving is where you owe the Devil's Advocate the most, not the least
+
+Both rounds' Devil's Advocate sections were written at full length, but only round 2's had to
+work — a rejection's argument-that-it-is-broken is trivial when you have four findings in
+hand. On the approving round it produced the two things worth keeping: that centralising six
+call sites behind `ownSpec` traded redundancy for clarity and left a one-line blast radius of
+two tests, and that `romEvents` and `standInEvents` now carry opposite policies justified only
+by call-graph shape three lines away in another function.
+
+Neither is a defect today and neither changed the verdict. Both went into the record as the
+arguments a future regression will most likely come from. **A Devil's Advocate on an APPROVE
+should surface what will break next, not re-litigate what was already fixed** — if it reads
+like a summary of the findings table, it was written after the verdict rather than before it.
