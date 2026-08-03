@@ -1919,3 +1919,76 @@ which reads, to anyone later, like a review that found nothing.
 finish that drops both leaves the story's entire reasoning — every measurement, every mutation,
 every disposal — recorded nowhere durable. The commits and the archived session are the record;
 if the ceremony silently skips half of it, the work looks like a diff with no argument behind it.
+
+---
+
+## RUN the candidate fix at setup — a zero-red blast radius is the story's biggest RISK, not its good news (sw8-19 setup, 2026-08-02)
+
+**Situation:** sw8-19 is a 2-point bug whose whole content is "gate C_PS on C_PV". The sw8-23 rule
+says run an executable subject rather than read it; I extended that from the story's *deliverable*
+to the story's *proposed fix*. Applied the one-line gate to committed source, ran the game suite,
+restored from a `cp` backup with an md5 re-match.
+
+**Result: 2238 passed / 200 files / zero red.** The instinct is to report that as good news — no
+fixture rework, the estimate holds. That reading is half of it and the less important half.
+
+**The other half: nothing already in the tree can observe the change.** A fix invisible to 2238
+tests is a fix whose entire observable footprint is the test nobody has written yet — the exact
+shape in which a guard ships as scenery (`guard-must-be-mutation-tested`). So the measurement's
+real output was an AC: the mutation proof is **mandatory** here, with the mutated string recorded
+verbatim, and the number 2238/200 written into the AC as the *reason*. Without that sentence the
+next reader sees "mutation-proven" as boilerplate and treats it as optional.
+
+**Generalise:** at setup, apply the story's own proposed fix and measure the blast radius. Both
+outcomes are load-bearing and they point opposite ways — a large red set sizes the fixture rework,
+and a zero red set tells you the fix is unobservable and the test is the whole deliverable. Cost:
+one apply, one suite run, one restore. Neither conclusion is available by reading.
+
+## A filing can be RIGHT in every particular and still understate its own mechanism — check whether the ROM gate is CONTROL FLOW rather than adjacency
+
+sw8-19 described its ROM gate as implicit: the sole `CHSET C$PS` "sits INSIDE the object draw pass,
+so an object the cabinet does not draw cannot receive the sights bit". True, checkable, and it
+frames the fix as a plausible inference ("Likely fix: gate C_PS on C_PV").
+
+Reading the enclosing routine turned that into a transcription. `S2VW` (`WSMAIN.MAC:3755`) has
+**exactly four exits before the `CHSET C$PV`** — `:3826`, `:3828`, `:3836`, `:3842`, all branching
+to `RTS1: RTS` at `:3754`, and those four are its only references in the file. Those four tests
+**are** C_PV's definition. `CHSET C$PV` is `:3846`, `CHSET C$PS` is `:3930`, and the only branch
+target between them is a forward local label. So the sights bit is *unreachable* unless the view
+bit was set 84 lines earlier on the same object in the same pass.
+
+**The move that found it:** grep the routine's RTS target and count its references, instead of
+reading the cited span. A span tells you what the code says; the exit list tells you what can reach
+it. Same family as the user memory `port-init-cites-wrong-actor` — a real ROM line, read at the
+wrong altitude. Where "the ROM does X near Y" appears in a filing, ask whether X is *guarded by* Y,
+and answer it from the branch targets.
+
+It also answered the story's own open question ("check whether the draw pass has other implicit
+gates worth porting") — a `JSR` between the two setters cannot gate anything, because it returns to
+the caller's next line; and the neighbouring block's `ENDIF`s all closed before the C_PS block, so
+C_PS was never nested inside them. Both are structure questions, not content questions.
+
+## A prerequisite that shipped can make the defect BIGGER — say so, because the filing predates it
+
+sw8-19's description opens "DEPENDENCY: DO uf1-14 FIRST", correctly, and explains the ordering as
+avoiding rework. Measured, the ordering mattered for a stronger reason nobody had written down:
+the divergence region's extent is `band / tan(half-angle)`, so uf1-14 narrowing the pyramid from
+±45° to a rendered 30° moved the crossover from 500 to **866** — a 73% deeper region — and made it
+aspect-dependent (866/aspect). The filing's "behaviourally small (the fighter is about to collide)"
+was measured against the *pre-uf1-14* geometry and is now false past the worked example: at depth
+800 the fighter is 3.7× its hit radius from the cockpit.
+
+The existing entries cover a prerequisite **renaming** a description's identifiers (uf1-9). This is
+the quantitative twin: a shipped prerequisite can move the *magnitude* the filing asserts, in the
+direction that makes the story more worth doing. The tell is the same — the story credits a
+prerequisite that has since landed — but the thing to re-derive is the number, not the symbol.
+
+## Deriving ACs: write them to the YAML FIRST, then generate the context FROM the YAML
+
+With `acceptance_criteria: null` the ACs are SM's to derive, and the documented failure modes
+(context and session disagreeing, an AC edited under a note saying it was not) all come from
+authoring the same text twice. Writing them with `pf sprint story update --add-ac` first and then
+building the context file programmatically from `yaml.safe_load` makes them byte-identical **by
+construction** rather than by verification — the `python3` `in` test afterwards then confirms a
+property that cannot have failed, which is the right order. `--add-ac` is repeatable and took six
+in one call; `git diff --stat` was one file, 7 insertions.
