@@ -475,7 +475,7 @@ stories:
       scenery. AC8 makes the mutation proof mandatory for each.
     points: 5
     priority: p3
-    status: in_review
+    status: in_progress
     started: '2026-08-03'
     repos: arcade
     workflow: tdd
