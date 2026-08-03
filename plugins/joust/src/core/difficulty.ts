@@ -371,30 +371,40 @@ export const ROW_DISPOSITION: Readonly<Record<DyRowName, RowDisposition>> = Obje
   HUUPVY: Object.freeze({ kind: 'wired', consumer: 'enemy.wingWake (the hunter up-flight VY gate at wing-timer expiry, with the INC re-arm, JOUSTRV4.SRC:4178)' }),
   SHUPVY: Object.freeze({ kind: 'wired', consumer: 'enemy.shadow (the shadow up-flight VY gate, consulted every wake, JOUSTRV4.SRC:4272)' }),
 
-  // ─── uf1-10 — the egg wait and the lava troll (4 rows) ────────────────────
+  // ─── Wired by jt9-9 — the settled egg's hatch wait (2 rows) ────────────────
+  //
+  // Both are read through `demo.eggWaitFrames`, which multiplies the row by the
+  // `PCNAP 12` nap (JOUSTRV4.SRC:3227) because the ROM spends one nap per
+  // `DEC PJOYT,U` (:3236) — the wait is naps, not frames. The two rows are NOT
+  // interchangeable: RAMDEF.SRC:393/:395 splits them into the general hatch wait
+  // and the EGG-WAVE one, and they differ from wave 1 (64 vs 56 at GA1 5).
   EGGWT: Object.freeze({
-    kind: 'no-consumer-yet',
-    rom: 'JOUSTRV4.SRC:3224',
-    missing: 'the settled-egg hatch wait timer (egg.ts models no wait at all)',
-    owner: 'uf1-10',
+    kind: 'wired',
+    consumer: "demo.eggWaitFrames (the settled egg's hatch wait after it LANDS, EGGLND JOUSTRV4.SRC:3224)",
   }),
   EGGWT2: Object.freeze({
-    kind: 'no-consumer-yet',
-    rom: 'JOUSTRV4.SRC:2761',
-    missing: 'the initial egg wait timer',
-    owner: 'uf1-10',
+    kind: 'wired',
+    consumer: 'demo.eggWaitFrames (the EGG-WAVE egg\'s initial hatch wait, JOUSTRV4.SRC:2761)',
   }),
+
+  // ─── uf1-10 — the lava troll (2 rows) ─────────────────────────────────────
+  //
+  // `owner` reads jt9-12 now, not uf1-10: the jt9 re-ordering renumbered uf1-10
+  // to jt9-12 and then split it — the EGG half came here to jt9-9, and the TROLL
+  // half went on to jt9-11, where `beginGrip` gets its first production caller.
+  // The old id is kept out of the string deliberately; a stale owner is how a
+  // row goes unclaimed.
   LAVTIM: Object.freeze({
     kind: 'no-consumer-yet',
     rom: 'JOUSTRV4.SRC:1611',
     missing: "the lava troll's hand-animation frame timer",
-    owner: 'uf1-10',
+    owner: 'jt9-11',
   }),
   LAVGRA: Object.freeze({
     kind: 'no-consumer-yet',
     rom: 'JOUSTRV4.SRC:6395',
-    missing: 'a LIVE troll grab — troll.beginGrip exists but has zero production callers (uf1-11)',
-    owner: 'uf1-10',
+    missing: 'a LIVE troll grab — troll.beginGrip exists but has zero production callers',
+    owner: 'jt9-11',
   }),
 })
 

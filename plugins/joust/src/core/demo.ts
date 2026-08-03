@@ -78,6 +78,7 @@ import {
   decimalWaveFromBcd,
   type WaveRow,
 } from './wave.js'
+import { waveValue, type DyRowName } from './difficulty.js'
 import {
   PADS,
   enterViaPads,
@@ -586,10 +587,46 @@ function spawnWavePteros(waveNumber: number): DemoProcess[] {
   return pteros
 }
 
+// ─── The settled egg's hatch wait (EGGLND, JOUSTRV4.SRC:3224-3237) ────────────
+
+/**
+ * `12` — the `PCNAP 12` a settled egg's wait loop costs per tick, in display
+ * frames ("12 EGG MAXIMUM, HOPEFULLY MULTIPLEXED", JOUSTRV4.SRC:3227). DECIMAL.
+ *
+ * THIS IS THE UNIT, and it is the whole reason the wait is not a frame count.
+ * EGGLND loads the wait into the egg's `PJOYT` (:3224-3225) and then spins
+ *
+ *     EGGLN2  JSR WEGG / PCNAP 12 / … / DEC PJOYT,U / BNE EGGLN2
+ *
+ * so the nap is paid once per decrement, not once in total — a wait of `n`
+ * costs `n × 12` display frames. Reading EGGWT as a frame count hatches every
+ * egg in the game twelve times too early. Same shape as `baiter`'s `PCNAP 8`
+ * (:2096) and `dissolve`'s 2+6 (:1393-1399).
+ */
+export const EGG_WAIT_NAP_FRAMES = 12
+
+/**
+ * A settled egg's hatch wait in DISPLAY FRAMES: the DYTBL row's value for this
+ * wave, times the nap. `row` is EGGWT2 for an egg an EGG WAVE dealt out and
+ * EGGWT for one that landed — RAMDEF.SRC:393/:395 names the split ("TIME TO
+ * WAIT BEFORE STARTING EGG HATCHIN SEQUENCE" vs the same "(EGG WAVES)"), and
+ * EGGWT is what EGGLND itself loads, so every egg that lands takes it.
+ */
+export function eggWaitFrames(row: Extract<DyRowName, 'EGGWT' | 'EGGWT2'>, wave: number): number {
+  return waveValue(row, wave) * EGG_WAIT_NAP_FRAMES
+}
+
 /**
  * A SETTLED egg resting on a ledge — one slot of an EGG wave's complement (a full PEGG, not
- * yet hatched). `settled` so `stepEgg` leaves it put (the hatch/remount wiring off a settled
- * wave egg is a later story's); it holds the wave open like any egg until it hatches.
+ * yet hatched). `settled` so `stepEgg` leaves it put; it holds the wave open like any egg
+ * until its EGGWT2 wait runs out and it hatches.
+ *
+ * The wait is NOT seeded here. `spawnWaveEggs` is reached with the raw WAVBCD
+ * counter — the unit confusion demo.ts's stepFrame comment documents and td1-12
+ * owns — and `waveValue` both mis-resolves a BCD byte and throws outright on the
+ * hundredth wave's `0x00`. So the seeding happens in `stepDemo`'s hatch block,
+ * at the one hop in this file that already converts the counter properly. An
+ * unseeded `waitFrames` means exactly that: not seeded yet.
  */
 function settledWaveEgg(posX: number, feetY: number): EggState {
   return {
@@ -1258,8 +1295,9 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // them decimal-expecting, all of them wrong from the tenth wave on. That
   // PREDATES uf1-2 and is owned by **td1-12**, which will decide once whether the
   // counter stays BCD or becomes an ordinal. Only this hop is fixed here.
+  const waveOrdinal = decimalWaveFromBcd(demo.wave)
   const stepped = stepFrame({ ...demo.sim, targets: tickedTargets, cues: [] }, inputs, {
-    wave: decimalWaveFromBcd(demo.wave),
+    wave: waveOrdinal,
   })
 
   const materialised = stepped.processes.map((p) => advanceMaterialisation(p as DemoProcess))
@@ -1277,16 +1315,27 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // the body's fate is complete (JSR CPLYR, JOUSTRV4.SRC:1414-1415).
   let processes = collided.processes.filter((p) => !(p.kind === 'dissolve' && p.dissolve?.done))
 
-  // jt4-5 — the WAVEGG egg-wave SELF-CLEAR: a SETTLED wave egg MATURES into a remounting
-  // buzzard (egg.ts willHatch/remountEntryEdge — the jt2-4 laws, cited EGGLND/EGGMAN :3239-3279) so
-  // an egg wave is no longer a permanent egg-lock. The egg leaves and a live enemy flies in
-  // from the FARTHER edge — the wave can now be fought and cleared. Runs BEFORE the wave-clear
-  // check below (a hatched enemy holds the wave open) and BEFORE the wave-advance spawn (so a
-  // freshly-entered wave egg is not hatched on its entry frame). Only WAVE eggs mature — a
-  // DEATH3 kill-egg keeps its jt2-4 lifecycle (this closes only the egg-WAVE clear jt4-4 gaps).
+  // jt4-5 — the SELF-CLEAR: a SETTLED egg MATURES into a remounting buzzard
+  // (egg.ts willHatch/remountEntryEdge — the jt2-4 laws, cited EGGLND/EGGMAN :3239-3279) so an
+  // arena full of eggs is no longer a permanent egg-lock. The egg leaves and a live enemy flies
+  // in from the FARTHER edge — the wave can now be fought and cleared. Runs BEFORE the
+  // wave-clear check below (a hatched enemy holds the wave open) and BEFORE the wave-advance
+  // spawn (so a freshly-entered wave egg is not hatched on its entry frame).
+  //
+  // jt9-9 — THE WAIT. EGGLND does not hatch a settled egg on sight: it loads the egg's wait
+  // into PJOYT and spins a `PCNAP 12` loop down to zero first (:3224-3237). The wait comes from
+  // DYTBL and FALLS with the wave — EGGWT walks $40 → $10, so a late-wave egg hatches four
+  // times sooner than a wave-1 one, which is per-wave hatch pressure the port had none of.
+  // Seeded HERE rather than at spawn because this is the one hop in this file that converts the
+  // WAVBCD counter to the decimal ordinal the difficulty engine needs.
   processes = processes.flatMap((p) => {
     if (!(p.kind === 'egg' && p.waveEgg === true && p.egg?.settled === true && willHatch(p.egg)))
       return [p]
+    // EGGWT2 for an egg an EGG WAVE dealt out, EGGWT for one that landed here.
+    const wait = p.egg.waitFrames ?? eggWaitFrames(p.waveEgg === true ? 'EGGWT2' : 'EGGWT', waveOrdinal)
+    // `DEC PJOYT,U / BNE EGGLN2` (:3236-3237) — still waiting, so still an egg.
+    const remaining = wait - 1
+    if (remaining > 0) return [{ ...p, egg: { ...p.egg, waitFrames: remaining } }]
     // SNEGGH "EGG HATCHING SOUND" (:8099) — the maturing egg, not the remount
     // bird's flight in. One cue per egg that matured this frame.
     cues.push({ type: 'egg-hatched' })

@@ -55,6 +55,22 @@ export interface EggState {
   pfeet: number
   /** Whether the egg has SETTLED on a ledge (velY ≥ -$20 and X index 0). */
   settled: boolean
+  /**
+   * jt9-9 — `PJOYT,U`, the settled egg's hatch wait, held in DISPLAY FRAMES.
+   *
+   * The ROM stores the wait in NAPS (`EGGLND LDA EGGWT / STA PJOYT,U`,
+   * JOUSTRV4.SRC:3224-3225) and spends one per pass of a loop that costs
+   * `PCNAP 12` (:3227) before its `DEC PJOYT,U / BNE EGGLN2` (:3236-3237). So a
+   * nap is twelve display frames and the wait a settled egg actually serves is
+   * `EGGWT × 12`. This field holds that product rather than the raw nap count,
+   * because the process it rides wakes every frame; `demo.EGG_WAIT_NAP_FRAMES`
+   * is the 12, and `demo.eggWaitFrames` does the multiply.
+   *
+   * OPTIONAL on the `homing`/`seek`/`plavt` precedent: absent means the wait has
+   * not been seeded yet, and the first settled frame seeds it from the egg's own
+   * row — EGGWT2 for a wave egg, EGGWT for one that landed.
+   */
+  waitFrames?: number
 }
 
 /** The minimum a dying joust victim hands the egg (its velocities + eggs-left). */

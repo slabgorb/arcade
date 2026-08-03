@@ -797,10 +797,15 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
     ] as const
     expect(
       [...wired].sort(),
-      "the wired set is uf1-2's two brakes + uf1-8's ten seek rows + uf1-9's eleven cadence rows + jt9-1's LAVLAV",
+      "the wired set is uf1-2's two brakes + uf1-8's ten seek rows + uf1-9's eleven cadence " +
+        "rows + jt9-1's LAVLAV + jt9-9's two egg waits",
     ).toEqual(
       [...WIRED_NAMES, ...UF18_ROWS, ...UF19_ROWS,
         'LAVLAV',
+        // jt9-9 — the settled egg's hatch wait. EGGWT is the wait an egg takes
+        // when it LANDS (EGGLND :3224); EGGWT2 the one an EGG WAVE's eggs enter
+        // holding (:2761). Both reach `demo.eggWaitFrames`.
+        'EGGWT', 'EGGWT2',
       ].sort())
     for (const n of wired) {
       const disp = d.ROW_DISPOSITION[n]
@@ -840,11 +845,13 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
   it('gives every unwired row a ROM line, a missing mechanic and an owner', async () => {
     const d = await loadDifficulty()
     const pending = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'no-consumer-yet')
-    // 28 rows − 24 wired (uf1-2's 2 + uf1-8's 10 + uf1-9's 11 + jt9-1's LAVLAV)
-    // − 0 dead-in-ROM = 4 genuinely waiting on a mechanic: uf1-10's
-    // EGGWT/EGGWT2/LAVTIM/LAVGRA. jt9-1 moved the dead term to zero; the
-    // remainder is unchanged, which is why this number did not have to move.
-    expect(pending.length, 'the tracked remainder').toBe(4)
+    // 28 rows − 26 wired (uf1-2's 2 + uf1-8's 10 + uf1-9's 11 + jt9-1's LAVLAV
+    // + jt9-9's EGGWT/EGGWT2) − 0 dead-in-ROM = 2 genuinely waiting on a
+    // mechanic: LAVTIM and LAVGRA, both of which need a live lava-troll grab.
+    // jt9-1 moved the dead term to zero; jt9-9 took the two egg waits, leaving
+    // the troll pair for jt9-11.
+    expect(pending.length, 'the tracked remainder').toBe(2)
+    expect([...pending].sort(), 'and it is the troll pair, by name').toEqual(['LAVGRA', 'LAVTIM'])
     for (const n of pending) {
       const disp = d.ROW_DISPOSITION[n]
       if (disp.kind !== 'no-consumer-yet') throw new Error('unreachable')
