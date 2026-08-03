@@ -2102,3 +2102,89 @@ defect it caught, not from the assertion it happens to contain. And prove the OR
 bites afterwards — mutate the first section too, or the rewrite has quietly retired the guard you
 were extending. (Mutating §2.5 the obvious way was a no-op: the cue was backticked **twice** in
 that section, so removing one mention left the guard correctly satisfied. Grep the count first.)
+
+---
+
+## A conjunction whose halves fail into the SAME observable needs its assertion at the level where they converge (cp6-4, centipede, 2026-08-03)
+
+**Situation:** AC-2 was a conjunction — harden *both* `FIXTURE.cues[cue]` and
+`STAND_IN_SPECS[cue]` with `Object.hasOwn`. sw8-27's rule says mutate each conjunct
+separately, so M2a reverted only the first and M2b only the second. Both reddened, so both
+are load-bearing. Fine.
+
+**The part worth keeping is HOW they reddened.** The two routes are completely different —
+with `FIXTURE.cues` bare, `toString` comes back truthy, `undefined !== null` classifies the
+cue as *transcribed* and it takes the ROM path; with `STAND_IN_SPECS` bare, `standIn` is
+truthy so the gate's second conjunct is false and the bake falls into `standInEvents`. Two
+different code paths, and **both terminate in a bake that RESOLVES**.
+
+So the message assertion could not tell them apart, and could not have told either of them
+from a pass. What made all three mutants legible was a `bakeFailure` helper that asserts an
+`Error` was thrown *before* comparing any message:
+
+```js
+expect(err, 'the bake RESOLVED — the gate this test exists to pin never fired, so the
+message assertion below would not have run').toBeInstanceOf(Error)
+```
+
+**Generalise:** when the conjuncts of an AC fail into the same observable, the discriminating
+assertion is not the specific one — it is the one at the level where the failures converge.
+`.rejects.toThrow(/name/)` reports a promise problem; the helper reports *which gate did not
+fire*. A helper that separates "did it throw at all" from "what did it say" is not ceremony,
+it is what makes a battery's red list attributable to a mutation instead of to a collision.
+
+## Ask what a NEW test does under the MUTANT, not just under the fix — shared output fixtures bite there
+
+The file's `staging` directory is shared, and one existing test asserts
+`readdirSync(staging)` equals exactly the fourteen shipped filenames. Under the fix, the new
+prototype test throws in pass 1 and writes nothing, so `staging` would have been perfectly
+safe. **Under the mutants it is the whole problem:** the defect being fixed is precisely that
+the bake COMPLETES and writes a file, so every one of M2/M2a/M2b would have dropped a stray
+`to_string.wav` into `staging` and reddened that unrelated 14-file assertion too.
+
+The battery would still have looked like it worked — more red is not obviously wrong — while
+actually reporting a fixture collision alongside the gate. Each new test got its own
+`mkdtemp` instead. **The check is one question asked at write time: what does this test WRITE
+when the code is broken?** For anything touching a bake, a cache, or a shared temp dir, the
+answer is usually "more than it does when the code is right."
+
+Related and cheap: the same test asserts the output directory is **empty** after the throw.
+The message pins that the gate fired; only the empty directory pins that it fired *before*
+the write, which is the half of a "44-byte file got written" defect that no message can
+express.
+
+## An anchor transcribed from DIFF output carries the diff's own gutter
+
+The control mutant M5 reported `ANCHOR MISS` on the first run. Cause: I wrote its anchor with
+four leading spaces where the file has two, because I copied the line out of `git diff`
+output — where the context gutter adds a column and the eye reads the total. An anchor miss
+that is *reported* costs thirty seconds; one that is not is indistinguishable from a
+surviving mutant, and it is the control mutant — the one whose job is to prove the harness
+works — that you are least likely to re-check.
+
+**Copy mutation anchors from `Read`/the file itself, never from a diff, a review comment, or
+a commit message.** All three re-indent.
+
+## When setup predicts a ZERO blast radius, the post-change test count must move by EXACTLY the number of tests you added
+
+Setup measured the fix's blast radius at zero red across 62 files / 1157 tests, and concluded
+the tests were the entire observable deliverable. After implementation: **1159**. Two tests
+added, delta exactly two.
+
+That equality is a free check and it is stronger than "still green". A zero-radius prediction
+plus a green suite is consistent with a test having been silently skipped, renamed into
+another describe, or collected twice; only the arithmetic catches it. If the delta is not
+exactly what you wrote, something else moved and you do not yet know what.
+
+## Small confirmations
+
+- **The stray-artifact sweep found nothing, and was still right to run.** The battery drives a
+  file-writing path; `find . -name "*.wav" -not -path "./node_modules/*"` was run before
+  `git status`, because a clean porcelain on the source file says nothing about untracked
+  binaries dropped elsewhere. (Standing rule from jt9-5, re-applied.)
+- **`Object.hasOwn` was already the fleet norm and centipede was the outlier** — joust
+  (`bake-samples.mjs:328,339`, from jt9-4/jt9-5) and star-wars' music bake
+  (`bake-music.mjs:245`) both had it; tempest iterates `for (const spec of SFX)` over an ARRAY
+  and does no name lookup at all, so it is structurally immune rather than fixed. Measuring
+  the siblings turned "is this a fleet-wide gap?" into a closed question in one grep, and it
+  went into Delivery Findings as a closed question rather than as a hunch.
