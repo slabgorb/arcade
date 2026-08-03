@@ -1420,3 +1420,8 @@ completed_stories:
     title: 'Test-hygiene sweep: move the 27 joust suites carrying a local loadClaims/claimCovers onto tests/helpers/claims.ts (the line-ref half is disposed — uf1-9 did it; remainder is jt9-30)'
     points: 2
     completed: '2026-08-02'
+  - id: sw8-19
+    epic: sw8
+    title: "C_PS can be set while C_PV is clear — the port carries only one of the ROM draw-pass gates (sw8-8 round-3 finding). The ROM's sole CHSET C$PS sits INSIDE the object draw pass (WSMAIN.MAC:3919-3932), so an object the cabinet does not draw cannot receive the sights bit. tie-status.ts ports exactly one of that pass's implicit gates — beamHit refusing anything behind the gun (tie-status.ts:170-173 says so out loud) — and beamHit carries no FOV clamp at all, so nothing ties C_PS to visibility. Worked example: a TIE at [400, 0, -10] has perpendicular distance 400 against the 500 u band (2 x TIE_HIT_RADIUS) so C_PS SETS, while its view depth of 10 is under VIEW_NEAR (0x10 = 16) so C_PV is CLEAR. The retired spaceEye made this unreachable — with the eye ~1024 off to one side and the fighter beelining the origin, along = dot(pos - eye, dir) was 0 at point blank and beamHit returned null — so sw8-8's cockpit seat is what exposed it, not what caused it. Consequence: TCH1DZ's loiter break (four C_PS gates, tie-vm.ts:341-342) can fire for a fighter that is not on screen. Behaviourally small (the fighter is about to collide) but it is a fidelity gap in a bit that gates choreography. Likely fix: gate C_PS on C_PV — 'was it drawn' — and pin it with a test seating a fighter inside the band but outside the pyramid. Check first whether the ROM's draw pass has other implicit gates worth porting at the same time."
+    points: 2
+    completed: '2026-08-03'
