@@ -101,7 +101,7 @@ All JavaScript error checks (#10 from JS checklist) apply, plus:
 
 **13. Fix-introduced regressions (meta-check)**
 After applying fixes for review findings, re-scan the fix diff against
-checks #1-#12 and #14-#24. Common patterns:
+checks #1-#12 and #14-#26. Common patterns:
 - Adding `as any` to silence a type error instead of fixing it
 - Adding null checks but using `||` instead of `??`
 - Adding runtime validation but not updating the type to match
@@ -190,6 +190,12 @@ paid later by whoever trusts it.
   `next()`" where one route does not) — narrow it, or name the case
 - Where the claim is cheap to run, RUN it and quote the output. Replacing a false
   claim with a second confident one repeats the defect being fixed.
+- **A mechanical re-anchor is not a re-read.** Shifting a citation's line number to
+  follow an edit makes it point somewhere valid-LOOKING without anyone checking
+  whether the claim beside it is still true — so a sweep can re-assert a paragraph
+  as current that nobody opened. When a diff touches a cited paragraph, the claim
+  is in scope, not just the number. The tell is a citation that lands on code with
+  no relationship to the sentence citing it.
 *Origin: uf1-13 I-F4 + I-F5 + I-F2 (two comments eleven lines apart contradicted
 each other; "retirement goes through next()" overreached; two of three worked
 examples in a runbook named failures that cannot produce the symptom)*
@@ -382,13 +388,68 @@ constant it asserted was read by nothing in `src/`; seven prose survivors plus t
 fixture guards still encoded the retired disc; a bare `(:1176-1177)` evaded the
 sweep and was caught only by the guard ceiling sitting one over)*
 
+**25. A source-text guard whose SEARCH SCOPE is the whole file**
+#15 asks whether a guard is mutation-tested and whether it anchors to the
+declaration that does the work. This asks the question one step earlier: over WHAT
+TEXT does the match run? A claim lives in a paragraph; a file is tens of thousands
+of characters. A regex that must land in one paragraph, matched against the whole
+file, passes on any hit anywhere — including the very declaration the prose is
+supposed to describe, and including an unrelated citation hundreds of lines away.
+- A NEGATIVE guard (`.not.toMatch`) over a whole file is usually fine — absence is
+  absence. A POSITIVE anchor over a whole file almost never is: the symbol it
+  demands is the symbol the module declares, so it verifies the code compiles
+- Bound the slice with CODE on both sides — a function signature above, the first
+  statement it documents below — never with a line count, which goes stale on the
+  next edit and fails silently open
+- For a citation that must SUPPORT a sentence, match a measured character WINDOW
+  around the claim, and record the measurement: the distance to the real citation
+  and the distance to the nearest decoy. Pick a radius that clears one and misses
+  the other by an order of magnitude, and put both numbers in the docstring
+- `indexOf` returns -1 on a miss and `slice(-1, …)` yields a DIFFERENT window rather
+  than an error. Assert both markers were found BEFORE slicing
+- The proof is never "the test passes". It is: reinstate the exact claim the guard
+  forbids, and require red
+*Origin: sw8-27 round-2 review R1/R2 (a citation guard matched `WSMAIN.MAC:3881`
+against the whole of `sim.ts` and passed on a hit 431 lines — 23 724 flattened
+characters — from the sentence it was credited with supporting; a positive anchor
+requiring the C_PS paragraph to name `SIGHTS_OCTAGON` was satisfied by the
+constant's own `export const` and by the predicate that reads it. Both survived
+reinstating the exact retired claim, and both sat in a file whose own header warns
+that a rewrite saying the same false thing in different words would pass)*
+
+**26. An assertion whose terms are ALL local to the test**
+#18 covers a fixture whose value IS the expectation. This is the degenerate end of
+it: an assertion where no term comes from the code under test at all, so it is an
+identity dressed as a check. It cannot fail, no mutant can kill it, and it reads as
+coverage.
+- Trace EVERY term to its definition. If all of them are consts in the test file, or
+  derived from each other, the assertion is arithmetic about itself —
+  `(3 * T) / (1.5 * T) === 2` holds for every non-zero T
+- The characteristic ORIGIN is a linter, not a belief: a constant goes unused when
+  the assertion around it is rewritten, `noUnusedLocals` complains, and a use is
+  invented to quiet it. Deleting the constant is the honest fix
+- When pinning a RELATIONSHIP between two exported constants, import BOTH from the
+  module so drift between them fails. Grep the constant's name first — a sibling
+  test file has usually already written the correct version
+- Keep fixture BOUNDS as independent literals even so: a bound that tracks the
+  constant under test moves with the mutant and scores every seat against the
+  mutated value. The literal, plus a separate `expect(CONST).toBe(literal)` anchor,
+  is what bites
+- Ask what production would have to get wrong for the line to notice. If the answer
+  is "nothing", delete it
+*Origin: sw8-27 round-2 review R3 (`expect(OCT / (1.5 * T)).toBe(SIGHTS_FACTOR)`
+compared three test-local values in a file importing only `computeStatus` from
+`src/`. It was added by the same commit that made `SIGHTS_FACTOR` unused, and the
+correct version — both constants imported and compared to each other — was written
+into a SIBLING file by that same diff)*
+
 If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 
 ```yaml
 GATE_RESULT:
   status: pass
   gate: typescript-review-checklist
-  message: "TypeScript self-review checklist passed (24 checks)"
+  message: "TypeScript self-review checklist passed (26 checks)"
   checks:
     - name: type-safety-escapes
       status: pass
@@ -428,7 +489,7 @@ GATE_RESULT:
       detail: "No barrel file over-imports; async fs in handlers"
     - name: fix-regressions
       status: pass
-      detail: "Fix commits re-scanned against checks #1-#12, #14-#24"
+      detail: "Fix commits re-scanned against checks #1-#12, #14-#26"
 ```
 </pass>
 
@@ -493,7 +554,7 @@ GATE_RESULT:
     - "Add Zod/io-ts validation at API boundaries; validate JSON.parse results"
     - "Use catch(e: unknown) and narrow with instanceof/type guards"
     - "Import specific exports instead of barrel; use async fs in handlers"
-    - "Re-scan fix diffs against checks #1-#12, #14-#24 before handoff"
+    - "Re-scan fix diffs against checks #1-#12, #14-#26 before handoff"
 ```
 </fail>
 
