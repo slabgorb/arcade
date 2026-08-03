@@ -295,10 +295,14 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   //
   // Those four tests ARE C_PV's definition — they are the same near/far clamps
   // and the same ratio law the C_PV block above ports. `CHSET C$PV` is
-  // WSMAIN.MAC:3846; the sole `CHSET C$PS` is WSMAIN.MAC:3930; and the only
-  // branch target between them is the FORWARD local label `86$` at
-  // WSMAIN.MAC:3933. So the cabinet cannot reach :3930 for an object it did not
-  // reach :3846 for. Gating the sights bit on the view bit transcribes that.
+  // WSMAIN.MAC:3846 and the sole `CHSET C$PS` is WSMAIN.MAC:3930, and between
+  // those two lines there is NO label at all — so nothing can branch into the
+  // span and reach the second without having executed the first. The next
+  // branch target is `86$` at WSMAIN.MAC:3933, which is PAST the CHSET and is
+  // reached only by the `?ALIVE?` test's own `BNE` at :3928; it can therefore
+  // only skip the sights bit, never deliver it. So the cabinet cannot reach
+  // :3930 for an object it did not reach :3846 for, and gating the sights bit
+  // on the view bit transcribes that rather than inferring it.
   //
   // Nothing else in the span gates. `IS2UV`/`OBJCEN` (WSMAIN.MAC:3870-3873) are
   // `JSR`s and return to :3875 — a subroutine call cannot skip the caller's

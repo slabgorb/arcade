@@ -19,11 +19,18 @@
 //           ... TMPSIZ / TMPOCT / the laser hit ...             :3875-3918
 //           CHSET C$PS            ;STATUS: ALIEN IN PLAYER SITES :3930
 //
-// Those four tests ARE C_PV's definition. `CHSET C$PV` is :3846, the tree's sole
-// `CHSET C$PS` is :3930, and the only branch target between them is the FORWARD local
-// label `86$` at :3933. So :3930 is UNREACHABLE unless :3846 executed, on the same
-// object, in the same pass. Gating C_PS on C_PV is a transcription of the cabinet's
-// control flow, not an inference from proximity.
+// Those four tests ARE C_PV's definition. `CHSET C$PV` is :3846 and the tree's sole
+// `CHSET C$PS` is :3930, and between those two lines there is NO label at all — so
+// nothing can branch into the span and arrive at the second without having executed
+// the first. (The next branch target, `86$`, is at :3933: PAST the CHSET, reached only
+// by the `?ALIVE?` test's own `BNE` at :3928, so it can only skip the sights bit.)
+// :3930 is therefore UNREACHABLE unless :3846 executed, on the same object, in the same
+// pass. Gating C_PS on C_PV is a transcription of the cabinet's control flow, not an
+// inference from proximity.
+//
+// (CORRECTED during GREEN: this paragraph first said `86$` was "the only branch target
+// BETWEEN them", which is false — :3933 is past :3930, not between. The true statement
+// is the stronger one above: the span contains no label whatsoever.)
 //
 // Nothing else in that span gates: `IS2UV`/`OBJCEN` (:3870-3873) are `JSR`s, and a JSR
 // returns to :3875 — it cannot skip the caller's remaining code. The laser-hit block's
