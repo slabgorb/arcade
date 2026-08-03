@@ -82,3 +82,23 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: cp6-4
+    title: centipede's rogue-manifest guard asserts only the interpolated cue name — rewording the diagnostic wholesale leaves it green
+    description: |-
+      Filed by jt9-4's TEA, then RE-MEASURED and NARROWED by SM before filing (2026-08-03). Read the narrowing first — the finding as TEA measured it is STALE.
+
+      WHAT TEA MEASURED, AND WHY IT NO LONGER HOLDS. jt9-4's TEA reported that replacing centipede's primary missing-spec gate with `if (false)` left the entire centipede project green (61 files / 1118 tests), including the very test written to pin it — because a SECOND throw a few lines down also interpolated the cue name, so the assertion `.rejects.toThrow(/aCueNobodyBaked/)` could not tell the two apart. That measurement was taken against the tree as it stood before cp6-2's review rounds landed. SM re-ran the identical mutation against `main` after pulling cp6-2's completion and it now REDDENS: 1 test fails, `cp6-2 AC3 — the manifest the baker can actually reach > a manifest cue with no bake spec THROWS — it never falls back to a default beep`, with `expected [Function] to throw error matching /aCueNobodyBaked/ but got 'Cannot read properties of undefined (...)'`. cp6-2's own review collapsed the two cue-name-interpolating throws into one (`grep -c "no bake spec for manifest cue"` returns 1), so the fallthrough now reaches `standInEvents(cue)` and dies on `STAND_IN_SPECS[cue]` being undefined — a TypeError that does not name the cue, which is exactly what makes the guard bite. The dead-guard half of the finding is CLOSED and needs no work.
+
+      WHAT SURVIVES, AND IT IS SMALL. The assertion is still a regex on the interpolated cue name rather than on the message. TEA measured this half too and it is unaffected by the restructure: rewording the diagnostic wholesale — while keeping `${cue}` in it — leaves the test green; only dropping the cue name reddens it. So the guard pins exactly one thing, the interpolation, and not the diagnosis. That is a real but LOW guard-strength gap: it cannot ship a silent cue (the gate still aborts `just deploy-assets` under `set -euo pipefail`), it can only let the operator's error message rot unnoticed.
+
+      THE FIX, AND THE PRECEDENT. Assert the message, not the name. joust's jt9-4 does exactly this one directory over: every assertion there is `toBe` on the ENTIRE message string, and jt9-4's TEA found that a name-only regex is defeated in a second way worth knowing about here — a manifest cue named `toString` is truthy via `Object.prototype`, sails past a bracket-read spec lookup, and trips a DIFFERENT gate, so the right cue name appears beside the wrong diagnosis. Check whether centipede's `FIXTURE.cues[cue]` / `STAND_IN_SPECS[cue]` bracket reads have that same shape; if they do, `Object.hasOwn` is the one-line fix and it belongs in this story rather than a new one. `plugins/joust/tools/sample-bake/bake-samples.test.mjs` carries the worked example and its mutation battery.
+
+      SCOPE: `plugins/centipede/tools/pokey-bake/bake-sfx.test.mjs` (the assertion at the `cp6-2 AC3` test), and `bake-sfx.mjs` only if the `Object.hasOwn` check above turns out to be needed. Verify by mutation both ways — reword the message and watch it redden, then restore — per the standing rule that a guard nobody has watched fail is not a guard.
+
+      DO NOT re-file the dead-guard claim. It was true when TEA measured it and is false now; two stories a day apart moved the code underneath it. That drift is the point.
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
