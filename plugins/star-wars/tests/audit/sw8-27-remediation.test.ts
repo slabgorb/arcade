@@ -104,18 +104,47 @@ const cpsBlock = () =>
  *
  *  A citation supports the sentence it sits beside; one in another paragraph supports
  *  nothing, and matching it against the whole file is how R1 stayed green while the exact
- *  retired claim was reinstated. MEASURED at the round-2 rework, so the radius is a
- *  reproducible choice rather than a round number: in `gameRules.ts` the supporting
- *  citation sits **193 characters** from the `+10.` mention it belongs to; in `sim.ts` the
- *  nearest one is **23 724** away, in the aim-freshness paragraph 431 lines up. 600 clears
- *  the first by 3× and misses the second by 40×, so no plausible re-wrap moves either
- *  across it. Recompute with `tools/`-free node: flatten both files and diff the indices. */
+ *  retired claim was reinstated. The radius is MEASURED rather than a round number.
+ *
+ *  Re-taken against HEAD after GREEN (round 3, Z4). The round-2 figures were exact when
+ *  written and this story's OWN next commit falsified them, which is #20's opening sentence
+ *  happening inside the docstring that quotes it: `gameRules.ts` still sits **193
+ *  characters** from the `+10.` mention it belongs to, but in `sim.ts` the nearest is now
+ *  **116** — GREEN put a citation beside the mention, which is the fix working — and the
+ *  decoy 431 lines up in the aim-freshness paragraph has drifted from 23 724 to **23 805**,
+ *  because GREEN rewrote the paragraph it sits in. So 600 still clears the nearest
+ *  legitimate cite by ~3× and misses the decoy by ~40×, and no plausible re-wrap moves
+ *  either across it.
+ *
+ *  Recompute (no `tools/` needed): flatten `sim.ts` and `gameRules.ts` with `flat()` above,
+ *  then diff the indices of `/\+10\./` against `/WSMAIN\.MAC:3881|WSGUNS\.MAC:918/`. */
 const CITATION_WINDOW = 600
 function windowsAround(text: string, claim: RegExp, radius = CITATION_WINDOW): string[] {
   const re = new RegExp(claim.source, claim.flags.includes('g') ? claim.flags : claim.flags + 'g')
   return [...text.matchAll(re)].map((m) =>
     text.slice(Math.max(0, m.index - radius), Math.min(text.length, m.index + radius)),
   )
+}
+
+/** The FLATTENED sentence containing index `i`.
+ *
+ *  A character radius is the right scope for "is the citation beside the claim" and the
+ *  WRONG one for "which mechanism does this figure belong to" — the round-3 review's Z1 sits
+ *  inside a 600-character window that also contains the word it must not be attributed to
+ *  (`tie-status.ts` says "the same viewport aspect" some 400 characters above the flick
+ *  sentence). An attribution is owned by a sentence, so that is the unit matched.
+ *
+ *  Bounded by `[.!?]` + whitespace, which the flattened comments produce only at real
+ *  sentence ends: `0.1`, `WSMAIN.MAC:3881` and `sim.ts:341` all keep a non-space after the
+ *  dot, so none of them splits. `:` and `;` are deliberately NOT breaks — `sim.ts` names the
+ *  mechanism before the colon ("The aspect gap grows with the yoke, though: 2694 u at full
+ *  deflection"), and breaking there would strip the subject off its own figure and make a
+ *  correct sentence unattributable. */
+function sentenceAt(text: string, i: number): string {
+  let start = 0
+  for (const m of text.slice(0, i).matchAll(/[.!?]\s+/g)) start = m.index + m[0].length
+  const rel = text.slice(i).search(/[.!?]\s+/)
+  return text.slice(start, rel < 0 ? text.length : i + rel + 1)
 }
 
 describe('sw8-27 F1 — the preamble no longer calls the divergence this story closed deliberate', () => {
@@ -348,6 +377,31 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
   // The two TEST files that made the same 500 → 750 edit DID re-derive and quote the
   // crossover correctly (`tie-sights-status.test.ts:286-288`,
   // `tie-loiter-sights.test.ts:236-239`) — the care was available and was not applied here.
+  //
+  // == ROUND 3 (Z2): A CROSSOVER BELONGS TO A MECHANISM ==============================
+  //
+  // The first version of the prose guard below asked `/\b2694\b|\b28\s?%/` of a correctly
+  // scoped block. Scope was the round-2 lesson and it was applied faithfully; the assertion
+  // inside the scope was still a digit match, and a digit match cannot see the only thing
+  // R5 is about — WHICH mechanism a figure is attached to. It was mutation-proven in both
+  // directions and failed both: a sentence reading "2694 u is the price of a banana, so
+  // past ~28% of Tuesday it bites" passed, and the CORRECT re-derivation for the block that
+  // carries it turned red, whereupon the failure message instructed the author to put the
+  // wrong number back. A guard that punishes the true statement is worse than no guard.
+  //
+  // There are TWO mechanisms here and they differ by 2.3×, so the confusion is not a
+  // rounding error:
+  //
+  //   * the AIM-FRESHNESS gap — one frame of stale yoke. Its separation is a function of
+  //     the CHANGE in aim alone (615.8 u per 0.1 wherever the yoke already sits, asserted
+  //     over the domain below), so at full travel it is 6158 u and it crosses the band at
+  //     ~12% of travel in one frame;
+  //   * the ASPECT drop — the same yoke read against a different viewport. This one DOES
+  //     grow with absolute deflection: 539 u at yoke 0.2, 2694 u at full, crossing at ~28%.
+  //
+  // So the guard derives the pair per mechanism and matches it against the SENTENCE that
+  // makes the claim, and its failure message quotes the computed figure rather than a typed
+  // one — it cannot prescribe a stale number, because it has no stale number to prescribe.
 
   const DEPTH = 6000
   const WIDE = 16 / 9
@@ -361,6 +415,24 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
     return [d[0] * t, d[1] * t]
   }
   const apart = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1])
+
+  /** The two mechanisms the two blocks describe. `full` is the separation at FULL yoke
+   *  travel and is COMPUTED from the production geometry, never typed — which is what stops
+   *  the guard below being wrong about which mechanism it is checking, since it will have
+   *  worked the answer out. `names` is how a sentence declares which one it is talking
+   *  about; both spellings are the ones the two files already use. */
+  const MECHANISMS = [
+    {
+      what: 'the aim-freshness gap (one frame of stale yoke)',
+      names: /stale aim|flick|freshness/i,
+      full: apart(inPlane(0, WIDE), inPlane(1, WIDE)),
+    },
+    {
+      what: 'the aspect drop (the same yoke against a different viewport)',
+      names: /aspect/i,
+      full: apart(inPlane(1, WIDE), inPlane(1, 1)),
+    },
+  ] as const
 
   it('RESOLVED — the two quoted separations are BELOW the band, and the crossover is not', () => {
     // Fixture anchors first: if either production constant is retuned, every number below
@@ -393,23 +465,60 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
     expect(alongRay, 'and neither does 613.4 — the figure the sentence actually quotes').toBeLessThan(BAND)
     expect(dropped, 'nor does 538.9').toBeLessThan(BAND)
 
-    // What DOES clear it, and where. This is the figure the two sentences need.
-    const full = apart(inPlane(1, WIDE), inPlane(1, 1))
-    expect(full, 'the aspect drop at full deflection').toBeCloseTo(2694.3, 1)
-    expect(full, 'which does clear the band').toBeGreaterThan(BAND)
-    expect(BAND / full, 'so the crossover is ~28% of yoke travel, not zero').toBeCloseTo(0.278, 3)
+    // What DOES clear it, and where — PER MECHANISM. Round 3 (Z1/Z2): the whole defect is
+    // that one file took the second figure below and attached it to the first mechanism.
+    const [fresh, aspect] = MECHANISMS
+
+    // The aim-freshness gap first, because it is the one the numbers were taken from. Its
+    // separation depends on the CHANGE in yoke and not on where the yoke already is, which
+    // is why "at full deflection" is a category error for it: there is no such thing as a
+    // stale-aim gap "at full deflection", only one for a flick of a given size.
+    for (const base of [0, 0.4, 0.9]) {
+      expect(
+        apart(inPlane(base, WIDE), inPlane(base + 0.1, WIDE)),
+        `a 0.1 flick starting from yoke ${base} — the freshness gap does not know where the yoke was`,
+      ).toBeCloseTo(615.8, 1)
+    }
+    expect(fresh.full, 'so a FULL-TRAVEL flick separates the two rays by this much').toBeCloseTo(6158.4, 1)
+    expect(fresh.full, 'which clears the band').toBeGreaterThan(BAND)
+    expect(BAND / fresh.full, 'and it crosses at ~12.2% of travel in one frame, not 28%').toBeCloseTo(0.1218, 4)
+
+    // The aspect drop second. This one genuinely does grow with absolute deflection — 539 u
+    // at yoke 0.2 (measured above), 2694 u at full — so a crossover in % of travel is the
+    // right shape for it, and 28% is the right value FOR IT.
+    expect(aspect.full, 'the aspect drop at full deflection').toBeCloseTo(2694.3, 1)
+    expect(aspect.full, 'which does clear the band').toBeGreaterThan(BAND)
+    expect(BAND / aspect.full, 'so the crossover is ~27.8% of yoke travel, not zero').toBeCloseTo(0.278, 3)
+    expect(dropped / aspect.full, 'and it is LINEAR in the yoke, so yoke 0.2 is a fifth of full').toBeCloseTo(0.2, 3)
+
+    // THE DISCRIMINATOR. The two full-travel figures are 2.3× apart, so a sentence that
+    // quotes one while naming the other is not off by a rounding — it is off by more than
+    // the band itself, and in the direction that matters: the freshness gap bites at less
+    // than half the deflection the smaller figure implies.
+    expect(fresh.full / aspect.full, 'the two mechanisms are nowhere near each other').toBeCloseTo(2.286, 2)
+    expect(
+      BAND / fresh.full,
+      'and quoting the aspect crossover for the freshness gap OVERSTATES the safe travel 2.3×',
+    ).toBeLessThan(BAND / aspect.full)
   })
 
   it('so neither source comment offers a sub-band separation as the divergence', () => {
     // Scoped to the BLOCK that carries the claim in each file, never the file (R1/R2's
-    // defect class). Three routes clear this and the fix column allows all three: quote the
-    // crossover alongside the example, drop the sub-band figures, or drop the comparison
-    // against the band. What must not survive is the pairing.
+    // defect class), and then — round 3 (Z2) — to the SENTENCE that makes the claim, because
+    // scope alone cannot tell a right crossover from a wrong one. Three routes clear this and
+    // the fix column allows all three: quote the crossover FOR THIS MECHANISM alongside the
+    // example, drop the sub-band figures, or drop the comparison against the band. What must
+    // not survive is a sub-band example paired with the band and no honest crossover.
     const SUB_BAND = /\b(613|539)\b/ // the two figures measured above, both < 750
     const THE_BAND = /\b750\b/
-    const CROSSOVER = /\b2694\b|\b28\s?%/
+    const AT_FULL = /full[- ](?:deflection|travel)/g
+    /** A separation quoted in world units. Commas tolerated so `6,158 u` is read, not
+     *  silently re-read as `158`. */
+    const QUOTED_U = /(\d[\d,.]*)\s*u\b/g
+    const QUOTED_PCT = /(\d+(?:\.\d+)?)\s?%/g
     const examined: string[] = []
     const pairing: string[] = []
+    const claimsChecked: string[] = []
     for (const [name, text] of [
       ['sim.ts (the stepGame preamble)', preambleOf(read('src', 'core', 'sim.ts'))],
       ['tie-status.ts (the C_PS block)', cpsBlock()],
@@ -417,18 +526,76 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
       examined.push(name)
       if (!SUB_BAND.test(text) || !THE_BAND.test(text)) continue
       pairing.push(name)
+
+      const claims = [...text.matchAll(AT_FULL)].map((m) => sentenceAt(text, m.index))
       expect(
-        text,
+        claims.length,
         `${name}: 613 u and 539 u are both INSIDE the 750 u band this story widened it to, so ` +
-          'neither shows the gun resolving what the bit denies. Quote the crossover ' +
-          '(750 / 2694 ≈ 28% of yoke travel) beside the example, or retire the example.',
-      ).toMatch(CROSSOVER)
+          'neither shows the gun resolving what the bit denies. Say where the separation DOES ' +
+          'clear the band ("… at full travel, so past …% of travel"), or retire the example.',
+      ).toBeGreaterThan(0)
+
+      for (const s of claims) {
+        claimsChecked.push(s)
+        // WHICH mechanism is this sentence about? Exactly one, or the figures in it belong
+        // to nothing in particular — which is the defect, stated precisely.
+        const named = MECHANISMS.filter((m) => m.names.test(s))
+        expect(
+          named.map((m) => m.what),
+          `${name}: a crossover belongs to ONE mechanism, and this sentence names ${named.length}. ` +
+            `Name the mechanism the figure belongs to, as sim.ts does ("The aspect gap grows with ` +
+            `the yoke, though: …"). The sentence: "${s}"`,
+        ).toHaveLength(1)
+        const mech = named[0]
+
+        // The separation it quotes AT FULL TRAVEL: the last figure in units before the
+        // phrase, so `750 u on the axis, but 2694 u at full deflection` reads 2694 and not
+        // the band it was contrasted against.
+        const at = s.search(/full[- ](?:deflection|travel)/)
+        const mags = [...s.slice(0, at).matchAll(QUOTED_U)].map((m) => Number(m[1].replace(/,/g, '')))
+        expect(
+          mags.length,
+          `${name}: this sentence reaches full travel without saying how far apart the rays are ` +
+            `there. ${mech.what} separates them by ${mech.full.toFixed(1)} u. The sentence: "${s}"`,
+        ).toBeGreaterThan(0)
+        expect(
+          Math.round(mags[mags.length - 1]),
+          `${name}: this sentence is about ${mech.what}, which at full travel separates the rays ` +
+            `by ${mech.full.toFixed(1)} u — the figure quoted is another mechanism's. The ` +
+            `sentence: "${s}"`,
+        ).toBe(Math.round(mech.full))
+
+        // And where it bites. Every percentage in the crossover sentence must be THIS
+        // mechanism's crossover: a second one in the same sentence is the wrong mechanism's
+        // being smuggled in beside the right one. If a sentence legitimately needs another
+        // percentage, split it — an attribution is owned by a sentence.
+        const want = (BAND / mech.full) * 100
+        const pcts = [...s.matchAll(QUOTED_PCT)].map((m) => Number(m[1]))
+        expect(
+          pcts.length,
+          `${name}: the crossover sentence must say WHERE it bites, as a % of travel — ` +
+            `${mech.what} crosses the ${BAND} u band at ${want.toFixed(1)}%. The sentence: "${s}"`,
+        ).toBeGreaterThan(0)
+        for (const p of pcts) {
+          expect(
+            Math.abs(p - want),
+            `${name}: ${mech.what} crosses the ${BAND} u band at ${want.toFixed(1)}% of travel ` +
+              `(${BAND} / ${mech.full.toFixed(1)}), so ${p}% is the other mechanism's crossover. ` +
+              `The sentence: "${s}"`,
+          ).toBeLessThanOrEqual(0.5)
+        }
+      }
     }
     expect(examined.length, 'floor: both blocks that carry the claim were opened').toBe(2)
     expect(
       pairing.length,
       'non-vacuity: the assertion above ran. A zero here means both blocks stopped comparing a ' +
         'separation against the band, which is a real fix — delete this guard rather than leave it green.',
+    ).toBeGreaterThan(0)
+    expect(
+      claimsChecked.length,
+      'non-vacuity: at least one crossover sentence was actually opened and its arithmetic checked, ' +
+        'rather than the loop finding none and the block passing on the floors alone',
     ).toBeGreaterThan(0)
   })
 })
@@ -478,25 +645,84 @@ describe('sw8-27 R6 — coaching.ts does not deny the mode assignments sim.ts ma
     ).not.toMatch(/while .{0,4}mode.{0,4} stays/i)
   })
 
-  it('RESOLVED — and every sim.ts line it cites for the end of a run really mentions it', () => {
-    // The half a rewrite cannot fake: the four cited numbers are opened against the working
-    // tree. At the round-2 rework they were `:567`, `:937`, `:1185` and `:1344`, landing on
-    // a `Set` construction, a docstring, a closing brace and an `events` field — none of
-    // them gameOver-related. BARE spellings are parsed too (`sim.ts:567, :937, …` inherits
-    // its filename from the first), because a `sim\.ts:` regex is blind to them and that is
-    // how three of these four evaded every citation sweep the story ran.
+  it('RESOLVED — and every sim.ts line it cites is the KIND of site the sentence claims', () => {
+    // The half a rewrite cannot fake: the cited numbers are opened against the working tree.
+    // At the round-2 rework they were `:567`, `:937`, `:1185` and `:1344`, landing on a `Set`
+    // construction, a docstring, a closing brace and an `events` field — none of them
+    // gameOver-related. BARE spellings are parsed too (`sim.ts:567, :937, …` inherits its
+    // filename from the first), because a `sim\.ts:` regex is blind to them and that is how
+    // three of those four evaded every citation sweep the story ran.
+    //
+    // ROUND 3 (Z3): requiring each cited line to match `/gameOver|'gameover'/` asserts the
+    // WORD, not the claim. The paragraph says the death sites set gameOver ALONGSIDE the
+    // mode; retargeting every citation to `sim.ts:241`/`:256` — which are `gameOver: false`
+    // inside `mode: 'attract'` literals on the name-entry/restart path, the opposite of a
+    // death site — left this green. Today's citations happen to be right, so that was a
+    // latent hole rather than a live falsehood, and a latent hole is exactly what a
+    // mechanical re-anchor walks into: it preserves a wrong target rather than fixing it.
+    //
+    // So the two populations the paragraph talks about are DERIVED from `sim.ts` and every
+    // citation is classified against them:
+    //
+    //   a PAIRING site  — a `gameOver:` line with `mode: … 'gameover'` within ±2 lines. This
+    //                     is the "set gameOver alongside the mode" claim, in code.
+    //   a game-over BRANCH — an `if (…)` on the flag or the mode, which is what the clause
+    //                     "the branch at sim.ts:221 is finalised now" cites. It is a
+    //                     different claim about a different kind of line, and collapsing the
+    //                     two is how :221 would be failed for being correct.
+    //
+    // A citation must be one or the other, and every PAIRING site must be cited, because the
+    // sentence presents its list as *the* death sites rather than as examples.
+    const lines = simLines()
+    const GAMEOVER_FIELD = /^\s*gameOver:/
+    const GAMEOVER_BRANCH = /^\s*(?:\}\s*)?(?:else\s+)?if\s*\(.*(?:gameOver|'gameover')/
+    const pairingSites = lines.flatMap((l, i) =>
+      GAMEOVER_FIELD.test(l) && lines.slice(Math.max(0, i - 2), i + 3).some((n) => MODE_ASSIGN.test(n)) ? [i + 1] : [],
+    )
+    const branches = lines.flatMap((l, i) => (GAMEOVER_BRANCH.test(l) ? [i + 1] : []))
+
+    // Fixture anchors, so a derivation that quietly matched nothing cannot pass this by
+    // admitting everything. Derived, not typed — if sim.ts gains a fifth death site these
+    // three lines are what say so, along with the `toBe(4)` seat above.
+    expect(pairingSites, 'fixture: the death sites that set BOTH, derived from sim.ts').toEqual([757, 1261, 1509, 1667])
+    expect(branches, 'fixture: and the places sim.ts branches on the end of a run').toEqual([221, 932, 943, 1846])
+    // THE DISCRIMINATOR, and the reason the retired token check was not one: `sim.ts` has
+    // `gameOver:` lines that are not death sites at all, and the old assertion accepted them.
+    const wordWithoutPairing = lines.flatMap((l, i) =>
+      GAMEOVER_FIELD.test(l) && !pairingSites.includes(i + 1) ? [i + 1] : [],
+    )
+    expect(
+      wordWithoutPairing,
+      'fixture: these two carry the word `gameOver:` WITHOUT the pairing — they are the ' +
+        "`gameOver: false` fields in the `mode: 'attract'` literals, and citing them would be false",
+    ).toEqual([241, 256])
+
     const src = read('src', 'core', 'coaching.ts')
     const guard = block(src, "coachingFor's death guard", 'export function coachingFor', 'if (s.wave !== 1)')
     const cited = [...guard.matchAll(/sim\.ts:(\d+)|[\s(,]:(\d+)/g)].map((m) => Number(m[1] ?? m[2]))
     expect(cited.length, 'fixture guard: the paragraph does cite sim.ts, so this check has work to do').toBeGreaterThan(
       0,
     )
-    const lines = simLines()
     for (const n of cited) {
       expect(
         lines[n - 1] ?? `(sim.ts has only ${lines.length} lines)`,
         `coaching.ts cites sim.ts:${n} for the end of a run — that line must mention it`,
       ).toMatch(/gameOver|'gameover'/)
+      expect(
+        pairingSites.includes(n) || branches.includes(n),
+        `coaching.ts cites sim.ts:${n}, but that line is neither a death site setting gameOver ` +
+          `alongside the mode (${pairingSites.join(', ')}) nor a branch on the end of a run ` +
+          `(${branches.join(', ')}), so it does not support the sentence it sits in. ` +
+          `sim.ts:${n} reads: ${lines[n - 1]?.trim() ?? '(past the end of the file)'}`,
+      ).toBe(true)
     }
+    // And the list is COMPLETE, not a sample. "The death sites set gameOver alongside the
+    // mode" is a claim about all of them, so one added to sim.ts and left uncited makes the
+    // paragraph false by omission — the drift this whole file exists to catch, running the
+    // other way.
+    expect(
+      pairingSites.filter((n) => !cited.includes(n)),
+      'the paragraph claims what THE death sites do, so every one of them must be cited by it',
+    ).toEqual([])
   })
 })

@@ -99,6 +99,11 @@ describe('sw7-10 F3 — the coaching hint clears when the run ends', () => {
     // the same literal as `gameOver: true`. The conservative seat is the right default
     // (see `killed`), but a fixture production never writes needs a control that says so,
     // or the suite is a statement about a hypothetical state machine.
+    //
+    // It is NOT expected to catch anything the sibling seat misses, and the round-3 review
+    // traced why: `coachingFor` returns null on `s.gameOver` before it ever reaches the mode
+    // check, so deleting `if (s.mode !== 'playing') return null` reddens neither seat. What
+    // this adds is production-faithfulness, not coverage — do not credit it with more.
     let s = killedAsShipped(coached())
     expect(s.mode, 'fixture: this is the literal shape sim.ts writes on the last life').toBe('gameover')
     for (let i = 0; i < 120; i++) s = stepGame(s, NO_INPUT, DT)
