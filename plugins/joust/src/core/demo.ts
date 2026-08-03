@@ -152,9 +152,14 @@ export interface DemoProcess {
   /** The transporter materialisation window (jt2-6), while one is in progress. */
   mat?: Materialisation
   /**
-   * jt4-5 — a WAVEGG egg-wave egg (a settled complement egg, not a DEATH3 kill-egg). The
-   * egg-wave SELF-CLEAR hatch→remount keys on this so only wave eggs mature into remount
-   * buzzards (a kill-egg keeps its jt2-4 lifecycle). Set by `spawnWaveEggs`.
+   * jt4-5 — a WAVEGG egg-wave egg (a settled complement egg, not a DEATH3 kill-egg). Set by
+   * `spawnWaveEggs`.
+   *
+   * jt9-9 NARROWED WHAT THIS DECIDES. It used to gate maturation itself: only a wave egg
+   * matured into a remount buzzard, and a kill-egg sat settled forever. It no longer does —
+   * EGGLND is one routine and every settled egg reaches it. All this tag now picks is WHICH
+   * WAIT the egg serves: EGGWT2, the egg-wave initial wait (:2761), rather than the EGGWT an
+   * egg takes when it lands (:3224).
    */
   waveEgg?: boolean
   /**
@@ -657,8 +662,9 @@ function spawnWaveEggs(waveNumber: number): DemoProcess[] {
   const eggs: DemoProcess[] = []
   for (let i = 0; i < complement; i++) {
     const pad = PADS[i % PADS.length]
-    // `waveEgg` tags the complement egg so the self-clear hatch (stepDemo) matures ONLY wave
-    // eggs into remounts — a DEATH3 kill-egg keeps its jt2-4 lifecycle, untouched.
+    // `waveEgg` tags the complement egg so the self-clear hatch (stepDemo) serves it the
+    // EGGWT2 egg-wave wait rather than the EGGWT a landing egg takes. Since jt9-9 the tag no
+    // longer decides WHETHER the egg matures — every settled egg does.
     eggs.push({ ...eggProcess(0x100 * waveNumber + i, settledWaveEgg(pad.x, pad.y)), waveEgg: true })
   }
   return eggs
@@ -1328,9 +1334,20 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // times sooner than a wave-1 one, which is per-wave hatch pressure the port had none of.
   // Seeded HERE rather than at spawn because this is the one hop in this file that converts the
   // WAVBCD counter to the decimal ordinal the difficulty engine needs.
+  //
+  // jt9-9 — AND THE `waveEgg === true` GATE IS GONE. It restricted maturation to egg-wave
+  // eggs, so an uncollected DEATH3 kill-egg sat settled forever and held its wave open: the
+  // clear gate below asks for NO eggs, and that egg was never leaving. Nothing in JOUSTRV4.SRC
+  // privileges a wave egg's maturation over a kill egg's — EGGLND is ONE routine and every egg
+  // that lands reaches it; in the machine an uncollected egg hatches into a remounting buzzard
+  // whatever killed it. The restriction was the port's invention.
+  //
+  // WHAT SURVIVES IS `willHatch`, and dropping it along with the gate is the tempting mistake:
+  // at `eggsLeft === 0` the enemy is permanently dead (`BNE 1$`, :3002) and its egg can only
+  // ever be collected, never hatched. Deleting the whole conjunction would resurrect dead
+  // enemies forever.
   processes = processes.flatMap((p) => {
-    if (!(p.kind === 'egg' && p.waveEgg === true && p.egg?.settled === true && willHatch(p.egg)))
-      return [p]
+    if (!(p.kind === 'egg' && p.egg?.settled === true && willHatch(p.egg))) return [p]
     // EGGWT2 for an egg an EGG WAVE dealt out, EGGWT for one that landed here.
     const wait = p.egg.waitFrames ?? eggWaitFrames(p.waveEgg === true ? 'EGGWT2' : 'EGGWT', waveOrdinal)
     // `DEC PJOYT,U / BNE EGGLN2` (:3236-3237) — still waiting, so still an egg.
