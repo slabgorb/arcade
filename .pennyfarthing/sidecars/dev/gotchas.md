@@ -1683,3 +1683,63 @@ appears in the fixture but not in the prose the guard reads. Before recording a 
 confirm the mutated bytes are actually in the file the test opens, and that the value you
 changed is one the test path reaches. Otherwise you file a coverage gap that does not exist —
 or worse, add a test for a hole that was never open.
+
+---
+
+## The sidecar's own warning fired on my first paragraph — a "no label between them" claim is checkable, "the only branch target between them" is not (sw8-19, star-wars, 2026-08-02)
+
+**Situation:** sw8-19's deliverable is half code (one gate) and half PROSE — a comment correcting
+an understated ROM claim. The existing entry in this file says: *in a fix round convened to delete
+false claims, your own correction prose is the likeliest new false claim.* It fired immediately.
+
+I wrote — in the source comment AND propagated it from TEA's RED header — that `86$` was *"the
+only branch target BETWEEN"* `CHSET C$PV` (`WSMAIN.MAC:3846`) and `CHSET C$PS` (`:3930`). `86$` is
+at `:3933`. It is **past** the second CHSET, not between them. The sentence was wrong in a story
+whose entire purpose was correcting a wrong sentence about those very lines.
+
+**What made it catchable, and it is a general technique:** the false version was a claim about
+*which* label sits in a span; the true version is a claim about *how many* — and a count is
+enumerable in one command. `awk 'NR>3846 && NR<3930 && /^[0-9]+\$:/'` returns nothing, and
+`grep -n '86\$'` returns exactly two lines (the `BNE` at `:3928` and the definition at `:3933`).
+The corrected claim is also STRICTLY STRONGER: no label in the span means nothing can branch in,
+where "the only branch target is X" invites the reader to check X and stop.
+
+**Rule:** when writing a structural claim about assembler control flow, prefer the form that a
+census settles (*"there is no label in this span"*, *"this symbol has exactly N references"*) over
+the form that names one item. Then actually run the census. Naming an item is a claim you verified
+by looking at that item; a count is a claim you verified by looking at all of them.
+
+## Rewriting a comment in `src/core` moves citation pins — and citing a single line while quoting a MULTI-line verbatim is the specific way it breaks
+
+Adding ~35 lines of comment to `tie-status.ts` took the tree-wide stale-citation count from 29 to
+**32**. The cause was not drift from the insertion: it was that I cited `WSMAIN.MAC:3826` while
+quoting `` `CMPD #10` / `LBLE RTS1` `` — and `CMPD #10` is on `:3825`. The comment-citation guard
+verifies the quoted verbatim is *inside the cited span*, so a single-line cite under a two-line
+quote fails even though both lines are correct and adjacent.
+
+Fix: cite the SPAN you quoted (`:3825-3826`, `:3827-3828`, `:3834-3836`, `:3840-3842`). Check with
+`checkCitations(readFileSync(f), {swRoot, romDir})` per file rather than waiting for the tree-wide
+ratchet, which tells you a number and not a location. And note the AC-level consequence: a test
+demanding the comment name line `3826` is still satisfied by the span `3825-3826`, so widening the
+cite costs nothing.
+
+## Re-derive the handoff's ROM claim before writing it into a comment — the comment IS the deliverable
+
+TEA and SM had both measured the four `RTS1` exits. I re-ran the census anyway before writing the
+comment, because on this story the comment is not documentation of the change, it is one of the
+acceptance criteria. That is what surfaced the `86$` error — which had survived SM's setup, TEA's
+RED and the RED's own passing assertions, because every one of those checks asked "is line X what
+you say it is?" and none asked "is your sentence about the SPAN true?"
+
+**Generalise:** citation gates verify `file:line` pairs and quoted verbatims. They cannot see a
+false relationship asserted BETWEEN two correct citations. When a comment's load-bearing content
+is a relationship (before/after, only/no other, reachable/unreachable), that relationship needs
+its own explicit check, and no tool in the repo will do it for you.
+
+## A shared helper is why the sibling finding is NOT the same one-line fix
+
+The gun carries the same divergence this story fixed for the sights bit, and the obvious follow-up
+is "gate `beamHit` the same way". It is not: `beamHit` is called from the trench and ground phases
+too (`sim.ts:1083`, `:1312`, `:1328`), which have no `C_PV` notion at all. The fix there has to be
+a caller-side gate on the space arm. Worth writing INTO the finding — a follow-up filed as "do
+what sw8-19 did" would send its Dev to the wrong file and the wrong shape.
