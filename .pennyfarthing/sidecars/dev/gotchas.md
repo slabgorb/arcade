@@ -1990,3 +1990,40 @@ bound and the yoke's NDC bound are the SAME quantity (`aimY = f*y/depth`, and th
 outside the rendered frustum at all.** So an off-glass target is only ever reachable through the
 hit RADIUS — a world distance, not an angle — which is exactly the construction every seat in this
 story's RED uses, and the reason no "aim at an off-glass target" fixture can be written.
+
+### An unquoted zsh variable holding two paths reads as a uniform false-KILL across an entire mutation battery — not a survivor illusion, the opposite one
+
+**Situation:** jt9-5 GREEN — applying TEA's measured diff and re-running the 27-mutant battery
+independently, against a from-scratch harness (literal string search/replace, snapshot-verified
+before and after each mutant, restored by `cp` never `git checkout --` since the fix was
+uncommitted at battery time — the discipline `mutate-with-a-wrong-value` and jt9-4's Reviewer
+both name).
+
+**Problem:** `npx vitest run --project joust $TESTFILES` with `TESTFILES="a.test.ts b.test.mjs"`
+(space-joined, unquoted) reported KILLED for every single mutant in the batch, including one
+that should have SURVIVED. The environment's login shell is zsh, and **zsh does not word-split
+an unquoted variable the way bash does** — `$TESTFILES` expanded to ONE argument containing a
+literal space, vitest's file filter matched nothing, and it printed `No test files found,
+exiting with code 1` for every mutant, indistinguishable from a real kill by exit code alone.
+`bash`-authored muscle memory (`for f in $VAR`, unquoted multi-path variables) is silently wrong
+under zsh, and this environment's `Shell: zsh` in the system context is not decorative.
+
+**Caught by:** re-reading ONE mutant's FULL vitest output instead of trusting `exit=$?` plus a
+`grep -E "Test Files|Tests "` that came back EMPTY — an empty grep result from a supposedly
+`KILLED` run is itself the tell, the same shape as `background-agent-liveness`'s "silence is not
+a signal" and the session file's own note about a broken concatenation making decoy mutants
+print zero reds. Had I trusted the exit code alone, I would have reported 12/12 killed and ZERO
+survivors — the reverse of a false positive: it would have UNDERSTATED my own battery's power to
+confirm TEA's N8-equivalence claim, because the one true survivor (the loop-bound loosening)
+would have been misreported as killed too, silently erasing the only interesting result.
+
+**Fix:** use a zsh array (`testfiles=(a.test.ts b.test.mjs)`, expanded `"${testfiles[@]}"`), and
+verify the fix by re-running one known-survivor mutant and confirming it now reports the
+EXPECTED result (33/33 passing, exit 0) rather than just re-running everything and hoping the
+counts look plausible.
+
+**Generalise:** when a whole mutation battery reports a uniform result (all killed, or all
+survived) with no variation across mutants that should behave differently, suspect the HARNESS,
+not the code — a uniform signal that erases an expected asymmetry (here: one mutation was
+supposed to be different from the other eleven) is the same shape as a guard that "does not do
+what its name says": it means the measurement broke, not that the property does or doesn't hold.
