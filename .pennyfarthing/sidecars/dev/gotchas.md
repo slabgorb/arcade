@@ -1709,6 +1709,39 @@ census settles (*"there is no label in this span"*, *"this symbol has exactly N 
 the form that names one item. Then actually run the census. Naming an item is a claim you verified
 by looking at that item; a count is a claim you verified by looking at all of them.
 
+## Two mutating/measuring subagents on the SAME working tree race, and the false failure looks exactly like the real one (jt9-3, joust, 2026-08-03)
+
+**Situation:** jt9-3's whole GREEN phase is re-running a mutation battery TEA already ran once —
+apply a one-line mutation to `frame.ts`/`demo.ts`, run `npx vitest run --project joust`, revert,
+confirm clean. I launched TWO `testing-runner` subagents in the SAME message to save wall-clock
+time: one running the battery script (apply → test → revert, ×3, ~4 full suite runs), the other
+running a plain `npx vitest run --project joust` + `npm run lint` + `npm run test:orchestrator`
+as an independent confirmation.
+
+**What happened:** the second agent's solo vitest run reported 2 failures — `a frame that flaps
+AND thuds emits the wing edge first` and the index-ordering test — with the exact symptom of
+mutation M3 (`player-wing-down`/`player-thud` swapped). That is not a coincidence: both agents
+share ONE git working tree, and the second agent's `npx vitest run` almost certainly executed
+while the first agent's driver had M3 applied (source mutated, not yet reverted). The two agents
+have no view of each other's state; neither one's prompt said "another agent is mutating the
+files you're about to test."
+
+**Catch:** `git status --porcelain` and `git diff --stat`, run AFTER both agents finished, were
+both empty — the tree was provably clean by the time I looked. That is inconsistent with a real
+regression (a real regression would still be visible with the guard tests present and no mutation
+applied) but perfectly consistent with a stale read from mid-mutation. Re-running the same command
+ALONE, sequentially, gave clean 104/104 files, 2510/2510 tests — confirming the first report was
+a race artifact, not a finding.
+
+**Rule:** never run two subagents that both (a) read or execute against a shared git working tree
+and (b) where at least one of them WRITES to tracked source files mid-run (even transiently, even
+with a revert at the end), in parallel. A mutation-battery driver that reverts is not "read-only"
+for this purpose — there is a window, and any concurrent reader can land inside it. Either run
+them sequentially, or give each its own worktree/checkout. When a parallel run DOES produce a
+failure that matches a mutation you know is being applied elsewhere, treat "was the tree provably
+clean when I read it" as the first question, not "is this a real regression" — check
+`git status --porcelain` / `git diff --stat` timing before writing the failure up.
+
 ## Rewriting a comment in `src/core` moves citation pins — and citing a single line while quoting a MULTI-line verbatim is the specific way it breaks
 
 Adding ~35 lines of comment to `tie-status.ts` took the tree-wide stale-citation count from 29 to
