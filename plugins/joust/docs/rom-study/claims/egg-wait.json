@@ -1,0 +1,101 @@
+[
+  {
+    "id": "JT99-001",
+    "claim": "EGGLND is the SETTLED-egg handler and its first act is to load the hatch wait into the egg's own PJOYT workspace. This is the general egg wait — RAMDEF.SRC:393 declares EGGWT as 'TIME TO WAIT BEFORE STARTING EGG HATCHIN SEQUENCE' — and every egg that LANDS reaches it, whatever killed it.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3224,
+      "verbatim": "EGGLND\tLDA\tEGGWT\t\tGET CURRENT WAIT TIME"
+    }
+  },
+  {
+    "id": "JT99-002",
+    "claim": "The wait is stored in the egg's PJOYT, the same per-process timer slot the enemy brains use for their own countdowns.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3225,
+      "verbatim": "\tSTA\tPJOYT,U"
+    }
+  },
+  {
+    "id": "JT99-003",
+    "claim": "THE UNIT OF THE WAIT. The settled-egg loop costs a PCNAP 12 per pass, and the pass is what spends one tick of the wait — so a wait of n is n*12 DISPLAY FRAMES, not n frames. The nap sits between EGGLND's load (:3224) and the DEC PJOYT,U at :3236, and the BNE at :3237 closes the loop back above it, so the nap is paid once per decrement rather than once in total. Reading EGGWT as a frame count runs every egg hatch twelve times too fast.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3227,
+      "verbatim": "\tPCNAP\t12\t\t12 EGG MAXIMUM, HOPEFULLY MULTIPLEXED"
+    }
+  },
+  {
+    "id": "JT99-004",
+    "claim": "The wait counts DOWN one per loop pass, and the loop repeats until it reaches zero. EGGLN2 (:3226) is the head this branches back to.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3236,
+      "verbatim": "\tDEC\tPJOYT,U"
+    }
+  },
+  {
+    "id": "JT99-005",
+    "claim": "The wait loop's closing branch. Non-zero PJOYT re-enters EGGLN2 and pays another PCNAP 12; only a zero falls through to the hatch.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3237,
+      "verbatim": "\tBNE\tEGGLN2\t"
+    }
+  },
+  {
+    "id": "JT99-006",
+    "claim": "EGGWT2 is a SEPARATE row from EGGWT and a separate wait: it is read once during EGG-WAVE setup, and RAMDEF.SRC:395 declares it 'TIME TO WAIT BEFORE STARTING EGG HATCHIN (EGG WAVES)'. So an egg-wave egg enters holding EGGWT2 while an egg that lands takes EGGWT. At GA1 5 the two differ from wave 1 onward (56 vs 64), so wiring one row to both paths is observable, not cosmetic.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2761,
+      "verbatim": "\tLDB\tEGGWT2\t\tINITIAL EGG WAITING TIME"
+    }
+  },
+  {
+    "id": "JT99-007",
+    "claim": "DEATH3 TRANSFERS the dying enemy's remaining egg count to the egg it leaves rather than inventing a fresh complement. The count lives on the BIRD (PEGG), and this is the first half of the cycle that walks it down toward permadeath.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2999,
+      "verbatim": "\tLDA\tPEGG,U\t\tTRANSFER NBR OF EGG LEFT"
+    }
+  },
+  {
+    "id": "JT99-008",
+    "claim": "The transferred count is then decremented — the egg costs the enemy one of its four. The BNE at :3002 branches away while the result is non-zero ('BR=YOU CAN GET MORE EGGS'), so only the decrement that REACHES ZERO falls through to the scoring block below.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3001,
+      "verbatim": "\tDEC\tPEGG,Y\t\tYOU CAN ONLY SQUEEZE SO MUCH BLOOD FROM AN EGG"
+    }
+  },
+  {
+    "id": "JT99-009",
+    "claim": "THE VICTOR GUARD. Before scoring the last egg the ROM loads the victor's workspace and skips the award entirely when it is zero — a death with no victor (the lava troll's) earns nobody anything. The BEQ target 1$ is the routine's own epilogue at :3007, the same label the eggs-remaining BNE at :3002 takes.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3004,
+      "verbatim": "\tLDU\t,S\t\tGET VICTORS WORKSPACE (CURRENTLY DIEING ENEMY)"
+    }
+  },
+  {
+    "id": "JT99-010",
+    "claim": "EGGSCR's SECOND call site, and the one this port did not model. An enemy's LAST egg is scored to the victor at the moment of the kill, with no catch required — distinct from the PLYEGG catch site at :3021 that jt8-4 wired. grep 'JSR EGGSCR' over JOUSTRV4.SRC returns exactly these two.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3006,
+      "verbatim": "\tJSR\tEGGSCR\t\tSCORE EGG"
+    }
+  },
+  {
+    "id": "JT99-011",
+    "claim": "The hatch hands the egg count BACK to the buzzard that remounts. This is the half that makes permadeath reachable at all: without it every remounted bird forgets its count, the four-egg complement is effectively infinite, and the DEATH3 award at :3006 can never fire in play.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3251,
+      "verbatim": "\tLDA\tPEGG,U\t\tMAINTAIN NBR OF EGGS LEFT IN THE BIRD"
+    }
+  }
+]

@@ -182,6 +182,21 @@ export interface EnemyState {
    */
   plavt?: number
   /**
+   * jt9-9 — `PEGG,U`, the number of eggs this enemy has left before permadeath.
+   *
+   * The ROM keeps this on the BIRD and hands it right around the death cycle:
+   * DEATH3 transfers the victim's count to the egg and decrements it
+   * (`LDA PEGG,U / STA PEGG,Y / DEC PEGG,Y`, JOUSTRV4.SRC:2999-3001), and the
+   * hatch hands it back to the buzzard that remounts (`LDA PEGG,U  MAINTAIN NBR
+   * OF EGGS LEFT IN THE BIRD / STA PEGG,Y`, :3251-3252). Without the second half
+   * the count resets every cycle and can never walk down, which is what made
+   * permadeath and the DEATH3 egg award unreachable in this port.
+   *
+   * OPTIONAL on the `homing`/`seek`/`plavt` precedent: absent means a full
+   * `EGGS_PER_ENEMY`, which is what a freshly-materialised wave enemy has.
+   */
+  eggsLeft?: number
+  /**
    * jt5-3 — the wing-edge detector's memory: the `flapHeld` LEVEL this enemy's
    * synthetic joystick carried on its LAST WAKE (`CURJOY+1`, read as the edge
    * by FLIPLP's `TSTB`/`BNE GOFLAP` and as the level by FLAPS2's `CLRB`,

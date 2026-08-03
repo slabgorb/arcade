@@ -257,6 +257,31 @@ export interface DemoModule {
   stepEgg(egg: EggState): EggState
 
   /**
+   * jt9-9 — `12`, the `PCNAP 12` a settled egg's wait loop costs per tick, in
+   * display frames (JOUSTRV4.SRC:3227). The wait EGGLND loads is in NAPS, and
+   * one nap is spent per `DEC PJOYT,U` (:3236), so a wait of `n` runs `n × 12`
+   * frames. This is the unit, and getting it wrong hatches every egg in the game
+   * twelve times too early.
+   */
+  EGG_WAIT_NAP_FRAMES: number
+
+  /**
+   * jt9-9 — a settled egg's hatch wait in DISPLAY FRAMES for a 1-based wave:
+   * the DYTBL row times `EGG_WAIT_NAP_FRAMES`. `EGGWT2` is the wait an EGG
+   * WAVE's eggs enter holding (:2761); `EGGWT` the one an egg takes when it
+   * LANDS (:3224). RAMDEF.SRC:393/:395 is what splits them.
+   */
+  eggWaitFrames(row: 'EGGWT' | 'EGGWT2', wave: number): number
+
+  /**
+   * jt9-9 — the EGGSCR award for an enemy's LAST egg, paid at the moment of the
+   * kill (`JSR EGGSCR  SCORE EGG`, JOUSTRV4.SRC:3006 — NOT the :3021 catch site
+   * jt8-4 wired). Returns 0 for a null victor: `LDU ,S / BEQ 1$` (:3004-3005)
+   * skips the award when nothing killed the enemy, which is the lava death.
+   */
+  lastEggAward(victor: number | null, hits: number): number
+
+  /**
    * Hatch a SETTLED egg into a remounting buzzard, or null on permadeath. While
    * `eggsLeft > 0` the buzzard enters from the FARTHER edge (egg.ts's
    * remountEntryEdge — the ROM correction to "nearer"); at `eggsLeft === 0` the

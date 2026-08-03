@@ -65,6 +65,7 @@ import { loadEgg } from './helpers/egg-contract.js'
 import { loadGame } from './helpers/game-contract.js'
 import { loadFlight, type PlayerInput } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
+import { loadDifficulty } from './helpers/difficulty-contract.js'
 
 const SEED = 0x1234_5678
 
@@ -458,7 +459,15 @@ describe('jt8-4 AC-3 — the catching player is credited; the remount is cancell
     // The re-seat guard: the jt4-5 self-clear must survive this story. Without
     // this, "cancel the remount" could be implemented as "never hatch", which
     // would re-lock every egg wave and pass the test above.
+    //
+    // jt9-9 RE-BASELINE — one frame is no longer enough, and the guard's claim
+    // is unchanged. A settled egg now serves the EGGWT2 wait before it matures
+    // (EGGLND `LDA EGGWT` / `PCNAP 12` / `DEC PJOYT,U`, JOUSTRV4.SRC:3224-3237),
+    // so this runs the wait out and then asserts exactly what it always did.
+    // The wait is READ from the row rather than typed as a literal, so it
+    // follows the difficulty walk instead of pinning wave 1 forever.
     const dmod = await loadDemo()
+    const diff = await loadDifficulty()
     const { x, y } = await findLedge()
 
     const demo = withProcesses(dmod.createWaveDemo(SEED), [
@@ -470,7 +479,9 @@ describe('jt8-4 AC-3 — the catching player is credited; the remount is cancell
       },
     ])
 
-    const after = dmod.stepDemo(demo)
+    const waitFrames = diff.waveValue('EGGWT2', 1) * dmod.EGG_WAIT_NAP_FRAMES
+    let after = demo
+    for (let f = 0; f < waitFrames; f++) after = dmod.stepDemo(after)
 
     expect(eggValuesOf(demo, after), 'nothing was caught').toEqual([])
     expect(enemies(after).length, 'the untouched wave egg still matures into its remount').toBe(1)

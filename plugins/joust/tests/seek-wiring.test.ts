@@ -560,11 +560,23 @@ describe('AC-5 — ROW_DISPOSITION records the wiring', () => {
         expect(row.consumer, `${name} must NAME its consumer`).toMatch(/\S/)
       }
     }
-    const uf110 = ['EGGWT', 'EGGWT2', 'LAVTIM', 'LAVGRA'] as const
-    for (const name of uf110) {
+    // uf1-10's four rows were the egg waits and the lava-troll pair. jt9-9 took
+    // the egg half — the epic renumbered uf1-10 to jt9-12 and then split it, the
+    // egg waits folding into jt9-9 and the troll half going on to jt9-11 — so
+    // the two egg rows are now WIRED and only the troll pair is still waiting.
+    // The point of this block is unchanged: this story must not overreach into
+    // rows it does not own, and a row that says "wired" must name where.
+    for (const name of ['EGGWT', 'EGGWT2'] as const) {
       const row = d.ROW_DISPOSITION[name]
-      expect(row.kind, `${name} waits on uf1-10's mechanics`).toBe('no-consumer-yet')
-      if (row.kind === 'no-consumer-yet') expect(row.owner).toBe('uf1-10')
+      expect(row.kind, `${name} is the settled-egg hatch wait, wired by jt9-9`).toBe('wired')
+      if (row.kind === 'wired') {
+        expect(row.consumer, `${name} must NAME its consumer`).toMatch(/eggWaitFrames/)
+      }
+    }
+    for (const name of ['LAVTIM', 'LAVGRA'] as const) {
+      const row = d.ROW_DISPOSITION[name]
+      expect(row.kind, `${name} waits on a live lava-troll grab`).toBe('no-consumer-yet')
+      if (row.kind === 'no-consumer-yet') expect(row.owner).toBe('jt9-11')
     }
   })
 })

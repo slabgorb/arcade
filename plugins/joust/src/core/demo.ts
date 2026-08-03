@@ -294,6 +294,15 @@ export interface ContactResult {
   /** The egg a dying ENEMY becomes (spawnEgg); null on a bounce or a player victim. */
   egg: EggState | null
   score: number
+  /**
+   * jt9-9 — events the contact itself surfaces beyond the kill `score`. Today
+   * that is exactly the DEATH3 last-egg award (`JSR EGGSCR  SCORE EGG`,
+   * JOUSTRV4.SRC:3006): when the transferred PEGG decrements to zero there is no
+   * egg left to collect, so the ladder rung is paid on the kill. Unattributed
+   * here — `collisionPass` re-issues it against the winning player at their real
+   * DEGGS position.
+   */
+  events: DemoEvent[]
 }
 
 // ─── Demo tuning (shell-facing, NOT a transcribed ROM law) ───────────────────
@@ -697,6 +706,11 @@ function remountEnemyProcess(id: number, egg: EggState): DemoProcess {
     pchase: 0,
     brain: 'linet',
     decision: brainFor(type),
+    // `LDA PEGG,U  MAINTAIN NBR OF EGGS LEFT IN THE BIRD / STA PEGG,Y`
+    // (JOUSTRV4.SRC:3251-3252). THIS is what makes permadeath reachable: without
+    // it every remounted bird forgets and the count can never walk to zero, so
+    // the 4-egg complement is really infinite and the DEATH3 award never fires.
+    eggsLeft: egg.eggsLeft,
   }
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'enemy', enemy, enemyType: type, collisionEnabled: true }
 }
@@ -854,6 +868,8 @@ function toJoustEntity(p: DemoProcess): JoustEntity | null {
       enemyType: p.enemyType,
       collision: collisionMaskFor(p),
       groundState: e.groundState,
+      // PEGG rides onto the collision entity so DEATH3 can transfer it (:2999).
+      eggsLeft: p.enemy.eggsLeft,
     }
   }
   return null
@@ -991,6 +1007,12 @@ function collisionPass(processes: readonly DemoProcess[]): {
   // the applied physics back onto the actual process at the end of the pass (the
   // same shape as `caught` below for egg catches).
   const bounced = new Map<number, JoustEntity>()
+  // Players whose state this pass rewrote — today that is the DEGGS egg-hit
+  // counter. Declared HERE rather than beside the catch loop below because jt9-9
+  // gave it a SECOND writer: the DEATH3 last-egg award in the joust pass above
+  // bumps the same counter, and both passes must see one another's bumps or a
+  // knight who takes a last egg and then catches one pays the same rung twice.
+  const caught = new Map<number, DemoProcess>()
 
   for (let i = 0; i < eligible.length; i++) {
     for (let j = i + 1; j < eligible.length; j++) {
@@ -1072,6 +1094,23 @@ function collisionPass(processes: readonly DemoProcess[]): {
         // is the surviving player. jt4-1's game.ts drain credits this player's ledger.
         events.push({ kind: 'score', value: contact.score, reason: 'kill', player: winner.id })
       }
+      // jt9-9 — the DEATH3 last-egg award (`JSR EGGSCR`, :3006). resolveContacts
+      // reports it unattributed because it cannot see processes; here the victor
+      // is known, so the rung is taken at that player's REAL DEGGS position and
+      // the counter climbs — the same bump the PLYEGG catch does above. Without
+      // this the award would always pay the opening 250 however many eggs the
+      // knight had already taken this wave.
+      if (contact.events.some((e) => e.kind === 'score' && e.reason === 'egg')) {
+        const holder = caught.get(winner.id) ?? winner
+        const hits = bumpEggHits(holder.eggHits ?? 0)
+        caught.set(winner.id, { ...holder, eggHits: hits })
+        events.push({
+          kind: 'score',
+          value: lastEggAward(winner.id, hits - 1),
+          reason: 'egg',
+          player: winner.id,
+        })
+      }
       // jt4-4 — a PLAYER-vs-PLAYER kill is a PARTNER-KILL: emit a distinguishable event so
       // the session layer (stepGame) can drive recordPartnerKill (the gladiator award / the
       // co-op void). A partner kill carries no DVALUE (score 0, above) but names both parties;
@@ -1136,7 +1175,6 @@ function collisionPass(processes: readonly DemoProcess[]): {
   // egg is gone before the wave-egg hatch matures survivors below, which is this
   // port's reachable form of the ROM sending an inbound remount bird away (AUTOFF,
   // :3078-3087) — see the session's Design Deviations.
-  const caught = new Map<number, DemoProcess>()
   for (const pl of livePlayers) {
     if (removed.has(pl.id)) continue
     let self = caught.get(pl.id) ?? pl
@@ -1192,12 +1230,51 @@ function collisionPass(processes: readonly DemoProcess[]): {
  * becomes (spawnEgg, carrying its velocities), and surfaces the kill score.
  * Enemies never kill each other → always bounce. Pure.
  */
+/**
+ * The EGGSCR award for an enemy's LAST egg, scored at the moment of the kill —
+ * the DEATH3 call site (`JSR EGGSCR  SCORE EGG`, JOUSTRV4.SRC:3006), which is
+ * NOT the one jt8-4 wired (`:3021`, PLYEGG, the catch). When the transferred
+ * count decrements to zero there is no more egg to collect, so the ROM pays the
+ * ladder rung there and then, with no pickup step.
+ *
+ * THE VICTOR GUARD. The award is skipped entirely when there is no victor:
+ *
+ *     TFR  Y,X
+ *     LDU  ,S    GET VICTORS WORKSPACE (CURRENTLY DIEING ENEMY)   :3004
+ *     BEQ  1$                                                     :3005
+ *     JSR  EGGSCR  SCORE EGG                                      :3006
+ *
+ * `1$` is the routine's own epilogue — the same label the `BNE` at :3002 takes —
+ * so a victor-less death leaves with nothing scored. A lava death is that case:
+ * the lava killed the enemy and no player earned anything. Returns 0 for it
+ * rather than crediting whoever happens to be first.
+ *
+ * `hits` is the victor's running DEGGS count; the rung comes from the shared
+ * jt2-4 ladder so this cannot drift from the catch path's values.
+ */
+export function lastEggAward(victor: number | null, hits: number): number {
+  if (victor === null) return 0
+  return eggValue(bumpEggHits(hits))
+}
+
+/**
+ * A stand-in victor for `resolveContacts`, which is pure over ENTITIES and holds
+ * no process ids. A joust kill always has one (`outcome.winner`), so the only
+ * thing the guard needs to know at that call site is "not null". Named rather
+ * than written as a bare literal so it cannot be misread as a player id.
+ */
+const JOUST_VICTOR = -1
+
 export function resolveContacts(a: JoustEntity, b: JoustEntity): ContactResult {
   const outcome = resolveJoust(a, b)
   if (outcome.kind === 'bounce') {
-    return { outcome, survivors: ['a', 'b'], egg: null, score: 0 }
+    return { outcome, survivors: ['a', 'b'], egg: null, score: 0, events: [] }
   }
   const victim = outcome.loser === 'a' ? a : b
+  // `LDA PEGG,U  TRANSFER NBR OF EGG LEFT` (:2999) — the count comes off the
+  // VICTIM, and `spawnEgg` applies the `DEC PEGG,Y` (:3001). A fixture that
+  // supplies none is a freshly-materialised enemy on its full complement.
+  const eggsLeft = victim.eggsLeft ?? EGGS_PER_ENEMY
   const egg =
     victim.party === 'enemy'
       ? spawnEgg({
@@ -1205,10 +1282,27 @@ export function resolveContacts(a: JoustEntity, b: JoustEntity): ContactResult {
           posY: victim.posY,
           velX: victim.velX,
           velY: victim.velY,
-          eggsLeft: EGGS_PER_ENEMY,
+          eggsLeft,
         })
       : null
-  return { outcome, survivors: [outcome.winner], egg, score: outcome.score }
+  // `BNE 1$  BR=YOU CAN GET MORE EGGS` (:3002): while the decremented count is
+  // nonzero the ROM leaves the egg to be collected and scores nothing here. Only
+  // the LAST one — the decrement that reaches zero — pays out on the kill.
+  const events: DemoEvent[] = []
+  if (egg !== null && egg.eggsLeft === 0) {
+    // A JOUST always has a victor — `outcome.winner` — so U is nonzero on this
+    // path and the BEQ falls through. The victor-less case the guard exists for
+    // is the LAVA death, which does not reach this function at all; jt9-11 wires
+    // that path and is the caller that will pass a null victor.
+    //
+    // The rung is the OPENING one here because this function is pure over
+    // entities and cannot see the victor's running DEGGS. `collisionPass` knows
+    // the winning PROCESS, so it re-issues this event attributed to that player
+    // and at their real ladder position — the same bump the catch path does.
+    const award = lastEggAward(JOUST_VICTOR, 0)
+    if (award > 0) events.push({ kind: 'score', value: award, reason: 'egg' })
+  }
+  return { outcome, survivors: [outcome.winner], egg, score: outcome.score, events }
 }
 
 // ─── The per-frame driver ─────────────────────────────────────────────────────

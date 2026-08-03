@@ -78,6 +78,17 @@ export interface JoustEntity {
   enemyType?: EnemyType
   collision: string | null
   groundState: string | null
+  /**
+   * jt9-9 — `PEGG,U`, the eggs this enemy has left, carried onto the collision
+   * entity so DEATH3 can TRANSFER it to the egg instead of inventing a fresh
+   * four (`LDA PEGG,U  TRANSFER NBR OF EGG LEFT / STA PEGG,Y / DEC PEGG,Y`,
+   * JOUSTRV4.SRC:2999-3001).
+   *
+   * OPTIONAL, and absent reads as a full `EGGS_PER_ENEMY`: a player carries no
+   * egg count at all, and a fixture that does not care about the count should
+   * not have to supply one. Only the enemy side is ever read.
+   */
+  eggsLeft?: number
 }
 
 /** The outcome of a resolved joust. */
