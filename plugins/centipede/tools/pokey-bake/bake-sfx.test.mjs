@@ -266,6 +266,38 @@ describe('cp6-2 AC2 — every cue declares where its sound came from', () => {
     }
   })
 
+  it("the flea stand-in uses the ROM's CKFE and falls in pitch as the flea descends", async () => {
+    // ROUND 1 REVIEW, HIGH. The first cut computed this sweep with a FABRICATED
+    // `CKFE = 0x55` and swept ANTV in the wrong direction, so the pitch ROSE
+    // where the machine's FALLS — under a comment claiming the shape was the
+    // machine's. Nothing asserted the stand-in's shape, so nothing caught it.
+    //
+    // CKFE is not a constant: CENDE4.MAC:254 declares it `.BLKB 1` for the
+    // cocktail build and documents `=0 WHEN NOT USING COCKTAIL`. cp6-1 had
+    // already recorded the upright value in claims/07-player-shot.json.
+    // ANTV runs 0xF8 (top) -> 4 (bottom): core/flea.ts:67,137.
+    bake = await loadBaker()
+    const sweep = bake.STAND_IN_SPECS.fleaLoop.sweep
+    const audf = (antv, ckfe) => ((((antv ^ ckfe) >> 1) ^ 0xff) | 0x80) & 0xff
+
+    expect(sweep.length, 'a sweep needs steps to be a sweep').toBeGreaterThan(4)
+    expect(sweep[0], 'the sweep must START at the top of the screen (ANTV 0xF8)').toBe(
+      audf(0xf8, 0x00),
+    )
+    // Higher AUDF divides further down, so a RISING AUDF is a FALLING pitch —
+    // "The pitch therefore falls as the flea descends" (docs/rom-study/sound.md).
+    for (let i = 1; i < sweep.length; i++) {
+      expect(
+        sweep[i],
+        `step ${i}: AUDF must rise monotonically so the pitch falls as the flea descends`,
+      ).toBeGreaterThan(sweep[i - 1])
+    }
+    // And the constant itself: the cocktail value produces a different sequence,
+    // so this fails if anyone reintroduces a fabricated CKFE.
+    expect(sweep, 'the sweep must be computed with the UPRIGHT CKFE (0), not 0xFE or a guess')
+      .not.toEqual(sweep.map((_, i) => audf(0xf8 - i * 0x10, 0xfe)))
+  })
+
   it('the transcribed cues carry the ROM bytes themselves, not numbers typed by hand', async () => {
     // AC2's substance. The baker must expose the tables it transcribed so the
     // claim "baked from the ROM's own FREQ and CONT tables" is checkable
@@ -363,6 +395,149 @@ describe('cp6-2 — bakeSfx(outDir) writes the manifest, the whole manifest and 
       const wav = readWav(buf)
       expect(wav.seconds, `${name}: a stand-in still has to be heard`).toBeGreaterThan(0.01)
     }
+  })
+
+  it('the ROM tables are APPLIED, not merely read — perturb a table and the audio moves', async () => {
+    // ROUND 1 REVIEW, HIGH. Everything above proves the tables are READ
+    // correctly (TABLES deep-equals an independent parse) and that durations
+    // match the fixture. Nothing proved they were USED. Three mutations of the
+    // baker survived the entire suite at 1118/0: emitting a constant pitch,
+    // emitting a constant AUDC, and REVERSING every FREQ table. A baker that
+    // read the ROM and threw it away was green, which is AC-2's whole claim
+    // unasserted.
+    //
+    // This is the differential form: bake once normally, bake again with ONE
+    // table perturbed, and require the rendered samples to differ. It cannot be
+    // satisfied by a baker that ignores its input.
+    bake = await loadBaker()
+    manifest = await loadManifest()
+    // Only the two cues under test, so this stays fast: `opts.sounds` is the
+    // same injection point the missing-spec test uses.
+    const pair = { fire: manifest.SOUNDS.fire, segmentKill: manifest.SOUNDS.segmentKill }
+    const dirs = []
+    const bakeWith = async (tables) => {
+      const d = mkdtempSync(join(tmpdir(), 'cp6-2-diff-'))
+      dirs.push(d)
+      await bake.bakeSfx(d, { sounds: pair, ...(tables ? { tables } : {}) })
+      return d
+    }
+
+    const base = await bakeWith(null)
+    const shot = readFileSync(join(base, pair.fire))
+    const explosion = readFileSync(join(base, pair.segmentKill))
+
+    // FREQ2 is the shot's pitch table; bump every byte.
+    const d1 = await bakeWith({
+      ...bake.TABLES,
+      FREQ2: bake.TABLES.FREQ2.map((b) => (b + 0x20) & 0xff),
+    })
+    expect(
+      readFileSync(join(d1, pair.fire)).equals(shot),
+      'changing FREQ2 must change shot_fire.wav — the pitch table is not being applied',
+    ).toBe(false)
+
+    // CONT0 is the explosion's control/volume table; bump the non-zero entries.
+    const d2 = await bakeWith({
+      ...bake.TABLES,
+      CONT0: bake.TABLES.CONT0.map((b) => (b === 0 ? 0 : (b + 0x01) & 0xff)),
+    })
+    expect(
+      readFileSync(join(d2, pair.segmentKill)).equals(explosion),
+      'changing CONT0 must change segment_kill.wav — the control table is not being applied',
+    ).toBe(false)
+
+    // Same bytes, wrong ORDER — the mutation that most resembles a plausible bug.
+    const d3 = await bakeWith({ ...bake.TABLES, FREQ2: [...bake.TABLES.FREQ2].reverse() })
+    expect(
+      readFileSync(join(d3, pair.fire)).equals(shot),
+      'reversing FREQ2 must change shot_fire.wav — table ORDER is not being applied',
+    ).toBe(false)
+
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  }, 20000)
+
+  it('the table ORDER survives into the audio — the shot rises, the flea falls', () => {
+    // The differential test above has a hole, found by re-running the reviewer's
+    // battery against it: a mutation that transforms EVERY table uniformly (e.g.
+    // reversing them inside the baker) also transforms the perturbed table the
+    // test supplies, so both sides move together and the comparison cancels. A
+    // differential assertion can only see a change it is the sole cause of.
+    //
+    // These are ABSOLUTE properties of the rendered audio instead, so nothing
+    // cancels them:
+    //   FREQ2 = F0 E0 D0 ... 50 — AUDF DESCENDS, and a lower AUDF divides less,
+    //   so the shot's pitch RISES across its 11 frames.
+    //   The flea's sweep runs ANTV 0xF8 -> 8, so its AUDF rises and the pitch
+    //   FALLS — the property cp6-1 stated in words and round 1 shipped inverted.
+    // Zero-crossing rate is a cheap, robust proxy for pitch on a POKEY square.
+    const zxHalves = (cue) => {
+      const buf = readFileSync(join(staging, manifest.SOUNDS[cue]))
+      const n = (buf.length - 44) >> 1
+      const at = (i) => buf.readInt16LE(44 + i * 2)
+      const rate = (lo, hi) => {
+        let c = 0
+        for (let i = lo + 1; i < hi; i++) if (at(i - 1) < 0 !== at(i) < 0) c++
+        return c / (hi - lo)
+      }
+      const mid = n >> 1
+      return [rate(0, mid), rate(mid, n)]
+    }
+    const [shotA, shotB] = zxHalves('fire')
+    expect(
+      shotB,
+      `shot_fire pitch must RISE (FREQ2 descends F0->50): ${shotA.toFixed(4)} -> ${shotB.toFixed(4)}`,
+    ).toBeGreaterThan(shotA * 1.05)
+
+    const [fleaA, fleaB] = zxHalves('fleaLoop')
+    expect(
+      fleaB,
+      `flea_move pitch must FALL as the flea descends: ${fleaA.toFixed(4)} -> ${fleaB.toFixed(4)}`,
+    ).toBeLessThan(fleaA * 0.95)
+  })
+
+  it('cues sharing a ROM table bake identically; cues on different tables do not', () => {
+    // The other half of the pair, and it is free: the four kill cues all resolve
+    // to CHAN0's single ';EXPLOSION SOUND' table, so a faithful transcription
+    // MUST produce four identical files. A hand-tuned per-creature explosion
+    // would pass every other assertion in this file and fail here.
+    const read = (cue) => readFileSync(join(staging, manifest.SOUNDS[cue]))
+    const kills = ['segmentKill', 'spiderKill', 'fleaKill', 'scorpionKill']
+    for (const k of kills.slice(1)) {
+      expect(
+        read(k).equals(read('segmentKill')),
+        `${k} and segmentKill both transcribe FREQ0/CONT0 — they must be byte-identical`,
+      ).toBe(true)
+    }
+    // ...and the control: different tables must NOT collide.
+    expect(read('fire').equals(read('segmentKill')), 'FREQ2 and FREQ0 must differ').toBe(false)
+    expect(read('march').equals(read('spiderLoop')), 'FREQ1 and FREQ3 must differ').toBe(false)
+  })
+
+  it('the player explosion is LOUDER than the kill it shares a table with', () => {
+    // ROUND 1 REVIEW, HIGH + MEDIUM, and this single assertion guards both.
+    //
+    // CENTI4.MAC:2447-2449 — the CHAN5 path adds 2 to every NON-ZERO CONT0 byte
+    // (';INCREASE VOLUME'), so the player's death is the general explosion made
+    // louder rather than a sound of its own. cp6-1 recorded it with the citation
+    // and the first bake ignored it.
+    //
+    // It also guards the normaliser: the first cut scaled every file to the same
+    // peak independently, which would take the +2 straight back out. A cue-by-cue
+    // normaliser cannot pass this test, so the fidelity fix cannot silently
+    // regress into a cosmetic one.
+    const peak = (cue) => {
+      const buf = readFileSync(join(staging, manifest.SOUNDS[cue]))
+      let hi = 0
+      for (let i = 44; i + 1 < buf.length; i += 2) hi = Math.max(hi, Math.abs(buf.readInt16LE(i)))
+      return hi / 32767
+    }
+    const death = peak('playerDeath')
+    const kill = peak('segmentKill')
+    expect(
+      death,
+      `playerDeath ${death.toFixed(3)} must exceed segmentKill ${kill.toFixed(3)} — ` +
+        'the ROM adds 2 to the control byte at :2449',
+    ).toBeGreaterThan(kill * 1.15)
   })
 
   it('writes nothing into the plugin tree', () => {

@@ -125,6 +125,29 @@ function loadPokeyClass(sampleRate) {
   return sandbox.__POKEY
 }
 
+/**
+ * `CKFE` on the upright cabinet.
+ *
+ * NOT a constant in the ROM — `CENDE4.MAC:254` declares `CKFE: .BLKB 1`, a RAM
+ * byte for the cocktail build, and documents its two values in the very next
+ * comment lines: `=0 WHEN NOT USING COCKTAIL` / `=FE WHEN USING COCKTAIL`. This
+ * clone models the 1-player upright, and cp6-1 had already established that
+ * reading in `docs/rom-study/claims/07-player-shot.json` ("CKFE=0 in the
+ * 1-player upright build, CENTI4.MAC:750").
+ *
+ * Named and cited rather than inlined because round 1 of review caught a
+ * fabricated `0x55` here: an invented operand inside an otherwise correctly
+ * cited formula is the hardest kind of wrong claim to see.
+ */
+const CKFE_UPRIGHT = 0x00
+
+/**
+ * The ROM's flea pitch, `CENTI4.MAC:2409-2414`:
+ * `LDA ANTV / EOR CKFE / LSR / EOR I,0FF / ORA I,80` — the last step forcing the
+ * high bit, per its own comment, to "USE LOWER FREQUENCIES".
+ */
+const fleaAudf = (antv) => ((((antv ^ CKFE_UPRIGHT) >> 1) ^ 0xff) | 0x80) & 0xff
+
 // ─── Declared stand-ins ──────────────────────────────────────────────────────
 //
 // The four cues with no FREQ table. These are NOT transcriptions and are not
@@ -135,32 +158,44 @@ function loadPokeyClass(sampleRate) {
 // Baking silence instead would satisfy every mechanical check in the suite and
 // leave four cues mute in play — indistinguishable from the 404s this story
 // exists to end, because @shared/audio swallows both identically.
-const STAND_INS = {
+//
+// VOLUME CEILING. Every stand-in's AUDC low nibble is 4, the same ceiling the
+// ROM's own ordinary cues use (CONT0/CONT1/CONT3 and the three immediates all
+// top out at 4; only the player explosion's +2 goes above it). The first cut
+// used 6 and 8 here, which — once per-file normalisation was removed and the
+// fleet started sharing one scale factor — made the INVENTED cues the loudest
+// things in the cabinet. A declared stand-in should be audible, not dominant.
+export const STAND_IN_SPECS = {
   // No ROM source: the mushroom path steps OVER the explosion seed (:2169
   // jumps past :2299-2300), so the machine is deliberately silent here. A
   // short, dry tick — the shot biting the mushroom, not a creature dying.
-  mushroom: { voice: 0, audf: 0x28, audc: 0xa6, seconds: 0.06 },
+  mushroom: { voice: 0, audf: 0x28, audc: 0xa4, seconds: 0.06 },
   // No ROM source: a head reaching the bottom row arms NEWD (:1310) and writes
   // no sound register. The event matters to a player, so it gets a brief alert.
-  headBottom: { voice: 2, audf: 0x50, audc: 0xa8, seconds: 0.22 },
+  headBottom: { voice: 2, audf: 0x50, audc: 0xa4, seconds: 0.22 },
   // No ROM source: clearing a wave sets DELAY (:2319) with no CHANn write. The
   // audible part of a wave end is RESTOR's burst of explosions, which is a
   // different cue; this is a short two-step flourish and nothing more.
-  waveClear: { voice: 2, sweep: [0x60, 0x30], audc: 0xa8, seconds: 0.45 },
+  waveClear: { voice: 2, sweep: [0x60, 0x30], audc: 0xa4, seconds: 0.45 },
   // ROM-sourced but COMPUTED, so a fixed sample can only ever be a stand-in for
   // it: the ROM derives AUDF1 from the flea's vertical position every pass
   // (:2409-2414, `LDA ANTV / EOR CKFE / LSR / EOR I,0FF / ORA I,80`) and the
   // pitch falls as the flea descends, lasting exactly as long as the flea is on
-  // screen. The sweep below runs that formula across ANTV's range so the SHAPE
-  // is the machine's; the fixed length is ours.
+  // screen. The sweep below runs that formula over ANTV's real range and in the
+  // real direction; only the fixed LENGTH is ours.
   fleaLoop: {
     voice: 1,
     audc: 0xa4,
     seconds: 0.6,
     sweep: (() => {
       const out = []
-      for (let antv = 0; antv <= 0xf0; antv += 0x10) {
-        out.push(((((antv ^ 0x55) >> 1) ^ 0xff) | 0x80) & 0xff)
+      // ANTV runs 0xF8 (parked at the top) DOWN to 4 (bottom) as the flea
+      // descends — `core/flea.ts:67,137`. Sweeping it downward is what makes
+      // AUDF rise and therefore the pitch FALL, which is the behaviour cp6-1
+      // recorded in words. Round 1 of review caught this running upward, which
+      // inverted the one property the dossier had stated.
+      for (let antv = 0xf8; antv >= 0x08; antv -= 0x10) {
+        out.push(fleaAudf(antv))
       }
       return out
     })(),
@@ -179,11 +214,47 @@ const STAND_INS = {
  * `lengthFrames * frameGate / FRAME_HZ` — the fixture's own `lengthSeconds`,
  * which is what the suite asserts the baked file's duration against.
  */
-function romEvents(cue) {
+function romEvents(cue, tables = TABLES) {
   const c = FIXTURE.cues[cue]
-  const freq = TABLES[c.freqTable]
-  const cont = c.contTable ? TABLES[c.contTable] : null
-  const immediate = c.contImmediate !== null ? Number(c.contImmediate) : 0xa8
+  const freq = tables[c.freqTable]
+  const cont = c.contTable ? tables[c.contTable] : null
+
+  // No invented fallback. Every ROM cue without a CONT table carries the ROM's
+  // own `LDA I,xx / STA AUDCn` immediate in the fixture (fire 0x64, bonusLife
+  // and scorpionLoop 0xA4). Round 1 flagged the previous `?? 0xa8` default:
+  // unreachable today, but it is a made-up control byte sitting in the one
+  // function whose entire claim is fidelity. A future cue missing both should
+  // stop the bake, not get a guess.
+  if (!cont && c.contImmediate === null) {
+    throw new Error(
+      `cue '${cue}' has neither a CONT table nor a contImmediate in sound.fixture.json — ` +
+        'refusing to invent a control byte',
+    )
+  }
+  const immediate = cont ? null : Number(c.contImmediate)
+
+  // The ROM walks the table one entry per gated frame for exactly its own
+  // length, so these must agree. They do for all ten transcribed cues (checked);
+  // if they ever diverge, wrapping with `%` would be an unexamined assumption
+  // about what the SOUNDS routine does past the end. Fail instead.
+  if (c.lengthFrames !== c.tableLengthBytes) {
+    throw new Error(
+      `cue '${cue}': lengthFrames ${c.lengthFrames} != tableLengthBytes ` +
+        `${c.tableLengthBytes} — the ROM's behaviour past the table end is unestablished`,
+    )
+  }
+
+  // CHAN5, the player explosion, is FREQ0/CONT0 made LOUDER rather than a sound
+  // of its own — CENTI4.MAC:2447-2449:
+  //     LDA Y,CONT0-1
+  //     BEQ 64$        ;LEAVE A DELAY BETWEEN EXPLOSIONS
+  //     CLC
+  //     ADC I,02       ;INCREASE VOLUME
+  // The BEQ matters: a ZERO control byte skips the add and stays zero, because
+  // those entries are the deliberate gap between explosions. cp6-1 recorded
+  // this with the citation and round 1 caught the bake ignoring it, which left
+  // the player's death sounding exactly like a segment's.
+  const louder = c.channel === 'CHAN5'
   const step = c.lengthSeconds / c.lengthFrames
   const fReg = c.pokeyVoice * 2
   const cReg = c.pokeyVoice * 2 + 1
@@ -191,14 +262,16 @@ function romEvents(cue) {
   const ev = []
   for (let i = 0; i < c.lengthFrames; i++) {
     const t = Number((i * step).toFixed(6))
-    ev.push([fReg, freq[i % freq.length] & 0xff, t])
-    ev.push([cReg, (cont ? cont[i % cont.length] : immediate) & 0xff, t])
+    const raw = cont ? cont[i] : immediate
+    const audc = louder && raw !== 0 ? raw + 0x02 : raw
+    ev.push([fReg, freq[i] & 0xff, t])
+    ev.push([cReg, audc & 0xff, t])
   }
   return { ev, seconds: c.lengthSeconds }
 }
 
 function standInEvents(cue) {
-  const s = STAND_INS[cue]
+  const s = STAND_IN_SPECS[cue]
   const fReg = s.voice * 2
   const cReg = s.voice * 2 + 1
   const steps = Array.isArray(s.sweep) ? s.sweep : [s.audf]
@@ -221,22 +294,35 @@ function render(POKEY, { ev, seconds }) {
   // the mode centipede's SOUNDS routine assumes.
   p.feed([8, 0x00, 0.0, ...ev.sort((a, b) => a[2] - b[2]).flat()])
   const out = new Float32Array(n)
-  let peak = 0
   for (let i = 0; i < n; i++) {
     p.processEvents(i)
-    const s = p.get()
-    out[i] = s
+    out[i] = p.get()
+  }
+  // NO per-file normalisation. It used to scale every cue to the same peak,
+  // which silently discards the ROM's own relative loudness — and the player
+  // explosion's `ADC I,02 ;INCREASE VOLUME` (:2449) is exactly that: a cue the
+  // machine makes louder than the kill it otherwise shares a table with.
+  // Round 1 of review caught that fixing the +2 while normalising per file
+  // would produce a correct AUDC stream and an identical-sounding wav — the
+  // worst outcome, because it looks fixed. The whole fleet is scaled by ONE
+  // shared factor in bakeSfx() instead, which preserves every ratio between
+  // cues while still giving the set a usable output level.
+  return out
+}
+
+/** Peak magnitude of a rendered buffer. */
+function peakOf(samples) {
+  let peak = 0
+  for (const s of samples) {
     const a = Math.abs(s)
     if (a > peak) peak = a
   }
-  // Normalise to a consistent headroom. The tables carry volume in AUDC's low
-  // nibble and the cues differ by several dB as a result; without this the
-  // march is inaudible under the explosion.
-  if (peak > 1e-6) {
-    const k = 0.85 / peak
-    for (let i = 0; i < n; i++) out[i] *= k
-  }
-  return out
+  return peak
+}
+
+function scaleInPlace(samples, k) {
+  for (let i = 0; i < samples.length; i++) samples[i] *= k
+  return samples
 }
 
 function writeWav(path, samples) {
@@ -262,42 +348,62 @@ function writeWav(path, samples) {
   writeFileSync(path, buf)
 }
 
+/** Headroom the loudest cue in the fleet is scaled to. */
+const FLEET_PEAK = 0.85
+
 /**
  * Bake every manifest cue into `outDir`.
  *
+ * TWO PASSES, and the second one is a fidelity requirement rather than polish.
+ * Every cue is rendered first, then the WHOLE FLEET is scaled by a single
+ * factor derived from the loudest one. That preserves every loudness ratio the
+ * ROM's AUDC volume nibbles create — most importantly the player explosion's
+ * `+2` over the kill cue it shares a table with — while still producing a set
+ * with a usable output level. Normalising each file independently, as the first
+ * cut did, flattens exactly those ratios.
+ *
  * `opts.sounds` overrides the cue record so the missing-spec path is reachable
- * from a test without editing the shipped manifest. A cue this bake cannot
- * account for THROWS: a default beep would be indistinguishable from a correct
- * sample at 200, so the failure has to be loud and it has to happen here rather
- * than in a player's browser.
+ * from a test without editing the shipped manifest. `opts.tables` overrides the
+ * decoded ROM tables so a test can prove the rendered audio actually DERIVES
+ * from them — round 1 of review showed the suite could not tell a faithful bake
+ * from one that ignored every byte it had just read.
+ *
+ * A cue this bake cannot account for THROWS: a default beep is
+ * indistinguishable from a correct sample at 200, so the failure has to be loud
+ * and it has to happen here rather than in a player's browser.
  */
 export async function bakeSfx(outDir, opts = {}) {
   if (typeof outDir !== 'string' || outDir.length === 0) {
     throw new Error('usage: bakeSfx(outDir) — pass an explicit staging directory')
   }
   const sounds = opts.sounds ?? SOUNDS
+  const tables = opts.tables ?? TABLES
   const POKEY = loadPokeyClass(SAMPLE_RATE)
   mkdirSync(outDir, { recursive: true })
 
+  // Pass 1 — render everything, unscaled.
+  const rendered = []
   for (const cue of Object.keys(sounds)) {
     const known = FIXTURE.cues[cue]
-    const standIn = STAND_INS[cue]
-    if (!known && !standIn) {
+    const standIn = STAND_IN_SPECS[cue]
+    const transcribed = known && known.freqTable !== null
+    if (!transcribed && !standIn) {
       throw new Error(
         `no bake spec for manifest cue '${cue}' — every cue must transcribe a ROM table or ` +
           'declare a stand-in; a new cue must arrive with its own sound',
       )
     }
-    const spec =
-      known && known.freqTable !== null ? romEvents(cue) : (() => {
-        if (!standIn) {
-          throw new Error(`no bake spec for manifest cue '${cue}' — no ROM table and no stand-in`)
-        }
-        return standInEvents(cue)
-      })()
-    writeWav(join(outDir, sounds[cue]), render(POKEY, spec))
+    const spec = transcribed ? romEvents(cue, tables) : standInEvents(cue)
+    rendered.push([cue, render(POKEY, spec)])
   }
-  return Object.keys(sounds).length
+
+  // Pass 2 — one shared factor for the whole fleet, then write.
+  const fleetPeak = Math.max(...rendered.map(([, s]) => peakOf(s)))
+  const k = fleetPeak > 1e-6 ? FLEET_PEAK / fleetPeak : 1
+  for (const [cue, samples] of rendered) {
+    writeWav(join(outDir, sounds[cue]), scaleInPlace(samples, k))
+  }
+  return rendered.length
 }
 
 // ─── CLI ─────────────────────────────────────────────────────────────────────
