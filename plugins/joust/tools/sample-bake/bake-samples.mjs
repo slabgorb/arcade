@@ -331,9 +331,20 @@ export async function bakeSamples(outDir, opts = {}) {
         `no synth spec for manifest cue '${name}' — a new cue must arrive with its own sound`,
       )
     }
+    // jt9-5 split what was one gate. `!(frames > 0)` fires on an ABSENT entry
+    // and on a PRESENT-but-zero one alike, and "no FRAME_DURATIONS entry" is
+    // false of the second — the fault jt9-4's own zero-window probe was told
+    // about itself. `Object.hasOwn`, matching the SPECS read above: an
+    // inherited Object.prototype member is an absence, not an entry.
+    if (!Object.hasOwn(frameDurations, name)) {
+      throw new Error(`no FRAME_DURATIONS entry for '${name}' — the ROM window sizes the file`)
+    }
     const frames = frameDurations[name]
     if (!(frames > 0)) {
-      throw new Error(`no FRAME_DURATIONS entry for '${name}' — the ROM window sizes the file`)
+      throw new Error(
+        `FRAME_DURATIONS entry for '${name}' is ${frames}, not a positive frame window — ` +
+          `a zero-length bake writes a header with no audio in it`,
+      )
     }
     const n = Math.round((frames / FRAME_HZ) * RATE)
     const samples = spec(n, mulberry32(seedFrom(name)))

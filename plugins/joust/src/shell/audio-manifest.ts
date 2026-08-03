@@ -120,7 +120,18 @@ export type CueSource =
       /** Where the game plays it. */
       callSite: Citation
     }
-  | { kind: 'invention'; note: string }
+  | {
+      kind: 'invention'
+      note: string
+      /**
+       * How many frames this invented cue holds the voice. REQUIRED, and that is
+       * the jt9-5 fix: there is no ROM table to derive a window from, so an
+       * invention must state its own. Before jt9-5 this field did not exist,
+       * `framesFor` returned 0 for the whole arm, and the bake then reported
+       * `no FRAME_DURATIONS entry` about an entry that existed and was zero.
+       */
+      frames: number
+    }
 
 const SRC = 'JOUSTRV4.SRC'
 
@@ -528,6 +539,22 @@ function framesInRow(verbatim: string, skipPriority: boolean): number {
     .map((t) => t.trim())
     .filter((t) => t.length > 0)
   const pairs = skipPriority ? tokens.slice(1) : tokens
+  // An ODD count is a sound code with no duration after it. Before jt9-5 the
+  // loop below simply never reached it — `i + 1 < pairs.length` stops one pair
+  // short — so the window came out short with no error and no log, which is the
+  // one failure mode a frame count cannot advertise: a cue that stops holding
+  // the voice early sounds like a cue, not like a bug. The check is BEFORE the
+  // loop on purpose: a row that has lost a token puts every later operand in
+  // the wrong column, so `unparseable ... operand` is the symptom and this is
+  // the cause.
+  if (pairs.length % 2 !== 0) {
+    throw new Error(
+      `sound-table row has an unpaired sound code — an odd operand count ` +
+        `(${pairs.length})` +
+        `${skipPriority ? ' after the priority byte' : ''} cannot form (code, duration) ` +
+        `pairs: '${verbatim}'`,
+    )
+  }
   let frames = 0
   for (let i = 0; i + 1 < pairs.length; i += 2) frames += evaluateOperand(pairs[i + 1]!)
   return frames
@@ -564,7 +591,21 @@ function framesInRow(verbatim: string, skipPriority: boolean): number {
  * BUT EXTENDS TIMER", which is what makes SNPCR1 450 rather than 285.
  */
 export function framesFor(source: CueSource): number {
-  if (source.kind !== 'rom') return 0
+  if (source.kind !== 'rom') {
+    // jt9-5. Not `return 0`: a 0 here becomes a FRAME_DURATIONS entry of 0, and
+    // the bake's `!(frames > 0)` then says the entry is MISSING, which is false.
+    // `Number.isInteger` rather than a bare `> 0` because Infinity passes `> 0`
+    // and `Math.round((Infinity / FRAME_HZ) * RATE)` reaches `Buffer.alloc` in
+    // the bake, where it fails as something unrecognisable.
+    if (!Number.isInteger(source.frames) || source.frames <= 0) {
+      throw new Error(
+        `invented cue '${source.note}' declares a frames window of ${source.frames} — ` +
+          `an invention has no ROM table to size it, so it must declare a positive ` +
+          `whole number of frames`,
+      )
+    }
+    return source.frames
+  }
   let frames = framesInRow(source.source.verbatim, true)
   for (const row of source.continuation) frames += framesInRow(row.verbatim, false)
   return frames
