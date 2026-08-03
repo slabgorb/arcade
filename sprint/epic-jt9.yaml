@@ -180,7 +180,8 @@ stories:
       ORDER INSIDE THE STORY, and it is NOT the order above. Wire EGGWT/EGGWT2 first so the hatch has a timer to obey; then open the hatch to kill-eggs; then add the kill-scoring. LAND AS SEPARATE COMMITS with the re-baseline last and carrying its own message - merging the STORY does not merge the COMMITS, and this epic standing rule about fingerprint movers is about commits, not stories.
     points: 7
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-03'
     repos: arcade
     workflow: tdd
   - id: jt9-10
