@@ -515,3 +515,33 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+  - id: jt9-33
+    title: audio-transporter-split's load() swallows every import failure and returns {} — the manifest now throws at import, so a real failure arrives as undefined fields
+    description: |-
+      Filed by jt9-5's TEA (2026-08-03), verified by SM at filing. Not a defect jt9-5 introduced — a pre-existing swallow that jt9-5 made REACHABLE, which is why it is filed rather than fixed in place.
+
+      THE CODE. plugins/joust/tests/audio-transporter-split.test.ts declares its dynamic-import helper as:
+
+        const load = async <T>(parts: string[]): Promise<Partial<T>> => {
+          try {
+            return (await import(/* @vite-ignore */ parts.join('/'))) as Partial<T>
+          } catch {
+            return {}
+          }
+        }
+
+      The bare `catch { return {} }` cannot distinguish "this module is legitimately absent" from "this module threw while evaluating". Both arrive as an empty object, and every downstream field read then yields `undefined`.
+
+      WHY IT MATTERS NOW AND DID NOT BEFORE. jt9-5 added two throws that fire at MODULE IMPORT time — the manifest validates its rows when it is loaded, not when a function is called. So the first time a malformed row reaches this suite, the import throws, `load()` swallows it, returns `{}`, and the assertions report missing fields instead of the real error. TEA measured the same shape from the other side while building its own battery: landing bad data on a shipped row makes the manifest throw at import, which made a whole test FILE fail to load and vitest report `(0 test)` — a zero that reads exactly like a passing sweep. The `no claims found ... refusing to report success over an empty set` guard elsewhere in this plugin exists because of the same family of bug.
+
+      THE FIX, roughly. Do not catch everything. Either narrow the catch to the module-not-found case (check `err.code === 'ERR_MODULE_NOT_FOUND'` / the resolver's own error shape and re-throw anything else), or drop the try entirely if no caller actually depends on the absent-module path — check first, because the helper's `Partial<T>` return type suggests at least one call site does. Whichever way, a module that throws while evaluating must propagate, with the original error attached.
+
+      VERIFY BY MUTATION, both directions. Make the imported module throw and assert the suite reports THAT error rather than an undefined field; then confirm the legitimately-absent path (if it is real) still behaves. Per the standing rule, a guard nobody has watched fail is not a guard — and per this epic's repeated lesson, assert that N tests RAN, not merely that none failed.
+
+      RELATED, do not conflate: jt9-32 pins what the bake PRODUCES; jt9-30 converts stale line refs to symbol refs. This story is about one helper's error handling in one test file.
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
