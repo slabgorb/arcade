@@ -1460,3 +1460,8 @@ completed_stories:
     title: POKEY voice 0 is contended and our CHANNELS map does not model it — the player explosion must silence the kill cues
     points: 5
     completed: '2026-08-03'
+  - id: jt9-9
+    epic: jt9
+    title: 'The egg lifecycle in ONE re-baseline: an EGGWT wait, a hatching uncollected KILL egg, and EGGSCR scored to the victor on the kill'
+    points: 7
+    completed: '2026-08-03'

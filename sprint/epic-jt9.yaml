@@ -180,10 +180,11 @@ stories:
       ORDER INSIDE THE STORY, and it is NOT the order above. Wire EGGWT/EGGWT2 first so the hatch has a timer to obey; then open the hatch to kill-eggs; then add the kill-scoring. LAND AS SEPARATE COMMITS with the re-baseline last and carrying its own message - merging the STORY does not merge the COMMITS, and this epic standing rule about fingerprint movers is about commits, not stories.
     points: 7
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-03'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-03'
   - id: jt9-10
     title: 'MERGED INTO jt9-9 — Egg score on the KILL — EGGSCR has two call sites and our port models only one. grep JSR EGGSCR in JOUSTRV4.SRC returns :3006 and :3021; jt8-4 wired :3021 (PLYEGG, the catch). The other is inside DEATH3: when a killed enemy transferred egg count decrements to zero (STA PEGG,Y / DEC PEGG,Y YOU CAN ONLY SQUEEZE SO MUCH BLOOD FROM AN EGG / BNE 1$, :3000-3002) the ROM does TFR Y,X / LDU ,S GET VICTORS WORKSPACE / BEQ 1$ / JSR EGGSCR SCORE EGG (:3003-3006), so an enemy LAST egg is scored to the victor immediately on the kill, bumping the DEGGS ladder with no catch required. Our port implements the decrement (spawnEgg eggsLeft minus 1, egg.ts:141) and treats eggsLeft zero as permadeath where hatchEgg returns null (egg.ts:273-275), but nothing ever scores it, so both the award and its ladder bump are silently dropped in play. Also makes JT84-003 incomplete, which states the collision IS the scoring trigger and there is no separate pickup step. Note the victor guard: BEQ skips when U is zero (a lava death has no victor). Filed by Reviewer on jt8-6 (round 2)'
     description: |-
