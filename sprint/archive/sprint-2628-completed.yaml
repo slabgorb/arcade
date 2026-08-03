@@ -1450,3 +1450,8 @@ completed_stories:
     title: An unarbitrated cue sharing the arbitrated voice's channel silences it without releasing its window
     points: 2
     completed: '2026-08-03'
+  - id: jt9-7
+    epic: jt9
+    title: CHANNELS is vestigial for arbitrated cues — three stories have now fed a map that routes nothing
+    points: 2
+    completed: '2026-08-03'
