@@ -106,8 +106,12 @@ describe('sw7-10 F3 — the coaching hint clears when the run ends', () => {
     // replacement, and the first attempt at it in round 5, were both wrong too, in the same
     // "reasoned rather than run" way. So this is the MEASURED version:
     //
-    //   * `coaching.ts:53` is `if (s.mode !== 'playing') return null`; `coaching.ts:59` is
-    //     `if (s.gameOver) return null`. The MODE check is unconditionally first.
+    //   * `if (s.mode !== 'playing') return null` (coaching.ts:53) runs FIRST, and
+    //     `if (s.gameOver) return null` (coaching.ts:59) second — that order is the finding.
+    //     (Each quote carries its OWN citation immediately after it. Written the other way
+    //     round the comment-citation guard pairs a citation with the PRECEDING quote and
+    //     reports a stale anchor for a true sentence — the word-order sensitivity Dev recorded
+    //     in this story's delivery findings, met head-on while writing this.)
     //   * This fixture sets both fields, so it returns at `:53` and never reaches `:59`.
     //   * Its sibling `killed` leaves the mode at `'playing'`, falls through `:53`, and is
     //     caught by `:59`.
