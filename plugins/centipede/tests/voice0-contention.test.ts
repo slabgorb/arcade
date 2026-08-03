@@ -48,9 +48,11 @@ import { dirname, join } from 'node:path'
 import * as audioModule from '../src/shell/audio'
 import { CHANNELS, createAudio } from '../src/shell/audio'
 import { playEventSounds } from '../src/shell/audio-dispatch'
-import { createSim, stepSim, type SimState } from '../src/core/sim'
-import { CENT_BODY_PIC, type Segment } from '../src/core/centipede'
+import { createSim, stepSim, WAVE_DELAY, type SimState } from '../src/core/sim'
+import { CENT_BODY_PIC, DEAD_BIT, type Segment } from '../src/core/centipede'
 import { SPIDER_PIC_MIN } from '../src/core/spider'
+import { FLEA_PARK_V } from '../src/core/flea'
+import { SCORP_PIC_LOW } from '../src/core/scorpion'
 import type { GameEvent } from '../src/core/events'
 
 // ─── the dossier is the source of every number below ────────────────────────
@@ -502,6 +504,91 @@ describe('cp6-3 AC-6 — the loops stop ON the death frame, not at the end of th
     const died = stepSim(staged, IDLE)
     expect(kindsOf(died)).toContain('player-died')
     expect(kindsOf(died), 'the march must not regress').toContain('march-stop')
+  })
+
+  // ─── the other two thirds of the clear, added in GREEN ─────────────────────
+  // AC-6 names the spider, the flea AND the scorpion, and the ROM clears CHAN1
+  // and CHAN6 alongside CHAN3. The RED above pinned only the spider, and the
+  // mutation battery proved that gap was real: deleting `!dying(s)` from
+  // `fleaAudible` — and, separately, from `scorpionAudible` — left the whole
+  // 1150-test project GREEN. Two thirds of the fix were unobserved.
+  //
+  // Both slots are STAGED rather than free-run, and that is sound for a `-stop`
+  // in a way it would not be for a `-start`: `loopEdges` takes its edge by
+  // comparing the state handed IN against the state handed BACK, so a voice
+  // already audible on the way in is exactly the precondition a closing edge
+  // needs. (The trap is the opposite direction — see the positive control below.)
+  // Each is paired with a no-death CONTROL, because "a `-stop` appeared" would
+  // otherwise be satisfiable by staging that is simply invalid.
+
+  /** Slot 12 carrying a live flea: below the parked row, under the picture gate. */
+  const withFlea = (s: SimState): SimState =>
+    ({ ...s, flea: { ...s.flea, pic: 0x0c, v: FLEA_PARK_V - 0x40 } }) as SimState
+
+  /** The same slot carrying a scorpion instead — 0x30..0x33 is the live band. */
+  const withScorpion = (s: SimState): SimState =>
+    ({ ...s, flea: { ...s.flea, pic: SCORP_PIC_LOW, v: FLEA_PARK_V - 0x40 } }) as SimState
+
+  it('a flea on screen is silenced by the death ITSELF (CHAN1, CENTI4.MAC:1813-1818)', () => {
+    const control = stepSim(withFlea(createSim(0x1234)), IDLE)
+    expect(kindsOf(control), 'control: an ordinary frame must NOT close the flea').not.toContain(
+      'flea-stop',
+    )
+
+    const died = stepSim(withFlea(stagedDeath(0x1234, false)), IDLE)
+    expect(kindsOf(died), 'precondition: the staged contact must kill the gun').toContain(
+      'player-died',
+    )
+    expect(
+      kindsOf(died),
+      "the flea rides CHAN1's computed AUDF1 path, which PLAYEX zeroes on the death frame",
+    ).toContain('flea-stop')
+  })
+
+  it('a scorpion crossing is silenced by the death ITSELF (CHAN6, CENTI4.MAC:1818)', () => {
+    const control = stepSim(withScorpion(createSim(0x1234)), IDLE)
+    expect(
+      kindsOf(control),
+      'control: an ordinary frame must NOT close the scorpion',
+    ).not.toContain('scorpion-stop')
+
+    const died = stepSim(withScorpion(stagedDeath(0x1234, false)), IDLE)
+    expect(kindsOf(died), 'precondition: the staged contact must kill the gun').toContain(
+      'player-died',
+    )
+    expect(kindsOf(died), 'CHAN6 is the scorpion, and :1818 is the line that zeroes it').toContain(
+      'scorpion-stop',
+    )
+  })
+
+  it('a WAVE clear does NOT silence them — the ROM clears no channel there', () => {
+    // The discriminator, and the third mutant the RED could not see: keying the
+    // clear on `delay > 0` instead of `playerExplode > 0` also left the project
+    // GREEN. Both pauses set `delay`; only the death clears channels. Clearing a
+    // wave is ":2319 STA DELAY" and nothing else, and sim.ts's own comment says
+    // the spider is deliberately NOT re-parked here — a spider mid-walk carries
+    // straight into the next wave, on the cabinet and here.
+    const s = createSim(0x1234)
+    const staged = {
+      ...s,
+      segs: [{ h: 0x40, v: 0x40, dh: 2, dv: 2, pic: CENT_BODY_PIC | DEAD_BIT }] as Segment[],
+      spider: { ...s.spider, pic: SPIDER_PIC_MIN, h: 0x40, v: 0x40 },
+    } as SimState
+
+    const cleared = stepSim(staged, IDLE)
+    expect(kindsOf(cleared), 'precondition: every segment is dead, so the wave clears').toContain(
+      'wave-cleared',
+    )
+    expect(cleared.delay, 'precondition: the wave pause is armed').toBe(WAVE_DELAY)
+    expect(
+      cleared.playerExplode,
+      'precondition: the wave pause is distinguished from a death by playerExplode staying 0',
+    ).toBe(0)
+    expect(
+      kindsOf(cleared),
+      'a wave clear must leave the creature voices alone — CENTI4.MAC:2319 sets DELAY and writes ' +
+        'no channel. Keying the clear on `delay` rather than `playerExplode` silences them here too.',
+    ).not.toContain('spider-stop')
   })
 
   it('POSITIVE CONTROL — a spider voice really is opened by the stream, and stays open', () => {

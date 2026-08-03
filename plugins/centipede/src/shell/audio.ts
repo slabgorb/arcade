@@ -31,6 +31,28 @@ import {
 } from '@shared/audio'
 import type { GameEventKind } from '../core/events'
 import { SOUNDS } from './audio-manifest.js'
+// cp6-3 — the voice-0 arbitration below is READ from cp6-1's machine-readable
+// ruling, never re-typed beside it (AC-3/AC-5). This import is what makes "a
+// dossier correction cannot silently disagree with the engine" a fact about the
+// build rather than a promise: correct `pokeyVoice` or `frameGate` in the
+// fixture and the shipped maps move with it, in the same commit.
+//
+// It is the ONE place a `docs/` file reaches the browser bundle, and the cost is
+// MEASURED, not waved at: the whole 19 kB file inlines — prose `note` fields and
+// all — taking this game's bundle from 44.43 kB to 64.70 kB (14.72 → 21.13 kB
+// gzipped, +6.4 kB), because Vite's JSON plugin cannot tree-shake fields out of
+// an object that is read by key. That is a 44% bundle increase to carry five
+// numbers, and it is worth stating plainly rather than discovering later. It is
+// still comfortably the smallest game bundle in the cabinet (joust 139.53 kB,
+// star-wars ~106 kB, tempest ~76 kB), and the alternative — retyping the five
+// cues and their windows here with a test to compare them — is the drift this
+// story exists to close, one indirection later. If the size ever does matter,
+// the fix is a build-time reduction of the fixture, not a second transcription.
+//
+// It cannot go in `audio-manifest.ts` — that module must import NOTHING
+// (tools/pokey-bake/bake-sfx.test.mjs asserts it, because the deploy-time bake
+// reads it under plain node).
+import fixture from '../../docs/rom-study/sound.fixture.json'
 
 /** The dedicated assets host, under this cabinet's own prefix. */
 export const DEFAULT_BASE_URL = 'https://arcade-assets.slabgorb.com/centipede/sfx/'
@@ -116,6 +138,84 @@ export const EVENT_SOUND: Record<GameEventKind, SoundName> = {
   'scorpion-stop': 'scorpionLoop',
 }
 
+// ─── cp6-3: POKEY voice 0 is CONTENDED, and the player explosion wins ────────
+//
+// THE MECHANISM IS CONTROL FLOW, NOT MIXING. The CHAN0 block — the one that
+// decrements the kill countdown and writes AUDF0/AUDC0 — is label `52$`
+// (CENTI4.MAC:2418). That label has exactly ONE reference in the whole SOUNDS
+// routine: the `BEQ 52$` at CENTI4.MAC:2437, taken only when CHAN5 (the player
+// explosion) is zero, and CENTI4.MAC:2416's `BNE 50$ ;ALWAYS` stops any
+// fall-through into it. So while the player is exploding the kill path is
+// UNREACHABLE: CHAN0 is neither decremented nor sounded, and the explosion has
+// the voice to itself.
+//
+// AND THE DIRECTION IS THE WHOLE POINT. Plain channel-stealing runs FORWARD — a
+// later sound stops the ringing one — so putting the death and the kills on one
+// CHANNELS bucket would let a kill silence the explosion, the exact inverse of
+// :2437. The shared engine's `priorities` arbitration (jt5-5) runs the other
+// way: a strictly-lower-priority cue is REFUSED while the window holds, and an
+// accepted one interrupts what is ringing on a DIFFERENT channel
+// (src/shared/audio.ts:253-255). That is why nothing in CHANNELS above moves.
+type CueRuling = {
+  pokeyVoice: number | null
+  lengthFrames: number | null
+  frameGate: number | null
+  channel: string | null
+}
+const CUES: Readonly<Record<string, CueRuling>> = fixture.cues
+
+/**
+ * The rank, and why there are only two of them.
+ *
+ * Centipede's ROM has no priority BYTE to transcribe — joust's `SND` compares
+ * one (SYSTEM.SRC:761-773), this machine branches instead. So the ranks here
+ * ENCODE that branch and nothing more: CHAN5 is what `:2437` tests, CHAN0 is
+ * what it skips, and the four kills are equal to each other because the machine
+ * never distinguishes them (all four seed the same CHAN0 at label 19$,
+ * CENTI4.MAC:2299-2300). Strictly greater, because the engine refuses
+ * strictly-lower only — equal ranks would let a kill interrupt the explosion.
+ */
+const EXPLOSION_RANK = 1
+const KILL_RANK = 0
+
+/** How many video frames a cue holds the voice: the ROM's countdown seed times
+ *  the FRAME mask it advances on. The player explosion's gate of 4 is the whole
+ *  reason it is 76 frames and the kills are 19 — both seed 0x13
+ *  (CENTI4.MAC:1811, :2299-2300) and only `AND I,3` (:2438-2439) differs.
+ *
+ *  A voice-0 cue the dossier gives no length is worth ZERO frames rather than a
+ *  guess: that is the engine's own rule for a missing duration ("it sounds, and
+ *  refuses nothing" — src/shared/audio.ts:84-87), and it degrades to exactly the
+ *  pre-cp6-3 behaviour instead of inventing a window. */
+const windowFrames = (cue: CueRuling): number =>
+  cue.lengthFrames === null || cue.frameGate === null ? 0 : cue.lengthFrames * cue.frameGate
+
+/** The contended set: every manifest cue the ruling puts on POKEY voice 0.
+ *  Walked over `SOUNDS` rather than over the fixture so a cue the dossier
+ *  describes but the shell does not declare cannot enter the maps. */
+const VOICE0: readonly SoundName[] = (Object.keys(SOUNDS) as SoundName[]).filter(
+  (name) => CUES[name]?.pokeyVoice === 0,
+)
+
+/**
+ * Cue -> arbitration rank, for the five cues that contend for voice 0.
+ *
+ * A name ABSENT from this map is outside arbitration entirely and keeps plain
+ * per-channel stealing — which is where `mushroom`, `headBottom` and `waveClear`
+ * stay. All three are INVENTIONS (`pokeyVoice: null`); the cabinet never sounds
+ * them, so arbitrating them would invent behaviour rather than transcribe it
+ * (user ruling, 2026-08-03). They ring through a player death.
+ */
+export const PRIORITIES: Partial<Record<SoundName, number>> = Object.fromEntries(
+  VOICE0.map((name) => [name, CUES[name].channel === 'CHAN5' ? EXPLOSION_RANK : KILL_RANK]),
+)
+
+/** Cue -> how many `tick()`s it holds voice 0. 76 for the explosion, 19 per
+ *  kill — the arithmetic above, applied to the ruling. */
+export const FRAME_DURATIONS: Partial<Record<SoundName, number>> = Object.fromEntries(
+  VOICE0.map((name) => [name, windowFrames(CUES[name])]),
+)
+
 export type AudioEngine = SharedAudioEngine<SoundName>
 
 /** Build centipede's engine from the shared one. */
@@ -124,5 +224,7 @@ export function createAudio(baseUrl: string = DEFAULT_BASE_URL): AudioEngine {
     baseUrl,
     sounds: SOUNDS,
     channels: CHANNELS,
+    priorities: PRIORITIES,
+    frameDurations: FRAME_DURATIONS,
   })
 }

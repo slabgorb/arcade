@@ -82,7 +82,7 @@ type Effect =
  * cue-NAME type is the half that is fully coupled: `Effect.sound` is
  * `SoundName`, so widening or narrowing the union lands here.
  */
-type SoundSurface = Pick<AudioEngine, 'play' | 'startLoop' | 'stopLoop'>
+type SoundSurface = Pick<AudioEngine, 'play' | 'startLoop' | 'stopLoop' | 'tick'>
 
 function recordingAudio(): SoundSurface & { calls: Effect[] } {
   const calls: Effect[] = []
@@ -91,6 +91,13 @@ function recordingAudio(): SoundSurface & { calls: Effect[] } {
     play: (sound) => void calls.push({ kind: 'play', sound }),
     startLoop: (sound) => void calls.push({ kind: 'startLoop', sound }),
     stopLoop: (sound) => void calls.push({ kind: 'stopLoop', sound }),
+    // cp6-3: the dispatch also carries POKEY voice 0's frame clock, so the fake
+    // has to answer it. Deliberately NOT recorded as an `Effect` — every sweep
+    // in this file counts "one effect per event kind", and a per-frame tick is
+    // not an effect OF an event. Its placement and its unconditional-ness are
+    // asserted in tests/voice0-contention.test.ts (AC-4) against a fake that
+    // DOES record it. joust made the same split (tests/audio-dispatch.test.ts:56-60).
+    tick: () => {},
   }
 }
 

@@ -198,6 +198,72 @@ The spider is not one of the contenders and its own channel is faithful: it
 writes `AUDF3` (`CENTI4.MAC:2349`), owns POKEY voice 3 outright, and rings
 alongside voice 1 on the cabinet exactly as it does here.
 
+### 2.6 POKEY voice 0 is contended five ways, and the player explosion wins outright
+
+*(cp6-3. §2.5's sibling, and the one whose mechanism is not a comparison.)*
+
+Voice 0 has exactly two writers. Every creature kill converges on label `19$`
+(`CENTI4.MAC:2299`, `CENTI4.MAC:2300`) and reaches `AUDF0` at
+`CENTI4.MAC:2423`. The player explosion reaches it from its own path at
+`CENTI4.MAC:2445`, replaying the same `FREQ0` louder (§2.2,
+`CENTI4.MAC:2444`, `CENTI4.MAC:2449`). Four of our cue names ride the first
+(§2.1) and one rides the second, so five cues contend for one voice.
+
+**The arbitration is CONTROL FLOW, not a priority comparison.** The kill block is
+label `52$` (`CENTI4.MAC:2418`) — the countdown read, and the only path to the
+`AUDC0` write at `CENTI4.MAC:2425` that makes a kill audible. Within `SOUNDS`
+(`CENTI4.MAC:2322` to the tables at `CENTI4.MAC:2455`) that label is written once
+and **referenced once**: the `BEQ 52$` at `CENTI4.MAC:2437`, taken only when
+`CHAN5` — the player-explosion countdown, read one line earlier at
+`CENTI4.MAC:2436` — is zero. Nothing falls into the block either, because the
+voice-1 code above it exits unconditionally on the author's own `;ALWAYS`
+(`CENTI4.MAC:2416`). So while the player is exploding the kill path is
+**unreachable**, not merely quieter: `CHAN0` is neither decremented nor sounded.
+
+Note the direction, because it is the opposite of ordinary channel sharing. The
+machine refuses the **later** cue. A kill that arrives during the explosion never
+sounds at all; an explosion that arrives during a ringing kill takes the voice
+and the kill stops.
+
+**76 frames against 19, and only the frame gate makes them differ.** Both seed
+`hex 13` (decimal 19) — the explosion at `CENTI4.MAC:1811`, a kill at
+`CENTI4.MAC:2299` — but the explosion block advances on one frame in four
+(`CENTI4.MAC:2438`, `CENTI4.MAC:2439`, per §3.1), so it holds voice 0 for
+19 × 4 = **76** video frames against a kill's 19 × 1 = **19**.
+
+**The death also clears everything else on the spot.** `PLAYEX` zeroes `CHAN0`,
+`CHAN1`, `CHAN2`, `CHAN3` and `CHAN6` on the death frame itself
+(`CENTI4.MAC:1813` `;NO OTHER SOUNDS` through `CENTI4.MAC:1818`) — every
+sustained voice at once, since `CHAN3` is the spider, `CHAN6` the scorpion and
+`CHAN1` carries the march and the computed flea path (§2.4, §2.5). `35$` is a
+**branch target**, not just the next line: `CENTI4.MAC:1810` sends an
+attract-mode death there, skipping only the `CHAN5` seed and still running the
+clear.
+
+**The three inventions are outside this entirely.** `mushroom`, `headBottom` and
+`waveClear` (§2.3) each have `pokeyVoice: null` because the machine sounds
+nothing at those moments. There is no contention to transcribe, so they are not
+arbitrated and they ring through a player death — arbitrating them would invent
+behaviour rather than record it (user ruling, 2026-08-03).
+
+**How our clone models it, and why `CHANNELS` did not move.** Unlike §2.5's
+divergence, this one is closed. `src/shell/audio.ts` derives `PRIORITIES` and
+`FRAME_DURATIONS` from `sound.fixture.json` — every cue with `pokeyVoice: 0` is
+arbitrated, the one on `CHAN5` outranks the four on `CHAN0`, and each window is
+`lengthFrames × frameGate` — and hands both to the shared engine's priority
+arbitration, which refuses a strictly-lower cue while the window holds and
+arbitrates *across* channels. `src/shell/audio-dispatch.ts` drives that window's
+clock with one `tick()` per stepped frame, first and unconditionally, because
+`SOUNDS` decrements at the top of its pass (`CENTI4.MAC:24`). Merging the
+`CHANNELS` buckets would have modelled it backwards: the shared engine's plain
+per-channel stealing runs *forward*, so a later kill would have silenced the
+explosion. The death-instant clear is modelled in the **sim**, not the shell —
+`core/sim.ts`'s spider, flea and scorpion audibility predicates now require
+`playerExplode === 0`, so their `-stop` edges land on the death frame instead of
+at the pause's end ~48 frames later. `playerExplode` and not `delay`: the
+wave-clear pause sets `delay` too (`CENTI4.MAC:2319`) and the ROM clears no
+channel there.
+
 ---
 
 ## 3. Lengths, gates and loops — derived, never chosen by ear

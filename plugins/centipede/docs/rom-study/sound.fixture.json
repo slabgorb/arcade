@@ -26,6 +26,32 @@
       "CENTI4.MAC:2435"
     ]
   },
+  "voice0Arbitration": {
+    "contenders": [
+      "playerDeath",
+      "segmentKill",
+      "spiderKill",
+      "fleaKill",
+      "scorpionKill"
+    ],
+    "winner": "playerDeath",
+    "note": "POKEY VOICE 0 IS CONTENDED FIVE WAYS AND THE PLAYER EXPLOSION WINS OUTRIGHT — AND THE MECHANISM IS CONTROL FLOW, NOT MIXING. Two blocks write voice 0: the general explosion that every creature kill seeds (label 19$, CENTI4.MAC:2299-2300, four of our cue names over the ONE ROM sound) reaches AUDF0 at CENTI4.MAC:2423, and the player explosion reaches it from its own path at CENTI4.MAC:2445. The kill block is label 52$ (CENTI4.MAC:2418), and within the SOUNDS routine (2322-2454) that label is written once and REFERENCED ONCE: the BEQ at CENTI4.MAC:2437, taken only when CHAN5 — the player explosion countdown, read one line earlier at CENTI4.MAC:2436 — is zero. Nothing falls into it either, because the voice-1 block above exits unconditionally (CENTI4.MAC:2416, the author's own ';ALWAYS'). So while the player is exploding the kill path is UNREACHABLE rather than merely quieter: CHAN0 is not decremented, and the AUDC0 write at label 60$ (CENTI4.MAC:2425) never happens. THE WINDOWS ARE 76 FRAMES AGAINST 19, AND ONLY THE FRAME GATE MAKES THEM DIFFER: both seed hex 13 (decimal 19) — the explosion at CENTI4.MAC:1811-1812, a kill at CENTI4.MAC:2299-2300 — but the explosion block decrements only on one frame in four (CENTI4.MAC:2438-2439, 'AND I,3'), so 19 x 4 = 76 video frames against the kill's 19 x 1. THE DEATH ALSO CLEARS EVERYTHING ELSE ON THE SPOT: PLAYEX zeroes CHAN0, CHAN1, CHAN2, CHAN3 and CHAN6 on the death frame itself (CENTI4.MAC:1813-1818, ';NO OTHER SOUNDS'), which is every sustained voice at once — CHAN3 the spider, CHAN6 the scorpion, CHAN1 the march and the computed ant/flea path. Note that 35$ is a BRANCH TARGET (CENTI4.MAC:1810): an attract death skips only the CHAN5 seed and still runs the clear. THE THREE INVENTIONS ARE OUTSIDE ALL OF THIS. mushroom, headBottom and waveClear each carry pokeyVoice null because the machine sounds nothing at those moments, so there is no contention to transcribe and arbitrating them would invent behaviour.",
+    "ourShellDiffers": "Our clone models this with the shared engine's priority arbitration (src/shared/audio.ts, added for joust by jt5-5), NOT by merging CHANNELS buckets. The direction is why: plain per-channel stealing runs FORWARD — a later sound stops the ringing one — so putting the explosion and the kills on one bucket would let a kill silence the explosion, the exact inverse of CENTI4.MAC:2437. Priority arbitration refuses a strictly-lower cue while the window holds and arbitrates ACROSS channels, so CHANNELS is untouched and cp6-1's AC-5 guard stays green. src/shell/audio.ts derives PRIORITIES and FRAME_DURATIONS from THIS file: every cue with pokeyVoice 0 is arbitrated, the one on CHAN5 outranks the four on CHAN0 (there is no priority BYTE in this ROM to transcribe — the rank IS the branch), and each window is lengthFrames x frameGate. src/shell/audio-dispatch.ts drives the clock with one tick() per stepped frame, first and unconditionally. The death-instant clear is modelled in the SIM, not the shell: core/sim.ts's spider/flea/scorpion audibility predicates now carry playerExplode === 0, so their '-stop' edges land on the death frame instead of ~48 frames later when the pause ends. playerExplode and not delay, because the wave-clear pause sets delay too and the ROM clears no channel there.",
+    "cites": [
+      "CENTI4.MAC:1810",
+      "CENTI4.MAC:1811-1812",
+      "CENTI4.MAC:1813-1818",
+      "CENTI4.MAC:2299-2300",
+      "CENTI4.MAC:2416",
+      "CENTI4.MAC:2418",
+      "CENTI4.MAC:2423",
+      "CENTI4.MAC:2425",
+      "CENTI4.MAC:2436",
+      "CENTI4.MAC:2437",
+      "CENTI4.MAC:2438-2439",
+      "CENTI4.MAC:2445"
+    ]
+  },
   "derivation": "lengthSeconds = lengthFrames * frameGate / FRAME_HZ. lengthFrames is the ROM's own countdown seed, decoded in the radix the ROM spells (bare literals are hex under .RADIX 16 inherited from CENDE4; only a trailing period is decimal). frameGate is the number of VIDEO frames per SOUNDS pass for that cue, which is 1 unless the routine masks FRAME first. SOUNDS is called once per video frame from MAIN (CENTI4.MAC:24) after the loop waits on SYNC, so a pass IS a frame. FRAME_HZ is imported from src/shell/timebase.ts and is deliberately not restated here.",
   "cues": {
     "fire": {

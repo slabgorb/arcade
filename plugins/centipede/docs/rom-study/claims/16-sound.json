@@ -970,5 +970,59 @@
       "line": 2380,
       "verbatim": "\tBEQ 48$\t\t\t;IF END OF SOUND"
     }
+  },
+  {
+    "id": "SND-109",
+    "claim": "The CHAN0 kill-cue block is label 52$, and this is the branch that decides whether it runs at all: taken only when CHAN5 — the player explosion countdown read one line above — is zero. While the player is exploding the branch is NOT taken and the block is skipped entirely, so no kill cue is decremented or sounded.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2437,
+      "verbatim": "\tBEQ 52$\t\t\t;IF NO PLAYER EXPLOSION"
+    }
+  },
+  {
+    "id": "SND-110",
+    "claim": "Label 52$ opens the CHAN0 block — the kill-cue countdown read, and the only path to the AUDF0/AUDC0 writes below it. Within the SOUNDS routine (2322-2454) this label is written once and referenced once, by the BEQ at 2437.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2418,
+      "verbatim": "52$:\tLDY CHAN0"
+    }
+  },
+  {
+    "id": "SND-111",
+    "claim": "The voice-1 block's unconditional exit, marked ;ALWAYS by the author. It is what stops the code above 52$ from FALLING THROUGH into the CHAN0 block, which is why 2437 is the block's only entry rather than merely its fastest one.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2416,
+      "verbatim": "\tBNE 50$\t\t\t;ALWAYS"
+    }
+  },
+  {
+    "id": "SND-112",
+    "claim": "The AUDC0 write at label 60$ — the last instruction of the CHAN0 block and the one that actually makes a kill audible on POKEY voice 0. Skipping 52$ skips this, so a refused kill cue leaves POKEY voice 0 untouched rather than merely quiet.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2425,
+      "verbatim": "60$:\tSTA AUDC0"
+    }
+  },
+  {
+    "id": "SND-113",
+    "claim": "35$ is a BRANCH TARGET, not just the next line: an attract-mode death jumps here, skipping only the CHAN5 explosion seed at 1811-1812 and still running the channel clear below. So on the machine an attract death silences the other channels without sounding an explosion.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 1810,
+      "verbatim": "\tBMI 35$\t\t\t;IF IN ATTRACT"
+    }
+  },
+  {
+    "id": "SND-114",
+    "claim": "The subtitle line that opens the SOUNDS routine. It is the upper bound of the routine's local-label scope, which is what makes 'label 52$ is referenced exactly once in SOUNDS' a countable claim rather than a file-wide one — the same 52$ spelling recurs in five other routines.",
+    "source": {
+      "file": "CENTI4.MAC",
+      "line": 2322,
+      "verbatim": "\t.SBTTL SOUNDS-SOUND ROUTINE"
+    }
   }
 ]

@@ -403,18 +403,36 @@ const inPlay = (s: SimState): boolean => s.phase === 'playing'
 const marchAudible = (s: SimState): boolean =>
   inPlay(s) && s.delay === 0 && s.segs.some((seg) => (seg.pic & DEAD_BIT) === 0)
 
+/**
+ * cp6-3 — the death-instant channel clear. PLAYEX seeds the explosion and then
+ * immediately zeroes every OTHER countdown: ":1813 35$: LDA I,0 ;NO OTHER
+ * SOUNDS" through ":1818 STA CHAN6" clears CHAN0, CHAN1, CHAN2, CHAN3 and CHAN6.
+ * CHAN3 is the spider and CHAN6 the scorpion; the flea rides the computed
+ * AUDF1/CHAN1 path. So all three creature voices stop ON the frame the gun dies,
+ * not when the pause ends ~48 frames later.
+ *
+ * `playerExplode`, NOT `delay`. Both pauses set `delay`, and the ROM does not
+ * clear a channel at a wave clear (":2319 STA DELAY" is the whole of it) — a
+ * spider mid-walk carries straight into the next wave. `playerExplode` is the
+ * death-specific term: `stepPlayingFrame` sets it with DEATH_DELAY and every
+ * exit of `stepDeathFrame` leaves it 0 through the wave pause.
+ */
+const dying = (s: SimState): boolean => s.playerExplode > 0
+
 /** "No spider on screen" is a PICTURE, not an absent object (SP-1) — slot 13
  *  always holds one, parked at SPIDER_OFF_PIC. */
-const spiderAudible = (s: SimState): boolean => inPlay(s) && s.spider.pic !== SPIDER_OFF_PIC
+const spiderAudible = (s: SimState): boolean =>
+  inPlay(s) && !dying(s) && s.spider.pic !== SPIDER_OFF_PIC
 
 /** Slot 12 is shared by the flea and the scorpion, and "no flea" is a POSITION
  *  (parked at FLEA_PARK_V), so the flea is here only when it is off the parked
  *  row AND the slot is not currently holding a scorpion. */
 const fleaAudible = (s: SimState): boolean =>
-  inPlay(s) && s.flea.v < FLEA_PARK_V && !isScorpion(s.flea.pic)
+  inPlay(s) && !dying(s) && s.flea.v < FLEA_PARK_V && !isScorpion(s.flea.pic)
 
 /** The other half of slot 12 — the scorpion's crossing. */
-const scorpionAudible = (s: SimState): boolean => inPlay(s) && isScorpion(s.flea.pic)
+const scorpionAudible = (s: SimState): boolean =>
+  inPlay(s) && !dying(s) && isScorpion(s.flea.pic)
 
 /** Every sustained voice and the predicate that says whether it is ringing.
  *  One table, so a voice cannot be added to `EVENT_KINDS` and wired up in some

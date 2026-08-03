@@ -16,8 +16,13 @@ import { type GameEvent } from '../core/events'
 import { EVENT_SOUND, type AudioEngine, type SoundName } from './audio'
 
 /** Just the slice of the engine the dispatch needs — decoupled from resume(),
- *  so tests can pass a recording fake without an AudioContext. */
-type SoundSurface = Pick<AudioEngine, 'play' | 'startLoop' | 'stopLoop'>
+ *  so tests can pass a recording fake without an AudioContext.
+ *
+ *  cp6-3 widened it by one: the dispatch also carries the voice-0 window's frame
+ *  clock, so a fake has to answer `tick`. Deliberately not counted as an EFFECT
+ *  by the sweeps in tests/audio-dispatch.test.ts — a per-frame tick is not an
+ *  effect OF an event (joust says the same at tests/audio-dispatch.test.ts:56-60). */
+type SoundSurface = Pick<AudioEngine, 'play' | 'startLoop' | 'stopLoop' | 'tick'>
 
 /**
  * How one event kind reaches the engine.
@@ -37,12 +42,25 @@ function effectFor(type: GameEvent['type']): 'play' | 'startLoop' | 'stopLoop' {
 }
 
 /**
- * Play one cue per gameplay moment the core emitted this step, in order.
+ * Play one cue per gameplay moment the core emitted this step, in order, and
+ * carry POKEY voice 0's frame clock (cp6-3).
  *
  * Every engine method is a no-op until the gesture gate opens, so events that
  * land before the player's first interaction are silently skipped.
+ *
+ * THE TICK COMES FIRST, AND UNCONDITIONALLY — even on a frame that emitted
+ * nothing. That is the machine's order rather than a convenience: `SOUNDS` runs
+ * once per video frame from MAIN (CENTI4.MAC:24) and decrements its countdowns
+ * at the top of the pass, and only afterwards does game logic seed a new one.
+ * Ticking AFTER the cues would give every one of them an extra frame of window;
+ * skipping the tick on a silent frame would stop the window expiring at all
+ * during a quiet stretch, so the first player death would refuse every kill cue
+ * for the rest of the run. This function is called once per STEPPED frame from
+ * `src/main.ts:203`, so one call is exactly one machine frame. joust's dispatch
+ * makes the same call for the same reason (shell/audio-dispatch.ts:98-110).
  */
 export function playEventSounds(audio: SoundSurface, events: readonly GameEvent[]): void {
+  audio.tick()
   for (const event of events) {
     // WHERE THE EXHAUSTIVENESS GUARANTEE ACTUALLY LIVES — and it is not here.
     // `EVENT_SOUND` is typed `Record<GameEventKind, SoundName>`, so a kind added

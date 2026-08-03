@@ -76,22 +76,35 @@ interface Pumped {
  * kind registry itself (`EVENT_KINDS`, core/events.ts:67-77), which is data,
  * not a push site.
  *
- * So all three compositions are one thing — a loop edge landing in a frame that
+ * So both compositions are one thing — a loop edge landing in a frame that
  * already had something in it:
  *
- *   march-start+spider-stop   `produced` EMPTY; BOTH halves are edges from the
- *                             single sweep. Not two subsystems — one.
- *   player-died+march-stop    `player-died` from the death concatenation
- *                             (sim.ts:693); `march-stop` from the sweep. The
- *                             death line supplies one half, not the pair.
+ *   player-died+march-stop+spider-stop
+ *                             `player-died` from the death concatenation
+ *                             (sim.ts:693); the two `-stop`s from the sweep.
+ *                             The death line supplies one third, not the triple.
  *   shot-fired+spider-stop    `shot-fired` pushed at sim.ts:438; `spider-stop`
  *                             from the sweep.
  *
  * No wave-clear composition occurs in this run.
+ *
+ * cp6-3 MOVED THIS LIST, and the move is the story's own behaviour change —
+ * re-measured from the run, never hand-edited. Before it, the spider's `-stop`
+ * was taken when the death PAUSE ended and the respawn re-parked it, which is
+ * also the frame the march resumes: hence a `march-start+spider-stop` pair, ~48
+ * frames after the gun died. cp6-3 models PLAYEX's death-instant channel clear
+ * (CENTI4.MAC:1813-1818), so the spider's voice closes on the death frame
+ * itself, where `player-died` and `march-stop` already are. The pair became a
+ * triple and the old pair vanished — the respawn frame now emits `march-start`
+ * ALONE, which is a singleton and so is not a composition at all.
+ *
+ * Measured, not inferred: an instrumented run of THIS test printed all three of
+ * the run's deaths as `idx 79 pump 1468`, `idx 156 pump 2899`, `idx 235 pump
+ * 4306`, each the triple, and each followed immediately by a bare `march-start`
+ * (`pump 1520`, `pump 2951`).
  */
 const MEASURED_PAIR_COMPOSITIONS: string[] = [
-  'march-start+spider-stop',
-  'player-died+march-stop',
+  'player-died+march-stop+spider-stop',
   'shot-fired+spider-stop',
 ]
 

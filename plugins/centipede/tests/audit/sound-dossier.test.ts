@@ -182,12 +182,37 @@ interface VoiceArbitration {
   cites: string[]
 }
 
+/**
+ * The contention ruling for POKEY voice 0 (cp6-3).
+ *
+ * Same shape as the voice-1 record plus a `winner`, because this contention has
+ * one: the player explosion does not merely rank highest, it makes the kill
+ * block UNREACHABLE (CENTI4.MAC:2437 is the only reference to label 52$).
+ *
+ * Declared here for the reason cp6-1 round 2 had to declare its sibling: a
+ * top-level record this interface does not name, and `fixtureCitations()` does
+ * not walk, is recorded but UNVERIFIED — the fixture's shape is structural, so
+ * adding one reddens nothing on its own. See the AC-7 note on the sweep below.
+ */
+interface Voice0Arbitration {
+  contenders: string[]
+  /** The cue that takes the voice outright. */
+  winner: string
+  note: string
+  ourShellDiffers: string
+  cites: string[]
+}
+
 interface SoundFixture {
   /** Must name src/shell/timebase.ts's FRAME_HZ — AC-3 forbids re-deriving it. */
   frameHzSource: string
   /** How lengthSeconds is obtained. Written down so cp6-2 reads a number. */
   derivation: string
   voiceArbitration: VoiceArbitration
+  /** cp6-3. Optional in the TYPE only so this file still reads a cp6-1-era
+   *  fixture; the sweep below treats a missing record as zero citations, and
+   *  voice0-contention.test.ts is what requires it to be there. */
+  voice0Arbitration?: Voice0Arbitration
   cues: Record<string, CueRuling>
 }
 
@@ -307,10 +332,21 @@ function fixtureCitations(): { cite: string; where: string }[] {
       if (typeof v === 'string' && v !== '') out.push({ cite: v, where: `cues.${name}.${String(f)}` })
     }
   }
-  const arb = fixture.voiceArbitration
-  if (arb && Array.isArray(arb.cites)) {
+  // Every top-level arbitration record's citations, not just the first one's.
+  //
+  // cp6-3: this walked `voiceArbitration` ALONE, and that was the exact failure
+  // the gate exists to prevent — a voice-0 record's citations would have been
+  // recorded and re-opened by nothing, which is worse than absent because it
+  // reads gated. Written as a list rather than a second hardcoded block so the
+  // NEXT record is enrolled by adding one key, not by remembering this function.
+  const records: [string, { cites?: string[] } | undefined][] = [
+    ['voiceArbitration', fixture.voiceArbitration],
+    ['voice0Arbitration', fixture.voice0Arbitration],
+  ]
+  for (const [where, arb] of records) {
+    if (!arb || !Array.isArray(arb.cites)) continue
     arb.cites.forEach((cite, i) => {
-      if (typeof cite === 'string' && cite !== '') out.push({ cite, where: `voiceArbitration.cites[${i}]` })
+      if (typeof cite === 'string' && cite !== '') out.push({ cite, where: `${where}.cites[${i}]` })
     })
   }
   return out
@@ -996,6 +1032,34 @@ describe('cp6-1 AC-2 — every transcribed constant is radix-cited and byte-veri
       missing.map((m) => `${m.where} → ${m.cite}`),
       'these fixture citations have no covering claim, so nothing re-opens them:\n  ' +
         missing.map((m) => `${m.where} → ${m.cite}`).join('\n  '),
+    ).toEqual([])
+  })
+
+  it('cp6-3 — the sweep visits EVERY top-level record that carries citations, not just the first', () => {
+    // The test above cannot catch its own blind spot. `fixtureCitations()` used
+    // to walk `voiceArbitration` ALONE, so a second arbitration record's
+    // citations would have been swept by nothing — and the test above would
+    // still have passed, because a citation the sweep never emits is a citation
+    // it never finds missing. Recorded but unverified is worse than absent: it
+    // READS gated. (The fixture's TS shape is structural with no exhaustive
+    // key assertion, so adding a record reddens nothing on its own either.)
+    //
+    // Derived from the fixture rather than naming the two records, so the THIRD
+    // one is enrolled by adding a key or fails here — which is the failure mode
+    // this whole test exists for.
+    const visited = new Set(fixtureCitations().map((c) => c.where.split('.')[0]))
+    const withCites = Object.entries(loadFixture() as unknown as Record<string, unknown>)
+      .filter(([, v]) => Array.isArray((v as { cites?: unknown } | null)?.cites))
+      .map(([k]) => k)
+    expect(
+      withCites.length,
+      'fewer than two top-level records carry `cites`, so "every record" is a claim about one ' +
+        'thing and this test proves nothing',
+    ).toBeGreaterThan(1)
+    expect(
+      withCites.filter((r) => !visited.has(r)),
+      'these fixture records carry citations that fixtureCitations() never emits, so the claim ' +
+        'gate never re-opens them:\n  ' + withCites.filter((r) => !visited.has(r)).join('\n  '),
     ).toEqual([])
   })
 })

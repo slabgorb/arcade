@@ -542,6 +542,15 @@ function applyEdges(open: Set<string>, kinds: readonly string[]): Set<string> {
 function trulyAudible(s: SimState): Set<string> {
   const live = new Set<string>()
   if (s.phase !== 'playing') return live
+  // cp6-3 — PLAYEX's death-instant clear, stated here in the ROM's terms rather
+  // than copied from the fix: ":1813 35$: LDA I,0 ;NO OTHER SOUNDS" through
+  // ":1818 STA CHAN6" zeroes CHAN0, CHAN1, CHAN2, CHAN3 and CHAN6 on the frame
+  // the gun dies, which is every sustained voice at once. A spider is still ON
+  // SCREEN through the explosion — it is not RINGING, and this function answers
+  // the second question. `playerExplode` and not `delay`, because the wave-clear
+  // pause sets `delay` too and the ROM clears nothing there (":2319 STA DELAY"
+  // is the whole of it).
+  if (s.playerExplode > 0) return live
   if (s.delay === 0 && s.segs.some((seg) => (seg.pic & DEAD_BIT) === 0)) live.add('march')
   if (s.spider.pic !== SPIDER_OFF_PIC) live.add('spider')
   if (s.flea.v < FLEA_PARK_V && !isScorpion(s.flea.pic)) live.add('flea')
