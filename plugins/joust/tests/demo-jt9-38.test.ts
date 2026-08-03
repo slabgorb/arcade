@@ -320,6 +320,28 @@ describe('AC-2 — an egg wave deals the ROM\'s TWELVE eggs (JOUSTRV4.SRC:2778-2
     expect(eggsIn(at).length, 'a non-egg wave enters ground enemies, not eggs').toBe(0)
     expect(enemiesIn(at).length, 'and it does enter its ground complement').toBeGreaterThan(0)
   })
+
+  it('the twelve are SPREAD across the pads, not piled on one spot', async () => {
+    // ADDED AT FINISH, from the Reviewer's battery. AC-2 requires the placement to be a
+    // stated port decision rather than something shipped silently — but it was stated
+    // only in a comment, and nothing held it: measured, `const pad = PADS[0]` (all twelve
+    // on one spot) left all 2627 tests green.
+    //
+    // It matters because a co-located stack is collected ATOMICALLY. The catch loop
+    // iterates every overlapping egg without breaking, so a player standing on a pad
+    // takes the whole stack in ONE frame: measured, three eggs give three DEGGS rungs
+    // (250/500/750) and three `egg-collected` cues on a single frame, where the ROM
+    // spreads its twelve over six ledges plus a 69-slot table and can never stack at all.
+    // Piling all twelve on one pad would make that four rungs and twelve cues.
+    //
+    // Deliberately asserts the WEAK property (more than one position), not the exact
+    // four: the pad layout is the port's approximation and a truer six-ledge placement
+    // should not have to redden this. KILLS `PADS[0]`.
+    const at = await advanceTo(EGG_WAVE_6)
+    const positions = new Set(eggsIn(at).map((p) => `${p.egg?.posX},${(p.egg?.posY ?? 0) >> 8}`))
+    expect(eggsIn(at).length, 'twelve eggs staged').toBe(12)
+    expect(positions.size, 'the twelve must not all land on one spot').toBeGreaterThan(1)
+  })
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -483,6 +505,31 @@ describe('AC-4 — the quota lookup survives the hundredth wave (R2-3, "the cabi
     const dmod = await loadDemo()
     const after = dmod.stepDemo(await stagedDemo([playerAt(PLAYER1_ID, 20, 40), ripeEgg(0x500)], 0x99))
     expect(eggsIn(after).length, 'at counter 0x99 an unblocked egg still matures').toBe(0)
+  })
+
+  it('the rollover fallback ADMITS — a crowded hundredth wave still hatches, it does not freeze', async () => {
+    // ADDED AT FINISH, from the Reviewer's battery. The test above pins only that the
+    // rolled counter does not THROW — and `.not.toThrow()` admits EVERY non-throwing
+    // value. Measured: substituting `: 0` for `: 255` in demo.ts left all 2627 tests
+    // green, and `: 1` did too. A quota of 0 makes `population >= quota` true for every
+    // egg forever, so on the hundredth wave no settled egg can ever hatch, the clear
+    // gate wants no eggs, and the wave becomes unwinnable — a permanent soft-lock
+    // shipping green from a one-character edit.
+    //
+    // 255 is WNRM's own normal-wave value (JOUSTRV4.SRC:1991-1992) and gates nothing, so
+    // the right assertion is that the fallback ADMITS a hatch with the arena already
+    // crowded. KILLS `: 0` and `: 1`; stays green on `: 255`.
+    const dmod = await loadDemo()
+    const staged = [
+      playerAt(PLAYER1_ID, 20, 40),
+      ...Array.from({ length: 9 }, (_, i) => holder(0x7000 + i)),
+      ripeEgg(0x500),
+    ]
+    const before = await stagedDemo(staged, 0x00)
+    expect(enemiesIn(before).length, 'nine enemies — well past any real wave quota').toBe(9)
+    const after = dmod.stepDemo(before)
+    expect(eggsIn(after).length, 'the hundredth wave admits the hatch rather than freezing it').toBe(0)
+    expect(enemiesIn(after).length, 'and the remount joined them').toBe(10)
   })
 })
 

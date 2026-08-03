@@ -681,6 +681,14 @@ function settledWaveEgg(posX: number, feetY: number): EggState {
  * WHAT IS STILL NOT TRANSCRIBED, and the disclaimer is narrowed rather than dropped: the
  * exact EGG1 ledge COORDINATES (these land on the four transporter pads, so twelve eggs
  * stack three per pad where the machine spreads them over six ledges plus 69 slots) and
+ * — the part that actually costs something — A CO-LOCATED STACK IS COLLECTED ATOMICALLY.
+ * The catch pass iterates every overlapping egg without breaking, so a player standing on
+ * a pad takes the whole stack in ONE frame: measured, three eggs give three DEGGS rungs
+ * (250/500/750) and three `egg-collected` cues on a single frame, where the machine's
+ * spread cannot stack and so can never award three rungs at once. This PRE-DATES jt9-38 —
+ * at the old six-egg complement the depth was already two (two rungs, two cues) — and the
+ * story deepened it by one rather than introducing it. A truer six-ledge placement is the
+ * real fix and belongs with whoever transcribes the EGG1 coordinates; and
  * the 2 pre-mature hatchings (`LDA #2 / STA PWHCH,U`, JOUSTRV4.SRC:2776-2777, consumed in
  * CREGG at JOUSTRV4.SRC:2888-2894), which draws from the wave's RNG and is deliberately
  * out of jt9-38's scope — see the story's Delivery Findings.
