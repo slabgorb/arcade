@@ -2126,3 +2126,95 @@ live defect. Confirmed as a race, not an intermittent. The battery driver must a
 clean BEFORE it starts and AFTER every revert (mine does, and it caught nothing only because
 nothing else was running). **Never run a mutation battery concurrently with anything else that
 touches the tree — including your own verification run.**
+
+---
+
+> **Cross-reference (cp6-2, 2026-08-03):** the jt9-3 entry above and the cp6-2 entry below are
+> the same lesson from opposite ends, and neither is complete alone. jt9-3: a battery built from
+> the guards' own comments cannot see the guards those comments do not mention. cp6-2: a battery
+> built from the TESTS' apparatus cannot see the PRODUCT. In both cases the earlier agents ran a
+> real battery, caught real mutants, and the reviewer's value was entirely in asking what the
+> battery was never pointed at. Ask it explicitly: *what did every prior mutation have in common,
+> and what does that exclude?*
+
+## When the specialists are off, mutate the PRODUCT — not just the tests (cp6-2 round 1, 2026-08-03)
+
+**Situation:** `workflow.reviewer_subagents` has 7 of 9 disabled and this session barred the Agent
+tool, so nothing but hand review was available on a 5-point story that shipped a ROM transcription,
+a manifest split, a justfile recipe and a README rewrite. TEA had already run a 12-mutation battery
+and every mutation was caught. Suite 1118/1118, lint 0, orchestrator 390/390, AC-1 verified with
+fourteen live 200s.
+
+**The finding that mattered came from mutating the BAKER, which no earlier battery had touched.**
+TEA's battery mutated *the tests' own apparatus* (the ROM parser, `flatten()`, the recipe matcher) —
+correctly, and it caught a real weak assertion. But the apparatus is not the product. Three
+mutations against `bake-sfx.mjs`:
+
+| mutation | result |
+|---|---|
+| emit a constant pitch for every cue — FREQ tables ignored | **SURVIVED** 1118/0 |
+| emit a constant AUDC — CONT tables ignored | **SURVIVED** 1118/0 |
+| reverse every FREQ table — right bytes, wrong order | **SURVIVED** 1118/0 |
+
+The suite proved the tables were **READ** correctly (a deep-equal against an independent parse) and
+that durations matched the recorded windows. Nothing proved they were **APPLIED**. A baker that
+read the ROM and threw it away was green.
+
+**Generalise — the shape to look for is a two-stage pipeline where only stage one is asserted.**
+Any "load data, then transform data" module invites it: the load is easy to assert (compare against
+the source) and the transform is not (you would need a golden output). So the tests cluster on the
+load, and the story's actual claim — that the output derives from the input — goes unguarded. Ask
+directly: *"which mutation to the TRANSFORM would this suite catch?"* If the answer is none, that
+is a High regardless of how green the run is.
+
+The cheap fix to demand is a differential property, not a golden file: perturb the input table,
+re-bake, assert the samples DIFFER; and assert that two cues sharing a table produce identical
+output while cues on different tables do not. The second half is often already true and free.
+
+## A fabricated constant hides best inside a comment that cites real line numbers
+
+`bake-sfx.mjs` computed a stand-in sweep as `(antv ^ 0x55) …` under a comment citing
+`CENTI4.MAC:2409-2414` verbatim and claiming *"the SHAPE is the machine's"*. The citation was real,
+the surrounding formula was real, and `0x55` was invented — `CKFE` is not a constant at all but a
+RAM byte whose own declaration documents `=0 WHEN NOT USING COCKTAIL` (`CENDE4.MAC:254`).
+
+**Two things made it findable, and both are cheap reflexes:**
+1. **Resolve every operand in a cited formula, not just the cited lines.** The lines were quoted
+   correctly; the defect was a symbol *inside* them that had never been looked up.
+2. **Grep the repo's own dossier for the symbol before deriving it yourself.** cp6-1 had already
+   established `CKFE=0 in the 1-player upright build` in `claims/07-player-shot.json`. The right
+   answer was one grep away, in a file the same epic had shipped a day earlier.
+
+And check the DIRECTION of any derived sweep against the game's own coordinate sense — here
+`flea.ts:137` says `ANTV pixel (0xF8 parked/top -> 4 bottom)`, so the code's ascending sweep ran the
+pitch backwards, inverting the one property the dossier had stated in words. A monotonic ROM ramp
+that comes out non-monotonic is a tell worth computing both sequences to see.
+
+## Kill your own leads with measurement before filing them — two of four died here
+
+I opened with four suspicions. Two were real (above). Two died, and recording *why* is what stops
+the next reviewer re-deriving them:
+
+- **"Per-file peak normalisation flattens the ROM's relative volumes."** Measured every ROM cue's
+  max AUDC volume nibble: all ten are **4**. Normalising each file to the same peak therefore
+  changes nothing between them, and a single scalar preserves each envelope. Refuted — *but it
+  becomes live the moment the `+2 ;INCREASE VOLUME` fix lands*, because then one cue peaks at 6.
+  Filed as a conditional Medium tied to the High, not as an independent finding.
+- **"The `spec` ternary's inner guard is dead code."** It is reachable — a fixture cue with a null
+  table and no stand-in entry hits it. Convoluted, not dead. No finding.
+
+The pattern worth keeping: a finding that survives measurement is worth more than three that were
+not measured, and a REFUTED lead is worth writing down at the same length as a confirmed one,
+because the next reviewer will have the identical suspicion from the identical grep.
+
+## An emergent coincidence is the strongest fidelity evidence in a transcription diff
+
+The four kill cues baked **byte-identical** with nothing in the baker special-casing them, because
+all four resolve to CHAN0's single `;EXPLOSION SOUND` table — exactly as the dossier had ruled
+independently from the assembler. Nothing asserted it; it fell out.
+
+That is worth actively hunting in any port-from-primary-source review: agreement the implementation
+was never told to produce. Hand-tuned per-creature explosions would have passed every test in the
+suite and produced four different files. Note it under VERIFIED with the md5, and note which of your
+findings it does *not* cover — here it was the only real evidence the transform worked at all, which
+is precisely why its absence everywhere else became the High.
