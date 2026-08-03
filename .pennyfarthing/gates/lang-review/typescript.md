@@ -101,7 +101,7 @@ All JavaScript error checks (#10 from JS checklist) apply, plus:
 
 **13. Fix-introduced regressions (meta-check)**
 After applying fixes for review findings, re-scan the fix diff against
-checks #1-#12 and #14-#20. Common patterns:
+checks #1-#12 and #14-#24. Common patterns:
 - Adding `as any` to silence a type error instead of fixing it
 - Adding null checks but using `||` instead of `??`
 - Adding runtime validation but not updating the type to match
@@ -266,14 +266,25 @@ commit, next to a sentence saying it was measured.
 - **A number taken at a ref that later moved.** `git worktree add … <SHA>
   --detach` and `rev-parse` it; "at HEAD" in a permanent record is a claim about
   a moving ref, and a rebase falsifies it silently
+- **A figure for an artifact built out of SHARED code** (a bundle assembled from
+  `src/shared/`, a count over a common fixture). No story that touches your own
+  module can keep it true — a sibling's commit falsifies it. Either pin it to a
+  SHA or hedge it with `~`; "exact and current" is not available
 - Name the command and the SHAs in the comment. "MEASURED, not waved at" tells the
   next reader not to check; a reproducible recipe invites them to
-*Origin: cp6-3 round-2 rework (five figures wrong in a paragraph asserting they
-were measured — the before-size was taken by stubbing the import out of the post-
-change tree, and the sibling-game figure at a pre-rebase commit. Correcting them
-surfaced a SIXTH the review had not caught: "the whole 19 kB file inlines" was
-true at the base and false at HEAD, because this story's own new fixture record
-grew the file to 23 kB)*
+*Origin: cp6-3, three review rounds on one paragraph of bundle figures. Round 1:
+five wrong, the before-size taken by stubbing the import out of the post-change
+tree instead of building the base commit. Round 2: corrected, then falsified again
+within hours by a rebase that pulled in jt9-6's 13-line edit to
+`src/shared/audio.ts` — every digit moved (64.70 → 64.71 kB, joust 139.95 →
+139.97) while centipede itself was untouched, which is where the shared-code
+bullet above comes from. Two reviewer subagents proposed "tooling drift"; the
+refutation was to revert ONLY the shared file in a worktree and rebuild, which
+regenerated the original chunk HASH. Round 3 retired the exact figures for `~`
+ones. NOTE, because this check's first draft got its own origin wrong: the "19 kB"
+figure was never "true when typed" — commit `77ef628` grew the fixture to 23 291
+bytes and wrote the "19 kB" wording in the SAME commit, so it described the parent
+tree and was already false in the commit that shipped it*
 
 **21. A DEGENERATE-but-not-nullish input reaching numeric or geometric code**
 #4 covers `||` vs `??`. This is the case `??` does not reach: a value that is
@@ -377,7 +388,7 @@ If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 GATE_RESULT:
   status: pass
   gate: typescript-review-checklist
-  message: "TypeScript self-review checklist passed (20 checks)"
+  message: "TypeScript self-review checklist passed (24 checks)"
   checks:
     - name: type-safety-escapes
       status: pass
@@ -417,7 +428,7 @@ GATE_RESULT:
       detail: "No barrel file over-imports; async fs in handlers"
     - name: fix-regressions
       status: pass
-      detail: "Fix commits re-scanned against checks #1-#12, #14-#19"
+      detail: "Fix commits re-scanned against checks #1-#12, #14-#24"
 ```
 </pass>
 
@@ -482,7 +493,7 @@ GATE_RESULT:
     - "Add Zod/io-ts validation at API boundaries; validate JSON.parse results"
     - "Use catch(e: unknown) and narrow with instanceof/type guards"
     - "Import specific exports instead of barrel; use async fs in handlers"
-    - "Re-scan fix diffs against checks #1-#12, #14-#20 before handoff"
+    - "Re-scan fix diffs against checks #1-#12, #14-#24 before handoff"
 ```
 </fail>
 

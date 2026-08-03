@@ -1393,9 +1393,29 @@ const ARBITRATION_SECTIONS: {
   heading: RegExp
   where: string
   record: (f: SoundFixture) => { contenders: string[] } | undefined
+  /** May this section name the three `pokeyVoice: null` inventions without
+   *  claiming they contend? TRUE only where the prose exists to EXCLUDE them.
+   *  Per-row, not global — round-2 review, N1: a blanket exemption let §2.5 name
+   *  an invention as a contender and stay green, quietly retiring half of the
+   *  guard cp6-1 built. §2.6 needs it (its closing paragraph records the user's
+   *  2026-08-03 ruling by naming the three); §2.5 has never named one and now
+   *  cannot. The exempted SET is still derived from `pokeyVoice`, never listed. */
+  mayNameInventions: boolean
 }[] = [
-  { voice: 1, heading: /^#{2,4}\s.*voice\s*1\b/i, where: 'voiceArbitration', record: (f) => f.voiceArbitration },
-  { voice: 0, heading: /^#{2,4}\s.*voice\s*0\b/i, where: 'voice0Arbitration', record: (f) => f.voice0Arbitration },
+  {
+    voice: 1,
+    heading: /^#{2,4}\s.*voice\s*1\b/i,
+    where: 'voiceArbitration',
+    record: (f) => f.voiceArbitration,
+    mayNameInventions: false,
+  },
+  {
+    voice: 0,
+    heading: /^#{2,4}\s.*voice\s*0\b/i,
+    where: 'voice0Arbitration',
+    record: (f) => f.voice0Arbitration,
+    mayNameInventions: true,
+  },
 ]
 
 /** The body of the first `##`..`####` section whose heading matches, exclusive
@@ -1410,7 +1430,7 @@ function dossierSection(md: string, heading: RegExp): string | null {
 }
 
 describe('the arbitration prose and the fixture rule the same way', () => {
-  for (const { voice, heading, where, record } of ARBITRATION_SECTIONS) {
+  for (const { voice, heading, where, record, mayNameInventions } of ARBITRATION_SECTIONS) {
     it(`POKEY voice ${voice}: the prose names the same contenders ${where} does`, () => {
       // The fixture is what the shell consumes, but the prose is what a human
       // reads, and they have disagreed in both directions. §2.5 listed
@@ -1418,27 +1438,39 @@ describe('the arbitration prose and the fixture rule the same way', () => {
       // would not — it is on voice 3. §2.6 named no contender at all.
       const md = readDossier(SOUND_DOC)
       const section = dossierSection(md, heading)
-      expect(section, `${SOUND_DOC} must carry a section about POKEY voice ${voice} contention`).not.toBeNull()
+      if (section === null) {
+        // Narrowed, not cast: `expect(...).not.toBeNull()` throws at runtime but
+        // is not a type guard, so `section as string` below would have been an
+        // unexplained escape (checklist #1) three lines from the cast this story
+        // removed.
+        expect.fail(`${SOUND_DOC} must carry a section about POKEY voice ${voice} contention`)
+      }
 
       const fixture = loadFixture()
       const contenders = new Set(record(fixture)?.contenders ?? [])
       expectPopulated(contenders.size, 4, `${where} contender declaration`)
-      const named = Object.keys(fixture.cues).filter((n) => new RegExp('`' + n + '`').test(section as string))
+      const named = Object.keys(fixture.cues).filter((n) => new RegExp('`' + n + '`').test(section))
       expectPopulated(named.length, contenders.size, `voice-${voice} prose contender sweep`)
 
-      // A section MAY name a cue the ROM puts on no voice at all. §2.6 names
-      // `mushroom`, `headBottom` and `waveClear` precisely to rule them OUT of
-      // the arbitration, and a guard that forbade it would delete the paragraph
-      // that records the user's 2026-08-03 ruling. What no section may do is
-      // name a cue riding a DIFFERENT numbered voice as though it contended —
-      // that is exactly what §2.5 shipped, and `pokeyVoice` is what tells them
-      // apart without a hand-maintained exclusion list.
-      const wrongVoice = named.filter((n) => !contenders.has(n) && fixture.cues[n].pokeyVoice !== null)
+      // A section may name a cue that is not a contender ONLY where its prose
+      // exists to rule that cue OUT, and only for the cues the ROM puts on no
+      // voice at all. §2.6 names `mushroom`, `headBottom` and `waveClear` to
+      // record the user's 2026-08-03 ruling, so it opts in; §2.5 does not, and
+      // so keeps cp6-1's original rule — every cue it names must contend.
+      // Round-2 review N1: making this exemption global instead of per-row let
+      // §2.5 name an invention as a contender with the suite green.
+      const allowed = (n: string): boolean =>
+        contenders.has(n) || (mayNameInventions && fixture.cues[n].pokeyVoice === null)
+      const wrongVoice = named.filter((n) => !allowed(n))
       expect(
         wrongVoice,
         `the voice-${voice} section names these cues as if they contended, but ${where}.contenders ` +
-          'does not list them and the fixture puts each on a numbered voice of its own. A cue on ' +
-          'another POKEY voice is not preempted and must not be described as though it were.',
+          'does not list them' +
+          (mayNameInventions
+            ? ' and the fixture puts each on a numbered voice of its own. A cue on another POKEY ' +
+              'voice is not preempted and must not be described as though it were.'
+            : '. This section may not name a non-contender at all — not even an invention — ' +
+              'because nothing in it exists to exclude one.'),
       ).toEqual([])
       expect(
         [...contenders].filter((n) => !named.includes(n)),

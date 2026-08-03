@@ -37,21 +37,29 @@ import { SOUNDS } from './audio-manifest.js'
 // build rather than a promise: correct `pokeyVoice` or `frameGate` in the
 // fixture and the shipped maps move with it, in the same commit.
 //
-// It is the ONE place a `docs/` file reaches the browser bundle, and the cost is
-// measured rather than estimated. Re-run it exactly as it was taken — `node
-// scripts/build-app.mjs centipede`, once in a detached worktree at the story's
-// base commit 63f32eb and once here; both figures below come from that pair, not
-// from stubbing the import out of one tree. The whole ~23 kB file inlines, all
-// 16 prose `note` fields included, taking this game's bundle from 43.91 kB to
-// 64.70 kB (14.52 → 21.13 kB gzipped, +6.61 kB), because Vite's JSON plugin
-// cannot tree-shake fields out of an object that is read by key. That is a 47.3%
-// bundle increase to carry five numbers, and it is worth stating plainly rather
-// than discovering later. It is still comfortably the smallest game bundle in
-// the cabinet (joust 139.95 kB in one chunk, star-wars ~106 kB over five,
-// tempest ~76 kB over three), and the alternative — retyping the five cues and
-// their windows here with a test to compare them — is the drift this story
-// exists to close, one indirection later. If the size ever does matter, the fix
-// is a build-time reduction of the fixture, not a second transcription.
+// It is the ONE place a `docs/` file reaches the browser bundle. The whole ~23 kB
+// file inlines, all 16 prose `note` fields included, because Vite's JSON plugin
+// cannot tree-shake fields out of an object that is read by key. It roughly
+// HALVES the headroom: ~44 kB before, ~65 kB after (~14.5 → ~21 kB gzipped), an
+// increase near 47% to carry five numbers, and it is worth stating plainly rather
+// than discovering later. Still comfortably the smallest game bundle in the
+// cabinet (joust ~140 kB, star-wars ~106 kB, tempest ~76 kB). The alternative —
+// retyping the five cues and their windows here with a test to compare them — is
+// the drift this story exists to close, one indirection later. If the size ever
+// does matter, the fix is a build-time reduction of the fixture, not a second
+// transcription.
+//
+// EVERY FIGURE ABOVE IS DELIBERATELY APPROXIMATE, AND THAT IS THE CORRECTION, NOT
+// A RETREAT. This comment quantifies a bundle assembled partly from `src/shared/`,
+// which all seven games import — so an exact figure here is a claim no story that
+// touches this game can keep true. It was falsified twice in three review rounds:
+// once by measuring the base wrong, and once by a rebase that pulled in jt9-6's
+// 13-line edit to `src/shared/audio.ts` and moved every digit (64.70 → 64.71 kB,
+// joust 139.95 → 139.97) while centipede itself was untouched. The exact pair, at
+// the commits it belongs to, lives in this story's session file; the standing
+// recipe is `node scripts/build-app.mjs centipede`, run in a detached worktree at
+// the base commit `63f32eb` and again at your own HEAD. Take the number, do not
+// trust this paragraph's — and if you write one down, pin it to a SHA.
 //
 // It cannot go in `audio-manifest.ts` — that module must import NOTHING
 // (tools/pokey-bake/bake-sfx.test.mjs asserts it, because the deploy-time bake
@@ -198,7 +206,19 @@ const KILL_RANK = 0
  *  keep the whole suite green: a live branch, described in four confident lines,
  *  that nothing ran. It is NOT hypothetical for want of a caller — `fleaLoop`
  *  already carries `lengthFrames: null` and would land here the day the dossier
- *  put a loop on voice 0. Pinned directly in tests/voice0-contention.test.ts. */
+ *  put a loop on voice 0. Pinned in tests/voice0-contention.test.ts.
+ *
+ *  ONE HALF OF THE TEST IS A CONTRACT PIN, NOT A MUTATION KILL, and saying which
+ *  is the point. `lengthFrames === null` is mutation-proven (`0` → `999` reddens).
+ *  `|| cue.frameGate === null` is NOT, and cannot be: deleting it leaves the whole
+ *  suite green because `19 * null === 0` in JS, so the two programs agree on every
+ *  input the fixture can hold. Enumerated over {null, 0, 1, 4, 19, -3, 255}² they
+ *  differ in exactly one cell — a NEGATIVE length with a null gate, which returns
+ *  `-0` without the clause and `0` with it, distinguishable only by `Object.is`.
+ *  That is an EQUIVALENT MUTANT, not a coverage hole, and the clause stays because
+ *  it states the contract the type allows rather than leaning on a coercion. Do not
+ *  "fix" this by asserting on `-0`: that would kill the mutant while proving
+ *  nothing about the rule the line exists to express. */
 export const windowFrames = (cue: CueRuling): number =>
   cue.lengthFrames === null || cue.frameGate === null ? 0 : cue.lengthFrames * cue.frameGate
 

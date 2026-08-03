@@ -286,6 +286,17 @@ describe('cp6-3 AC-3 — every window is lengthFrames x frameGate from the rulin
     //     -> `? 999 : cue.lengthFrames * cue.frameGate`   the degrade; review's own survivor
     //   `cue.lengthFrames * cue.frameGate`
     //     -> `cue.lengthFrames + cue.frameGate`            the arithmetic (reddens 4)
+    //
+    // And ONE mutant this deliberately does NOT kill, named so the next reader
+    // does not mistake it for a hole (round-2 review, N7):
+    //   `cue.lengthFrames === null || cue.frameGate === null ? 0 :`
+    //     -> `cue.lengthFrames === null ? 0 :`             SURVIVES — equivalent
+    // It survives because `19 * null === 0`: with a numeric length, dropping the
+    // gate test changes nothing. Enumerated over {null,0,1,4,19,-3,255} squared, the two
+    // programs differ in one cell only (`-3, null` gives `-0` instead of `0`).
+    // The last assertion below is therefore a CONTRACT pin — "a missing gate is
+    // worth no frames" — not a discriminating one, and it is written down that
+    // way rather than left to look like coverage it does not provide.
     const cue = (lengthFrames: number | null, frameGate: number | null) => ({
       pokeyVoice: 0,
       lengthFrames,
@@ -299,7 +310,11 @@ describe('cp6-3 AC-3 — every window is lengthFrames x frameGate from the rulin
       'no length in the dossier must be ZERO frames — "it sounds, and refuses nothing" — never a ' +
         'guessed window',
     ).toBe(0)
-    expect(shellWindowFrames(cue(19, null)), 'and a missing gate degrades the same way').toBe(0)
+    expect(
+      shellWindowFrames(cue(19, null)),
+      'a missing gate must also be worth no frames. This pins the CONTRACT and does not ' +
+        'discriminate the `frameGate === null` clause — see the equivalent-mutant note above',
+    ).toBe(0)
   })
 
   it('the shell declares FRAME_DURATIONS matching the ruling for every arbitrated cue', () => {

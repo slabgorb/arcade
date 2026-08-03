@@ -2039,8 +2039,24 @@ Rebuilding at the base commit in a detached worktree (`git worktree add … <bas
 `node_modules` symlinked from the main checkout) reproduced all five of the review's corrections
 exactly. **It also turned up a sixth the review had not caught**, and the sixth is the
 instructive one: the paragraph said "the whole 19 kB file inlines". The fixture was 19 426 bytes
-at the base and **23 291** at HEAD — this story's own new record had grown it. The figure was
-true when it was written and false by the time it shipped, in the same file, in the same commit.
+at the base and **23 291** at HEAD — this story's own new record had grown it.
+
+**Corrected in the next review round, because this entry got it wrong too.** The sentence here
+first read "the figure was true when it was written and false by the time it shipped". It was
+never true of the tree it shipped in: commit `77ef628` grew the fixture to 23 291 bytes *and*
+wrote the "19 kB" wording in the SAME commit, so the number described the PARENT tree and was
+already false the moment it landed. Different defect, different instruction — not "re-take a
+figure your edit invalidated" but **measure the tree you are shipping, not the one you started
+from**. Both entries and the checklist check built on this incident had to be re-told.
+
+**And a third round found the class that neither of those covers.** These figures were corrected
+accurately, then falsified again within hours by a REBASE that pulled in another story's 13-line
+edit to `src/shared/audio.ts`. Centipede was untouched and every digit moved. A bundle figure is
+a measurement of shared code as much as of your own, so no story that touches only your module
+can keep it exact — pin it to a SHA or write it with `~`. Two reviewer subagents called the
+0.01 kB drift "tooling drift"; the way to settle that in one step is to revert ONLY the suspect
+shared file in a throwaway worktree and rebuild — a matching chunk **content-hash** is proof,
+where a matching byte count is a coincidence waiting to happen.
 
 **Generalise:** a wrong-figure correction has two halves and only one of them is arithmetic.
 Re-run the measurement, yes — but also ask, for every bare quantity in the paragraph, *what is
