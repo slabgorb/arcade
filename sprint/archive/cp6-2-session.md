@@ -1315,3 +1315,21 @@ and it is worth more than any number above.
 that cannot fire on the current fixture — measured, not assumed. Catching their removal would need a
 fixture-injection point existing solely to exercise a throw, which tests the injection point rather
 than the baker. Recorded so the next reader does not re-derive them.
+
+---
+
+## AC-5 discharged — 2026-08-03, after archival
+
+The Impact Summary above ends by stating that nobody had heard the samples, and that a human listen
+was the remaining acceptance step. **It has now been done: the user played it and reported it sounds
+fine.**
+
+Recorded here rather than left to be inferred, because the summary immediately above says the
+opposite and an archived record that understates what was verified misleads exactly as much as one
+that overstates it. AC-5 read "The game has been played with sound on and the result reported in
+prose, because a decodable wav of the wrong tone passes every automated check in this repo" — that
+was the one criterion no evidence in this repo could close, round 1 proved the concern was real
+(two cues were demonstrably wrong while the suite was green), and it is now closed by the only
+instrument that could close it.
+
+All six acceptance criteria are met.
