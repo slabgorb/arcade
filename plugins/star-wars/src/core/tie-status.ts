@@ -293,8 +293,15 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   //   WSMAIN.MAC:3834-3836  `LDD M.YPS` / `SUBD M.XPS` / `LBHS RTS1`  ;B OUT OF VIEW
   //   WSMAIN.MAC:3840-3842  `LDD M.ZPS` / `SUBD M.XPS` / `LBHS RTS1`  the other ratio test
   //
-  // Those four tests ARE C_PV's definition — they are the same near/far clamps
-  // and the same ratio law the C_PV block above ports. `CHSET C$PV` is
+  // Those four tests are the ROM's C_PV — the same near/far literals and the
+  // same per-axis ratio SHAPE our C_PV block above ports, re-sloped to our glass
+  // by uf1-14. Read that as an analogue, not an identity: the cabinet's ratio
+  // tests are a fixed ±45° square pyramid, ours is the RENDERED frustum (30°
+  // vertical, horizontal swinging with the canvas), and that deviation is
+  // deliberate and disclosed fifty lines up — a bit that claims "the player can
+  // see it" has to use the player's actual glass. Do NOT "restore fidelity" by
+  // putting ±45° back here; that undoes uf1-14. What transcribes exactly is the
+  // CONTROL FLOW below, which is what this gate ports. `CHSET C$PV` is
   // WSMAIN.MAC:3846 and the sole `CHSET C$PS` is WSMAIN.MAC:3930, and between
   // those two lines there is NO label at all — so nothing can branch into the
   // span and reach the second without having executed the first. The next
@@ -318,6 +325,14 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // 30 of its 391 flight frames. The gun is deliberately NOT changed here — the
   // clone's laser resolves through the same helper and carries the same divergence
   // from the cabinet, which is a separate story.
+  //
+  // ORDERING IS LOAD-BEARING: this block reads `status`, so the C_PV block above
+  // MUST stay above it. Move C_PS up, or hoist C_PV down in a refactor, and the
+  // conjunct silently becomes always-false — C_PS dies outright and TCH1DZ's
+  // loiter break never fires. The failure is loud rather than prevented (forcing
+  // the gate always-false reddens 16 tests, and `tie-sights-visibility.test.ts`
+  // asserts its positive controls before the zero it exists to check), but
+  // nothing in the code says so, which is why it says so here.
   const sightsRay = aimDirection(state.aimX, state.aimY, state.aspect)
   if (
     (status & Status.C_PV) !== 0 &&

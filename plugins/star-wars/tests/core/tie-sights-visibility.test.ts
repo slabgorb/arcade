@@ -80,7 +80,15 @@ import { ChoreoOp, Status, initVm, program } from '../../src/core/tie-vm'
 import { choreoPc } from '../../src/core/tie-waves'
 import { COCKPIT, FOV_Y, aimDirection, beamHit } from '../../src/core/gameRules'
 import { stepGame } from '../../src/core/sim'
-import { initialState, TICK_HZ, TIE_HIT_RADIUS, TIE_SPAWN_DISTANCE, type GameState } from '../../src/core/state'
+import {
+  initialState,
+  PLAY_CUBE_MAX,
+  PLAY_CUBE_MIN,
+  TICK_HZ,
+  TIE_HIT_RADIUS,
+  TIE_SPAWN_DISTANCE,
+  type GameState,
+} from '../../src/core/state'
 import type { Vec3 } from '@shared/math3d'
 import { makeSpaceState, makeTie, lookAtOrigin, rngSeed } from './helpers/space'
 
@@ -284,10 +292,22 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
   })
 
   it('records that the FAR exit (:3828) is unreachable in space rather than leaving it untested', () => {
-    // There is no seat to write for the far clamp: a TIE spawns at 0x7C00 and the play cube
-    // clamps inside 0x7F00, so view depth never exceeds VIEW_FAR. Asserting the ordering is
-    // the honest substitute — if either constant ever moves, this says so instead of a
-    // missing test quietly implying the case was covered.
+    // There is no seat to write for the far clamp: view depth never exceeds VIEW_FAR, so
+    // asserting the ordering is the honest substitute — if a constant moves, this says so
+    // instead of a missing test quietly implying the case was covered.
+    //
+    // The BOUND that makes it unreachable is the play cube, not the spawn depth. A TIE
+    // spawns at 0x7C00 but then flies, and `sim.ts` re-clamps every enemy every step
+    // (`clampToPlayCube`), so the reachable extreme is |PLAY_CUBE_MIN| = 32,000 — which is
+    // what has to stay under VIEW_FAR (32,512; margin 512). Pinning only the spawn depth
+    // was mutation-PASSABLE: the sw8-19 Reviewer set PLAY_CUBE_MIN = -33000, making depth
+    // 33,000 reachable and the far exit live, and all 2252 tests stayed green including
+    // this one. The play-cube assertion below is the guard; the spawn pin is kept as a
+    // second anchor because it is the depth every fixture in this suite is chosen against.
+    expect(VIEW_FAR, 'the reachable extreme of the play cube stays inside the far clamp').toBeGreaterThan(
+      Math.abs(PLAY_CUBE_MIN),
+    )
+    expect(VIEW_FAR).toBeGreaterThan(PLAY_CUBE_MAX)
     expect(TIE_SPAWN_DISTANCE, 'TBG* spawn depth').toBe(0x7c00)
     expect(VIEW_FAR).toBeGreaterThan(TIE_SPAWN_DISTANCE)
   })

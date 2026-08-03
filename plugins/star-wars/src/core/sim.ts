@@ -156,6 +156,17 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // at depth 6000 on 16:9, a single-frame yoke move of 0.1 separates the two rays by 613 u
   // against a 500 u band, so the laser kills fighters the bit says are not there. Dropping
   // the aspect does the same thing statically (539 u at yoke 0.2).
+  //
+  // That failure mode is about AIM FRESHNESS, and it is the only one this paragraph
+  // describes. A SECOND, unrelated way for the gun and the bit to disagree is now shipped
+  // ON PURPOSE: since sw8-19, C_PS is gated on C_PV, so an off-glass fighter is not
+  // sighted — while `beamHit` below still resolves it, because the cabinet's own view
+  // gate sits on the laser-hit block too (WSMAIN.MAC:3898-3918, under the same four
+  // `RTS1` exits) and porting it would change what the player can shoot. So "the laser
+  // kills a fighter the bit says is not there" is a BUG when the cause is a stale ray and
+  // the DESIGNED behaviour when the cause is visibility. Closing the second one is filed
+  // separately, and it is not a change to `beamHit` — the helper is shared with the trench
+  // and ground phases, which have no C_PV notion at all.
   const state: GameState = { ...stateIn, aimX: input.aimX, aimY: input.aimY, aspect: input.aspect ?? 1 }
   const t = state.t + dt
   const aimX = input.aimX

@@ -191,6 +191,12 @@ describe('uf1-12 — in play: a fighter held under the crosshair breaks into 20$
     // it had stopped discriminating rather than started failing. 4,000 at this depth is
     // 33.7° off the nose — still outside the ±30° glass, so the parked half holds for the
     // same reason it did before.
+    //
+    // That sentence is also a description of sw8-19's defect, written here before anyone
+    // recognised it: a seat inside the sights band and outside the glass. Until sw8-19
+    // gated C_PS on C_PV, this very fixture spent 30 of its 391 frames sighting a fighter
+    // the player could not see. Same fact, two readings — see
+    // `tie-sights-visibility.test.ts`, which flies this seat as its in-play case.
     const seat: Vec3 = [4000, 0, -6000]
 
     /** Fly the loiter script for `frames`, tracking the fighter with the yoke (or not),

@@ -159,7 +159,13 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     expect(killable, 'guard: the sweep actually contained killable positions').toBeGreaterThan(0)
   })
 
-  it('never sights a TIE behind the eye — the CHSET lives in the DRAW pass', () => {
+  it("never sights a TIE behind the eye — beamHit's `along <= 0` refusal", () => {
+    // Renamed at sw8-19's finish (TEA's own filed Improvement). The old name claimed
+    // "the CHSET lives in the DRAW pass", which is a statement about the ROM's draw-pass
+    // gate — and nothing here observes that gate; this test only exercises the behind-the-
+    // eye half, which comes from `beamHit`. The name was the closest the suite could get
+    // while the draw-pass gate was unported. It IS ported now (C_PS is gated on C_PV) and
+    // covered by `tie-sights-visibility.test.ts`, so this name narrows to what it proves.
     const s = makeSpaceState()
     const eye = COCKPIT
     // Mirror of the on-ray fixture, straight out the back of the cockpit.
@@ -233,7 +239,7 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
 
   it('measures against the SAME ray the gun uses — viewport aspect included (AC-6)', () => {
     // The shell supplies a real aspect every frame (src/shell/input.ts:45), and the gun
-    // inverts the projection WITH it (sim.ts:313, `aimDirection(aimX, aimY, input.aspect)`)
+    // inverts the projection WITH it (sim.ts:324, `aimDirection(aimX, aimY, input.aspect)`)
     // so the bolt goes where the crosshair is drawn. A sights bit computed at the default
     // unit aspect is therefore testing a DIFFERENT RAY, and not by a little: at 16:9 and
     // depth 6000 the two rays are 539 u apart at yoke 0.2 and 2694 u apart at full

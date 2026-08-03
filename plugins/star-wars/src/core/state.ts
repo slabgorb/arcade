@@ -995,9 +995,11 @@ export interface GameState {
    *  `stepGame` so the pure core can rebuild the SAME aim ray the gun fires
    *  down (`aimDirection` inverts the projection, aspect term included). Any
    *  core geometry that has to agree with what the pilot sees on the glass
-   *  reads it from here: `computeStatus`'s C_PS sights bit is the first
-   *  consumer (uf1-12). Defaults to 1 (square), which is what a headless
-   *  fixture or a frame that omits `Input.aspect` gets. */
+   *  reads it from here. `computeStatus`'s C_PS sights bit was the first
+   *  consumer (uf1-12); since uf1-14 the C_PV view bit reads it too, to build
+   *  the RENDERED frustum, and since sw8-19 C_PS reaches it only THROUGH C_PV.
+   *  Defaults to 1 (square), which is what a headless fixture or a frame that
+   *  omits `Input.aspect` gets. */
   aspect: number
   /** Accumulated sim time (seconds) — drives the attract-mode wireframe spin. */
   t: number
