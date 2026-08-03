@@ -3764,3 +3764,96 @@ run the full battery against it, revert, and paste the exact diff into the sessi
 default must be `?? SOUNDS` not `?? {}`, the write path must use the injected record). Dev gets
 zero design work and a real RED; the measurement still happened. **The refactor being verified
 and the refactor being committed are separable, and TDD wants them separated.**
+
+---
+
+### A CALLER-SIDE gate is invisible to a helper unit test — and that is also why the predecessor's helper test does NOT need retiring (sw8-27 RED, 2026-08-03)
+
+**Situation:** sw8-27 gates the player's gun on C_PV. Its AC3 puts the gate at the CALL SITE
+(`sim.ts`'s space arm), explicitly not in the shared `beamHit`, because the helper also serves
+the surface and trench phases. The filing said closing the story "means deliberately retiring"
+the predecessor's `does NOT change the GUN` assertion in `tie-sights-visibility.test.ts`.
+
+**Both halves of that are testable, and measuring them settled the whole test design.**
+
+1. **A `beamHit` unit test cannot observe a caller-side gate.** It passes identically before and
+   after, by construction. So every gun assertion in the RED drives `stepGame` and reads kill
+   events. If you find yourself writing `expect(helper(...)).toBeNull()` for a gate that lives
+   in the caller, you are testing the wrong seam and it will be green forever.
+2. **Which is exactly why the predecessor's assertion survives.** It calls `beamHit` DIRECTLY,
+   so the caller-side gate leaves it green — verified by applying a throwaway implementation and
+   running it. What it pins is *the gate is not in the helper*, which the new story still
+   requires. Retiring it, as the filing instructed, would have deleted the guard protecting the
+   new fix's own shape.
+
+**Generalise:** when a filing names a test as "the thing that must be retired", check WHICH SEAM
+that test calls before deleting it. A filing written against one candidate fix routinely
+prescribes a different one by the time it is scoped, and the deletion is the part nobody reviews
+— the story authorised it.
+
+### A gate on a MOVING target reads the position AFTER the tick, while the fixture aimed BEFORE
+
+**Situation:** the gate reddened two sibling tests in `tie-hit-status.test.ts`. Both seat Darth
+at `[0,0,-1200]`, arm his VM, then hold the trigger through `fireUntilDarthHit`, which re-aims
+every frame from `s.enemies[0].pos`.
+
+**The mechanism, and it is not visible by reading either file.** Inside `stepGame` the decision
+tick runs BEFORE the laser resolves. So the helper aims at where Darth was at the top of the
+step, and the gate evaluates C_PV at where he is after it. A VM-seated Darth climbs ~175 u per
+render frame on his gated record's MU2 bits; at depth 1,200 the vertical pyramid bound is
+`1200·tan30° = 693`. Measured over the fixture: **1 on-glass frame out of 240**, after which he
+flew out to +11,923 — behind the pilot. The old fixture worked only because a 250 u disc is
+forgiving of a 175 u drift; the gate is not.
+
+**Two things worth keeping.** First, the diagnostic that found it was a throwaway trace of
+position + bound + C_PV per frame, written to a file — `console.log` inside vitest is swallowed
+by default, and two attempts were wasted before noticing the trace had produced nothing at all.
+`writeFileSync` to the scratchpad, every time. Second, my first reconstruction of the fixture
+used `TICK_DT = 1/TICK_HZ` where the real file has `1.05/TICK_HZ`, and it HIT on frame 0 —
+i.e. it did not reproduce, and I nearly concluded the gate was not the cause. **Reproduce a
+fixture with its own constants, copied, not retyped.**
+
+**The re-seat:** 6,000, where the bound is 3,464 against a first-frame height of ~713. Verified
+green BOTH before the fix and after — that pair is what separates re-seating a fixture from
+smuggling the change in, and it is the whole reason the sw3-15 rule puts this on TEA rather than
+Dev.
+
+### Before porting a SHAPE into a shared helper, grep the ROM for the shape's own symbol across EVERY module
+
+**Situation:** AC5 said the kill region "replaces the Euclidean disc", and the disc lives in the
+shared `beamHit`. AC3 said `beamHit` is unchanged. Read literally, the two ACs conflict.
+
+**One grep resolved it.** `TMPOCT` — the ROM's octagon accumulator — appears in exactly TWO
+files: `WSMAIN.MAC` (space aliens) and `WSGUNS.MAC` (fireballs). Those are precisely the two
+passes the story gates. The GROUND objects use a different collision entirely: an unrotated
+width/height box with a `+10.` site fudge and no octagon term at all
+(`WSGRND.MAC:1076-1132`, writing `CL.BDS`/`CL.TDS`). So the box-and-octagon is not a property of
+"a hit" in this machine — it is a property of the space draw pass, and putting it in the shared
+helper would impose it on towers, bunkers, the exhaust port and trench obstacles.
+
+**Generalise:** a shape, a radius or a tolerance that looks universal in the port is often
+per-pass in the ROM, because the cabinet wrote each draw pass separately. The check costs one
+`grep -l <symbol> *.MAC` and it tells you whether a helper is the right home. When the answer is
+"two of nine modules", the two call sites are the home — and the OTHER phases' tests become the
+discriminator that keeps a future refactor from hoisting it.
+
+### An EQUIVALENT MUTANT can come from one term IMPLYING another — and the defect is then in your comment
+
+**Situation:** 13 mutants, 12 caught. The survivor added a box `|dx| <= 3T && |dy| <= 3T` to the
+sights predicate, which already required `|dx| + |dy| <= 3T`.
+
+**It is unobservable, and correctly so:** the sum bound implies each individual bound, so the
+added term can never change an outcome. No test can catch it and one written for it would pass
+vacuously forever.
+
+**The real defect was the sentence I had written above the seat.** My 725-on-axis test was
+commented as the seat that "shows the box is absent" — and it does not, because 725 ≤ 750. What
+it shows is the axis REACH. A further mutant settled the boundary by measurement: a box at 2×
+reddens four tests including that one. So the test is load-bearing against every box NARROWER
+than 3×, and blind only to the redundant one.
+
+**Generalise, extending the jt5-5 rule:** an equivalent mutant usually arises from redundancy,
+and redundancy usually arises from one asserted term IMPLYING another. When a mutation survives,
+try the same mutation at a different SCALE before concluding either "gap" or "equivalent" — the
+scale sweep is what tells you which, and it converts a shrug into a documented boundary. Then
+fix the comment, record the equivalence, and say explicitly that no test should be added.
