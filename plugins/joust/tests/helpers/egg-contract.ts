@@ -112,6 +112,15 @@ export interface EggState {
   pfeet: number
   /** Whether the egg has SETTLED on a ledge (|velY| ≤ $20 and X index 0). */
   settled: boolean
+  /**
+   * `PJOYT` — the settled egg's remaining hatch wait in DISPLAY frames (jt9-9).
+   * Production has carried this since jt9-9 (`src/core/egg.ts:73`); the mirror
+   * had not been updated, so no test could stage a wait. Seeding it is NOT a
+   * fixture cheat: `stepDemo`'s hatch loop writes this exact field on the egg on
+   * every frame of the wait, so a seeded value is a state the sim itself
+   * produces — it only saves stepping the full EGGWT/EGGWT2 wait to reach it.
+   */
+  waitFrames?: number
 }
 
 /** The minimum a dying joust victim hands the egg (its velocities + eggs-left). */

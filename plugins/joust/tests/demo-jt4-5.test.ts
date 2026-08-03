@@ -56,17 +56,31 @@ async function groundComplement(wave: number): Promise<number> {
 //   enemies (strengthens the jt4-4 hasEgg-only pin). Green regression guard.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt4-5 egg wave — the complement enters as EGGS, not materialising ground enemies (hardening)', () => {
-  it('wave 5 enters EXACTLY the ground-complement count of eggs and ZERO ground enemies', async () => {
+  it("wave 5 enters the ROM's TWELVE eggs and ZERO ground enemies", async () => {
     const demo = await loadDemo()
-    // Wave 5 (status $08) dispatches to the egg type: WAVEGG enters the whole ground
-    // complement as eggs (JOUSTRV4.SRC:2737). Harden past `hasEgg`: the COUNT must equal
-    // the ground complement, and there must be NO materialising `enemy` process — kills
-    // "the egg wave spawns eggs AND the usual bounders" and "it spawns just one token egg".
+    // ⚠ INVERTED BY jt9-38 (in ITS RED, deliberately). This assertion previously read
+    // `toBe(expected)` — the wave's ground complement — which was the best reading
+    // available to jt4-5. The ROM's WAVEGG does not derive the egg count from the row at
+    // all: it places six one-per-ledge over EGLEDG's six entries (LDA #6 / STA PWREGA,U
+    // "6 EGGS ON EACH LEDGE", JOUSTRV4.SRC:2778-2779, loop JOUSTRV4.SRC:2780-2804, table
+    // JOUSTRV4.SRC:2910-2915) and then six MORE across the 69-slot EGPTBL (LDA #6 /
+    // STA PWREGA,U "6 MORE EGGS TO GO", JOUSTRV4.SRC:2805-2822). Twelve, from two
+    // literal immediates that do not read the wave row.
+    //
+    // Inverted HERE rather than left for GREEN: a guard asserting the old count stays
+    // green through the whole build and reds only at the very end, at which point the
+    // cheapest way back to green is to undo jt9-38's AC-2 while the suite reports
+    // success. The twelve is DERIVED from the source, not transcribed — see the WAVEGG
+    // derivation in demo-jt9-38-source.test.ts.
+    //
+    // Still kills what it always killed ("the egg wave spawns eggs AND the usual
+    // bounders", "it spawns just one token egg") and now also kills "the count still
+    // tracks the row": wave 5's complement is 6, and twelve is not it.
     const atWave5 = advanceTo(demo, demo.createWaveDemo(SEED), 5)
     expect(atWave5.wave, 'reached the egg wave').toBe(5)
-    const expected = await groundComplement(5)
-    expect(expected, 'wave 5 has a real ground complement to convert (bounders)').toBeGreaterThan(0)
-    expect(eggCount(atWave5), 'the whole ground complement entered as eggs').toBe(expected)
+    const complement = await groundComplement(5)
+    expect(complement, 'wave 5 has a real ground complement — and it is NOT the egg count').toBe(6)
+    expect(eggCount(atWave5), 'the egg wave deals the ROM twelve, independent of the row').toBe(12)
     expect(enemyCount(atWave5), 'and NO materialising ground enemy entered alongside them').toBe(0)
     expect(hasEgg(atWave5), 'so the wave holds open on eggs').toBe(true)
   })
