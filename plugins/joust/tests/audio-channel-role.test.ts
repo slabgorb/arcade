@@ -11,7 +11,11 @@
 //  1. DELETION IS NOT A JOUST CHANGE. `src/shared/audio.ts:69` declares
 //     `channels: Record<N, string>` REQUIRED — no `?`, no default. Deleting the
 //     `channels:` line from joust's `createAudioEngine` is not type-legal:
-//         plugins/joust/src/shell/audio.ts(162,45): error TS2345
+//         plugins/joust/src/shell/audio.ts(168,45): error TS2345
+//     (re-measured at review; the GREEN commit's six added prose lines moved
+//     this from the `(162,45)` the RED phase recorded — the column is the
+//     manifest literal's `{` on the `createSharedAudioEngine` call, so grep for
+//     that call rather than trusting either number)
 //     So the branch begins with making the field optional in code all five
 //     manifest-building cabinets import (asteroids, centipede, joust,
 //     star-wars, tempest — 6 production `channels:` sites, 24 more manifest
@@ -30,7 +34,8 @@
 //     per-channel stealing". A cabinet with `priorities` AND unarbitrated cues
 //     routed by `channels` is not a hypothetical; it shipped.
 //
-//     joust's own `PRIORITIES` (`src/shell/audio.ts:151-158`) is DERIVED by the
+//     joust's own `PRIORITIES` (`src/shell/audio.ts:157-164`, `const
+//     PRIORITIES`) is DERIVED by the
 //     same shape of filter — `if (source.kind === 'rom')` — and `CueSource` has
 //     an `invention` arm that jt9-5 made first-class with a REQUIRED `frames`
 //     field. "All 18 cues carry a priority" is therefore a fact about today's
@@ -69,7 +74,9 @@ const NAMES = Object.keys(SOUNDS) as SoundName[]
 
 /** The ROM priority `PRIORITIES` derives for a cue, or `undefined` where the
  *  derivation gives none — which is every non-`rom` arm. Read from the same
- *  place `src/shell/audio.ts:151-158` reads it, so this cannot drift from it. */
+ *  place `const PRIORITIES` (`src/shell/audio.ts:157-164`) reads it, so the
+ *  VALUE cannot drift from it. The line number can and did — this story's own
+ *  GREEN commit moved it six lines — so the symbol is the anchor, not `:157`. */
 function romPriority(name: SoundName): number | undefined {
   const source = CUE_SOURCES[name]
   return source.kind === 'rom' ? source.priority : undefined
@@ -511,14 +518,21 @@ describe('jt9-7 AC4 — the prose does not claim the channel decides nothing', (
   it('no sentence claims the channel stopped mattering ENTIRELY', () => {
     // The measured falsehood, banned by SHAPE rather than by spelling: a
     // sentence saying the channel/fence "no longer" does something, qualified by
-    // an absolute ("anything", "nothing", "at all"). Two sentences match today
-    // and `AC2` above proves both wrong:
-    //   :51 "the fence no longer decides anything for these seventeen cues"
-    //   :93 "a shared channel can no longer buy or deny a cue anything"
-    // The two that must SURVIVE are the ones that are true and are not absolute
-    // — ":91 The channel no longer decides which cue wins" (it does not; the
-    // priority does) and ":96 no longer the arbitration". A guard on the literal
-    // wording would let a reworded absolute straight through; this does not.
+    // an absolute ("anything", "nothing", "at all"). At RED two sentences
+    // matched and `AC2` above proved both wrong — `:51` "the fence no longer
+    // decides anything for these seventeen cues" and `:93` "a shared channel can
+    // no longer buy or deny a cue anything". The GREEN commit removed both, so
+    // the matching set is EMPTY today and this guard is a ratchet, not a
+    // measurement. The two that must SURVIVE are the ones that are true and are
+    // not absolute — "The channel no longer decides which cue wins" (it does
+    // not; the priority does) and "just no longer the arbitration", now `:94`
+    // and `:101-102`. A guard on the literal wording would let a reworded
+    // absolute straight through; this bans by shape instead.
+    //
+    // KNOWN GAP, reviewed and filed as jt9-37: the shape is `/no longer/` AND an
+    // absolute word, so a false absolute phrased WITHOUT "no longer" — measured
+    // at review with "A shared channel buys and denies a cue nothing at all." —
+    // passes all 2548 tests. Widen the first clause when jt9-37 is picked up.
     const source = readFileSync(join(root, 'src', 'shell', 'audio.ts'), 'utf8')
     const sentences = flatten(source).split(/(?<=\.)\s+/)
     const absolutes = sentences.filter(
@@ -538,8 +552,19 @@ describe('jt9-7 AC4 — the prose does not claim the channel decides nothing', (
   it('the CHANNELS docblock names the case where the channel still decides', () => {
     // PROXIMITY: the claim has to sit on the map, not somewhere in the 60-line
     // file header, because the docblock is what a reader of `CHANNELS` reads.
-    // Non-vacuous today by measurement: none of `window`, `release`, `expire`,
-    // `tick` appears in that docblock at all.
+    // Non-vacuous AT RED by measurement: none of `window`, `release`, `expire`,
+    // `tick` appeared in that docblock at all. They do now — that was the fix —
+    // so what keeps this honest going forward is the mutant, not the wordlist:
+    // deleting the release sentence reddens this test (measured by Dev at GREEN
+    // and again at review).
+    //
+    // KNOWN GAP, reviewed and filed as jt9-37: this matches on KEYWORD
+    // CO-OCCURRENCE, not on the claim. Measured at review, the INVERTED sentence
+    // "Once that window is released the channel is released with it, so a shared
+    // channel decides nothing about whose tail gets cut" satisfies it — it
+    // carries `channel` and `released`, and `AC2` above proves it false. The
+    // executable claim is the AC2 trio; this guard only makes the docblock
+    // MENTION the case.
     const source = readFileSync(join(root, 'src', 'shell', 'audio.ts'), 'utf8')
     const doc = docblockAbove(source, 'export const CHANNELS')
     const qualified = doc
