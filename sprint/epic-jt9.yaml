@@ -102,6 +102,7 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+    review_verdict: approved
   - id: jt9-4
     title: The bake's synth-spec gate is itself unguarded — only the missing-outDir throw is pinned
     description: 'bakeSamples throws `no synth spec for manifest cue <name> — a new cue must arrive with its own sound` (plugins/joust/tools/sample-bake/bake-samples.mjs:305-306) and `no FRAME_DURATIONS entry for <name>` (:311). That gate is what makes `just deploy-assets` abort under set -euo pipefail rather than silently ship a manifest row with no audio — jt5-6 AC4 leaned on it directly. It is UNGUARDED: bake-samples.test.mjs:119 pins ONLY the missing-outDir throw (`await expect(bakeSamples()).rejects.toThrow()`), and nothing anywhere asserts the missing-spec or missing-duration throws. So the gate could be removed or weakened and every suite would stay green, while the next cue ships an unbaked .wav name into the bucket. Found by jt5-6 TEA, who could not pin it in that story: SOUNDS and SPECS are both module-scope consts in bake-samples.mjs, so exercising the throw needs an injectable manifest — either bakeSamples taking its manifest as an argument, or exporting SPECS. That refactor is this story. Prove it with a test that adds a cue with no spec and asserts the SPECIFIC message, not just that something threw.'
