@@ -1435,3 +1435,8 @@ completed_stories:
     title: Bake the samples, upload them, and prove a live 200 — the sound actually arrives
     points: 5
     completed: '2026-08-03'
+  - id: jt9-4
+    epic: jt9
+    title: The bake's synth-spec gate is itself unguarded — only the missing-outDir throw is pinned
+    points: 2
+    completed: '2026-08-03'
