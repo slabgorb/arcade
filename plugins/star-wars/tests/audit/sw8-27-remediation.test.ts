@@ -1020,7 +1020,20 @@ describe('sw8-27 R6 — coaching.ts does not deny the mode assignments sim.ts ma
    *  Braces are matched over the source with comments AND string bodies blanked, so a brace in
    *  either cannot derail it; the `mode:` token is then sought in the same span with only
    *  comments blanked, since the token itself lives inside a string. Line numbers survive both
-   *  passes untouched, which is what lets a derived number be compared to a cited one. */
+   *  passes untouched, which is what lets a derived number be compared to a cited one.
+   *
+   *  KNOWN LIMIT, with the direction it fails. `\bgameOver:` also matches a TYPE position — a
+   *  `{ gameOver: boolean }` member reads as a field. Found while mutating for W9, where an
+   *  appended helper typed that way entered the `fields` population. Not patched, deliberately:
+   *  the value cannot be narrowed to a boolean literal, because the four real death sites are
+   *  `gameOver: lives <= 0` and `gameOver: gunHit.lives <= 0 ? true : base.gameOver` — a
+   *  `true|false` requirement would exclude every one of them and select only the two
+   *  attract-mode fields. A blacklist of type names would dodge the one mutant that found this
+   *  and nothing else, which is the sort of scenery this file exists to refuse. What makes it
+   *  safe to leave is the direction: a type member has no `mode: … 'gameover'` in its literal,
+   *  so it can only join `fields`, never `pairing` — and `fields` is pinned to an exact list
+   *  below. It therefore fails CLOSED, as a red on a named fixture that says which line moved,
+   *  and can never turn into a silent pass. */
   const deathSites = () => {
     const src = read('src', 'core', 'sim.ts')
     const braces = blankNonCode(src, true)
@@ -1129,6 +1142,11 @@ describe('sw8-27 R6 — coaching.ts does not deny the mode assignments sim.ts ma
     // Fixture anchors, so a derivation that quietly matched nothing cannot pass this by
     // admitting everything. Derived, not typed — if sim.ts gains a fifth death site these
     // three lines are what say so, along with the mode-assignment seat above.
+    expect(
+      derived.fields,
+      'fixture: every `gameOver:` field line in sim.ts. Pinned as an exact list because it is ' +
+        'what makes the type-position limit in `deathSites` fail closed — a new one shows up here',
+    ).toEqual([241, 256, 757, 1261, 1509, 1667])
     expect(pairingSites, 'fixture: the death sites that set BOTH, derived from sim.ts').toEqual([757, 1261, 1509, 1667])
     expect(branches, 'fixture: and the places sim.ts branches on the end of a run').toEqual([221, 932, 943, 1846])
     // The branch population must be bound to the run's own state, not to the mere presence of a

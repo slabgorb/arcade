@@ -100,21 +100,63 @@ describe('sw7-10 F3 — the coaching hint clears when the run ends', () => {
     // (see `killed`), but a fixture production never writes needs a control that says so,
     // or the suite is a statement about a hypothetical state machine.
     //
-    // It is NOT expected to catch anything the sibling seat misses, and the mechanism is worth
+    // It is NOT expected to catch anything the sibling seat misses. The mechanism is worth
     // stating exactly, because the sentence that stood here stated it backwards (round-4 review
-    // W2, confirmed by four parties, three of them by running the function). The mode check is
-    // FIRST: `coaching.ts:53` is `if (s.mode !== 'playing') return null` and `coaching.ts:59` is
-    // `if (s.gameOver) return null`. So this fixture, which sets both fields, returns at `:53`
-    // and never reaches `:59` — it is the only seat in this file that exercises the mode guard at
-    // all, the opposite of redundant with respect to which LINE it covers. Its sibling `killed`
-    // leaves the mode at `'playing'` and is caught by `:59`. Deleting either guard therefore
-    // reddens neither seat: whichever one is deleted, the other still returns null for the state
-    // that reaches it. What this adds is production-faithfulness, not coverage — do not credit it
-    // with more, and do not read it as evidence that the mode check is the redundant one.
+    // W2, confirmed by four parties) — and because the round-4 review's own prescribed
+    // replacement, and the first attempt at it in round 5, were both wrong too, in the same
+    // "reasoned rather than run" way. So this is the MEASURED version:
+    //
+    //   * `coaching.ts:53` is `if (s.mode !== 'playing') return null`; `coaching.ts:59` is
+    //     `if (s.gameOver) return null`. The MODE check is unconditionally first.
+    //   * This fixture sets both fields, so it returns at `:53` and never reaches `:59`.
+    //   * Its sibling `killed` leaves the mode at `'playing'`, falls through `:53`, and is
+    //     caught by `:59`.
+    //   * MEASURED, not inferred — deleting `:53` reddens NOTHING, in this file or anywhere in
+    //     the plugin's 2304 tests, because the only seat that reaches it also satisfies `:59`.
+    //     Deleting `:59` reddens THREE seats in this file. So `:59` is covered and `:53` was
+    //     not, which is the opposite of the guard order the retired sentence implied and is not
+    //     what "reddens neither" would have told you either.
+    //
+    // What this control adds is production-faithfulness, not coverage — do not credit it with
+    // more. The `:53` coverage gap it exposed is closed by the seat below, which reaches
+    // `coachingFor` the way attract mode does rather than by faking a state.
     let s = killedAsShipped(coached())
     expect(s.mode, 'fixture: this is the literal shape sim.ts writes on the last life').toBe('gameover')
     for (let i = 0; i < 120; i++) s = stepGame(s, NO_INPUT, DT)
     expect(s.coaching, 'the hint must not outlive the run in the real shape either').toBeNull()
+  })
+
+  it('the mode guard is load-bearing on the ATTRACT path, which nothing exercised', () => {
+    // Added at sw8-27 round 5, from a measurement the W2 rework forced: deleting
+    // `coaching.ts:53` reddened not one of the plugin's 2304 tests. That guard is not
+    // defensive — `stepGame`'s attract branch (`sim.ts:206-217`) returns through
+    // `finalizeFrame`, and `finalizeFrame` re-derives `coaching` at `sim.ts:800`, so
+    // `coachingFor` IS called with `mode: 'attract'` and `gameOver: false` on a live path. With
+    // `:53` gone, the idle screen carries a flight hint. The gap was that every seat above
+    // reaches `coachingFor` with `gameOver` already set, so `:59` covered for it.
+    //
+    // Driven through `stepGame` rather than by calling `coachingFor` directly, so it pins the
+    // OBSERVABLE the way the rest of this file does and cannot pass on a state the game never
+    // builds. The route is the cabinet's own: die, then press start on the game-over screen,
+    // which `sim.ts:252-262` answers with `mode: 'attract', gameOver: false`. `initialState`
+    // opens in `'playing'`, not in attract — the first attempt at this seat assumed otherwise
+    // and its fixture guard is what said so.
+    let s = killedAsShipped(coached())
+    for (let i = 0; i < 5; i++) s = stepGame(s, NO_INPUT, DT)
+    expect(s.mode, 'fixture: the run is over and holding').toBe('gameover')
+    s = stepGame(s, { ...NO_INPUT, start: true }, DT)
+
+    // The conditions that make `:53` the ONLY guard standing: the run is not over, and the wave
+    // is 1, so neither `:59` nor the SC.FWV gate at `:61` can be what returns null here.
+    expect(s.mode, 'fixture: start on the game-over screen returns to the attract screen').toBe('attract')
+    expect(s.gameOver, 'fixture: and clears the flag in the same literal, so :59 lets this through').toBe(false)
+    expect(s.wave, 'fixture: on wave 1, so the SC.FWV gate at :61 lets it through too').toBe(1)
+    expect(s.phase, 'fixture: and in the space phase, which is the branch that returns a hint').toBe('space')
+
+    expect(s.coaching, 'the idle screen is not being coached: the cabinet hints during PLAY').toBeNull()
+    for (let i = 0; i < 120; i++) s = stepGame(s, NO_INPUT, DT)
+    expect(s.mode, 'fixture: still attracting — the button was released').toBe('attract')
+    expect(s.coaching, 'and it stays uncoached, frame after frame, the way the attract screen runs').toBeNull()
   })
 
   it('the docstring promise holds: the hint is never ACCUMULATED across the death boundary', () => {
