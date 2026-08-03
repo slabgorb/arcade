@@ -39,9 +39,9 @@ import { SOUNDS } from './audio-manifest.js'
 //
 // It is the ONE place a `docs/` file reaches the browser bundle. The whole ~23 kB
 // file inlines, all 16 prose `note` fields included, because Vite's JSON plugin
-// cannot tree-shake fields out of an object that is read by key. It roughly
-// HALVES the headroom: ~44 kB before, ~65 kB after (~14.5 → ~21 kB gzipped), an
-// increase near 47% to carry five numbers, and it is worth stating plainly rather
+// cannot tree-shake fields out of an object that is read by key. It adds about
+// half again to this game's bundle: ~44 kB before, ~65 kB after (~14.5 → ~21 kB
+// gzipped), an increase near 47% to carry five numbers, worth stating plainly rather
 // than discovering later. Still comfortably the smallest game bundle in the
 // cabinet (joust ~140 kB, star-wars ~106 kB, tempest ~76 kB). The alternative —
 // retyping the five cues and their windows here with a test to compare them — is
@@ -56,10 +56,11 @@ import { SOUNDS } from './audio-manifest.js'
 // once by measuring the base wrong, and once by a rebase that pulled in jt9-6's
 // 13-line edit to `src/shared/audio.ts` and moved every digit (64.70 → 64.71 kB,
 // joust 139.95 → 139.97) while centipede itself was untouched. The exact pair, at
-// the commits it belongs to, lives in this story's session file; the standing
-// recipe is `node scripts/build-app.mjs centipede`, run in a detached worktree at
-// the base commit `63f32eb` and again at your own HEAD. Take the number, do not
-// trust this paragraph's — and if you write one down, pin it to a SHA.
+// the commits it belongs to, is recorded in `sprint/archive/cp6-3-session.md`; the
+// standing recipe is `node scripts/build-app.mjs centipede`, run in a detached
+// worktree at the base commit `63f32eb` and again at your own HEAD. Take the
+// number, do not trust this paragraph's — and if you write one down, pin it to a
+// SHA that has actually been pushed.
 //
 // It cannot go in `audio-manifest.ts` — that module must import NOTHING
 // (tools/pokey-bake/bake-sfx.test.mjs asserts it, because the deploy-time bake
