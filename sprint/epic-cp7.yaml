@@ -26,7 +26,7 @@ stories:
 
       ROOT CAUSE, MEASURED AT FILING BY DECODING THE ACTUAL ROM BYTES: the motion-object picture byte's hardware FLIP BITS (6 and 7) are dropped at atlas bake time. CENDE4.MAC documents them by name — CKC0 :239 "VALUE THAT FLIPS AND TURNS PICTURES IN COCKTAIL VERSION" and CK40 :248 "USED FOR FLIPPING PICTURES UPSIDE DOWN IN COCKTAIL VERSION" — which is precisely why BUGMV EORs BUGP with CK40 at CENTI4.MAC:308, :312 and :432 and ANTMV EORs ANTP with CKC0 at :54. In an upright cabinet CLEAR zeroes CKF8/CKC0/CK40 (CENTI4.MAC:745-748) so those EORs are the identity — BUT THE BITS ALREADY BAKED INTO THE CONSTANT ARE NOT. All three PTS codes carry bit 7 set: 0xB6 = 1011 0110, 0xB7 = 1011 0111, 0xB8 = 1011 1000. src/core/pictures.ts:317-324 states the decode as offset = ((pic & 1) << 10) | (((pic >> 1) & 0x3F) << 4), which consumes bits 1-6 as ADDRESS and silently discards bit 7. Bit 7 is not address. It is the flip.
 
-      WHY ONLY THE POINTS SPRITES SHOW IT, which is the fact that makes this a one-sprite bug rather than a whole-renderer bug: every other picture code the game actually draws has bits 6-7 clear — BUG0-7 = 0x14-0x1B, ANT = 0x1C-0x1F, SCORP = 0x30-0x33, segments = 0x00-0x0F. The explosions (0xFA-0xFF) have BOTH bits set, i.e. a 180 degree turn, and are too amorphous for anyone to have noticed.
+      WHY ONLY THE POINTS SPRITES SHOW IT, which is the fact that makes this a one-sprite bug rather than a whole-renderer bug. CORRECTED AT SETUP (cp7-1, 2026-08-03) — the filed reason was wrong and the conclusion survives anyway. The filing said "every other picture code the game actually draws has bits 6-7 clear — BUG0-7 = 0x14-0x1B, ANT = 0x1C-0x1F, SCORP = 0x30-0x33, segments = 0x00-0x0F". That is true of BUG, ANT and SCORP but FALSE of the segments: src/core/centipede.ts:63-71 has CENT_BODY_PIC = 0x42 with BODY_BIT = 0x40 (bit 6 SET on every body segment) and DEAD_BIT = 0x80 (bit 7), which CENDE4.MAC:129-137 states outright — "D6=0 FOR HEAD", "D5=1 FOR POISONED CENTIPEDE HEAD, D7=1 FOR NO OBJECT". The segments are exempt by CONTROL FLOW, not by clear bits: CENIR4.MAC:347-351 branches on the slot index (CPX I,NCENT / BCS 33$) and only then does AND I,3F and AND I,0F, stripping bits 5-7 for centipede slots alone. Our render.ts:70-72 segmentStamp(pic & 0x0F) already mirrors that mask, which is why nothing is visibly wrong there. Do not print a body segment's pic expecting bits 6-7 clear. The explosions (0xFA-0xFF) have BOTH bits set, i.e. a 180 degree turn, and are too amorphous for anyone to have noticed.
 
       THE VISIBLE CONSEQUENCE WAS CONFIRMED, NOT INFERRED. Decoding THREE at 0x1B0 (CENPIC.MAC:47) through the CURRENT bake renders as "0 0 backwards-3" — the exact horizontal mirror of 300. Applying the ROM-space row reversal that bit 7 asks for, before the ROT270, yields correctly-handed 300, 600 and 900. SIX currently reads as a mirrored 6 in the same way.
 
@@ -39,7 +39,8 @@ stories:
       ALSO FILE, DO NOT FIX: the same bit-6/7 confusion means the pictures.ts offset formula disagrees with hardware for ANY code with bit 6 set — explosion 0xFF decodes to 0x7F0 by the formula but 0x5F0 on hardware. render.ts:70-72 sidesteps it for explosions by mapping through segmentStamp(pic & 0x0F) rather than the formula, so the explosion pool may be drawing the wrong sprites. Nobody has looked. You will be the closest anyone has been to this code; file what you find as its own story and stay out of it here.
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-03T22:00:33Z'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -50,6 +51,7 @@ stories:
       - If the fix draws with a canvas transform, the render.ts transform ban at tests/atlas-orientation.test.ts:150-155 is revisited DELIBERATELY with the reason written down — not left passing on the technicality that ctx.scale is unlisted.
       - 'The adjacent bit-6 risk is FILED as its own story and not fixed here: the offset formula disagrees with hardware for codes with bit 6 set (0xFF decodes 0x7F0 by formula, 0x5F0 on hardware) and render.ts:70-72 sidesteps it for explosions via segmentStamp(pic & 0x0F), so the explosion pool may draw wrong sprites — the story records what was found, measured, not assumed.'
       - A spider is shot in a live run and the readout is read off the screen, because a correctly-decoded atlas can still be blitted to the wrong place.
+      - 'SETUP FINDING, also FILED and not fixed here: the direction-derived facing flip is unimplemented. CENIR4.MAC:332-340 loads Y from MOBJDH for every motion object EXCEPT slot 13 (LDY I,0 / CPX I,13. / BEQ 35$ — comment: LEAVE PICTURE ALONE IF SPIDER OR 100, ETC) and EORs bit 7 of it into the hardware picture at :368, so segments, flea, scorpion and shot all mirror to face their travel direction on the cabinet. Nothing in plugins/centipede implements any flip and blit() has no flip parameter.'
     type: bug
   - id: cp7-2
     title: The train enters on the score line — the render paints where the ROM says off-screen
