@@ -134,7 +134,8 @@ stories:
     description: 'jt5-5 put the arbitration in src/shared/audio.ts and guarded the case where an ACCEPTED cue never starts (a 404''d or still-decoding sample must not hold a silent window). One route to the same silent-window state is left open. `stopChannel(channel)` is reached from a plain `startSource` for a cue with NO priority; if that cue''s channel happens to be the one the arbitrated voice is sounding on, the voice''s SOURCE is stopped but `voiceFrames`/`voiceChannel` keep holding, so lower-priority arbitrated cues go on being refused by a voice nobody can hear. `stopLoop` already handles this correctly (`if (voiceChannel === channel) releaseVoice()`); the stealing path does not, and the asymmetry is the bug. REPRODUCED at review with a probe: manifest {loud:80 ch ''v'', plain:no-priority ch ''v'', quiet:10 ch ''w''}; play(''loud''), play(''plain'') -> loud''s source .stopped === true; play(''quiet'') -> still refused. NOT REACHABLE TODAY, which is why jt5-5 shipped: joust routes all seventeen cues as arbitrated, and none of the other six games passes `priorities` at all, so no manifest in the tree can mix an unarbitrated cue onto an arbitrated channel. It is a trap for the next cabinet that does. Fix is one line — release the voice inside `stopChannel` itself (which both paths share) rather than in `stopLoop` — plus a test with the mixed manifest above. Check the reverse too: an ARBITRATED cue that steals a channel out from under an unarbitrated sound is fine and should stay fine.'
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-03'
     repos: arcade
     workflow: tdd
   - id: jt9-7
