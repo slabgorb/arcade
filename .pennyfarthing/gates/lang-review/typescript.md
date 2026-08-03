@@ -275,6 +275,102 @@ surfaced a SIXTH the review had not caught: "the whole 19 kB file inlines" was
 true at the base and false at HEAD, because this story's own new fixture record
 grew the file to 23 kB)*
 
+**21. A DEGENERATE-but-not-nullish input reaching numeric or geometric code**
+#4 covers `||` vs `??`. This is the case `??` does not reach: a value that is
+PRESENT and unusable. `x ?? default` fires only on `null`/`undefined`, so `0`,
+`-1`, `NaN` and `±Infinity` all pass straight through to arithmetic that silently
+produces a wrong answer instead of an error.
+- A measured quantity from the outside world (a viewport, a canvas size, a device
+  ratio, a parsed number) defaulted with `??` and never range-checked. A
+  zero-width element yields exactly `0`, which is not nullish
+- Validate where the value ENTERS the module, not inside the math — one boundary
+  guard covers every future reader; a guard inside one formula covers one
+- **Then check for a SECOND reader that bypassed the boundary.** A sanitiser is
+  only as good as its narrowest consumer, and a codebase that shadows the value
+  onto a state object usually has one call site still reading the raw input.
+  Grep the raw field name after adding the guard; the comment claiming "this one
+  line reaches every exit path" is a claim, not a search
+- The trigger to re-examine an existing unvalidated input is its BLAST RADIUS
+  growing — a value that used to feed one display field now gating a behaviour
+*Origin: sw8-27 F7 + round-2 Dev (`input.aspect ?? 1` let a zero-width canvas set
+`aspect = 0`, collapsing a frustum's lateral bound so NOTHING was visible — and
+once that gated the gun, the player's laser hit nothing for the whole frame; the
+fix at the shadow site alone left a second call site building the aim ray from the
+raw input, so the frame would have GATED on 1 and AIMED on 0)*
+
+**22. A REJECT-style rewrite of an ACCEPT-style predicate inverts its NaN safety**
+Every comparison against `NaN` is false. So `return d <= r ? hit : null` fails
+CLOSED (no hit) and the "equivalent" `if (d > r) return null; … return hit` fails
+OPEN (a hit) on exactly the same input. Refactors that invert a comparison to add
+an early return change the degenerate-case answer while leaving every ordinary
+case identical — which is why tests do not notice.
+- Any `<=`/`<` acceptance rewritten as a `>`/`>=` rejection, or the reverse.
+  Enumerate the non-finite inputs explicitly; "it can't be NaN here" is the claim
+  to check, not the reason to skip
+- A docstring invariant quantified over a TYPE rather than the reachable DOMAIN
+  ("`dir[2] < 0` for every ray it can return") — find the input that refutes it
+  before relying on it
+- A fail-open masked by a discard in a DIFFERENT function (a `NaN < best`
+  comparison upstream). That is a coincidence, not a guarantee: a single-element
+  path, an early return or any rewrite of the caller removes it
+- Have the function honour its own `| null` for every input rather than for the
+  inputs its author had in mind
+*Origin: sw8-27 F8 (a new `spaceSiteHit` rejected with `>` where the `beamHit` it
+replaced accepted with `<=`, so a NaN offset cleared both the box and the octagon
+and was reported as a hit — reachable because `aimDirection(Infinity, 0, 1)`
+returns `[NaN, 0, -0]`, refuting the invariant the code rested on)*
+
+**23. A recorded MUTANT that cannot be re-run, or whose red count is not blast radius**
+#15 requires guards to be mutation-tested. This is about the RECORD of that test.
+A battery table is written so the next reader re-runs the string instead of
+reconstructing the intent, and it fails at that in three distinct ways.
+- **Not re-runnable.** A published mutant that is a FRAGMENT plus prose about
+  where it goes ("applied to `f`'s body") has more than one reading, and the
+  readings differ. Publish a complete replacement UNIT — a whole body, a whole
+  line — with nothing left to interpret
+- **Silently drops a clause.** A replacement body that omits a check the original
+  had (a range clamp, a bounds test) measures a different mutant from the one
+  named, and its count is larger for a reason unrelated to the guard
+- **The count includes apparatus.** A mutant that changes a file's LINE COUNT, or
+  that changes the CONTENT of a line another file quotes verbatim, reddens
+  citation/audit tests without touching behaviour. Keep mutants line-preserving,
+  and separate behavioural red from apparatus red in the table
+- **A survivor is a question about the MUTANT first.** Check operator precedence
+  before concluding a guard is uncovered — `if (false && A || B)` collapses to
+  `B` and leaves the guard live. Additive mutants of a subset test, and mutants
+  redundant by construction, are equivalent and no test can catch them
+*Origin: sw8-27 F4 + round-2 Dev (a published mutant reddened 7 tests in 5 files
+against a recorded 1 because it dropped a `maxRange` clip and left a variable
+undefined; folded to be line-preserving it reddens exactly 1. A later mutant
+scored 0 and read as a coverage gap — it was `&&`/`||` precedence leaving half the
+guard live)*
+
+**24. A RETIREMENT applied where the AC named it, and nowhere else**
+When a story replaces a shape, a threshold or a model, the code changes and the
+statements ABOUT it change only where someone was pointed. Everything else keeps
+describing the retired thing, in the same commit, and nothing fails.
+- **Grep the OLD model's NUMBER, not its name.** The name is what got updated;
+  the value is what got left behind (`500 u band` found seven survivors across
+  four files in one command)
+- **Look in FIXTURE GUARDS, not just prose.** A guard asserting a seat is outside
+  the retired region is code, so no prose grep finds it — and check the DIRECTION
+  of implication: if the retired region is strictly INSIDE the new one, "outside
+  the old" does not imply "outside the new", and the test it protects can go
+  vacuous
+- **Sweep both citation spellings.** A `file.ts:N` regex does not see a bare `:N`
+  that inherits its filename from a sentence above, and a mechanical re-anchor
+  will skip it silently
+- **A quoted span cited as ONE line when the quote covers several.** The tell is
+  an inconsistency inside a parallel construction — one half of a list written as
+  ranges and the other as single lines means only one half was checked
+- Distinguish LIVE citations from HISTORICAL ones before any mechanical shift: a
+  line number recording where something used to be must not be re-anchored
+*Origin: sw8-27 F2/F6/F10 + round-2 Dev (a test titled "keeps the band at exactly
+twice the kill radius" stayed green when the shipped band was halved, and the
+constant it asserted was read by nothing in `src/`; seven prose survivors plus two
+fixture guards still encoded the retired disc; a bare `(:1176-1177)` evaded the
+sweep and was caught only by the guard ceiling sitting one over)*
+
 If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 
 ```yaml
