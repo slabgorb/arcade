@@ -151,6 +151,7 @@ describe('jt5-2 — bakeSamples(outDir) writes the manifest, the whole manifest,
     // guard that existed could not tell them apart. The bare form is the exact
     // weak shape jt9-4 exists to remove, so leaving it here while removing it
     // everywhere else would have been a joke at this file's expense.
+    // Reddened by: M8, M19.
     expect((await bakeFailure(undefined)).message).toBe(
       'usage: bakeSamples(outDir) — pass an explicit staging directory',
     )
@@ -159,10 +160,15 @@ describe('jt5-2 — bakeSamples(outDir) writes the manifest, the whole manifest,
   it('an EMPTY output directory is refused too — the `length === 0` half of the guard', async () => {
     // Second clause, separately unexercised until jt9-4: `typeof outDir !==
     // 'string' || outDir.length === 0`. The no-argument case above only ever
-    // reaches the FIRST clause, so dropping `|| outDir.length === 0` was free —
-    // and `join('', 'enemy_death.wav')` writes to a RELATIVE path, i.e. into
-    // whatever directory the bake happened to be run from. That is the plugin
-    // tree, under vitest.
+    // reaches the FIRST clause, so dropping `|| outDir.length === 0` was free.
+    //
+    // NOT a hypothetical, and not reasoned — MEASURED. Running mutation M7
+    // (that clause deleted) against this suite wrote all eighteen .wav files
+    // into the REPO ROOT, because `join('', 'enemy_death.wav')` is a relative
+    // path and vitest's cwd is the root, not the plugin. They had to be `rm`ed
+    // by hand. `audio-seam-scope.test.ts` walks plugins/joust and would not
+    // have seen one of them.
+    // Reddened by: M7, M8, M19 — M7 is seen by this test and by nothing else.
     expect((await bakeFailure('')).message).toBe(
       'usage: bakeSamples(outDir) — pass an explicit staging directory',
     )
@@ -299,6 +305,48 @@ describe('jt5-2 — the bake is deterministic and the cues are distinct', () => 
 // audio-transporter-split.test.ts leans on that in prose ("SPECS is
 // module-private, so behaviour is also the only honest reach"), and exporting it
 // would make that sentence false while proving nothing this seam does not.
+//
+// ─── THE MUTATION BATTERY (19 mutants, measured 2026-08-03, 0 survivors) ─────
+// Every mutant below was applied to bake-samples.mjs, the suite run, the reds
+// recorded by name, and the file restored. A guard nobody watched fail is not a
+// guard. Written verbatim so the next reader can re-run them.
+//
+//   M1  `const sounds = opts.sounds ?? SOUNDS`  →  `const sounds = SOUNDS`
+//   M2  `const frameDurations = opts.frameDurations ?? FRAME_DURATIONS`
+//                                              →  `... = FRAME_DURATIONS`
+//   M3  `if (!spec) {`                          →  `if (spec) {`        RESTRICTIVE
+//   M4  `no synth spec for manifest cue '${name}'`
+//                                              →  `no synth spec for cue '${name}'`
+//   M5  `if (!(frames > 0)) {`                  →  `if (frames > 0) {`  RESTRICTIVE
+//   M6  `— the ROM window sizes the file`       →  `— the ROM window sizes it`
+//   M7  ` || outDir.length === 0`               →  (deleted)            permissive
+//   M8  `usage: bakeSamples(outDir) — pass an explicit staging directory`
+//                                              →  `usage: bakeSamples(outDir) — give me a directory`
+//   M9  `Object.hasOwn(SPECS, name) ? SPECS[name] : undefined`
+//                                              →  `SPECS[name]`        permissive
+//   M10 `writeFileSync(join(outDir, sounds[name])`
+//                                              →  `... SOUNDS[name])`
+//   M11 spec message `'${name}'`                →  `'aCueNobodyBaked'`  (a DECOY:
+//         it hardcodes the very name the first test probes, so that test alone
+//         cannot see it — `mutate-with-a-WRONG-value-not-the-old-one`)
+//   M12 duration message `'${name}'`            →  `'playerWingUp'`     (same decoy)
+//   M13 `for (const name of Object.keys(sounds))`→ `... Object.keys(SOUNDS))`
+//   M14 `if (!spec) {`                          →  `if (spec === null) {` permissive
+//   M15 `if (!(frames > 0)) {`                  →  `if (frames === undefined) {`
+//   M16 `opts.sounds ?? SOUNDS`                 →  `opts.sounds ?? {}`
+//   M17 `bakeSamples(outDir, opts = {})`        →  `bakeSamples(outDir, opts)`
+//   M18 `opts.frameDurations ?? FRAME_DURATIONS`→  `opts.frameDurations ?? {}`
+//   M19 the whole outDir `if` block             →  (deleted)            permissive
+//
+// Which guard each one reddens is recorded above that guard. Two facts the
+// battery turned up that reasoning had not:
+//   · M7 (drop the empty-string clause) wrote all EIGHTEEN .wav files into the
+//     REPO ROOT — vitest's cwd, not the plugin — where audio-seam-scope.test.ts
+//     does not walk. They had to be removed by hand.
+//   · M3 and M5 redden fourteen tests each, including both positive controls.
+//     That is the controls doing their job, not coverage: a blunt inversion
+//     breaks the bake outright, so those two mutants say nothing about whether
+//     the GATE is pinned. M4/M6/M9/M11/M12 are the ones that do.
 
 describe('jt9-4 — the injected manifest is REALLY the one baked', () => {
   // Everything below this line is worthless if `opts` is merely ACCEPTED and
@@ -310,6 +358,7 @@ describe('jt9-4 — the injected manifest is REALLY the one baked', () => {
       // justfile's deploy-assets passes ONE argument. `bakeSamples(dir, {})`
       // and `bakeSamples(dir)` must be the same bake, or the seam has changed
       // the tool's behaviour instead of merely opening it.
+      // Reddened by: M3, M5, M16, M18.
       await expect(bakeSamples(dir, {})).resolves.toBeUndefined()
       expect(readdirSync(dir).sort()).toEqual([...Object.values(SHELL_SOUNDS)].sort())
     }))
@@ -320,6 +369,7 @@ describe('jt9-4 — the injected manifest is REALLY the one baked', () => {
       // but still writes `SOUNDS[name]` passes every throw test below — the
       // rogue cue throws before anything is written, so the write path is never
       // observed. Renaming a REAL cue's file is the only assertion that sees it.
+      // Reddened by: M1, M3, M5, M10, M18 — M10 is the one that isolates it.
       const probe = 'jt9_4_injection_probe.wav'
       const shipped = BAKE_SOUNDS.enemyDeath
       expect(shipped, 'enemyDeath must still be a shipped cue for this probe to mean anything').toBe(
@@ -344,6 +394,9 @@ describe('jt9-4 — a manifest cue with no synth spec throws, and says which cue
       // (jt5-6 added SNPCR2 exactly this way) and the sound is forgotten. The
       // manifest here is the SHIPPED record plus one cue, so nothing but that
       // cue can be the reason it throws.
+      // Reddened by: M1, M3, M4, M5, M13, M14, M18. NOT by M11, which hardcodes
+      // this very cue name into the message — the Object.prototype test below is
+      // what catches that, which is why two probes with DIFFERENT names exist.
       const rogue = { ...BAKE_SOUNDS, aCueNobodyBaked: 'a_cue_nobody_baked.wav' }
       const err = await bakeFailure(dir, { sounds: rogue })
       expect(err.message).toBe(
@@ -357,6 +410,8 @@ describe('jt9-4 — a manifest cue with no synth spec throws, and says which cue
       // malformed in some unrelated way throws for an unrelated reason and a
       // `rejects` assertion is satisfied all the same. This is the same object,
       // built the same way, one key lighter — and it must BAKE.
+      // Reddened by: M3, M5, M18 — all three break the bake outright, which is
+      // exactly what a control is for. No targeted mutant should redden it.
       await expect(bakeSamples(dir, { sounds: { ...BAKE_SOUNDS } })).resolves.toBeUndefined()
       expect(readdirSync(dir).sort()).toEqual([...Object.values(BAKE_SOUNDS)].sort())
     }))
@@ -372,6 +427,8 @@ describe('jt9-4 — a manifest cue with no synth spec throws, and says which cue
       // regex is not enough. (.pennyfarthing/gates/lang-review/javascript.md
       // check 3 names this shape: "bracket notation with user input —
       // prototype access"; `Object.hasOwn` is the one-line answer.)
+      // Reddened by: M1, M3, M4, M5, M9, M11, M13, M14, M18 — the best-covered
+      // guard here, and the only one that sees M9 (the hardening removed) or M11.
       const err = await bakeFailure(dir, {
         sounds: { ...BAKE_SOUNDS, toString: 'to_string.wav' },
       })
@@ -386,15 +443,26 @@ describe('jt9-4 — a manifest cue with no ROM window throws, and says which cue
   // a SPECS row also has a FRAME_DURATIONS row, and a cue that has neither trips
   // the spec gate first. Overriding the durations record is what makes it
   // reachable — and it lets the manifest stay entirely real while it happens.
-  const CUE = 'playerWingUp'
+  // TWO DIFFERENT CUES, on purpose. Both tests below assert a message that
+  // interpolates the cue name, so if they both probed the same cue, a throw
+  // that HARDCODED that name would satisfy both and the `${name}` half of the
+  // message would be unpinned — `mutate-with-a-WRONG-value-not-the-old-one`, in
+  // this file. Measured: mutation M12 (interpolation replaced by the literal
+  // 'playerWingUp') reddens the zero-window test alone.
+  const DROPPED_CUE = 'playerWingUp'
+  const ZEROED_CUE = 'enemyThud'
   const without = (name) =>
     Object.fromEntries(Object.entries(FRAME_DURATIONS).filter(([k]) => k !== name))
 
   it('the missing-duration gate fires with ITS message, naming the cue', () =>
     withTempDir(async (dir) => {
-      expect(CUE in BAKE_SOUNDS, 'the probe cue must be a shipped cue').toBe(true)
-      expect(FRAME_DURATIONS[CUE], 'the probe cue must really have a window to remove').toBeGreaterThan(0)
-      const err = await bakeFailure(dir, { frameDurations: without(CUE) })
+      // Reddened by: M2, M3, M5, M6, M16.
+      expect(DROPPED_CUE in BAKE_SOUNDS, 'the probe cue must be a shipped cue').toBe(true)
+      expect(
+        FRAME_DURATIONS[DROPPED_CUE],
+        'the probe cue must really have a window to remove',
+      ).toBeGreaterThan(0)
+      const err = await bakeFailure(dir, { frameDurations: without(DROPPED_CUE) })
       expect(err.message).toBe(
         "no FRAME_DURATIONS entry for 'playerWingUp' — the ROM window sizes the file",
       )
@@ -413,9 +481,14 @@ describe('jt9-4 — a manifest cue with no ROM window throws, and says which cue
       // entry") becomes a lie — there IS an entry. That is jt9-5's finding, not
       // this story's fix; pinning the message here is what makes jt9-5's change
       // arrive as a red test rather than as prose nobody re-reads.
-      const err = await bakeFailure(dir, { frameDurations: { ...FRAME_DURATIONS, [CUE]: 0 } })
+      // Reddened by: M2, M3, M5, M6, M12, M15, M16 — M15 (a presence check
+      // instead of `> 0`) is seen by THIS test and by nothing else.
+      expect(ZEROED_CUE in BAKE_SOUNDS, 'the probe cue must be a shipped cue').toBe(true)
+      const err = await bakeFailure(dir, {
+        frameDurations: { ...FRAME_DURATIONS, [ZEROED_CUE]: 0 },
+      })
       expect(err.message).toBe(
-        "no FRAME_DURATIONS entry for 'playerWingUp' — the ROM window sizes the file",
+        "no FRAME_DURATIONS entry for 'enemyThud' — the ROM window sizes the file",
       )
     }))
 
@@ -424,6 +497,7 @@ describe('jt9-4 — a manifest cue with no ROM window throws, and says which cue
       // Same override path, same object, nothing removed. If this reds, the two
       // tests above are throwing because of the injection itself and prove
       // nothing about the gate.
+      // Reddened by: M3, M5, M16 — blunt breakage only, as a control should be.
       await expect(bakeSamples(dir, { frameDurations: FRAME_DURATIONS })).resolves.toBeUndefined()
       expect(readdirSync(dir).sort()).toEqual([...Object.values(BAKE_SOUNDS)].sort())
     }))
