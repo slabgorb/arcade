@@ -601,10 +601,25 @@ describe('AC6 — the dumb wing cue', () => {
     // mechanism in place: 105→111, 141→219, 69→180) — the opposite of the
     // "halving the flap rate" intuition, because a continuous HOLD sounds once
     // however long it runs, while an alternation sounds on every flap.
+    // jt9-9 RE-BASELINE, two numbers and both on ONE seed: 0xface's `playerDown`
+    // 154 -> 153 and its `playerUp` 153 -> 152. The other seven are
+    // bit-identical, including all four of 0xbeef's and 0x2468's.
+    //
+    // AND THE SURROUNDING CLAIM NEEDS NARROWING, because as written it does not
+    // survive this story. "The knight's wing cues come from the scripted input,
+    // not from any bird" is true of the SOURCE of a cue and false as a promise
+    // that nothing can move the COUNT: a knight only sounds its wings while it
+    // is alive, so any change to when knights die changes how many it gets to
+    // emit inside a fixed 2000-frame window. jt9-1 could honestly claim the
+    // count was unmoved because its mechanism only altered how birds fly. jt9-9
+    // alters when the arena empties — an uncollected kill-egg now matures — and
+    // seed 0xface's first knight death moves 2062 -> 2578 as a result, which is
+    // measured in audio-events.test.ts. One fewer down-beat inside the window is
+    // the arithmetic of that, not a regression in the wing mechanism.
     const before: Record<number, { down: number; playerDown: number; playerUp: number }> = {
       0xbeef: { down: 105, playerDown: 154, playerUp: 154 },
       0x2468: { down: 141, playerDown: 154, playerUp: 154 },
-      0xface: { down: 69, playerDown: 154, playerUp: 153 },
+      0xface: { down: 69, playerDown: 153, playerUp: 152 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)
@@ -614,8 +629,9 @@ describe('AC6 — the dumb wing cue', () => {
         `seed ${seed.toString(16)}: the dumb wing cue did not become more frequent`,
       ).toBeGreaterThan(base.down)
       // The knight's wing cues come from the scripted input, not from any bird,
-      // and this story must not move them. Measured unchanged with the
-      // mechanism in place, on all three seeds.
+      // so no change to how BIRDS fly may move them — which is what jt9-1's
+      // mechanism was, and it did not. A story that changes when knights DIE
+      // moves them legitimately: see the re-baseline note above the table.
       expect(t.get('player-wing-down') ?? 0, `seed ${seed.toString(16)}: player cue count`).toBe(
         base.playerDown,
       )

@@ -723,11 +723,23 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // player-1 re-entry. 1889 → 2063, chosen from 0xface's list because the
     // coupling below requires knight TWO and it is the earliest that re-enters
     // knight 2; audio-events.test.ts stages the same frame, as it did before.
+    //
+    // jt9-9 RE-BASELINE, and only 0xface moved. Re-swept both seeds the same
+    // way — a player id appearing in the process list that was not there the
+    // frame before — and never by nudging:
+    //   0xbeef re-entries: 214→2, 340→1, 540→2, 820→2, 1122→2, 1784→1  (IDENTICAL)
+    //   0xface re-entries: 622→1, 950→1, 1196→1, 2489→1, 2579→2
+    // Both 0xbeef fixtures are therefore untouched, which is worth stating: this
+    // story changed the egg lifecycle, and a seed whose window holds no settling
+    // kill-egg does not notice. 0xface has FEWER re-entries than before (5, was
+    // 7) and its only knight-TWO one is now 2579, so that is the fixture —
+    // chosen by the same rule as last time, the earliest that re-enters knight 2.
+    // audio-events.test.ts stages the same frame, as it has through both moves.
     expect(materialisedIdsAt(0xbeef, 214), 'seed 0xbeef frame 214 re-enters knight 2').toEqual([2])
     expect(materialisedIdsAt(0xbeef, 340), 'seed 0xbeef frame 340 re-enters knight 1').toEqual([1])
     expect(
-      materialisedIdsAt(0xface, 2063),
-      'seed 0xface frame 2063 — the frame audio-events.test.ts already stages — re-enters ' +
+      materialisedIdsAt(0xface, 2579),
+      'seed 0xface frame 2579 — the frame audio-events.test.ts already stages — re-enters ' +
         'knight TWO. Its comment there calls this "SNPCR1 PLAYER 1 RE-CREATED", which is the ' +
         'same misattribution AC5 fixes on the citation, arrived at from the emitter side.',
     ).toEqual([2])
@@ -755,7 +767,8 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
 
   it('the frame the suite already stages sounds SNPCR2 — today it sounds SNPCR1', async () => {
     // The headline defect, end to end, at a fixture that predates this story.
-    const events = materialiseEventsAt(0xface, 2063)
+    // jt9-9 RE-BASELINE: 2063 -> 2579, riding the precondition above.
+    const events = materialiseEventsAt(0xface, 2579)
     expect(events, 'precondition: frame 2063 still emits the moment').toHaveLength(1)
     expect(await cuesFor({ ...events[0]! })).toEqual(['player2Materialise'])
   })
