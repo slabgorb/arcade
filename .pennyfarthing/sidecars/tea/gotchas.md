@@ -4017,3 +4017,91 @@ which is precisely what the gate exists to prevent, and nothing complains becaus
 fixture's shape is a structural interface with no exhaustive key check. Filed as a Delivery
 Finding for Dev rather than discovered at review. **When a story adds a peer to a
 gated structure, check whether the gate enumerates by name or by shape.**
+
+---
+
+## A gate whose inputs all mature on ONE frame is only a gate if the counter rises WITHIN the frame (jt9-38 RED, 2026-08-03)
+
+**Situation:** jt9-38 ports the ROM's `NENEMY`/`WENEMY` population gate on the settled-egg hatch.
+The obvious implementation reads the enemy count, then filters the egg list against it.
+
+**What the probe said, and it re-shaped the whole suite.** Every egg an egg wave deals matures on
+the SAME frame — measured f=624 on all three probed seeds — because they are all spawned together
+with the same `EGGWT2` wait. So a quota evaluated ONCE per frame lets *every* egg through: all
+twelve see a population of zero. The ROM's `INC NENEMY` (`JOUSTRV4.SRC:3242`) runs on the pass that
+hatches, not once per frame, and that per-hatch increment IS the mechanism.
+
+**The reusable shape:** whenever a story adds a quota, budget or cap over a COLLECTION that the sim
+processes in one pass, ask whether the population the quota reads is recomputed as the pass
+proceeds. If the collection's members can all become eligible simultaneously — and anything seeded
+together with one timer will — then "compute once, then filter" is indistinguishable from no gate
+at all, and it is the natural implementation. Make it mutant M1 and put the twelve-at-once fixture
+in the suite; a staged trickle of one eligible item per frame cannot tell the two apart.
+
+## Reachability has to be measured at the INSTANT of the decision, not as a maximum over the run
+
+My first probe recorded `maxEnemies >= quota` over a whole wave and printed `GATE_WOULD_FIRE=true`.
+That was **wrong and reassuring**: the maximum is reached only *after* every egg has hatched, when
+there is nothing left to defer. Re-probed at the actual decision instant — enemies alive on the
+frame an egg's wait expires — the answer inverted to "never fires", which is what justified the
+story's re-scope.
+
+**Rule:** a reachability probe for "does condition C hold when event E happens" must sample C **at
+E**, not aggregate C over the window that contains E. An extremum over a run answers a different
+question and tends to answer it optimistically. Same family as the cp6-3 entry ("measure whether X
+can happen during Y at all"), one level finer: measure it at the right *moment*, not just in the
+right *run*.
+
+## RUN the candidate: two defects, and the second natural fix HID the first rather than removing it
+
+Applying the story's own fix uncommitted (the sw8-19 rule) found what reading could not:
+
+- A quota lookup keyed on the wave counter **throws at the BCD rollover** (`waveRowAt` refuses wave
+  < 1; the hundredth wave's counter is `0x00`). Resolved eagerly it reddened two existing
+  "the cabinet must not die" guards outright — a clean signal.
+- Resolved **lazily**, the whole project went green (2625/2625) **and the crash was still there**,
+  because those guards stage a falling *enemy*, not an egg. Staged with a ripe egg at counter
+  `0x00` it still threw.
+
+**That is the entry.** The lazy form is the fix a reviewer would wave through: it is more faithful
+(the ROM reads WENEMY at the test), it is cheaper, and every guard in the tree passes. Going green
+is what made it dangerous. **When a candidate's first form reddens an existing guard and its second
+form does not, check whether the second form removed the defect or merely moved it outside that
+guard's fixture** — re-stage the guard's scenario with YOUR story's entity before believing the
+green. Then pin the invariant rather than the mechanism, and hand the mechanism choice over with
+both measurements attached.
+
+## A denylist that scans the paint path reads COMMENTS — a ROM immediate parses as a hex colour
+
+Writing the ROM operand as a hash-prefixed `255` in a `demo.ts` comment failed
+`demo-source.test.ts`'s cp2-1 scan with ``hex colour literals on the paint path: [ '#255' ]`` —
+`/#[0-9a-fA-F]{3,8}\b/` cannot tell an assembler immediate from `#255` the colour. Reword as "LDA
+immediate 255". Same family as `tempest-purity-scanner-reads-comments`, and it will fire for any
+6809 immediate in the range that happens to be valid hex digits. Note the scanner is scoped to the
+paint path: the identical text in `wave.ts` is fine, so the trap only appears in one file.
+
+## Only a SYNTHETIC row separated the ROM's derivation from the wrong one — every real row agreed
+
+`wenemyFor` selects one of three nibbles. Across **all eighteen** shipped egg rows, every row
+carries exactly one non-zero ground nibble — so `bounders + hunters + lords` returns the identical
+answer on every real input, and the mutant "just sum them" is invisible to any fixture built from
+the table. A fabricated row (`bounders: 7, hunters: 3` -> must be 3, not 10) is the only thing that
+kills it. This is the user memory `derived-vs-transcribed-needs-a-synthetic-input` arriving in a
+new place, and it has a corollary worth shipping: **when the synthetic test is the only thing
+guarding a branch, add a test asserting the property that makes real inputs unable to guard it**
+(here: "every shipped egg row has exactly one non-zero ground nibble"). If a future row breaks that
+property the select stops being unobservable, and the suite says so instead of quietly gaining
+coverage nobody notices.
+
+## Invert a predecessor's opposing guard in YOUR red, and check the mirror is not stale while you are there
+
+`demo-jt4-5.test.ts` pinned the egg count to the wave's ground complement — the exact opposite of
+this story's AC. Left for GREEN it stays green through the whole build and reds only at the end,
+when the cheapest way back to green is to undo the story's own AC (the cp6-2 entry above). Inverted
+in RED with a comment naming the inverting story, it is part of the specification.
+
+Separately: `egg-contract.ts`'s `EggState` had **drifted from production** — `waitFrames` has been
+on the real `EggState` since jt9-9 and the mirror never gained it, so no test could stage a hatch
+wait and jt9-9's own suite stepped 624 frames to reach one. **When a story needs to stage a field,
+check the mirror against production before concluding the field does not exist**; a cast-mirrored
+contract goes stale silently and the cost lands as slow, fragile fixtures rather than as a failure.
