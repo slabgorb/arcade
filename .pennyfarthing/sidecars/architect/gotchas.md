@@ -45,3 +45,17 @@ Common pitfalls encountered during Architect (design) work.
 **Example:** enemy fireball = `WSVROM.MAC` `GNB0–3`/`GNT0–3`: animated **red radial sparkle** (`COLOR VGCRED`, spikes-from-center + `FUSE` balls), not a ring. See `star-wars/docs/star-wars-1983-source-findings.md` ("Original Atari source").
 
 ---
+
+### When the REVIEW is the backlog's generator, merge by FILE SURFACE — not by theme, and not at all if the surfaces are disjoint
+
+**Situation:** An epic where finishing a story reliably files one to three more, and the backlog is flat or growing despite steady completions. The instinct is to merge stories that sound alike.
+
+**Problem:** In a mutation-battery pipeline the new stories are not produced by the CODE, they are produced by the REVIEW. Each completed story buys one Reviewer battery over one file surface, and a battery over a weakly-asserted surface reliably yields one or two surviving mutants, each filed as its own story — which then buys its own battery. Merging two stories that share a THEME but not a FILE still buys two batteries and saves nothing; merging two that share a FILE buys one. Measured on epic jt9 (joust, 2026-08-03): 7 stories done burning 21 points, 9 stories filed totalling 21 points — exactly break-even. The concentration is the tell: the ONE production story (jt9-1, 8pt) spawned 5 points, while the five small audio/test-seam stories (jt9-2/4/5/6/7, 10 points total) spawned 16 — **160%**. The only story that spawned NOTHING was jt9-3, whose deliverable already WAS a mutation battery, so its reviewer's battery had nothing left to find.
+
+**Prevention:** At grooming, group the backlog by the FILES each story edits, not by subsystem or by the ROM routine it cites. Two stories touching the same guard, the same test file or the same decoder are one story with two commits. Two stories citing adjacent ROM lines but editing different files are two stories, and merging them buys nothing but a bigger diff. Then check for the inverse: a story whose ONLY justification is another story (a latent prerequisite with no observable effect of its own) should be folded into its dependant as its first commit, not shipped alone — shipping it alone buys a full TDD cycle and a battery for a change nothing exercises.
+
+**Fix:** The three highest-yield shapes, all seen in jt9 — (1) two stories that each say "extend the OTHER one's guard to my files" (jt9-36 and jt9-37 both wanted the same read-set line in `audio-channel-role.test.ts` widened, over disjoint file lists); (2) sequential fingerprint-movers over one subsystem, which re-baseline the SAME seeded pins twice and whose second re-baseline is harder to audit than a joint one; (3) a latent prerequisite plus its only consumer (`jt9-13`'s sign-extension has exactly one call site and is unobservable until `jt9-25` draws the frames).
+
+**Counter-example — respect an explicit DO-NOT-MERGE:** `jt9-14` names `jt9-15` in its own text: "They are adjacent enough to be merged by a groomer who reads only the titles; they should not be." Different loop, different routine, different failure. A filing story that anticipated the merge and refused it outranks a groomer's pattern-match; read the descriptions, not the titles.
+
+---
