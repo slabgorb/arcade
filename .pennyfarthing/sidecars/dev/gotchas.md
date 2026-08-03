@@ -2188,3 +2188,88 @@ exactly what you wrote, something else moved and you do not yet know what.
   and does no name lookup at all, so it is structurally immune rather than fixed. Measuring
   the siblings turned "is this a fleet-wide gap?" into a closed question in one grep, and it
   went into Delivery Findings as a closed question rather than as a hunch.
+
+---
+
+## RE-ANCHORING a moved citation is worthless when it was ALREADY stale — check the referent at HEAD before you shift 51 of them (jt9-38 GREEN, joust, 2026-08-03)
+
+**Situation:** two comment insertions in `demo.ts` moved 51 `demo.ts:<line>` refs across 16 files.
+The standing rule says re-anchor them, so I built the difflib map and did. The histogram was
+textbook — `{+20: 33, +1: 18}`, two values matching my two insertion points, nothing lost — which is
+exactly the "it worked" signal the sw8-19 entry describes.
+
+**Then the spot-checks did not resolve.** `demo.ts:817` was blank, `:1308` was `: null`, `:975` was
+`toPteroEntity` where the citing comment wanted `nextWaveBcd`. Not because the shift was wrong —
+because the citations were **already stale at HEAD**. Measured over the checkable subset (refs whose
+comment quotes a backticked identifier I can search for near the cited line): **14 of 16 do not
+resolve at HEAD.**
+
+**Why that changes the action, and it is the opposite of the instinct.** A re-anchor preserves a
+citation's REFERENT. That is right when the referent is right and worthless when it is not — and it
+is worse than worthless, because a freshly-updated line number reads as maintained. It is the sw8-19
+principle ("worse than uniformly stale, because the corrected neighbours lend it credibility")
+arriving from the other side: there, fixing only the flagged refs lent credibility to their stale
+neighbours; here, fixing all of them lends credibility to the whole stale population. It would also
+have wrapped a 3-file behavioural change in a 16-file churn diff nobody can review.
+
+**So: before re-anchoring, sample the referents at HEAD.** One cheap automated check — pull the
+backticked identifiers out of the citing comment and grep the cited line ±3 in `git show HEAD:<file>`
+— tells you whether you are repairing drift you caused or laundering rot you inherited. If it is rot,
+revert the re-anchor, measure the rate, and route it to the owner with the number attached. Mine went
+to `jt9-30`, whose own description leaves open "convert ALL comment-body refs on principle, or only
+the demonstrably-stale ones" — 14 of 16 is the evidence for the first, and it is worth more to that
+story than 51 shifted pointers were.
+
+**Corollary on what to cite in NEW comments:** every citation I added is `JOUSTRV4.SRC:<line>`, which
+`jt9-30` hard-excludes because the ROM is immutable. In-repo line refs rot in hours; vendored ROM
+refs never do. Adding zero new `<our>.ts:<line>` refs is why the owner story's counts were unaffected
+by a change that moved 51 of them.
+
+## Mutate your own COMMENT's claim, not just your code — mine was false and sat beside the line it described
+
+I wrote that an eager quota lookup "takes the cabinet down (the R2-3 laws)" directly above
+`quota ??= demo.wave >= 1 ? … : 255`, which reads as "the `>= 1` guard is what protects R2-3". Running
+the two mutants separately said otherwise:
+
+| form | reds |
+|---|---|
+| resolve once per frame (truly eager) | **3** — both R2-3 laws **and** the rollover guard |
+| drop the `>= 1` test, keep it lazy | **1** — the rollover guard only |
+
+Laziness buys the R2-3 property (a frame with no ripe egg never reaches the lookup, and the R2-3
+fixtures stage a falling *enemy*); the `>= 1` test buys the egg-at-rollover property. One line, two
+halves, two different guards — and my sentence attributed both to one half.
+
+**The general form:** when a defensive line has two clauses, mutate them **independently** and record
+which test each one's failure reaches. A comment that credits the wrong clause is the kind of false
+prose no test can see, written by the person best placed to know better, in the same commit as the
+fix. Same family as `measured-claims-need-exact-strings`, applied to a conjunction.
+
+## When a docblock DISCLAIMS the thing you just implemented, rewrite it — narrowing beats deleting
+
+`spawnWaveEggs`'s docblock said the ROM's "6-per-ledge count" was untranscribed and pinned by a TEA
+design deviation. My change transcribes it. Deleting the paragraph would have lost the two clauses
+that are *still* true (the EGG1 ledge coordinates, and the `PWHCH` pre-mature hatchings), and leaving
+it would have shipped a false sentence, green, in the file the next reader opens first.
+
+Narrowed instead: what was transcribed, with its ROM lines; what is still approximated, with the
+reason (twelve eggs stack three per pad against six ledges plus 69 slots); and what is deliberately
+out of scope, with its ROM lines and a pointer to the story's findings. **A disclaimer is a claim
+with a scope — when your change moves the scope, move the disclaimer rather than choosing between
+keeping and deleting it.**
+
+## "No re-baseline happened" is a RESULT — do not manufacture the commit the AC reserved for it
+
+AC-7 required the determinism re-baseline to land as its own commit. There was no re-baseline:
+natural seeded play reaches wave 1-2 in 3000 frames and the changed wave is 5, so no fixture can
+observe it. Zero pins moved, collected count unchanged at 2627.
+
+Splitting an empty change into a ceremonial second commit would have put a fabricated re-baseline
+into the permanent record. Ship one commit, state the measurement that makes the second unnecessary,
+and log it as a deviation — the AC conditions the commit on the re-baseline EXISTING, so satisfying
+it literally would falsify it. This is the jt9-1 entry above ("measure the delta, don't budget for
+it") followed through to the ceremony rather than stopping at the measurement.
+
+**And cross-check the null result.** "Zero pins moved" and "the suite stopped collecting those
+tests" are the same output. The collected count being unchanged at 2627 is what separates them, and
+it costs nothing to report alongside.
