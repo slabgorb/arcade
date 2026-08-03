@@ -78,16 +78,18 @@
 // the file before a single test ran.
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
 import { sourceLines, vendoredAvailable } from './helpers/joust-source.js'
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. Behaviour-preserving.
+import { loadClaims, type Claim } from './helpers/claims.js'
 import type { EntityState } from '../src/core/flight.js'
 import type { EnemyState } from '../src/core/enemy.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(root, 'docs', 'rom-study', 'claims')
 
 const ROM = 'JOUSTRV4.SRC'
 
@@ -356,20 +358,6 @@ describe('jt5-10 AC1/AC2 — the answer is written down where the ptero lives', 
 // ═════════════════════════════════════════════════════════════════════════════
 // GROUP 4 (RED) — the claims registry carries the finding, verbatim-checked
 // ═════════════════════════════════════════════════════════════════════════════
-
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
 
 const jt510Claims = (): Claim[] => loadClaims().filter((c) => c.id?.startsWith('JT510-'))
 

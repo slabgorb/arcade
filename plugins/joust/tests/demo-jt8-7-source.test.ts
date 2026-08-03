@@ -30,27 +30,13 @@
 // enforces it), or the two entries collapse into one.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines, parseStatement, evalNumber } from './helpers/joust-source.js'
 import { loadPictures } from './helpers/pictures-contract.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
-
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-
-function loadClaims(): Claim[] {
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')))
-    .flat()
-}
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. This file's local copy was the ONE without an
+// `existsSync` guard — on the helper a missing claims/ returns [] instead of
+// throwing. Strictly more tolerant, and the directory is committed either way.
+import { loadClaims, type Claim } from './helpers/claims.js'
 
 /** The EGGI table's first and last ROM lines. */
 const EGGI_FIRST = 2255

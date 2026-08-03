@@ -23,36 +23,16 @@
 // docs/rom-study/claims/enemy.json. Every range below is covered either way.
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. Behaviour-preserving.
+import { loadClaims, claimCovers } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
 
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
-
-const basename = (p: string): string => p.split('/').pop() ?? p
-
-/** Does some committed claim pin a line INSIDE this dossier citation range? */
-function claimCovers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source && basename(c.source.file) === file && c.source.line >= start && c.source.line <= end,
-  )
-}
 
 /** The one authoritative line of the vendored source. */
 const line = (file: string, n: number): string => sourceLines(file)[n - 1] ?? ''

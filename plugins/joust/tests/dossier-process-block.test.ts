@@ -38,10 +38,15 @@
 // degradation pattern.
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
+// jt9-2 swept this suite's local pre-hardening claims loader onto the shared one
+// jt8-3 extracted. Behaviour-preserving — the local copy declared `id`/`claim`
+// required where the helper has them optional, and every consumer below already
+// reads them defensively (`c.claim ?? ''`, `c.source?.`).
+import { loadClaims } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const subsystemsPath = join(repoRoot, 'docs', 'rom-study', 'subsystems.md')
@@ -70,20 +75,6 @@ function processBlockSection(): string {
   return md.slice(start, next === -1 ? undefined : next)
 }
 
-interface Claim {
-  id: string
-  claim: string
-  source?: { file: string; line: number }
-}
-
-function loadClaims(): Claim[] {
-  const dir = join(repoRoot, 'docs', 'rom-study', 'claims')
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(dir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
 
 /** Walk the process block from `ORG $0`, honouring RMB sizes, to `PBLKL EQU *`. */
 function derivedLayout(): { overhead: number; block: number; lines: Record<string, number> } {

@@ -31,38 +31,17 @@
 // prefix — never a bare "JT4".
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines, parseStatement } from './helpers/joust-source.js'
 import { loadGameBounty } from './helpers/game-contract.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. The local clone was named `covers` rather than
+// `claimCovers` — same body, so the call sites below just take the shared name.
+import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
 // ─── Claims plumbing (the game-extra-source.test.ts pattern) ─────────────────
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
-const basename = (p: string): string => p.split('/').pop() ?? p
 function jt43Claims(claims: Claim[]): Claim[] {
   return claims.filter((c) => (c.id ?? '').startsWith('JT43-'))
 }
-function covers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source && basename(c.source.file) === file && c.source.line >= start && c.source.line <= end,
-  )
-}
-
 // Raw-line reader for INSTRUCTION lines (parseStatement handles only FCB/FDB).
 const line = (n: number): string => sourceLines('JOUSTRV4.SRC')[n - 1] ?? ''
 
@@ -211,14 +190,14 @@ describe('JT43 claim coverage — the jt4-3 bounty/polarity constants are commit
   it('jt4-3 commits JT43-* claims covering all of its cited source regions', () => {
     const jt43 = jt43Claims(loadClaims())
     expect(jt43.length, 'jt4-3 commits JT43-* claims (docs/rom-study/claims/game-bounty.json)').toBeGreaterThan(0)
-    expect(covers(jt43, 'JOUSTRV4.SRC', 2589, 2590), 'a JT43 claim cites the WGLAD/WAVEGG dispatch entries').toBe(true)
-    expect(covers(jt43, 'JOUSTRV4.SRC', 2634, 2635), 'a JT43 claim cites the co-op PLYG reset (polarity)').toBe(true)
-    expect(covers(jt43, 'JOUSTRV4.SRC', 2642, 2661), 'a JT43 claim cites the co-op 3,000 bounty').toBe(true)
-    expect(covers(jt43, 'JOUSTRV4.SRC', 2674, 2693), 'a JT43 claim cites the survival deathless bonus').toBe(true)
-    expect(covers(jt43, 'JOUSTRV4.SRC', 2703, 2705), 'a JT43 claim cites the gladiator PLYG arm (polarity)').toBe(true)
-    expect(covers(jt43, 'JOUSTRV4.SRC', 2737, 2776), 'a JT43 claim cites the egg wave (WAVEGG)').toBe(true)
-    expect(covers(jt43, 'JOUSTRV4.SRC', 4691, 4698), 'a JT43 claim cites the SPDGLA partner-kill bounty').toBe(true)
-    expect(covers(jt43, 'JOUSTRV4.SRC', 6282, 6284), 'a JT43 claim cites the PATC11 boot cleanup').toBe(true)
+    expect(claimCovers(jt43, 'JOUSTRV4.SRC', 2589, 2590), 'a JT43 claim cites the WGLAD/WAVEGG dispatch entries').toBe(true)
+    expect(claimCovers(jt43, 'JOUSTRV4.SRC', 2634, 2635), 'a JT43 claim cites the co-op PLYG reset (polarity)').toBe(true)
+    expect(claimCovers(jt43, 'JOUSTRV4.SRC', 2642, 2661), 'a JT43 claim cites the co-op 3,000 bounty').toBe(true)
+    expect(claimCovers(jt43, 'JOUSTRV4.SRC', 2674, 2693), 'a JT43 claim cites the survival deathless bonus').toBe(true)
+    expect(claimCovers(jt43, 'JOUSTRV4.SRC', 2703, 2705), 'a JT43 claim cites the gladiator PLYG arm (polarity)').toBe(true)
+    expect(claimCovers(jt43, 'JOUSTRV4.SRC', 2737, 2776), 'a JT43 claim cites the egg wave (WAVEGG)').toBe(true)
+    expect(claimCovers(jt43, 'JOUSTRV4.SRC', 4691, 4698), 'a JT43 claim cites the SPDGLA partner-kill bounty').toBe(true)
+    expect(claimCovers(jt43, 'JOUSTRV4.SRC', 6282, 6284), 'a JT43 claim cites the PATC11 boot cleanup').toBe(true)
   })
 
   it('every JT43 id is well-formed and globally unique (no collision with JT4-*/JT41-*/JT42-*)', () => {

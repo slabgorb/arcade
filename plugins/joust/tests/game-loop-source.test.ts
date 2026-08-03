@@ -33,38 +33,17 @@
 // the FULL "JT44-" prefix — never a bare "JT4".
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
 import { loadGameLoop } from './helpers/game-contract.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. The local clone was named `covers` rather than
+// `claimCovers` — same body, so the call sites below just take the shared name.
+import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
 // ─── Claims plumbing (the game-bounty-source.test.ts pattern) ────────────────
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
-const basename = (p: string): string => p.split('/').pop() ?? p
 function jt44Claims(claims: Claim[]): Claim[] {
   return claims.filter((c) => (c.id ?? '').startsWith('JT44-'))
 }
-function covers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source && basename(c.source.file) === file && c.source.line >= start && c.source.line <= end,
-  )
-}
-
 // Raw-line reader for INSTRUCTION lines.
 const line = (n: number): string => sourceLines('JOUSTRV4.SRC')[n - 1] ?? ''
 
@@ -179,13 +158,13 @@ describe('JT44 claim coverage — the jt4-4 game-over/baiter/egg constants are c
   it('jt4-4 commits JT44-* claims covering all of its cited source regions', () => {
     const jt44 = jt44Claims(loadClaims())
     expect(jt44.length, 'jt4-4 commits JT44-* claims (docs/rom-study/claims/game-loop.json)').toBeGreaterThan(0)
-    expect(covers(jt44, 'JOUSTRV4.SRC', 232, 233), 'a JT44 claim cites the GAMSIM $7F attract rung').toBe(true)
-    expect(covers(jt44, 'JOUSTRV4.SRC', 712, 712), 'a JT44 claim cites the ATTRCT CLR GOVER (over)').toBe(true)
-    expect(covers(jt44, 'JOUSTRV4.SRC', 1015, 1015), 'a JT44 claim cites the DEC GOVER (running)').toBe(true)
-    expect(covers(jt44, 'JOUSTRV4.SRC', 2108, 2113), 'a JT44 claim cites the baiter max-3 cap + PCHASE −1').toBe(true)
-    expect(covers(jt44, 'JOUSTRV4.SRC', 1370, 1372), 'a JT44 claim cites the NBAIT settle-on-death').toBe(true)
-    expect(covers(jt44, 'JOUSTRV4.SRC', 2737, 2776), 'a JT44 claim cites the WAVEGG egg wave').toBe(true)
-    expect(covers(jt44, 'JOUSTRV4.SRC', 4688, 4688), 'a JT44 claim cites the SPDGLA DEC-keep-positive').toBe(true)
+    expect(claimCovers(jt44, 'JOUSTRV4.SRC', 232, 233), 'a JT44 claim cites the GAMSIM $7F attract rung').toBe(true)
+    expect(claimCovers(jt44, 'JOUSTRV4.SRC', 712, 712), 'a JT44 claim cites the ATTRCT CLR GOVER (over)').toBe(true)
+    expect(claimCovers(jt44, 'JOUSTRV4.SRC', 1015, 1015), 'a JT44 claim cites the DEC GOVER (running)').toBe(true)
+    expect(claimCovers(jt44, 'JOUSTRV4.SRC', 2108, 2113), 'a JT44 claim cites the baiter max-3 cap + PCHASE −1').toBe(true)
+    expect(claimCovers(jt44, 'JOUSTRV4.SRC', 1370, 1372), 'a JT44 claim cites the NBAIT settle-on-death').toBe(true)
+    expect(claimCovers(jt44, 'JOUSTRV4.SRC', 2737, 2776), 'a JT44 claim cites the WAVEGG egg wave').toBe(true)
+    expect(claimCovers(jt44, 'JOUSTRV4.SRC', 4688, 4688), 'a JT44 claim cites the SPDGLA DEC-keep-positive').toBe(true)
   })
 
   it('every JT44 id is well-formed and globally unique (no collision with JT4-*/JT41-*/JT42-*/JT43-*)', () => {

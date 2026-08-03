@@ -18,14 +18,13 @@
 // Vendored reads live inside it() bodies (the tp1-8 collection trap).
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines, parseStatement, evalNumber } from './helpers/joust-source.js'
 import { loadArena } from './helpers/arena-contract.js'
 import { loadPictures } from './helpers/pictures-contract.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+// jt9-2 swept this suite's local pre-hardening claims loader onto the shared one
+// jt8-3 extracted. Behaviour-preserving — the local copy declared `id` required
+// where the helper has it optional, and nothing here depends on that.
+import { loadClaims } from './helpers/claims.js'
 
 /** Pull `SYMBOL EQU value` out of a vendored file. */
 function equValue(file: string, symbol: string): number {
@@ -203,15 +202,6 @@ describe('jt1-3 collections are not silently truncatable', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // CLAIMS COUPLING — every constant introduced here is anchored FILE:LINE.
 // ─────────────────────────────────────────────────────────────────────────────
-function loadClaims(): Array<{ id: string; source?: { file: string; line: number } }> {
-  const dir = join(repoRoot, 'docs', 'rom-study', 'claims')
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(dir, f), 'utf8')))
-    .flat()
-}
-
 describe('every arena constant is anchored by a fully-qualified claim', () => {
   const anchored = (file: string, from: number, to: number): boolean =>
     loadClaims().some((c) => c.source?.file === file && c.source.line >= from && c.source.line <= to)

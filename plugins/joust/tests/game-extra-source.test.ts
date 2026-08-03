@@ -28,38 +28,17 @@
 // .startsWith("JT4") is TRUE, so coverage here matches the FULL "JT42-" prefix.
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines, parseStatement, evalNumber } from './helpers/joust-source.js'
 import { loadGameExtra } from './helpers/game-contract.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. The local clone was named `covers` rather than
+// `claimCovers` — same body, so the call sites below just take the shared name.
+import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
 // ─── Claims plumbing (the game-source.test.ts pattern) ───────────────────────
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
-const basename = (p: string): string => p.split('/').pop() ?? p
 function jt42Claims(claims: Claim[]): Claim[] {
   return claims.filter((c) => (c.id ?? '').startsWith('JT42-'))
 }
-function covers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source && basename(c.source.file) === file && c.source.line >= start && c.source.line <= end,
-  )
-}
-
 // Raw-line reader for INSTRUCTION lines (parseStatement handles only FCB/FDB).
 const line = (file: string, n: number): string => sourceLines(file)[n - 1] ?? ''
 // One byte read as two BCD nibbles: $20 → 20, $05 → 5.
@@ -150,10 +129,10 @@ describe('JT42 claim coverage — the extra-men constants are committed claims',
   it('jt4-2 commits JT42-* claims covering all four source regions', () => {
     const jt42 = jt42Claims(loadClaims())
     expect(jt42.length, 'jt4-2 commits JT42-* claims (docs/rom-study/claims/game-extra.json)').toBeGreaterThan(0)
-    expect(covers(jt42, 'TB12REV3.SRC', 134, 135), 'a JT42 claim cites the REPLAY/NMEN CMOS defaults').toBe(true)
-    expect(covers(jt42, 'JOUSTRV4.SRC', 915, 928), 'a JT42 claim cites the ×16 REPLAY justification').toBe(true)
-    expect(covers(jt42, 'JOUSTRV4.SRC', 7382, 7411), 'a JT42 claim cites the SCRLEV re-arm').toBe(true)
-    expect(covers(jt42, 'JOUSTRV4.SRC', 4730, 4732), 'a JT42 claim cites the 50-for-dying').toBe(true)
+    expect(claimCovers(jt42, 'TB12REV3.SRC', 134, 135), 'a JT42 claim cites the REPLAY/NMEN CMOS defaults').toBe(true)
+    expect(claimCovers(jt42, 'JOUSTRV4.SRC', 915, 928), 'a JT42 claim cites the ×16 REPLAY justification').toBe(true)
+    expect(claimCovers(jt42, 'JOUSTRV4.SRC', 7382, 7411), 'a JT42 claim cites the SCRLEV re-arm').toBe(true)
+    expect(claimCovers(jt42, 'JOUSTRV4.SRC', 4730, 4732), 'a JT42 claim cites the 50-for-dying').toBe(true)
   })
 
   it('every JT42 id is well-formed and globally unique (no collision with JT4-*/JT41-*)', () => {

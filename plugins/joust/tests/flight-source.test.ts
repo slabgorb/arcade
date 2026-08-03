@@ -32,12 +32,16 @@
 // scope and only ever REMOVES bits, so nothing here becomes wrong when it lands.
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines, parseStatement, evalNumber } from './helpers/joust-source.js'
 import { loadFlight } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
+// jt9-2 swept this suite's local pre-hardening claims loader onto the shared one
+// jt8-3 extracted. Behaviour-preserving — the local copy declared `id` required
+// where the helper has it optional, and nothing here reads `id`.
+import { loadClaims } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -265,15 +269,6 @@ describe('arena.ts is safe to consume from a hot sim loop', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // CLAIMS COUPLING.
 // ─────────────────────────────────────────────────────────────────────────────
-function loadClaims(): Array<{ id: string; source?: { file: string; line: number } }> {
-  const dir = join(repoRoot, 'docs', 'rom-study', 'claims')
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(dir, f), 'utf8')))
-    .flat()
-}
-
 describe('every constant this story introduces is anchored', () => {
   const anchored = (from: number, to: number): boolean =>
     loadClaims().some(

@@ -7,9 +7,17 @@
 // This is the HARDENED variant (the jt8-2 round-2 [LOW][SEC]/[RULE] repair):
 // every parsed JSON value is narrowed by `asClaim` before use, so a malformed
 // claims file names itself instead of surfacing as a confusing `undefined` deep
-// inside `claimCovers`. The 27 older `-source` suites still carry their own
-// pre-hardening local copies — that sweep is a filed follow-up, not this
-// story's scope; new suites must import from here instead of copying.
+// inside `claimCovers`.
+//
+// jt9-2 ran the sweep this comment used to defer: the 27 suites carrying a
+// pre-hardening local copy now import from here, so there is exactly ONE claims
+// loader in the joust suite and 29 test files depend on it. Copy it and you have
+// re-created the drift jt9-2 removed — import it.
+//
+// One deliberate exception: `transporter-source.test.ts` keeps a
+// `claimCoversWithPrefix`, which narrows by claim-id prefix (jt2-6 needs an
+// existing JT8/JT23 citation NOT to cover its range) and then delegates the
+// range match here. It extends this rule; it does not duplicate it.
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'

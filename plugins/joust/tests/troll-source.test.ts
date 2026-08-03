@@ -20,41 +20,21 @@
 // read lives INSIDE an it() body (the tp1-8 collection trap).
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines, evalOperand } from './helpers/joust-source.js'
 import { loadTroll } from './helpers/troll-contract.js'
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. Behaviour-preserving.
+import { loadClaims, claimCovers } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
 const trollSrc = join(repoRoot, 'src', 'core', 'troll.ts')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Claims plumbing (the arena-destruction-source.test.ts pattern).
 // ─────────────────────────────────────────────────────────────────────────────
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
-
-const basename = (p: string): string => p.split('/').pop() ?? p
-
-function claimCovers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source && basename(c.source.file) === file && c.source.line >= start && c.source.line <= end,
-  )
-}
-
 // Raw-line reader for INSTRUCTION lines (the joust-source reader parses only
 // FCB/FDB). Pulls the operand off a `<label?> <OP> #<operand> …` line.
 function line(n: number): string {

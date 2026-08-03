@@ -23,27 +23,13 @@
 // Every vendored read lives inside an it() body (the tp1-8 collection trap).
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines, bytesInRange } from './helpers/joust-source.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
-
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. The local `claimCovers` compared `c.source.file`
+// whole where the helper basenames it first; every committed claim stores a
+// bare filename, so the two agree on the current data and the helper's is the
+// variant the other suites already used.
+import { loadClaims, claimCovers } from './helpers/claims.js'
 
 /** The vendored line (1-based), whitespace-trimmed on the right. */
 const line = (file: string, n: number): string => (sourceLines(file)[n - 1] ?? '').replace(/\s+$/, '')
@@ -241,13 +227,6 @@ const CITED_RANGES: ReadonlyArray<{ law: string; file: string; start: number; en
   { law: 'egg score-message overlays PPVELX', file: 'JOUSTRV4.SRC', start: 3036, end: 3036 },
   { law: 'egg score value overlays PRDIR', file: 'JOUSTRV4.SRC', start: 3054, end: 3054 },
 ]
-
-/** Does some committed claim pin a line INSIDE this dossier citation range? */
-function claimCovers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source?.file === file && c.source.line >= start && c.source.line <= end,
-  )
-}
 
 describe('each jt2-4 egg law is pinned by a claims/*.json entry', () => {
   it('loads a non-empty claims set (the guard must have teeth)', () => {

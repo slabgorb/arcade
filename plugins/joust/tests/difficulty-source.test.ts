@@ -31,40 +31,21 @@
 // vendored read lives inside an it() body (the tp1-8 collection trap).
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
 import { loadDifficulty, type DyRow } from './helpers/difficulty-contract.js'
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. Behaviour-preserving.
+import { loadClaims, claimCovers } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
 const coreDir = join(repoRoot, 'src', 'core')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Claims plumbing (the wave-source.test.ts pattern).
 // ─────────────────────────────────────────────────────────────────────────────
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
-
-const basename = (p: string): string => p.split('/').pop() ?? p
-
-function claimCovers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source && basename(c.source.file) === file && c.source.line >= start && c.source.line <= end,
-  )
-}
 
 const line = (file: string, n: number): string => sourceLines(file)[n - 1] ?? ''
 

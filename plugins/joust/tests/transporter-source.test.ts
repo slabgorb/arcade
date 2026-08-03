@@ -30,49 +30,37 @@
 // inside an it() body (the tp1-8 collection trap).
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines, parseStatement } from './helpers/joust-source.js'
 import { loadTransporter, type PadId } from './helpers/transporter-contract.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
+// jt9-2 swept this suite's local pre-hardening claims loader onto the shared one
+// jt8-3 extracted. Its `claimCovers` was a SUPERSET, not a copy — see
+// `claimCoversWithPrefix` below.
+import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Claims plumbing (the wave-source.test.ts pattern).
 // ─────────────────────────────────────────────────────────────────────────────
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
-
-const basename = (p: string): string => p.split('/').pop() ?? p
-
-/** Covered by a claim in [start,end]; optionally only claims whose id has `prefix`. */
-function claimCovers(
-  claims: Claim[],
+/**
+ * Covered by a claim in [start,end] whose id carries `prefix`.
+ *
+ * This one is NOT a copy of the shared `claimCovers` — it is a strict superset.
+ * jt2-6 needs the id filter so an existing JT8/JT23 citation cannot cover this
+ * story's range vacuously, and the shared helper has no such filter. jt9-2 kept
+ * the narrowing here and delegated the range match, so the coverage rule itself
+ * lives in exactly one place.
+ */
+function claimCoversWithPrefix(
+  claims: readonly Claim[],
   file: string,
   start: number,
   end: number,
-  prefix?: string,
+  prefix: string,
 ): boolean {
-  return claims.some(
-    (c) =>
-      c.source &&
-      basename(c.source.file) === file &&
-      c.source.line >= start &&
-      c.source.line <= end &&
-      (prefix ? (c.id ?? '').startsWith(prefix) : true),
+  return claimCovers(
+    claims.filter((c) => (c.id ?? '').startsWith(prefix)),
+    file,
+    start,
+    end,
   )
 }
 
@@ -274,7 +262,7 @@ describe('each jt2-6 law is pinned by a committed JT26 claim (transcription gate
   it.each(CITED_RANGES)('$law ($file:$start-$end) has a JT26 claim', ({ file, start, end }) => {
     const claims = loadClaims()
     expect(
-      claimCovers(claims, file, start, end, 'JT26'),
+      claimCoversWithPrefix(claims, file, start, end, 'JT26'),
       `no JT26 claim pins ${file}:${start}-${end} — jt2-6 transcribes this law, so add a ` +
         `JT26-* claim to docs/rom-study/claims/transporter.json (an existing JT8/JT23 claim does not count)`,
     ).toBe(true)

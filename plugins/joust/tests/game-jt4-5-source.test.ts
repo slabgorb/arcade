@@ -29,37 +29,16 @@
 // is TRUE, so coverage here matches the FULL "JT45-" prefix — never a bare "JT4".
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. The local clone was named `covers` rather than
+// `claimCovers` — same body, so the call sites below just take the shared name.
+import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
 // ─── Claims plumbing (the game-loop-source.test.ts pattern) ──────────────────
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
-const basename = (p: string): string => p.split('/').pop() ?? p
 function jt45Claims(claims: Claim[]): Claim[] {
   return claims.filter((c) => (c.id ?? '').startsWith('JT45-'))
 }
-function covers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source && basename(c.source.file) === file && c.source.line >= start && c.source.line <= end,
-  )
-}
-
 const line = (n: number): string => sourceLines('JOUSTRV4.SRC')[n - 1] ?? ''
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,10 +77,10 @@ describe('JT45 claim coverage — the jt4-5 rebirth-path citations are committed
   it('jt4-5 commits JT45-* claims covering the rebirth path (docs/rom-study/claims/game-jt4-5.json)', () => {
     const jt45 = jt45Claims(loadClaims())
     expect(jt45.length, 'jt4-5 commits JT45-* claims for the rebirth path').toBeGreaterThan(0)
-    expect(covers(jt45, 'JOUSTRV4.SRC', 5610, 5611), 'a JT45 claim cites CREP1/CREP2 (re-create)').toBe(true)
-    expect(covers(jt45, 'JOUSTRV4.SRC', 5613, 5614), 'a JT45 claim cites DECLIV + BEQ PLYDIE').toBe(true)
-    expect(covers(jt45, 'JOUSTRV4.SRC', 5390, 5400), 'a JT45 claim cites the DECLIV man-count decrement').toBe(true)
-    expect(covers(jt45, 'JOUSTRV4.SRC', 5605, 5606), 'a JT45 claim cites PLYDIE (zero lives → the man is gone)').toBe(true)
+    expect(claimCovers(jt45, 'JOUSTRV4.SRC', 5610, 5611), 'a JT45 claim cites CREP1/CREP2 (re-create)').toBe(true)
+    expect(claimCovers(jt45, 'JOUSTRV4.SRC', 5613, 5614), 'a JT45 claim cites DECLIV + BEQ PLYDIE').toBe(true)
+    expect(claimCovers(jt45, 'JOUSTRV4.SRC', 5390, 5400), 'a JT45 claim cites the DECLIV man-count decrement').toBe(true)
+    expect(claimCovers(jt45, 'JOUSTRV4.SRC', 5605, 5606), 'a JT45 claim cites PLYDIE (zero lives → the man is gone)').toBe(true)
   })
 
   it('every JT45 id is well-formed and globally unique (no collision with JT4-*/JT41..JT44-*)', () => {

@@ -25,43 +25,19 @@
 // prefix — never a bare "JT4" — or it would confuse the two stories' claims.
 
 import { describe, it, expect } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { vendoredAvailable, sourceLines, parseStatement, evalNumber } from './helpers/joust-source.js'
 import { loadGame } from './helpers/game-contract.js'
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const claimsDir = join(repoRoot, 'docs', 'rom-study', 'claims')
+// jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
+// loader jt8-3 extracted. The local clone was named `covers` rather than
+// `claimCovers` — same body, so the call sites below just take the shared name.
+import { loadClaims, claimCovers, type Claim } from './helpers/claims.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Claims plumbing (the ptero-source.test.ts / troll-source.test.ts pattern).
 // ─────────────────────────────────────────────────────────────────────────────
-interface Claim {
-  id?: string
-  claim?: string
-  source?: { file: string; line: number; verbatim?: string }
-}
-
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
-}
-
-const basename = (p: string): string => p.split('/').pop() ?? p
-
 function jt41Claims(claims: Claim[]): Claim[] {
   return claims.filter((c) => (c.id ?? '').startsWith('JT41-'))
 }
-function covers(claims: Claim[], file: string, start: number, end: number): boolean {
-  return claims.some(
-    (c) => c.source && basename(c.source.file) === file && c.source.line >= start && c.source.line <= end,
-  )
-}
-
 // Raw-line reader for INSTRUCTION lines (the joust-source reader parses only
 // FCB/FDB). Pulls the operand off a `<label?> <OP> #<operand> …` line.
 function line(n: number): string {
@@ -146,7 +122,7 @@ describe('JT41 claim coverage — the SCRHUN/SCRTEN layout is a committed claim'
     const jt41 = jt41Claims(loadClaims())
     expect(jt41.length, 'jt4-1 commits JT41-* claims (docs/rom-study/claims/game.json)').toBeGreaterThan(0)
     expect(
-      covers(jt41, 'JOUSTRV4.SRC', 7340, 7366),
+      claimCovers(jt41, 'JOUSTRV4.SRC', 7340, 7366),
       'a JT41 claim must cite the SCRHUN/SCRTEN routine block',
     ).toBe(true)
   })

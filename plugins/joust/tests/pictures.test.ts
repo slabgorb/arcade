@@ -29,6 +29,10 @@ import {
   SYMBOLS,
 } from './helpers/joust-source.js'
 import { loadPictures } from './helpers/pictures-contract.js'
+// jt9-2 swept this suite's local pre-hardening claims loader onto the shared one
+// jt8-3 extracted. Behaviour-preserving — the local copy declared `id` required
+// where the helper has it optional, and nothing here reads `id`.
+import { loadClaims } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -533,15 +537,6 @@ describe('contact sheet — the human-review artefact', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // THE CLAIMS COUPLING — jt1-2's gate must keep covering what jt1-3 adds.
 // ─────────────────────────────────────────────────────────────────────────────
-function loadClaims(): Array<{ id: string; source?: { file: string; line: number } }> {
-  const dir = join(repoRoot, 'docs', 'rom-study', 'claims')
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(dir, f), 'utf8')))
-    .flat()
-}
-
 describe('every constant this story introduces is anchored by a claim', () => {
   it('DMAFIX, COFF and the palette all have claims', async () => {
     const claims = loadClaims()
