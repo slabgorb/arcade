@@ -51,11 +51,11 @@ const ALTERNATE_MASK = 0x10
  */
 export function coachingFor(s: GameState): string | null {
   if (s.mode !== 'playing') return null
-  // The run being OVER is not the same fact as the mode having changed: production
-  // signals death with `gameOver: true` while `mode` stays `'playing'` (sim.ts:567,
-  // :937, :1185, :1344) and nothing in `src/` ever assigns `mode: 'gameover'`. Gating
-  // on the mode alone left the hint frozen on screen for the whole end-of-run hold —
-  // a dead pilot cannot SHOOT FIREBALLS (sw7-10 rework, finding F3).
+  // `coaching` is a STORED field, re-derived only in `finalizeFrame`. The end-of-run hold used
+  // to return before that pass, so the hint live at death stayed on the state and on screen — a
+  // dead pilot still being told to SHOOT FIREBALLS (sw7-10 rework, finding F3). The branch at
+  // sim.ts:221 is finalised now, and the death sites set gameOver alongside the mode
+  // (sim.ts:757, :1261, :1509, :1667); this line is the half that does not depend on the mode.
   if (s.gameOver) return null
   if (s.wave !== 1) return null // SC.FWV
   if (s.phase === 'space') {

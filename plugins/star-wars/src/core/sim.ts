@@ -162,10 +162,10 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // `TMPOCT`, off one `LZ.CX/LZ.CY` cursor sample, twelve lines apart in the same pass
   // (WSMAIN.MAC:3881-3930) — they cannot disagree there. Reading `stateIn`'s aim would
   // make the sights bit one frame stale while the gun below fires down `input`: measured
-  // at depth 6000 on 16:9, a single-frame yoke move of 0.1 separates the two rays by 613 u,
-  // against a warning band that reaches 3 · TIE_HIT_RADIUS = 750 u on the axis — so the
-  // laser kills fighters the bit says are not there. Dropping the aspect does the same thing
-  // statically (539 u at yoke 0.2).
+  // at depth 6000 on 16:9, a one-frame yoke move of 0.1 separates the two rays by 613 u, and
+  // dropping the aspect separates them 539 u at yoke 0.2 — both still INSIDE a warning band that
+  // reaches 3 · TIE_HIT_RADIUS = 750 u on the axis. The aspect gap grows with the yoke, though:
+  // 2694 u at full deflection, so past ~28% of travel (750 / 2694) the laser kills what the bit denies.
   //
   // AIM FRESHNESS IS NOW THE ONLY DIVERGENCE THIS PREAMBLE DESCRIBES. There used to be a
   // second one, and this paragraph used to call it deliberate: C_PS was gated on C_PV while
@@ -591,8 +591,8 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // objects use a different collision shape entirely — an unrotated box measured against the
   // object's own collision width and height, with no octagon term (WSGRND.MAC:1076-1132).
   // Measured: `TMPOCT` appears in exactly two ROM modules, WSMAIN.MAC and WSGUNS.MAC, which
-  // are these two loops. (The `+10.` cursor fudge used to be listed here as part of what makes
-  // the ground different. It is not — all three passes add it; see `gameRules.ts`.)
+  // are these two loops. (The `+10.` cursor fudge used to be listed here as part of what makes the
+  // ground different. It is not — all three add it: WSMAIN.MAC:3881, WSGUNS.MAC:918, WSGRND.MAC:1078.)
   //
   // The RANGE still ranks on the same quantity CL.ADS/CL.GDS do — `M.XT`, the depth along the
   // beam, which is `siteOffset`'s `along`.
