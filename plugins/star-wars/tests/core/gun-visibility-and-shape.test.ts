@@ -161,8 +161,14 @@ const spaceRun = (over: Partial<GameState> = {}): GameState => ({
 })
 
 /** Trigger down with the yoke AT REST, so the beam is exactly `[0, 0, -1]` from the cockpit
- *  and a seat's perpendicular offset from the ray is just its own (x, y). Every geometric
- *  claim in this file rests on that, which is why no test here deflects the yoke. */
+ *  and a seat's perpendicular offset from the ray is just its own (x, y). Every geometric claim
+ *  in groups A–E rests on that.
+ *
+ *  It used to say "which is why no test here deflects the yoke", and that stopped being true
+ *  the moment a property needed a deflection to be observable: the depth-plane guard in group D
+ *  (`aimY = 0.6`, added at GREEN) and two seats in group F. Those build their own `Input` and
+ *  measure their own geometry off `aimDirection`, and they must — `assertGunSeat` below
+ *  measures from the at-rest ray and would reject every one of them. */
 const restTrigger = (aspect: number): Input => ({ aimX: 0, aimY: 0, fire: true, aspect })
 
 const tieDied = (s: GameState): boolean => s.events.some((e) => e.type === 'enemy-death' && e.enemyType === 'tie')
@@ -396,22 +402,25 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // ROM octagon (284.4 ≤ 300). If the space shape ever reaches `beamHit`, this tower starts
     // dying and this test reddens.
     //
-    // VERBATIM MUTANT this kills — the WHOLE body of `beamHit`, replaced:
+    // VERBATIM MUTANT this kills — the WHOLE body of `beamHit`, replaced, same five lines:
     //   const along = dot(sub(pos, eye), dir)
     //   if (along > maxRange) return null
     //   const s = siteOffset(eye, dir, pos)
-    //   if (s === null) return null
-    //   if (s.dx > radius || s.dy > radius) return null
-    //   if (s.dx + s.dy > SPACE_HIT_OCTAGON * radius) return null
-    //   return along
+    //   if (s === null || s.dx > radius || s.dy > radius) return null
+    //   return s.dx + s.dy > SPACE_HIT_OCTAGON * radius ? null : along
     //
-    // (CORRECTED at the round-1 rework, and the correction is the point of publishing these
-    // strings at all. The version that stood here began at `const s = …`, which left `along`
-    // undefined if taken literally and silently DROPPED the `maxRange` clip if taken as "the
-    // body below the first line". Pasted, it reddened 7 tests across 5 files — because the
-    // trench clips its beam at TRENCH_FAR — and was recorded as reddening 1. A reader
-    // reproducing it would have concluded this guard was far broader than it is. Re-measured
-    // with `maxRange` preserved: it reddens exactly this test.)
+    // MEASURED at the round-1 rework: reddens exactly 1 test — this one.
+    //
+    // (CORRECTED twice, and both corrections are the reason AC8 asks for a runnable string
+    // rather than a description. The version that stood here began at `const s = …`, which
+    // left `along` undefined if pasted literally and silently DROPPED the `maxRange` clip if
+    // read as "the body below the first line". Pasted that way it reddens 7 tests across 5
+    // files — the trench clips its beam at TRENCH_FAR — against a recorded 1, so a reader
+    // reproducing it would have concluded this guard was far broader than it is. The second
+    // correction is subtler: written as seven lines it also reddens `citations.test.ts` twice,
+    // because it changes gameRules.ts's LINE COUNT and the findings' `ours` citations are
+    // re-opened against the working tree. A mutant that moves lines cannot report a clean
+    // blast radius in this repo. Folded to five lines, exactly replacing the original five.)
     const corner: Vec3 = [189.6, SKIM_ALTITUDE + 94.8, -3000]
     expect(Math.hypot(189.6, 94.8), 'fixture guard: OUTSIDE the disc the surface uses').toBeGreaterThan(
       TURRET_HIT_RADIUS,
@@ -545,9 +554,22 @@ describe('sw8-27 AC5 — the space kill region is the cabinet box ∩ octagon, n
     // the ROM box at 250 rejects it) but only 236.6 from the ray PERPENDICULARLY (so a
     // perpendicular measure would accept it). It must MISS.
     //
-    // VERBATIM MUTANT this kills, replacing `siteOffset`'s return:
+    // VERBATIM MUTANT this kills, replacing `siteOffset`'s `const t` line and its return —
+    // six lines for six, so nothing in the file moves:
     //   const c = add(eye, scale(dir, along))
-    //   return { along, dx: Math.abs(pos[0] - c[0]), dy: Math.abs(pos[1] - c[1]) }
+    //   return {
+    //     along,
+    //     dx: Math.abs(pos[0] - c[0]),
+    //     dy: Math.abs(pos[1] - c[1]),
+    //   }
+    //
+    // MEASURED at the round-1 rework: reddens exactly 1 test — this one.
+    //
+    // (RE-FOLDED there from a two-line form. Collapsing the object literal shortens
+    // `gameRules.ts` by four lines, and `citations.test.ts` re-opens each finding's `ours`
+    // citation against the WORKING TREE — so the two-line version reddened it twice on top of
+    // this test, and a reader would have recorded a blast radius of 3 for a change that moves
+    // one behaviour. Any mutant published here must preserve line count.)
     const AIM_Y = 0.6
     const DEEP = 2000
     const rayY = (AIM_Y / (1 / Math.tan(FOV_Y / 2))) * DEEP // where the deflected ray sits at that depth
@@ -850,9 +872,23 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
     // and `?? 1` does not fire, because 0 is not nullish. A zero-width canvas is what a
     // display: none container, a collapsed flex child or a pre-layout first frame all produce.
     //
-    // The fix belongs where `state.aspect` is SET, not inside the frustum math: one guard at
-    // the boundary keeps `inPlayerView` a pure statement of the pyramid, and covers every
-    // future reader of `state.aspect` rather than the two that exist today.
+    // The fix belongs where the viewport ENTERS the core, not inside the frustum math: one
+    // guard at the boundary keeps `inPlayerView` a pure statement of the pyramid, and covers
+    // every future reader rather than the two that exist today.
+    //
+    // THE RULE PINNED HERE is the one the core already documents for a viewport the shell has
+    // not supplied — fall back to SQUARE (`tie-sights-status.test.ts`, "defaults to a square
+    // viewport when the shell has not supplied one") — extended to a viewport the shell HAS
+    // supplied and that cannot be used: `Number.isFinite(a) && a > 0 ? a : 1`. A fallback and
+    // not a clamp, deliberately: clamping into a sane band means inventing the band, and still
+    // hands the frustum a number nobody measured.
+    //
+    // AND IT MUST REACH TWO CALL SITES, which is what the last block below is for. `stepGame`
+    // shadows the viewport onto the state at `sim.ts:179`, and the preamble above that line
+    // says "this one line reaches every exit path" — but `beamDir` is built at `sim.ts:333`
+    // from `input.aspect` RAW, not from the shadowed `state.aspect`. Today they agree; a guard
+    // written at :179 alone would make them disagree, and the beam would go on inverting the
+    // projection with the very viewport the gate had just rejected.
     const deadAhead: Vec3 = [0, 0, -3000]
     expect(
       tieDied(stepGame(spaceRun({ aspect: 1, enemies: [tieAt(deadAhead)] }), restTrigger(1), DT)),
@@ -865,17 +901,61 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
       ['NaN', NaN],
       ['Infinity', Infinity],
     ] as const) {
-      const s = spaceRun({ enemies: [tieAt(deadAhead)] })
-      const after = stepGame(s, { aimX: 0, aimY: 0, fire: true, aspect }, DT)
+      const after = stepGame(spaceRun({ enemies: [tieAt(deadAhead)] }), { aimX: 0, aimY: 0, fire: true, aspect }, DT)
+      expect(after.aspect, `aspect ${label}: falls back to square, the default the core documents`).toBe(1)
       expect(
         tieDied(after),
         `aspect ${label}: a fighter dead ahead under the crosshair must still be killable`,
       ).toBe(true)
-      expect(
-        Number.isFinite(after.aspect) && after.aspect > 0,
-        `aspect ${label}: the state must never carry a viewport the frustum math cannot use`,
-      ).toBe(true)
     }
+
+    // FAIL-OPEN, the mirror of the case above and the third of the round-1 review's confirmed
+    // silent failures. An unbounded aspect makes `hBound` unbounded, so a fighter off the SIDE
+    // of the glass reads as drawn. The seat has to be one the SHAPE admits, or the assertion
+    // passes without the gate ever being consulted: at depth 400 the lateral bound is 230.9 on
+    // a square canvas while 240 is inside TIE_HIT_RADIUS of the at-rest ray. It is AC1's filed
+    // seat rotated onto the other axis.
+    const offGlassLaterally: Vec3 = [240, 0, -400]
+    assertGunSeat(offGlassLaterally, TIE_HIT_RADIUS, 1, true, 'lateral fail-open seat')
+    expect(
+      tieDied(
+        stepGame(
+          spaceRun({ enemies: [tieAt(offGlassLaterally)] }),
+          { aimX: 0, aimY: 0, fire: true, aspect: Infinity },
+          DT,
+        ),
+      ),
+      'aspect Infinity: an unbounded lateral bound must not re-admit a fighter that was never drawn',
+    ).toBe(false)
+
+    // THE SECOND CALL SITE. Seat a fighter on the ray the yoke describes AT THE FALLBACK
+    // ASPECT, then send the degenerate one. A fix applied only where `state.aspect` is set
+    // leaves `sim.ts:333` building `aimDirection(aimX, aimY, 0)`, whose x term is multiplied to
+    // zero: the beam flies straight ahead while the crosshair is deflected, and this fighter
+    // lives through a shot that is on it.
+    const YOKE = 0.5
+    const deflectedRay = aimDirection(YOKE, 0, 1)
+    const tOf = 3000 / -deflectedRay[2]
+    const onDeflectedRay: Vec3 = [deflectedRay[0] * tOf, deflectedRay[1] * tOf, -3000]
+    // Guarded by hand rather than through `assertGunSeat`, which measures from the AT-REST ray
+    // (see its docstring) and would reject a seat 866 u off it — the whole point of this seat.
+    expect(
+      beamHit(COCKPIT, deflectedRay, onDeflectedRay, TIE_HIT_RADIUS),
+      'fixture guard: the seat is on the DEFLECTED ray, so the shot resolves it at aspect 1',
+    ).not.toBeNull()
+    expect(inView(onDeflectedRay, 1), 'fixture guard: and on the glass at the fallback aspect').toBe(Status.C_PV)
+    expect(
+      tieDied(
+        stepGame(spaceRun({ enemies: [tieAt(onDeflectedRay)] }), { aimX: YOKE, aimY: 0, fire: true, aspect: 1 }, DT),
+      ),
+      'control: at the fallback aspect the deflected crosshair is on this fighter',
+    ).toBe(true)
+    expect(
+      tieDied(
+        stepGame(spaceRun({ enemies: [tieAt(onDeflectedRay)] }), { aimX: YOKE, aimY: 0, fire: true, aspect: 0 }, DT),
+      ),
+      'aspect zero: the BEAM must fall back too — a state-only guard leaves sim.ts:333 raw',
+    ).toBe(true)
   })
 
   it('F8 — a non-finite yoke cannot manufacture a hit out of NaN', () => {
