@@ -60,9 +60,17 @@ export const FIXTURE = JSON.parse(
  * cp6-4 round 1 hardened only `bakeSfx`'s gate and asserted in a comment that
  * nothing else could reach the unguarded reads. Review round 1 falsified that in
  * one probe: the EXPORTED `audcStreamFor` calls `romEvents` directly, and
- * `audcStreamFor('toString')` returned `[]` with no throw. Every by-name lookup
- * now goes through here, so the claim is a property of the code rather than a
- * promise in a comment.
+ * `audcStreamFor('toString')` returned `[]` with no throw. Every lookup of a
+ * SPEC RECORD by cue name now goes through here, so the claim is a property of
+ * the code rather than a promise in a comment.
+ *
+ * The qualifier is load-bearing, and review round 2 is why it is there. Pass 2's
+ * `sounds[cue]` is also keyed by a cue name and does NOT come through here — it
+ * reads a FILENAME out of the caller's manifest, and it is safe for a different
+ * reason: `cue` is always drawn from `Object.keys(sounds)`, so it can never
+ * resolve through the prototype. An unqualified "every by-name lookup" made two
+ * reviewers read the sentence as true and one as false, which is the tell that
+ * the sentence, not the code, was wrong.
  */
 const ownSpec = (record, cue) => (Object.hasOwn(record, cue) ? record[cue] : undefined)
 
