@@ -2425,3 +2425,84 @@ number: of 53 test-level failures, ZERO carry the real message and all 53 report
 across nine variants. That measurement is what argues the priority, and it belongs IN the story
 record — a follow-up whose description says "this is bad" competes badly against one that says
 "53 of 53 signals point at the wrong file".
+---
+
+## The citation discriminator that separates "this story broke it" from "it was already broken" (sw8-27, star-wars, 2026-08-03)
+
+`reviewer-rule-checker` returned "~26 of ~35 `sim.ts:N` citations point at unrelated code" on a
+story that re-anchored 41 of them. Read at face value that is a damning indictment and it would
+have gone into the permanent record as one. It is true and it is **not this story's defect**.
+
+**The discriminator is one script and it settles the whole question:** for every citation the diff
+MOVED, compare `old_file[old_N]` against `new_file[new_N]`. Identical content ⇒ the re-anchor was
+mechanically faithful and the citation is exactly as right or wrong as it was at base. Different
+content ⇒ the story moved the pointer onto different code.
+
+```python
+sm = difflib.SequenceMatcher(None, old_lines, new_lines)   # per changed file
+for tag,i1,i2,j1,j2 in sm.get_opcodes():
+    if tag == 'replace':                                    # pair the -/+ lines
+        ... extract file.ts:N from each, compare targets ...
+```
+
+Result: **41 examined, 40 byte-identical, exactly 1 moved.** So the sweep was sound, the inherited
+staleness belongs to the follow-up sweep story, and the ONE real defect was findable in the noise —
+and it was the citation the story's own AC had named. Without the discriminator you either report
+26 phantom findings against the wrong story or you miss the one that matters.
+
+**Why the one that moved, moved:** the AC supplied a hand-measured line number (`:546`), correct
+against the PRE-story file, and the story then inserted 43 lines above it. The mechanical +9 shift
+would have been RIGHT (`:544`, same content); the hand-correction from the AC was what broke it.
+**An AC that hard-codes a line number into a story that grows the file is a booby trap** — the AC is
+written before the insertion exists. Prefer naming the symbol.
+
+## Attribute WHICH test catches a mutant — a test can survive its own subject being destroyed
+
+The story replaced a 2·R disc with a 3·R L1 octagon. Mutating `SIGHTS_OCTAGON` 3 → 1.5 (halving the
+shipped band) reddened 2 tests. A battery that records "caught" stops there. The two that reddened
+were a viewport test and a positive control; the test that stayed GREEN was the one literally titled
+**"keeps the band at exactly twice the kill radius"**, whose comment says it exists to kill "the
+tempting wrong fix: shrink SIGHTS_BAND_FACTOR". Its seat sat at dx 251 against a 375 bound, and
+`SIGHTS_BAND_FACTOR` had become vestigial — read by nothing in `src/`, so the wrong fix it names is
+behaviourally a no-op. The property is covered; the LABEL is a lie that invites deleting the tests
+doing the real work.
+
+**The pattern to hunt after any shape/threshold retirement:** the story rewrites the sibling the AC
+names by line number and nothing else. Here `grep -n '500 u band'` found seven surviving statements
+of the retired model across four files in one command. Grep for the OLD model's number, not its
+name.
+
+## Two mutation-harness failures in one session, both of which print green
+
+1. **An anchor that occurs twice.** `if (along <= 0) return null // behind the gun` exists in BOTH
+   `beamHit` and the new `siteOffset`. `assert s.count(old)==1` refused to write, and the run that
+   followed was the unmutated CONTROL printing 2276/2276 — which reads exactly like "the mutant
+   survived". Without the count assertion that is a fabricated finding. Disambiguate by including
+   the following line in the anchor.
+2. **A mutation that changes the LINE COUNT reddens the citation gate as an artifact.** Deleting the
+   guard gave "2 failed" — both in `citations.test.ts`, from the line shift, not from behaviour.
+   Re-run with a line-count-PRESERVING neutralisation (swap the statement for a comment of one line)
+   to isolate the behavioural signal. It then went 202/202, 2276/2276 green: genuinely unguarded.
+
+## Verify a specialist's MECHANISM, not just its conclusion
+
+`reviewer-test-analyzer` correctly found the unguarded `along <= 0` check and explained it as "a
+target behind the pilot". That mechanism is wrong — `inPlayerView` runs first and rejects anything
+behind. Confirming the finding as written would have put a refutable sentence in the record. The
+real reachable case is **opposite frustum corners**: a target at one corner passes C_PV while the
+yoke is jammed to the other, giving 99.3° and `along = −249.5`. Since the ranking is
+`range < bestRange` seeded at `Infinity`, a negative range WINS — the nearest-hit contest is won by
+a target the player is aiming away from. The finding survived; it got stronger and its severity got
+real. Grade item-by-item, and re-derive the mechanism before you write it down.
+
+## Check the leg of a port's justification that nobody states
+
+The port measures the ROM's screen-space `|dx|`/`|dy|` box as WORLD-space offsets in the target's
+depth plane, justified by "the view matrices are identity-oriented, so screen axes ARE world axes."
+That is an argument about ORIENTATION and the box also needs SCALE — an anisotropic projection would
+make a world-space square box render as a non-square one and the whole shape port would be wrong.
+It checks out here (`aimDirection` scales x by `aspect`, the NDC→viewport mapping divides by it, so
+world→pixel scale is `H/(2·tan(FOV_Y/2)·d)` on both axes and the aspect cancels) — but nothing in
+the diff says so, and it is the one leg that could have sunk the story. **When a port says "the ROM
+does X so we do X", check that the thing we call X is the same thing.** Citation gates verify the
+quote and structurally cannot see this.
