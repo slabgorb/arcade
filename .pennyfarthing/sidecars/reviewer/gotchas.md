@@ -2010,3 +2010,70 @@ read the Dev Assessment and not the Delivery Finding four lines below, where Dev
 recorded the fix (`4172a95`, landed six minutes after their measurement) and the 390/390. A
 subagent's contradiction of an author is a claim with a timestamp too — resolve it against the
 whole record before putting it in the permanent one, and retract loudly when it was yours.
+
+---
+
+## A guard can be "caught" by a NEIGHBOUR's assertion and score as protected — mutate the constant the property DEPENDS on, not the one it NAMES (sw8-19, star-wars, 2026-08-02)
+
+**Situation:** the story shipped a test named *"records that the FAR exit (:3828) is unreachable in
+space rather than leaving it untested"*, with a logged deviation explaining that no fixture exists
+(the state is genuinely unreachable) so the property is asserted by constant ordering instead —
+*"if either constant moves, this says so."*
+
+**It does not.** The test pins `TIE_SPAWN_DISTANCE` (0x7c00 = 31744) against `VIEW_FAR` (0x7f00 =
+32512). But reachable depth is bounded by `PLAY_CUBE_MIN` (-32000), applied every step by
+`clampToPlayCube`. Mutating `PLAY_CUBE_MIN` to -33000 makes depth 33000 reachable — past `VIEW_FAR`,
+so the far exit goes live — and **the entire 2252-test suite stays green**, that test included.
+
+**The part worth keeping is how it HID from a normal battery.** My first mutation moved `VIEW_FAR`
+itself, and that DID redden — so the guard looked protected. It was reddened by a *different* test
+(a geometry-anchor block pinning `VIEW_FAR === 0x7f00` literally). A battery that records only
+"mutant caught / not caught" scores this as covered. **Attribute WHICH test caught each mutant**, not
+merely whether one did; a guard whose only defender is someone else's anchor is undefended for every
+mutation that anchor does not cover.
+
+**The general rule:** for a test asserting "state X is unreachable", enumerate the constants the
+unreachability actually depends on — usually a clamp, a cap or a bound applied somewhere else
+entirely — and mutate each. The constant the test NAMES is chosen for readability; the constant the
+property DEPENDS on is chosen by the code. They are routinely different, and a spawn/initial value
+is the classic decoy for a clamp.
+
+## Re-measure the number in a shipped COMMENT, not just the number in the report
+
+Dev's comment states "30 of its 391 flight frames". That number is now permanent record, so I
+re-derived it rather than reading it: removed the gate in place from committed source, re-ran the
+fixture, restored and md5-matched. `frames=391 offGlassSighted=30` — exact.
+
+The bonus is what the re-measurement gave me that no report had: `visibleSighted=154`. That is the
+positive control's magnitude, and it is the number that decides whether an `=== 0` assertion is
+meaningful. A count-is-zero test with a control of 2 and one with a control of 154 read identically
+in the diff. **When you verify a "count is zero" claim, measure the control in the same run** — you
+are checking the assertion can see the thing, not just that the number matches.
+
+## "Comment-only" is mechanically checkable — strip and diff, do not eyeball
+
+Dev edited a comment inside TEA's RED test file (correcting a false ROM claim propagated from it)
+and logged it as a deviation asserting no assertion moved. Verifying that by reading the diff is
+exactly the review that misses a one-token change buried in 17 changed lines. Instead:
+
+```bash
+strip() { git show "$1:$F" | sed 's|//.*$||' | grep -v '^\s*$'; }
+diff <(strip <before>) <(strip <after>)
+```
+
+Identical output = comment-only, proven. Two seconds, and it converts a claim into a fact. Worth
+making the reflex for any "docs only" / "comment only" / "rename only" deviation.
+
+## The strongest ROM inference needs its ANALOGUE checked, not just its premise
+
+The gate's justification is: the cabinet cannot reach `CHSET C$PS` without having executed
+`CHSET C$PV`, therefore gate ours the same way. I verified the premise exhaustively (four `RTS1`
+exits, no label in the span, `86$` past the CHSET). The premise was airtight and the inference still
+has a second leg: it needs OUR C_PV to be the right analogue of THEIRS — and it is not identical.
+The ROM's ratio tests are ±45°; ours are the rendered frustum (uf1-14 changed the slope
+deliberately). That is the correct call, but the delivered paragraph asserts an identity where a
+re-sloped analogue exists, which invites a later reader to "restore fidelity" and undo uf1-14.
+
+**Generalise:** when a port's justification is "the ROM does X, so we do X", check both legs —
+that the ROM does X, and that the thing we call X is the same thing. Citation gates verify the
+first and structurally cannot see the second.
