@@ -2077,3 +2077,116 @@ findings against the successor's actual description text.** Not "does the owner 
 and not "can its mechanism express the finding" (ad1-2) — those both pass here. The question is
 whether the words ever landed in the field the next agent will read. When the successor predates the
 predecessor's review, the answer is almost always no.
+
+---
+
+## `git stash` is the wrong tool for capturing a before-state in THIS checkout — use a `git worktree` at HEAD (sw8-19 finish, 2026-08-03)
+
+**Situation:** the finish chore added 11 comment lines to `sim.ts`, and the citation guard went
+29 → 32 against sw8-18's ratchet ceiling. To say which of the 32 were *mine*, I needed the guard's
+output at HEAD. The obvious move is `git stash push -- <paths>`, run the checker, `git stash pop`.
+
+**Two failures, and the second is destructive.** The `stash push` failed on a path prefix — the
+shell's cwd had persisted inside `plugins/star-wars/` from an earlier command, so the pathspec
+resolved to `plugins/star-wars/plugins/star-wars`. Nothing was stashed. The follow-up `git stash
+pop` then popped **`stash@{0}` — an unrelated WIP from an old rb2-4 session** — leaving
+`sprint/archive/epic-rb2.yaml` in `UU` conflict. Recovered with `git checkout HEAD -- <path>`; the
+stash entry was kept (pop refuses to drop on conflict), so the list still holds its original 4
+entries and nothing was lost.
+
+**This checkout carries 4 parked stashes.** Any bare `git stash pop` here targets somebody else's
+work. Treat `stash` as a shared mutable stack that this repo already uses for long-term parking,
+not as scratch space. The right tool has no shared state at all:
+
+```bash
+git worktree add -f "$SCRATCH/head-wt" HEAD
+(cd "$SCRATCH/head-wt" && node <the checker>) > before.txt
+git worktree remove "$SCRATCH/head-wt" --force
+```
+
+**Two smaller traps in the same sequence, both worth their own line.** The Bash tool's working
+directory persists between calls, so a `cd` three commands ago silently changes what a relative
+pathspec means — prefer absolute paths in anything destructive. And `check-comment-citations.mjs`
+writes its findings to **stderr**, so `2>/dev/null | wc -l` reports a confident, wrong `0`; a
+before/after comparison built on that would have "proved" the chore introduced nothing.
+
+## A comment insertion has a THREE-population citation blast radius, and the guard reports only one
+
+`sim.ts:159 +11 lines` broke citations three separate ways. Fixing what the gate reports gets you
+a green gate and a half-corrected tree:
+
+| population | how many | visible to the comment guard? |
+|---|---|---|
+| `file.ts:N` refs in comments | 3 | **yes** — these are what turned the suite red |
+| bare `:N` refs in the SAME comment blocks | 6 | **no** — the guard needs a filename to associate |
+| `ours` citations in `docs/audit/findings/*.json` | 23 | **no** — different gate entirely (`citations.test.ts`) |
+
+The middle row is the dangerous one, and it is the user-memory rule `bare-colon-citations-evade-gates`
+arriving from a new direction: `surface-traversal-end.test.ts` carries `(:1122-1123)`, `(:1145-1150)`
+and `(:965-969)` sitting in the same comment block as the `sim.ts:983` the guard *did* flag.
+Re-anchoring only the flagged one leaves a comment where some numbers are right and their immediate
+neighbours are silently wrong — **worse than uniformly stale**, because the corrected neighbours
+lend it credibility. All 11 were shifted by hand, each replacement asserting `count == 1` on its own
+line before writing. The third row has a tool (`tools/audit/reanchor-citations.mjs --write`); the
+tell that it worked is that **every** shift was exactly +11 (sim.ts) or +2 (state.ts), matching the
+two insertions, with 0 lost. A shift that is *not* uniform means the quote moved for a second reason.
+
+**And measure the delta, do not read the count.** Of the 5 guard lines that looked new, **2 were
+pre-existing stale citations whose *reported target* had merely shifted by 11** —
+`coaching-clears-on-death.test.ts: sim.ts:163` reported "now at :185" before and "now at :196"
+after. Same defect, same count, not mine. `comm -13 before.txt after.txt` on sorted output says so;
+a count of 32-vs-29 does not, and would have had me "fixing" two citations belonging to sw8-24's
+sweep.
+
+## The Reviewer's FLAG on a logged Design Deviation can be discharged by the FIX, not by prose
+
+The Reviewer accepted TEA's far-clamp deviation but flagged its stated rationale as false — *"if
+either constant moves, this says so"*, when the test pinned `TIE_SPAWN_DISTANCE` and reachability is
+bounded by `PLAY_CUBE_MIN`. It added: "it must be corrected because the archived session is the
+permanent record."
+
+The reflex is to annotate the deviation entry. The better close was to make the rationale **true**:
+the chore changed the assertion to `VIEW_FAR > |PLAY_CUBE_MIN|`, and the Reviewer's own mutant
+(`PLAY_CUBE_MIN = -33000`, previously green across all 2252 tests) now reddens that test on its own
+assertion rather than via a sibling. The deviation text then needed no edit at all — as of the
+finish commit it describes what the test does.
+
+**Generalise:** when a flagged rationale describes a property the code *should* have, ask whether
+the story can give the code that property inside the finish chore. Editing another agent's session
+entry to say "this was wrong" preserves a defect in the tree and a correction in an archive nobody
+greps. Fixing the code makes the archive accurate for free. Only annotate when the claim is about
+something unfixable — history, a measurement, a decision.
+
+## Two generator failures in one `story finish`, both silent-ish, both routine now
+
+`pf sprint story finish sw8-19` printed `AI generation failed (Command '['claude', '-p', '--model',
+'sonnet']' timed out after 120 seconds), falling back to templates` and then its usual clean step
+list. Consequences, neither of which appears in that step list:
+
+- **The Impact Summary was never written.** This is the fourth recorded occurrence (cp6-1, jt9-2,
+  and this one) with a third distinct cause — not an unimportable `pf`, just a timeout. The standing
+  rule held: it was hand-written into `.session/` **before** running finish, so it archived intact.
+  Writing it beforehand is strictly better than grepping for it afterwards, because after the finish
+  the session file has already moved.
+- **`sprint/demos/sw8-19/` is template fallback** — `demo-script.md` inlines the story's entire
+  1,400-character title as the presenter's spoken line, three times. Prior finishes commit the whole
+  demo directory including `deck.pptx` (uf1-14, uf1-15, jt5-7 all do), so it was committed for
+  consistency and the fallback named in the commit message rather than quietly shipped as content.
+
+Also confirmed working as documented: `archive_epics` swept **nothing**, because no epic is 100%
+done. The one-command pre-check (`grep -rn "sprint/epic-" tests/*.mjs` against the epics about to be
+swept) took seconds and correctly predicted a gate-neutral finish — post-finish orchestrator was
+390/390, matching pre-finish.
+
+## Expect to rebase TWICE, and re-run the gates in between
+
+A sibling checkout (`a-3`, on cp6-2) pushed **6 commits** during the chore and **1 more** during the
+post-rebase gate run, so the first `git push` after a clean rebase was still rejected. Both rebases
+were conflict-free — their work was centipede-only, mine star-wars — but the second push attempt
+came *after* I had already verified gates, so the gates were re-run against the new base before
+pushing. Their diff touched `justfile`, which the orchestrator suite guards, so that was not a
+formality.
+
+**The claim-branch deletion succeeded on the rejected push run**, because branch deletion is a
+separate ref update and does not care that `main` was behind. Worth knowing: a failed `push origin
+main` in the same command list does not mean the `--delete` beside it failed.
