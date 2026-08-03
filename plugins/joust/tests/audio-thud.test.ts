@@ -1254,3 +1254,108 @@ describe('jt5-4 — the thuds leave jt5-1’s deferred list, and only the thuds'
     }
   })
 })
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+// jt9-3 — THE THIRD jt5-3 INVARIANT THAT SHIPPED HELD BY PROSE ALONE
+//
+// jt5-3's Reviewer ran a 24-mutation battery. Three of its twenty-four mutations
+// reddened NOTHING, so three deliberate behaviours were documented in comments
+// and enforced by no test. The shipped code is CORRECT in all three — this pins
+// it, it does not change it. RE-MEASURED 2026-08-03 against the grown suite (the
+// original figure was "0 of 1979"): all three still pass 2499 of 2499, so none
+// of them was covered by accident in the meantime.
+//
+// WHY THIS ONE IS HERE AND NOT IN jt5-3'S OWN SUITE. The other two are frame.ts's
+// and live in audio-flap.test.ts beside that story's emission groups. This one
+// needs a frame that raises BOTH a flight cue and a collision cue, and the
+// staging that puts two bodies at one lance height is THIS file's
+// (`stage`/`playerProcess`/`enemyProcess`/`entity`). Copying that kit into
+// audio-flap.test.ts to keep the three together would re-introduce exactly the
+// duplication jt9-2 spent a whole story removing. `grep -rn jt9-3
+// plugins/joust/tests` finds all three.
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('jt9-3 — the frame’s cue stream is flight-first, collision-second', () => {
+  // ─── THE MUTATION THIS GROUP FORBIDS ───────────────────────────────────────
+  // src/core/demo.ts, `stepDemo`:
+  //
+  //   -  const cues: GameEvent[] = [...stepped.cues, ...collided.cues]
+  //   +  const cues: GameEvent[] = [...collided.cues, ...stepped.cues]
+  //
+  // MEASURED 2026-08-03: with it applied, 2499 of 2499 joust tests pass.
+  //
+  // THE LAW. `stepFrame` runs the whole flight-stepping phase before
+  // `collisionPass` is handed this frame's processes at all, so a wing edge
+  // detected inside the step happened EARLIER in the frame than a thud decided
+  // after it. The concatenation is the port's record of that ordering, and its
+  // comment was the only thing holding it.
+  //
+  // IT IS NOT COSMETIC. `playEventSounds` walks the stream in order and the
+  // channel map lets a later cue take a channel from an earlier one, so which of
+  // two same-channel moments is actually HEARD is decided by this line.
+
+  /** A press: the waking knight raises `player-wing-down` inside `stepFrame`. */
+  const PRESS: PlayerInput = { dir: 0, flap: true, flapHeld: true }
+  const PLAYER_WING_DOWN = 'player-wing-down'
+
+  /**
+   * One AWAKE knight far from everything — `nap: 1`, so unlike every other
+   * fixture in this file it really does take a flight step and can therefore
+   * raise a wing edge — plus the frozen knight-and-buzzard tie this file
+   * measured as a `player-thud`.
+   *
+   * The two moments are CAUSALLY INDEPENDENT: the flapper is 80 pixels and two
+   * platforms away from the tie and never touches it, so nothing about the flap
+   * can influence the thud or vice versa. That is what makes the order of the
+   * emitted pair a fact about the concatenation and about nothing else.
+   */
+  const flapperAndTie = (): DemoProcess[] => [
+    playerProcess(P1, entity(20, 40, DESCENDING), 1),
+    playerProcess(P2, entity(100, 94, DESCENDING)),
+    enemyProcess(A, entity(104, 94, DESCENDING)),
+  ]
+
+  it('a frame that flaps AND thuds emits the wing edge first', () => {
+    const d = stepDemo(stage(flapperAndTie()), { [P1]: PRESS, [P2]: IDLE })
+    expect(
+      cuesOf(d),
+      'the flight-stepping phase runs before collisionPass sees the frame, so its ' +
+        'cues belong ahead of the thud',
+    ).toEqual([PLAYER_WING_DOWN, PLAYER_THUD])
+  })
+
+  it('the fixture is real — each moment fires ALONE, so neither is imagined', () => {
+    // Without this, the exact array above could be satisfied by a stream that is
+    // right for a reason unrelated to the concatenation — a frame that emits only
+    // one of the two, or emits them for the wrong causes.
+    const flapOnly = stepDemo(
+      stage([playerProcess(P1, entity(20, 40, DESCENDING), 1), enemyProcess(FAR, entity(240, 40, DESCENDING))]),
+      { [P1]: PRESS },
+    )
+    expect(cuesOf(flapOnly), 'the flapper alone raises exactly the wing cue').toEqual([
+      PLAYER_WING_DOWN,
+    ])
+
+    const tieOnly = stepDemo(
+      stage([
+        playerProcess(P2, entity(100, 94, DESCENDING)),
+        enemyProcess(A, entity(104, 94, DESCENDING)),
+      ]),
+      { [P2]: IDLE },
+    )
+    expect(cuesOf(tieOnly), 'the tie alone raises exactly the thud').toEqual([PLAYER_THUD])
+  })
+
+  it('the flight cue precedes the collision cue by INDEX, not by luck of the list', () => {
+    // The same law stated as a relation rather than a literal array, so a future
+    // story that legitimately adds a THIRD cue to this frame breaks the exact
+    // assertion above without silently losing the ordering guarantee here.
+    const kinds = cuesOf(stepDemo(stage(flapperAndTie()), { [P1]: PRESS, [P2]: IDLE }))
+    const wing = kinds.indexOf(PLAYER_WING_DOWN)
+    const thud = kinds.indexOf(PLAYER_THUD)
+    expect(wing, 'the frame raised no wing cue at all — the comparison below is vacuous').toBeGreaterThanOrEqual(0)
+    expect(thud, 'the frame raised no thud at all — the comparison below is vacuous').toBeGreaterThanOrEqual(0)
+    expect(wing, 'a flight cue must never follow a collision cue from the same frame').toBeLessThan(thud)
+  })
+})

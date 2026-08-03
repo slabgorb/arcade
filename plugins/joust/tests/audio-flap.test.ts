@@ -72,6 +72,11 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
+// jt9-3 — the RAW scheduler seam. Two of jt5-3's three unguarded invariants are
+// invisible from `stepGame`, and one of them is invisible BY CONSTRUCTION (see
+// the jt9-3 block at the foot of this file), so their guards call `stepFrame`
+// directly. `GameState` is aliased because game.ts already owns that name here.
+import { createState, spawn, stepFrame, type GameState as SimState } from '../src/core/frame.js'
 import { EVENT_KINDS, type GameEvent } from '../src/core/events.js'
 import { CHANNELS, CUE_SOURCES, SOUNDS, type CueSource } from '../src/shell/audio.js'
 import { playEventSounds } from '../src/shell/audio-dispatch.js'
@@ -132,6 +137,9 @@ function priorityOf(cue: string): number {
 
 const IDLE: PlayerInput = { dir: 0, flap: false, flapHeld: false }
 const LEFT: PlayerInput = { dir: -1, flap: false, flapHeld: false }
+/** jt9-3 — walking left with the button DOWN, so the NEXT frame's release is a
+ *  real edge without spending a flap impulse that would move the walk-off. */
+const LEFT_HELD: PlayerInput = { dir: -1, flap: false, flapHeld: true }
 /** `flap` is the shell's RISING edge, `flapHeld` the level (shell/input.ts:45). */
 const btn = (flap: boolean, flapHeld: boolean): PlayerInput => ({ dir: 0, flap, flapHeld })
 
@@ -844,6 +852,257 @@ describe('jt5-3 AC1 — the edge memory is carried by the state the shell steps'
     expect(kindsOf(g), 'precondition: the press sounded').toEqual([PLAYER_WING_DOWN])
     g = stepGame(g, { 1: btn(false, true), 2: IDLE })
     expect(kindsOf(g), "'player-wing-down' survived a frame with no edge").toEqual([])
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// jt9-3 — TWO OF THE THREE jt5-3 INVARIANTS THAT SHIPPED HELD BY PROSE ALONE
+//
+// jt5-3's Reviewer ran a 24-mutation battery against this seam. Twenty-one
+// mutations reddened something; THREE reddened nothing at all, which means three
+// behaviours this story deliberately chose were documented in a comment and
+// enforced by no test. The shipped code is CORRECT in all three cases — nothing
+// below changes behaviour, it pins it.
+//
+// RE-MEASURED 2026-08-03 against the grown suite, because the original figure
+// was "0 of 1979" and the project is now 2499 tests: all three mutations still
+// pass 2499 of 2499. Nothing in the intervening two days covered them by
+// accident, so all three guards are genuinely new coverage rather than
+// duplicates of somebody else's.
+//
+// TWO of the three are frame.ts's and live here, beside the emission groups
+// above. The third — `stepDemo` emitting flight cues before collision cues —
+// needs the two-bodies-at-one-lance-height staging that audio-thud.test.ts
+// already owns, so it lives there rather than being written twice.
+// `grep -rn jt9-3 plugins/joust/tests` finds all three.
+//
+// ─── EACH GROUP RECORDS ITS MUTATION VERBATIM ────────────────────────────────
+// Hazard C at the head of this file is the whole reason: a seam whose sweeps all
+// read one shared tuple agrees with itself whether or not anything works, and
+// six of jt5-1's eleven cues could once be deleted with the suite green. So a
+// guard nobody has watched FAIL is not a guard. Every group below was run with
+// its mutation applied (red), then reverted (green), and the diff that produced
+// the red is written out so the battery can be repeated by anyone.
+//
+// ─── WHY THESE TWO USE THE RAW `stepFrame` SEAM ──────────────────────────────
+// Not preference — necessity, and for the accumulation invariant it is a
+// STRUCTURAL necessity worth stating: `stepDemo` calls
+//
+//     stepFrame({ ...demo.sim, targets: tickedTargets, cues: [] }, …)
+//
+// which overwrites `cues` on the way IN. So no amount of play through
+// `stepGame` can ever observe `stepFrame` reading `state.cues` — that is
+// precisely why the accumulate mutation reddened nothing, and why the
+// "the stream is REBUILT per frame" test immediately above, which goes through
+// `stepGame`, cannot see it. It tests the DEMO's rebuild, not the scheduler's.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const RAW_PID = 1
+
+/** An airborne knight at the raw scheduler seam: pixels in, the sim's 8.8 fixed
+ *  point out. Same shape audio-thud.test.ts stages its bodies with. */
+const rawEntity = (posXpx: number, posYpx: number, velY: number): EntityState => ({
+  posX: posXpx,
+  posY: posYpx << 8,
+  velXIndex: 0,
+  velXFrac: 0,
+  velY,
+  timeUp: 10,
+  groundState: null,
+  plantZ: 0,
+  airborne: true,
+  animPhase: 0,
+})
+
+/**
+ * One player process, alone, waking every frame.
+ *
+ * `prevFlapHeld` is SEEDED rather than played in, and that is not a synthetic:
+ * it is a first-class `ProcessSpec` field which `runBehaviour` writes on every
+ * single player wake (`prevFlapHeld: input.flapHeld`), so `true` here is exactly
+ * the state the sim itself leaves behind after any held frame. Playing it in
+ * would cost a press frame whose flap impulse moves the measured landing.
+ */
+const rawSim = (e: EntityState, prevFlapHeld: boolean): SimState =>
+  spawn(createState(0x1234), {
+    id: RAW_PID,
+    cls: 'primary',
+    nap: 1,
+    period: 1,
+    kind: 'player',
+    entity: e,
+    prevFlapHeld,
+  })
+
+const rawCues = (s: SimState): string[] => s.cues.map((c) => c.type as string)
+const rawAirborne = (s: SimState): boolean | undefined =>
+  s.processes.find((p) => p.id === RAW_PID)?.entity?.airborne
+
+describe('jt9-3 — the airborne level is read BEFORE the step, never after', () => {
+  // ─── THE MUTATION THIS GROUP FORBIDS ───────────────────────────────────────
+  // src/core/frame.ts, `runBehaviour`, the `p.kind === 'player'` branch:
+  //
+  //   -    const wasAirborne = p.entity.airborne
+  //        const prevFlapHeld = p.prevFlapHeld ?? false
+  //        …
+  //        const entity = stepPlayerEntity(p.entity, input, facing)
+  //   +    const wasAirborne = entity.airborne
+  //
+  // It moves ONE read across ONE call. It is neither a deletion nor a permissive
+  // widening — the mutant computes a DIFFERENT answer, on exactly the frames
+  // where `airborne` flips INSIDE `stepPlayerEntity`, and an identical one on
+  // every other frame. That is why 3000 frames of scripted play move the cue
+  // count by ONE (1610 → 1609, jt5-3's Reviewer) and why no seeded replay
+  // fingerprint notices: the divergence is two or three frames in three
+  // thousand, and a digest that never reaches one of them is unmoved.
+  //
+  // MEASURED 2026-08-03: with the mutation applied and none of these tests
+  // present, 2499 of 2499 joust tests pass.
+  //
+  // BOTH DIRECTIONS ARE PINNED, deliberately. A landing (true → false) makes the
+  // mutant SWALLOW a cue the machine plays; a walk-off (false → true) makes it
+  // INVENT one the machine does not. A guard for only one of them is satisfied
+  // by a fix that special-cases that one.
+
+  /** x=100, y=162, velY=+256. MEASURED, not guessed: the first cell of a
+   *  y ∈ [120,200] sweep at x=100 where ONE step puts this knight on a
+   *  platform. `groundOutcome` reports `platform` for the position the step
+   *  lands on, which is what flips `airborne` inside `stepPlayerEntity`. */
+  const aboutToLand = (): EntityState => rawEntity(100, 162, 256)
+
+  it('a knight that LANDS on its release frame still sounds wing-up', () => {
+    const landing = stepFrame(rawSim(aboutToLand(), true), { [RAW_PID]: btn(false, false) })
+
+    // THE precondition the whole test rests on: `airborne` really does flip
+    // inside this one step. Without it the staging silently degenerates into the
+    // aloft control below and the assertion passes for an unrelated reason.
+    expect(rawAirborne(landing), 'staging: THIS is the frame the knight lands on').toBe(false)
+
+    expect(
+      rawCues(landing),
+      'GOFLIP sounds because the bird was in FLIPLP when the frame BEGAN. Reading the ' +
+        'level after `stepPlayerEntity` has landed it takes the GROUND branch of ' +
+        '`wingEdge`, whose only cue is a flap take-off — so the release is swallowed.',
+    ).toEqual([PLAYER_WING_UP])
+  })
+
+  it('the same release twenty pixels higher sounds too — the control that must NOT move', () => {
+    // Airborne before AND after, so the mutant computes the identical answer
+    // here and this test stays GREEN under it. Its job is to prove the
+    // assertion above is about the LANDING, and not about release edges being
+    // broken in general — which is the reading a lone red would also support.
+    const aloft = stepFrame(rawSim(rawEntity(100, 142, 256), true), {
+      [RAW_PID]: btn(false, false),
+    })
+    expect(rawAirborne(aloft), 'control: this one is still flying afterwards').toBe(true)
+    expect(rawCues(aloft), 'control: a release edge in open air sounds').toEqual([PLAYER_WING_UP])
+  })
+
+  it('landing with the button still HELD is silent — a landing is not itself a cue', () => {
+    // The negative half, on the SAME staging. `wingEdge` has no edge to report,
+    // so neither reading sounds. Without it, the first test above is satisfied
+    // by a rule as crude as "any landing emits wing-up".
+    const held = stepFrame(rawSim(aboutToLand(), true), { [RAW_PID]: btn(false, true) })
+    expect(rawAirborne(held), 'staging: it lands on this frame too').toBe(false)
+    expect(rawCues(held), 'the button never moved — there is no edge to sound').toEqual([])
+  })
+
+  it('WALKING off a ledge on the release frame stays SILENT — the other direction', () => {
+    // The mirror image: `airborne` flips false → true inside the step. The
+    // pre-step read sees the GROUND loop, whose only wing cue is a flap
+    // take-off (`input.flap`), so a release that happens to coincide with
+    // walking off is silent — STFALL's `BRA FLIPS2` (:6157), already re-opened
+    // at the head of this file. The post-step read sees FLIPLP instead and
+    // manufactures a `player-wing-up` the machine never plays.
+    const ground = knightOnTheGround()
+    const armed = stepGame(ground, { 1: LEFT_HELD, 2: IDLE })
+    expect(airborne(armed, 1), 'staging: still standing on the cliff, button down').toBe(false)
+
+    // CONTROL FIRST, on the very same staging: this knight, on this frame, CAN
+    // make a wing sound. Without it the silence below is satisfied by a detector
+    // that has stopped firing at all.
+    const pressed = stepGame(armed, { 1: btn(true, true), 2: IDLE })
+    expect(airborne(pressed, 1), 'control: the press really takes off from here').toBe(true)
+    expect(kindsOf(pressed), 'control: this staging CAN sound').toEqual([PLAYER_WING_DOWN])
+
+    const walkedOff = stepGame(armed, { 1: LEFT, 2: IDLE })
+    expect(airborne(walkedOff, 1), 'staging: THIS is the frame it leaves the ground').toBe(true)
+    expect(
+      kindsOf(walkedOff),
+      'STFALL enters FLIPLP at its BYPASS label, so a release coinciding with the ' +
+        'walk-off must not manufacture a wing-up',
+    ).toEqual([])
+  })
+})
+
+describe('jt9-3 — `GameState.cues` is REBUILT every frame, never accumulated', () => {
+  // ─── THE MUTATION THIS GROUP FORBIDS ───────────────────────────────────────
+  // src/core/frame.ts, `stepFrame`:
+  //
+  //   -  const cues: GameEvent[] = []
+  //   +  const cues: GameEvent[] = [...state.cues]
+  //
+  // MEASURED 2026-08-03: with it applied, 2499 of 2499 joust tests pass. The
+  // field's own doc comment says the cues are "REBUILT from scratch every step,
+  // never accumulated (`stepFrame` never READS `state.cues`, only builds a fresh
+  // one)" — and until this group that sentence was the entire enforcement.
+  //
+  // WHY IT COULD ROT UNSEEN. A carried-forward cue is invisible to every seeded
+  // replay digest, because both runs carry it forward identically; and it is
+  // unreachable through `stepDemo`, which passes `cues: []` in. It would first
+  // appear in the SHELL, as one sound repeating for the rest of the game —
+  // which is the failure this whole seam was designed to make impossible.
+
+  /** A kind no wing edge can raise, so finding it in the output can only mean it
+   *  was carried in. Deliberately NOT a wing cue: a sentinel from the family the
+   *  emitter itself raises cannot tell carry-forward from a fresh emission. */
+  const CARRIED: GameEvent = { type: 'egg-hatched' }
+  const aloft = (): SimState => rawSim(rawEntity(100, 60, 256), true)
+
+  it('a cue handed IN does not come back out — even on a frame that emits', () => {
+    const out = stepFrame({ ...aloft(), cues: [CARRIED] }, { [RAW_PID]: btn(false, false) })
+    expect(rawCues(out), 'precondition: this frame is not silent — the release fired').toEqual([
+      PLAYER_WING_UP,
+    ])
+    expect(
+      rawCues(out),
+      "'egg-hatched' was handed in on `state.cues` and must not survive the step",
+    ).not.toContain('egg-hatched')
+  })
+
+  it('and not on a SILENT frame either — the output is [], not the input', () => {
+    // The stronger half, and the one that actually kills the mutant: an EXACT
+    // empty array. A lone `not.toContain` on a frame that emits something can be
+    // satisfied by a stream that carried everything else forward.
+    const out = stepFrame({ ...aloft(), cues: [CARRIED] }, { [RAW_PID]: btn(false, true) })
+    expect(
+      rawCues(out),
+      'a held button raises no edge, so this frame must emit NOTHING at all',
+    ).toEqual([])
+  })
+
+  it('the array handed in is neither returned nor written to', () => {
+    // A third shape of the same defect, which the two above would both pass:
+    // `const cues = state.cues as GameEvent[]` reuses the caller's array, so the
+    // scheduler scribbles on a state its caller is still holding. `stepFrame` is
+    // a pure reducer; this is that promise, observed rather than asserted.
+    const handedIn: GameEvent[] = [CARRIED]
+    const out = stepFrame({ ...aloft(), cues: handedIn }, { [RAW_PID]: btn(false, false) })
+    expect(rawCues(out), 'precondition: the step really did emit').toEqual([PLAYER_WING_UP])
+    expect(Object.is(out.cues, handedIn), 'the returned array IS the one handed in').toBe(false)
+    expect(handedIn, 'stepFrame wrote into its own argument').toEqual([CARRIED])
+  })
+
+  it('two steps of one state do not share a cue array', () => {
+    // The module-scoped-accumulator shape — the same defect the "two games in
+    // flight do not share an edge memory" test above guards for `prevFlapHeld`.
+    // It survives the accumulate mutation and is not meant to catch it.
+    const armed = aloft()
+    const a = stepFrame(armed, { [RAW_PID]: btn(false, false) })
+    const b = stepFrame(armed, { [RAW_PID]: btn(false, false) })
+    expect(rawCues(a), 'precondition: both steps really emit').toEqual([PLAYER_WING_UP])
+    expect(rawCues(b), 'the same state stepped twice gives the same stream').toEqual(rawCues(a))
+    expect(Object.is(a.cues, b.cues), 'two frames must not share one array').toBe(false)
   })
 })
 
