@@ -1455,3 +1455,8 @@ completed_stories:
     title: CHANNELS is vestigial for arbitrated cues — three stories have now fed a map that routes nothing
     points: 2
     completed: '2026-08-03'
+  - id: cp6-3
+    epic: cp6
+    title: POKEY voice 0 is contended and our CHANNELS map does not model it — the player explosion must silence the kill cues
+    points: 5
+    completed: '2026-08-03'
