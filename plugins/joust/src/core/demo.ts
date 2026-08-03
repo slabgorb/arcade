@@ -69,6 +69,7 @@ import { trollSpawnable } from './troll.js'
 import { seedBaiterClock, stepBaiterClock, NAP_FRAMES, type BaiterClock } from './baiter.js'
 import {
   waveRowAt,
+  wenemyFor,
   seedWaveBudget,
   emytimForWave,
   waveBeats,
@@ -659,17 +660,36 @@ function settledWaveEgg(posX: number, feetY: number): EggState {
 
 /**
  * The egg processes an EGG wave enters INSTEAD of materialising ground enemies (WAVEGG
- * `LDX #EGG1` "EGG WAVE", JOUSTRV4.SRC:2737-2776): one settled egg per ground-complement
- * slot, placed at the transporter pads. The byte-exact EGG1 placement table (:2737-2776) is
- * untranscribed — TEA's design deviation pins the "enters as eggs" observable, not the exact
- * ledge coordinates / the 6-per-ledge count / the 2 pre-mature hatchings — so the complement
- * lands as settled eggs at real arena pad positions. Ids ride a per-wave namespace clear of
+ * `LDX #EGG1` "EGG WAVE", JOUSTRV4.SRC:2737-2776). Ids ride a per-wave namespace clear of
  * the pteros (+$80) and the kill-eggs ($1_0000+).
+ *
+ * HOW MANY: TWELVE, and it does not depend on the wave row. jt9-38 transcribed the count
+ * the jt4-4/jt4-5 docblock here used to disclaim as untranscribed. WAVEGG runs two
+ * placement loops, each primed with its own literal immediate:
+ *
+ *   · six one-per-ledge over EGLEDG's six entries — `LDA #6 / STA PWREGA,U`
+ *     "6 EGGS ON EACH LEDGE" (JOUSTRV4.SRC:2778-2779), loop JOUSTRV4.SRC:2780-2804,
+ *     table JOUSTRV4.SRC:2910-2915;
+ *   · then six MORE scattered over the 69-slot EGPTBL — `LDA #6 / STA PWREGA,U`
+ *     "6 MORE EGGS TO GO" (JOUSTRV4.SRC:2805-2806), loop JOUSTRV4.SRC:2807-2822.
+ *
+ * That is the number `wenemyFor` exists to be smaller than: WENEMY is "NUMBER OF ENEMIES
+ * TO HATCH AT A TIME" (JOUSTRV4.SRC:2759), so it can only bite while more eggs exist than
+ * the quota. Dealing the ground complement instead — which equals the quota on every one
+ * of the eighteen egg rows — left the gate unreachable by construction.
+ *
+ * WHAT IS STILL NOT TRANSCRIBED, and the disclaimer is narrowed rather than dropped: the
+ * exact EGG1 ledge COORDINATES (these land on the four transporter pads, so twelve eggs
+ * stack three per pad where the machine spreads them over six ledges plus 69 slots) and
+ * the 2 pre-mature hatchings (`LDA #2 / STA PWHCH,U`, JOUSTRV4.SRC:2776-2777, consumed in
+ * CREGG at JOUSTRV4.SRC:2888-2894), which draws from the wave's RNG and is deliberately
+ * out of jt9-38's scope — see the story's Delivery Findings.
  */
 function spawnWaveEggs(waveNumber: number): DemoProcess[] {
-  const complement = enemyTypesForWave(waveRowAt(waveNumber)).length
+  // Both sixes are literal immediates in the ROM; neither reads the wave row.
+  const EGG_WAVE_EGGS = 6 + 6
   const eggs: DemoProcess[] = []
-  for (let i = 0; i < complement; i++) {
+  for (let i = 0; i < EGG_WAVE_EGGS; i++) {
     const pad = PADS[i % PADS.length]
     // `waveEgg` tags the complement egg so the self-clear hatch (stepDemo) serves it the
     // EGGWT2 egg-wave wait rather than the EGGWT a landing egg takes. Since jt9-9 the tag no
@@ -1441,6 +1461,16 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // at `eggsLeft === 0` the enemy is permanently dead (`BNE 1$`, :3002) and its egg can only
   // ever be collected, never hatched. Deleting the whole conjunction would resurrect dead
   // enemies forever.
+  //
+  // jt9-38 — AND THE POPULATION GATE. A wait that has run out is not a hatch: EGGLND
+  // re-primes the timer and asks whether the wave is already full before it commits
+  // (:3238-3242, below). `population` is NENEMY and it MUST rise inside this pass — the
+  // ROM's `INC NENEMY` is on the branch that hatches, not on the frame. Every egg an egg
+  // wave deals shares one EGGWT2 wait, so they all mature on the SAME frame (measured:
+  // f=624 on three seeds); a count taken once before the loop would see zero for all
+  // twelve and let every one through, which is indistinguishable from having no gate.
+  let quota: number | null = null
+  let population = processes.filter((p) => p.kind === 'enemy').length
   processes = processes.flatMap((p) => {
     if (!(p.kind === 'egg' && p.egg?.settled === true && willHatch(p.egg))) return [p]
     // EGGWT2 for an egg an EGG WAVE dealt out, EGGWT for one that landed here.
@@ -1448,6 +1478,30 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     // `DEC PJOYT,U / BNE EGGLN2` (:3236-3237) — still waiting, so still an egg.
     const remaining = wait - 1
     if (remaining > 0) return [{ ...p, egg: { ...p.egg, waitFrames: remaining } }]
+    // The quota is read HERE, at the test, once an egg has actually reached it — as the
+    // ROM does, not once a frame. On the hundredth wave the BCD counter rolls to 0x00 and
+    // `waveRowAt` refuses it, so BOTH halves of this line are load-bearing and they buy
+    // DIFFERENT properties. Measured, each by making the change and running the project:
+    //
+    //   · resolving once per frame instead of here      -> 3 red: the two R2-3 laws in
+    //     difficulty-wiring.test.ts ("the cabinet must not die") plus the egg-at-rollover
+    //     guard. Laziness is what keeps a wave with no egg in it out of the lookup at all.
+    //   · dropping the `>= 1` test but keeping it lazy  -> 1 red: only the egg-at-rollover
+    //     guard. The R2-3 fixtures stage a falling ENEMY, so they never reach this line —
+    //     which is exactly how the crash hid the first time.
+    //
+    // 255 is WNRM's own normal-wave value and gates nothing, so a wave whose row cannot be
+    // resolved behaves exactly like a wave with no quota. The unresolvable case is the
+    // raw-counter/ordinal confusion td1-12 owns, not something this gate can fix.
+    quota ??= demo.wave >= 1 ? wenemyFor(waveRowAt(demo.wave)) : 255
+    // `LDA NENEMY / CMPA WENEMY / BHS EGGLN2` (:3239-3241) — "ENOUGH ENEMIES IN THIS
+    // WAVE?". At or above the quota the egg goes back round the wait loop, re-primed by
+    // `INC PJOYT,U  SET = 1,` (:3238) to ONE nap — `PCNAP 12` (:3227) — so it re-asks in
+    // twelve frames. Not a fresh EGGWT2, and not next frame: without :3238 the branch
+    // would DEC a zero timer to $FF and wait 255 more naps.
+    if (population >= quota) return [{ ...p, egg: { ...p.egg, waitFrames: EGG_WAIT_NAP_FRAMES } }]
+    // `INC NENEMY  1 MORE ENEMY COMMING UP` (:3242) — on the pass that hatches only.
+    population += 1
     // SNEGGH "EGG HATCHING SOUND" (:8099) — the maturing egg, not the remount
     // bird's flight in. One cue per egg that matured this frame.
     cues.push({ type: 'egg-hatched' })

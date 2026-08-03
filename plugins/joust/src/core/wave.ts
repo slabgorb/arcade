@@ -190,6 +190,41 @@ export function waveRowAt(waveNumber: number): WaveRow {
 }
 
 /**
+ * WENEMY — how many enemies this wave may hold at once, and therefore how many
+ * settled eggs may hatch before the rest are held back (EGGLND's
+ * `LDA NENEMY / CMPA WENEMY / BHS EGGLN2`, JOUSTRV4.SRC:3239-3241).
+ *
+ * A NORMAL wave has NO quota. WNRM loads the immediate 255 and stores it —
+ * "MAXIMIM ENEMIES FOR A NORMAL WAVE" (JOUSTRV4.SRC:1991-1992) — and every
+ * wave-advance path converges on WNRM (the four branches at JOUSTRV4.SRC:1937,
+ * :1952, :1955, :1957). So outside an egg wave the comparison can never be taken
+ * and every settled egg matures the instant its timer runs out. That is faithful:
+ * it is where jt9-9's kill-eggs live.
+ *
+ * Only the EGG-wave setup overwrites it, with the row's own ground nibble —
+ * `STA WENEMY  NUMBER OF ENEMIES TO HATCH AT A TIME` (JOUSTRV4.SRC:2759), fed by
+ * the three-way select at JOUSTRV4.SRC:2744-2759:
+ *
+ *     LDA WBOUND,X   /  BNE 1$        byte0 non-zero?
+ *   1$ BITA #$0F     /  BNE 3$          → low nibble non-zero: the HUNTER count
+ *     (fall through) /  2$ LSRA x4      → else the HIGH nibble: the BOUNDER count
+ *     (byte0 zero)      LDA WLORD,X     → else WLORD's HIGH nibble: the LORDS
+ *   3$ ANDA #$0F
+ *
+ * Every one of the eighteen shipped egg rows carries exactly one non-zero ground
+ * nibble, so on real data the select is indistinguishable from summing the three.
+ * It is written as the select anyway, because that is what the machine does — and
+ * `demo-jt9-38.test.ts` pins the difference on a fabricated row, since no real one
+ * can.
+ */
+export function wenemyFor(row: WaveRow): number {
+  if (rawWaveType(row.status) !== 'egg') return 255
+  const byte0 = (row.bounders << 4) | row.hunters
+  if (byte0 !== 0) return (byte0 & 0x0f) !== 0 ? byte0 & 0x0f : (byte0 >> 4) & 0x0f
+  return (((row.lords << 4) | row.pursuers) >> 4) & 0x0f
+}
+
+/**
  * One BCD increment of the wave counter (LDA WAVBCD / ADDA #$01 / DAA,
  * JOUSTRV4.SRC:2001-2004): the byte is BCD (0x00..0x99), so 0x09→0x10 and
  * 0x99→0x00 (rollover). INDEPENDENT of the table index.
