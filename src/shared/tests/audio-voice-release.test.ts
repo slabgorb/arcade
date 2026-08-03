@@ -1,0 +1,518 @@
+// tests/audio-voice-release.test.ts
+//
+// Story jt9-6 (epic jt9) — RED phase (O'Brien / TEA). `stopChannel` silences the
+// arbitrated voice's SOURCE without releasing the voice's WINDOW.
+//
+// ─── THE DEFECT ──────────────────────────────────────────────────────────────
+// jt5-5 gave the engine one arbitrated voice: `voicePriority` / `voiceFrames` /
+// `voiceChannel`, claimed at `src/shared/audio.ts:273-277` by a cue that actually
+// starts, and read at `:232` to REFUSE a strictly-lower-priority cue while the
+// window holds. `stopChannel` (`:206-216`) stops whatever is sounding on a channel
+// and touches none of those three. `stopLoop` compensates one level up (`:300`,
+// `if (voiceChannel === channel) releaseVoice()`); the steal inside `startSource`
+// (`:250`) does not. So a cue with NO priority entry, landing on the channel the
+// arbitrated voice happens to be sounding on, stops the voice's source and leaves
+// its window holding — and every lower-priority arbitrated cue behind it is refused
+// by a voice nobody can hear.
+//
+// ─── IT IS REACHABLE TODAY. The filed story says otherwise; the story is stale ──
+// The description closes with "NOT REACHABLE TODAY ... a trap for the next cabinet
+// that does [pass `priorities`]". That was true when it was filed and is false now:
+// `cp6-3` (commit `77ef628`) made centipede the SECOND cabinet passing
+// `priorities`/`frameDurations`, and it ships two channels holding BOTH an
+// arbitrated and an unarbitrated cue (`plugins/centipede/src/shell/audio.ts`,
+// `CHANNELS` + `PRIORITIES`):
+//
+//   channel `alert`  — arbitrated playerDeath (rank 1, 76 frames)
+//                      unarbitrated headBottom, waveClear
+//   channel `impact` — arbitrated segmentKill/spiderKill/fleaKill/scorpionKill
+//                      (rank 0, 19 frames) — unarbitrated mushroom
+//
+// Both shapes are reproduced below on a synthetic manifest, because this is the
+// SHARED engine's suite and it must not depend on one game's numbers: `MIXED` is
+// the `alert` shape and `IMPACT` is the `impact` shape, each with the ranks that
+// make the two behave differently.
+//
+// ─── THE `impact` SHAPE IS NOT BENIGN, AND THAT NEEDED MEASURING ─────────────
+// The obvious reading is that a stale rank-0 window is harmless: refusal is
+// STRICTLY-lower and nothing ranks below 0, so no cue is ever refused by it. That
+// is true, and it is not the whole story. The stale voice also leaves `voiceChannel`
+// pointing at a channel the voice no longer owns, and `:253-255` uses `voiceChannel`
+// to STOP a source on another channel when an arbitrated cue is accepted. So the
+// next accepted arbitrated cue reaches across and stops whatever unarbitrated sound
+// has since taken that channel over — a second, independent observable, pinned by
+// `a released voice no longer reaches across to a channel it lost`. The refusal
+// axis and the cross-channel-steal axis fail separately: the mutation battery
+// includes a fix that clears the counters but not `voiceChannel`, and it passes
+// every refusal test here while reddening that one.
+//
+// ─── THE PLACEMENT FORK, SETTLED: the release goes BELOW the early return ────
+// `stopChannel` opens with `const prev = live.get(channel); if (!prev) return`.
+// `releaseVoice()` above that guard and below it are NOT equivalent, and only one
+// is right:
+//
+//   • An arbitrated window deliberately OUTLIVES its own sample. jt5-5's whole
+//     design note is that the window is measured in FRAMES FROM THE ROM TABLE,
+//     "never in wall-clock, and never in the length of a `.wav` we happen to have
+//     baked" (`audio-priority.test.ts:33-35`). When the sample ends on its own,
+//     `onended` (`:264-266`) deletes the channel's `live` entry while `voiceFrames`
+//     keeps counting. That state — window held, `live` empty — is normal, not an
+//     error.
+//   • ABOVE the guard, an unarbitrated cue arriving in that state cuts the window
+//     short having STOPPED NOTHING. That is a new defect pointing the other way:
+//     silence that should still be refusing gets overwritten because an unrelated
+//     cue touched the same channel bucket.
+//   • BELOW the guard, the voice is released exactly when something audible was
+//     actually taken away — which is what the engine's own comment at `:298-299`
+//     already asserts for `stopLoop` ("the window describes how long a sound RINGS,
+//     so it cannot outlive one that has been stopped").
+//
+// `an arbitrated window survives an unarbitrated cue that stopped nothing` is the
+// discriminator. It passes today, passes with the release below the guard, and
+// FAILS with it above — a battery built only from the story's own scenario cannot
+// tell the two placements apart, so this test is the reason the fork is decidable.
+//
+// ─── `stopLoop`'s `:300` IS NOT REDUNDANT — do not delete it ─────────────────
+// Moving the release into `stopChannel` looks like it subsumes `:300`. It does not,
+// for the same reason the fork above exists: when the arbitrated sample has already
+// ended, `stopChannel` finds nothing and (correctly) releases nothing, while
+// `stopLoop`'s explicit "silence this channel" command releases unconditionally and
+// has since jt5-5. Those are different operations and the asymmetry is deliberate —
+// `stopLoop` is the game SAYING stop, `play` is the game saying start something
+// else. `stopLoop still frees a window whose sample already ended` pins the shipped
+// behaviour so the redundancy claim is testable rather than assumed.
+//
+// ─── RED audit — 4 of these 11 fail today; the other 7 justify themselves ────
+// FAIL TODAY (the defect, on all four of its routes):
+//   • an unarbitrated cue that silences the arbitrated voice releases its window
+//   • the same steal through startLoop() releases it too
+//   • a released voice no longer reaches across to a channel it lost
+//   • an arbitrated cue whose source fails to build releases the voice it silenced
+//
+// PASS TODAY, and each names the wrong fix it would catch (mutant ids are the ones
+// recorded in this story's session file):
+//   • an unarbitrated cue on ANOTHER channel does not release the voice — kills M4,
+//     "release on every unarbitrated trigger", which passes the headline test.
+//   • an arbitrated window survives an unarbitrated cue that stopped nothing —
+//     kills M2 (release ABOVE the early return) and M5 (release at the `:250` call
+//     site, which is above-the-guard by another spelling).
+//   • an arbitrated cue re-taking its own channel still holds the voice — kills a
+//     fix that releases and then fails to re-claim.
+//   • an arbitrated cue still steals a sounding unarbitrated one (both the
+//     same-channel and the `:253-255` cross-channel form) — the story's explicit
+//     "check the reverse too", and the POSITIVE CONTROL for the cross-channel steal
+//     that `a released voice no longer reaches across...` asserts the absence of.
+//   • stopLoop still frees a window whose sample already ended — kills M3, deleting
+//     `:300` as redundant.
+//   • a manifest with no priorities cannot tell this story shipped — the six
+//     cabinets that pass no `priorities` at all.
+//
+// RED until `src/shared/audio.ts` releases the arbitrated voice inside
+// `stopChannel`, BELOW its early return.
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+
+// ── Fake WebAudio surface ─────────────────────────────────────────────────────
+// Each audio suite in this directory carries its own stub so no test can be broken
+// from another file. This one adds ONE capability the others do not have:
+// `sourceThrowsOnCall`, which makes the Nth `createBufferSource()` throw. That is
+// how the `:256` try-block's failure path — the third `stopChannel` caller's
+// consequence — is reached without a real browser.
+
+interface Created {
+  contexts: FakeCtx[]
+  gains: FakeGain[]
+  sources: FakeSource[]
+  fetches: string[]
+}
+
+interface InstallOpts {
+  startState?: 'suspended' | 'running'
+  fetchFails?: Set<string>
+  /** 1-indexed: the Nth createBufferSource() call throws instead of returning. */
+  sourceThrowsOnCall?: number
+}
+
+class FakeGain {
+  gain = { value: -1 }
+  connectedTo: unknown = null
+  connect(dest: unknown): void {
+    this.connectedTo = dest
+  }
+}
+
+class FakeSource {
+  buffer: unknown = null
+  loop = false
+  onended: (() => void) | null = null
+  connectedTo: unknown = null
+  started = false
+  stopped = false
+  connect(dest: unknown): void {
+    this.connectedTo = dest
+  }
+  start(): void {
+    this.started = true
+  }
+  stop(): void {
+    this.stopped = true
+  }
+  disconnect(): void {}
+}
+
+class FakeCtx {
+  state: 'suspended' | 'running'
+  destination = { __dest: true }
+  resumeCalls = 0
+  private created: Created
+  private opts: InstallOpts
+  private sourceCalls = 0
+  constructor(opts: InstallOpts, created: Created) {
+    this.created = created
+    this.opts = opts
+    this.state = opts.startState ?? 'running'
+    created.contexts.push(this)
+  }
+  createGain(): FakeGain {
+    const g = new FakeGain()
+    this.created.gains.push(g)
+    return g
+  }
+  createBufferSource(): FakeSource {
+    this.sourceCalls += 1
+    // Throw BEFORE the node is recorded, so `created.sources` counts only the
+    // nodes the engine really got — a failed build must leave no trace.
+    if (this.opts.sourceThrowsOnCall === this.sourceCalls) {
+      throw new Error('createBufferSource failed')
+    }
+    const s = new FakeSource()
+    this.created.sources.push(s)
+    return s
+  }
+  resume(): Promise<void> {
+    this.resumeCalls++
+    return Promise.resolve()
+  }
+  decodeAudioData(data: { __url?: string }): Promise<unknown> {
+    return Promise.resolve({ __buffer: data && data.__url })
+  }
+}
+
+let saved: { AC: unknown; WK: unknown; FETCH: unknown }
+
+function install(opts: InstallOpts = {}): Created {
+  const created: Created = { contexts: [], gains: [], sources: [], fetches: [] }
+  const g = globalThis as Record<string, unknown>
+  g.AudioContext = class extends FakeCtx {
+    constructor() {
+      super(opts, created)
+    }
+  }
+  g.webkitAudioContext = undefined
+  g.fetch = (url: string) => {
+    created.fetches.push(url)
+    const fails = [...(opts.fetchFails ?? [])].some((f) => url.endsWith(f))
+    if (fails) return Promise.reject(new Error('network error'))
+    return Promise.resolve({ arrayBuffer: () => Promise.resolve({ __url: url }) })
+  }
+  return created
+}
+
+/** Drain the fetch -> arrayBuffer -> decode -> store microtask chain. */
+async function flush(): Promise<void> {
+  for (let i = 0; i < 16; i++) await Promise.resolve()
+}
+
+const load = () => import('../audio')
+
+/** Same local surface audio-priority.test.ts declares, for the same reason. */
+interface ArbitratingEngine {
+  resume(): void
+  play(name: string): void
+  startLoop(name: string): void
+  stopLoop(name: string): void
+  ready(): boolean
+  tick(): void
+}
+
+/** Build an engine on the fake context with its samples already decoded. */
+async function mkLoadedEngine(manifest: unknown, opts: InstallOpts = {}) {
+  const created = install(opts)
+  const { createAudioEngine } = await load()
+  const engine = createAudioEngine(manifest as never) as unknown as ArbitratingEngine
+  engine.resume()
+  await flush()
+  return { engine, created }
+}
+
+/** Sources that actually began sounding — the only evidence a cue was accepted. */
+const startedSources = (created: Created) => created.sources.filter((s) => s.started)
+
+// ── Manifests ─────────────────────────────────────────────────────────────────
+const BASE = 'https://sfx.example/'
+
+// The filed repro, generalised: `loud` is the arbitrated voice, `plain` is the
+// unarbitrated cue SHARING ITS CHANNEL (the centipede `alert` shape), `quiet` is
+// the lower-priority arbitrated cue that gets refused by the corpse, and `noise`
+// is an unarbitrated cue on a channel the voice does NOT own — the control that
+// stops an over-broad fix passing.
+const MIXED = {
+  baseUrl: BASE,
+  sounds: {
+    loud: 'loud.wav',
+    loud2: 'loud2.wav',
+    plain: 'plain.wav',
+    quiet: 'quiet.wav',
+    noise: 'noise.wav',
+  },
+  channels: { loud: 'v', loud2: 'v', plain: 'v', quiet: 'w', noise: 'x' },
+  priorities: { loud: 80, loud2: 80, quiet: 10 },
+  frameDurations: { loud: 76, loud2: 76, quiet: 20 },
+}
+
+// Centipede's `impact` shape: FOUR equal-rank arbitrated kills and one
+// unarbitrated cue on one channel, plus a higher-ranked cue on another. Nothing
+// ranks below `kill`, so the stale window refuses nothing — which is exactly why
+// the damage here has to be looked for on the other axis.
+const IMPACT = {
+  baseUrl: BASE,
+  sounds: { kill: 'kill.wav', kill2: 'kill2.wav', mush: 'mush.wav', death: 'death.wav' },
+  channels: { kill: 'impact', kill2: 'impact', mush: 'impact', death: 'alert' },
+  priorities: { kill: 0, kill2: 0, death: 1 },
+  frameDurations: { kill: 19, kill2: 19, death: 76 },
+}
+
+// The `:256` try-block failure path: `hi2` is accepted, stops `hi` on the OTHER
+// channel via `:253-255`, and then fails to build its own source.
+const THROWER = {
+  baseUrl: BASE,
+  sounds: { hi: 'hi.wav', hi2: 'hi2.wav', lo: 'lo.wav' },
+  channels: { hi: 'a', hi2: 'b', lo: 'c' },
+  priorities: { hi: 50, hi2: 50, lo: 10 },
+  frameDurations: { hi: 30, hi2: 30, lo: 30 },
+}
+
+// An arbitrated ONE-SHOT and an unarbitrated LOOP sharing a channel: the state in
+// which `stopChannel` has nothing to stop but `stopLoop` still means "silence".
+const LOOPY = {
+  baseUrl: BASE,
+  sounds: { bang: 'bang.wav', hum: 'hum.wav', quiet: 'quiet.wav' },
+  channels: { bang: 'c1', hum: 'c1', quiet: 'c2' },
+  priorities: { bang: 80, quiet: 10 },
+  frameDurations: { bang: 600, quiet: 20 },
+}
+
+// The six cabinets that pass no `priorities` at all.
+const LEGACY = {
+  baseUrl: BASE,
+  sounds: { a: 'a.wav', b: 'b.wav' },
+  channels: { a: 'ch', b: 'ch' },
+}
+
+beforeEach(() => {
+  const g = globalThis as Record<string, unknown>
+  saved = { AC: g.AudioContext, WK: g.webkitAudioContext, FETCH: g.fetch }
+})
+afterEach(() => {
+  const g = globalThis as Record<string, unknown>
+  g.AudioContext = saved.AC
+  g.webkitAudioContext = saved.WK
+  g.fetch = saved.FETCH
+})
+
+// ── The defect itself ─────────────────────────────────────────────────────────
+
+describe('jt9-6 shared audio — silencing the arbitrated voice releases its window', () => {
+  it('an unarbitrated cue that silences the arbitrated voice releases its window', async () => {
+    const { engine, created } = await mkLoadedEngine(MIXED)
+    engine.play('loud') // priority 80, a 76-frame window opens on channel `v`
+    const voice = created.sources[0]
+    engine.play('plain') // NO priority entry — outside arbitration, but same channel
+    expect(
+      voice.stopped,
+      'premise of this test: the unarbitrated cue really does silence the voice — if ' +
+        'this is false the rest proves nothing',
+    ).toBe(true)
+    engine.play('quiet') // priority 10 — lower, but nothing is sounding any more
+    expect(
+      startedSources(created),
+      'the voice was silenced, so its window must be gone: a cue nobody can hear must ' +
+        'not go on refusing cues that could be heard',
+    ).toHaveLength(3)
+  })
+
+  it('the same steal through startLoop() releases it too', async () => {
+    const { engine, created } = await mkLoadedEngine(MIXED)
+    engine.play('loud')
+    const voice = created.sources[0]
+    engine.startLoop('plain') // the OTHER route into startSource -> stopChannel
+    expect(voice.stopped, 'a sustained unarbitrated cue steals the channel the same way').toBe(true)
+    engine.play('quiet')
+    expect(
+      startedSources(created),
+      'the fix belongs where both routes pass — inside stopChannel, not inside play()',
+    ).toHaveLength(3)
+  })
+
+  it('a released voice no longer reaches across to a channel it lost', async () => {
+    const { engine, created } = await mkLoadedEngine(IMPACT)
+    engine.play('kill') // rank 0, 19-frame window, channel `impact`
+    const killSrc = created.sources[0]
+    engine.play('mush') // unarbitrated, same channel — silences the kill
+    const mushSrc = created.sources[1]
+    expect(killSrc.stopped, 'premise: the unarbitrated cue silences the arbitrated one').toBe(true)
+    expect(mushSrc.started, 'premise: and the unarbitrated cue is itself sounding').toBe(true)
+    engine.play('death') // rank 1 >= 0, so accepted on EITHER side of this fix
+    expect(
+      startedSources(created),
+      'control: the accepted higher-ranked cue really did start, so the assertion below ' +
+        'is about what it did NOT do, not about a cue that never ran',
+    ).toHaveLength(3)
+    expect(
+      mushSrc.stopped,
+      'a stale `voiceChannel` makes `:253-255` stop a channel the voice no longer owns. ' +
+        'Nothing ranks below the kills, so this — not a refusal — is how the `impact` ' +
+        'overlap does damage.',
+    ).toBe(false)
+  })
+
+  it('an arbitrated cue whose source fails to build releases the voice it silenced', async () => {
+    const { engine, created } = await mkLoadedEngine(THROWER, { sourceThrowsOnCall: 2 })
+    engine.play('hi') // priority 50, 30-frame window, channel `a`
+    const first = created.sources[0]
+    engine.play('hi2') // accepted, stops `hi` via :253-255, then throws at :257
+    expect(first.stopped, 'premise: the cross-channel steal silenced the sounding voice').toBe(true)
+    expect(
+      created.sources,
+      'premise: and the replacement never became a node at all',
+    ).toHaveLength(1)
+    engine.play('lo') // priority 10
+    expect(
+      startedSources(created),
+      'nothing is sounding: `hi` was stopped and `hi2` never started. The engine already ' +
+        'rules that "a sound that never sounded must not hold a window" (:269-272); a sound ' +
+        'that was SILENCED must not hold one either.',
+    ).toHaveLength(2)
+  })
+})
+
+// ── The placement fork: the window outlives the sample, on purpose ────────────
+
+describe('jt9-6 shared audio — the release belongs BELOW stopChannel`s early return', () => {
+  it('an arbitrated window survives an unarbitrated cue that stopped nothing', async () => {
+    const { engine, created } = await mkLoadedEngine(MIXED)
+    engine.play('loud') // 76-frame window
+    const voice = created.sources[0]
+    expect(voice.onended, 'the engine wires onended to clear the channel').toBeTypeOf('function')
+    voice.onended?.() // the SAMPLE ended; the ROM-declared window keeps counting
+    for (let i = 0; i < 10; i++) engine.tick() // 66 of 76 frames still to run
+    engine.play('plain') // unarbitrated, same channel — but there is nothing to stop
+    expect(
+      created.sources[1].started,
+      'premise: the unarbitrated cue did start, so `stopChannel` really was reached',
+    ).toBe(true)
+    engine.play('quiet') // priority 10 — the window is still legitimately open
+    expect(
+      startedSources(created),
+      'the window is measured in FRAMES from the ROM table, not in the length of the .wav. ' +
+        'Releasing ABOVE the early return would let a cue that silenced NOTHING cut a live ' +
+        'window short — the same defect pointing the other way.',
+    ).toHaveLength(2)
+  })
+
+  it('an unarbitrated cue on ANOTHER channel does not release the voice', async () => {
+    const { engine, created } = await mkLoadedEngine(MIXED)
+    engine.play('loud') // 76-frame window on channel `v`
+    engine.play('noise') // unarbitrated, channel `x` — touches nothing arbitrated
+    expect(
+      created.sources[1].started,
+      'premise: the unrelated unarbitrated cue really did play',
+    ).toBe(true)
+    engine.play('quiet')
+    expect(
+      startedSources(created),
+      'only the channel the voice is SOUNDING ON may release it — "release on every ' +
+        'unarbitrated trigger" would pass the headline test and destroy arbitration',
+    ).toHaveLength(2)
+  })
+
+  it('an arbitrated cue re-taking its own channel still holds the voice', async () => {
+    const { engine, created } = await mkLoadedEngine(MIXED)
+    engine.play('loud') // 80 on `v`
+    engine.play('loud2') // 80 on `v` — equal interrupts, same channel
+    expect(created.sources[0].stopped, 'premise: the equal-priority cue stole the channel').toBe(
+      true,
+    )
+    engine.play('quiet')
+    expect(
+      startedSources(created),
+      'a release inside stopChannel runs BEFORE the claim at :273-277, so the stealing cue ' +
+        'must still end up owning the voice — release-and-forget-to-reclaim fails here',
+    ).toHaveLength(2)
+  })
+})
+
+// ── The reverse case the story asks for: it is correct today and must stay ────
+
+describe('jt9-6 shared audio — an arbitrated cue stealing from an unarbitrated one stays correct', () => {
+  it('an arbitrated cue still steals the channel of a sounding unarbitrated cue', async () => {
+    const { engine, created } = await mkLoadedEngine(MIXED)
+    engine.play('plain') // unarbitrated, channel `v`, no window
+    engine.play('loud') // arbitrated, same channel — the reverse of the defect
+    expect(created.sources[0].stopped, 'the arbitrated cue cuts in exactly as before').toBe(true)
+    expect(created.sources[1].started).toBe(true)
+    engine.play('quiet')
+    expect(
+      startedSources(created),
+      'and it claims a real window: the lower-priority cue behind it is refused',
+    ).toHaveLength(2)
+  })
+
+  it('an arbitrated cue still reaches across channels to stop the voice (:253-255)', async () => {
+    const { engine, created } = await mkLoadedEngine(THROWER)
+    engine.play('hi') // 50 on channel `a`
+    const first = created.sources[0]
+    engine.play('hi2') // 50 on channel `b` — one voice, so `a` must go quiet
+    expect(
+      first.stopped,
+      'POSITIVE CONTROL for the cross-channel steal: this suite elsewhere asserts this ' +
+        'mechanism does NOT fire, and that assertion is worthless if it cannot fire here',
+    ).toBe(true)
+    expect(created.sources[1].started, 'and the new voice sounds').toBe(true)
+  })
+})
+
+// ── stopLoop's own release is not made redundant by the fix ───────────────────
+
+describe('jt9-6 shared audio — stopLoop keeps its own release (:300)', () => {
+  it('stopLoop still frees a window whose sample already ended', async () => {
+    const { engine, created } = await mkLoadedEngine(LOOPY)
+    engine.play('bang') // arbitrated one-shot, 600-frame window on `c1`
+    created.sources[0].onended?.() // the sample ends; `live` is empty, window holds
+    engine.stopLoop('hum') // an explicit "silence c1" — hum shares that channel
+    engine.play('quiet') // priority 10
+    expect(
+      startedSources(created),
+      'stopLoop releases unconditionally and has since jt5-5. `stopChannel` finds nothing ' +
+        'to stop here, so a fix that deletes :300 as redundant would leave 600 frames of ' +
+        'silent refusal behind.',
+    ).toHaveLength(2)
+  })
+})
+
+// ── The six cabinets that declare no priorities ───────────────────────────────
+
+describe('jt9-6 shared audio — a manifest with no priorities cannot tell this shipped', () => {
+  it('unconditional channel stealing and the clock both still behave', async () => {
+    const { engine, created } = await mkLoadedEngine(LEGACY)
+    for (let i = 0; i < 100; i++) engine.tick()
+    engine.play('a')
+    engine.play('b')
+    engine.play('a')
+    expect(
+      startedSources(created),
+      'three triggers, three sounds — an unarbitrated manifest refuses nothing',
+    ).toHaveLength(3)
+    expect(created.sources[0].stopped, 'and still steals its shared channel').toBe(true)
+    expect(() => engine.stopLoop('a'), 'stopLoop with no voice to release must not throw').not.toThrow()
+  })
+})
