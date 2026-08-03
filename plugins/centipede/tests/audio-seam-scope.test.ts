@@ -112,19 +112,22 @@ describe('cp5-1 AC6 — this story ships the seam and NO audio data', () => {
     ).toEqual([])
   })
 
-  it('claims no R2 upload — the manifest names files that do not exist yet', () => {
-    // The epic's rule is that a LIVE 200 is the acceptance test for an asset
-    // story, and this is explicitly not one. A test or doc asserting the files
-    // are hosted would be asserting something nobody has checked.
-    const audioPath = join(gameRoot, 'src', 'shell', 'audio.ts')
-    if (!existsSync(audioPath)) {
-      throw new Error('cp5-1 not implemented yet: src/shell/audio.ts must exist.')
-    }
-    const src = readFileSync(audioPath, 'utf8')
-    expect(src, 'do not claim the samples are uploaded — none are').not.toMatch(
-      /uploaded|hosted and verified|confirmed 200|curl-verified/i,
-    )
-  })
+  // ───────────────────────────────────────────────────────────────────────────
+  // RETIRED by cp6-2. The test that stood here asserted audio.ts must NOT match
+  // /uploaded|hosted and verified|confirmed 200|curl-verified/ — a scope fence
+  // for cp5-1, which correctly shipped the seam and no assets.
+  //
+  // cp6-2 bakes and uploads those samples, so the fence now forbids the truth:
+  // it would red on any honest rewrite of audio.ts's header and Dev's cheapest
+  // way to green would be to keep the module claiming the files do not exist.
+  // A guard whose premise its own story deleted must go WITH that story.
+  //
+  // The replacement lives in tools/pokey-bake/deploy-assets.test.mjs, which
+  // pins the inverse — audio.ts must no longer defer the bake to "a LATER cp5
+  // story" nor say "none of them exists yet". Deleted rather than inverted here
+  // because it was cp5-1's scope fence, and cp5-1's scope is not what cp6-2
+  // guards.
+  // ───────────────────────────────────────────────────────────────────────────
 })
 
 describe('cp5-1 AC6 — the README stops advertising a gap that has closed', () => {
@@ -168,24 +171,36 @@ describe('cp5-1 AC6 — the README stops advertising a gap that has closed', () 
       /audio-dispatch|core\/events|SOUNDS|manifest/i.test(src),
       'the README must name the seam that now exists (the event channel, manifest or dispatch)',
     ).toBe(true)
+    // INVERTED by cp6-2. The half above (the README must name the seam) still
+    // holds and is untouched. The half below used to require the README say
+    // "no samples ship yet" — cp6-2 bakes and uploads them, so the same
+    // sentence is now the falsehood AC6 exists to remove. Requiring its ABSENCE
+    // is what makes this test red until the story lands.
     expect(
-      /no samples|no `?\.wav`?|not yet baked|no audio data|samples are not|no sample/i.test(src),
-      'the README must still say the game makes no sound yet — the seam is not the sound',
-    ).toBe(true)
+      /no samples|not yet baked|no audio data|samples are not/i.test(src),
+      'AC6: the README must stop saying the samples are missing — cp6-2 baked and uploaded them',
+    ).toBe(false)
   })
 
-  it('does not claim centipede now HAS sound', () => {
-    // NOTE: this one is shared with cp5-2's block below — the seam being wired
-    // does not make the cabinet audible, and the README must not start saying
-    // it does just because main.ts now calls the dispatch.
-    // The failure this whole AC exists to prevent: the seam landing and the
-    // docs reading as though the cabinet is audible, when every cue resolves
-    // to a 404 the shared engine swallows in silence.
-    const src = readmeSrc()
-    expect(src, 'no sample is hosted yet — the game cannot be described as audible').not.toMatch(
-      /\bnow (?:has|with) (?:full )?(?:sound|audio)\b/i,
-    )
-    expect(src).not.toMatch(/\bfully voiced\b|\bsound is live\b/i)
+  it('SAYS centipede has sound, because as of cp6-2 it does', () => {
+    // INVERTED by cp6-2, and this is the sharpest of the four.
+    //
+    // Under cp5-1 and cp5-2 this test asserted the README must NOT say the game
+    // has sound — correct then, because every cue resolved to a 404 the shared
+    // engine swallowed in silence. cp6-2 bakes the samples and uploads them, so
+    // the negative now forbids the README from stating a fact. Left as it was,
+    // the cheapest way to keep it green is to leave the README describing a
+    // silent cabinet — which is failing AC6 while the suite reports success.
+    //
+    // The positive form is also the better guard: it cannot be satisfied by
+    // deleting sentences, which the old negative could.
+    const src = normalized(readmeSrc())
+    expect(
+      /\bnow (?:has|with) (?:full )?(?:sound|audio)\b|\bfully voiced\b|\bsound is live\b|\bno longer silent\b/i.test(
+        src,
+      ),
+      'AC6: say it plainly — the samples are baked, uploaded and audible as of cp6-2',
+    ).toBe(true)
   })
 })
 
@@ -277,16 +292,20 @@ describe('cp5-2 — the README stops saying the shell is unwired, because it is 
     // COUNT carries this assertion and a bare /404/ would have passed
     // vacuously. Same note as above: this records the measurement taken when
     // the assertion was written, not the state of the file today.
+    // INVERTED by cp6-2. The warning above was cp5-2's honest disclosure of a
+    // cost the epic knowingly accepted: fourteen 404s the moment resume() opens
+    // the gate. cp6-2 uploads the fourteen files, so the wall of 404s is gone
+    // and a README still warning about it sends the next reader hunting for a
+    // condition that no longer exists — the mirror image of the defect the
+    // original warning prevented.
+    //
+    // Measured at RED: the README today matches BOTH halves below, so both
+    // fire. Verified live the same session: all fourteen URLs return 404 now,
+    // which is precisely what this story ends.
     const src = normalized(readmeSrc())
     expect(
       /\b14\b[\s\S]{0,120}404|404[\s\S]{0,120}\b14\b/.test(src),
-      'the README must say how many 404s appear (14 — one per SOUNDS entry) so the next ' +
-        'person does not go hunting for a bug that is the missing samples',
-    ).toBe(true)
-    expect(
-      /expected|harmless|not a bug/i.test(src),
-      'the 404s must be described as expected, not merely mentioned — a console full of red ' +
-        'reads as a fault unless the docs say otherwise',
-    ).toBe(true)
+      'AC6: the wall of fourteen 404s is over — the README must stop warning about it',
+    ).toBe(false)
   })
 })
