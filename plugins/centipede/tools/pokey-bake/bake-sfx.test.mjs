@@ -309,6 +309,54 @@ describe('cp6-2 AC2 — every cue declares where its sound came from', () => {
     }
   })
 
+  it("the player explosion's +2 skips the ROM's delay bytes — the BEQ is load-bearing", async () => {
+    // ROUND 2 CHORE (reviewer [RULE] #8). The implementation is correct and was
+    // correct on arrival; what was missing is any assertion that observes it.
+    // Mutation-confirmed before this test was written: boosting the zero bytes
+    // too survived the whole suite.
+    //
+    // CENTI4.MAC:2447-2449 —
+    //     LDA Y,CONT0-1
+    //     BEQ 64$        ;LEAVE A DELAY BETWEEN EXPLOSIONS
+    //     CLC
+    //     ADC I,02       ;INCREASE VOLUME
+    // The BEQ means a ZERO control byte is left alone: those four entries are
+    // the deliberate silence between explosions. Boosting them to 0x02 fills the
+    // gap with noise at volume 2 — audible where the machine is quiet.
+    bake = await loadBaker()
+    const cont0 = bake.TABLES.CONT0
+    const zeros = cont0.filter((b) => b === 0).length
+    expect(zeros, 'CONT0 must still carry its delay bytes for this test to mean anything').toBe(4)
+
+    // The CHAN5 stream, taken from the baker itself rather than reconstructed.
+    const audc = bake.audcStreamFor('playerDeath')
+    expect(audc, 'one control byte per frame').toHaveLength(cont0.length)
+    cont0.forEach((raw, i) => {
+      expect(audc[i], `frame ${i}: a ZERO delay byte must stay zero, not become 0x02`).toBe(
+        raw === 0 ? 0 : raw + 0x02,
+      )
+    })
+  })
+
+  it('no stand-in is louder than the ROM lets an ordinary cue be', async () => {
+    // ROUND 2 CHORE (reviewer [RULE] #8). Removing per-file normalisation made
+    // the four INVENTED cues the loudest things in the cabinet, because their
+    // hand-picked AUDC volumes (6 and 8) exceeded every ROM cue's ceiling of 4.
+    // They were capped as part of that fix and nothing guarded the cap;
+    // mutation-confirmed before this test was written.
+    //
+    // 4 is the ROM's own ceiling for ordinary cues — CONT0/CONT1/CONT3 and all
+    // three immediates top out there. Only the player explosion's +2 goes above
+    // it, and it earns that by being in the ROM.
+    bake = await loadBaker()
+    for (const [cue, spec] of Object.entries(bake.STAND_IN_SPECS)) {
+      expect(
+        spec.audc & 0x0f,
+        `${cue} is an invented cue; it must not be louder than a transcribed one`,
+      ).toBeLessThanOrEqual(4)
+    }
+  })
+
   it('FREQ4 keeps all seventeen bytes — the two-line table nobody may tidy', async () => {
     // Called out separately from the sweep above because this is the one that
     // fails QUIETLY: a baker reading only the labelled line produces a

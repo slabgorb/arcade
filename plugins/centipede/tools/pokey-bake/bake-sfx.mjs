@@ -270,6 +270,20 @@ function romEvents(cue, tables = TABLES) {
   return { ev, seconds: c.lengthSeconds }
 }
 
+/**
+ * The AUDC bytes a transcribed cue actually emits, in frame order.
+ *
+ * Exported for the suite: the CHAN5 volume boost and its `BEQ` exemption are
+ * otherwise only observable as a peak difference in the rendered wav, which
+ * cannot distinguish "the delay bytes stayed zero" from "the delay bytes were
+ * boosted a little". Reading the stream directly makes the ROM's rule checkable
+ * byte by byte instead of inferred from a level.
+ */
+export function audcStreamFor(cue) {
+  const cReg = FIXTURE.cues[cue].pokeyVoice * 2 + 1
+  return romEvents(cue).ev.filter(([reg]) => reg === cReg).map(([, value]) => value)
+}
+
 function standInEvents(cue) {
   const s = STAND_IN_SPECS[cue]
   const fReg = s.voice * 2
