@@ -2777,3 +2777,75 @@ Neither is a defect today and neither changed the verdict. Both went into the re
 arguments a future regression will most likely come from. **A Devil's Advocate on an APPROVE
 should surface what will break next, not re-litigate what was already fixed** — if it reads
 like a summary of the findings table, it was written after the verdict rather than before it.
+
+---
+
+## Aim your battery at the values that were CHOSEN, not the ones that were DERIVED (jt9-38 review, joust, 2026-08-03)
+
+**Situation:** TEA ran 11 mutants and Dev re-ran 5, both against the story's mechanism (the quota
+comparison, the density constant, the per-hatch counter, the nibble select). All 16 were caught. By
+the time I arrived the mechanism was thoroughly proven and re-reading the diff found nothing.
+
+**What worked:** I aimed 8 mutants at the parts that are correct **by choice** rather than **by
+derivation** — the fallback value on an error branch, and the placement index. Both survived. The
+derived parts (the twelve, the nibble select, the 12-frame nap) are guarded to the hilt, because
+that is what the ACs were written about; the chosen parts had no AC, so no test, so no guard.
+
+**The generalisable split:** in any diff, sort the constants into DERIVED (traceable to a spec, a
+ROM line, a table) and CHOSEN (a default, a fallback, an index, a cap someone picked). The derived
+ones attract tests because the story is about them. **The chosen ones are where a battery pays**,
+and the most dangerous is a fallback on an error path, because the test that covers it is usually
+`.not.toThrow()` — which admits *every* non-throwing value. Here `: 255` was right and `: 0` was a
+permanent soft-lock, and both were green across 2627 tests.
+
+**Corollary for reading a `not.toThrow()` guard:** it pins liveness, never the value. If the
+expression it guards RETURNS something the code then uses, the guard is half a guard. Ask what the
+worst legal return value would do before accepting it.
+
+## Classify every survivor before reporting it — 3 of my 6 were equivalent, and saying so is the finding
+
+Six mutants survived. Only two were coverage gaps. The other three could not be caught by any test:
+
+- `quota ??= …` → `quota = …`: `demo.wave` is constant within a frame, so recomputing is
+  observationally identical.
+- `((lords << 4) | pursuers) >> 4` → `lords`: identical for any `pursuers <= 15`, and I verified no
+  nibble in the 90-row table exceeds 15 — so no input the decoder can produce distinguishes them.
+- `rawWaveType` → `dispatchWaveType`: equivalent because egg is the one wave type that does not
+  degrade by player count.
+
+Reporting six "gaps" would have sent Dev to write three impossible tests. **Record each equivalence
+with the reason and an explicit "do not add a test"** — and note that the third one is still worth a
+sentence in the code, because it is equivalent *today* for a reason that could change.
+
+## Verify the PREMISE of a deviation you are about to accept — Dev's was right, and checking cost two commands
+
+Dev logged "the 51 shifted citations were left stale rather than re-anchored" on the grounds that
+they were already stale at HEAD. That is a convenient-sounding justification for skipping tedious
+work, and it is exactly the shape a reviewer should distrust. Two `git show HEAD:<file> | sed -n
+'<n>p'` calls settled it: the cited lines are blank, `: null`, and a function the citing comment does
+not mention. The premise held, the deviation is correct, and it is the better call — but "I accepted
+it because the reasoning sounded right" and "I accepted it because I re-ran the check" are different
+reviews, and only one of them catches the case where the reasoning is a rationalisation.
+
+## When the divergence PRE-DATES the story, measure both sides before assigning it
+
+I found that a stack of co-located eggs is collected atomically — three eggs in one frame, three
+score-ladder rungs, three audio cues, where the ROM's six-ledge spread cannot stack at all. The
+instinct is to file it against the story that put three eggs on a pad.
+
+**Measuring the pre-story tree changed the finding.** A worktree at the story's own claim SHA showed
+6 eggs, max stack **2**, and one frame yielding two rungs and two cues. So the divergence existed and
+the story moved its depth by one. That converts a rejection-worthy regression into a
+disclosure gap: the story's comment describes the stacking but not its consequence, and *that* is the
+one-sentence fix. **Use a `git worktree` at the pre-story SHA, symlink `node_modules` from the main
+checkout** (the worktree has none and `npx vitest` dies on a config import that cannot resolve
+`vitest`) — and never `git stash` in this repo, whose stash stack holds someone's parked work.
+
+## The gate wants all eight dispatch tags even when all eight specialists are disabled
+
+`workflow.reviewer_subagents` has 8 of 9 `false`, and the session bars spawning the ninth. The
+completion gate still requires `[EDGE]`/`[SILENT]`/`[TEST]`/`[DOC]`/`[TYPE]`/`[SEC]`/`[SIMPLE]`/
+`[RULE]` to appear in the assessment. Do not stub them — write what you actually did in each domain
+and say the coverage is yours rather than a subagent's. Two of my four findings were reached twice,
+once through `[EDGE]` (a boundary) and once through `[SILENT]` (a silent fallback), which is a real
+argument for walking the domains deliberately instead of treating the tags as gate bureaucracy.

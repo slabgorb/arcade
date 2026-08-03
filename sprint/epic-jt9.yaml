@@ -736,7 +736,7 @@ stories:
       Expect a determinism re-baseline; land it as its own commit per this epic's standing rule, and re-FIND the moved fixtures by re-running the seeded sweeps rather than nudging them to whatever the new code prints.
     points: 5
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-03'
     repos: arcade
     workflow: tdd
@@ -748,6 +748,7 @@ stories:
       - "AC-5 THE DEFERRAL RE-POLLS ONCE PER NAP - TWELVE FRAMES - NOT ONCE PER WAIT AND NOT EVERY FRAME. INC PJOYT,U \"SET = 1,\" (JOUSTRV4.SRC:3238) re-primes the timer to 1 BEFORE the population test, so the branch back to EGGLN2 costs exactly one PCNAP 12 (:3227) - twelve display frames, the port's own EGG_WAIT_NAP_FRAMES (demo.ts:620). Without it the branch would DEC a zero timer to $FF and wait 255 more naps. Assert the gap between two consecutive re-checks is 12 frames, and redden TWO mutants by name: one that re-primes the full EGGWT wait, and one that re-checks on the next frame."
       - 'AC-6 THE PWHCH DISPOSITION IS RECORDED IN WRITING, AND IF DESCOPED IT IS FILED. LDA #2 / STA PWHCH,U "NUMBER OF PRE-MATURE EGG HATCHINGS" (JOUSTRV4.SRC:2776-2777), consumed in CREGG at :2888-2894 (DEC PWHCH / BMI / VRAND / MUL / NEGA / ADDA PJOYT,Y), gives two of the twelve eggs a randomly-shortened hatch time. It is the third unmodelled piece of the same block and SM did not decide it. TEA states explicitly whether it is in scope; the recommendation is OUT (it consumes the RNG, so folding it in moves the re-baseline a second time). If out, it ends with a filed story id - SM owns that at finish, before pf sprint story finish archives the session.'
       - AC-7 THE DETERMINISM RE-BASELINE LANDS AS ITS OWN COMMIT AND ITS NUMBERS ARE RE-FOUND, NOT NUDGED. Per this epic's standing rule. Re-run the seeded sweeps and take the moved fixtures from that run rather than pasting whatever the new code prints; name in the commit message which seeds moved and why. Separately, confirm a seeded EGG WAVE still CLEARS with twelve eggs against a quota of six - the wave-clear gate wants no enemies AND no eggs (demo.ts:1481-1484) and now has twice as many eggs to get through. That is a termination property, nothing currently asserts it, and a stall would look like a hung demo rather than a failing test.
+    review_verdict: approved
   - id: jt9-39
     title: ROW_DISPOSITION can lie in the direction that matters — a row wired in code but left 'no-consumer-yet' ships GREEN
     description: |-
