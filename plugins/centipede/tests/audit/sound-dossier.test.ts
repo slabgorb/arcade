@@ -480,36 +480,26 @@ describe('cp6-1 AC-5 — the manifest and the CHANNELS map are UNCHANGED', () =>
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC-6 — CENTIPEDE IS STILL SILENT WHEN THIS STORY CLOSES.
-// Two mechanical proofs and one in words. The mechanical ones matter more: a
-// story that quietly started cp6-2's work would read like progress toward sound
-// while shipping none, which is the tracking failure epic cp6 exists to repair.
+// AC-6 — CENTIPEDE IS STILL SILENT WHEN cp6-1 CLOSES.
+//
+// cp6-1 shipped three guards here. TWO WERE SCOPE FENCES FOR cp6-1 AND ARE
+// RETIRED BY cp6-2, which is the story they name: they asserted that
+// `tools/pokey-bake/` does NOT exist and that `deploy-assets` does NOT mention
+// centipede, and their own failure messages say "belongs to cp6-2, not cp6-1"
+// and "adding centipede to deploy-assets is cp6-2". cp6-2 has now built the
+// baker and extended the recipe, so both fences forbid the very work they were
+// holding the door open for.
+//
+// This is the same class as the four cp5 guards cp6-2 inverted in
+// tests/audio-seam-scope.test.ts, and it is worth being explicit about why they
+// are DELETED rather than inverted: a guard reading "the baker exists" belongs
+// to the story that built it, and it already exists — the whole of
+// tools/pokey-bake/bake-sfx.test.mjs asserts what that baker does.
+//
+// The THIRD guard survives unchanged. It is about cp6-1's own deliverable, the
+// dossier's truth-in-reporting clause, and cp6-2 does not touch the dossier.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('cp6-1 AC-6 — centipede is still silent', () => {
-  it('ships no baker — cp6-1 records what the ROM sounds like, it does not bake it', () => {
-    expect(
-      existsSync(join(pluginRoot, 'tools', 'pokey-bake')),
-      'plugins/centipede/tools/pokey-bake/ belongs to cp6-2, not cp6-1',
-    ).toBe(false)
-  })
-
-  it('the deploy-assets recipe still does not name centipede', () => {
-    const justfile = readFileSync(join(pluginRoot, '..', '..', 'justfile'), 'utf8').split('\n')
-    const start = justfile.findIndex((l) => /^deploy-assets:/.test(l))
-    expect(start, 'justfile must still carry a deploy-assets recipe').toBeGreaterThan(-1)
-    const body: string[] = []
-    for (let i = start + 1; i < justfile.length; i++) {
-      const line = justfile[i]
-      if (line.trim() !== '' && !/^\s/.test(line)) break
-      body.push(line)
-    }
-    expect(
-      body.filter((l) => /centipede/i.test(l)),
-      'adding centipede to deploy-assets is cp6-2 — uploading samples this story did not bake ' +
-        'would make the recipe lie',
-    ).toEqual([])
-  })
-
+describe('cp6-1 AC-6 — the dossier reports its own scope honestly', () => {
   it('the dossier says plainly that centipede is still silent', () => {
     const md = readDossier(SOUND_DOC)
     expect(md, `docs/rom-study/${SOUND_DOC} must exist (GREEN writes it)`).not.toBe('')

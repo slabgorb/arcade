@@ -8,35 +8,41 @@ input/render shell, the same architecture as its siblings
 [tempest](../tempest), [asteroids](../asteroids), [battlezone](../battlezone),
 [star-wars](../star-wars) and [red-baron](../red-baron).
 
-> **Status:** Live at **v0.0.6**, playable and **silent**. Four epics have
-> shipped (34 archived stories): the scaffold and the machine-verified
-> primary-source dossier (cp1), the playable raster slice — playfield,
-> mushrooms, the centipede train, rendering and the trackball (cp2), the
-> ecosystem — spider, flea, scorpion (cp3), and the game structure — waves,
-> bonus lives, attract mode, high-score entry (cp4). **The audio SEAM has
-> landed (cp5-1) and the cabinet is still silent** — `src/core/events.ts` emits
-> every gameplay moment as data, `src/shell/audio.ts` holds the SOUNDS manifest
-> and channel map, and `src/shell/audio-dispatch.ts` wires them to the shared
-> engine. As of `cp5-2` the shell is connected too: `main.ts` builds the engine
-> with `createAudio()` behind the browser's gesture gate and calls
-> `playEventSounds` once per stepped frame, so the seam is reached in ordinary
-> play. **One** thing is still missing — the sound itself: **no samples are
-> baked or uploaded yet**, so every cue resolves to a file that is not there and
-> the shared engine degrades silently. Epic cp5 closed on 2026-08-01 having
-> shipped the seam and the wiring only — it never filed the asset story it was
-> deferring to, so baking and hosting the samples is owned by
-> `sprint/epic-cp6.yaml`, which exists to repair exactly that gap. The
-> acceptance test for those asset stories is a live `200` on the hosted `.wav`,
-> never a green vitest — because a missing sample and a working one look
-> identical to the test suite.
+> **Status:** Live at **v0.0.6**, playable and **audible**. Five epics have
+> shipped: the scaffold and the machine-verified primary-source dossier (cp1),
+> the playable raster slice — playfield, mushrooms, the centipede train,
+> rendering and the trackball (cp2), the ecosystem — spider, flea, scorpion
+> (cp3), the game structure — waves, bonus lives, attract mode, high-score
+> entry (cp4), and the audio seam (cp5). **The cabinet now has sound.**
+> `src/core/events.ts` emits every gameplay moment as data,
+> `src/shell/audio-manifest.ts` holds the fourteen-cue SOUNDS manifest,
+> `src/shell/audio.ts` builds the shared engine and holds the channel map, and
+> `src/shell/audio-dispatch.ts` wires the two together. `main.ts` constructs the
+> engine with `createAudio()` behind the browser's gesture gate and calls
+> `playEventSounds` once per stepped frame — the shell has been wired that way
+> **as of `cp5-2`**, which connected it.
 >
-> **One consequence to know before you open devtools:** the player's first
-> gesture now fires **14** requests, one per `SOUNDS` entry, and every one of
-> them is a `404` against `arcade-assets.slabgorb.com`. That is **expected**
-> until the asset stories land — the shared engine swallows a failed load by
-> design and the game runs on at a steady 60 fps. It is not a bug, and it is the
-> only wall of red in centipede's console that the missing samples explain.
-> (The `favicon.ico` 404 is a separate, pre-existing one.)
+> **The samples are live.** `cp6-1` ruled what each of the fourteen cues
+> transcribes — six POKEY frequency tables at `CENTI4.MAC:2455-2465`, recorded
+> in [`docs/rom-study/sound.md`](./docs/rom-study/sound.md) — and `cp6-2` baked
+> them with [`tools/pokey-bake/bake-sfx.mjs`](./tools/pokey-bake/bake-sfx.mjs)
+> and uploaded them. They are served from
+> `arcade-assets.slabgorb.com/centipede/sfx/`, staged and shipped by
+> `just deploy-assets` from the monorepo root.
+>
+> **Ten of the fourteen are transcriptions; four are declared stand-ins.** The
+> ROM has no sound at all for the mushroom hit, a head reaching the bottom row,
+> or a wave clearing — the machine marks those visually — and the flea's voice
+> is COMPUTED from its vertical position rather than tabulated, so a fixed
+> sample can only ever stand in for it. The baker's `PROVENANCE` record says
+> which cue is which, derived from `docs/rom-study/sound.fixture.json` rather
+> than asserted by hand.
+>
+> **The acceptance test for an asset story here is a live `200` and an ear,
+> never a green vitest** — the shared engine swallows a failed fetch, a blocked
+> autoplay and undecodable data identically, so a missing sample and a working
+> one look the same to the whole suite. A decodable `.wav` of the wrong tone
+> passes every mechanical check in this repo.
 
 ---
 
@@ -137,10 +143,11 @@ sibling. Two centipede-specific notes an agent will otherwise get wrong:
 centipede consumes `@shared/rng`, `@shared/highscore`, `@shared/name-entry`,
 `@shared/loop` and — as of cp5-1 — `@shared/audio`, the in-repo library at
 [`src/shared/`](../../src/shared/), reached through the `@shared/*` path alias.
-`src/shell/audio.ts` holds only this cabinet's numbers (the SOUNDS manifest, the
-CHANNELS voice map and the R2 base URL) and builds the shared engine from them;
-the WebAudio machinery itself is not forked. **No samples ship yet** — see the
-status note above. It does **not** consume `@shared/font` (score and level
+`src/shell/audio-manifest.ts` holds the SOUNDS manifest (dependency-free, so the
+POKEY bake can read it under plain node) and `src/shell/audio.ts` holds the rest
+of this cabinet's numbers — the CHANNELS voice map and the R2 base URL — and
+builds the shared engine from them; the WebAudio machinery itself is not forked.
+**The samples are baked and live** — see the status note above. It does **not** consume `@shared/font` (score and level
 digits are ROM picture tiles, by epic ruling).
 
 Two known divergences, both recorded rather than silently absorbed:

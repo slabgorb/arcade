@@ -13,56 +13,40 @@
 // This is IO (shell), not simulation (core): the pure core emits `GameEvent`
 // DATA and never imports this module.
 //
-// ─── NO SAMPLES SHIP WITH THIS STORY ─────────────────────────────────────────
-// Every filename below names a `.wav` that a LATER cp5 story bakes and uploads
-// by hand (`wrangler r2 object put --remote`); none of them exists yet. That is
-// deliberate and it is why this story cannot be blocked on asset production —
-// but it also means the cabinet is still SILENT. The shared engine degrades
-// silently at every failure path (no WebAudio, blocked autoplay, failed fetch,
-// undecodable sample), so a 404 is indistinguishable from working audio
-// everywhere except here: the acceptance test for any asset story in this epic
-// is a live 200, never a green vitest.
+// ─── THE SAMPLES SHIP, AS OF cp6-2 ───────────────────────────────────────────
+// Every filename below names a `.wav` baked from the cabinet's own POKEY tables
+// by `tools/pokey-bake/bake-sfx.mjs` and uploaded to the `arcade` bucket by
+// `just deploy-assets`, served under DEFAULT_BASE_URL. cp5-1 shipped this seam
+// with nothing behind it and cp5-2 wired it into main.ts; cp6-1 ruled what each
+// cue transcribes; cp6-2 baked them and put them on the host.
+//
+// The degradation path is unchanged and still matters: the shared engine fails
+// silently at every step (no WebAudio, blocked autoplay, failed fetch,
+// undecodable sample), so a 404 remains indistinguishable from working audio to
+// every automated check in this repo. That is why the acceptance test for an
+// asset story here is a live 200 and an ear, never a green vitest.
 import {
   createAudioEngine as createSharedAudioEngine,
   type AudioEngine as SharedAudioEngine,
 } from '@shared/audio'
 import type { GameEventKind } from '../core/events'
+import { SOUNDS } from './audio-manifest.js'
 
 /** The dedicated assets host, under this cabinet's own prefix. */
 export const DEFAULT_BASE_URL = 'https://arcade-assets.slabgorb.com/centipede/sfx/'
 
-/**
- * Logical cue -> R2 filename.
- *
- * One cue per gameplay moment, except that each sustained voice has ONE cue
- * driven by both edges of its start/stop pair — a loop is one sound told to
- * begin and end, not two sounds.
- *
- * Filenames are exact: R2 keys are case-sensitive, and the base URL supplies
- * the directory, so these are bare names with no path.
- */
-export const SOUNDS = {
-  // ── one-shots ─────────────────────────────────────────────────────────────
-  fire: 'shot_fire.wav', // the gun launches (RSHOT1)
-  mushroom: 'mushroom_hit.wav', // the shot bites a mushroom (OBSTAC)
-  segmentKill: 'segment_kill.wav', // a centipede segment dies (SHOOT)
-  spiderKill: 'spider_kill.wav', // slot 13 killed
-  fleaKill: 'flea_kill.wav', // slot 12 killed, second hit (:2169)
-  scorpionKill: 'scorpion_kill.wav', // slot 12 killed, 1000 points (SC-15)
-  headBottom: 'head_bottom.wav', // a head reached the bottom row (CT-23/89)
-  playerDeath: 'player_death.wav', // PLAYEX (CT-52/53)
-  waveClear: 'wave_clear.wav', // DEAD==0 (CT-62)
-  bonusLife: 'bonus_life.wav', // SCORNG's tail (:1994-1995, CHAN4)
-
-  // ── sustained voices, one cue each ────────────────────────────────────────
-  march: 'centipede_march.wav', // the marching tick, for the whole wave
-  spiderLoop: 'spider_move.wav', // the spider's presence
-  fleaLoop: 'flea_move.wav', // the flea's descent
-  scorpionLoop: 'scorpion_move.wav', // the scorpion's crossing
-} as const satisfies Record<string, string>
-
-/** Every cue name in the manifest. */
-export type SoundName = keyof typeof SOUNDS
+// `SOUNDS` and `SoundName` live in ./audio-manifest.ts as of cp6-2, so the POKEY
+// bake can reach them under plain node — this module's `@shared/audio` import
+// makes IT unreachable there. Re-exported (not copied) so the bake, the shell
+// and the suite all hold the SAME object: the identity assertion in
+// tools/pokey-bake/bake-sfx.test.mjs is what stops a second, drifting manifest.
+// `export … from` re-exports WITHOUT creating a local binding, and this module
+// still names `SoundName` in four signatures below — so it is imported as well
+// as re-exported. vitest does not typecheck, so the missing import was green in
+// the suite and only `npm run lint` (tsc --noEmit) caught it.
+export { SOUNDS } from './audio-manifest.js'
+export type { SoundName } from './audio-manifest.js'
+import type { SoundName } from './audio-manifest.js'
 
 /**
  * Logical cue -> logical channel.
