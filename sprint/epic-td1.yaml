@@ -323,3 +323,53 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: td1-18
+    title: pf preflight finish reports a CRITICAL missing PR on a trunk-based repo — the check never reads branch_strategy
+    description: |-
+      Found at jt9-6's finish preflight (2026-08-03) and VERIFIED AT SOURCE before filing, not
+      inherited from the subagent that reported it.
+
+      WHAT HAPPENS. `pf.preflight finish <story> --branch main` returns `status: blocked` with a
+      CRITICAL issue "No PR found for branch" and the fix text "Create PR with: gh pr create" on
+      every story this repo finishes. arcade is trunk-based: `.pennyfarthing/repos.yaml` sets
+      `branch_strategy: trunk-based`, CLAUDE.md states there are no per-game PRs, and the session
+      files correctly carry `**PR:** none`. There is never a PR to find, so the check is
+      unconditionally critical-red on a correctly-finished story.
+
+      MEASURED, not argued. In pennyfarthing-dist `src/pf/preflight/finish.py`, the aggregator
+      maps any PR error containing "no pull requests found" straight to
+      `PreflightIssue(severity="critical", issue="No PR found for branch", ...)` (the block
+      beginning at :394). Confirming the cause rather than the symptom: `grep -n
+      "branch_strategy\|trunk" src/pf/preflight/finish.py` returns ZERO hits — the module never
+      reads the repo's branching strategy at all, so it cannot distinguish "PR is missing" from
+      "this repo does not use PRs". `check_pr_status` shells out to `gh pr view` unconditionally.
+
+      WHY IT MATTERS MORE THAN IT LOOKS. This is a false RED on the last gate before archive, and
+      a false red is trained past. Every jt9 story this sprint has had to override it by hand, so
+      the one time the check is right — an actual unmerged PR in a repo that does use them —
+      the override is already habitual. That is the same failure shape as a vacuous green, in the
+      opposite direction.
+
+      A SECOND, SMALLER QUIRK IN THE SAME RUN, worth fixing alongside but NOT the headline: the
+      script reports `acceptance_criteria: {total: 0, checked: 0}` for a story whose ACs are all
+      present and all accepted. Its regex recognises only `- [ ]` / `- [x]` checkbox syntax, and
+      this project's ACs are prose bullets (`- **AC-1** ...`). It adds no blocking issue either
+      way, so it reads as "no ACs to check" rather than "cannot parse these ACs" — a zero that
+      looks like a pass.
+
+      SCOPE. `src/pf/preflight/finish.py` in the pennyfarthing repo (~/Projects/orc-penny/
+      pennyfarthing, branch `develop` — NOT arcade's `main`; see repos.yaml before any git
+      operation). The fix is to read `branch_strategy` the way `pf/hooks/branch_protection.py`
+      already does and skip the PR check for trunk-based repos, rather than to special-case the
+      error string. Note pf compares against the literal string `trunk-based` and any other
+      spelling falls through to the gitflow path.
+
+      VERIFY BY MUTATION BOTH WAYS: a trunk-based repo must stop reporting the critical, AND a
+      gitflow repo with a genuinely missing PR must still report it. The second half is the one
+      that will be skipped; a guard nobody has watched fail is not a guard.
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug

@@ -1445,3 +1445,8 @@ completed_stories:
     title: 'framesFor edge cases: an odd token count is silently dropped, and an invention cue reports the wrong bake error'
     points: 2
     completed: '2026-08-03'
+  - id: jt9-6
+    epic: jt9
+    title: An unarbitrated cue sharing the arbitrated voice's channel silences it without releasing its window
+    points: 2
+    completed: '2026-08-03'
