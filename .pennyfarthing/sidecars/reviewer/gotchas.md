@@ -2636,3 +2636,94 @@ pre-existing sprint file throughout, so the gate figures needed no post-hoc rest
 paste it into every reviewer subagent prompt — it costs two lines and buys back a whole serial
 re-measurement pass. Also tell them *not* to `git checkout` or `git stash` as cleanup: on a repo
 where other checkouts park stashes, "undo my mutation" is how you take someone else's work with you.
+---
+
+## The diff-based specialist fleet is structurally blind to the STORY'S OWN PROSE — that defect is always yours alone (cp6-4, centipede, 2026-08-03)
+
+**Situation:** four enabled specialists returned on a two-file diff. Three of them
+independently converged on the same false comment at `bake-sfx.mjs:414-415`, by three
+different routes — security by enumerating exported entry points, comment-analyzer by
+executing `audcStreamFor('toString')` against HEAD, rule-checker by grepping the defect
+PATTERN rather than the AC's named location. Excellent coverage, and it corroborated a line
+I had reached on my own.
+
+**Not one of them could see the worst finding.** The session's mutation-battery table says
+*"the script is reproduced below each row."* No script is reproduced anywhere in the
+session. Four of seven mutants are prose descriptions rather than the verbatim strings AC-4
+demands, so the archived record promises a reader they can re-run the battery and they
+cannot. Every NUMBER in that table is correct — preflight and rule-checker each reproduced
+them — which is exactly what makes the sentence dangerous.
+
+**Why no specialist could catch it:** every diff-based subagent receives the DIFF. The
+session file is not in the diff. The Dev assessment, the deviation entries, the battery
+table, the handoff prose — the entire body of *claims about* the change — is invisible to
+the fleet by construction. So: **read the session's assessment against the diff yourself,
+every time, as a distinct pass.** The specialists verify what the code does; only you verify
+what the story SAYS it did. Grade each quantitative claim, and grade every sentence that
+promises the reader a reproduction recipe.
+
+## A POSITIVE CONTROL is the assertion most likely to be tautological, because its job is to pass
+
+The control added here asserted `count === Object.keys(manifest.SOUNDS).length`. `bakeSfx`
+returns `rendered.length`, and `rendered` gains exactly one entry per iteration of
+`Object.keys(sounds)`. With `sounds === manifest.SOUNDS`, that is `Object.keys(X).length ===
+Object.keys(X).length` — it compares the input to itself and can only fail if the loop
+throws.
+
+Two mutants, from two reviewers, by different routes: mine made pass 2 write **nothing** (8
+other tests red, control GREEN); rule-checker forced every cue through the wrong ROM table
+(13 of 14 cues audibly wrong, control GREEN). A bake that writes zero files and a bake that
+writes fourteen wrong files both satisfy it.
+
+**The tell is cheap and mechanical: can you rewrite the assertion as `X === X`?** Trace where
+the *expected* value comes from and where the *actual* value comes from; if both resolve to
+the same expression over the same object, the assertion tests only for exceptions. Say that
+in the review — "it proves the bake did not throw" — rather than calling it vacuous, because
+proving-no-throw is a legitimate narrow thing and is usually what the author meant.
+
+**And generalise the class, which is the useful part.** A positive control is *written to
+pass*. That biases the author toward an assertion they are confident will hold — which is
+the same failure shape the SM sidecar records for the losing branch of a user question: the
+thing you expect not to fight you gets the least verification. **Mutate your controls
+first**, not last.
+
+## When two specialists score one finding differently, check whether they are grading different HALVES
+
+security called the `audcStreamFor` gap **medium**; rule-checker called it **HIGH**. Both
+were right about different things, and the split is instructive:
+
+- the **code** half — an exported function reaching `romEvents` ungated — is pre-existing, not
+  touched by this diff, unreachable from the deploy path, and cannot write a file. Medium.
+- the **claim** half — a comment introduced BY this diff asserting that path does not exist —
+  is false, and it is the sentence that authorises not hardening further. High.
+
+Scoring the composite at either number alone loses information. Split it in the findings
+table, name which half carries the severity, and prescribe the fix for the half that
+actually blocks. Here the right fix is the sw8-27 move: make the claim TRUE by hardening
+`romEvents`, rather than editing the comment to admit the gap.
+
+## Reviewing your own implementation: attack the assertions with mutants, do not re-read them
+
+I wrote this diff in the Dev phase and reviewed it in this one. Re-reading my own assertions
+produced nothing — they look correct, because I wrote them to look correct. Every defect I
+found came from asking a mechanical question instead: **what mutation would this assertion
+fail to catch?** That question found the tautological control in one probe.
+
+The three assertions I was most suspicious of on reading (the two preconditions, the
+empty-directory check) all turned out to be genuinely non-vacuous under mutation. The one I
+was least suspicious of was the defect. Intuition about your own code is anti-correlated
+with where its problems are; the mutant is not.
+
+## Two agents doing mutation work need UNIQUELY NAMED worktrees
+
+I created a scratch worktree at `<scratchpad>/wt`; the rule-checker independently created
+one and, finding my mutations in `wt` mid-run (it read back a `throw new TypeError` it had
+never written), correctly abandoned it — and the prune took mine out from under me
+mid-probe, so my next command failed on a missing path. No work was lost, but the collision
+was avoidable.
+
+**Name the worktree after the agent or the phase** (`obiwan-wt`, `rulecheck-wt`), never a
+bare `wt`, whenever the review dispatches specialists that may mutate. And note the good
+behaviour worth copying: the rule-checker's tell that something was wrong was *reading back
+a file it had just written and not recognising the contents*. That check costs nothing and
+it is the only thing standing between a shared worktree and a fabricated mutation result.
