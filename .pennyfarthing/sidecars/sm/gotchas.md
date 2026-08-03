@@ -2521,3 +2521,71 @@ check at the moment of the bump than to discover at the `implement` gate.
   question. It does not: `tests/audio-citations.test.ts` is scoped to `src/main.ts`, and the
   only reference to the touched test file (`tests/audit/sound-dossier.test.ts:548`) is by
   path, not by line.
+
+---
+
+## A story's own CONDITIONAL is its most load-bearing sentence, and it can understate rather than authorise (cp6-4 finish, 2026-08-03)
+
+The setup entry for this story recorded that a filing's conditional ("check whether X; if so,
+fold in the fix") carries its risk in the PREDICTION attached to it. Two review rounds later
+that is confirmed from the other end, and the shape is worth the whole story:
+
+**cp6-4 was filed at 1 point as an assertion rewrite and shipped at 2 with a source fix,
+because its conditional was met AND its predicted outcome was wrong in the dangerous
+direction — too mild.** The filing predicted joust's failure mode (right cue name, wrong
+diagnosis). centipede's was a completely clean bake writing a 44-byte silent wav. Had setup
+answered only "yes, the shape is there" and stopped, the AC would have been written at the
+predicted severity and the real hole would have shipped as a footnote.
+
+## Both review rejections were about CLAIMS, and the code was correct from round 1
+
+This is the part I did not expect and would not have predicted. The implementation landed
+correct in round 1 and never changed in substance. What got rejected, twice, was:
+
+- a comment asserting the hardening was sufficient when an exported function bypassed it
+- a positive control that compared the input to itself
+- a mechanism description that called three distinct failure modes one
+- a session sentence promising a reproduction script that was not in the file
+
+**Every one is the same defect the story existed to fix** — an assertion that pins a proxy
+for the property instead of the property — committed by the author of the fix, inside the fix.
+When a story's subject is guard strength, budget review rounds for the story's own claims, not
+its code. The code is the part the author was paying attention to.
+
+## The specialist fleet cannot see the session file, and that is a permanent structural gap
+
+Round 1's fourth finding — a false "the script is reproduced below each row" — was found by
+no specialist, because every diff-based subagent receives the DIFF and the session file is not
+in it. The entire body of *claims about* a change (Dev assessment, deviation entries, battery
+tables, handoff prose) is invisible to the fleet by construction.
+
+**Grade the session's assessment against the diff as a distinct pass, every time.** It is the
+one review surface that is structurally yours alone, and it is where a story records what it
+believes it did.
+
+## Grade a comment finding by whether reviewers CONVERGE or SPLIT
+
+Round 1's false claim: every reader converged on "false" after one probe → REJECT.
+Round 2's surviving claim ("every by-name lookup"): two specialists read it true, one false →
+LOW, fixed as a finish chore with one qualifying word.
+
+The split is not noise to be resolved by majority vote — it is the evidence that the *sentence*
+is ambiguous rather than the code wrong. Convergence means wrong and is worth a round trip;
+divergence means imprecise and is worth a word. Applying that distinction is what kept this
+from becoming a third round over a comment.
+
+## Small confirmations from the finish
+
+- **The Impact Summary was hand-written before `story finish`, again, and again it was right
+  to be.** Standing rule held; the generator's four recorded failures on this repo make
+  writing it beforehand strictly better than checking afterwards, since the session has moved
+  by then.
+- **`archive_epics` swept nothing** — pre-checked by reading every cp6 story's status before
+  running finish (cp6-5 and cp6-6 still backlog keep the epic open). Post-finish orchestrator
+  390/390, matching pre-finish. The one-command pre-check keeps paying.
+- **The finish preflight caught an unpushed commit** I had made minutes earlier and would have
+  carried into `story finish`. Worth spawning even when you are confident the tree is clean —
+  "clean working tree" and "pushed" are different questions and I had only checked the first.
+- **A sibling landed between preflight and push**, so the gates were re-run against the new
+  base before finishing rather than trusting the preflight's numbers. Third story running this
+  week where `main` moved inside a single phase.

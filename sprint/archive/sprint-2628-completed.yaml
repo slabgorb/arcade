@@ -1465,3 +1465,8 @@ completed_stories:
     title: 'The egg lifecycle in ONE re-baseline: an EGGWT wait, a hatching uncollected KILL egg, and EGGSCR scored to the victor on the kill'
     points: 7
     completed: '2026-08-03'
+  - id: cp6-4
+    epic: cp6
+    title: centipede's rogue-manifest guard asserts only the interpolated cue name — rewording the diagnostic wholesale leaves it green
+    points: 2
+    completed: '2026-08-03'
