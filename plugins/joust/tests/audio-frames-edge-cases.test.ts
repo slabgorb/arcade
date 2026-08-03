@@ -38,11 +38,18 @@
 // and `audio-transporter-split.test.ts` ("every continuation row re-opens
 // BYTE-EXACT") does the same for continuations. A hand-mangled row cannot match
 // the file, so it cannot ARRIVE. That says nothing about `framesInRow`
-// MISHANDLING one, which is what this story closes — and the gap is wider than
-// the story states, because BOTH of those checks are
-// `describe.skipIf(!vendoredAvailable)` / `it.skipIf(!vendoredAvailable)`. On a
-// checkout without `reference/williams-source/joust/` (CI's shape) they skip and
-// there is no defence at all, direct or indirect.
+// MISHANDLING one, which is what this story closes.
+//
+// One embellishment I drafted here and then had to retract, recorded because the
+// retraction is the useful part. Both of those checks are
+// `describe.skipIf(!vendoredAvailable)` / `it.skipIf(!vendoredAvailable)`, so I
+// wrote that they skip on CI and the defence is absent there. FALSE: the
+// vendored tree is COMMITTED to this monorepo — `git ls-files
+// reference/williams-source/joust` returns 49 files and nothing gitignores them,
+// which is what the joust README already says at :118. The skip bites only on a
+// checkout where the tree was removed or `JOUST_SOURCE_DIR` points elsewhere.
+// The defence is live wherever this repo is checked out; the story's argument
+// stands on the mechanism gap alone, which is enough and did not need help.
 //
 // ─── DEFECT 2: THE INVENTION ARM, AND THE RULING THIS FILE RESTS ON ──────────
 // `framesFor` opens `if (source.kind !== 'rom') return 0`, so an `invention` cue
@@ -117,7 +124,7 @@
 //   ── audio-manifest.ts, framesInRow ──
 //   N1  `pairs.length % 2 !== 0`             →  `pairs.length % 2 === 0`  RESTRICTIVE
 //   N2  the whole pairing guard              →  (deleted; the pre-jt9-5 code) permissive
-//   N3  `${pairs.length} operands`           →  `5 operands`      DECOY (the defining probe's count)
+//   N3  `an odd operand count (${pairs.length})` → `... (5)`  DECOY (the defining probe's count)
 //   N4  `${skipPriority ? ' after the priority byte' : ''}` → always present   DECOY
 //   N5  the same                             →  always absent     DECOY
 //   N6  `pairs: '${verbatim}'`               →  `pairs: '(row)'`  DECOY
@@ -253,8 +260,8 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
     // 285 instead of an error. Measured before writing this test.
     const odd = romCue('FAKE\tFCB\t070,!N$12!+$80,30,!N$14!+$80,255,!N$16!.$7F\tFIVE OPERANDS')
     expect(() => framesFor(odd)).toThrowError(
-      "sound-table row has an unpaired sound code — 5 operands after the priority byte " +
-        "cannot form (code, duration) pairs: " +
+      "sound-table row has an unpaired sound code — an odd operand count (5) after the " +
+        "priority byte cannot form (code, duration) pairs: " +
         "'FAKE\tFCB\t070,!N$12!+$80,30,!N$14!+$80,255,!N$16!.$7F\tFIVE OPERANDS'",
     )
   })
@@ -280,7 +287,7 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
       '\tFCB\t    !N$15!+$80,255,!N$00!.$7F',
     ])
     expect(() => framesFor(odd)).toThrowError(
-      "sound-table row has an unpaired sound code — 3 operands cannot form " +
+      "sound-table row has an unpaired sound code — an odd operand count (3) cannot form " +
         "(code, duration) pairs: '\tFCB\t    !N$15!+$80,255,!N$00!.$7F'",
     )
   })
@@ -302,8 +309,8 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
     // is for.
     const odd = romCue('FAKE\tFCB\t070,!N$12!+$80,$3F,!N$16!.$7F\tBAD OPERAND TOO')
     expect(() => framesFor(odd)).toThrowError(
-      "sound-table row has an unpaired sound code — 3 operands after the priority byte " +
-        "cannot form (code, duration) pairs: " +
+      "sound-table row has an unpaired sound code — an odd operand count (3) after the " +
+        "priority byte cannot form (code, duration) pairs: " +
         "'FAKE\tFCB\t070,!N$12!+$80,$3F,!N$16!.$7F\tBAD OPERAND TOO'",
     )
   })
