@@ -2549,3 +2549,37 @@ updated three of four references and missed one", which after the sibling's comm
 though the story under review owned four stale references. It owned one. Say which, and say the
 line numbers were re-taken. Rejecting a story for figures that outlived their measurement while
 your own assessment carries some is not a defensible position, and the fix costs one rebuild.
+
+## Your finding can be RIGHT about the symptom and WRONG about the fix — an unkillable mutant is a fact, not an excuse (cp6-3 round 3, centipede, 2026-08-03)
+
+I rejected a story partly because a new assertion was vacuous: deleting `|| cue.frameGate ===
+null` from `windowFrames` left the whole suite green, so the clause the test claimed to prove was
+unobserved. That symptom was real. The fix I asked for — "make the case discriminate" — was wrong.
+
+The Dev came back with an enumeration instead of a new assertion. Over the parameter type's whole
+domain, `{null, 0, 1, 4, 19, -3, 255}` squared, the guarded and unguarded programs differ in
+**one cell**: a negative length with a null gate returns `-0` instead of `0`, distinguishable
+only by `Object.is`. The cause is that `19 * null === 0` in JS. It is an **equivalent mutant**, so
+no meaningful test can kill it — and the only way to redden it would be to assert on `-0`, which
+would satisfy the mutation battery while proving nothing about the rule the line exists to state.
+
+**Generalise:** "this mutant survives" has three explanations, not one — a coverage gap, a no-op
+edit, or an *equivalent program*. Before demanding a kill, ask whether one exists. The cheap test
+is to enumerate the input domain and diff the two implementations directly (a five-line script),
+which is faster than arguing and gives the next reader a fact instead of an opinion. When the
+answer is "equivalent", the correct deliverable is a comment naming it as such and labelling the
+assertion a CONTRACT pin rather than a discriminating one — the suite is then honest about what it
+measures, which is the thing mutation testing is for.
+
+**And accept the correction cleanly when it comes.** A reviewer who insists on the fix they named
+rather than the fix that is right converts a good finding into a worse test. Say the finding was
+right about the symptom, record what was established, and approve.
+
+## A proportionate review is fine — but say which specialists did NOT run
+
+At the user's direction, round 3 ran with no subagent fan-out: the diff was four claim-fixes and
+one boolean. That is a reasonable trade on a small diff. What is not reasonable is letting the
+assessment read as though the usual coverage happened. Name the specialists that were skipped, in
+the assessment, next to the verdict — and say what you did instead, line by line, so the next
+reader can price the review rather than assume it. The round-1 reviewer on this same story did
+exactly that for a different reason (7 of 9 disabled by settings) and it was the right habit.
