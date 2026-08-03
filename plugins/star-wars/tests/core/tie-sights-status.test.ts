@@ -42,9 +42,17 @@
 // about how big a target is." C_PS is that same predicate at twice the radius.
 //
 // The ROM's ?ALIVE? guard (A$TYP == 1) needs no port: `state.enemies` holds only live
-// fighters — a killed TIE moves to `dyingTies`. And the "must be drawn" gate the CHSET
-// inherits from sitting in the draw pass comes free from `beamHit`, which refuses any
-// target behind the gun.
+// fighters — a killed TIE moves to `dyingTies`.
+//
+// The visibility gate is C_PV, and it is control flow rather than proximity (sw8-19):
+// `S2VW` (WSMAIN.MAC:3755) exits to `RTS1` at WSMAIN.MAC:3826, :3828, :3836 and :3842 —
+// the near clamp, the far clamp and the two ratio tests, i.e. C_PV's own definition —
+// all of them BEFORE `CHSET C$PV` at WSMAIN.MAC:3846, so the sole `CHSET C$PS` at
+// WSMAIN.MAC:3930 is unreachable for an object the cabinet did not draw. `beamHit`'s
+// refusal of targets behind the gun is a real but weaker guard that survives alongside
+// it, and it is not that gate. The gating itself is pinned by
+// `tie-sights-visibility.test.ts`; the seats below all sit inside the rendered pyramid,
+// so they exercise the band rather than the gate.
 //
 // RED until computeStatus derives C_PS.
 //

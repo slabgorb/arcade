@@ -278,12 +278,47 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // band. The cabinet has no such gap — it builds both tests from one cursor
   // sample in one pass (WSMAIN.MAC:3881-3930).
   //
-  // Two ROM guards come free. `?ALIVE?` (`CMPA #1 / BNE 86$`, :3926-3928) needs
-  // no port — `state.enemies` holds only live fighters, a killed one moves to
-  // `dyingTies`. And the "must be drawn" gate the CHSET inherits from sitting
-  // in the draw pass is `beamHit` refusing anything behind the gun.
+  // One ROM guard comes free: `?ALIVE?` (`CMPA #1 / BNE 86$`, WSMAIN.MAC:3926-3928)
+  // needs no port — `state.enemies` holds only live fighters, a killed one moves
+  // to `dyingTies`.
+  //
+  // THE VISIBILITY GATE IS CONTROL FLOW, AND IT IS C_PV (sw8-19). Not an
+  // inference from the CHSET's neighbourhood: `S2VW` (WSMAIN.MAC:3755) is one
+  // straight-line routine, and it has EXACTLY FOUR exits before it sets C$PV,
+  // every one a long branch to `RTS1` — whose body is a bare `RTS` at
+  // WSMAIN.MAC:3754, and which nothing else in the file branches to:
+  //
+  //   WSMAIN.MAC:3825-3826  `CMPD #10` / `LBLE RTS1`            the near clamp
+  //   WSMAIN.MAC:3827-3828  `CMPD #7F00` / `LBHI RTS1`          the far clamp
+  //   WSMAIN.MAC:3834-3836  `LDD M.YPS` / `SUBD M.XPS` / `LBHS RTS1`  ;B OUT OF VIEW
+  //   WSMAIN.MAC:3840-3842  `LDD M.ZPS` / `SUBD M.XPS` / `LBHS RTS1`  the other ratio test
+  //
+  // Those four tests ARE C_PV's definition — they are the same near/far clamps
+  // and the same ratio law the C_PV block above ports. `CHSET C$PV` is
+  // WSMAIN.MAC:3846; the sole `CHSET C$PS` is WSMAIN.MAC:3930; and the only
+  // branch target between them is the FORWARD local label `86$` at
+  // WSMAIN.MAC:3933. So the cabinet cannot reach :3930 for an object it did not
+  // reach :3846 for. Gating the sights bit on the view bit transcribes that.
+  //
+  // Nothing else in the span gates. `IS2UV`/`OBJCEN` (WSMAIN.MAC:3870-3873) are
+  // `JSR`s and return to :3875 — a subroutine call cannot skip the caller's
+  // remaining code. The laser-hit block's four `ENDIF`s all close at
+  // WSMAIN.MAC:3915-3918, before the `;---` at :3919, so the sights test is that
+  // block's SIBLING and not nested inside its conditions.
+  //
+  // `beamHit` still refuses anything behind the gun (`along <= 0`), and that
+  // refusal is real and still runs — but it is a weaker, separate guard, not the
+  // ported gate: it says nothing about the frustum, so before this gate a fighter
+  // off the top of the glass, or nearer than VIEW_NEAR, could take the sights bit
+  // while the player could not see it. Measured on the shipped uf1-12 loiter seat:
+  // 30 of its 391 flight frames. The gun is deliberately NOT changed here — the
+  // clone's laser resolves through the same helper and carries the same divergence
+  // from the cabinet, which is a separate story.
   const sightsRay = aimDirection(state.aimX, state.aimY, state.aspect)
-  if (beamHit(eye, sightsRay, e.pos, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS) !== null) {
+  if (
+    (status & Status.C_PV) !== 0 &&
+    beamHit(eye, sightsRay, e.pos, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS) !== null
+  ) {
     status |= Status.C_PS
   }
 
