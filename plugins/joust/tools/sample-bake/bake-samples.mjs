@@ -28,6 +28,18 @@
 // here (a manifest entry with no synth spec throws; it never falls back to a
 // default beep).
 //
+// ─── jt9-4: `opts.sounds` / `opts.frameDurations` ────────────────────────────
+// The two throws above are unreachable from outside this module unless the
+// manifest they check against can be substituted — a test cannot force a
+// missing-spec or missing-duration failure through the SHIPPED manifest, since
+// every shipped cue has both. `bakeSamples(outDir, opts = {})` takes each
+// record as an optional override, defaulting to the shipped ones so the
+// recipe's one-argument call (`node bake-samples.mjs "$staging/joust/sfx"`) is
+// byte-for-byte unchanged. Mirrors centipede's `bakeSfx(outDir, opts = {})`
+// (cp6-2) rather than inventing a second idiom for the same seam. `SPECS`
+// stays module-private; only the two records already imported from the
+// manifest are overridable.
+//
 // Determinism: the only randomness is mulberry32 (the same generator the core
 // lifted into frame.ts) seeded from each cue's NAME — two runs are
 // byte-identical, which is what makes the recipe's re-uploads idempotent.
@@ -304,26 +316,28 @@ function encodeWav(samples) {
 
 // ─── The bake ────────────────────────────────────────────────────────────────
 
-export async function bakeSamples(outDir) {
+export async function bakeSamples(outDir, opts = {}) {
   if (typeof outDir !== 'string' || outDir.length === 0) {
     // No default on purpose: the plugin tree must never grow a .wav
     // (audio-seam-scope.test.ts forbids audio binaries anywhere under joust).
     throw new Error('usage: bakeSamples(outDir) — pass an explicit staging directory')
   }
-  for (const name of Object.keys(SOUNDS)) {
-    const spec = SPECS[name]
+  const sounds = opts.sounds ?? SOUNDS
+  const frameDurations = opts.frameDurations ?? FRAME_DURATIONS
+  for (const name of Object.keys(sounds)) {
+    const spec = Object.hasOwn(SPECS, name) ? SPECS[name] : undefined
     if (!spec) {
       throw new Error(
         `no synth spec for manifest cue '${name}' — a new cue must arrive with its own sound`,
       )
     }
-    const frames = FRAME_DURATIONS[name]
+    const frames = frameDurations[name]
     if (!(frames > 0)) {
       throw new Error(`no FRAME_DURATIONS entry for '${name}' — the ROM window sizes the file`)
     }
     const n = Math.round((frames / FRAME_HZ) * RATE)
     const samples = spec(n, mulberry32(seedFrom(name)))
-    writeFileSync(join(outDir, SOUNDS[name]), encodeWav(samples))
+    writeFileSync(join(outDir, sounds[name]), encodeWav(samples))
   }
 }
 

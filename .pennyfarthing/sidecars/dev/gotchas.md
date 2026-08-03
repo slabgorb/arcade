@@ -1848,3 +1848,42 @@ dossier) and a mechanical transcription of it (the bake), and it is stronger evi
 I could have written — a hand-tuned "explosion" per creature would have produced four different
 files and passed every check in the suite. **When implementing from primary source, look for
 coincidences the spec did not demand; they are the cheapest fidelity signal available.**
+
+---
+
+### Re-running a fully-measured TEA battery still needs its OWN backup file — `git checkout --` reverts to the wrong state when the refactor isn't committed yet
+
+**Situation:** GREEN work where TEA hands you an exact diff already measured against 19 mutants,
+reverted, and pasted verbatim into the session file (jt9-4). The mechanical task looks like:
+apply diff, confirm green, re-run the battery yourself, revert each mutant, move on.
+
+**Problem:** My first draft of the battery driver reverted each mutant with `git checkout -- <file>`
+— which is correct ONLY once the refactor itself is committed. Applied but uncommitted, `git
+checkout --` resets the file to HEAD, i.e. the pre-refactor RED state, silently undoing the entire
+diff on the very first mutant's cleanup. Caught it before running (the revert target is "the state I
+just verified GREEN", not "whatever git last saw"), not after.
+
+**Prevention:** When mutating a file that is itself part of an uncommitted change, snapshot the
+CURRENT working-tree content to a scratch file first (`cp file backup`) and restore from THAT on
+every iteration, never from git, until the base change is committed. Only reach for `git checkout --`
+once the file you're mutating against is itself the committed baseline.
+
+**Also confirmed independently:** TEA's own flagged weak spot was real and reproducible — a mutant
+that deletes the `outDir.length === 0` clause (M7) writes every baked `.wav` into the repo ROOT
+(`join('', name)` is relative, and vitest's cwd is the repo root, not the plugin), which
+`audio-seam-scope.test.ts` never walks. Re-running the battery reproduced all eighteen stray files
+exactly as TEA described. **After ANY mutation battery that touches a bake/file-write path, `ls
+*.wav` (or the equivalent stray-artifact check) at the repo root before running `git status` and
+before committing** — a clean `git status --porcelain` on the SOURCE file says nothing about
+untracked binaries the battery may have dropped elsewhere.
+
+**On the in-story judgment call (keep or drop a one-line hardening beyond spec):** the spec said "no
+production behaviour change"; the diff added `Object.hasOwn` guarding a real prototype-bracket-read
+bug (a manifest cue named `toString` bypassing the missing-spec gate and mis-firing the duration
+gate instead) that the repo's own `lang-review/javascript.md` check 3 names. Ruled to KEEP it: one
+line, fixes a real misdiagnosis directly on the exact lookup the story's own refactor touches, has a
+dedicated test already measured RED→GREEN by the mutation that removes it (M9), and "no behaviour
+change" was clearly scoped at "don't redesign the throws," not "leave a known misdiagnosis in the
+one function this story is opening up." State the ruling explicitly in the assessment either way —
+it is cheap for the Reviewer to overturn a stated ruling and expensive for them to notice an
+unstated one.
