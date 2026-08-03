@@ -76,11 +76,108 @@ stories:
       SCOPE. This is a core/shell change to the channel model, NOT a baker change — the fourteen .wav files are correct and live, and nothing here should re-bake or re-upload anything. Expect to touch CHANNELS, and expect `plugins/centipede/tests/audio-dispatch.test.ts` (which pins that each sustained voice has its OWN channel — that rule stays true; what changes is which cues SHARE voice 0). Note that cp6-1's dossier guard `tests/audit/sound-dossier.test.ts` asserts SOUNDS and CHANNELS are exactly as cp5-1 left them; that guard's premise is what this story deletes, so retire it here in the open, as cp6-2 did for its own six predecessors.
 
       ONE THING TO SETTLE FIRST: whether 'faithful' means the death cue STOPS an in-flight kill cue (true preemption) or merely that the two never start together. The ROM's answer is preemption — CHAN5 is checked before CHAN0 every SOUNDS pass — but the shared engine's steal model may express that differently, so decide it explicitly rather than discovering it in review.
-    points: 3
+
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      ⚠ SM CORRECTIONS (2026-08-03, cp6-3 setup). The text ABOVE is preserved as filed.
+      Everything in it about the ROM is TRUE and line-exact. Four claims about THIS REPO
+      are false, and two of them would have sent the build the wrong way. Measured, not
+      argued — every item below was run.
+
+      C-1. THE FIXTURE RECORD NAMED IS THE WRONG VOICE. `voiceArbitration` in
+      sound.fixture.json is POKEY VOICE **1** (contenders: bonusLife, scorpionLoop,
+      fleaLoop, march) and sound.md section 2.5 is "POKEY voice 1 is contended four ways,
+      and the march loses". Neither concerns voice 0. A term scan of the whole fixture
+      scores ZERO for `2437`, `AUDF0`, `AUDC0`, `52$` and "voice 0". So the voice-0
+      ARBITRATION RULE IS RECORDED NOWHERE — writing it is part of this story (AC-6), not
+      an input to it. What the fixture DOES carry, and what you should consume: per-cue
+      `pokeyVoice` (0 for playerDeath and all four kills, null for the three inventions),
+      `lengthFrames`, `frameGate`. The voice-0 PROSE is section 2.2 plus the cue table
+      rows, not 2.5.
+
+      C-2. "EXPECT TO TOUCH CHANNELS" IS WRONG, AND SO IS RETIRING THE GUARD. The shared
+      engine's `priorities` arbitration is CROSS-CHANNEL (src/shared/audio.ts:253-255 —
+      an accepted arbitrated sound stops what is sounding on a DIFFERENT channel).
+      Probe-proven with CHANNELS exactly as it ships today: a kill arriving during a
+      death is REFUSED, and a death arriving during a kill interrupts it. **CHANNELS does
+      not change, so cp6-1's AC-5 guard (tests/audit/sound-dossier.test.ts:431-478) stays
+      GREEN and must NOT be retired.** The instruction to retire it was written against a
+      different candidate fix than the one that works. Do not delete a guard on this
+      story's authority alone.
+
+      C-3. MERGING THE CHANNELS PRODUCES THE OPPOSITE OF THE CABINET. Plain channel
+      sharing steals FORWARD: probe-proven, a later segmentKill STOPS a ringing
+      playerDeath. The cabinet has the ringing explosion BLOCK the later kill. So the
+      story's open question ("preemption or merely never together?") is answered by the
+      machine and needs no ruling: it is REFUSAL OF THE LATER CUE, and only the
+      priorities path expresses it.
+
+      C-4. "THE LOOPS KEEP RUNNING UNDER A DEATH" IS FALSE IN BOTH HALVES. `march-stop`
+      fires ON the death frame — `marchAudible` carries `s.delay === 0` (core/sim.ts) and
+      the death sets delay = DEATH_DELAY — and it is a RECORDED pair composition in
+      tests/audio-wiring.test.ts:94 (`player-died+march-stop`). Spider, flea and scorpion
+      DO stop too, at the pause's END, pinned green by tests/audio-events.test.ts:553.
+      The real defect is TIMING: those three ring up to DEATH_DELAY = 0x30 = 48 frames
+      (0.8s) past the ROM's death-instant clear. Smaller than filed, real, and audible.
+
+      MEASURED BLAST RADII (baseline 1668/1668, 89 files, centipede+shared):
+        * priorities + frameDurations + tick(), CHANNELS untouched -> 14 tests, ONE file
+          (tests/audio-dispatch.test.ts). All mechanical: the recording fake at :91-93
+          has no `tick`. joust already solved this exact problem — copy the shape at
+          plugins/joust/tests/audio-dispatch.test.ts:60-72, comment included. lint clean.
+        * death-instant clear for the three creature loops -> 2 tests, 2 files, both
+          behavioural re-baselines (the seeded pair-composition fingerprint at
+          audio-wiring.test.ts:94 is EXPECTED to move; re-measure it, do not hand-edit).
+        * merging CHANNELS (the rejected approach) -> 1 test. Its near-zero radius is
+          exactly why it is dangerous: nothing in the tree can hear it go the wrong way.
+
+      TWO UNRECORDED ROM FACTS FOUND AT SETUP, both stronger than the filing:
+        * The gate is CONTROL FLOW, not adjacency. Label `52$` (CENTI4.MAC:2418) has
+          exactly ONE reference in the SOUNDS routine — the `BEQ 52$` at :2437. The kill
+          path is UNREACHABLE while CHAN5 is non-zero. That is a transcription, not an
+          inference.
+        * `35$:` at :1813 is a BRANCH TARGET (`BMI 35$ ;IF IN ATTRACT`, :1810). In
+          ATTRACT the CHAN5 seed is SKIPPED and only the clear runs — the attract demo
+          dies silently. Unverified against our attract path; TEA should check, not assume.
+
+      ONE OPEN QUESTION SM COULD NOT SETTLE — hand-verify before leaning on it. Our death
+      pause is 48 frames and NO one-shot can be emitted during it (only stepPlayingFrame
+      builds events; the pause runs stepDeathFrame). The ROM's CHAN5 window is 0x13 x 4 =
+      76 frames. So 48 of the 76 may already be faithful by accident of the pause, leaving
+      a ~28-frame tail as the window where the divergence can actually be heard. SM did
+      NOT confirm a kill is reachable in that tail (it needs a respawn, a shot in flight
+      and a contact). If it is not reachable, a "no kill cue sounds during a death" sweep
+      is VACUOUS and needs a positive control proving the sweep can see a kill at all.
+      Settle this before writing the RED.
+
+      USER RULINGS (2026-08-03), both binding:
+        R-1. The death-instant clear is FOLDED INTO this story (not filed separately).
+        R-2. Arbitration keys on the fixture's `pokeyVoice` field. The three inventions
+             (mushroom, headBottom, waveClear — all `pokeyVoice: null`) stay OUTSIDE
+             arbitration and ring through a death. Nothing is invented for a cue the
+             cabinet never sounds.
+
+      SM SIZING NOTE: filed at 3 points against a shell-only channel edit. With R-1 folded
+      in, the real build is the arbitration wiring + a new tick() call site + 14 fake
+      fixups + 2 re-baselines + the dossier record. Re-pointed to 5. Note also that SM's
+      own pre-ruling estimate for R-1 ("~2 more points, widens into core/sim.ts's
+      loop-edge model, the part with the most existing coverage") was WRONG and is
+      corrected here: measured, it is 2 tests, both of which SHOULD move.
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-03'
     repos: arcade
     workflow: tdd
+    acceptance_criteria:
+      - "AC-1 VOICE 0 IS ARBITRATED, NOT MERGED. While the player explosion is ringing, all four ROM kill cues (segmentKill, spiderKill, fleaKill, scorpionKill) are REFUSED — they must not reach the engine's start path at all. A player explosion arriving while a kill cue rings INTERRUPTS it. This is the cabinet's direction and it is the OPPOSITE of plain channel-sharing: CENTI4.MAC:2437's `BEQ 52$` is the only reference to label `52$` (:2418) in the SOUNDS routine, so the kill path is unreachable while CHAN5 is non-zero. Implemented with the shared engine's `priorities`/`frameDurations` (jt5-5), which arbitrate ACROSS channels (src/shared/audio.ts:253-255)."
+      - AC-2 CHANNELS IS NOT EDITED, AND cp6-1's AC-5 GUARD STAYS GREEN. `tests/audit/sound-dossier.test.ts:431-478` must still pass unmodified at the end of this story. The filing's instruction to expect a CHANNELS edit and to retire that guard was written against a candidate fix that does not reproduce the cabinet; do not delete a guard on this story's authority. If the implementation appears to require a CHANNELS change, that is a signal the arbitration is being modelled the wrong way — stop and say so rather than editing the map.
+      - AC-3 THE WINDOW COMES FROM THE FIXTURE, NOT FROM TASTE. The player explosion holds voice 0 for lengthFrames 19 x frameGate 4 = 76 video frames (CENTI4.MAC:1811 seeds 0x13; :2438-2439 gates on `AND I,3`); each kill cue holds 19 frames at frameGate 1. Both numbers are read from `docs/rom-study/sound.fixture.json` rather than written a second time as literals, so a dossier correction cannot silently disagree with the engine.
+      - "AC-4 tick() IS DRIVEN ONCE PER STEPPED FRAME, FIRST AND UNCONDITIONALLY. centipede has never called `engine.tick()` and declares no priorities today; joust is the only game that does. Without the tick the arbitration window never expires and the FIRST player death refuses every kill cue for the rest of the run. Follow joust's shape and its reasoning: `plugins/joust/src/shell/audio-dispatch.ts:98-110` ticks at the top of `playEventSounds`, before any cue, on every frame including silent ones. centipede's `playEventSounds` is already called once per stepped frame from `main.ts:203`."
+      - "AC-5 ONLY `pokeyVoice: 0` CUES ARE ARBITRATED — USER RULING, 2026-08-03. The arbitration set is derived from the fixture's `pokeyVoice` field, not hand-listed. The three INVENTIONS — mushroom, headBottom, waveClear, each `pokeyVoice: null` and each riding a bucket shared with an arbitrated cue — stay OUTSIDE arbitration and ring through a player death. The cabinet never sounds them, so arbitrating them would invent behaviour rather than transcribe it. A test must show an invention sounding during a death window in which a kill cue is refused, or the ruling is unproven."
+      - "AC-6 THE DEATH-INSTANT CHANNEL CLEAR IS MODELLED — USER RULING, 2026-08-03 (folded in). The ROM zeroes CHAN0/1/2/3/6 on the death frame itself (CENTI4.MAC:1813-1818), so the spider, flea and scorpion loops must stop ON the death frame rather than at the death pause's end — today they ring up to DEATH_DELAY = 0x30 = 48 frames (0.8s) longer than the cabinet. The march is ALREADY correct (`marchAudible` carries `s.delay === 0`; `player-died+march-stop` is a recorded pair at tests/audio-wiring.test.ts:94) and must not regress. Expect the seeded pair-composition fingerprint to MOVE: re-measure it from a run, never hand-edit the expected list."
+      - AC-7 THE DOSSIER GAINS THE VOICE-0 RULE IT DOES NOT CARRY. The fixture's existing `voiceArbitration` record is POKEY voice 1 and sound.md section 2.5 is the voice-1 prose; a term scan of the fixture scores zero for 2437, AUDF0, AUDC0 and `52$`. Record voice 0's contention where cp6-1 recorded voice 1's — the contenders, the control-flow mechanism (the single reference to `52$`), the 76-vs-19-frame windows, and how our clone now models it — with citations that pass the existing citation gate. Do not disturb the voice-1 record.
+      - AC-8 EVERY NEW GUARD IS MUTATION-PROVEN, WITH THE MUTANT RECORDED VERBATIM. The baseline is 1668/1668 across 89 files, and the correct fix is invisible to all of it except mechanical fixture rework — so the tests written here ARE the entire observable footprint. For each new assertion, name the exact source mutation that reddens it and paste the mutated string, so the next reader re-runs the string rather than reconstructing the intent. A 'no kill cue sounds during a death' sweep additionally needs a POSITIVE CONTROL proving the sweep can observe a kill cue at all — see the open question about the ~28-frame audible tail.
     type: bug
   - id: cp6-4
     title: centipede's rogue-manifest guard asserts only the interpolated cue name — rewording the diagnostic wholesale leaves it green
