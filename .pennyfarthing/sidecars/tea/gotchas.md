@@ -3486,3 +3486,89 @@ asserts the CURRENT gun behaviour explicitly — off-glass targets still resolve
 that "fixes" both at once is caught rather than welcomed. **When a finding has a sibling you are
 deliberately not fixing, pin the sibling's present behaviour and file it; otherwise the tempting
 over-fix ships silently and the follow-up story is filed against code that already changed.**
+
+---
+
+## vitest `-t` is a REGEX — a mutation harness that filters by test name scores untested mutants as SURVIVED (cp6-2 RED, 2026-08-03)
+
+**Situation:** a 12-mutation battery over the cp6-2 RED tests. One mutation — breaking `flatten()`
+so it no longer un-wraps blockquotes — came back **SURVIVED**, which read as "the apparatus test
+for `flatten()` has no teeth".
+
+**It had never been run.** The harness selected the test with
+`npx vitest run -t "flatten() un-wraps a blockquote-wrapped silence claim"`. `-t` is matched as a
+**regular expression**, so the literal `()` is an empty capture group and the name never matches.
+Vitest reported `1120 skipped`, exited **0**, and a `returncode == 0` check read that as green
+before AND after the mutation.
+
+**Why this is worse than a crash:** a mutant that was never run is indistinguishable in the report
+from one that was caught, and it lands on the *safe*-looking side. Here it inverted — it reported a
+good test as bad — but the same bug silently reports a bad test as good whenever the mutation is
+expected to survive.
+
+**The fix is to make "nothing ran" a distinct outcome from "nothing failed":**
+```python
+m = re.search(r"^\s*Tests\s+(.+)$", out, re.M)
+passed = ... ; failed = ...
+if passed + failed == 0:
+    return None          # filter matched nothing — NOT a green run
+```
+and refuse to score a mutation whose test was not passing beforehand. Also: prefer paren-free,
+regex-safe substrings when naming the filter, and remember that `.` `(` `)` `*` `+` `?` `[` `|` in a
+test name are all live regex syntax.
+
+**Generalises past vitest:** any harness that infers "green" from an exit code is really inferring
+"nothing failed", and "nothing ran" satisfies that. Assert the positive — N tests ran — not the
+absence of failure. Same family as the SM sidecar's `grep -Eci` alternation trap: a zero from a
+filter you just composed is a claim about your filter first and the code second.
+
+## "The token appears SOMEWHERE in the file" is defeated by a second occurrence — assert the PAIR
+
+The first cut of a guard on `just deploy-assets` asserted that each game's key prefix appeared in
+the recipe body: `expect(body).toMatch(/joust\/sfx/)`. A mutation deleting `"$staging/joust/sfx"`
+from the `mkdir` line **survived** — because `joust/sfx` also appears in the bake line two rows
+down. Same for `star-wars/music`.
+
+The real invariant is a pair: a prefix must be **staged** *and* **baked into**. Staging without
+baking uploads an empty directory; baking without staging writes nowhere. Either half alone
+produces a live 404 at the exact URL the game requests, and on this project `@shared/audio`
+swallows that identically to success — so the suite stays green over a silent game, which is the
+precise defect the story existed to fix. The guard was reproducing the bug it was written to catch.
+
+**Rule:** before asserting a token's presence, `grep -c` it. If the count is >1, presence proves
+nothing about the occurrence you care about — scope the match to the line or structure that
+matters (`body.match(/^\s*mkdir -p .*$/m)` here), and assert each half separately with a message
+naming which half failed.
+
+## A previous story's guards can assert the OPPOSITE of your ACs — invert them in RED, never leave them for GREEN
+
+centipede's `tests/audio-seam-scope.test.ts` carried four guards from cp5-1/cp5-2 requiring the
+README to say the game is **silent**, that no samples ship, and that fourteen 404s are expected —
+all correct then, all false the moment cp6-2 bakes and uploads. One of them
+(`audio.ts must not match /uploaded|hosted and verified/`) actively **forbade** the AC's fix.
+
+Left in place they stay green through the whole build and red only when the README is finally told
+the truth — at which point **the cheapest way back to green is to restore the false sentence**,
+failing the AC while the suite reports success. That is the mg1-9 "guard whose correct fate is
+deletion" shape seen from the test-authoring side.
+
+**Do it in RED.** Inverting them there makes the inversion part of the specification: the tests are
+red for the same reason as everything else, and Dev cannot mistake them for collateral damage. Keep
+an inline comment naming the inverting story and the reason, so the history stays legible — and keep
+the guards whose premise survives (`commits no .wav anywhere in the plugin` is still right, because
+the baker stages to a temp dir).
+
+## To mutation-prove a green-on-arrival assertion bundled with a legitimately-RED one, SIMULATE the fix first
+
+The strengthened recipe guard covers four prefixes, three shipped and one this story adds. It is
+therefore red today — so the standard battery step ("assert green, mutate, assert red") cannot run,
+and the harness correctly refused with `NOT GREEN FIRST`.
+
+The answer is not to split the test to suit the harness. It is to apply a **minimal simulation of
+the story's own fix** (here: two lines added to the justfile), assert the guard is now GREEN — that
+assertion is the precondition and must itself be checked — run the mutations on top, then restore
+and verify byte-identity. Five mutations, five caught, and it proved the shipped games' halves bite
+in a state that does not exist yet.
+
+Restore by explicit write from an in-memory copy, never `git checkout --`: the RED phase's own
+uncommitted work is sitting in the same tree.
