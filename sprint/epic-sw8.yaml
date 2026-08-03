@@ -372,6 +372,20 @@ stories:
       NOT sw8-26: that story is about the guard being silent on what it did not cover (a failed opt-out, an unreadable file). This one is about the guard being LOUD and WRONG about something it did cover. Different failure direction, different code — quoteFor's adjacency window versus checkTree's reporting.
 
       NOT td1-14: that story owns the relocation SEARCH (refuse to guess between duplicate verbatims; widen the window for a multi-instruction run). This one is upstream of it — the wrong quote is chosen before any search happens, so td1-14's fixes would faithfully relocate a quote that was never this citation's.
+
+      ---
+
+      ADDED at sw8-19's finish — a THIRD occurrence, reproduced during ORDINARY AUTHORING rather than in legacy prose. Raised as a Question by TEA, then hit independently by SM during the finish chore.
+
+      TEA's occurrence: writing a ROM span BARE (':3898-3918') in a new comment that also mentioned 'gameRules.ts' made the association rule bind the span to gameRules.ts — a 272-line file — and correctly report it out of range, raising the tree-wide count to 30 against sw8-18's ratchet ceiling of 29. Three tests red with NO source change at all. Fixed by spelling the filename ('WSMAIN.MAC:3898-3918'); count back to 29.
+
+      SM's occurrence, same ceremony: the finish chore added 11 lines to sim.ts, shifting every line below :159 by 11. The guard flagged the ':N' refs it could resolve, but 'surface-traversal-end.test.ts' also carries SIX bare ':N' spellings — (:1122-1123), (:1145-1150), (:965-969) — that the guard never mentions, sitting in the same comment block as the ':N' refs it does. Re-anchoring only what the guard reports leaves a comment where some numbers are correct and their neighbours are silently wrong, which is worse than uniformly stale. All 11 were shifted by hand.
+
+      SO THE OPEN QUESTION FOR THIS STORY, which its owner should rule on rather than inherit: the two spellings fail in OPPOSITE directions and this story currently owns only the first.
+        - A bare span NEAR A DIFFERENT FILENAME is bound to the wrong file and reported LOUD AND WRONG — this story's exact defect class, but arriving from a NEW file rather than a drifted one, so a fix aimed only at columnar tables may not catch it.
+        - A bare span near NO filename is bound to nothing and evades the gate ENTIRELY — silent, and arguably sw8-26's shape ('the guard is silent about what it did not cover') rather than this one's.
+
+      Both were measured in this repo within one story. Whether they belong here, in sw8-26, or in a story of their own is a scoping call; what should NOT happen is each being rediscovered a third time. Note the interaction with sw8-24, which sweeps the 29: a sweep that re-anchors only guard-visible citations will leave the bare ones stale by construction.
     points: 3
     priority: p3
     status: backlog
@@ -396,6 +410,26 @@ stories:
       NOT sw8-25: that one is the guard being loud and WRONG about a citation it did check. This is the guard being SILENT about files it did not.
 
       MEASURED CONTEXT: the delivered guard skips exactly three files today (the two sw8-18 suites and sw8-23's own), all legitimately, all announced by name. The failure modes above are latent, not currently firing — which is why they need a test rather than a bug report.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: sw8-27
+    title: The player's GUN carries the same visibility divergence C_PS just lost — the clone can kill a TIE it never drew (sw8-19 TEA + Dev finding)
+    description: |-
+      FILED at sw8-19's finish, from findings raised INDEPENDENTLY by TEA (test design) and re-verified by Dev (implementation).
+
+      THE DIVERGENCE. sw8-19 gated the C_PS sights bit on C_PV, because the ROM's sole `CHSET C$PS` (WSMAIN.MAC:3930) is unreachable unless `CHSET C$PV` (:3846) executed on the same object in the same pass — S2VW has exactly four exits before it, all long branches to `RTS1` at :3754 (:3825-3826 near clamp, :3827-3828 far clamp, :3834-3836 and :3840-3842 the two ratio tests). The cabinet's LASER-HIT block (WSMAIN.MAC:3898-3918) sits under those SAME four exits, twelve lines above the sights block. So the cabinet cannot resolve a hit on an object it did not draw either — and our port still can.
+
+      MEASURED (TEA, sw8-19 RED): a TIE at [0, 240, -400] on a 16:9 canvas is OUTSIDE the rendered pyramid (vertical bound 230.9) and 240 u from the aim ray, i.e. inside TIE_HIT_RADIUS (250). Killable while off-screen. That seat is pinned TODAY by 'does NOT change the GUN' in tests/core/tie-sights-visibility.test.ts, which asserts beamHit still resolves it — so this change CANNOT happen by accident, and closing this story means deliberately retiring that assertion.
+
+      THE FIX IS NOT THE ONE-LINE GATE sw8-19 USED — this is the datum Dev added while implementing, and it is the reason this is 3 points and not 1. `beamHit` (gameRules.ts) is SHARED with the trench and ground phases (sim.ts:1094 / :1323 / :1339 in the post-chore file — verify before citing, this file moves), and those phases have no C_PV notion at all. Clamping the helper itself is mutant G6/M6 in sw8-19's two mutation batteries and is caught by design. The gate belongs at the SPACE-arm CALL SITE (sim.ts, the player-laser-vs-enemies resolution), not in the helper.
+
+      SCOPE NOTE. This changes what the player can SHOOT, which is why sw8-19 (a 2-point sights-bit story) deliberately did not do it. Expect fixture rework that sw8-19 did not have: sw8-19's candidate fix was measured at ZERO red across 2238 tests, and this one will not be — the hitscan suites seat targets without regard to the glass.
+
+      OPEN QUESTION carried over from sw8-19's setup, worth answering here rather than re-deriving: the ROM's C_PS test is a pure L1 octagon (|dx| + |dy| <= 3*TMPSIZ, WSMAIN.MAC:3920-3924) with no box test, while the laser hit is box AND octagon at 1.5x (:3898-3908). Our port models both as Euclidean spheres. That shape deviation is pre-existing and documented at gameRules.ts:118-123, and containment (kill subset of sights) holds in both models — but nobody has determined whether the L1 diamond and the L2 sphere ever disagree about a SPECIFIC seat in a way a test could see. This story is where that gets answered, because it is the story that touches the gun.
     points: 3
     priority: p3
     status: backlog
