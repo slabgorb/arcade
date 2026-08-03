@@ -30,6 +30,49 @@ workflow: "trivial"
 | review | 2026-08-03T00:08:34Z | 2026-08-03T00:20:58Z | 12m 24s |
 | finish | 2026-08-03T00:20:58Z | - | - |
 
+## Impact Summary
+
+> **Hand-written by SM at finish.** `pf sprint story finish` emitted no Impact Summary —
+> the compile step could not import `pf` from the `.venv` and failed silently, exactly the
+> defect `sidecars/sm/gotchas.md` item 4 records. `.session/` is gitignored here, so this
+> archive and the epic YAML's `review_findings` are the only durable trace of the story.
+
+**What shipped.** 27 joust test files that each carried their own copy of
+`loadClaims`/`claimCovers` now import `plugins/joust/tests/helpers/claims.ts`. Four commits,
+28 files, **+172 / −649**, joust tests only — no production code. The suite was
+**104 files / 2499 tests, green, before and after**, and the baseline was captured before the
+first edit so "unchanged" is a measurement.
+
+**Commits:** `16c15f1` setup · `72344a4` the sweep · `9356e6a` + `2a03b79` review fixes ·
+`76fab5c` this completion. Trunk-based: no branch, no PR.
+
+**Blast radius.** `tests/helpers/claims.ts` went from 2 dependent test files to **29**. It is
+now the single loader behind every claims assertion in the joust suite. Nothing outside
+`plugins/joust/tests/` was touched; `npm run lint` and the 390-test orchestrator suite are
+unaffected and green.
+
+**Two scope corrections made before any code changed.** The story's second half — converting
+stale `enemy.ts:<line>` comment refs — **was already done by `uf1-9`** and was disposed of as
+AC5; the numbers still visible at `difficulty-wiring.test.ts:33-35` are the note explaining
+that repair, and the AC sm-setup first wrote would have deleted them. And "27 legacy `-source`
+suites" undercounted its own shape: 27 files, but only **24** are `-source` suites — the other
+three (`demo-jt5-16`, `dossier-process-block`, `pictures`) would have been skipped by the
+`*-source.test.ts` glob the title invites.
+
+**Follow-ups filed** (nothing descoped without an id):
+- **jt9-30** (3pts, tdd, p3) — the line-ref finding's live remainder: 86 distinct
+  `<our>.ts:<line>` refs across 30 files, with the 283 `JOUSTRV4.SRC:<line>` ROM citations
+  explicitly excluded as gate-pinned.
+- **jt9-31** (2pts, tdd, p2) — `asClaim`, the entire hardening the loader is named for, has
+  **zero** coverage: gutting it to a passthrough leaves all 2499 tests green. Pre-existing from
+  jt8-3, made urgent by this story's 2 → 29 dependency growth.
+
+**Known-and-accepted.** One local variant survives by design: `transporter-source.test.ts`'s
+`claimCoversWithPrefix`, a superset that narrows by claim id and delegates the range match.
+AC1's grep prefix-matches its name and so reports 1 file rather than 0 — that is the grep, not
+a surviving duplicate. Re-verified by mutation, not by argument (forcing the prefix to a
+non-matching value reddens 11 tests).
+
 ## Background
 
 **Epic:** jt9 — Joust — the remainder, re-ordered: apparatus, gameplay, geometry, brains, dossier

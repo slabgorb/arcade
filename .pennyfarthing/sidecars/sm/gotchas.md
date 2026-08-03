@@ -1884,3 +1884,38 @@ pass `--review-findings` too.
 **5. Routing, not doing.** The fix is a test-file edit, which SM does not make. Route it to Dev
 with the constraint written out ("resolve by existence, live-first; do not weaken any assertion;
 mutation-prove it"), then verify the diff and re-run the suite yourself.
+
+---
+
+## jt9-2 finish — item 4 fires TWICE, and the second half has a new cause
+
+Both silent defects item 4 warns about fired on this story. Item 4 is right and its check is
+cheap; two additions.
+
+**The Impact Summary was absent again, and the preflight said why.** `sm-finish` reported that
+`write_impact_summary_to_session()` could not run — `pf` was not importable from the `.venv` —
+and correctly called it non-blocking. It is non-blocking for the *finish*; it is not harmless.
+Read that line as "the archive will have no Impact Summary" and plan to hand-write one, rather
+than as an incidental tooling note. Grep after the finish either way.
+
+**`review_findings` can be absent for a reason item 4 does not name: the update never ran.**
+Item 4 warns that `--review-verdict` leaves *stale* findings from a previous round. There is a
+second path to the same empty field — `pf sprint story update` **validates its enum values
+before applying anything**, so a single invocation passing both `--review-verdict APPROVED` and
+`--review-findings "…"` fails whole. `APPROVED` is rejected (the enum is lower-case
+`approved`/`rejected`/`pending`), and the findings text goes with it. Re-running only the
+corrected verdict then leaves the story archived as `approved` with **no findings at all** —
+which reads, to anyone later, like a review that found nothing.
+
+- Pass the verdict **lower-case**: `--review-verdict approved`.
+- After any partial failure, re-run the *other* flags too; do not assume the half that was
+  well-formed landed.
+- The check is one line and worth making reflexive at every finish:
+  ```bash
+  python3 -c "import yaml;s=[x for x in yaml.safe_load(open('sprint/epic-<E>.yaml'))['stories'] if x['id']=='<ID>'][0];print(s.get('review_verdict'),'|',(s.get('review_findings') or '*** ABSENT ***')[:80])"
+  ```
+
+**Why this pair matters more here than the wording suggests.** `.session/` is gitignored, so a
+finish that drops both leaves the story's entire reasoning — every measurement, every mutation,
+every disposal — recorded nowhere durable. The commits and the archived session are the record;
+if the ceremony silently skips half of it, the work looks like a diff with no argument behind it.
