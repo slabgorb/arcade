@@ -527,6 +527,8 @@ stories:
       Prior art for the conversion: uf1-9's own edits to audio-flap.test.ts and difficulty-wiring.test.ts are the template — name the symbol, and where the number carried information, keep it as an explicit historical note rather than deleting it.
 
       THE DRIFT RATE IS HOURS, NOT MONTHS — routed here by jt9-3's TEA (finding) and Reviewer (routing), 2026-08-03, with a worked example. jt5-3's story text cited demo.ts:1109 for the flight-cues-before-collision-cues concatenation. That was CORRECT when written: at jt5-3's own GREEN commit (8ef35a1, 2026-08-01) demo.ts:1109 was exactly that statement. jt5-4 (af3fed4, THE SAME DAY) moved it to :1174; it is :1275 today. Three positions in three days, by two unrelated stories — and today's :1109 is unrelated egg-catch narrowPhase logic, so the stale ref does not dangle, it silently points at the WRONG REAL CODE, which is the worse failure. Two consequences for this story's ACs: (a) state the drift rate in them, because a reader who thinks these refs rot over months will under-prioritise; (b) the same rot affects <file>.ts:<line> refs in STORY and EPIC YAML text, where no gate can ever catch it — decide explicitly whether this story's remit stops at test comments (as currently scoped) or extends to sprint YAML, and say so rather than leaving it implied.
+
+      STALENESS RATE MEASURED (jt9-38 GREEN, 2026-08-03): of the 51 demo.ts:<line> refs that jt9-38's insertions moved, the checkable subset (refs whose comment quotes a backticked identifier) was sampled against HEAD and 14 of 16 DO NOT RESOLVE - HEAD:797 is blank, HEAD:1288 is ': null', HEAD:955 is toPteroEntity where the comment wants nextWaveBcd. That answers this story's own open question 2: convert ALL comment-body refs on principle rather than only the demonstrably-stale ones - at ~87% already stale, classifying is more work than converting. jt9-38 deliberately did NOT re-anchor them (shifting an already-wrong pointer preserves a wrong referent while making it look maintained), and added zero new <our>.ts:<line> refs, so this story's counts of 86 distinct / 102 occurrences / 30 files are unchanged.
     points: 3
     priority: p3
     status: backlog
@@ -763,6 +765,40 @@ stories:
       ALSO IN SCOPE, cheaply: the `owner` strings drift. Both lava rows read owner uf1-10 until jt9-9 corrected them to jt9-11, an id the epic renumbering had already invalidated. An owner naming a story id that does not exist in the sprint is a dangling reference and should redden.
 
       ACCEPTANCE: a guard that, for each no-consumer-yet row, greps the joust core for a call passing that row NAME to waveValue/dyRow and fails if one exists; and for each wired row, fails if NO such call exists. Mutation-verify BOTH directions - flip a wired row to no-consumer-yet without touching code (must redden), and add a waveValue call for a pending row (must redden). Plus: every owner must match a story id present in the sprint YAML.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-40
+    title: The egg wave's TWO pre-mature hatchings — PWHCH shortens two of the twelve eggs' waits by a VRAND draw
+    description: |-
+      Descoped out of jt9-38 on 2026-08-03 by TEA, with the reasoning read from the ROM rather than asserted, and confirmed by the Reviewer. jt9-38 ported the egg wave's DENSITY (twelve eggs) and the NENEMY/WENEMY population gate. PWHCH is the third unmodelled piece of the same WAVEGG block and it was deliberately left out.
+
+      WHAT THE ROM DOES. The egg-wave setup loads LDA #2 / STA PWHCH,U "NUMBER OF PRE-MATURE EGG HATCHINGS" (JOUSTRV4.SRC:2776-2777), immediately before the two placement loops jt9-38 transcribed. PWHCH is then consumed inside CREGG, the routine that creates each egg (JOUSTRV4.SRC:2888-2894):
+
+        2886   LDB  PEGGTM,U      HATCHING TIME
+        2887   STB  PJOYT,Y
+        2888   DEC  PWHCH,U       ANYMORE EGGS TO HATCH PREMATURLY?
+        2889   BMI  20$
+        2890   JSR  VRAND         A RANDOM NUMBER 0-127
+        2891   MUL                GET A RANDOM TIME 1/2 OF THE RANGE
+        2892   NEGA
+        2893   ADDA PJOYT,Y
+        2894   STA  PJOYT,Y       NEW HATCHING TIME
+
+      So each created egg first takes the wave's PEGGTM (the EGGWT2-derived wait jt9-9 ported), and then the first TWO eggs created have that wait SHORTENED by a random amount up to half its range. The count is TWO and the ROM's own comment is right: PWHCH starts at 2, and DEC-then-BMI shortens on the DEC to 1 and the DEC to 0 (BMI branches only on NEGATIVE), then skips from the DEC to -1 onward.
+
+      A NOTE ON THAT COUNT, because the first draft of this filing got it wrong. SM initially wrote "three, despite the comment saying two", reasoning that the DEC/BMI pair fires on 2, 1 and 0. It does not: the egg whose DEC lands on 0 is shortened, and the NEXT egg's DEC lands on -1 and is skipped, giving two. The lesson is the inverse of the usual one in this repo — here the 1982 comment was accurate and the re-derivation was not. Distrusting a ROM comment is right; replacing it with an unchecked count is not. Re-run the three-line trace before building on either number.
+
+      WHY IT WAS DESCOPED, and it is a real reason rather than a scoping shrug. The shortening draws from VRAND, i.e. it CONSUMES THE WAVE'S RNG STREAM once per affected egg. jt9-38 already carried a determinism question, and folding this in would have moved the seeded fixtures a second time inside one story while its own AC-7 fixtures were still being measured.
+
+      WHAT THE PORT LOOKS LIKE TODAY. plugins/joust/src/core/demo.ts's spawnWaveEggs deals twelve eggs (6 + 6, JOUSTRV4.SRC:2778-2779 and :2805-2806) and seeds NO waitFrames on any of them; the hatch pass in stepDemo lazily resolves each egg's wait via eggWaitFrames('EGGWT2', waveOrdinal). Measured on the real seeded demo at wave 5, seeds 0x1234/0xbeef/0x2468: all twelve mature on the SAME frame, f=624. That simultaneity is exactly what PWHCH exists to break up, and it is also why jt9-38's population gate is so visible — six hatch and six defer on one frame. With PWHCH the first three would arrive earlier and the pile-up would soften.
+
+      ACCEPTANCE, and the traps.
+       - Model the shortened wait for the first N eggs an egg wave deals (N derived from the DEC/BMI, not from the ROM's comment — see above), drawn from the run's seeded RNG so it stays deterministic.
+       - EXPECT A DETERMINISM RE-BASELINE and land it as its own commit per this epic's standing rule. Unlike jt9-38 this one probably DOES move pins: it perturbs egg timing on every egg wave, and it consumes RNG, which shifts every subsequent draw. But MEASURE it rather than budgeting for it — jt9-38 predicted a re-baseline and had none, because natural seeded play reaches only wave 1-2 in 3000 frames while the first egg wave is wave 5. Check whether any fixture reaches an egg wave at all before assuming.
+       - The gate jt9-38 shipped reads the population at the moment each egg's wait expires. Staggering the maturities changes WHICH eggs are deferred and when, so re-read plugins/joust/tests/demo-jt9-38.test.ts's AC-2/4 block before changing anything: its twelve-at-once fixture stages waitFrames explicitly and should be unaffected, but the seeded observations in the session's assessments will move.
     points: 3
     priority: p3
     status: backlog
