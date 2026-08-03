@@ -2583,3 +2583,56 @@ assessment read as though the usual coverage happened. Name the specialists that
 the assessment, next to the verdict — and say what you did instead, line by line, so the next
 reader can price the review rather than assume it. The round-1 reviewer on this same story did
 exactly that for a different reason (7 of 9 disabled by settings) and it was the right habit.
+
+## Correct SCOPE plus a digit match is still a token guard — and it can defend the lie
+
+sw8-27 was rejected three times for the same class: assertions that pass for a reason unrelated to
+what they claim. Round 2's finding was "a guard binds to a slice, never to a file", and round 3
+applied that faithfully — the new guards are bounded by real code on both sides and the helper even
+asserts each marker was found before slicing, closing the `indexOf` → `-1` → `slice(-1, …)` hole.
+Then, *inside* the correctly-scoped slice, the assertion was `toMatch(/\b2694\b|\b28\s?%/)`.
+
+Two source comments were supposed to quote a crossover that justifies a claim. One of them quoted
+the right number for the wrong mechanism — a figure belonging to a *different* divergence, off by
+2.3× for the one the sentence names. The guard could not see it, because the guard was asking
+whether the DIGITS appear in the block, not whether they support the sentence. Worse: the same
+regex was applied to two blocks describing two different mechanisms, so **the correct re-derivation
+for the second block turns the guard RED**, and its failure message instructs the author to restore
+the wrong number. A guard that punishes the true statement is worse than no guard.
+
+**Generalise, three ways.**
+
+1. **Scope and substance are different axes.** Fixing "the match ran over the whole file" does not
+   fix "the match is a token". Ask both questions every time: over WHAT text, and does the thing
+   matched *entail* the claim? A correctly-scoped digit match is #15 wearing #25's clothes.
+2. **When a guard exists to check that a NUMBER supports a sentence, make it DERIVE the number.**
+   The same test file already had an arithmetic group importing `aimDirection`/`FOV_Y` and computing
+   every figure from production code — the pairing guard two tests below it could have called the
+   same helpers per block. A derived guard cannot be wrong about which mechanism it is checking,
+   because it computed it. A regex over digits always can.
+3. **Mutation-prove in BOTH directions.** Everyone, including two specialists, tested "reinstate the
+   retired claim → red" and called it proven. Nobody tested "write the CORRECT claim → does it stay
+   green?" That second direction is what exposed the guard as inverted, and it costs one extra run.
+   For any guard that prescribes a fix in its failure message, the fix it prescribes must be the one
+   that makes it pass.
+
+**Corollary for the reviewer's own reading:** two specialists cleared this diff on the arithmetic —
+one verified every figure's VALUE and concluded the files were consistent, the other walked all 26
+rules and marked #15 clean. Both were right about what they checked. Neither checked which
+MECHANISM each number belonged to. When specialists agree a numeric claim is fine, re-derive it
+yourself for the mechanism the *sentence* names, not the one the number came from.
+
+## Give every mutating specialist a worktree, in the dispatch
+
+Rounds 1 and 2 of sw8-27 each lost a suite run to another agent's residue: specialists mutation-test
+the LIVE tree concurrently, one left a mutant applied, and the resulting failures were
+indistinguishable from a real regression without checking `git status` first. Round 3 fixed it for
+free — every dispatch carried an explicit instruction to do mutation work inside
+`git worktree add <scratchpad>/wt-<name> HEAD --detach` and to leave the main checkout read-only.
+All six complied, four named the worktrees they removed, and `git status --short` showed only the
+pre-existing sprint file throughout, so the gate figures needed no post-hoc restore.
+
+**Generalise:** this belongs in the specialist definitions, not in each dispatch. Until it is there,
+paste it into every reviewer subagent prompt — it costs two lines and buys back a whole serial
+re-measurement pass. Also tell them *not* to `git checkout` or `git stash` as cleanup: on a repo
+where other checkouts park stashes, "undo my mutation" is how you take someone else's work with you.
