@@ -2506,3 +2506,46 @@ world→pixel scale is `H/(2·tan(FOV_Y/2)·d)` on both axes and the aspect canc
 the diff says so, and it is the one leg that could have sunk the story. **When a port says "the ROM
 does X so we do X", check that the thing we call X is the same thing.** Citation gates verify the
 quote and structurally cannot see this.
+
+## A figure quoted for a bundle assembled from SHARED code can be falsified by a story that never touches your game (cp6-3 round 2, centipede, 2026-08-03)
+
+A comment quoted the game's bundle size as bare, exact figures — "64.70 kB (14.52 → 21.13 kB
+gzipped, +6.61 kB) … 47.3% … joust 139.95 kB" — under a paragraph naming the command and the
+commits so the next reader could re-run it. Round 1 had rejected the same paragraph for wrong
+numbers; round 2 re-measured them correctly. Then the Dev rebased onto a sibling's work, and a
+13-line addition to `src/shared/audio.ts` from an unrelated story (jt9-6) moved every one of
+them: 64.71 / 21.14 / +6.62 / 47.37% / joust 139.97.
+
+**How to prove the cause rather than guess it.** Two specialists independently reported the
+drift and both attributed it to "environment/tooling-version drift", one reasoning that joust
+had drifted too "even though this diff touches nothing in joust". That inference is wrong and
+the refutation is one command: `grep -rl '@shared/audio' plugins/*/src` — joust bundles the same
+shared module. The decisive experiment is better still: in a throwaway worktree, revert **only**
+the suspect shared file to its base state and rebuild. It regenerated the Dev's exact chunk
+**hash** (`main-C8-_6twG.js`) and both of their figures, while the real HEAD built
+`main-beT9ldva.js`. A matching content-hash is proof; a matching byte-count is a coincidence
+waiting to happen.
+
+**Generalise:** before accepting "tooling drift" for a size/perf number, ask which files the
+artifact is assembled FROM, and whether anything in the range moved them. The chunk hash is the
+cheapest discriminator you have — it changes when content changes and does not when it doesn't,
+so it separates "the tree moved" from "the toolchain moved" without arguing.
+
+**And the standing hazard worth raising as a finding, not just fixing:** a bare exact figure for
+anything built out of `src/shared/` is a claim that *no sibling story may falsify*, which is not
+true in a monorepo where every game imports that directory. The `~` convention exists for
+exactly this. Re-taking the number closes the instance; hedging it closes the class.
+
+## Apply the review's own rule to the review — the tree moves under you too
+
+The same session: while this review ran, a sibling landed three commits. Two things already
+written into the assessment went false — the cabinet's 10 attributed failures were fixed by
+their owner (11 674/10 failed → **11 684/0 failed**), and a checklist finding needed re-scoping
+because the sibling appended checks #21-#24 and made three *other* range references stale that
+had been correct when the story under review finished.
+
+Re-take your own figures before you finalise, and **re-attribute**: the finding was "this commit
+updated three of four references and missed one", which after the sibling's commit reads as
+though the story under review owned four stale references. It owned one. Say which, and say the
+line numbers were re-taken. Rejecting a story for figures that outlived their measurement while
+your own assessment carries some is not a defensible position, and the fix costs one rebuild.
