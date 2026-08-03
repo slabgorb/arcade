@@ -1225,12 +1225,6 @@ function collisionPass(processes: readonly DemoProcess[]): {
 }
 
 /**
- * Resolve ONE overlapping pair — the wiring over the jt2-3 `resolveJoust` law.
- * Removes the LOSER (never the winner, never both), leaves the egg a dying ENEMY
- * becomes (spawnEgg, carrying its velocities), and surfaces the kill score.
- * Enemies never kill each other → always bounce. Pure.
- */
-/**
  * The EGGSCR award for an enemy's LAST egg, scored at the moment of the kill —
  * the DEATH3 call site (`JSR EGGSCR  SCORE EGG`, JOUSTRV4.SRC:3006), which is
  * NOT the one jt8-4 wired (`:3021`, PLYEGG, the catch). When the transferred
@@ -1265,6 +1259,13 @@ export function lastEggAward(victor: number | null, hits: number): number {
  */
 const JOUST_VICTOR = -1
 
+/**
+ * Resolve ONE overlapping pair — the wiring over the jt2-3 `resolveJoust` law.
+ * Removes the LOSER (never the winner, never both), leaves the egg a dying ENEMY
+ * becomes (spawnEgg, carrying its velocities, and its TRANSFERRED egg count),
+ * and surfaces the kill score plus — on the last egg — the DEATH3 EGGSCR award.
+ * Enemies never kill each other → always bounce. Pure.
+ */
 export function resolveContacts(a: JoustEntity, b: JoustEntity): ContactResult {
   const outcome = resolveJoust(a, b)
   if (outcome.kind === 'bounce') {

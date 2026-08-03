@@ -180,7 +180,7 @@ stories:
       ORDER INSIDE THE STORY, and it is NOT the order above. Wire EGGWT/EGGWT2 first so the hatch has a timer to obey; then open the hatch to kill-eggs; then add the kill-scoring. LAND AS SEPARATE COMMITS with the re-baseline last and carrying its own message - merging the STORY does not merge the COMMITS, and this epic standing rule about fingerprint movers is about commits, not stories.
     points: 7
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-03'
     repos: arcade
     workflow: tdd
@@ -701,3 +701,39 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+  - id: jt9-38
+    title: The settled egg hatches with no regard for how crowded the wave is — the ROM's NENEMY/WENEMY population gate (:3239-3242) is unmodelled
+    description: |-
+      Filed by jt9-9's Reviewer, 2026-08-03. jt9-9 opened the settled-egg hatch to kill-eggs and gave it the EGGWT/EGGWT2 wait, but wired only the TIMER half of EGGLND's exit condition. The ROM checks the wave's population too.
+
+      After the wait expires (DEC PJOYT,U / BNE EGGLN2, JOUSTRV4.SRC:3236-3237) EGGLND does NOT hatch unconditionally. It reads LDA NENEMY / CMPA WENEMY / BHS EGGLN2 (:3239-3241) - "ENOUGH ENEMIES IN THIS WAVE?" - and goes back round the wait loop if the wave already holds its quota, only incrementing NENEMY (:3242 "1 MORE ENEMY COMMING UP") on the pass that actually hatches. So the machine staggers remounts against the live population; this port matures every settled egg the instant its timer runs out however crowded the arena is.
+
+      WENEMY is already modelled in the port as the per-wave "number of enemies to hatch at a time" (:2759, STA WENEMY, read in the same egg-wave setup block that reads EGGWT2 at :2761). NENEMY is the running on-screen count and has no port equivalent yet - that is the work.
+
+      NOT A REGRESSION, and jt9-9 did not make it worse: before jt9-9 kill-eggs never matured at all, so there was no hatch to gate. The gap arrives WITH the feature.
+
+      ACCEPTANCE: model NENEMY as the live enemy count; gate the hatch in stepDemo on NENEMY < WENEMY; assert a crowded wave defers a matured egg and that the egg is still there afterward (identity, not a count - jt9-9's Reviewer found a count assertion passing on a DIFFERENT egg). Expect a determinism re-baseline; land it as its own commit per this epic's standing rule.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-39
+    title: ROW_DISPOSITION can lie in the direction that matters — a row wired in code but left 'no-consumer-yet' ships GREEN
+    description: |-
+      Filed by jt9-9's Reviewer, 2026-08-03, from a gap its TEA raised at RED and its own mutation battery confirmed.
+
+      difficulty.ts's ROW_DISPOSITION is the 28-row inventory recording, for every DYTBL row, whether it is wired / dead-in-rom / no-consumer-yet. Two guards pin it and BOTH check only the table's self-consistency: difficulty-wiring.test.ts:781 pins the wired set by exact equality, and :847 pins the pending count. Neither asserts that a row marked no-consumer-yet genuinely HAS no consumer.
+
+      So the failure that matters is unguarded: wire a row in code, forget the table, and the suite is green while the inventory says nobody reads it. That is exactly how uf1-2's frozen-dial defect stayed invisible for a year - the inventory is the thing future sweeps trust instead of re-deriving, and a stale entry is worse than none.
+
+      jt9-9 hit this concretely. It wired EGGWT and EGGWT2 and had to move them by hand; nothing would have caught leaving them as no-consumer-yet. jt9-9 pins those two rows specifically, which does not generalise.
+
+      ALSO IN SCOPE, cheaply: the `owner` strings drift. Both lava rows read owner uf1-10 until jt9-9 corrected them to jt9-11, an id the epic renumbering had already invalidated. An owner naming a story id that does not exist in the sprint is a dangling reference and should redden.
+
+      ACCEPTANCE: a guard that, for each no-consumer-yet row, greps the joust core for a call passing that row NAME to waveValue/dyRow and fails if one exists; and for each wired row, fails if NO such call exists. Mutation-verify BOTH directions - flip a wired row to no-consumer-yet without touching code (must redden), and add a waveValue call for a pending row (must redden). Plus: every owner must match a story id present in the sprint YAML.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
