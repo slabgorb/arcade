@@ -42,6 +42,11 @@ import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 
 import { SOUNDS as SHELL_SOUNDS } from '../../src/shell/audio'
+// jt9-4: the SAME record the bake itself imports, not audio.ts's re-export —
+// the injection controls below pass this object straight back in, and a control
+// that hands the bake a DIFFERENT instance of "the real durations" would not be
+// a control at all.
+import { FRAME_DURATIONS } from '../../src/shell/audio-manifest.ts'
 import { SOUNDS as BAKE_SOUNDS, bakeSamples } from './bake-samples.mjs'
 
 const withTempDir = async (fn) => {
@@ -84,6 +89,28 @@ function parseWav(buf) {
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex')
 
+/** jt9-4: run a bake that MUST fail and hand back the Error it threw.
+ *
+ *  The whole family of tests below is about a message, so the one way they can
+ *  go vacuous is the bake RESOLVING and the assertion never running — which is
+ *  precisely how `bakeSamples` behaved before jt9-4's `opts` seam existed: it
+ *  ignored the injected manifest and baked the shipped one, happily. Asserting
+ *  `toBeInstanceOf(Error)` here means every caller below gets that check for
+ *  free and cannot forget it. */
+async function bakeFailure(outDir, opts) {
+  let err = null
+  try {
+    await bakeSamples(outDir, opts)
+  } catch (e) {
+    err = e
+  }
+  expect(
+    err,
+    'the bake RESOLVED — the gate this test exists to pin never fired, so the message assertion below would not have run',
+  ).toBeInstanceOf(Error)
+  return err
+}
+
 describe('jt5-2 — the bake derives its list from the manifest (AC1)', () => {
   it('re-exports the shell manifest ITSELF — same object, not a transcription', () => {
     // `toBe` is the whole point: a hand-copied record deep-equals today and
@@ -111,12 +138,34 @@ describe('jt5-2 — bakeSamples(outDir) writes the manifest, the whole manifest,
       expect(actual).toEqual(expected)
     }))
 
-  it('refuses to run without an explicit output directory', async () => {
+  it('refuses to run without an explicit output directory — by THAT message', async () => {
     // The plugin tree must never grow a .wav (audio-seam-scope.test.ts forbids
     // audio binaries anywhere under plugins/joust/). No default outDir means
     // no habit of baking into the repo; the recipe hands it a mktemp staging
     // dir, the tests hand it a tmpdir.
-    await expect(bakeSamples()).rejects.toThrow()
+    //
+    // jt9-4 SHARPENED THIS LINE, and it is worth saying why it needed it. This
+    // read `await expect(bakeSamples()).rejects.toThrow()` — no argument, so
+    // ANY throw satisfied it. `bakeSamples` has three throws; two of them were
+    // unguarded (see the jt9-4 block at the foot of this file), and the one
+    // guard that existed could not tell them apart. The bare form is the exact
+    // weak shape jt9-4 exists to remove, so leaving it here while removing it
+    // everywhere else would have been a joke at this file's expense.
+    expect((await bakeFailure(undefined)).message).toBe(
+      'usage: bakeSamples(outDir) — pass an explicit staging directory',
+    )
+  })
+
+  it('an EMPTY output directory is refused too — the `length === 0` half of the guard', async () => {
+    // Second clause, separately unexercised until jt9-4: `typeof outDir !==
+    // 'string' || outDir.length === 0`. The no-argument case above only ever
+    // reaches the FIRST clause, so dropping `|| outDir.length === 0` was free —
+    // and `join('', 'enemy_death.wav')` writes to a RELATIVE path, i.e. into
+    // whatever directory the bake happened to be run from. That is the plugin
+    // tree, under vitest.
+    expect((await bakeFailure('')).message).toBe(
+      'usage: bakeSamples(outDir) — pass an explicit staging directory',
+    )
   })
 })
 
@@ -204,5 +253,178 @@ describe('jt5-2 — the bake is deterministic and the cues are distinct', () => 
       // SNEGG, …). One placeholder copied N times would satisfy every format
       // check above and betray all of them at once — kill it by name.
       expect(new Set(hashes).size, 'duplicate waveforms across distinct tables').toBe(files.length)
+    }))
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// jt9-4 — THE BAKE'S OWN GATES, PINNED
+// ═════════════════════════════════════════════════════════════════════════════
+// `bakeSamples` throws three times. Until jt9-4 exactly ONE of those throws was
+// pinned, by a bare `rejects.toThrow()` that any throw satisfied — so the two
+// that matter most could be deleted with all 2510 joust tests green:
+//
+//   · `no synth spec for manifest cue '<name>' — a new cue must arrive with its
+//     own sound`   (bakeSamples, the `if (!spec)` arm)
+//   · `no FRAME_DURATIONS entry for '<name>' — the ROM window sizes the file`
+//     (bakeSamples, the `if (!(frames > 0))` arm)
+//
+// Cited by SYMBOL, not by line: those two throws have moved twice since jt5-6
+// filed this story (:305-306/:311 → :316-318/:322), and jt9-30 exists to
+// convert this repo's line refs wholesale.
+//
+// WHY THE GATE IS WORTH A STORY. `just deploy-assets` runs the whole recipe
+// under `set -euo pipefail` and bakes FOUR trees into one staging dir before a
+// single upload (justfile: star-wars music, star-wars sfx, joust sfx, centipede
+// sfx, then deploy-r2.mjs). A throw here therefore aborts the recipe and
+// nothing is uploaded at all — the bucket keeps serving last-good. That is
+// jt5-6 AC4's guarantee, and it rests entirely on these two lines. Delete them
+// and a manifest row with no sound ships its .wav NAME into the manifest while
+// no such object exists in the bucket; `@shared/audio` degrades SILENTLY on a
+// 404, so nobody hears the difference and no test can see it.
+//
+// WHY THE MESSAGE, NOT JUST THE THROW. Both throws interpolate the cue name, so
+// a name-only regex (`/aCueNobodyBaked/`) cannot tell them apart and passes when
+// the WRONG gate fires. That is not hypothetical here: see the Object.prototype
+// case below, where the spec gate is bypassed and the DURATION gate fires
+// instead, naming the right cue for the wrong reason. Every assertion below is
+// `toBe` on the whole message. A deliberate reword must come here and say so.
+//
+// THE SEAM. `bakeSamples(outDir, opts = {})` — `opts.sounds` and
+// `opts.frameDurations` override the two records the tool imports from
+// `src/shell/audio-manifest.ts`, and default to those records so the recipe's
+// one-argument `node bake-samples.mjs "$staging/joust/sfx"` is untouched. This
+// mirrors centipede's `bakeSfx(outDir, opts = {})` (cp6-2, plugins/centipede/
+// tools/pokey-bake/bake-sfx.mjs) rather than inventing a second idiom for the
+// same seam one directory over. SPECS stays module-PRIVATE on purpose:
+// audio-transporter-split.test.ts leans on that in prose ("SPECS is
+// module-private, so behaviour is also the only honest reach"), and exporting it
+// would make that sentence false while proving nothing this seam does not.
+
+describe('jt9-4 — the injected manifest is REALLY the one baked', () => {
+  // Everything below this line is worthless if `opts` is merely ACCEPTED and
+  // then ignored — which is exactly what `bakeSamples` did before this story.
+  // These two tests are the seam's own non-vacuity control.
+
+  it("an empty `opts` bakes the shipped manifest — the recipe's call is untouched", () =>
+    withTempDir(async (dir) => {
+      // justfile's deploy-assets passes ONE argument. `bakeSamples(dir, {})`
+      // and `bakeSamples(dir)` must be the same bake, or the seam has changed
+      // the tool's behaviour instead of merely opening it.
+      await expect(bakeSamples(dir, {})).resolves.toBeUndefined()
+      expect(readdirSync(dir).sort()).toEqual([...Object.values(SHELL_SOUNDS)].sort())
+    }))
+
+  it('a RENAMED file in the injected manifest is the file actually written', () =>
+    withTempDir(async (dir) => {
+      // The sharp end of "is it wired up". A bake that iterates `opts.sounds`
+      // but still writes `SOUNDS[name]` passes every throw test below — the
+      // rogue cue throws before anything is written, so the write path is never
+      // observed. Renaming a REAL cue's file is the only assertion that sees it.
+      const probe = 'jt9_4_injection_probe.wav'
+      const shipped = BAKE_SOUNDS.enemyDeath
+      expect(shipped, 'enemyDeath must still be a shipped cue for this probe to mean anything').toBe(
+        'enemy_death.wav',
+      )
+      await bakeSamples(dir, { sounds: { ...BAKE_SOUNDS, enemyDeath: probe } })
+      const written = readdirSync(dir)
+      expect(written, 'the injected filename was not written').toContain(probe)
+      expect(written, 'the SHIPPED filename was written — opts.sounds is being ignored').not.toContain(
+        shipped,
+      )
+      expect(written.length, 'a renamed cue must not change how MANY files are baked').toBe(
+        Object.keys(BAKE_SOUNDS).length,
+      )
+    }))
+})
+
+describe('jt9-4 — a manifest cue with no synth spec throws, and says which cue and why', () => {
+  it('the missing-spec gate fires with ITS message, naming the cue', () =>
+    withTempDir(async (dir) => {
+      // The failure this models is the real one: a cue is added to the manifest
+      // (jt5-6 added SNPCR2 exactly this way) and the sound is forgotten. The
+      // manifest here is the SHIPPED record plus one cue, so nothing but that
+      // cue can be the reason it throws.
+      const rogue = { ...BAKE_SOUNDS, aCueNobodyBaked: 'a_cue_nobody_baked.wav' }
+      const err = await bakeFailure(dir, { sounds: rogue })
+      expect(err.message).toBe(
+        "no synth spec for manifest cue 'aCueNobodyBaked' — a new cue must arrive with its own sound",
+      )
+    }))
+
+  it('POSITIVE CONTROL: that same manifest MINUS the rogue cue bakes clean', () =>
+    withTempDir(async (dir) => {
+      // Without this the test above proves nothing. An injected object that is
+      // malformed in some unrelated way throws for an unrelated reason and a
+      // `rejects` assertion is satisfied all the same. This is the same object,
+      // built the same way, one key lighter — and it must BAKE.
+      await expect(bakeSamples(dir, { sounds: { ...BAKE_SOUNDS } })).resolves.toBeUndefined()
+      expect(readdirSync(dir).sort()).toEqual([...Object.values(BAKE_SOUNDS)].sort())
+    }))
+
+  it('a cue named after an Object.prototype member is NOT waved through', () =>
+    withTempDir(async (dir) => {
+      // `SPECS[name]` is a bracket read on an object literal, so `SPECS
+      // ['toString']` is Object.prototype.toString — a FUNCTION, therefore
+      // truthy, therefore `if (!spec)` does not fire and the gate is bypassed.
+      // The bake then reaches `FRAME_DURATIONS['toString']`, inherits a function
+      // there too, and throws the DURATION message instead: the right cue name
+      // attached to the wrong diagnosis, which is precisely why a name-only
+      // regex is not enough. (.pennyfarthing/gates/lang-review/javascript.md
+      // check 3 names this shape: "bracket notation with user input —
+      // prototype access"; `Object.hasOwn` is the one-line answer.)
+      const err = await bakeFailure(dir, {
+        sounds: { ...BAKE_SOUNDS, toString: 'to_string.wav' },
+      })
+      expect(err.message).toBe(
+        "no synth spec for manifest cue 'toString' — a new cue must arrive with its own sound",
+      )
+    }))
+})
+
+describe('jt9-4 — a manifest cue with no ROM window throws, and says which cue and why', () => {
+  // This gate cannot be reached through `opts.sounds` alone: every cue that has
+  // a SPECS row also has a FRAME_DURATIONS row, and a cue that has neither trips
+  // the spec gate first. Overriding the durations record is what makes it
+  // reachable — and it lets the manifest stay entirely real while it happens.
+  const CUE = 'playerWingUp'
+  const without = (name) =>
+    Object.fromEntries(Object.entries(FRAME_DURATIONS).filter(([k]) => k !== name))
+
+  it('the missing-duration gate fires with ITS message, naming the cue', () =>
+    withTempDir(async (dir) => {
+      expect(CUE in BAKE_SOUNDS, 'the probe cue must be a shipped cue').toBe(true)
+      expect(FRAME_DURATIONS[CUE], 'the probe cue must really have a window to remove').toBeGreaterThan(0)
+      const err = await bakeFailure(dir, { frameDurations: without(CUE) })
+      expect(err.message).toBe(
+        "no FRAME_DURATIONS entry for 'playerWingUp' — the ROM window sizes the file",
+      )
+    }))
+
+  it('a window of ZERO frames is refused too, not silently baked as an empty file', () =>
+    withTempDir(async (dir) => {
+      // `if (!(frames > 0))`, not `if (frames === undefined)`. A 0 would make
+      // `Math.round((0 / FRAME_HZ) * RATE)` zero samples and write a 44-byte
+      // header with no audio in it — a file that 200s and plays nothing, the
+      // failure mode `@shared/audio`'s silent degrade cannot distinguish.
+      //
+      // jt9-5 OWNS THE FOLLOW-UP AND WILL HAVE TO EDIT THIS LINE. framesFor()
+      // returns 0 for any cue whose source kind is `invention`, so the first
+      // invention cue gets an entry of 0 and this message ("no FRAME_DURATIONS
+      // entry") becomes a lie — there IS an entry. That is jt9-5's finding, not
+      // this story's fix; pinning the message here is what makes jt9-5's change
+      // arrive as a red test rather than as prose nobody re-reads.
+      const err = await bakeFailure(dir, { frameDurations: { ...FRAME_DURATIONS, [CUE]: 0 } })
+      expect(err.message).toBe(
+        "no FRAME_DURATIONS entry for 'playerWingUp' — the ROM window sizes the file",
+      )
+    }))
+
+  it('POSITIVE CONTROL: the shipped durations, passed EXPLICITLY, bake clean', () =>
+    withTempDir(async (dir) => {
+      // Same override path, same object, nothing removed. If this reds, the two
+      // tests above are throwing because of the injection itself and prove
+      // nothing about the gate.
+      await expect(bakeSamples(dir, { frameDurations: FRAME_DURATIONS })).resolves.toBeUndefined()
+      expect(readdirSync(dir).sort()).toEqual([...Object.values(BAKE_SOUNDS)].sort())
     }))
 })
