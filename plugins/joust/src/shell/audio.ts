@@ -48,9 +48,12 @@
 // them. That kept the map from inverting the ROM without implementing it — a
 // priority-40 enemy death and a priority-80 player death sat on different
 // channels and simply both played. The engine now arbitrates across channels, so
-// the fence no longer decides anything for these seventeen cues; the map is kept
-// because the shared engine still routes every sound by channel, and because a
-// channel per priority remains the honest description of which cues share a voice.
+// while that arbitrated window holds the voice, the fence settles nothing beyond
+// what the priority already decided for these eighteen cues; the map is kept
+// because the shared engine still routes every sound by channel, because a
+// channel per priority remains the honest description of which cues share a
+// voice, and because once the window is released a shared channel decides again
+// whose tail gets cut (see the docblock on `CHANNELS` below).
 //
 // The ROM's other branch is deliberately NOT ported. `:762`'s
 // `BMI 1$  SOUND PIRORITYS OF 128 TO 255 ARE ALWAYS SENT` skips only the
@@ -90,10 +93,13 @@ export { SOUNDS }
  *
  * The channel no longer decides which cue wins. Until jt5-5 it did: every cue
  * here is arbitrated now, so `PRIORITIES` and the engine's single voice settle
- * every collision and a shared channel can no longer buy or deny a cue anything.
- * What the grouping still says is TRUE and worth keeping — cues on one channel
- * are exactly the cues at one ROM priority — and the engine continues to route
- * by channel, so the map is live wiring, just no longer the arbitration.
+ * every collision while the arbitrated window still holds the voice. Once that
+ * window is released, though, `stopChannel` runs on every start regardless of
+ * arbitration, so a shared channel again decides whose tail gets cut — the one
+ * routing power the map keeps. What the grouping still says is TRUE and worth
+ * keeping — cues on one channel are exactly the cues at one ROM priority — and
+ * the engine continues to route by channel, so the map is live wiring, just no
+ * longer the arbitration.
  */
 export const CHANNELS: Readonly<Record<SoundName, string>> = {
   enemyThud: 'prio-9',

@@ -164,7 +164,7 @@ let prevFlap2 = false
 // jt5-1 — the audio seam. The engine is inert until a user gesture unlocks the
 // context (browsers refuse an AudioContext before one) and inert forever where
 // WebAudio is absent, so `resume()` on every keydown is the cheap, correct hook:
-// only the first call does work. The seventeen `.wav` files it will fetch are NOT
+// only the first call does work. The eighteen `.wav` files it will fetch are NOT
 // in this repo and nothing has put them in the bucket yet — jt5-1 ships the seam
 // and joust stays quiet, because a failed fetch degrades silently by design.
 const audio = createAudioEngine()
