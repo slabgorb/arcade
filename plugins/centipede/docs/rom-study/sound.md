@@ -206,8 +206,11 @@ Voice 0 has exactly two writers. Every creature kill converges on label `19$`
 (`CENTI4.MAC:2299`, `CENTI4.MAC:2300`) and reaches `AUDF0` at
 `CENTI4.MAC:2423`. The player explosion reaches it from its own path at
 `CENTI4.MAC:2445`, replaying the same `FREQ0` louder (§2.2,
-`CENTI4.MAC:2444`, `CENTI4.MAC:2449`). Four of our cue names ride the first
-(§2.1) and one rides the second, so five cues contend for one voice.
+`CENTI4.MAC:2444`, `CENTI4.MAC:2449`). Four of our cue names ride the first —
+`segmentKill`, `spiderKill`, `fleaKill` and `scorpionKill`, four names over the
+one ROM sound (§2.1) — and `playerDeath` rides the second. So five cues contend
+for one voice, over two write sites: the contender set is not the writer count,
+and reading it off the writers is how a reader gets it wrong.
 
 **The arbitration is CONTROL FLOW, not a priority comparison.** The kill block is
 label `52$` (`CENTI4.MAC:2418`) — the countdown read, and the only path to the

@@ -231,6 +231,21 @@ function loadFixture(): SoundFixture {
   return JSON.parse(readFileSync(fixturePath, 'utf8')) as SoundFixture
 }
 
+/**
+ * The same file, typed as DATA rather than as `SoundFixture` describes it.
+ *
+ * Deliberately not `loadFixture()`. The one test that uses this asks which
+ * top-level records carry `cites`, and its whole subject is a record the
+ * interface above might not name — so viewing the file through that interface
+ * begs the question. `SoundFixture` is an `interface`, which gets no implicit
+ * index signature, so the alternative was `loadFixture() as unknown as
+ * Record<string, unknown>`; a double cast that says nothing about why is worse
+ * than a second, honest reader.
+ */
+function fixtureRaw(): Record<string, unknown> {
+  return JSON.parse(readFileSync(fixturePath, 'utf8')) as Record<string, unknown>
+}
+
 /** Every cue the ruling marks as transcribed from the machine. */
 function romCues(): [string, CueRuling][] {
   return Object.entries(loadFixture().cues).filter(([, c]) => c.origin === 'rom')
@@ -1048,7 +1063,7 @@ describe('cp6-1 AC-2 — every transcribed constant is radix-cited and byte-veri
     // one is enrolled by adding a key or fails here — which is the failure mode
     // this whole test exists for.
     const visited = new Set(fixtureCitations().map((c) => c.where.split('.')[0]))
-    const withCites = Object.entries(loadFixture() as unknown as Record<string, unknown>)
+    const withCites = Object.entries(fixtureRaw())
       .filter(([, v]) => Array.isArray((v as { cites?: unknown } | null)?.cites))
       .map(([k]) => k)
     expect(
@@ -1311,34 +1326,128 @@ describe('cp6-1 round 2 — the voice-1 contention ruling is recovered from the 
     ).toBe(true)
   })
 
-  it('the prose names the same contenders the fixture does', () => {
-    // The fixture is what cp6-2 consumes, but the prose is what a human reads,
-    // and they disagreed: §2.5 listed `spiderLoop` among the cues that "ring
-    // simultaneously" where the cabinet would not, though it is on voice 3 and
-    // rings alongside voice 1 on the cabinet too.
-    const md = readDossier(SOUND_DOC)
-    const heading = md.split('\n').findIndex((l) => /^#{2,4}\s.*voice\s*1/i.test(l))
-    expect(heading, `${SOUND_DOC} must carry a section about POKEY voice 1 contention`).toBeGreaterThan(-1)
-    const rest = md.split('\n').slice(heading + 1)
-    const endRel = rest.findIndex((l) => /^#{2,4}\s/.test(l))
-    const section = (endRel === -1 ? rest : rest.slice(0, endRel)).join('\n')
+  // The prose-vs-fixture contender guard this describe used to carry now runs
+  // over BOTH arbitration sections — see 'the arbitration prose and the fixture
+  // rule the same way' below. It was keyed on /voice\s*1/i and so was blind to
+  // §2.6, which shipped naming none of its five contenders.
+})
 
-    const contenders = new Set(loadFixture().voiceArbitration?.contenders ?? [])
-    const cueNames = Object.keys(loadFixture().cues)
-    const named = cueNames.filter((n) => new RegExp('`' + n + '`').test(section))
-    expectPopulated(named.length, 4, 'prose contender sweep')
+describe('cp6-3 — the voice-0 contention ruling is recovered from the ROM', () => {
+  // Review round 1: `voice0Arbitration.contenders` was checked against the
+  // fixture's own `pokeyVoice` fields and against nothing else. That is the
+  // fixture agreeing with itself — the precise hole cp6-1 round 2 closed for
+  // voice 1 and left open here. These two are the voice-1 pair pointed at voice
+  // 0: 'the ROM has exactly FOUR writers of POKEY voice 1' and
+  // 'voiceArbitration.contenders is EXACTLY the set of cues on voice 1', named
+  // rather than cited by line so the pointer cannot rot.
+
+  it.skipIf(!vendoredAvailable)('the ROM has exactly TWO writers of POKEY voice 0', () => {
+    // The asymmetry that makes this worth recovering rather than restating:
+    // voice 1 has four writers and four contenders, one apiece. Voice 0 has TWO
+    // writers and FIVE contenders, because our four kill cues are four names
+    // over the ONE general explosion the ROM seeds at label 19$ (:2299-2300).
+    // A reader who assumes writers and contenders correspond will mis-derive
+    // this set, so the count is pinned before the set is.
+    const writers = audfWriters(centi4(), 0)
     expect(
-      named.filter((n) => !contenders.has(n)),
-      'the voice-1 section names these cues as if they contended, but voiceArbitration.contenders ' +
-        'does not list them. A cue on another POKEY voice is not preempted and must not be ' +
-        'described as though it were.',
-    ).toEqual([])
-    expect(
-      [...contenders].filter((n) => !named.includes(n)),
-      'these declared contenders are never named in the voice-1 section — the prose and the ' +
-        'fixture must rule the same way',
-    ).toEqual([])
+      writers,
+      'SOUNDS should contain exactly two `STA AUDF0` — the general explosion every creature kill ' +
+        'seeds (:2423, inside label 52$) and the player explosion on its own path (:2445). The ' +
+        '`STX AUDC0` at :2332 is the attract-mode mute and belongs to no cue',
+    ).toEqual([2423, 2445])
   })
+
+  it.skipIf(!vendoredAvailable)('voice0Arbitration.contenders is EXACTLY the set of cues on voice 0', () => {
+    const lines = centi4()
+    const writers = new Set(audfWriters(lines, 0))
+    const onVoice0 = romCues()
+      .filter(([, c]) => typeof c.voiceCite === 'string' && c.voiceCite !== '')
+      .filter(([, c]) => writers.has(parseCite(c.voiceCite, 'voiceCite').start))
+      .map(([n]) => n)
+      .sort()
+    expectPopulated(onVoice0.length, 5, 'voice-0 contender recovery')
+
+    const declared = [...(loadFixture().voice0Arbitration?.contenders ?? [])].sort()
+    expect(
+      declared,
+      'voice0Arbitration.contenders must name every cue whose voiceCite writes AUDF0 and no other. ' +
+        'This is what src/shell/audio.ts turns into PRIORITIES and FRAME_DURATIONS, so a contender ' +
+        'the ROM does not put on this voice would be arbitrated in the shipped game. The ROM says ' +
+        `the contenders are: ${onVoice0.join(', ')}.`,
+    ).toEqual(onVoice0)
+  })
+})
+
+/**
+ * The dossier's arbitration sections, and the fixture record each one rules on.
+ *
+ * Written as a TABLE because the single-section version of this guard was the
+ * defect: cp6-1 built it for §2.5, keyed the heading on `/voice\s*1/i`, and
+ * cp6-3's §2.6 was then invisible to it — it shipped naming the three
+ * NON-contenders and none of the five contenders, which is the same class of
+ * prose/fixture disagreement the guard exists to catch. A third arbitration
+ * record must be enrolled by adding a row here, not by writing a third test.
+ */
+const ARBITRATION_SECTIONS: {
+  voice: number
+  heading: RegExp
+  where: string
+  record: (f: SoundFixture) => { contenders: string[] } | undefined
+}[] = [
+  { voice: 1, heading: /^#{2,4}\s.*voice\s*1\b/i, where: 'voiceArbitration', record: (f) => f.voiceArbitration },
+  { voice: 0, heading: /^#{2,4}\s.*voice\s*0\b/i, where: 'voice0Arbitration', record: (f) => f.voice0Arbitration },
+]
+
+/** The body of the first `##`..`####` section whose heading matches, exclusive
+ *  of the heading itself and stopping at the next one of any depth. */
+function dossierSection(md: string, heading: RegExp): string | null {
+  const lines = md.split('\n')
+  const at = lines.findIndex((l) => heading.test(l))
+  if (at === -1) return null
+  const rest = lines.slice(at + 1)
+  const endRel = rest.findIndex((l) => /^#{2,4}\s/.test(l))
+  return (endRel === -1 ? rest : rest.slice(0, endRel)).join('\n')
+}
+
+describe('the arbitration prose and the fixture rule the same way', () => {
+  for (const { voice, heading, where, record } of ARBITRATION_SECTIONS) {
+    it(`POKEY voice ${voice}: the prose names the same contenders ${where} does`, () => {
+      // The fixture is what the shell consumes, but the prose is what a human
+      // reads, and they have disagreed in both directions. §2.5 listed
+      // `spiderLoop` among the cues that "ring simultaneously" where the cabinet
+      // would not — it is on voice 3. §2.6 named no contender at all.
+      const md = readDossier(SOUND_DOC)
+      const section = dossierSection(md, heading)
+      expect(section, `${SOUND_DOC} must carry a section about POKEY voice ${voice} contention`).not.toBeNull()
+
+      const fixture = loadFixture()
+      const contenders = new Set(record(fixture)?.contenders ?? [])
+      expectPopulated(contenders.size, 4, `${where} contender declaration`)
+      const named = Object.keys(fixture.cues).filter((n) => new RegExp('`' + n + '`').test(section as string))
+      expectPopulated(named.length, contenders.size, `voice-${voice} prose contender sweep`)
+
+      // A section MAY name a cue the ROM puts on no voice at all. §2.6 names
+      // `mushroom`, `headBottom` and `waveClear` precisely to rule them OUT of
+      // the arbitration, and a guard that forbade it would delete the paragraph
+      // that records the user's 2026-08-03 ruling. What no section may do is
+      // name a cue riding a DIFFERENT numbered voice as though it contended —
+      // that is exactly what §2.5 shipped, and `pokeyVoice` is what tells them
+      // apart without a hand-maintained exclusion list.
+      const wrongVoice = named.filter((n) => !contenders.has(n) && fixture.cues[n].pokeyVoice !== null)
+      expect(
+        wrongVoice,
+        `the voice-${voice} section names these cues as if they contended, but ${where}.contenders ` +
+          'does not list them and the fixture puts each on a numbered voice of its own. A cue on ' +
+          'another POKEY voice is not preempted and must not be described as though it were.',
+      ).toEqual([])
+      expect(
+        [...contenders].filter((n) => !named.includes(n)),
+        `these declared contenders are never named in the voice-${voice} section, so a reader of ` +
+          'the prose cannot learn which cues the ruling is about — the prose and the fixture must ' +
+          'rule the same way, and naming the excluded cues instead is not the same thing',
+      ).toEqual([])
+    })
+  }
 })
 
 describe('cp6-1 round 2 — the sweep reports what it cannot parse', () => {

@@ -46,12 +46,15 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 import * as audioModule from '../src/shell/audio'
-import { CHANNELS, createAudio } from '../src/shell/audio'
+// Aliased: this file has its own `windowFrames`, which re-derives the window
+// from the fixture and THROWS on a missing length. Keeping both under one name
+// would hide which of the two an assertion is about.
+import { CHANNELS, createAudio, windowFrames as shellWindowFrames } from '../src/shell/audio'
 import { playEventSounds } from '../src/shell/audio-dispatch'
 import { createSim, stepSim, WAVE_DELAY, type SimState } from '../src/core/sim'
 import { CENT_BODY_PIC, DEAD_BIT, type Segment } from '../src/core/centipede'
 import { SPIDER_PIC_MIN } from '../src/core/spider'
-import { FLEA_PARK_V } from '../src/core/flea'
+import { FLEA_PARK_V, FLEA_PARK_PIC } from '../src/core/flea'
 import { SCORP_PIC_LOW } from '../src/core/scorpion'
 import type { GameEvent } from '../src/core/events'
 
@@ -269,6 +272,34 @@ describe('cp6-3 AC-3 — every window is lengthFrames x frameGate from the rulin
     for (const kill of voice0Cues().filter((n) => n !== 'playerDeath')) {
       expect(windowFrames(kill), `${kill} advances every pass, so 19 x 1`).toBe(19)
     }
+  })
+
+  it('the shell derives a window by MULTIPLYING, and degrades a lengthless cue to zero', () => {
+    // Review round 1: the shell's own `windowFrames` carries a four-line comment
+    // about what happens to a cue the dossier gives no length, and mutating its
+    // `0` to `999` left 1153/1153 green — today's fixture puts no lengthless cue
+    // on voice 0, so nothing ran the branch. It is reachable in principle:
+    // `fleaLoop` already has `lengthFrames: null`, and lands here the day a loop
+    // is ruled onto voice 0. So it is pinned at the function, the only seam it
+    // has. The mutants this kills, each string verbatim as run (AC-8):
+    //   `? 0 : cue.lengthFrames * cue.frameGate`
+    //     -> `? 999 : cue.lengthFrames * cue.frameGate`   the degrade; review's own survivor
+    //   `cue.lengthFrames * cue.frameGate`
+    //     -> `cue.lengthFrames + cue.frameGate`            the arithmetic (reddens 4)
+    const cue = (lengthFrames: number | null, frameGate: number | null) => ({
+      pokeyVoice: 0,
+      lengthFrames,
+      frameGate,
+      channel: 'CHAN0',
+    })
+    expect(shellWindowFrames(cue(19, 4)), 'the explosion: 19 x 4').toBe(76)
+    expect(shellWindowFrames(cue(19, 1)), 'a kill: 19 x 1').toBe(19)
+    expect(
+      shellWindowFrames(cue(null, 1)),
+      'no length in the dossier must be ZERO frames — "it sounds, and refuses nothing" — never a ' +
+        'guessed window',
+    ).toBe(0)
+    expect(shellWindowFrames(cue(19, null)), 'and a missing gate degrades the same way').toBe(0)
   })
 
   it('the shell declares FRAME_DURATIONS matching the ruling for every arbitrated cue', () => {
@@ -521,13 +552,21 @@ describe('cp6-3 AC-6 — the loops stop ON the death frame, not at the end of th
   // Each is paired with a no-death CONTROL, because "a `-stop` appeared" would
   // otherwise be satisfiable by staging that is simply invalid.
 
-  /** Slot 12 carrying a live flea: below the parked row, under the picture gate. */
-  const withFlea = (s: SimState): SimState =>
-    ({ ...s, flea: { ...s.flea, pic: 0x0c, v: FLEA_PARK_V - 0x40 } }) as SimState
+  /** Slot 12 carrying a live flea: below the parked row, on the picture the sim
+   *  itself seeds. `FLEA_PARK_PIC` and not a hand-written byte — `fleaAudible`
+   *  only asks `!isScorpion(pic)`, so any low number is green here, and a fixture
+   *  whose picture the machine cannot produce (0x1c-0x1f is the whole band) would
+   *  pass for a reason that evaporates the day the predicate checks the range. */
+  const withFlea = (s: SimState): SimState => ({
+    ...s,
+    flea: { ...s.flea, pic: FLEA_PARK_PIC, v: FLEA_PARK_V - 0x40 },
+  })
 
   /** The same slot carrying a scorpion instead — 0x30..0x33 is the live band. */
-  const withScorpion = (s: SimState): SimState =>
-    ({ ...s, flea: { ...s.flea, pic: SCORP_PIC_LOW, v: FLEA_PARK_V - 0x40 } }) as SimState
+  const withScorpion = (s: SimState): SimState => ({
+    ...s,
+    flea: { ...s.flea, pic: SCORP_PIC_LOW, v: FLEA_PARK_V - 0x40 },
+  })
 
   it('a flea on screen is silenced by the death ITSELF (CHAN1, CENTI4.MAC:1813-1818)', () => {
     const control = stepSim(withFlea(createSim(0x1234)), IDLE)

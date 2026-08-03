@@ -38,16 +38,20 @@ import { SOUNDS } from './audio-manifest.js'
 // fixture and the shipped maps move with it, in the same commit.
 //
 // It is the ONE place a `docs/` file reaches the browser bundle, and the cost is
-// MEASURED, not waved at: the whole 19 kB file inlines — prose `note` fields and
-// all — taking this game's bundle from 44.43 kB to 64.70 kB (14.72 → 21.13 kB
-// gzipped, +6.4 kB), because Vite's JSON plugin cannot tree-shake fields out of
-// an object that is read by key. That is a 44% bundle increase to carry five
-// numbers, and it is worth stating plainly rather than discovering later. It is
-// still comfortably the smallest game bundle in the cabinet (joust 139.53 kB,
-// star-wars ~106 kB, tempest ~76 kB), and the alternative — retyping the five
-// cues and their windows here with a test to compare them — is the drift this
-// story exists to close, one indirection later. If the size ever does matter,
-// the fix is a build-time reduction of the fixture, not a second transcription.
+// measured rather than estimated. Re-run it exactly as it was taken — `node
+// scripts/build-app.mjs centipede`, once in a detached worktree at the story's
+// base commit 63f32eb and once here; both figures below come from that pair, not
+// from stubbing the import out of one tree. The whole ~23 kB file inlines, all
+// 16 prose `note` fields included, taking this game's bundle from 43.91 kB to
+// 64.70 kB (14.52 → 21.13 kB gzipped, +6.61 kB), because Vite's JSON plugin
+// cannot tree-shake fields out of an object that is read by key. That is a 47.3%
+// bundle increase to carry five numbers, and it is worth stating plainly rather
+// than discovering later. It is still comfortably the smallest game bundle in
+// the cabinet (joust 139.95 kB in one chunk, star-wars ~106 kB over five,
+// tempest ~76 kB over three), and the alternative — retyping the five cues and
+// their windows here with a test to compare them — is the drift this story
+// exists to close, one indirection later. If the size ever does matter, the fix
+// is a build-time reduction of the fixture, not a second transcription.
 //
 // It cannot go in `audio-manifest.ts` — that module must import NOTHING
 // (tools/pokey-bake/bake-sfx.test.mjs asserts it, because the deploy-time bake
@@ -186,8 +190,16 @@ const KILL_RANK = 0
  *  A voice-0 cue the dossier gives no length is worth ZERO frames rather than a
  *  guess: that is the engine's own rule for a missing duration ("it sounds, and
  *  refuses nothing" — src/shared/audio.ts:84-87), and it degrades to exactly the
- *  pre-cp6-3 behaviour instead of inventing a window. */
-const windowFrames = (cue: CueRuling): number =>
+ *  pre-cp6-3 behaviour instead of inventing a window.
+ *
+ *  EXPORTED ONLY SO THAT SECOND SENTENCE IS OBSERVED. Nothing else imports it.
+ *  Today's fixture reaches the null branch from no voice-0 cue — all five carry
+ *  a length and a gate — so review round 1 could mutate the `0` to `999` and
+ *  keep the whole suite green: a live branch, described in four confident lines,
+ *  that nothing ran. It is NOT hypothetical for want of a caller — `fleaLoop`
+ *  already carries `lengthFrames: null` and would land here the day the dossier
+ *  put a loop on voice 0. Pinned directly in tests/voice0-contention.test.ts. */
+export const windowFrames = (cue: CueRuling): number =>
   cue.lengthFrames === null || cue.frameGate === null ? 0 : cue.lengthFrames * cue.frameGate
 
 /** The contended set: every manifest cue the ruling puts on POKEY voice 0.

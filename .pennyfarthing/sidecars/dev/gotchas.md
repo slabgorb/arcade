@@ -2027,3 +2027,62 @@ survived) with no variation across mutants that should behave differently, suspe
 not the code — a uniform signal that erases an expected asymmetry (here: one mutation was
 supposed to be different from the other eleven) is the same shape as a guard that "does not do
 what its name says": it means the measurement broke, not that the property does or doesn't hold.
+
+## Correcting a wrong figure: re-measure the ARTIFACT AS IT IS NOW, not the sentence's arithmetic (cp6-3 round 2, centipede, 2026-08-03)
+
+A review rejected a comment paragraph whose five bundle figures were wrong and whose opening
+line told the reader they had been **measured**. The root cause was named precisely: the
+"before" number had been taken by stubbing the import out of the *post*-change tree instead of
+building the base commit, and one figure had been taken at a commit a rebase later replaced.
+
+Rebuilding at the base commit in a detached worktree (`git worktree add … <base> --detach`, with
+`node_modules` symlinked from the main checkout) reproduced all five of the review's corrections
+exactly. **It also turned up a sixth the review had not caught**, and the sixth is the
+instructive one: the paragraph said "the whole 19 kB file inlines". The fixture was 19 426 bytes
+at the base and **23 291** at HEAD — this story's own new record had grown it. The figure was
+true when it was written and false by the time it shipped, in the same file, in the same commit.
+
+**Generalise:** a wrong-figure correction has two halves and only one of them is arithmetic.
+Re-run the measurement, yes — but also ask, for every bare quantity in the paragraph, *what is
+this a measurement OF, and did my change move it?* A number describing an artifact your own diff
+edits is the class most likely to be stale in the very commit that introduces it, and it will
+read as verified because the sentence around it was verified.
+
+**Two corollaries that cost nothing:**
+
+- Name the command and the commits in the comment (`node scripts/build-app.mjs centipede`, "at
+  `63f32eb` and at HEAD"), so the next reader re-runs it instead of trusting it. "MEASURED, not
+  waved at" is an instruction *not* to check; a recipe is an invitation to.
+- **Re-run the build after the last edit, not after the first.** Exporting one function could
+  have moved the chunk. It did not — the hash was identical — but that is a measurement, not a
+  deduction, and the whole finding was about the difference.
+
+**And grep the CLAIM, not the sentence.** The same five figures were mirrored in the session
+file's Design Deviations entry. Fixing the comment alone would have left the deviation entry
+contradicting the code it justifies, which is the exact shape the review was rejecting.
+
+## A prose-vs-artifact guard keyed on a section HEADING is blind to that section's sibling (cp6-3 round 2, centipede, 2026-08-03)
+
+cp6-1 built a two-directional guard that the dossier's §2.5 prose names exactly the contenders
+its fixture record declares — because §2.5 had shipped naming a cue that rides a different POKEY
+voice. It found its section with `findIndex(l => /^#{2,4}\s.*voice\s*1/i.test(l))`.
+
+cp6-3 then added §2.6, the same ruling for voice 0. The guard could not see it, and §2.6 shipped
+backticking the three cues it **excludes** and **zero** of the five it is about. A guard built
+from one instance of a defect gets keyed on that instance's coordinates.
+
+**Fix shape:** a table of sections, one row per record (`{voice, heading, where, record}`), so a
+third record is enrolled by adding a row rather than by writing a third test.
+
+**The part that needed thought:** the one-directional rule did not survive generalisation. §2.6
+names `mushroom`, `headBottom` and `waveClear` *deliberately*, to record a user ruling that they
+stay outside arbitration — so "every named cue must be a contender" would have forced deleting
+the paragraph that carries the ruling. The forbidden case had to be narrowed to what the original
+defect actually was: naming a cue that rides a **different numbered voice**. The fixture's own
+`pokeyVoice` field decides that, so no hand-maintained exclusion list appears anywhere.
+
+**Generalise:** when widening a guard to a second instance, re-derive what it forbids from the
+defect it caught, not from the assertion it happens to contain. And prove the ORIGINAL row still
+bites afterwards — mutate the first section too, or the rewrite has quietly retired the guard you
+were extending. (Mutating §2.5 the obvious way was a no-op: the cue was backticked **twice** in
+that section, so removing one mention left the guard correctly satisfied. Grep the count first.)

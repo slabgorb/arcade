@@ -1018,7 +1018,7 @@
   },
   {
     "id": "SND-114",
-    "claim": "The subtitle line that opens the SOUNDS routine. It is the upper bound of the routine's local-label scope, which is what makes 'label 52$ is referenced exactly once in SOUNDS' a countable claim rather than a file-wide one — the same 52$ spelling recurs in five other routines.",
+    "claim": "The subtitle line that opens the SOUNDS routine. It is the upper bound of the routine's local-label scope, which is what makes 'label 52$ is referenced exactly once in SOUNDS' a countable claim rather than a file-wide one — the same 52$ spelling is DEFINED four more times in this revision (CENTI4.MAC:622, :1076, :2065 and CENIR4.MAC:388), and 20 times across the whole vendored tree; counted with grep -rn '^52[$]:' over reference/atari-source/centipede.",
     "source": {
       "file": "CENTI4.MAC",
       "line": 2322,
