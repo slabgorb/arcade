@@ -1887,3 +1887,106 @@ change" was clearly scoped at "don't redesign the throws," not "leave a known mi
 one function this story is opening up." State the ruling explicitly in the assessment either way —
 it is cheap for the Reviewer to overturn a stated ruling and expensive for them to notice an
 unstated one.
+
+
+---
+
+### An ADDITIVE mutant of a subset test is an equivalent mutant of your own making — mutate by REPLACEMENT when testing whether a shape leaked (sw8-27 GREEN, 2026-08-03)
+
+**Situation:** sw8-27's AC3 says the space-only hit SHAPE (a box intersected with a 1.5x octagon)
+must not enter the shared `beamHit`. To prove the guard bites, I mutated `beamHit` by ADDING the
+box test in front of its existing disc test — and it reddened nothing. My first reading was "the
+guard is scenery."
+
+**Wrong, and the reason is arithmetic.** A disc of radius r is contained in the box of half-width
+r: every point with `hypot(dx,dy) <= r` also has `dx <= r` and `dy <= r`. So adding the box to a
+disc test cannot change any outcome. **I had written an equivalent mutant and it scored exactly
+like a missed guard.** Re-run as a REPLACEMENT — swap the disc out for box∩octagon entirely — it
+exposed a genuine gap.
+
+**Generalise:** when the thing under test is a REGION and one candidate region contains the other,
+an additive mutation is a no-op by construction. Ask "is my mutant's region different from the
+original's, in a direction some point can occupy?" before recording a survivor. The cheap check is
+the containment relation between the two shapes, and it takes one line of algebra. Same family as
+the TEA-side equivalent mutant on this story (a box at exactly 3x added to a 3x octagon) — both
+arose from redundancy, and in both cases the honest output was a corrected claim rather than a new
+test.
+
+### One AC can be HALF covered, and only a battery separates the halves
+
+AC3 asserted two things about the shared helper: no view gate, and no space-only shape. Measured
+separately, hoisting the GATE into `beamHit` reddens **6** tests; hoisting the SHAPE reddens
+**zero**. The suite looked like it enforced AC3 and enforced half of it.
+
+The reason is worth keeping because it generalises past this story: **every surface and trench
+fixture seats its target essentially ON the ray**, where a disc and a box-and-octagon agree
+exactly. Two regions that differ only near their boundary are indistinguishable to fixtures that
+all sit at the centre. The discriminator has to be seated where the shapes differ — here the
+octagon CORNER, at `atan(1/2)`, `sqrt(5)/2` of the radius out.
+
+**When an AC is a conjunction, mutate each conjunct separately.** A single mutant that violates
+both will redden and tell you nothing about which half was doing the work.
+
+### A guard's rationale can be arithmetically false while the guard still passes — because something ELSE covers the property
+
+The surface guard on this story was commented "This tower sits at vert 4000 against a pyramid
+bound of 400 x tan30 = 230.9 — hopelessly off the SPACE glass". `SKIM_ALTITUDE` is **128**
+(`state.ts:619`), comfortably INSIDE that bound. Measured: the gate-into-`beamHit` mutant leaves
+that test green. The property was still covered — by `hitscan-laser.test.ts`'s 6,000-off-axis
+tower — so nothing was broken and nothing failed. The guard was simply not the thing doing the
+work it claimed.
+
+**The tell is a comment that quotes a number the fixture does not contain.** Grep the constant.
+Here the comment named a value (4000) that appears nowhere near `SKIM_ALTITUDE`, and one `grep -n`
+settled it. Fix the comment, rename the test to what it does, and say in the assessment which test
+actually holds the property — otherwise the next reader deletes the real guard as redundant.
+
+### The citation blast radius was 45 where the guard reported 5 — build a difflib map, and expect TWO kinds of wrong hint
+
+The comment guard reported 5 new stale rows. An exact HEAD-to-working-tree line map, built with
+`difflib.SequenceMatcher` per changed file and applied to every `file.ts:N` reference in the
+plugin, found **45** citations whose target had moved. The guard sees only the population with an
+adjacent verbatim quote; everything else is range-checked and passes silently.
+
+**Two hints were wrong, in different ways, and hand-checking caught both:**
+
+- the guard's own relocation suggestion pointed **backwards** — `sim.ts:678` where the true target
+  was `:1176-1177` — the documented first-occurrence defect (`td1-14`). A backwards hint after a
+  pure insertion is impossible on its face; that is the tell.
+- the difflib map itself mis-aligned a SPAN end, matching `gameRules.ts:150` (a closing brace) to
+  a different closing brace 67 lines away. Single-line anchors mapped correctly; the span's end
+  did not. **Spans need their end verified against the symbol's real bounds, not the map.**
+
+**The tell that the sweep worked is UNIFORMITY**: every shift was exactly +0/+9/+43 for one file
+and +67 for another, matching the insertions, with the findings tool reporting 0 lost. A shift
+that is not uniform means the quote moved for a second reason.
+
+**And leave pre-existing stale citations alone.** Three were already wrong at HEAD (one cites
+`stepTrench` but points at the space arm, and straddles the insertion so a mechanical shift would
+have widened it across 34 lines of new code). Shifting an already-wrong citation preserves its
+wrongness at best and manufactures a new kind of wrong at worst. Confirm against the guard's HEAD
+baseline, route them to the sweep story, and say so.
+
+### Removing a degeneracy beats guarding one — read the constructor for a structural guarantee
+
+TEA handed over a real trap: building a perpendicular basis as `normalize(cross(dir, worldUp))`
+blows up when the ray is vertical, and asked whether a vertical space aim ray is reachable.
+
+The answer was better than a guard. `aimDirection` returns `normalize([x, y, -1])` — a **literal
+-1** in z — so `dir[2] < 0` for every ray it can produce and the ray meets every depth plane in
+front of the eye exactly once. That let the implementation drop the basis construction entirely
+and measure offsets in the target's own depth plane, which is also the more faithful port (the
+cabinet compares PROJECTED coordinates, and every view matrix here is identity-oriented, so the
+screen axes are world +X/+Y).
+
+**Generalise:** when asked "can this input be degenerate?", read the CONSTRUCTOR of the value
+rather than adding a guard at the use site. A literal in a constructor is a stronger guarantee
+than any runtime check, and it often unlocks a simpler formulation rather than merely permitting
+the current one.
+
+**A second structural fact fell out of the same reading and is worth its own line:** the frustum
+bound and the yoke's NDC bound are the SAME quantity (`aimY = f*y/depth`, and the bound is
+`y = depth/f`, so `|aimY| = 1` exactly at the edge). **The player cannot point the crosshair
+outside the rendered frustum at all.** So an off-glass target is only ever reachable through the
+hit RADIUS — a world distance, not an angle — which is exactly the construction every seat in this
+story's RED uses, and the reason no "aim at an off-glass target" fixture can be written.
