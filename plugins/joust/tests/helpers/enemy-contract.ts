@@ -268,6 +268,13 @@ export interface EnemyState {
    * LNTLAV (DYTBL row 3, wave-scaled).
    */
   plavt?: number
+  /**
+   * jt9-9 — `PEGG,U`, the eggs this enemy has left before permadeath. Carried
+   * around the whole death cycle: DEATH3 transfers it to the egg and decrements
+   * (JOUSTRV4.SRC:2999-3001), the hatch hands it back to the remounting bird
+   * (:3251-3252). OPTIONAL — absent reads as a full `EGGS_PER_ENEMY`.
+   */
+  eggsLeft?: number
 }
 
 /** An enemy process for jt2-1's scheduler — the tagged union's new `enemy` kind. */

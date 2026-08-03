@@ -335,10 +335,57 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
     // one. KILLS: dropping the `willHatch` term along with the `waveEgg` term
     // — the obvious way to write AC-2, and it would resurrect dead enemies
     // forever.
+    //
+    // ─── THIS TEST WAS VACUOUS AND THE REVIEW MUTATION CAUGHT IT ─────────────
+    // It used to run `frames * 2` and assert `eggsIn(after).length === 1`. Under
+    // the exact mutant it exists to kill, the permadeath egg DOES hatch at frame
+    // 767 — and the bird it becomes is then killed and leaves a NEW egg, so by
+    // frame 1536 the arena holds one egg again and the count assertion passed.
+    // It was satisfied by a DIFFERENT egg than the one it named.
+    //
+    // Two changes fix it, and both matter: assert IDENTITY (this egg process id,
+    // still carrying eggsLeft 0) rather than a population count, and stop at the
+    // frame the hatch would happen rather than running on past it into a second
+    // lifecycle.
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1, { eggsLeft: 0 })])
-    const after = await run(demo, frames * 2)
-    expect(eggsIn(after).length, 'the permadeath egg is still an egg').toBe(1)
-    expect(enemiesIn(after).length, 'nothing remounted from it').toBe(0)
+    const eggId = killEggProc(1).id
+
+    const atHatchFrame = await run(demo, frames)
+    const survivor = atHatchFrame.sim.processes.find((p) => p.id === eggId)
+    expect(survivor, 'the SAME egg process is still on the board').toBeTruthy()
+    expect(survivor?.kind, 'and it is still an egg, not a hatched bird').toBe('egg')
+    expect(survivor?.egg?.eggsLeft, 'still the permadeath egg, not a fresh one').toBe(0)
+    expect(enemiesIn(atHatchFrame).length, 'nothing remounted from it').toBe(0)
+  })
+
+  it('the hatch reads the wave — a LATE wave egg hatches strictly sooner (the EGGWT walk)', async () => {
+    const diff = await loadDifficulty()
+    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    // AC-1's headline claim is that EGGWT walks $40 -> $10, so "late-wave eggs
+    // hatch four times sooner". Nothing tested it END TO END: the DYTBL oracle
+    // above proves `waveValue` walks, but that is the difficulty engine, which
+    // already worked. This asserts the EGG CODE consults it.
+    //
+    // KILLS the mutant that survived review: hard-wiring the hatch's wave
+    // argument to 1. That leaves the walk correct, the oracle green and the
+    // per-wave pressure entirely absent — the uf1-2 defect exactly, one layer
+    // down. Wave 0x20 is BCD for the twentieth (the counter is packed), where
+    // EGGWT has walked 64 -> 58.
+    const LATE_BCD = 0x20
+    const lateWait = diff.waveValue('EGGWT', 20)
+    const earlyWait = diff.waveValue('EGGWT', 1)
+    expect(lateWait, 'precondition: the row really has walked down by wave 20').toBeLessThan(
+      earlyWait,
+    )
+
+    const late = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1)], LATE_BCD)
+    // One frame short of the LATE wait: still an egg on any correct reading.
+    const shortOfLate = await run(late, lateWait * dmod.EGG_WAIT_NAP_FRAMES - 1)
+    expect(eggsIn(shortOfLate).length, 'still waiting at wave 20').toBe(1)
+    // AT the late wait it must be gone. A hatch pinned to wave 1 would still be
+    // waiting here, because wave 1's wait is longer.
+    const atLate = await run(late, lateWait * dmod.EGG_WAIT_NAP_FRAMES)
+    expect(eggsIn(atLate).length, 'the wave-20 egg hatched on the wave-20 schedule').toBe(0)
   })
 })
 
@@ -415,6 +462,62 @@ describe('AC-4 — EGGSCR on the KILL, and the victor guard (BEQ :3005)', () => 
     // would otherwise satisfy the pin above.
     const r = dmod.resolveContacts(enemyVictim(120, 40, 4), playerVictor(120, 30))
     expect(eggScoresOf(r).length, 'three eggs still to come — nothing scored').toBe(0)
+  })
+
+  it('the award climbs the DEGGS ladder — it is not pinned to the opening rung', async () => {
+    const egg = await loadEgg()
+    // AC-3 says the award "bumps the DEGGS ladder". Nothing tested the CLIMB:
+    // `lastEggAward(winner.id, 0)` — always paying 250 — survived the full
+    // suite at review. The ladder is per-PLAYER and per-wave (jt8-6), so a
+    // knight who has already taken eggs this wave is further up it.
+    //
+    // Staged through stepDemo because the attribution lives in `collisionPass`,
+    // which is module-private: a player already holding `eggHits: 2` kills an
+    // enemy on its LAST egg, so the award must be the THIRD rung, not the first.
+    const victim: DemoProcess = {
+      id: 900,
+      cls: 'secondary',
+      nap: 1,
+      period: 1,
+      kind: 'enemy',
+      enemyType: 'bounder',
+      collisionEnabled: true,
+      enemy: {
+        entity: {
+          posX: 120,
+          posY: 40 << 8,
+          velXIndex: 0,
+          velXFrac: 0,
+          velY: 0,
+          timeUp: 1,
+          groundState: null,
+          plantZ: 0,
+          airborne: true,
+          animPhase: 0,
+        },
+        facing: 1,
+        pchase: 0,
+        brain: 'linet',
+        decision: 'boundr',
+        eggsLeft: 1,
+      },
+    }
+    const killer: DemoProcess = { ...playerAt(PLAYER1_ID, 120, 30), eggHits: 2 }
+    const demo = await stagedDemo([killer, victim])
+    const after = await run(demo, 1)
+
+    const eggScores = after.events.filter(
+      (e) => e.kind === 'score' && (e as { reason?: string }).reason === 'egg',
+    ) as Array<{ value: number; player?: number }>
+    expect(eggScores.length, 'precondition: the staged kill really took a last egg').toBe(1)
+    expect(eggScores[0].player, 'credited to the knight that made the kill').toBe(PLAYER1_ID)
+    // hitCount 2 already banked → this egg is the THIRD rung (750), not the first.
+    expect(eggScores[0].value, 'the third rung, because this knight had two already').toBe(
+      egg.eggValue(egg.bumpEggHits(2)),
+    )
+    expect(eggScores[0].value, 'and that is NOT the opening rung — the mutant that survived').not.toBe(
+      egg.eggValue(egg.bumpEggHits(0)),
+    )
   })
 
   it('THE VICTOR GUARD — U zero (no victor) skips EGGSCR, as a PURE law', async () => {
