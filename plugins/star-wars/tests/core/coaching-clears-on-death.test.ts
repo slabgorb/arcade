@@ -100,10 +100,17 @@ describe('sw7-10 F3 — the coaching hint clears when the run ends', () => {
     // (see `killed`), but a fixture production never writes needs a control that says so,
     // or the suite is a statement about a hypothetical state machine.
     //
-    // It is NOT expected to catch anything the sibling seat misses, and the round-3 review
-    // traced why: `coachingFor` returns null on `s.gameOver` before it ever reaches the mode
-    // check, so deleting `if (s.mode !== 'playing') return null` reddens neither seat. What
-    // this adds is production-faithfulness, not coverage — do not credit it with more.
+    // It is NOT expected to catch anything the sibling seat misses, and the mechanism is worth
+    // stating exactly, because the sentence that stood here stated it backwards (round-4 review
+    // W2, confirmed by four parties, three of them by running the function). The mode check is
+    // FIRST: `coaching.ts:53` is `if (s.mode !== 'playing') return null` and `coaching.ts:59` is
+    // `if (s.gameOver) return null`. So this fixture, which sets both fields, returns at `:53`
+    // and never reaches `:59` — it is the only seat in this file that exercises the mode guard at
+    // all, the opposite of redundant with respect to which LINE it covers. Its sibling `killed`
+    // leaves the mode at `'playing'` and is caught by `:59`. Deleting either guard therefore
+    // reddens neither seat: whichever one is deleted, the other still returns null for the state
+    // that reaches it. What this adds is production-faithfulness, not coverage — do not credit it
+    // with more, and do not read it as evidence that the mode check is the redundant one.
     let s = killedAsShipped(coached())
     expect(s.mode, 'fixture: this is the literal shape sim.ts writes on the last life').toBe('gameover')
     for (let i = 0; i < 120; i++) s = stepGame(s, NO_INPUT, DT)
