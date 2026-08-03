@@ -2474,9 +2474,14 @@ Here that chain is three comparisons that all read a prototype value as *present
   length-disagreement throw never fires
 
 then the render loop `i < c.lengthFrames` runs **zero** iterations and writes a header.
-**Generalise: wherever a guard chain spells "missing" as `=== null` / `!== null`, a
-prototype read is classified PRESENT at every link** — so the count of guards protecting
-the path tells you nothing. Read the operator, not the number of guards.
+**Generalise: a guard chain does not fail for ONE reason — read each link's operator.**
+Only the first two above are null comparisons, where `undefined` slips past because
+`undefined !== null`. The third passes because both sides are equally `undefined`, so an
+equality check between two absent fields agrees with itself; the fourth is not a gate at all,
+just a loop bound that degenerates to zero iterations. Three mechanisms, one outcome. The
+count of guards on a path tells you nothing, and neither does classifying them all as the
+same kind of mistake — cp6-4's review round 1 rejected exactly that over-generalisation in
+the comment this entry was written from.
 
 ## The zero-red blast radius is also a SIZING instrument, not just a safety check
 

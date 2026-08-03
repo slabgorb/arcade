@@ -48,6 +48,25 @@ export const FIXTURE = JSON.parse(
 )
 
 /**
+ * The ONE way this module looks a cue up by name.
+ *
+ * `FIXTURE.cues` and `STAND_IN_SPECS` are plain objects, so a bare `obj[cue]`
+ * resolves `toString`, `constructor`, `valueOf` and `hasOwnProperty` through
+ * `Object.prototype` and hands back something truthy. Every "is this cue known"
+ * test downstream then reads that inherited value as PRESENT, because the ones
+ * that compare against `null` (`freqTable !== null`, `contImmediate === null`)
+ * are not satisfied by `undefined`.
+ *
+ * cp6-4 round 1 hardened only `bakeSfx`'s gate and asserted in a comment that
+ * nothing else could reach the unguarded reads. Review round 1 falsified that in
+ * one probe: the EXPORTED `audcStreamFor` calls `romEvents` directly, and
+ * `audcStreamFor('toString')` returned `[]` with no throw. Every by-name lookup
+ * now goes through here, so the claim is a property of the code rather than a
+ * promise in a comment.
+ */
+const ownSpec = (record, cue) => (Object.hasOwn(record, cue) ? record[cue] : undefined)
+
+/**
  * Cue -> 'rom' | 'stand-in'. DERIVED from the fixture, never hand-listed: a cue
  * with no FREQ table has nothing to transcribe, so it is a stand-in and is
  * labelled one. Four cues qualify, and one of them is the trap — `fleaLoop` is
@@ -56,7 +75,10 @@ export const FIXTURE = JSON.parse(
  * tabulating it. ROM-sourced is not the same as transcribable.
  */
 export const PROVENANCE = Object.fromEntries(
-  Object.keys(SOUNDS).map((cue) => [cue, FIXTURE.cues[cue]?.freqTable === null ? 'stand-in' : 'rom']),
+  Object.keys(SOUNDS).map((cue) => [
+    cue,
+    ownSpec(FIXTURE.cues, cue)?.freqTable === null ? 'stand-in' : 'rom',
+  ]),
 )
 
 // ─── The ROM tables, parsed from the vendored source ─────────────────────────
@@ -215,7 +237,12 @@ export const STAND_IN_SPECS = {
  * which is what the suite asserts the baked file's duration against.
  */
 function romEvents(cue, tables = TABLES) {
-  const c = FIXTURE.cues[cue]
+  // Its own gate, not the caller's. `bakeSfx` checks this too, but `audcStreamFor`
+  // reaches here without passing through that loop at all.
+  const c = ownSpec(FIXTURE.cues, cue)
+  if (!c) {
+    throw new Error(`no fixture entry for cue '${cue}' — there is no ROM table to transcribe`)
+  }
   const freq = tables[c.freqTable]
   const cont = c.contTable ? tables[c.contTable] : null
 
@@ -280,12 +307,21 @@ function romEvents(cue, tables = TABLES) {
  * byte by byte instead of inferred from a level.
  */
 export function audcStreamFor(cue) {
-  const cReg = FIXTURE.cues[cue].pokeyVoice * 2 + 1
-  return romEvents(cue).ev.filter(([reg]) => reg === cReg).map(([, value]) => value)
+  // romEvents FIRST, so an unknown cue reports the missing fixture entry rather
+  // than a TypeError from reading `.pokeyVoice` off nothing.
+  const ev = romEvents(cue).ev
+  const cReg = ownSpec(FIXTURE.cues, cue).pokeyVoice * 2 + 1
+  return ev.filter(([reg]) => reg === cReg).map(([, value]) => value)
 }
 
 function standInEvents(cue) {
-  const s = STAND_IN_SPECS[cue]
+  // `ownSpec` for uniformity with every other by-name lookup, but deliberately
+  // NO throw of its own: unlike romEvents, this function has exactly one caller
+  // and it is bakeSfx's pass-1 gate, which has already established `standIn` is
+  // truthy. A guard here is unreachable — proven, not assumed: deleting one from
+  // an earlier draft left all 28 tests green (round 2 mutant N3, an equivalent
+  // mutant), which is the definition of a guard nobody can watch fail.
+  const s = ownSpec(STAND_IN_SPECS, cue)
   const fReg = s.voice * 2
   const cReg = s.voice * 2 + 1
   const steps = Array.isArray(s.sweep) ? s.sweep : [s.audf]
@@ -398,25 +434,28 @@ export async function bakeSfx(outDir, opts = {}) {
   // Pass 1 — render everything, unscaled.
   const rendered = []
   for (const cue of Object.keys(sounds)) {
-    // OWN properties only, and this is not decoration. A bare bracket read
-    // resolves `toString`, `constructor` and `valueOf` through Object.prototype
-    // and hands back something TRUTHY, after which every gate downstream reads
-    // the inherited value as PRESENT — because each of them spells "missing" as
-    // a comparison against null. `undefined !== null` classifies the cue as
-    // transcribed; romEvents' `contImmediate === null` is false so the
-    // invent-a-control-byte throw stays quiet; `undefined !== undefined` is
-    // false so its length-disagreement throw does too; and `i < undefined` runs
-    // its render loop zero times. MEASURED (cp6-4): the bake COMPLETED and wrote
-    // a 44-byte header-only wav, which `just deploy-assets` would have uploaded
-    // as silence under a real cue's name. The count of guards on this path was
-    // never the thing protecting it.
+    // `ownSpec`, not a bare bracket read — see its docblock for why. What made
+    // that hole survive is that NOTHING downstream fired on the inherited value:
     //
-    // Hardening here is sufficient: romEvents and standInEvents are reachable
-    // only once this gate has passed. Same fix as joust's jt9-4/jt9-5, one
-    // directory over — but joust's shape merely misdiagnosed, and this one
-    // shipped a clean bake.
-    const known = Object.hasOwn(FIXTURE.cues, cue) ? FIXTURE.cues[cue] : undefined
-    const standIn = Object.hasOwn(STAND_IN_SPECS, cue) ? STAND_IN_SPECS[cue] : undefined
+    //   - `known.freqTable !== null` is TRUE for `undefined`, so the cue was
+    //     classified transcribed and took the ROM path. A null comparison.
+    //   - romEvents' `contImmediate === null` is FALSE for `undefined`, so the
+    //     invent-a-control-byte throw stayed quiet. Also a null comparison.
+    //   - `lengthFrames !== tableLengthBytes` is FALSE — but for a different
+    //     reason: both sides are equally `undefined`, so an equality check
+    //     between two absent fields agrees with itself.
+    //   - `i < c.lengthFrames` then runs zero times. Not a gate at all; a loop
+    //     bound that degenerates silently.
+    //
+    // Three distinct mechanisms, not one — round 1's comment called them all
+    // null comparisons and only the first two are. MEASURED (cp6-4): the bake
+    // COMPLETED and wrote a 44-byte header-only wav, which `just deploy-assets`
+    // would have uploaded as silence under a real cue's name.
+    //
+    // Same fix as joust's jt9-4/jt9-5, one directory over — but joust's shape
+    // merely misdiagnosed, and this one shipped a clean bake.
+    const known = ownSpec(FIXTURE.cues, cue)
+    const standIn = ownSpec(STAND_IN_SPECS, cue)
     const transcribed = known && known.freqTable !== null
     if (!transcribed && !standIn) {
       throw new Error(

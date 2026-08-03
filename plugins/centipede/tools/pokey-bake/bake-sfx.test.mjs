@@ -294,7 +294,35 @@ describe('cp6-2 AC3 — the manifest the baker can actually reach', () => {
     expect(count, 'every shipped cue bakes, and no more than the shipped cues').toBe(
       Object.keys(manifest.SOUNDS).length,
     )
+    // The count above is `rendered.length`, one push per `Object.keys(sounds)` —
+    // so on its own it compares the input to itself and can only fail if the
+    // bake throws. Review round 1 proved that twice: a mutant whose pass 2
+    // writes NOTHING passed it, and so did one that rendered 13 of 14 cues from
+    // the wrong ROM table. The files on disk are the part that says the bake
+    // produced something.
+    expect(readdirSync(dir).sort(), 'and the files actually LAND').toEqual(
+      Object.values(manifest.SOUNDS).sort(),
+    )
     rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('audcStreamFor REFUSES an inherited cue too — the gate is in the lookup, not the caller', async () => {
+    // Review round 1. Round 1's fix hardened only bakeSfx's pass-1 loop and
+    // claimed in a comment that romEvents was reachable no other way. It was:
+    // audcStreamFor is EXPORTED and calls romEvents directly, and before this
+    // change `audcStreamFor('toString')` returned `[]` with no throw — the same
+    // prototype hole, on a second public entry point, one function away from the
+    // one the story fixed. Every by-name lookup now goes through `ownSpec`.
+    bake = await loadBaker()
+    for (const rogue of ['toString', 'constructor', 'valueOf', 'hasOwnProperty']) {
+      expect(
+        () => bake.audcStreamFor(rogue),
+        `audcStreamFor('${rogue}') must throw, not return an empty stream`,
+      ).toThrow(`no fixture entry for cue '${rogue}' — there is no ROM table to transcribe`)
+    }
+    // POSITIVE CONTROL: a real cue still works, so the guard above is not simply
+    // breaking the function.
+    expect(bake.audcStreamFor('playerDeath').length, 'a real cue still streams').toBeGreaterThan(0)
   })
 
   it('refuses to run without an explicit output directory', async () => {
