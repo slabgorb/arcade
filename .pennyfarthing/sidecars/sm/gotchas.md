@@ -2267,3 +2267,66 @@ The sw8-19 finish entry already names a three-population blast radius for a comm
 a fourth population, and the worst kind: **a `file.ts:N` citation that the guard CAN parse and still
 cannot falsify.** After any line-shifting edit, re-anchor by the shift arithmetic over the touched
 file's neighbourhood, not by the guard's report — the report is the population it can see.
+
+---
+
+## A finding routed "BLOCKING FOR <next story>" can be declined by BOTH stories and belong to neither — the filing is SM's, at finish (cp6-2, 2026-08-03)
+
+**Situation:** cp6-1's Reviewer filed a voice-0 contention finding marked **BLOCKING FOR cp6-2**. At
+cp6-2's setup I measured that it had never reached cp6-2's description — that finish commit's epic
+diff was two lines, `status` and `completed`. I recorded it in the context. At cp6-2's review it was
+*still* unactioned, and a grep of every epic YAML for its own vocabulary returned only my own
+round-1 findings text.
+
+**The part that is new, and worth the entry.** This is not the usual "nobody executed the routing"
+failure (already documented from jt9-1). cp6-2 **could not** have fixed it: cp6-2's scope fence
+forbids editing the `CHANNELS` map, inherited from cp6-1's own AC-5 ("it rules, it does not edit"),
+and none of cp6-2's six ACs mention voice arbitration. So cp6-1 correctly declined to fix it, cp6-2
+correctly declined to fix it, and the finding belonged to **neither**. The existing rules all assume
+an owner exists somewhere; this is the shape where the honest answer is that none does.
+
+**The tell:** a finding whose fix touches a surface the receiving story's scope explicitly protects.
+When you see "blocking for X" and X's scope fence names the very file the finding concerns, the
+routing was wrong at the moment it was written — X was never able to take it.
+
+**Whose job:** SM's, at **finish**, before `story finish` archives the session that explains it. Same
+class as the jt5-10 "an AC that names a backlog artifact" rule. Filed as `cp6-3` with the mechanism
+written into the description (four ROM citations, the measured divergence, the fixture record that
+is its input, why it is not a baker change, and the dossier guard it will have to retire) — because
+a story filed as a title with an empty body loses everything that made the finding worth keeping.
+
+**Check the epic still stays open.** `archive_epics` sweeps any 100%-done epic. Filing cp6-3 into
+cp6 kept it open, which is correct — there IS remaining work — and it meant the sweep correctly
+moved nothing. Had the finding gone into a different epic, cp6 would have archived with a known
+unowned defect against it.
+
+## Verify a routed chore's GAP before you write the fix, not just the fix afterwards
+
+The Reviewer routed two coverage findings as a finish chore. The standing rule is "verify the
+Reviewer's numbers before applying the chore". For a chore that ADDS TESTS, the thing to verify is
+the *gap*: I ran both mutations first and confirmed each survived the full suite, then wrote the
+tests, then re-ran and confirmed each was caught — with a control mutation to prove the battery
+itself still worked.
+
+Both halves matter. Skipping the "before" measurement means you cannot tell a test that closed a
+real gap from one that was always going to pass; skipping the "after" means you have swapped an
+unfalsifiable claim for another one. The whole check cost three suite runs.
+
+**One design note that generalises.** Closing the first gap needed a *seam*, not just an assertion.
+The ROM rule in question (a zero control byte is exempt from a volume boost) was only observable in
+the rendered audio as a peak difference — which cannot distinguish "the delay bytes stayed zero"
+from "the delay bytes were boosted a little". Exporting the emitted byte stream made the rule
+checkable byte by byte. **When a guard is hard to write, the usual cause is that the property is
+being inferred from a downstream measurement rather than read where it is decided.**
+
+## `complete-phase` scans the FIRST `## Reviewer Assessment` — on a multi-round story, demote the earlier ones
+
+The gate requires tags for **enabled** specialists only (here `rule_checker` → `[RULE]`), and it
+reads exactly one section. On a two-round story with `## Reviewer Assessment` for round 1 and
+`## Reviewer Assessment — round 2` for round 2, it scanned round 1's and rejected the transition
+even though round 2's assessment carried six `[RULE]` tags.
+
+The fix is the convention cp6-1's own session already used: the **final** round owns the bare
+`## Reviewer Assessment` heading, and earlier rounds are demoted to
+`### Round N Reviewer Assessment (REJECTED — superseded by round M)` with their content untouched.
+It passed immediately after. Do this when writing round 2, not when the gate refuses.
