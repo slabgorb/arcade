@@ -3411,3 +3411,78 @@ that survives either — *such seeds are common, so scan and take the earliest r
 scarcity*. **When two honest measurements of a "how rare is this" claim disagree because they count
 different things, that disagreement is the evidence that a bare count does not belong in the comment
 at all.** Fixing the number would have re-created the defect one layer up.
+
+---
+
+## Your own RED file can break a tree-wide RATCHET — and the failures look exactly like the fix's (sw8-19, 2026-08-02)
+
+**Situation:** the sw8-19 RED added one heavily-cited test file. Running the candidate fix through
+the full suite gave **5 failures**; 2 were my intended comment-AC reds and **3 were in
+`tests/audit/comment-citations.test.ts` and `sw8-23-guard-hardening.test.ts`** — the tree-wide
+stale-citation ratchet, ceiling 29, now reporting 30.
+
+**The trap is attribution.** Those 3 appeared in the same run as the source mutation, so the
+natural reading is "the fix breaks the citation guard" — which would have contradicted SM's
+measured "zero fixture rework" sizing and sent Dev hunting a coupling that does not exist. The
+check that settles it costs one run: **run the guards with your test file present and NO source
+mutation.** They failed identically. The 3 were mine.
+
+**The cause is worth knowing because it fires while WRITING, not while drifting.** I cited a ROM
+span bare — `:3898-3918` — in a comment that also mentioned `gameRules.ts`. The guard's
+association rule binds a bare span to the nearest preceding filename, so it resolved the ROM span
+against a 272-line TypeScript file and correctly reported it out of range. That is `sw8-25`'s
+filed association defect and the `bare-colon-citations-evade-gates` memory, reproduced in a
+brand-new file by ordinary authoring. **Spell the filename** (`WSMAIN.MAC:3898-3918`) whenever a
+span sits anywhere near a different filename — the header of an ASCII ROM listing anchored by one
+`FILE.MAC:NNNN` is fine, free-running prose is not.
+
+**Generalise:** before handing off, ask which tree-wide COUNTERS your new file feeds. Citation
+ratchets, coverage floors, file-count invariants and lint budgets are all "the suite was green
+and now is not" in a file you never edited. Run them against your file alone.
+
+## Re-verify ROM citations against the VENDORED tree, not the greppable clone
+
+All of sw8-19's measurements were taken from `~/Projects/star-wars-1983-source-text`, but the
+citation guard resolves against `reference/atari-source/star-wars-1983/` **inside the repo**. The
+`centipede-quarry-canonical-path` memory records these being off by one for another game, so the
+two are not interchangeable by default. Checked here with `cmp`: byte-identical, 3996 lines both,
+and every cited line reads as claimed. **Cost of the check: one `cmp`. Cost of skipping it: every
+line number in the file is wrong and the guard is the only thing that would have said so** — and
+it only checks spans it can resolve.
+
+## A RED whose green half is the DESIGN — count the tests that must NOT move
+
+sw8-19's suite is 14 tests: 8 red, **6 green on arrival**. The 6 are not filler. The whole story is
+"stop setting a bit in some cases", and the single most likely wrong fix is to stop setting it at
+all — under which **every negative assertion passes**. The mutation battery proved the point:
+killing C_PS outright reddened 7 of my 14 and 21 across the game, and all of that signal came from
+the green-on-arrival controls plus the in-play run's own preconditions.
+
+So when the story is a NARROWING, budget as much design effort for the assertions that must stay
+green as for the ones that must go red, and put the positive controls FIRST inside each test so a
+collapsed derivation fails on the control rather than passing the negative. Related to the
+`jt9-1` rule about shipping a positive control alongside a "count is zero" criterion — this is the
+same rule applied to a whole suite rather than one assertion.
+
+## Rank the wrong fixes, not just the right one — and check they are caught by DIFFERENT tests
+
+Six wrong fixes were each written and run: an aspect-blind fixed cone, a near-clamp-only fix that
+closes the filing's own worked example and nothing else, a half-pyramid, a narrowed band, a killed
+bit, and a clamp applied to `beamHit` instead of to the status bit. Every one was caught, and by a
+different test — which is the property worth checking, because a battery where every mutant reds
+the same test has one guard wearing six hats.
+
+The near-clamp-only mutant is the one worth building deliberately: **a filing's worked example is
+usually its most degenerate case**, so the minimal fix that satisfies the story text is a real
+risk. Here it left 7 of 14 red because the seats were chosen per ROM EXIT rather than per
+coordinate. Naming each seat after the branch it exercises is what made that fall out for free.
+
+## The gun and the sights can share a defect — pin the half you are NOT fixing
+
+sw8-19 gates the sights bit on visibility. The clone's player laser resolves through the same
+`beamHit` and has the same divergence (the ROM's hit block sits under the identical `C$PV` exits),
+but fixing it changes what the player can shoot and is a different story. The RED therefore
+asserts the CURRENT gun behaviour explicitly — off-glass targets still resolve — so the mutant
+that "fixes" both at once is caught rather than welcomed. **When a finding has a sibling you are
+deliberately not fixing, pin the sibling's present behaviour and file it; otherwise the tempting
+over-fix ships silently and the follow-up story is filed against code that already changed.**
