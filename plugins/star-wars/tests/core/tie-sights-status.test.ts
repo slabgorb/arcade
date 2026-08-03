@@ -62,7 +62,7 @@
 import { describe, it, expect } from 'vitest'
 import { computeStatus } from '../../src/core/tie-status'
 import { Status } from '../../src/core/tie-vm'
-import { aimDirection, beamHit, COCKPIT, FOV_Y } from '../../src/core/gameRules'
+import { aimDirection, beamHit, COCKPIT, FOV_Y, siteOffset } from '../../src/core/gameRules'
 import { TIE_HIT_RADIUS, type GameState } from '../../src/core/state'
 import { add, scale, type Vec3 } from '@shared/math3d'
 import { makeSpaceState, makeTie, lookAtOrigin, lookAway, rngSeed } from './helpers/space'
@@ -135,6 +135,11 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     // Absolute anchor, so the boundary probes below cannot go vacuous if the
     // established hit radius is ever retuned without revisiting this law.
     expect(TIE_HIT_RADIUS, 'fixture anchor: the established TIE kill radius').toBe(250)
+    // The ratio `SIGHTS_FACTOR` names, pinned as a ratio and nothing more: the warning
+    // octagon over the kill octagon, 3 ÷ 1.5. It is the one term in the whole expression
+    // that is unit-free, and it is what survives of the retired disc model — the shape
+    // probes below, not this line, are what pin the region.
+    expect(OCT / (1.5 * T), 'the ROM doubling: 3·TMPSIZ over 1.5·TMPSIZ').toBe(SIGHTS_FACTOR)
 
     // ON THE AXIS the octagon reaches 3·T. A disc at 2·T stops at 500 and reddens here.
     expect(
@@ -279,8 +284,11 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     // so the bolt goes where the crosshair is drawn. A sights bit computed at the default
     // unit aspect is therefore testing a DIFFERENT RAY, and not by a little: at 16:9 and
     // depth 6000 the two rays are 539 u apart at yoke 0.2 and 2694 u apart at full
-    // deflection, against a band only 500 u wide. From about a fifth of yoke travel the
-    // two bands stop overlapping at all.
+    // deflection, against a band reaching 3 · TIE_HIT_RADIUS = 750 u on the axis. From
+    // about 28% of yoke travel (750 / 2694) a fighter centred on one ray is outside the
+    // other's band entirely. (sw8-27 SWEEP: this paragraph said "a band only 500 u wide"
+    // and "about a fifth of yoke travel" — both true of the retired disc, both stale since
+    // the band became the cabinet's L1 octagon. The seat below clears either bound.)
     const aimX = 0.4
     const s: GameState = { ...makeSpaceState(), aimX, aimY: 0, aspect: 16 / 9 }
     const eye = COCKPIT
@@ -291,10 +299,16 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     // point must sit genuinely OUTSIDE the sights band taken from the gun's ray, or the
     // negative assertion below could pass on a correct implementation by luck.
     const gunDir = aimDirection(aimX, 0, s.aspect)
+    // Measured against the band the game actually tests — the L1 octagon at 3 · TMPSIZ,
+    // written as the ROM literal rather than imported from the value under test, the way
+    // `SIGHTS_FACTOR` above is. Until sw8-27's rework this guard asked `beamHit` for a
+    // 2 · TIE_HIT_RADIUS DISC, which is strictly inside that octagon, so it could not
+    // actually establish the sentence it asserts.
+    const blindSite = siteOffset(eye, gunDir, onBlindRay)
     expect(
-      beamHit(eye, gunDir, onBlindRay, SIGHTS_FACTOR * TIE_HIT_RADIUS),
+      blindSite && blindSite.dx + blindSite.dy > 3 * TIE_HIT_RADIUS,
       'the aspect-blind ray leaves the band entirely at this yoke',
-    ).toBeNull()
+    ).toBe(true)
 
     expect(
       sights(makeTie({ pos: onGunRay }), s),

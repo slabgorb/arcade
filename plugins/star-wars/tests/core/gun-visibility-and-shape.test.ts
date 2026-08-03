@@ -15,19 +15,40 @@
 //
 // THE HALF sw8-19 DID NOT HAVE, and which this story adds: the FIREBALLS are gated the same
 // way, in a different module. `VWGUN::` (WSGUNS.MAC:852) has its own four exits before its
-// `;GUN SHOT IS VISIBLE` marker at :904 — :885 (`CMPD #01` / `LBLE 90$`), :887 (`CMPD #7F00`
-// / `LBHI 90$`), :896 and :903 (the two `SUBD M.XP` / `LBHS 90$` ratio tests) — and the
-// hit-record that writes `CL.GDS`/`CL.GP` is :906-948, below all four. Identical structure,
-// different literals. So BOTH space-arm resolutions are gated in the cabinet and neither is
-// gated here.
+// `;GUN SHOT IS VISIBLE` marker at :904, and each exit is a compare-and-branch PAIR, so each
+// spans TWO lines:
+//
+//     LDD M.XP / CMPD #01   / LBLE 90$     :883-885   near clamp
+//              CMPD #7F00   / LBHI 90$     :886-887   far clamp
+//              SUBD M.XP    / LBHS 90$     :895-896   ratio test  (Y)
+//              SUBD M.XP    / LBHS 90$     :902-903   ratio test  (Z)
+//
+// The hit-record that writes `CL.GDS`/`CL.GP` is :906-948, below all four. Identical
+// structure to `S2VW`, different literals. So BOTH space-arm resolutions are gated in the
+// cabinet and neither is gated here.
+//
+// (SPANS CORRECTED at sw8-27's rework. Each exit was cited as the single line of its BRANCH
+// — :885, :887, :896, :903 — while the text quoted beside it was the whole compare-and-branch
+// pair, whose compare sits one line above. The `S2VW` four in the paragraph above were already
+// written as two-line ranges, and it was the inconsistency inside one parallel construction
+// that gave it away: only one half of the pair had been read as ranges.)
 //
 // == THE SHAPE, AND WHY IT MUST NOT GO IN THE SHARED HELPER ====================
 //
 // MEASURED at setup by grepping every ROM module for `TMPOCT`: the octagon test exists in
 // exactly TWO files — WSMAIN.MAC (aliens) and WSGUNS.MAC (fireballs). Those are the same two
-// passes the gate covers. The GROUND objects use a completely different test — an unrotated
-// width/height box with a `+10.` site fudge and NO octagon term at all (WSGRND.MAC:1076-1132,
-// writing `CL.BDS`/`CL.TDS`) — and the trench is another matter again.
+// passes the gate covers. The GROUND objects use a completely different test — an UNROTATED
+// width/height box, measured against the object's own collision width and height, with NO
+// octagon term at all (WSGRND.MAC:1076-1132, writing `CL.BDS`/`CL.TDS`) — and the trench is
+// another matter again.
+//
+// (CORRECTED at sw8-27's rework: this sentence used to offer the `+10.` site fudge as part of
+// what makes the ground pass different, and it is the one term all three passes share.
+// WSGRND.MAC:1078 `ADDD #10. ;SITE RADIUS FOR FUDGE` has exact counterparts in both space
+// passes — WSMAIN.MAC:3881 `ADDD #10. ;ADDIN CURSOR SIZE` and WSGUNS.MAC:918 `ADDD #10.
+// ;SIZE OF CURSOR` — so it is the cursor's own size being added to every object's projected
+// size, everywhere. The real differentiators are the unrotated width/height box and the
+// absent octagon, which is what the sentence now says.)
 //
 // So porting the box/octagon into `beamHit` would impose the space alien's shape on towers,
 // bunkers, the exhaust port and trench obstacles, which the cabinet does not do. The shape
@@ -76,7 +97,7 @@ import { describe, it, expect } from 'vitest'
 import { stepGame, enterPhase } from '../../src/core/sim'
 import { computeStatus, SIGHTS_BAND_FACTOR } from '../../src/core/tie-status'
 import { Status } from '../../src/core/tie-vm'
-import { COCKPIT, FOV_Y, aimDirection, beamHit } from '../../src/core/gameRules'
+import { COCKPIT, FOV_Y, aimDirection, beamHit, siteOffset } from '../../src/core/gameRules'
 import {
   initialState,
   SKIM_ALTITUDE,
@@ -375,12 +396,22 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // ROM octagon (284.4 ≤ 300). If the space shape ever reaches `beamHit`, this tower starts
     // dying and this test reddens.
     //
-    // VERBATIM MUTANT this kills, applied to `beamHit`'s body:
+    // VERBATIM MUTANT this kills — the WHOLE body of `beamHit`, replaced:
+    //   const along = dot(sub(pos, eye), dir)
+    //   if (along > maxRange) return null
     //   const s = siteOffset(eye, dir, pos)
     //   if (s === null) return null
     //   if (s.dx > radius || s.dy > radius) return null
     //   if (s.dx + s.dy > SPACE_HIT_OCTAGON * radius) return null
     //   return along
+    //
+    // (CORRECTED at the round-1 rework, and the correction is the point of publishing these
+    // strings at all. The version that stood here began at `const s = …`, which left `along`
+    // undefined if taken literally and silently DROPPED the `maxRange` clip if taken as "the
+    // body below the first line". Pasted, it reddened 7 tests across 5 files — because the
+    // trench clips its beam at TRENCH_FAR — and was recorded as reddening 1. A reader
+    // reproducing it would have concluded this guard was far broader than it is. Re-measured
+    // with `maxRange` preserved: it reddens exactly this test.)
     const corner: Vec3 = [189.6, SKIM_ALTITUDE + 94.8, -3000]
     expect(Math.hypot(189.6, 94.8), 'fixture guard: OUTSIDE the disc the surface uses').toBeGreaterThan(
       TURRET_HIT_RADIUS,
@@ -718,5 +749,175 @@ describe('sw8-27 AC7 — the port and the cabinet now agree about every seat, no
     }
     expect(accepted, 'positive control: the sweep contained sighted seats').toBeGreaterThan(0)
     expect(rejected, 'positive control: and unsighted ones').toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// F — the round-1 review's findings: the parts of the new gate nobody named
+// ---------------------------------------------------------------------------
+//
+// Groups A–E were written from the ACs, and the round-1 Reviewer's Devil's Advocate is that
+// this is exactly their limit: every guard in this file aims at a mutant somebody thought of,
+// so anything the ACs did not name is unexamined. Three such things were found, and all three
+// are inputs rather than geometry — which is why a file organised by ROM citation missed them.
+//
+// They share one shape: `spaceSiteHit` REJECTS with `>` where the helper it replaced ACCEPTED
+// with `<=`. That inversion is invisible on ordinary inputs and decides the answer on
+// degenerate ones, because every comparison against NaN is false — so `beamHit` failed CLOSED
+// (a NaN offset is not `<= radius`, no hit) and `spaceSiteHit` fails OPEN (a NaN offset is not
+// `> radius`, so it clears the box AND the octagon and returns a "hit").
+
+describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not name', () => {
+  it('F5 — a target at the OPPOSITE frustum corner is not killed: `along <= 0` is load-bearing', () => {
+    // `siteOffset`'s behind-the-gun exit was invisible to the whole suite: a line-preserving
+    // neutralisation of it left 202/202 files and 2276/2276 tests GREEN. It is not dead code,
+    // and it is not merely "reachable" — past it, the player kills a fighter they are aiming
+    // AWAY from.
+    //
+    // Reaching it needs all three of: the target ON the glass (or `inPlayerView` refuses it
+    // first), the target INSIDE the box and octagon (or the shape refuses it), and `along < 0`.
+    // The last two pull against each other — `along = t + delta·dir`, where `t > 0` is the
+    // ray's parameter at the target's depth plane and `delta` is the in-plane offset the box
+    // caps at the hit radius — so the only way to lose is with `t` SMALL, which means shallow
+    // depth, which means a tiny frustum. Everything has to be near a corner at once.
+    //
+    // The round-1 review named a seat at [1025.4, 576.8, -1000] with `along = -249.5`. That
+    // seat proves the exit is reachable and NOT that it matters: measured, its in-plane offset
+    // is dx 2051.8, dy 1154.2, so the box rejects it and the guard changes nothing there. The
+    // seat below is the one that actually bites — at depth 117 with the yoke jammed to the
+    // opposite corner, dx 239.6 and dy 134.8 clear the box (250) and sum to 374.3, inside the
+    // octagon's 375, while `along` is -28.8.
+    //
+    // VERBATIM MUTANT this kills, replacing that line in `siteOffset` (`gameRules.ts`):
+    //   if (along <= 0 && false) return null // behind the gun — never under the site
+    const DEPTH = 117
+    const vBound = DEPTH * TAN_HALF
+    const hBound = vBound * WIDE
+    const oppositeCorner: Vec3 = [hBound * 0.995, vBound * 0.995, -DEPTH]
+    // The yoke jammed to the corner DIAGONALLY opposite the seat.
+    const cornerYoke: Input = { aimX: -1, aimY: -1, fire: true, aspect: WIDE }
+
+    // Fixture guards — each is one of the three conditions above, so a seat that drifts off
+    // any of them fails HERE, naming which one, instead of passing the assertion vacuously.
+    expect(inView(oppositeCorner, WIDE), 'fixture guard: the seat is ON the glass').toBe(Status.C_PV)
+    const dir = aimDirection(cornerYoke.aimX, cornerYoke.aimY, WIDE)
+    const site = siteOffset(COCKPIT, dir, oppositeCorner)
+    expect(site, 'fixture guard: the guard under test is the ONLY thing rejecting this seat').toBeNull()
+    // Re-derive what `siteOffset` would have returned with the guard neutralised, so the
+    // claim "the box and octagon both accept it" is measured here rather than asserted in
+    // the comment above.
+    const t = (COCKPIT[2] - oppositeCorner[2]) / -dir[2]
+    const dx = Math.abs(oppositeCorner[0] - (COCKPIT[0] + dir[0] * t))
+    const dy = Math.abs(oppositeCorner[1] - (COCKPIT[1] + dir[1] * t))
+    const along = dir[0] * oppositeCorner[0] + dir[1] * oppositeCorner[1] + dir[2] * oppositeCorner[2]
+    expect(along, 'fixture guard: the seat really is BEHIND the gun').toBeLessThan(0)
+    expect(dx, 'fixture guard: and inside the ROM box on x, so the box does not save us').toBeLessThanOrEqual(
+      BOX * TIE_HIT_RADIUS,
+    )
+    expect(dy, 'fixture guard: and on y').toBeLessThanOrEqual(BOX * TIE_HIT_RADIUS)
+    expect(dx + dy, 'fixture guard: and inside the ROM octagon, so that does not either').toBeLessThanOrEqual(
+      OCTAGON * TIE_HIT_RADIUS,
+    )
+
+    expect(
+      tieDied(stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(oppositeCorner)] }), cornerYoke, DT)),
+      'the player is aiming at the far corner of the glass — this fighter must survive',
+    ).toBe(false)
+
+    // POSITIVE CONTROL, without which "nothing dies at depth 117" passes for the wrong reason:
+    // the same fighter, same frame, with the yoke pointed AT it, dies.
+    const onTarget: Input = {
+      aimX: (oppositeCorner[0] / -oppositeCorner[2] / WIDE) * (1 / TAN_HALF),
+      aimY: (oppositeCorner[1] / -oppositeCorner[2]) * (1 / TAN_HALF),
+      fire: true,
+      aspect: WIDE,
+    }
+    expect(
+      tieDied(stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(oppositeCorner)] }), onTarget, DT)),
+      'positive control: aimed at, the very same fighter at the very same seat dies',
+    ).toBe(true)
+  })
+
+  it('F7 — a degenerate viewport aspect does not silently disarm the gun', () => {
+    // RED. `inPlayerView` builds `hBound = vBound * aspect`, so `aspect === 0` collapses the
+    // lateral bound to zero and `lat * lat < 0` is false for EVERY position — including dead
+    // ahead. Before this story that corrupted a status bit; as of this story it also gates
+    // `spaceSiteHit`, so the player's laser hits NOTHING in space for the whole frame and
+    // nothing anywhere says why.
+    //
+    // It is reachable from the shell: `shell/input.ts` guards `clientHeight === 0` but not
+    // `clientWidth === 0`, which yields exactly 0 and reaches `input.aspect ?? 1` untouched —
+    // and `?? 1` does not fire, because 0 is not nullish. A zero-width canvas is what a
+    // display: none container, a collapsed flex child or a pre-layout first frame all produce.
+    //
+    // The fix belongs where `state.aspect` is SET, not inside the frustum math: one guard at
+    // the boundary keeps `inPlayerView` a pure statement of the pyramid, and covers every
+    // future reader of `state.aspect` rather than the two that exist today.
+    const deadAhead: Vec3 = [0, 0, -3000]
+    expect(
+      tieDied(stepGame(spaceRun({ aspect: 1, enemies: [tieAt(deadAhead)] }), restTrigger(1), DT)),
+      'control: on a sane viewport this fighter is dead centre and dies',
+    ).toBe(true)
+
+    for (const [label, aspect] of [
+      ['zero (a zero-width canvas)', 0],
+      ['negative', -1],
+      ['NaN', NaN],
+      ['Infinity', Infinity],
+    ] as const) {
+      const s = spaceRun({ enemies: [tieAt(deadAhead)] })
+      const after = stepGame(s, { aimX: 0, aimY: 0, fire: true, aspect }, DT)
+      expect(
+        tieDied(after),
+        `aspect ${label}: a fighter dead ahead under the crosshair must still be killable`,
+      ).toBe(true)
+      expect(
+        Number.isFinite(after.aspect) && after.aspect > 0,
+        `aspect ${label}: the state must never carry a viewport the frustum math cannot use`,
+      ).toBe(true)
+    }
+  })
+
+  it('F8 — a non-finite yoke cannot manufacture a hit out of NaN', () => {
+    // RED, and the premise it corrects is one `siteOffset`'s own docstring states as fact:
+    // "`aimDirection` puts a literal `-1` in z before normalising, so `dir[2] < 0` for every
+    // ray it can return". Measured, that is false — `aimDirection(Infinity, 0, 1)` returns
+    // `[NaN, 0, -0]`, whose z is neither negative nor usable as a divisor.
+    //
+    // What follows is the inversion described above the describe: `beamHit` accepts with
+    // `<= radius`, so NaN fails it and the helper fails CLOSED. `spaceSiteHit` rejects with
+    // `> radius`, so NaN passes the box AND the octagon and it returns a non-null "hit" whose
+    // range is NaN. Today that is masked one layer up — `range < bestRange` is also false for
+    // NaN, so the contest discards it — which means the whole thing rests on a coincidence in
+    // a DIFFERENT function from the one that made the assumption. Remove the ranking (a single
+    // target, an early return, any future rewrite of the loop) and the mask goes with it.
+    //
+    // Pin the contract at the seam that made the claim: `siteOffset` returns null when it
+    // cannot answer, which is what its `| null` already promises and what makes its docstring
+    // true again.
+    for (const [label, aimX, aimY] of [
+      ['+Infinity on x', Infinity, 0],
+      ['-Infinity on x', -Infinity, 0],
+      ['NaN on y', 0, NaN],
+    ] as const) {
+      const dir = aimDirection(aimX, aimY, WIDE)
+      expect(
+        siteOffset(COCKPIT, dir, [0, 0, -3000]),
+        `${label}: a ray that cannot be resolved yields no site, rather than a NaN one`,
+      ).toBeNull()
+    }
+
+    // And end-to-end, because the seam contract is only worth having if the arm honours it:
+    // no kill, and no crash, on a frame the shell should never send but might.
+    const s = spaceRun({ aspect: WIDE, enemies: [tieAt([0, 0, -3000])] })
+    const after = stepGame(s, { aimX: Infinity, aimY: 0, fire: true, aspect: WIDE }, DT)
+    expect(tieDied(after), 'a non-finite yoke kills nothing').toBe(false)
+
+    // POSITIVE CONTROL for the whole block: the ordinary ray at the same seat still resolves,
+    // so "returns null" is not passing because `siteOffset` stopped working.
+    expect(
+      siteOffset(COCKPIT, aimDirection(0, 0, WIDE), [0, 0, -3000]),
+      'positive control: the at-rest ray still resolves the very same target',
+    ).not.toBeNull()
   })
 })

@@ -40,7 +40,8 @@ import { fileURLToPath } from 'node:url'
 import { stepGame } from '../../src/core/sim'
 import { ChoreoOp, Status, Twist, Move, initVm, program, tickChoreo, ctFrames } from '../../src/core/tie-vm'
 import { choreoPc } from '../../src/core/tie-waves'
-import { COCKPIT, FOV_Y, aimDirection, beamHit } from '../../src/core/gameRules'
+import { COCKPIT, FOV_Y, aimDirection, siteOffset } from '../../src/core/gameRules'
+import { SIGHTS_OCTAGON } from '../../src/core/tie-status'
 import { initialState, TICK_HZ, TIE_HIT_RADIUS, type GameState } from '../../src/core/state'
 import { add, scale, type Vec3 } from '@shared/math3d'
 import { makeTie, lookAtOrigin } from './helpers/space'
@@ -233,7 +234,9 @@ describe('uf1-12 — AC-6: the shell viewport reaches the pure core', () => {
     // The plumbing AC-6 rests on, pinned end-to-end rather than at the seam: whatever
     // `computeStatus` reads has to be what the shell actually sampled this frame,
     // otherwise the sights bit and the gun diverge exactly as measured (539 u at yoke
-    // 0.2 on 16:9, against a 500 u band).
+    // 0.2 on 16:9, against a band reaching 750 u on the axis since sw8-27 — so it now
+    // takes about 28% of yoke travel, rather than the 19% the retired 500 u disc needed,
+    // before a fighter centred on one ray falls outside the other's band).
     const base: GameState = { ...initialState(1983), enemies: [], spawnTimer: 1e9, lives: 999 }
     const wide = stepGame(base, { aimX: 0.4, aimY: 0, fire: false, aspect: 16 / 9 }, TICK_DT)
     expect(wide.aspect, "the shell's viewport reaches the core").toBe(16 / 9)
@@ -246,9 +249,11 @@ describe('uf1-12 — AC-6: the shell viewport reaches the pure core', () => {
     // Regression pin for the uf1-12 review (F2). The gun fires down `input`
     // (sim.ts: `aimDirection(aimX, aimY, input.aspect)` with `aimX = input.aimX`), so a
     // sights bit read off the INCOMING state's aim is one frame stale and the two rays
-    // separate by 613 u on a one-frame flick of 0.1 — against a 500 u band. The cabinet
-    // cannot do that: the laser hit (1.5x TMPSIZ, WSMAIN.MAC:3906) and the sights bit
-    // (3x TMPSIZ, :3922) are computed twelve lines apart from ONE TMPOCT, off one
+    // separate by 613 u on a one-frame flick of 0.1 — against a band that reaches 3 ×
+    // TIE_HIT_RADIUS = 750 u on the axis (sw8-27; it was a 500 u disc when this was
+    // written, and the flick used to clear it outright rather than eat 82% of it). The
+    // cabinet cannot do that: the laser hit (1.5x TMPSIZ, WSMAIN.MAC:3906) and the sights
+    // bit (3x TMPSIZ, :3922) are computed twelve lines apart from ONE TMPOCT, off one
     // LZ.CX/LZ.CY sample. So `stepGame` shadows the frame's yoke onto the state.
     //
     // The discriminator is the branch itself: seat the VM ON the `.CIF C$PS` and step ONE
@@ -272,10 +277,21 @@ describe('uf1-12 — AC-6: the shell viewport reaches the pure core', () => {
     const pos = add(eye, scale(aimDirection(flickX, flickY), 6000)) as Vec3
 
     // Fixture guard: parked, this fighter is nowhere near the sights band.
+    //
+    // RE-POINTED AT THE SHIPPED BAND at sw8-27's rework. This guard used to ask
+    // `beamHit(..., 2 * TIE_HIT_RADIUS)` — the retired 500 u DISC — and the direction of
+    // that error matters: the disc is strictly INSIDE the L1 octagon the game now tests
+    // (a 500 u disc reaches 707 in `|dx| + |dy|`, under the octagon's 750), so "outside
+    // the disc" does NOT imply "outside the band". A future seat could satisfy the old
+    // guard while being sighted with the yoke parked, which would make the premise of this
+    // whole test — that the FLICK is what brings the fighter in — quietly false. Ask the
+    // shipped predicate instead. (This seat clears it either way: parked, it sits 2329 u
+    // out in `|dx| + |dy|`, more than 3× the band.)
+    const parkedSite = siteOffset(eye, aimDirection(parked.aimX, parked.aimY), pos)
     expect(
-      beamHit(eye, aimDirection(parked.aimX, parked.aimY), pos, 2 * TIE_HIT_RADIUS),
+      parkedSite && parkedSite.dx + parkedSite.dy > SIGHTS_OCTAGON * TIE_HIT_RADIUS,
       'with the yoke parked the fighter is outside the band — the flick is what brings it in',
-    ).toBeNull()
+    ).toBe(true)
     // Both axes, since the flick is diagonal: if the incoming state were already deflected
     // on either one, that component would stop discriminating fresh aim from stale.
     expect(

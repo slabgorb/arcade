@@ -58,11 +58,19 @@
 //
 // WHY THE DIVERGENCE IS BIGGER THAN THE FILING SAYS. The filing calls it "behaviourally
 // small (the fighter is about to collide)", which is true of the single seat it chose and
-// false of the region. The C_PS band is a fixed 500 u (2 × TIE_HIT_RADIUS) while the
-// pyramid's half-width GROWS with depth, so the two cross over at
-// `band / tan(FOV_Y/2)` = 500 / 0.57735 = 866 u. Below that depth a fighter can be inside
-// the band and outside the glass. At depth 800 it is ~925 u from the cockpit — 3.7 × its
-// own kill radius, nowhere near collision.
+// false of the region. The band is a FIXED size while the pyramid's half-width GROWS with
+// depth, so the two cross over, and below that crossover a fighter can be inside the band
+// and outside the glass. At depth 800 it is ~925 u from the cockpit — 3.7 × its own kill
+// radius, nowhere near collision.
+//
+// (SWEPT at sw8-27, which retired the shape this paragraph described, and the numbers with
+// it. The band WAS a 500 u disc — `SIGHTS_BAND_FACTOR × TIE_HIT_RADIUS`, 2 × 250 — and is
+// now the cabinet's L1 octagon, `|dx| + |dy| <= SIGHTS_OCTAGON × TIE_HIT_RADIUS`
+// (WSMAIN.MAC:3920-3924). So it is no longer ONE number: it reaches 750 u on each axis and
+// 375 u per axis on the diagonal, which is 530 u radially. The crossover is per-axis too —
+// vertically `3 × TIE_HIT_RADIUS / tan(FOV_Y/2)` = 750 / 0.57735 = 1299 u, where this
+// paragraph used to say 866. Every seat below still sits inside BOTH models, so the seats
+// did not move; only the description of the region they sit in did.)
 //
 // And uf1-14 made the region BIGGER, which is why the story's dependency ordering
 // mattered: at the retired ±45° pyramid the crossover was 500/1.0 = 500; at the rendered
@@ -80,7 +88,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { computeStatus, VIEW_NEAR, VIEW_FAR, SIGHTS_BAND_FACTOR } from '../../src/core/tie-status'
+import { computeStatus, VIEW_NEAR, VIEW_FAR, SIGHTS_BAND_FACTOR, SIGHTS_OCTAGON } from '../../src/core/tie-status'
 import { ChoreoOp, Status, initVm, program } from '../../src/core/tie-vm'
 import { choreoPc } from '../../src/core/tie-waves'
 import { COCKPIT, FOV_Y, aimDirection, beamHit } from '../../src/core/gameRules'
@@ -115,12 +123,22 @@ const sights = (pos: Vec3, aspect: number) => statusAt(pos, aspect) & Status.C_P
 const inView = (pos: Vec3, aspect: number) => statusAt(pos, aspect) & Status.C_PV
 
 /**
- * Fixture guard used by every negative seat below. Asserts — with the SAME machinery the
- * assertions use — that the seat really is the case we mean: strictly inside the sights
- * band measured off the at-rest aim ray, and strictly outside the rendered view pyramid.
+ * Fixture guard used by every negative seat below. Asserts that the seat really is the case
+ * we mean: strictly inside the sights band measured off the at-rest aim ray, and strictly
+ * outside the rendered view pyramid.
  *
  * Without this a "C_PS is clear" assertion passes for the wrong reason the moment a seat
  * drifts out of the band, and the suite scores itself as protecting something it does not.
+ *
+ * IT IS DELIBERATELY CONSERVATIVE, and since sw8-27 that is a real distinction rather than a
+ * pedantic one. The band the game now tests is the L1 octagon at `SIGHTS_OCTAGON` (750 u);
+ * this guard asks the strictly SMALLER question "inside the retired 500 u disc", which
+ * implies the octagon — a disc of radius 500 reaches at most 500·√2 = 707 in `|dx| + |dy|`,
+ * under the octagon's 750. So "in-disc ⇒ in-band" holds and every seat below is still the
+ * case it claims to be. What it no longer is, is a statement of the shipped SHAPE: it cannot
+ * fail a seat that left the disc but stayed in the octagon, and a seat needing that
+ * discrimination belongs in `gun-visibility-and-shape.test.ts`, which tests the region
+ * directly.
  */
 function assertSeatIsInBandAndOffGlass(pos: Vec3, aspect: number, label: string): void {
   const ray = aimDirection(0, 0, aspect)
@@ -139,15 +157,24 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
     // Absolute anchors. Every seat is chosen relative to these, so if one is retuned the
     // failure lands here — naming the cause — instead of scattering across the negatives.
     expect(TIE_HIT_RADIUS, 'the established TIE kill radius').toBe(250)
-    expect(SIGHTS_BAND_FACTOR, 'the ROM doubling, 3·TMPSIZ over 1.5·TMPSIZ').toBe(2)
+    expect(SIGHTS_OCTAGON, "the sights octagon, ADDD TMPSIZ twice at WSMAIN.MAC:3920-3923").toBe(3)
     expect(VIEW_NEAR, "the ROM's near clamp, CMPD #10 at WSMAIN.MAC:3825").toBe(0x10)
     expect(VIEW_FAR, "the ROM's far clamp, CMPD #7F00 at WSMAIN.MAC:3827").toBe(0x7f00)
-    // The crossover depth below which band-but-off-glass is reachable at all.
-    expect((SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS) / TAN_HALF).toBeCloseTo(866.0, 1)
+    // The crossover depth below which band-but-off-glass is reachable at all, on the
+    // VERTICAL axis — where the octagon reaches 3 × the kill radius. (sw8-27 moved this
+    // from 866 to 1299: the retired disc stopped at 2 ×.)
+    expect((SIGHTS_OCTAGON * TIE_HIT_RADIUS) / TAN_HALF).toBeCloseTo(1299.0, 1)
+    // NOT a behavioural anchor, and it must not be read as one: since sw8-27 nothing in
+    // `src/` consumes `SIGHTS_BAND_FACTOR`. It survives as the docstring statement of the
+    // cabinet's unit-free 3 ÷ 1.5 ratio, so what is pinned here is that ARITHMETIC — the
+    // two octagon thresholds still stand in the ratio the constant claims — and not any
+    // region the game tests a fighter against.
+    expect(SIGHTS_OCTAGON / 1.5, 'the ROM doubling, 3·TMPSIZ over 1.5·TMPSIZ').toBe(SIGHTS_BAND_FACTOR)
   })
 
   it("the NEAR-clamp exit (LBLE RTS1, :3826): the filing's own worked example", () => {
-    // A TIE at [400, 0, -10]: perpendicular distance 400 against the 500 u band, so the
+    // A TIE at [400, 0, -10]: 400 u off the aim ray, inside the sights band on that axis
+    // (750 u since sw8-27, and 500 before it, so the seat reads the same either way), so the
     // beam test passes — while its view depth of 10 is under VIEW_NEAR (0x10 = 16), so the
     // cabinet would have returned at :3826 and never reached :3930.
     const seat: Vec3 = [400, 0, -10]
@@ -181,7 +208,7 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
     // The strongest single discriminator in this file, and the one a hard-coded cone
     // cannot pass. `hBound = depth · tan(FOV_Y/2) · aspect`, so at depth 800 the lateral
     // bound is 461.9 on a square canvas and 821.1 at 16:9. A TIE at x = 480 is therefore
-    // OFF the glass at 1:1 and ON it at 16:9 — while sitting inside the 500 u band at
+    // OFF the glass at 1:1 and ON it at 16:9 — while sitting inside the sights band at
     // both, so the sights band alone cannot explain the difference.
     const seat: Vec3 = [480, 0, -800]
 
@@ -272,20 +299,30 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // A closer seat, off the glass AND inside the kill radius. This is the one that shows
     // the gate is not being smuggled into the ray: at depth 400 the pyramid's vertical
     // bound is 230.9, so vert 240 is off-screen while sitting 240 u from the ray — inside
-    // TIE_HIT_RADIUS. `sim.ts:546` resolves the player's laser through exactly this call,
-    // so a view clamp added here would silently change what the player can shoot.
+    // TIE_HIT_RADIUS. A view clamp added to `beamHit` would silently change what the player
+    // can shoot in the phases that still call it: the surface turrets (`sim.ts:1137`) and
+    // the trench's exhaust port and obstacles (`:1366`, `:1382`). The cabinet gates none of
+    // those — `GRLZCL` runs unconditionally straight after `BJGDRW` (WSGRND.MAC:978-979).
     //
-    // (RE-ANCHORED by sw8-27, from `sim.ts:544` to `:546`. The shift is exactly +11 — the
-    // comment block sw8-19's OWN finish chore inserted at `sim.ts:168`. The
-    // comment-citation guard never reported it: with no verbatim quote adjacent it
-    // range-checks only, and 535 was still a valid line, so this citation sat in neither
-    // the guard's 29 nor sw8-24's sweep of them. It pointed at a comment about Darth
-    // scoring.)
+    // (CITATION HISTORY, and it is worth keeping because both of this story's attempts at it
+    // were wrong in instructive ways. It began as `sim.ts:535`, went stale by +11 when
+    // sw8-19's finish chore inserted a comment block at `sim.ts:168`, and sw8-27 re-anchored
+    // it to `:546` — a number measured against the PRE-story file, which the story's own
+    // +43-line insertion then invalidated in the same commit. `:546` now lands on
+    // `const darthScored = new Set<number>()`. The mechanical +9 shift would have been right
+    // where the hand-measured number was not, which is the lesson: an AC that hard-codes a
+    // line into a story that GROWS the file is a booby trap, because the AC is written before
+    // the insertion exists. Neither number was ever reported by the comment-citation guard —
+    // with no verbatim quote adjacent it range-checks only, and every one of 535, 544 and 546
+    // was a valid line — so this citation sat in neither the guard's 29 nor sw8-24's sweep.
+    // Anchored on SYMBOLS above rather than on a third line number.)
     //
-    // The clone's GUN diverging from the cabinet the same way C_PS does is real, and is
-    // now sw8-27. This assertion is NOT retired by that story — measured, it stays green
-    // under the caller-side gate, because it calls `beamHit` DIRECTLY. What it pins is
-    // that the gate is not in the helper, which sw8-27's AC3 still requires.
+    // WHAT THIS ASSERTION PINS, RESTATED FOR THE POST-sw8-27 TREE. It is not retired, and
+    // sw8-27's AC3 is why: the space arm resolves its own hits through `spaceSiteHit`
+    // (`sim.ts:589` for fighters, `:597` for fireballs) and no longer calls `beamHit` at all,
+    // so this direct `beamHit` probe is now the ONLY thing standing between the shared helper
+    // and a well-meant "just clamp it in one place" refactor. It stays green precisely because
+    // it calls the helper directly.
     const killableOffGlass: Vec3 = [0, 240, -400]
     expect(inView(killableOffGlass, 16 / 9), 'fixture guard: also off the glass').toBe(0)
     expect(
@@ -294,15 +331,37 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     ).not.toBeNull()
   })
 
-  it('keeps the band at exactly twice the kill radius — the fix is a gate, not a narrowing', () => {
-    // The other tempting wrong fix: shrink SIGHTS_BAND_FACTOR until the reported seats stop
-    // reproducing. That would break the ROM's unit-free 3 ÷ 1.5 = 2 and silently retune the
-    // loiter break. Pin the factor and pin a seat that only survives at 2×.
-    expect(SIGHTS_BAND_FACTOR).toBe(2)
-    const justOutsideKill: Vec3 = [TIE_HIT_RADIUS + 1, 0, -6000]
+  it('NARROWING THE BAND IS NOT THE FIX: a seat only the full 3× octagon reaches stays sighted', () => {
+    // The other tempting wrong fix for this story: shrink the sights band until the reported
+    // off-glass seats stop reproducing. That trades the cabinet's region for a tuned number
+    // and silently retunes the loiter break TCH1DZ hangs off C_PS.
+    //
+    // REWRITTEN AT sw8-27's REWORK, because the version that stood here could not do its job
+    // and said it could. It was titled "keeps the band at exactly twice the kill radius", it
+    // asserted `SIGHTS_BAND_FACTOR === 2`, and it seated a TIE at dx 251. MEASURED: halving
+    // the shipped band — `SIGHTS_OCTAGON` 3 → 1.5, so the axis bound drops 750 → 375 — left
+    // it GREEN, because 251 clears 375 as comfortably as it clears 750. It was pinning a
+    // constant that, since AC6, nothing in `src/` reads: mutating `SIGHTS_BAND_FACTOR` 2 → 1
+    // reddens only self-assertions on itself. A title claiming a property the test cannot
+    // fail is worse than no test, because it invites deleting the ones doing the real work.
+    //
+    // The seat therefore has to sit in the SHELL between the two bands. At depth 6000 on
+    // 16:9 the glass reaches 6158 laterally, so dx 700 is comfortably drawn — and 700 is
+    // inside the shipped axis bound of 3 × 250 = 750 while being far outside 1.5 × 250 = 375.
+    //
+    // VERBATIM MUTANT this kills, applied to `tie-status.ts`:
+    //   export const SIGHTS_OCTAGON = 1.5
+    const inTheOuterBand: Vec3 = [700, 0, -6000]
+    expect(inView(inTheOuterBand, 16 / 9), 'fixture guard: this seat is ON the glass').toBe(Status.C_PV)
+    expect(700, 'fixture guard: outside a HALVED band, so halving the octagon reddens this').toBeGreaterThan(
+      1.5 * TIE_HIT_RADIUS,
+    )
+    expect(700, 'fixture guard: inside the shipped band, so it is sighted today').toBeLessThanOrEqual(
+      SIGHTS_OCTAGON * TIE_HIT_RADIUS,
+    )
     expect(
-      sights(justOutsideKill, 16 / 9),
-      'just outside the kill radius but inside the warning band, and visible',
+      sights(inTheOuterBand, 16 / 9),
+      'well outside the kill radius but inside the ROM warning octagon, and visible',
     ).toBe(Status.C_PS)
   })
 
