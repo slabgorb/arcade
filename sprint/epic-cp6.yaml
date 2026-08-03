@@ -196,11 +196,17 @@ stories:
       SCOPE: `plugins/centipede/tools/pokey-bake/bake-sfx.test.mjs` (the assertion at the `cp6-2 AC3` test), and `bake-sfx.mjs` only if the `Object.hasOwn` check above turns out to be needed. Verify by mutation both ways — reword the message and watch it redden, then restore — per the standing rule that a guard nobody has watched fail is not a guard.
 
       DO NOT re-file the dead-guard claim. It was true when TEA measured it and is false now; two stories a day apart moved the code underneath it. That drift is the point.
-    points: 1
+    points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-03T19:03:55Z'
     repos: arcade
     workflow: trivial
+    acceptance_criteria:
+      - 'AC-1 THE ASSERTION PINS THE MESSAGE, NOT THE NAME. The `cp6-2 AC3 > a manifest cue with no bake spec THROWS` test in plugins/centipede/tools/pokey-bake/bake-sfx.test.mjs asserts the ENTIRE diagnostic string with `toBe`, not a regex on the interpolated cue name, and it asserts through a helper that FIRST proves an Error was actually thrown (joust bake-samples.test.mjs:100-112 is the worked shape). Measured at setup: rewording the message wholesale while keeping ${cue} leaves the file 25/25 GREEN; only deleting ${cue} reddens it. Under the new assertion the wholesale reword must redden.'
+      - 'AC-2 THE GUARD READS OWN PROPERTIES. The two bracket reads at bake-sfx.mjs:401-402 (`FIXTURE.cues[cue]` and `STAND_IN_SPECS[cue]`) become `Object.hasOwn` checks. This is NOT optional hardening: measured at setup, a manifest cue named `toString`, `constructor` or `valueOf` today bakes COMPLETELY CLEAN with no throw at all — bakeSfx returns 15 instead of 14 and writes a 44-byte header-only wav that just deploy-assets would upload as a silent cue. The mechanism is three undefined-vs-null comparisons that all read false on a prototype object: `known.freqTable !== null` reads the cue as transcribed, then romEvents `c.contImmediate === null` is false and `c.lengthFrames !== c.tableLengthBytes` is false, and the render loop runs zero iterations. Hardening the guard alone suffices because romEvents and standInEvents are only reached after it passes.'
+      - 'AC-3 THE PROTOTYPE HOLE HAS ITS OWN TEST, WITH ITS PRECONDITIONS ASSERTED. Follow joust bake-samples.test.mjs:589-621: assert that the value IS reachable by a bracket read and is NOT an own property, so a future reader can see the test still separates the two implementations, then assert the whole message. This story is worse than the joust case its filing predicted — joust got the right cue name beside the wrong diagnosis, centipede gets no diagnosis at all — so say that in the test prose rather than copying joust wording that understates it.'
+      - 'AC-4 MUTATION-PROVEN BOTH WAYS, EVERY MUTANT RECORDED VERBATIM. Baselines measured at setup: 25/25 in bake-sfx.test.mjs, 62 files / 1157 tests in the centipede project, and the hasOwn fix has a ZERO-red blast radius across all 1157 — so the tests written here ARE the entire observable deliverable. For each new or changed assertion name the source mutation that reddens it and paste the mutated string. At minimum: the wholesale message reword (green today, must redden) and the hasOwn revert (green today, must redden). A POSITIVE CONTROL must show the shipped 14-cue manifest still bakes clean, or the two tests above prove nothing about the gate.'
     type: chore
   - id: cp6-5
     title: centipede's claim ledger cannot re-run a COUNT — SND-114 shipped 'five other routines' when it is four, and the corrected number is just as unguarded

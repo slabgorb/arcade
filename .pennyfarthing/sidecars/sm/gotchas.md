@@ -2434,3 +2434,85 @@ together, rather than inheriting a wrong number as scope.
   GREEN). Rebased — success line named `refs/heads/main`, so HEAD was right — and the beacon
   branch pushed with `git push origin main:refs/heads/feat/<id>-<slug>`, which never checks
   out and so cannot reproduce the mg1-5 stale-ref trap. Verified 0 ahead from origin.
+
+---
+
+## A filing's CONDITIONAL is an authorising sentence too — and this one UNDERSTATED its own finding by predicting a sibling's failure mode (cp6-4 setup, 2026-08-03)
+
+**Situation:** cp6-4 was filed with an explicit conditional: *"Check whether centipede's
+`FIXTURE.cues[cue]` / `STAND_IN_SPECS[cue]` bracket reads have that same shape; if they do,
+`Object.hasOwn` is the one-line fix and it belongs in this story rather than a new one."*
+It named the expected outcome by analogy to joust's jt9-4 — *"a manifest cue named
+`toString` … trips a DIFFERENT gate, so the right cue name appears beside the wrong
+diagnosis."*
+
+The shape was there. **The outcome was not.** Probed against the real module under plain
+`node`: cues named `toString`, `constructor` and `valueOf` **bake completely clean, with no
+throw at all**. `bakeSfx` returns 15 where the shipped manifest returns 14 and writes a
+**44-byte header-only wav** that `just deploy-assets` would upload as a silent cue. joust
+gets a wrong diagnosis; centipede gets *no* diagnosis. That is the difference between "the
+operator reads a confusing error" and "the operator reads nothing and ships silence".
+
+**The rule this extends.** cp6-3 established: rank a filing's sentences by what they
+authorise, because a sentence that says *delete X* or *skip the derivation of Y* removes a
+guard and nobody reviews a removal the story sanctioned. This is the mirror case — a
+conditional authorises an **addition**, so it draws no suspicion at all, and its risk is
+carried by the *prediction attached to it*. If the prediction understates, the AC gets
+written at the predicted severity and the real hole ships as a footnote. **Measure the
+conditional's OUTCOME, not just its precondition.** Answering "yes, the shape is there" and
+stopping would have produced a correct-but-toothless AC.
+
+**A specific tell: "the same shape as <sibling>" is a claim about how two code paths
+DEGRADE, not about how they are written.** Two bracket reads can be typographically
+identical and fail differently, because what happens next is the guard chain downstream.
+Here that chain is three comparisons that all read a prototype value as *present*:
+
+- `known.freqTable !== null` → `undefined !== null` is **true** ⇒ classified *transcribed*
+- `c.contImmediate === null` → `undefined === null` is **false** ⇒ "refusing to invent a
+  control byte" never fires
+- `c.lengthFrames !== c.tableLengthBytes` → `undefined !== undefined` is **false** ⇒ the
+  length-disagreement throw never fires
+
+then the render loop `i < c.lengthFrames` runs **zero** iterations and writes a header.
+**Generalise: wherever a guard chain spells "missing" as `=== null` / `!== null`, a
+prototype read is classified PRESENT at every link** — so the count of guards protecting
+the path tells you nothing. Read the operator, not the number of guards.
+
+## The zero-red blast radius is also a SIZING instrument, not just a safety check
+
+`Object.hasOwn` applied to the two reads: **62 files / 1157 tests, zero red.** cp6-3
+recorded that a near-zero radius is ambiguous — equally "nothing can observe this" and
+"nothing can observe this going *wrong*" — so it was paired with the direction probe above
+before being read as anything.
+
+What is new is the second use. Once the direction probe settles that the fix is correct, a
+zero radius says the **tests are the entire deliverable and the source change is trivial**.
+That is exactly the number needed to size the story: filed at 1 point as an assertion
+rewrite, it became assertion rewrite + two-line source hardening + one new guard test, and
+went to **2**. The measurement produced the estimate rather than the estimate being
+defended afterwards — which is the failure mode sw8-27 and cp6-3 both recorded, twice, in
+the same week.
+
+**Check the workflow's ceiling when you bump.** `trivial` caps at 2 points
+(`pf workflow show trivial`). A bump to 3 would have silently invalidated the workflow tag
+the story was filed under, and the phase flow would have needed changing too — cheaper to
+check at the moment of the bump than to discover at the `implement` gate.
+
+## Small confirmations from this run
+
+- **The three-mutation battery cost one file's worth of runtime, not the project's.**
+  `npx vitest run --project centipede tools/pokey-bake/bake-sfx.test.mjs` is ~6s against
+  ~90s for the project; the project run was spent once, on the fix's blast radius, where a
+  whole-project number was actually the deliverable.
+- **An anchor-miss guard earned its keep immediately.** The first battery attempt used a
+  bash heredoc and the backtick/`${}` escaping mangled the anchor; the `assert old in s`
+  line reported `ANCHOR MISS` rather than letting a no-op mutation read as a survivor.
+  Moving the mutations into a standalone `.py` with plain string literals fixed it. **Do not
+  write mutation anchors through a shell heredoc when the target contains backticks or
+  `${}`** — which is every template-literal diagnostic, i.e. exactly the code these stories
+  are about.
+- **The citation check was worth its 30 seconds.** `jt9-35` re-anchored centipede's
+  citations one commit before this setup, so "will my edit drift a pin?" was a live
+  question. It does not: `tests/audio-citations.test.ts` is scoped to `src/main.ts`, and the
+  only reference to the touched test file (`tests/audit/sound-dossier.test.ts:548`) is by
+  path, not by line.
