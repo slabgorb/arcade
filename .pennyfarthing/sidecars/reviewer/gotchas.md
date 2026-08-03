@@ -2293,3 +2293,71 @@ evaporates between two stories that each correctly declined it.
 arrive in the successor's text, and did the successor discharge or re-file it? When neither, route it
 to SM as a finish-phase filing obligation with the mechanism written out, because after
 `story finish` the session that explains it is one directory further away.
+
+## Two agents agreeing on a battery is one experiment run twice — the survivors live OUTSIDE the list
+
+jt9-4's TEA measured 19 mutants, 0 survivors. Dev independently re-ran all 19 and matched by test
+name and count. That agreement is worth exactly nothing about the mutants nobody thought to write.
+I re-ran 18 of the 19 (confirming every one of TEA's ten per-guard "Reddened by:" citations exact,
+including all five "seen by this test and by nothing else" claims — a genuinely clean result) and
+then ran **12 the battery never contained**. Two survived, and neither was reachable from inside the
+original list's design:
+
+- **R7** — the CLI's `console.error('usage: node bake-samples.mjs <outDir>')` blanked to
+  `console.error('')`: green. The test was named "refuses, **loudly**" and asserted only
+  `status !== 0`. The battery never probed it because the battery was aimed at `bakeSamples`, and
+  this is a **second, different refusal** — the `if (!dir)` CLI arm exits 2 without ever reaching
+  the function's own `usage:` throw. A story that sharpens one refusal should enumerate *every*
+  refusal in the file; the file's own prose claimed it had removed the weak form "everywhere else"
+  and it was false by one describe block.
+- **R12** — `const RATE = 22050` → `24000`: green, and every one of the eighteen shipped `.wav`
+  files is now different audio. The suite pinned *shape* (decodable, sane rate, not silence,
+  pairwise distinct) and pinned determinism **across two runs of the same code** — the near miss,
+  because a constant change moves both sides together.
+
+**The move:** ask what the battery's mutants have in COMMON (here: all twelve edits sat inside one
+function's gate logic) and aim outside it — the module's other entry points, and the values the code
+produces rather than the branches it takes.
+
+## When a refactor moves a write path, prove byte-identity OUT OF BAND — the suite may be blind to it
+
+Same story. The refactor changed `writeFileSync(join(outDir, SOUNDS[name]))` to `sounds[name]`, in a
+story whose text promised no behaviour change. R12 proves no test could have caught a content
+regression, so "2519 green" was not evidence. Two minutes settled it instead: write the pre-refactor
+module out with `git show <sha>^:<path>` **into the same directory** (relative imports break anywhere
+else), bake both into temp dirs, `diff -r` plus a combined `sha256`. Identical.
+
+Do this whenever a diff touches the line that PRODUCES an artifact, and treat "the tests pass" as
+unrelated to the question. The by-hand digest is also the baseline number the follow-up story needs.
+
+## A mutation that fails to APPLY prints the most persuasive wrong answer available: green
+
+My first centipede mutation used perl `s{...}{if (false) {}` — the unbalanced brace inside a
+brace-delimited replacement made perl die, `cp` had already run, and the suite printed a clean
+61 files / 1125 tests **passing**. Read carelessly that is "the mutant survived", i.e. a finding.
+It was a no-op.
+
+**Rule:** a mutation harness must prove the file CHANGED before it reports a result — diff against
+the backup, or assert the replacement count is exactly 1 and echo the mutated line. Python's
+`assert s.count(old)==1` before `write` is the cheap version, and it also catches the opposite error
+(a pattern matching two sites, so you mutated more than you named). Never report a survivor from a
+run you did not watch the mutation land in.
+
+## Fix cheap defects in place, but re-run the mutant that FOUND them — both directions
+
+R7's fix was one `expect(run.stderr).toContain(...)` line. Adding it is worthless without proving
+the loop closed: I re-ran R7 (now RED), R8 (still RED, so the exit-code half did not regress), and
+the unmutated control (GREEN). A review fix is a guard, and a guard nobody watched fail is not a
+guard — the rule applies to the reviewer's own patch, not just the implementer's.
+
+Corollary on routing: of four findings here, three were fixable in place and one (`jt9-32`,
+pre-existing jt5-2 scope) was not. Expanding the story to cover it would have been the wrong call —
+but so would a findings-table row saying "file with X", which routes nothing. It needed a real id.
+
+## Sprint YAML: a blank line inside a single-quoted description fails validation — use a block scalar
+
+Appending a paragraph to jt9-5's `description: '...'` tripped pf's PostToolUse validator:
+"Single-quoted string contains blank lines (breaks Cyclist panel parser)". Converting that one
+description to `|-` (what the newer stories already use) fixed it. Worth knowing before editing an
+older story record by hand: the quoting style varies across the file, and only the block form takes
+paragraphs. Re-parse with `yaml.safe_load` afterwards regardless.

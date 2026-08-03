@@ -230,8 +230,31 @@ describe('jt5-2 — the recipe can actually run this tool (AC3’s other half)',
     }))
 
   it('`node bake-samples.mjs` with no directory refuses, loudly', () => {
+    // jt9-4 REVIEW: the word "loudly" in this test's name was unbacked. Until
+    // this line the body asserted `status !== 0` and nothing else, so the CLI's
+    // own usage message could be blanked entirely and all 101 tests stayed
+    // green — MEASURED, mutant R7 (`console.error('usage: node bake-samples.mjs
+    // <outDir>')` → `console.error('')`), a survivor of the 19-mutant battery.
+    //
+    // Note this is a SECOND, DIFFERENT refusal from the one pinned above: the
+    // `if (!dir)` arm at the foot of bake-samples.mjs prints its own message and
+    // exits 2, and never reaches `bakeSamples`'s `usage:` throw at all. The
+    // block at the foot of this file argues the bare form "is the exact weak
+    // shape jt9-4 exists to remove, so leaving it here while removing it
+    // everywhere else would have been a joke at this file's expense" — and it
+    // had been left here, one describe block away, in the same file. Pinning
+    // the message is what makes that sentence true.
+    //
+    // The exit CODE stays loose on purpose (`not.toBe(0)`, not `toBe(2)`): what
+    // the recipe needs under `set -euo pipefail` is any nonzero, and mutant R8
+    // (`process.exit(2)` → `process.exit(0)`) already reddens this test — the
+    // silent-no-op deploy that `invokedAsScript()`'s own comment calls the worst
+    // failure available to a deploy step is caught either way.
     const run = spawnSync(process.execPath, [toolPath], { encoding: 'utf8' })
     expect(run.status, 'a default output dir invites baking into the plugin tree').not.toBe(0)
+    expect(run.stderr, 'refused, but silently — "loudly" is the half nothing checked').toContain(
+      'usage: node bake-samples.mjs <outDir>',
+    )
   })
 })
 
@@ -274,9 +297,15 @@ describe('jt5-2 — the bake is deterministic and the cues are distinct', () => 
 //   · `no FRAME_DURATIONS entry for '<name>' — the ROM window sizes the file`
 //     (bakeSamples, the `if (!(frames > 0))` arm)
 //
-// Cited by SYMBOL, not by line: those two throws have moved twice since jt5-6
-// filed this story (:305-306/:311 → :316-318/:322), and jt9-30 exists to
-// convert this repo's line refs wholesale.
+// Cited by SYMBOL, not by line: those two throws have moved THREE times since
+// jt5-6 filed this story (:305-306/:311 → :316-318/:322 → :330-332/:336), and
+// jt9-30 exists to convert this repo's line refs wholesale. The third move is
+// this story's own: `:316-318/:322` was measured at RED and was already stale
+// by GREEN, because the twelve-line `jt9-4: opts.sounds / opts.frameDurations`
+// paragraph the refactor added to the head of bake-samples.mjs pushed the whole
+// function down. A comment-only edit breaking a line citation is exactly the
+// drift this sentence is about — corrected at review, and left as the worked
+// example of why the symbol is the citation.
 //
 // WHY THE GATE IS WORTH A STORY. `just deploy-assets` runs the whole recipe
 // under `set -euo pipefail` and bakes FOUR trees into one staging dir before a

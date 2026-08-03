@@ -115,7 +115,10 @@ stories:
     workflow: tdd
   - id: jt9-5
     title: 'framesFor edge cases: an odd token count is silently dropped, and an invention cue reports the wrong bake error'
-    description: 'Two edge cases in the jt5-6 derivation in plugins/joust/src/shell/audio-manifest.ts, both currently unreachable but both real. (1) framesInRow loops `for (let i = 0; i + 1 < pairs.length; i += 2)`, so a row with an ODD token count — a sound code with no duration operand — has its tail SILENTLY dropped and the cue window comes out short with no error. It is defended today only INDIRECTLY: every defining row is re-opened byte-exact by tests/audio-rom-citations.test.ts and every continuation row by tests/audio-transporter-split.test.ts, so a malformed row cannot match the vendored file. The defence is a different mechanism from the failure, which is why it is worth closing directly — throw on an odd count. (2) framesFor opens `if (source.kind !== rom) return 0` (:525), so an `invention` cue gets FRAME_DURATIONS 0; bake-samples.mjs:310-312 then tests `if (!(frames > 0))` and throws `no FRAME_DURATIONS entry` — but there IS an entry, it is 0 because the cue has no ROM table to size it. All 18 cues are kind:rom today so neither fires, but the invention arm exists precisely so a later story can use it, and that story hits a misleading error. Found by jt5-6 Reviewer.'
+    description: |-
+      Two edge cases in the jt5-6 derivation in plugins/joust/src/shell/audio-manifest.ts, both currently unreachable but both real. (1) framesInRow loops `for (let i = 0; i + 1 < pairs.length; i += 2)`, so a row with an ODD token count — a sound code with no duration operand — has its tail SILENTLY dropped and the cue window comes out short with no error. It is defended today only INDIRECTLY: every defining row is re-opened byte-exact by tests/audio-rom-citations.test.ts and every continuation row by tests/audio-transporter-split.test.ts, so a malformed row cannot match the vendored file. The defence is a different mechanism from the failure, which is why it is worth closing directly — throw on an odd count. (2) framesFor opens `if (source.kind !== rom) return 0` (:525), so an `invention` cue gets FRAME_DURATIONS 0; bake-samples.mjs:310-312 then tests `if (!(frames > 0))` and throws `no FRAME_DURATIONS entry` — but there IS an entry, it is 0 because the cue has no ROM table to size it. All 18 cues are kind:rom today so neither fires, but the invention arm exists precisely so a later story can use it, and that story hits a misleading error. Found by jt5-6 Reviewer.
+
+      READ THIS BEFORE PLANNING (added by jt9-4 Reviewer, 2026-08-03): jt9-4 pinned that second message, so YOU WILL EDIT A TEST FILE THIS STORY. `plugins/joust/tools/sample-bake/bake-samples.test.mjs` now asserts `toBe` on the WHOLE string "no FRAME_DURATIONS entry for '<cue>' — the ROM window sizes the file" in two tests, and one of them (`a window of ZERO frames is refused too, not silently baked as an empty file`) drives it with an entry of exactly 0 — which is case (2) above, the case this story exists to change. That is deliberate on jt9-4 TEA's part: it makes your change arrive as a RED test rather than as prose nobody re-reads. Expect it, budget for it, and re-word the guard and its message together. Verified by the jt9-4 Reviewer's own mutation of that assertion.
     points: 2
     priority: p1
     status: backlog
@@ -481,6 +484,30 @@ stories:
       NOTE the loader also has an untested `if (!existsSync(claimsDir)) return []` path, which jt9-2 made reachable for demo-jt8-7-source (its local copy had no such guard and threw instead). Worth covering in the same suite.
     points: 2
     priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
+  - id: jt9-32
+    title: Nothing pins WHAT the joust bake produces — every synthesis constant can change and the whole suite stays green
+    description: |-
+      Filed by jt9-4's Reviewer, 2026-08-03, from a surviving mutant. `plugins/joust/tools/sample-bake/bake-samples.mjs` synthesises the eighteen .wav files that `just deploy-assets` uploads to the assets bucket, and NO test can see a change to their contents.
+
+      MEASURED, not argued. Mutant R12 — `const RATE = 22050` changed to `24000` — leaves all 101 tests in the four files that touch the bake green (bake-samples.test.mjs, deploy-assets.test.mjs, audio-transporter-split.test.ts, audio-seam-scope.test.ts), and the full joust project green with it. Every one of the eighteen shipped files is different audio afterwards. The same hole swallows any edit to FRAME_HZ, to a SPECS entry's envelope or frequencies, or to encodeWav's header.
+
+      WHY THE EXISTING TESTS CANNOT SEE IT. jt5-2's suite pins shape, not content: decodable RIFF/WAVE, format in {1,3}, sample rate within [8000,96000], duration within [0.05,10] seconds, a data chunk that is not silence, all eighteen pairwise distinct, and two runs byte-identical. That last one is the near miss — it compares two runs of the SAME code, so a constant change moves both sides together and the assertion holds. Determinism is pinned; the value it is deterministic ABOUT is not.
+
+      WHY IT MATTERS RATHER THAN BEING TIDINESS. The three failure surfaces compound. `@shared/audio` degrades SILENTLY on a bad fetch, so nobody hears a regression at runtime. The deploy-assets recipe's own comment promises "re-running it re-uploads byte-identical files" — an idempotency claim about content that nothing verifies. And CI never diffs the bucket against the bake. A one-character edit to a synthesis constant therefore ships changed audio to production with a green pipeline and no observer at any layer.
+
+      THIS IS PRE-EXISTING (jt5-2), NOT jt9-4's REGRESSION. jt9-4 moved the write path from `SOUNDS[name]` to `sounds[name]`, so the Reviewer proved byte-identity out of band rather than trusting the suite: the pre-refactor module and the shipped one were each run into a temp directory and produced the same eighteen filenames with combined sha256 4499a28b47e95eb778d2f33d92c50a6de0a6ff43a70fbb172d686992992c9962. That is the number a golden pin would record. The point of this story is that the Reviewer had to compute it by hand because no test could.
+
+      THE FIX. Pin the content — a committed table of the eighteen filenames and their sha256, asserted after a default bake. Prefer per-file hashes over one combined digest so a failure names the cue that moved. Deliberately cheap to re-baseline: a real change to a sound SHOULD red this and be re-recorded in the same commit, with the reason in the message. That is the feature, not the cost.
+
+      ACCEPTANCE IS A MUTATION, BOTH WAYS. The new pin must go RED under `RATE 22050 -> 24000` and stay GREEN unmutated. Re-run the Reviewer's R12 verbatim as the acceptance mutant. Note jt9-5 is expected to change the invention arm of framesFor and NOT the eighteen shipped windows (all 18 cues are kind:rom today), so the baseline should be stable across it; if it is not, that is worth knowing and is exactly what the pin is for.
+
+      SCOPE: `plugins/joust/tools/sample-bake/bake-samples.test.mjs`. Centipede's and star-wars' bakes have the same shape and the same gap; do NOT widen this story to them — measure and file separately if wanted.
+    points: 1
+    priority: p3
     status: backlog
     repos: arcade
     workflow: tdd
