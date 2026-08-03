@@ -1430,3 +1430,8 @@ completed_stories:
     title: Pin the three wing-cue invariants jt5-3 shipped unguarded
     points: 3
     completed: '2026-08-03'
+  - id: cp6-2
+    epic: cp6
+    title: Bake the samples, upload them, and prove a live 200 — the sound actually arrives
+    points: 5
+    completed: '2026-08-03'
