@@ -3948,3 +3948,72 @@ them, and the plugin README says so in a sentence I had already read. **A `skipI
 fixture path tells you the test is CONDITIONAL, not that the condition is ever false here.**
 Cost of checking: one command. Cost of not checking: a false sentence in a file header,
 shipped green, in a repo whose standing lesson is that prose is the unguarded surface.
+## Measure REACHABILITY before choosing the seam — one direction of a contention was unreachable, and the obvious sweep for it is vacuous forever (cp6-3 RED, 2026-08-03)
+
+**Situation:** cp6-3 models POKEY voice 0's contention: the player explosion must silence
+the four kill cues. The obvious RED is a seeded sweep — play a long run, assert no kill cue
+sounds while the explosion is ringing.
+
+**What the measurement said.** Seven seeds, 30 000 frames, fire held:
+
+| direction | reachable? | evidence |
+|---|---|---|
+| kill arrives DURING a ringing death | **NO** | the 48-frame death pause emits **zero** one-shots (only `stepPlayingFrame` builds events); the first kill after a death landed at **+183, +286, +186, +322** frames — never inside the ROM's 76-frame window |
+| death arrives during a ringing kill | **YES** | **3 of 22** deaths had a kill < 19 frames earlier (gaps 5, 7, 16) |
+
+So the natural sweep asserts a zero that **can never be non-zero**, and it would pass
+forever whether or not the fix works — while looking like the story's headline coverage.
+
+**What to do instead, and it generalises.** Split by seam:
+- the **unreachable** direction belongs at the **unit/engine seam**, where the window is
+  controllable and a refusal is directly observable (here: "no source node was created at
+  all", which distinguishes REFUSED from merely muted);
+- the **reachable** direction is the behavioural guard, and its frequency census (3/22,
+  gaps 5/7/16) is the **positive control** that keeps the zero honest.
+
+**The rule:** before writing a sweep for "X never happens during Y", measure whether X can
+happen during Y **at all** in the harness you plan to use. If it cannot, the sweep is not
+coverage — it is scenery. This is the jt9-1 "a repro citing a seed but no harness is
+under-specified" rule applied one step earlier, at test-design time rather than at repro time.
+
+## Run your own GREEN tests and ask why each one passed — three of mine passed for the wrong reason
+
+In a RED phase the failures get all the attention. The passes are where the vacuity hides,
+and all three of these looked fine on the page:
+
+1. **Vacuous against an absent feature.** `expect(PRIORITIES ?? {}).not.toHaveProperty(n)`
+   — `{}` has no property called anything, so it passed while the map did not exist. Any
+   "X is absent from Y" assertion needs `expect(Y).toBeDefined()` first, or it is asserting
+   nothing until the feature ships.
+2. **A pass that cannot distinguish.** "releases the voice when the window expires" asserted
+   both cues sound — true after the fix (window expired) **and** true today (nothing
+   refuses). The fix: assert the refusal one frame earlier **in the same test**. A
+   release-assertion is only meaningful next to the refusal it lifts.
+3. **A control that never established its own precondition.** A sweep counted loop edges to
+   prove no creature voice was left ringing — but the spider had been written straight into
+   the input state, and `loopEdges` takes its edge by comparing the state handed IN against
+   the state handed BACK. A voice already audible on the way in gives `was === now` and
+   emits **no** start edge, so the counter began at 0, stayed at 0, and the sweep passed for
+   a voice that was never heard.
+
+**#3 is the reusable one: a STAGED state cannot produce an OPENING edge.** Anywhere edges
+are derived by comparing consecutive states, staging the "on" condition suppresses exactly
+the edge you were about to count. Free-run until the sim opens the voice, and name that run
+as the positive control in its own test so the next reader cannot delete it by accident.
+
+## The RED's failure output is free corroboration for the setup's claims
+
+The AC-6 red printed the death frame's actual stream as `['player-died', 'march-stop']` —
+which independently confirmed SM's correction that the march ALREADY stops on the death
+frame, against a filing that said all four loops keep running. Read the red's *actual*
+values, not just the fact that it is red; they are a measurement you did not have to write
+a probe for.
+
+## A new record in a fixture is not covered by the gate that covers its neighbour
+
+The dossier's citation sweep walks `voiceArbitration.cites` **by name**. Adding a sibling
+`voice0Arbitration` record puts its citations outside the gate — recorded but unverified,
+which is precisely what the gate exists to prevent, and nothing complains because the
+fixture's shape is a structural interface with no exhaustive key check. Filed as a Delivery
+Finding for Dev rather than discovered at review. **When a story adds a peer to a
+gated structure, check whether the gate enumerates by name or by shape.**
