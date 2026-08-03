@@ -207,6 +207,19 @@ export function createAudioEngine<N extends string>(manifest: AudioManifest<N>):
     const prev = live.get(channel)
     if (!prev) return
     live.delete(channel)
+    // Release the arbitrated voice now, having proven THIS call actually
+    // silenced something (jt9-6). Must stay BELOW the `if (!prev) return`
+    // guard above — not above it. An arbitrated window deliberately outlives
+    // its own sample (frameDurations counts ROM-table frames, not wall-clock
+    // or the .wav's length), so `onended` below can already have cleared
+    // `live` while the window still legitimately holds: "live empty, window
+    // held" is a normal state, not a bug. Releasing above this guard would let
+    // an unarbitrated cue that stopped NOTHING cut a live window short — the
+    // same defect, pointing the other way. `releaseVoice()` clears
+    // `voiceChannel` too, not just the counters, so a later arbitrated cue
+    // can't reach across at the cross-channel steal below and stop a source
+    // on a channel this voice no longer owns.
+    if (voiceChannel === channel) releaseVoice()
     try {
       prev.stop()
       prev.disconnect()
