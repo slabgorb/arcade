@@ -2190,3 +2190,80 @@ formality.
 **The claim-branch deletion succeeded on the rejected push run**, because branch deletion is a
 separate ref update and does not care that `main` was behind. Worth knowing: a failed `push origin
 main` in the same command list does not mean the `--delete` beside it failed.
+
+
+---
+
+## When the user OVERRULES your sizing estimate, MEASURE the estimate — mine was wrong by a mile (sw8-27 setup, 2026-08-03)
+
+**Situation:** sw8-27's filing carried an OPEN QUESTION (do the ROM's L1 diamond and our L2 sphere
+disagree about a specific seat?). I measured the answer, then offered the user two dispositions with
+the census attached, per the documented pattern. My non-recommended branch said folding in the shape
+fix would "turn a 3-point visibility story into a hit-test rewrite touching every hitscan fixture in
+the game". The user chose it anyway.
+
+**That sentence was an ESTIMATE dressed as a cost, sitting inside a decision aid.** The rules in this
+file demand a measured census attached to an either/or; I attached one to the *recommended* branch
+(the ROM geometry, one-sided containment, 0/2000 directions) and an unmeasured guess to the *other*.
+So I measured it after the ruling, before writing it into the ACs: applied the ROM box-and-octagon
+kill region inside `beamHit`, ran the game suite. **Zero red across 2252 tests.** The L1 sights
+diamond: **one** test, the very pin being changed. Not "every hitscan fixture" — one.
+
+**Why zero, and this is the part that generalises:** the containment I had already measured
+*predicted* it and I did not connect the two. The port's disc is a strict SUBSET of the cabinet's
+region, so no currently-passing hit stops passing, and all the new behaviour lives in octagon corners
+(1.0-1.118 R at atan(1/2) = 26.57°) that no fixture seats. **A subset-widening change has a blast
+radius near zero by construction.** When you know the direction of a shape deviation, you already
+know the sign of its fixture damage — check that before quoting a cost.
+
+**The rule:** the cp6-2 entry says a subagent's unsourced claims apply to your own prose with equal
+force, and names the handoff's reassuring sentences as highest-risk. This adds a second high-risk
+site: **the losing branch of a question you put to the user.** You write it to be dismissed, so it
+gets the least verification and the most rhetorical weight — and if they pick it, it silently becomes
+the scope premise. Measure both branches, or label the unmeasured one as an estimate in the question
+itself. Record the correction in the session too: a wrong estimate that reached the user deserves the
+same permanent-record treatment as a wrong claim about code.
+
+## A ROM gate proven for one object CLASS has a sibling class with its OWN gate, in another file
+
+sw8-19 established that the cabinet's laser-hit block is unreachable for an undrawn TIE, from
+`S2VW`'s four exits in `WSMAIN.MAC`. sw8-27's filing inherited that and wrote "the SPACE-arm CALL
+SITE" — singular. The port has **two**: `sim.ts:546` (TIEs) and `:554` (enemy fireballs), four lines
+apart in the same block, and the code's own ROM quotation two dozen lines above says why they are
+adjacent (`CLSLZ` ranks `CL.GDS` and `CL.ADS` in ONE contest).
+
+Fireballs are not aliens, so they are not in `WSMAIN.MAC` at all. **`VWGUN::` (`WSGUNS.MAC:852`) has
+exactly the same four-exit shape** — `:885` near (`CMPD #01`), `:887` far (`CMPD #7F00`), `:896` and
+`:903` ratio — before its `;GUN SHOT IS VISIBLE` marker at `:904`, with the `CL.GDS`/`CL.GP`
+hit-record at `:906-948` below all four. Different literals, identical structure. Nothing in this
+repo had recorded it.
+
+**The tell is cheap: if the port's call site is one of N in a loop over N object lists, the ROM has N
+draw passes and you have read one.** Find the other pass by the object's own type prefix (`A$` alien,
+`G$` gun) rather than by grepping the routine you already know. And do not copy the known pass's
+constants onto the new one — the near clamps differ (`#01` vs `#10`).
+
+## "Closing this story means retiring that assertion" — check WHAT the test calls
+
+sw8-27's filing said its own pinned guard (`does NOT change the GUN`) would have to be deliberately
+retired. Measured by applying the story's own prescribed **caller-side** fix: the file stays GREEN,
+because the test calls the shared helper `beamHit` DIRECTLY, not through `sim`. What it pins is "the
+gate is not in the helper" — which the story still requires. A TEA following the description would
+have deleted the guard protecting the fix's own shape.
+
+**Generalise:** a filing that names a test as "the thing that must be retired" was usually written
+against a *different* candidate fix than the one it ends up prescribing. The check is one suite run,
+and the failure mode is silent — nobody reviews a deletion the story authorised.
+
+## A stale citation in NEITHER the guard's report NOR the sweep story
+
+`tie-sights-visibility.test.ts:270` cites `sim.ts:535` for the player's laser; the call is at `:546`,
+exactly +11 — the shift from sw8-19's own finish chore, which inserted 11 comment lines at
+`sim.ts:159`. The comment-citation guard does **not** report it: with no verbatim adjacent it
+range-checks only, and 535 is in range. So it is absent from the guard's 29 AND from `sw8-24`'s sweep
+of that 29.
+
+The sw8-19 finish entry already names a three-population blast radius for a comment insertion. This is
+a fourth population, and the worst kind: **a `file.ts:N` citation that the guard CAN parse and still
+cannot falsify.** After any line-shifting edit, re-anchor by the shift arithmetic over the touched
+file's neighbourhood, not by the guard's report — the report is the population it can see.
