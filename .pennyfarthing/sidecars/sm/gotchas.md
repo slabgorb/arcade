@@ -2330,3 +2330,107 @@ The fix is the convention cp6-1's own session already used: the **final** round 
 `## Reviewer Assessment` heading, and earlier rounds are demoted to
 `### Round N Reviewer Assessment (REJECTED — superseded by round M)` with their content untouched.
 It passed immediately after. Do this when writing round 2, not when the gate refuses.
+
+---
+
+## A story filed BY a predecessor's finish can misname its own input artifact — and the filing's most dangerous sentence is the one AUTHORISING A DELETION (cp6-3 setup, 2026-08-03)
+
+**Situation:** cp6-3 was filed by cp6-2's own finish, by an SM following the rules in this
+file — rich description, four ROM citations, the mechanism written out, "DO NOT RE-DERIVE
+IT". Exactly the artifact these entries ask for. Its ROM claims were all **line-exact**.
+
+**Four claims about the REPO were false**, and the two that mattered were both
+instructions to act:
+
+1. **"YOUR INPUT IS ALREADY WRITTEN — consume the `voiceArbitration` record."** That record
+   is POKEY voice **1** (bonusLife/scorpionLoop/fleaLoop/march); the story is about voice
+   **0**. Likewise "sound.md §2.5 is the prose" — §2.5 is the voice-1 section by title. A
+   term scan of the entire fixture scored **0** for `2437`, `AUDF0`, `AUDC0`, `52$` and
+   "voice 0". The rule the story exists to model was recorded **nowhere**, so the sentence
+   promising the reading was done inverted the truth: writing it is the deliverable.
+2. **"Expect to touch CHANNELS … retire the dossier guard, as cp6-2 did for its own six."**
+   Probe-proven false: the shared engine's `priorities` arbitration is **cross-channel**,
+   so with `CHANNELS` exactly as shipped the contention is modelled correctly and the guard
+   **stays green**. The filing authorised deleting a guard the fix does not need.
+
+**The generalisation, and it is the sharpest thing here.** sw8-27 recorded "a filing that
+names a test as the thing that must be retired was usually written against a *different*
+candidate fix than the one it ends up prescribing." This is the third instance and the
+first where the filing came from *our own process*. Rank a filing's sentences by what they
+authorise: a sentence that says **delete X** or **skip the derivation of Y** removes a
+guard or a step, and nobody reviews a removal the story sanctioned. Measure those first,
+before the claims that merely describe.
+
+**A specific tell for "your input is already written":** it is a falsifiable claim about a
+FILE, so open the file and check it names your subject. A predecessor recording voice 1
+while you need voice 0 is not carelessness — the two records are neighbours in one
+artifact, written days apart, and the wrong one is genuinely relevant-looking.
+
+## A mechanism has a DIRECTION, and two plausible implementations can be exact opposites
+
+The story's own "ONE THING TO SETTLE FIRST" asked whether faithful means true preemption
+or merely never-together — framed as a ruling to obtain. It was neither: it was a
+measurement, and both candidate mechanisms were already in the tree.
+
+- **Plain channel-sharing steals FORWARD.** Probe: a later `segmentKill` **stops** a
+  ringing `playerDeath`. The cabinet has the ringing explosion **block** the later kill.
+- **`priorities`/`frameDurations` refuses the later cue**, which is the machine's shape.
+
+Both are "the two cues share a voice". One is backwards. **When a story asks you to rule on
+a behaviour, first check whether the engine can express it in more than one direction** —
+if it can, the question is not a preference, and offering it as one hands the user a choice
+whose wrong branch looks identical to the right one. Cost: two ~30-line probes against the
+real module with a faked `AudioContext`, run under plain `node` (Node's type-stripping
+imports the `.ts` directly, no vitest, no config).
+
+**Why reading could not have settled it:** the engine source describes stealing *and*
+arbitration correctly; what it does not say is which one a given map selects. Running it
+does. This is the sw8-23 "import it and run it, do not read it" rule applied to the
+DEPENDENCY rather than to the deliverable.
+
+## The near-zero blast radius belonged to the WRONG fix — read the radius, do not just record it
+
+Three candidates applied against a `cp` backup and restored (`cmp` + empty `git status`):
+
+| candidate | red | verdict |
+|---|---|---|
+| merge the channels (as filed) | **1** | backwards; the 1 is cp6-1's own guard |
+| `priorities` + `frameDurations` + `tick()` | 14 | correct; all mechanical fake-stubs, lint clean |
+| death-instant loop clear | 2 | correct; both behavioural re-baselines |
+
+sw8-19 says a zero-red radius means the fix is unobservable and the test is the whole
+deliverable. This adds the darker case: **the smallest radius here belonged to the
+candidate that produced the opposite behaviour.** A tiny radius is equally consistent with
+"nothing can observe this" and "nothing can observe this going *wrong*". Pair every radius
+measurement with a direction probe before reading it as reassurance.
+
+## When the user overrules your sizing, measure it IMMEDIATELY — mine was wrong again
+
+sw8-27 established this and it recurred verbatim. I offered "fold the death-clear in" as
+the non-recommended branch and priced it "~2 more points, widens into core/sim.ts's
+loop-edge model, the part with the most existing test coverage." The user chose it.
+Measured after the ruling: **2 tests**, and both are re-baselines that *should* move.
+
+The losing branch gets the least verification and the most rhetorical weight, and when it
+wins it becomes the scope premise silently. Two things that worked: measuring within
+minutes of the ruling, and recording the correction in **both** the context and the session
+under the ruling itself — so the next reader meets the ruling and its corrected cost
+together, rather than inheriting a wrong number as scope.
+
+## Small confirmations
+
+- **`sm-setup` was not spawned** (session instructions bar the Agent tool unless asked), so
+  session, context and ACs were hand-written. Stated as what happened on this run, not as
+  project policy.
+- **ACs byte-identical BY CONSTRUCTION:** written to the YAML with `--add-ac` first, then
+  injected into both files from `yaml.safe_load` via a `<!--ACS-->` marker. The `python3`
+  `in` test afterwards then confirms a property that cannot have failed — the right order.
+  Note a plain f-string will choke on a code sample containing `{}`; write the prose with
+  the file tool and substitute the marker separately.
+- **The labelled-token count came back 1/1/1/2 on both passes**, including the post-assessment
+  re-run. Naming them ("the phase pointer", "the branch field") rather than spelling them is
+  what keeps the audit paragraph safe.
+- **Push race, as routine as ever:** `main` moved between commit and push (a sibling's sw8-27
+  GREEN). Rebased — success line named `refs/heads/main`, so HEAD was right — and the beacon
+  branch pushed with `git push origin main:refs/heads/feat/<id>-<slug>`, which never checks
+  out and so cannot reproduce the mg1-5 stale-ref trap. Verified 0 ahead from origin.
