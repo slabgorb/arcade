@@ -3698,3 +3698,69 @@ construction, not a fixture cheat, and worth one sentence of comment saying so.
 before paying for a multi-frame input script that perturbs the thing you measured.** The
 disclosure discipline (audio-thud.test.ts's `airborne: true` with `plantZ: 2`) is for genuinely
 unreachable combinations; spending it on a reachable one buys nothing and hides the real ones.
+
+## Two throws that both interpolate the same variable cannot be told apart by a regex on it
+
+jt9-4's whole design came out of one observation SM handed over: `bakeSamples` has two gates,
+`no synth spec for manifest cue '${name}'` and `no FRAME_DURATIONS entry for '${name}'`, and
+centipede's precedent guard asserted `.rejects.toThrow(/aCueNobodyBaked/)` — the CUE NAME. That
+regex is satisfied by either gate. A guard that says "it threw and mentioned the right cue" is
+one step above `rejects.toThrow()`, not many.
+
+It is not a theoretical gap. `SPECS[name]` is a bracket read on an object literal, so a cue
+named `toString` inherits `Object.prototype.toString`, is TRUTHY, **sails past the missing-spec
+gate**, and then trips the DURATION gate — right cue name, wrong diagnosis, regex green. The
+class of bug and the class of test failure coincide exactly.
+
+**When two error paths share an interpolated value, assert `toBe` on the whole message**, and
+build a probe for each path whose interpolated value DIFFERS from the other's. jt9-4's two
+duration probes name `playerWingUp` and `enemyThud` for exactly this reason, and mutants M11/M12
+(hardcode one probe's name into the message) prove it: each is invisible to its own probe and
+caught only by the other.
+
+## Design the mutants BEFORE finalising the tests — planning M12 found a hole in my own suite
+
+Both duration guards originally probed the same cue. Writing the mutant list — "M12: replace
+`'${name}'` with the literal `'playerWingUp'`" — made it obvious that both would still pass,
+because both expected that name. The fix (two different cues) went in before a single mutant ran.
+
+The battery is not only a verification pass. **Enumerating the mutants is a design review of the
+tests**, and it is cheapest before the tests are committed. `mutate-with-a-WRONG-value-not-the-old-one`
+is usually read as advice about the mutant; it is equally advice about the PROBE.
+
+## A permissive mutant is still worth running — the rule is about its SURVIVAL, not its use
+
+`mutation-direction-must-be-restrictive` says a permissive mutant's survival proves nothing.
+It does not say don't run one. Of jt9-4's 19 mutants, 5 were permissive (a deleted clause, a
+deleted block, `Object.hasOwn` removed, `if (spec === null)`, `if (frames === undefined)`) and
+**all 5 reddened** — which is a positive result each time and covered three guards nothing else
+reached. M7 was the only mutant that any test saw at all for the `|| outDir.length === 0` clause.
+
+Report direction per mutant and let the reader apply the rule. Dropping permissive mutants
+because of a half-remembered rule loses real coverage.
+
+## Run the battery and then look at your WORKING TREE, not just the test output
+
+M7 (delete `|| outDir.length === 0`) reddened the guard, exactly as designed. It also wrote all
+EIGHTEEN `.wav` files into the **repo root** — `join('', 'enemy_death.wav')` is a relative path
+and vitest's cwd is the repo root, not the plugin. `git status` caught them; nothing else would
+have, because `audio-seam-scope.test.ts` walks `plugins/joust` and they were not there.
+
+Two lessons. **`git status --porcelain` after the battery, always** — a mutant that disables a
+path guard writes real files to real places. And the comment I had already written on that guard
+said the stray files would land in "the plugin tree"; the measurement said repo root. **A guard's
+comment is prose and prose is the unguarded surface** — the mutant that proves the guard also
+fact-checks the sentence explaining it, if you look.
+
+## When TEA is told to ship the refactor too, ship it in the HANDOFF instead
+
+SM's dispatch listed "the refactor plus the guards" as the TEA deliverable. Doing that would have
+left every test green on arrival — no RED, nothing for Dev, and a pinning story whose entire
+point is a guard someone watched fail.
+
+What worked: write the tests, commit them RED, then apply the candidate refactor **uncommitted**,
+run the full battery against it, revert, and paste the exact diff into the session file under
+"What remains for Dev" with the mutant-backed traps beside it (don't add a return value, the
+default must be `?? SOUNDS` not `?? {}`, the write path must use the injected record). Dev gets
+zero design work and a real RED; the measurement still happened. **The refactor being verified
+and the refactor being committed are separable, and TDD wants them separated.**
