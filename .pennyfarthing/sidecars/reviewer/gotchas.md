@@ -2361,3 +2361,67 @@ Appending a paragraph to jt9-5's `description: '...'` tripped pf's PostToolUse v
 description to `|-` (what the newer stories already use) fixed it. Worth knowing before editing an
 older story record by hand: the quoting style varies across the file, and only the block form takes
 paragraphs. Re-parse with `yaml.safe_load` afterwards regardless.
+
+## An "equivalent mutant" is settled by DOMAIN ENUMERATION, not by the syllogism two agents agreed on
+
+jt9-5's single survivor (`i + 1 < len` -> `i < len`, after a new guard makes `len` even) came to me
+with TEA and Dev both calling it equivalent, on the same argument, from two independent harnesses.
+Agreement between agents is not measurement — they can share a premise and therefore share its
+error. Three checks turn the claim into a fact, and each is cheap:
+
+1. **Reachability.** `grep` the mutated function's call sites and confirm the guard is unconditional
+   and lexically first. Here `framesInRow` is module-private with exactly two call sites, both past
+   the guard, so the requested counter-example (an odd row reaching the loop) cannot be built. That
+   is the difference between "no test distinguishes them" and "nothing CAN".
+2. **Enumeration over the reachable domain.** Ten lines of node: run both loop bounds for every even
+   length 0..40 and diff the iteration sets, then run the ODD lengths to show where they *would*
+   diverge. Empty vs non-empty is the whole proof, and it also tells you exactly what the guard buys.
+3. **A harness positive control.** Mutate one notch FURTHER (`i <= len`) and confirm it dies loudly.
+   A survivor from a harness that has never printed a red is not a survivor.
+
+Generalisation: when an equivalence claim rests on a precondition, the review question is not "are
+the two forms the same?" but "can anything reach this code with the precondition false?".
+
+## The strongest novel mutant is the one that keeps the module LOADING
+
+TEA and Dev between them ran 39 mutants on jt9-5 and both dropped a token from a shipped ROM row to
+test the parity guard. That makes the manifest throw at import, five files report `(0 test)`, and 53
+tests fail — a loud, obvious, uninformative red. The mutant nobody built was `,20` -> `,21`: same
+row, parity PRESERVED, so the module still loads and one cue's duration silently changes. That is
+the actual regression shape the story risked, and it reddened three independent guards. Rule: when a
+diff adds a structural gate, mutate the data in a way that SATISFIES the new gate. Mutants that trip
+it only re-prove the gate exists.
+
+## `toThrowError("string")` is a SUBSTRING check — append text to find out
+
+Two survivors in jt9-5 were literally "add words to the end of the error message". vitest's
+`toThrowError(string)` asserts `includes()`, so every append and every prepend passes. Content
+mutations (change an interpolated value) DO die, because they break containment — which is why a
+27-mutant battery of decoys can look thorough and still leave the direction unguarded. The same
+story's other half used `expect(err.message).toBe(...)` and was airtight. Check which form each
+assertion uses before you believe a message is pinned, and mutate by APPENDING, not by editing.
+Fix is `toThrowError(new Error(msg))` or an anchored `/^...$/`.
+
+## A comment that quotes measured output goes stale when the output is REWORDED
+
+jt9-5's TEA measured a mutant, quoted its error text verbatim into a comment, and then — two commits
+later — reworded that very error message, updating the three assertions and the mutant's own entry
+but not the quotation. The comment shipped green quoting a string the code can no longer produce.
+`correction-is-itself-a-transcription`, one turn further on: the correction was right, and it
+orphaned its own evidence. When a diff reworders a message, grep the WHOLE repo for a fragment of
+the OLD wording, not just for the assertions.
+
+Same file, same review: two comments explained why `Infinity` must be refused by naming
+`Buffer.alloc` as the crash site. Running it takes four lines and shows the `RangeError` comes from
+`new Float32Array(n)` one step earlier — `encodeWav` is never reached. The conclusion was right and
+the mechanism was wrong, which is the hardest kind of false comment to notice, because the reader
+who checks the conclusion stops there. Execute the claim, don't audit it.
+
+## Quantify a filed follow-up before you agree with its priority
+
+jt9-33 was already filed and accurately described ("`load()` swallows import failures"). Easy to
+tick and move on. Re-running the real failure through the whole suite turned a description into a
+number: of 53 test-level failures, ZERO carry the real message and all 53 report "must export ..."
+across nine variants. That measurement is what argues the priority, and it belongs IN the story
+record — a follow-up whose description says "this is bad" competes badly against one that says
+"53 of 53 signals point at the wrong file".
