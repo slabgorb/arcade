@@ -553,7 +553,9 @@ describe('jt9-4 — a manifest cue with no ROM window throws, and says which cue
       // The value is interpolated, and the sibling below probes -5 for exactly
       // the reason jt9-4 gave for using two different cue names: a message that
       // hardcoded `0` would satisfy this test alone.
-      // Reddened by: see the jt9-5 battery (N-series) recorded above.
+      // Reddened by: N16, N23, N24, N25 — N23 (`> 0` loosened to `>= 0`, so a
+      // zero-length .wav ships) is seen by THIS test and by nothing else.
+      // The N-series battery is recorded in tests/audio-frames-edge-cases.test.ts.
       expect(ZEROED_CUE in BAKE_SOUNDS, 'the probe cue must be a shipped cue').toBe(true)
       const err = await bakeFailure(dir, {
         frameDurations: { ...FRAME_DURATIONS, [ZEROED_CUE]: 0 },
@@ -572,6 +574,9 @@ describe('jt9-4 — a manifest cue with no ROM window throws, and says which cue
       // `framesFor` — every arm of it returns a non-negative number or throws —
       // so this is constructed to pin the GATE's domain, which is "not a
       // positive frame window", not "zero".
+      // Reddened by: N16, N20, N21, N22, N24, N25 — the best-covered guard of
+      // the three, and the only one that sees N20/N21 (the two message decoys,
+      // which hardcode the zero probe's value and cue name) or N22.
       const err = await bakeFailure(dir, {
         frameDurations: { ...FRAME_DURATIONS, [DROPPED_CUE]: -5 },
       })
@@ -601,6 +606,9 @@ describe('jt9-4 — a manifest cue with no ROM window throws, and says which cue
       // The prototype value is 42 rather than a function because a function
       // would also be caught by `!(frames > 0)`; 42 is the value that separates
       // the two implementations and nothing else does.
+      // Reddened by: N16, N18, N19 — N18 (own-property check swapped for a
+      // bracket read) is seen by THIS test and by nothing else, which is the
+      // whole reason it exists.
       const inherited = Object.assign(Object.create({ [ZEROED_CUE]: 42 }), without(ZEROED_CUE))
       expect(inherited[ZEROED_CUE], 'precondition: the value IS reachable by a bracket read').toBe(42)
       expect(

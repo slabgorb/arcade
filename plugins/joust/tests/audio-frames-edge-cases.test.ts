@@ -103,6 +103,75 @@
 // `createAudioEngine()`'s captured manifest — that is the surface the new throw
 // sits behind, the surface the bake imports, and the surface that stops loading
 // at all if either throw is mis-placed.
+//
+// ─── THE MUTATION BATTERY (27 mutants, measured 2026-08-03, 1 survivor) ──────
+// Applied against the candidate fix, uncommitted, one at a time; each write was
+// re-read from disk and diffed against a pristine snapshot BEFORE the run, so a
+// mutation that failed to apply could not print a full green run and read as a
+// survivor (that happened to jt9-4's Reviewer). Restored from that snapshot, not
+// from git — the fix under test was uncommitted, and `git checkout --` would
+// have destroyed it. `git status --porcelain` after the battery: clean of stray
+// files. jt9-4's battery is the M-series and lives in bake-samples.test.mjs;
+// this is the N-series and does not renumber it.
+//
+//   ── audio-manifest.ts, framesInRow ──
+//   N1  `pairs.length % 2 !== 0`             →  `pairs.length % 2 === 0`  RESTRICTIVE
+//   N2  the whole pairing guard              →  (deleted; the pre-jt9-5 code) permissive
+//   N3  `${pairs.length} operands`           →  `5 operands`      DECOY (the defining probe's count)
+//   N4  `${skipPriority ? ' after the priority byte' : ''}` → always present   DECOY
+//   N5  the same                             →  always absent     DECOY
+//   N6  `pairs: '${verbatim}'`               →  `pairs: '(row)'`  DECOY
+//   N7  the pairing guard                    →  moved AFTER the loop
+//   N8  `i + 1 < pairs.length`               →  `i < pairs.length`         permissive
+//   N16 `i + 1 < pairs.length; i += 2`       →  `i + 3 < pairs.length; i += 4` RESTRICTIVE
+//   N17 `skipPriority ? tokens.slice(1) : tokens` → `tokens`               permissive
+//   N26 `pairs.length % 2 !== 0`             →  `pairs.length < 2 || pairs.length % 2 !== 0`
+//   N27 SNEDIE's shipped row `,20`           →  (deleted) — an ODD row that SHIPS
+//
+//   ── audio-manifest.ts, framesFor's invention arm ──
+//   N9  `!Number.isInteger(f) || f <= 0`     →  `f <= 0`                   permissive
+//   N10 the same                             →  `!Number.isInteger(f)`     permissive
+//   N11 `|| source.frames <= 0`              →  `|| source.frames < 0`     permissive
+//   N12 `return source.frames`               →  `return 60`       DECOY (the first probe's window)
+//   N13 message `'${source.note}'`           →  `'silent by mistake'`  DECOY
+//   N14 message `${source.frames}`           →  `0`               DECOY (the zero probe's value)
+//   N15 the whole invention arm              →  `return 0` — THE ORIGINAL DEFECT, restored
+//
+//   ── bake-samples.mjs ──
+//   N18 `!Object.hasOwn(frameDurations, name)` → `frameDurations[name] === undefined` permissive
+//   N19 the missing-entry gate               →  (deleted)                  permissive
+//   N20 `is ${frames}, not a positive`       →  `is 0, not a positive`     DECOY
+//   N21 `entry for '${name}' is `            →  `entry for 'enemyThud' is ` DECOY
+//   N22 `if (!(frames > 0))`                 →  `if (frames === 0)`        permissive
+//   N23 `if (!(frames > 0))`                 →  `if (!(frames >= 0))`      permissive
+//   N24 the zero-window gate                 →  (deleted)                  permissive
+//   N25 `not a positive frame window — `     →  `not a window — `          DECOY
+//
+// THE ONE SURVIVOR, and it is equivalent rather than a gap. N8 loosens the loop
+// bound to `i < pairs.length`. With the pairing guard in front of it, `pairs`
+// is always even, so `i + 1 < len` and `i < len` admit exactly the same
+// iterations — one term IMPLIES the other and no test can distinguish them.
+// (This is the jt5-5/sw8-27 shape: an equivalent mutant arising from redundancy,
+// where the redundancy is the fix's own precondition.) Do NOT write a test for
+// it; it would pass vacuously forever. It is worth noting that the `!` on
+// `pairs[i + 1]!` is what the old bound was protecting, and the guard now
+// protects it instead — which is why N8 is safe and not merely invisible.
+//
+// N1 AND N17 ARE NOT EVIDENCE ABOUT ANY GUARD HERE, and the reason is the same
+// mechanism N27 exposed: both make the manifest throw while FRAME_DURATIONS is
+// being built, so THIS FILE fails to collect and its tests never run. Each
+// reddens 53 tests and drops the suite from 2533 to 2392 — a file-level
+// failure, not a guard firing. Read them as "the module still loads" checks and
+// nothing more.
+//
+// GUARDS NO MUTANT REACHED, stated rather than left for the Reviewer to find:
+//   · `POSITIVE CONTROL: every cue in CUE_SOURCES is kind: rom` — unreachable by
+//     construction. It pins a FACT about the data, not a behaviour; the only
+//     mutation that could move it is flipping a shipped cue to `invention`,
+//     which trips the citation gate and the type checker first. Correct as is.
+//   · `EVERY shipped row is even` — no mutant reddens it and N27 proves none
+//     can. See its own comment; the claim it used to make was false.
+// Every other guard names the mutants that reached it, above it.
 import { describe, it, expect } from 'vitest'
 
 import {
@@ -177,6 +246,8 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
     // `PIRORITY,SOUND,LENGTH`, so a SOUND with no LENGTH is a transcription that
     // lost a token, exactly the error a hand-typed citation makes.
     //
+    // Reddened by: N2, N5, N6. NOT by N3 (which hardcodes this test's own
+    // operand count, 5) — that decoy is caught by its two siblings.
     // TODAY: `i + 1 < pairs.length` stops at i=2, the trailing code is never
     // reached, and this returns 30 + 255 = 285 — a plausible number, silently
     // 285 instead of an error. Measured before writing this test.
@@ -202,6 +273,8 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
     // a continuation row has no priority byte, and a message that claims it does
     // is telling the reader to look for a token that is not there.
     //
+    // Reddened by: N2, N3, N4, N6 — the only guard that sees N4 (the message
+    // claiming a priority byte on a row that has none).
     // TODAY: returns 30 + 255 = 285, the tail code dropped.
     const odd = romCue('FAKE\tFCB\t070,!N$12!+$80,30\tWELL FORMED', [
       '\tFCB\t    !N$15!+$80,255,!N$00!.$7F',
@@ -224,8 +297,9 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
     // subsequent operand in the wrong column, so "that is not a number" is a
     // symptom and "this row is not pairs" is the cause.
     //
-    // This is the only test here that a fix appending the check AFTER the loop
-    // would fail, which is exactly what it is for.
+    // Reddened by: N2, N3, N5, N6, N7 — and N7 (the guard moved after the
+    // loop) is seen by THIS test and by nothing else, which is exactly what it
+    // is for.
     const odd = romCue('FAKE\tFCB\t070,!N$12!+$80,$3F,!N$16!.$7F\tBAD OPERAND TOO')
     expect(() => framesFor(odd)).toThrowError(
       "sound-table row has an unpaired sound code — 3 operands after the priority byte " +
@@ -239,6 +313,7 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
     // tests above. The numbers are SNPCR2's shape — the expression pair that
     // makes `parseInt` wrong — so a fix that broke operand evaluation while
     // adding the pairing check reddens here rather than passing quietly.
+    // Reddened by: N16 (count every OTHER pair).
     const even = romCue('FAKE\tFCB\t070,!N$12!+$80,30+13\tSTILL FINE', [
       '\tFCB\t    !N$15!+$80,255',
       '\tFCB\t    !N$00!.$7F,165-13',
@@ -251,6 +326,9 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
     // `pairs.length < 2` check or a truthiness test would not. The distinction
     // is worth pinning because a priority-only row is a legal (if pointless)
     // FCB row and refusing it would be the fix over-reaching.
+    // Reddened by: N26 alone — no other mutant in the battery reaches it, and
+    // N26 was added to the battery BECAUSE the first 25 left this guard
+    // unexercised. A control nobody has watched fail is not a control.
     expect(framesFor(romCue('FAKE\tFCB\t070\tPRIORITY ONLY'))).toBe(0)
   })
 })
@@ -274,6 +352,10 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     // "framesFor() returns 0 for any cue whose source kind is `invention`". That
     // sentence stops being true here, and nothing else in the suite would
     // notice — `prose-claims-are-the-unguarded-surface`.
+    // Reddened by: N15 alone — the mutant that restores the original defect.
+    // That is the right single mutant for this guard, but it IS single: N12
+    // (`return 60`) is invisible here by design, so the sibling below is what
+    // stops a constant passing for a window.
     const framesForMirror = (await inventionSurface()).framesFor
     expect(
       framesForMirror({ kind: 'invention', note: 'a sound the machine never made', frames: 60 }),
@@ -286,6 +368,7 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     // `return source.frames` are indistinguishable, and so are `return 1` and
     // any other fixed non-zero — the defect would read as fixed while the arm
     // still ignored what it was told.
+    // Reddened by: N12, N15.
     const framesForMirror = (await inventionSurface()).framesFor
     expect(framesForMirror({ kind: 'invention', note: 'short', frames: 7 })).toBe(7)
     expect(framesForMirror({ kind: 'invention', note: 'long', frames: 451 })).toBe(451)
@@ -297,6 +380,8 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     // would land in precisely the state this story exists to remove: a 0 in
     // FRAME_DURATIONS and a bake message that says the entry is missing. The
     // fix would have moved the defect one field to the left.
+    // Reddened by: N10, N11, N15 — N11 (`<= 0` narrowed to `< 0`) IS the
+    // relocation this test is named for, and only this test sees it.
     const framesForMirror = (await inventionSurface()).framesFor
     expect(() => framesForMirror({ kind: 'invention', note: 'silent by mistake', frames: 0 })).toThrowError(
       "invented cue 'silent by mistake' declares a frames window of 0 — an invention has " +
@@ -319,6 +404,9 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     //   undefined   the field is required by the type, so this is unreachable
     //         through TypeScript — and reachable through anything that hands the
     //         manifest a value it did not type-check.
+    // Reddened by: N9, N10, N13, N14, N15 — the best-covered guard here, and
+    // the only one that sees N9 (the integer check dropped) or the two message
+    // decoys N13/N14.
     const framesForMirror = (await inventionSurface()).framesFor
     const refuse = (note: string, frames: number | undefined, shown: string) =>
       expect(() => framesForMirror({ kind: 'invention', note, frames })).toThrowError(
@@ -336,6 +424,7 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     // The measurement every "unreachable today" claim in this file rests on. If
     // a later story lands an invention cue, this reddens and the reader is sent
     // to read the paragraphs above rather than discovering them by surprise.
+    // Reddened by: NOTHING, and correctly — see the battery note in the header.
     const kinds = Object.entries(CUE_SOURCES).map(([name, s]) => `${name}:${s.kind}`)
     expect(kinds.filter((k) => !k.endsWith(':rom'))).toEqual([])
     expect(kinds.length, 'eighteen cues, all of them ROM-cited').toBe(18)
@@ -375,6 +464,8 @@ describe('jt9-5 AC5 — the eighteen shipped windows are unchanged, by value', (
   it('every cue holds the voice for exactly as many frames as it did before', () => {
     // Key sets BOTH ways first: a per-cue sweep over one side alone goes green
     // when a cue disappears from the other.
+    // Reddened by: N16, the mutant that counts every other pair and so moves
+    // pteroDeath, playerThud, enemyThud, pteroArrives and enemyMaterialise.
     expect(Object.keys(FRAME_DURATIONS).sort()).toEqual(Object.keys(WINDOWS_AT_HEAD).sort())
     expect(Object.keys(FRAME_DURATIONS).length, 'eighteen cues').toBe(18)
     for (const [name, frames] of Object.entries(WINDOWS_AT_HEAD)) {
@@ -384,16 +475,39 @@ describe('jt9-5 AC5 — the eighteen shipped windows are unchanged, by value', (
 
   it('EVERY shipped row is even — the new pairing throw cannot fire on the manifest', () => {
     // The precondition that makes defect 1's fix safe, machine-checked rather
-    // than asserted in a comment. Measured at HEAD: 18 defining rows (2 or 4
-    // operands after the priority byte) and 6 continuation rows (2 or 4), zero
-    // odd — and the 6 is the number my own header comment first got wrong (I
-    // wrote 5; three multi-row tables carry TWO continuation rows each, not
-    // one). It reddened here, which is the argument for asserting the row total
-    // rather than only the odd list: an empty `odd` array is green over a sweep
-    // that visited nothing. If a future citation edit lands an odd row, this names the cue and
-    // the row — whereas the throw itself fires while FRAME_DURATIONS is being
-    // built at module load, which takes down every test that imports the
-    // manifest with a failure that points at the importer, not the citation.
+    // than asserted in a comment, with an oracle (`operandTokens` above) that
+    // does not call the code under test. Measured at HEAD: 18 defining rows (2
+    // or 4 operands after the priority byte) and 6 continuation rows (2 or 4),
+    // zero odd — and the 6 is the number my own header comment first got wrong
+    // (I wrote 5; the three multi-row tables carry TWO continuation rows each).
+    // It reddened here, which is the argument for asserting the row TOTAL and
+    // not only the odd list: an empty `odd` array is green over a sweep that
+    // visited nothing.
+    //
+    // WHAT THIS TEST CANNOT DO, MEASURED, BECAUSE THE OBVIOUS COMMENT HERE WAS
+    // WRONG AND I WROTE IT. The first version of this note claimed the guard
+    // would "name the cue and the row" if a citation edit ever landed an odd
+    // one, where the bare throw would take the suite down pointing at the
+    // importer. Both halves are false. Mutant N27 (drop the trailing `,20` from
+    // SNEDIE's shipped defining row) was run: the throw fires while
+    // FRAME_DURATIONS is being built at module load, THIS FILE's own top-level
+    // import of the manifest is what fails, and vitest reports
+    // `tests/audio-frames-edge-cases.test.ts (0 test)` — the guard does not run
+    // at all in the one scenario it is named after. That is
+    // `guard-tests-name-uncovered-cases`, committed here by the person who
+    // knows the rule.
+    //
+    // It stays, with the claim corrected, for two reasons that ARE true:
+    //   · nothing is lost by its absence. The collection error IS the throw's
+    //     message — `sound-table row has an unpaired sound code — 1 operands
+    //     after the priority byte cannot form (code, duration) pairs: 'SNEDIE
+    //     <TAB>FCB<TAB>040,!N$16!.$7F<TAB>ENEMY DIES'` — with a stack through
+    //     framesInRow, on all 58 failures across 11 files. The diagnosis is
+    //     better than this test's would have been.
+    //   · on a GREEN tree it is the standing proof that the throw's
+    //     precondition holds and that all 24 rows were visited, which is the
+    //     only form in which this fact is checkable at all.
+    // No mutant reddens it, and none can: see the battery note at the foot.
     const odd: string[] = []
     let rows = 0
     for (const [name, source] of Object.entries(CUE_SOURCES)) {
