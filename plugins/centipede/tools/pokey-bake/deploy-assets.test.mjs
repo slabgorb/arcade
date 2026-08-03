@@ -84,14 +84,37 @@ describe('cp6-2 AC4 — `just deploy-assets` stages centipede/sfx into the asset
     )
   })
 
-  it('and still stages star-wars AND joust — extended, not replaced', () => {
-    // Green on arrival, deliberately: AC4 says "alongside star-wars and joust".
-    // A rewrite that drops either would silence a SHIPPED game to make room
-    // for this one, and nothing else in the repo would notice.
+  it('every staged prefix is also BAKED into — a staged-but-unbaked game uploads nothing', () => {
+    // Green on arrival for star-wars and joust, deliberately: AC4 says
+    // "alongside star-wars and joust", and a rewrite that drops either would
+    // silence a SHIPPED game to make room for this one.
+    //
+    // STRENGTHENED AT RED after a mutation SURVIVED. The first cut asserted
+    // only that each prefix appeared SOMEWHERE in the body — and `joust/sfx`
+    // appears twice (the mkdir at justfile:279 and the bake at :285), so
+    // deleting it from the mkdir left the other mention and the test stayed
+    // green. Same for `star-wars/music`. That is this story's own failure class
+    // in miniature: a prefix that is staged but never baked into uploads an
+    // empty directory, every URL 404s, and `@shared/audio` swallows all of it
+    // while the suite reports success.
+    //
+    // The pair is the invariant, so the pair is what is asserted.
     const body = deployAssetsRecipe()
-    expect(body).toMatch(/star-wars\/music/)
-    expect(body).toMatch(/star-wars\/sfx/)
-    expect(body).toMatch(/joust\/sfx/)
+    const mkdir = body.match(/^\s*mkdir -p .*$/m)
+    expect(mkdir, 'the recipe must create its staging tree').not.toBeNull()
+
+    const bakes = [
+      ['star-wars/music', /star-wars\/tools\/music-bake\/\S+\.mjs/],
+      ['star-wars/sfx', /star-wars\/tools\/pokey-bake\/\S+\.mjs/],
+      ['joust/sfx', /joust\/tools\/sample-bake\/\S+\.mjs/],
+      ['centipede/sfx', /centipede\/tools\/pokey-bake\/\S+\.mjs/],
+    ]
+    for (const [prefix, baker] of bakes) {
+      expect(mkdir[0], `${prefix} is never staged — deploy-r2 uploads what exists`).toContain(
+        prefix,
+      )
+      expect(body, `${prefix} is staged but nothing bakes into it`).toMatch(baker)
+    }
   })
 
   it('the bucket stays `arcade` — the one bucket that does not match its domain', () => {

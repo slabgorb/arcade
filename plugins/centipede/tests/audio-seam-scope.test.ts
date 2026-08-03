@@ -23,7 +23,10 @@
 // defence is that the docs say plainly which one it is.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+// `existsSync` went with the R2-upload scope fence cp6-2 retired below — it was
+// that test's only consumer, and an unused import exits tsc 2, which reddens
+// tests/shared-tests-typechecked.test.mjs in the orchestrator suite.
+import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
