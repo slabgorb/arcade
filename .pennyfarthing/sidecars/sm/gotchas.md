@@ -1992,3 +1992,88 @@ building the context file programmatically from `yaml.safe_load` makes them byte
 construction** rather than by verification — the `python3` `in` test afterwards then confirms a
 property that cannot have failed, which is the right order. `--add-ac` is repeatable and took six
 in one call; `git diff --stat` was one file, 7 insertions.
+
+---
+
+## The `lsof -ti tcp:<port>` recipe in this very file can return a CLIENT, not the server — and I wrote an unrun measurement into my own assessment (cp6-2 setup, 2026-08-03)
+
+**Two lessons, and the second one is about me.**
+
+**1. The documented port probe is wrong, and it fails in the direction that looks authoritative.**
+The ad1-2 entry above prescribes:
+```bash
+PID=$(lsof -ti tcp:5270 | head -1)
+lsof -a -p "$PID" -d cwd -Fn | grep '^n'      # → n/Users/slabgorb/Projects/a-2
+```
+Run here, it returned **pid 1702 — Google Chrome's network service**, a *client* holding a
+connection to the port, whose cwd is `/`. Not a dev server at all. `lsof -ti` lists every process
+with the port open in any role, and `head -1` picks whichever sorts first. The output is not an
+error; it is a confident, wrong attribution — "cwd `/`" reads like an unidentifiable system process
+and would have been reported as "nobody owns it, safe to serve".
+
+Ask for the **listener**:
+```bash
+LPID=$(lsof -nP -iTCP:5270 -sTCP:LISTEN -t | head -1)
+lsof -a -p "$LPID" -d cwd -Fn | grep '^n'     # → n/Users/slabgorb/Projects/a-1
+```
+That found `node` pid 7744 serving from **a-1**. And confirm it serves the *cabinet* rather than the
+SPA fallback the same way `canonical-serve.test.mjs` does — compare a game path against a nonsense
+control and assert they DIFFER (`/centipede/` vs `/banana-not-a-game/`: different md5s). An all-200
+sweep proves nothing, because the fallback answers 200 to everything.
+
+**2. I wrote "the dev port was checked at setup and is unheld right now" into my assessment without
+having run it.** It was plausible, it was in the handoff section, and it was false — the port was
+held by a sibling. What caught it was mechanically re-verifying every number in my own assessment
+before committing, exactly as this file demands of a *subagent's* claims. The rule "a subagent's
+status claims are unsourced; grep the line or run the command" has always been written outwards. It
+applies to your own prose with equal force, and the highest-risk sentences are the reassuring ones
+in the handoff — the ones written last, from memory, about environment rather than about code. Four
+numbers in that assessment were wrong on first draft (the port, a two-line span, a mention count,
+a banner extent); all four were caught by re-running, none by re-reading.
+
+## A prerequisite story live in a SIBLING is invisible to the branch probe when the prerequisite is trunk-based
+
+The mg1-2 entry says the branch probe (`git branch -r | grep <id>`) "is the reliable half now that
+all checkouts share one remote". For a *prerequisite* it can be the useless half. `git branch -r |
+grep -Ei cp6` returned **nothing** while cp6-1 was live in a-2 sitting at its finish phase with a
+round-trip count of 2 — because trunk-based work lands on `main` and the beacon branch is deleted at
+finish. The `.session/` sweep across `/Users/slabgorb/Projects/a-*/` was the only probe that fired,
+and what it found was not a competitor for *my* story but **my own prerequisite, mid-finish**.
+
+That is a distinct hazard from the documented one. A sibling racing the same story is a collision;
+a sibling *finishing your prerequisite* is a timing window — proceed and TEA is told to "consume
+cp6-1's recorded lengths" against a dossier not yet in this checkout. Run both probes and read the
+sibling session's phase pointer and round-trip count, not just its filename. Here the resolution was
+a plain `git pull`, after which cp6-1 was `done` and its whole deliverable was on `main`.
+
+## A description can be stale against its OWN epic-filing commit
+
+cp6-2's description said the README "currently points readers at 'the open epic
+`sprint/epic-cp5.yaml`'". `grep -c epic-cp5 README` → **0**, and `git log -S` named the fixing commit:
+`c6d75c4 chore(sprint): file epic cp6` — **the commit that filed this very epic also fixed the
+README**. The description shipped describing a world its own filing had already changed.
+
+The existing rule ("measure a description's falsifiable claims") catches it, but the *tell* is new
+and worth knowing: when a story's remedial clause describes a state its own epic was filed to
+repair, check whether the filing already did it. The consequence is not cosmetic — half of AC-6 is
+now **true on arrival**, so a guard written for it passes immediately and looks like coverage. Hand
+that to TEA as "mutation-prove this one" rather than letting it be discovered at review.
+
+**Related and worth chaining:** the stale pointer had *moved*, not vanished — `shell/audio.ts:16-19`
+still named a "LATER cp5 story" as the owner. Correcting prose in one file and leaving the identical
+claim in another is the `wrong-prose fix: grep all phrasings` failure. Grep the synonym set, not the
+one string the story quoted.
+
+## A finding marked "BLOCKING FOR <story>" in a commit message is filed NOWHERE
+
+Third confirmation of the jt9-1 entry, and the sharpest instance yet. cp6-1's finish commit says
+"filed **BLOCKING FOR cp6-2**"; its Reviewer's assessment says the same; the archived session names
+cp6-2 **43 times**. The `epic-cp6.yaml` diff of that same commit is **two lines** — `status` and
+`completed`. A term count over cp6-2's description scored **0** for `voice 0`, `preempt`,
+`arbitration`, `fixture`, `sound.md`, `invention` and `stand-in`.
+
+So the audit is cheap and should be unconditional: **at setup, term-count the predecessor's routed
+findings against the successor's actual description text.** Not "does the owner story exist" (jt5-5)
+and not "can its mechanism express the finding" (ad1-2) — those both pass here. The question is
+whether the words ever landed in the field the next agent will read. When the successor predates the
+predecessor's review, the answer is almost always no.
