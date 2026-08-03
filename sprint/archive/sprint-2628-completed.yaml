@@ -1415,3 +1415,8 @@ completed_stories:
     title: The POKEY dossier and the fourteen-cues-over-six-tables ruling — what centipede's ROM actually sounds like
     points: 3
     completed: '2026-08-02'
+  - id: jt9-2
+    epic: jt9
+    title: 'Test-hygiene sweep: move the 27 joust suites carrying a local loadClaims/claimCovers onto tests/helpers/claims.ts (the line-ref half is disposed — uf1-9 did it; remainder is jt9-30)'
+    points: 2
+    completed: '2026-08-02'

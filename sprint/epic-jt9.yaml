@@ -86,10 +86,12 @@ stories:
       (2) DISPOSED — the comment-body line-ref half. The Reviewer's finding named audio-flap.test.ts:536 ("enemy.ts:540") and difficulty-wiring.test.ts:27 ("enemy.ts:115/118"). BOTH WERE ALREADY CONVERTED BY uf1-9 and the joust suite now contains ZERO enemy.ts:<number> refs. The :115/:118 -> :266/:273 numbers still visible at difficulty-wiring.test.ts:33-35 are a HISTORICAL NOTE EXPLAINING THAT REPAIR, not a live defect — deleting them destroys the record. The finding's live remainder, 86 distinct <our>.ts:<line> refs across 30 test files with the 283 JOUSTRV4.SRC:<line> ROM citations explicitly excluded, is filed as jt9-30.
     points: 2
     priority: p2
-    status: in_progress
+    status: done
     repos: arcade
     workflow: trivial
+    completed: '2026-08-02'
     type: chore
+    review_verdict: approved
   - id: jt9-3
     title: Pin the three wing-cue invariants jt5-3 shipped unguarded
     description: 'jt5-3''s Reviewer ran a 24-mutation battery. Twenty-one mutations reddened something; THREE reddened NOTHING across all 1979 joust tests, which means three behaviours the story deliberately chose are held in place by prose alone. The shipped code is CORRECT in all three cases — this story does not change behaviour, it pins it. (1) THE PRE-STEP wasAirborne READ, plugins/joust/src/core/frame.ts:321. Reading wasAirborne AFTER the step instead of before reddens 0/1979 and yet genuinely changes the emitted stream: over 3000 frames of a hold-3/release-4 script at seed 0xbeef the wing-cue count goes 1610 to 1609, with player-wing-up vanishing at frames 633 and 1732 and appearing at 2656 — the divergence is exactly the frames where airborne flips INSIDE the step. That measurement is the test: stage a frame where the entity becomes airborne mid-step and assert which cue is emitted. (2) GameState.cues IS NEVER ACCUMULATED across frames — frame.ts:163-169 says so in a comment and nothing enforces it. Mutating stepFrame to accumulate reddens 0. Assert a fresh array per frame, not merely that the field exists. (3) stepDemo EMITS FLIGHT CUES BEFORE COLLISION CUES — demo.ts:1109 documents the order and flipping it reddens 0. Assert the relative order in a frame that produces both. WHY THIS IS ITS OWN STORY AND NOT A NOTE: this is the exact shape jt5-1 shipped and jt5-3 measured — a seam whose sweeps all read the same EVENT_KINDS tuple and therefore agree with each other whether or not anything is right. Six of jt5-1''s eleven cues could be deleted with the suite fully green. A guard that cannot fail is not a guard. Verify each new test by mutation before calling it done: make the change the test forbids, watch it redden, revert. Filed from the Reviewer''s mutation battery on jt5-3, 2026-08-01.'
