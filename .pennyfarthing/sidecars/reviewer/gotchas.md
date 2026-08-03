@@ -2218,3 +2218,78 @@ was never told to produce. Hand-tuned per-creature explosions would have passed 
 suite and produced four different files. Note it under VERIFIED with the md5, and note which of your
 findings it does *not* cover — here it was the only real evidence the transform worked at all, which
 is precisely why its absence everywhere else became the High.
+
+---
+
+## Round 2: verify the fix by RE-DERIVING it, not by re-reading the diff — and budget mutations for the surface the fix CREATED (cp6-2, 2026-08-03)
+
+**Two habits did the work, and neither is "read the diff carefully".**
+
+**1. Re-derive the corrected value independently and compare against the shipped artifact.** The
+round-1 High was a fabricated ROM constant. Rather than confirm the diff now reads `0x00`, I
+imported the shipped module, recomputed the ROM formula here, and diffed the two sequences byte for
+byte — plus asserted the property the value exists to produce (monotonic, so the pitch falls) and
+that the *old wrong* sequence is absent. A diff read tells you the literal changed; a re-derivation
+tells you it changed to the right thing, which is a different question and the one that matters
+when the first value was plausible enough to ship.
+
+**2. A fix is new surface, so it needs its own mutations.** Re-running round 1's battery only proves
+the old holes closed. I ran six FRESH mutations against code that did not exist in round 1 — apply
+the volume boost to every cue instead of one channel, apply it to the bytes the ROM's `BEQ` exempts,
+take the shared normalisation factor from the quietest cue instead of the loudest, raise a stand-in
+above its ceiling, drop each new throw. Three were caught, three survived, and the survivors were the
+entire round-2 finding list. **The mutations that matter in round N+1 are the ones aimed at the
+repair, not at the original defect.**
+
+## Classify every survivor before filing it — "correct code, no guard" and "equivalent mutant" are different verdicts
+
+Three survivors, three different dispositions, and collapsing them into one list would have been
+wrong in both directions:
+
+- **Correct code with no guard** (the ROM's `BEQ` exempts zero control bytes from the volume boost;
+  the implementation honours it, nothing asserts it). Real gap, cheap fix, but the behaviour already
+  ships correctly — so it is a **chore with an exact spec**, not a round.
+- **A deliberate constraint with no guard** (stand-in volumes capped to the ROM's own ceiling — a
+  judgement the implementer made, not an AC). Same treatment, but worth naming as *the implementer's
+  own deviation* so nobody later "simplifies" it away as arbitrary.
+- **Equivalent mutants** (two defensive throws that cannot fire on current fixture data). Measured
+  and left uncovered on purpose. Catching them needs an injection point that exists only to exercise
+  the throw, which tests the injection point rather than the code.
+
+The general rule: for each survivor ask *"is the shipped behaviour wrong, or merely unguarded — and
+if unguarded, is it observable at all?"* Only the first is a blocking finding.
+
+## The reviewer's OWN specified fix can be wrong, and the implementer is who finds out
+
+I specified the round-1 remedy for "the suite cannot see the transform": perturb an input table,
+re-bake, assert the output moves. Dev implemented it, then re-ran my battery against their own new
+test and found it **still** missed one mutation — a transformation applied uniformly (reversing
+every table inside the baker) also transforms the perturbed table the test supplies, and the two
+cancel. A differential assertion can only detect a change it is the sole cause of.
+
+The replacement — absolute, order-sensitive properties of the OUTPUT (this table descends, so this
+cue's pitch must rise; that sweep descends, so that cue's pitch must fall) — is strictly stronger
+than what I asked for and cannot be cancelled by any uniform transformation.
+
+**Two things to carry forward.** Write the remedy as a *property to achieve*, not a *mechanism to
+implement*, because the mechanism may not achieve it. And say explicitly in the finding that the
+implementer should re-run the battery against their own fix — here that instruction is what caught
+my error, and the alternative was a third round discovering it.
+
+## An "already routed" finding can go unexecuted TWICE in the same epic — grep the successor's TEXT, not the board
+
+cp6-1's reviewer filed a voice-0 contention finding marked **BLOCKING FOR cp6-2**. At cp6-2's setup
+I recorded that it had never reached cp6-2's description. At cp6-2's review it had *still* not been
+actioned, deferred in writing, or filed: a grep of every epic YAML for the finding's own vocabulary
+returned only my own round-1 findings text.
+
+It was also genuinely **not cp6-2's to fix** — the scope fence forbids editing the map it concerns,
+inherited from cp6-1's own AC. So the failure is not that nobody built it; it is that a descope
+never ended in a filed story or a named owner. The existing rule ("check the owner's MECHANISM, not
+its theme") assumes an owner exists. This is the case where none does and the finding simply
+evaporates between two stories that each correctly declined it.
+
+**Reviewer's move:** treat "was routed to this story" as a claim to verify at BOTH ends — did it
+arrive in the successor's text, and did the successor discharge or re-file it? When neither, route it
+to SM as a finish-phase filing obligation with the mechanism written out, because after
+`story finish` the session that explains it is one directory further away.
