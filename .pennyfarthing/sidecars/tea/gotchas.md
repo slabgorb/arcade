@@ -3572,3 +3572,129 @@ in a state that does not exist yet.
 
 Restore by explicit write from an in-memory copy, never `git checkout --`: the RED phase's own
 uncommitted work is sitting in the same tree.
+
+## A PINNING story's RED is taken against the MUTANT — and say so out loud (jt9-3, 2026-08-03)
+
+jt9-3 pinned three behaviours a previous Reviewer's mutation battery found unguarded. The code
+was already correct, so **no guard can fail against the tree as shipped** and the ordinary
+"watch it go red" ritual has nothing to bite on. The protocol that replaces it:
+
+1. write the test, 2. apply the forbidden change to PRODUCTION code, 3. run the whole project,
+4. revert, 5. confirm green, 6. **record the mutation verbatim in the comment above the test.**
+
+A test nobody has watched fail is not a guard, and in a pinning story that is the ONLY way to
+watch it. Handing off "11 tests, all green" without the battery is indistinguishable from
+handing off 11 tests that assert nothing. Write the diff into the file, not just the session —
+the next person to touch that line is reading the file.
+
+**And re-measure the baseline BEFORE writing anything.** The story said "0 of 1979"; the suite
+was 2499 by the time it was worked. All three still reddened nothing, so nothing was dropped —
+but the run costs 90 seconds and the alternative is writing a duplicate of a guard some
+intervening story already added. Do it first, not as a formality afterwards.
+
+## Ask WHY a behaviour was unguarded — the answer is often that it is STRUCTURALLY unobservable
+
+The most useful finding of jt9-3 was not a test, it was the reason one mutation reddened
+nothing. `stepDemo` calls
+
+    stepFrame({ ...demo.sim, targets: tickedTargets, cues: [] }, …)
+
+— it **overwrites `cues` on the way in**. So "stepFrame must never read `state.cues`" cannot be
+observed from `stepGame` by any input, any seed, any length of play. It is not thinly covered;
+it is unreachable. Every guard for it must call the raw seam directly.
+
+Two things follow, and both generalise:
+
+- **An end-to-end guard would have been permanently vacuous** — green forever, for a reason
+  nobody would find again. Had I reached for the game-level fixture the file was full of
+  (the tempting move: it is the house style), I would have shipped exactly the
+  `audio-seam-suites-cannot-see-emitters` defect this story exists to prevent.
+- **A neighbouring test had almost the right name.** `the stream is REBUILT per frame — a wing
+  cue does not survive into the next` sits twenty lines above and goes through `stepGame`, so
+  it pins the DEMO's rebuild, not the scheduler's. A name match is not a coverage match; open
+  the test and find which layer it actually calls before concluding a behaviour is covered —
+  or, as here, before concluding your new guard duplicates it.
+
+So: before designing the fixture, ask *why* the battery found this unguarded. "Nobody thought
+of it" and "the only caller destroys the evidence" want completely different tests.
+
+## A boolean that flips INSIDE a step diverges in TWO directions — pin both
+
+The mutation was one read moved across one call (`wasAirborne` from above `stepPlayerEntity` to
+below it). It is easy to think of that as one defect. It is two:
+
+- **LANDING** (true → false): the mutant takes the grounded branch and **swallows** a cue the
+  machine plays.
+- **WALK-OFF** (false → true): the mutant takes the airborne branch and **invents** one the
+  machine does not.
+
+Either alone kills the mutant, so one test looks sufficient. It is not: **a fix that
+special-cases one direction survives a guard that only tests the other**, and a narrowing fix
+is exactly what a reviewer or a later story will reach for. Both went red, in different suites'
+idioms, which also proved the two are genuinely separate paths rather than one assertion in two
+costumes.
+
+Corollary on cheapness: the divergence was 2 frames in 3000 of scripted play (cue count
+1610 → 1609). **That is why no replay fingerprint noticed** — and why a staged frame beats a
+long sweep as the primary guard. The sweep can only find it by accident; the staging cannot
+miss it.
+
+## Report the tests that must stay GREEN under each mutant, not just the reds
+
+M2 reddened 3 of the 4 tests in its group. The fourth (`two steps of one state do not share a
+cue array`) was **predicted** to survive, because it guards a different defect shape — a
+module-scoped accumulator, not a carried-in field. Same for M1's aloft control and M3's
+"each moment fires ALONE" control.
+
+Written down in advance, that reads as a designed battery. Written down nowhere, a reviewer
+sees "3 of 4 red" and reasonably asks whether the fourth is dead weight. **The predicted-green
+list is the part of the report that shows you know what each test is for**, and it is also
+where a real mistake surfaces: a control you expected to stay green that goes red means the
+mutation is broader than you claimed, and a pin you expected to go red that stays green means
+you wrote a test for a behaviour you did not actually reach.
+
+## What a NEW TEST FILE costs: check the counters that count FILES, not just content
+
+Setup proposed a new `wing-cues.test.ts`. Adding any file under `plugins/joust/tests/` reddens
+`the suite FILE count matches what vitest actually discovers` (audio-seam-scope.test.ts), which
+derives the count and compares it to a number stated on the README's command line. A new file is
+therefore never free: it is a test file plus a README edit, in a story whose AC says "no
+production changes".
+
+This is the sw8-19 ratchet lesson on a new axis — there the counter was fed by my file's
+CONTENT (a citation), here by its EXISTENCE. Both are "the suite was green and now is not, in a
+file I never edited". **Before choosing new-file vs. add-to-existing, grep the suite for
+`readdirSync` / file-count derivations.**
+
+The decision that fell out was better anyway: put each guard in the suite that already owns its
+seam and already has its staging kit. The third guard needed a two-bodies-at-one-lance-height
+fixture that existed in another file; copying it would have re-created the duplication the
+immediately-preceding story spent itself removing. **Discoverability is grep, not filenames** —
+put the story id in every describe and every test name and say so in the handoff.
+
+## Check the FILING commit before calling a story's line citation wrong
+
+Setup corrected the story's `demo.ts:1109` to `:1272-1275` and was right about today. But
+`git show <jt5-3's own GREEN commit>:…/demo.ts | sed -n '1109p'` printed the cited statement
+exactly. The story was correct when written; the very next story that day moved it to :1174,
+and it is :1275 now — **three positions in three days, by two unrelated stories.**
+
+"The story was sloppy" and "the citation rotted" look identical at HEAD and route completely
+differently: one is a correction, the other is evidence for the standing story about converting
+line refs to symbol refs. One `git show` separates them. Cite the SYMBOL in whatever you write
+next, and when a ref does turn out stale, note the drift RATE — hours, here — because that is
+the number that justifies the conversion story.
+
+## Seeding a state field is not "synthetic" when production writes that field every frame
+
+The landing fixture needed a knight whose previous-frame button level was DOWN. Playing that in
+costs a press frame, whose flap impulse moves the measured landing and forces the whole sweep to
+be redone. But `prevFlapHeld` turned out to be a first-class `ProcessSpec` field that the
+scheduler writes on **every** player wake (`prevFlapHeld: input.flapHeld`), so seeding it `true`
+is precisely the state the sim itself leaves behind after any held frame — reachable by
+construction, not a fixture cheat, and worth one sentence of comment saying so.
+
+**Check whether the value you want to "play in" is a field the production code already produces
+before paying for a multi-frame input script that perturbs the thing you measured.** The
+disclosure discipline (audio-thud.test.ts's `airborne: true` with `plantZ: 2`) is for genuinely
+unreachable combinations; spending it on a reachable one buys nothing and hides the real ones.
