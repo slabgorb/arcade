@@ -319,8 +319,8 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // C_PS than for the gun: the sights bit gates a LOITER break, so an eye
   // offset would have TIEs breaking off at a crosshair the player is not
   // looking down. Reading a stale aim reintroduces the divergence AC-6 exists to
-  // close: 613 u of separation on a one-frame flick of 0.1 — inside a band reaching
-  // 750 u on the axis, but 2694 u at full deflection, so past ~28% of travel it bites.
+  // close: 613 u of separation on a one-frame flick of 0.1 — inside a band reaching 750 u on
+  // the axis, but 6158 u for a full-travel flick, so past ~12% of travel in one frame it bites.
   // The cabinet has no such gap: both tests off one cursor sample (WSMAIN.MAC:3881-3930).
   //
   // One ROM guard comes free: `?ALIVE?` (`CMPA #1 / BNE 86$`, WSMAIN.MAC:3926-3928)
