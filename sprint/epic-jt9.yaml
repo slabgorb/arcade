@@ -113,6 +113,7 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: jt9-5
     title: 'framesFor edge cases: an odd token count is silently dropped, and an invention cue reports the wrong bake error'
     description: |-
