@@ -267,10 +267,20 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // A closer seat, off the glass AND inside the kill radius. This is the one that shows
     // the gate is not being smuggled into the ray: at depth 400 the pyramid's vertical
     // bound is 230.9, so vert 240 is off-screen while sitting 240 u from the ray — inside
-    // TIE_HIT_RADIUS. `sim.ts:535` resolves the player's laser through exactly this call,
+    // TIE_HIT_RADIUS. `sim.ts:546` resolves the player's laser through exactly this call,
     // so a view clamp added here would silently change what the player can shoot.
-    // (That the clone's GUN diverges from the cabinet the same way C_PS does is real and
-    // is filed as a Delivery Finding — it is deliberately NOT fixed by this story.)
+    //
+    // (RE-ANCHORED by sw8-27, from `sim.ts:535` to `:546`. The shift is exactly +11 — the
+    // comment block sw8-19's OWN finish chore inserted at `sim.ts:159`. The
+    // comment-citation guard never reported it: with no verbatim quote adjacent it
+    // range-checks only, and 535 was still a valid line, so this citation sat in neither
+    // the guard's 29 nor sw8-24's sweep of them. It pointed at a comment about Darth
+    // scoring.)
+    //
+    // The clone's GUN diverging from the cabinet the same way C_PS does is real, and is
+    // now sw8-27. This assertion is NOT retired by that story — measured, it stays green
+    // under the caller-side gate, because it calls `beamHit` DIRECTLY. What it pins is
+    // that the gate is not in the helper, which sw8-27's AC3 still requires.
     const killableOffGlass: Vec3 = [0, 240, -400]
     expect(inView(killableOffGlass, 16 / 9), 'fixture guard: also off the glass').toBe(0)
     expect(

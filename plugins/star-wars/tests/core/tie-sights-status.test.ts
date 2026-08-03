@@ -115,22 +115,55 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     ).toBe(0)
   })
 
-  it('opens the band at EXACTLY twice the kill radius — 3·TMPSIZ over 1.5·TMPSIZ', () => {
+  it('opens the band as the ROM L1 OCTAGON at 3·TMPSIZ — not as a disc at 2×', () => {
+    // REWRITTEN by sw8-27, not relaxed. The old version asserted a DISC boundary at
+    // `SIGHTS_FACTOR × TIE_HIT_RADIUS` and was right about the only number it could see.
+    //
+    // What it could not see: `SIGHTS_FACTOR = 2` is the ratio of the two OCTAGON terms
+    // (3 ÷ 1.5), and it is genuinely 2 — but the cabinet never tests a radius. C_PS is
+    // `LDD TMPSIZ / ADDD TMPSIZ / ADDD TMPSIZ / SUBD TMPOCT / IFHS` (WSMAIN.MAC:3920-3924),
+    // i.e. `|dx| + |dy| <= 3·TMPSIZ`, with NO box term at all — an L1 octagon, not a circle.
+    // A disc of radius 2·T is a strict SUBSET of that octagon: they agree nowhere except by
+    // accident, reaching 3·T on the axes and 2.121·T on the diagonals against a flat 2·T.
+    //
+    // So the old assertions were not merely under-specified, they pinned the wrong SHAPE at
+    // a boundary the cabinet does not have. The rewrite keeps the anchor and the
+    // wider-than-the-kill-band property and replaces the boundary with the ROM's own terms.
     const s = makeSpaceState()
-    const band = SIGHTS_FACTOR * TIE_HIT_RADIUS
+    const T = TIE_HIT_RADIUS
+    const OCT = 3 * T // the cabinet's warning octagon, WSMAIN.MAC:3920-3923
     // Absolute anchor, so the boundary probes below cannot go vacuous if the
     // established hit radius is ever retuned without revisiting this law.
     expect(TIE_HIT_RADIUS, 'fixture anchor: the established TIE kill radius').toBe(250)
+
+    // ON THE AXIS the octagon reaches 3·T. A disc at 2·T stops at 500 and reddens here.
     expect(
-      sights(makeTie({ pos: onRay(s, 6000, band - 1) }), s),
-      'one unit inside 2× the kill radius is still in the sights',
+      sights(makeTie({ pos: onRay(s, 6000, OCT - 1) }), s),
+      'one unit inside 3·TMPSIZ on the axis is in the sights',
     ).toBe(Status.C_PS)
     expect(
-      sights(makeTie({ pos: onRay(s, 6000, band + 1) }), s),
-      'one unit outside 2× the kill radius is not',
+      sights(makeTie({ pos: onRay(s, 6000, OCT + 1) }), s),
+      'one unit outside 3·TMPSIZ on the axis is not',
     ).toBe(0)
+
+    // ON THE DIAGONAL the same octagon reaches only 1.5·T per axis — 2.121·T radially.
+    // This is the pair that discriminates the octagon from ANY disc: a disc widened to 3·T
+    // to satisfy the axis probes above would accept the second seat here.
+    const diag = (perAxis: number): Vec3 => {
+      const p = onRay(s, 6000)
+      return [p[0] + perAxis, p[1] + perAxis, p[2]]
+    }
+    expect(
+      sights(makeTie({ pos: diag(1.5 * T - 1) }), s),
+      'just inside the octagon on the diagonal (|dx| + |dy| < 3·TMPSIZ)',
+    ).toBe(Status.C_PS)
+    expect(
+      sights(makeTie({ pos: diag(1.5 * T + 1) }), s),
+      'just outside it — the SUM is what the cabinet tests, not the radius',
+    ).toBe(0)
+
     // And the band is genuinely WIDER than the kill band — a port that reused the
-    // kill radius unchanged (factor 1 instead of 2) reddens here.
+    // kill radius unchanged (factor 1 instead of 3) reddens here.
     expect(
       sights(makeTie({ pos: onRay(s, 6000, TIE_HIT_RADIUS + 1) }), s),
       'just OUTSIDE the kill radius is still inside the warning band',
@@ -217,7 +250,10 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     expect(
       Math.abs(pos[0]),
       'fixture guard: this sits outside the band measured from the cockpit',
-    ).toBeGreaterThan(SIGHTS_FACTOR * TIE_HIT_RADIUS)
+      // Stated against the ROM OCTAGON (3·TMPSIZ = 750) rather than the retired disc
+      // (2·TMPSIZ = 500) since sw8-27 reshaped the band. 1,024 clears both, but a guard
+      // that kept the smaller number would have stopped meaning "outside the band".
+    ).toBeGreaterThan(3 * TIE_HIT_RADIUS)
     for (const frame of [0, 128]) {
       const s: GameState = { ...makeSpaceState(), frame }
       expect(

@@ -126,6 +126,33 @@ const loneWave = (enemy: Enemy, over: Partial<GameState> = {}): GameState => ({
 const darthStill = (pos: Vec3): Enemy => ({ pos, kind: 'darth', orient: IDENTITY })
 
 /**
+ * THE STATION DEPTH FOR A DARTH WHO IS BOTH FLYING AND BEING SHOT (re-seated by sw8-27).
+ *
+ * Since sw8-27 the player's gun is gated on C_PV — the cabinet cannot resolve a hit on an
+ * object it did not draw (WSMAIN.MAC:3898-3918 sits under `S2VW`'s four `RTS1` exits). That
+ * makes a fixture's station depth load-bearing for the FIRST TIME, and only for the tests
+ * that arm Darth's VM and then shoot him.
+ *
+ * MEASURED: a VM-seated Darth climbs ~175 u per render frame on the gated record's MU2 bits.
+ * `fireUntilDarthHit` aims from his position at the START of a step, but the decision tick
+ * moves him BEFORE the laser resolves — so the gate reads the moved position. At the old
+ * 1,200 station the vertical pyramid bound is 1200·tan30° = 693, and he crossed it on the
+ * first resolved frame: 1 on-glass frame out of 240, after which he flew out to +11,923
+ * (behind the pilot) and never returned. The helper's own throw was correct — the FIXTURE
+ * geometry was wrong.
+ *
+ * At 6,000 the bound is 3,464 against a first-frame height of ~713, so the shot lands on
+ * frame 0 with ~4.8× headroom. 3,000 also works (bound 1,732); 6,000 is chosen so the
+ * fixture is not one retune away from breaking again. Nothing else about these tests
+ * depends on the depth — Darth is immortal, `TIE_NEAR_BOUND` gates only enemy fire, and
+ * the weave is depth-independent.
+ *
+ * The STILL Darths elsewhere in this file stay at 1,200 deliberately: they do not move, so
+ * they never leave the glass, and moving them would be a change with no reason behind it.
+ */
+const DARTH_FLYING_STATION: Vec3 = [0, 0, -6000]
+
+/**
  * Hold the trigger until Darth's hit is actually PROCESSED — the ROM scores
  * SCRDARTH on exactly the frame CPHTSA runs, so the score edge IS the "the hit
  * happened" signal — and return that state.
@@ -313,7 +340,9 @@ describe('uf1-3 — end to end: shooting Darth drives his choreography', () => {
     // The whole point of the story: not that a field flips, but that the
     // choreography reacts. Seat Darth ON the gate so the reaction is legible.
     const gate = program.reduce<number>((a, instr, i) => (instr.op === 'until' && instr.mask === Status.C_AH ? i : a), -1)
-    const darth: Enemy = { ...darthStill([0, 0, -1200]), vm: initVm(gate) }
+    // Seated at DARTH_FLYING_STATION: this Darth both FLIES and gets SHOT, so since sw8-27
+    // his station has to keep him on the glass long enough for the beam to resolve.
+    const darth: Enemy = { ...darthStill(DARTH_FLYING_STATION), vm: initVm(gate) }
     let s = loneWave(darth)
     // arm the gate first, without firing, so the "before" state is mid-weave
     s = stepGame(s, { aimX: 0, aimY: 0, fire: false }, TICK_DT)
@@ -358,7 +387,8 @@ describe('uf1-3 — the signal survives the 60fps no-tick gap', () => {
     program.reduce<number>((a, instr, i) => (instr.op === 'until' && instr.mask === Status.C_AH ? i : a), -1)
 
   it("reaches Darth's VM at real render cadence, not only on a forced tick", () => {
-    const darth: Enemy = { ...darthStill([0, 0, -1200]), vm: initVm(cAhGate()) }
+    // Flies AND is shot — DARTH_FLYING_STATION for the same reason as above (sw8-27).
+    const darth: Enemy = { ...darthStill(DARTH_FLYING_STATION), vm: initVm(cAhGate()) }
     let s = loneWave(darth)
     // arm the gate at 60fps (several steps, since most carry no tick)
     for (let i = 0; i < 6; i++) s = stepGame(s, { aimX: 0, aimY: 0, fire: false }, DT)

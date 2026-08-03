@@ -1,0 +1,619 @@
+// tests/core/gun-visibility-and-shape.test.ts
+//
+// sw8-27 — the player's GUN carries the visibility divergence C_PS lost in sw8-19, and the
+// space arm's hit SHAPE is a disc where the cabinet uses a box intersected with an octagon.
+//
+// == THE GATE IS CONTROL FLOW, IN TWO DRAW PASSES, NOT ONE =====================
+//
+// sw8-19 established the alien half. `S2VW` (WSMAIN.MAC:3755) has EXACTLY FOUR exits before
+// `CHSET C$PV` (:3846), all long branches to `RTS1` at :3754 — :3825-3826 near clamp,
+// :3827-3828 far clamp, :3834-3836 and :3840-3842 the two ratio tests. The LASER-HIT block
+// (WSMAIN.MAC:3898-3918), which writes `CL.ADS`/`CL.AP`, sits below all four. Between :3846
+// and :3898 there is no label at all, and the three intervening `JSR`s return to the caller's
+// next line, so nothing can branch in. The cabinet cannot resolve a hit on an alien it did
+// not draw.
+//
+// THE HALF sw8-19 DID NOT HAVE, and which this story adds: the FIREBALLS are gated the same
+// way, in a different module. `VWGUN::` (WSGUNS.MAC:852) has its own four exits before its
+// `;GUN SHOT IS VISIBLE` marker at :904 — :885 (`CMPD #01` / `LBLE 90$`), :887 (`CMPD #7F00`
+// / `LBHI 90$`), :896 and :903 (the two `SUBD M.XP` / `LBHS 90$` ratio tests) — and the
+// hit-record that writes `CL.GDS`/`CL.GP` is :906-948, below all four. Identical structure,
+// different literals. So BOTH space-arm resolutions are gated in the cabinet and neither is
+// gated here.
+//
+// == THE SHAPE, AND WHY IT MUST NOT GO IN THE SHARED HELPER ====================
+//
+// MEASURED at setup by grepping every ROM module for `TMPOCT`: the octagon test exists in
+// exactly TWO files — WSMAIN.MAC (aliens) and WSGUNS.MAC (fireballs). Those are the same two
+// passes the gate covers. The GROUND objects use a completely different test — an unrotated
+// width/height box with a `+10.` site fudge and NO octagon term at all (WSGRND.MAC:1076-1132,
+// writing `CL.BDS`/`CL.TDS`) — and the trench is another matter again.
+//
+// So porting the box/octagon into `beamHit` would impose the space alien's shape on towers,
+// bunkers, the exhaust port and trench obstacles, which the cabinet does not do. The shape
+// belongs at the same two space-arm call sites as the gate. That is why the surface and trench
+// probes in group C below are not merely regression cover: they are the discriminator that
+// kills the helper-side fix, which is mutant G6/M6 in sw8-19's batteries.
+//
+//   space alien  (WSMAIN.MAC:3898-3908)  |dx| <= T  AND  |dy| <= T  AND  |dx|+|dy| <= 1.5·T
+//   fireball     (WSGUNS.MAC:926-941)    the same three terms
+//   sights       (WSMAIN.MAC:3920-3924)  |dx|+|dy| <= 3·T          — no box term at all
+//
+// NOTE the box threshold is 1.0·T and only the OCTAGON is 1.5·T. The filing compressed the two
+// into "box AND octagon at 1.5x"; a port written to that reading is wrong in the one direction
+// the current deviation never errs in (see below).
+//
+// == WHY THE SUITE IS MOSTLY GREEN-ON-ARRIVAL, AND WHY THAT IS THE POINT =======
+//
+// MEASURED at setup over 2000 sampled directions: today's disc is a STRICT SUBSET of the
+// cabinet's region in both tests — 0/2000 directions where the clone reaches further than the
+// ROM. Kill: identical on the axes, cabinet reaching sqrt(5)/2 = 1.1180·R at atan(1/2) = 26.57°
+// off-axis (the octagon corner). Sights: cabinet 3.0·R on axis against our 2.0·R, never below
+// 2.121·R.
+//
+// Two consequences drive the design of this file:
+//
+//   1. The shape change is PURELY ADDITIVE. Nothing killable today stops being killable, which
+//      is why applying it reddened ZERO of 2252 tests at setup. Group D therefore leads with
+//      the seats that are red TODAY (inside the ROM region, outside the disc) and follows with
+//      guards that are green today and exist to kill a specific wrong fix by name. Each of the
+//      latter says which mutant it catches, because a green assertion that names no mutant is
+//      indistinguishable from scenery.
+//   2. The GATE is not additive — it takes kills away — so group A and B are red today and
+//      carry positive controls, without which "stop killing anything" would pass every one.
+//
+// == WHAT THIS FILE DELIBERATELY DOES NOT DO ==================================
+//
+// It does not call `beamHit` and assert a gate. It CANNOT: the gate is caller-side by AC3, so
+// a `beamHit` unit test is structurally blind to it. Every gun assertion here therefore drives
+// `stepGame` and reads the kill events. `tie-sights-visibility.test.ts`'s "does NOT change the
+// GUN" is the complementary half and stays GREEN — it pins that the gate is not in the helper,
+// which is exactly what AC3 still requires.
+//
+// The sacred boundary holds: no DOM, no time except dt, no randomness except the seeded RNG.
+
+import { describe, it, expect } from 'vitest'
+import { stepGame, enterPhase } from '../../src/core/sim'
+import { computeStatus, SIGHTS_BAND_FACTOR } from '../../src/core/tie-status'
+import { Status } from '../../src/core/tie-vm'
+import { COCKPIT, FOV_Y, aimDirection, beamHit } from '../../src/core/gameRules'
+import {
+  initialState,
+  SKIM_ALTITUDE,
+  TIE_HIT_RADIUS,
+  ENEMY_SHOT_HIT_RADIUS,
+  TURRET_HIT_RADIUS,
+  COCKPIT_HIT_RADIUS,
+  ENEMY_SHOT_TTL,
+  type GameState,
+} from '../../src/core/state'
+import { OBSTACLE_HIT_RADIUS } from '../../src/core/trench-obstacles'
+import type { Input } from '../../src/core/input'
+import type { Vec3 } from '@shared/math3d'
+import { makeSpaceState, makeTie, rngSeed } from './helpers/space'
+
+const DT = 1 / 60
+const WIDE = 16 / 9
+
+/** The rendered frustum's vertical slope, recomputed from the shared constant rather than
+ *  copied — a change to FOV_Y moves the fixtures and the machine together. */
+const TAN_HALF = Math.tan(FOV_Y / 2)
+
+/** The ROM's kill terms, in units of the target's hit radius (WSMAIN.MAC:3898-3908 /
+ *  WSGUNS.MAC:926-941). Named so the seats below read as what they are. */
+const BOX = 1.0
+const OCTAGON = 1.5
+/** The sights term, the same octagon scaled up and with the box dropped (:3920-3924). */
+const SIGHTS_OCTAGON = 3.0
+
+/** C_PV for a position, through the real machine — a pure function of position and aspect,
+ *  independent of where the yoke points, which is what lets a seat be off-glass and under the
+ *  crosshair at the same time. */
+const inView = (pos: Vec3, aspect: number): number => {
+  const s: GameState = { ...makeSpaceState(), aspect }
+  return computeStatus(makeTie({ pos }), s, rngSeed(1)) & Status.C_PV
+}
+
+/** C_PS for a position, likewise. */
+const sights = (pos: Vec3, aspect: number): number => {
+  const s: GameState = { ...makeSpaceState(), aspect }
+  return computeStatus(makeTie({ pos }), s, rngSeed(1)) & Status.C_PS
+}
+
+/**
+ * A space run holding exactly what the fixture places, with the spawner and enemy fire parked
+ * so nothing but the player's own trigger can change the lists.
+ *
+ * `firePrev: false` and `fireCooldown: 0` are load-bearing — the trigger is EDGE-triggered
+ * (`fireEdge = input.fire && !state.firePrev`, sim.ts:271) and gated on the cooldown, so
+ * without both the beam never arms and every negative below passes for the wrong reason.
+ */
+const spaceRun = (over: Partial<GameState> = {}): GameState => ({
+  ...initialState(1983),
+  enemies: [],
+  enemyShots: [],
+  spawnTimer: 1e9,
+  enemyFireCooldown: 1e9,
+  firePrev: false,
+  fireCooldown: 0,
+  ...over,
+})
+
+/** Trigger down with the yoke AT REST, so the beam is exactly `[0, 0, -1]` from the cockpit
+ *  and a seat's perpendicular offset from the ray is just its own (x, y). Every geometric
+ *  claim in this file rests on that, which is why no test here deflects the yoke. */
+const restTrigger = (aspect: number): Input => ({ aimX: 0, aimY: 0, fire: true, aspect })
+
+const tieDied = (s: GameState): boolean => s.events.some((e) => e.type === 'enemy-death' && e.enemyType === 'tie')
+const fireballDied = (s: GameState): boolean => s.events.some((e) => e.type === 'fireball-destroyed')
+
+/** A TIE at `pos` — a plain mook, so a hit destroys it (Darth is immortal and would not). */
+const tieAt = (pos: Vec3) => makeTie({ pos: [...pos] as Vec3, kind: 'tie' as const })
+
+/**
+ * Fixture guard for every gun seat below. Asserts through the SAME machinery the assertions
+ * use that the seat is the case we mean: under the at-rest crosshair (so the beam resolves it
+ * today) and, when `offGlass`, outside the rendered pyramid.
+ *
+ * Without this a "did not die" assertion passes the moment a seat drifts out of the kill
+ * radius, and the suite scores itself as protecting something it does not.
+ */
+function assertGunSeat(pos: Vec3, radius: number, aspect: number, offGlass: boolean, label: string): void {
+  const ray = aimDirection(0, 0, aspect)
+  expect(
+    beamHit(COCKPIT, ray, pos, radius),
+    `${label}: fixture guard — the seat is under the at-rest crosshair, so the beam resolves it TODAY`,
+  ).not.toBeNull()
+  expect(
+    inView(pos, aspect),
+    `${label}: fixture guard — the seat is ${offGlass ? 'OUTSIDE' : 'INSIDE'} the rendered view pyramid`,
+  ).toBe(offGlass ? 0 : Status.C_PV)
+}
+
+// ---------------------------------------------------------------------------
+// A — AC1: the TIE resolution is gated on C_PV
+// ---------------------------------------------------------------------------
+
+describe('sw8-27 AC1 — the player cannot kill a TIE the cabinet would not have drawn', () => {
+  it('the filed seat: off the glass at depth 400, inside the kill radius, survives the shot', () => {
+    // The story's headline seat, and TEA's original sw8-19 measurement. At depth 400 the
+    // pyramid's vertical bound is 400 · tan30° = 230.9, so vert 240 is off-screen — while
+    // sitting 240 u from the at-rest ray, inside TIE_HIT_RADIUS (250). Killable while
+    // invisible: the cabinet returns at :3836 and never reaches its hit block.
+    const seat: Vec3 = [0, 240, -400]
+    assertGunSeat(seat, TIE_HIT_RADIUS, WIDE, true, 'filed off-glass seat')
+
+    const s = stepGame(spaceRun({ enemies: [tieAt(seat)] }), restTrigger(WIDE), DT)
+
+    expect(tieDied(s), 'the cabinet cannot resolve a hit on an alien it did not draw').toBe(false)
+    expect(s.enemies, 'and the fighter is still standing').toHaveLength(1)
+  })
+
+  it('the POSITIVE CONTROL: the same depth, on the glass, still dies', () => {
+    // Without this every negative in this file passes for a gate that simply stopped the gun.
+    // Vert 200 is inside the 230.9 bound at the same depth and the same distance regime.
+    const seat: Vec3 = [0, 200, -400]
+    assertGunSeat(seat, TIE_HIT_RADIUS, WIDE, false, 'on-glass control')
+
+    const s = stepGame(spaceRun({ enemies: [tieAt(seat)] }), restTrigger(WIDE), DT)
+
+    expect(tieDied(s), 'a visible fighter under the crosshair still dies').toBe(true)
+    expect(s.enemies, 'and is removed from the wave').toHaveLength(0)
+  })
+
+  it('follows the REAL viewport: one seat, two canvases, opposite outcomes', () => {
+    // The strongest single discriminator here, and the one a hard-coded cone cannot pass.
+    // `hBound = depth · tan(FOV_Y/2) · aspect`, so at depth 400 the lateral bound is 230.9 on
+    // a square canvas and 410.5 at 16:9. A TIE at x = 240 is therefore OFF the glass at 1:1
+    // and ON it at 16:9 — while sitting 240 u from the ray at both, so the kill radius alone
+    // cannot explain the difference. A gate that ignores `state.aspect` reddens here.
+    const seat: Vec3 = [240, 0, -400]
+
+    assertGunSeat(seat, TIE_HIT_RADIUS, 1, true, 'square-canvas seat')
+    const square = stepGame(spaceRun({ aspect: 1, enemies: [tieAt(seat)] }), restTrigger(1), DT)
+    expect(tieDied(square), 'square canvas: off the glass, so the shot cannot land').toBe(false)
+
+    assertGunSeat(seat, TIE_HIT_RADIUS, WIDE, false, 'wide-canvas seat')
+    const wide = stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(seat)] }), restTrigger(WIDE), DT)
+    expect(tieDied(wide), 'at 16:9 the very same seat is on the glass, and dies').toBe(true)
+  })
+
+  it('holds as a UNIVERSAL across depth, offset and canvas shape — a kill implies C_PV', () => {
+    // The law itself, swept rather than sampled. Both counters are asserted non-zero after,
+    // because a gun that killed NOTHING would satisfy every implication vacuously.
+    let kills = 0
+    let underSiteOffGlass = 0
+    for (const aspect of [1, 4 / 3, WIDE]) {
+      for (const depth of [120, 200, 400, 800, 2000, 6000]) {
+        for (const lat of [0, 120, 240]) {
+          for (const vert of [0, 120, 240]) {
+            const pos: Vec3 = [lat, vert, -depth]
+            const ray = aimDirection(0, 0, aspect)
+            const underSite = beamHit(COCKPIT, ray, pos, TIE_HIT_RADIUS) !== null
+            const visible = inView(pos, aspect) !== 0
+            if (underSite && !visible) underSiteOffGlass++
+
+            const s = stepGame(spaceRun({ aspect, enemies: [tieAt(pos)] }), restTrigger(aspect), DT)
+            if (tieDied(s)) {
+              kills++
+              expect(
+                visible,
+                `killed at aspect ${aspect.toFixed(3)}, depth ${depth}, lat ${lat}, vert ${vert} — but C_PV clear`,
+              ).toBe(true)
+            }
+          }
+        }
+      }
+    }
+    expect(kills, 'positive control: the sweep DID kill fighters').toBeGreaterThan(0)
+    expect(
+      underSiteOffGlass,
+      'positive control: the sweep DID contain under-site, off-glass seats — the case under test',
+    ).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// B — AC2: the FIREBALL resolution is gated the same way (VWGUN's own four exits)
+// ---------------------------------------------------------------------------
+
+describe('sw8-27 AC2 — the player cannot shoot down a fireball the cabinet would not have drawn', () => {
+  // A fireball's hit radius (150) is SMALLER than the pyramid's vertical bound at any depth
+  // past 260, so an off-glass-but-under-site seat only exists close in: the bound is
+  // depth · 0.5774, which is under 150 only for depth < 259.8. These seats are therefore
+  // shallow by necessity, not by choice — and still well outside COCKPIT_HIT_RADIUS (80), so
+  // the shot is not consumed as cockpit damage before the beam can reach it.
+  it('off the glass at depth 200, under the crosshair, is NOT shot down', () => {
+    const seat: Vec3 = [0, 140, -200]
+    expect(
+      Math.abs(seat[1]) > Math.abs(seat[2]) * TAN_HALF,
+      'fixture guard: the seat is above the rendered pyramid at this depth',
+    ).toBe(true)
+    expect(
+      Math.hypot(...seat) > COCKPIT_HIT_RADIUS,
+      'fixture guard: far enough out that the cockpit-damage pass does not eat it first',
+    ).toBe(true)
+    assertGunSeat(seat, ENEMY_SHOT_HIT_RADIUS, WIDE, true, 'off-glass fireball')
+
+    const s = stepGame(
+      spaceRun({ enemyShots: [{ pos: [...seat] as Vec3, vel: [0, 0, 0], ttl: ENEMY_SHOT_TTL }] }),
+      restTrigger(WIDE),
+      DT,
+    )
+
+    expect(
+      fireballDied(s),
+      'VWGUN returns at :896 before ;GUN SHOT IS VISIBLE, so CL.GDS is never written',
+    ).toBe(false)
+  })
+
+  it('the POSITIVE CONTROL: an on-glass fireball under the crosshair is still shot down', () => {
+    // sw8-3 / 8-18 shipped fireball interception deliberately; this is the assertion that
+    // stops AC2 being satisfied by disabling it.
+    const seat: Vec3 = [0, 100, -6000]
+    assertGunSeat(seat, ENEMY_SHOT_HIT_RADIUS, WIDE, false, 'on-glass fireball')
+
+    const s = stepGame(
+      spaceRun({ enemyShots: [{ pos: [...seat] as Vec3, vel: [0, 0, 0], ttl: ENEMY_SHOT_TTL }] }),
+      restTrigger(WIDE),
+      DT,
+    )
+
+    expect(fireballDied(s), 'a visible fireball under the crosshair still dies').toBe(true)
+  })
+
+  it('gates the two space lists INDEPENDENTLY — a fix wired to only one of them reddens here', () => {
+    // The filing named a single space-arm call site. There are two, four lines apart, and a
+    // gate applied to the loop the description mentions leaves the other one open. Seating
+    // both off-glass at once means neither may resolve.
+    const tieSeat: Vec3 = [0, 240, -400]
+    const shotSeat: Vec3 = [0, 140, -200]
+    const s = stepGame(
+      spaceRun({
+        enemies: [tieAt(tieSeat)],
+        enemyShots: [{ pos: [...shotSeat] as Vec3, vel: [0, 0, 0], ttl: ENEMY_SHOT_TTL }],
+      }),
+      restTrigger(WIDE),
+      DT,
+    )
+    expect(tieDied(s), 'the fighter is off the glass').toBe(false)
+    expect(fireballDied(s), 'and so is the fireball').toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// C — AC3: the gate is CALLER-SIDE. The shared helper keeps no view term.
+// ---------------------------------------------------------------------------
+
+describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
+  it('a SURFACE turret far outside the space pyramid still dies', () => {
+    // MUTANT G6/M6 BY NAME: clamping `beamHit` to the frustum is the tempting one-line fix,
+    // and it would satisfy every assertion in groups A and B. It is wrong twice over — the
+    // ROM's ground pass has no view gate on its collision at all (`GRLZCL` is called at
+    // WSGRND.MAC:979 immediately after `BJGDRW` at :978, and no branch in the routine skips
+    // one without skipping the other), and the ground objects do not even use the same hit
+    // SHAPE (WSGRND.MAC:1076-1132 is a width/height box with no octagon term).
+    //
+    // This tower sits at vert 4000 against a pyramid bound of 400 · tan30° = 230.9 — which is
+    // to say, hopelessly off the SPACE glass — and must die anyway.
+    const tower: Vec3 = [0, SKIM_ALTITUDE, -400]
+    const s0: GameState = {
+      ...enterPhase(initialState(1983), 'surface'),
+      mode: 'playing',
+      altitude: SKIM_ALTITUDE,
+      turrets: [{ pos: [...tower] as Vec3, age: 0 }],
+      surfaceMazeLaid: true,
+      projectiles: [],
+      enemyShots: [],
+      firePrev: false,
+      fireCooldown: 0,
+    }
+    const s = stepGame(s0, restTrigger(WIDE), DT)
+    expect(
+      s.events.some((e) => e.type === 'enemy-death' && e.enemyType === 'turret'),
+      'the surface phase has no C_PV notion — a view clamp in beamHit would break it',
+    ).toBe(true)
+    expect(TURRET_HIT_RADIUS, 'anchor: the surface probe is measured against its own radius').toBeGreaterThan(0)
+  })
+
+  it('`beamHit` itself still resolves a target outside the space pyramid', () => {
+    // The direct statement of the same property, and the complement of
+    // `tie-sights-visibility.test.ts`'s "does NOT change the GUN" — which stays green and
+    // must: what it pins is that the gate is not in the helper, which AC3 still requires.
+    const ray = aimDirection(0, 0, WIDE)
+    const offGlass: Vec3 = [0, 240, -400]
+    expect(inView(offGlass, WIDE), 'fixture guard: off the glass').toBe(0)
+    expect(
+      beamHit(COCKPIT, ray, offGlass, TIE_HIT_RADIUS),
+      'the helper is view-blind by design; the caller is what gates',
+    ).not.toBeNull()
+    expect(OBSTACLE_HIT_RADIUS, 'anchor: the trench radius the helper also serves').toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// D — AC5: the space-arm KILL region is the ROM's box ∩ 1.5× octagon
+// ---------------------------------------------------------------------------
+
+describe('sw8-27 AC5 — the space kill region is the cabinet box ∩ octagon, not a disc', () => {
+  // Every seat here is ON the glass and at depth 6000, so the AC1 gate cannot confound the
+  // shape measurement: at that depth the bounds are 3464 vertical and 6157 lateral at 16:9,
+  // and no offset below approaches either.
+  const DEPTH = -6000
+  const at = (dx: number, dy: number): Vec3 => [dx, dy, DEPTH]
+  const shootAt = (pos: Vec3): GameState =>
+    stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(pos)] }), restTrigger(WIDE), DT)
+
+  it('anchors the terms the seats below are built from', () => {
+    expect(TIE_HIT_RADIUS, 'the established TIE kill radius').toBe(250)
+    expect(BOX, 'WSMAIN.MAC:3898-3903 — |dx| and |dy| against a BARE TMPSIZ').toBe(1.0)
+    expect(OCTAGON, 'WSMAIN.MAC:3904-3906 — LSRD / ADDD TMPSIZ, "MAKE 1.5 FOR OCTAGON"').toBe(1.5)
+    // The corner of the ROM's octagon: where the box and the octagon cross, at atan(1/2).
+    expect(Math.sqrt(5) / 2, 'the cabinet reaches √5/2 R at 26.57° off-axis').toBeCloseTo(1.118, 3)
+  })
+
+  it('RED — the octagon CORNER: a seat the cabinet kills and the disc misses', () => {
+    // 26.57° off-axis (atan ½) at 1.06 R. |dx| = 237.0 and |dy| = 118.5, so both box terms
+    // pass (≤ 250) and the octagon sum is 355.5 (≤ 375) — the cabinet records the hit. The
+    // radial distance is 265, outside the 250 disc, so today's port misses it. This is the
+    // ONLY direction in which the two models disagree, and the shell is 250 → 279.5 wide.
+    const seat = at(237.0, 118.5)
+    expect(inView(seat, WIDE), 'fixture guard: plainly on the glass at this depth').toBe(Status.C_PV)
+    expect(Math.hypot(237.0, 118.5), 'fixture guard: OUTSIDE the disc the port uses today').toBeGreaterThan(
+      TIE_HIT_RADIUS,
+    )
+    expect(Math.abs(237.0), 'fixture guard: inside the ROM box on x').toBeLessThanOrEqual(BOX * TIE_HIT_RADIUS)
+    expect(Math.abs(118.5), 'fixture guard: inside the ROM box on y').toBeLessThanOrEqual(BOX * TIE_HIT_RADIUS)
+    expect(237.0 + 118.5, 'fixture guard: inside the ROM octagon').toBeLessThanOrEqual(OCTAGON * TIE_HIT_RADIUS)
+
+    expect(tieDied(shootAt(seat)), 'the cabinet writes CL.ADS here, so the clone must too').toBe(true)
+  })
+
+  it('GREEN GUARD — the BOX term bites: kills the "octagon only" fix', () => {
+    // MUTANT BY NAME: dropping the box and keeping only `|dx|+|dy| <= 1.5·T` accepts a seat
+    // 1.3 R dead on the lateral axis (sum 325 ≤ 375) that the cabinet REJECTS at :3898-3900,
+    // because |dx| = 325 exceeds a bare TMPSIZ. Green today only because the disc rejects it
+    // too, for a different reason — so it is stated here as the wrong-fix guard it is, not as
+    // evidence of anything the port currently gets right.
+    const seat = at(325, 0)
+    expect(inView(seat, WIDE), 'fixture guard: on the glass').toBe(Status.C_PV)
+    expect(325 + 0, 'this seat IS inside the octagon — only the box excludes it').toBeLessThanOrEqual(
+      OCTAGON * TIE_HIT_RADIUS,
+    )
+    expect(325, 'and it is outside the box').toBeGreaterThan(BOX * TIE_HIT_RADIUS)
+
+    expect(tieDied(shootAt(seat)), 'the cabinet returns at the box test, so no kill').toBe(false)
+  })
+
+  it('GREEN GUARD — the OCTAGON term bites: kills the "box only" fix', () => {
+    // The mirror mutant: keeping only the box accepts a 45° seat at |dx| = |dy| = 195 (both
+    // ≤ 250) that the cabinet REJECTS at :3907-3908, because the sum 390 exceeds 1.5·TMPSIZ.
+    const seat = at(195, 195)
+    expect(inView(seat, WIDE), 'fixture guard: on the glass').toBe(Status.C_PV)
+    expect(195, 'this seat IS inside the box on both axes — only the octagon excludes it').toBeLessThanOrEqual(
+      BOX * TIE_HIT_RADIUS,
+    )
+    expect(195 + 195, 'and it is outside the octagon').toBeGreaterThan(OCTAGON * TIE_HIT_RADIUS)
+
+    expect(tieDied(shootAt(seat)), 'the cabinet returns at the octagon test, so no kill').toBe(false)
+  })
+
+  it('the change is PURELY ADDITIVE — nothing killable today stops being killable', () => {
+    // The containment measured at setup, asserted rather than trusted: the disc is a strict
+    // subset of the ROM region, because the greatest |dx|+|dy| anywhere on a disc of radius R
+    // is R·√2 = 1.414 R, which is inside the 1.5 R octagon, and every point of the disc is
+    // inside the box by construction. So a shape port that LOSES a kill has mis-ported it.
+    let killable = 0
+    for (let deg = 0; deg < 360; deg += 7) {
+      for (const k of [0.2, 0.5, 0.8, 0.95, 0.999]) {
+        const dx = k * TIE_HIT_RADIUS * Math.cos((deg * Math.PI) / 180)
+        const dy = k * TIE_HIT_RADIUS * Math.sin((deg * Math.PI) / 180)
+        const seat = at(dx, dy)
+        killable++
+        expect(
+          tieDied(shootAt(seat)),
+          `inside today's disc at ${deg}°, k=${k} — the ROM region contains the whole disc`,
+        ).toBe(true)
+      }
+    }
+    expect(killable, 'positive control: the sweep actually probed seats').toBeGreaterThan(100)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// E — AC6: the SIGHTS region is the ROM's pure L1 octagon at 3×, with no box
+// ---------------------------------------------------------------------------
+
+describe('sw8-27 AC6 — the sights band is the cabinet L1 octagon at 3×, not a disc at 2×', () => {
+  const DEPTH = -6000
+  const at = (dx: number, dy: number): Vec3 => [dx, dy, DEPTH]
+  const R = TIE_HIT_RADIUS
+
+  it('RED — on the axis the cabinet warns out to 3·TMPSIZ, where the disc stops at 2·', () => {
+    // The largest disagreement between the two models anywhere: 750 against 500. A fighter
+    // 625 u off the ray at this depth is inside the cabinet's warning area (sum 625 ≤ 750)
+    // and outside our disc. TCH1DZ's loiter break reads this bit, so the region is not
+    // cosmetic — it gates choreography.
+    const seat = at(625, 0)
+    expect(inView(seat, WIDE), 'fixture guard: on the glass').toBe(Status.C_PV)
+    expect(625, 'inside the ROM warning octagon').toBeLessThanOrEqual(SIGHTS_OCTAGON * R)
+    expect(625, 'outside the disc the port uses today').toBeGreaterThan(SIGHTS_BAND_FACTOR * R)
+
+    expect(sights(seat, WIDE), 'ALLOW LARGER WARNING AREA, WSMAIN.MAC:3922').toBe(Status.C_PS)
+  })
+
+  it('RED — and on the diagonal it warns to 2.121·, where the disc still stops at 2·', () => {
+    // The other end of the same anisotropy. |dx| = |dy| = 362.3 is 512.5 radially — outside
+    // the disc — while the sum 724.6 is inside the octagon. A port that merely WIDENED the
+    // disc from 2× to 3× would pass the axis test above and fail here, because it would also
+    // accept 750 on the diagonal, which the cabinet does not.
+    const seat = at(362.3, 362.3)
+    expect(inView(seat, WIDE), 'fixture guard: on the glass').toBe(Status.C_PV)
+    expect(Math.hypot(362.3, 362.3), 'outside the disc').toBeGreaterThan(SIGHTS_BAND_FACTOR * R)
+    expect(362.3 + 362.3, 'inside the octagon').toBeLessThanOrEqual(SIGHTS_OCTAGON * R)
+
+    expect(sights(seat, WIDE), 'the sum is what the cabinet tests, not the radius').toBe(Status.C_PS)
+  })
+
+  it('GREEN GUARD — a widened DISC is not the fix: the diagonal must stop short of 3·', () => {
+    // MUTANT BY NAME: `SIGHTS_BAND_FACTOR = 3` with the disc kept. That passes the axis test
+    // and accepts this seat, which the cabinet rejects — 380 + 380 = 760 is past 3·TMPSIZ.
+    const seat = at(380, 380)
+    expect(inView(seat, WIDE), 'fixture guard: on the glass').toBe(Status.C_PV)
+    expect(Math.hypot(380, 380), 'a 3× DISC would accept this seat').toBeLessThan(SIGHTS_OCTAGON * R)
+    expect(380 + 380, 'the octagon does not').toBeGreaterThan(SIGHTS_OCTAGON * R)
+
+    expect(sights(seat, WIDE), 'past the warning octagon on the diagonal').toBe(0)
+  })
+
+  it('RED — the sights band reaches 725 on the axis, so no box NARROWER than 3× survives', () => {
+    // The one structural difference between the two ROM blocks: :3920-3924 tests only the
+    // sum, with no box term.
+    //
+    // WHAT THIS SEAT PROVES, stated to match what was measured rather than what reads well.
+    // A port that reused the kill predicate at a bigger scale would add a box, and how far
+    // this test can see depends on that box's SCALE:
+    //
+    //   box at 1× or 2× TMPSIZ  — CAUGHT here (mutation-proven: a 2× box reddens this test,
+    //                             the axis test above, the rewritten band test in
+    //                             tie-sights-status.test.ts, and the AC7 agreement sweep).
+    //   box at exactly 3×       — EQUIVALENT MUTANT. `|dx| + |dy| <= 3·T` already implies
+    //                             both `|dx| <= 3·T` and `|dy| <= 3·T`, so the term is
+    //                             redundant and changes no observable behaviour. It survived
+    //                             the battery, and correctly: there is nothing to catch. Do
+    //                             not add a test for it — add one and it passes vacuously,
+    //                             asserting a property no input can violate.
+    //
+    // So this test's job is the 725 reach itself, which the retired 2× disc fails.
+    const seat = at(725, 0)
+    expect(inView(seat, WIDE), 'fixture guard: on the glass').toBe(Status.C_PV)
+    expect(725, 'inside the octagon, and past 2·TMPSIZ').toBeLessThanOrEqual(SIGHTS_OCTAGON * R)
+
+    expect(sights(seat, WIDE), 'no box term at :3920-3924 — only the sum').toBe(Status.C_PS)
+  })
+
+  it('GREEN GUARD — the axis still stops: 3· is a bound, not an opening', () => {
+    const seat = at(775, 0)
+    expect(inView(seat, WIDE), 'fixture guard: on the glass').toBe(Status.C_PV)
+    expect(775, 'past the warning octagon on the axis').toBeGreaterThan(SIGHTS_OCTAGON * R)
+    expect(sights(seat, WIDE), 'the cabinet does not warn out here either').toBe(0)
+  })
+
+  it('containment survives the reshape: anything the gun can KILL is in the sights', () => {
+    // 1.5·TMPSIZ ⊂ 3·TMPSIZ is a containment in the cabinet, and it must remain one here
+    // after BOTH regions change shape. Measured at setup in the old models and asserted here
+    // in the new ones — this is the assertion that stops the two machines drifting apart
+    // while each is independently "correct".
+    let killable = 0
+    for (let deg = 0; deg < 360; deg += 11) {
+      for (const k of [0.3, 0.7, 1.0, 1.1]) {
+        const dx = k * R * Math.cos((deg * Math.PI) / 180)
+        const dy = k * R * Math.sin((deg * Math.PI) / 180)
+        const seat = at(dx, dy)
+        const died = tieDied(stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(seat)] }), restTrigger(WIDE), DT))
+        if (died) {
+          killable++
+          expect(sights(seat, WIDE), `killable at ${deg}°, k=${k} — but not in the sights`).toBe(Status.C_PS)
+        }
+      }
+    }
+    expect(killable, 'positive control: the sweep DID contain killable seats').toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// F — AC7: the shape deviation is retired by MEASUREMENT, in both directions
+// ---------------------------------------------------------------------------
+
+describe('sw8-27 AC7 — the port and the cabinet now agree about every seat, not merely nest', () => {
+  const DEPTH = -6000
+  const at = (dx: number, dy: number): Vec3 => [dx, dy, DEPTH]
+
+  it('the KILL region matches the cabinet term for term, in both directions', () => {
+    // Before this story the relationship was CONTAINMENT — 0/2000 directions where the clone
+    // reached further, but a real gap at the octagon corner. The deviation is only retired if
+    // the two agree, so this asserts equality and counts both kinds of seat to prove the
+    // sweep can see both.
+    let accepted = 0
+    let rejected = 0
+    for (let deg = 0; deg < 360; deg += 9) {
+      for (const k of [0.5, 0.9, 1.0, 1.05, 1.1, 1.15, 1.3]) {
+        const dx = k * TIE_HIT_RADIUS * Math.cos((deg * Math.PI) / 180)
+        const dy = k * TIE_HIT_RADIUS * Math.sin((deg * Math.PI) / 180)
+        const rom =
+          Math.abs(dx) <= BOX * TIE_HIT_RADIUS &&
+          Math.abs(dy) <= BOX * TIE_HIT_RADIUS &&
+          Math.abs(dx) + Math.abs(dy) <= OCTAGON * TIE_HIT_RADIUS
+        const seat = at(dx, dy)
+        const died = tieDied(stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(seat)] }), restTrigger(WIDE), DT))
+        if (rom) accepted++
+        else rejected++
+        expect(died, `cabinet says ${rom ? 'HIT' : 'MISS'} at ${deg}°, k=${k} — the port disagreed`).toBe(rom)
+      }
+    }
+    expect(accepted, 'positive control: the sweep contained seats the cabinet ACCEPTS').toBeGreaterThan(0)
+    expect(rejected, 'positive control: and seats it REJECTS').toBeGreaterThan(0)
+  })
+
+  it('the SIGHTS region matches the cabinet term for term, in both directions', () => {
+    let accepted = 0
+    let rejected = 0
+    for (let deg = 0; deg < 360; deg += 9) {
+      for (const k of [1.5, 2.0, 2.1, 2.3, 2.8, 3.1]) {
+        const dx = k * TIE_HIT_RADIUS * Math.cos((deg * Math.PI) / 180)
+        const dy = k * TIE_HIT_RADIUS * Math.sin((deg * Math.PI) / 180)
+        const rom = Math.abs(dx) + Math.abs(dy) <= SIGHTS_OCTAGON * TIE_HIT_RADIUS
+        const seat = at(dx, dy)
+        expect(inView(seat, WIDE), `fixture guard: on the glass at ${deg}°, k=${k}`).toBe(Status.C_PV)
+        if (rom) accepted++
+        else rejected++
+        expect(
+          sights(seat, WIDE) !== 0,
+          `cabinet says ${rom ? 'SIGHTED' : 'CLEAR'} at ${deg}°, k=${k} — the port disagreed`,
+        ).toBe(rom)
+      }
+    }
+    expect(accepted, 'positive control: the sweep contained sighted seats').toBeGreaterThan(0)
+    expect(rejected, 'positive control: and unsighted ones').toBeGreaterThan(0)
+  })
+})
