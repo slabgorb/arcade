@@ -373,3 +373,21 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: td1-19
+    title: The shared audio docblock says six of seven cabinets pass no priorities map — centipede passes one, so joust is not the only arbitrated cabinet
+    description: 'Found by jt9-7''s TEA (2026-08-03) while measuring whether joust''s CHANNELS map could be deleted. src/shared/audio.ts:70-75 states: "Six of this arcade''s seven cabinets are multi-voice machines whose sounds simply mix, and they pass neither map ... The seventh, joust, is a Williams machine ...". MEASURED FALSE: plugins/centipede/src/shell/audio.ts:227 passes priorities: PRIORITIES as well, built by a filter over POKEY voice 0 (:209-211), and centipede''s own docblock at :204-208 names three cues — mushroom, headBottom, waveClear — deliberately left OUTSIDE arbitration under a user ruling of 2026-08-03, where they keep plain per-channel stealing. So TWO cabinets arbitrate, and one of them ships the partial-priorities case the shared prose implies does not exist. The sentence matters beyond tidiness: it is the reason jt9-7''s filing (and its story context) treated joust as the only consumer, which is what made "delete the map" look joust-local. Fix the count and add the centipede case; jt9-7 could not, because centipede files are fenced off while cp6-3 runs in a sibling checkout. Scope: src/shared/audio.ts prose only, no behaviour. Note the file is shared by all five manifest-building cabinets, so the full suite applies.'
+    points: 1
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
+  - id: td1-20
+    title: Make the shared engine channels map optional with a designed default — the costed version of jt9-7's deletion branch
+    description: 'jt9-7 was asked to decide between deleting joust''s CHANNELS map and keeping it, and DECIDED TO KEEP IT — on measurement, not preference. This story exists so the other branch is not lost by that ruling (standing rule: a descoped option ends with a story id). What jt9-7 measured, all against main at 5cc5bc2: (1) src/shared/audio.ts:69 declares channels as Record<N, string>, REQUIRED, so deleting joust''s wiring is not type-legal — dropping the channels: line yields error TS2345 at plugins/joust/src/shell/audio.ts(162,45). (2) There is NO engine default to fall back on: startSource reads manifest.channels[name] at src/shared/audio.ts:238, above and outside the try/catch at :269 that makes every other failure a silent degrade, so an absent map is a TypeError on the first cue of the first game, not a degrade. jt9-7 pins that as an executable test (there is no engine default to fall back to — an absent channels map THROWS) which will redden the day a default is added, which is the signal to pick this story up. (3) Blast radius: 6 production channels: sites across five manifest-building cabinets (asteroids, centipede, joust, star-wars x2, tempest) plus 24 manifest literals in src/shared/tests/. (4) Deleting a game''s map also spends the Readonly<Record<SoundName, string>> completeness check that today makes a cue with no channel a COMPILE error; jt9-7''s test "a cue MISSING from a present map shares one phantom channel" prices that — two holed cues key live on the same undefined and steal from each other across ROM priorities they never shared. So this story is NOT "delete a map": it is design the default (per-cue channel? one shared channel? refuse at construction?), prove the six other cabinets'' per-channel stealing is byte-identical before and after, and only then let a cabinet drop its map. CLAUDE.md''s reuse-first rule says do not start until a second consumer proves the need — jt9-7 measured the opposite, that centipede NEEDS channels precisely because it has unarbitrated cues (see td1-19). Full suite mandatory.'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor

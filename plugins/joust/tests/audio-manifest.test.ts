@@ -157,7 +157,22 @@ describe('jt5-1 AC4 — the manifest carries joust’s numbers', () => {
     }
   })
 
-  it('CHANNELS gives every SOUNDS entry a voice — no cue is unroutable', async () => {
+  // RE-AIMED by jt9-7 (O'Brien / TEA), which was asked to decide whether this
+  // map should exist at all. It should — see `tests/audio-channel-role.test.ts`
+  // for the decision and its three measurements — but the assertion that used to
+  // stand here, `CHANNELS gives every SOUNDS entry a voice`, was not the reason.
+  // It was REDUNDANT WITH `tsc`: `Readonly<Record<SoundName, string>>` already
+  // makes a missing key `error TS2741` and an extra key an excess-property
+  // error, and CI runs `npm run lint` before this project. The three stories
+  // that "had to feed the map" were fed by the compiler, not by this test.
+  //
+  // What is left worth stating at runtime is the ASYMMETRY the compiler states
+  // only in passing: `channels` is total over the cue union while `priorities`
+  // is a `Partial` built by a filter, so routing is the floor under arbitration
+  // rather than a parallel to it. What the map GUARANTEES beyond that — the ROM
+  // priority partition, in both directions, and the tail it still cuts once the
+  // arbitrated window is released — is pinned in that same jt9-7 file.
+  it('CHANNELS routes every cue — the floor under an arbitration that is only Partial', async () => {
     const [sounds, channels] = await Promise.all([need('SOUNDS'), need('CHANNELS')])
     expect(Object.keys(channels).sort()).toEqual(Object.keys(sounds).sort())
   })
@@ -212,8 +227,22 @@ describe('jt5-1 AC4 — the channel map cannot invert the ROM’s priority arbit
   it('the voices are not all one channel either — distinct priorities keep distinct voices', async () => {
     // The control for the rule above: collapsing every cue onto one channel
     // would satisfy nothing, but collapsing onto one channel PER PRIORITY is
-    // what the rule asks for. Eleven cues carry nine distinct ROM priorities.
-    const channels = await need('CHANNELS')
+    // what the rule asks for.
+    //
+    // The comment here used to read "Eleven cues carry nine distinct ROM
+    // priorities," which was already wrong when jt5-6 made the manifest 18 and
+    // is corrected by jt9-7 the only way a count should be: by DERIVING both
+    // sides below instead of retyping either. Measured today: 18 cues, 13
+    // distinct priorities, 13 channels. The exact-equality form of this — which
+    // is what catches a map that SPLITS one ROM priority across two channels,
+    // something `toBeGreaterThan(1)` cannot see — is
+    // `there are exactly as many channels as the ROM has distinct priorities`
+    // in `tests/audio-channel-role.test.ts`.
+    const [channels, sources] = await Promise.all([need('CHANNELS'), need('CUE_SOURCES')])
+    const priorities = new Set(
+      Object.keys(channels).map((n) => (sources[n]?.kind === 'rom' ? sources[n]?.priority : undefined)),
+    )
+    expect(priorities.size, 'precondition: the ROM does not give every cue one priority').toBeGreaterThan(1)
     expect(
       new Set(Object.values(channels)).size,
       'the ROM’s priorities are not all equal, so the voices cannot all be one',
