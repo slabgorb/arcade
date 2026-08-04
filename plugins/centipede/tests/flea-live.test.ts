@@ -81,6 +81,10 @@ function makeRecorder() {
     clearRect() {},
     save() {},
     restore() {},
+    // cp7-1 AC-8: the facing flip blits mirrored sprites through a horizontal
+    // mirror (render.ts blit), so the ctx surface grew these two.
+    translate() {},
+    scale() {},
     drawImage(_img: unknown, _sx: number, _sy: number, _sw: number, _sh: number, x: number, y: number, w: number, h: number) {
       draws.push({ stamp: pending, x, y, w, h })
     },

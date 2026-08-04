@@ -109,6 +109,34 @@ export function scorpionStamp(pic: number): string {
   return `SCORP${pic - SCORP_PIC_LOW}`
 }
 
+/** cp7-1 AC-8: does a motion object with this horizontal direction face the
+ *  mirrored way? CENIR4.MAC:333-334 `LDY X,MOBJDH / BPL 35$ ;IF FACING LEFT` —
+ *  the display routine tests the SIGN BIT of MOBJDH and mirrors only when it is
+ *  set, so dh = 0 does NOT mirror (BPL is "branch if plus", and 0 is plus). The
+ *  flip is then EOR'd into bit 7 of the picture at :368, the same hardware bit
+ *  the PTS picture constants carry (flipsForPicture, src/core/pictures.ts).
+ *
+ *  This is ONE predicate over dh applied to every slot but the spider, exactly
+ *  as the ROM states it — never a list of entity types. The flea and the shot
+ *  decline to mirror on their own data (ANTDH is a hard 0, CENTI4.MAC:153-154;
+ *  SHOTDH is written nowhere in the revision), which is the mechanism doing the
+ *  work rather than a special case. */
+export function mirroredForDh(dh: number): boolean {
+  return dh < 0
+}
+
+/** cp7-1 AC-8: the screen-x a motion object blits at, carrying the ROM's
+ *  one-pixel correction for a mirrored sprite — CENIR4.MAC:337-338
+ *  `CLC / ADC I,01 ;FACE PICTURE BY CORRECTING HORIZONTAL`, applied to MOBJH
+ *  before it reaches HPOS. The increment happens in the ROM's OWN horizontal
+ *  space, so it must go through gunScreenX like every other position rather
+ *  than being added to the screen coordinate. That distinction is visible:
+ *  gunScreenX is mirrored (screen x FALLS as h rises, layout.ts:92-97), so the
+ *  ROM's +1 lands one pixel LEFT on our screen, not right. */
+function mobjScreenX(h: number, mirrored: boolean): number {
+  return gunScreenX(mirrored ? h + 1 : h)
+}
+
 function blit(
   ctx: CanvasRenderingContext2D,
   atlas: Atlas,
@@ -117,9 +145,24 @@ function blit(
   y: number,
   w: number,
   h: number,
+  mirrored = false,
 ): void {
   const rect = atlas.rect(name)
-  ctx.drawImage(atlas.image, rect.sx, rect.sy, rect.sw, rect.sh, x, y, w, h)
+  if (!mirrored) {
+    ctx.drawImage(atlas.image, rect.sx, rect.sy, rect.sw, rect.sh, x, y, w, h)
+    return
+  }
+  // cp7-1 AC-5: a HORIZONTAL mirror about the sprite's own box, and nothing
+  // else. cp2-1's ban on canvas transforms in render.ts guarded against the
+  // ROT270 being applied twice (bake AND render); a left-right mirror is not a
+  // rotation and cannot double it, so the ban is kept for rotate/setTransform/
+  // transform and narrowed to permit scale(-1, 1) alone — pinned in
+  // tests/facing-flip.test.ts. save/restore keeps it off the following draws.
+  ctx.save()
+  ctx.translate(x + w, y)
+  ctx.scale(-1, 1)
+  ctx.drawImage(atlas.image, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, w, h)
+  ctx.restore()
 }
 
 function drawText(ctx: CanvasRenderingContext2D, atlas: Atlas, text: string, x: number, y: number): void {
@@ -212,7 +255,9 @@ export function render(ctx: CanvasRenderingContext2D, atlas: Atlas, state: SimSt
     const live = (seg.pic & DEAD_BIT) === 0
     const exploding = seg.pic > EXPLOSION_DONE
     if (!live && !exploding) continue
-    blit(ctx, atlas, segmentStamp(seg.pic), gunScreenX(seg.h), gunScreenY(seg.v), SPRITE_H, SPRITE_W)
+    // cp7-1 AC-8: slots 0-11 take the facing flip from MOBJDH's sign.
+    const mirrored = mirroredForDh(seg.dh)
+    blit(ctx, atlas, segmentStamp(seg.pic), mobjScreenX(seg.h, mirrored), gunScreenY(seg.v), SPRITE_H, SPRITE_W, mirrored)
   }
 
   // cp3-1: the spider (slot 13). It draws in exactly three states — one of the
@@ -248,12 +293,18 @@ export function render(ctx: CanvasRenderingContext2D, atlas: Atlas, state: SimSt
   // in this same slot on pictures 0x30-0x33 and takes the middle branch below.
   const flea = state.flea
   if (flea.v < FLEA_PARK_V) {
+    // cp7-1 AC-8: slot 12 goes through the SAME predicate as the segments. A
+    // flea declines to mirror on its own data (ANTDH is a hard 0,
+    // CENTI4.MAC:153-154); a scorpion sharing the slot mirrors, because its
+    // ANTDH is -2/+1/-1 (CENTI4.MAC:2038-2045). One rule, two outcomes.
+    const mirrored = mirroredForDh(flea.dh)
+    const x = mobjScreenX(flea.h, mirrored)
     if (isFleaAlive(flea.pic)) {
-      blit(ctx, atlas, fleaStamp(flea.pic), gunScreenX(flea.h), gunScreenY(flea.v), SPRITE_H, SPRITE_W)
+      blit(ctx, atlas, fleaStamp(flea.pic), x, gunScreenY(flea.v), SPRITE_H, SPRITE_W, mirrored)
     } else if (isScorpion(flea.pic)) {
-      blit(ctx, atlas, scorpionStamp(flea.pic), gunScreenX(flea.h), gunScreenY(flea.v), SPRITE_H, SPRITE_W)
+      blit(ctx, atlas, scorpionStamp(flea.pic), x, gunScreenY(flea.v), SPRITE_H, SPRITE_W, mirrored)
     } else if (flea.pic > EXPLOSION_DONE) {
-      blit(ctx, atlas, segmentStamp(flea.pic), gunScreenX(flea.h), gunScreenY(flea.v), SPRITE_H, SPRITE_W)
+      blit(ctx, atlas, segmentStamp(flea.pic), x, gunScreenY(flea.v), SPRITE_H, SPRITE_W, mirrored)
     }
   }
 

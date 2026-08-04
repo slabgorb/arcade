@@ -12,9 +12,10 @@
 // that out in as many words — "A grep for the import is not the test" — so the
 // claim had to be re-measured rather than inherited.
 //
-// It is false, and cheaply so. The shell's whole DOM surface is FIVE canvas
+// It is false, and cheaply so. The shell's whole DOM surface is NINE canvas
 // members (`clearRect`, `drawImage`, `fillRect`, `fillStyle`,
-// `imageSmoothingEnabled`) plus `document.querySelector`,
+// `imageSmoothingEnabled`, and — since cp7-1's facing flip — `save`, `restore`,
+// `scale`, `translate`) plus `document.querySelector`,
 // `document.createElement`, `window.addEventListener`, `window.location` and a
 // bare `requestAnimationFrame` — measured with
 //   grep -rhoE "\b(ctx|logicalCtx)\.[a-zA-Z]+" src/shell/*.ts src/main.ts | sort -u
@@ -158,15 +159,24 @@ export function installShellDom(): ShellHarness {
     },
   })
 
-  // The five members the shell actually touches. Anything else the renderer
+  // The nine members the shell actually touches. Anything else the renderer
   // reaches for should fail loudly rather than be silently absorbed by a Proxy —
   // a stub that answers every question cannot tell you the shell changed.
+  //
+  // cp7-1: it did exactly that. The facing flip added save/restore/scale/
+  // translate to blit(), and this stub is what reported it — every boot-shell
+  // test threw `ctx.save is not a function` rather than quietly passing. The
+  // count above was re-measured with the grep in the header, not guessed.
   const makeCtx = (): Record<string, unknown> => ({
     fillStyle: '',
     imageSmoothingEnabled: false,
     clearRect: () => {},
     fillRect: () => {},
     drawImage: () => {},
+    save: () => {},
+    restore: () => {},
+    scale: () => {},
+    translate: () => {},
   })
 
   const makeCanvas = (): Record<string, unknown> => {

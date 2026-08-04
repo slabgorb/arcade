@@ -79,8 +79,11 @@ import type { Atlas } from '../src/shell/atlas'
 // transform-shaped call so the canvas-mirror trap above is machine-checked.
 interface Blit {
   name: string
+  /** Effective LEFT edge on the canvas, after any active transform (cp7-1). */
   x: number
   y: number
+  /** cp7-1: true when this sprite was painted through the facing mirror. */
+  mirrored: boolean
 }
 function makeRecorder() {
   const blits: Blit[] = []
@@ -93,19 +96,35 @@ function makeRecorder() {
       return { sx: 0, sy: 0, sw: 8, sh: 8 }
     },
   }
+  // cp7-1: a mirror can now legitimately be in effect for ONE sprite at a time
+  // (the facing flip). The recorder therefore models the 2D transform rather
+  // than recording raw drawImage args — a mirrored sprite is drawn at (0,0)
+  // under a translate, so the RAW x would be a lie and every position
+  // assertion in this file reads `x`.
+  let m = { a: 1, d: 1, e: 0, f: 0 }
+  const scopes: Array<typeof m> = []
   const ctx = {
     imageSmoothingEnabled: true,
     fillStyle: '' as string,
     fillRect() {},
-    drawImage(_i: unknown, _sx: number, _sy: number, _sw: number, _sh: number, x: number, y: number) {
-      blits.push({ name: pending ?? '<none>', x, y })
+    drawImage(_i: unknown, _sx: number, _sy: number, _sw: number, _sh: number, x: number, y: number, w = 0) {
+      const x0 = m.a * x + m.e
+      const x1 = m.a * (x + w) + m.e
+      blits.push({
+        name: pending ?? '<none>',
+        x: w === 0 || m.a > 0 ? m.a * x + m.e : Math.min(x0, x1),
+        y: m.d * y + m.f,
+        mirrored: m.a < 0,
+      })
       pending = null
     },
     scale(...args: number[]) {
       transforms.push({ fn: 'scale', args })
+      m = { ...m, a: m.a * args[0], d: m.d * args[1] }
     },
     translate(...args: number[]) {
       transforms.push({ fn: 'translate', args })
+      m = { ...m, e: m.e + m.a * args[0], f: m.f + m.d * args[1] }
     },
     transform(...args: number[]) {
       transforms.push({ fn: 'transform', args })
@@ -117,10 +136,22 @@ function makeRecorder() {
       transforms.push({ fn: 'rotate', args })
     },
     clearRect() {},
-    save() {},
-    restore() {},
+    save() {
+      scopes.push({ ...m })
+    },
+    restore() {
+      const p = scopes.pop()
+      if (p) m = p
+    },
   }
-  return { ctx: ctx as unknown as CanvasRenderingContext2D, atlas: atlas as unknown as Atlas, blits, transforms }
+  return {
+    ctx: ctx as unknown as CanvasRenderingContext2D,
+    atlas: atlas as unknown as Atlas,
+    blits,
+    transforms,
+    /** Truthy at end of frame means a mirror leaked past its save/restore. */
+    leakedMirror: () => (m.a < 0 ? 1 : 0),
+  }
 }
 
 /** A sim with an EMPTY playfield, so a staged mushroom is the only field blit. */
@@ -264,12 +295,51 @@ describe('cp2-14 AC-1 — the cp2-12 HUD lands on the true cabinet sides (absolu
     expect(guns[0].x, 'the first life icon sits at ROM column h6 = x 48').toBe(6 * TILE_W)
   })
 
-  it('applies NO horizontal canvas mirror — the flip is a coordinate change, not a scale(-1,1)', () => {
+  // cp7-1 AC-5 — this pin is NARROWED, deliberately, and here is the reasoning.
+  //
+  // As written it banned every scale(-1,1) anywhere in the frame. Its own failure
+  // message says what it was actually protecting: "a canvas mirror would flip the
+  // field AND mirror-write every glyph" — i.e. the hazard is implementing the
+  // cabinet's horizontal orientation by mirroring the WHOLE CANVAS instead of
+  // fixing the coordinate mapping, which is exactly the bug cp2-14 fixed.
+  //
+  // cp7-1's facing flip (AC-8) is not that. It is a per-sprite mirror opened and
+  // closed around ONE motion object by save/restore, and the ROM applies it the
+  // same way (CENIR4.MAC:368 EORs the flip into that slot's picture, not into the
+  // display). A blanket ban would have forbidden a faithful behaviour on the
+  // strength of a mechanism it shares with an unfaithful one.
+  //
+  // So the guarantee is re-stated as what cp2-14 meant rather than dropped: the
+  // field mapping is still a coordinate change, no HUD glyph is ever mirror-
+  // written, and no mirror may outlive its own sprite. The whole-canvas mirror is
+  // still impossible — it would trip every one of these.
+  it('never mirror-writes a HUD glyph, and never leaks a mirror past its sprite', () => {
+    const { r, y } = hud()
+    // Named, not merely "everything on the HUD row" — a mirrored motion object
+    // that happened to sit on that row would otherwise be misread as a glyph.
+    const hudGlyphs = r.blits.filter((b) => b.y === y && (/^DIGIT_/.test(b.name) || b.name === 'GUN'))
+    expect(hudGlyphs.length, 'the HUD must have drawn for this to mean anything').toBeGreaterThan(0)
+    expect(
+      hudGlyphs.filter((b) => b.mirrored),
+      'a mirrored HUD glyph means the mirror escaped the sprite that opened it',
+    ).toEqual([])
+    expect(r.leakedMirror(), 'every mirror must be closed by its own restore()').toBe(0)
+  })
+
+  it('still sets no transform MATRIX and never rotates — the cp2-14 ban that is unchanged', () => {
     const { r } = hud()
-    const mirrored = r.transforms.filter(
-      (t) => (t.fn === 'scale' && t.args[0] < 0) || (t.fn === 'setTransform' && t.args[0] < 0) || (t.fn === 'transform' && t.args[0] < 0),
-    )
-    expect(mirrored, 'a canvas mirror would flip the field AND mirror-write every glyph').toEqual([])
+    const banned = r.transforms.filter((t) => t.fn === 'setTransform' || t.fn === 'transform' || t.fn === 'rotate')
+    expect(banned, 'the field mapping must stay a coordinate change, not a matrix').toEqual([])
+  })
+
+  it('the only scale() the renderer ever performs is the horizontal mirror scale(-1, 1)', () => {
+    // Narrowed, not opened: scale(1,-1) is a vertical flip and scale(-1,-1) is
+    // the 180-degree cocktail turn. Neither is sanctioned, and a bare "scale is
+    // allowed now" would have let both through.
+    const { r } = hud()
+    for (const t of r.transforms.filter((x) => x.fn === 'scale')) {
+      expect(t.args.join(','), `renderer called scale(${t.args.join(', ')})`).toBe('-1,1')
+    }
   })
 })
 

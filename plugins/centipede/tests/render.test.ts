@@ -44,6 +44,10 @@ function makeCtx() {
     clearRect() {},
     save() {},
     restore() {},
+    // cp7-1 AC-8: the facing flip blits mirrored sprites through a horizontal
+    // mirror (render.ts blit), so the ctx surface grew these two.
+    translate() {},
+    scale() {},
   }
   return {
     ctx: ctx as unknown as CanvasRenderingContext2D,
@@ -293,6 +297,10 @@ describe('cp2-12 render — the HUD sits on the ROM v=0x1F top row (UPSCRE / DLI
       clearRect() {},
       save() {},
       restore() {},
+      // cp7-1 AC-8: the facing flip blits mirrored sprites through a horizontal
+      // mirror (render.ts blit), so the ctx surface grew these two.
+      translate() {},
+      scale() {},
     }
     return { ctx: ctx as unknown as CanvasRenderingContext2D, atlas: atlas as unknown as Atlas, blits }
   }

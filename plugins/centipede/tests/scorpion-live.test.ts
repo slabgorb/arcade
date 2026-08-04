@@ -84,6 +84,10 @@ function makeRecorder(): { ctx: CanvasRenderingContext2D; atlas: Atlas; draws: D
     clearRect() {},
     save() {},
     restore() {},
+    // cp7-1 AC-8: the facing flip blits mirrored sprites through a horizontal
+    // mirror (render.ts blit), so the ctx surface grew these two.
+    translate() {},
+    scale() {},
     drawImage(
       _img: unknown,
       _sx: number,
