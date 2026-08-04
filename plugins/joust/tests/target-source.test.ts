@@ -35,6 +35,14 @@ const LAWS: ReadonlyArray<{ name: string; file: string; n: number; must: readonl
   { name: 'the secondary grace gate', file: 'JOUSTRV4.SRC', n: 4468, must: ['LDA', 'TARTM2'] },
   { name: 'nearest tiebreak — the Y coordinate', file: 'JOUSTRV4.SRC', n: 4477, must: ['SUBB', 'PPOSY+1,U', 'FIND CLOSEST'] },
   { name: 'nearest tiebreak — the X coordinate', file: 'JOUSTRV4.SRC', n: 4482, must: ['SUBD', 'PPOSX,U'] },
+  // ── jt9-24: the decode-critical instructions of the nearest-of-two metric ────
+  { name: 'the Y-metric negate (abs via NEGB)', file: 'JOUSTRV4.SRC', n: 4479, must: ['NEGB'] },
+  { name: 'the X-metric negate carries a −2 bias (ADDD #-1, not a plain NEG)', file: 'JOUSTRV4.SRC', n: 4486, must: ['ADDD', '#-1'] },
+  { name: 'the overflow guard tests the X-metric HIGH byte', file: 'JOUSTRV4.SRC', n: 4487, must: ['SPRXX', 'TSTA'] },
+  { name: 'a non-zero high byte SKIPS the X store (the X axis is dead)', file: 'JOUSTRV4.SRC', n: 4488, must: ['BNE', 'SPRLOX'] },
+  { name: 'the final compare — register B (secondary X low byte) vs the primary slot', file: 'JOUSTRV4.SRC', n: 4512, must: ['CMPB', '1,S'] },
+  { name: 'the tiebreak is a STRICT less-than', file: 'JOUSTRV4.SRC', n: 4514, must: ['BLO', 'SPN3PL'] },
+  { name: 'the fall-through favours the SECONDARY (tie → TARPL2)', file: 'JOUSTRV4.SRC', n: 4515, must: ['SPN2PL', 'LDX', 'TARPL2'] },
   // ── STPLY: register a player into a slot, arm its grace timer ────────────────
   { name: 'register asks if the slot is empty', file: 'JOUSTRV4.SRC', n: 4656, must: ['STPLY2', 'LDD', 'TARPLY'] },
   { name: 'claim the primary slot', file: 'JOUSTRV4.SRC', n: 4658, must: ['STU', 'TARPLY', 'IN USE'] },
@@ -136,5 +144,18 @@ describe('each aggro law is pinned by a claims/*.json entry', () => {
     const ids = loadClaims().map((c) => c.id)
     const dupes = [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))]
     expect(dupes, 'duplicate claim ids').toEqual([])
+  })
+
+  it('jt9-24 — JT81-003 no longer asserts the REFUTED min-of-axes metric', () => {
+    // The :4476-4514 decode (jt9-24) refutes "the smaller of the per-axis gaps":
+    // the ROM reads ONLY the primary's Y and the secondary's X (a cross-axis
+    // compare), never min(|dx|,|dy|). JT81-003 must be rewritten to the decoded
+    // rule — Dev owns the exact replacement text; this only pins that the retired
+    // claim is gone. RED until it is corrected.
+    const c = loadClaims().find((claim) => claim.id === 'JT81-003')
+    expect(c, 'JT81-003 (the SELPLY nearest-of-two claim) must exist').toBeDefined()
+    expect(c?.claim, 'JT81-003 still states the retired min-of-axes metric').not.toContain(
+      'smaller of the per-axis gaps',
+    )
   })
 })
