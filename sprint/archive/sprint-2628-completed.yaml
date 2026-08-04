@@ -1490,3 +1490,8 @@ completed_stories:
     title: The player's GUN carries the same visibility divergence C_PS just lost — the clone can kill a TIE it never drew (sw8-19 TEA + Dev finding) — PLUS the ROM's hit/sights SHAPES (user ruling at setup; box∩1.5x octagon, L1 sights diamond)
     points: 5
     completed: '2026-08-04'
+  - id: cp7-2
+    epic: cp7
+    title: The train enters on the score line — the render paints where the ROM says off-screen
+    points: 2
+    completed: '2026-08-04'
