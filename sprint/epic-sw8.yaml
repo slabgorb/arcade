@@ -475,7 +475,7 @@ stories:
       scenery. AC8 makes the mutation proof mandatory for each.
     points: 5
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-03'
     repos: arcade
     workflow: tdd
@@ -489,5 +489,13 @@ stories:
       - "AC7 — The shape deviation being retired is recorded WITH ITS NUMBERS, and the doctrine paragraph at gameRules.ts:118-123 that argues for the world-space sphere is rewritten rather than left contradicting the code it sits above. MEASURED at setup over 2000 sampled directions: the disc model is a strict SUBSET of the cabinet's in both tests — 0/2000 angles where the clone reaches further than the ROM. Kill: identical on the axes, cabinet reaching sqrt(5)/2 = 1.1180 R at atan(1/2) = 26.57 degrees off-axis (the octagon corner: 279.5 u against our 250). Sights: cabinet 3.0 R on axis against our 2.0 R, never dipping below 2.121 R. So the pre-existing deviation could only ever make the clone STINGIER than the cabinet, never more permissive — which is why it survived this long unnoticed."
       - 'AC8 — Each of the four behaviour changes (AC1 gate, AC2 gate, AC5 kill shape, AC6 sights shape) is MUTATION-PROVEN with the mutated string recorded VERBATIM, so the next reader re-runs the string rather than reconstructing the intent. This is mandatory rather than customary here: measured blast radius is 2 tests, 0, 0 and 1 respectively, so three of the four ship invisible to a 2252-test suite. Record which test reddens for each mutant, and treat any mutant that survives as a question about observability before writing a test for it.'
     type: bug
-    review_findings: "Round 3 REJECTED, 3 HIGH. Z2 [TEST]: the R5 crossover guard (sw8-27-remediation.test.ts:410,:424) matches the DIGITS /2694|28%/ inside a correctly-scoped block — mutation-proven both directions in a worktree: nonsense keeping the tokens passes 18/18, and the CORRECT re-derivation (6158 u / ~12%) turns it RED, with the failure message prescribing the wrong number. Z1 [DOC]: tie-status.ts:322-323 hangs the ASPECT gap's 2694 u / ~28% on the STALE-AIM sentence; re-derived from aimDirection/FOV_Y the flick figure is 6158.4 u at full travel and the crossover is 12.18%, so the file understates it 2.3x. sim.ts:168 and both sibling test files are correct — one site of four is wrong. Z3 [TEST]: R6's RESOLVED citation check (:481-497) asserts the token gameOver, not the 'alongside the mode' claim; retargeting to sim.ts:241/:256 (gameOver: false in mode:'attract' literals) leaves 18/18 green. Plus LOW Z4/Z5 (two stale numbers falsified by this story's own GREEN) and Z6 (a non-discriminating control, note only). Machine re-verified sound: beamHit byte-identical to 92c5ed1, GREEN is comment-only 14/14, gates 203 files/2298 tests/0 failed, lint 0, orchestrator 390/390, guard 28."
-    review_verdict: rejected
+    review_findings: "APPROVED round 5 (reversed from REJECTED, on the record). Seven findings V1-V7 raised, all non-blocking and all in TEST files or the session file — zero paths under plugins/star-wars/src/. V1 [HIGH]: the magnitude check tested SET MEMBERSHIP not attribution — 'derived' was the cross-product named x points, so swapping '616 u' and '6158 u' in the C_PS crossover sentence (a tenfold error in both clauses) passed 2305/2305. V2 [HIGH]: the population was keyed on the unit token's spelling and case (/u\\b/ with no /i), so '9999 U', '9999 units' and '40 percent' escaped examination entirely. V3-V7: a falsified docstring count, a brittle 40-char-window seat, a mis-reported non-null assertion, a self-referential citation claim, and three unlogged deviations. FIXED IN ROUND 6 rather than deferred: on the Reviewer's own handoff instruction the guard was REDUCED, not deepened — the crossover-sentence parser (numericSentences, QUOTED_U/QUOTED_PCT, the names regexes, the operating-point extraction, the attribution machine) and the V4 seat were DELETED, closing V1/V2/V4 by removal. The six recorded mutants are therefore UNCHECKED, not caught, and the file says so verbatim. V3, V5, V6 fixed in place; V7 logged under Design Deviations. Rationale: rounds 3-5 each replaced a shallow proxy with a deeper one (digit, keyword position, set membership; wording, token) and each failed one level down, because no regex reads English. Gates at finish, run directly: 203 files / 2303 tests / 0 failed (2305 -> 2303 = the two deleted it-blocks), lint 0, orchestrator 390/390, citation guard 28 against a ceiling of 29, purity 14/14. Zero production lines changed in round 6."
+    review_verdict: approved
+  - id: sw8-28
+    title: REDUCE the sw8-27 crossover guard instead of deepening it a sixth time — delete the sentence parser (round-5 V1-V7; test/doc only, zero paths under plugins/star-wars/src/)
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug

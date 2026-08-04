@@ -128,10 +128,13 @@ function windowsAround(text: string, claim: RegExp, radius = CITATION_WINDOW): s
 
 /** The FLATTENED sentence containing index `i`.
  *
- *  A character radius is the right scope for "is the citation beside the claim" and the
+ *  NO GUARD CONSUMES THIS ANY MORE. It was the unit the rounds 3-5 attribution guard read:
+ *  a character radius is the right scope for "is the citation beside the claim" and the
  *  WRONG one for "which mechanism does this figure belong to" — the round-3 review's Z1 sits
- *  in a block that also contains the word it must not be attributed to. An attribution is
- *  owned by a sentence, so that is the unit matched.
+ *  in a block that also contains the word it must not be attributed to — and an attribution
+ *  is owned by a sentence. That guard was deleted at the round-5 review (V1/V2; THE
+ *  REDUCTION note in the R5 describe below says what that leaves unchecked). The helper and
+ *  its seats stay as the record of the segmentation and of its limits.
  *
  *  ROUND 4 (W7): the justification that stood here was measured wrong and argued the wrong
  *  way round. It said `tie-status.ts` puts "the same viewport aspect" *some 400 characters
@@ -144,14 +147,17 @@ function windowsAround(text: string, claim: RegExp, radius = CITATION_WINDOW): s
  *  it in one direction or the other. A sentence boundary is structural and cannot drift.
  *
  *  Recompute: `flat()` `tie-status.ts`, take `cpsBlock()`, and diff the index of `/aspect/i`
- *  against the first `/(\d[\d,.]*)\s*u\b/` match. Pinned live in the W5 seat below.
+ *  against the first `/(\d[\d,.]*)\s*u\b/` match. (The seat that pinned this live was the
+ *  round-5 review's V4 — a 40-character window any re-wrap of the block would cross — and it
+ *  was deleted with the parser rather than re-expressed.)
  *
  *  Bounded by `[.!?]` + whitespace, which the flattened comments produce only at real
  *  sentence ends: `0.1`, `WSMAIN.MAC:3881` and `tie-vm.ts:341-342` all keep a non-space after
  *  the dot, so none of them splits. (`sim.ts:341` stood here as the third example and occurs
- *  nowhere in this block, nor anywhere in this plugin — round-4 review W7. `tie-vm.ts:341-342`
+ *  nowhere in this block — nor anywhere in this plugin as a LIVE citation, only in notes like
+ *  this one — round-4 review W7, qualified at the round-5 review's V6. `tie-vm.ts:341-342`
  *  is the real token of that shape in the block, same line number, different file.) The `\s+`
- *  is the load-bearing half and it now has its own seat: drop it and all three tokens split.
+ *  is the load-bearing half and it has its own seats below: drop it and all three tokens split.
  *  `:` and `;` are deliberately NOT breaks — `sim.ts` names the mechanism before the colon
  *  ("The aspect gap grows with the yoke, though: 2694 u at full deflection"), and breaking
  *  there would strip the subject off its own figure and make a correct sentence
@@ -163,25 +169,9 @@ function sentenceAt(text: string, i: number): string {
   return text.slice(start, rel < 0 ? text.length : i + rel + 1)
 }
 
-/** Every FLATTENED sentence in `text` that makes a numeric claim — one carrying a separation
- *  in world units or a percentage — in order of first appearance, deduplicated.
- *
- *  ROUND 4 (W3): the population this replaces was `[...text.matchAll(/full[- ](?:deflection|
- *  travel)/g)]`, i.e. selected on a WORDING. Four different false sentences were shown to ride
- *  along unexamined because they phrased the same claim another way ("widens to 9999 u",
- *  "saturates at 9999 u", "Budget for ~40% of travel instead.", "At maximum yoke, the aspect
- *  drop reaches 100 u, crossing at 5% of travel."), and the `claims.length > 0` floor was
- *  satisfied by the one correct sentence standing beside them. #19: the population was filtered
- *  on a neighbour's phrasing rather than on the field the body reads. So the selector is now the
- *  field itself — a number in `u`, or a `%` — and a sentence cannot escape examination by
- *  choosing different words. */
-const QUOTED_U = /(\d[\d,.]*)\s*u\b/g
-const QUOTED_PCT = /(\d+(?:\.\d+)?)\s?%/g
-function numericSentences(text: string): string[] {
-  const at: number[] = []
-  for (const re of [QUOTED_U, QUOTED_PCT]) for (const m of text.matchAll(re)) at.push(m.index)
-  return [...new Set(at.sort((a, b) => a - b).map((i) => sentenceAt(text, i)))]
-}
+// (`numericSentences` and its `u`/`%` population selectors stood here from round 4 to the
+// round-5 review. Deleted, not deepened, at that review's V1/V2 — see THE REDUCTION note in
+// the R5 describe below for what that deliberately leaves unchecked.)
 
 /** `src` with comments — and optionally string BODIES — replaced by spaces of the same length,
  *  so both character indices and line numbers survive untouched.
@@ -282,7 +272,9 @@ describe('sw8-27 W5 — the apparatus: the sentence splitter has a seat of its o
 
   it('does not split inside a source citation — `tie-vm.ts:341-342`, the token W7 corrected', () => {
     // The docstring named `sim.ts:341` here for three rounds. It occurs nowhere in the block it
-    // describes; this is the real token of that shape in it (same line number, different file).
+    // describes — and nowhere in this plugin as a live citation, only in notes like this one
+    // (round-5 review V6); this is the real token of that shape in it (same line number,
+    // different file).
     const v = 'The VM seat is tie-vm.ts:341-342 and the flick is 0.1. Done.'
     expect(sentenceAt(v, v.indexOf('0.1')), 'a source citation is not a sentence end').toBe(
       'The VM seat is tie-vm.ts:341-342 and the flick is 0.1.',
@@ -309,23 +301,11 @@ describe('sw8-27 W5 — the apparatus: the sentence splitter has a seat of its o
     expect(sentenceAt(c, c.indexOf('2694')), 'so the mechanism is inside the extracted sentence').toMatch(/aspect/)
   })
 
-  it('W7, live — a ±600 character window would MISS the word the sentence must not name', () => {
-    // The docstring's justification, re-taken here rather than remembered. The C_PS block names
-    // `aspect` exactly once, in the shared-origin clause two paragraphs above the flick sentence.
-    const cps = cpsBlock()
-    const aspectAt = cps.search(/aspect/i)
-    const firstMag = [...cps.matchAll(QUOTED_U)][0]
-    expect(aspectAt, 'fixture: the block does contain the word, so this measurement is live').toBeGreaterThan(0)
-    expect([...cps.matchAll(/aspect/gi)], 'fixture: exactly once, so the distance is unambiguous').toHaveLength(1)
-    expect(firstMag, 'fixture: and it carries at least one separation in units').toBeTruthy()
-    const gap = firstMag.index - aspectAt
-    expect(gap, 'W7: 618 characters from the nearest anchor back to `aspect`').toBeGreaterThan(600)
-    expect(gap, 'and only just — 18 characters of margin, which is the argument for a sentence').toBeLessThan(640)
-    // And the property all of that exists to deliver: the flick sentence does not contain the
-    // word, so the mechanism the guard reads off it cannot be the aspect drop.
-    expect(sentenceAt(cps, firstMag.index), 'the extracted sentence is the flick sentence').toMatch(/stale|flick/i)
-    expect(sentenceAt(cps, firstMag.index), 'and it does not reach the aspect clause above it').not.toMatch(/aspect/i)
-  })
+  // (The 'W7, live' seat stood here: it pinned the 618-character distance from `aspect` to the
+  // block's first `u` figure inside a 600..640 window — the round-5 review's V4, which any
+  // re-wrap of the intervening prose reddened with a message about something else. With the
+  // attribution guard deleted there is no window left to justify, so the seat is deleted too,
+  // per the review's handoff, rather than re-expressed as the property it was arguing for.)
 })
 
 describe('sw8-27 F1 — the preamble no longer calls the divergence this story closed deliberate', () => {
@@ -545,7 +525,7 @@ describe('sw8-27 F10 — VWGUN’s four exits are cited as the compare-and-branc
   })
 })
 
-describe('sw8-27 R5 — the separation examples support the conclusion attached to them', () => {
+describe('sw8-27 R5 — the separation figures, re-derived from the production geometry', () => {
   // The round-2 review's R5. sw8-27 widened the warning band from the retired 500 u disc to
   // the cabinet's L1 octagon, 3 × TIE_HIT_RADIUS = 750 u on the axis. Two source comments
   // made that 500 → 750 edit and did NOT re-derive the conclusion resting on it, so they now
@@ -580,9 +560,10 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
   //   * the ASPECT drop — the same yoke read against a different viewport. This one DOES
   //     grow with absolute deflection: 539 u at yoke 0.2, 2694 u at full, crossing at ~28%.
   //
-  // So the guard derives the pair per mechanism and matches it against the SENTENCE that
-  // makes the claim, and its failure message quotes the computed figure rather than a typed
-  // one — it cannot prescribe a stale number, because it has no stale number to prescribe.
+  // So rounds 3-5's guard derived the pair per mechanism and matched it against the SENTENCE
+  // that made the claim, its failure message quoting the computed figure rather than a typed
+  // one — it could not prescribe a stale number, because it had no stale number to prescribe.
+  // That guard is deleted now — THE REDUCTION, at the end of this header, says why.
   //
   // == ROUND 4 (W1): THE MAGNITUDE MUST COME FROM THE CLAIM, NOT FROM A POSITION =======
   //
@@ -596,15 +577,17 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
   // carried the `-1`-into-`slice` fail-open that `block()` twelve screens above exists to
   // close, W10, and a hand-maintained second copy of `AT_FULL`'s pattern.)
   //
-  // Nothing is sliced any more. A sentence's numbers are checked against what the SENTENCE'S
-  // OWN TERMS produce — the mechanisms it names, the operating points it states, and the
-  // production geometry that turns those into separations. There is no side of a keyword to be
-  // on and no last-figure-wins: `9999 u` is not a separation this geometry yields at any point
-  // the sentence mentions, wherever in the sentence it sits.
+  // Round 5's replacement sliced nothing: a sentence's numbers were checked against what the
+  // SENTENCE'S OWN TERMS produced — the mechanisms it named, the operating points it stated,
+  // and the production geometry that turned those into separations. The round-5 review broke
+  // that one level down again, twice: membership in the cross-product of named mechanisms and
+  // stated points is not ATTRIBUTION, so two figures could swap clauses and stay green (V1),
+  // and the population was keyed on the unit token's spelling, so `9999 U` was never examined
+  // at all (V2). THE REDUCTION below is the answer.
   //
   // == AND THE BASIS IS PART OF THE CLAIM (W4) ========================================
   //
-  // The live sentences quote `613 u`, which is the flick measured ALONG THE RAY. The 750 u band
+  // At round 4 the live sentences quoted `613 u`, the flick measured ALONG THE RAY. The 750 u band
   // is an L1 bound on `siteOffset`'s dx/dy, so it lives in the DEPTH PLANE, and an along-ray
   // chord is not a quantity that band can be compared against. The same flick in the plane the
   // band bounds is 615.8 u. That is not a rounding quibble — the two bases behave differently:
@@ -621,8 +604,36 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
   //
   // The note that used to sit in the seat below said the two bases were "2.4 u apart, and
   // nothing here turns on which". True of a sentence quoting ONE figure, which is what it was
-  // written against. These sentences quote a pair 1494 u apart and invite the reader to scale
-  // between them, so it turns on which, and the guard requires the one basis the band lives in.
+  // written against. These sentences quoted a pair 1494 u apart and invited the reader to scale
+  // between them, so it turns on which — the round-5 GREEN moved the prose onto the in-plane
+  // figures, and the seat below keeps both bases derived and told apart.
+  //
+  // == THE REDUCTION (after the round-5 review): WHAT THIS SUITE NO LONGER CHECKS ======
+  //
+  // Round 3 matched a DIGIT. Round 4 matched a POSITION — a keyword's side. Round 5 matched a
+  // SET, and keyed its population on a token's spelling. Each round replaced a shallow proxy
+  // for "this figure belongs to that claim" with a deeper proxy, and each broke exactly one
+  // level down, because no regex reads English. A sixth proxy would be the same failure mode
+  // again, so per the round-5 review's handoff this rework is a guard REDUCTION, not a
+  // deepening: `numericSentences`, the `u`/`%` population selectors, the mechanisms' `names`
+  // regexes, the operating-point extraction and the whole sentence-attribution seat are
+  // DELETED (V1, V2), along with the W7 character-window seat that only that machinery
+  // justified (V4).
+  //
+  // WHAT REMAINS: the `.not.toMatch()` retirement guards above — they caught rounds 1 and 2,
+  // and are cheap and stable — and the arithmetic seat below, which re-derives every figure in
+  // this story from the production geometry, so the correct numbers stay on record beside the
+  // constants they follow from, with their recompute.
+  //
+  // WHAT IS NOW UNCHECKED, DELIBERATELY: nothing in this suite reads the prose in `sim.ts` or
+  // `tie-status.ts` any more. Every prose mutant the round-5 review recorded was RE-RUN under
+  // this reduced guard at the rework, and every one rides through green: the `616 u`/`6158 u`
+  // swap inside the C_PS flick sentence, the `616 u`/`539 u` swap in the stepGame preamble,
+  // `539 u` -> `1232 u`, and the spelling escapes `9999 U`, `9999 units` and `40 percent`.
+  // Nothing else catches them either; they are unchecked. A wrong figure in those comments is
+  // now caught by a reader with the seat below as the reference table, or not at all. Do not
+  // rebuild the parser on the assumption its absence was an oversight — its five-round history
+  // is in the sw8-27 session record and the sw8 archive.
 
   const DEPTH = 6000
   const WIDE = 16 / 9
@@ -649,23 +660,19 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
   /** The two mechanisms the two blocks describe.
    *
    *  `at(x)` is the IN-PLANE separation at operating point `x` ∈ (0, 1], COMPUTED from the
-   *  production geometry and never typed — which is what stops the guard below being wrong
-   *  about the figure it asks for, since it will have worked the answer out. `x` means
-   *  different things to the two mechanisms and the sentences say which: for the freshness gap
-   *  it is the SIZE of a one-frame yoke change (that gap does not know where the yoke already
-   *  was); for the aspect drop it is the absolute deflection. `names` is how a sentence declares
-   *  which one it is about — the spellings are the ones the two files already use, and bare
-   *  `stale` is in the set because `sim.ts` writes "one frame stale", not "stale aim". */
+   *  production geometry and never typed. `x` means different things to the two mechanisms:
+   *  for the freshness gap it is the SIZE of a one-frame yoke change (that gap does not know
+   *  where the yoke already was); for the aspect drop it is the absolute deflection. (The
+   *  `names` regexes that let the retired attribution guard read a sentence's subject were
+   *  deleted with it — THE REDUCTION above.) */
   const MECHANISMS = [
     {
       what: 'the aim-freshness gap (one frame of stale yoke)',
-      names: /stale|flick|freshness/i,
       at: (d: number) => apart(inPlane(0, WIDE), inPlane(d, WIDE)),
       alongRayAt: (d: number) => alongRay(0, WIDE, d, WIDE),
     },
     {
       what: 'the aspect drop (the same yoke against a different viewport)',
-      names: /aspect/i,
       at: (y: number) => apart(inPlane(y, WIDE), inPlane(y, 1)),
       alongRayAt: (y: number) => alongRay(y, WIDE, y, 1),
     },
@@ -687,10 +694,6 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
     }
     return (lo + hi) / 2
   }
-
-  /** The prose rounds to whole units and whole percent, so a quoted figure may sit half a unit
-   *  from the derived one. 613 against an in-plane 615.84 is 2.84 away and is NOT a rounding. */
-  const ROUNDING = 0.5
 
   it('RESOLVED — the two quoted separations are BELOW the band, and the crossover is not', () => {
     // Fixture anchors first: if either production constant is retuned, every number below
@@ -820,172 +823,6 @@ describe('sw8-27 R5 — the separation examples support the conclusion attached 
     //     target's depth plane and C_PS bounds |dx| + |dy| by 3 · TIE_HIT_RADIUS.
     expect(SIGHTS_OCTAGON * TIE_HIT_RADIUS, 'the band is the octagon bound on in-plane dx/dy').toBe(BAND)
   })
-
-  it('so neither source comment offers a sub-band separation as the divergence', () => {
-    // Scoped to the BLOCK that carries the claim in each file, never the file (R1/R2's defect
-    // class), then to the SENTENCE that makes the claim (round 3, Z2), and now to the sentence's
-    // OWN TERMS (round 4, W1) — because scope and mechanism together still left the magnitude
-    // being read off a position. Every figure a sentence quotes must be one that the mechanisms
-    // it names produce at the operating points it states, in the basis the band lives in.
-    //
-    // Three routes clear this and the fix column allows all three: quote this mechanism's
-    // crossover alongside the example, drop the sub-band figures, or drop the comparison against
-    // the band. What must not survive is a figure the sentence's own terms do not yield.
-    //
-    // Findings are ACCUMULATED and asserted once at the end rather than thrown at the first
-    // mismatch, so a single red names every site instead of sending the author round the loop
-    // one file at a time. The floors below are what stop that accumulator passing by never
-    // filling: they pin which blocks were opened, which made numeric claims, and which carried a
-    // crossover — so a population that silently narrowed to nothing reddens instead of passing.
-    /** Operating points a sentence states about itself: a decimal yoke figure, or the top of
-     *  the range in any of the spellings the two files use. NOT a phrase the magnitude is
-     *  positioned against — nothing is sliced on it; it only says which points to evaluate. */
-    const OPERATING_POINT = /\b0\.\d+\b/g
-    const AT_FULL = /full[- ](?:deflection|travel)|maximum (?:yoke|deflection|travel)/i
-
-    const examined: string[] = []
-    const claiming: string[] = []
-    const withCrossover: string[] = []
-    const magsChecked: number[] = []
-    const pctsChecked: number[] = []
-    const findings: string[] = []
-
-    // W8: each block's SUBJECT is declared, so a self-consistent sentence about the OTHER
-    // mechanism cannot be transplanted in and pass on internal agreement alone. A wrong figure
-    // then has one exit — correct the number — where before it had two, the second being to
-    // rename the mechanism.
-    for (const [name, text, subject] of [
-      ['sim.ts (the stepGame preamble)', preambleOf(read('src', 'core', 'sim.ts')), ASPECT],
-      ['tie-status.ts (the C_PS block)', cpsBlock(), FRESH],
-    ] as const) {
-      examined.push(name)
-      const sentences = numericSentences(text)
-      if (sentences.length === 0) continue
-      claiming.push(name)
-
-      for (const s of sentences) {
-        const named = MECHANISMS.filter((m) => m.names.test(s))
-        const points = [
-          ...new Set([...[...s.matchAll(OPERATING_POINT)].map((m) => Number(m[0])), ...(AT_FULL.test(s) ? [1] : [])]),
-        ].filter((x) => x > 0 && x <= 1)
-        const mags = [...s.matchAll(QUOTED_U)].map((m) => Number(m[1].replace(/,/g, '')))
-        const pcts = [...s.matchAll(QUOTED_PCT)].map((m) => Number(m[1]))
-
-        /** What this sentence's own terms yield, in the plane the band bounds. */
-        const derived = named.flatMap((m) => points.map((p) => ({ m, p, u: m.at(p) })))
-        const table =
-          derived.map((d) => `${d.m.what} at ${d.p} = ${d.u.toFixed(1)} u`).join('; ') || '(nothing — see above)'
-
-        // (1) EVERY separation in the sentence must be one those terms produce, or the band.
-        // No slice, no keyword side, no last-figure-wins: a figure is checked wherever it sits.
-        for (const mag of mags) {
-          magsChecked.push(mag)
-          if (Math.abs(mag - BAND) <= ROUNDING) continue
-          if (derived.some((d) => Math.abs(mag - d.u) <= ROUNDING)) continue
-          // Diagnose rather than prescribe: the commonest wrong figure here is the RIGHT
-          // mechanism at the RIGHT point in the WRONG basis, and saying so is more use than
-          // quoting a replacement digit.
-          const basis = named
-            .flatMap((m) => points.map((p) => ({ m, p, u: m.alongRayAt(p) })))
-            .find((d) => Math.abs(mag - d.u) <= ROUNDING)
-          findings.push(
-            `${name}: "${mag} u" is not a separation this sentence's own terms produce. It names ` +
-              `[${named.map((m) => m.what).join(' | ') || 'no mechanism'}] and states the operating ` +
-              `point(s) [${points.join(', ') || 'none'}], which in the depth plane give: ${table}. ` +
-              (basis
-                ? `${mag} u is ${basis.m.what} at ${basis.p} measured ALONG THE RAY (${basis.u.toFixed(1)} u), ` +
-                  `not in the depth plane. The ${BAND} u band is an L1 bound on siteOffset's dx/dy, so it ` +
-                  `lives in that plane and an along-ray chord is not comparable to it — and unlike the ` +
-                  `in-plane figure the along-ray one changes with where the yoke already is. In the plane ` +
-                  `the same point gives ${basis.m.at(basis.p).toFixed(1)} u.`
-                : `No mechanism this sentence names yields it at any point it states.`) +
-              ` The sentence: "${s}"`,
-          )
-        }
-
-        // (2) A sentence with a PERCENTAGE is making a crossover claim, and a crossover belongs
-        // to one mechanism at one basis. These are the checks that only apply to those.
-        if (pcts.length === 0) continue
-        withCrossover.push(name)
-        // Recorded on ENCOUNTER, not on passing: the floor below asks whether the population
-        // found any percentages, and must not be satisfiable only when every check succeeds.
-        pctsChecked.push(...pcts)
-        if (named.length !== 1) {
-          findings.push(
-            `${name}: a crossover belongs to ONE mechanism, and this sentence names ${named.length} ` +
-              `[${named.map((m) => m.what).join(' | ') || 'none'}]. Name the mechanism the figure ` +
-              `belongs to, as sim.ts does ("The aspect gap grows with the yoke, though: …"); if a ` +
-              `sentence legitimately needs a second percentage, split it — an attribution is owned ` +
-              `by a sentence. The sentence: "${s}"`,
-          )
-          continue
-        }
-        const mech = named[0]
-        if (mech !== subject) {
-          findings.push(
-            `${name}: this block's subject is ${subject.what}, but the crossover sentence in it is ` +
-              `about ${mech.what}. The two are ${(FRESH.at(1) / ASPECT.at(1)).toFixed(3)}× apart, so ` +
-              `a sentence that agrees with itself can still be the wrong mechanism's — which is the ` +
-              `second exit a wrong figure must not have. The sentence: "${s}"`,
-          )
-          continue
-        }
-        if (!points.includes(1)) {
-          findings.push(
-            `${name}: this sentence gives a crossover without saying where the separation reaches ` +
-              `at FULL travel, so there is nothing for the percentage to be a fraction of. ` +
-              `${mech.what} separates the rays by ${mech.at(1).toFixed(1)} u there. The sentence: "${s}"`,
-          )
-          continue
-        }
-        if (!mags.some((mag) => Math.abs(mag - mech.at(1)) <= ROUNDING)) {
-          findings.push(
-            `${name}: this sentence reaches full travel without quoting how far apart the rays are ` +
-              `there. ${mech.what} separates them by ${mech.at(1).toFixed(1)} u. The sentence: "${s}"`,
-          )
-          continue
-        }
-        const want = crossoverOf(mech) * 100
-        for (const p of pcts) {
-          if (Math.abs(p - want) <= ROUNDING) continue
-          findings.push(
-            `${name}: ${mech.what} crosses the ${BAND} u band at ${want.toFixed(2)}% of travel — ` +
-              `found by bisection on the production geometry, not by dividing — so ${p}% is not its ` +
-              `crossover. The other mechanism's is ${(crossoverOf(mech === FRESH ? ASPECT : FRESH) * 100).toFixed(2)}%. ` +
-              `The sentence: "${s}"`,
-          )
-        }
-      }
-    }
-
-    // The floors, before the verdict — each one pins a different way the loop could have
-    // examined nothing and reported success.
-    expect(examined, 'floor: both blocks that carry the claim were opened').toEqual([
-      'sim.ts (the stepGame preamble)',
-      'tie-status.ts (the C_PS block)',
-    ])
-    expect(
-      claiming,
-      'non-vacuity: both blocks still make a numeric claim about the divergence. A block dropping ' +
-        'off this list has stopped quoting figures entirely, which is a real fix — delete its seat ' +
-        'here rather than leave the guard green over nothing.',
-    ).toEqual(['sim.ts (the stepGame preamble)', 'tie-status.ts (the C_PS block)'])
-    expect(
-      [...new Set(withCrossover)],
-      'non-vacuity: and each block still carries a crossover sentence, so the % checks ran for both',
-    ).toEqual(['sim.ts (the stepGame preamble)', 'tie-status.ts (the C_PS block)'])
-    expect(
-      magsChecked.length,
-      'non-vacuity: separations were actually opened and checked, rather than the population ' +
-        'finding none and the block passing on the floors alone',
-    ).toBeGreaterThan(0)
-    expect(pctsChecked.length, 'non-vacuity: and so were the percentages').toBeGreaterThan(0)
-
-    // THE VERDICT.
-    expect(findings, `${findings.length} figure(s) do not follow from their own sentence:\n\n${findings.join('\n\n')}`).toEqual(
-      [],
-    )
-  })
 })
 
 describe('sw8-27 R6 — coaching.ts does not deny the mode assignments sim.ts makes', () => {
@@ -1064,9 +901,12 @@ describe('sw8-27 R6 — coaching.ts does not deny the mode assignments sim.ts ma
     for (const line of sites) {
       const at = braces.split('\n').slice(0, line).join('\n').lastIndexOf('mode:')
       const span = enclosingLiteral(braces, at)
-      expect(span, `sim.ts:${line}'s mode assignment sits inside an object literal`).toBeTruthy()
+      // V5 (round-5 review): a throwing narrow instead of `expect(…).toBeTruthy()` plus a `!`
+      // on the next line — the same condition still reddens the test, and the type flows.
+      if (span === null)
+        throw new Error(`sim.ts:${line}'s mode assignment sits inside an object literal — brace matching found none`)
       expect(
-        braces.slice(span![0], span![1]),
+        braces.slice(span[0], span[1]),
         `sim.ts:${line} sets the mode in the SAME literal as gameOver, not merely near it`,
       ).toMatch(/gameOver:/)
     }

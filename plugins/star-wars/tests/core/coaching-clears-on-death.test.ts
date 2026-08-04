@@ -115,11 +115,16 @@ describe('sw7-10 F3 — the coaching hint clears when the run ends', () => {
     //   * This fixture sets both fields, so it returns at `:53` and never reaches `:59`.
     //   * Its sibling `killed` leaves the mode at `'playing'`, falls through `:53`, and is
     //     caught by `:59`.
-    //   * MEASURED, not inferred — deleting `:53` reddens NOTHING, in this file or anywhere in
-    //     the plugin's 2304 tests, because the only seat that reaches it also satisfies `:59`.
-    //     Deleting `:59` reddens THREE seats in this file. So `:59` is covered and `:53` was
-    //     not, which is the opposite of the guard order the retired sentence implied and is not
-    //     what "reddens neither" would have told you either.
+    //   * MEASURED, not inferred — and dated, because the diff that added the seats below is
+    //     the diff that changed the answer: BEFORE it, deleting `:53` reddened NOTHING, in
+    //     this file or anywhere else in the plugin, because the only seat that reached it also
+    //     satisfied `:59`. The attract seat below ("the mode guard is load-bearing on the
+    //     ATTRACT path") is what changed that: deleting `:53` now reddens exactly that one
+    //     test, and `:59` still covers everything else — re-measured against this tree at the
+    //     round-5 rework. Deleting `:59` reddens THREE seats in this file (also re-measured
+    //     then). So `:59` was covered and `:53` was not until the attract seat landed, which
+    //     is the opposite of the guard order the retired sentence implied and is not what
+    //     "reddens neither" would have told you either.
     //
     // What this control adds is production-faithfulness, not coverage — do not credit it with
     // more. The `:53` coverage gap it exposed is closed by the seat below, which reaches
