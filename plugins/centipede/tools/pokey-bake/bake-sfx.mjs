@@ -195,6 +195,21 @@ const fleaAudf = (antv) => ((((antv ^ CKFE_UPRIGHT) >> 1) ^ 0xff) | 0x80) & 0xff
 // used 6 and 8 here, which — once per-file normalisation was removed and the
 // fleet started sharing one scale factor — made the INVENTED cues the loudest
 // things in the cabinet. A declared stand-in should be audible, not dominant.
+// cp7-4. The flea's stand-in LENGTH is derived here from the descent it scores,
+// not chosen by ear. ANTV falls 0xF8 (parked at top) until the flea is removed
+// below 4 (`core/flea.ts:66` FLEA_PARK_V, `:102` FLEA_BOTTOM_V), by dv per frame
+// — 2 normally, 3 after 60K (`:70` FLEA_DV_SLOW, `:71` FLEA_DV_60K). One sim
+// step per video frame at FRAME_HZ (`src/shell/timebase.ts:20`). The SLOW drop
+// is the longer one (~2.03s), and it is the length the sample must cover: a
+// sample that spans the slow descent is CUT OFF (not wrapped) during the shorter
+// fast descent, whereas a shorter sample restarts under source.loop=true.
+const FLEA_PARK_V = 0xf8
+const FLEA_BOTTOM_V = 0x04
+const FLEA_DV_SLOW = 2
+const FLEA_FRAME_HZ = 15750 / 263
+const FLEA_DESCENT_FRAMES = Math.ceil((FLEA_PARK_V - FLEA_BOTTOM_V) / FLEA_DV_SLOW)
+const FLEA_DESCENT_SECONDS = FLEA_DESCENT_FRAMES / FLEA_FRAME_HZ
+
 export const STAND_IN_SPECS = {
   // No ROM source: the mushroom path steps OVER the explosion seed (:2169
   // jumps past :2299-2300), so the machine is deliberately silent here. A
@@ -213,18 +228,34 @@ export const STAND_IN_SPECS = {
   // pitch falls as the flea descends, lasting exactly as long as the flea is on
   // screen. The sweep below runs that formula over ANTV's real range and in the
   // real direction; only the fixed LENGTH is ours.
+  //
+  // cp7-4 (PATH A, asset-only). cp6-2 baked this at 0.6s — shorter than the
+  // ~2.03s descent it scores — so under source.loop=true it restarted 2-3 times
+  // inside one drop: the "flea repeats" the playtest reported. The dispatch is
+  // correct (one start/stop edge per descent); the ASSET was too short. Fixed
+  // here by (a) lengthening `seconds` to the real slow-descent window and (b)
+  // stepping the sweep by the actual dv over the WHOLE range 0xF8->4, so one
+  // playthrough spans a whole drop as one continuous falling glide — the ROM
+  // recomputes every pass, and this now approximates one recompute per frame.
+  // KNOWN LIMITATION, stated plainly per the story: a fixed sample cannot be
+  // right for both descent speeds. This covers the SLOW drop (~2.03s); the
+  // post-60K FAST drop (~1.37s) gets CUT OFF at the stop edge rather than
+  // wrapping — audible truncation, not a repeat. The faithful fix (Path B:
+  // per-frame playbackRate from flea.v) is a contract change to the payload-free
+  // src/core/events.ts and is out of scope for this baker story.
   fleaLoop: {
     voice: 1,
     audc: 0xa4,
-    seconds: 0.6,
+    seconds: FLEA_DESCENT_SECONDS,
     sweep: (() => {
       const out = []
       // ANTV runs 0xF8 (parked at the top) DOWN to 4 (bottom) as the flea
-      // descends — `core/flea.ts:67,137`. Sweeping it downward is what makes
+      // descends — `core/flea.ts:66,102`. Sweeping it downward is what makes
       // AUDF rise and therefore the pitch FALL, which is the behaviour cp6-1
       // recorded in words. Round 1 of review caught this running upward, which
-      // inverted the one property the dossier had stated.
-      for (let antv = 0xf8; antv >= 0x08; antv -= 0x10) {
+      // inverted the one property the dossier had stated. cp7-4 densifies the
+      // step from 0x10 to the real dv and carries it to the bottom row.
+      for (let antv = FLEA_PARK_V; antv >= FLEA_BOTTOM_V; antv -= FLEA_DV_SLOW) {
         out.push(fleaAudf(antv))
       }
       return out

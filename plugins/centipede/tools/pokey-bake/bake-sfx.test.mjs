@@ -553,6 +553,70 @@ describe('cp6-2 — bakeSfx(outDir) writes the manifest, the whole manifest and 
     }
   })
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // cp7-4 — the flea sweep is SHORTER than the descent it scores, so it wraps
+  // ═══════════════════════════════════════════════════════════════════════════
+  //
+  // PATH A (asset only), chosen for this 2-pt story. The core dispatch is
+  // correct — loopEdges/fleaAudible emit exactly one flea-start and one
+  // flea-stop per descent (src/core/sim.ts:390-393, :426-429), routed to a
+  // sustained source.loop=true node (src/shared/audio.ts:235-292). The BUG is
+  // the ASSET: the flea stand-in bakes at 0.6s (bake-sfx.mjs:219) but a descent
+  // lasts ~2.03s, so a 0.6s sample under loop=true restarts two-to-three times
+  // inside one drop — the "repeat" the playtest heard. cp6-2 recorded this
+  // choice ("Bake a descending sweep across the ANTV range and say so",
+  // sound.fixture.json cues.fleaLoop.cp62Decision) and then baked it too short.
+  // Path B (per-frame playbackRate driven from flea.v) is faithful but is a
+  // contract change to the payload-free src/core/events.ts — a wiring story
+  // beyond this baker fix, deliberately out of scope here.
+  //
+  // Nothing today guards the flea's LENGTH: the "ROM window" test above SKIPS it
+  // (cues.fleaLoop.lengthSeconds is null — the flea has no ROM length, it lasts
+  // as long as the flea is on screen), and "the stand-ins are audible" only
+  // demands > 0.01s. Closing that gap is part of the deliverable (AC-3).
+
+  // Flea descent kinematics, from the core the sound scores.
+  // ANTV: 0xF8 (parked at top) -> removed when v < 4 (src/core/flea.ts:66 FLEA_PARK_V,
+  // :102 FLEA_BOTTOM_V), decrementing by dv each frame: 2 normally, 3 after 60K
+  // (:70 FLEA_DV_SLOW, :71 FLEA_DV_60K). The SLOW drop is the LONGER one and is
+  // what the sample must span to avoid wrapping — a sample that covers the slow
+  // descent is cut off (not wrapped) during the shorter fast descent.
+  const FLEA_PARK_V = 0xf8
+  const FLEA_BOTTOM_V = 0x04
+  const FLEA_DV_SLOW = 2
+  // One sim step per video frame at FRAME_HZ (src/shell/timebase.ts:20).
+  const FRAME_HZ = 15750 / 263
+  const descentFrames = Math.ceil((FLEA_PARK_V - FLEA_BOTTOM_V) / FLEA_DV_SLOW) // 122
+  const slowDescentSeconds = descentFrames / FRAME_HZ // ~2.037s
+
+  it('cp7-4: the flea sample outlasts a full slow descent — one playthrough, no wrap', () => {
+    // THE property, on the rendered output (not the `seconds` input): with
+    // source.loop=true the sample wraps iff it is shorter than the ~2.03s the
+    // flea-start/flea-stop edges hold it open. 0.6s wraps ~3x; the guard is that
+    // the baked file is at least as long as the descent it scores.
+    const wav = readWav(readFileSync(join(staging, manifest.SOUNDS.fleaLoop)))
+    expect(
+      wav.seconds,
+      `flea_move is ${wav.seconds.toFixed(4)}s but a slow descent (0xF8->4 at dv=2, ` +
+        `${descentFrames} frames) lasts ${slowDescentSeconds.toFixed(4)}s — a shorter ` +
+        `sample restarts under source.loop=true, which is the repeat the player heard`,
+    ).toBeGreaterThanOrEqual(slowDescentSeconds - 0.02)
+  })
+
+  it('cp7-4: the flea sweep resolves the descent — one recompute per frame, to the bottom row', () => {
+    // AC-2. The ROM recomputes AUDF1 from ANTV EVERY SOUNDS pass (CENTI4.MAC:2409-2414),
+    // so the faithful stand-in steps once per descent frame across the WHOLE
+    // range 0xF8 -> 4, not the 16 coarse 0x10 steps that stop at 0x08 today. A
+    // 16-step sweep stretched over 2s is an audible staircase, not a glide.
+    const sweep = bake.STAND_IN_SPECS.fleaLoop.sweep
+    expect(
+      sweep.length,
+      `the flea sweep has ${sweep.length} steps; the ROM recomputes every pass, so a ` +
+        `full descent is ${descentFrames} steps (0xF8->4 at dv=2) — a coarser sweep ` +
+        `stair-steps the pitch instead of gliding`,
+    ).toBeGreaterThanOrEqual(descentFrames)
+  })
+
   it('the stand-ins are audible too — a labelled stand-in is still a sound', () => {
     // A "declared stand-in" that bakes silence satisfies every assertion above
     // and leaves four cues mute in play, where the shared engine's silent
