@@ -726,20 +726,26 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     //
     // jt9-9 RE-BASELINE, and only 0xface moved. Re-swept both seeds the same
     // way — a player id appearing in the process list that was not there the
-    // frame before — and never by nudging:
+    // frame before:
     //   0xbeef re-entries: 214→2, 340→1, 540→2, 820→2, 1122→2, 1784→1  (IDENTICAL)
     //   0xface re-entries: 622→1, 950→1, 1196→1, 2489→1, 2579→2
-    // Both 0xbeef fixtures are therefore untouched, which is worth stating: this
-    // story changed the egg lifecycle, and a seed whose window holds no settling
-    // kill-egg does not notice. 0xface has FEWER re-entries than before (5, was
-    // 7) and its only knight-TWO one is now 2579, so that is the fixture —
-    // chosen by the same rule as last time, the earliest that re-enters knight 2.
-    // audio-events.test.ts stages the same frame, as it has through both moves.
+    //
+    // jt9-25 RE-BASELINE, and again only 0xface moved. The EGGMAN hatch cutscene
+    // (and the committed-egg no-catch fix that lets a hatch actually reach its
+    // remount on this seed) reshapes the timeline from the first hatch on. Re-swept
+    // both seeds the same way, never by nudging:
+    //   0xbeef re-entries: 214→2, 340→1, 540→2, 820→2, 1122→2, 1784→1  (STILL IDENTICAL)
+    //   0xface re-entries: 622→1, 950→1, 1391→1, 1894→2, 1922→1
+    // Both 0xbeef fixtures are therefore untouched again — its window holds no
+    // settling kill-egg that reaches the cutscene. 0xface's only knight-TWO re-entry
+    // is now 1894, so that is the fixture — chosen by the same rule as every prior
+    // move, the earliest that re-enters knight 2. audio-events.test.ts stages the
+    // same frame, as it has through all three moves.
     expect(materialisedIdsAt(0xbeef, 214), 'seed 0xbeef frame 214 re-enters knight 2').toEqual([2])
     expect(materialisedIdsAt(0xbeef, 340), 'seed 0xbeef frame 340 re-enters knight 1').toEqual([1])
     expect(
-      materialisedIdsAt(0xface, 2579),
-      'seed 0xface frame 2579 — the frame audio-events.test.ts already stages — re-enters ' +
+      materialisedIdsAt(0xface, 1894),
+      'seed 0xface frame 1894 — the frame audio-events.test.ts already stages — re-enters ' +
         'knight TWO. Its comment there calls this "SNPCR1 PLAYER 1 RE-CREATED", which is the ' +
         'same misattribution AC5 fixes on the citation, arrived at from the emitter side.',
     ).toEqual([2])
@@ -768,8 +774,9 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
   it('the frame the suite already stages sounds SNPCR2 — today it sounds SNPCR1', async () => {
     // The headline defect, end to end, at a fixture that predates this story.
     // jt9-9 RE-BASELINE: 2063 -> 2579, riding the precondition above.
-    const events = materialiseEventsAt(0xface, 2579)
-    expect(events, 'precondition: frame 2063 still emits the moment').toHaveLength(1)
+    // jt9-25 RE-BASELINE: 2579 -> 1894, riding the precondition above.
+    const events = materialiseEventsAt(0xface, 1894)
+    expect(events, 'precondition: frame 1894 still emits the moment').toHaveLength(1)
     expect(await cuesFor({ ...events[0]! })).toEqual(['player2Materialise'])
   })
 

@@ -479,7 +479,12 @@ describe('jt8-4 AC-3 — the catching player is credited; the remount is cancell
       },
     ])
 
-    const waitFrames = diff.waveValue('EGGWT2', 1) * dmod.EGG_WAIT_NAP_FRAMES
+    // jt9-25 RE-BASELINE — the wait is no longer enough on its own: a matured egg
+    // now walks the EGGMAN cutscene (EGGTBL, JOUSTRV4.SRC:3290-3544) for
+    // EGG_HATCH_ANIM_FRAMES before the remount buzzard flies in. Run the wait AND the
+    // cutscene out; the guard's claim (an uncaught egg still matures) is unchanged.
+    const waitFrames =
+      diff.waveValue('EGGWT2', 1) * dmod.EGG_WAIT_NAP_FRAMES + dmod.EGG_HATCH_ANIM_FRAMES
     let after = demo
     for (let f = 0; f < waitFrames; f++) after = dmod.stepDemo(after)
 

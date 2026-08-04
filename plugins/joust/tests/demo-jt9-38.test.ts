@@ -176,6 +176,12 @@ async function stagedDemo(processes: DemoProcess[], wave: number): Promise<DemoS
 
 const eggsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
 const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
+// jt9-25 — a "hatch" now ADMITS the egg into the EGGMAN cutscene (hatchRow set at the
+// quota-passing frame, INC NENEMY there) rather than spawning the buzzard that frame;
+// the remount flies in EGG_HATCH_ANIM_FRAMES later. So the quota's effect is observed
+// as cutscene-entry, not as an enemy appearing. A deferred egg stays purely waiting.
+const hatchingIn = (d: DemoState): DemoProcess[] => eggsIn(d).filter((p) => p.egg?.hatchRow !== undefined)
+const waitingIn = (d: DemoState): DemoProcess[] => eggsIn(d).filter((p) => p.egg?.hatchRow === undefined)
 const pterosIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'ptero')
 
 /** Step to the given wave counter by clearing the arena (jt4-5's forced-advance idiom). */
@@ -368,8 +374,8 @@ describe('AC-2/4 — twelve simultaneous maturities against a quota of six', () 
     expect(enemiesIn(before).length, 'and an empty arena — the population starts at zero').toBe(0)
 
     const after = dmod.stepDemo(before)
-    expect(enemiesIn(after).length, 'the quota admits six remounts (WENEMY = 6 at wave 5)').toBe(6)
-    expect(eggsIn(after).length, 'and the other six are DEFERRED, still eggs').toBe(6)
+    expect(hatchingIn(after).length, 'the quota admits six into the hatch cutscene (WENEMY = 6 at wave 5)').toBe(6)
+    expect(waitingIn(after).length, 'and the other six are DEFERRED, still purely waiting').toBe(6)
 
     // IDENTITY, never a count: jt9-9's Reviewer caught a count assertion passing on a
     // REGENERATED egg. Every surviving egg must be one we staged, and no new egg id
@@ -394,8 +400,8 @@ describe('AC-2/4 — twelve simultaneous maturities against a quota of six', () 
       ...Array.from({ length: 12 }, (_, i) => ripeEgg(0x500 + i, 100 + i)),
     ]
     const after = dmod.stepDemo(await stagedDemo(staged, EGG_WAVE_8))
-    expect(enemiesIn(after).length, 'wave 35 admits EIGHT — the quota is read, not hard-coded').toBe(8)
-    expect(eggsIn(after).length, 'so four are deferred').toBe(4)
+    expect(hatchingIn(after).length, 'wave 35 admits EIGHT into the cutscene — the quota is read, not hard-coded').toBe(8)
+    expect(waitingIn(after).length, 'so four are deferred').toBe(4)
   })
 })
 
@@ -426,8 +432,8 @@ describe('AC-3 — pterodactyls and baiters do NOT count toward the quota (NBAIT
 
     const after = dmod.stepDemo(before)
     expect(pterosIn(after).length, 'the pteros are still present at the decision frame').toBe(3)
-    expect(eggsIn(after).length, 'the egg hatched: pteros are not part of the population').toBe(0)
-    expect(enemiesIn(after).length, 'and the remount raised the enemy count to six').toBe(6)
+    expect(hatchingIn(after).length, 'the egg hatched (entered the cutscene): pteros are not part of the population').toBe(1)
+    expect(enemiesIn(after).length, 'the five enemies are unchanged — the remount flies in after the cutscene').toBe(5)
   })
 
   it('CONTROL — six enemies and NO pteros defers, so the test above is discriminating', async () => {
@@ -467,8 +473,8 @@ describe('AC-1/4 — a NORMAL wave never defers, however crowded (WENEMY = 255)'
     const before = await stagedDemo(staged, NON_EGG_WAVE)
     expect(enemiesIn(before).length, 'a very crowded normal wave').toBe(20)
     const after = dmod.stepDemo(before)
-    expect(eggsIn(after).length, 'the kill-egg matured anyway — a normal wave admits 255').toBe(0)
-    expect(enemiesIn(after).length, 'and it put a buzzard back in play').toBe(21)
+    expect(hatchingIn(after).length, 'the kill-egg matured anyway (entered the cutscene) — a normal wave admits 255').toBe(1)
+    expect(enemiesIn(after).length, 'the twenty enemies are unchanged — the buzzard flies in after the cutscene').toBe(20)
   })
 })
 
@@ -504,7 +510,7 @@ describe('AC-4 — the quota lookup survives the hundredth wave (R2-3, "the cabi
     // had stopped hatching anything at all, anywhere.
     const dmod = await loadDemo()
     const after = dmod.stepDemo(await stagedDemo([playerAt(PLAYER1_ID, 20, 40), ripeEgg(0x500)], 0x99))
-    expect(eggsIn(after).length, 'at counter 0x99 an unblocked egg still matures').toBe(0)
+    expect(hatchingIn(after).length, 'at counter 0x99 an unblocked egg still matures (enters the cutscene)').toBe(1)
   })
 
   it('the rollover fallback ADMITS — a crowded hundredth wave still hatches, it does not freeze', async () => {
@@ -528,8 +534,8 @@ describe('AC-4 — the quota lookup survives the hundredth wave (R2-3, "the cabi
     const before = await stagedDemo(staged, 0x00)
     expect(enemiesIn(before).length, 'nine enemies — well past any real wave quota').toBe(9)
     const after = dmod.stepDemo(before)
-    expect(eggsIn(after).length, 'the hundredth wave admits the hatch rather than freezing it').toBe(0)
-    expect(enemiesIn(after).length, 'and the remount joined them').toBe(10)
+    expect(hatchingIn(after).length, 'the hundredth wave ADMITS the hatch (into the cutscene) rather than freezing it').toBe(1)
+    expect(enemiesIn(after).length, 'the nine enemies are unchanged — the remount joins them after the cutscene').toBe(9)
   })
 })
 
@@ -573,7 +579,10 @@ describe('AC-5 — a deferred egg re-checks after ONE nap (JOUSTRV4.SRC:3238 + :
     const hatchedAt: number[] = []
     for (let f = 1; f <= 40 && hatchedAt.length === 0; f++) {
       d = dmod.stepDemo(d)
-      if (eggsIn(d).length === 0) hatchedAt.push(f)
+      // jt9-25 — "hatch" is the egg entering the cutscene (hatchRow set), the frame
+      // the re-poll admits it; the buzzard itself flies in later and would confound
+      // the cadence measurement.
+      if (hatchingIn(d).length > 0) hatchedAt.push(f)
     }
     expect(hatchedAt[0], `the re-poll is one nap: expected the hatch ${nap} frames after the deferral`).toBe(nap)
   })

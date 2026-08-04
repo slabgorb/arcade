@@ -168,20 +168,24 @@ describe('jt5-1 — egg-hatched is EMITTED when a settled wave egg matures', () 
     expect(d.wave, 'precondition: the wave really advanced').toBe(5)
     expect(count(d, 'egg'), 'precondition: the egg wave really entered as eggs').toBeGreaterThan(0)
 
+    // jt9-25 — SNEGGH marks the MATURING egg (jt9-9: "the maturing egg, not the
+    // remount bird's flight in"), which now ENTERS the EGGMAN hatch cutscene rather
+    // than becoming a buzzard on the same frame; the remount flies in ~112 frames
+    // later. So the precondition on the cue frame is that eggs BEGAN hatching
+    // (hatchRow set), not that an egg left and an enemy arrived.
+    const hatchingCount = (s: DemoState): number =>
+      s.sim.processes.filter((p) => p.kind === 'egg' && p.egg?.hatchRow !== undefined).length
     let hatches = 0
-    let eggsBefore = count(d, 'egg')
-    let sawEggLeaveWithEnemyArriving = false
+    let sawEggsBeginHatching = false
     for (let f = 0; f < 2000 && hatches === 0; f++) {
       const next = stepDemo(d, inputs)
       const n = simKinds(next).filter((k) => k === 'egg-hatched').length
       if (n > 0) {
-        // The precondition, checked on the very frame the cue claims it: an egg
-        // left AND an enemy arrived to replace it.
-        sawEggLeaveWithEnemyArriving =
-          count(next, 'egg') < eggsBefore && count(next, 'enemy') > count(d, 'enemy')
+        // The precondition, checked on the very frame the cue claims it: eggs began
+        // hatching — one per egg-hatched cue.
+        sawEggsBeginHatching = hatchingCount(next) - hatchingCount(d) === n
         hatches = n
       }
-      eggsBefore = count(next, 'egg')
       d = next
     }
     // The whole settled complement matures on the SAME frame, so this is a
@@ -190,7 +194,7 @@ describe('jt5-1 — egg-hatched is EMITTED when a settled wave egg matures', () 
       hatches,
       'no egg matured in 2000 frames — the staging, not the cue, is stale',
     ).toBeGreaterThan(0)
-    expect(sawEggLeaveWithEnemyArriving, 'precondition: an egg really became a buzzard').toBe(true)
+    expect(sawEggsBeginHatching, 'precondition: an egg really began hatching, one per cue').toBe(true)
   })
 })
 

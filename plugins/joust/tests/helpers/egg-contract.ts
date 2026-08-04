@@ -121,6 +121,15 @@ export interface EggState {
    * produces — it only saves stepping the full EGGWT/EGGWT2 wait to reach it.
    */
   waitFrames?: number
+  /**
+   * jt9-25 — the EGGMAN hatch-cutscene walk position (the EGGTBL row 0..7 shown),
+   * UNDEFINED until the wait expires and the crack animation begins. Production
+   * carries this on `src/core/egg.ts`'s EggState; the mirror gains it so tests can
+   * observe that the hatch is now a multi-frame cutscene, not an instant remount.
+   */
+  hatchRow?: number
+  /** jt9-25 — display frames left on the current EGGTBL row before the walk advances. */
+  hatchNap?: number
 }
 
 /** The minimum a dying joust victim hands the egg (its velocities + eggs-left). */

@@ -203,10 +203,20 @@ describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :
 
     const justBefore = await run(demo, waitNaps * nap - 1)
     expect(eggsIn(justBefore).length, 'one frame short of the wait, still an egg').toBe(1)
+    expect(eggsIn(justBefore)[0].egg?.hatchRow, 'and NOT yet hatching — still purely waiting').toBeUndefined()
 
+    // jt9-25 — the wait elapsing now BEGINS the EGGMAN cutscene (JOUSTRV4.SRC:3290+)
+    // rather than spawning the buzzard outright: the egg walks EGGTBL for
+    // EGG_HATCH_ANIM_FRAMES, then the remount flies in. The "not a nap sooner"
+    // discrimination is now the frame the hatch cutscene STARTS (hatchRow 0).
     const atExpiry = await run(demo, waitNaps * nap)
-    expect(eggsIn(atExpiry).length, 'the wait elapses and the egg is gone').toBe(0)
-    expect(enemiesIn(atExpiry).length, 'it matured into a remounting buzzard').toBe(1)
+    expect(eggsIn(atExpiry).length, 'still an egg — the crack animation has begun').toBe(1)
+    expect(eggsIn(atExpiry)[0].egg?.hatchRow, 'the cutscene starts EXACTLY at the wait boundary').toBe(0)
+    expect(enemiesIn(atExpiry).length, 'the buzzard has not flown in yet').toBe(0)
+
+    const afterCutscene = await run(demo, waitNaps * nap + dmod.EGG_HATCH_ANIM_FRAMES)
+    expect(eggsIn(afterCutscene).length, 'the cutscene ends and the egg is gone').toBe(0)
+    expect(enemiesIn(afterCutscene).length, 'it matured into a remounting buzzard').toBe(1)
   })
 
   it('hatches a settled KILL egg after EGGWT naps — the LANDING wait, not the wave one', async () => {
@@ -224,9 +234,14 @@ describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :
 
     const justBefore = await run(demo, waitNaps * nap - 1)
     expect(eggsIn(justBefore).length, 'one frame short of EGGWT, still an egg').toBe(1)
+    expect(eggsIn(justBefore)[0].egg?.hatchRow, 'and NOT yet hatching').toBeUndefined()
 
+    // jt9-25 — the EGGWT wait elapsing begins the cutscene; the kill-egg is gone
+    // only after EGG_HATCH_ANIM_FRAMES more, when the buzzard flies in.
     const atExpiry = await run(demo, waitNaps * nap)
-    expect(eggsIn(atExpiry).length, 'the EGGWT wait elapses and the kill-egg is gone').toBe(0)
+    expect(eggsIn(atExpiry)[0]?.egg?.hatchRow, 'the EGGWT wait elapses and the crack animation begins').toBe(0)
+    const afterCutscene = await run(demo, waitNaps * nap + dmod.EGG_HATCH_ANIM_FRAMES)
+    expect(eggsIn(afterCutscene).length, 'after the cutscene the kill-egg is gone').toBe(0)
   })
 
   it('records EGGWT and EGGWT2 as WIRED, each naming its live consumer', async () => {
@@ -267,7 +282,9 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
     // JOUSTRV4.SRC privileges a wave egg's maturation over a kill egg's —
     // EGGLND is one routine and reaches both.
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1)])
-    const after = await run(demo, frames)
+    // jt9-25 — matures through the EGGMAN cutscene: the buzzard flies in
+    // EGG_HATCH_ANIM_FRAMES after the wait elapses.
+    const after = await run(demo, frames + dmod.EGG_HATCH_ANIM_FRAMES)
     expect(eggsIn(after).length, 'the kill-egg matured').toBe(0)
     expect(enemiesIn(after).length, 'and a buzzard flew back in to remount').toBe(1)
   })
@@ -281,7 +298,7 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
     // where the egg lay. The egg sits at posX 250 (the RIGHT half), so the ROM
     // sends the bird in from the LEFT (:3272-3278).
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1, { posX: 250 })])
-    const after = await run(demo, frames)
+    const after = await run(demo, frames + dmod.EGG_HATCH_ANIM_FRAMES)
     const bird = enemiesIn(after)[0]
     expect(bird, 'a bird remounted').toBeTruthy()
     expect(bird.enemy?.entity.posX, 'a right-half egg sends the bird in from the LEFT').toBe(
@@ -304,7 +321,10 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
     // be demanding a bug.
     const frames = diff.waveValue('EGGWT', 1) * dmod.EGG_WAIT_NAP_FRAMES
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1, { eggsLeft: 2 })])
-    const after = await run(demo, frames)
+    // jt9-25 — past the EGGMAN cutscene, the egg is gone and a live buzzard holds
+    // the wave. Throughout the cutscene the egg (then the buzzard) keeps the wave
+    // open, so it never advances — which is the point.
+    const after = await run(demo, frames + dmod.EGG_HATCH_ANIM_FRAMES)
     expect(eggsIn(after).length, 'no egg is holding the wave any more').toBe(0)
     expect(enemiesIn(after).length, 'a killable buzzard holds it instead').toBe(1)
     expect(after.wave, 'and the wave is still 1 — the bird has to be beaten first').toBe(1)
@@ -379,13 +399,14 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
     )
 
     const late = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1)], LATE_BCD)
-    // One frame short of the LATE wait: still an egg on any correct reading.
+    // One frame short of the LATE wait: still purely waiting on any correct reading.
     const shortOfLate = await run(late, lateWait * dmod.EGG_WAIT_NAP_FRAMES - 1)
     expect(eggsIn(shortOfLate).length, 'still waiting at wave 20').toBe(1)
-    // AT the late wait it must be gone. A hatch pinned to wave 1 would still be
-    // waiting here, because wave 1's wait is longer.
+    expect(eggsIn(shortOfLate)[0].egg?.hatchRow, 'not yet cracking at wave 20').toBeUndefined()
+    // AT the late wait the hatch cutscene must BEGIN (jt9-25). A hatch pinned to
+    // wave 1 would still be purely waiting here, because wave 1's wait is longer.
     const atLate = await run(late, lateWait * dmod.EGG_WAIT_NAP_FRAMES)
-    expect(eggsIn(atLate).length, 'the wave-20 egg hatched on the wave-20 schedule').toBe(0)
+    expect(eggsIn(atLate)[0]?.egg?.hatchRow, 'the wave-20 egg begins hatching on the wave-20 schedule').toBe(0)
   })
 })
 
@@ -425,7 +446,7 @@ describe('AC-3 — the egg count CARRIES (PEGG :2999-3001, :3251-3252)', () => {
     // unreachable in play. Seam-agnostic: read back through whatever accessor
     // Dev lands, but the OBSERVABLE is that a 2-left egg makes a 2-left bird.
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1, { eggsLeft: 2 })])
-    const after = await run(demo, frames)
+    const after = await run(demo, frames + dmod.EGG_HATCH_ANIM_FRAMES)
     const bird = enemiesIn(after)[0]
     expect(bird, 'a bird remounted').toBeTruthy()
     expect(eggsLeftOf(bird), 'the bird carries the egg count forward').toBe(2)

@@ -375,6 +375,59 @@ const EGG_FRAME_VEL_Y = 0x0080
 /** EGGI rows 0-2 (JOUSTI.SRC:2255-2257) — the three tumble STILLS, in row order. */
 const EGGI_STILL_MASKS = ['CEGGUP', 'CEGGLF', 'CEGGRT'] as const
 
+// ─── The egg's HATCH-animation driver (jt9-25, EGGMAN — JOUSTRV4.SRC:3290-3544) ──
+
+/**
+ * `EGGTBL` — the third table in the EGG ANIMATION TABLE block (JOUSTRV4.SRC:3537-3544),
+ * the one jt8-7 read past. EGFLFT/EGFRIT above are the first two. Each row is
+ * `[col0, col1, col2]`:
+ *   • col0 — a byte offset into EGGI (`row * 6`), selecting the drawn frame;
+ *   • col1 — the collision HEIGHT (`PCOLY2 = feet - col1`, :3302-3305). The port has
+ *     no numeric egg PCOLY yet — its egg collision is by named mask — so col1 is
+ *     PROVENANCE here (claimed + source-pinned); its consumer is the standing-knight
+ *     follow-up;
+ *   • col2 — the display DURATION for that row in frames (`JSR VNAPTPC`, :3296, the
+ *     same primitive as `PCNAP`) and, on the last row, the zero TERMINATOR (:3306-3307).
+ * The walk runs straight through ONCE: wiggle L/up/R/pause, then HATCH 1-4. `7+60`=67
+ * is the long WIGGLE UP & PAUSE hold.
+ *
+ * These columns are NOT EGF_LEFT/EGF_RIGHT's — there all three are EGGI offsets. Only
+ * col0 is a row offset; do NOT run col1/col2 through `/ EGGI_ROW_BYTES`.
+ */
+export const EGGTBL = [
+  [6, 6, 7], //     WIGGLE LEFT       -> EGGI row 1 (EGGLF)
+  [0, 6, 3], //     WIGGLE UP         -> row 0 (EGGI)
+  [12, 6, 7], //    WIGGLE RIGHT      -> row 2 (EGGRT)
+  [0, 6, 7 + 60], //WIGGLE UP & PAUSE -> row 0 (EGGI), the 67-frame hold
+  [18, 6, 7], //    HATCH 1           -> row 3 (EGGB1)
+  [24, 11, 7], //   HATCH 2           -> row 4 (EGGB2)
+  [30, 11, 7], //   HATCH 3           -> row 5 (EGGB3)
+  [36, 11, 0], //   HATCH 4           -> row 6 (PLY4S), col2 0 ends the walk
+] as const
+
+/** The seven EGGI rows by DRAW name, in table order (JOUSTI.SRC:2255-2261). An
+ *  EGGTBL col-0 offset of `row * 6` names the frame at that row. */
+const EGG_HATCH_FRAMES = ['EGGI', 'EGGLF', 'EGGRT', 'EGGB1', 'EGGB2', 'EGGB3', 'PLY4S'] as const
+
+/** `PCNAP 7` — the hold on PLY4S after the walk terminates, before the knight stands
+ *  and the buzzard is awaited (:3309). The last row's col-2 is the 0 terminator, so
+ *  the stand hold is sourced here rather than from the table. */
+const EGGTBL_STAND_NAP = 7
+
+/** The frames a given EGGTBL row is displayed: its col-2 nap, or the stand hold for
+ *  the terminator row (col-2 0). */
+const eggTblNap = (row: number): number => EGGTBL[row][2] || EGGTBL_STAND_NAP
+
+/**
+ * jt9-25 — the total display frames the EGGMAN hatch cutscene runs before the remount
+ * buzzard flies in: the sum of every EGGTBL row's nap. A matured egg enters the
+ * cutscene at its wait-expiry frame and the buzzard appears this many frames later, so
+ * the story DELAYS the remount (a deliberate fingerprint move — the egg-hatched CUE
+ * still fires at wait-expiry, unchanged). Derived so it stays correct if the table
+ * changes; today 7+3+7+67+7+7+7+7 = 112.
+ */
+export const EGG_HATCH_ANIM_FRAMES = EGGTBL.reduce((sum, _row, i) => sum + eggTblNap(i), 0)
+
 // ─── Wave-1 assembly ──────────────────────────────────────────────────────────
 
 /** A player's flight state at its spawn X, airborne mid-screen. */
@@ -1299,6 +1352,15 @@ function collisionPass(processes: readonly DemoProcess[]): {
     let self = caught.get(pl.id) ?? pl
     for (const ep of processes) {
       if (ep.kind !== 'egg' || !ep.egg || removed.has(ep.id)) continue
+      // jt9-25 — a COMMITTED-HATCHING egg (mid-EGGMAN-cutscene, hatchRow set) is no
+      // longer a collectible: the ROM commits the hatch at EGGLND's `INC NENEMY`
+      // (:3242), after which the remount buzzard WILL come and the egg cannot be
+      // caught for score. Leaving it collectible let a player cancel a committed
+      // remount during the cutscene's ~112 frames — measured on seed 0xface, where
+      // the one egg that reached the cutscene was collected mid-crack and no buzzard
+      // ever flew in. (Killing the standing knight during EGGLLP is the filed
+      // follow-up; that is a different interaction from collecting the egg.)
+      if (ep.egg.hatchRow !== undefined) continue
       const catcher = toJoustEntity(self)
       if (!catcher) continue
       if (!broadPhase(collisionBox(catcher), eggBox(ep.egg))) continue
@@ -1594,14 +1656,39 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   }
 
   let quota: number | null = null
-  let population = processes.filter((p) => p.kind === 'enemy').length
+  // NENEMY counts an egg from its `INC NENEMY` at EGGLND (:3242) — the moment it
+  // MATURES — through its EGGMAN cutscene and on as the remount buzzard. jt9-25's
+  // cutscene keeps a matured egg as `kind: 'egg'` (hatchRow set) for
+  // EGG_HATCH_ANIM_FRAMES before it becomes an enemy, so a mid-cutscene egg must
+  // still count toward the quota; otherwise a deferred egg re-polling during that
+  // window would see a population of zero and hatch past the gate (jt9-38's invariant).
+  let population = processes.filter(
+    (p) => p.kind === 'enemy' || (p.kind === 'egg' && p.egg?.hatchRow !== undefined),
+  ).length
   processes = processes.flatMap((p) => {
-    if (!(p.kind === 'egg' && p.egg?.settled === true && willHatch(p.egg))) return [p]
+    if (p.kind !== 'egg' || !p.egg) return [p]
+    const egg = p.egg
+    // ── The EGGMAN cutscene, once begun (jt9-25): walk EGGTBL, then the buzzard ──
+    // `EGGNXF`/`EGGHCH` (:3294-3307) draws a row, naps its col-2 (`JSR VNAPTPC`),
+    // advances 3 bytes and stops when col-2 is 0 (PLY4S). When the walk runs off the
+    // end the remount buzzard flies in (the EGGLLP wait, :3316, collapsed to the spawn
+    // here; the standing knight's own vulnerability is the filed follow-up).
+    if (egg.hatchRow !== undefined) {
+      const nap = (egg.hatchNap ?? 1) - 1
+      if (nap > 0) return [{ ...p, egg: { ...egg, hatchNap: nap } }]
+      const nextRow = egg.hatchRow + 1
+      if (nextRow < EGGTBL.length) {
+        return [{ ...p, egg: { ...egg, hatchRow: nextRow, hatchNap: eggTblNap(nextRow) } }]
+      }
+      return [remountEnemyProcess(0x40_0000 + p.id, egg)]
+    }
+    // ── The settled-egg wait (EGGLND, :3224-3237) ──
+    if (!(egg.settled === true && willHatch(egg))) return [p]
     // EGGWT2 for an egg an EGG WAVE dealt out, EGGWT for one that landed here.
-    const wait = p.egg.waitFrames ?? seedEggWait(p)
+    const wait = egg.waitFrames ?? seedEggWait(p)
     // `DEC PJOYT,U / BNE EGGLN2` (:3236-3237) — still waiting, so still an egg.
     const remaining = wait - 1
-    if (remaining > 0) return [{ ...p, egg: { ...p.egg, waitFrames: remaining } }]
+    if (remaining > 0) return [{ ...p, egg: { ...egg, waitFrames: remaining } }]
     // The quota is read HERE, at the test, once an egg has actually reached it — as the
     // ROM does, not once a frame. On the hundredth wave the BCD counter rolls to 0x00 and
     // `waveRowAt` refuses it, so BOTH halves of this line are load-bearing and they buy
@@ -1623,13 +1710,16 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     // `INC PJOYT,U  SET = 1,` (:3238) to ONE nap — `PCNAP 12` (:3227) — so it re-asks in
     // twelve frames. Not a fresh EGGWT2, and not next frame: without :3238 the branch
     // would DEC a zero timer to $FF and wait 255 more naps.
-    if (population >= quota) return [{ ...p, egg: { ...p.egg, waitFrames: EGG_WAIT_NAP_FRAMES } }]
+    if (population >= quota) return [{ ...p, egg: { ...egg, waitFrames: EGG_WAIT_NAP_FRAMES } }]
     // `INC NENEMY  1 MORE ENEMY COMMING UP` (:3242) — on the pass that hatches only.
     population += 1
     // SNEGGH "EGG HATCHING SOUND" (:8099) — the maturing egg, not the remount
-    // bird's flight in. One cue per egg that matured this frame.
+    // bird's flight in. One cue per egg that matured this frame. Fires at EGGLND,
+    // BEFORE the EGGMAN cutscene, so its frame is unchanged by jt9-25.
     cues.push({ type: 'egg-hatched' })
-    return [remountEnemyProcess(0x40_0000 + p.id, p.egg)]
+    // jt9-25 — begin the EGGTBL crack animation rather than spawning the buzzard now.
+    // The buzzard flies in when the walk terminates (the hatchRow branch above).
+    return [{ ...p, egg: { ...egg, hatchRow: 0, hatchNap: eggTblNap(0) } }]
   })
 
   let budget = stepped.budget
@@ -1813,6 +1903,21 @@ export function dissolveFrame(): string {
   return 'ASH1R'
 }
 
+/**
+ * The frame an egg draws this instant (jt9-25). While the hatch cutscene runs
+ * (`egg.hatchRow` set) it walks EGGTBL — col0 / EGGI_ROW_BYTES selects the EGGI row
+ * name — the EGGMAN side-show (JOUSTRV4.SRC:3290-3307). Before the hatch (a falling
+ * or waiting egg, no `hatchRow`) it draws the still EGGI, as the draw list always
+ * has. The enemyFrame/pteroFrame/trollFrame idiom; the shell blits what it returns.
+ * Pure.
+ */
+export function eggFrame(p: DemoProcess): string {
+  const row = p.egg?.hatchRow
+  if (row === undefined) return 'EGGI'
+  const offset = EGGTBL[Math.min(row, EGGTBL.length - 1)][0]
+  return EGG_HATCH_FRAMES[offset / EGGI_ROW_BYTES]
+}
+
 /** The mount frame for a player's bird, by mount + motion (ostrich `O*` / stork `S*`). */
 function mountFrame(mount: 'ostrich' | 'stork', e: EntityState): string {
   const phase = e.animPhase ?? 0
@@ -1919,7 +2024,7 @@ export function drawList(demo: DemoState): DrawOp[] {
       const e = p.enemy.entity
       entities.push(entityOp(enemyFrame(p), e.posX, e.posY >> 8, p.enemy.facing))
     } else if (p.kind === 'egg' && p.egg) {
-      entities.push(entityOp('EGGI', p.egg.posX, p.egg.posY >> 8, 1))
+      entities.push(entityOp(eggFrame(p), p.egg.posX, p.egg.posY >> 8, 1))
     } else if (p.kind === 'ptero' && p.entity) {
       entities.push(entityOp(pteroFrame(p), p.entity.posX, p.entity.posY >> 8, p.facing ?? 1))
     } else if (p.kind === 'troll' && p.entity) {

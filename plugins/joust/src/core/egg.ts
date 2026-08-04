@@ -71,6 +71,18 @@ export interface EggState {
    * row — EGGWT2 for a wave egg, EGGWT for one that landed.
    */
   waitFrames?: number
+  /**
+   * jt9-25 — the EGGMAN hatch-cutscene walk position: the EGGTBL row (0..7)
+   * currently shown. UNDEFINED until the wait expires and the crack animation
+   * begins (`LDX #EGGTBL / STX PRDIR,U`, JOUSTRV4.SRC:3290-3291); the port drives
+   * the walk from `demo.EGGTBL` and `demo.eggFrame` reads it to pick the frame.
+   * When the walk runs off the end (past PLY4S) the egg hands off to a remount
+   * buzzard, so this field's life is the cutscene's.
+   */
+  hatchRow?: number
+  /** jt9-25 — display frames left on the current EGGTBL row (its col-2 nap) before
+   *  the walk advances; the `JSR VNAPTPC` at :3296, the same primitive as PCNAP. */
+  hatchNap?: number
 }
 
 /** The minimum a dying joust victim hands the egg (its velocities + eggs-left). */

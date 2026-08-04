@@ -266,6 +266,15 @@ export interface DemoModule {
   EGG_WAIT_NAP_FRAMES: number
 
   /**
+   * jt9-25 — the display frames the EGGMAN hatch cutscene runs before the remount
+   * buzzard flies in: the sum of EGGTBL's per-row naps (7+3+7+67+7+7+7+7 = 112). A
+   * matured egg enters the cutscene at its wait-expiry frame and the buzzard appears
+   * this many frames later, so any test that observed the old instant remount steps
+   * this far past the wait to see it.
+   */
+  EGG_HATCH_ANIM_FRAMES: number
+
+  /**
    * jt9-9 — a settled egg's hatch wait in DISPLAY FRAMES for a 1-based wave:
    * the DYTBL row times `EGG_WAIT_NAP_FRAMES`. `EGGWT2` is the wait an EGG
    * WAVE's eggs enter holding (:2761); `EGGWT` the one an egg takes when it

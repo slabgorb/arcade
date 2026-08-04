@@ -34,5 +34,23 @@
       "line": 3524,
       "verbatim": "WEGVM\tADDD\t#$0080"
     }
+  },
+  {
+    "id": "JT87-005",
+    "claim": "EGGTBL is the egg's HATCH-animation driver — the THIRD table in the EGG ANIMATION TABLE block (:3533), after EGFLFT/EGFRIT, and the one that consumes EGGI rows 3-6. Eight rows, each `[col0, col1, col2]` (:3537-3544): `EGGTBL FCB 6,6,7  WIGGLE LEFT` / 0,6,3 WIGGLE UP / 12,6,7 WIGGLE RIGHT / 0,6,7+60 WIGGLE UP & PAUSE / 18,6,7 HATCH 1 / 24,11,7 HATCH 2 / 30,11,7 HATCH 3 / 36,11,0 HATCH 4. col0 is a byte offset into EGGI (row × 6), so 0/6/12/18/24/30/36 name rows 0/1/2/3/4/5/6 — EGGI, EGGLF, EGGRT, EGGB1, EGGB2, EGGB3, PLY4S. The maximum offset 36 → row 6 independently CORROBORATES EGGI's seven-row extent (JT87-001) from a different table. The walk runs straight through once; the block ends at :3544, the next header (BUZARD SEEKING MAN) is :3546.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3537,
+      "verbatim": "EGGTBL\tFCB\t6,6,7\t\tWIGGLE LEFT"
+    }
+  },
+  {
+    "id": "JT87-006",
+    "claim": "EGGMAN walks EGGTBL a COLUMN at a time, and the three columns mean different things (unlike EGFLFT/EGFRIT, whose three columns are all EGGI offsets). Setup: `LDX #EGGTBL / STX PRDIR,U` (:3290-3291). Per row (:3297-3307): col0 is the FRAME offset — `LDA [PRDIR,U]  GET NEXT FRAME OFFSET` (:3299) then `JSR WEGPAR` draws it (:3300); col1 is the collision HEIGHT — `LDA PPOSY+1,U / STA PCOLY1,U / SUBA 1,X / STA PCOLY2,U` (:3302-3305); col2 is the DURATION and the terminator — `LDA 2,X / BNE EGGHCH` (:3306-3307), and `EGGHCH LEAX 3,X / … / JSR VNAPTPC` (:3294-3296) advances three bytes and naps col2. VNAPTPC is the same nap primitive PCNAP expands to (LDA #TIME / JSR VNAPTPC, RAMDEF.SRC:31-33), so col2 is a frame count. A col2 of 0 (HATCH 4) ends the walk.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3290,
+      "verbatim": "\tLDX\t#EGGTBL\t\tGET SIDE SHOW FOR THE EGG, WHILE THE BIRD IS IN"
+    }
   }
 ]

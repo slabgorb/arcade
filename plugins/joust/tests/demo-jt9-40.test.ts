@@ -550,13 +550,20 @@ describe('AC-5 — the wave no longer matures in one lump (JOUSTRV4.SRC:2776-277
     for (const seed of SWEEP.slice(0, 8)) {
       let d = eggsOnly(await advanceTo(seed, EGG_WAVE))
       const bulk = d.sim.frame + dmod.eggWaitFrames('EGGWT2', EGG_WAVE)
+      // jt9-25 — "beats the bulk" now means BEGINS THE HATCH CUTSCENE early (hatchRow
+      // set), not disappears: a matured egg lingers as an egg for EGG_HATCH_ANIM_FRAMES.
+      // The maturation frame is unchanged, so the boundary reasoning above still holds;
+      // only the observable moved from id-disappearance to hatchRow being set.
+      const started = new Set<number>()
       const early: number[] = []
-      let live = new Set(eggsIn(d).map((p) => p.id))
       while (d.sim.frame < bulk - 1) {
         d = dmod.stepDemo(d)
-        const now = new Set(eggsIn(d).map((p) => p.id))
-        for (const id of live) if (!now.has(id)) early.push(id)
-        live = now
+        for (const p of eggsIn(d)) {
+          if (p.egg?.hatchRow !== undefined && !started.has(p.id)) {
+            started.add(p.id)
+            early.push(p.id)
+          }
+        }
       }
       expect(early.length, `seed 0x${seed.toString(16)}: more than two eggs beat the bulk`).toBeLessThanOrEqual(2)
       for (const id of early) {
@@ -578,7 +585,13 @@ describe('AC-5 — the wave no longer matures in one lump (JOUSTRV4.SRC:2776-277
     const dmod = await loadDemo()
     for (const seed of SWEEP.slice(0, 8)) {
       let d = eggsOnly(await advanceTo(seed, EGG_WAVE))
-      const until = d.sim.frame + dmod.eggWaitFrames('EGGWT2', EGG_WAVE) + 1
+      // jt9-25 — step past the whole EGGMAN cutscene so every matured egg has become
+      // its buzzard. The quota must STILL be six even though matured eggs spend
+      // EGG_HATCH_ANIM_FRAMES as mid-cutscene eggs: during that window they must keep
+      // counting toward NENEMY, or a deferred egg re-polling into a seemingly-empty
+      // arena would hatch past the gate. This step-through is what proves it.
+      const until =
+        d.sim.frame + dmod.eggWaitFrames('EGGWT2', EGG_WAVE) + dmod.EGG_HATCH_ANIM_FRAMES + 1
       while (d.sim.frame < until) d = dmod.stepDemo(d)
       expect(enemiesIn(d).length, `seed 0x${seed.toString(16)}: the quota admits six remounts, no more`).toBe(6)
       expect(eggsIn(d).length, 'and the other six are still eggs, deferred').toBe(6)

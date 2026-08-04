@@ -397,34 +397,33 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   // own precondition (an egg really leaves and really scores; a knight really
   // dies; the wave really advances), so a re-baseline cannot quietly turn one
   // of them vacuous — the precondition fails first if the moment is not there.
-  it('a dying knight emits player-death (seed 0xface, frame 2578)', () => {
+  it('a dying knight emits player-death (seed 0xface, frame 1893)', () => {
     // jt8-7 RE-BASELINE: 1938 -> 1810 (see the block comment above).
     //
     // jt5-8 RE-BASELINE: 1888 -> 2062.
     //
-    // jt9-9 RE-BASELINE: 2062 -> 2578. Re-swept 2600 frames of this seed for
-    // this test's OWN precondition (a player process leaves the list), never by
-    // nudging: 621, 949, 1195, 2488 and 2578 satisfy it now. 2578 rather than
-    // the earliest for the reason the jt5-8 note gives and which still holds —
-    // the SIBLING test below stages `death + 1`, and that re-entry is coupled to
-    // audio-transporter-split.test.ts, which needs knight TWO. Re-measured:
-    // 622, 950, 1196 and 2489 all re-enter knight ONE, and 2579 is the only
-    // knight-TWO re-entry in the window. Seed, script and every assertion
-    // unchanged.
+    // jt9-9 RE-BASELINE: 2062 -> 2578.
     //
-    // WHY THIS SEED MOVED AT ALL, since it is not one of the three the story
-    // named: an uncollected kill-egg now matures instead of sitting settled
-    // forever, so this seed's arena empties differently from wave 1 on. It is
-    // also the ONLY seed in the suite that moved — see the Dev Assessment.
-    const before = advanceTo(0xface, 2578)
-    const after = stepGame(before, inputsAt(2578))
+    // jt9-25 RE-BASELINE: 2578 -> 1893. The EGGMAN hatch is now a ~112-frame
+    // cutscene before the remount, and a COMMITTED-hatching egg is no longer
+    // collectible (a player could otherwise cancel a committed remount mid-crack),
+    // so this seed's arena empties differently again. Re-swept 3000 frames of this
+    // seed for this test's OWN precondition (a player process leaves the list),
+    // never by nudging: 621, 949, 1390, 1893 and 1921 satisfy it now. 1893 rather
+    // than the earliest for the reason the jt5-8 note gives and which still holds —
+    // the SIBLING test stages `death + 1`, coupled to audio-transporter-split.test.ts,
+    // which needs knight TWO. Re-measured: 622, 950, 1391 and 1922 re-enter knight
+    // ONE, and 1894 is the only knight-TWO re-entry in the window. Seed, script and
+    // every assertion unchanged.
+    const before = advanceTo(0xface, 1893)
+    const after = stepGame(before, inputsAt(1893))
     expect(countOf(after, 'player'), 'precondition: a knight really dies on this frame').toBe(
       countOf(before, 'player') - 1,
     )
     expect(kindsOf(after)).toContain('player-death')
   })
 
-  it('the transporter re-entry emits player-materialise (seed 0xface, frame 2579)', () => {
+  it('the transporter re-entry emits player-materialise (seed 0xface, frame 1894)', () => {
     // The frame AFTER the death: `stepGame`'s respawn re-enters the spent knight
     // through the transporter (game.ts:425-441), which is the ROM's CREP
     // re-create — DSNCRE → the re-created player's own transporter table.
@@ -445,31 +444,35 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // sibling file re-asserts it off the process list at the new frame.
     //
     // jt9-9 RE-BASELINE: 2063 -> 2579, again riding the death above and again
-    // still `death + 1`. Re-measured knight TWO off the process list (it is the
-    // only knight-2 re-entry in a 2600-frame sweep of this seed), so the SNPCR2
-    // attribution survives a second move for the same reason it survived the
-    // first.
-    const before = advanceTo(0xface, 2579)
-    const after = stepGame(before, inputsAt(2579))
+    // still `death + 1`.
+    //
+    // jt9-25 RE-BASELINE: 2579 -> 1894, riding the death above (still death + 1).
+    // Re-measured knight TWO off the process list (it is the only knight-2 re-entry
+    // in a 3000-frame sweep of this seed), so the SNPCR2 attribution survives a
+    // third move for the same reason it survived the first two.
+    const before = advanceTo(0xface, 1894)
+    const after = stepGame(before, inputsAt(1894))
     expect(countOf(after, 'player'), 'precondition: the knight really re-enters here').toBe(
       countOf(before, 'player') + 1,
     )
     expect(kindsOf(after)).toContain('player-materialise')
   })
 
-  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 2246)', () => {
+  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 1731)', () => {
     // jt8-7 RE-BASELINE: 1614 -> 1641 (see the block comment above).
     //
     // jt5-8 RE-BASELINE: 1726 -> 1900.
     //
-    // jt9-9 RE-BASELINE: 1900 -> 2246. Re-swept for this test's own precondition
-    // (the wave counter advances AND the new complement is dealt) and frame 2246
-    // is again the ONLY frame in 2600 that satisfies it — wave 1 -> 2, four
-    // buzzards. It moved LATER, which is the expected direction: a kill-egg that
-    // now matures puts a bird back on the board, and the wave cannot close while
-    // it lives. Seed, script and every assertion unchanged.
-    const before = advanceTo(0xface, 2246)
-    const after = stepGame(before, inputsAt(2246))
+    // jt9-9 RE-BASELINE: 1900 -> 2246.
+    //
+    // jt9-25 RE-BASELINE: 2246 -> 1731. Re-swept for this test's own precondition
+    // (the wave counter advances AND the new complement is dealt) and frame 1731 is
+    // again the ONLY frame in 3000 that satisfies it — wave 1 -> 2, four buzzards.
+    // The hatch cutscene (and the committed-egg no-catch fix) reshapes the whole
+    // seed timeline from the first hatch on. Seed, script and every assertion
+    // unchanged.
+    const before = advanceTo(0xface, 1731)
+    const after = stepGame(before, inputsAt(1731))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
