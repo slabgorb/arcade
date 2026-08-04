@@ -419,7 +419,7 @@ describe('cp2-12 render — the HUD sits on the ROM v=0x1F top row (UPSCRE / DLI
 //   UPSCRE (CENTI4.MAC:2638-2645) drives SCORE2, SCORE1, SCORE0 through DIGIT2
 //   with SEC before the first (zero-suppression on) and CLC before the last.
 //   DIGIT2/DIGITZ (CENIR4.MAC:224-247): a digit is blanked only while the carry
-//   is still SET; the FIRST non-zero digit does CLC (:245 "10$: CLC"), and the
+//   is still SET; the FIRST non-zero digit does CLC (:240 "10$: CLC"), and the
 //   carry is threaded digit-by-digit — PLA/AND between the two nibbles and LDA
 //   between the bytes never touch carry — so suppression is PER-DIGIT across all
 //   six, not per-byte. A suppressed digit reaches CHAR with A=0, and CHAR
