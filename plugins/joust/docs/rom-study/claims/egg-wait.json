@@ -97,5 +97,95 @@
       "line": 3251,
       "verbatim": "\tLDA\tPEGG,U\t\tMAINTAIN NBR OF EGGS LEFT IN THE BIRD"
     }
+  },
+  {
+    "id": "JT940-001",
+    "claim": "PWHCH is a one-byte per-player workspace cell, declared with Williams's own name for the mechanic: a PRE-MATURE HATCHING EGG. Its declaration comment says 'IF >0', which is LOOSER than the rule CREGG actually implements — the DEC/BMI pair at :2888-2889 shortens while the DECREMENTED value is non-negative, so a cell holding 1 still buys a shortening. Read the code, not this line, for the count.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 160,
+      "verbatim": "PWHCH\tRMB\t1\tIF >0 A PRE-MATURE HATCHING EGG TO BE CREATED"
+    }
+  },
+  {
+    "id": "JT940-002",
+    "claim": "CREGG's egg-creation block loads the wave's hatch time from PEGGTM — the EGGWT2-derived per-wave wait set at egg-wave setup (:2767). This is the value the pre-mature shortening subtracts FROM, and it is still in the B accumulator when the MUL at :2891 runs, which is what makes the cut a fraction of the wave's own wait rather than a fixed number of frames.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2886,
+      "verbatim": "\tLDB\tPEGGTM,U\tHATCHING TIME"
+    }
+  },
+  {
+    "id": "JT940-003",
+    "claim": "The wait is stored into the new egg's PJOYT, the per-process timer the settled-egg loop (EGGLND, :3224-3237) counts down. Every egg CREGG creates starts here; only the first two then have this value reduced.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2887,
+      "verbatim": "\tSTB\tPJOYT,Y"
+    }
+  },
+  {
+    "id": "JT940-004",
+    "claim": "The pre-mature counter is decremented once per egg CREGG creates. Together with the BMI on the next line this is what decides HOW MANY eggs of the twelve are shortened: DEC sets N from bit 7 of the RESULT, so starting from the 2 loaded at :2776 the decrement to 1 and the decrement to 0 both fall through, and the decrement to $FF is the first to branch away. TWO eggs, matching the :2776 comment — not three.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2888,
+      "verbatim": "\tDEC\tPWHCH,U\t\tANYMORE EGGS TO HATCH PREMATURLY?"
+    }
+  },
+  {
+    "id": "JT940-005",
+    "claim": "The branch that skips the shortening. BMI is taken only when the decremented PWHCH has gone NEGATIVE, and its target 20$ (:2895) is the line immediately after the shortening block, so a skip leaves the egg holding the full PEGGTM wait it was given at :2887.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2889,
+      "verbatim": "\tBMI\t20$"
+    }
+  },
+  {
+    "id": "JT940-006",
+    "claim": "The draw. VRAND yields a random number in 0-127 — a range this comment states and two other sites depend on: :2795 has to ROLA a draw to 'GET RANDOM NBR 0 TO 255', and the ledge select at :2782-2784 multiplies a draw by 6*2 to index the six-entry EGLEDG table, which a 0-255 draw would overrun.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2890,
+      "verbatim": "\tJSR\tVRAND\t\tA RANDOM NUMBER 0-127"
+    }
+  },
+  {
+    "id": "JT940-007",
+    "claim": "The 6809 MUL multiplies A (the 0-127 draw) by B (the wave's hatch time, still held from :2886) and leaves the 16-bit product in D, high byte in A. Taking only that high byte is a divide by 256, so with the draw capped at 127 the result can never reach half the wait — which is exactly what Williams's comment claims. A pre-mature egg is EARLY, never instant.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2891,
+      "verbatim": "\tMUL\t\t\tGET A RANDOM TIME 1/2 OF THE RANGE"
+    }
+  },
+  {
+    "id": "JT940-008",
+    "claim": "The high byte of the product is negated, so the ADDA on the next line SUBTRACTS it.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2892,
+      "verbatim": "\tNEGA"
+    }
+  },
+  {
+    "id": "JT940-009",
+    "claim": "The negated cut is added to the egg's stored hatch time, giving wait minus (draw * wait / 256).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2893,
+      "verbatim": "\tADDA\tPJOYT,Y"
+    }
+  },
+  {
+    "id": "JT940-010",
+    "claim": "The shortened value is written back over the egg's PJOYT. This is the whole effect of PWHCH: two of an egg wave's twelve eggs hatch sooner than the other ten, by an amount drawn per egg, so the wave's twelve maturities no longer land on one frame.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 2894,
+      "verbatim": "\tSTA\tPJOYT,Y\t\tNEW HATCHING TIME"
+    }
   }
 ]

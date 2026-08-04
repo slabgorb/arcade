@@ -26,7 +26,7 @@
 //      already gated by flight's suite) to accelerate the fall — so the citations
 //      suite stays honest by construction.
 
-import { createState, stepFrame, type ProcessClass } from './frame.js'
+import { createState, draw, stepFrame, type ProcessClass } from './frame.js'
 import type { GameEvent } from './events.js'
 import { GRAV, groundMaskAt, type EntityState, type PlayerInput } from './flight.js'
 import { groundOutcome } from './arena.js'
@@ -163,6 +163,20 @@ export interface DemoProcess {
    * egg takes when it lands (:3224).
    */
   waveEgg?: boolean
+  /**
+   * jt9-40 — PWHCH picked this egg for a PRE-MATURE hatching. Set by `spawnWaveEggs` on
+   * the first `PRE_MATURE_HATCHINGS` eggs the wave deals, which is where the ROM spends
+   * the counter: `DEC PWHCH,U` lives inside CREGG (JOUSTRV4.SRC:2888) and CREGG has
+   * exactly two call sites, both in WAVEGG's placement loops (JOUSTRV4.SRC:2802, :2820).
+   *
+   * It marks ELIGIBILITY, not an amount. The draw itself is taken once, at the hop that
+   * resolves this egg's wait, for the same reason jt9-9 seeds the wait there: this tag is
+   * applied while `spawnWaveEggs` still holds the raw WAVBCD counter, and resolving a wait
+   * from that counter both mis-reads the tenth wave and throws outright on the hundredth
+   * (the crash jt9-38's AC-4 found). Absent on every kill-egg, so a DEATH3 egg is never
+   * pre-mature — in the machine PWHCH is long spent by the time one exists.
+   */
+  prematureHatch?: boolean
   /**
    * jt8-4 — `DEGGS`, the per-PLAYER egg-hit counter that drives the EGGVAL ladder.
    *
@@ -632,6 +646,64 @@ export function eggWaitFrames(row: Extract<DyRowName, 'EGGWT' | 'EGGWT2'>, wave:
 }
 
 /**
+ * `2` — PWHCH, "NUMBER OF PRE-MATURE EGG HATCHINGS" (`LDA #2 / STA PWHCH,U`,
+ * JOUSTRV4.SRC:2776-2777). How many of the twelve eggs an egg wave deals get their
+ * hatch wait cut short.
+ *
+ * THE COUNT IS THE DECREMENT'S, NOT THE IMMEDIATE'S, and the two are easy to
+ * confuse — this story arrived asserting THREE. CREGG runs
+ *
+ *     DEC  PWHCH,U    ANYMORE EGGS TO HATCH PREMATURLY?
+ *     BMI  20$                             (JOUSTRV4.SRC:2888-2889)
+ *
+ * per egg. `DEC` sets N from bit 7 of the RESULT and `BMI` branches only when it is
+ * set, so the decrement to 1 shortens, the decrement to 0 shortens, and the
+ * decrement to $FF is the first one skipped. Two, which is what the 1982 comment
+ * said. The declaration's "IF >0" (JOUSTRV4.SRC:160) is looser than either and
+ * should not be read as the rule.
+ *
+ * It is re-primed inside the egg-wave SETUP, so every egg wave gets its own two —
+ * not two per run. Derived from the source, not transcribed from here, by
+ * tests/demo-jt9-40-source.test.ts.
+ */
+const PRE_MATURE_HATCHINGS = 2
+
+/**
+ * A pre-mature egg's hatch wait: the wave's full wait less the HIGH byte of
+ * `VRAND x PEGGTM` (CREGG, JOUSTRV4.SRC:2886-2894).
+ *
+ *     LDB  PEGGTM,U   HATCHING TIME
+ *     STB  PJOYT,Y
+ *     …
+ *     JSR  VRAND      A RANDOM NUMBER 0-127
+ *     MUL             GET A RANDOM TIME 1/2 OF THE RANGE
+ *     NEGA
+ *     ADDA PJOYT,Y
+ *     STA  PJOYT,Y    NEW HATCHING TIME
+ *
+ * `LDB PEGGTM,U` is still in B when the `MUL` runs — nothing between them writes B
+ * — so the multiplicand is the WAVE'S OWN WAIT and the cut scales with it rather
+ * than being a fixed number of frames. The 6809 `MUL` leaves the high byte of
+ * A x B in A, which is the `>> 8`.
+ *
+ * WHY IT CAN NEVER HALVE THE WAIT, which is the ROM's own "1/2 OF THE RANGE": the
+ * draw tops out at 127, so the cut tops out at `floor(127 * wait / 256)` — a hair
+ * under half. A pre-mature egg is EARLY, never instant. The 0-127 range is a
+ * property of the code and not only of its comment: JOUSTRV4.SRC:2794-2795 has to
+ * `ROLA` a draw to "GET RANDOM NBR 0 TO 255", and the ledge select at
+ * JOUSTRV4.SRC:2782-2784 multiplies a draw by 6*2 to index a SIX-entry table,
+ * which a 0-255 draw would run off the end of.
+ *
+ * `draw` is the raw VRAND value, 0-127. Pure.
+ */
+export function prematureHatchWait(wait: number, draw: number): number {
+  return wait - ((draw * wait) >> 8)
+}
+
+/** The raw VRAND value a `[0, 1)` float stands in for: an integer 0-127. */
+const vrandFrom = (value: number): number => Math.floor(value * 128)
+
+/**
  * A SETTLED egg resting on a ledge — one slot of an EGG wave's complement (a full PEGG, not
  * yet hatched). `settled` so `stepEgg` leaves it put; it holds the wave open like any egg
  * until its EGGWT2 wait runs out and it hatches.
@@ -702,7 +774,17 @@ function spawnWaveEggs(waveNumber: number): DemoProcess[] {
     // `waveEgg` tags the complement egg so the self-clear hatch (stepDemo) serves it the
     // EGGWT2 egg-wave wait rather than the EGGWT a landing egg takes. Since jt9-9 the tag no
     // longer decides WHETHER the egg matures — every settled egg does.
-    eggs.push({ ...eggProcess(0x100 * waveNumber + i, settledWaveEgg(pad.x, pad.y)), waveEgg: true })
+    //
+    // jt9-40 — and the FIRST TWO carry PWHCH's pre-mature mark. The ROM spends the counter in
+    // CREGG, which the ledge loop calls before the scatter loop (JOUSTRV4.SRC:2802 then :2820),
+    // so the eggs it reaches are the first two DEALT. Priming happens per egg wave
+    // (JOUSTRV4.SRC:2776-2777, inside this block's setup), which is why the mark is decided
+    // here from `i` rather than from any state carried between waves.
+    eggs.push({
+      ...eggProcess(0x100 * waveNumber + i, settledWaveEgg(pad.x, pad.y)),
+      waveEgg: true,
+      ...(i < PRE_MATURE_HATCHINGS ? { prematureHatch: true } : {}),
+    })
   }
   return eggs
 }
@@ -1473,16 +1555,41 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // jt9-38 — AND THE POPULATION GATE. A wait that has run out is not a hatch: EGGLND
   // re-primes the timer and asks whether the wave is already full before it commits
   // (:3238-3242, below). `population` is NENEMY and it MUST rise inside this pass — the
-  // ROM's `INC NENEMY` is on the branch that hatches, not on the frame. Every egg an egg
-  // wave deals shares one EGGWT2 wait, so they all mature on the SAME frame (measured:
-  // f=624 on three seeds); a count taken once before the loop would see zero for all
-  // twelve and let every one through, which is indistinguishable from having no gate.
+  // ROM's `INC NENEMY` is on the branch that hatches, not on the frame. Before jt9-40 every
+  // egg an egg wave dealt shared ONE EGGWT2 wait and they all matured on the same frame
+  // (measured under the forced-advance harness: a 624-frame wait entered at f=4 brought all
+  // twelve up together at f=628); a count taken once before the loop would see zero for all
+  // twelve and let every one through, which is indistinguishable from having no gate. PWHCH
+  // now pulls two of the twelve forward, so the lump is smaller — but it is still a lump,
+  // and the running count is still what makes this a gate.
+  // jt9-40 — PWHCH's draw, and the one place in this pass that MOVES the run's RNG.
+  // `JSR VRAND` sits inside CREGG (JOUSTRV4.SRC:2890), so the machine draws once per
+  // pre-mature egg and the wave's stream really is consumed. Threaded through a local and
+  // handed to `sim.rng` below, rather than drawn off a private generator, because that
+  // consumption is the point: a shortening that did not advance the stream would leave every
+  // later draw in the run exactly where it was and would not be the ROM's behaviour.
+  let rng = stepped.rng
+
+  /**
+   * The wait an egg takes on its FIRST resolve: EGGWT2 for one an egg wave dealt out,
+   * EGGWT for one that landed here — and, for the two PWHCH marked, that wait cut by a
+   * draw. Called only where `waitFrames` is still unseeded, so a deferred egg re-primed to
+   * one nap never draws again and the cut is spent exactly once per egg.
+   */
+  const seedEggWait = (p: DemoProcess): number => {
+    const base = eggWaitFrames(p.waveEgg === true ? 'EGGWT2' : 'EGGWT', waveOrdinal)
+    if (p.prematureHatch !== true) return base
+    const drawn = draw({ ...stepped, rng })
+    rng = drawn.state.rng
+    return prematureHatchWait(base, vrandFrom(drawn.value))
+  }
+
   let quota: number | null = null
   let population = processes.filter((p) => p.kind === 'enemy').length
   processes = processes.flatMap((p) => {
     if (!(p.kind === 'egg' && p.egg?.settled === true && willHatch(p.egg))) return [p]
     // EGGWT2 for an egg an EGG WAVE dealt out, EGGWT for one that landed here.
-    const wait = p.egg.waitFrames ?? eggWaitFrames(p.waveEgg === true ? 'EGGWT2' : 'EGGWT', waveOrdinal)
+    const wait = p.egg.waitFrames ?? seedEggWait(p)
     // `DEC PJOYT,U / BNE EGGLN2` (:3236-3237) — still waiting, so still an egg.
     const remaining = wait - 1
     if (remaining > 0) return [{ ...p, egg: { ...p.egg, waitFrames: remaining } }]
@@ -1582,7 +1689,12 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     for (const cliff of arena.destroyedCliffs) {
       if (!standing.has(cliff)) cues.push({ type: 'cliff-destroyed' })
     }
-    const arrivals = spawnWaveEnemies(wave, stepped.rng)
+    // `rng`, not `stepped.rng`: the hatch pass above may have spent a draw on a pre-mature
+    // egg this frame, and the next thing to read the stream must see it moved. The two
+    // cannot actually differ today — a wave is clearable only with no eggs left in it, and
+    // a draw happens only while twelve of them are sitting there — but writing the stale
+    // word here would be a latent fork in the stream waiting for that to stop being true.
+    const arrivals = spawnWaveEnemies(wave, rng)
     // SNECRE "ENEMY RE-CREATED (TRANSPORTER)" (:8103) per buzzard on the pads,
     // and SNPTEI, the introduction scream (:8094), per pterodactyl. An EGG wave
     // enters its complement as settled eggs instead — the machine's table has no
@@ -1626,7 +1738,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     frame: stepped.frame,
     processes,
     woke: stepped.woke,
-    rng: stepped.rng,
+    rng,
     budget,
     targets,
   }
