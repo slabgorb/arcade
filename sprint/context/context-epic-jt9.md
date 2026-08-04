@@ -4,119 +4,45 @@
 Joust — the remainder, re-ordered: apparatus, gameplay, geometry, brains, dossier
 
 ## Overview
-Sixth joust epic, and the first that is purely a RE-ORDERING: it holds every joust story left
-unfinished on 2026-08-02, pulled out of jt5 (audio/fidelity), jt8 (playability) and uf1 (unwired
-features) and resequenced into one dependency-ordered plan. **28 stories, 82 points.** Nothing was
-re-scoped, re-pointed or re-written in the move itself — see the correction below for the one
-story that has since been rewritten deliberately.
+Sixth joust epic, and the first that is purely a RE-ORDERING: it holds every joust story left unfinished on 2026-08-02, pulled out of jt5 (audio/fidelity), jt8 (playability) and uf1 (unwired features) and resequenced into one dependency-ordered plan. 28 stories, 82 points. NOTHING WAS RE-SCOPED, RE-POINTED OR RE-WRITTEN in the move — every description, acceptance criterion and ROM citation is the text its filing story shipped with. ONE EXCEPTION SINCE, and it is a precedent rather than a defect: jt9-1's description and acceptance criteria were deliberately rewritten at its 2026-08-02 setup after its claims were measured — its ROM citations proved exact, but its repro turned out to reproduce on only ONE of four seeded harnesses (the idle-input replay; the plugin's habitual scripted/inputsAt harness gives zero hits), and two unrouted jt5-8 Reviewer findings (R-2, a MEDIUM the Reviewer marked "file with R-1" and which was filed nowhere; R-4, live false prose in the very pin jt9-1 re-baselines) were folded in on the user's ruling. ACs 5 -> 7, points unchanged. Read the blanket claim above as "this text is a FILING, not a MEASUREMENT" and measure a story's falsifiable claims at setup before building against them. Details in sprint/context/context-epic-jt9.md. DELIBERATELY LEFT BEHIND: ad1-4 (joust attract simulation, GOVER_ATTRACT) stays in ad1 on the user's ruling — it belongs with the other six games' attract demos and the lobby carousel that consumes them, not with joust's fidelity work. uf1 keeps its red-baron, star-wars and lobby stories; jt5 and jt8 are now fully done and archivable.
 
-Deliberately left behind: **ad1-4** (joust attract simulation, `GOVER_ATTRACT`) stays in ad1 on the
-user's ruling — it belongs with the other six games' attract demos and the lobby carousel that
-consumes them. uf1 keeps its red-baron, star-wars and lobby stories; jt5 and jt8 are now fully done
-and archivable.
+THE IDS CHANGED AND CROSS-REFERENCES DID NOT. pf renumbers on move, so a description here that names a jt5-NN or jt8-NN or uf1-NN id may mean either a DONE story (id unchanged, reference still valid) or a story that moved into this epic (id now jt9-NN). The map, in this epic's order: jt9-1 was jt5-27, jt9-2 was jt8-12, jt9-3 was jt5-11, jt9-4 was jt5-21, jt9-5 was jt5-22, jt9-6 was jt5-15, jt9-7 was jt5-20, jt9-8 was jt5-9, jt9-9 was jt5-12, jt9-10 was jt8-8, jt9-11 was uf1-11, jt9-12 was uf1-10, jt9-13 was jt8-15, jt9-14 was jt8-13, jt9-15 was jt5-17, jt9-16 was jt5-14, jt9-17 was jt5-13, jt9-18 was jt5-18, jt9-19 was jt8-16, jt9-20 was jt8-9, jt9-21 was jt8-11, jt9-22 was jt8-10, jt9-23 was jt5-19, jt9-24 was jt8-5, jt9-25 was jt8-14, jt9-26 was jt5-24, jt9-27 was jt5-25, jt9-28 was jt5-26. Every OTHER joust id named in a description (jt1-x through jt4-x, jt5-1..jt5-8, jt5-10, jt5-16, jt5-23, jt8-1..jt8-4, jt8-6, jt8-7, uf1-2, uf1-8, uf1-9) is DONE and unmoved, so those references are still literal.
+
+THE STANDING RULE THIS EPIC IS ORDERED AROUND: roughly half these stories move the jt2 seeded-replay fingerprints, and two of them say in their own text that a fingerprint-moving change must not share a commit with another (jt9-8 about jt5-8, jt9-1 about jt9-8). One story per commit satisfies that; BATCHING TWO OF THEM DOES NOT, and the re-baseline stops being reviewable. The method is written up in sprint/archive/jt5-8-session.md and sprint/archive/uf1-9-session.md: re-find every moved pin by sweeping for its OWN precondition, never by nudging a number toward the new output, and state which digests moved and why. Read the nearer of those two sessions before starting any story marked as a fingerprint mover.
+
+THE FIVE BLOCKS, AND WHY THE ORDER IS THIS ORDER.
+
+BLOCK A, jt9-1 to jt9-7 (18 pts): ride the fresh re-baseline, then harden the apparatus. jt9-1 is first because it is jt5-8's direct successor, filed out of jt5-8's own review, and jt5-8's session — with its 20-assertion moved-pin table and the method that produced it — was archived hours before this epic was cut. That context is never cheaper than now. jt9-2 follows because it is a mechanical 27-file test sweep onto tests/helpers/claims.ts: done here it is one large diff and every later story writes against the hardened loader; done later it is the same diff plus however many new copies the intervening stories added. jt9-3 through jt9-7 then pin the apparatus the rest of the epic leans on — three wing-cue behaviours currently held by prose alone, the bake gate that stops an unbaked cue reaching the bucket, the manifest decoder's edge cases, the shared-audio voice-release asymmetry, and the ruling on whether CHANNELS routes anything. None of the six moves a fingerprint, so they form a clean buffer behind jt9-1.
+
+BLOCK B, jt9-8 to jt9-12 (17 pts): the gameplay a player can actually feel, hardest-hitting first. Rapid tapping should out-climb holding and on this port it does not (jt9-8). An uncollected kill-egg never matures, so the wave-clear gate stays shut on it (jt9-9). An enemy last egg is scored to the victor on the kill and our port drops the award and its ladder bump silently (jt9-10). The lava troll can never grab anyone, because the whole PATCH1/2/3 grip escalation has zero production callers (jt9-11) — and jt9-12's LAVGRA half is theatre until it does, which is the one hard ordering constraint inside this block.
+
+BLOCK C, jt9-13 to jt9-17 (16 pts): collision geometry — settle the premise, then fix the passes. jt9-13 is a two-point sign-extension fix that is latent today and is a loaded chamber for jt9-25, so it goes early and cheap. jt9-14 comes next not only for its own defect (the player's reach against a pterodactyl is a flat box) but because it is the story that must rule on whether narrowPhase's screen-X blindness matches the machine at all — a premise inherited unexamined since jt2-3 that jt9-15 and jt9-17 both build on. jt9-16 wants a three-or-more body pile-up to be observable and gets one more easily once jt9-15 makes mixed ptero pairs resolve. jt9-17 is last in the block and the largest: it gives EntityState a real horizontal velocity and a PBUMPX home, which is the biggest structural change left in the core, and it should land on geometry that has stopped moving.
+
+BLOCK D, jt9-18 to jt9-23 (19 pts): the enemy brains. jt9-18 is the level-flight twin of jt9-1's dumb-brain glide — same forced-glide shape, cheapest while that shape is fresh. jt9-19's precondition was built by uf1-9 and its note about SHLEP equivalence is now stale, so it needs re-deriving rather than inheriting. jt9-20 through jt9-22 are the remaining steering gaps, smaller before larger. jt9-23 is deliberately LAST AND DELIBERATELY AT RISK: uf1-9 measured that the up-seek path it serves is entered on ZERO frames of natural play across three seeds and 6000 frames, and the story's own first instruction is to rule on whether the climb-preparation state is reachable in this port at all. If the answer is no, cancel it rather than build two states nothing reaches.
+
+BLOCK E, jt9-24 to jt9-28 (12 pts): the decode, the animation, and dossier precision. jt9-24 may confirm the shipped approximation rather than replace it, which is a fine outcome and the reason it is not urgent. jt9-25 draws the egg's hatch frames and needs jt9-13 from Block C. jt9-26 to jt9-28 are citation and README corrections that change no behaviour: real defects of the class jt5-7 was filed for, but nothing a player or a later story trips over, so they go last.
+
+GROUND TRUTH throughout: plugins/joust/docs/rom-study/ and reference/williams-source/joust/JOUSTRV4.SRC (red-label RV4), with JOUSTI.SRC for the sprite and table records. Radix discipline is Motorola — bare decimal, dollar hex — and every transcribed constant carries a radix-cited claim.
+
+=== THE 2026-08-03 MERGE PASS: NINE STORIES RETIRED, NOTHING DELETED, NO RENUMBERING ===
+
+THE MEASUREMENT THAT PROMPTED IT. Seven stories done burning 21 points; nine stories filed totalling 21 points. Net progress on this epic was EXACTLY ZERO, and the backlog stood larger than the 28/82 it was cut with. The concentration says where it came from: the one PRODUCTION story (jt9-1, 8pts) spawned 5 points, while the five small audio/test-seam stories — jt9-2, jt9-4, jt9-5, jt9-6, jt9-7, together only 10 points — spawned 16. That seam runs at roughly 160%. The one story that spawned NOTHING was jt9-3, whose deliverable already WAS a mutation battery, so its reviewer had nothing left to find.
+
+THE DIAGNOSIS, and it is the reason the merges are shaped the way they are: THE BACKLOG'S GENERATOR IS THE REVIEW, NOT THE CODE. Each completed story buys one Reviewer mutation battery over one file surface, and a battery over a weakly-asserted surface reliably yields one or two survivors, each filed as its own story, each of which then buys its own battery. So the merges that pay are the ones sharing a FILE SURFACE — those buy one battery instead of two. Merging stories that share only a THEME saves nothing and yields a bigger diff. Written up in .pennyfarthing/sidecars/architect/gotchas.md.
+
+WHAT MOVED. Seven merges took the backlog from 30 stories / 85 points to 21 / 78 — the seven points are the small saving; the real one is NINE FEWER REVIEW CYCLES, five of them inside the 160% seam. (1) jt9-36 + jt9-37 + jt9-28 → jt9-28: the two count-guard stories each asked for the OTHER's guard to be widened, and the guards at tests/audio-channel-role.test.ts:478,:499 read exactly two hardcoded files, so whichever landed second would rewrite the first's work. (2) jt9-33 → jt9-31: one defect class, one layer. (3) jt9-34 → jt9-32: one bake surface, one verbatim acceptance mutant. (4) jt9-27 → jt9-26: both filed out of jt5-23, both turning on the same G-family/P-family distinction. (5) jt9-13 → jt9-25: a latent prerequisite with exactly one call site (demo.ts:1532) folded into its only consumer. (6) jt9-10 + jt9-12's egg rows → jt9-9, and jt9-12's troll rows → jt9-11: three egg mechanisms sharing one file and ONE re-baseline of the same five pins, and a story whose own text said half of it was theatre until jt9-11 landed. (7) jt9-19 → jt9-18: both rewrite the same twenty lines of enemy.ts and move the same replay pins, so apart the second re-baselines pins the first just moved.
+
+HOW TO READ A `canceled` STORY HERE. The nine retired ids — jt9-10, jt9-12, jt9-13, jt9-19, jt9-27, jt9-33, jt9-34, jt9-36, jt9-37 — are `status: canceled` with `points: 0`, and their FULL ORIGINAL TEXT IS RETAINED UNCHANGED beneath a header naming the survivor. They were NOT deleted and NOT renumbered: 65 live references across sprint/ and plugins/joust/ name those ids, this epic has already survived one renumbering (see the map above), and a dangling story reference in a test comment is precisely the defect jt9-30 exists to fix. `canceled` is this repo's established terminal status (33 prior uses). A survivor carries a `=== MERGED 2026-08-03 ===` section holding the folded-in deliverable, so no story needs its retired sibling's record to be actionable — the retired text is provenance, not scope.
+
+TWO MERGES DELIBERATELY NOT MADE, and the reasons outrank a groomer's pattern-match. jt9-14 and jt9-15 stay separate because jt9-14 anticipated exactly this pass and refused it in its own text ("adjacent enough to be merged by a groomer who reads only the titles; they should not be") — different loop, different routine, different failure. jt9-35 stays separate because it lives in src/shared/, its suite is the 11,666-test cabinet-wide run, and it names centipede as live-affected; folding it into a joust story would run a shared-library change under a joust-only project gate. Also unmerged but flagged: jt9-23 (5 pts) is filed as at-risk, but read its evidence carefully — uf1-9's zero-frames result says the up-seek path is unreached BECAUSE NO TEST'S PLAY GETS TO WAVE 4, which is a fixture gap, not a dead path. Rule on that with a measurement before scheduling it, not inside it.
 
 ## Metadata
 - **Epic ID:** jt9
 - **Repo:** arcade
-- **Priority:** p2
-
----
 
 ## Background
+_Cross-story constraints and guardrails to be filled in as the epic
+progresses._
 
-### ⚠ The ids changed and cross-references did not
-
-`pf sprint story move` renumbers to the target epic's next id, so a description in this epic that
-names a `jt5-NN` / `jt8-NN` / `uf1-NN` id may mean **either** a DONE story (id unchanged, reference
-still literal) **or** a story that moved into this epic (id now `jt9-NN`). The map, in this epic's
-order:
-
-| now | was | now | was | now | was | now | was |
-|---|---|---|---|---|---|---|---|
-| jt9-1 | jt5-27 | jt9-8 | jt5-9 | jt9-15 | jt5-17 | jt9-22 | jt8-10 |
-| jt9-2 | jt8-12 | jt9-9 | jt5-12 | jt9-16 | jt5-14 | jt9-23 | jt5-19 |
-| jt9-3 | jt5-11 | jt9-10 | jt8-8 | jt9-17 | jt5-13 | jt9-24 | jt8-5 |
-| jt9-4 | jt5-21 | jt9-11 | uf1-11 | jt9-18 | jt5-18 | jt9-25 | jt8-14 |
-| jt9-5 | jt5-22 | jt9-12 | uf1-10 | jt9-19 | jt8-16 | jt9-26 | jt5-24 |
-| jt9-6 | jt5-15 | jt9-13 | jt8-15 | jt9-20 | jt8-9 | jt9-27 | jt5-25 |
-| jt9-7 | jt5-20 | jt9-14 | jt8-13 | jt9-21 | jt8-11 | jt9-28 | jt5-26 |
-
-Every OTHER joust id named in a description (`jt1-x`–`jt4-x`, `jt5-1..8`, `jt5-10`, `jt5-16`,
-`jt5-23`, `jt8-1..4`, `jt8-6`, `jt8-7`, `uf1-2`, `uf1-8`, `uf1-9`) is DONE and unmoved, so those
-references are still literal.
-
-### ⚠ One correction to the "nothing was re-written" claim (measured 2026-08-02, jt9-1 setup)
-
-The epic description states that **every description, acceptance criterion and ROM citation is the
-text its filing story shipped with**. That was true when the epic was cut and is **no longer true
-of jt9-1**, which was deliberately rewritten at setup after its claims were measured:
-
-- Its ROM citations were all re-opened against the vendored source and are exact — no change there.
-- Its **repro was under-specified**. Re-run across four harnesses, the filed evidence (seed 0x2468,
-  frame 2688, process 514, 1 of 11 promotions) reproduces **only** on the idle-input replay and on
-  none of the other three; the plugin's habitual `scripted`/`inputsAt` harness gives 14 promotions
-  and zero hits. The harness is now named in the description and in AC2.
-- **Two unrouted jt5-8 Reviewer findings were folded in** on the user's ruling: R-2 (a MEDIUM whose
-  disposition line read "file with R-1" and which was filed nowhere) and R-4 (live false prose in
-  the very pin jt9-1 re-baselines). Acceptance criteria went 5 → 7; points unchanged at 5.
-
-**Read that as a precedent, not an exception:** the blanket "nothing was re-written" claim means the
-text you are reading is a *filing*, not a *measurement*. Measure a story's falsifiable claims at
-setup before building against them.
-
-### The standing rule this epic is ordered around
-
-Roughly half these stories move the jt2 seeded-replay fingerprints, and two say in their own text
-that a fingerprint-moving change must not share a commit with another (jt9-8 about jt5-8, jt9-1
-about jt9-8). **One story per commit satisfies that; batching two does not**, and the re-baseline
-stops being reviewable.
-
-The method is written up in `sprint/archive/jt5-8-session.md` and `sprint/archive/uf1-9-session.md`:
-re-find every moved pin by sweeping for its **own precondition**, never by nudging a number toward
-the new output, and state which digests moved and why. Read the nearer of those two before starting
-any fingerprint-moving story. Both record pins whose precondition had an **empty solution set** on
-the old seed, and one that "would have passed while lying" — an anchor left sitting strictly before
-the contact it was named for.
-
-### The five blocks, and why the order is this order
-
-- **Block A — jt9-1…jt9-7 (18 pts): ride the fresh re-baseline, then harden the apparatus.**
-  jt9-1 is first because it is jt5-8's direct successor, filed out of jt5-8's own review, and that
-  session — with its 20-assertion moved-pin table — was archived hours before this epic was cut.
-  jt9-2 follows because it is a mechanical 27-file sweep onto `tests/helpers/claims.ts`: done here
-  it is one diff and every later story writes against the hardened loader. jt9-3…jt9-7 pin the
-  apparatus the rest of the epic leans on. None of the six moves a fingerprint, so they are a clean
-  buffer behind jt9-1.
-- **Block B — jt9-8…jt9-12 (17 pts): the gameplay a player can feel**, hardest-hitting first.
-  Rapid tapping should out-climb holding and does not; an uncollected kill-egg never matures; an
-  enemy's last egg is scored to the victor on the kill and the port drops it; the lava troll can
-  never grab anyone because the whole grip escalation has zero production callers — and jt9-12's
-  LAVGRA half is theatre until it does, the one hard ordering constraint inside the block.
-- **Block C — jt9-13…jt9-17 (16 pts): collision geometry — settle the premise, then fix the passes.**
-  jt9-13 is a cheap sign-extension fix, latent today and a loaded chamber for jt9-25. jt9-14 must
-  rule on whether `narrowPhase`'s screen-X blindness matches the machine at all — a premise
-  inherited unexamined since jt2-3 that jt9-15 and jt9-17 both build on. jt9-17 is last and largest.
-- **Block D — jt9-18…jt9-23 (19 pts): the enemy brains.** jt9-18 is the level-flight twin of jt9-1's
-  dumb-brain glide — same forced-glide shape, cheapest while that shape is fresh. jt9-19's note
-  about SHLEP equivalence is now stale and needs re-deriving rather than inheriting. **jt9-23 is
-  deliberately last and deliberately at risk:** uf1-9 measured its up-seek path entered on ZERO
-  frames across three seeds and 6000 frames. If the climb-preparation state is unreachable, cancel
-  it rather than build two states nothing reaches.
-- **Block E — jt9-24…jt9-28 (12 pts): the decode, the animation, and dossier precision.** jt9-24 may
-  confirm the shipped approximation rather than replace it — a fine outcome. jt9-25 needs jt9-13.
-  jt9-26…28 are citation and README corrections that change no behaviour.
-
-### Ground truth
-
-`plugins/joust/docs/rom-study/` and `reference/williams-source/joust/JOUSTRV4.SRC` (red-label RV4),
-with `JOUSTI.SRC` for the sprite and table records. **Present in this checkout** — verified at
-jt9-1 setup. Radix discipline is Motorola — bare decimal, dollar hex — and every transcribed
-constant carries a radix-cited claim.
-
-### Commands
-
-```bash
-npx vitest run --project joust        # this app's suite
-npm run lint                          # tsc --noEmit, repo-wide
-npm run test:orchestrator             # the cabinet's wiring invariants
-```
+---
+_Generated by `pf context create epic jt9` from the sprint YAML._

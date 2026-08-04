@@ -281,7 +281,8 @@ stories:
       WATCH FOR: jt8-7's fix moved four frame-exact seeded pins in tests/audio-events.test.ts because a tighter collision changes what happens when in a deterministic replay. Expect the same here, and re-baseline by SCANNING for each test's own precondition rather than nudging numbers — the method is written up in the jt8-7 session and the Dev sidecar.
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-04'
     repos: arcade
     workflow: tdd
     type: bug
