@@ -213,9 +213,11 @@ stories:
       NOT IN SCOPE and never will be: LAVLAV, the fifth lava row. Its label appears exactly ONCE in the whole of JOUSTRV4.SRC, on its own DYWORD line at :7306. Williams shipped a row nothing reads; uf1-2 recorded it as dead-in-rom in ROW_DISPOSITION so no future sweep re-files it as a porting gap. CAUTION, added by this grooming pass: jt9-1 found the SAME dead-in-rom reasoning to be WRONG for LNTLAV - the label appeared once but the DYTBL initialiser walks the table POSITIONALLY (:939-950) and never reads a name, so the row was live. Re-check LAVLAV positionally before trusting its disposition; jt9-1 emptied the dead-in-rom category and added a guard asserting it stays empty.
     points: 6
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-04'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-04'
     review_verdict: approved
   - id: jt9-12
     title: 'MERGED INTO jt9-9 (egg rows) and jt9-11 (troll rows) — joust DYTBL egg-wait and lava-troll rows — wire EGGWT/EGGWT2 and LAVTIM/LAVGRA (4 rows, blocked on the troll grip)'

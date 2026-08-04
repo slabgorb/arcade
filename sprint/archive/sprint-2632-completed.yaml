@@ -1,7 +1,3 @@
-# Sprint TO Sprint 2632 - Completed Stories
-# Jira Sprint ID: 3
-# Archived: 2026-08-04
-
 sprint:
   name: "TO Sprint 2632"
   number: 2632
@@ -9,5 +5,10 @@ sprint:
   jira_sprint_name: "TO Sprint 2632"
   goal: ROM fidelity
 
-completed:
-  # Completed stories will be appended here by pf sprint archive
+completed_epics: []
+completed_stories:
+  - id: jt9-11
+    epic: jt9
+    title: 'joust troll GRIP is production-dead — beginGrip/stepGrip/escalateGrip have zero production callers, and LAVTIM/LAVGRA are the rows that feed them'
+    points: 6
+    completed: '2026-08-04'
