@@ -258,13 +258,11 @@ describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :
         `${name} must name the egg-wait consumer that reads it`,
       ).toMatch(/egg/i)
     }
-    // And the tracked remainder falls by exactly two. KILLS: flipping the
-    // dispositions without wiring anything, or wiring a third row by accident.
+    // The tracked remainder held only the two lava rows after jt9-9; jt9-11 then
+    // wired those too (demo.stepTrolls), so nothing is left waiting. KILLS: flipping
+    // a disposition without wiring anything, or wiring a third row by accident.
     const pending = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'no-consumer-yet')
-    expect([...pending].sort(), 'only the two lava rows are left waiting').toEqual([
-      'LAVGRA',
-      'LAVTIM',
-    ])
+    expect([...pending].sort(), 'no DYTBL row is left waiting after jt9-11').toEqual([])
   })
 })
 

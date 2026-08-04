@@ -573,10 +573,13 @@ describe('AC-5 — ROW_DISPOSITION records the wiring', () => {
         expect(row.consumer, `${name} must NAME its consumer`).toMatch(/eggWaitFrames/)
       }
     }
+    // jt9-11 wired the troll pair — `demo.stepTrolls` gives the grip a live grab, so
+    // LAVTIM (the hand-animation cadence) and LAVGRA (the grip's pull) now have a
+    // consumer. No DYTBL row is left waiting.
     for (const name of ['LAVTIM', 'LAVGRA'] as const) {
       const row = d.ROW_DISPOSITION[name]
-      expect(row.kind, `${name} waits on a live lava-troll grab`).toBe('no-consumer-yet')
-      if (row.kind === 'no-consumer-yet') expect(row.owner).toBe('jt9-11')
+      expect(row.kind, `${name} is wired by jt9-11's live lava-troll grab`).toBe('wired')
+      if (row.kind === 'wired') expect(row.consumer, `${name} must NAME its consumer`).toMatch(/stepTrolls/)
     }
   })
 })

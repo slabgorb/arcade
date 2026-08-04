@@ -151,7 +151,7 @@ export type WaveBehaviour =
 export interface GameScoreEvent {
   kind: 'score'
   value: number
-  reason: 'kill' | 'egg'
+  reason: 'kill' | 'egg' | 'escape'
   player: number
 }
 

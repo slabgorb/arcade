@@ -387,24 +387,19 @@ export const ROW_DISPOSITION: Readonly<Record<DyRowName, RowDisposition>> = Obje
     consumer: 'demo.eggWaitFrames (the EGG-WAVE egg\'s initial hatch wait, JOUSTRV4.SRC:2761)',
   }),
 
-  // ─── uf1-10 — the lava troll (2 rows) ─────────────────────────────────────
+  // ─── Wired by jt9-11 — the lava troll's grip, now LIVE (2 rows) ───────────
   //
-  // `owner` reads jt9-12 now, not uf1-10: the jt9 re-ordering renumbered uf1-10
-  // to jt9-12 and then split it — the EGG half came here to jt9-9, and the TROLL
-  // half went on to jt9-11, where `beginGrip` gets its first production caller.
-  // The old id is kept out of the string deliberately; a stale owner is how a
-  // row goes unclaimed.
+  // jt9-11 gave `troll.beginGrip` its first production caller: `demo.stepTrolls`
+  // runs the LT1HT hand animation, grabs the nearest player, and drives the grip.
+  // LAVTIM is the hand-animation frame timer (reloaded into PJOYT, :1611); LAVGRA
+  // seeds the grip's pull (CLVGRA = LAVGRA, PATCH1 :6395). Both now have a consumer.
   LAVTIM: Object.freeze({
-    kind: 'no-consumer-yet',
-    rom: 'JOUSTRV4.SRC:1611',
-    missing: "the lava troll's hand-animation frame timer",
-    owner: 'jt9-11',
+    kind: 'wired',
+    consumer: "demo.stepTrolls (the lava troll's LT1HT hand-animation frame cadence, JOUSTRV4.SRC:1611)",
   }),
   LAVGRA: Object.freeze({
-    kind: 'no-consumer-yet',
-    rom: 'JOUSTRV4.SRC:6395',
-    missing: 'a LIVE troll grab — troll.beginGrip exists but has zero production callers',
-    owner: 'jt9-11',
+    kind: 'wired',
+    consumer: 'demo.stepTrolls (seeds troll.beginGrip — the grip pull CLVGRA = LAVGRA, JOUSTRV4.SRC:6395)',
   }),
 })
 

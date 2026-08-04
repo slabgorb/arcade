@@ -28,8 +28,8 @@
 
 import { createState, draw, stepFrame, type ProcessClass } from './frame.js'
 import type { GameEvent } from './events.js'
-import { GRAV, groundMaskAt, type EntityState, type PlayerInput } from './flight.js'
-import { groundOutcome } from './arena.js'
+import { GRAV, flap, tickTimeUp, groundMaskAt, type EntityState, type PlayerInput } from './flight.js'
+import { groundOutcome, FLOOR } from './arena.js'
 import { applyWaveDestruction, initialArenaState, type ArenaState } from './arena-state.js'
 import {
   bounceEgg,
@@ -65,7 +65,14 @@ import {
   type PteroEntity,
 } from './ptero.js'
 import { startDissolve, type DissolveState } from './dissolve.js'
-import { trollSpawnable } from './troll.js'
+import {
+  trollSpawnable,
+  beginGrip,
+  escalateGrip,
+  stepGrip,
+  escapeScoreEvent,
+  type TrollGrip,
+} from './troll.js'
 import { seedBaiterClock, stepBaiterClock, NAP_FRAMES, type BaiterClock } from './baiter.js'
 import {
   waveRowAt,
@@ -215,7 +222,48 @@ export interface DemoProcess {
    * advance. Both are pinned by tests/demo-jt8-6.test.ts.
    */
   eggHits?: number
+  /**
+   * jt9-11 — a `kind: 'troll'` lava troll's VICTIM BINDING: the `id` of the bird it
+   * is grabbing (PJOY, "FINGER PRINT THIS PROCESS FOR THE LAVA TROLL" — `STU PJOY,Y`,
+   * JOUSTRV4.SRC:6781; read back at `LAVVI2 CMPY PJOY,U`, :1712). Set when the troll
+   * spawns; the whole grip has nowhere to attach without it.
+   */
+  victimId?: number
+  /**
+   * jt9-11 — a `kind: 'troll'` troll's escalating GRIP, seeded by `beginGrip` the
+   * frame its hand reaches the victim (PATCH1: CLVGRA = the wave's LAVGRA, LAVKLL =
+   * 30*60). Absent while the hand is still rising; present === the victim's gravity
+   * is ADDLAV (`stepGrip`), not normal.
+   */
+  grip?: TrollGrip
+  /**
+   * jt9-11 — the lava troll's hand-animation frame timer (`PJOYT`, reloaded from
+   * LAVTIM at `LDA LAVTIM / STA PJOYT,U`, JOUSTRV4.SRC:1611-1612). Counts down one
+   * per frame; at zero the hand advances one animation frame and it reloads.
+   */
+  handTimer?: number
+  /**
+   * jt9-11 — set on the VICTIM (not the troll) to the grabbing troll's `id` once the
+   * grab commits. The bird's normal flight-gravity is suspended while this is set
+   * (frame.ts skips it), because the LAVA TROLL owns its fall now (PADGRA → ADDLAV,
+   * :1651-1652); `stepTrolls` drives it with `stepGrip` instead.
+   */
+  grippedBy?: number
 }
+
+/** `FLOOR-9` (JOUSTRV4.SRC:6783) — the pixel row the troll's hand starts on, rising
+ * from the ground toward its victim. */
+export const TROLL_HAND_START_Y = FLOOR - 9
+/** `ADDD #-2` (JOUSTRV4.SRC:6786) — the troll's X offset from its victim. */
+export const TROLL_X_OFFSET = -2
+/** `CMPA #5*6` (JOUSTRV4.SRC:1614) — the extended grab frame the hand animates up to
+ * before it starts closing the Y gap. PFRAME units (a frame is 6). */
+export const TROLL_EXTENDED_FRAME = 5 * 6
+/** `ADDB #10-7` (JOUSTRV4.SRC:1629) — the hand-grip Y offset: the grab commits when
+ * the hand reaches the victim's pixel-Y + 3. */
+export const TROLL_GRIP_Y_OFFSET = 10 - 7
+/** `ADDA #6` (JOUSTRV4.SRC:1623) — one PFRAME animation row is 6. */
+export const TROLL_FRAME_STEP = 6
 
 /**
  * ONE ordered render operation (round 2). The shell iterates a `drawList` and
@@ -260,7 +308,10 @@ export type DemoEvent =
   // `player` attributes a kill to the scoring player's id (jt4-1's game.ts drain
   // credits the right ledger — the co-op independence). Optional so pre-jt4 event
   // literals still typecheck; collisionPass always sets it on a real kill.
-  | { kind: 'score'; value: number; reason: 'kill' | 'egg'; player?: number }
+  // jt9-11 — `reason: 'escape'` is the 50-point break-free award a bird earns when it
+  // flaps out of the lava troll's grip (`troll.escapeScoreEvent`, ADLFRE :6666-6670);
+  // `player` is the victim who broke free.
+  | { kind: 'score'; value: number; reason: 'kill' | 'egg' | 'escape'; player?: number }
   | { kind: 'beat'; message: string }
   // jt4-4 — a PLAYER-vs-PLAYER kill: collisionPass names the surviving WINNER and the
   // removed LOSER so the session layer (stepGame) can drive recordPartnerKill (the
@@ -592,14 +643,18 @@ function baiterProcess(id: number): DemoProcess {
   }
 }
 
-/** The lava-troll hand's resting state off CLIF5 (the bottom island): standing on
- * the surface, mid-span. The hand is a render placeholder here — its GRIP mechanic
- * (stepGrip) is a pure core exercised directly; wiring the live grab off the LNDB7
- * landing dispatch is beyond this slice. */
-function trollEntity(): EntityState {
+/** The CLIF5 (bottom island) grab point — the X the lava troll's hand works off of.
+ * The nearest player to here is the bird it reaches up for. */
+const TROLL_CLIF5_X = 148
+
+/** The lava-troll hand's initial state (jt9-11): rising from the ground floor
+ * (`LDD #FLOOR-9`, :6783), offset `-2` in X from its victim (`ADDD #-2`, :6786), at
+ * PFRAME 0. `handTimer` seeds the first animation step. `stepTrolls` drives it from
+ * here up to the victim, then the grab commits. */
+function trollEntity(victimX: number): EntityState {
   return {
-    posX: 148,
-    posY: 210 << 8,
+    posX: victimX + TROLL_X_OFFSET,
+    posY: TROLL_HAND_START_Y << 8,
     velXIndex: 0,
     velXFrac: 0,
     velY: 0,
@@ -612,8 +667,8 @@ function trollEntity(): EntityState {
 }
 
 /**
- * jt9-1 — place a spawned troll where the ROM places it: immediately BEFORE the
- * process it attaches to, not at the end of the list.
+ * jt9-1 / jt9-11 — place a spawned troll where the ROM places it: immediately BEFORE
+ * its victim, not at the end of the list.
  *
  * `VCUPROC` creates a process relative to the workspace in U, and the troll's
  * creation site loads that workspace from `PPREV`:
@@ -626,22 +681,21 @@ function trollEntity(): EntityState {
  * PID,X / CMPA #LAVID` — "did a lava troll execute immediately before me?" — and
  * a troll appended after every enemy is a troll no enemy can ever see.
  *
- * We have no victim to attach to (the grip that would choose one is unwired —
- * jt9-11), so the placement is in front of the FIRST ground enemy, which is the
- * closest honest reading of "before this one". If there is no enemy at all the
- * troll goes at the end, exactly as before: with nobody to look behind them the
- * position is unobservable.
+ * jt9-1 placed the troll before the FIRST enemy because it had no victim to pick;
+ * jt9-11 gives it a real `victimId`, so the splice point is now THAT process. If the
+ * victim is not in the list the troll goes at the end (unobservable, as before).
  */
 function insertTroll(processes: readonly DemoProcess[], troll: DemoProcess): DemoProcess[] {
-  const victim = processes.findIndex((p) => p.kind === 'enemy')
-  if (victim < 0) return [...processes, troll]
-  return [...processes.slice(0, victim), troll, ...processes.slice(victim)]
+  const at = processes.findIndex((p) => p.id === troll.victimId)
+  if (at < 0) return [...processes, troll]
+  return [...processes.slice(0, at), troll, ...processes.slice(at)]
 }
 
-/** A lava-troll process — the hand grabbing off CLIF5 once the bridge has burned
- * (trollSpawnable, jt3-3). Its id rides a per-wave namespace clear of the ground
- * enemies (< $80) and the pteros ($80+). */
-function trollProcess(wave: number): DemoProcess {
+/** A lava-troll process bound to `victim` — the hand rising off CLIF5 once the
+ * bridge has burned (trollSpawnable, jt3-3). Its id rides a per-wave namespace clear
+ * of the ground enemies (< $80) and the pteros ($80+); `victimId` is the PJOY
+ * finger-print (:6781) and `handTimer` primes the LT1HT animation. */
+function trollProcess(wave: number, victim: DemoProcess): DemoProcess {
   return {
     id: 0x100 * wave + 0xc0,
     cls: 'secondary',
@@ -650,8 +704,132 @@ function trollProcess(wave: number): DemoProcess {
     kind: 'troll',
     facing: 1,
     collisionEnabled: true,
-    entity: trollEntity(),
+    victimId: victim.id,
+    handTimer: 1,
+    entity: trollEntity(victim.entity?.posX ?? TROLL_CLIF5_X),
   }
+}
+
+/** The bird the troll reaches for: the live PLAYER nearest the CLIF5 grab point
+ * (`LT1GRP  ... GRIP THE PLAYER`, :1645). Null if no player is present. */
+function pickTrollVictim(processes: readonly DemoProcess[]): DemoProcess | null {
+  let best: DemoProcess | null = null
+  let bestDist = Infinity
+  for (const p of processes) {
+    if (p.kind !== 'player' || !p.entity) continue
+    const dist = Math.abs(p.entity.posX - TROLL_CLIF5_X)
+    if (dist < bestDist) {
+      bestDist = dist
+      best = p
+    }
+  }
+  return best
+}
+
+/**
+ * jt9-11 — one frame of every lava troll's grab (LAVAT1/LT1HT → LT1GRP → ADDLAV,
+ * JOUSTRV4.SRC:1606-1670). This is the production caller the grip core
+ * (`beginGrip`/`stepGrip`/`escalateGrip`/`escapeScoreEvent`) never had.
+ *
+ *   • RISING (LT1HT). Not yet gripping: the hand tracks the victim's X and, in the
+ *     frame-extension phase, steps PFRAME (`animPhase`) 0 → 5*6 on the LAVTIM cadence
+ *     (`handTimer`, reloaded from `LAVTIM`, :1611). Once extended it closes the Y gap
+ *     1px/frame toward the victim's pixel-Y + (10-7) (:1629); on arrival the grab
+ *     COMMITS — `grip = beginGrip(LAVGRA)` (PATCH1, :6395) and the victim is marked
+ *     `grippedBy` so its normal gravity is suspended (PADGRA → ADDLAV, :1651).
+ *   • GRIPPING (ADDLAV). Committed: `escalateGrip` grows the pull past the grace
+ *     (PATCH2, :6374) and `stepGrip` folds it into the victim's VY — keeping the
+ *     victim's own flap (the only way out) but replacing its gravity. A sustained
+ *     flap breaks free (post-pull VY < -$0180) for 50 points and releases the grip;
+ *     otherwise the fall integrates and, at FLOOR+7, the bird dies in the lava. Either
+ *     terminal removes the troll (VSUCIDE / LT2DIE).
+ */
+function stepTrolls(
+  processes: readonly DemoProcess[],
+  wave: number,
+  inputs?: Record<number, PlayerInput>,
+): { processes: DemoProcess[]; events: DemoEvent[] } {
+  if (!processes.some((p) => p.kind === 'troll')) return { processes: [...processes], events: [] }
+
+  const lavtim = Math.max(1, waveValue('LAVTIM', wave))
+  const lavgra = waveValue('LAVGRA', wave)
+  const events: DemoEvent[] = []
+  const byId = new Map<number, DemoProcess>(processes.map((p) => [p.id, { ...p }]))
+  const removed = new Set<number>()
+
+  for (const src of processes) {
+    if (src.kind !== 'troll') continue
+    const troll = byId.get(src.id)
+    if (!troll || troll.victimId === undefined || !troll.entity) continue
+    const victim = byId.get(troll.victimId)
+    if (!victim || !victim.entity) {
+      // LAVVFY: the target no longer exists — the troll gives up (LAVATF).
+      removed.add(troll.id)
+      continue
+    }
+
+    if (troll.grip) {
+      // ADDLAV: escalate the pull, then fold it into the victim's fall.
+      const grip = escalateGrip(troll.grip)
+      const input = inputs?.[victim.id] ?? NEUTRAL_INPUT
+      let vent = victim.entity
+      if (input.flap) vent = flap(vent, input)
+      const gs = stepGrip(vent.velY, vent.posY, grip, !input.flapHeld)
+      victim.entity = { ...vent, velY: gs.velY, posY: gs.posY, timeUp: tickTimeUp(vent.timeUp) }
+      if (gs.escaped) {
+        // ADLFRE: broke free — 50 points to the victim, and the grip releases.
+        events.push({ ...escapeScoreEvent(), player: victim.id })
+        victim.grippedBy = undefined
+        removed.add(troll.id)
+      } else if (gs.inLava) {
+        // Pulled under: the bird dies with the troll.
+        removed.add(troll.id)
+        removed.add(victim.id)
+      } else {
+        troll.grip = grip
+        victim.grippedBy = troll.id
+      }
+      continue
+    }
+
+    // LT1HT: rising. Track the victim's X throughout (STD PPOSX,U).
+    const handX = victim.entity.posX + TROLL_X_OFFSET
+    const animPhase = troll.entity.animPhase ?? 0
+    if (animPhase < TROLL_EXTENDED_FRAME / TROLL_FRAME_STEP) {
+      // Phase 1 — extend the grab frame on the LAVTIM cadence.
+      const timer = (troll.handTimer ?? lavtim) - 1
+      if (timer > 0) {
+        troll.entity = { ...troll.entity, posX: handX }
+        troll.handTimer = timer
+      } else {
+        troll.entity = { ...troll.entity, posX: handX, animPhase: animPhase + 1 }
+        troll.handTimer = lavtim
+      }
+    } else {
+      // Phase 2 — close the Y gap 1px/frame toward victim pixelY + 3, then GRAB.
+      const target = (victim.entity.posY >> 8) + TROLL_GRIP_Y_OFFSET
+      const handY = troll.entity.posY >> 8
+      if (handY === target) {
+        troll.grip = beginGrip(lavgra)
+        troll.entity = { ...troll.entity, posX: handX }
+        victim.grippedBy = troll.id
+      } else {
+        const next = handY > target ? handY - 1 : handY + 1
+        troll.entity = { ...troll.entity, posX: handX, posY: next << 8 }
+      }
+    }
+  }
+
+  if (removed.size === 0 && events.length === 0) {
+    // Fast path: nothing moved a process in/out — still return the updated copies.
+    return { processes: processes.map((p) => byId.get(p.id) ?? p), events }
+  }
+  const out: DemoProcess[] = []
+  for (const p of processes) {
+    if (removed.has(p.id)) continue
+    out.push(byId.get(p.id) ?? p)
+  }
+  return { processes: out, events }
 }
 
 /**
@@ -1597,6 +1775,14 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // the body's fate is complete (JSR CPLYR, JOUSTRV4.SRC:1414-1415).
   let processes = collided.processes.filter((p) => !(p.kind === 'dissolve' && p.dissolve?.done))
 
+  // jt9-11 — the lava troll's grab. Runs every frame after collisions: the hand rises
+  // and tracks (LT1HT), grabs (LT1GRP → beginGrip), then ADDLAV (stepGrip/escalateGrip)
+  // drives the gripped victim to a break-free (+50) or a lava death. `waveOrdinal` is
+  // the decimal wave the difficulty engine (LAVGRA/LAVTIM) wants.
+  const trollStep = stepTrolls(processes, waveOrdinal, inputs)
+  processes = trollStep.processes
+  const trollEvents = trollStep.events
+
   // jt4-5 — the SELF-CLEAR: a SETTLED egg MATURES into a remounting buzzard
   // (egg.ts willHatch/remountEntryEdge — the jt2-4 laws, cited EGGLND/EGGMAN :3239-3279) so an
   // arena full of eggs is no longer a permanent egg-lock. The egg leaves and a live enemy flies
@@ -1804,11 +1990,13 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     }
     processes = [...processes, ...arrivals]
     // Once the bridge has burned and the troll wave (4) is reached, the lava troll
-    // grabs off CLIF5 — the full menagerie (jt3-3 trollSpawnable, consumed live).
-    // Only ONE live troll at a time: nothing removes a troll placeholder yet, so
-    // without this dedup guard a troll would stack one-per-wave-clear (jt3-7 N2).
-    if (trollSpawnable(arena, wave) && !processes.some((p) => p.kind === 'troll'))
-      processes = insertTroll(processes, trollProcess(wave))
+    // rises off CLIF5 and grabs the nearest player (jt3-3 trollSpawnable; jt9-11 gives
+    // it a real victim). Only ONE live troll at a time (LAVNBR): the spawn guard, plus
+    // `stepTrolls` removing it on escape/lava-death, keeps it from stacking (jt3-7 N2).
+    if (trollSpawnable(arena, wave) && !processes.some((p) => p.kind === 'troll')) {
+      const victim = pickTrollVictim(processes)
+      if (victim) processes = insertTroll(processes, trollProcess(wave, victim))
+    }
     budget = seedWaveBudget(waveRowAt(wave))
     // WBEGIN re-seeds the baiter schedule each wave (JOUSTRV4.SRC:2081-2089).
     baiterClock = seedBaiterClock(wave)
@@ -1843,7 +2031,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   }
   // Cap the log to its most recent entries — the append-only history would
   // otherwise grow unbounded (nothing drains it until the jt4 score display).
-  const events = [...demo.events, ...collided.events].slice(-EVENT_LOG_CAP)
+  const events = [...demo.events, ...collided.events, ...trollEvents].slice(-EVENT_LOG_CAP)
   return { sim, wave, events, cues, arena, baiterClock }
 }
 

@@ -312,6 +312,13 @@ function runBehaviour(
   target?: PlayerView | null,
   lavaBehind = false,
 ): { process: Process; budget: IntelBudget; cue?: WingCue } {
+  // jt9-11 — a bird in the lava troll's grip does not run normal flight: the LAVA
+  // TROLL owns its fall now (PADGRA → ADDLAV, JOUSTRV4.SRC:1651). `demo.stepTrolls`
+  // drives it with `stepGrip` (keeping its flap, replacing its gravity); stepping it
+  // here too would double-integrate the fall and spend the flap twice.
+  if ((p as { grippedBy?: number }).grippedBy !== undefined) {
+    return { process: p, budget }
+  }
   if (p.kind === 'player' && p.entity) {
     const input = inputs?.[p.id] ?? NEUTRAL_INPUT
     // A bare scheduler process may carry no facing → treat as right-facing.
