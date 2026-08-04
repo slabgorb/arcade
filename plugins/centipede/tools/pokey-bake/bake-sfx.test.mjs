@@ -576,9 +576,9 @@ describe('cp6-2 — bakeSfx(outDir) writes the manifest, the whole manifest and 
   // demands > 0.01s. Closing that gap is part of the deliverable (AC-3).
 
   // Flea descent kinematics, from the core the sound scores.
-  // ANTV: 0xF8 (parked at top) -> removed when v < 4 (src/core/flea.ts:66 FLEA_PARK_V,
+  // ANTV: 0xF8 (parked at top) -> removed when v < 4 (src/core/flea.ts:67 FLEA_PARK_V,
   // :102 FLEA_BOTTOM_V), decrementing by dv each frame: 2 normally, 3 after 60K
-  // (:70 FLEA_DV_SLOW, :71 FLEA_DV_60K). The SLOW drop is the LONGER one and is
+  // (:71 FLEA_DV_SLOW, :72 FLEA_DV_60K). The SLOW drop is the LONGER one and is
   // what the sample must span to avoid wrapping — a sample that covers the slow
   // descent is cut off (not wrapped) during the shorter fast descent.
   const FLEA_PARK_V = 0xf8

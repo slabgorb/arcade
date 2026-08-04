@@ -197,8 +197,8 @@ const fleaAudf = (antv) => ((((antv ^ CKFE_UPRIGHT) >> 1) ^ 0xff) | 0x80) & 0xff
 // things in the cabinet. A declared stand-in should be audible, not dominant.
 // cp7-4. The flea's stand-in LENGTH is derived here from the descent it scores,
 // not chosen by ear. ANTV falls 0xF8 (parked at top) until the flea is removed
-// below 4 (`core/flea.ts:66` FLEA_PARK_V, `:102` FLEA_BOTTOM_V), by dv per frame
-// — 2 normally, 3 after 60K (`:70` FLEA_DV_SLOW, `:71` FLEA_DV_60K). One sim
+// below 4 (`core/flea.ts:67` FLEA_PARK_V, `:102` FLEA_BOTTOM_V), by dv per frame
+// — 2 normally, 3 after 60K (`:71` FLEA_DV_SLOW, `:72` FLEA_DV_60K). One sim
 // step per video frame at FRAME_HZ (`src/shell/timebase.ts:20`). The SLOW drop
 // is the longer one (~2.03s), and it is the length the sample must cover: a
 // sample that spans the slow descent is CUT OFF (not wrapped) during the shorter
@@ -250,7 +250,7 @@ export const STAND_IN_SPECS = {
     sweep: (() => {
       const out = []
       // ANTV runs 0xF8 (parked at the top) DOWN to 4 (bottom) as the flea
-      // descends — `core/flea.ts:66,102`. Sweeping it downward is what makes
+      // descends — `core/flea.ts:67,102`. Sweeping it downward is what makes
       // AUDF rise and therefore the pitch FALL, which is the behaviour cp6-1
       // recorded in words. Round 1 of review caught this running upward, which
       // inverted the one property the dossier had stated. cp7-4 densifies the
