@@ -94,12 +94,19 @@ describe('cp2-5 render — segmentStamp maps MOBJP to the HEAD0-F pool (CT-44)',
 })
 
 describe('cp2-5 render — the train is drawn (one blit per live segment)', () => {
+  // cp7-2: this fixture used to seat the head + first body at v=0xF8 — the
+  // ROM's OFF-SCREEN entry band (V >= 0xF8, three ROM comments). That was the
+  // defect it was unwittingly pinning: it asserted the train DRAWS on the score
+  // line. The train's on-field rows are v <= 0xF7; the fixture is re-seated onto
+  // visible rows so it keeps testing the surviving behaviour (a descended
+  // segment blits) rather than the bug. The entry-band GATE is pinned in
+  // tests/train-entry-gate.test.ts.
   it('blits every live segment from the atlas, on top of the mushrooms + gun', () => {
     const c = makeCtx()
     const a = makeAtlas()
     const state = withSegs(0x0abc, [
-      seg(0x80, 0xf8, 0x03), // head
-      seg(0x78, 0xf8, 0x42), // body
+      seg(0x80, 0xe8, 0x03), // head, descended onto the field
+      seg(0x78, 0xe8, 0x42), // body
       seg(0x70, 0xe0, 0x47), // body, a row down
     ])
     const s2 = state as SimExt
