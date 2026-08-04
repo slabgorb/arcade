@@ -409,3 +409,172 @@ describe('cp2-12 render — the HUD sits on the ROM v=0x1F top row (UPSCRE / DLI
     expect(mushOnHudRow.map((b) => b.name), 'no mushroom on the reserved score row').toEqual([])
   })
 })
+
+// cp7-3 — RED phase (Han Solo / TEA). The score formatter zero-PADS where the
+// ROM zero-SUPPRESSES. sixDigits() = String(v).padStart(6,'0').slice(-6), so at
+// score 0 it draws SIX zeros; the cabinet draws four BLANK tiles + '00'. No test
+// ever pinned what a ZERO score looks like — that is the hole that let this ship.
+//
+// ROM rule (read from source, not paraphrased):
+//   UPSCRE (CENTI4.MAC:2638-2645) drives SCORE2, SCORE1, SCORE0 through DIGIT2
+//   with SEC before the first (zero-suppression on) and CLC before the last.
+//   DIGIT2/DIGITZ (CENIR4.MAC:224-247): a digit is blanked only while the carry
+//   is still SET; the FIRST non-zero digit does CLC (:245 "10$: CLC"), and the
+//   carry is threaded digit-by-digit — PLA/AND between the two nibbles and LDA
+//   between the bytes never touch carry — so suppression is PER-DIGIT across all
+//   six, not per-byte. A suppressed digit reaches CHAR with A=0, and CHAR
+//   (CENIR4.MAC:204-206 "TAY / BEQ 10$ ;LEAVE A BLANK AS 0") writes a blank tile
+//   and still advances one column (+0x20, CL-16). CLC before SCORE0 forces the
+//   last two digits to always draw. layoutText already emits nothing for a space
+//   while advancing the cursor, so a blank-padded 6-char string renders correctly.
+//
+// ⚠ AC-3 CORRECTION (recorded in the session's Design Deviations): the epic's
+// AC-3 says "a score of 100 shows blanks then 0100". That is WRONG — it assumes
+// per-BYTE suppression. Traced through DIGIT2 the carry clears at the '1'
+// (digit index 3), so 100 renders "   100" (THREE blanks + 100), NOT "  0100".
+// These tests pin the ROM-correct "   100". Do not "fix" this back to the AC's
+// value; the ROM is ground truth (CL-13 agrees: "the first pair with SEC = zero-
+// suppression, the last with CLC = always drawn").
+describe('cp7-3 render — the score zero-SUPPRESSES (blank tiles), not zero-PADS', () => {
+  const HUD_ROW_Y = cellScreenY(PLYFLD_HEIGHT - 1)
+  type RenderWithHigh = (ctx: CanvasRenderingContext2D, atlas: Atlas, state: SimState, highScore: number) => void
+  const renderHud = render as unknown as RenderWithHigh
+
+  // Name+position recorder: blit() calls atlas.rect(name) immediately before the
+  // ctx.drawImage(...,x,y,...), so the pending name pairs with the next drawImage.
+  interface HudBlit {
+    name: string
+    x: number
+    y: number
+  }
+  function makeHudRecorder() {
+    const blits: HudBlit[] = []
+    let pending: string | null = null
+    const atlas = {
+      image: {} as CanvasImageSource,
+      rect(name: string) {
+        pending = name
+        return { sx: 0, sy: 0, sw: 8, sh: 8 }
+      },
+    }
+    const ctx = {
+      imageSmoothingEnabled: true,
+      fillStyle: '' as string,
+      fillRect() {},
+      drawImage(_img: unknown, _sx: number, _sy: number, _sw: number, _sh: number, x: number, y: number) {
+        blits.push({ name: pending ?? '<none>', x, y })
+        pending = null
+      },
+      clearRect() {},
+      save() {},
+      restore() {},
+      translate() {},
+      scale() {},
+    }
+    return { ctx: ctx as unknown as CanvasRenderingContext2D, atlas: atlas as unknown as Atlas, blits }
+  }
+
+  const digitOf = (name: string): string | null => /^DIGIT_(\d)$/.exec(name)?.[1] ?? null
+
+  // Six-column readout of a HUD field anchored at ROM column `baseCol` (score = 0,
+  // high score = 12). drawText advances one TILE_W per character from cellScreenX
+  // (baseCol), and cellScreenX(col) = col * TILE_W, so glyph slot i sits exactly
+  // at cellScreenX(baseCol + i). Each slot is the drawn digit char, or null when
+  // NOTHING was blitted there (a suppressed/blank tile — CHAR emits no glyph).
+  // Reads DRAWN GLYPH POSITIONS, never a formatted string (AC-1).
+  const fieldSlots = (blits: readonly HudBlit[], baseCol: number): (string | null)[] =>
+    Array.from({ length: 6 }, (_, i) => {
+      const x = cellScreenX(baseCol + i)
+      const hit = blits.find((b) => b.y === HUD_ROW_Y && b.x === x)
+      return hit ? (digitOf(hit.name) ?? hit.name) : null
+    })
+
+  // ── AC-1: score 0 → four blanks then 00, occupying six slots h0-5, 00 at h4-5 ─
+  it('score 0 draws four blank tiles then 00 (h0-3 blank, DIGIT_0 at h4-5) — UPSCRE SEC…CLC, CL-13', () => {
+    const r = makeHudRecorder()
+    renderHud(r.ctx, r.atlas, { ...createSim(1), score: 0 }, 987654)
+    expect(fieldSlots(r.blits, 0), 'score 0 = "    00": blanks at h0-3, the forced 00 at h4-5').toEqual([
+      null,
+      null,
+      null,
+      null,
+      '0',
+      '0',
+    ])
+    // The forced last pair really drew (guards against an all-blank vacuous pass).
+    const scoreDigits = r.blits.filter((b) => b.y === HUD_ROW_Y && digitOf(b.name) !== null && b.x <= cellScreenX(5))
+    expect(scoreDigits.length, 'exactly the two always-drawn digits blit at score 0, nothing more').toBe(2)
+  })
+
+  // ── AC-2: the HIGH SCORE uses the identical idiom (CENTI4.MAC:1902-1910 pattern,
+  //    CL-14) — a high score of 0 suppresses the same way, at h12-17. ───────────
+  it('high score 0 draws four blanks then 00 at h12-17 — the same SEC…CLC idiom (CL-14)', () => {
+    const r = makeHudRecorder()
+    renderHud(r.ctx, r.atlas, { ...createSim(1), score: 123456 }, 0)
+    expect(fieldSlots(r.blits, 12), 'high 0 = "    00" in the h12-17 band: blanks then the forced 00').toEqual([
+      null,
+      null,
+      null,
+      null,
+      '0',
+      '0',
+    ])
+  })
+
+  // ── AC-3: suppression propagates across the leading digits and stops at the
+  //    last BCD byte — boundary cases, not just zero. ──────────────────────────
+  it('score 5 draws four blanks then 05 (h0-3 blank, 0 at h4, 5 at h5)', () => {
+    const r = makeHudRecorder()
+    renderHud(r.ctx, r.atlas, { ...createSim(1), score: 5 }, 987654)
+    expect(fieldSlots(r.blits, 0), 'score 5 = "    05": the CLC byte always draws both of its digits').toEqual([
+      null,
+      null,
+      null,
+      null,
+      '0',
+      '5',
+    ])
+  })
+
+  it('score 100 draws THREE blanks then 100 (carry clears at the 1) — corrects AC-3’s "0100"', () => {
+    const r = makeHudRecorder()
+    renderHud(r.ctx, r.atlas, { ...createSim(1), score: 100 }, 987654)
+    // 100 = digits 0 0 0 1 0 0; DIGITZ CLCs at the first non-zero (the 1 at slot
+    // 3), so slots 0-2 blank and 1-0-0 draw. Per-digit, NOT per-byte → "   100".
+    expect(fieldSlots(r.blits, 0), 'score 100 = "   100": blanks h0-2, then 1,0,0 at h3-5').toEqual([
+      null,
+      null,
+      null,
+      '1',
+      '0',
+      '0',
+    ])
+  })
+
+  // ── AC-6 guard: a fully-significant six-digit score suppresses NOTHING — the
+  //    existing 123456 pin must stay green after the fix. ──────────────────────
+  it('score 123456 still draws all six digits (nothing suppressed) — the fix must not touch this', () => {
+    const r = makeHudRecorder()
+    renderHud(r.ctx, r.atlas, { ...createSim(1), score: 123456 }, 987654)
+    expect(fieldSlots(r.blits, 0), 'six significant digits render 1-2-3-4-5-6 with no blanks').toEqual([
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+    ])
+  })
+
+  // ── AC-4: the sixDigits docblock recorded the mistake as a finding ("zero-
+  //    padded, never truncated"). The corrected comment must drop that claim and
+  //    cite the suppression source. (This asserts COMMENT content by design.) ──
+  it('the render.ts docblock no longer claims "zero-padded, never truncated" and cites the suppression (AC-4)', () => {
+    expect(renderSrc, 'the mistaken "zero-padded, never truncated" claim is removed').not.toMatch(
+      /zero-padded, never truncated/,
+    )
+    expect(renderSrc, 'the corrected docblock names the zero-SUPPRESSION rule').toMatch(/suppress/i)
+    expect(renderSrc, 'the corrected docblock cites the UPSCRE SEC…CLC source (CENTI4.MAC:2638)').toMatch(/2638/)
+    expect(renderSrc, 'the corrected docblock cites DIGIT2/DIGITZ (CENIR4.MAC)').toMatch(/CENIR4/)
+  })
+})
