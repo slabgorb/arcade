@@ -21,14 +21,26 @@
 // change `DEC` to `INC`, change `BMI` to `BPL`, or change the number of CREGG
 // calls, and the derived count moves. That is a test the "three" reading fails.
 //
-// A NOTE ON THE DECLARATION COMMENT, because there are now THREE phrasings in
-// play and only one of them is executable. JOUSTRV4.SRC:160 declares PWHCH as "IF
-// >0 A PRE-MATURE HATCHING EGG TO BE CREATED" — but the code shortens while the
-// DECREMENTED value is >= 0, so at PWHCH = 1 (not > 0 after the DEC) an egg is
-// still shortened. The 1982 declaration comment is loose, the 1982 inline comment
-// ("NUMBER OF PRE-MATURE EGG HATCHINGS", with the value 2) is exact, and the code
-// is what is simulated below. Distrusting a ROM comment stays right; replacing one
-// with an unchecked count is what went wrong here.
+// A NOTE ON THE DECLARATION COMMENT — CORRECTED AT REVIEW, and the correction is
+// the same lesson twice. RED shipped a claim that JOUSTRV4.SRC:160's "IF >0 A
+// PRE-MATURE HATCHING EGG TO BE CREATED" was LOOSER than the DEC/BMI rule, and
+// offered as evidence that "a cell holding 1 still buys a shortening". A cell
+// holding 1 IS >0, so that example is agreement, not looseness — the supporting
+// claim contradicted the conclusion it was supporting.
+//
+// Enumerated over all 256 byte values at review: read as the SIGNED comparison
+// `BMI` tests, `v > 0` is true exactly when `v - 1` is non-negative, so the
+// declaration comment and the code agree on every value PWHCH ever reaches
+// (2, 1, 0, $FF, $FE …) and disagree only at $80, which it cannot reach. They part
+// company only under an UNSIGNED reading, where $FF is 255 and ">0" would predict
+// a shortening the code skips. So the reading is load-bearing and the 1982 comment
+// is not loose.
+//
+// Which makes this the story's own thesis landing on the story: it opened by
+// establishing that a 1982 comment was right and the modern re-derivation wrong,
+// and then impugned a SECOND 1982 comment on an argument that did not hold. Both
+// comments were fine. Distrusting a ROM comment stays right; publishing the
+// distrust before enumerating it does not.
 //
 // ─── THE RANGE IS CORROBORATED, NOT TAKEN FROM ITS OWN COMMENT ───────────────
 // `A RANDOM NUMBER 0-127` (JOUSTRV4.SRC:2890) is a comment, and a comment is the
@@ -80,11 +92,46 @@ describeVendored('PWHCH is set at egg-wave setup and spent inside CREGG', () => 
     expect(lines[2779 - 1], 'and the ledge loop is primed right after').toContain('PWREGA,U')
   })
 
-  it('the DECLARATION exists, and its comment is looser than the code (:160)', () => {
-    // Pinned so the discrepancy is on the record rather than rediscovered. "IF >0"
-    // is not the rule the DEC/BMI implements; the simulation below is.
+  it('the DECLARATION agrees with the code — SIGNED, on every value PWHCH reaches (:160)', () => {
+    // REWRITTEN AT REVIEW. This test used to be named "…its comment is looser than the
+    // code" and its body pinned one line, which asserts nothing about looseness at all:
+    // the claim lived entirely in the name and the file header, where nothing could
+    // check it — and it was wrong. A test whose name claims more than its body checks is
+    // the same unguarded-prose failure as a false comment, wearing a green tick.
+    //
+    // So the claim is now EXECUTED. `BMI` tests the sign bit, so read `> 0` as the
+    // SIGNED comparison and the declaration comment is exactly the DEC/BMI rule.
     const lines = sourceLines(SRC)
     expect(lines[160 - 1]).toBe('PWHCH\tRMB\t1\tIF >0 A PRE-MATURE HATCHING EGG TO BE CREATED')
+
+    const signed = (v: number): number => (v & 0x80 ? v - 256 : v)
+    /** What CREGG does with a cell holding `v`: DEC, then BMI skips on negative. */
+    const codeShortens = (v: number): boolean => (((v - 1) & 0xff) & 0x80) === 0
+    /** What the declaration comment predicts, read as the signed test BMI performs. */
+    const commentPredicts = (v: number): boolean => signed(v) > 0
+
+    // Every value the counter actually reaches: primed at 2, decremented once per egg
+    // over the twelve CREGG calls. KILLS the "looser" reading this story shipped in RED.
+    let v = 2
+    for (let call = 0; call < 12; call++) {
+      expect(
+        commentPredicts(v),
+        `PWHCH=$${v.toString(16)}: the declaration comment and the DEC/BMI rule disagree`,
+      ).toBe(codeShortens(v))
+      v = (v - 1) & 0xff
+    }
+
+    // Exhaustive, so the agreement is a property of the byte and not of the five values
+    // this counter happens to visit. The ONE signed disagreement is $80, whose DEC wraps
+    // to $7F — and PWHCH counts DOWN from 2, so it can never be there.
+    const disagree = [...Array(256).keys()].filter((n) => commentPredicts(n) !== codeShortens(n))
+    expect(disagree, 'signed, the only value the two readings differ on is $80').toEqual([0x80])
+
+    // And the UNSIGNED reading really is the one that would mislead — recorded because
+    // it is why the RED prose went wrong, not because the ROM is ambiguous.
+    const unsignedDisagree = [...Array(256).keys()].filter((n) => n > 0 !== codeShortens(n))
+    expect(unsignedDisagree.length, 'read unsigned, the two part company from $81 up').toBe(127)
+    expect(unsignedDisagree.includes(0xff), 'including $FF, which the third egg lands on').toBe(true)
   })
 
   it('CREGG spends it, in the block that sets the egg\'s hatch time (:2886-2894)', () => {

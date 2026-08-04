@@ -659,8 +659,17 @@ export function eggWaitFrames(row: Extract<DyRowName, 'EGGWT' | 'EGGWT2'>, wave:
  * per egg. `DEC` sets N from bit 7 of the RESULT and `BMI` branches only when it is
  * set, so the decrement to 1 shortens, the decrement to 0 shortens, and the
  * decrement to $FF is the first one skipped. Two, which is what the 1982 comment
- * said. The declaration's "IF >0" (JOUSTRV4.SRC:160) is looser than either and
- * should not be read as the rule.
+ * said.
+ *
+ * AND THE DECLARATION COMMENT IS RIGHT TOO — this story's review corrected a claim
+ * here that it was not. JOUSTRV4.SRC:160 declares PWHCH "IF >0 A PRE-MATURE
+ * HATCHING EGG TO BE CREATED", and read as the SIGNED comparison `BMI` actually
+ * tests that is exactly the DEC/BMI rule: `v > 0` is true precisely when `v - 1`
+ * is non-negative, on every value the cell reaches (2, 1, 0, $FF, $FE …). The two
+ * phrasings part company only under an UNSIGNED reading, where $FF counts as 255
+ * and ">0" would predict a shortening the code skips — which is a fact about the
+ * READING, not a looseness in Williams's comment. Enumerated over all 256 values
+ * at review; the only signed disagreement is $80, which PWHCH cannot reach.
  *
  * It is re-primed inside the egg-wave SETUP, so every egg wave gets its own two —
  * not two per run. Derived from the source, not transcribed from here, by

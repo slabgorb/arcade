@@ -100,7 +100,7 @@
   },
   {
     "id": "JT940-001",
-    "claim": "PWHCH is a one-byte per-player workspace cell, declared with Williams's own name for the mechanic: a PRE-MATURE HATCHING EGG. Its declaration comment says 'IF >0', which is LOOSER than the rule CREGG actually implements — the DEC/BMI pair at :2888-2889 shortens while the DECREMENTED value is non-negative, so a cell holding 1 still buys a shortening. Read the code, not this line, for the count.",
+    "claim": "PWHCH is a one-byte per-player workspace cell, declared with Williams's own name for the mechanic: a PRE-MATURE HATCHING EGG. Its 'IF >0' agrees exactly with the rule CREGG implements, PROVIDED '>0' is read as the SIGNED comparison the BMI at :2889 performs: v > 0 is true precisely when v-1 is non-negative, which holds for every value the counter reaches (2, 1, 0, $FF, $FE and down). Enumerated over all 256 byte values, the only signed disagreement is $80, which a counter that only decrements from 2 can never hold. Read UNSIGNED the two part company from $81 up — including the $FF the third egg lands on — so the reading is load-bearing even though the comment is not loose. This claim replaces an earlier version that called the declaration looser than the code and offered 'a cell holding 1 still buys a shortening' as evidence; a cell holding 1 IS >0, so that example showed agreement.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 160,

@@ -447,6 +447,53 @@ describe('AC-4 — the draw, swept over 32 seeds', () => {
     expect(tied, `${tied} of 32 seeds gave the two eggs the SAME cut — they must be drawn separately`).toBeLessThan(8)
   })
 
+  it('the draw CONSUMES the run\'s stream — the wave leaves the RNG somewhere else', async () => {
+    // ADDED AT REVIEW, from the mutation battery. Measured: replacing `rng` with
+    // `stepped.rng` in the sim this frame returns — so the two draws happen, shorten the
+    // two waits correctly, and are then THROWN AWAY instead of moving the run's durable
+    // word — left all 2657 tests green. Every other test in this file reads a WAIT, and a
+    // wait is computed from a local that advances whether or not the result is kept.
+    //
+    // It matters because the consumption is the story's own reason for existing as a
+    // separate story: PWHCH "draws from VRAND, so it moves the re-baseline a second time"
+    // is why it was descoped from jt9-38. A shortening that does not advance the shared
+    // generator leaves every later draw in the run exactly where it would have been
+    // without PWHCH, which is not what `JSR VRAND` (JOUSTRV4.SRC:2890) does.
+    //
+    // "DID THE RNG MOVE?" WOULD BE VACUOUS — `stepFrame` advances it every frame anyway,
+    // so the only honest question is whether it moved FURTHER than it would have. Hence
+    // the twin: the same twelve eggs, one set as the wave dealt them, one rebuilt from
+    // their own data through a field whitelist that drops whatever tag the deal added.
+    // Same processes, same frame, same everything the scheduler can see.
+    const dmod = await loadDemo()
+    const dealt = eggsOnly(await advanceTo(0x1234, EGG_WAVE))
+    const plain = (p: DemoProcess): DemoProcess => ({
+      id: p.id, cls: p.cls, nap: p.nap, period: p.period, kind: p.kind, waveEgg: p.waveEgg, egg: p.egg,
+    })
+    const untagged: DemoState = { ...dealt, sim: { ...dealt.sim, processes: dealt.sim.processes.map(plain) } }
+
+    const withPwhch = dmod.stepDemo(dealt)
+    const without = dmod.stepDemo(untagged)
+
+    // The fixtures really are the same twelve eggs, or the comparison below is between
+    // two different runs and proves nothing.
+    expect(eggsIn(dealt).length, 'twelve dealt eggs').toBe(12)
+    expect(eggsIn(untagged).map((p) => p.id), 'and the twin holds the same twelve ids').toEqual(
+      eggsIn(dealt).map((p) => p.id),
+    )
+    // CONTROL — the twin has no pre-mature eggs at all, so its twelve share one wait.
+    // Without this the rng difference below could come from the twin being broken.
+    expect(new Set(eggsIn(without).map((p) => p.egg?.waitFrames)).size, 'the untagged twelve are uniform').toBe(1)
+
+    expect(
+      withPwhch.sim.rng,
+      'the two VRAND draws must leave the run\'s durable word somewhere the untagged run never reaches',
+    ).not.toBe(without.sim.rng)
+
+    // And it is not simply nondeterministic: the same input replays to the same word.
+    expect(dmod.stepDemo(dealt).sim.rng, 'the advance is deterministic, not entropy').toBe(withPwhch.sim.rng)
+  })
+
   it('DETERMINISM — the same seed gives the same two waits, twice over', async () => {
     // The story's own constraint: "drawn from the run's seeded RNG so it stays
     // deterministic". Core mints no entropy (the jt1-7 purity law), and this is the
