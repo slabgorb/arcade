@@ -798,7 +798,7 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
     expect(
       [...wired].sort(),
       "the wired set is uf1-2's two brakes + uf1-8's ten seek rows + uf1-9's eleven cadence " +
-        "rows + jt9-1's LAVLAV + jt9-9's two egg waits",
+        "rows + jt9-1's LAVLAV + jt9-9's two egg waits + jt9-11's two troll rows",
     ).toEqual(
       [...WIRED_NAMES, ...UF18_ROWS, ...UF19_ROWS,
         'LAVLAV',
@@ -806,6 +806,11 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
         // when it LANDS (EGGLND :3224); EGGWT2 the one an EGG WAVE's eggs enter
         // holding (:2761). Both reach `demo.eggWaitFrames`.
         'EGGWT', 'EGGWT2',
+        // jt9-11 — the lava troll's grip, now LIVE. LAVGRA seeds the grip's pull
+        // (`troll.beginGrip`, the wave gravity CLVGRA = LAVGRA, :6395); LAVTIM is
+        // the hand-animation frame timer (`LDA LAVTIM / STA PJOYT,U`, :1611). Both
+        // gain a production caller the moment the grab is wired into the demo.
+        'LAVGRA', 'LAVTIM',
       ].sort())
     for (const n of wired) {
       const disp = d.ROW_DISPOSITION[n]
@@ -842,25 +847,18 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
     expect(dead, 'the dead-in-ROM category is now empty').toEqual([])
   })
 
-  it('gives every unwired row a ROM line, a missing mechanic and an owner', async () => {
+  it('has NO rows left waiting on a mechanic — jt9-11 wired the last two (the troll pair)', async () => {
     const d = await loadDifficulty()
     const pending = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'no-consumer-yet')
-    // 28 rows − 26 wired (uf1-2's 2 + uf1-8's 10 + uf1-9's 11 + jt9-1's LAVLAV
-    // + jt9-9's EGGWT/EGGWT2) − 0 dead-in-ROM = 2 genuinely waiting on a
-    // mechanic: LAVTIM and LAVGRA, both of which need a live lava-troll grab.
-    // jt9-1 moved the dead term to zero; jt9-9 took the two egg waits, leaving
-    // the troll pair for jt9-11.
-    expect(pending.length, 'the tracked remainder').toBe(2)
-    expect([...pending].sort(), 'and it is the troll pair, by name').toEqual(['LAVGRA', 'LAVTIM'])
-    for (const n of pending) {
-      const disp = d.ROW_DISPOSITION[n]
-      if (disp.kind !== 'no-consumer-yet') throw new Error('unreachable')
-      // "Not wired" is only acceptable as a FACT with an address. Empty strings are
-      // the shrug this AC exists to forbid.
-      expect(disp.rom, `${n} must cite the ROM line that reads it`).toMatch(/JOUSTRV4\.SRC:\d+/)
-      expect(disp.missing.length, `${n} must name the mechanic the clone lacks`).toBeGreaterThan(0)
-      expect(disp.owner, `${n} must name the story that will wire it`).toMatch(/\S/)
-    }
+    // 28 rows − 28 wired (uf1-2's 2 + uf1-8's 10 + uf1-9's 11 + jt9-1's LAVLAV +
+    // jt9-9's EGGWT/EGGWT2 + jt9-11's LAVGRA/LAVTIM) − 0 dead-in-ROM = 0 waiting.
+    // LAVTIM and LAVGRA were the last remainder; giving the grip a live grab is what
+    // gives them a caller, so `no-consumer-yet` is now empty.
+    //
+    // RED until jt9-11: difficulty.ts still marks LAVTIM/LAVGRA `no-consumer-yet,
+    // owner jt9-11`, so this reads `['LAVGRA','LAVTIM']` and fails at length 0.
+    expect([...pending].sort(), 'the troll pair no longer waits on a mechanic').toEqual([])
+    expect(pending.length, 'no DYTBL row is left without a consumer').toBe(0)
   })
 })
 

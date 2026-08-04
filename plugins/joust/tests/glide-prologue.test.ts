@@ -355,46 +355,47 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
     return d
   }
 
-  it('the troll precedes the enemy it was inserted at — BEFORE, not after', () => {
-    // Review R-2: the first form asserted `procs[at + 1].kind === 'enemy'`, which
-    // is true whether the troll is placed BEFORE or AFTER its victim — six
-    // enemies exist at the troll wave, so the kind repeats and the ordering claim
-    // evaporated. Mutation-proven: inverting the placement passed all 2496 tests.
+  it('the troll precedes its BOUND VICTIM — BEFORE, not after (jt9-11 gives it a real victim)', () => {
+    // jt9-1 placed the troll before the FIRST ENEMY because it had no victim to pick
+    // (demo.ts insertTroll: `processes.findIndex(kind === 'enemy')`). jt9-11 gives
+    // the troll a real `victimId` (PJOY), so the splice point is now THAT process —
+    // whatever its kind — per `:6778 LDU PPREV  AFTER PREVIOUS PROCESS (BEFORE THIS
+    // ONE)`. Asserting against the bound victim's INDEX (not its kind) is what tells a
+    // correct BEFORE-splice from an inverted one; comparing kinds cannot (Review R-2).
     //
-    // `:6778  LDU PPREV  AFTER PREVIOUS PROCESS (BEFORE THIS ONE)` — the word
-    // under test is BEFORE, so the assertion has to be POSITIONAL against the
-    // insertion point. `insertTroll` splices at the first enemy, so a correct
-    // insertion leaves that enemy at the troll's index + 1; an inverted one
-    // leaves it at the troll's index − 1. Comparing the two indices tells them
-    // apart; comparing kinds cannot.
+    // RED until jt9-11: the spawned troll carries no `victimId`, so there is no bound
+    // victim to sit before.
     const d = atTrollWave(0x1234)
     const procs = d.sim.processes
     const t = procs.findIndex((p) => p.kind === 'troll')
-    const firstEnemy = procs.findIndex((p) => p.kind === 'enemy')
     expect(t, 'floor — the troll spawned').toBeGreaterThanOrEqual(0)
-    expect(firstEnemy, 'floor — there is an enemy to insert in front of').toBeGreaterThanOrEqual(0)
-    expect(firstEnemy, 'the first enemy sits DIRECTLY AFTER the troll').toBe(t + 1)
-    // Said the other way, so an inverted splice cannot satisfy it by symmetry:
-    // nothing of kind `enemy` may precede the troll.
-    expect(
-      procs.slice(0, t).filter((p) => p.kind === 'enemy'),
-      'no enemy may precede the troll — that is what "BEFORE THIS ONE" forbids',
-    ).toEqual([])
+    // victimId is jt9-11's addition to the troll process; access it through the
+    // inline-cast idiom this file already uses for not-yet-in-type fields (cf. the
+    // `p.enemy as { plavt?: number }` looker read below) so the RED typechecks.
+    const troll = procs[t] as { victimId?: number }
+    expect(troll.victimId, 'the troll bound a real victim (PJOY)').toBeDefined()
+    const vi = procs.findIndex((p) => p.id === troll.victimId)
+    expect(vi, 'floor — the bound victim is in the list').toBeGreaterThanOrEqual(0)
+    expect(vi, 'the bound victim sits DIRECTLY AFTER the troll').toBe(t + 1)
+    // Said the other way, so an inverted splice cannot satisfy it by symmetry: the
+    // victim must not precede the troll.
+    expect(vi, 'the victim does not precede the troll').toBeGreaterThan(t)
   })
 
-  it('the troll is not appended at the list end', () => {
-    // :6778 `LDU PPREV  AFTER PREVIOUS PROCESS (BEFORE THIS ONE)` — the ROM
-    // creates the troll immediately before its victim, and that placement is the
-    // ONLY reason `LDX PPREV / LDA PID,X / CMPA #LAVID` can ever be true. Our
-    // port appends it with `processes = [...processes, trollProcess(wave)]`
-    // (demo.ts), which strands it after every enemy, so no enemy can ever see
-    // it. The looker would then be a correct pure function whose production
-    // input is false forever — this repo's named failure mode.
+  it('the troll is not appended at the list end — it sits immediately before its victim', () => {
+    // :6778 `LDU PPREV  AFTER PREVIOUS PROCESS (BEFORE THIS ONE)` — the ROM creates
+    // the troll immediately before its victim, and that placement is the ONLY reason
+    // `LDX PPREV / LDA PID,X / CMPA #LAVID` can ever be true (fires for an enemy
+    // whose victim binding puts it right after the troll). Our port appended it with
+    // `[...processes, trollProcess(wave)]`, stranding it after every process — this
+    // repo's named failure mode. RED until jt9-11 binds a victim.
     const d = atTrollWave(0x1234)
     const procs = d.sim.processes
     const at = procs.findIndex((p) => p.kind === 'troll')
     expect(at, 'floor — the troll must be in the list').toBeGreaterThanOrEqual(0)
-    expect(procs[at + 1]?.kind, 'the process immediately after the troll is its victim').toBe('enemy')
+    const victimId = (procs[at] as { victimId?: number }).victimId
+    expect(victimId, 'the troll bound a victim to sit before').toBeDefined()
+    expect(procs[at + 1]?.id, 'the process immediately after the troll is its bound victim').toBe(victimId)
   })
 
   it('the looker channel is fed from real adjacency, not hard-coded', () => {

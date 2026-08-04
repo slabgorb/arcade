@@ -30,6 +30,7 @@
 // forked/divergent stepping path fails loudly.
 
 import type { PlayerInput, EntityState } from './flight-contract.js'
+import type { TrollGrip } from './troll-contract.js'
 import type { ProcessClass } from './scheduler-contract.js'
 import type { IntelBudget, EnemyState } from './enemy-contract.js'
 import type { EggState, EggVictim, RemountEntry } from './egg-contract.js'
@@ -49,6 +50,7 @@ export type {
   EnemyType,
   Facing,
   ArenaState,
+  TrollGrip,
 }
 
 // ─── The sim, as the demo carries it ─────────────────────────────────────────
@@ -119,6 +121,22 @@ export interface DemoProcess {
    * counter — reasoning from the one to the other is what misfiled jt8-6.
    */
   eggHits?: number
+  /**
+   * jt9-11 — a `kind: 'troll'` lava troll's VICTIM BINDING: the `id` of the bird it
+   * is grabbing. This is PJOY's third meaning (the "FINGER PRINT THIS PROCESS FOR
+   * THE LAVA TROLL" — `STU PJOY,Y`, JOUSTRV4.SRC:6781, read back at `LAVVI2 CMPY
+   * PJOY,U` :1712), the address LNDB7 stamps on the troll from the bird that landed
+   * in its zone. Absent until a troll is spawned; the whole grip has nowhere to
+   * attach without it.
+   */
+  victimId?: number
+  /**
+   * jt9-11 — a `kind: 'troll'` troll's escalating GRIP, seeded by `troll.beginGrip`
+   * (PATCH1: CLVGRA = the wave's LAVGRA, LAVKLL = 30*60) the frame the hand reaches
+   * the victim and the grab COMMITS. Absent while the hand is still rising/tracking;
+   * present === the victim's gravity is now ADDLAV (`troll.stepGrip`), not normal.
+   */
+  grip?: TrollGrip
 }
 
 /** The demo's simulation state — the jt2-1 GameState, egg variant live. */
