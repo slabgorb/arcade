@@ -5,11 +5,12 @@
 // THE DEFECT IS IN THE RENDER, NOT THE SIM. The sim value CENT_ENTER_V = 0xF8
 // (src/core/centipede.ts:64) is byte-cited to CENTI4.MAC:489 and CORRECT — the
 // ROM lays the whole wave-1 train along the top row v=0xF8 and holds it there.
-// Three ROM comments say V >= 0xF8 is OFF the visible field (SHOOT :2177-2182
-// "IF OFF TOP OF SCREEN", ANTMV :59-62 "IF ON SCREEN, KEEP MOVING", ANTPC
-// :135-137 "REMOVE ANT FROM SCREEN"). render() draws the gun, shot, spider and
-// flea already declining to paint in that band — the flea is gated four lines
-// from the train by `if (flea.v < FLEA_PARK_V)` (render.ts) — but the TRAIN is
+// Three ROM comments say V >= 0xF8 is OFF the visible field (SHOOT :2181-2182
+// "CMP I,0F8 / BCS ;IF OFF TOP OF SCREEN", ANTMV :59-62 "IF ON SCREEN, KEEP
+// MOVING", ANTPC :125 "JSR ANTPC ;REMOVE ANT FROM SCREEN"). render() draws the
+// gun, shot, spider and flea already declining to paint in that band — the flea
+// is gated four lines from the train by `if (flea.v < FLEA_PARK_V)` (render.ts)
+// — but the TRAIN is
 // the one motion object that blits there ungated, painting the 12-segment wave
 // straight over the P1 score, lives and high-score row at wave start.
 //

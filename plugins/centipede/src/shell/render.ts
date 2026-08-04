@@ -288,10 +288,11 @@ export function render(ctx: CanvasRenderingContext2D, atlas: Atlas, state: SimSt
   // (pic>=0xFA, CT-44); a rested/vacant slot (0xF9) is not drawn.
   for (const seg of state.segs) {
     // cp7-2: the ROM holds the entering train at v=0xF8 (CENT_ENTER_V) but calls
-    // V >= 0xF8 OFF the visible field three times (SHOOT :2177-2182 "IF OFF TOP
-    // OF SCREEN", ANTMV :59-62, ANTPC :135-137 "REMOVE ANT FROM SCREEN"). The
-    // sim is byte-correct; the render must decline to paint there — the SAME
-    // gate the flea takes below (`flea.v < FLEA_PARK_V`), not a vertical offset:
+    // V >= 0xF8 OFF the visible field three times (SHOOT :2181-2182 "CMP I,0F8 /
+    // BCS ;IF OFF TOP OF SCREEN", ANTMV :59-62, ANTPC :125 "JSR ANTPC ;REMOVE ANT
+    // FROM SCREEN"). The sim is byte-correct; the render must decline to paint
+    // there — the SAME gate the flea takes below (`flea.v < FLEA_PARK_V`), not a
+    // vertical offset:
     // an offset would still blit the wave-start train one pixel down onto the
     // HUD score row, and gunScreenY is shared with the gun and pinned.
     if (seg.v >= FLEA_PARK_V) continue
