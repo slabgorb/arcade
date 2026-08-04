@@ -75,7 +75,8 @@ stories:
       TESTS THAT WILL REACT, KNOWN AT FILING: tests/segment-render.test.ts:97-98 builds its fixture from segments at v=0xf8 and asserts drawImageCount() >= mushrooms + 1 + 3 with HEAD3/HEAD2 among the requested stamps — IT GOES RED THE MOMENT SEGMENTS AT 0xF8 STOP DRAWING, and rewriting it to a visible row is part of this story, not collateral damage. tests/gun-vertical.test.ts:42-45 pins y = 247 - v only over PLAYV_MIN..PLAYV_MAX, so a segment-only fix is safe from it but an offset fix is not. tests/render.test.ts:260 and :379-386 require every HUD glyph at y = cellScreenY(31). Also aware: tests/centipede.test.ts:152/:164/:170-174, tests/sim-assembly.test.ts:158 and tests/fragmented-train.test.ts:121/:264 all pin the 0xF8 entry in the SIM and must all still pass untouched — if any of them goes red you have changed the wrong layer.
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-04'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
