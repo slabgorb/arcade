@@ -1865,10 +1865,16 @@ function isForegroundArena(destY: number): boolean {
  * clips through every ledge; the mount/rider (different POSOFFs) stack at one
  * origin. Unknown frames (no record) take a zero offset. Pure.
  */
-function posOffset(name: string): { xoff: number; yoff: number } {
+export function posOffset(name: string): { xoff: number; yoff: number } {
   const rec = ENTITY_RECORDS.find((r) => r.name === name)
   if (!rec) return { xoff: 0, yoff: 0 }
-  return { xoff: rec.position >> 8, yoff: 256 - (rec.position & 0xff) }
+  // XOFF is SIGNED — the POSOFF macro packs `XOFF*256 + 256-YOFF` (JOUSTI.SRC:12-13),
+  // and a sprite whose art hangs to the LEFT of its hot spot carries a negative XOFF.
+  // `>> 8` returns the raw high byte, so a negative XOFF (high bit set) comes back as
+  // its unsigned complement; sign-extend it. EGGB2 $FFF6 -> -1, EGGB3 $FEF5 -> -2
+  // (jt9-13). Every other record's high byte is <= 2, so this is a no-op for them.
+  const hi = rec.position >> 8
+  return { xoff: hi > 127 ? hi - 256 : hi, yoff: 256 - (rec.position & 0xff) }
 }
 
 /** One POSOFF-placed, facing-tagged entity op from a frame name + feet position. */
