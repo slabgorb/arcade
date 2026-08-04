@@ -1172,10 +1172,18 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
     // 199 (it was alive at 200 under uf1-9, dead under uf1-8), so `egg#65793` is
     // back in the list and `enemy#258` is elsewhere again. Which enemy row moves
     // is not the claim; that no PLAYER row does, is.
+    //
+    // jt9-24 RE-BASELINE (decoded SELPLY metric): the invariant survives a SIXTH
+    // tree, and this is the pin narrowing to its true claim — `player#1` and
+    // `player#2` are STILL byte-for-byte what they were. `enemy#256` now moves
+    // (its y/vy change: the decoded nearest-of-two metric re-routes which knight
+    // the buzzard homes on), which is exactly what an ENEMY row is permitted to
+    // do. The claim was never "enemy#256 is invariant" — it is "no PLAYER row
+    // moves", and that holds.
     expect(entityDigest(0xbeef, 200)).toEqual([
       'player#1:40,30508,326,-4,192,161,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:171,30017,-13,8,64,101,1',
+      'enemy#256:171,28788,-33,8,64,101,1',
       'enemy#258:171,33756,-20,8,64,101,1',
       'egg#65793:-',
     ])

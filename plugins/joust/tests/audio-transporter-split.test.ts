@@ -741,8 +741,20 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // is now 1894, so that is the fixture — chosen by the same rule as every prior
     // move, the earliest that re-enters knight 2. audio-events.test.ts stages the
     // same frame, as it has through all three moves.
-    expect(materialisedIdsAt(0xbeef, 214), 'seed 0xbeef frame 214 re-enters knight 2').toEqual([2])
-    expect(materialisedIdsAt(0xbeef, 340), 'seed 0xbeef frame 340 re-enters knight 1').toEqual([1])
+    //
+    // jt9-24 RE-BASELINE, and this time 0xbeef moved while 0xface did NOT. The
+    // decoded SELPLY nearest-of-two metric re-routes which knight each buzzard
+    // homes on, so the deaths — and the transporter re-entries downstream of them
+    // — shift for 0xbeef. Re-swept both seeds by THIS test's own precondition (a
+    // player id in the process list that was not there the frame before), never
+    // by nudging:
+    //   0xbeef re-entries: 350→1, 516→2, 1646→1, 1870→1, 2563→2
+    //   0xface re-entries: 622→1, 950→1, 1391→1, 1894→2, 2137→1  (IDENTICAL)
+    // By the same rule as every prior move: 0xbeef's earliest knight-TWO re-entry
+    // is now 516 and its first knight-1 re-entry is 350. 0xface/1894 is untouched,
+    // so audio-events.test.ts still stages the same frame.
+    expect(materialisedIdsAt(0xbeef, 516), 'seed 0xbeef frame 516 re-enters knight 2').toEqual([2])
+    expect(materialisedIdsAt(0xbeef, 350), 'seed 0xbeef frame 350 re-enters knight 1').toEqual([1])
     expect(
       materialisedIdsAt(0xface, 1894),
       'seed 0xface frame 1894 — the frame audio-events.test.ts already stages — re-enters ' +
@@ -757,15 +769,15 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // the defect this story exists to remove. Asserted BEHAVIOURALLY at two
     // measured frames rather than by reading events.ts, because a type can
     // declare a field the emitter never fills.
-    expect(materialiseEventsAt(0xbeef, 214).map((e) => e.player)).toEqual([2])
-    expect(materialiseEventsAt(0xbeef, 340).map((e) => e.player)).toEqual([1])
+    expect(materialiseEventsAt(0xbeef, 516).map((e) => e.player)).toEqual([2])
+    expect(materialiseEventsAt(0xbeef, 350).map((e) => e.player)).toEqual([1])
   })
 
   it('the payload is the LOOP’s id, not a constant — the two frames disagree', async () => {
     // The control that kills the cheapest green: `player: 1` hardcoded at the
     // emit site satisfies the player-1 frame and every dispatch test below.
-    const two = materialiseEventsAt(0xbeef, 214).map((e) => e.player)
-    const one = materialiseEventsAt(0xbeef, 340).map((e) => e.player)
+    const two = materialiseEventsAt(0xbeef, 516).map((e) => e.player)
+    const one = materialiseEventsAt(0xbeef, 350).map((e) => e.player)
     expect(two, 'precondition: both frames emit').toHaveLength(1)
     expect(one).toHaveLength(1)
     expect(two[0], 'a constant would make these equal').not.toBe(one[0])

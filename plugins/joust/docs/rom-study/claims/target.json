@@ -19,7 +19,7 @@
   },
   {
     "id": "JT81-003",
-    "claim": "When both players are targetable SELPLY picks the nearer by a FIND CLOSEST CO-ORDINANT metric — the smaller of the per-axis gaps between the enemy and each player.",
+    "claim": "When both players are targetable SELPLY (:4476-4514) does NOT compute a per-player distance: the X-axis metric's high byte is always non-zero so the TSTA/BNE store guard (:4487-4488) never fires and the X store is dead. The choice reads only the primary's Y-distance byte (-(|Dy|)&0xFF) and the secondary's X-metric low byte, left in register B; the final CMPB 1,S / BLO (:4512-4514) keeps the primary only when the secondary's X byte is strictly less (unsigned) than the primary's Y byte, else it falls through to LDX TARPL2 — the secondary (so an exact tie favours the secondary). Decoded by verified 6809 trace (jt9-24); this retires the jt8-1 min-of-axes approximation.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 4477,

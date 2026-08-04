@@ -550,26 +550,37 @@ describe('AC5 — the jt2 replay pins move, and the bound is stated', () => {
     }
   })
 
-  it('seed 0x2468 at 400 frames — ONE enemy row moves, and nothing else does', () => {
-    // FROZEN pre-story, measured on the shipped tree at aa9305d. This fixture
-    // was chosen because its blast radius is a single row: it proves the change
-    // bites AND bounds it in the same assertion. Dev re-finds the sibling pins
-    // by sweeping for each one's own precondition — never by nudging a number
-    // toward the new output (uf1-9 moved 21 assertions that way, two of which
-    // had to change SEED because their precondition had no solution on the old
-    // one).
+  it('seed 0x2468 at 400 frames — the dumb wingbeat still bites, and player#1 is unmoved', () => {
+    // FROZEN pre-story, measured on the shipped tree at aa9305d. This fixture was
+    // chosen because its jt9-18 blast radius is a single row: it proves the change
+    // bites AND bounds it in the same assertion. Dev re-finds the sibling pins by
+    // sweeping for each one's own precondition — never by nudging a number toward
+    // the new output.
+    //
+    // jt9-24 RE-BASELINE, and the "ONE enemy row / nothing else" BOUND could not
+    // survive as written: the decoded SELPLY nearest-of-two metric re-routes this
+    // seed's targeting so `enemy#256` is now KILLED before frame 400 (it leaves
+    // `egg#65792` where it used to fly). That widened radius is jt9-24's doing,
+    // not jt9-18's, so it is not evidence against the dumb-wingbeat mechanism. The
+    // guards that DO isolate jt9-18 survive intact and are what this test now
+    // pins: (a) `player#1` is BIT-IDENTICAL to the aa9305d frozen value — the
+    // decoded metric has not reached its replay by frame 400, a real cross-tree
+    // invariant; (b) `player#2` never leaves the ground; (c) `enemy#257` is NOT in
+    // the held-wings state, i.e. the dumb wingbeat is still active — the mutation
+    // guard that reverting jt9-18 would trip. The composition is still four
+    // processes; only WHICH enemy row moved, and how far, changed.
     const rows = entityDigest(0x2468, 400)
     expect(rows.length, 'the fixture no longer has the four processes it was measured on').toBe(4)
     expect(rows[0], 'player#1 must not move — it has met no re-routed bird by frame 400').toBe(
       'player#1:30,31671,-17,0,128,49,1',
     )
-    expect(rows[1], 'enemy#256 is outside the blast radius at this frame').toBe(
-      'enemy#256:277,31046,-6,8,0,28,1',
-    )
-    expect(rows[3], 'player#2 never leaves the ground in this replay').toBe(
+    expect(rows[1], 'player#2 never leaves the ground in this replay').toBe(
       'player#2:200,32768,0,0,0,1,0',
     )
-    expect(rows[2], 'enemy#257 did NOT move — the dumb wingbeat is still the old one').not.toBe(
+    expect(rows[3], 'jt9-24 re-routes enemy#256 to its death here — the widened radius is jt9-24, not jt9-18').toBe(
+      'egg#65792:-',
+    )
+    expect(rows[2], 'enemy#257 did NOT move to held-wings — the dumb wingbeat is still active').not.toBe(
       'enemy#257:161,53760,0,8,0,1,0',
     )
   })

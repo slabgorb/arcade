@@ -634,12 +634,19 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // the brains draw randomness — the law this group exists to pin).
     // `procs`/`scores` moved again: a committed uf1-8 dive puts enemy#257
     // under the idle knight's lance before frame 240 (+1250 to P2).
+    //
+    // jt9-24 RE-BASELINE (the decoded SELPLY nearest-of-two metric re-routes
+    // enemy targeting), and the headline is again the field that did NOT move:
+    // `rng` is STILL 1_928_172_029 — the metric draws no randomness, the law this
+    // group pins. What moved is play-dependent only: enemy#256 is now killed
+    // (leaving egg#65792) instead of surviving, and the re-routed contact scores
+    // P1 +500.
     expect(fingerprint(0x1a2b_3c4d, 240)).toEqual({
       frame: 240,
       rng: 1_928_172_029,
       wave: 1,
-      procs: 'player#1,player#2,enemy#256,enemy#258',
-      scores: [0, 1250],
+      procs: 'player#1,player#2,enemy#258,egg#65792',
+      scores: [500, 1250],
       lives: [5, 5],
     })
   })
@@ -673,13 +680,19 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // this time: 2 -> 1. The dumb birds now beat their wings instead of holding
     // them down, which keeps them airborne and alive, so this seed no longer
     // clears wave 1 inside 2400 frames at all and player 2 is out (lives 0).
+    //
+    // jt9-24 RE-BASELINE (decoded SELPLY metric), and once more the field that
+    // did NOT move is the point: `rng` is STILL 2_006_456_271 — no draw added.
+    // The play moved a long way: the re-routed targeting now clears wave 1 and
+    // grinds into wave 2, player 1 racks up 7150, and both knights are alive at
+    // frame 2400 (lives 2 and 4) rather than player 2 being out.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
-      wave: 1,
-      procs: 'enemy#256,player#1',
-      scores: [850, 1500],
-      lives: [3, 0],
+      wave: 2,
+      procs: 'player#2,enemy#513,player#1',
+      scores: [7150, 1300],
+      lives: [2, 4],
     })
   })
 
@@ -695,13 +708,18 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // part-way through wave 2's four. What moved is play-dependent and only
     // that: the process ORDER (both knights have been through the transporter in
     // a different order), P1's score by one 100-point bird, and P1's lives.
+    //
+    // jt9-24 RE-BASELINE (decoded SELPLY metric): `rng` bit-identical AGAIN
+    // (3_436_766_652) — the law this group pins. The re-routed targeting keeps
+    // this seed slower through wave 1 in this window (wave 1, not 2, at frame
+    // 900) with both knights untouched (lives 5/5), one enemy killed to an egg.
     expect(fingerprint(0x2468, 900)).toEqual({
       frame: 900,
       rng: 3_436_766_652,
-      wave: 2,
-      procs: 'enemy#512,enemy#513,enemy#514,enemy#515,player#2,player#1',
-      scores: [1400, 2600],
-      lives: [2, 3],
+      wave: 1,
+      procs: 'player#1,player#2,enemy#257,egg#65792',
+      scores: [500, 1250],
+      lives: [5, 5],
     })
   })
 

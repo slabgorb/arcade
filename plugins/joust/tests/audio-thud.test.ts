@@ -859,6 +859,15 @@ describe('jt5-4 — the sim RESOLVES what the thud announces', () => {
 // enemy-vs-PLAYER character did not survive: with the dumb brain alternating,
 // no seed this file used produces a person thud at all, so that case moved to a
 // seed of its own (see the test below, which carries the sweep).
+//
+// jt9-24 RE-MEASURED both windows a final time. 0xbeef's first thud is STILL
+// frame 119 and still enemy-vs-enemy. 0x2468, by contrast, no longer bounces AT
+// ALL inside 1300 frames: the decoded SELPLY nearest-of-two metric re-routes its
+// birds so every contact resolves as a kill, so its whole window is now
+// thud-free (its pre-contact anchor below stands more firmly than ever, and its
+// post-contact anchor moved off it — to 0xface, which still bounces at 119). The
+// person-thud case, already rare, is now near-eliminated fleet-wide (see the
+// SNPTHD test below, which carries the census).
 
 describe('jt5-4 — the thuds happen in ordinary play', () => {
   const advanceTo = (seed: number, frame: number): GameState => {
@@ -874,11 +883,24 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     expect(thudsOf(eventsOf(fired))).toEqual([ENEMY_THUD])
   })
 
-  it('seed 0x2332, frame 973: a buzzard bumps a knight — a PERSON thud', () => {
+  it('seed 0x1b4a, frame 1151: a buzzard bumps a knight — a PERSON thud', () => {
     // The case derived AC3 would have left silent: enemy-vs-player, not
     // player-vs-player. Measured — the frame before emits NOTHING at all, so both
     // streams can be asserted exactly: the thud arrives with the knight's own
     // wing-down cue (the scripted flap on a %13 frame), and nothing else.
+    //
+    // jt9-24 RE-BASELINE, and the SEED had to move — this is the empty-solution
+    // case AC5 anticipates, re-found by sweeping and NOT by relaxing. The decoded
+    // SELPLY nearest-of-two metric re-routes targeting so that almost every
+    // equal-height approach now resolves as a KILL rather than a bump: a census
+    // over 6000 seeds (frame window 1200) found only TWO producing a person-thud
+    // at all, one of them clean — down from the "common" this file measured
+    // pre-jt9-24 (jt9-1's census: 62 of 400 seeds in [0x2200,0x2390)). 0x1b4a is
+    // the earliest clean person-thud in [0x1000,0x3000); its thud lands at frame
+    // 1151, which is not a %13 flap frame, so the knight's own wing cue does not
+    // ride along and the stream is EXACTLY the person thud, same as 0x2332 was.
+    // The SNPTHD near-eliminating is a faithful consequence of the ROM metric,
+    // recorded as a Delivery Finding — the mechanic is not gone, only rare.
     //
     // uf1-9 RE-BASELINE: seed 0x2468 frame 611 -> seed 0xface frame 260, and the
     // SEED had to move. Swept 1200 frames of all three seeds this file uses: with
@@ -919,9 +941,9 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     // spawn perch at (200,128), 55 px away. The stream is now EXACTLY the person
     // thud (frame 973 is not a %13 flap frame, so the knight's own wing cue does
     // not ride along), which makes the assertion strictly tighter than before.
-    const before = stepGame(advanceTo(0x2332, 972), inputsAt(972))
+    const before = stepGame(advanceTo(0x1b4a, 1150), inputsAt(1150))
     expect(eventsOf(before), 'the frame BEFORE emits nothing at all').toEqual([])
-    const fired = stepGame(advanceTo(0x2332, 973), inputsAt(973))
+    const fired = stepGame(advanceTo(0x1b4a, 1151), inputsAt(1151))
     expect(eventsOf(fired)).toEqual([PLAYER_THUD])
     expect(eventsOf(fired), 'this is the SNPTHD path, not the SNETHD one').not.toContain(ENEMY_THUD)
   })
@@ -1063,19 +1085,28 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // scores, lives and BOTH player rows are bit-identical. This seed's first
     // contact moved (611 -> 746, re-measured) but moved AWAY, so frame 188 is
     // still strictly pre-contact and the anchor does not need to move.
+    //
+    // jt9-24 RE-BASELINE (decoded SELPLY metric): `rng` is BIT-IDENTICAL
+    // (736_998_484 — a kill draws no randomness, the law this group pins) and so
+    // are BOTH player rows. This seed's whole window is now thud-free (see AC7's
+    // header note: 0x2468 no longer bounces at all under the decoded metric), so
+    // 188 is more-than-ever strictly pre-CONTACT. What moved is one enemy: the
+    // re-routed metric sends `enemy#256` to its death before 188 (P1 +500), so it
+    // leaves `egg#65792` where it used to fly; `enemy#257`/`enemy#258` are
+    // unchanged. procs and P1's score move with that kill; lives do not.
     expect(entityDigest(0x2468, 188)).toEqual([
       'player#1:45,26830,272,-2,0,149,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:64,29333,-1,8,64,95,1',
       'enemy#257:252,53313,14,8,192,95,1',
       'enemy#258:159,33196,10,8,64,95,1',
+      'egg#65792:-',
     ])
     expect(fingerprint(0x2468, 188)).toEqual({
       frame: 188,
       rng: 736_998_484,
       wave: 1,
-      procs: 'player#1,player#2,enemy#256,enemy#257,enemy#258',
-      scores: [0, 0],
+      procs: 'player#1,player#2,enemy#257,enemy#258,egg#65792',
+      scores: [500, 0],
       lives: [5, 5],
     })
   })
@@ -1095,45 +1126,42 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // dumb `enemy#257` is still FLYING here where the held-wings port had
     // already dropped it onto a platform (`35072,0,…,1,0` — airborne 0), and
     // `enemy#258` moved with the traffic.
+    //
+    // jt9-24 RE-BASELINE (decoded SELPLY metric): the frame-119 thud is UNMOVED
+    // (re-measured by sweeping for a thud, not assumed), so 160 is still strictly
+    // post-contact. Both PLAYER rows are unchanged a fifth time — the guard's
+    // claim. The one enemy row that moved is `enemy#256`: the decoded metric
+    // re-routes which knight it homes on, so it sinks on a different arc here
+    // (`30547,-40` -> `29844,-51`); `enemy#257`/`enemy#258` are unchanged.
     expect(entityDigest(0xbeef, 160)).toEqual([
       'player#1:54,20736,147,-4,64,121,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:131,30547,-40,8,64,81,1',
+      'enemy#256:131,29844,-51,8,64,81,1',
       'enemy#257:14,33111,-30,8,0,62,1',
       'enemy#258:131,34247,-49,8,64,81,1',
     ])
   })
 
-  it('AFTER it, seed 0x2468 has moved to its frozen post-story digest — frame 755', () => {
-    // jt5-4 froze this seed at frame 200, nine frames past its then-contact at
-    // 189 (the grounded ±2-shove case). uf1-8's brains emptied that window —
-    // the first contact is now the frame-611 player thud — so the post-contact
-    // anchor moves out with it: frame 620 sits past the thud AND the joust
-    // death/respawn pair it precipitates at 612/613 (measured), which is why
-    // the process list below carries a respawned player#2 at the tail and no
-    // enemy#258 (killed long before). An exact frozen pin, same as 0xbeef's.
+  it('AFTER it, seed 0xface has moved to its frozen post-story digest — frame 128', () => {
+    // jt5-4 froze the post-contact anchor on seed 0x2468 (frame 200, then 620,
+    // then 755 as its first contact drifted out). jt9-24 ends that lineage: the
+    // decoded SELPLY metric turns 0x2468 THUD-FREE (no contact in 1300 frames, see
+    // the header note above), so a "post-contact" anchor cannot live on it at all
+    // — frame 755 would sit past nothing and assert the reverse of its own name.
     //
-    // uf1-9 re-baseline: with the ROM cadence this seed's play diverges hard by
-    // frame 620 — the knights fare better, so the death/respawn pair at 612/613
-    // no longer happens in this window, player#2 is still on its spawn perch and
-    // enemy#256 is dead instead. Re-measured, not nudged.
-    //
-    // jt5-8 RE-BASELINE, and this time the ANCHOR moved, not just its values:
-    // 620 -> 755. The whole point of this test is to sit AFTER the first
-    // contact, and this seed's first contact moved out again (611 -> 746,
-    // re-measured by sweeping 1300 frames for a thud, not inferred), which would
-    // have left frame 620 strictly PRE-contact — the test would have gone on
-    // passing while quietly asserting the opposite of its own name. 755 is
-    // 746 + 9, the same nine-frame offset jt5-4 and uf1-8 both used. By then
-    // wave 1 has cleared and wave 2's complement (enemy#512-515) is up, which is
-    // why the list below is six processes rather than three.
-    expect(entityDigest(0x2468, 755)).toEqual([
+    // jt9-24 RE-BASELINE: the post-contact anchor moves to a seed that still
+    // bounces. 0xface's first contact is frame 119 (enemy-thud, re-measured by
+    // sweeping for a thud), so frame 128 is 119 + 9 — the same nine-frame offset
+    // jt5-4/uf1-8 always used — and sits strictly AFTER it. An exact frozen pin,
+    // the pair to 0xbeef's frame-160 anchor above. Both knights are still up at
+    // 128 (no death/respawn yet on this seed inside the window), so the list is
+    // the natural five processes.
+    expect(entityDigest(0xface, 128)).toEqual([
+      'player#1:66,17357,75,-2,128,89,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#512:50,51147,-98,-8,192,65,1',
-      'enemy#513:99,31225,19,8,64,65,1',
-      'enemy#514:99,35209,-31,8,64,65,1',
-      'enemy#515:285,32962,1,8,0,46,1',
-      'player#1:100,23166,-42,2,64,8,1',
+      'enemy#256:189,15895,-22,8,64,65,1',
+      'enemy#257:285,32962,1,8,0,46,1',
+      'enemy#258:189,20041,-32,8,64,65,1',
     ])
   })
 

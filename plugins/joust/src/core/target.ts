@@ -134,25 +134,59 @@ function viewOf(id: number | null, players: readonly TargetPlayer[]): PlayerView
   return p ? viewFor(p) : null
 }
 
+// ─── SELPLY's nearest-of-two metric, decoded byte-for-byte (jt9-24) ──────────
+// The verified 6809 decode of JOUSTRV4.SRC:4476-4514. It is NOT a per-player
+// distance: the X-axis store is dead code, so the choice reads ONLY the primary's
+// Y and the secondary's X, compared across axes. See tests/target.test.ts (the
+// `SELPLY nearest-of-two — the decoded :4476-4514 metric` suite) for the full
+// instruction-level writeup and the verification (a faithful sim that fired the
+// X store 0 times over 400k samples; a closed form matched over 2M inputs).
+
 /**
- * A SIMPLIFIED "closest coordinate" distance — the smaller of the two axis gaps.
- * ⚠ APPROXIMATION, not the verified ROM metric: SELPLY's tiebreak (:4476-4514) is a
- * subtle 6809 sequence — a 16-bit two's-complement negate with an overflow-guarded
- * per-axis compare (TSTA/BNE :4487/:4505) — that is NOT yet instruction-level
- * decoded, and may be Y-dominant rather than a plain min-of-axes. This port uses a
- * directionally-correct min-of-axes (the NEARER player wins), deferring the exact
- * decode to a successor story (see the jt8-1 Delivery Findings). Do not treat this
- * as byte-faithful.
+ * The primary candidate's Y-distance byte — the metric SELPLY stores and later
+ * reads for the PRIMARY (JOUSTRV4.SRC:4476-4480). `LDB PPOSY+1,X / SUBB
+ * PPOSY+1,U / BLO / NEGB`: a one-byte gap, negated on the NO-borrow branch, so
+ * the value is always `-(|Δy|) & 0xFF`. Larger byte = nearer; an EXACT match
+ * reads as `$00` (NEGB(0)=0), the smallest byte — so a primary level with the
+ * enemy looks maximally far. Only the low byte of Y (`PPOSY+1`) participates.
  */
-function coordDistance(seeker: TargetSeeker, p: TargetPlayer): number {
-  return Math.min(Math.abs(p.posX - seeker.posX), Math.abs(p.pixelY - seeker.pixelY))
+function primaryYMetric(pixelY: number, seekerY: number): number {
+  const py = pixelY & 0xff
+  const uy = seekerY & 0xff
+  const dy = (py - uy) & 0xff // SUBB — a byte subtract
+  return py >= uy ? (-dy & 0xff) : dy // BLO skips NEGB on borrow (py < uy)
 }
 
-/** Of two targetable candidates, the nearer by `coordDistance`; a tie keeps the
- * PRIMARY. ⚠ The exact ROM tie-break is UNVERIFIED: the final `CMPB 1,S / BLO
- * SPN3PL` (:4512-4515) is a STRICT less-than, so an exact tie appears to fall
- * through to `LDX TARPL2` — favouring the SECONDARY, the opposite of this port's
- * primary-favouring approximation. Deferred with the metric above. */
+/**
+ * The low byte SELPLY leaves in register B for the SECONDARY candidate — the low
+ * byte of its 16-bit X-metric (JOUSTRV4.SRC:4481-4510). `LDD PPOSX,Y / SUBD
+ * PPOSX,U` then, on the NO-borrow branch, `COMA / COMB / ADDD #-1` — a negate
+ * that carries a −2 bias, NOT a plain two's-complement. The metric's high byte is
+ * always $FF/$FE, so the `TSTA / BNE SPRLOX` guard (:4487-4488) NEVER stores it;
+ * it stays in B and is exactly what the final compare reads.
+ */
+function secondaryXLowByte(posX: number, seekerX: number): number {
+  const sx = posX & 0xffff
+  const ux = seekerX & 0xffff
+  const dx = (sx - ux) & 0xffff // SUBD — a 16-bit subtract
+  const xmetric = sx >= ux ? (((~dx & 0xffff) + 0xffff) & 0xffff) : dx // COMA/COMB/ADDD #-1 vs keep
+  return xmetric & 0xff
+}
+
+/**
+ * SELPLY's final decision (JOUSTRV4.SRC:4512-4515): `CMPB 1,S / BLO SPN3PL`.
+ * Register B holds the SECONDARY's X low byte; `1,S` is the PRIMARY's stored
+ * Y-metric. `BLO` is a STRICT less-than, so the primary is kept only when its
+ * byte is strictly greater (nearer); an exact tie falls through to `SPN2PL LDX
+ * TARPL2` — the secondary.
+ */
+function selplyKeepsPrimary(seeker: TargetSeeker, primary: TargetPlayer, secondary: TargetPlayer): boolean {
+  return secondaryXLowByte(secondary.posX, seeker.posX) < primaryYMetric(primary.pixelY, seeker.pixelY)
+}
+
+/** Of two targetable candidates, SELPLY's decoded nearest-of-two pick
+ * (JOUSTRV4.SRC:4476-4514); an exact tie favours the SECONDARY. When only one of
+ * the slot ids is still among the live players, that one is returned. */
 function nearer(
   seeker: TargetSeeker,
   players: readonly TargetPlayer[],
@@ -162,9 +196,7 @@ function nearer(
   const primary = players.find((q) => q.id === primaryId)
   const secondary = players.find((q) => q.id === secondaryId)
   if (primary && secondary) {
-    return coordDistance(seeker, secondary) < coordDistance(seeker, primary)
-      ? viewFor(secondary)
-      : viewFor(primary)
+    return selplyKeepsPrimary(seeker, primary, secondary) ? viewFor(primary) : viewFor(secondary)
   }
   if (primary) return viewFor(primary)
   if (secondary) return viewFor(secondary)
@@ -175,7 +207,7 @@ function nearer(
  * `SELPLY` (JOUSTRV4.SRC:4462-4520): the PlayerView of the player this enemy hunts,
  * or null when nobody is targetable. A player is targetable only once its grace
  * timer is 0; with the primary in grace the secondary is tried; with both
- * targetable the nearer to `seeker` is chosen. Pure.
+ * targetable the decoded SELPLY :4476-4514 metric chooses one (`nearer`). Pure.
  */
 export function selectTarget(
   state: TargetState,

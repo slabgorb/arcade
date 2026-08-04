@@ -230,7 +230,11 @@ describe('AC2 — no promotion in seeded play ever carries a glide', () => {
     // 11 at setup. Pinned as a floor rather than an equality because AC4's
     // re-baseline moves promotion frames by design; what must not change is
     // that promotions HAPPEN.
-    expect(total, 'the population the claim below quantifies over').toBeGreaterThanOrEqual(8)
+    // jt9-24 RE-BASELINE: 11 -> 7. The decoded SELPLY metric re-routes targeting
+    // so a few birds are killed before they would have promoted, shrinking the
+    // population. It is still comfortably non-empty — the only thing this control
+    // exists to prove — so the floor drops with it (kept below the measured 7).
+    expect(total, 'the population the claim below quantifies over').toBeGreaterThanOrEqual(6)
   })
 
   it('RED — on the IDLE-input replay, zero promotions carry a glide', () => {
