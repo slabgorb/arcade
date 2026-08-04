@@ -71,6 +71,32 @@ export function segmentStamp(pic: number): string {
   return `HEAD${(pic & 0x0f).toString(16).toUpperCase()}`
 }
 
+/** cp7-1 AC-6: the stamp for an EXPLODING motion object — the dedicated
+ *  EXPLD0-5 sprites, not the HEAD0-F pool this used to borrow from.
+ *
+ *  CENIR4.MAC:349-353 is where the two part company. For a centipede slot the
+ *  picture is masked `AND I,3F`, and then `CMP I,30 / BCS 33$` branches AWAY on
+ *  >= 0x30 — so an explosion SKIPS the `AND I,0F` that folds live pictures into
+ *  HEAD0-F and keeps 0x3A-0x3F, which address EXPLD0-5. Slots 12-15 skip the
+ *  masking entirely (`CPX I,NCENT / BCS 33$` at :349-350) and hand over the raw
+ *  0xFA-0xFF — the same six stamps, because bits 6-7 are flips rather than
+ *  address, plus a 180-degree turn. Both routes land here.
+ *  (The 180-degree turn the unmasked route also carries is NOT implemented — see
+ *  the note below.) */
+export function explosionStamp(pic: number): string {
+  const index = (pic & 0x3f) - (EXPLOSION_DONE & 0x3f) - 1
+  if (index < 0 || index > 5) throw new Error(`explosionStamp: 0x${pic.toString(16)} is not an explosion picture`)
+  return `EXPLD${index}`
+}
+
+// NOT IMPLEMENTED, deliberately: slots 12/13 hand MOBJP to the hardware
+// unmasked (CENIR4.MAC:349-350), so an explosion there reaches PICT with both
+// flip bits still set and the cabinet draws it 180 degrees turned, where a
+// centipede slot's `AND I,3F` strips them. That is a real divergence and it is
+// recorded here rather than built: it is a refinement on top of the actual bug
+// (the wrong SPRITES), it doubles the blit's flip surface to express, and no
+// story asked for it. Fix it when something makes it matter.
+
 /** cp3-1: the stamp for a spider's current picture. The eight walking faces
  *  0x14-0x1B are BUG0..BUG7 (CENPIC BUG0 sits at picture 0x14); the three PTS
  *  codes draw the points sprite the kill awarded, in the ROM's own sprite order
@@ -256,8 +282,12 @@ export function render(ctx: CanvasRenderingContext2D, atlas: Atlas, state: SimSt
     const exploding = seg.pic > EXPLOSION_DONE
     if (!live && !exploding) continue
     // cp7-1 AC-8: slots 0-11 take the facing flip from MOBJDH's sign.
+    // cp7-1 AC-6: an exploding segment draws EXPLD0-5, and its picture reaches
+    // the mask (AND I,3F) with the flip bits stripped — so no 180-degree turn
+    // here, only the facing mirror.
     const mirrored = mirroredForDh(seg.dh)
-    blit(ctx, atlas, segmentStamp(seg.pic), mobjScreenX(seg.h, mirrored), gunScreenY(seg.v), SPRITE_H, SPRITE_W, mirrored)
+    const stamp = exploding ? explosionStamp(seg.pic) : segmentStamp(seg.pic)
+    blit(ctx, atlas, stamp, mobjScreenX(seg.h, mirrored), gunScreenY(seg.v), SPRITE_H, SPRITE_W, mirrored)
   }
 
   // cp3-1: the spider (slot 13). It draws in exactly three states — one of the
@@ -271,7 +301,7 @@ export function render(ctx: CanvasRenderingContext2D, atlas: Atlas, state: SimSt
   // and not a defensive branch.
   const spider = state.spider
   if (spider.pic !== SPIDER_OFF_PIC && spider.pic !== EXPLOSION_DONE) {
-    const stamp = spider.pic > EXPLOSION_DONE ? segmentStamp(spider.pic) : spiderStamp(spider.pic)
+    const stamp = spider.pic > EXPLOSION_DONE ? explosionStamp(spider.pic) : spiderStamp(spider.pic)
     blit(ctx, atlas, stamp, gunScreenX(spider.h), gunScreenY(spider.v), SPRITE_H, SPRITE_W)
   }
 
@@ -304,7 +334,8 @@ export function render(ctx: CanvasRenderingContext2D, atlas: Atlas, state: SimSt
     } else if (isScorpion(flea.pic)) {
       blit(ctx, atlas, scorpionStamp(flea.pic), x, gunScreenY(flea.v), SPRITE_H, SPRITE_W, mirrored)
     } else if (flea.pic > EXPLOSION_DONE) {
-      blit(ctx, atlas, segmentStamp(flea.pic), x, gunScreenY(flea.v), SPRITE_H, SPRITE_W, mirrored)
+      // cp7-1 AC-6: the dedicated explosion sprites, not the HEAD pool.
+      blit(ctx, atlas, explosionStamp(flea.pic), x, gunScreenY(flea.v), SPRITE_H, SPRITE_W, mirrored)
     }
   }
 

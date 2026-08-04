@@ -30,6 +30,13 @@
 // bytes/plane); playfield stamps are 8x8 (8 bytes/plane). Head/body share ONE
 // sprite pool (CENDEF.MAC:129-137, CENTI4.MAC:478/500) — HEAD0..HEADF, no separate
 // BODY set.
+//
+// cp7-1 AC-6: that HEAD/BODY sharing does NOT extend to explosions, and reading it
+// that way is what made render.ts draw exploding objects as caterpillar heads.
+// CENPIC carries dedicated EXPLD0-5 sprites (:49-51 and :148-150), and the display
+// routine keeps an explosion's picture at 0x3A-0x3F rather than masking it to a low
+// nibble — CENIR4.MAC:352-353 `CMP I,30 / BCS 33$` branches away before the
+// `AND I,0F`. Explosions are their own pool, shared between segments/flea/spider.
 
 /** Total assembled picture image, both planes (bytes). CENPIC.MAC:8 (.RADIX 16), :12/:156. */
 export const REGION_SIZE = 0x1000
@@ -362,6 +369,30 @@ export const STAMPS: readonly Stamp[] = [
   { name: 'THREE', kind: 'sprite', offset: 0x1b0, pic: 0xb6 },
   { name: 'SIX', kind: 'sprite', offset: 0x1c0, pic: 0xb8 },
   { name: 'NINE', kind: 'sprite', offset: 0x5b0, pic: 0xb7 },
+  // cp7-1 AC-6: the DEDICATED explosion sprites. CENPIC labels EXPLD0/2/4
+  // (CENPIC.MAC:49-51) and EXPLD1/3/5 (:148-150), with EXPLD (:147) — the
+  // all-zero rest frame — between them. They were missing from this table, so
+  // render.ts drew exploding objects out of the HEAD0-F pool instead.
+  //
+  // They are reached from picture codes 0x3A-0x3F, which is where the display
+  // routine leaves an explosion: CENIR4.MAC:351-353 masks a centipede slot's
+  // MOBJP with AND I,3F, then `CMP I,30 / BCS 33$` branches AWAY on >= 0x30 —
+  // so the AND I,0F that would fold it into HEAD0-F is SKIPPED for explosions.
+  // 0x3A -> 0x1D0, 0x3B -> 0x5D0, ... by the corrected offset formula (bits 1-5
+  // are address; bits 6-7 are the flips). Every byte at each of these offsets was
+  // checked against CENPIC.MAC before the offsets were written down.
+  //
+  // No `pic` field: unlike THREE/SIX/NINE these are NOT flipped at bake. Slots
+  // 12/13 hand the RAW picture byte to hardware (0xFA-0xFF, both flip bits set)
+  // while centipede slots hand over the masked 0x3A-0x3F (flip bits stripped) —
+  // one stamp, two flip states, so the flip cannot live in the bake. It is
+  // applied at the blit, from the picture byte, in render.ts.
+  { name: 'EXPLD0', kind: 'sprite', offset: 0x1d0 },
+  { name: 'EXPLD1', kind: 'sprite', offset: 0x5d0 },
+  { name: 'EXPLD2', kind: 'sprite', offset: 0x1e0 },
+  { name: 'EXPLD3', kind: 'sprite', offset: 0x5e0 },
+  { name: 'EXPLD4', kind: 'sprite', offset: 0x1f0 },
+  { name: 'EXPLD5', kind: 'sprite', offset: 0x5f0 },
   { name: 'GUN', kind: 'sprite', offset: 0x80 },
   { name: 'SHOT', kind: 'sprite', offset: 0x480 },
   { name: 'CHAR_A', kind: 'tile', offset: 0x208 },

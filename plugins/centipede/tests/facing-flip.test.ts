@@ -65,9 +65,10 @@
 // the implementation records what they catch.
 
 import { describe, it, expect } from 'vitest'
-import { render, mirroredForDh } from '../src/shell/render'
+import { render, mirroredForDh, explosionStamp } from '../src/shell/render'
 import renderSrc from '../src/shell/render.ts?raw'
 import { createSim, type SimState } from '../src/core/sim'
+import { STAMPS } from '../src/core/pictures'
 import { gunScreenX } from '../src/shell/layout'
 import type { Segment } from '../src/core/centipede'
 
@@ -280,5 +281,88 @@ describe('cp7-1 AC-5 — the transform ban, revisited deliberately', () => {
     expect(drawOf(draws, 'HEAD3')?.mirrored, 'the leftward segment mirrors').toBe(true)
     expect(drawOf(draws, 'HEAD5')?.mirrored, 'the rightward one that follows it must NOT').toBe(false)
     expect(draws.filter((d) => d.mirrored).length, 'exactly one draw in the frame is mirrored').toBe(1)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// cp7-1 AC-6 — the DEDICATED explosion sprites.
+//
+// Filed as "not fixed here", then verified and found real. The claim as filed was
+// about a lossy offset formula; that part is a comment-only defect (the formula
+// appears in four comments and no executable code) and was corrected separately.
+// The REAL defect is one branch further on: exploding objects were drawn out of
+// the HEAD0-F caterpillar pool because cp2-5 read CT-44's "no new pixels" as
+// covering explosions too.
+//
+//   CENIR4.MAC:349-353
+//     CPX I,NCENT
+//     BCS 33$        ; slots 12+ skip the masking entirely
+//     AND I,3F       ; a centipede slot: strip the flip bits
+//     CMP I,30
+//     BCS 33$        ; >= 0x30 is an EXPLOSION -> branch AWAY...
+//     AND I,0F       ; ...so THIS never runs for one
+//
+// So an explosion keeps picture 0x3A-0x3F, which addresses EXPLD0-5 — sprites
+// CENPIC labels outright (EXPLD0/2/4 :49-51, EXPLD1/3/5 :148-150) and that were
+// simply missing from the STAMPS table.
+describe('cp7-1 AC-6 — an explosion draws EXPLD0-5, not the caterpillar head pool', () => {
+  const EXPECTED: ReadonlyArray<readonly [number, string]> = [
+    [0xfa, 'EXPLD0'],
+    [0xfb, 'EXPLD1'],
+    [0xfc, 'EXPLD2'],
+    [0xfd, 'EXPLD3'],
+    [0xfe, 'EXPLD4'],
+    [0xff, 'EXPLD5'],
+  ]
+
+  for (const [pic, stamp] of EXPECTED) {
+    it(`picture 0x${pic.toString(16).toUpperCase()} -> ${stamp}`, () => {
+      expect(explosionStamp(pic)).toBe(stamp)
+    })
+  }
+
+  it('rejects a picture that is not an explosion, rather than returning a wrong sprite', () => {
+    // EXPLOSION_DONE (0xF9) is the rest frame and draws nothing; the live bands
+    // are not explosions either. A total function over the wrong domain is how
+    // the HEAD-pool bug survived — segmentStamp answers for EVERY byte.
+    for (const pic of [0x00, 0x03, 0x14, 0x1c, 0x30, 0xb6, 0xf8, 0xf9]) {
+      expect(() => explosionStamp(pic), `0x${pic.toString(16)} is not an explosion`).toThrow()
+    }
+  })
+
+  it('every EXPLD stamp is a real entry in the picture table, at its CENPIC offset', () => {
+    const OFFSETS: Readonly<Record<string, number>> = {
+      EXPLD0: 0x1d0, EXPLD1: 0x5d0, EXPLD2: 0x1e0,
+      EXPLD3: 0x5e0, EXPLD4: 0x1f0, EXPLD5: 0x5f0,
+    }
+    for (const [name, offset] of Object.entries(OFFSETS)) {
+      const stamp = STAMPS.find((s) => s.name === name)
+      expect(stamp, `${name} must exist in STAMPS`).toBeDefined()
+      expect(stamp?.offset, `${name} sits at CENPIC offset 0x${offset.toString(16)}`).toBe(offset)
+      expect(stamp?.kind).toBe('sprite')
+    }
+  })
+
+  it('no EXPLD stamp declares a picture code — its flips are NOT baked', () => {
+    // The shared-stamp constraint SM predicted, and the reason this cannot ride
+    // on the bake the way THREE/SIX/NINE do: a centipede slot reaches these
+    // sprites with the flip bits STRIPPED (AND I,3F) while slots 12/13 reach the
+    // same six with both bits SET. One stamp, two flip states. Giving an EXPLD a
+    // `pic` would bake one of them in and make the other impossible.
+    for (const s of STAMPS.filter((x) => x.name.startsWith('EXPLD'))) {
+      expect(s.pic, `${s.name} must not be baked-flipped`).toBeUndefined()
+    }
+  })
+
+  it('an exploding segment renders EXPLD, and a LIVE one still renders HEAD', () => {
+    const segs: Segment[] = [
+      { h: 0x40, v: 0x40, dh: 1, dv: 0, pic: 0xff },
+      { h: 0x50, v: 0x40, dh: 1, dv: 0, pic: 0x03 },
+    ]
+    const { ctx, atlas, draws } = makeHarness()
+    render(ctx, atlas, { ...(createSim(7) as SimState & { segs: Segment[] }), segs } as SimState)
+    const stamps = draws.map((d) => d.stamp)
+    expect(stamps, 'the exploding segment').toContain('EXPLD5')
+    expect(stamps, 'the live one is untouched — this is not a blanket swap').toContain('HEAD3')
   })
 })

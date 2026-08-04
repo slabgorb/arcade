@@ -177,15 +177,28 @@ describe('cp3-4 AC-1 — render.ts finally knows the flea exists', () => {
     expect(antDraws(state)).toEqual([])
   })
 
-  it('falls through to the SHARED explosion pool while the flea is blowing up', () => {
-    // FL-19: the flea's explosion is the segments' own 0xFF..0xFA pool (CT-41/44),
-    // so it must reach segmentStamp exactly as cp3-1 routed the spider's — not a
-    // bespoke ANT explosion.
+  it('falls through to the shared EXPLOSION sprites while the flea is blowing up', () => {
+    // FL-19: the flea's explosion is the segments' own 0xFF..0xFA pool, so it must
+    // route exactly as cp3-1 routed the spider's — not a bespoke ANT explosion.
+    //
+    // cp7-1 AC-6 CORRECTION: that shared pool is EXPLD0-5, not HEAD0-F. This test
+    // asserted 'HEADF' because cp2-5 read CT-44's "no new pixels" as meaning the
+    // explosion reused the HEAD stamps. CENPIC has DEDICATED explosion sprites
+    // (EXPLD0/2/4 at :49-51, EXPLD1/3/5 at :148-150) and the display routine keeps
+    // pictures 0x3A-0x3F for an explosion rather than masking them down to a low
+    // nibble — CENIR4.MAC:352-353 `CMP I,30 / BCS 33$` branches AWAY before the
+    // `AND I,0F`. Picture 0xFF is EXPLD5, not HEADF. The "shared, not bespoke"
+    // half of the original claim survives; the stamp it named does not.
     const r = makeRecorder()
     render(r.ctx, r.atlas, simWithFlea({ v: 0x80, h: 0x54, pic: FLEA_EXPLODE_PIC }))
     const stamps = r.draws.map((d) => d.stamp)
-    expect(stamps, 'pic 0xFF is HEADF from the shared pool').toContain('HEADF')
+    expect(stamps, 'pic 0xFF is EXPLD5 from the shared explosion pool').toContain('EXPLD5')
     expect(stamps.filter((s) => s.startsWith('ANT')), 'and no ANT sprite').toEqual([])
+    // Scoped to the FLEA's own cell — live segments elsewhere in the same frame
+    // draw HEAD stamps legitimately, so a frame-wide filter would be asserting
+    // something else entirely.
+    const atFlea = r.draws.filter((d) => d.x === gunScreenX(0x54) && d.y === gunScreenY(0x80)).map((d) => d.stamp)
+    expect(atFlea, 'the flea cell draws the explosion sprite').toEqual(['EXPLD5'])
   })
 
   it('draws nothing on the explosion REST picture (0xF9), exactly as a rested segment does', () => {

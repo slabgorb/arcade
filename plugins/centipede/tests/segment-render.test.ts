@@ -113,7 +113,13 @@ describe('cp2-5 render — the train is drawn (one blit per live segment)', () =
     expect(a.requested, 'a body stamp is requested').toContain('HEAD2')
   })
 
-  it('draws an EXPLODING segment with a reused cp1-3 stamp — a rested/vacant slot is NOT drawn', () => {
+  // cp7-1 AC-6 CORRECTION: this asserted the exploding segment reuses 'HEADF'
+  // "(CT-44)". It does not. CENPIC carries dedicated EXPLD0-5 explosion sprites
+  // and CENIR4.MAC:352-353 (`CMP I,30 / BCS 33$`) branches away from the
+  // `AND I,0F` for an explosion, so picture 0xFF draws EXPLD5. CT-44's "no new
+  // pixels" is true of HEAD/BODY sharing one pool — it was over-extended to the
+  // explosion here, and that is what put the wrong sprite on the screen.
+  it('draws an EXPLODING segment with the dedicated explosion stamp — a rested/vacant slot is NOT drawn', () => {
     const c = makeCtx()
     const a = makeAtlas()
     // One exploding segment (0xFF) and one rested/finished slot (0xF9, vacant).
@@ -121,7 +127,8 @@ describe('cp2-5 render — the train is drawn (one blit per live segment)', () =
     // Clear mushrooms so only the segments drive the segment-region requests.
     ;(state as SimExt).playfield.cells.fill(0)
     render(c.ctx, a.atlas, state)
-    expect(a.requested, 'the exploding segment reuses a HEAD stamp (CT-44)').toContain('HEADF')
+    expect(a.requested, 'the exploding segment draws EXPLD5, the dedicated sprite').toContain('EXPLD5')
+    expect(a.requested, 'and NOT the head stamp it used to borrow').not.toContain('HEADF')
     expect(a.requested.every((n) => KNOWN.has(n)), 'every requested stamp is a real cp1-3 STAMP').toBe(true)
     // A finished/rested slot (0xF9) is vacant and must NOT be blitted.
     expect(a.requested, 'a rested 0xF9 slot is not drawn (HEAD9 not requested for it)').not.toContain('HEAD9')
