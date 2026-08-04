@@ -12,3 +12,8 @@ completed_stories:
     title: 'joust troll GRIP is production-dead — beginGrip/stepGrip/escalateGrip have zero production callers, and LAVTIM/LAVGRA are the rows that feed them'
     points: 6
     completed: '2026-08-04'
+  - id: jt9-24
+    epic: jt9
+    title: Decode the exact SELPLY nearest-target metric (:4476-4514) and retire the min-of-axes approximation
+    points: 2
+    completed: '2026-08-04'
