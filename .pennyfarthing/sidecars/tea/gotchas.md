@@ -4105,3 +4105,77 @@ on the real `EggState` since jt9-9 and the mirror never gained it, so no test co
 wait and jt9-9's own suite stepped 624 frames to reach one. **When a story needs to stage a field,
 check the mirror against production before concluding the field does not exist**; a cast-mirrored
 contract goes stale silently and the cost lands as slow, fragile fixtures rather than as a failure.
+
+## A contested count must be DERIVED BY EXECUTION — a line pin on the immediate settles nothing
+
+jt9-40 arrived stating its own count both ways: SM's first draft said the ROM shortens THREE eggs,
+the correction said TWO, and the committed description still carries a stale "the first three would
+arrive earlier" contradicting its own title. The instinct is to pin `LDA #2` byte-exactly and move
+on. **That pin agrees with the wrong reading.** Nobody ever disputed what the immediate says; the
+dispute was over what `DEC PWHCH,U / BMI 20$` DOES with it — read as firing on 2, 1 and 0 you get
+three, and a byte-exact citation of the load is perfectly happy with that.
+
+So parse the operands out of the source and RUN them: the immediate, the read-modify-write
+mnemonic, the branch mnemonic, and the number of times the block is entered. Simulate the flag
+(`DEC` sets N from bit 7 of the result; `BMI` takes it when negative) and count the fall-throughs.
+Change any one of those four inputs and the derived count moves — which is the property a
+transcription cannot have. Then add a CONTROL feeding the same executor a fabricated immediate
+(3 -> three, 0 -> none, 20 -> saturates at the number of calls), or the simulation could be a loop
+that returns 2 whatever it is fed.
+
+Generalises: **when two readings of a mechanism disagree, the test must execute the mechanism, not
+quote it.** Quoting is what they already agree on.
+
+## A bound is not a driver — `<= 2` is satisfied by zero, and zero is what RED has
+
+Two of this story's tests were written as per-seed bounds ("at most two eggs beat the bulk", "the
+second wave's two are no longer than its ten") and both were GREEN at RED against an implementation
+that does nothing at all, because nothing shortened is trivially within every bound. They would
+have been green after GREEN too, and would have driven no code.
+
+The fix is not to tighten the bound — a per-seed strict `<` is wrong, since a legitimate zero draw
+shortens by nothing. It is to **keep the bound as the per-seed guard and add a restrictive COUNT
+over a sweep**: 60 of 64 draws must actually shorten something, 14 of 16 pre-mature eggs must
+actually arrive early. The bound says "never wrong", the count says "not nothing", and only the
+second one is red today. Same shape as `mutation-direction-must-be-restrictive`, met from the test
+side rather than the mutant side.
+
+## When a legitimate value collapses your observable, sweep seeds and reason about the rate
+
+VRAND yields 0-127, so 1 draw in 128 shortens by nothing and that egg becomes indistinguishable
+from the ones the mechanism never touched. Any test demanding a visible effect ON A NAMED SEED is
+therefore a coin-flip away from a false red that the next author "fixes" by changing the seed.
+
+Sweep instead, and put the arithmetic in the comment: 32 seeds x 2 eggs = 64 draws, ~0.5 expected
+zeros, floor at 60 — which still fails anything shortening less than 94% of the time. Pair it with
+a distinct-value floor (a constant reduction gives 1) and a tie counter (one draw SHARED between
+the two eggs makes them tie every time; independent draws almost never do). Three cheap aggregates
+kill three different wrong implementations that no single-seed assertion can separate.
+
+## Take the numeric control from the fixture's own untouched members, not from a literal
+
+Every expectation about the two shortened waits is stated against the TEN the mechanism cannot
+reach — `new Set(ten).size === 1`, then the two compared to `ten[0]`. Writing `623` instead would
+have pinned the fixture's arithmetic rather than the mechanism, and would have had to be re-typed
+for the second egg wave, whose EGGWT2 is different and whose BCD counter is not its decimal ordinal
+(td1-12). The untouched members are a control that re-derives itself per wave, and asserting they
+are mutually IDENTICAL is what makes them trustworthy as one.
+
+## The maturity boundary is one frame wide, and getting it wrong reds for the wrong reason
+
+An egg entered at frame `spawn` with wait `full` hatches on the step that lands on `spawn + full`.
+A "did anything beat the bulk?" loop written as `while (frame < spawn + full)` therefore sweeps the
+entire bulk hatch into its early set: measured, that read `expected 6 to be less than or equal to
+2` — a red that looks exactly like the feature working wrong, on a suite where nothing was
+implemented yet. `while (frame < spawn + full - 1)`. **Check that a RED failure message says what
+you think it says before believing it is your feature's red.**
+
+## Adding two test files reddens a guard on a DERIVED file count — and re-measure it, do not add 2
+
+`audio-seam-scope.test.ts` derives the plugin's test-file count by walking the tree and compares it
+to a number stated on the README's `--project joust` command line. Two new files moved it 110 ->
+112 and the guard fired, correctly. Fix it in RED, not at review — and take the new number from a
+fresh measurement (`find` over the tree AND vitest's own `Test Files (N)` line agreed at 112)
+rather than by adding 2 to the stale one, which is `the-correction-is-itself-a-transcription`
+waiting to happen. Note `npx vitest list --filesOnly | grep -c` gave 110 and was simply wrong;
+two independent methods that agree are worth the extra command.
