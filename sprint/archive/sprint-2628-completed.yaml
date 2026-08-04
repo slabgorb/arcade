@@ -1500,3 +1500,8 @@ completed_stories:
     title: The score zero-PADS where the ROM zero-SUPPRESSES — and our own claim already says so
     points: 2
     completed: '2026-08-04'
+  - id: jt9-25
+    epic: jt9
+    title: 'EGGTBL is the egg''s animation driver — the third table in the block jt8-7 read, plus the signed-POSOFF decoder fix it cannot ship without'
+    points: 6
+    completed: '2026-08-04'

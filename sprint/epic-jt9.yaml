@@ -419,9 +419,11 @@ stories:
       FIX: sign-extend the high byte in the DECODER, e.g. `const hi = rec.position >> 8; xoff: hi > 127 ? hi - 256 : hi`. KEEP THE RAW WORD IN THE RECORD - jt8-7 deliberately stored the unsigned 16-bit word because every other record does, and that decision was reviewed and accepted; the sign belongs in the decoder, not the data. TEST NOTE: the natural guard is a decode test over every ENTITY_RECORD asserting -128 <= xoff <= 127, which reds on today code for exactly the two new records and stays meaningful as more high-bit words arrive. jt8-7 Dev deviation flagged this hazard but named the WRONG AXIS ("decodes these as Y-offsets must sign-extend") - the Y is fine, the X is not; that correction is recorded in jt8-7 Design Deviations under the Reviewer stamp.
     points: 6
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-04'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-04'
     type: feature
   - id: jt9-26
     title: 'Two joust citations that name the wrong ROM family: JT51-009 misattributes SNPCR1 and still says jt5-1 collapsed the knights, and demo.ts cites real play from the module that IS the demo'
@@ -811,3 +813,12 @@ stories:
     repos: arcade
     workflow: tdd
     completed: '2026-08-04'
+  - id: jt9-41
+    title: joust — the hatched standing knight is killable during EGGLLP before the buzzard remounts (JOUSTRV4.SRC:3316-3319)
+    description: 'Descoped from jt9-25 (TEA Delivery Finding, user ruling 2026-08-04). jt9-25 built the EGGMAN hatch cutscene: a matured egg walks EGGTBL and, on the terminal frame (PLY4S), spawns the remount buzzard. It does NOT model the tail of EGGMAN — EGGLLP (JOUSTRV4.SRC:3316-3319, "WAIT UNTILL BUZZARD COMES OR KILLED BY PLAYER"), where the just-hatched STANDING KNIGHT (PLY4S) can be killed by a player before the buzzard arrives. This story models that interaction: the standing-knight window, its collision as a killable target, and what a kill does to the pending remount (does it cancel? score?). Note jt9-25 made a committed-hatching egg NON-collectible (the crack is past the collectible stage) and pinned it in demo-jt9-25.test.ts — that is COLLECTING the egg, a DIFFERENT interaction from KILLING the standing knight, and this story must not undo it. Likely a fingerprint mover; read jt9-25''s archived session for the cutscene shape and the EGG_HATCH_ANIM_FRAMES timing before scheduling.'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: feature
