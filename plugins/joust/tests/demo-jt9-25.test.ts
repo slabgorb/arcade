@@ -251,4 +251,29 @@ describe('jt9-25 AC-4 — a hatching egg walks EGGTBL before it becomes a buzzar
     expect(xByName.get('EGGB2'), 'EGGB2 hangs 1px left of the hot spot').toBe(EGG_X - 1)
     expect(xByName.get('EGGB3'), 'EGGB3 hangs 2px left').toBe(EGG_X - 2)
   })
+
+  it('a COMMITTED-hatching egg cannot be collected — a player on it does NOT cancel the remount', async () => {
+    // The hatch commits at EGGLND's INC NENEMY; the ROM's remount WILL come. A
+    // mid-cutscene egg is still kind:'egg', so without an explicit exclusion the
+    // catch pass would collect it and cancel the committed remount. This pins the
+    // direct behaviour (added at review): a hatching egg overlapping a player is
+    // NOT caught, emits no egg-collected cue, and still reaches its buzzard.
+    // Seeding hatchRow is a real reachable state — stepDemo writes it every frame of
+    // the cutscene (the egg-contract waitFrames precedent). Mutation-proven: deleting
+    // the `hatchRow !== undefined` guard in the catch loop reddens this.
+    const dmod = await loadDemo()
+    const EGG_X = 100
+    // A hatching egg (hatchRow set) with a player sitting ON it (same posX/feet).
+    let d = await stagedDemo([
+      playerAt(PLAYER1_ID, EGG_X, 40),
+      hatchingEggProc({ posX: EGG_X, posY: 40 << 8, pfeet: 0, hatchRow: 0, hatchNap: 7 }),
+    ])
+    let collected = false
+    for (let f = 0; f < 600 && enemiesIn(d).length === 0; f++) {
+      d = dmod.stepDemo(d)
+      if (d.cues.some((c) => c.type === 'egg-collected')) collected = true
+    }
+    expect(collected, 'the hatching egg was collected mid-crack — the committed remount was cancelled').toBe(false)
+    expect(enemiesIn(d).length, 'the committed remount still flew in').toBe(1)
+  })
 })
