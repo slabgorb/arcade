@@ -17,3 +17,8 @@ completed_stories:
     title: Decode the exact SELPLY nearest-target metric (:4476-4514) and retire the min-of-axes approximation
     points: 2
     completed: '2026-08-04'
+  - id: jt9-14
+    epic: jt9
+    title: Player-vs-ptero attack is box-only too — the third pass that stops at broadPhase, and the narrowPhase X-blindness question it forces
+    points: 3
+    completed: '2026-08-04'

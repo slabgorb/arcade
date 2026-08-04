@@ -281,11 +281,13 @@ stories:
       WATCH FOR: jt8-7's fix moved four frame-exact seeded pins in tests/audio-events.test.ts because a tighter collision changes what happens when in a deterministic replay. Expect the same here, and re-baseline by SCANNING for each test's own precondition rather than nudging numbers — the method is written up in the jt8-7 session and the Dev sidecar.
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-04'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-04'
     type: bug
+    review_verdict: approved
   - id: jt9-15
     title: 'Measure PTEBRD and route the ptero-vs-buzzard pair: SNETHD sounds, then the ptero/bird collision resolves'
     description: |-
