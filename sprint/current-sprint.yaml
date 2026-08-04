@@ -1,12 +1,12 @@
 sprint:
-  name: TO Sprint 2628
-  jira_sprint_id: 2
-  jira_sprint_name: TO Sprint 2628
+  name: TO Sprint 2632
+  jira_sprint_id: 3
+  jira_sprint_name: TO Sprint 2632
   goal: ROM fidelity
-  start_date: '2026-07-12'
-  end_date: '2026-07-26'
+  start_date: '2026-08-04'
+  end_date: '2026-08-18'
   status: active
-  number: 2628
+  number: 2632
 epics:
   - td1
   - sw8
