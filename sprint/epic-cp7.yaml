@@ -119,6 +119,8 @@ stories:
       - 'tests/render.test.ts:321-326, :329-334, :182-204 and :337-343 all stay green, and the new test closes the specific hole that let this ship: nothing previously asserted what a ZERO score looks like.'
     completed: '2026-08-04'
     type: bug
+    review_findings: 'APPROVED round 2. Round-1 LOW (test comment citation :245->:240) fixed and re-verified. Fix ROM-correct (per-digit zero-suppression: score 0=blanks+00, 100=   100), security clean, centipede 1234/1234 + orchestrator 390/390 green, AC-5 holds (no claim JSON touched).'
+    review_verdict: approved
   - id: cp7-4
     title: The flea's 0.6s sample wraps inside a 2s drop — the sweep is shorter than the descent
     description: |-
