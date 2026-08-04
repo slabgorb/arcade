@@ -1480,3 +1480,8 @@ completed_stories:
     title: The egg wave's TWO pre-mature hatchings — PWHCH shortens two of the twelve eggs' waits by a VRAND draw
     points: 3
     completed: '2026-08-04'
+  - id: cp7-1
+    epic: cp7
+    title: The spider points readout is mirrored — the picture byte's flip bits are dropped at bake
+    points: 3
+    completed: '2026-08-04'

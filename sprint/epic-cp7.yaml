@@ -37,9 +37,11 @@ stories:
       SITES: src/shell/atlas.ts:38-48 and :101-113 (buildAtlas bakes one orientation per stamp name and has no notion of a per-picture flip); src/shell/render.ts:42-47 SPIDER_PTS_STAMPS, :78-83 spiderStamp and :227-231 the blit — note that mapping a picture CODE to a stamp NAME is exactly where bits 6-7 are thrown away; src/core/pictures.ts:317-324 is the COMMENT that codifies the lossy formula and may be corrected in place, but the module's data is SHA-256 byte-gated by tests/pictures.test.ts and its bytes stay untouched.
 
       ALSO FILE, DO NOT FIX: the same bit-6/7 confusion means the pictures.ts offset formula disagrees with hardware for ANY code with bit 6 set — explosion 0xFF decodes to 0x7F0 by the formula but 0x5F0 on hardware. render.ts:70-72 sidesteps it for explosions by mapping through segmentStamp(pic & 0x0F) rather than the formula, so the explosion pool may be drawing the wrong sprites. Nobody has looked. You will be the closest anyone has been to this code; file what you find as its own story and stay out of it here.
+
+      RESOLVED 2026-08-04, and the "ALSO FILE, DO NOT FIX" paragraph above is SUPERSEDED - it was DELIVERED in this story on the user ruling to stop spawning follow-ups. Read it for history, not for instruction, and note its reasoning was wrong twice over: the offset formula is comment-only and never selects a sprite, and render.ts was not "sidestepping" the formula but skipping the AND I,0F entirely, because CENIR4.MAC:352-353 branches away from it for an explosion. The explosions really were drawing the wrong sprites - the dedicated EXPLD0-5 stamps were missing from STAMPS. See the amended AC-6 and AC-8.
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-03T22:00:33Z'
     repos: arcade
     workflow: tdd
@@ -52,6 +54,7 @@ stories:
       - 'SUPERSEDED 2026-08-04 by user ruling (stop filing follow-ups, finish the work): DELIVERED in this story, not filed. Two halves, and only one was as described here. The offset-formula defect is COMMENT-ONLY, appearing in four comments and no executable code; the mask was corrected 0x3F to 0x1F in a087213, which reconciles the two figures this AC quotes, since 0xFF decodes to 0x5F0 under the corrected mask. The render defect is REAL but the reason given here is WRONG: segmentStamp(pic AND 0x0F) does not mirror the ROM AND I,0F, because CENIR4.MAC:352-353 CMP I,30 / BCS 33$ branches away before that mask for an explosion. Explosions keep pictures 0x3A-0x3F, which address the dedicated EXPLD0-5 sprites that were simply missing from STAMPS. Fixed in ccdea72.'
       - A spider is shot in a live run and the readout is read off the screen, because a correctly-decoded atlas can still be blitted to the wrong place.
       - 'SUPERSEDED 2026-08-04 by user ruling: DELIVERED in this story, not filed. Implemented in d45dd9d as ONE predicate over dh applied to every slot except 13, per CENIR4.MAC:333-340 and :368. Two of the four claims in the original text are WRONG, measured by enumerating every MOBJDH write in revision.v4: the flea never mirrors (ANTDH is a hard 0, CENTI4.MAC:153-154) and the shot never mirrors (SHOTDH is written nowhere in the revision). Segments and the scorpion do. Review then found and fixed a further defect in the delivery: the ROM +1 horizontal correction is an eight-bit ADC and must wrap, reachable via a scorpion stepping to h=0xFF off the edge (4c98d2a).'
+    completed: '2026-08-04'
     type: bug
     review_verdict: approved
   - id: cp7-2
