@@ -51,12 +51,24 @@ not have it.
 **NEW — the fireball path, which the filing does not mention.** `VWGUN::` (`WSGUNS.MAC:852`) has
 the identical four-exit shape before its `;GUN SHOT IS VISIBLE` marker at `:904`:
 
-| Exit | Line | Test |
+| Exit | Lines | Test |
 |---|---|---|
-| near | `:885` | `CMPD #01` / `LBLE 90$` |
-| far | `:887` | `CMPD #7F00` / `LBHI 90$` |
-| ratio Y | `:896` | `SUBD M.XP` / `LBHS 90$` |
-| ratio Z | `:903` | `SUBD M.XP` / `LBHS 90$` |
+| near | `:884-885` | `CMPD #01` / `LBLE 90$` |
+| far | `:886-887` | `CMPD #7F00` / `LBHI 90$` |
+| ratio Y | `:895-896` | `SUBD M.XP` / `LBHS 90$` |
+| ratio Z | `:902-903` | `SUBD M.XP` / `LBHS 90$` |
+
+<!-- Each exit is a two-instruction PAIR and the span must name both lines: the compare and the
+     long branch that acts on it. These four read `:885`, `:887`, `:896` and `:903` until the
+     sw8-27 finish — one line each, naming only the BRANCH while quoting both instructions, so
+     every row attributed a `CMPD`/`SUBD` to the line below it. Verified against
+     `reference/atari-source/star-wars-1983/WSGUNS.MAC` at finish: :884 `CMPD #01`, :885
+     `LBLE 90$`, :886 `CMPD #7F00`, :887 `LBHI 90$`, :895 `SUBD M.XP`, :896 `LBHS 90$`, :902
+     `SUBD M.XP`, :903 `LBHS 90$`, :904 `;GUN SHOT IS VISIBLE`. These are BARE `:N` refs, which
+     the citation guard does not watch — it matches only `file.ts:N` — which is why the error
+     survived six review rounds untouched. Sweep both spellings when re-anchoring. -->
+
+
 
 The hit-record that writes `CL.GDS` / `CL.GP` is `:906-948`, below all four. So the cabinet
 cannot resolve a laser hit on a fireball it did not draw either. (Note the near clamp differs
@@ -160,7 +172,7 @@ They have not been edited — the equality is by construction, not by inspection
 
 - AC1 — The player's laser can no longer resolve a TIE the cabinet would not have DRAWN. The space arm's TIE resolution (the `beamHit(beamOrigin, beamDir, enemies[ei].pos, TIE_HIT_RADIUS)` call in sim.ts) is gated on the same C_PV predicate `computeStatus` derives. Transcription, not inference: `S2VW` (WSMAIN.MAC:3755) has exactly four exits before `CHSET C$PV` (:3846) — :3825-3826 near clamp, :3827-3828 far clamp, :3834-3836 and :3840-3842 the two ratio tests, all long-branching to `RTS1` at :3754 — and the ROM's laser-hit block (:3898-3918) sits below all four with no intervening label. Pinned seat: a TIE at [0, 240, -400] on 16:9 is off the glass (vertical bound 230.9) yet 240 u from the aim ray, inside TIE_HIT_RADIUS (250); it must stop being killable, with an on-glass positive control asserted in the same test so the zero is an observed zero.
 
-- AC2 — The SAME gate covers the FIREBALL resolution (`beamHit(beamOrigin, beamDir, enemyShots[si].pos, ENEMY_SHOT_HIT_RADIUS)`), because the cabinet gates it identically and nobody had checked. `VWGUN::` (WSGUNS.MAC:852) has exactly four exits before its `;GUN SHOT IS VISIBLE` marker at :904 — :885 (`CMPD #01` / `LBLE 90$`), :887 (`CMPD #7F00` / `LBHI 90$`), and :896 and :903 (the two `SUBD M.XP` / `LBHS 90$` ratio tests) — and the hit-record that writes `CL.GDS`/`CL.GP` (:906-948) sits below all four. USER RULING at setup: BOTH space-arm sites, not the one the description names. MEASURED at setup: adding this second site costs ZERO additional red, so it buys no fixture saving to omit.
+- AC2 — The SAME gate covers the FIREBALL resolution (`beamHit(beamOrigin, beamDir, enemyShots[si].pos, ENEMY_SHOT_HIT_RADIUS)`), because the cabinet gates it identically and nobody had checked. `VWGUN::` (WSGUNS.MAC:852) has exactly four exits before its `;GUN SHOT IS VISIBLE` marker at :904 — :884-885 (`CMPD #01` / `LBLE 90$`), :886-887 (`CMPD #7F00` / `LBHI 90$`), and :895-896 and :902-903 (the two `SUBD M.XP` / `LBHS 90$` ratio tests) — and the hit-record that writes `CL.GDS`/`CL.GP` (:906-948) sits below all four. USER RULING at setup: BOTH space-arm sites, not the one the description names. MEASURED at setup: adding this second site costs ZERO additional red, so it buys no fixture saving to omit.
 
 - AC3 — The gate is CALLER-SIDE and `beamHit` itself is unchanged. The helper stays shared with the surface and trench phases (sim.ts:1094 turrets, :1323 exhaust port, :1339 obstacles — all three re-verified at setup against the post-chore file), which have no C_PV notion at all; clamping the helper is mutant G6/M6 in sw8-19's two batteries and must stay caught. Note the enabling structural fact: the C_PV predicate is INLINE in `computeStatus` (tie-status.ts:243-251) and no standalone frustum test is exported anywhere, so a named predicate has to be extracted — and that extraction is what makes AC2 nearly free, since fireballs carry no status word to read C_PV from.
 
