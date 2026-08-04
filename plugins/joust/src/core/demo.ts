@@ -1490,6 +1490,27 @@ function collisionPass(processes: readonly DemoProcess[]): {
       if (!playerJoust || !pteroEntity) continue
       if (!broadPhase(collisionBox(playerJoust), entityBox(pt.entity!))) continue
 
+      // jt9-14 — NARROW phase, the same two-step the joust and egg passes use.
+      // Without it the player's reach against a ptero is the bare 16px
+      // `ENTITY_BOX_H` instead of PT1RC's real scanlines, so a pterodactyl is
+      // lanced (or the knight is taken) from visibly clear of it. The ROM gates
+      // this dispatch on the span-mask test too: `OSTXYP JSR BPCOL` / `BCS
+      // OSTHIT` (JOUSTRV4.SRC:4944-4945) reaches the lance compare (:4971-5001)
+      // ONLY on a BPCOL collision. The player mask is collisionMaskFor's
+      // CWNG3R/CSTN4R; the ptero's is PT1RC. (BPCOL folds a screen-X COLDX term
+      // this narrowPhase drops for all three passes — the pre-existing jt2-3
+      // divergence filed as jt9-43, not fixed here.)
+      const pteroMask = collisionMaskFor(pt)
+      if (playerJoust.collision === null || pteroMask === null) continue
+      if (
+        !narrowPhase(
+          { name: playerJoust.collision, top: playerJoust.posY >> 8 },
+          { name: pteroMask, top: pt.entity!.posY >> 8 },
+          MASKS,
+        )
+      )
+        continue
+
       const outcome = resolvePteroAttack(playerJoust, pteroEntity)
       if (outcome.kind === 'kill') {
         // The 1000-pt kill event is jt3-4's (pteroScoreEvent) — emitted ONCE here on
