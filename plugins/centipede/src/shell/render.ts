@@ -204,10 +204,22 @@ function drawText(ctx: CanvasRenderingContext2D, atlas: Atlas, text: string, x: 
   for (const glyph of layoutText(text, x, y)) blit(ctx, atlas, glyph.stamp, glyph.x, glyph.y, TILE_W, TILE_H)
 }
 
-/** cp2-12: UPSCRE/the high-score routine each draw exactly six raw BCD
- *  digits (CL-13/CL-14) — zero-padded, never truncated to fewer glyphs. */
+/** cp7-3: UPSCRE and the high-score routine lay six BCD digits with ZERO
+ *  SUPPRESSION, not zero-padding — leading zeros render as BLANK tiles while the
+ *  last BCD byte always draws both its digits. UPSCRE (CENTI4.MAC:2638-2645)
+ *  sends SCORE2/SCORE1 through DIGIT2 with SEC (suppression on) and SCORE0 with
+ *  CLC (always drawn). DIGIT2/DIGITZ (CENIR4.MAC:224-247) thread the carry per
+ *  digit: a zero drawn while carry is set blanks — CHAR leaves A=0 as a blank
+ *  tile (:204-206) — and the first non-zero digit does CLC, so suppression stops
+ *  there. So score 0 shows "    00", never "000000" (CL-13/CL-14). layoutText
+ *  emits nothing for a space while still advancing one column, matching CHAR.
+ *  (Supersedes cp2-12's docblock, which mis-recorded padding as the rule.) */
 function sixDigits(value: number): string {
-  return String(Math.max(0, Math.trunc(value))).padStart(6, '0').slice(-6)
+  const digits = String(Math.max(0, Math.trunc(value))).padStart(6, '0').slice(-6)
+  // Blank the contiguous run of leading zeros over the first four digits (SEC);
+  // the last two (SCORE0, drawn under CLC) always render.
+  const lead = digits.slice(0, 4).replace(/^0+/, (zeros) => ' '.repeat(zeros.length))
+  return lead + digits.slice(4)
 }
 
 // cp4-6: GETINT's own screen text (:1036, :1038), transcribed verbatim rather
