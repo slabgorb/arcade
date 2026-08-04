@@ -158,9 +158,18 @@ export function mirroredForDh(dh: number): boolean {
  *  space, so it must go through gunScreenX like every other position rather
  *  than being added to the screen coordinate. That distinction is visible:
  *  gunScreenX is mirrored (screen x FALLS as h rises, layout.ts:92-97), so the
- *  ROM's +1 lands one pixel LEFT on our screen, not right. */
+ *  ROM's +1 lands one pixel LEFT on our screen, not right.
+ *
+ *  The `& 0xff` is load-bearing, not defensive. `CLC / ADC I,01` is an EIGHT-BIT
+ *  add and WRAPS: at MOBJH = 0xFF the ROM stores HPOS = 0x00. A plain `h + 1`
+ *  gives 0x100, which gunScreenX maps to x = -17 where the ROM lands on x = 239
+ *  — a full screen width out. That state is REACHABLE, not theoretical: a
+ *  scorpion enters at ANTH = 0x00 (SC-7, CENTI4.MAC:2046-2047 "LDA I,0 / STA
+ *  ANTH ;START AT EDGE") and steps by dh of -1 or -2 through
+ *  `(slot.h + slot.dh) & 0xff` (scorpion.ts:177), so one step off the edge going
+ *  left puts it on exactly 0xFF while `mirrored` is true. Pinned below. */
 function mobjScreenX(h: number, mirrored: boolean): number {
-  return gunScreenX(mirrored ? h + 1 : h)
+  return gunScreenX(mirrored ? (h + 1) & 0xff : h)
 }
 
 function blit(

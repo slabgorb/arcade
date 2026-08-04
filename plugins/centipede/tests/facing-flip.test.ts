@@ -194,6 +194,27 @@ describe('cp7-1 AC-8 — the renderer mirrors an object to face its travel direc
     ).not.toBe(drawOf(plain.draws, 'HEAD3')?.left)
   })
 
+  // REVIEW FINDING (round 1, Thought Police) — the +1 correction was written as
+  // a plain `h + 1`. `CLC / ADC I,01` is an EIGHT-BIT add and wraps, so at
+  // MOBJH = 0xFF the ROM stores HPOS = 0x00. Without the mask our sprite lands
+  // at x = -17 where the cabinet puts it at x = 239 — a full screen width out,
+  // and REACHABLE: a scorpion enters at ANTH = 0 (CENTI4.MAC:2046-2047) and
+  // steps -1/-2 through `& 0xff`, so one step off the edge going left is exactly
+  // 0xFF with `mirrored` true. Measured on the real render before the fix.
+  it('the +1 correction wraps at 8 bits, as the ROM ADC does', () => {
+    const base = createSim(7) as SimState & { flea: { pic: number; h: number; v: number; dh: number } }
+    const atEdge = makeHarness()
+    render(atEdge.ctx, atEdge.atlas, {
+      ...base,
+      flea: { ...base.flea, pic: 0x30, h: 0xff, v: 0x40, dh: -1 },
+    } as SimState)
+    const drawn = drawOf(atEdge.draws, 'SCORP0')
+    expect(drawn, 'the scorpion must be drawn for this to mean anything').toBeDefined()
+    expect(drawn?.mirrored, 'and it is travelling left, so it is mirrored').toBe(true)
+    expect(drawn?.left, '0xFF + 1 wraps to 0x00 — the ROM lands on the far edge').toBe(gunScreenX(0x00))
+    expect(drawn?.left, 'and NOT off the other side of the screen').not.toBe(gunScreenX(0x100))
+  })
+
   it('the SPIDER is exempt whatever else is on screen (CPX I,13. / BEQ 35$)', () => {
     // The exemption cp7-1's first half rests on: if the spider ever picked up a
     // direction-derived flip, the PTS readout this story just corrected would
@@ -351,6 +372,23 @@ describe('cp7-1 AC-6 — an explosion draws EXPLD0-5, not the caterpillar head p
     // `pic` would bake one of them in and make the other impossible.
     for (const s of STAMPS.filter((x) => x.name.startsWith('EXPLD'))) {
       expect(s.pic, `${s.name} must not be baked-flipped`).toBeUndefined()
+    }
+  })
+
+  // REVIEW FINDING (round 1) — render.ts:303 was switched from segmentStamp to
+  // explosionStamp for the SPIDER's explosion and no test covered that path, so
+  // a regression there would have been silent. explosionStamp THROWS outside
+  // 0xFA-0xFF, which makes an uncovered caller a crash risk rather than a
+  // cosmetic one. Verified correct by probe, then pinned here.
+  it('the SPIDER’s explosion draws EXPLD too, across the whole 0xFA-0xFF countdown', () => {
+    for (const pic of [0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff]) {
+      const { ctx, atlas, draws } = makeHarness()
+      const base = createSim(7) as SimState & { spider: { pic: number; h: number; v: number } }
+      const state = { ...base, spider: { ...base.spider, pic, h: 0x50, v: 0x30 } } as SimState
+      expect(() => render(ctx, atlas, state), `spider pic 0x${pic.toString(16)}`).not.toThrow()
+      const stamps = draws.map((d) => d.stamp)
+      expect(stamps, `spider 0x${pic.toString(16)} draws ${explosionStamp(pic)}`).toContain(explosionStamp(pic))
+      expect(stamps.filter((n) => /^HEAD[A-F]$/.test(n)), 'and never a HEAD explosion').toEqual([])
     }
   })
 
