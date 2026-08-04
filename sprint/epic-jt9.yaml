@@ -216,6 +216,7 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: jt9-12
     title: 'MERGED INTO jt9-9 (egg rows) and jt9-11 (troll rows) — joust DYTBL egg-wait and lava-troll rows — wire EGGWT/EGGWT2 and LAVTIM/LAVGRA (4 rows, blocked on the troll grip)'
     description: |-
@@ -822,3 +823,11 @@ stories:
     repos: arcade
     workflow: tdd
     type: feature
+  - id: jt9-42
+    title: "joust lava-troll looker is production-dead again: allow ENEMY victims so LNTLAV can fire, and pin the grip's single-integration"
+    description: 'FOUND BY Reviewer during jt9-11 review (2026-08-04). jt9-11 wired the lava-troll grip with PLAYER-ONLY victims (pickTrollVictim, demo.ts), per the user chosen "grab a player" scope. TWO CONSEQUENCES the review confirmed. (F1, MEDIUM) the troll is now spliced before a PLAYER, so no enemy ever has a troll as PPREV and jt9-1 LNTLAV looker (LDX PPREV / CMPA #LAVID, JOUSTRV4.SRC:3727) NEVER FIRES in the live demo. Probe (forceAdvance to wave 4, seed 0x1234): ORDER=troll,player,player,enemy,... enemyAfterTroll=false. Before jt9-11 the troll spliced before the first ENEMY, so the looker WAS reachable. The ROM LNDB7 (:6764) grabs player OR enemy; broaden pickTrollVictim to the nearest BIRD (not just player) so an enemy victim restores looker reachability. WATCH: a gripped enemy is skipped by frame.ts (grippedBy) which freezes its own looker countdown; verify a gripped enemy not looking is acceptable and that NEIGHBOUR enemies still see it. (F2, LOW) the frame.ts grippedBy single-integration skip is UNGUARDED; mutation M4 (removing it) left all 17 jt9-11 tests green. Add a test pinning a gripped victim exact per-frame velY (grip pull only, NOT grip+GRAV) so the ADDLAV-replaces-gravity fidelity cannot regress silently.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
