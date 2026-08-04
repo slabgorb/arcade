@@ -803,6 +803,8 @@ stories:
        - The gate jt9-38 shipped reads the population at the moment each egg's wait expires. Staggering the maturities changes WHICH eggs are deferred and when, so re-read plugins/joust/tests/demo-jt9-38.test.ts's AC-2/4 block before changing anything: its twelve-at-once fixture stages waitFrames explicitly and should be unaffected, but the seeded observations in the session's assessments will move.
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    assigned_to: Keith Avery
+    started: '2026-08-04T09:38:44Z'
     repos: arcade
     workflow: tdd
