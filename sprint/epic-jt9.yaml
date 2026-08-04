@@ -795,7 +795,7 @@ stories:
 
       WHY IT WAS DESCOPED, and it is a real reason rather than a scoping shrug. The shortening draws from VRAND, i.e. it CONSUMES THE WAVE'S RNG STREAM once per affected egg. jt9-38 already carried a determinism question, and folding this in would have moved the seeded fixtures a second time inside one story while its own AC-7 fixtures were still being measured.
 
-      WHAT THE PORT LOOKS LIKE TODAY. plugins/joust/src/core/demo.ts's spawnWaveEggs deals twelve eggs (6 + 6, JOUSTRV4.SRC:2778-2779 and :2805-2806) and seeds NO waitFrames on any of them; the hatch pass in stepDemo lazily resolves each egg's wait via eggWaitFrames('EGGWT2', waveOrdinal). Measured on the real seeded demo at wave 5, seeds 0x1234/0xbeef/0x2468: all twelve mature on the SAME frame, f=624. That simultaneity is exactly what PWHCH exists to break up, and it is also why jt9-38's population gate is so visible — six hatch and six defer on one frame. With PWHCH the first three would arrive earlier and the pile-up would soften.
+      WHAT THE PORT LOOKS LIKE TODAY. plugins/joust/src/core/demo.ts's spawnWaveEggs deals twelve eggs (6 + 6, JOUSTRV4.SRC:2778-2779 and :2805-2806) and seeds NO waitFrames on any of them; the hatch pass in stepDemo lazily resolves each egg's wait via eggWaitFrames('EGGWT2', waveOrdinal). Measured on the real seeded demo at wave 5, seeds 0x1234/0xbeef/0x2468: all twelve mature on the SAME frame, f=624. That simultaneity is exactly what PWHCH exists to break up, and it is also why jt9-38's population gate is so visible — six hatch and six defer on one frame. With PWHCH the first TWO arrive earlier and the pile-up softens. (Corrected at finish, 2026-08-04: this sentence said "three", contradicting the TWO in this story's own title and body — the last surviving trace of the mis-derivation the paragraph above records. The f=624 above is the WAIT, not the frame: under the forced-advance harness that enters wave 5 at f=4 the twelve matured at f=628. Both measured during delivery.)
 
       ACCEPTANCE, and the traps.
        - Model the shortened wait for the first N eggs an egg wave deals (N derived from the DEC/BMI, not from the ROM's comment — see above), drawn from the run's seeded RNG so it stays deterministic.
@@ -803,7 +803,7 @@ stories:
        - The gate jt9-38 shipped reads the population at the moment each egg's wait expires. Staggering the maturities changes WHICH eggs are deferred and when, so re-read plugins/joust/tests/demo-jt9-38.test.ts's AC-2/4 block before changing anything: its twelve-at-once fixture stages waitFrames explicitly and should be unaffected, but the seeded observations in the session's assessments will move.
     points: 3
     priority: p3
-    status: in_progress
+    status: in_review
     assigned_to: Keith Avery
     started: '2026-08-04T09:38:44Z'
     repos: arcade
