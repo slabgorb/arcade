@@ -53,6 +53,37 @@ export interface Stamp {
   readonly kind: StampKind
   /** Lower-plane region offset (0..0x7FF); the matching upper plane is PLANE_UPPER at the same index. */
   readonly offset: number
+  /** The MOBJP picture code that selects this stamp, where one code owns it —
+   *  the input to flipsForPicture (cp7-1). Absent for stamps a code does not
+   *  uniquely select (the shared HEAD pool, the tiles). */
+  readonly pic?: number
+}
+
+// ─── THE PICTURE BYTE'S FLIP BITS (cp7-1) ────────────────────────────────────
+// CENDE4.MAC names bits 6-7 of a picture code as the cocktail-cabinet controls:
+//   :239  CKC0 = 0xC0  "VALUE THAT FLIPS AND TURNS PICTURES IN COCKTAIL VERSION"
+//   :248  CK40 = 0x40  "USED FOR FLIPPING PICTURES UPSIDE DOWN IN COCKTAIL VERSION"
+// CK40 is bit 6 alone and the ROM calls it "upside down", so bit 6 is the
+// VERTICAL flip; CKC0 is both bits and the ROM calls it a flip AND a turn (the
+// 180-degree cocktail rotation), which leaves bit 7 as the HORIZONTAL mirror.
+// In an upright cabinet CLEAR zeroes the cocktail variables (CENTI4.MAC:745-748)
+// so the EORs against them are the identity — but a flip bit baked into a
+// picture CONSTANT (0xB6/0xB7/0xB8) was never that variable and still fires.
+
+/** Bit 7 — the horizontal mirror. CENDE4.MAC:239 (CKC0 = flip AND turn). */
+export const PICTURE_FLIP_X = 0x80
+
+/** Bit 6 — the vertical flip. CENDE4.MAC:248 (CK40, "upside down"). */
+export const PICTURE_FLIP_Y = 0x40
+
+/** Decode a picture code's two flip bits. PURE — deliberately unaware that the
+ *  centipede slots reuse the same bits as BODY (0x40) / DEAD (0x80) flags
+ *  (CENDE4.MAC:129-137, src/core/centipede.ts:63-71). The ROM exempts those
+ *  slots by CONTROL FLOW, not by clear bits (CENIR4.MAC:347-351 branches on the
+ *  slot index, then masks); render.ts's segmentStamp(pic & 0x0F) already mirrors
+ *  that mask, so the exemption belongs at the call site, not in here. */
+export function flipsForPicture(pic: number): { flipX: boolean; flipY: boolean } {
+  return { flipX: (pic & PICTURE_FLIP_X) !== 0, flipY: (pic & PICTURE_FLIP_Y) !== 0 }
 }
 
 // ─── THE LOWER BITPLANE — 136001.201, region 0x000-0x7FF (CENPIC.MAC:12) ──────────
@@ -316,12 +347,21 @@ export const STAMPS: readonly Stamp[] = [
   { name: 'SCORP3', kind: 'sprite', offset: 0x590 },
   // cp3-1 (SP-22): the spider's points display. CENPIC labels THREE (:47),
   // SIX (:48) and NINE (:146) — the three values a spider kill can award. Their
-  // picture codes are the PTS bytes BUGP takes (0xB6/0xB7/0xB8), which decode
-  // as offset = ((pic & 1) << 10) | (((pic >> 1) & 0x3F) << 4). Note the ROM's
-  // sprite ORDER is THREE, NINE, SIX — not ascending by score.
-  { name: 'THREE', kind: 'sprite', offset: 0x1b0 },
-  { name: 'SIX', kind: 'sprite', offset: 0x1c0 },
-  { name: 'NINE', kind: 'sprite', offset: 0x5b0 },
+  // picture codes are the PTS bytes BUGP takes (0xB6/0xB7/0xB8, src/core/spider.ts:116-118).
+  //
+  // cp7-1 CORRECTION — the offset formula written here as
+  //   offset = ((pic & 1) << 10) | (((pic >> 1) & 0x3F) << 4)
+  // is LOSSY and misnames its top bit. Its 0x3F window consumes bits 1-6 as
+  // address and drops bit 7 silently, but bit 7 is not address at all: bit 7 is
+  // the HORIZONTAL flip and bit 6 is the VERTICAL flip (PICTURE_FLIP_X /
+  // PICTURE_FLIP_Y above, CENDE4.MAC:239 and :248). The three offsets below are
+  // the correct SHIPPED offsets and are unchanged — they were transcribed, not
+  // computed by that formula — but the flip carried by each code's bit 7 was
+  // being thrown away at bake, which is what mirrored the readout. Note also the
+  // ROM's sprite ORDER is THREE, NINE, SIX — not ascending by score.
+  { name: 'THREE', kind: 'sprite', offset: 0x1b0, pic: 0xb6 },
+  { name: 'SIX', kind: 'sprite', offset: 0x1c0, pic: 0xb8 },
+  { name: 'NINE', kind: 'sprite', offset: 0x5b0, pic: 0xb7 },
   { name: 'GUN', kind: 'sprite', offset: 0x80 },
   { name: 'SHOT', kind: 'sprite', offset: 0x480 },
   { name: 'CHAR_A', kind: 'tile', offset: 0x208 },

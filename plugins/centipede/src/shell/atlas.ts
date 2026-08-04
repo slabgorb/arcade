@@ -15,7 +15,16 @@
 // buildAtlas() touches a canvas (absent in the node vitest env), so its wiring
 // is pinned by the `?raw` source read (the reviewer-blessed tp1-39 idiom).
 
-import { decodeStamp, STAMPS, SPRITE_W, SPRITE_H, TILE_W, TILE_H, type Stamp } from '../core/pictures'
+import {
+  decodeStamp,
+  flipsForPicture,
+  STAMPS,
+  SPRITE_W,
+  SPRITE_H,
+  TILE_W,
+  TILE_H,
+  type Stamp,
+} from '../core/pictures'
 import { playfieldPensForWave, spritePensForWave, rgbCss, type Rgb } from './palette'
 
 export interface AtlasRect {
@@ -44,6 +53,24 @@ export function orientForScreen(grid: number[][]): number[][] {
     for (let j = 0; j < R; j++) row.push(grid[j][C - 1 - i])
     out.push(row)
   }
+  return out
+}
+
+/** Story cp7-1 — apply the picture byte's own flip bits, in RAW ROM space,
+ *  BEFORE orientForScreen. The bits are decoded by flipsForPicture (bit 7
+ *  horizontal, bit 6 vertical — CENDE4.MAC:239/:248); a stamp with no picture
+ *  code of its own reads as 0 and is left alone. The axes line up only in ROM
+ *  space: decodeStamp emits rows along the ROM byte axis, and ROT270 maps ROM
+ *  column (C-1-i) onto screen row i, so reversing the ROW array here is the
+ *  screen's horizontal mirror and reversing WITHIN each row is the vertical
+ *  flip. Doing this after the rotation, or swapping the two, is a silent
+ *  wrong-axis bug that still looks "flipped". Layered ON TOP of the rotation —
+ *  orientForScreen is untouched. */
+function applyPictureFlips(grid: number[][], stamp: Stamp): number[][] {
+  const { flipX, flipY } = flipsForPicture(stamp.pic ?? 0)
+  let out = grid
+  if (flipX) out = [...out].reverse()
+  if (flipY) out = out.map((row) => [...row].reverse())
   return out
 }
 
@@ -100,7 +127,7 @@ export function buildAtlas(wave = 1): Atlas {
 
   for (const stamp of STAMPS) {
     const rect = atlasRectFor(stamp.name)
-    const grid = orientForScreen(decodeStamp(stamp))
+    const grid = orientForScreen(applyPictureFlips(decodeStamp(stamp), stamp))
     for (let r = 0; r < grid.length; r++) {
       const row = grid[r]
       for (let c = 0; c < row.length; c++) {
