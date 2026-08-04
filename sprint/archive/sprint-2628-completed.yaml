@@ -1475,3 +1475,8 @@ completed_stories:
     title: The egg wave deals TWELVE eggs and hatches WENEMY at a time — port the ROM's egg density (:2778-2822) and the NENEMY/WENEMY hatch gate (:3238-3242)
     points: 5
     completed: '2026-08-03'
+  - id: jt9-40
+    epic: jt9
+    title: The egg wave's TWO pre-mature hatchings — PWHCH shortens two of the twelve eggs' waits by a VRAND draw
+    points: 3
+    completed: '2026-08-04'
