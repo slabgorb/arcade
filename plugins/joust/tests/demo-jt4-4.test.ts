@@ -65,11 +65,15 @@ function advanceTo(d: Awaited<ReturnType<typeof loadDemo>>, demo: DemoState, tar
   return s
 }
 
-/** A player positioned to win a lance-height joust against the entity 4px to its right. */
+/** A player positioned to win a lance-height joust against the entity 4px to its right.
+ *  jt9-14 re-seat 110→109 (lanceOffset 9): the player-vs-ptero/baiter pass now runs
+ *  narrowPhase after broadPhase (the ROM's BPCOL→OSTHIT gate, JOUSTRV4.SRC:4944-4952),
+ *  and CWNG3R×PT1RC overlap only at lanceOffset 8-9 — offset 10 became a mask MISS.
+ *  Offset 9 is in the band AND the mask (green pre- and post-jt9-14). */
 function lancePlayer(): DemoProcess {
   return {
     id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
-    collisionEnabled: true, entity: entity({ posX: 100, posY: 110 << 8 }),
+    collisionEnabled: true, entity: entity({ posX: 100, posY: 109 << 8 }),
   }
 }
 

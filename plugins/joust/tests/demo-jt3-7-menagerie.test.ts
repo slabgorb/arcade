@@ -138,9 +138,15 @@ describe('AC-1 — a live ptero is stepped by stepPteroFlight (gravity-exempt)',
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: filtered out today)', () => {
   /**
-   * A clean glide-frame kill: player lance at offset 10 (band 10±2), OPPOSITE
+   * A clean glide-frame kill: player lance at offset 9 (band 10±2), OPPOSITE
    * facings, the player facing INTO the ptero. All velocities zero so the one-frame
    * step before the collision pass does not shift them out of the band.
+   *
+   * jt9-14 re-seat: was offset 10 (player posY 110). The player-vs-ptero pass now
+   * runs narrowPhase after broadPhase (the ROM's BPCOL→OSTHIT gate,
+   * JOUSTRV4.SRC:4944-4952), and the CWNG3R×PT1RC masks overlap only at lanceOffset
+   * 8-9, so offset 10 became a mask MISS. Offset 9 is in the band AND the mask —
+   * green on the pre- and post-jt9-14 tree alike. See demo-jt9-14.test.ts.
    */
   function killScenario(): { player: DemoProcess; ptero: DemoProcess } {
     const player: DemoProcess = {
@@ -152,7 +158,7 @@ describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: fil
       facing: 1, // faces RIGHT, into the ptero to its right
       mount: 'ostrich',
       collisionEnabled: true,
-      entity: entity({ posX: 100, posY: 110 << 8, airborne: true }),
+      entity: entity({ posX: 100, posY: 109 << 8, airborne: true }),
     }
     const ptero: DemoProcess = {
       id: 0x0880,
@@ -162,8 +168,9 @@ describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: fil
       kind: 'ptero',
       facing: -1, // opposite the player
       collisionEnabled: true,
-      // 4px right of the player (broad-phase overlap), 10px above its feet-line
-      // reference: lanceOffset = plantZ(0) + 110 − 100 = 10 → glide band centre.
+      // 4px right of the player (broad-phase overlap), 9px above its feet-line
+      // reference: lanceOffset = plantZ(0) + 109 − 100 = 9 → in the glide band AND
+      // the CWNG3R×PT1RC narrowPhase mask.
       entity: entity({ posX: 104, posY: 100 << 8, airborne: true }),
     }
     return { player, ptero }
@@ -200,7 +207,9 @@ describe('AC-1 — a killed ptero enters the dissolve, rendered, not vanished (R
     const player: DemoProcess = {
       id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1,
       mount: 'ostrich', collisionEnabled: true,
-      entity: entity({ posX: 100, posY: 110 << 8, airborne: true }),
+      // jt9-14 re-seat 110→109 (lanceOffset 9): in the glide band AND the
+      // CWNG3R×PT1RC narrowPhase mask the pass now consults.
+      entity: entity({ posX: 100, posY: 109 << 8, airborne: true }),
     }
     const ptero: DemoProcess = {
       id: 0x0880, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: -1,

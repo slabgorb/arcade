@@ -253,11 +253,16 @@ describe('jt5-16 AC4 — ptero-vs-PLAYER stays whole on resolvePteroAttack', () 
   // the dedicated lance-height loop ever runs. Exactly one death cue may fire.
 
   it('a lance-band contact still kills the ptero — one ptero-death, no pair-loop leak', () => {
-    // jt4-4's proven lance geometry: player 10px below, opposite facings,
+    // jt4-4's proven lance geometry: player 9px below, opposite facings,
     // facing into the ptero → the resolvePteroAttack KILL band.
+    // jt9-14 re-seat: was 10px (posY 110). The player-vs-ptero pass now runs
+    // narrowPhase after broadPhase (the ROM's BPCOL→OSTHIT gate,
+    // JOUSTRV4.SRC:4944-4952), and CWNG3R×PT1RC overlap only at lanceOffset 8-9,
+    // so offset 10 became a mask MISS. Offset 9 is in the band AND the mask —
+    // green on both the pre- and post-jt9-14 tree. See demo-jt9-14.test.ts.
     const player: DemoProcess = {
       id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
-      collisionEnabled: true, entity: flightEntity({ posX: 100, posY: 110 << 8 }),
+      collisionEnabled: true, entity: flightEntity({ posX: 100, posY: 109 << 8 }),
     }
     const ptero: DemoProcess = { ...pteroAt(LANCE_PTERO, { posX: 104, posY: 100 << 8 }), facing: -1 }
     const base = stage([])

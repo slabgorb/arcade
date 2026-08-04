@@ -223,7 +223,13 @@ describe('jt5-1 — ptero-death is EMITTED, and is not the player death next doo
   }
 
   it('a lance-height kill sounds SNPTED and leaves a dissolving body', () => {
-    const stepped = stepDemo(stage(10), inputs)
+    // jt9-14 re-seat: the player-vs-ptero pass now runs narrowPhase after
+    // broadPhase (matching the joust/egg passes and the ROM's BPCOL→OSTHIT
+    // gate, JOUSTRV4.SRC:4944-4952). The CWNG3R×PT1RC masks overlap only for
+    // lanceOffset 8-9 within the 10±2 glide band, so offset 10 (the old value)
+    // is now a mask MISS. Offset 9 keeps a real, mask-consulted kill — green
+    // on both the pre- and post-jt9-14 tree. See demo-jt9-14.test.ts.
+    const stepped = stepDemo(stage(9), inputs)
     expect(
       count(stepped, 'dissolve'),
       'precondition: the ptero really died (a dissolve replaced it)',
@@ -240,11 +246,13 @@ describe('jt5-1 — ptero-death is EMITTED, and is not the player death next doo
     // of this pair produced `player-death` and looked like a pass, because a cue
     // did come out — it was the correct cue for the opposite outcome.
     //
-    // Offset 14 is deliberate: still INSIDE the 16px collision box, so a contact
-    // really is resolved, but outside the 10±2 glide band, so it resolves the
-    // other way. Push it past the box (24+) and neither entity dies — the test
-    // would then pass its `not.toContain` for the reason that nothing happened.
-    const stepped = stepDemo(stage(14), inputs)
+    // Offset 5 is deliberate: still inside the CWNG3R×PT1RC mask (dy=-5 is a
+    // narrowPhase HIT post-jt9-14), so a contact really is resolved, but outside
+    // the 10±2 glide band, so it resolves the OTHER way (pteroWins → the knight
+    // dies). The old value 14 was a box-only contact the mask now rejects, so
+    // post-jt9-14 nothing would happen and the `not.toContain` would pass
+    // vacuously. Push it past the mask (|dy|≥10) and neither entity dies.
+    const stepped = stepDemo(stage(5), inputs)
     expect(count(stepped, 'player'), 'precondition: the knight really died').toBe(0)
     expect(simKinds(stepped)).toContain('player-death')
     expect(simKinds(stepped)).not.toContain('ptero-death')
