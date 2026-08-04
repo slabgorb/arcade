@@ -106,7 +106,8 @@ stories:
       NO TEST PINS 000000, verified at filing, so nothing blocks this. What exists: tests/render.test.ts:321-326 (score 123456 renders exactly 123456 in the h0-5 band) and :329-334 (high score 987654) both stay green because six significant digits suppress nothing. tests/render.test.ts:182-204 is an it.each over states including createSim(1) at score 0, asserting every character of String(state.score) — that is "0" — appears in the drawn HUD text; it stays green with "    00" but it is NOT a pin on six zeros, and it is the only test that touches score 0 at all. tests/render.test.ts:337-343 ("no CHAR_ letter glyph on the HUD row") stays green because blanks emit no glyph whatsoever. The gap is the point: the reason this shipped is that nothing ever asserted what a ZERO score looks like, and the story's own test must close that specific hole rather than re-asserting the six-digit case that already passes.
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-04'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
