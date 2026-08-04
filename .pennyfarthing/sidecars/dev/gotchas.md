@@ -2273,3 +2273,57 @@ it") followed through to the ceremony rather than stopping at the measurement.
 **And cross-check the null result.** "Zero pins moved" and "the suite stopped collecting those
 tests" are the same output. The collected count being unchanged at 2627 is what separates them, and
 it costs nothing to report alongside.
+
+## Mark eligibility where the ROM decides it; take the value where the units exist
+
+PWHCH (jt9-40) picks WHICH eggs get a shortened hatch wait at the moment each egg is created,
+and computes the shortened value in the same breath. The port cannot do both in one place:
+`spawnWaveEggs` knows the deal ORDER (so it knows which two the ROM would reach) but holds the raw
+WAVBCD counter, and resolving a wait from that counter mis-reads the tenth wave and throws outright
+on the hundredth — the crash jt9-38's AC-4 found. The hatch pass has the decimal ordinal but no
+notion of deal order once the eggs are in a list.
+
+Splitting it — a boolean `prematureHatch` set at the deal, the draw taken at the resolve — keeps
+each half where it can be correct, and costs one field. **When a ROM routine does two things at one
+site and the port can only do one of them there, split on WHICH FACT each half needs rather than
+forcing both into the site that looks like the ROM's.** The docblock has to say so, or the next
+reader "fixes" the split by moving the draw back to the deal and re-opens the rollover crash.
+
+## Threading a draw means threading it to EVERY later reader in the frame, not just the return
+
+Taking a draw off `stepped.rng` inside the hatch pass and handing the advanced word to `sim.rng`
+looks complete, and is not: the wave-advance block further down was still calling
+`spawnWaveEnemies(wave, stepped.rng)` — the PRE-draw word. Nothing tested it, and today nothing
+can, because a wave is clearable only when no eggs remain in it while a draw happens only while
+twelve are sitting there. That is exactly the kind of gap that stays invisible until some later
+story makes the two co-occur, and then presents as an RNG stream that forks.
+
+**When you introduce a mid-frame RNG advance, grep the rest of the frame for every other reader of
+the old word** and move them all, even the ones that provably cannot differ yet. Say in the comment
+why they cannot differ, so the next reader knows the choice was made rather than missed.
+
+## The repo-wide tsc gate makes one checkout's RED phase everyone else's red
+
+`npm run lint` and `npm run test:orchestrator` (via `shared-tests-typechecked`) run tsc over the
+WHOLE monorepo. A sibling checkout mid-RED on centipede had pushed a test file statically importing
+an export its GREEN has not written yet — five TS2305/TS2339 errors — so both of my gates were red
+on arrival with zero errors in my own plugin. Since CI runs `npm run lint` before any deploy, that
+window also means **no app can be released while any checkout's RED sits on main.**
+
+joust's own convention already avoids this and it is worth knowing WHY it exists: TEA loads
+not-yet-written exports through a runtime `await import` with a specifier assembled at run time
+(`loadWenemy`, `loadPrematureHatchWait`) so the type checker never sees the missing name, and the
+RED failure reads as "the feature is absent" instead of a module-resolution trace. A static import
+of a future export is the form that reddens the whole cabinet.
+
+Practically: when a gate fails, attribute every error to a file before believing it is yours —
+`git log --oneline -3 -- <file>` names the commit and the story in one command.
+
+## A number the README states TWICE moves twice
+
+Adding ten dossier claims moved `check-citations.mjs`'s output from 949 to 959, and joust's README
+quotes that figure in two places (the quick-start command and the degraded-mode walkthrough).
+`audio-seam-scope.test.ts` asserts BOTH match, deliberately — the checker prints the same number in
+either mode, so there is no honest reason for them to differ. `grep -n` for the old value before
+editing rather than fixing the first hit; and take the new number from running the checker, not
+from arithmetic on the old one.
