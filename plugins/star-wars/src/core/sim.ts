@@ -162,7 +162,7 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // `TMPOCT`, off one `LZ.CX/LZ.CY` cursor sample, twelve lines apart in the same pass
   // (WSMAIN.MAC:3881-3930) — they cannot disagree there. Reading `stateIn`'s aim would
   // make the sights bit one frame stale while the gun below fires down `input`: measured
-  // at depth 6000 on 16:9, a one-frame yoke move of 0.1 separates the two rays by 613 u, and
+  // at depth 6000 on 16:9, a one-frame yoke move of 0.1 separates the two rays by 616 u, and
   // dropping the aspect separates them 539 u at yoke 0.2 — both still INSIDE a warning band that
   // reaches 3 · TIE_HIT_RADIUS = 750 u on the axis. The aspect gap grows with the yoke, though:
   // 2694 u at full deflection, so past ~28% of travel (750 / 2694) the laser kills what the bit denies.
