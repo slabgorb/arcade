@@ -1495,3 +1495,8 @@ completed_stories:
     title: The train enters on the score line — the render paints where the ROM says off-screen
     points: 2
     completed: '2026-08-04'
+  - id: cp7-3
+    epic: cp7
+    title: The score zero-PADS where the ROM zero-SUPPRESSES — and our own claim already says so
+    points: 2
+    completed: '2026-08-04'
