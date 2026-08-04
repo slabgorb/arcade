@@ -1084,8 +1084,10 @@ describe('cp3-1 AC-4 — THREE / SIX / NINE join the STAMPS table', () => {
     const stamps = pics.STAMPS as ReadonlyArray<{ name: string; offset: number; kind: string }>
     // Offsets computed by walking CENPIC.MAC's .BYTE/.REPT stream from ".=0":
     // THREE :47 -> 0x1B0, SIX :48 -> 0x1C0, NINE :146 -> 0x5B0. They decode from
-    // the PTS codes as offset = ((pic & 1) << 10) | (((pic >> 1) & 0x3F) << 4):
+    // the PTS codes as offset = ((pic & 1) << 10) | (((pic >> 1) & 0x1F) << 4):
     //   0xB6 -> 0x1B0 THREE, 0xB7 -> 0x5B0 NINE, 0xB8 -> 0x1C0 SIX.
+    // cp7-1: mask corrected 0x3F -> 0x1F. Bits 6-7 are the flip bits, not
+    // address; these three carry bit 6 clear, so both masks agree HERE.
     const want: ReadonlyArray<[string, number]> = [
       ['THREE', 0x1b0],
       ['SIX', 0x1c0],

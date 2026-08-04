@@ -110,9 +110,15 @@ export const SPIDER_PTS_CLAMP_LO = 0x10 // SP-20 (:2259 "LDA I,10")
 // The points-display picture codes (:2236 "LDY I,0B6", then INC PTS at :2245
 // and again at :2249). The walk is 300 -> 900 -> 600, which is NOT sorted by
 // score: it is the CENPIC sprite ORDER. Picture N decodes to lower-plane offset
-// ((N & 1) << 10) | (((N >> 1) & 0x3F) << 4), so 0xB6 -> 0x1B0 THREE,
+// ((N & 1) << 10) | (((N >> 1) & 0x1F) << 4), so 0xB6 -> 0x1B0 THREE,
 // 0xB7 -> 0x5B0 NINE, 0xB8 -> 0x1C0 SIX. "Tidying" these into ascending order
 // draws the wrong number on the screen.
+//
+// cp7-1: the mask is 0x1F, NOT the 0x3F this comment used to carry. Bits 6 and
+// 7 are the FLIP bits (PICTURE_FLIP_Y / PICTURE_FLIP_X in src/core/pictures.ts,
+// CENDE4.MAC:248 and :239), not address, so only bits 1-5 are the stamp index.
+// The three PTS codes have bit 6 clear, which is why the old 0x3F mask still
+// produced their correct offsets and the error stayed invisible here.
 export const SPIDER_PTS_300 = 0xb6 // SP-19 (:2236-2237 "LDY I,0B6 / STY PTS ;POINTS=300")
 export const SPIDER_PTS_900 = 0xb7 // SP-19 (:2245 "INC PTS ;POINTS=900")
 export const SPIDER_PTS_600 = 0xb8 // SP-19 (:2249 "INC PTS ;POINTS=600")
