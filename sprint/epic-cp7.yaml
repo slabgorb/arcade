@@ -139,7 +139,7 @@ stories:
       THE ACCEPTANCE TEST INCLUDES EARS. cp6-2 established the rule for this game and it holds here: a decodable wav of the wrong length passes every mechanical check in this repo. The samples are served from arcade-assets.slabgorb.com/centipede/sfx/ and CI never touches that bucket, so a re-bake is not shipped until just deploy-assets has been RUN and the flea has been heard dropping.
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
     acceptance_criteria:
