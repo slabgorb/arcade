@@ -372,7 +372,9 @@ stories:
     description: 'jt8-1 shipped an HONEST APPROXIMATION for SELPLY''s nearest-of-two tiebreak: target.ts coordDistance/nearer picks the smaller min(|dx|,|dy|), tie keeps the primary (cited JT81-003, pinned by the DISCRIMINATING case in tests/target.test.ts). Three independent jt8-1 analyses (TEA, reviewer test-analyzer, reviewer comment-analyzer) each FAILED to hand-decode the actual 6809 sequence — a 16-bit two''s-complement negate with an overflow-guarded per-axis compare (TSTA/BNE :4487/:4505) and a final CMPB 1,S / BLO :4512-4515 (a STRICT less-than that appears to fall through to LDX TARPL2, favouring the SECONDARY, the OPPOSITE of the shipped primary-tie). The metric may be Chebyshev / Y-dominant, not min-of-axes. This story decodes :4476-4514 at INSTRUCTION level (emulator trace or a verified 6809 hand-trace), then either replaces coordDistance/nearer with the true metric+tie or CONFIRMS the approximation faithful — do NOT hand-guess (the jt8-1 ruling). BUILDS ON jt8-1; independent of jt8-2/jt8-3/jt8-4.'
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    assigned_to: Keith Avery
+    started: '2026-08-04'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
