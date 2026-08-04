@@ -53,6 +53,7 @@ stories:
       - A spider is shot in a live run and the readout is read off the screen, because a correctly-decoded atlas can still be blitted to the wrong place.
       - 'SETUP FINDING, also FILED and not fixed here: the direction-derived facing flip is unimplemented. CENIR4.MAC:332-340 loads Y from MOBJDH for every motion object EXCEPT slot 13 (LDY I,0 / CPX I,13. / BEQ 35$ — comment: LEAVE PICTURE ALONE IF SPIDER OR 100, ETC) and EORs bit 7 of it into the hardware picture at :368, so segments, flea, scorpion and shot all mirror to face their travel direction on the cabinet. Nothing in plugins/centipede implements any flip and blit() has no flip parameter.'
     type: bug
+    review_verdict: approved
   - id: cp7-2
     title: The train enters on the score line — the render paints where the ROM says off-screen
     description: |-
