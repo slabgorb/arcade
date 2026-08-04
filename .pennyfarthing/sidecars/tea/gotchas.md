@@ -4179,3 +4179,37 @@ fresh measurement (`find` over the tree AND vitest's own `Test Files (N)` line a
 rather than by adding 2 to the stale one, which is `the-correction-is-itself-a-transcription`
 waiting to happen. Note `npx vitest list --filesOnly | grep -c` gave 110 and was simply wrong;
 two independent methods that agree are worth the extra command.
+
+## Wiring an EXISTING narrowPhase into a NEW pass: the kill band and the mask band barely overlap (jt9-14, 2026-08-04)
+
+**Situation:** jt9-14 wired the existing narrowPhase into the third `collisionPass` overlap pass
+(player-vs-ptero, demo.ts:1491), which had run `resolvePteroAttack` after broadPhase ONLY — box-only,
+exactly the jt8-7 egg bug on a third consumer.
+
+**Three things this surfaced, all reusable:**
+
+1. **Measure BOTH bands, because the kill window is their INTERSECTION and it can be tiny.** The lance
+kill band is `lanceOffset ∈ [8,12]` (a game-logic gate in resolvePteroAttack); the CWNG3R×PT1RC mask
+agrees only at `dy ∈ [−9,+8]`. Intersection = dy {−8,−9} — a 2px kill window. So the NATURAL kill
+geometry every sibling stages (lanceOffset 10 → dy=−10) sits ONE PIXEL outside the mask and the fix
+turns those green kills RED. A throwaway that sweeps dy printing `box` / `mask` / `killband` for the
+two real masks (import narrowPhase + broadPhase + COLLISION_TABLES) is three minutes and replaces every
+guess. A SECOND throwaway that runs `stepDemo` per dy prints the actual outcome (kill / player-death /
+nothing) — do it, because a game gate (facing, band) may make the observable differ from the raw mask.
+
+2. **The contract change breaks siblings staged OUTSIDE the new gate — find them by APPLYING the fix,
+not by reading.** Apply the minimal fix to demo.ts, run the FULL `--project joust --project shared`,
+record every failure, then `git checkout` the source. jt9-14 found 8 breaks across 4 files
+(audio-emission, demo-jt3-7-menagerie, demo-jt4-4 — baiters are ptero-kind! — demo-jt5-16). Re-seat
+each to the band∩mask (offset 9), verify green pre- AND post-fix, log 6-field deviations. Adding test
+files also reddens `audio-seam-scope.test.ts`'s derived README file-count (bump plugins/joust/README.md).
+
+3. **The "does narrowPhase match the ROM" question (jt9-15/jt9-17 inherit it): the STRUCTURE is right,
+the COLUMN test is not.** `OSTXYP JSR BPCOL` (JOUSTRV4.SRC:4944) → `BCS OSTHIT` (:4945) → the ptero
+lance compare (:4971-5001): the ROM runs the span-mask test as a PRECONDITION to the whole player-vs-
+ptero dispatch, so wiring narrowPhase in is FAITHFUL (confirm the port direction). BUT BPCOL subtracts
+COLDX (screen-X separation) from its column compare (:7047/:7051/:7062) — it is a SCREEN-space overlap.
+The port's narrowPhase (joust.ts:177) drops COLDX and compares superimposed sprite-local columns,
+X-blind, leaning on broadPhase for all of X. That is a pre-existing divergence since jt2-3 across ALL
+THREE consumers — filed jt9-43. Stage jt9-14's fixtures at **dx=0** (COLDX=0) so the bands are invariant
+under that follow-up; a dx≠0 sibling (the four above stage dx=4) will need re-baseline when jt9-43 lands.
