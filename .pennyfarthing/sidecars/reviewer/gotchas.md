@@ -2849,3 +2849,73 @@ completion gate still requires `[EDGE]`/`[SILENT]`/`[TEST]`/`[DOC]`/`[TYPE]`/`[S
 and say the coverage is yours rather than a subagent's. Two of my four findings were reached twice,
 once through `[EDGE]` (a boundary) and once through `[SILENT]` (a silent fallback), which is a real
 argument for walking the domains deliberately instead of treating the tags as gate bureaucracy.
+
+## The claim a whole story rests on can be the one nothing tests — mutate the RETURN, not the value
+
+jt9-40 ported a ROM mechanic whose entire reason for being a separate story was that it CONSUMES
+the run's RNG stream. Nine tests asserted the shortened hatch waits: their range, their scaling,
+their determinism across 32 seeds, which two eggs get them. Every one of those reads a WAIT — and
+the wait is computed from a local that advances whether or not the advanced word is ever kept.
+Replacing `rng,` with `rng: stepped.rng,` in the returned state left **all 2657 tests green**.
+
+**When a story's headline claim is about a SIDE EFFECT rather than a returned value, no amount of
+testing the returned value reaches it.** Mutate the write-back, not the computation.
+
+The guard is also where this gets interesting, because the obvious one is vacuous: the scheduler
+advances the RNG every frame anyway, so "did the rng move?" passes on any frame in the game. The
+shape that works is a TWIN — run the same frame twice, once with the mechanism's marks and once
+with the same objects rebuilt through a field WHITELIST that drops whatever tag the producer added,
+and require the two durable words to differ. The whitelist matters: it drops the mark without
+naming it, so the guard does not couple to a field name the implementer was free to choose.
+
+## A test whose NAME claims more than its BODY checks is a false comment with a green tick
+
+The same story pinned `JOUSTRV4.SRC:160` byte-exactly under the title "the DECLARATION exists, and
+its comment is looser than the code". The body asserted one `toBe` on the line text. The looseness
+claim — which was WRONG — lived entirely in the title and the file header, where no assertion
+reaches, and it was repeated into a production docblock and a dossier claim.
+
+Test names, file headers and `expect` messages are prose. **Read them as claims and check them
+against the body**, because a reader who greps for a subject finds the name first and the name is
+what they will believe. The fix is not to reword the title: make the claim EXECUTABLE. Here that
+meant enumerating all 256 byte values under both the signed and unsigned readings and asserting
+which one the branch implements — three lines of arithmetic that turn an opinion into a guard.
+
+## Check the JUSTIFICATION separately from the CONCLUSION — they can point opposite ways
+
+The false claim above read: "'IF >0' is LOOSER than the rule CREGG implements — the DEC/BMI pair
+shortens while the DECREMENTED value is non-negative, **so a cell holding 1 still buys a
+shortening**." The evidence clause is true. It is also an example of the two rules AGREEING (1 is
+> 0, and the code shortens), offered as proof that they disagree.
+
+A conclusion can be defensible while its stated reason is nonsense, and the reason is the part the
+next reader reuses. **Evaluate the "so …" clause on its own terms before accepting the sentence.**
+Here the conclusion was additionally reading-dependent (true unsigned, false signed) and the claim
+never said which reading it meant — so the honest correction was to state the reading, not to pick
+a side.
+
+## A dossier claim is byte-verified and prose-unverified, and the README says so
+
+`check-citations.mjs` reported 959 claims, all verified, with the false one among them — because,
+in the claims README's own words, "the checker verifies SOURCE and VERBATIM only — it never reads
+claim prose". A green citation gate means the QUOTE re-opens, nothing more.
+
+So when a story adds claims, read every one against its line by hand. Ten added here; nine were
+sound. The gate cannot do this and does not pretend to.
+
+## Attribute a red gate to a FILE and a COMMIT before believing it is the story's
+
+`npm run lint` and `npm run test:orchestrator` were both red on arrival with zero errors in the
+plugin under review — a sibling checkout's in-flight RED (`b039b64`, a different story) had landed
+on main, and the tsc gate is repo-wide. `git log --oneline -3 -- <file>` on each error-producing
+file names the commit and the story in one command. Do this before writing a finding, and note the
+consequence while you are there: a repo-wide type gate in the deploy path means **no app can be
+released while any checkout's RED sits on main.**
+
+## Your own mutation battery shows up as an "unexplained anomaly" in a concurrent preflight
+
+The background preflight subagent reported `demo.ts` transiently modified twice by "a process other
+than me", quoting two of my own mutants, and flagged it as an unexplainable environment condition.
+It handled it correctly (re-ran everything against a verified-clean tree), but the report cost a
+paragraph and could easily have been read as a real finding. Either run the battery after preflight
+returns, or tell preflight it is coming.
