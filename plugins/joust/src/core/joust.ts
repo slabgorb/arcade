@@ -133,6 +133,9 @@ export const BUMP_Y_TOP = -2
 /** Loser's vertical shove: `PBUMPY = +2` (`LDA #2`, OSTXDN, JOUSTRV4.SRC:5175). DECIMAL. */
 export const BUMP_Y_BOTTOM = 2
 
+/** PTEBRD's HARD vertical shove: `PBUMPY = ±5` (`LDA #-5`/`LDA #5`, JOUSTRV4.SRC:5213/5218). DECIMAL. */
+export const BUMP_Y_HARD = 5
+
 // ─── Broad phase (box) ────────────────────────────────────────────────────
 
 /**
@@ -268,6 +271,20 @@ export function bounceBottom(e: JoustEntity): JoustEntity {
     bumpY: BUMP_Y_BOTTOM,
     velY: e.velY < 0 ? -e.velY >> 1 : e.velY,
   }
+}
+
+/**
+ * The HARD one-sided shove PTEBRD hands the BIRD ("COLIDE PTERODACTYL & BIRD",
+ * JOUSTRV4.SRC:5203-5248). PTEBRD calls OSTXUP/OSTXDN FIRST (the same velY
+ * halve-reverse `bounceTop`/`bounceBottom` encode) and then `LDA #∓5 / STA
+ * PBUMPY,X` (:5213-5214 / :5218-5219) OVERWRITES their ±2 with a hard 5 — so the
+ * bird gets the ±2 velY treatment but a ±5 `bumpY`. `pteroOnTop` (the bird is
+ * LOWER, so OSTXDN, :5217) drives it DOWN (+5); otherwise (bird higher, OSTXUP,
+ * :5212) UP (−5) — always AWAY from the pterodactyl. Only the bird is returned;
+ * the pterodactyl (REG.U) is read, never written. Pure. */
+export function pteroBirdBump(bird: JoustEntity, pteroOnTop: boolean): JoustEntity {
+  const base = pteroOnTop ? bounceBottom(bird) : bounceTop(bird)
+  return { ...base, bumpY: pteroOnTop ? BUMP_Y_HARD : -BUMP_Y_HARD }
 }
 
 /**

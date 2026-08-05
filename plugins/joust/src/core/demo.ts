@@ -50,6 +50,7 @@ import {
   resolveJoust,
   bounceTop,
   bounceBottom,
+  pteroBirdBump,
   consumeBumpY,
   type JoustEntity,
   type JoustOutcome,
@@ -1365,9 +1366,12 @@ function collisionPass(processes: readonly DemoProcess[]): {
       const pa = eligible[i]
       const pb = eligible[j]
       if (removed.has(pa.id) || removed.has(pb.id)) continue
-      // jt5-16: a ptero pairs only with a ptero — player-ptero belongs to
-      // resolvePteroAttack below; ptero-buzzard is PTEBRD (:5034), unbuilt here.
-      if ((pa.kind === 'ptero') !== (pb.kind === 'ptero')) continue
+      // A pair with EXACTLY ONE pterodactyl. player-vs-ptero belongs to
+      // resolvePteroAttack (the lance-height joust) below, NOT this loop — skip
+      // it here. A ptero-vs-buzzard pair (the other party an enemy) is the ROM's
+      // PTEBRD pair (:5034; :5037-5038 after EXG X,U) — jt9-15 routes it below.
+      const mixedPtero = (pa.kind === 'ptero') !== (pb.kind === 'ptero')
+      if (mixedPtero && (pa.kind === 'player' || pb.kind === 'player')) continue
 
       const a = toJoustEntity(pa)
       const b = toJoustEntity(pb)
@@ -1384,6 +1388,27 @@ function collisionPass(processes: readonly DemoProcess[]): {
         MASKS,
       )
       if (!hit) continue
+
+      // ─── jt9-15: PTEBRD — "COLIDE PTERODACTYL & BIRD" (:5203-5248) ──────────
+      // The no-kill branch sounds SNETHD FIRST (OSTHT2, :5019) and then hands a
+      // one-pterodactyl pair to PTEBRD, a SEPARATE routine from OSTBMP: it bumps
+      // the BIRD alone and reads (never writes) the pterodactyl — no kill, no
+      // score. Orient ptero→U / bird→X regardless of loop order (OSTH13's
+      // `EXG X,U`, :5037). The pterodactyl on top (the bird lower OR level — the
+      // `BPL` at :5211 takes the tie) drives the bird DOWN a hard +5, otherwise
+      // UP −5 (pteroBirdBump). The pterodactyl is never added to `bounced`, so
+      // `withBounced` leaves it untouched. PTEBRD returns via `JMP HITEM2` with
+      // carry clear like OSTH11, so the inner scan CONTINUES (jt9-16's carry law).
+      if (mixedPtero) {
+        const pteroIsA = pa.kind === 'ptero'
+        const birdP = pteroIsA ? pb : pa
+        const birdE = pteroIsA ? b : a
+        const pteroE = pteroIsA ? a : b
+        const pteroOnTop = (pteroE.posY >> 8) <= (birdE.posY >> 8)
+        bounced.set(birdP.id, consumeBumpY(pteroBirdBump(birdE, pteroOnTop)))
+        cues.push({ type: 'enemy-thud' })
+        continue
+      }
 
       const contact = resolveContacts(a, b)
       if (contact.outcome.kind === 'bounce') {
@@ -2287,14 +2312,16 @@ export function drawList(demo: DemoState): DrawOp[] {
 // (the bounce branch above). The branch is reached from
 // `:4961  BNE OSTHT2   BR=NO KILL (ENEMY VS. ENEMY, PTERO VS. PTERO)`.
 //
-// ONE ARM STAYS UNBUILT, ON PURPOSE. A ptero-vs-BIRD pair goes to PTEBRD
-// (:5034, and :5037-5038 after `EXG X,U` so the ptero is in U) — an UNMEASURED
-// routine jt5-16's ruling did not price. The pair loop therefore skips mixed
-// ptero/buzzard pairs entirely (no cue, no bump) until PTEBRD's own story
-// measures it; the jt5-16 Delivery Findings demand that story's filing.
-// Player-vs-ptero is untouched: `resolvePteroAttack` (the lance-height joust)
-// remains that pair's ONLY resolver, and the pair loop skips it too.
+// THE LAST ARM, BUILT (jt9-15). A ptero-vs-BIRD pair goes to PTEBRD (:5034, and
+// :5037-5038 after `EXG X,U` so the ptero is in U) — measured by jt9-15 and now
+// routed in the pair loop above: SNETHD sounds (`enemy-thud`), then the BIRD
+// alone takes a HARD ±5 bump AWAY from the pterodactyl (`pteroBirdBump`, down
+// when the ptero is on top, up when the bird is) while the pterodactyl flies on
+// untouched — no kill, no score. Player-vs-ptero is still untouched here:
+// `resolvePteroAttack` (the lance-height joust) remains that pair's ONLY
+// resolver, and the pair loop skips it.
 //
-// The routing is pinned verbatim by tests/audio-ptero-wing-source.test.ts, and
-// the behaviour (thud, ±2px bump, no deaths, both fences) by
-// tests/demo-jt5-16.test.ts.
+// The routing is pinned verbatim by tests/audio-ptero-wing-source.test.ts; the
+// ptero/ptero behaviour (thud, ±2px bump, no deaths, both fences) by
+// tests/demo-jt5-16.test.ts; and the ptero/bird PTEBRD behaviour (thud, hard ±5
+// one-sided bump, no deaths) by tests/demo-jt9-15.test.ts.
