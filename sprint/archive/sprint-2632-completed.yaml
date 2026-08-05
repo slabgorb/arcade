@@ -7,6 +7,7 @@ sprint:
 
 completed_epics:
   - cp7
+  - cp6
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -98,3 +99,28 @@ completed_stories:
     title: Suppress the wave-entry cue-spam from spawnWavePteros stacking pteros at one coordinate
     points: 3
     completed: '2026-08-05'
+  - id: cp6-6
+    epic: cp6
+    title: "two loose pins in centipede's audit suite: a citation floor of 20 against a population of 86, and bake-sfx.test.mjs's stale ':25-28' span for the @shared/audio import"
+    points: 1
+    completed: '2026-08-05'
+  - id: cp6-1
+    epic: cp6
+    title: The POKEY dossier and the fourteen-cues-over-six-tables ruling — what centipede's ROM actually sounds like
+    points: 3
+    completed: '2026-08-02'
+  - id: cp6-2
+    epic: cp6
+    title: Bake the samples, upload them, and prove a live 200 — the sound actually arrives
+    points: 5
+    completed: '2026-08-03'
+  - id: cp6-3
+    epic: cp6
+    title: POKEY voice 0 is contended and our CHANNELS map does not model it — the player explosion must silence the kill cues
+    points: 5
+    completed: '2026-08-03'
+  - id: cp6-4
+    epic: cp6
+    title: centipede's rogue-manifest guard asserts only the interpolated cue name — rewording the diagnostic wholesale leaves it green
+    points: 2
+    completed: '2026-08-03'

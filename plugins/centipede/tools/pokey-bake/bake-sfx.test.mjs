@@ -58,7 +58,7 @@ async function loadManifest() {
     throw new Error(
       'cp6-2 AC3: plugins/centipede/src/shell/audio-manifest.ts does not exist yet. Split the ' +
         'cue manifest out of audio.ts so the baker can reach it under plain node — audio.ts ' +
-        "imports @shared/audio at :25-28 and the justfile's `node` cannot resolve that alias.",
+        "imports @shared/audio at :28-31 and the justfile's `node` cannot resolve that alias.",
     )
   }
   return import('../../src/shell/audio-manifest.ts')
@@ -195,7 +195,7 @@ describe('cp6-2 AC3 — the manifest the baker can actually reach', () => {
   it('audio-manifest.ts exists and is DEPENDENCY-FREE', async () => {
     // The import trap, stated plainly: the justfile runs bakers under plain
     // `node`, where the @shared alias does not resolve. audio.ts imports
-    // @shared/audio at :25-28, so the baker cannot import audio.ts. Any import
+    // @shared/audio at :28-31, so the baker cannot import audio.ts. Any import
     // added here breaks the deploy-time bake while every vitest stays green —
     // which is exactly the failure joust's manifest header warns about.
     const path = join(centipede, 'src', 'shell', 'audio-manifest.ts')

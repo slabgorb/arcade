@@ -431,15 +431,20 @@ describe('AC-2 — every dossier citation is pinned by a claim', () => {
   it('extracts a non-trivial set of primary-source citations from the dossier (the sweep has teeth)', () => {
     // A sweep that silently matched nothing would make the coverage test below
     // pass vacuously — the exact way a green gate can mean nothing at all.
-    expect(allProseCitations().length, 'the coverage check must actually scan citations').toBeGreaterThan(20)
+    // The enrolled dossier carries 175 citations today (brief.md 32, glossary.md
+    // 25, sound.md 118), so a floor of 20 was two-thirds of the way to vacuous:
+    // sound.md's whole 118 could vanish and the aggregate would still clear 20.
+    // 100 keeps real teeth — losing sound.md drops the total to 57 and reddens
+    // here — while the per-file floor below guards the two smaller files.
+    expect(allProseCitations().length, 'the coverage check must actually scan citations').toBeGreaterThan(100)
   })
 
   it('each enrolled file clears the floor on its OWN, not on the strength of its siblings', () => {
     // cp6-1 round 2: the floor above is an AGGREGATE. brief.md and glossary.md
-    // contribute 32 and 24 citations today, so either could be rewritten into a
+    // contribute 32 and 25 citations today, so either could be rewritten into a
     // spelling the extractor cannot see, fall to zero, and the total would still
-    // clear 20 on the strength of the other two — with every citation in the
-    // silenced file rotting unwatched behind a green gate.
+    // clear the aggregate floor on the strength of its siblings — with every
+    // citation in the silenced file rotting unwatched behind a green gate.
     const perFile = DOSSIER_FILES.map((f) => [f, extractProseCitations(readDossier(f), f).length] as const)
     const starved = perFile.filter(([, n]) => n === 0).map(([f]) => f)
     expect(
