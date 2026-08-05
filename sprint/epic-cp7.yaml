@@ -176,7 +176,8 @@ stories:
       ALSO IN SCOPE BECAUSE IT IS THE SAME DIP AND THE SAME REGISTER, and leaving it half-modelled invites a second story: CENTI4.MAC:380-399 lowers the spider's ceiling from 0x60 by 8 for every 20,000 points past the 60K BCD datum, capped at 5 steps (:391 "LDA I,5"). Confirm whether our port models it and say so either way rather than leaving it unstated.
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
