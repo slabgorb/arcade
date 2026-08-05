@@ -47,3 +47,8 @@ completed_stories:
     title: narrowPhase drops BPCOL's COLDX screen-X term — the mask test is X-blind for all three overlap passes
     points: 3
     completed: '2026-08-05'
+  - id: td1-12
+    epic: td1
+    title: joust wave counter is BCD but every consumer reads it as decimal — wrong wave row from the 10th wave on
+    points: 5
+    completed: '2026-08-05'
