@@ -143,6 +143,27 @@ export interface HomingState {
    * homing-contract.ts for the full chain and why round 1 got this wrong.
    */
   readonly prdir: number
+
+  /**
+   * jt9-18 (folded jt9-19) — `PPVELX` ("OLD PLAYERS X VELOCITY", RAMDEF.SRC:209),
+   * the TARGET's FLYX index SNAPSHOTTED at the level-flight decide and then held.
+   *
+   * `BOLEV` freezes it once per decide (`LDA PVELX,X / STA PPVELX,U`, JOUSTRV4.SRC
+   * :3907-3908; the twins `B2LEV` :4058-4059 and `SHLEP` :4281-4282), and
+   * `BOLEVB`'s throttle READS it — `LDA PPVELX,U / CMPA PVELX,U` (:3939-3940) —
+   * against the enemy's OWN current index, never rewriting it until the interval
+   * expires and the brain re-decides. So `homingWake` must gate on THIS snapshot,
+   * not on the target's live `velXIndex`.
+   *
+   * The gap this closes was OPENED deliberately: before uf1-9 built the decision
+   * interval there was no moment at which a snapshot could honestly be taken, so
+   * the port compared the target's LIVE index (the Design Deviation noted above).
+   * uf1-9 created the decide moment; this field records the value frozen there.
+   * Absent means "no decide has happened yet" — `homingWake` holds (no tick).
+   * Written at exactly THREE sites (bounder/hunter/shadow-SHLEP); the fourth
+   * level family, SHLEV, has no `PPVELX` — it steers via SHDIR, not the throttle.
+   */
+  readonly ppvelx?: number
 }
 
 /**
