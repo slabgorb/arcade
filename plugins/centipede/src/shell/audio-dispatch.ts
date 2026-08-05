@@ -56,7 +56,7 @@ function effectFor(type: GameEvent['type']): 'play' | 'startLoop' | 'stopLoop' {
  * skipping the tick on a silent frame would stop the window expiring at all
  * during a quiet stretch, so the first player death would refuse every kill cue
  * for the rest of the run. This function is called once per STEPPED frame from
- * `src/main.ts:203`, so one call is exactly one machine frame. joust's dispatch
+ * `src/main.ts:291`, so one call is exactly one machine frame. joust's dispatch
  * makes the same call for the same reason (shell/audio-dispatch.ts:98-110).
  */
 export function playEventSounds(audio: SoundSurface, events: readonly GameEvent[]): void {

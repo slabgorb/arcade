@@ -55,17 +55,26 @@ function walkTs(dir: string): string[] {
   return out
 }
 
-/** src files (path relative to src/) whose text contains `pattern`. */
+/** Source with block and line comments removed, so a specifier quoted in a
+ *  COMMENT cannot satisfy an import guard (lang-review #15). Without this, deleting
+ *  a real import but leaving a comment that quotes it keeps the guard green — the
+ *  exact failure mode `tests/shell-convergence.test.mjs` strips comments to avoid.
+ *  The `//` pattern is anchored to start-of-line-or-whitespace so it cannot eat the
+ *  `//` inside a `https://` URL. */
+const stripComments = (src: string): string =>
+  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1')
+
+/** src files (path relative to src/) whose CODE (comments stripped) contains `pattern`. */
 function importersOf(pattern: RegExp): string[] {
   return walkTs(srcDir)
-    .filter((f) => pattern.test(readFileSync(f, 'utf8')))
+    .filter((f) => pattern.test(stripComments(readFileSync(f, 'utf8'))))
     .map((f) => f.slice(srcDir.length + 1))
 }
 
-// Anchor to the QUOTED specifier, not a bare word (lang-review #15): the string
-// `'@shared/pause'` appears only in an actual import (or a comment), and the two
-// siblings below are prefixes of nothing — `@shared/pause` is NOT a prefix of
-// `@shared/pause-x`, and the `['"]` bracket pins both quote styles.
+// Anchor to the QUOTED specifier, not a bare word (lang-review #15): with comments
+// stripped above, the string `'@shared/pause'` survives only in an actual import,
+// and the two siblings below are prefixes of nothing — `@shared/pause` is NOT a
+// prefix of `@shared/pause-x`, and the `['"]` bracket pins both quote styles.
 const PAUSE_IMPORT = /['"]@shared\/pause['"]/
 const ESC_OVERLAY_IMPORT = /['"]@shared\/esc-overlay['"]/
 const HOST_HELPERS_IMPORT = /['"]@shared\/host-helpers['"]/

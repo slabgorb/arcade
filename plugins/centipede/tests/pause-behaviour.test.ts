@@ -77,11 +77,19 @@ vi.mock('../src/shell/audio', async (importOriginal) => {
   }
 })
 
-vi.mock('@shared/esc-overlay', () => ({
-  drawEscOverlay: (_ctx: unknown, w: number, h: number): void => {
-    rec.overlay.push({ w, h })
-  },
-}))
+vi.mock('@shared/esc-overlay', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@shared/esc-overlay')>()
+  return {
+    // Anchor the recorder's parameters to the REAL drawEscOverlay signature
+    // (ctx, w, h, opts) so a future signature change is caught at compile time
+    // here — the same discipline the audio mock above uses (lang-review #8). A
+    // bare `(ctx, w, h)` would silently drop the 4th `opts` param.
+    drawEscOverlay: (...args: Parameters<typeof real.drawEscOverlay>): void => {
+      const [, w, h] = args
+      rec.overlay.push({ w, h })
+    },
+  }
+})
 
 const shell = installShellDom()
 
