@@ -270,7 +270,7 @@ beforeAll(async () => {
 
 describe('cp5-2 — the boot is SEEDED, so what this run happens to produce is not luck', () => {
   it('main.ts honoured the ?seed= override instead of seeding attract from the clock', () => {
-    // REWORK (Reviewer round 1, MEDIUM). main.ts:148 used to seed attract with
+    // REWORK (Reviewer round 1, MEDIUM). main.ts:203 used to seed attract with
     // `createAttract(Date.now())`, and the assertions below this line are about
     // EMERGENT play: that the gun cue fires, that a spider loop opens and
     // closes, that some step emitted two events. Against a wall-clock seed
@@ -279,7 +279,7 @@ describe('cp5-2 — the boot is SEEDED, so what this run happens to produce is n
     // centipede suite pins a literal seed for exactly this reason.
     //
     // The fix was a shell-only `?seed=` debug override in the shape of the
-    // `?wave=` one main.ts already parses (main.ts:36-45) — parsed in the SHELL
+    // `?wave=` one main.ts already parses (main.ts:40-49) — parsed in the SHELL
     // and never passed into createSim, so the pure core stays debug-free.
     // `Date.now()` survives as the fallback when no `?seed=` is given, which is
     // every real page load. This assertion is what keeps the override honest.

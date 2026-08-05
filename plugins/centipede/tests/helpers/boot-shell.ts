@@ -45,7 +45,7 @@
 //    green 8 times running is not proven green, and every other centipede suite
 //    pins a literal seed. `SEED` below is that pin; it reaches main.ts through
 //    `window.location.search`, in the shape of the `?wave=` debug param the
-//    shell already parses (main.ts:36-45). `?seed=` was this rework's one
+//    shell already parses (main.ts:40-49). `?seed=` was this rework's one
 //    production change — it did not exist when these guards were written, and
 //    `seedWasHonoured` is the assertion that reddened until it landed. Keep
 //    that assertion: without it, a `?seed=` that stops being honoured leaves

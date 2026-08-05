@@ -1155,7 +1155,7 @@ describe('cp5-2 AC3 — an unmapped kind DEGRADES: the frame plays on, quietly',
   //     runtime the branch stays SILENT — a stale or typo'd kind falling through
   //     onto some other cue would be audibly wrong, which is worse than quiet."
   //  2. CONSEQUENCE. cp5-2 puts this function inside requestAnimationFrame. An
-  //     uncaught throw there skips main.ts:227's trailing
+  //     uncaught throw there skips main.ts:326's trailing
   //     `requestAnimationFrame(frame)` and the game freezes — a total failure
   //     for a defect whose honest cost is one missing sound. Pinned end-to-end
   //     in tests/audio-hot-path.test.ts, which boots the real loop and poisons a
