@@ -942,7 +942,8 @@ stories:
       rule.
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -951,7 +952,9 @@ stories:
       - "AC-3 NO HAND-AUTHORED PIXELS, NO INVENTED COLOUR. The rider sprites are the already-transcribed PLYR3/4/5 records (sources PLY3R/PLY4R/PLY5R, JOUSTI.SRC:2106/2155/2208) drawn through the existing atlas; the enemy-knight colour is the transcribed COLOR1 nibble (nibble 4 = 0o017 red, pictures.test.ts:262-266), never a literal. The purity/denylist scans stay clean and the byte-gate is untouched — this story authors zero new pixel data."
       - "AC-4 THE HATCHED REMOUNT BUZZARD ALSO GETS A RIDER. remountEnemyProcess builds a kind:'enemy' process (demo.ts:1056-1082), so enemyDrawList must cover it with no special case. Assert a matured-egg remount bird carries a rider op. NOTE in the test that its species is bounder ONLY because remountEnemyProcess hardcodes it today (the jt9-47 follow-up), so this AC pins that the rider is DRAWN, not which species it is."
       - "AC-5 THE RIDER SITS ON THE BUZZARD (POSOFF). The rider op carries the PLYR* record's own transcribed POSOFF (posOffset, demo.ts:2234-2244; PLYR3/4/5 position word 751) so it stacks on the mount rather than at the feet. Pin the rider op's placement offset against the record; the exact on-buzzard alignment (751 was authored over the ostrich/stork) is a HUMAN visual-verification point — call it out for the reviewer with a `just serve` screenshot at /joust/, do not claim it from a unit test alone."
+    completed: '2026-08-05'
     type: refactor
+    review_verdict: approved
   - id: jt9-47
     title: The hatched remount buzzard HARDCODES type 'bounder' — a hunter/shadow-lord loses its species on remount (ROM keeps PID/PEGG, JOUSTRV4.SRC:3251-3252)
     description: |-

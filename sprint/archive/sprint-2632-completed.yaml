@@ -144,3 +144,8 @@ completed_stories:
     title: 'Port OSTLR: the horizontal half of the bounce has no PBUMPX home and bounceHorizontal models a quarter of it'
     points: 5
     completed: '2026-08-05'
+  - id: jt9-46
+    epic: jt9
+    title: Enemy buzzards are drawn RIDERLESS — draw the DPLYR knight rider per enemy species (the buzzards carry PLYR3/4/5, JOUSTRV4.SRC:109)
+    points: 3
+    completed: '2026-08-05'
