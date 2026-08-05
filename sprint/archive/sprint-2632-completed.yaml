@@ -154,3 +154,8 @@ completed_stories:
     title: Mid-game plays far softer than the cabinet — port the GM.DIF difficulty accumulator (WV.HRD index) and the ADCGAS Death-Star-kill shield refill
     points: 5
     completed: '2026-08-05'
+  - id: bz5-5
+    epic: bz5
+    title: "Periscope HUD authentic pass — viewport brackets + red top band (radar red), retire the box + green-radar deviation"
+    points: 2
+    completed: '2026-08-05'

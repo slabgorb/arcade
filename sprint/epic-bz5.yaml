@@ -163,7 +163,10 @@ stories:
     title: Periscope HUD authentic pass — viewport brackets + red top band (radar red), retire the box + green-radar deviation
     points: 2
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-05'
+    review_findings: "Direct playtest-correction to bz5-2 (trunk-based, sanctioned direct commit). TDD: hud-palette radar test flipped green->red + periscope no-box/brackets-flank-centre pins written RED first, then implemented. Visually verified on a fresh dev server (5290, a-2 tree): box gone, viewport brackets flank centre, radar red. battlezone 1057/1057, orchestrator 392/0, lint clean, citations 0-lost. Also fixed a sibling's jt9-48 'arcade (.)' repos typo that had reddened the orchestrator suite."
+    review_verdict: approved
