@@ -39,9 +39,10 @@ stories:
       appear/clear timing matches the executed ROM, not just the disassembly line.
     points: 2
     priority: p1
+    status: in_progress
+    started: '2026-08-05'
     repos: battlezone
     workflow: tdd
-    status: backlog
     acceptance_criteria:
       - >-
         On a fresh run and during normal play the windshield is CLEAN — drawCrackedGlass
@@ -72,9 +73,9 @@ stories:
       bzone.cpp:855 records a blue-overlay variant — out of scope, green cabinet is canonical.
     points: 3
     priority: p2
+    status: backlog
     repos: battlezone
     workflow: tdd
-    status: backlog
     acceptance_criteria:
       - >-
         A skeuomorphic periscope bezel frames the viewport, drawn in HUD/pixel space over the
@@ -104,9 +105,9 @@ stories:
       reconciled, cited answer plus any needed correction, NOT a speculative rewrite.
     points: 3
     priority: p2
+    status: backlog
     repos: battlezone
     workflow: tdd
-    status: backlog
     acceptance_criteria:
       - >-
         The clone's game-logic frame rate is reconciled against the MAME clock chain
@@ -136,9 +137,9 @@ stories:
       changes only where BOTH sources agree the clone is wrong.
     points: 3
     priority: p2
+    status: backlog
     repos: battlezone
     workflow: tdd
-    status: backlog
     acceptance_criteria:
       - >-
         The tank AI state machine (turn rate, standoff, flank/charge transitions, fire-on-
