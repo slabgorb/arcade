@@ -1038,9 +1038,10 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
     const d = await loadDifficulty()
     const w = await loadWaveBcd()
 
-    // Premise, asserted not assumed: the counter really is packed, and really does
-    // read 0x10 (= 16 as a plain number) on the tenth wave. If td1-12 later makes
-    // `demo.wave` decimal, THIS fails first and says the staging must be revisited.
+    // Premise, asserted not assumed: `demo.wave` is the DECIMAL wave ordinal
+    // (td1-12 / Option B), so the tenth wave's value is 10 — not the old BCD byte
+    // 0x10 (= 16 as a plain number). This pins that the staging tracks the field's
+    // unit; if the wave model ever changes again, this premise fails first.
     const counter = counterAtWave(w, 10)
     expect(counter, 'the demo wave value on its tenth wave (decimal ordinal, td1-12/Option B)').toBe(10)
 

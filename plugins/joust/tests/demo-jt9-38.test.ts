@@ -482,35 +482,35 @@ describe('AC-1/4 — a NORMAL wave never defers, however crowded (WENEMY = 255)'
 // AC-4 — resolving the quota must not kill the cabinet at the BCD ROLLOVER
 // ═════════════════════════════════════════════════════════════════════════════
 
-describe('AC-4 — the quota lookup survives the hundredth wave (R2-3, "the cabinet must not die")', () => {
-  it('a settled egg maturing at the ROLLED counter does not throw', async () => {
-    // FOUND AT RED BY RUNNING THE CANDIDATE, not by reading. `waveRowAt` refuses a
-    // wave < 1, and on the hundredth wave the BCD counter rolls to 0x00 — so ANY
-    // quota lookup keyed on `demo.wave` throws there. Two forms were measured:
+describe('AC-4 — the quota lookup survives an OUT-OF-RANGE wave (the `demo.wave >= 1` guard)', () => {
+  it('a settled egg maturing at wave 0 does not throw — the `>= 1` guard holds', async () => {
+    // `waveRowAt` refuses a wave < 1, and the egg-quota lookup in `stepDemo`'s hatch
+    // block keys on `demo.wave`. Since td1-12 (Option B) `demo.wave` is the monotone
+    // DECIMAL ordinal, so it is >= 1 in every real game and wave 0 is UNREACHABLE in
+    // play — but that invariant is not local to the lookup, so the line carries a
+    // `demo.wave >= 1 ? … : 255` guard as cheap defence: without it, a stray wave 0
+    // would throw "there is no wave 0" the frame an egg matures. This is the only
+    // fixture that reaches that guard; it stages a ripe egg at wave 0 and pins that
+    // the cabinet does not go down.
     //
-    //   · resolved EAGERLY, once per frame  -> reddens the two existing R2-3 guards
-    //     in difficulty-wiring.test.ts outright (measured: 2 failed / 2625).
-    //   · resolved LAZILY, on the first hatch decision -> the whole project is green
-    //     (measured: 2625/2625) because those fixtures stage a falling ENEMY, not an
-    //     egg. The crash is not gone, only hidden: staged with a ripe EGG at counter
-    //     0x00 it still throws "there is no wave 0 — waves are 1-based".
-    //
-    // So the lazy form passes every guard in the tree and still ships a crash. This
-    // test is the one that says so. It pins the INVARIANT, not the mechanism — see
-    // the Delivery Finding for the options and why SM/TEA did not choose between them.
+    // (History: this class of crash was live while `demo.wave` was still the BCD
+    // WAVBCD byte, which rolled 0x99 -> 0x00 on the hundredth wave. td1-12 retired the
+    // rollover — the counter is monotone now — so wave 0 no longer OCCURS; the guard
+    // and this test remain only as belt-and-suspenders against an out-of-range wave.)
     const dmod = await loadDemo()
-    const rolled = 0x00
+    const outOfRange = 0
     const staged = [playerAt(PLAYER1_ID, 20, 40), ripeEgg(0x500)]
-    const at = await stagedDemo(staged, rolled)
-    expect(() => dmod.stepDemo(at), 'the hundredth wave must not take the cabinet down').not.toThrow()
+    const at = await stagedDemo(staged, outOfRange)
+    expect(() => dmod.stepDemo(at), 'an out-of-range wave must not take the cabinet down').not.toThrow()
   })
 
-  it('CONTROL — the same fixture at the ninety-ninth counter works, so the test above is about the ROLLOVER', async () => {
+  it('CONTROL — the same fixture at an in-range wave hatches, so the test above is about the GUARD', async () => {
     // Without this, the test above would pass just as well against a `stepDemo` that
-    // had stopped hatching anything at all, anywhere.
+    // had stopped hatching anything at all, anywhere. Wave 99 is a plain in-range
+    // decimal wave (td1-12 / Option B), not the old BCD 0x99 counter.
     const dmod = await loadDemo()
-    const after = dmod.stepDemo(await stagedDemo([playerAt(PLAYER1_ID, 20, 40), ripeEgg(0x500)], 0x99))
-    expect(hatchingIn(after).length, 'at counter 0x99 an unblocked egg still matures (enters the cutscene)').toBe(1)
+    const after = dmod.stepDemo(await stagedDemo([playerAt(PLAYER1_ID, 20, 40), ripeEgg(0x500)], 99))
+    expect(hatchingIn(after).length, 'at wave 99 an unblocked egg still matures (enters the cutscene)').toBe(1)
   })
 
   it('the rollover fallback ADMITS — a crowded hundredth wave still hatches, it does not freeze', async () => {

@@ -175,11 +175,11 @@ export interface DemoProcess {
    * exactly two call sites, both in WAVEGG's placement loops (JOUSTRV4.SRC:2802, :2820).
    *
    * It marks ELIGIBILITY, not an amount. The draw itself is taken once, at the hop that
-   * resolves this egg's wait, for the same reason jt9-9 seeds the wait there: this tag is
-   * applied while `spawnWaveEggs` still holds the raw WAVBCD counter, and resolving a wait
-   * from that counter both mis-reads the tenth wave and throws outright on the hundredth
-   * (the crash jt9-38's AC-4 found). Absent on every kill-egg, so a DEATH3 egg is never
-   * pre-mature — in the machine PWHCH is long spent by the time one exists.
+   * resolves this egg's wait, for the same reason jt9-9 seeds the wait there: the wait
+   * depends on the wave, and `stepDemo`'s hatch block resolves it from `demo.wave` (the
+   * decimal wave ordinal — td1-12 / Option B) at the frame the egg matures, not at
+   * placement. Absent on every kill-egg, so a DEATH3 egg is never pre-mature — in the
+   * machine PWHCH is long spent by the time one exists.
    */
   prematureHatch?: boolean
   /**
@@ -946,12 +946,10 @@ const vrandFrom = (value: number): number => Math.floor(value * 128)
  * yet hatched). `settled` so `stepEgg` leaves it put; it holds the wave open like any egg
  * until its EGGWT2 wait runs out and it hatches.
  *
- * The wait is NOT seeded here. `spawnWaveEggs` is reached with the raw WAVBCD
- * counter — the unit confusion demo.ts's stepFrame comment documents and td1-12
- * owns — and `waveValue` both mis-resolves a BCD byte and throws outright on the
- * hundredth wave's `0x00`. So the seeding happens in `stepDemo`'s hatch block,
- * at the one hop in this file that already converts the counter properly. An
- * unseeded `waitFrames` means exactly that: not seeded yet.
+ * The wait is NOT seeded here. It depends on the wave, so the seeding happens in
+ * `stepDemo`'s hatch block, which reads `demo.wave` (the decimal wave ordinal —
+ * td1-12 / Option B) at the frame an egg actually matures rather than at placement.
+ * An unseeded `waitFrames` means exactly that: not seeded yet.
  */
 function settledWaveEgg(posX: number, feetY: number): EggState {
   return {
@@ -1903,20 +1901,18 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     const remaining = wait - 1
     if (remaining > 0) return [{ ...p, egg: { ...egg, waitFrames: remaining } }]
     // The quota is read HERE, at the test, once an egg has actually reached it — as the
-    // ROM does, not once a frame. On the hundredth wave the BCD counter rolls to 0x00 and
-    // `waveRowAt` refuses it, so BOTH halves of this line are load-bearing and they buy
-    // DIFFERENT properties. Measured, each by making the change and running the project:
+    // ROM does, not once a frame. Laziness is load-bearing for its own reason: it keeps a
+    // wave with no egg in it out of the `waveRowAt` lookup entirely, so an out-of-range
+    // wave never reaches the lookup unless an egg actually matures on it.
     //
-    //   · resolving once per frame instead of here      -> 3 red: the two R2-3 laws in
-    //     difficulty-wiring.test.ts ("the cabinet must not die") plus the egg-at-rollover
-    //     guard. Laziness is what keeps a wave with no egg in it out of the lookup at all.
-    //   · dropping the `>= 1` test but keeping it lazy  -> 1 red: only the egg-at-rollover
-    //     guard. The R2-3 fixtures stage a falling ENEMY, so they never reach this line —
-    //     which is exactly how the crash hid the first time.
-    //
-    // 255 is WNRM's own normal-wave value and gates nothing, so a wave whose row cannot be
-    // resolved behaves exactly like a wave with no quota. The unresolvable case is the
-    // raw-counter/ordinal confusion td1-12 owns, not something this gate can fix.
+    // The `>= 1` half is belt-and-suspenders. In play `demo.wave` is monotone from 1
+    // (td1-12 / Option B), so it is never < 1 and this branch never takes the `: 255`
+    // arm — but `wenemyFor(waveRowAt(0))` would THROW ("no wave 0"), and the invariant
+    // that `demo.wave >= 1` is not local to this line, so the guard stays as a cheap
+    // defence against a 0/negative wave. Only a synthetic fixture can reach it:
+    // `demo-jt9-38.test.ts` stages a maturing egg at wave 0 and pins that this line does
+    // not take the cabinet down. 255 is WNRM's own normal-wave value and gates nothing,
+    // so an unresolved wave behaves exactly like a wave with no quota.
     quota ??= demo.wave >= 1 ? wenemyFor(waveRowAt(demo.wave)) : 255
     // `LDA NENEMY / CMPA WENEMY / BHS EGGLN2` (:3239-3241) — "ENOUGH ENEMIES IN THIS
     // WAVE?". At or above the quota the egg goes back round the wait loop, re-primed by
