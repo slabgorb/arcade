@@ -77,18 +77,18 @@ interface Pumped {
  * not a push site.
  *
  * A composition arises two ways. Most carry a loop edge — a `-start`/`-stop`
- * from one of the four loop voices (march/spider/flea/scorpion, LOOP_VOICES at
- * sim.ts:440) — landing in a frame that already had a one-shot event pushed into
- * it. The death triple is the clearest example:
+ * from one of the four loop voices (march/spider/flea/scorpion, the `LOOP_VOICES`
+ * table) — landing in a frame that already had a one-shot event pushed into it.
+ * The death triple is the clearest example:
  *
  *   player-died+march-stop+spider-stop
- *                             `player-died` from the death concatenation
- *                             (sim.ts:693); the two `-stop`s from the sweep.
- *                             The death line supplies one third, not the triple.
+ *                             `player-died` from the death concatenation; the
+ *                             two `-stop`s from the sweep. The death line
+ *                             supplies one third, not the triple.
  *
  * But some entries carry NO loop edge at all — `shot-fired+mushroom-destroyed`,
  * `shot-fired+segment-killed` and `shot-fired+spider-killed` are each two
- * one-shot pushed events (`shot-fired` at sim.ts:438, and the kill/eat pushes)
+ * one-shot pushed events (the `shot-fired` push plus the kill/eat pushes)
  * colliding in the same frame. Under cp7-5's EASY default the run survives long
  * enough to REACH these later events, so wave-clear compositions now occur —
  * see the re-measurement note below.
