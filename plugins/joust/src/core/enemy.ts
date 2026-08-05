@@ -246,8 +246,17 @@ export interface EnemyState {
 export type PjoyState =
   /** A seek episode's wing cadence: which phase, and the wakes left in it. */
   | { readonly kind: 'wing'; readonly timer: number; readonly wings: 'down' | 'up' }
-  /** A level-flight decide holding its "time until next decision" interval. */
-  | { readonly kind: 'interval'; readonly timer: number }
+  /**
+   * A level-flight decide holding its "time until next decision" interval.
+   *
+   * jt9-18 — `glide` is the BOLEV1↔BOLEV2 sub-phase. `BOFAST` FLAPS and points
+   * `PJOY` at `BOLEV2` (:3931-3934); the next wake lands at `BOLEV2`, which points
+   * `PJOY` back at `BOLEV1` and falls into `BOLEVA`'s `CLRB` (:3936-3938) — a
+   * FORCED GLIDE, whatever the falling test would say. So a level wake that
+   * flapped forces the next to glide: `glide: true` marks the BOLEV2 wake. The
+   * twins are `B2LEV2` :4162, `SHLEP2` :4300, `SHLEV2` :4399. Absent = BOLEV1.
+   */
+  | { readonly kind: 'interval'; readonly timer: number; readonly glide?: boolean }
   /**
    * A cliff-avoidance dwell — `B2AV` (:4190-4193) / `SHAV` (:4406-4409). Wings
    * stay UP for the whole dwell and its expiry RE-DECIDES (`JMP B2UNDR` /
@@ -590,6 +599,16 @@ function wingRows(brain: SmartBrain, wave: number): WingRows {
  * so it reads SHLEP's SHUPTM: `SHLEP` is the branch a shadow with a live target
  * takes (:4277), and a null-target shadow does not run a decide at all.
  */
+/**
+ * jt9-18 — a level-flight interval `PjoyState`, with the BOLEV1↔BOLEV2 sub-phase.
+ * `glide: true` is set ONLY on a forced-glide (BOLEV2) wake; the field is OMITTED
+ * otherwise, so a normal level interval keeps its pre-jt9-18 shape (`{kind,timer}`)
+ * and the many suites that assert that exact object stay green.
+ */
+function levelInterval(timer: number, glide: boolean | undefined): PjoyState {
+  return glide === true ? { kind: 'interval', timer, glide: true } : { kind: 'interval', timer }
+}
+
 function decideInterval(brain: SmartBrain, wave: number, hasTarget: boolean): number {
   if (brain === 'boundr') return waveValue('BOLETM', wave)
   if (brain === 'b2undr') return waveValue('HULETM', wave)
@@ -690,10 +709,13 @@ function pursue(enemy: EnemyState, player: PlayerView | null | undefined, rows: 
     return { dir, flap: enemy.pjoy.wings === 'down' }
   }
   // No episode armed (a bare `boundr(e, p, w)` call, or a level route): the
-  // per-wake laws. Level flight really is per-wake in the ROM — `BOFAST`'s
-  // `LDB #$01` and `BOLEVA`'s `CLRB` are re-decided every wake (:3926-3938);
-  // only its ROUTE is held, by the decision interval.
+  // per-wake laws.
   if (route === 'down') return { dir, flap: velY >= rows.brake }
+  // Level route. jt9-18 — the wake AFTER a level flap is a FORCED GLIDE: `BOFAST`
+  // set `PJOY = BOLEV2` (:3931), so this wake ran BOLEV2 (`CLRB`, :3936-3938), not
+  // BOLEV1, and the falling test at :3926 was never reached. Otherwise the BOLEV1
+  // law: flap iff falling.
+  if (enemy.pjoy?.kind === 'interval' && enemy.pjoy.glide === true) return { dir, flap: false }
   return { dir, flap: velY >= 0 }
 }
 
@@ -813,6 +835,11 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
   // wakes: `CLRB` (:4406) holds the wings UP for the whole dwell and the brain
   // does not re-decide until it expires.
   if (enemy.pjoy?.kind === 'dwell') return { dir, flap: false }
+  // jt9-18 — the SHLEP2/SHLEV2 forced glide: the wake after a shadow level flap
+  // is a glide (`SHLEP2`/`SHLEV2` point PJOY back and `CLRB`, :4300-4302/:4399-4401).
+  // A shadow only ever holds an interval on a level route, so this gate is the
+  // level forced-glide for BOTH shadow branches, before either flap law runs.
+  if (enemy.pjoy?.kind === 'interval' && enemy.pjoy.glide === true) return { dir, flap: false }
   // SHLEV — no players: wings up, with the BOLAVA stand-in below the lava line.
   if (player == null) return { dir, flap: enemyY > LAVA_ESCAPE_Y }
   const delta = player.pixelY - enemyY
@@ -1175,7 +1202,12 @@ function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number):
   if (interval !== undefined) {
     const remaining = interval.timer - 1
     if (remaining > 0) {
-      const carried: EnemyState = { ...enemy, pjoy: { kind: 'interval', timer: remaining } }
+      // jt9-18 — carry the BOLEV1↔BOLEV2 sub-phase across the countdown; only the
+      // timer spends. `stepEnemyDetailed` sets it from this wake's flap decision.
+      const carried: EnemyState = {
+        ...enemy,
+        pjoy: levelInterval(remaining, interval.glide),
+      }
       return carried.seek === undefined ? carried : { ...carried, seek: undefined }
     }
     // Expired — fall through and re-decide THIS wake.
@@ -1262,8 +1294,18 @@ export function stepEnemyDetailed(
   // (the PTIMUP impulse) nor AIROVR (its increment). So NO reset here; only the
   // player path in frame.ts's runBehaviour clears it. (The pterodactyl's PTEFLY
   // uses PTIMUP as an anim timer, not the flap budget — a separate concern.)
+  // jt9-18 — advance the level-flight forced-glide sub-phase. A BOLEV1 wake that
+  // FLAPPED set `PJOY = BOLEV2`, so the next wake is a forced glide; a glide wake
+  // (forced or natural) leaves `PJOY = BOLEV1`. `decision.flap` on the held level
+  // interval is exactly that BOLEV1/BOLEV2 next-state (a forced-glide wake decides
+  // `flap: false`, so it clears itself). Only a surviving level interval carries
+  // it — a cliff turn has already swapped `pjoy` for a dwell.
+  const phased =
+    settled.pjoy?.kind === 'interval'
+      ? { ...settled, pjoy: levelInterval(settled.pjoy.timer, decision.flap) }
+      : settled
   return {
-    enemy: { ...settled, entity: stepEntity(settled.entity, input), prevFlapHeld: input.flapHeld },
+    enemy: { ...phased, entity: stepEntity(phased.entity, input), prevFlapHeld: input.flapHeld },
     wingEdge: edge,
   }
 }
@@ -1400,7 +1442,10 @@ function shadowDwellWake(enemy: EnemyState, target: PlayerView | null, wave: num
   // the countdown below is the SHLEP/SHLEV interval, and a glide has none.
   if (running !== undefined && running.kind !== 'glide') {
     const remaining = running.timer - 1
-    if (remaining > 0) return { ...enemy, pjoy: { kind: 'interval', timer: remaining } }
+    // jt9-18 — carry the SHLEP2/SHLEV2 forced-glide sub-phase across the countdown
+    // (only an `interval` carries one; a `wing`/`dwell` has none).
+    const glide = running.kind === 'interval' ? running.glide : undefined
+    if (remaining > 0) return { ...enemy, pjoy: levelInterval(remaining, glide) }
     // Expired — `JMP SHADOW` / `SHBRA2`: fall through and re-decide this wake.
   }
   // Re-decide. A level branch arms its interval; anything else carries none.
