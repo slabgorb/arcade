@@ -322,7 +322,8 @@ stories:
     description: 'jt5-4 applied the VERTICAL half of the ROM''s non-killing bounce (OSTXUP :5163-5173 / OSTXDN :5175-5185, the +/-2 PBUMPY shove and the wrong-way velocity halving) and struck the HORIZONTAL half from its AC-1 as undeliverable. This story owns that half. WHAT THE ROM DOES: OSTLR (JOUSTRV4.SRC:5110-5159) runs after every vertical arm (OSTUTP falls into it at :5102, OSTXTP at :5109). It is gated on COLDX — ''BEQ OSTNLR'' (:5112) means a dead-centre collision gets NO horizontal bounce at all — then splits on ''BPL OSTURT'' (:5113) into two arms, OSTXLF (:5114) and OSTURT (:5137). Each arm reverses BOTH parties, each store guarded by BLE 1$ / BGE 1$ (:5115, :5126, :5138, :5148) so a bird already moving away is left alone, and each also writes PFACE (:5123-5124, :5134, :5146, :5156-5157) — the bounce turns the birds around as well as pushing them. WHY IT COULD NOT BE WIRED IN jt5-4, all measured: (1) bounceHorizontal in plugins/joust/src/core/joust.ts models ONE QUARTER of this — its ''selfVelX: -velX + 2, otherBumpX: velX >> 1'' is the arithmetic of the RIGHTWARD-moving party only; the other party''s is -v - 2 with PBUMPX = -(v + 2) >> 1, which the signature cannot express, and it returns nothing for PFACE. (2) EntityState carries velXIndex/velXFrac — the FLYX ladder, :7150-7158 — and no velX at all, and toJoustEntity hard-codes velX: 0 (demo.ts:748, :764) and bumpX: 0 (demo.ts:751, :767), so there is nothing to reverse. (3) drainBumpX (WRAPX :7270-7288) has ZERO production callers, so there is no PBUMPX home and no drain. So this is three pieces of work, not one: give EntityState a real horizontal velocity the FLYX ladder can round-trip, give it a PBUMPX field that drainBumpX actually drains each frame, then rewrite bounceHorizontal to return both parties'' velocities AND both PFACE writes and call it from collisionPass''s bounce fork (demo.ts:918-934) after the vertical arm, gated on the COLDX equivalent. EXPECT A DETERMINISM RE-BASELINE, for the same reason jt5-4 had one: a horizontal shove moves entities, so every seeded replay whose script produces a non-killing contact diverges. Filed from jt5-4''s TEA Delivery Finding and its Design Deviation striking bounceHorizontal from AC-1, 2026-08-01. ALSO OWNED HERE (routed from jt8-3''s TEA, 2026-08-01): the DIRECTION routines'' bump-facing arms — B2DIRA (:4148-4150) and SHDIRA (:4379-4381) turn the enemy to face along PBUMPX after a collision shove, collision-driven facing that jt8-3''s steering left unmodelled. Those write sites are already ENUMERATED in jt8-3''s steering-source.test.ts write-set tests (PFACE write-set), so extend that enumeration''s pins rather than re-deriving. They belong to this story because they consume the PBUMPX field this story creates: until EntityState has a real PBUMPX home and drainBumpX drains it, the bump-facing arms have nothing to read.'
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
   - id: jt9-18
@@ -884,7 +885,6 @@ stories:
     repos: arcade
     workflow: tdd
     type: refactor
-
   - id: jt9-46
     title: Enemy buzzards are drawn RIDERLESS — draw the DPLYR knight rider per enemy species (the buzzards carry PLYR3/4/5, JOUSTRV4.SRC:109)
     description: |-
@@ -943,14 +943,13 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
-    type: refactor
     acceptance_criteria:
       - "AC-1 EVERY ENEMY DRAWS A MOUNT AND A RIDER. A pure enemyDrawList(p) returns TWO ordered sprite names for a kind:'enemy' process — the buzzard-body frame (unchanged from enemyFrame) and the species' DPLYR rider — and drawList emits both, tagged with the enemy's facing, mirroring the player path (demo.ts:2281-2286 vs the current single-op :2284-2286). Guard: a fresh wave's enemy produces a rider op stacked on its BR* mount. MUTATION: dropping the rider op (reverting to the single mount op) must redden a named test."
       - "AC-2 THE RIDER IS THE SPECIES' OWN DPLYR SPRITE, READ FROM THE ROM. bounder / hunter / shadow-lord each map to the PLYR3/4/5 sprite named in their PxDEC DPLYR field (field 6 / offset 10, JOUSTRV4.SRC:109; buzzard blocks at :5560/:5564/:5568/:5572). The mapping is read from the vendored source at RED, not transcribed from this filing. Guard each of the three species maps to a DISTINCT rider record. MUTATION: swapping two species' riders must redden. Degrades to the committed fixture on CI (vendoredAvailable), like the sibling oracle in audio-ptero-wing-source.test.ts."
       - "AC-3 NO HAND-AUTHORED PIXELS, NO INVENTED COLOUR. The rider sprites are the already-transcribed PLYR3/4/5 records (sources PLY3R/PLY4R/PLY5R, JOUSTI.SRC:2106/2155/2208) drawn through the existing atlas; the enemy-knight colour is the transcribed COLOR1 nibble (nibble 4 = 0o017 red, pictures.test.ts:262-266), never a literal. The purity/denylist scans stay clean and the byte-gate is untouched — this story authors zero new pixel data."
       - "AC-4 THE HATCHED REMOUNT BUZZARD ALSO GETS A RIDER. remountEnemyProcess builds a kind:'enemy' process (demo.ts:1056-1082), so enemyDrawList must cover it with no special case. Assert a matured-egg remount bird carries a rider op. NOTE in the test that its species is bounder ONLY because remountEnemyProcess hardcodes it today (the jt9-47 follow-up), so this AC pins that the rider is DRAWN, not which species it is."
       - "AC-5 THE RIDER SITS ON THE BUZZARD (POSOFF). The rider op carries the PLYR* record's own transcribed POSOFF (posOffset, demo.ts:2234-2244; PLYR3/4/5 position word 751) so it stacks on the mount rather than at the feet. Pin the rider op's placement offset against the record; the exact on-buzzard alignment (751 was authored over the ostrich/stork) is a HUMAN visual-verification point — call it out for the reviewer with a `just serve` screenshot at /joust/, do not claim it from a unit test alone."
-
+    type: refactor
   - id: jt9-47
     title: The hatched remount buzzard HARDCODES type 'bounder' — a hunter/shadow-lord loses its species on remount (ROM keeps PID/PEGG, JOUSTRV4.SRC:3251-3252)
     description: |-
@@ -995,11 +994,10 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "AC-1 A REMOUNT PRESERVES THE LAYING SPECIES. A hunter's settled egg hatches into a hunter and a shadow-lord's into a shadow-lord — remountEnemyProcess takes the species from the egg, not the hardcoded 'bounder' (demo.ts:1058). Guard all THREE species through a full drop→settle→hatch cycle and assert the remount's enemyType matches the parent. MUTATION: restoring the `= 'bounder'` hardcode must redden a named test."
       - "AC-2 EGGSTATE CARRIES THE PARENT SPECIES, SET EXPLICITLY AT DEATH. The egg records the dropping enemy's EnemyType at creation (egg.ts, the DEATH3/egg-spawn site) and remountEnemyProcess reads it — the species is THREADED, never inferred from position, brain, or colour. Guard that an egg dropped by each species carries that species. MUTATION: dropping the field (defaulting to bounder) must redden."
       - "AC-3 THE REMOUNT KEEPS ITS BRAIN AND ITS SCORE. decision resolves via brainFor(remountType) so a remounted hunter carries the b2undr brain and a shadow-lord SHADOW (enemy.ts:531-539), and killScore(enemyType) (joust.ts:243) pays the species' real value on a bird that has hatched. Guard a hatched hunter's decision brain is b2undr (not boundr) and its kill scores as a hunter. This is the behaviour half — pin it distinctly from AC-1's identity."
       - "AC-4 PEGG IS STILL PRESERVED, AND THE 4-EGG PERMADEATH STILL TERMINATES. The existing eggsLeft carry-forward (demo.ts:1076-1080, JOUSTRV4.SRC:3251-3252) is untouched and the complement still walks to permadeath at 0 — adding the species must not perturb the egg-count ladder. Guard a full 4-egg depletion of a non-bounder species reaches permadeath (no regeneration), so the type thread did not reopen the count-to-zero the eggsLeft comment guards."
       - "AC-5 DETERMINISM RE-BASELINE LANDS AS ITS OWN COMMIT, RE-FOUND NOT NUDGED. Per this epic's standing rule: any seeded fixture that hatches a non-bounder and then steps it will move because the brain changed; re-run the seeded sweeps, take the moved frames from that run, and name in the commit message which seeds moved and why. Event-searching tests should survive; frame-pinned ones will not."
-
+    type: bug
