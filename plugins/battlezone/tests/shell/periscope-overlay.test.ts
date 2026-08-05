@@ -25,7 +25,7 @@
 // and shell-only guards are green-on-arrival regression guards (they redden if a
 // later edit drops the layer order or leaks the overlay into core).
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import {
   drawPeriscope,
   MAME_COLOR_SPLIT,
@@ -139,7 +139,13 @@ describe('bz5-2 (A) — layering: over the world, under the score/radar HUD', ()
     const firstWorld = mainSrc.indexOf('drawSegments(')
     const radar = mainSrc.indexOf('drawRadar(')
     const score = mainSrc.indexOf('drawScore(')
+    // Every marker must actually be present first — otherwise a -1 from a rename
+    // would make the `toBeGreaterThan(firstWorld)` ordering check vacuously pass
+    // (any found `peri` is > -1) instead of failing loud.
     expect(peri, 'main.ts never calls drawPeriscope').toBeGreaterThan(-1)
+    expect(firstWorld, 'main.ts never calls drawSegments (the world)').toBeGreaterThan(-1)
+    expect(radar, 'main.ts never calls drawRadar').toBeGreaterThan(-1)
+    expect(score, 'main.ts never calls drawScore').toBeGreaterThan(-1)
     expect(peri, 'periscope must be drawn AFTER the world (drawSegments)').toBeGreaterThan(firstWorld)
     expect(peri, 'periscope must be drawn BEFORE the radar HUD').toBeLessThan(radar)
     expect(peri, 'periscope must be drawn BEFORE the score HUD').toBeLessThan(score)
@@ -171,7 +177,6 @@ describe('bz5-2 (C) — the overlay is shell-only (core purity, AC3)', () => {
     // leak into core — the core-purity sweep (tests/core/core-purity-sweep.test.ts)
     // stays green because the whole feature lives in src/shell.
     const coreDir = new URL('../../src/core/', import.meta.url)
-    const { readdirSync } = require('node:fs') as typeof import('node:fs')
     const files = readdirSync(coreDir).filter((f: string) => f.endsWith('.ts'))
     for (const f of files) {
       const src = readFileSync(new URL(f, coreDir), 'utf8')
