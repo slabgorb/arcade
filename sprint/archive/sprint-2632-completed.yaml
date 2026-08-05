@@ -52,3 +52,8 @@ completed_stories:
     title: joust wave counter is BCD but every consumer reads it as decimal — wrong wave row from the 10th wave on
     points: 5
     completed: '2026-08-05'
+  - id: jt9-15
+    epic: jt9
+    title: 'Measure PTEBRD and route the ptero-vs-buzzard pair: SNETHD sounds, then the ptero/bird collision resolves'
+    points: 3
+    completed: '2026-08-05'

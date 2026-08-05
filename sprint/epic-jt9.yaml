@@ -301,9 +301,11 @@ stories:
       DELIVERABLES: (1) the PTEBRD read, claimed in docs/rom-study/claims (JT516-001/002 already claim OSTH12's dispatch, :5031/:5033); (2) the port: replace the pair loop's mixed-pair skip in collisionPass (demo.ts, 'a ptero pairs only with a ptero') with the measured routing, ptero-in-U orientation preserved; (3) flip the jt5-16 scope-fence test in demo-jt5-16.test.ts in place — updating it here is the point of it, exactly as jt5-16 flipped jt5-10's. Also inherit jt5-16's latent note: spawnWavePteros stacks a wave's ptero complement at one coordinate, so once mixed pairs resolve, wave entries with pteros near buzzards may cue — measure, don't guess.
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    completed: '2026-08-05'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: jt9-16
     title: The two thud paths return OPPOSITE carry — the ROM's collision scan continues after SNETHD and ABORTS after SNPTHD
     description: 'The ROM''s two thud continuations return OPPOSITE carry, and this port''s pair loop models neither. SNETHD''s path ends OSTH11 -> ''JMP HITEM2'' (JOUSTRV4.SRC:5029), and HITEM2 clears carry with ''ANDCC #$FE'' (:4947). SNPTHD''s path ends OSTXTT -> ''BRA OSTX12'' (:5054), and OSTX12 SETS carry with ''ORCC #$01'' (:5059), commented ''REG.U GUY IS DEAD, GET NEXT REG.U GUY''. The scan driver reads that carry at '':4886 BCS 20$'' and restarts the outer walk. So on the machine the collision scan for the current object CONTINUES after an enemy thud and ABORTS after a person-involved tie — the tie consumes the object''s whole remaining scan even though NOBODY DIED, which is the surprising part and the reason this is worth porting rather than dismissing. Our inner loop (plugins/joust/src/core/demo.ts, ''for (let j = i + 1; j < eligible.length; j++)'') does neither: it always continues, for both cues. OBSERVABILITY: only a three-or-more entity pile-up can tell the two apart — with exactly two eligible entities the inner loop has nothing left to visit either way — so a fixture needs a person tie plus a third body still overlapping the same object on the same frame. A wave-6 swarm reaches that in ordinary play; jt5-4''s two-body fixtures could not, which is why it was descoped rather than guessed. VERIFY THE PORT DIRECTION BEFORE IMPLEMENTING: read :4885-4886 and :4867-4890 to confirm ''BCS 20$'' restarts at the OUTER walk (20$, a fresh ''LDU PLINK,U'' at :4874) and not the inner one, because a break of the inner loop and a restart of the outer are different behaviours and only one of them is the machine''s. EXPECT A DETERMINISM RE-BASELINE if the abort turns out to suppress contacts that currently resolve. Filed from jt5-4''s TEA Delivery Finding, 2026-08-01.'
@@ -863,3 +865,12 @@ stories:
     completed: '2026-08-05'
     type: bug
     review_verdict: approved
+  - id: jt9-44
+    title: Suppress the wave-entry cue-spam from spawnWavePteros stacking pteros at one coordinate
+    description: "Filed by jt9-15 (which built PTEBRD, the ptero-vs-buzzard collision). Inherited from jt5-16's latent note, forwarded once (jt5-16 said 'owned by jt5-17's description'; jt5-17 renumbered to jt9-15) and now made ACTIVE: spawnWavePteros stacks a wave's whole ptero complement at ONE coordinate (demo.ts). With ptero/ptero (jt5-16) and now ptero/buzzard (jt9-15) pairs both resolving, a multi-ptero wave entry that lands pteros on top of buzzards (or each other) fires a BURST of enemy-thud cues + hard/ordinary bumps on the entry frame. The physics is ROM-LAWFUL; the CUE TIMING is un-ROM-like (a real machine spreads spawns). SCOPE: decide whether to spread the wave-stack spawn coordinate (spawnWavePteros) or suppress duplicate wave-entry cues, then guard it. Not triggered by jt5-16/jt9-15 tests because both anchor the wave open to stop spawnWavePteros advancing — a test here must let the wave advance. May be closed WONTFIX if the burst proves inaudible/unobjectionable in the real app (needs a human smoke test at a multi-ptero wave)."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor
