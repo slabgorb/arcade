@@ -113,6 +113,19 @@ export interface HomingState {
    * wrap, so this is masked to 0..255 on every tick. See `PRDIR_FLIP_WAKES`.
    */
   readonly prdir: number
+
+  /**
+   * jt9-18 (folded jt9-19) — `PPVELX` ("OLD PLAYERS X VELOCITY", RAMDEF.SRC:209):
+   * the TARGET's FLYX index SNAPSHOTTED at the level-flight decide and HELD.
+   * `BOLEV` freezes it once (`LDA PVELX,X / STA PPVELX,U`, :3907-3908; twins
+   * `B2LEV` :4058-4059, `SHLEP` :4281-4282) and `BOLEVB` READS it against the
+   * enemy's OWN current index (`LDA PPVELX,U / CMPA PVELX,U`, :3939-3940), never
+   * rewriting it until the interval expires. `homingWake` gates on THIS, not the
+   * target's live index — the gap uf1-9's decide interval finally made closable.
+   * Absent = no decide yet (the throttle holds); written at the three decide sites
+   * only (SHLEV steers via SHDIR, not the throttle, so it has no PPVELX).
+   */
+  readonly ppvelx?: number
 }
 
 /**
@@ -609,6 +622,18 @@ function levelInterval(timer: number, glide: boolean | undefined): PjoyState {
   return glide === true ? { kind: 'interval', timer, glide: true } : { kind: 'interval', timer }
 }
 
+/**
+ * jt9-18 (folded jt9-19) — the `PPVELX` snapshot taken at a level-flight decide:
+ * freeze the TARGET's FLYX index into the homing workspace (`LDA PVELX,X / STA
+ * PPVELX,U`, :3907-3908 and twins). A null-target level decide (SHLEV / a
+ * quarry-less bounder) has no player to copy, so it snapshots NOTHING — the
+ * homing workspace is left as-is and `homingWake` holds.
+ */
+function snapshotHoming(enemy: EnemyState, target: PlayerView | null): HomingState | undefined {
+  if (target === null) return enemy.homing
+  return { ...(enemy.homing ?? seedHoming()), ppvelx: target.velXIndex }
+}
+
 function decideInterval(brain: SmartBrain, wave: number, hasTarget: boolean): number {
   if (brain === 'boundr') return waveValue('BOLETM', wave)
   if (brain === 'b2undr') return waveValue('HULETM', wave)
@@ -942,9 +967,10 @@ export function seedHoming(): HomingState {
  * throttle. Returns the enemy with its `facing` and `homing` advanced. Pure —
  * the argument is never mutated.
  *
- * A wake counts ONLY when the enemy is flying its target's speed; a mismatched
- * wake leaves the counter untouched (not reset — skipped), so the 129-wake
- * budget is spent in matched frames alone.
+ * A wake counts ONLY when the enemy is flying the speed the target had AT THE
+ * LEVEL-FLIGHT DECIDE (jt9-18: `PPVELX`, the snapshot frozen there), not the
+ * target's live speed; a mismatched wake leaves the counter untouched (not reset
+ * — skipped), so the 129-wake budget is spent in matched frames alone.
  */
 export function homingWake(enemy: EnemyState, target: PlayerView | null): EnemyState {
   // The dumb lane-tracker has no homing at all — it moves in its facing and
@@ -953,16 +979,27 @@ export function homingWake(enemy: EnemyState, target: PlayerView | null): EnemyS
   // Nobody to copy. Holding here is what keeps a bare scheduler run — where
   // every enemy is stepped with no target — bit-identical to its pre-jt8-2 replay.
   if (target === null) return enemy
+  // jt9-18 (folded jt9-19): the throttle reads `PPVELX,U` — the target's index
+  // SNAPSHOTTED at the last level decide (:3939) — held for the interval. In the
+  // ROM `BOLEVB` is reached ONLY after `BOLEV` froze that snapshot, so a snapshot
+  // always exists when it runs; this port calls the throttle every wake, so before
+  // any level decide has frozen one it FALLS BACK to the target's live index (the
+  // pre-jt9-18 read). The snapshot therefore OVERRIDES only where the ROM has one
+  // — inside a held level interval — and off-level / freshly-mounted wakes are
+  // unchanged. The two diverge exactly when the target changes speed mid-interval.
+  const snapshot = enemy.homing?.ppvelx
+  const gate = snapshot ?? target.velXIndex
   // `CMPA PVELX,U / BNE BODIR3` (:3940-3941): the branch jumps CLEAR of the DEC,
-  // so a wake on which the enemy is not matching its target does not tick at all.
-  if (target.velXIndex !== enemy.entity.velXIndex) return enemy
-  // `DEC PRDIR,U` (:3942) — 8-bit, and the wrap is the whole cadence.
+  // so a wake on which the enemy is not matching that index does not tick at all.
+  if (gate !== enemy.entity.velXIndex) return enemy
+  // `DEC PRDIR,U` (:3942) — 8-bit, and the wrap is the whole cadence. The snapshot
+  // rides along untouched (the ROM never rewrites PPVELX in BOLEVB).
   const prdir = ((enemy.homing ?? seedHoming()).prdir - 1) & 0xff
   // `BMI BODIR3` (:3943) — N set (bit 7 of the result), so no flip this wake.
-  if (prdir & 0x80) return { ...enemy, homing: { prdir } }
+  if (prdir & 0x80) return { ...enemy, homing: { prdir, ppvelx: snapshot } }
   // `CLR PRDIR,U` (:3944) then `COM PFACE,U` (:3945). A COMplement toggles the
   // facing; it does not aim it.
-  return { ...enemy, facing: enemy.facing === 1 ? -1 : 1, homing: { prdir: 0 } }
+  return { ...enemy, facing: enemy.facing === 1 ? -1 : 1, homing: { prdir: 0, ppvelx: snapshot } }
 }
 
 // ─── Cliff look-ahead steering (B2DIR / SHDIR) — jt8-3 ─────────────────────
@@ -1218,12 +1255,13 @@ function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number):
   )
   if (route === 'down') return { ...enemy, seek: { mode: 'down', pdist: rows.dnDi }, pjoy: undefined }
   if (route === 'up') return { ...enemy, seek: { mode: 'up', pdist: rows.upDi }, pjoy: undefined }
-  // A level decide arms its interval; the brain is `boundr`/`b2undr` here.
+  // A level decide arms its interval AND snapshots the target's velocity index
+  // (PPVELX, jt9-18); the brain is `boundr`/`b2undr` here.
   const armed: PjoyState = {
     kind: 'interval',
     timer: decideInterval(enemy.brain, wave, target !== null),
   }
-  return { ...enemy, seek: undefined, pjoy: armed }
+  return { ...enemy, seek: undefined, pjoy: armed, homing: snapshotHoming(enemy, target) }
 }
 
 /**
@@ -1455,9 +1493,12 @@ function shadowDwellWake(enemy: EnemyState, target: PlayerView | null, wave: num
     delta === null ||
     (delta < waveValue('SHDNRG', wave) && delta > waveValue('SHUPRG', wave))
   if (!level) return enemy.pjoy === undefined ? enemy : { ...enemy, pjoy: undefined }
+  // A level decide arms its interval AND (SHLEP, target present) snapshots PPVELX;
+  // SHLEV (null target) snapshots nothing — `snapshotHoming` handles both.
   return {
     ...enemy,
     pjoy: { kind: 'interval', timer: decideInterval('shadow', wave, target !== null) },
+    homing: snapshotHoming(enemy, target),
   }
 }
 

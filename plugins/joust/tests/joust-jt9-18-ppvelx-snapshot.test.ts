@@ -199,15 +199,29 @@ describe('AC-2 — homingWake gates on `homing.ppvelx`, not the live `target.vel
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC-3 — the "no decide yet" default: an enemy with no snapshot has nothing to
-//        compare against, so the throttle HOLDS (the counter is untouched).
-//        Today the port flips here, because it falls back to the live index.
+// AC-3 — the snapshot OVERRIDES; absent, the live index still gates. In the ROM
+//        the throttle is only reached with a fresh snapshot, but this port runs it
+//        every wake, so before any level decide has frozen a PPVELX it falls back
+//        to the pre-jt9-18 live read — leaving off-level and freshly-mounted wakes
+//        (and jt8-2's whole homing suite) unchanged. The snapshot only overrides
+//        where the ROM actually has one: inside a held level interval.
+//        (Design choice, recorded in the session Design Deviations — the earlier
+//        RED draft asserted a strict HOLD; the fallback is the minimal faithful
+//        form that does not disturb the throttle off the level path.)
 // ─────────────────────────────────────────────────────────────────────────────
-describe('AC-3 — absent snapshot ⇒ the throttle holds (no decide has happened yet)', () => {
-  it('no `ppvelx` ⇒ no tick even when the live target matches the enemy', () => {
+describe('AC-3 — the snapshot overrides the live index; absent, the live read stands', () => {
+  it('a PRESENT snapshot wins over a differing live target (the override)', () => {
+    // snapshot 4 == enemy 4 ⇒ flip, even though the live target flies 8.
+    const e = smartEnemy('boundr', 4, { homing: { prdir: 1, ppvelx: 4 } })
+    expect(H.homingWake(e, targetAt(8)).facing, 'the frozen 4 wins over the live 8').toBe(-1)
+  })
+
+  it('an ABSENT snapshot falls back to the live target (jt8-2 behaviour preserved)', () => {
+    // No decide has frozen a snapshot yet; the live index still gates, so a live
+    // match ticks. This is what keeps the off-level throttle and jt8-2's suite
+    // unchanged — the snapshot is an override, not a precondition.
     const e = smartEnemy('boundr', 4, { homing: { prdir: 1 } }) // prdir only, no snapshot
-    const after = H.homingWake(e, targetAt(4)) // live matches the enemy — but no decide yet
-    expect(after.facing, 'no snapshot ⇒ nothing to copy ⇒ facing held').toBe(1)
-    expect(after.homing?.prdir, 'and the reverse counter is untouched').toBe(1)
+    expect(H.homingWake(e, targetAt(4)).facing, 'no snapshot ⇒ live gate ⇒ match ⇒ flip').toBe(-1)
+    expect(H.homingWake(e, targetAt(6)).facing, 'no snapshot ⇒ live gate ⇒ mismatch ⇒ hold').toBe(1)
   })
 })
