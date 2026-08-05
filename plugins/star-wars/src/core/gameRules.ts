@@ -286,8 +286,37 @@ const ENEMY_FIRE_INTERVAL_FLOOR = 0.25
 // (pinned by difficulty.test.ts / tie-wave-ramp.test.ts); the space fire path no
 // longer consumes it — the §6 gate replaced it.
 //
-// Clone `wave` is 1-based and the cabinet's first space wave is mission 0, so the
-// fire index is min((wave - 1) + DIP, 15). The clone has no DIP switches → DIP = 0.
+// Clone `wave` is 1-based and the cabinet's first space wave is mission 0. The ROM fire
+// index, computed at WSMAIN.MAC:1353-1364, is WV.HRD = min(min(GM.WAV,31)+GM.DIF, 15):
+// the wave clamps at 31, GM.DIF is added, the sum clamps at 15. GM.DIF is NOT a static
+// DIP — it is the gmDif ACCUMULATOR carried in GameState, seeded at DIFFICULTY_DIP and
+// grown every Death-Star kill (see advanceDifficulty). wvHrd below is the single index
+// helper; both waveParams (space TIEs) and the trench base guns (sim.ts) read it, so
+// exactly one accumulator drives every phase.
+
+/** The ROM fire-difficulty index WV.HRD (WSMAIN.MAC:1353-1364): min(min(GM.WAV,31)+gmDif,15)
+ *  — the wave clamps at 31, gmDif is added, the sum clamps at 15. `wave` is the clone's
+ *  1-based wave, so GM.WAV = wave - 1. Pure. sw8-30. */
+export function wvHrd(wave: number, gmDif: number): number {
+  const gmWav = Math.min(Math.max(0, wave - 1), 31)
+  return Math.min(gmWav + gmDif, 15)
+}
+
+/** Advance the `GM.DIF`/`GM.BMP` difficulty accumulator across ONE Death-Star kill —
+ *  the ROM's wave-wrap block (WSMAIN.MAC:1995-2021). `newWave1Based` is the wave the
+ *  run is entering (GM.WAV already incremented). The bump gate reads that NEW GM.WAV:
+ *  while it is below 5 (WSMAIN.MAC:2004 "IGNORE BUMP WHEN ABOVE SELECTALEVEL"),
+ *  `gmBmp` climbs by one, capped at 4; then — UNCONDITIONALLY, outside that gate —
+ *  `gmDif` grows by `gmBmp`, capped at 15. Pure. sw8-30. */
+export function advanceDifficulty(
+  prev: { gmDif: number; gmBmp: number },
+  newWave1Based: number,
+): { gmDif: number; gmBmp: number } {
+  const newGmWav = newWave1Based - 1
+  const gmBmp = newGmWav < 5 ? Math.min(prev.gmBmp + 1, 4) : prev.gmBmp
+  const gmDif = Math.min(prev.gmDif + gmBmp, 15)
+  return { gmDif, gmBmp }
+}
 
 /** Per-index simultaneous-fireball cap — the TGPROB GUNS column (WSCPU.MAC:736).
  * Length 16 (the index saturates at 15); the value tops out at the 6-slot pool
@@ -295,11 +324,12 @@ const ENEMY_FIRE_INTERVAL_FLOOR = 0.25
  * other two columns, addressed by the same fire-index below. */
 const FIRE_CONCURRENCY: readonly number[] = [1, 1, 2, 3, 4, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
 
-export function waveParams(wave: number): WaveParams {
+export function waveParams(wave: number, gmDif = 0): WaveParams {
   const ramp = 1 + (wave - 1) * RAMP_PER_WAVE
-  // Fire-aggression index into TGPROB: min((wave - 1) + DIP, 15), DIP = 0. One index
-  // addresses all three columns (guns / mask / threshold), which share the length-16 shape.
-  const fireIndex = Math.max(0, Math.min(wave - 1, FIRE_CONCURRENCY.length - 1))
+  // Fire-aggression index into TGPROB: WV.HRD = min(min(wave-1,31) + gmDif, 15). One
+  // index addresses all three columns (guns / mask / threshold), which share the
+  // length-16 shape. `gmDif` defaults to 0, so a wave-only call keeps the wave-1 base.
+  const fireIndex = wvHrd(wave, gmDif)
   return {
     enemyFireInterval: Math.max(ENEMY_FIRE_INTERVAL_FLOOR, ENEMY_FIRE_INTERVAL / ramp),
     maxConcurrentShots: FIRE_CONCURRENCY[fireIndex],

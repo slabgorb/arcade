@@ -222,6 +222,20 @@ export interface TrenchObstacle {
 
 /** Shields the player starts a run with; a hit costs one. */
 export const STARTING_LIVES = 6
+
+/** The difficulty-DIP ordinal the game boots with — the initial value of the
+ *  `gmDif` fire-difficulty accumulator (WSMAIN.MAC:1300-1307, `GM.DIF` init,
+ *  WSMAIN.MAC:1304 "CURRENT DEFAULT DIFFICULTY, STARTS AT 0(EASY)"). The cabinet's
+ *  difficulty DIP is 0..3; MAME's manual-verified FACTORY default is Hard = 2
+ *  (starwars.cpp). sw8-30 ruling (2026-08-05): the clone models the EASY cabinet,
+ *  so this is 0 — not folded into the index formula, but one named ordinal that
+ *  seeds `gmDif` (see gameRules.advanceDifficulty / wvHrd). */
+export const DIFFICULTY_DIP = 0
+
+/** "Bonus Shields" DIP ordinal (0..3) — how many shield units ADCGAS restores on a
+ *  Death-Star kill (WSGAS.MAC:42-58, OPTS1 high nibble & 3). MAME factory default
+ *  is 1 (starwars.cpp). sw8-30. */
+export const BONUS_SHIELDS_DIP = 1
 // sw7-4 / S-015 removed the 400,000 / 800,000 "extra shield" thresholds: the ROM
 // has NO score-threshold life/shield grant (the 2026-07-15 audit's refuter did the
 // exhaustive BCD hunt). Those numbers are the Death-Star-SELECTION start-bonus
@@ -985,6 +999,15 @@ export interface GameState {
   select: SelectState | null
   /** Which wave the run is on (1-based); drives the HUD and the difficulty ramp. */
   wave: number
+  /** The ROM `GM.DIF` fire-difficulty accumulator (WSMAIN.MAC:1300-1307 init,
+   *  1995-2021 growth). Seeds at DIFFICULTY_DIP and climbs every Death-Star kill by
+   *  `gmBmp` (clamped 15); the fire index is `wvHrd(wave, gmDif)`. TRUE state, not a
+   *  function of `wave` — a SELECT-A-LEVEL start climbs it differently (sw8-30). */
+  gmDif: number
+  /** The ROM `GM.BMP` per-transition bump (WSMAIN.MAC:2003-2021, "USED TO KILL OFF
+   *  RINGERS WHO START TO EASY") — increments 1..4 (capped 4) while the run stays in
+   *  the early waves, then freezes; it is what `gmDif` grows by each kill (sw8-30). */
+  gmBmp: number
   phase: Phase
   rng: Rng
   /** Crosshair / yoke aim, normalised [-1, 1] per axis. */
@@ -1253,6 +1276,9 @@ export function initialState(seed = 1983): GameState {
     mode: 'playing',
     select: null,
     wave: 1,
+    // GM.DIF seeds at the difficulty-DIP ordinal, GM.BMP at 0 (WSMAIN.MAC:1300-1307).
+    gmDif: DIFFICULTY_DIP,
+    gmBmp: 0,
     phase: 'space',
     rng: createRng(seed),
     aimX: 0,

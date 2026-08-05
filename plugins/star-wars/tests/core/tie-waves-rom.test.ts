@@ -9,7 +9,7 @@
 // begin-loc` triples (WSCPU.MAC:1252–1320). Past the 6 authored sets the selector
 // (`NWNSHP`, WSCPU.MAC:969–984) recycles the last two — DARTH SECOND on even space
 // waves (SETA5), DARTH FIRST on odd (SETA6). Our sim has none of this: every space
-// wave is an identical flat spawn (`SPAWN_LATERALS[spawnIndex % SPAWN_LATERALS.length]`, sim.ts:2241),
+// wave is an identical flat spawn (`SPAWN_LATERALS[spawnIndex % SPAWN_LATERALS.length]`, sim.ts:2263),
 // wave identity is a formula, and Darth (RTH) never appears in any schedule.
 //
 // This suite pins the COMPOSITION DATA + SELECTOR contract and is EXPECTED TO FAIL

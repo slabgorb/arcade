@@ -8,7 +8,7 @@
 // by reading:
 //
 //   * `coaching` is a STORED field, re-derived in exactly one place — `finalizeFrame`.
-//   * The game-over branch (`sim.ts:221`, `if (state.mode === 'gameover' || state.gameOver)`)
+//   * The game-over branch (`sim.ts:225`, `if (state.mode === 'gameover' || state.gameOver)`)
 //     returns EARLY, so that one place never runs and whatever string was live at the
 //     moment of death stays on the state untouched.
 //   * `render.ts` draws whatever the state carries, so it goes on screen.

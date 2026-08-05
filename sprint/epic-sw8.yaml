@@ -543,7 +543,8 @@ stories:
       Scope guard: this story touches the difficulty INDEX and the shield count only. The TGPROB table contents (mask/threshold/guns columns), the sec.6 fire gate itself, TIE flight, and the hit-test geometry (sw8-27/sw8-29) are untouched. My GM.BMP schedule reading is a single-session derivation — AC1 refutes it before it becomes code.
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:

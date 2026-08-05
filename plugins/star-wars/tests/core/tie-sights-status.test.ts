@@ -295,7 +295,7 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
 
   it('measures against the SAME ray the gun uses — viewport aspect included (AC-6)', () => {
     // The shell supplies a real aspect every frame (src/shell/input.ts:45), and the gun
-    // inverts the projection WITH it (sim.ts:354, `aimDirection(aimX, aimY, state.aspect)`)
+    // inverts the projection WITH it (sim.ts:358, `aimDirection(aimX, aimY, state.aspect)`)
     // so the bolt goes where the crosshair is drawn. A sights bit computed at the default
     // unit aspect is therefore testing a DIFFERENT RAY, and not by a little: at 16:9 and
     // depth 6000 the two rays are 539 u apart at yoke 0.2 and 2694 u apart at full

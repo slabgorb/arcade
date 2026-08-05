@@ -75,6 +75,8 @@ import {
   PORT_APPROACH_WINDOW,
   forceBonusForWave,
   SHIELD_BONUS_PER_UNIT,
+  STARTING_LIVES,
+  BONUS_SHIELDS_DIP,
   POST_HIT_SHIELD_WINDOW,
   TIE_ROLL_RATE,
   TIE_YAW_RATE,
@@ -117,6 +119,8 @@ import {
   SPACE_HIT_OCTAGON,
   toCockpit,
   waveParams,
+  wvHrd,
+  advanceDifficulty,
 } from './gameRules'
 import { createRng, nextInt, type Rng } from '@shared/rng'
 import { stepNameEntry } from '@shared/name-entry'
@@ -401,7 +405,7 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // faster, and lob fireballs more often (gameRules.waveParams; wave 1 is today's
   // balance exactly). The phase machinery (quotas/transitions) is 8-8's and is
   // untouched — this only scales how hard the space phase plays.
-  const params = waveParams(state.wave)
+  const params = waveParams(state.wave, state.gmDif)
 
   // --- Discrete-tick timebase (sw7, docs 4c93855, tasks 2 & 4) ---------------
   // Design §3 — split DECISIONS (discrete, at TICK_HZ) from MOTION (continuous).
@@ -1459,7 +1463,10 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   // shield (loseShield / S-016), unlike the force-field GRAZE above. The cadence
   // keys off the integer game-frame — `stepTrench` never advances `state.frame`, so
   // the ROM's FRAME counter is `Math.floor(trenchTimer)` (game frames elapsed).
-  const gunDiff = Math.max(0, Math.min(romWave0(state.wave), TRENCH_GUN_FIRE_MASK.length - 1))
+  // Base-gun difficulty is the SAME WV.HRD accumulator as the space TIEs (WSBASE.MAC
+  // `LDB WV.HRD / CMPB #7`), just clamped to this table's 0..7 — one accumulator, not
+  // a second wave-only ramp (sw8-30).
+  const gunDiff = Math.min(wvHrd(state.wave, state.gmDif), TRENCH_GUN_FIRE_MASK.length - 1)
   const gunMask = TRENCH_GUN_FIRE_MASK[gunDiff]
   const gunThreshold = TRENCH_GUN_FIRE_THRESHOLD[gunDiff]
   const gameFrame = Math.floor(trenchTimer)
@@ -1620,10 +1627,25 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
     // `clearRun` -> `enterPhase` restarts the phase clock at 0 and the new wave's
     // theme (or the Imperial March, musicTrackFor's law) fires at its 2s PH.TIM
     // milestone in the space stepper.
+    // The difficulty accumulator climbs one Death Star (WSMAIN.MAC:1995-2021):
+    // `clearRun` advances the wave to `afterObstacles.wave + 1`, so `gmDif`/`gmBmp`
+    // step for THAT new wave. This is the one site the accumulator moves (sw8-30).
+    const advanced = advanceDifficulty(
+      { gmDif: afterObstacles.gmDif, gmBmp: afterObstacles.gmBmp },
+      afterObstacles.wave + 1,
+    )
+    // ADCGAS (WSGAS.MAC:42-58): a Death-Star kill refills BONUS_SHIELDS_DIP shield
+    // units, capped at the starting amount. It runs AFTER SCRSHL (PH.TIM 2 → 1,
+    // WSMAIN.MAC:1964-1977), so `shieldBonus` above is already scored on the
+    // pre-refill survivors — the refill only affects the shields carried forward.
+    const refilledLives = Math.min(afterObstacles.lives + BONUS_SHIELDS_DIP, STARTING_LIVES)
     return clearRun({
       ...afterObstacles,
       projectiles: liveBolts,
       score: afterObstacles.score + bonus,
+      lives: refilledLives,
+      gmDif: advanced.gmDif,
+      gmBmp: advanced.gmBmp,
       forceBonusAwardedAt: clean ? t : null,
       // Stamp the kill so the shell's Death-Star explosion survives the warp to
       // space that `clearRun` triggers this same frame (sw2-4). Unlike the Force

@@ -279,8 +279,8 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 //
 // >> Line numbers below marked (pre-fix) describe that OLD layout and will not
 // >> match the current file: the fix moved the push. Current anchors are
-// >> `const scrollSpeed` (sim.ts:1061, where the crossing is computed),
-// >> `loseShield` / `const lives` (:1200-1201) and the gated push (:1223-1228).
+// >> `const scrollSpeed` (sim.ts:1065, where the crossing is computed),
+// >> `loseShield` / `const lives` (:1204-1205) and the gated push (:1227-1232).
 //
 // WHY THIS IS NOT A ONE-LINE `if` (the thing the story's "same fix shape as
 // sw8-13" phrasing hides). `lives` is bound by `loseShield`, far below where the
@@ -299,7 +299,7 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 // Two of these tests exist specifically to refute the near-misses, and both turn
 // on the same structural fact: the surface accrues `damage` at SEVERAL points,
 // some above where the crossing is computed (`const scrollSpeed`, :1050) and some
-// below it, while `loseShield` (:1200) is the ONE place damage becomes death.
+// below it, while `loseShield` (:1204) is the ONE place damage becomes death.
 // That is why the gate must read `loseShield`'s result and not any earlier proxy
 // — and it stays true however many damage sources the stepper grows:
 //   - the turret-bolt case lands damage BELOW the crossing, so a fix reading the
@@ -374,7 +374,7 @@ describe('sw8-21 — a finishGround crossing on the death frame cues NOTHING', (
     // the terrain scrape above it (:1000-1004) has already been counted. A fix
     // that gated on `damage` at the crossing would therefore pass the scrape
     // test above and fail this one. Only the post-`loseShield` `lives`
-    // (:1200-1201) sees every source, whatever they are.
+    // (:1204-1205) sees every source, whatever they are.
     const ship = surfaceShip(SKIM_ALTITUDE)
     const out = stepGame(
       atCrossing({

@@ -209,6 +209,25 @@ the findings JSON; ids cited throughout.
   page (H-017), the receding intro crawl (H-018), in-flight coaching
   messages (H-022), the 50,000-towers reward banner (H-021).
 
+### MAME cross-check (pair-mame, 2026-08-05, sw8-30)
+
+A cross-check against MAME's `starwars.cpp` / `starwars_m.cpp` / `starwars.h`
+**independently corroborated** two constants the primary-source audit already
+pinned — recorded here so the cross-check leaves a trace and is not re-run:
+
+- **Confirmed (timebase, corroborates T-007):** MAME drives the game-logic IRQ with
+  `set_periodic_int(CLOCK_3KHZ / 12)` = **246.094 Hz** (12 IRQs → the 20.508 Hz game
+  frame), an independent second source for `TICK_HZ` (`state.ts`, T-007). `starwars.cpp`.
+- **Confirmed (starting shields, corroborates S/WSMAIN.MAC:1294-1302):** MAME's ROM
+  decode for the initial shield energy is `ANDA #03 / ADDA #06` → **6 shields** at the
+  factory shields-DIP default, matching `STARTING_LIVES = 6`. `starwars.cpp`.
+
+The two DIP factory defaults the same cross-check surfaced — difficulty **Hard = 2**
+and **Bonus Shields = 1** (`starwars.cpp`, "Dips Manual Verified 06/2009") — are ported
+as `DIFFICULTY_DIP` / `BONUS_SHIELDS_DIP` (sw8-30; the clone rules the EASY cabinet, so
+`DIFFICULTY_DIP = 0`). PRNG (23-bit LFSR, which MAME itself stubs with `machine().rand()`)
+and the Math Box/divider microcode remain declared STRUCTURAL substitutes, out of scope.
+
 ---
 
 ## What the secondary sources got wrong

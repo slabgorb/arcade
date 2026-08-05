@@ -146,7 +146,7 @@ const sights = (pos: Vec3, aspect: number): number => {
  * so nothing but the player's own trigger can change the lists.
  *
  * `firePrev: false` and `fireCooldown: 0` are load-bearing — the trigger is EDGE-triggered
- * (`fireEdge = input.fire && !state.firePrev`, sim.ts:296) and gated on the cooldown, so
+ * (`fireEdge = input.fire && !state.firePrev`, sim.ts:300) and gated on the cooldown, so
  * without both the beam never arms and every negative below passes for the wrong reason.
  */
 const spaceRun = (over: Partial<GameState> = {}): GameState => ({
