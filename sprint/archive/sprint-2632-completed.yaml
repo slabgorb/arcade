@@ -93,3 +93,8 @@ completed_stories:
     title: centipede's claim ledger cannot re-run a COUNT — SND-114 shipped 'five other routines' when it is four, and the corrected number is just as unguarded
     points: 2
     completed: '2026-08-05'
+  - id: jt9-44
+    epic: jt9
+    title: Suppress the wave-entry cue-spam from spawnWavePteros stacking pteros at one coordinate
+    points: 3
+    completed: '2026-08-05'

@@ -870,10 +870,11 @@ stories:
     description: "Filed by jt9-15 (which built PTEBRD, the ptero-vs-buzzard collision). Inherited from jt5-16's latent note, forwarded once (jt5-16 said 'owned by jt5-17's description'; jt5-17 renumbered to jt9-15) and now made ACTIVE: spawnWavePteros stacks a wave's whole ptero complement at ONE coordinate (demo.ts). With ptero/ptero (jt5-16) and now ptero/buzzard (jt9-15) pairs both resolving, a multi-ptero wave entry that lands pteros on top of buzzards (or each other) fires a BURST of enemy-thud cues + hard/ordinary bumps on the entry frame. The physics is ROM-LAWFUL; the CUE TIMING is un-ROM-like (a real machine spreads spawns). SCOPE: decide whether to spread the wave-stack spawn coordinate (spawnWavePteros) or suppress duplicate wave-entry cues, then guard it. Not triggered by jt5-16/jt9-15 tests because both anchor the wave open to stop spawnWavePteros advancing — a test here must let the wave advance. May be closed WONTFIX if the burst proves inaudible/unobjectionable in the real app (needs a human smoke test at a multi-ptero wave)."
     points: 3
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-05'
     type: refactor
   - id: jt9-45
     title: 'Port the full PTERST/PTERWV ptero entry: random side + time-stagger, not just the jt9-44 Y-lane spread'
