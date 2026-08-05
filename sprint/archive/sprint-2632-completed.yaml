@@ -57,3 +57,8 @@ completed_stories:
     title: 'Measure PTEBRD and route the ptero-vs-buzzard pair: SNETHD sounds, then the ptero/bird collision resolves'
     points: 3
     completed: '2026-08-05'
+  - id: sw8-24
+    epic: sw8
+    title: Sweep the 29 stale citations the comment-citation guard reports across plugins/star-wars, then lower its ratchet (sw8-18 TEA finding; re-measured at sw8-23)
+    points: 5
+    completed: '2026-08-05'

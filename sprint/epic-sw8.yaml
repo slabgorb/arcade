@@ -347,10 +347,11 @@ stories:
       THE RATCHET. Two assertions pin the tree-wide count at 29 — 'does not let the tree-wide count RISE above the delivered baseline of 29' in tests/audit/comment-citations.test.ts and its pair in tests/audit/sw8-23-guard-hardening.test.ts. Lower BOTH to whatever remains, in the same commit, and mutation-prove the new value (prepend one stale citation to a scanned file and require red) — sw8-23 established that a threshold changed without that proof is just a different unfalsifiable assertion.
     points: 5
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-05'
     type: chore
   - id: sw8-25
     title: The guard's association rule binds a quote to the WRONG citation in a columnar table — it reports a correct citation as stale and names the previous entry's line

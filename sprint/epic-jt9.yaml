@@ -302,9 +302,9 @@ stories:
     points: 3
     priority: p3
     status: done
-    completed: '2026-08-05'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-05'
     review_verdict: approved
   - id: jt9-16
     title: The two thud paths return OPPOSITE carry — the ROM's collision scan continues after SNETHD and ABORTS after SNPTHD
