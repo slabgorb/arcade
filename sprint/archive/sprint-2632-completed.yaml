@@ -5,7 +5,8 @@ sprint:
   jira_sprint_name: "TO Sprint 2632"
   goal: ROM fidelity
 
-completed_epics: []
+completed_epics:
+  - cp7
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -62,3 +63,23 @@ completed_stories:
     title: Sweep the 29 stale citations the comment-citation guard reports across plugins/star-wars, then lower its ratchet (sw8-18 TEA finding; re-measured at sw8-23)
     points: 5
     completed: '2026-08-05'
+  - id: cp7-6
+    epic: cp7
+    title: Adopt the shared pause — and stop the sustained voices that would ring through it
+    points: 3
+    completed: '2026-08-05'
+  - id: cp7-1
+    epic: cp7
+    title: The spider points readout is mirrored — the picture byte's flip bits are dropped at bake
+    points: 3
+    completed: '2026-08-04'
+  - id: cp7-2
+    epic: cp7
+    title: The train enters on the score line — the render paints where the ROM says off-screen
+    points: 2
+    completed: '2026-08-04'
+  - id: cp7-3
+    epic: cp7
+    title: The score zero-PADS where the ROM zero-SUPPRESSES — and our own claim already says so
+    points: 2
+    completed: '2026-08-04'

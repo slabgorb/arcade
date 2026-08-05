@@ -16,7 +16,7 @@ description: |-
 
   THE SIXTH STORY IS NOT A PLAYTEST DEFECT. cp7-6 adopts the shared pause feature, which centipede has never had. It carries NO fidelity claim — a 1980 coin-op has no player pause, and grep over the whole vendored tree returns zero hits for the word — so it is a house cabinet feature that five of the seven games already have and centipede and joust do not.
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: cp7-1
@@ -219,7 +219,7 @@ stories:
       TEST PRECEDENTS TO COPY: plugins/red-baron/tests/pause-adoption.test.ts:38-118 is the closest fit — it walks src/, asserts something imports @shared/pause (:86-91) and @shared/esc-overlay (:93-98), then runtime-imports both and asserts the full API plus the frozen-reference and zero-call property (:100-112). Identical files exist for asteroids, tempest and star-wars. For behaviour, plugins/battlezone/tests/shell/pause-gate.test.ts:37-80 covers key recognition INCLUDING the negative set ('e', 'esc', '') plus a mid-play frozen-frame assertion; plugins/battlezone/tests/shell/pause-overlay.test.ts:55/:77 mocks the overlay. For the loop-silencing test, centipede's own tests/audio-wiring.test.ts and tests/voice0-contention.test.ts already drive a SoundSurface double — use it. FINALLY, BE HONEST ABOUT THE SEAM: every adopter declares that the live keydown-to-rAF path has NO unit seam and is verified by a manual run (see red-baron's test header :14-17). Frame it the same way and actually do the manual run.
     points: 3
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
@@ -232,5 +232,7 @@ stories:
       - Pause lives entirely in src/main.ts and src/shell/; SimState gains no pause field and tests/purity.test.ts:140-161 stays green. @shared/pause is used rather than the logic re-implemented, and the keydown wiring keeps the !e.repeat edge test and the key.toLowerCase() that installPauseToggle bakes in.
       - A pause-adoption test in the shape of plugins/red-baron/tests/pause-adoption.test.ts:38-118 exists for centipede, plus a behavioural gate covering the negative key set ('e', 'esc', '').
       - The story records that this carries NO fidelity claim — the vendored tree has zero occurrences of 'pause' and the ROM's DELAY is a different concept — and adds no claim JSON.
-    review_findings: "R2: 3 of 4 round-1 findings CLOSED (citation :203->:291, #15 stripComments mutation-verified, #8 esc-overlay mock type-anchored). REJECTED on CA-3 (#17 lying comment, NEW): rework's replacement comment at main.ts:145-146 asserts 'battlezone silenced for free' (FALSE — battlezone main.ts:159-164 skips updateContinuousSounds when paused) and 'asteroids same care' (misleading — asteroids is unfixed twin). Comment-only green rework to Dev."
-    review_verdict: rejected
+    completed: '2026-08-05'
+    review_findings: "APPROVED round 3. All 4 findings across rounds 1-2 CLOSED and verified: CA-1 citation :203->:291; RC-2 stripComments guard hardening (#15, mutation-verified); RC-1 esc-overlay mock type-anchored (#8); CA-3 (#17) false battlezone/asteroids sibling claims removed in 230ccb4 and reworded to accurate hedged text (verified vs asteroids main.ts:104-119 + battlezone main.ts:159-164). Non-blocking cross-game follow-ups filed in Delivery Findings (asteroids thrust + battlezone continuous voices ring through pause — same latent bug one game over). GREEN: centipede 1256/1256, orchestrator 390/390."
+    review_verdict: approved
+completed: '2026-08-05'
