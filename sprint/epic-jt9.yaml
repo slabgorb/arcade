@@ -339,7 +339,8 @@ stories:
       ORDER AND COMMITS. Enumerate the twins for BOTH halves before writing anything - uf1-9 census found SIX sites where the backlog claimed four, so B2LEV2 and the SHLEV/SHLEP equivalents are to be counted, not assumed. Then land the two behaviours as SEPARATE COMMITS with ONE joint re-baseline commit last: merging the STORY does not merge the COMMITS, and a single sweep stating which digests moved and why is what this epic standing rule is actually protecting.
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
   - id: jt9-19
