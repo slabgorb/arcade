@@ -134,7 +134,7 @@ export const TIE_FIGHTER: Model3D = {
     [-52, 26, -78],
     [-104, 26, 0],
   ],
-  // Edges RE-PORTED from the ROM draw list `.WL TIE` (WSOBJ.MAC:1352-1367) by
+  // Edges RE-PORTED from the ROM draw list `.WL TIE` (WSOBJ.MAC:1351-1367) by
   // story sw5-3 — the exact set the cabinet strokes, no longer the story-8-10
   // heuristic (which fabricated the lower cap's 6th-vertex closure [24,29]/[28,29]
   // and an equator strut [39,47] the ROM never draws, and lacked the ROM's pentagon
@@ -682,8 +682,8 @@ export const EXHAUST_PORT: Model3D = {
 }
 
 /**
- * Trench wall turret — the authentic WALL GUN TYPE A (`.WP WGA` / `.WGD WGA`,
- * WSOBJ.MAC:576-599 / 1780-1789; finding M-011). PROVISIONAL box+barrel REPLACED:
+ * Trench wall turret — the authentic WALL GUN TYPE A (`.WP WGA` WSOBJ.MAC:576-599,
+ * `.WGD WGA` WSOBJ.MAC:1780-1789; finding M-011). PROVISIONAL box+barrel REPLACED:
  * the disassembly lacked the table but the MACRO-11 source carries it in full, so
  * this is a straight data re-port — a 4-corner wall base (±256/±192 after ×8), a
  * 6-point gun body, and a 4-point nozzle.

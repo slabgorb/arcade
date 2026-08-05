@@ -83,7 +83,7 @@ const WFF_TABLE: readonly Vec3[] = [
   ph(0, 0, 0x20), ph(0, 0x40, 0x20), //  4-5 TOP MIDLINE     z=+256
 ]
 
-/** `.WGD WFF` (WSOBJ.MAC:1819-1823): `PLOT 1 / DRAWTO 0,2,3,1,5,4,0`. PLOT n
+/** `.WGD WFF` (WSOBJ.MAC:1818-1823): `PLOT 1 / DRAWTO 0,2,3,1,5,4,0`. PLOT n
  *  starts the run at point n pen-UP; each DRAWTO strokes a visible line to the
  *  next index. So the pen walks 1→0→2→3→1→5→4→0. */
 const WFF_EDGES: readonly (readonly [number, number])[] = [

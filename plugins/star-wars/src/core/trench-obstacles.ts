@@ -2,8 +2,8 @@
 //
 // Fidelity epic (task 3) — the trench's wall content as ENTITIES: shootable
 // turrets and wall squares, and catwalk hazards spanning the channel. Stations
-// re-expressed from the ROM's obstacle records (docs/star-wars-1983-source-
-// findings.md ## Trench catwalks, turrets & wall squares — off_7CC0 →
+// re-expressed from the ROM's obstacle records
+// (docs/star-wars-1983-source-findings.md ## Trench catwalks, turrets & wall squares — off_7CC0 →
 // off_7B1E..7BFE); scores from ## Scoring tables (byte_9853 turrets,
 // byte_9850 squares).
 

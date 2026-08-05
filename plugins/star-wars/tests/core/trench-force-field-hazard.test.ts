@@ -4,7 +4,7 @@
 // re-ported as the WALL FORCE FIELD it is in the ROM (finding B-012, the
 // behaviour half; the model half is trench-force-field-rom.test.ts).
 //
-// SUPERSEDES + INVERTS the story-14-7 suite (trench-catwalk-hazard.test.ts).
+// SUPERSEDES + INVERTS the story-14-7 suite (RETIRED:trench-catwalk-hazard.test.ts).
 // 14-7 made the (fabricated, channel-spanning) catwalk "cost exactly one
 // shield". B-012 rules that WRONG: the ROM's WSPANL contact is a GRAZE, not a
 // hard `lives-1`. That file is deleted; its "a pass registers a crash over a

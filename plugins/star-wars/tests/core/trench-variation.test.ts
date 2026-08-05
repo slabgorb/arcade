@@ -5,7 +5,7 @@
 //
 // HISTORY: sw3-7 pinned a "fixed-head + picked-tail" seeded shuffle of the
 // hand-authored station table, approximating the ROM's GNBASE ("GEN A NEW BASE
-// PIE", WSBASE.MAC:162-179) before the wedge grid existed. Two later findings
+// PIE", WSBASE.MAC:1059) before the wedge grid existed. Two later findings
 // superseded that approximation:
 //   • B-011 (docs/audit/findings/pair-trench.json): the AUTHORED pies
 //     (BS.WAV 0..10) are run-identical on the cabinet — the early trenches do

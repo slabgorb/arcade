@@ -11,7 +11,7 @@
 // Each object also carries its AWAKENING SEQUENCE byte — the third
 // TOWER/BISHOP/BUNKER operand `.BYTE .C ;AWAKENING SEQUENCE NUMBER`
 // (WSGRND.MAC:115), values 0..3. The object stays dormant until the ground
-// traversal has reached its sequence (`GD.SEQ >= .C`, WSGRND.MAC:740-742), so
+// traversal has reached its sequence (GD.SEQ >= .C — `LDA GD.SEQ / CMPA TGD$SQ(X) / LBLT 90$`, WSGRND.MAC:740-742), so
 // the maze wakes in staged subsets as the ship flies the five $8000 passes
 // (sw7-18 / D-018). Restored here after the sw4-3 transcription dropped it.
 //
@@ -35,7 +35,7 @@ export interface MazeEntry {
   /** The ROM TGD$PC picture byte: 1 tower, 2 bishop, 3 bunker. */
   readonly typeDigit: 1 | 2 | 3
   /** Awakening sequence (WSGRND `.BYTE .C`, 0..3): the object is dormant until
-   *  the traversal reaches its sequence (`GD.SEQ >= seq`, WSGRND.MAC:740-742) —
+   *  the traversal reaches its sequence (GD.SEQ >= seq — `LDA GD.SEQ / CMPA TGD$SQ(X) / LBLT 90$`, WSGRND.MAC:740-742) —
    *  staged reveal per $8000 pass (sw7-18 / D-018). */
   readonly seq: 0 | 1 | 2 | 3
 }

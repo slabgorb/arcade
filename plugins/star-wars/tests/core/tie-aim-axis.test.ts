@@ -30,8 +30,8 @@
 //
 //   1. THERE IS NO PERSPECTIVE DIVIDE. PRE2 rotates into the viewer's frame and squares;
 //      it never divides by depth. The perspective multiply is a DIFFERENT math box program
-//      — "PERS", PC $86, SWMP.DOC:180-187: "YP = YP * XP (SCREEN X), ZP = ZP * XP (SCREEN
-//      Y)" where "XP is inverse X" — and the C$AS path does not run it. Our own
+//      — "PERS", PC $86, SWMP.DOC:180-187, which documents YP = YP * XP (SCREEN X) and
+//      ZP = ZP * XP (SCREEN Y) where XP is inverse X — and the C$AS path does not run it. Our own
 //      docs/mathbox.md:171-176 says the same thing from the disassembly side: $67 is the
 //      view transform "plus Reg38=X²,Reg39=Y²,Reg3A=Z²", while the perspective divide "that
 //      yields screen coordinates the AVG can draw" is $AE/$B0. So M.YPS/M.ZPS are squares of

@@ -12,7 +12,7 @@
 //     * LIFE  `LDA #20 / STA XP$TMR` (:330/:366/:401) — radix 16, so 0x20 = 32
 //       game-frames. At the cabinet's 20.508 Hz game frame that is 32/20.508 =
 //       1.560 s (sw7-1 timebase; the same idiom as TIE_WING_LIFE_SECONDS = 0x18/TICK_HZ).
-//     * LAUNCH `LDA TMPVZ ... JSR LSLD2 ;*4 / STD XP$MZ` (:355-357/:390-392/:426-428) —
+//     * LAUNCH `LDA TMPVZ / LDB P.RND1 / JSR LSLD2 ;*4 / STD XP$MZ` (:355-358/:390-393/:426-429) —
 //       an UPWARD vertical velocity, the ROM comment "728. TO 1024., VARY AROUND
 //       54.*120.*2/16=810." shifted left twice (×4). Both periods force decimal.
 //     * GRAVITY `SUBD #50.*4 ;FORCE OF GRAVITY` (:559) — `50.` is decimal (trailing

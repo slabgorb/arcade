@@ -11,7 +11,7 @@
 //
 // SUPERSESSION: the story-9-2/9-3 SOFT-FLIGHT model (curved-approach swoop + always
 // peel-away, never ram) was retired here — the invented curve/bank/peel assertions
-// in tie-flight.test.ts were removed and tie-peel-away.test.ts was deleted, as they
+// in tie-flight.test.ts were removed and RETIRED:tie-peel-away.test.ts was deleted, as they
 // asserted the deliberately-replaced model. Authentic VM-driven flight is covered
 // here (and in tie-vm.test.ts for the VM itself); design:
 // docs/superpowers/specs/2026-07-18-star-wars-tie-vm-fire-wiring-design.md. A

@@ -29,8 +29,8 @@
 //
 // GROUND TRUTH is WSOBJ.MAC (~/Projects/star-wars-1983-source-text), the 1983
 // Atari source. The draw lists below are transcribed BY HAND from `.WL TIE`
-// (WSOBJ.MAC:1352-1367), `.WL TI1`/`.WL2 TI2` (1374-1382) and `.WL TI3`
-// (1389-1422), and decoded here by an INDEPENDENT re-implementation of the AVG
+// (WSOBJ.MAC:1351-1367), `.WL TI1`/`.WL2 TI2` (1371-1382) and `.WL TI3`
+// (1385-1422), and decoded here by an INDEPENDENT re-implementation of the AVG
 // pen macros — NOT read out of `romModels.generated.ts`. The bake is then checked
 // against this hand oracle (see "the ROM oracle" below), so the port AND the bake
 // are each verified against WSOBJ.MAC rather than merely against each other.
@@ -71,7 +71,7 @@ type Draw = readonly { pen: 'BD' | 'LD'; pts: readonly number[] }[]
 
 // --- the independent oracle: the `.WL` draw lists, verbatim, decoded by hand ---
 
-/** `.WL TIE` (WSOBJ.MAC:1352-1367), pen kind + SOURCE (1-based) point indices. */
+/** `.WL TIE` (WSOBJ.MAC:1351-1367), pen kind + SOURCE (1-based) point indices. */
 const TIE_DRAW: Draw = [
   { pen: 'BD', pts: [1, 2, 3, 4, 5, 6, 1] },
   { pen: 'LD', pts: [7, 8, 9, 10, 11, 12, 7] },
@@ -91,7 +91,7 @@ const TIE_DRAW: Draw = [
   { pen: 'BD', pts: [18, 24, 36, 52, 44, 30, 12, 6] },
 ]
 
-/** `.WL TI1` == `.WL2 TI2` (WSOBJ.MAC:1374-1382) — one shared draw list. The
+/** `.WL TI1` == `.WL2 TI2` (WSOBJ.MAC:1371-1382) — one shared draw list. The
  *  `.LD 13,…` stitch on the 2nd line is the 6-12 rung (source 7->13). */
 const WING_DRAW: Draw = [
   { pen: 'BD', pts: [7, 8, 9, 10, 11, 12, 7] }, // inner circle of the fin
@@ -104,7 +104,7 @@ const WING_DRAW: Draw = [
   { pen: 'BD', pts: [6, 12, 18] },
 ]
 
-/** `.WL TI3` (WSOBJ.MAC:1389-1422) — the centre cabin (uncommented lines only). */
+/** `.WL TI3` (WSOBJ.MAC:1385-1422) — the centre cabin (uncommented lines only). */
 const TI3_DRAW: Draw = [
   { pen: 'BD', pts: [1, 2, 3, 4, 5, 1] },
   { pen: 'LD', pts: [13, 14, 15, 23] },

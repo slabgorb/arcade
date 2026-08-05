@@ -7,7 +7,7 @@
 // ROM units (RIB_Z 2048, TRENCH_FAR 28672). The ROM's forward speed is set once
 // at trench entry — PHIBS `LDD #300 ;INITIAL PLAYER SPEED` (WSMAIN.MAC:1834),
 // $300 = 768 — and integrated ONCE PER GAME-FRAME by S1MVBS (`ADDD M$TX+M.S1`,
-// WSMAIN.MAC:2654). At the sw7-1 game-frame rate (TICK_HZ = 246.094/12 = 20.508 Hz)
+// WSMAIN.MAC:2654-2656). At the sw7-1 game-frame rate (TICK_HZ = 246.094/12 = 20.508 Hz)
 // that is 768 × 20.508 = 15,750 units/sec — 31.5× our 500.
 //
 // So the fix is FRAME-TRUE, exactly like the other sw7 speed constants

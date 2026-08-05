@@ -9,7 +9,7 @@
 //     (`LDA PHASE / LSLA / LDX #TPHASE / JSR @A(X)`, WSMAIN.MAC:307-312) whose idle
 //     run is BNR → INS → SCR → HIS (WSMAIN.MAC:335-338), closing back to the banner.
 //   * Each page hands itself off on its own countdown:
-//       BNR→INS  TCMES.MAC:441-444  (`LDD BN.CNT / CMPD #200 / IFHS / LDA #PH$INS`)
+//       BNR→INS  TCMES.MAC:440-443  (`LDD BN.CNT / CMPD #200 / IFHS / LDA #PH$INS`)
 //       INS→SCR  WSMAIN.MAC:688-689 (`LDD #0200 / STD PH.TIM`), expiring at :708
 //       SCR→HIS  WSMAIN.MAC:718-719 (`LDD #0200 / STD PH.TIM`), expiring at :739
 //       HIS→BNR  WSMAIN.MAC:883-884 (`LDD #0100 / STD PH.TIM`), expiring at :923-927

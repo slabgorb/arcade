@@ -7,7 +7,7 @@
 // RTS1`) is a RATIO law — lateral² < depth², vertical² < depth² — a ±45° square
 // pyramid. A ratio ports unit-for-unit, which is why sw7-24's port looked safe;
 // but the 45° encodes the CABINET's screen shape, and ours is not that shape.
-// The clone projects with `perspective(FOV_Y, w/h, NEAR, FAR)` (render.ts:451,
+// The clone projects with `perspective(FOV_Y, w/h, NEAR, FAR)` (render.ts:490,
 // FOV_Y = π/3 from gameRules.ts), so the glass actually ends at:
 //
 //   vertical half-angle:    FOV_Y/2 = 30°, at EVERY aspect

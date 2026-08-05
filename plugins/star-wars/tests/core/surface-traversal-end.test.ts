@@ -25,7 +25,7 @@
 //
 // AUDIO RIDER (design §Defect 3, music rider). PHEGD fires `PMREB` "FINISH GROUND
 // WITH REBEL" at pseudo-second 14 (`LDA PH.TIM / CMPA #14. / JSR PMREB`,
-// WSMAIN.MAC:1668-1671; PH.TIM ticks once per 16 frames). sw7-8's audio hooks are
+// WSMAIN.MAC:1670-1673; PH.TIM ticks once per 16 frames). sw7-8's audio hooks are
 // live, so this cues a one-shot `finishGround` tune late in the surface — once,
 // before the phase ends.
 //

@@ -4,7 +4,7 @@
 //
 // The core carries `state.starfield` (see tests/core/starfield.test.ts). This proves
 // the SHELL actually draws it. Seam-agnostic: rather than pin Dev's exact dot
-// primitive (the ROM star glyph is a single point, `VGSTAR: VON 0,0` WSVROM.MAC:1524),
+// primitive (the ROM star glyph is a single point, `VGSTAR: VON 0,0` WSVROM.MAC:1524-1525),
 // count ALL mark-producing canvas calls (arc / fillRect / rect / moveTo) and compare
 // a 50-star attract frame to a 0-star one. The delta IS the starfield. render()
 // ignores `state.starfield` today, so the delta is 0 → red.

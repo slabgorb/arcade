@@ -80,7 +80,7 @@ const wave = (seed = 1983): GameState => initialState(seed)
 //     `hitscan-laser.test.ts` (a);
 //   * that a pull opens a bounded ~8-game-frame window — `laser-sweep.test.ts` (a).
 // `advance()` itself, which "a bolt advances / expires" was really exercising, is still live
-// for ENEMY fire and still covered: `hitscan-laser.test.ts` (e) and `shootable-fireballs.ts`.
+// for ENEMY fire and still covered: `hitscan-laser.test.ts` (e) and `shootable-fireballs.test.ts`.
 //
 // What stays here is the half that survives the model change and that no other suite owns:
 // THE TRIGGER CADENCE. It gained a test, because the old "rate-limits firing" case can no

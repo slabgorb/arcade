@@ -30,7 +30,7 @@ RNG** — which directly contradicts the source-confirmed model:
 **The tick is not the gap.** `state.ts:281` already pins `TICK_HZ = 246.094 / 12`
 (20.508 Hz) via audit T-007, and the core deliberately converts every ROM
 per-game-frame count to *seconds* via `TICK_HZ`, applied as `rate × dt`, to stay
-**dt-independent** (state.ts:299-300; `ENEMY_SHOT_TTL = 64/TICK_HZ`,
+**dt-independent** (state.ts:379; `ENEMY_SHOT_TTL = 64 / TICK_HZ`,
 `LASER_SWEEP_SECONDS = 8/TICK_HZ`, `DARTH_GLOW_SECONDS = 0x1f/TICK_HZ`). That
 architecture is committed and stays.
 

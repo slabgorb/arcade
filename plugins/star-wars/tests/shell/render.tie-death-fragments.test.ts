@@ -2,8 +2,8 @@
 //
 // Story sw3-8 — RED phase (O'Brien / TEA). The WIRING half of the story.
 //
-// Porting the three exploded-TIE fragment models (see tests/core/tie-wing-
-// fragments.test.ts) is worthless if a killed TIE still blinks out of existence.
+// Porting the three exploded-TIE fragment models
+// (see tests/core/tie-wing-fragments.test.ts) is worthless if a killed TIE still blinks out of existence.
 // Today it does: stepGame filters a hit TIE out of `state.enemies` the same frame
 // (sim.ts, the player-bolt-vs-TIE loop) and render.ts only ever draws
 // `state.enemies` — so the fighter vanishes with no death beat. This suite pins

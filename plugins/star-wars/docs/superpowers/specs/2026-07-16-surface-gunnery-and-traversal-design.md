@@ -20,8 +20,8 @@ ROM cites verified against `~/Projects/star-wars-1983-source-text` (LF copy);
 
 - Bolts spawn at `COCKPIT` (origin): `sim.ts:173` — the sw5-6 muzzle fix covered
   only the trench (`state.phase === 'trench' ? trenchView : COCKPIT`).
-- The surface **camera** flies at `[0, state.altitude, 0]` (`render.ts:284
-  cameraView`), altitude ∈ [40..238], nominal `SKIM_ALTITUDE` 128.
+- The surface **camera** flies at `[0, altitude, 0]` (`sim.ts:2268
+  surfaceShip`), altitude ∈ [40..238], nominal `SKIM_ALTITUDE` 128.
 - `aimDirection` is a camera-space direction, so sight-line and bolt run on
   **parallel rays separated by `altitude`**: every impact lands 40–238 units
   below the reticle, against `TURRET_HIT_RADIUS` 200 centred at the tower base.

@@ -23,7 +23,7 @@
 //        IFHS                       ; GM.WAV >= 5 ?
 //        LDU #TSCFRZ-3              ; ";HIGHER LEVELS USE MAX SCORE" -> clamp to last (100,000)
 //        ELSE  LSLB / ADDB GM.WAV  ; index = GM.WAV*3 bytes, used DIRECTLY -> 0-based
-//     GM.WAV starts at 0 (WSMAIN.MAC:1053 "LDA #00 / STA GM.WAV ;START AT EASY"),
+//     GM.WAV starts at 0 (`LDA #00 / STA GM.WAV`, WSMAIN.MAC:1052-1053; START AT EASY default),
 //     so entry 0 (5,000) is the FIRST wave. For GM.WAV >= 5 the pointer is CLAMPED
 //     to the last entry — no wrap, no fall-off.
 //
