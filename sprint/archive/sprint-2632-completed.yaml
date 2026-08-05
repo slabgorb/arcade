@@ -42,3 +42,8 @@ completed_stories:
     title: The spider is too fast because the OPTNS difficulty DIP is declared and never passed
     points: 3
     completed: '2026-08-05'
+  - id: jt9-43
+    epic: jt9
+    title: narrowPhase drops BPCOL's COLDX screen-X term — the mask test is X-blind for all three overlap passes
+    points: 3
+    completed: '2026-08-05'

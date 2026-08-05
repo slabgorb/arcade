@@ -856,7 +856,10 @@ stories:
       THE FIX. Fold COLDX into narrowPhase's column compare (shift spanB by the screen-X delta before intervalsOverlap), and thread the two entities' screen X into every call site. Expect the mask bands measured in jt9-14 (dx=0 only) to widen/shift for dx!=0; re-baseline jt9-14's dx=0 fixtures (COLDX-invariant, should be untouched) and any dx!=0 sibling (audio-emission/menagerie/jt4-4/jt5-16 stage at dx=4). Verify against BPCOL byte-for-byte.
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-05'
     type: bug
+    review_verdict: approved
