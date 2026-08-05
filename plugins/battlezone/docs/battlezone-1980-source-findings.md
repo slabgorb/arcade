@@ -605,6 +605,18 @@ counter dividing NMI by 16 → **≈15.38 Hz** vs the clone's 15.625 Hz. The exa
 246-vs-250 Hz reconcile is **deferred to bz5-3**; it does not move any AI constant
 materially and no AI value is re-pinned here.
 
+**Trap avoided (green-phase re-check).** `bzone.cpp:151-164` documents a
+"Self-adjusting game difficulty" DIP feature with a target-average-game-length table —
+tempting to read as a second source on Battlezone's aggression ramp (`difficulty.ts`).
+It is **not Battlezone's**: it sits inside the file's `RED BARON DIP SWITCH SETTINGS`
+block (`bzone.cpp:122`, "airplanes per game", switch at P10/M10) — Battlezone and Red
+Baron share `bzone.cpp`. Battlezone's own DIP block (`bzone.cpp:42-90`) has **no**
+self-adjusting-difficulty switch; Battlezone's adaptive difficulty is the ROM's
+score-differential aggression ramp (findings §5, `$69fd`), which MAME's driver does
+**not** document. Attributing the Red Baron DIP to Battlezone would have been a false
+finding; the correct reading leaves the §5 aggression ramp single-sourced to the
+disassembly, consistent with the structural fact above.
+
 **Ruling (AC3).** The enemy AI is **CONFIRMED** against the second source on every
 axis MAME can document — the two spawn-threshold defaults and the enemy-action
 sound-gating all agree; the engine-bit note is a story-premise correction, not a code
