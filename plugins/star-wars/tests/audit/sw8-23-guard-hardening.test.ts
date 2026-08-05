@@ -504,32 +504,30 @@ describe('sw8-23 AC2 — the fresh count, and the extractor defect underneath tw
     expect(checkCitations(read(join(swRoot, ...parts)), opts)).toEqual([])
   })
 
-  it('the widened scan does not RISE above the baseline sw8-18 delivered', () => {
-    // The forcing function for this AC. sw8-18 tightened its ratchet to 35 over
-    // src+tests+specs. MEASURED at RED with tools/ added: 45 (35 + 10). DELIVERED: 29 —
-    // the extractor defect cleared six phantoms (two in tools/, four already in the
-    // baseline) and the eight real tools/ citations were re-anchored or disowned. So the
-    // scanned surface GREW and the count FELL, which is the claim this AC actually makes.
+  it('the widened scan carries zero stale citations (swept clean by sw8-24)', () => {
+    // sw8-18 tightened this to 35 over src+tests+specs; sw8-23 widened the scope to add
+    // tools/ and lowered it to 29. sw8-24 then SWEPT the tree — every stale citation the
+    // widened scan surfaces was re-anchored or disowned — so the count is now 0.
     //
-    // The scope is passed EXPLICITLY here rather than relying on the default. Calling
-    // the default today measures the UN-widened tree and reports 35 <= 35 — a green
-    // that proves nothing and would stay green through a story that never widened
-    // anything. Naming the roots makes this red at RED.
+    // The scope is passed EXPLICITLY here rather than relying on the default, so this
+    // asserts the whole surface sw8-23 widened to (naming the roots is what made it red
+    // at sw8-23's RED, and it is what makes a regression here red now).
     const widened = [
       join(swRoot, 'src'),
       join(swRoot, 'tests'),
       join(swRoot, 'docs', 'superpowers', 'specs'),
       TOOLS,
     ]
-    expect(checkTree({ swRoot, romDir, roots: widened }).length).toBeLessThanOrEqual(29)
+    expect(checkTree({ swRoot, romDir, roots: widened }).length).toBe(0)
   })
 
-  it('...and the DEFAULT scan, once it covers tools/, stays under it too', () => {
+  it('...and the DEFAULT scan, now covering tools/, is clean too', () => {
     // Guards the seam between AC1 and AC2: widening the default without remediating
     // would satisfy AC1's scope tests while pushing the tree-wide count up.
     //
-    // Tightened to the achieved count in the same commit, alongside sw8-18's. A ratchet
-    // with slack is the "guard that does not bite" these two stories exist to retire.
-    expect(checkTree({ swRoot, romDir }).length).toBeLessThanOrEqual(29)
+    // sw8-24 lowered this from 29 to a zero-floor in the same commit as the sweep. A
+    // ratchet with slack is the "guard that does not bite" these stories exist to retire;
+    // at 0 it bites on the first stale citation anyone adds.
+    expect(checkTree({ swRoot, romDir }).length).toBe(0)
   })
 })

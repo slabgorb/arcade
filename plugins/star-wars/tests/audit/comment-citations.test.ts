@@ -375,7 +375,7 @@ describe('sw8-18 AC5 — the real tree scans clean', () => {
     expect(errs.filter((e) => /WSBASE\.MAC:1330|WSMAIN\.MAC:2654/.test(e))).toEqual([])
   })
 
-  it('does not let the tree-wide count RISE above the delivered baseline of 29', () => {
+  it('holds the tree-wide count at the swept-clean floor of 0 (sw8-24)', () => {
     // A ratchet, not a gate. If this fails, the change added new stale citations.
     // If it passes with room to spare, lower the number in the same commit.
     //
@@ -411,8 +411,13 @@ describe('sw8-18 AC5 — the real tree scans clean', () => {
     // landed, because a sibling story shipped in between). If you need the split, re-run
     // the two endpoints above rather than trusting a subtraction.
     //
-    // Mutation-proven at 29: prepending one stale citation to a scanned file reddens
-    // four tests. At the old 35 the same mutation reddened none.
-    expect(checkTree({ swRoot, romDir }).length).toBeLessThanOrEqual(29)
+    // TIGHTENED AGAIN, 29 -> 0 by sw8-24: the whole tree was swept clean (28 stale
+    // citations at RED — 23 verbatim drifts re-anchored, 5 dead-file refs re-pointed or
+    // disowned with RETIRED:). The ratchet is now a zero-FLOOR, not a ceiling with slack:
+    // every stale citation the guard can see is a failure, which is the strongest form of
+    // this guard. Re-mutation-proven at 0 by tests/audit/sw8-24-citation-sweep.test.ts
+    // (inject one stale citation into a scanned file, require red) — a threshold changed
+    // without a live mutation is just a different unfalsifiable assertion (sw8-23's lesson).
+    expect(checkTree({ swRoot, romDir }).length).toBe(0)
   })
 })
