@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+.session/
+
+# Reference material quarried locally (original Atari WW3 source / MAME) — NEVER
+# committed or pushed (copyright wall). The durable, cited extraction lives in
+# docs/rom-study/.
+reference/

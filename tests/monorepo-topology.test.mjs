@@ -93,7 +93,7 @@ const repo = resolve(import.meta.dirname, '..');
 const path = (...rel) => join(repo, ...rel);
 const read = (...rel) => readFileSync(path(...rel), 'utf8');
 
-const GAMES = ['tempest', 'star-wars', 'asteroids', 'battlezone', 'red-baron', 'centipede', 'joust'];
+const GAMES = ['tempest', 'star-wars', 'asteroids', 'battlezone', 'red-baron', 'centipede', 'joust', 'missile-command'];
 // Every app, with its directory: the games under plugins/, the lobby at the root.
 const APPS = [...GAMES.map((id) => [id, join('plugins', id)]), ['lobby', 'lobby']];
 
@@ -101,7 +101,7 @@ const APPS = [...GAMES.map((id) => [id, join('plugins', id)]), ['lobby', 'lobby'
 // is blind to an EIGHTH plugin nobody added to the list — it would sail through
 // all seven iterations and guard nothing about the newcomer. This test is what
 // makes the seven-element loops honest, so it must run and it must be first.
-test('plugins/ holds exactly the seven games this file loops over', () => {
+test('plugins/ holds exactly the eight games this file loops over', () => {
   const dirs = readdirSync(path('plugins'), { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
@@ -1542,6 +1542,7 @@ test('every plugin dev-tool HTML file is declared, and every declared one exists
     battlezone: [],
     centipede: [],
     joust: [],
+    'missile-command': [],
   };
   for (const id of GAMES) {
     const onDisk = readdirSync(path('plugins', id))

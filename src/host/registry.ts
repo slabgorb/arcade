@@ -87,6 +87,17 @@ export const GAMES: readonly GameMeta[] = [
     showcase: false,
     version: '0.0.28',
   },
+  {
+    id: 'missile-command',
+    title: 'MISSILE COMMAND',
+    year: 1980,
+    color: '#d8d020',
+    controls: ['AIM — Mouse / Trackball', 'FIRE — Z X C  (left / centre / right base)'],
+    order: 8,
+    listed: true,
+    showcase: false,
+    version: '0.0.1',
+  },
 ]
 
 /** The games the lobby lists — `listed: false` opts a game out deliberately. */

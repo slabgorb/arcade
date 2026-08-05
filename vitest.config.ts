@@ -39,6 +39,7 @@ const GAMES = [
   'red-baron',
   'centipede',
   'joust',
+  'missile-command',
 ] as const
 
 export default defineConfig({

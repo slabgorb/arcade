@@ -16,7 +16,7 @@ default:
 # There is no `subrepos` list any more, and no concept for one to name: the eight
 # gitignored sibling checkouts are one repo. The lobby is not in this list because
 # it is not a game — recipes that mean "every app" say `{{games}} lobby`.
-games := "tempest star-wars asteroids battlezone red-baron centipede joust"
+games := "tempest star-wars asteroids battlezone red-baron centipede joust missile-command"
 
 # One install for the whole cabinet. The eight per-subrepo installs are gone, and
 # with them the `@arcade/shared` git-dep pin they had to be reconciled against
