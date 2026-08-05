@@ -145,6 +145,20 @@ export interface GameState {
    */
   readonly bounce: number
   /**
+   * bz5-1: the ROM's CRACKED WINDSHIELD COUNTER (`CRACK: .BLKB 1`,
+   * BZONE.MAC:256) — the sibling of `bounce` bz4-1 shipped without. 0 = a clean
+   * windshield; non-zero = the shattered-glass overlay is drawn (the ROM gates
+   * the whole windshield on it: `LDA CRACK / BEQ 31$ / JMP WNSHLD`, :506-508).
+   * `sim.ts`'s `stepBattle` SETS it to 2 on the player-death / windshield-crack
+   * path (`LDA I,2 / STA CRACK`, :2335-2336) — every life lost, right beside the
+   * BOUNCE=0xFF write — and `advanceRadar` advances it +2 per 15.625 Hz game
+   * frame (INC CRACK ×2, :697-698), resetting to 0 at the ROM's 16×2 cap
+   * (:660-661), a BOUNDED death-sequence window that clears on its own. Advanced
+   * on the game frame (NOT the ~60 Hz render sub-step, the C-001 trap `bounce`
+   * and `frameCount` also avoid). Pure core; the shell only READS `game.crack`.
+   */
+  readonly crack: number
+  /**
    * The gameplay moments of THIS step, fresh every step, never accumulated
    * (bz1-11, star-wars pattern). Pure data for the shell's sound dispatch —
    * one-way: the core writes, the shell reads, nothing flows back.
@@ -195,5 +209,6 @@ export function initGame(seed: number): GameState {
     events: [],
     frameCount: 0,
     bounce: 0,
+    crack: 0,
   }
 }

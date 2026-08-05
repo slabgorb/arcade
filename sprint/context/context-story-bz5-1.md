@@ -9,7 +9,7 @@ The windshield crack is a HIT reaction, not a permanent decal — gate it on pla
 - **Points:** 2
 - **Priority:** p1
 - **Workflow:** tdd
-- **Repo:** battlezone
+- **Repo:** arcade
 - **Epic:** Battlezone presentation & MAME cross-check — hit-driven windshield, the periscope overlay, and a driver-level fidelity pass
 
 ## Problem

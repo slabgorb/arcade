@@ -34,7 +34,7 @@
     },
     "ours": {
       "file": "src/main.ts",
-      "line": 322,
+      "line": 325,
       "verbatim": "const loop = createLoop(stepFrame, renderFrame)"
     }
   },
@@ -51,7 +51,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 123,
+      "line": 132,
       "verbatim": "  const modeAge = s.modeAge + dt"
     },
     "recommendation": "accept"
@@ -110,7 +110,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 72,
+      "line": 81,
       "verbatim": "    leftTread: clampAxis(0.75 + 0.25 * Math.sin(t * 0.7)),"
     },
     "recommendation": "accept"
@@ -174,7 +174,7 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 139,
+      "line": 148,
       "verbatim": "  const enemyStep = stepEnemies(s.enemies, player, playerShell, dt, s.score, ratchet, differential)"
     }
   }

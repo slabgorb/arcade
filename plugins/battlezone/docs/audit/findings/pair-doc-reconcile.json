@@ -131,7 +131,7 @@
     },
     "ours": {
       "file": "docs/battlezone-1980-source-findings.md",
-      "line": 130,
+      "line": 131,
       "verbatim": "> \"Missiles have a second score threshold equal to the base threshold plus 25K points.\" — code"
     }
   },
@@ -148,7 +148,7 @@
     },
     "ours": {
       "file": "docs/battlezone-1980-source-findings.md",
-      "line": 115,
+      "line": 116,
       "verbatim": "> \"There will always be one hostile unit on the battlefield, either alive or exploding. When"
     }
   },
@@ -383,7 +383,7 @@
     },
     "ours": {
       "file": "docs/battlezone-1980-source-findings.md",
-      "line": 353,
+      "line": 354,
       "verbatim": "> \"The units on the battlefield are visible in a cone 45 degrees wide, which is why when you"
     }
   },
@@ -400,7 +400,7 @@
     },
     "ours": {
       "file": "docs/battlezone-1980-source-findings.md",
-      "line": 371,
+      "line": 372,
       "verbatim": "> Channel 1: \"collision with object, post-collision 'merp', saucer hit, saucer alive, high"
     }
   },
@@ -417,7 +417,7 @@
     },
     "ours": {
       "file": "docs/battlezone-1980-source-findings.md",
-      "line": 400,
+      "line": 401,
       "verbatim": "DSW0 ($0A00): LLBBMMTT"
     }
   },
@@ -451,7 +451,7 @@
     },
     "ours": {
       "file": "docs/battlezone-1980-source-findings.md",
-      "line": 404,
+      "line": 405,
       "verbatim": "  TT=number of starting tanks (value + 2)"
     }
   },
