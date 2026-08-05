@@ -5,7 +5,7 @@
 // `crack` counter (tests/core/windshield-crack.test.ts pins that counter), not
 // stroked unconditionally every frame.
 //
-// The ROM gates the whole windshield on CRACK at BZONE.MAC:506-507
+// The ROM gates the whole windshield on CRACK at BZONE.MAC:506-508
 // (`LDA CRACK / BEQ 31$ / JMP WNSHLD`): CRACK == 0 draws the clear window,
 // CRACK != 0 draws the cracked one. Our shell must mirror that — read
 // `game.crack` (the core computes it; the shell only READS, preserving core

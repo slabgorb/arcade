@@ -15,7 +15,7 @@
 //     CRACK is SET to 2 on every life lost (game-over included, same as BOUNCE).
 //   * Mutual player-enemy kill also writes CRACK                (:3362).
 //   * The render gates the whole windshield on it:
-//       LDA CRACK / BEQ 31$ / JMP WNSHLD                        (:506-507)
+//       LDA CRACK / BEQ 31$ / JMP WNSHLD                        (:506-508)
 //     CRACK == 0 → open the clear window (BIGWND); CRACK != 0 → draw the
 //     cracked windshield (WNSHLD). So "cracked" ≡ CRACK != 0.
 //   * WNSHLD advances the counter once per game frame, +2, and RESETS it to 0

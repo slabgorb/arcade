@@ -148,7 +148,7 @@ export interface GameState {
    * bz5-1: the ROM's CRACKED WINDSHIELD COUNTER (`CRACK: .BLKB 1`,
    * BZONE.MAC:256) — the sibling of `bounce` bz4-1 shipped without. 0 = a clean
    * windshield; non-zero = the shattered-glass overlay is drawn (the ROM gates
-   * the whole windshield on it: `LDA CRACK / BEQ 31$ / JMP WNSHLD`, :506-507).
+   * the whole windshield on it: `LDA CRACK / BEQ 31$ / JMP WNSHLD`, :506-508).
    * `sim.ts`'s `stepBattle` SETS it to 2 on the player-death / windshield-crack
    * path (`LDA I,2 / STA CRACK`, :2335-2336) — every life lost, right beside the
    * BOUNCE=0xFF write — and `advanceRadar` advances it +2 per 15.625 Hz game

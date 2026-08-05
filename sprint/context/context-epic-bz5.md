@@ -8,7 +8,7 @@ Fifth of the bz1/bz2/bz3/bz4 Battlezone line. Two presentation gaps the player s
 
 ## Metadata
 - **Epic ID:** bz5
-- **Repo:** battlezone
+- **Repo:** arcade
 
 ## Background
 _Cross-story constraints and guardrails to be filled in as the epic

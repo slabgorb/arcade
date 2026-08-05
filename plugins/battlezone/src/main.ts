@@ -272,7 +272,7 @@ function renderFrame(): void {
 
   // bz5-1: the cracked-glass windshield is the cabinet's HIT reaction, not a
   // permanent decal — the ROM gates the whole windshield on its CRACK counter
-  // (`LDA CRACK / BEQ 31$ / JMP WNSHLD`, BZONE.MAC:506-507). Core owns the
+  // (`LDA CRACK / BEQ 31$ / JMP WNSHLD`, BZONE.MAC:506-508). Core owns the
   // counter (state.crack, set on death and cleared over the death window); the
   // shell only READS it. Drawn over the world, under the HUD so score/radar stay
   // legible. (bz1-12 originally drew this every frame — that was the bug.)

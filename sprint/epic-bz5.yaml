@@ -18,7 +18,7 @@ description: >-
   chain, and re-validate the enemy AI against MAME + the disassembly together.
 priority: p2
 status: backlog
-repos: battlezone
+repos: arcade
 stories:
   - id: bz5-1
     title: The windshield crack is a HIT reaction, not a permanent decal — gate it on player-hit state
@@ -39,9 +39,9 @@ stories:
       appear/clear timing matches the executed ROM, not just the disassembly line.
     points: 2
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-08-05'
-    repos: battlezone
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - >-
@@ -74,7 +74,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: battlezone
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - >-
@@ -106,7 +106,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: battlezone
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - >-
@@ -138,7 +138,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: battlezone
+    repos: arcade
     workflow: tdd
     acceptance_criteria:
       - >-

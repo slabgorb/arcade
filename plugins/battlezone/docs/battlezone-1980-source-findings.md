@@ -478,7 +478,7 @@ counter bz4-1 shipped `BOUNCE` **without**:
 |---|---|
 | `CRACK: .BLKB 1  ;CRACKED WINDSHIELD COUNTER` (:256) | The register. 0 = clean. |
 | `LDA I,2 / STA CRACK` (:2335-2336) | **Set to 2 on the death / windshield-crack path**, right beside `LDA I,-1 / STA BOUNCE` (:2337-2338), **before** `DEC LIVES` (:2339) — so **every** life lost (game-over included) cracks the glass. The mutual-kill branch writes it too (:3362). |
-| `LDA CRACK / BEQ 31$ / JMP WNSHLD` (:506-507) | The render gate: `CRACK == 0` → open the clear window (`BIGWND`); `CRACK != 0` → draw the cracked windshield (`WNSHLD`). So **"cracked" ≡ `CRACK != 0`**. |
+| `LDA CRACK / BEQ 31$ / JMP WNSHLD` (:506-508) | The render gate: `CRACK == 0` → open the clear window (`BIGWND`); `CRACK != 0` → draw the cracked windshield (`WNSHLD`). So **"cracked" ≡ `CRACK != 0`**. |
 | `INC CRACK / INC CRACK` (:697-698) | Advance the counter **+2 per game frame** — the crack progressively spreads (more `CRACKS` sections drawn as it climbs). |
 | reset `STA CRACK` = 0 at the `16*2` cap (:656, :660-661), then reposition/respawn or → attract | A **bounded** death sequence (~15 game frames ≈ 1 s at 15.625 Hz), then it clears on its own. |
 
