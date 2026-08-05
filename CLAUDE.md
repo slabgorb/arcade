@@ -208,16 +208,20 @@ domains are still bound to them: unbinding those and replacing them with Single
 Redirects onto `arcade.slabgorb.com/<id>/` is the **owner's** step, and it had not been
 taken when this file was written.
 
-That is a statement about *routing*, not about content. Task 1 measured which buckets
-and domains exist; **nothing has measured what any of them serves.** Five of the seven
-(tempest, star-wars, asteroids, battlezone, red-baron) were the production cabinet
-before the migration and this repo's retired hosting table listed each one. Centipede
-appeared in no such table and nothing here records a deploy to its bucket — it is the
-one genuinely unverified case. Joust was doubted for the same reason, but that is
-superseded: `arcade-joust` was created 2026-07-26 and Task 1 released joust v0.0.8 with
-a **green CI deploy**. A green deploy proves an upload ran, not what a hostname serves
-today, so: **do not infer a live game from a live hostname; request it.** Full
-architecture, the real bucket inventory, the runbook and how to read a `404` per game:
+That is a statement about *routing*, not about content — and the two were measured
+separately. Task 1 measured which buckets and domains exist; **mg1-12 then measured what
+each one serves** (2026-08-05, recorded in [`docs/ops/hosting.md`](./docs/ops/hosting.md)).
+The result: **all seven `<game>.slabgorb.com` hostnames are live, each serving its own
+real build**, and none has been cut over — every fetch was a direct `200`, no `301`. That
+settled the two long-standing doubts by measurement, not inference. **Centipede** — once
+the one genuinely unverified case (in no retired hosting table, no recorded deploy) — is
+**live**. **Joust** — doubted, then cleared on paper by a green CI deploy of v0.0.8, which
+proves an upload ran but *not* what the hostname serves — is **live** in fact too. The
+probe is point-in-time, so the rule it was taken under still governs the teardown: **do
+not infer a live game from a live hostname; request it** — re-run the probe before the
+irreversible delete, because a host may since have flipped to a `301` (cut over) or gone
+`404` (a regression). Full architecture, the real bucket inventory, the runbook, the
+probe results and how to read a `404` per game:
 [`docs/ops/hosting.md`](./docs/ops/hosting.md).
 
 The Cloudflare tunnel that once served the arcade is retired; [`cloudflared/`](./cloudflared/)
