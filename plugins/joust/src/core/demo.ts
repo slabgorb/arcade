@@ -2277,6 +2277,36 @@ export function playerDrawList(p: DemoProcess): string[] {
   return [mountFrame(mount, p.entity), rider]
 }
 
+/**
+ * The DPLYR rider sprite each enemy species carries — the ROM `DPLYR` field
+ * (`RIDERS IMAGE`, JOUSTRV4.SRC:109, field 6 / offset 10) of that species'
+ * decision block: PLYR3 for the bounder (P4DEC, DSMART=BOUNDR), PLYR4 for the
+ * hunter (P5DEC, DSMART=B2UNDR), PLYR5 for the shadow lord (P6DEC, DSMART=SHADOW).
+ * The three differ only in colour — the enemy-knight red COLOR1 nibble 4 — which
+ * is the WHOLE visible difference between the species (the pterodactyl, P7DEC,
+ * carries 0: no rider). Records already transcribed in ENTITY_RECORDS at position
+ * word 751, alongside PLYR1/2.
+ */
+const ENEMY_RIDER: Readonly<Record<EnemyType, string>> = Object.freeze({
+  bounder: 'PLYR3',
+  hunter: 'PLYR4',
+  shadowLord: 'PLYR5',
+})
+
+/**
+ * The ordered draw layers for an ENEMY: `[mount, rider]`, mirroring
+ * `playerDrawList` — the buzzard body (`enemyFrame`) drawn first (under), the
+ * species' DPLYR knight on top. Every bird+rider is TWO objects in the ROM; the
+ * port used to draw the enemy as a bare bird (one mount op), which both hid the
+ * rider and made the three ground species indistinguishable. Covers the hatched
+ * remount buzzard for free — it is a `kind:'enemy'` process. Pure DATA; the shell
+ * blits both and mirrors a left-facer from the op's facing.
+ */
+export function enemyDrawList(p: DemoProcess): string[] {
+  const type = p.enemyType ?? 'bounder'
+  return [enemyFrame(p), ENEMY_RIDER[type]]
+}
+
 /** A lower/foreground platform tile — drawn AFTER entities so it occludes them.
  *
  * NOTE (jt2-9): the single `destY >= 0xC0` threshold is a DEMO/SHELL choice, not
@@ -2351,7 +2381,13 @@ export function drawList(demo: DemoState): DrawOp[] {
       }
     } else if (p.kind === 'enemy' && p.enemy) {
       const e = p.enemy.entity
-      entities.push(entityOp(enemyFrame(p), e.posX, e.posY >> 8, p.enemy.facing))
+      // [mount, rider], each POSOFF-placed and facing-tagged, exactly as the
+      // player branch above — the enemy is a bird PLUS a DPLYR knight, not a
+      // bare bird (jt9-46). The remount buzzard is a kind:'enemy' too, so it is
+      // covered here with no special case.
+      for (const name of enemyDrawList(p)) {
+        entities.push(entityOp(name, e.posX, e.posY >> 8, p.enemy.facing))
+      }
     } else if (p.kind === 'egg' && p.egg) {
       entities.push(entityOp(eggFrame(p), p.egg.posX, p.egg.posY >> 8, 1))
     } else if (p.kind === 'ptero' && p.entity) {
