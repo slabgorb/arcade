@@ -37,3 +37,8 @@ completed_stories:
     title: PTIMUP clears at BOTH wing transitions — a release restores flap lift and our flight.ts never does
     points: 3
     completed: '2026-08-05'
+  - id: cp7-5
+    epic: cp7
+    title: The spider is too fast because the OPTNS difficulty DIP is declared and never passed
+    points: 3
+    completed: '2026-08-05'

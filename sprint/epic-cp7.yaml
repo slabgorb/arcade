@@ -176,7 +176,7 @@ stories:
       ALSO IN SCOPE BECAUSE IT IS THE SAME DIP AND THE SAME REGISTER, and leaving it half-modelled invites a second story: CENTI4.MAC:380-399 lowers the spider's ceiling from 0x60 by 8 for every 20,000 points past the 60K BCD datum, capped at 5 steps (:391 "LDA I,5"). Confirm whether our port models it and say so either way rather than leaving it unstated.
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
@@ -189,7 +189,10 @@ stories:
       - The 60K spider-ceiling scaling (CENTI4.MAC:380-399, 8 per 20,000 past the datum, capped at 5 by :391) is confirmed present or absent in our port and the answer is stated either way rather than left unexamined.
       - 'The timing chain is untouched: tests/timebase.test.ts:34-39, tests/main-loop.test.ts:28-31 and :65-68, and tests/frame-order.test.ts stay green — a red one means pacing was changed instead of difficulty.'
       - The story is played and the spider reported on in prose, since the whole finding originated as a feel complaint that no constant could have revealed.
+    completed: '2026-08-05'
     type: bug
+    review_findings: "APPROVED round 4. Functionally correct from first GREEN (both spider consumers threaded, AC3 constants untouched, default EASY with reasoning in code, AC5 comments fixed, AC6 ceiling present, timing/purity green). Four review rounds, all on the re-baselined audio-wiring test-comment block: a self-contradiction, an over-generalization, and drifted citations — all documentation, now resolved. Pre-existing block-wide citation drift logged as non-blocking follow-up."
+    review_verdict: approved
   - id: cp7-6
     title: Adopt the shared pause — and stop the sustained voices that would ring through it
     description: |-
