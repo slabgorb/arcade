@@ -142,9 +142,9 @@ resize()
 
 // cp7-6 — SHELL-SIDE LIVE-LOOP TRACKING (AC2). Centipede's sustained voices are
 // EDGE-driven: the core emits `march-start` once and `march-stop` once (spider/
-// flea/scorpion likewise), never a per-frame level — unlike battlezone's, re-read
-// live and silenced for free (asteroids' `thrust` is edge-driven too, same care).
-// A paused sim emits no `-stop` edge, so those loops would RING through the pause. The
+// flea/scorpion likewise), never a per-frame level. A paused sim emits no `-stop`
+// edge, so those loops would RING through the pause (asteroids' `thrust` and battlezone's
+// continuous voices are NOT verified silenced here — see Delivery Findings). The
 // shared AudioEngine has no suspend/stopAll, only per-name stopLoop, so the fix
 // lives HERE, in the shell: mirror which loops are live from the core's edge
 // stream, then silence them at the pause edge and restart them at the resume edge

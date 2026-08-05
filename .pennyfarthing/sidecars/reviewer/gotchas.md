@@ -4,6 +4,47 @@ Common pitfalls encountered during code review.
 
 ---
 
+### A green-rework dispatched to fix a LYING comment can ship a FRESH lie in the replacement — re-verify the NEW comment's cross-references against the sibling source, don't just confirm the old false phrase is gone
+
+**Situation:** Re-reviewing a comment-only green rework (cp7-6 round 2). Round 1 rejected a centipede
+comment for a FALSE universal — "centipede is the cabinet's ONLY game with edge-driven sustained
+voices." Dev's rework correctly DELETED that phrase. Preflight green, rule-checker confirmed the two
+substantive findings (#15 comment-strip guard, #8 mock typing) genuinely closed, citation re-anchor
+verified. Easy to rubber-stamp: "the false phrase is gone, findings closed, approve."
+
+**Problem — the REPLACEMENT prose asserted two NEW claims about sibling games, and both were wrong.**
+The new comment read "…never a per-frame level — unlike battlezone's, re-read live and silenced for
+free (asteroids' `thrust` is edge-driven too, same care)." Neither claim was checked against the
+sibling source before it shipped: (1) battlezone's continuous voices are driven by
+`updateContinuousSounds`, which is called ONLY inside `if (game !== prev)` (battlezone main.ts:159-164)
+— when paused `game === prev`, so it is SKIPPED and the loops are NOT silenced. "Silenced for free" is
+verifiably FALSE; battlezone has the SAME unsilenced-through-pause bug. (2) asteroids' thrust is
+edge-driven and dispatched only inside the `stepUnlessPaused` thunk (asteroids main.ts:104-119) — a
+paused sim emits no `thrust-stop`, so it rings through pause too; asteroids is the UNFIXED twin. "same
+care" reads as "already receives the same care (safe)," exactly backwards. The lie now OBSCURES two
+real sibling bugs instead of one — worse than the round-1 claim it replaced.
+
+**Why it's the reviewer's catch and not the pipeline's:** the comment is not machine-checked (no gate
+scans this source file's prose against battlezone/asteroids behaviour), the suite is green, and the
+round-1 finding's phrase IS gone — every mechanical signal says "closed." Only reading the sibling
+source the new comment NAMES (`git grep` the cited symbols, open the cited file:line) surfaces it.
+
+**Prevention:** When a rework's mandate was "fix a false/misleading comment," do NOT diff for "is the
+old false phrase gone?" — read the ENTIRE replacement comment as new prose and verify every factual
+claim it makes, especially cross-references to OTHER modules/games, against that source directly. A
+comment that characterizes how a sibling behaves is a claim; treat it like a citation and check it.
+Re-reject (comment-only green rework — the lightest round-trip) rather than backlog a VERIFIED
+falsehood in the story's own new diff; a Delivery Finding is for pre-existing issues, not for a lie
+this very rework wrote. Bless the genuinely-closed findings explicitly so the next rework is surgical.
+
+**Example (cp7-6 R2):** 3 of 4 round-1 findings verified closed (citation :203→:291, #15 stripComments
+mutation-verified, #8 esc-overlay mock type-anchored). REJECTED for the ONE unclosed one: the
+replacement comment (main.ts:145-146) makes two false sibling claims. Filed battlezone's
+`updateContinuousSounds` gate and asteroids' thrust as non-blocking cross-game bugs (same class,
+one/two games over) — those ARE legitimate backlog Delivery Findings; the centipede comment is not.
+
+---
+
 ### After a coordinate-space refactor, Dev's sibling re-seat DEFANGS a PASSING test in the same block — mutation-test the WHOLE describe-block, and break the feedback loop that hides the regression
 
 **Situation:** Reviewing a story that moves a shared mechanism into a NEW coordinate space (rb4-16:
