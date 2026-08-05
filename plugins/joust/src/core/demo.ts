@@ -835,19 +835,19 @@ function stepTrolls(
 }
 
 /**
- * The pterodactyl processes a wave sends in (jt3-4): the wave row's ptero nibble
- * (WPTEN) WHEN the wave dispatches to the 'ptero' type through jt2-5's
- * `dispatchWaveType`, else none. The count flows through the pure
- * `pteroWaveSpawnCount`. Ptero ids sit in a separate per-wave namespace (+$80) so
- * they never collide with the ground-enemy indices.
- */
-/**
  * The three cliff "clear area" Ys a wave pterodactyl appears from — CLIF5 (bottom,
  * `$D3-2`), CLIF3 (middle, `$8A-10`) and CLIF1 (top, `$51-20`) — the areas PTERST
  * selects among per bird (JOUSTRV4.SRC:1457-1463). DECIMAL pixels: 209, 128, 61.
  */
 const PTERO_APPEAR_Y = [0xd3 - 2, 0x8a - 10, 0x51 - 20] as const
 
+/**
+ * The pterodactyl processes a wave sends in (jt3-4): the wave row's ptero nibble
+ * (WPTEN) WHEN the wave dispatches to the 'ptero' type through jt2-5's
+ * `dispatchWaveType`, else none. The count flows through the pure
+ * `pteroWaveSpawnCount`. Ptero ids sit in a separate per-wave namespace (+$80) so
+ * they never collide with the ground-enemy indices.
+ */
 function spawnWavePteros(waveNumber: number): DemoProcess[] {
   const row = waveRowAt(waveNumber)
   const count = pteroWaveSpawnCount(row.status, row.pterodactyls, { p1: true, p2: true })
