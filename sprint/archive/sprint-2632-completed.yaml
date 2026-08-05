@@ -134,3 +134,8 @@ completed_stories:
     title: The windshield crack is a HIT reaction, not a permanent decal — gate it on player-hit state
     points: 2
     completed: '2026-08-05'
+  - id: bz5-2
+    epic: bz5
+    title: Skeuomorphic periscope overlay framing the viewport + MAME color-geometry reconcile
+    points: 3
+    completed: '2026-08-05'
