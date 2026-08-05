@@ -121,29 +121,48 @@ describe('jt9-17 — the horizontal bounce reverses PVELX and turns the birds (O
     expect(facingOf(d, B), 'dead-centre: right facing unchanged').toBe(-1)
   })
 
-  it('the PBUMPX shove drains into posX at <=3 px/frame after the bounce', () => {
-    // Choose velocities that reflect to index 0 so FLIGHT contributes no X (and
-    // the parties are FROZEN anyway): the only thing that can move posX is the
-    // parked PBUMPX draining. Left +2 -> 0 (bump on left from right -2 = -2>>1 = -1);
-    // right -2 -> 0 (bump on right from left +2 = 2>>1 = +1). |bump| = 1 <= 3, so
-    // it drains whole within a frame. After settling, the left bird has slid one
-    // pixel LEFT and the right one pixel RIGHT — shoved apart by the bump alone.
+  it('the PBUMPX shove drains into posX at <=3 px/frame, shoving the birds APART until they part', () => {
+    // The birds are FROZEN (no flight step), so the ONLY thing that can move
+    // posX is the parked PBUMPX draining. A on the left charges right (+2 ->
+    // reflects to 0), B on the right already flees right (+8 -> guard skips, no
+    // reflect); the OSTLR half-shove hands A a big leftward PBUMPX (-(8+2)>>1 =
+    // -5) and B a small rightward one (+2>>1 = +1). A's -5 exceeds the WRAPX cap
+    // and drains 3 then 2. Because the entity box is 16 px wide they overlap for
+    // several frames and re-bounce each frame (the scan driver re-runs while the
+    // boxes touch, JOUSTRV4.SRC:4874-4897) — so the drain is exercised at its
+    // FULL 3 px/frame cap, monotonically outward, until they finally part and
+    // settle. We pin the LAW (cap + direction + settle), not a single pixel.
     let d = stage([
       enemyProcess(A, entity(100, 92, +2), 1),
-      enemyProcess(B, entity(104, 94, -2), 1),
+      enemyProcess(B, entity(104, 94, +8), 1),
     ])
-    const x0A = posXOf(d, A)
-    const x0B = posXOf(d, B)
-    const perFrameDeltas: number[] = []
-    let prevA = x0A ?? 0
-    for (let i = 0; i < 3; i++) {
+    const x0A = posXOf(d, A) ?? 0
+    const x0B = posXOf(d, B) ?? 0
+    const deltasA: number[] = []
+    const deltasB: number[] = []
+    let prevA = x0A
+    let prevB = x0B
+    for (let i = 0; i < 10; i++) {
       d = stepDemo(d, {})
       const nowA = posXOf(d, A) ?? 0
-      perFrameDeltas.push(Math.abs(nowA - prevA))
+      const nowB = posXOf(d, B) ?? 0
+      deltasA.push(nowA - prevA)
+      deltasB.push(nowB - prevB)
       prevA = nowA
+      prevB = nowB
     }
-    expect(Math.max(...perFrameDeltas), 'PBUMPX drains at most 3 px in any one frame').toBeLessThanOrEqual(3)
-    expect(posXOf(d, A), 'left bird shoved one pixel LEFT by its PBUMPX = -1').toBe((x0A ?? 0) - 1)
-    expect(posXOf(d, B), 'right bird shoved one pixel RIGHT by its PBUMPX = +1').toBe((x0B ?? 0) + 1)
+    // Cap: WRAPX spends at most 3 px in any one frame (BUMP_X_MAX_PER_FRAME).
+    expect(Math.max(...deltasA.map(Math.abs)), 'A drains <= 3 px/frame').toBeLessThanOrEqual(3)
+    expect(Math.max(...deltasB.map(Math.abs)), 'B drains <= 3 px/frame').toBeLessThanOrEqual(3)
+    // Cap is REAL, not a 1 px trickle: A's -5 shove must spend a full 3 somewhere.
+    expect(deltasA, 'A spends the full 3 px cap on a frame').toContain(-3)
+    // Direction: A shoved LEFT, B shoved RIGHT — never the wrong way.
+    expect(deltasA.every((dx) => dx <= 0), 'A only ever moves left').toBe(true)
+    expect(deltasB.every((dx) => dx >= 0), 'B only ever moves right').toBe(true)
+    expect(posXOf(d, A), 'A ends left of where it started').toBeLessThan(x0A)
+    expect(posXOf(d, B), 'B ends right of where it started').toBeGreaterThan(x0B)
+    // Settle: the drain terminates (they part; PBUMPX reaches 0), not runaway.
+    expect(deltasA[9], 'A has settled by frame 10').toBe(0)
+    expect(deltasB[9], 'B has settled by frame 10').toBe(0)
   })
 })

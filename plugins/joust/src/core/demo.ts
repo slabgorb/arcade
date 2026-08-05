@@ -50,6 +50,8 @@ import {
   resolveJoust,
   bounceTop,
   bounceBottom,
+  bounceApartX,
+  drainBumpX,
   pteroBirdBump,
   consumeBumpY,
   type JoustEntity,
@@ -154,6 +156,14 @@ export interface DemoProcess {
    * frame.ts is the writer; nothing here reads it directly.
    */
   prevFlapHeld?: boolean
+  /**
+   * jt9-17 — `PBUMPX`, the horizontal shove a non-killing bounce (`OSTLR`) parks
+   * on a bird, drained ≤3 px/frame into `posX` by `drainBumpX` (`WRAPX`,
+   * JOUSTRV4.SRC:7270-7288). Same home as `facing`/`prevFlapHeld` and for the
+   * identical reason — `EntityState` is GENERATED and cannot grow it. Absent
+   * reads as 0. Used for a player, a ptero-carrying enemy, and an enemy alike.
+   */
+  bumpX?: number
   /** A player's MOUNT (round 2): P1 an ostrich, P2 a stork — the render draws it under the rider. */
   mount?: 'ostrich' | 'stork'
   /** The transporter materialisation window (jt2-6), while one is in progress. */
@@ -1210,10 +1220,10 @@ function toJoustEntity(p: DemoProcess): JoustEntity | null {
       posX: e.posX,
       posY: e.posY,
       velY: e.velY,
-      velX: 0,
+      velX: e.velXIndex, // PVELX *is* the FLYX index (:7150-7158) — what OSTLR reverses
       plantZ: e.plantZ,
       facing: p.facing ?? 1,
-      bumpX: 0,
+      bumpX: p.bumpX ?? 0,
       bumpY: 0,
       party: p.kind === 'player' ? 'player' : 'enemy', // the PID class bit sides a ptero with the enemies (:4961)
       collision: collisionMaskFor(p),
@@ -1226,10 +1236,10 @@ function toJoustEntity(p: DemoProcess): JoustEntity | null {
       posX: e.posX,
       posY: e.posY,
       velY: e.velY,
-      velX: 0,
+      velX: e.velXIndex, // PVELX *is* the FLYX index (:7150-7158) — what OSTLR reverses
       plantZ: e.plantZ,
       facing: p.enemy.facing,
-      bumpX: 0,
+      bumpX: p.bumpX ?? 0,
       bumpY: 0,
       party: 'enemy',
       enemyType: p.enemyType,
@@ -1243,26 +1253,57 @@ function toJoustEntity(p: DemoProcess): JoustEntity | null {
 }
 
 /**
- * Write a resolved bounce's `velY`/`posY` back onto the process that produced
- * the `JoustEntity` (jt5-4). A bounce touches exactly these two fields — the
- * ±2 `PBUMPY` shove is folded into `posY` immediately by `consumeBumpY` rather
- * than parked in a register for a later frame to drain (no `EntityState` field
- * exists for it, and the ROM's own consumer, the flight loop's
- * `ADDA PBUMPY,U / CLR PBUMPY,U`, is one frame later than the cue this story
- * pins to the SAME frame). Everything else on the entity — facing, plantZ,
- * groundState, animPhase — is untouched.
+ * Write a resolved bounce back onto the process that produced the `JoustEntity`.
+ * The vertical arm (jt5-4) folds its ±2 `PBUMPY` into `posY` immediately via
+ * `consumeBumpY`. The horizontal arm (jt9-17, `OSTLR`) reverses `PVELX` — the
+ * FLYX index, so it lands on `velXIndex` — turns `PFACE`, and PARKS a `PBUMPX`
+ * on the process's `bumpX` for a later frame's `drainBumpX` to spend into `posX`
+ * (the WRAPX consumer is a frame later than the same-frame cue). A vertical-only
+ * or COLDX-centre bounce resolves with these three fields at their `toJoustEntity`
+ * values, so writing them back is a no-op; only a real horizontal arm changes
+ * them. `plantZ`/`groundState`/`animPhase` are untouched.
  */
 function withBounced(p: DemoProcess, resolved: JoustEntity): DemoProcess {
   if ((p.kind === 'player' || p.kind === 'ptero') && p.entity) {
-    return { ...p, entity: { ...p.entity, velY: resolved.velY, posY: resolved.posY } }
+    return {
+      ...p,
+      facing: resolved.facing,
+      bumpX: resolved.bumpX,
+      entity: { ...p.entity, velY: resolved.velY, posY: resolved.posY, velXIndex: resolved.velX },
+    }
   }
   if (p.kind === 'enemy' && p.enemy) {
     return {
       ...p,
-      enemy: { ...p.enemy, entity: { ...p.enemy.entity, velY: resolved.velY, posY: resolved.posY } },
+      bumpX: resolved.bumpX,
+      enemy: {
+        ...p.enemy,
+        facing: resolved.facing,
+        entity: { ...p.enemy.entity, velY: resolved.velY, posY: resolved.posY, velXIndex: resolved.velX },
+      },
     }
   }
   return p
+}
+
+/**
+ * jt9-17 — drain a parked `PBUMPX` by ≤3 px this frame into `posX` (`WRAPX`,
+ * JOUSTRV4.SRC:7270-7288). Runs every frame over every process (a frozen bird
+ * still drains — the shove outlives one wake); `bumpX` absent/0 is a no-op, so
+ * only a bird a bounce shoved moves. `drainBumpX` keeps the remainder for the
+ * next frame, so a >3 px shove slides across several.
+ */
+function drainProcessBumpX(p: DemoProcess): DemoProcess {
+  const bump = p.bumpX ?? 0
+  if (bump === 0) return p
+  const { applied, remaining } = drainBumpX(bump)
+  if ((p.kind === 'player' || p.kind === 'ptero') && p.entity) {
+    return { ...p, bumpX: remaining, entity: { ...p.entity, posX: p.entity.posX + applied } }
+  }
+  if (p.kind === 'enemy' && p.enemy) {
+    return { ...p, bumpX: remaining, enemy: { ...p.enemy, entity: { ...p.enemy.entity, posX: p.enemy.entity.posX + applied } } }
+  }
+  return { ...p, bumpX: remaining }
 }
 
 function collisionBox(e: JoustEntity): CollisionBox {
@@ -1461,6 +1502,23 @@ function collisionPass(processes: readonly DemoProcess[]): {
         } else {
           resolvedA = consumeBumpY(bounceBottom(a))
           resolvedB = consumeBumpY(bounceTop(b))
+        }
+        // ─── jt9-17: OSTLR, the horizontal arm, after every vertical arm ────
+        // `LDD COLDX / BEQ OSTNLR` (:5112): a dead-centre (equal-X) hit gets NO
+        // horizontal bounce. Otherwise `BPL OSTURT` (:5113) sides the parties by
+        // COLDX's sign — here, by posX. Each reflects its PVELX (the FLYX index),
+        // turns its PFACE, and parks the other's PBUMPX for `drainBumpX`.
+        if (a.posX !== b.posX) {
+          const aIsLeft = a.posX < b.posX
+          const h = bounceApartX(aIsLeft ? a.velX : b.velX, aIsLeft ? b.velX : a.velX)
+          const forA = aIsLeft
+            ? { velX: h.leftVelX, bumpX: h.leftBumpX, facing: h.leftFacing }
+            : { velX: h.rightVelX, bumpX: h.rightBumpX, facing: h.rightFacing }
+          const forB = aIsLeft
+            ? { velX: h.rightVelX, bumpX: h.rightBumpX, facing: h.rightFacing }
+            : { velX: h.leftVelX, bumpX: h.leftBumpX, facing: h.leftFacing }
+          resolvedA = { ...resolvedA, ...forA }
+          resolvedB = { ...resolvedB, ...forB }
         }
         bounced.set(pa.id, resolvedA)
         bounced.set(pb.id, resolvedB)
@@ -1826,9 +1884,19 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // advance-block consumer take that decimal ordinal directly, so there is no unit to
   // change here any more — this is the identity that USED to be `decimalWaveFromBcd`.
   const waveOrdinal = demo.wave
-  const stepped = stepFrame({ ...demo.sim, targets: tickedTargets, cues: [] }, inputs, {
-    wave: waveOrdinal,
-  })
+  // jt9-17 — WRAPX, the PBUMPX drain, runs at the top of the frame: it spends
+  // ≤3 px of the shove a bounce parked LAST frame into `posX` before this frame's
+  // flight/collision see the bird (JOUSTRV4.SRC:7270-7288, the flight loop's
+  // per-object drain is one frame after OSTLR sets PBUMPX). Draining here — not
+  // right after `collisionPass` — keeps the parked bump VISIBLE for the rest of
+  // the frame it was set, and drains it uniformly next frame whether or not the
+  // bird woke to fly.
+  const drainedProcesses = demo.sim.processes.map(drainProcessBumpX)
+  const stepped = stepFrame(
+    { ...demo.sim, processes: drainedProcesses, targets: tickedTargets, cues: [] },
+    inputs,
+    { wave: waveOrdinal },
+  )
 
   const materialised = stepped.processes.map((p) => advanceMaterialisation(p as DemoProcess))
   const collided = collisionPass(materialised)

@@ -297,6 +297,52 @@ export function bounceHorizontal(velX: number): { selfVelX: number; otherBumpX: 
   return { selfVelX: -velX + 2, otherBumpX: velX >> 1 }
 }
 
+/** The resolved horizontal bounce (`OSTLR`) for BOTH parties — see `bounceApartX`. */
+export interface HorizontalBounce {
+  leftVelX: number
+  rightVelX: number
+  leftBumpX: number
+  rightBumpX: number
+  leftFacing: Facing
+  rightFacing: Facing
+}
+
+/**
+ * The WHOLE horizontal bounce `OSTLR` (JOUSTRV4.SRC:5110-5159), both parties at
+ * once. `bounceHorizontal` above is one QUARTER of this (the rightward party's
+ * self-velocity only). `OSTLR` splits on `COLDX`'s sign (`BPL OSTURT`, :5113)
+ * into two mirror arms; over `(leftVelX, rightVelX)` — the roles decided by
+ * `COLDX` at the call site — the two arms are ONE law:
+ *
+ *   - the LEFT party moves LEFT: reverse-slow `−velX+2`, guarded `BLE 1$`
+ *     (:5115) so a party already moving away (`velX ≤ 0`) is left alone;
+ *   - the RIGHT party moves RIGHT: reverse-slow `−velX−2`, guarded `BGE`
+ *     (:5131) so `velX ≥ 0` is left alone;
+ *   - each hands the OTHER the shared-`A` `ASRA` half as its `PBUMPX`
+ *     (:5121-5122 / :5132-5134 and mirror), computed from the same reflected/
+ *     unreflected accumulator the guard produced;
+ *   - PFACE is UNCONDITIONAL (outside the velocity guard): the left party faces
+ *     left (`LDA #-1 / STA PFACE`, :5123-5124) → `-1`, the right faces right
+ *     (`CLR PFACE`, :5135; ROM 0 = right) → `+1`.
+ *
+ * `COLDX == 0` is `BEQ OSTNLR` (:5112) — no horizontal bounce — and NEVER reaches
+ * here. The FLYX index is always EVEN, so `>>` (arithmetic, = `ASRA`) has no
+ * odd-negative edge. Pure.
+ */
+export function bounceApartX(leftVelX: number, rightVelX: number): HorizontalBounce {
+  return {
+    leftVelX: leftVelX > 0 ? -leftVelX + 2 : leftVelX,
+    rightVelX: rightVelX < 0 ? -rightVelX - 2 : rightVelX,
+    // The other party's PBUMPX is the shared-A ASRA half. LEFT reflected → the
+    // right gets `velX>>1`; LEFT not reflected → `(−velX+2)>>1` (the ROM reads A
+    // AFTER the skipped store). Mirror for the right onto the left.
+    leftBumpX: rightVelX < 0 ? rightVelX >> 1 : -(rightVelX + 2) >> 1,
+    rightBumpX: leftVelX > 0 ? leftVelX >> 1 : (-leftVelX + 2) >> 1,
+    leftFacing: -1,
+    rightFacing: 1,
+  }
+}
+
 // ─── Bump drain laws ──────────────────────────────────────────────────────
 
 /**
