@@ -88,3 +88,8 @@ completed_stories:
     title: Probe what each old <game>.slabgorb.com hostname actually serves before any bucket is torn down
     points: 2
     completed: '2026-08-05'
+  - id: cp6-5
+    epic: cp6
+    title: centipede's claim ledger cannot re-run a COUNT — SND-114 shipped 'five other routines' when it is four, and the corrected number is just as unguarded
+    points: 2
+    completed: '2026-08-05'

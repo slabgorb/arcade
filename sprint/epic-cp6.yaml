@@ -214,10 +214,11 @@ stories:
     title: centipede's claim ledger cannot re-run a COUNT — SND-114 shipped 'five other routines' when it is four, and the corrected number is just as unguarded
     points: 2
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-05'
     type: chore
     review_verdict: approved
   - id: cp6-6
