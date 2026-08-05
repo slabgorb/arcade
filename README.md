@@ -34,13 +34,14 @@ front door, with every game one tile away.
 | **Asteroids** | [asteroids.slabgorb.com](https://asteroids.slabgorb.com) | Faithful clone of Atari's 1979 vector arcade game — inertial ship flight, splitting rocks, and a roaming saucer. | [`plugins/asteroids`](plugins/asteroids) |
 | **Battlezone** | [battlezone.slabgorb.com](https://battlezone.slabgorb.com) | Faithful clone of Atari's 1980 vector arcade game — first-person 3D wireframe tank duel with dual-tread steering. | [`plugins/battlezone`](plugins/battlezone) |
 | **Red Baron** | [red-baron.slabgorb.com](https://red-baron.slabgorb.com) | Faithful clone of Atari's 1980 vector arcade game — first-person WWI biplane dogfight over a vector landscape. | [`plugins/red-baron`](plugins/red-baron) |
-| **Centipede** | [in the lobby](https://arcade.slabgorb.com)&nbsp;† | Faithful clone of Atari's 1981 raster arcade game — trackball shooter in a mushroom field, with spider, flea and scorpion. | [`plugins/centipede`](plugins/centipede) |
-| **Joust** | [in the lobby](https://arcade.slabgorb.com)&nbsp;† | Faithful clone of Williams' 1982 raster arcade game — flapping knight duel over a lava pit. | [`plugins/joust`](plugins/joust) |
+| **Centipede** | [centipede.slabgorb.com](https://centipede.slabgorb.com)&nbsp;† | Faithful clone of Atari's 1981 raster arcade game — trackball shooter in a mushroom field, with spider, flea and scorpion. | [`plugins/centipede`](plugins/centipede) |
+| **Joust** | [joust.slabgorb.com](https://joust.slabgorb.com)&nbsp;† | Faithful clone of Williams' 1982 raster arcade game — flapping knight duel over a lava pit. | [`plugins/joust`](plugins/joust) |
 
-† The two newest cabinets, added after the per-game hosting table was last written, and
-reached through the lobby's tiles. Joust has had a green deploy (v0.0.8, during the
-migration); centipede's has never been confirmed from this repo, so its tile may not
-launch yet. See [`docs/ops/hosting.md`](docs/ops/hosting.md).
+† The two newest cabinets — the arcade's raster titles, added after the per-game hosting
+table was last written. Both were once doubted (centipede's deploy was unconfirmed from
+this repo; joust's was known only from a green CI deploy), but on 2026-08-05 each was
+MEASURED serving a live build — at its own hostname and via `arcade.slabgorb.com/<id>/`,
+each against a nonsense control (mg1-12). See [`docs/ops/hosting.md`](docs/ops/hosting.md).
 
 Plus the front door: [**the lobby**](lobby), the vector-style menu that lists and
 launches every game above.

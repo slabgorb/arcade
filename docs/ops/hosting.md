@@ -125,7 +125,10 @@ link decoration, and the one-time high-score bridge reads that cookie.
 >
 > "Bound" is a statement about **routing, not content**. The inventory above measured
 > which buckets and domains exist; **nothing has measured what any of the seven
-> serves.** What this repo's own record does establish, and what it does not:
+> serves.** **(Superseded 2026-08-05 — mg1-12 measured exactly that; see "Probe results"
+> below: all seven serve live builds, none cut over. This block is kept as the
+> pre-measurement record and the doubts it reasoned about.)** What this repo's own record
+> does establish, and what it does not:
 >
 > - **tempest, star-wars, asteroids, battlezone, red-baron** were the production cabinet
 >   under the pre-migration architecture — the bucket table this file used to carry

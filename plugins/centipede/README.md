@@ -61,15 +61,26 @@ npm run lint                           # tsc --noEmit across the monorepo
 npm run test:orchestrator              # the root node:test suite
 ```
 
-> **There is no way to open centipede in a browser from this repo right now.**
-> The root `npx vite` serves the **lobby** at every path — probed on a spare
-> port (5297), `/`, `/centipede/` and a nonsense control `/banana/` all return
-> 200 with the same `<title>Slabcade</title>` page. That is a blanket SPA
-> fallback, not routing. Do not screenshot `/centipede/` and report it as
-> centipede. The per-plugin dev server, the port pin (centipede owned 5278) and
-> `npm run build` were all removed by the monorepo migration; the root build and
-> the plugin router are still being wired up. The **shipped** game is unaffected
-> and still live at [centipede.slabgorb.com](https://centipede.slabgorb.com/).
+> **Open centipede in a browser with `just serve`, from the monorepo root.** One
+> Vite dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the lobby
+> at `/` and this game at `/centipede/`, served from these plugin sources, so a
+> dev URL and a production URL differ only in origin. mg1-2 landed that; the
+> per-plugin dev server, centipede's old private port (5278) and the per-plugin
+> `npm run build` are gone with it.
+>
+> Unknown paths still fall back to the lobby's SPA shell, which is why an
+> all-`200` sweep proves nothing — a fallback answers 200 to everything. A check
+> that means something compares a game path against a nonsense control and
+> asserts they DIFFER, which is what `tests/canonical-serve.test.mjs` pins. Hot
+> reload does not reach the games; refresh the browser (mg1-14).
+>
+> The **shipped** game was MEASURED live on 2026-08-05, not inferred from a
+> hostname — CLAUDE.md's rule is to request it, with a control:
+> `arcade.slabgorb.com/centipede/` and `centipede.slabgorb.com/` each served
+> `<title>Centipede</title>`, while a nonsense control on each served
+> `<title>Not Found</title>` (404). That settled centipede's long-standing
+> "genuinely unverified" doubt (mg1-12). The single-origin path is the canonical
+> one.
 
 ---
 
