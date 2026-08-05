@@ -22,3 +22,8 @@ completed_stories:
     title: Player-vs-ptero attack is box-only too — the third pass that stops at broadPhase, and the narrowPhase X-blindness question it forces
     points: 3
     completed: '2026-08-04'
+  - id: jt9-16
+    epic: jt9
+    title: The two thud paths return OPPOSITE carry — the ROM's collision scan continues after SNETHD and ABORTS after SNPTHD
+    points: 3
+    completed: '2026-08-05'
