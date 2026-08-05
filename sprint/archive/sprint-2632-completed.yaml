@@ -149,3 +149,8 @@ completed_stories:
     title: Enemy buzzards are drawn RIDERLESS — draw the DPLYR knight rider per enemy species (the buzzards carry PLYR3/4/5, JOUSTRV4.SRC:109)
     points: 3
     completed: '2026-08-05'
+  - id: sw8-30
+    epic: sw8
+    title: Mid-game plays far softer than the cabinet — port the GM.DIF difficulty accumulator (WV.HRD index) and the ADCGAS Death-Star-kill shield refill
+    points: 5
+    completed: '2026-08-05'

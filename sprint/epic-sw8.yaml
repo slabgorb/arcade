@@ -543,7 +543,7 @@ stories:
       Scope guard: this story touches the difficulty INDEX and the shield count only. The TGPROB table contents (mask/threshold/guns columns), the sec.6 fire gate itself, TIE flight, and the hit-test geometry (sw8-27/sw8-29) are untouched. My GM.BMP schedule reading is a single-session derivation — AC1 refutes it before it becomes code.
     points: 5
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
@@ -554,4 +554,6 @@ stories:
       - "AC4 — ADCGAS ported: on a Death-Star kill, BONUS_SHIELDS_DIP (one named constant, factory 1, MAME starwars.cpp:204-208) shield units are added, capped at STARTING_LIVES, sequenced AFTER the SCRSHL surviving-shield score bonus (cite WSGAS.MAC:42-58 and WSMAIN.MAC:1964-1977 at the site). The shield HUD gauge reflects the refill. A run that dies before any Death-Star kill is unchanged."
       - "AC5 (MUTATION-PROVEN, epic convention) — Both behaviors redden with the mutated string recorded VERBATIM: (a) deleting the accumulator (index falls back to min(wave-1,15)) reddens a seat that pins the AC1 oracle at a mid-run wave where the two indexes differ; (b) deleting the ADCGAS step reddens a seat asserting post-kill shields = pre-kill + 1 (capped). Record which tests redden."
       - "AC6 (CONFIRMED ledger) — The two MAME corroborations (timebase, starting shields) are appended to the star-wars audit doc's confirmed findings with the starwars.cpp cites, so the cross-check leaves a trace and is not re-run from scratch."
+    completed: '2026-08-05'
     type: bug
+    review_verdict: approved
