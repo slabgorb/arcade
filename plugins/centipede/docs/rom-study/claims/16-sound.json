@@ -1023,6 +1023,19 @@
       "file": "CENTI4.MAC",
       "line": 2322,
       "verbatim": "\t.SBTTL SOUNDS-SOUND ROUTINE"
-    }
+    },
+    "counts": [
+      {
+        "pattern": "^52[$]:",
+        "expected": 20,
+        "note": "Re-derives the prose's '20 times across the whole vendored tree; counted with grep -rn ^52[$]: over reference/atari-source/centipede'."
+      },
+      {
+        "pattern": "^52[$]:",
+        "scope": "revision.v4",
+        "expected": 5,
+        "note": "The prose's 'four more times in this revision' guarded via its substrate: revision.v4 holds 5 defs of 52$ (CENTI4.MAC:622,:1076,:2065,:2418 + CENIR4.MAC:388); 'four more' = these 5 minus the SOUNDS-owned def at CENTI4.MAC:2418. See cp6-5 TEA deviation."
+      }
+    ]
   }
 ]

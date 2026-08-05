@@ -8,7 +8,10 @@
 //
 // Schema per claim: non-empty unique `id`; non-empty `claim`; `source` =
 // {file: non-empty string, line: positive int, verbatim: string}; optional
-// `corroboration` (object or non-empty string), never byte-opened.
+// `corroboration` (object or non-empty string), never byte-opened; optional
+// `counts` (cp6-5) — an array of {pattern, scope?, expected, note?} tallies
+// RE-DERIVED against the tree so a number embedded in claim prose reddens on
+// source drift (schema-checked always, re-run only with a vendoredRoot).
 //
 // Byte verification (only when `vendoredRoot` is non-null): resolve
 // `source.file` root-first, then revision.v4/ (a `file` already containing a
@@ -21,7 +24,7 @@
 // part ledger, the link map) as primary design intent — existence in the
 // vendored tree is the gate here, not link-string membership.
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
 import { join, dirname, isAbsolute, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -102,6 +105,66 @@ function resolveInTree(vendoredRoot, file) {
 }
 
 /**
+ * cp6-5 — resolve a count assertion's optional `scope` to an absolute path in
+ * the vendored tree. Absent/empty ⇒ the whole tree (the bare
+ * `grep -rn … reference/atari-source/centipede` recipe). A subpath is joined and
+ * then CONTAINED: it must stay inside vendoredRoot after normalisation (same rule
+ * as `resolveInTree`'s slash-branch — a `..` landing back inside is fine; one that
+ * escapes is refused, never a silent zero). Returns undefined if it escapes or is
+ * absent from the tree.
+ */
+function resolveScope(vendoredRoot, scope) {
+  if (scope === undefined || scope === '') return vendoredRoot
+  const p = isAbsolute(scope) ? scope : join(vendoredRoot, scope)
+  const resolvedRoot = resolve(vendoredRoot)
+  const resolvedPath = resolve(p)
+  const withinTree = resolvedPath === resolvedRoot || resolvedPath.startsWith(resolvedRoot + sep)
+  if (!withinTree) return undefined
+  return existsSync(p) ? p : undefined
+}
+
+/**
+ * cp6-5 — count LINES matching `re` under `root` (a file, or a directory walked
+ * recursively). Line-oriented, mirroring `grep -n <pattern>` — not global matches
+ * within a line. `re` must be flag-free (`new RegExp(pattern)`) so `.test` stays
+ * stateless across the walk.
+ */
+function countMatchingLines(root, re) {
+  if (statSync(root).isDirectory()) {
+    let n = 0
+    for (const e of readdirSync(root, { withFileTypes: true })) n += countMatchingLines(join(root, e.name), re)
+    return n
+  }
+  let n = 0
+  for (const line of readFileSync(root, 'utf8').split('\n')) if (re.test(line)) n++
+  return n
+}
+
+/**
+ * cp6-5 — schema-validate one count assertion, returning an error string or null.
+ * `expected: 0` is VALID (a pattern that legitimately matches nothing) — the
+ * non-negative-integer test admits it, so no `||`-style falsy coercion can drop it.
+ */
+function countSchemaError(id, ct) {
+  if (typeof ct !== 'object' || ct === null || Array.isArray(ct)) {
+    return `${id}: malformed count assertion (must be an object with a pattern and expected)`
+  }
+  if (typeof ct.pattern !== 'string' || ct.pattern.length === 0) {
+    return `${id}: malformed count assertion (needs a non-empty string pattern)`
+  }
+  if (!(Number.isInteger(ct.expected) && ct.expected >= 0)) {
+    return `${id}: malformed count assertion (expected must be a non-negative integer)`
+  }
+  if ('scope' in ct && ct.scope !== undefined && typeof ct.scope !== 'string') {
+    return `${id}: malformed count assertion (scope must be a string)`
+  }
+  if ('note' in ct && ct.note !== undefined && typeof ct.note !== 'string') {
+    return `${id}: malformed count assertion (note must be a string)`
+  }
+  return null
+}
+
+/**
  * Validate a set of claims. Returns one error string per problem; an empty
  * array means every claim is well-formed and (when `vendoredRoot` is
  * provided) every cited line re-opens byte-for-byte.
@@ -149,6 +212,41 @@ export function checkClaims(claims, { vendoredRoot }) {
     if ('corroboration' in (c ?? {}) && c.corroboration !== undefined) {
       if (!isValidCorroboration(c.corroboration)) {
         errors.push(`${id}: malformed corroboration (must be a non-empty string, or an object with valid fields)`)
+      }
+    }
+
+    // cp6-5 — COUNT assertions: schema always, re-derivation only with a tree.
+    if ('counts' in (c ?? {}) && c.counts !== undefined) {
+      if (!Array.isArray(c.counts)) {
+        errors.push(`${id}: malformed counts (must be an array of count assertions)`)
+      } else {
+        for (const ct of c.counts) {
+          const schemaErr = countSchemaError(id, ct)
+          if (schemaErr) {
+            errors.push(schemaErr)
+            continue
+          }
+          if (!vendoredRoot) continue // schema-only (CI): the tree is absent, don't re-derive
+          const scopeRoot = resolveScope(vendoredRoot, ct.scope)
+          if (scopeRoot === undefined) {
+            errors.push(`${id}: count scope ${JSON.stringify(ct.scope)} escapes or is absent from the vendored tree`)
+            continue
+          }
+          let re
+          try {
+            re = new RegExp(ct.pattern)
+          } catch (e) {
+            errors.push(`${id}: count pattern ${JSON.stringify(ct.pattern)} is not a valid regex (${e.message})`)
+            continue
+          }
+          const actual = countMatchingLines(scopeRoot, re)
+          if (actual !== ct.expected) {
+            const where = ct.scope ? `in ${ct.scope}` : 'over the whole tree'
+            errors.push(
+              `${id}: count ${JSON.stringify(ct.pattern)} ${where} expected ${ct.expected} but re-derived ${actual}`,
+            )
+          }
+        }
       }
     }
   }
