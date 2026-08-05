@@ -612,7 +612,8 @@ function pteroFlightEntity(): EntityState {
  * enemyType, so it never carries a DVALUE type). jt3-4 spawns it; jt3-7 makes it
  * LIVE: it carries a flight `entity` (stepped gravity-exempt by frame.ts) and
  * collides with a player through resolvePteroAttack (the lance-height joust). */
-function pteroProcess(id: number): DemoProcess {
+function pteroProcess(id: number, posY?: number): DemoProcess {
+  const entity = pteroFlightEntity()
   return {
     id,
     cls: 'secondary',
@@ -621,7 +622,9 @@ function pteroProcess(id: number): DemoProcess {
     kind: 'ptero',
     facing: 1,
     collisionEnabled: true,
-    entity: pteroFlightEntity(),
+    // jt9-44 — a wave's pteros enter on DISTINCT cliff lanes (see spawnWavePteros);
+    // absent an override the shared pteroFlightEntity Y stands (the baiter's single ptero).
+    entity: posY === undefined ? entity : { ...entity, posY },
   }
 }
 
@@ -838,11 +841,28 @@ function stepTrolls(
  * `pteroWaveSpawnCount`. Ptero ids sit in a separate per-wave namespace (+$80) so
  * they never collide with the ground-enemy indices.
  */
+/**
+ * The three cliff "clear area" Ys a wave pterodactyl appears from — CLIF5 (bottom,
+ * `$D3-2`), CLIF3 (middle, `$8A-10`) and CLIF1 (top, `$51-20`) — the areas PTERST
+ * selects among per bird (JOUSTRV4.SRC:1457-1463). DECIMAL pixels: 209, 128, 61.
+ */
+const PTERO_APPEAR_Y = [0xd3 - 2, 0x8a - 10, 0x51 - 20] as const
+
 function spawnWavePteros(waveNumber: number): DemoProcess[] {
   const row = waveRowAt(waveNumber)
   const count = pteroWaveSpawnCount(row.status, row.pterodactyls, { p1: true, p2: true })
   const pteros: DemoProcess[] = []
-  for (let i = 0; i < count; i++) pteros.push(pteroProcess(0x100 * waveNumber + 0x80 + i))
+  for (let i = 0; i < count; i++) {
+    // jt9-44 — SPREAD the complement so it never enters STACKED. The ROM stages a
+    // wave's pteros ONE AT A TIME (PTERWV `PCNAP 65` between each create, :2618) and
+    // each picks a CLEAR cliff AREA to appear from (PTERST, :1457-1463). This port
+    // enters the whole complement on a single frame, so without a spread they land at
+    // ONE coordinate and — now that jt5-16/jt9-15 resolve ptero pairs — the collision
+    // pass sounds a BURST of enemy-thud cues on the entry frame. Cycling the ROM's
+    // three cliff-appear lanes by index keeps every ptero on its own Y (≥60px apart):
+    // no entry-frame overlap, no burst, and the physics stays ROM-lawful.
+    pteros.push(pteroProcess(0x100 * waveNumber + 0x80 + i, PTERO_APPEAR_Y[i % PTERO_APPEAR_Y.length] << 8))
+  }
   return pteros
 }
 
