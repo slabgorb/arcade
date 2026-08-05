@@ -118,14 +118,38 @@ source-wiring tests as the backstop.
 
 ## The citation gate
 
-`tests/audit/citations.test.ts` + `tools/audit/check-citations.mjs`. Unlike
-tempest's, this gate re-opens each finding's `ours` citation **against the
-working tree**, not against a frozen commit — so any edit that shifts a cited
-line breaks it. Re-anchor with `tools/audit/reanchor-citations.mjs` after editing
-a cited file. The source side reads
+`tests/audit/citations.test.ts` + `tools/audit/check-citations.mjs`. Like
+tempest's (story td1-13 ported tp1-22), this gate re-opens each finding's `ours`
+citation **against the audit commit** — `git show 3580752:<file>`, the commit that
+recorded the audit (`chore(audit): land primary-source fidelity rig`) — **not** the
+working tree. That commit is reachable via the `audit/star-wars` tag on origin (its
+paths are the OLD repo-root paths — `src/core/sim.ts`, not
+`plugins/star-wars/src/core/sim.ts` — which is correct, since `git show <rev>:<path>`
+resolves against that commit's own tree); CI's `fetch-depth: 0` keeps the blob
+reachable. Because the audit record is immutable, a finding that is green once is
+green forever no matter how the code is later refactored: `ours.line` is now
+decorative and the quote is matched **by text** anywhere in the frozen file. Before
+td1-13 the gate read the working tree, and every fix story paid a tax of re-pointing
+citations by hand — that tax is gone. The source side reads
 `/Users/slabgorb/Projects/star-wars-1983-source-text` (override with
-`STARWARS_SOURCE_DIR`); if that path is missing the source-side describe
-**skips**, which is a silent pass — check it ran.
+`STARWARS_SOURCE_DIR`) and stays **live** against the immutable 1983 assembler; if
+that path is missing the source-side describe **skips**, which is a silent pass —
+check it ran.
+
+Two conventions still matter:
+
+1. **Fixed a finding? Record it with `"remediated_by": "<story-id>"`.** The freeze
+   keeps the gate green either way, but the field is how the audit RECORDS that a
+   defect was corrected. The checker then keeps `ours` as HISTORY and does not
+   re-open it. Do NOT re-point a fixed finding's `ours` at the corrected line — that
+   makes the finding assert the fix is the defect.
+2. **If the gate goes red with "does not match verbatim at 3580752",** the finding's
+   `ours` has drifted off the immutable record: re-baseline its quote to the `3580752`
+   text, or mark it `remediated_by` if it was actually fixed.
+   `node tools/audit/reanchor-citations.mjs` is now a **health check** — it validates
+   every `ours` quote against the audit commit and reports any that are LOST; it no
+   longer moves line numbers, because `ours` is frozen and its stored line is now
+   decorative.
 
 The migration's `@arcade/shared/*` → `@shared/*` rewrite deliberately did **not**
 touch `docs/`: the findings' `ours.verbatim` quotes are frozen audit evidence, and

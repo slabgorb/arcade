@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { checkFindings } from '../../tools/audit/check-citations.mjs'
@@ -8,6 +9,14 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const findingsDir = join(repoRoot, 'docs', 'audit', 'findings')
 const sourceDir = process.env.STARWARS_SOURCE_DIR ?? '/Users/slabgorb/Projects/star-wars-1983-source-text'
 const sourceAvailable = existsSync(sourceDir)
+
+// td1-13 — the checker now re-opens `ours` against the AUDIT COMMIT, not the working tree.
+// A well-formed `ours` fixture therefore has to quote a line as it stood at 3580752, not a line
+// read live off disk. `auditLine` reads exactly what the checker's own `AUDIT_COMMIT` read sees;
+// a line that existed at the audit resolves fine. (Mirrors tempest's tp1-22 citations.test.ts.)
+const AUDIT_COMMIT = '3580752'
+const auditLine = (file: string, n: number): string =>
+  execFileSync('git', ['show', `${AUDIT_COMMIT}:${file}`], { cwd: repoRoot, encoding: 'utf8' }).split('\n')[n - 1]
 
 describe('checkFindings', () => {
   it('rejects a citation to a module that never shipped', () => {
@@ -53,7 +62,7 @@ describe('checkFindings', () => {
   })
 
   it('accepts a finding whose `ours` verbatim matches the real line', () => {
-    const line = readFileSync(join(repoRoot, 'src/core/gameRules.ts'), 'utf8').split('\n')[19]
+    const line = auditLine('src/core/gameRules.ts', 20) // as it stood at the audit commit
     const errors = checkFindings(
       [{
         id: 'X-003', class: 'DIVERGENCE', title: 't',
@@ -109,8 +118,9 @@ describe('checkFindings', () => {
 
   it('still accepts an `ours` citation to a tracked file in our own tree', () => {
     // Guard the guard: the node_modules rule must not become a blanket ban on
-    // ours-side citations. A stable, tracked anchor in our own core still passes.
-    const line = readFileSync(join(repoRoot, 'src/core/gameRules.ts'), 'utf8').split('\n')[19]
+    // ours-side citations. A stable, tracked anchor in our own core, quoted as it stood at
+    // the audit commit (src/core/gameRules.ts existed at 3580752), must still be accepted.
+    const line = auditLine('src/core/gameRules.ts', 20) // as it stood at the audit commit
     const errors = checkFindings(
       [{
         id: 'X-021', class: 'DIVERGENCE', title: 't',

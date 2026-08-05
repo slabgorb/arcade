@@ -183,8 +183,8 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 1798,
-      "verbatim": "  return { lives: Math.max(0, lives - 1), shieldHitAt: t }"
+      "line": 325,
+      "verbatim": "  const lives = Math.max(0, state.lives - damage)"
     }
   },
   {

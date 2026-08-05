@@ -80,8 +80,8 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 640,
-      "verbatim": "        killedTie.add(hitTie)"
+      "line": 266,
+      "verbatim": "        killedTie.add(ei)"
     }
   },
   {
@@ -97,8 +97,8 @@
     },
     "ours": {
       "file": "src/core/state.ts",
-      "line": 574,
-      "verbatim": "export const TIE_NEAR_BOUND = 0x800 // 2048 — WSCPU \"not too close\" fire floor"
+      "line": 308,
+      "verbatim": "export const TIE_NEAR_BOUND = 0x800 // 2048 — WSCPU \"not too close\" fire/peel floor"
     }
   },
   {
@@ -131,8 +131,8 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 2255,
-      "verbatim": "  return { pos, kind, orient: lookRotation(FACING_PLAYER), vm, firedGun: false }"
+      "line": 1189,
+      "verbatim": "  return { pos, vel: scale(dir, speed), kind: 'tie', orient: lookRotation(dir), bank }"
     }
   },
   {

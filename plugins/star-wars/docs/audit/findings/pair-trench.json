@@ -258,8 +258,8 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 1994,
-      "verbatim": "  return { pos: [0, 0, -trenchPortDistance(baseWave, rng)] }"
+      "line": 1018,
+      "verbatim": "  return { pos: [0, 0, -EXHAUST_PORT_DISTANCE] }"
     }
   },
   {
@@ -326,8 +326,8 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 1648,
-      "verbatim": "  if (reachedCockpit) {"
+      "line": 781,
+      "verbatim": "  if (collides(port, COCKPIT, COCKPIT_HIT_RADIUS)) {"
     },
     "recommendation": "accept",
     "verdict": "CONFIRMED"

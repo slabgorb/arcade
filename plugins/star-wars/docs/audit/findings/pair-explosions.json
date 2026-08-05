@@ -12,8 +12,8 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 587,
-      "verbatim": "        drawWireframe(ctx, TIE_WING_FRAG_1, at(-ws, 0, 0), proj, w, h, wc)"
+      "line": 394,
+      "verbatim": "      drawWireframe(ctx, TIE_WING_FRAG_1, at(-s, 0, 0), proj, w, h, TIE_GLOW)"
     },
     "verdict": "CONFIRMED",
     "refutation_corrections": "STRIKE the false parenthetical: 'The third piece differs in identity (ROM: center globe/cockpit ball; ours: a third wing fragment on +z).' It does NOT differ. Verified models.ts:234-239: TIE_WING_FRAG_3 has name 'TIE Fragment Cabin', vertices `TIE_FIGHTER.vertices.slice(-28)` (the aft cabin/globe), i.e. the ROM's TP$TI3 CENTER GLOBE. The symbol name 'WING_FRAG_3' is a misnomer; the geometry is the globe, so the third-piece identity actually MATCHES the ROM (consistent with pair-models M-002, not in conflict with it). Only its render placement (+z drift, render.ts:396) is a render-only tell. The false 'differs in identity' clause must not ship as proof-of-divergence."
@@ -76,8 +76,8 @@
     },
     "ours": {
       "file": "src/shell/render.ts",
-      "line": 585,
-      "verbatim": "        const ws = wf * TIE_DEATH_SPREAD"
+      "line": 391,
+      "verbatim": "      const s = f * TIE_DEATH_SPREAD"
     },
     "recommendation": "accept"
   },

@@ -1,7 +1,8 @@
-// The citation gates in tempest and red-baron read blobs from the commit their
-// audit was taken against. Squashing history on import would delete those commits
+// The citation gates in tempest, red-baron and star-wars read blobs from the commit
+// their audit was taken against. Squashing history on import would delete those commits
 // and the gates would fail forever. These tags keep them reachable; this test is
-// the tripwire that notices if one is ever dropped or gc'd.
+// the tripwire that notices if one is ever dropped or gc'd. (star-wars was frozen later,
+// by td1-13 — its tag was cut from the archived slabgorb/star-wars history, not Task 2.)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -9,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 const AUDIT_REFS = [
   { tag: 'audit/tempest', sha: '4232ed4', probe: 'src/core/sim.ts' },
   { tag: 'audit/red-baron', sha: '6038a07b9044f1add37fd12c217cd39ec1629439', probe: 'src/core/flight.ts' },
+  { tag: 'audit/star-wars', sha: '358075282db3f7b2116ed5016ff61e99cf9f2acd', probe: 'src/core/sim.ts' },
 ];
 
 for (const { tag, sha, probe } of AUDIT_REFS) {

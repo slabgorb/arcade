@@ -91,8 +91,8 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 1390,
-      "verbatim": "      ? beamHit(beamOrigin, beamDir, portPos, PORT_HIT_RADIUS, TRENCH_FAR)"
+      "line": 728,
+      "verbatim": "    sweptCollides(port, sub(b.pos, scale(b.vel ?? ZERO, dt)), b.pos, PORT_HIT_RADIUS),"
     },
     "recommendation": "accept"
   },
@@ -151,8 +151,8 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 703,
-      "verbatim": "    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {"
+      "line": 317,
+      "verbatim": "    if (collides(s.pos, COCKPIT, COCKPIT_HIT_RADIUS)) {"
     },
     "recommendation": "accept",
     "verdict": "CONFIRMED"
@@ -191,8 +191,8 @@
     },
     "ours": {
       "file": "src/core/sim.ts",
-      "line": 466,
-      "verbatim": "          enemyShots.push({ pos: [...e.pos] as Vec3, vel: [0, 0, 0], ttl: ENEMY_SHOT_TTL })"
+      "line": 240,
+      "verbatim": "        pos: [...e.pos] as Vec3,"
     }
   },
   {
