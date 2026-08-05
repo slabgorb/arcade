@@ -124,3 +124,8 @@ completed_stories:
     title: centipede's rogue-manifest guard asserts only the interpolated cue name — rewording the diagnostic wholesale leaves it green
     points: 2
     completed: '2026-08-03'
+  - id: td1-13
+    epic: td1
+    title: star-wars citation gate still reads the WORKING TREE — port tempest's tp1-22 audit-commit freeze and retire the re-anchor loop
+    points: 3
+    completed: '2026-08-05'
