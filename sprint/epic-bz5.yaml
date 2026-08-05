@@ -1,0 +1,154 @@
+id: bz5
+type: epic
+title: Battlezone presentation & MAME cross-check — hit-driven windshield, the periscope overlay, and a driver-level fidelity pass
+description: >-
+  Fifth of the bz1/bz2/bz3/bz4 Battlezone line. Two presentation gaps the player
+  sees plus a driver-level fidelity re-audit against a SECOND, independent primary
+  source. The prior four epics audited the game against the BZONE.MAC / va-battlezone
+  dis65 ROM disassembly; this epic cross-checks that work against the MAME driver
+  (/Users/slabgorb/Projects/mame/src/mame/atari/bzone.cpp, bzone.h, bzone_a.cpp and
+  layout/bzone.lay) — the emulator that actually RUNS the ROM, so its clock chain,
+  color overlay and sound-gating are an executable ground truth the disassembly alone
+  is not. Two agreeing sources is the bar. Presentation: (1) the cracked-glass
+  windshield currently draws every frame from spawn (main.ts:276) — it is the cabinet's
+  HIT reaction, not a permanent decal, and must be gated on the player-hit state core
+  already tracks; (2) the skeuomorphic periscope bezel that frames the viewport is
+  missing, and the red/green color split should be pinned to MAME's authoritative
+  geometry. Fidelity: reconcile our 15.625 Hz sim game-frame against MAME's clock
+  chain, and re-validate the enemy AI against MAME + the disassembly together.
+priority: p2
+status: backlog
+repos: battlezone
+stories:
+  - id: bz5-1
+    title: The windshield crack is a HIT reaction, not a permanent decal — gate it on player-hit state
+    description: >-
+      The lead bug. drawCrackedGlass(ctx, w, h) is called UNCONDITIONALLY every frame
+      (plugins/battlezone/src/main.ts:276), so the viewport "starts cracked" the instant
+      a run begins. On the real cabinet the shattered-glass graphic is the tank's hit/
+      destruction reaction — the periscope shatters when you are killed, then clears on
+      respawn. The ROM already models the trigger: bz4-1 shipped BOUNCE=0xFF on the
+      player-death / windshield-crack path (BZONE.MAC:2337-2338), and the render comment
+      (render.ts:329-333, "dis65 @ $6140") already documents the crack as the death-path
+      graphic. What is missing is the WIRING: the shell must draw the crack only while the
+      player is in the hit/dying state and clear it on respawn, instead of always. Thread a
+      pure, observable "windshield cracked" flag off the existing death/hit event in core
+      (events.ts / state.ts / sim.ts) — do NOT compute it in the shell — and gate
+      drawCrackedGlass on it. Keep the crack geometry (CRACK_PATHS) as-is; only its
+      VISIBILITY changes. Cross-check the trigger against MAME's death handling so the
+      appear/clear timing matches the executed ROM, not just the disassembly line.
+    points: 2
+    priority: p1
+    repos: battlezone
+    workflow: tdd
+    status: backlog
+    acceptance_criteria:
+      - >-
+        On a fresh run and during normal play the windshield is CLEAN — drawCrackedGlass
+        is not invoked while the player is alive and un-hit (pinned by a core-state test,
+        not a screenshot).
+      - >-
+        The crack appears when the player is hit/destroyed (the existing BOUNCE=0xFF /
+        death event, BZONE.MAC:2337-2338) and clears on respawn; the visibility flag is
+        computed in core and only READ by the shell (core purity preserved).
+      - >-
+        The appear/clear timing is cross-checked against MAME's player-death handling
+        (bzone.cpp) and the ruling recorded in the findings doc.
+  - id: bz5-2
+    title: Skeuomorphic periscope overlay framing the viewport + MAME color-geometry reconcile
+    description: >-
+      Two parts of the same overlay. (A) DESIGN — add the skeuomorphic periscope bezel that
+      frames the play area: the cabinet's viewport is seen through a periscope mask, and the
+      clone currently renders edge-to-edge with no framing. This is cabinet artwork, NOT in
+      the ROM or MAME (MAME models only the color multiply, layout/bzone.lay), so it is
+      eyeball/reference-driven from real-cabinet footage (references/footage) — a shell-only
+      HUD-space overlay, drawn over the world and under the score/radar so the HUD stays
+      legible, same layering as drawCrackedGlass. (B) FIDELITY — pin the red/green color
+      split to MAME's authoritative geometry: layout/bzone.lay defines the physical color
+      overlay as RED from top=0 to bottom=0.2 (rgb 1.0,0.125,0.125) and GREEN from 0.2 to 1.0
+      (rgb 0.125,1.0,0.125), blended "multiply". Our HUD already uses HUD_RED for the score/
+      radar band and GLOW_GREEN for the field; verify the red band's lower edge sits at the
+      0.2 split and the field is green below it, and document any deliberate deviation. Note
+      bzone.cpp:855 records a blue-overlay variant — out of scope, green cabinet is canonical.
+    points: 3
+    priority: p2
+    repos: battlezone
+    workflow: tdd
+    status: backlog
+    acceptance_criteria:
+      - >-
+        A skeuomorphic periscope bezel frames the viewport, drawn in HUD/pixel space over the
+        world and under the score/radar HUD; placement/style is reference-driven and does not
+        obscure the gunsight or a target at screen center.
+      - >-
+        The red radar/score band and the green field split at the MAME-authoritative
+        boundary (layout/bzone.lay: red top..0.2, green 0.2..1.0), pinned by a test on the
+        boundary value; any intentional deviation is documented in the findings doc.
+      - >-
+        The overlay is shell-only presentation — no core/sim change, core-purity sweep stays
+        green.
+  - id: bz5-3
+    title: Timing cross-check — reconcile the 15.625 Hz sim game-frame against MAME's clock chain
+    description: >-
+      The prior epics fixed the sim to a 15.625 Hz game-frame (vs a 60 Hz shell sub-step,
+      ~divide-by-4; see the bz3 timebase work and tests/core/timebase.test.ts). MAME gives an
+      independent, executable clock chain to check that against: BZONE_MASTER_CLOCK = XTAL
+      12.096 MHz (bzone.h:20); the 6502 runs at master/8 = 1.512 MHz (bzone.cpp:611);
+      BZONE_CLOCK_3KHZ = master/4096 ~= 2953 Hz (bzone.h:21); the NMI is periodic at
+      CLOCK_3KHZ/12 ~= 246 Hz, GATED by IN0 bit 0x10 self-test (bzone.cpp:613, 261-266); the
+      vector refresh is CLOCK_3KHZ/12/6 ~= 41 Hz (bzone.cpp:619); and clock_r toggles on CPU
+      total_cycles & 0x100 (bzone.cpp:275-278). Trace how the ROM's main loop derives its
+      game-logic tick from that chain (NMI-counted frames vs vector-draw sync) and confirm the
+      effective game-logic rate is 15.625 Hz — or, if the chain says otherwise, quantify the
+      drift and correct the timebase. This is a verification-first story: the deliverable is a
+      reconciled, cited answer plus any needed correction, NOT a speculative rewrite.
+    points: 3
+    priority: p2
+    repos: battlezone
+    workflow: tdd
+    status: backlog
+    acceptance_criteria:
+      - >-
+        The clone's game-logic frame rate is reconciled against the MAME clock chain
+        (bzone.h:20-21, bzone.cpp:611/613/619) with the derivation written up in the findings
+        doc — showing whether 15.625 Hz matches the executed ROM and by what path.
+      - >-
+        If a drift is found the timebase is corrected and every cadence-gated counter
+        (shot/saucer/AI/radar) still ticks at its ROM-correct rate; if no drift, the 15.625 Hz
+        value gains an explicit second-source citation and the tests assert it.
+      - >-
+        No regression in the existing timebase/cadence suites (timebase, radar-sweep, firing,
+        saucer, enemies) after the reconcile.
+  - id: bz5-4
+    title: Enemy AI cross-check against MAME + BZONE.MAC together
+    description: >-
+      Re-validate the enemy AI (shipped across bz1-bz4: the goal-heading tank state machine —
+      flank/wander/charge, ~22 deg/s turn, standoff distance, fire on barrel sweep; plus
+      saucer, missile and supertank behaviors) against MAME as a second source. The bz*
+      audits read behavior off the BZONE.MAC / dis65 disassembly; MAME EXECUTES the same ROM,
+      so its running behavior and its sound-gating are a cross-check on our port. bzone_a.cpp
+      documents the sound-enable bits that fire as AI acts — engine enable/rev (D7/D4), shell
+      enable (D2), explosion enable (D0) (bzone_a.cpp:1-20) — which tie audible enemy actions
+      (move, fire, die) to the AI state and give an observable hook for the cross-check.
+      Confirm the aggression ramp, the fire-decision gating, the standoff/charge transitions
+      and the missile/supertank spawn cadence match the executed ROM; file any divergence as a
+      finding with a MAME citation before changing behavior. Verification-first: behavior
+      changes only where BOTH sources agree the clone is wrong.
+    points: 3
+    priority: p2
+    repos: battlezone
+    workflow: tdd
+    status: backlog
+    acceptance_criteria:
+      - >-
+        The tank AI state machine (turn rate, standoff, flank/charge transitions, fire-on-
+        sweep) is cross-checked against MAME's executed behavior and the disassembly together;
+        agreements and any divergences are recorded in the findings doc with MAME citations.
+      - >-
+        The saucer, missile and supertank spawn/aggression cadences are confirmed against the
+        second source; the enemy sound-gating (bzone_a.cpp:1-20) is used as the observable
+        hook tying AI actions to their audio.
+      - >-
+        Any behavior change lands only where both sources agree the clone diverged, with the
+        existing enemy suites (enemies, enemies-aggression, enemies-maneuver, firing) staying
+        green.
