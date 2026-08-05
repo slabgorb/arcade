@@ -1426,7 +1426,20 @@ function collisionPass(processes: readonly DemoProcess[]): {
         // SNPTHD (020) and SNETHD (009) send the same 6-bit code $08 at
         // different priorities — two sounds, never a collapsed 'thud'.
         cues.push({ type: isEnemyThud ? 'enemy-thud' : 'player-thud' })
-        continue
+        // jt9-16 — the two thud tails return OPPOSITE carry, and the scan driver
+        // branches on it. SNETHD (enemies collide) clears carry — OSTH11
+        // `JMP HITEM2` (:5029) → HITEM1 `ANDCC #$FE` (:4947) — so the driver's
+        // `BCS 20$` (:4886) is NOT taken and the INNER scan CONTINUES to the next
+        // partner (:4897 `LDX PLINK,X`). SNPTHD (a person tie, "BOTH ON SAME
+        // LEVEL") SETS carry — OSTXTT `BRA OSTX12` (:5054) → `ORCC #$01` (:5059) —
+        // so `BCS 20$` IS taken and the driver jumps to `20$`/`25$ LDU PLINK,U`
+        // (:4874), ADVANCING the outer walk: this object's remaining inner
+        // partners are abandoned this frame even though the tie killed no one
+        // ("REG.U GUY IS DEAD, GET NEXT REG.U GUY", :5059). So enemy-thud keeps
+        // the inner loop running; player-thud breaks it, letting the outer `i`
+        // advance to the next object U.
+        if (isEnemyThud) continue
+        break
       }
 
       const winner = contact.survivors.includes('a') ? pa : pb
