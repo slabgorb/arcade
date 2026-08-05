@@ -24,7 +24,7 @@ prose; only this one is the contract, and the test refuses to run without them.
 | asteroids | adopted | adopted | adopted |
 | battlezone | adopted | adopted | adopted |
 | red-baron | adopted | adopted | adopted |
-| centipede | rom-cadence | rom-cadence | behaviour-absent |
+| centipede | rom-cadence | rom-cadence | adopted |
 | joust | rom-cadence | rom-cadence | behaviour-absent |
 
 <!-- adoption-matrix:end -->
@@ -46,13 +46,16 @@ nobody will re-examine.
 says "yes, this game does this, and we chose not to touch it". Nothing here is a
 missed opportunity; the two rows are argued below.
 
-## Why centipede and joust adopt nothing
+## Why centipede and joust defer the canvas mount and audio unlock
 
 Both run the original cabinets' frame cadences — centipede on `FRAME_HZ =
 15750/263`, joust on its own `FRAME_DURATIONS` timebase — and both are gated
 against original source. The epic's constraint is explicit: a helper that changes
 when a frame starts or how input is sampled is a regression **even if every test
-stays green**.
+stays green**. That reasoning covers `mountCanvas` and `installAudioUnlock`, which
+sit next to the frame/input plumbing; it does NOT cover the pause toggle, whose
+listener is independent of both — which is why centipede later adopted that one
+alone (see the pause note below).
 
 joust makes the risk concrete. Its audio unlock is not a separate listener; it is
 fused into the handler that samples input:
@@ -76,10 +79,23 @@ Both games already hand-wrote the checked canvas mount — with a byte-identical
 error string, which is what proved `mountCanvas` was worth extracting at all — so
 adopting it there would be the lowest-value, highest-risk cell in the table.
 
-Their pause cells are `behaviour-absent` and that is checked, not asserted:
-neither `main.ts` mentions a pause key, a toggle or a gate. **Neither game grows a
-pause here.** That is AC-1's rule and the epic's words: "a game that has no pause
-today must not grow one."
+Their pause cells diverged. During sc1 neither game had a pause at all, so both
+were `behaviour-absent` — checked, not asserted: their `main.ts` mentioned no
+pause key, toggle or gate, and **neither grew a pause during the convergence**
+(AC-1's rule and the epic's words, "a game that has no pause today must not grow
+one"). That rule scopes the *convergence* story — it forbids a refactor sneaking
+in a new behaviour — and does not bind a later feature story that deliberately
+adds one.
+
+**centipede did exactly that in cp7-6**: it grew a player pause (the house cabinet
+feature the vector games already had) and adopted `installPauseToggle` for it, so
+its pause cell is now `adopted`. Because the behaviour did not exist at the
+baseline, this is the one cell the AC-1 growth check exempts by name — a
+`DELIBERATE_GROWTH` entry in `tests/shell-convergence.test.mjs` citing cp7-6. The
+exemption is narrow: it waives only the "existed at baseline" test, so the
+`adopted`-requires-import-and-call check still holds centipede to actually wiring
+the helper. **joust's pause stays `behaviour-absent`** — it never grew one; that
+cell is still refuted against the live tree on every run.
 
 ## Why battlezone counts as `adopted` for pause
 

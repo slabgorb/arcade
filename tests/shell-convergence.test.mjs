@@ -109,6 +109,27 @@ const PERFORMS = {
   installPauseToggle: (src) => /\bisPauseKey\b|\btogglePaused\b|\binstallPauseToggle\s*\(/.test(src),
 };
 
+// ─── DELIBERATE, POST-CONVERGENCE GROWTHS ───────────────────────────────────
+// The AC-1 growth check forbids a game ADOPTING a helper for a behaviour it did
+// not already perform at the baseline. That rule scopes sc1 — a pure convergence
+// refactor that must not sneak in a new behaviour. It does NOT bind a later
+// FEATURE story that deliberately adds one: those are the epic's own words
+// ("a game that has no pause today must not grow one HERE" — i.e. in the
+// convergence), not a ban for all time.
+//
+// Each entry is a `<game>/<helper>` cell whose behaviour was grown ON PURPOSE by
+// a named later story, so the baseline predicate would (correctly) report it
+// absent. The waiver is NARROW: it exempts ONLY the "existed at baseline" test.
+// The `adopted`-requires-import-and-call check (AC-1, above) is UNAFFECTED, so a
+// cell here still has to genuinely wire the helper in the tree — this cannot be
+// used to mark a cell adopted that nothing implements.
+const DELIBERATE_GROWTH = new Set([
+  // cp7-6 — centipede grew the house player pause (five vector games already had
+  // it) and adopted installPauseToggle for it. Absent at the 088bc3d baseline by
+  // construction; see docs/ops/shell-adoption-matrix.md's pause note.
+  'centipede/installPauseToggle',
+]);
+
 /** Parse the recorded matrix into { [game]: { [helper]: cell } } plus its baseline. */
 function readMatrix() {
   assert.ok(
@@ -220,11 +241,17 @@ test('AC-1: no game GROWS a behaviour — a helper is adopted only where the beh
     const before = mainSrcAt(baseline, game);
     for (const helper of HELPERS) {
       if (rows[game][helper] !== 'adopted') continue;
+      // A cell grown on purpose by a later feature story is exempt from the
+      // "existed at baseline" test — but NOT from the adopted-requires-import
+      // check above, which still holds it to actually wiring the helper.
+      if (DELIBERATE_GROWTH.has(`${game}/${helper}`)) continue;
       checked++;
       assert.ok(
         PERFORMS[helper](before),
         `${game} adopted ${helper} but did NOT perform that behaviour at ${baseline} — ` +
-          `AC-1 forbids growing it here ("a game that has no pause today must not grow one")`,
+          `AC-1 forbids growing it here ("a game that has no pause today must not grow one"). ` +
+          `If this is a DELIBERATE feature growth, add \`${game}/${helper}\` to DELIBERATE_GROWTH ` +
+          `with the story that grew it`,
       );
     }
   }
