@@ -139,7 +139,7 @@ stories:
       THE ACCEPTANCE TEST INCLUDES EARS. cp6-2 established the rule for this game and it holds here: a decodable wav of the wrong length passes every mechanical check in this repo. The samples are served from arcade-assets.slabgorb.com/centipede/sfx/ and CI never touches that bucket, so a re-bake is not shipped until just deploy-assets has been RUN and the flea has been heard dropping.
     points: 2
     priority: p2
-    status: in_progress
+    status: done
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -151,6 +151,9 @@ stories:
       - just deploy-assets has been RUN, the re-baked flea returns a live 200 under arcade-assets.slabgorb.com/centipede/sfx/ with the status pasted in, and the flea has been HEARD dropping in a live run — CI never touches that bucket and a green suite is explicitly not sufficient.
       - The dossier's cp62Decision for fleaLoop is updated to record which option was taken, so the next reader finds a decision that was acted on rather than one that was written and left.
     type: bug
+    completed: '2026-08-05'
+    review_findings: 'F1 (blocking, LOW): flea.ts citation line numbers off by one at bake-sfx.mjs:200,201,253 and bake-sfx.test.mjs:579,581 — :66->:67 (FLEA_PARK_V), :70->:71 (FLEA_DV_SLOW), :71->:72 (FLEA_DV_60K); a regression from a previously-correct :67. Comment-only fix. F2 (non-blocking) deferred: constant duplication drift-guard.'
+    review_verdict: approved
   - id: cp7-5
     title: The spider is too fast because the OPTNS difficulty DIP is declared and never passed
     description: |-
