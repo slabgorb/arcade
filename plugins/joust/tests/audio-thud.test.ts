@@ -883,7 +883,7 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     expect(thudsOf(eventsOf(fired))).toEqual([ENEMY_THUD])
   })
 
-  it('seed 0x1b4a, frame 1151: a buzzard bumps a knight — a PERSON thud', () => {
+  it('seed 0x1001, frame 1401: a buzzard bumps a knight — a PERSON thud', () => {
     // The case derived AC3 would have left silent: enemy-vs-player, not
     // player-vs-player. Measured — the frame before emits NOTHING at all, so both
     // streams can be asserted exactly: the thud arrives with the knight's own
@@ -941,9 +941,37 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     // spawn perch at (200,128), 55 px away. The stream is now EXACTLY the person
     // thud (frame 973 is not a %13 flap frame, so the knight's own wing cue does
     // not ride along), which makes the assertion strictly tighter than before.
-    const before = stepGame(advanceTo(0x1b4a, 1150), inputsAt(1150))
+    //
+    // jt9-8 RE-BASELINE: seed 0x1b4a frame 1151 -> seed 0x1001 frame 1401, and the
+    // SEED had to move again — AC5's empty-solution case, re-found by SWEEPING and
+    // not by relaxing either assertion. 0x1b4a produces no `player-thud` anywhere
+    // in 2600 frames once the flap-lift budget re-inits on a wing edge: the knight
+    // no longer runs up an unbounded `timeUp` across a glide, so it arrives at the
+    // buzzards' height on different frames and its old bump is gone.
+    //
+    // AND THE SWEEP WINDOW ITSELF WAS THE TRAP — record this, because two of the
+    // re-baselines above nearly stalled on it. A sweep of ALL 8192 seeds in
+    // [0x1000,0x3000) over 1300 frames finds person-thuds in abundance but ZERO
+    // that satisfy this test's precondition; every one of them shares its frame
+    // with a buzzard's wing cue. The window, not the seed space, is what was too
+    // small: re-swept to 6000 frames, seeds 0x1001/0x1004/0x1006/0x100d/0x1012 all
+    // qualify, the earliest of them at frame 1401. So if this pin has to move
+    // again, DEEPEN the frame window before widening the seed range.
+    //
+    // 0x1001 is the earliest clean person-thud in [0x1000,0x3000) — 0x1000 itself
+    // was swept for all 6000 frames and has none. Verified enemy-vs-PLAYER, not
+    // player-vs-player, from the process positions: entering frame 1401 the
+    // hatched buzzard `enemy#4260097` stands at (218,128) and knight `player#2` at
+    // (200,128) — the same row — while `player#1` is 80 px away at (283,210) with
+    // `enemy#256` beside it at (253,209), a different height and no contact. The
+    // bounce lands on that pair and on nothing else: `player#2` is pushed DOWN to
+    // y=130 (OSTXTP's `REG.U GUY DOWN`, :5106 — the knight is the earlier process)
+    // and the buzzard UP to y=126 (`& REG.X GUY UP`, :5108). Frame 1401 is not a
+    // %13 flap frame (1401 % 13 = 10), so the knight's own wing cue does not ride
+    // along and the stream is EXACTLY the person thud, as it was on 0x2332/0x1b4a.
+    const before = stepGame(advanceTo(0x1001, 1400), inputsAt(1400))
     expect(eventsOf(before), 'the frame BEFORE emits nothing at all').toEqual([])
-    const fired = stepGame(advanceTo(0x1b4a, 1151), inputsAt(1151))
+    const fired = stepGame(advanceTo(0x1001, 1401), inputsAt(1401))
     expect(eventsOf(fired)).toEqual([PLAYER_THUD])
     expect(eventsOf(fired), 'this is the SNPTHD path, not the SNETHD one').not.toContain(ENEMY_THUD)
   })
@@ -1009,6 +1037,21 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
 // The 0x2468 move is why the post-contact anchor below is 755 and not 620: a
 // "post-contact" pin whose contact has moved past it still passes, silently
 // asserting the reverse of its own name.
+//
+// jt9-8 RE-BASELINE (2026-08-05) — `CLR PTIMUP,U`, the flap-lift budget re-inited
+// on a PLAYER wing edge. This story inverts the bound every re-baseline above
+// drew: it is the PLAYER row that legitimately moves at every anchor, and the
+// ENEMY rows that must not, because the reset is reached only from
+// `runBehaviour`'s player path (buzzard and ptero flight are untouched). Measured
+// at all four anchors: `player#1` moved everywhere and EVERY enemy row is
+// bit-identical everywhere, as is `rng`. First contacts re-swept, not inferred:
+//
+//   seed 0xbeef      first non-killing contact at frame 119   (unmoved)
+//   seed 0xface      first non-killing contact at frame 119   (unmoved)
+//   seed 0x2468      NO contact at all inside 1300 frames     (unmoved)
+//
+// A future change that moves an ENEMY row at these anchors without touching enemy
+// flight is a regression whatever it claims.
 
 describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
   const fingerprint = (seed: number, frames: number) => {
@@ -1052,8 +1095,17 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // moved is `enemy#257` — this seed's still-DUMB bird at frame 118, which is
     // precisely the actor this story re-flies. Its first contact was re-measured
     // rather than assumed: still frame 119, so 118 is still strictly pre-contact.
+    //
+    // jt9-8 RE-BASELINE (`CLR PTIMUP,U` — a wing transition re-inits the flap-lift
+    // budget). This story's line is the PLAYER, and the digest shows exactly that
+    // and nothing more: `player#1` is the ONE row that moved, all three enemy rows
+    // are BIT-IDENTICAL, and so is every fingerprint field including `rng`, procs,
+    // scores and lives. The moved row's signature is the story itself — `timeUp`
+    // 79 -> 0 (the budget re-inited on this frame's wing edge) with the position
+    // and velocity that follow from it. First contact re-measured by sweeping 1300
+    // frames for a thud, not assumed: still frame 119, so the anchor does not move.
     expect(entityDigest(0xbeef, 118)).toEqual([
-      'player#1:69,16967,-5,-2,0,79,1',
+      'player#1:71,15592,-80,-2,0,0,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:89,32725,-62,8,64,60,1',
       'enemy#257:275,33037,-39,8,0,41,1',
@@ -1094,19 +1146,31 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // re-routed metric sends `enemy#256` to its death before 188 (P1 +500), so it
     // leaves `egg#65792` where it used to fly; `enemy#257`/`enemy#258` are
     // unchanged. procs and P1's score move with that kill; lives do not.
+    //
+    // jt9-8 RE-BASELINE (`CLR PTIMUP,U`). `rng` is BIT-IDENTICAL again
+    // (736_998_484) and so are `enemy#257` and `enemy#258` — the two birds that
+    // never meet a knight in this window. `player#1` moved, which is this story's
+    // whole line (`timeUp` 149 -> 4: the budget re-inits on every wing edge, so it
+    // can no longer run up unbounded across a long glide). And the jt9-24 kill
+    // UNWINDS: the re-flown knight is no longer where it needs to be to take
+    // `enemy#256` before frame 188, so that buzzard is ALIVE here, `egg#65792` is
+    // never laid, and P1's score returns to 0. procs and scores move with that;
+    // `rng`, lives, wave and `player#2` do not. This seed is still thud-free
+    // across 1300 frames (re-swept, not assumed), so 188 remains strictly
+    // pre-contact.
     expect(entityDigest(0x2468, 188)).toEqual([
-      'player#1:45,26830,272,-2,0,149,1',
+      'player#1:47,14512,0,-2,0,4,1',
       'player#2:200,32768,0,0,0,1,0',
+      'enemy#256:64,28338,-77,8,64,95,1',
       'enemy#257:252,53313,14,8,192,95,1',
       'enemy#258:159,33196,10,8,64,95,1',
-      'egg#65792:-',
     ])
     expect(fingerprint(0x2468, 188)).toEqual({
       frame: 188,
       rng: 736_998_484,
       wave: 1,
-      procs: 'player#1,player#2,enemy#257,enemy#258,egg#65792',
-      scores: [500, 0],
+      procs: 'player#1,player#2,enemy#256,enemy#257,enemy#258',
+      scores: [0, 0],
       lives: [5, 5],
     })
   })
@@ -1133,8 +1197,16 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // claim. The one enemy row that moved is `enemy#256`: the decoded metric
     // re-routes which knight it homes on, so it sinks on a different arc here
     // (`30547,-40` -> `29844,-51`); `enemy#257`/`enemy#258` are unchanged.
+    //
+    // jt9-8 RE-BASELINE (`CLR PTIMUP,U`): the frame-119 thud is UNMOVED (re-swept
+    // for a thud, not assumed), so 160 is still strictly post-contact. `player#1`
+    // is the ONLY row that moved and it carries the story's signature — `timeUp`
+    // 121 -> 2, a budget re-inited two frames ago on a wing edge instead of
+    // accumulated since the last one. All THREE enemy rows are bit-identical,
+    // which is the bound: a story that touches player physics may not move a
+    // buzzard.
     expect(entityDigest(0xbeef, 160)).toEqual([
-      'player#1:54,20736,147,-4,64,121,1',
+      'player#1:56,14560,-32,-4,64,2,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:131,29844,-51,8,64,81,1',
       'enemy#257:14,33111,-30,8,0,62,1',
@@ -1156,8 +1228,13 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // the pair to 0xbeef's frame-160 anchor above. Both knights are still up at
     // 128 (no death/respawn yet on this seed inside the window), so the list is
     // the natural five processes.
+    //
+    // jt9-8 RE-BASELINE (`CLR PTIMUP,U`): 0xface's first contact is STILL frame
+    // 119 (re-swept for a thud), so 128 is still 119 + 9 and still strictly after
+    // it. `player#1` alone moved — `timeUp` 89 -> 9 — and all three enemy rows are
+    // bit-identical, the same bound the 0xbeef anchor above carries.
     expect(entityDigest(0xface, 128)).toEqual([
-      'player#1:66,17357,75,-2,128,89,1',
+      'player#1:68,15232,0,-2,128,9,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:189,15895,-22,8,64,65,1',
       'enemy#257:285,32962,1,8,0,46,1',

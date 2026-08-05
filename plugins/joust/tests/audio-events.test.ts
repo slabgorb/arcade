@@ -326,15 +326,24 @@ describe('jt5-1 AC2 — stepGame carries the stream on the state it returns', ()
 // precondition fails first and says so, instead of the event assertion failing
 // for a reason that has nothing to do with the seam.
 describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fixtures', () => {
-  it('a killed enemy emits enemy-death (seed 0xbeef, frame 199)', () => {
+  it('a killed enemy emits enemy-death (seed 0xbeef, frame 213)', () => {
     // jt5-8 RE-BASELINE: 204 -> 199. The dumb brain's LNTUP/LNTOFP alternation
     // re-flies every UNpromoted buzzard from its first wake, so the joust that
     // kills this one lands five frames earlier. Re-found by sweeping 900 frames
     // of this seed for THIS test's own precondition (an enemy process leaves the
     // list) — 199 and 515 are the only two frames that satisfy it, and 199 is
     // the earlier. Same seed, same script, every assertion unchanged.
-    const before = advanceTo(0xbeef, 199)
-    const after = stepGame(before, inputsAt(199))
+    //
+    // jt9-8 RE-BASELINE: 199 -> 213. A PLAYER's wing transition now RE-INITs its
+    // flap-lift budget (`CLR PTIMUP,U`), so the scripted knight climbs on the
+    // ROM's cadence and reaches this buzzard later. Re-swept the same 900 frames
+    // of the same seed under the same script for THIS test's own precondition (an
+    // enemy process leaves the list): 213, 331 and 869 are the only frames that
+    // satisfy it, and 213 is the earliest. Seed, script and every assertion
+    // unchanged. (Enemy flight is untouched by jt9-8 — enemy.ts is not modified;
+    // what moved is where the knight's lance is.)
+    const before = advanceTo(0xbeef, 213)
+    const after = stepGame(before, inputsAt(213))
     expect(countOf(after, 'enemy'), 'precondition: an enemy really dies on this frame').toBe(
       countOf(before, 'enemy') - 1,
     )
@@ -397,7 +406,7 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   // own precondition (an egg really leaves and really scores; a knight really
   // dies; the wave really advances), so a re-baseline cannot quietly turn one
   // of them vacuous — the precondition fails first if the moment is not there.
-  it('a dying knight emits player-death (seed 0xface, frame 1893)', () => {
+  it('a dying knight emits player-death (seed 0xface, frame 1402)', () => {
     // jt8-7 RE-BASELINE: 1938 -> 1810 (see the block comment above).
     //
     // jt5-8 RE-BASELINE: 1888 -> 2062.
@@ -415,15 +424,27 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // which needs knight TWO. Re-measured: 622, 950, 1391 and 1922 re-enter knight
     // ONE, and 1894 is the only knight-TWO re-entry in the window. Seed, script and
     // every assertion unchanged.
-    const before = advanceTo(0xface, 1893)
-    const after = stepGame(before, inputsAt(1893))
+    //
+    // jt9-8 RE-BASELINE: 1893 -> 1402. The player's flap-lift budget now RE-INITs
+    // on every wing transition, so the scripted knight flies the ROM's cadence and
+    // this seed's whole knight timeline moves. Re-swept 3000 frames of this seed
+    // under the same script for THIS test's OWN precondition (a player process
+    // leaves the list): 251, 821, 1402 and 2996 satisfy it. 1402 rather than the
+    // earliest for the reason every prior note gives and which still holds — the
+    // SIBLING test stages `death + 1` and is coupled to
+    // audio-transporter-split.test.ts, which needs knight TWO. Re-measured off the
+    // process list: 252, 822 and 2997 re-enter knight ONE, and 1403 is the only
+    // knight-TWO re-entry in the 3000-frame window. Seed, script and every
+    // assertion unchanged.
+    const before = advanceTo(0xface, 1402)
+    const after = stepGame(before, inputsAt(1402))
     expect(countOf(after, 'player'), 'precondition: a knight really dies on this frame').toBe(
       countOf(before, 'player') - 1,
     )
     expect(kindsOf(after)).toContain('player-death')
   })
 
-  it('the transporter re-entry emits player-materialise (seed 0xface, frame 1894)', () => {
+  it('the transporter re-entry emits player-materialise (seed 0xface, frame 1403)', () => {
     // The frame AFTER the death: `stepGame`'s respawn re-enters the spent knight
     // through the transporter (game.ts:425-441), which is the ROM's CREP
     // re-create — DSNCRE → the re-created player's own transporter table.
@@ -450,15 +471,20 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // Re-measured knight TWO off the process list (it is the only knight-2 re-entry
     // in a 3000-frame sweep of this seed), so the SNPCR2 attribution survives a
     // third move for the same reason it survived the first two.
-    const before = advanceTo(0xface, 1894)
-    const after = stepGame(before, inputsAt(1894))
+    //
+    // jt9-8 RE-BASELINE: 1894 -> 1403, riding the death above (still death + 1).
+    // Re-measured knight TWO off the process list — it is the only knight-2
+    // re-entry in a 3000-frame sweep of this seed — so the SNPCR2 attribution
+    // survives a fourth move for the same reason it survived the first three.
+    const before = advanceTo(0xface, 1403)
+    const after = stepGame(before, inputsAt(1403))
     expect(countOf(after, 'player'), 'precondition: the knight really re-enters here').toBe(
       countOf(before, 'player') + 1,
     )
     expect(kindsOf(after)).toContain('player-materialise')
   })
 
-  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 1731)', () => {
+  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 3947)', () => {
     // jt8-7 RE-BASELINE: 1614 -> 1641 (see the block comment above).
     //
     // jt5-8 RE-BASELINE: 1726 -> 1900.
@@ -471,8 +497,18 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // The hatch cutscene (and the committed-egg no-catch fix) reshapes the whole
     // seed timeline from the first hatch on. Seed, script and every assertion
     // unchanged.
-    const before = advanceTo(0xface, 1731)
-    const after = stepGame(before, inputsAt(1731))
+    //
+    // jt9-8 RE-BASELINE: 1731 -> 3947, and the SWEEP WINDOW had to grow with it.
+    // The ROM-cadence flap budget slows this seed's clear-out badly: sweeping the
+    // customary 3000 frames found NO frame satisfying this test's precondition
+    // (the wave counter advances) at all, which is what the seed changes at jt5-4
+    // and uf1-9 were for. Before reaching for a fourth seed the window was widened
+    // to 6000, and 0xface DOES still clear — frame 3947, wave 1 -> 2, dealing four
+    // buzzards, and it is the only such frame in 6000. So the seed STAYS: the old
+    // "no frame satisfies it" reading was an artefact of the 3000-frame window,
+    // not a barren seed. Script and every assertion unchanged.
+    const before = advanceTo(0xface, 3947)
+    const after = stepGame(before, inputsAt(3947))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
@@ -526,10 +562,13 @@ describe('jt5-1 AC3 — a fixed seed and input stream replay an identical stream
     // would not have FAILED — it would have gone quiet, and two empty streams
     // compare equal forever. That is the failure mode this file's header calls
     // trap 1, so the frame moves with the kill it was chosen for.
-    const start = advanceTo(0xbeef, 199)
-    const twice = kindsOf(stepGame(start, inputsAt(199)))
+    //
+    // jt9-8 RE-BASELINE: 199 -> 213, tracking the kill above for exactly the same
+    // reason — 199 is now silent, and two empty streams compare equal forever.
+    const start = advanceTo(0xbeef, 213)
+    const twice = kindsOf(stepGame(start, inputsAt(213)))
     expect(twice, 'a quiet frame would make this comparison vacuous').not.toEqual([])
-    expect(twice).toEqual(kindsOf(stepGame(start, inputsAt(199))))
+    expect(twice).toEqual(kindsOf(stepGame(start, inputsAt(213))))
   })
 })
 
@@ -538,10 +577,15 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
     // THE test replay determinism cannot make. A stale carry-forward is carried
     // identically in BOTH runs, so the comparison above still passes with the
     // bug in. This one steps past the triggering frame and demands it be gone.
-    const fired = stepGame(advanceTo(0xbeef, 199), inputsAt(199))
-    expect(kindsOf(fired), 'precondition: frame 199 must emit the kill').toContain('enemy-death')
+    //
+    // jt9-8 RE-BASELINE: 199 -> 213 (and the following frame 200 -> 214), tracking
+    // the kill above. Frame 214 is not silent — it collects an egg — but that is
+    // beside this test's point: what it demands is that 'enemy-death' does not
+    // survive into a frame that did not kill anything.
+    const fired = stepGame(advanceTo(0xbeef, 213), inputsAt(213))
+    expect(kindsOf(fired), 'precondition: frame 213 must emit the kill').toContain('enemy-death')
 
-    const next = stepGame(fired, inputsAt(200))
+    const next = stepGame(fired, inputsAt(214))
     expect(
       kindsOf(next),
       "'enemy-death' survived into a frame with no kill — the stream is appended to, not rebuilt",
@@ -553,9 +597,12 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
     // bound looks like a leak detector and is not one: an appended stream that
     // has only gathered four events in a quiet window is still under any
     // generous bound, so the mutation passes. `=== 0` is the actual property.
-    // Frame 200 is the frame after the kill at 199, and it is silent. (Under
-    // jt5-8's re-baseline that sentence is finally true of the frame this test
-    // actually steps: it said "frame 205 … the kill at 204" while stepping 200.)
+    //
+    // jt9-8: the kill moved 199 -> 213, so frame 200 is no longer "the frame after
+    // the kill" — but it is still SILENT (re-measured under the corrected sim), and
+    // silence is the whole of what this test needs. The frame therefore stays and
+    // only the claim about WHY it is quiet is withdrawn. The frame-after-a-kill
+    // property is pinned by the sibling test above, which did move to 214.
     const g = stepGame(advanceTo(0xbeef, 200), inputsAt(200))
     expect(streamOf(g), 'frame 200 is a quiet frame — the stream must be empty').toEqual([])
   })
@@ -563,9 +610,12 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
   it('and a long quiet run stays empty rather than accumulating', () => {
     // The unbounded-growth shape of the same bug: an appended array grows
     // forever and the shell replays the whole wave every frame.
-    let g = stepGame(advanceTo(0xbeef, 199), inputsAt(199))
-    expect(kindsOf(g), 'precondition: frame 199 emits the kill').toContain('enemy-death')
-    for (let i = 200; i < 213; i++) g = stepGame(g, inputsAt(i))
+    //
+    // jt9-8 RE-BASELINE: the kill moves 199 -> 213, so the trailing run moves with
+    // it — 214..226, the same thirteen frames, and frame 226 is silent.
+    let g = stepGame(advanceTo(0xbeef, 213), inputsAt(213))
+    expect(kindsOf(g), 'precondition: frame 213 emits the kill').toContain('enemy-death')
+    for (let i = 214; i < 227; i++) g = stepGame(g, inputsAt(i))
     expect(
       streamOf(g),
       'the stream never drained — events are accumulating across frames',
@@ -641,12 +691,22 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // group pins. What moved is play-dependent only: enemy#256 is now killed
     // (leaving egg#65792) instead of surviving, and the re-routed contact scores
     // P1 +500.
+    //
+    // jt9-8 RE-BASELINE (the player's flap-lift budget RE-INITs on a wing
+    // transition — `CLR PTIMUP,U`), and for the fourth time the headline is the
+    // field that did NOT move: `rng` is STILL 1_928_172_029. A budget reset draws
+    // no randomness, which is the law this group exists to pin, and it is a change
+    // to how the KNIGHT climbs on every wing edge — the widest input-side change
+    // yet — so a draw added anywhere in it would have shown here. What moved is
+    // play-dependent only: on the ROM cadence the knight no longer reaches
+    // enemy#256 inside 240 frames, so that buzzard survives (no egg#65792) and P1's
+    // 500 for it is not scored.
     expect(fingerprint(0x1a2b_3c4d, 240)).toEqual({
       frame: 240,
       rng: 1_928_172_029,
       wave: 1,
-      procs: 'player#1,player#2,enemy#258,egg#65792',
-      scores: [500, 1250],
+      procs: 'player#1,player#2,enemy#256,enemy#258',
+      scores: [0, 1250],
       lives: [5, 5],
     })
   })
@@ -686,13 +746,21 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // The play moved a long way: the re-routed targeting now clears wave 1 and
     // grinds into wave 2, player 1 racks up 7150, and both knights are alive at
     // frame 2400 (lives 2 and 4) rather than player 2 being out.
+    //
+    // jt9-8 RE-BASELINE (the flap-budget re-init on a wing edge), and once more the
+    // field that did NOT move is the point: `rng` is STILL 2_006_456_271, through
+    // five consecutive re-baselines of everything around it. The play moved a long
+    // way in the OTHER direction this time — a knight that climbs on the ROM's
+    // cadence survives and scores far better, so this seed now reaches WAVE 3 by
+    // frame 2400 (was 2), both knights are alive on 3 and 4 lives, and the scores
+    // roughly double (8350 / 10800) with two fresh wave-3 buzzards and two eggs up.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
-      wave: 2,
-      procs: 'player#2,enemy#513,player#1',
-      scores: [7150, 1300],
-      lives: [2, 4],
+      wave: 3,
+      procs: 'enemy#770,enemy#772,player#2,egg#66305,player#1,egg#66304',
+      scores: [8350, 10800],
+      lives: [3, 4],
     })
   })
 
@@ -713,13 +781,20 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // (3_436_766_652) — the law this group pins. The re-routed targeting keeps
     // this seed slower through wave 1 in this window (wave 1, not 2, at frame
     // 900) with both knights untouched (lives 5/5), one enemy killed to an egg.
+    //
+    // jt9-8 RE-BASELINE (the flap-budget re-init on a wing edge): `rng` bit-
+    // identical AGAIN (3_436_766_652) — the law this group pins. `wave` is
+    // unchanged at 1 as well. What moved is play-dependent only: enemy#256 now
+    // survives (so P1's 500 and the egg it left are both gone), player 2 has been
+    // jousted down to 3 lives while banking an extra 100, and both knights sit
+    // either side of the two surviving buzzards in the process order.
     expect(fingerprint(0x2468, 900)).toEqual({
       frame: 900,
       rng: 3_436_766_652,
       wave: 1,
-      procs: 'player#1,player#2,enemy#257,egg#65792',
-      scores: [500, 1250],
-      lives: [5, 5],
+      procs: 'player#1,enemy#256,enemy#257,player#2',
+      scores: [0, 1350],
+      lives: [5, 3],
     })
   })
 

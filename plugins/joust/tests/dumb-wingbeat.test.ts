@@ -550,7 +550,7 @@ describe('AC5 — the jt2 replay pins move, and the bound is stated', () => {
     }
   })
 
-  it('seed 0x2468 at 400 frames — the dumb wingbeat still bites, and player#1 is unmoved', () => {
+  it('seed 0x2468 at 400 frames — the dumb wingbeat still bites, and player#1 moves exactly this far', () => {
     // FROZEN pre-story, measured on the shipped tree at aa9305d. This fixture was
     // chosen because its jt9-18 blast radius is a single row: it proves the change
     // bites AND bounds it in the same assertion. Dev re-finds the sibling pins by
@@ -569,16 +569,33 @@ describe('AC5 — the jt2 replay pins move, and the bound is stated', () => {
     // the held-wings state, i.e. the dumb wingbeat is still active — the mutation
     // guard that reverting jt9-18 would trip. The composition is still four
     // processes; only WHICH enemy row moved, and how far, changed.
+    //
+    // jt9-8 RE-BASELINE, and guard (a) is RETIRED as a cross-tree invariant — it
+    // was never a law, only the observation that nothing had reached this knight
+    // yet, and jt9-8 reaches it directly. `runBehaviour` now re-inits a PLAYER's
+    // `timeUp` to 0 on every wing transition (`CLR PTIMUP,U`), so `player#1` —
+    // which flies the scripted replay and presses flap every 13th frame — flies a
+    // different arc from frame 13 onward: `30,31671,-17,0,128,49,1` ->
+    // `2,11592,8,-2,0,8,1`, the `timeUp` 49 -> 8 being the reset's own signature.
+    // The knight's new arc misses the collision that used to kill `enemy#256`, so
+    // that bird now SURVIVES to frame 400 and its kill-`egg#65792` is never laid;
+    // the process list is still four long but reads
+    // [player#1, enemy#256, enemy#257, player#2] instead of
+    // [player#1, player#2, enemy#257, egg#65792]. Every one of those deltas was
+    // confirmed to be jt9-8's alone: the parent commit's tree reproduces all four
+    // frozen rows byte-for-byte. Guards (b) and (c) survive unweakened, re-indexed
+    // onto the rows they now occupy — and `enemy#257`'s digest is BIT-IDENTICAL
+    // before and after, which is what makes (c) still the same fence it was.
     const rows = entityDigest(0x2468, 400)
     expect(rows.length, 'the fixture no longer has the four processes it was measured on').toBe(4)
-    expect(rows[0], 'player#1 must not move — it has met no re-routed bird by frame 400').toBe(
-      'player#1:30,31671,-17,0,128,49,1',
+    expect(rows[0], 'player#1 flies the jt9-8 arc — PTIMUP re-inits on its wing edges').toBe(
+      'player#1:2,11592,8,-2,0,8,1',
     )
-    expect(rows[1], 'player#2 never leaves the ground in this replay').toBe(
+    expect(rows[3], 'player#2 never leaves the ground in this replay').toBe(
       'player#2:200,32768,0,0,0,1,0',
     )
-    expect(rows[3], 'jt9-24 re-routes enemy#256 to its death here — the widened radius is jt9-24, not jt9-18').toBe(
-      'egg#65792:-',
+    expect(rows[1], 'jt9-8 re-routes the knight past enemy#256, so it lives and lays no egg').toBe(
+      'enemy#256:276,33045,-9,8,0,12,1',
     )
     expect(rows[2], 'enemy#257 did NOT move to held-wings — the dumb wingbeat is still active').not.toBe(
       'enemy#257:161,53760,0,8,0,1,0',
@@ -627,10 +644,23 @@ describe('AC6 — the dumb wing cue', () => {
     // seed 0xface's first knight death moves 2062 -> 2578 as a result, which is
     // measured in audio-events.test.ts. One fewer down-beat inside the window is
     // the arithmetic of that, not a regression in the wing mechanism.
+    //
+    // jt9-8 RE-BASELINE, and it UNDOES jt9-9's two-number exception rather than
+    // adding one: 0xface's `playerDown` 153 -> 154 and its `playerUp` 152 -> 154,
+    // putting all three seeds back on the same 154/154 the scripted input emits
+    // when its knight survives the whole 2000-frame window. The mechanism is the
+    // same arithmetic read the other way — `runBehaviour` re-inits a PLAYER's
+    // `timeUp` on each wing transition, the knight flies a different arc, and
+    // 0xface's first knight death moves back out past the window's edge. The
+    // `down` FLOORS are untouched: they are the pre-jt5-8 shipped-tree counts, and
+    // the corrected sim clears every one of them with room (measured at 2000
+    // frames: 0xbeef 299 > 105, 0x2468 305 > 141, 0xface 103 > 69). The relational
+    // claim — dumb enemies emit MORE, knights emit exactly as many — still holds
+    // on all three seeds, in the same direction, against the same floors.
     const before: Record<number, { down: number; playerDown: number; playerUp: number }> = {
       0xbeef: { down: 105, playerDown: 154, playerUp: 154 },
       0x2468: { down: 141, playerDown: 154, playerUp: 154 },
-      0xface: { down: 69, playerDown: 153, playerUp: 152 },
+      0xface: { down: 69, playerDown: 154, playerUp: 154 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)

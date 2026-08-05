@@ -157,6 +157,13 @@ export interface FlightModule {
   /** Frames airborne, saturating at 255 (`AIRTIM`, :6476-6478). */
   tickTimeUp(timeUp: number): number
 
+  /**
+   * The wing transition this frame, from the previous-frame airborne/held state
+   * (jt5-3). `'down'` on a press or take-off, `'up'` on a release, else `null` —
+   * the moment the ROM clears PTIMUP (jt9-8) and sounds a wing cue.
+   */
+  wingEdge(wasAirborne: boolean, prevFlapHeld: boolean, input: PlayerInput): 'down' | 'up' | null
+
   // ─── Ground ───────────────────────────────────────────────────────────────
   /** One frame of ground movement: state advance + the ORRUN X delta. */
   stepGround(state: EntityState, input: PlayerInput): EntityState

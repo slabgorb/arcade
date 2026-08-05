@@ -340,13 +340,21 @@ describe('AC-3 — the jt1-5 seeded replay reproduces through the process list',
     flapHeld: i % 4 === 0,
   })
 
-  /** main.ts stepPlayer's AIRBORNE branch, verbatim — the existing stepping. */
+  /**
+   * main.ts stepPlayer's AIRBORNE branch — the existing stepping, plus jt9-8's
+   * PTIMUP re-init on a wing transition. `prevFlapHeld` is the button LEVEL the
+   * previous frame carried, so this independent reference model reproduces
+   * `runBehaviour`'s edge reset (a wing transition clears `timeUp`, applied after
+   * the tick and only while still airborne) without calling the scheduler.
+   */
   function stepAirborne(
     f: Awaited<ReturnType<typeof loadFlight>>,
     arena: Awaited<ReturnType<typeof loadArena>>,
     state: EntityState,
     input: PlayerInput,
+    prevFlapHeld: boolean,
   ): EntityState {
+    const wasAirborne = state.airborne
     let s = state
     if (input.flap) s = f.flap(s, input)
     s = f.stepFlight(s, input)
@@ -356,6 +364,7 @@ describe('AC-3 — the jt1-5 seeded replay reproduces through the process list',
     s = { ...s, posX: arena.wrapX(s.posX) }
     const outcome = arena.groundOutcome(f.groundMaskAt(s.posX, s.posY >> 8))
     if (outcome.kind === 'platform') s = f.land(s, outcome.platform)
+    if (f.wingEdge(wasAirborne, prevFlapHeld, input) !== null && s.airborne) s = { ...s, timeUp: 0 }
     return s
   }
 
@@ -368,7 +377,7 @@ describe('AC-3 — the jt1-5 seeded replay reproduces through the process list',
     const ref: string[] = []
     let e = START
     for (let i = 0; i < FRAMES; i++) {
-      e = stepAirborne(f, arena, e, scriptInput(i))
+      e = stepAirborne(f, arena, e, scriptInput(i), i > 0 ? scriptInput(i - 1).flapHeld : false)
       ref.push(JSON.stringify(e))
     }
 
@@ -409,7 +418,7 @@ describe('AC-3 — the jt1-5 seeded replay reproduces through the process list',
     let wrapped = false
     for (let i = 0; i < FRAMES; i++) {
       const before = e.posX
-      e = stepAirborne(f, arena, e, scriptInput(i))
+      e = stepAirborne(f, arena, e, scriptInput(i), i > 0 ? scriptInput(i - 1).flapHeld : false)
       if (e.posX !== before) moved = true
       if (e.posX < before - 100) wrapped = true // a big backward jump = a wrap
     }

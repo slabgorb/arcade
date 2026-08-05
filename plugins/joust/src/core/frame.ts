@@ -333,12 +333,22 @@ function runBehaviour(
     // neutral (JOUSTRV4.SRC:6451-6481). Facing lives on the PROCESS, so the
     // entity a solo scheduler run computes is unchanged (the routing≠geometry
     // drive pin compares entities, and it stays bit-identical).
-    const entity = stepPlayerEntity(p.entity, input, facing)
+    const stepped = stepPlayerEntity(p.entity, input, facing)
+    // jt9-8: a wing transition RE-INITs the flap-lift budget (`CLR PTIMUP,U` —
+    // GOFLIP :6185 on release, GOFLAP :6219 on press, and STFLY :6135→FLAST2 on
+    // take-off), which is exactly when `wingEdge` fires. Applied AFTER the step's
+    // `tickTimeUp` (AIROVR/AIRTIM `INC PTIMUP` :6476 runs BEFORE the edge CLR, so
+    // an edge frame ends at 0, not 1) and only while STILL airborne — landing's
+    // STLDIR owns `timeUp = 1`. `flap()`'s impulse has already read the pre-clear
+    // budget (ADDFLP :6212 precedes CLR :6219), so releasing restores lift and
+    // rapid tapping out-climbs a hold.
+    const edge = wingEdge(wasAirborne, prevFlapHeld, input)
+    const entity = edge !== null && stepped.airborne ? { ...stepped, timeUp: 0 } : stepped
     const nextFacing: -1 | 1 = input.dir === 0 ? facing : input.dir > 0 ? 1 : -1
     return {
       process: { ...p, entity, facing: nextFacing, prevFlapHeld: input.flapHeld },
       budget,
-      cue: wingCue(wingEdge(wasAirborne, prevFlapHeld, input), 'player'),
+      cue: wingCue(edge, 'player'),
     }
   }
   // An enemy integrates on each wake through its own brain + the shared flight

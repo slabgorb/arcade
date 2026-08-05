@@ -1256,6 +1256,12 @@ export function stepEnemyDetailed(
   const pressed = held && !(settled.prevFlapHeld ?? false)
   const input: PlayerInput = { dir: decision.dir, flap: pressed, flapHeld: held }
   const edge = wingEdge(settled.entity.airborne, settled.prevFlapHeld ?? false, input)
+  // jt9-8: the PTIMUP wing-edge re-init is a PLAYER-only mechanic — every ROM
+  // PTIMUP clear (GOFLIP :6185 / GOFLAP :6219 / STFALL :6154) lives in the human
+  // flight loop (FLAPLP/FLIPLP), and buzzards' OST* movement calls neither ADDFLP
+  // (the PTIMUP impulse) nor AIROVR (its increment). So NO reset here; only the
+  // player path in frame.ts's runBehaviour clears it. (The pterodactyl's PTEFLY
+  // uses PTIMUP as an anim timer, not the flap budget — a separate concern.)
   return {
     enemy: { ...settled, entity: stepEntity(settled.entity, input), prevFlapHeld: input.flapHeld },
     wingEdge: edge,
