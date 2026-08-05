@@ -159,3 +159,8 @@ completed_stories:
     title: "Periscope HUD authentic pass — viewport brackets + red top band (radar red), retire the box + green-radar deviation"
     points: 2
     completed: '2026-08-05'
+  - id: mc1-1
+    epic: mc1
+    title: Scaffold the missile-command plugin and boot it in the cabinet
+    points: 3
+    completed: '2026-08-05'

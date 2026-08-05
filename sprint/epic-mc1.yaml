@@ -1,0 +1,76 @@
+id: mc1
+type: epic
+title: 'Missile Command — plugin skeleton: boot the cabinet on REV-01 ground truth'
+description: |-
+  First Missile Command epic. Stands up the eighth game as a bootable plugin, faithful to REV-01 Atari source (codename WW3), on a SKELETON-FIRST kickoff (owner decision 2026-08-05): get the cabinet on screen and the wiring proven, back-fill the full citation dossier in a follow-on epic.
+
+  GROUND TRUTH: plugins/missile-command/docs/rom-study/brief.md (five preflight answers, cited to the vendored source at plugins/missile-command/reference/source/, historicalsource @ bab468c). DESIGN: plugins/missile-command/docs/design/mc1-skeleton.md (core/shell decomposition + skeleton acceptance). PROVENANCE + disk-name->module map: plugins/missile-command/reference/PROVENANCE.md.
+
+  Missile Command is a RASTER game (6502 + POKEY, framebuffer video, trackball + 3 fire buttons, 8-colour palette, ~61.0076 Hz) — architecturally the joust/centipede shape. REUSE-FIRST: copy plugins/joust/, strip to the design's core/shell tables; no new src/shared extraction. The core/shell purity boundary is the load-bearing rule and is enforced by a purity scanner copied from joust.
+
+  RADIX DISCIPLINE (the trap): W3COMN.MAC sets .RADIX 16 once and every module inherits it — bare numbers are HEX, a trailing period means DECIMAL (MAXMIS=10. vs CITY2H=0B4). Every constant hardcoded in the skeleton must cite brief.md, which cites source: no magic number faithful to nothing, even under skeleton-first.
+
+  DEFERRED to epic mc2 (dossier back-fill): TDD citation checker, subsystems.md/glossary.md/claims/*.json, and open questions O-1 (decode A35820.1C binary object) and O-2 (exact sim tick from W3INT). Skeleton needs no enemies/scoring/waves — those are gameplay epics after mc1.
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: mc1-1
+    title: Scaffold the missile-command plugin and boot it in the cabinet
+    description: |-
+      Stand up plugins/missile-command/ as the eighth game and prove it boots in the cabinet. REUSE-FIRST: copy plugins/joust/ (the newest raster game) as the template and strip it to a minimal bootable shell — do NOT hand-type the four files (a missing one fails late, not at the step you were on). Design: plugins/missile-command/docs/design/mc1-skeleton.md. Provenance/ground-truth already staged by the Architect under plugins/missile-command/{reference,docs}.
+
+      SCOPE: scaffold + registration + a black canvas that boots. No field, cursor, or gameplay yet (those are mc1-2..mc1-4). What this story buys is the wiring: the four-file plugin shape, the three registrations, a regenerated registry, and the core/shell purity boundary in place so every later story writes against a clean skeleton.
+
+      WATCH THE SERVE TRAP (tests/canonical-serve.test.mjs): the one dev server answers 200 to EVERYTHING via the lobby SPA fallback, so an all-200 sweep proves nothing. Any boot check must compare /missile-command/ against a nonsense control path and assert they DIFFER.
+
+      plugin.ts meta per design: id 'missile-command', title 'MISSILE COMMAND', year 1980, order 7, listed true, showcase false, version from package.json.
+    points: 3
+    priority: p3
+    status: done
+    started: '2026-08-05'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "The four-file plugin shape exists under plugins/missile-command/, copied and adapted from plugins/joust/: index.html (Vite entry referencing /src/main.ts), plugin.ts (GameMeta per design — id 'missile-command', title 'MISSILE COMMAND', year 1980, order 7), package.json ({name,version,private}), tsconfig.json (extends ../../tsconfig.json). The orchestrator suite's 'adding a game' invariants pass for the new directory."
+      - "All THREE registrations are done and no more: 'missile-command' appended to games in justfile and to GAMES in vitest.config.ts, and src/host/registry.ts regenerated via 'npm run gen:registry' (committed, NOT hand-edited). scripts/build-app.mjs and the deploy workflow read plugins/ directly and need no edit."
+      - "The game boots on the one dev server: http://127.0.0.1:5270/missile-command/ serves the plugin's own index.html and its /src/main.ts mounts a canvas. Proven DISTINCT from the lobby fallback — the check compares /missile-command/ against a nonsense control path (e.g. /banana/) and asserts the responses DIFFER, not merely that both are 200."
+      - "The core/shell boundary is present and enforced: src/core/ and src/shell/ exist, and a purity/core-boundary test (copied from joust's tests/helpers/purity-scanner.ts) scans src/core/ source text and passes on the skeleton's clean core (no Date, no Math.random, no canvas in core)."
+      - "Gates green: 'npx vitest run --project missile-command' passes, 'npm run lint' is clean repo-wide, and 'npm run test:orchestrator' passes (the new game's wiring invariants are satisfied)."
+    completed: '2026-08-05'
+    type: chore
+    review_verdict: approved
+    review_findings: 'MEDIUM (rule-matching): render.ts ships uncited, self-contradicting, UNUSED geometry constants (LOGICAL_WIDTH/HEIGHT 256/231 — comment math gives 232; unused dead exports) — delete them, defer real cited geometry to mc1-2. LOW doc cluster: purity-scanner.ts header names a non-existent purity-scanner.test.ts + unmarked joust provenance; design doc mc1-skeleton.md still shows order:7. No Critical/High; everything else approved.'
+  - id: mc1-2
+    title: 'Draw the fixed field: 6 cities + 3 missile bases at cited coords'
+    description: "Draw the static playfield: six cities and three missile bases at their cabinet coordinates. Core: field.ts holds the fixed layout (pure data). Shell: render.ts paints them on the raster canvas. Coords are CITED from source — W3COMN.MAC CITY1H/V..CITY6H/V (:123-145, HEX) via brief.md's constant table. Cities NCITY=6 (W3COMN:39), bases NMISBA=3 (:41). No enemies/damage yet."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - field.ts (core, pure) exposes the six city positions and three base positions using the source coordinates from brief.md (W3COMN CITY1..6H/V, NCITY=6, NMISBA=3), each value carrying a source citation in a comment or claim.
+      - render.ts draws the six cities and three bases at those positions on the missile-command canvas; a screenshot at /missile-command/ shows them along the bottom band. Core stays pure (purity test still green).
+  - id: mc1-3
+    title: Trackball/mouse crosshair cursor with clamp
+    description: 'Trackball/mouse-driven crosshair cursor that integrates input delta and clamps to the play area. Core: cursor.ts integrates a per-frame delta and clamps (W3MAIN:424 PROCESS CURSOR MOTION, :546 ADD TBALL TO CURSOR, :587 UPDATE CURSOR). Shell: input.ts maps mouse/trackball motion to the delta. Desktop-only (repo rule: no touch/narrow-viewport).'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'cursor.ts (core, pure) is a reducer: (cursor, delta) -> clamped cursor, bounded to the field. Deterministic and unit-tested; no shell imports.'
+      - input.ts feeds mouse/trackball motion as the delta; the crosshair moves on screen at /missile-command/ and cannot leave the play area.
+  - id: mc1-4
+    title: Player ABM launch to expanding/collapsing blast
+    description: "Fire an ABM from the nearest live base to the crosshair; it flies, reaches the target, and detonates into an expanding-then-collapsing blast circle. This is the skeleton's proof-of-life interaction. Core: abm.ts (launch from nearest base, flight, arrival) + explosion.ts (blast radius grow/shrink, W3MAIN:606 LAUNCH ABMS, :665 LAUNCH 1 ABM, :860 UPDATE MISSILE POSITION, :906 PROCESS EXPLOSIONS, :2503 DRAW A CIRCLE). Shell: input.ts binds three fire keys (Z/X/C = left/centre/right base) and render.ts draws the trail + blast. No enemy/scoring/damage — mc1 acceptance ends here."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - abm.ts + explosion.ts (core, pure) model launch from the nearest live base to the cursor, straight-line flight to the target, and a blast that expands to a max radius then collapses to nothing, over deterministic ticks. Unit-tested; core stays pure.
+      - Three fire keys (Z/X/C) launch from left/centre/right base; at /missile-command/ a fire draws a trail to the crosshair and an expanding/collapsing blast. This completes the mc1 skeleton acceptance (boot + field + cursor + fire->blast).
