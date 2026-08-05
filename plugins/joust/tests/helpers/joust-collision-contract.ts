@@ -183,6 +183,21 @@ export interface BumpDrain {
   remaining: number
 }
 
+/**
+ * jt9-17 — the resolved horizontal bounce (`OSTLR`) for BOTH parties. `*VelX` is
+ * the reflected `PVELX` (the FLYX index) written back to each; `*BumpX` is the
+ * `PBUMPX` shove parked on each for `drainBumpX` to spend ≤3 px/frame; `*Facing`
+ * is the unconditional `PFACE` write (left `-1`, right `+1`).
+ */
+export interface HorizontalBounce {
+  leftVelX: number
+  rightVelX: number
+  leftBumpX: number
+  rightBumpX: number
+  leftFacing: Facing
+  rightFacing: Facing
+}
+
 export interface JoustModule {
   // ─── Cited constants ──────────────────────────────────────────────────────
   /** `COFF EQU $0200` (JOUSTI.SRC:7) — the collision-span bias. */
@@ -255,6 +270,22 @@ export interface JoustModule {
    * the shove to hand the other entity as a `PBUMPX`. Pure.
    */
   bounceHorizontal(velX: number): { selfVelX: number; otherBumpX: number }
+
+  /**
+   * jt9-17 — the WHOLE horizontal bounce (`OSTLR`, JOUSTRV4.SRC:5110-5159), both
+   * parties at once. `bounceHorizontal` above models only ONE QUARTER of it (the
+   * rightward-moving party's self-velocity). `OSTLR` splits on `COLDX`'s sign
+   * (`BPL OSTURT`, :5113) into two mirror arms, and each arm reverses BOTH
+   * parties AND writes BOTH `PFACE`s — the caller supplies the two velocities
+   * with the LEFT/RIGHT roles already decided by `COLDX` (`COLDX == 0` is the
+   * `BEQ OSTNLR` no-bounce case and never calls this). Each store is guarded so a
+   * party already moving APART is left alone (`BLE 1$` on the left / `BGE`… on
+   * the right, :5115/:5138), and the other party's `PBUMPX` is the shared-A
+   * `ASRA` half (:5121/:5133/:5145/:5155). Facing is UNCONDITIONAL: the left
+   * party faces left (`LDA #-1 / STA PFACE`, :5123-5124/:5156-5157) → `-1`; the
+   * right faces right (`CLR PFACE`, :5135/:5146; ROM 0 = right → our `+1`). Pure.
+   */
+  bounceApartX(leftVelX: number, rightVelX: number): HorizontalBounce
 
   // ─── Bump drain laws ──────────────────────────────────────────────────────
   /**
