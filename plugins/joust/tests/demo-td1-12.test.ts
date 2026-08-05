@@ -48,7 +48,7 @@ const SEED = 0x1234_5678
 
 const players = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'player')
 const enemies = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
-const bounders = (d: DemoState): DemoProcess[] => enemies(d).filter((p) => p.enemyType === 'bounder')
+const eggs = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
 
 /**
  * Advance the cabinet by EXACTLY ONE wave, without asserting anything about the
@@ -110,44 +110,38 @@ describe('AC-1 — the wave the advance block reads is the wave the cabinet is o
     expect(tenth.wave, 'the tenth wave is ordinal 10, not the packed byte 0x10 = 16').toBe(10)
   })
 
-  it("materialises the tenth wave's OWN complement — 8 bounders, not wave 16's row", async () => {
+  it("materialises the tenth wave's OWN complement — wave 10's eggs, not wave 16's ground enemies", async () => {
     const demo = await loadDemo()
     const w = await loadWave()
 
     // Discriminability, asserted before the behaviour so a future table edit that
-    // collapses the two rows fails HERE, loudly, instead of going vacuously green:
-    // wave 10 is eight bounders (wave.ts:84), wave 16 is zero bounders / five hunters
-    // / one lord (wave.ts:90). If those ever coincide this probe proves nothing.
+    // collapses the two rows fails HERE, loudly, instead of going vacuously green.
+    // The tenth wave and wave 16 are DIFFERENT WAVE TYPES, which is the sharpest
+    // possible discriminator: wave 10's status 0x08 is an EGG wave (waveTypeIndex
+    // (0x08) = 4 → 'egg', wave.ts), so its complement enters as settled EGGS and NO
+    // ground enemies; wave 16's status 0x00 is a NOP/ground wave, so it enters ground
+    // enemies (five hunters, one lord) and NO eggs. (The story's "8 bounders" was the
+    // wave-10 ROW's bounder count — but an egg wave never materialises that row's
+    // ground nibble as buzzards, so the observable complement is eggs. Corrected in
+    // GREEN; see the session's Design Deviations.)
     const row10 = w.waveRowAt(10)
     const row16 = w.waveRowAt(16)
-    expect(row10.bounders, 'wave 10 is eight bounders').toBe(8)
-    expect(row16.bounders, 'wave 16 is zero bounders').toBe(0)
-    expect(row10.bounders, 'the two rows must differ or this test proves nothing').not.toBe(
-      row16.bounders,
-    )
+    expect(w.rawWaveType(row10.status), 'the tenth wave is an EGG wave').toBe('egg')
+    expect(w.rawWaveType(row16.status), 'wave 16 is not an egg wave').not.toBe('egg')
 
     // The complement that entered on the advance INTO the tenth wave. Under Option (B)
-    // the advance block calls spawnWaveEnemies(10) → eight bounders; against the
-    // current tree it calls spawnWaveEnemies(0x10 = 16) → zero bounders, five hunters,
-    // one lord. The bounder count is the single cleanest discriminator: 8 vs 0.
+    // the advance block calls spawnWaveEnemies(10) → the twelve-egg EGG-wave complement
+    // (six per ledge + six scattered, JOUSTRV4.SRC:2778-2822) and zero ground enemies;
+    // against the current tree it calls spawnWaveEnemies(0x10 = 16) → wave 16's six
+    // ground enemies and zero eggs. Eggs-vs-enemies is the cleanest discriminator.
     const tenth = demoAtNthWave(demo, 10)
-    expect(bounders(tenth).length, "the tenth wave's eight bounders enter, not wave 16's none").toBe(
-      8,
+    expect(eggs(tenth).length, "the tenth wave's twelve eggs enter (its EGG-wave complement)").toBe(
+      12,
     )
-
-    // And the WHOLE ground complement is wave 10's, type-for-type — not merely the
-    // bounder count. Kills a fix that special-cases the count without moving the row.
-    const spawnedTypes = enemies(tenth)
-      .map((p) => p.enemyType)
-      .sort()
-    const expectedTypes = [
-      ...Array<string>(row10.bounders).fill('bounder'),
-      ...Array<string>(row10.hunters).fill('hunter'),
-      ...Array<string>(row10.lords).fill('shadowLord'),
-    ].sort()
-    expect(spawnedTypes, "the tenth wave's ground complement is wave 10's row, type-for-type").toEqual(
-      expectedTypes,
-    )
+    expect(
+      enemies(tenth).length,
+      'and NO ground enemies — the current tree would enter wave 16’s six here',
+    ).toBe(0)
   })
 })
 

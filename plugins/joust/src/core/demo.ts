@@ -82,8 +82,6 @@ import {
   waveBeats,
   dispatchWaveType,
   growthDue,
-  nextWaveBcd,
-  decimalWaveFromBcd,
   type WaveRow,
 } from './wave.js'
 import { waveValue, type DyRowName } from './difficulty.js'
@@ -1776,20 +1774,15 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // would resolve every dial at wave 1 forever, which is the exact defect uf1-2
   // was filed for.
   //
-  // `demo.wave` is the ROM's WAVBCD byte and is BCD-PACKED, not decimal — it is
-  // advanced by `nextWaveBcd` below, so the tenth wave holds `0x10`. The difficulty
-  // engine takes a 1-based DECIMAL wave, so the unit has to change HERE; handing it
-  // the raw byte resolves the tenth wave's dials at wave 16 and crashes outright at
-  // the hundredth, where the counter rolls to `0x00`.
-  //
-  // Do NOT read this call site as evidence that the others are right. The wave-
-  // advance block below still passes the raw counter to `waveRowAt`,
-  // `applyWaveDestruction`, `spawnWaveEnemies`, `trollSpawnable` and
-  // `seedWaveBudget`, and `game.ts` does the same in `resolveWaveType` — all of
-  // them decimal-expecting, all of them wrong from the tenth wave on. That
-  // PREDATES uf1-2 and is owned by **td1-12**, which will decide once whether the
-  // counter stays BCD or becomes an ordinal. Only this hop is fixed here.
-  const waveOrdinal = decimalWaveFromBcd(demo.wave)
+  // `demo.wave` IS the 1-based DECIMAL wave ordinal — the ROM's PWAVE, the monotone
+  // pointer that walks the wave table (LDX PWAVE,U / … / LDX #WTBRST, JOUSTRV4.SRC:2011-2019),
+  // never a BCD byte. td1-12 (Option B) settled this: WAVBCD has four references in
+  // the whole 1982 source and indexes nothing (its sole read is the display routine,
+  // :2399-2403), so modelling the game's wave number is PWAVE's job, and the BCD byte
+  // is derived only where a display wants it. The difficulty engine and every
+  // advance-block consumer take that decimal ordinal directly, so there is no unit to
+  // change here any more — this is the identity that USED to be `decimalWaveFromBcd`.
+  const waveOrdinal = demo.wave
   const stepped = stepFrame({ ...demo.sim, targets: tickedTargets, cues: [] }, inputs, {
     wave: waveOrdinal,
   })
@@ -1971,7 +1964,12 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     !processes.some((p) => p.kind === 'egg') &&
     processes.some((p) => p.kind === 'player')
   if (clearable) {
-    wave = nextWaveBcd(demo.wave)
+    // A monotone +1 on the decimal wave ordinal (PWAVE, td1-12 / Option B) — never a
+    // BCD DAA and never a wrap. The wave TABLE loops at 81 (WTBRST) inside `waveRowAt`,
+    // and the DYTBL difficulty runs off its own per-row countdown; the wave count
+    // itself just climbs, so wave 100 is 100 and wave 101 is 101, with no once-per-
+    // hundred reset and no `waveRowAt(0)` death at the old 0x99→0x00 rollover.
+    wave = demo.wave + 1
     // WNRM — a wave start CLEARS both knights' egg-hit counters:
     //
     //     WNRM  CLR  EGGS1    RESET NUMBER OF EGGS KILLED BY PLAYER 1

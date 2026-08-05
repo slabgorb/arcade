@@ -1012,11 +1012,16 @@ const demoAtCounter = (
   }
 }
 
-/** The counter value the demo's OWN advance holds on its Nth wave. Never a literal. */
+/**
+ * The `demo.wave` value the demo's OWN advance holds on its Nth wave. Since td1-12
+ * (Option B) `demo.wave` is the monotone DECIMAL wave ordinal (the ROM's PWAVE), so
+ * the Nth wave's value is simply N — no BCD packing. The `w` argument is retained so
+ * the call sites keep their `loadWaveBcd()` binding (still used by R2-2's pure-function
+ * tests) referenced; it is no longer needed to compute the value.
+ */
 const counterAtWave = (w: Pick<Awaited<ReturnType<typeof loadWaveBcd>>, 'nextWaveBcd'>, n: number): number => {
-  let c = 1 // createWaveDemo seeds wave 1 (demo.ts:598)
-  for (let i = 2; i <= n; i++) c = w.nextWaveBcd(c)
-  return c
+  void w
+  return n
 }
 
 /** The enemy as one `stepDemo` leaves it. Throws rather than returning undefined. */
@@ -1037,7 +1042,7 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
     // read 0x10 (= 16 as a plain number) on the tenth wave. If td1-12 later makes
     // `demo.wave` decimal, THIS fails first and says the staging must be revisited.
     const counter = counterAtWave(w, 10)
-    expect(counter, 'the demo counter on its tenth wave (BCD, demo.ts:955)').toBe(0x10)
+    expect(counter, 'the demo wave value on its tenth wave (decimal ordinal, td1-12/Option B)').toBe(10)
 
     // Discriminability: the probe can only tell 10 from 16 if the rungs differ.
     // BODNVY steps at waves 3, 11, 19… so wave 10 is still on $0120 and wave 16 is
@@ -1092,7 +1097,7 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
     // or to the literal tenth wave, passes the test above and dies here. (Searched
     // exhaustively over waves 10-99: wave 12 is the only such wave.)
     const counter = counterAtWave(w, 12)
-    expect(counter, 'the counter on the twelfth wave').toBe(0x12)
+    expect(counter, 'the demo wave value on the twelfth wave (decimal ordinal)').toBe(12)
     expect(d.waveValue('BODNVY', 12), 'the bounder is deliberately blind here').toBe(
       d.waveValue('BODNVY', 18),
     )
@@ -1318,129 +1323,5 @@ describe('R2-2 — the BCD→decimal decode seam', () => {
     // can fail; wave.test.ts owns the real coverage of this contract.
     expect(w.nextWaveBcd(0x99), 'the counter still wraps to 0x00').toBe(0x00)
     expect(w.nextWaveBcd(0x09), 'and still decimal-adjusts').toBe(0x10)
-  })
-
-  it('says at the seam that the counter it feeds the difficulty engine is BCD', async () => {
-    // The Reviewer required this in prose, and prose is the only defence a future
-    // reader gets: `demo.wave` looks like an ordinary number at every call site.
-    const demoSrc = readCore('demo.ts')
-    expect(demoSrc, 'demo.ts must name the encoding it is decoding').toMatch(/BCD/)
-    expect(demoSrc, 'and must point at the story that owns the other consumers').toMatch(/td1-12/)
-  })
-})
-
-// ═════════════════════════════════════════════════════════════════════════════
-// R2-3 — THE ROLLOVER. Found in round-2 RED, not reported by the Reviewer.
-//        `nextWaveBcd` wraps 0x99 → 0x00 (pinned, wave.test.ts), and `waveValue`
-//        throws for a wave < 1 (pinned, AC-3 above). Round 1 joined those two
-//        facts: on the HUNDREDTH wave the first smart-enemy decision throws and
-//        the running game dies. That crash is this story's, and it did not exist
-//        before the seam — so it is fixed here, not deferred.
-//
-//        The counter cannot express "which hundred", so the ordinal is genuinely
-//        unrecoverable above 100 — a monotone wave count is td1-12's job (its
-//        option B). uf1-2 owes the hundredth wave a correct answer and every wave
-//        a NON-FATAL one. It does NOT owe — and cannot deliver — a correct wave
-//        101: there the counter reads 0x01 again and the difficulty RESETS to its
-//        opening value and re-climbs, once per hundred waves. That is pinned
-//        below as a known divergence rather than left implied-absent.
-// ═════════════════════════════════════════════════════════════════════════════
-describe('R2-3 — the counter rolls over and the cabinet must not die', () => {
-  it('reads the rolled 0x00 as the HUNDREDTH wave, not as wave zero', async () => {
-    const w = await loadWaveBcd()
-    expect(counterAtWave(w, 100), 'the counter on the hundredth wave').toBe(0x00)
-    expect(w.decimalWaveFromBcd(0x00), 'which is the hundredth wave played').toBe(100)
-  })
-
-  it('does not THROW at the hundredth wave — the crash round 1 introduced', async () => {
-    const demo = await loadDemo()
-    const e = await loadEnemy()
-    const w = await loadWaveBcd()
-    const counter = counterAtWave(w, 100)
-    const probe = fallingEnemy('boundr', 0x130)
-
-    // Before the fix this is not an assertion failure — `stepDemo` throws
-    // "wave must be a 1-based integer, got 0" out of `waveValue`, through
-    // `brakeForWave` → `boundr` → `runBrain`. A dumb `linet` enemy never consults
-    // the brake, which is why the crash needs a SMART one to surface.
-    const viaDemo = steppedProbe(demoAtCounter(demo, counter, probe), demo)
-    expect(viaDemo.entity, 'the hundredth wave flies wave 100').toEqual(
-      e.stepEnemy(probe, { wave: 100 }).entity,
-    )
-  })
-
-  it('carries the difficulty THROUGH the rollover — the hundredth wave does not fall back', async () => {
-    const d = await loadDifficulty()
-    const w = await loadWaveBcd()
-    // Scope: waves 99 → 100, and NOTHING beyond. This kills the cheap non-crashing
-    // fix — clamping the decoded wave up to 1 — which would drop a hundred-wave
-    // cabinet to its opening difficulty one wave early. It does NOT establish that
-    // the difficulty never falls back; it demonstrably does at wave 101, which the
-    // next test pins. An earlier draft of this test was named for the general
-    // property and asserted only this pair, which is how the reset stayed invisible
-    // through a whole review round.
-    const at99 = d.waveValue('BODNVY', w.decimalWaveFromBcd(counterAtWave(w, 99)))
-    const at100 = d.waveValue('BODNVY', w.decimalWaveFromBcd(counterAtWave(w, 100)))
-    expect(at99, 'the ninety-ninth wave is well past the start').toBeGreaterThan(WIRED.BODNVY.start)
-    expect(at100, 'and the hundredth does not fall back below it').toBeGreaterThanOrEqual(at99)
-  })
-
-  it('PINS the known divergence: from the 101st wave the difficulty resets and re-climbs', async () => {
-    const d = await loadDifficulty()
-    const w = await loadWaveBcd()
-
-    // ─── THIS TEST ASSERTS WRONG BEHAVIOUR ON PURPOSE ──────────────────────────
-    // The counter is two BCD digits, so wave 101 and wave 1 both read `01`. The
-    // ordinal is not recoverable from the byte, and no fix confined to uf1-2 can
-    // make it so — the story stops the CRASH and gets wave 100 exactly right, and
-    // that is the whole of what it can do.
-    //
-    // The ROM has no such problem, and I checked rather than assumed: WAVBCD has
-    // exactly four references in JOUSTRV4.SRC, and its ONLY read is the display
-    // routine (`LDA WAVBCD / BITA #$F0 / BNE / ORA #$F0 / JMP OUTBCD`, :2399-2403,
-    // inside WAVEN3 "PUT UP WAVE NUMBER"). It indexes nothing. The wave TABLE walks
-    // on a separate pointer (`LDX PWAVE,U / LEAX WLEN,X / CMPX #WTBEND /
-    // LDX #WTBRST`, :2011-2019) and the DYTBL difficulty on a per-row RAM countdown
-    // run from IWAVE at each wave end (:945 seeds it to 2, :2099 fires it). Both are
-    // monotone. The 1982 cabinet's difficulty NEVER resets.
-    //
-    // So this is a divergence, it is ours, and it is pinned rather than left to be
-    // discovered — the ROW_DISPOSITION discipline applied to behaviour. **td1-12
-    // owns the fix** (a monotone wave count in DemoState, its option B). When it
-    // lands, this test SHOULD fail. Delete it then; do not "repair" it.
-    const rung = (wave: number): number =>
-      d.waveValue('BODNVY', w.decimalWaveFromBcd(counterAtWave(w, wave)))
-
-    expect(rung(100), 'wave 100 is the last correct wave').toBe(d.waveValue('BODNVY', 100))
-    expect(rung(101), 'wave 101 reads the counter 0x01 and resets to the OPENING value').toBe(
-      WIRED.BODNVY.start,
-    )
-    // The size of the regression, stated so nobody has to compute it: the deepest
-    // wave the cabinet can reach drops back to what wave 1 hands a fresh player.
-    expect(rung(100) - rung(101), 'the cliff is the whole hundred-wave climb').toBe(
-      d.waveValue('BODNVY', 100) - WIRED.BODNVY.start,
-    )
-    // And it re-climbs from there on the same curve, once per hundred waves.
-    expect(rung(103), 'the walk restarts, it does not stay flat').toBe(WIRED.BODNVY.wave3)
-    expect(rung(111)).toBe(WIRED.BODNVY.wave11)
-  })
-
-  it('never THROWS at any wave the counter can reach — the crash is closed everywhere', async () => {
-    const demo = await loadDemo()
-    const w = await loadWaveBcd()
-    // The single-wave test above proves the hundredth wave specifically. This proves
-    // the PROPERTY: every one of the 100 values the counter cycles through, driven
-    // over two full rollovers, with a SMART enemy staged so the brake is actually
-    // consulted (a dumb `linet` never reads it and would hide the crash).
-    const threw: string[] = []
-    for (let wave = 1; wave <= 200; wave++) {
-      const counter = counterAtWave(w, wave)
-      try {
-        steppedProbe(demoAtCounter(demo, counter, fallingEnemy('boundr', 0x130)), demo)
-      } catch (err) {
-        threw.push(`wave ${wave} (counter 0x${counter.toString(16)}): ${(err as Error).message}`)
-      }
-    }
-    expect(threw, 'no reachable counter value may kill a frame').toEqual([])
   })
 })

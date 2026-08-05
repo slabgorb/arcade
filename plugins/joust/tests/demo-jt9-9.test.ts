@@ -387,16 +387,17 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
     // KILLS the mutant that survived review: hard-wiring the hatch's wave
     // argument to 1. That leaves the walk correct, the oracle green and the
     // per-wave pressure entirely absent — the uf1-2 defect exactly, one layer
-    // down. Wave 0x20 is BCD for the twentieth (the counter is packed), where
-    // EGGWT has walked 64 -> 58.
-    const LATE_BCD = 0x20
+    // down. `demo.wave` is now the DECIMAL wave ordinal (td1-12 / Option B), so the
+    // twentieth wave is staged as 20, not the packed byte 0x20; EGGWT has walked
+    // 64 -> 58 by wave 20.
+    const LATE_WAVE = 20
     const lateWait = diff.waveValue('EGGWT', 20)
     const earlyWait = diff.waveValue('EGGWT', 1)
     expect(lateWait, 'precondition: the row really has walked down by wave 20').toBeLessThan(
       earlyWait,
     )
 
-    const late = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1)], LATE_BCD)
+    const late = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1)], LATE_WAVE)
     // One frame short of the LATE wait: still purely waiting on any correct reading.
     const shortOfLate = await run(late, lateWait * dmod.EGG_WAIT_NAP_FRAMES - 1)
     expect(eggsIn(shortOfLate).length, 'still waiting at wave 20').toBe(1)
