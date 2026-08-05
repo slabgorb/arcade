@@ -219,7 +219,8 @@ stories:
       TEST PRECEDENTS TO COPY: plugins/red-baron/tests/pause-adoption.test.ts:38-118 is the closest fit — it walks src/, asserts something imports @shared/pause (:86-91) and @shared/esc-overlay (:93-98), then runtime-imports both and asserts the full API plus the frozen-reference and zero-call property (:100-112). Identical files exist for asteroids, tempest and star-wars. For behaviour, plugins/battlezone/tests/shell/pause-gate.test.ts:37-80 covers key recognition INCLUDING the negative set ('e', 'esc', '') plus a mid-play frozen-frame assertion; plugins/battlezone/tests/shell/pause-overlay.test.ts:55/:77 mocks the overlay. For the loop-silencing test, centipede's own tests/audio-wiring.test.ts and tests/voice0-contention.test.ts already drive a SoundSurface double — use it. FINALLY, BE HONEST ABOUT THE SEAM: every adopter declares that the live keydown-to-rAF path has NO unit seam and is verified by a manual run (see red-baron's test header :14-17). Frame it the same way and actually do the manual run.
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
