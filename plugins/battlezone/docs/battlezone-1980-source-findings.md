@@ -511,12 +511,33 @@ the tank-freeze / progressive-sections / reposition port is a candidate **bz5 fo
 
 ---
 
+### 11.1 · MAME colour-overlay geometry & our deliberate deviation (bz5-2)
+
+MAME models the cabinet's physical colour overlay in `layout/bzone.lay` (not in the ROM):
+a two-band gel blended **multiply** over the monochrome vector CRT — **RED** from the top
+down to **0.2** of viewport height (rgb `1.0,0.125,0.125`) and **GREEN** from `0.2` to
+`1.0` (rgb `0.125,1.0,0.125`). `bzone.cpp:855` records a separate **blue**-overlay ROM
+variant — out of scope here; the green cabinet is canonical. The `0.2` boundary is pinned
+in the clone as `MAME_COLOR_SPLIT` (`src/shell/render.ts`) and guarded by
+`tests/shell/periscope-overlay.test.ts`.
+
+**Deliberate deviation (method, not boundary):** we honour MAME's `0.2` split *location* —
+the red score/radar band occupies the top ~20% and the field below is green — but we do
+**not** lay a full-width translucent red/green multiply gel across the whole viewport.
+Instead the clone colours the **HUD elements** in that top band red (`HUD_RED`, the bz1-12
+bichromatic pass — score, radar and alert text) and renders the vector world green
+(`GLOW_GREEN`). Reason: a multiply gel over the entire green vector field would dim and
+muddy the wireframe legibility our render depends on, for no gameplay gain; colouring the
+HUD elements reproduces the cabinet's red-band / green-field read while keeping the vectors
+crisp. Boundary fidelity is exact (`0.2`); the rendering method is the documented deviation.
+
 ## 12 · Provenance / changelog
 
 | Date | Change | Source |
 |---|---|---|
 | 2026-07-03 | Initial findings doc authored (story bz1-2) | 6502disassembly.com/va-battlezone/ (hub, objects.html, mathbox.html, rev1.html); arcade-museum.com DIP switch settings |
 | 2026-07-03 | **Rework:** `src/core/obstacles.ts`'s 21 entries and 9 of 10 `src/core/models.ts` model geometries upgraded from AUTHORED placeholders to byte-exact ROM decodes; `EXPLOSION_DEBRIS` upgraded to ROM-exact vertices with documented authored edge connectivity (§3, §4, §6 rewritten). Scoring (§1/§9) and DIP band (§9) re-confirmed against the ROM disassembly — no value changes. | Real ROM quarry supplied locally (`~/Downloads/va-battlezone/`: `Battlezone` ROM binary, `Battlezone.dis65` SourceGen project, `VisBattlezone.cs` visualizer source) — canonical hosted pages [Battlezone.html](https://6502disassembly.com/va-battlezone/Battlezone.html), [objects.html](https://6502disassembly.com/va-battlezone/objects.html) |
+| 2026-08-05 | **§11.1 added (bz5-2):** MAME's `layout/bzone.lay` red/green colour-overlay geometry (RED top..0.2, GREEN 0.2..1.0, multiply) pinned as `MAME_COLOR_SPLIT = 0.2`; our HUD-element colouring vs MAME's full-width multiply gel documented as a deliberate method deviation (boundary fidelity exact). Periscope bezel overlay added (cabinet artwork, not in ROM/MAME). | MAME `~/Projects/mame/src/mame/atari/layout/bzone.lay`, `bzone.cpp:855` (blue variant, out of scope) |
 | 2026-08-05 | **§11 added (bz5-1):** the `CRACK` cracked-windshield counter — the sibling of `BOUNCE` bz4-1 shipped without — is now wired (set on death, advanced per game frame, cleared at `16*2`) and the overlay is gated on it. AC3 cross-check against the MAME driver: MAME executes the same ROM (no death-specific C); its clock chain times the ~1 s window; exact NMI-rate reconcile deferred to bz5-3. Tank-freeze / progressive-sections / reposition deviation documented as a bz5 follow-up. | `~/Projects/battlezone-source-text/BZONE.MAC` (CRACK :256/:506/:697/:2335/:3362); MAME `~/Projects/mame/src/mame/atari/bzone.{cpp,h}`, `bzone_a.cpp` |
 
 **Refresh procedure:** see `reference/README.md` (gitignored, checkout-local) for how to

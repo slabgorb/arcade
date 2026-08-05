@@ -71,6 +71,19 @@ export const GLOW_GREEN = '#33ff66'
  */
 export const HUD_RED = '#ff3b30'
 
+/**
+ * bz5-2 (AC2): MAME's authoritative red/green colour boundary, as a fraction of
+ * viewport height from the top. `layout/bzone.lay` lays the physical colour
+ * overlay as RED from top..0.2 (rgb 1.0,0.125,0.125) and GREEN from 0.2..1.0
+ * (rgb 0.125,1.0,0.125), blended "multiply" — so the top 20% is the red
+ * score/radar band and the field below is green. This lives in MAME's layout
+ * file, not the ROM, so it is pinned here as the single authoritative number
+ * (bzone.cpp:855's blue-overlay variant is out of scope — green cabinet is
+ * canonical). Any deliberate deviation is documented in
+ * docs/battlezone-1980-source-findings.md.
+ */
+export const MAME_COLOR_SPLIT = 0.2
+
 /** World-unit distance mapped to the scope's outer edge (bz1-12 may retune). */
 export const RADAR_RANGE = 32768
 
@@ -366,6 +379,40 @@ export function drawCrackedGlass(
     for (let i = 1; i < path.length; i++) ctx.lineTo(path[i][0] * w, path[i][1] * h)
   }
   ctx.stroke()
+}
+
+/**
+ * The skeuomorphic periscope bezel (bz5-2, AC1). The Battlezone cabinet is seen
+ * through a periscope viewer; without a frame the clone renders edge-to-edge. A
+ * shell-only HUD-space overlay drawn OVER the world and UNDER the score/radar HUD
+ * (the same slot as drawCrackedGlass), so the HUD stays legible on top. This is
+ * cabinet artwork — not in the ROM or MAME — so the look is reference-driven
+ * (references/footage) and thickness/opacity are playtest-tunable.
+ *
+ * Drawn as a dark bezel framing the four edges around a central VIEWPORT
+ * APERTURE that is never filled: the gunsight and a target at screen centre stay
+ * fully visible (AC1). A soft phosphor-green rim traces the aperture — the
+ * periscope's lit edge.
+ */
+export function drawPeriscope(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const bezelX = w * 0.08 // frame thickness, left/right
+  const bezelY = h * 0.1 // frame thickness, top/bottom
+  ctx.save()
+  ctx.shadowBlur = 0
+  // Opaque dark bezel: four border bands around the aperture. The aperture (the
+  // central hole) is never painted, so screen centre is left clear.
+  ctx.fillStyle = 'rgba(6,10,8,0.92)'
+  ctx.fillRect(0, 0, w, bezelY) // top band
+  ctx.fillRect(0, h - bezelY, w, bezelY) // bottom band
+  ctx.fillRect(0, bezelY, bezelX, h - bezelY * 2) // left band
+  ctx.fillRect(w - bezelX, bezelY, bezelX, h - bezelY * 2) // right band
+  // Phosphor-green rim around the viewport aperture — the periscope's lit edge.
+  ctx.strokeStyle = GLOW_GREEN
+  ctx.lineWidth = 2
+  ctx.shadowColor = GLOW_GREEN
+  ctx.shadowBlur = 8
+  ctx.strokeRect(bezelX, bezelY, w - bezelX * 2, h - bezelY * 2)
+  ctx.restore()
 }
 
 /**

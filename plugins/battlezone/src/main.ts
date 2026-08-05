@@ -49,6 +49,7 @@ import {
   drawScreenLines,
   drawLives,
   drawCrackedGlass,
+  drawPeriscope,
   drawHorizonBand,
   drawMessage,
   drawPauseOverlay,
@@ -277,6 +278,13 @@ function renderFrame(): void {
   // shell only READS it. Drawn over the world, under the HUD so score/radar stay
   // legible. (bz1-12 originally drew this every frame — that was the bug.)
   if (game.crack !== 0) drawCrackedGlass(ctx, w, h)
+
+  // bz5-2 (AC1): the skeuomorphic periscope bezel frames the viewport. Cabinet
+  // artwork (not in the ROM or MAME), drawn OVER the world and UNDER the
+  // score/radar HUD so the HUD stays legible — the same slot as the cracked
+  // glass above. The bezel leaves a central aperture, so the gunsight and a
+  // centred target are never obscured.
+  drawPeriscope(ctx, w, h)
 
   // Radar scanner HUD — bz3-7: the sweep and the blip list are now LIVE core
   // state (`game.radar` / `game.radarBlips`, ticked by sim.ts's `advanceRadar`
