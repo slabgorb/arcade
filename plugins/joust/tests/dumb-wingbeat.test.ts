@@ -642,9 +642,17 @@ describe('AC6 — the dumb wing cue', () => {
       // trajectories, so the trajectory-dependent 2000-frame counts move
       // 0xbeef 311 -> 302 and 0x2468 290 -> 284 (both still substantial, > 50).
       // 0xface's count and every scripted knight-cue count (154) are unmoved.
+      //
+      // jt9-18 RE-BASELINE (the BOLEV2 forced glide): a level-flying knight now
+      // PUMPS its wings (flap/glide/flap) where it used to hold them down, and a
+      // held wing sounds ONCE however long it lasts — so the enemy-wing-down count
+      // RISES where level flight fires. Measured: 0x2468 284 -> 370 and 0xface
+      // 110 -> 159; 0xbeef's trajectory reaches no new level pumping in this window
+      // and holds at 302. Every scripted knight cue (154) is unmoved — the forced
+      // glide is enemy-only and does not shift knight-death timing.
       0xbeef: { down: 302, playerDown: 154, playerUp: 154 },
-      0x2468: { down: 284, playerDown: 154, playerUp: 154 },
-      0xface: { down: 110, playerDown: 154, playerUp: 154 },
+      0x2468: { down: 370, playerDown: 154, playerUp: 154 },
+      0xface: { down: 159, playerDown: 154, playerUp: 154 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)

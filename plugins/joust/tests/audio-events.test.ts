@@ -535,8 +535,14 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // this seed's trajectories, clearing wave 1 sooner; re-swept the same 6000
     // frames for the same precondition — 4370 (wave 1 -> 2, four buzzards dealt)
     // is now the earliest. Seed, script and every assertion unchanged.
-    const before = advanceTo(0xface, 4370)
-    const after = stepGame(before, inputsAt(4370))
+    //
+    // jt9-18 RE-BASELINE: 4370 -> 4714. The BOLEV2 forced glide halves a level
+    // flyer's flap rate, so buzzards climb slower and wave 1 clears LATER; re-swept
+    // the same 6000 frames for the same precondition (wave 1 -> 2 AND a complement
+    // dealt) — 4714 (four buzzards) is now the earliest. Seed, script and every
+    // assertion unchanged.
+    const before = advanceTo(0xface, 4714)
+    const after = stepGame(before, inputsAt(4714))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
@@ -796,12 +802,19 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // draws no randomness, the law this group pins. The play moved the OTHER way this
     // time: rejecting X-blind over-reaches means far fewer kills, so this seed is back
     // to WAVE 1 at frame 2400 (was 3), both knights alive on 5/4 lives, scores 1250/1550.
+    // jt9-18 RE-BASELINE (BOLEV2 forced glide + PPVELX snapshot): `rng` is STILL
+    // 2_006_456_271, through SEVEN consecutive re-baselines — the forced glide changes
+    // how the birds fly, not the numbers the sim draws, which is exactly this group's
+    // law. Play moved: still WAVE 1 at frame 2400, both knights alive on 5/4 lives, but
+    // the arena now holds TWO grown buzzards rather than one buzzard and an egg, and
+    // player 2 scores 500 less (1550 -> 1050) — the slower level flap-rate reshapes the
+    // clear-out and the process population.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
       wave: 1,
-      procs: 'player#1,enemy#4260097,player#2,egg#4325634',
-      scores: [1250, 1550],
+      procs: 'player#1,enemy#4260098,enemy#4260097,player#2',
+      scores: [1250, 1050],
       lives: [5, 4],
     })
   })

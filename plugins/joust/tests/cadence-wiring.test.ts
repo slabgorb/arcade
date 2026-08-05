@@ -716,8 +716,20 @@ describe('R1-3b — a running shadow interval HOLDS the level branch', () => {
       flaps.push(e.shadow(held, FAR_ABOVE, 1).flap)
       enemy = e.stepEnemy(held, { player: FAR_ABOVE, wave: 1 })
     }
-    // Every mid-interval wake takes SHLEP (flap), not the climb (no flap).
-    expect(flaps.every((f) => f), 'the level branch is held for the whole interval').toBe(true)
+    // The level branch is held for the whole interval: every mid-interval wake
+    // takes SHLEP, not the climb. jt9-18 RE-BASELINE — SHLEP now flaps at most
+    // every OTHER wake (the BOLEV2/SHLEP2 forced glide), so "held" is no longer
+    // "flaps every wake" but "flaps on alternate wakes"; the climb, by contrast,
+    // refuses the flap on EVERY wake (rising faster than SHUPVY). So the held
+    // signature is `some flap` (SHLEP fires) AND `not every flap` (the forced
+    // glide breaks the run) — a pattern the climb cannot produce.
+    expect(flaps.some((f) => f), 'the level branch is held — SHLEP flaps, the climb never would').toBe(
+      true,
+    )
+    expect(
+      flaps.every((f) => f),
+      'and it is the forced-glide cadence, not a flap-every-wake hold (jt9-18)',
+    ).toBe(false)
     // The control: with no interval running, the SAME state takes the climb.
     const fresh: EnemyState = {
       ...airborneEnemy('shadow', RISING_FAST),
