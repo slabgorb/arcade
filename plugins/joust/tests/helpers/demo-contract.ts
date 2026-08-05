@@ -353,6 +353,26 @@ export interface DemoModule {
   playerDrawList(p: DemoProcess): string[]
 
   /**
+   * jt9-46 — the ordered draw layers for a kind:'enemy' process: `[mount, rider]`,
+   * mirroring `playerDrawList`. The mount is the buzzard body frame (unchanged from
+   * `enemyFrame`), the rider is the species' own DPLYR knight — PLYR3 (bounder) /
+   * PLYR4 (hunter) / PLYR5 (shadowLord), read from each PxDEC block's DPLYR field
+   * (JOUSTRV4.SRC:109, field 6/offset 10). The enemy used to render riderless (one
+   * mount op). `drawList` loops this for EVERY enemy — the hatched remount buzzard
+   * (`remountEnemyProcess`, a kind:'enemy' process) gets its rider with no special
+   * case. Pure DATA; the shell blits and mirrors a left-facer from the op's facing.
+   */
+  enemyDrawList(p: DemoProcess): string[]
+
+  /**
+   * The transcribed POSOFF offset for an entity frame name (jt2-9): each
+   * ENTITY_RECORDS `position` word decodes to `{ xoff, yoff }` so a sprite draws
+   * lifted off its feet rather than clipping through a ledge. PLYR3/4/5 all carry
+   * position word 751. Unknown names take a zero offset. Pure.
+   */
+  posOffset(name: string): { xoff: number; yoff: number }
+
+  /**
    * The whole frame's ordered render ops (round 2): background/platform tiles,
    * the entity sprites, and the FOREGROUND (lower) cliff/island tiles that occlude
    * entities standing behind them. The user reported the lower-platform z-order
@@ -385,6 +405,33 @@ export async function loadDemoRender(): Promise<
         'playerDrawList / drawList to joust/src/core/demo.ts: the buzzard RUN frames ' +
         '(BRRUN1-4), the [mount, rider] player composition (ostrich/stork under PLY*), ' +
         `and the back→entity→foreground draw order. (${(e as Error).message})`,
+    )
+  }
+}
+
+/**
+ * Load the jt9-46 enemy rider seam with a self-describing failure. Kept SEPARATE
+ * from `loadDemoRender` so the pre-existing render suite stays green while only
+ * `enemyDrawList` is still absent — my new rails red cleanly here, and the rest of
+ * the suite (which still asks loadDemoRender for the three built seams) does not.
+ * `drawList`/`enemyFrame`/`posOffset` already exist; `enemyDrawList` is the RED.
+ */
+export async function loadEnemyDrawList(): Promise<
+  Pick<DemoModule, 'enemyDrawList' | 'drawList' | 'enemyFrame' | 'posOffset'>
+> {
+  const specifier = ['..', '..', 'src', 'core', 'demo.js'].join('/')
+  try {
+    const mod = (await import(/* @vite-ignore */ specifier)) as Partial<DemoModule>
+    for (const fn of ['enemyDrawList', 'drawList', 'enemyFrame', 'posOffset'] as const) {
+      if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
+    }
+    return mod as DemoModule
+  } catch (e) {
+    throw new Error(
+      'enemy rider seam not built yet — GREEN (Julia) adds a pure `enemyDrawList(p)` ' +
+        'to joust/src/core/demo.ts returning [enemyFrame(p), <species DPLYR rider>] ' +
+        '(bounder→PLYR3, hunter→PLYR4, shadowLord→PLYR5) and has drawList emit both ops ' +
+        `for every kind:'enemy' process, tagged with the enemy's facing. (${(e as Error).message})`,
     )
   }
 }
