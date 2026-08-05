@@ -83,3 +83,8 @@ completed_stories:
     title: The score zero-PADS where the ROM zero-SUPPRESSES — and our own claim already says so
     points: 2
     completed: '2026-08-04'
+  - id: mg1-12
+    epic: mg1
+    title: Probe what each old <game>.slabgorb.com hostname actually serves before any bucket is torn down
+    points: 2
+    completed: '2026-08-05'
