@@ -1013,5 +1013,5 @@ stories:
     points: 3
     priority: p3
     status: backlog
-    repos: arcade (.)
+    repos: arcade
     workflow: tdd
