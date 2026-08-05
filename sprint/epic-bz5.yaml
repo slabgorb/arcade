@@ -75,7 +75,8 @@ stories:
       bzone.cpp:855 records a blue-overlay variant — out of scope, green cabinet is canonical.
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
