@@ -219,7 +219,7 @@ stories:
       TEST PRECEDENTS TO COPY: plugins/red-baron/tests/pause-adoption.test.ts:38-118 is the closest fit — it walks src/, asserts something imports @shared/pause (:86-91) and @shared/esc-overlay (:93-98), then runtime-imports both and asserts the full API plus the frozen-reference and zero-call property (:100-112). Identical files exist for asteroids, tempest and star-wars. For behaviour, plugins/battlezone/tests/shell/pause-gate.test.ts:37-80 covers key recognition INCLUDING the negative set ('e', 'esc', '') plus a mid-play frozen-frame assertion; plugins/battlezone/tests/shell/pause-overlay.test.ts:55/:77 mocks the overlay. For the loop-silencing test, centipede's own tests/audio-wiring.test.ts and tests/voice0-contention.test.ts already drive a SoundSurface double — use it. FINALLY, BE HONEST ABOUT THE SEAM: every adopter declares that the live keydown-to-rAF path has NO unit seam and is verified by a manual run (see red-baron's test header :14-17). Frame it the same way and actually do the manual run.
     points: 3
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
@@ -232,3 +232,5 @@ stories:
       - Pause lives entirely in src/main.ts and src/shell/; SimState gains no pause field and tests/purity.test.ts:140-161 stays green. @shared/pause is used rather than the logic re-implemented, and the keydown wiring keeps the !e.repeat edge test and the key.toLowerCase() that installPauseToggle bakes in.
       - A pause-adoption test in the shape of plugins/red-baron/tests/pause-adoption.test.ts:38-118 exists for centipede, plus a behavioural gate covering the negative key set ('e', 'esc', '').
       - The story records that this carries NO fidelity claim — the vendored tree has zero occurrences of 'pause' and the ROM's DELAY is a different concept — and adds no claim JSON.
+    review_findings: "4 minor same-diff defects (code correct, manually verified): #17 false 'only game' comment (asteroids also edge-driven) main.ts:143; #15 importersOf not comment-stripped pause-adoption.test.ts; stale citation regression audio-dispatch.ts:59 (203->291); #8 esc-overlay mock not type-anchored pause-behaviour.test.ts. Green rework."
+    review_verdict: rejected
