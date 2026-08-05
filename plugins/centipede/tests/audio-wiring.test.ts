@@ -98,14 +98,26 @@ interface Pumped {
  * triple and the old pair vanished — the respawn frame now emits `march-start`
  * ALONE, which is a singleton and so is not a composition at all.
  *
- * Measured, not inferred: an instrumented run of THIS test printed all three of
- * the run's deaths as `idx 79 pump 1468`, `idx 156 pump 2899`, `idx 235 pump
- * 4306`, each the triple, and each followed immediately by a bare `march-start`
- * (`pump 1520`, `pump 2951`).
+ * Measured, not inferred, and RE-MEASURED for cp7-5. This seeded run still ends
+ * three lives, each a `player-died+march-stop+spider-stop` triple. What changed
+ * is everything BETWEEN the deaths: cp7-5 models the OPTNS difficulty DIP and
+ * defaults it to EASY, so the spider is the gentler cabinet — it arrives at full
+ * speed five times later (5,100 vs 1,100 points) and turns more often. The run
+ * therefore survives long enough to shoot segments, kill a spider, stop a flea
+ * and clear a wave, and those are the richer compositions below. Per this
+ * block's own rule the list is pinned, not narrated: volatile per-death pump
+ * indices are deliberately no longer quoted here, since a sim change (like this
+ * one) rots them — the constant is the artifact, re-measured from the run.
  */
 const MEASURED_PAIR_COMPOSITIONS: string[] = [
+  'mushroom-destroyed+spider-start',
   'player-died+march-stop+spider-stop',
-  'shot-fired+spider-stop',
+  'segment-killed+wave-cleared+march-stop',
+  'shot-fired+flea-stop',
+  'shot-fired+mushroom-destroyed',
+  'shot-fired+segment-killed',
+  'shot-fired+segment-killed+wave-cleared+march-stop',
+  'shot-fired+spider-killed',
 ]
 
 // ─── recorders ───────────────────────────────────────────────────────────────

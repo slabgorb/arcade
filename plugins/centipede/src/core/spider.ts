@@ -55,8 +55,9 @@ export const SPIDER_SIDE_BIT = 0x04 // SP-3 (:266 "AND I,04" — vary the entry 
 // The BUGOFF speed gate (:258-262). The threshold byte is (OPTNS & 40) | 10 —
 // 0x10 on HARD, 0x50 on EASY — compared against SCORE1, the BCD byte holding
 // the hundreds and thousands digits. So the fast spider arrives above 1000
-// points (hard) or 5000 (easy). The DIP itself is not modelled anywhere in the
-// sim yet, so it is an explicit option here (TEA deviation: parameterized).
+// points (hard) or 5000 (easy). cp7-5 now MODELS the DIP: sim.ts carries the
+// OPTNS difficulty position on SimState and threads it here through `opts.easy`
+// (default EASY — the product ruling; see createSim in sim.ts).
 export const SPIDER_GATE_HARD = 0x10 // SP-2 (:260 "ORA I,10")
 export const SPIDER_GATE_EASY = 0x50 // SP-2 (:259-260 "AND I,40 / ORA I,10")
 
@@ -154,8 +155,9 @@ export interface Spider {
   pts: number
 }
 
-/** Options the ROM reads from the OPTNS DIP byte, which the sim does not model
- *  (epic wave-gating ruling: parameterize, do not guess a factory default). */
+/** Options the ROM reads from the OPTNS DIP byte. cp7-5 models the difficulty
+ *  position at the sim level (SimState.easy, default EASY — the product ruling)
+ *  and threads it to both consumers below. */
 export interface SpiderOptions {
   /** OPTNS bit 6 — moves the fast-spider gate from 1000 to 5000 points and the
    *  per-turn V-reversal probability from 1/2 to 3/4 (:259/:333). */

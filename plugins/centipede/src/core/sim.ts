@@ -261,6 +261,20 @@ export interface SimState {
    *  carried across every state so the sweep survives the demo's immortal loop. */
   readonly attractDirH: number
   readonly attractDirV: number
+  /** cp7-5: the OPTNS difficulty DIP position (bit 6), fixed for the whole game
+   *  as a factory cabinet's switch is. `true` = EASY: the fast spider is deferred
+   *  from 1,100 to 5,100 points (CENTI4.MAC:258-262) and the per-turn V-reversal
+   *  runs 3/4 rather than 1/2 of the time (:332-336). Threaded from here into
+   *  BOTH spider consumers (createSpider's speed gate and stepSpider's reversal
+   *  mask) so the DIP is modelled in live play, not just in the pure function.
+   *
+   *  PRODUCT RULING (cp7-5): the default is EASY. The playtest reported the
+   *  spider "much too fast" — the clone had been running the HARD branch
+   *  permanently because nothing set this field. EASY is the gentler cabinet the
+   *  player meets cold; it is the deliberate default, not an accident of a
+   *  hard-coded constant. It may not match the real Atari factory-shipped
+   *  position (unmeasured), and that trade was made knowingly. */
+  readonly easy: boolean
   /** cp5-1: the gameplay moments THIS frame produced, for the shell's audio.
    *  DATA, not callbacks — the core never learns whether anything is audible,
    *  so `stepSim` stays a pure function of (state, input) and a fixed seed
@@ -274,7 +288,11 @@ export interface SimState {
 /** Seed the playfield (CENTI4.MAC:1220 "PUT UP OBSTACLES") through a fresh
  *  seeded rng, boot the gun at its rest position, glue the shot to it, and
  *  lay the wave-1 train (CENTPC) with full lives (CT-67/68). */
-export function createSim(seed: number): SimState {
+export function createSim(seed: number, opts: { easy?: boolean } = {}): SimState {
+  // cp7-5: the OPTNS difficulty DIP. Default EASY (the product ruling) — a bare
+  // `createSim(seed)` gets the gentler cabinet, which is what fixes the "much too
+  // fast" playtest report. See SimState.easy for the full reasoning.
+  const easy = opts.easy ?? true
   const rng = createRng(seed)
   const playfield = seedPlayfield(rng)
   const player = createPlayer()
@@ -305,7 +323,7 @@ export function createSim(seed: number): SimState {
     newd: false, // CT-90: disarmed until a head reaches the bottom
     count1: NEWHD_COUNT_INIT, // CT-88
     count3: NEWHD_COUNT_INIT, // CT-88
-    spider: createSpider(rng, 0), // INIT :1199 "JSR BUGOFF ;INITIALIZE BUG"
+    spider: createSpider(rng, 0, { easy }), // INIT :1199 "JSR BUGOFF ;INITIALIZE BUG"
     flea: createFlea(rng, 0), // INIT :1200 "JSR ANTPC ;ANT" — BUGOFF then ANTPC
     // INIT :854-859 "JSR BONUS1 / STA BONUSL / … / LDA Y,BONUSV+1 ;SET INITIAL
     // BONUS VALUES" — the first threshold IS the increment.
@@ -314,6 +332,7 @@ export function createSim(seed: number): SimState {
     centis: CENTIS_INIT, // INIT :1174-1176 "LDA I,02 ;FAST TO START WITH"
     attractDirH: ATTRACT_DIR_INIT, // cp4-7: PLAYDH/PLAYDV sweep seeds
     attractDirV: ATTRACT_DIR_INIT,
+    easy, // cp7-5: the OPTNS difficulty DIP, default EASY (product ruling)
     events: [], // cp5-1: nothing has happened yet
   }
 }
@@ -515,6 +534,7 @@ function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
         score,
         rng: state.rng,
         flea: state.flea,
+        easy: state.easy, // cp7-5: the DIP reaches BUGMV's reversal mask and its walk-off re-park
       }).spider
     }
   }
@@ -565,7 +585,7 @@ function stepPlayingFrame(state: SimState, input: InputCounts): SimState {
     // SHOOT's tail (:2304-2314) runs every frame regardless of the shot: it is
     // the ONLY thing that brings a killed spider back, because BUGMV freezes
     // while the points sprite is up and stops ticking COUNT2.
-    spider = stepSpiderKillTimer(spider, state.rng, score)
+    spider = stepSpiderKillTimer(spider, state.rng, score, { easy: state.easy }) // cp7-5: DIP survives the post-kill re-park
   }
 
   // cp3-2/cp3-3: motion-object slot 12, shared by the flea AND the scorpion. Its
@@ -891,7 +911,7 @@ function stepDeathFrame(state: SimState): SimState {
       count3: state.count3,
       // :641/:732 — the death/respawn paths re-run BUGOFF, so the new life
       // starts with the spider parked off-screen rather than mid-walk.
-      spider: createSpider(state.rng, score),
+      spider: createSpider(state.rng, score, { easy: state.easy }), // cp7-5: DIP carries into the death re-lay
       // :733 — and ANTPC immediately after it, so a flea caught mid-fall when
       // the player died does not carry into the new life.
       flea: createFlea(state.rng, score),
@@ -906,6 +926,7 @@ function stepDeathFrame(state: SimState): SimState {
       centis: state.centis,
       attractDirH: state.attractDirH, // cp4-7: carry the demo sweep through respawn
       attractDirV: state.attractDirV,
+      easy: state.easy, // cp7-5: the DIP is a cabinet setting — it survives a death
     }
   }
 
@@ -1035,7 +1056,7 @@ function stepPhase(state: SimState, input: InputCounts, pressed: boolean): SimSt
     // The BOARD is threaded across the reseed: it outlives every run, and
     // createSim deliberately builds an empty one.
     return {
-      ...createSim(state.rng.seed),
+      ...createSim(state.rng.seed, { easy: state.easy }), // cp7-5: the cabinet DIP outlives a restart, like the board does
       highScoreTable: state.highScoreTable,
     }
   }
@@ -1181,5 +1202,6 @@ export function cloneState(state: SimState): SimState {
     centis: state.centis,
     attractDirH: state.attractDirH,
     attractDirV: state.attractDirV,
+    easy: state.easy, // cp7-5: clone the DIP position with the rest of the state
   }
 }
