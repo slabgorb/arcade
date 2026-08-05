@@ -767,22 +767,21 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // before — never by nudging a number:
     //   0xbeef re-entries: 1803->2, 1884->1, 2114->1
     //   0xface re-entries:  252->1,  822->1, 1403->2
-    // Both seeds still satisfy every clause below without a seed change: 0xbeef
-    // has an earliest knight-TWO (1803) and an earliest knight-1 (1884) and they
-    // DISAGREE, which is what `the payload is the LOOP's id` needs; 0xface has
-    // exactly one knight-TWO re-entry in the window, 1403, so that is the fixture
-    // by the same "earliest that re-enters knight 2" rule as every prior move.
-    // The sibling fixture in audio-events.test.ts is re-baselined independently
-    // under this same story, so this comment no longer asserts the two agree —
-    // 1403 is chosen from THIS test's precondition, measured here.
-    expect(materialisedIdsAt(0xbeef, 1803), 'seed 0xbeef frame 1803 re-enters knight 2').toEqual([2])
-    expect(materialisedIdsAt(0xbeef, 1884), 'seed 0xbeef frame 1884 re-enters knight 1').toEqual([1])
-    expect(
-      materialisedIdsAt(0xface, 1403),
-      'seed 0xface frame 1403 re-enters knight TWO — the seed\'s only knight-2 re-entry in ' +
-        'the swept window. The emitter side of the same misattribution AC5 fixes on the ' +
-        'citation: a moment that is not player 1 must not sound "PLAYER 1 RE-CREATED".',
-    ).toEqual([2])
+    //
+    // jt9-43 RE-BASELINE: folding BPCOL's COLDX makes every collision screen-precise,
+    // reshaping both seeds' death/re-entry timelines again. Re-swept 2600 frames of each
+    // seed for THIS test's precondition (a player id appearing that was not there the
+    // frame before):
+    //   0xbeef re-entries: 2110->2   (its ONLY re-entry in the window — knight 1 no
+    //                                 longer re-enters here at all)
+    //   0xface re-entries:  259->1, 2370->2
+    // 0xbeef can no longer supply BOTH knights, so the DISAGREEING pair the clauses
+    // below need moves to 0xface, which still has an earliest knight-1 (259) and an
+    // earliest knight-2 (2370). Same "earliest that re-enters knight N" rule as every
+    // prior move; the sibling audio-events fixture is re-baselined independently.
+    expect(materialisedIdsAt(0xface, 259), 'seed 0xface frame 259 re-enters knight 1').toEqual([1])
+    expect(materialisedIdsAt(0xface, 2370), 'seed 0xface frame 2370 re-enters knight 2').toEqual([2])
+    expect(materialisedIdsAt(0xbeef, 2110), 'seed 0xbeef frame 2110 re-enters knight 2').toEqual([2])
   })
 
   it('the emitted moment carries the knight it belongs to', async () => {
@@ -791,22 +790,22 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // the defect this story exists to remove. Asserted BEHAVIOURALLY at two
     // measured frames rather than by reading events.ts, because a type can
     // declare a field the emitter never fills.
-    // jt9-8 RE-BASELINE: 516 -> 1803 (knight 2) and 350 -> 1884 (knight 1),
-    // riding the swept precondition above — the PTIMUP wing-edge re-init moved
-    // every player trajectory and with it every death that causes a re-entry.
-    expect(materialiseEventsAt(0xbeef, 1803).map((e) => e.player)).toEqual([2])
-    expect(materialiseEventsAt(0xbeef, 1884).map((e) => e.player)).toEqual([1])
+    // jt9-8 RE-BASELINE: 516 -> 1803 (knight 2) and 350 -> 1884 (knight 1).
+    // jt9-43 RE-BASELINE: moved to 0xface — knight 2 at 2370, knight 1 at 259 —
+    // because 0xbeef no longer re-enters knight 1 under screen-precise collision.
+    expect(materialiseEventsAt(0xface, 2370).map((e) => e.player)).toEqual([2])
+    expect(materialiseEventsAt(0xface, 259).map((e) => e.player)).toEqual([1])
   })
 
   it('the payload is the LOOP’s id, not a constant — the two frames disagree', async () => {
     // The control that kills the cheapest green: `player: 1` hardcoded at the
     // emit site satisfies the player-1 frame and every dispatch test below.
-    // jt9-8 RE-BASELINE: 516 -> 1803, 350 -> 1884. The discriminator is intact —
-    // the swept list above gives 0xbeef a knight-2 re-entry (1803) and a knight-1
-    // re-entry (1884), so the two frames still DISAGREE and a hardcoded
-    // `player: 1` still cannot pass both.
-    const two = materialiseEventsAt(0xbeef, 1803).map((e) => e.player)
-    const one = materialiseEventsAt(0xbeef, 1884).map((e) => e.player)
+    // jt9-8 RE-BASELINE: 516 -> 1803, 350 -> 1884.
+    // jt9-43 RE-BASELINE: on 0xface — knight-2 re-entry (2370) and knight-1 re-entry
+    // (259), so the two frames still DISAGREE and a hardcoded `player: 1` cannot pass
+    // both (0xbeef no longer offers both knights under screen-precise collision).
+    const two = materialiseEventsAt(0xface, 2370).map((e) => e.player)
+    const one = materialiseEventsAt(0xface, 259).map((e) => e.player)
     expect(two, 'precondition: both frames emit').toHaveLength(1)
     expect(one).toHaveLength(1)
     expect(two[0], 'a constant would make these equal').not.toBe(one[0])
@@ -816,11 +815,12 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // The headline defect, end to end, at a fixture that predates this story.
     // jt9-9 RE-BASELINE: 2063 -> 2579, riding the precondition above.
     // jt9-25 RE-BASELINE: 2579 -> 1894, riding the precondition above.
-    // jt9-8 RE-BASELINE: 1894 -> 1403, riding the precondition above — 1403 is
-    // 0xface's only knight-TWO re-entry in the swept 2600-frame window, so the
-    // SNPCR2 assertion is kept, not weakened, at the frame where it now holds.
-    const events = materialiseEventsAt(0xface, 1403)
-    expect(events, 'precondition: frame 1403 still emits the moment').toHaveLength(1)
+    // jt9-8 RE-BASELINE: 1894 -> 1403.
+    // jt9-43 RE-BASELINE: 1403 -> 2370 — 0xface's knight-TWO re-entry under screen-
+    // precise collision, so the SNPCR2 assertion is kept, not weakened, at the frame
+    // where it now holds.
+    const events = materialiseEventsAt(0xface, 2370)
+    expect(events, 'precondition: frame 2370 still emits the moment').toHaveLength(1)
     expect(await cuesFor({ ...events[0]! })).toEqual(['player2Materialise'])
   })
 

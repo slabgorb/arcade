@@ -128,6 +128,13 @@ export interface MaskRef {
   name: string
   /** The scanline (pixel Y) of this mask's FIRST span row on screen. */
   top: number
+  /**
+   * The entity's screen X (`PPOSX`) — the column origin of this mask, symmetric
+   * with `top`. narrowPhase folds the screen-X separation `COLDX = b.left − a.left`
+   * into the column overlap (BPCOL's `SUBD COLDX`, JOUSTRV4.SRC:7047/:7051/:7062).
+   * OPTIONAL: absent reads as 0 — the COLDX=0 superimposed case (jt9-43).
+   */
+  left?: number
 }
 
 /**

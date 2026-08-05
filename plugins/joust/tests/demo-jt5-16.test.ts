@@ -264,7 +264,11 @@ describe('jt5-16 AC4 — ptero-vs-PLAYER stays whole on resolvePteroAttack', () 
       id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
       collisionEnabled: true, entity: flightEntity({ posX: 100, posY: 109 << 8 }),
     }
-    const ptero: DemoProcess = { ...pteroAt(LANCE_PTERO, { posX: 104, posY: 100 << 8 }), facing: -1 }
+    // jt9-43 COLDX re-seat 104→100: at dy=−9 only player row 0 [7,9] aligns with
+    // PT1RC row 9 [8,15], and narrowPhase now folds COLDX — dx=4 shifts it to
+    // [12,19], a MISS (the ROM rejects it too). Co-locating keeps the masks
+    // superimposed at the lance row (COLDX=0 right-facer kill, JOUSTRV4.SRC:4994).
+    const ptero: DemoProcess = { ...pteroAt(LANCE_PTERO, { posX: 100, posY: 100 << 8 }), facing: -1 }
     const base = stage([])
     const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
     if (!anchor) throw new Error('stage() always keeps the anchor')

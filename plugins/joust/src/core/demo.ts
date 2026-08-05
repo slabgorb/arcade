@@ -1381,8 +1381,8 @@ function collisionPass(processes: readonly DemoProcess[]): {
       // entity with no transcribed mask cannot be jousted.
       if (a.collision === null || b.collision === null) continue
       const hit = narrowPhase(
-        { name: a.collision, top: a.posY >> 8 },
-        { name: b.collision, top: b.posY >> 8 },
+        { name: a.collision, top: a.posY >> 8, left: a.posX },
+        { name: b.collision, top: b.posY >> 8, left: b.posX },
         MASKS,
       )
       if (!hit) continue
@@ -1508,15 +1508,15 @@ function collisionPass(processes: readonly DemoProcess[]): {
       // this dispatch on the span-mask test too: `OSTXYP JSR BPCOL` / `BCS
       // OSTHIT` (JOUSTRV4.SRC:4944-4945) reaches the lance compare (:4971-5001)
       // ONLY on a BPCOL collision. The player mask is collisionMaskFor's
-      // CWNG3R/CSTN4R; the ptero's is PT1RC. (BPCOL folds a screen-X COLDX term
-      // this narrowPhase drops for all three passes — the pre-existing jt2-3
-      // divergence filed as jt9-43, not fixed here.)
+      // CWNG3R/CSTN4R; the ptero's is PT1RC. narrowPhase folds BPCOL's screen-X
+      // COLDX term (jt9-43) — `left` threads each sprite's PPOSX so the span
+      // overlap is taken in SCREEN space, not with the origins superimposed.
       const pteroMask = collisionMaskFor(pt)
       if (playerJoust.collision === null || pteroMask === null) continue
       if (
         !narrowPhase(
-          { name: playerJoust.collision, top: playerJoust.posY >> 8 },
-          { name: pteroMask, top: pt.entity!.posY >> 8 },
+          { name: playerJoust.collision, top: playerJoust.posY >> 8, left: playerJoust.posX },
+          { name: pteroMask, top: pt.entity!.posY >> 8, left: pt.entity!.posX },
           MASKS,
         )
       )
@@ -1582,8 +1582,8 @@ function collisionPass(processes: readonly DemoProcess[]): {
       if (catcher.collision === null) continue
       if (
         !narrowPhase(
-          { name: catcher.collision, top: catcher.posY >> 8 },
-          { name: eggMaskFor(ep.egg), top: ep.egg.posY >> 8 },
+          { name: catcher.collision, top: catcher.posY >> 8, left: catcher.posX },
+          { name: eggMaskFor(ep.egg), top: ep.egg.posY >> 8, left: ep.egg.posX },
           MASKS,
         )
       )

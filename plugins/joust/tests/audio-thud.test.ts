@@ -969,9 +969,17 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     // and the buzzard UP to y=126 (`& REG.X GUY UP`, :5108). Frame 1401 is not a
     // %13 flap frame (1401 % 13 = 10), so the knight's own wing cue does not ride
     // along and the stream is EXACTLY the person thud, as it was on 0x2332/0x1b4a.
-    const before = stepGame(advanceTo(0x1001, 1400), inputsAt(1400))
+    //
+    // jt9-43 RE-BASELINE: seed 0x1001 frame 1401 -> seed 0x1007 frame 344, and the
+    // SEED had to move — the empty-solution case again, re-found by SWEEPING and not
+    // by relaxing either assertion. Folding BPCOL's COLDX makes every contact screen-
+    // precise, so 0x1001's old person-thud is gone. Swept [0x1000,0x1120) over 4000
+    // frames for this test's precondition (a stream of EXACTLY one `player-thud` with a
+    // silent frame before): 0x1007 frame 344 is the earliest clean hit. 344 % 13 = 6,
+    // not a flap frame, so no knight wing cue rides along. Every assertion unchanged.
+    const before = stepGame(advanceTo(0x1007, 343), inputsAt(343))
     expect(eventsOf(before), 'the frame BEFORE emits nothing at all').toEqual([])
-    const fired = stepGame(advanceTo(0x1001, 1401), inputsAt(1401))
+    const fired = stepGame(advanceTo(0x1007, 344), inputsAt(344))
     expect(eventsOf(fired)).toEqual([PLAYER_THUD])
     expect(eventsOf(fired), 'this is the SNPTHD path, not the SNETHD one').not.toContain(ENEMY_THUD)
   })

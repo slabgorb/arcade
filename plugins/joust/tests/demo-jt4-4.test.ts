@@ -77,11 +77,15 @@ function lancePlayer(): DemoProcess {
   }
 }
 
-/** A BAITER process (a ptero tagged PCHASE≠0) 4px right of the lance player, lower — killable. */
+/** A BAITER process (a ptero tagged PCHASE≠0) CO-LOCATED with the lance player,
+ *  lower — killable. jt9-43 COLDX re-seat 104→100: at dy=−9 only player row 0 [7,9]
+ *  aligns with PT1RC row 9 [8,15], and narrowPhase now folds COLDX — dx=4 shifts it
+ *  to [12,19], a MISS (the ROM rejects it too). Co-locating keeps the lance-row
+ *  masks superimposed (COLDX=0 right-facer kill, JOUSTRV4.SRC:4994). */
 function baiterVictim(): BaiterProc {
   return {
     id: 0x0880, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', baiter: true, facing: -1,
-    collisionEnabled: true, entity: entity({ posX: 104, posY: 100 << 8 }),
+    collisionEnabled: true, entity: entity({ posX: 100, posY: 100 << 8 }),
   }
 }
 

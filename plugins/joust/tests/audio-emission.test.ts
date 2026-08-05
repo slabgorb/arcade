@@ -202,7 +202,13 @@ describe('jt5-1 — ptero-death is EMITTED, and is not the player death next doo
   /** Stage a knight and a ptero in the geometry that resolves one way or the
    *  other. `lanceOffset` = plantZ + (player.posY>>8) − (ptero.posY>>8), and the
    *  glide band is 10 ± 2, so the ptero sits ten pixels above the knight's lance
-   *  for a kill and well outside the band for the fallback. */
+   *  for a kill and well outside the band for the fallback.
+   *
+   *  jt9-43 COLDX re-seat: the ptero was 4px into the knight's facing (dx=±4).
+   *  narrowPhase now folds BPCOL's screen-X term, and at the lance row only the
+   *  1px-wide overlap survives a shift, so dx=4 became a MISS. The screen-X delta
+   *  is placed at the minimum `facingInto` still admits (JOUSTRV4.SRC:4994): a
+   *  right-facer keeps COLDX=0 (0 IS a kill via BPL), a left-facer needs COLDX<0. */
   function stage(offset: number): DemoState {
     const d = stepDemo(createWaveDemo(0x1234), {})
     const knight = d.sim.processes.find((p) => p.kind === 'player')
@@ -217,7 +223,7 @@ describe('jt5-1 — ptero-death is EMITTED, and is not the player death next doo
       kind: 'ptero',
       facing: facing > 0 ? -1 : 1,
       collisionEnabled: true,
-      entity: { ...e, posX: e.posX + (facing > 0 ? 4 : -4), posY: (e.plantZ + (e.posY >> 8) - offset) << 8 },
+      entity: { ...e, posX: e.posX + (facing > 0 ? 0 : -1), posY: (e.plantZ + (e.posY >> 8) - offset) << 8 },
     }
     return { ...d, sim: { ...d.sim, processes: [knight, ptero] } }
   }

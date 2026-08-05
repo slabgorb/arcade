@@ -474,12 +474,16 @@ describe('jt4-5 determinism — the full seeded stepGame loop replays bit-for-bi
     const input: Record<number, PlayerInput> = { 1: flap(-1), 2: flap(1) }
     const run = (): GameState => {
       let game = g.createGame(SEED)
-      for (let i = 0; i < 120; i++) game = g.stepGame(game, input)
+      for (let i = 0; i < 240; i++) game = g.stepGame(game, input)
       return game
     }
     const a = run()
     const b = run()
-    // Non-vacuous: the window contains P1's frame-49 death, so a man was actually spent.
+    // Non-vacuous: the window contains P1's death, so a man was actually spent.
+    // jt9-43 RE-BASELINE: 120 -> 240. Folding BPCOL's COLDX makes collision screen-
+    // precise, so a continuously-flapping P1 is far harder to hit — its death moved
+    // from frame 49 out to frame 227. The window is extended to capture it; the
+    // bit-for-bit replay this test really guards is unaffected by window length.
     expect(a.players[0].lives, 'the run is non-vacuous — a death was booked').toBeLessThan(NSHIP)
     expect(a.players, 'the ledgers replay bit-for-bit').toEqual(b.players)
     expect(a.gover, 'gover replays bit-for-bit').toBe(b.gover)
@@ -515,7 +519,9 @@ describe('jt4-5 dev-overlay — overlayReadout projects score/lives/wave from th
   it('tracks a live game — the readout of a stepped state matches its ledgers exactly', async () => {
     const g = await loadGameFull()
     let game = g.createGame(SEED)
-    for (let i = 0; i < 120; i++) game = g.stepGame(game, { 1: flap(-1), 2: flap(1) })
+    // jt9-43 RE-BASELINE: 120 -> 240 (screen-precise collision pushed P1's death
+    // from frame 49 to 227; the window must reach it for the non-vacuity pin below).
+    for (let i = 0; i < 240; i++) game = g.stepGame(game, { 1: flap(-1), 2: flap(1) })
     const readout = g.overlayReadout(game)
     // The readout must be the SAME registers stepGame just wrote (the co-op independence
     // survives into the overlay) — kills "the overlay keeps its own drifting counters".

@@ -147,6 +147,12 @@ describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: fil
    * JOUSTRV4.SRC:4944-4952), and the CWNG3R×PT1RC masks overlap only at lanceOffset
    * 8-9, so offset 10 became a mask MISS. Offset 9 is in the band AND the mask —
    * green on the pre- and post-jt9-14 tree alike. See demo-jt9-14.test.ts.
+   *
+   * jt9-43 re-seat: the ptero was 4px RIGHT (dx=4). narrowPhase now folds BPCOL's
+   * COLDX screen-X term, and at dy=−9 only player row 0 [7,9] aligns with PT1RC row
+   * 9 [8,15]; COLDX=4 shifts that to [12,19], a MISS — the ROM rejects it too. Co-
+   * locating (dx=0) keeps the masks superimposed at the lance row AND exercises the
+   * documented COLDX=0 right-facer kill (facingInto: coldx≥0, JOUSTRV4.SRC:4994).
    */
   function killScenario(): { player: DemoProcess; ptero: DemoProcess } {
     const player: DemoProcess = {
@@ -168,10 +174,10 @@ describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: fil
       kind: 'ptero',
       facing: -1, // opposite the player
       collisionEnabled: true,
-      // 4px right of the player (broad-phase overlap), 9px above its feet-line
-      // reference: lanceOffset = plantZ(0) + 109 − 100 = 9 → in the glide band AND
-      // the CWNG3R×PT1RC narrowPhase mask.
-      entity: entity({ posX: 104, posY: 100 << 8, airborne: true }),
+      // co-located in X (broad-phase overlap; jt9-43 COLDX re-seat 104→100), 9px
+      // above its feet-line: lanceOffset = plantZ(0) + 109 − 100 = 9 → in the glide
+      // band AND the CWNG3R×PT1RC narrowPhase mask at COLDX=0.
+      entity: entity({ posX: 100, posY: 100 << 8, airborne: true }),
     }
     return { player, ptero }
   }
@@ -213,7 +219,9 @@ describe('AC-1 — a killed ptero enters the dissolve, rendered, not vanished (R
     }
     const ptero: DemoProcess = {
       id: 0x0880, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: -1,
-      collisionEnabled: true, entity: entity({ posX: 104, posY: 100 << 8, airborne: true }),
+      // jt9-43 COLDX re-seat 104→100: co-located so the lance row's masks stay
+      // superimposed once narrowPhase folds the screen-X term.
+      collisionEnabled: true, entity: entity({ posX: 100, posY: 100 << 8, airborne: true }),
     }
     const stepped = demo.stepDemo(only(demo.createWaveDemo(SEED), [player, ptero]))
     const ops = r.drawList(stepped).filter((o) => o.kind === 'entity')

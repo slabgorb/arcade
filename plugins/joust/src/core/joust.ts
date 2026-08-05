@@ -58,6 +58,14 @@ export interface MaskRef {
   name: string
   /** The scanline (pixel Y) of this mask's FIRST span row on screen. */
   top: number
+  /**
+   * The entity's screen X (`PPOSX`) — the column origin of this mask, symmetric
+   * with `top`. narrowPhase compares columns in SCREEN space by folding the
+   * screen-X separation `COLDX = b.left − a.left` into the overlap (BPCOL's
+   * `SUBD COLDX`, JOUSTRV4.SRC:7047/:7051/:7062). OPTIONAL: absent reads as 0, so
+   * two refs at equal (or unspecified) X compare superimposed — the COLDX=0 case.
+   */
+  left?: number
 }
 
 /**
@@ -170,9 +178,12 @@ function resolveSpans(spans: Array<[number, number]>): Array<[number, number] | 
 /**
  * Walk two entities' collision-span masks aligned by their on-screen `top`
  * (`BPCOL`, JOUSTRV4.SRC:7043): for a scanline both masks cover, collide iff
- * their COFF-unbiased [l,r] spans overlap. A `$8000` row contributes no
- * collision; the walk stops at `$8100`. `masks` supplies the transcribed span
- * tables by name (pictures.ts COLLISION_TABLES). Pure.
+ * their COFF-unbiased [l,r] spans overlap IN SCREEN SPACE. The columns are stored
+ * sprite-local, so `b`'s span is shifted by the screen-X separation
+ * `COLDX = b.left − a.left` before the overlap — BPCOL's `SUBD COLDX`
+ * (:7047/:7051/:7062). A `$8000` row contributes no collision; the walk stops at
+ * `$8100`. `masks` supplies the transcribed span tables by name (pictures.ts
+ * COLLISION_TABLES). Pure.
  */
 export function narrowPhase(
   a: MaskRef,
@@ -181,6 +192,7 @@ export function narrowPhase(
 ): boolean {
   const rowsA = resolveSpans(masks[a.name] ?? [])
   const rowsB = resolveSpans(masks[b.name] ?? [])
+  const coldx = (b.left ?? 0) - (a.left ?? 0)
   for (let i = 0; i < rowsA.length; i++) {
     const spanA = rowsA[i]
     if (spanA === null) continue
@@ -188,7 +200,7 @@ export function narrowPhase(
     if (j < 0 || j >= rowsB.length) continue
     const spanB = rowsB[j]
     if (spanB === null) continue
-    if (intervalsOverlap(spanA, spanB)) return true
+    if (intervalsOverlap(spanA, [spanB[0] + coldx, spanB[1] + coldx])) return true
   }
   return false
 }

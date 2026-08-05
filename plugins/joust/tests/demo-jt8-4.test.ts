@@ -504,10 +504,12 @@ describe('jt8-4 integration — the egg you take straight off your own kill', ()
     // triggers.
     //
     // Frames probed under this exact seed/input (the jt4-2 deterministic-frame
-    // discipline): f145 the kill credits the bounder DVALUE, f146 the egg credits the
+    // discipline): f146 the kill credits the bounder DVALUE, f147 the egg credits the
     // first ladder rung + the mid-air 500. The egg spawns at the victim's position
     // (spawnEgg: victim X+4, Y−8px) with PFEET=0, and P2 is still there — which is
     // exactly the play the +500 bonus (:3063-3069) exists to reward.
+    // jt9-43 re-anchor 145→146: the COLDX (screen-X) fold shifted the seeded
+    // trajectory one frame later; the kill→catch pair is intact, now at f146/f147.
     const gmod = await loadGame()
     const egg = await loadEgg()
     const SEED_1234 = 0x1234
@@ -515,7 +517,7 @@ describe('jt8-4 integration — the egg you take straight off your own kill', ()
 
     let game = gmod.createGame(SEED_1234)
     let killValue = 0
-    for (let f = 1; f <= 145; f++) game = gmod.stepGame(game, input)
+    for (let f = 1; f <= 146; f++) game = gmod.stepGame(game, input)
 
     const killEvent = game.sim.events.find((e) => e.kind === 'score')
     expect(killEvent, 'the seeded kill really fired — the test is not dead').toBeDefined()

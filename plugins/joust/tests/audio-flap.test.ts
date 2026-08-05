@@ -1181,30 +1181,17 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
     // do. The claim was never "enemy#256 is invariant" — it is "no PLAYER row
     // moves", and that holds.
     //
-    // jt9-8 RE-BASELINE — and READ THIS ONE DIFFERENTLY FROM THE FIVE ABOVE.
-    // Every re-baseline in the lineage so far could say "and the PLAYER rows are
-    // byte-for-byte what they were". This one CANNOT, and does not pretend to.
-    // jt9-8 puts the ROM's `CLR PTIMUP,U` back on the player's wing transitions
-    // (`GOFLAP`/`GOFLIP`/`STFLY`, frame.ts `runBehaviour`; pinned directly by
-    // ptimup-reset.test.ts), so a knight's flap-lift budget is RE-INITialised on
-    // every edge instead of running down once. This script taps flap every 13th
-    // frame — i.e. it is nothing BUT wing edges — so player#1's whole 200-frame
-    // trajectory legitimately changes: it now ends still climbing at y=14656 with
-    // a fresh budget (timeUp 3) rather than spent and sinking at y=30508
-    // (timeUp 161). That is the story's own AC3, not a leak: the seam this suite
-    // pins IS the player flap seam, and jt9-8 changes it on purpose.
-    //
-    // So the "no PLAYER row moves" invariant this comment carried through six
-    // trees is RETIRED HERE, deliberately. What survives is the weaker thing the
-    // fixture can still honestly promise: a frozen, DISCRIMINATING full-sim
-    // digest (the sibling test proves another seed lands elsewhere), which still
-    // catches any UNINTENDED perturbation of the flight/flap pipeline. Do not
-    // re-baseline it again without naming the ROM line that moved it.
-    // Downstream, unchanged in kind: player#2 idles and is byte-identical;
-    // enemy#256 is where jt9-24 left it; the moved player re-times the kills, so
-    // `enemy#257` is ALIVE at frame 200 again and its `egg#65793` is gone.
-    //
-    // MEASURED on the jt9-8 tree with this exact script, seed 0xbeef, 200 frames.
+    // jt9-8 + jt9-43 COMBINED RE-BASELINE. jt9-8 puts the ROM's `CLR PTIMUP,U` back on
+    // the player's wing transitions (frame.ts `runBehaviour`; pinned by
+    // ptimup-reset.test.ts), so a knight's flap-lift budget RE-INITs on every edge —
+    // this every-13th-frame script is nothing but wing edges, so player#1's whole
+    // 200-frame trajectory legitimately changes (it now ends still climbing with a
+    // fresh budget). jt9-43 then folds BPCOL's COLDX (screen-precise collision): the
+    // box-only kill that removed `enemy#257` was an X-blind over-reach the mask now
+    // REJECTS, so the enemy/egg rows move too. The "no PLAYER row moves" invariant is
+    // retired (jt9-8 owns the flap seam on purpose); what survives is a frozen,
+    // DISCRIMINATING full-sim digest that still catches any UNINTENDED perturbation.
+    // MEASURED on the integrated (jt9-8 + jt9-43) tree, seed 0xbeef, 200 frames.
     expect(entityDigest(0xbeef, 200)).toEqual([
       'player#1:42,14656,0,-4,192,3,1',
       'player#2:200,32768,0,0,0,1,0',

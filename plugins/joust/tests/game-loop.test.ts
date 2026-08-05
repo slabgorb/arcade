@@ -144,35 +144,39 @@ describe('AC-1 game-over — settleGameOver: a player at 0 lives is OUT; over on
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-1 INTEGRATION — game-over settled LIVE through stepGame off the sim's deaths.
-//   Deterministic seam (SEED 0x1234): with the two knights driven APART, P1 loses a
-//   partner-joust and its process is removed at frame 49 (the jt4-2 death seam) with
-//   NO enemy involved. A lone survivor never dies in a unit window (no respawn), so
-//   the ALL-OUT game-over is driven from a constructed all-dead state.
+//   Deterministic seam (SEED 0x1234): with the two knights driven APART, one loses a
+//   partner-joust and its process is removed with NO enemy involved. jt9-43 RE-BASELINE:
+//   screen-precise collision flips the resolution — P2 (not P1) now loses, at frame 50
+//   (was P1 at 49). A lone survivor never dies in a unit window, so the ALL-OUT
+//   game-over is driven from a constructed all-dead state.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 integration — stepGame settles out/gover from the live sim', () => {
-  it("a P1 death drops P1 to OUT but keeps the game RUNNING while P2 survives (the partner WAITS)", async () => {
+  it("a P2 death drops P2 to OUT but keeps the game RUNNING while P1 survives (the partner WAITS)", async () => {
     const g = await loadGameLoop()
-    // Both knights on their LAST life so the one sim death makes P1 out.
+    // Both knights on their LAST life so the one sim death makes the loser out.
     const base = g.createGame(SEED)
     let game: GameState = { ...base, players: [{ ...base.players[0], lives: 1 }, { ...base.players[1], lives: 1 }] }
     const input: Record<number, PlayerInput> = { 1: flap(-1), 2: flap(1) }
+    // jt9-43 RE-BASELINE: with screen-precise collision the partner-joust resolves the
+    // OTHER way — P2 loses and its process is removed at frame 50 (was P1 at 49). The
+    // wiring under test is symmetric, so the test now watches P2's death and P1's survival.
     let died = false
     for (let f = 1; f <= 120; f++) {
       const next = g.stepGame(game, input)
-      if (livePlayers(game).includes(1) && !livePlayers(next).includes(1)) {
+      if (livePlayers(game).includes(2) && !livePlayers(next).includes(2)) {
         game = next
         died = true
         break
       }
       game = next
     }
-    expect(died, "P1 must actually lose its partner-joust in the window — the test is not dead").toBe(true)
+    expect(died, "P2 must actually lose its partner-joust in the window — the test is not dead").toBe(true)
     // The live settle (kills "stepGame carries gover forward, never recomputes out").
-    expect(game.players[0].lives, 'P1 spent its last man').toBe(0)
-    expect(game.players[0].out, 'P1 is now OUT').toBe(true)
-    expect(game.players[1].out, 'P2 is still in the game — waiting is not out').toBe(false)
+    expect(game.players[1].lives, 'P2 spent its last man').toBe(0)
+    expect(game.players[1].out, 'P2 is now OUT').toBe(true)
+    expect(game.players[0].out, 'P1 is still in the game — waiting is not out').toBe(false)
     // All-out gate: one survivor → the game is NOT over yet (kills "over when the first player is out").
-    expect(game.gover, 'the game runs on while P2 survives').toBe(g.GOVER_RUNNING)
+    expect(game.gover, 'the game runs on while P1 survives').toBe(g.GOVER_RUNNING)
   })
 
   it('when EVERY player is out the stepped game reaches GOVER_OVER', async () => {
@@ -214,7 +218,9 @@ describe('AC-2 the loop — score/lives/gover ride the SINGLE stepDemo-wrapping 
     const input: Record<number, PlayerInput> = { 1: flap(-1), 2: flap(1) }
     const run = (): GameState => {
       let game = g.createGame(SEED)
-      for (let i = 0; i < 80; i++) game = g.stepGame(game, input)
+      // jt9-43 RE-BASELINE: 80 -> 240. Screen-precise collision pushed P1's death
+      // from frame 49 to 227; the window must reach it for the non-vacuity pin.
+      for (let i = 0; i < 240; i++) game = g.stepGame(game, input)
       return game
     }
     const a = run()

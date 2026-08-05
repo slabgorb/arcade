@@ -219,9 +219,12 @@ describe('AC2 — no promotion in seeded play ever carries a glide', () => {
   it('CONTROL — the sweep can SEE a glide, so a zero below is an observed zero', () => {
     // Without this the AC is a sentence that passes on a broken probe. Measured
     // at setup: 317 / 366 / 220 glide-carrying enemy-frames on these seeds.
+    // jt9-43 re-baseline: the COLDX (screen-X) fold shifted the seeded
+    // trajectories to 62 / 272 / 359; glides are still plainly observed (the
+    // control's job), so the threshold drops to a non-vacuous 30.
     for (const seed of SEEDS) {
       const { glideFrames } = sweepPromotions(seed, 3000, idleInputs)
-      expect(glideFrames, `seed 0x${seed.toString(16)} must carry glides at all`).toBeGreaterThan(100)
+      expect(glideFrames, `seed 0x${seed.toString(16)} must carry glides at all`).toBeGreaterThan(30)
     }
   })
 

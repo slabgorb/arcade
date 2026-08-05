@@ -194,15 +194,16 @@ describe('AC-3 death — bookDeath drops one own-life and credits the SCRTEN $50
 // The isolated bookDeath tests pin the mechanic; this drives demo.ts's collisionPass
 // (a player loses a joust → its process is REMOVED, never respawned) and proves
 // stepGame detects that removal and books BOTH the life-loss and the 50. Under SEED
-// 0x1234 with the players driven apart, P1 loses a joust and dies at frame 49 with no
-// prior score (verified by probe), so the death frame credits exactly 50.
+// 0x1234 with the players driven apart, P1 loses a joust and dies (jt9-43 RE-BASELINE:
+// at frame 227, not 49 — screen-precise collision lets P1 survive and score kills first),
+// so the death frame ADDS exactly 50 on top of whatever P1 had banked.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-3 integration — a real sim death books the life-loss + the 50 through stepGame', () => {
   // A live P1 process in the wrapped sim (GameState.sim is a DemoState → .sim.processes).
   const hasP1 = (game: { sim: { sim: { processes: readonly { kind: string; id: number }[] } } }): boolean =>
     game.sim.sim.processes.some((p) => p.kind === 'player' && p.id === 1)
 
-  it("P1's mount death (frame 49) drops P1 to 4 lives and credits exactly 50 — P2 untouched", async () => {
+  it("P1's mount death drops P1 one man and credits exactly 50 — P2's ledger untouched by it", async () => {
     const g = await loadGameExtra()
     const input: Record<number, PlayerInput> = { 1: flap(-1), 2: flap(1) }
     let game = g.createGame(SEED)
@@ -224,20 +225,25 @@ describe('AC-3 integration — a real sim death books the life-loss + the 50 thr
     // The life-loss (kills "stepGame credits the 50 but forgets the life").
     expect(prev.players[0].lives, 'P1 was at full men the frame before').toBe(NSHIP)
     expect(game.players[0].lives, 'P1 lost exactly one man to the mount death').toBe(NSHIP - 1)
-    // The 50 credit (kills "stepGame drops the life but forgets the 50"). No score accrued
-    // before f49, so the death-frame credit is the whole score and is exactly 50.
-    expect(prev.players[0].score, 'P1 had scored nothing before dying').toBe(0)
-    expect(game.players[0].score, 'the death frame credits the 50-for-dying').toBe(DEATH_POINTS)
+    // The 50 credit (kills "stepGame drops the life but forgets the 50"). jt9-43 RE-BASELINE:
+    // P1 now scores kills before dying (death at frame 227, not 49), so the death frame is the
+    // DELTA — exactly 50 on top of whatever P1 had banked, no longer the whole score.
+    expect(game.players[0].score - prev.players[0].score, 'the death frame credits the 50-for-dying').toBe(DEATH_POINTS)
     // P2 is the control — a P1 death is P1's alone (kills "death decrements a shared/global count").
-    expect(game.players[1].lives, "P2's life count untouched by P1's death").toBe(NSHIP)
-    expect(game.players[1].score, 'and P2 banked nothing').toBe(0)
+    // jt9-43: P2 is now also active (it has died and scored earlier), so the invariant tightens to
+    // "P1's death frame moves ONLY P1's ledger" — P2's lives and score are UNCHANGED across it.
+    expect(game.players[1].lives, "P2's life count untouched by P1's death").toBe(prev.players[1].lives)
+    expect(game.players[1].score, "and P2's score untouched by P1's death").toBe(prev.players[1].score)
 
-    // No respawn exists → P1's id stays gone → the death books EXACTLY once. Dropping the
-    // "was-live-last-frame" guard would re-book every subsequent frame, bleeding lives away.
+    // The death books EXACTLY once — the "was-live-last-frame" guard stops per-frame re-booking
+    // (dropping it would re-book every subsequent frame, bleeding lives away). Neither the life
+    // count nor the score moves again over the next 60 frames.
+    const deathLives = game.players[0].lives
+    const deathScore = game.players[0].score
     let after = game
     for (let i = 0; i < 60; i++) after = g.stepGame(after, input)
-    expect(after.players[0].lives, 'the death books once — no per-frame re-booking').toBe(NSHIP - 1)
-    expect(after.players[0].score, 'and the 50 is credited once, not every frame').toBe(DEATH_POINTS)
+    expect(after.players[0].lives, 'the death books once — no per-frame re-booking').toBe(deathLives)
+    expect(after.players[0].score, 'and the 50 is credited once, not every frame').toBe(deathScore)
   })
 })
 
@@ -251,12 +257,14 @@ describe('AC-4 determinism — seeded replay is bit-for-bit, extra men included'
     const input: Record<number, PlayerInput> = { 1: flap(-1), 2: flap(1) }
     const run = () => {
       let game = g.createGame(SEED)
-      for (let i = 0; i < 120; i++) game = g.stepGame(game, input)
+      // jt9-43 RE-BASELINE: 120 -> 240. Screen-precise collision pushed P1's death
+      // from frame 49 to 227; the window must reach it for the non-vacuity pin.
+      for (let i = 0; i < 240; i++) game = g.stepGame(game, input)
       return game
     }
     const a = run()
     const b = run()
-    // Non-vacuous: the window contains P1's frame-49 death, so a life was actually spent.
+    // Non-vacuous: the window contains P1's death, so a life was actually spent.
     expect(a.players[0].lives, 'the run is non-vacuous — a mount death was booked').toBe(NSHIP - 1)
     expect(a.players, 'per-player ledgers (lives + score + threshold) replay bit-for-bit').toEqual(b.players)
     expect(a.sim, 'and the wrapped sim is deterministic too').toEqual(b.sim)
