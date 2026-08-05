@@ -164,3 +164,8 @@ completed_stories:
     title: Scaffold the missile-command plugin and boot it in the cabinet
     points: 3
     completed: '2026-08-05'
+  - id: jt9-18
+    epic: jt9
+    title: 'The level-flight block, read once: BOLEV2 forces a glide wake after every level flap, and PPVELX is snapshotted at the decide rather than read live'
+    points: 5
+    completed: '2026-08-05'
