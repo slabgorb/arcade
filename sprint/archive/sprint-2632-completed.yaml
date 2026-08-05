@@ -139,3 +139,8 @@ completed_stories:
     title: Skeuomorphic periscope overlay framing the viewport + MAME color-geometry reconcile
     points: 3
     completed: '2026-08-05'
+  - id: jt9-17
+    epic: jt9
+    title: 'Port OSTLR: the horizontal half of the bounce has no PBUMPX home and bounceHorizontal models a quarter of it'
+    points: 5
+    completed: '2026-08-05'
