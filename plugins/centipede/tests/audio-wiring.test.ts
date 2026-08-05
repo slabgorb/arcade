@@ -76,17 +76,19 @@ interface Pumped {
  * kind registry itself (`EVENT_KINDS`, core/events.ts:67-77), which is data,
  * not a push site.
  *
- * So both compositions are one thing — a loop edge landing in a frame that
- * already had something in it:
+ * Every composition is one thing — a loop edge landing in a frame that already
+ * had something pushed into it. The death triple is the clearest worked example:
  *
  *   player-died+march-stop+spider-stop
  *                             `player-died` from the death concatenation
  *                             (sim.ts:693); the two `-stop`s from the sweep.
  *                             The death line supplies one third, not the triple.
- *   shot-fired+spider-stop    `shot-fired` pushed at sim.ts:438; `spider-stop`
- *                             from the sweep.
  *
- * No wave-clear composition occurs in this run.
+ * Every other entry has the same shape — a pushed event (`shot-fired` at
+ * sim.ts:438, plus `segment-killed`, `mushroom-destroyed`, a `wave-cleared`)
+ * sharing its frame with a loop-edge `-start`/`-stop`. Under cp7-5's EASY default
+ * the run survives long enough to REACH those later events, so wave-clear
+ * compositions now occur — see the re-measurement note below.
  *
  * cp6-3 MOVED THIS LIST, and the move is the story's own behaviour change —
  * re-measured from the run, never hand-edited. Before it, the spider's `-stop`
