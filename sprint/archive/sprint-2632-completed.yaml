@@ -27,3 +27,8 @@ completed_stories:
     title: The two thud paths return OPPOSITE carry — the ROM's collision scan continues after SNETHD and ABORTS after SNPTHD
     points: 3
     completed: '2026-08-05'
+  - id: cp7-4
+    epic: cp7
+    title: The flea's 0.6s sample wraps inside a 2s drop — the sweep is shorter than the descent
+    points: 2
+    completed: '2026-08-05'
