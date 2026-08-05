@@ -39,6 +39,41 @@ export interface Claim {
    * Its SHAPE is schema-validated; it is never byte-opened.
    */
   corroboration?: unknown
+  /**
+   * cp6-5 — optional COUNT assertions. A claim's prose often embeds a
+   * reproducible tally ("52$ is defined … 20 times across the whole vendored
+   * tree; counted with grep -rn '^52[$]:'"). The verbatim/line gate above cannot
+   * see such a number, so it rots silently when the source drifts. Each entry
+   * RE-DERIVES a tally from the vendored tree and compares it to `expected` —
+   * shape-checked always, re-run only when `vendoredRoot` is present (schema-only
+   * on CI, exactly like the byte gate). A mismatch is one error, per claim.
+   */
+  counts?: CountAssertion[]
+}
+
+/**
+ * A machine-checkable tally embedded in a claim's prose. The checker walks the
+ * in-scope files, counts LINES matching `pattern` (line-oriented, mirroring
+ * `grep -n <pattern>` — not global matches within a line), and compares the
+ * total to `expected`.
+ */
+export interface CountAssertion {
+  /**
+   * Regex SOURCE (a string, fed to `new RegExp(pattern)`) tested against each
+   * line. E.g. `"^52[$]:"` counts lines that begin `52$:`.
+   */
+  pattern: string
+  /**
+   * Optional tree-relative subpath scoping the scan — a directory (walked
+   * recursively) or a single file. Absent ⇒ the WHOLE vendored tree, i.e. the
+   * `grep -rn … reference/atari-source/centipede` recipe. Must stay inside the
+   * tree after normalisation (same containment rule as `source.file`).
+   */
+  scope?: string
+  /** The tally the prose asserts. Re-derived and compared when `vendoredRoot` is non-null. */
+  expected: number
+  /** Optional human note — which prose figure this guards, or a derivation. */
+  note?: string
 }
 
 export interface CheckOpts {
