@@ -343,6 +343,7 @@ stories:
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: jt9-19
     title: 'MERGED INTO jt9-18 — joust PPVELX — homingWake compares the LIVE velocity index where the ROM snapshots it at the decide'
     description: |-
