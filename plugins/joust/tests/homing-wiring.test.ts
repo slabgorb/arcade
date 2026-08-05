@@ -350,7 +350,13 @@ function reversalsInPlay(
     for (const p of d.sim.processes) {
       if (p.kind !== 'enemy' || !p.enemy) continue
       const was = facing.get(p.id)
-      if (was !== undefined && was !== p.enemy.facing) reversals++
+      // jt9-17 — the control comment above names "a joust" as a non-homing flip
+      // cause, and OSTLR now MODELS it (the bounce turns the birds). A joust
+      // parks a non-zero PBUMPX (never 0) that WRAPX drains the FOLLOWING frame,
+      // so a joust-turned bird carries `bumpX ≠ 0` this frame; homing rewrites
+      // PRDIR and never touches PBUMPX. Exclude joust turns.
+      const joustTurned = (p.bumpX ?? 0) !== 0
+      if (was !== undefined && was !== p.enemy.facing && !joustTurned) reversals++
       facing.set(p.id, p.enemy.facing)
     }
   }

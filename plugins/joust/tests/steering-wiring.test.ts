@@ -94,6 +94,7 @@ interface EnemySnap {
   readonly facing: -1 | 1
   readonly airborne: boolean
   readonly homingJson: string
+  readonly bumpX: number
 }
 
 const snapOf = (p: DemoProcess): EnemySnap | null =>
@@ -106,6 +107,13 @@ const snapOf = (p: DemoProcess): EnemySnap | null =>
         facing: p.enemy.facing,
         airborne: p.enemy.entity.airborne,
         homingJson: JSON.stringify(p.enemy.homing ?? null),
+        // jt9-17 — the OSTLR joust turn (PFACE) is a THIRD facing-flip cause
+        // besides steering and homing. A joust ALSO parks a non-zero PBUMPX (the
+        // bump is never 0) that WRAPX drains a frame later, so a joust-turned
+        // bird still carries `bumpX ≠ 0` at this end-of-frame snapshot — the
+        // marker the attribution filter uses to exclude it. Steering never
+        // touches PBUMPX.
+        bumpX: p.bumpX ?? 0,
       }
     : null
 
@@ -133,9 +141,16 @@ function steeringTurns(seed: number, stage?: (d: DemoState) => DemoState): Steer
       if (!before) continue
       const facingChanged = before.facing !== after.facing
       const homingUntouched = before.homingJson === after.homingJson
+      // jt9-17 — exclude the OSTLR joust turn. A joust parks a non-zero PBUMPX
+      // (the bump is never 0) that WRAPX drains the FOLLOWING frame, so a
+      // joust-turned bird carries `bumpX ≠ 0` at this end-of-frame snapshot;
+      // steering never touches PBUMPX. (A steering turn DOES walk velXIndex on
+      // the flip frame, so velXIndex cannot be the discriminator.)
+      const notJoustTurn = after.bumpX === 0
       const samePhysicalBird =
         before.airborne && after.airborne && Math.abs(after.posX - before.posX) <= 8
-      if (facingChanged && homingUntouched && samePhysicalBird) turns.push({ frame: f, before })
+      if (facingChanged && homingUntouched && notJoustTurn && samePhysicalBird)
+        turns.push({ frame: f, before })
     }
     prev = now
   }

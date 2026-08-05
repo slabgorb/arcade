@@ -530,8 +530,13 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // this seed's clear-out further; re-swept 6000 frames for the precondition (the
     // wave counter advances AND a complement is dealt) — 4654 (wave 1 -> 2) is the
     // earliest. Seed, script and every assertion unchanged.
-    const before = advanceTo(0xface, 4654)
-    const after = stepGame(before, inputsAt(4654))
+    //
+    // jt9-17 RE-BASELINE: 4654 -> 4370. The OSTLR horizontal shove/turn reshapes
+    // this seed's trajectories, clearing wave 1 sooner; re-swept the same 6000
+    // frames for the same precondition — 4370 (wave 1 -> 2, four buzzards dealt)
+    // is now the earliest. Seed, script and every assertion unchanged.
+    const before = advanceTo(0xface, 4370)
+    const after = stepGame(before, inputsAt(4370))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)

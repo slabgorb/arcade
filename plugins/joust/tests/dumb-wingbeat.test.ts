@@ -638,8 +638,12 @@ describe('AC6 — the dumb wing cue', () => {
     // the enemy cue is substantial, and the knight-cue counts pinned exactly (they
     // move only when knight-death timing shifts, per the jt9-9 note).
     const expected: Record<number, { down: number; playerDown: number; playerUp: number }> = {
-      0xbeef: { down: 311, playerDown: 154, playerUp: 154 },
-      0x2468: { down: 290, playerDown: 154, playerUp: 154 },
+      // jt9-17 RE-BASELINE: the OSTLR horizontal shove/turn reshapes enemy
+      // trajectories, so the trajectory-dependent 2000-frame counts move
+      // 0xbeef 311 -> 302 and 0x2468 290 -> 284 (both still substantial, > 50).
+      // 0xface's count and every scripted knight-cue count (154) are unmoved.
+      0xbeef: { down: 302, playerDown: 154, playerUp: 154 },
+      0x2468: { down: 284, playerDown: 154, playerUp: 154 },
       0xface: { down: 110, playerDown: 154, playerUp: 154 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
