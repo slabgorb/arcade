@@ -157,6 +157,56 @@ link decoration, and the one-time high-score bridge reads that cookie.
 >   in which case it is a rollback target in name only and the redirect is the *fix*,
 >   not the risk.
 
+### Probe results — what each hostname actually serves (measured mg1-12, 2026-08-05)
+
+The section above is a standing instruction; this is the measurement it asked for,
+taken **2026-08-05T13:39Z** against the live hostnames. It replaces the assumption the
+teardown would otherwise check itself against. **The bar was a live `200` with a real
+build body, not a green suite** — for each host, `index.html` *and* one hashed asset
+were fetched, and a nonsense path was fetched as a control.
+
+**Verdict: all seven hostnames are live and each serves its own real build. None has
+been cut over yet — every fetch was a direct `200` with no `301`, so the owner's
+unbind-and-redirect step still has not been taken.** Centipede, the one genuinely
+unverified case, is **live** (not the bound-but-empty case the section above allowed
+for). Joust is **live**. No `404` anomaly on any of the five established games.
+
+| Host (`<game>.slabgorb.com/`) | `/` status · content-type · bytes | `<title>` | Hashed asset fetched | Asset status · content-type · bytes |
+|---|---|---|---|---|
+| tempest    | `200` · `text/html` · 1830 | `Tempest`    | `/assets/main-DeyGbDgW.js`  | `200` · `text/javascript` · 23 690 |
+| star-wars  | `200` · `text/html` · 1561 | `Star Wars`  | `/assets/main-2RlNEMov.js`  | `200` · `text/javascript` · 11 989 |
+| asteroids  | `200` · `text/html` · 1402 | `Asteroids`  | `/assets/index-CHe9f2bT.js` | `200` · `text/javascript` · 30 839 |
+| battlezone | `200` · `text/html` · 1708 | `Battlezone` | `/assets/index-M82jnXoc.js` | `200` · `text/javascript` · 46 120 |
+| red-baron  | `200` · `text/html` · 1504 | `Red Baron`  | `/assets/main-BJ0dMSx9.js`  | `200` · `text/javascript` · 24 884 |
+| centipede  | `200` · `text/html` · 1429 | `Centipede`  | `/assets/index-B8-h8Kyj.js` | `200` · `text/javascript` · 38 922 |
+| joust      | `200` · `text/html` · 1425 | `Joust`      | `/assets/index-X0xBAf2A.js` | `200` · `text/javascript` · 120 847 |
+
+**Why the `200`s mean "real build", not a blanket fallback.** A `200` alone proves
+nothing — a SPA fallback or a bucket default can answer `200` to everything (this is the
+`canonical-serve` lesson from the *lobby* origin). Three facts taken together rule that
+out here:
+
+1. **Each host serves a *distinct* build.** The `<title>` and the hashed bundle name
+   differ per host (`Centipede` + `index-B8-h8Kyj.js` is not `Joust` + `index-X0xBAf2A.js`).
+   A single shared fallback would return byte-identical HTML across all seven; these are
+   seven different documents referencing seven different bundles.
+2. **The hashed asset is a real JS module, not a `200` error page.** Every asset came
+   back `text/javascript`, 12 KB–121 KB, opening with an ESM `import{…}` or the Vite
+   module-preload polyfill — a Vite-built bundle, not an HTML error body served with a
+   `200`.
+3. **Control: nonsense paths `404`.** `/<host>/assets/does-not-exist-ZZZZZZZZ.js` and a
+   bogus top-level path both returned a genuine **`404`** on all seven (the identical
+   27 150 / 28 088-byte Cloudflare default page), so these buckets resolve objects by
+   exact key. The real assets `200` *because they exist*, not because everything does.
+
+**What this clears for the teardown.** Every one of the seven `arcade-<game>` buckets
+currently serves live, game-correct content, so each is a genuine rollback target and
+the unbind-then-delete step is destructive for all seven, centipede included — there is
+no "empty bucket, safe to drop" case among them. Re-run the loop in the section above
+before the irreversible delete; a host that has since flipped to `301 ->
+arcade.slabgorb.com/<id>/` is cut over, and a host that has gone `404` where this table
+recorded `200` is a regression to investigate before deleting anything.
+
 ## Shipping: a TAG is production
 
 `.github/workflows/deploy.yml` is **one** workflow for the whole cabinet, triggered by
