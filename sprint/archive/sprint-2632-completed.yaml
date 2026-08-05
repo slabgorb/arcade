@@ -129,3 +129,8 @@ completed_stories:
     title: star-wars citation gate still reads the WORKING TREE — port tempest's tp1-22 audit-commit freeze and retire the re-anchor loop
     points: 3
     completed: '2026-08-05'
+  - id: bz5-1
+    epic: bz5
+    title: The windshield crack is a HIT reaction, not a permanent decal — gate it on player-hit state
+    points: 2
+    completed: '2026-08-05'
