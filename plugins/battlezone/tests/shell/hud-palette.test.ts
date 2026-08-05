@@ -126,11 +126,17 @@ describe('bz1-12 — the wireframe world stays green (only the score reddened)',
     }
   })
 
-  it('the radar scope chrome stays green (HUD chrome is green; only text is red)', () => {
+  // bz5-5 SUPERSEDES the old bz1-12 "radar stays green" pin. The radar sits in
+  // MAME bzone.lay's top red band (0..0.2, multiply), so authentically it reads
+  // RED — as the real cabinet shows (reference footage). The green-radar choice
+  // was bz5-2's documented deviation; bz5-5 retires it. The WORLD below the split
+  // stays green (the test above still pins that).
+  it('the radar scope chrome is RED (it lives in the top red band — bz5-5)', () => {
     const { ctx, strokes, fills } = recordingCtx()
     drawRadar(ctx, [{ bearing: 0.3, range: 8000 }], 0.5, W, H)
+    expect(strokes.length + fills.length, 'drawRadar painted nothing').toBeGreaterThan(0)
     for (const c of [...strokes, ...fills]) {
-      expect(isGreenDominant(c), `radar painted "${c}" — expected green-dominant`).toBe(true)
+      expect(isRedDominant(c), `radar painted "${c}" — expected red-dominant`).toBe(true)
     }
   })
 })

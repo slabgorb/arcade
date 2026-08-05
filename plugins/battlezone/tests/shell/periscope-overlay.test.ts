@@ -65,13 +65,17 @@ function alphaOf(style: unknown): number {
 
 type Rect = { x: number; y: number; w: number; h: number; alpha: number }
 
+type Pt = { x: number; y: number }
+
 /** A recording 2D-context stub that captures the rectangles a routine paints
- *  (fillRect) and re-opens (clearRect), plus the fill/stroke colours. Any other
+ *  (fillRect) and re-opens (clearRect), the fill/stroke colours, AND the path
+ *  points fed to moveTo/lineTo (so we can tell WHERE strokes land). Any other
  *  member no-ops so a real render routine runs end-to-end. */
 function recordingCtx(width = 800, height = 600) {
   const fills: Rect[] = []
   const clears: Rect[] = []
   const strokes: string[] = []
+  const points: Pt[] = []
   const rec = { fillStyle: '#000000', strokeStyle: '#000000', canvas: { width, height } }
   const target = rec as unknown as Record<string | symbol, unknown>
   const proxy = new Proxy(target, {
@@ -83,6 +87,7 @@ function recordingCtx(width = 800, height = 600) {
       if (prop === 'clearRect') {
         return (x: number, y: number, w: number, h: number) => clears.push({ x, y, w, h, alpha: 0 })
       }
+      if (prop === 'moveTo' || prop === 'lineTo') return (x: number, y: number) => points.push({ x, y })
       if (prop === 'stroke' || prop === 'strokeText') return () => strokes.push(String(rec.strokeStyle))
       if (prop === 'createLinearGradient') return () => ({ addColorStop() {} })
       if (prop === 'createRadialGradient') return () => ({ addColorStop() {} })
@@ -95,7 +100,7 @@ function recordingCtx(width = 800, height = 600) {
       return true
     },
   })
-  return { ctx: proxy as unknown as CanvasRenderingContext2D, fills, clears, strokes, width, height }
+  return { ctx: proxy as unknown as CanvasRenderingContext2D, fills, clears, strokes, points, width, height }
 }
 
 const covers = (r: Rect, px: number, py: number) =>
@@ -104,30 +109,44 @@ const covers = (r: Rect, px: number, py: number) =>
 const W = 800
 const H = 600
 
-describe('bz5-2 (A) — the periscope bezel is a shell overlay that keeps a central aperture', () => {
+describe('bz5-2/bz5-5 (A) — the periscope is authentic HUD framing (viewport brackets, no box)', () => {
   it('drawPeriscope is exported from the render layer', () => {
     expect(typeof drawPeriscope, 'drawPeriscope must be an exported render function').toBe('function')
   })
 
-  it('does not obscure the viewport centre — the gunsight/target stays visible', () => {
-    // AC1: "does not obscure the gunsight or a target at screen center." The mask
-    // may darken the frame with border rects or a transparent-centre vignette
-    // (gradient fillStyle → alpha 0 here), but no OPAQUE solid fill may cover the
-    // centre unless a later clearRect re-opens it. GUNSIGHT_NDC = [0,0] → (W/2,H/2).
-    const { ctx, fills, clears } = recordingCtx(W, H)
+  it('is NOT a solid box — no opaque fill anywhere (bz5-5 retires the rectangle bezel)', () => {
+    // The bz5-2 shipped version framed the play area with four opaque fillRect
+    // border bands — the "just a box" the reference does not have. bz5-5 replaces
+    // it with stroked viewport brackets, so drawPeriscope must paint NO opaque fill.
+    const { ctx, fills } = recordingCtx(W, H)
+    drawPeriscope(ctx, W, H)
+    expect(fills.filter((r) => r.alpha > 0).length, 'drawPeriscope still paints an opaque fill (a box)').toBe(0)
+  })
+
+  it('does not obscure the viewport centre — gunsight/target stays visible', () => {
+    // AC1: "does not obscure the gunsight or a target at screen center." The
+    // brackets FLANK the centre; the central aperture (GUNSIGHT_NDC [0,0] → W/2,H/2)
+    // must carry neither an opaque fill nor a stroked path point.
+    const { ctx, fills, clears, points } = recordingCtx(W, H)
     drawPeriscope(ctx, W, H)
     const cx = W / 2
     const cy = H / 2
-    const obscured = fills.some((r) => r.alpha > 0 && covers(r, cx, cy))
-    const reopened = clears.some((r) => covers(r, cx, cy))
-    expect(obscured && !reopened, 'the periscope mask painted an opaque fill over screen centre').toBe(false)
+    const filled = fills.some((r) => r.alpha > 0 && covers(r, cx, cy)) && !clears.some((r) => covers(r, cx, cy))
+    const strokedThroughCentre = points.some((p) => Math.abs(p.x - cx) < W * 0.06 && Math.abs(p.y - cy) < H * 0.1)
+    expect(filled, 'an opaque fill covers screen centre').toBe(false)
+    expect(strokedThroughCentre, 'a bracket stroke runs through the central aperture').toBe(false)
   })
 
-  it('paints SOMETHING — an empty overlay is not a bezel', () => {
-    // Guards against a vacuous no-op implementation passing the aperture test.
-    const { ctx, fills, strokes } = recordingCtx(W, H)
+  it('draws brackets FLANKING the centre — geometry on both the left and right sides', () => {
+    // Two viewport brackets, symmetric about centre (the reference's frame). Proves
+    // it is not a one-sided or empty overlay: stroked points exist left of centre
+    // AND right of centre, none crossing the middle (checked above).
+    const { ctx, points } = recordingCtx(W, H)
     drawPeriscope(ctx, W, H)
-    expect(fills.length + strokes.length, 'drawPeriscope drew nothing at all').toBeGreaterThan(0)
+    const cx = W / 2
+    expect(points.length, 'drawPeriscope stroked no bracket geometry').toBeGreaterThan(0)
+    expect(points.some((p) => p.x < cx), 'no bracket geometry left of centre').toBe(true)
+    expect(points.some((p) => p.x > cx), 'no bracket geometry right of centre').toBe(true)
   })
 })
 

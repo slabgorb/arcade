@@ -524,12 +524,22 @@ in the clone as `MAME_COLOR_SPLIT` (`src/shell/render.ts`) and guarded by
 **Deliberate deviation (method, not boundary):** we honour MAME's `0.2` split *location* —
 the red score/radar band occupies the top ~20% and the field below is green — but we do
 **not** lay a full-width translucent red/green multiply gel across the whole viewport.
-Instead the clone colours the **HUD elements** in that top band red (`HUD_RED`, the bz1-12
-bichromatic pass — score, radar and alert text) and renders the vector world green
+Instead the clone colours the **HUD elements** in that top band red (`HUD_RED` — score,
+high-score, alert text, and the radar scope chrome) and renders the vector world green
 (`GLOW_GREEN`). Reason: a multiply gel over the entire green vector field would dim and
 muddy the wireframe legibility our render depends on, for no gameplay gain; colouring the
 HUD elements reproduces the cabinet's red-band / green-field read while keeping the vectors
 crisp. Boundary fidelity is exact (`0.2`); the rendering method is the documented deviation.
+
+**bz5-5 update (playtest correction):** two changes after the bz5-2 pass was played.
+(1) The **radar scope is now red** — it lives in the top red band, so bz1-12's original
+"radar chrome stays green" choice (which bz5-2 had carried as a deviation) was retired;
+`drawRadar` now strokes `HUD_RED`, matching the real cabinet's red radar. Only the vector
+WORLD below `0.2` stays green. (2) The **periscope framing is no longer a rectangle box** —
+bz5-2 shipped a full green border ("just a box"), which the reference cabinet does not have.
+`drawPeriscope` now strokes two vertical **viewport brackets** flanking the aiming centre
+(the cabinet's periscope sight frame), leaving the central aperture clear. Framing now comes
+from the HUD (red top band + brackets + gunsight), not a drawn border.
 
 ## 12 · Provenance / changelog
 

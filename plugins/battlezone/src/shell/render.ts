@@ -192,7 +192,7 @@ export function drawScore(
 }
 
 /**
- * Stroke the radar scanner HUD at top-center: the green scope ring, the forward
+ * Stroke the radar scanner HUD at top-center: the red scope ring (bz5-5 — it is
  * view cone (±H_FOV/2 — the wedge the player can actually see), the rotating
  * sweep line, and one dot per blip. The core's `stepRadar` (bz3-7 — the DRADAR
  * analog) owns the sweep, the gating, and the afterglow; this only strokes
@@ -220,9 +220,13 @@ export function drawRadar(
     cy - radius * Math.cos(angle),
   ]
 
-  ctx.strokeStyle = GLOW_GREEN
-  ctx.fillStyle = GLOW_GREEN
-  ctx.shadowColor = GLOW_GREEN
+  // bz5-5: the radar sits in MAME bzone.lay's top red band (0..0.2, multiply), so
+  // it reads RED like the real cabinet — retiring bz1-12's green-radar choice
+  // (which bz5-2 had documented as a deviation). The WORLD below the split stays
+  // GLOW_GREEN; only this top-band HUD chrome is red.
+  ctx.strokeStyle = HUD_RED
+  ctx.fillStyle = HUD_RED
+  ctx.shadowColor = HUD_RED
   ctx.shadowBlur = 8
   ctx.lineWidth = 1.5
 
@@ -395,23 +399,34 @@ export function drawCrackedGlass(
  * periscope's lit edge.
  */
 export function drawPeriscope(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  const bezelX = w * 0.08 // frame thickness, left/right
-  const bezelY = h * 0.1 // frame thickness, top/bottom
+  // Two vertical viewport brackets flanking the aiming centre — the cabinet's
+  // periscope sight frame. The bz5-2 pass drew a full rectangle border ("just a
+  // box"); bz5-5 retired it after playtest for this authentic HUD framing that
+  // matches the real cabinet (reference footage). Stroked green vector chrome; the
+  // central aperture is left clear so the gunsight and a centred target stay
+  // visible. Placement/extent are playtest-tunable.
+  const cx = w / 2
+  const bx = w * 0.16 // each bracket's horizontal offset from centre
+  const tick = w * 0.035 // inward tick length at each bracket end
+  const topY = h * 0.3
+  const botY = h * 0.7
   ctx.save()
-  ctx.shadowBlur = 0
-  // Opaque dark bezel: four border bands around the aperture. The aperture (the
-  // central hole) is never painted, so screen centre is left clear.
-  ctx.fillStyle = 'rgba(6,10,8,0.92)'
-  ctx.fillRect(0, 0, w, bezelY) // top band
-  ctx.fillRect(0, h - bezelY, w, bezelY) // bottom band
-  ctx.fillRect(0, bezelY, bezelX, h - bezelY * 2) // left band
-  ctx.fillRect(w - bezelX, bezelY, bezelX, h - bezelY * 2) // right band
-  // Phosphor-green rim around the viewport aperture — the periscope's lit edge.
   ctx.strokeStyle = GLOW_GREEN
-  ctx.lineWidth = 2
   ctx.shadowColor = GLOW_GREEN
   ctx.shadowBlur = 8
-  ctx.strokeRect(bezelX, bezelY, w - bezelX * 2, h - bezelY * 2)
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  // Left bracket "[" — ticks point inward (right).
+  ctx.moveTo(cx - bx + tick, topY)
+  ctx.lineTo(cx - bx, topY)
+  ctx.lineTo(cx - bx, botY)
+  ctx.lineTo(cx - bx + tick, botY)
+  // Right bracket "]" — ticks point inward (left).
+  ctx.moveTo(cx + bx - tick, topY)
+  ctx.lineTo(cx + bx, topY)
+  ctx.lineTo(cx + bx, botY)
+  ctx.lineTo(cx + bx - tick, botY)
+  ctx.stroke()
   ctx.restore()
 }
 
