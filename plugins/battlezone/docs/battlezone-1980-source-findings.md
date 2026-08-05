@@ -541,6 +541,83 @@ bz5-2 shipped a full green border ("just a box"), which the reference cabinet do
 (the cabinet's periscope sight frame), leaving the central aperture clear. Framing now comes
 from the HUD (red top band + brackets + gunsight), not a drawn border.
 
+### 11.2 · Enemy AI cross-check against MAME (bz5-4)
+
+Re-validation of the enemy AI shipped across bz1–bz4 (the goal-heading tank state
+machine — flank/wander/charge, ~22 °/s turn, standoff, fire-on-sweep; plus saucer,
+missile and super-tank behaviour) against MAME as an **independent second primary
+source**. bz1–bz4 read that behaviour off the `BZONE.MAC` / dis65 **disassembly**;
+MAME **executes** the same ROM, so — where MAME's driver documents anything — its
+documentation is a second source on the port.
+
+**The structural fact that scopes this cross-check (same as §11/bz5-1).** MAME's
+driver source contains **no enemy-AI logic**. The state machine (turn rate,
+standoff, flank/charge transitions, fire-on-sweep) and `GetTankType`'s missile-count
+super-tank selection live in the `maincpu` ROM region MAME loads and runs
+(`bzone.cpp:711-717`, ROM `036409-01`…`036415-02`) — byte-identical to what
+`BZONE.MAC` disassembles. `bzone.cpp` / `bzone_a.cpp` only wrap the **hardware**
+(clock chain, DIP inputs, discrete/POKEY audio). So MAME **cannot independently
+transcribe the AI logic** to diff against; a true "executed-behaviour" cross-check
+of the AI logic itself would require **running** MAME and observing telemetry, which
+a source-diff / headless unit suite cannot do. This is a **limitation on AC1**, not a
+gap in the clone: the bz1–bz4 disassembly audit remains the sole *logic* source, and
+it is not weakened by MAME. What MAME **does** second-source is below.
+
+**CONFIRMED — spawn/cadence thresholds (AC2), upgraded from one secondary source to two.**
+The clone pinned two DIP-selectable values from a **secondary** source
+(arcade-museum.com's DIP sheet) because "the ROM cannot name a factory default"
+(`src/core/scoring.ts:63-66`, `src/core/difficulty.ts:38-44`). MAME's driver
+documents the **same factory defaults** (`$`-marked), so the two sources now agree:
+
+| Value | Clone | MAME (`bzone.cpp`, `$` = factory default) | Verdict |
+|---|---|---|---|
+| Missile-intro threshold | `MISSILE_INTRO_THRESHOLD = 10000` (`scoring.ts:66`) | `bzone.cpp:75` — "Missile appears after 10,000 points  $" | **CONFIRMED** |
+| Bonus-tank thresholds | `BONUS_TANK_SCORES = [15000, 100000]` (`difficulty.ts:44`) | `bzone.cpp:79` — "Bonus tanks at 15,000 and 100,000 points  $" | **CONFIRMED** |
+
+`tests/core/scoring.test.ts` only asserted the missile threshold was **within** the
+`{5000, 10000, 20000, 30000}` DIP band; the second source resolves the band to the
+single default, so `tests/core/enemies-mame-crosscheck.test.ts` tightens it to
+`=== 10000` and pins `BONUS_TANK_SCORES` to the MAME-documented pair.
+
+**CONFIRMED — sound-gating observable hook (AC2).** `bzone_a.cpp:1-20` documents the
+cabinet's sound-enable bits — one shared generator per effect, gated as an audible
+trace of the AI acting. The clone's core→cue map (`src/shell/audio-dispatch.ts`)
+ties enemy actions to exactly these single generators:
+
+| MAME sound-enable bit (`bzone_a.cpp:1-20`) | Enemy action | Clone hook | Verdict |
+|---|---|---|---|
+| D0 explosion enable — "gates a noise generator" (:18) | a unit is destroyed | `enemy-destroyed` → `play('explosion')` (`audio-dispatch.ts:38`) | **CONFIRMED** |
+| D0 explosion enable — one generator, not a per-side pair | the player is destroyed | `player-hit` → `play('explosion')` (`audio-dispatch.ts:48`) | **CONFIRMED** (single generator) |
+| D2 shell enable (:16) | a shell leaves a barrel | `shot-fired` → `play('cannon')` (`audio-dispatch.ts:35`) | **CONFIRMED** |
+| D7 motor enable / D4 engine rev (:7, :11) | tank driving (engine) | continuous `setEngine(effort)` (`audio-dispatch.ts:107`) | **CONFIRMED** (and see note) |
+
+*Note (premise correction):* the story framed the engine bits (D7/D4) as an "enemy
+action" hook. `bzone_a.cpp:7-14` shows the engine/rev sound is a **single continuous
+generator** — the **player's own tank** idle-hum + rev, not a per-enemy cue — which
+is exactly how the clone models it (`updateContinuousSounds`, tread-effort driven).
+The enemy-tied audible actions are D2 (fire) and D0 (die).
+
+**Timebase.** The AI's per-frame cadences (turn °/frame, ramp seconds) convert to
+real time via the ROM game frame, which §11 already reconciled against the MAME clock:
+6502 at `BZONE_MASTER_CLOCK/8 = 1.512 MHz` (`bzone.cpp:611`), periodic NMI at
+`BZONE_CLOCK_3KHZ/12 ≈ 246 Hz` (`bzone.cpp:613`, `bzone.h:20-21`), the ROM frame
+counter dividing NMI by 16 → **≈15.38 Hz** vs the clone's 15.625 Hz. The exact
+246-vs-250 Hz reconcile is **deferred to bz5-3**; it does not move any AI constant
+materially and no AI value is re-pinned here.
+
+**Ruling (AC3).** The enemy AI is **CONFIRMED** against the second source on every
+axis MAME can document — the two spawn-threshold defaults and the enemy-action
+sound-gating all agree; the engine-bit note is a story-premise correction, not a code
+divergence. **No divergence was found where both sources agree the clone is wrong, so
+no AI behaviour changes** (AC3's precondition is unmet by design). The AI *logic*
+axes (turn rate, standoff, flank/charge, fire-on-sweep, super-tank selection) are
+outside what MAME's source can second-source and stay pinned to the bz1–bz4
+disassembly audit. **Open item for a human ruling:** whether a live-MAME behavioural
+capture (running the emulator and logging AI state) is worth a follow-up to
+second-source the AI *logic* — the only way to satisfy AC1's "executed behaviour"
+literally; recommended **not** blocking, as bz1–bz4 already fixed the logic against
+the disassembly and this pass found no contradicting evidence.
+
 ## 12 · Provenance / changelog
 
 | Date | Change | Source |
@@ -548,6 +625,7 @@ from the HUD (red top band + brackets + gunsight), not a drawn border.
 | 2026-07-03 | Initial findings doc authored (story bz1-2) | 6502disassembly.com/va-battlezone/ (hub, objects.html, mathbox.html, rev1.html); arcade-museum.com DIP switch settings |
 | 2026-07-03 | **Rework:** `src/core/obstacles.ts`'s 21 entries and 9 of 10 `src/core/models.ts` model geometries upgraded from AUTHORED placeholders to byte-exact ROM decodes; `EXPLOSION_DEBRIS` upgraded to ROM-exact vertices with documented authored edge connectivity (§3, §4, §6 rewritten). Scoring (§1/§9) and DIP band (§9) re-confirmed against the ROM disassembly — no value changes. | Real ROM quarry supplied locally (`~/Downloads/va-battlezone/`: `Battlezone` ROM binary, `Battlezone.dis65` SourceGen project, `VisBattlezone.cs` visualizer source) — canonical hosted pages [Battlezone.html](https://6502disassembly.com/va-battlezone/Battlezone.html), [objects.html](https://6502disassembly.com/va-battlezone/objects.html) |
 | 2026-08-05 | **§11.1 added (bz5-2):** MAME's `layout/bzone.lay` red/green colour-overlay geometry (RED top..0.2, GREEN 0.2..1.0, multiply) pinned as `MAME_COLOR_SPLIT = 0.2`; our HUD-element colouring vs MAME's full-width multiply gel documented as a deliberate method deviation (boundary fidelity exact). Periscope bezel overlay added (cabinet artwork, not in ROM/MAME). | MAME `~/Projects/mame/src/mame/layout/bzone.lay` (verified: red top..0.2 rgb 1.0,0.125,0.125 / green 0.2..1.0 rgb 0.125,1.0,0.125, blend multiply), `~/Projects/mame/src/mame/atari/bzone.cpp:855` (blue Desert Wars variant, out of scope) |
+| 2026-08-05 | **§11.2 added (bz5-4):** enemy-AI cross-check vs MAME. Structural fact recorded (MAME's driver has no AI logic — it executes the ROM; same as §11); two DIP-default spawn thresholds (missile 10K, bonus tanks 15K/100K) CONFIRMED against MAME's driver documentation, upgrading them from one secondary source to two; enemy-action sound-gating (D2 shell / D0 explosion) CONFIRMED against `audio-dispatch.ts`; engine-bit premise correction noted. No divergence → no AI behaviour change (AC3 precondition unmet). Pinned by `tests/core/enemies-mame-crosscheck.test.ts`. | MAME `~/Projects/mame/src/mame/atari/bzone.cpp` (DIP block :55-90, ROM region :711-717), `bzone_a.cpp:1-20` (sound-enable bits) |
 | 2026-08-05 | **§11 added (bz5-1):** the `CRACK` cracked-windshield counter — the sibling of `BOUNCE` bz4-1 shipped without — is now wired (set on death, advanced per game frame, cleared at `16*2`) and the overlay is gated on it. AC3 cross-check against the MAME driver: MAME executes the same ROM (no death-specific C); its clock chain times the ~1 s window; exact NMI-rate reconcile deferred to bz5-3. Tank-freeze / progressive-sections / reposition deviation documented as a bz5 follow-up. | `~/Projects/battlezone-source-text/BZONE.MAC` (CRACK :256/:506/:697/:2335/:3362); MAME `~/Projects/mame/src/mame/atari/bzone.{cpp,h}`, `bzone_a.cpp` |
 
 **Refresh procedure:** see `reference/README.md` (gitignored, checkout-local) for how to
