@@ -4213,3 +4213,28 @@ The port's narrowPhase (joust.ts:177) drops COLDX and compares superimposed spri
 X-blind, leaning on broadPhase for all of X. That is a pre-existing divergence since jt2-3 across ALL
 THREE consumers — filed jt9-43. Stage jt9-14's fixtures at **dx=0** (COLDX=0) so the bands are invariant
 under that follow-up; a dx≠0 sibling (the four above stage dx=4) will need re-baseline when jt9-43 lands.
+
+---
+
+### A DERIVED AC (acceptance_criteria: null → sm-setup invents them) can assert a false "already modelled" — verify every clause against the CODE + ROM before writing tests to it
+
+**Situation:** jt9-8 (PTIMUP clears at both wing transitions). The epic YAML had `acceptance_criteria:
+null`, so sm-setup derived five ACs from the description. Derived AC1 said timeUp "resets when it
+transitions from released to pressed (**the press edge already modelled**)."
+
+**Problem:** the parenthetical was FALSE. `flap()` (flight.ts) READS `timeUp` for its impulse but never
+clears it, and `tickTimeUp` only increments — so NEITHER edge resets timeUp today. The ROM clears
+PTIMUP at BOTH transitions (GOFLIP release :6185, GOFLAP press :6219). Had I written tests to the AC as
+written, I'd have pinned only the release edge and shipped the press-edge bug green. This is the SM-side
+"sm-setup fabricates ROM citations" trap arriving on the TEA side through a derived AC.
+
+**Prevention:** treat a derived AC exactly like a story description with a falsifiable claim — read the
+cited code and ROM line for EACH clause before it becomes a test. When a clause says "X already
+modelled / already handled," open X and confirm it. Write the tests to the VERIFIED contract, and file
+the correction as a `[Conflict]` Delivery Finding so Dev and the archived AC don't disagree silently.
+
+**Also useful (joust flight edges):** to stage a single-frame wing edge deterministically at the raw
+`stepFrame` seam, SEED `prevFlapHeld` on the lone player process (it is a first-class ProcessSpec field
+`runBehaviour` writes every wake) and feed the one input — the step IS the edge, with no played-in press
+perturbing the measured velY. A lone player also removes all entity-collision noise; only the ground
+matters, so stage in the open-air scanline band (33–68 at posX 0; ceiling is pixel 32, ground ~69).
