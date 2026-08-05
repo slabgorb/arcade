@@ -32,3 +32,8 @@ completed_stories:
     title: The flea's 0.6s sample wraps inside a 2s drop — the sweep is shorter than the descent
     points: 2
     completed: '2026-08-05'
+  - id: jt9-8
+    epic: jt9
+    title: PTIMUP clears at BOTH wing transitions — a release restores flap lift and our flight.ts never does
+    points: 3
+    completed: '2026-08-05'
