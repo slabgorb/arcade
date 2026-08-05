@@ -219,6 +219,7 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+    review_verdict: approved
   - id: cp6-6
     title: "two loose pins in centipede's audit suite: a citation floor of 20 against a population of 86, and bake-sfx.test.mjs's stale ':25-28' span for the @shared/audio import"
     points: 1
