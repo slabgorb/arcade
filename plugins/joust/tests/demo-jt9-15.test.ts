@@ -62,6 +62,8 @@ const PTERO_LO = 0xc12 // a pterodactyl placed BELOW the buzzard (bird on top)
 const BUZZ_HI = 0xc13 // its buzzard partner, above
 const CTRL_A = 0xc20 // buzzard-pair presence control
 const CTRL_B = 0xc21
+const TIE_PTERO = 0xc30 // level pair — the BPL-includes-zero boundary
+const TIE_BUZZ = 0xc31
 
 const cueKinds = (d: DemoState): string[] => d.cues.map((c) => c.type as string)
 
@@ -238,6 +240,23 @@ describe('jt9-15 — PTEBRD: the PTERODACTYL on top drives the bird DOWN by a ha
       r.final.sim.processes.some((p) => p.kind === 'dissolve'),
       'no dissolve — a dissolve would mean the lance-height path resolved it',
     ).toBe(false)
+  })
+
+  it('a LEVEL pair treats the pterodactyl as on top — the bird goes DOWN +5, not up', () => {
+    // The boundary JT915-002 pins: PTEBRD's who-is-on-top BPL takes the EXACT
+    // tie (result ≥ 0), so a ptero and bird at the same Y treat the pterodactyl
+    // as the higher party and drive the bird DOWN +5. Both subjects at Y64.
+    // Kills the '<=' → '<' mutant (which would send the bird UP −5 at a tie).
+    const d = stage([
+      pteroAt(TIE_PTERO, { posY: 0x40 << 8 }),
+      buzzardAt(TIE_BUZZ, { posY: 0x40 << 8 }),
+    ])
+    const r = runToThud(d, TIE_BUZZ, TIE_PTERO)
+
+    expect(r.thudFrame, 'a level ptero/buzzard overlap still reaches SNETHD').toBeGreaterThanOrEqual(0)
+    expect(r.birdAfter - r.birdBefore, 'at a tie the ptero is on top → bird DOWN +5').toBe(5)
+    expect(r.pteroAfter - r.pteroBefore, 'the pterodactyl flies on undisturbed').toBe(0)
+    expect(r.deaths, 'PTEBRD kills no-one').toEqual([])
   })
 })
 
