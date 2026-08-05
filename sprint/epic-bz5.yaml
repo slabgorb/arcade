@@ -91,6 +91,8 @@ stories:
       - >-
         The overlay is shell-only presentation — no core/sim change, core-purity sweep stays
         green.
+    review_findings: 'APPROVED (approve-with-remediations, commit 99d31b47). Production code clean vs all 26 lang-review checks. 3 test/doc findings fixed: stray require->ESM import (#5), unguarded indexOf layer-order markers (#25), findings-doc bzone.lay path (atari/layout -> layout). 2 as-unknown-as casts kept as the sanctioned hud-palette recording-ctx idiom. Reviewer verified MAME geometry against src/mame/layout/bzone.lay (red top..0.2 / green 0.2..1.0 multiply) + bzone.cpp:855. battlezone 1056/1056, lint clean. AC1 bezel look is playtest-verified per epic convention.'
+    review_verdict: approved
   - id: bz5-3
     title: Timing cross-check — reconcile the 15.625 Hz sim game-frame against MAME's clock chain
     description: >-
