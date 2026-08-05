@@ -270,10 +270,13 @@ function renderFrame(): void {
     )
   }
 
-  // bz1-12: the cracked-glass windshield overlay frames the viewport (its top
-  // is hidden behind the radar/score band, per the ROM note) — drawn over the
-  // world, under the HUD so score/radar stay legible.
-  drawCrackedGlass(ctx, w, h)
+  // bz5-1: the cracked-glass windshield is the cabinet's HIT reaction, not a
+  // permanent decal — the ROM gates the whole windshield on its CRACK counter
+  // (`LDA CRACK / BEQ 31$ / JMP WNSHLD`, BZONE.MAC:506-507). Core owns the
+  // counter (state.crack, set on death and cleared over the death window); the
+  // shell only READS it. Drawn over the world, under the HUD so score/radar stay
+  // legible. (bz1-12 originally drew this every frame — that was the bug.)
+  if (game.crack !== 0) drawCrackedGlass(ctx, w, h)
 
   // Radar scanner HUD — bz3-7: the sweep and the blip list are now LIVE core
   // state (`game.radar` / `game.radarBlips`, ticked by sim.ts's `advanceRadar`

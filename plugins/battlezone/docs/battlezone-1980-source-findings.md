@@ -57,7 +57,8 @@ quarry it was pulled from is *not* required to be present for any of this to hol
 8. [Sound inventory](#8--sound-inventory)
 9. [DIP switches & the missile-threshold pin](#9--dip-switches--the-missile-threshold-pin)
 10. [Verification pass against `context-epic-bz1.md`'s "known ROM facts"](#10--verification-pass-against-context-epic-bz1mds-known-rom-facts)
-11. [Provenance / changelog](#11--provenance--changelog)
+11. [Windshield crack — the `CRACK` counter & the MAME cross-check (bz5-1)](#11--windshield-crack--the-crack-counter--the-mame-cross-check-bz5-1)
+12. [Provenance / changelog](#12--provenance--changelog)
 
 ---
 
@@ -466,12 +467,57 @@ here since there is no correction to make).
 
 ---
 
-## 11 · Provenance / changelog
+## 11 · Windshield crack — the `CRACK` counter & the MAME cross-check (bz5-1)
+
+The cracked-glass windshield is the cabinet's **hit reaction**, not a permanent decal.
+The clone drew it every frame from spawn (`src/main.ts`, the old unconditional
+`drawCrackedGlass` call) — so the viewport "started cracked". The ROM gates it on a
+counter bz4-1 shipped `BOUNCE` **without**:
+
+| ROM (`BZONE.MAC`) | Meaning |
+|---|---|
+| `CRACK: .BLKB 1  ;CRACKED WINDSHIELD COUNTER` (:256) | The register. 0 = clean. |
+| `LDA I,2 / STA CRACK` (:2335-2336) | **Set to 2 on the death / windshield-crack path**, right beside `LDA I,-1 / STA BOUNCE` (:2337-2338), **before** `DEC LIVES` (:2339) — so **every** life lost (game-over included) cracks the glass. The mutual-kill branch writes it too (:3362). |
+| `LDA CRACK / BEQ 31$ / JMP WNSHLD` (:506-507) | The render gate: `CRACK == 0` → open the clear window (`BIGWND`); `CRACK != 0` → draw the cracked windshield (`WNSHLD`). So **"cracked" ≡ `CRACK != 0`**. |
+| `INC CRACK / INC CRACK` (:697-698) | Advance the counter **+2 per game frame** — the crack progressively spreads (more `CRACKS` sections drawn as it climbs). |
+| reset `STA CRACK` = 0 at the `16*2` cap (:656, :660-661), then reposition/respawn or → attract | A **bounded** death sequence (~15 game frames ≈ 1 s at 15.625 Hz), then it clears on its own. |
+
+**What bz5-1 shipped (VISIBILITY only):** `GameState.crack` (`src/core/state.ts`), a pure
+core counter — set to 2 on the death step in `stepBattle` (both the respawn and game-over
+returns), advanced +2 per 15.625 Hz game frame in `advanceRadar` (beside `bounce >> 1`),
+reset to 0 at `16*2`. The shell reads `game.crack` and draws the overlay only when it is
+non-zero. `CRACK_PATHS` (the geometry) is unchanged — only the overlay's **visibility** is
+now gated. Core purity is preserved (the counter is computed in core, read in the shell).
+
+**AC3 — cross-check against MAME's player-death handling.** MAME has **no** death-specific
+C code: the death/crack logic is the ROM the M6502 executes (`bzone_a.cpp` models only the
+discrete explosion/shell audio, not the counter). MAME's independent contribution is the
+**clock that times the sequence**: the 6502 runs at `BZONE_MASTER_CLOCK/8 = 1.512 MHz`
+(`bzone.cpp:611`), the NMI is periodic at `BZONE_CLOCK_3KHZ/12 ≈ 246 Hz`
+(`bzone.cpp:613`, `bzone.h:20-21`), and the ROM frame counter divides the NMI by 16
+("`AND I,0F` … END OF FRAME (64 MS)", `src/core/timebase.ts`) → a **≈15.38 Hz** game
+frame. The clone uses **15.625 Hz** (NMI taken as exactly 250 Hz). Either rate puts the
+~15-game-frame crack window at **≈0.96–0.98 s** — the difference does not materially change
+the window, and the exact NMI-rate reconcile (246 vs 250 Hz) is **deferred to bz5-3**
+(the timebase cross-check story). **Ruling:** the shipped crack timing (2 → +2/frame →
+reset at `16*2`, ≈1 s) is faithful to the ROM sequence MAME executes.
+
+**Documented deviation (deferred).** The ROM's full death sequence FREEZES the tank while
+the crack spreads ("ALLOW ENDING SEQUENCE TO FINISH", :450), draws **progressively more**
+`CRACKS` sections as `CRACK` climbs, and **repositions** the tank on reset (:660-713). The
+clone respawns **instantly** and draws the full `CRACK_PATHS` for the whole window (no
+tank-freeze, no progressive sections, no reposition). bz5-1 is scoped to visibility only;
+the tank-freeze / progressive-sections / reposition port is a candidate **bz5 follow-up**.
+
+---
+
+## 12 · Provenance / changelog
 
 | Date | Change | Source |
 |---|---|---|
 | 2026-07-03 | Initial findings doc authored (story bz1-2) | 6502disassembly.com/va-battlezone/ (hub, objects.html, mathbox.html, rev1.html); arcade-museum.com DIP switch settings |
 | 2026-07-03 | **Rework:** `src/core/obstacles.ts`'s 21 entries and 9 of 10 `src/core/models.ts` model geometries upgraded from AUTHORED placeholders to byte-exact ROM decodes; `EXPLOSION_DEBRIS` upgraded to ROM-exact vertices with documented authored edge connectivity (§3, §4, §6 rewritten). Scoring (§1/§9) and DIP band (§9) re-confirmed against the ROM disassembly — no value changes. | Real ROM quarry supplied locally (`~/Downloads/va-battlezone/`: `Battlezone` ROM binary, `Battlezone.dis65` SourceGen project, `VisBattlezone.cs` visualizer source) — canonical hosted pages [Battlezone.html](https://6502disassembly.com/va-battlezone/Battlezone.html), [objects.html](https://6502disassembly.com/va-battlezone/objects.html) |
+| 2026-08-05 | **§11 added (bz5-1):** the `CRACK` cracked-windshield counter — the sibling of `BOUNCE` bz4-1 shipped without — is now wired (set on death, advanced per game frame, cleared at `16*2`) and the overlay is gated on it. AC3 cross-check against the MAME driver: MAME executes the same ROM (no death-specific C); its clock chain times the ~1 s window; exact NMI-rate reconcile deferred to bz5-3. Tank-freeze / progressive-sections / reposition deviation documented as a bz5 follow-up. | `~/Projects/battlezone-source-text/BZONE.MAC` (CRACK :256/:506/:697/:2335/:3362); MAME `~/Projects/mame/src/mame/atari/bzone.{cpp,h}`, `bzone_a.cpp` |
 
 **Refresh procedure:** see `reference/README.md` (gitignored, checkout-local) for how to
 re-pull the quarry if 6502disassembly.com's content changes, or how to re-run the byte

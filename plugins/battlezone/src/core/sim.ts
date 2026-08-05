@@ -58,6 +58,15 @@ export const ENTRY_SECONDS = 15
  * shared reducer (SH2-13). */
 const MAX_INITIALS = 3
 
+/**
+ * bz5-1: the ROM CRACKED WINDSHIELD COUNTER. Set to 2 on the death /
+ * windshield-crack path (`LDA I,2 / STA CRACK`, BZONE.MAC:2335-2336), advanced
+ * +2 per game frame (INC CRACK ×2, :697-698), and reset to 0 at the 16×2 cap
+ * (:656/:660-661) — a bounded death-sequence window, ~15 game frames.
+ */
+const CRACK_ON_DEATH = 2
+const CRACK_RESET = 16 * 2
+
 function clampAxis(v: number): number {
   return v < -1 ? -1 : v > 1 ? 1 : v
 }
@@ -234,6 +243,9 @@ function stepBattle(s: GameState, driver: Input, dt: number, demo: boolean): Gam
         motionBlockedLatch: motionBlocked,
         enemyInRangeLatch: enemyInRange,
         bounce: deathBounce,
+        // bz5-1: the windshield-crack write beside BOUNCE (BZONE.MAC:2335) —
+        // the final/game-over death cracks the glass too.
+        crack: CRACK_ON_DEATH,
         events,
       }
     }
@@ -274,6 +286,9 @@ function stepBattle(s: GameState, driver: Input, dt: number, demo: boolean): Gam
       // bz4-1: the respawn carries the death's full-byte 0xFF forward — never
       // silently zeroed, never clamped back to the obstacle 0x3F (see above).
       bounce: deathBounce,
+      // bz5-1: the same step cracks the windshield (`LDA I,2 / STA CRACK`,
+      // BZONE.MAC:2335) — advanceRadar plays out the crack window from here.
+      crack: CRACK_ON_DEATH,
       events: events.filter((e) => e.type !== 'shot-fired'),
     }
   }
@@ -331,6 +346,7 @@ function advanceRadar(state: GameState, dt: number): GameState {
   let radarBlips = state.radarBlips
   let frameCount = state.frameCount
   let bounce = state.bounce
+  let crack = state.crack
   const contacts = [...radarContacts(state.enemies), ...saucerContacts(state.saucer)]
   const events = [...state.events]
   while (clock >= RADAR_FRAME_SECONDS) {
@@ -340,9 +356,13 @@ function advanceRadar(state: GameState, dt: number): GameState {
     if (step.litThisFrame) events.push({ type: 'radar-blip' })
     frameCount += 1
     bounce = bounce >> 1
+    // bz5-1: the ROM's CRACK advance (INC CRACK ×2, BZONE.MAC:697-698) — only
+    // while a crack is active, and reset to 0 at the 16×2 cap (:656/:660-661).
+    // Guarded on `!== 0` so a clean windshield never spontaneously cracks.
+    crack = crack !== 0 && crack + 2 < CRACK_RESET ? crack + 2 : 0
     clock -= RADAR_FRAME_SECONDS
   }
-  return { ...state, radar, radarBlips, radarClock: clock, frameCount, bounce, events }
+  return { ...state, radar, radarBlips, radarClock: clock, frameCount, bounce, crack, events }
 }
 
 /**
