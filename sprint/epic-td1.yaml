@@ -269,7 +269,8 @@ stories:
       NEW PREREQUISITE, ADDED 2026-07-31 BY THE MONOREPO MIGRATION — DO THIS STEP FIRST OR THE STORY CANNOT BE DONE. This story's central step is 'pick star-wars's audit commit deliberately — the commit that RECORDED the findings'. That commit is no longer reachable from this repo: the 2026-07-30 collapse imported each game as ONE SQUASHED commit, so star-wars has no per-file history here. The migration's Task 2 anticipated exactly this and cut tags for the two gates it knew depended on frozen commits — `audit/tempest` and `audit/red-baron` exist on origin. THERE IS NO `audit/star-wars` TAG. The pre-migration history survives in two places only: the archived GitHub repo slabgorb/star-wars (archived, private — the durable copy) and a local .migration-backup/star-wars.git in the a-1 checkout (not present in every checkout). So step zero is: identify the audit commit in the archived repo, fetch it, and push an `audit/star-wars` tag on origin — before anything prunes it and before the freeze can be built against it. VERIFIED STILL TRUE post-migration: plugins/star-wars/tools/audit/check-citations.mjs:29 is still a bare readFileSync against the working tree, so the defect this story fixes is unchanged. FLEET NOTE, out of scope but now measurable: six games ship tools/audit/check-citations.mjs (battlezone, centipede, joust, red-baron, star-wars, tempest) and only two have a frozen audit commit.
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
