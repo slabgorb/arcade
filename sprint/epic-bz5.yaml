@@ -159,3 +159,11 @@ stories:
         Any behavior change lands only where both sources agree the clone diverged, with the
         existing enemy suites (enemies, enemies-aggression, enemies-maneuver, firing) staying
         green.
+  - id: bz5-5
+    title: Periscope HUD authentic pass — viewport brackets + red top band (radar red), retire the box + green-radar deviation
+    points: 2
+    priority: p2
+    status: in_progress
+    started: '2026-08-05'
+    repos: arcade
+    workflow: tdd
