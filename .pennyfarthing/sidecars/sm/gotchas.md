@@ -2589,3 +2589,38 @@ from becoming a third round over a comment.
 - **A sibling landed between preflight and push**, so the gates were re-run against the new
   base before finishing rather than trusting the preflight's numbers. Third story running this
   week where `main` moved inside a single phase.
+
+---
+
+### A citation-sweep story's count drifts when a LATER story ships a citation fix — and the predecessor's ARCHIVE hands you both the drift and the scope fence
+
+**Situation:** `/pf-work sw8-24` ("sweep the 29 stale citations the comment guard reports, then lower
+its ratchet"). Description was re-measured 2026-08-02 and said 29 (24 verbatim + 5 dead-file). Nothing
+parked, no banner. But `node plugins/star-wars/tools/audit/check-comment-citations.mjs` printed **28**
+(23 + 5) at 2026-08-05.
+
+**Why it drifted, and how the drift explained itself:** `sw8-27` shipped and archived AFTER sw8-24 was
+filed. It fixed ONE verbatim citation as its own AC2 chore (29→28) and — per its finding 14 —
+DELIBERATELY left both ratchets pinned at 29 ("finishes at 28 against a ceiling of 29"). So the ratchet
+was slack by 1. The whole story sat in `sprint/archive/sw8-27-session.md`, including **row 19: "OPEN,
+owned by sw8-24 ... with the Reviewer's request that its scope widen"** — a predecessor explicitly
+handing scope, plus a widening request that is actually OUT of scope (it names ~26 bare-`:N` refs the
+guard can't see; `sw8-25` owns that association-rule defect).
+
+**The reusable move:** when a story cites a predecessor as its finding-source ("sw8-18 TEA finding;
+re-measured at sw8-23"), and any successor of that predecessor has since shipped, **read the
+successor's archived session before sm-setup.** grep it for the story id — the count drift AND an
+explicit scope handoff/fence usually both sit in one Delivery-Findings row. Here it turned a "copy 29
+forward" into a measured 28 + a scope fence + a named live safety trap in one read.
+
+**Also:** a citation-sweep story whose own safety net is a different backlog story (`td1-14`,
+refuse-to-guess on non-unique verbatim) does NOT get that net if it hasn't landed — the guard relocates
+by FIRST-OCCURRENCE, so a duplicate verbatim names the wrong routine. Put the live trap in the context
+by name (`trench-traversal-speed.test.ts` cites WSMAIN.MAC:2654, hint says :2539 — the S1MVGD/S1MVBS
+`ADDD M$TX+M.S1` inversion sw8-18 was already burned by) so Dev counts occurrences by hand.
+
+**sm-setup notes (all confirmed AGAIN on sw8-24):** left status at `backlog` (stamped by hand);
+**omitted `**Repos:**`** from the session (added by hand — the session Background/ACs were otherwise
+excellent and fully carried the correction block); and copied the stale-29 description verbatim into
+`context-story-*.md` with NO correction banner — added a `> ⚠` banner at the top pointing to the
+session's measured Background rather than editing the copied description.
