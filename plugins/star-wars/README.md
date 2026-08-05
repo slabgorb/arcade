@@ -31,16 +31,19 @@ npx vitest run --project star-wars     # this game's suite (189 files, 2028 test
 npm run lint                           # tsc --noEmit across the monorepo
 ```
 
-> **You cannot run star-wars in a browser from this repo yet.** There is no
-> per-game dev server any more (the pinned port 5274 went with the deleted
-> `vite.config.ts`), and the root `npx vite` is not wired to serve games yet:
-> the root config sets `root: lobby`, so **every** path returns the lobby.
-> Verified by execution on a spare port, not assumed —
-> `/`, `/star-wars/`, `/star-wars/models.html`, `/star-wars/scenes.html` and the
-> nonsense control `/banana/` all return `200` with `<title>Slabcade</title>`.
-> Identical bytes on all five, including the control: that is a blanket SPA
-> fallback, not routing. Play the released build at
-> [star-wars.slabgorb.com](https://star-wars.slabgorb.com) instead.
+> **Open star-wars in a browser with `just serve`, from the monorepo root.** One
+> Vite dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the lobby
+> at `/` and this game at `/star-wars/`, served from these plugin sources, so a
+> dev URL and a production URL differ only in origin. Both dev entries are served
+> too: `/star-wars/models.html` and `/star-wars/scenes.html`. mg1-2 landed that
+> (and `scripts/build-app.mjs` builds the game); the per-plugin dev server and the
+> old pinned port 5274 are gone with it.
+>
+> Unknown paths still fall back to the lobby's SPA shell, which is why an
+> all-`200` sweep proves nothing — a fallback answers 200 to everything. A check
+> that means something compares a game path against a nonsense control and
+> asserts they DIFFER, which is what `tests/canonical-serve.test.mjs` pins. Hot
+> reload does not reach the games; refresh the browser (mg1-14).
 
 ---
 
@@ -145,13 +148,12 @@ are no scripts and no dependencies here any more.
 | `npm run lint` | `tsc --noEmit` across the monorepo |
 | `npm run test:watch` | Vitest in watch mode |
 
-`npm run dev`, `npm run preview` and `npm run build` are **deliberately absent**:
-the first two went with the deleted per-game `vite.config.ts` (see Quick start),
-and the root `npm run build` is not wired yet — it runs `node
-scripts/build-app.mjs`, which does not exist in this checkout (`MODULE_NOT_FOUND`).
-A later migration task adds it. When it lands it must declare **all three** of
-this game's HTML entries — `index.html`, `models.html` and `scenes.html` — or the
-two dev tools are silently dropped from the bundle.
+There are no per-plugin `dev`, `preview` or `build` scripts — the root owns the
+toolchain. Serve the game with `just serve` (see Quick start) and build it with
+`node scripts/build-app.mjs star-wars` (→ `dist/star-wars/`). That build declares
+**all three** of this game's HTML entries — `index.html`, `models.html` and
+`scenes.html` — so the two dev tools stay in the bundle; if a future change to the
+build config drops them, they vanish silently.
 
 ---
 
@@ -169,13 +171,14 @@ bucket. All three are gone: the repo is now a directory in
 [arcade](https://github.com/slabgorb/arcade), and the workflow was deleted on
 import.
 
-Per-game independent releases survive the move, but the mechanism is being
-rebuilt by the migration and is **not wired yet** — so no release command is
-documented here rather than a guessed one. Two things are settled and worth
-knowing:
+Per-game independent releases survive the move, now through one pipeline: run
+**`just release star-wars`** from the repo root. `scripts/release.mjs` gates on
+this app's vitest project and build, bumps `plugins/star-wars/package.json` plus
+the generated registry, then tags and pushes. A couple of things worth knowing:
 
-- **Release tags are `star-wars-vX.Y.Z`.** A bare `vX.Y.Z` tag is invalid in the
-  monorepo — it cannot say which app it releases.
+- **Release tags are `star-wars-vX.Y.Z`**, and the tag is the deploy trigger — a
+  bare `vX.Y.Z` tag is invalid in the monorepo (it cannot say which app it
+  releases) and deploys nothing.
 - The version this tree was imported at is `0.0.33`, recorded in
   `package.json` and in `docs/ops/migration-manifest.md` at the repo root, which
   also holds the pre-migration `develop` SHA for a per-game rollback.

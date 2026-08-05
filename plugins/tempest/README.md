@@ -30,14 +30,18 @@ npm test                            # vitest across every project, tempest inclu
 npx vitest run --project tempest    # this app's tests only
 ```
 
-> **You cannot run tempest in a browser right now.** Neither a root dev server nor
-> a root build reaches this app yet — both land in a later stage of the monorepo
-> migration, and the old per-game `npm run dev` / port 5273 are gone. `npx vite` at
-> the root serves the **lobby only**: root `vite.config.ts` sets `root: lobby`, so
-> `/tempest/` falls back to the lobby's `index.html` (as does any other path — a
-> control request to `/banana/` returns exactly the same page). `npm run build` is
-> likewise not wired for tempest. Until then, tempest is exercised through its test
-> suite, not by loading it.
+> **Open tempest in a browser with `just serve`, from the repo root.** One Vite
+> dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the lobby at
+> `/` and this game at `/tempest/`, served from these plugin sources, so a dev URL
+> and a production URL differ only in origin. mg1-2 landed that; the old per-game
+> `npm run dev` and port 5273 are gone with it. Build for production with
+> `node scripts/build-app.mjs tempest` (→ `dist/tempest/`).
+>
+> Unknown paths still fall back to the lobby's SPA shell, which is why an
+> all-`200` sweep proves nothing — a fallback answers 200 to everything. A check
+> that means something compares a game path against a nonsense control and asserts
+> they DIFFER, which is what `tests/canonical-serve.test.mjs` pins. Hot reload does
+> not reach the games; refresh the browser (mg1-14).
 
 For prerequisites and troubleshooting, see **[INSTALLATION.md](INSTALLATION.md)**.
 
@@ -126,9 +130,8 @@ All of these run from the **repo root** — there are no per-app scripts.
 | `npx vitest run --project tempest` | Run only tempest's suite |
 | `npm run test:watch` | Run Vitest in watch mode |
 
-`npx vite` is deliberately absent from that table: it starts, but it serves the
-lobby at every path — see the Quick start note. Nothing here launches tempest in a
-browser yet.
+To launch tempest in a browser, use `just serve` (one dev server for the whole
+cabinet, this game at `/tempest/`) — see the Quick start note.
 
 ### Testing
 
@@ -136,9 +139,8 @@ The pure core is developed test-first with Vitest. Tests live under `tests/core/
 (geometry, each enemy state machine, collisions, scoring, level transitions, warp)
 and `tests/shell/` (loop, input, audio, and source-wiring checks on render/fx).
 The standing convention is that the shell's render/input/audio is verified by
-**running the game** — which you cannot do from this repo until the migration
-wires a dev server, so shell changes currently rest on the source-wiring tests
-alone. Weigh that before landing one.
+**running the game** — `just serve` makes that possible (load `/tempest/`), with
+the source-wiring tests as the backstop.
 
 ```bash
 npx vitest run --project tempest              # full tempest suite

@@ -37,14 +37,17 @@ npm run lint                             # tsc --noEmit across the monorepo
 npm run test:orchestrator                # the root node:test suite
 ```
 
-> **There is no way to open battlezone in a browser from this repo right now.**
-> The root `npx vite` serves the **lobby** at every path — `/`, `/battlezone/`
-> and a nonsense control `/banana/` all return the same `<title>Slabcade</title>`
-> page. That is a blanket SPA fallback, not routing. Do not screenshot
-> `/battlezone/` and report it as battlezone. The per-plugin dev server, the
-> port pin (battlezone owned 5276) and `npm run build` were all removed by the
-> monorepo migration; the root build and the plugin router are still being wired
-> up.
+> **Open battlezone in a browser with `just serve`, from the monorepo root.** One
+> Vite dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the lobby
+> at `/` and this game at `/battlezone/`, served from these plugin sources, so a
+> dev URL and a production URL differ only in origin. mg1-2 landed that; the
+> per-plugin dev server and battlezone's old private port (5276) are gone with it.
+>
+> Unknown paths still fall back to the lobby's SPA shell, which is why an
+> all-`200` sweep proves nothing — a fallback answers 200 to everything. A check
+> that means something compares a game path against a nonsense control and
+> asserts they DIFFER, which is what `tests/canonical-serve.test.mjs` pins. Hot
+> reload does not reach the games; refresh the browser (mg1-14).
 
 ---
 
@@ -166,9 +169,9 @@ Every command runs from the **monorepo root**, not from this directory.
 | `npm run lint` | `tsc --noEmit` over the monorepo, battlezone included |
 | `npm run test:orchestrator` | The root `node:test` suite |
 
-`npm run build` at the root is **not wired yet** (it calls a
-`scripts/build-app.mjs` that does not exist), and there is no per-plugin `dev`,
-`build`, `preview`, `test` or `lint` script at all.
+Build this game with `node scripts/build-app.mjs battlezone` (→ `dist/battlezone/`)
+from the repo root; there is no per-plugin `dev`, `build`, `preview`, `test` or
+`lint` script — the root owns the whole toolchain.
 
 ---
 
@@ -189,6 +192,9 @@ imported into the [arcade monorepo](https://github.com/slabgorb/arcade) as
 `plugins/battlezone`: no `develop` branch, no per-repo CI, no bucket of its own.
 
 The last standalone release was **v1.0.3** (`413bb0c` on the old `develop`); the
-pre-monorepo history is parked at `.migration-backup/battlezone.git`. How the
-monorepo builds, versions and deploys the cabinet is still being wired up — see
-the orchestrator's `docs/ops/`.
+pre-monorepo history is parked at `.migration-backup/battlezone.git`. The monorepo
+now ships the cabinet through one pipeline: `just release battlezone` from the repo
+root gates + bumps `plugins/battlezone/package.json` + the generated registry,
+tags **`battlezone-vX.Y.Z`**, and that tag triggers the CI deploy into the shared
+`arcade-lobby` bucket under `battlezone/`. See
+[`docs/ops/hosting.md`](../../docs/ops/hosting.md).

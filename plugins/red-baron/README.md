@@ -37,14 +37,17 @@ npm run lint                            # tsc --noEmit across the monorepo
 npm run test:orchestrator               # the root node:test suite
 ```
 
-> **There is no way to open red-baron in a browser from this repo right now.**
-> The root `npx vite` serves the **lobby** at every path — probed on a spare
-> port, `/`, `/red-baron/` and a nonsense control `/banana/` all return the same
-> `<title>Slabcade</title>` page. That is a blanket SPA fallback, not routing.
-> Do not screenshot `/red-baron/` and report it as red-baron. The per-plugin dev
-> server, the port pin (red-baron owned 5277) and `npm run build` were all
-> removed by the monorepo migration; the root build and the plugin router are
-> still being wired up.
+> **Open red-baron in a browser with `just serve`, from the monorepo root.** One
+> Vite dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the lobby
+> at `/` and this game at `/red-baron/`, served from these plugin sources, so a
+> dev URL and a production URL differ only in origin. mg1-2 landed that; the
+> per-plugin dev server and red-baron's old private port (5277) are gone with it.
+>
+> Unknown paths still fall back to the lobby's SPA shell, which is why an
+> all-`200` sweep proves nothing — a fallback answers 200 to everything. A check
+> that means something compares a game path against a nonsense control and
+> asserts they DIFFER, which is what `tests/canonical-serve.test.mjs` pins. Hot
+> reload does not reach the games; refresh the browser (mg1-14).
 
 ---
 
@@ -153,9 +156,9 @@ Every command runs from the **monorepo root**, not from this directory.
 | `npm run lint` | `tsc --noEmit` over the monorepo, red-baron included |
 | `npm run test:orchestrator` | The root `node:test` suite |
 
-`npm run build` at the root is **not wired yet** (it calls a
-`scripts/build-app.mjs` that does not exist), and there is no per-plugin `dev`,
-`build`, `preview`, `test` or `lint` script at all.
+Build this game with `node scripts/build-app.mjs red-baron` (→ `dist/red-baron/`)
+from the repo root; there is no per-plugin `dev`, `build`, `preview`, `test` or
+`lint` script — the root owns the whole toolchain.
 
 Sprint/epics are managed at the
 [arcade orchestrator](https://github.com/slabgorb/arcade), not here.
@@ -173,9 +176,12 @@ imported into the [arcade monorepo](https://github.com/slabgorb/arcade) as
 `plugins/red-baron`: no `develop` branch, no per-repo CI, no bucket of its own.
 
 The last standalone release was **v0.0.23** (`d7f7870` on the old `develop`);
-the pre-monorepo history is parked at `.migration-backup/red-baron.git`. How the
-monorepo builds, versions and deploys the cabinet is still being wired up — see
-the orchestrator's `docs/ops/`.
+the pre-monorepo history is parked at `.migration-backup/red-baron.git`. The
+monorepo now ships the cabinet through one pipeline: `just release red-baron` from
+the repo root gates + bumps `plugins/red-baron/package.json` + the generated
+registry, tags **`red-baron-vX.Y.Z`**, and that tag triggers the CI deploy into
+the shared `arcade-lobby` bucket under `red-baron/`. See
+[`docs/ops/hosting.md`](../../docs/ops/hosting.md).
 
 ---
 

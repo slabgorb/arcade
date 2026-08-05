@@ -37,14 +37,18 @@ npx vitest run --project asteroids     # asteroids' suite: 44 files / 823 tests
 npm run lint                           # tsc --noEmit across the monorepo
 ```
 
-**Serving asteroids in a browser is not wired yet.** Bare `npx vite` at the
-root starts the cabinet dev server, but it is configured with
-`root: lobby` — so `/asteroids/` returns the **lobby's** HTML, exactly as a
-nonsense path like `/banana/` does (verified by curl: all three return
-`<title>Slabcade</title>`). Do not screenshot `/asteroids/` and report it as
-this game. Per-game routing and the root `npm run build`
-(`scripts/build-app.mjs`, which does not exist yet — it exits
-`MODULE_NOT_FOUND`) land later in the plugin-host migration.
+> **Open asteroids in a browser with `just serve`, from the monorepo root.** One
+> Vite dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the lobby
+> at `/` and this game at `/asteroids/`, served from these plugin sources, so a
+> dev URL and a production URL differ only in origin. mg1-2 landed that, and
+> `scripts/build-app.mjs` builds the game for production; the per-plugin dev
+> server and asteroids' old private port went with the migration.
+>
+> Unknown paths still fall back to the lobby's SPA shell, which is why an
+> all-`200` sweep proves nothing — a fallback answers 200 to everything. A check
+> that means something compares a game path against a nonsense control and
+> asserts they DIFFER, which is what `tests/canonical-serve.test.mjs` pins. Hot
+> reload does not reach the games; refresh the browser (mg1-14).
 
 ---
 
@@ -154,7 +158,9 @@ along with the `vite.config.ts` that pinned port 5275.
 | `npm run lint` | `tsc --noEmit` across the monorepo, this game included |
 | `npm run test:orchestrator` | The root's `node --test` suite |
 
-`npm run build` at the root is **not wired yet** (see *Where this lives*).
+Build this game with `node scripts/build-app.mjs asteroids` (→ `dist/asteroids/`)
+from the repo root; there is no per-plugin `build` script — the root owns the
+toolchain.
 
 ---
 
@@ -167,12 +173,13 @@ learn how the original worked.
 ## Releasing
 
 The standalone `develop` → `main` → `vX.Y.Z` flow is **retired**, along with this
-game's own `.github/workflows/deploy.yml`. Releases now happen from the monorepo
-and are tagged **`asteroids-vX.Y.Z`**; the version of record is
-`plugins/asteroids/package.json` (currently **1.0.14**, carried over from the
-last standalone release). The release and deploy machinery for the monorepo is
-still being wired — until it lands, do not assume `just release asteroids`
-works from here.
+game's own `.github/workflows/deploy.yml`. Releases now run from the repo root
+with **`just release asteroids`**: `scripts/release.mjs` gates on this app's
+vitest project and build, bumps `plugins/asteroids/package.json` (the version of
+record, currently **1.0.14**, carried over from the last standalone release) plus
+the generated registry, then tags **`asteroids-vX.Y.Z`** and pushes — and that
+tag is what triggers the CI deploy into the shared `arcade-lobby` bucket under
+`asteroids/`. See [`docs/ops/hosting.md`](../../docs/ops/hosting.md).
 
 The pre-migration git history is not in this repo. It is parked at
 `.migration-backup/asteroids.git` in the orchestrator checkout, and remains on

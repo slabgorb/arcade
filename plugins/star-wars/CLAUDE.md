@@ -112,8 +112,9 @@ at every path, and that `scripts/build-app.mjs` does not exist. Both were measur
 again — the server serves this game, and the build runs.
 
 Consequence for the standing "the shell is verified by running the game"
-convention below: that route is **currently unavailable**, so shell changes rest
-on the source-wiring tests alone until a later migration task restores it.
+convention below: mg1-2 **restored** that route — `just serve` serves this game at
+`/star-wars/`, so a shell change can again be verified by loading it, with the
+source-wiring tests as the backstop.
 
 ## The citation gate
 
@@ -135,10 +136,11 @@ rewriting them would make the audit misquote itself.
 TDD on the pure core with Vitest — write the failing test first, then make it
 pass. Cover: the math box (matrix multiply, rotation, projection invariants),
 each enemy/object behavior driven by a fixed RNG seed, collision/hit-tests in 3D,
-and scoring/phase-transition logic. The shell (render/input/audio) was
-conventionally verified by running the game — **that route is unavailable in this
-repo today** (see the Commands warning above), so shell changes currently rest on
-the source-wiring tests (`tests/shell/render.*.test.ts` and friends) alone.
+and scoring/phase-transition logic. The shell (render/input/audio) is
+conventionally verified by running the game — `just serve` makes that route
+available again (see Commands above), so a shell change can be checked by loading
+`/star-wars/`, with the source-wiring tests (`tests/shell/render.*.test.ts` and
+friends) as the backstop.
 
 ## Build Roadmap — complete
 
@@ -207,12 +209,13 @@ parked, unpushed-safe, at `.migration-backup/star-wars.git` (repo root,
 gitignored); `develop` there is `822ee06`, level with the old `origin`, which is
 the per-game rollback point.
 
-- **Do not** look for a `develop` branch here, open a PR against the old
-  `slabgorb/star-wars` remote, or run `just release star-wars`.
-- **Release tags are `star-wars-vX.Y.Z`.** A bare `vX.Y.Z` is invalid in the
-  monorepo. The per-game release mechanism is being rebuilt by the migration and
-  is not wired yet, so this file names no release command rather than a guessed
-  one.
+- **Do not** look for a `develop` branch here or open a PR against the old
+  `slabgorb/star-wars` remote — that repo is archived history.
+- **Release with `just release star-wars` from the repo root; tags are
+  `star-wars-vX.Y.Z`** (a bare `vX.Y.Z` is invalid in the monorepo and deploys
+  nothing). `scripts/release.mjs` gates on this app's vitest project and build,
+  bumps `plugins/star-wars/package.json` plus the generated registry, then tags
+  and pushes — and the `star-wars-v*` tag is what triggers the deploy.
 - Imported at version `0.0.33` — see `docs/ops/migration-manifest.md` at the repo
   root for the source SHA and the rollback target.
 

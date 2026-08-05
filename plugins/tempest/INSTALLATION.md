@@ -49,26 +49,25 @@ library it consumes (`@shared/*`) lives in this same repo at `src/shared/`.
 
 ---
 
-## 3. Run the dev server — not yet available for tempest
+## 3. Run the dev server — `just serve`
 
-**Skip this step.** There is no working dev server for tempest right now, and the
-old per-game `npm run dev` on port 5273 is gone with `vite.config.ts`. Wiring one
-lands in a later stage of the monorepo migration.
+From the repo root:
 
-`npx vite` at the repo root does start, but it serves only the lobby. Root
-`vite.config.ts` sets `root: lobby`, so every path falls back to the lobby's
-`index.html`:
-
-```
-/                    -> 200  <title>Slabcade</title>   (lobby)
-/tempest/            -> 200  <title>Slabcade</title>   (lobby)
-/tempest/models.html -> 200  <title>Slabcade</title>   (lobby)
-/banana/             -> 200  <title>Slabcade</title>   (control — identical)
+```bash
+just serve
 ```
 
-The `/banana/` control is the point: this is a blanket fallback, not routing that
-is merely misconfigured. Until the migration wires it, tempest is exercised
-through its test suite (step 4), not by loading it in a browser.
+One Vite dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the
+lobby at `/` and tempest at `/tempest/` (its `models.html` dev tool at
+`/tempest/models.html`), served from these plugin sources. mg1-2 landed that; the
+old per-game `npm run dev` on port 5273 went with the deleted `vite.config.ts`.
+
+Unknown paths still fall back to the lobby's SPA shell, so an all-`200` sweep
+proves nothing — a fallback answers 200 to everything. What tells routing from a
+fallback is comparing a game path against a nonsense control and seeing them
+DIFFER: `/tempest/` serves tempest while `/banana/` serves the lobby. That is what
+`tests/canonical-serve.test.mjs` pins. Hot reload does not reach the games;
+refresh the browser (mg1-14).
 
 ---
 
@@ -98,9 +97,8 @@ shallow clone will fail it.
 
 ## 5. Build for production
 
-The monorepo's root build lands in a later stage of the migration; there is no
-working `npm run build` yet. Don't run it expecting a tempest bundle. Once it
-exists, tempest emits two entries — the game (`index.html`) and the model
+Build tempest with `node scripts/build-app.mjs tempest` (→ `dist/tempest/`) from
+the repo root. It emits two entries — the game (`index.html`) and the model
 contact-sheet dev tool (`models.html`) — as a fully static site with no backend
 or environment configuration. High scores are stored in the browser's
 `localStorage`.
