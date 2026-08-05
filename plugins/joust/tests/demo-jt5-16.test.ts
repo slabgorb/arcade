@@ -329,34 +329,53 @@ describe('jt5-16 AC4 — ptero-vs-PLAYER stays whole on resolvePteroAttack', () 
   })
 })
 
-describe('jt5-16 scope fence — ptero-vs-BUZZARD stays unresolved (PTEBRD is not built here)', () => {
-  it('an overlapping ptero/buzzard pair resolves NOTHING — no thud, no death, no egg', () => {
-    // The ROM routes this pair to PTEBRD (:5034, :5037-5038 after EXG X,U puts
-    // the ptero in U) with SNETHD already sounded (:5019). PTEBRD is a real,
-    // UNMEASURED mechanic — the user's jt5-10 ruling priced only the
-    // ptero/ptero pair, so this story must leave ptero/buzzard exactly as it
-    // found it: no interaction. The Delivery Finding filed this phase demands
-    // the PTEBRD story at finish. Kills "the widening quietly invents PTEBRD
-    // as an ordinary bump" — plausible, ROM-adjacent (the cue would even be
-    // right), and unpriced. Non-vacuity: Group 1's control proves this exact
-    // harness sounds enemy-thud when BOTH parties are buzzards.
+describe('jt5-16 scope fence FLIPPED (jt9-15) — ptero-vs-BUZZARD now routes through PTEBRD', () => {
+  it('an overlapping ptero/buzzard pair thuds and PTEBRD bumps the bird — no death, no egg', () => {
+    // jt5-16 fenced this pair to no-interaction because PTEBRD was UNMEASURED
+    // and jt5-10 had priced only the ptero/ptero pair. jt9-15 measured PTEBRD
+    // (JOUSTRV4.SRC:5203-5248) and routes the pair, so this fence flips IN PLACE
+    // — exactly as jt5-16 flipped jt5-10's — from "resolves NOTHING" to "SNETHD
+    // sounds and the bird is bumped away". The ROM: OSTHT2 sounds SNETHD first
+    // (:5019), then OSTPX/OSTH13 hand the pair (ptero always in REG.U) to PTEBRD,
+    // which shoves the BIRD alone by a HARD 5 and leaves the pterodactyl still.
+    // Full mechanic + both hard-bump directions live in demo-jt9-15.test.ts;
+    // here we only certify the fence is gone. Non-vacuity: Group 1's control
+    // proves this harness sounds enemy-thud, and both subjects are inert hovers
+    // so the ptero-still / bird-moved split is exact.
+    // ptero at Y64 (higher), buzzard at Y68 → ptero on top → bird driven DOWN 5.
     let d = stage([
-      buzzardAt(VS_BUZZ, { posY: 0x40 << 8 }),
-      pteroAt(VS_PTERO, { posY: 0x44 << 8 }),
+      pteroAt(VS_PTERO, { posY: 0x40 << 8 }),
+      buzzardAt(VS_BUZZ, { posY: 0x44 << 8 }),
     ])
     const keep = new Set([VS_BUZZ, VS_PTERO])
     const seen: string[] = []
-    let overlapFrames = 0
-    for (let f = 0; f < 6; f++) {
-      if (overlapping(pixelPos(d, VS_BUZZ), pixelPos(d, VS_PTERO))) overlapFrames++
+    let thudFrame = -1
+    let birdBefore = NaN
+    let birdAfter = NaN
+    let pteroBefore = NaN
+    let pteroAfter = NaN
+    for (let f = 0; f < 6 && thudFrame === -1; f++) {
+      const bBird = pixelPos(d, VS_BUZZ)
+      const bPtero = pixelPos(d, VS_PTERO)
+      expect(overlapping(bBird, bPtero), `frame ${f}: the pair overlaps`).toBe(true)
       d = hush(d, keep)
       d = stepDemo(d, {})
-      seen.push(...cueKinds(d))
+      const kinds = cueKinds(d)
+      seen.push(...kinds)
+      if (kinds.includes('enemy-thud')) {
+        thudFrame = f
+        birdBefore = bBird.y
+        pteroBefore = bPtero.y
+        birdAfter = pixelPos(d, VS_BUZZ).y
+        pteroAfter = pixelPos(d, VS_PTERO).y
+      }
     }
-    expect(overlapFrames, 'precondition: the pair really did overlap').toBeGreaterThan(0)
+    expect(thudFrame, 'the mixed pair now reaches SNETHD (enemy-thud)').toBeGreaterThanOrEqual(0)
+    expect(birdAfter - birdBefore, 'PTEBRD drives the bird DOWN a hard 5 (ptero on top)').toBe(5)
+    expect(pteroAfter - pteroBefore, 'PTEBRD never bumps the pterodactyl').toBe(0)
     expect(
-      seen.filter((k) => DEATH_OR_THUD.test(k)),
-      'no thud and no death of any species resolves a ptero/buzzard pair here',
+      seen.filter((k) => k.endsWith('-death')),
+      'PTEBRD is a pure bump — no death of any species',
     ).toEqual([])
     expect(procOf(d, VS_BUZZ), 'the buzzard flies on').toBeDefined()
     expect(procOf(d, VS_PTERO), 'the ptero flies on').toBeDefined()

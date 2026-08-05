@@ -1,0 +1,38 @@
+[
+  {
+    "id": "JT915-001",
+    "claim": "PTEBRD ('COLIDE PTERODACTYL & BIRD') is a ONE-SIDED repulsion, not a symmetric bump. On entry REG.U is ALWAYS the pterodactyl (OSTH13's 'EXG X,U', :5037, guarantees it) and REG.X is the bird. Reading the whole routine (:5203-5248) shows every write targets ,X — PBUMPY,X (:5214/:5219), PVELX,X (:5229/:5242), PBUMPX,X (:5233/:5246), PFACE,X (:5235/:5247) — while the pterodactyl (U) is only READ. So the bird is knocked away and the pterodactyl flies on undisturbed. No party dies and no score is taken; SNETHD (enemy-thud) has already sounded upstream at OSTHT2 (:5019-5020) before PTEBRD is called.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5203,
+      "verbatim": "PTEBRD\tCLRA\t\t\tDETERMINE WHO IS ON TOP"
+    }
+  },
+  {
+    "id": "JT915-002",
+    "claim": "PTEBRD picks who is on top by the collision-box Y extent: it forms the 16-bit signed sum (PCOLY1,X + PCOLY2,X) - (PCOLY1,U + PCOLY2,U) (:5203-5210) — the bird's vertical box-sum minus the pterodactyl's — and BPL (result >= 0, i.e. the bird sits at an equal-or-larger Y, LOWER on screen) branches to '1$ PTERODACTYL IS ON TOP'. An exact tie takes the BPL too, so a level pair treats the pterodactyl as the higher party.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5211,
+      "verbatim": "\tBPL\t1$\t\tBR=PTERODACTYL IS ON TOP"
+    }
+  },
+  {
+    "id": "JT915-003",
+    "claim": "When the BIRD is on top (the fall-through arm, bird higher than the pterodactyl) PTEBRD shoves the bird UP with a HARD bump: 'LDA #-5 / STA PBUMPY,X' (:5213-5214). The magnitude is 5, DISTINCT from the ordinary enemy bump OSTXUP/OSTXDN uses (PBUMPY = -2/+2, :5163/:5175). OSTXUP is called first (:5212) but its -2 is immediately overwritten by the -5, so the net vertical shove on the bird is the hard 5.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5213,
+      "verbatim": "\tLDA\t#-5"
+    }
+  },
+  {
+    "id": "JT915-004",
+    "claim": "When the PTERODACTYL is on top (the '1$' arm) PTEBRD shoves the bird DOWN with the same HARD magnitude: 'LDA #5 / STA PBUMPY,X' (:5218-5219), overwriting the +2 OSTXDN (:5217) just set. So the bird is always driven AWAY from the pterodactyl by 5 whole pixels — up when the bird is higher, down when the pterodactyl is higher — and the pterodactyl's own PBUMPY is never written.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5218,
+      "verbatim": "\tLDA\t#5"
+    }
+  }
+]
