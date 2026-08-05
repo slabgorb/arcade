@@ -884,3 +884,122 @@ stories:
     repos: arcade
     workflow: tdd
     type: refactor
+
+  - id: jt9-46
+    title: Enemy buzzards are drawn RIDERLESS — draw the DPLYR knight rider per enemy species (the buzzards carry PLYR3/4/5, JOUSTRV4.SRC:109)
+    description: |-
+      Filed by the Architect from a user playtest, 2026-08-05: "I never see ANY figures riding
+      the buzzards", and "I still have yet to see any enemies spawn besides buzzards". Both trace
+      to ONE render-selection gap.
+
+      WHAT THE PORT DOES NOW. drawList (demo.ts:2284-2286) emits exactly ONE op per enemy — the
+      buzzard-body frame enemyFrame(p) returns (BRFLAP / BRRUN1-4 / BRSTND, all sourced from the
+      BRUN*/BFLY* BIRD sprites, pictures.ts:1685-1693). A PLAYER (demo.ts:2281-2283) instead loops
+      playerDrawList(p), which returns TWO stacked sprites: the bird mount PLUS the knight rider
+      (PLYR1 / PLYR2, demo.ts:2201-2210). So the player has a rider and the enemy has none — every
+      enemy renders as a bare bird. The enemy-knight rider sprite is already transcribed and unused:
+      PLYR3 (source PLY3R, JOUSTI.SRC:2106), PLYR4 (PLY4R, :2155), PLYR5 (PLY5R, :2208), all at
+      POSOFF word 751 like PLYR1/2.
+
+      WHAT THE ROM DOES. Every bird+rider is TWO objects. The decision block for each enemy species
+      carries a DPLYR field — `DPLYR RMB 2   RIDERS IMAGE` (field 6, offset 10, JOUSTRV4.SRC:109) —
+      naming that species' rider sprite, exactly as the player's block does. This is already pinned
+      as an oracle by tests/audio-ptero-wing-source.test.ts:132-139 ("field 6 is DPLYR, the RIDERS
+      IMAGE"), whose sibling note (:48-50) records that the buzzard blocks carry PLYR3/4/5 in that
+      field while the pterodactyl (P7DEC) carries 0 because a ptero has no rider. The enemy buzzard
+      sound rows are at :5560 / :5564 / :5568 / :5572 (P3DEC-P6DEC), and the DPLYR field is the
+      rider on the same rows.
+
+      WHY THIS IS ALSO "only buzzards, never hunters/lords". The three ground species (bounder,
+      hunter, shadow lord) are distinguished in the ROM by WHICH rider sprite they carry — the
+      PLYR3/4/5 records differ (PLY3R's colour nibble is at JOUSTI.SRC:2114; nibble 4 is the enemy
+      knight red, COLOR1[4] = 0o017, pinned pictures.test.ts:262-266). Hunters DO spawn from wave 4
+      (WAVE_TABLE wave 4 = 3 bounders + 3 hunters, wave.ts:78) — the player just cannot tell them
+      apart, because the port draws no rider at all and so encodes no per-species appearance. Drawing
+      the DPLYR rider per species fixes BOTH reports at once; they are one mechanism, not two stories.
+
+      THE MAPPING IS A RED-PHASE READ, NOT A GUESS. Which species maps to PLYR3 vs 4 vs 5 must be
+      read from the actual PxDEC DPLYR fields in the vendored source at RED — do not hardcode a
+      mapping from this filing. (The Architect confirmed the STRUCTURE from the test oracle but did
+      not read the per-block field values; the vendored tree is not in this checkout — like
+      red-baron's, it lives in a sibling a-2 checkout, and these suites degrade to committed
+      fixtures on CI via vendoredAvailable. See the joust-source helper.)
+
+      SHAPE. Add a pure `enemyDrawList(p): string[]` mirroring playerDrawList — [ enemyFrame(p),
+      <rider for p.enemyType> ] — and have drawList loop it for every kind:'enemy' process, so the
+      hatched remount buzzard (remountEnemyProcess, a kind:'enemy' process) gets its rider for free
+      too. Keep it in the pure render-SELECTION seam (demo.ts:2111 "routing≠geometry"): it returns
+      DATA (frame names), the shell blits them, and each op is tagged with the enemy's facing so the
+      shell mirrors a left-facer exactly as it does for the player.
+
+      OUT OF SCOPE, FILE SEPARATELY: remountEnemyProcess (demo.ts:1056-1082) HARDCODES type:'bounder',
+      so a hatched hunter/shadow-lord remounts — and now, after this story, VISIBLY re-rides — as a
+      bounder, losing its species (the ROM keeps PID/PEGG across the remount, :3251-3252). That is a
+      SIM bug, not a render one; this story makes it more visible but must not absorb it. Recommended
+      follow-up jt9-47. SM owns filing it at finish if this story descopes it, per the descoped-finding
+      rule.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor
+    acceptance_criteria:
+      - "AC-1 EVERY ENEMY DRAWS A MOUNT AND A RIDER. A pure enemyDrawList(p) returns TWO ordered sprite names for a kind:'enemy' process — the buzzard-body frame (unchanged from enemyFrame) and the species' DPLYR rider — and drawList emits both, tagged with the enemy's facing, mirroring the player path (demo.ts:2281-2286 vs the current single-op :2284-2286). Guard: a fresh wave's enemy produces a rider op stacked on its BR* mount. MUTATION: dropping the rider op (reverting to the single mount op) must redden a named test."
+      - "AC-2 THE RIDER IS THE SPECIES' OWN DPLYR SPRITE, READ FROM THE ROM. bounder / hunter / shadow-lord each map to the PLYR3/4/5 sprite named in their PxDEC DPLYR field (field 6 / offset 10, JOUSTRV4.SRC:109; buzzard blocks at :5560/:5564/:5568/:5572). The mapping is read from the vendored source at RED, not transcribed from this filing. Guard each of the three species maps to a DISTINCT rider record. MUTATION: swapping two species' riders must redden. Degrades to the committed fixture on CI (vendoredAvailable), like the sibling oracle in audio-ptero-wing-source.test.ts."
+      - "AC-3 NO HAND-AUTHORED PIXELS, NO INVENTED COLOUR. The rider sprites are the already-transcribed PLYR3/4/5 records (sources PLY3R/PLY4R/PLY5R, JOUSTI.SRC:2106/2155/2208) drawn through the existing atlas; the enemy-knight colour is the transcribed COLOR1 nibble (nibble 4 = 0o017 red, pictures.test.ts:262-266), never a literal. The purity/denylist scans stay clean and the byte-gate is untouched — this story authors zero new pixel data."
+      - "AC-4 THE HATCHED REMOUNT BUZZARD ALSO GETS A RIDER. remountEnemyProcess builds a kind:'enemy' process (demo.ts:1056-1082), so enemyDrawList must cover it with no special case. Assert a matured-egg remount bird carries a rider op. NOTE in the test that its species is bounder ONLY because remountEnemyProcess hardcodes it today (the jt9-47 follow-up), so this AC pins that the rider is DRAWN, not which species it is."
+      - "AC-5 THE RIDER SITS ON THE BUZZARD (POSOFF). The rider op carries the PLYR* record's own transcribed POSOFF (posOffset, demo.ts:2234-2244; PLYR3/4/5 position word 751) so it stacks on the mount rather than at the feet. Pin the rider op's placement offset against the record; the exact on-buzzard alignment (751 was authored over the ostrich/stork) is a HUMAN visual-verification point — call it out for the reviewer with a `just serve` screenshot at /joust/, do not claim it from a unit test alone."
+
+  - id: jt9-47
+    title: The hatched remount buzzard HARDCODES type 'bounder' — a hunter/shadow-lord loses its species on remount (ROM keeps PID/PEGG, JOUSTRV4.SRC:3251-3252)
+    description: |-
+      Filed by the Architect, 2026-08-05, split out of jt9-46 (the enemy-rider render fix) as the
+      user directed. jt9-46 makes this VISIBLE — once enemies draw their DPLYR rider, a remounted
+      hunter or shadow-lord will re-ride as a bounder — but the defect is in the SIM, not the render,
+      so it is its own story.
+
+      WHAT THE PORT DOES NOW. remountEnemyProcess (demo.ts:1056-1082) — the buzzard a SETTLED egg
+      hatches into — builds its EnemyState with `const type: EnemyType = 'bounder'` hardcoded
+      (:1058), then `decision: brainFor(type)` and `enemyType: type`. So EVERY hatched bird is a
+      bounder regardless of the species that laid the egg. The one species-carrying field it DOES
+      preserve is eggsLeft (:1076-1080, cited :3251-3252) — which the docblock there already frames
+      as "what makes permadeath reachable" — so the omission of the TYPE is a visible inconsistency
+      in the same function: it copies PEGG forward but not the species PEGG belongs to.
+
+      WHAT THE ROM DOES. The remount (EGGLND/MOUNRI) carries the bird's identity across the hatch.
+      PEGG is maintained (`LDA PEGG,U / STA PEGG,Y`, :3251-3252, already ported). The species PID and
+      its decision pointer come from the same egg/parent record — a hunter's egg remounts a hunter,
+      a shadow lord's a shadow lord — not a fixed bounder. Read the exact fields at RED from the
+      vendored EGGLND/MOUNRI block (:3239-3279); the vendored tree is not in this checkout (sibling
+      a-2, like red-baron) and these suites degrade to committed fixtures on CI (vendoredAvailable).
+
+      WHERE THE TYPE MUST COME FROM. EggState must carry the laying enemy's species so the remount
+      can restore it. Check egg.ts — the egg is created at DEATH3 from the dying enemy (egg.ts:157
+      region); if it does not already record the parent's EnemyType, adding that field is part of
+      this story, threaded from the enemy that dropped it through to remountEnemyProcess. Do NOT
+      infer the species from any other signal; carry it explicitly.
+
+      WHY IT MATTERS BEYOND LOOKS. decision: brainFor(type) means the remounted bird also gets the
+      BOUNDER brain (boundr), so a hatched hunter loses its hunter pursuit (b2undr) and a shadow lord
+      its SHADOW brain — a behaviour regression, not only a colour one. And killScore(enemyType)
+      (joust.ts:243) scores every remount as a bounder, so the 750/1500-point kills are unreachable
+      on any bird that has hatched at least once.
+
+      WATCH THE DETERMINISM BAR. Changing the remounted bird's brain changes its flight, so a seeded
+      replay that lets an egg hatch and then steps the bird will move. Expect a re-baseline on those
+      fixtures; land it as its own commit per this epic's standing rule and RE-FIND the moved frames
+      by re-running the seeded sweeps, not by nudging them to whatever the new code prints.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "AC-1 A REMOUNT PRESERVES THE LAYING SPECIES. A hunter's settled egg hatches into a hunter and a shadow-lord's into a shadow-lord — remountEnemyProcess takes the species from the egg, not the hardcoded 'bounder' (demo.ts:1058). Guard all THREE species through a full drop→settle→hatch cycle and assert the remount's enemyType matches the parent. MUTATION: restoring the `= 'bounder'` hardcode must redden a named test."
+      - "AC-2 EGGSTATE CARRIES THE PARENT SPECIES, SET EXPLICITLY AT DEATH. The egg records the dropping enemy's EnemyType at creation (egg.ts, the DEATH3/egg-spawn site) and remountEnemyProcess reads it — the species is THREADED, never inferred from position, brain, or colour. Guard that an egg dropped by each species carries that species. MUTATION: dropping the field (defaulting to bounder) must redden."
+      - "AC-3 THE REMOUNT KEEPS ITS BRAIN AND ITS SCORE. decision resolves via brainFor(remountType) so a remounted hunter carries the b2undr brain and a shadow-lord SHADOW (enemy.ts:531-539), and killScore(enemyType) (joust.ts:243) pays the species' real value on a bird that has hatched. Guard a hatched hunter's decision brain is b2undr (not boundr) and its kill scores as a hunter. This is the behaviour half — pin it distinctly from AC-1's identity."
+      - "AC-4 PEGG IS STILL PRESERVED, AND THE 4-EGG PERMADEATH STILL TERMINATES. The existing eggsLeft carry-forward (demo.ts:1076-1080, JOUSTRV4.SRC:3251-3252) is untouched and the complement still walks to permadeath at 0 — adding the species must not perturb the egg-count ladder. Guard a full 4-egg depletion of a non-bounder species reaches permadeath (no regeneration), so the type thread did not reopen the count-to-zero the eggsLeft comment guards."
+      - "AC-5 DETERMINISM RE-BASELINE LANDS AS ITS OWN COMMIT, RE-FOUND NOT NUDGED. Per this epic's standing rule: any seeded fixture that hatches a non-bounder and then steps it will move because the brain changed; re-run the seeded sweeps, take the moved frames from that run, and name in the commit message which seeds moved and why. Event-searching tests should survive; frame-pinned ones will not."
+
