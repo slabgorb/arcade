@@ -1,9 +1,16 @@
 // tests/helpers/purity-scanner.ts
 //
+// PORTED VERBATIM into missile-command (mc1-1) from
+// plugins/joust/tests/helpers/purity-scanner.ts — the logic is unchanged, so
+// every jtN-N reference below is JOUST's original rationale, kept as provenance.
+// Here it is exercised by tests/purity.test.ts (whose own fixture self-tests give
+// it teeth); missile-command does not carry joust's separate purity-scanner.test.ts.
+//
+// ── ORIGINAL JOUST HEADER (jt1-7) ────────────────────────────────────────────
 // Story jt1-7 (GREEN, Julia) — the core/shell boundary scanner, rebuilt on the
-// TypeScript compiler API. One implementation, shared by tests/purity.test.ts
-// (which sweeps src/core/) and tests/purity-scanner.test.ts (which pins its
-// behaviour).
+// TypeScript compiler API. One implementation, shared (in joust) by
+// tests/purity.test.ts (which sweeps src/core/) and tests/purity-scanner.test.ts
+// (which pins its behaviour).
 //
 // ─── WHY AN AST AND NOT A BETTER REGEX ───────────────────────────────────────
 // jt1-1's scanner stripped comments and strings with regexes over flat text.

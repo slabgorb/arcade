@@ -12,8 +12,9 @@
 // such claim, and voids it as flake — which is why this guard lands with the
 // skeleton, before any gameplay.
 //
-// The scanner (tests/helpers/purity-scanner.ts) is byte-identical to the sibling
-// games' — one hardened TypeScript-AST implementation, copied, never re-authored.
+// The scanner (tests/helpers/purity-scanner.ts) is ported verbatim from the
+// sibling games' — one hardened TypeScript-AST implementation, its logic copied
+// and never re-authored (only a provenance note added to its header).
 // The fixture self-tests below pin its teeth permanently; the src/core sweep at
 // the bottom bites the moment core modules land. This paragraph names Date.now
 // and Math.random in plain prose and does not trip the scanner, because it strips

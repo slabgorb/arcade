@@ -79,7 +79,7 @@ export const meta: GameMeta = {
   year: 1980,
   color: '#d8d020',              // provisional; reconcile to palette in a render story
   controls: ['AIM — Mouse / Trackball', 'FIRE — Z X C  (left / centre / right base)'],
-  order: 7,
+  order: 8,                       // corrected from 7 at scaffold time — red-baron owns order 7
   listed: true,
   showcase: false,
   version,

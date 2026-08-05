@@ -6,12 +6,10 @@
 
 import type { GameState } from '../core/game.js'
 
-/** Missile Command's raster field is 256x231 visible (HTOTAL 320 / VTOTAL 256,
- *  VBLANK 24 lines) — the logical backbuffer the shell blits at integer scale.
- *  Exact geometry is reconciled in a later render story; the skeleton only needs
- *  a fixed aspect to letterbox. */
-export const LOGICAL_WIDTH = 256
-export const LOGICAL_HEIGHT = 231
+// The logical backbuffer size (visible raster geometry) is deliberately NOT
+// declared here yet: the exact figures are an open question (brief.md O-5) that
+// mc1-2 (the field-draw story) settles with cited constants. The skeleton draws
+// straight into the display canvas, so it needs no logical size.
 
 /** Clear the whole context to the cabinet's black background. */
 export function clearField(ctx: CanvasRenderingContext2D, width: number, height: number): void {
