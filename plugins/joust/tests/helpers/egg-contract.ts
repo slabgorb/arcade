@@ -79,6 +79,7 @@
 
 import type { EntityState } from './flight-contract.js'
 import type { IntelBudget } from './enemy-contract.js'
+import type { EnemyType } from './joust-collision-contract.js'
 
 export type { EntityState, IntelBudget }
 
@@ -130,6 +131,15 @@ export interface EggState {
   hatchRow?: number
   /** jt9-25 — display frames left on the current EGGTBL row before the walk advances. */
   hatchNap?: number
+  /**
+   * jt9-47 — the LAYING enemy's species (PID), carried across the hatch so the
+   * remount buzzard restores its parent's type/brain/score instead of the
+   * hardcoded 'bounder' the port used through jt9-46 (the `const type` in
+   * `remountEnemyProcess`). Set by `spawnEgg` from the dying enemy at DEATH3; the remount
+   * reads it. OPTIONAL because a WAVEGG wave egg has no laying enemy — such an
+   * egg carries no species and the remount falls back to 'bounder'.
+   */
+  enemyType?: EnemyType
 }
 
 /** The minimum a dying joust victim hands the egg (its velocities + eggs-left). */
@@ -142,6 +152,13 @@ export interface EggVictim {
   velY: number
   /** The victim's PEGG before this death. */
   eggsLeft: number
+  /**
+   * jt9-47 — the dying enemy's species (PID), the field `spawnEgg` threads onto
+   * the egg's `enemyType` so the eventual remount restores the parent's species.
+   * OPTIONAL only so pre-jt9-47 `spawnEgg` callers still typecheck; a real DEATH3
+   * victim always carries it.
+   */
+  enemyType?: EnemyType
 }
 
 /** Where a hatched buzzard enters, and how it flies toward the rider. */

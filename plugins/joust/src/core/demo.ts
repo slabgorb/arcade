@@ -1123,7 +1123,10 @@ function spawnWaveEggs(waveNumber: number): DemoProcess[] {
  */
 function remountEnemyProcess(id: number, egg: EggState): DemoProcess {
   const entry = remountEntryEdge(egg.posX)
-  const type: EnemyType = 'bounder'
+  // jt9-47 — the remount restores the species that laid the egg (PID carried
+  // across EGGLND/MOUNRI), not a fixed bounder. A WAVEGG wave egg has no laying
+  // enemy, so it carries no species and falls back to bounder.
+  const type: EnemyType = egg.enemyType ?? 'bounder'
   const enemy: EnemyState = {
     entity: {
       posX: entry.posX,
@@ -1838,6 +1841,9 @@ export function resolveContacts(a: JoustEntity, b: JoustEntity): ContactResult {
           velX: victim.velX,
           velY: victim.velY,
           eggsLeft,
+          // jt9-47 — carry the dying enemy's species onto the egg so the eventual
+          // remount restores it (`LDA PID …` alongside the PEGG transfer, MOUNRI).
+          enemyType: victim.enemyType,
         })
       : null
   // `BNE 1$  BR=YOU CAN GET MORE EGGS` (:3002): while the decremented count is
