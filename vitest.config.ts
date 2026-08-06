@@ -79,6 +79,16 @@ export default defineConfig({
           root: resolve(root, 'plugins', id),
           globals: true,
           environment: 'node' as const,
+          // The 5 s vitest default is too tight for the games' heaviest tool
+          // tests on a cold CI runner. centipede's POKEY SFX baker
+          // (tools/pokey-bake/bake-sfx.test.mjs) does real WAV synthesis that
+          // clears 5 s locally but timed out three tests on ubuntu-latest,
+          // failing the deploy of an otherwise-green release (centipede v1.0.1).
+          // The gate command `vitest run --project <id>` is pinned verbatim by
+          // tests/release.test.mjs / monorepo-topology / ci-sweep-masking, so a
+          // `--testTimeout` flag can't live there — this config is the one lever
+          // both `just release` and the deploy workflow honour unchanged.
+          testTimeout: 20_000,
         },
       })),
     ],
