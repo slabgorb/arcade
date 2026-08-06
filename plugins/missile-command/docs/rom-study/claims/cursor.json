@@ -1,0 +1,57 @@
+[
+  {
+    "id": "MC-TOPSCR",
+    "symbol": "TOPSCR",
+    "value": 222,
+    "meaning": "Top-of-screen vertical coord (decimal 222.)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 107,
+      "verbatim": "TOPSCR\t=222.\t\t\t;TOP OF SCREEN VERTICAL COORD."
+    }
+  },
+  {
+    "id": "MC-IHMIN",
+    "symbol": "IHMIN",
+    "value": 8,
+    "meaning": "Cursor min horizontal",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 113,
+      "verbatim": "IHMIN\t=8"
+    }
+  },
+  {
+    "id": "MC-IHMAX",
+    "symbol": "IHMAX",
+    "value": 247,
+    "meaning": "Cursor max horizontal (decimal 247.)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 115,
+      "verbatim": "IHMAX\t=247."
+    }
+  },
+  {
+    "id": "MC-IVMIN",
+    "symbol": "IVMIN",
+    "value": 45,
+    "meaning": "Cursor min vertical (decimal 45.)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 117,
+      "verbatim": "IVMIN\t=45."
+    }
+  },
+  {
+    "id": "MC-IVMAX",
+    "symbol": "IVMAX",
+    "value": 206,
+    "meaning": "Cursor max vertical = TOPSCR-16. = 206",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 119,
+      "verbatim": "IVMAX\t=TOPSCR-16."
+    }
+  }
+]

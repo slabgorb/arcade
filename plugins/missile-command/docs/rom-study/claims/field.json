@@ -1,0 +1,233 @@
+[
+  {
+    "id": "MC-MAXMIS",
+    "symbol": "MAXMIS",
+    "value": 10,
+    "meaning": "ABMs loaded per base (decimal 10.)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 29,
+      "verbatim": "MAXMIS\t=10.\t\t\t;# ABMS/BASE"
+    }
+  },
+  {
+    "id": "MC-NCITY",
+    "symbol": "NCITY",
+    "value": 6,
+    "meaning": "Max cities (hardware default 6)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 39,
+      "verbatim": "NCITY\t=6\t\t\t;MAX # OF CITIES"
+    }
+  },
+  {
+    "id": "MC-NMISBA",
+    "symbol": "NMISBA",
+    "value": 3,
+    "meaning": "Missile bases",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 41,
+      "verbatim": "NMISBA\t=3\t\t\t;MAX # OF MISSILE BASES"
+    }
+  },
+  {
+    "id": "MC-CITY1H",
+    "symbol": "CITY1H",
+    "value": 95,
+    "meaning": "City 1 horizontal cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 123,
+      "verbatim": "CITY1H\t=5F\t\t\t;CITY, MISSLE BASE"
+    }
+  },
+  {
+    "id": "MC-CITY1V",
+    "symbol": "CITY1V",
+    "value": 16,
+    "meaning": "City 1 vertical cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 125,
+      "verbatim": "CITY1V\t=10\t\t\t;HORIZ AND VERT COORDINATES"
+    }
+  },
+  {
+    "id": "MC-CITY2H",
+    "symbol": "CITY2H",
+    "value": 180,
+    "meaning": "City 2 horizontal cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 127,
+      "verbatim": "CITY2H\t=0B4"
+    }
+  },
+  {
+    "id": "MC-CITY2V",
+    "symbol": "CITY2V",
+    "value": 21,
+    "meaning": "City 2 vertical cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 129,
+      "verbatim": "CITY2V\t=15"
+    }
+  },
+  {
+    "id": "MC-CITY3H",
+    "symbol": "CITY3H",
+    "value": 148,
+    "meaning": "City 3 horizontal cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 131,
+      "verbatim": "CITY3H\t=94"
+    }
+  },
+  {
+    "id": "MC-CITY3V",
+    "symbol": "CITY3V",
+    "value": 18,
+    "meaning": "City 3 vertical cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 133,
+      "verbatim": "CITY3V\t=12"
+    }
+  },
+  {
+    "id": "MC-CITY4H",
+    "symbol": "CITY4H",
+    "value": 44,
+    "meaning": "City 4 horizontal cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 135,
+      "verbatim": "CITY4H\t=2C"
+    }
+  },
+  {
+    "id": "MC-CITY4V",
+    "symbol": "CITY4V",
+    "value": 18,
+    "meaning": "City 4 vertical cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 137,
+      "verbatim": "CITY4V\t=12"
+    }
+  },
+  {
+    "id": "MC-CITY5H",
+    "symbol": "CITY5H",
+    "value": 71,
+    "meaning": "City 5 horizontal cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 139,
+      "verbatim": "CITY5H\t=47"
+    }
+  },
+  {
+    "id": "MC-CITY5V",
+    "symbol": "CITY5V",
+    "value": 17,
+    "meaning": "City 5 vertical cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 141,
+      "verbatim": "CITY5V\t=11"
+    }
+  },
+  {
+    "id": "MC-CITY6H",
+    "symbol": "CITY6H",
+    "value": 208,
+    "meaning": "City 6 horizontal cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 143,
+      "verbatim": "CITY6H\t=0D0"
+    }
+  },
+  {
+    "id": "MC-CITY6V",
+    "symbol": "CITY6V",
+    "value": 17,
+    "meaning": "City 6 vertical cabinet coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 145,
+      "verbatim": "CITY6V\t=11"
+    }
+  },
+  {
+    "id": "MC-MISB1H",
+    "symbol": "MISB1H",
+    "value": 20,
+    "meaning": "Missile base 1 horizontal coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 147,
+      "verbatim": "MISB1H\t=14"
+    }
+  },
+  {
+    "id": "MC-MISB1V",
+    "symbol": "MISB1V",
+    "value": 22,
+    "meaning": "Missile base 1 vertical coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 149,
+      "verbatim": "MISB1V\t=16"
+    }
+  },
+  {
+    "id": "MC-MISB2H",
+    "symbol": "MISB2H",
+    "value": 123,
+    "meaning": "Missile base 2 horizontal coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 151,
+      "verbatim": "MISB2H\t=7B"
+    }
+  },
+  {
+    "id": "MC-MISB2V",
+    "symbol": "MISB2V",
+    "value": 22,
+    "meaning": "Missile base 2 vertical coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 153,
+      "verbatim": "MISB2V\t=16"
+    }
+  },
+  {
+    "id": "MC-MISB3H",
+    "symbol": "MISB3H",
+    "value": 240,
+    "meaning": "Missile base 3 horizontal coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 155,
+      "verbatim": "MISB3H\t=0F0"
+    }
+  },
+  {
+    "id": "MC-MISB3V",
+    "symbol": "MISB3V",
+    "value": 22,
+    "meaning": "Missile base 3 vertical coord",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 157,
+      "verbatim": "MISB3V\t=16"
+    }
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "id": "MC-EXDONE",
+    "symbol": "EXDONE",
+    "value": 27,
+    "meaning": "Explosion diameter / lifetime index (decimal 27.). NOTE physical line 225; skeleton mis-cited :111 (its logical line).",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 225,
+      "verbatim": "EXDONE\t=27.\t\t\t;EXPLOSION DIAMETER"
+    }
+  },
+  {
+    "id": "MC-OLDRAD-PEAK",
+    "symbol": "MAX_BLAST_RADIUS",
+    "value": 13,
+    "meaning": "Peak blast radius = OLDRAD table maximum (rising half ends at 13.)",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 1917,
+      "verbatim": "OLDRAD:\t.BYTE 0,0,2,3,4,5,6,7,8,9,10.,11.,12.,13."
+    }
+  }
+]

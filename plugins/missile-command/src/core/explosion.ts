@@ -16,7 +16,7 @@
 //                 .BYTE 13.,12.,11.,10.,9,8,7,6,5,4,3,2,1,0,0
 //     i.e. radius climbs 0→13 then falls 13→0 (peak 13).
 //   DRAW A CIRCLE       W3MAIN:2503 — renders a circle of that radius.
-//   EXDONE = 27.        W3COMN:111 — "EXPLOSION DIAMETER"; the lifetime. Diameter 27
+//   EXDONE = 27.        W3COMN:225 — "EXPLOSION DIAMETER"; the lifetime. Diameter 27
 //     ⇒ peak radius 13 == the OLDRAD maximum == (EXDONE-1)/2.
 //
 // Skeleton model: a symmetric triangle derived from the two cited constants — grow
@@ -30,7 +30,7 @@ export interface Explosion {
   readonly t: number
 }
 
-/** Explosion diameter / lifetime index — EXDONE, `W3COMN.MAC:111` (`27.`). */
+/** Explosion diameter / lifetime index — EXDONE, `W3COMN.MAC:225` (`27.`). */
 export const EXDONE = 27
 
 /** Peak blast radius — the OLDRAD table maximum, `W3MAIN.MAC:906`; = (EXDONE-1)/2. */

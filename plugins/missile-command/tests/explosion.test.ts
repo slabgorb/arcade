@@ -16,7 +16,7 @@
 //     i.e. radius climbs 0→13 then falls 13→0 — a single peak of 13. (Radix: a
 //     trailing `.` is decimal; the bare 0-9 are hex == decimal here.)
 //   DRAW A CIRCLE        W3MAIN:2503 (phys 5005) — renders a circle of that radius.
-//   EXDONE = 27.         W3COMN:111 — "EXPLOSION DIAMETER"; the time index at which
+//   EXDONE = 27.         W3COMN:225 — "EXPLOSION DIAMETER"; the time index at which
 //     the blast is finished. Diameter 27 ⇒ radius ≈ 13 == the OLDRAD peak. The
 //     skeleton pins those two source facts: MAX_BLAST_RADIUS = 13 and EXDONE = 27.
 //
@@ -53,7 +53,7 @@ interface Explosion {
 }
 
 interface ExplosionModule {
-  /** Explosion time index at which the blast is finished — EXDONE, W3COMN:111 (27). */
+  /** Explosion time index at which the blast is finished — EXDONE, W3COMN:225 (27). */
   EXDONE: number
   /** Peak blast radius — the OLDRAD table maximum, W3MAIN:906 (13). */
   MAX_BLAST_RADIUS: number
@@ -86,7 +86,7 @@ async function loadExplosion(): Promise<ExplosionModule> {
   } catch (e) {
     throw new Error(
       'explosion core module not built yet — GREEN (Yoda) creates src/core/explosion.ts, a PURE ' +
-        'module exporting EXDONE (27, W3COMN:111), MAX_BLAST_RADIUS (13, the OLDRAD peak, ' +
+        'module exporting EXDONE (27, W3COMN:225), MAX_BLAST_RADIUS (13, the OLDRAD peak, ' +
         'W3MAIN PROCESS EXPLOSIONS :906), startExplosion(h,v) {t:0}, stepExplosion (t+1), ' +
         'blastRadius(exp) that GROWS from 0 to MAX_BLAST_RADIUS then COLLAPSES to 0 over ticks, ' +
         'and isExplosionDone(exp) that flips true once it has collapsed. No shell import, no clock, ' +
@@ -114,7 +114,7 @@ const radiusCurve = (mod: ExplosionModule, cap = 3 * EXDONE): number[] => {
 }
 
 describe('AC1 — the cited constants are exported', () => {
-  it('EXDONE is the explosion diameter/lifetime 27 (W3COMN:111)', async () => {
+  it('EXDONE is the explosion diameter/lifetime 27 (W3COMN:225)', async () => {
     const m = await loadExplosion()
     expect(m.EXDONE).toBe(EXDONE)
   })
