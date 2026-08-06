@@ -507,7 +507,8 @@ stories:
       HOW TO SEQUENCE THIS STORY, since it is now three things. Widen the guard read-set ONCE, to plugins/joust/src/ + tests/ + tools/, and let it go red across all eight stale sites plus whatever the widening newly catches; fix the sites; then repair the three guard SHAPES above, because a shape repair on a narrow read-set has to be re-verified after widening anyway. The README counts (items 1-3 of the original story) are independent of the guard and can land in their own commit either side. Beware the standing trap this epic has hit twice: a prose guard goes vacuous three ways - via the file OWN data, via a different sentence, and via line-wrapping - so assert by RESOLUTION and PROXIMITY, and include CONTROL mutants that must stay GREEN. The guard file own NUMBER_WORDS table at :446 and its explanatory comments at :481 and :523 all contain the word seventeen legitimately; a naive widening that reads its own file will red on them.
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     type: chore
