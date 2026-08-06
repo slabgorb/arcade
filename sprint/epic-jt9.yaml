@@ -379,7 +379,8 @@ stories:
     description: 'BOLAVA (JOUSTRV4.SRC:3953+) is the lava-avoid episode the steering gates DIVERT to: the hunter''s B2DIRL gate (:4097-4102, CMPA #$D3 / BLO B2DIR / LDA PVELY / BMI B2DIR / JMP BOLAVA) and the shadow''s own SHDIR pre-check (:4330-4334, threshold $D0 — two DIFFERENT lava thresholds, do not conflate them; both re-derived by jt8-3''s Reviewer). jt8-3 shipped the gates exactly but SUPPRESSES rather than diverts: gated wakes fall through to the existing brain laws, with SHLEV''s protective lava flap (uf1-8) as the stand-in — a Reviewer-ACCEPTED deviation, since modelling BOLAVA inside jt8-3 would have expanded a 3pt story into the whole lava-avoid system. This story ports the episode itself and replaces the fall-through with the divert. Bounder-family mechanism per jt8-3''s deviation record. Found by TEA on jt8-3 during test design; jt8-3''s boundary test (both brains at their exact gate scanline) pins the gate lines themselves — build on it, do not weaken it.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
   - id: jt9-23
