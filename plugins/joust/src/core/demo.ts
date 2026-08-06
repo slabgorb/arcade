@@ -705,10 +705,21 @@ function insertTroll(processes: readonly DemoProcess[], troll: DemoProcess): Dem
   return [...processes.slice(0, at), troll, ...processes.slice(at)]
 }
 
+/** A live bird's grab-point X, wherever its flight state lives — a PLAYER carries it
+ * on `entity`, an ENEMY on `enemy.entity`. jt9-42: LNDB7 (JOUSTRV4.SRC:6764) grabs a
+ * player ($80+PLYID) OR an enemy ($80+EMYID), so both the victim search and the hand
+ * placement read here. Undefined for any other kind — a ptero/baiter is not grabbable. */
+function birdPosX(p: DemoProcess): number | undefined {
+  if (p.kind === 'player') return p.entity?.posX
+  if (p.kind === 'enemy') return p.enemy?.entity.posX
+  return undefined
+}
+
 /** A lava-troll process bound to `victim` — the hand rising off CLIF5 once the
  * bridge has burned (trollSpawnable, jt3-3). Its id rides a per-wave namespace clear
  * of the ground enemies (< $80) and the pteros ($80+); `victimId` is the PJOY
- * finger-print (:6781) and `handTimer` primes the LT1HT animation. */
+ * finger-print (:6781) and `handTimer` primes the LT1HT animation. jt9-42: the hand
+ * tracks the victim's X for a player OR enemy victim (`birdPosX`). */
 function trollProcess(wave: number, victim: DemoProcess): DemoProcess {
   return {
     id: 0x100 * wave + 0xc0,
@@ -720,18 +731,22 @@ function trollProcess(wave: number, victim: DemoProcess): DemoProcess {
     collisionEnabled: true,
     victimId: victim.id,
     handTimer: 1,
-    entity: trollEntity(victim.entity?.posX ?? TROLL_CLIF5_X),
+    entity: trollEntity(birdPosX(victim) ?? TROLL_CLIF5_X),
   }
 }
 
-/** The bird the troll reaches for: the live PLAYER nearest the CLIF5 grab point
- * (`LT1GRP  ... GRIP THE PLAYER`, :1645). Null if no player is present. */
+/** The bird the troll reaches for: the live BIRD nearest the CLIF5 grab point —
+ * a PLAYER or an ENEMY (`LNDB7 ... GRIP THE PLAYER OR ENEMY`, JOUSTRV4.SRC:6764).
+ * jt9-42 broadened this from player-only: an enemy victim is what puts an enemy
+ * immediately after the troll in wake order, restoring the lava-troll looker's
+ * PPREV reachability (jt9-1). Null if no grabbable bird is present. */
 function pickTrollVictim(processes: readonly DemoProcess[]): DemoProcess | null {
   let best: DemoProcess | null = null
   let bestDist = Infinity
   for (const p of processes) {
-    if (p.kind !== 'player' || !p.entity) continue
-    const dist = Math.abs(p.entity.posX - TROLL_CLIF5_X)
+    const posX = birdPosX(p)
+    if (posX === undefined) continue
+    const dist = Math.abs(posX - TROLL_CLIF5_X)
     if (dist < bestDist) {
       bestDist = dist
       best = p
