@@ -8,6 +8,7 @@ sprint:
 completed_epics:
   - cp7
   - cp6
+  - bz5
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -218,4 +219,9 @@ completed_stories:
     epic: mc1
     title: 'missile-command landing left main RED: registry.test.ts MANIFESTS and lobby main.test.ts not updated for the 8th cabinet, and missile-command field.test.ts ENOENTs on vendored reference/source/W3COMN.MAC'
     points: 2
+    completed: '2026-08-06'
+  - id: bz5-3
+    epic: bz5
+    title: Timing cross-check — reconcile the 15.625 Hz sim game-frame against MAME's clock chain
+    points: 3
     completed: '2026-08-06'

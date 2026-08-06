@@ -17,7 +17,7 @@ description: >-
   geometry. Fidelity: reconcile our 15.625 Hz sim game-frame against MAME's clock
   chain, and re-validate the enemy AI against MAME + the disassembly together.
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: bz5-1
@@ -111,7 +111,7 @@ stories:
       reconciled, cited answer plus any needed correction, NOT a speculative rewrite.
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-06'
     repos: arcade
     workflow: tdd
@@ -127,6 +127,8 @@ stories:
       - >-
         No regression in the existing timebase/cadence suites (timebase, radar-sweep, firing,
         saucer, enemies) after the reconcile.
+    completed: '2026-08-06'
+    review_verdict: approved
   - id: bz5-4
     title: Enemy AI cross-check against MAME + BZONE.MAC together
     description: >-
@@ -173,3 +175,4 @@ stories:
     completed: '2026-08-05'
     review_findings: "Direct playtest-correction to bz5-2 (trunk-based, sanctioned direct commit). TDD: hud-palette radar test flipped green->red + periscope no-box/brackets-flank-centre pins written RED first, then implemented. Visually verified on a fresh dev server (5290, a-2 tree): box gone, viewport brackets flank centre, radar red. battlezone 1057/1057, orchestrator 392/0, lint clean, citations 0-lost. Also fixed a sibling's jt9-48 'arcade (.)' repos typo that had reddened the orchestrator suite."
     review_verdict: approved
+completed: '2026-08-06'
