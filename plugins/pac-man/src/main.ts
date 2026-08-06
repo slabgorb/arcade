@@ -1,24 +1,27 @@
 // src/main.ts
 //
-// Story pm1-3 (GREEN) — wires the maze model + shell render into a real
-// frame loop. Still no gameplay (no pac-man, no ghosts, no input) — that is
-// tasks 4-8's scope. This renders the STATIC maze at the cabinet's
-// 224x288 logical resolution, integer-scaled and letterboxed onto the
-// visible canvas (centipede's AC-2 crisp-pixel rule), pumped through the
-// 60 Hz fixed-timestep accumulator (timebase.ts) so the wiring this task
-// installs is the same shape every later gameplay task builds on.
+// Story pm1-8 (GREEN, Julia) — the playable cabinet: wires the full sim
+// (game.ts's stepGame) into the 60 Hz fixed-timestep accumulator + integer-
+// scaled 224x288 backbuffer this file already had (pm1-3), plus keyboard
+// direction input, name entry and the persisted high-score board
+// (`@shared/name-entry` + `@shared/highscore`, the centipede pattern, adapted
+// — this cabinet has no attract mode / trackball, so it is a smaller wiring
+// than centipede's, not a re-invention of it).
 
-import { drawMaze } from './shell/render'
+import { drawMaze, drawPacman, drawGhost, drawFruit, drawHud } from './shell/render'
 import { LOGICAL_W, LOGICAL_H, fitIntegerScale } from './shell/layout'
 import { pumpFrame } from './shell/timebase'
+import { createGameState, stepGame, enterInitial, confirmNameEntry, type GameState } from './core/game'
+import type { Dir } from './core/actor'
+import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')
 if (!canvas) throw new Error('index.html must host a <canvas id="game">')
 const ctx = canvas.getContext('2d')
 if (!ctx) throw new Error('2d canvas context unavailable')
 
-// The renderer always draws into this fixed 224x288 logical backbuffer; the
-// visible canvas only ever receives an integer-scaled blit of it (AC-2).
+// render draws into this fixed 224x288 logical backbuffer; the visible
+// canvas only ever receives an integer-scaled blit of it (AC-2).
 const logical = document.createElement('canvas')
 logical.width = LOGICAL_W
 logical.height = LOGICAL_H
@@ -32,6 +35,70 @@ const resize = (): void => {
 window.addEventListener('resize', resize)
 resize()
 
+// The persistence seam — the ONLY thing that touches localStorage, so it
+// lives here in the shell and never in the pure core (purity guard). 'level'
+// is pac-man's domain field, matching tempest's convention.
+const highScoreStorage = makeHighScoreStorage('pac-man', makeHighScoreRowGuard('level'), 'level')
+
+// pm1-8: shell-only `?seed=N` rng seed (the cp5-2 Design Deviation pattern —
+// parsed here in the shell, handed to the core as a plain argument). Without
+// it the game seeds from the wall clock, which is fine for play and simply
+// not what a pinned test would use.
+const params = new URLSearchParams(window.location.search)
+const rawSeed = Number.parseInt(params.get('seed') ?? '', 10)
+const seed = Number.isFinite(rawSeed) ? rawSeed : Date.now()
+
+let game: GameState = createGameState(seed, highScoreStorage.load())
+
+// ── Keyboard: held-direction sampling + name-entry edge events ───────────
+const held = new Set<string>()
+const DIR_KEYS: Readonly<Record<string, Dir>> = {
+  arrowup: 'up',
+  arrowdown: 'down',
+  arrowleft: 'left',
+  arrowright: 'right',
+  w: 'up',
+  s: 'down',
+  a: 'left',
+  d: 'right',
+}
+
+function currentDir(): Dir {
+  // Newest-held-wins is unrecoverable from a Set alone (no press order), so
+  // this samples in a fixed priority order — good enough for a keyboard
+  // (a real joystick reports one direction at a time anyway; pacman.ts's own
+  // `pending` latch is what makes an early turn "stick" until it opens).
+  for (const key of ['arrowup', 'w', 'arrowdown', 's', 'arrowleft', 'a', 'arrowright', 'd']) {
+    if (held.has(key) && DIR_KEYS[key]) return DIR_KEYS[key]
+  }
+  return 'none'
+}
+
+window.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase()
+  if (key in DIR_KEYS) held.add(key)
+
+  // Initials entry rides its own edge event, same as centipede's
+  // enterInitial — it is not part of the held-direction sampling above.
+  if (game.phase === 'game-over' && game.nameEntry && !game.nameEntry.confirmed) {
+    if (e.key === 'Enter') {
+      confirmNameEntry(game)
+      highScoreStorage.save(game.highScoreTable)
+    } else {
+      enterInitial(game, e.key)
+    }
+    return
+  }
+
+  // Restart once game-over is fully resolved (no open, unconfirmed entry).
+  if (game.phase === 'game-over' && (!game.nameEntry || game.nameEntry.confirmed) && e.key === 'Enter') {
+    game = createGameState(Date.now(), game.highScoreTable)
+  }
+})
+window.addEventListener('keyup', (e) => {
+  held.delete(e.key.toLowerCase())
+})
+
 let acc = 0
 let last = 0
 let started = false
@@ -44,19 +111,26 @@ const frame = (now: number): void => {
   } else {
     const elapsed = (now - last) / 1000
     last = now
-    // No gameplay state to step yet (tasks 4-8) — the accumulator still
-    // drains at the real 60 Hz cadence so later steps slot in unchanged.
     acc = pumpFrame(
       acc,
       elapsed,
-      () => undefined,
-      () => {
-        /* no sim step yet — the maze is static */
+      () => ({ dir: currentDir() }),
+      (input) => {
+        if (game.phase === 'game-over') return
+        const boardBefore = game.highScoreTable
+        stepGame(game, input)
+        if (game.highScoreTable !== boardBefore) highScoreStorage.save(game.highScoreTable)
       },
     )
   }
 
-  drawMaze(logicalCtx)
+  drawMaze(logicalCtx, game.pac.eaten)
+  for (const id of ['blinky', 'pinky', 'inky', 'clyde'] as const) {
+    if (game.house.released[id]) drawGhost(logicalCtx, game.ghosts[id], game.mode.frightenedTimer > 0 ? 'frightened' : 'chase')
+  }
+  drawPacman(logicalCtx, game.pac.actor.xPx, game.pac.actor.yPx, game.pac.actor.dir)
+  if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y)
+  drawHud(logicalCtx, game.score, game.lives, game.level)
 
   const fit = fitIntegerScale(canvas.width, canvas.height)
   ctx.imageSmoothingEnabled = false

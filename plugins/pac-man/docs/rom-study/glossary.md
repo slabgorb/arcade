@@ -346,3 +346,59 @@ Table A.1 Elroy column), exactly like the personal dot limits in §Ghost house.
 So the routine ANCHORS are cited above and the per-level values are recorded as
 **Dossier-decoded and left uncited**. `mode.ts`'s `elroyThresholds`/`elroyStage`
 carry the Dossier progression with that honest status.
+
+## Level table (pm1-8)
+
+`src/core/level.ts`'s `LEVELS` is the per-level table `game.ts`'s round
+lifecycle reads: Pac-Man/ghost speeds (honest-uncited, same status as
+§Speeds above), frightened seconds/flash count (reused from `mode.ts`, never
+a second literal), Elroy 1/2 thresholds (reused from `mode.ts`'s
+`elroyThresholds`), and the bonus fruit for that level — the one column with
+a real, byte-cited ROM literal.
+
+**The FRUIT TABLE (`pacman.asm:2b23`-`2b31`).** Immediately after the
+ghost-chain scoring table (§Scoring), eight more little-endian BCD ×10 words
+give the eight bonus-fruit point values, in the ROM's own table order:
+
+| Symbol                   | Citation           | Raw word | Decoded | Fruit (Dossier ch.5) | Levels |
+|--------------------------|---------------------|----------|---------|-----------------------|--------|
+| `FRUIT_CHERRY_POINTS`    | `pacman.asm:2b23`  | `1000`   | **100**  | Cherry     | 1      |
+| `FRUIT_STRAWBERRY_POINTS`| `pacman.asm:2b25`  | `3000`   | **300**  | Strawberry | 2      |
+| `FRUIT_ORANGE_POINTS`    | `pacman.asm:2b27`  | `5000`   | **500**  | Orange     | 3-4    |
+| `FRUIT_APPLE_POINTS`     | `pacman.asm:2b29`  | `7000`   | **700**  | Apple      | 5-6    |
+| `FRUIT_MELON_POINTS`     | `pacman.asm:2b2b`  | `0001`   | **1000** | Melon      | 7-8    |
+| `FRUIT_GALAXIAN_POINTS`  | `pacman.asm:2b2d`  | `0002`   | **2000** | Galaxian   | 9-10   |
+| `FRUIT_BELL_POINTS`      | `pacman.asm:2b2f`  | `0003`   | **3000** | Bell       | 11-12  |
+| `FRUIT_KEY_POINTS`       | `pacman.asm:2b31`  | `0005`   | **5000** | Key        | 13+    |
+
+The level→fruit-kind MAPPING (which level gets which fruit) is the Dossier's
+well-known progression, listed above for reference; it has no separate
+literal of its own to cite beyond the points table itself, which is real.
+`docs/rom-study/claims/level.json` (claims `FRUIT-CHERRY`..`FRUIT-KEY`) pins
+these eight, byte-verified and re-derived by the same ×10 BCD decoder the
+scoring-table claims use.
+
+**The bonus-fruit spawn thresholds (`pacman.asm:0eba`/`0ebe`) — a real
+routine, not Dossier prose alone.** The running dots-eaten counter at
+`(#4e0e)` is compared directly against two literals: `cp #46` (70 decimal,
+`pacman.asm:0eba`) arms the first fruit; on a miss, `cp #aa` (170 decimal,
+`pacman.asm:0ebe`) arms the second, and a miss on THAT `ret nz`s straight out
+— so 70 and 170 are the ONLY two thresholds this routine ever checks, not a
+sample of a larger table. `level.ts`'s `FRUIT_SPAWN_DOTS = [70, 170]` and
+`claims/level.json` (`FRUIT-SPAWN-1`/`FRUIT-SPAWN-2`) pin both, byte-verified.
+
+**Pac-Man/ghost speed progression (honest-uncited, Dossier Table A.1).**
+Level 1: Pac-Man 80% / ghost 75%. Levels 2-4: 90%/85%. Levels 5-20: 100%/95%.
+Level 21+: 90%/95% (no further change is documented before the level-256 kill
+screen, out of this epic's scope). Same citation status as §Speeds: no
+isolable `pacman.asm:<addr>` literal, recorded honestly rather than invented.
+
+**Extra life (Dossier default; honest-uncited).** A free life at 10 000
+points is the Dossier's documented DIP-switch default. The vendored
+disassembly has no plain stored literal for it — only the DIP-driven message
+TEMPLATE `"BONUS PAC-MAN FOR   000 Pts"` at `pacman.asm:36b9` (the `000` is a
+placeholder the ROM fills in from the DIP-selected value at draw time, not a
+constant this dump captures). `game.ts`'s `EXTRA_LIFE_SCORE = 10_000` carries
+the Dossier default with that honest status, matching `claims/lives.json`'s
+existing treatment of `LIVES_PER_GAME`'s RAM-default (not a ROM literal
+either).
