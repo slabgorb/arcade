@@ -708,10 +708,11 @@ stories:
       arbitrated on channel `impact`, spiderLoop still sits on `voice-spider`, and the same kill still takes both edges. The corrected anchors: the spiderKill channel entry :106 -> :109; the `spider-killed` -> `spiderKill` mapping :123 -> :136; the `spider-stop` -> `spiderLoop` mapping :133-134 -> :147; PRIORITIES/FRAME_DURATIONS :209-218 -> :242-248; and the `spider-killed` emit cited as core/sim.ts:683-687 is at sim.ts:563. RE-MEASURE AGAIN AT SETUP rather than trusting this list — jt9-30 measured the drift rate for exactly these refs at HOURS, not months.'
     points: 2
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-05'
     type: bug
   - id: jt9-36
     title: 'MERGED INTO jt9-28 — Eight stale seventeen-cue counts in joust''s audio comments — the manifest has been eighteen since jt5-6'

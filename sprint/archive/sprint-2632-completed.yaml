@@ -189,3 +189,8 @@ completed_stories:
     title: joust B2UP3/SHUP3 — the two climb-preparation states, and the four PJOYT sites no DYTBL row covers
     points: 5
     completed: '2026-08-05'
+  - id: jt9-35
+    epic: jt9
+    title: The stopChannel voice release ships with its channel condition unpinned — an unconditional releaseVoice() leaves all 11666 tests green
+    points: 2
+    completed: '2026-08-05'
