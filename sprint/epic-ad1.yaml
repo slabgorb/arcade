@@ -33,7 +33,8 @@ stories:
     title: asteroids self-play attract demo — put a ship in the drifting rock field, then opt in
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
   - id: ad1-4
