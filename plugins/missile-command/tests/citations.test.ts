@@ -6,8 +6,8 @@
 // proves the apparatus exists, every skeleton constant is pinned by a committed
 // claim, and the checker reddens on a wrong claim.
 //
-// RED today, on all three counts, until Dev (Yoda) ports the joust/centipede
-// guardrail onto missile-command:
+// mc2-1 ported the joust/centipede guardrail onto missile-command; all three
+// pieces ship today and the suite is green on them:
 //   1. tests/helpers/claims.ts        — the claims loader (loadClaims/claimCovers)
 //   2. docs/rom-study/claims/*.json   — one claim per skeleton constant
 //   3. tools/audit/check-citations.mjs — the checker CLI that byte-verifies them
@@ -35,6 +35,21 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
+// mc2-6 (section 5): the dossier prose-citation sweep. Static imports — unlike
+// mc2-1's claims loader (dynamic-imported while the module was still absent),
+// this machinery is BUILT in the RED commit, so tsc sees it. Aliased because
+// this file already carries a loose local `Claim` for the dynamic loader.
+import {
+  DOSSIER_FILES,
+  romStudyDir,
+  allProseCitations,
+  allLegacyCitations,
+  allMalformedCitations,
+  extractProseCitations,
+  scanProseCitations,
+  uncoveredCitations,
+} from './helpers/dossier-sweep.js'
+import { loadClaims as loadCommittedClaims, type Claim as CommittedClaim } from './helpers/claims.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const W3COMN = join(root, 'reference', 'source', 'W3COMN.MAC')
@@ -254,5 +269,183 @@ describe('src/core carries no un-cited numeric literal (AC3 guard)', () => {
         ).toBe(true)
       }
     }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. mc2-6 — THE DOSSIER PROSE-CITATION COVERAGE SWEEP.
+//    Ported from joust/centipede (see tests/helpers/dossier-sweep.ts for the
+//    grammar and the legacy-spelling design decision). Sections 1–4 above watch
+//    src/core and claims/*.json; NOTHING above watched the dossier PROSE — the
+//    gap this section closes. At RED it failed on four counts (census 2026-08-06);
+//    GREEN resolved every one and the gates below keep them at zero:
+//      • 43 legacy bare-module (logical-line) cites → normalised to canonical
+//        physical `FILE.MAC:N` (41 were subsystems.md .SBTTL anchors, already
+//        physical but merely extensionless; 2 brief.md stragglers genuinely
+//        logical, re-cited/reworded)
+//      • 6 en-dash/junk linespecs invisible to any ASCII grammar — 5 in
+//        brief.md's missile.cpp cites, and 1 PRIMARY range in glossary.md
+//        (`W3COMN.MAC:123–145`) that the sweep itself surfaced: an ASCII grep
+//        during story setup counted only 5, which is the trap demonstrating why
+//        the malformed bucket exists → all six normalised to ASCII `N-M`
+//      • 8 canonical primary cites had no covering claim → claims authored
+//      • 1 external missile.cpp cite had no schema-only claim → claim authored
+//    HOW GREEN normalised (recorded for the audit trail): grep the .SBTTL/symbol
+//    for the physical line — W3MAIN is double-spaced, logical ≈ physical/2 and
+//    NOT cleanly convertible — and reword prose that merely MENTIONS a deprecated
+//    ref (brief.md:63 quotes `W3DSUP.MAC:19` historically — a mention must not
+//    wear the citation costume). The byte checker corroborates every rewrite:
+//    only a claim verified at that physical line can cover it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('mc2-6 — the dossier files are enrolled and the sweep has teeth', () => {
+  it('the three enrolled dossier files exist (fixture sanity)', () => {
+    for (const f of DOSSIER_FILES) {
+      expect(existsSync(join(romStudyDir, f)), `docs/rom-study/${f} must exist`).toBe(true)
+    }
+  })
+
+  it('extracts a non-trivial citation set across BOTH spellings (the sweep must actually see mc prose)', () => {
+    // A sweep that silently matched nothing would make every coverage test
+    // below pass vacuously — the exact way a green gate can mean nothing.
+    // Measured 2026-08-06: 42 canonical (41 .MAC + 1 missile.cpp) + 43 legacy
+    // = 85; post-GREEN ≈ 90 canonical + 0 legacy. The floor holds in BOTH states.
+    const canonical = allProseCitations()
+    const legacy = allLegacyCitations()
+    expect(
+      canonical.length + legacy.length,
+      'the coverage check must actually scan citations',
+    ).toBeGreaterThan(75)
+  })
+})
+
+describe('mc2-6 — one citation grammar: no legacy spelling, no unparseable linespec', () => {
+  it('no LEGACY bare-module (logical-line) citation remains in the enrolled dossier', () => {
+    // A `W3MAIN:475` cite is a LOGICAL non-blank ordinal into a double-spaced
+    // file. It cannot be covered (claims cite PHYSICAL lines) and cannot be
+    // mechanically converted (the two counting methods drift). GREEN rewrites
+    // each to `W3MODULE.MAC:<physical>` — the jt1-8 human-judgement precedent.
+    const legacy = allLegacyCitations()
+    expect(
+      legacy,
+      `${legacy.length} legacy logical-line citation(s) await normalisation to physical \`FILE.MAC:N\` form:\n  ` +
+        legacy.join('\n  '),
+    ).toEqual([])
+  })
+
+  it('no cite-lookalike with an unparseable linespec remains (en-dash ranges are invisible to ASCII grammars)', () => {
+    // At RED, brief.md carried `missile.cpp:454–462` and siblings as EN-DASH
+    // (U+2013) ranges; GREEN normalised them to ASCII and this gate keeps any
+    // from returning. A linespec that cannot parse is a citation nothing
+    // re-checks — it must be reported, never dropped (centipede round-2,
+    // Reviewer M3).
+    const malformed = allMalformedCitations()
+    expect(
+      malformed,
+      `${malformed.length} unparseable cite-lookalike(s) — normalise to ASCII N or N-M:\n  ` +
+        malformed.join('\n  '),
+    ).toEqual([])
+  })
+})
+
+describe('mc2-6 — every dossier prose citation is pinned by a committed claim', () => {
+  it('every PRIMARY-source citation has a covering claim', () => {
+    const claims = loadCommittedClaims()
+    const primary = allProseCitations().filter((c) => !c.external)
+    const missing = uncoveredCitations(claims, primary)
+    expect(
+      missing,
+      `${missing.length} primary dossier citation(s) have no claims/*.json entry (GREEN authors them):\n  ` +
+        missing.join('\n  '),
+    ).toEqual([])
+  })
+
+  it('every EXTERNAL (MAME missile.cpp) citation has a covering schema-only claim', () => {
+    // Reported separately from the primary bucket, joust-style, so Dev sees
+    // two work items. External claims carry the self-describing marker
+    // verbatim (check-citations.mjs) — schema-checked, never byte-opened.
+    const claims = loadCommittedClaims()
+    const external = allProseCitations().filter((c) => c.external)
+    const missing = uncoveredCitations(claims, external)
+    expect(
+      missing,
+      `${missing.length} external citation(s) have no schema-only claim:\n  ` + missing.join('\n  '),
+    ).toEqual([])
+  })
+})
+
+describe('mc2-6 — the sweep machinery itself (synthetic input; the mutation proof)', () => {
+  // These pass in the RED state on purpose: they prove the GUARD has teeth,
+  // independent of the dossier's current condition, by calling the REAL sweep
+  // functions on synthetic input — never touching the committed docs.
+
+  it('parses N, N-M and comma-list linespecs from canonical cites', () => {
+    const scan = scanProseCitations(
+      'See `W3COMN.MAC:39` then `W3MAIN.MAC:3877-3895` and `W3INT.MAC:100,200-300`.',
+      'synthetic.md',
+    )
+    expect(scan.citations.map((c) => `${c.file}:${c.start}-${c.end}`)).toEqual([
+      'W3COMN.MAC:39-39',
+      'W3MAIN.MAC:3877-3895',
+      'W3INT.MAC:100-100',
+      'W3INT.MAC:200-300',
+    ])
+    expect(scan.legacy).toEqual([])
+    expect(scan.malformed).toEqual([])
+  })
+
+  it('a bare-module spelling lands in legacy — visible, never silently dropped, never canonical', () => {
+    const scan = scanProseCitations('The cursor loop sits at `W3MAIN:475` today.', 'synthetic.md')
+    expect(scan.legacy).toEqual(['W3MAIN:475'])
+    expect(scan.citations).toEqual([])
+    expect(scan.malformed).toEqual([])
+  })
+
+  it('an EN-DASH range lands in malformed — the exact spelling brief.md carried pre-GREEN', () => {
+    const scan = scanProseCitations('MAME shows this at `missile.cpp:454\u2013462`.', 'synthetic.md')
+    expect(scan.malformed).toEqual(['missile.cpp:454\u2013462'])
+    expect(scan.citations).toEqual([])
+  })
+
+  it('a reversed range N-M (N>M) lands in malformed — no claim line can ever fall inside it', () => {
+    const scan = scanProseCitations('Broken: `W3MAIN.MAC:3895-3877`.', 'synthetic.md')
+    expect(scan.malformed).toEqual(['W3MAIN.MAC:3895-3877'])
+    expect(scan.citations).toEqual([])
+  })
+
+  it('a trailing-token linespec lands in malformed — the `617–625 get_bit3_addr` class', () => {
+    const scan = scanProseCitations('See `missile.cpp:617-625 get_bit3_addr` for the shifter.', 'synthetic.md')
+    expect(scan.malformed).toEqual(['missile.cpp:617-625 get_bit3_addr'])
+    expect(scan.citations).toEqual([])
+  })
+
+  it('AC5 mutation proof: removing the covering claim reddens the REAL sweep', () => {
+    const cites = extractProseCitations('The city table is `W3MAIN.MAC:3895`.', 'synthetic.md')
+    expect(cites).toHaveLength(1)
+    const covering: CommittedClaim = {
+      id: 'SYN-STCITY',
+      symbol: 'STCITY',
+      value: '6,4,5,7',
+      meaning: 'starting-city pattern table',
+      source: { file: 'W3MAIN.MAC', line: 3895, verbatim: 'STCITY:\t.BYTE 6,4,5,7' },
+    }
+    // With the claim: covered. With the claim REMOVED: the sweep MUST redden.
+    // Same function the disk gate calls — a copy with teeth would prove nothing.
+    expect(uncoveredCitations([covering], cites)).toEqual([])
+    expect(uncoveredCitations([], cites)).toEqual(['W3MAIN.MAC:3895'])
+  })
+
+  it('a range cite is covered by a claim pinning ANY line inside it — and not one outside', () => {
+    const cites = extractProseCitations('Loader: `W3MAIN.MAC:3877-3895`.', 'synthetic.md')
+    const at = (line: number): CommittedClaim => ({
+      id: `SYN-${line}`,
+      symbol: 'STCITY',
+      value: 0,
+      meaning: 'probe',
+      source: { file: 'W3MAIN.MAC', line, verbatim: 'x' },
+    })
+    expect(uncoveredCitations([at(3877)], cites)).toEqual([])
+    expect(uncoveredCitations([at(3895)], cites)).toEqual([])
+    expect(uncoveredCitations([at(3896)], cites)).toEqual(['W3MAIN.MAC:3877-3895'])
   })
 })
