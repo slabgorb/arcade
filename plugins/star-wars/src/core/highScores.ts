@@ -11,23 +11,27 @@
 // O(15) B(2) I(9) = OBI. Both decodes verified arithmetically against
 // ~/Projects/star-wars-1983-source-text/TCHSCR.MAC:718-738.
 //
-// The ROM hi-score table carries no per-entry wave; our HighScoreEntry<'wave'>
-// schema requires one, so `wave: 0` is a "seeded default — no real run" marker
-// (a clone artifact, not a ROM value).
+// The ROM hi-score table carries no per-entry wave (and the ROM's board DISPLAY
+// draws initials + score only — there is no wave column). Our HighScoreEntry<'wave'>
+// schema still has the field, so a seeded default — which is NOT a real run — sets
+// `wave: null`. sw8-20: null is the honest "no real run" encoding (Task 20 widened
+// the domain field to `number | null` for exactly this), replacing the fabricated
+// `wave: 0`, which invented a fact about a game nobody played. render.ts draws a
+// null wave as a blank column (no "WAVE" label at all).
 import type { HighScoreTable } from '@shared/highscore'
 
 /** The ROM's 10 seeded high-score entries, highest first (INTINT / INTSCR). */
 export const DEFAULT_HIGH_SCORES: HighScoreTable<'wave'> = [
-  { name: 'OBI', score: 1_285_353, wave: 0 },
-  { name: 'WAN', score: 1_110_936, wave: 0 },
-  { name: 'HAN', score: 1_024_650, wave: 0 },
-  { name: 'GJR', score: 872_551, wave: 0 },
-  { name: 'MLH', score: 813_553, wave: 0 },
-  { name: 'JED', score: 704_899, wave: 0 },
-  { name: 'NLA', score: 518_000, wave: 0 },
-  { name: 'EJD', score: 492_159, wave: 0 },
-  { name: 'EAR', score: 384_766, wave: 0 },
-  { name: 'RLM', score: 380_655, wave: 0 },
+  { name: 'OBI', score: 1_285_353, wave: null },
+  { name: 'WAN', score: 1_110_936, wave: null },
+  { name: 'HAN', score: 1_024_650, wave: null },
+  { name: 'GJR', score: 872_551, wave: null },
+  { name: 'MLH', score: 813_553, wave: null },
+  { name: 'JED', score: 704_899, wave: null },
+  { name: 'NLA', score: 518_000, wave: null },
+  { name: 'EJD', score: 492_159, wave: null },
+  { name: 'EAR', score: 384_766, wave: null },
+  { name: 'RLM', score: 380_655, wave: null },
 ]
 
 /**
