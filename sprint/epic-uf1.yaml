@@ -249,7 +249,8 @@ stories:
     description: "Raised by Dev and confirmed by the Reviewer on ad1-2 (2026-08-01), which opted battlezone into the carousel. Every guard around the showcase asserts MEMBERSHIP or WIRING; none asserts the framed game is actually alive. A game could regress to a black, frozen, or exception-throwing pane and the entire suite stays green. THE CENSUS, all measured on ad1-2: src/host/registry.test.ts pins exactly who is in the carousel (['tempest','battlezone','centipede']) and nothing about what they draw; lobby/tests/main.test.ts:156 derives its expectation from LISTED_GAMES.filter(g => g.showcase) and asserts the launch link's href, not the frame's contents; lobby/src/shell/showcase.ts's own failure handling keys on LOAD_TIMEOUT_MS (8 s) of silence before the load event, and docs/ops/hosting.md states plainly that \"A game serving a broken build still fires load and looks healthy from the lobby\"; and `just check-showcase` does NOT close this either — hosting.md:296-330 says \"What that recipe measures is the HTTP status of /<id>/, and nothing else\", so a 200 serving a broken bundle passes it. WHAT ad1-2 DID BY HAND, and this is the method to automate rather than re-invent: serve the tree, let the carousel reach the game, then reach into the same-origin iframe's canvas and sample lit-pixel counts over time — ten samples at 250 ms intervals gave ten DISTINCT counts in the upper band and nine of ten in the lower, which a static text page cannot produce. That evidence lived in one session and dies with it. WHY THIS IS NOT uf1-19: uf1-19 pins lobby TEST-APPARATUS guards (accessible-name.ts helpers, slideFor's ALPHA-only cases) — DOM fixtures in jsdom. This finding is about the framed GAME rendering, which jsdom cannot observe at all; the two do not overlap and routing this into uf1-19 would quietly drop it. SCOPE NOTE: this is epic-wide and rising — ad1-1, ad1-3, ad1-4 and ad1-5 each add another game to the carousel, so the unguarded surface grows with every story in ad1. Decide explicitly whether the check belongs in CI (needs a real browser — the repo has no such harness today, which is the main cost) or as a documented manual gate in docs/ops/hosting.md; do not assume the first without pricing it."
     points: 3
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -258,3 +259,5 @@ stories:
       - "Proven non-vacuous by mutation: break one game's render (or point its frame at a blank document) and require the check to go red"
       - Whether the check runs in CI or is a documented manual gate is decided EXPLICITLY and recorded, with the browser-harness cost stated either way
     type: chore
+    review_findings: "HIGH: isAlive() reads a frozen frame as ALIVE when the canvas is absent on early samples (-1 sentinel not filtered before the variation check) — fail-open in the guard's core verdict; filter negatives + add a RED test. MEDIUM: caught goto/eval error → isAlive([])→DEAD conflates probe failure with a dead game. LOW x2: stale comment + hosting.md 5290 nit."
+    review_verdict: approved
