@@ -8,6 +8,7 @@
 
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { drawFrame } from './shell/render.js'
+import { applyPointerMotion } from './shell/input.js'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')
 if (!canvas) throw new Error('index.html must host a <canvas id="game">')
@@ -15,6 +16,12 @@ const context = canvas.getContext('2d')
 if (!context) throw new Error('2d canvas context unavailable')
 
 let game: GameState = createGame()
+
+// Mouse/trackball → crosshair (mc1-3). Each pointer move feeds its relative
+// motion through the core clamp; the crosshair follows and stops at the edge.
+canvas.addEventListener('pointermove', (event: PointerEvent): void => {
+  game = { ...game, cursor: applyPointerMotion(game.cursor, event.movementX, event.movementY) }
+})
 
 const frame = (): void => {
   game = stepGame(game)

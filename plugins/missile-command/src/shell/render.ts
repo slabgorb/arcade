@@ -32,9 +32,9 @@ function project(pos: FieldPos, width: number, height: number): { x: number; y: 
   }
 }
 
-/** Draw one frame: black field, then the fixed cities and bases at their
- *  cited positions. `state` is unused until mc1-3 adds moving entities. */
-export function drawFrame(ctx: CanvasRenderingContext2D, _state: GameState, width: number, height: number): void {
+/** Draw one frame: black field, the fixed cities and bases at their cited
+ *  positions, then the trackball crosshair at the cursor (mc1-3). */
+export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width: number, height: number): void {
   clearField(ctx, width, height)
 
   // Cities — squat blocks. Yellow-green, the cabinet's city hue.
@@ -59,4 +59,17 @@ export function drawFrame(ctx: CanvasRenderingContext2D, _state: GameState, widt
     ctx.closePath()
     ctx.fill()
   }
+
+  // Crosshair — the trackball cursor (mc1-3). A white cross at the clamped cursor
+  // position; `project` flips V so bottom-origin cabinet coords land correctly.
+  const { x, y } = project(state.cursor, width, height)
+  ctx.strokeStyle = '#fff'
+  ctx.lineWidth = 1
+  const arm = Math.max(4, Math.round(width / 48))
+  ctx.beginPath()
+  ctx.moveTo(x - arm, y)
+  ctx.lineTo(x + arm, y)
+  ctx.moveTo(x, y - arm)
+  ctx.lineTo(x, y + arm)
+  ctx.stroke()
 }
