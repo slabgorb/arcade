@@ -86,6 +86,15 @@ const LAWS: ReadonlyArray<{ name: string; file: string; n: number; must: readonl
   { name: 'SHLEP exits through the throttle to SHDIRA', file: 'JOUSTRV4.SRC', n: 4310, must: ['JMP', 'SHDIRA'] },
   { name: 'SHDIRB: the long-range seeks COAST while moving', file: 'JOUSTRV4.SRC', n: 4388, must: ['SHDIRB', 'LDA', 'PVELX,U'] },
   { name: 'SHDN exits through SHDIRB', file: 'JOUSTRV4.SRC', n: 4255, must: ['JMP', 'SHDIRB'] },
+  // ── jt9-20: the coast reaches SHDIRB from ALL THREE moving seeks, and a
+  //    PARKED seek falls THROUGH SHDIRB to the SHDIRA aim-writer ────────────────
+  { name: 'SHUP0 (wings up) exits through SHDIRB too', file: 'JOUSTRV4.SRC', n: 4267, must: ['JMP', 'SHDIRB'] },
+  { name: 'SHUP1 (flap wings) exits through SHDIRB', file: 'JOUSTRV4.SRC', n: 4275, must: ['JMP', 'SHDIRB'] },
+  { name: 'SHDIRB coasts ONLY while moving — CLRA then STD CURJOY', file: 'JOUSTRV4.SRC', n: 4390, must: ['CLRA'] },
+  { name: 'SHDIRB writes CURJOY (the coast, dir 0)', file: 'JOUSTRV4.SRC', n: 4391, must: ['STD', 'CURJOY'] },
+  { name: 'a PARKED seek (PVELX==0) falls through SHDIRB to the SHDIRA aim-writer', file: 'JOUSTRV4.SRC', n: 4389, must: ['BEQ', 'SHDIRA'] },
+  { name: 'SHDIRA aims: facing right ⇒ CURJOY dir +1', file: 'JOUSTRV4.SRC', n: 4384, must: ['LDA', '#1'] },
+  { name: 'SHDIRA aims: facing left ⇒ SHDN1C writes −1', file: 'JOUSTRV4.SRC', n: 4394, must: ['SHDN1C', 'LDA', '#-1'] },
   { name: 'SHLEV re-arms and falls INTO SHDIR — the one shadow route that steers', file: 'JOUSTRV4.SRC', n: 4328, must: ['LDB', '#$01', 'FLAP WINGS'] },
   { name: 'SHLEVA jumps to SHDIR as well', file: 'JOUSTRV4.SRC', n: 4402, must: ['JMP', 'SHDIR'] },
   // ── the range gate SHDN/SHLEP hang off (fixture staging reads these rows) ──

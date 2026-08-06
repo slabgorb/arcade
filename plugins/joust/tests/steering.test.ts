@@ -368,6 +368,87 @@ describe('AC-2 — SHDN free-fall and the :4249-4254 lava escape', () => {
   })
 })
 
+// ═════════════════════════════════════════════════════════════════════════════
+// jt9-20 — THE SHDIRB COAST (the `dir` channel, not the `flap` channel).
+//
+//   SHDIRB (JOUSTRV4.SRC:4388-4392) is the no-steer exit the SHDN free-fall and
+//   both SHUP wakes (SHUP0 :4267, SHUP1 :4275) jump to:
+//       SHDIRB  LDA  PVELX,U        ; the horizontal velocity index
+//               BEQ  SHDIRA         ; PARKED (PVELX==0) ⇒ fall to the aim-writer
+//               CLRA
+//               STD  CURJOY         ; MOVING (PVELX!=0) ⇒ CURJOY dir = 0 ⇒ COAST
+//               RTS
+//   A MOVING long-range seek therefore writes dir 0 — no horizontal thrust, the
+//   drift decays. Only a PARKED seek falls through to SHDIRA (:4379-4386), which
+//   writes CURJOY = the facing sign (+1 right / -1 via SHDN1C left) to get moving.
+//
+//   Our port's shadow() returns `dir = enemy.facing` on EVERY branch, so a moving
+//   SHDN/SHUP seek THRUSTS where the ROM coasts. THE MOVING PINS RED TODAY; the
+//   parked pins are GREEN-on-arrival guards that keep the fix from over-correcting
+//   (an unconditional `dir = 0` would break the parked SHDIRA aim), and the SHLEP
+//   control guards the fix from bleeding onto the level route, which exits SHDIRA
+//   directly (:4310) and must keep thrusting.
+//
+//   `dir` reaches flight only through flap() (flight.ts:263, `velXIndex + dir*2`):
+//   dir 0 leaves the FLYX index unchanged (coast), dir === facing steps it (thrust).
+// ═════════════════════════════════════════════════════════════════════════════
+describe('jt9-20 — SHDN/SHUP moving seeks COAST: dir 0, not facing (SHDIRB :4388-4392)', () => {
+  const DOWN = (): number => waveValue('SHDNRG', 1) // +20: a player this far BELOW ⇒ SHDN free-fall
+  const UP = (): number => waveValue('SHUPRG', 1) // −20: a player this far ABOVE ⇒ SHUP up-seek
+
+  it('fixture premise: SHDNRG(1) is a positive down-delta and SHUPRG(1) a negative up-delta', () => {
+    expect(DOWN(), 'a target below ⇒ SHDN').toBeGreaterThan(0)
+    expect(UP(), 'a target above ⇒ SHUP').toBeLessThan(0)
+  })
+
+  // ── SHDN (:4246 → SHDIRB :4255): the free-fall seek ──────────────────────────
+  it('a MOVING shadow on the SHDN free-fall writes dir 0 (SHDIRB CLRA/STD) — RED: port thrusts at facing', () => {
+    // enemyY 100 (well above the lava band) so only the dir channel is under test.
+    const player = { pixelY: 100 + DOWN(), velXIndex: 0 }
+    expect(E.shadow(shadowAt(150, 100, 8), player, 1).dir, 'PVELX!=0 ⇒ CURJOY=0 ⇒ coast').toBe(0)
+  })
+
+  it('the SHDN coast is FACING-INDEPENDENT — a left-facing moving shadow also writes 0, not −facing', () => {
+    // Proves the fix zeroes the channel rather than returning some transform of
+    // facing: a left-facing (facing −1) port returns −1 today; the ROM coasts.
+    const e = { ...shadowAt(150, 100, -8), facing: -1 as const }
+    const player = { pixelY: 100 + DOWN(), velXIndex: 0 }
+    expect(E.shadow(e, player, 1).dir, 'coast is the same 0 whichever way it faces').toBe(0)
+  })
+
+  // ── SHUP (:4266/:4269 → SHDIRB :4267/:4275): the up-seek ─────────────────────
+  it('a MOVING shadow on the SHUP up-seek writes dir 0 (SHDIRB) — RED: port thrusts at facing', () => {
+    const player = { pixelY: 100 + UP(), velXIndex: 0 }
+    expect(E.shadow(shadowAt(150, 100, 8), player, 1).dir, 'the up-seek coasts while moving too').toBe(0)
+  })
+
+  // ── PARKED (PVELX==0 ⇒ BEQ SHDIRA :4389): the guard against over-correction ──
+  it('GUARD: a PARKED shadow on SHDN still AIMS via SHDIRA — dir = facing (+1 right)', () => {
+    // Green on arrival. SHDIRB BEQ SHDIRA falls to the aim-writer, which writes
+    // the facing sign. An unconditional `dir = 0` fix would break this.
+    const player = { pixelY: 100 + DOWN(), velXIndex: 0 }
+    expect(E.shadow(shadowAt(150, 100, 0), player, 1).dir, 'parked ⇒ SHDIRA ⇒ +1').toBe(1)
+  })
+
+  it('GUARD: a PARKED shadow on SHUP still AIMS — dir tracks the facing sign both ways', () => {
+    const up = { pixelY: 100 + UP(), velXIndex: 0 }
+    expect(E.shadow(shadowAt(150, 100, 0), up, 1).dir, 'parked right ⇒ +1').toBe(1)
+    const left = { ...shadowAt(150, 100, 0), facing: -1 as const }
+    expect(E.shadow(left, up, 1).dir, 'parked left ⇒ SHDN1C ⇒ −1').toBe(-1)
+  })
+
+  // ── SHLEP control: the level route exits SHDIRA, NOT SHDIRB ──────────────────
+  it('GUARD: a MOVING shadow on the SHLEP level track still THRUSTS (dir = facing) — SHLEP → SHDIRA :4310', () => {
+    // The coast is exclusive to the SHDN/SHUP long-range seeks. SHLEP (a target
+    // inside SHUPRG < delta < SHDNRG) exits through SHDIRA and keeps its aim; the
+    // fix must not zero it. Green on arrival — pins the scope boundary.
+    const player = { pixelY: 100, velXIndex: 0 } // delta 0: strictly inside the SHLEP window
+    expect(DOWN(), 'window premise (down)').toBeGreaterThan(0)
+    expect(UP(), 'window premise (up)').toBeLessThan(0)
+    expect(E.shadow(shadowAt(150, 100, 8), player, 1).dir, 'SHLEP thrusts at facing').toBe(1)
+  })
+})
+
 describe('AC-2 — SHLEP tracks the targeted player’s line (:4277-4298)', () => {
   /** A target strictly inside the SHLEP window: SHUPRG(1) < delta < SHDNRG(1). */
   const shlepPlayer = (enemyY: number, offset: number): { pixelY: number; velXIndex: number } => {
