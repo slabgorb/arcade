@@ -26,6 +26,15 @@ export interface FieldPos {
 /** Max cities — `W3COMN.MAC:39` (`NCITY=6`). */
 export const NCITY = 6
 
+/**
+ * Default starting cities (REV-01) — the count a new game begins with, DISTINCT
+ * from the `NCITY` max. NEW GAME SETUP reads it from `STCITY[OPTIO2 & SCITYM]`
+ * (`STCITY: .BYTE 6,4,5,7`, `W3MAIN.MAC:3895`); with the option-2 bits clear the
+ * default is entry 0 = 6. SCITYM's "5 cities" is the option-2 (Y=2) selection, not
+ * the default. See `docs/rom-study/starting-cities.md` (claim `MC-STCITY-START`).
+ */
+export const START_CITIES = 6
+
 /** Missile bases — `W3COMN.MAC:41` (`NMISBA=3`). */
 export const NMISBA = 3
 
