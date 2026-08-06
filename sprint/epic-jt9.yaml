@@ -1059,7 +1059,8 @@ stories:
     title: Scope the horizontal-homing throttle to a live level interval — stop homingWake ticking off-level (retire jt8-2's every-wake read and the jt9-18 stale-PPVELX-during-seeks nuance)
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     type: refactor
