@@ -1031,7 +1031,8 @@ stories:
       by re-running the seeded sweeps, not by nudging them to whatever the new code prints.
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
