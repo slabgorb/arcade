@@ -199,3 +199,8 @@ completed_stories:
     title: Trackball/mouse crosshair cursor with clamp
     points: 2
     completed: '2026-08-05'
+  - id: uf1-1
+    epic: uf1
+    title: red-baron enemy planes cannot shoot — wire planeFires into the calc-frame damage channel
+    points: 3
+    completed: '2026-08-06'
