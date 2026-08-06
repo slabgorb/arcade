@@ -281,3 +281,8 @@ completed_stories:
     title: 'star-wars: the ten ROM default high scores should carry wave null, not the fabricated wave 0'
     points: 2
     completed: '2026-08-06'
+  - id: jt9-39
+    epic: jt9
+    title: ROW_DISPOSITION can lie in the direction that matters — a row wired in code but left 'no-consumer-yet' ships GREEN
+    points: 3
+    completed: '2026-08-06'

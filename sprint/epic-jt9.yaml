@@ -817,10 +817,12 @@ stories:
       ACCEPTANCE: a guard that, for each no-consumer-yet row, greps the joust core for a call passing that row NAME to waveValue/dyRow and fails if one exists; and for each wired row, fails if NO such call exists. Mutation-verify BOTH directions - flip a wired row to no-consumer-yet without touching code (must redden), and add a waveValue call for a pending row (must redden). Plus: every owner must match a story id present in the sprint YAML.
     points: 3
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-06T17:47:50Z'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
+    review_findings: APPROVED (Heimdall). Guard-only, zero src change. Mutation battery M1-M6 all bite (wired->pending, wrong/extra/dropped golden entry, real consumer deletion); M5 clean (no comment-only literals). Preflight GREEN 2949/0; its one Low redundancy finding dispositioned non-blocking (line 1004 guards the loop's undefined-continue). Design Deviation (wrapper-inclusive consumer grep) faithful.
   - id: jt9-40
     title: The egg wave's TWO pre-mature hatchings — PWHCH shortens two of the twelve eggs' waits by a VRAND draw
     description: |-
@@ -1108,3 +1110,12 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+  - id: jt9-57
+    title: Pin ROW_DISPOSITION consumer prose against its ROM cite
+    description: Filed by jt9-39's finish (2026-08-06). difficulty-wiring.test.ts:819 checks a wired row's ROW_DISPOSITION.consumer field is truthy PROSE only; jt9-39's auditDispositions() now proves a consumer literal EXISTS in core, but the prose string (e.g. 'enemy.dumbWingbeat (LINET's lava-troll looker reload, JOUSTRV4.SRC:3727)') is still unverified against its cited ROM line. Pin each consumer string's JOUSTRV4.SRC:NNNN against docs/rom-study/claims/ (the citations suite idiom), so a wrong ROM cite reddens. Non-blocking; guard-only.
+    points: 2
+    priority: p3
+    status: backlog
+    repos: pennyfarthing
+    workflow: tdd
+    type: refactor
