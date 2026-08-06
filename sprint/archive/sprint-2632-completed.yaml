@@ -241,3 +241,8 @@ completed_stories:
     title: The lava-troll looker in the three SMART brains — BOUNDR/B2UNDR/SHADOW, and why jt9-1's looker cannot fire without them
     points: 5
     completed: '2026-08-06'
+  - id: mc2-1
+    epic: mc2
+    title: Citation checker + claims format, guarding the skeleton
+    points: 5
+    completed: '2026-08-06'
