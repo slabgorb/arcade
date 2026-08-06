@@ -18,7 +18,7 @@ stories:
       Design: plugins/missile-command/docs/design/mc2-dossier.md. Ground truth: docs/rom-study/brief.md.
     points: 5
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-06'
     repos: arcade
     workflow: tdd
@@ -28,6 +28,8 @@ stories:
       - "Every constant currently hardcoded in src/core and src/shell (field.ts, cursor.ts, explosion.ts, abm.ts, render.ts) is represented by a claim; a guard test asserts no un-cited numeric literal remains in src/core."
       - "Wired as a missile-command surface: 'npx vitest run --project missile-command', 'npm run lint', and 'npm run test:orchestrator' all pass."
     type: chore
+    review_findings: "Round 2 APPROVED. Rework closed F1 (claim value now verified via verbatim radix double-entry, mutation-proven), F2 (header prose reconciled: W3MAIN logical / W3COMN physical), F3 (CLI JSON.parse reports cleanly, exit 2). F4 deferred to mc2-2. 194/194 + lint + 398/398."
+    review_verdict: approved
   - id: mc2-2
     title: subsystems.md + glossary.md source-of-record docs
     description: |-
