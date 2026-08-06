@@ -242,8 +242,8 @@ and its own build (`node scripts/build-app.mjs <app>`), bumps
 `src/host/registry.ts` into the **same** commit, then tags **`<app>-vX.Y.Z`** and
 pushes.
 
-**The tag is the deploy trigger, not a push to `main`.** `main` now carries every
-app's commits, so a branch trigger could not say which app to ship — it would
+**The tag is the deploy trigger, not a branch push.** Both `develop` and `main` carry
+every app's commits, so a branch trigger could not say which app to ship — it would
 redeploy all eight on every commit. `.github/workflows/deploy.yml` fires on `*-v*`,
 parses the app id back out of the tag, and refuses anything that is not
 `<app>-vX.Y.Z`. **A bare `vX.Y.Z` tag is invalid here** — it matches no app and
@@ -275,29 +275,33 @@ production; only a release (or an explicit `just deploy`) can.
 
 ## Git Workflow
 
-**One repo, one remote, one branch.** `origin` → [github.com/slabgorb/arcade](https://github.com/slabgorb/arcade);
-default branch `main`, trunk-based — commit straight to `main`. Just commit; no need
-to ask first. There are no per-game remotes, no `develop` branches and no per-game
-PRs; the nine archived repos are read-only history.
+**One repo, one remote, gitflow.** `origin` → [github.com/slabgorb/arcade](https://github.com/slabgorb/arcade).
+Two long-lived branches: **`develop`** is the integration branch (the default — every
+story branches from it and PRs back into it) and **`main`** is the release branch (the
+`<app>-vX.Y.Z` deploy tags are cut from it). There are no per-game remotes and no
+per-game PRs; the nine archived repos are read-only history.
 
-Branch naming, when a branch is warranted: `feat/{story}-{description}`,
-`fix/{issue}-{description}`, `chore/{story}-{description}`.
+**Do not commit straight to `develop`.** Cut a branch, open a PR into `develop`, merge
+it there. Branch naming: `feat/{story}-{description}`, `fix/{issue}-{description}`,
+`chore/{story}-{description}`. pf's `create_branches` cuts these from `develop`
+automatically, and the reviewer diffs against `origin/develop`.
 
-**`repos.yaml` is what the tooling actually enforces**, not this file. It now holds a
-single entry, `arcade`, and pf's branch-protection hook reads its `branch_strategy`:
+Release flow: work accumulates on `develop`; a release merges `develop` → `main` and
+`just release <app>` tags `<app>-vX.Y.Z` (see *Releasing* above). The deploy workflow
+fires on the tag, so what ships is still defined by the tag, not by either branch.
 
-- The value **must be the literal string `trunk-based`**. pf compares against that
-  exact spelling (`pf/hooks/branch_protection.py`), and *any* other value — a bare
-  `trunk`, a typo, `gitflow` — falls through to the gitflow path and **protects
-  `main`**, blocking the direct sprint commits this repo depends on. Measured against
-  pf 13.4.0's own hook: with the file as committed the protected set is **empty**;
-  with `trunk`, `trunk_based` or `gitflow` substituted it becomes `{main}`. (Deleting
-  the key entirely is *safe* — the hook defaults to `trunk-based` — but a wrong value
-  is not.) If commits to `main` start getting blocked here, check that line first.
-- The hook used to protect the games' `develop` branches even from the orchestrator.
-  With one repo in `repos.yaml` there are no gitflow entries left, so it now protects
-  **nothing**. That guard is gone because the thing it guarded is gone, not because it
-  was disabled.
+**`repos.yaml` is what the tooling actually enforces**, not this file. It holds a single
+entry, `arcade`, and pf's branch-protection hook reads its `branch_strategy`:
+
+- The value **must be the literal string `gitflow`**, with `default_branch: develop`. pf
+  compares against that exact spelling (`pf/hooks/branch_protection.py::_get_protected_branches`);
+  under `gitflow` the hook **protects this repo's `default_branch`** — so a direct commit
+  or push to `develop` is blocked, forcing the feature-branch + PR path. A typo, a bare
+  `trunk`, or reverting to `trunk-based` reopens direct commits to `develop`. If pushes
+  to `develop` start being *allowed* unexpectedly, check that line first.
+- Because the hook protects `default_branch` (`develop`), **`main` is not protected by
+  pf** — configure GitHub branch-protection on `main` server-side if you want the release
+  branch guarded against direct pushes. pf's guardrail is `develop`.
 
 The hook judges the repo/branch from the **session's** working directory, not from a
 `cd` inside your command. That still matters when touching a checkout outside this one

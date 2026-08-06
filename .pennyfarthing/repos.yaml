@@ -3,12 +3,17 @@ repos:
   arcade:
     path: .
     type: orchestrator
-    default_branch: main
-    # MUST be the literal "trunk-based" — pf's branch-protection hook compares
-    # against that exact string (pf/hooks/branch_protection.py). A bare "trunk"
-    # or a typo silently falls through to the gitflow path and PROTECTS main,
-    # blocking the direct sprint commits this repo depends on.
-    branch_strategy: trunk-based
+    # Gitflow: `develop` is the integration branch pf cuts feature branches from
+    # and targets PRs at (pf/git/create_branches.py, and base_ref = origin/develop
+    # at pf/git/repos.py). `main` stays the release branch — the deploy workflow
+    # fires on `<app>-vX.Y.Z` tags, independent of branch.
+    default_branch: develop
+    # MUST be the literal "gitflow" — pf's branch-protection hook compares against
+    # that exact string (pf/hooks/branch_protection.py::_get_protected_branches).
+    # Under gitflow the hook PROTECTS this repo's default_branch (develop), so
+    # direct commits go through feature branches + PRs. A typo or "trunk-based"
+    # here reopens direct commits to develop.
+    branch_strategy: gitflow
     description: 'The arcade: a plugin host for browser-based arcade-game clones.
       Games live in plugins/<id>/, shared code in src/shared/, the lobby at the
       root of the single origin. One repo, one origin, per-game releases by tag.'
