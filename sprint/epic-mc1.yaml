@@ -46,7 +46,8 @@ stories:
     description: "Draw the static playfield: six cities and three missile bases at their cabinet coordinates. Core: field.ts holds the fixed layout (pure data). Shell: render.ts paints them on the raster canvas. Coords are CITED from source — W3COMN.MAC CITY1H/V..CITY6H/V (:123-145, HEX) via brief.md's constant table. Cities NCITY=6 (W3COMN:39), bases NMISBA=3 (:41). No enemies/damage yet."
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
