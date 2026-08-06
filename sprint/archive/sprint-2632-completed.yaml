@@ -246,3 +246,8 @@ completed_stories:
     title: Citation checker + claims format, guarding the skeleton
     points: 5
     completed: '2026-08-06'
+  - id: jt9-30
+    epic: jt9
+    title: Comment-body <file>.ts:<line> refs in the joust suite become symbol refs — 86 distinct refs across 30 test files; the 283 JOUSTRV4.SRC citations are OUT of scope
+    points: 3
+    completed: '2026-08-06'

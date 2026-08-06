@@ -570,9 +570,11 @@ stories:
       STALENESS RATE MEASURED (jt9-38 GREEN, 2026-08-03): of the 51 demo.ts:<line> refs that jt9-38's insertions moved, the checkable subset (refs whose comment quotes a backticked identifier) was sampled against HEAD and 14 of 16 DO NOT RESOLVE - HEAD:797 is blank, HEAD:1288 is ': null', HEAD:955 is toPteroEntity where the comment wants nextWaveBcd. That answers this story's own open question 2: convert ALL comment-body refs on principle rather than only the demonstrably-stale ones - at ~87% already stale, classifying is more work than converting. jt9-38 deliberately did NOT re-anchor them (shifting an already-wrong pointer preserves a wrong referent while making it look maintained), and added zero new <our>.ts:<line> refs, so this story's counts of 86 distinct / 102 occurrences / 30 files are unchanged.
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
     type: chore
   - id: jt9-31
     title: 'The joust test helpers report failures as undefined: asClaim has ZERO coverage and gutting it leaves 2499 green, and audio-transporter-split load() swallows every import failure'
@@ -1084,3 +1086,11 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: jt9-55
+    title: Sprint/epic YAML comment refs of the form <file>.ts:<line> go stale with no gate to catch them — decide scope and convert (descoped from jt9-30, test-comments-only)
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
