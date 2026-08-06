@@ -37,13 +37,18 @@
 //                                the legacy gate reddens on any return.
 //
 // WHY the legacy spelling is BANNED rather than interpreted: nothing in the
-// bare form says which basis it uses. W3MAIN.MAC is double-spaced, so a
-// LOGICAL (non-blank) ordinal ≈ physical/2 — brief.md's old `W3DSUP:792`
-// colour-cycling cite really meant the write at physical 1641 (logical 792;
-// physical 792 is a blank line) — and the logical→physical mapping is
-// ambiguous by measurement (ceil(physical/2) vs true non-blank count drift
-// ~6 lines deep in the file; mc1-4 review record). Claims cite PHYSICAL
-// lines, so coverage against an ambiguous ordinal is unfalsifiable. The jt1-8
+// bare form says which basis it uses, and the two readings genuinely diverge.
+// W3MAIN.MAC is double-spaced, so a LOGICAL (non-blank) ordinal ≈ physical/2:
+// brief.md's old `W3DSUP:792` colour-cycling cite STRICT-DECODES to the colour
+// write at physical 1641 (logical 792; physical 792 is itself a blank line),
+// YET the routine it names (`SET UP COLORS FOR NEXT WAVE`) anchors at physical
+// 1583 — the two readings sit 58 lines apart, which is exactly why the bare
+// form is unfalsifiable. GREEN resolved this straggler to the routine anchor
+// (the shipped cite is `W3DSUP.MAC:1583`, the .SBTTL convention every other
+// cite follows), NOT to the strict-decode line. The mapping is ambiguous by
+// measurement too (ceil(physical/2) vs true non-blank count drift ~6 lines
+// deep in the file; mc1-4 review record). Claims cite PHYSICAL lines, so
+// coverage against an ambiguous ordinal is unfalsifiable. The jt1-8
 // precedent: make the spelling visible, gate it to zero, resolve each by
 // human judgement — the coverage gate then corroborates every rewrite,
 // because only a claim byte-verified at that physical line can cover it.

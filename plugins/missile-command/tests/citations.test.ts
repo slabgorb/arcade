@@ -6,8 +6,8 @@
 // proves the apparatus exists, every skeleton constant is pinned by a committed
 // claim, and the checker reddens on a wrong claim.
 //
-// RED today, on all three counts, until Dev (Yoda) ports the joust/centipede
-// guardrail onto missile-command:
+// mc2-1 ported the joust/centipede guardrail onto missile-command; all three
+// pieces ship today and the suite is green on them:
 //   1. tests/helpers/claims.ts        — the claims loader (loadClaims/claimCovers)
 //   2. docs/rom-study/claims/*.json   — one claim per skeleton constant
 //   3. tools/audit/check-citations.mjs — the checker CLI that byte-verifies them
@@ -273,26 +273,29 @@ describe('src/core carries no un-cited numeric literal (AC3 guard)', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. mc2-6 — THE DOSSIER PROSE-CITATION COVERAGE SWEEP (RED).
+// 5. mc2-6 — THE DOSSIER PROSE-CITATION COVERAGE SWEEP.
 //    Ported from joust/centipede (see tests/helpers/dossier-sweep.ts for the
 //    grammar and the legacy-spelling design decision). Sections 1–4 above watch
-//    src/core and claims/*.json; NOTHING above watches the dossier PROSE — the
-//    gap this section closes. RED today on four counts:
-//      • 43 legacy bare-module (logical-line) cites await normalisation
+//    src/core and claims/*.json; NOTHING above watched the dossier PROSE — the
+//    gap this section closes. At RED it failed on four counts (census 2026-08-06);
+//    GREEN resolved every one and the gates below keep them at zero:
+//      • 43 legacy bare-module (logical-line) cites → normalised to canonical
+//        physical `FILE.MAC:N` (41 were subsystems.md .SBTTL anchors, already
+//        physical but merely extensionless; 2 brief.md stragglers genuinely
+//        logical, re-cited/reworded)
 //      • 6 en-dash/junk linespecs invisible to any ASCII grammar — 5 in
 //        brief.md's missile.cpp cites, and 1 PRIMARY range in glossary.md
 //        (`W3COMN.MAC:123–145`) that the sweep itself surfaced: an ASCII grep
 //        during story setup counted only 5, which is the trap demonstrating why
-//        the malformed bucket exists
-//      • 8 canonical primary cites have no covering claim
-//      • 1 external missile.cpp cite has no schema-only claim
-//    GREEN (Yoda): normalise the legacy/malformed spellings to canonical
-//    physical `FILE.MAC:N` form (grep the .SBTTL/symbol for the physical line —
-//    W3MAIN is double-spaced, logical ≈ physical/2 and NOT cleanly convertible),
-//    reword prose that merely MENTIONS a deprecated ref (brief.md:63 quotes
-//    `W3DSUP.MAC:19` historically — a mention must not wear the citation
-//    costume), and author the missing claims. The byte checker then corroborates
-//    every rewrite: only a claim verified at that physical line can cover it.
+//        the malformed bucket exists → all six normalised to ASCII `N-M`
+//      • 8 canonical primary cites had no covering claim → claims authored
+//      • 1 external missile.cpp cite had no schema-only claim → claim authored
+//    HOW GREEN normalised (recorded for the audit trail): grep the .SBTTL/symbol
+//    for the physical line — W3MAIN is double-spaced, logical ≈ physical/2 and
+//    NOT cleanly convertible — and reword prose that merely MENTIONS a deprecated
+//    ref (brief.md:63 quotes `W3DSUP.MAC:19` historically — a mention must not
+//    wear the citation costume). The byte checker corroborates every rewrite:
+//    only a claim verified at that physical line can cover it.
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('mc2-6 — the dossier files are enrolled and the sweep has teeth', () => {
