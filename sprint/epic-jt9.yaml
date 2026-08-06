@@ -915,10 +915,11 @@ stories:
     title: 'Port the full PTERST/PTERWV ptero entry: random side + time-stagger, not just the jt9-44 Y-lane spread'
     points: 3
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-06'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
     type: refactor
     review_verdict: approved
   - id: jt9-46
@@ -1134,3 +1135,12 @@ stories:
     repos: arcade
     workflow: trivial
     type: chore
+  - id: jt9-59
+    title: 'Faithfully defer wave-ptero creation: spawn pteros one at a time (PTERWV SECCR) instead of nap-staggering already-present ones (jt9-45 follow-up)'
+    description: "jt9-45 modeled the PTERWV time-stagger as a nap-delay: all wave pteros are created at the advance and sit RENDERED + collision-eligible at their entry edges (ELEFT+1/ERIGHT-1) until they wake (nap=65*(i+1)). The ROM instead CREATES them one at a time (PTERWV: PCNAP 65 / DEC PJOYT / SECCR PTERST, JOUSTRV4.SRC:2618), so a not-yet-created ptero is neither drawn nor collidable. Port genuine deferred creation via a DemoState pending-arrivals schedule ticked in stepDemo; this supersedes jt9-44's entry-frame length===3 guard (demo-jt9-44.test.ts). Full context + Reviewer finding in sprint/archive/jt9-45-session.md (Reviewer code-review finding + Dev Design Deviation 1)."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor

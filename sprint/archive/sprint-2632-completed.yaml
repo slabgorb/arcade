@@ -700,3 +700,8 @@ completed_stories:
     title: 'O-1: decode the A35820.1C binary object'
     points: 2
     completed: '2026-08-06'
+  - id: jt9-45
+    epic: jt9
+    title: 'Port the full PTERST/PTERWV ptero entry: random side + time-stagger, not just the jt9-44 Y-lane spread'
+    points: 3
+    completed: '2026-08-06'
