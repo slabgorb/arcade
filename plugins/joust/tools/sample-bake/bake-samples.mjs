@@ -149,7 +149,7 @@ function env(buf, { attack = 0.005, decay = 3 }) {
   return buf
 }
 
-// ─── The seventeen stand-ins ─────────────────────────────────────────────────
+// ─── The eighteen stand-ins ──────────────────────────────────────────────────
 // One entry per manifest cue; `bakeSamples` throws on a manifest entry with no
 // spec, so a future cue (jt5-6's SNPCR2) must arrive with its own sound. Each
 // comment names the Williams table the synthesis stands in for.

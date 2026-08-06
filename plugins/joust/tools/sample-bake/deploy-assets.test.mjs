@@ -17,9 +17,9 @@
 // every positive is built from a token verified ABSENT today (`joust/sfx`,
 // grep-count 0) — the audio-seam-scope.test.ts discipline, same flatten().
 //
-// SCOPE FENCE: the README status block also carries stale COUNTS ("eleven
-// ROM-cited moments" — the manifest holds seventeen today). Those counts are
-// owned by jt5-7 ("joust's unguarded README counts"), so nothing here pins a
+// SCOPE FENCE: the README status block also carries COUNTS ("eleven
+// ROM-cited moments" was one — since re-derived and guarded by jt5-7/jt9-28).
+// Those counts are owned by those stories, so nothing here pins a
 // number. This file pins only the SILENCE claims this story ends.
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'

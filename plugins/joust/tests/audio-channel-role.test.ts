@@ -573,8 +573,9 @@ describe('jt9-7 AC4 — the prose does not claim the channel decides nothing', (
       .filter((s) => /\bchannel\b/i.test(s) && /\b(window|released?|expires?|expired|tick)\b/i.test(s))
     expect(
       qualified,
-      'the docblock must say that once the arbitrated window is released a shared channel ' +
-        'again decides whose tail is cut — the map’s one remaining routing power',
+      'this is a MENTION check only — it forces the docblock to NAME the released-window ' +
+        'case, but it matches on keyword co-occurrence, so an inverted sentence carries the ' +
+        'same words; the executable claim lives in the AC2 trio above, never here',
     ).not.toEqual([])
   })
 })
@@ -768,9 +769,27 @@ describe('jt9-28 AC6 — no stale "seventeen" cue total survives in the audio su
 // half of this test, and the reason the fix is not "just drop /no longer/".
 
 /** Does a sentence claim a shared channel/fence decides NOTHING, absolutely and
- *  UNCONDITIONALLY? Current body is jt9-7's shipped shape; jt9-28 repairs it. */
+ *  UNCONDITIONALLY? jt9-28 repairs jt9-7's `/no longer/ && absolute` shape, which
+ *  jt9-37 measured a tense-less absolute slipping through. Two shapes are banned
+ *  now, and the tense marker is no longer required for either:
+ *    1. the old one — `no longer` + an absolute (`anything|nothing|at all`);
+ *    2. a claim ABOUT a channel/fence carrying a BARE absolute and no tense word.
+ *  A SCOPED absolute is TRUE and must survive — `nothing BEYOND X`, `while the
+ *  window holds`, `once released` — so a scoping qualifier vetoes the match. That
+ *  is what keeps audio.ts:51 ("the fence settles nothing beyond …") green, and
+ *  :94 ("no longer decides WHICH cue wins" — no absolute) never matched at all. */
 function channelDecidesNothing(sentence: string): boolean {
-  return /no longer/i.test(sentence) && /\b(anything|nothing|at all)\b/i.test(sentence)
+  const absolute = /\b(anything|nothing|at all)\b/i.test(sentence)
+  if (!absolute) return false
+  // A scoped absolute is a true statement, not the falsehood.
+  const scoped = /\b(beyond|except|while|once|until|during|before|released?|window)\b/i.test(sentence)
+  if (scoped) return false
+  // Shape 1: the tense-marked absolute jt9-7 already caught.
+  if (/no longer/i.test(sentence)) return true
+  // Shape 2: an unqualified absolute made ABOUT a shared channel/fence — the
+  // jt9-37 hole. Requiring channel/fence keeps it off unrelated absolutes
+  // elsewhere in the header (`no comparison at all`, `nothing in this manifest`).
+  return /\b(channel|fence)\b/i.test(sentence)
 }
 
 describe('jt9-28 AC7(a) — R1 catches an unqualified channel-absolute, tense marker or not', () => {
@@ -815,7 +834,8 @@ describe('jt9-28 AC7(b) — R2 declares itself a mention check, deferring the cl
     // PRINTS on failure is the artifact a tripped reader actually sees.
     const start = selfSource.indexOf('names the case where the channel still decides')
     expect(start, 'precondition: the R2 guard is still here').toBeGreaterThan(-1)
-    const region = selfSource.slice(start, start + 1600)
+    // Window must clear R2's long comment (~1.4k chars) AND the message after it.
+    const region = selfSource.slice(start, start + 2800)
     const captured = region.match(/expect\(\s*qualified,([\s\S]*?)\)\s*\.not\.toEqual/)
     const message = captured?.[1] ?? ''
     expect(

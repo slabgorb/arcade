@@ -10,14 +10,14 @@ the same architecture as its siblings
 [star-wars](../star-wars), [red-baron](../red-baron) and
 [centipede](../centipede).
 
-> **Status:** Live at **v0.0.8** and, since jt5-2, **audible**. Thirty-six stories are archived
+> **Status:** Live at **v0.0.8** and, since jt5-2, **audible**. Thirty-eight stories are archived
 > across five epics: the scaffold and the machine-verified primary-source
 > dossier (jt1, 11); the simulation — process scheduler, enemies, the joust,
 > eggs, the wave machine, transporters and the wave-1 demo (jt2, 9); the
 > menagerie — difficulty ramp, bridge/cliff destruction, lava troll,
 > pterodactyl, baiters, death dissolve (jt3, 7); the game structure — BCD
 > scoring, extra men, wave types and bounties, game-over and the loop (jt4, 5);
-> and the in-progress playability epic (jt8, 4 so far) that makes enemies hunt
+> and the in-progress playability epic (jt8, 6 so far) that makes enemies hunt
 > and eggs catchable.
 > **Audio: seam and samples.** jt5-1 landed the three-file wiring —
 > `src/core/events.ts` (17 ROM-cited moments, emitted as data), the
@@ -51,6 +51,13 @@ npm run lint                        # tsc --noEmit across the monorepo
 npm run test:orchestrator           # the root node:test suite
 node plugins/joust/tools/audit/check-citations.mjs   # → "checked 978 claim(s)"
 ```
+
+> **Contributor note — the file count on the `--project joust` line is DERIVED
+> and guarded.** `audio-seam-scope.test.ts` (jt5-7 AC5) reads that number off the
+> quick-start command and asserts it against what vitest discovers, so **adding a
+> new test file under `plugins/joust/tests/` requires bumping the derived file
+> count on that line in the same commit** — otherwise the suite reddens on the
+> file you added. (That coupling silently shapes test PLACEMENT; jt9-3 cited it.)
 
 > **Open joust in a browser with `just serve`, from the monorepo root.** One
 > Vite dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the
@@ -93,9 +100,9 @@ this directory, not one. Six files here resolve it (`tests/helpers/joust-source.
 honours `JOUST_SOURCE_DIR` first. Get the depth wrong and nothing goes red:
 every `describe.skipIf(!vendoredAvailable)` / `it.skipIf(...)` guard in the
 suite quietly skips, the byte-for-byte citation gate degrades to schema-only,
-and the run still reports every file passed. The Task 12 import measured that
-failure mode deliberately — 1280 passed | 566 skipped, fully green — before
-repairing it.
+and the run still reports every file passed. The Task 12 import — the 2026-07-30
+monorepo migration — measured that failure mode deliberately, as a historical
+record: 1280 passed | 566 skipped, fully green — before repairing it.
 
 > **The numbers in this block are INDICATIVE, measured 2026-08-02, and nothing
 > guards them.** That is a deliberate choice, not an oversight: the block is
@@ -140,8 +147,12 @@ sibling.
   oversight.
 - **It consumes exactly one `@shared` subpath: `@shared/audio`.** jt5-1 landed
   it, ending joust's run as the fleet's zero-consumption outlier — the others
-  take between six and thirteen subpaths (centipede 6, red-baron 8, asteroids
-  and tempest 10, star-wars 11, battlezone 13). Its mulberry32 is still lifted
+  take between nine and fourteen subpaths (centipede 9, red-baron 9, asteroids
+  and tempest 11, star-wars 12, battlezone 14 — **indicative, measured
+  2026-08-06**, and nothing guards them: the whole fleet churns this figure
+  every time any cabinet adopts a shared module, so re-measure with `grep -rhoE
+  '@shared/[a-z0-9-]+' plugins/<game>/src | sort -u | wc -l` before quoting).
+  Its mulberry32 is still lifted
   **byte-for-byte** into `src/core/frame.ts` rather than imported (the comments
   there naming `@arcade/shared/rng` are provenance, not a dependency). There was
   no adoption ruling left to make: the 2026-07-30 monorepo collapse put

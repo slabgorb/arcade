@@ -62,7 +62,7 @@
 // AC2's derivation is pinned as an EXPORTED function rather than inferred from
 // the numbers matching, because a hand-transcribed map agrees with itself
 // forever. `framesFor(source)` is called with SYNTHETIC citations below — a
-// derivation that is only ever applied to the seventeen real records could be a
+// derivation that is only ever applied to the eighteen real records could be a
 // lookup table wearing a function's clothes.
 //
 // ─── THE ONE HARD CONSTRAINT ON WHERE THIS DATA MAY LIVE ─────────────────────
@@ -573,7 +573,7 @@ describe('jt5-6 AC2 — the window is computed from the cited rows, not transcri
     expect(
       typeof fn,
       'AC2 needs the derivation to be a callable seam — a total that is only ever ' +
-        'applied to the seventeen real records cannot be told from a lookup table',
+        'applied to the eighteen real records cannot be told from a lookup table',
     ).toBe('function')
   })
 
@@ -847,7 +847,7 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // kind must play something.
     //
     // GREEN ON ARRIVAL, deliberately — say so rather than let it read as a
-    // failed RED. Today there are 17 cues and 17 kinds and every one is
+    // failed RED. Today there are 18 cues and 17 kinds and every one is
     // reachable, so it passes. It is a guard for the HALF-DONE state this
     // story can land in: the moment `player2Materialise` enters SOUNDS (and
     // the bake starts shipping its .wav) without the dispatch learning to
@@ -912,7 +912,7 @@ describe('jt5-6 AC4 — the new cue is baked, and it is a genuinely different so
     // the token-not-claim trap. SPECS is module-private, so behaviour is also
     // the only honest reach.
     //
-    // GREEN ON ARRIVAL, and say so: today's seventeen cues all have specs, so
+    // GREEN ON ARRIVAL, and say so: today's eighteen cues all have specs, so
     // the bake completes. It bites the moment `player2Materialise` enters
     // SOUNDS without a SPECS row — which is the half-done state, and the one
     // that would abort `just deploy-assets` in front of a human rather than in

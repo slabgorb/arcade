@@ -11,8 +11,8 @@
 //
 // ─── THE DURATION TRAP: A CUE'S TABLE IS NOT ALWAYS ITS CITED LINE ───────────
 // The story asks for frame durations "parsed from ROM verbatim strings". For 15
-// of joust's 17 cues that works, because their whole table is one `FCB` row. For
-// TWO of them it is wrong, and quietly so — the row parses cleanly and yields a
+// of joust's 18 cues that works, because their whole table is one `FCB` row. For
+// THREE of them it is wrong, and quietly so — the row parses cleanly and yields a
 // number that is simply not the table's length.
 //
 // The sound table's own format header says how a table ends
@@ -22,7 +22,7 @@
 //   *	 PIRORITY,SOUND,LENGTH (IF M.S.BIT SET ON SOUND, SOUND,LENGTH)
 //
 // "IF M.S.BIT SET ON SOUND" — a pair whose CODE carries `+$80` is followed by
-// another pair, and the assembler is free to put that pair on the next line. Two
+// another pair, and the assembler is free to put that pair on the next line. Three
 // of joust's cues do exactly that:
 //
 //   SNPCR1 (playerMaterialise) — :8116-8118, and its cited row is :8116
@@ -37,7 +37,14 @@
 //     8093: 	FCB	    !N$16!.$7F,90
 //     cited row alone → 30 frames.   Whole table → 15+15+7+7+90 = 134 frames.
 //
-// Both cited rows are byte-perfect. Both are the wrong length. This is the
+//   SNPCR2 (player2Materialise) — :8119-8121, and its cited row is :8119
+//     8119: SNPCR2	FCB	070,!N$12!+$80,30+13	PLAYER 2 RE-CREATED (TRANSPORTER)
+//     8120: 	FCB	    !N$15!+$80,255	PLAYER FADING IN  (TRANSPORTER)
+//     8121: 	FCB	    !N$00!.$7F,165-13
+//     cited row alone → 30+13 = 43 frames.   Whole table → 43+255+152 = 450 frames.
+//     (jt5-6's 18th cue — SNPCR1's player-2 twin; the +13/-13 offsets net to 450.)
+//
+// All three cited rows are byte-perfect. All three are the wrong length. This is the
 // repo's standing lesson about its own citation gate — the gate re-opens the
 // QUOTED LINE and can neither see nor check what a reading of that line claims —
 // arriving here as an off-by-15x rather than as prose. The `+$80` continuation
@@ -47,13 +54,13 @@
 // So the expected windows below are the FULL-TABLE totals, and
 // `the two multi-line tables are not truncated to their cited row` fails
 // specifically against the single-line shortcut. If Dev parses only `verbatim`,
-// 15 cues come out right and those two come out 30 — a bug that would be
+// 15 cues come out right and those three come out their cited rows (30, 30 and 43) — a bug that would be
 // inaudible until a transporter materialise stopped holding the voice for the
 // seven and a half seconds the machine gives it.
 //
 // ─── CONTRACT Dev implements ─────────────────────────────────────────────────
-//   • createAudioEngine() passes `priorities` (all 17, from CUE_SOURCES) and
-//     `frameDurations` (all 17, the FULL table totals) to the shared engine.
+//   • createAudioEngine() passes `priorities` (all 18, from CUE_SOURCES) and
+//     `frameDurations` (all 18, the FULL table totals) to the shared engine.
 //   • `playEventSounds` advances the clock exactly ONCE per call, BEFORE it plays
 //     any of that frame's cues — the machine decrements STMR in `EXECST`
 //     (SYSTEM.SRC:173-187) at the top of the frame, and only then does game logic
@@ -180,7 +187,7 @@ const NAMES = Object.keys(ROM) as SoundName[]
 // ── AC3: the numbers reach the engine ─────────────────────────────────────────
 
 describe('jt5-5 joust — every cue passes its ROM priority to the engine (AC3)', () => {
-  it('declares a priority for all seventeen cues', async () => {
+  it('declares a priority for all eighteen cues', async () => {
     const m = await captureManifest()
     const missing = NAMES.filter((n) => m.priorities?.[n] === undefined)
     expect(missing, `cues with no priority passed to the engine: ${missing.join(', ')}`).toEqual([])
@@ -221,7 +228,7 @@ describe('jt5-5 joust — every cue passes its ROM priority to the engine (AC3)'
 })
 
 describe('jt5-5 joust — every cue passes its FULL-TABLE frame window (AC3)', () => {
-  it('declares a frame duration for all seventeen cues', async () => {
+  it('declares a frame duration for all eighteen cues', async () => {
     const m = await captureManifest()
     const missing = NAMES.filter((n) => m.frameDurations?.[n] === undefined)
     expect(missing, `cues with no frame window: ${missing.join(', ')}`).toEqual([])

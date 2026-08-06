@@ -27,7 +27,7 @@
 //     promises "re-running it re-uploads byte-identical files", and an
 //     idempotent upload is what makes the bucket auditable
 //   - all waveforms are pairwise distinct — the manifest stands in for
-//     seventeen DISTINCT Williams tables (audio.ts CUE_SOURCES); one beep
+//     eighteen DISTINCT Williams tables (audio.ts CUE_SOURCES); one beep
 //     copied N times is the cheap green-maker this kills by name
 //   - no default output directory — the plugin tree must never grow a .wav
 //     (audio-seam-scope.test.ts walks the tree and forbids audio binaries;
