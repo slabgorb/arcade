@@ -402,7 +402,7 @@ fires `load` — sails through it green. That is the whole gap uf1-20 closes: ev
 showcase guard asserts membership, wiring, or HTTP status, none that the framed game
 *renders*.
 
-    just check-showcase-alive              # against a local `just serve` (default 5290/5270)
+    just check-showcase-alive              # against a local `just serve` (default 5270)
     ARCADE_ORIGIN=https://arcade.slabgorb.com just check-showcase-alive   # against prod
 
 The recipe reads the showcase roster from the generated registry (`showcase: true`, via
