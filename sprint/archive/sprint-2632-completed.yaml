@@ -225,3 +225,8 @@ completed_stories:
     title: Timing cross-check — reconcile the 15.625 Hz sim game-frame against MAME's clock chain
     points: 3
     completed: '2026-08-06'
+  - id: jt9-28
+    epic: jt9
+    title: 'Joust''s written counts, derived or guarded: the README tallies, the eight stale seventeen-cue comments, and the three AC4 prose guards a falsehood walks through'
+    points: 5
+    completed: '2026-08-06'
