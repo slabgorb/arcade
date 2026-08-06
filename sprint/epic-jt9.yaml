@@ -876,7 +876,8 @@ stories:
     description: 'FOUND BY Reviewer during jt9-11 review (2026-08-04). jt9-11 wired the lava-troll grip with PLAYER-ONLY victims (pickTrollVictim, demo.ts), per the user chosen "grab a player" scope. TWO CONSEQUENCES the review confirmed. (F1, MEDIUM) the troll is now spliced before a PLAYER, so no enemy ever has a troll as PPREV and jt9-1 LNTLAV looker (LDX PPREV / CMPA #LAVID, JOUSTRV4.SRC:3727) NEVER FIRES in the live demo. Probe (forceAdvance to wave 4, seed 0x1234): ORDER=troll,player,player,enemy,... enemyAfterTroll=false. Before jt9-11 the troll spliced before the first ENEMY, so the looker WAS reachable. The ROM LNDB7 (:6764) grabs player OR enemy; broaden pickTrollVictim to the nearest BIRD (not just player) so an enemy victim restores looker reachability. WATCH: a gripped enemy is skipped by frame.ts (grippedBy) which freezes its own looker countdown; verify a gripped enemy not looking is acceptable and that NEIGHBOUR enemies still see it. (F2, LOW) the frame.ts grippedBy single-integration skip is UNGUARDED; mutation M4 (removing it) left all 17 jt9-11 tests green. Add a test pinning a gripped victim exact per-frame velY (grip pull only, NOT grip+GRAV) so the ADDLAV-replaces-gravity fidelity cannot regress silently.'
     points: 5
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
   - id: jt9-43
@@ -1121,3 +1122,12 @@ stories:
     repos: arcade
     workflow: tdd
     type: refactor
+  - id: jt9-58
+    title: pin the lava-troll hand-track X for an ENEMY victim (jt9-42 M-C coverage gap)
+    description: 'Coverage gap surfaced by the jt9-42 review mutation battery. Mutant M-C — `trollProcess`s hand entity X changed from `birdPosX(victim) ?? TROLL_CLIF5_X` to a constant `TROLL_CLIF5_X` — SURVIVED (all 7 jt9-42 tests green). The code is CORRECT (jt9-42 shipped `birdPosX` for both player and enemy victims); only the ENEMY-victim hand-track X is unpinned. jt9-11 AC-2 pins the player-victim hand-track (LT1HT, JOUSTRV4.SRC:1606-1665); add the enemy analogue: stage a rising troll bound to an enemy victim at a known X, step, assert `troll.entity.posX === enemyX + TROLL_X_OFFSET`. Low/cosmetic (rise-animation X only); reachability rides insertTroll by id, not the hand X.'
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore

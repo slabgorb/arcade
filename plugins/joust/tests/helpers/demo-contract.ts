@@ -137,6 +137,14 @@ export interface DemoProcess {
    * present === the victim's gravity is now ADDLAV (`troll.stepGrip`), not normal.
    */
   grip?: TrollGrip
+  /**
+   * jt9-11 — set on the VICTIM (a player OR enemy `DemoProcess`) to the grabbing
+   * troll's `id` once the grab commits (PADGRA→ADDLAV, JOUSTRV4.SRC:1651). While it
+   * is present the flight/looker core skips the bird (`runBehaviour`'s short-circuit)
+   * so its fall is the troll's single `stepGrip` integration, never grip + GRAV.
+   * jt9-42 pins that skip; mirrored here from the production `DemoProcess`.
+   */
+  grippedBy?: number
 }
 
 /** The demo's simulation state — the jt2-1 GameState, egg variant live. */
