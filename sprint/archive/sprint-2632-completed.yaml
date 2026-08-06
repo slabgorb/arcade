@@ -256,3 +256,8 @@ completed_stories:
     title: the showcase carousel proves a game is FRAMED, never that it is ALIVE — a black or frozen pane ships green
     points: 3
     completed: '2026-08-06'
+  - id: jt9-31
+    epic: jt9
+    title: 'The joust test helpers report failures as undefined: asClaim has ZERO coverage and gutting it leaves 2499 green, and audio-transporter-split load() swallows every import failure'
+    points: 3
+    completed: '2026-08-06'

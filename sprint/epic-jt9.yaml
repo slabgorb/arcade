@@ -617,11 +617,13 @@ stories:
       WHAT THE TWO HALVES SHARE, and it is the acceptance bar for both: a guard nobody has watched fail is not a guard, and "no test saw it" prints identically to "no test ran". So for BOTH halves assert that N tests RAN, not merely that none failed, and verify by mutation in both directions - remove each asClaim check one at a time and watch the new suite redden, make the imported module throw and assert the suite reports THAT error rather than an undefined field. Keep the positive controls: the unmutated helper stays green and the full joust suite stays at its current count.
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-06'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
     type: chore
+    review_verdict: approved
   - id: jt9-32
     title: 'Two bake assertions weaker than their names: nothing pins WHAT the joust bake produces, and the manifest throws are pinned only as SUBSTRINGS'
     description: |-
@@ -1091,6 +1093,14 @@ stories:
     title: Sprint/epic YAML comment refs of the form <file>.ts:<line> go stale with no gate to catch them — decide scope and convert (descoped from jt9-30, test-comments-only)
     points: 3
     priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
+  - id: jt9-56
+    title: Adopt the shared dynamic-load helper across the 7 remaining joust test files that still swallow every import failure (and consider tightening isModuleNotFound to a top-level-only resolution failure)
+    points: 3
+    priority: p2
     status: backlog
     repos: arcade
     workflow: tdd
