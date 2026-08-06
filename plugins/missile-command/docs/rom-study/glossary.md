@@ -56,13 +56,14 @@ The six cities' fixed cabinet H/V positions. Bare hex throughout — no decimal 
 | `CITY6H` | `0D0` | 208 | hex | City 6 horizontal coord | `W3COMN.MAC:143` | `MC-CITY6H` |
 | `CITY6V` | `11` | 17 | hex | City 6 vertical coord | `W3COMN.MAC:145` | `MC-CITY6V` |
 
-## Open-question symbols (O-4 open; O-2 resolved)
+## Open-question symbols (O-2 & O-4 resolved)
 
-`SCITYM`/`NCITY` (**O-4**) is still open — documented here so later stories know where
-to look, not asserted as ground truth. `FRAME` (**O-2**) is now **resolved** (see
+`SCITYM`/`NCITY` (**O-4**) is now **resolved** — the default starting count is **6** =
+`STCITY[0]` (see [`starting-cities.md`](./starting-cities.md)); the entries below are kept
+with their citations. `FRAME` (**O-2**) is now **resolved** (see
 [`timebase.md`](./timebase.md)) and is kept here with its corrected physical citations.
 
 | Symbol | Meaning | Where | Open question |
 |---|---|---|---|
 | `FRAME` | Per-frame counter that paces the sim; defined `W3MAIN.MAC:239` (`FRAME COUNTER (1-60)`), advanced by `W3MAIN.MAC:781` (`INC FRAME`) once per VBLANK frame. Sim tick = 1 step/frame = 61.0076 Hz (nominal 60). | `W3MAIN` | **O-2** — resolved ([`timebase.md`](./timebase.md)) |
-| `SCITYM` vs `NCITY` | `NCITY` is the *max* city count (6); `SCITYM` is the option-2 "5 cities at start" mask. The *actual* starting-city count, and where the option is read, is unpinned. | `W3COMN` | **O-4** |
+| `SCITYM` vs `NCITY` | `NCITY` is the *max* city count (6); `SCITYM` is the option-2 "5 cities at start" mask. The default starting count is **6** = `STCITY[0]`, read at NEW GAME SETUP (`W3MAIN.MAC:3877`); see [`starting-cities.md`](./starting-cities.md). | `W3COMN` | **O-4** — resolved |

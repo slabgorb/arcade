@@ -117,8 +117,11 @@ Radix caution: `MAXMIS`/`TOPSCR` are decimal (trailing period); city coords are 
   `FRAME` (`W3MAIN.MAC:781`). Rate **61.0076 Hz**, nominal 60.
 - **O-3** REV-01 vs MAME REV-03 default: the "missile" most players know is REV-03.
   Catalogue behavioural deltas (e.g. difficulty tuning) as they surface.
-- **O-4** `NCITY=6` (max) vs `SCITYM` "5 cities at start" comment vs MAME dip default
-  "6 cities": pin the *actual* starting-city count and where the option is read.
+- **O-4** *(RESOLVED — see [`starting-cities.md`](./starting-cities.md))* Default start =
+  **6** cities = `STCITY[0]` when `OPTIO2 & SCITYM` = 0, read at NEW GAME SETUP
+  (`LDA AY,STCITY`, `W3MAIN.MAC:3877`; table `STCITY: .BYTE 6,4,5,7`, `W3MAIN.MAC:3895`).
+  `NCITY=6` is the *max*; `SCITYM`'s "5 cities" is the option-2 (Y=2) selection, not the
+  default. Options: `{0:6, 1:4, 2:5, 3:7}`.
 - **O-5** Video RAM 3rd-colour-bit scatter (`missile.cpp:617–625 get_bit3_addr`,
   MISSIL.MAP "3RD BIT COLOR REGION" `$0200–$05FF`): our render need not reproduce the
   hardware address scramble, but the *palette* (8 colours, 3 bits) and per-wave colour

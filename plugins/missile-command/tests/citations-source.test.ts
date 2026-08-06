@@ -186,8 +186,9 @@ describe.skipIf(!sourceAvailable)('W3MAIN is double-spaced: physical :1640 is bl
 // ─────────────────────────────────────────────────────────────────────────────
 describe('every claim `value` is the radix decode of its own verbatim', () => {
   // EQU claims whose RHS is not a plain radix literal — value is derived/resolved
-  // and is checked explicitly below instead.
-  const DERIVED = new Set(['IVMAX', 'MAX_BLAST_RADIUS'])
+  // and is checked explicitly below instead. STCITY is a `.BYTE` option table
+  // (no `=` RHS), like OLDRAD/MAX_BLAST_RADIUS; its value is entry [0].
+  const DERIVED = new Set(['IVMAX', 'MAX_BLAST_RADIUS', 'STCITY'])
 
   it('the committed claims set is non-empty (the guard must have teeth)', () => {
     expect(loadClaims().length).toBeGreaterThan(0)
@@ -204,11 +205,16 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     },
   )
 
-  it('the derived values are internally consistent (IVMAX = TOPSCR - 16; OLDRAD peak = 13)', () => {
+  it('the derived values are internally consistent (IVMAX = TOPSCR - 16; OLDRAD peak = 13; STCITY[0] = 6)', () => {
     const by = new Map(loadClaims().map((c) => [c.symbol, c]))
     const topscr = Number(by.get('TOPSCR')?.value)
     expect(Number(by.get('IVMAX')?.value), 'IVMAX = TOPSCR - 16').toBe(topscr - 16)
     expect(Number(by.get('IVMAX')?.value), 'IVMAX resolves to 206').toBe(206)
     expect(by.get('MAX_BLAST_RADIUS')?.value, 'OLDRAD table peak').toBe(13)
+    // STCITY value is entry [0] of its `.BYTE` table verbatim (the default start count).
+    const stcity = by.get('STCITY')
+    const firstByte = Number((stcity?.source.verbatim.split('.BYTE')[1] ?? '').split(',')[0]?.trim())
+    expect(stcity?.value, 'STCITY claim value is the default start count').toBe(6)
+    expect(firstByte, 'STCITY[0] in the verbatim table decodes to the claimed 6').toBe(6)
   })
 })
