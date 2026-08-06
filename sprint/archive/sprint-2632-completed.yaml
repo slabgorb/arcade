@@ -266,3 +266,8 @@ completed_stories:
     title: asteroids self-play attract demo — put a ship in the drifting rock field, then opt in
     points: 3
     completed: '2026-08-06'
+  - id: mc2-2
+    epic: mc2
+    title: subsystems.md + glossary.md source-of-record docs
+    points: 3
+    completed: '2026-08-06'

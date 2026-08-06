@@ -39,13 +39,16 @@ stories:
       Radix discipline throughout: bare = hex, trailing '.' = decimal (W3COMN.MAC .RADIX 16 at :1).
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
       - "docs/rom-study/subsystems.md lists every subsystem from brief.md's map (mainline/state machine, cursor, ABM launch, enemy ICBM/CM/MIRV, explosions+damage, missile geometry, wave/scoring/bonus, circle draw, attract, drawing, hi-score ladder, coin, interrupt/timebase) with its module (W3MAIN/W3DSUP/W3INT/W3COIN) + .SBTTL line anchor and a one-line behaviour, cross-checked against the vendored source."
       - "docs/rom-study/glossary.md defines every W3COMN constant in brief.md's table (MAXMIS, NABMS, NICBMS, NCITY, NMISBA, MXICON, MAXMUL, SPUTWV, MIRVWV, STUPID, TOPSCR, CITY1..6H/V, SCITYM, LAUHGT) plus symbols surfaced by O-2/O-4 — each with as-written value, decoded value, radix note, meaning, and line; mechanically-checkable entries are backed by an mc2-1 claim."
+    completed: '2026-08-06'
     type: chore
+    review_verdict: approved
   - id: mc2-3
     title: 'O-2: pin the exact sim tick from W3INT'
     description: |-
