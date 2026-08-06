@@ -74,7 +74,8 @@ stories:
     description: "Fire an ABM from the nearest live base to the crosshair; it flies, reaches the target, and detonates into an expanding-then-collapsing blast circle. This is the skeleton's proof-of-life interaction. Core: abm.ts (launch from nearest base, flight, arrival) + explosion.ts (blast radius grow/shrink, W3MAIN:606 LAUNCH ABMS, :665 LAUNCH 1 ABM, :860 UPDATE MISSILE POSITION, :906 PROCESS EXPLOSIONS, :2503 DRAW A CIRCLE). Shell: input.ts binds three fire keys (Z/X/C = left/centre/right base) and render.ts draws the trail + blast. No enemy/scoring/damage — mc1 acceptance ends here."
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
