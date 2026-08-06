@@ -1,0 +1,101 @@
+[
+  {
+    "id": "MC-NABMS",
+    "symbol": "NABMS",
+    "value": 8,
+    "meaning": "Max friendly ABMs in flight",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 33,
+      "verbatim": "NABMS\t=8\t\t\t;MAX # OF ABMS"
+    }
+  },
+  {
+    "id": "MC-NICBMS",
+    "symbol": "NICBMS",
+    "value": 8,
+    "meaning": "Max enemy ICBMs tracked",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 35,
+      "verbatim": "NICBMS\t=8\t\t\t;MAX # OF ICBMS"
+    }
+  },
+  {
+    "id": "MC-LAUHGT",
+    "symbol": "LAUHGT",
+    "value": 202,
+    "meaning": "ICBM height gate: an ICBM below this launches more",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 171,
+      "verbatim": "LAUHGT\t=0CA\t\t\t;HEIGHT OF HIGHEST ICBM < THIS LAUNCHES MORE"
+    }
+  },
+  {
+    "id": "MC-MXICON",
+    "symbol": "MXICON",
+    "value": 7,
+    "meaning": "Max ICBMs on screen at once",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 193,
+      "verbatim": "MXICON\t=7\t\t\t;MAX # OF ICBMS ON SCREEN"
+    }
+  },
+  {
+    "id": "MC-SCITYM",
+    "symbol": "SCITYM",
+    "value": 3,
+    "meaning": "Option-2 mask: 5 cities at start",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 195,
+      "verbatim": "SCITYM\t=03\t\t\t;5 CITIES AT START (OPTIO2 MASK)"
+    }
+  },
+  {
+    "id": "MC-MAXMUL",
+    "symbol": "MAXMUL",
+    "value": 6,
+    "meaning": "Max score multiplier (rises by wave)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 201,
+      "verbatim": "MAXMUL\t=6\t\t\t;MAX SCORE MULTIPLIER"
+    }
+  },
+  {
+    "id": "MC-SPUTWV",
+    "symbol": "SPUTWV",
+    "value": 2,
+    "meaning": "First wave with a Sputnik (satellite)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 203,
+      "verbatim": "SPUTWV\t=2\t\t\t;# OF WAVE WITH 1ST SPUTNIK"
+    }
+  },
+  {
+    "id": "MC-MIRVWV",
+    "symbol": "MIRVWV",
+    "value": 1,
+    "meaning": "First wave with a MIRV",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 205,
+      "verbatim": "MIRVWV\t=1\t\t\t;# OF WAVE WITH 1ST MIRV"
+    }
+  },
+  {
+    "id": "MC-STUPID",
+    "symbol": "STUPID",
+    "value": 9,
+    "meaning": "Wave at which cruise missiles may fly up",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 231,
+      "verbatim": "STUPID\t=9\t\t\t;WAVE AT WHICH CM'S CAN GO UP"
+    }
+  }
+]
