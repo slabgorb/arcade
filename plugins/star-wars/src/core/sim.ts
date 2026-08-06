@@ -1314,24 +1314,22 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   // The walled channel scrolls toward the cockpit at the SAME rate the port does
   // (story 11-6), so the corridor and the target rush past together — advanced on
   // `base` so it rides every return path (reset to 0 on the next phase entry).
-  // Advance the trench voice-line timer (ROM word_4B0E) at the GAME-FRAME rate and
-  // cue any parity-gated voice line whose threshold this step CROSSES (story sw3-4;
-  // sw7-1/T-008 made it frame-true). The ROM advances word_4B0E once per 20.508 Hz
-  // game frame — not once per 60 Hz loop step — so the timer accumulates dt·TICK_HZ
-  // (game frames), and its 16/22/24-frame thresholds fire at their authentic wall-
-  // clock times (0.78–1.17 s) regardless of tick rate. A cue fires the step its
-  // threshold is first crossed — inherently one-shot. Pushed onto the shared `events`
-  // list, so the cue rides every return path below (safe-hold, crash, or port hit).
-  // Parity is the ROM's 0-based BS.WAV bit 0 (`LDA BS.WAV / LSRA`, WSMAIN:1868), NOT a
-  // 1-based `wave % 2` — sw7-2 reconciled the base (audit U-008): BS.WAV-even (human
-  // ODD waves) → 'even' set; BS.WAV-odd (human EVEN) → 'odd' set.
+  // Advance the trench voice-line timer (ROM word_4B0E) at the GAME-FRAME rate
+  // (story sw3-4; sw7-1/T-008 made it frame-true). The ROM advances word_4B0E once
+  // per 20.508 Hz game frame — not once per 60 Hz loop step — so the timer
+  // accumulates dt·TICK_HZ (game frames), and its 16/22/24-frame thresholds cross at
+  // their authentic wall-clock times (0.78–1.17 s) regardless of tick rate. The
+  // CROSSING is computed here, but the voice/theme cue it fires is PUSHED below the
+  // wall-gun shield resolution (`gunHit`) and gated on that death — see the gated
+  // push after `gunHit` (sw8-22). PHEBS ('VIEW BASE TRENCH', WSMAIN.MAC) tests the
+  // shields at the TOP of the phase — `LDA S.GAS / LBMI PHIB0D ;J EXIT WHEN PLAYER
+  // DIES` — ABOVE the PH.TIM cue walk (`JSR PMRRP`, `JSR SPKTRU`/`SPKYAU`/`SPKLET`/
+  // `SPKSTR`), so a last-shield fall to a wall gun (`DOBASE`, which runs above the
+  // walk) silences that frame's lines. The exhaust-port CRASH sits BELOW the walk
+  // under its own guard and does NOT silence them — so the cue rides the crash /
+  // safe-hold / port-hit return paths untouched, exactly as before. This mirrors
+  // sw8-13 (space, PHESP1) and sw8-21 (surface, PHEGD).
   const trenchTimer = state.trenchTimer + dt * TICK_HZ
-  const parity: 'even' | 'odd' = romWave0(state.wave) % 2 === 0 ? 'even' : 'odd'
-  for (const cue of TRENCH_VOICE_CUES) {
-    if (state.trenchTimer < cue.timer && trenchTimer >= cue.timer && cue.parity === parity) {
-      events.push({ type: 'speech', line: cue.line })
-    }
-  }
 
   const base: GameState = {
     ...state,
@@ -1505,6 +1503,25 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
 
   const gunHit = loseShield(base.lives, base.shieldHitAt, gunDamage, t) // S-016 window
   if (gunHit.lives <= 0 && base.lives > 0) pushFarewell(events, gunHit.lives)
+
+  // The trench voice/theme cue (sw8-22): timer crossing computed at the top, LINE
+  // pushed HERE — below the wall-gun resolution and gated on `gunHit.lives > 0`. The
+  // ROM's top guard silences the whole PH.TIM cue walk over the player's death, and
+  // `DOBASE` (the wall guns) runs ABOVE that walk. `gunHit.lives` — not `gunDamage`,
+  // not `state.lives` — is the faithful reading: `loseShield` is where damage becomes
+  // death and folds away an S-016-dropped hit. This is the ONLY death that gates the
+  // line; the exhaust-port CRASH below sits BENEATH the walk (its own guard gates only
+  // `SPKR2N`), so the line has already fired before that crash resolves. Parity is the
+  // ROM's 0-based BS.WAV bit 0 (sw7-2, audit U-008): BS.WAV-even (human ODD) → 'even'.
+  // One-shot: a line fires the single step its threshold is first crossed.
+  if (gunHit.lives > 0) {
+    const parity: 'even' | 'odd' = romWave0(state.wave) % 2 === 0 ? 'even' : 'odd'
+    for (const cue of TRENCH_VOICE_CUES) {
+      if (state.trenchTimer < cue.timer && trenchTimer >= cue.timer && cue.parity === parity) {
+        events.push({ type: 'speech', line: cue.line })
+      }
+    }
+  }
 
   const afterObstacles: GameState = {
     ...base,
