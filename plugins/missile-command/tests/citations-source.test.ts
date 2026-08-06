@@ -208,6 +208,23 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     expect(loadClaims().filter(isEquClaim).length).toBeGreaterThan(0)
   })
 
+  it('every non-EQU claim carries a kind-tag string value, never a number (mc2-6 review M6)', () => {
+    // The vacuous-green vector this closes: a NUMERIC value on an anchor/cite/
+    // external claim would flow into the un-cited-literal guard's claimedValues
+    // set (citations.test.ts section 4 takes Number(c.value)) and could
+    // greenlight an un-cited magic constant in src/core. Non-EQU claims have no
+    // decodable value BY DEFINITION — their value is the kind tag, and nothing
+    // else is legal. (DERIVED constants are EQU-or-.BYTE cases with real
+    // numeric values, checked in the explicit block below — they are exempt.)
+    const KIND_TAGS = new Set(['anchor', 'cite', 'external'])
+    for (const c of loadClaims().filter((c) => !isEquClaim(c) && !DERIVED.has(c.symbol))) {
+      expect(
+        typeof c.value === 'string' && KIND_TAGS.has(c.value),
+        `${c.id}: non-EQU claim value must be a kind tag ('anchor'|'cite'|'external'), got ${JSON.stringify(c.value)}`,
+      ).toBe(true)
+    }
+  })
+
   it.each(loadClaims().filter((c) => !DERIVED.has(c.symbol) && isEquClaim(c)))(
     '$id ($symbol): value equals decodeRadix16(verbatim RHS)',
     (c) => {

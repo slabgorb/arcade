@@ -331,9 +331,11 @@ describe('mc2-6 — one citation grammar: no legacy spelling, no unparseable lin
   })
 
   it('no cite-lookalike with an unparseable linespec remains (en-dash ranges are invisible to ASCII grammars)', () => {
-    // brief.md today: `missile.cpp:454–462` and siblings, EN-DASH (U+2013).
-    // A linespec that cannot parse is a citation nothing re-checks — it must
-    // be reported, never dropped (centipede round-2, Reviewer M3).
+    // At RED, brief.md carried `missile.cpp:454–462` and siblings as EN-DASH
+    // (U+2013) ranges; GREEN normalised them to ASCII and this gate keeps any
+    // from returning. A linespec that cannot parse is a citation nothing
+    // re-checks — it must be reported, never dropped (centipede round-2,
+    // Reviewer M3).
     const malformed = allMalformedCitations()
     expect(
       malformed,
@@ -396,7 +398,7 @@ describe('mc2-6 — the sweep machinery itself (synthetic input; the mutation pr
     expect(scan.malformed).toEqual([])
   })
 
-  it('an EN-DASH range lands in malformed — the exact spelling brief.md carries today', () => {
+  it('an EN-DASH range lands in malformed — the exact spelling brief.md carried pre-GREEN', () => {
     const scan = scanProseCitations('MAME shows this at `missile.cpp:454\u2013462`.', 'synthetic.md')
     expect(scan.malformed).toEqual(['missile.cpp:454\u2013462'])
     expect(scan.citations).toEqual([])

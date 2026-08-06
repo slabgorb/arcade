@@ -18,30 +18,35 @@
 // `W3MAIN:2039`) that brief.md:63 now records as "logical/approximate" — this
 // sweep would have flagged both, because no byte-verified claim can cover them.
 //
-// ─── MC'S CITATION GRAMMAR — TWO SPELLINGS, ONE OF THEM DEPRECATED ──────────
-// The three enrolled docs spell citations two ways (measured 2026-08-06):
+// ─── MC'S CITATION GRAMMAR — WHAT THE SWEEP SEES, AND WHAT IT KNOWS IT DOESN'T
+// The enrolled docs spell citations these ways (RED-state census 2026-08-06;
+// the mc2-6 GREEN then normalised the deprecated spellings to zero, and the
+// gates below keep them there):
 //
 //   CANONICAL  `W3COMN.MAC:39`   file + extension; the line is PHYSICAL, which
 //                                is the convention mc2-1 RESOLVED: every
 //                                committed claim cites the physical line where
 //                                its byte-verified verbatim sits.
-//   LEGACY     `W3MAIN:475`      bare module, no extension; the line is LOGICAL
-//                                (non-blank ordinal — W3MAIN.MAC is double-
-//                                spaced, so logical ≈ physical/2, and the two
-//                                counting methods drift ~6 lines deep in the
-//                                file). 43 survive in the enrolled docs today.
+//   LEGACY     `W3MAIN:475`      bare module, no extension. 43 of these stood
+//                                at RED; GREEN measured every one and appended
+//                                `.MAC` — 41 were ALREADY physical .SBTTL
+//                                anchor lines (subsystems.md was written under
+//                                the physical convention, merely extensionless)
+//                                and 2 brief.md stragglers were genuinely
+//                                logical and were re-cited/reworded. 0 remain;
+//                                the legacy gate reddens on any return.
 //
-// A legacy cite CANNOT be covered: claims cite physical lines, so the numeric
-// overlap test is meaningless against a logical ordinal (STCITY: prose says
-// `W3MAIN:1925`, its byte-verified claim sits at physical 3895 — and physical
-// 1925 is an unrelated .SBTTL). Nor can the sweep convert logical→physical:
-// the mapping is ambiguous by measurement (ceil(physical/2) vs true non-blank
-// count diverge — see the mc1-4 review record). So the sweep does what jt1-8
-// did with joust's 127 ambiguous bare-`:N` cites: it makes every legacy
-// spelling VISIBLE and the gate requires the bucket EMPTY — GREEN rewrites
-// each to the canonical physical form (grep the .SBTTL/symbol label to find
-// the physical line; the coverage gate then corroborates every rewrite,
-// because only a claim byte-verified at that physical line can cover it).
+// WHY the legacy spelling is BANNED rather than interpreted: nothing in the
+// bare form says which basis it uses. W3MAIN.MAC is double-spaced, so a
+// LOGICAL (non-blank) ordinal ≈ physical/2 — brief.md's old `W3DSUP:792`
+// colour-cycling cite really meant the write at physical 1641 (logical 792;
+// physical 792 is a blank line) — and the logical→physical mapping is
+// ambiguous by measurement (ceil(physical/2) vs true non-blank count drift
+// ~6 lines deep in the file; mc1-4 review record). Claims cite PHYSICAL
+// lines, so coverage against an ambiguous ordinal is unfalsifiable. The jt1-8
+// precedent: make the spelling visible, gate it to zero, resolve each by
+// human judgement — the coverage gate then corroborates every rewrite,
+// because only a claim byte-verified at that physical line can cover it.
 //
 // External secondary source: MAME's `missile.cpp` (the O-2 timebase facts the
 // 1982 tree never states). Cited with lines in brief.md; never byte-opened —
@@ -50,16 +55,34 @@
 // sees two work items, not one undifferentiated list.
 //
 // THE TRAP THIS GRAMMAR SETS, GUARDED BELOW: only well-formed ASCII linespecs
-// (N, N-M, comma lists) parse. The enrolled docs today carry SIX ranges using
-// the EN-DASH (U+2013) — `missile.cpp:454–462` and three siblings, one with a
-// trailing token (`617–625 get_bit3_addr`), all in brief.md, plus one PRIMARY
-// range in glossary.md (`W3COMN.MAC:123–145`) that this sweep's first run
-// surfaced after an ASCII grep at story setup had counted only the brief.md
-// five — invisible spellings are exactly how a citation escapes every
-// re-check. A part that looks like a linespec and does not parse as one lands
-// in the `malformed` bucket (centipede round-2, Reviewer M3: an unparseable
-// part must never fall off the end of the loop with no record), and the gate
-// requires that bucket empty too.
+// (N, N-M, comma lists) parse. At RED the enrolled docs carried SIX ranges
+// using the EN-DASH (U+2013) — `missile.cpp:454–462` and three siblings, one
+// with a trailing token (`617–625 get_bit3_addr`), all in brief.md, plus one
+// PRIMARY range in glossary.md (`W3COMN.MAC:123–145`) that this sweep's first
+// run surfaced after an ASCII grep at story setup had counted only the
+// brief.md five. GREEN normalised all six to ASCII; the malformed gate
+// reddens on any return. A part that looks like a linespec and does not parse
+// as one lands in the `malformed` bucket (centipede round-2, Reviewer M3: an
+// unparseable part must never fall off the end of the loop with no record).
+//
+// ─── KNOWN-INVISIBLE SPELLINGS — WHAT THIS SWEEP CANNOT SEE (disclosed) ─────
+// Two spellings inside the enrolled set escape BOTH regexes by construction,
+// and a reader of this module must not believe the sweep sees everything:
+//
+//   • The bare-colon continuation form `` `:238 MAINLINE` `` (module named in
+//     an adjacent table cell, no file inside the backticks). brief.md's
+//     "Subsystem map" and "Cited constants" tables (brief.md:76-109) cite this
+//     way, by the deliberate LOGICAL convention subsystems.md:17-19 documents
+//     — and for the same routine those tables and subsystems.md now disagree
+//     (`:238` vs the byte-verified `W3MAIN.MAC:475` for MAINLINE). Closing
+//     this form — the jt1-8 analogue: rewrite the tables canonical and teach
+//     the malformed gate to flag backticked bare-`:N` — is the filed
+//     follow-up story (mc2-6 Delivery Findings), NOT silently in scope here.
+//   • A bare NON-W3 module cite (`COIN65:100`, `COND65:100`) — the legacy
+//     regex is W3-anchored because only W3 modules were ever cited bare; a
+//     bare COIN65/COND65 cite would land in NO bucket. The canonical form
+//     (`COIN65.MAC:100`) IS seen. If those modules ever enter the dossier,
+//     widen the legacy regex with them.
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname, basename } from 'node:path'
