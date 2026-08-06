@@ -9,14 +9,17 @@
 // PURE: plain arithmetic, no clock, no entropy, no browser surface, no shell
 // import. The src/core purity sweep (tests/purity.test.ts) scans this file.
 //
-// ─── SOURCE OF TRUTH (REV-01; W3MAIN double-spaced — logical cites) ───────────
-//   PROCESS EXPLOSIONS  W3MAIN:906 (PREXPL) — each blast walks a radius-vs-time
+// ─── SOURCE OF TRUTH (REV-01) ────────────────────────────────────────────────
+// CITATION BASIS DIFFERS BY FILE (measured; see citations-source.test.ts):
+// W3MAIN is double-spaced, so its cites are LOGICAL (non-blank) line numbers;
+// W3COMN cites are PHYSICAL lines. Each cite below is tagged accordingly.
+//   PROCESS EXPLOSIONS  W3MAIN:906 (logical; PREXPL) — each blast walks a radius-vs-time
 //     table (OLDRAD) and finishes when its time index reaches EXDONE:
 //         OLDRAD: .BYTE 0,0,2,3,4,5,6,7,8,9,10.,11.,12.,13.
 //                 .BYTE 13.,12.,11.,10.,9,8,7,6,5,4,3,2,1,0,0
 //     i.e. radius climbs 0→13 then falls 13→0 (peak 13).
-//   DRAW A CIRCLE       W3MAIN:2503 — renders a circle of that radius.
-//   EXDONE = 27.        W3COMN:225 — "EXPLOSION DIAMETER"; the lifetime. Diameter 27
+//   DRAW A CIRCLE       W3MAIN:2503 (logical) — renders a circle of that radius.
+//   EXDONE = 27.        W3COMN:225 (physical) — "EXPLOSION DIAMETER"; the lifetime.
 //     ⇒ peak radius 13 == the OLDRAD maximum == (EXDONE-1)/2.
 //
 // Skeleton model: a symmetric triangle derived from the two cited constants — grow
@@ -30,10 +33,10 @@ export interface Explosion {
   readonly t: number
 }
 
-/** Explosion diameter / lifetime index — EXDONE, `W3COMN.MAC:225` (`27.`). */
+/** Explosion diameter / lifetime index — EXDONE, `W3COMN.MAC:225` (physical, `27.`). */
 export const EXDONE = 27
 
-/** Peak blast radius — the OLDRAD table maximum, `W3MAIN.MAC:906`; = (EXDONE-1)/2. */
+/** Peak blast radius — the OLDRAD table maximum, `W3MAIN.MAC:906` (logical); = (EXDONE-1)/2. */
 export const MAX_BLAST_RADIUS = 13
 
 /** Ticks from detonation to full collapse: grow to the peak, then back to 0. */

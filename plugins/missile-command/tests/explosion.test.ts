@@ -6,8 +6,10 @@
 // maximum, then COLLAPSES back to 0, deterministically over ticks, at which point
 // the explosion is done. Core owns the geometry; render.ts paints the circle.
 //
-// ─── GROUND TRUTH (REV-01; W3MAIN is DOUBLE-SPACED — cites are logical non-blank
-//     lines; grep the `.SBTTL`/label with `grep -a`, not the raw physical line) ──
+// ─── GROUND TRUTH (REV-01) — CITATION BASIS DIFFERS BY FILE (see citations-source
+//     .test.ts): W3MAIN is DOUBLE-SPACED, so its cites are LOGICAL non-blank lines
+//     (annotated `phys N` below); W3COMN cites are PHYSICAL lines. grep `.SBTTL`/
+//     labels with `grep -a`, not the raw physical line. ──
 //   PROCESS EXPLOSIONS   W3MAIN:906 (PREXPL, phys 1811) — each explosion carries a
 //     time index (EXTIME) that walks a radius table and finishes when it reaches
 //     EXDONE. The radius-vs-time table IS in this routine:
@@ -16,7 +18,7 @@
 //     i.e. radius climbs 0→13 then falls 13→0 — a single peak of 13. (Radix: a
 //     trailing `.` is decimal; the bare 0-9 are hex == decimal here.)
 //   DRAW A CIRCLE        W3MAIN:2503 (phys 5005) — renders a circle of that radius.
-//   EXDONE = 27.         W3COMN:225 — "EXPLOSION DIAMETER"; the time index at which
+//   EXDONE = 27.         W3COMN:225 (physical) — "EXPLOSION DIAMETER"; the time index at which
 //     the blast is finished. Diameter 27 ⇒ radius ≈ 13 == the OLDRAD peak. The
 //     skeleton pins those two source facts: MAX_BLAST_RADIUS = 13 and EXDONE = 27.
 //

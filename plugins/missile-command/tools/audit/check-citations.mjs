@@ -171,10 +171,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const claimsDir = process.env.MC_CLAIMS_DIR ?? join(repoRoot, 'docs', 'rom-study', 'claims')
   const vendoredRoot = process.env.MC_SOURCE_DIR ?? join(repoRoot, 'reference', 'source')
 
+  // A malformed claims file is REPORTED (naming the file), never thrown as a raw
+  // stack trace — the same "every problem is reported" invariant checkClaims holds.
+  const parseClaimsFile = (f) => {
+    try {
+      return JSON.parse(readFileSync(join(claimsDir, f), 'utf8'))
+    } catch (e) {
+      console.error(`cannot parse claims/${f}: ${e.message}`)
+      process.exit(2)
+    }
+  }
   const claims = existsSync(claimsDir)
     ? readdirSync(claimsDir)
         .filter((f) => f.endsWith('.json'))
-        .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')))
+        .flatMap(parseClaimsFile)
         .flat()
     : []
 

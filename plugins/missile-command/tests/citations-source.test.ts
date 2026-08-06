@@ -37,6 +37,7 @@ import { dirname, join } from 'node:path'
 import { NCITY, NMISBA, CITIES, BASES } from '../src/core/field.js'
 import { HMIN, HMAX, VMIN, VMAX } from '../src/core/cursor.js'
 import { EXDONE } from '../src/core/explosion.js'
+import { loadClaims } from './helpers/claims.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const W3COMN = join(root, 'reference', 'source', 'W3COMN.MAC')
@@ -173,5 +174,41 @@ describe.skipIf(!sourceAvailable)('W3MAIN is double-spaced: physical :1640 is bl
   })
   it('the ABMVEL routine LABEL is physically at line 3285', () => {
     expect(lineAt(W3MAIN, 3285)).toMatch(/^ABMVEL:/)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Each committed claim's decoded `value` IS the radix decode of its OWN verbatim.
+// This closes the loop the checker deliberately leaves open (it compares the
+// verbatim byte-for-byte but never PARSES it): a claim with a correct verbatim
+// but a wrong `value` would otherwise pass every gate. Runs everywhere — it reads
+// the value out of the claim itself, not the vendored tree. (Reviewer F1.)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('every claim `value` is the radix decode of its own verbatim', () => {
+  // EQU claims whose RHS is not a plain radix literal — value is derived/resolved
+  // and is checked explicitly below instead.
+  const DERIVED = new Set(['IVMAX', 'MAX_BLAST_RADIUS'])
+
+  it('the committed claims set is non-empty (the guard must have teeth)', () => {
+    expect(loadClaims().length).toBeGreaterThan(0)
+  })
+
+  it.each(loadClaims().filter((c) => !DERIVED.has(c.symbol)))(
+    '$id ($symbol): value equals decodeRadix16(verbatim RHS)',
+    (c) => {
+      const token = rhs(c.source.verbatim)
+      // Only plain radix literals are auto-decodable; anything else is a DERIVED
+      // symbol and belongs in the explicit block below, not here.
+      expect(/^[0-9A-F]+\.?$/.test(token), `${c.symbol} RHS "${token}" must be a plain radix literal`).toBe(true)
+      expect(decodeRadix16(token), `${c.id}: claimed value ${c.value} must equal the decode of "${token}"`).toBe(c.value)
+    },
+  )
+
+  it('the derived values are internally consistent (IVMAX = TOPSCR - 16; OLDRAD peak = 13)', () => {
+    const by = new Map(loadClaims().map((c) => [c.symbol, c]))
+    const topscr = Number(by.get('TOPSCR')?.value)
+    expect(Number(by.get('IVMAX')?.value), 'IVMAX = TOPSCR - 16').toBe(topscr - 16)
+    expect(Number(by.get('IVMAX')?.value), 'IVMAX resolves to 206').toBe(206)
+    expect(by.get('MAX_BLAST_RADIUS')?.value, 'OLDRAD table peak').toBe(13)
   })
 })
