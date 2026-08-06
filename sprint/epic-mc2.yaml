@@ -18,15 +18,16 @@ stories:
       Design: plugins/missile-command/docs/design/mc2-dossier.md. Ground truth: docs/rom-study/brief.md.
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
-    type: chore
     acceptance_criteria:
       - "tools/audit/check-citations.mjs + tests/helpers/claims.ts exist under plugins/missile-command/, adapted from the joust/centipede shape; a claims/*.json set encodes each skeleton constant as {symbol, value, module, line, meaning}."
       - "The checker reads the vendored reference/source/*.MAC and FAILS when a claimed symbol/value/line disagrees with it — radix-aware (hex default, trailing-'.' decimal), W3MAIN logical-line-aware, grep -a-safe on CR-terminated files. Proven by a deliberately-wrong claim reddening it, then reverted."
       - "Every constant currently hardcoded in src/core and src/shell (field.ts, cursor.ts, explosion.ts, abm.ts, render.ts) is represented by a claim; a guard test asserts no un-cited numeric literal remains in src/core."
       - "Wired as a missile-command surface: 'npx vitest run --project missile-command', 'npm run lint', and 'npm run test:orchestrator' all pass."
+    type: chore
   - id: mc2-2
     title: subsystems.md + glossary.md source-of-record docs
     description: |-
@@ -38,10 +39,10 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
-    type: chore
     acceptance_criteria:
       - "docs/rom-study/subsystems.md lists every subsystem from brief.md's map (mainline/state machine, cursor, ABM launch, enemy ICBM/CM/MIRV, explosions+damage, missile geometry, wave/scoring/bonus, circle draw, attract, drawing, hi-score ladder, coin, interrupt/timebase) with its module (W3MAIN/W3DSUP/W3INT/W3COIN) + .SBTTL line anchor and a one-line behaviour, cross-checked against the vendored source."
       - "docs/rom-study/glossary.md defines every W3COMN constant in brief.md's table (MAXMIS, NABMS, NICBMS, NCITY, NMISBA, MXICON, MAXMUL, SPUTWV, MIRVWV, STUPID, TOPSCR, CITY1..6H/V, SCITYM, LAUHGT) plus symbols surfaced by O-2/O-4 — each with as-written value, decoded value, radix note, meaning, and line; mechanically-checkable entries are backed by an mc2-1 claim."
+    type: chore
   - id: mc2-3
     title: 'O-2: pin the exact sim tick from W3INT'
     description: |-
@@ -53,10 +54,10 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
-    type: chore
     acceptance_criteria:
       - "A docs/rom-study note derives the sim tick from W3INT (which IRQ advances game logic, how FRAME increments), cited to W3INT lines and the missile.cpp anchors; the exact Hz and ticks/frame are recorded with the nominal-60 fallback documented."
       - "The tick is encoded as a claim/const that shell/timebase.ts (or a core constant) consumes, replacing any nominal-60 placeholder; O-2 is marked resolved in docs/rom-study/brief.md."
+    type: chore
   - id: mc2-4
     title: 'O-4: pin the actual starting-city count'
     description: |-
@@ -66,10 +67,10 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
-    type: chore
     acceptance_criteria:
       - "A docs/rom-study note pins the REV-01 default starting-city count, citing where SCITYM/NCITY are read at setup (W3MAIN SETUP STATE / NEW GAME SETUP) and documenting the option-2 '5 cities' path; O-4 is marked resolved in docs/rom-study/brief.md."
       - "The starting count is a cited claim that field.ts (or a setup/wave module) can consume in mc3."
+    type: chore
   - id: mc2-5
     title: 'O-1: decode the A35820.1C binary object'
     description: |-
@@ -79,6 +80,6 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
-    type: chore
     acceptance_criteria:
       - "A35820.1C.bin is identified (what data/ROM it is and its role in the CPU link) with the decode method recorded; reference/PROVENANCE.md and docs/rom-study/brief.md are updated and O-1 is marked resolved."
+    type: chore
