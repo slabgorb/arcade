@@ -1,13 +1,13 @@
 // src/shell/render.ts
 //
 // Story mc1-2 (GREEN, Yoda) — the shell render surface. Paints the black field
-// (mc1-1) and now the fixed playfield: six cities and three missile bases along
-// the bottom band, at the coordinates core/field.ts holds. Trails, blasts and
-// the cursor arrive in mc1-3.. The shell owns the canvas; core emits data, never
-// pixels.
+// (mc1-1), the fixed playfield (six cities + three bases, mc1-2), the trackball
+// crosshair (mc1-3) and now the ABM trails + expanding/collapsing blasts (mc1-4).
+// The shell owns the canvas; core emits data, never pixels.
 
 import type { GameState } from '../core/game.js'
 import { CITIES, BASES, type FieldPos } from '../core/field.js'
+import { blastRadius } from '../core/explosion.js'
 
 // ─── The cabinet's logical coordinate space (settled here, mc1-1 deferred it) ─
 // H is an 8-bit cabinet coordinate (the structures span MISB1H=0x14..MISB3H=0xF0,
@@ -57,6 +57,30 @@ export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width
     ctx.lineTo(x - bw / 2, y) // bottom-left
     ctx.lineTo(x + bw / 2, y) // bottom-right
     ctx.closePath()
+    ctx.fill()
+  }
+
+  // ABM trails (mc1-4) — a line from each missile's launch base to its head.
+  ctx.strokeStyle = '#f44'
+  ctx.lineWidth = 1
+  for (const abm of state.abms) {
+    const from = project(abm.origin, width, height)
+    const to = project(abm.pos, width, height)
+    ctx.beginPath()
+    ctx.moveTo(from.x, from.y)
+    ctx.lineTo(to.x, to.y)
+    ctx.stroke()
+  }
+
+  // Blasts (mc1-4) — an expanding/collapsing circle at each explosion, its radius
+  // scaled from cabinet units into the display (same H scale as `project`).
+  ctx.fillStyle = '#ff0'
+  for (const exp of state.explosions) {
+    const r = blastRadius(exp)
+    if (r <= 0) continue
+    const { x: ex, y: ey } = project(exp, width, height)
+    ctx.beginPath()
+    ctx.arc(ex, ey, (r / LOGICAL_WIDTH) * width, 0, Math.PI * 2)
     ctx.fill()
   }
 
