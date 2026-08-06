@@ -536,7 +536,8 @@ stories:
       ALSO NOTE the frame-boundary deviation jt9-1 logged: lastRanKind is re-initialised per stepFrame, while the ROM's PPREV is persistent RAM that carries across frames (RAMDEF.SRC:240). Unobservable today because insertTroll guarantees an enemy follows the troll; widening the set of processes that read PPREV is exactly what would make it observable, so re-assess it here.
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     type: bug
