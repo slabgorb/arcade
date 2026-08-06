@@ -202,3 +202,60 @@ recorded here as Dossier-sourced and left uncited, per this file's existing
 policy for values with no isolable literal. `src/core/house.ts`'s
 `PERSONAL_DOT_LIMIT` table carries these Dossier figures with that same
 honest-uncited status.
+
+## Ghost AI — the four personalities (pm1-6)
+
+Each ghost's per-frame TARGET tile (what `src/core/ghost.ts`'s `stepGhost`
+steers toward) is chosen by its own routine. `src/core/targeting.ts`'s
+`targetTile(id, state)` reproduces all four. The Pac-Man Dossier ch.4 *Meet The
+Ghosts* is the decoder of what each routine *does*; the routine addresses below
+are the byte-level anchors.
+
+| Ghost  | Routine            | Target rule (Dossier ch.4)                                        |
+|--------|--------------------|------------------------------------------------------------------|
+| Blinky | `pacman.asm:2758`  | Pac-Man's current tile (direct chase; loads Pac at `(#4d39)`).    |
+| Pinky  | `pacman.asm:278e`  | 4 tiles ahead of Pac in his facing direction (up-overflow below). |
+| Inky   | `pacman.asm:27cb`  | `2·intermediate − Blinky`, intermediate = 2 ahead of Pac (up-overflow too). |
+| Clyde  | `pacman.asm:2813`  | Pac's tile when ≥8 tiles away, else his own scatter corner.       |
+
+**The offsets are shift-adds, not stored literals.** Pinky's "×4" is two
+`add hl,hl` (2795, 2796) on Pac-Man's direction word; Inky's "×2" is one
+`add hl,hl` (27d6) and its vector-doubling is per-byte `add a,a ; sub`
+(27d8-27df). There is no `#04`/`#02` operand to cite — the routines are anchored
+by ADDRESS, and the multipliers are documented here as emergent arithmetic, not
+invented literal addresses (`brief.md` citation discipline). Claims
+`TARGET-BLINKY-ROUTINE` / `TARGET-PINKY-ROUTINE` / `TARGET-INKY-ROUTINE` /
+`TARGET-CLYDE-ROUTINE` in `claims/targeting.json` pin these routine anchors.
+
+**The up-overflow (the mandatory 8-bit bug).** When Pac-Man faces **up**, both
+Pinky's 4-ahead and Inky's 2-ahead intermediate land N up **AND** N left — the
+original overflow, where the y-offset bleeds into the x byte during the
+shift-add on the packed direction word. It is an EMERGENT code behaviour (a
+genuine bug), not a stored literal, so it has no isolable `pacman.asm:<addr>`
+to cite — it is anchored by the routine addresses (`278e`, `27cb`) above and
+documented here honestly. `targeting.ts`'s `aheadOfPac` reproduces it directly
+(returns `{x: px − n, y: py − n}` for up) — never "fixed". Cross-checked for
+decoding only against the GPL `shaunlebron/pacman` oracle (`brief.md` firewall):
+no code, table, or structure was copied.
+
+**Clyde's 8-tile flip — the one real literal.** Clyde's routine computes the
+SQUARED Euclidean distance Pac↔Clyde (`#29ea`: `dx²+dy²`) and compares it against
+the literal `#0040` = 64 = 8² at `pacman.asm:281e` via `sbc hl,#0040 ; jp c`.
+The carry (→ scatter) fires ONLY on a borrow, i.e. distance² **strictly less
+than** 64, so a distance of exactly 8 tiles (`dist²==64`) **chases** — the ROM's
+strict boundary, transcribed exactly rather than rounded to the prose "eight
+tiles". This is the single genuine numeric literal among the four routines;
+claim `TARGET-CLYDE-RADIUS` pins it and `CLYDE_CHASE_MIN_DISTSQ` = 64 carries it.
+
+**Scatter corners.** Each ghost's fixed scatter-mode home target (and Clyde's
+close-range fallback): Blinky top-right `{25,0}`, Pinky top-left `{2,0}`, Inky
+bottom-right `{27,35}`, Clyde bottom-left `{0,35}`, in this port's 28×36 grid.
+The ROM stores per-ghost scatter targets as the immediate words loaded before
+`call #2966` in each scatter branch (Pinky `ld de,#391d` @ 2781, Inky
+`ld de,#2040` @ 27be, Clyde `ld de,#3b40` @ 2806), but those immediates are
+packed in the ROM's internal ROTATED tile-coordinate frame — which this maze, a
+faithful-style RECONSTRUCTION (`src/core/maze.ts`) rather than a byte-identical
+tile-RAM transcription, deliberately does not replicate. Mapping them onto this
+grid would be inventing a coordinate transform, so the corner tiles are
+Dossier-DECODED and left uncited, exactly the policy the maze layout already
+follows. `SCATTER_CORNER` in `targeting.ts` carries them with that honest status.
