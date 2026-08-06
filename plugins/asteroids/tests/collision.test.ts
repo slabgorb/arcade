@@ -356,23 +356,23 @@ describe('collision hardening — kills A-8 mutation-weak survivors (A-9 carry-f
     expect(smallMiss.shipDestroyed).toBe(false)
   })
 
-  // Mutation C — delete the `mode === 'playing'` gate. Destruction must not
-  // happen during attract or gameover.
-  it('no bullet-vs-rock destruction outside playing mode', () => {
-    for (const mode of ['attract', 'gameover'] as const) {
-      const s1 = stepGame(
-        {
-          ...initialState(4242),
-          mode,
-          rocks: [rockAt(CENTER, 'large')],
-          bullets: [bulletAt(CENTER)],
-        },
-        NO_INPUT,
-        DT,
-      )
-      expect(s1.rocks).toHaveLength(1) // not split
-      expect(s1.rocks[0].size).toBe('large')
-    }
+  // gameover runs no collision loop — a shot over a rock leaves it whole.
+  // (ad1-3: 'attract' was dropped from this list — the attract self-play demo
+  // now runs the REAL collision loop, so it DOES destroy rocks; that is pinned
+  // in score.test.ts "the attract self-play demo scores and destroys a rock".)
+  it('no bullet-vs-rock destruction in gameover mode', () => {
+    const s1 = stepGame(
+      {
+        ...initialState(4242),
+        mode: 'gameover',
+        rocks: [rockAt(CENTER, 'large')],
+        bullets: [bulletAt(CENTER)],
+      },
+      NO_INPUT,
+      DT,
+    )
+    expect(s1.rocks).toHaveLength(1) // not split
+    expect(s1.rocks[0].size).toBe('large')
   })
 
   // Survivor identity: a non-hit rock keeps its exact position, not merely the

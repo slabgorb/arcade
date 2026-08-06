@@ -543,11 +543,18 @@ describe('stepGame — drives the wave director during play (AC)', () => {
     expect(s.rocks.every((r) => r.size === 'large')).toBe(true)
   })
 
-  it('does NOT spawn waves in attract mode (director dormant when not playing)', () => {
-    const s = runStep(initialState(1979), TICKS_TO_ARM + 20) // stays in attract
-    expect(s.mode).toBe('attract')
-    expect(s.rocks).toHaveLength(0)
-    expect(s.wave).toBe(0)
+  it('drives the wave director in attract — the self-play demo populates an empty field (ad1-3)', () => {
+    // ad1-3: attract now runs the REAL play step on a synthetic controller
+    // (the self-play demo), so the wave director is live and bootstraps a field
+    // for the demo to play. (Before ad1-3 attract was inert and this asserted
+    // rocks stayed empty / wave stayed 0.) The director itself is still mode-
+    // gated — the "dormant in attract" unit test above calls updateWaveDirector
+    // directly on an attract-mode state and still sees it do nothing; here the
+    // demo reaches it through mode 'playing', exactly as real play does.
+    const s = runStep(initialState(1979), TICKS_TO_ARM + 20)
+    expect(s.mode).toBe('attract') // the demo lives inside the attract screen
+    expect(s.rocks.length).toBeGreaterThan(0) // a wave was dealt for the demo
+    expect(s.wave).toBeGreaterThan(0)
   })
 
   it('threads the advanced rng seed forward once a wave spawns', () => {

@@ -25,7 +25,7 @@ import { updateSpawnDirector, stepSaucer, SAUCER_HITBOX, SAUCER_ROCK_COLLISION_E
 import { applyScore, addScore, SAUCER_SCORE } from './score'
 import { insertHighScore } from '@shared/highscore'
 import { stepNameEntry } from '@shared/name-entry'
-import { handleShipDeath, tryRespawnShip } from './lives'
+import { handleShipDeath, tryRespawnShip, RESPAWN_INVULNERABILITY_S } from './lives'
 import { triggerHyperspace } from './hyperspace'
 import { wrappedDelta, type Bounds } from './bounds'
 import type { GameEvent } from './events'
@@ -139,18 +139,90 @@ function sweptOverlaps(pos: Vec2, vel: Vec2, target: Vec2, extent: number, frame
   return segmentHitsBox(start, end, extent)
 }
 
-/** The attract branch: rocks keep drifting through the SAME A-6 mover the play
- * mode uses (never a parallel one), while the ship, guns, scoring, and
- * collisions are all inert regardless of held gameplay inputs. A fresh start
- * press deals a new game from initialState's field defaults — WITHOUT
- * re-seeding the rng: the cabinet draws from one stream across
- * attract→playing→attract cycles; only a hard page reload re-seeds. */
-function stepAttract(state: GameState, input: Input, dt: number, startPressed: boolean): GameState {
-  const rng: Rng = { seed: state.rng.seed }
+// --- ad1-3: the attract self-play demo -------------------------------------
+// The lobby showcase carousel (uf1-6) frames each game's LIVE attract mode, so
+// asteroids' old rocks-only backdrop (the A-16 "everything inert" contract)
+// showed an empty field. ad1-3 puts a ship in that field and lets it PLAY
+// itself, mirroring tempest's demoActive (tempest 10-3): the attract branch
+// runs the EXACT same play step on a synthetic controller's input, so there is
+// no forked mover/collision anywhere — the demo is the real game, one frame at
+// a time, held inside the 'attract' screen until a start press opts in.
+
+/** Half-angle deadband (dir-units, 256 = full circle) inside which the demo
+ * stops rotating and lets its shots fly — roughly ±11°, enough to hit a rock. */
+const DEMO_AIM_DEADBAND = 8
+/** Frames between the demo's shots — a rising fire edge every this-many frames. */
+const DEMO_FIRE_PERIOD = 12
+/** The demo thrusts for DEMO_THRUST_ON frames out of every DEMO_THRUST_PERIOD,
+ * so it drifts through the field instead of sitting still and shooting. */
+const DEMO_THRUST_PERIOD = 120
+const DEMO_THRUST_ON = 24
+
+/** The rock nearest `from`, measured seam-aware across the torus (so a rock just
+ * over the wrap edge counts as close). null when the field is empty. */
+function nearestRock(from: Vec2, rocks: readonly Rock[]): Rock | null {
+  let best: Rock | null = null
+  let bestSq = Infinity
+  for (const r of rocks) {
+    const d = wrappedDelta(r.pos, from, WORLD_BOUNDS)
+    const sq = d.x * d.x + d.y * d.y
+    if (sq < bestSq) {
+      bestSq = sq
+      best = r
+    }
+  }
+  return best
+}
+
+/** The attract self-play "brain": a PURE, RNG-free, clock-free function of the
+ * board (mirroring tempest's demoInput). Turns the ship toward the nearest rock
+ * the short way around the torus, fires on a fixed cadence, and thrusts in
+ * gentle bursts. Reads only `state` — tick for cadence, ship+rocks for aim — so
+ * an attract replay is bit-identical (the core-boundary purity rule holds). */
+export function demoInput(state: GameState): Input {
+  const target = nearestRock(state.ship.pos, state.rocks)
+  let left = false
+  let right = false
+  if (target !== null) {
+    const d = wrappedDelta(target.pos, state.ship.pos, WORLD_BOUNDS) // ship → target
+    const targetDir = (Math.atan2(d.y, d.x) / (2 * Math.PI)) * 256
+    const norm = (((targetDir - state.ship.dir) % 256) + 256) % 256 // [0, 256)
+    const turn = norm > 128 ? norm - 256 : norm // shortest signed turn, (−128, 128]
+    // +dir is CCW (the left button, ship.ts $708b); −dir is CW (right).
+    if (turn > DEMO_AIM_DEADBAND) left = true
+    else if (turn < -DEMO_AIM_DEADBAND) right = true
+  }
+  return {
+    left,
+    right,
+    thrust: state.tick % DEMO_THRUST_PERIOD < DEMO_THRUST_ON,
+    // A rising fire edge every DEMO_FIRE_PERIOD frames — never on the opening
+    // tick, so the first attract frame leaves the rock field as pure A-6 drift.
+    fire: state.tick > 0 && state.tick % DEMO_FIRE_PERIOD === 0,
+    hyperspace: false,
+    start: false,
+  }
+}
+
+/** The attract branch. A fresh start press deals a new game from initialState's
+ * field defaults WITHOUT re-seeding the rng (one stream across attract→playing→
+ * attract; only a page reload re-seeds). Otherwise the self-play demo runs: one
+ * step of the REAL play pipeline (stepPlay) on demoInput, with the ship held
+ * invulnerable — this is a showcase LOOP, not a scored run, so it must never
+ * stall on a death — then coerced back onto the attract screen (mode 'attract',
+ * no game-over phase, silent). The demo never advances to 'playing' on its own;
+ * only `start` does that. */
+function stepAttract(
+  state: GameState,
+  input: Input,
+  dt: number,
+  startPressed: boolean,
+  turnRate?: number,
+): GameState {
   if (startPressed) {
     return {
       ...initialState(),
-      rng,
+      rng: { seed: state.rng.seed },
       mode: 'playing',
       tick: state.tick + 1,
       lives: STARTING_LIVES,
@@ -158,25 +230,24 @@ function stepAttract(state: GameState, input: Input, dt: number, startPressed: b
       startPrev: input.start,
     }
   }
-  return {
+  // Borrow the play pipeline for one frame: a live, invulnerable ship on a
+  // synthetic controller. RESPAWN_INVULNERABILITY_S keeps shipSpawnTimer > 0
+  // through stepPlay's decay, so the demo ship is never hittable and never dies.
+  const demoState: GameState = {
     ...state,
-    rng,
-    tick: state.tick + 1,
-    rocks: updateRocks(state.rocks, dt, WORLD_BOUNDS),
-    // A2-5: keep ship-death debris drifting/fading even in attract — a run-
-    // ending death's wreckage can outlive the game-over card and carry into
-    // the following attract loop, and must not freeze there (a fresh cabinet's
-    // debris is [], so this is a no-op unless a prior run left live segments).
-    shipDebris: updateShipDebris(state.shipDebris, dt),
-    // A2-8: age rock-break shrapnel here too — a break just before a run-ending
-    // death can leave a scatter still animating into attract; it must keep fading,
-    // not freeze (the same cross-mode-aging rule as shipDebris).
-    shrapnel: updateShrapnel(state.shrapnel, dt),
-    // A-21: age saucer-death debris here too — a saucer killed just before a
-    // run-ending death can leave wreckage animating into attract; same rule.
-    saucerDebris: updateShipDebris(state.saucerDebris, dt),
+    mode: 'playing',
+    lives: Math.max(state.lives, 1),
+    shipSpawnTimer: RESPAWN_INVULNERABILITY_S,
+  }
+  const played = stepPlay(demoState, demoInput(state), dt, turnRate)
+  return {
+    ...played,
+    mode: 'attract', // the demo lives inside the attract screen
+    gameOver: null, // a demo run never charts
+    lives: state.lives, // attract's ship-count display is unchanged (cosmetic)
+    shipSpawnTimer: RESPAWN_INVULNERABILITY_S, // re-arm immortality for next frame
     startPrev: input.start,
-    events: [], // A-18: no gameplay-audio events in attract; never carry a stale frame's forward
+    events: [], // A-18: attract stays silent — no gameplay audio bleeds to the lobby
   }
 }
 
@@ -260,16 +331,30 @@ export function stepGame(
   dt: number,
   turnRate?: number,
 ): GameState {
-  // `state` is rebindable: A-14 rebinds it to the post-hyperspace state below,
-  // so the rest of the step (collisions, death, respawn) reads the jumped ship.
-  let state = inState
+  const state = inState
 
   // Start is edge-triggered (the firePrev pattern): a press held across a mode
   // transition is consumed by the transition and must not fire again.
   const startPressed = input.start && !state.startPrev
 
-  if (state.mode === 'attract') return stepAttract(state, input, dt, startPressed)
+  if (state.mode === 'attract') return stepAttract(state, input, dt, startPressed, turnRate)
   if (state.mode === 'gameover') return stepGameOver(state, input, dt, startPressed)
+  return stepPlay(state, input, dt, turnRate)
+}
+
+/** One step of PLAY: hyperspace, flight, firing, collisions, death/respawn,
+ * saucer, waves, heartbeat. Extracted from stepGame (ad1-3) so the attract
+ * self-play demo can run the EXACT same pipeline on a synthetic controller,
+ * never a forked mover or collision. Mode is 'playing' on entry. */
+function stepPlay(
+  inState: GameState,
+  input: Input,
+  dt: number,
+  turnRate?: number,
+): GameState {
+  // `state` is rebindable: A-14 rebinds it to the post-hyperspace state below,
+  // so the rest of the step (collisions, death, respawn) reads the jumped ship.
+  let state = inState
 
   // A-14: apply the hyperspace jump FIRST — before the rng clone and every
   // collision check — so a successful jump's invulnerability window (or a failed

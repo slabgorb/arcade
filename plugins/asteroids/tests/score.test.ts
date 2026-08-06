@@ -134,7 +134,11 @@ describe('stepGame — score awarded per destroyed rock by tier (AC-1)', () => {
     expect(s1.score).toBe(700) // ...but no rock was destroyed, so no points
   })
 
-  it('scores NOTHING in attract mode (collision loop is gated to playing)', () => {
+  it('the attract self-play demo scores and destroys a rock like real play (ad1-3)', () => {
+    // ad1-3: attract runs the REAL play step on a synthetic controller, so a
+    // player shot over a rock destroys it and scores — attract is no longer the
+    // inert backdrop it was under A-16 (which is what this used to assert). The
+    // gameover test below still pins the collision loop OFF in gameover.
     const s0: GameState = {
       ...initialState(4242),
       mode: 'attract',
@@ -143,8 +147,9 @@ describe('stepGame — score awarded per destroyed rock by tier (AC-1)', () => {
       bullets: [bulletAt(CENTER)],
     }
     const s1 = stepGame(s0, NO_INPUT, DT)
-    expect(s1.score).toBe(500)
-    expect(s1.rocks).toHaveLength(1) // rock not destroyed in attract
+    expect(s1.mode).toBe('attract') // still demoing, not a real game
+    expect(s1.score).toBeGreaterThan(500) // the large rock was scored (tier 20)
+    expect(s1.rocks.some((r) => r.size === 'large')).toBe(false) // it split
   })
 
   it('scores NOTHING in gameover mode (collision loop is gated to playing)', () => {

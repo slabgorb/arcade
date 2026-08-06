@@ -76,11 +76,14 @@ test('showcaseLivenessTargets() defaults to the live registry roster and paths',
   assert.deepEqual(targets, expected, 'the default roster must track the registry, live');
 
   const ids = targets.map((t) => t.id);
-  // Membership sanity against the ad1-2 census — and, crucially, the exclusions:
-  for (const id of ['tempest', 'battlezone', 'centipede']) {
+  // Membership sanity against the census — and, crucially, the exclusions.
+  // ad1-3 added asteroids: its attract mode now self-plays (a ship steering and
+  // shooting the drifting field, plugins/asteroids/tests/attract-demo.test.ts)
+  // and its manifest flipped showcase:true, so it MUST now be probed.
+  for (const id of ['tempest', 'asteroids', 'battlezone', 'centipede']) {
     assert.ok(ids.includes(id), `${id} is showcase:true and must be probed`);
   }
-  for (const id of ['joust', 'asteroids', 'red-baron']) {
+  for (const id of ['joust', 'red-baron']) {
     assert.ok(!ids.includes(id), `${id} is showcase:false and must NOT be probed`);
   }
 });

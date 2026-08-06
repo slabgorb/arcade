@@ -417,10 +417,11 @@ function drawMarginMask(ctx: CanvasRenderingContext2D, w: number, h: number): vo
 
 /** Paint one frame: a fresh black field, then rocks, the saucer (when live),
  *  shots, and the ship on top — with the thrust flame when the current input is
- *  thrusting — then the HUD and the mode overlay. In attract the ship is absent
- *  (the field is a rocks-only backdrop, A-16); in play a destroyed ship (A-8's
- *  sticky latch) leaves the drawn set until A-15 respawns it. Pure over `state`
- *  — reads, never writes. */
+ *  thrusting — then the HUD and the mode overlay. In attract the ship is the
+ *  self-play demo (ad1-3), drawn like any other; a destroyed ship (A-8's sticky
+ *  latch) leaves the drawn set until A-15 respawns it. The thrust flame keys off
+ *  the player's `input`, so it shows in play but not for the demo's own thrust —
+ *  the showcase feeds NO_INPUT. Pure over `state` — reads, never writes. */
 export function render(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -441,7 +442,7 @@ export function render(
   // A-14: `ship.visible` is false while a hyperspace jump is in flight — the ship
   // (and its flame) vanish for the reappearance window, then pop back at the new
   // spot. Skipping the draw here is the whole visual of a hyperspace jump.
-  if (state.mode !== 'attract' && !state.shipDestroyed && state.ship.visible) {
+  if (!state.shipDestroyed && state.ship.visible) {
     drawShip(ctx, state.ship, view)
     if (input.thrust) drawFlame(ctx, state.ship, view)
   }

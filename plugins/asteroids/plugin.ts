@@ -9,6 +9,6 @@ export const meta: GameMeta = {
   controls: ['ROTATE/THRUST — ←→↑ / WASD', 'FIRE — Space / K'],
   order: 3,
   listed: true,
-  showcase: false,
+  showcase: true,
   version,
 }
