@@ -60,7 +60,8 @@ stories:
     description: 'Trackball/mouse-driven crosshair cursor that integrates input delta and clamps to the play area. Core: cursor.ts integrates a per-frame delta and clamps (W3MAIN:424 PROCESS CURSOR MOTION, :546 ADD TBALL TO CURSOR, :587 UPDATE CURSOR). Shell: input.ts maps mouse/trackball motion to the delta. Desktop-only (repo rule: no touch/narrow-viewport).'
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
