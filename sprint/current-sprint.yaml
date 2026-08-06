@@ -8,10 +8,6 @@ sprint:
   status: active
   number: 2632
 epics:
-  - td1
-  - sw8
-  - uf1
   - ad1
-  - mg1
   - jt9
   - mc2

@@ -10,6 +10,10 @@ completed_epics:
   - cp6
   - bz5
   - mc1
+  - td1
+  - sw8
+  - uf1
+  - mg1
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -310,4 +314,384 @@ completed_stories:
     epic: jt9
     title: "joust lava-troll looker is production-dead again: allow ENEMY victims so LNTLAV can fire, and pin the grip's single-integration"
     points: 5
+    completed: '2026-08-06'
+  - id: sw8-25
+    epic: sw8
+    title: The guard's association rule binds a quote to the WRONG citation in a columnar table — it reports a correct citation as stale and names the previous entry's line
+    points: 3
+    completed: '2026-08-06'
+  - id: td1-1
+    epic: td1
+    title: Fleet strictPort is porous — pin host 127.0.0.1 in every subrepo's vite config
+    points: 2
+    completed: '2026-07-20'
+  - id: td1-2
+    epic: td1
+    title: Fold the AST purity scanner back to centipede and tempest — six false negatives each
+    points: 3
+    completed: '2026-07-20'
+  - id: td1-3
+    epic: td1
+    title: Re-take the joust demo screenshot — the committed one predates the shear fix
+    points: 1
+    completed: '2026-08-06'
+  - id: td1-4
+    epic: td1
+    title: Triage the two orchestrator extract-audio reds — tempest/red-baron link-5 audits
+    points: 2
+    completed: '2026-07-20'
+  - id: td1-5
+    epic: td1
+    title: Close the jt1 carried-open verification gaps — render internals and the text-match vacuity sweep
+    points: 2
+    completed: '2026-08-06'
+  - id: td1-6
+    epic: td1
+    title: tempest bake-sfx expandSeq omits the ROM AUDC high-nibble mask on a ramp — player_fire diverges from event 3
+    points: 2
+    completed: '2026-07-20'
+  - id: td1-7
+    epic: td1
+    title: Scaffold suites guard the wrong invariant — assert host 127.0.0.1 pin, not just strictPort
+    points: 1
+    completed: '2026-07-20'
+  - id: td1-8
+    epic: td1
+    title: just serve swallows a failed launch — bare wait returns 0, fleet looks healthy with one game silently missing
+    points: 2
+    completed: '2026-07-20'
+  - id: td1-9
+    epic: td1
+    title: Four repos carry no scaffold suite at all — lobby, tempest, star-wars, asteroids have no config guard of any kind
+    points: 3
+    completed: '2026-07-27'
+  - id: td1-10
+    epic: td1
+    title: just test-all and build-all mask every game's failure but the last — just ci prints CI passed with six of seven red
+    points: 2
+    completed: '2026-07-20'
+  - id: td1-11
+    epic: td1
+    title: bake-sfx expandAlsoun omits the ROM terminal-zero register write — five cues truncate their tail, player_fire among them
+    points: 3
+    completed: '2026-08-06'
+  - id: td1-14
+    epic: td1
+    title: "reanchor-citations.mjs must REFUSE to move a pin whose verbatim is non-unique in its file (sw8-8 round-3 finding; strengthens td1-13 with a measured near-miss). td1-13 already describes the silent-corruption path: the tool matches NEAREST-LINE, so a duplicated verbatim can be re-pointed at the wrong occurrence and check-citations.mjs re-opens it, finds the text it expected, and goes green forever while the finding now describes a different routine. sw8-8's merge resolution re-anchored 36 pins and TWO of the three duplicate-verbatim pins in the whole findings set moved — G-009 and S-016, the exact pair td1-13 names by hand ('      damage++' at sim.ts:625/1110 and '    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {' at :624/1109, the near-identical space and surface cockpit-damage paths). They landed on the correct SPACE occurrence, verified by the Reviewer against the enclosing section comment and the emitted event (cause 'enemy' vs cause 'turret') — but nothing in the pipeline checked. Neither of Dev's two verifications can detect it: 'the diff contains only line changes' and 'per-file remediated_by counts match' BOTH pass a mis-anchor, and so does the gate. This is the cheap interim guard, well short of td1-13's full audit-commit freeze, and worth having even if td1-13 lands: before moving any pin, count occurrences of ours.verbatim in ours.file; if > 1, do not guess — leave the pin, print the candidate line numbers, and exit non-zero so a human resolves it. Also worth reporting the checked-pin SPLIT in the tool's summary (sw8-8 had 137 pins, 96 gate-checked, 41 legitimately historical via remediated_by/NO_COUNTERPART per check-citations.mjs:150-165) so a reviewer auditing the counts is not chasing 41 phantom failures. || EXTENDED sw8-18 (2026-08-02): the identical guard clause is now needed in a SECOND tool. sw8-18 shipped plugins/star-wars/tools/audit/check-comment-citations.mjs, which re-opens citations written into ordinary source comments and, when a span is stale, RE-LOCATES it — 'it is now at <file>:<N>; re-anchor the citation to that'. That search is FIRST-OCCURRENCE, so a non-unique verbatim points at the wrong site: measured during sw8-18, state.ts cites `ADDD M$TX+M.S1` for S1MVBS and the hint named WSMAIN.MAC:2539, which is S1MVGD — a different routine containing the identical instruction; the right answer was :2656 (fixed by citing the routine span :2654-2656). The two tools differ in blast radius and BOTH matter: reanchor-citations.mjs WRITES a wrong anchor silently, check-comment-citations.mjs only PRINTS a wrong suggestion — but a human then applies it, and the printed form is more persuasive than a diff. Same fix in both places: count occurrences first; if > 1, refuse to name one and print every candidate. Do them together — the clause is four lines and splitting it across two stories invites one of them to drift."
+    points: 5
+    completed: '2026-08-06'
+  - id: td1-15
+    epic: td1
+    title: pf _collect_repos iterates a comma-separated repos string character by character
+    points: 2
+    completed: '2026-08-06'
+  - id: td1-16
+    epic: td1
+    title: 'pf validate context-epic passes on a stale context: existence is checked, freshness never is'
+    points: 2
+    completed: '2026-08-06'
+  - id: td1-17
+    epic: td1
+    title: "mg1-4's guards pass on absence: the context scan and the AC-shape scan both go green when there is nothing to read"
+    points: 2
+    completed: '2026-08-06'
+  - id: td1-18
+    epic: td1
+    title: pf preflight finish reports a CRITICAL missing PR on a trunk-based repo — the check never reads branch_strategy
+    points: 2
+    completed: '2026-08-06'
+  - id: td1-19
+    epic: td1
+    title: The shared audio docblock says six of seven cabinets pass no priorities map — centipede passes one, so joust is not the only arbitrated cabinet
+    points: 1
+    completed: '2026-08-06'
+  - id: td1-20
+    epic: td1
+    title: Make the shared engine channels map optional with a designed default — the costed version of jt9-7's deletion branch
+    points: 3
+    completed: '2026-08-06'
+  - id: sw8-1
+    epic: sw8
+    title: 'The moving eye — port the ST.UX viewer drift so the space viewpoint MOVES: Death Star can leave frame, starfield drifts laterally instead of forward-streaming (collapses camera + starfield + DS-approach)'
+    points: 5
+    completed: '2026-07-21'
+  - id: sw8-2
+    epic: sw8
+    title: TIE feel and fire fairness — tune VM-driven flight to sweep/arc (not Y-zoom/barrel-roll) and make incoming fire dodgeable or shootable (homing always-arrives); absorbs backlog sw7-24
+    points: 5
+    completed: '2026-07-21'
+  - id: sw8-3
+    epic: sw8
+    title: Enemy-fire readability — add the lingering destroy-burst when a fireball is shot down (today silent-delete) and verify incoming-fire colour vs WSVROM/WSGUNS
+    points: 3
+    completed: '2026-07-24'
+  - id: sw8-4
+    epic: sw8
+    title: Trench reads deep — port the ROM far-end terminus (TBSBF ∐ frame) drawn at the ROM-authentic $7000 draw clamp (BSVFAR/BSVBOT; keep TRENCH_FAR, do NOT raise it) so the channel reads as a deep receding tunnel with a vanishing end; verify side-gun/wall-panel legibility vs the longplay
+    points: 3
+    completed: '2026-07-24'
+  - id: sw8-5
+    epic: sw8
+    title: Surface HUD + tower render — draw the TOWERS-remaining counter and POINTS-NEXT-TOWER readout (towerCount helper exists, never drawn) and verify the tower field vs the wave 2/3 longplay
+    points: 3
+    completed: '2026-07-26'
+  - id: sw8-6
+    epic: sw8
+    title: 'TIE approach reads as a field-crossing sweep, not a centerline zoom — choreography homes each fighter to x≈0 through the long approach (measured: a TIE flew x=0 its whole life; #2/#3 steer x→0); carry the ROM lateral offset across the field as they close so TIEs cross the screen like the longplay, not grow-on-the-crosshair-then-loop'
+    points: 5
+    completed: '2026-07-26'
+  - id: sw8-7
+    epic: sw8
+    title: TIE spawn cadence + on-screen density — ours puts up only 3 fighters (capped), first not until ~1.6s; the cabinet dogfight is a swirl. Rule the ROM TSPWAV spawn schedule/count/onset vs ours and match the on-screen density
+    points: 3
+    completed: '2026-07-26'
+  - id: sw8-8
+    epic: sw8
+    title: Incoming-fire reaction window (sw8-2 follow-up) — an idle ship died in <1s to a fireball during the sw8-4 investigation; verify a dodge/shoot window actually exists per sw8-2's acceptance and fix if homing still 'always arrives'
+    points: 3
+    completed: '2026-07-30'
+  - id: sw8-9
+    epic: sw8
+    title: TIE in-front loiter — fighters currently fly PAST the cockpit (converge x→0 at negative depth, behind the eye) instead of loitering-and-converging IN FRONT as the longplay shows; port the deferred §5 play-cube clamp (sub_8DE3, sw8-2 AC3 'deferred tuning') + loiter/no-ram (model §9-3 'no body collision'); confirmed by sw8-6 Dev finding (sprint/archive/sw8-6-session.md)
+    points: 3
+    completed: '2026-07-28'
+  - id: sw8-10
+    epic: sw8
+    title: Past-plan TIE supply loops the set's LAST group (TWV2Z), not a bare 1A1 mook — ADASHP clamps WV.LVL to the last group and RESTARTS its loop pointer (WSCPU.MAC:1058-1090), so the endless tail is the 18-entry TWV2Z mix incl. the ±2048 corners; our waveSpawnPlan fallback (sim.ts spawnTie 'past the plan's end') invents a single '1A1' entry. Latent today (wave-1 plan 27 entries vs ≤9 spawns under the 6-kill quota) — bites if quota rises or the phase becomes time-boxed
+    points: 2
+    completed: '2026-08-01'
+  - id: sw8-11
+    epic: sw8
+    title: Space phase END is TIME-boxed in the ROM, not kill-quota'd — PHESP1 advances to PH$SP2 on the PH.TIM music schedule (theme→theme B→descent→'GO AHEAD AND DESCEND', WSMAIN.MAC:1420-1448) with an endless TIE supply; our SPACE_WAVE_QUOTA=6 kill gate (state.ts:882, self-described 'chosen to play right… until deeper reverse-engineering recovers the real numbers') is that unrecovered number. Rule the divergence and port or ratify
+    points: 3
+    completed: '2026-07-27'
+  - id: sw8-12
+    epic: sw8
+    title: "Space-phase music follows the PH.TIM milestone schedule — the ROM opens the phase in SILENCE and plays theme at 2s (PMTH5, or PMDAR on GM.WAV>=3 odd), theme B at 10s (PMTHB), descent at 20s (PMDES) — 1s BEFORE the warp (WSMAIN.MAC:1418-1440, left-to-right eval: (2+7+1)*20=200, (2+7+1+9+1)*20=400 frames @ 20 Hz; first-wave head start 39 frames shifts all cues ~1.95s earlier). Our clone cues the space track + descent tune ON the phase edges (sw3-5/U-014). Depends on sw8-11's phaseTime clock; descoped from sw8-11 (end-condition only)"
+    points: 2
+    completed: '2026-07-27'
+  - id: sw8-13
+    epic: sw8
+    title: "Space warp tune-channel priority: the cabinet's ONE PM player lets the ground-init towers music (PM4TH, WSMAIN.MAC:1636) STEAL a still-ringing descent tune (PMDES), and any new tune silences the loop — our two-channel shell (sw3-5 adaptation) overlays them instead, so descent + towers ring together across the space→surface warp. Decide/port the steal semantics (single logical priority channel or music-starts-kill-tunes). Surfaced by sw8-12's milestone port (descent now rings ~1s into the warp overlap window)"
+    points: 1
+    completed: '2026-08-01'
+  - id: sw8-14
+    epic: sw8
+    title: "music-bake pipeline cannot reproduce finish_ground.wav: sw7-18's PMREB one-shot exists only in R2 — OUTPUT_FILES has no entry, so 'just deploy-assets' never re-uploads it and a bucket wipe loses it. Add finishGround (REB, TUNTAB 19-22) to gen-music-data TUNE_SPEC + bake OUTPUT_FILES and drop the carve-out in bake-music.test.mjs's manifest-agreement test (gap surfaced/documented by sw8-12)"
+    points: 1
+    completed: '2026-07-27'
+  - id: sw8-15
+    epic: sw8
+    title: "music-bake comment accuracy: the sw8-14 double-play prose overstates history and three catalogue counts went stale. (1) audio.ts:83 + gen-music-data.mjs:270 say REB 'had been ringing twice'/'rang once per iteration AND again from that cue' — it never did: finish_ground.wav 404s in R2, so the cue was always silent and REB rang only from the towers loop (sw8-14 Dev finding recorded the correction; the source comments did not get it). (2) events.ts:217 'The five one-shot POKEY tunes' sits above a SEVEN-member TuneName union. (3) bake-music.test.mjs:201 banner 'the five one-shot TUNES' sits above a seven-entry list. (4) bake-music.mjs CLI: --only <unknown-track> silently bakes ZERO files and exits 0, bypassing bakeTrack's own 'unknown track' throw — the file already validates unknown FLAGS, so the value gap is inconsistent"
+    points: 1
+    completed: '2026-08-01'
+  - id: sw8-16
+    epic: sw8
+    title: "TIE fire-gate coverage: the C$T9 aim-ahead lockout and the A$GLW glow lockout are UNPINNED — mutation-proven during sw8-9 review (setting aimingAhead=false or notHit=true each leave the suite 1437/1437 green). The other two of the ROM gate's four conditions ARE pinned (removing C$PV reds 2, removing the $800 floor reds 1). Gate is WSCPU.MAC:622-633. Needs: a fighter mid-AIM_AHEAD maneuver must not fire; a glowing just-hit fighter must not fire"
+    points: 1
+    completed: '2026-08-01'
+  - id: sw8-17
+    epic: sw8
+    title: "The Death Star's off-centre wander belongs to the STATION, not the camera — port its own lateral motion into deathStarPlacement. The epic's §1 evidence anchor is a real cabinet observation (longplay ~wave 4, score 352,171: mid space-combat the Death Star is entirely out of frame) that our port cannot reproduce: deathStarPlacement seats the station at x=0 and moves it only in DEPTH. sw8-1 explained it with a viewer slide off ST.UX; sw8-8 retired that camera (ST.UX is the starfield's register — sole reader VWSTAR WSSTAR.MAC:98-102, and no space code writes the player's world position at all), so the observation is now unexplained. Find the station's OWN ROM mechanism (WSBASE.MAC / the DS site handling in WSSITE.MAC) and port it as a lateral term in deathStarPlacement. MUST NOT be re-derived from ST.UX or reintroduced as a camera slide: tests/shell/render.space-camera.test.ts pins camera-contributes-no-lateral-offset and will fail loudly on the shortcut"
+    points: 3
+    completed: '2026-08-01'
+  - id: sw8-18
+    epic: sw8
+    title: "Correct the sw8 ST.UX citation and prose defects from sw8-8 review rounds 2+3 -- 11 filed (4 since drifted) plus a 12th created by sw8-17 -- and add the comment-citation guard for the three a mechanical checker can catch"
+    points: 5
+    completed: '2026-08-02'
+  - id: sw8-19
+    epic: sw8
+    title: "C_PS can be set while C_PV is clear — the port carries only one of the ROM draw-pass gates (sw8-8 round-3 finding). The ROM's sole CHSET C$PS sits INSIDE the object draw pass (WSMAIN.MAC:3919-3932), so an object the cabinet does not draw cannot receive the sights bit. tie-status.ts ports exactly one of that pass's implicit gates — beamHit refusing anything behind the gun (tie-status.ts:170-173 says so out loud) — and beamHit carries no FOV clamp at all, so nothing ties C_PS to visibility. Worked example: a TIE at [400, 0, -10] has perpendicular distance 400 against the 500 u band (2 x TIE_HIT_RADIUS) so C_PS SETS, while its view depth of 10 is under VIEW_NEAR (0x10 = 16) so C_PV is CLEAR. The retired spaceEye made this unreachable — with the eye ~1024 off to one side and the fighter beelining the origin, along = dot(pos - eye, dir) was 0 at point blank and beamHit returned null — so sw8-8's cockpit seat is what exposed it, not what caused it. Consequence: TCH1DZ's loiter break (four C_PS gates, tie-vm.ts:341-342) can fire for a fighter that is not on screen. Behaviourally small (the fighter is about to collide) but it is a fidelity gap in a bit that gates choreography. Likely fix: gate C_PS on C_PV — 'was it drawn' — and pin it with a test seating a fighter inside the band but outside the pyramid. Check first whether the ROM's draw pass has other implicit gates worth porting at the same time."
+    points: 2
+    completed: '2026-08-03'
+  - id: sw8-21
+    epic: sw8
+    title: 'surface finishGround death gate: port the PHEGD death exit so a last-shield fall on the crossing frame silences PMREB, as sw8-13 did for the space walk'
+    points: 1
+    completed: '2026-08-01'
+  - id: sw8-23
+    epic: sw8
+    title: 'Harden the comment-citation guard: it cannot see its own directory, its opt-out fires on a MENTION, and its stated limits omit the two biggest ones (sw8-18 review findings 3, 4, 5, 7)'
+    points: 3
+    completed: '2026-08-02'
+  - id: sw8-26
+    epic: sw8
+    title: 'The comment-citation guard is silent about what it did NOT cover: a failed opt-out looks identical to a skip, and one unreadable file aborts the whole scan'
+    points: 3
+    completed: '2026-08-06'
+  - id: sw8-27
+    epic: sw8
+    title: The player's GUN carries the same visibility divergence C_PS just lost — the clone can kill a TIE it never drew (sw8-19 TEA + Dev finding) — PLUS the ROM's hit/sights SHAPES (user ruling at setup; box∩1.5x octagon, L1 sights diamond)
+    points: 5
+    completed: '2026-08-04'
+  - id: sw8-28
+    epic: sw8
+    title: REDUCE the sw8-27 crossover guard instead of deepening it a sixth time — delete the sentence parser (round-5 V1-V7; test/doc only, zero paths under plugins/star-wars/src/)
+    points: 3
+    completed: '2026-08-06'
+  - id: sw8-29
+    epic: sw8
+    title: The space kill/sights test drops the cabinet's +10 cursor floor — a constant world-space hit radius makes distant TIEs stingier than the machine
+    points: 3
+    completed: '2026-08-06'
+  - id: uf1-2
+    epic: uf1
+    title: joust DYTBL difficulty engine is production-dead — wire difficultyValue as the per-wave source
+    points: 5
+    completed: '2026-07-28'
+  - id: uf1-3
+    epic: uf1
+    title: star-wars Status.C_AH is always false — squadmates never react to a nearby kill
+    points: 3
+    completed: '2026-07-29'
+  - id: uf1-4
+    epic: uf1
+    title: star-wars trench wedge grid — 13 of 19 exports never reach production
+    points: 5
+    completed: '2026-08-01'
+  - id: uf1-5
+    epic: uf1
+    title: star-wars speech catalogue — correct the stale deferred-count comment and inventory the 10 untriggered lines
+    points: 1
+    completed: '2026-07-28'
+  - id: uf1-6
+    epic: uf1
+    title: lobby attract-mode demo loop is promised by the docs and absent from the code
+    points: 5
+    completed: '2026-07-29'
+  - id: uf1-7
+    epic: uf1
+    title: orchestrator CLAUDE.md production table omits centipede and joust — both buckets are live
+    points: 1
+    completed: '2026-08-06'
+  - id: uf1-8
+    epic: uf1
+    title: joust DYTBL flight-control rows — wire the long/short range seek and the PDIST distance-to-go (10 rows)
+    points: 5
+    completed: '2026-08-01'
+  - id: uf1-9
+    epic: uf1
+    title: joust DYTBL cadence rows — wire the wing-flap timer, the decision timer and the up-flight VY gates (11 rows)
+    points: 5
+    completed: '2026-08-02'
+  - id: uf1-12
+    epic: uf1
+    title: star-wars C_PS is never derived — TCH1DZ's loiter branch is unreachable dead code
+    points: 5
+    completed: '2026-07-29'
+  - id: uf1-13
+    epic: uf1
+    title: lobby showcase carousel — close the deferred review residuals
+    points: 2
+    completed: '2026-08-01'
+  - id: uf1-15
+    epic: uf1
+    title: star-wars C_AS's fire cone is INVENTED — the ROM's own gate is a squared screen radius (WSCPU.MAC:615-618)
+    points: 3
+    completed: '2026-08-02'
+  - id: uf1-14
+    epic: uf1
+    title: star-wars C_PV's ±45° pyramid is not the rendered frustum — off-screen TIEs pass the §6 fire gate
+    points: 3
+    completed: '2026-08-01'
+  - id: uf1-18
+    epic: uf1
+    title: the origin collapse widened the showcase iframe's default permissions beyond autoplay
+    points: 2
+    completed: '2026-08-06'
+  - id: uf1-19
+    epic: uf1
+    title: "pin the lobby test apparatus — five guards that do not bite (3 new in accessible-name.ts, 2 pre-existing in slideFor's cases)"
+    points: 2
+    completed: '2026-08-06'
+  - id: mg1-1
+    epic: mg1
+    title: red-baron's audit doc claims a @arcade/shared/highscore consumer that never existed
+    points: 1
+    completed: '2026-08-06'
+  - id: mg1-2
+    epic: mg1
+    title: A genuinely multi-app dev server — just serve currently serves the lobby at every path
+    points: 5
+    completed: '2026-07-31'
+  - id: mg1-3
+    epic: mg1
+    title: "CI's lobby deploy leg uploads the whole dist/ tree — defect #21's shape, latent in deploy.yml"
+    points: 2
+    completed: '2026-08-06'
+  - id: mg1-4
+    epic: mg1
+    title: sprint epics still route stories to per-game repos that repos.yaml no longer registers
+    points: 3
+    completed: '2026-07-31'
+  - id: mg1-5
+    epic: mg1
+    title: 'deploy-r2 is not atomic: index.html must upload LAST, or a failed deploy leaves a live page pointing at absent assets'
+    points: 3
+    completed: '2026-08-01'
+  - id: mg1-6
+    epic: mg1
+    title: Safari ITP purges the games' own high scores after 7 days
+    points: 3
+    completed: '2026-08-06'
+  - id: mg1-7
+    epic: mg1
+    title: "Empirically test Safari ITP's interaction clock: per-hostname or per-eTLD+1"
+    points: 2
+    completed: '2026-08-06'
+  - id: mg1-8
+    epic: mg1
+    title: 'Purity fence: importClosure misses side-effect and dynamic imports'
+    points: 2
+    completed: '2026-08-06'
+  - id: mg1-9
+    epic: mg1
+    title: "Typecheck arcade-shared's tests: 22 pre-existing errors in WebAudio doubles"
+    points: 3
+    completed: '2026-07-31'
+  - id: mg1-10
+    epic: mg1
+    title: Rename the cabinet bucket arcade-lobby to arcade-cabinet
+    points: 1
+    completed: '2026-08-06'
+  - id: mg1-11
+    epic: mg1
+    title: "One green light: run the orchestrator's node:test suite under vitest too"
+    points: 5
+    completed: '2026-08-06'
+  - id: mg1-13
+    epic: mg1
+    title: Archive the arcade-shared GitHub repo — the design says archive it, and it is the one of nine still live
+    points: 1
+    completed: '2026-08-06'
+  - id: mg1-14
+    epic: mg1
+    title: Hot module replacement does not reach the games — the dev server's children share one websocket
+    points: 3
+    completed: '2026-08-06'
+  - id: mg1-15
+    epic: mg1
+    title: Evaluate noUncheckedIndexedAccess repo-wide — the tsconfig blind spot that let an undefined-typed-as-WaveEntry indexed access through tsc
+    points: 3
+    completed: '2026-08-06'
+  - id: mg1-16
+    epic: mg1
+    title: "The cabinet deploy is atomic per-APP, not per-cabinet: the lobby's front door goes live before the games"
+    points: 3
+    completed: '2026-08-06'
+  - id: mg1-17
+    epic: mg1
+    title: 'A test can still reach the real deploy: harden deploy-r2 with a dry-run and reject option-shaped filenames'
+    points: 2
+    completed: '2026-08-06'
+  - id: mg1-18
+    epic: mg1
+    title: deploy-r2's walk() follows symlinks — a link inside dist/ uploads its target to the public bucket
+    points: 1
+    completed: '2026-08-06'
+  - id: mg1-19
+    epic: mg1
+    title: Epic archival breaks jt5-7's truth test — sprint/epic-jt5.yaml is pinned to a live path the finish lifecycle moves
+    points: 1
     completed: '2026-08-06'

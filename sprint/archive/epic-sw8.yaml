@@ -3,7 +3,7 @@ type: epic
 title: 'Cabinet feel: the flight and combat loop — render/experiential fidelity vs the cabinet longplay'
 description: 'Second fidelity axis after sw7. sw7 verified sim-vs-ROM (constants/opcodes/tables) and is live; this epic verifies pixels-and-feel-vs-cabinet from a playtest report + the star-wars-longplay.mov reference. Coverage gap, not a regression: the render/camera/tuning layer was never held against the cabinet the way the sim was held against the source. GAMEPLAY-first per user directive 2026-07-20 (front-of-house split to sw9). Each story RULES the divergence (bug/tuning/accepted-deviation) before fixing — many items are already ROM-authentic in code and the real culprit is camera/projection/tuning. Design: star-wars/docs/superpowers/specs/2026-07-20-cabinet-feel-render-fidelity-design.md'
 priority: p1
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: sw8-1
@@ -395,10 +395,11 @@ stories:
       Both were measured in this repo within one story. Whether they belong here, in sw8-26, or in a story of their own is a scoping call; what should NOT happen is each being rediscovered a third time. Note the interaction with sw8-24, which sweeps the 29: a sweep that re-anchors only guard-visible citations will leave the bare ones stale by construction.
     points: 3
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-06'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
     type: bug
     review_verdict: approved
   - id: sw8-26
@@ -563,3 +564,4 @@ stories:
     completed: '2026-08-05'
     type: bug
     review_verdict: approved
+completed: '2026-08-06'
