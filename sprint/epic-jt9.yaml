@@ -464,10 +464,11 @@ stories:
       DECIDE, do not assume. The right outcome may be to re-anchor to G1DEC :5543 / G2DEC :5547, or to note explicitly that the cells are family-independent and the citation is therefore free. Either is defensible; what is not defensible is leaving it unexplained now that the distinction is documented. Note the asymmetry with the first half of this story: JT51-009 pairs the right LABEL with the WRONG LINE and is simply false, whereas these two are true-but-imprecise. Do not let one ruling cover both - say which is which.
     points: 2
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-06'
     repos: arcade
     workflow: trivial
+    completed: '2026-08-06'
     type: bug
   - id: jt9-27
     title: 'MERGED INTO jt9-26 — demo.ts cites the REAL-PLAY block for EGGS1/EGGS2 from the module that IS the demo'

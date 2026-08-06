@@ -209,3 +209,8 @@ completed_stories:
     title: Port BOLAVA (:3953+) — the lava-avoid episode the lava steer gates divert to; jt8-3 suppresses instead
     points: 3
     completed: '2026-08-06'
+  - id: jt9-26
+    epic: jt9
+    title: 'Two joust citations that name the wrong ROM family: JT51-009 misattributes SNPCR1 and still says jt5-1 collapsed the knights, and demo.ts cites real play from the module that IS the demo'
+    points: 2
+    completed: '2026-08-06'
