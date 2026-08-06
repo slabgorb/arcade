@@ -695,3 +695,8 @@ completed_stories:
     title: Epic archival breaks jt5-7's truth test — sprint/epic-jt5.yaml is pinned to a live path the finish lifecycle moves
     points: 1
     completed: '2026-08-06'
+  - id: mc2-5
+    epic: mc2
+    title: 'O-1: decode the A35820.1C binary object'
+    points: 2
+    completed: '2026-08-06'
