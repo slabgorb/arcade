@@ -602,8 +602,9 @@ real time via the ROM game frame, which §11 already reconciled against the MAME
 6502 at `BZONE_MASTER_CLOCK/8 = 1.512 MHz` (`bzone.cpp:611`), periodic NMI at
 `BZONE_CLOCK_3KHZ/12 ≈ 246 Hz` (`bzone.cpp:613`, `bzone.h:20-21`), the ROM frame
 counter dividing NMI by 16 → **≈15.38 Hz** vs the clone's 15.625 Hz. The exact
-246-vs-250 Hz reconcile is **deferred to bz5-3**; it does not move any AI constant
-materially and no AI value is re-pinned here.
+246-vs-250 Hz reconcile is **resolved in §11.3** (bz5-3: mechanism confirmed, ~1.59%
+delta documented, 15.625 kept); it does not move any AI constant materially and no AI
+value is re-pinned here.
 
 **Trap avoided (green-phase re-check).** `bzone.cpp:151-164` documents a
 "Self-adjusting game difficulty" DIP feature with a target-average-game-length table —
@@ -684,6 +685,7 @@ window." Cross-check pins: `tests/core/timebase-mame-crosscheck.test.ts`.
 | 2026-08-05 | **§11.1 added (bz5-2):** MAME's `layout/bzone.lay` red/green colour-overlay geometry (RED top..0.2, GREEN 0.2..1.0, multiply) pinned as `MAME_COLOR_SPLIT = 0.2`; our HUD-element colouring vs MAME's full-width multiply gel documented as a deliberate method deviation (boundary fidelity exact). Periscope bezel overlay added (cabinet artwork, not in ROM/MAME). | MAME `~/Projects/mame/src/mame/layout/bzone.lay` (verified: red top..0.2 rgb 1.0,0.125,0.125 / green 0.2..1.0 rgb 0.125,1.0,0.125, blend multiply), `~/Projects/mame/src/mame/atari/bzone.cpp:855` (blue Desert Wars variant, out of scope) |
 | 2026-08-05 | **§11.2 added (bz5-4):** enemy-AI cross-check vs MAME. Structural fact recorded (MAME's driver has no AI logic — it executes the ROM; same as §11); two DIP-default spawn thresholds (missile 10K, bonus tanks 15K/100K) CONFIRMED against MAME's driver documentation, upgrading them from one secondary source to two; enemy-action sound-gating (D2 shell / D0 explosion) CONFIRMED against `audio-dispatch.ts`; engine-bit premise correction noted. No divergence → no AI behaviour change (AC3 precondition unmet). Pinned by `tests/core/enemies-mame-crosscheck.test.ts`. | MAME `~/Projects/mame/src/mame/atari/bzone.cpp` (DIP block :55-90, ROM region :711-717), `bzone_a.cpp:1-20` (sound-enable bits) |
 | 2026-08-05 | **§11 added (bz5-1):** the `CRACK` cracked-windshield counter — the sibling of `BOUNCE` bz4-1 shipped without — is now wired (set on death, advanced per game frame, cleared at `16*2`) and the overlay is gated on it. AC3 cross-check against the MAME driver: MAME executes the same ROM (no death-specific C); its clock chain times the ~1 s window; exact NMI-rate reconcile deferred to bz5-3. Tank-freeze / progressive-sections / reposition deviation documented as a bz5 follow-up. | `~/Projects/battlezone-source-text/BZONE.MAC` (CRACK :256/:506/:697/:2335/:3362); MAME `~/Projects/mame/src/mame/atari/bzone.{cpp,h}`, `bzone_a.cpp` |
+| 2026-08-06 | **§11.3 added (bz5-3):** timebase cross-check — MAME's clock chain confirms the ROM mechanism (game frame = NMI÷16, vector = NMI÷6) but pins the exact NMI at **246.094 Hz** (not the nominal 250), so the executed frame is **≈15.381 Hz** and the clone's 15.625 Hz runs **~1.59% fast**. Ruling (verification-first): keep `GAME_FRAME_HZ = 15.625` (the ROM-documented 64 ms intent), document the delta, no magnitude rewrite; MAME second-source citation added to `src/core/timebase.ts`; §11.2/§11 deferral notes updated to "resolved in §11.3". Pinned by `tests/core/timebase-mame-crosscheck.test.ts`. | MAME `~/Projects/mame/src/mame/atari/bzone.cpp` (`:611` CPU master/8, `:613` NMI CLOCK_3KHZ/12, `:619` vector /12/6), `bzone.h:20-21` (master 12.096 MHz, CLOCK_3KHZ master/4096) |
 
 **Refresh procedure:** see `reference/README.md` (gitignored, checkout-local) for how to
 re-pull the quarry if 6502disassembly.com's content changes, or how to re-run the byte

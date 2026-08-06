@@ -43,6 +43,12 @@ const VECTOR_HZ = CLOCK_3KHZ / 12 / 6 // bzone.cpp:619  ≈ 41.016 Hz
 const NMI_PER_FRAME = 16 // ROM: AND I,0F + INC SYNC every 16th NMI (BZONE.MAC:1084-1088)
 const NMI_PER_VECTOR = 6 // ROM: VTIMER←6, vector every 6th NMI (BZONE.MAC:1216-1235)
 
+// NOTE (rule-#26): the assertions in this block are DOCUMENTARY transcription pins — they
+// make the off-repo MAME derivation executable and reproducible, so they check arithmetic
+// among test-local constants (a wrong transcription of the MAME source is a shared-source
+// error no in-repo test can catch). The production-facing guards live BELOW: the AC1/AC2
+// blocks read findings.md / timebase.ts live from disk and assert 246.09 / 15.381 / 1.59%
+// are actually written there, and the drift/immutability block imports GAME_FRAME_HZ live.
 describe('bz5-3 · MAME clock chain — the executable second source (CONFIRMED pins)', () => {
   it('derives the 6502 core clock: master ÷ 8 = 1.512 MHz (bzone.cpp:611)', () => {
     expect(CPU_HZ).toBe(1_512_000)
