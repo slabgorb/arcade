@@ -246,6 +246,16 @@ const operandTokens = (verbatim: string): string[] => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losing it', () => {
+  // jt9-32: the three pairing throws below (and the two invention throws in AC-3)
+  // were pinned by `toThrowError("<message>")`, which vitest treats as CONTAINMENT,
+  // not equality — so an APPEND or PREPEND to the production message survives while
+  // every existing test stays green (measured: mutant R4 appended
+  // ` - AND THE WINDOW WAS SILENTLY HALVED` to the pairing message and 105 files /
+  // 2533 tests passed). Each is now `toThrowError(new Error(<same literal>))`, which
+  // compares the message for EQUALITY, so R4 (and R5 on the invention message)
+  // redden. The literal is UNCHANGED — reused, not re-typed — so the interpolated
+  // content stays pinned exactly as before (decoy N3 still reddens). A deliberate
+  // reword of the production message must edit the matching literal here and say so.
   it('a DEFINING row with five operands after the priority byte is refused', () => {
     // CONSTRUCTED: `070` priority, then (code,30), (code,255), and a THIRD code
     // with nothing after it. Five operands once the priority byte is dropped.
@@ -260,9 +270,11 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
     // 285 instead of an error. Measured before writing this test.
     const odd = romCue('FAKE\tFCB\t070,!N$12!+$80,30,!N$14!+$80,255,!N$16!.$7F\tFIVE OPERANDS')
     expect(() => framesFor(odd)).toThrowError(
-      "sound-table row has an unpaired sound code — an odd operand count (5) after the " +
-        "priority byte cannot form (code, duration) pairs: " +
-        "'FAKE\tFCB\t070,!N$12!+$80,30,!N$14!+$80,255,!N$16!.$7F\tFIVE OPERANDS'",
+      new Error(
+        "sound-table row has an unpaired sound code — an odd operand count (5) after the " +
+          "priority byte cannot form (code, duration) pairs: " +
+          "'FAKE\tFCB\t070,!N$12!+$80,30,!N$14!+$80,255,!N$16!.$7F\tFIVE OPERANDS'",
+      ),
     )
   })
 
@@ -287,8 +299,10 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
       '\tFCB\t    !N$15!+$80,255,!N$00!.$7F',
     ])
     expect(() => framesFor(odd)).toThrowError(
-      "sound-table row has an unpaired sound code — an odd operand count (3) cannot form " +
-        "(code, duration) pairs: '\tFCB\t    !N$15!+$80,255,!N$00!.$7F'",
+      new Error(
+        "sound-table row has an unpaired sound code — an odd operand count (3) cannot form " +
+          "(code, duration) pairs: '\tFCB\t    !N$15!+$80,255,!N$00!.$7F'",
+      ),
     )
   })
 
@@ -309,9 +323,11 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
     // is for.
     const odd = romCue('FAKE\tFCB\t070,!N$12!+$80,$3F,!N$16!.$7F\tBAD OPERAND TOO')
     expect(() => framesFor(odd)).toThrowError(
-      "sound-table row has an unpaired sound code — an odd operand count (3) after the " +
-        "priority byte cannot form (code, duration) pairs: " +
-        "'FAKE\tFCB\t070,!N$12!+$80,$3F,!N$16!.$7F\tBAD OPERAND TOO'",
+      new Error(
+        "sound-table row has an unpaired sound code — an odd operand count (3) after the " +
+          "priority byte cannot form (code, duration) pairs: " +
+          "'FAKE\tFCB\t070,!N$12!+$80,$3F,!N$16!.$7F\tBAD OPERAND TOO'",
+      ),
     )
   })
 
@@ -345,6 +361,14 @@ describe('jt9-5 AC1 — a row with an unpaired sound code throws instead of losi
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('jt9-5 AC3 — an invented cue declares its window; it is not derived as zero', () => {
+  // jt9-32: the two invention throws below (the zero-window refusal, and the
+  // `refuse(...)` helper) were pinned by `toThrowError("<message>")` — CONTAINMENT,
+  // not equality. Measured mutant R5 appended
+  // ` - jt9-5 APPENDED THIS AND NOTHING NOTICED` to the invention message and
+  // survived (105 files / 2533 passed). Both are now
+  // `toThrowError(new Error(<same literal>))`, EQUALITY, so R5 reddens. Literals
+  // reused verbatim, so the interpolated `${note}`/`${shown}` decoys (N13/N14)
+  // still redden. See the fuller note at the head of the AC-1 block above.
   it('an invention cue no longer reports a window of ZERO', async () => {
     // CONSTRUCTED: the first invention cue this repo has ever had. None ships —
     // `every cue in CUE_SOURCES is kind: rom` below is the measurement — so the
@@ -391,8 +415,10 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     // relocation this test is named for, and only this test sees it.
     const framesForMirror = (await inventionSurface()).framesFor
     expect(() => framesForMirror({ kind: 'invention', note: 'silent by mistake', frames: 0 })).toThrowError(
-      "invented cue 'silent by mistake' declares a frames window of 0 — an invention has " +
-        "no ROM table to size it, so it must declare a positive whole number of frames",
+      new Error(
+        "invented cue 'silent by mistake' declares a frames window of 0 — an invention has " +
+          "no ROM table to size it, so it must declare a positive whole number of frames",
+      ),
     )
   })
 
@@ -421,8 +447,10 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     const framesForMirror = (await inventionSurface()).framesFor
     const refuse = (note: string, frames: number | undefined, shown: string) =>
       expect(() => framesForMirror({ kind: 'invention', note, frames })).toThrowError(
-        `invented cue '${note}' declares a frames window of ${shown} — an invention has ` +
-          `no ROM table to size it, so it must declare a positive whole number of frames`,
+        new Error(
+          `invented cue '${note}' declares a frames window of ${shown} — an invention has ` +
+            `no ROM table to size it, so it must declare a positive whole number of frames`,
+        ),
       )
     refuse('negative', -1, '-1')
     refuse('fractional', 12.5, '12.5')

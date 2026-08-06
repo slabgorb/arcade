@@ -286,6 +286,67 @@ describe('jt5-2 — the bake is deterministic and the cues are distinct', () => 
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
+// jt9-32 — the bake pins WHAT it produces, per file (content, not just shape)
+// ═════════════════════════════════════════════════════════════════════════════
+// The "byte-identical" test directly above is a NEAR MISS: it compares two runs
+// of the SAME code, so a one-character edit to a synthesis constant — `RATE`,
+// `FRAME_HZ`, a `SPECS` envelope or frequency, `encodeWav`'s header — moves BOTH
+// runs together and the equality still holds. Every shape check in this file is
+// the same: format in {1,3}, sample rate in [8000,96000], duration in [0.05,10],
+// not-silence, pairwise-distinct — all satisfied by DIFFERENT audio. Determinism
+// is pinned; the value it is deterministic ABOUT is not.
+//
+// MEASURED (jt9-4 Reviewer, story jt9-32): mutant R12 — `const RATE = 22050` ->
+// `24000` in bake-samples.mjs — leaves all 101 tests in the four files that touch
+// the bake green, and the whole joust project green, while every one of the
+// eighteen shipped .wav files is different audio. The Reviewer proved byte
+// identity across jt9-4's refactor OUT OF BAND (combined sha256 4499a28b…c9962)
+// precisely because no test could. This block is that hand computation, committed
+// and made a gate: one sha256 PER FILE, so a change NAMES the cue that moved
+// rather than reporting a single opaque digest.
+//
+// GOLDEN is deliberately cheap to re-baseline: a real change to a sound SHOULD
+// red this and be re-recorded IN THE SAME COMMIT, with the reason in the message.
+// That is the feature, not the cost. Set-equality below keeps the table honest —
+// a cue added to SOUNDS with no golden row reds, and a stale row for a removed
+// cue reds — for the same reason the manifest re-export is identity, not a copy.
+//
+// ACCEPTANCE (re-run VERBATIM): R12 above must redden every per-file assertion
+// here and the block must stay GREEN unmutated. jt9-5 changes only the invention
+// arm of framesFor and NOT the eighteen shipped windows (every cue is kind:rom
+// today), so this baseline is stable across it; if it is not, that is worth
+// knowing and is exactly what the pin is for.
+//
+// filename -> sha256 of the default bake (`bakeSamples(dir)`, no opts).
+const GOLDEN = {
+  // GREEN(dev): bake the shipped manifest once into a temp dir and record each
+  // file's sha256 here — DERIVE the values (read them off a `bakeSamples(tmp)`
+  // run), do NOT hand-type them, or the pin becomes its own transcription. The
+  // set of keys must equal Object.values(SOUNDS); the two tests below enforce it.
+}
+
+describe('jt9-32 — the bake pins WHAT it produces, per file (content, not just shape)', () => {
+  it('the golden table covers EXACTLY the shipped manifest — a new cue forces an entry', () => {
+    // Both directions: a shipped cue missing from GOLDEN reds (the baseline
+    // cannot silently omit a file), and a GOLDEN row for a cue no longer shipped
+    // reds (a rename or removal cannot leave a dangling pin).
+    const manifest = new Set(Object.values(SHELL_SOUNDS))
+    expect(new Set(Object.keys(GOLDEN)), 'golden table keys vs shipped manifest').toEqual(manifest)
+  })
+
+  it('every shipped file hashes to its recorded sha256 after a default bake — R12 reddens this, by cue', () =>
+    withTempDir(async (dir) => {
+      // No opts: the shipped manifest, exactly what `just deploy-assets` uploads.
+      await bakeSamples(dir)
+      for (const file of Object.values(SHELL_SOUNDS)) {
+        expect(sha256(readFileSync(join(dir, file))), `${file}: baked content moved`).toBe(
+          GOLDEN[file],
+        )
+      }
+    }))
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
 // jt9-4 — THE BAKE'S OWN GATES, PINNED
 // ═════════════════════════════════════════════════════════════════════════════
 // `bakeSamples` throws three times. Until jt9-4 exactly ONE of those throws was
