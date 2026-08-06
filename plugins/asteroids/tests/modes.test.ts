@@ -19,9 +19,16 @@
 //    'gameover' — A-2's Mode union is NOT extended) and
 //    `highScoreTable: HighScoreEntry<'wave'>[]` (loaded by the shell at boot).
 //  - 'attract': rocks drift via the EXISTING A-6 movement (pinned by equality
-//    with updateRocks, not golden values); ship/bullets/score/lives are inert
-//    regardless of held gameplay inputs; input.start begins a fresh game using
+//    with updateRocks, not golden values); input.start begins a fresh game using
 //    initialState's field defaults WITHOUT re-seeding the rng.
+//
+// SUPERSEDED (ad1-3): A-16's "ship/bullets/score/lives are inert in attract"
+// contract is GONE — attract now runs a self-play demo (a ship that steers and
+// shoots the drifting field), mirroring tempest's demoActive. The two inert-
+// backdrop tests that used to live here were removed; the live attract-with-ship
+// contract is pinned in tests/attract-demo.test.ts. What survives below is the
+// half that still holds: the rock DRIFT is still the same A-6 mover, and the
+// start-press opt-in still hands a fresh game to the player.
 //  - 'gameover' entry: ship destruction with no ships in reserve flips mode
 //    to 'gameover' in the SAME step (deaths with reserves decrement and
 //    respawn instead — A-15, pinned in tests/lives.test.ts) and initialises
@@ -43,15 +50,6 @@ const DT = 1 / 60
 const BOUNDS: Bounds = { width: WORLD_W, height: WORLD_H }
 
 const START: Input = { ...NO_INPUT, start: true }
-// Every gameplay control held at once — attract must ignore ALL of them.
-const MASHED: Input = {
-  left: true,
-  right: true,
-  thrust: true,
-  fire: true,
-  hyperspace: true,
-  start: false,
-}
 
 /** An attract-mode field with drifting rocks and a deliberately ADVANCED rng
  * (two draws off the boot seed), so "the stream continues" is distinguishable
@@ -136,49 +134,27 @@ describe("stepGame — 'attract' branch", () => {
     expect(s1.rocks).not.toEqual(s0.rocks)
   })
 
-  it('keeps drifting deterministically across many ticks (fixed seed, fixed dt)', () => {
+  it('runs deterministically across many ticks (fixed seed, fixed dt)', () => {
+    // ad1-3: attract now self-plays, so the field is no longer pure drift — the
+    // demo's shots can destroy rocks within this window. The invariant that
+    // survives is determinism itself: identical seed + dt reproduces the run
+    // exactly. (The pre-ad1-3 "rocks equal iterated updateRocks" assertion was
+    // dropped with the inert-backdrop contract; live self-play is pinned in
+    // tests/attract-demo.test.ts.)
     const run = (): GameState => {
       let s: GameState = attractWithRocks(99)
       for (let i = 0; i < 120; i++) s = stepGame(s, NO_INPUT, DT)
       return s
     }
-    const a = run()
-    expect(a).toEqual(run())
-    // Expected drift iterates updateRocks per tick exactly as the sim does —
-    // one 120*DT mega-step would diverge in accumulated float rounding.
-    let expected = attractWithRocks(99).rocks
-    for (let i = 0; i < 120; i++) expected = updateRocks(expected, DT, BOUNDS)
-    expect(a.rocks).toEqual(expected)
+    expect(run()).toEqual(run())
   })
 
-  it('ignores every held gameplay input: ship, bullets, score, lives all inert', () => {
-    let s: GameState = attractWithRocks()
-    const before = attractWithRocks()
-    for (let i = 0; i < 30; i++) s = stepGame(s, MASHED, DT)
-    expect(s.ship).toEqual(before.ship) // no thrust, no rotation
-    expect(s.bullets).toEqual([]) // fire spawns nothing without a player
-    expect(s.score).toBe(before.score)
-    expect(s.lives).toBe(before.lives)
-    expect(s.shipDestroyed).toBe(false) // no collision path runs in attract
-    expect(s.saucer).toBeNull()
-    expect(s.highScoreTable).toEqual(before.highScoreTable)
-  })
-
-  it('never collides or splits: rock count is stable with a rock over the ship', () => {
-    const s0 = attractWithRocks()
-    // Park one rock exactly on the (inert) ship to prove collision is off.
-    const parked: GameState = {
-      ...s0,
-      rocks: [
-        ...s0.rocks,
-        { pos: { x: WORLD_W / 2, y: WORLD_H / 2 }, velocity: { x: 0, y: 0 }, size: 'large', shapeVariant: 1 },
-      ],
-    }
-    let s: GameState = parked
-    for (let i = 0; i < 10; i++) s = stepGame(s, MASHED, DT)
-    expect(s.rocks).toHaveLength(parked.rocks.length)
-    expect(s.shipDestroyed).toBe(false)
-  })
+  // (ad1-3) The two A-16 tests that asserted an INERT attract ship — "ignores
+  // every held gameplay input: ship/bullets/score/lives all inert" and "never
+  // collides or splits" — were removed here. They pinned the pre-demo contract
+  // this story overturns. The live self-play contract (the ship steers, shoots,
+  // reads the board, ignores held player buttons, never auto-starts) is pinned
+  // in tests/attract-demo.test.ts.
 })
 
 // ---- attract -> playing: the start press --------------------------------------
