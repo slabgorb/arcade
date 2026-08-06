@@ -30,7 +30,7 @@ const pluginDirs = () =>
 
 test('every plugins/* directory has a plugin.ts', () => {
   const dirs = pluginDirs();
-  assert.equal(dirs.length, 8, 'expected eight games under plugins/');
+  assert.equal(dirs.length, 9, 'expected nine games under plugins/');
   for (const dir of dirs) {
     assert.doesNotThrow(
       () => readFileSync(path('plugins', dir, 'plugin.ts')),
@@ -55,7 +55,7 @@ test('the generator CLI runs, agrees, and --check writes nothing', () => {
     encoding: 'utf8',
     cwd: repo,
   });
-  assert.match(out, /8 games \(7 listed\)/);
+  assert.match(out, /9 games \(8 listed\)/);
   assert.deepEqual(readFileSync(path('src', 'host', 'registry.ts')), before, '--check wrote to the registry');
 });
 
@@ -67,7 +67,7 @@ test('the cabinet keeps its curated tile order', () => {
   const registry = read('src', 'host', 'registry.ts');
   const ids = [...registry.matchAll(/^\s*id: '([^']+)'/gm)].map((m) => m[1]);
   assert.deepEqual(ids, [
-    'tempest', 'star-wars', 'asteroids', 'battlezone', 'centipede', 'joust', 'red-baron', 'missile-command',
+    'tempest', 'star-wars', 'asteroids', 'battlezone', 'centipede', 'joust', 'red-baron', 'missile-command', 'pac-man',
   ]);
 });
 
