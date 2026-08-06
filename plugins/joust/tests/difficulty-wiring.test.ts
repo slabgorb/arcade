@@ -69,10 +69,10 @@
 // Every test NAMES the mutant it kills.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { loadDifficulty, type DyRowName } from './helpers/difficulty-contract.js'
+import { loadDifficulty, type DyRowName, type RowDisposition } from './helpers/difficulty-contract.js'
 import { loadEnemy, type EnemyState, type PlayerView } from './helpers/enemy-contract.js'
 import { loadDemo } from './helpers/demo-contract.js'
 import type { DemoState, DemoProcess } from './helpers/demo-contract.js'
@@ -81,6 +81,95 @@ import { violations } from './helpers/purity-scanner.js'
 
 const coreDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'core')
 const readCore = (f: string): string => readFileSync(join(coreDir, f), 'utf8')
+
+// ─────────────────────────────────────────────────────────────────────────────
+// jt9-39 — the disposition must not LIE about consumers.
+//
+// The AC-6 block below pins the table against ITSELF (the wired SET, and that each
+// wired entry's `consumer` field is non-empty PROSE). Neither re-derives that prose
+// against the core, so two lies ship green: a row marked `wired` whose name is read
+// NOWHERE, and a row marked `no-consumer-yet` that a call already reads. The helpers
+// here re-derive each disposition from the core source and the live sprint, so the
+// inventory cannot drift from the code it claims to describe.
+//
+// "Consumed" = the row's DYWORD NAME appears as a QUOTED literal ('NAME') in some
+// src/core/*.ts other than difficulty.ts. Quoted, not bare, so a comment that merely
+// NAMES the row (there are many) is not mistaken for a call. This deliberately counts
+// a WRAPPER that forwards the literal, not only a direct waveValue()/dyRow() argument:
+// EGGWT and EGGWT2 reach waveValue only through demo.eggWaitFrames (demo.ts:1977), so
+// a direct-call-only reading would falsely flag two correctly wired rows. See this
+// story's Design Deviation.
+// ─────────────────────────────────────────────────────────────────────────────
+const sprintDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'sprint')
+
+/** Every src/core/*.ts except difficulty.ts, concatenated — the consumer surface. */
+const coreConsumerSurface = (): string =>
+  readdirSync(coreDir)
+    .filter((f) => f.endsWith('.ts') && f !== 'difficulty.ts')
+    .map((f) => readCore(f))
+    .join('\n')
+
+/** Does a call in the core pass this row's NAME as a string literal? */
+const hasConsumerLiteral = (name: string, coreText: string): boolean =>
+  coreText.includes(`'${name}'`)
+
+/** The story ids the LIVE sprint declares (backlog + in-progress); archive excluded. */
+const liveSprintStoryIds = (): ReadonlySet<string> => {
+  const ids = new Set<string>()
+  for (const f of readdirSync(sprintDir)) {
+    if (!f.startsWith('epic-') || !f.endsWith('.yaml')) continue
+    for (const m of readFileSync(join(sprintDir, f), 'utf8').matchAll(
+      /^\s*-?\s*id:\s*["']?([A-Za-z0-9-]+)["']?\s*$/gm,
+    )) {
+      ids.add(m[1])
+    }
+  }
+  return ids
+}
+
+interface DispositionLie {
+  readonly row: string
+  readonly problem: string
+}
+
+/**
+ * The lie detector, pure over its inputs so the synthetic mutations below drive it
+ * without touching a file on disk. A `wired` row whose name is read nowhere, a
+ * `no-consumer-yet` row a call already reads, and a pending owner naming a story the
+ * sprint does not contain are each a lie.
+ */
+const auditDispositions = (
+  disp: Readonly<Record<string, RowDisposition>>,
+  coreText: string,
+  sprintIds: ReadonlySet<string>,
+): DispositionLie[] => {
+  const out: DispositionLie[] = []
+  for (const [row, d] of Object.entries(disp)) {
+    const consumed = hasConsumerLiteral(row, coreText)
+    if (d.kind === 'wired' && !consumed) {
+      out.push({ row, problem: `wired, but no '${row}' literal reads it in src/core` })
+    }
+    if (d.kind === 'no-consumer-yet') {
+      if (consumed) {
+        out.push({ row, problem: `no-consumer-yet, but a '${row}' literal already reads it` })
+      }
+      if (!sprintIds.has(d.owner)) {
+        out.push({ row, problem: `owner '${d.owner}' is not a live sprint story id` })
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * GREEN(dev) fills this: each wired row → the src/core file its consumer literal
+ * lives in, DERIVED by grep (not hand-typed) — the same "record the baseline" GREEN
+ * jt9-32 used for the bake hashes. EMPTY here is the RED: the two AC-1 tests below
+ * fail (28 wired rows, 0 recorded) until it is filled. It pins the SITE, so a
+ * consumer that moves to another module — or a row silently re-pointed — reddens
+ * even though a literal still exists somewhere in the core.
+ */
+const CONSUMER_FILE: Readonly<Record<string, string>> = {}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The two wired dials, with their curves derived by hand from the DYWORD rows and
@@ -859,6 +948,107 @@ describe('AC-6 — every one of the 28 rows carries an explicit disposition', ()
     // owner jt9-11`, so this reads `['LAVGRA','LAVTIM']` and fails at length 0.
     expect([...pending].sort(), 'the troll pair no longer waits on a mechanic').toEqual([])
     expect(pending.length, 'no DYTBL row is left without a consumer').toBe(0)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// jt9-39 — ROW_DISPOSITION cannot LIE in the direction that matters. The checks
+// above pin the table against itself; these pin it against the core and the sprint,
+// so a row wired in code but left `no-consumer-yet` (or vice versa) reddens.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('jt9-39 AC-1 — every wired row records a REAL consumer site', () => {
+  it('records a consumer file for EXACTLY the wired rows — RED until GREEN fills CONSUMER_FILE', async () => {
+    const d = await loadDifficulty()
+    const wired = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'wired')
+    expect(
+      Object.keys(CONSUMER_FILE).sort(),
+      'CONSUMER_FILE keys must be the wired set exactly — no missing row, no ghost',
+    ).toEqual([...wired].sort())
+  })
+
+  it('each recorded file genuinely contains the row’s quoted literal', async () => {
+    const d = await loadDifficulty()
+    const wired = d.DYTBL_ROW_NAMES.filter((n) => d.ROW_DISPOSITION[n].kind === 'wired')
+    const missing = wired.filter((n) => !(n in CONSUMER_FILE))
+    expect(missing, 'wired rows with no recorded consumer file (GREEN fills these)').toEqual([])
+    for (const n of wired) {
+      const file = CONSUMER_FILE[n]
+      if (file === undefined) continue
+      expect(
+        hasConsumerLiteral(n, readCore(file)),
+        `${n}: recorded consumer file '${file}' must contain the '${n}' literal`,
+      ).toBe(true)
+    }
+  })
+})
+
+describe('jt9-39 AC-1/2/4 — the LIVE inventory is consistent with the core and the sprint', () => {
+  it('audits clean: no wired row unread, no pending row already read, no dangling owner', async () => {
+    const d = await loadDifficulty()
+    expect(
+      auditDispositions(d.ROW_DISPOSITION, coreConsumerSurface(), liveSprintStoryIds()),
+      'the real 28-row disposition must not lie about any consumer or owner',
+    ).toEqual([])
+  })
+})
+
+// The live pending/dead sets are empty by design (jt9-11 wired the last rows), so the
+// bite of AC-2/3/4 is proven on SYNTHETIC dispositions rather than the live table —
+// the exact mutation the story mandates ("flip a wired row to no-consumer-yet; add a
+// call for a pending row"), driven through the pure detector without editing a file.
+describe('jt9-39 AC-2/3 — a mislabelled consumer is caught (mutation, synthetic inputs)', () => {
+  it('the detector counts a quoted literal, not a bare mention in a comment', () => {
+    expect(hasConsumerLiteral('LAVLAV', "x = waveValue('LAVLAV', wave)")).toBe(true)
+    expect(hasConsumerLiteral('LAVLAV', '// LAVLAV is the lava-troll looker reload')).toBe(false)
+  })
+
+  it('flags a row DOWNGRADED to no-consumer-yet while a call still reads it', () => {
+    const core = coreConsumerSurface() // real core: LAVLAV is read by the lookers
+    const mutated: Record<string, RowDisposition> = {
+      LAVLAV: { kind: 'no-consumer-yet', rom: 'JOUSTRV4.SRC:7306', missing: 'n/a', owner: 'jt9-39' },
+    }
+    const lies = auditDispositions(mutated, core, liveSprintStoryIds())
+    expect(lies.map((x) => x.row)).toContain('LAVLAV')
+    expect(
+      lies.some((x) => /already reads it/.test(x.problem)),
+      'the lie names the still-live consumer',
+    ).toBe(true)
+  })
+
+  it('flags a row UPGRADED to wired that nothing in the core reads', () => {
+    const core = coreConsumerSurface()
+    const mutated: Record<string, RowDisposition> = {
+      NOSUCHROW: { kind: 'wired', consumer: 'a consumer that does not exist' },
+    }
+    expect(auditDispositions(mutated, core, liveSprintStoryIds()).map((x) => x.row)).toContain(
+      'NOSUCHROW',
+    )
+  })
+})
+
+describe('jt9-39 AC-4 — a pending owner must name a live sprint story (mutation, synthetic)', () => {
+  it('the live sprint id set holds real stories and rejects a fabricated one', () => {
+    const ids = liveSprintStoryIds()
+    expect(ids.has('jt9-39'), 'this story is in the sprint').toBe(true)
+    expect(ids.has('jt9-11'), 'jt9-11 (the last troll wiring) is in the sprint').toBe(true)
+    expect(ids.has('zz9-000-not-a-real-story')).toBe(false)
+  })
+
+  it('flags a pending row whose owner is renumbered-away, passes a real one', () => {
+    const core = coreConsumerSurface()
+    const ids = liveSprintStoryIds()
+    // NOSUCHROW has no consumer literal, so only the owner axis is under test.
+    const dangling: Record<string, RowDisposition> = {
+      NOSUCHROW: { kind: 'no-consumer-yet', rom: 'x', missing: 'y', owner: 'uf1-10-renumbered-away' },
+    }
+    expect(
+      auditDispositions(dangling, core, ids).some((x) => /not a live sprint story/.test(x.problem)),
+      'a dangling owner is a lie',
+    ).toBe(true)
+    const valid: Record<string, RowDisposition> = {
+      NOSUCHROW: { kind: 'no-consumer-yet', rom: 'x', missing: 'y', owner: 'jt9-39' },
+    }
+    expect(auditDispositions(valid, core, ids), 'a real owner is not a lie').toEqual([])
   })
 })
 
