@@ -9,18 +9,20 @@ single constant.
 
 ## 1. What we are cloning (and what we are not)
 
-Three candidate sources were on the table; only one is the arcade machine:
+Several candidate sources were weighed; the ground truth is now the arcade ROM itself:
 
 | Source | What it actually is | Role here |
 |--------|---------------------|-----------|
-| **The Pac-Man Dossier** (Jamey Pittman, `pacman.holenet.info`) | Behavioral reference **derived from the ROM disassembly** + testing: ghost AI, scatter/chase timing, per-level speed/Elroy/fruit tables, scoring, the kill screen. | **Primary spec.** Transcribed into `pm1-dossier.md`; every fidelity constant cites it. |
-| **`shaunlebron/pacman`** (GitHub) | Faithful JS remake, credits the Dossier + MAME. **GPL v3.** | **Read-only oracle** behind a GPL firewall (§3). Disambiguates the Dossier. **Zero lines copied.** |
+| **`pacman.asm`** — a complete commented **Z80 disassembly of the 1980 Namco/Midway arcade program ROM** (`0000`–`3fff`, ~9,289 instructions), vendored at `plugins/pac-man/reference/source/` | The actual machine's code: labelled routines + data tables (scoring table `2b17`, ghost-name table `36bf`, actor RAM `4c/4d`, level `4e13`). | **Primary source of record.** Every fidelity constant cites `pacman.asm:<addr>`; the gate byte-verifies against it — the fleet-standard model (centipede/missile-command). |
+| **The Pac-Man Dossier** (Jamey Pittman, `pacman.holenet.info`) | Behavioral reference derived from the ROM + testing: ghost AI, scatter/chase timing, per-level speed/Elroy/fruit tables, scoring, kill screen. | **Behavioral decoder.** Explains what the routines *do* and decodes encodings (e.g. the ×10 BCD scores). Cited in `glossary.md` for meaning, not as the byte-level truth. |
+| **`shaunlebron/pacman`** (GitHub) | Faithful JS remake, credits the Dossier + MAME. **GPL v3.** | **Read-only oracle** behind a GPL firewall (§3). Disambiguates. **Zero lines copied.** |
 | `DillonDepeel/Pacman-Source-Code` (GitHub) | The **Atari 2600 home port** — 6502 `.ASM`, a different, lesser game. | **Not used.** Wrong machine. Recorded here so nobody re-adopts it. |
 
-No Z80 disassembly is vendored. The fleet's **dossier-file citation gate** (already in
-use on missile-command `mc2`, centipede, joust) is the accepted fidelity mechanism for
-exactly this case; a line-level Z80 audit can be added later if ever wanted, but is not
-in scope.
+The Z80 disassembly **is** vendored (provenance: `reference/PROVENANCE.md`), so Pac-Man
+uses the fleet's normal line-level citation gate exactly as centipede and missile-command
+do — no dossier-only adaptation. **Encoding traps** the gate must survive are recorded in
+PROVENANCE.md: hex radix (`#xx`), and the BCD-little-endian-×10 scoring table (`2b1b 20 00`
+→ 200), where a claim must cite the raw byte AND the decoded value.
 
 ## 2. Fleet placement — reuse, invent nothing
 
@@ -42,14 +44,19 @@ vector-hardware concerns. Any duplication with centipede/joust stays in
 
 ## 3. Ground truth & the fidelity gate
 
-- **Primary spec:** the Pac-Man Dossier, transcribed into
-  `plugins/pac-man/docs/design/pm1-dossier.md`, following the shape of
-  `plugins/missile-command/docs/design/mc2-dossier.md`.
-- **The gate:** clone `plugins/centipede/tests/audit/citations.test.ts`. Every
-  fidelity constant (speeds, mode timers, ghost targets, dot/energizer counts, the
-  per-level table) carries a `pm1-dossier.md:§` citation the test verifies against the
-  code. Plus `purity.test.ts` (core/shell boundary scan) and a `sim-clock-free` scan of
-  `src/core/`.
+- **Primary source of record:** the vendored `plugins/pac-man/reference/source/pacman.asm`
+  Z80 disassembly (provenance `reference/PROVENANCE.md`). A `docs/rom-study/brief.md` +
+  `glossary.md` (the missile-command shape) index the routines and decode the constants,
+  citing `pacman.asm:<addr>` for the byte-level truth and the Dossier for decoded meaning.
+- **The gate:** clone `plugins/centipede/tests/audit/citations.test.ts` +
+  `check-citations.mjs` + `dossier-sweep.ts`. Every fidelity constant (speeds, mode
+  timers, ghost targets, dot/energizer counts, the per-level table, the ×10-BCD scores)
+  is a `claims/*.json` entry `{symbol, value, source:'pacman.asm', addr, meaning}` that
+  the checker **byte-verifies against the vendored `pacman.asm`** — the same mechanism
+  centipede/missile-command use against their vendored source, no adaptation. Plus
+  `purity.test.ts` (core/shell boundary scan) and a `sim-clock-free` scan of `src/core/`.
+  On CI (where `reference/` may be absent) the byte-verification SKIPS and the coverage
+  sweep still runs, per the centipede pattern.
 - **GPL firewall (binding):** `shaunlebron/pacman` is GPL v3. It is a **read-only
   behavioral oracle** — we read it to disambiguate the Dossier and **never copy a line
   of its code, structure, or data tables** into this repo. Lifting GPL code would

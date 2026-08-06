@@ -1,7 +1,7 @@
 id: pm1
 type: epic
 title: Pac-Man — playable arcade core with authentic ghost AI
-description: "Ninth cabinet: the 1980 Namco ARCADE Pac-Man (Z80), raster, built on the centipede shape — NOT the Atari 2600 port (rejected in the design as the wrong machine). GROUND TRUTH: the Pac-Man Dossier (pacman.holenet.info) transcribed into plugins/pac-man/docs/rom-study/ + pm1-dossier.md, machine-verified by a ported centipede citation gate (docs/rom-study/claims + tools/audit/check-citations.mjs). GPL FIREWALL: shaunlebron/pacman is a READ-ONLY oracle — never copy a line; MAME is the tiebreaker. REUSE-FIRST: copy centipede's scaffold, purity scanner and citation machinery; invent no new fidelity mechanism. SCOPE: playable core with authentic four-ghost AI (scatter/chase/frightened, Blinky/Pinky/Inky/Clyde targeting incl. the Pinky up-overflow quirk, Cruise Elroy, tunnel slowdown, per-level tables, scoring, death/win). The harness (pm1-2) lands BEFORE any constant so gameplay numbers are written UNDER the gate (the rb4 lesson). DEFERRED to pm2+: the three cutscenes, the level-256 kill screen, authentic Namco/POKEY sound, and the attract self-play demo (an ad1 sibling). SPEC: docs/superpowers/specs/2026-08-06-pac-man-arcade-design.md. PLAN: docs/superpowers/plans/2026-08-06-pac-man-pm1.md."
+description: "Ninth cabinet: the 1980 Namco ARCADE Pac-Man (Z80), raster, built on the centipede shape — NOT the Atari 2600 port (rejected in the design as the wrong machine). GROUND TRUTH: the vendored Z80 disassembly plugins/pac-man/reference/source/pacman.asm (full 16KB arcade program ROM, provenance reference/PROVENANCE.md) is the SOURCE OF RECORD, byte-verified by a ported centipede citation gate (docs/rom-study/claims + tools/audit/check-citations.mjs). The Pac-Man Dossier (pacman.holenet.info) is the behavioral DECODER (glossary.md), not the byte-level truth. TRAPS: hex radix (#xx); SCORING TABLE at 2b17 is little-endian BCD ×10 (2b1b 20 00 → 200). GPL FIREWALL: shaunlebron/pacman is a READ-ONLY oracle — never copy a line; MAME is the tiebreaker. REUSE-FIRST: copy centipede's scaffold, purity scanner and citation machinery; invent no new fidelity mechanism. SCOPE: playable core with authentic four-ghost AI (scatter/chase/frightened, Blinky/Pinky/Inky/Clyde targeting incl. the Pinky up-overflow quirk, Cruise Elroy, tunnel slowdown, per-level tables, scoring, death/win). The harness (pm1-2) lands BEFORE any constant so gameplay numbers are written UNDER the gate (the rb4 lesson). DEFERRED to pm2+: the three cutscenes, the level-256 kill screen, authentic Namco/POKEY sound, and the attract self-play demo (an ad1 sibling). SPEC: docs/superpowers/specs/2026-08-06-pac-man-arcade-design.md. PLAN: docs/superpowers/plans/2026-08-06-pac-man-pm1.md."
 priority: p1
 status: backlog
 repos: arcade
@@ -11,9 +11,10 @@ stories:
     points: 2
     priority: p1
     plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-1
-    status: backlog
+    status: done
     repos: arcade
     workflow: superpowers
+    completed: '2026-08-06'
   - id: pm1-2
     title: The fidelity harness — dossier + citation gate + purity, BEFORE any constant
     points: 5
