@@ -656,7 +656,8 @@ stories:
       SCOPE FENCE, unchanged by the merge: centipede and star-wars bakes have the same shape and the same gap; do NOT widen to them - measure and file separately if wanted.
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     type: chore
