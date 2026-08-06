@@ -915,11 +915,12 @@ stories:
     title: 'Port the full PTERST/PTERWV ptero entry: random side + time-stagger, not just the jt9-44 Y-lane spread'
     points: 3
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-06'
     repos: arcade
     workflow: tdd
     type: refactor
+    review_verdict: approved
   - id: jt9-46
     title: Enemy buzzards are drawn RIDERLESS — draw the DPLYR knight rider per enemy species (the buzzards carry PLYR3/4/5, JOUSTRV4.SRC:109)
     description: |-
