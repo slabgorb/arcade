@@ -705,3 +705,8 @@ completed_stories:
     title: 'Port the full PTERST/PTERWV ptero entry: random side + time-stagger, not just the jt9-44 Y-lane spread'
     points: 3
     completed: '2026-08-06'
+  - id: jt9-47
+    epic: jt9
+    title: The hatched remount buzzard HARDCODES type 'bounder' — a hunter/shadow-lord loses its species on remount (ROM keeps PID/PEGG, JOUSTRV4.SRC:3251-3252)
+    points: 3
+    completed: '2026-08-06'
