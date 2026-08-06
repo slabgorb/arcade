@@ -301,3 +301,8 @@ completed_stories:
     title: joust — the hatched standing knight is killable during EGGLLP before the buzzard remounts (JOUSTRV4.SRC:3316-3319)
     points: 3
     completed: '2026-08-06'
+  - id: mc2-4
+    epic: mc2
+    title: 'O-4: pin the actual starting-city count'
+    points: 2
+    completed: '2026-08-06'
