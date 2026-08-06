@@ -143,7 +143,8 @@ stories:
       changes only where BOTH sources agree the clone is wrong.
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -159,6 +160,7 @@ stories:
         Any behavior change lands only where both sources agree the clone diverged, with the
         existing enemy suites (enemies, enemies-aggression, enemies-maneuver, firing) staying
         green.
+    completed: '2026-08-05'
   - id: bz5-5
     title: Periscope HUD authentic pass — viewport brackets + red top band (radar red), retire the box + green-radar deviation
     points: 2

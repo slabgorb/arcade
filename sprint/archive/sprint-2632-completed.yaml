@@ -169,3 +169,8 @@ completed_stories:
     title: 'The level-flight block, read once: BOLEV2 forces a glide wake after every level flap, and PPVELX is snapshotted at the decide rather than read live'
     points: 5
     completed: '2026-08-05'
+  - id: bz5-4
+    epic: bz5
+    title: Enemy AI cross-check against MAME + BZONE.MAC together
+    points: 3
+    completed: '2026-08-05'
