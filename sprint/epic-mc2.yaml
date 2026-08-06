@@ -74,7 +74,8 @@ stories:
       Resolve open question O-4: NCITY=6 (W3COMN:39, the MAX) vs SCITYM=03 (W3COMN:195, the "5 cities at start" option-2 mask) vs MAME's 6-city dip default. Read where the option is CONSUMED at game setup (W3MAIN:281 SETUP STATE, :1916 NEW GAME SETUP) and pin the REV-01 default starting count and where the option flips it. mc3 damage/end-game blocks on this: how many cities you begin with, and when "all cities gone" ends the game.
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
