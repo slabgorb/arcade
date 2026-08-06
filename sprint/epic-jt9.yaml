@@ -656,10 +656,11 @@ stories:
       SCOPE FENCE, unchanged by the merge: centipede and star-wars bakes have the same shape and the same gap; do NOT widen to them - measure and file separately if wanted.
     points: 2
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-06'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
     type: chore
   - id: jt9-33
     title: 'MERGED INTO jt9-31 — audio-transporter-split''s load() swallows every import failure and returns {} — the manifest now throws at import, so a real failure arrives as undefined fields'

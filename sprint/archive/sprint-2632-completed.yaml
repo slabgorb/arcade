@@ -271,3 +271,8 @@ completed_stories:
     title: subsystems.md + glossary.md source-of-record docs
     points: 3
     completed: '2026-08-06'
+  - id: jt9-32
+    epic: jt9
+    title: 'Two bake assertions weaker than their names: nothing pins WHAT the joust bake produces, and the manifest throws are pinned only as SUBSTRINGS'
+    points: 2
+    completed: '2026-08-06'
