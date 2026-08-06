@@ -90,7 +90,8 @@ stories:
       Resolve open question O-1: reference/source/A35820.1C.bin is a binary object present in the REV-01 CPU link (MISSIL.DOC.txt) that has not been decoded or identified. Decode it, identify what data/ROM it is and its role in the link, and confirm the module inventory is provably complete. Record the decode method.
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     acceptance_criteria:

@@ -22,14 +22,15 @@ an open question, never a silent pick.
 
 ### 1. What shipped?
 Six 2716 program ROMs at `$5000–$7FFF` + one 82S123 video PROM. The CPU link
-(`MISSIL.DOC.txt`) is `W3DSUP` + `W3COIN` + (`A35820.1C`) + `W3MAIN` + `W3INT`, each
+(`MISSIL.DOC.txt`) is `W3DSUP` + `W3COIN` + `W3SOUN` + `W3MAIN` + `W3INT`, each
 `.INCLUDE`-ing the shared `W3COMN` (→ `COND65`) and, for `W3COIN`, `COIN65`.
 - `035826-01` "BIT/BYTE PROM" (`A35826-PROM.txt`, @L6) is the **video write-mask
   PROM** — MAME's `m_writeprom` / `"proms"` region. It is *data assembled outside the
   CPU link* (the raster trap): it appears in no link string but absolutely ships.
 - Bitmap game — **no character/picture/sprite ROM**. The playfield is a framebuffer
   in video RAM (see §Video). This is why the source is pure logic + a mask PROM.
-- `A35820.1C` is a binary object not yet decoded — **open question O-1**.
+- `A35820.1C` decodes to **`W3SOUN`** — the POKEY sound-system control ROM (ROM2 @
+  `$6000`). O-1 is now **resolved** (see below and `reference/PROVENANCE.md`).
 
 ### 2. What radix?
 `.RADIX 16` (hex) is set **once**, at `W3COMN.MAC:1`, and inherited by W3MAIN,
@@ -110,8 +111,16 @@ Radix caution: `MAXMIS`/`TOPSCR` are decimal (trailing period); city coords are 
 
 ## Open questions
 
-- **O-1** `A35820.1C.bin` is an undecoded binary object in the CPU link. Decode /
-  identify before claiming the module inventory complete.
+- **O-1** *(RESOLVED — see [`PROVENANCE.md`](../../reference/PROVENANCE.md))* — `A35820.1C.bin` is **`W3SOUN`**, the WW3 POKEY sound-system control ROM.
+  It is REV-01 **ROM2** (part `035822-01`, load `$6000`, `MISSIL.DOC.txt:21`). Decode method: it is
+  not a raw ROM image but **ASCII assembler source** (CRLF-lined, null-padded to
+  `0x2400`) that was mis-vendored as a `.bin` because its CR/LF + padding were never
+  LF-normalized like its `.MAC` siblings. Identity is doubly pinned — by its own
+  `.TITLE W3SOUN-(WAS T2SOUN)` header + POKEY content (`AUDCTL`/`AUDF1`), and by its
+  `.INCLUDE COND65`-yes / `W3COMN`-no fingerprint matching MISSIL.DOC's per-object
+  include ledger for `.1C` (COND65 list = `.1A,.1C,.1D,.1E`; W3COMN list =
+  `.1A,.1D,.1E`). All five link objects now resolve — `.1A`=W3DSUP, `.1B`=W3COIN,
+  `.1C`=W3SOUN, `.1D`=W3MAIN, `.1E`=W3INT — so the module inventory is provably complete.
 - **O-2** *(RESOLVED — see [`timebase.md`](./timebase.md))* Exact sim tick: **one logic
   step per video frame**, released by the VBLANK IRQ (`W3INT.MAC:281`) and counted by
   `FRAME` (`W3MAIN.MAC:781`). Rate **61.0076 Hz**, nominal 60.
