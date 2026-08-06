@@ -65,9 +65,10 @@ stories:
     points: 5
     priority: p1
     plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-7
-    status: backlog
+    status: done
     repos: arcade
     workflow: superpowers
+    completed: '2026-08-06'
   - id: pm1-8
     title: Level table + round lifecycle
     points: 5
