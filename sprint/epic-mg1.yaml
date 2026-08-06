@@ -11,7 +11,7 @@ stories:
     description: "Same documentation-drift class as uf1-7, found during the monorepo migration (plan task 10, 2026-07-30). plugins/red-baron/docs/audit/coverage-review.md line 355 states 'We use @arcade/shared/highscore'. That is false on disk and, unlike most drift, it was never true: red-baron persists no high scores at all, and git log -S'highscore' over every commit in the archived pre-migration repo (.migration-backup/red-baron.git) returns empty, so no such consumer ever existed to be removed. The migration deliberately did NOT edit this file — docs/audit/ is a frozen audit record and rewriting it retroactively would falsify the audit rather than fix the code, which is why this is a story instead of a one-line patch. Decide the honest remedy: either an errata note appended to the audit doc that leaves the original claim visible and dated, or a correction recorded wherever that audit's findings are indexed. Do not simply delete the sentence. Note the migration already added a pointer to this in the plugin's README, so whatever is done here should reconcile the two. No test reads coverage-review.md, so nothing goes red either way — this is a truthfulness fix, not a breakage fix."
     points: 1
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -39,7 +39,7 @@ stories:
     description: "Raised by the Task 19 implementer, 2026-07-31. PLAN DEFECT #21 was that both lobby deploy legs ran deploy-r2.mjs against the WHOLE dist/ tree unprefixed, so `just deploy-one lobby` published every game from whatever build happened to be on disk — measured at 34 objects, 29 of them games. Task 19 fixed the justfile side with a lobbyOwnedEntries helper (the single definition cleanLobbyOutput also uses, so the two cannot drift) and proved it: 34/29 became 5/0. The CI side was deliberately left alone and is NOT fixed: .github/workflows/deploy.yml has no --lobby-only on its lobby leg. It is safe TODAY only by accident of environment — a fresh GitHub runner builds one app, so dist/ holds only that app. Nothing asserts that property, and it stops holding the moment CI builds more than one app in a job or reuses a workspace or adds a cache. The implementer correctly declined to fix it in place: the workflow belongs to Task 18, and tests/monorepo-topology.test.mjs pins that argv by deepEqual, so changing it means changing a completed task's pinned contract. Small change, real latent exposure, needs its own review."
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -86,7 +86,7 @@ stories:
     description: "ADR-0004 logged this as follow-up 1 and it was never filed - found while auditing that ADR during the monorepo migration's Task 22. Safari's Intelligent Tracking Prevention deletes script-writable storage, including localStorage, after 7 days without user interaction with the site. This has been universal since Safari 13.1 and applies to first-party storage, not just trackers. A player who does not come back within a week can lose their high-score table outright. This is PRE-EXISTING and entirely unaffected by the migration - the collapse to one origin changes which origin holds the table, not how long Safari keeps it. It is filed separately from the migration work for exactly that reason: fixing it is a product decision about durable storage, not a cleanup task. Note the interaction with the migration's own cookie bridge - that cookie is a 400-day document.cookie value on the registrable domain and is NOT subject to the same 7-day localStorage purge, so today it is accidentally the more durable of the two stores. Its publish side is now retired, so it will not keep itself fresh. Severity depends on mg1-7's measurement of how the interaction clock is scoped."
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -99,7 +99,7 @@ stories:
     description: "ADR-0004 logged this as follow-up 2 and it was never filed. It decides the SEVERITY of mg1-6, which is why it is worth its own story despite being small. If ITP's 7-day interaction clock is scoped per-hostname, then before the monorepo collapse a player had seven independent clocks - playing tempest did nothing to preserve their asteroids table - and the collapse to one origin is a genuine IMPROVEMENT, because any visit to arcade.slabgorb.com now refreshes the clock for every game at once. If the clock is scoped per-eTLD+1, the behaviour was already shared and the collapse changes nothing. The migration made this measurable for the first time by putting every game on one origin. This must be measured in a real Safari rather than read out of the specification: WebKit's localStorage partitioning already contradicts its own published policy, which is precisely the trap that produced a Critical finding during this migration when iframe permission behaviour was reasoned about instead of measured and came out exactly backwards."
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -111,7 +111,7 @@ stories:
     description: "src/shared/tests/purity.test.ts enforces ADR-0003's pure/browser split, and its strongest guard is a transitive fence - a module declared PURE must not reach a DOM global THROUGH an import either, not merely in its own source text. That fence walks the import graph with importClosure(), which matches only `from '...'` relative specifiers. A bare side-effect import (import './x.js') or a dynamic import() therefore bypasses the closure check entirely. This was found by MUTATION during the Task 4 re-review, by a reviewer trying an attack the implementer had not thought of: it made a pure module reach the DOM via a side-effect import, and the closure test stayed GREEN. Only the whole-tree backstop caught it, and that backstop only reaches the file because src/shared is currently FLAT - every module sits in one directory. The gap becomes real the moment src/shared grows subdirectories, which is the natural next step for a library this size. The regex is byte-identical to the one in the original arcade-shared repo, so this is inherited rather than introduced by the migration - which is why it is filed rather than fixed in passing."
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -139,7 +139,7 @@ stories:
     description: "Spec section 6.2, deferred out of the monorepo migration. The bucket named arcade-lobby now holds the entire cabinet - the lobby at its root keys and all seven games under their own key prefixes - so its name describes what it used to be rather than what it is. Purely cosmetic, and the cost is one custom-domain rebind on arcade.slabgorb.com plus updating every reference in code and docs. Two traps worth knowing before starting. First, do NOT confuse this with the bucket named plain `arcade`, which is the ASSETS bucket behind arcade-assets.slabgorb.com - it is the one bucket in the account whose name does not match its domain, and mistaking the two produces a `specified bucket does not exist` error that reads like a permissions problem. Second, the bucket name is not in one place: it appears in the justfile's deploy recipes, in .github/workflows/deploy.yml, and is asserted by tests/monorepo-topology.test.mjs, which pins the CI deploy target by name specifically so a silent retarget cannot happen. Weigh whether the rename is worth a rebind of the live front door at all - there is a reasonable case for leaving it and documenting the name as historical."
     points: 1
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -152,7 +152,7 @@ stories:
     description: "PLAN DEFECT 14 from the monorepo migration, deferred by owner ruling on 2026-07-30 - deferred, explicitly not descoped. This repo has TWO test runners and the migration spent most of its life watching only one. The files under tests/ are node:test files, run by `npm run test:orchestrator`; vitest.config.ts declares projects for shared, host, lobby and the seven games, and NONE of them is rooted at tests/. So `npx vitest run` - the command nearly every migration task used as its green light - never executed a single orchestrator test. Task 9 is where this surfaced for real: two assertions in tests/battlezone-bootstrap.test.mjs went RED while `npx vitest run` cheerfully reported 489 files and 6239 tests all passing. That is this migration's signature failure shape - an accurate report, a green suite, and a vanished guarantee - except here the guarantee had not vanished, it was simply never being looked at. Give tests/ a vitest project, or otherwise make one command cover both runners, so a red orchestrator test cannot pass unnoticed again. Note this is a real port and not a config one-liner: the .mjs files use node:test's API - test and assert imported from node:test and node:assert/strict - rather than vitest's globals."
     points: 5
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -177,7 +177,7 @@ stories:
     description: "The plugin-host design, section 5: 'arcade-shared the repo is archived.' It is not. Checked 2026-07-31: slabgorb/lobby, slabgorb/star-wars and slabgorb/tempest all report archived=true, while slabgorb/arcade-shared reports archived=false — a live, writable repo that nothing consumes and nobody owns, whose contents now live in src/shared/. The risk is small but it is the sharp kind: a push to a dead repo is invisible, and the next person to find it has no way to tell it is dead. Archive it, and while there confirm the other eight are archived too — the design's rule was 'archive, do not delete', because history was squashed on import and those repos are the ONLY place pre-migration per-file blame survives (see td1-13, which needs exactly that history to cut an audit/star-wars tag). Deleting one is unrecoverable; check the whole set rather than assuming this is the only miss."
     points: 1
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: trivial
     type: chore
@@ -186,7 +186,7 @@ stories:
     description: "Found by the Reviewer on mg1-2, 2026-07-31, and MEASURED rather than inferred. mg1-2 made one dev server serve the whole cabinet by mounting one middlewareMode Vite server per game under its /<id>/ prefix. Each child is created with hmr: { server: parentHttpServer }, and that is load-bearing: without it every child opens its own websocket on Vite's default port 24678, six of the seven lose the race, and `just serve` prints six 'Port is already in use' errors on every start. The cost is that the parent's own socket then wins every upgrade, so the games' HMR messages go nowhere. Measured by editing real files against a live server: touching plugins/tempest/src/core/rules.ts delivers NOTHING to a game client, while touching lobby/src/shell/tiles.ts delivers full-reload to the lobby's. The lobby's HMR works; the seven games' does not. This is NOT a regression - before mg1-2 no game could be served at all, so no game had hot reload to lose - and the dev server is fully usable meanwhile: each child's file WATCHER is live and re-requesting a module returns fresh content, so a manual browser refresh picks up every change. Only the automatic push is missing. One approach was already tried and does NOT work: hmr: { server, path: '/<id>/@hmr' } routes no better than the bare shared server. Likely candidates are a distinct HMR port per child (cheap, but it puts seven more unpinned ports into a repo that has been bitten twice by port collisions across sibling checkouts - see td1-1) or an upgrade-dispatching layer on the parent that hands the socket to the child owning the URL's prefix (correct, more work). Note also that NO test in this repo covers HMR for any app, including the lobby's working one - which is exactly why a silent HMR gap reached review green. The technique is cheap: connect a websocket with the 'vite-hmr' protocol, touch a file, assert an update message arrives."
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: .
     workflow: tdd
     acceptance_criteria:
@@ -201,7 +201,7 @@ stories:
     description: "Filed from sw8-10's review (Reviewer Improvement, 2026-08-01). tsconfig.json has strict:true but NOT noUncheckedIndexedAccess, so tsc cannot see that plan[i] on a readonly array returns undefined for an out-of-range index while the expression is typed as the element. sw8-10's round-1 MEDIUM (supplyEntry returning undefined-typed-as-WaveEntry for a negative spawnIndex, then dereferenced unguarded in spawnTie) shipped past tsc for exactly this reason and was caught only by the reviewer-rule-checker; the fix was a guard-throw (tie-vm CHERR convention, plugins/star-wars/src/core/tie-waves.ts supplyEntry). The same blind spot covers EVERY table lookup in every game (waveParams, TWV_GROUPS, TBG, TCH1/TCH2, tempest WTABLE ports, ...). Scope: measure the one-time cost (npx tsc --noEmit with the flag enabled in a scratch tsconfig; count errors per app), decide enable-repo-wide vs per-project vs decline-with-rationale, and if enabled fix or annotate the sites. This is an evaluation+decision story: the DECISION with measured numbers is the deliverable; a fleet-wide annotation sweep, if chosen, should be split into follow-ups per app."
     points: 3
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
   - id: mg1-16
@@ -209,7 +209,7 @@ stories:
     description: "Raised by the Reviewer on mg1-5, which fixed ordering WITHIN one deploy-r2.mjs invocation and left the ordering BETWEEN invocations untouched. mg1-5's title says 'deploy-r2 is not atomic' and a reader will close it believing the deploy now is; it is atomic per-APP, which is a weaker and undocumented claim. MEASURED: the justfile 'deploy' recipe runs the LOBBY leg FIRST (node scripts/deploy-r2.mjs {{root}}/dist arcade-lobby --lobby-only) and only then loops the seven games, so eight separate invocations. The lobby's index.html links to /<id>/ for every game via gamePath() baked into its bundle (src/host/registry.ts), so the front door goes live BEFORE any game is uploaded. A failure during the games loop leaves exactly the 'six dead tiles on the front door' mg1-5's own description names — the scenario the story opened with and did not close. Narrow in steady state, because the games are already in the bucket from previous deploys; EXACT on a fresh bucket. CONCRETE TRIGGER: mg1-10 (rename arcade-lobby to arcade-cabinet) requires a full upload into an empty bucket, which is precisely the worst case. Note the tag-triggered CI path deploys one app per tag and does not exhibit this; it is 'just deploy' (the documented manual fallback, and the command that caused the 2026-07-31 incident) that does. Likely shape: move the lobby leg LAST in both recipes, or make the whole cabinet upload transactional. Verify with a test over the justfile's real recipe bodies — tests/deploy-r2.test.mjs already parses them for the --lobby-only guard and that reader can be reused."
     points: 3
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     type: bug
@@ -218,7 +218,7 @@ stories:
     description: "Raised by TEA, Dev and the Reviewer on mg1-5, none of whom could close it inside that story's ACs. mg1-5 made uploadDir's 'upload' option REQUIRED, so it now fails closed: a caller with no uploader throws instead of deploying (scripts/deploy-r2.mjs:173-179), and the single production call site passes 'upload: putObject' explicitly at :197. That closed the hole that took arcade.slabgorb.com down during mg1-5's own RED phase. What remains is defence in depth, and it is cheap. (1) NO DRY RUN. putObject is now the one exported function that touches the network, so a --dry-run flag is nearly free: swap the uploader for one that logs. Any code path reaching uploadDir with a real uploader deploys, with no confirmation and no preview. (2) ARGUMENT INJECTION, CWE-88, raised by reviewer-security at low confidence. putObject passes ${bucket}/${key} and file as bare argv elements to wrangler with no check that they do not begin with '-'. This is NOT shell injection — execFileSync with array args is correct and a test pins it — but a dash-prefixed filename could be parsed by wrangler's own yargs as a flag. Unreachable today because Vite/Rollup names the output, and nothing enforces that. Cheap structural close: reject such keys in collectUploads. (3) A TEST-SIDE GUARD WEAKNESS worth folding in: tests/deploy-r2.test.mjs proves fail-closed behaviour by calling uploadDir on an EMPTY fixture, which is safe because collectUploads throws before the upload loop. That reasoning is airtight but undocumented outside a comment; consider asserting it structurally. NOT in scope: walk()'s symlink following, which is filed separately."
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     type: chore
@@ -227,7 +227,7 @@ stories:
     description: "Raised by reviewer-security on mg1-5 at medium confidence, and confirmed PRE-EXISTING — 'git diff <mg1-5 base>..HEAD -- scripts/deploy-r2.mjs | grep -c statSync' returns 0, so mg1-5 neither introduced nor touched it. Filed separately from mg1-17 because it is a different mechanism. scripts/deploy-r2.mjs:38-46: walk() uses statSync(full).isDirectory(), which FOLLOWS symlinks, rather than lstatSync. If a symlink is ever present inside the dist/ tree at deploy time and points at a directory — committed under a game's public/ folder, or created by a build step — walk() recurses into whatever it resolves to and uploads those contents to the PUBLIC arcade-lobby bucket under an innocuous-looking key. Note this is NOT traversal in the R2 key: relative(distDir, file) can never emit a '..' segment because every path is derived by walking under distDir, so the key stays nominally in place. It is traversal in the FILE CONTENT that key points at. Trust boundary is commit access to plugins/*/public/, so this is defence in depth rather than urgent — but the fix is small. Likely shape: use lstatSync and either skip symlinks outright, or resolve and validate they stay within distDir (fs.realpathSync(full).startsWith(fs.realpathSync(distDir))) before following. A RED test can build a fixture with a symlink pointing outside a temp dist dir and assert the target's contents never appear in collectUploads' output. The file already documents subtle trust assumptions in comments (see the --lobby-only block); this one deserves the same treatment."
     points: 1
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     type: bug
@@ -236,7 +236,7 @@ stories:
     description: "Found while finishing sc1-1. pf sprint story finish runs an archive_epics step that moves every 100%-done epic out of sprint/ into sprint/archive/. jt5 and jt8 are both fully done (11/11 and 6/6), so ANY story finish now archives them - and tests/jt5-7-epic-yaml-truth.test.mjs reads sprint/epic-jt5.yaml through a hardcoded live path (line 38, read('sprint','epic-jt5.yaml')). The move therefore reddens 8 orchestrator tests, all of them jt5-7's own prose-correction guards, with the misleading failure 'PREMISE: the epic YAML and the vendored ROM are both readable'. Measured at sc1-1 finish: the suite went 390/390 to 382/390 the moment the ceremony ran, and back to 390/390 when jt5 and jt8 were restored to the live board by hand. That restore is a WORKAROUND, not a fix: both epics are genuinely complete and belong in the archive, and the next finish anyone runs will archive them again and redden the same 8 tests. The test's subject is the epic's CONTENT - that jt5-7 rewrote prose the ROM refuted - and that content is equally true in sprint/archive/epic-jt5.yaml. Resolve the path from either location rather than pinning the live one, then let the archival proceed."
     points: 1
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: trivial
     acceptance_criteria:
