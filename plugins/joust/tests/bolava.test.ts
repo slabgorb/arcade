@@ -87,6 +87,46 @@ function flapWakes(enemy: EnemyState, target: PlayerView | null, n: number): boo
 const count = (flaps: readonly boolean[]): number => flaps.filter(Boolean).length
 
 // ═════════════════════════════════════════════════════════════════════════════
+// AC-1 — THE EPISODE STATE MACHINE (:3948-3964), seeded at each entry address so
+//        the flap↔coast PHASE and the exit are pinned directly — the wing-edge
+//        end-to-end tests below merge consecutive flaps and cannot see them.
+//   BOLAV2 (:3958-3961) COAST, arm BOLAV1. BOLAV1 (:3948-3952) re-check $D3:
+//   still gated ⇒ FLAP (BOLAVA), arm BOLAV2; above $D3 OR rising ⇒ BOLAV4 exit.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('AC-1 — the BOLAVA ping-pong: BOLAV2 coasts, BOLAV1 flaps-or-exits', () => {
+  /** A hunter already mid-episode at a given entry address. */
+  const inLava = (entry: 'BOLAV2' | 'BOLAV1', pixelY: number, velY = FALL): EnemyState => ({
+    ...hunterAt(pixelY, { velY }),
+    pjoy: { kind: 'lava', entry },
+  })
+
+  it('BOLAV2 COASTS (`CLRB`) even while gated, and arms BOLAV1 — a bird never flaps two wakes running', () => {
+    // Deep in the lava and falling — the gate would re-fire, but a BOLAV2 wake
+    // still coasts unconditionally. This is the wake right after every divert.
+    const r = E.stepEnemyDetailed(inLava('BOLAV2', 0xf0), { player: null, wave: 1 })
+    expect(r.enemy.prevFlapHeld, 'BOLAV2 is a coast — wings up this wake (CLRB)').toBe(false)
+    expect(r.enemy.pjoy, 'BOLAV2 arms the BOLAV1 re-check next').toEqual({ kind: 'lava', entry: 'BOLAV1' })
+  })
+
+  it('BOLAV1 still below $D3 and falling FLAPS (`LDB #1`) and arms BOLAV2', () => {
+    const r = E.stepEnemyDetailed(inLava('BOLAV1', 0xf0), { player: null, wave: 1 })
+    expect(r.enemy.prevFlapHeld, 'a re-check that stays in the lava flaps').toBe(true)
+    expect(r.enemy.pjoy, 'BOLAVA arms the BOLAV2 coast next').toEqual({ kind: 'lava', entry: 'BOLAV2' })
+  })
+
+  it('BOLAV1 ABOVE $D3 EXITS the episode (`BLO BOLAV4`) — pjoy is no longer lava', () => {
+    // Climbed clear of $D3: the re-check drops PJOY,U and returns to the brains.
+    const r = E.stepEnemyDetailed(inLava('BOLAV1', 0xc0), { player: null, wave: 1 })
+    expect(r.enemy.pjoy?.kind, 'above $D3 the lava episode ends').not.toBe('lava')
+  })
+
+  it('BOLAV1 while RISING EXITS the episode (`BMI BOLAV4`, IGNORE LAVA) even deep below $D3', () => {
+    const r = E.stepEnemyDetailed(inLava('BOLAV1', 0xf0, -FALL), { player: null, wave: 1 })
+    expect(r.enemy.pjoy?.kind, 'a rising bird leaves the lava even from deep below').not.toBe('lava')
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
 // AC-2 — THE SHADOW DIVERTS AT $D0, NOT THE STAND-IN'S $D3.
 //   SHDIR (:4330-4334): `CMPA #$D0 / BLO 1$ / LDA PVELY,U / LBPL BOLAVA`. A
 //   no-target (SHLEV) shadow at/below $D0 and falling diverts to BOLAVA and
@@ -121,6 +161,11 @@ describe('AC-2 — the no-target shadow diverts to BOLAVA at its own $D0 gate', 
     const flaps = flapWakes(shadowAt(0xd2, { velY: -FALL }), null, 4)
     expect(flaps[0], 'a rising shadow ignores the lava — the gate is falling-only').toBe(false)
   })
+
+  it('BOUNDARY — velY EXACTLY 0 still diverts (`LBPL` is >= 0, non-negative, not strictly falling)', () => {
+    const flaps = flapWakes(shadowAt(0xd2, { velY: 0 }), null, 4)
+    expect(flaps[0], 'zero vertical velocity is on the divert side of the gate, not the rising side').toBe(true)
+  })
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -140,6 +185,19 @@ describe('AC-2 — the hunter diverts to BOLAVA, target-blind', () => {
     const e = hunterAt(0xf0, { velY: DEEP_FALL })
     expect(e.entity.posY >> 8, 'deep in the lava band').toBeGreaterThanOrEqual(D3)
     expect(e.entity.velY, 'falling').toBeGreaterThanOrEqual(0)
+  })
+
+  it('the divert arms BOLAV2 — so the wake AFTER the divert coasts, never a second flap', () => {
+    // `JMP BOLAVA` stores #BOLAV2 (:3953-3954): the divert wake flaps, the next
+    // is the coast. Arming BOLAV1 instead would re-check and flap again — two
+    // flaps running — which the wing-edge tests cannot see (a held flap is no
+    // new edge). Pin the stored state directly.
+    const r = E.stepEnemyDetailed(hunterAt(0xf0, { velY: DEEP_FALL }), { player: below, wave: 1 })
+    expect(r.enemy.prevFlapHeld, 'the divert wake itself flaps').toBe(true)
+    expect(r.enemy.pjoy, 'and arms the BOLAV2 coast, not the BOLAV1 re-check').toEqual({
+      kind: 'lava',
+      entry: 'BOLAV2',
+    })
   })
 
   it('the flap sequence is INDEPENDENT of the target — above vs below give the same escape', () => {
