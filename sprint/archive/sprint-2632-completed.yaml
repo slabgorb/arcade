@@ -184,3 +184,8 @@ completed_stories:
     title: 'Draw the fixed field: 6 cities + 3 missile bases at cited coords'
     points: 3
     completed: '2026-08-05'
+  - id: jt9-23
+    epic: jt9
+    title: joust B2UP3/SHUP3 — the two climb-preparation states, and the four PJOYT sites no DYTBL row covers
+    points: 5
+    completed: '2026-08-05'
