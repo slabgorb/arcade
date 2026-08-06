@@ -52,10 +52,15 @@ Hardware (MAME, authoritative on the board):
 - IRQ = `/32V` latched at SYNC, **4 IRQs per frame** (V = 0, 64, 128, 192 unflipped;
   `schedule_next_irq`, `missile.cpp:485–497`). VBLANK true when `V < 24`
   (`vblank_r`, `missile.cpp:528–532`).
-Game-logic tick: driven by `W3INT` (interrupt handler) + a `FRAME` counter the
-mainline reads (`W3DSUP.MAC:19` globals `FRAME`; `W3MAIN.MAC` reads `FRAME` at
-`:2039`). Derive the sim tick from W3INT against the 61.0076 Hz field — **open
-question O-2** until W3INT is read in full.
+Game-logic tick (**O-2, resolved** — full working in [`timebase.md`](./timebase.md)):
+**one logic step per video frame.** The VBLANK interrupt sets `SYNC` (`INC SYNC`,
+`W3INT.MAC:281`) once per frame — of the 4 IRQs/frame only the blank one does — and the
+mainline blocks on it (`BEGIN ;SYNC UP WITH I/O`, `W3MAIN.MAC:497`), runs a frame, then
+`INC FRAME` (`W3MAIN.MAC:781`). `FRAME` is the per-frame counter
+(`FRAME: .BLKB 1 ;FRAME COUNTER (1-60)`, `W3MAIN.MAC:239`; sub-second use
+`UPDATE EVERY 4/60 SEC`, `:623`). So the sim tick = **61.0076 Hz** (nominal 60).
+(brief's earlier `W3DSUP.MAC:19` / `W3MAIN:2039` FRAME refs were logical/approximate;
+the physical lines are `:239`/`:781`.)
 
 ### 4. What did the author already tell us?
 - `MISSIL.DOC.txt` — Atari's own ROM/file ledger (part numbers, link command).
@@ -80,7 +85,7 @@ question O-2** until W3INT is read in full.
 | High-score ladder + name entry    | `W3DSUP`    | `:1862 INIT HI SCORE`, `:1890 UPDATE LADDER`, `:2032 TAKE INITIALS`, `:2145 DISPLAY HI SCORES` |
 | Language literals (EN/FR/DE/ES)   | `W3DSUP`    | `:1513–1749` FR/DE/ES/EN literal tables    |
 | Coin door                         | `W3COIN`+`COIN65` | Atari standard coin handler          |
-| Interrupt / video timebase        | `W3INT`     | (to be read — O-2)                         |
+| Interrupt / video timebase        | `W3INT`     | `:169 PROCESS INTERRUPT`, `:269 HANDLE VBLANK` (O-2 resolved → `timebase.md`) |
 
 ## Cited constants (the skeleton's oracle) — all `W3COMN.MAC`
 
@@ -107,8 +112,9 @@ Radix caution: `MAXMIS`/`TOPSCR` are decimal (trailing period); city coords are 
 
 - **O-1** `A35820.1C.bin` is an undecoded binary object in the CPU link. Decode /
   identify before claiming the module inventory complete.
-- **O-2** Exact sim tick: read `W3INT.MAC` fully and reconcile the `FRAME` counter
-  against MAME's 61.0076 Hz + 4-IRQ/frame model.
+- **O-2** *(RESOLVED — see [`timebase.md`](./timebase.md))* Exact sim tick: **one logic
+  step per video frame**, released by the VBLANK IRQ (`W3INT.MAC:281`) and counted by
+  `FRAME` (`W3MAIN.MAC:781`). Rate **61.0076 Hz**, nominal 60.
 - **O-3** REV-01 vs MAME REV-03 default: the "missile" most players know is REV-03.
   Catalogue behavioural deltas (e.g. difficulty tuning) as they surface.
 - **O-4** `NCITY=6` (max) vs `SCITYM` "5 cities at start" comment vs MAME dip default
