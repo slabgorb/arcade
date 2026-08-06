@@ -9,6 +9,7 @@ completed_epics:
   - cp7
   - cp6
   - bz5
+  - mc1
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -228,5 +229,10 @@ completed_stories:
   - id: jt9-28
     epic: jt9
     title: 'Joust''s written counts, derived or guarded: the README tallies, the eight stale seventeen-cue comments, and the three AC4 prose guards a falsehood walks through'
+    points: 5
+    completed: '2026-08-06'
+  - id: mc1-4
+    epic: mc1
+    title: Player ABM launch to expanding/collapsing blast
     points: 5
     completed: '2026-08-06'
