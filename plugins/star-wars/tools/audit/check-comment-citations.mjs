@@ -331,7 +331,8 @@ export function checkCitations(raw, opts) {
   const errs = []
   if (hasPragma(raw)) return errs
 
-  for (const c of extractCitations(raw)) {
+  const cites = extractCitations(raw)
+  for (const c of cites) {
     if (c.retired) continue
     if (c.bare && c.start !== null && c.candidates.length > 1) {
       // The nearest ROM name is only a guess — a parenthetical aside ("…and identically
@@ -410,6 +411,18 @@ export function checkCitations(raw, opts) {
           break
         }
       }
+    }
+    // Columnar mis-attribution (sw8-25). A comment that lays out `<cite>  "quote"` rows
+    // in a column has, after `unwrap`, the TRAILING quote of one row abutting the NEXT
+    // row's citation — so `quoteFor`'s `before` search binds it to the wrong (later)
+    // citation and this CORRECT one is reported stale, naming the previous row as where
+    // it "moved to". That relocation target is the tell: if the quote actually resolves
+    // INSIDE an EARLIER citation's cited span in the SAME file, it was that row's quote,
+    // not ours. Suppress the manufactured report rather than name a wrong line a reader
+    // would "fix" a correct citation onto. A genuinely stale quote relocates to a line no
+    // other citation claims (or nowhere), and is still reported.
+    if (at !== null && cites.some((o) => o !== c && o.index < c.index && o.file === c.file && o.start !== null && at >= o.start && at <= o.end)) {
+      continue
     }
     errs.push(
       `${label}: quoted verbatim is not in the cited span` +
