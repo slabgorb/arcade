@@ -1,0 +1,10 @@
+[
+  {
+    "id": "MAZE-TOTAL-PELLETS",
+    "symbol": "TOTAL_PELLETS",
+    "value": 244,
+    "meaning": "Total collectible pellets in the maze: 240 regular dots + 4 energizers. Loaded as the literal #f4 in the fruit-bonus-threshold routine, which subtracts the running dot-eaten count from this same 244 to find how many dots remain (the dossier's 'first fruit at 70 dots eaten, second at 170' logic). src/core/maze.ts derives DOT_COUNT = TOTAL_PELLETS - ENERGIZER_TILES.length = 240 from this constant, cross-checked at module load against the row table's own dot count.",
+    "addr": "20e6",
+    "source": { "file": "pacman.asm", "line": 4616, "verbatim": "20e6  3ef4      ld      a,#f4" }
+  }
+]

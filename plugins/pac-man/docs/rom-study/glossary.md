@@ -44,3 +44,33 @@ Ghosts*):
 The Dossier does not state the starting-lives default in a headed section; the
 value is the machine's DIP default (3), and the citation pins the RAM slot the game
 reads and writes.
+
+## Maze (`pacman.asm:20e6`)
+
+The maze is 28x36 tiles (8px tiles -> the cabinet's 224x288 logical resolution,
+Dossier ch.3 "The Maze"). The wall/dot/energizer LAYOUT itself is graphics-ROM
+tile-init data, not program-ROM literals — it is not vendored in this
+disassembly (0000-3fff is the 16 KB *program* ROM only) and so is not
+byte-cited tile-by-tile; `src/core/maze.ts` states that explicitly and encodes
+the layout as a row-string table instead (a faithful-style reconstruction of
+the well-known arcade shape, not a line-for-line ROM transcription).
+
+One real number anchors the pellet count. The fruit-bonus-threshold routine
+loads the literal `#f4` = 244 at `pacman.asm:20e6` (`ld a,#f4`) and subtracts
+the running dot-eaten count from it — the Dossier's "first fruit appears after
+70 dots eaten, second after 170" logic reads as `244-70=174` and `244-170=74`
+against that same constant. 244 is the maze's TOTAL collectible count: 240
+regular dots + 4 energizers.
+
+| Symbol           | Citation           | Raw byte | Decoded | Meaning                                            |
+|------------------|---------------------|----------|---------|-----------------------------------------------------|
+| `TOTAL_PELLETS`  | `pacman.asm:20e6`  | `f4`     | **244** | Total collectible pellets (240 dots + 4 energizers), the fruit-threshold subtrahend. Dossier ch.3 "The Maze" / ch.5 "Fruit". |
+
+`DOT_COUNT` (the regular, non-energizer dot count the maze model exports) is
+**derived**, not a second independent literal: `TOTAL_PELLETS - ENERGIZER_TILES.length`
+= `244 - 4` = **240**. `src/core/maze.ts` cross-checks this derivation against
+its own row table's actual dot count at module load, so the two can never
+silently disagree. The 28x36 grid dimensions and the individual wall/dot/
+energizer placements have no `pacman.asm:<addr>` citation — they are the
+maze's tile-graphics shape, not a program-ROM constant, and are recorded here
+as an explicit, deliberate exception to the citation rule rather than a gap.
