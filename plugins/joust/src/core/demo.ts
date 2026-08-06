@@ -29,7 +29,7 @@
 import { createState, draw, stepFrame, type ProcessClass } from './frame.js'
 import type { GameEvent } from './events.js'
 import { GRAV, flap, tickTimeUp, groundMaskAt, type EntityState, type PlayerInput } from './flight.js'
-import { groundOutcome, FLOOR } from './arena.js'
+import { groundOutcome, FLOOR, ELEFT, ERIGHT } from './arena.js'
 import { applyWaveDestruction, initialArenaState, type ArenaState } from './arena-state.js'
 import {
   bounceEgg,
@@ -91,6 +91,7 @@ import { waveValue, type DyRowName } from './difficulty.js'
 import {
   PADS,
   enterViaPads,
+  enterPteroSides,
   beginMaterialise,
   stepMaterialise,
   PLAYER1_SPAWN,
@@ -620,23 +621,39 @@ function pteroFlightEntity(): EntityState {
   }
 }
 
+/** How a wave ptero enters (jt9-45): its cliff-lane Y and the PTERST side — the entry
+ *  X edge, the FLYXP velocity rung (negated on the right so it flies inward), the face
+ *  it flips to on the right branch — plus the PTERWV `nap` that time-staggers its arrival. */
+interface PteroEntry {
+  posX: number
+  /** <<8 fixed-point cliff-appear lane. */
+  posY: number
+  velXIndex: number
+  facing: Facing
+  nap: number
+}
+
 /** A pterodactyl process — a PTEID secondary, NOT a scored ground enemy (no
  * enemyType, so it never carries a DVALUE type). jt3-4 spawns it; jt3-7 makes it
  * LIVE: it carries a flight `entity` (stepped gravity-exempt by frame.ts) and
- * collides with a player through resolvePteroAttack (the lance-height joust). */
-function pteroProcess(id: number, posY?: number): DemoProcess {
-  const entity = pteroFlightEntity()
+ * collides with a player through resolvePteroAttack (the lance-height joust). jt9-45 —
+ * a wave ptero overrides the shared flight entity with its PTERST/PTERWV entry (see
+ * spawnWavePteros); the baiter's single ptero (baiterProcess) keeps the bare default. */
+function pteroProcess(id: number, entry: PteroEntry): DemoProcess {
   return {
     id,
     cls: 'secondary',
-    nap: 1,
+    nap: entry.nap,
     period: 1,
     kind: 'ptero',
-    facing: 1,
+    facing: entry.facing,
     collisionEnabled: true,
-    // jt9-44 — a wave's pteros enter on DISTINCT cliff lanes (see spawnWavePteros);
-    // absent an override the shared pteroFlightEntity Y stands (the baiter's single ptero).
-    entity: posY === undefined ? entity : { ...entity, posY },
+    entity: {
+      ...pteroFlightEntity(),
+      posX: entry.posX,
+      posY: entry.posY,
+      velXIndex: entry.velXIndex,
+    },
   }
 }
 
@@ -869,26 +886,50 @@ function stepTrolls(
 const PTERO_APPEAR_Y = [0xd3 - 2, 0x8a - 10, 0x51 - 20] as const
 
 /**
- * The pterodactyl processes a wave sends in (jt3-4): the wave row's ptero nibble
- * (WPTEN) WHEN the wave dispatches to the 'ptero' type through jt2-5's
- * `dispatchWaveType`, else none. The count flows through the pure
- * `pteroWaveSpawnCount`. Ptero ids sit in a separate per-wave namespace (+$80) so
- * they never collide with the ground-enemy indices.
+ * `65` — the `PTERWV PCNAP 65` a wave parks between creating each of its pterodactyls
+ * (JOUSTRV4.SRC:2618). DECIMAL frames. Ptero i enters `PTERO_STAGGER_FRAMES * (i + 1)`
+ * frames in, so the complement arrives spread over TIME instead of all on one frame.
  */
-function spawnWavePteros(waveNumber: number): DemoProcess[] {
+const PTERO_STAGGER_FRAMES = 65
+
+/**
+ * The pterodactyl processes a wave sends in (jt3-4), entered deterministically under
+ * `seed`: the wave row's ptero nibble (WPTEN) WHEN the wave dispatches to the 'ptero'
+ * type through jt2-5's `dispatchWaveType`, else none. The count flows through the pure
+ * `pteroWaveSpawnCount`. Ptero ids sit in a separate per-wave namespace (+$80) so they
+ * never collide with the ground-enemy indices.
+ *
+ * jt9-45 ports the full PTERST/PTERWV entry on top of jt9-44's cliff-lane spread:
+ *   • SIDE (PTERST `JSR VRAND / BCC → ELEFT/ERIGHT`, :1421-1489): `enterPteroSides`
+ *     rolls each bird's entry EDGE off `seed`. A left bird enters at `ELEFT+1` on the
+ *     top FLYXP rung moving right; a right bird enters at `ERIGHT-1` with the rung and
+ *     face NEGATED (`COM PFACE / NEG PVELX`) so it too flies INTO the arena.
+ *   • TIME (PTERWV `PCNAP 65`, :2618): a per-bird nap of `PTERO_STAGGER_FRAMES*(i+1)`
+ *     staggers arrivals ≥65 frames apart. All three are still PRESENT (napping) from the
+ *     spawn frame — jt9-44's "no stacked burst" holds — but they wake, and fly, in turn.
+ *   • Y (jt9-44): the three cliff-appear lanes stand, cycled by index (AC6).
+ *
+ * `seed` is the same positional wave-entry seed `enterViaPads` takes (the running `rng`
+ * word at the advance) — used as a local mulberry seed, NOT consumed off `sim.rng`, so
+ * the frame RNG stream is untouched and no downstream draw forks.
+ */
+function spawnWavePteros(waveNumber: number, seed: number): DemoProcess[] {
   const row = waveRowAt(waveNumber)
   const count = pteroWaveSpawnCount(row.status, row.pterodactyls, { p1: true, p2: true })
+  const sides = enterPteroSides(count, seed)
   const pteros: DemoProcess[] = []
   for (let i = 0; i < count; i++) {
-    // jt9-44 — SPREAD the complement so it never enters STACKED. The ROM stages a
-    // wave's pteros ONE AT A TIME (PTERWV `PCNAP 65` between each create, :2618) and
-    // each picks a CLEAR cliff AREA to appear from (PTERST, :1457-1463). This port
-    // enters the whole complement on a single frame, so without a spread they land at
-    // ONE coordinate and — now that jt5-16/jt9-15 resolve ptero pairs — the collision
-    // pass sounds a BURST of enemy-thud cues on the entry frame. Cycling the ROM's
-    // three cliff-appear lanes by index keeps every ptero on its own Y (≥60px apart):
-    // no entry-frame overlap, no burst, and the physics stays ROM-lawful.
-    pteros.push(pteroProcess(0x100 * waveNumber + 0x80 + i, PTERO_APPEAR_Y[i % PTERO_APPEAR_Y.length] << 8))
+    const right = sides[i] === 'right'
+    pteros.push(
+      pteroProcess(0x100 * waveNumber + 0x80 + i, {
+        posX: right ? ERIGHT - 1 : ELEFT + 1,
+        posY: PTERO_APPEAR_Y[i % PTERO_APPEAR_Y.length] << 8,
+        // velXIndex 8 is the top FLYXP rung (rightward); NEG on the right branch.
+        velXIndex: right ? -8 : 8,
+        facing: right ? -1 : 1,
+        nap: PTERO_STAGGER_FRAMES * (i + 1),
+      }),
+    )
   }
   return pteros
 }
@@ -1125,7 +1166,7 @@ function remountEnemyProcess(id: number, egg: EggState): DemoProcess {
 function spawnWaveEnemies(waveNumber: number, seed: number): DemoProcess[] {
   const row = waveRowAt(waveNumber)
   if (dispatchWaveType(row.status, { p1: true, p2: true }) === 'egg') {
-    return [...spawnWaveEggs(waveNumber), ...spawnWavePteros(waveNumber)]
+    return [...spawnWaveEggs(waveNumber), ...spawnWavePteros(waveNumber, seed)]
   }
   const period = emytimForWave(waveNumber)
   const types = enemyTypesForWave(row)
@@ -1133,7 +1174,7 @@ function spawnWaveEnemies(waveNumber: number, seed: number): DemoProcess[] {
     const pad = PADS.find((p) => p.id === entry.pad) ?? PADS[0]
     return enemyProcess(0x100 * waveNumber + entry.index, pad, period, types[entry.index])
   })
-  return [...enemies, ...spawnWavePteros(waveNumber)]
+  return [...enemies, ...spawnWavePteros(waveNumber, seed)]
 }
 
 /**
