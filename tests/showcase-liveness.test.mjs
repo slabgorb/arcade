@@ -108,6 +108,39 @@ test('isAlive is TRUE for a live game — counts vary across the samples', async
 });
 
 // ---------------------------------------------------------------------------
+// AC-1 + AC-3 (rework, round-trip #2) — the `-1` "no canvas" SENTINEL must not be read
+// as motion. sampleLitPixels returns -1 when no sized canvas is present; the frozen
+// verdict counts distinct values, so a canvas that mounts one tick LATE and then freezes
+// gives [-1, k, k, …] — two distinct values, one positive — and the guard fails OPEN,
+// stamping a dead frame ALIVE. That is exactly the regression this gate exists to catch
+// (a game that JS-mounts its canvas and dies on the first frame), masked today only
+// because every showcase game ships a static <canvas> in HTML — a guarantee no test
+// pins and the gate must survive ad1-1/3/4/5 adding games. Filter negatives out of the
+// counts BEFORE the variation check. (Reviewer HIGH, 2026-08-06.)
+// ---------------------------------------------------------------------------
+
+test('isAlive is FALSE for a late-mounting FROZEN frame — [-1] then one repeated count', async () => {
+  const { isAlive } = await probe();
+  // Canvas absent on the first sample (-1), then a single frozen count for the rest.
+  // The -1 sentinel must NOT count as variation: this is a dead frame.
+  assert.equal(isAlive([-1, 812, 812, 812, 812, 812, 812, 812, 812, 812]), false);
+});
+
+test('isAlive is FALSE when the canvas is never present — every sample -1', async () => {
+  const { isAlive } = await probe();
+  // No sized canvas for the whole run: nothing rendered, dead.
+  assert.equal(isAlive([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]), false);
+});
+
+test('isAlive stays TRUE for a late-mounting but genuinely LIVE game — [-1] then varying counts', async () => {
+  const { isAlive } = await probe();
+  // Canvas mounts one tick late, then the game renders and its counts vary. Filtering
+  // the sentinel must not throw the baby out: a blunt "any -1 ⇒ dead" fix would wrongly
+  // fail this real live game. Alive.
+  assert.equal(isAlive([-1, 804, 831, 796, 850, 812, 799, 868, 777, 823]), true);
+});
+
+// ---------------------------------------------------------------------------
 // AC-1 (wiring) — the probe actually reaches into the framed canvas and samples pixels
 // over time through a real browser. This is what makes it observe RENDERED OUTPUT
 // rather than an HTTP status. The change that reddens it: replacing the browser
