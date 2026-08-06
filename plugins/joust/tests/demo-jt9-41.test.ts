@@ -111,8 +111,13 @@ async function stagedDemo(processes: DemoProcess[], wave = 1): Promise<DemoState
   return { ...base, wave, sim: { ...base.sim, processes } }
 }
 
-const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
-const eggsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
+// The remount buzzard rides `0x40_0000 + eggId` (demo.ts remountEnemyProcess) — a
+// namespace above every other live process (wave enemies < 0x10000, baiters 0x30_0000).
+// Scoping to it isolates the REMOUNT from the wave-advance enemies that spawn once the
+// arena clears after a collect, which a bare enemy count would wrongly catch.
+const REMOUNT_NS = 0x40_0000
+const remountsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy' && p.id >= REMOUNT_NS)
+const hasProc = (d: DemoState, id: number): boolean => d.sim.processes.some((p) => p.id === id)
 const eggScores = (d: DemoState): Array<DemoEvent & { value: number }> =>
   d.events.filter(
     (e): e is DemoEvent & { value: number } =>
@@ -188,11 +193,11 @@ describe('jt9-41 AC-2 — a kill cancels the remount buzzard (AUTOFF, JOUSTRV4.S
       playerAt(PLAYER1_ID, EGG_X + 400, 40), // parked far away
       hatchingEggProc({ posX: EGG_X, posY: 40 << 8, hatchRow: 7, hatchNap: 1 }),
     ])
-    let sawBuzzard = false
+    let sawRemount = false
     run(dmod.stepDemo, start, 20, (d) => {
-      if (enemiesIn(d).length > 0) sawBuzzard = true
+      if (remountsIn(d).length > 0) sawRemount = true
     })
-    expect(sawBuzzard, 'the uncollected cutscene must remount into a buzzard').toBe(true)
+    expect(sawRemount, 'the uncollected cutscene must remount into a buzzard').toBe(true)
   })
 
   it('a player on the standing knight cancels the remount — NO buzzard ever flies in', async () => {
@@ -201,13 +206,16 @@ describe('jt9-41 AC-2 — a kill cancels the remount buzzard (AUTOFF, JOUSTRV4.S
       playerAt(PLAYER1_ID, EGG_X, 40),
       hatchingEggProc({ posX: EGG_X, posY: 40 << 8, pfeet: 0, hatchRow: 7, hatchNap: 1 }),
     ])
-    let maxEnemies = 0
-    const end = run(dmod.stepDemo, start, 200, (d) => {
-      maxEnemies = Math.max(maxEnemies, enemiesIn(d).length)
+    let sawRemount = false
+    // 150 frames > EGG_HATCH_ANIM_FRAMES (112): well past when a remount could fly in.
+    // Scoped to the remount namespace so the wave-advance enemies that appear once the
+    // arena clears after the collect are not miscounted as the cancelled buzzard.
+    const end = run(dmod.stepDemo, start, 150, (d) => {
+      if (remountsIn(d).length > 0) sawRemount = true
     })
     // TODAY the egg is un-collectible, so the flatMap remounts it into a buzzard.
-    expect(maxEnemies, 'killing the knight must send the inbound buzzard away, not spawn one').toBe(0)
-    expect(enemiesIn(end).length, 'no remount buzzard at the end either').toBe(0)
+    expect(sawRemount, 'killing the knight must send the inbound buzzard away, not spawn one').toBe(false)
+    expect(remountsIn(end).length, 'no remount buzzard at the end either').toBe(0)
   })
 })
 
@@ -245,18 +253,23 @@ describe('jt9-41 AC-3 — the score is the egg ladder, not killScore (EGGVAL, JO
 describe('jt9-41 AC-4 — a killed knight leaves nothing behind (DEC NENEMY, JOUSTRV4.SRC:3080)', () => {
   it('after the kill there is no egg and no enemy for that lineage', async () => {
     const dmod = await loadDemo()
+    const eggId = 0x1_0000 + 1 // hatchingEggProc's id
+    const remountId = REMOUNT_NS + eggId // what remountEnemyProcess would create
     const start = await stagedDemo([
       playerAt(PLAYER1_ID, EGG_X, 40),
       hatchingEggProc({ posX: EGG_X, posY: 40 << 8, pfeet: 0, hatchRow: 5, hatchNap: 7 }),
     ])
     let collected = false
-    const end = run(dmod.stepDemo, start, 200, (d) => {
+    let sawRemount = false
+    const end = run(dmod.stepDemo, start, 150, (d) => {
       if (d.cues.some((c) => c.type === 'egg-collected')) collected = true
+      if (hasProc(d, remountId)) sawRemount = true
     })
     expect(collected, 'the knight was killed').toBe(true)
-    // The egg is gone and no buzzard replaced it — killing ends the lineage, so no
-    // infinite egg loop. (A remount buzzard OR a fresh egg would both fail this.)
-    expect(eggsIn(end).length, 'no egg remains for the killed knight').toBe(0)
-    expect(enemiesIn(end).length, 'the killed knight did not remount into a buzzard').toBe(0)
+    // Killing ends the lineage — no infinite egg loop: the egg is gone and it neither
+    // remounts into its buzzard nor leaves a fresh egg. (Scoped to the lineage's own
+    // ids so wave-advance enemies/eggs, spawned once the arena clears, are not caught.)
+    expect(hasProc(end, eggId), 'the killed egg is gone').toBe(false)
+    expect(sawRemount, 'the killed knight never remounted into its buzzard').toBe(false)
   })
 })

@@ -1665,15 +1665,19 @@ function collisionPass(processes: readonly DemoProcess[]): {
     let self = caught.get(pl.id) ?? pl
     for (const ep of processes) {
       if (ep.kind !== 'egg' || !ep.egg || removed.has(ep.id)) continue
-      // jt9-25 — a COMMITTED-HATCHING egg (mid-EGGMAN-cutscene, hatchRow set) is no
-      // longer a collectible: the ROM commits the hatch at EGGLND's `INC NENEMY`
-      // (:3242), after which the remount buzzard WILL come and the egg cannot be
-      // caught for score. Leaving it collectible let a player cancel a committed
-      // remount during the cutscene's ~112 frames — measured on seed 0xface, where
-      // the one egg that reached the cutscene was collected mid-crack and no buzzard
-      // ever flew in. (Killing the standing knight during EGGLLP is the filed
-      // follow-up; that is a different interaction from collecting the egg.)
-      if (ep.egg.hatchRow !== undefined) continue
+      // jt9-41 — a HATCHING egg (mid-EGGMAN-cutscene, hatchRow set) IS collectible,
+      // and hitting one is the EGGLLP "killed by player" (JOUSTRV4.SRC:3316). The ROM
+      // has ONE mechanism, `PLYEGG`/`EGGSCR` (:3009-3095): a player touching the egg —
+      // cracking or standing (PLY4S) — runs the same egg-score ladder, and because a
+      // remount buzzard is already inbound (after EGGLND's `INC NENEMY`, :3242) it
+      // sends that bird off-screen (`LDD #AUTOFF ... STD PJOY,Y`) and drops the enemy
+      // count (`DEC NENEMY  THIS GUY IS NO LONGER AN ENEMY`, :3078-3087). This port's
+      // reachable form: the collect REMOVES the egg here, before the maturation flatMap
+      // below ever runs (collisionPass precedes it in stepDemo), so no buzzard spawns at
+      // walk-off (AUTOFF) and `population`/NENEMY drops (the flatMap counts hatchRow-set
+      // eggs; the removed one leaves the count). jt9-25 had made a hatchRow-set egg
+      // non-collectible to hold the seed-0xface fingerprints still — a simplification the
+      // ROM contradicts, lifted here per the 2026-08-06 fully-ROM-faithful ruling.
       const catcher = toJoustEntity(self)
       if (!catcher) continue
       if (!broadPhase(collisionBox(catcher), eggBox(ep.egg))) continue
