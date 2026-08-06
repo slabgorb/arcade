@@ -132,17 +132,25 @@ describe('sw7-3 H-020 — board scores are comma-grouped (VW8DIG), not the raw i
   })
 })
 
-// Task 20 — a row migrated across the origin boundary (the ADR-0004 summary
-// cookie) carries name + score only, so its `wave` is an honest `null`, not a
-// fabricated number. The column must render BLANK, not the string 'null':
-// `WAVE ${e.wave}` on a null wave is `WAVE null` — a truthy, non-empty string
-// that a vaguer "something was drawn" assertion would happily accept. The
-// assertion below targets that exact substring, so it fails if the ternary
-// fix in drawHighScoreBoard is reverted to the bare template interpolation.
-describe('Task 20 — a migrated row (wave: null) renders blank, not the string "null"', () => {
+// sw8-20 — a row with no real run (the ten ROM defaults; also a row migrated
+// across the ADR-0004 origin boundary) carries name + score only, so its `wave`
+// is an honest `null`. The ROM's high-score DISPLAY (TCHSCR.MAC) draws initials +
+// score and has NO wave column at all, so the faithful render for a null row is a
+// truly BLANK column — no value AND no "WAVE" label.
+//
+// USER RULING (sw8-20, 2026-08-06): null rows show no WAVE. The three wrong
+// answers this block must each redden by name:
+//   1. `WAVE 0`     — the fabricated 0 (invents a fact about a player's game)
+//   2. `WAVE null`  — String(null): a truthy non-empty string a vague "something
+//                     was drawn" assertion would accept
+//   3. `WAVE`       — the pre-sw8-20 dangling label: `${...} WAVE ${wave}` with
+//                     wave='' leaves the bare word "WAVE" after trimEnd()
+// The correct fix drops the "WAVE" label entirely when wave is null. Real rows
+// (a finite wave) are unchanged and still render "WAVE N".
+describe('sw8-20 — a null-wave row renders a truly blank column: no value AND no WAVE label', () => {
   const MIGRATED_BOARD: HighScoreTable<'wave'> = [{ name: 'JPX', score: 149_830, wave: null }]
 
-  it('does not draw the string "null" for the migrated row\'s wave', () => {
+  it('draws the string "null" nowhere for the null row\'s wave (String(null) trap)', () => {
     render(makeCtx(), attract(), W, H, MIGRATED_BOARD)
     const all = texts().join('\n')
     expect(all, `wave column drew the string "null"; saw: ${JSON.stringify(texts())}`).not.toMatch(
@@ -150,33 +158,50 @@ describe('Task 20 — a migrated row (wave: null) renders blank, not the string 
     )
   })
 
-  it("still draws the migrated row's name and score", () => {
+  it('draws no "WAVE 0" for the null row (the fabricated-0 trap)', () => {
+    render(makeCtx(), attract(), W, H, MIGRATED_BOARD)
+    const all = texts().join('\n')
+    expect(all, `wave column fabricated a 0; saw: ${JSON.stringify(texts())}`).not.toMatch(
+      /WAVE\s*0/,
+    )
+  })
+
+  it('draws no bare "WAVE" label at all when the only row is null (the dangling-label trap)', () => {
+    // The board title is "PRINCESS LEIA'S REBEL FORCE" — no WAVE token — so on a
+    // board whose only entry is null, ANY "WAVE" in the drawn text is the label
+    // leaking through. This is the assertion that reddens the current source,
+    // whose null row emits " 1  JPX  149,830  WAVE".
+    render(makeCtx(), attract(), W, H, MIGRATED_BOARD)
+    const all = texts().join('\n')
+    expect(all, `a null row must show no WAVE label; saw: ${JSON.stringify(texts())}`).not.toMatch(
+      /WAVE/,
+    )
+  })
+
+  it("still draws the null row's name and score", () => {
     render(makeCtx(), attract(), W, H, MIGRATED_BOARD)
     const all = texts().join('\n')
     expect(all).toContain('JPX')
     expect(all).toContain('149,830')
   })
 
-  it('an ordinary row on the same board still shows its real wave', () => {
+  it('an ordinary row on the same board still shows its real wave (only null rows change)', () => {
     const mixed: HighScoreTable<'wave'> = [...BOARD, ...MIGRATED_BOARD]
     render(makeCtx(), attract(), W, H, mixed)
     const all = texts().join('\n')
     expect(all).toContain('WAVE 4')
   })
 
-  // Review fix round 1 (Important 2): 'not "null"' alone is satisfied by ANY
-  // stand-in value, including a fabricated `e.wave ?? 0` or `e.wave ?? '?'` —
-  // both would pass every assertion above while doing exactly what this
-  // task's design ruling forbids: inventing a fact about a player's game. This
-  // pins the EXACT row string the fixed code emits (rank " 1", two-space
-  // separators, the label with no value and no trailing space — trimEnd()
-  // drops it so the centred row does not sit off-centre from its neighbours),
-  // so any value other than a true blank fails it by name.
-  it('draws the migrated row as the exact blank-wave string, not a fabricated stand-in', () => {
+  // Pin the EXACT row string the fixed code emits: rank " 1", two-space
+  // separators, name, score — and NOTHING after it. toContain on the texts()
+  // ARRAY is exact-element (not substring), so the old dangling-label output
+  // " 1  JPX  149,830  WAVE" does NOT satisfy it — a distinct, longer element.
+  // Any stand-in (a fabricated 0, '?', or the leftover label) fails it by name.
+  it('draws the null row as the exact blank string " 1  JPX  149,830", nothing trailing', () => {
     render(makeCtx(), attract(), W, H, MIGRATED_BOARD)
     expect(
       texts(),
-      `expected the exact row " 1  JPX  149,830  WAVE"; saw: ${JSON.stringify(texts())}`,
-    ).toContain(' 1  JPX  149,830  WAVE')
+      `expected the exact row " 1  JPX  149,830" with no trailing wave column; saw: ${JSON.stringify(texts())}`,
+    ).toContain(' 1  JPX  149,830')
   })
 })

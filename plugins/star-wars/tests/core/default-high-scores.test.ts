@@ -73,13 +73,42 @@ describe('sw7-3 H-015 — the ROM default high-score board (DOINTS / INTINT / IN
 
   it("every entry validates against the shared wave-domain row guard (round-trips through storage)", () => {
     // makeHighScoreRowGuard('wave') is what main.ts feeds makeHighScoreStorage;
-    // a seed entry missing a numeric `wave` would be rejected on load. This
-    // forces the seed rows to be well-formed HighScoreEntry<'wave'> — the ROM
-    // ladder carries no per-entry wave, so Dev supplies a numeric placeholder
-    // (the exact value is a clone artifact, deliberately NOT pinned here).
+    // it accepts a finite number OR an explicit null (highscore.ts: a migrated /
+    // no-real-run row). This forces the seed rows to be well-formed
+    // HighScoreEntry<'wave'>. Since sw8-20 the ROM ladder's absent per-entry wave
+    // is encoded as `null` (no real run) rather than a fabricated number — the
+    // exact value IS pinned, in the sw8-20 block below.
     const isRow = makeHighScoreRowGuard('wave')
     for (const e of DEFAULT_HIGH_SCORES) {
       expect(isRow(e), `entry ${e.name} is not a valid HighScoreEntry<'wave'>`).toBe(true)
+    }
+  })
+})
+
+// sw8-20 — The ROM's default table (INTINT/INTSCR, TCHSCR.MAC:718-738) carries
+// ONLY initials + score; there is no per-entry wave in the ROM. The pre-sw8-20
+// clone marked "no real run" with the fabricated `wave: 0`, which the file's own
+// comment flagged as "a clone artifact, not a ROM value". Task 20 widened the
+// domain field to `number | null` so a row with no real run can say so instead of
+// inventing one; sw8-20 acts on that: the ten defaults must carry `wave: null`.
+describe('sw8-20 — the ROM defaults carry NO per-run wave: honest null, not the fabricated 0', () => {
+  it('encodes every default row as wave === null (no real run) — not 0, not any number', () => {
+    // `toBeNull()` is exact: it passes ONLY for the JS value null. It reddens on
+    // the pre-sw8-20 `wave: 0` (0 is not null) and on any numeric placeholder, so
+    // this is the non-vacuity proof — the current (mutant) source fails it.
+    for (const e of DEFAULT_HIGH_SCORES) {
+      expect(
+        e.wave,
+        `${e.name}: default rows have no real run, so wave must be null; got ${JSON.stringify(e.wave)}`,
+      ).toBeNull()
+    }
+  })
+
+  it('carries the fabricated wave 0 on no default row (mutation: restoring wave: 0 must redden)', () => {
+    // Explicit refutation of the exact mutation the story names — a Dev who
+    // "restores" wave: 0 reddens here even if toBeNull above were ever loosened.
+    for (const e of DEFAULT_HIGH_SCORES) {
+      expect(e.wave, `${e.name} still carries the fabricated wave 0`).not.toBe(0)
     }
   })
 })
