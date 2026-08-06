@@ -96,7 +96,7 @@ const readCore = (f: string): string => readFileSync(join(coreDir, f), 'utf8')
 // src/core/*.ts other than difficulty.ts. Quoted, not bare, so a comment that merely
 // NAMES the row (there are many) is not mistaken for a call. This deliberately counts
 // a WRAPPER that forwards the literal, not only a direct waveValue()/dyRow() argument:
-// EGGWT and EGGWT2 reach waveValue only through demo.eggWaitFrames (demo.ts:1977), so
+// EGGWT and EGGWT2 reach waveValue only through the demo.eggWaitFrames wrapper, so
 // a direct-call-only reading would falsely flag two correctly wired rows. See this
 // story's Design Deviation.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,7 +169,38 @@ const auditDispositions = (
  * consumer that moves to another module — or a row silently re-pointed — reddens
  * even though a literal still exists somewhere in the core.
  */
-const CONSUMER_FILE: Readonly<Record<string, string>> = {}
+const CONSUMER_FILE: Readonly<Record<string, string>> = {
+  // The seek/cadence/brake/troll-looker rows — every brain reads them in enemy.ts.
+  BODNVY: 'enemy.ts',
+  HUDNVY: 'enemy.ts',
+  LAVLAV: 'enemy.ts',
+  BODNRG: 'enemy.ts',
+  BODNDI: 'enemy.ts',
+  BOUPRG: 'enemy.ts',
+  BOUPDI: 'enemy.ts',
+  HUDNRG: 'enemy.ts',
+  HUDNDI: 'enemy.ts',
+  HUUPRG: 'enemy.ts',
+  HUUPDI: 'enemy.ts',
+  SHDNRG: 'enemy.ts',
+  SHUPRG: 'enemy.ts',
+  BOUPWD: 'enemy.ts',
+  BOUPWU: 'enemy.ts',
+  HUUPWD: 'enemy.ts',
+  HUUPWU: 'enemy.ts',
+  BOLETM: 'enemy.ts',
+  HULETM: 'enemy.ts',
+  SHUPTM: 'enemy.ts',
+  SHLETM: 'enemy.ts',
+  SHCLTM: 'enemy.ts',
+  HUUPVY: 'enemy.ts',
+  SHUPVY: 'enemy.ts',
+  // The egg-hatch waits (via demo.eggWaitFrames) and the lava-troll grip/timer.
+  EGGWT: 'demo.ts',
+  EGGWT2: 'demo.ts',
+  LAVTIM: 'demo.ts',
+  LAVGRA: 'demo.ts',
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The two wired dials, with their curves derived by hand from the DYWORD rows and
