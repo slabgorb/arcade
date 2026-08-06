@@ -89,3 +89,11 @@ stories:
     acceptance_criteria:
       - "A35820.1C.bin is identified (what data/ROM it is and its role in the CPU link) with the decode method recorded; reference/PROVENANCE.md and docs/rom-study/brief.md are updated and O-1 is marked resolved."
     type: chore
+  - id: mc2-6
+    title: Port the joust/centipede DOSSIER_FILES prose-citation coverage sweep onto missile-command — enroll brief.md/subsystems.md/glossary.md so every primary-source line-citation in doc prose requires a covering claim (mc's citations.test.ts globs claims/*.json + scans src/core only today; the sweep would have caught mc2-2's wrong FRAME citation)
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
