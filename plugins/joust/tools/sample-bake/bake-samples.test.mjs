@@ -318,11 +318,29 @@ describe('jt5-2 — the bake is deterministic and the cues are distinct', () => 
 // knowing and is exactly what the pin is for.
 //
 // filename -> sha256 of the default bake (`bakeSamples(dir)`, no opts).
+// jt9-32 GREEN: DERIVED, not hand-typed — sha256 of each file from a default
+// `bakeSamples(dir)` run (script in the session's Delivery Findings). To
+// re-baseline after a deliberate sound change, re-run that derivation and paste
+// the block, with the reason in the commit message.
 const GOLDEN = {
-  // GREEN(dev): bake the shipped manifest once into a temp dir and record each
-  // file's sha256 here — DERIVE the values (read them off a `bakeSamples(tmp)`
-  // run), do NOT hand-type them, or the pin becomes its own transcription. The
-  // set of keys must equal Object.values(SOUNDS); the two tests below enforce it.
+  'cliff_destroyed.wav': '752528eeca23d235fc3f501ee2cd8645852abb7ee95e93ba856b6ac5f19abeab',
+  'egg_collected.wav': '8621e2cfe1d4b195271b5a7220bc55ed1385ed18a906ea3618c161c4a3f305c7',
+  'egg_hatched.wav': '0de9e19faa0aeaf013709c7858065657de01c2a267d74167ca27bda285004f6b',
+  'enemy_death.wav': '0f10d233b72e41e5a07825c403f8de097dd718e6bfd46fa761c1dd8e9a5f3c1c',
+  'enemy_materialise.wav': 'd781176f8e7e74aab197058204760079a84086d9b2fea6778f0de5f869a09688',
+  'enemy_thud.wav': '223dd35d1f71a2a523a129e056afa47b012871072607bfdaec8c449acaf2baca',
+  'enemy_wing_down.wav': 'c58e6e23d9e7d390cacf09893044f1559cc9c1b4183ea4ad544cce4bdf0170ef',
+  'enemy_wing_up.wav': '19eda9ff4d572cc5cbf812f68c75fecfeb9bb2e5be5b57f791bf5e7b34507421',
+  'extra_man.wav': '0e5d66fa71a3b40ea71160ac27f59b8c84b11563ee3910e6b8a83d8efb9faee8',
+  'player2_materialise.wav': 'b1ac5f968f1130cb9bcffc7af1dc8ce56a3ae06447bbd678942dca96243a16b0',
+  'player_death.wav': '378f0131d0e85dc77e56acce68a4a4f1901843eb6196c7023a533a77b3fcc26c',
+  'player_materialise.wav': 'ee2d07eff4ab135b18f61743d56afe522677e1b667b370fc3d1eae2067a164eb',
+  'player_thud.wav': '82c65d92aeabea7e0dd26d5c886d65bf62770bbf4e76bfb4c71a60bbe3f202fb',
+  'player_wing_down.wav': '02f900153cd7c80eba60ca854501559c8fe38b7f18749b935dd272ed549c59a4',
+  'player_wing_up.wav': '51602327637e578c4ae97b4903c7672f712d47191b40e8c5a818c22151da0b7d',
+  'ptero_arrives.wav': 'c725adb448c963f8110f339fec578b70eb989d2b17a8384b92690e569df4d13f',
+  'ptero_death.wav': '16db1b69e423799209e3cca701950dd0f10e89b6843c6b8bf26a41aa5cf4c70c',
+  'wave_bounty.wav': '1669576d6b39cf6330c342bc579e1e19d375f166295ad72d2c47509e1de1e036',
 }
 
 describe('jt9-32 — the bake pins WHAT it produces, per file (content, not just shape)', () => {
