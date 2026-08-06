@@ -14,6 +14,7 @@ completed_epics:
   - sw8
   - uf1
   - mg1
+  - mc2
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -713,5 +714,10 @@ completed_stories:
   - id: jt9-48
     epic: jt9
     title: "Port B2DIRA/SHDIRA: collision-driven bump-facing consumes jt9-17's PBUMPX"
+    points: 3
+    completed: '2026-08-06'
+  - id: mc2-6
+    epic: mc2
+    title: Port the joust/centipede DOSSIER_FILES prose-citation coverage sweep onto missile-command — enroll brief.md/subsystems.md/glossary.md so every primary-source line-citation in doc prose requires a covering claim (mc's citations.test.ts globs claims/*.json + scans src/core only today; the sweep would have caught mc2-2's wrong FRAME citation)
     points: 3
     completed: '2026-08-06'

@@ -3,7 +3,7 @@ type: epic
 title: Missile Command — ground truth + the guardrail before gameplay
 description: "Second Missile Command epic, the deferred dossier back-fill named by mc1. Installs the fidelity guardrail BEFORE the large cited-constant surface of the gameplay epics (mc3 enemies/damage, mc4 waves/scoring), so those constants are written UNDER the citation checker instead of retrofitted — the fleet's documented reanchoring pain (tempest/red-baron/star-wars). Also resolves the two open questions mc3 blocks on: O-2 (exact sim tick from W3INT) and O-4 (real starting-city count). REUSE-FIRST: port joust/centipede's tools/audit/check-citations.mjs + tests/helpers/claims.ts + docs/rom-study/{subsystems.md,glossary.md,claims/}; invent no new machinery. DESIGN: plugins/missile-command/docs/design/mc2-dossier.md. GROUND TRUTH: plugins/missile-command/docs/rom-study/brief.md (REV-01, historicalsource @ bab468c). TRAPS the checker must survive: W3MAIN is double-spaced (cite LOGICAL non-blank lines, ~physical/2); .RADIX 16 at W3COMN:1 (bare=hex, trailing '.'=decimal); CR-terminated non-UTF8 .MAC (grep -a). O-3 (REV-01 vs REV-03 deltas) stays a running open question, not a story; O-5 (palette) rides with mc4."
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: mc2-1
@@ -103,10 +103,12 @@ stories:
     title: Port the joust/centipede DOSSIER_FILES prose-citation coverage sweep onto missile-command — enroll brief.md/subsystems.md/glossary.md so every primary-source line-citation in doc prose requires a covering claim (mc's citations.test.ts globs claims/*.json + scans src/core only today; the sweep would have caught mc2-2's wrong FRAME citation)
     points: 3
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-06'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
     type: chore
     review_findings: "Round 2: all 6 round-1 findings verified closed; 2 new MEDIUM prose-drift defects in the story's own diff — R2-1 citations.test.ts:276-296 section-5 header still '(RED)'/'RED today on four counts' (all zero at HEAD), R2-2 dossier-sweep.ts:41 worked example names physical 1641 but shipped cite resolves to 1583. Comment-only green rework."
     review_verdict: approved
+completed: '2026-08-06'
