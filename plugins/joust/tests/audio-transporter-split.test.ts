@@ -99,6 +99,7 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { load } from './helpers/dynamic-load'
 
 import { createGame, stepGame } from '../src/core/game.js'
 import type { GameState } from '../src/core/game.js'
@@ -254,14 +255,6 @@ type RomCueSource = {
 
 type CueSource = RomCueSource | { kind: 'invention'; note: string }
 
-const load = async <T>(parts: string[]): Promise<Partial<T>> => {
-  try {
-    return (await import(/* @vite-ignore */ parts.join('/'))) as Partial<T>
-  } catch {
-    return {}
-  }
-}
-
 interface ManifestSurface {
   SOUNDS: Readonly<Record<string, string>>
   FRAME_DURATIONS: Readonly<Record<string, number>>
@@ -269,8 +262,8 @@ interface ManifestSurface {
   framesFor: (source: CueSource) => number
 }
 
-const manifest = () => load<ManifestSurface>(['..', 'src', 'shell', 'audio-manifest'])
-const shell = () => load<ManifestSurface>(['..', 'src', 'shell', 'audio'])
+const manifest = () => load<ManifestSurface>(import.meta.url, ['..', 'src', 'shell', 'audio-manifest'])
+const shell = () => load<ManifestSurface>(import.meta.url, ['..', 'src', 'shell', 'audio'])
 
 async function need<K extends keyof ManifestSurface>(key: K): Promise<ManifestSurface[K]> {
   const value = (await manifest())[key]
@@ -298,7 +291,7 @@ async function romSources(): Promise<[string, RomCueSource][]> {
  */
 async function bakeFn(): Promise<(outDir: string) => Promise<void>> {
   const fn = (
-    await load<{ bakeSamples: (outDir: string) => Promise<void> }>([
+    await load<{ bakeSamples: (outDir: string) => Promise<void> }>(import.meta.url, [
       '..', 'tools', 'sample-bake', 'bake-samples.mjs',
     ])
   ).bakeSamples
@@ -314,7 +307,7 @@ type PlayEventSounds = (
 ) => void
 
 async function dispatchFn(): Promise<PlayEventSounds> {
-  const fn = (await load<{ playEventSounds: PlayEventSounds }>(['..', 'src', 'shell', 'audio-dispatch']))
+  const fn = (await load<{ playEventSounds: PlayEventSounds }>(import.meta.url, ['..', 'src', 'shell', 'audio-dispatch']))
     .playEventSounds
   if (typeof fn !== 'function') {
     throw new Error('src/shell/audio-dispatch.ts must export `playEventSounds(audio, events)`.')
@@ -856,7 +849,7 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // count. Non-vacuity proven by mutation, not asserted — see the TEA
     // Assessment's mutation table (M7).
     const [kinds, sounds] = await Promise.all([
-      load<{ EVENT_KINDS: readonly string[] }>(['..', 'src', 'core', 'events']).then(
+      load<{ EVENT_KINDS: readonly string[] }>(import.meta.url, ['..', 'src', 'core', 'events']).then(
         (m) => m.EVENT_KINDS ?? [],
       ),
       need('SOUNDS'),
