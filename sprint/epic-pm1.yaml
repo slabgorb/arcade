@@ -1,0 +1,72 @@
+id: pm1
+type: epic
+title: Pac-Man — playable arcade core with authentic ghost AI
+description: "Ninth cabinet: the 1980 Namco ARCADE Pac-Man (Z80), raster, built on the centipede shape — NOT the Atari 2600 port (rejected in the design as the wrong machine). GROUND TRUTH: the Pac-Man Dossier (pacman.holenet.info) transcribed into plugins/pac-man/docs/rom-study/ + pm1-dossier.md, machine-verified by a ported centipede citation gate (docs/rom-study/claims + tools/audit/check-citations.mjs). GPL FIREWALL: shaunlebron/pacman is a READ-ONLY oracle — never copy a line; MAME is the tiebreaker. REUSE-FIRST: copy centipede's scaffold, purity scanner and citation machinery; invent no new fidelity mechanism. SCOPE: playable core with authentic four-ghost AI (scatter/chase/frightened, Blinky/Pinky/Inky/Clyde targeting incl. the Pinky up-overflow quirk, Cruise Elroy, tunnel slowdown, per-level tables, scoring, death/win). The harness (pm1-2) lands BEFORE any constant so gameplay numbers are written UNDER the gate (the rb4 lesson). DEFERRED to pm2+: the three cutscenes, the level-256 kill screen, authentic Namco/POKEY sound, and the attract self-play demo (an ad1 sibling). SPEC: docs/superpowers/specs/2026-08-06-pac-man-arcade-design.md. PLAN: docs/superpowers/plans/2026-08-06-pac-man-pm1.md."
+priority: p1
+status: backlog
+repos: arcade
+stories:
+  - id: pm1-1
+    title: Scaffold the cabinet (4 files + 3 registrations)
+    points: 2
+    priority: p1
+    plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-1
+    status: backlog
+    repos: arcade
+    workflow: superpowers
+  - id: pm1-2
+    title: The fidelity harness — dossier + citation gate + purity, BEFORE any constant
+    points: 5
+    priority: p1
+    plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-2
+    status: backlog
+    repos: arcade
+    workflow: superpowers
+  - id: pm1-3
+    title: Maze model + render
+    points: 3
+    priority: p1
+    plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-3
+    status: backlog
+    repos: arcade
+    workflow: superpowers
+  - id: pm1-4
+    title: Pac-Man movement
+    points: 3
+    priority: p1
+    plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-4
+    status: backlog
+    repos: arcade
+    workflow: superpowers
+  - id: pm1-5
+    title: Ghost kinematics + house release
+    points: 5
+    priority: p1
+    plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-5
+    status: backlog
+    repos: arcade
+    workflow: superpowers
+  - id: pm1-6
+    title: Targeting — the four personalities
+    points: 5
+    priority: p1
+    plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-6
+    status: backlog
+    repos: arcade
+    workflow: superpowers
+  - id: pm1-7
+    title: Mode engine + Cruise Elroy
+    points: 5
+    priority: p1
+    plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-7
+    status: backlog
+    repos: arcade
+    workflow: superpowers
+  - id: pm1-8
+    title: Level table + round lifecycle
+    points: 5
+    priority: p1
+    plan_ref: plan:docs/superpowers/plans/2026-08-06-pac-man-pm1.md#task-8
+    status: backlog
+    repos: arcade
+    workflow: superpowers
