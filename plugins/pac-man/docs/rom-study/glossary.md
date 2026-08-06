@@ -45,6 +45,54 @@ The Dossier does not state the starting-lives default in a headed section; the
 value is the machine's DIP default (3), and the citation pins the RAM slot the game
 reads and writes.
 
+## Speeds (Pac-Man Dossier Table A.1; no clean `pacman.asm:<addr>` literal)
+
+Pac-Man's per-level speed is a PERCENTAGE of a 1px/frame reference rate (the
+cabinet runs at 60 Hz, so 100% = 60px/s). The Pac-Man Dossier's Table A.1
+gives the level-1 figures used by `src/core/pacman.ts`:
+
+| Symbol                     | Value | Meaning                                              |
+|----------------------------|-------|-------------------------------------------------------|
+| `PACMAN_SPEED_PCT_LEVEL_1` | 80%   | Pac-Man's normal (non-eating) speed at level 1.       |
+| `EAT_PAUSE_DOT`            | 1 frame | Pac-Man freezes for 1 frame eating a regular dot ("stops moving for one frame (1/60th of a second), slowing his progress by roughly ten percent"). |
+| `EAT_PAUSE_ENERGIZER`      | 3 frames | Pac-Man freezes for 3 frames eating an energizer ("Eating an energizer dot causes Pac-Man to stop moving for three frames."). |
+
+**Why these have no `pacman.asm:<addr>` citation, stated explicitly rather
+than hidden:** the vendored disassembly (`reference/source/pacman.asm`) is
+commented only in its boot sequence, RAM-map header, scoring/fruit/text-table
+region (`0000`-`2c60`ish) and message-pointer table (`36a5`+) — every other
+region, including whatever routine realizes speed percentages as a per-frame
+move/skip decision and whatever counter freezes Pac-Man on an eat, is bare,
+unlabelled Z80 mnemonics with no symbol names to `grep` for ("speed",
+"pause", "elroy", "cruise", "fright", "dot count" all return zero hits
+outside the regions above). Per `brief.md`'s citation discipline, a value
+with no clean stored literal to point to is recorded here as
+Dossier-sourced and left uncited, rather than inventing an address — the
+same policy `src/core/maze.ts` already applies to the wall/dot layout table.
+`src/core/actor.ts`'s `speedPattern()` (the function that turns a percentage
+into a repeating move/skip boolean cycle) is therefore a SELF-DERIVED integer
+algorithm, not a transcription of the ROM's actual bit pattern (which is not
+recoverable from this vendored source, and was not read from
+`shaunlebron/pacman` either — GPL firewall, `brief.md`).
+
+## Movement (glossary-decoded, no ROM-address citation for the same reason)
+
+- **Grid alignment.** An actor occupies a pixel position; it is "at a tile
+  centre" only when both pixel coordinates are exact multiples of the 8px
+  tile size (`src/core/actor.ts`'s `TILE_PX`). Cornering and eating can only
+  happen at a tile centre — mid-tile, Pac-Man is committed to its current
+  direction.
+- **Cornering (input latching).** The most recently held direction is
+  latched as `pending`. At each tile centre, `pending` is tried: if the tile
+  it leads to is walkable, it becomes the new `dir`; otherwise it stays
+  latched, unconsumed, and is retried at the next tile centre reached — so a
+  turn queued early into a wall opens automatically as soon as the corridor
+  allows it, with no separate re-press required.
+- **Eat-pause.** Landing on a not-yet-eaten dot or energizer tile freezes
+  Pac-Man (no movement, no speed-pattern advance) for `EAT_PAUSE_DOT` or
+  `EAT_PAUSE_ENERGIZER` frames respectively; re-crossing an already-eaten
+  tile never re-triggers it.
+
 ## Maze (`pacman.asm:20e6`)
 
 The maze is 28x36 tiles (8px tiles -> the cabinet's 224x288 logical resolution,
