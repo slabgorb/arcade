@@ -927,8 +927,11 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
     // one SHYLEN above (`SHUNUP` :4261-4262 → `LBNE SHUP3`) suppresses the climb and
     // holds level, flapping back toward the tracked line only past #-$0040 (`SHUP3A`
     // :4426). Stateless like the rest of the shadow's up-seek — re-checked each wake,
-    // so a cleared cliff resumes the climb.
-    if (cliffBlocksClimb(enemy)) return { dir: coastDir, flap: velY >= CLIMB_PREP_FALL_FAST }
+    // so a cleared cliff resumes the climb. NOTE: `SHUP3A`/`SHUP3B` `JMP SHDIRA`
+    // (:4434/:4441) — the AIMING routine (`SHFDIR` :4382, dir = facing, no PVELX
+    // check) — NOT `SHDIRB`'s coast. So this AIMS at `dir`, unlike SHUP1 above which
+    // coasts (`SHUP1`→`SHDIRB`, jt9-20). Reviewer R1 F1: was `coastDir`, corrected.
+    if (cliffBlocksClimb(enemy)) return { dir, flap: velY >= CLIMB_PREP_FALL_FAST }
     return { dir: coastDir, flap: velY >= waveValue('SHUPVY', wave) }
   }
   // SHLEP — track the line; the lava term is falling-gated (velY, not velX).

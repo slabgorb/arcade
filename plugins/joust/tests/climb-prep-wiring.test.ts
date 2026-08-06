@@ -172,3 +172,77 @@ describe('jt9-23 — the climb-preparation hold (B2UP3 / SHUP3)', () => {
     expect(flaps, 'shadow with a cliff above must not flap up into it — it holds SHUP3 level').toBe(0)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reviewer round 1 (Heimdall) — the mutation battery found three knobs the
+// behaviour block above did not pin: the shadow's STEERING routine (F1, a real
+// defect — `coastDir` where SHUP3A→SHDIRA aims), the FALL-FAST threshold value
+// (F2), and the bounder EXCLUSION (F3). These call the brain decision functions
+// directly so `dir` and `flap` are both observable on a single wake — the freeze
+// harness above can only see flap (`prevFlapHeld`).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('jt9-23 review R1 — steering, fall-fast threshold, and bounder exclusion', () => {
+  let e: EnemyModule
+  let cliff: { x: number; y: number }
+  let clear: { x: number; y: number }
+
+  beforeAll(async () => {
+    e = await loadEnemy()
+    const sites = findSites()
+    cliff = sites.cliff
+    clear = sites.clear
+  })
+
+  /** A brain fixture at (x,y) with an explicit velY / horizontal index / facing. */
+  const at = (
+    brain: 'boundr' | 'b2undr' | 'shadow',
+    x: number,
+    y: number,
+    velY: number,
+    velXIndex: number,
+    facing: -1 | 1,
+  ): EnemyState => ({
+    entity: { posX: x, posY: y << 8, velXIndex, velXFrac: 0, velY, timeUp: 0, groundState: null, plantZ: 0, airborne: true },
+    brain,
+    decision: brain,
+    pchase: 1,
+    facing,
+  })
+
+  it('F1 — a MOVING shadow holding below a cliff AIMS at its facing (SHDIRA), it does not coast', () => {
+    // SHUP3A/SHUP3B `JMP SHDIRA` (:4434/:4441) — aims (dir = facing), no PVELX gate.
+    // SHUP1 (the normal up-seek) `JMP SHDIRB` (:4275) — coasts (dir 0) while moving.
+    // So over a cliff the shadow must AIM even though it is moving.
+    const movingOverCliff = e.shadow(at('shadow', cliff.x, cliff.y, 0, 1, 1), FAR_ABOVE, WAVE)
+    expect(movingOverCliff.dir, 'SHUP3 aims at facing (SHDIRA), not dir 0').toBe(1)
+    // Control that anchors the distinction: the SAME shadow with NO cliff is on the
+    // normal up-seek (SHUP1→SHDIRB) and COASTS to dir 0 while moving.
+    const movingClear = e.shadow(at('shadow', clear.x, clear.y, 0, 1, 1), FAR_ABOVE, WAVE)
+    expect(movingClear.dir, 'the normal up-seek coasts (SHDIRB) while moving').toBe(0)
+  })
+
+  it('F2 — the fall-fast gate is exactly CLIMB_PREP_FALL_FAST (0x40): flap at 0x40, glide at 0x3F', () => {
+    // `ADDD #-$0040 / BMI B2UP3B` (:4210/:4426): flap only once the fall reaches 0x40.
+    for (const brain of ['b2undr', 'shadow'] as const) {
+      const fast = brain === 'shadow'
+        ? e.shadow(at(brain, cliff.x, cliff.y, 0x40, 0, 1), FAR_ABOVE, WAVE)
+        : e.b2undr(at(brain, cliff.x, cliff.y, 0x40, 0, 1), FAR_ABOVE, WAVE)
+      const slow = brain === 'shadow'
+        ? e.shadow(at(brain, cliff.x, cliff.y, 0x3f, 0, 1), FAR_ABOVE, WAVE)
+        : e.b2undr(at(brain, cliff.x, cliff.y, 0x3f, 0, 1), FAR_ABOVE, WAVE)
+      expect(fast.flap, `${brain}: velY=0x40 is falling fast enough → flap`).toBe(true)
+      expect(slow.flap, `${brain}: velY=0x3F is below the gate → glide (wings up)`).toBe(false)
+    }
+  })
+
+  it('F3 — the BOUNDER is excluded from climb-prep: over a cliff it still climbs (BOUP→BOLEV, no BOUP3)', () => {
+    // The bounder samples the same cliff and diverts to plain BOLEV (`BNE BOLEV`
+    // :3850) — there is no BOUP3. So the climb-prep gate must NOT touch it: over a
+    // cliff at velY=0 it behaves as it does with no cliff (its level/climb law flaps
+    // `velY >= 0`), NOT the climb-prep hold (which would glide at velY=0 < 0x40).
+    const overCliff = e.boundr(at('boundr', cliff.x, cliff.y, 0, 0, 1), FAR_ABOVE, WAVE)
+    const noCliff = e.boundr(at('boundr', clear.x, clear.y, 0, 0, 1), FAR_ABOVE, WAVE)
+    expect(overCliff.flap, 'the bounder is not held level by a cliff').toBe(true)
+    expect(overCliff.flap, 'the cliff does not change the bounder at all').toBe(noCliff.flap)
+  })
+})
