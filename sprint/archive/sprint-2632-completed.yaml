@@ -296,3 +296,8 @@ completed_stories:
     title: 'trench PMRRP/voice death gate: port the PHEBS death exit so a last-shield fall on a cue-crossing frame silences the trench voice lines, completing the sw8-13/sw8-21 family'
     points: 1
     completed: '2026-08-06'
+  - id: jt9-41
+    epic: jt9
+    title: joust — the hatched standing knight is killable during EGGLLP before the buzzard remounts (JOUSTRV4.SRC:3316-3319)
+    points: 3
+    completed: '2026-08-06'

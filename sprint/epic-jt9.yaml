@@ -865,9 +865,11 @@ stories:
     description: 'Descoped from jt9-25 (TEA Delivery Finding, user ruling 2026-08-04). jt9-25 built the EGGMAN hatch cutscene: a matured egg walks EGGTBL and, on the terminal frame (PLY4S), spawns the remount buzzard. It does NOT model the tail of EGGMAN — EGGLLP (JOUSTRV4.SRC:3316-3319, "WAIT UNTILL BUZZARD COMES OR KILLED BY PLAYER"), where the just-hatched STANDING KNIGHT (PLY4S) can be killed by a player before the buzzard arrives. This story models that interaction: the standing-knight window, its collision as a killable target, and what a kill does to the pending remount (does it cancel? score?). Note jt9-25 made a committed-hatching egg NON-collectible (the crack is past the collectible stage) and pinned it in demo-jt9-25.test.ts — that is COLLECTING the egg, a DIFFERENT interaction from KILLING the standing knight, and this story must not undo it. Likely a fingerprint mover; read jt9-25''s archived session for the cutscene shape and the EGG_HATCH_ANIM_FRAMES timing before scheduling.'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
     type: feature
   - id: jt9-42
     title: "joust lava-troll looker is production-dead again: allow ENEMY victims so LNTLAV can fire, and pin the grip's single-integration"
