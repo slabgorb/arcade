@@ -122,3 +122,83 @@ silently disagree. The 28x36 grid dimensions and the individual wall/dot/
 energizer placements have no `pacman.asm:<addr>` citation — they are the
 maze's tile-graphics shape, not a program-ROM constant, and are recorded here
 as an explicit, deliberate exception to the citation rule rather than a gap.
+
+## Ghost movement (pm1-5)
+
+At each tile centre (`src/core/actor.ts`'s grid-alignment rule, reused
+verbatim by `src/core/ghost.ts`) a ghost picks the walkable, non-reversing
+candidate direction whose destination tile is closest — straight-line,
+squared-Euclidean, no `sqrt` — to its current target tile. This targeting
+metric and the "never reverse" rule (a ghost may only reverse when a
+mode-change signal — scatter&harr;chase, Task 7 — forces it for exactly one
+step) are Pac-Man Dossier ch.4 *Meet The Ghosts* / "Ghost Movement" facts with
+no isolable `pacman.asm:<addr>` literal in this vendored disassembly: the
+routine that walks the four candidate directions and compares squared
+distances is bare, unlabelled Z80 in the actor-update region (the `2000`+
+landmark cited in the task brief holds the ghost-house release gates below,
+not the targeting arithmetic itself) — `grep`-ing for "target", "distance",
+"reverse" returns zero hits outside the commented regions `brief.md` already
+enumerates. Recorded here as Dossier-sourced and left uncited, the same
+policy `src/core/maze.ts` and this file's own §Speeds section already apply.
+
+**Tie-break order.** When two or more candidate directions tie on squared
+distance, the ROM's well-documented tile-preference order — **up, then left,
+then down, then right** — decides. Same citation status as above: Dossier-
+sourced, no isolable ROM literal, recorded honestly rather than invented.
+
+**Red-zone tiles (no upward turn).** The Dossier documents specific maze
+intersections where a ghost may never choose "up" as its turn, even when up
+is the closest candidate to its target — the classic anti-shortcut rule that
+keeps a ghost from cutting straight up the narrow shafts flanking the ghost
+house instead of going around. Because `src/core/maze.ts`'s row table is (per
+that file's own header) a faithful-style *reconstruction* of the arcade maze
+shape and not a tile-by-tile ROM transcription, this port locates the rule on
+the two tiles this reconstruction unambiguously has an analogue for: the feet
+of the two vertical shafts immediately flanking the house, `{x:12,y:14}` and
+`{x:15,y:14}` (`src/core/ghost.ts`'s `RED_ZONE_TILES`) — at each, 'up' is
+genuinely walkable (unlike the tiles directly over the gate itself, which are
+walled above), so the rule has real work to do. The Dossier documents
+additional red-zone tiles elsewhere in the original maze (near the upper
+tunnel corners); this reconstruction has no byte-cited, tile-identical
+analogue for those, so implementing them would be inventing coordinates
+rather than decoding them, and they are deliberately NOT implemented — an
+honest gap, not a silent one.
+
+## Ghost house (pm1-5)
+
+Blinky starts outside the house and is never gated by a release counter —
+Dossier ch.4. Pinky, Inky and Clyde are held in the house and released when a
+dot-eaten counter reaches a per-ghost threshold. The vendored disassembly's
+`2000`+ actor-update region holds three near-identical gate blocks in program
+order (addresses 2069-208b, 208c-20ae, 20af-20d6), each guarded
+by the "use global counter" flag at `(#4e12)` (set only after a life is lost
+mid-level — the Dossier's "global dot counter" mode) and comparing the
+running global dot counter `(#4d9f)` against a literal threshold before
+setting that block's release flag (`(#4da1)`, `(#4da2)`, `(#4da3)`
+respectively — presumed Pinky/Inky/Clyde by block order, since the bare
+disassembly carries no ghost-name label at any of these addresses):
+
+| Symbol                    | Citation           | Raw byte | Decoded | Ghost (by Dossier value match) |
+|---------------------------|---------------------|----------|---------|---------------------------------|
+| `GLOBAL_DOT_LIMIT_PINKY`  | `pacman.asm:2078`  | `07`     | **7**   | Pinky |
+| `GLOBAL_DOT_LIMIT_INKY`   | `pacman.asm:209b`  | `11`     | **17**  | Inky |
+| `GLOBAL_DOT_LIMIT_CLYDE`  | `pacman.asm:20be`  | `20`     | **32**  | Clyde |
+
+These three raw bytes (7, 17 hex-11, 32 hex-20) are BYTE-VERIFIED ROM
+literals — real anchors, not Dossier-only — and their decoded values match
+the Pac-Man Dossier's documented global-dot-counter thresholds exactly, which
+is the basis for identifying which block belongs to which ghost (the ROM
+itself never names them here). See `docs/rom-study/claims/house.json`
+(claims `GHOST-HOUSE-GLOBAL-PINKY/INKY/CLYDE`).
+
+**What is NOT byte-cited.** Each gate block also has a "personal counter"
+branch (taken when `(#4e12)` is zero, i.e. normal mid-level play, not the
+post-death global-counter mode) that compares a per-ghost RAM byte against a
+level-indexed table entry (`(#4db8)`/`(#4db9)`/`(#4dba)` read through a
+pointer, not a plain `cp #nn` literal) — this is DATA, not a single citable
+instruction operand, so the actual per-level personal thresholds (the
+Dossier's well-known level-1 figures: Pinky 0, Inky 30, Clyde 60) are
+recorded here as Dossier-sourced and left uncited, per this file's existing
+policy for values with no isolable literal. `src/core/house.ts`'s
+`PERSONAL_DOT_LIMIT` table carries these Dossier figures with that same
+honest-uncited status.
