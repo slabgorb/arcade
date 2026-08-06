@@ -16,7 +16,7 @@
 //
 // REACHABILITY (measured in RED — the story's "latent under the 6-kill quota"
 // framing is STALE): the space phase is TIME-boxed now, not quota'd — phaseCleared
-// reads `s.phaseTime >= SPACE_PHASE_END_S` (sim.ts:1751, state.ts:929 = 21s,
+// reads `s.phaseTime >= SPACE_PHASE_END_S` (sim.ts:1768, state.ts:929 = 21s,
 // sw8-11/12) — and a killed TIE frees a slot that refills on the NEXT step
 // (sw8-7, sim.ts:504-517), so spawnCount = 3 + kills. 25+ kills inside 21s walks
 // spawnIndex past SET A1's 27 entries in a legitimately played game.
