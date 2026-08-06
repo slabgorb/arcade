@@ -11,7 +11,7 @@ stories:
     description: "planeFires(level, frame, roll) — red-baron/src/core/enemy.ts:789 — is ported from R2BRON.MAC:4798-4807, covered by tests/core/enemy-fire.test.ts (AC-8, the divide-by-2 FRAME cadence over the PLNLVL level gate) and tests/core/blimp.test.ts, and has ZERO production callers. main.ts:632 states it plainly: 'The blimp is the modelled enemy shooter; plane fire (planeFires) is not yet wired into the shell loop, so it stays silent for now.' Consequence: all three player-hit emission sites in main.ts (:557, :602, :750) are CRSHSN collision crashes, so the pilot is currently immortal to enemy gunfire — the game's central threat does not exist. The blimp path is the working reference: main.ts:742 latches enemyFiring for the SN-017 gun cue when blimpFires(simFrame, level) is true, and :747 rolls BLIMP_HIT_CHANCE against a dedicated blimpRng before calling the rb2-9 loseLife damage channel, guarded by dying === null and not gameOver. Mirror that seam for planes. Note red-baron has no single stepGame: the calc-frame loop in main.ts assembles the GameEvent list itself, and the roll must come from a seeded Rng so the URL seed param (main.ts:461) still replays deterministically. Watch the level gate — planeFireChance returns 0 below level 4, 0.5 at level 4, 1 above, so a wave-1 playtest will correctly show nothing."
     points: 3
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-08-06'
     repos: arcade
     workflow: tdd
