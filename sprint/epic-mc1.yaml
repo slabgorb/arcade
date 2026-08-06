@@ -60,13 +60,15 @@ stories:
     description: 'Trackball/mouse-driven crosshair cursor that integrates input delta and clamps to the play area. Core: cursor.ts integrates a per-frame delta and clamps (W3MAIN:424 PROCESS CURSOR MOTION, :546 ADD TBALL TO CURSOR, :587 UPDATE CURSOR). Shell: input.ts maps mouse/trackball motion to the delta. Desktop-only (repo rule: no touch/narrow-viewport).'
     points: 2
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'cursor.ts (core, pure) is a reducer: (cursor, delta) -> clamped cursor, bounded to the field. Deterministic and unit-tested; no shell imports.'
       - input.ts feeds mouse/trackball motion as the delta; the crosshair moves on screen at /missile-command/ and cannot leave the play area.
+    completed: '2026-08-05'
+    review_verdict: approved
   - id: mc1-4
     title: Player ABM launch to expanding/collapsing blast
     description: "Fire an ABM from the nearest live base to the crosshair; it flies, reaches the target, and detonates into an expanding-then-collapsing blast circle. This is the skeleton's proof-of-life interaction. Core: abm.ts (launch from nearest base, flight, arrival) + explosion.ts (blast radius grow/shrink, W3MAIN:606 LAUNCH ABMS, :665 LAUNCH 1 ABM, :860 UPDATE MISSILE POSITION, :906 PROCESS EXPLOSIONS, :2503 DRAW A CIRCLE). Shell: input.ts binds three fire keys (Z/X/C = left/centre/right base) and render.ts draws the trail + blast. No enemy/scoring/damage — mc1 acceptance ends here."

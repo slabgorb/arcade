@@ -194,3 +194,8 @@ completed_stories:
     title: The stopChannel voice release ships with its channel condition unpinned — an unconditional releaseVoice() leaves all 11666 tests green
     points: 2
     completed: '2026-08-05'
+  - id: mc1-3
+    epic: mc1
+    title: Trackball/mouse crosshair cursor with clamp
+    points: 2
+    completed: '2026-08-05'
