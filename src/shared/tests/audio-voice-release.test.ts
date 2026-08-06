@@ -353,6 +353,21 @@ const ZEROLOOP = {
   frameDurations: { boom: 30 }, // zap has NONE -> voiceFrames 0
 }
 
+// ── jt9-35 rework (Reviewer B1/B2) manifests ─────────────────────────────────
+// B2 needs FOREIGN's reach-the-:222-line shape AND ZEROWIN's zero-length window
+// in ONE manifest: `zap` claims the voice with `voiceFrames = 0` on `v`, while
+// `n1`/`n2` on foreign channel `x` make the SECOND cue's stopChannel(x) execute
+// the :222 line with `voiceChannel !== channel` — the exact state in which a
+// `|| voiceFrames === 0` widening of the guard wrongly releases a voice that is
+// still sounding on a channel nobody touched.
+const ZEROFOREIGN = {
+  baseUrl: BASE,
+  sounds: { zap: 'zap.wav', n1: 'n1.wav', n2: 'n2.wav', boom: 'boom.wav' },
+  channels: { zap: 'v', n1: 'x', n2: 'x', boom: 'w' },
+  priorities: { zap: 5, boom: 9 },
+  frameDurations: { boom: 30 }, // zap has NONE -> voiceFrames 0 with voiceChannel `v`
+}
+
 beforeEach(() => {
   const g = globalThis as Record<string, unknown>
   saved = { AC: g.AudioContext, WK: g.webkitAudioContext, FETCH: g.fetch }
@@ -670,5 +685,98 @@ describe('jt9-35 shared audio — the stopChannel release guard is pinned', () =
         'stopLoop`s :313 release skips it (zap`s window is 0), leaving voiceChannel stale — ' +
         'then `boom` steals channel `v` and stops `plain`.',
     ).toBe(false)
+  })
+})
+
+// ── jt9-35 rework: two Reviewer-found survivors of the battery above ──────────
+// The A–D battery pins the :222 guard against DELETING and RESTRICTING mutations,
+// but two non-equivalent mutants still passed the whole file green:
+//   • B1: tick() keeps `voiceFrames -= 1` (:325) but DROPS the natural-expiry
+//     release `if (voiceFrames === 0) releaseVoice()` (:326). Every existing test
+//     releases through stopChannel/stopLoop or never lets a window expire by
+//     ticking, so the stale `voiceChannel` a tick-expired window leaves behind was
+//     never observed.
+//   • B2: the :222 guard WIDENED to `voiceChannel === channel || voiceFrames === 0`.
+//     Mutants A–B delete or restrict that guard; nothing pinned it against
+//     accepting MORE, and a zero-length window (FOREIGN's shape says the line is
+//     reached; ZEROWIN's shape says voiceFrames is 0) satisfies the widened arm on
+//     a FOREIGN channel's silencing.
+
+describe('jt9-35 shared audio — Reviewer B1/B2: tick-expiry and widened-guard survivors', () => {
+  // Mutant B1: natural expiry must RELEASE, not merely count to zero. A window
+  // that reached 0 by ticking but kept its `voiceChannel` lets the next accepted
+  // arbitrated cue reach across (:266) and stop an unarbitrated sound on a
+  // channel the dead voice no longer owns.
+  it('a window that expires naturally via tick() releases the voice — no later cross-steal', async () => {
+    const { engine, created } = await mkLoadedEngine(MIXED)
+    engine.play('loud') // priority 80, a 76-frame window opens on channel `v`
+    expect(created.sources[0].onended, 'the engine wires onended to clear the channel').toBeTypeOf(
+      'function',
+    )
+    // The SAMPLE ends; `live` on `v` empties while the window keeps counting.
+    // Essential, not decorative: with `loud` still live, `plain` below would stop
+    // it and the :222 release would clear the stale voice EVEN UNDER THE MUTANT.
+    // Only an empty `v` makes the tick-expiry release the sole thing that can.
+    created.sources[0].onended?.()
+    for (let i = 0; i < 75; i++) engine.tick() // 75 of 76 — one frame still to run
+    engine.play('quiet') // priority 10 < 80, window holds
+    expect(
+      startedSources(created),
+      'premise: at frame 75 the window still refuses — proving tick() really was ' +
+        'decrementing the counter this test is about',
+    ).toHaveLength(1)
+    engine.tick() // the 76th frame: voiceFrames hits 0 — the mutated line fires here
+    engine.play('plain') // unarbitrated on `v`; stopChannel(v) finds nothing (:222 not reached)
+    expect(created.sources[1].started, 'premise: `plain` is sounding on `v`').toBe(true)
+    engine.play('quiet') // priority 10 on `w` — accepted either way (voiceFrames is 0)
+    expect(
+      created.sources[2].started,
+      'control: `quiet` really started, so the cross-channel steal at :266 was evaluated',
+    ).toBe(true)
+    expect(
+      created.sources[1].stopped,
+      'natural expiry released the voice at the 76th tick, so voiceChannel is null and the ' +
+        'accepted `quiet` cannot reach across to stop `plain`. Dropping the :326 release ' +
+        'leaves voiceChannel `v` stale at zero frames — then `quiet` steals `v` and silences ' +
+        'an unarbitrated sound on a channel the voice no longer owns.',
+    ).toBe(false)
+  })
+
+  // Mutant B2: `if (voiceChannel === channel || voiceFrames === 0)` at :222. A
+  // zero-length window's voice is still SOUNDING; a silencing on a FOREIGN
+  // channel must not release it, or the next accepted arbitrated cue finds
+  // voiceChannel null, the one-voice steal at :266 never fires, and two voices
+  // sound at once.
+  it('a foreign-channel silencing does not release a zero-length voice that is still sounding', async () => {
+    const { engine, created } = await mkLoadedEngine(ZEROFOREIGN)
+    engine.play('zap') // priority 5, NO frameDurations -> voiceFrames 0, voiceChannel `v`
+    engine.play('n1') // unarbitrated, channel `x` — first cue there, nothing to stop
+    engine.play('n2') // unarbitrated, channel `x` — stopChannel(x) now executes :222
+    expect(
+      created.sources[2].started,
+      'premise: n2 played, so stopChannel(x) passed its `if (!prev) return` and REACHED ' +
+        'the :222 guard with voiceChannel `v` !== `x` and voiceFrames 0 — the exact state ' +
+        'the widened arm wrongly matches',
+    ).toBe(true)
+    expect(
+      created.sources[1].stopped,
+      'premise: and it really silenced n1 — the release line ran having stopped something',
+    ).toBe(true)
+    expect(
+      created.sources[0].stopped,
+      'premise: the zero-window `zap` on `v` is still sounding — n1/n2 are on `x`',
+    ).toBe(false)
+    engine.play('boom') // priority 9 on channel `w` — accepted (voiceFrames is 0 either way)
+    expect(
+      created.sources[3].started,
+      'control: `boom` really started, so the one-voice steal at :266 was evaluated',
+    ).toBe(true)
+    expect(
+      created.sources[0].stopped,
+      'the machine has ONE voice: `zap` still owns it (a foreign-channel silencing must not ' +
+        'release a sounding voice), so accepting `boom` steals across and stops `zap`. The ' +
+        'widened guard released the voice at n2`s silencing — voiceChannel null, the :266 ' +
+        'steal never fires, and `zap` sounds alongside `boom`: two voices at once.',
+    ).toBe(true)
   })
 })
