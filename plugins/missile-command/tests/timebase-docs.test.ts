@@ -55,6 +55,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const romStudy = join(root, 'docs', 'rom-study')
 const timebasePath = join(romStudy, 'timebase.md')
 const briefPath = join(romStudy, 'brief.md')
+const subsystemsPath = join(romStudy, 'subsystems.md')
+const glossaryPath = join(romStudy, 'glossary.md')
 
 const sourceDir = join(root, 'reference', 'source')
 const W3INT = join(sourceDir, 'W3INT.MAC')
@@ -186,11 +188,14 @@ describe.skipIf(!sourceAvailable)('timebase.md source anchors cross-check agains
     }))
   }
 
-  const lineAt = (module: string, line: number): string =>
+  // Named `physLineOf` (module → physical line) to NOT collide with the
+  // differently-typed `lineAt(file, n)` in citations-source.test.ts, which takes a
+  // full path — a same-name/different-arg trap (lang-review #18, round-1 F3).
+  const physLineOf = (module: string, line: number): string =>
     readFileSync(join(sourceDir, `${module}.MAC`), 'utf8').split('\n')[line - 1] ?? ''
 
   const citedLines = (module: string): string[] =>
-    anchors().filter((a) => a.module === module).map((a) => lineAt(module, a.line))
+    anchors().filter((a) => a.module === module).map((a) => physLineOf(module, a.line))
 
   it('cites at least one W3INT anchor and at least one W3MAIN anchor', () => {
     // The floor comes first (check #15): a note that cited zero source lines could
@@ -201,7 +206,7 @@ describe.skipIf(!sourceAvailable)('timebase.md source anchors cross-check agains
   })
 
   it('every cited anchor lands on a NON-BLANK source line (not a double-space logical ordinal)', () => {
-    const blank = anchors().filter((a) => lineAt(a.module, a.line).trim() === '')
+    const blank = anchors().filter((a) => physLineOf(a.module, a.line).trim() === '')
     expect(
       blank,
       `these anchors land on BLANK lines — W3MAIN is double-spaced, so brief.md's ` +
@@ -276,12 +281,33 @@ describe('src/shell/timebase.ts encodes the exact tick as a constant (AC3)', () 
 //   positive marker (resolved) plus a targeted retirement of the exact stale
 //   clause (check #24: grep the OLD framing, not just add the new).
 // ─────────────────────────────────────────────────────────────────────────────
+// A negation the guard must NOT read as "resolved" — the exact defeat the round-1
+// vacuous guard let through (`/\bO-2\b.*\bresolv/i` matched "O-2 not resolved"). Kept
+// narrow so it does not fire on the "## Open questions" section heading or on a mere
+// "resolved": it targets the phrases that assert O-2 is STILL open.
+const STILL_OPEN = /\b(unresolved|not\s+(?:fully\s+|yet\s+)?resolved|not\s+yet\s+read|to\s+be\s+read)\b/i
+/** Lines that mention O-2 (each must be in a resolved framing, none may say it is open). */
+const o2LinesOf = (doc: string): string[] => doc.split('\n').filter((l) => /\bO-2\b/.test(l))
+
 describe('brief.md marks O-2 resolved (AC4)', () => {
-  it('the brief still references O-2 and now marks it resolved', () => {
-    const doc = readDoc(briefPath, 'brief.md')
-    expect(/O-2/.test(doc), 'brief.md must still reference O-2').toBe(true)
-    expect(/O-2[^.\n]*\b(resolved|RESOLVED|answered|closed)\b/i.test(doc) || /\bO-2\b.*\bresolv/i.test(doc),
-      'brief.md must mark O-2 resolved (not just leave it under Open questions)').toBe(true)
+  it('the brief still references O-2', () => {
+    expect(o2LinesOf(readDoc(briefPath, 'brief.md')).length, 'brief.md must still reference O-2').toBeGreaterThan(0)
+  })
+
+  it('positively marks O-2 resolved — and a NEGATED "not resolved" does NOT satisfy the guard', () => {
+    const lines = o2LinesOf(readDoc(briefPath, 'brief.md'))
+    // Teeth (round-1 defect): the marker must be a resolved statement that is NOT negated.
+    // "O-2 not resolved" / "unresolved" carry `resolved` as a substring but assert the
+    // opposite, so they are excluded here (STILL_OPEN) — reddening the round-1 mutation.
+    expect(
+      lines.some((l) => /\bresolved\b/i.test(l) && !STILL_OPEN.test(l)),
+      'an O-2 mention must positively state it is resolved (a "not resolved" line does not count)',
+    ).toBe(true)
+  })
+
+  it('no O-2 mention still frames it as OPEN / unresolved / not-yet-read', () => {
+    const openish = o2LinesOf(readDoc(briefPath, 'brief.md')).filter((l) => STILL_OPEN.test(l))
+    expect(openish, 'every O-2 mention must be updated to the resolved framing').toEqual([])
   })
 
   // NB: a "brief.md includes 61.0076" test would be vacuous here — the brief's §3
@@ -296,5 +322,46 @@ describe('brief.md marks O-2 resolved (AC4)', () => {
       /until\s+W3INT\s+is\s+read\s+in\s+full/i.test(doc),
       'the O-2-is-open clause must be retired now that W3INT has been read',
     ).toBe(false)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AC4 coherence (round-1 review, lang-review #24) — a retirement applied only in
+//   brief.md leaves the SIBLING source-of-record docs describing O-2 as open. After
+//   O-2 is resolved, subsystems.md and glossary.md must not still frame it as unread
+//   / unresolved, and glossary.md must drop the stale logical-ordinal FRAME citations
+//   (W3DSUP.MAC:19 / W3MAIN.MAC:2039) this story proved wrong. These read committed
+//   docs, so they run on CI too. (O-4 may stay open — scoped to O-2 lines only.)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('the O-2 resolution is coherent across the rom-study source-of-record (review #24)', () => {
+  it('subsystems.md no longer frames W3INT / O-2 as "not yet read"', () => {
+    const openish = o2LinesOf(readDoc(subsystemsPath, 'subsystems.md')).filter((l) => STILL_OPEN.test(l))
+    expect(openish, 'subsystems.md still calls O-2 open / W3INT unread — O-2 is resolved now').toEqual([])
+  })
+
+  it('subsystems.md points at the resolved derivation (timebase.md) or marks O-2 resolved', () => {
+    const sub = readDoc(subsystemsPath, 'subsystems.md')
+    expect(
+      /timebase\.md/.test(sub) || o2LinesOf(sub).some((l) => /\bresolved\b/i.test(l) && !STILL_OPEN.test(l)),
+      'subsystems.md must reference timebase.md or positively mark O-2 resolved',
+    ).toBe(true)
+  })
+
+  it('glossary.md drops the stale logical-ordinal FRAME citations (W3DSUP:19 / W3MAIN:2039)', () => {
+    const gloss = readDoc(glossaryPath, 'glossary.md')
+    expect(/W3DSUP\.MAC:19\b/.test(gloss), 'glossary must drop the stale W3DSUP.MAC:19 FRAME citation').toBe(false)
+    expect(/W3MAIN\.MAC:2039\b/.test(gloss), 'glossary must drop the stale W3MAIN.MAC:2039 FRAME citation').toBe(false)
+  })
+
+  it('glossary.md cites the correct physical FRAME lines (W3MAIN.MAC:239 def / :781 increment)', () => {
+    expect(
+      /W3MAIN\.MAC:(239|781)\b/.test(readDoc(glossaryPath, 'glossary.md')),
+      'the glossary FRAME entry must cite the physical W3MAIN.MAC:239 / :781',
+    ).toBe(true)
+  })
+
+  it('glossary.md no longer calls the O-2 sim tick unresolved', () => {
+    const openish = o2LinesOf(readDoc(glossaryPath, 'glossary.md')).filter((l) => STILL_OPEN.test(l))
+    expect(openish, 'the FRAME/O-2 glossary entry must be updated to resolved (O-4 may remain open)').toEqual([])
   })
 })
