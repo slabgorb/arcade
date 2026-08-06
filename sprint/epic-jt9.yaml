@@ -360,7 +360,8 @@ stories:
     description: 'SHDIRB (JOUSTRV4.SRC:4388-4392) is the shadow lord''s no-steer exit for SHDN/SHUP wakes: it writes CURJOY dir = 0, so a moving shadow COASTS (drift decays, no horizontal thrust). Our port''s shadow() returns dir = facing on those wakes — continuous thrust the ROM does not apply. Found by TEA on jt8-3 while mapping the per-route steering; real ROM behaviour, fenced out of jt8-3''s scope (horizontal look-ahead + SHLEP line track). Affects plugins/joust/src/core/enemy.ts (shadow() dir channel). jt8-3''s steering-source.test.ts already proves SHLEPB→SHDIRA and SHDIRB consult NO background mask — extend those structural pins rather than re-deriving the routing. Expect a determinism re-baseline on the demo replays if the shadow''s drift shape changes (a claim to verify, not a measurement).'
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-05'
     repos: arcade
     workflow: tdd
   - id: jt9-21
