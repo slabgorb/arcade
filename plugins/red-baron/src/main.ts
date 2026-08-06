@@ -27,7 +27,7 @@
 import { flightView } from './core/camera'
 import { horizonSegments } from './core/horizon'
 import { INITIAL_FLIGHT, step, toAttitude, toEye, controlBand, type FlightInput, type FlightState } from './core/flight'
-import { proximityBand, displayPos, WO_RTN, type Enemy } from './core/enemy'
+import { proximityBand, displayPos, planeFires, WO_RTN, type Enemy } from './core/enemy'
 import {
   spawnWave, stepWave, promoteLead, INITIAL_WAVE_CLOCK, stepWaveClock, isPlaneWave,
   grmodeForWave, planeGenDisabled, isGroundMode, GRMODE_PLANE, groundModeEnds, GRNDCT_INITIAL,
@@ -127,6 +127,10 @@ const { canvas, ctx } = mountCanvas(document)
  * through the full GRSHLS flight model, which is not in this story's scope).
  */
 const BLIMP_HIT_CHANCE = 0.05
+// uf1-1: a connecting PLANE shell costs a life on the same per-shot model as the blimp
+// (BLIMP_HIT_CHANCE above) — the ROM's full GRSHLS shell-flight model is out of scope, so a
+// fire-frame that lands is a per-shot roll, not a modelled bullet. Same 5 % as the airship.
+const PLANE_HIT_CHANCE = 0.05
 
 function resize(): void {
   canvas.width = canvas.clientWidth || window.innerWidth
@@ -492,6 +496,10 @@ let aceCountdown = WO_RTN
 let dying: EolState | null = null // the EOGTMR sequence in progress; freezes the pilot's world
 let gameOver = false // ENDLFE with no lives left (RBARON.MAC:1207-1212)
 const aceRng = createRng((seed ^ 0xace5) >>> 0) // the EOLSEQ JSR RANDOM (:1090)
+// uf1-1: the wave planes' fire stream — the level-4 coin flip (planeFires' roll) AND the per-shot
+// hit roll both draw from HERE. Its OWN sub-seed, independent of blimpRng/aceRng, so wiring the
+// planes' guns does not shift the airship's or the ace's rolls (the rb4-4 draw-order discipline).
+const planeRng = createRng((seed ^ 0x91a2) >>> 0)
 
 let lastMs: number | null = null
 let accumulator = 0
@@ -634,8 +642,8 @@ function frame(nowMs: number): void {
   const events: GameEvent[] = []
   // rb4-10 / SN-017: the ROM's S.VAL gun counter is bumped for EVERY shell, the
   // enemy's included, so enemy fire rattles the same gun cue. Latched across this
-  // render frame's calc-steps. The blimp is the modelled enemy shooter; plane fire
-  // (planeFires) is not yet wired into the shell loop, so it stays silent for now.
+  // render frame's calc-steps. BOTH enemy shooters set it: the blimp (below) and —
+  // once the GMLEVL grants the fire bit — the wave planes (uf1-1, the planeFires loop).
   let enemyFiring = false
   // SH2-14: the frozen-frame gate. While paused, run NO calc-frames (the sim —
   // flight, guns, waves, wrecks, blimp, mountains, score — is held) and discard the
@@ -756,6 +764,26 @@ function frame(nowMs: number): void {
         events.push({ type: 'player-hit' }) // the CRSHSN crash
       }
       blimp = reapBlimp(drifted)
+    }
+
+    // ── uf1-1: the wave planes shoot back (PLNSHL, RBARON.MAC:4798-4807) ──────────
+    // The blimp is not the only enemy shooter: once the kill-driven GMLEVL grants the
+    // "@ PLAYER" bit (planeFireChance — 0 below level 4, 0.5 at 4, 1 above), each live
+    // plane fires on the ÷2 FRAME cadence. This mirrors the blimp seam above — latch the
+    // SN-017 gun cue on the SHOT (rb4-10), then a per-shot hit roll opens the SAME rb2-9
+    // loseLife death channel, guarded on the pilot being alive. Both rolls draw from
+    // planeRng (its own stream), unconditionally on the pilot's state so it never shifts.
+    for (const plane of enemies) {
+      if (planeFires(level, simFrame, nextFloat(planeRng))) {
+        enemyFiring = true // the gun rattles on the shot, hit or miss (rb4-10 / SN-017)
+        // The hit ROLL is always drawn on a fire-frame (the stream must not shift with the
+        // pilot's state); only the EFFECT is gated on him being alive — as with the blimp.
+        if (nextFloat(planeRng) < PLANE_HIT_CHANCE && dying === null && !gameOver) {
+          dying = beginEol('shells')
+          windscreen = addBulletHole(windscreen, plane.side) // WNDSHD: a hole on the plane's side
+          events.push({ type: 'player-hit' }) // the CRSHSN crash
+        }
+      }
     }
 
     // ── ONE shared collision pass (rb2-5): the player's shells vs the planes AND the blimp ──
