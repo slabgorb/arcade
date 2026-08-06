@@ -46,7 +46,7 @@ does `INC FRAME` (`W3MAIN.MAC:781`).
 `FRAME` is the per-frame counter — `FRAME: .BLKB 1 ;FRAME COUNTER (1-60)`
 (`W3MAIN.MAC:239`) — so it wraps once per second at 60 frames. That the game *means*
 60 frames = 1 second is proved by its own use as a sub-second timer: the pause state
-reads `LDA FRAME / AND I,03 / IFEQ ;UPDATE EVERY 4/60 SEC` (`W3MAIN.MAC:623`), i.e.
+reads `LDA FRAME / AND I,03 / IFEQ ;UPDATE EVERY 4/60 SEC` (`W3MAIN.MAC:619-623`), i.e.
 every 4 frames is 4/60 s. The tick is therefore one logic step per frame, at video
 rate.
 
@@ -54,7 +54,7 @@ rate.
 
 | Quantity            | Value        | Source |
 |---------------------|--------------|--------|
-| Sim tick            | 1 step/frame | `W3MAIN.MAC:497` sync gate + `:781` `INC FRAME` |
+| Sim tick            | 1 step/frame | `W3MAIN.MAC:497` sync gate + `W3MAIN.MAC:781` `INC FRAME` |
 | Exact frame rate    | **61.0076 Hz** | `missile.cpp:58` VSYNC (PCB note) |
 | Nominal fallback    | **60 Hz**    | `FRAME COUNTER (1-60)`, `W3MAIN.MAC:239`; `UPDATE EVERY 4/60 SEC`, `:623` |
 | IRQs per frame      | 4 (only VBLANK advances the frame) | `missile.cpp:485-497`; `W3INT.MAC:275`/`:281` |
