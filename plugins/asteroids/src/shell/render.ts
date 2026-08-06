@@ -421,7 +421,8 @@ function drawMarginMask(ctx: CanvasRenderingContext2D, w: number, h: number): vo
  *  self-play demo (ad1-3), drawn like any other; a destroyed ship (A-8's sticky
  *  latch) leaves the drawn set until A-15 respawns it. The thrust flame keys off
  *  the player's `input`, so it shows in play but not for the demo's own thrust —
- *  the showcase feeds NO_INPUT. Pure over `state` — reads, never writes. */
+ *  in the lobby carousel nobody presses keys, so the sampled input is all-false
+ *  and the demo draws no flame. Pure over `state` — reads, never writes. */
 export function render(
   ctx: CanvasRenderingContext2D,
   state: GameState,

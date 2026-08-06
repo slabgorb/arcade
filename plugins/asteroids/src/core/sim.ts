@@ -4,9 +4,11 @@
 // state. Time only ever enters here as `dt`; randomness only ever comes from
 // `state.rng`. A-2 wired the loop (tick + RNG passthrough); A-3 added the
 // ship's flight model; A-4 added firing; A-6 drifts the rocks. A-16 closes
-// A-2's mode loop: attract is a rocks-drift backdrop a start press turns into a
-// real game, and a final death runs the game-over/high-score framing before
-// returning to attract. A-15 replaces A-16's terminal-death stub with the real
+// A-2's mode loop: a start press turns attract into a real game, and a final
+// death runs the game-over/high-score framing before returning to attract.
+// ad1-3 makes attract SELF-PLAY: it runs the real play step on a synthetic
+// controller (stepAttract → demoInput → stepPlay), no longer an inert backdrop.
+// A-15 replaces A-16's terminal-death stub with the real
 // lives model: a death with ships in reserve decrements and waits for a clear
 // center to respawn (core/lives.ts) instead of ending the run.
 

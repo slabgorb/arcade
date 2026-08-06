@@ -148,7 +148,10 @@ describe('stepGame — score awarded per destroyed rock by tier (AC-1)', () => {
     }
     const s1 = stepGame(s0, NO_INPUT, DT)
     expect(s1.mode).toBe('attract') // still demoing, not a real game
-    expect(s1.score).toBeGreaterThan(500) // the large rock was scored (tier 20)
+    // Deterministic: rock+bullet both at CENTER, hit on frame 1; large tier = 20
+    // (SCORE_VALUES.large, pinned below), so 500 → 520 exactly. No new demo shot
+    // this frame (demoInput's fire cadence skips tick 0), so nothing else scores.
+    expect(s1.score).toBe(520)
     expect(s1.rocks.some((r) => r.size === 'large')).toBe(false) // it split
   })
 
