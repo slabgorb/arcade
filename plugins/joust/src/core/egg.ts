@@ -22,6 +22,7 @@
 
 import { ELEFT, ERIGHT } from './arena.js'
 import type { IntelBudget } from './enemy.js'
+import type { EnemyType } from './joust.js'
 
 export type { IntelBudget }
 
@@ -83,6 +84,14 @@ export interface EggState {
   /** jt9-25 — display frames left on the current EGGTBL row (its col-2 nap) before
    *  the walk advances; the `JSR VNAPTPC` at :3296, the same primitive as PCNAP. */
   hatchNap?: number
+  /**
+   * jt9-47 — the LAYING enemy's species (PID), carried across the hatch so the
+   * remount buzzard restores its parent's type, brain and score instead of the
+   * bounder the port hardcoded through jt9-46. `spawnEgg` copies it from the
+   * dying enemy (DEATH3). OPTIONAL: a WAVEGG wave egg has no laying enemy, so it
+   * carries no species and the remount falls back to 'bounder'.
+   */
+  enemyType?: EnemyType
 }
 
 /** The minimum a dying joust victim hands the egg (its velocities + eggs-left). */
@@ -95,6 +104,9 @@ export interface EggVictim {
   velY: number
   /** The victim's PEGG before this death. */
   eggsLeft: number
+  /** jt9-47 — the dying enemy's species (PID); threaded onto the egg's `enemyType`
+   *  so the remount restores it. Absent for a species-less (wave) egg producer. */
+  enemyType?: EnemyType
 }
 
 /** Where a hatched buzzard enters, and how it flies toward the rider. */
@@ -170,6 +182,8 @@ export function spawnEgg(victim: EggVictim): EggState {
     hitCount: 0,
     pfeet: 0,
     settled: false,
+    // jt9-47 — carry the laying enemy's species so the remount restores it.
+    enemyType: victim.enemyType,
   }
 }
 
