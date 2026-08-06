@@ -76,7 +76,7 @@ describe('bz5-4 · enemy-action sound-gating cross-check vs MAME (bzone_a.cpp:1-
   function record() {
     const calls: string[] = []
     const surface = {
-      play(name: 'cannon' | 'explosion' | string): void {
+      play(name: 'cannon' | 'explosion'): void {
         calls.push(`play:${name}`)
       },
       startLoop(): void {},
@@ -90,21 +90,21 @@ describe('bz5-4 · enemy-action sound-gating cross-check vs MAME (bzone_a.cpp:1-
   it('an enemy death drives the single explosion generator (MAME D0, one noise gen)', () => {
     const { calls, surface } = record()
     const events: readonly GameEvent[] = [{ type: 'enemy-destroyed', kind: 'tank' }]
-    playEventSounds(surface as never, events)
+    playEventSounds(surface, events)
     expect(calls).toEqual(['play:explosion'])
   })
 
   it('the player death uses the SAME explosion generator, not a per-side pair (MAME D0)', () => {
     const { calls, surface } = record()
     const events: readonly GameEvent[] = [{ type: 'player-hit' }]
-    playEventSounds(surface as never, events)
+    playEventSounds(surface, events)
     expect(calls).toEqual(['play:explosion'])
   })
 
   it('a cannon shot drives the shell channel (MAME D2 shell enable)', () => {
     const { calls, surface } = record()
     const events: readonly GameEvent[] = [{ type: 'shot-fired' }]
-    playEventSounds(surface as never, events)
+    playEventSounds(surface, events)
     expect(calls).toEqual(['play:cannon'])
   })
 })

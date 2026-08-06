@@ -554,7 +554,7 @@ documentation is a second source on the port.
 driver source contains **no enemy-AI logic**. The state machine (turn rate,
 standoff, flank/charge transitions, fire-on-sweep) and `GetTankType`'s missile-count
 super-tank selection live in the `maincpu` ROM region MAME loads and runs
-(`bzone.cpp:711-717`, ROM `036409-01`…`036415-02`) — byte-identical to what
+(`bzone.cpp:711-717`, the `maincpu` ROMs `036409-01`…`036414-02`) — byte-identical to what
 `BZONE.MAC` disassembles. `bzone.cpp` / `bzone_a.cpp` only wrap the **hardware**
 (clock chain, DIP inputs, discrete/POKEY audio). So MAME **cannot independently
 transcribe the AI logic** to diff against; a true "executed-behaviour" cross-check
