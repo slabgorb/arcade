@@ -498,8 +498,8 @@ discrete explosion/shell audio, not the counter). MAME's independent contributio
 ("`AND I,0F` … END OF FRAME (64 MS)", `src/core/timebase.ts`) → a **≈15.38 Hz** game
 frame. The clone uses **15.625 Hz** (NMI taken as exactly 250 Hz). Either rate puts the
 ~15-game-frame crack window at **≈0.96–0.98 s** — the difference does not materially change
-the window, and the exact NMI-rate reconcile (246 vs 250 Hz) is **deferred to bz5-3**
-(the timebase cross-check story). **Ruling:** the shipped crack timing (2 → +2/frame →
+the window, and the exact NMI-rate reconcile (246 vs 250 Hz) is **resolved in §11.3**
+(bz5-3, the timebase cross-check story: mechanism confirmed, ~1.59% delta documented, 15.625 kept). **Ruling:** the shipped crack timing (2 → +2/frame →
 reset at `16*2`, ≈1 s) is faithful to the ROM sequence MAME executes.
 
 **Documented deviation (deferred).** The ROM's full death sequence FREEZES the tank while
@@ -629,6 +629,51 @@ capture (running the emulator and logging AI state) is worth a follow-up to
 second-source the AI *logic* — the only way to satisfy AC1's "executed behaviour"
 literally; recommended **not** blocking, as bz1–bz4 already fixed the logic against
 the disassembly and this pass found no contradicting evidence.
+
+### 11.3 · Timebase cross-check against MAME's clock chain (bz5-3)
+
+Closes the exact NMI-rate reconcile that §11 (bz5-1) explicitly **deferred to bz5-3**.
+MAME is the independent, executable second source: its `bzone_base` machine config
+(`~/Projects/mame/src/mame/atari/bzone.cpp`, off-repo — cited in prose, as with §11.2)
+gives the full clock chain, and it **confirms the clone's mechanism** while pinning the
+NMI's exact rate — which the ROM's own round "END OF FRAME (64 MS)" comment only
+approximates.
+
+**The chain (MAME):**
+
+| Node | MAME derivation | Rate |
+|---|---|---|
+| Master clock | `XTAL(12'096'000)` (`bzone.h:20`) | 12.096 MHz |
+| 6502 core | `BZONE_MASTER_CLOCK / 8` (`bzone.cpp:611`) | 1.512 MHz |
+| `BZONE_CLOCK_3KHZ` | `master / 4096` (`bzone.h:21`) | ≈ 2953.125 Hz |
+| NMI (periodic int) | `BZONE_CLOCK_3KHZ / 12` (`bzone.cpp:613`), gated by IN0 0x10 self-test (`bzone.cpp:261-266`) | ≈ **246.094 Hz** |
+| Vector refresh | `BZONE_CLOCK_3KHZ / 12 / 6` (`bzone.cpp:619`) | ≈ 41.016 Hz |
+
+**Mechanism — CONFIRMED.** The ROM derives the game-logic tick by **counting NMIs**, not
+by vector-draw sync: `AND I,0F` + `INC SYNC` bumps the frame counter every **16th** NMI
+(`BZONE.MAC:1084-1088`, "END OF FRAME (64 MS)"), and `MAIN: LSR SYNC` (`BZONE.MAC:422`)
+blocks the main loop on that tick. MAME's `set_refresh_hz(... / 12 / 6)` independently
+corroborates the vector generator as a **separate** NMI/6 divide (≈41 Hz), i.e. the display
+refresh is NOT the game-logic rate — the two are distinct nodes off the one NMI. So
+`game frame = NMI ÷ 16` is second-sourced.
+
+**Rate — a documented ~1.59% drift, not a clean confirmation.** The clone (bz3-1) took the
+NMI as a round **250 Hz** (back-computed from the "64 MS" comment: 64 ms ÷ 16 = 4 ms ⇒
+250 Hz) → `GAME_FRAME_HZ = 15.625`. MAME's exact chain gives NMI = **246.094 Hz**, so the
+executed hardware frame is `246.094 / 16 =` **≈ 15.381 Hz** (65.02 ms). The clone therefore
+runs **≈1.59% fast** (`250 / 246.094 − 1`); the vector node shows the same nominal-vs-exact
+gap (clone/audit 41.67 Hz vs MAME 41.016 Hz). The delta is entirely the round-250 vs
+exact-246.094 NMI — the ROM's "64 MS" label is itself a ~1.6% rounding of its own hardware's
+65.02 ms period.
+
+**Ruling (verification-first, NOT a speculative rewrite).** **KEEP `GAME_FRAME_HZ = 15.625`** —
+the ROM designers' *documented* 64 ms game-frame intent — and **document** the ~1.59%
+nominal-vs-exact delta here with the MAME citation added in `src/core/timebase.ts`. No
+magnitude is rewritten: correcting to 15.381 Hz would re-baseline the entire bz3 magnitude
+suite (turn rate, forward speed, shell speed, radar sweep, every cadence-gated counter) for a
+sub-2% change the ROM's own comment already rounds away, which the story's mandate forbids.
+This matches §11's bz5-1 pre-ruling that "the difference does not materially change the
+window." Cross-check pins: `tests/core/timebase-mame-crosscheck.test.ts`.
 
 ## 12 · Provenance / changelog
 
