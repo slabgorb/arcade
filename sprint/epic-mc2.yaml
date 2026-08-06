@@ -109,4 +109,4 @@ stories:
     workflow: tdd
     type: chore
     review_findings: "Round 2: all 6 round-1 findings verified closed; 2 new MEDIUM prose-drift defects in the story's own diff — R2-1 citations.test.ts:276-296 section-5 header still '(RED)'/'RED today on four counts' (all zero at HEAD), R2-2 dossier-sweep.ts:41 worked example names physical 1641 but shipped cite resolves to 1583. Comment-only green rework."
-    review_verdict: rejected
+    review_verdict: approved
