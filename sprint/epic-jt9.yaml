@@ -360,10 +360,11 @@ stories:
     description: 'SHDIRB (JOUSTRV4.SRC:4388-4392) is the shadow lord''s no-steer exit for SHDN/SHUP wakes: it writes CURJOY dir = 0, so a moving shadow COASTS (drift decays, no horizontal thrust). Our port''s shadow() returns dir = facing on those wakes — continuous thrust the ROM does not apply. Found by TEA on jt8-3 while mapping the per-route steering; real ROM behaviour, fenced out of jt8-3''s scope (horizontal look-ahead + SHLEP line track). Affects plugins/joust/src/core/enemy.ts (shadow() dir channel). jt8-3''s steering-source.test.ts already proves SHLEPB→SHDIRA and SHDIRB consult NO background mask — extend those structural pins rather than re-deriving the routing. Expect a determinism re-baseline on the demo replays if the shadow''s drift shape changes (a claim to verify, not a measurement).'
     points: 2
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-05'
   - id: jt9-21
     title: Vertical look-ahead — the overhead-cliff checks gating the UP-seek arms are unmodelled (:4030-4034, :4259-4262, :4418-4422)
     description: 'The vertical counterpart of jt8-3''s horizontal B2XLEN/SHXLEN steering: the ROM gates its UP-seek arms on an overhead-cliff check — :4030-4034 (hunter), :4259-4262 and :4418-4422 (shadow) — so an enemy does not seek up into solid ground overhead. Unmodelled in the port: affects plugins/joust/src/core/enemy.ts (seekWake''s up-arm). Found by TEA on jt8-3, whose scope was fenced to the HORIZONTAL look-ahead. jt8-3 shipped bckMaskAt (the BCKXTB/BCKYTB point sample, landMaskAtX-indexed) — whether the vertical checks sample the same table pair with a Y offset is TEA''s to derive from the cited lines, not assumed. Coordination note: uf1-9 owns the up-flight VY gates on the same up-seek path (HUUPVY :4178 / SHUPVY :4272) — a different mechanism (velocity gates, not mask checks); coordinate if both land close together.'

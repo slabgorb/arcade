@@ -174,3 +174,8 @@ completed_stories:
     title: Enemy AI cross-check against MAME + BZONE.MAC together
     points: 3
     completed: '2026-08-05'
+  - id: jt9-20
+    epic: jt9
+    title: Shadow SHDIRB coast — SHDN/SHUP wakes write dir 0; our shadow() thrusts at facing (:4388-4392)
+    points: 2
+    completed: '2026-08-05'
