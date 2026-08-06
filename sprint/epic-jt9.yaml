@@ -1116,6 +1116,6 @@ stories:
     points: 2
     priority: p3
     status: backlog
-    repos: pennyfarthing
+    repos: arcade
     workflow: tdd
     type: refactor
