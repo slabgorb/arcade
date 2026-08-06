@@ -73,7 +73,7 @@
   },
   {
     "id": "JT51-009",
-    "claim": "SNPCR1 is the PLAYER 1 RE-CREATED (TRANSPORTER) table at priority 070 — the jt5-1 cue 'playerMaterialise' (JOUSTRV4.SRC:8116). It is bound to the knight through P1DEC's decision block rather than a direct load (JOUSTRV4.SRC:5544); P2 carries its own table SNPCR2 (:8119), which jt5-1 collapses onto this one.",
+    "claim": "SNPCR1 is the PLAYER 1 RE-CREATED (TRANSPORTER) table at priority 070 — the jt5-1 cue 'playerMaterialise' (JOUSTRV4.SRC:8116). It is bound to the knight through a decision-block binding rather than a direct load (P1DEC :5552).",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 8116,

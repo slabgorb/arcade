@@ -217,8 +217,10 @@ export interface DemoProcess {
    * read the second from the first, and a story was filed on the difference. `DEGGS`
    * is a POINTER — `LDY DEGGS,Y` then `LDB ,Y`, and the debug guard at :3039 reads
    * "SHOULD NEVER BE ZERO" because it holds an address — into the fixed cells
-   * `EGGS1`/`EGGS2` that P1DEC/P2DEC bind it to (:5551, :5555). Grepping those cells
-   * gives the whole lifetime, six `CLR`s and nothing else:
+   * `EGGS1`/`EGGS2` that G1DEC/G2DEC bind it to (:5543, :5547) — the attract-mode
+   * block this demo actually runs; real play binds the byte-identical rows at
+   * P1DEC/P2DEC (:5551, :5555). Grepping those cells gives the whole lifetime, six
+   * `CLR`s and nothing else:
    *
    *   :907 / :912      a new game        "RESET NUMBER OF EGG KILLED"       (JT86-007)
    *   :1979 / :1980    EVERY wave start  WNRM                               (JT86-006)
@@ -2090,7 +2092,8 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     // rung here, not still holding 1,000.
     //
     // It has to be EXPLICIT for us where the ROM gets it structurally: the ROM clears
-    // the fixed cells EGGS1/EGGS2 that P1DEC/P2DEC bind `DEGGS` to (:5551, :5555),
+    // the fixed cells EGGS1/EGGS2 that G1DEC/G2DEC — the attract-mode block this demo
+    // runs — bind `DEGGS` to (:5543, :5547),
     // whereas our count rides the player process — and the advance below carries those
     // processes forward untouched. The player's OTHER reset boundary needs no code at
     // all for the same reason, in reverse: `DEATH1 CLR EGGS1` (:4669, the `DDEAD` field
