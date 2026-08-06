@@ -286,3 +286,8 @@ completed_stories:
     title: ROW_DISPOSITION can lie in the direction that matters — a row wired in code but left 'no-consumer-yet' ships GREEN
     points: 3
     completed: '2026-08-06'
+  - id: mc2-3
+    epic: mc2
+    title: 'O-2: pin the exact sim tick from W3INT'
+    points: 3
+    completed: '2026-08-06'
