@@ -195,6 +195,25 @@ describe('AC3 — SHADOW looker: it arms the CLIMB, it does not flap this wake',
     expect(base1.wingEdge, 'CONTROL — with no troll, neither wake climbs').not.toBe('down')
   })
 
+  it('SHUP1 re-points PJOY→SHADOW UNCONDITIONALLY: the climb clears after ONE wake, even when it coasts', () => {
+    // Reviewer R-1. `SHUP1` sets `PJOY = #SHADOW` as its first two instructions
+    // (:4269-4270), BEFORE the `CMPD SHUPVY` flap test — so the armed climb is a
+    // strictly ONE-wake pointer whether the consume wake flaps (`SHUP1`) or coasts
+    // a fast climber (`SHUP0`). This fixture is already rising faster than SHUPVY
+    // (velY = -0x400 < -0x200), so the consume wake COASTS: a clear gated on the
+    // flap would leave the shadow stuck in `climb` forever, never re-deciding.
+    const fast = (over: Partial<EnemyState> = {}): EnemyState =>
+      smart('shadow', { entity: entityAt(0x85, -0x400), ...over })
+    const w0 = step(fast({ plavt: 1 }), true, player(TGT))
+    expect(w0.enemy.pjoy?.kind, 'w0 (SHUPST) arms the climb, wings up').toBe('climb')
+    const w1 = step(w0.enemy, false, player(TGT))
+    expect(w1.wingEdge, 'the fast climber COASTS on the consume wake (SHUP0, no flap)').not.toBe('down')
+    expect(w1.enemy.pjoy?.kind, 'yet the climb is CLEARED — SHUP1 re-points to SHADOW regardless').not.toBe('climb')
+    // And the wake after that re-decides through the normal brain, not the climb.
+    const w2 = step(w1.enemy, false, player(TGT))
+    expect(w2.enemy.pjoy?.kind, 'w2 is back in the brain, no lingering climb').not.toBe('climb')
+  })
+
   it('CONTRAST — the SAME looker-fire flaps in BOUNDR but not SHADOW ("not a shared flap")', () => {
     // The mutant this kills: copying LINET/BOUNDR\'s "force the flap bit" into all
     // three brains. That impl flaps the shadow on the looker wake; the ROM clears

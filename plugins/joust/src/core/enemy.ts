@@ -1504,14 +1504,20 @@ export function stepEnemyDetailed(
   // interval is exactly that BOLEV1/BOLEV2 next-state (a forced-glide wake decides
   // `flap: false`, so it clears itself). Only a surviving level interval carries
   // it — a cliff turn has already swapped `pjoy` for a dwell.
-  // jt9-29 — the shadow's armed `climb` (`SHUP1`) is a one-wake pointer: once the
-  // wake it flapped on has run, `SHUP1` hands `PJOY` back to `SHADOW`, so it is
-  // cleared here on the wake it was CONSUMED (i.e. flapped), never on the wings-up
-  // wake that `SHUPST` armed it (that wake decides `flap: false` and keeps it).
+  // jt9-29 — the shadow's armed `climb` (`SHUP1`) is a one-wake pointer. `SHUP1`
+  // re-points `PJOY` back at `SHADOW` UNCONDITIONALLY as its first two
+  // instructions (`LDD #SHADOW / STD PJOY,U`, :4269-4270), BEFORE the `CMPD
+  // SHUPVY` flap test — so it is cleared on the wake that CONSUMED it (the entry
+  // `PJOY` was `climb`), whether that wake flapped (`SHUP1`) or coasted a fast
+  // climber (`SHUP0`). It is NOT cleared on the wings-up wake `SHUPST` armed it
+  // (there the entry `PJOY` was not yet `climb`), which is what keeps it for one
+  // wake. Without the unconditional clear a shadow rising faster than SHUPVY
+  // never returns to the brain and stops re-deciding entirely (Reviewer R-1).
+  const consumedClimb = homed.pjoy?.kind === 'climb'
   const phased =
     settled.pjoy?.kind === 'interval'
       ? { ...settled, pjoy: levelInterval(settled.pjoy.timer, decision.flap) }
-      : settled.pjoy?.kind === 'climb' && decision.flap
+      : consumedClimb && settled.pjoy?.kind === 'climb'
         ? { ...settled, pjoy: undefined }
         : settled
   return {
