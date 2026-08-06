@@ -817,7 +817,8 @@ stories:
       ACCEPTANCE: a guard that, for each no-consumer-yet row, greps the joust core for a call passing that row NAME to waveValue/dyRow and fails if one exists; and for each wired row, fails if NO such call exists. Mutation-verify BOTH directions - flip a wired row to no-consumer-yet without touching code (must redden), and add a waveValue call for a pending row (must redden). Plus: every owner must match a story id present in the sprint YAML.
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-06T17:47:50Z'
     repos: arcade
     workflow: tdd
   - id: jt9-40
