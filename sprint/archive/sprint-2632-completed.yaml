@@ -291,3 +291,8 @@ completed_stories:
     title: 'O-2: pin the exact sim tick from W3INT'
     points: 3
     completed: '2026-08-06'
+  - id: sw8-22
+    epic: sw8
+    title: 'trench PMRRP/voice death gate: port the PHEBS death exit so a last-shield fall on a cue-crossing frame silences the trench voice lines, completing the sw8-13/sw8-21 family'
+    points: 1
+    completed: '2026-08-06'

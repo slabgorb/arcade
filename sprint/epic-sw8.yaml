@@ -295,10 +295,12 @@ stories:
       Reachable only when a cue crossing and the last shield's fall share one frame.
     points: 1
     priority: p3
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
     type: bug
+    review_verdict: approved
   - id: sw8-23
     title: 'Harden the comment-citation guard: it cannot see its own directory, its opt-out fires on a MENTION, and its stated limits omit the two biggest ones (sw8-18 review findings 3, 4, 5, 7)'
     description: |-
