@@ -254,7 +254,7 @@ stories:
     description: "Routed out of the monorepo migration's Task 20 review and DECLINED by Task 21's implementer with reasoning worth keeping, 2026-07-31. plugins/star-wars/src/core/highScores.ts:20-31 seeds ten default rows using wave 0 as its no-real-run marker, and its own comment at :14-16 calls that value 'a clone artifact, not a ROM value'. The migration made null the honest encoding of exactly that idea: Task 20 widened HighScoreEntry's domain field to number | null specifically so a row with no real run says so instead of inventing one, on the standing ruling that the cabinet must not invent a fact about a player's game. The renderer already cooperates — render.ts:1639 blanks a null wave, so these rows would draw with an empty column and no further change. It was declined for three reasons that all still hold: it is a DATA change inside a game's src/core, not the mechanical call-site update the main.ts carve-out authorises; nothing in the seeding task needed it, since the seed never touches DEFAULT_HIGH_SCORES; and it is a ROM-fidelity display decision with its own test file, so it deserves its own review rather than riding along in a migration commit. The judgement to decline was endorsed. Note the display question is genuinely open: the real cabinet shows SOMETHING in that column for its defaults, so 'blank' may or may not be the faithful answer — settle that against the ROM rather than assuming null-renders-blank is automatically right."
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
     acceptance_criteria:
