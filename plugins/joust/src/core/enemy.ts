@@ -576,6 +576,24 @@ export const DOWN_SEEK_WING_HOLD = 2
  */
 export const HUNTER_CLIFF_DWELL = 8
 
+/**
+ * jt9-23 — `B2YLEN = SHYLEN EQU $14-6` = 14. The height, in whole pixels, the
+ * up-seek decide samples ABOVE the bird for a cliff blocking the climb — the
+ * VERTICAL `ANDA BCKYTB-B2YLEN,Y` (JOUSTRV4.SRC:4205 `B2UP` / `-SHYLEN` :4262
+ * `SHUNUP`). DECIMAL. A different read from steerWake's HORIZONTAL `B2XLEN`
+ * look-ahead: this one asks "is there a ceiling over my climb?", not "a wall
+ * ahead of me?".
+ */
+const CLIMB_PREP_YLEN = 0x14 - 6
+
+/**
+ * jt9-23 — `ADDD #-$0040`, the climb-prep body's "FALLING FAST ENOUGH?" gate
+ * (`B2UP3A` :4210 / `SHUP3A` :4426). Holding level below a cliff, the bird flaps
+ * back toward its tracked line only once the fall reaches this VY; slower than
+ * that it glides, wings up. HEX, in PVELY's 16-bit units.
+ */
+const CLIMB_PREP_FALL_FAST = 0x40
+
 /** uf1-9 — one brain's UP-seek wing cadence, in wakes. */
 interface WingRows {
   /** Wakes the wings stay DOWN (`BOUPWD` :3864 / `HUUPWD` :4182). */
@@ -730,6 +748,17 @@ function pursue(enemy: EnemyState, player: PlayerView | null | undefined, rows: 
   // brain just reads the phase it is in. `LDB #$01` / `CLRB` in the ROM.
   // A cliff dwell holds the wings UP and never flaps (`B2AV`/`SHAV` `CLRB`).
   if (enemy.pjoy?.kind === 'dwell') return { dir, flap: false }
+  // jt9-23 — B2UP3, "LEVEL FLIGHT, READY TO GO UP" (the HUNTER only; the bounder's
+  // BOUP diverts a blocked climb to plain BOLEV, :3850, and the shadow has its own
+  // copy in `shadow()`). At the up-seek the decide samples the background one YLEN
+  // above the bird (`B2UP` :4204); a cliff there holds it LEVEL instead of flapping
+  // up into the box. The body (`B2UP3A` :4202-4218) flaps back toward the tracked
+  // line only once the fall reaches #-$0040, else wings up. Re-derived per wake, so
+  // a cleared cliff falls straight back to the climb; the port's per-wake line ≡
+  // live line collapses the ROM's `PDIST+1 CMPB PPOSY+1` gate (as SHLEP does, :4279).
+  if (enemy.brain === 'b2undr' && route === 'up' && cliffBlocksClimb(enemy)) {
+    return { dir, flap: velY >= CLIMB_PREP_FALL_FAST }
+  }
   if (route !== 'level' && enemy.pjoy?.kind === 'wing') {
     return { dir, flap: enemy.pjoy.wings === 'down' }
   }
@@ -893,8 +922,15 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
   // HUUPVY (:4174-4179) it is consulted on every entry to SHUP1, which is why it
   // lives in this per-wake law and not in `wingWake`. `CMPD SHUPVY / BLT SHUP0`
   // is strict, so velY EQUAL to the gate still flaps.
-  if (!holding && delta <= waveValue('SHUPRG', wave))
+  if (!holding && delta <= waveValue('SHUPRG', wave)) {
+    // jt9-23 — SHUP3, the shadow's copy of "LEVEL FLIGHT, READY TO GO UP": a cliff
+    // one SHYLEN above (`SHUNUP` :4261-4262 → `LBNE SHUP3`) suppresses the climb and
+    // holds level, flapping back toward the tracked line only past #-$0040 (`SHUP3A`
+    // :4426). Stateless like the rest of the shadow's up-seek — re-checked each wake,
+    // so a cleared cliff resumes the climb.
+    if (cliffBlocksClimb(enemy)) return { dir: coastDir, flap: velY >= CLIMB_PREP_FALL_FAST }
     return { dir: coastDir, flap: velY >= waveValue('SHUPVY', wave) }
+  }
   // SHLEP — track the line; the lava term is falling-gated (velY, not velX).
   return { dir, flap: enemyY > player.pixelY || (enemyY >= LAVA_ESCAPE_Y && velY >= 0) }
 }
@@ -1061,6 +1097,17 @@ function bckMaskAt(x: number, y: number): number {
   const i = x + X_TABLE_ORIGIN
   const col = i >= 0 && i < BCK_X_TABLE.length ? BCK_X_TABLE[i] : 0
   return y >= 0 && y < BCK_Y_TABLE.length ? col & BCK_Y_TABLE[y] : 0
+}
+
+/**
+ * jt9-23 — the up-seek decide's VERTICAL cliff sample: is there solid background
+ * one height-look-up (`CLIMB_PREP_YLEN`) ABOVE the bird, blocking the climb?
+ * `LDA BCKXTB,X / ANDA BCKYTB-B2YLEN,Y` (JOUSTRV4.SRC:4204-4205 / `SHUNUP`
+ * :4261-4262). A non-zero sample is the ROM's `LBNE B2UP3`/`LBNE SHUP3` — enter
+ * "LEVEL FLIGHT, READY TO GO UP" instead of committing to the climb. Pure.
+ */
+function cliffBlocksClimb(enemy: EnemyState): boolean {
+  return bckMaskAt(enemy.entity.posX, (enemy.entity.posY >> 8) - CLIMB_PREP_YLEN) !== 0
 }
 
 /**
