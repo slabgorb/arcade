@@ -710,3 +710,8 @@ completed_stories:
     title: The hatched remount buzzard HARDCODES type 'bounder' — a hunter/shadow-lord loses its species on remount (ROM keeps PID/PEGG, JOUSTRV4.SRC:3251-3252)
     points: 3
     completed: '2026-08-06'
+  - id: jt9-48
+    epic: jt9
+    title: "Port B2DIRA/SHDIRA: collision-driven bump-facing consumes jt9-17's PBUMPX"
+    points: 3
+    completed: '2026-08-06'
