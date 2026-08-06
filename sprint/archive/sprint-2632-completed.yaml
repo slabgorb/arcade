@@ -214,3 +214,8 @@ completed_stories:
     title: 'Two joust citations that name the wrong ROM family: JT51-009 misattributes SNPCR1 and still says jt5-1 collapsed the knights, and demo.ts cites real play from the module that IS the demo'
     points: 2
     completed: '2026-08-06'
+  - id: mc1-5
+    epic: mc1
+    title: 'missile-command landing left main RED: registry.test.ts MANIFESTS and lobby main.test.ts not updated for the 8th cabinet, and missile-command field.test.ts ENOENTs on vendored reference/source/W3COMN.MAC'
+    points: 2
+    completed: '2026-08-06'

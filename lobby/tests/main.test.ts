@@ -9,7 +9,7 @@ import { GAMES, LISTED_GAMES, gamePath } from '@host/registry'
 // registry and the real score reader behind them.
 //
 // Task 15 made this file the guard on ONE specific mistake. The generated registry
-// exports two lists: `GAMES` (all seven manifests) and `LISTED_GAMES` (the six with
+// exports two lists: `GAMES` (all eight manifests) and `LISTED_GAMES` (the seven with
 // `listed: true`). `import { GAMES }` here compiles, type-checks, renders beautifully,
 // and quietly puts red-baron — deliberately held back from production — on the live
 // cabinet. Nothing about the resulting page looks wrong. So the assertions below pin the
@@ -78,9 +78,9 @@ describe('lobby bootstrap', () => {
     expect(tiles.length).toBe(LISTED_GAMES.length)
     // Stated as a number as well as a length, because `LISTED_GAMES.length` alone would
     // follow the registry wherever it went: if the filter broke and both lists became
-    // seven, the comparison above would still hold. Six is what the cabinet ships.
-    expect(tiles.length).toBe(6)
-    expect(GAMES.length).toBe(7)
+    // eight, the comparison above would still hold. Seven is what the cabinet ships.
+    expect(tiles.length).toBe(7)
+    expect(GAMES.length).toBe(8)
   })
 
   it('wires each tile to its game real launch path, in listed order', async () => {
@@ -99,6 +99,7 @@ describe('lobby bootstrap', () => {
       '/battlezone/',
       '/centipede/',
       '/joust/',
+      '/missile-command/',
     ])
     expect(hrefs.some((h) => h?.includes('slabgorb.com'))).toBe(false)
   })
