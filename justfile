@@ -366,6 +366,19 @@ check-showcase:
     fi
     exit $fail
 
+# Showcase LIVENESS gate (uf1-20) — the half `check-showcase` cannot see. That recipe
+# proves a game is SERVED (HTTP 200); this one proves the framed game is ALIVE, by
+# reaching each showcase game's canvas and sampling its lit-pixel count over ten ticks
+# (varying = alive, static/black = dead). It is an ON-DEMAND MANUAL gate, deliberately
+# NOT in CI: it needs a real browser (Playwright), a harness this repo does not install
+# for CI. Serve the tree first — `just serve` (default origin http://127.0.0.1:5270) —
+# or point it at the live origin with ARCADE_ORIGIN. Install the harness on demand:
+#   npm i -D playwright && npx playwright install chromium
+# See docs/ops/hosting.md → "Is the framed game actually alive?" for the decision, the
+# cost, and the recorded mutation proof.
+check-showcase-alive:
+    @node {{root}}/scripts/check-showcase-alive.mjs
+
 # ============================================
 # RELEASE (tag <app>-vX.Y.Z on main → CI deploys to R2)
 # ============================================

@@ -394,6 +394,54 @@ Which games appear is `showcase: true` in that game's `plugins/<id>/plugin.ts` m
 — not a config, a per-game product decision that flips as each game's self-play demo
 lands.
 
+### Is the framed game actually *alive*? — the manual liveness gate (uf1-20)
+
+`check-showcase` above proves a game is **served** (HTTP `200`). It never looks at the
+bytes, so a game that renders a **black or frozen pane** — a broken build that still
+fires `load` — sails through it green. That is the whole gap uf1-20 closes: every other
+showcase guard asserts membership, wiring, or HTTP status, none that the framed game
+*renders*.
+
+    just check-showcase-alive              # against a local `just serve` (default 5290/5270)
+    ARCADE_ORIGIN=https://arcade.slabgorb.com just check-showcase-alive   # against prod
+
+The recipe reads the showcase roster from the generated registry (`showcase: true`, via
+`showcaseLivenessTargets()` in `scripts/check-showcase-alive.mjs`), reaches each game's
+canvas, and samples its **lit-pixel count over ten 250 ms ticks**. A live game's counts
+**vary**; a frozen frame repeats one count and a black frame is all zero — both fail
+`isAlive()`. It automates, once and for all, the by-hand method proven on ad1-2.
+
+**Decision (uf1-20, 2026-08-06): this is a MANUAL, on-demand gate — it is deliberately
+NOT run in CI.** Reading real pixels needs a **real browser**, and this repo has **no
+browser harness**: every vitest project runs `environment: 'node'` and the whole release
+path is `npm ci → lint → orchestrator → vitest → build`. Bolting a Playwright browser
+into every deploy would add a browser install, a dev-server boot, and flakiness to a CI
+whose identity is fast, deterministic and node-only — a cost out of proportion to a
+regression an operator can catch on demand before a release. So the **browser-harness
+cost** is paid only when you run the gate: `playwright` is imported *dynamically* and is
+**not a committed dependency** (adding it would make every `npm ci` pay for a gate CI
+never runs). Install it on demand:
+
+    npm i -D playwright && npx playwright install chromium
+
+The orchestrator suite (`tests/showcase-liveness.test.mjs`) still guards the parts that
+*are* node-testable: that the roster is derived from `showcase: true` (so it keeps
+covering ad1-1/ad1-3/ad1-4/ad1-5 as they opt games in), and that `isAlive()` rejects the
+black and frozen cases. Only the browser leg is manual.
+
+**Mutation proof (recorded — AC-3, measured 2026-08-06 against `centipede` on a local
+`just serve`).** The gate is non-vacuous: it distinguishes a live game from a broken one.
+
+| Frame | Ten sampled lit-pixel counts | Distinct | `isAlive` |
+|-------|------------------------------|----------|-----------|
+| **live centipede** | 26964, 27090, 27099, 27054, 27252, 27459, 27342, 27405, 27378, 27387 | 10 | **true** |
+| **frozen pane** (canvas drawn once, never updated) | 120191 ×10 | 1 | **false** |
+| **black pane** (nothing drawn) | 0 ×10 | 1 | **false** |
+
+The frozen row is the important one: a static frame carries *more* lit pixels than the
+live game, so a threshold on brightness alone would pass it — it is the **variation over
+time** that separates alive from dead.
+
 ## Game assets: the `arcade` bucket (served at `arcade-assets.slabgorb.com`)
 
 > **⚠ The bucket is called `arcade`, not `arcade-assets`.** Every *other* bucket
