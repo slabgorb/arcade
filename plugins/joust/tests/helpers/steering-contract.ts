@@ -107,8 +107,20 @@ export interface SteeringModule {
    *   • a solid sample sets facing AWAY from the cliff (right-moving ⇒ face
    *     left, :4140-4141; left-moving ⇒ face right, :4122) and reports
    *     `turned: true`; open air changes nothing.
+   *
+   * jt9-48 — the THIRD parameter is `bumpX`, the collision shove jt9-17 parked
+   * on the `DemoProcess` (`PBUMPX,U`). B2DIRA (:4148-4150) / SHDIRA (:4379-4381)
+   * are the tails EVERY B2DIR/SHDIR path funnels through before the aim: the
+   * parked branch (`BEQ B2DIRA` :4105/:4336), open air (`BEQ B2DIRA`
+   * :4121/:4352/:4370), AND a cliff turn (`B2DICL`/`SHDICL` fall THROUGH into
+   * B2DIRA/SHDIRA — :4142-4148 / :4373-4379). At that tail `LDA PBUMPX,U / BEQ
+   * B2FDIR / STA PFACE,U`: a NON-ZERO bump is the LAST word on facing —
+   * `facing = sign(bumpX)`, overriding even the turn-away it just set. Zero (or
+   * `undefined` — an unshoved process) leaves facing exactly as the look-ahead
+   * left it. Never reached when lava-diverted (B2DIRL/`$D0` fired) or for the
+   * bounder/linet/grounded, which return before the tail. Defaults to no shove.
    */
-  steerWake(enemy: EnemyState, target: PlayerView | null): SteerResult
+  steerWake(enemy: EnemyState, target: PlayerView | null, bumpX?: number): SteerResult
 }
 
 /**
