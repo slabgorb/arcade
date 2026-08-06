@@ -1046,3 +1046,23 @@ stories:
     repos: arcade
     workflow: tdd
     type: refactor
+  - id: jt9-52
+    title: harden the two voice-release mutants jt9-35 shipped without — tick-expiry release (B1) and stopChannel :222 guard-widening (B2)
+    description: 'Filed 2026-08-05 out of a parallel-checkout race: a SIBLING checkout completed jt9-35 (commit 3280c9a) with only the original 15 mutation tests (M1-M4) while this checkout independently ran jt9-35 through verify+review. That adversarial review (Reviewer, APPROVE-after-rework) found TWO BLOCKER-severity survivors the shipped jt9-35 leaves live, and DELIVERED the kill-tests for them in commit fd12e9c (src/shared/tests/audio-voice-release.test.ts, ZEROFOREIGN manifest + the "B1/B2" describe block, now 17 tests). This story is the home for that already-landed work. B1 — deleting tick()s natural-expiry release at src/shared/audio.ts:326 survives the full 560-test suite: after a window counts down naturally the stale voiceChannel lets the next accepted arbitrated cue cross-steal (:266) a channel the voice no longer owns. Killed by "a window that expires naturally via tick() releases the voice — no later cross-steal" (fires the prior source onended FIRST so only the :326 release can clear the voice — otherwise stopChannel :222 masks the mutant). B2 — widening the :222 guard to `voiceChannel === channel || voiceFrames === 0` survives: a foreign-channel silencing releases a still-sounding zero-window voice, the one-voice steal never fires, two voices sound. Killed by "a foreign-channel silencing does not release a zero-length voice that is still sounding". Both independently re-verified by the Reviewer (each reddens its own test, no collateral). DELIVERED + TEA-verified + Reviewer-APPROVED at fd12e9c; this record exists so the landed tests trace to a story rather than to the completed jt9-35. See jt9-53 for the third, MINOR idle-tick survivor left open.'
+    points: 2
+    priority: p2
+    status: done
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-05'
+    type: bug
+    review_verdict: approved
+  - id: jt9-53
+    title: 'pin tick() idle path: an idle tick must not release a sounding zero-window voice'
+    description: 'Filed by jt9-35 Reviewer (2026-08-05), non-blocking MINOR, sibling to jt9-52. One adjacent mutant of src/shared/audio.ts survives the full 560-test shared suite: hoist the release out of tick()s countdown block so it fires whenever voiceFrames === 0 (on EVERY idle tick), not only on the countdown-to-zero pass. Site: tick() at src/shared/audio.ts:324-326 (`if (voiceFrames > 0) { voiceFrames -= 1; if (voiceFrames === 0) releaseVoice() }`). Non-equivalent in principle: a zero-length-window voice still SOUNDING would be released by the next idle tick(), so a subsequently accepted arbitrated cue would not cross-steal (:266) and TWO voices sound at once. LATENT today: the precondition is a manifest degrade path — an arbitrated priority with NO frameDurations entry (voiceFrames === 0 with voiceChannel set) — which no shipped cabinet has (joust/centipede declare a duration for every arbitrated cue; joust framesFor throws on frames <= 0). Same latent shape jt9-6/jt9-35/jt9-52 pin at the other release sites. SCOPE: add one engine test to src/shared/tests/audio-voice-release.test.ts — ZEROWIN manifest shape (a priority with no frameDurations entry) plus one tick() before the steal: an idle tick must NOT release a sounding zero-window voice; the next accepted arbitrated cue must still steal its channel. Re-measure the line anchors at setup (jt9-30: these audio.ts anchors drift by the hour).'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
