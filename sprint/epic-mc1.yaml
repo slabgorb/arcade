@@ -46,13 +46,14 @@ stories:
     description: "Draw the static playfield: six cities and three missile bases at their cabinet coordinates. Core: field.ts holds the fixed layout (pure data). Shell: render.ts paints them on the raster canvas. Coords are CITED from source — W3COMN.MAC CITY1H/V..CITY6H/V (:123-145, HEX) via brief.md's constant table. Cities NCITY=6 (W3COMN:39), bases NMISBA=3 (:41). No enemies/damage yet."
     points: 3
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-05'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
       - field.ts (core, pure) exposes the six city positions and three base positions using the source coordinates from brief.md (W3COMN CITY1..6H/V, NCITY=6, NMISBA=3), each value carrying a source citation in a comment or claim.
       - render.ts draws the six cities and three bases at those positions on the missile-command canvas; a screenshot at /missile-command/ shows them along the bottom band. Core stays pure (purity test still green).
+    completed: '2026-08-05'
     review_verdict: approved
   - id: mc1-3
     title: Trackball/mouse crosshair cursor with clamp

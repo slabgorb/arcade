@@ -179,3 +179,8 @@ completed_stories:
     title: Shadow SHDIRB coast — SHDN/SHUP wakes write dir 0; our shadow() thrusts at facing (:4388-4392)
     points: 2
     completed: '2026-08-05'
+  - id: mc1-2
+    epic: mc1
+    title: 'Draw the fixed field: 6 cities + 3 missile bases at cited coords'
+    points: 3
+    completed: '2026-08-05'
