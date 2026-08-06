@@ -2,13 +2,13 @@
 //
 // Story jt8-1 — RED phase (Leeloo / TEA). AC-4: the WIRING. The aggro subsystem
 // is inert until a smart enemy actually RECEIVES its target — today
-// `frame.ts:265` steps every enemy as `stepEnemy(enemy)` with no player, so the
+// `frame.ts` steps every enemy as `stepEnemy(enemy)` with no player, so the
 // vertical-seek branch (`enemy.ts` smartDecision) can never fire. This test pins
 // the observable that proves the seam is closed: a promoted bounder placed BELOW
 // a targetable player flaps UP toward it.
 //
 // THE DISCRIMINATOR (deterministic, no dynamics guesswork):
-//   • flap's first impulse is −96 (`flight.ts:262`, timeUp 1), GRAV is tiny — so
+//   • flap's first impulse is −96 (`flight.ts`, timeUp 1), GRAV is tiny — so
 //     a bounder that SEEKS an above-player flaps and its velY goes NEGATIVE.
 //   • an UNWIRED bounder gets `player = null`, so smartDecision never takes the
 //     seek-up branch; with velY starting at 0 and below the 0x100 down-brake it

@@ -4,10 +4,10 @@
 // catch pass (PLYEGG :3009 / EGGSCR :3030-3095).
 //
 // RED today: `collisionPass` (demo.ts) filters its participants to
-// `p.kind === 'player' || p.kind === 'enemy'` (demo.ts:761-763) — an egg process
+// `p.kind === 'player' || p.kind === 'enemy'` (demo.ts) — an egg process
 // is not eligible for ANY collision, so a player can stand inside an egg forever.
 // Nothing emits a `reason:'egg'` score event; the variant exists in the DemoEvent
-// union (demo.ts:190) with no producer.
+// union (demo.ts) with no producer.
 //
 // ─── REUSE-FIRST, AND THE ONE PLACE IT BITES ─────────────────────────────────
 // The story is explicit that the scoring ladder and the air bonus already exist
@@ -34,9 +34,9 @@
 //
 // `DEGGS RMB 2  EGG KILLED COUNTER` is declared inside the `* DECISION BLOCK *`
 // at `ORG $0` (:101-113) — per-PLAYER state, indirected, and never reset by
-// EGGSCR. Our port stores `hitCount` on the EGG instead (egg.ts:53), where BOTH
-// producers hard-code it to 0 (`spawnEgg` egg.ts:142, `settledWaveEgg`
-// demo.ts:498) and nothing ever writes it back. So `eggScoreEvents` today can
+// EGGSCR. Our port stores `hitCount` on the EGG instead (egg.ts), where BOTH
+// producers hard-code it to 0 (`spawnEgg` egg.ts, `settledWaveEgg`
+// demo.ts) and nothing ever writes it back. So `eggScoreEvents` today can
 // only ever compute `eggValue(bumpEggHits(0))` = 250: the 500/750/1000 rungs are
 // unreachable in the running game, and AC-2's "the ladder value follows the hit
 // count" is unsatisfiable through the egg's own field no matter how the catch
@@ -116,18 +116,18 @@ function eggOf(over: Partial<EggState>): EggState {
   }
 }
 
-/** An egg PROCESS in the kill-egg id namespace (`$1_0000+`, demo.ts:797). */
+/** An egg PROCESS in the kill-egg id namespace (`$1_0000+`, demo.ts). */
 function eggProcAt(id: number, over: Partial<EggState>): DemoProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'egg', egg: eggOf(over) }
 }
 
 /**
- * An inert wave-HOLDER. `enemiesLeft` (demo.ts:1007) only asks whether some
- * process has `kind:'enemy'`, while both the frame stepper (frame.ts:271,
- * `&& p.enemy`) and `toJoustEntity` (demo.ts:689) require an `enemy` payload —
+ * An inert wave-HOLDER. `enemiesLeft` (demo.ts) only asks whether some
+ * process has `kind:'enemy'`, while both the frame stepper (frame.ts,
+ * `&& p.enemy`) and `toJoustEntity` (demo.ts) require an `enemy` payload —
  * so a payload-less enemy process holds the wave open, is never stepped, and can
  * never joust the catcher. Without it a caught last egg CLEARS the wave
- * (demo.ts:1018-1021) and the advance spawns a fresh complement mid-test — and
+ * (demo.ts) and the advance spawns a fresh complement mid-test — and
  * wave 5 is the EGG wave, which would deal new eggs into the middle of the
  * ladder walk.
  */
@@ -230,7 +230,7 @@ describe('jt8-4 AC-1 — collisionPass gains a player-vs-egg pass (PLYEGG :3009)
     const { x, y } = await findAir()
     const demo = withProcesses(dmod.createWaveDemo(SEED), [
       playerAt(PLAYER1_ID, x, y),
-      // Two full box-widths away horizontally (ENTITY_BOX_W = 16, demo.ts:256).
+      // Two full box-widths away horizontally (ENTITY_BOX_W = 16, demo.ts).
       eggProcAt(0x1_0002, { posX: x + 64, posY: y << 8, settled: true, pfeet: 1 }),
       waveHolder(),
     ])
@@ -304,8 +304,8 @@ describe('jt8-4 AC-2 — the EGGVAL ladder and the PFEET air bonus (:3063-3069, 
   })
 
   it('the ladder CLIMBS across successive catches by the same player, then PEGS at the cap', async () => {
-    // THE STORY'S CENTRE. Today every egg carries hitCount 0 (spawnEgg egg.ts:142,
-    // settledWaveEgg demo.ts:498) and nothing writes it back, so a per-egg counter
+    // THE STORY'S CENTRE. Today every egg carries hitCount 0 (spawnEgg egg.ts,
+    // settledWaveEgg demo.ts) and nothing writes it back, so a per-egg counter
     // pays the first rung forever. This kills that mutant — and it also kills a
     // counter that climbs but never pegs (the CMPB #4 / BHS cap, :3043).
     //
@@ -396,9 +396,9 @@ describe('jt8-4 AC-2 — the EGGVAL ladder and the PFEET air bonus (:3063-3069, 
 describe('jt8-4 AC-3 — the catching player is credited; the remount is cancelled', () => {
   it("P2's catch credits P2's ledger and leaves P1's alone (through the jt4-1 drain)", async () => {
     // The existing game.ts drain already routes `reason:'egg'` by `player`
-    // (game.ts:379-384) — this proves the catch pass SETS `player`, which is the
+    // (game.ts) — this proves the catch pass SETS `player`, which is the
     // only new thing. Kills the "emit with no player" mutant, which would silently
-    // default to PLAYER1_ID (game.ts:383's `?? PLAYER1_ID`) and pay the wrong pilot.
+    // default to PLAYER1_ID (game.ts's `?? PLAYER1_ID`) and pay the wrong pilot.
     const gmod = await loadGame()
     const { x, y } = await findLedge()
 
@@ -425,10 +425,10 @@ describe('jt8-4 AC-3 — the catching player is credited; the remount is cancell
     // EGGSCR's `LDY PDIST,X` / `LDD #AUTOFF / STD PJOY,Y` (:3078-3087) sends the
     // inbound bird away when its rider is collected. Our port has no in-transit
     // riderless bird — a SETTLED wave egg matures straight into a remount enemy in
-    // the same stepDemo (demo.ts:991-995) — so the reachable analogue is this: an
+    // the same stepDemo (demo.ts) — so the reachable analogue is this: an
     // egg caught this frame must not ALSO hatch this frame.
     //
-    // This is the ordering pin. collisionPass (demo.ts:974) already runs before the
+    // This is the ordering pin. collisionPass (demo.ts) already runs before the
     // hatch flatMap (:988), so a catch that REMOVES the egg is safe; a catch that
     // merely marks the egg non-colliding leaves it visible to the flatMap and the
     // player gets both the score and a fresh enemy. That mutant dies here.

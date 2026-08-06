@@ -2,7 +2,7 @@
 //
 // Story jt8-2 — RED phase (Leeloo / TEA). THE PLUMBING. The `BOLEVB` throttle is
 // inert unless the enemy can actually SEE the speed its target is flying, and
-// today nothing carries it: `frame.ts:323` builds each candidate as
+// today nothing carries it: `frame.ts` builds each candidate as
 // `{ id, posX, pixelY }`, `target.ts`'s `viewOf`/`nearer` return `{ pixelY }`,
 // and the FLYX index (`PVELX,X`, RAMDEF.SRC:190) never leaves the player process.
 //
@@ -203,7 +203,7 @@ describe('AC-2 — the new facing survives the frame and reaches the draw list',
   it('and the buzzard is DRAWN facing the new way (demo.ts tags the op from enemy.facing)', () => {
     // routing ≠ geometry: a flip that never reaches the render op is a flip the
     // player cannot see. `drawList` tags each entity op with `p.enemy.facing`
-    // (demo.ts:1201). `DrawOp` carries no id, so the discriminator is the FACING
+    // (demo.ts). `DrawOp` carries no id, so the discriminator is the FACING
     // SET across entity ops: the player holds facing +1 in both runs (NEUTRAL
     // input, dir 0 ⇒ facing held), so a −1 anywhere in the set is the bounder.
     const entityFacings = (d: DemoState): Array<number | undefined> =>
@@ -228,7 +228,7 @@ describe('AC-2 — the new facing survives the frame and reaches the draw list',
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-3 — no aggro state ⇒ no target ⇒ no flip (the jt2 replays hold)', () => {
   it('an enemy stepped with no `targets` on the sim never reverses', () => {
-    // `DemoSim.targets` is REQUIRED (demo.ts:181) — a demo always carries aggro
+    // `DemoSim.targets` is REQUIRED (demo.ts) — a demo always carries aggro
     // state — so the bare path is the raw jt2-1 scheduler, where `GameState.targets`
     // is optional and `stepFrame` hands every enemy `target = null`. That is the
     // shape every pre-jt8 seeded scheduler replay runs in, so a flip here would

@@ -37,9 +37,9 @@
 // (3) `eggsLeft` CANNOT REACH ZERO IN THIS PORT, so AC-3's trigger is
 //     unreachable as the story states it. Both producers hard-code the count:
 //     `resolveContacts` passes `eggsLeft: EGGS_PER_ENEMY` on every kill
-//     (demo.ts:1165) and `settledWaveEgg` sets `EGGS_PER_ENEMY` (demo.ts:602),
+//     (demo.ts) and `settledWaveEgg` sets `EGGS_PER_ENEMY` (demo.ts),
 //     `EnemyState` carries no PEGG field at all, and `remountEnemyProcess`
-//     (demo.ts:637) builds a fresh enemy that remembers nothing. So every
+//     (demo.ts) builds a fresh enemy that remembers nothing. So every
 //     kill-egg in the running game is born with 3 and dies with 3; permadeath
 //     and the last-egg score are both dead code paths.
 //
@@ -181,7 +181,7 @@ describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :
   })
 
   it('does NOT hatch a settled wave egg on the frame it is already settled', async () => {
-    // TODAY THIS IS THE WHOLE BUG: stepDemo's self-clear hatch (demo.ts:1288)
+    // TODAY THIS IS THE WHOLE BUG: stepDemo's self-clear hatch (demo.ts)
     // matures a settled wave egg on the very next frame, with no wait at all.
     // KILLS: shipping the timer as a field nothing reads.
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), waveEggProc(0x100)])
@@ -247,7 +247,7 @@ describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :
   it('records EGGWT and EGGWT2 as WIRED, each naming its live consumer', async () => {
     const d = await loadDifficulty()
     // ROW_DISPOSITION currently reads `no-consumer-yet, owner: uf1-10` for both
-    // (difficulty.ts:375-386). uf1-10 IS this story — the epic renumbered it to
+    // (difficulty.ts). uf1-10 IS this story — the epic renumbered it to
     // jt9-12 and its egg half was folded into jt9-9 — so shipping the wiring
     // without moving these two leaves the inventory lying about its own port.
     for (const name of ['EGGWT', 'EGGWT2'] as const) {
@@ -276,7 +276,7 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
     const dmod = (await loadDemo()) as unknown as Record<string, number>
     const frames = diff.waveValue('EGGWT', 1) * dmod.EGG_WAIT_NAP_FRAMES
     // THE STORY'S CENTRE. `stepDemo` filters on `p.waveEgg === true`
-    // (demo.ts:1288), so today a kill-egg sits settled forever. Nothing in
+    // (demo.ts), so today a kill-egg sits settled forever. Nothing in
     // JOUSTRV4.SRC privileges a wave egg's maturation over a kill egg's —
     // EGGLND is one routine and reaches both.
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1)])
@@ -308,7 +308,7 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
     const diff = await loadDifficulty()
     const dmod = (await loadDemo()) as unknown as Record<string, number>
     // The gate is `!enemiesLeft && !processes.some(egg) && some(player)`
-    // (demo.ts:1320-1323). A kill-egg that can never mature sits in the second
+    // (demo.ts). A kill-egg that can never mature sits in the second
     // clause forever, so wave N cannot end however well the players play. After
     // the fix the egg leaves and what holds the wave is a LIVE BUZZARD — which
     // play can remove. That is the whole difference, and it is why this is a
@@ -417,7 +417,7 @@ describe('AC-3 — the egg count CARRIES (PEGG :2999-3001, :3251-3252)', () => {
   it('takes the kill-egg count from the VICTIM, not from a hard-coded 4', async () => {
     const dmod = await loadDemo()
     const egg = await loadEgg()
-    // `resolveContacts` (demo.ts:1160-1166) passes `eggsLeft: EGGS_PER_ENEMY`
+    // `resolveContacts` (demo.ts) passes `eggsLeft: EGGS_PER_ENEMY`
     // unconditionally, so a bird on its LAST egg still yields a 3-left egg and
     // the count never walks down. The ROM transfers the victim's own count and
     // decrements it (`LDA PEGG,U / STA PEGG,Y / DEC PEGG,Y`, :2999-3001).
@@ -440,7 +440,7 @@ describe('AC-3 — the egg count CARRIES (PEGG :2999-3001, :3251-3252)', () => {
     const dmod = (await loadDemo()) as unknown as Record<string, number>
     const frames = diff.waveValue('EGGWT', 1) * dmod.EGG_WAIT_NAP_FRAMES
     // `LDA PEGG,U / STA PEGG,Y  MAINTAIN NBR OF EGGS LEFT IN THE BIRD`.
-    // `remountEnemyProcess` (demo.ts:637) builds an EnemyState with no such
+    // `remountEnemyProcess` (demo.ts) builds an EnemyState with no such
     // field, so today the cycle resets to a full 4 every time and permadeath is
     // unreachable in play. Seam-agnostic: read back through whatever accessor
     // Dev lands, but the OBSERVABLE is that a 2-left egg makes a 2-left bird.
@@ -567,7 +567,7 @@ describe('AC-4 — EGGSCR on the KILL, and the victor guard (BEQ :3005)', () => 
 /**
  * A dying ENEMY carrying `eggsLeft` — the DEATH3 victim. `eggsLeft` is the field
  * this story adds to the collision entity so `resolveContacts` can transfer the
- * count instead of hard-coding 4 (demo.ts:1165); it is absent today, which is
+ * count instead of hard-coding 4 (demo.ts); it is absent today, which is
  * why the AC-3/AC-4 pins are red.
  */
 function enemyVictim(posX: number, pixelY: number, eggsLeft: number) {

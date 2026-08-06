@@ -15,7 +15,7 @@
 // as its unsigned complement. The Y half is correct; only the X, and only for a
 // word with the high bit set.
 //
-// MEASURED at RED against the two records jt8-7 added (pictures.ts:1718-1719):
+// MEASURED at RED against the two records jt8-7 added (pictures.ts):
 //   EGGB2  position $FFF6  ->  today xoff = 255   | correct signed XOFF = -1
 //   EGGB3  position $FEF5  ->  today xoff = 254   | correct signed XOFF = -2
 // Every OTHER ENTITY_RECORD holds a position word whose high byte is in [0, 2]

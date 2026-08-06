@@ -180,7 +180,7 @@ describe('Round 2 Rail 2b — playerDrawList composes [mount, rider]', () => {
 
 // ═════════════════════════════════════════════════════════════════════════════
 // RAIL 2c — DRAW ORDER: foreground platforms occlude entities.
-//   Current gap: main.ts draws ALL arena, then ALL entities (main.ts:165-166), so
+//   Current gap: main.ts draws ALL arena, then ALL entities (main.ts), so
 //   a lower/foreground cliff draws BEHIND a sprite standing in front of it. The
 //   correct order layers back tiles → entities → foreground tiles.
 // ═════════════════════════════════════════════════════════════════════════════

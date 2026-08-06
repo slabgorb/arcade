@@ -4,7 +4,7 @@
 // horizontal bounce `OSTLR` (JOUSTRV4.SRC:5110-5159), both parties at once.
 //
 // `bounceHorizontal(velX)` models ONE QUARTER of OSTLR — the rightward-moving
-// party's self-velocity only (joust.ts:296-297). This suite pins the full law as
+// party's self-velocity only (joust.ts). This suite pins the full law as
 // a new pure function `bounceApartX(leftVelX, rightVelX)` returning both parties'
 // reflected `PVELX`, both `PBUMPX` shoves and both `PFACE` writes. It fails today
 // with "module has no `bounceApartX` export" (the loadJoust contract) until Julia

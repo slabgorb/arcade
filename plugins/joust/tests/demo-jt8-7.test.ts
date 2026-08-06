@@ -5,11 +5,11 @@
 // transcribe the six EGGI rows the port dropped.
 //
 // ─── RED TODAY ───────────────────────────────────────────────────────────────
-// `collisionPass`'s catch pass (demo.ts:1027) runs
+// `collisionPass`'s catch pass (demo.ts) runs
 //     if (!broadPhase(collisionBox(catcher), eggBox(ep.egg))) continue
 // and then scores. There is no narrowPhase, so the egg's vertical reach is the
-// bare 16px ENTITY_BOX_H (demo.ts:322) rather than CEGGUP's 7 real scanlines.
-// The joust pass 140 lines above (demo.ts:887-897) already does broad THEN
+// bare 16px ENTITY_BOX_H (demo.ts) rather than CEGGUP's 7 real scanlines.
+// The joust pass 140 lines above (demo.ts) already does broad THEN
 // narrow — this story brings the catch to the same shape.
 //
 // ─── WHERE THE FIXTURES SIT, AND WHY (the jt8-3 rule) ────────────────────────
@@ -29,10 +29,10 @@
 // consulting the mask cannot satisfy both halves of either pair.
 //
 // ─── WHY THE FIXTURES ARE `settled: true` ────────────────────────────────────
-// `stepFrame` runs BEFORE `collisionPass` (demo.ts:1174-1175), so a falling egg
+// `stepFrame` runs BEFORE `collisionPass` (demo.ts), so a falling egg
 // is moved and re-accelerated (velY += GRAV = 4, posY += velY) before the catch
 // is tested — staged numbers would not be the numbers at collision time.
-// `stepEgg` returns a SETTLED egg completely untouched (demo.ts:699), so
+// `stepEgg` returns a SETTLED egg completely untouched (demo.ts), so
 // `settled: true` freezes BOTH posY and velY across the step and the staged
 // values ARE the collision-time values. Measured, not assumed. The player does
 // not drift either (velY 0, timeUp 1 — verified: playerTop is the staged y).
@@ -179,7 +179,7 @@ async function caughtAt(
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-1 — THE SEVEN EGGI ROWS.
 //
-// `EGGI` is a SEVEN-row frame table (JOUSTI.SRC:2255-2261). pictures.ts:1699
+// `EGGI` is a SEVEN-row frame table (JOUSTI.SRC:2255-2261). pictures.ts
 // transcribed row 0 only, anchored startLine 2255 / endLine 2255. Rows 1-6 were
 // dropped — the same multi-row-table-read-as-one-row shape as the SNPCR1 sound
 // table. The ROM rows, verbatim:

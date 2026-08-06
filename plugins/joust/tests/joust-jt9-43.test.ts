@@ -8,7 +8,7 @@
 // collision columns in SCREEN space: at :7047/:7051/:7062 it `SUBD COLDX` — the
 // screen-X separation of the two sprites (COLDX = the other object's PPOSX minus
 // this object's, set at :4916-4917 `SUBD PPOSX,U / STD COLDX`). The port's
-// narrowPhase (joust.ts:177) compares COFF-unbiased SPRITE-LOCAL columns with the
+// narrowPhase (joust.ts) compares COFF-unbiased SPRITE-LOCAL columns with the
 // two origins SUPERIMPOSED (COLDX = 0) and leans entirely on broadPhase (a coarse
 // 16px AABB) to carry X. So two sprites up to 15px apart in X whose masks overlap
 // when superimposed register a hit the ROM would REJECT once COLDX shifts the

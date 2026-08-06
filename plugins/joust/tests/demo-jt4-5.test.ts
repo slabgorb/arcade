@@ -7,7 +7,7 @@
 // wave can NEVER be cleared through play (Dev + Reviewer forward finding). This file:
 //
 //   1. HARDENS the jt4-4 egg-wave entry pin beyond `hasEgg` (Reviewer [MEDIUM][TEST]
-//      at demo-jt4-4.test.ts:176-184): the complement enters as EXACTLY the ground
+//      at demo-jt4-4.test.ts): the complement enters as EXACTLY the ground
 //      count of eggs, with ZERO materialising ground enemies. Green regression guard.
 //   2. Pins the SELF-CLEAR (RED): a settled wave egg must HATCH→remount, so the egg
 //      wave stops being a permanent egg-lock and can progress (egg.ts's willHatch /
@@ -125,7 +125,7 @@ describe('jt4-5 egg wave — settled wave eggs HATCH→remount so the wave is no
     const demo = await loadDemo()
     const atWave5 = advanceTo(demo, demo.createWaveDemo(SEED), 5)
     const entryEggs = eggCount(atWave5)
-    // The remount is a buzzard flying back in (the FARTHER-edge remount, egg.ts:285) — a
+    // The remount is a buzzard flying back in (the FARTHER-edge remount, egg.ts) — a
     // live `enemy` process. So a hatch both DROPS an egg and RAISES an enemy: the wave
     // can now be fought and cleared. Kills "the egg just vanishes (no buzzard remounts)".
     let d = atWave5

@@ -24,8 +24,8 @@
 //     entire accept path, so a reader who checks the cited span sees a routine
 //     that can only ever say no. That is not a missing detail, it is the other
 //     half of the algorithm.
-//   • `:761-772` (`src/shell/audio.ts:164`, copied into
-//     `tests/audio-rom-citations.test.ts:88`) drops only `NOSND RTS` — the label
+//   • `:761-772` (`src/shell/audio.ts`, copied into
+//     `tests/audio-rom-citations.test.ts`) drops only `NOSND RTS` — the label
 //     the refusal branch at :768 actually jumps TO. A span that excludes its own
 //     branch target cannot be the routine.
 //

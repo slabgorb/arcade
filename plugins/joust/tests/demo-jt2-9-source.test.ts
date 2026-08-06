@@ -7,7 +7,7 @@
 // convention). The DATA half (drawList emits op.facing) is pinned behaviourally
 // in demo-jt2-9.test.ts item 2c; here we pin that the SHELL actually consumes it.
 //
-// The gap (source-confirmed, main.ts:63-84 on HEAD a755096): blit() does a plain
+// The gap (source-confirmed, main.ts on HEAD a755096): blit() does a plain
 // drawImage(atlas, …, x, y, w, h) with no transform, and blitOp() passes the op's
 // x/y straight through — nothing reads facing, so every right-facing atlas frame
 // draws un-flipped and a LEFT-moving sprite visually faces RIGHT. The enemyFrame /

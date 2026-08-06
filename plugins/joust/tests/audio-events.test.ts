@@ -10,11 +10,11 @@
 // draw and no ordering change).
 //
 // ─── WHERE THE STREAM LIVES, AND WHY ─────────────────────────────────────────
-// `stepGame(game, inputs): GameState` (src/core/game.ts:374) returns a BARE
+// `stepGame(game, inputs): GameState` (src/core/game.ts) returns a BARE
 // state — there is no step-result pair to hang events off, so the stream is a
 // field on the returned state (the asteroids precedent, and the ruling in
 // sprint/context/context-epic-jt5.md). It is pinned at `GameState.events`
-// because that is the seam the shell actually reads: main.ts:184 steps
+// because that is the seam the shell actually reads: main.ts steps
 // `stepGame` and nothing else. Two of the eleven moments (extra-man, wave-
 // bounty) are resolved by the SESSION layer in game.ts, not by `stepDemo` at
 // all, so a stream homed on `DemoState` could not carry them. Whether Dev also
@@ -41,10 +41,10 @@
 //     — which steps past a triggering frame and demands the event be GONE.
 //     This trap is not hypothetical here: joust's EXISTING `DemoState.events`
 //     log is append-and-cap (`[...demo.events, ...collided.events]
-//     .slice(-EVENT_LOG_CAP)`, demo.ts:1321, the cap declared 32 at demo.ts:311 —
+//     .slice(-EVENT_LOG_CAP)`, demo.ts, the cap declared 32 at demo.ts —
 //     this cited `:1173` and a literal `slice(-32)` from jt5-1 until jt5-4
 //     re-anchored it), and `stepGame` only tells this frame's entries from last
-//     frame's by a reference-set delta (game.ts:376-380). A cue channel built
+//     frame's by a reference-set delta (game.ts). A cue channel built
 //     on that log inherits exactly the defect determinism cannot see.
 
 import { describe, it, expect } from 'vitest'
@@ -460,7 +460,7 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
 
   it('the transporter re-entry emits player-materialise (seed 0xface, frame 2370)', () => {
     // The frame AFTER the death: `stepGame`'s respawn re-enters the spent knight
-    // through the transporter (game.ts:425-441), which is the ROM's CREP
+    // through the transporter (game.ts), which is the ROM's CREP
     // re-create — DSNCRE → the re-created player's own transporter table.
     //
     // CORRECTED 2026-08-02 (jt5-6 TEA). This comment used to name
@@ -661,9 +661,9 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
   })
 
   it('the stream is NOT joust’s capped DemoState.events log wearing a new name', () => {
-    // `demo.ts:1321` keeps the last EVENT_LOG_CAP (32) entries of an append-only log and nothing
+    // `demo.ts` keeps the last EVENT_LOG_CAP (32) entries of an append-only log and nothing
     // clears it per frame. If the cue channel were that log — or derived from it
-    // by the reference-set delta game.ts:376 uses — a quiet frame would still
+    // by the reference-set delta game.ts uses — a quiet frame would still
     // report the last kill. Compare the two ON THE SAME QUIET FRAME: the sim log
     // is still carrying its history while the cue stream must be empty.
     const g = stepGame(advanceTo(0xbeef, 200), inputsAt(200))

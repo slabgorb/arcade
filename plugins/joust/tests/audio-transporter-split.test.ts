@@ -1033,8 +1033,8 @@ describe('jt5-6 AC5 — playerMaterialise cites P1DEC, the block its comment alr
 
   it('the "both knights map here" scope comment is gone — they no longer do', async () => {
     // Deliberately broader than the exact sentence. The two files phrase the
-    // same claim differently — audio.ts:246 "both knights map here for now",
-    // game.ts:485 "both knights map onto SNPCR1 here" — so an exact-phrase
+    // same claim differently — audio.ts "both knights map here for now",
+    // game.ts "both knights map onto SNPCR1 here" — so an exact-phrase
     // match would let a reword survive while the claim stayed false. The
     // alternation covers the claim, not one spelling of it.
     const stale = /both knights map|both knights onto|map onto SNPCR1/i

@@ -20,8 +20,8 @@
 //
 // ─── FIXTURE PREMISES ARE PROVEN, NOT TRUSTED (jt5-10) ───────────────────────
 // Every cliff/open-air coordinate below is ASSERTED against the transcribed
-// BCK_X_TABLE/BCK_Y_TABLE (the ROM's `BCKXTB`/`BCKYTB`, flight.ts:176 /
-// arena.ts:198) inside the test that uses it — and the cliff samples are chosen
+// BCK_X_TABLE/BCK_Y_TABLE (the ROM's `BCKXTB`/`BCKYTB`, flight.ts /
+// arena.ts) inside the test that uses it — and the cliff samples are chosen
 // where the LANDING pair (`groundMaskAt`, the `CKGND` :6705-6706 analog) reads
 // ZERO, so an implementation that samples the wrong table pair cannot pass.
 
@@ -389,7 +389,7 @@ describe('AC-2 — SHDN free-fall and the :4249-4254 lava escape', () => {
 //   control guards the fix from bleeding onto the level route, which exits SHDIRA
 //   directly (:4310) and must keep thrusting.
 //
-//   `dir` reaches flight only through flap() (flight.ts:263, `velXIndex + dir*2`):
+//   `dir` reaches flight only through flap() (flight.ts, `velXIndex + dir*2`):
 //   dir 0 leaves the FLYX index unchanged (coast), dir === facing steps it (thrust).
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-20 — SHDN/SHUP moving seeks COAST: dir 0, not facing (SHDIRB :4388-4392)', () => {

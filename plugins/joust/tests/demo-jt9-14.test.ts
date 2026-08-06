@@ -5,13 +5,13 @@
 //
 // ─── RED TODAY ───────────────────────────────────────────────────────────────
 // `collisionPass` has THREE overlap passes; only two consult a mask.
-//   • joust pass          (demo.ts:1379/1385) — broadPhase THEN narrowPhase. ✓
-//   • player-vs-egg catch (demo.ts:1544/1552) — broadPhase THEN narrowPhase. ✓ (jt8-7)
-//   • player-vs-ptero     (demo.ts:1491/1493) — broadPhase, then resolvePteroAttack.
+//   • joust pass          (demo.ts) — broadPhase THEN narrowPhase. ✓
+//   • player-vs-egg catch (demo.ts) — broadPhase THEN narrowPhase. ✓ (jt8-7)
+//   • player-vs-ptero     (demo.ts) — broadPhase, then resolvePteroAttack.
 //                                                NO narrowPhase. ← THE DEFECT.
 // So the player's reach against a pterodactyl is the flat 16px ENTITY_BOX_H,
 // exactly the bug jt8-7 fixed for eggs. `collisionMaskFor` already returns the
-// real transcribed mask 'PT1RC' for a ptero (demo.ts:1184); the pass that most
+// real transcribed mask 'PT1RC' for a ptero (demo.ts); the pass that most
 // needs it never asks.
 //
 // ─── THE ROM SETTLES THE PREMISE (the story's "settle this first") ───────────

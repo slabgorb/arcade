@@ -278,7 +278,7 @@ describe('jt5-1 — the new modules satisfy the TypeScript review checklist', ()
 
   it('#5 every relative import carries the .js extension', () => {
     // joust's ESM convention: 100+ relative imports across src/ carry `.js`
-    // (`shell/timebase.ts:7` is the single pre-existing exception and is out of
+    // (`shell/timebase.ts` is the single pre-existing exception and is out of
     // this story's scope). Bare specifiers like `@shared/audio` take none.
     const offenders: string[] = []
     for (const { name, src } of eachNewModule()) {

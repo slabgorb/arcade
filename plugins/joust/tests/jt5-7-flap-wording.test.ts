@@ -176,8 +176,8 @@ describe('jt5-7 AC4 — the wording censor discriminates', () => {
 //                                            claim's tail says STFALL "re-enters
 //                                            below both cues" — the same defect,
 //                                            in a claim nobody listed.
-//   src/core/flight.ts:438                 "re-enters its loop BELOW the cue"
-//   tests/audio-flap.test.ts:20,40,195,200,387,483,636   (seven)
+//   src/core/flight.ts                 "re-enters its loop BELOW the cue"
+//   tests/audio-flap.test.ts   (seven occurrences)
 //
 // The story's own text says "fix all nine together or the next reader finds the
 // corrected copy and the stale copies disagreeing" — which is exactly why this

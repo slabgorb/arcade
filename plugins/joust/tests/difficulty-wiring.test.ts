@@ -9,8 +9,8 @@
 // ─── WHAT WAS ACTUALLY DEAD (verified against the tree at 279b1df) ────────────
 // `grep -rn "\bSYM\b" src --include="*.ts"` outside src/core/difficulty.ts returns
 // ZERO hits for DIFFICULTY_TABLE, difficultyValue, ga1StartColumn, stepNibble,
-// GA1_DEFAULT and DYTBL_ROW_COUNT. The module IS imported — by wave.ts:24 and
-// arena.ts:51 — but only for the three retrofit knobs, never for a row. So all 28
+// GA1_DEFAULT and DYTBL_ROW_COUNT. The module IS imported — by wave.ts and
+// arena.ts — but only for the three retrofit knobs, never for a row. So all 28
 // rows of the ROM's per-wave escalation were unreachable from the running game.
 //
 // ─── THE SMOKING GUN: THE CLONE FROZE THE WAVE-1 VALUE ───────────────────────
@@ -51,7 +51,7 @@
 //
 //     waveValue('BODNVY') → enemy.boundr  ─┐
 //     waveValue('HUDNVY') → enemy.b2undr  ─┴→ runBrain → stepEnemy
-//                                            → frame.ts:265 → demo.stepDemo → game
+//                                            → frame.ts → demo.stepDemo → game
 //
 // Everything else needs a mechanic first (a wing-flap cadence timer, a PDIST
 // "distance to go", a range gate, a decision timer, an egg wait) or has a consumer
@@ -195,7 +195,7 @@ const FAR_BELOW: PlayerView = { pixelY: 0xd2, velXIndex: 2 }
 /**
  * `createWaveDemo`'s knights start mid-screen at pixel Y 90 and settle at 162 and
  * 128 — one above and one below the buzzard that promotes on this seed. Park both
- * at the bottom island's band top: `arena.ts:151` is CLIF5's LANDING record (LNDB5,
+ * at the bottom island's band top: `arena.ts` is CLIF5's LANDING record (LNDB5,
  * `bandTop: 211, snapY: 210`), which is exactly why a knight staged at 211 comes to
  * rest at 210 and stays there, BELOW every buzzard for the whole run. Nothing else
  * about the wave is touched.
@@ -689,7 +689,7 @@ describe('AC-4 — the retrofit knobs are separate BY ROM, and stay put', () => 
     //   SAFRAM  :1929-1933  the lava raise, AFTER the DYTBL loop ends at :1927.
     //   WPERSUE :2075-2077  LDA WPERSUE,X / ANDA #$0F / STA WSMART   — the WAVE table.
     // None is a DYWORD row, so "source them from the table" is not available; the
-    // module's existing ruling (difficulty.ts:38-52) is CORRECT and this pins it.
+    // module's existing ruling (difficulty.ts) is CORRECT and this pins it.
     for (const notARow of ['EMYTIM', 'SAFRAM', 'WPERSUE', 'GRAV']) {
       expect(d.DYTBL_ROW_NAMES as readonly string[], `${notARow} is not a DYWORD row`).not.toContain(
         notARow,
@@ -741,7 +741,7 @@ describe('AC-5 — waves 1 and 2 are bit-identical to the frozen behaviour', () 
 
   it('keeps the exported constants alive at their cited values', async () => {
     const e = await loadEnemy()
-    // enemy-contract.ts types these as `number` and tests/enemy.test.ts:317-319 pins
+    // enemy-contract.ts types these as `number` and tests/enemy.test.ts pins
     // them. Turning them into functions would break both for no fidelity gain — the
     // wave-1 value IS a real ROM constant (the pre-DYTBL immediate). Kills the
     // over-eager refactor.
@@ -911,8 +911,8 @@ describe('project rules — the core boundary and the type-safety escapes', () =
 // Round 1 threaded the wave through all four layers and the Reviewer confirmed
 // every link load-bearing. It then REJECTED the story, because the VALUE entering
 // the chain is the wrong unit: `demo.wave` is the ROM's WAVBCD byte — BCD-PACKED,
-// advanced by `nextWaveBcd` (demo.ts:955; "BCD not binary" is already pinned at
-// tests/wave.test.ts:155) — and `waveValue` documents its argument as a 1-based
+// advanced by `nextWaveBcd` (demo.ts; "BCD not binary" is already pinned at
+// tests/wave.test.ts) — and `waveValue` documents its argument as a 1-based
 // DECIMAL wave. The two agree for waves 1-9 and diverge forever after.
 //
 // MEASURED against the tree at 88de71c, through the real `stepDemo`:
@@ -940,11 +940,11 @@ describe('project rules — the core boundary and the type-safety escapes', () =
 // advance, never through a literal.
 //
 // ─── SCOPE — WHAT IS *NOT* HERE ──────────────────────────────────────────────
-// The same confusion PREDATES uf1-2 at demo.ts:959-968, where the raw counter also
+// The same confusion PREDATES uf1-2 at demo.ts, where the raw counter also
 // reaches `waveRowAt` / `applyWaveDestruction` / `spawnWaveEnemies` /
-// `trollSpawnable` / `seedWaveBudget` (and game.ts:347). That is **td1-12**, filed,
+// `trollSpawnable` / `seedWaveBudget` (and game.ts). That is **td1-12**, filed,
 // p1, and deliberately untouched here: every probe below is staged so the wave
-// never ADVANCES (a wave clears only with a player present — demo.ts:950-953 —
+// never ADVANCES (a wave clears only with a player present — demo.ts —
 // and no probe stages one), so those consumers never run and this suite cannot
 // accidentally demand td1-12's fix.
 // ═════════════════════════════════════════════════════════════════════════════

@@ -23,7 +23,7 @@
 // ─── WHERE THE MISFILE CAME FROM, AND WHAT THE REAL DEFECT IS ────────────────
 // jt8-4 read the counter's lifetime off EGGSCR alone and concluded "EGGSCR never
 // resets it, so the count persists for that player" (claims/egg-catch.json
-// JT84-006, mirrored in demo.ts:158 and demo-jt8-4-source.test.ts:25-26). The
+// JT84-006, mirrored in demo.ts and demo-jt8-4-source.test.ts). The
 // first clause is true; the second does not follow. `DEGGS` is a POINTER
 // (`LDY DEGGS,Y` then `LDB ,Y`, :3037/:3042 — the debug guard at :3039 reads
 // "SHOULD NEVER BE ZERO" because it is an address), and it points at the fixed
@@ -38,7 +38,7 @@
 // boundary right by construction (`eggHits` rides the player process; a death
 // removes it and `respawnPlayerProcess` builds a fresh one, so the credit dies
 // with the man) and gets the WAVE boundary WRONG: `stepDemo`'s advance carries
-// `processes` forward and only appends the new complement (demo.ts:1090-1105), so
+// `processes` forward and only appends the new complement (demo.ts), so
 // the counter walks into the next wave. PROBED on this tree: a player holding 2
 // hits clears wave 1, and its first catch of wave 2 pays 750 where the ROM pays
 // 250.
@@ -125,7 +125,7 @@ function eggOf(over: Partial<EggState>): EggState {
   }
 }
 
-/** An egg PROCESS in the kill-egg id namespace (`$1_0000+`, demo.ts:797). */
+/** An egg PROCESS in the kill-egg id namespace (`$1_0000+`, demo.ts). */
 function eggProcAt(id: number, over: Partial<EggState>): DemoProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'egg', egg: eggOf(over) }
 }
@@ -146,7 +146,7 @@ const withProcesses = (d: DemoState, procs: readonly DemoProcess[]): DemoState =
 })
 
 /**
- * A sim staged so the NEXT `stepDemo` clears the wave: `clearable` (demo.ts:1086)
+ * A sim staged so the NEXT `stepDemo` clears the wave: `clearable` (demo.ts)
  * wants no enemy, no egg, and a live player. Everything else about the state is
  * the real `createWaveDemo` product.
  */
@@ -162,7 +162,7 @@ const playerNo = (d: DemoState, id: number): DemoProcess => {
 }
 
 /** The ladder credit a process carries, normalised — absent reads as zero, which
- *  is exactly how `collisionPass` reads it (`self.eggHits ?? 0`, demo.ts:904). */
+ *  is exactly how `collisionPass` reads it (`self.eggHits ?? 0`, demo.ts). */
 const creditOf = (p: DemoProcess): number => p.eggHits ?? 0
 
 /** Re-seat a process at a pixel position, keeping every other field — including

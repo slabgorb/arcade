@@ -29,7 +29,7 @@
 // wave start WNRM :1979-1980, and the player's own death DEATH1/DEATH2 :4669/:4675
 // — so it climbs only within ONE life of ONE wave. See claims JT86-002..007 and
 // tests/demo-jt8-6-source.test.ts, which pins that set exhaustively.) Our port put `hitCount` on
-// the EGG (egg.ts:53) where every producer hard-codes 0, which pins the ladder to
+// the EGG (egg.ts) where every producer hard-codes 0, which pins the ladder to
 // its first rung forever. A claim on the declaration line is what stops a future
 // reader "tidying" that counter back onto the egg.
 //
@@ -211,7 +211,7 @@ describe('jt8-4 citations — the cited ranges are pinned by committed claims', 
 // It also closes the one mutation the behaviour suite CANNOT see. Replacing the
 // capped `bumpEggHits(n)` with a bare `n + 1` leaves all 12 behaviour pins green,
 // because `eggValue` ALSO clamps its index (`Math.min(hitCount, LADDER.length)`,
-// egg.ts:250) — so an uncapped counter drifts to 5, 6, 7… while every score it
+// egg.ts) — so an uncapped counter drifts to 5, 6, 7… while every score it
 // produces stays correct at 1000. The ROM writes the PEGGED value back
 // (`CMPB #4 / BHS` around the `INCB`, then `EGGSMN STB ,Y` — :3043-3053), so an
 // uncapped counter is a real divergence in stored state; it is simply invisible

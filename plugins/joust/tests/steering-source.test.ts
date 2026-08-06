@@ -182,7 +182,7 @@ describe.skipIf(!vendoredAvailable)('the steering laws are really in the 1982 so
     // The story description says "our arena.groundMaskAt is that BCKXTB/BCKYTB
     // analog". It is not: groundMaskAt is the CKGND (LNDXTB/LNDYTB) analog by
     // its own docstring, and the BCK pair is transcribed separately
-    // (BCK_X_TABLE flight.ts:176 ← :7617+, BCK_Y_TABLE arena.ts:198 ← :7549+).
+    // (BCK_X_TABLE flight.ts ← :7617+, BCK_Y_TABLE arena.ts ← :7549+).
     // Deviated in the session file; the fixtures sit where the pairs disagree.
     expect(line('JOUSTRV4.SRC', 4119)).toContain('BCKXTB')
     expect(line('JOUSTRV4.SRC', 6705)).toContain('LNDXTB')

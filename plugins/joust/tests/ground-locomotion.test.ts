@@ -4,7 +4,7 @@
 // jt1-5 review ruled onto this story.
 //
 // jt1-5 shipped `stepGround` as a stub: it selects `ORRUN_DELTAS[0]`
-// unconditionally (src/core/flight.ts:326), which is the standstill entry, so
+// unconditionally (src/core/flight.ts), which is the standstill entry, so
 // forty frames of held direction move ZERO pixels where the ROM moves eighty.
 // It was never called by a test, so nothing noticed. That is the whole reason
 // this file exists — the fix and the test that would have caught it.

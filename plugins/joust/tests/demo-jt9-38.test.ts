@@ -117,7 +117,7 @@ const holder = (id: number): DemoProcess => ({
   kind: 'enemy',
 })
 
-/** The plugin's local widening for the baiter tag (mirrors demo-jt4-4.test.ts:39). */
+/** The plugin's local widening for the baiter tag (mirrors demo-jt4-4.test.ts). */
 type BaiterProc = DemoProcess & { baiter?: boolean }
 
 /** A PTERODACTYL/baiter process. The ROM counts these on NBAIT (JOUSTRV4.SRC:2111), never NENEMY. */

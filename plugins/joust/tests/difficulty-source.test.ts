@@ -269,7 +269,7 @@ const IMPORTS_DIFFICULTY = /import\b[\s\S]*?\bfrom\s*['"]\.\/difficulty(?:\.js)?
 
 describe('the retrofit re-points jt2 stubs at the difficulty engine (AC-2 — SOURCE, not value)', () => {
   it('src/core/wave.ts IMPORTS EMYTIM + the budget seed from ./difficulty', () => {
-    // wave.ts:24 — `import { emytimForWave as difficultyEmytim, seedBudgetForRow }
+    // wave.ts — `import { emytimForWave as difficultyEmytim, seedBudgetForRow }
     // from './difficulty.js'`. Require the STATEMENT (comments stripped first) so a
     // values-preserving un-source that left only a prose mention would red.
     const src = codeOnly(moduleSource('wave.ts'))
@@ -280,7 +280,7 @@ describe('the retrofit re-points jt2 stubs at the difficulty engine (AC-2 — SO
   })
 
   it('src/core/arena.ts IMPORTS the lava-level step from ./difficulty', () => {
-    // arena.ts:51 — `import { lavaLevelForWave as difficultyLava } from './difficulty.js'`.
+    // arena.ts — `import { lavaLevelForWave as difficultyLava } from './difficulty.js'`.
     const src = codeOnly(moduleSource('arena.ts'))
     expect(
       src,

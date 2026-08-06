@@ -183,7 +183,7 @@ describe('jt4-5 game-over — reached through REAL played deaths (hardening: not
   it('two knights on their last man are killed by enemies through stepGame and the game reaches GOVER_OVER', async () => {
     const g = await loadGameLoop()
     // Both knights on their LAST life, each positioned just BELOW a materialised enemy
-    // (the higher entity wins the joust, joust.ts:211) — so the sim itself KILLS them.
+    // (the higher entity wins the joust, joust.ts) — so the sim itself KILLS them.
     // Unlike jt4-4's constructed all-dead step (lives preset to 0, processes emptied),
     // the game STARTS live and both deaths are booked by stepGame's collision pass.
     const base = g.createGame(SEED)
@@ -256,10 +256,10 @@ describe('jt4-5 game-over — reached through REAL played deaths (hardening: not
 //   `LDA NPSERV … BRA CRELP` (JOUSTRV4.SRC:5615-5618) → CRELP/CREPLY, the
 //   transporter-served re-materialise, whose PLYINT window RE-ENABLES collisions on
 //   exit (jt2-6 `stepMaterialise`: it TIMES OUT after its nap, or a control input
-//   ABORTS it early — transporter.ts:220-231, `collisionsEnabled:true` on both exits).
+//   ABORTS it early — transporter.ts, `collisionsEnabled:true` on both exits).
 //   So the ROM knight becomes vulnerable again shortly after re-entry and CAN lose all
 //   its lives. Round-1's re-entry returns `collisionEnabled:false` with NO `mat` window
-//   (demo.ts:297-299) — a PERMANENT shield that never re-enables, so a re-entered knight
+//   (demo.ts) — a PERMANENT shield that never re-enables, so a re-entered knight
 //   is an immortal ghost and all-out is unreachable. RED until Dev gives the re-entry a
 //   re-enabling window.
 //
@@ -344,7 +344,7 @@ describe('jt4-5 round-2 — game-over reached THROUGH a respawn cycle (Reviewer 
     expect(livePlayers(game).includes(2), 'P2 lost the partner-joust and was removed').toBe(false)
     expect(game.players[1].out, 'P2 has lives left — it is not out').toBe(false)
     // Run on with NEUTRAL input: a ROM-faithful `mat` window TIMES OUT (no control input aborts it)
-    // and re-enables collisions (PLYINT, transporter.ts:230 `collisionsEnabled:true` on time-out).
+    // and re-enables collisions (PLYINT, transporter.ts `collisionsEnabled:true` on time-out).
     // RED today: the permanent shield keeps collisionEnabled:false FOREVER, so the re-entered
     // knight is never vulnerable again — the window never ends.
     let reentered = false

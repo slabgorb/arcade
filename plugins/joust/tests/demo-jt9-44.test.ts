@@ -16,7 +16,7 @@
 //
 // WHY jt5-16 / jt9-15 NEVER TRIP IT. Both suites keep a napped base enemy as a
 // wave-open ANCHOR precisely "so spawnWavePteros never stacks a later wave's
-// pteros at one coordinate behind our backs" (demo-jt9-15.test.ts:38). This suite
+// pteros at one coordinate behind our backs" (demo-jt9-15.test.ts). This suite
 // does the OPPOSITE: it lets a cleared wave ADVANCE into a real WPTERO wave, so
 // spawnWavePteros stacks the pteros for real and the burst is observed end to end.
 //

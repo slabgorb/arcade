@@ -26,7 +26,7 @@
 // coverage and recorded in the session Delivery Findings).
 //
 // ─── THE PORT'S BUG ──────────────────────────────────────────────────────────
-// `homingWake` (enemy.ts:931) gates on `target.velXIndex` — the player's LIVE
+// `homingWake` (enemy.ts) gates on `target.velXIndex` — the player's LIVE
 // index — where the ROM gates on the snapshot. Its own docblock logs the gap as
 // a Design Deviation ("while the ROM compares against an index up to BOLETM wakes
 // old, this port compares against the current one"), left open because before

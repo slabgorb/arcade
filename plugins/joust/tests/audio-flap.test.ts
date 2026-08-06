@@ -142,7 +142,7 @@ const LEFT: PlayerInput = { dir: -1, flap: false, flapHeld: false }
 /** jt9-3 — walking left with the button DOWN, so the NEXT frame's release is a
  *  real edge without spending a flap impulse that would move the walk-off. */
 const LEFT_HELD: PlayerInput = { dir: -1, flap: false, flapHeld: true }
-/** `flap` is the shell's RISING edge, `flapHeld` the level (shell/input.ts:45). */
+/** `flap` is the shell's RISING edge, `flapHeld` the level (shell/input.ts). */
 const btn = (flap: boolean, flapHeld: boolean): PlayerInput => ({ dir: 0, flap, flapHeld })
 
 const kindsOf = (g: GameState): string[] => g.events.map((e) => e.type as string)

@@ -18,7 +18,7 @@
 //   never hand-typed, so a re-transcription that changes the word moves the expectation):
 //     BRSTND 243→13   ORSTND 237→19   PLYR1 751→17 (XOFF 2)
 //
-// Current bug: drawList (demo.ts:642-654) emits every entity op as { x: posX,
+// Current bug: drawList (demo.ts) emits every entity op as { x: posX,
 // y: posY>>8 } — POSOFF NEVER applied. So (1) the whole sprite hangs a full YOFF
 // (13–19px) below the platform on ALL ledges (feet clip through), and (4b) the
 // mount and rider — which carry DIFFERENT POSOFF words — draw at the SAME origin

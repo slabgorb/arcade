@@ -8,7 +8,7 @@
 // Measured against `main` at 5cc5bc2, three legs, each re-measured here rather
 // than inherited from the filing:
 //
-//  1. DELETION IS NOT A JOUST CHANGE. `src/shared/audio.ts:69` declares
+//  1. DELETION IS NOT A JOUST CHANGE. `src/shared/audio.ts` declares
 //     `channels: Record<N, string>` REQUIRED — no `?`, no default. Deleting the
 //     `channels:` line from joust's `createAudioEngine` is not type-legal:
 //         plugins/joust/src/shell/audio.ts(168,45): error TS2345
@@ -25,16 +25,16 @@
 //
 //  2. THE OPPOSITE OF A SECOND CONSUMER — a second cabinet already relies on
 //     exactly the fallback this map provides. The filing (and the shared
-//     docblock at `src/shared/audio.ts:70-75`, which says so in prose) has joust
+//     docblock at `src/shared/audio.ts`, which says so in prose) has joust
 //     as the only cabinet passing `priorities`. It is not:
-//     `plugins/centipede/src/shell/audio.ts:227` passes one too, built by a
+//     `plugins/centipede/src/shell/audio.ts` passes one too, built by a
 //     FILTER over voice 0, and its own docblock at :204-211 names three cues —
 //     `mushroom`, `headBottom`, `waveClear` — deliberately left OUTSIDE
 //     arbitration under a user ruling of 2026-08-03, where they "keep plain
 //     per-channel stealing". A cabinet with `priorities` AND unarbitrated cues
 //     routed by `channels` is not a hypothetical; it shipped.
 //
-//     joust's own `PRIORITIES` (`src/shell/audio.ts:157-164`, `const
+//     joust's own `PRIORITIES` (`src/shell/audio.ts`, `const
 //     PRIORITIES`) is DERIVED by the
 //     same shape of filter — `if (source.kind === 'rom')` — and `CueSource` has
 //     an `invention` arm that jt9-5 made first-class with a REQUIRED `frames`
@@ -74,7 +74,7 @@ const NAMES = Object.keys(SOUNDS) as SoundName[]
 
 /** The ROM priority `PRIORITIES` derives for a cue, or `undefined` where the
  *  derivation gives none — which is every non-`rom` arm. Read from the same
- *  place `const PRIORITIES` (`src/shell/audio.ts:157-164`) reads it, so the
+ *  place `const PRIORITIES` (`src/shell/audio.ts`) reads it, so the
  *  VALUE cannot drift from it. The line number can and did — this story's own
  *  GREEN commit moved it six lines — so the symbol is the anchor, not `:157`. */
 function romPriority(name: SoundName): number | undefined {
@@ -167,7 +167,7 @@ describe('jt9-7 AC1 — CHANNELS is the ROM priority partition, in BOTH directio
 // the same frame count), so this is the state reached whenever the sim runs
 // ahead of the audio clock — `pumpFrames` catch-up in `src/main.ts` is bounded
 // at MAX_CATCHUP_SECONDS and does exactly that. The engine already treats
-// "window held, `live` empty" as a normal state (`src/shared/audio.ts:214-221`,
+// "window held, `live` empty" as a normal state (`src/shared/audio.ts`,
 // jt9-6); this is that state pointing the other way.
 
 class FakeSource {
@@ -352,7 +352,7 @@ describe('jt9-7 AC3 — CHANNELS is the route for any cue outside arbitration', 
   it('there is no engine default to fall back to — an absent channels map THROWS', async () => {
     // The story's own framing is "delete joust's map and let the engine
     // DEFAULT". Measured, there is no default to let happen: `startSource`
-    // reads `manifest.channels[name]` at `src/shared/audio.ts:238`, above and
+    // reads `manifest.channels[name]` at `src/shared/audio.ts`, above and
     // outside the try/catch at `:269` that makes every other failure here a
     // silent degrade. So an absent map is not a degrade path, it is an
     // unguarded property access — `TypeError: Cannot read properties of
@@ -362,7 +362,7 @@ describe('jt9-7 AC3 — CHANNELS is the route for any cue outside arbitration', 
       baseUrl: 'https://sfx.invalid/joust/',
       sounds: SOUNDS,
       priorities: {} as Partial<Record<SoundName, number>>,
-      // Deliberately illegal: `channels` is REQUIRED (`src/shared/audio.ts:69`).
+      // Deliberately illegal: `channels` is REQUIRED (`src/shared/audio.ts`).
       // The cast IS the finding — it is what the deletion branch would have to
       // make legal for real, across all five manifest-building cabinets.
     } as unknown as Parameters<typeof createSharedAudioEngine<SoundName>>[0]
@@ -498,7 +498,7 @@ describe('jt9-7 AC4 — the header counts joust’s cues correctly', () => {
 
   it('main.ts counts the .wav files the engine will fetch', () => {
     // The same off-by-one, in the file that says how many samples get fetched.
-    // The engine fetches one per DISTINCT filename (`src/shared/audio.ts:167`
+    // The engine fetches one per DISTINCT filename (`src/shared/audio.ts`
     // builds a Set), so that — not the cue count — is what this compares to,
     // even though joust's cues happen to be 1:1 with its files today.
     const source = readFileSync(join(root, 'src', 'main.ts'), 'utf8')
@@ -776,7 +776,7 @@ describe('jt9-28 AC6 — no stale "seventeen" cue total survives in the audio su
  *    2. a claim ABOUT a channel/fence carrying a BARE absolute and no tense word.
  *  A SCOPED absolute is TRUE and must survive — `nothing BEYOND X`, `while the
  *  window holds`, `once released` — so a scoping qualifier vetoes the match. That
- *  is what keeps audio.ts:51 ("the fence settles nothing beyond …") green, and
+ *  is what keeps audio.ts ("the fence settles nothing beyond …") green, and
  *  :94 ("no longer decides WHICH cue wins" — no absolute) never matched at all. */
 function channelDecidesNothing(sentence: string): boolean {
   const absolute = /\b(anything|nothing|at all)\b/i.test(sentence)
@@ -801,14 +801,14 @@ describe('jt9-28 AC7(a) — R1 catches an unqualified channel-absolute, tense ma
     ).toBe(true)
     // CONTROLS that MUST stay false — both are TRUE and live in audio.ts, so a
     // repair that flags either reddens the live R1 guard on the green tree:
-    //  · audio.ts:51 — a SCOPED absolute ("settles nothing BEYOND ..."), true.
+    //  · audio.ts — a SCOPED absolute ("settles nothing BEYOND ..."), true.
     expect(
       channelDecidesNothing(
         'While that arbitrated window holds the voice, the fence settles nothing beyond what the priority already decided.',
       ),
       'a scoped "nothing beyond X" is true, not the absolute',
     ).toBe(false)
-    //  · audio.ts:94 — a BOUNDED claim ("no longer decides WHICH cue wins"), true.
+    //  · audio.ts — a BOUNDED claim ("no longer decides WHICH cue wins"), true.
     expect(
       channelDecidesNothing('The channel no longer decides which cue wins.'),
       'a bounded "no longer decides which" is true',

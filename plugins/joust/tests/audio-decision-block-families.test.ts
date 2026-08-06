@@ -101,7 +101,7 @@ function vendoredLines(file: string): string[] {
 }
 
 /** The nearest label at or above `line` — which decision block an `FDB` row
- *  belongs to. Same helper as audio-transporter-split.test.ts:226; :5544 and
+ *  belongs to. Same helper as audio-transporter-split.test.ts; :5544 and
  *  :5552 both name SNPCR1 and belong to DIFFERENT blocks, and that difference
  *  is the whole subject of this file. */
 function owningLabel(lines: string[], line: number): string {
@@ -509,7 +509,7 @@ describe('jt5-23 AC6 — the record keeps WHY the old citation was also true', (
   it('the identical-rows fact survives, so the re-anchor is not read as a bug fix', () => {
     // If the record simply moved the citation and said nothing, the next reader
     // concludes :5544 was WRONG and re-litigates a correct decision — or worse,
-    // "fixes" audio-flap.test.ts:244, which legitimately quotes :5544 as a ROM
+    // "fixes" audio-flap.test.ts, which legitimately quotes :5544 as a ROM
     // fact. The record must keep the wing tables' identity across the families.
     // Asserted by PROXIMITY, and two survived mutations drove it there.
     //

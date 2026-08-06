@@ -7,7 +7,7 @@
 //
 // This is deliberately the tempest/battlezone extraction and NOT star-wars's
 // inline-in-main.ts switch. battlezone's own header says why
-// (plugins/battlezone/src/shell/audio-dispatch.ts:1-9): "so the map is
+// (plugins/battlezone/src/shell/audio-dispatch.ts): "so the map is
 // unit-testable against a recording fake without booting a canvas." Every test
 // below is exactly that — no DOM, no canvas, no AudioContext.
 //

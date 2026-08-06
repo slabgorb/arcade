@@ -72,8 +72,8 @@
 // and its :5010 `BEQ 1$  BR=BOTH ON SAME LEVEL` is the only door to SNPTHD. So
 // the partition over a `bounce` outcome is total and has exactly two cells, and
 // it is the one `resolveJoust` already computes:
-//   both parties enemy   (joust.ts:205  ↔  :4961)  -> enemy-thud   (SNETHD)
-//   otherwise, ha === hb (joust.ts:209  ↔  :5010)  -> player-thud  (SNPTHD)
+//   both parties enemy   (joust.ts  ↔  :4961)  -> enemy-thud   (SNETHD)
+//   otherwise, ha === hb (joust.ts  ↔  :5010)  -> player-thud  (SNPTHD)
 // The measured seeded windows below land one of each, and the player one is a
 // buzzard walking through a standing knight — a case AC3 as written would have
 // left silent.
@@ -650,7 +650,7 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
 describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
   /**
    * A tie whose two birds are at DIFFERENT screen Ys. `plantHeight` is
-   * `plantZ + (posY >> 8)` (joust.ts:193), so a skidding bird's `PLANTZ = 2`
+   * `plantZ + (posY >> 8)` (joust.ts), so a skidding bird's `PLANTZ = 2`
    * ("A LANTZ 2 PIXELS LOWER", :6071) ties with a bird two pixels lower down.
    * That is the ONLY staging that can tell OSTBMP's height dispatch apart from
    * OSTXTT's unconditional `JSR OSTXTP`, and it is why this story needed the
@@ -701,7 +701,7 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
     //
     // This used to count `filter(v => v === UP_FROM_DESCENDING).length === 1` on
     // both birds, which is symmetric by construction and CANNOT FAIL: swapping
-    // `bounceBottom(a)`/`bounceTop(b)` at demo.ts:929-930 inverted both roles and
+    // `bounceBottom(a)`/`bounceTop(b)` at demo.ts inverted both roles and
     // left it green. The count assertions are kept below the absolute ones —
     // they are what catches a bounce that separates NOBODY.
     const d = stepDemo(stage(tie(true)), { [P1]: IDLE })
@@ -735,7 +735,7 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
     expect(riser(bottom).length, 'precondition: B really bounced').toBe(1)
     // The ABSOLUTE pair carries the coverage; the relative assertion below is
     // kept for its failure message, not for unique reach. MEASURED both ways:
-    //   • role INVERSION (swap bounceBottom(a)/bounceTop(b) at demo.ts:929-930)
+    //   • role INVERSION (swap bounceBottom(a)/bounceTop(b) at demo.ts)
     //     moves the rise in BOTH stagings at once, so the relative assertion
     //     stays green — only the absolute pair sees it.
     //   • GEOMETRY dispatch (make the person tie consult screen Y) diverges in

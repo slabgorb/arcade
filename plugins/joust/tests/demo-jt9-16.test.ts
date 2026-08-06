@@ -3,7 +3,7 @@
 // Story jt9-16 — RED phase (Leeloo / TEA). THE TWO THUD PATHS RETURN OPPOSITE
 // CARRY: the ROM's collision scan CONTINUES after an enemy thud (SNETHD) and
 // ABORTS the current object's whole remaining scan after a person tie (SNPTHD).
-// The port's inner pair loop (demo.ts:1368) `continue`s for BOTH cues, so it
+// The port's inner pair loop (demo.ts) `continue`s for BOTH cues, so it
 // models neither.
 //
 // ─── WHAT THE MACHINE DOES (verified against the ROM, not assumed) ────────────
@@ -54,7 +54,7 @@ import type { EntityState } from '../src/core/flight.js'
 const SEED = 0x1234
 // One shared top for the whole pile-up. plantHeight = plantZ + (posY>>8), so an
 // identical top + plantZ 0 makes any person pair an EXACT tie → bounce (SNPTHD),
-// never a kill (joust.ts:220). Staged at the x=100/top=110 spot jt9-14 proved the
+// never a kill (joust.ts). Staged at the x=100/top=110 spot jt9-14 proved the
 // wave anchor never reaches.
 const LEVEL = 110
 

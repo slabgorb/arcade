@@ -11,7 +11,7 @@
 //
 // ─── WHY THIS FILE EXISTS AT ALL ─────────────────────────────────────────────
 // jt8-7's defect is not a wrong constant — it is a table READ SHORT. `EGGI` is
-// seven 3-word rows (JOUSTI.SRC:2255-2261) and pictures.ts:1699 transcribed the
+// seven 3-word rows (JOUSTI.SRC:2255-2261) and pictures.ts transcribed the
 // first one, anchored startLine 2255 / endLine 2255, and stopped. Nothing was
 // wrong with the row it did take; the six it left behind were simply invisible,
 // because a single-row anchor is indistinguishable from a complete one.

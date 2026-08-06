@@ -30,7 +30,7 @@
 // — and it is a trap. A flap adds ADDFLP's impulse to VY, and at low `timeUp`
 // that impulse is a full -96: the bird is RISING on the next wake, so the lane
 // decision declines to flap all by itself and the test passes with the
-// mechanism absent. `tests/audio-flap.test.ts:606` is staged exactly there, and
+// mechanism absent. `tests/audio-flap.test.ts` is staged exactly there, and
 // its comment already reads the resulting silence as "LINET's LNTUP -> LNTOFP
 // one-shot in the ROM" — which the port does not have.
 //
@@ -676,7 +676,7 @@ describe('AC6 — the dumb wing cue', () => {
 
   it('GUARD — a HELD wing still sounds once, on the actors that can still hold one', () => {
     // jt5-3's "wings HELD across many wakes sound ONCE — the edge, never the
-    // level" is staged on a dumb buzzard (audio-flap.test.ts:636), and this
+    // level" is staged on a dumb buzzard (audio-flap.test.ts), and this
     // story makes that staging IMPOSSIBLE: LNTOFP forbids a dumb bird from
     // holding its wings down across wakes at all. The LAW is not repealed —
     // only its actor — so it is re-staged here on the two that can still hold,

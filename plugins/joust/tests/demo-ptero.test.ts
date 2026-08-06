@@ -3,7 +3,7 @@
 // Story jt3-4 — RED phase (Leeloo / TEA). THE PTERO WAVE TYPE GOES LIVE in the demo
 // (the architect ruling: "the PTERODACTYL wave type goes live on jt2-5's WJSRTB
 // skeleton"). jt2-5 routed the ptero dispatch but demo.ts filled a ptero wave's
-// slots with 'bounder' (demo.ts:287 "Pterodactyls carry no scored DVALUE type … are
+// slots with 'bounder' (demo.ts "Pterodactyls carry no scored DVALUE type … are
 // filled with 'bounder'") — an inert placeholder. This file pins the placeholder
 // being replaced by real ptero spawning driven by the wave table's ptero nibble.
 //
@@ -78,7 +78,7 @@ describe('jt3-4 — the ptero wave type spawns pteros in the demo, from the nibb
   })
 
   it('the spawned ptero is NOT a scored ground enemy (no bounder/hunter/lord DVALUE type)', async () => {
-    // The demo.ts:287 placeholder filled ptero slots with 'bounder'. A real ptero is a
+    // The demo.ts placeholder filled ptero slots with 'bounder'. A real ptero is a
     // PTEID process, not a scored ground enemy — so no ptero process carries an enemyType.
     const demo = await loadDemo()
     const d = advanceTo(demo.stepDemo, demo.createWaveDemo(SEED), 8)

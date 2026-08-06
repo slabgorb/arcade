@@ -4,7 +4,7 @@
 // seam + the ENTITY_RECORDS count floor + provenance for the new menagerie frames.
 //
 // ─── THE SILENT-NO-LIFT SEAM (jt2-9 HIGH, epic seed 4) ───────────────────────
-// posOffset(name) (demo.ts:699) does ENTITY_RECORDS.find(r => r.name === name) and
+// posOffset(name) (demo.ts) does ENTITY_RECORDS.find(r => r.name === name) and
 // returns {0,0} when the frame is NOT recorded — a SILENT no-lift. A render fix
 // keyed on ENTITY_RECORDS no-lifts frames MISSING from the table. jt2-9 round 2
 // already added the P2 STORK mount records (SRUNSR/SRUN1-4R/SFLY1R), so the stork

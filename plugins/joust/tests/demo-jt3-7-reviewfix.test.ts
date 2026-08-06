@@ -6,12 +6,12 @@
 //
 // ─── B1 (BLOCKING) — the ptero dissolve paints ZERO pixels in the shell ───────
 // drawList emits entityOp('ASH1R', …) for a dissolving body, but the shell paints
-// nothing: ASH1R is encoding:'runlength' (pictures.ts:1652), excluded from the
-// atlas (buildAtlas keeps encoding==='raster', render.ts:132), so blitOp's
-// `atlas.blocks['ASH1R']` is undefined and it silently `return`s (main.ts:88-89).
-// expandAsh/expandAshFrames (pictures.ts:1951,1998) have NO shell caller. The
+// nothing: ASH1R is encoding:'runlength' (pictures.ts), excluded from the
+// atlas (buildAtlas keeps encoding==='raster', render.ts), so blitOp's
+// `atlas.blocks['ASH1R']` is undefined and it silently `return`s (main.ts).
+// expandAsh/expandAshFrames (pictures.ts) have NO shell caller. The
 // shipped precedent is COMCL5: main.ts decodes the non-raster 'stream' via
-// expandComcl5 → drawIsland and PAINTS it (main.ts:59,105). The dissolve needs the
+// expandComcl5 → drawIsland and PAINTS it (main.ts). The dissolve needs the
 // same last shell mile. The existing render test pins only the OP (green while the
 // pixels stay dark) — this guard pins PIXELS: the shell's dissolve-paint seam must
 // emit fillRect paints covering exactly the decoded ASH frame's visible pixels.
@@ -28,14 +28,14 @@
 //   — exactly the drawIsland idiom. main.ts then calls it for a kind:'dissolve' op.
 //
 // ─── N1 (FOLD-IN) — resolvePteroAttack over-kills the exact-column LEFT-facer ──
-// ptero.ts:189 `player.facing > 0 ? coldx >= 0 : coldx <= 0`. The right-facer
+// ptero.ts `player.facing > 0 ? coldx >= 0 : coldx <= 0`. The right-facer
 // COLDX=0 kill is ROM-correct + already pinned (LDD COLDX / BPL 12$ — BPL takes 0
 // → kill, JOUSTRV4.SRC:4994-5001). But the ROM groups COLDX=0 into the RIGHT branch,
 // so a LEFT-facing player at the same column (coldx=0, facing<0) falls to OSTBO =
 // NO kill — whereas `coldx <= 0` KILLS it. The left branch must be strict `coldx < 0`.
 //
 // ─── N2 (FOLD-IN) — live trolls accumulate one-per-wave ──────────────────────
-// demo.ts:782 `if (trollSpawnable(arena, wave))` fires on every wave-clear once
+// demo.ts `if (trollSpawnable(arena, wave))` fires on every wave-clear once
 // bridgeBurned latches (wave≥4), with no "already a live troll" guard and nothing
 // removing a troll → ~5 stacked trolls by wave 8. GREEN adds
 // `&& !processes.some(p => p.kind === 'troll')`.
