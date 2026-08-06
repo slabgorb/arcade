@@ -259,3 +259,90 @@ tile-RAM transcription, deliberately does not replicate. Mapping them onto this
 grid would be inventing a coordinate transform, so the corner tiles are
 Dossier-DECODED and left uncited, exactly the policy the maze layout already
 follows. `SCATTER_CORNER` in `targeting.ts` carries them with that honest status.
+
+## Modes — scatter / chase / frightened (pm1-7)
+
+`src/core/mode.ts`'s `stepMode` is the scatter/chase/frightened state machine.
+The sim runs at **60 Hz**, so every Dossier "second" below is **× 60 frames**
+(documented in `mode.ts` as `SECONDS = 60`).
+
+**Scatter/chase timer table.** A ghost alternates scatter and chase for a
+fixed, level-dependent schedule, then chases permanently. The Pac-Man Dossier
+ch.4 *Chase, Scatter, and Frightened* gives the level-1 phases used by the
+tests:
+
+| Phase | Mode    | Duration | Frames |
+|-------|---------|----------|--------|
+| 0     | scatter | 7 s      | 420    |
+| 1     | chase   | 20 s     | 1200   |
+| 2     | scatter | 7 s      | 420    |
+| 3     | chase   | 20 s     | 1200   |
+| 4     | scatter | 5 s      | 300    |
+| 5     | chase   | 20 s     | 1200   |
+| 6     | scatter | 5 s      | 300    |
+| 7     | chase   | ∞        | —      |
+
+**Frightened.** Eating an energizer drops every ghost into frightened mode for
+a level-dependent time (level 1 = **6 s** = 360 frames), during which the
+scatter/chase clock is **paused** and resumes untouched afterward. As it wears
+off the ghosts **flash** a Dossier-documented number of times (level 1 =
+**5**, `FRIGHT_FLASHES`); the exact per-frame flash cadence and start-time are a
+rendering detail decoded in the shell (Task 8), not pinned here. From level 19
+on, frightened time is zero.
+
+**Reverse-on-mode-change.** A ghost's sole exception to "never reverse"
+(§Ghost movement) is a mode change: `reverseSignal` fires on **each
+scatter↔chase transition** and on **frightened ENTRY** (the moment an energizer
+is eaten), but **not** on frightened exit — Dossier ch.4 ("the only time ghosts
+reverse … a mode switch, or Pac-Man eats an energizer"). Task 8 wires this
+one-frame signal into every ghost's `GhostStepState.forceReverse` seam.
+
+**Frightened random turn.** A frightened ghost turns at random. `mode.ts`'s
+`frightenedTurn` draws from the seeded `@shared/rng` carried in `ModeState`
+(`createRng`/`nextInt`), never `Math.random` — deterministic for a fixed seed
+(§core purity).
+
+**Citation status.** The scatter/chase durations, the frightened time and the
+flash count live in ROM as **bare, unlabelled level-indexed data tables**:
+`grep`-ing the vendored disassembly for `scatter`/`chase`/`fright`/`elroy`
+returns **zero** hits (the source is commented only in its boot / RAM-map /
+scoring-text / message-table regions, as §Speeds already documents). There is
+no isolable `pacman.asm:<addr>` literal to point at, so these values are
+recorded honestly as **Dossier-decoded and left uncited**, the same policy
+§Speeds, §Ghost movement and §Ghost house already apply. Only Cruise Elroy
+below has a real, decodable routine to anchor.
+
+## Cruise Elroy (`pacman.asm:20d7`)
+
+When enough dots have been eaten, Blinky speeds up — "Cruise Elroy" — in two
+stages. Unlike the mode tables above, this **is** a decodable routine at
+`pacman.asm:20d7`. `src/core/mode.ts`'s `elroyStage(dotsRemaining, level)`
+reproduces it.
+
+The routine (20d7-2107):
+
+1. Loads the Clyde-released flag at `(#4da3)` and returns if it is zero
+   (`pacman.asm:20d7` → `and a; ret z`): **Elroy is suppressed until Clyde has
+   left the house** (Dossier ch.4). That house-state gate belongs to the caller
+   (Task 8 / the ghost speed logic), not to the pure dots→stage function.
+2. Computes **dots remaining** = `244 − dots-eaten`, reusing `TOTAL_PELLETS`
+   `#f4` at `pacman.asm:20e6` (§Maze) as the subtrahend.
+3. Compares dots-remaining against the **Elroy 1** threshold read from RAM slot
+   `(#4dbb)` at `pacman.asm:20ea`, then against the **Elroy 2** threshold from
+   `(#4dbc)` at `pacman.asm:20fd`. The compare is `sub b; ret c`, so a stage
+   engages when **dots-remaining ≤ threshold** (the borrow does not fire at
+   equality) — an inclusive boundary, transcribed exactly.
+
+| Symbol                   | Citation           | Value  | Meaning                                                       |
+|--------------------------|--------------------|--------|---------------------------------------------------------------|
+| `ELROY_CLYDE_GATE`       | `pacman.asm:20d7`  | `4da3` | Elroy suppressed until Clyde leaves the house (Clyde flag).   |
+| `ELROY1_THRESHOLD_SLOT`  | `pacman.asm:20ea`  | `4dbb` | RAM slot the Elroy 1 dots-remaining threshold is read from.   |
+| `ELROY2_THRESHOLD_SLOT`  | `pacman.asm:20fd`  | `4dbc` | RAM slot the Elroy 2 dots-remaining threshold is read from.   |
+
+**What is NOT byte-cited.** The threshold VALUES themselves (level 1: Elroy 1 at
+**20** dots remaining, Elroy 2 at **10**) are not `cp #nn` operands — `(#4dbb)`
+and `(#4dbc)` are loaded per level from an internal data table (the Dossier
+Table A.1 Elroy column), exactly like the personal dot limits in §Ghost house.
+So the routine ANCHORS are cited above and the per-level values are recorded as
+**Dossier-decoded and left uncited**. `mode.ts`'s `elroyThresholds`/`elroyStage`
+carry the Dossier progression with that honest status.
