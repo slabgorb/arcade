@@ -111,7 +111,8 @@ stories:
       reconciled, cited answer plus any needed correction, NOT a speculative rewrite.
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
