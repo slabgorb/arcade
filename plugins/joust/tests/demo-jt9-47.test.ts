@@ -182,6 +182,62 @@ describe('jt9-47 AC-2 — spawnEgg records the dying enemy species on the egg', 
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
+// AC-2 (integration) — the DEATH3 KILL SEAM: resolveContacts → spawnEgg wiring
+// (round-1 review R1-1: the unit tests above seed the egg's species directly;
+//  nothing proved the demo.ts wiring that feeds a REAL kill's species into
+//  spawnEgg. Dropping `enemyType: victim.enemyType` from resolveContacts must
+//  redden HERE — the story's actual gameplay path, not a hand-built egg.)
+// ═════════════════════════════════════════════════════════════════════════════
+describe('jt9-47 AC-2 (integration) — a killed enemy leaves an egg of ITS species', () => {
+  /** A killed enemy of `species` — sits LOWER (larger joust height) so it loses. */
+  const enemyVictim = (posX: number, pixelY: number, species: EnemyType, eggsLeft = 3) =>
+    ({
+      posX, posY: pixelY << 8, velY: 0, velX: 0, plantZ: 0, facing: 1,
+      bumpX: 0, bumpY: 0, party: 'enemy', enemyType: species, collision: null,
+      groundState: null, eggsLeft,
+    }) as never
+  /** The winning player — higher lance, so resolveJoust gives it the kill. */
+  const playerVictor = (posX: number, pixelY: number) =>
+    ({
+      posX, posY: pixelY << 8, velY: 0, velX: 0, plantZ: 0, facing: 1,
+      bumpX: 0, bumpY: 0, party: 'player', collision: null, groundState: null,
+    }) as never
+
+  it('resolveContacts threads the killed enemy species onto the egg — all three', async () => {
+    // MUTATION (R1-1): removing `enemyType: victim.enemyType` from resolveContacts
+    // makes the egg carry no species and reddens the hunter + shadowLord rows.
+    const dmod = await loadDemo()
+    for (const species of ALL_SPECIES) {
+      const r = dmod.resolveContacts(enemyVictim(120, 40, species), playerVictor(120, 30))
+      expect(r.egg?.enemyType, `a killed ${species} leaves a ${species} egg`).toBe(species)
+    }
+  })
+
+  it('full chain: a REAL killed-hunter egg (no hand-set species) remounts a hunter', async () => {
+    // The strongest guard — the species is set ONLY by the kill, then driven all the
+    // way to the remount. Take the actual egg resolveContacts produces, settle it (the
+    // fall/settle is harness convenience, exactly as hatchingEggProc), and hatch it.
+    const dmod = await loadDemo()
+    const killed = dmod.resolveContacts(enemyVictim(120, 40, 'hunter', 3), playerVictor(120, 30))
+    expect(killed.egg, 'the killed enemy left an egg').not.toBeNull()
+
+    const settledKillEgg: DemoProcess = {
+      id: 0x3_0001, cls: 'secondary', nap: 1, period: 1, kind: 'egg',
+      egg: { ...killed.egg!, settled: true, waitFrames: 1, pfeet: 1 },
+    }
+    let d: DemoState = only(dmod.createWaveDemo(SEED), [settledKillEgg])
+    let remount: DemoProcess | undefined
+    for (let f = 0; f < 800 && !remount; f++) {
+      d = dmod.stepDemo(d)
+      remount = d.sim.processes.find((p) => p.kind === 'enemy')
+    }
+    expect(remount, 'the kill-egg hatched a remount').toBeDefined()
+    expect(remount!.enemyType, 'a killed hunter, through the whole chain, remounts a hunter').toBe('hunter')
+    expect(remount!.enemy!.decision, 'and carries the hunter brain').toBe('b2undr')
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
 // AC-3 — the remount keeps its BRAIN and its SCORE (behaviour, not only colour)
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-47 AC-3 — the remount promotes into its species brain and scores its species value', () => {
