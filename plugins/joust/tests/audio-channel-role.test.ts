@@ -62,7 +62,7 @@
 // and nothing pinned it. That is what this file pins.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, type Dirent } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { CHANNELS, CUE_SOURCES, SOUNDS, createAudioEngine } from '../src/shell/audio.js'
@@ -535,9 +535,10 @@ describe('jt9-7 AC4 — the prose does not claim the channel decides nothing', (
     // passes all 2548 tests. Widen the first clause when jt9-37 is picked up.
     const source = readFileSync(join(root, 'src', 'shell', 'audio.ts'), 'utf8')
     const sentences = flatten(source).split(/(?<=\.)\s+/)
-    const absolutes = sentences.filter(
-      (s) => /no longer/i.test(s) && /\b(anything|nothing|at all)\b/i.test(s),
-    )
+    // Detection extracted to `channelDecidesNothing` (foot of file) so the
+    // jt9-28 AC7(a) meta-test drives the SAME predicate this live guard runs —
+    // neither can drift from the other. jt9-37's hole is repaired there.
+    const absolutes = sentences.filter(channelDecidesNothing)
     expect(
       sentences.some((s) => /no longer/i.test(s)),
       'precondition: the file still discusses what changed at jt5-5',
@@ -575,5 +576,252 @@ describe('jt9-7 AC4 — the prose does not claim the channel decides nothing', (
       'the docblock must say that once the arbitrated window is released a shared channel ' +
         'again decides whose tail is cut — the map’s one remaining routing power',
     ).not.toEqual([])
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Story jt9-28 — RED phase (Tyr One-Handed / TEA). The eight (RE-MEASURED: TEN)
+// stale seventeen-cue comments, the widened count-guard read-set, and the R1/R4
+// prose-guard shape repairs jt9-37 filed.
+//
+// ─── WHAT RE-MEASUREMENT CHANGED, 2026-08-06 ─────────────────────────────────
+// The grooming pass filed "EIGHT stale seventeen-cue counts" and prescribed
+// "widen R4's read-set / drop the determiner." Both were too optimistic against
+// the tree:
+//
+//   · The stale count is TEN, not eight. The groom missed two — the DIGIT site
+//     `audio-priority.test.ts` "joust's 17 cues" and a moved "today's seventeen
+//     cues" in `audio-transporter-split.test.ts` — and one groom site is now a
+//     digit ("17 cues and 17 kinds"). A `(word) cues` guard cannot see a digit.
+//   · The ten sites are LEXICALLY HETEROGENEOUS: "cues", "real records",
+//     "stand-ins", "DISTINCT Williams tables", "seventeen today". One regex
+//     cannot catch them without catching the ~30 TRUE "N cues" pair/subset
+//     sentences ("two cues share a channel", "15 cues come out right", "six of
+//     eleven cues"). The determiner R4 required was LOAD-BEARING, not a bug;
+//     dropping it (jt9-37's suggested R4 fix) floods false positives.
+//
+// So the guard is TWO complementary checks over the AUDIO SUBSYSTEM's files
+// (the meaningful "widened read-set" — literally all of src+tests+tools would
+// drag in arena scanlines and wave ordinals that also spell "seventeen"):
+//   Guard B — a TOTALITY "N cues" claim (word or digit), gated by a totality
+//             determiner/possessive, must equal the DERIVED cue count.
+//   Guard A — a ratchet: in the audio subsystem the WORD "seventeen" may appear
+//             ONLY where it means the 17 EVENT KINDS or the "-plus-one"(=18)
+//             idiom; every other occurrence is a stale cue total.
+// Both carry synthetic pos/neg controls (AC8), because a prose guard goes
+// vacuous three ways and only a fabricated input proves it fires.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** The derived joust cue count — the ONE authority every stale prose count
+ *  below is measured against. 18 today (jt5-6 split player2Materialise/SNPCR2). */
+const CUE_COUNT = Object.keys(CUE_SOURCES).length
+
+/** Every file under `dir`, recursively, as absolute paths. */
+function walkFiles(dir: string, acc: string[] = []): string[] {
+  let entries: Dirent<string>[]
+  try {
+    entries = readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return acc
+  }
+  for (const e of entries) {
+    if (e.name === 'node_modules' || e.name === 'dist' || e.name === '.git') continue
+    const p = join(dir, e.name)
+    if (e.isDirectory()) walkFiles(p, acc)
+    else acc.push(p)
+  }
+  return acc
+}
+
+/** The AUDIO subsystem across src + tests + tools — the honest reading of
+ *  "widen the read-set". The two files jt9-7 pinned (`audio.ts`, `main.ts`) plus
+ *  every audio test, the sample-bake tools, and the two core files that carry
+ *  cue / event-kind counts. This guard's OWN file is excluded — its NUMBER_WORDS
+ *  table (`seventeen: 17`) and the comments quoting jt5-5's removed sentence
+ *  would otherwise be self-inflicted offenders. */
+function audioFiles(): string[] {
+  const self = fileURLToPath(import.meta.url)
+  return [join(root, 'src'), join(root, 'tests'), join(root, 'tools')]
+    .flatMap((d) => walkFiles(d))
+    .filter(
+      (f) =>
+        f !== self &&
+        /\.(ts|mjs|cjs|js)$/.test(f) &&
+        (/[/\\]audio/.test(f) ||
+          /sample-bake[/\\]/.test(f) ||
+          /core[/\\](events|demo)\.ts$/.test(f)),
+    )
+}
+
+const label = (f: string): string => f.replace(`${root}/`, '')
+
+// A totality determiner/possessive immediately governing "N cues" — the claim
+// is about the WHOLE manifest. Only STRONG totalizers qualify: "the"/"these"/
+// "those" are EXCLUDED because "the two cues are different files" and "these two
+// cues MOVED in jt5-23" are pair references, not totals (RE-MEASURED: both are
+// live in the tree). audio.ts's own "these eighteen cues" total stays pinned by
+// R4 above; every stale WIDENED site uses all/every/joust's/today's/today there
+// are, so this loses no offender.
+const CUE_TOTAL = new RegExp(
+  `\\b(all|every|joust['’]s|today['’]?s?)\\s+(?:there\\s+are\\s+)?(\\d+|${WORD_ALT})\\s+cues\\b`,
+  'gi',
+)
+const wordOrDigit = (s: string): number =>
+  /^\d+$/.test(s) ? Number(s) : NUMBER_WORDS[s.toLowerCase()]!
+
+describe('jt9-28 AC5/AC6 — every TOTALITY cue count in the audio subsystem is the derived one', () => {
+  it('a "N cues" total (word or digit) equals CUE_COUNT wherever it is stated', () => {
+    expect(CUE_COUNT, 'the cue derivation collapsed').toBeGreaterThan(1)
+
+    // Synthetic controls FIRST (AC8): the classifier must fire on a total and
+    // spare a pair/subset — a fabricated input, not the tree, proves this.
+    const totals = (t: string): number[] =>
+      [...flatten(t).matchAll(CUE_TOTAL)].map((m) => wordOrDigit(m[2]!))
+    expect(totals("of joust's 17 cues that works"), 'a possessive total must be seen').toEqual([17])
+    expect(totals('all seventeen cues'), 'a determiner total must be seen').toEqual([17])
+    expect(totals('so two cues could only ever steal from each other'), 'a pair must be spared').toEqual([])
+    expect(totals('these two cues MOVED in jt5-23'), 'a DETERMINED pair must be spared').toEqual([])
+    expect(totals('15 cues come out right and those two come out 30'), 'a subset must be spared').toEqual([])
+    expect(totals('all eighteen cues'), 'the correct total must pass').toEqual([18])
+
+    const offenders: string[] = []
+    let claims = 0
+    for (const f of audioFiles()) {
+      for (const m of flatten(readFileSync(f, 'utf8')).matchAll(CUE_TOTAL)) {
+        claims++
+        if (wordOrDigit(m[2]!) !== CUE_COUNT) offenders.push(`${label(f)}: "${m[0].trim()}"`)
+      }
+    }
+    expect(claims, 'non-vacuity: the widened scan found no totality cue-count claim').toBeGreaterThan(2)
+    expect(
+      offenders,
+      `every totality cue count must read ${CUE_COUNT} (= CUE_COUNT); each line below is stale`,
+    ).toEqual([])
+  })
+})
+
+// The event-kind / idiom uses that legitimately spell "seventeen" in an audio
+// file — keyed by basename AND an anchoring phrase, so a NEW stale "seventeen"
+// elsewhere in the same file is still caught.
+const SEVENTEEN_OK: Record<string, RegExp[]> = {
+  'events.ts': [/seventeen moments/i, /sixteen of the seventeen/i], // 17 EVENT KINDS
+  'demo.ts': [/seventeen cued moments/i], // 17 event-emission moments
+  'audio-transporter-split.test.ts': [/seventeen-plus-one/i], // means 18
+}
+
+/** Flagged "seventeen" windows in one file — every occurrence that is NOT an
+ *  allow-listed event-kind / idiom use. */
+function staleSeventeens(base: string, flat: string): string[] {
+  const allow = SEVENTEEN_OK[base] ?? []
+  const bad: string[] = []
+  for (const m of flat.matchAll(/\bseventeen\b/gi)) {
+    const window = flat.slice(Math.max(0, m.index! - 45), m.index! + 45)
+    // A "seventeen" abutting another spelled number-word is a NUMBER_WORDS-style
+    // TABLE entry (…'sixteen', 'seventeen', 'eighteen'…), not prose — the trap
+    // the story flags for :446. "sixteen OF THE seventeen" (event kinds) has
+    // eight chars between, so it is NOT a table and stays with the allow-list.
+    if (/(sixteen|eighteen)['",:\s-]{0,4}seventeen|seventeen['",:\s-]{0,4}(sixteen|eighteen)/i.test(window)) continue
+    if (!allow.some((re) => re.test(window))) bad.push(window.trim())
+  }
+  return bad
+}
+
+describe('jt9-28 AC6 — no stale "seventeen" cue total survives in the audio subsystem', () => {
+  it('every "seventeen" in an audio file is an event-kind or "-plus-one" use, never a cue total', () => {
+    // Guard B (above) checks "N cues"; the ten sites also say "real records",
+    // "stand-ins", "Williams tables", "today" — this ratchet closes those.
+
+    // Synthetic controls (AC8): a fabricated stale total is flagged; the
+    // event-kind idiom is spared.
+    expect(
+      staleSeventeens('foo.ts', flatten('the manifest holds seventeen today')),
+      'a stale cue total must be flagged',
+    ).not.toEqual([])
+    expect(
+      staleSeventeens('demo.ts', flatten('six of the seventeen cued moments')),
+      'the event-emission idiom must be spared',
+    ).toEqual([])
+
+    const offenders: string[] = []
+    let scanned = 0
+    for (const f of audioFiles()) {
+      const flat = flatten(readFileSync(f, 'utf8'))
+      scanned += (flat.match(/\bseventeen\b/gi) ?? []).length
+      offenders.push(...staleSeventeens(f.split('/').pop()!, flat).map((w) => `${label(f)}: …${w}…`))
+    }
+    expect(scanned, 'non-vacuity: the scan saw no "seventeen" at all').toBeGreaterThan(3)
+    expect(
+      offenders,
+      `these read "seventeen" but joust ships ${CUE_COUNT} cues — each must read eighteen`,
+    ).toEqual([])
+  })
+})
+
+// ─── AC7(a) — R1: the absolute-ban guard, repaired for a tense-less absolute ──
+//
+// jt9-37 measured the hole: R1 requires BOTH `/no longer/` and an absolute word,
+// so "A shared channel buys and denies a cue nothing at all." (no tense marker)
+// passed all tests. `channelDecidesNothing` is the detector the live R1 guard
+// (`no sentence claims the channel stopped mattering ENTIRELY`, above) now shares
+// with this meta-test. Dev repairs the BODY to catch the tense-less absolute
+// WITHOUT flagging the two TRUE sentences that live in audio.ts — the control
+// half of this test, and the reason the fix is not "just drop /no longer/".
+
+/** Does a sentence claim a shared channel/fence decides NOTHING, absolutely and
+ *  UNCONDITIONALLY? Current body is jt9-7's shipped shape; jt9-28 repairs it. */
+function channelDecidesNothing(sentence: string): boolean {
+  return /no longer/i.test(sentence) && /\b(anything|nothing|at all)\b/i.test(sentence)
+}
+
+describe('jt9-28 AC7(a) — R1 catches an unqualified channel-absolute, tense marker or not', () => {
+  it('the detector flags the jt9-37 falsehood and spares the two true sentences in audio.ts', () => {
+    // POSITIVE — the measured falsehood, reworded without "no longer".
+    expect(
+      channelDecidesNothing('A shared channel buys and denies a cue nothing at all.'),
+      'a tense-less absolute is still the falsehood AC2 refuted',
+    ).toBe(true)
+    // CONTROLS that MUST stay false — both are TRUE and live in audio.ts, so a
+    // repair that flags either reddens the live R1 guard on the green tree:
+    //  · audio.ts:51 — a SCOPED absolute ("settles nothing BEYOND ..."), true.
+    expect(
+      channelDecidesNothing(
+        'While that arbitrated window holds the voice, the fence settles nothing beyond what the priority already decided.',
+      ),
+      'a scoped "nothing beyond X" is true, not the absolute',
+    ).toBe(false)
+    //  · audio.ts:94 — a BOUNDED claim ("no longer decides WHICH cue wins"), true.
+    expect(
+      channelDecidesNothing('The channel no longer decides which cue wins.'),
+      'a bounded "no longer decides which" is true',
+    ).toBe(false)
+  })
+})
+
+// ─── AC7(b) — R2: honest about being a MENTION check ─────────────────────────
+//
+// jt9-37 measured R2's hole: it matches KEYWORD CO-OCCURRENCE (`channel` +
+// `window|released|...`), so the exact INVERSION of the claim satisfies it. That
+// is not repairable by a better regex — the executable claim is the AC2 trio.
+// The fix (story's own words) is to make R2 SAY it only forces a MENTION. This
+// pins that acknowledgement in R2's own guard message.
+
+describe('jt9-28 AC7(b) — R2 declares itself a mention check, deferring the claim to AC2', () => {
+  it('the docblock guard’s expect MESSAGE admits it can only force a MENTION', () => {
+    const selfSource = readFileSync(fileURLToPath(import.meta.url), 'utf8')
+    // Anchor on R2's live it() TITLE (stable, unique, kept across a reword), then
+    // capture ONLY the expect message — between `expect(qualified,` and
+    // `.not.toEqual`. The block comment above it already says "mention"/"AC2
+    // trio", so a body-wide check would pass vacuously; the MESSAGE the guard
+    // PRINTS on failure is the artifact a tripped reader actually sees.
+    const start = selfSource.indexOf('names the case where the channel still decides')
+    expect(start, 'precondition: the R2 guard is still here').toBeGreaterThan(-1)
+    const region = selfSource.slice(start, start + 1600)
+    const captured = region.match(/expect\(\s*qualified,([\s\S]*?)\)\s*\.not\.toEqual/)
+    const message = captured?.[1] ?? ''
+    expect(
+      /mention/i.test(message) && /\bAC2\b/.test(message),
+      'R2 must state in its guard MESSAGE that it only forces a MENTION and that the AC2 ' +
+        'trio carries the executable claim — otherwise it reads as a claim guard it is not',
+    ).toBe(true)
   })
 })

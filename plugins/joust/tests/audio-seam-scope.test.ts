@@ -554,3 +554,158 @@ describe('jt5-7 AC8 — liveness is a MEASUREMENT, not an inference from a hostn
     ).toMatch(/arcade\.slabgorb\.com\/joust/)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Story jt9-28 — RED phase (Tyr One-Handed / TEA). The three README count
+// families jt5-7 left untouched, RE-MEASURED against the tree 2026-08-06.
+//
+// jt5-7 derived the file/claim/event counts and stamped the test-total and the
+// skipIf block indicative. It left three families alone, and all three have
+// since gone stale — which is the whole point: a hand-maintained count in a
+// file nothing guards rots silently behind a green suite.
+//
+//   AC1  the status-block story tallies (README :13-21)   → DERIVED (joust-only
+//        churn, self-contained, low-maintenance to guard live).
+//   AC2  the @shared subpath range (README :143)          → INDICATIVE + date.
+//        Ruled by the user 2026-08-06: the range rots on FLEET churn (measured
+//        6→9 in four days from other cabinets adopting @shared/host-helpers), so
+//        a live cross-game derivation would redden joust's suite for work joust
+//        never touched. Stamp it like jt5-7's skipIf block instead.
+//   AC3  the Task 12 historical measurement (README :96)  → ruled HISTORY with a
+//        date bound to the claim (not the block below's borrowed 2026-08-02).
+//   AC4  the derived file-count's contributor cost        → documented in one
+//        sentence: adding a tests/*.test.ts bumps the derived count.
+//
+// Every guard runs through `readmeRaw`/`flatten` and carries a positive
+// precondition, so deleting the sentence cannot satisfy it — this file's
+// standing rule.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/** English cardinal for 0..40 — the status block and the range are written as
+ *  WORDS ("Thirty-six stories", "between six and thirteen"), so a number guard
+ *  must compare against the spelling, not the digit. */
+const ONES = [
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+  'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+  'seventeen', 'eighteen', 'nineteen',
+]
+const TENS = ['', '', 'twenty', 'thirty', 'forty']
+function numToWord(n: number): string {
+  if (n < 20) return ONES[n]!
+  const o = n % 10
+  return o ? `${TENS[Math.floor(n / 10)]}-${ONES[o]}` : TENS[Math.floor(n / 10)]!
+}
+
+const repoRoot = join(root, '..', '..')
+
+/** The joust stories archived per status-block epic, straight from the archive
+ *  dir — the authority the hand-maintained tally drifts from. Filtered to the
+ *  FIVE epics the status block enumerates (jt5/audio and jt9/remainder are not
+ *  in that sentence), and to `<epic>-<n>-session.md` so a `-superseded-<co>.md`
+ *  archive is not double-counted. */
+function derivedJoustEpicCounts(): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const f of readdirSync(join(repoRoot, 'sprint', 'archive'))) {
+    const m = f.match(/^(jt1|jt2|jt3|jt4|jt8)-\d+-session\.md$/)
+    if (m) out[m[1]!] = (out[m[1]!] ?? 0) + 1
+  }
+  return out
+}
+
+describe('jt9-28 AC1 — the status-block story tallies are DERIVED from the archive', () => {
+  it('every per-epic count and the total match sprint/archive, not a hand-kept number', () => {
+    const counts = derivedJoustEpicCounts()
+    const epics = Object.keys(counts)
+    const total = Object.values(counts).reduce((a, b) => a + b, 0)
+    // Non-vacuity: an empty archive read, or a derivation collapsed to a
+    // constant, would make the README "wrong" for the wrong reason.
+    expect(epics.length, 'the archive scan found none of the five status-block epics').toBe(5)
+    expect(total, 'the derivation collapsed to too few stories to be real').toBeGreaterThan(30)
+
+    const md = readmeRaw()
+    // Per-epic counts are DIGITS in parens: `(jt1, 11)`. The status block is the
+    // FIRST place each id appears, so a first-match read lands in it.
+    for (const [epic, n] of Object.entries(counts)) {
+      const stated = md.match(new RegExp(`${epic},\\s*(\\d+)`))
+      expect(stated, `the status block must state a count for ${epic}`).not.toBeNull()
+      expect(
+        Number(stated?.[1]),
+        `README says ${epic} = ${stated?.[1]}; the archive holds ${n}. ` +
+          'This tally is derived and reddens whenever a story in these epics closes.',
+      ).toBe(n)
+    }
+    // The total is a WORD. flatten() first, since the sentence wraps.
+    expect(
+      flatten(md).toLowerCase(),
+      `the status block says a total that is not ${total} (${numToWord(total)}) stories`,
+    ).toContain(`${numToWord(total)} stories`)
+  })
+})
+
+describe('jt9-28 AC2 — the @shared subpath range is INDICATIVE, dated, and not the stale figure', () => {
+  it('the refuted "six and thirteen" range is gone and a dated indicative stamp sits beside it', () => {
+    const md = flatten(readmeRaw())
+    // The @shared sentence names joust's one subpath and then the fleet range.
+    // PROXIMITY: pull the window around joust's `@shared/audio` mention so the
+    // stamp and the range are checked where the CLAIM is, not anywhere in the
+    // file. (jt5-7 already stamps an unrelated 2026-08-.. block near line 100.)
+    const anchor = md.indexOf('zero-consumption outlier')
+    expect(anchor, 'precondition: the @shared range sentence is still here').toBeGreaterThan(-1)
+    const near = md.slice(anchor, anchor + 500)
+
+    // Ratchet: the range rotted to 9–14 (measured 2026-08-06). "six and
+    // thirteen" and its endpoint exemplars "centipede 6"/"battlezone 13" were
+    // right on 2026-08-02 and are wrong now — they must not survive.
+    expect(near, 'the stale range word-pair must go').not.toMatch(/between six and thirteen/i)
+    expect(near, 'the stale endpoint exemplar must go').not.toMatch(/centipede 6\b/i)
+
+    // Indicative + date, in the SAME neighbourhood as the range — the user's
+    // ruling. A bare `measured 2026-..` elsewhere in the README must NOT satisfy
+    // it, which is why this reads the windowed slice, not the whole file.
+    expect(near, 'the range must be marked indicative').toMatch(/indicative/i)
+    expect(near, 'an indicative count needs the date it was measured, beside the claim').toMatch(
+      /measured\s+20\d\d-\d\d-\d\d/i,
+    )
+  })
+})
+
+describe('jt9-28 AC3 — the Task 12 measurement is ruled HISTORY, with a date bound to it', () => {
+  it('the "1280 passed | 566 skipped" claim carries its own date, not the indicative block’s', () => {
+    const flat = flatten(readmeRaw())
+    expect(flat, 'precondition: the Task 12 measurement is still in the README').toContain(
+      '1280 passed',
+    )
+
+    // Bound the window to the Task 12 SENTENCE, not its paragraph — so neither
+    // the 2026-08-02 stamp on the INDICATIVE block below (a DIFFERENT
+    // measurement, ~2 lines away and inside 200 chars) NOR a date added to some
+    // other sentence of the surrounding "path depth" paragraph can satisfy this.
+    // AC3 is that the claim is dated in its OWN sentence.
+    const sentence =
+      flat.split(/(?<=\.)\s+/).find((s) => s.includes('1280 passed')) ?? ''
+
+    expect(
+      sentence,
+      'control: the Task 12 sentence must not borrow the indicative block’s date below it',
+    ).not.toContain('2026-08-02')
+    expect(
+      sentence,
+      'a bare past-tense count is ambiguous; the Task 12 import must be dated as the ' +
+        'historical record it is, in its own sentence',
+    ).toMatch(/20\d\d-\d\d-\d\d/)
+  })
+})
+
+describe('jt9-28 AC4 — the derived file-count’s contributor cost is written down', () => {
+  it('a note tells contributors that adding a test file bumps the derived count in the same commit', () => {
+    const md = flatten(readmeRaw()).toLowerCase()
+    // The `--project joust` file count is DERIVED (jt5-7 AC5) and guarded, so any
+    // new tests/*.test.ts reddens it in the same commit. That tax has silently
+    // shaped test PLACEMENT (jt9-3) and is nowhere in the README. RESOLUTION: two
+    // required tokens, so a vague sentence about files can't pass.
+    expect(
+      md,
+      'the README must warn that a new test file requires bumping the derived file count',
+    ).toMatch(/adding a (new )?test file[^.]*\b(bump|update|derived count|derived file count)\b/)
+  })
+})
