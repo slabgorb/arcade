@@ -36,9 +36,9 @@
 // where no gate can catch it — that is explicitly OUT of this 3-point story and
 // needs its own follow-up if the owner wants it (see the TEA assessment).
 
-import { readdirSync, readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname, join, basename, relative } from 'node:path'
 import { describe, it, expect } from 'vitest'
 
 const testsDir = dirname(fileURLToPath(import.meta.url))
@@ -56,11 +56,22 @@ const OUR_TS_LINE_REF = /\b[a-z0-9-]+\.ts:\d+/g
 /** ROM citations — the immutable primary-source idiom this story must not touch. */
 const ROM_CITE = /\b[A-Z0-9_]+\.(?:SRC|MAC):\d+/g
 
-/** Every `*.test.ts` in this directory EXCEPT this guard itself. */
-const suiteFiles = (): string[] =>
-  readdirSync(testsDir)
-    .filter((f) => f.endsWith('.test.ts') && f !== SELF)
-    .sort()
+/** Every `*.test.ts` under this directory RECURSIVELY, EXCEPT this guard itself.
+ *  Recursive (not a flat `readdirSync`) so a ref in a nested test file — e.g.
+ *  `audit/citations.test.ts` — cannot slip past this durability guard. Mirrors
+ *  the `walk()` in audio-seam-scope.test.ts. Paths are returned relative to
+ *  `testsDir`, so an offender reads `audit/citations.test.ts:12`. */
+function walkTests(dir: string, acc: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry === 'dist') continue
+    const p = join(dir, entry)
+    if (statSync(p).isDirectory()) walkTests(p, acc)
+    else if (p.endsWith('.test.ts') && basename(p) !== SELF) acc.push(relative(testsDir, p))
+  }
+  return acc
+}
+
+const suiteFiles = (): string[] => walkTests(testsDir).sort()
 
 describe('jt9-30 — the regex distinguishes our stale line-refs from ROM citations and the historical-note form', () => {
   it('MATCHES a contiguous <our>.ts:<line> ref', () => {
