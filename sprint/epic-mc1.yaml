@@ -77,3 +77,11 @@ stories:
     acceptance_criteria:
       - abm.ts + explosion.ts (core, pure) model launch from the nearest live base to the cursor, straight-line flight to the target, and a blast that expands to a max radius then collapses to nothing, over deterministic ticks. Unit-tested; core stays pure.
       - Three fire keys (Z/X/C) launch from left/centre/right base; at /missile-command/ a fire draws a trail to the crosshair and an expanding/collapsing blast. This completes the mc1 skeleton acceptance (boot + field + cursor + fire->blast).
+  - id: mc1-5
+    title: 'missile-command landing left main RED: registry.test.ts MANIFESTS and lobby main.test.ts not updated for the 8th cabinet, and missile-command field.test.ts ENOENTs on vendored reference/source/W3COMN.MAC'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
