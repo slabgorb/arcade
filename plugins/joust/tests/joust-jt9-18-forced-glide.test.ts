@@ -252,17 +252,23 @@ describe('AC-3 — the shadow lord forces a glide after a level flap (SHLEP2/SHL
   })
 
   it('SHLEV (no target, below the lava ⇒ escape flap): post-flap wake glides', () => {
-    // Null target, below cliff5 ($D3): shadow() returns the BOLAVA stand-in flap.
-    // Altitude PINNED deep below the lava so `enemyY > LAVA_ESCAPE_Y` stays true
-    // — otherwise a single flap lifts the bird clear and the flap turns off for
-    // the wrong reason (that masked the missing forced glide on the first draft).
+    // jt9-22 — a null-target shadow deep below cliff5 ($D3) and falling no longer
+    // reaches SHLEV2's forced glide: `SHLEV JMP SHDIR`, whose $D0 pre-check
+    // (:4330-4334) DIVERTS it to the real BOLAVA episode (`LBPL BOLAVA`). The
+    // `enemyY > $D3` flap this once measured via `shadow()` WAS the uf1-8 BOLAVA
+    // stand-in, now replaced. The invariant is unchanged and stronger: BOLAVA's
+    // own BOLAV2 coast (`CLRB`, :3960) is the glide after the BOLAVA flap, so
+    // the bird still never flaps two wakes running. Measured through the real
+    // pipeline (the divert lives in `stepEnemyDetailed`, not `shadow()`), altitude
+    // pinned deep in the lava so the episode keeps re-entering.
     const flyer = levelFlyer('shadow', 0xf0)
-    expect(flapOf(flyer, null, 'shadow'), 'shadow below the lava flaps to escape (SHLEV)').toBe(true)
+    const flap = E.stepEnemyDetailed(flyer, { player: null, wave: 1 })
+    expect(flap.wingEdge, 'shadow below the lava flaps to escape (BOLAVA divert)').toBe('down')
 
-    const afterFlap = keepFallingAt(E.stepEnemy(flyer, { player: null, wave: 1 }), 0xf0)
+    const glide = E.stepEnemyDetailed(keepFallingAt(flap.enemy, 0xf0), { player: null, wave: 1 })
     expect(
-      flapOf(afterFlap, null, 'shadow'),
-      'SHLEV2: the wake after a null-target shadow level flap is a forced glide (position held below the lava)',
-    ).toBe(false)
+      glide.wingEdge,
+      'the wake after the BOLAVA flap is a coast (BOLAV2), not a second flap',
+    ).not.toBe('down')
   })
 })

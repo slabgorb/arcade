@@ -1,0 +1,119 @@
+[
+  {
+    "id": "JT922-001",
+    "claim": "BOLAV1 is the re-check head of the BOLAVA lava-avoid episode. It reloads PPOSY+1 (the enemy's whole-pixel Y) to decide whether the bird has escaped the lava since the last wake. BOLAV1 is reached only from a BOLAV2 (coast) wake, whose STD PJOY,U parked #BOLAV1 as the next entry address.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3948,
+      "verbatim": "BOLAV1\tLDA\tPPOSY+1,U"
+    }
+  },
+  {
+    "id": "JT922-002",
+    "claim": "The BOLAV1 re-check threshold is the HEX constant $D3 (211 decimal) — the SAME line the hunter's B2DIRL gate compares against (:4098), and NOT the shadow's $D0 entry gate (:4331). A shadow ENTERS BOLAVA at $D0 but LEAVES it at $D3: PPOSY+1 < $D3 (BLO) exits to BOLAV4 and the brains. The two lava thresholds are distinct constants and must not be conflated.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3949,
+      "verbatim": "\tCMPA\t#$D3\t\tBELOW CLIF5?"
+    }
+  },
+  {
+    "id": "JT922-003",
+    "claim": "Above $D3 the re-check branches to BOLAV4 (BLO = below-$D3), leaving the episode. The comment 'NOT ANY MORE' reads: the bird is no longer below CLIF5, so the lava avoid is done.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3950,
+      "verbatim": "\tBLO\tBOLAV4\t\t BR=NOT ANY MORE"
+    }
+  },
+  {
+    "id": "JT922-004",
+    "claim": "The second BOLAV1 exit test loads PVELY (vertical velocity). A rising bird already leaves the lava on its own, so the episode ignores the lava and exits.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3951,
+      "verbatim": "\tLDA\tPVELY,U\t\tYES, GOING UP?"
+    }
+  },
+  {
+    "id": "JT922-005",
+    "claim": "A NEGATIVE PVELY (rising) branches to BOLAV4 via BMI, exiting the episode ('IGNORE LAVA'). So BOLAV1 stays in the flap cycle only while the bird is at/below $D3 AND falling (PVELY >= 0) — the same falling-gate the divert entries require.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3952,
+      "verbatim": "\tBMI\tBOLAV4\t\t BR=YES, IGNORE LAVA"
+    }
+  },
+  {
+    "id": "JT922-006",
+    "claim": "BOLAVA is the FLAP head of the episode and the address both steering gates JMP to on a divert. It arms the NEXT wake at BOLAV2 by loading #BOLAV2 into D for the STD PJOY,U that follows.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3953,
+      "verbatim": "BOLAVA\tLDD\t#BOLAV2"
+    }
+  },
+  {
+    "id": "JT922-007",
+    "claim": "BOLAVA writes PJOY,U — the per-process entry address the scheduler jumps through next wake — with #BOLAV2, so the wake after a BOLAVA flap enters at BOLAV2 (the coast). This is the entry-address ping-pong, the same PJOY,U mechanism LINET's LNTOFP glide uses.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3954,
+      "verbatim": "\tSTD\tPJOY,U"
+    }
+  },
+  {
+    "id": "JT922-008",
+    "claim": "BOLAVA FLAPS the wings: LDB #1 loads the joystick flap bit (B=1) that BODIR carries into the flight impulse. This is the protective lava flap the divert forces, overriding whatever flap the brain had decided.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3955,
+      "verbatim": "\tLDB\t#1"
+    }
+  },
+  {
+    "id": "JT922-009",
+    "claim": "After setting the flap, BOLAVA falls through to BODIR3, the shared jump into BODIR — so the flap head and the coast head both steer through the BOUNDER homing routine.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3956,
+      "verbatim": "\tBRA\tBODIR3"
+    }
+  },
+  {
+    "id": "JT922-010",
+    "claim": "BOLAV2 is the COAST head, entered the wake after a BOLAVA flap. It arms the next wake at BOLAV1 (the re-check) by loading #BOLAV1 for the STD PJOY,U that follows.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3958,
+      "verbatim": "BOLAV2\tLDD\t#BOLAV1"
+    }
+  },
+  {
+    "id": "JT922-011",
+    "claim": "BOLAV2 CLRB clears the joystick flap bit (B=0) — wings UP, no flap this wake. The flap/coast alternation is exactly BOLAVA (flap) then BOLAV2 (coast) then BOLAV1 (re-check), so a bird held below $D3 flaps every OTHER wake, not every wake.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3960,
+      "verbatim": "\tCLRB"
+    }
+  },
+  {
+    "id": "JT922-012",
+    "claim": "BOLAV4 is the episode exit. It reloads the enemy's decision-block index PDECSN,U so the brains can re-decide this same wake — the lava avoid does not consume a wake once it has cleared.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3963,
+      "verbatim": "BOLAV4\tLDX\tPDECSN,U\tBACK TO THE BRAINS"
+    }
+  },
+  {
+    "id": "JT922-013",
+    "claim": "BOLAV4 jumps indirectly through DSMART,X — the smart-brain vector selected by PDECSN — handing the wake back to the enemy's own brain (bounder/hunter/shadow). This is why leaving BOLAVA returns to the brain rather than a fixed routine.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 3964,
+      "verbatim": "\tJMP\t[DSMART,X]"
+    }
+  }
+]

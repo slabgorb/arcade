@@ -293,6 +293,22 @@ export type PjoyState =
    * variant here does. `dumbWingbeat` is the only reader and writer.
    */
   | { readonly kind: 'glide' }
+  /**
+   * jt9-22 — the BOLAVA lava-avoid episode (`JOUSTRV4.SRC:3948-3964`), a second
+   * `PJOY,U` entry-address ping-pong that the steering gates DIVERT to (hunter
+   * `B2DIRL` :4102 `JMP BOLAVA`; no-target shadow `SHDIR` :4334 `LBPL BOLAVA`).
+   * `entry` is the address THIS wake begins at:
+   *   • `BOLAV2` (:3958-3961) — COAST (`CLRB`), then arm `BOLAV1`.
+   *   • `BOLAV1` (:3948-3952) — RE-CHECK `PPOSY+1 < $D3` OR rising ⇒ `BOLAV4`
+   *     (exit to `[DSMART,X]`, the brains); else fall into `BOLAVA` — FLAP
+   *     (`LDB #1`) and arm `BOLAV2`.
+   * The divert wake itself enters at `BOLAVA` (flap, arm `BOLAV2`) from the gate;
+   * it is never STORED, so only these two addresses are held. The whole episode
+   * steers via `BODIR3 JMP BODIR` (:3946) — the BOUNDER homing, target-blind —
+   * which is why the escape reads no player. Carries no timer: the ping-pong is
+   * two routine pointers, like `glide`. `stepEnemyDetailed` is the only reader.
+   */
+  | { readonly kind: 'lava'; readonly entry: 'BOLAV2' | 'BOLAV1' }
 
 // ─── Cited constants ────────────────────────────────────────────────────────
 
@@ -1080,8 +1096,10 @@ export function homingWake(enemy: EnemyState, target: PlayerView | null): EnemyS
 // the FLYX index 2 toward the new facing through ADDFLP (:6437-6439). The
 // 8-wake PJOYT hold is the decision-timer family (uf1-9's rows); the per-wake
 // collapse keeps the turn-wake flap and lets the idempotent re-steer supply
-// the sustained brake (Design Deviation, session file). BOLAVA itself is
-// unmodelled — a gated wake falls through to its brain's existing law.
+// the sustained brake (Design Deviation, session file). BOLAVA itself is the
+// lava-avoid episode the gates DIVERT to — modelled as a `PjoyState` in
+// `stepEnemyDetailed` (jt9-22); `steerWake` holds on a gated wake because
+// BOLAVA aims via `BODIR`, not the look-ahead.
 
 /** What one steering wake did to the enemy. */
 export interface SteerResult {
@@ -1114,6 +1132,25 @@ function cliffBlocksClimb(enemy: EnemyState): boolean {
 }
 
 /**
+ * The lava-avoid DIVERT gate: does this airborne wake `JMP BOLAVA`? The hunter
+ * `B2DIRL` (:4097-4102) gates at `$D3` (`LAVA_ESCAPE_Y`); the no-target shadow
+ * `SHDIR` pre-check (:4330-4334) gates at `$D0` (`SHDIR_LAVA_Y`) — three
+ * scanlines earlier — and only ever with no target (a hunting shadow exits
+ * SHDIRA/SHDIRB). Both require a FALLING bird (`LDA PVELY,U / BMI`/`LBPL`,
+ * velY ≥ 0). The single home for the two thresholds, read by BOTH `steerWake`
+ * (which then holds — BOLAVA does not aim) and the divert in `stepEnemyDetailed`
+ * (which arms the episode). Pure.
+ */
+export function lavaGateFires(enemy: EnemyState, target: PlayerView | null): boolean {
+  if (!enemy.entity.airborne) return false
+  if (enemy.entity.velY < 0) return false
+  const pixelY = enemy.entity.posY >> 8
+  if (enemy.brain === 'b2undr') return pixelY >= LAVA_ESCAPE_Y
+  if (enemy.brain === 'shadow') return target === null && pixelY >= SHDIR_LAVA_Y
+  return false
+}
+
+/**
  * One look-ahead wake (`B2DIR` :4104-4159 / `SHDIR` :4330-4377), collapsed
  * per-wake. Runs for the hunter on every airborne wake behind the `$D3`
  * B2DIRL gate; for the shadow only with no target, behind the `$D0` SHDIR
@@ -1130,12 +1167,12 @@ export function steerWake(enemy: EnemyState, target: PlayerView | null): SteerRe
   const velY = enemy.entity.velY
   if (enemy.brain === 'b2undr') {
     // B2DIRL (:4097-4102): at/below $D3 and falling is BOLAVA's territory.
-    if (pixelY >= LAVA_ESCAPE_Y && velY >= 0) return held
+    if (lavaGateFires(enemy, target)) return held
   } else if (enemy.brain === 'shadow') {
     // Only SHLEV falls into SHDIR; a hunting shadow exits SHDIRA/SHDIRB.
     if (target !== null) return held
     // SHDIR's own pre-check (:4330-4334): $D0, three scanlines above $D3.
-    if (pixelY >= SHDIR_LAVA_Y && velY >= 0) return held
+    if (lavaGateFires(enemy, target)) return held
   } else {
     return held
   }
@@ -1321,6 +1358,18 @@ function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number):
 }
 
 /**
+ * jt9-22 — `BOLAV1`'s re-check (`JOUSTRV4.SRC:3949-3952`): a re-check wake leaves
+ * the lava episode (`BOLAV4`, back to the brains) when the bird has climbed above
+ * `$D3` (`CMPA #$D3 / BLO BOLAV4`) OR is rising (`LDA PVELY,U / BMI BOLAV4`). The
+ * threshold is `$D3` (`LAVA_ESCAPE_Y`) for BOTH brains — a shadow ENTERS the
+ * episode at `$D0` but LEAVES it at `$D3`, which is why the two are not the same
+ * constant. Pure.
+ */
+function lavaRecheckExits(enemy: EnemyState): boolean {
+  return (enemy.entity.posY >> 8) < LAVA_ESCAPE_Y || enemy.entity.velY < 0
+}
+
+/**
  * jt5-3 — `stepEnemy` PLUS the wing edge this WAKE produced (or `null`). The
  * decision (and therefore the edge) is computed from `input.flap`/`flapHeld`,
  * which only this function's internals see — `stepEnemy`'s pinned signature
@@ -1347,28 +1396,59 @@ export function stepEnemyDetailed(
   // facing on the same wake.
   const steered = steerWake(flipped, target)
   const homed = steered.enemy
-  // uf1-8: then the seek workspace advances (ground-exit → spend → exhaust →
-  // re-decide/arm), so the brain reads the episode this wake is ACTUALLY in —
-  // the arm wake already runs its episode's law, exactly as the ROM's decide
-  // falls through into BODN1/BOUP1.
-  const sought = seekWake(homed, target, wave)
-  // uf1-9: then the WING cadence advances, on the route the seek workspace just
-  // settled — the ROM's `DEC PJOYT,U` sits inside the episode state and falls
-  // into that state's own flap logic on the same wake. A level route leaves the
-  // wing phase undefined; `seekWake` owns that route's countdown instead.
-  const cadenced = steered.turned
-    ? withCliffDwell(sought, wave)
-    : withWingCadence(sought, target, wave)
-  // uf1-2: the brain reads its per-wave difficulty row from `wave`. It runs on
-  // the ALREADY-HOMED enemy, so the wave-scaled seek and the flipped facing are
-  // the same wake's decision, not two.
-  const decided = runBrain(cadenced, target, wave)
-  // jt5-8: LINET's two-state wingbeat sits AROUND the lane decision, not inside
-  // it — `linet()` stays the pure decision the ROM reaches at :3733, and this is
-  // the `PJOY,U` dispatch that decides whether the wake entered there at all.
-  const beat = dumbWingbeat(cadenced, decided, wave, lavaBehind)
-  const settled = beat.enemy
-  const decision = beat.decision
+  // jt9-22 — BOLAVA (:3948-3964). An enemy already in the lava episode enters at
+  // its stored `PJOY,U` address, which BYPASSES the whole brain/seek/wing
+  // pipeline — the ping-pong runs and the facing rides on `homed` (the homing
+  // flip; `steerWake` held, because BOLAVA aims via `BODIR`, not `B2DIR`/`SHDIR`).
+  let settled: EnemyState
+  let decision: Decision
+  const lava = homed.pjoy?.kind === 'lava' ? homed.pjoy : null
+  if (lava !== null && !(lava.entry === 'BOLAV1' && lavaRecheckExits(homed))) {
+    // BOLAV2 (:3958-3961) COASTS (`CLRB`) and arms BOLAV1; a BOLAV1 that did NOT
+    // exit falls into BOLAVA (:3953-3956) — FLAPS (`LDB #1`) and arms BOLAV2.
+    // Target-blind: `dir` is the BODIR facing (`homed.facing`), no player read.
+    const flap = lava.entry === 'BOLAV1'
+    const entry: 'BOLAV2' | 'BOLAV1' = lava.entry === 'BOLAV2' ? 'BOLAV1' : 'BOLAV2'
+    settled = { ...homed, pjoy: { kind: 'lava', entry } }
+    decision = { dir: homed.facing, flap }
+  } else {
+    // A BOLAV1 re-check that clears the lava (`BOLAV4`) drops `PJOY,U` and falls
+    // through to `[DSMART,X]` — the brains re-decide THIS wake. A non-lava wake
+    // runs the pipeline unchanged.
+    const base = lava !== null ? { ...homed, pjoy: undefined } : homed
+    // uf1-8: then the seek workspace advances (ground-exit → spend → exhaust →
+    // re-decide/arm), so the brain reads the episode this wake is ACTUALLY in —
+    // the arm wake already runs its episode's law, exactly as the ROM's decide
+    // falls through into BODN1/BOUP1.
+    const sought = seekWake(base, target, wave)
+    // uf1-9: then the WING cadence advances, on the route the seek workspace just
+    // settled — the ROM's `DEC PJOYT,U` sits inside the episode state and falls
+    // into that state's own flap logic on the same wake. A level route leaves the
+    // wing phase undefined; `seekWake` owns that route's countdown instead.
+    const cadenced = steered.turned
+      ? withCliffDwell(sought, wave)
+      : withWingCadence(sought, target, wave)
+    // uf1-2: the brain reads its per-wave difficulty row from `wave`. It runs on
+    // the ALREADY-HOMED enemy, so the wave-scaled seek and the flipped facing are
+    // the same wake's decision, not two.
+    const decided = runBrain(cadenced, target, wave)
+    // jt5-8: LINET's two-state wingbeat sits AROUND the lane decision, not inside
+    // it — `linet()` stays the pure decision the ROM reaches at :3733, and this is
+    // the `PJOY,U` dispatch that decides whether the wake entered there at all.
+    const beat = dumbWingbeat(cadenced, decided, wave, lavaBehind)
+    // jt9-22 — the DIVERT (`B2DIRL` :4102 / `SHDIR` :4334): a gate fire on this
+    // wake `JMP BOLAVA` — `LDD #BOLAV2 / STD PJOY,U` overwrites whatever the brain
+    // armed, `LDB #1` forces the flap. The gate is checked AFTER the brain decides
+    // (on the episode-exit path), so the seek workspace has already advanced —
+    // faithful: the divert wake ran the brain in the ROM too.
+    if (lavaGateFires(beat.enemy, target)) {
+      settled = { ...beat.enemy, pjoy: { kind: 'lava', entry: 'BOLAV2' } }
+      decision = { ...beat.decision, flap: true }
+    } else {
+      settled = beat.enemy
+      decision = beat.decision
+    }
+  }
   // jt8-3: the turn wake FLAPS (`B2DICL`/`SHDICL` `LDB #1`, :4146/:4377) —
   // through ADDFLP that steps the FLYX index 2 toward the new facing, which is
   // the immediate half of the "slow down, going into a cliff" episode.
@@ -1532,9 +1612,11 @@ function shadowDwellWake(enemy: EnemyState, target: PlayerView | null, wave: num
   // A cliff dwell is `withWingCadence`'s to tick (one law, both brains) — leave it.
   if (running?.kind === 'dwell') return enemy
   // jt5-8 — a `glide` is LINET's, and `dumbWingbeat` is its only writer, so the
-  // shadow lord cannot be in one. Excluded by narrowing rather than by comment:
-  // the countdown below is the SHLEP/SHLEV interval, and a glide has none.
-  if (running !== undefined && running.kind !== 'glide') {
+  // shadow lord cannot be in one. jt9-22 — a `lava` (BOLAVA) wake bypasses this
+  // whole pipeline in `stepEnemyDetailed`, so it never arrives here either. Both
+  // excluded by narrowing rather than by comment: the countdown below is the
+  // SHLEP/SHLEV interval, and neither of those two carries one.
+  if (running !== undefined && running.kind !== 'glide' && running.kind !== 'lava') {
     const remaining = running.timer - 1
     // jt9-18 — carry the SHLEP2/SHLEV2 forced-glide sub-phase across the countdown
     // (only an `interval` carries one; a `wing`/`dwell` has none).

@@ -281,6 +281,13 @@ export interface EnemyState {
      * an omission.
      */
     | { readonly kind: 'glide' }
+    /**
+     * jt9-22's BOLAVA lava-avoid episode (`JOUSTRV4.SRC:3948-3964`) — the second
+     * `PJOY,U` entry-address ping-pong, this one for the SMART brains. `entry` is
+     * the address this wake begins at: `BOLAV2` coasts, `BOLAV1` re-checks against
+     * `$D3` and either flaps or exits. Mirrors production per jt9-1's R-6 lesson.
+     */
+    | { readonly kind: 'lava'; readonly entry: 'BOLAV2' | 'BOLAV1' }
 
   /**
    * `PLAVT,U` — jt9-1's lava-troll looker countdown (`DEC PLAVT,U / BGT`,
