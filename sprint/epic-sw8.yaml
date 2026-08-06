@@ -395,10 +395,12 @@ stories:
       Both were measured in this repo within one story. Whether they belong here, in sw8-26, or in a story of their own is a scoping call; what should NOT happen is each being rediscovered a third time. Note the interaction with sw8-24, which sweeps the 29: a sweep that re-anchors only guard-visible citations will leave the bare ones stale by construction.
     points: 3
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     type: bug
+    review_verdict: approved
   - id: sw8-26
     title: 'The comment-citation guard is silent about what it did NOT cover: a failed opt-out looks identical to a skip, and one unreadable file aborts the whole scan'
     description: |-
@@ -419,7 +421,7 @@ stories:
       MEASURED CONTEXT: the delivered guard skips exactly three files today (the two sw8-18 suites and sw8-23's own), all legitimately, all announced by name. The failure modes above are latent, not currently firing — which is why they need a test rather than a bug report.
     points: 3
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     type: bug
@@ -521,7 +523,7 @@ stories:
       Scope guard: this is the DISTANCE floor only. The C_PV fire/kill gates (sw8-27, sim.ts:455 reads C_PV faithfully) and the octagon/box hit SHAPES (sw8-27 AC5/AC6) are correct and stay exactly as shipped. beamHit stays a SHARED helper — surface turrets, exhaust port, trench obstacles and ground/towers have their own tests and the ground pass adds its fudge in a DIFFERENT (unrotated collision) basis, so add the floor at the SPACE caller, not inside beamHit, or you cross-wire WSGRND's term into the space passes.
     points: 3
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
