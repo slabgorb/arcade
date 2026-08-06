@@ -617,7 +617,8 @@ stories:
       WHAT THE TWO HALVES SHARE, and it is the acceptance bar for both: a guard nobody has watched fail is not a guard, and "no test saw it" prints identically to "no test ran". So for BOTH halves assert that N tests RAN, not merely that none failed, and verify by mutation in both directions - remove each asClaim check one at a time and watch the new suite redden, make the imported module throw and assert the suite reports THAT error rather than an undefined field. Keep the positive controls: the unmutated helper stays green and the full joust suite stays at its current count.
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     type: chore
