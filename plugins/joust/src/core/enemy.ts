@@ -309,6 +309,17 @@ export type PjoyState =
    * two routine pointers, like `glide`. `stepEnemyDetailed` is the only reader.
    */
   | { readonly kind: 'lava'; readonly entry: 'BOLAV2' | 'BOLAV1' }
+  /**
+   * jt9-29 — the SHADOW lava-troll looker's armed climb (`SHUPST`,
+   * JOUSTRV4.SRC:4264-4267). When a lava troll ran immediately before a SHADOW
+   * wake and its looker expires, `BEQ SHUPST` points `PJOY` at `#SHUP1` and
+   * CLEARS the flap bit (`CLRB`) — so the wake it fires is wings-UP, and the
+   * NEXT wake enters at `SHUP1` (:4269-4275) and FLAPS into the climb. Unlike the
+   * bounder/hunter targets (`BODN1A`/`B2DN1A`, which flap on the looker wake
+   * itself), the shadow's is a DEFERRED flap. Carries no timer: it is a single
+   * routine pointer, like `glide`/`lava`, consumed on the one wake it is read.
+   */
+  | { readonly kind: 'climb' }
 
 // ─── Cited constants ────────────────────────────────────────────────────────
 
@@ -905,6 +916,15 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
   // wakes: `CLRB` (:4406) holds the wings UP for the whole dwell and the brain
   // does not re-decide until it expires.
   if (enemy.pjoy?.kind === 'dwell') return { dir, flap: false }
+  // jt9-29 — `SHUP1` (:4269-4275), the climb the lava-troll looker armed via
+  // `SHUPST` on the previous wake. It FLAPS into the climb unless already rising
+  // faster than the SHUPVY gate (`CMPD SHUPVY / BLT SHUP0`, strict), and steers
+  // through `SHDIRB` — a moving seek coasts (dir 0), a parked one aims at facing.
+  // The pointer then hands `PJOY` back to `SHADOW` (cleared once consumed).
+  if (enemy.pjoy?.kind === 'climb') {
+    const coast: -1 | 0 | 1 = enemy.entity.velXIndex !== 0 ? 0 : dir
+    return { dir: coast, flap: velY >= waveValue('SHUPVY', wave) }
+  }
   // jt9-18 — the SHLEP2/SHLEV2 forced glide: the wake after a shadow level flap
   // is a glide (`SHLEP2`/`SHLEV2` point PJOY back and `CLRB`, :4300-4302/:4399-4401).
   // A shadow only ever holds an interval on a level route, so this gate is the
@@ -1416,6 +1436,10 @@ export function stepEnemyDetailed(
     // through to `[DSMART,X]` — the brains re-decide THIS wake. A non-lava wake
     // runs the pipeline unchanged.
     const base = lava !== null ? { ...homed, pjoy: undefined } : homed
+    // jt9-29: does this wake enter a SMART brain at its top? The looker's
+    // `DEC PLAVT,U` runs only there — read on the ENTRY state, before the seek
+    // workspace advances, because that is the `PJOY` address dispatched to.
+    const reDecides = smartBrainReDecides(base)
     // uf1-8: then the seek workspace advances (ground-exit → spend → exhaust →
     // re-decide/arm), so the brain reads the episode this wake is ACTUALLY in —
     // the arm wake already runs its episode's law, exactly as the ROM's decide
@@ -1436,17 +1460,23 @@ export function stepEnemyDetailed(
     // it — `linet()` stays the pure decision the ROM reaches at :3733, and this is
     // the `PJOY,U` dispatch that decides whether the wake entered there at all.
     const beat = dumbWingbeat(cadenced, decided, wave, lavaBehind)
+    // jt9-29 — the SMART brains' lava-troll looker, at the brain TOP. It ticks
+    // `plavt` on a re-decide wake and, on expiry with a troll behind, overrides
+    // the decision with the brain's branch target (down-seek flap for the
+    // bounder/hunter, the armed climb for the shadow). LINET's looker already ran
+    // inside `dumbWingbeat`, so this touches only the three smart brains.
+    const looked = smartBrainLooker(beat.enemy, beat.decision, wave, lavaBehind, reDecides)
     // jt9-22 — the DIVERT (`B2DIRL` :4102 / `SHDIR` :4334): a gate fire on this
     // wake `JMP BOLAVA` — `LDD #BOLAV2 / STD PJOY,U` overwrites whatever the brain
     // armed, `LDB #1` forces the flap. The gate is checked AFTER the brain decides
     // (on the episode-exit path), so the seek workspace has already advanced —
     // faithful: the divert wake ran the brain in the ROM too.
-    if (lavaGateFires(beat.enemy, target)) {
-      settled = { ...beat.enemy, pjoy: { kind: 'lava', entry: 'BOLAV2' } }
-      decision = { ...beat.decision, flap: true }
+    if (lavaGateFires(looked.enemy, target)) {
+      settled = { ...looked.enemy, pjoy: { kind: 'lava', entry: 'BOLAV2' } }
+      decision = { ...looked.decision, flap: true }
     } else {
-      settled = beat.enemy
-      decision = beat.decision
+      settled = looked.enemy
+      decision = looked.decision
     }
   }
   // jt8-3: the turn wake FLAPS (`B2DICL`/`SHDICL` `LDB #1`, :4146/:4377) —
@@ -1474,10 +1504,16 @@ export function stepEnemyDetailed(
   // interval is exactly that BOLEV1/BOLEV2 next-state (a forced-glide wake decides
   // `flap: false`, so it clears itself). Only a surviving level interval carries
   // it — a cliff turn has already swapped `pjoy` for a dwell.
+  // jt9-29 — the shadow's armed `climb` (`SHUP1`) is a one-wake pointer: once the
+  // wake it flapped on has run, `SHUP1` hands `PJOY` back to `SHADOW`, so it is
+  // cleared here on the wake it was CONSUMED (i.e. flapped), never on the wings-up
+  // wake that `SHUPST` armed it (that wake decides `flap: false` and keeps it).
   const phased =
     settled.pjoy?.kind === 'interval'
       ? { ...settled, pjoy: levelInterval(settled.pjoy.timer, decision.flap) }
-      : settled
+      : settled.pjoy?.kind === 'climb' && decision.flap
+        ? { ...settled, pjoy: undefined }
+        : settled
   return {
     enemy: { ...phased, entity: stepEntity(phased.entity, input), prevFlapHeld: input.flapHeld },
     wingEdge: edge,
@@ -1579,6 +1615,65 @@ function lavaTrollLooker(
 }
 
 /**
+ * jt9-29 — is THIS wake entering a smart brain at its TOP (`BOUNDR`/`B2UNDR`/
+ * `SHADOW`), where the lava-troll looker's `DEC PLAVT,U` lives? Only a re-decide
+ * wake does. An EPISODE wake resumes at its own `PJOY` entry (a committed seek's
+ * `BODN1`/`BODN2`/`BOUP*`, a level `interval`, a cliff `dwell`, a `lava`
+ * ping-pong, or the looker's own armed `climb`), STRICTLY BELOW the brain label,
+ * so the looker is skipped and the countdown does not tick — the smart-brain
+ * analog of jt9-1's "a glide wake skips LINET's prologue". Read on the ENTRY
+ * state, because that is the `PJOY` address the scheduler dispatched to.
+ */
+function smartBrainReDecides(enemy: EnemyState): boolean {
+  if (enemy.brain !== 'boundr' && enemy.brain !== 'b2undr' && enemy.brain !== 'shadow') return false
+  // The bounder/hunter carry their committed descent/climb in `seek`; the shadow
+  // never does. Any of these `pjoy` phases means the wake resumes inside an
+  // episode rather than at the brain entry.
+  if (enemy.seek !== undefined) return false
+  const k = enemy.pjoy?.kind
+  return k !== 'interval' && k !== 'wing' && k !== 'dwell' && k !== 'lava' && k !== 'climb'
+}
+
+/**
+ * jt9-29 — the lava-troll looker at the top of the three SMART brains
+ * (`BOUNDR` :3787, `B2UNDR` :3971, `SHADOW` :4230). The SAME eight instructions
+ * as LINET's, differing only in the branch target:
+ *
+ *     DEC PLAVT,U / BGT 1$ / LDA LNTLAV / STA PLAVT,U / LDX PPREV / LDA PID,X /
+ *     CMPA #LAVID / BEQ <target>
+ *
+ * and the target is NOT a shared flap. `BODN1A`/`B2DN1A` (:3821/:4006) FLAP into
+ * the down-seek on THIS wake; `SHUPST` (:4264) clears the flap bit (`CLRB`, wings
+ * up) and arms `#SHUP1`, so the shadow's is a DEFERRED flap taken next wake.
+ *
+ * Runs only on a re-decide wake (`smartBrainReDecides`); the reload from LNTLAV
+ * happens on expiry whether or not a troll is behind (`STA PLAVT,U` sits ABOVE
+ * `CMPA #LAVID`), and only the `BEQ` is troll-gated. Pure.
+ */
+function smartBrainLooker(
+  enemy: EnemyState,
+  decision: Decision,
+  wave: number,
+  lavaBehind: boolean,
+  reDecides: boolean,
+): { enemy: EnemyState; decision: Decision } {
+  if (!reDecides) return { enemy, decision }
+  // `DEC` then `BGT`: an absent countdown behaves as the zero-initialised byte —
+  // it goes negative and reloads on this very wake.
+  const ticked = (enemy.plavt ?? 0) - 1
+  if (ticked > 0) return { enemy: { ...enemy, plavt: ticked }, decision }
+  const reloaded: EnemyState = { ...enemy, plavt: waveValue('LAVLAV', wave) }
+  if (!lavaBehind) return { enemy: reloaded, decision }
+  // `BEQ <target>` — a lava troll ran immediately before us.
+  if (enemy.brain === 'shadow') {
+    // SHUPST: wings UP this wake, arm the climb for the next (`SHUP1`).
+    return { enemy: { ...reloaded, pjoy: { kind: 'climb' } }, decision: { ...decision, flap: false } }
+  }
+  // BODN1A / B2DN1A: force the down-seek flap on this wake, aimed at the facing.
+  return { enemy: reloaded, decision: { dir: enemy.facing, flap: true } }
+}
+
+/**
  * uf1-9 — one wake of the SHADOW LORD's countdown. It has two states, told apart
  * by whether a wing phase is present:
  *
@@ -1611,6 +1706,9 @@ function shadowDwellWake(enemy: EnemyState, target: PlayerView | null, wave: num
   const running = enemy.pjoy
   // A cliff dwell is `withWingCadence`'s to tick (one law, both brains) — leave it.
   if (running?.kind === 'dwell') return enemy
+  // jt9-29 — the looker's armed climb (`SHUP1`) survives this wake UNTOUCHED so
+  // `shadow()` reads it and flaps; `stepEnemyDetailed` clears it once consumed.
+  if (running?.kind === 'climb') return enemy
   // jt5-8 — a `glide` is LINET's, and `dumbWingbeat` is its only writer, so the
   // shadow lord cannot be in one. jt9-22 — a `lava` (BOLAVA) wake bypasses this
   // whole pipeline in `stepEnemyDetailed`, so it never arrives here either. Both

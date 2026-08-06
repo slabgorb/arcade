@@ -288,6 +288,13 @@ export interface EnemyState {
      * `$D3` and either flaps or exits. Mirrors production per jt9-1's R-6 lesson.
      */
     | { readonly kind: 'lava'; readonly entry: 'BOLAV2' | 'BOLAV1' }
+    /**
+     * jt9-29's SHADOW armed climb (`SHUPST`, JOUSTRV4.SRC:4264-4267): the shadow
+     * lava-troll looker points `PJOY` at `#SHUP1` and clears the flap bit, so the
+     * NEXT wake climbs. Mirrors production per jt9-1's R-6 rule (the contract must
+     * carry every variant an exhaustive `switch` could meet). Carries no timer.
+     */
+    | { readonly kind: 'climb' }
 
   /**
    * `PLAVT,U` — jt9-1's lava-troll looker countdown (`DEC PLAVT,U / BGT`,
