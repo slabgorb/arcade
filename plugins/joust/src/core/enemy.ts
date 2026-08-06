@@ -876,9 +876,15 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
   // was READ and stored and then gated nothing at all — armed, ticked, and inert,
   // which is the shape round 1 rejected for SHCLTM.
   const holding = enemy.pjoy?.kind === 'interval'
+  // jt9-20 — SHDIRB (:4388-4392) is the no-steer exit BOTH long-range seeks jump
+  // to (SHDN :4255, SHUP0 :4267, SHUP1 :4275): `LDA PVELX,U / BEQ SHDIRA / CLRA /
+  // STD CURJOY`. A MOVING seek (PVELX≠0) writes CURJOY dir 0 — it COASTS, no
+  // horizontal thrust; only a PARKED seek (PVELX==0) falls through to SHDIRA and
+  // aims at its facing. The port previously thrust at `dir` on every branch.
+  const coastDir: -1 | 0 | 1 = enemy.entity.velXIndex !== 0 ? 0 : dir
   // SHDN — the free-fall; the escape is velX-gated and inclusive at $D3.
   if (!holding && delta >= waveValue('SHDNRG', wave))
-    return { dir, flap: enemyY >= LAVA_ESCAPE_Y && enemy.entity.velXIndex >= 0 }
+    return { dir: coastDir, flap: enemyY >= LAVA_ESCAPE_Y && enemy.entity.velXIndex >= 0 }
   // Long-range up-seek (`SHUP1` :4269-4275): flap unless already climbing FASTER
   // than the SHUPVY gate. uf1-9 — before this the port compared against a bare 0,
   // which is the gate's wave-1 value only in sign: SHUPVY is -$0200 at wave 1 and
@@ -888,7 +894,7 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
   // lives in this per-wake law and not in `wingWake`. `CMPD SHUPVY / BLT SHUP0`
   // is strict, so velY EQUAL to the gate still flaps.
   if (!holding && delta <= waveValue('SHUPRG', wave))
-    return { dir, flap: velY >= waveValue('SHUPVY', wave) }
+    return { dir: coastDir, flap: velY >= waveValue('SHUPVY', wave) }
   // SHLEP — track the line; the lava term is falling-gated (velY, not velX).
   return { dir, flap: enemyY > player.pixelY || (enemyY >= LAVA_ESCAPE_Y && velY >= 0) }
 }
