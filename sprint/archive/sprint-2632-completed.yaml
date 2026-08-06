@@ -236,3 +236,8 @@ completed_stories:
     title: Player ABM launch to expanding/collapsing blast
     points: 5
     completed: '2026-08-06'
+  - id: jt9-29
+    epic: jt9
+    title: The lava-troll looker in the three SMART brains — BOUNDR/B2UNDR/SHADOW, and why jt9-1's looker cannot fire without them
+    points: 5
+    completed: '2026-08-06'
