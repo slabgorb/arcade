@@ -261,3 +261,8 @@ completed_stories:
     title: 'The joust test helpers report failures as undefined: asClaim has ZERO coverage and gutting it leaves 2499 green, and audio-transporter-split load() swallows every import failure'
     points: 3
     completed: '2026-08-06'
+  - id: ad1-3
+    epic: ad1
+    title: asteroids self-play attract demo — put a ship in the drifting rock field, then opt in
+    points: 3
+    completed: '2026-08-06'
