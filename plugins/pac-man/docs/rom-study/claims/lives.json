@@ -1,0 +1,10 @@
+[
+  {
+    "id": "LIVES-PER-GAME",
+    "symbol": "LIVES_PER_GAME",
+    "value": "3 (default)",
+    "meaning": "RAM byte 4e6f holds the number of lives per game; the shipped default is 3 (set from the lives DIP switch). Cited to the RAM-map documentation line. Not a ROM constant, so no in-ROM literal is decoded here.",
+    "addr": "4e6f",
+    "source": { "file": "pacman.asm", "line": 6, "verbatim": "\t;; 4e6f #lives per game" }
+  }
+]

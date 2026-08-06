@@ -1,0 +1,34 @@
+[
+  {
+    "id": "GHOST-BLINKY",
+    "symbol": "BLINKY",
+    "value": "BLINKY",
+    "meaning": "The red ghost, character 'shadow'. CHARACTER/NICKNAME name-pointer table at 36bf. Dossier ch.4 'Meet The Ghosts'.",
+    "addr": "36bf",
+    "source": { "file": "pacman.asm", "line": 7780, "verbatim": "36bf  673d\t\t\t; d  1738   \"BLINKY\"" }
+  },
+  {
+    "id": "GHOST-PINKY",
+    "symbol": "PINKY",
+    "value": "PINKY",
+    "meaning": "The pink ghost, character 'speedy'. Name-pointer table entry at 36c3. Dossier ch.4 'Meet The Ghosts'.",
+    "addr": "36c3",
+    "source": { "file": "pacman.asm", "line": 7782, "verbatim": "36c3  863d\t\t\t; f  3238   \"PINKY\"" }
+  },
+  {
+    "id": "GHOST-INKY",
+    "symbol": "INKY",
+    "value": "INKY",
+    "meaning": "The light-blue ghost, character 'bashful'. Name-pointer table entry at 3703. Dossier ch.4 'Meet The Ghosts'.",
+    "addr": "3703",
+    "source": { "file": "pacman.asm", "line": 7814, "verbatim": "3703  a53d\t\t\t; 2f d339    \"INKY\"" }
+  },
+  {
+    "id": "GHOST-CLYDE",
+    "symbol": "CLYDE",
+    "value": "CLYDE",
+    "meaning": "The orange ghost, character 'pokey'. Name-pointer table entry at 3707. Dossier ch.4 'Meet The Ghosts'.",
+    "addr": "3707",
+    "source": { "file": "pacman.asm", "line": 7816, "verbatim": "3707  c43d\t\t\t; 31 ee39    \"CLYDE\"" }
+  }
+]

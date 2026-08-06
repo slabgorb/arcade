@@ -1,0 +1,56 @@
+[
+  {
+    "id": "SCORE-DOT",
+    "symbol": "SCORE_DOT",
+    "value": 10,
+    "meaning": "A dot is worth 10 points. SCORING TABLE entry, BCD little-endian word x10 (raw 0100 -> 0x0001 -> 1 -> 10). Dossier ch.2 'The Basics'.",
+    "addr": "2b17",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5925, "verbatim": "2b17  0100\t\t\t\t; dot" }
+  },
+  {
+    "id": "SCORE-ENERGIZER",
+    "symbol": "SCORE_ENERGIZER",
+    "value": 50,
+    "meaning": "An energizer (power pellet) is worth 50 points. Raw 0500 -> 0x0005 -> 5 -> 50. Dossier ch.2 'The Basics'.",
+    "addr": "2b19",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5926, "verbatim": "2b19  0500\t\t\t\t; pellet" }
+  },
+  {
+    "id": "SCORE-GHOST1",
+    "symbol": "SCORE_GHOST_1",
+    "value": 200,
+    "meaning": "First ghost eaten in an energizer chain: 200 points. Raw 2000 -> 0x0020 -> 20 -> 200. Dossier ch.2 'The Basics'.",
+    "addr": "2b1b",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5927, "verbatim": "2b1b  2000\t\t\t\t; ghost 1" }
+  },
+  {
+    "id": "SCORE-GHOST2",
+    "symbol": "SCORE_GHOST_2",
+    "value": 400,
+    "meaning": "Second ghost in the same chain: 400 points (doubles). Raw 4000 -> 0x0040 -> 40 -> 400. Dossier ch.2 'The Basics'.",
+    "addr": "2b1d",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5928, "verbatim": "2b1d  4000\t\t\t\t; ghost 2" }
+  },
+  {
+    "id": "SCORE-GHOST3",
+    "symbol": "SCORE_GHOST_3",
+    "value": 800,
+    "meaning": "Third ghost in the same chain: 800 points. Raw 8000 -> 0x0080 -> 80 -> 800. Dossier ch.2 'The Basics'.",
+    "addr": "2b1f",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5929, "verbatim": "2b1f  8000\t\t\t\t; ghost 3" }
+  },
+  {
+    "id": "SCORE-GHOST4",
+    "symbol": "SCORE_GHOST_4",
+    "value": 1600,
+    "meaning": "Fourth ghost in the same chain: 1600 points. Raw 6001 -> little-endian 0x0160 -> 160 -> 1600. Dossier ch.2 'The Basics'.",
+    "addr": "2b21",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5930, "verbatim": "2b21  6001\t\t\t\t; ghost 4" }
+  }
+]
