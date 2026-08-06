@@ -308,6 +308,51 @@ const LEGACY = {
   channels: { a: 'ch', b: 'ch' },
 }
 
+// ── jt9-35 manifests ──────────────────────────────────────────────────────────
+// jt9-6's release inside `stopChannel` is guarded `if (voiceChannel === channel)`,
+// but nothing in the jt9-6 suite pins that GUARD CONDITION. The `an unarbitrated
+// cue on ANOTHER channel does not release the voice` test uses `noise` — the ONLY
+// cue on channel `x` — so `stopChannel(x)` always hits `if (!prev) return` and the
+// release line at `:222` is NEVER reached. A bare unconditional `releaseVoice()`
+// there is therefore invisible to that test. FOREIGN puts TWO unarbitrated cues on
+// a foreign channel (`x`) the voice does not own, so the SECOND one's `stopChannel`
+// reaches past the early return and executes the release line while the arbitrated
+// window on `v` is still legitimately holding.
+const FOREIGN = {
+  baseUrl: BASE,
+  sounds: { loud: 'loud.wav', n1: 'n1.wav', n2: 'n2.wav', quiet: 'quiet.wav' },
+  channels: { loud: 'v', n1: 'x', n2: 'x', quiet: 'w' },
+  priorities: { loud: 80, quiet: 10 },
+  frameDurations: { loud: 76, quiet: 20 },
+}
+
+// The ZERO-LENGTH WINDOW: `zap` has a priority but NO `frameDurations` entry, so it
+// claims the voice with `voiceChannel = 'v'` but `voiceFrames = 0`
+// (`frameDurations?.['zap'] ?? 0`). `tick()` can never clear that state — it only
+// acts while `voiceFrames > 0` — so ONLY `stopChannel` / `stopLoop` can release it.
+// A `&& voiceFrames > 0` restrictor on any of the three release/steal sites leaves
+// `voiceChannel` pointing at a channel the voice no longer owns; the next accepted
+// arbitrated cue then reaches across (`:266`) and stops whatever took that channel.
+const ZEROWIN = {
+  baseUrl: BASE,
+  sounds: { zap: 'zap.wav', plain: 'plain.wav', boom: 'boom.wav' },
+  channels: { zap: 'v', plain: 'v', boom: 'w' },
+  priorities: { zap: 5, boom: 9 },
+  frameDurations: { boom: 30 }, // zap has NONE -> voiceFrames 0 with voiceChannel set
+}
+
+// Same zero-length window, but reached through `stopLoop`'s OWN release (`:313`)
+// rather than the `stopChannel` release. `zap`'s sample ends on its own (onended
+// clears `live`) so a later `stopLoop` on that channel finds nothing to stop — the
+// `:222` release never runs, and only `stopLoop`'s `:313` line can free the window.
+const ZEROLOOP = {
+  baseUrl: BASE,
+  sounds: { zap: 'zap.wav', hum: 'hum.wav', plain: 'plain.wav', boom: 'boom.wav' },
+  channels: { zap: 'v', hum: 'v', plain: 'v', boom: 'w' },
+  priorities: { zap: 5, boom: 9 },
+  frameDurations: { boom: 30 }, // zap has NONE -> voiceFrames 0
+}
+
 beforeEach(() => {
   const g = globalThis as Record<string, unknown>
   saved = { AC: g.AudioContext, WK: g.webkitAudioContext, FETCH: g.fetch }
@@ -514,5 +559,116 @@ describe('jt9-6 shared audio — a manifest with no priorities cannot tell this 
     ).toHaveLength(3)
     expect(created.sources[0].stopped, 'and still steals its shared channel').toBe(true)
     expect(() => engine.stopLoop('a'), 'stopLoop with no voice to release must not throw').not.toThrow()
+  })
+})
+
+// ── jt9-35: pin the GUARD CONDITION jt9-6 left unpinned ────────────────────────
+// jt9-6's fix `if (voiceChannel === channel) releaseVoice()` (src/shared/audio.ts:222)
+// is correct and shipped. What the jt9-6 suite does NOT pin is its guard condition:
+// four mutants — each proven non-equivalent by the story's own standalone probes —
+// leave the full suite green today. These tests turn each RED. RED phase applies the
+// verbatim mutant strings from the story description rather than reconstructing intent.
+//
+// RED audit — each PASSES on the shipped code and FAILS under exactly its mutant
+// (mutants applied one at a time, verbatim, then reverted):
+//   • A: bare `    releaseVoice()` at :222 (drops `if (voiceChannel === channel)`)
+//   • B: `    if (voiceChannel === channel && voiceFrames > 0) releaseVoice()` at :222
+//   • C: `&& voiceFrames > 0` added to the cross-channel steal condition at :266
+//   • D: `&& voiceFrames > 0` added to stopLoop's own release at :313
+
+describe('jt9-35 shared audio — the stopChannel release guard is pinned', () => {
+  // Mutant A: bare unconditional `releaseVoice()` at :222. Reachable in centipede
+  // today (spiderKill arbitrated on `impact`, spider-stop -> stopLoop(spiderLoop) on
+  // `voice-spider`, both edges on one kill), so this is LIVE, not latent.
+  it('an unarbitrated cue silencing a source on a channel the voice does NOT own leaves the window intact', async () => {
+    const { engine, created } = await mkLoadedEngine(FOREIGN)
+    engine.play('loud') // priority 80, a 76-frame window opens on channel `v`
+    engine.play('n1') // unarbitrated, channel `x` — first cue there, nothing to stop
+    engine.play('n2') // unarbitrated, channel `x` — now stopChannel(x) DOES stop n1
+    expect(
+      created.sources[2].started,
+      'premise: n2 played, so stopChannel(x) passed its `if (!prev) return` and REACHED ' +
+        'the release line at :222 — without this the mutant line is never executed',
+    ).toBe(true)
+    expect(
+      created.sources[0].stopped,
+      'premise: the arbitrated voice on channel `v` was never touched — n1/n2 are on `x`',
+    ).toBe(false)
+    engine.play('quiet') // priority 10 — must be refused by the window still on `v`
+    expect(
+      startedSources(created),
+      'the release line ran on channel `x`, which the voice does NOT own, so the 76-frame ' +
+        'window on `v` must survive and go on refusing `quiet`. A bare unconditional ' +
+        'releaseVoice() there frees the window and lets `quiet` through — 4 sources, not 3.',
+    ).toHaveLength(3)
+  })
+
+  // Mutant B: `&& voiceFrames > 0` on the :222 release. A zero-length window's
+  // voiceChannel is left stale, so the next accepted arbitrated cue steals across.
+  it('a zero-length arbitrated window is still released when its own channel is silenced', async () => {
+    const { engine, created } = await mkLoadedEngine(ZEROWIN)
+    engine.play('zap') // priority 5, NO frameDurations -> voiceFrames 0, voiceChannel `v`
+    engine.play('plain') // unarbitrated, same channel `v` — silences zap, reaches :222
+    expect(
+      created.sources[0].stopped,
+      'premise: `plain` silenced `zap`, so stopChannel(v) reached the :222 release line',
+    ).toBe(true)
+    expect(created.sources[1].started, 'premise: `plain` is itself sounding on `v`').toBe(true)
+    engine.play('boom') // priority 9 on channel `w` — accepted on either side of the fix
+    expect(
+      created.sources[2].started,
+      'control: `boom` really started, so the cross-channel steal at :266 was evaluated',
+    ).toBe(true)
+    expect(
+      created.sources[1].stopped,
+      'the voice was released when `plain` silenced `zap`, so voiceChannel is null and the ' +
+        'accepted `boom` cannot reach across to stop `plain`. A `&& voiceFrames > 0` ' +
+        'restrictor on :222 skips the release (zap`s window is 0), leaving voiceChannel `v` ' +
+        'stale — then `boom` steals channel `v` and stops `plain`.',
+    ).toBe(false)
+  })
+
+  // Mutant C: `&& voiceFrames > 0` on the cross-channel steal at :266. A one-voice
+  // machine must silence the sounding zero-window cue when it accepts a new one.
+  it('an accepted arbitrated cue steals a zero-length voice`s channel — one voice, even at zero frames', async () => {
+    const { engine, created } = await mkLoadedEngine(ZEROWIN)
+    engine.play('zap') // priority 5, voiceFrames 0, sounding on channel `v`
+    engine.play('boom') // priority 9 on channel `w` — takes the one voice
+    expect(
+      created.sources[1].started,
+      'control: `boom` was accepted, so the cross-channel steal at :266 was evaluated',
+    ).toBe(true)
+    expect(
+      created.sources[0].stopped,
+      'the machine has ONE voice: accepting `boom` must silence `zap` even though `zap`s ' +
+        'window is zero frames. A `&& voiceFrames > 0` restrictor on the :266 steal skips ' +
+        'it, leaving `zap` sounding alongside `boom` — two voices at once.',
+    ).toBe(true)
+  })
+
+  // Mutant D: `&& voiceFrames > 0` on stopLoop's own release at :313. Reached only
+  // when stopChannel found nothing (the sample already ended), so :222 never runs.
+  it('stopLoop frees a zero-length arbitrated window whose sample already ended', async () => {
+    const { engine, created } = await mkLoadedEngine(ZEROLOOP)
+    engine.play('zap') // priority 5, voiceFrames 0, voiceChannel `v`
+    expect(created.sources[0].onended, 'the engine wires onended to clear the channel').toBeTypeOf(
+      'function',
+    )
+    created.sources[0].onended?.() // the sample ends; `live` on `v` is now empty, window holds
+    engine.stopLoop('hum') // explicit "silence `v`" — stopChannel finds nothing, :222 not reached
+    engine.play('plain') // unarbitrated, channel `v` — a fresh source to be stolen
+    expect(created.sources[1].started, 'premise: the fresh `plain` is sounding on `v`').toBe(true)
+    engine.play('boom') // priority 9 on channel `w`
+    expect(
+      created.sources[2].started,
+      'control: `boom` really started, so the cross-channel steal at :266 was evaluated',
+    ).toBe(true)
+    expect(
+      created.sources[1].stopped,
+      'stopLoop must free the zero-length window (voiceChannel `v`) so voiceChannel is null ' +
+        'and `boom` cannot reach across to stop `plain`. A `&& voiceFrames > 0` restrictor on ' +
+        'stopLoop`s :313 release skips it (zap`s window is 0), leaving voiceChannel stale — ' +
+        'then `boom` steals channel `v` and stops `plain`.',
+    ).toBe(false)
   })
 })
