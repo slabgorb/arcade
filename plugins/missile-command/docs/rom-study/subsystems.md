@@ -21,9 +21,9 @@ physical line, `W3COMN.MAC:39`).
 > `tests/dossier-docs.test.ts` re-opens each anchor against the vendored tree and
 > fails if it does not land on a real `.SBTTL` directive.
 
-Two subsystems carry no `.SBTTL` anchor and say so: **coin** (`W3COIN` uses `.TITLE`,
-not `.SBTTL`) and the **interrupt/timebase** handler (`W3INT`, still open question
-**O-2** — not yet read in full).
+The **coin** subsystem carries no `.SBTTL` anchor and says so (`W3COIN` uses `.TITLE`,
+not `.SBTTL`). The **interrupt/timebase** handler (`W3INT`) has now been read: open
+question **O-2** is resolved — the sim tick is derived in [`timebase.md`](./timebase.md).
 
 ## The map
 
@@ -41,4 +41,4 @@ not `.SBTTL`) and the **interrupt/timebase** handler (`W3INT`, still open questi
 | All drawing (stamps / cities / text) | `W3DSUP` | `W3DSUP:587` WRITE A STAMP · `W3DSUP:1067` DRAW ALL LIVING CITIES · `W3DSUP:1221` DRAW MISSILE · `W3DSUP:1583` SET UP COLORS FOR NEXT WAVE · `W3DSUP:1712` CLEAR SCREEN | The framebuffer draw layer: stamps, city sprites, missile trails, per-wave palette, screen clear. |
 | High-score ladder + name entry | `W3DSUP` | `W3DSUP:3724` INITIALIZE HIGH SCORE TABLE · `W3DSUP:3780` UPDATE HIGH SCORE LADDER · `W3DSUP:4064` TAKE INITIALS FOR NEW HIGH SCORE · `W3DSUP:4290` DISPLAY HIGH SCORES TABLE | Maintains the high-score ladder, takes initials for a new entry, renders the table. |
 | Coin door | `W3COIN` + `COIN65` | — (`.TITLE W3COIN`; no `.SBTTL`) | Atari standard coin handler (`COIN65` include); no game-specific routine anchors. |
-| Interrupt / video timebase | `W3INT` | — (open question **O-2**; module not yet read) | The interrupt handler that drives the `FRAME` counter and the sim tick. Sizing the tick against MAME's 61.0076 Hz / 4-IRQ model is O-2. |
+| Interrupt / video timebase | `W3INT` | `W3INT:169` PROCESS INTERRUPT · `W3INT:269` HANDLE VBLANK | The IRQ handler + VBLANK sync that paces the game. **O-2 resolved** ([`timebase.md`](./timebase.md)): 4 IRQs/frame, only the VBLANK one bumps `SYNC`; the mainline advances one step per frame — sim tick = 1 step/frame = 61.0076 Hz (nominal 60). |

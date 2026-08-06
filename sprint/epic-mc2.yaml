@@ -57,13 +57,17 @@ stories:
       Note the CPU half-speed band from scanline 224 (missile.cpp:542-555) when reasoning about per-frame work, and record both the exact rate and the nominal-60 fallback. brief.md references FRAME globals at W3DSUP.MAC:19 and a read at W3MAIN.MAC:2039.
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
       - "A docs/rom-study note derives the sim tick from W3INT (which IRQ advances game logic, how FRAME increments), cited to W3INT lines and the missile.cpp anchors; the exact Hz and ticks/frame are recorded with the nominal-60 fallback documented."
       - "The tick is encoded as a claim/const that shell/timebase.ts (or a core constant) consumes, replacing any nominal-60 placeholder; O-2 is marked resolved in docs/rom-study/brief.md."
+    completed: '2026-08-06'
     type: chore
+    review_findings: "APPROVED round 2. Both round-1 blockers mutation-verified CLOSED: AC4 guard hardened (negating brief.md reddens), source-of-record coherence restored (subsystems.md/glossary.md O-2 resolved + physical citations, byte-verified). No fresh lie (all new citations TRUE). 1 non-blocking LOW nit (redundant whole-file assertion, backstopped by line-scoped sibling)."
+    review_verdict: approved
   - id: mc2-4
     title: 'O-4: pin the actual starting-city count'
     description: |-
