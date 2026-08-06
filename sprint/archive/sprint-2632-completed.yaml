@@ -306,3 +306,8 @@ completed_stories:
     title: 'O-4: pin the actual starting-city count'
     points: 2
     completed: '2026-08-06'
+  - id: jt9-42
+    epic: jt9
+    title: "joust lava-troll looker is production-dead again: allow ENEMY victims so LNTLAV can fire, and pin the grip's single-integration"
+    points: 5
+    completed: '2026-08-06'
