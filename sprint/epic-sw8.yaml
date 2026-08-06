@@ -254,7 +254,7 @@ stories:
     description: "Routed out of the monorepo migration's Task 20 review and DECLINED by Task 21's implementer with reasoning worth keeping, 2026-07-31. plugins/star-wars/src/core/highScores.ts:20-31 seeds ten default rows using wave 0 as its no-real-run marker, and its own comment at :14-16 calls that value 'a clone artifact, not a ROM value'. The migration made null the honest encoding of exactly that idea: Task 20 widened HighScoreEntry's domain field to number | null specifically so a row with no real run says so instead of inventing one, on the standing ruling that the cabinet must not invent a fact about a player's game. The renderer already cooperates — render.ts:1639 blanks a null wave, so these rows would draw with an empty column and no further change. It was declined for three reasons that all still hold: it is a DATA change inside a game's src/core, not the mechanical call-site update the main.ts carve-out authorises; nothing in the seeding task needed it, since the seed never touches DEFAULT_HIGH_SCORES; and it is a ROM-fidelity display decision with its own test file, so it deserves its own review rather than riding along in a migration commit. The judgement to decline was endorsed. Note the display question is genuinely open: the real cabinet shows SOMETHING in that column for its defaults, so 'blank' may or may not be the faithful answer — settle that against the ROM rather than assuming null-renders-blank is automatically right."
     points: 2
     priority: p2
-    status: in_progress
+    status: done
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -262,6 +262,7 @@ stories:
       - Whatever is chosen, the value and the reason are stated in the file so the next reader does not re-derive it — the current comment already flags 0 as a clone artifact without acting on it.
       - The board's rendering of the default rows is asserted by a test that distinguishes a blank column from the string '0' and from the string 'null'. String(null) is 'null', a truthy non-empty string, so an assertion satisfied by 'a value was drawn' is satisfied by every wrong answer.
       - The existing star-wars high-score test file is updated rather than duplicated, and the change is proven non-vacuous by mutation.
+    completed: '2026-08-06'
     review_verdict: approved
   - id: sw8-21
     title: 'surface finishGround death gate: port the PHEGD death exit so a last-shield fall on the crossing frame silences PMREB, as sw8-13 did for the space walk'

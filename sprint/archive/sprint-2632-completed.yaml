@@ -276,3 +276,8 @@ completed_stories:
     title: 'Two bake assertions weaker than their names: nothing pins WHAT the joust bake produces, and the manifest throws are pinned only as SUBSTRINGS'
     points: 2
     completed: '2026-08-06'
+  - id: sw8-20
+    epic: sw8
+    title: 'star-wars: the ten ROM default high scores should carry wave null, not the fabricated wave 0'
+    points: 2
+    completed: '2026-08-06'
