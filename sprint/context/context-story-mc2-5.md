@@ -19,6 +19,28 @@ Resolve open question O-1: reference/source/A35820.1C.bin is a binary object pre
 _Approach hints to be refined by TEA/Dev. The story title above defines the
 intended behavior._
 
+### SM-verified ground truth (measured against the current tree at setup)
+These are starting points for the investigation, not the answer — the decode itself is TEA/Dev's work.
+
+- **The artifact:** `plugins/missile-command/reference/source/A35820.1C.bin`, **9216 bytes (9 KiB / 0x2400)**.
+- **Premise is live:** `plugins/missile-command/reference/PROVENANCE.md` line 28 currently reads
+  `| A35820.1C | A35820.1C.bin | — | Binary object — **not yet decoded** (open Q) | — |`.
+- **The decisive clue — the sibling table.** In that same PROVENANCE table every OTHER `A35820.1x`
+  object maps to a named assembler module and an Atari part number; only `.1C` is a bare `.bin` with
+  neither:
+  | Object | Module | Part no. |
+  |--------|--------|----------|
+  | `A35820.1A` | `W3DSUP.MAC` (display/draw support) | 035820/823/824-01 incl. |
+  | `A35820.1B` | `W3COIN.MAC` (coin-door glue) | 035821-01 |
+  | `A35820.1C` | `A35820.1C.bin` — **?** | **—** |
+  | `A35820.1D` | `W3MAIN.MAC` (main program) | 035823-01 incl. |
+  | `A35820.1E` | `W3INT.MAC` (interrupt/timebase) | 035824-01 incl. |
+  The gap in the `.1C` row is the whole story; the REV-01 CPU link in `MISSIL.DOC.txt` is the source of record for what the link expects at that slot.
+
+### AC-required doc updates (both files exist and are the canonical targets)
+- `plugins/missile-command/reference/PROVENANCE.md` — the `A35820.1C` row (retire "not yet decoded (open Q)").
+- `plugins/missile-command/docs/rom-study/brief.md` — where O-1 is tracked; mark it resolved.
+
 ## Scope
 - In scope: the behavior described by the story title.
 - Out of scope: unrelated changes.
