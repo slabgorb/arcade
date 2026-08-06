@@ -3,7 +3,7 @@ type: epic
 title: Tech debt — fleet-wide fixes and carried-open items from the joust jt1 epic
 description: 'Cross-repo tech debt surfaced by the jt1 joust foundation epic (2026-07-19/20). Three classes: (1) FLEET-WIDE holes joust found and closed locally — the sibling repos still carry them; (2) FOLD-BACK of improvements joust proved (the AST purity scanner and its case tables); (3) CARRIED-OPEN items the jt1 reviews named honestly rather than silently shipping. Each story cites the joust story/review that found it, and where joust already shipped the fix, the joust implementation is the reference — port it rather than re-deriving.'
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: td1-1
@@ -399,3 +399,4 @@ stories:
     repos: arcade
     workflow: tdd
     type: refactor
+completed: '2026-08-06'
