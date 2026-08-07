@@ -38,9 +38,25 @@ export interface BinaryCitation {
 }
 
 /**
+ * A full-BYTE citation into a vendored graphics ROM/PROM (pm3-1). `file`
+ * resolves inside the GRAPHICS dir (`reference/graphics/`), `offset` is a byte
+ * position, and `bytes` is the run of expected whole-byte values (0–255).
+ * RE-VERIFIED byte-for-byte: unlike BinaryCitation's low-nibble compare (the
+ * WSG waveform PROM), the tile/sprite ROMs and colour PROMs are decoded WHOLE
+ * (MAME gfxlayout / resistor-DAC), so the full byte must match.
+ */
+export interface ByteCitation {
+  file: string
+  offset: number
+  bytes: number[]
+}
+
+/**
  * A single-sided claim: one assertion about the machine, cited to either a
- * byte-exact line of the vendored `pacman.asm` (a TextCitation) or a byte range
- * of a vendored PROM (a BinaryCitation, pm2-1's WSG waveforms).
+ * byte-exact line of the vendored `pacman.asm` (a TextCitation), a nibble range
+ * of a vendored PROM (a BinaryCitation, pm2-1's WSG waveforms), or a full-byte
+ * range of a vendored graphics ROM/PROM (a ByteCitation, pm3-1's tile/sprite
+ * ROMs and colour PROMs).
  */
 export interface Claim {
   /** Stable, unique id across the whole claims set (e.g. "SCORE-GHOST1"). */
@@ -63,8 +79,11 @@ export interface Claim {
    * re-opened — the byte gate is `source`.
    */
   addr: string
-  /** Primary-source citation — a text line of `pacman.asm` or a PROM byte range. */
-  source: TextCitation | BinaryCitation
+  /**
+   * Primary-source citation — a text line of `pacman.asm`, a PROM nibble range,
+   * or a graphics ROM/PROM full-byte range.
+   */
+  source: TextCitation | BinaryCitation | ByteCitation
   /**
    * Optional decode marker. `"bcd-x10-word"` tags a scoring-table entry whose
    * `value` must equal the BCD, little-endian, ×10 decode of the two data bytes
@@ -89,6 +108,12 @@ export interface CheckOpts {
    * schema-validate; the nibble compare is skipped).
    */
   soundRoot?: string | null
+  /**
+   * Absolute path to the vendored graphics dir (the tile/sprite ROMs and the two
+   * colour PROMs, pm3-1), or `null`/absent to skip full-byte verification (byte
+   * claims schema-validate; the byte compare is skipped).
+   */
+  gfxRoot?: string | null
 }
 
 /**

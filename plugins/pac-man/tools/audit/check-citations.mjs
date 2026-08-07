@@ -75,6 +75,21 @@ function isBinaryCitation(o) {
   )
 }
 
+/** A full-BYTE binary citation (pm3-1): a graphics ROM/PROM file, a byte
+ *  offset, and the run of whole bytes (0..255) expected there. Used for the
+ *  tile/sprite ROMs and the two colour PROMs, whose meaning is decoded in JS
+ *  (MAME gfxlayout / resistor-DAC) — unlike the WSG waveform PROM, the low
+ *  nibble is not the whole story, so the WHOLE byte is compared. */
+function isByteCitation(o) {
+  return (
+    typeof o === 'object' && o !== null && !Array.isArray(o) &&
+    typeof o.file === 'string' && o.file.length > 0 &&
+    Number.isInteger(o.offset) && o.offset >= 0 &&
+    Array.isArray(o.bytes) && o.bytes.length > 0 &&
+    o.bytes.every((b) => Number.isInteger(b) && b >= 0 && b <= 255)
+  )
+}
+
 const lineCache = new Map()
 function lineAt(path, n) {
   if (!lineCache.has(path)) {
@@ -130,8 +145,12 @@ function resolveInTree(vendoredRoot, file) {
  *   the WSG PROM `82s126.1m`), or null/absent to skip PROM byte-verification. A
  *   binary citation still schema-validates without it; only the nibble compare is
  *   skipped — the same graceful degradation the text side gives.
+ * @param opts.gfxRoot  absolute path to the vendored GRAPHICS dir (the tile/sprite
+ *   ROMs and the two colour PROMs, pm3-1), or null/absent to skip full-byte
+ *   verification. A byte citation still schema-validates without it; only the
+ *   byte compare is skipped — the same graceful degradation the sound side gives.
  */
-export function checkClaims(claims, { vendoredRoot, soundRoot = null }) {
+export function checkClaims(claims, { vendoredRoot, soundRoot = null, gfxRoot = null }) {
   const errors = []
   const seen = new Set()
 
@@ -206,10 +225,31 @@ export function checkClaims(claims, { vendoredRoot, soundRoot = null }) {
           }
         }
       }
+    } else if (isByteCitation(c?.source)) {
+      if (gfxRoot) {
+        const path = resolveInTree(gfxRoot, c.source.file)
+        if (!path) {
+          errors.push(`${id}: graphics ROM ${c.source.file} not found in the graphics tree`)
+        } else {
+          const buf = bytesOf(path)
+          const { offset, bytes } = c.source
+          if (offset + bytes.length > buf.length) {
+            errors.push(`${id}: graphics ROM ${c.source.file} offset ${offset}+${bytes.length} runs past end-of-file (length ${buf.length})`)
+          } else {
+            const mism = []
+            for (let i = 0; i < bytes.length; i++) {
+              if (buf[offset + i] !== bytes[i]) mism.push(`[${i}] cited ${bytes[i]}, actual ${buf[offset + i]}`)
+            }
+            if (mism.length > 0) {
+              errors.push(`${id}: graphics ROM ${c.source.file}@${offset} byte mismatch: ${mism.slice(0, 4).join('; ')}${mism.length > 4 ? ` (+${mism.length - 4} more)` : ''}`)
+            }
+          }
+        }
+      }
     } else {
       errors.push(
         `${id}: missing or malformed source citation ` +
-          `(needs a text {file,line,verbatim} or a binary {file,offset,nibbles})`,
+          `(needs a text {file,line,verbatim}, a binary {file,offset,nibbles}, or a byte {file,offset,bytes})`,
       )
     }
   }
@@ -223,12 +263,14 @@ export function checkClaims(claims, { vendoredRoot, soundRoot = null }) {
 // per error, exits non-zero on any failure.
 //   PACMAN_SOURCE_DIR  — vendored source dir, default ../../reference/source
 //   PACMAN_SOUND_DIR   — vendored sound dir (WSG PROM), default ../../reference/sound
+//   PACMAN_GFX_DIR     — vendored graphics dir (tile/sprite/colour ROMs), default ../../reference/graphics
 //   PACMAN_CLAIMS_DIR  — claims directory,    default docs/rom-study/claims
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
   const claimsDir = process.env.PACMAN_CLAIMS_DIR ?? join(repoRoot, 'docs', 'rom-study', 'claims')
   const vendoredRoot = process.env.PACMAN_SOURCE_DIR ?? join(repoRoot, 'reference', 'source')
   const soundRoot = process.env.PACMAN_SOUND_DIR ?? join(repoRoot, 'reference', 'sound')
+  const gfxRoot = process.env.PACMAN_GFX_DIR ?? join(repoRoot, 'reference', 'graphics')
 
   // A malformed claims file is REPORTED (naming the file), never thrown as a raw
   // stack trace — the same "every problem is reported" invariant checkClaims holds.
@@ -249,6 +291,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
   const root = existsSync(vendoredRoot) ? vendoredRoot : null
   const sndRoot = existsSync(soundRoot) ? soundRoot : null
+  const gfxRootResolved = existsSync(gfxRoot) ? gfxRoot : null
 
   // AN EMPTY CLAIMS SET IS NOT A PASS — a path typo or moved directory would
   // otherwise read as success forever. This repo has no legitimate zero-claim state.
@@ -260,10 +303,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.exit(2)
   }
 
-  const errors = checkClaims(claims, { vendoredRoot: root, soundRoot: sndRoot })
+  const errors = checkClaims(claims, { vendoredRoot: root, soundRoot: sndRoot, gfxRoot: gfxRootResolved })
 
   if (!root) console.log(`(vendored source absent at ${vendoredRoot} — schema-only text check)`)
   if (!sndRoot) console.log(`(sound PROM tree absent at ${soundRoot} — schema-only for waveform claims)`)
+  if (!gfxRootResolved) console.log(`(graphics ROM tree absent at ${gfxRoot} — schema-only for graphics claims)`)
   console.log(`checked ${claims.length} claim(s)`)
 
   if (errors.length > 0) {

@@ -40,6 +40,12 @@ export interface Level {
   /** Blinky's Cruise Elroy stage-2 (faster) speed — replaces `ghostSpeedPct`
    *  once `elroyStage(...) >= 2`. Same citation status as `elroy1SpeedPct`. */
   readonly elroy2SpeedPct: number
+  /** A ghost's speed while standing on a 'tunnel'-kind tile — replaces
+   *  `ghostSpeedPct` (and overrides chase/frightened/Elroy alike) for ANY
+   *  ghost in the tunnel. Pac-Man is never slowed by the tunnel; this column
+   *  applies to ghosts only. Dossier Table A.1, honest-uncited — same status
+   *  as `ghostSpeedPct`. */
+  readonly tunnelSpeedPct: number
   /** Frightened duration in seconds — `frightenedFramesForLevel(level) / 60`,
    *  reused from mode.ts, never a second literal. */
   readonly frightenedSeconds: number
@@ -73,15 +79,18 @@ interface SpeedRow {
    *  §Level table). */
   elroy1: number
   elroy2: number
+  /** A ghost's speed on a 'tunnel'-kind tile, same Dossier Table A.1 row —
+   *  see `Level.tunnelSpeedPct`. */
+  tunnel: number
 }
 
 const SPEED_TABLE: readonly SpeedRow[] = [
-  { pac: 80, ghost: 75, elroy1: 80, elroy2: 85 }, // level 1
-  { pac: 90, ghost: 85, elroy1: 90, elroy2: 95 }, // level 2
-  { pac: 90, ghost: 85, elroy1: 90, elroy2: 95 }, // level 3
-  { pac: 90, ghost: 85, elroy1: 90, elroy2: 95 }, // level 4
-  ...Array.from({ length: 16 }, () => ({ pac: 100, ghost: 95, elroy1: 100, elroy2: 105 })), // levels 5-20
-  { pac: 90, ghost: 95, elroy1: 100, elroy2: 100 }, // level 21
+  { pac: 80, ghost: 75, elroy1: 80, elroy2: 85, tunnel: 40 }, // level 1
+  { pac: 90, ghost: 85, elroy1: 90, elroy2: 95, tunnel: 45 }, // level 2
+  { pac: 90, ghost: 85, elroy1: 90, elroy2: 95, tunnel: 45 }, // level 3
+  { pac: 90, ghost: 85, elroy1: 90, elroy2: 95, tunnel: 45 }, // level 4
+  ...Array.from({ length: 16 }, () => ({ pac: 100, ghost: 95, elroy1: 100, elroy2: 105, tunnel: 50 })), // levels 5-20
+  { pac: 90, ghost: 95, elroy1: 100, elroy2: 100, tunnel: 50 }, // level 21
 ]
 const MAX_TABLED_LEVEL = SPEED_TABLE.length // 21
 
@@ -132,6 +141,7 @@ function buildLevel(level: number): Level {
     ghostSpeedPct: speed.ghost,
     elroy1SpeedPct: speed.elroy1,
     elroy2SpeedPct: speed.elroy2,
+    tunnelSpeedPct: speed.tunnel,
     frightenedSeconds: frightenedFramesForLevel(level) / 60,
     frightenedFlashes: FRIGHT_FLASHES,
     fruit: fruitForLevel(level),

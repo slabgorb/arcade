@@ -9,8 +9,8 @@
 // speedPattern), never invented — same discipline pm1-5/6/7's tests used.
 
 import { describe, it, expect } from 'vitest'
-import { tileAt, DOT_COUNT } from '../../src/core/maze'
-import { speedPattern } from '../../src/core/actor'
+import { tileAt, DOT_COUNT, TUNNEL_ROW } from '../../src/core/maze'
+import { speedPattern, TILE_PX } from '../../src/core/actor'
 import { LEVELS, levelRow, FRUIT_SPAWN_DOTS } from '../../src/core/level'
 import {
   createGameState,
@@ -32,6 +32,7 @@ describe('LEVELS[0] — the level-1 row (glossary.md §Level table)', () => {
       ghostSpeedPct: 75, // same status
       elroy1SpeedPct: 80, // Dossier Table A.1, honest-uncited (final-review fix)
       elroy2SpeedPct: 85, // same status
+      tunnelSpeedPct: 40, // Dossier Table A.1, honest-uncited (pm3-2)
       frightenedSeconds: 6, // mode.ts frightenedFramesForLevel(1)/60
       frightenedFlashes: 5, // mode.ts FRIGHT_FLASHES
       fruit: { type: 'cherry', points: 100 }, // pacman.asm:2b23 (byte-cited)
@@ -439,5 +440,26 @@ describe('Cruise Elroy bumps ONLY Blinky\'s speed as dots run out', () => {
     stepGame(state, { dir: 'none' })
     const after = state.ghosts.pinky.actor
     expect(after.xPx !== before.x || after.yPx !== before.y, 'Pinky still uses the level\'s plain ghostSpeedPct').toBe(true)
+  })
+})
+
+// ─── tunnel slowdown (pm3-2) ────────────────────────────────────────────────
+
+describe('ghost tunnel slowdown (pm3-2, Dossier Table A.1)', () => {
+  it('a ghost on a tunnel tile moves at the tunnel speed, not the normal ghost speed', () => {
+    const g = createGameState(1, [])
+    const ghost = g.ghosts.blinky
+    g.house.released.blinky = true
+    // Park Blinky on a tunnel-kind tile (left tunnel mouth on TUNNEL_ROW).
+    ghost.actor.xPx = 0
+    ghost.actor.yPx = TUNNEL_ROW * TILE_PX
+    let moved = 0
+    for (let i = 0; i < 20; i++) {
+      const x = ghost.actor.xPx
+      stepGame(g, { dir: 'none' })
+      if (ghost.actor.xPx !== x) moved++
+    }
+    // 40% level-1 tunnel speed => ~8 of 20 frames move; normal 75% would be ~15.
+    expect(moved).toBeLessThan(12)
   })
 })

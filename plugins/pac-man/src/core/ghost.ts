@@ -11,7 +11,7 @@
 // file. PURE: no DOM, no clock, no Math.random, no shell import — the purity
 // sweep (tests/purity.test.ts) scans this file's source text.
 
-import { type Tile, isWalkable } from './maze'
+import { type Tile, isWalkable, wrapThroughTunnel } from './maze'
 import { type Actor, type Dir, DIR_DELTA, TILE_PX } from './actor'
 
 export type GhostId = 'blinky' | 'pinky' | 'inky' | 'clyde'
@@ -131,4 +131,5 @@ export function stepGhost(ghost: Ghost, target: Tile, state: GhostStepState = {}
 
   actor.xPx += dx
   actor.yPx += dy
+  wrapThroughTunnel(actor)
 }

@@ -455,6 +455,15 @@ export function stepGame(state: GameState, input: GameInput): void {
     } else {
       pct = level.ghostSpeedPct
     }
+
+    // Tunnel slowdown (Dossier §Speeds): on a tunnel tile a ghost always
+    // crawls at the level's tunnelSpeedPct, regardless of chase/frightened/
+    // Elroy. Pac-Man is NOT slowed (his pattern stays pacSpeedPct) — only
+    // ghosts. The zone is the 'tunnel'-kind tiles maze.ts marks.
+    const gtileX = Math.floor(ghost.actor.xPx / TILE_PX)
+    const gtileY = Math.floor(ghost.actor.yPx / TILE_PX)
+    if (tileAt(gtileX, gtileY) === 'tunnel') pct = level.tunnelSpeedPct
+
     const pattern = speedPattern(pct)
     const frame = state.ghostFrame[id]
     state.ghostFrame[id] = frame + 1

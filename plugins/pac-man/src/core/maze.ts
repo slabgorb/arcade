@@ -31,6 +31,8 @@
 // structure was copied from shaunlebron/pacman (GPL v3; see brief.md's
 // firewall clause).
 
+import { TILE_PX } from './actor'
+
 /** The `pacman.asm:20e6` literal: 240 dots + 4 energizers. Not itself a
  *  TileKind count — see DOT_COUNT below, which is derived from this minus
  *  the energizers the table actually places. */
@@ -202,3 +204,16 @@ if (DOT_COUNT_FROM_TABLE !== DOT_COUNT_FROM_ROM) {
  *  real ROM literal `pacman.asm:20e6` (TOTAL_PELLETS=244) minus the 4
  *  energizers — 244 - 4 = 240. Cross-checked against the table itself above. */
 export const DOT_COUNT: number = DOT_COUNT_FROM_TABLE
+
+/** Wrap an actor's horizontal position through the tunnel: on the tunnel row
+ *  ONLY (the cabinet's single left<->right wrap point, TUNNEL_ROW), an actor
+ *  whose xPx has stepped past either edge reappears at the opposite edge,
+ *  modulo the maze pixel width. Off the tunnel row this is a no-op — the walls
+ *  make an off-edge xPx unreachable there anyway. Mirrors tileAt's wrap, but
+ *  for POSITION: tileAt wraps kind LOOKUPS, this wraps the actor. Call it after
+ *  every actor step (pacman.ts / ghost.ts). Pure. */
+export function wrapThroughTunnel(actor: { xPx: number; yPx: number }): void {
+  if (actor.yPx !== TUNNEL_ROW * TILE_PX) return
+  const width = MAZE.cols * TILE_PX
+  actor.xPx = ((actor.xPx % width) + width) % width
+}
