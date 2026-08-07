@@ -1069,7 +1069,8 @@ stories:
     title: "joust bounder BOUP cliff-above diverts to BOLEV: model the blocked-climb level flight (no BOUP3). Found by jt9-23 Dev: BOUP (JOUSTRV4.SRC:3846-3853) samples BCKYTB-DYLEN and on a hit BNE BOLEV (:3850) flies plain level; the port's bounder still commits to the climb blind. Distinct from B2UP3/SHUP3 (hunter/shadow) which jt9-23 wired."
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
   - id: jt9-51
