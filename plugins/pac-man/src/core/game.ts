@@ -40,11 +40,13 @@
 //    LIFECYCLE (score/lives/level/game-over), not presentation; a future
 //    shell task can layer a pause on the `pac-died`/`level-cleared` events
 //    this module already emits without changing this module.
-//  • Cruise Elroy's SPEED bump is not wired to a ghost speed multiplier:
-//    `mode.ts`'s `elroyStage` is computed and available, but no glossary
-//    entry documents a cited or even Dossier-decoded speed DELTA value for
-//    it (only the dots-remaining thresholds are decoded) — inventing one
-//    here would fabricate a number the citation discipline forbids.
+//  • Cruise Elroy IS wired to a ghost speed bump for BLINKY ONLY:
+//    `mode.ts`'s `elroyStage(dotsRemaining, level)` selects `level.ts`'s
+//    `elroy1SpeedPct`/`elroy2SpeedPct` (Dossier Table A.1 figures, honest-
+//    uncited — glossary.md §Level table, same status as `ghostSpeedPct`
+//    itself) in place of Blinky's normal `ghostSpeedPct`. Deliberately NOT
+//    wired: the ROM's `pacman.asm:20d7` "suppressed until Clyde has left the
+//    house" gate — that nuance is out of this round's scope (pm2).
 //  • Frightened Pac-Man speed is not modelled — Pac-Man's speed pattern is
 //    the level's `pacSpeedPct` at all times, matching the honest-uncited
 //    Dossier figures already in `level.ts`/`glossary.md` §Speeds, which give
@@ -63,7 +65,7 @@ import {
   elroyStage as computeElroyStage,
   type ModeState,
 } from './mode'
-import { levelRow, FRUIT_SPAWN_DOTS, type LevelFruit } from './level'
+import { levelRow, FRUIT_SPAWN_DOTS, FRIGHTENED_GHOST_SPEED_PCT, type LevelFruit } from './level'
 import type { GameEvent } from './events'
 import { qualifiesForHighScore, insertHighScore, type HighScoreTable } from '@shared/highscore'
 import { stepNameEntry } from '@shared/name-entry'
@@ -433,10 +435,26 @@ export function stepGame(state: GameState, input: GameInput): void {
   // ── Ghosts: move only released ones, gated by the level's speed pattern ──
   const level = levelRow(state.level)
   const dotsRemaining = DOT_COUNT - state.dotsEaten
+  // Cruise Elroy (pacman.asm:20d7 routine; level.ts's elroy1/2SpeedPct are the
+  // Dossier-decoded speed figures, honest-uncited — glossary.md §Level table).
+  // Blinky ONLY: stage 1/2 replaces his normal ghostSpeedPct as the board
+  // empties. Deliberately NOT gating this on "Clyde has left the house" (the
+  // ROM's `pacman.asm:20d7` suppression) — that nuance is out of this round's
+  // scope (deferred to pm2); a threshold-based bump is the deliverable here.
+  const blinkyElroyStage = computeElroyStage(dotsRemaining, state.level)
   for (const id of GHOST_IDS) {
     if (!state.house.released[id]) continue
     const ghost = state.ghosts[id]
-    const pct = modeStep.mode === 'frightened' ? 50 : level.ghostSpeedPct
+    let pct: number
+    if (modeStep.mode === 'frightened') {
+      pct = FRIGHTENED_GHOST_SPEED_PCT
+    } else if (id === 'blinky' && blinkyElroyStage >= 2) {
+      pct = level.elroy2SpeedPct
+    } else if (id === 'blinky' && blinkyElroyStage >= 1) {
+      pct = level.elroy1SpeedPct
+    } else {
+      pct = level.ghostSpeedPct
+    }
     const pattern = speedPattern(pct)
     const frame = state.ghostFrame[id]
     state.ghostFrame[id] = frame + 1
@@ -475,9 +493,6 @@ export function stepGame(state: GameState, input: GameInput): void {
     // eligible this call — either way it's spent.
     if (atCentreThisCall) state.pendingReverse[id] = false
   }
-  // Cruise Elroy stage is computed (available for a future speed-bump wire)
-  // but deliberately not applied — see file header "deliberate descopes".
-  void computeElroyStage(dotsRemaining, state.level)
 
   // ── Pac-Man / ghost collision ─────────────────────────────────────────
   const ptx = Math.floor(state.pac.actor.xPx / TILE_PX)

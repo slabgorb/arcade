@@ -30,6 +30,8 @@ describe('LEVELS[0] — the level-1 row (glossary.md §Level table)', () => {
       level: 1,
       pacSpeedPct: 80, // glossary.md §Speeds (honest-uncited Dossier figure)
       ghostSpeedPct: 75, // same status
+      elroy1SpeedPct: 80, // Dossier Table A.1, honest-uncited (final-review fix)
+      elroy2SpeedPct: 85, // same status
       frightenedSeconds: 6, // mode.ts frightenedFramesForLevel(1)/60
       frightenedFlashes: 5, // mode.ts FRIGHT_FLASHES
       fruit: { type: 'cherry', points: 100 }, // pacman.asm:2b23 (byte-cited)
@@ -236,6 +238,16 @@ describe('the game RNG path is deterministic for a fixed seed', () => {
   it('produces byte-identical outcomes for the same seed', () => {
     expect(run(4242)).toEqual(run(4242))
   })
+
+  // Final-review ride-along: same-seed equality alone would also pass for a
+  // no-op/constant RNG (it proves nothing draws entropy at all, not that a
+  // real seeded stream is being consumed). A DIFFERENT seed must diverge —
+  // seeds 4242 and 9 genuinely produce different `frightenedTurn` draws
+  // along the way (confirmed empirically before pinning), so this is a real
+  // discriminator, not a coin-flip assertion that happens to pass.
+  it('produces DIFFERENT outcomes for a different seed (not a no-op RNG)', () => {
+    expect(run(4242)).not.toEqual(run(9))
+  })
 })
 
 // ─── mode-change reversal — LATCHED to each ghost's next tile centre ───────
@@ -346,5 +358,86 @@ describe('a fresh level-1 game survives its opening scatter phase with no input'
       )
     }
     expect(state.phase).toBe('playing')
+  })
+})
+
+// ─── Cruise Elroy — Blinky-only speed bump (final-review Important fix) ────
+//
+// Pre-fix, `game.ts` computed `elroyStage` and threw the result away
+// (`void computeElroyStage(...)`): every ghost, including Blinky, always
+// used the level's uniform `ghostSpeedPct`. This is a real discriminator
+// against that discarded value: it probes the actual per-frame MOVE/HOLD
+// decision (`speedPattern(pct)[frameIndex]`), at frame indices chosen so the
+// three candidate speeds (`ghostSpeedPct=75`, `elroy1SpeedPct=80`,
+// `elroy2SpeedPct=85`) disagree — so a wrong (or discarded/always-75%) speed
+// selection flips the boolean this test asserts, not just a fuzzy timing
+// difference that could pass by coincidence.
+describe('Cruise Elroy bumps ONLY Blinky\'s speed as dots run out', () => {
+  it('Blinky moves at ghostSpeedPct above the Elroy-1 threshold, elroy1SpeedPct at/below it, elroy2SpeedPct at/below Elroy-2', () => {
+    const state = createGameState(20)
+    const lvl = levelRow(1)
+    state.pac.actor.xPx = 0
+    state.pac.actor.yPx = 0 // parked well away — no collision/eating noise
+
+    // speedPattern(75) = [false,true,true,true]        -> index 4 (%4=0): false
+    // speedPattern(80) = [false,true,true,true,true]    -> index 4: true
+    // speedPattern(85) = 20-long, index 6: false; index 4: true (like 75/80)
+    // These exact indices were computed from the real speedPattern function,
+    // not guessed — see the module's own docstring for the algorithm.
+    function blinkyMovesThisFrame(dotsRemaining: number, frameIndex: number): boolean {
+      state.dotsEaten = DOT_COUNT - dotsRemaining
+      state.ghosts.blinky.actor.xPx = 13 * 8
+      state.ghosts.blinky.actor.yPx = 14 * 8
+      state.ghosts.blinky.actor.dir = 'left'
+      state.ghostFrame.blinky = frameIndex
+      const before = { x: state.ghosts.blinky.actor.xPx, y: state.ghosts.blinky.actor.yPx }
+      stepGame(state, { dir: 'none' })
+      const after = state.ghosts.blinky.actor
+      return after.xPx !== before.x || after.yPx !== before.y
+    }
+
+    // Fixture sanity: the three speeds really do disagree at these indices —
+    // if `speedPattern`'s algorithm ever changes shape, this fails loudly
+    // instead of the test below silently testing nothing.
+    const at = (pct: number, frameIndex: number): boolean => {
+      const pattern = speedPattern(pct)
+      return pattern[frameIndex % pattern.length]
+    }
+    expect(at(lvl.ghostSpeedPct, 4)).toBe(false)
+    expect(at(lvl.elroy1SpeedPct, 4)).toBe(true)
+    expect(at(lvl.elroy1SpeedPct, 6)).toBe(true)
+    expect(at(lvl.elroy2SpeedPct, 6)).toBe(false)
+
+    // Just above the Elroy-1 threshold (20 dots remaining on level 1): base speed.
+    expect(blinkyMovesThisFrame(lvl.elroy1 + 5, 4), 'above Elroy-1 threshold: base ghostSpeedPct (no move at index 4)').toBe(false)
+
+    // At the Elroy-1 threshold: bumped to elroy1SpeedPct.
+    expect(blinkyMovesThisFrame(lvl.elroy1, 4), 'at Elroy-1 threshold: elroy1SpeedPct (moves at index 4)').toBe(true)
+    expect(blinkyMovesThisFrame(lvl.elroy1, 6), 'still Elroy-1 stage: elroy1SpeedPct (moves at index 6 too)').toBe(true)
+
+    // At the Elroy-2 threshold: bumped further to elroy2SpeedPct.
+    expect(blinkyMovesThisFrame(lvl.elroy2, 6), 'at Elroy-2 threshold: elroy2SpeedPct (holds at index 6)').toBe(false)
+  })
+
+  it('does NOT bump Pinky/Inky/Clyde — Elroy is Blinky-only', () => {
+    const state = createGameState(21)
+    state.pac.actor.xPx = 0
+    state.pac.actor.yPx = 0
+    state.house.released = { blinky: true, pinky: true, inky: true, clyde: true }
+    const lvl = levelRow(1)
+    state.dotsEaten = DOT_COUNT - lvl.elroy2 // deep into Elroy-2 territory for Blinky
+
+    state.ghosts.pinky.actor.xPx = 13 * 8
+    state.ghosts.pinky.actor.yPx = 17 * 8
+    state.ghosts.pinky.actor.dir = 'left'
+    state.ghostFrame.pinky = 6 // the index elroy2SpeedPct (85) holds on, but ghostSpeedPct (75) moves on
+
+    const pinkyPattern = speedPattern(lvl.ghostSpeedPct)
+    expect(pinkyPattern[6 % pinkyPattern.length]).toBe(true)
+
+    const before = { x: state.ghosts.pinky.actor.xPx, y: state.ghosts.pinky.actor.yPx }
+    stepGame(state, { dir: 'none' })
+    const after = state.ghosts.pinky.actor
+    expect(after.xPx !== before.x || after.yPx !== before.y, 'Pinky still uses the level\'s plain ghostSpeedPct').toBe(true)
   })
 })

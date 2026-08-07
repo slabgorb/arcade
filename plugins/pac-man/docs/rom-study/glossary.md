@@ -393,6 +393,33 @@ Level 21+: 90%/95% (no further change is documented before the level-256 kill
 screen, out of this epic's scope). Same citation status as §Speeds: no
 isolable `pacman.asm:<addr>` literal, recorded honestly rather than invented.
 
+**Cruise Elroy speeds — `elroy1SpeedPct` / `elroy2SpeedPct` (honest-uncited,
+Dossier Table A.1; final-review fix).** The Elroy 1/2 dots-remaining
+THRESHOLDS already had a real routine anchor (`pacman.asm:20d7`, §Cruise
+Elroy below) — the SPEED PERCENTAGES a stage bumps Blinky to are a separate
+Table A.1 column with no isolable ROM literal, same status as the plain
+`ghostSpeedPct` progression immediately above. Level 1: Elroy-1 80%,
+Elroy-2 85%. Levels 2-4: 90%/95%. Levels 5-20: 100%/105%. Level 21+:
+100%/100%. `level.ts`'s `SPEED_TABLE` carries these alongside `pac`/`ghost`;
+`game.ts`'s per-ghost movement loop selects `elroy1SpeedPct`/`elroy2SpeedPct`
+in place of the plain `ghostSpeedPct` for BLINKY ONLY, gated on
+`mode.ts`'s `elroyStage(dotsRemaining, level)` — Pinky/Inky/Clyde always use
+the plain `ghostSpeedPct`, matching the Dossier (Cruise Elroy is a Blinky-only
+mechanic). The ROM's own further gate — Elroy suppressed until Clyde has left
+the house (`pacman.asm:20d7`'s `and a; ret z` on the Clyde-released flag,
+already documented in §Cruise Elroy below) — is deliberately NOT wired here;
+that nuance is deferred to a later story.
+
+**Frightened ghost speed — `FRIGHTENED_GHOST_SPEED_PCT` (honest-uncited,
+Dossier Table A.1; final-review fix).** A frightened ghost moves at 50% —
+the Dossier's documented figure (it does vary slightly by level group in the
+full table, but only the level-1 value is test-pinned here, the same scope
+discipline `frightenedSeconds`/`frightenedFlashes` already apply). Named and
+exported from `level.ts` rather than left as a bare literal in `game.ts` —
+the bare `50` there was visually indistinguishable from the byte-CITED
+`SCORE_ENERGIZER = 50` (`pacman.asm:2b19`) despite the two having nothing to
+do with each other and completely different citation status.
+
 **Extra life (Dossier default; honest-uncited).** A free life at 10 000
 points is the Dossier's documented DIP-switch default. The vendored
 disassembly has no plain stored literal for it — only the DIP-driven message

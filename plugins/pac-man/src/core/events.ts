@@ -1,12 +1,16 @@
 // src/core/events.ts
 //
 // Story pm1-8 (Julia) — the discriminated union `game.ts`'s `stepGame` emits,
-// one entry per gameplay moment a shell (render/audio) actually needs to
-// react to this frame. Kept to what `main.ts` (this task) and a future
-// audio/render shell consume — YAGNI: no per-frame position events (the
-// shell already reads `GameState` directly for that), no event for every
-// internal state transition. PURE type-only module: no DOM, no clock, no
-// Math.random, no shell import.
+// one entry per gameplay moment a shell (render/audio) would need to react
+// to. `main.ts` (this task) does NOT read `GameState.events` — it drives
+// rendering and high-score persistence straight off `GameState` each frame,
+// which is all a bare visual + score/lives HUD needs. This union is a
+// FORWARD SEAM for a future shell (per-cue audio, popup score text, a
+// "READY!"/flash overlay reacting to a specific moment rather than polling
+// state) — kept to the shape such a consumer would plausibly need (YAGNI: no
+// per-frame position events, since a shell can already read `GameState`
+// directly for that; no event for every internal state transition). PURE
+// type-only module: no DOM, no clock, no Math.random, no shell import.
 
 import type { GhostId } from './ghost'
 import type { FruitType } from './level'

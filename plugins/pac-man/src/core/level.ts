@@ -32,6 +32,14 @@ export interface Level {
   /** A ghost's normal (non-frightened, non-Elroy) speed, same units.
    *  glossary.md §Level table; honest-uncited (Dossier Table A.1). */
   readonly ghostSpeedPct: number
+  /** Blinky's Cruise Elroy stage-1 speed — replaces `ghostSpeedPct` for
+   *  Blinky ONLY once `mode.ts`'s `elroyStage(dotsRemaining, level) >= 1`.
+   *  glossary.md §Level table / §Speeds; honest-uncited (Dossier Table A.1,
+   *  same status as `ghostSpeedPct` itself). */
+  readonly elroy1SpeedPct: number
+  /** Blinky's Cruise Elroy stage-2 (faster) speed — replaces `ghostSpeedPct`
+   *  once `elroyStage(...) >= 2`. Same citation status as `elroy1SpeedPct`. */
+  readonly elroy2SpeedPct: number
   /** Frightened duration in seconds — `frightenedFramesForLevel(level) / 60`,
    *  reused from mode.ts, never a second literal. */
   readonly frightenedSeconds: number
@@ -57,20 +65,39 @@ export const FRUIT_SPAWN_DOTS: readonly [number, number] = [70, 170]
  *  §Level table): level 1, levels 2-4, levels 5-20, level 21+. 21 rows total
  *  — beyond 21 the Dossier documents no further speed change before the
  *  level-256 kill screen (out of scope, epic pm1's DEFERRED list). */
-const SPEED_TABLE: readonly { pac: number; ghost: number }[] = [
-  { pac: 80, ghost: 75 }, // level 1
-  { pac: 90, ghost: 85 }, // level 2
-  { pac: 90, ghost: 85 }, // level 3
-  { pac: 90, ghost: 85 }, // level 4
-  ...Array.from({ length: 16 }, () => ({ pac: 100, ghost: 95 })), // levels 5-20
-  { pac: 90, ghost: 95 }, // level 21
+interface SpeedRow {
+  pac: number
+  ghost: number
+  /** Blinky's Cruise Elroy stage-1/stage-2 speeds — same Dossier Table A.1
+   *  row as `ghost`, honest-uncited for the same reason (glossary.md
+   *  §Level table). */
+  elroy1: number
+  elroy2: number
+}
+
+const SPEED_TABLE: readonly SpeedRow[] = [
+  { pac: 80, ghost: 75, elroy1: 80, elroy2: 85 }, // level 1
+  { pac: 90, ghost: 85, elroy1: 90, elroy2: 95 }, // level 2
+  { pac: 90, ghost: 85, elroy1: 90, elroy2: 95 }, // level 3
+  { pac: 90, ghost: 85, elroy1: 90, elroy2: 95 }, // level 4
+  ...Array.from({ length: 16 }, () => ({ pac: 100, ghost: 95, elroy1: 100, elroy2: 105 })), // levels 5-20
+  { pac: 90, ghost: 95, elroy1: 100, elroy2: 100 }, // level 21
 ]
 const MAX_TABLED_LEVEL = SPEED_TABLE.length // 21
 
-function speedRow(level: number): { pac: number; ghost: number } {
+function speedRow(level: number): SpeedRow {
   const idx = Math.min(Math.max(level, 1), MAX_TABLED_LEVEL) - 1
   return SPEED_TABLE[idx]
 }
+
+/** A frightened ghost's speed — a single Dossier figure, not per-level in
+ *  this table (the Dossier's frightened-speed column does vary slightly by
+ *  level group too, but only the level-1 figure is test-pinned here, same
+ *  scope discipline `frightenedSeconds`/`frightenedFlashes` already use).
+ *  Honest-uncited, glossary.md §Speeds — was a bare `50` literal in
+ *  `game.ts` before this fix, indistinguishable at a glance from the CITED
+ *  `SCORE_ENERGIZER = 50`; now a named, documented constant. */
+export const FRIGHTENED_GHOST_SPEED_PCT = 50
 
 /** Fruit progression by level (Dossier ch.5 "Fruit"), byte-cited points
  *  table above: cherry(1) / strawberry(2) / orange(3-4) / apple(5-6) /
@@ -103,6 +130,8 @@ function buildLevel(level: number): Level {
     level,
     pacSpeedPct: speed.pac,
     ghostSpeedPct: speed.ghost,
+    elroy1SpeedPct: speed.elroy1,
+    elroy2SpeedPct: speed.elroy2,
     frightenedSeconds: frightenedFramesForLevel(level) / 60,
     frightenedFlashes: FRIGHT_FLASHES,
     fruit: fruitForLevel(level),
