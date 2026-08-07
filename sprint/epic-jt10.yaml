@@ -10,10 +10,12 @@ stories:
     title: 'Font port: transcribe FONT35 (3x5) + FONT57 (5x7) from MESSAGE.SRC into pure core data, add a shell raster text renderer'
     points: 5
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-07'
     repos: arcade
     workflow: tdd
+    review_findings: 'APPROVED (Heimdall, peloton). Independently re-decoded all ~102 glyphs from MESSAGE.SRC (0 drift) + verified both FDB pointer chains. Non-blocking: (Medium) source double-entry + citation gates guard only 10/102 glyphs — filed as jt10-8; (Low) renderer ops paint via the paintDissolve fillRect idiom, not blitOp — guidance for the jt10 painter stories; (Nit) Pixel/Glyph/Font types duplicated across font35/font57.'
+    review_verdict: approved
   - id: jt10-2
     title: 'Cabinet state machine: new core cabinet.ts (attract/title/select/playing/gameover/highscore) wrapping the session, hinged on GOVER'
     points: 3
@@ -62,3 +64,12 @@ stories:
     repos: arcade
     workflow: tdd
     depends_on: jt10-6
+  - id: jt10-8
+    title: Extend the font source double-entry gate to ALL ~102 glyphs (font35+font57), not just the 10 jt10-1 pinned
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-1
+    type: chore
