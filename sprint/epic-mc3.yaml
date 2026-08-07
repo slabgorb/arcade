@@ -11,7 +11,8 @@ stories:
     description: 'Plan tasks 1-3 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). The enemy-side data model that mc3-2/3/4 all build on. (a) src/core/icbm.ts — a PURE reducer mirroring abm.ts: launchIcbm(origin,target)/stepIcbm(icbm) fly a straight line at unit speed from a top-edge origin to a ground target and snap on arrival. Cite UPDATE ICBM POSITIONS (W3MAIN); unit speed only (per-wave enemy-speed table is mc4). (b) src/core/field.ts (append, do not alter existing cited exports) — stateful City{pos,alive} and Base{pos,alive,ammo} plus createCities() (6 live) and createBases() (3 live, ammo=MAXMIS) and export const MAXMIS=10 (reuses existing claim MC-MAXMIS). (c) src/core/spawn.ts + claims/spawn.json — a MINIMAL seeded spawner (mc4 replaces it) driven by the REAL ROM mechanism: keep at most MXICON(7) on screen, launch while remaining budget NICBMS(8)>0 and the highest ICBM has fallen below LAUHGT(202/0xCA), placing each at a random top-edge column (seeded @shared/rng) aimed at a random live structure. New claims MC-NICBMS/MC-MXICON/MC-LAUHGT; replace any bare top-edge 256/210 with cited HMAX/TOPSCR-derived consts (grep them first) so the AC3 guard stays green. Depends on nothing new; blocks mc3-2/3/4.'
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -20,6 +21,8 @@ stories:
       - 'field.ts gains City/Base types and createCities()/createBases(): createCities() returns 6 live cities at the cited CITIES positions; createBases() returns 3 live bases at the cited BASES positions each with ammo=MAXMIS=10; the pre-existing field exports and their claims are unchanged.'
       - 'src/core/spawn.ts exports NICBMS=8, MXICON=7, LAUHGT=202 and spawnIcbms(current,liveTargets,remaining,rng): never exceeds MXICON on screen; launches nothing when remaining=0 or no live targets; holds fire while a live ICBM is still above LAUHGT (screen non-empty); otherwise launches toward a random live target from a top-edge column and decrements the budget; deterministic for a given seed.'
       - claims/spawn.json carries MC-NICBMS(8)/MC-MXICON(7)/MC-LAUHGT(202) with byte-exact verbatim from W3COMN.MAC, and any top-edge column/height constant is claim-backed; citations.test.ts (incl. the AC3 no-uncited-literal guard) and purity.test.ts pass for every new src/core module.
+    review_findings: 'APPROVED round 2. Both round-1 blocking test-tooth findings resolved and mutation-verified (citation-delete reddens the icbm guard; launch-cap-at-1 reddens the pinned spawn assertion). src/core byte-identical, fully rule-compliant. Non-blocking follow-ups: JSDoc parity, UPDPOS->ICPOSI citation precision, one round-2 comment wording nit (type identifiers -> prose).'
+    review_verdict: approved
   - id: mc3-2
     title: 'Damage detection: a blast destroys incoming ICBMs; an arrived ICBM destroys a city/base'
     description: "Plan task 4 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). The core mechanic, as two PURE functions in src/core/damage.ts. (a) killIcbmsInBlasts(icbms,explosions): {survivors,killed} — an ICBM is destroyed when its head lies within blastRadius(exp) of any live blast (point-in-circle vs mc1's explosion.ts). (b) resolveGroundImpacts(icbms,cities,bases): {cities,bases,icbms} — an ARRIVED ICBM kills the city/base at its target and is removed from the returned list. Cite MISSILE DAMAGE DETECTION & PROCESS and DESTROY A CITY OR BASE (W3MAIN). Only trivial literals — no new claim. Depends on mc3-1 (Icbm, City, Base)."
