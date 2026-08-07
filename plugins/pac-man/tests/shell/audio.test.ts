@@ -6,7 +6,8 @@
 // marks required (the SWMUS silent-feature trap). Expected effect params come
 // straight from `wsg-effects.ts` so the tests track the cited decode.
 import { describe, it, expect } from 'vitest'
-import { createAudioDriver } from '../../src/shell/audio'
+import { createAudioDriver, type AudioDriver } from '../../src/shell/audio'
+import { THEME_FRAMES } from '../../src/shell/tune'
 import type { Wsg, WsgEffect } from '../../src/shell/wsg'
 import {
   MUNCH_A,
@@ -50,6 +51,13 @@ function stateWith(over: Partial<GameState> & { frightenedTimer?: number }): Gam
     mode: { frightenedTimer } as GameState['mode'],
     ...rest,
   } as GameState
+}
+
+/** Run the driver past the start-of-game theme (pm2-4): the first
+ *  `THEME_FRAMES` playing-phase frames voice the theme and hold the ambient
+ *  siren, so siren tests fast-forward through it first. */
+function skipTheme(driver: AudioDriver, state: GameState): void {
+  for (let i = 0; i < THEME_FRAMES; i++) driver.onFrame(state)
 }
 
 const plays = (calls: Call[]): WsgEffect[] =>
@@ -125,6 +133,7 @@ describe('audio driver — the background siren rises as the maze empties', () =
   it('the siren BASE (each startSiren) rises through the 5 stages, first→last', () => {
     const { wsg, calls } = spyWsg()
     const driver = createAudioDriver(wsg)
+    skipTheme(driver, stateWith({ dotsEaten: 0 }))
     // Sweep dotsEaten across every stage boundary (0e77 thresholds 116/180/212/228).
     for (const dotsEaten of [0, 50, 116, 179, 180, 211, 212, 227, 228, 240]) {
       driver.onFrame(stateWith({ dotsEaten }))
@@ -139,6 +148,7 @@ describe('audio driver — the background siren rises as the maze empties', () =
     const { wsg, calls } = spyWsg()
     const driver = createAudioDriver(wsg)
     const stage = SIREN_STAGES[0]
+    skipTheme(driver, stateWith({ dotsEaten: 10 }))
     // A full warble period of frames, all in stage 0.
     for (let i = 0; i < stage.periodFrames; i++) driver.onFrame(stateWith({ dotsEaten: 10 }))
     const pitches = calls
@@ -156,6 +166,7 @@ describe('audio driver — the background siren rises as the maze empties', () =
   it('starts the siren only ONCE while the stage is unchanged (warble aside)', () => {
     const { wsg, calls } = spyWsg()
     const driver = createAudioDriver(wsg)
+    skipTheme(driver, stateWith({ dotsEaten: 0 }))
     driver.onFrame(stateWith({ dotsEaten: 0 }))
     driver.onFrame(stateWith({ dotsEaten: 10 })) // same stage 0
     expect(calls.filter((c) => c.fn === 'startSiren')).toHaveLength(1)
@@ -164,6 +175,7 @@ describe('audio driver — the background siren rises as the maze empties', () =
   it('switches the ambient to the frightened warble while frightened, then back', () => {
     const { wsg, calls } = spyWsg()
     const driver = createAudioDriver(wsg)
+    skipTheme(driver, stateWith({ dotsEaten: 50 }))
     driver.onFrame(stateWith({ dotsEaten: 50 })) // background stage 0
     driver.onFrame(stateWith({ dotsEaten: 50, frightenedTimer: 120 })) // → warble
     driver.onFrame(stateWith({ dotsEaten: 50, frightenedTimer: 0 })) // → back to background
@@ -177,10 +189,46 @@ describe('audio driver — the background siren rises as the maze empties', () =
   it('suppresses the ambient siren during the death cue', () => {
     const { wsg, calls } = spyWsg()
     const driver = createAudioDriver(wsg)
+    skipTheme(driver, stateWith({ dotsEaten: 50 }))
     driver.onFrame(stateWith({ dotsEaten: 50 })) // siren running
     driver.onEvents([{ type: 'pac-died' }]) // death: stopAll + cue
     const before = calls.length
     driver.onFrame(stateWith({ dotsEaten: 50 })) // must NOT restart the siren yet
     expect(calls.slice(before).every((c) => c.fn !== 'startSiren')).toBe(true)
+  })
+})
+
+describe('audio driver — the start-of-game theme (pm2-4)', () => {
+  // The cited first melody note: pitch #5c << (f2 base 2 + voice-2 nibble 4).
+  const MELODY_ROOT = 0x5c << 6
+
+  it('voices the theme from the first playing frame, holding the siren under it', () => {
+    const { wsg, calls } = spyWsg()
+    const driver = createAudioDriver(wsg)
+    driver.onFrame(stateWith({ dotsEaten: 0 }))
+    // Frame 0 plays the melody root (voice 1) and the bass root (voice 2)…
+    const themed = calls.filter((c): c is Extract<Call, { fn: 'play' }> => c.fn === 'play')
+    expect(themed.map((c) => c.voice).sort()).toEqual([1, 2])
+    expect(themed.find((c) => c.voice === 1)?.effect.frequency).toBe(MELODY_ROOT)
+    // …and no ambient siren starts anywhere under the theme.
+    for (let i = 1; i < THEME_FRAMES; i++) driver.onFrame(stateWith({ dotsEaten: 0 }))
+    expect(calls.every((c) => c.fn !== 'startSiren')).toBe(true)
+    // The frame after the theme ends, the background siren takes over.
+    driver.onFrame(stateWith({ dotsEaten: 0 }))
+    expect(calls.some((c) => c.fn === 'startSiren')).toBe(true)
+  })
+
+  it('plays once per game: not again mid-game, again after game-over', () => {
+    const { wsg, calls } = spyWsg()
+    const driver = createAudioDriver(wsg)
+    skipTheme(driver, stateWith({ dotsEaten: 0 }))
+    const rootPlays = () =>
+      calls.filter((c) => c.fn === 'play' && c.effect.frequency === MELODY_ROOT).length
+    const afterFirst = rootPlays()
+    driver.onFrame(stateWith({ dotsEaten: 10 })) // mid-game: no retrigger
+    expect(rootPlays()).toBe(afterFirst)
+    driver.onEvents([{ type: 'game-over' }]) // re-arms for the next game
+    driver.onFrame(stateWith({ dotsEaten: 0 })) // the new game's first frame
+    expect(rootPlays()).toBe(afterFirst + 1)
   })
 })
