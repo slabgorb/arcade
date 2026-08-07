@@ -42,6 +42,11 @@ export interface WsgEffect {
   volume: number
   /** Optional one-shot cutoff; omitted = plays until replaced or stopped. */
   durationMs?: number
+  /** The ROM effects are pitch SWEEPS, not flat tones — the munch "wak" is a
+   *  fast downward chirp, ghost-eaten a descent, fruit a rise. When set (with
+   *  `durationMs`), the pitch ramps linearly from `frequency` to this word over
+   *  the duration, reproducing the voice-def's per-tick frequency sweep. */
+  frequencyEnd?: number
 }
 
 /** The chip's three channels. One-shots default to channel 0. */
@@ -102,6 +107,14 @@ function buildChannel({ context, out }: SynthTarget, effect: WsgEffect): Channel
     playbackRateFor(effect.frequency, context.sampleRate),
     context.currentTime,
   )
+  // A pitch sweep (the chirp that makes munch a "wak", not a beep): ramp the
+  // playback rate to the end word over the one-shot's duration.
+  if (effect.frequencyEnd !== undefined && effect.durationMs !== undefined) {
+    source.playbackRate.linearRampToValueAtTime(
+      playbackRateFor(effect.frequencyEnd, context.sampleRate),
+      context.currentTime + effect.durationMs / 1000,
+    )
+  }
   source.connect(gain)
   return { source, gain }
 }

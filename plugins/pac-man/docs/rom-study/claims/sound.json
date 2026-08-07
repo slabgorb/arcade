@@ -811,12 +811,480 @@
     "id": "SND-CHOOSE-SOUND-DISPATCH",
     "symbol": "SND_CHOOSE_SOUND",
     "value": "#4e9c",
-    "meaning": "\"Choose sound N\" — a sound effect is requested by writing an effect number into the RAM sound block (here #4e9c, \"Choose sound 2\"). The test-mode sound roster at #31a2+ exercises the effects this way; gameplay writes the same request bytes (#4eac/#4ebc). This is how the events->voice driver (Task 3) will trigger a cue.",
+    "meaning": "\"Choose sound N\" \u2014 a sound effect is requested by writing an effect number into the RAM sound block (here #4e9c, \"Choose sound 2\"). The test-mode sound roster at #31a2+ exercises the effects this way; gameplay writes the same request bytes (#4eac/#4ebc). This is how the events->voice driver (Task 3) will trigger a cue.",
     "addr": "31a2",
     "source": {
       "file": "pacman.asm",
       "line": 6974,
       "verbatim": "31a2  329c4e    ld      (#4e9c),a\t; Choose sound 2"
+    }
+  },
+  {
+    "id": "SND-MUNCH-PHASE-A-FREQ",
+    "symbol": "SND_MUNCH_PHASE_A_FREQ",
+    "value": 24,
+    "meaning": "8-byte voice3 tone voice-def @3b80 [42 18 fd 06 00 01 0c 00]. Base frequency byte1=#18. Frequency word = byte1<<octave(byte0 bits6-4=4) <<4 (voice 3 has 4 freq nibbles, bits4-19) = 6144 (#1800) -> 562.5 Hz via f*96000/2^20; then swept by byte2=-3/tick over duration. Munch/wakka phase A (EVEN dot count). Alternates with phase B each dot eaten. Dossier ch.2 'The Basics' (dot-eat). Selected by voice3 request bit0 when the dots-eaten counter #4e0e is even (pacman.asm:1a0f `set 0,(hl)`).",
+    "addr": "3b81",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8834,
+      "verbatim": "3b81  18fd      jr      #3b80           ; (-3)"
+    }
+  },
+  {
+    "id": "SND-MUNCH-PHASE-A-WAVE-VOL",
+    "symbol": "SND_MUNCH_PHASE_A_WAVEFORM_VOLUME",
+    "value": 12,
+    "meaning": "8-byte voice3 tone voice-def @3b80 [42 18 fd 06 00 01 0c 00]. byte6=#0c packs waveform-select in the HIGH nibble = 0 (routes to WSG_WAVEFORM_0) and 4-bit volume in the LOW nibble = 12 (0-15). Handler pacman.asm:2e56-2e60 (waveform) / 2f22 (volume).",
+    "addr": "3b86",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8836,
+      "verbatim": "3b85  010c00    ld      bc,#000c"
+    }
+  },
+  {
+    "id": "SND-MUNCH-PHASE-A-DUR",
+    "symbol": "SND_MUNCH_PHASE_A_DURATION",
+    "value": 6,
+    "meaning": "8-byte voice3 tone voice-def @3b80 [42 18 fd 06 00 01 0c 00]. byte3=#06: duration-counter reload = byte3&#7f = 6 ticks; bit7=0 = vibrato flag (off). Segment/repeat count byte5=1. Handler pacman.asm:2e48.",
+    "addr": "3b83",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8835,
+      "verbatim": "3b83  0600      ld      b,#00"
+    }
+  },
+  {
+    "id": "SND-MUNCH-PHASE-B-FREQ",
+    "symbol": "SND_MUNCH_PHASE_B_FREQ",
+    "value": 4,
+    "meaning": "8-byte voice3 tone voice-def @3b88 [42 04 03 06 00 01 0c 00]. Base frequency byte1=#04. Frequency word = byte1<<octave(byte0 bits6-4=4) <<4 (voice 3 has 4 freq nibbles, bits4-19) = 1024 (#0400) -> 93.8 Hz via f*96000/2^20; then swept by byte2=+3/tick over duration. Munch/wakka phase B (ODD dot count). Dossier ch.2. Selected by voice3 request bit1 when #4e0e is odd (pacman.asm:1a16 `set 1,(hl)`).",
+    "addr": "3b89",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8838,
+      "verbatim": "3b89  04        inc     b"
+    }
+  },
+  {
+    "id": "SND-MUNCH-PHASE-B-WAVE-VOL",
+    "symbol": "SND_MUNCH_PHASE_B_WAVEFORM_VOLUME",
+    "value": 12,
+    "meaning": "8-byte voice3 tone voice-def @3b88 [42 04 03 06 00 01 0c 00]. byte6=#0c packs waveform-select in the HIGH nibble = 0 (routes to WSG_WAVEFORM_0) and 4-bit volume in the LOW nibble = 12 (0-15). Handler pacman.asm:2e56-2e60 (waveform) / 2f22 (volume).",
+    "addr": "3b8e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8841,
+      "verbatim": "3b8d  010c00    ld      bc,#000c"
+    }
+  },
+  {
+    "id": "SND-MUNCH-PHASE-B-DUR",
+    "symbol": "SND_MUNCH_PHASE_B_DURATION",
+    "value": 6,
+    "meaning": "8-byte voice3 tone voice-def @3b88 [42 04 03 06 00 01 0c 00]. byte3=#06: duration-counter reload = byte3&#7f = 6 ticks; bit7=0 = vibrato flag (off). Segment/repeat count byte5=1. Handler pacman.asm:2e48.",
+    "addr": "3b8b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8840,
+      "verbatim": "3b8b  0600      ld      b,#00"
+    }
+  },
+  {
+    "id": "SND-GHOST-EATEN-FREQ",
+    "symbol": "SND_GHOST_EATEN_FREQ",
+    "value": 12,
+    "meaning": "8-byte voice3 tone voice-def @3b90 [56 0c ff 8c 00 02 0f 00]. Base frequency byte1=#0c. Frequency word = byte1<<octave(byte0 bits6-4=5) <<4 (voice 3 has 4 freq nibbles, bits4-19) = 6144 (#1800) -> 562.5 Hz via f*96000/2^20; then swept by byte2=-1/tick over duration. Ghost-eaten (eating a frightened ghost for 200/400/800/1600). Dossier ch.2/ch.4. Voice3 request bit2, set as the ghost-eaten score is drawn (pacman.asm:19cb `set 2,(hl)`).",
+    "addr": "3b91",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8843,
+      "verbatim": "3b91  0c        inc     c"
+    }
+  },
+  {
+    "id": "SND-GHOST-EATEN-WAVE-VOL",
+    "symbol": "SND_GHOST_EATEN_WAVEFORM_VOLUME",
+    "value": 15,
+    "meaning": "8-byte voice3 tone voice-def @3b90 [56 0c ff 8c 00 02 0f 00]. byte6=#0f packs waveform-select in the HIGH nibble = 0 (routes to WSG_WAVEFORM_0) and 4-bit volume in the LOW nibble = 15 (0-15). Handler pacman.asm:2e56-2e60 (waveform) / 2f22 (volume).",
+    "addr": "3b96",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8848,
+      "verbatim": "3b96  0f        rrca"
+    }
+  },
+  {
+    "id": "SND-GHOST-EATEN-DUR",
+    "symbol": "SND_GHOST_EATEN_DURATION",
+    "value": 140,
+    "meaning": "8-byte voice3 tone voice-def @3b90 [56 0c ff 8c 00 02 0f 00]. byte3=#8c: duration-counter reload = byte3&#7f = 12 ticks; bit7=1 = vibrato flag (ON). Segment/repeat count byte5=2. Handler pacman.asm:2e48.",
+    "addr": "3b93",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8845,
+      "verbatim": "3b93  8c        adc     a,h"
+    }
+  },
+  {
+    "id": "SND-FRUIT-EATEN-FREQ",
+    "symbol": "SND_FRUIT_EATEN_FREQ",
+    "value": 0,
+    "meaning": "8-byte voice3 tone voice-def @3b98 [05 00 02 20 00 01 0c 00]. Base frequency byte1=#00. Frequency word = byte1<<octave(byte0 bits6-4=0) <<4 (voice 3 has 4 freq nibbles, bits4-19) = 0 (#0000) -> 0.0 Hz via f*96000/2^20; then swept by byte2=+2/tick over duration. Fruit/bonus eaten. Dossier ch.5 'Fruit'. Voice3 request bit3, set as the fruit score is displayed (pacman.asm:1786 `set 3,(hl)`).",
+    "addr": "3b99",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8851,
+      "verbatim": "3b99  00        nop"
+    }
+  },
+  {
+    "id": "SND-FRUIT-EATEN-WAVE-VOL",
+    "symbol": "SND_FRUIT_EATEN_WAVEFORM_VOLUME",
+    "value": 12,
+    "meaning": "8-byte voice3 tone voice-def @3b98 [05 00 02 20 00 01 0c 00]. byte6=#0c packs waveform-select in the HIGH nibble = 0 (routes to WSG_WAVEFORM_0) and 4-bit volume in the LOW nibble = 12 (0-15). Handler pacman.asm:2e56-2e60 (waveform) / 2f22 (volume).",
+    "addr": "3b9e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8854,
+      "verbatim": "3b9d  010c00    ld      bc,#000c"
+    }
+  },
+  {
+    "id": "SND-FRUIT-EATEN-DUR",
+    "symbol": "SND_FRUIT_EATEN_DURATION",
+    "value": 32,
+    "meaning": "8-byte voice3 tone voice-def @3b98 [05 00 02 20 00 01 0c 00]. byte3=#20: duration-counter reload = byte3&#7f = 32 ticks; bit7=0 = vibrato flag (off). Segment/repeat count byte5=1. Handler pacman.asm:2e48.",
+    "addr": "3b9b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8853,
+      "verbatim": "3b9b  2000      jr      nz,#3b9d        ; (0)"
+    }
+  },
+  {
+    "id": "SND-DEATH-1-FREQ",
+    "symbol": "SND_DEATH_1_FREQ",
+    "value": 32,
+    "meaning": "8-byte voice3 tone voice-def @3ba0 [41 20 ff 86 fe 1c 0f ff]. Base frequency byte1=#20. Frequency word = byte1<<octave(byte0 bits6-4=4) <<4 (voice 3 has 4 freq nibbles, bits4-19) = 8192 (#2000) -> 750.0 Hz via f*96000/2^20; then swept by byte2=-1/tick over duration. Death melody, part 1 (long descending vibrato tone; 28 segments). Dossier ch.2 (losing a life). Voice3 request bit4, set at the start of the Pac-Man death animation sequence (sprite frames #34-#3f) (pacman.asm:12fc `set 4,(hl)`).",
+    "addr": "3ba1",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8856,
+      "verbatim": "3ba1  20ff      jr      nz,#3ba2        ; (-1)"
+    }
+  },
+  {
+    "id": "SND-DEATH-1-WAVE-VOL",
+    "symbol": "SND_DEATH_1_WAVEFORM_VOLUME",
+    "value": 15,
+    "meaning": "8-byte voice3 tone voice-def @3ba0 [41 20 ff 86 fe 1c 0f ff]. byte6=#0f packs waveform-select in the HIGH nibble = 0 (routes to WSG_WAVEFORM_0) and 4-bit volume in the LOW nibble = 15 (0-15). Handler pacman.asm:2e56-2e60 (waveform) / 2f22 (volume).",
+    "addr": "3ba6",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8859,
+      "verbatim": "3ba6  0f        rrca"
+    }
+  },
+  {
+    "id": "SND-DEATH-1-DUR",
+    "symbol": "SND_DEATH_1_DURATION",
+    "value": 134,
+    "meaning": "8-byte voice3 tone voice-def @3ba0 [41 20 ff 86 fe 1c 0f ff]. byte3=#86: duration-counter reload = byte3&#7f = 6 ticks; bit7=1 = vibrato flag (ON). Segment/repeat count byte5=28. Handler pacman.asm:2e48.",
+    "addr": "3ba3",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8857,
+      "verbatim": "3ba3  86        add     a,(hl)"
+    }
+  },
+  {
+    "id": "SND-DEATH-2-FREQ",
+    "symbol": "SND_DEATH_2_FREQ",
+    "value": 0,
+    "meaning": "8-byte voice3 tone voice-def @3ba8 [70 00 01 0c 00 01 08 00]. Base frequency byte1=#00. Frequency word = byte1<<octave(byte0 bits6-4=7) <<4 (voice 3 has 4 freq nibbles, bits4-19) = 0 (#0000) -> 0.0 Hz via f*96000/2^20; then swept by byte2=+1/tick over duration. Death melody, part 2 (final high blip, octave 7). Dossier ch.2. Voice3 request bit5, set near the end of the death animation (pacman.asm:1349 `ld (hl),#20`).",
+    "addr": "3ba9",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8862,
+      "verbatim": "3ba9  00        nop"
+    }
+  },
+  {
+    "id": "SND-DEATH-2-WAVE-VOL",
+    "symbol": "SND_DEATH_2_WAVEFORM_VOLUME",
+    "value": 8,
+    "meaning": "8-byte voice3 tone voice-def @3ba8 [70 00 01 0c 00 01 08 00]. byte6=#08 packs waveform-select in the HIGH nibble = 0 (routes to WSG_WAVEFORM_0) and 4-bit volume in the LOW nibble = 8 (0-15). Handler pacman.asm:2e56-2e60 (waveform) / 2f22 (volume).",
+    "addr": "3bae",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8864,
+      "verbatim": "3bad  010800    ld      bc,#0008"
+    }
+  },
+  {
+    "id": "SND-DEATH-2-DUR",
+    "symbol": "SND_DEATH_2_DURATION",
+    "value": 12,
+    "meaning": "8-byte voice3 tone voice-def @3ba8 [70 00 01 0c 00 01 08 00]. byte3=#0c: duration-counter reload = byte3&#7f = 12 ticks; bit7=0 = vibrato flag (off). Segment/repeat count byte5=1. Handler pacman.asm:2e48.",
+    "addr": "3bab",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8863,
+      "verbatim": "3baa  010c00    ld      bc,#000c"
+    }
+  },
+  {
+    "id": "SND-FRIGHT-FREQ",
+    "symbol": "SND_FRIGHT_FREQ",
+    "value": 0,
+    "meaning": "8-byte voice2 tone voice-def @3b68 [24 00 06 08 00 00 0a 00]. Base frequency byte1=#00. Frequency word = byte1<<octave(byte0 bits6-4=2) <<4 (voice 2 has 4 freq nibbles, bits4-19) = 0 (#0000) -> 0.0 Hz via f*96000/2^20; then swept by byte2=+6/tick over duration. Frightened / energizer siren (rising sweep, plays while ghosts are blue). Dossier ch.4 'Chase, Scatter, and Frightened'. Voice2 request bit5, set when an energizer is eaten and fright mode begins (pacman.asm:1ac4 `set 5,(hl)`).",
+    "addr": "3b69",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8813,
+      "verbatim": "3b69  00        nop"
+    }
+  },
+  {
+    "id": "SND-FRIGHT-WAVE-VOL",
+    "symbol": "SND_FRIGHT_WAVEFORM_VOLUME",
+    "value": 10,
+    "meaning": "8-byte voice2 tone voice-def @3b68 [24 00 06 08 00 00 0a 00]. byte6=#0a packs waveform-select in the HIGH nibble = 0 (routes to WSG_WAVEFORM_0) and 4-bit volume in the LOW nibble = 10 (0-15). Handler pacman.asm:2e56-2e60 (waveform) / 2f22 (volume).",
+    "addr": "3b6e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8817,
+      "verbatim": "3b6e  0a        ld      a,(bc)"
+    }
+  },
+  {
+    "id": "SND-FRIGHT-DUR",
+    "symbol": "SND_FRIGHT_DURATION",
+    "value": 8,
+    "meaning": "8-byte voice2 tone voice-def @3b68 [24 00 06 08 00 00 0a 00]. byte3=#08: duration-counter reload = byte3&#7f = 8 ticks; bit7=0 = vibrato flag (off). Segment/repeat count byte5=0. Handler pacman.asm:2e48.",
+    "addr": "3b6b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8814,
+      "verbatim": "3b6a  0608      ld      b,#08"
+    }
+  },
+  {
+    "id": "SND-EXTRA-LIFE-FREQ",
+    "symbol": "SND_EXTRA_LIFE_FREQ",
+    "value": 32,
+    "meaning": "8-byte voice1 tone voice-def @3b30 [73 20 00 0c 00 0a 1f 00]. Base frequency byte1=#20. Frequency word = byte1<<octave(byte0 bits6-4=7) (voice1, 20-bit from bit0) = 4096 (#1000) -> 375.0 Hz via f*96000/2^20; then swept by byte2=+0/tick over duration. Extra-life / bonus-Pac-Man jingle (waveform 1, one-shot). Dossier ch.2 (free man). Voice1 request bit0, set once when the score crosses the bonus threshold, alongside inc-lives at pacman.asm:2b44 (pacman.asm:2b3f `set 0,(hl)`).",
+    "addr": "3b31",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8770,
+      "verbatim": "3b31  2000      jr      nz,#3b33        ; (0)"
+    }
+  },
+  {
+    "id": "SND-EXTRA-LIFE-WAVE-VOL",
+    "symbol": "SND_EXTRA_LIFE_WAVEFORM_VOLUME",
+    "value": 31,
+    "meaning": "8-byte voice1 tone voice-def @3b30 [73 20 00 0c 00 0a 1f 00]. byte6=#1f packs waveform-select in the HIGH nibble = 1 (routes to WSG_WAVEFORM_1) and 4-bit volume in the LOW nibble = 15 (0-15). Handler pacman.asm:2e56-2e60 (waveform) / 2f22 (volume).",
+    "addr": "3b36",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8774,
+      "verbatim": "3b36  1f        rra"
+    }
+  },
+  {
+    "id": "SND-EXTRA-LIFE-DUR",
+    "symbol": "SND_EXTRA_LIFE_DURATION",
+    "value": 12,
+    "meaning": "8-byte voice1 tone voice-def @3b30 [73 20 00 0c 00 0a 1f 00]. byte3=#0c: duration-counter reload = byte3&#7f = 12 ticks; bit7=0 = vibrato flag (off). Segment/repeat count byte5=10. Handler pacman.asm:2e48.",
+    "addr": "3b33",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8771,
+      "verbatim": "3b33  0c        inc     c"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-1-FREQ",
+    "symbol": "SND_SIREN_STAGE_1_FREQ",
+    "value": 32,
+    "meaning": "Background siren stage 1/5 (rising as maze empties), voice2 tone voice-def @3b40 [36 20 04 8c 00 00 06 00]. Base freq byte1=#20; word=byte1<<octave(3)<<4 = 4096 (#1000) -> 375.0 Hz. waveform 0, volume 6, duration 12. Stage selected by dots-eaten thresholds in the siren driver pacman.asm:0e77 (>=#74/#b4/#d4/#e4 pick bits1-4, else bit0). Dossier ch.3 (siren rises through the maze).",
+    "addr": "3b41",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8783,
+      "verbatim": "3b40  3620      ld      (hl),#20"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-1-DUR",
+    "symbol": "SND_SIREN_STAGE_1_DURATION",
+    "value": 140,
+    "meaning": "Background siren stage 1/5, voice2 @3b40. byte3=#8c: duration&#7f=12 ticks, bit7=1 vibrato ON (the siren warble). Duration shortens as pitch rises across stages (12->8).",
+    "addr": "3b43",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8785,
+      "verbatim": "3b43  8c        adc     a,h"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-2-FREQ",
+    "symbol": "SND_SIREN_STAGE_2_FREQ",
+    "value": 40,
+    "meaning": "Background siren stage 2/5 (rising as maze empties), voice2 tone voice-def @3b48 [36 28 05 8b 00 00 06 00]. Base freq byte1=#28; word=byte1<<octave(3)<<4 = 5120 (#1400) -> 468.8 Hz. waveform 0, volume 6, duration 11. Stage selected by dots-eaten thresholds in the siren driver pacman.asm:0e77 (>=#74/#b4/#d4/#e4 pick bits1-4, else bit0). Dossier ch.3 (siren rises through the maze).",
+    "addr": "3b49",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8789,
+      "verbatim": "3b48  3628      ld      (hl),#28"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-2-DUR",
+    "symbol": "SND_SIREN_STAGE_2_DURATION",
+    "value": 139,
+    "meaning": "Background siren stage 2/5, voice2 @3b48. byte3=#8b: duration&#7f=11 ticks, bit7=1 vibrato ON (the siren warble). Duration shortens as pitch rises across stages (12->8).",
+    "addr": "3b4b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8791,
+      "verbatim": "3b4b  8b        adc     a,e"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-3-FREQ",
+    "symbol": "SND_SIREN_STAGE_3_FREQ",
+    "value": 48,
+    "meaning": "Background siren stage 3/5 (rising as maze empties), voice2 tone voice-def @3b50 [36 30 06 8a 00 00 06 00]. Base freq byte1=#30; word=byte1<<octave(3)<<4 = 6144 (#1800) -> 562.5 Hz. waveform 0, volume 6, duration 10. Stage selected by dots-eaten thresholds in the siren driver pacman.asm:0e77 (>=#74/#b4/#d4/#e4 pick bits1-4, else bit0). Dossier ch.3 (siren rises through the maze).",
+    "addr": "3b51",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8795,
+      "verbatim": "3b50  3630      ld      (hl),#30"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-3-DUR",
+    "symbol": "SND_SIREN_STAGE_3_DURATION",
+    "value": 138,
+    "meaning": "Background siren stage 3/5, voice2 @3b50. byte3=#8a: duration&#7f=10 ticks, bit7=1 vibrato ON (the siren warble). Duration shortens as pitch rises across stages (12->8).",
+    "addr": "3b53",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8796,
+      "verbatim": "3b52  068a      ld      b,#8a"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-4-FREQ",
+    "symbol": "SND_SIREN_STAGE_4_FREQ",
+    "value": 60,
+    "meaning": "Background siren stage 4/5 (rising as maze empties), voice2 tone voice-def @3b58 [36 3c 07 89 00 00 06 00]. Base freq byte1=#3c; word=byte1<<octave(3)<<4 = 7680 (#1e00) -> 703.1 Hz. waveform 0, volume 6, duration 9. Stage selected by dots-eaten thresholds in the siren driver pacman.asm:0e77 (>=#74/#b4/#d4/#e4 pick bits1-4, else bit0). Dossier ch.3 (siren rises through the maze).",
+    "addr": "3b59",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8800,
+      "verbatim": "3b58  363c      ld      (hl),#3c"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-4-DUR",
+    "symbol": "SND_SIREN_STAGE_4_DURATION",
+    "value": 137,
+    "meaning": "Background siren stage 4/5, voice2 @3b58. byte3=#89: duration&#7f=9 ticks, bit7=1 vibrato ON (the siren warble). Duration shortens as pitch rises across stages (12->8).",
+    "addr": "3b5b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8802,
+      "verbatim": "3b5b  89        adc     a,c"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-5-FREQ",
+    "symbol": "SND_SIREN_STAGE_5_FREQ",
+    "value": 72,
+    "meaning": "Background siren stage 5/5 (rising as maze empties), voice2 tone voice-def @3b60 [36 48 08 88 00 00 06 00]. Base freq byte1=#48; word=byte1<<octave(3)<<4 = 9216 (#2400) -> 843.8 Hz. waveform 0, volume 6, duration 8. Stage selected by dots-eaten thresholds in the siren driver pacman.asm:0e77 (>=#74/#b4/#d4/#e4 pick bits1-4, else bit0). Dossier ch.3 (siren rises through the maze).",
+    "addr": "3b61",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8806,
+      "verbatim": "3b60  3648      ld      (hl),#48"
+    }
+  },
+  {
+    "id": "SND-SIREN-STAGE-5-DUR",
+    "symbol": "SND_SIREN_STAGE_5_DURATION",
+    "value": 136,
+    "meaning": "Background siren stage 5/5, voice2 @3b60. byte3=#88: duration&#7f=8 ticks, bit7=1 vibrato ON (the siren warble). Duration shortens as pitch rises across stages (12->8).",
+    "addr": "3b63",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8808,
+      "verbatim": "3b63  88        adc     a,b"
+    }
+  },
+  {
+    "id": "SND-SIREN-WAVEFORM-VOLUME",
+    "symbol": "SND_SIREN_WAVEFORM_VOLUME",
+    "value": 6,
+    "meaning": "Background siren waveform/volume, common to all 5 stages (voice2 entries @3b40-3b60 all carry byte6=#06). High nibble 0 = WSG_WAVEFORM_0 (sine); low nibble 6 = volume 6/15. Cites stage-1 byte6 @3b46.",
+    "addr": "3b46",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8788,
+      "verbatim": "3b46  0600      ld      b,#00"
+    }
+  },
+  {
+    "id": "SND-DURATION-TABLE",
+    "symbol": "SND_DURATION_TABLE",
+    "value": "01 02 04 08 10 20 40 80",
+    "meaning": "Sound-engine duration/tempo lookup table @3bb0 (8 bytes: powers of two 1,2,4,8,16,32,64,128). Indexed by a 3-bit field of a note-stream command via `rst #10`; loaded at pacman.asm:2dc2 (`ld hl,#3bb0`). Cites the first three bytes 01 02 04 on line 8865; remaining bytes 08 10 20 40 80 continue @3bb3-3bb7.",
+    "addr": "3bb0",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8865,
+      "verbatim": "3bb0  010204    ld      bc,#0402"
+    }
+  },
+  {
+    "id": "SND-FREQ-TABLE",
+    "symbol": "SND_FREQ_TABLE_16",
+    "value": "00 57 5c 61 67 6d 74 7b 82 8a 92 9a a3 ad b8 c3",
+    "meaning": "Sound-engine 16-entry note-frequency lookup table @3bb8, indexed by a note byte's low-4-bit field via `rst #10`; loaded at pacman.asm:2dd0 (`ld hl,#3bb8`). Byte0=00 (rest); bytes 57..c3 form a chromatic-ish rising scale (each ~ the next semitone). Full 16 bytes span @3bb8-3bc7; cites byte0=00 @3bb8 (line 8870).",
+    "addr": "3bb8",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8870,
+      "verbatim": "3bb8  00        nop"
+    }
+  },
+  {
+    "id": "SND-TONE-DISPATCH-INDEX",
+    "symbol": "SND_TONE_DISPATCH_BITSCAN",
+    "value": 8,
+    "meaning": "Tone dispatch: the request byte at (ix+0)=#4e9c/#4eac/#4ebc is a BITMASK. Handler pacman.asm:2e1b-2e28 scans it high-bit-first (e=#80, b=8); the found bit's position selects the voice-def: `dec b` then `rlca` x3 makes offset = bitpos*8 into the voice's table (#3b30/#3b40/#3b80). So bit N -> the Nth 8-byte entry. Cites the `dec b` @2e32.",
+    "addr": "2e32",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6400,
+      "verbatim": "2e32  05        dec     b"
+    }
+  },
+  {
+    "id": "SND-SIREN-DRIVER",
+    "symbol": "SND_SIREN_DRIVER",
+    "value": "#4eac",
+    "meaning": "Background-siren stage selector entry @0e77: `ld hl,#4eac` sets up voice2's request byte, then (pacman.asm:0e7a `ld b,#e0`) masks to preserve bits5-7 while the routine sets exactly one of voice2 bits0-4 from the dots-eaten counter #4e0e by threshold (>=#e4->bit4 .. >=#74->bit1, else bit0). This chooses the 5 rising siren stages @3b40-3b60 as the maze empties. Dossier ch.3.",
+    "addr": "0e77",
+    "source": {
+      "file": "pacman.asm",
+      "line": 2089,
+      "verbatim": "0e77  21ac4e    ld      hl,#4eac"
     }
   }
 ]
