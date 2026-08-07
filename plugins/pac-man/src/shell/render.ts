@@ -66,17 +66,153 @@ import { TILES } from './tile-data'
 import { SPRITES } from './sprite-data'
 import { HARDWARE_PALETTE, colourLookup } from './palette-data'
 import { FRUIT_SPRITE, SCORE_SPRITE } from './glyph-data'
-import { MAZE_TILEMAP } from './maze-tilemap-data'
 
 const TILE_PX = CORE_TILE_PX
 const SPRITE_PX = 16 // pacman.5f's native sprite size — 2x2 maze tiles.
 
-// Colour for the HUD text is a plain, readable approximation — not a
-// byte-cited palette. Pac-Man and the ghosts are sprite+palette rendered
-// below (pm3-5) and no longer use a flat fillStyle. The ghost-house gate
-// line is no longer procedural either (pm3-8): the authentic tilemap
-// (maze-tilemap-data.ts) carries the door's own tile+colour art.
+// Colours for the non-sprited actors (the ghost-house gate line, the HUD
+// text) are a plain, readable approximation — not a byte-cited palette. Pac-
+// Man and the ghosts are sprite+palette rendered below (pm3-5) and no longer
+// use a flat fillStyle.
+const GATE_COLOR = '#ffb8de'
 const HUD_COLOR = '#ffffff'
+
+// ─── MAZE TILE AUTOTILER (authored — see header) ───────────────────────────
+// pm3-4 round 2 fix: the FIRST tile pick (210/214-217/218) was wrong. Those
+// tiles mix TWO ink planes per pixel — pv1 (16 px) AND pv3 (16 px) — and
+// WALL_COLOR_CODE resolves pv1 to peach and pv3 to blue (see below), so half
+// the wall's ink rendered peach: the reported "peach lines on a field of
+// blue stripes" defect. The fix is not a new colour code — it is a
+// different TILE SET: 46/60/61/62/63/101 below were re-selected by scanning
+// every one of the 256 decoded tiles for ones using ONLY pv3 (verified: pv0
+// background, pv3 ink, pv1==0 and pv2==0 everywhere in the tile — see the
+// fix report's histogram). With a pure-pv3 tile, WALL_COLOR_CODE's pv1
+// entry is simply never sampled, so no peach can leak in regardless of
+// which code is chosen.
+//
+// WALL_COLOR_CODE (16 = 0x10) is doubly anchored, not just colour-matched:
+// (1) colourLookup(16, 3) resolves through HARDWARE_PALETTE[11] =
+// [33,33,255] = '#2121ff', this file's own pre-pm3-4 hand-picked wall
+// colour; (2) `reference/source/pacman.asm:24df` (`ld a,#10`) writes this
+// exact byte into color RAM's maze-body region (`pacman.asm:24e1`,
+// `ld hl,#4440` — colour RAM starts at #4400, so #4440 is inside the 28x36
+// playfield, not the HUD rows) as one of exactly two candidate attribute
+// values (the other, `pacman.asm:24db` `ld a,#1f`, is selected only when a
+// caller-supplied flag equals 2 — a branch this file's disassembly does not
+// trace to a specific caller, so it is not claimed as the ANSWER, only as
+// corroborating evidence that 0x10 is a real maze-attribute byte the ROM
+// writes). PELLET_COLOR_CODE (29) is unchanged (see file header).
+const WALL_COLOR_CODE = 16
+const PELLET_COLOR_CODE = 29
+// DOT_TILE (0x10 = 16) is BYTE-CITED, not authored: `pacman.asm:2463`
+// (`ld (hl),#10`) is the level-start "restore all dots" routine — it walks
+// a 240-bit table at ROM #35b5 and writes tile byte #10 into video RAM
+// (#4000) for every uneaten dot cell. That is the exact tile index this
+// file already used for DOT_TILE, now confirmed against the program ROM
+// rather than only "found by ASCII-art inspection of the graphics ROM".
+const DOT_TILE = 16
+// ENERGIZER_TILE (0x14 = 20) stays the pm3-4-round-1 ASCII-inspection pick
+// (a full 8x8 filled circle at tile 20/21) — NOT re-derived as byte-cited
+// here. `pacman.asm:24d1` (`ld a,#14`) writes 0x14 into a 4-byte RAM run
+// right after the dot-active bitmap, which is suggestive (same literal,
+// same neighbourhood of code) but is a WORKING-RAM write, not proven to be
+// a video-RAM tile-index write the way the dot case is — so it is noted
+// here as corroboration only, per this round's "don't overclaim" instruction.
+const ENERGIZER_TILE = 20
+const WALL_H_TILE = 46 // pacman.5e: bottom-row-only line, pv3=14, pv1=pv2=0
+const WALL_V_TILE = 101 // pacman.5e: solid 3px-wide vertical column, pv3=24, pv1=pv2=0
+const WALL_CORNER_DOWN_RIGHT_TILE = 63 // right+bottom L (open up-left), pv3=15, pv1=pv2=0
+const WALL_CORNER_DOWN_LEFT_TILE = 62 // left+bottom L (open up-right), pv3=15, pv1=pv2=0
+const WALL_CORNER_UP_RIGHT_TILE = 61 // top+right L (open down-left), pv3=15, pv1=pv2=0
+const WALL_CORNER_UP_LEFT_TILE = 60 // top+left L (open down-right), pv3=15, pv1=pv2=0
+
+/** Rows this maze table reserves for the score/lives/level HUD (`maze.ts`'s
+ *  header: rows 0-2 and 33-35, always 'wall', no gameplay tile). Round 3's
+ *  fix: these must never paint wall LINE ART (see wallTileFor's header) —
+ *  they are six rows deep specifically so `drawHud` has clean black to write
+ *  its text onto, and every cell in them borders another all-wall cell on
+ *  every side it has a neighbour on (so they were never "interior" by the
+ *  neighbour test alone at the seam with the real 30-row maze). */
+function isHudRow(ty: number): boolean {
+  return ty < 3 || ty >= MAZE.rows - 3
+}
+
+/** Pick the wall autotile for (tx,ty), or `null` for a cell that should
+ *  paint nothing (pure black background).
+ *
+ *  Round 3 fix (was: round 2's version always returned a tile, defaulting
+ *  unmatched cases to the horizontal line — for a wall cell whose four
+ *  orthogonal neighbours are ALL wall too, EVERY case fell through to that
+ *  default, so a stack of such INTERIOR cells painted a stack of full-width
+ *  horizontal lines: the reported "venetian blinds" defect). Authentic
+ *  Pac-Man is line art — a wall's INTERIOR (the arcade's maze has 2-3-cell-
+ *  thick wall blocks, not 1-cell-thick everywhere) is empty black; a blue
+ *  line/corner is drawn only on the cells that border open space, oriented
+ *  to face the open side(s):
+ *   - all four neighbours wall -> interior -> null (no paint)
+ *   - open above AND below (closed left/right) -> horizontal line
+ *   - open left AND right (closed above/below) -> vertical line
+ *   - open on exactly two ADJACENT sides -> the corner tile whose ink
+ *     traces the two CLOSED (wall) edges — i.e. facing the open corner
+ *   - any other case (exactly one or exactly three sides open — a
+ *     dead-end notch or a thin peninsula, both rare in this table) falls
+ *     back to a straight line matching whichever axis has an opening,
+ *     preferring horizontal; this is an approximation (see file header:
+ *     "don't over-engineer corner-perfection"), not a claim every such
+ *     cell's tile is arcade-exact. */
+function wallTileFor(tx: number, ty: number): number | null {
+  const up = tileAt(tx, ty - 1) === 'wall'
+  const down = tileAt(tx, ty + 1) === 'wall'
+  const left = tileAt(tx - 1, ty) === 'wall'
+  const right = tileAt(tx + 1, ty) === 'wall'
+
+  if (up && down && left && right) return null // interior — paint nothing
+
+  const openUp = !up
+  const openDown = !down
+  const openLeft = !left
+  const openRight = !right
+
+  if (openUp && openDown && !openLeft && !openRight) return WALL_H_TILE
+  if (openLeft && openRight && !openUp && !openDown) return WALL_V_TILE
+  if (openUp && openLeft && !openDown && !openRight) return WALL_CORNER_DOWN_RIGHT_TILE
+  if (openUp && openRight && !openDown && !openLeft) return WALL_CORNER_DOWN_LEFT_TILE
+  if (openDown && openLeft && !openUp && !openRight) return WALL_CORNER_UP_RIGHT_TILE
+  if (openDown && openRight && !openUp && !openLeft) return WALL_CORNER_UP_LEFT_TILE
+
+  // Fallback: one or three sides open (a notch/peninsula, not a clean
+  // straight run or corner) — face whichever axis has an opening.
+  return openUp || openDown ? WALL_H_TILE : WALL_V_TILE
+}
+
+export interface TileCell {
+  readonly tileIndex: number
+  readonly colorCode: number
+}
+
+/** The authored 28x36 grid of {tileIndex, colorCode} — null where a cell
+ *  paints nothing (path/tunnel/house stay the cleared black background, an
+ *  interior wall cell paints nothing too — see wallTileFor — and so do the
+ *  HUD rows, which drawHud paints its text over; the gate keeps its own
+ *  thin procedural line). Computed once from MAZE's topology (see header
+ *  for what "authored" means here), not per frame. */
+export const MAZE_TILEMAP: readonly (TileCell | null)[][] = Array.from({ length: MAZE.rows }, (_, ty) =>
+  Array.from({ length: MAZE.cols }, (_, tx) => {
+    switch (tileAt(tx, ty)) {
+      case 'wall': {
+        if (isHudRow(ty)) return null // HUD bands: black, never wall line art
+        const tileIndex = wallTileFor(tx, ty)
+        return tileIndex === null ? null : { tileIndex, colorCode: WALL_COLOR_CODE }
+      }
+      case 'dot':
+        return { tileIndex: DOT_TILE, colorCode: PELLET_COLOR_CODE }
+      case 'energizer':
+        return { tileIndex: ENERGIZER_TILE, colorCode: PELLET_COLOR_CODE }
+      default:
+        return null
+    }
+  }),
+)
 
 /** Per-(tileIndex,colorCode) ImageData cache — built once the first time a
  *  combination is drawn, reused every later frame and cell (pm3-5/6 should
@@ -228,12 +364,21 @@ export function drawMaze(ctx: CanvasRenderingContext2D, eaten: ReadonlySet<strin
   for (let ty = 0; ty < MAZE.rows; ty++) {
     for (let tx = 0; tx < MAZE.cols; tx++) {
       const kind = tileAt(tx, ty)
-      // Eaten dots/energizers: skip so the corridor reads as cleared. The
-      // authentic tilemap draws the pellet; the core `eaten` set removes it.
+      const px = tx * TILE_PX
+      const py = ty * TILE_PX
+
+      if (kind === 'gate') {
+        // The ghost-house door has no dedicated tile-ROM art in this task's
+        // scope — kept as the original thin procedural line.
+        ctx.fillStyle = GATE_COLOR
+        ctx.fillRect(px, py + TILE_PX / 2 - 1, TILE_PX, 2)
+        continue
+      }
       if ((kind === 'dot' || kind === 'energizer') && eaten.has(`${tx},${ty}`)) continue
 
       const cell = MAZE_TILEMAP[ty][tx]
-      ctx.putImageData(tileImageData(ctx, cell.tileIndex, cell.colorCode), tx * TILE_PX, ty * TILE_PX)
+      if (!cell) continue // 'path', 'tunnel', 'house' stay the cleared black background
+      ctx.putImageData(tileImageData(ctx, cell.tileIndex, cell.colorCode), px, py)
     }
   }
 }

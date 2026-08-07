@@ -24,7 +24,6 @@ import {
   decodeColourLookupFromProm,
   decodeTilePixel,
   decodeSpritePixel,
-  mazeCellOffset,
 } from '../src/shell/gfx-rom.ts'
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -155,43 +154,6 @@ function bakeSprites() {
 // score value (picked by rendering candidate sprites and inspecting shape,
 // see that file's header). Generating it from this driver would misstate it
 // as ROM data re-derivable from bytes, which it is not.
-
-function bakeMaze() {
-  const vram = readFileSync(join(graphicsDir, 'maze-vram.bin')) // 2048 bytes
-  if (vram.length !== 2048) throw new Error(`maze-vram.bin is ${vram.length} bytes, expected 2048`)
-  const TILE_BASE = 0x000 // 0x4000-0x43ff
-  const COLOR_BASE = 0x400 // 0x4400-0x47ff
-  const COLS = 28
-  const ROWS = 36
-  const grid = Array.from({ length: ROWS }, (_, sy) =>
-    Array.from({ length: COLS }, (_, sx) => {
-      const off = mazeCellOffset(sx, sy)
-      return { tileIndex: vram[TILE_BASE + off], colorCode: vram[COLOR_BASE + off] & 0x1f }
-    }),
-  )
-
-  const body =
-    HEADER +
-    '//\n' +
-    '// Source: reference/graphics/maze-vram.bin (MAME video RAM 0x4000-0x43ff +\n' +
-    '// colour RAM 0x4400-0x47ff). Unpack: src/shell/gfx-rom.ts mazeCellOffset\n' +
-    '// (MAME pacman_v.cpp:170 pacman_scan_rows); colorCode = colourByte & 0x1f.\n\n' +
-    '/** One maze cell: a tile-ROM index and its 82s126.4a colour code. */\n' +
-    'export interface MazeCell {\n  readonly tileIndex: number\n  readonly colorCode: number\n}\n\n' +
-    '/** The authentic 28x36 maze tilemap [row sy][col sx], unpacked from the\n' +
-    ' * cabinet\'s video+colour RAM. The maze-tilemap test re-derives this and\n' +
-    ' * asserts byte-equality. Retires pm3-4\'s wallTileFor autotiler. */\n' +
-    'export const MAZE_TILEMAP: readonly (readonly MazeCell[])[] = [\n' +
-    grid
-      .map((row) => '  [' + row.map((c) => `{ tileIndex: ${c.tileIndex}, colorCode: ${c.colorCode} }`).join(', ') + '],')
-      .join('\n') +
-    '\n]\n'
-
-  writeFileSync(join(outDir, 'maze-tilemap-data.ts'), body)
-  console.log(`wrote ${join(outDir, 'maze-tilemap-data.ts')} (${ROWS}x${COLS} cells)`)
-}
-
 bakePalette()
 bakeTiles()
 bakeSprites()
-bakeMaze()

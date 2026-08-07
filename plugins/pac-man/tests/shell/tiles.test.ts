@@ -12,8 +12,7 @@ import { decodeTilePixel, decodeColourLookupFromProm } from '../../src/shell/gfx
 import { TILES } from '../../src/shell/tile-data'
 import { drawMaze } from '../../src/shell/render'
 import { colourLookup, HARDWARE_PALETTE } from '../../src/shell/palette-data'
-import { MAZE_TILEMAP } from '../../src/shell/maze-tilemap-data'
-import { tileAt } from '../../src/core/maze'
+import { tileAt, MAZE } from '../../src/core/maze'
 import { TILE_PX } from '../../src/core/actor'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -103,54 +102,92 @@ describe('drawMaze tile blit (pm3-4)', () => {
     expect(calls.some((c) => c.method === 'fillRect' && c.w === 8 && c.h === 8)).toBe(false)
   })
 
-  // pm3-8 rewrite: drawMaze now blits the AUTHENTIC baked tilemap
-  // (maze-tilemap-data.ts, unpacked straight from the cabinet's own video +
-  // colour RAM) instead of the retired pm3-4 heuristic autotiler, so this
-  // test's premise changed along with it — see the finding below.
-  //
-  // pm3-4's "never a pellet-peach pixel on any wall blit" guard was true
-  // ONLY because that story's autotiler deliberately hand-picked tiles using
-  // a single ink plane (pv3) to sidestep exactly this colour-bleed risk (see
-  // the retired file header this test used to cite). The authentic tilemap
-  // has no such constraint: the ENTIRE 30-row playfield shares ONE colour
-  // attribute (code 16 — `pacman.asm:24df`/`24e1`, cited in
-  // maze-tilemap-data.ts's header) for BOTH the wall line art and the dots,
-  // and this hardware's colour PROM assigns that one attribute's
-  // pixel-value-1 to the exact warm-pink/peach RGB the dots render in
-  // (HARDWARE_PALETTE[14], [255,184,174]) and pixel-value-3 to the wall's
-  // blue (HARDWARE_PALETTE[11], [33,33,255]). MEASURED directly against this
-  // baked table: every one of the 420 real playfield wall blits that paints
-  // blue ALSO paints that exact peach RGB somewhere in the same 8x8 tile —
-  // a genuine decorative highlight baked into the authentic corner/line art
-  // (classic Pac-Man's maze corners really do carry small pink accents), not
-  // a rendering defect. A "peach never appears on any wall" sweep would
-  // therefore assert something FALSE of the authentic renderer, so it is
-  // retired along with the heuristic it was guarding. What replaces it: pin
-  // that a real playfield wall cell paints the CABINET's own wall ink (read
-  // via colourLookup off the real colour PROM), not the old fabricated
-  // BLUE constant this test used to hardcode.
-  it('a playfield wall-tile blit contains the authentic hardware wall ink', () => {
+  // Round-2 fix regression guard: round 1 passed every test above (correct
+  // 8x8 putImageData shape) while still rendering PEACH pixels into the
+  // maze walls (the controller's visual-playtest defect — the chosen wall
+  // tiles mixed two ink planes, and the wall colour code resolves one of
+  // them to peach). Shape-only assertions can never catch a wrong-colour
+  // regression like that; this test reads the actual blitted pixel bytes.
+  it('wall-tile blits contain the authentic blue and never the pellet peach', () => {
     const ctx = fakeCtx()
     drawMaze(ctx, new Set())
     const calls = (ctx as unknown as { calls: RecordedCall[] }).calls
 
-    // (1,3): a genuine playfield line-art wall cell (tileIndex 218, colour
-    // code 16) — not a HUD-band cell, not the border corner at (0,3) (that
-    // one, tileIndex 208, is itself one of the peach-accented tiles above).
-    expect(tileAt(1, 3)).toBe('wall')
-    const wallCell = MAZE_TILEMAP[3][1]
-    const wallInk = HARDWARE_PALETTE[colourLookup(wallCell.colorCode, 3)] // pv3 = wall ink
+    const BLUE = HARDWARE_PALETTE[11] // '#2121ff' — this file's own pre-pm3-4 wall colour
+    const PEACH = HARDWARE_PALETTE[14] // '#ffb8ae' — the dot/energizer colour; must never appear on a wall
 
-    const call = calls.find(
-      (c) => c.method === 'putImageData' && c.x === 1 * TILE_PX && c.y === 3 * TILE_PX && c.w === 8 && c.h === 8,
+    const wallBlits = calls.filter(
+      (c) => c.method === 'putImageData' && c.data && tileAt(c.x / TILE_PX, c.y / TILE_PX) === 'wall',
     )
-    expect(call).toBeDefined()
-    const data = (call as RecordedCall).data as Uint8ClampedArray
+    expect(wallBlits.length).toBeGreaterThan(0)
 
-    let sawInk = false
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i] === wallInk[0] && data[i + 1] === wallInk[1] && data[i + 2] === wallInk[2]) sawInk = true
+    let sawBlue = false
+    for (const call of wallBlits) {
+      const data = call.data as Uint8ClampedArray
+      for (let i = 0; i < data.length; i += 4) {
+        const rgb = [data[i], data[i + 1], data[i + 2]]
+        if (rgb[0] === PEACH[0] && rgb[1] === PEACH[1] && rgb[2] === PEACH[2]) {
+          throw new Error(`wall tile at (${call.x},${call.y}) painted a pellet-peach pixel`)
+        }
+        if (rgb[0] === BLUE[0] && rgb[1] === BLUE[1] && rgb[2] === BLUE[2]) sawBlue = true
+      }
     }
-    expect(sawInk).toBe(true)
+    expect(sawBlue).toBe(true)
+  })
+
+  // Round-3 fix regression guard: rounds 1-2 both passed every test above
+  // (real 8x8 putImageData blits, correct blue/no-peach colour) while the
+  // maze still rendered as ~20 full-width horizontal stripes — every INTERIOR
+  // wall cell (walls on all four orthogonal sides, e.g. inside a 2-3-cell-
+  // thick block or an all-'#' HUD row) fell through to the horizontal-line
+  // default instead of painting nothing. Locate one real interior wall cell
+  // and one real corridor-edge wall cell directly from the maze table (not
+  // hardcoded coordinates, so this stays correct if the table is ever
+  // edited), and assert drawMaze treats them oppositely.
+  function findWallCell(wantInterior: boolean): { tx: number; ty: number } {
+    for (let ty = 3; ty < MAZE.rows - 3; ty++) {
+      for (let tx = 0; tx < MAZE.cols; tx++) {
+        if (tileAt(tx, ty) !== 'wall') continue
+        const up = tileAt(tx, ty - 1) === 'wall'
+        const down = tileAt(tx, ty + 1) === 'wall'
+        const left = tileAt(tx - 1, ty) === 'wall'
+        const right = tileAt(tx + 1, ty) === 'wall'
+        const isInterior = up && down && left && right
+        if (isInterior === wantInterior) return { tx, ty }
+      }
+    }
+    throw new Error(`no ${wantInterior ? 'interior' : 'edge'} wall cell found in the maze table`)
+  }
+
+  it('an interior wall cell draws nothing; a corridor-edge wall cell draws a tile', () => {
+    const interior = findWallCell(true)
+    const edge = findWallCell(false)
+
+    const ctx = fakeCtx()
+    drawMaze(ctx, new Set())
+    const calls = (ctx as unknown as { calls: RecordedCall[] }).calls
+
+    const paintsAt = (tx: number, ty: number) =>
+      calls.some((c) => c.x === tx * TILE_PX && c.y === ty * TILE_PX && c.w === 8 && c.h === 8)
+
+    expect(paintsAt(interior.tx, interior.ty)).toBe(false) // black background, no blit at all
+    expect(paintsAt(edge.tx, edge.ty)).toBe(true) // a line/corner tile facing the open side
+  })
+
+  it('the top and bottom HUD bands never paint wall line art', () => {
+    const ctx = fakeCtx()
+    drawMaze(ctx, new Set())
+    const calls = (ctx as unknown as { calls: RecordedCall[] }).calls
+
+    for (let ty = 0; ty < MAZE.rows; ty++) {
+      if (ty >= 3 && ty < MAZE.rows - 3) continue // real 30-row maze, not the HUD bands
+      for (let tx = 0; tx < MAZE.cols; tx++) {
+        // Only per-TILE paints (w===8, h===8) count — clearField's initial
+        // full-canvas fillRect(0, 0, 224, 288) also lands at x=0,y=0 and
+        // must not be mistaken for a wall-tile blit at cell (0,0).
+        const hit = calls.some((c) => c.x === tx * TILE_PX && c.y === ty * TILE_PX && c.w === 8 && c.h === 8)
+        expect(hit).toBe(false)
+      }
+    }
   })
 })
