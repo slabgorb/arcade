@@ -26,4 +26,15 @@ describe('palette bake (pm3-3)', () => {
   it('the baked palette equals a fresh decode of the vendored PROM', () => {
     expect(HARDWARE_PALETTE).toEqual(decodePaletteFromProm(prom).slice(0, 16))
   })
+
+  // pm3-4 round 2: the endpoint-only checks above passed throughout round 1's
+  // wrong-tile-set bug (they never touch slots 11/14 at all), so they gave no
+  // signal on the actual defect. Pin the two SPECIFIC slots render.ts's maze
+  // now depends on, by name, so a future palette-decode change that shifts
+  // these slots (a permuted CLUT, a different resistor-weight order, etc.)
+  // reddens here instead of silently repainting the maze.
+  it('slot 11 is the authentic wall blue and slot 14 is the authentic pellet peach', () => {
+    expect(HARDWARE_PALETTE[11]).toEqual([33, 33, 255]) // '#2121ff'
+    expect(HARDWARE_PALETTE[14]).toEqual([255, 184, 174]) // '#ffb8ae'
+  })
 })

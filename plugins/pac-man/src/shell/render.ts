@@ -9,19 +9,21 @@
 // hardware palette (pm3-3) — Pac-Man/ghosts/fruit/HUD stay procedural
 // placeholders (no sprite ROM wired up yet; that is pm3-5/6).
 //
-// ─── WHAT IS BYTE-CITED AND WHAT IS NOT (pm3-4) ────────────────────────────
+// ─── WHAT IS BYTE-CITED AND WHAT IS NOT (pm3-4, round 2) ───────────────────
 // TILES (tile-data.ts) is baked from decodeTilePixel, a byte-for-byte decode
 // of the vendored pacman.5e — that part IS ROM data (re-derivation-checked
 // by tests/shell/tiles.test.ts). MAZE_TILEMAP below — which tileIndex and
 // colorCode paints which of the 28x36 grid cells — is AUTHORED, the same
 // honest-uncited status as core/maze.ts's ROWS table: no per-cell tile
 // assignment here was read off a screenshot pixel-by-pixel or lifted from
-// another codebase, it is a hand-built autotiler over MAZE's wall topology
-// that happens to reuse ROM tiles whose shapes (found by inspection: 8x8
-// double-line segments and diagonal corner pieces at ROM indices in the
-// 210-251 range, a small dot at 16, a large dot at 20) already look like the
-// cabinet's rounded corridor art. Treat any specific corner/edge choice as a
-// best-effort approximation, not a ROM- or screenshot-verified claim.
+// another codebase, it is a hand-built autotiler over MAZE's wall topology.
+// One piece of it IS byte-cited: DOT_TILE (0x10) is confirmed against the
+// vendored program-ROM disassembly (`reference/source/pacman.asm:2463`, the
+// level-start dot-restore routine), not just picked by inspecting the
+// graphics ROM. See the constants below for the full per-value citation
+// status (byte-cited / corroborated-but-not-proven / authored-only). Treat
+// any specific corner/edge tile choice as a best-effort approximation of the
+// cabinet's rounded corridor art, not a ROM- or screenshot-verified claim.
 
 import { MAZE, tileAt } from '../core/maze'
 import { TILE_PX as CORE_TILE_PX, type Dir } from '../core/actor'
@@ -42,25 +44,53 @@ const FRIGHTENED_COLOR = '#2121ff'
 const HUD_COLOR = '#ffffff'
 
 // ─── MAZE TILE AUTOTILER (authored — see header) ───────────────────────────
-// Tile indices found by inspecting the decoded ROM for shapes that read as
-// the cabinet's double-line wall art: a horizontal double-line (210), a
-// vertical double-line (218), and four diagonal corner pieces (214/215/216/
-// 217). WALL_COLOR_CODE (16) is the colour-lookup entry whose dominant pixel
-// value (3) resolves to HARDWARE_PALETTE[11] = [33,33,255] — the exact RGB
-// this file used as its old hand-picked WALL_COLOR '#2121ff' before this
-// task. PELLET_COLOR_CODE (29) resolves pixel value 2 to
-// HARDWARE_PALETTE[14] = [255,184,174], likewise the exact old DOT_COLOR /
-// ENERGIZER_COLOR '#ffb8ae'.
+// pm3-4 round 2 fix: the FIRST tile pick (210/214-217/218) was wrong. Those
+// tiles mix TWO ink planes per pixel — pv1 (16 px) AND pv3 (16 px) — and
+// WALL_COLOR_CODE resolves pv1 to peach and pv3 to blue (see below), so half
+// the wall's ink rendered peach: the reported "peach lines on a field of
+// blue stripes" defect. The fix is not a new colour code — it is a
+// different TILE SET: 46/60/61/62/63/101 below were re-selected by scanning
+// every one of the 256 decoded tiles for ones using ONLY pv3 (verified: pv0
+// background, pv3 ink, pv1==0 and pv2==0 everywhere in the tile — see the
+// fix report's histogram). With a pure-pv3 tile, WALL_COLOR_CODE's pv1
+// entry is simply never sampled, so no peach can leak in regardless of
+// which code is chosen.
+//
+// WALL_COLOR_CODE (16 = 0x10) is doubly anchored, not just colour-matched:
+// (1) colourLookup(16, 3) resolves through HARDWARE_PALETTE[11] =
+// [33,33,255] = '#2121ff', this file's own pre-pm3-4 hand-picked wall
+// colour; (2) `reference/source/pacman.asm:24df` (`ld a,#10`) writes this
+// exact byte into color RAM's maze-body region (`pacman.asm:24e1`,
+// `ld hl,#4440` — colour RAM starts at #4400, so #4440 is inside the 28x36
+// playfield, not the HUD rows) as one of exactly two candidate attribute
+// values (the other, `pacman.asm:24db` `ld a,#1f`, is selected only when a
+// caller-supplied flag equals 2 — a branch this file's disassembly does not
+// trace to a specific caller, so it is not claimed as the ANSWER, only as
+// corroborating evidence that 0x10 is a real maze-attribute byte the ROM
+// writes). PELLET_COLOR_CODE (29) is unchanged (see file header).
 const WALL_COLOR_CODE = 16
 const PELLET_COLOR_CODE = 29
-const WALL_H_TILE = 210
-const WALL_V_TILE = 218
-const WALL_CORNER_DOWN_RIGHT_TILE = 216 // open toward up-left
-const WALL_CORNER_DOWN_LEFT_TILE = 214 // open toward up-right
-const WALL_CORNER_UP_RIGHT_TILE = 217 // open toward down-left
-const WALL_CORNER_UP_LEFT_TILE = 215 // open toward down-right
+// DOT_TILE (0x10 = 16) is BYTE-CITED, not authored: `pacman.asm:2463`
+// (`ld (hl),#10`) is the level-start "restore all dots" routine — it walks
+// a 240-bit table at ROM #35b5 and writes tile byte #10 into video RAM
+// (#4000) for every uneaten dot cell. That is the exact tile index this
+// file already used for DOT_TILE, now confirmed against the program ROM
+// rather than only "found by ASCII-art inspection of the graphics ROM".
 const DOT_TILE = 16
+// ENERGIZER_TILE (0x14 = 20) stays the pm3-4-round-1 ASCII-inspection pick
+// (a full 8x8 filled circle at tile 20/21) — NOT re-derived as byte-cited
+// here. `pacman.asm:24d1` (`ld a,#14`) writes 0x14 into a 4-byte RAM run
+// right after the dot-active bitmap, which is suggestive (same literal,
+// same neighbourhood of code) but is a WORKING-RAM write, not proven to be
+// a video-RAM tile-index write the way the dot case is — so it is noted
+// here as corroboration only, per this round's "don't overclaim" instruction.
 const ENERGIZER_TILE = 20
+const WALL_H_TILE = 46 // pacman.5e: bottom-row-only line, pv3=14, pv1=pv2=0
+const WALL_V_TILE = 101 // pacman.5e: solid 3px-wide vertical column, pv3=24, pv1=pv2=0
+const WALL_CORNER_DOWN_RIGHT_TILE = 63 // right+bottom L (open up-left), pv3=15, pv1=pv2=0
+const WALL_CORNER_DOWN_LEFT_TILE = 62 // left+bottom L (open up-right), pv3=15, pv1=pv2=0
+const WALL_CORNER_UP_RIGHT_TILE = 61 // top+right L (open down-left), pv3=15, pv1=pv2=0
+const WALL_CORNER_UP_LEFT_TILE = 60 // top+left L (open down-right), pv3=15, pv1=pv2=0
 
 /** Pick the wall autotile for (tx,ty) from which of its four neighbours are
  *  also 'wall'. Four neighbours wall (or none) falls back to the horizontal
