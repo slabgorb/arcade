@@ -1381,9 +1381,21 @@ function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number):
     rows,
   )
   if (route === 'down') return { ...enemy, seek: { mode: 'down', pdist: rows.dnDi }, pjoy: undefined }
-  if (route === 'up') return { ...enemy, seek: { mode: 'up', pdist: rows.upDi }, pjoy: undefined }
+  if (route === 'up') {
+    // jt9-50 — BOUP's cliff-above divert (JOUSTRV4.SRC:3846-3850). The bounder's
+    // up-seek decide samples the background one DYLEN ($14-6) above the bird and,
+    // on a solid hit, `BNE BOLEV` (:3850): it ABANDONS the climb and flies plain
+    // LEVEL flight instead of arming BOUPDI. Unlike the hunter/shadow (B2UP3/SHUP3,
+    // handled per-wake at :786/:970) there is NO hold state — there is no `BOUP3`
+    // label — so the decide falls straight through to the BOLEV interval arm below.
+    // Bounder only. `cliffBlocksClimb` reads `BCKYTB-CLIMB_PREP_YLEN` ($14-6), and
+    // the ROM's DYLEN = B2YLEN = SHYLEN = $14-6, so one sample serves all three.
+    const cliffAbove = enemy.brain === 'boundr' && cliffBlocksClimb(enemy)
+    if (!cliffAbove) return { ...enemy, seek: { mode: 'up', pdist: rows.upDi }, pjoy: undefined }
+  }
   // A level decide arms its interval AND snapshots the target's velocity index
-  // (PPVELX, jt9-18); the brain is `boundr`/`b2undr` here.
+  // (PPVELX, jt9-18); the brain is `boundr`/`b2undr` here. A bounder diverted off
+  // a blocked climb (jt9-50, above) lands here too — the BOLEV level flight.
   const armed: PjoyState = {
     kind: 'interval',
     timer: decideInterval(enemy.brain, wave, target !== null),

@@ -650,9 +650,19 @@ describe('AC6 — the dumb wing cue', () => {
       // 110 -> 159; 0xbeef's trajectory reaches no new level pumping in this window
       // and holds at 302. Every scripted knight cue (154) is unmoved — the forced
       // glide is enemy-only and does not shift knight-death timing.
-      0xbeef: { down: 302, playerDown: 154, playerUp: 154 },
-      0x2468: { down: 370, playerDown: 154, playerUp: 154 },
-      0xface: { down: 159, playerDown: 154, playerUp: 154 },
+      //
+      // jt9-50 RE-BASELINE (the bounder BOUP cliff-above divert to BOLEV): a bounder
+      // up-seeking under a platform now flies plain LEVEL instead of flapping its
+      // climb cadence up into the ledge, so where the divert fires the enemy-wing-down
+      // count FALLS. Measured: 0xbeef 302 -> 143 and 0x2468 370 -> 325; 0xface RISES
+      // 159 -> 164 (its diverted birds reach new level-pumping windows, net up). Every
+      // scripted knight cue (154) is UNMOVED on all three seeds — the divert is
+      // enemy-only and does not shift knight-death timing — and every count stays well
+      // above the >50 floor. The sim's `rng` cursor is bit-identical through this
+      // change (audio-events.test.ts AC3): a BOLEV divert draws no randomness.
+      0xbeef: { down: 143, playerDown: 154, playerUp: 154 },
+      0x2468: { down: 325, playerDown: 154, playerUp: 154 },
+      0xface: { down: 164, playerDown: 154, playerUp: 154 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)

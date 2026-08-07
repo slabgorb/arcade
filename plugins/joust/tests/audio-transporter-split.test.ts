@@ -772,9 +772,19 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // below need moves to 0xface, which still has an earliest knight-1 (259) and an
     // earliest knight-2 (2370). Same "earliest that re-enters knight N" rule as every
     // prior move; the sibling audio-events fixture is re-baselined independently.
+    //
+    // jt9-50 RE-BASELINE (the bounder BOUP cliff-above divert to BOLEV): reshaped
+    // bounder paths change which collisions kill the scripted knight, so 0xbeef's
+    // knight-2 re-entry shifts 2110 -> 2103 (the same late re-entry, moved 7 frames).
+    // Re-swept 2600 frames of each seed by THIS test's precondition (a player id in
+    // the process list that was not there the frame before), never by nudging:
+    //   0xbeef re-entries:  224->2, 2103->2, 2432->1
+    //   0xface re-entries:  259->1,  738->2, 1040->2, 1654->2, 2370->2  (259/2370 UNMOVED)
+    // 0xface's earliest knight-1 (259) and knight-2 (2370) are untouched, so the
+    // disagreeing pair below still stages the same frames; only 0xbeef's line moves.
     expect(materialisedIdsAt(0xface, 259), 'seed 0xface frame 259 re-enters knight 1').toEqual([1])
     expect(materialisedIdsAt(0xface, 2370), 'seed 0xface frame 2370 re-enters knight 2').toEqual([2])
-    expect(materialisedIdsAt(0xbeef, 2110), 'seed 0xbeef frame 2110 re-enters knight 2').toEqual([2])
+    expect(materialisedIdsAt(0xbeef, 2103), 'seed 0xbeef frame 2103 re-enters knight 2').toEqual([2])
   })
 
   it('the emitted moment carries the knight it belongs to', async () => {
