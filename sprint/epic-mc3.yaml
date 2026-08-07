@@ -45,7 +45,7 @@ stories:
     description: Plan tasks 5-6 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). (a) src/core/score.ts + claims/score.json — ICBM_KILL_POINTS=25 and scoreKills(score,killed)=score+killed*25. The ROM scores 25 x wave number per downed ICBM (ADC I,25 under 'INCREASE POINTS FOR DOWNING ICBMS', W3MAIN ICBPTL); mc3 pins the wave-1 value 25, the x-wave ramp is mc4. New claim MC-ICBPTS(25), byte-exact verbatim (grep 'ADC I,25' for the exact physical line). (b) src/core/state.ts — Phase='play'|'over', allCitiesDead(cities), nextPhase(phase,cities) flips to 'over' once every city is dead ('over' is terminal). The full attract/setup/pause machine is mc6. Depends on mc3-1 (City).
     points: 3
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-08-07'
     repos: arcade
     workflow: tdd
@@ -53,6 +53,7 @@ stories:
       - score.ts exports ICBM_KILL_POINTS=25 and scoreKills(score,killed) adding 25 per kill onto the running score; claims/score.json carries MC-ICBPTS(25) with byte-exact verbatim; the literal 25 passes the AC3 guard.
       - "state.ts exports Phase 'play'|'over', allCitiesDead(cities), and nextPhase(phase,cities): stays 'play' while any city lives, flips to 'over' when all cities are dead, and 'over' is terminal."
       - both modules are pure; score.test.ts and state.test.ts pass; purity.test.ts and citations.test.ts stay green.
+    review_verdict: approved
   - id: mc3-4
     title: 'Compose the combat loop: grow GameState and stepGame (spawn->fly->detonate->damage->resolve)'
     description: "Plan task 7 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). Compose the whole loop in src/core/game.ts. Grow GameState to add icbms, cities, bases, score, phase, remaining (per-wave budget), and a seeded rng (Rng from @shared/rng). createGame(seed=1) seeds 6 live cities, 3 live bases at full ammo, empty enemy list, phase 'play', remaining=NICBMS. stepGame runs the 7-step per-frame order: (1) spawn against live targets, (2) fly ICBMs, (3) fly ABMs, (4) detonate ABM arrivals into blasts, (5) damage — blasts kill ICBMs (scored) and arrived ICBMs kill structures, (6) age blasts, (7) resolve score + phase. When phase='over' the loop only advances frame. Consumes every module from mc3-1/2/3 plus mc1's abm/explosion/cursor. Depends on mc3-1, mc3-2, mc3-3."
