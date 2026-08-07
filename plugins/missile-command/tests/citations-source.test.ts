@@ -191,7 +191,17 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   // (mc3-3) is an INSTRUCTION-site claim (`ADC I,25`, no `=` RHS) whose numeric
   // value 25 IS the immediate operand — same non-EQU-but-numeric shape as STCITY;
   // its verbatim is byte-checked and its value is pinned by score.test.ts.
-  const DERIVED = new Set(['IVMAX', 'MAX_BLAST_RADIUS', 'STCITY', 'ICBPTS'])
+  // mc4-1 adds the wave-difficulty schedule: ICBWAV (per-wave ICBM count),
+  // WICSPL/WICSPH (per-wave descent-speed period bytes) are `.BYTE` tables like
+  // STCITY — non-EQU claims carrying real numeric entries; ICSPDL carries the 8.8
+  // fixed-point scale (256) derived from its one-byte FRACTION declaration. All
+  // four are numeric-but-non-EQU, so they join the DERIVED exemption and are pinned
+  // by the explicit mc4-1 consistency block below (their values are NOT free-form —
+  // each must be a real decoded entry of its cited line).
+  const DERIVED = new Set([
+    'IVMAX', 'MAX_BLAST_RADIUS', 'STCITY', 'ICBPTS',
+    'ICBWAV', 'WICSPL', 'WICSPH', 'ICSPDL',
+  ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
   // `=` RHS. The dossier-coverage claims mc2-6 added (routine `.SBTTL` anchors,
@@ -250,5 +260,29 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     const firstByte = Number((stcity?.source.verbatim.split('.BYTE')[1] ?? '').split(',')[0]?.trim())
     expect(stcity?.value, 'STCITY claim value is the default start count').toBe(6)
     expect(firstByte, 'STCITY[0] in the verbatim table decodes to the claimed 6').toBe(6)
+  })
+
+  // mc4-1: the DERIVED exemption above lets the wave-schedule table claims carry
+  // numeric values; this block is what keeps that from being a hole — every such
+  // value must be a genuine radix decode of an entry on its own cited `.BYTE` line
+  // (so a fabricated number cannot ride into the un-cited-literal guard's set).
+  it('mc4-1: every wave-schedule table claim value is a real entry of its cited .BYTE line', () => {
+    const TABLE = new Set(['ICBWAV', 'WICSPL', 'WICSPH'])
+    const entries = (verbatim: string): number[] =>
+      (verbatim.split('.BYTE')[1] ?? '').split(',').map((t) => decodeRadix16(t.trim()))
+    const tableClaims = loadClaims().filter((c) => TABLE.has(c.symbol))
+    expect(tableClaims.length, 'the mc4-1 wave-schedule tables must be claimed').toBeGreaterThan(0)
+    for (const c of tableClaims) {
+      expect(
+        entries(c.source.verbatim),
+        `${c.id}: claimed value ${c.value} must be a real ${c.symbol} entry of "${c.source.verbatim}"`,
+      ).toContain(Number(c.value))
+    }
+  })
+
+  it('mc4-1: the ICBM update-period fixed-point scale is 256, cited to the ICSPDL fraction byte', () => {
+    const icspd = loadClaims().find((c) => c.symbol === 'ICSPDL')
+    expect(Number(icspd?.value), 'ICSPDL fraction scale = 2^8 (a one-byte fraction of a frame)').toBe(256)
+    expect(icspd?.source.verbatim, 'cited to the ICSPDL declaration that names it a FRACTION').toMatch(/ICSPDL:\s*\.BLKB.*FRACTION/)
   })
 })
