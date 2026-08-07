@@ -15,6 +15,7 @@ completed_epics:
   - uf1
   - mg1
   - mc2
+  - pm1
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -731,3 +732,48 @@ completed_stories:
     title: "joust bounder BOUP cliff-above diverts to BOLEV: model the blocked-climb level flight (no BOUP3). Found by jt9-23 Dev: BOUP (JOUSTRV4.SRC:3846-3853) samples BCKYTB-DYLEN and on a hit BNE BOLEV (:3850) flies plain level; the port's bounder still commits to the climb blind. Distinct from B2UP3/SHUP3 (hunter/shadow) which jt9-23 wired."
     points: 3
     completed: '2026-08-07'
+  - id: mc3-1
+    epic: mc3
+    title: 'Enemy warheads: ICBM straight-flight reducer, stateful cities/bases, and the minimal spawner'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm1-1
+    epic: pm1
+    title: Scaffold the cabinet (4 files + 3 registrations)
+    points: 2
+    completed: '2026-08-06'
+  - id: pm1-2
+    epic: pm1
+    title: The fidelity harness — dossier + citation gate + purity, BEFORE any constant
+    points: 5
+    completed: '2026-08-06'
+  - id: pm1-3
+    epic: pm1
+    title: Maze model + render
+    points: 3
+    completed: '2026-08-06'
+  - id: pm1-4
+    epic: pm1
+    title: Pac-Man movement
+    points: 3
+    completed: '2026-08-06'
+  - id: pm1-5
+    epic: pm1
+    title: Ghost kinematics + house release
+    points: 5
+    completed: '2026-08-06'
+  - id: pm1-6
+    epic: pm1
+    title: Targeting — the four personalities
+    points: 5
+    completed: '2026-08-06'
+  - id: pm1-7
+    epic: pm1
+    title: Mode engine + Cruise Elroy
+    points: 5
+    completed: '2026-08-06'
+  - id: pm1-8
+    epic: pm1
+    title: Level table + round lifecycle
+    points: 5
+    completed: '2026-08-06'
