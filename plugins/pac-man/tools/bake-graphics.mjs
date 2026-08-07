@@ -144,6 +144,15 @@ function bakeSprites() {
   console.log(`wrote ${join(outDir, 'sprite-data.ts')} (${sprites.length} sprites)`)
 }
 
+// pm3-6 note: glyph-data.ts (FRUIT_SPRITE/SCORE_SPRITE) is deliberately NOT
+// baked by this tool and has no bake*() function here. Every other module
+// this file writes is re-derivable ROM pixel data (a decode function applied
+// to vendored bytes, re-checked byte-for-byte by that module's test) —
+// glyph-data.ts holds no pixel data at all, just two small hand-authored
+// records mapping an already-decoded SPRITES index to a fruit kind or a
+// score value (picked by rendering candidate sprites and inspecting shape,
+// see that file's header). Generating it from this driver would misstate it
+// as ROM data re-derivable from bytes, which it is not.
 bakePalette()
 bakeTiles()
 bakeSprites()

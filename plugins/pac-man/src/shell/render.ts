@@ -11,7 +11,13 @@
 // sprite blits (pacman.5f, decodeSpritePixel in gfx-rom.ts) for Pac-Man's
 // per-direction chomp animation and every ghost mode (chase body, the
 // frightened blue body + white flash, the eaten eyes-only body) — fruit/HUD
-// remain the pm1-8 procedural placeholders (out of this story's scope).
+// remained the pm1-8 procedural placeholders (out of that story's scope).
+// Story pm3-6 retires the fruit half of that: drawFruit blits a real 16x16
+// bonus-fruit sprite (FRUIT_SPRITE, glyph-data.ts) instead of a flat red
+// square, and a new drawScoreSprite blits the ghost-chain "200"/"400"/
+// "800"/"1600" digit-glyph sprites (SCORE_SPRITE) for pm3-7's eaten-ghost
+// popups. The HUD (drawHud) is still the pm1-8 procedural text — untouched
+// here, still out of scope.
 //
 // ─── PAC-MAN / GHOST SPRITES: WHAT IS BYTE-CITED, WHAT IS AUTHORED (pm3-5) ─
 // SPRITES (sprite-data.ts) is baked from decodeSpritePixel, a byte-for-byte
@@ -55,9 +61,11 @@ import { MAZE, tileAt } from '../core/maze'
 import { TILE_PX as CORE_TILE_PX, type Dir } from '../core/actor'
 import type { Ghost, GhostId } from '../core/ghost'
 import type { Mode } from '../core/mode'
+import type { FruitType } from '../core/level'
 import { TILES } from './tile-data'
 import { SPRITES } from './sprite-data'
 import { HARDWARE_PALETTE, colourLookup } from './palette-data'
+import { FRUIT_SPRITE, SCORE_SPRITE } from './glyph-data'
 
 const TILE_PX = CORE_TILE_PX
 const SPRITE_PX = 16 // pacman.5f's native sprite size — 2x2 maze tiles.
@@ -263,6 +271,29 @@ const GHOST_COLOR_CODE: Readonly<Record<GhostId, number>> = { blinky: 1, pinky: 
 const FRIGHTENED_COLOR_CODE = 9
 const FLASH_COLOR_CODE = 29
 
+// pm3-6: FRUIT_COLOR_CODE and SCORE_COLOR_CODE, same authored-and-scanned
+// status as the codes above. Every FRUIT_SPRITE candidate's dominant plane
+// (the fruit body) is pixel value 2 (glyph-data.ts's placeholder-palette
+// dump shows it filling most of each sprite), so each fruit's code was
+// picked by scanning colourLookup(code, 2) across all 64 codes for the
+// closest real-world hue to that fruit — same 4-entries-per-code caveat as
+// above: only the body plane was solved for, accent planes (stem/cap/seeds)
+// land wherever that code's other two slots happen to fall. Where no code
+// gave a good match (no code's slot-2 value is exactly the FRUIT_TABLE's
+// citrus-orange or golden-bell), the closest available hue was kept rather
+// than left unsolved. cherry/apple share 9 (both read as red fruit).
+const FRUIT_COLOR_CODE: Readonly<Record<FruitType, number>> = {
+  cherry: 9,
+  strawberry: 24,
+  orange: 20,
+  apple: 9,
+  melon: 21,
+  galaxian: 22,
+  bell: 18,
+  key: 5,
+}
+const SCORE_COLOR_CODE = 15 // colourLookup(15,2) = HARDWARE_PALETTE[12] = [0,255,0] green digits
+
 // ─── PAC-MAN SPRITE INDICES (pm3-5; authored, see file header) ────────────
 // Identified from the pacman.5f PNG dump: sprite 48 is a solid, direction-
 // agnostic full circle (Pac-Man's closed-mouth frame, hist all-pv3, no
@@ -454,11 +485,27 @@ export function drawGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, mode: Gho
   ctx.putImageData(spriteImageData(ctx, spriteIndex, colorCode), px, py)
 }
 
-/** The bonus fruit — a small coloured square standing in for its sprite
- *  (no fruit-tile graphics ROM is vendored here). */
-export function drawFruit(ctx: CanvasRenderingContext2D, tileX: number, tileY: number): void {
-  ctx.fillStyle = '#ff5050'
-  ctx.fillRect(tileX * TILE_PX, tileY * TILE_PX, TILE_PX, TILE_PX)
+/** The bonus fruit — a real 16x16 sprite blit (pacman.5f), picked per
+ *  `fruit` via FRUIT_SPRITE (pm3-6, glyph-data.ts). Centred on the tile the
+ *  same way drawPacman/drawGhost centre their sprite on a tile-sized
+ *  hitbox (SPRITE_PX/2 - TILE_PX/2 offset). Replaces the pm1-8 flat coloured
+ *  square placeholder. */
+export function drawFruit(ctx: CanvasRenderingContext2D, tileX: number, tileY: number, fruit: FruitType): void {
+  const img = spriteImageData(ctx, FRUIT_SPRITE[fruit], FRUIT_COLOR_CODE[fruit])
+  ctx.putImageData(img, tileX * TILE_PX + TILE_PX / 2 - SPRITE_PX / 2, tileY * TILE_PX + TILE_PX / 2 - SPRITE_PX / 2)
+}
+
+/** A ghost-chain score popup ("200"/"400"/"800"/"1600") — a real 16x16
+ *  digit-glyph sprite blit picked via SCORE_SPRITE (pm3-6, glyph-data.ts).
+ *  `xPx`/`yPx` are the popup's top-left pixel (caller's choice — pm3-7 wires
+ *  this to the eaten ghost's position), not tile-snapped like drawFruit.
+ *  A `points` value with no SCORE_SPRITE entry draws nothing (silently —
+ *  callers that only ever pass the four ghost-chain values, per this
+ *  story's scope, never hit this). */
+export function drawScoreSprite(ctx: CanvasRenderingContext2D, xPx: number, yPx: number, points: number): void {
+  const spriteIndex = SCORE_SPRITE[points]
+  if (spriteIndex === undefined) return
+  ctx.putImageData(spriteImageData(ctx, spriteIndex, SCORE_COLOR_CODE), xPx, yPx)
 }
 
 /** The score/lives/level HUD, drawn into the reserved top HUD rows

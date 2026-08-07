@@ -192,7 +192,7 @@ const frame = (now: number): void => {
     if (game.house.released[id]) drawGhost(logicalCtx, game.ghosts[id], mode, game.ghostFrame[id])
   }
   drawPacman(logicalCtx, game.pac.actor.xPx, game.pac.actor.yPx, game.pac.actor.dir, game.pac.frame)
-  if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y)
+  if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)
   drawHud(logicalCtx, game.score, game.lives, game.level)
 
   const fit = fitIntegerScale(canvas.width, canvas.height)
