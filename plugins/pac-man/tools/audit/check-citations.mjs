@@ -53,6 +53,28 @@ function isCitation(o) {
   )
 }
 
+/**
+ * A BINARY citation (pm2-1): a PROM file, a byte offset, and the run of 4-bit
+ * nibbles expected there. Used for the Namco WSG waveform PROM (`82s126.1m`),
+ * whose eight waveforms are 32 samples of one nibble each and have no text
+ * `verbatim` to quote. Byte-verified against the binary in the sound tree — the
+ * low nibble of each byte, matching how MAME reads it (`namco.cpp:241`).
+ */
+function isBinaryCitation(o) {
+  return (
+    typeof o === 'object' &&
+    o !== null &&
+    !Array.isArray(o) &&
+    typeof o.file === 'string' &&
+    o.file.length > 0 &&
+    Number.isInteger(o.offset) &&
+    o.offset >= 0 &&
+    Array.isArray(o.nibbles) &&
+    o.nibbles.length > 0 &&
+    o.nibbles.every((n) => Number.isInteger(n) && n >= 0 && n <= 15)
+  )
+}
+
 const lineCache = new Map()
 function lineAt(path, n) {
   if (!lineCache.has(path)) {
@@ -60,6 +82,13 @@ function lineAt(path, n) {
     lineCache.set(path, readFileSync(path, 'utf8').split('\n'))
   }
   return lineCache.get(path)[n - 1]
+}
+
+const byteCache = new Map()
+/** The raw bytes of a binary source (a PROM), cached per path. */
+function bytesOf(path) {
+  if (!byteCache.has(path)) byteCache.set(path, readFileSync(path))
+  return byteCache.get(path)
 }
 
 /** Resolve a cited `file` to an absolute path inside the vendored tree, safely. */
@@ -95,10 +124,14 @@ function resolveInTree(vendoredRoot, file) {
  *
  * @param claims  array of single-sided claim objects
  * @param opts.vendoredRoot  absolute path to the vendored source dir (the one
- *   holding pacman.asm), or null to skip byte-verification (schema-only — the CI
- *   path, if the reference/ tree is ever absent).
+ *   holding pacman.asm), or null to skip TEXT byte-verification (schema-only —
+ *   the CI path, if the reference/ tree is ever absent).
+ * @param opts.soundRoot  absolute path to the vendored SOUND dir (the one holding
+ *   the WSG PROM `82s126.1m`), or null/absent to skip PROM byte-verification. A
+ *   binary citation still schema-validates without it; only the nibble compare is
+ *   skipped — the same graceful degradation the text side gives.
  */
-export function checkClaims(claims, { vendoredRoot }) {
+export function checkClaims(claims, { vendoredRoot, soundRoot = null }) {
   const errors = []
   const seen = new Set()
 
@@ -126,26 +159,58 @@ export function checkClaims(claims, { vendoredRoot }) {
       errors.push(`${id}: addr must be a hex string (e.g. "2b17")`)
     }
 
-    if (!isCitation(c?.source)) {
-      errors.push(`${id}: missing or malformed source citation (needs file, positive line, verbatim)`)
-    } else if (vendoredRoot) {
-      const path = resolveInTree(vendoredRoot, c.source.file)
-      if (!path) {
-        errors.push(`${id}: source file ${c.source.file} not found in the vendored tree`)
-      } else {
-        const actual = lineAt(path, c.source.line)
-        if (actual === undefined) {
-          errors.push(`${id}: source ${c.source.file}:${c.source.line} does not exist`)
-        } else if (actual.trimEnd() !== String(c.source.verbatim).trimEnd()) {
-          errors.push(
-            `${id}: source ${c.source.file}:${c.source.line} does not match verbatim\n` +
-              `  cited:  ${String(c.source.verbatim).trimEnd()}\n` +
-              `  actual: ${actual.trimEnd()}\n` +
-              `  cited  (escaped): ${JSON.stringify(String(c.source.verbatim).trimEnd())}\n` +
-              `  actual (escaped): ${JSON.stringify(actual.trimEnd())}`,
-          )
+    if (isCitation(c?.source)) {
+      if (vendoredRoot) {
+        const path = resolveInTree(vendoredRoot, c.source.file)
+        if (!path) {
+          errors.push(`${id}: source file ${c.source.file} not found in the vendored tree`)
+        } else {
+          const actual = lineAt(path, c.source.line)
+          if (actual === undefined) {
+            errors.push(`${id}: source ${c.source.file}:${c.source.line} does not exist`)
+          } else if (actual.trimEnd() !== String(c.source.verbatim).trimEnd()) {
+            errors.push(
+              `${id}: source ${c.source.file}:${c.source.line} does not match verbatim\n` +
+                `  cited:  ${String(c.source.verbatim).trimEnd()}\n` +
+                `  actual: ${actual.trimEnd()}\n` +
+                `  cited  (escaped): ${JSON.stringify(String(c.source.verbatim).trimEnd())}\n` +
+                `  actual (escaped): ${JSON.stringify(actual.trimEnd())}`,
+            )
+          }
         }
       }
+    } else if (isBinaryCitation(c?.source)) {
+      if (soundRoot) {
+        const path = resolveInTree(soundRoot, c.source.file)
+        if (!path) {
+          errors.push(`${id}: PROM ${c.source.file} not found in the sound tree`)
+        } else {
+          const buf = bytesOf(path)
+          const { offset, nibbles } = c.source
+          if (offset + nibbles.length > buf.length) {
+            errors.push(
+              `${id}: PROM ${c.source.file} offset ${offset}+${nibbles.length} runs past end-of-file (length ${buf.length})`,
+            )
+          } else {
+            const mism = []
+            for (let i = 0; i < nibbles.length; i++) {
+              const actual = buf[offset + i] & 0x0f
+              if (actual !== nibbles[i]) mism.push(`[${i}] cited ${nibbles[i]}, actual ${actual}`)
+            }
+            if (mism.length > 0) {
+              errors.push(
+                `${id}: PROM ${c.source.file}@${offset} nibble mismatch: ` +
+                  `${mism.slice(0, 4).join('; ')}${mism.length > 4 ? ` (+${mism.length - 4} more)` : ''}`,
+              )
+            }
+          }
+        }
+      }
+    } else {
+      errors.push(
+        `${id}: missing or malformed source citation ` +
+          `(needs a text {file,line,verbatim} or a binary {file,offset,nibbles})`,
+      )
     }
   }
 
@@ -157,11 +222,13 @@ export function checkClaims(claims, { vendoredRoot }) {
 // each against the vendored source (or schema-only if absent), prints one line
 // per error, exits non-zero on any failure.
 //   PACMAN_SOURCE_DIR  — vendored source dir, default ../../reference/source
+//   PACMAN_SOUND_DIR   — vendored sound dir (WSG PROM), default ../../reference/sound
 //   PACMAN_CLAIMS_DIR  — claims directory,    default docs/rom-study/claims
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
   const claimsDir = process.env.PACMAN_CLAIMS_DIR ?? join(repoRoot, 'docs', 'rom-study', 'claims')
   const vendoredRoot = process.env.PACMAN_SOURCE_DIR ?? join(repoRoot, 'reference', 'source')
+  const soundRoot = process.env.PACMAN_SOUND_DIR ?? join(repoRoot, 'reference', 'sound')
 
   // A malformed claims file is REPORTED (naming the file), never thrown as a raw
   // stack trace — the same "every problem is reported" invariant checkClaims holds.
@@ -181,6 +248,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     : []
 
   const root = existsSync(vendoredRoot) ? vendoredRoot : null
+  const sndRoot = existsSync(soundRoot) ? soundRoot : null
 
   // AN EMPTY CLAIMS SET IS NOT A PASS — a path typo or moved directory would
   // otherwise read as success forever. This repo has no legitimate zero-claim state.
@@ -192,9 +260,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.exit(2)
   }
 
-  const errors = checkClaims(claims, { vendoredRoot: root })
+  const errors = checkClaims(claims, { vendoredRoot: root, soundRoot: sndRoot })
 
-  if (!root) console.log(`(vendored source absent at ${vendoredRoot} — schema-only check)`)
+  if (!root) console.log(`(vendored source absent at ${vendoredRoot} — schema-only text check)`)
+  if (!sndRoot) console.log(`(sound PROM tree absent at ${soundRoot} — schema-only for waveform claims)`)
   console.log(`checked ${claims.length} claim(s)`)
 
   if (errors.length > 0) {

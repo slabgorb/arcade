@@ -40,3 +40,32 @@
 - **`shaunlebron/pacman`** (GitHub) — a faithful JS remake, **GPL v3**. Read-only oracle
   to disambiguate; **never copy a line of its code, structure, or data tables** into this
   repo. MAME is the final tiebreaker.
+
+## Sound PROMs (added pm2-1 — the Namco WSG byte source)
+
+`pacman.asm` is the 16 KB *program* ROM only; the eight 32-sample 4-bit WSG waveforms
+live in a **separate PROM** the program ROM cannot supply. The Namco WSG sound region
+is two 256-byte 82S126 PROMs, vendored here under `reference/sound/`:
+
+- `reference/sound/82s126.1m` — **the waveform PROM.** 256 bytes = 8 waveforms × 32
+  samples, one 4-bit sample per byte's **low nibble** (high nibble is always 0). MAME
+  reads it signed as `(byte & 0x0f) - 8` (`namco.cpp:241`); this is the byte source for
+  every WSG waveform Task 2 bakes.
+  **SHA-1 `bbcec0570aeceb582ff8238a4bc8546a23430081`**, CRC32 `a9cc86bf`.
+- `reference/sound/82s126.3m` — the **timing PROM**, **not used** by Pac-Man's sound
+  (MAME labels it `// Timing - not used` in `ROM_START(pacman)`). Vendored only to keep a
+  complete `"namco"` sound-region provenance record; **no claim cites it**.
+  **SHA-1 `0c4d0bee858b97632411c440bea6948a74759746`**, CRC32 `77245b66`.
+
+- **Origin:** the MAME `pacman` parent romset (`~/roms/pacman.zip`). Both SHA-1s match
+  MAME's `ROM_START( pacman )` `ROM_REGION(0x0200, "namco")` entries exactly
+  (`src/mame/pacman/pacman.cpp`) — the same byte-verified provenance shape as the
+  program ROM above.
+- **Vendored:** extracted and committed in-tree under `reference/sound/` on 2026-08-07,
+  because the citation gate byte-verifies waveform claims against `82s126.1m` — a CI
+  checkout must contain it.
+
+> **ROM-vs-plan correction (pm2-1).** The pm2 plan and epic description name `82s126.3m`
+> as "the waveform PROM." MAME's `ROM_START(pacman)` is authoritative and says otherwise:
+> **`82s126.1m` holds the waveforms**; `82s126.3m` is the timing PROM, "not used." ROM
+> wins — the waveform claims in `claims/sound.json` cite **`82s126.1m`**.

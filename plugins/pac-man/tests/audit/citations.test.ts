@@ -31,7 +31,10 @@ import {
   decodeBcdX10,
 } from './dossier-sweep'
 
-type CheckClaims = (claims: Claim[], opts: { vendoredRoot: string | null }) => string[]
+type CheckClaims = (
+  claims: Claim[],
+  opts: { vendoredRoot: string | null; soundRoot?: string | null },
+) => string[]
 
 // tests/audit/citations.test.ts → the plugin root is two levels up.
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -39,6 +42,13 @@ const sourceDir = process.env.PACMAN_SOURCE_DIR ?? join(pluginRoot, 'reference',
 const pacmanAsm = join(sourceDir, 'pacman.asm')
 const vendoredAvailable = existsSync(pacmanAsm)
 const vendoredRoot = vendoredAvailable ? sourceDir : null
+
+// pm2-1 — the WSG waveform PROM lives in a SEPARATE sound tree, byte-verified the
+// same way pacman.asm is: present in a dev checkout, skipped on a CI clone.
+const soundDir = process.env.PACMAN_SOUND_DIR ?? join(pluginRoot, 'reference', 'sound')
+const wsgProm = join(soundDir, '82s126.1m')
+const soundAvailable = existsSync(wsgProm)
+const soundRoot = soundAvailable ? soundDir : null
 
 /** The one authoritative PHYSICAL line of the vendored source (1-indexed). */
 function vendoredLine(n: number): string {
@@ -193,7 +203,7 @@ describe.skipIf(!vendoredAvailable)('the committed claims all re-open byte-for-b
 
   it('every committed claim passes the checker against the vendored tree', async () => {
     const checkClaims = await loadChecker()
-    expect(checkClaims(loadClaims(), { vendoredRoot })).toEqual([])
+    expect(checkClaims(loadClaims(), { vendoredRoot, soundRoot })).toEqual([])
   })
 })
 
@@ -222,10 +232,121 @@ describe('every scoring claim value is the ×10 BCD decode of its own verbatim',
   })
 
   it.each(scoring)('$id ($symbol): value equals the ×10 BCD decode of the verbatim', (c) => {
-    const word = dataWordOf(c.source.verbatim)
+    // scoring claims are all TEXT citations (bcd-x10-word tags a pacman.asm line);
+    // narrow off the union the binary WSG claims introduced.
+    const src = c.source as { verbatim: string }
+    const word = dataWordOf(src.verbatim)
     expect(word, `${c.id}: verbatim must carry a 4-hex-digit data word`).not.toBeNull()
     expect(decodeBcdX10(word as string), `${c.id}: claimed value ${c.value} must equal the decode of ${word}`).toBe(
       c.value,
     )
+  })
+})
+
+// ───────────────────────────────────────────────────────────────────────────────
+// pm2-1 — BINARY (PROM) CITATIONS: the WSG waveform PROM `82s126.1m`.
+// The eight waveforms have no text verbatim to quote; a binary citation is
+// {file, offset, nibbles} and the checker re-verifies the LOW nibble of each byte.
+// ───────────────────────────────────────────────────────────────────────────────
+const okBinaryClaim = (over: Partial<Claim> = {}): Claim => ({
+  id: 'WSG-OK',
+  symbol: 'WSG_WAVEFORM_0',
+  value: 'sine',
+  meaning: 'a WSG waveform sample run',
+  addr: '0000',
+  source: { file: '82s126.1m', offset: 0, nibbles: [7, 9, 10, 11] },
+  ...over,
+})
+
+describe('binary (PROM) citation — schema validation (runs schema-only, no tree)', () => {
+  it('accepts a well-formed binary citation', async () => {
+    const checkClaims = await loadChecker()
+    expect(checkClaims([okBinaryClaim()], { vendoredRoot: null, soundRoot: null })).toEqual([])
+  })
+
+  it('rejects a binary citation with a non-integer / out-of-range nibble', async () => {
+    const checkClaims = await loadChecker()
+    expect(
+      checkClaims([okBinaryClaim({ source: { file: '82s126.1m', offset: 0, nibbles: [16] } })], {
+        vendoredRoot: null,
+        soundRoot: null,
+      }).join('\n'),
+    ).toMatch(/WSG-OK.*source/i)
+  })
+
+  it('rejects a binary citation with a negative offset', async () => {
+    const checkClaims = await loadChecker()
+    expect(
+      checkClaims([okBinaryClaim({ source: { file: '82s126.1m', offset: -1, nibbles: [7] } })], {
+        vendoredRoot: null,
+        soundRoot: null,
+      }).join('\n'),
+    ).toMatch(/WSG-OK.*source/i)
+  })
+
+  it('does NOT byte-check nibbles when soundRoot is null (a wrong nibble passes schema-only)', async () => {
+    const checkClaims = await loadChecker()
+    expect(
+      checkClaims([okBinaryClaim({ source: { file: '82s126.1m', offset: 0, nibbles: [0, 0, 0, 0] } })], {
+        vendoredRoot: null,
+        soundRoot: null,
+      }),
+    ).toEqual([])
+  })
+})
+
+describe.skipIf(!soundAvailable)('binary (PROM) citation — byte-for-byte re-open + drift', () => {
+  it('accepts a claim whose nibbles match the real PROM bytes', async () => {
+    const checkClaims = await loadChecker()
+    // waveform 0, first four bytes of 82s126.1m are 07 09 0a 0b → low nibbles 7 9 10 11
+    expect(checkClaims([okBinaryClaim()], { vendoredRoot: null, soundRoot })).toEqual([])
+  })
+
+  it('FAILS on a drifted nibble', async () => {
+    const checkClaims = await loadChecker()
+    const c = okBinaryClaim({ source: { file: '82s126.1m', offset: 0, nibbles: [8, 9, 10, 11] } })
+    expect(checkClaims([c], { vendoredRoot: null, soundRoot }).join('\n')).toMatch(/WSG-OK.*mismatch/i)
+  })
+
+  it('FAILS on a byte range past end-of-file', async () => {
+    const checkClaims = await loadChecker()
+    const c = okBinaryClaim({ source: { file: '82s126.1m', offset: 254, nibbles: [0, 0, 0, 0] } })
+    expect(checkClaims([c], { vendoredRoot: null, soundRoot }).join('\n')).toMatch(/WSG-OK.*end-of-file/i)
+  })
+
+  it('errors on a PROM file not in the sound tree', async () => {
+    const checkClaims = await loadChecker()
+    const c = okBinaryClaim({ source: { file: 'nope.1m', offset: 0, nibbles: [0] } })
+    expect(checkClaims([c], { vendoredRoot: null, soundRoot }).join('\n')).toMatch(/WSG-OK.*not found/i)
+  })
+})
+
+// ───────────────────────────────────────────────────────────────────────────────
+// pm2-1 — WAVEFORM re-derivation: every committed WSG waveform claim's decoded
+// `samples` IS `(nibble - 8)` of its OWN cited nibbles. Runs everywhere (reads the
+// claim's own data): a correct nibble run under a WRONG samples[] reddens here —
+// the teeth on the decoded value the dumb checker never parses (the BCD analogue).
+// ───────────────────────────────────────────────────────────────────────────────
+describe('every WSG waveform claim decodes samples = nibble - 8 of its own citation', () => {
+  const waveforms = loadClaims().filter(
+    (c) => typeof c.waveform === 'number' && Array.isArray(c.samples),
+  )
+
+  it('the eight waveforms 0..7 are all present', () => {
+    expect(waveforms.map((c) => c.waveform).sort((a, b) => (a as number) - (b as number))).toEqual([
+      0, 1, 2, 3, 4, 5, 6, 7,
+    ])
+  })
+
+  it.each(waveforms)('$id: 32 samples, each = its cited nibble minus 8', (c) => {
+    const src = c.source as { offset: number; nibbles: number[] }
+    expect(c.samples, `${c.id}: needs 32 decoded samples`).toHaveLength(32)
+    expect(src.nibbles, `${c.id}: needs 32 cited nibbles`).toHaveLength(32)
+    expect(src.offset, `${c.id}: waveform N sits at PROM offset N*32`).toBe((c.waveform as number) * 32)
+    for (let i = 0; i < 32; i++) {
+      expect(src.nibbles[i], `${c.id} nibble[${i}] must be 0..15`).toBeGreaterThanOrEqual(0)
+      expect(src.nibbles[i]).toBeLessThanOrEqual(15)
+      expect((c.samples as number[])[i], `${c.id} sample[${i}] must equal nibble-8`).toBe(src.nibbles[i] - 8)
+    }
   })
 })
