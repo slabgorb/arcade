@@ -36,6 +36,7 @@ import { spawnIcbms, NICBMS, type SpawnResult } from './spawn.js'
 import { killIcbmsInBlasts, resolveGroundImpacts } from './damage.js'
 import { scoreKills } from './score.js'
 import { nextPhase, type Phase } from './state.js'
+import type { SoundEvent } from './sound-events.js'
 import { createRng, type Rng } from '@shared/rng'
 
 /** The whole game state — grown from mc1's seed to carry the full combat model. */
@@ -62,6 +63,12 @@ export interface GameState {
   readonly remaining: number
   /** The seeded PRNG (mutable seed word, threaded through state — the sole entropy). */
   readonly rng: Rng
+  /** The sound moments this frame produced, for the audio shell to voice (mc8-2).
+   *  Rebuilt fresh every step (never accumulated), so it is pure per-frame data —
+   *  a fixed seed yields an identical stream. Empty on a fresh game and on every
+   *  frozen `'over'` frame. The fire reducer (shell/input.fireFromKey) appends
+   *  `launched`/`ammoEmpty` between frames on the same channel. */
+  readonly soundEvents: readonly SoundEvent[]
 }
 
 /** A fresh game: 6 live cities, 3 live bases at full ammo, no enemies, phase 'play',
@@ -79,6 +86,7 @@ export function createGame(seed = 1): GameState {
     phase: 'play',
     remaining: NICBMS,
     rng: createRng(seed),
+    soundEvents: [],
   }
 }
 
@@ -89,8 +97,9 @@ export function createGame(seed = 1): GameState {
  * cursor advance is the sanctioned exception; determinism holds per-seed).
  */
 export function stepGame(state: GameState): GameState {
-  // Terminal phase: freeze the battle, only the clock ticks on.
-  if (state.phase === 'over') return { ...state, frame: state.frame + 1 }
+  // Terminal phase: freeze the battle, only the clock ticks on — and the sound
+  // channel goes quiet (no spawn/flight/damage happens, so nothing to voice).
+  if (state.phase === 'over') return { ...state, frame: state.frame + 1, soundEvents: [] }
 
   // (1) spawn — only ever against structures that are still alive.
   const liveTargets = [
@@ -120,6 +129,19 @@ export function stepGame(state: GameState): GameState {
   const score = scoreKills(state.score, killed.length)
   const phase = nextPhase(state.phase, impact.cities)
 
+  // Voice this frame's moments, in the frame's own order: each ABM that arrived
+  // banged (detonated), each ICBM the blasts caught died (icbmKilled — silent at
+  // the shell, but real data), and each structure an arrived warhead just
+  // destroyed fell (structureDestroyed). Rebuilt fresh — never carried over.
+  const destroyed =
+    impact.cities.filter((c, i) => state.cities[i].alive && !c.alive).length +
+    impact.bases.filter((b, i) => state.bases[i].alive && !b.alive).length
+  const soundEvents: SoundEvent[] = [
+    ...detonations.map(() => ({ type: 'detonated' }) as const),
+    ...killed.map(() => ({ type: 'icbmKilled' }) as const),
+    ...Array.from({ length: destroyed }, () => ({ type: 'structureDestroyed' }) as const),
+  ]
+
   return {
     ...state,
     frame: state.frame + 1,
@@ -131,5 +153,6 @@ export function stepGame(state: GameState): GameState {
     score,
     phase,
     remaining: spawned.remaining,
+    soundEvents,
   }
 }
