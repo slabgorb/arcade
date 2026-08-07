@@ -113,8 +113,10 @@ describe('drawMaze tile blit (pm3-4)', () => {
     drawMaze(ctx, new Set())
     const calls = (ctx as unknown as { calls: RecordedCall[] }).calls
 
-    const BLUE = HARDWARE_PALETTE[11] // '#2121ff' — this file's own pre-pm3-4 wall colour
-    const PEACH = HARDWARE_PALETTE[14] // '#ffb8ae' — the dot/energizer colour; must never appear on a wall
+    // pm3-8: the maze is monochrome-by-type. Wall cells paint HARDWARE_PALETTE[11]
+    // (blue) on every ink pixel; the pellet peach must never appear on a wall.
+    const BLUE = HARDWARE_PALETTE[11]
+    const PEACH = HARDWARE_PALETTE[14]
 
     const wallBlits = calls.filter(
       (c) => c.method === 'putImageData' && c.data && tileAt(c.x / TILE_PX, c.y / TILE_PX) === 'wall',
