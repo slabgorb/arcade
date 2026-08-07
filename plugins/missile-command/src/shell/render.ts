@@ -4,10 +4,19 @@
 // (mc1-1), the fixed playfield (six cities + three bases, mc1-2), the trackball
 // crosshair (mc1-3) and now the ABM trails + expanding/collapsing blasts (mc1-4).
 // The shell owns the canvas; core emits data, never pixels.
+//
+// mc9-1 (GREEN, Yoda): the fixed cities and bases now render as authentic W3DSUP
+// STAMP geometry instead of the mc3-5 fillRect blocks / plain triangles. A live
+// city is the four-quadrant DACITY grid (DRAW ALL LIVING CITIES, W3DSUP.MAC:1067)
+// built from WRITE A STAMP glyphs (W3DSUP.MAC:587); a live base is its ABM
+// stockpile pyramid. All shapes live in the cited src/shell/stamps.ts data module
+// and are positioned by the same project() mapping mc3 uses. Dead structures still
+// draw as grey rubble.
 
 import type { GameState } from '../core/game.js'
 import { CITIES, BASES, type FieldPos } from '../core/field.js'
 import { blastRadius } from '../core/explosion.js'
+import { CITY_STAMPS, STAMP_H, STAMP_W, stampPixels, MISSILE_STACK } from './stamps.js'
 
 // ─── The cabinet's logical coordinate space (settled here, mc1-1 deferred it) ─
 // H is an 8-bit cabinet coordinate (the structures span MISB1H=0x14..MISB3H=0xF0,
@@ -37,36 +46,57 @@ function project(pos: FieldPos, width: number, height: number): { x: number; y: 
 export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width: number, height: number): void {
   clearField(ctx, width, height)
 
-  // Cities — squat blocks (mc1-2). mc3-5: only LIVE cities draw intact; a dead one
-  // draws as a low grey rubble line, never as a live city. The layout is core data
-  // (CITIES, field.ts) paired with the live per-city `alive` flag from state.cities.
-  const cw = Math.max(4, Math.round(width / 40))
-  const chh = Math.max(3, Math.round(height / 40))
+  // Cities — authentic four-stamp DACITY geometry (mc9-1). Each live city is the
+  // 2x2 grid of W3DSUP quadrant stamps (DRAW ALL LIVING CITIES, W3DSUP.MAC:1067;
+  // stamps by WRITE A STAMP, W3DSUP.MAC:587), two-tone top/bottom. A dead city is
+  // a low grey rubble line. Positions stay core data (CITIES, field.ts), gated by
+  // the live per-city `alive` flag from state.cities.
+  const uH = width / LOGICAL_WIDTH // canvas px per cabinet H unit
+  const uV = height / LOGICAL_HEIGHT // canvas px per cabinet V unit
+  const pw = Math.max(1, Math.ceil(uH)) // one stamp pixel, in canvas px
+  const ph = Math.max(1, Math.ceil(uV))
+  const cw = Math.max(4, Math.round(width / 40)) // rubble line width
+  const CITY_TOP = '#9f9'
+  const CITY_BOTTOM = '#6f6' // the cabinet's live-city green (functional; per-wave palette is mc9-2)
   CITIES.forEach((pos, i) => {
-    const { x, y } = project(pos, width, height)
     if (state.cities[i]?.alive ?? true) {
-      ctx.fillStyle = '#6f6' // yellow-green, the cabinet's live-city hue
-      ctx.fillRect(x - cw / 2, y - chh, cw, chh)
+      for (const stamp of CITY_STAMPS) {
+        ctx.fillStyle = stamp.layer === 'top' ? CITY_TOP : CITY_BOTTOM
+        for (const { col, row } of stampPixels(stamp.rows)) {
+          // pixel -> cabinet coord: centre the 8-wide stamp on its hOffset; the
+          // bottom bitmap row sits on the city ground line (pos.v), rows rise up.
+          const h = pos.h + stamp.hOffset + (col - (STAMP_W - 1) / 2)
+          const v = pos.v + (STAMP_H - 1 - row)
+          const p = project({ h, v }, width, height)
+          ctx.fillRect(p.x - pw / 2, p.y - ph / 2, pw, ph)
+        }
+      }
     } else {
+      const { x, y } = project(pos, width, height)
       ctx.fillStyle = '#555' // grey rubble
       ctx.fillRect(x - cw / 2, y - 1, cw, 1)
     }
   })
 
-  // Bases — launch triangles pointing up (mc1-2). mc3-5: only LIVE bases draw as a
-  // triangle; a dead one draws as grey rubble.
+  // Bases — authentic ABM stockpile pyramid (mc9-1). A live base shows its ready
+  // missiles as the W3DSUP 1-2-3-4 stack (DRAW MISSILE, W3DSUP.MAC:1221; offsets
+  // W3DSUP.MAC:1329-1331), shrinking with the base's remaining ammo — not a plain
+  // triangle. A short platform anchors it so a spent-but-alive base still reads as
+  // a base; a dead base is grey rubble.
   const bw = Math.max(5, Math.round(width / 32))
-  const bh = Math.max(4, Math.round(height / 28))
+  const dot = Math.max(1, Math.round(width / 200)) // one ready-missile marker
   BASES.forEach((pos, i) => {
     const { x, y } = project(pos, width, height)
     if (state.bases[i]?.alive ?? true) {
       ctx.fillStyle = '#4cf' // blue, the cabinet's live-base hue
-      ctx.beginPath()
-      ctx.moveTo(x, y - bh) // apex
-      ctx.lineTo(x - bw / 2, y) // bottom-left
-      ctx.lineTo(x + bw / 2, y) // bottom-right
-      ctx.closePath()
-      ctx.fill()
+      const ammo = state.bases[i]?.ammo ?? MISSILE_STACK.length
+      const shown = Math.max(0, Math.min(ammo, MISSILE_STACK.length))
+      for (let k = 0; k < shown; k++) {
+        const m = MISSILE_STACK[k]
+        const p = project({ h: pos.h + m.dh, v: pos.v + m.dv }, width, height)
+        ctx.fillRect(p.x - dot, p.y - dot, dot * 2, dot * 2)
+      }
+      ctx.fillRect(x - bw / 2, y - 1, bw, 2) // launch platform
     } else {
       ctx.fillStyle = '#555' // grey rubble
       ctx.fillRect(x - bw / 2, y - 1, bw, 1)

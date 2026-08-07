@@ -1,0 +1,59 @@
+id: mc4
+type: epic
+title: Missile Command — waves, scoring & bonus (the speed fix)
+description: "Fourth Missile Command epic. mc3 made the cabinet playable but with two flagged placeholders: enemy ICBMs and player ABMs both fly at a unit SPEED=1 per tick (icbm.ts/abm.ts), and the spawner runs ONE endless cadence with no wave progression. That is why the game 'feels too fast' — a warhead crosses the whole 222-tall field in ~3.6s on every wave, and ICBMs move at the same speed as the ABMs meant to outrun them. This epic retires both placeholders: a cited per-wave difficulty schedule (enemy count + descent-velocity ramp), the end-of-wave city bonus and unused-missile bonus, city regeneration, the bonus city at a score threshold, and the per-wave score multiplier. Executes the Architect roadmap slice for mc4 in docs/superpowers/specs/2026-08-07-missile-command-full-cabinet-roadmap.md (a detailed mc4 design + plan is written at epic start, per the roadmap's one-design-per-epic rule). GROUND TRUTH: the vendored REV-01 tree (plugins/missile-command/reference/source/) and the machine-gated dossier (docs/rom-study/); every new src/core numeric constant carries a committed claim gated by citations.test.ts (the AC3 no-uncited-literal guard), and purity.test.ts stays green (wave state pure, RNG seeded, no clock in core). REV-01 vs REV-03 (open question O-3) first BITES here — difficulty tuning is where the revisions diverge; each story that touches a divergence catalogues the delta in a claim note and ships REV-01 behaviour (contract 3). Primary anchors (subsystems.md): W3MAIN.MAC:3279 CALCULATE MISSILE VELOCITY & DISPLAY INCREMENT; W3MAIN.MAC:3901 1ST PHASE OF NEW WAVE SETUP; W3MAIN.MAC:4323 CITY BONUS; W3MAIN.MAC:4765 REGENERATE CITIES; W3MAIN.MAC:5549 ADD TO PLAYER'S SCORE. OUT OF SCOPE (later epics): MIRV/cruise/bomber/satellite/smart-bomb spawned BY this schedule (mc5); attract/pause + restart machine (mc6); high-score ladder (mc7); authentic audio (mc8); palette/stamps/blast curve (mc9)."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: mc4-1
+    title: 'Wave model + per-wave ICBM velocity & count ramp (retire the SPEED=1 placeholder — the speed fix)'
+    description: "The story that fixes 'too fast'. (a) src/core/wave.ts (new, pure) — a wave number carried in state and a cited per-wave schedule that yields this wave's ICBM budget (count) and descent velocity. Cite 1ST PHASE OF NEW WAVE SETUP (W3MAIN.MAC:3901 logical) for the count schedule and CALCULATE MISSILE VELOCITY & DISPLAY INCREMENT (W3MAIN.MAC:3279 logical) for the velocity ramp; new claims in a new claims/wave.json for every schedule constant (byte-exact verbatim from REV-01, decimal decode). (b) src/core/icbm.ts (change) — stepIcbm takes its per-tick velocity from the wave schedule instead of the hard-coded SPEED=1; wave 1 is slow and each wave ramps monotonically to the cited ceiling. (c) src/core/abm.ts (change) — the player ABM velocity is corrected so ABMs OUTRUN ICBMs at every wave (cite the ABM velocity vs the ICBM ramp; the ROM's player missiles are faster than incoming). Record the REV-01 vs REV-03 delta for the difficulty numbers in a claim note (O-3). Depends on mc3. Blocks mc4-2/3/4."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'src/core/wave.ts is a pure module exporting the wave number and a schedule function that returns {count, velocity} for a given wave, sourced from cited REV-01 constants; purity.test.ts stays green.'
+      - 'stepIcbm advances by the wave-scheduled velocity, not a hard-coded 1: a wave-1 ICBM crosses the field measurably slower than a later-wave ICBM, and the ramp is monotonic up to the cited ceiling.'
+      - 'ABM velocity is corrected so an ABM launched at the same time as an ICBM reaches its target first at every wave (ABMs outrun ICBMs); the change is cited.'
+      - 'claims/wave.json carries every new schedule constant (count + velocity ramp) with byte-exact REV-01 verbatim and a REV-01-vs-REV-03 delta note; citations.test.ts (incl. the AC3 no-uncited-literal guard) and purity.test.ts pass for every changed/new src/core module.'
+  - id: mc4-2
+    title: 'End-of-wave transition: city bonus + unused-missile bonus, regenerate cities, refill ammo, advance wave'
+    description: "The wave loop. When the wave's ICBM budget is exhausted and the screen is clear of enemies, the wave ends and resolves: tally the end-of-wave CITY BONUS (per surviving city) and the UNUSED-MISSILE BONUS (per remaining ABM in the magazines), regenerate destroyed cities up to the cabinet cap, refill each live base's ammo, then advance to the next wave and re-seed its attack from the mc4-1 schedule. (a) src/core/wave.ts / state.ts (change) — add the wave-end detection and the bonus/regen/advance reducer; extend Phase with the between-wave beat if needed (the full attract/pause machine is still mc6). (b) claims — new claims for the city-bonus and unused-missile bonus point values and the city-regeneration cap (cite CITY BONUS W3MAIN.MAC:4323 and REGENERATE CITIES W3MAIN.MAC:4765, both logical). Depends on mc4-1."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "a wave ends only when the budget is spent AND no enemy remains on screen; on end, phase transitions through the between-wave beat and then back to 'play' on the next wave (game-over still wins if all cities are dead)."
+      - 'the end-of-wave bonus adds the cited per-surviving-city value and the cited per-unused-missile value to the score; a wave with no survivors and no unused missiles adds zero.'
+      - 'destroyed cities regenerate up to the cited cap at wave end and each live base refills to full ammo; a base destroyed in play stays dead (structures resurrect only via the cited regeneration path, never spontaneously).'
+      - 'all new bonus/regen constants carry byte-exact claims; citations.test.ts and purity.test.ts stay green; deterministic for a fixed seed.'
+  - id: mc4-3
+    title: 'Per-wave score multiplier and the bonus city at a score threshold'
+    description: "Scoring fidelity. (a) src/core/score.ts (change) — the per-ICBM kill value scales by the wave multiplier, capped at the cited MAXMUL (claim MC-MAXMUL already exists); mc3 pinned only the wave-1 value 25 (claim MC-ICBPTS), this generalises it to 25 x min(wave, MAXMUL cap). Cite ADD TO PLAYER'S SCORE (W3MAIN.MAC:5549 logical). (b) a bonus city is awarded when the running score crosses the cited threshold (claim MC-SCITYM already exists) — one extra city added at each threshold crossing, subject to the mc4-2 city cap. Depends on mc4-1 (wave number) and mc4-2 (city cap + regen path)."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'scoreKills scales the kill value by the current wave multiplier capped at MAXMUL: a kill on wave 1 adds 25, a later wave adds 25 x wave up to the cited cap, and the cap is never exceeded.'
+      - 'crossing the cited SCITYM score threshold awards one bonus city (added via the regeneration path, respecting the city cap); not crossing it awards none; the same threshold is not double-counted.'
+      - 'the generalised multiplier and the bonus-city threshold both cite their claims (MC-ICBPTS/MC-MAXMUL/MC-SCITYM); citations.test.ts and purity.test.ts stay green.'
+  - id: mc4-4
+    title: 'Compose waves into stepGame, HUD wave/multiplier readout, and a seeded multi-wave playthrough'
+    description: "Wire the wave model into the composition root and make it visible. (a) src/core/game.ts (change) — createGame seeds wave 1; stepGame runs the wave-end resolution in its resolve step and advances the wave; GameState gains the wave number and multiplier. (b) shell/render.ts (change) — the HUD draws the wave number and current multiplier (functional text; authentic stroke font is mc9); the score/ammo readouts are unchanged and remain the core's verbatim values (HUD-figure rule). (c) tests/mc4-playthrough.test.ts — one seeded run across at least two waves asserting the descent speed ramps between waves, the wave-end bonus is awarded, cities regenerate, ammo refills, the multiplier climbs, and identical seeds yield identical states. Depends on mc4-1/2/3."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "createGame starts at wave 1; stepGame advances the wave at wave-end and freezes on game-over; GameState exposes wave and multiplier."
+      - 'render draws the wave number and multiplier in the HUD against the existing canvas-mock harness, and the score/ammo it draws are still the core values, not re-derived copies.'
+      - 'tests/mc4-playthrough.test.ts: a seeded multi-wave run shows the ICBM descent measurably slower on wave 1 than on a later wave, the end-of-wave bonus applied, cities regenerated and ammo refilled between waves, and the multiplier increasing; identical seeds yield identical states.'
+      - 'the full gate is green: npx vitest run --project missile-command, npm run lint, and npm run test:orchestrator all pass.'
