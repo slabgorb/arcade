@@ -12,7 +12,7 @@ import { decodeTilePixel, decodeColourLookupFromProm } from '../../src/shell/gfx
 import { TILES } from '../../src/shell/tile-data'
 import { drawMaze } from '../../src/shell/render'
 import { colourLookup, HARDWARE_PALETTE } from '../../src/shell/palette-data'
-import { tileAt } from '../../src/core/maze'
+import { tileAt, MAZE } from '../../src/core/maze'
 import { TILE_PX } from '../../src/core/actor'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -133,5 +133,61 @@ describe('drawMaze tile blit (pm3-4)', () => {
       }
     }
     expect(sawBlue).toBe(true)
+  })
+
+  // Round-3 fix regression guard: rounds 1-2 both passed every test above
+  // (real 8x8 putImageData blits, correct blue/no-peach colour) while the
+  // maze still rendered as ~20 full-width horizontal stripes — every INTERIOR
+  // wall cell (walls on all four orthogonal sides, e.g. inside a 2-3-cell-
+  // thick block or an all-'#' HUD row) fell through to the horizontal-line
+  // default instead of painting nothing. Locate one real interior wall cell
+  // and one real corridor-edge wall cell directly from the maze table (not
+  // hardcoded coordinates, so this stays correct if the table is ever
+  // edited), and assert drawMaze treats them oppositely.
+  function findWallCell(wantInterior: boolean): { tx: number; ty: number } {
+    for (let ty = 3; ty < MAZE.rows - 3; ty++) {
+      for (let tx = 0; tx < MAZE.cols; tx++) {
+        if (tileAt(tx, ty) !== 'wall') continue
+        const up = tileAt(tx, ty - 1) === 'wall'
+        const down = tileAt(tx, ty + 1) === 'wall'
+        const left = tileAt(tx - 1, ty) === 'wall'
+        const right = tileAt(tx + 1, ty) === 'wall'
+        const isInterior = up && down && left && right
+        if (isInterior === wantInterior) return { tx, ty }
+      }
+    }
+    throw new Error(`no ${wantInterior ? 'interior' : 'edge'} wall cell found in the maze table`)
+  }
+
+  it('an interior wall cell draws nothing; a corridor-edge wall cell draws a tile', () => {
+    const interior = findWallCell(true)
+    const edge = findWallCell(false)
+
+    const ctx = fakeCtx()
+    drawMaze(ctx, new Set())
+    const calls = (ctx as unknown as { calls: RecordedCall[] }).calls
+
+    const paintsAt = (tx: number, ty: number) =>
+      calls.some((c) => c.x === tx * TILE_PX && c.y === ty * TILE_PX && c.w === 8 && c.h === 8)
+
+    expect(paintsAt(interior.tx, interior.ty)).toBe(false) // black background, no blit at all
+    expect(paintsAt(edge.tx, edge.ty)).toBe(true) // a line/corner tile facing the open side
+  })
+
+  it('the top and bottom HUD bands never paint wall line art', () => {
+    const ctx = fakeCtx()
+    drawMaze(ctx, new Set())
+    const calls = (ctx as unknown as { calls: RecordedCall[] }).calls
+
+    for (let ty = 0; ty < MAZE.rows; ty++) {
+      if (ty >= 3 && ty < MAZE.rows - 3) continue // real 30-row maze, not the HUD bands
+      for (let tx = 0; tx < MAZE.cols; tx++) {
+        // Only per-TILE paints (w===8, h===8) count — clearField's initial
+        // full-canvas fillRect(0, 0, 224, 288) also lands at x=0,y=0 and
+        // must not be mistaken for a wall-tile blit at cell (0,0).
+        const hit = calls.some((c) => c.x === tx * TILE_PX && c.y === ty * TILE_PX && c.w === 8 && c.h === 8)
+        expect(hit).toBe(false)
+      }
+    }
   })
 })

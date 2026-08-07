@@ -92,22 +92,63 @@ const WALL_CORNER_DOWN_LEFT_TILE = 62 // left+bottom L (open up-right), pv3=15, 
 const WALL_CORNER_UP_RIGHT_TILE = 61 // top+right L (open down-left), pv3=15, pv1=pv2=0
 const WALL_CORNER_UP_LEFT_TILE = 60 // top+left L (open down-right), pv3=15, pv1=pv2=0
 
-/** Pick the wall autotile for (tx,ty) from which of its four neighbours are
- *  also 'wall'. Four neighbours wall (or none) falls back to the horizontal
- *  double-line — an interior/isolated case this maze table rarely produces. */
-function wallTileFor(tx: number, ty: number): number {
+/** Rows this maze table reserves for the score/lives/level HUD (`maze.ts`'s
+ *  header: rows 0-2 and 33-35, always 'wall', no gameplay tile). Round 3's
+ *  fix: these must never paint wall LINE ART (see wallTileFor's header) —
+ *  they are six rows deep specifically so `drawHud` has clean black to write
+ *  its text onto, and every cell in them borders another all-wall cell on
+ *  every side it has a neighbour on (so they were never "interior" by the
+ *  neighbour test alone at the seam with the real 30-row maze). */
+function isHudRow(ty: number): boolean {
+  return ty < 3 || ty >= MAZE.rows - 3
+}
+
+/** Pick the wall autotile for (tx,ty), or `null` for a cell that should
+ *  paint nothing (pure black background).
+ *
+ *  Round 3 fix (was: round 2's version always returned a tile, defaulting
+ *  unmatched cases to the horizontal line — for a wall cell whose four
+ *  orthogonal neighbours are ALL wall too, EVERY case fell through to that
+ *  default, so a stack of such INTERIOR cells painted a stack of full-width
+ *  horizontal lines: the reported "venetian blinds" defect). Authentic
+ *  Pac-Man is line art — a wall's INTERIOR (the arcade's maze has 2-3-cell-
+ *  thick wall blocks, not 1-cell-thick everywhere) is empty black; a blue
+ *  line/corner is drawn only on the cells that border open space, oriented
+ *  to face the open side(s):
+ *   - all four neighbours wall -> interior -> null (no paint)
+ *   - open above AND below (closed left/right) -> horizontal line
+ *   - open left AND right (closed above/below) -> vertical line
+ *   - open on exactly two ADJACENT sides -> the corner tile whose ink
+ *     traces the two CLOSED (wall) edges — i.e. facing the open corner
+ *   - any other case (exactly one or exactly three sides open — a
+ *     dead-end notch or a thin peninsula, both rare in this table) falls
+ *     back to a straight line matching whichever axis has an opening,
+ *     preferring horizontal; this is an approximation (see file header:
+ *     "don't over-engineer corner-perfection"), not a claim every such
+ *     cell's tile is arcade-exact. */
+function wallTileFor(tx: number, ty: number): number | null {
   const up = tileAt(tx, ty - 1) === 'wall'
   const down = tileAt(tx, ty + 1) === 'wall'
   const left = tileAt(tx - 1, ty) === 'wall'
   const right = tileAt(tx + 1, ty) === 'wall'
 
-  if (!up && !down && left && right) return WALL_H_TILE
-  if (up && down && !left && !right) return WALL_V_TILE
-  if (!up && !left && down && right) return WALL_CORNER_DOWN_RIGHT_TILE
-  if (!up && !right && down && left) return WALL_CORNER_DOWN_LEFT_TILE
-  if (!down && !left && up && right) return WALL_CORNER_UP_RIGHT_TILE
-  if (!down && !right && up && left) return WALL_CORNER_UP_LEFT_TILE
-  return WALL_H_TILE
+  if (up && down && left && right) return null // interior — paint nothing
+
+  const openUp = !up
+  const openDown = !down
+  const openLeft = !left
+  const openRight = !right
+
+  if (openUp && openDown && !openLeft && !openRight) return WALL_H_TILE
+  if (openLeft && openRight && !openUp && !openDown) return WALL_V_TILE
+  if (openUp && openLeft && !openDown && !openRight) return WALL_CORNER_DOWN_RIGHT_TILE
+  if (openUp && openRight && !openDown && !openLeft) return WALL_CORNER_DOWN_LEFT_TILE
+  if (openDown && openLeft && !openUp && !openRight) return WALL_CORNER_UP_RIGHT_TILE
+  if (openDown && openRight && !openUp && !openLeft) return WALL_CORNER_UP_LEFT_TILE
+
+  // Fallback: one or three sides open (a notch/peninsula, not a clean
+  // straight run or corner) — face whichever axis has an opening.
+  return openUp || openDown ? WALL_H_TILE : WALL_V_TILE
 }
 
 export interface TileCell {
@@ -116,14 +157,19 @@ export interface TileCell {
 }
 
 /** The authored 28x36 grid of {tileIndex, colorCode} — null where a cell
- *  paints nothing (path/tunnel/house stay the cleared black background, the
- *  gate keeps its own thin procedural line). Computed once from MAZE's
- *  topology (see header for what "authored" means here), not per frame. */
+ *  paints nothing (path/tunnel/house stay the cleared black background, an
+ *  interior wall cell paints nothing too — see wallTileFor — and so do the
+ *  HUD rows, which drawHud paints its text over; the gate keeps its own
+ *  thin procedural line). Computed once from MAZE's topology (see header
+ *  for what "authored" means here), not per frame. */
 export const MAZE_TILEMAP: readonly (TileCell | null)[][] = Array.from({ length: MAZE.rows }, (_, ty) =>
   Array.from({ length: MAZE.cols }, (_, tx) => {
     switch (tileAt(tx, ty)) {
-      case 'wall':
-        return { tileIndex: wallTileFor(tx, ty), colorCode: WALL_COLOR_CODE }
+      case 'wall': {
+        if (isHudRow(ty)) return null // HUD bands: black, never wall line art
+        const tileIndex = wallTileFor(tx, ty)
+        return tileIndex === null ? null : { tileIndex, colorCode: WALL_COLOR_CODE }
+      }
       case 'dot':
         return { tileIndex: DOT_TILE, colorCode: PELLET_COLOR_CODE }
       case 'energizer':
