@@ -1,0 +1,299 @@
+[
+  {
+    "id": "MC-COL-CWHITE",
+    "symbol": "CWHITE",
+    "value": 0,
+    "meaning": "Colour code WHITE (store in a COLxxx register)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 491,
+      "verbatim": "CWHITE\t=0\t\t\t;COLOR CODES (STORE IN COLORS)"
+    }
+  },
+  {
+    "id": "MC-COL-CYELLO",
+    "symbol": "CYELLO",
+    "value": 2,
+    "meaning": "Colour code YELLOW",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 493,
+      "verbatim": "CYELLO\t=2"
+    }
+  },
+  {
+    "id": "MC-COL-CPURPL",
+    "symbol": "CPURPL",
+    "value": 4,
+    "meaning": "Colour code PURPLE",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 495,
+      "verbatim": "CPURPL\t=4"
+    }
+  },
+  {
+    "id": "MC-COL-CRED",
+    "symbol": "CRED",
+    "value": 6,
+    "meaning": "Colour code RED",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 497,
+      "verbatim": "CRED\t=6"
+    }
+  },
+  {
+    "id": "MC-COL-CBLUGR",
+    "symbol": "CBLUGR",
+    "value": 8,
+    "meaning": "Colour code BLUE-GREEN",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 499,
+      "verbatim": "CBLUGR\t=8"
+    }
+  },
+  {
+    "id": "MC-COL-CGREEN",
+    "symbol": "CGREEN",
+    "value": 10,
+    "meaning": "Colour code GREEN (0A hex = 10)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 501,
+      "verbatim": "CGREEN\t=0A"
+    }
+  },
+  {
+    "id": "MC-COL-CBLUE",
+    "symbol": "CBLUE",
+    "value": 12,
+    "meaning": "Colour code BLUE (0C hex = 12)",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 503,
+      "verbatim": "CBLUE\t=0C"
+    }
+  },
+  {
+    "id": "MC-COL-CBLACK",
+    "symbol": "CBLACK",
+    "value": 14,
+    "meaning": "Colour code BLACK (0E hex = 14) — the sky/backdrop hue",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 505,
+      "verbatim": "CBLACK\t=0E"
+    }
+  },
+  {
+    "id": "MC-COL-GAMEFL",
+    "symbol": "GAMEFL",
+    "value": 48,
+    "meaning": "FLSHCO mask (30 hex) — flash colours 4 & 5 (COL100, COL101) each VBLANK",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 489,
+      "verbatim": "GAMEFL\t=30\t\t\t;(FLSHCO) FLASH COLORS 4 & 5 MASK"
+    }
+  },
+  {
+    "id": "MC-COL-SETCOL",
+    "symbol": "SETCOL",
+    "value": "cite",
+    "meaning": "SET UP COLORS FOR NEXT WAVE entry — palette index derives from WAVENO",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1593,
+      "verbatim": "SETCOL:\tLDA WAVENO"
+    }
+  },
+  {
+    "id": "MC-COL-SETCOL-SBC1",
+    "symbol": "SETCOL",
+    "value": "cite",
+    "meaning": "SETCOL subtracts 1 from the wave before halving (0-based index)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1597,
+      "verbatim": "\tSBC I,1"
+    }
+  },
+  {
+    "id": "MC-COL-SETCOL-LSR",
+    "symbol": "SETCOL",
+    "value": "cite",
+    "meaning": "SETCOL halves the wave (LSR) — the palette advances every TWO waves",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1599,
+      "verbatim": "\tLSR"
+    }
+  },
+  {
+    "id": "MC-COL-SETCOL-MOD",
+    "symbol": "WAVEND-WAVCOL",
+    "value": "cite",
+    "meaning": "SETCOL reduces the index modulo the 10-entry table (WAVEND-WAVCOL)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1603,
+      "verbatim": "\tCMP I,WAVEND-WAVCOL"
+    }
+  },
+  {
+    "id": "MC-COL-WAVCOL",
+    "symbol": "WAVCOL",
+    "value": "cite",
+    "meaning": "Palette dispatch table — first entry selects WV1COL for waves 1-2",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1655,
+      "verbatim": "WAVCOL:\t.BYTE WV1COL-WAVCOL+3"
+    }
+  },
+  {
+    "id": "MC-COL-DBLCOL",
+    "symbol": "DBLCOL",
+    "value": "cite",
+    "meaning": "DBLCOL packs 8 colour codes as nibbles (10 = 0x10 under .RADIX 16)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1679,
+      "verbatim": "\t.BYTE A*10+B,C*10+D,E*10+F,G*10+H"
+    }
+  },
+  {
+    "id": "MC-COL-WVBCOL",
+    "symbol": "WVBCOL",
+    "value": "cite",
+    "meaning": "Per-wave palette WVBCOL (dispatch index 7)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1684,
+      "verbatim": "WVBCOL:\tDBLCOL CYELLO,CGREEN,CBLACK,CWHITE,CBLACK,CYELLO,CRED,CRED"
+    }
+  },
+  {
+    "id": "MC-COL-WVCCOL",
+    "symbol": "WVCCOL",
+    "value": "cite",
+    "meaning": "Per-wave palette WVCCOL (dispatch index 8)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1686,
+      "verbatim": "WVCCOL:\tDBLCOL CWHITE,CRED,CPURPL,CYELLO,CPURPL,CWHITE,CGREEN,CGREEN"
+    }
+  },
+  {
+    "id": "MC-COL-WVDCOL",
+    "symbol": "WVDCOL",
+    "value": "cite",
+    "meaning": "Per-wave palette WVDCOL (dispatch index 3) — the bare 0 slot is CWHITE",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1688,
+      "verbatim": "WVDCOL:\tDBLCOL CBLACK,CRED,CYELLO,CYELLO,0,CGREEN,CBLUE,CBLUE"
+    }
+  },
+  {
+    "id": "MC-COL-WV1COL",
+    "symbol": "WV1COL",
+    "value": "cite",
+    "meaning": "Per-wave palette WV1COL (dispatch index 0) — waves 1-2",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1690,
+      "verbatim": "WV1COL:\tDBLCOL CBLACK,CYELLO,CRED,CBLUGR,CRED,CBLACK,CBLUE,CBLUE"
+    }
+  },
+  {
+    "id": "MC-COL-WV5COL",
+    "symbol": "WV5COL",
+    "value": "cite",
+    "meaning": "Per-wave palette WV5COL (dispatch index 1) — waves 3-4",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1692,
+      "verbatim": "WV5COL:\tDBLCOL CBLACK,CYELLO,CGREEN,CBLUGR,CGREEN,CBLACK,CBLUE,CBLUE"
+    }
+  },
+  {
+    "id": "MC-COL-WV6COL",
+    "symbol": "WV6COL",
+    "value": "cite",
+    "meaning": "Per-wave palette WV6COL (dispatch index 2)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1694,
+      "verbatim": "WV6COL:\tDBLCOL CBLACK,CBLUE,CRED,CYELLO,CRED,CPURPL,CGREEN,CGREEN"
+    }
+  },
+  {
+    "id": "MC-COL-WV7COL",
+    "symbol": "WV7COL",
+    "value": "cite",
+    "meaning": "Per-wave palette WV7COL (dispatch index 4)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1696,
+      "verbatim": "WV7COL:\tDBLCOL CBLUE,CYELLO,CRED,CPURPL,CRED,CBLUE,CBLACK,CBLACK"
+    }
+  },
+  {
+    "id": "MC-COL-WV8COL",
+    "symbol": "WV8COL",
+    "value": "cite",
+    "meaning": "Per-wave palette WV8COL (dispatch index 9)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1698,
+      "verbatim": "WV8COL:\tDBLCOL CRED,CYELLO,CBLACK,CGREEN,CBLACK,CRED,CBLUE,CBLUE"
+    }
+  },
+  {
+    "id": "MC-COL-WV9COL",
+    "symbol": "WV9COL",
+    "value": "cite",
+    "meaning": "Per-wave palette WV9COL (dispatch index 5)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1700,
+      "verbatim": "WV9COL:\tDBLCOL CBLUGR,CYELLO,CRED,CBLACK,CRED,CBLUGR,CBLUE,CBLUE"
+    }
+  },
+  {
+    "id": "MC-COL-WVACOL",
+    "symbol": "WVACOL",
+    "value": "cite",
+    "meaning": "Per-wave palette WVACOL (dispatch index 6)",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1702,
+      "verbatim": "WVACOL:\tDBLCOL CPURPL,CGREEN,CBLACK,CBLACK,CPURPL,CBLUGR,CYELLO,CYELLO"
+    }
+  },
+  {
+    "id": "MC-COL-COL000",
+    "symbol": "COL000",
+    "value": "cite",
+    "meaning": "The 8 colour registers COL000..COL111 — each named for its 3-bit pixel index",
+    "source": {
+      "file": "W3INT.MAC",
+      "line": 93,
+      "verbatim": "COL000:\t.BLKB 1\t\t\t;8 COLORS"
+    }
+  },
+  {
+    "id": "MC-COL-FLASH-CYCLE",
+    "symbol": "COLORS",
+    "value": "cite",
+    "meaning": "The flash cycle INCs each flagged colour register and copies it to hardware each VBLANK",
+    "source": {
+      "file": "W3INT.MAC",
+      "line": 309,
+      "verbatim": "\tSTA AX,COLORS\t\t;UPDATE HARDWARE COLOR"
+    }
+  }
+]
