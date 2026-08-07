@@ -11,7 +11,8 @@ stories:
     description: "The story that fixes 'too fast'. (a) src/core/wave.ts (new, pure) — a wave number carried in state and a cited per-wave schedule that yields this wave's ICBM budget (count) and descent velocity. Cite 1ST PHASE OF NEW WAVE SETUP (W3MAIN.MAC:3901 logical) for the count schedule and CALCULATE MISSILE VELOCITY & DISPLAY INCREMENT (W3MAIN.MAC:3279 logical) for the velocity ramp; new claims in a new claims/wave.json for every schedule constant (byte-exact verbatim from REV-01, decimal decode). (b) src/core/icbm.ts (change) — stepIcbm takes its per-tick velocity from the wave schedule instead of the hard-coded SPEED=1; wave 1 is slow and each wave ramps monotonically to the cited ceiling. (c) src/core/abm.ts (change) — the player ABM velocity is corrected so ABMs OUTRUN ICBMs at every wave (cite the ABM velocity vs the ICBM ramp; the ROM's player missiles are faster than incoming). Record the REV-01 vs REV-03 delta for the difficulty numbers in a claim note (O-3). Depends on mc3. Blocks mc4-2/3/4."
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
