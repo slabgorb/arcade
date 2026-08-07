@@ -1069,10 +1069,11 @@ stories:
     title: "joust bounder BOUP cliff-above diverts to BOLEV: model the blocked-climb level flight (no BOUP3). Found by jt9-23 Dev: BOUP (JOUSTRV4.SRC:3846-3853) samples BCKYTB-DYLEN and on a hit BNE BOLEV (:3850) flies plain level; the port's bounder still commits to the climb blind. Distinct from B2UP3/SHUP3 (hunter/shadow) which jt9-23 wired."
     points: 3
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-07'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: jt9-51
     title: "joust climb-prep: pin the 21-wake B2UP3/SHUP3 decision-interval LENGTH behaviourally. Found by jt9-23 TEA/Reviewer: the #20+1 interval is pinned only in climb-prep-source.test.ts (ROM provenance); the behavioural suite proves the level hold but not its 21-wake period. Add a phase-pinning test (mirroring cadence-wiring's period reads) once the port models the interval as a held state."
     points: 2
