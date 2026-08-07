@@ -792,3 +792,8 @@ completed_stories:
     title: "joust climb-prep: pin the 21-wake B2UP3/SHUP3 decision-interval LENGTH behaviourally. Found by jt9-23 TEA/Reviewer: the #20+1 interval is pinned only in climb-prep-source.test.ts (ROM provenance); the behavioural suite proves the level hold but not its 21-wake period. Add a phase-pinning test (mirroring cadence-wiring's period reads) once the port models the interval as a held state."
     points: 2
     completed: '2026-08-07'
+  - id: mc3-3
+    epic: mc3
+    title: Scoring (25/ICBM wave-1) and the play->game-over phase
+    points: 3
+    completed: '2026-08-07'
