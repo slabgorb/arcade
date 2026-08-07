@@ -21,11 +21,12 @@ stories:
     title: 'Cabinet state machine: new core cabinet.ts (attract/title/select/playing/gameover/highscore) wrapping the session, hinged on GOVER'
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-07'
     repos: arcade
     workflow: tdd
     depends_on: jt10-1
+    completed: '2026-08-07'
   - id: jt10-3
     title: 'Title screen: transcribe the JOUST logo picture + PRESENTED-BY / EXTRA-MOUNT / (C)1982 lines in FONT57, with the ATT.SRC colour cycle'
     points: 5
