@@ -828,3 +828,8 @@ completed_stories:
     title: 'Font port: transcribe FONT35 (3x5) + FONT57 (5x7) from MESSAGE.SRC into pure core data, add a shell raster text renderer'
     points: 5
     completed: '2026-08-07'
+  - id: jt10-2
+    epic: jt10
+    title: 'Cabinet state machine: new core cabinet.ts (attract/title/select/playing/gameover/highscore) wrapping the session, hinged on GOVER'
+    points: 3
+    completed: '2026-08-07'
