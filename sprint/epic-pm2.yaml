@@ -1,0 +1,41 @@
+id: pm2
+type: epic
+title: Pac-Man — authentic Namco WSG sound
+description: "Tenth epic, second Pac-Man round: give the ninth cabinet its VOICE. pm1 shipped a playable AI-authentic core and built an idle FORWARD SEAM for exactly this — `plugins/pac-man/src/core/events.ts`'s `GameEvent` discriminated union (dot-eaten, energizer, ghost-eaten chain, fruit, pac-died, extra-life, level-cleared, game-over) which `main.ts` still does NOT consume. This epic makes that seam sing. GROUND TRUTH & HARDWARE: Pac-Man sound is the NAMCO 3-voice WSG (Waveform Sound Generator) — a wavetable chip, NOT POKEY (the pm1 epic's \"Namco/POKEY\" phrasing is loose; the chip is the Namco WSG). Its eight 32-sample 4-bit waveforms live in a SEPARATE 256-byte PROM (`82s126.3m`) that is NOT in the vendored tree — `plugins/pac-man/reference/source/pacman.asm` is the 16KB PROGRAM ROM only. So, mirroring pm1-2 (the rb4 lesson): a SOUND-FIDELITY HARNESS lands BEFORE any synth constant — vendor the waveform PROM, transcribe the effect frequency/duration tables from the program ROM (sound regs at #3305; the `Choose sound N` writes near 4e8c/4e9c/4ebc), extend `tools/audit/check-citations.mjs` to cover a new `claims/sound.json`. SILENT-FEATURE TRAP AVOIDED BY DESIGN: unlike star-wars music (four .wav loops that 404'd on R2 and were silently absent from ship — architect gotcha `SWMUS`), pm2 BAKES the WSG waveforms into JS (the tools/speech-bake LPC precedent) and SYNTHESISES every cue at runtime — zero asset fetch, so no bucket can 404 the sound away. REUSE-FIRST: build the voice on `@shared/synth` + `@shared/audio` (startLoop/stopLoop already exist); the star-wars `SNDPM.MAC` port is the shape precedent (lift the tune data, port the player, feed a vendored core). CORE STAYS PURE: all audio is shell-side; `events.ts` and `game.ts` are untouched (their seam is already correct). SCOPE: the WSG synth voice, the one-shot SFX (munch/wakka, ghost-eaten, fruit, death melody, extra-life), the continuous background siren whose pitch tracks dots-remaining/Elroy, and the start-of-game theme. DEFERRED to pm3: the three intermission cutscenes, the level-256 kill screen, and the presentation overlays (READY!/flash/game-over + score popups) that also consume this same events seam. DEFERRED to ad1: the attract self-play demo (ad1 sibling — see epic-ad1). PLAN: docs/superpowers/plans/2026-08-07-pac-man-pm2.md."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: pm2-1
+    title: Sound ground truth — vendor the WSG waveform PROM + transcribe effect tables, under a citation gate, BEFORE any synth constant
+    points: 5
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm2.md#task-1
+    status: done
+    repos: arcade
+    workflow: superpowers
+    completed: '2026-08-07'
+  - id: pm2-2
+    title: The WSG voice — a pure-param 3-channel wavetable synth on @shared/synth
+    points: 5
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm2.md#task-2
+    status: backlog
+    repos: arcade
+    workflow: superpowers
+  - id: pm2-3
+    title: Wire the events seam to the voice — munch, ghost-eaten, fruit, death, extra-life + the dots-remaining siren
+    points: 5
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm2.md#task-3
+    status: backlog
+    repos: arcade
+    workflow: superpowers
+  - id: pm2-4
+    title: The start-of-game theme — the tune sequencer on the WSG voice
+    points: 3
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm2.md#task-4
+    status: backlog
+    repos: arcade
+    workflow: superpowers
