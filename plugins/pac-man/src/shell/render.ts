@@ -521,21 +521,76 @@ export function drawScoreSprite(ctx: CanvasRenderingContext2D, xPx: number, yPx:
 // masks a BCD nibble (`and #0f`) and writes that VALUE directly as a tile
 // code into video RAM — proof positive that tile-rom indices 0-9 ARE the
 // digit glyphs 0-9 (pacman.5e, decoded via the same `TILES`/decodeTilePixel
-// this file already uses for the maze). Visually confirmed too: TILES[0]
-// decodes to a clean "0" oval, TILES[1] to a "1", etc. (a throwaway PNG dump,
-// same inspection method glyph-data.ts's header describes — not committed).
+// this file already uses for the maze).
+//
+// pm3-7 review fix round 2 (CRITICAL 1 continued — the first fix drew, but
+// SIDEWAYS): `TILES` (tile-data.ts) is baked straight off `decodeTilePixel`
+// with NO rotation (`tools/bake-graphics.mjs`'s `bakeTiles`: `TILES[i][y*8+x]
+// = decodeTilePixel(rom, i, x, y)`, the raw ROM coordinate, unlike
+// `bakeSprites`'s sprite path below). That's invisible for the maze — wall
+// line art happens to autotile fine either way — but the digit glyphs are
+// stored for Pac-Man's REAL cabinet, a portrait monitor mounted ROT90, so
+// reading them in raw ROM orientation renders each non-symmetric digit
+// rotated ~90° (confirmed by eye: unrotated "2"/"3"/"1" render as
+// "N"/"M"/a horizontal bar; only "0" looks fine, being rotation-symmetric).
+// `bakeSprites` already solves this exact problem for the sprite rom via an
+// x'=y, y'=(15-x) 90°-clockwise correction (see that function's header,
+// tools/bake-graphics.mjs) — `rotatedDigitPixel` below applies the identical
+// mapping at 8x8 scale (x'=y, y'=(7-x)) to JUST the digit-tile blit path, so
+// the maze's own (unrotated, already-correct) tile rendering is untouched.
+// Re-verified visually after the fix: TILES[0..9] rotated this way render as
+// a clean, upright "0123456789" (a throwaway PNG dump, same inspection
+// method glyph-data.ts's header describes — not committed).
 const DIGIT_COLOR_CODE = SCORE_COLOR_CODE // colourLookup(15,3) = near-white — legible, same constant already anchored for the sprite-based popups above.
+const DIGIT_ROM_SIZE = 8 // TILES are 8x8 — the rotation below is this function's own axis size, not TILE_PX (a colour/scale concept).
+
+/** Read digit tile `TILES[digit]`'s pixel at screen-upright (x,y), applying
+ *  the SAME 90°-clockwise rotation `bakeSprites` bakes permanently into
+ *  `SPRITES` (`tools/bake-graphics.mjs`'s `x'=y, y'=(N-1-x)`) — but computed
+ *  on the fly, only for this digit-text path, since `TILES` itself must stay
+ *  unrotated for the maze (see the header above). */
+function rotatedDigitPixel(digit: number, x: number, y: number): number {
+  const pixels = TILES[digit]
+  const rawX = y
+  const rawY = DIGIT_ROM_SIZE - 1 - x
+  return pixels[rawY * DIGIT_ROM_SIZE + rawX]
+}
+
+/** Per-digit rotated ImageData cache — same shape as `imageDataCache` above,
+ *  keyed separately since these pixels are NOT `TILES`'s raw orientation. */
+const digitImageDataCache = new Map<string, ImageData>()
+
+function digitImageData(ctx: CanvasRenderingContext2D, digit: number, colorCode: number): ImageData {
+  const key = `${digit}:${colorCode}`
+  const cached = digitImageDataCache.get(key)
+  if (cached) return cached
+
+  const img = ctx.createImageData(TILE_PX, TILE_PX)
+  for (let y = 0; y < DIGIT_ROM_SIZE; y++) {
+    for (let x = 0; x < DIGIT_ROM_SIZE; x++) {
+      const pv = rotatedDigitPixel(digit, x, y)
+      const [r, g, b] = HARDWARE_PALETTE[colourLookup(colorCode, pv)]
+      const k = y * DIGIT_ROM_SIZE + x
+      img.data[k * 4] = r
+      img.data[k * 4 + 1] = g
+      img.data[k * 4 + 2] = b
+      img.data[k * 4 + 3] = 255
+    }
+  }
+  digitImageDataCache.set(key, img)
+  return img
+}
 
 /** Compose an arbitrary point value from the tile rom's digit font
- *  (`TILES[0]`..`TILES[9]`, see the header above) — one 8x8 digit tile per
- *  character, left-to-right from `xPx,yPx`. Used only as `drawScorePopup`'s
- *  fallback for values `SCORE_SPRITE` doesn't cover (never called directly
- *  by `overlays.ts`). */
+ *  (`TILES[0]`..`TILES[9]`, rotated upright — see the header above) — one
+ *  8x8 digit tile per character, left-to-right from `xPx,yPx`. Used only as
+ *  `drawScorePopup`'s fallback for values `SCORE_SPRITE` doesn't cover
+ *  (never called directly by `overlays.ts`). */
 function drawScoreText(ctx: CanvasRenderingContext2D, xPx: number, yPx: number, points: number): void {
   const digits = String(points).split('')
   digits.forEach((digitChar, i) => {
     const digit = Number(digitChar)
-    ctx.putImageData(tileImageData(ctx, digit, DIGIT_COLOR_CODE), xPx + i * TILE_PX, yPx)
+    ctx.putImageData(digitImageData(ctx, digit, DIGIT_COLOR_CODE), xPx + i * TILE_PX, yPx)
   })
 }
 

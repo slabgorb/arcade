@@ -11,8 +11,10 @@
 
 import { describe, it, expect } from 'vitest'
 import { SPRITES } from '../../src/shell/sprite-data'
+import { TILES } from '../../src/shell/tile-data'
+import { HARDWARE_PALETTE, colourLookup } from '../../src/shell/palette-data'
 import { FRUIT_SPRITE, SCORE_SPRITE } from '../../src/shell/glyph-data'
-import { drawFruit, drawScoreSprite } from '../../src/shell/render'
+import { drawFruit, drawScoreSprite, drawScorePopup } from '../../src/shell/render'
 import type { FruitType } from '../../src/core/level'
 
 const ALL_FRUITS: readonly FruitType[] = [
@@ -137,5 +139,61 @@ describe('drawScoreSprite (pm3-6)', () => {
     const a = lastBlit(ctx200).data as Uint8ClampedArray
     const b = lastBlit(ctx1600).data as Uint8ClampedArray
     expect([...a]).not.toEqual([...b])
+  })
+})
+
+describe('drawScorePopup (pm3-7 review fix round 2 — digit-tile rotation)', () => {
+  // TILES (tile-data.ts) is baked with NO rotation (tools/bake-graphics.mjs's
+  // bakeTiles reads decodeTilePixel(rom, i, x, y) straight, unlike
+  // bakeSprites's x'=y,y'=(15-x) correction) — fine for the maze, but the
+  // digit glyphs at TILES[0..9] are stored for the ROT90 cabinet, so
+  // drawScorePopup's fallback (drawScoreText, render.ts) must rotate each
+  // digit tile 90° clockwise (x'=y, y'=(7-x), the 8x8 analogue of
+  // bakeSprites's own correction) before blitting it, or a non-symmetric
+  // digit like "2"/"3" renders sideways/garbled instead of upright. This
+  // test re-derives the expected rotated pixels directly from TILES (the
+  // same "fresh decode, assert byte-equality" style sprites.test.ts already
+  // uses for SPRITES) so it fails if that rotation is ever missing, backwards
+  // (CCW), or dropped by a future refactor — a test that only checked
+  // "something was drawn" could not catch a sideways digit.
+  function expectedRotatedDigitPixels(digit: number, colorCode: number): number[] {
+    const src = TILES[digit]
+    const out: number[] = []
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        const rawX = y
+        const rawY = 7 - x
+        const pv = src[rawY * 8 + rawX]
+        const [r, g, b] = HARDWARE_PALETTE[colourLookup(colorCode, pv)]
+        out.push(r, g, b, 255)
+      }
+    }
+    return out
+  }
+
+  it('draws the fruit-popup leading digit as the 90°-clockwise-rotated tile, not the raw unrotated one', () => {
+    // 3000 (galaxian's bonus, level.ts) has no SCORE_SPRITE entry, so this
+    // exercises drawScorePopup's tile-composition fallback. Its leading
+    // digit, '3', is NOT rotation-symmetric (unlike '0') — an unrotated or
+    // wrongly-rotated blit reads as "M"/garbage, not "3".
+    const ctx = fakeCtx()
+    drawScorePopup(ctx, 0, 0, 3000)
+    const puts = ctx.calls.filter((c) => c.method === 'putImageData')
+    expect(puts.length).toBe(4) // one 8x8 tile per digit: '3','0','0','0'
+    const firstDigitBlit = puts[0]
+
+    const DIGIT_COLOR_CODE = 15 // same constant render.ts anchors (colourLookup(15,3) = near-white)
+    const expectedRotated = expectedRotatedDigitPixels(3, DIGIT_COLOR_CODE)
+    expect([...(firstDigitBlit.data as Uint8ClampedArray)]).toEqual(expectedRotated)
+
+    // The un-rotated raw TILES[3] pixels must NOT match — proves the test
+    // would have caught the round-1 bug (drawScoreText blitting TILES[digit]
+    // straight, producing a sideways glyph).
+    const rawUnrotated: number[] = []
+    for (let k = 0; k < TILES[3].length; k++) {
+      const [r, g, b] = HARDWARE_PALETTE[colourLookup(DIGIT_COLOR_CODE, TILES[3][k])]
+      rawUnrotated.push(r, g, b, 255)
+    }
+    expect([...(firstDigitBlit.data as Uint8ClampedArray)]).not.toEqual(rawUnrotated)
   })
 })
