@@ -80,7 +80,7 @@ function wallTileFor(tx: number, ty: number): number {
   return WALL_H_TILE
 }
 
-interface TileCell {
+export interface TileCell {
   readonly tileIndex: number
   readonly colorCode: number
 }
@@ -89,7 +89,7 @@ interface TileCell {
  *  paints nothing (path/tunnel/house stay the cleared black background, the
  *  gate keeps its own thin procedural line). Computed once from MAZE's
  *  topology (see header for what "authored" means here), not per frame. */
-const MAZE_TILEMAP: readonly (TileCell | null)[][] = Array.from({ length: MAZE.rows }, (_, ty) =>
+export const MAZE_TILEMAP: readonly (TileCell | null)[][] = Array.from({ length: MAZE.rows }, (_, ty) =>
   Array.from({ length: MAZE.cols }, (_, tx) => {
     switch (tileAt(tx, ty)) {
       case 'wall':

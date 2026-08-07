@@ -46,15 +46,21 @@ describe('colourLookup (pm3-3 direct coverage)', () => {
   })
 })
 
+// Each recorded call is TAGGED by which ctx method produced it, so the test
+// below can tell a real ctx.putImageData tile blit apart from a ctx.fillRect
+// solid rectangle even though both happen to be called with an 8x8 w/h —
+// an untagged {x,y,w,h} shape (the pre-fix version of this fake) could not
+// distinguish them, and so passed against BOTH a real tile-blit drawMaze and
+// a reverted-to-fillRect one.
 function fakeCtx() {
-  const puts: { x: number; y: number; w: number; h: number }[] = []
+  const puts: { method: 'fillRect' | 'putImageData'; x: number; y: number; w: number; h: number }[] = []
   return {
     calls: puts,
     fillStyle: '',
-    fillRect: (x: number, y: number, w: number, h: number) => puts.push({ x, y, w, h }),
+    fillRect: (x: number, y: number, w: number, h: number) => puts.push({ method: 'fillRect', x, y, w, h }),
     // real render uses putImageData for tiles; record its dimensions
     putImageData: (img: { width: number; height: number }, dx: number, dy: number) =>
-      puts.push({ x: dx, y: dy, w: img.width, h: img.height }),
+      puts.push({ method: 'putImageData', x: dx, y: dy, w: img.width, h: img.height }),
     createImageData: (w: number, h: number) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
     clearRect: () => {},
     beginPath: () => {},
@@ -66,13 +72,23 @@ function fakeCtx() {
 }
 
 describe('drawMaze tile blit (pm3-4)', () => {
-  it('draws the maze as 8x8 tile blits, not one solid rectangle per wall tile', () => {
+  it('draws the maze as 8x8 tile blits via putImageData, never a solid fillRect wall tile', () => {
     const ctx = fakeCtx()
     drawMaze(ctx, new Set())
-    // At least one blit is a full 8x8 tile image (a real tile), proving we no
-    // longer paint a flat fillRect wall.
-    expect((ctx as unknown as { calls: { w: number; h: number }[] }).calls.some((c) => c.w === 8 && c.h === 8)).toBe(
-      true,
-    )
+    const calls = (
+      ctx as unknown as {
+        calls: { method: 'fillRect' | 'putImageData'; x: number; y: number; w: number; h: number }[]
+      }
+    ).calls
+
+    // At least one blit is a real 8x8 tile image via putImageData — proves
+    // the maze IS drawn with tile-ROM pixels, not just that SOMETHING is 8x8.
+    expect(calls.some((c) => c.method === 'putImageData' && c.w === 8 && c.h === 8)).toBe(true)
+
+    // No fillRect paints a full 8x8 wall tile — proves drawMaze did NOT fall
+    // back to (or regress to) the old flat solid-rectangle wall. A reverted
+    // drawMaze that fillRect's every wall tile at TILE_PX x TILE_PX fails
+    // this line.
+    expect(calls.some((c) => c.method === 'fillRect' && c.w === 8 && c.h === 8)).toBe(false)
   })
 })
