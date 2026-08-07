@@ -11,7 +11,7 @@ stories:
     description: "Real structure graphics. Port the city and base shapes from the W3DSUP stamp layer: WRITE A STAMP (W3DSUP.MAC:587) and DRAW ALL LIVING CITIES (W3DSUP.MAC:1067). Replace render.ts's fillRect city blocks and triangle bases with the authentic stamp geometry (the shapes rendered against the same project() cabinet->canvas mapping mc3 established). Stamp geometry is shell render data (a src/shell data module), NOT core — no core touch here. Dead structures still draw as rubble but the LIVE stamp is authentic. Keep purity.test.ts green (shell-only). Cite the W3DSUP stamp routines in the render source. Depends on mc3."
     points: 5
     priority: p1
-    status: in_review
+    status: done
     started: '2026-08-07'
     repos: arcade
     workflow: tdd
@@ -19,6 +19,7 @@ stories:
       - 'live cities and bases render from authentic W3DSUP-derived stamp geometry (not fillRect blocks / plain triangles), positioned by the existing project() mapping at the cited field coordinates.'
       - 'the render source cites WRITE A STAMP (W3DSUP.MAC:587) and DRAW ALL LIVING CITIES (W3DSUP.MAC:1067); stamp geometry lives in src/shell (no src/core change) and purity.test.ts stays green.'
       - 'a dead city/base still draws as rubble and never as a live stamp; the render tests assert live-vs-dead against the existing canvas-mock harness.'
+    completed: '2026-08-07'
     review_findings: "5 test-quality findings, all in render-stamps.test.ts; production code (render.ts/stamps.ts) correct, faithful (verbatim ROM bitmaps), boundary intact, verified on-screen. [M] citation guards whole-src/shell scope, mutation-defeated (161-173); [M] wiring tests pass vacuously (136-153); [M] NC/NB hardcoded vs field.ts NCITY/NMISBA (114); [L] '3 stamps/city' comment false, is 4 (9); [L] recordingCtx 3rd divergent duplicate (56). No Critical/High, no production defect. Rework to TEA: tighten guards, import constants, fix comment."
     review_verdict: approved
   - id: mc9-2
