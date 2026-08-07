@@ -500,12 +500,57 @@ export function drawFruit(ctx: CanvasRenderingContext2D, tileX: number, tileY: n
  *  `xPx`/`yPx` are the popup's top-left pixel (caller's choice — pm3-7 wires
  *  this to the eaten ghost's position), not tile-snapped like drawFruit.
  *  A `points` value with no SCORE_SPRITE entry draws nothing (silently —
- *  callers that only ever pass the four ghost-chain values, per this
- *  story's scope, never hit this). */
+ *  callers that pass one of the four ghost-chain values never hit this;
+ *  pm3-7's fruit popups do NOT call this directly — see `drawScorePopup`
+ *  below, which is why that silent no-op is safe rather than a trap). */
 export function drawScoreSprite(ctx: CanvasRenderingContext2D, xPx: number, yPx: number, points: number): void {
   const spriteIndex = SCORE_SPRITE[points]
   if (spriteIndex === undefined) return
   ctx.putImageData(spriteImageData(ctx, spriteIndex, SCORE_COLOR_CODE), xPx, yPx)
+}
+
+// pm3-7 review fix (CRITICAL 1): SCORE_SPRITE only covers the four
+// ghost-chain values because pacman.5f (the SPRITE rom) genuinely has no
+// other digit-shaped graphics anywhere in its 64 sprites — every one of the
+// 37 sprites not already claimed by FRUIT_SPRITE/SCORE_SPRITE/ghost/Pac-Man
+// art was decoded and inspected (a repeat of glyph-data.ts's own method) and
+// resolves to fruit/ghost/Pac-Man/death-spin art, never a "100"/"300"/...
+// numeral. The 8 fruit bonus values (100/300/500/700/1000/2000/3000/5000,
+// level.ts's FRUIT_PROGRESSION/KEY_FRUIT) are therefore composed from a
+// DIFFERENT rom instead: pacman.asm's own "Draw digit" routine (`2ace`)
+// masks a BCD nibble (`and #0f`) and writes that VALUE directly as a tile
+// code into video RAM — proof positive that tile-rom indices 0-9 ARE the
+// digit glyphs 0-9 (pacman.5e, decoded via the same `TILES`/decodeTilePixel
+// this file already uses for the maze). Visually confirmed too: TILES[0]
+// decodes to a clean "0" oval, TILES[1] to a "1", etc. (a throwaway PNG dump,
+// same inspection method glyph-data.ts's header describes — not committed).
+const DIGIT_COLOR_CODE = SCORE_COLOR_CODE // colourLookup(15,3) = near-white — legible, same constant already anchored for the sprite-based popups above.
+
+/** Compose an arbitrary point value from the tile rom's digit font
+ *  (`TILES[0]`..`TILES[9]`, see the header above) — one 8x8 digit tile per
+ *  character, left-to-right from `xPx,yPx`. Used only as `drawScorePopup`'s
+ *  fallback for values `SCORE_SPRITE` doesn't cover (never called directly
+ *  by `overlays.ts`). */
+function drawScoreText(ctx: CanvasRenderingContext2D, xPx: number, yPx: number, points: number): void {
+  const digits = String(points).split('')
+  digits.forEach((digitChar, i) => {
+    const digit = Number(digitChar)
+    ctx.putImageData(tileImageData(ctx, digit, DIGIT_COLOR_CODE), xPx + i * TILE_PX, yPx)
+  })
+}
+
+/** A score popup for ANY point value this cabinet awards — the four
+ *  ghost-chain values (200/400/800/1600) via the real `drawScoreSprite`
+ *  sprite blit, and every other value (the 8 fruit bonus amounts) via
+ *  `drawScoreText`'s tile-digit composition, so no caller-visible value ever
+ *  silently draws nothing. This is the function `overlays.ts` (pm3-7) calls
+ *  for both ghost-eaten and fruit-eaten popups. */
+export function drawScorePopup(ctx: CanvasRenderingContext2D, xPx: number, yPx: number, points: number): void {
+  if (SCORE_SPRITE[points] !== undefined) {
+    drawScoreSprite(ctx, xPx, yPx, points)
+    return
+  }
+  drawScoreText(ctx, xPx, yPx, points)
 }
 
 /** The score/lives/level HUD, drawn into the reserved top HUD rows

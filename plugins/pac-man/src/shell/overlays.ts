@@ -6,7 +6,7 @@
 // into a latched visual overlay, painted on top of the playfield each frame.
 // Where the audio driver maps an event to a WSG voice call, this module maps
 // an event to a bounded on-screen state: a ghost/fruit-eaten score popup
-// (`drawScoreSprite`, pm3-6), a level-clear flash over the maze, and the
+// (`drawScorePopup`, pm3-6/pm3-7), a level-clear flash over the maze, and the
 // READY!/GAME OVER banners. All timing is FRAME-COUNT — `onEvents` only
 // latches state, `draw` is the sole place a counter is ever decremented —
 // there is no Date/performance/requestAnimationFrame read anywhere in this
@@ -24,7 +24,7 @@
 import type { GameEvent } from '../core/events'
 import type { GameState } from '../core/game'
 import { TILE_PX } from '../core/actor'
-import { drawScoreSprite } from './render'
+import { drawScorePopup } from './render'
 
 export interface Overlays {
   /** Voice one frame's worth of gameplay events (the `events.ts` seam) —
@@ -68,6 +68,28 @@ export function createOverlays(): Overlays {
   let flashFramesLeft = 0
   let banner: 'game-over' | null = null
   let readyCleared = false
+  // pm3-7 review fix (CRITICAL 2): `overlays` is constructed ONCE in main.ts
+  // and outlives every individual GameState — main.ts:156 builds a fresh
+  // GameState on Enter-after-game-over, but never a fresh Overlays, so
+  // without this the GAME OVER banner would latch forever and READY! would
+  // never return. `createAudioDriver` (audio.ts) self-heals the same way:
+  // it POLLS `state.phase` every `onFrame` and re-arms on the game-over ->
+  // playing edge (see its `themeArmed` handling) rather than relying on a
+  // dedicated "new game" event — `events.ts` has none, and adding one would
+  // be a core change, out of this driver's scope. `phase` only ever flips
+  // 'game-over' -> 'playing' when main.ts hands `draw` a BRAND NEW GameState
+  // (a fresh game never starts already in 'game-over'), so that specific
+  // edge, tracked here across `draw` calls, is an unambiguous "new game"
+  // signal without reading anything but the GameState already passed in.
+  let prevPhase: GameState['phase'] | null = null
+
+  function resetForNewGame(): void {
+    queued.length = 0
+    active = []
+    flashFramesLeft = 0
+    banner = null
+    readyCleared = false
+  }
 
   function onEvents(events: readonly GameEvent[]): void {
     for (const event of events) {
@@ -113,6 +135,11 @@ export function createOverlays(): Overlays {
   }
 
   function draw(ctx: CanvasRenderingContext2D, game: GameState): void {
+    if (prevPhase === 'game-over' && game.phase === 'playing') {
+      resetForNewGame()
+    }
+    prevPhase = game.phase
+
     // Resolve this frame's newly-queued popups against the live GameState,
     // then drop them into the countdown list.
     for (const popup of queued) {
@@ -122,7 +149,7 @@ export function createOverlays(): Overlays {
     queued.length = 0
 
     for (const popup of active) {
-      drawScoreSprite(ctx, popup.xPx, popup.yPx, popup.points)
+      drawScorePopup(ctx, popup.xPx, popup.yPx, popup.points)
       popup.framesLeft--
     }
     active = active.filter((popup) => popup.framesLeft > 0)
