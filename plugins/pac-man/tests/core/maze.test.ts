@@ -9,7 +9,8 @@
 // energizers; see glossary.md and docs/rom-study/claims/maze.json).
 
 import { describe, it, expect } from 'vitest'
-import { MAZE, tileAt, isWalkable, DOT_COUNT, ENERGIZER_TILES, TUNNEL_ROW } from '../../src/core/maze'
+import { MAZE, tileAt, isWalkable, DOT_COUNT, ENERGIZER_TILES, TUNNEL_ROW, wrapThroughTunnel } from '../../src/core/maze'
+import { TILE_PX } from '../../src/core/actor'
 
 describe('maze (glossary.md §Maze)', () => {
   it('is a 28x36 grid with 240 dots and 4 energizers', () => {
@@ -83,5 +84,27 @@ describe('maze (glossary.md §Maze)', () => {
       }
     }
     expect(count).toBe(DOT_COUNT)
+  })
+})
+
+describe('wrapThroughTunnel (pm3-2) — position-wrap, not just tileAt lookup wrap', () => {
+  const W = MAZE.cols * TILE_PX // 224
+
+  it('wraps an actor stepping off the left edge on the tunnel row to the right edge', () => {
+    const a = { xPx: -1, yPx: TUNNEL_ROW * TILE_PX, dir: 'left' as const, pending: 'none' as const }
+    wrapThroughTunnel(a)
+    expect(a.xPx).toBe(W - 1) // 223
+  })
+
+  it('wraps an actor stepping off the right edge to the left edge', () => {
+    const a = { xPx: W, yPx: TUNNEL_ROW * TILE_PX, dir: 'right' as const, pending: 'none' as const }
+    wrapThroughTunnel(a)
+    expect(a.xPx).toBe(0)
+  })
+
+  it('does NOT wrap on any non-tunnel row', () => {
+    const a = { xPx: -1, yPx: (TUNNEL_ROW + 1) * TILE_PX, dir: 'left' as const, pending: 'none' as const }
+    wrapThroughTunnel(a)
+    expect(a.xPx).toBe(-1) // untouched — only the tunnel row wraps
   })
 })

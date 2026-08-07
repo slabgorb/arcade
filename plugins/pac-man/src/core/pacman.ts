@@ -8,7 +8,7 @@
 // Pac-Man freezes 1 frame eating a dot, 3 frames eating an energizer). PURE:
 // no DOM, no clock, no Math.random, no shell import.
 
-import { tileAt, isWalkable, type TileKind } from './maze'
+import { tileAt, isWalkable, wrapThroughTunnel, type TileKind } from './maze'
 import { TILE_PX, DIR_DELTA, speedPattern, type Actor, type Dir } from './actor'
 
 // Re-exported so callers building a PacmanState don't need a second import
@@ -138,6 +138,7 @@ export function stepPacman(state: PacmanState, input: PacmanInput): void {
 
   actor.xPx = nextXPx
   actor.yPx = nextYPx
+  wrapThroughTunnel(actor)
 
   if (atTileCentre(actor.xPx, actor.yPx)) {
     const newTx = actor.xPx / TILE_PX
