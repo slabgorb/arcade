@@ -1,0 +1,13 @@
+[
+  {
+    "id": "MC-ICBPTS",
+    "symbol": "ICBPTS",
+    "value": 25,
+    "meaning": "Points per downed ICBM at wave 1 (ROM adds 25 x wave in BCD; mc3 pins wave-1)",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 4091,
+      "verbatim": "\tADC I,25"
+    }
+  }
+]
