@@ -23,6 +23,7 @@
 
 import { moveCursor, type Cursor } from '../core/cursor.js'
 import { launchAbm, type Abm, type Vec } from '../core/abm.js'
+import type { GameState } from '../core/game.js'
 
 /**
  * Map a screen-space pointer movement (a PointerEvent's movementX/movementY,
@@ -61,4 +62,22 @@ export function launchFromKey(key: string, bases: readonly Vec[], target: Vec): 
   const base = fireKeyToBase(key)
   if (base === null) return null
   return launchAbm(bases[base], target)
+}
+
+/**
+ * mc3 (mc3-5): ammo-GATED firing over the live game state. The fire `key` picks
+ * its base (via fireKeyToBase — the Z/X/C mapping is preserved); a destroyed base
+ * or one with `ammo === 0` cannot fire, so the state is returned UNCHANGED. A live
+ * base with ammo appends one ABM (from that base to the crosshair, via core/abm)
+ * and spends one round. Pure — the input state is never mutated. This is the
+ * reducer main.ts drives on each keydown, replacing the mc1-4 unconditional launch.
+ */
+export function fireFromKey(key: string, state: GameState): GameState {
+  const idx = fireKeyToBase(key)
+  if (idx === null) return state
+  const base = state.bases[idx]
+  if (!base.alive || base.ammo === 0) return state
+  const abm = launchAbm(base.pos, state.cursor)
+  const bases = state.bases.map((b, i) => (i === idx ? { ...b, ammo: b.ammo - 1 } : b))
+  return { ...state, abms: [...state.abms, abm], bases }
 }
