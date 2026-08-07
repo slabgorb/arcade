@@ -844,3 +844,8 @@ completed_stories:
     title: '1P/2P start select: ONE PLAYER START / TWO PLAYER START ($1D/$1E) + a static CREDITS row, transitioning attract->select->playing'
     points: 3
     completed: '2026-08-07'
+  - id: jt10-6
+    epic: jt10
+    title: 'Game-over screen: wire GOVER_OVER/settleGameOver to a GAME OVER overlay and the transition to highscore-or-attract'
+    points: 2
+    completed: '2026-08-07'
