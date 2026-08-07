@@ -1,0 +1,26 @@
+[
+  {
+    "id": "ELROY-CLYDE-GATE",
+    "symbol": "ELROY_CLYDE_GATE",
+    "value": "4da3",
+    "meaning": "The head of the Cruise Elroy routine. It loads the Clyde-released flag at (#4da3) and returns immediately if it is zero (`and a; ret z` at 20da/20db) — so Elroy is SUPPRESSED until Clyde has left the ghost house, matching the Pac-Man Dossier's ch.4 note that Blinky's Elroy speed does not engage while Clyde is still penned. 4da3 is the same release flag the third ghost-house gate block sets (see house.json GHOST-HOUSE-GLOBAL-CLYDE, identified as Clyde by block order and Dossier value match).",
+    "addr": "20d7",
+    "source": { "file": "pacman.asm", "line": 4608, "verbatim": "20d7  3aa34d    ld      a,(#4da3)" }
+  },
+  {
+    "id": "ELROY1-THRESHOLD-SLOT",
+    "symbol": "ELROY1_THRESHOLD_SLOT",
+    "value": "4dbb",
+    "meaning": "The Elroy 1 dots-remaining threshold is read from RAM slot (#4dbb) here, then subtracted from the dots-remaining count (244 - dots-eaten, computed via #f4 at 20e6/20e8) with `ret c` gating engagement. 4dbb is loaded per level from an internal Dossier Table-A.1 data table (not a plain `cp #nn` operand), so the level-1 VALUE (20 dots remaining) carries the same honest-uncited Dossier status as the personal dot limits; this claim pins the ROUTINE anchor that reads the slot.",
+    "addr": "20ea",
+    "source": { "file": "pacman.asm", "line": 4619, "verbatim": "20ea  3abb4d    ld      a,(#4dbb)" }
+  },
+  {
+    "id": "ELROY2-THRESHOLD-SLOT",
+    "symbol": "ELROY2_THRESHOLD_SLOT",
+    "value": "4dbc",
+    "meaning": "The Elroy 2 (faster) dots-remaining threshold is read from RAM slot (#4dbc) here, subtracted from dots-remaining (via #f4 at 20f9/20fb) with `ret c` gating engagement. Like 4dbb, 4dbc is a per-level table load, so the level-1 VALUE (10 dots remaining) is Dossier-decoded and honest-uncited; this claim pins the routine anchor that reads the slot.",
+    "addr": "20fd",
+    "source": { "file": "pacman.asm", "line": 4632, "verbatim": "20fd  3abc4d    ld      a,(#4dbc)" }
+  }
+]

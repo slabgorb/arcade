@@ -76,8 +76,14 @@ function airborneAt(posX: number, pixelY: number, velXIndex: number): EntityStat
   }
 }
 
-/** Player 1, airborne HIGH (so the bounder seeks UP and therefore flaps), flying
- * at `velXIndex` — the ONLY thing that varies between the two runs below. */
+/** Player 1, airborne on the SAME rung as the bounder (pixelY 120) so the bounder
+ * decides LEVEL and arms its decision interval — jt9-49 scoped the horizontal-
+ * homing throttle to a live level interval, so the wiring under test (the player's
+ * FLYX index reaching `BOLEVB`) is exercised on the level path where the ROM
+ * actually reaches the throttle. (Before jt9-49 this player sat HIGH at pixelY 60
+ * and the bounder reversed mid up-seek — an off-level tick the ROM never performs;
+ * that is the behaviour jt9-49 retired.) `velXIndex` is the ONLY thing that varies
+ * between the two runs below. */
 function player(velXIndex: number): DemoProcess {
   return {
     id: 1,
@@ -85,7 +91,7 @@ function player(velXIndex: number): DemoProcess {
     nap: 1,
     period: 1,
     kind: 'player',
-    entity: airborneAt(50, 60, velXIndex),
+    entity: airborneAt(50, 120, velXIndex),
     facing: 1,
     mount: 'ostrich',
   }
@@ -259,16 +265,27 @@ describe('AC-3 — no aggro state ⇒ no target ⇒ no flip (the jt2 replays hol
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Four seeds, chosen (round-2 review [MEDIUM][TEST]) because they place the
- * enemy that reverses on FOUR DIFFERENT transporter pads. It was `[0x1234,
- * 0xbeef]`, annotated "two seeds, so a single lucky RNG stream cannot carry the
- * guard" — and the Reviewer measured that BOTH of those spawn the reversing
- * enemy at the identical `(23, 35072)`. The diversity was asserted, not
- * obtained; this list obtained it. First reversals re-measured under uf1-8's
- * chase script: frames 191 / 91 / 93 / 261 — still four distinct frames.
+ * Four seeds — four independent RNG streams / wave layouts — so a single lucky
+ * stream cannot carry the guard (round-2 review [MEDIUM][TEST]).
+ *
+ * ─── jt9-49 RE-BASELINE — the reversal is now CHASE-GATED, not RNG-gated ──────
+ * Before jt9-49 the throttle ticked every wake, so the first reversal landed at
+ * a seed-dependent frame (191 / 91 / 93 / 261) — often off the level path, on
+ * whatever wake first matched. jt9-49 scoped the throttle to a live level
+ * interval: it now fires ONLY when the buzzard is level with (and matched to)
+ * the player. `chaseInput` engineers exactly that moment — P1 saturates and
+ * climbs onto the buzzards' rung — so under the scoped throttle EVERY reversing
+ * seed now flips at the SAME frame 91, in a `pjoy.kind === 'interval'` state
+ * (measured). The old frame-diversity is therefore no longer obtainable and its
+ * absence is the fix working; the guard's teeth are unchanged — it fires in a
+ * real stepped game and the per-seed CONTROL below proves the homing caused it.
+ * Seed `0xabc` was retired here: under the scoped throttle its wave-1 enemies
+ * never level with the chasing player (0 reversals in 3000 frames), so it no
+ * longer exercises the mechanism; `0x2a` replaces it (reverses at 91, in a level
+ * interval, control 0 — measured).
  */
-const PLAY_SEEDS: readonly number[] = [0x1234, 0x7, 0x63, 0xabc]
-/** Latest measured first reversal is frame 261 (seed 0xabc); 600 keeps ~2.3x margin. */
+const PLAY_SEEDS: readonly number[] = [0x1234, 0x7, 0x63, 0x2a]
+/** First reversal is now frame 91 for every seed (chase-gated, jt9-49); 600 keeps ample margin. */
 const PLAY_FRAMES = 600
 
 /**

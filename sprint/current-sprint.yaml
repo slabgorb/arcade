@@ -10,4 +10,6 @@ sprint:
 epics:
   - ad1
   - jt9
+  - pm1
+  - pm2
   - mc3

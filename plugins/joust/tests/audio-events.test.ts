@@ -541,8 +541,14 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // the same 6000 frames for the same precondition (wave 1 -> 2 AND a complement
     // dealt) — 4714 (four buzzards) is now the earliest. Seed, script and every
     // assertion unchanged.
-    const before = advanceTo(0xface, 4714)
-    const after = stepGame(before, inputsAt(4714))
+    //
+    // jt9-49 RE-BASELINE: 4714 -> 4182. Scoping the horizontal-homing throttle to
+    // a live level interval (it no longer ticks off-level) reshapes this seed's
+    // buzzard trajectories and wave 1 clears SOONER; re-swept the same 6000 frames
+    // for the same precondition (wave 1 -> 2 AND a complement dealt) — 4182 (four
+    // buzzards) is now the earliest. Seed, script and every assertion unchanged.
+    const before = advanceTo(0xface, 4182)
+    const after = stepGame(before, inputsAt(4182))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
