@@ -25,7 +25,8 @@ stories:
     description: "Implement the spike. (a) src/shell/audio.ts (new) — port/reuse the vendored pokey.js behind @shared/audio + @shared/synth, playing the sound commands the spike lifted. (b) if the core must surface events, add a pure per-frame events list to GameState in src/core (plain data — e.g. {launched, detonated, icbmKilled, structureDestroyed, ammoEmpty, bonusTick}); the shell reads it and voices it. Keep the core/shell boundary (contract 2) and purity.test.ts green. (c) wire it into main.ts's frame loop. HEED the edge-driven-voices gotcha: sustained/looping voices (the incoming-missile drone, the klaxon) must be silenced at the pause/game-over EDGE, not left to ring through a naive stop; make that testable via a boot-shell seam. Depends on mc8-1."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -33,6 +34,7 @@ stories:
       - 'each mapped game event (launch, ABM detonation, ICBM kill, city/base destroyed, out-of-ammo, wave-bonus count-up) triggers its sound command through the shell; a test asserts the mapping via a mockable audio seam, not a real AudioContext.'
       - 'sustained voices are silenced at the pause/game-over edge (no drone or klaxon rings through a stop); a boot-shell test proves the edge-silence.'
       - 'purity.test.ts, citations.test.ts, and npx vitest run --project missile-command stay green.'
+    completed: '2026-08-07'
   - id: mc8-3
     title: 'Verify audio live and close the asset loop'
     description: "Prove the sound actually plays — a green vitest is not proof (contract 5 + sidecar gotcha: @shared/audio degrades silently, a 404 is indistinguishable from working code). Serve the cabinet (just serve -> /missile-command/) and confirm the mapped events are audible in the running game. IF the mc8-1 path baked any sound to files: upload them to the R2 bucket 'arcade' (there is no automated upload path — do it via the deploy-assets route) and prove each with a live 200 (curl -o /dev/null -w '%{http_code}' <url>); record the manifest + results in docs/ops/hosting.md. IF the path is runtime-synth: confirm no external asset is required and that the served game is audible with the network offline. Any residual 'asset follows later' item is FILED AS A STORY here, not left as a finding. Depends on mc8-2."
@@ -45,3 +47,11 @@ stories:
       - 'the served game (/missile-command/) is confirmed audible for the mapped events — evidence recorded, not asserted (a screenshot/console log of playback or, for baked assets, the live 200 results).'
       - 'if any sound is baked: every asset returns a live 200 from the R2 bucket, the manifest + results are recorded in docs/ops/hosting.md; if runtime-synth: the game is audible with no external asset fetch.'
       - 'no open Delivery Finding of the form asset-follows-later remains — any such item is filed as a tracked story before this story finishes.'
+  - id: mc8-4
+    title: Parametric drones + full event wiring (bonusTick, whoop, end-game, bonus-city, low-ammo, cruise/Sputnik drone sweep)
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    depends_on: mc8-2

@@ -905,3 +905,8 @@ completed_stories:
     title: 'Wave model + per-wave ICBM velocity & count ramp (retire the SPEED=1 placeholder — the speed fix)'
     points: 5
     completed: '2026-08-07'
+  - id: mc8-2
+    epic: mc8
+    title: 'Audio shell: the POKEY driver and the core-event -> sound mapping'
+    points: 5
+    completed: '2026-08-07'
