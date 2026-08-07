@@ -1,0 +1,59 @@
+id: mc9
+type: epic
+title: Missile Command — render fidelity (real graphics)
+description: "Ninth Missile Command epic — retires the placeholder graphics. Today src/shell/render.ts draws functional stand-ins only: cities are fillRect blocks, bases are triangles, ICBMs are lines+dots, blasts are symmetric-triangle circles, the HUD is monospace, and there is a single hard-coded colour per object with no per-wave palette. mc3-5 shipped that deliberately ('functional colours only, per-wave palette + authentic stamps are mc9') and mc1's blast is 'a symmetric-triangle placeholder ... the exact per-tick OLDRAD curve and EXPFRA cadence are explicitly deferred to mc9'. This epic makes it LOOK like Missile Command: authentic city/base stamps, the per-wave 8-colour palette + colour cycling, authentic missile trails, the exact OLDRAD blast curve, and the cabinet's stroke-font HUD. Missile Command is a RASTER machine drawn by a framebuffer stamp layer (W3DSUP), so 'real graphics' means porting the W3DSUP draw routines/shapes, not vendoring a sprite ROM. Executes the Architect roadmap slice for mc9 in docs/superpowers/specs/2026-08-07-missile-command-full-cabinet-roadmap.md; mc9 may begin any time after mc3 and in parallel with mc4/mc8 since it layers on state the core already emits. The core/shell boundary holds (contract 2): all pixels stay in src/shell; the ONE core touch is the OLDRAD blast-radius curve, which is a cited numeric constant and moves through a claim in explosion.ts. Resolves open question O-5 (per-wave palette / 3rd colour bit / hardware address scramble). Primary anchors (subsystems.md): W3DSUP.MAC:587 WRITE A STAMP; W3DSUP.MAC:1067 DRAW ALL LIVING CITIES; W3DSUP.MAC:1221 DRAW MISSILE; W3DSUP.MAC:1583 SET UP COLORS FOR NEXT WAVE; W3DSUP.MAC:1712 CLEAR SCREEN; W3MAIN.MAC:1811 PROCESS EXPLOSIONS. OUT OF SCOPE: waves/scoring (mc4), audio (mc8), enemy roster (mc5)."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: mc9-1
+    title: 'Authentic city and base stamps (retire the fillRect blocks and triangles)'
+    description: "Real structure graphics. Port the city and base shapes from the W3DSUP stamp layer: WRITE A STAMP (W3DSUP.MAC:587) and DRAW ALL LIVING CITIES (W3DSUP.MAC:1067). Replace render.ts's fillRect city blocks and triangle bases with the authentic stamp geometry (the shapes rendered against the same project() cabinet->canvas mapping mc3 established). Stamp geometry is shell render data (a src/shell data module), NOT core — no core touch here. Dead structures still draw as rubble but the LIVE stamp is authentic. Keep purity.test.ts green (shell-only). Cite the W3DSUP stamp routines in the render source. Depends on mc3."
+    points: 5
+    priority: p1
+    status: in_review
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'live cities and bases render from authentic W3DSUP-derived stamp geometry (not fillRect blocks / plain triangles), positioned by the existing project() mapping at the cited field coordinates.'
+      - 'the render source cites WRITE A STAMP (W3DSUP.MAC:587) and DRAW ALL LIVING CITIES (W3DSUP.MAC:1067); stamp geometry lives in src/shell (no src/core change) and purity.test.ts stays green.'
+      - 'a dead city/base still draws as rubble and never as a live stamp; the render tests assert live-vs-dead against the existing canvas-mock harness.'
+    review_findings: "5 test-quality findings, all in render-stamps.test.ts; production code (render.ts/stamps.ts) correct, faithful (verbatim ROM bitmaps), boundary intact, verified on-screen. [M] citation guards whole-src/shell scope, mutation-defeated (161-173); [M] wiring tests pass vacuously (136-153); [M] NC/NB hardcoded vs field.ts NCITY/NMISBA (114); [L] '3 stamps/city' comment false, is 4 (9); [L] recordingCtx 3rd divergent duplicate (56). No Critical/High, no production defect. Rework to TEA: tighten guards, import constants, fix comment."
+    review_verdict: rejected
+  - id: mc9-2
+    title: 'Per-wave 8-colour palette and colour cycling (resolve open question O-5)'
+    description: "Colour fidelity. Port SET UP COLORS FOR NEXT WAVE (W3DSUP.MAC:1583): the per-wave 8-colour palette applied to background, structures, missiles, and blasts, plus the colour-cycling the cabinet uses. This RESOLVES open question O-5 — the palette / 3rd-colour-bit / hardware address scramble that mc3 render explicitly did not reproduce; the resolution (how REV-01 maps palette indices to the 8 hardware colours) is documented in the dossier or the mc9 design doc and cited. Shell-only (a palette data module + render wiring). Depends on mc3; independent of mc9-1 but naturally lands after it."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'the field is drawn through a per-wave 8-colour palette sourced from SET UP COLORS FOR NEXT WAVE (W3DSUP.MAC:1583): the palette changes wave to wave and background/structures/missiles/blasts pull their colour from it, not from hard-coded hex.'
+      - 'open question O-5 is resolved in writing (how REV-01 maps palette indices to the 8 hardware colours, incl. the 3rd-colour-bit/address scramble) and the resolution is cited; the dossier/design doc records it.'
+      - 'colour cycling is reproduced where the cabinet cycles; render tests assert palette selection per wave; shell-only, purity.test.ts stays green.'
+  - id: mc9-3
+    title: 'Exact OLDRAD blast curve + EXPFRA cadence and authentic missile trails (retire the triangle blast)'
+    description: "The blast, for real. mc1's blast is a symmetric-triangle placeholder from two cited constants; this ports the exact per-tick OLDRAD radius curve and the EXPFRA growth/collapse cadence from PROCESS EXPLOSIONS (W3MAIN.MAC:1811). This is the ONE core touch in mc9: blastRadius() in src/core/explosion.ts moves from the triangle approximation to the cited OLDRAD curve, backed by a new claim (the OLDRAD table / EXPFRA cadence, byte-exact REV-01) so citations.test.ts and the AC3 guard stay green. Also render authentic missile trails (DRAW MISSILE, W3DSUP.MAC:1221) — the ABM/ICBM trail styling the cabinet uses. Depends on mc3; coordinate with mc4 only if both edit explosion.ts."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'blastRadius() follows the exact OLDRAD per-tick curve with the EXPFRA growth/collapse cadence (not the mc1 symmetric triangle); the curve constants carry a byte-exact claim and the AC3 no-uncited-literal guard passes.'
+      - 'missile trails render from the authentic DRAW MISSILE (W3DSUP.MAC:1221) styling; explosion.ts cites PROCESS EXPLOSIONS (W3MAIN.MAC:1811).'
+      - 'citations.test.ts and purity.test.ts stay green after the core explosion change; existing blast/damage tests are updated to the real curve and pass.'
+  - id: mc9-4
+    title: 'Authentic stroke-font HUD and screen layout'
+    description: "Retire the monospace HUD. Replace render.ts's `${hud}px monospace` score/ammo readouts with the cabinet's stroke-font glyphs and the authentic on-screen layout (score position, per-base ammo, wave/multiplier if mc4 has landed). Reuse @shared/font if it fits; otherwise a missile-command-only glyph module in src/shell (extract to src/shared only if a second game proves the duplication — the CLAUDE.md eligibility bar). Cite CLEAR SCREEN / the text-draw path (W3DSUP.MAC:1712 and the alphanumeric draw). The HUD-figure rule still holds: the score drawn is the core's state.score verbatim. Shell-only. Depends on mc3 (and reads mc4's wave/multiplier if present)."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'the HUD renders in the cabinet stroke font (not monospace) at the authentic layout; the score drawn is the core state.score verbatim (HUD-figure rule), never a re-derived copy.'
+      - 'the text path cites its W3DSUP source; the glyph source reuses @shared/font or is a documented missile-command-only module (no premature src/shared extraction).'
+      - 'render tests assert the HUD content against the canvas-mock harness; shell-only, purity.test.ts stays green.'
