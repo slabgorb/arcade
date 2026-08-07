@@ -721,3 +721,8 @@ completed_stories:
     title: Port the joust/centipede DOSSIER_FILES prose-citation coverage sweep onto missile-command — enroll brief.md/subsystems.md/glossary.md so every primary-source line-citation in doc prose requires a covering claim (mc's citations.test.ts globs claims/*.json + scans src/core only today; the sweep would have caught mc2-2's wrong FRAME citation)
     points: 3
     completed: '2026-08-06'
+  - id: jt9-49
+    epic: jt9
+    title: Scope the horizontal-homing throttle to a live level interval — stop homingWake ticking off-level (retire jt8-2's every-wake read and the jt9-18 stale-PPVELX-during-seeks nuance)
+    points: 3
+    completed: '2026-08-07'
