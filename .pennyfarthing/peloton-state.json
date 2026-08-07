@@ -1,7 +1,13 @@
 {
-  "active": false,
-  "story_id": null,
-  "workflow": null,
-  "team_name": null,
-  "agents": []
+  "active": true,
+  "story_id": "jt10-1",
+  "workflow": "tdd",
+  "team_name": "peloton-jt10-1",
+  "agents": [
+    "tea",
+    "dev",
+    "reviewer"
+  ],
+  "layout": "grid",
+  "created_at": "2026-08-07T15:17:37.213645+00:00"
 }
