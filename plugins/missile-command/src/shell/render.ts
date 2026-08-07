@@ -37,26 +37,57 @@ function project(pos: FieldPos, width: number, height: number): { x: number; y: 
 export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width: number, height: number): void {
   clearField(ctx, width, height)
 
-  // Cities — squat blocks. Yellow-green, the cabinet's city hue.
-  ctx.fillStyle = '#6f6'
+  // Cities — squat blocks (mc1-2). mc3-5: only LIVE cities draw intact; a dead one
+  // draws as a low grey rubble line, never as a live city. The layout is core data
+  // (CITIES, field.ts) paired with the live per-city `alive` flag from state.cities.
   const cw = Math.max(4, Math.round(width / 40))
   const chh = Math.max(3, Math.round(height / 40))
-  for (const c of CITIES) {
-    const { x, y } = project(c, width, height)
-    ctx.fillRect(x - cw / 2, y - chh, cw, chh)
-  }
+  CITIES.forEach((pos, i) => {
+    const { x, y } = project(pos, width, height)
+    if (state.cities[i]?.alive ?? true) {
+      ctx.fillStyle = '#6f6' // yellow-green, the cabinet's live-city hue
+      ctx.fillRect(x - cw / 2, y - chh, cw, chh)
+    } else {
+      ctx.fillStyle = '#555' // grey rubble
+      ctx.fillRect(x - cw / 2, y - 1, cw, 1)
+    }
+  })
 
-  // Bases — launch triangles pointing up. Blue, the cabinet's base hue.
-  ctx.fillStyle = '#4cf'
+  // Bases — launch triangles pointing up (mc1-2). mc3-5: only LIVE bases draw as a
+  // triangle; a dead one draws as grey rubble.
   const bw = Math.max(5, Math.round(width / 32))
   const bh = Math.max(4, Math.round(height / 28))
-  for (const b of BASES) {
-    const { x, y } = project(b, width, height)
+  BASES.forEach((pos, i) => {
+    const { x, y } = project(pos, width, height)
+    if (state.bases[i]?.alive ?? true) {
+      ctx.fillStyle = '#4cf' // blue, the cabinet's live-base hue
+      ctx.beginPath()
+      ctx.moveTo(x, y - bh) // apex
+      ctx.lineTo(x - bw / 2, y) // bottom-left
+      ctx.lineTo(x + bw / 2, y) // bottom-right
+      ctx.closePath()
+      ctx.fill()
+    } else {
+      ctx.fillStyle = '#555' // grey rubble
+      ctx.fillRect(x - bw / 2, y - 1, bw, 1)
+    }
+  })
+
+  // Incoming ICBMs (mc3-5) — a trail from each warhead's top-edge origin to its
+  // current head, plus a head dot. Orange, the cabinet's enemy hue (functional).
+  ctx.strokeStyle = '#f80'
+  ctx.fillStyle = '#f80'
+  ctx.lineWidth = 1
+  const headR = Math.max(1, Math.round(width / 200))
+  for (const icbm of state.icbms) {
+    const from = project(icbm.origin, width, height)
+    const head = project(icbm.pos, width, height)
     ctx.beginPath()
-    ctx.moveTo(x, y - bh) // apex
-    ctx.lineTo(x - bw / 2, y) // bottom-left
-    ctx.lineTo(x + bw / 2, y) // bottom-right
-    ctx.closePath()
+    ctx.moveTo(from.x, from.y)
+    ctx.lineTo(head.x, head.y)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(head.x, head.y, headR, 0, Math.PI * 2)
     ctx.fill()
   }
 
@@ -96,4 +127,14 @@ export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width
   ctx.moveTo(x, y - arm)
   ctx.lineTo(x, y + arm)
   ctx.stroke()
+
+  // HUD (mc3-5) — the running score and each base's remaining ammo, in the top
+  // band. The score drawn is the core's `state.score` VERBATIM (the HUD-figure
+  // rule: never a re-derived copy). Functional white text; the authentic stroke
+  // font is mc9.
+  const hud = Math.max(8, Math.round(height / 24))
+  ctx.fillStyle = '#fff'
+  ctx.font = `${hud}px monospace`
+  ctx.fillText(`SCORE ${String(state.score)}`, 4, hud)
+  ctx.fillText(`AMMO ${state.bases.map((b) => b.ammo).join(' ')}`, 4, hud * 2 + 2)
 }
