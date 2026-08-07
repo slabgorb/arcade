@@ -29,9 +29,10 @@ stories:
     points: 5
     priority: p2
     plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm2.md#task-3
-    status: backlog
+    status: done
     repos: arcade
     workflow: superpowers
+    completed: '2026-08-07'
   - id: pm2-4
     title: The start-of-game theme — the tune sequencer on the WSG voice
     points: 3
