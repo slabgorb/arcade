@@ -885,3 +885,8 @@ completed_stories:
     title: 'Presentation overlays on the events seam — READY!, level-clear flash, game-over, score popups'
     points: 5
     completed: '2026-08-07'
+  - id: mc9-1
+    epic: mc9
+    title: 'Authentic city and base stamps (retire the fillRect blocks and triangles)'
+    points: 5
+    completed: '2026-08-07'
