@@ -16,6 +16,7 @@ completed_epics:
   - mg1
   - mc2
   - pm1
+  - pm2
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -795,5 +796,30 @@ completed_stories:
   - id: mc3-3
     epic: mc3
     title: Scoring (25/ICBM wave-1) and the play->game-over phase
+    points: 3
+    completed: '2026-08-07'
+  - id: mc3-4
+    epic: mc3
+    title: 'Compose the combat loop: grow GameState and stepGame (spawn->fly->detonate->damage->resolve)'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm2-1
+    epic: pm2
+    title: Sound ground truth — vendor the WSG waveform PROM + transcribe effect tables, under a citation gate, BEFORE any synth constant
+    points: 5
+    completed: '2026-08-07'
+  - id: pm2-2
+    epic: pm2
+    title: The WSG voice — a pure-param 3-channel wavetable synth on @shared/synth
+    points: 5
+    completed: '2026-08-07'
+  - id: pm2-3
+    epic: pm2
+    title: Wire the events seam to the voice — munch, ghost-eaten, fruit, death, extra-life + the dots-remaining siren
+    points: 5
+    completed: '2026-08-07'
+  - id: pm2-4
+    epic: pm2
+    title: The start-of-game theme — the tune sequencer on the WSG voice
     points: 3
     completed: '2026-08-07'
