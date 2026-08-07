@@ -101,3 +101,68 @@ export function decodeTilePixel(rom: Uint8Array, tileIndex: number, x: number, y
   for (let p = 0; p < 2; p++) v |= bitAt(rom, base, TILE_PLANES[p] + TILE_X[x] + TILE_Y[y]) << p
   return v
 }
+
+// ─── SPRITE ROM DECODE (pm3-5) ─────────────────────────────────────────────
+// MAME pacman spritelayout (src/mame/pacman/pacman.cpp): 16x16, 2 planes at
+// bit offsets {0,4} (TILE_PLANES, reused above); each sprite is 64 bytes.
+// xoffs/yoffs below reproduce that layout exactly — cited here in prose per
+// this story's "cite, don't copy" constraint; nothing below is pasted from
+// MAME. This IS the byte-cited half of pm3-5 (verified: tests/shell/
+// sprites.test.ts re-derives SPRITES from this function and asserts byte
+// equality against the baked module). What tile-data.ts's MAZE_TILEMAP is to
+// pm3-4 — an AUTHORED table sitting on top of a byte-cited decode — sprite-
+// data.ts's row-major assembly (tools/bake-graphics.mjs's bakeSprites) is to
+// this function: see that tool's header for the authored 90°-rotation
+// correction applied when assembling this function's raw (x,y) pixels into a
+// screen-upright 16x16 image (this function's OWN (x,y) contract is exactly
+// MAME's spritelayout coordinate, unmodified).
+const SPR_BYTES = 64
+const SPR_X = [
+  8 * 8,
+  8 * 8 + 1,
+  8 * 8 + 2,
+  8 * 8 + 3,
+  16 * 8 + 0,
+  16 * 8 + 1,
+  16 * 8 + 2,
+  16 * 8 + 3,
+  24 * 8 + 0,
+  24 * 8 + 1,
+  24 * 8 + 2,
+  24 * 8 + 3,
+  0,
+  1,
+  2,
+  3,
+]
+const SPR_Y = [
+  0 * 8,
+  1 * 8,
+  2 * 8,
+  3 * 8,
+  4 * 8,
+  5 * 8,
+  6 * 8,
+  7 * 8,
+  32 * 8,
+  33 * 8,
+  34 * 8,
+  35 * 8,
+  36 * 8,
+  37 * 8,
+  38 * 8,
+  39 * 8,
+]
+
+/**
+ * Decode one pixel (0..3) of sprite `spriteIndex` at (x,y) in a 16x16 sprite,
+ * from a pacman.5f-shaped sprite ROM (MAME spritelayout: 64 bytes/sprite,
+ * planes at bit offsets {0,4} — same TILE_PLANES/bitAt primitives as
+ * decodeTilePixel). Pure: no I/O beyond the `rom` bytes passed in.
+ */
+export function decodeSpritePixel(rom: Uint8Array, spriteIndex: number, x: number, y: number): number {
+  const base = spriteIndex * SPR_BYTES
+  let v = 0
+  for (let p = 0; p < 2; p++) v |= bitAt(rom, base, TILE_PLANES[p] + SPR_X[x] + SPR_Y[y]) << p
+  return v
+}

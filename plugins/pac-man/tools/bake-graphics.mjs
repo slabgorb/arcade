@@ -19,7 +19,12 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { decodePaletteFromProm, decodeColourLookupFromProm, decodeTilePixel } from '../src/shell/gfx-rom.ts'
+import {
+  decodePaletteFromProm,
+  decodeColourLookupFromProm,
+  decodeTilePixel,
+  decodeSpritePixel,
+} from '../src/shell/gfx-rom.ts'
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const graphicsDir = join(pluginRoot, 'reference', 'graphics')
@@ -88,5 +93,57 @@ function bakeTiles() {
   console.log(`wrote ${join(outDir, 'tile-data.ts')} (${tiles.length} tiles)`)
 }
 
+// pm3-5: the sprite ROM (pacman.5f), decoded by decodeSpritePixel (MAME
+// spritelayout, gfx-rom.ts). decodeSpritePixel's own (x,y) contract is
+// MAME's spritelayout coordinate verbatim (see that function's header) — but
+// assembling those into a 16x16 image the naive way (x=column, y=row,
+// direct) comes out visibly rotated 90° from screen-upright: a ghost-body
+// sprite decoded that way shows its dome on the LEFT edge and its wavy
+// skirt on the RIGHT, with its two eyes stacked VERTICALLY — a real Pac-Man
+// ghost never draws that way, its eyes are always side-by-side. Rendered as
+// a PNG and inspected (both the raw and the rotated candidate), the
+// x' = y, y' = 15-x correction (a 90° clockwise turn) is what puts the dome
+// on top, the skirt on the bottom, and the two eyes side-by-side — confirmed
+// numerically too, not just by eye: computing each ghost-body sprite's
+// pupil-pixel (value 1) centroid AFTER this correction gives a clean,
+// unambiguous per-direction grouping (sprites 32/33 centre right, 34/35
+// centre down, 36/37 centre left, 38/39 centre up) that does not appear
+// before it. This is consistent with Pac-Man's real cabinet — a portrait
+// monitor driven by video hardware MAME's own driver rotates for display —
+// but that rotation is not itself something pm3-1 vendored or cited, so it
+// is recorded here as an AUTHORED, empirically-verified assembly choice, not
+// a MAME-sourced fact. tests/shell/sprites.test.ts's "fresh decode" applies
+// the identical x'=y,y'=15-x transform, so the byte-equality check still
+// pins this choice against a regression, same as every other baked module.
+function bakeSprites() {
+  const rom = readFileSync(join(graphicsDir, 'pacman.5f'))
+
+  const sprites = Array.from({ length: 64 }, (_, i) =>
+    Uint8Array.from({ length: 256 }, (_, k) => {
+      const x = k % 16
+      const y = (k / 16) | 0
+      return decodeSpritePixel(rom, i, y, 15 - x)
+    }),
+  )
+
+  const body =
+    HEADER +
+    '//\n' +
+    '// Source ROM: reference/graphics/pacman.5f (64 sprites x 64 bytes, 2bpp planar).\n' +
+    '// Decode: src/shell/gfx-rom.ts (decodeSpritePixel, MAME spritelayout), assembled\n' +
+    '// with the 90-degree rotation correction this function documents above.\n\n' +
+    '/** 64 sprites, each 256 palette-group indices (0..3) in row-major 16x16\n' +
+    ' * screen-upright order (see the rotation-correction comment above).\n' +
+    ' * Decoded from pacman.5f; the sprite test re-derives this and asserts\n' +
+    ' * byte-equality. */\n' +
+    'export const SPRITES: readonly Uint8Array[] = [\n' +
+    sprites.map((s) => `  Uint8Array.of(${s.join(', ')}),`).join('\n') +
+    '\n]\n'
+
+  writeFileSync(join(outDir, 'sprite-data.ts'), body)
+  console.log(`wrote ${join(outDir, 'sprite-data.ts')} (${sprites.length} sprites)`)
+}
+
 bakePalette()
 bakeTiles()
+bakeSprites()
