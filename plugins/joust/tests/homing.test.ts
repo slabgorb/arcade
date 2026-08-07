@@ -331,22 +331,27 @@ describe('AC-4 — the flip is applied BEFORE the wake’s step, not after it', 
   // So on the flip wake the index drops to 6 iff the new facing drove that wake's
   // impulse. An implementation that flips after stepping leaves it at 8 and
   // drops on the NEXT wake — one wake late, and this reds.
-  const primedToFlip = (): EnemyState =>
+  // jt9-49: the throttle fires ONLY in a live level interval, so stage one — a
+  // held `interval` (uf1-9), the target's index frozen into the snapshot (jt9-18
+  // `ppvelx`, so the matched-wake compare fires), and velY FALLING so the level
+  // flap law (`BOLEV`: flap iff falling, :3903) applies this wake's horizontal
+  // impulse. (Before jt9-49 this staged the target ABOVE and rode the up-seek's
+  // flap — an off-level tick the ROM never performs; that is what jt9-49 retired.
+  // The flip-before-step discriminator is unchanged: the impulse still reads the
+  // facing this wake, only the episode it reads it in moved seek → level.)
+  const inLevelInterval = (prdir: number): EnemyState =>
     smartEnemy(
-      { homing: { prdir: 0x80 } }, // one matched wake from the flip
-      { velXIndex: MAXVX, velY: 0 },
+      { homing: { prdir, ppvelx: MAXVX }, pjoy: { kind: 'interval', timer: 5 } },
+      { velXIndex: MAXVX, velY: 0x100 },
     )
-  const notYetFlipping = (): EnemyState =>
-    smartEnemy(
-      { homing: { prdir: 0 } }, // DEC ⇒ $FF ⇒ BMI ⇒ no flip
-      { velXIndex: MAXVX, velY: 0 },
-    )
-  // Target ABOVE (small pixelY) with velY 0 ⇒ smartDecision takes the seek-up
-  // branch and flaps this wake, so the horizontal impulse is actually applied.
-  const above = targetAt(MAXVX, 0x20)
+  const primedToFlip = (): EnemyState => inLevelInterval(0x80) // one matched wake from the flip
+  const notYetFlipping = (): EnemyState => inLevelInterval(0) // DEC ⇒ $FF ⇒ BMI ⇒ no flip
+  // A LEVEL target (same altitude) flying the frozen index — matched, and the
+  // route is level so the interval above is the one the enemy is really in.
+  const level = targetAt(MAXVX)
 
   it('on the flip wake the horizontal impulse already uses the NEW facing', () => {
-    const stepped = E.stepEnemy(primedToFlip(), { player: above })
+    const stepped = E.stepEnemy(primedToFlip(), { player: level })
     expect(stepped.facing, 'the facing flipped this wake').toBe(-1)
     expect(
       stepped.entity.velXIndex,
@@ -357,7 +362,7 @@ describe('AC-4 — the flip is applied BEFORE the wake’s step, not after it', 
   it('the control: a non-flipping wake keeps facing and stays saturated at +8', () => {
     // Proves the fixture engages the mechanism — the 8 → 6 above is the flip,
     // not the staging.
-    const stepped = E.stepEnemy(notYetFlipping(), { player: above })
+    const stepped = E.stepEnemy(notYetFlipping(), { player: level })
     expect(stepped.facing, 'no flip this wake').toBe(1)
     expect(stepped.entity.velXIndex, 'candidate +10 rejected ⇒ still saturated').toBe(MAXVX)
   })
@@ -370,8 +375,8 @@ describe('AC-4 — the flip is applied BEFORE the wake’s step, not after it', 
     // its "CAME WITHIN SHORT RANGE SENSORS" flag at :3584-3585 and carries it into
     // the brain.) Without the carry, a primed counter is thrown away every wake
     // and the 129-wake budget can never be spent.
-    const carried = smartEnemy({ homing: { prdir: 5 } }, { velXIndex: MAXVX, velY: 0 })
-    const stepped = E.stepEnemy(carried, { player: above })
+    const carried = inLevelInterval(5)
+    const stepped = E.stepEnemy(carried, { player: level })
     expect(stepped.facing, 'a positive counter flips on the first matched wake').toBe(-1)
     expect(stepped.homing?.prdir, 'and CLR PRDIR,U reset it').toBe(0)
   })

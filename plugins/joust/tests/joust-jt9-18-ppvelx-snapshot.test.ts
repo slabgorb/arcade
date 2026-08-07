@@ -65,7 +65,14 @@ beforeAll(async () => {
 /** An airborne entity at a whole-pixel Y, at a chosen FLYX index. */
 function airborne(pixelY: number, velXIndex: number, over: Partial<EntityState> = {}): EntityState {
   return {
-    posX: 100,
+    // posX 200 is cliff-free for the hunter's B2DIR look-ahead (jt9-49): at
+    // posX 100 the HUNTER's cliff scan turned it into a B2AV `dwell` on wake 1,
+    // and jt9-49 correctly does NOT tick the throttle during a dwell (the ROM's
+    // B2AV episode bypasses B2LE11), so AC-1's b2undr held its counter instead of
+    // ticking. 200 keeps the hunter on a clean level interval where the throttle
+    // is faithfully reached. (The bounder never steers, so it was unaffected;
+    // AC-2/AC-3 call `homingWake` directly and never read posX.)
+    posX: 200,
     posY: pixelY << 8,
     velXIndex,
     velXFrac: 0,

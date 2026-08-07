@@ -1427,7 +1427,26 @@ export function stepEnemyDetailed(
   // jt8-2: the homing wake runs BEFORE the brain. `COM PFACE,U` (:3945) falls
   // into `JMP BODIR` (:3946), whose first instruction is `LDA PFACE,U` (:3876) —
   // so a flip already steers THIS wake's horizontal impulse, not the next one.
-  const flipped = homingWake(enemy, target)
+  //
+  // jt9-49: SCOPED TO A LIVE LEVEL INTERVAL. The throttle `BOLEVB` (:3939-3946)
+  // and its twins `B2LE11`/`SHLEPB` are reached in the ROM ONLY on the level path
+  // — they sit after `BOLEV`/`B2LEV`/`SHLEP` armed the decision interval. A bird
+  // that decided down/up runs `BODN1`/`BOUP1` and never falls into the throttle.
+  // jt8-2 ran it every wake and jt9-18 left the frozen `PPVELX` snapshot intact
+  // when `seekWake` routed to a seek, so the throttle kept ticking off-level on a
+  // stale snapshot; gating on the entry interval retires both. A held level
+  // interval is `pjoy.kind === 'interval'` (uf1-9); down/up seeks carry `wing`,
+  // freshly-mounted wakes carry nothing.
+  //
+  // READ-VS-DECIDE ORDERING: because the flip must steer THIS wake (above), the
+  // call stays BEFORE the brain — so it reads the interval the enemy ENTERED with,
+  // not the one this wake's decide may arm. The ROM's level-decide wake falls
+  // through `BOLEV → BOLEVB` and ticks the same wake; here the first tick lands on
+  // the next wake instead. That one-wake offset on the decide is the minimal cost
+  // of keeping the flip before the brain — the port cannot know "this wake decides
+  // level" until after `seekWake`, which runs later. (TEA left this call to Dev.)
+  const inLevelInterval = enemy.pjoy?.kind === 'interval'
+  const flipped = inLevelInterval ? homingWake(enemy, target) : enemy
   // jt8-3: the look-ahead runs AFTER the homing flip and its write WINS — in
   // the ROM the throttle blocks (`B2LE11`/`SHLEPB`) fall INTO the direction
   // routine, so B2DIR/SHDIR read (and may overwrite) the freshly-COMplemented
