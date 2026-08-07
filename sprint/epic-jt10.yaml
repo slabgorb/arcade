@@ -57,7 +57,8 @@ stories:
     title: 'Game-over screen: wire GOVER_OVER/settleGameOver to a GAME OVER overlay and the transition to highscore-or-attract'
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     depends_on: jt10-2
