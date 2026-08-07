@@ -726,3 +726,8 @@ completed_stories:
     title: Scope the horizontal-homing throttle to a live level interval — stop homingWake ticking off-level (retire jt8-2's every-wake read and the jt9-18 stale-PPVELX-during-seeks nuance)
     points: 3
     completed: '2026-08-07'
+  - id: jt9-50
+    epic: jt9
+    title: "joust bounder BOUP cliff-above diverts to BOLEV: model the blocked-climb level flight (no BOUP3). Found by jt9-23 Dev: BOUP (JOUSTRV4.SRC:3846-3853) samples BCKYTB-DYLEN and on a hit BNE BOLEV (:3850) flies plain level; the port's bounder still commits to the climb blind. Distinct from B2UP3/SHUP3 (hunter/shadow) which jt9-23 wired."
+    points: 3
+    completed: '2026-08-07'
