@@ -11,7 +11,7 @@ stories:
     description: "The story that fixes 'too fast'. (a) src/core/wave.ts (new, pure) — a wave number carried in state and a cited per-wave schedule that yields this wave's ICBM budget (count) and descent velocity. Cite 1ST PHASE OF NEW WAVE SETUP (W3MAIN.MAC:3901 logical) for the count schedule and CALCULATE MISSILE VELOCITY & DISPLAY INCREMENT (W3MAIN.MAC:3279 logical) for the velocity ramp; new claims in a new claims/wave.json for every schedule constant (byte-exact verbatim from REV-01, decimal decode). (b) src/core/icbm.ts (change) — stepIcbm takes its per-tick velocity from the wave schedule instead of the hard-coded SPEED=1; wave 1 is slow and each wave ramps monotonically to the cited ceiling. (c) src/core/abm.ts (change) — the player ABM velocity is corrected so ABMs OUTRUN ICBMs at every wave (cite the ABM velocity vs the ICBM ramp; the ROM's player missiles are faster than incoming). Record the REV-01 vs REV-03 delta for the difficulty numbers in a claim note (O-3). Depends on mc3. Blocks mc4-2/3/4."
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-07'
     repos: arcade
     workflow: tdd
@@ -20,6 +20,7 @@ stories:
       - 'stepIcbm advances by the wave-scheduled velocity, not a hard-coded 1: a wave-1 ICBM crosses the field measurably slower than a later-wave ICBM, and the ramp is monotonic up to the cited ceiling.'
       - 'ABM velocity is corrected so an ABM launched at the same time as an ICBM reaches its target first at every wave (ABMs outrun ICBMs); the change is cited.'
       - 'claims/wave.json carries every new schedule constant (count + velocity ramp) with byte-exact REV-01 verbatim and a REV-01-vs-REV-03 delta note; citations.test.ts (incl. the AC3 no-uncited-literal guard) and purity.test.ts pass for every changed/new src/core module.'
+    completed: '2026-08-07'
     review_verdict: approved
     review_findings: "APPROVED round 2. Round-1's two High fidelity defects fixed + re-verified at source: velocity 1/(period+1) (UPICBM consumes the move-frame; ramps 0.172->1.0), ABM_SPEED=3 (COND65 MIEND=BPL => FASABM+1). Exact-value regression guards added (wave-5~0.615, ABM=3). 3 non-blocking comment defects remain (wave.ts:41/55 stale 1/period JSDoc, :44 NEWWV1->NEGAM miscite) - code/claims/tests correct; fold into mc4-2."
   - id: mc4-2

@@ -900,3 +900,8 @@ completed_stories:
     title: 'Spike: decode the W3SOUN sound-command tables and choose the driver path (runtime-synth vs baked asset)'
     points: 3
     completed: '2026-08-07'
+  - id: mc4-1
+    epic: mc4
+    title: 'Wave model + per-wave ICBM velocity & count ramp (retire the SPEED=1 placeholder — the speed fix)'
+    points: 5
+    completed: '2026-08-07'
