@@ -1286,5 +1286,1181 @@
       "line": 2089,
       "verbatim": "0e77  21ac4e    ld      hl,#4eac"
     }
+  },
+  {
+    "id": "SND-THEME-TRIGGER",
+    "symbol": "SND_THEME_TRIGGER",
+    "value": "#01",
+    "meaning": "Start-of-game trigger: at game start the ROM writes sound number #01 into the voice-1 and voice-2 note-stream request bytes #4ecc/#4edc (a=1 via `0668 xor a` + `066c inc a`; the #4edc write follows at 0670). Request bit0 selects note-stream 0 of each voice-def table: voice1 -> stream #3bd4 (bass), voice2 -> stream #3c58 (melody). Sound #02 (written at 0a33) is the looping intermission music instead.",
+    "addr": "066d",
+    "source": {
+      "file": "pacman.asm",
+      "line": 988,
+      "verbatim": "066d  32cc4e    ld      (#4ecc),a"
+    }
+  },
+  {
+    "id": "SND-CMD-DISPATCH",
+    "symbol": "SND_CMD_DISPATCH_TABLE",
+    "value": "55 2f 65 2f 77 2f 89 2f 9b 2f",
+    "meaning": "Note-stream command jump table @2d85 (dispatched via `rst #20` after `and #0f` at 2d82-2d84 on a stream byte >= #f0). 16 little-endian word entries: #f0->2f55 (jump), #f1->2f65 (waveform), #f2->2f77 (octave shift), #f3->2f89 (volume), #f4->2f9b (volume-effect), #f5-#fe->000c (a bare ret, unused), #ff->2fad (end). Cites the first entry byte 55 @2d85 (the table is data the disassembler renders as code); entries continue through 2da4 (`ad 2f`, line 6332-6333).",
+    "addr": "2d85",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6302,
+      "verbatim": "2d85  55        ld      d,l"
+    }
+  },
+  {
+    "id": "SND-CMD-F0-JUMP",
+    "symbol": "SND_CMD_F0_JUMP",
+    "value": "#2f55",
+    "meaning": "Command #f0 handler @2f55: reads the 2-byte little-endian operand at the note pointer (ix+6/7) and REPLACES the note pointer with it \u2014 an absolute jump/loop within the stream (the looping intermission streams end with `f0 fb 3b` / `f0 9d 3c`). The start-theme streams never use it; they end with #ff.",
+    "addr": "2f55",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6576,
+      "verbatim": "2f55  dd6e06    ld      l,(ix+#06)"
+    }
+  },
+  {
+    "id": "SND-CMD-F1-WAVEFORM",
+    "symbol": "SND_CMD_F1_WAVEFORM",
+    "value": "#2f65",
+    "meaning": "Command #f1 handler @2f65: one operand byte -> ix+3, the voice WAVEFORM select. The interrupt driver routes it to the WSG hardware waveform register while a note-stream is active (pacman.asm:00ac-00b4 reads #4ecf = tune-struct ix+3 when #4ecc is nonzero). Start theme: bass f1 02 (waveform 2), melody f1 00 (waveform 0).",
+    "addr": "2f65",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6585,
+      "verbatim": "2f65  dd6e06    ld      l,(ix+#06)"
+    }
+  },
+  {
+    "id": "SND-CMD-F2-OCTAVE",
+    "symbol": "SND_CMD_F2_OCTAVE",
+    "value": "#2f77",
+    "meaning": "Command #f2 handler @2f77: one operand byte -> ix+4, the BASE FREQUENCY SHIFT. At note output (2de5) the shift count = ix+4 plus the note byte bit4, and the 16-bit word = pitch-table byte << shift (2ee4-2ee7 `add hl,hl` loop). Start theme: bass f2 03, melody f2 02.",
+    "addr": "2f77",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6594,
+      "verbatim": "2f77  dd6e06    ld      l,(ix+#06)"
+    }
+  },
+  {
+    "id": "SND-CMD-F3-VOLUME",
+    "symbol": "SND_CMD_F3_VOLUME",
+    "value": "#2f89",
+    "meaning": "Command #f3 handler @2f89: one operand byte -> ix+9, the 4-bit VOLUME latched into ix+0f at each note start (2dad-2db9). Both start-theme streams use f3 0f (full volume).",
+    "addr": "2f89",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6603,
+      "verbatim": "2f89  dd6e06    ld      l,(ix+#06)"
+    }
+  },
+  {
+    "id": "SND-CMD-F4-VOLEFFECT",
+    "symbol": "SND_CMD_F4_VOLEFFECT",
+    "value": "#2f9b",
+    "meaning": "Command #f4 handler @2f9b: one operand byte -> ix+0b, the VOLUME-EFFECT select dispatched per frame via `rst #20` through the table @2f02 (2efe-2f01): 0 -> 2f22 (flat: return ix+0f), 1 -> 2f26 (decay: decrement ix+0f once per frame toward 0), 2/3/4 -> slower decays gated on the frame counter #4c84. Start theme: bass f4 01 (the plucked decay), melody f4 00 (flat).",
+    "addr": "2f9b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6612,
+      "verbatim": "2f9b  dd6e06    ld      l,(ix+#06)"
+    }
+  },
+  {
+    "id": "SND-CMD-F4-DECAY",
+    "symbol": "SND_CMD_F4_EFFECT1_DECAY",
+    "value": "#2f26",
+    "meaning": "Volume-effect 1 handler @2f26 (reached from the @2f02 dispatch): reads ix+0f and falls into 2f34 `and #0f; ret z; dec a; ld (ix+#0f),a` \u2014 the running note volume decrements by 1 each engine frame until 0. This is the start-theme bass PLUCK envelope (bass stream sets f4 01).",
+    "addr": "2f26",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6534,
+      "verbatim": "2f26  dd7e0f    ld      a,(ix+#0f)"
+    }
+  },
+  {
+    "id": "SND-CMD-FF-END",
+    "symbol": "SND_CMD_FF_END",
+    "value": "#2fad",
+    "meaning": "Command #ff handler @2fad: clears this sound request bit out of ix+0 (`cpl / and (ix+#00)`) and jumps to the silence path 2df4 (zeroes the voice frequency/volume registers). End of a finite tune \u2014 both start-theme streams terminate with #ff (bass @3bf2, melody @3c94).",
+    "addr": "2fad",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6621,
+      "verbatim": "2fad  dd7e02    ld      a,(ix+#02)"
+    }
+  },
+  {
+    "id": "SND-NOTE-DECODE",
+    "symbol": "SND_NOTE_BYTE_DECODE",
+    "value": "b7-5 duration, b4 octave, b3-0 pitch",
+    "meaning": "Note handler @2da5 (stream bytes < #f0): the note byte b is split \u2014 top 3 bits (rlca x3, `and #07` @2dbc-2dc0) index the duration table #3bb0 (frames = 1<<idx) into the counter ix+0c; low 4 bits (`and #0f` @2dce) index the pitch table #3bb8 into ix+0e; low 5 bits == 0 (`and #1f` z @2dca) sustains the previous pitch for the duration; pitch idx 0 with bit4 set (e.g. #50/#70) is a REST (table byte 00 -> frequency 0).",
+    "addr": "2da5",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6334,
+      "verbatim": "2da5  47        ld      b,a"
+    }
+  },
+  {
+    "id": "SND-NOTE-OCTAVE-BIT",
+    "symbol": "SND_NOTE_OCTAVE_BIT",
+    "value": "#10",
+    "meaning": "Note output @2ddc-2de5: bit4 of the stored note byte (ix+0d `and #10`) adds 1 to the shift count on top of the base shift ix+4 (`add a,(ix+#04)` @2de5) \u2014 a per-note +1 octave. The 16-bit word (pitch byte << shift) is then written as 4 nibbles into the voice frequency registers @2ee8-2efb; voice 1 registers are frequency bits 0-15 (5-nibble voice), voices 2/3 registers are bits 4-19, an implicit further x16.",
+    "addr": "2ddf",
+    "source": {
+      "file": "pacman.asm",
+      "line": 6362,
+      "verbatim": "2ddf  e610      and     #10"
+    }
+  },
+  {
+    "id": "SND-VOICEDEF-V1-STREAMS",
+    "symbol": "SND_VOICEDEF_V1_STREAM_PTRS",
+    "value": "#3bd4",
+    "meaning": "Voice-1 note-stream voice-def table @3bc8: word0 (bytes d4 3b @3bc8-3bc9, on this line as the operand of the phantom `jp`) = stream #3bd4 for request bit0 \u2014 the START THEME BASS. Word1 @3bca-3bcb (lines 8886-8887, bytes f3 3b) = stream #3bf3, request bit1 = the looping intermission music. Selected by `rst #18` (hl=#3bc8 + 2*bit-index) at 2d63.",
+    "addr": "3bc8",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8885,
+      "verbatim": "3bc7  c3d43b    jp      #3bd4"
+    }
+  },
+  {
+    "id": "SND-VOICEDEF-V2-STREAMS",
+    "symbol": "SND_VOICEDEF_V2_STREAM_PTRS",
+    "value": "#3c58",
+    "meaning": "Voice-2 note-stream voice-def table @3bcc: word0 low byte 58 @3bcc (this line; high byte 3c @3bcd, line 8889) = stream #3c58 for request bit0 \u2014 the START THEME MELODY. Word1 @3bce-3bcf (95 3c, lines 8890-8891) = stream #3c95, request bit1 = the looping intermission counter-melody.",
+    "addr": "3bcc",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8888,
+      "verbatim": "3bcc  58        ld      e,b"
+    }
+  },
+  {
+    "id": "SND-VOICEDEF-V3-STREAMS",
+    "symbol": "SND_VOICEDEF_V3_STREAM_PTRS",
+    "value": "#3cde",
+    "meaning": "Voice-3 note-stream voice-def table @3bd0: bytes de 3c (word0 = #3cde, bit0) on this line; word1 @3bd2-3bd3 = #3cdf (lines 8893-8894). Both point at single #00 placeholder bytes @3cde/3cdf \u2014 voice 3 has NO start-theme (or intermission) part; the theme is a two-voice arrangement (bass + melody).",
+    "addr": "3bd0",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8892,
+      "verbatim": "3bd0  de3c      sbc     a,#3c"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BD4",
+    "symbol": "SND_THEME_BASS_3BD4",
+    "value": "f1",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bd4): command #f1 SET WAVEFORM (operand -> ix+3, routed to the WSG waveform-select; pacman.asm:2f65). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bd4",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8895,
+      "verbatim": "3bd4  f1        pop     af"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BD5",
+    "symbol": "SND_THEME_BASS_3BD5",
+    "value": "02",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bd5): operand #02 for command #f1. Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bd5",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8896,
+      "verbatim": "3bd5  02        ld      (bc),a"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BD6",
+    "symbol": "SND_THEME_BASS_3BD6",
+    "value": "f2 03 f3",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bd6): command #f2 SET BASE OCTAVE SHIFT (operand -> ix+4; pacman.asm:2f77); operand #03 for command #f2; command #f3 SET VOLUME (operand -> ix+9; pacman.asm:2f89). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bd6",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8897,
+      "verbatim": "3bd6  f203f3    jp      p,#f303"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BD9",
+    "symbol": "SND_THEME_BASS_3BD9",
+    "value": "0f",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bd9): operand #0f for command #f3. Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bd9",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8898,
+      "verbatim": "3bd9  0f        rrca    "
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BDA",
+    "symbol": "SND_THEME_BASS_3BDA",
+    "value": "f4 01 82",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bda): command #f4 SET VOLUME-EFFECT (operand -> ix+0b; 0=flat, 1=decay 1/frame; pacman.asm:2f9b); operand #01 for command #f4; note #82: pitch idx 2 (raw #5c), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bda",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8899,
+      "verbatim": "3bda  f40182    call    p,#8201"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BDD",
+    "symbol": "SND_THEME_BASS_3BDD",
+    "value": "70",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bdd): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bdd",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8900,
+      "verbatim": "3bdd  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BDE",
+    "symbol": "SND_THEME_BASS_3BDE",
+    "value": "69",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bde): note #69: pitch idx 9 (raw #8a), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bde",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8901,
+      "verbatim": "3bde  69        ld      l,c"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BDF",
+    "symbol": "SND_THEME_BASS_3BDF",
+    "value": "82",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bdf): note #82: pitch idx 2 (raw #5c), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bdf",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8902,
+      "verbatim": "3bdf  82        add     a,d"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE0",
+    "symbol": "SND_THEME_BASS_3BE0",
+    "value": "70",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be0): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be0",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8903,
+      "verbatim": "3be0  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE1",
+    "symbol": "SND_THEME_BASS_3BE1",
+    "value": "69",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be1): note #69: pitch idx 9 (raw #8a), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be1",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8904,
+      "verbatim": "3be1  69        ld      l,c"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE2",
+    "symbol": "SND_THEME_BASS_3BE2",
+    "value": "83",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be2): note #83: pitch idx 3 (raw #61), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be2",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8905,
+      "verbatim": "3be2  83        add     a,e"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE3",
+    "symbol": "SND_THEME_BASS_3BE3",
+    "value": "70",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be3): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be3",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8906,
+      "verbatim": "3be3  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE4",
+    "symbol": "SND_THEME_BASS_3BE4",
+    "value": "6a",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be4): note #6a: pitch idx 10 (raw #92), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be4",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8907,
+      "verbatim": "3be4  6a        ld      l,d"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE5",
+    "symbol": "SND_THEME_BASS_3BE5",
+    "value": "83",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be5): note #83: pitch idx 3 (raw #61), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be5",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8908,
+      "verbatim": "3be5  83        add     a,e"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE6",
+    "symbol": "SND_THEME_BASS_3BE6",
+    "value": "70",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be6): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be6",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8909,
+      "verbatim": "3be6  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE7",
+    "symbol": "SND_THEME_BASS_3BE7",
+    "value": "6a",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be7): note #6a: pitch idx 10 (raw #92), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be7",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8910,
+      "verbatim": "3be7  6a        ld      l,d"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE8",
+    "symbol": "SND_THEME_BASS_3BE8",
+    "value": "82",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be8): note #82: pitch idx 2 (raw #5c), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be8",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8911,
+      "verbatim": "3be8  82        add     a,d"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BE9",
+    "symbol": "SND_THEME_BASS_3BE9",
+    "value": "70",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3be9): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3be9",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8912,
+      "verbatim": "3be9  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BEA",
+    "symbol": "SND_THEME_BASS_3BEA",
+    "value": "69",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bea): note #69: pitch idx 9 (raw #8a), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bea",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8913,
+      "verbatim": "3bea  69        ld      l,c"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BEB",
+    "symbol": "SND_THEME_BASS_3BEB",
+    "value": "82",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3beb): note #82: pitch idx 2 (raw #5c), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3beb",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8914,
+      "verbatim": "3beb  82        add     a,d"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BEC",
+    "symbol": "SND_THEME_BASS_3BEC",
+    "value": "70",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bec): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bec",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8915,
+      "verbatim": "3bec  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BED",
+    "symbol": "SND_THEME_BASS_3BED",
+    "value": "69",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bed): note #69: pitch idx 9 (raw #8a), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bed",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8916,
+      "verbatim": "3bed  69        ld      l,c"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BEE",
+    "symbol": "SND_THEME_BASS_3BEE",
+    "value": "89",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bee): note #89: pitch idx 9 (raw #8a), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bee",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8917,
+      "verbatim": "3bee  89        adc     a,c"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BEF",
+    "symbol": "SND_THEME_BASS_3BEF",
+    "value": "8b",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bef): note #8b: pitch idx 11 (raw #9a), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bef",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8918,
+      "verbatim": "3bef  8b        adc     a,e"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BF0",
+    "symbol": "SND_THEME_BASS_3BF0",
+    "value": "8d",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bf0): note #8d: pitch idx 13 (raw #ad), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bf0",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8919,
+      "verbatim": "3bf0  8d        adc     a,l"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BF1",
+    "symbol": "SND_THEME_BASS_3BF1",
+    "value": "8e",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bf1): note #8e: pitch idx 14 (raw #b8), 16 frames (dur idx 4). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bf1",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8920,
+      "verbatim": "3bf1  8e        adc     a,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-BASS-3BF2",
+    "symbol": "SND_THEME_BASS_3BF2",
+    "value": "ff",
+    "meaning": "Start-of-game theme bass note stream @#3bd4 (byte(s) @#3bf2): command #ff END-OF-STREAM (clears the sound request bit and silences; pacman.asm:2fad). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3bf2",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8921,
+      "verbatim": "3bf2  ff        rst     #38"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C58",
+    "symbol": "SND_THEME_MELODY_3C58",
+    "value": "f1",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c58): command #f1 SET WAVEFORM (operand -> ix+3, routed to the WSG waveform-select; pacman.asm:2f65). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c58",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8981,
+      "verbatim": "3c58  f1        pop     af"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C59",
+    "symbol": "SND_THEME_MELODY_3C59",
+    "value": "00",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c59): operand #00 for command #f1. Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c59",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8982,
+      "verbatim": "3c59  00        nop     "
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C5A",
+    "symbol": "SND_THEME_MELODY_3C5A",
+    "value": "f2 02 f3",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c5a): command #f2 SET BASE OCTAVE SHIFT (operand -> ix+4; pacman.asm:2f77); operand #02 for command #f2; command #f3 SET VOLUME (operand -> ix+9; pacman.asm:2f89). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c5a",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8983,
+      "verbatim": "3c5a  f202f3    jp      p,#f302"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C5D",
+    "symbol": "SND_THEME_MELODY_3C5D",
+    "value": "0f",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c5d): operand #0f for command #f3. Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c5d",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8984,
+      "verbatim": "3c5d  0f        rrca    "
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C5E",
+    "symbol": "SND_THEME_MELODY_3C5E",
+    "value": "f4 00 42",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c5e): command #f4 SET VOLUME-EFFECT (operand -> ix+0b; 0=flat, 1=decay 1/frame; pacman.asm:2f9b); operand #00 for command #f4; note #42: pitch idx 2 (raw #5c), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c5e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8985,
+      "verbatim": "3c5e  f40042    call    p,#4200"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C61",
+    "symbol": "SND_THEME_MELODY_3C61",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c61): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c61",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8986,
+      "verbatim": "3c61  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C62",
+    "symbol": "SND_THEME_MELODY_3C62",
+    "value": "4e",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c62): note #4e: pitch idx 14 (raw #b8), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c62",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8987,
+      "verbatim": "3c62  4e        ld      c,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C63",
+    "symbol": "SND_THEME_MELODY_3C63",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c63): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c63",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8988,
+      "verbatim": "3c63  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C64",
+    "symbol": "SND_THEME_MELODY_3C64",
+    "value": "49",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c64): note #49: pitch idx 9 (raw #8a), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c64",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8989,
+      "verbatim": "3c64  49        ld      c,c"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C65",
+    "symbol": "SND_THEME_MELODY_3C65",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c65): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c65",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8990,
+      "verbatim": "3c65  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C66",
+    "symbol": "SND_THEME_MELODY_3C66",
+    "value": "46",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c66): note #46: pitch idx 6 (raw #74), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c66",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8991,
+      "verbatim": "3c66  46        ld      b,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C67",
+    "symbol": "SND_THEME_MELODY_3C67",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c67): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c67",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8992,
+      "verbatim": "3c67  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C68",
+    "symbol": "SND_THEME_MELODY_3C68",
+    "value": "4e",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c68): note #4e: pitch idx 14 (raw #b8), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c68",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8993,
+      "verbatim": "3c68  4e        ld      c,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C69",
+    "symbol": "SND_THEME_MELODY_3C69",
+    "value": "49",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c69): note #49: pitch idx 9 (raw #8a), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c69",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8994,
+      "verbatim": "3c69  49        ld      c,c"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C6A",
+    "symbol": "SND_THEME_MELODY_3C6A",
+    "value": "70",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c6a): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c6a",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8995,
+      "verbatim": "3c6a  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C6B",
+    "symbol": "SND_THEME_MELODY_3C6B",
+    "value": "66",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c6b): note #66: pitch idx 6 (raw #74), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c6b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8996,
+      "verbatim": "3c6b  66        ld      h,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C6C",
+    "symbol": "SND_THEME_MELODY_3C6C",
+    "value": "70",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c6c): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c6c",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8997,
+      "verbatim": "3c6c  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C6D",
+    "symbol": "SND_THEME_MELODY_3C6D",
+    "value": "43",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c6d): note #43: pitch idx 3 (raw #61), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c6d",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8998,
+      "verbatim": "3c6d  43        ld      b,e"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C6E",
+    "symbol": "SND_THEME_MELODY_3C6E",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c6e): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c6e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 8999,
+      "verbatim": "3c6e  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C6F",
+    "symbol": "SND_THEME_MELODY_3C6F",
+    "value": "4f",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c6f): note #4f: pitch idx 15 (raw #c3), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c6f",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9000,
+      "verbatim": "3c6f  4f        ld      c,a"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C70",
+    "symbol": "SND_THEME_MELODY_3C70",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c70): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c70",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9001,
+      "verbatim": "3c70  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C71",
+    "symbol": "SND_THEME_MELODY_3C71",
+    "value": "4a",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c71): note #4a: pitch idx 10 (raw #92), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c71",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9002,
+      "verbatim": "3c71  4a        ld      c,d"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C72",
+    "symbol": "SND_THEME_MELODY_3C72",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c72): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c72",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9003,
+      "verbatim": "3c72  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C73",
+    "symbol": "SND_THEME_MELODY_3C73",
+    "value": "47",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c73): note #47: pitch idx 7 (raw #7b), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c73",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9004,
+      "verbatim": "3c73  47        ld      b,a"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C74",
+    "symbol": "SND_THEME_MELODY_3C74",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c74): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c74",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9005,
+      "verbatim": "3c74  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C75",
+    "symbol": "SND_THEME_MELODY_3C75",
+    "value": "4f",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c75): note #4f: pitch idx 15 (raw #c3), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c75",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9006,
+      "verbatim": "3c75  4f        ld      c,a"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C76",
+    "symbol": "SND_THEME_MELODY_3C76",
+    "value": "4a",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c76): note #4a: pitch idx 10 (raw #92), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c76",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9007,
+      "verbatim": "3c76  4a        ld      c,d"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C77",
+    "symbol": "SND_THEME_MELODY_3C77",
+    "value": "70",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c77): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c77",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9008,
+      "verbatim": "3c77  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C78",
+    "symbol": "SND_THEME_MELODY_3C78",
+    "value": "67",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c78): note #67: pitch idx 7 (raw #7b), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c78",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9009,
+      "verbatim": "3c78  67        ld      h,a"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C79",
+    "symbol": "SND_THEME_MELODY_3C79",
+    "value": "70",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c79): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c79",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9010,
+      "verbatim": "3c79  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C7A",
+    "symbol": "SND_THEME_MELODY_3C7A",
+    "value": "42",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c7a): note #42: pitch idx 2 (raw #5c), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c7a",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9011,
+      "verbatim": "3c7a  42        ld      b,d"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C7B",
+    "symbol": "SND_THEME_MELODY_3C7B",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c7b): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c7b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9012,
+      "verbatim": "3c7b  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C7C",
+    "symbol": "SND_THEME_MELODY_3C7C",
+    "value": "4e",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c7c): note #4e: pitch idx 14 (raw #b8), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c7c",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9013,
+      "verbatim": "3c7c  4e        ld      c,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C7D",
+    "symbol": "SND_THEME_MELODY_3C7D",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c7d): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c7d",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9014,
+      "verbatim": "3c7d  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C7E",
+    "symbol": "SND_THEME_MELODY_3C7E",
+    "value": "49",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c7e): note #49: pitch idx 9 (raw #8a), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c7e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9015,
+      "verbatim": "3c7e  49        ld      c,c"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C7F",
+    "symbol": "SND_THEME_MELODY_3C7F",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c7f): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c7f",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9016,
+      "verbatim": "3c7f  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C80",
+    "symbol": "SND_THEME_MELODY_3C80",
+    "value": "46",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c80): note #46: pitch idx 6 (raw #74), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c80",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9017,
+      "verbatim": "3c80  46        ld      b,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C81",
+    "symbol": "SND_THEME_MELODY_3C81",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c81): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c81",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9018,
+      "verbatim": "3c81  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C82",
+    "symbol": "SND_THEME_MELODY_3C82",
+    "value": "4e",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c82): note #4e: pitch idx 14 (raw #b8), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c82",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9019,
+      "verbatim": "3c82  4e        ld      c,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C83",
+    "symbol": "SND_THEME_MELODY_3C83",
+    "value": "49",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c83): note #49: pitch idx 9 (raw #8a), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c83",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9020,
+      "verbatim": "3c83  49        ld      c,c"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C84",
+    "symbol": "SND_THEME_MELODY_3C84",
+    "value": "70",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c84): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c84",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9021,
+      "verbatim": "3c84  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C85",
+    "symbol": "SND_THEME_MELODY_3C85",
+    "value": "66",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c85): note #66: pitch idx 6 (raw #74), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c85",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9022,
+      "verbatim": "3c85  66        ld      h,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C86",
+    "symbol": "SND_THEME_MELODY_3C86",
+    "value": "70",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c86): note #70: REST, 8 frames (dur idx 3, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c86",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9023,
+      "verbatim": "3c86  70        ld      (hl),b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C87",
+    "symbol": "SND_THEME_MELODY_3C87",
+    "value": "45",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c87): note #45: pitch idx 5 (raw #6d), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c87",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9024,
+      "verbatim": "3c87  45        ld      b,l"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C88",
+    "symbol": "SND_THEME_MELODY_3C88",
+    "value": "46",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c88): note #46: pitch idx 6 (raw #74), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c88",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9025,
+      "verbatim": "3c88  46        ld      b,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C89",
+    "symbol": "SND_THEME_MELODY_3C89",
+    "value": "47",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c89): note #47: pitch idx 7 (raw #7b), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c89",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9026,
+      "verbatim": "3c89  47        ld      b,a"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C8A",
+    "symbol": "SND_THEME_MELODY_3C8A",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c8a): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c8a",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9027,
+      "verbatim": "3c8a  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C8B",
+    "symbol": "SND_THEME_MELODY_3C8B",
+    "value": "47",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c8b): note #47: pitch idx 7 (raw #7b), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c8b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9028,
+      "verbatim": "3c8b  47        ld      b,a"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C8C",
+    "symbol": "SND_THEME_MELODY_3C8C",
+    "value": "48",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c8c): note #48: pitch idx 8 (raw #82), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c8c",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9029,
+      "verbatim": "3c8c  48        ld      c,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C8D",
+    "symbol": "SND_THEME_MELODY_3C8D",
+    "value": "49",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c8d): note #49: pitch idx 9 (raw #8a), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c8d",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9030,
+      "verbatim": "3c8d  49        ld      c,c"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C8E",
+    "symbol": "SND_THEME_MELODY_3C8E",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c8e): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c8e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9031,
+      "verbatim": "3c8e  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C8F",
+    "symbol": "SND_THEME_MELODY_3C8F",
+    "value": "49",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c8f): note #49: pitch idx 9 (raw #8a), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c8f",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9032,
+      "verbatim": "3c8f  49        ld      c,c"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C90",
+    "symbol": "SND_THEME_MELODY_3C90",
+    "value": "4a",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c90): note #4a: pitch idx 10 (raw #92), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c90",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9033,
+      "verbatim": "3c90  4a        ld      c,d"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C91",
+    "symbol": "SND_THEME_MELODY_3C91",
+    "value": "4b",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c91): note #4b: pitch idx 11 (raw #9a), 4 frames (dur idx 2). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c91",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9034,
+      "verbatim": "3c91  4b        ld      c,e"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C92",
+    "symbol": "SND_THEME_MELODY_3C92",
+    "value": "50",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c92): note #50: REST, 4 frames (dur idx 2, pitch idx 0 -> freq 0). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c92",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9035,
+      "verbatim": "3c92  50        ld      d,b"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C93",
+    "symbol": "SND_THEME_MELODY_3C93",
+    "value": "6e",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c93): note #6e: pitch idx 14 (raw #b8), 8 frames (dur idx 3). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c93",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9036,
+      "verbatim": "3c93  6e        ld      l,(hl)"
+    }
+  },
+  {
+    "id": "SND-THEME-MELODY-3C94",
+    "symbol": "SND_THEME_MELODY_3C94",
+    "value": "ff",
+    "meaning": "Start-of-game theme melody note stream @#3c58 (byte(s) @#3c94): command #ff END-OF-STREAM (clears the sound request bit and silences; pacman.asm:2fad). Decoded per the note-stream handler pacman.asm:2d44/2da5: a note byte is bits7-5 duration index into #3bb0, bit4 +1 octave, bits3-0 pitch index into #3bb8.",
+    "addr": "3c94",
+    "source": {
+      "file": "pacman.asm",
+      "line": 9037,
+      "verbatim": "3c94  ff        rst     #38"
+    }
   }
 ]

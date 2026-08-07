@@ -47,6 +47,11 @@ export interface WsgEffect {
    *  `durationMs`), the pitch ramps linearly from `frequency` to this word over
    *  the duration, reproducing the voice-def's per-tick frequency sweep. */
   frequencyEnd?: number
+  /** Optional volume envelope (with `durationMs`): the gain ramps linearly to
+   *  this 4-bit value over the duration — the tune engine's per-frame volume
+   *  decay (command #f4 effect 1, `pacman.asm:2f26`), the plucked-bass
+   *  envelope of the start theme (pm2-4). */
+  volumeEnd?: number
 }
 
 /** The chip's three channels. One-shots default to channel 0. */
@@ -99,6 +104,13 @@ interface Channel {
 function buildChannel({ context, out }: SynthTarget, effect: WsgEffect): Channel {
   const gain = context.createGain()
   gain.gain.setValueAtTime(volumeGain(effect.volume), context.currentTime)
+  // A volume envelope (the tune engine's per-frame decay — the bass pluck).
+  if (effect.volumeEnd !== undefined && effect.durationMs !== undefined) {
+    gain.gain.linearRampToValueAtTime(
+      volumeGain(effect.volumeEnd),
+      context.currentTime + effect.durationMs / 1000,
+    )
+  }
   gain.connect(out)
   const source = context.createBufferSource()
   source.buffer = wavetable(context, effect.waveform)

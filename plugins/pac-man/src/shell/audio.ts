@@ -34,6 +34,7 @@ import {
   sirenStageFor,
   type SirenVoice,
 } from './wsg-effects'
+import { createTunePlayer } from './tune'
 
 export interface AudioDriver {
   /** Voice one frame's worth of gameplay events (the `events.ts` seam). */
@@ -56,6 +57,12 @@ export function createAudioDriver(wsg: Wsg): AudioDriver {
   let ambient: SirenVoice | null = null
   let warbleFrame = 0
   let deathHold = 0
+  // pm2-4: the start-of-game theme. The ROM writes sound #1 at game start
+  // (`pacman.asm:066d`); the clone's equivalent moment is the first
+  // playing-phase frame of a fresh game — POLLED off `GameState` (the driver's
+  // birth, or a game-over → playing restart), never a new core event.
+  const theme = createTunePlayer(wsg)
+  let themeArmed = true
 
   function onEvents(events: readonly GameEvent[]): void {
     for (const event of events) {
@@ -79,8 +86,14 @@ export function createAudioDriver(wsg: Wsg): AudioDriver {
           deathHold = DEATH_HOLD_FRAMES
           wsg.play(DEATH)
           break
-        case 'level-cleared':
         case 'game-over':
+          // Re-arm the start theme for the next game (main.ts stops polling
+          // onFrame once the phase is game-over, so the event is the signal).
+          themeArmed = true
+          wsg.stopAll()
+          ambient = null
+          break
+        case 'level-cleared':
           wsg.stopAll()
           ambient = null
           break
@@ -99,10 +112,23 @@ export function createAudioDriver(wsg: Wsg): AudioDriver {
       return // let the death cue play out; the siren resumes after.
     }
     if (state.phase === 'game-over') {
+      themeArmed = true // the next game gets its start theme again
       if (ambient !== null) {
         wsg.stopAll()
         ambient = null
       }
+      return
+    }
+
+    // Start-of-round: fire the theme once per fresh game, and hold the ambient
+    // siren while it plays (the real cabinet is silent under the jingle — the
+    // deathHold precedent).
+    if (themeArmed) {
+      themeArmed = false
+      theme.playTheme()
+    }
+    if (theme.playing()) {
+      theme.tick()
       return
     }
 

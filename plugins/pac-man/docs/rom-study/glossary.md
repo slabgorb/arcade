@@ -586,7 +586,62 @@ are the **note-stream** family's tables (Task 4), byte-cited here for completene
   the trigger context was **not** conclusively traced, so the cue label is left open;
   the byte-defs are decodable but their cue identity is **not** asserted.
 - **The start-of-game theme** and all note-stream tunes (`#3bc8`+, handler `2d44`):
-  Task 4, not decoded here.
+  decoded by Task 4 — see *The note-stream (tune) format (pm2-4)* below.
 - **Per-segment envelope evolution.** The Hz above is the *starting* pitch; the full
   swept/stepped trajectory (byte2/byte4/byte7 over byte5 segments) is described by role
   but not enumerated frame-by-frame — that is the synthesis task's to realise.
+
+### The note-stream (tune) format (pm2-4)
+
+The second table family — the **tune sequencer** the start-of-game theme rides. Decoded
+from the note-stream handler `pacman.asm:2d44`; every byte below is pinned by the
+`SND-THEME-*` / `SND-CMD-*` / `SND-NOTE-*` claims in `claims/sound.json`.
+
+**Dispatch.** A game routine requests a tune by writing a sound *number* (a bitmask)
+into `#4ecc` / `#4edc` / `#4eec` (voices 1/2/3). Bit N selects word N of that voice's
+pointer table at `#3bc8` / `#3bcc` / `#3bd0` (`rst #18` at `2d63`), the address of a
+byte **stream**. The handler walks the stream once per 60 Hz interrupt via a per-voice
+RAM struct (`ix+6/7` note pointer, `ix+0c` duration counter, `2d66`).
+
+**Stream bytes.**
+
+- A byte `≥ #f0` is a **command** (`cp #f0` @`2d7a`, jump table @`2d85`):
+  `f0` = jump (2-byte little-endian target — how the looping tunes loop);
+  `f1` = waveform-select → `ix+3` (routed to the WSG hardware select while the tune is
+  active, `00ac-00b4`); `f2` = base octave shift → `ix+4`; `f3` = 4-bit volume →
+  `ix+9`; `f4` = volume-effect → `ix+0b` (0 = flat, 1 = **decay** −1 volume/frame
+  (`2f26`) — the plucked bass, 2/3/4 = slower decays); `f5`-`fe` = unused (→ `#000c`,
+  a bare `ret`); `ff` = **end**: clear the request bit and silence (`2fad`).
+- A byte `< #f0` is a **note** (`2da5`): bits 7-5 index the duration table `#3bb0`
+  (`01 02 04 08 10 20 40 80` — frames = `1 << idx`); bit 4 = **+1 octave** (`2ddf`);
+  bits 3-0 index the 16-entry pitch table `#3bb8`
+  (`00 57 5c 61 67 6d 74 7b 82 8a 92 9a a3 ad b8 c3` — entry 0 silent, entries 1-15 a
+  chromatic semitone scale, each ≈ ×2^(1/12)). Pitch idx 0 with bit 4 set (`#50`,
+  `#70`, …) is a **rest**; low 5 bits all zero **sustains** the previous pitch.
+- The 16-bit word = pitch byte `<<` (base shift + octave bit), written as 4 nibbles
+  into the voice frequency registers (`2ee8`). Voice 1's nibbles are frequency bits
+  0-15; voices 2/3's are bits **4-19** — an implicit further ×16 (the same 4-nibble
+  placement `wsg-effects.ts` encodes as `VOICE23_NIBBLE_SHIFT`).
+
+**The start-of-game theme** is sound `#01`, written to voices 1 & 2 at game start
+(`066d`): a **two-voice** arrangement — voice 3's pointers (`#3bd0`) reach `00`
+placeholders.
+
+- **Bass** — stream `#3bd4`, ROM voice 1: `f1 02 f2 03 f3 0f f4 01` (waveform 2,
+  shift 3, full volume, pluck decay), then root(16f)/rest(8f)/fifth(8f) twice, the same
+  a semitone up twice, root/fifth twice again, and a 4×16f walk-up of
+  +7 +9 +11 +12 semitones over the root, `ff`. 256 frames ≈ 4.2 s. Root word
+  `#5c<<3 = 736` ≈ 67.4 Hz (≈ C2 + ½ semitone — the cabinet tunes ~50 cents sharp of
+  concert pitch).
+- **Melody** — stream `#3c58`, ROM voice 2: `f1 00 f2 02 f3 0f f4 00` (waveform 0,
+  shift 2, flat). Root word `#5c<<(2+4) = 5888` ≈ 539 Hz. Phrase (semitones over the
+  root): 0 · +12 · +7 · +4 · +12 · +7 · +4 — root, octave, fifth, major third — then
+  the same phrase +1 semitone, the first phrase again, and three overlapping chromatic
+  triplet runs (+3+4+5, +5+6+7, +7+8+9) ending on the octave (+12). 248 frames.
+  The interval structure matches the canonical Pac-Man intro exactly; note the runs
+  sit **one semitone below** the popular D♯-E-F transcription and end a minor third
+  under the final octave — the ROM wins.
+
+The clone's transcription is `src/shell/tune.ts` (streams baked byte-for-byte, decoder
+per the handler above, ticked per 60 Hz sim frame by `audio.ts`), unit-locked to the
+claims by `tests/shell/tune.test.ts`.
