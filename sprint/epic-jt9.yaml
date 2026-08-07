@@ -915,10 +915,13 @@ stories:
     title: 'Port the full PTERST/PTERWV ptero entry: random side + time-stagger, not just the jt9-44 Y-lane spread'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
     type: refactor
+    review_verdict: approved
   - id: jt9-46
     title: Enemy buzzards are drawn RIDERLESS — draw the DPLYR knight rider per enemy species (the buzzards carry PLYR3/4/5, JOUSTRV4.SRC:109)
     description: |-
@@ -1028,7 +1031,8 @@ stories:
       by re-running the seeded sweeps, not by nudging them to whatever the new code prints.
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -1037,15 +1041,20 @@ stories:
       - "AC-3 THE REMOUNT KEEPS ITS BRAIN AND ITS SCORE. decision resolves via brainFor(remountType) so a remounted hunter carries the b2undr brain and a shadow-lord SHADOW (enemy.ts:531-539), and killScore(enemyType) (joust.ts:243) pays the species' real value on a bird that has hatched. Guard a hatched hunter's decision brain is b2undr (not boundr) and its kill scores as a hunter. This is the behaviour half — pin it distinctly from AC-1's identity."
       - "AC-4 PEGG IS STILL PRESERVED, AND THE 4-EGG PERMADEATH STILL TERMINATES. The existing eggsLeft carry-forward (demo.ts:1076-1080, JOUSTRV4.SRC:3251-3252) is untouched and the complement still walks to permadeath at 0 — adding the species must not perturb the egg-count ladder. Guard a full 4-egg depletion of a non-bounder species reaches permadeath (no regeneration), so the type thread did not reopen the count-to-zero the eggsLeft comment guards."
       - "AC-5 DETERMINISM RE-BASELINE LANDS AS ITS OWN COMMIT, RE-FOUND NOT NUDGED. Per this epic's standing rule: any seeded fixture that hatches a non-bounder and then steps it will move because the brain changed; re-run the seeded sweeps, take the moved frames from that run, and name in the commit message which seeds moved and why. Event-searching tests should survive; frame-pinned ones will not."
+    completed: '2026-08-06'
     type: bug
+    review_findings: "APPROVED round 2. Round-1 R1-1 (DEATH3 kill-seam coverage gap) closed by two integration tests through resolveContacts (test-only, commit 116fba28); the survivor mutation now reddens them. All 5 ACs met, mutation obligations verified, 2980 joust + 408 orchestrator green, lint clean."
+    review_verdict: approved
   - id: jt9-48
     title: "Port B2DIRA/SHDIRA: collision-driven bump-facing consumes jt9-17's PBUMPX"
     description: 'Routed from jt9-17 (TEA + Dev, 2026-08-05). jt9-17 built OSTLR (the horizontal bounce) and created the PBUMPX home (DemoProcess.bumpX, drained by drainProcessBumpX at the TOP of stepDemo, WRAPX :7270-7288). It did NOT wire the DIRECTION routines bump-facing arms: B2DIRA (JOUSTRV4.SRC:4148-4150) and SHDIRA (:4379-4381) turn a smart enemy to FACE ALONG its accumulated PBUMPX after a collision shove (LDA PBUMPX,U / BEQ B2FDIR / STA PFACE,U). This is COLLISION-DRIVEN STEERING facing, distinct from OSTLR own unconditional PFACE turn that jt9-17 DID build: B2DIR/SHDIR read PBUMPX during the enemy steering decision and orient the enemy along the shove. Deferred from jt9-17 because it had no failing test there (TEA logged a major test-omission deviation), it couples to the enemy.ts steering subsystem, and its provenance pins are currently DE-SCOPED in plugins/joust/tests/steering-source.test.ts (write-set membership :121/:130 + toContain(PBUMPX,U) :122/:131) whose promotion trips the claimCovers gate (needs committed claims). SCOPE: (1) in B2DIR/SHDIR (enemy.ts), when PBUMPX != 0 set enemy facing to sign(PBUMPX) before the aim runs; read the parked DemoProcess.bumpX before the drain clears it (drain runs at the TOP of stepDemo so last-frame bump is readable this frame). (2) Promote the de-scoped steering-source pins to LAWS/CITED_RANGES rows with committed claims for :4148-4150 and :4379-4381. (3) Behaviour test: an enemy given a rightward PBUMPX faces right on its next steering decision. WATCH: likely a fingerprint-mover (facing ripples steering); expect a determinism re-baseline in its own commit. Prereq (PBUMPX home) is DONE by jt9-17.'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-06'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-06'
   - id: jt9-49
     title: Scope the horizontal-homing throttle to a live level interval — stop homingWake ticking off-level (retire jt8-2's every-wake read and the jt9-18 stale-PPVELX-during-seeks nuance)
     points: 3
@@ -1132,3 +1141,29 @@ stories:
     repos: arcade
     workflow: trivial
     type: chore
+  - id: jt9-59
+    title: 'Faithfully defer wave-ptero creation: spawn pteros one at a time (PTERWV SECCR) instead of nap-staggering already-present ones (jt9-45 follow-up)'
+    description: "jt9-45 modeled the PTERWV time-stagger as a nap-delay: all wave pteros are created at the advance and sit RENDERED + collision-eligible at their entry edges (ELEFT+1/ERIGHT-1) until they wake (nap=65*(i+1)). The ROM instead CREATES them one at a time (PTERWV: PCNAP 65 / DEC PJOYT / SECCR PTERST, JOUSTRV4.SRC:2618), so a not-yet-created ptero is neither drawn nor collidable. Port genuine deferred creation via a DemoState pending-arrivals schedule ticked in stepDemo; this supersedes jt9-44's entry-frame length===3 guard (demo-jt9-44.test.ts). Full context + Reviewer finding in sprint/archive/jt9-45-session.md (Reviewer code-review finding + Dev Design Deviation 1)."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor
+  - id: jt9-60
+    title: 'Port SHDIRA for the HUNTING shadow: SHLEP/SHDIRB also spend PBUMPX'
+    description: "Follow-up descoped from jt9-48 (which wired B2DIRA/SHDIRA bump-facing via steerWake). steerWake only models the NULL-TARGET SHLEV route into SHDIR, so jt9-48 makes only a no-target shadow spend its parked PBUMPX. But SHDIRA (JOUSTRV4.SRC:4379-4381), the shadow's bump arm, is ALSO reached by a HUNTING shadow: SHLEP's player-line track exits SHLEPB -> JMP SHDIRA (:4303-4310, unconditional) and the parked long-range seeks reach it via SHDN/SHUP0/SHUP1 -> SHDIRB -> BEQ SHDIRA (:4388-4389). So a hunting shadow carrying a bump should face along it too, and today does not. Same follow-up bucket as the already-filed SHDIRB coast finding. SCOPE: wire bumpX into the shadow's SHLEP/coast aim path (shadow()/stepEnemyDetailed, outside steerWake) so a hunting shadow with a parked bump faces sign(bumpX) before SHFDIR; add the behaviour + wiring tests; promote/extend the SHLEPB->SHDIRA and SHDIRB->SHDIRA provenance pins. Prereq: jt9-48 (the bump arg + hunter/no-target-shadow arm) DONE."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt9-61
+    title: 'Bump-facing reads PBUMPX pre-drain: small shoves (<=3) currently lost'
+    description: "Reviewer finding on jt9-48 (Heimdall, 2026-08-06). jt9-48 wired B2DIRA/SHDIRA correctly (mechanism verified), but the shove reaches the brain POST-DRAIN. drainProcessBumpX runs at the TOP of stepDemo (jt9-17) and spends <=3 px BEFORE stepFrame runs the enemy brain, so the brain reads the post-drain remainder. CONFIRMED empirically: bumpX 2->facing unchanged, 3->unchanged, 4->faces (remaining 1), 5->faces (remaining 2). But the ROM reads the FULL PBUMPX in B2DIR/SHDIR (JMP [DSMART,X] :3964 -> B2DIRA :4148) BEFORE WRAPX (:3140/:6010/:6518, the MOVEMENT phase) drains it -- brain-before-movement, same frame. So a shove of magnitude <=3 faces the bird for one frame in the ROM but ZERO frames in the port. Organic shoves (bounceApartX = velX>>1, velX even <=8) are frequently <=3 (velX 2/4/6 -> bump 1/2/3), so the bump-facing MAINTENANCE is lost for the common case (jt9-17's OSTLR still sets the IMMEDIATE facing on the bounce frame, so the feature is not fully dead -- only its post-bounce maintenance during the drain). SCOPE: (1) the enemy brain must read the PRE-drain bumpX (reorder drainProcessBumpX to AFTER stepFrame, mirroring ROM WRAPX-after-brain, or thread the pre-drain value into the ctx) -- watch jt9-17's drain-timing tests for a re-baseline. (2) Add boundary tests: bump=3 (should face, remaining 0) vs the current cutoff, and characterize each organic magnitude 1..5. (3) steering-wiring.test.ts uses bumpX=16, which is UNREACHABLE organically (max ~5) and over-margins the drain-survival -- retest at realistic magnitudes. Prereq: jt9-48 DONE."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug

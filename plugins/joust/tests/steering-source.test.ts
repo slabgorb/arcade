@@ -64,6 +64,16 @@ const LAWS: ReadonlyArray<{ name: string; file: string; n: number; must: readonl
   { name: 'SHDICL installs SHAV', file: 'JOUSTRV4.SRC', n: 4373, must: ['SHDICL', 'LDD', '#SHAV', 'SLOW DOWN!!! GOING INTO A CLIFF'] },
   { name: "the shadow's turn wake flaps too", file: 'JOUSTRV4.SRC', n: 4377, must: ['LDB', '#1'] },
   { name: 'SHAV mirrors B2AV', file: 'JOUSTRV4.SRC', n: 4406, must: ['SHAV', 'CLRB'] },
+  // ── jt9-48: B2DIRA/SHDIRA — the collision BUMP-FACING arm every path funnels
+  //    through before the aim (was de-scoped; jt9-17 parked PBUMPX, this spends it)
+  { name: 'B2DIRA reads the parked shove — FACE, BUMPED DIRECTION', file: 'JOUSTRV4.SRC', n: 4148, must: ['B2DIRA', 'LDA', 'PBUMPX,U', 'FACE, BUMPED DIRECTION'] },
+  { name: 'a zero shove skips the write (BEQ B2FDIR)', file: 'JOUSTRV4.SRC', n: 4149, must: ['BEQ', 'B2FDIR'] },
+  { name: 'else the shove BECOMES the facing (STA PFACE)', file: 'JOUSTRV4.SRC', n: 4150, must: ['STA', 'PFACE,U'] },
+  { name: 'B2FDIR then aims from PFACE (BMI ⇒ FACE LEFT)', file: 'JOUSTRV4.SRC', n: 4151, must: ['B2FDIR', 'LDA', 'PFACE,U'] },
+  { name: 'SHDIRA reads the shove too — the shadow copy', file: 'JOUSTRV4.SRC', n: 4379, must: ['SHDIRA', 'LDA', 'PBUMPX,U', 'FACE, BUMPED DIRECTION'] },
+  { name: 'a zero shove skips it (BEQ SHFDIR)', file: 'JOUSTRV4.SRC', n: 4380, must: ['BEQ', 'SHFDIR'] },
+  { name: 'else STA PFACE — face the shove', file: 'JOUSTRV4.SRC', n: 4381, must: ['STA', 'PFACE,U'] },
+  { name: 'SHFDIR then aims from PFACE, mirroring B2FDIR', file: 'JOUSTRV4.SRC', n: 4382, must: ['SHFDIR', 'LDA', 'PFACE,U'] },
   // ── SHDN: the free-fall and its velX-gated escape ───────────────────────────
   { name: 'SHDN — the ROM’s own words: NO FLAPING WINGS', file: 'JOUSTRV4.SRC', n: 4246, must: ['SHDN', 'LDD', '#SHDN2', 'NO FLAPING WINGS'] },
   { name: 'wings up', file: 'JOUSTRV4.SRC', n: 4248, must: ['CLRB', 'WINGS UP'] },
@@ -120,9 +130,9 @@ describe.skipIf(!vendoredAvailable)('the steering laws are really in the 1982 so
 
   it('B2DIR’s PFACE writes are the two turns plus the PBUMPX bump — nothing else (:4104-4159)', () => {
     // The complete write set (the jt8-6 lesson: enumerate, don't count). :4122
-    // and :4141 are this story's aiming writes; :4150 is `B2DIRA`'s bump-facing
+    // and :4141 are jt8-3's aiming writes; :4150 is `B2DIRA`'s bump-facing
     // (`LDA PBUMPX,U / BEQ B2FDIR / STA PFACE,U`), the collision-face mechanism
-    // this port does not model — recorded as a Delivery Finding, not scope.
+    // jt9-48 now wires — its provenance is promoted to LAWS/CITED_RANGES above.
     const writes = sourceLines('JOUSTRV4.SRC')
       .slice(4103, 4159) // :4104-4159
       .map((l, i) => ({ l, n: 4104 + i }))
@@ -210,6 +220,10 @@ const CITED_RANGES: ReadonlyArray<{ law: string; file: string; start: number; en
   { law: 'SHDIR — the shadow look-ahead', file: 'JOUSTRV4.SRC', start: 4350, end: 4372 },
   { law: 'SHDICL/SHAV — the shadow’s slow', file: 'JOUSTRV4.SRC', start: 4373, end: 4377 },
   { law: 'SHDIRB — the seeks coast (filed finding)', file: 'JOUSTRV4.SRC', start: 4388, end: 4392 },
+  // jt9-48 — the collision bump-facing arm, promoted from de-scoped. RED until
+  // Dev commits a claim pinning each range (the claimCovers gate the SM flagged).
+  { law: 'B2DIRA — the hunter bump-facing arm', file: 'JOUSTRV4.SRC', start: 4148, end: 4150 },
+  { law: 'SHDIRA — the shadow bump-facing arm', file: 'JOUSTRV4.SRC', start: 4379, end: 4381 },
 ]
 
 describe('each steering law is pinned by a claims/*.json entry', () => {

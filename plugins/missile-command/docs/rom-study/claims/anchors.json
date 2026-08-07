@@ -1,0 +1,442 @@
+[
+ {
+  "id": "MC-ANCH-W3DSUP-587",
+  "symbol": "WRITE A STAMP",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: WRITE A STAMP",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 587,
+   "verbatim": "\t.SBTTL WRITE A STAMP"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3DSUP-1067",
+  "symbol": "DRAW ALL LIVING CITIES",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: DRAW ALL LIVING CITIES",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 1067,
+   "verbatim": "\t.SBTTL DRAW ALL LIVING CITIES"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3DSUP-1221",
+  "symbol": "DRAW MISSILE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: DRAW MISSILE",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 1221,
+   "verbatim": "\t.SBTTL DRAW MISSILE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3DSUP-1583",
+  "symbol": "SET UP COLORS FOR NEXT WAVE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: SET UP COLORS FOR NEXT WAVE",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 1583,
+   "verbatim": "\t.SBTTL SET UP COLORS FOR NEXT WAVE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3DSUP-1712",
+  "symbol": "CLEAR SCREEN",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: CLEAR SCREEN",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 1712,
+   "verbatim": "\t.SBTTL CLEAR SCREEN"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3DSUP-3724",
+  "symbol": "INITIALIZE HIGH SCORE TABLE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: INITIALIZE HIGH SCORE TABLE",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3724,
+   "verbatim": "\t.SBTTL INITIALIZE HIGH SCORE TABLE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3DSUP-3780",
+  "symbol": "UPDATE HIGH SCORE LADDER",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: UPDATE HIGH SCORE LADDER",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3780,
+   "verbatim": "\t.SBTTL UPDATE HIGH SCORE LADDER"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3DSUP-4064",
+  "symbol": "TAKE INITIALS FOR NEW HIGH SCORE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: TAKE INITIALS FOR NEW HIGH SCORE",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 4064,
+   "verbatim": "\t.SBTTL TAKE INITIALS FOR NEW HIGH SCORE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3DSUP-4290",
+  "symbol": "DISPLAY HIGH SCORES TABLE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: DISPLAY HIGH SCORES TABLE",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 4290,
+   "verbatim": "\t.SBTTL DISPLAY HIGH SCORES TABLE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3INT-169",
+  "symbol": "PROCESS INTERRUPT",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: PROCESS INTERRUPT",
+  "source": {
+   "file": "W3INT.MAC",
+   "line": 169,
+   "verbatim": "\t.SBTTL PROCESS INTERRUPT"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3INT-269",
+  "symbol": "HANDLE VBLANK",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: HANDLE VBLANK",
+  "source": {
+   "file": "W3INT.MAC",
+   "line": 269,
+   "verbatim": "\t.SBTTL HANDLE VBLANK"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-475",
+  "symbol": "MAINLINE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: MAINLINE",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 475,
+   "verbatim": "\t.SBTTL MAINLINE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-539",
+  "symbol": "PLAY",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: PLAY",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 539,
+   "verbatim": "\t.SBTTL PLAY"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-561",
+  "symbol": "SETUP STATE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: SETUP STATE",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 561,
+   "verbatim": "\t.SBTTL SETUP STATE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-615",
+  "symbol": "PAUSE STATE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: PAUSE STATE",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 615,
+   "verbatim": "\t.SBTTL PAUSE STATE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-847",
+  "symbol": "PROCESS CURSOR MOTION",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: PROCESS CURSOR MOTION",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 847,
+   "verbatim": "\t.SBTTL PROCESS CURSOR MOTION"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-891",
+  "symbol": "SMART CURSOR MOVER (ATTRACT)",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: SMART CURSOR MOVER (ATTRACT)",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 891,
+   "verbatim": "\t.SBTTL SMART CURSOR MOVER (ATTRACT)"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-1091",
+  "symbol": "ADD TBALL TO CURSOR POSITION",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: ADD TBALL TO CURSOR POSITION",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 1091,
+   "verbatim": "\t.SBTTL ADD TBALL TO CURSOR POSITION"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-1173",
+  "symbol": "UPDATE CURSOR POSITION",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: UPDATE CURSOR POSITION",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 1173,
+   "verbatim": "\t.SBTTL UPDATE CURSOR POSITION"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-1211",
+  "symbol": "LAUNCH ABMS",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: LAUNCH ABMS",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 1211,
+   "verbatim": "\t.SBTTL LAUNCH ABMS"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-1329",
+  "symbol": "LAUNCH 1 ABM",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: LAUNCH 1 ABM",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 1329,
+   "verbatim": "\t.SBTTL LAUNCH 1 ABM"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-1443",
+  "symbol": "UPDATE ICBM POSITIONS",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: UPDATE ICBM POSITIONS",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 1443,
+   "verbatim": "\f\t.SBTTL UPDATE ICBM POSITIONS"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-1811",
+  "symbol": "PROCESS EXPLOSIONS",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: PROCESS EXPLOSIONS",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 1811,
+   "verbatim": "\t.SBTTL PROCESS EXPLOSIONS"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-1925",
+  "symbol": "MISSILE DAMAGE DETECTION & PROCESS",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: MISSILE DAMAGE DETECTION & PROCESS",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 1925,
+   "verbatim": "\t.SBTTL MISSILE DAMAGE DETECTION & PROCESS"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-2069",
+  "symbol": "SPUTNIK KILL",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: SPUTNIK KILL",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 2069,
+   "verbatim": "\t.SBTTL SPUTNIK KILL"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-2167",
+  "symbol": "DESTROY A CITY OR BASE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: DESTROY A CITY OR BASE",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 2167,
+   "verbatim": "\t.SBTTL DESTROY A CITY OR BASE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-2273",
+  "symbol": "LAUNCH ICBMS",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: LAUNCH ICBMS",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 2273,
+   "verbatim": "\t.SBTTL LAUNCH ICBMS"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-2635",
+  "symbol": "CRUISE MISSILE LAUNCH",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: CRUISE MISSILE LAUNCH",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 2635,
+   "verbatim": "\t.SBTTL CRUISE MISSILE LAUNCH"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-2683",
+  "symbol": "MIRV AN ICBM",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: MIRV AN ICBM",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 2683,
+   "verbatim": "\t.SBTTL MIRV AN ICBM"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-3177",
+  "symbol": "CALCULATE DELTA FROM OBJECT 1 TO 2",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: CALCULATE DELTA FROM OBJECT 1 TO 2",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 3177,
+   "verbatim": "\t.SBTTL CALCULATE DELTA FROM OBJECT 1 TO 2"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-3279",
+  "symbol": "CALCULATE MISSILE VELOCITY & DISPLAY INCREMENT",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: CALCULATE MISSILE VELOCITY & DISPLAY INCREMENT",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 3279,
+   "verbatim": "\t.SBTTL CALCULATE MISSILE VELOCITY & DISPLAY INCREMENT"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-3831",
+  "symbol": "NEW GAME SETUP",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: NEW GAME SETUP",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 3831,
+   "verbatim": "\f\t.SBTTL NEW GAME SETUP"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-3901",
+  "symbol": "1ST PHASE OF NEW WAVE SETUP",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: 1ST PHASE OF NEW WAVE SETUP",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 3901,
+   "verbatim": "\t.SBTTL\t1ST PHASE OF NEW WAVE SETUP"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-4323",
+  "symbol": "CITY BONUS",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: CITY BONUS",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 4323,
+   "verbatim": "\t.SBTTL CITY BONUS"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-4765",
+  "symbol": "REGENERATE CITIES",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: REGENERATE CITIES",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 4765,
+   "verbatim": "\t.SBTTL REGENERATE CITIES"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-4931",
+  "symbol": "DISPLAY EXPLOSION PICTURE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: DISPLAY EXPLOSION PICTURE",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 4931,
+   "verbatim": "\t.SBTTL DISPLAY EXPLOSION PICTURE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-5005",
+  "symbol": "DRAW A CIRCLE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: DRAW A CIRCLE",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 5005,
+   "verbatim": "\t.SBTTL DRAW A CIRCLE"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-5277",
+  "symbol": "REFRESH ATTRACT MODE MESSAGES",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: REFRESH ATTRACT MODE MESSAGES",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 5277,
+   "verbatim": "\t.SBTTL REFRESH ATTRACT MODE MESSAGES"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-5331",
+  "symbol": "SCROLL ATTRACT MESSAGES ACROSS SCREEN",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: SCROLL ATTRACT MESSAGES ACROSS SCREEN",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 5331,
+   "verbatim": "\t.SBTTL SCROLL ATTRACT MESSAGES ACROSS SCREEN"
+  }
+ },
+ {
+  "id": "MC-ANCH-W3MAIN-5549",
+  "symbol": "ADD TO PLAYER'S SCORE",
+  "value": "anchor",
+  "meaning": "Routine anchor (.SBTTL) — subsystem index entry: ADD TO PLAYER'S SCORE",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 5549,
+   "verbatim": "\t.SBTTL ADD TO PLAYER'S SCORE"
+  }
+ }
+]

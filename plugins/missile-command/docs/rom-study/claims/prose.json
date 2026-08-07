@@ -1,0 +1,90 @@
+[
+ {
+  "id": "MC-CITE-W3COMN-1",
+  "symbol": "RADIX",
+  "value": "cite",
+  "meaning": "Radix directive: bare literals are HEX, trailing period is DECIMAL — inherited by every module.",
+  "source": {
+   "file": "W3COMN.MAC",
+   "line": 1,
+   "verbatim": "\t.RADIX 16"
+  }
+ },
+ {
+  "id": "MC-CITE-W3INT-281",
+  "symbol": "SYNC",
+  "value": "cite",
+  "meaning": "The VBLANK IRQ (only the blank one of the 4 IRQs/frame) advances SYNC once per frame — the O-2 timebase.",
+  "source": {
+   "file": "W3INT.MAC",
+   "line": 281,
+   "verbatim": "\tINC SYNC"
+  }
+ },
+ {
+  "id": "MC-CITE-W3MAIN-497",
+  "symbol": "SYNC-WAIT",
+  "value": "cite",
+  "meaning": "The mainline blocks on SYNC before running a frame (BEGIN ;SYNC UP WITH I/O).",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 497,
+   "verbatim": "\tBEGIN\t\t\t;SYNC UP WITH I/O"
+  }
+ },
+ {
+  "id": "MC-CITE-W3MAIN-239",
+  "symbol": "FRAME",
+  "value": "cite",
+  "meaning": "FRAME: .BLKB 1 — the per-frame counter (1-60) that paces the sim.",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 239,
+   "verbatim": "FRAME:\t.BLKB 1\t\t\t;FRAME COUNTER (1-60)"
+  }
+ },
+ {
+  "id": "MC-CITE-W3MAIN-781",
+  "symbol": "FRAME-INC",
+  "value": "cite",
+  "meaning": "INC FRAME — the mainline advances the frame counter once per video frame.",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 781,
+   "verbatim": "\tINC FRAME"
+  }
+ },
+ {
+  "id": "MC-CITE-W3MAIN-623",
+  "symbol": "FRAME-QUARTER",
+  "value": "cite",
+  "meaning": "Sub-second cadence: the pause-state job runs every 4/60 sec off FRAME.",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 623,
+   "verbatim": "\tIFEQ\t\t\t;UPDATE EVERY 4/60 SEC"
+  }
+ },
+ {
+  "id": "MC-CITE-W3MAIN-9",
+  "symbol": "DFT",
+  "value": "cite",
+  "meaning": "Programmer initials DFT in the module banner (provenance).",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 9,
+   "verbatim": "\t.SBTTL * PROGRAMMER: DFT            *"
+  }
+ },
+ {
+  "id": "MC-CITE-W3MAIN-3877",
+  "symbol": "STCITY-READ",
+  "value": "cite",
+  "meaning": "NEW GAME SETUP reads the starting-city count from the STCITY option table (LDA AY,STCITY).",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 3877,
+   "verbatim": "\tLDA AY,STCITY\t\t;# OF CITIES"
+  }
+ }
+]

@@ -190,11 +190,42 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   // (no `=` RHS), like OLDRAD/MAX_BLAST_RADIUS; its value is entry [0].
   const DERIVED = new Set(['IVMAX', 'MAX_BLAST_RADIUS', 'STCITY'])
 
+  // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
+  // `=` RHS. The dossier-coverage claims mc2-6 added (routine `.SBTTL` anchors,
+  // instruction sites like `INC FRAME`, and schema-only external markers) carry
+  // no decodable literal AT ALL; their integrity is held by the byte checker
+  // (the verbatim must re-open byte-for-byte at the cited physical line, so a
+  // constant claim cannot masquerade as an anchor — its real source line HAS
+  // the `=` and would be filtered IN). Their `value` is the kind tag
+  // ('anchor' | 'cite' | 'external'), not a number.
+  const isEquClaim = (c: { source: { verbatim: string } }): boolean => rhs(c.source.verbatim) !== ''
+
   it('the committed claims set is non-empty (the guard must have teeth)', () => {
     expect(loadClaims().length).toBeGreaterThan(0)
   })
 
-  it.each(loadClaims().filter((c) => !DERIVED.has(c.symbol)))(
+  it('the EQU-claim subset is non-empty (the decode loop below must have teeth)', () => {
+    expect(loadClaims().filter(isEquClaim).length).toBeGreaterThan(0)
+  })
+
+  it('every non-EQU claim carries a kind-tag string value, never a number (mc2-6 review M6)', () => {
+    // The vacuous-green vector this closes: a NUMERIC value on an anchor/cite/
+    // external claim would flow into the un-cited-literal guard's claimedValues
+    // set (citations.test.ts section 4 takes Number(c.value)) and could
+    // greenlight an un-cited magic constant in src/core. Non-EQU claims have no
+    // decodable value BY DEFINITION — their value is the kind tag, and nothing
+    // else is legal. (DERIVED constants are EQU-or-.BYTE cases with real
+    // numeric values, checked in the explicit block below — they are exempt.)
+    const KIND_TAGS = new Set(['anchor', 'cite', 'external'])
+    for (const c of loadClaims().filter((c) => !isEquClaim(c) && !DERIVED.has(c.symbol))) {
+      expect(
+        typeof c.value === 'string' && KIND_TAGS.has(c.value),
+        `${c.id}: non-EQU claim value must be a kind tag ('anchor'|'cite'|'external'), got ${JSON.stringify(c.value)}`,
+      ).toBe(true)
+    }
+  })
+
+  it.each(loadClaims().filter((c) => !DERIVED.has(c.symbol) && isEquClaim(c)))(
     '$id ($symbol): value equals decodeRadix16(verbatim RHS)',
     (c) => {
       const token = rhs(c.source.verbatim)

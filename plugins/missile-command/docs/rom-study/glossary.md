@@ -37,7 +37,7 @@ the source token verbatim (including the trailing period) so the radix is audita
 | `MIRVWV` | `1` | 1 | hex | First wave with a MIRV | `W3COMN.MAC:205` | `MC-MIRVWV` |
 | `STUPID` | `9` | 9 | hex | Wave at which cruise missiles may fly up | `W3COMN.MAC:231` | `MC-STUPID` |
 
-### City coordinates (`W3COMN.MAC:123–145`, all hex)
+### City coordinates (`W3COMN.MAC:123-145`, all hex)
 
 The six cities' fixed cabinet H/V positions. Bare hex throughout — no decimal overrides.
 

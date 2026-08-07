@@ -1180,7 +1180,7 @@ export function lavaGateFires(enemy: EnemyState, target: PlayerView | null): boo
  * reports `turned`; open air holds everything. Pure — the argument is never
  * mutated.
  */
-export function steerWake(enemy: EnemyState, target: PlayerView | null): SteerResult {
+export function steerWake(enemy: EnemyState, target: PlayerView | null, bumpX = 0): SteerResult {
   const held: SteerResult = { enemy, turned: false }
   if (!enemy.entity.airborne) return held
   const pixelY = enemy.entity.posY >> 8
@@ -1196,14 +1196,28 @@ export function steerWake(enemy: EnemyState, target: PlayerView | null): SteerRe
   } else {
     return held
   }
+  // jt9-48 — B2DIRA (:4148-4150) / SHDIRA (:4379-4381): the collision shove is
+  // the LAST word on facing before the aim. `LDA PBUMPX,U / BEQ B2FDIR / STA
+  // PFACE,U` — EVERY B2DIR/SHDIR exit below funnels through this tail (the
+  // parked `BEQ B2DIRA` :4105, the open-air `BEQ B2DIRA` :4121, AND a cliff
+  // turn — `B2DICL` :4142-4146 falls THROUGH into B2DIRA), so a non-zero shove
+  // overrides whatever the look-ahead just wrote. PFACE<0 is LEFT (`BMI`), so
+  // facing = sign(bumpX). Zero (an unshoved bird) leaves facing untouched. It
+  // is reached ONLY past the lava-divert and brain-type gates above, which is
+  // why those return `held` before this point.
+  const bumpFace = (r: SteerResult): SteerResult => {
+    if (bumpX > 0) return { ...r, enemy: { ...r.enemy, facing: 1 } }
+    if (bumpX < 0) return { ...r, enemy: { ...r.enemy, facing: -1 } }
+    return r
+  }
   const vx = enemy.entity.velXIndex
-  if (vx === 0) return held
+  if (vx === 0) return bumpFace(held)
   const dir = vx > 0 ? 1 : -1
   const len = enemy.brain === 'shadow' ? SHXLEN : B2XLEN
   // The (PVELY×8)>>8 projection (:4108-4118): sample where the bird is going.
   const sampleY = pixelY + ((velY * 8) >> 8)
-  if (bckMaskAt(enemy.entity.posX + len * dir, sampleY) === 0) return held
-  return { enemy: { ...enemy, facing: dir > 0 ? -1 : 1 }, turned: true }
+  if (bckMaskAt(enemy.entity.posX + len * dir, sampleY) === 0) return bumpFace(held)
+  return bumpFace({ enemy: { ...enemy, facing: dir > 0 ? -1 : 1 }, turned: true })
 }
 
 /**
@@ -1398,10 +1412,14 @@ function lavaRecheckExits(enemy: EnemyState): boolean {
  */
 export function stepEnemyDetailed(
   enemy: EnemyState,
-  ctx?: { player?: PlayerView | null; wave?: number; lavaBehind?: boolean },
+  ctx?: { player?: PlayerView | null; wave?: number; lavaBehind?: boolean; bumpX?: number },
 ): { enemy: EnemyState; wingEdge: WingEdge } {
   const target = ctx?.player ?? null
   const wave = ctx?.wave ?? 1
+  // jt9-48 — the collision shove jt9-17 parked on the process (`PBUMPX`),
+  // threaded in like `player`/`wave` because only the caller (frame.ts) holds
+  // the DemoProcess it rides. Spent by `B2DIR`/`SHDIR`'s bump-facing arm below.
+  const bumpX = ctx?.bumpX ?? 0
   // jt9-1: `PPREV` — did a lava troll execute immediately before this process
   // this frame? Only the scheduler knows its own wake order, so it is threaded
   // in exactly as `player` (jt8-1) and `wave` (uf1-2) are.
@@ -1414,7 +1432,7 @@ export function stepEnemyDetailed(
   // the ROM the throttle blocks (`B2LE11`/`SHLEPB`) fall INTO the direction
   // routine, so B2DIR/SHDIR read (and may overwrite) the freshly-COMplemented
   // facing on the same wake.
-  const steered = steerWake(flipped, target)
+  const steered = steerWake(flipped, target, bumpX)
   const homed = steered.enemy
   // jt9-22 — BOLAVA (:3948-3964). An enemy already in the lava episode enters at
   // its stored `PJOY,U` address, which BYPASSES the whole brain/seek/wing
