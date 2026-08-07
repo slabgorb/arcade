@@ -10,7 +10,8 @@ stories:
     title: 'Font port: transcribe FONT35 (3x5) + FONT57 (5x7) from MESSAGE.SRC into pure core data, add a shell raster text renderer'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
   - id: jt10-2
