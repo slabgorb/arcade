@@ -6,7 +6,7 @@
 // 3-vertex triangle — and deferred authentic geometry to mc9. This file reddens
 // that placeholder and stays green once Dev ports the W3DSUP stamp layer:
 //   • WRITE A STAMP        (W3DSUP.MAC:587)  — the 8-row glyph blitter
-//   • DRAW ALL LIVING CITIES (W3DSUP.MAC:1067) — ALLCIT → DACITY, 3 stamps/city
+//   • DRAW ALL LIVING CITIES (W3DSUP.MAC:1067) — ALLCIT → DACITY, 4 stamps/city
 //
 // ─── PIXELS ARE THE REVIEWER'S JOB; WIRING IS OURS ───────────────────────────
 // Exactly the division render-field.test.ts drew for mc1-2. Whether the drawn
@@ -36,6 +36,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { drawFrame } from '../src/shell/render.js'
 import { createGame, type GameState } from '../src/core/game.js'
+import { NCITY, NMISBA } from '../src/core/field.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const shellDir = join(root, 'src', 'shell')
@@ -49,11 +50,12 @@ const H = 231
 // beyond these three — the "src/shell data module" the story requires.
 const PREEXISTING_SHELL = new Set(['render.ts', 'input.ts', 'timebase.ts'])
 
-// ─── A recording 2D context that COUNTS every coordinate-bearing primitive ───
-// Same shape as render-field.test.ts's harness, but here the datum is the count:
-// a live structure's authentic geometry emits more marks than a placeholder, and
-// diffing two otherwise-identical frames isolates a single structure's marks.
-function recordingCtx(): { ctx: CanvasRenderingContext2D; marks: string[] } {
+// ─── A 2D context that COUNTS every coordinate-bearing primitive ─────────────
+// Named apart from render-field/render-battle's `recordingCtx` on purpose: those
+// siblings record structured `Mark[]`; this one's datum is the op-name COUNT
+// (string[]) — a live structure's authentic geometry emits more marks than a
+// placeholder, and diffing two otherwise-identical frames isolates one structure.
+function markCountingCtx(): { ctx: CanvasRenderingContext2D; marks: string[] } {
   const marks: string[] = []
   const mark =
     (op: string) =>
@@ -95,7 +97,7 @@ function recordingCtx(): { ctx: CanvasRenderingContext2D; marks: string[] } {
 
 /** Total marks drawn for one frame of the given state. */
 function markCount(state: GameState): number {
-  const { ctx, marks } = recordingCtx()
+  const { ctx, marks } = markCountingCtx()
   drawFrame(ctx, state, W, H)
   return marks.length
 }
@@ -111,8 +113,8 @@ function fieldState(cityAlive: readonly boolean[], baseAlive: readonly boolean[]
   }
 }
 
-const NC = 6 // NCITY
-const NB = 3 // NMISBA
+const NC = NCITY
+const NB = NMISBA
 const noneAlive = (n: number): boolean[] => Array(n).fill(false)
 /** Toggle index `i` true in an otherwise all-dead array of length `n`. */
 const onlyAt = (n: number, i: number): boolean[] => noneAlive(n).map((_, j) => j === i)
@@ -120,56 +122,83 @@ const onlyAt = (n: number, i: number): boolean[] => noneAlive(n).map((_, j) => j
 // Everything dead — the shared baseline both single-structure frames diff against.
 const ALL_DEAD = fieldState(noneAlive(NC), noneAlive(NB))
 
-// The render source = render.ts plus any NEW src/shell modules it draws from.
-function renderSourceText(): string {
-  const shellFiles = readdirSync(shellDir).filter((f) => f.endsWith('.ts'))
-  return shellFiles.map((f) => readFileSync(join(shellDir, f), 'utf8')).join('\n')
+// ─── Which shell module render.ts draws its stamp geometry from ──────────────
+// The story requires the stamp geometry to live in its OWN cited src/shell data
+// module that render.ts consumes — not baked into render.ts. We resolve that
+// module structurally: the sibling './…' import in render.ts that pulls in the
+// real stamp symbols. Naming those symbols (not "any ./ import") is what makes
+// the wiring assertion enforce the wiring; scoping the citation scan to THIS
+// module (not the whole shell dir) is what makes the citation guard bite —
+// dropping a cite from the stamp module reddens even though render.ts keeps its
+// own copy.
+const STAMP_SYMBOLS = ['CITY_STAMPS', 'MISSILE_STACK'] as const
+
+/** The sibling shell module render.ts imports the stamp geometry from — the `./…`
+ *  import that pulls in every STAMP_SYMBOL. `file` is '' (and `imported` empty)
+ *  when render.ts imports no such module. */
+function stampModule(): { file: string; imported: readonly string[] } {
+  const renderSrc = readFileSync(join(shellDir, 'render.ts'), 'utf8')
+  for (const m of renderSrc.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+['"]\.\/([^'"]+\.js)['"]/g)) {
+    const imported = m[1].split(',').map((s) => s.trim().replace(/^type\s+/, ''))
+    if (STAMP_SYMBOLS.every((s) => imported.includes(s))) {
+      return { file: m[2].replace(/\.js$/, '.ts'), imported }
+    }
+  }
+  return { file: '', imported: [] }
+}
+
+/** Source text of that stamp module — the scope the citation guards police. */
+function stampModuleText(): string {
+  const { file } = stampModule()
+  expect(file, 'render.ts imports no shell module exporting CITY_STAMPS + MISSILE_STACK').not.toBe('')
+  return readFileSync(join(shellDir, file), 'utf8')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// A. AC1/AC2 — stamp geometry lives in a cited src/shell DATA MODULE that
-//    render.ts consumes (not a literal baked into render.ts).
-//    RED: the only shell modules are render/input/timebase, and render.ts imports
-//    nothing shell-local.
+// A. AC1/AC2 — stamp geometry lives in a NEW src/shell DATA MODULE that render.ts
+//    consumes BY NAME (CITY_STAMPS + MISSILE_STACK), not a literal baked into
+//    render.ts. RED before mc9-1: the only shell modules are render/input/timebase
+//    and render.ts imports no such geometry.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('mc9-1 AC1/AC2 — stamp geometry is a src/shell data module render consumes', () => {
-  it('a NEW src/shell module (beyond render/input/timebase) holds the stamp geometry', () => {
-    const newModules = readdirSync(shellDir)
-      .filter((f) => f.endsWith('.ts'))
-      .filter((f) => !PREEXISTING_SHELL.has(f))
+  it('render.ts imports the real stamp symbols from a NEW sibling shell module', () => {
+    const { file, imported } = stampModule()
     expect(
-      newModules.length,
-      'the story requires the city/base stamp geometry to live in its own src/shell data module',
-    ).toBeGreaterThan(0)
+      file,
+      'render.ts must import the stamp geometry (CITY_STAMPS + MISSILE_STACK) from a sibling src/shell module',
+    ).not.toBe('')
+    expect(
+      PREEXISTING_SHELL.has(file),
+      `the stamp geometry must live in its OWN new module, not a pre-existing one (${file})`,
+    ).toBe(false)
+    for (const sym of STAMP_SYMBOLS) {
+      expect(imported, `render.ts must import ${sym} from ${file}`).toContain(sym)
+    }
   })
 
-  it('render.ts imports the stamp geometry from a shell-local module', () => {
-    const renderSrc = readFileSync(join(shellDir, 'render.ts'), 'utf8')
-    expect(
-      renderSrc,
-      "render.ts must import stamp geometry from a sibling src/shell module (a './…' import), " +
-        'not hardcode the shapes and not reach into core for them',
-    ).toMatch(/import\s+[^;]*from\s+['"]\.\/[^'"]+['"]/)
+  it('the imported stamp module actually exports that geometry', () => {
+    const src = stampModuleText()
+    for (const sym of STAMP_SYMBOLS) {
+      expect(src, `the stamp module must export ${sym}`).toMatch(new RegExp(`export\\s+const\\s+${sym}\\b`))
+    }
   })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// B. AC2 — the render source CITES the two W3DSUP stamp routines.
-//    RED: neither citation exists in any src/shell module today.
+// B. AC2 — the stamp module render.ts consumes CITES the two W3DSUP routines.
+//    Scoped to that module (not the whole shell dir): removing a cite from the
+//    stamp module reddens even though render.ts carries its own copy.
+//    RED before mc9-1: no stamp module exists to cite them.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('mc9-1 AC2 — the render source cites the W3DSUP stamp routines', () => {
+describe('mc9-1 AC2 — the stamp module cites the W3DSUP stamp routines', () => {
   it('cites WRITE A STAMP at W3DSUP.MAC:587', () => {
-    expect(
-      renderSourceText(),
-      'the shell render source must cite WRITE A STAMP (W3DSUP.MAC:587)',
-    ).toMatch(/W3DSUP\.MAC:587\b/)
+    expect(stampModuleText(), 'the stamp module must cite WRITE A STAMP (W3DSUP.MAC:587)').toMatch(/W3DSUP\.MAC:587\b/)
   })
 
   it('cites DRAW ALL LIVING CITIES at W3DSUP.MAC:1067', () => {
-    expect(
-      renderSourceText(),
-      'the shell render source must cite DRAW ALL LIVING CITIES (W3DSUP.MAC:1067)',
-    ).toMatch(/W3DSUP\.MAC:1067\b/)
+    expect(stampModuleText(), 'the stamp module must cite DRAW ALL LIVING CITIES (W3DSUP.MAC:1067)').toMatch(
+      /W3DSUP\.MAC:1067\b/,
+    )
   })
 })
 
