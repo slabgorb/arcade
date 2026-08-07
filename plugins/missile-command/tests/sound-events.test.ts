@@ -118,6 +118,24 @@ describe('mc8-2 — stepGame emits each sim sound-moment at its frame', () => {
     expect(next.cities[0].alive, 'staging: the struck city must die').toBe(false)
     expect(kinds(next.soundEvents)).toContain('structureDestroyed')
   })
+
+  it('an ALREADY-dead structure does NOT re-emit `structureDestroyed` on a later frame', () => {
+    // structureDestroyed is a rising-edge moment — the frame a structure DIES — not
+    // a per-frame census of the dead. A frame with a pre-dead city but no new loss
+    // must be silent; a guard that counts every !alive structure would machine-gun
+    // the explosion cue for the graveyard every frame (mutation-caught).
+    const base = createGame(1)
+    const g: GameState = {
+      ...base,
+      remaining: 0, // no spawn
+      icbms: [], // nothing arriving to destroy anything this frame
+      abms: [],
+      cities: base.cities.map((c, i) => (i === 0 ? { ...c, alive: false } : c)), // city 0 died earlier
+    }
+    const next = stepGame(g)
+    expect(next.phase, 'staging: five cities still stand, so still in play').toBe('play')
+    expect(kinds(next.soundEvents)).not.toContain('structureDestroyed')
+  })
 })
 
 // ─── AC1: the channel is per-frame, not sticky, and deterministic ─────────────

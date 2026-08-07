@@ -196,4 +196,14 @@ describe('updateSustainedSounds — the drone does not ring through game over', 
     updateSustainedSounds(r.audio, over())
     expect(r.calls).toContain('stopLoop:drone')
   })
+
+  it('during PLAY it does NOT stop the drone — the silence is EDGE-conditional, not unconditional', () => {
+    // The control the edge tests need: an unconditional stopLoop (ignoring phase)
+    // would silence the drone every frame, so when mc8-3 starts it mid-run it would
+    // never sound. A live-play frame must leave a running drone alone (mutation-caught).
+    const r = recorder()
+    r.audio.startLoop('drone')
+    updateSustainedSounds(r.audio, createGame(1)) // a fresh game is phase 'play'
+    expect(r.calls).not.toContain('stopLoop:drone')
+  })
 })
