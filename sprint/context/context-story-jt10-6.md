@@ -2,6 +2,20 @@
 
 **DERIVED ACs** — the epic YAML's `description` and `acceptance_criteria` were `null`. These acceptance criteria are derived from the primary source material cited below and are the CANONICAL reference for RED/Review.
 
+> ⚠ **CORRECTION (TEA, RED phase — user-ruled). The overlay TEXT and its CITATION in AC-1/AC-6 below are WRONG; the RED tests pin the corrected values. Do NOT implement `'GAME OVER'` / `GAMEND`.**
+>
+> The derived AC named the overlay text **`GAME OVER`** cited to **`GAMEND` (EQU.SRC:237)**. Both are wrong against the ROM:
+> - `GAMEND` (EQU.SRC:237) is **`RMB 3`** — a RAM variable for the "GAME OVER H.S.T.D. CHECK AND ENTER ROUTINE", **not a message string**.
+> - The whole-cabinet game-over overlay Joust actually displays is **`'THY GAME IS OVER'`** — `MSGOVR EQU $00` (**MESSEQU.SRC:18**), put up by the routine literally labelled "GAME OVER MESSAGE": `GOVERM` (JOUSTRV4.SRC:674 `LDD #256*MSGOVR+…  PUT UP GAME OVER MESSAGE`), held ~**88 ticks (~1.47s)** by `GOVWAT` (JOUSTRV4.SRC:678 `#11  8*11 OR 88 TICK WAIT`) before `JMP GAMEND`.
+> - `'GAME OVER'` = `MSGAMO $6D` (MESSEQU.SRC:130) is a **different** string — the per-player banner `GAMOV1` ("GAME OVER FOR PLAYER 1 OR 2", a 3-second message). **Not this story's string.**
+>
+> **User ruling (RED):** ship the faithful **`'THY GAME IS OVER'`** (`MSGOVR $00`, MESSEQU.SRC:18). So:
+> - **AC-1/AC-6 string:** the overlay text is `'THY GAME IS OVER'`, exported as a core constant **`GAME_OVER_TEXT`** from `src/core/cabinet.ts` (mirroring `SEL_*` in `core/select.ts`), imported by the shell — never re-hardcoded. Cite `MSGOVR $00, MESSEQU.SRC:18`.
+> - **AC-1 font:** the comment says "FONT57 (5×7)" — FONT57 is **6×7** (cellWidth 6, cellHeight 7); FONT35 is the 3×5 font. The banner is FONT57.
+> - **AC-2 duration:** the authentic hold is **~88 ticks (~1.47s)**, then `afterGameOver`; a shell timing constant, tunable. The RED pins the hold's *presence*, not the exact value.
+>
+> See the session file's **Delivery Findings** (`### TEA (test design)`) for the full record. RED test files: `tests/gameover-screen.test.ts`, `tests/gameover-wiring.test.ts`, `tests/helpers/gameover-contract.ts`.
+
 ## Story Metadata
 - **ID:** jt10-6
 - **Title:** Game-over screen: wire GOVER_OVER/settleGameOver to a GAME OVER overlay and the transition to highscore-or-attract
