@@ -32,6 +32,16 @@ import { qualifiesForHighScore, type HighScoreEntryBase } from '@shared/highscor
 export { GOVER_OVER, GOVER_RUNNING, GOVER_ATTRACT }
 
 /**
+ * MSGOVR $00 'THY GAME IS OVER' — MESSEQU.SRC:18. The whole-cabinet game-over overlay
+ * string Joust actually puts up: GOVERM (JOUSTRV4.SRC:674, `LDD #256*MSGOVR+…  PUT UP
+ * GAME OVER MESSAGE`), held ~88 ticks by GOVWAT (JOUSTRV4.SRC:678) before JMP GAMEND.
+ * Verbatim. NOT the per-player banner 'GAME OVER' (MSGAMO $6D, MESSEQU.SRC:130), and
+ * NOT GAMEND (EQU.SRC:237 — that is the RMB-3 H.S.T.D. routine, not a string). Core
+ * DATA, like the SEL_* strings in core/select.ts — under the jt1-7 purity boundary.
+ */
+export const GAME_OVER_TEXT = 'THY GAME IS OVER'
+
+/**
  * The six cabinet-lifecycle modes (design spec §"The mode set"). A union type, not
  * a string enum — enums carry a runtime cost and this set is closed.
  */

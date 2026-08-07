@@ -57,10 +57,12 @@ stories:
     title: 'Game-over screen: wire GOVER_OVER/settleGameOver to a GAME OVER overlay and the transition to highscore-or-attract'
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     depends_on: jt10-2
+    review_verdict: approved
   - id: jt10-7
     title: 'High-score entry + JOUST CHAMPIONS table: initials entry (ENTER YOUR INITIALS / ENTER THY NAME MY LORD!) via @shared/highscore in the joust font'
     points: 5
