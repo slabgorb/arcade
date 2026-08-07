@@ -260,20 +260,25 @@ git commit -m "feat(pm3-8): pacman_scan_rows video-RAM offset decoder"
 
 ---
 
-### Task 3: Bake `maze-tilemap-data.ts` + byte-equality test
+### Task 3: Bake the authentic maze **tile-index grid** + byte-equality test
+
+> REVISED (see spec "REVISION 2026-08-07"): the bake emits a tile-index grid only —
+> `colorCode`/`colourLookup` play no part in the maze; colour is applied by cell type
+> at render time (Task 4). If a prior `{tileIndex, colorCode}` version of
+> `maze-tilemap-data.ts` is already committed, this task **replaces** it (re-bake).
 
 **Files:**
-- Modify: `plugins/pac-man/tools/bake-graphics.mjs` (add `bakeMaze()` + call it)
-- Create (GENERATED, committed): `plugins/pac-man/src/shell/maze-tilemap-data.ts`
+- Modify: `plugins/pac-man/tools/bake-graphics.mjs` (add/replace `bakeMaze()` + call it)
+- Create/replace (GENERATED, committed): `plugins/pac-man/src/shell/maze-tilemap-data.ts`
 - Test: `plugins/pac-man/tests/shell/maze-tilemap.test.ts` (byte-equality half; the oracle half is added in Task 6)
 
 **Interfaces:**
 - Consumes: `mazeCellOffset` (Task 2), `reference/graphics/maze-vram.bin` (Task 1).
-- Produces: `export const MAZE_TILEMAP: readonly (readonly MazeCell[])[]` where `MazeCell = { tileIndex: number; colorCode: number }`; dimensions `[36][28]` (`[sy][sx]`).
+- Produces: `export const MAZE_TILES: readonly (readonly number[])[]` — a `[36][28]` (`[sy][sx]`) grid of tile-ROM indices (0..255). No colour field.
 
-- [ ] **Step 1: Add the bake function**
+- [ ] **Step 1: Add/replace the bake function**
 
-In `plugins/pac-man/tools/bake-graphics.mjs`, add an import for the decoder and a `bakeMaze()` beside `bakeTiles()`:
+In `plugins/pac-man/tools/bake-graphics.mjs`, ensure `mazeCellOffset` is in the existing import from `../src/shell/gfx-rom.ts`, and define `bakeMaze()` beside `bakeTiles()`:
 
 ```js
 // add to the existing import from '../src/shell/gfx-rom.ts':
@@ -282,88 +287,77 @@ In `plugins/pac-man/tools/bake-graphics.mjs`, add an import for the decoder and 
 function bakeMaze() {
   const vram = readFileSync(join(graphicsDir, 'maze-vram.bin')) // 2048 bytes
   if (vram.length !== 2048) throw new Error(`maze-vram.bin is ${vram.length} bytes, expected 2048`)
-  const TILE_BASE = 0x000 // 0x4000-0x43ff
-  const COLOR_BASE = 0x400 // 0x4400-0x47ff
+  const TILE_BASE = 0x000 // 0x4000-0x43ff (colour RAM 0x400.. is intentionally unused:
+  //                          the maze is coloured monochrome by cell type — see spec REVISION)
   const COLS = 28
   const ROWS = 36
   const grid = Array.from({ length: ROWS }, (_, sy) =>
-    Array.from({ length: COLS }, (_, sx) => {
-      const off = mazeCellOffset(sx, sy)
-      return { tileIndex: vram[TILE_BASE + off], colorCode: vram[COLOR_BASE + off] & 0x1f }
-    }),
+    Array.from({ length: COLS }, (_, sx) => vram[TILE_BASE + mazeCellOffset(sx, sy)]),
   )
 
   const body =
     HEADER +
     '//\n' +
-    '// Source: reference/graphics/maze-vram.bin (MAME video RAM 0x4000-0x43ff +\n' +
-    '// colour RAM 0x4400-0x47ff). Unpack: src/shell/gfx-rom.ts mazeCellOffset\n' +
-    '// (MAME pacman_v.cpp:170 pacman_scan_rows); colorCode = colourByte & 0x1f.\n\n' +
-    '/** One maze cell: a tile-ROM index and its 82s126.4a colour code. */\n' +
-    'export interface MazeCell {\n  readonly tileIndex: number\n  readonly colorCode: number\n}\n\n' +
-    '/** The authentic 28x36 maze tilemap [row sy][col sx], unpacked from the\n' +
-    ' * cabinet\'s video+colour RAM. The maze-tilemap test re-derives this and\n' +
-    ' * asserts byte-equality. Retires pm3-4\'s wallTileFor autotiler. */\n' +
-    'export const MAZE_TILEMAP: readonly (readonly MazeCell[])[] = [\n' +
-    grid
-      .map((row) => '  [' + row.map((c) => `{ tileIndex: ${c.tileIndex}, colorCode: ${c.colorCode} }`).join(', ') + '],')
-      .join('\n') +
+    '// Source: reference/graphics/maze-vram.bin (MAME video RAM 0x4000-0x43ff).\n' +
+    '// Unpack: src/shell/gfx-rom.ts mazeCellOffset (MAME pacman_v.cpp:170\n' +
+    '// pacman_scan_rows). Tile INDICES only — the maze is coloured monochrome by\n' +
+    '// core cell type at render time (walls blue, dots/energizers peach), so no\n' +
+    '// colour code is baked (see the pm3-8 spec REVISION).\n\n' +
+    '/** The authentic 28x36 maze tile-index grid [row sy][col sx], unpacked from\n' +
+    ' * the cabinet\'s video RAM. render.ts blits TILES[MAZE_TILES[sy][sx]] recoloured\n' +
+    ' * by cell type. The maze-tilemap test re-derives this and asserts byte-equality.\n' +
+    ' * Retires pm3-4\'s wallTileFor autotiler. */\n' +
+    'export const MAZE_TILES: readonly (readonly number[])[] = [\n' +
+    grid.map((row) => '  [' + row.join(', ') + '],').join('\n') +
     '\n]\n'
 
   writeFileSync(join(outDir, 'maze-tilemap-data.ts'), body)
-  console.log(`wrote ${join(outDir, 'maze-tilemap-data.ts')} (${ROWS}x${COLS} cells)`)
+  console.log(`wrote ${join(outDir, 'maze-tilemap-data.ts')} (${ROWS}x${COLS} tiles)`)
 }
 ```
 
-Add `bakeMaze()` to the call list at the bottom of the file (after `bakeSprites()`).
+Ensure `bakeMaze()` is in the call list at the bottom of the file (after `bakeSprites()`).
 
 - [ ] **Step 2: Run the bake**
 
 Run: `node plugins/pac-man/tools/bake-graphics.mjs`
-Expected: prints `wrote …/maze-tilemap-data.ts (36x28 cells)` among the other modules; `plugins/pac-man/src/shell/maze-tilemap-data.ts` now exists.
+Expected: prints `wrote …/maze-tilemap-data.ts (36x28 tiles)`; only that module is new/changed among the generated files (`git status` shows palette/tile/sprite-data.ts unchanged).
 
 - [ ] **Step 3: Write the byte-equality test**
 
-Create `plugins/pac-man/tests/shell/maze-tilemap.test.ts`:
+Create/replace `plugins/pac-man/tests/shell/maze-tilemap.test.ts`:
 
 ```ts
 // tests/shell/maze-tilemap.test.ts
-// pm3-8 — the authentic maze tilemap. Half 1 (here): the baked module equals a
-// fresh unpack of maze-vram.bin. Half 2 (Task 6): the semantic oracle.
+// pm3-8 — the authentic maze tile-index grid. Half 1 (here): the baked module
+// equals a fresh unpack of maze-vram.bin. Half 2 (Task 6): the semantic oracle.
 import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { mazeCellOffset } from '../../src/shell/gfx-rom'
-import { MAZE_TILEMAP } from '../../src/shell/maze-tilemap-data'
+import { MAZE_TILES } from '../../src/shell/maze-tilemap-data'
 import { MAZE } from '../../src/core/maze'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const vram = new Uint8Array(readFileSync(join(root, 'reference', 'graphics', 'maze-vram.bin')))
 
-describe('maze tilemap (pm3-8)', () => {
-  it('is a 36x28 grid of {tileIndex, colorCode}', () => {
-    expect(MAZE_TILEMAP.length).toBe(MAZE.rows) // 36
-    for (const row of MAZE_TILEMAP) {
+describe('maze tile-index grid (pm3-8)', () => {
+  it('is a 36x28 grid of tile indices (0..255)', () => {
+    expect(MAZE_TILES.length).toBe(MAZE.rows) // 36
+    for (const row of MAZE_TILES) {
       expect(row.length).toBe(MAZE.cols) // 28
-      for (const cell of row) {
-        expect(cell.tileIndex).toBeGreaterThanOrEqual(0)
-        expect(cell.tileIndex).toBeLessThanOrEqual(255)
-        expect(cell.colorCode).toBeGreaterThanOrEqual(0)
-        expect(cell.colorCode).toBeLessThanOrEqual(0x1f)
+      for (const t of row) {
+        expect(t).toBeGreaterThanOrEqual(0)
+        expect(t).toBeLessThanOrEqual(255)
       }
     }
   })
 
-  it('equals a fresh unpack of the vendored video+colour RAM', () => {
+  it('equals a fresh unpack of the vendored video RAM', () => {
     for (let sy = 0; sy < MAZE.rows; sy++)
-      for (let sx = 0; sx < MAZE.cols; sx++) {
-        const off = mazeCellOffset(sx, sy)
-        expect(MAZE_TILEMAP[sy][sx]).toEqual({
-          tileIndex: vram[off],
-          colorCode: vram[0x400 + off] & 0x1f,
-        })
-      }
+      for (let sx = 0; sx < MAZE.cols; sx++)
+        expect(MAZE_TILES[sy][sx]).toBe(vram[mazeCellOffset(sx, sy)])
   })
 })
 ```
@@ -377,7 +371,7 @@ Expected: PASS (both `it`s).
 
 ```bash
 git add plugins/pac-man/tools/bake-graphics.mjs plugins/pac-man/src/shell/maze-tilemap-data.ts plugins/pac-man/tests/shell/maze-tilemap.test.ts
-git commit -m "feat(pm3-8): bake authentic maze tilemap from video RAM"
+git commit -m "feat(pm3-8): bake authentic maze tile-index grid from video RAM"
 ```
 
 ---
@@ -388,76 +382,124 @@ git commit -m "feat(pm3-8): bake authentic maze tilemap from video RAM"
 - Modify: `plugins/pac-man/src/shell/render.ts`
 - Modify: `plugins/pac-man/tests/shell/tiles.test.ts` (update the wall-colour assertion the autotiler owned)
 
+> REVISED (see spec "REVISION 2026-08-07"): the maze renders authentic tile **shapes**
+> coloured **monochrome by core cell type** (wall→blue, dot/energizer→peach) using
+> MAME-sampled colours. `colourLookup`/`colorCode` are NOT used for the maze. HUD-row
+> suppression (`isHudRow`) is **kept** (drawHud owns those bands). If a prior Task-4
+> commit swapped drawMaze to a `{tileIndex,colorCode}` blit, this task **supersedes** it.
+
 **Interfaces:**
-- Consumes: `MAZE_TILEMAP` from `./maze-tilemap-data` (Task 3).
+- Consumes: `MAZE_TILES` from `./maze-tilemap-data` (revised Task 3); `TILES` (`tile-data`), `HARDWARE_PALETTE` (`palette-data`).
 - `drawMaze` keeps its signature: `drawMaze(ctx: CanvasRenderingContext2D, eaten?: ReadonlySet<string>): void`.
 
-- [ ] **Step 1: Import the baked tilemap and rewrite `drawMaze`**
+- [ ] **Step 1: Add MAME-sampled colours + a monochrome tile blit, and rewrite `drawMaze`**
 
 In `plugins/pac-man/src/shell/render.ts`, add near the other data imports:
 
 ```ts
-import { MAZE_TILEMAP } from './maze-tilemap-data'
+import { MAZE_TILES } from './maze-tilemap-data'
 ```
 
-Replace the body of `drawMaze` (currently ~line 361) with:
+Add the two maze colours (MAME framebuffer-confirmed) and a monochrome blit helper. `HARDWARE_PALETTE[11] = [33,33,255]` (wall blue) and `HARDWARE_PALETTE[14] = [255,184,174]` (pellet peach) are exactly the two non-black colours a MAME snapshot of the maze contains:
+
+```ts
+// The maze is monochrome per element (a MAME framebuffer of the level-1 maze is
+// strictly these two colours + black). We render the authentic tile SHAPES and
+// colour every non-background pixel by the core cell type — this is immune to the
+// per-cell colour-code / colourLookup convention (see pm3-8 spec REVISION).
+const MAZE_WALL_RGB = HARDWARE_PALETTE[11] // [33,33,255]  blue  (MAME snapshot-confirmed)
+const MAZE_PELLET_RGB = HARDWARE_PALETTE[14] // [255,184,174] peach (MAME snapshot-confirmed)
+
+// Per-(tileIndex, rgb) monochrome ImageData cache: tile pixel value 0 -> black
+// background, any non-zero -> the given rgb. Keyed like tileImageData's cache.
+const mazeTileCache = new Map<string, ImageData>()
+function mazeTileImageData(
+  ctx: CanvasRenderingContext2D,
+  tileIndex: number,
+  rgb: readonly [number, number, number],
+): ImageData {
+  const key = `${tileIndex}:${rgb[0]},${rgb[1]},${rgb[2]}`
+  const cached = mazeTileCache.get(key)
+  if (cached) return cached
+  const pixels = TILES[tileIndex]
+  const img = ctx.createImageData(TILE_PX, TILE_PX)
+  for (let k = 0; k < pixels.length; k++) {
+    const on = pixels[k] !== 0
+    img.data[k * 4] = on ? rgb[0] : 0
+    img.data[k * 4 + 1] = on ? rgb[1] : 0
+    img.data[k * 4 + 2] = on ? rgb[2] : 0
+    img.data[k * 4 + 3] = 255
+  }
+  mazeTileCache.set(key, img)
+  return img
+}
+```
+
+Replace the body of `drawMaze` with:
 
 ```ts
 export function drawMaze(ctx: CanvasRenderingContext2D, eaten: ReadonlySet<string> = new Set()): void {
   clearField(ctx, MAZE.cols * TILE_PX, MAZE.rows * TILE_PX)
 
   for (let ty = 0; ty < MAZE.rows; ty++) {
+    // HUD bands (rows 0-2, 33-35) stay black — drawHud paints its text there.
+    if (isHudRow(ty)) continue
     for (let tx = 0; tx < MAZE.cols; tx++) {
       const kind = tileAt(tx, ty)
-      // Eaten dots/energizers: skip so the corridor reads as cleared. The
-      // authentic tilemap draws the pellet; the core `eaten` set removes it.
+      const px = tx * TILE_PX
+      const py = ty * TILE_PX
+
+      if (kind === 'gate') {
+        // The ghost-house door: keep the thin procedural line (its own colour).
+        ctx.fillStyle = GATE_COLOR
+        ctx.fillRect(px, py + TILE_PX / 2 - 1, TILE_PX, 2)
+        continue
+      }
+      if (kind === 'path' || kind === 'tunnel' || kind === 'house') continue // black background
       if ((kind === 'dot' || kind === 'energizer') && eaten.has(`${tx},${ty}`)) continue
 
-      const cell = MAZE_TILEMAP[ty][tx]
-      ctx.putImageData(tileImageData(ctx, cell.tileIndex, cell.colorCode), tx * TILE_PX, ty * TILE_PX)
+      const rgb = kind === 'wall' ? MAZE_WALL_RGB : MAZE_PELLET_RGB // dot/energizer -> peach
+      ctx.putImageData(mazeTileImageData(ctx, MAZE_TILES[ty][tx], rgb), px, py)
     }
   }
 }
 ```
 
-- [ ] **Step 2: Delete the retired autotiler and its constants**
+- [ ] **Step 2: Delete the retired autotiler and its now-dead constants**
 
-Remove from `render.ts` (all pm3-4 autotiler machinery, now dead):
-- `wallTileFor` (the whole function, ~line 165).
-- The old `export const MAZE_TILEMAP` computed grid (~line 199) and its `TileCell` interface if unused elsewhere.
-- `isHudRow` (~line 135).
-- The wall-tile constants: `WALL_H_TILE`, `WALL_V_TILE`, `WALL_CORNER_DOWN_RIGHT_TILE`, `WALL_CORNER_DOWN_LEFT_TILE`, `WALL_CORNER_UP_RIGHT_TILE`, `WALL_CORNER_UP_LEFT_TILE`, `WALL_COLOR_CODE`, `DOT_TILE`, `ENERGIZER_TILE`, `PELLET_COLOR_CODE`, and `GATE_COLOR` (the procedural gate is retired — the authentic tilemap carries the door tile).
+Remove from `render.ts` (pm3-4 autotiler machinery the monochrome path no longer uses):
+- `wallTileFor` (the whole function).
+- The old `export const MAZE_TILEMAP` computed grid and its `TileCell` interface (if unused elsewhere).
+- The wall-tile constants: `WALL_H_TILE`, `WALL_V_TILE`, `WALL_CORNER_DOWN_RIGHT_TILE`, `WALL_CORNER_DOWN_LEFT_TILE`, `WALL_CORNER_UP_RIGHT_TILE`, `WALL_CORNER_UP_LEFT_TILE`, `WALL_COLOR_CODE`, `DOT_TILE`, `ENERGIZER_TILE`, `PELLET_COLOR_CODE`.
+
+**Keep:** `isHudRow` (still used), `GATE_COLOR` (gate still drawn), `tileImageData`/`colourLookup` (sprites/digits still use them), and `clearField`.
 
 Run: `npm run lint`
-Expected: PASS — no "declared but never used". If lint flags a remaining reference to any deleted symbol, that reference is now dead code; remove it. (`ENERGIZER_TILES` is a *core* export and is unrelated — do not touch it.)
+Expected: PASS — no "declared but never used". If lint flags a remaining reference to a deleted symbol, remove that dead reference (within `render.ts`). If a symbol you were told to delete is still used by live code, STOP and report DONE_WITH_CONCERNS. (`ENERGIZER_TILES` is a *core* export — unrelated; do not touch it.)
 
-- [ ] **Step 3: Update the pm3-4 wall-colour assertion in `tiles.test.ts`**
+- [ ] **Step 3: Update `tiles.test.ts` for the monochrome maze**
 
-The `'wall-tile blits contain the authentic blue and never the pellet peach'` test (~line 90) hard-codes `HARDWARE_PALETTE[11]` — that was the autotiler's hand-picked `WALL_COLOR_CODE=16` blue. The authentic tilemap uses the cabinet's own wall colour code. Replace the `BLUE` constant derivation with one read from the authentic tilemap, and keep the never-peach guard:
+The pm3-4 test `'wall-tile blits contain the authentic blue and never the pellet peach'` (~line 90) was written against the autotiler's `colourLookup`-resolved wall pixels. Under the monochrome render, wall cells are painted `MAZE_WALL_RGB = HARDWARE_PALETTE[11]` (blue) and never peach — which is exactly what that test wants, so it still expresses a true, meaningful invariant. Update its `BLUE` derivation to the fixed wall colour and keep the never-peach guard:
 
 ```ts
-import { MAZE_TILEMAP } from '../../src/shell/maze-tilemap-data'
-import { colourLookup } from '../../src/shell/palette-data'
-// ... inside the test, replace the `const BLUE = HARDWARE_PALETTE[11]` line:
-// derive the authentic wall colour from a known border wall cell (0,3 is a
-// wall just below the HUD band).
-const wallCell = MAZE_TILEMAP[3][0]
-const wallInk = HARDWARE_PALETTE[colourLookup(wallCell.colorCode, 3)] // pv3 = wall ink
-const PEACH = HARDWARE_PALETTE[14] // dot/energizer colour; must never appear on a wall
+// pm3-8: the maze is monochrome-by-type. Wall cells paint HARDWARE_PALETTE[11]
+// (blue) on every ink pixel; the pellet peach must never appear on a wall.
+const BLUE = HARDWARE_PALETTE[11]
+const PEACH = HARDWARE_PALETTE[14]
 ```
 
-Then change the wall-blit assertion to require the authentic `wallInk` (not `BLUE`) present and `PEACH` absent. Leave the rest of the test's structure intact.
+Keep the assertion structure: filter `putImageData` calls whose cell is a core `wall`, assert their pixel data contains `BLUE` and never `PEACH`. The `'draws the maze as 8x8 tile blits via putImageData, never a solid fillRect wall tile'` test still holds (walls blit via `putImageData`; the only `fillRect` is the 8×2 gate line, not an 8×8 wall). If a removed `render.ts` export was imported by this or another test, update the import to the authentic equivalent. Do NOT delete whole tests without reporting it as a concern.
 
 - [ ] **Step 4: Run the full pac-man suite**
 
 Run: `npx vitest run --project pac-man`
-Expected: PASS. In particular `tiles.test.ts` `'draws the maze as 8x8 tile blits via putImageData'` still passes (the authentic map blits via `putImageData`), and the updated wall-colour test passes. If any other test referenced a deleted `render.ts` export, update it to the authentic equivalent.
+Expected: PASS. If a test fails on a genuinely-retired premise (e.g. it asserted a specific autotiler tile index), report it in your report with the rationale before changing it — do not silently delete coverage.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add plugins/pac-man/src/shell/render.ts plugins/pac-man/tests/shell/tiles.test.ts
-git commit -m "feat(pm3-8): drawMaze consumes the authentic tilemap; retire the autotiler"
+git commit -m "feat(pm3-8): drawMaze renders authentic shapes, monochrome by cell type; retire the autotiler"
 ```
 
 ---
@@ -522,8 +564,11 @@ git commit -m "feat(pm3-8): cite the maze-vram capture under the graphics gate"
 - Modify: `plugins/pac-man/tests/shell/maze-tilemap.test.ts` (add the oracle/invariant `describe`)
 - Possibly modify: `plugins/pac-man/src/shell/gfx-rom.ts` `mazeCellOffset` (only if the oracle rejects the primary orientation) + re-bake
 
+> REVISED: the oracle operates on the `MAZE_TILES` tile-index grid (colour is
+> type-based now and does not affect this structural check).
+
 **Interfaces:**
-- Consumes: `MAZE_TILEMAP`, `core/maze.ts` (`tileAt`, `ENERGIZER_TILES`, `TUNNEL_ROW`, `MAZE`).
+- Consumes: `MAZE_TILES`, `core/maze.ts` (`tileAt`, `ENERGIZER_TILES`, `TUNNEL_ROW`, `MAZE`).
 
 - [ ] **Step 1: Write the oracle + invariant test**
 
@@ -541,24 +586,24 @@ describe('maze tilemap oracle — authentic layout agrees with core (pm3-8)', ()
     for (let ty = 0; ty < 36; ty++)
       for (let tx = 0; tx < 28; tx++)
         if (tileAt(tx, ty) === 'dot')
-          expect(MAZE_TILEMAP[ty][tx].tileIndex, `dot expected at ${tx},${ty}`).toBe(DOT_TILE)
+          expect(MAZE_TILES[ty][tx], `dot expected at ${tx},${ty}`).toBe(DOT_TILE)
   })
 
   it('the four core energizer cells carry the energizer tile (0x14)', () => {
     expect(ENERGIZER_TILES.length).toBe(4)
     for (const { x, y } of ENERGIZER_TILES)
-      expect(MAZE_TILEMAP[y][x].tileIndex, `energizer at ${x},${y}`).toBe(ENERGIZER_TILE)
+      expect(MAZE_TILES[y][x], `energizer at ${x},${y}`).toBe(ENERGIZER_TILE)
   })
 
   it('the authentic map places exactly four energizer tiles', () => {
     let n = 0
-    for (const row of MAZE_TILEMAP) for (const c of row) if (c.tileIndex === ENERGIZER_TILE) n++
+    for (const row of MAZE_TILES) for (const t of row) if (t === ENERGIZER_TILE) n++
     expect(n).toBe(4)
   })
 
   it('the tunnel row is open (background tiles) edge-to-edge at both ends', () => {
-    expect(MAZE_TILEMAP[TUNNEL_ROW][0].tileIndex).toBe(SPACE_TILE)
-    expect(MAZE_TILEMAP[TUNNEL_ROW][27].tileIndex).toBe(SPACE_TILE)
+    expect(MAZE_TILES[TUNNEL_ROW][0]).toBe(SPACE_TILE)
+    expect(MAZE_TILES[TUNNEL_ROW][27]).toBe(SPACE_TILE)
   })
 
   it('the ghost-house band has an interior of background tiles (a real house, not scattered walls)', () => {
@@ -566,11 +611,16 @@ describe('maze tilemap oracle — authentic layout agrees with core (pm3-8)', ()
     let houseBg = 0
     for (let ty = 0; ty < 36; ty++)
       for (let tx = 0; tx < 28; tx++)
-        if (tileAt(tx, ty) === 'house' && MAZE_TILEMAP[ty][tx].tileIndex === SPACE_TILE) houseBg++
+        if (tileAt(tx, ty) === 'house' && MAZE_TILES[ty][tx] === SPACE_TILE) houseBg++
     expect(houseBg).toBeGreaterThan(10) // a recognizable hollow house
   })
 })
 ```
+
+> Note (orientation): the primary orientation is known to render **mirrored** (the
+> initial implementation showed reversed HUD text), so this oracle is expected to fail
+> on candidate A and pass on one of B/C/D in Step 2 — that is the mechanism working,
+> not a surprise.
 
 - [ ] **Step 2: Run the oracle**
 

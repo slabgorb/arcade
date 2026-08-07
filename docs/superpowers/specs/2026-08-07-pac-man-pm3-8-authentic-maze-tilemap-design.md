@@ -47,6 +47,38 @@ sourced from hardware ground truth, baked to committed JS, and cited under the
 existing graphics citation gate. This matches the epic's whole "decode, don't guess —
 MAME is the tiebreaker — bake to committed JS" philosophy.
 
+> ## REVISION (2026-08-07): colour comes from MAME, monochrome by cell type
+>
+> **Discovered during implementation (Task 4):** feeding the authentic captured
+> colour codes (`colorram & 0x1f`) through the existing pm3-3 `colourLookup` renders a
+> **broken** maze — the dot tile (16) under its authentic code (16) resolves to black
+> (invisible dots), and authentic wall tiles (208–251) resolve to peach+blue stripes.
+> The captured `{tileIndex, colorCode}` pairing is real, but our `colourLookup` /
+> pixel-plane convention does not reproduce what the cabinet displays for those codes,
+> and fixing that is a shared-decode change (sprites, digits, fruit) out of this
+> story's scope.
+>
+> **Resolution (owner decision — "bake resolved colours from MAME"):** a MAME
+> framebuffer snapshot (224×288, the exact 28×8 × 36×8 tile grid, upright) is the
+> colour ground truth. Its histogram shows the maze proper is strictly **two colours +
+> black**: walls = blue `[33,33,255]` (= `HARDWARE_PALETTE[11]`), dots & energizers =
+> peach `[255,184,174]` (= `HARDWARE_PALETTE[14]`). Everything else (near-white text,
+> red/pink/cyan/orange/yellow) is sprites/HUD, not the maze.
+>
+> Therefore the maze renders the **authentic tile _shapes_** (the tile-ROM art the
+> video-RAM indices reference) **coloured monochrome by core cell _type_** — every
+> non-background pixel of a `wall` cell → blue, of a `dot`/`energizer` cell → peach.
+> This is immune to the `colourLookup`/plane discrepancy (it never distinguishes pixel
+> planes), needs no clean full framebuffer (only the two sampled colour values), and
+> touches no shared decode. Real Pac-Man maze elements are each monochrome, so this is
+> faithful, not a compromise.
+>
+> **Net effect on the sections below:** the bake emits a **tile-index grid** (not
+> `{tileIndex, colorCode}`); `colorCode` and `colourLookup` play no part in the maze.
+> `render.ts` keeps its HUD-row suppression (`isHudRow`) and gate handling; it swaps
+> the autotiler for `TILES[MAZE_TILES[ty][tx]]` recoloured by `tileAt(tx,ty)`. The
+> oracle and orientation check operate on tile indices exactly as written.
+
 ### Ground truth: a MAME video-RAM + colour-RAM dump
 
 The maze wall layout is **not** a clean ROM table — the `0x35b5` table only places
