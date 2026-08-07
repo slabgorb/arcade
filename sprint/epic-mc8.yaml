@@ -11,7 +11,7 @@ stories:
     description: "Architecture spike, no production wiring. Read the normalized W3SOUN ASCII source (A35820.1C -> W3SOUN under plugins/missile-command/reference/source/; CR-terminated non-UTF8 -> tr / grep -a as the star-wars source needed) and the pokey-bake pattern at plugins/star-wars/tools/pokey-bake/. Extract the sound-command table(s) and the game-event -> sound mapping the ROM uses (launch, explosion, incoming ICBM, city/base destroyed, out-of-ammo klaxon, wave-bonus count-up, low-city warning). Decide the driver path: drive the vendored pokey.js from the lifted commands at RUNTIME (no assets, like a synth) vs bake sound to files uploaded to R2 (needs the contract-5 live-verify follow-through). Output: a committed design doc under docs/superpowers/specs/ with the extracted tables (each cited FILE.MAC:LINE), the event map, and the chosen path with rationale; this doc is the mc8-2/mc8-3 plan. No src/ changes."
     points: 3
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-07'
     repos: arcade
     workflow: architecture
@@ -19,6 +19,7 @@ stories:
       - 'a design doc is committed under docs/superpowers/specs/ containing the W3SOUN sound-command table(s) transcribed with per-entry citations (FILE.MAC:LINE, radix noted) and the game-event -> sound mapping.'
       - 'the driver path is decided and justified (runtime-synth via pokey.js vs baked asset), including — if baked — the exact R2 bucket/key layout and the contract-5 live-verify + follow-up-story plan.'
       - 'the reuse surface is confirmed by reading it: @shared/audio, @shared/synth, and plugins/star-wars/tools/pokey-bake/vendor/pokey.js are cited as the intended building blocks; no src/ production code is changed in this story.'
+    completed: '2026-08-07'
   - id: mc8-2
     title: 'Audio shell: the POKEY driver and the core-event -> sound mapping'
     description: "Implement the spike. (a) src/shell/audio.ts (new) — port/reuse the vendored pokey.js behind @shared/audio + @shared/synth, playing the sound commands the spike lifted. (b) if the core must surface events, add a pure per-frame events list to GameState in src/core (plain data — e.g. {launched, detonated, icbmKilled, structureDestroyed, ammoEmpty, bonusTick}); the shell reads it and voices it. Keep the core/shell boundary (contract 2) and purity.test.ts green. (c) wire it into main.ts's frame loop. HEED the edge-driven-voices gotcha: sustained/looping voices (the incoming-missile drone, the klaxon) must be silenced at the pause/game-over EDGE, not left to ring through a naive stop; make that testable via a boot-shell seam. Depends on mc8-1."
