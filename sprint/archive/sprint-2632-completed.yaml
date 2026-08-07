@@ -895,3 +895,8 @@ completed_stories:
     title: Extend the font source double-entry gate to ALL ~102 glyphs (font35+font57), not just the 10 jt10-1 pinned
     points: 2
     completed: '2026-08-07'
+  - id: mc8-1
+    epic: mc8
+    title: 'Spike: decode the W3SOUN sound-command tables and choose the driver path (runtime-synth vs baked asset)'
+    points: 3
+    completed: '2026-08-07'
