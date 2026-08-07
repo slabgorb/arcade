@@ -166,3 +166,28 @@ export function decodeSpritePixel(rom: Uint8Array, spriteIndex: number, x: numbe
   for (let p = 0; p < 2; p++) v |= bitAt(rom, base, TILE_PLANES[p] + SPR_X[x] + SPR_Y[y]) << p
   return v
 }
+
+// ─── VIDEO-RAM OFFSET MAPPER (pm3-8) ───────────────────────────────────────
+// MAME `pacman_v.cpp:170` `pacman_scan_rows`: maps a (col,row) in Pac-Man's
+// 36x28 tilemap to a video/colour-RAM offset. Re-implemented from the driver
+// arithmetic, cited here in prose per this story's "cite, don't copy"
+// constraint; nothing below is pasted from MAME.
+
+/** MAME `pacman_v.cpp:170` `pacman_scan_rows`: maps a (col,row) in Pac-Man's
+ *  36x28 tilemap to a video/colour-RAM offset (0..0x3ff). Re-implemented from
+ *  the driver arithmetic (`row += 2; col -= 2; if (col & 0x20) ...`), cited not
+ *  copied. `col` 0..35, `row` 0..27. */
+export function pacmanScanRows(col: number, row: number): number {
+  const r = row + 2
+  const c = col - 2
+  if (c & 0x20) return r + ((c & 0x1f) << 5)
+  return c + (r << 5)
+}
+
+/** Screen cell (sx: column 0..27, sy: row 0..35) -> RAM offset. Pac-Man's tube
+ *  is ROT90, so a screen row is a tilemap column: col=sy, row=sx. (If Task 6's
+ *  oracle rejects this orientation, it is one of exactly four candidates —
+ *  see that task.) */
+export function mazeCellOffset(sx: number, sy: number): number {
+  return pacmanScanRows(sy, sx)
+}
