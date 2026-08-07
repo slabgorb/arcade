@@ -839,3 +839,8 @@ completed_stories:
     title: 'Shell: render ICBMs/dead structures/HUD, ammo-gated firing, and a seeded end-to-end playthrough'
     points: 5
     completed: '2026-08-07'
+  - id: jt10-5
+    epic: jt10
+    title: '1P/2P start select: ONE PLAYER START / TWO PLAYER START ($1D/$1E) + a static CREDITS row, transitioning attract->select->playing'
+    points: 3
+    completed: '2026-08-07'
