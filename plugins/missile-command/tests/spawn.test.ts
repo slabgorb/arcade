@@ -166,9 +166,12 @@ describe('mc3-1 AC4 — hold fire while a live ICBM is still above LAUHGT', () =
     const { spawnIcbms, LAUHGT, MXICON } = await loadSpawn()
     const low = icbmAt(LAUHGT - 50) // the only ICBM, now below the launch height
     const r = spawnIcbms([low], TARGETS, 8, createRng(1))
-    expect(r.icbms.length, 'the screen was clear above LAUHGT, so more launch').toBeGreaterThan(1)
-    expect(r.icbms.length).toBeLessThanOrEqual(MXICON)
-    expect(r.remaining, 'launching spends budget').toBeLessThan(8)
+    // Deterministic: room = MXICON - 1 = 6, launches = min(6, 8) = 6, total = 7 = MXICON.
+    // Pinned exactly (Reviewer, rule_checker #8/#15) — a `> 1` bound would pass an
+    // under-launch bug on this non-empty-cleared path (the empty-screen fill-to-cap
+    // is pinned separately above, but the room = MXICON - length path only here).
+    expect(r.icbms.length, 'a cleared non-empty screen refills to the MXICON cap').toBe(MXICON)
+    expect(r.remaining, 'launching 6 spends 6 of the 8 budget').toBe(8 - (MXICON - 1))
   })
 })
 

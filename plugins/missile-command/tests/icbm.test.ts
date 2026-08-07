@@ -257,10 +257,13 @@ describe('mc3-1 AC2 — icbm.ts carries its W3MAIN source citation', () => {
     expect(icbmSrc(), 'must cite W3MAIN').toMatch(/W3MAIN/)
   })
 
-  it('cites the ICBM motion routine it models (UPDATE ICBM POSITIONS / UPDPOS / ICBM)', () => {
+  it('cites the ICBM motion routine it models (UPDATE ICBM POSITIONS / UPDPOS)', () => {
+    // NB: no bare `ICBM` alternative — it would match the module's own name and
+    // type identifiers, making this guard unfalsifiable (Reviewer, rule_checker
+    // #15/#25). The two named routines only appear in the source-of-truth comment.
     expect(
       icbmSrc(),
       'must name the enemy-warhead motion routine it mirrors',
-    ).toMatch(/UPDATE ICBM POSITIONS|UPDPOS|ICBM/)
+    ).toMatch(/UPDATE ICBM POSITIONS|UPDPOS/)
   })
 })
