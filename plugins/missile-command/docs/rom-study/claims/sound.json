@@ -1,0 +1,299 @@
+[
+  {
+    "id": "SOUND-AUDCV",
+    "symbol": "AUDCV",
+    "value": 32,
+    "meaning": "POKEY AUDCTL/AUDCV control byte (fixed 0x20)",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 128,
+      "verbatim": "AUDCV\t=20"
+    }
+  },
+  {
+    "id": "SOUND-EX1-A0",
+    "symbol": "EX1",
+    "value": 160,
+    "meaning": "explosion ch1 AUDF (pitch) — byte 0xA0",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 157,
+      "verbatim": "EX1:\t.BYTE 0A0,10,4,10"
+    }
+  },
+  {
+    "id": "SOUND-EX1-10",
+    "symbol": "EX1",
+    "value": 16,
+    "meaning": "explosion ch1 AUDF (pitch) — byte 0x10",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 157,
+      "verbatim": "EX1:\t.BYTE 0A0,10,4,10"
+    }
+  },
+  {
+    "id": "SOUND-EX1-04",
+    "symbol": "EX1",
+    "value": 4,
+    "meaning": "explosion ch1 AUDF (pitch) — byte 0x4",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 157,
+      "verbatim": "EX1:\t.BYTE 0A0,10,4,10"
+    }
+  },
+  {
+    "id": "SOUND-EX2-86",
+    "symbol": "EX2",
+    "value": 134,
+    "meaning": "explosion ch2 AUDC (vol/dist) — byte 0x86",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 159,
+      "verbatim": "EX2:\t.BYTE 86,40,0FE,4"
+    }
+  },
+  {
+    "id": "SOUND-EX2-40",
+    "symbol": "EX2",
+    "value": 64,
+    "meaning": "explosion ch2 AUDC (vol/dist) — byte 0x40",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 159,
+      "verbatim": "EX2:\t.BYTE 86,40,0FE,4"
+    }
+  },
+  {
+    "id": "SOUND-EX2-FE",
+    "symbol": "EX2",
+    "value": 254,
+    "meaning": "explosion ch2 AUDC (vol/dist) — byte 0xFE",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 159,
+      "verbatim": "EX2:\t.BYTE 86,40,0FE,4"
+    }
+  },
+  {
+    "id": "SOUND-EX3-C0",
+    "symbol": "EX3",
+    "value": 192,
+    "meaning": "explosion ch3 AUDF — byte 0xC0",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 161,
+      "verbatim": "EX3:\t.BYTE 0C0,10,4,10"
+    }
+  },
+  {
+    "id": "SOUND-LA5-60",
+    "symbol": "LA5",
+    "value": 96,
+    "meaning": "launch ch5 AUDF sweep — byte 0x60",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 166,
+      "verbatim": "LA5:\t.BYTE 60,10,0,1"
+    }
+  },
+  {
+    "id": "SOUND-LA5-50",
+    "symbol": "LA5",
+    "value": 80,
+    "meaning": "launch ch5 AUDF sweep — byte 0x50",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 167,
+      "verbatim": "\t.BYTE 50,10,0F8,1"
+    }
+  },
+  {
+    "id": "SOUND-LA5-F8",
+    "symbol": "LA5",
+    "value": 248,
+    "meaning": "launch ch5 AUDF sweep — byte 0xF8",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 167,
+      "verbatim": "\t.BYTE 50,10,0F8,1"
+    }
+  },
+  {
+    "id": "SOUND-LA5-48",
+    "symbol": "LA5",
+    "value": 72,
+    "meaning": "launch ch5 AUDF sweep — byte 0x48",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 168,
+      "verbatim": "\t.BYTE 48,10,18,1"
+    }
+  },
+  {
+    "id": "SOUND-LA5-18",
+    "symbol": "LA5",
+    "value": 24,
+    "meaning": "launch ch5 AUDF sweep — byte 0x18",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 168,
+      "verbatim": "\t.BYTE 48,10,18,1"
+    }
+  },
+  {
+    "id": "SOUND-LA5-F0",
+    "symbol": "LA5",
+    "value": 240,
+    "meaning": "launch ch5 AUDF sweep — byte 0xF0",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 169,
+      "verbatim": "\t.BYTE 60,18,0F0,1"
+    }
+  },
+  {
+    "id": "SOUND-LA5-08",
+    "symbol": "LA5",
+    "value": 8,
+    "meaning": "launch ch5 AUDF sweep — byte 0x8",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 171,
+      "verbatim": "\t.BYTE 60,10,8,10"
+    }
+  },
+  {
+    "id": "SOUND-LA6-82",
+    "symbol": "LA6",
+    "value": 130,
+    "meaning": "launch ch6 AUDC — byte 0x82",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 173,
+      "verbatim": "LA6:\t.BYTE 82,20,2,1"
+    }
+  },
+  {
+    "id": "SOUND-LA6-84",
+    "symbol": "LA6",
+    "value": 132,
+    "meaning": "launch ch6 AUDC — byte 0x84",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 174,
+      "verbatim": "\t.BYTE 84,10,0,4"
+    }
+  },
+  {
+    "id": "SOUND-LA6-38",
+    "symbol": "LA6",
+    "value": 56,
+    "meaning": "launch ch6 AUDC — byte 0x38",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 175,
+      "verbatim": "\t.BYTE 84,38,0FF,4"
+    }
+  },
+  {
+    "id": "SOUND-LA6-FF",
+    "symbol": "LA6",
+    "value": 255,
+    "meaning": "launch ch6 AUDC — byte 0xFF",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 175,
+      "verbatim": "\t.BYTE 84,38,0FF,4"
+    }
+  },
+  {
+    "id": "SOUND-TK2-2F",
+    "symbol": "TK2",
+    "value": 47,
+    "meaning": "bonus-tick ch2 AUDC — byte 0x2F",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 180,
+      "verbatim": "TK2:\t.BYTE 2F,4,0F,1"
+    }
+  },
+  {
+    "id": "SOUND-TK2-0F",
+    "symbol": "TK2",
+    "value": 15,
+    "meaning": "bonus-tick ch2 AUDC — byte 0xF",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 180,
+      "verbatim": "TK2:\t.BYTE 2F,4,0F,1"
+    }
+  },
+  {
+    "id": "SOUND-BN2-A4",
+    "symbol": "BN2",
+    "value": 164,
+    "meaning": "bonus-city ch2 AUDC (dummy) — byte 0xA4",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 185,
+      "verbatim": "BN2:\t.BYTE 0A4,18,0,18"
+    }
+  },
+  {
+    "id": "SOUND-LO7-80",
+    "symbol": "LO7",
+    "value": 128,
+    "meaning": "low-on-ABMs ch7 AUDF — byte 0x80",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 199,
+      "verbatim": "LO7:\t.BYTE 20,80,0,3"
+    }
+  },
+  {
+    "id": "SOUND-LO7-03",
+    "symbol": "LO7",
+    "value": 3,
+    "meaning": "low-on-ABMs ch7 AUDF — byte 0x3",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 199,
+      "verbatim": "LO7:\t.BYTE 20,80,0,3"
+    }
+  },
+  {
+    "id": "SOUND-LO8-A3",
+    "symbol": "LO8",
+    "value": 163,
+    "meaning": "low-on-ABMs ch8 AUDC — byte 0xA3",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 201,
+      "verbatim": "LO8:\t.BYTE 0A3,40,0FD,2"
+    }
+  },
+  {
+    "id": "SOUND-LO8-FD",
+    "symbol": "LO8",
+    "value": 253,
+    "meaning": "low-on-ABMs ch8 AUDC — byte 0xFD",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 201,
+      "verbatim": "LO8:\t.BYTE 0A3,40,0FD,2"
+    }
+  },
+  {
+    "id": "SOUND-XX2-88",
+    "symbol": "XX2",
+    "value": 136,
+    "meaning": "end-game ch2 AUDC — byte 0x88",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 208,
+      "verbatim": "XX2:\t.BYTE 88,0FF,0FF,8"
+    }
+  }
+]

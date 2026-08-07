@@ -201,6 +201,12 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   const DERIVED = new Set([
     'IVMAX', 'MAX_BLAST_RADIUS', 'STCITY', 'ICBPTS',
     'ICBWAV', 'WICSPL', 'WICSPH', 'ICSPDL',
+    // mc8-2: the W3SOUN sound sequences are `.BYTE` records (non-EQU) whose claim
+    // values are real ROM bytes, not kind tags — same shape as the wave tables
+    // above. Each is pinned to a genuine entry of its cited line by the mc8-2
+    // consistency block below.
+    'EX1', 'EX2', 'EX3', 'EX4', 'LA5', 'LA6', 'TK1', 'TK2', 'BN1', 'BN2',
+    'WP1', 'WP2', 'LO7', 'LO8', 'XX1', 'XX2', 'XX3', 'XX4', 'NS7', 'NS8',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -276,6 +282,28 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
       expect(
         entries(c.source.verbatim),
         `${c.id}: claimed value ${c.value} must be a real ${c.symbol} entry of "${c.source.verbatim}"`,
+      ).toContain(Number(c.value))
+    }
+  })
+
+  it('mc8-2: every W3SOUN sound-table claim value is a real byte of its cited .BYTE line', () => {
+    // The DERIVED exemption lets the sound sequences carry numeric values; this is
+    // what keeps that from being a hole (the mc4-1 wave-table pattern). Every
+    // sound claim's value must be a genuine radix decode of an entry on its own
+    // cited `.BYTE` line, so a fabricated byte cannot ride into the un-cited-literal
+    // guard's claimedValues set.
+    const SEQ = new Set([
+      'EX1', 'EX2', 'EX3', 'EX4', 'LA5', 'LA6', 'TK1', 'TK2', 'BN1', 'BN2',
+      'WP1', 'WP2', 'LO7', 'LO8', 'XX1', 'XX2', 'XX3', 'XX4', 'NS7', 'NS8',
+    ])
+    const entries = (verbatim: string): number[] =>
+      (verbatim.split('.BYTE')[1] ?? '').split(',').map((t) => decodeRadix16(t.trim()))
+    const seqClaims = loadClaims().filter((c) => SEQ.has(c.symbol))
+    expect(seqClaims.length, 'the mc8-2 sound-table sequences must be claimed').toBeGreaterThan(0)
+    for (const c of seqClaims) {
+      expect(
+        entries(c.source.verbatim),
+        `${c.id}: claimed value ${c.value} must be a real ${c.symbol} byte of "${c.source.verbatim}"`,
       ).toContain(Number(c.value))
     }
   })
