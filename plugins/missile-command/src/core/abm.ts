@@ -17,9 +17,15 @@
 //     constant velocity vector (ABCP += ABVE); returns "AT TARGET" once it reaches
 //     the target array (ABTA). Straight line, constant step, arrival snap.
 //   CALC MISSILE VELOCITY   W3MAIN:1640 (ABMVEL) — the step is the UNIT vector to
-//     the target: ABVE = delta / totalDelta, so speed ≈ 1 cabinet unit/tick and a
-//     farther target takes proportionally more ticks. We model that unit velocity
-//     directly (SPEED = 1); the ROM's 8.8 fixed-point DIVIDE is mc2 fidelity.
+//     the target: ABVE = delta / totalDelta, so a farther target takes
+//     proportionally more ticks. The ROM's 8.8 fixed-point DIVIDE is mc2 fidelity.
+//   UPDATE MISSILE POSITION runs that unit step FASABM times per frame: the ABM
+//     update loop sets `LDY I,2 ;DEFAULT IS SLOW (MOVE 2 DOTS)` (W3MAIN.MAC:1661)
+//     and moves the head once per iteration. So a player ABM advances 2 cabinet
+//     units/tick — FASTER than an ICBM, which UPICBM moves at most once per frame
+//     (≤ 1 unit/tick; see wave.ts). mc3 modelled both at unit speed, a tie; mc4-1
+//     restores the ROM's 2-dot ABM so ABMs OUTRUN ICBMs at every wave. (The centre
+//     base's 6-dot "MOVE FAST" is a per-base nuance left to a later story.)
 //
 // Owner ruling (2026-08-06): per-key specific base, source-faithful — this core has
 // NO nearest-base logic; it flies from whatever `origin` the shell gives it.
@@ -42,8 +48,11 @@ export interface Abm {
   readonly arrived: boolean
 }
 
-/** Cabinet units the head advances each tick — the unit velocity of ABMVEL (W3MAIN:1640). */
-export const ABM_SPEED = 1
+// Cabinet units the head advances each tick — the ROM's default ABM speed, 2 dots
+// per frame (FASABM `LDY I,2`, W3MAIN.MAC:1661), the ABMVEL unit step run twice.
+// (// line comments, not a /** */ block: the un-cited-literal guard strips `//`
+// lines but not multi-line block comments, so a line number in a JSDoc would leak.)
+export const ABM_SPEED = 2
 
 /** Launch from `origin` toward `target`: the head starts on the base, not yet arrived. */
 export function launchAbm(origin: Vec, target: Vec): Abm {
