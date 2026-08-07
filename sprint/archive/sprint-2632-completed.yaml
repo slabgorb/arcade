@@ -890,3 +890,8 @@ completed_stories:
     title: 'Authentic city and base stamps (retire the fillRect blocks and triangles)'
     points: 5
     completed: '2026-08-07'
+  - id: jt10-8
+    epic: jt10
+    title: Extend the font source double-entry gate to ALL ~102 glyphs (font35+font57), not just the 10 jt10-1 pinned
+    points: 2
+    completed: '2026-08-07'
