@@ -24,6 +24,7 @@
 import type { GameEvent } from '../core/events'
 import type { GameState } from '../core/game'
 import { TILE_PX } from '../core/actor'
+import { LOGICAL_W, LOGICAL_H } from './layout'
 import { drawScorePopup } from './render'
 
 export interface Overlays {
@@ -158,7 +159,7 @@ export function createOverlays(): Overlays {
       const cycle = Math.floor(flashFramesLeft / FLASH_HALF_PERIOD) % 2
       if (cycle === 0) {
         ctx.fillStyle = FLASH_COLOR
-        ctx.fillRect(0, 0, 224, 288)
+        ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
       }
       flashFramesLeft--
     }
@@ -182,6 +183,6 @@ function drawBanner(ctx: CanvasRenderingContext2D, text: string): void {
   ctx.font = '8px monospace'
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'center'
-  ctx.fillText(text, 112, 164) // centred over the playfield, just above the ghost house
+  ctx.fillText(text, LOGICAL_W / 2, 164) // centred over the playfield, just above the ghost house
   ctx.textAlign = 'start'
 }

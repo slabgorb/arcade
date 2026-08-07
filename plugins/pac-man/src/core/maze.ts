@@ -31,11 +31,11 @@
 // structure was copied from shaunlebron/pacman (GPL v3; see brief.md's
 // firewall clause).
 
+import { TILE_PX } from './actor'
+
 /** The `pacman.asm:20e6` literal: 240 dots + 4 energizers. Not itself a
  *  TileKind count — see DOT_COUNT below, which is derived from this minus
  *  the energizers the table actually places. */
-import { TILE_PX } from './actor'
-
 const TOTAL_PELLETS = 244 // pacman.asm:20e6 (claims/maze.json MAZE-TOTAL-PELLETS)
 
 export type TileKind = 'wall' | 'path' | 'dot' | 'energizer' | 'tunnel' | 'house' | 'gate'
