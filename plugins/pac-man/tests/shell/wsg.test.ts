@@ -54,8 +54,14 @@ const waveformClaims = claims
 
 class FakeParam {
   value = 0
+  /** Every linear ramp scheduled on this param: {to, at}. */
+  readonly ramps: Array<{ to: number; at: number }> = []
   setValueAtTime(v: number, _t: number): this {
     this.value = v
+    return this
+  }
+  linearRampToValueAtTime(v: number, at: number): this {
+    this.ramps.push({ to: v, at })
     return this
   }
 }
@@ -242,6 +248,25 @@ describe('createWsg().play — renders the cited waveform at the mapped pitch', 
     context.currentTime = 2
     wsg.play({ ...effect, durationMs: 250 })
     expect(context.sources[0].stoppedAt).toContain(2.25)
+  })
+
+  it('chirps: ramps the playback rate to frequencyEnd over durationMs (the munch sweep)', () => {
+    const { context, wsg } = harness()
+    context.currentTime = 1
+    // start word 0x1800 (562 Hz), end word 0x0600 (140 Hz) over 100ms — a downward chirp.
+    wsg.play({ waveform: 0, frequency: 0x1800, volume: 12, durationMs: 100, frequencyEnd: 0x0600 })
+    const rate = context.sources[0].playbackRate
+    // Held at the START rate, then ramped to the END rate at now + duration.
+    expect(rate.value).toBeCloseTo(expectedRate(0x1800, context.sampleRate), 10)
+    expect(rate.ramps).toHaveLength(1)
+    expect(rate.ramps[0].to).toBeCloseTo(expectedRate(0x0600, context.sampleRate), 10)
+    expect(rate.ramps[0].at).toBeCloseTo(1 + 0.1, 10)
+  })
+
+  it('a one-shot with no frequencyEnd stays a flat tone (no ramp)', () => {
+    const { context, wsg } = harness()
+    wsg.play(effect)
+    expect(context.sources[0].playbackRate.ramps).toHaveLength(0)
   })
 
   it('is 3-voice: distinct voices mix, replaying a voice replaces its sound', () => {

@@ -11,8 +11,14 @@
 // Channel model (the ROM's, faithfully): the three `play()` channels carry the
 // mutually-exclusive one-shots (munch / ghost-eaten / fruit / extra-life), and
 // the single retunable siren channel carries whichever AMBIENT is current —
-// background-stage siren, the frightened warble, or (suppressed to it) silence
-// during the death cue. One ambient at a time, exactly as voice 2 behaves.
+// background-stage siren, the frightened warble, or (suppressed) silence during
+// the death cue. One ambient at a time, exactly as voice 2 behaves.
+//
+// The ambient WARBLES: a WSG siren voice-def is a fast repeating pitch sweep
+// (the "woop-woop"), not a flat tone. The driver realises it by retuning
+// `setSirenPitch` every frame across the voice's `periodFrames`, riding on a
+// `frequency` base that rises with the game state. Rendering only the base gives
+// a sustained drone (the bug this fixes).
 import type { Wsg } from './wsg'
 import type { GameEvent } from '../core/events'
 import type { GameState } from '../core/game'
@@ -26,6 +32,7 @@ import {
   FRIGHTENED,
   SIREN_STAGES,
   sirenStageFor,
+  type SirenVoice,
 } from './wsg-effects'
 
 export interface AudioDriver {
@@ -35,38 +42,20 @@ export interface AudioDriver {
   onFrame(state: GameState): void
 }
 
-/** The current ambient on the siren channel — a stage index, the warble, or none. */
-type Ambient = { kind: 'stage'; stage: number } | { kind: 'fright' } | { kind: 'none' }
-
 /** Frames to hold the ambient siren silent after a death, so the death cue is
  *  heard (there is no death `phase` in `GameState` to poll — the pac-died event
- *  is the only signal — so the driver counts the hold itself). DEATH's own
- *  length in frames: (0x86 & 0x7f) × 0x1c segments. */
+ *  is the only signal — so the driver counts the hold itself). Matches DEATH's
+ *  own length: (0x86 & 0x7f) × 0x1c segments. */
 const DEATH_HOLD_FRAMES = (0x86 & 0x7f) * 0x1c
 
 export function createAudioDriver(wsg: Wsg): AudioDriver {
   let munchPhaseA = true
-  let ambient: Ambient = { kind: 'none' }
+  // The base voice currently on the siren channel (a stable singleton from
+  // SIREN_STAGES / FRIGHTENED, so reference identity == "same ambient"), and
+  // where we are in its warble cycle.
+  let ambient: SirenVoice | null = null
+  let warbleFrame = 0
   let deathHold = 0
-
-  function setAmbient(next: Ambient): void {
-    const same =
-      (next.kind === 'none' && ambient.kind === 'none') ||
-      (next.kind === 'fright' && ambient.kind === 'fright') ||
-      (next.kind === 'stage' && ambient.kind === 'stage' && next.stage === ambient.stage)
-    if (same) return
-    if (next.kind === 'none') {
-      // handled by the caller's stopAll — just drop our record
-    } else if (next.kind === 'fright') {
-      wsg.startSiren(FRIGHTENED)
-    } else if (ambient.kind === 'stage') {
-      // Same channel, new pitch — retune rather than restart (no wavetable click).
-      wsg.setSirenPitch(SIREN_STAGES[next.stage].frequency)
-    } else {
-      wsg.startSiren(SIREN_STAGES[next.stage])
-    }
-    ambient = next
-  }
 
   function onEvents(events: readonly GameEvent[]): void {
     for (const event of events) {
@@ -86,14 +75,14 @@ export function createAudioDriver(wsg: Wsg): AudioDriver {
           break
         case 'pac-died':
           wsg.stopAll()
-          ambient = { kind: 'none' }
+          ambient = null
           deathHold = DEATH_HOLD_FRAMES
           wsg.play(DEATH)
           break
         case 'level-cleared':
         case 'game-over':
           wsg.stopAll()
-          ambient = { kind: 'none' }
+          ambient = null
           break
         // energizer-eaten drives frightened mode, voiced by onFrame's poll; the
         // remaining events (fruit-spawned/expired, high-score-qualified) have no
@@ -110,14 +99,32 @@ export function createAudioDriver(wsg: Wsg): AudioDriver {
       return // let the death cue play out; the siren resumes after.
     }
     if (state.phase === 'game-over') {
-      setAmbient({ kind: 'none' })
+      if (ambient !== null) {
+        wsg.stopAll()
+        ambient = null
+      }
       return
     }
-    if (state.mode.frightenedTimer > 0) {
-      setAmbient({ kind: 'fright' })
-    } else {
-      setAmbient({ kind: 'stage', stage: sirenStageFor(state.dotsEaten) })
+
+    const target: SirenVoice =
+      state.mode.frightenedTimer > 0
+        ? FRIGHTENED
+        : SIREN_STAGES[sirenStageFor(state.dotsEaten)]
+
+    if (target !== ambient) {
+      // New ambient (first frame, a stage change, or entering/leaving fright):
+      // (re)start the siren channel on the new base and restart its warble.
+      wsg.startSiren(target)
+      ambient = target
+      warbleFrame = 0
     }
+
+    // Animate the woop: sweep up from the base by depthWord across periodFrames,
+    // snapping back — the repeating siren warble.
+    const period = Math.max(1, target.periodFrames)
+    const phase = (warbleFrame % period) / period
+    wsg.setSirenPitch(target.frequency + Math.round(target.depthWord * phase))
+    warbleFrame++
   }
 
   return { onEvents, onFrame }

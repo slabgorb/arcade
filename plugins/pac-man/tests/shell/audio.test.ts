@@ -117,32 +117,48 @@ describe('audio driver — one cue per event', () => {
 })
 
 describe('audio driver — the background siren rises as the maze empties', () => {
-  it('setSirenPitch (with the opening startSiren) rises monotonically across the 5 stages', () => {
+  const startBases = (calls: Call[]): number[] =>
+    calls
+      .filter((c): c is Extract<Call, { fn: 'startSiren' }> => c.fn === 'startSiren')
+      .map((c) => c.effect.frequency)
+
+  it('the siren BASE (each startSiren) rises through the 5 stages, first→last', () => {
     const { wsg, calls } = spyWsg()
     const driver = createAudioDriver(wsg)
     // Sweep dotsEaten across every stage boundary (0e77 thresholds 116/180/212/228).
     for (const dotsEaten of [0, 50, 116, 179, 180, 211, 212, 227, 228, 240]) {
       driver.onFrame(stateWith({ dotsEaten }))
     }
-    // The pitch words the driver commanded, in order (startSiren + retunes).
-    const pitches = calls
-      .filter((c) => c.fn === 'startSiren' || c.fn === 'setSirenPitch')
-      .map((c) => (c.fn === 'startSiren' ? c.effect.frequency : c.frequency))
-    // Non-decreasing overall …
-    for (let i = 1; i < pitches.length; i++) expect(pitches[i]).toBeGreaterThanOrEqual(pitches[i - 1])
-    // … and it visits each of the 5 rising stage words, first→last.
-    expect(pitches[0]).toBe(SIREN_STAGES[0].frequency)
-    expect(pitches[pitches.length - 1]).toBe(SIREN_STAGES[4].frequency)
-    expect(new Set(pitches).size).toBe(5)
+    const bases = startBases(calls)
+    // One (re)start per stage, strictly rising, visiting all 5 stage bases.
+    for (let i = 1; i < bases.length; i++) expect(bases[i]).toBeGreaterThan(bases[i - 1])
+    expect(bases).toEqual(SIREN_STAGES.map((s) => s.frequency))
   })
 
-  it('does not re-issue the siren when the stage has not changed', () => {
+  it('warbles: within one stage it retunes every frame inside [base, base+depth]', () => {
+    const { wsg, calls } = spyWsg()
+    const driver = createAudioDriver(wsg)
+    const stage = SIREN_STAGES[0]
+    // A full warble period of frames, all in stage 0.
+    for (let i = 0; i < stage.periodFrames; i++) driver.onFrame(stateWith({ dotsEaten: 10 }))
+    const pitches = calls
+      .filter((c): c is Extract<Call, { fn: 'setSirenPitch' }> => c.fn === 'setSirenPitch')
+      .map((c) => c.frequency)
+    // One retune per frame, each within the woop's range, and it MOVES (not flat).
+    expect(pitches).toHaveLength(stage.periodFrames)
+    for (const p of pitches) {
+      expect(p).toBeGreaterThanOrEqual(stage.frequency)
+      expect(p).toBeLessThanOrEqual(stage.frequency + stage.depthWord)
+    }
+    expect(new Set(pitches).size).toBeGreaterThan(1)
+  })
+
+  it('starts the siren only ONCE while the stage is unchanged (warble aside)', () => {
     const { wsg, calls } = spyWsg()
     const driver = createAudioDriver(wsg)
     driver.onFrame(stateWith({ dotsEaten: 0 }))
     driver.onFrame(stateWith({ dotsEaten: 10 })) // same stage 0
-    const sirenCalls = calls.filter((c) => c.fn === 'startSiren' || c.fn === 'setSirenPitch')
-    expect(sirenCalls).toHaveLength(1)
+    expect(calls.filter((c) => c.fn === 'startSiren')).toHaveLength(1)
   })
 
   it('switches the ambient to the frightened warble while frightened, then back', () => {
@@ -150,11 +166,12 @@ describe('audio driver — the background siren rises as the maze empties', () =
     const driver = createAudioDriver(wsg)
     driver.onFrame(stateWith({ dotsEaten: 50 })) // background stage 0
     driver.onFrame(stateWith({ dotsEaten: 50, frightenedTimer: 120 })) // → warble
-    const afterFright = calls[calls.length - 1]
-    expect(afterFright.fn === 'startSiren' && afterFright.effect).toEqual(FRIGHTENED)
     driver.onFrame(stateWith({ dotsEaten: 50, frightenedTimer: 0 })) // → back to background
-    const back = calls[calls.length - 1]
-    expect(back.fn === 'startSiren' && back.effect).toEqual(SIREN_STAGES[0])
+    // The startSiren voices, in order: stage0 → FRIGHTENED → stage0.
+    const restarts = calls.filter(
+      (c): c is Extract<Call, { fn: 'startSiren' }> => c.fn === 'startSiren',
+    )
+    expect(restarts.map((c) => c.effect)).toEqual([SIREN_STAGES[0], FRIGHTENED, SIREN_STAGES[0]])
   })
 
   it('suppresses the ambient siren during the death cue', () => {

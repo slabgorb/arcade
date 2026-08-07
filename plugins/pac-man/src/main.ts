@@ -97,10 +97,14 @@ function currentDir(): Dir {
   return 'none'
 }
 
+let audioStarted = false
 window.addEventListener('keydown', (e) => {
   // WebAudio autoplay policy: the context stays suspended until a user gesture.
-  // The first keydown is that gesture — idempotent thereafter.
+  // The first keydown is that gesture — idempotent thereafter. `audioStarted`
+  // gates the driver so it never records an ambient it silently no-op'd before
+  // the context was live (which would leave the siren dead for the session).
   resumeAudio()
+  audioStarted = true
 
   const key = e.key.toLowerCase()
   if (key in DIR_KEYS) held.add(key)
@@ -149,8 +153,12 @@ const frame = (now: number): void => {
         // Voice this step's cues, then poll the ambient siren. Both run PER sub-
         // step (not per rAF): a catch-up frame may run several steps and each
         // clears `state.events`, so onEvents must consume them before the next.
-        audio?.onEvents(game.events)
-        audio?.onFrame(game)
+        // Gated on the first gesture so nothing is voiced before the audio
+        // context is live (autoplay) — see `audioStarted`.
+        if (audioStarted) {
+          audio?.onEvents(game.events)
+          audio?.onFrame(game)
+        }
         if (game.highScoreTable !== boardBefore) highScoreStorage.save(game.highScoreTable)
       },
     )
