@@ -18,6 +18,7 @@ completed_epics:
   - pm1
   - pm2
   - mc3
+  - pm3
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -848,4 +849,39 @@ completed_stories:
     epic: jt10
     title: 'Game-over screen: wire GOVER_OVER/settleGameOver to a GAME OVER overlay and the transition to highscore-or-attract'
     points: 2
+    completed: '2026-08-07'
+  - id: pm3-1
+    epic: pm3
+    title: 'Graphics ground truth — vendor the tile/sprite ROMs + colour PROMs under a citation gate, BEFORE any decode'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm3-2
+    epic: pm3
+    title: 'The working tunnel — actor position-wrap (Pac + ghosts) + authentic ~40% tunnel slowdown, core-only and pure'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm3-3
+    epic: pm3
+    title: 'Palette bake — decode the 16 hardware colours (resistor DAC) + colour-lookup, baked to committed JS'
+    points: 3
+    completed: '2026-08-07'
+  - id: pm3-4
+    epic: pm3
+    title: 'Tiles + authentic maze — decode 8x8 tiles, render the real double-line rounded blue corridors, retiring the placeholder'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm3-5
+    epic: pm3
+    title: 'Sprites — decode 16x16; Pac chomp cycle, ghost body + direction eyes, frightened blue/white-flash, eaten eyes-only'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm3-6
+    epic: pm3
+    title: 'Fruit + score sprites — the 8 bonus fruits and the point-value numerals (ghost chain 200-1600, fruit values)'
+    points: 3
+    completed: '2026-08-07'
+  - id: pm3-7
+    epic: pm3
+    title: 'Presentation overlays on the events seam — READY!, level-clear flash, game-over, score popups'
+    points: 5
     completed: '2026-08-07'
