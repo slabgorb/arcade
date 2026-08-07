@@ -237,3 +237,80 @@ describe('the game RNG path is deterministic for a fixed seed', () => {
     expect(run(4242)).toEqual(run(4242))
   })
 })
+
+// ─── mode-change reversal — LATCHED to each ghost's next tile centre ───────
+//
+// Review finding (round 1): mode.ts's `reverseSignal` is a ONE-FRAME pulse.
+// A ghost is at a tile centre only ~1 frame in 8 (8px tiles, 1px/frame) and
+// may also be speed-gated off on the pulse frame, so applying the pulse
+// directly (the pre-fix shape: `forceReverse: modeStep.reverseSignal`) means
+// a scatter<->chase reversal is honoured only when the pulse happens to land
+// on a frame where the ghost is BOTH un-gated AND exactly centred — most
+// reversals were silently dropped. `game.ts` now latches `pendingReverse`
+// per ghost on the pulse frame (every ghost, regardless of gating/position)
+// and consumes it (forces the reverse, clears the flag) at that ghost's own
+// next tile-centre turn decision. The two assertions below are the
+// discriminator: WITHOUT the latch, `dir` stays 'left' forever (the ghost
+// never revisits `forceReverse` on the un-centred pulse frame, and the
+// signal is gone by the next call); WITH the latch, it reverses once the
+// ghost actually reaches a centre.
+describe('mode-change reversal is latched to each ghost\'s NEXT tile centre', () => {
+  it('a ghost mid-tile on the reversal frame does not flip immediately, but does at its next centre', () => {
+    const state = createGameState(13)
+    // Blinky, released by default, placed 3px off a tile centre (13,14),
+    // heading left — genuinely NOT at a tile centre on the pulse frame.
+    state.ghosts.blinky.actor.xPx = 13 * 8 + 3
+    state.ghosts.blinky.actor.yPx = 14 * 8
+    state.ghosts.blinky.actor.dir = 'left'
+    // Pac-Man parked well away so no dot/collision noise muddies the frames.
+    state.pac.actor.xPx = 0
+    state.pac.actor.yPx = 0
+
+    // Arm a scatter->chase transition on the VERY NEXT stepGame call
+    // (mode.ts's level-1 schedule: phase 0 is 7s * 60 = 420 frames).
+    state.mode.phaseIndex = 0
+    state.mode.phaseTimer = 420
+
+    stepGame(state, { dir: 'none' }) // the one-frame pulse — blinky is NOT centred
+    expect(state.pendingReverse.blinky, 'the pulse must latch, not vanish').toBe(true)
+    expect(state.ghosts.blinky.actor.dir, 'no instant mid-tile flip').toBe('left')
+
+    // Drive frames ONLY until the latch is consumed (the ghost's own next
+    // turn decision) — not a fixed count. A fixed, generous frame budget
+    // risks the ghost reaching a SECOND tile centre and picking a fresh
+    // chase-target direction there, which would mask the very reversal this
+    // test exists to pin (that masking is a real failure mode this loop
+    // shape avoids, not a hypothetical).
+    let steps = 0
+    while (state.pendingReverse.blinky && steps < 30) {
+      stepGame(state, { dir: 'none' })
+      steps += 1
+    }
+
+    expect(steps, 'the latch must actually get consumed within a bounded window').toBeLessThan(30)
+    expect(state.ghosts.blinky.actor.dir, 'reversed at the next real turn decision').toBe('right')
+    expect(state.pendingReverse.blinky, 'consumed, not left armed forever').toBe(false)
+  })
+
+  it('a ghost already centred AND due to move on the pulse frame reverses that same frame', () => {
+    const state = createGameState(14)
+    state.ghosts.blinky.actor.xPx = 13 * 8
+    state.ghosts.blinky.actor.yPx = 14 * 8
+    state.ghosts.blinky.actor.dir = 'left'
+    // speedPattern(75) (level-1 ghost speed) is [false, true, true, true] —
+    // frame index 0 is a HELD frame (the ghost would not even be simulated
+    // this call); pick an index the pattern actually moves on, so this
+    // frame is genuinely blinky's turn-decision frame, not a gated no-op.
+    const movingIndex = speedPattern(75).indexOf(true)
+    state.ghostFrame.blinky = movingIndex
+    state.pac.actor.xPx = 0
+    state.pac.actor.yPx = 0
+    state.mode.phaseIndex = 0
+    state.mode.phaseTimer = 420
+
+    stepGame(state, { dir: 'none' })
+
+    expect(state.ghosts.blinky.actor.dir).toBe('right')
+    expect(state.pendingReverse.blinky).toBe(false)
+  })
+})

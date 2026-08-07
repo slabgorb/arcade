@@ -145,6 +145,17 @@ export interface GameState {
    *  per-level `ghostSpeedPct` is realised here via `speedPattern`, mirroring
    *  how `pacman.ts` already gates its own movement. */
   ghostFrame: Record<GhostId, number>
+  /** A mode-change reversal request latched per ghost (fix for the review
+   *  finding: `stepMode`'s `reverseSignal` is a ONE-FRAME pulse, but a ghost
+   *  sits at a tile centre only ~1 frame in 8 and may also be speed-gated
+   *  off on the pulse frame — applying `forceReverse` only on that exact
+   *  frame silently drops most mode-change reversals). Set to `true` for
+   *  every ghost the instant `reverseSignal` fires (regardless of that
+   *  ghost's speed gate or position that frame); consumed — forced and
+   *  cleared — the NEXT time that specific ghost reaches a tile centre and
+   *  makes a turn decision, matching the ROM's "the reversal takes effect at
+   *  the next turn decision" behaviour. */
+  pendingReverse: Record<GhostId, boolean>
   house: HouseState
   mode: ModeState
   dotsEaten: number
@@ -225,6 +236,7 @@ export function createGameState(seed: number, highScoreTable: PacHighScoreTable 
     pac,
     ghosts: createGhosts(),
     ghostFrame: { blinky: 0, pinky: 0, inky: 0, clyde: 0 },
+    pendingReverse: { blinky: false, pinky: false, inky: false, clyde: false },
     house: createHouseState(),
     mode: createModeState(level, seed),
     dotsEaten: spawnEat.dots,
@@ -255,6 +267,7 @@ function respawnAfterDeath(state: GameState): void {
   state.pac.frame = 0
   resetGhostPositions(state.ghosts)
   state.ghostFrame = { blinky: 0, pinky: 0, inky: 0, clyde: 0 }
+  state.pendingReverse = { blinky: false, pinky: false, inky: false, clyde: false }
   // glossary.md §Ghost house: a life lost mid-level switches release checks
   // to the GLOBAL dot counter for the rest of the level.
   state.house = { ...createHouseState(), useGlobalCounter: true }
@@ -273,6 +286,7 @@ function advanceLevel(state: GameState): void {
   state.pac = pac
   state.ghosts = createGhosts()
   state.ghostFrame = { blinky: 0, pinky: 0, inky: 0, clyde: 0 }
+  state.pendingReverse = { blinky: false, pinky: false, inky: false, clyde: false }
   state.house = createHouseState()
   state.mode = createModeState(level, state.seed + level * 13)
   state.dotsEaten = spawnEat.dots
@@ -401,6 +415,21 @@ export function stepGame(state: GameState, input: GameInput): void {
   // ── Mode engine (scatter/chase/frightened + reverse signal) ──────────
   const modeStep = stepMode(state.mode, { energizerEaten: energizerEatenThisFrame })
 
+  // `reverseSignal` is a ONE-FRAME pulse from stepMode, but a ghost is only
+  // AT a tile centre ~1 frame in 8 and may be speed-gated off on the pulse
+  // frame too — applying it directly (the pre-review shape) silently drops
+  // most mode-change reversals. Latch it per-ghost instead: every ghost
+  // (regardless of release/speed-gate/position this frame) gets
+  // `pendingReverse` armed the instant the pulse fires, and each ghost
+  // consumes (forces + clears) its own flag the NEXT time IT specifically
+  // reaches a tile centre and makes a turn decision — matching the ROM's
+  // "reversal takes effect at the next turn decision", not an instant
+  // mid-tile flip. A still-housed ghost simply carries the flag until it is
+  // released and reaches its first tile centre — harmless, never lost.
+  if (modeStep.reverseSignal) {
+    for (const id of GHOST_IDS) state.pendingReverse[id] = true
+  }
+
   // ── Ghosts: move only released ones, gated by the level's speed pattern ──
   const level = levelRow(state.level)
   const dotsRemaining = DOT_COUNT - state.dotsEaten
@@ -413,8 +442,13 @@ export function stepGame(state: GameState, input: GameInput): void {
     state.ghostFrame[id] = frame + 1
     if (!pattern[frame % pattern.length]) continue
 
+    // Captured BEFORE the step call, which mutates position: this is the
+    // frame's turn-decision point, if any, for THIS ghost.
+    const atCentreThisCall = atTileCentre(ghost.actor.xPx, ghost.actor.yPx)
+    const reverseNow = state.pendingReverse[id]
+
     if (modeStep.mode === 'frightened') {
-      stepGhostFrightened(ghost, state.mode, modeStep.reverseSignal)
+      stepGhostFrightened(ghost, state.mode, reverseNow)
     } else {
       const pacTile: Tile = { x: state.pac.actor.xPx / TILE_PX, y: state.pac.actor.yPx / TILE_PX }
       const ghostTiles = {} as Record<GhostId, Tile>
@@ -422,8 +456,14 @@ export function stepGame(state: GameState, input: GameInput): void {
         ghostTiles[gid] = { x: state.ghosts[gid].actor.xPx / TILE_PX, y: state.ghosts[gid].actor.yPx / TILE_PX }
       }
       const target = targetTile(id, { pacTile, pacDir: state.pac.actor.dir, ghostTiles })
-      stepGhost(ghost, target, { forceReverse: modeStep.reverseSignal })
+      stepGhost(ghost, target, { forceReverse: reverseNow })
     }
+
+    // Consumed: this call made this ghost's turn decision for the frame
+    // (stepGhost/stepGhostFrightened both branch on `atTileCentre` first
+    // thing), so a pending reversal was either just forced or was never
+    // eligible this call — either way it's spent.
+    if (atCentreThisCall) state.pendingReverse[id] = false
   }
   // Cruise Elroy stage is computed (available for a future speed-bump wire)
   // but deliberately not applied — see file header "deliberate descopes".
