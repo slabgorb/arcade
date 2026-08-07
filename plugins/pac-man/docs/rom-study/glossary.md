@@ -510,3 +510,83 @@ source is fixed; decoding a specific effect's frequency/duration bytes into WSG
 values is done **by the task that voices that effect** (Task 3 for the SFX/siren,
 Task 4 for the theme), transcribed *under* this gate — never audited in afterward.
 No effect-frequency constant is invented here.
+
+### Effect decode (pm2-3)
+
+pm2-3 decodes the **tone / one-shot SFX** family — the bytes of the three tone
+voice-def tables `#3b30` (voice1), `#3b40` (voice2), `#3b80` (voice3) — into per-cue
+WSG parameters, and traces the effect-number→voice-def dispatch. (The note-stream
+tune family `#3bc8`/`#3bcc`/`#3bd0` — the start theme — is Task 4, still deferred.)
+Every value below is byte-cited in `claims/sound.json` (`SND-*`) and gate-verified.
+
+**The 8-byte voice-def format.** The tone handler `pacman.asm:2dee` copies an 8-byte
+entry into its work area `ix+3..ix+A` (`ldir bc=8` @`2e42`). Decoded byte roles
+(verified against the handler):
+
+| Byte | Role | Handler |
+|------|------|---------|
+| 0 | control; **octave** = `(byte0 & #70) >> 4` = left-shift of the frequency word | `2edc`/`2ee0` |
+| 1 | **base frequency** (low byte of the running frequency accumulator) | `2e50` |
+| 2 | frequency **sweep** delta added per tick (signed) | `2ed0` |
+| 3 | **duration** reload = `byte3 & #7f`; **bit7 = vibrato** flag | `2e48`/`2e91` |
+| 4 | frequency **step** added to the base per duration-segment (signed) | `2eb0` |
+| 5 | **segment / repeat count** | `2e73`/`2e79` |
+| 6 | **waveform-select** in the HIGH nibble (`>>4 & #0f`) + **volume** in the LOW nibble | `2e56`/`2f22` |
+| 7 | volume / waveform **delta** per segment (signed) | `2ebc` |
+
+**Pitch, per voice.** Frequency word = `byte1 << octave` (16-bit `hl`). The hardware
+copy `pacman.asm:009d` (`#4e8c`→`#5050`, 16 bytes) gives **voice1** a 5-nibble
+(20-bit, bit0-based) frequency register, but **voices 2 and 3** only a 4-nibble
+register (bits 4-19) — so for voices 2/3 the actual 20-bit word is `(byte1 << octave)
+<< 4`. Then `Hz = word × 96000 / 2²⁰` (§The chip). The sound then sweeps (byte2) and
+steps (byte4) from there, so the Hz below is the **starting** pitch of a moving tone.
+
+**The dispatch (effect number → voice-def).** A sound is requested by writing a
+**bitmask** into the voice's RAM request byte — `#4e9c` (voice1), `#4eac` (voice2),
+`#4ebc` (voice3) — with `set N,(hl)` / `res N,(hl)` / a plain store. The handler
+`pacman.asm:2e1b-2e28` scans the mask high-bit-first; the found **bit position N**
+becomes the entry index (`dec b`, then `rlca`×3 → offset `N*8`, `pacman.asm:2e32`),
+so **bit N selects the Nth 8-byte voice-def** in that voice's table. The test-mode
+roster (`pacman.asm:31a2`+) confirms it: "Choose sound 1/2/4/8/16/32" writes the
+single-bit values `#01/#02/#04/#08/#10/#20`.
+
+**Cue → voice-def (byte-cited; Dossier is the behavioural decoder of *which* cue).**
+
+| Cue | Voice·bit | Def | Trigger | Wave | Freq word | Start Hz | Vol | Dur | Notes |
+|-----|-----------|-----|---------|------|-----------|----------|-----|-----|-------|
+| Munch phase A (even dot) | v3·b0 | `#3b80` | `1a0f` | 0 | 6144 | 562 | 12 | 6 | down-chirp (sweep −3) |
+| Munch phase B (odd dot) | v3·b1 | `#3b88` | `1a16` | 0 | 1024 | 94 | 12 | 6 | up-chirp (sweep +3); phases toggle on `#4e0e` parity |
+| Ghost eaten | v3·b2 | `#3b90` | `19cb` | 0 | 6144 | 562 | 15 | 12 | vibrato, 2 segments |
+| Fruit eaten | v3·b3 | `#3b98` | `1786` | 0 | 0→ | 0→ | 12 | 32 | rises from 0 (sweep +2) |
+| Death, part 1 | v3·b4 | `#3ba0` | `12fc` | 0 | 8192 | 750 | 15 | 6 | long descending vibrato, **28 segments**, vol −1/seg |
+| Death, part 2 | v3·b5 | `#3ba8` | `1349` | 0 | 0→ | 0→ | 8 | 12 | final octave-7 blip |
+| Frightened / energizer siren | v2·b5 | `#3b68` | `1ac4` | 0 | 0→ | 0→ | 10 | 8 | rising sweep +6, set on energizer eaten |
+| Background siren st.1 | v2·b0 | `#3b40` | `0e77` | 0 | 4096 | 375 | 6 | 12 | vibrato; lowest, maze full |
+| Background siren st.2 | v2·b1 | `#3b48` | `0e77` | 0 | 5120 | 469 | 6 | 11 | dots ≥ `#74` |
+| Background siren st.3 | v2·b2 | `#3b50` | `0e77` | 0 | 6144 | 562 | 6 | 10 | dots ≥ `#b4` |
+| Background siren st.4 | v2·b3 | `#3b58` | `0e77` | 0 | 7680 | 703 | 6 | 9 | dots ≥ `#d4` |
+| Background siren st.5 | v2·b4 | `#3b60` | `0e77` | 0 | 9216 | 844 | 6 | 8 | dots ≥ `#e4`; highest, maze near-empty |
+| Extra life / bonus Pac | v1·b0 | `#3b30` | `2b3f` | **1** | 4096 | 375 | 15 | 12 | one-shot, waveform 1; fires with inc-lives `2b44` |
+
+Addresses are `pacman.asm:<addr>`. The **background siren** is one continuous cue whose
+pitch rises through five stages as the maze empties — driver `pacman.asm:0e77` selects
+the stage from the dots-eaten counter `#4e0e` against thresholds `#74/#b4/#d4/#e4`,
+masking with `#e0` so it never disturbs voice2 bits 5-7. The frightened siren (bit5),
+"eyes/other" overlay (bits 6-7) ride the same voice on top of it.
+
+**Lookup tables.** `SND_DURATION_TABLE` @`#3bb0` = `01 02 04 08 10 20 40 80` (powers of
+two, tempo). `SND_FREQ_TABLE_16` @`#3bb8` = `00 57 5c 61 67 6d 74 7b 82 8a 92 9a a3 ad
+b8 c3` (rest + a 15-step rising scale), indexed by a note byte's low-4-bit field. Both
+are the **note-stream** family's tables (Task 4), byte-cited here for completeness.
+
+**Undecoded / deferred (honest gaps).**
+- **Voice2 bit6** (`#3b70`, set `128e` / cleared `1115`) and **voice2 bit7** (`#3b78`,
+  octave-7 high warble, set `0aee` / cleared `13da`/`1ac6`): two additional voice2
+  overlays. bit7's very high pitch fits the "ghost eyes returning to house" warble but
+  the trigger context was **not** conclusively traced, so the cue label is left open;
+  the byte-defs are decodable but their cue identity is **not** asserted.
+- **The start-of-game theme** and all note-stream tunes (`#3bc8`+, handler `2d44`):
+  Task 4, not decoded here.
+- **Per-segment envelope evolution.** The Hz above is the *starting* pitch; the full
+  swept/stepped trajectory (byte2/byte4/byte7 over byte5 segments) is described by role
+  but not enumerated frame-by-frame — that is the synthesis task's to realise.

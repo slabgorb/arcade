@@ -11,6 +11,8 @@
 import { drawMaze, drawPacman, drawGhost, drawFruit, drawHud } from './shell/render'
 import { LOGICAL_W, LOGICAL_H, fitIntegerScale } from './shell/layout'
 import { pumpFrame } from './shell/timebase'
+import { createWsg } from './shell/wsg'
+import { createAudioDriver, type AudioDriver } from './shell/audio'
 import { createGameState, stepGame, enterInitial, confirmNameEntry, type GameState } from './core/game'
 import type { Dir } from './core/actor'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
@@ -50,6 +52,27 @@ const seed = Number.isFinite(rawSeed) ? rawSeed : Date.now()
 
 let game: GameState = createGameState(seed, highScoreStorage.load())
 
+// ── Audio: the WSG voice + the events→cue driver (pm2-3) ─────────────────
+// pm1 built the `events.ts` seam and left it idle; this consumes it. All of it
+// degrades silently: WebAudio starts suspended until a user gesture (resumed on
+// the first keydown below), and if the voice can't be built at all (no audio
+// device) the game simply runs muted — one missing sound never crashes a frame.
+let audio: AudioDriver | null = null
+let resumeAudio: () => void = () => {}
+try {
+  const wsg = createWsg()
+  audio = createAudioDriver(wsg)
+  resumeAudio = () => {
+    try {
+      wsg.resume()
+    } catch {
+      /* audio device vanished mid-session — stay muted, keep playing */
+    }
+  }
+} catch {
+  audio = null
+}
+
 // ── Keyboard: held-direction sampling + name-entry edge events ───────────
 const held = new Set<string>()
 const DIR_KEYS: Readonly<Record<string, Dir>> = {
@@ -74,7 +97,15 @@ function currentDir(): Dir {
   return 'none'
 }
 
+let audioStarted = false
 window.addEventListener('keydown', (e) => {
+  // WebAudio autoplay policy: the context stays suspended until a user gesture.
+  // The first keydown is that gesture — idempotent thereafter. `audioStarted`
+  // gates the driver so it never records an ambient it silently no-op'd before
+  // the context was live (which would leave the siren dead for the session).
+  resumeAudio()
+  audioStarted = true
+
   const key = e.key.toLowerCase()
   if (key in DIR_KEYS) held.add(key)
 
@@ -119,6 +150,15 @@ const frame = (now: number): void => {
         if (game.phase === 'game-over') return
         const boardBefore = game.highScoreTable
         stepGame(game, input)
+        // Voice this step's cues, then poll the ambient siren. Both run PER sub-
+        // step (not per rAF): a catch-up frame may run several steps and each
+        // clears `state.events`, so onEvents must consume them before the next.
+        // Gated on the first gesture so nothing is voiced before the audio
+        // context is live (autoplay) — see `audioStarted`.
+        if (audioStarted) {
+          audio?.onEvents(game.events)
+          audio?.onFrame(game)
+        }
         if (game.highScoreTable !== boardBefore) highScoreStorage.save(game.highScoreTable)
       },
     )
