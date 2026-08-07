@@ -6,7 +6,8 @@ Plan tasks 1-3 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.
 
 > ⚠ Setup note (measured 2026-08-07):
 > - **CLAIMS PATH:** the description writes `claims/spawn.json`, but this game's claims live at `plugins/missile-command/docs/rom-study/claims/`. The new spawner claim file is `plugins/missile-command/docs/rom-study/claims/spawn.json`. Do NOT create a top-level `plugins/missile-command/claims/` directory.
-> - **Existing claims:** The reuse claim `MC-MAXMIS` exists (glossary + citations, W3COMN.MAC:29 = `MAXMIS=10.` decimal). New claims MC-NICBMS / MC-MXICON / MC-LAUHGT do not yet exist — expected.
+> - **Existing claims:** The reuse claim `MC-MAXMIS` exists (glossary + citations, W3COMN.MAC:29 = `MAXMIS=10.` decimal). ~~New claims MC-NICBMS / MC-MXICON / MC-LAUHGT do not yet exist — expected.~~
+>   **⚠ TEA CORRECTION (2026-08-07):** that was WRONG — the SM note grepped the nonexistent `plugins/missile-command/claims/` dir, not the real `docs/rom-study/claims/`. `MC-NICBMS`(8), `MC-MXICON`(7) and `MC-LAUHGT`(0CA=202) are **ALREADY committed in `docs/rom-study/claims/config.json`** with byte-exact verbatim (mc2). They are NOT new. **Dev must REUSE them and must NOT create a `spawn.json` re-declaring these ids** — a duplicate id fails `check-citations`. AC5's substance (constants claimed + byte-exact) is already satisfied; see the session's Delivery Findings / Design Deviations.
 > - **Template exports:** `abm.ts` exports `launchAbm(origin,target)` / `stepAbm(abm)` — the mirror template for `icbm.ts`.
 > - **Field.ts exports:** `field.ts` already exports NCITY, START_CITIES, NMISBA, CITIES, BASES — APPEND City/Base/createCities/createBases/MAXMIS, do not alter these.
 > - **New files:** `spawn.ts` does NOT yet exist — it's a new file (correct).
