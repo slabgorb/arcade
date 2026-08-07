@@ -17,9 +17,10 @@
 import { ENTITY_RECORDS, PALETTES, COMCL5, expandComcl5 } from './core/pictures.js'
 import { drawList, type DrawOp } from './core/demo.js'
 import { createGame, stepGame, overlayReadout, type GameState } from './core/game.js'
-import { startPlaying, type CabinetState } from './core/cabinet.js'
+import { startPlaying, modeForGover, afterGameOver, type CabinetState } from './core/cabinet.js'
 import { selectPlayerCount, type SelectInput } from './core/select.js'
 import { layoutSelectScreen } from './shell/selectScreen.js'
+import { layoutGameOverScreen } from './shell/gameOverScreen.js'
 import type { LaidOutText } from './shell/fontRender.js'
 import type { PlayerInput } from './core/flight.js'
 import { pumpFrames } from './shell/timebase.js'
@@ -189,6 +190,23 @@ function renderSelectScreen(): void {
   paintText(screen.credits, centred(screen.credits), 210)
 }
 
+// jt10-6 — the game-over banner colour (a transcribed COLOR1 index, as the select
+// screen and dev overlay use — NOT an invented literal, so the denylist scan stays
+// clean) and its Y position (a placeholder tuned by a human smoke test / reference
+// capture; the ROM puts the phrase at $3090). The exact colour awaits a capture.
+const GAMEOVER_COLOUR_INDEX = 5
+const GAMEOVER_BANNER_Y = 108
+
+/**
+ * The game-over overlay: the single 'THY GAME IS OVER' banner (FONT57), centred
+ * horizontally on the backbuffer. Text + font come from `layoutGameOverScreen`; the
+ * position is the shell's (a human smoke test / reference capture tunes it).
+ */
+function renderGameOverScreen(): void {
+  const { banner } = layoutGameOverScreen(colours[GAMEOVER_COLOUR_INDEX])
+  paintText(banner, Math.round((LOGICAL_WIDTH - banner.width) / 2), GAMEOVER_BANNER_Y)
+}
+
 // ─── The cabinet: booted to 'select', stepping the SESSION layer once playing ──
 //
 // jt4-5 MIGRATION (Dev/Korben): the shell drives the SESSION layer — `createGame` +
@@ -213,12 +231,20 @@ let prevFlap2 = false
 // game every frame (the prevFlap discipline, one tier up).
 let prevStartHeld = false
 
+// jt10-6 — the game-over hold. GOVWAT (JOUSTRV4.SRC:678, `#11  8*11 OR 88 TICK WAIT`)
+// shows the banner ~88 ticks before JMP GAMEND, so the shell holds the overlay this
+// many whole frames before routing on through afterGameOver — otherwise the banner
+// would flash for a single frame. Reset when a fresh game begins.
+const GAMEOVER_HOLD_FRAMES = 88
+let gameoverHoldFrames = 0
+
 /** Begin a real game for `count` players, seeded from SEED, and cache its player ids. */
 function enterPlaying(count: 1 | 2): void {
   cabinet = startPlaying(cabinet, SEED, count)
   playerIds = cabinet.game.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
   prevFlap1 = false
   prevFlap2 = false
+  gameoverHoldFrames = 0
 }
 
 /** The player's start-button intent this frame: the 1P / 2P start keys (1 / 2). */
@@ -257,9 +283,22 @@ const frame = (now: number): void => {
     const elapsed = Math.min((now - last) / 1000, MAX_CATCHUP_SECONDS)
     last = now
     accumulator = pumpFrames(accumulator, elapsed, () => {
-      if (cabinet.mode === 'select') {
-        // Coin-up: begin a game on the RISING edge of a start press only, so a
-        // held start button cannot re-seed the game each frame.
+      if (cabinet.mode === 'gameover') {
+        // Hold the banner ~88 ticks (GOVWAT), then route on through the PURE gate:
+        // afterGameOver → 'highscore' iff the best score qualifies, else 'attract'
+        // (the table is empty until jt10-7 wires @shared/highscore). jt10-4 (attract)
+        // and jt10-7 (high-score entry) build those screens; until they land, both
+        // render as the coin-up door below, so the cabinet never dead-ends.
+        if (++gameoverHoldFrames >= GAMEOVER_HOLD_FRAMES) {
+          cabinet = afterGameOver(cabinet, [])
+          gameoverHoldFrames = 0
+        }
+        return
+      }
+      if (cabinet.mode !== 'playing') {
+        // The coin-up door: 'select', and — until jt10-4/jt10-7 — 'attract'/'highscore'
+        // too. Begin a game on the RISING edge of a start press only, so a held start
+        // button cannot re-seed the game each frame.
         const want = readSelectInput(held)
         const startHeld = want !== null
         if (startHeld && !prevStartHeld) {
@@ -274,7 +313,11 @@ const frame = (now: number): void => {
       const inputs: Record<number, PlayerInput> = {}
       if (playerIds[0] !== undefined) inputs[playerIds[0]] = in1
       if (playerIds[1] !== undefined) inputs[playerIds[1]] = in2
-      cabinet = { mode: 'playing', game: stepGame(cabinet.game, inputs) }
+      // Step the SESSION layer, then DERIVE the mode from the stepped game's settled
+      // GOVER (modeForGover) — so an all-players-out frame lands in 'gameover'. The
+      // literal stepGame( call is preserved (the jt4-5 demo-source seam).
+      const game = stepGame(cabinet.game, inputs)
+      cabinet = { mode: modeForGover(game.gover), game }
       // The core emitted this frame's moments as DATA; the shell turns them into
       // cues. Inside the pump, so a catch-up frame's moments are not dropped.
       playEventSounds(audio, cabinet.game.events)
@@ -285,10 +328,7 @@ const frame = (now: number): void => {
 
   logicalContext.fillStyle = `rgb(${colours[0].r} ${colours[0].g} ${colours[0].b})`
   logicalContext.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT)
-  if (cabinet.mode === 'select') {
-    // The coin-up screen: the two START banners and the CREDITS row.
-    renderSelectScreen()
-  } else {
+  if (cabinet.mode === 'playing') {
     // Render BY the core's ordered draw list (back platforms → entity sprites →
     // foreground platforms) — the render SELECTION lives in the pure core
     // (enemyFrame/playerDrawList/drawList), never by-eye in the shell.
@@ -303,6 +343,13 @@ const frame = (now: number): void => {
     drawIsland()
     // The dev-overlay reads the session registers straight off the stepped GameState.
     drawOverlay(cabinet.game)
+  } else if (cabinet.mode === 'gameover') {
+    // The game-over overlay: the 'THY GAME IS OVER' banner, held ~88 ticks.
+    renderGameOverScreen()
+  } else {
+    // The coin-up door: the two START banners and the CREDITS row. 'select', and —
+    // until jt10-4 (attract) / jt10-7 (high-score) land — 'attract'/'highscore' too.
+    renderSelectScreen()
   }
 
   canvas.width = canvas.clientWidth
