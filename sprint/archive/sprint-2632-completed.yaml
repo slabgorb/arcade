@@ -823,3 +823,8 @@ completed_stories:
     title: The start-of-game theme — the tune sequencer on the WSG voice
     points: 3
     completed: '2026-08-07'
+  - id: jt10-1
+    epic: jt10
+    title: 'Font port: transcribe FONT35 (3x5) + FONT57 (5x7) from MESSAGE.SRC into pure core data, add a shell raster text renderer'
+    points: 5
+    completed: '2026-08-07'
