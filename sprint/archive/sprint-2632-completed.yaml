@@ -17,6 +17,7 @@ completed_epics:
   - mc2
   - pm1
   - pm2
+  - mc3
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -832,4 +833,9 @@ completed_stories:
     epic: jt10
     title: 'Cabinet state machine: new core cabinet.ts (attract/title/select/playing/gameover/highscore) wrapping the session, hinged on GOVER'
     points: 3
+    completed: '2026-08-07'
+  - id: mc3-5
+    epic: mc3
+    title: 'Shell: render ICBMs/dead structures/HUD, ammo-gated firing, and a seeded end-to-end playthrough'
+    points: 5
     completed: '2026-08-07'
