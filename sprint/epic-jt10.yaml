@@ -76,8 +76,11 @@ stories:
     title: Extend the font source double-entry gate to ALL ~102 glyphs (font35+font57), not just the 10 jt10-1 pinned
     points: 2
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     depends_on: jt10-1
     type: chore
+    review_verdict: approved
+    review_findings: "APPROVED (Heimdall) round 1. Test+citations chore. Extended font source gate to all glyphs: all-glyph double-entry (green on arrival, faithful port) + 90 new byte-verified citation claims (font35 41, font57 49) closing the citation half of jt10-1's finding. Non-vacuity proven by mutation battery (coverage delete, real module-data drift, verbatim drift — each bites). Both axes guarded in CI via committed vendored tree. No font DATA changed. No findings."
