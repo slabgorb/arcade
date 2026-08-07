@@ -13,6 +13,7 @@ import { LOGICAL_W, LOGICAL_H, fitIntegerScale } from './shell/layout'
 import { pumpFrame } from './shell/timebase'
 import { createWsg } from './shell/wsg'
 import { createAudioDriver, type AudioDriver } from './shell/audio'
+import { createOverlays } from './shell/overlays'
 import { createGameState, stepGame, enterInitial, confirmNameEntry, type GameState } from './core/game'
 import { FRIGHT_FLASHES } from './core/mode'
 import type { Dir } from './core/actor'
@@ -94,6 +95,13 @@ try {
 } catch {
   audio = null
 }
+
+// pm3-7: the presentation-overlay driver — mirrors `audio` in shape
+// (createOverlays().{onEvents,draw} vs createAudioDriver().{onEvents,onFrame})
+// and reads the SAME `events.ts` seam, but never depends on the audio
+// context, so it is constructed unconditionally (no try/catch — it touches
+// no browser API that can fail to initialise).
+const overlays = createOverlays()
 
 // ── Keyboard: held-direction sampling + name-entry edge events ───────────
 const held = new Set<string>()
@@ -181,6 +189,12 @@ const frame = (now: number): void => {
           audio?.onEvents(game.events)
           audio?.onFrame(game)
         }
+        // pm3-7: overlays consume the same per-substep events seam, but —
+        // unlike audio — are not gated on the first user gesture: READY!/a
+        // ghost catching Pac-Man before any key is pressed must still latch
+        // its overlay, and overlays touch no autoplay-restricted API. Still
+        // runs before the next `stepGame` call replaces `game.events`.
+        overlays.onEvents(game.events)
         if (game.highScoreTable !== boardBefore) highScoreStorage.save(game.highScoreTable)
       },
     )
@@ -194,6 +208,7 @@ const frame = (now: number): void => {
   drawPacman(logicalCtx, game.pac.actor.xPx, game.pac.actor.yPx, game.pac.actor.dir, game.pac.frame)
   if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)
   drawHud(logicalCtx, game.score, game.lives, game.level)
+  overlays.draw(logicalCtx, game) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield
 
   const fit = fitIntegerScale(canvas.width, canvas.height)
   ctx.imageSmoothingEnabled = false
