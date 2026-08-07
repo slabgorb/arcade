@@ -21,7 +21,8 @@ stories:
     title: 'Cabinet state machine: new core cabinet.ts (attract/title/select/playing/gameover/highscore) wrapping the session, hinged on GOVER'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     depends_on: jt10-1
