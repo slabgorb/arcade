@@ -235,14 +235,23 @@ describe('jt9-23 review R1 — steering, fall-fast threshold, and bounder exclus
     }
   })
 
-  it('F3 — the BOUNDER is excluded from climb-prep: over a cliff it still climbs (BOUP→BOLEV, no BOUP3)', () => {
+  it('F3 — the BOUNDER never gets the climb-prep HOLD: its per-wake flap law is unchanged over a cliff (no BOUP3)', () => {
     // The bounder samples the same cliff and diverts to plain BOLEV (`BNE BOLEV`
-    // :3850) — there is no BOUP3. So the climb-prep gate must NOT touch it: over a
-    // cliff at velY=0 it behaves as it does with no cliff (its level/climb law flaps
-    // `velY >= 0`), NOT the climb-prep hold (which would glide at velY=0 < 0x40).
+    // :3850) — there is no BOUP3. So the climb-prep HOLD gate (the `velY >= 0x40`
+    // fall-fast law of B2UP3/SHUP3) must NOT touch it. This calls `boundr()` — the
+    // bare per-wake flap law (`pursue`), NOT the full step pipeline — where at velY=0
+    // the bounder flaps `velY >= 0` exactly as it does with no cliff, NOT the hold
+    // (which would glide at velY=0 < 0x40).
+    //
+    // jt9-50 note: the BOUP divert itself lives at the up-seek DECIDE (`seekWake`),
+    // which `boundr()` does not run, so it is INVISIBLE here — at velY=0 BOLEV and the
+    // climb both flap, so this pair cannot see the divert either way. The divert is
+    // observable only through the full pipeline while RISING (velY<0); that is what
+    // climb-prep-bounder.test.ts stages. So "the flap law is the same over a cliff"
+    // remains true for this bare-`pursue` call even after jt9-50 landed.
     const overCliff = e.boundr(at('boundr', cliff.x, cliff.y, 0, 0, 1), FAR_ABOVE, WAVE)
     const noCliff = e.boundr(at('boundr', clear.x, clear.y, 0, 0, 1), FAR_ABOVE, WAVE)
-    expect(overCliff.flap, 'the bounder is not held level by a cliff').toBe(true)
-    expect(overCliff.flap, 'the cliff does not change the bounder at all').toBe(noCliff.flap)
+    expect(overCliff.flap, 'the bounder is not held level (no B2UP3 hold)').toBe(true)
+    expect(overCliff.flap, 'the bare per-wake flap law is unchanged by the cliff').toBe(noCliff.flap)
   })
 })

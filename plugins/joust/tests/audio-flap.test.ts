@@ -1192,10 +1192,17 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
     // retired (jt9-8 owns the flap seam on purpose); what survives is a frozen,
     // DISCRIMINATING full-sim digest that still catches any UNINTENDED perturbation.
     // MEASURED on the integrated (jt9-8 + jt9-43) tree, seed 0xbeef, 200 frames.
+    //
+    // jt9-50 RE-BASELINE (the bounder BOUP cliff-above divert to BOLEV): only the
+    // BOUNDER `enemy#256` moves — diverting off a blocked climb to level flight it is
+    // on a different arc here (`28788,-33` -> `30017,-13`; posX/velXIndex/timeUp
+    // unchanged). Every other row — both players and `enemy#257`/`enemy#258` — is
+    // bit-identical, and the sim's `rng` cursor is unmoved (audio-events.test.ts AC3):
+    // a BOLEV divert draws no randomness. Re-measured on the integrated tree.
     expect(entityDigest(0xbeef, 200)).toEqual([
       'player#1:42,14656,0,-4,192,3,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:171,28788,-33,8,64,101,1',
+      'enemy#256:171,30017,-13,8,64,101,1',
       'enemy#257:54,33030,-15,8,0,82,1',
       'enemy#258:171,33756,-20,8,64,101,1',
     ])
