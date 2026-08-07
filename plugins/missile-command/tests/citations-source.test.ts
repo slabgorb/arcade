@@ -187,8 +187,11 @@ describe.skipIf(!sourceAvailable)('W3MAIN is double-spaced: physical :1640 is bl
 describe('every claim `value` is the radix decode of its own verbatim', () => {
   // EQU claims whose RHS is not a plain radix literal — value is derived/resolved
   // and is checked explicitly below instead. STCITY is a `.BYTE` option table
-  // (no `=` RHS), like OLDRAD/MAX_BLAST_RADIUS; its value is entry [0].
-  const DERIVED = new Set(['IVMAX', 'MAX_BLAST_RADIUS', 'STCITY'])
+  // (no `=` RHS), like OLDRAD/MAX_BLAST_RADIUS; its value is entry [0]. ICBPTS
+  // (mc3-3) is an INSTRUCTION-site claim (`ADC I,25`, no `=` RHS) whose numeric
+  // value 25 IS the immediate operand — same non-EQU-but-numeric shape as STCITY;
+  // its verbatim is byte-checked and its value is pinned by score.test.ts.
+  const DERIVED = new Set(['IVMAX', 'MAX_BLAST_RADIUS', 'STCITY', 'ICBPTS'])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
   // `=` RHS. The dossier-coverage claims mc2-6 added (routine `.SBTTL` anchors,
