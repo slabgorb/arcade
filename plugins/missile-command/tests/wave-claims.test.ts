@@ -58,11 +58,10 @@ describe('mc4-1 AC4 — the delta-note detector itself has teeth (synthetic muta
   // Proves the guard above can DISTINGUISH the artifact from its absence, independent
   // of the committed set (lang-review #15/#18): it must accept a note naming both
   // revisions and reject notes naming one or neither.
-  const claimWith = (meaning: string): Claim =>
-    ({
-      id: 'SYN', symbol: 'SYN', value: 0, meaning,
-      source: { file: 'W3MAIN.MAC', line: 1, verbatim: 'x' },
-    }) as unknown as Claim
+  const claimWith = (meaning: string): Claim => ({
+    id: 'SYN', symbol: 'SYN', value: 0, meaning,
+    source: { file: 'W3MAIN.MAC', line: 1, verbatim: 'x' },
+  })
 
   it('accepts a note that names both revisions', () => {
     expect(recordsRevDelta(claimWith('REV-01 uses 3; REV-03 raises it to 5 (delta +2)'))).toBe(true)

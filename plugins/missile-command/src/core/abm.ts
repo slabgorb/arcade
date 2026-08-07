@@ -19,13 +19,17 @@
 //   CALC MISSILE VELOCITY   W3MAIN:1640 (ABMVEL) — the step is the UNIT vector to
 //     the target: ABVE = delta / totalDelta, so a farther target takes
 //     proportionally more ticks. The ROM's 8.8 fixed-point DIVIDE is mc2 fidelity.
-//   UPDATE MISSILE POSITION runs that unit step FASABM times per frame: the ABM
-//     update loop sets `LDY I,2 ;DEFAULT IS SLOW (MOVE 2 DOTS)` (W3MAIN.MAC:1661)
-//     and moves the head once per iteration. So a player ABM advances 2 cabinet
-//     units/tick — FASTER than an ICBM, which UPICBM moves at most once per frame
-//     (≤ 1 unit/tick; see wave.ts). mc3 modelled both at unit speed, a tie; mc4-1
-//     restores the ROM's 2-dot ABM so ABMs OUTRUN ICBMs at every wave. (The centre
-//     base's 6-dot "MOVE FAST" is a per-base nuance left to a later story.)
+//   UPDATE MISSILE POSITION runs that unit step in a `BEGIN … DEC FASABM … MIEND`
+//     loop. FASABM is loaded with `LDY I,2 ;DEFAULT IS SLOW (MOVE 2 DOTS)`
+//     (W3MAIN.MAC:1661), but COND65's MIEND expands to `BPL <begin>` — it loops
+//     while FASABM ≥ 0 — so the body runs FASABM+1 times: the head advances 3 dots
+//     per frame (and 7, not 6, for the centre base's `LDY I,6` "MOVE FAST"). This is
+//     the classic off-by-one that W3COMN's `IBLOOP/ABLOOP = <N-1>` exists to cancel
+//     for array loops; FASABM deliberately does NOT use `-1`. So a player ABM moves
+//     3 units/tick — faster than an ICBM (UPICBM moves it at most once per frame,
+//     ≤ 1 unit/tick; see wave.ts) — so ABMs OUTRUN ICBMs at every wave. mc3 modelled
+//     both at unit speed (a tie); mc4-1 restores the ROM's real ABM speed. (The
+//     centre base's 7-dot speed is a per-base nuance left to a later story.)
 //
 // Owner ruling (2026-08-06): per-key specific base, source-faithful — this core has
 // NO nearest-base logic; it flies from whatever `origin` the shell gives it.
@@ -48,11 +52,16 @@ export interface Abm {
   readonly arrived: boolean
 }
 
-// Cabinet units the head advances each tick — the ROM's default ABM speed, 2 dots
-// per frame (FASABM `LDY I,2`, W3MAIN.MAC:1661), the ABMVEL unit step run twice.
-// (// line comments, not a /** */ block: the un-cited-literal guard strips `//`
-// lines but not multi-line block comments, so a line number in a JSDoc would leak.)
-export const ABM_SPEED = 2
+// Cabinet units the head advances each tick — the ROM's default ABM speed. FASABM
+// is loaded with 2 (`LDY I,2`, W3MAIN.MAC:1661) but the BEGIN…DEC FASABM…MIEND loop
+// (COND65 MIEND = BPL, loops while ≥ 0) runs the unit step FASABM+1 = 3 times, so the
+// head advances 3 dots/frame. Expressed as FASABM+1 so the derivation is explicit and
+// the source literal 2 stays the cited value (both 2 and 1 are trivial-exempt from the
+// un-cited-literal guard, so ABM_SPEED needs no separate claim — same as mc3 citing the
+// ICBM unit speed by comment). (// lines, not /** */: the guard strips `//` per line but
+// not multi-line block comments, so a line number in a JSDoc would leak past it.)
+const FASABM = 2
+export const ABM_SPEED = FASABM + 1
 
 /** Launch from `origin` toward `target`: the head starts on the base, not yet arrived. */
 export function launchAbm(origin: Vec, target: Vec): Abm {

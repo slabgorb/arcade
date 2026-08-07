@@ -21,10 +21,11 @@
 //     BEFORE UPDATE" value — ICSPDH the integer frames, ICSPDL the /256 fraction
 //     (W3MAIN.MAC:207,209 declarations). UPDATE ICBM POSITIONS (UPICBM, W3MAIN)
 //     counts ICBFRH down each frame and moves every ICBM ONE step only when it hits
-//     zero, then reloads by adding ICSPD. So the period is frames-per-move: LARGER
-//     = slower. Descent velocity = moves/frame = 1/period, and since a move happens
-//     at most once per frame the effective ceiling is 1 step/frame — exactly mc3's
-//     old flat SPEED=1, which is why mc3 (all waves at the ceiling) felt too fast.
+//     zero, then reloads by adding ICSPD. The countdown-to-zero frame is ITSELF the
+//     move frame, so an ICBM moves once every (period + 1) frames. Descent velocity
+//     = moves/frame = 1/(period + 1): wave 1 ≈ 0.172, ramping to 1.0 at wave 15+
+//     (period 0). mc3's flat SPEED=1 was that wave-15 ceiling run on every wave —
+//     which is why mc3 felt too fast; this restores the gentle early-wave ramp.
 //   WICSPL (W3MAIN.MAC:5717) and WICSPH (W3MAIN.MAC:5719) are hex byte tables; the
 //     tables end at ICBWEN/WICEND, so a wave past the table clamps to the last row.
 //
@@ -70,8 +71,13 @@ export function waveSchedule(wave: number): WaveParams {
   const count = ICBWAV[rowFor(wave, ICBWAV.length)]
   const i = rowFor(wave, WICSPH.length)
   const period = WICSPH[i] + WICSPL[i] / FIXED_POINT
-  // moves/frame, capped at the 1-step/frame hardware maximum (UPICBM moves an ICBM
-  // at most once per frame; a period ≤ 1 means "every frame").
-  const velocity = period <= 1 ? 1 : 1 / period
+  // Moves/frame. UPICBM counts ICBFRH down each frame and moves the ICBM on the
+  // frame it reaches zero — and THAT frame is itself consumed — so an ICBM moves
+  // once every (period + 1) frames, giving velocity = 1/(period + 1). This caps
+  // naturally at 1.0 as period→0 (the wave-15+ rows where WICSPH=WICSPL=0), so no
+  // explicit clamp is needed, and it ramps smoothly (wave 1 ≈ 0.172 … wave 15 = 1.0)
+  // rather than slamming to the ceiling. (The earlier 1/period-capped model wrongly
+  // flattened waves 5-14 to 1.0 — round-1 review finding.)
+  const velocity = 1 / (period + 1)
   return { count, velocity }
 }

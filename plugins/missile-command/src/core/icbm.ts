@@ -1,9 +1,10 @@
 // src/core/icbm.ts
 //
 // Story mc3-1 (GREEN, Yoda) — the enemy ICBM as PURE core data: a warhead that
-// launches from a top-edge origin, flies a STRAIGHT line at constant unit speed
-// to a ground target (a city or base position), and reports ARRIVAL on impact.
-// The mirror of the player abm.ts; the shell never computes geometry.
+// launches from a top-edge origin, flies a STRAIGHT line at its per-ICBM descent
+// speed (mc4-1: `velocity`, defaulting to mc3's unit speed) to a ground target (a
+// city or base position), and reports ARRIVAL on impact. The mirror of the player
+// abm.ts; the shell never computes geometry.
 //
 // PURE: plain arithmetic, no clock, no entropy, no browser surface, no shell
 // import. The src/core purity sweep (tests/purity.test.ts) scans this file.

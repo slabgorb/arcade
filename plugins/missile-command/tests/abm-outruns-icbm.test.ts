@@ -6,11 +6,13 @@
 // it is meant to intercept — a tie, not a win. The ROM's player missiles are
 // faster than the incoming ICBMs; this restores that at every wave of the ramp.
 //
-// The corrected ABM speed is a CITED constant (its value comes from the ROM, not a
-// guess) — that citation is enforced automatically by citations.test.ts §4 the
-// moment ABM_SPEED stops being the trivial-exempt 1. This file pins the BEHAVIOUR:
-// ABM_SPEED strictly exceeds the ICBM descent velocity for every wave, ceiling
-// included.
+// The corrected ABM speed comes from the ROM (FASABM+1 = 3 dots/frame, W3MAIN.MAC:1661
+// via COND65's BPL-based MIEND loop), cited in abm.ts's comment. Note: it is NOT
+// enforced by citations.test.ts §4 — that guard's TRIVIAL set is {0,1,2,-1}, and the
+// value is derived as FASABM(2)+1 from trivial-exempt literals, so no committed claim
+// is required (the same comment-citation pattern mc3 used for the ICBM unit speed).
+// This file pins the BEHAVIOUR instead: ABM_SPEED strictly exceeds the ICBM descent
+// velocity for every wave, ceiling included, and an ABM out-flies an ICBM.
 //
 // ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
 // Two ways, both real:
@@ -87,6 +89,13 @@ const ticksIcbm = (mod: IcbmModule, velocity: number): number => {
 }
 
 describe('mc4-1 AC3 — ABM_SPEED strictly exceeds the ICBM descent velocity at every wave', () => {
+  it('ABM_SPEED is the ROM value 3 (FASABM+1), regression guard against a 2/6 miscount', () => {
+    // Round-1 review: the ROM's BEGIN…DEC FASABM…MIEND loop (MIEND=BPL) runs FASABM+1
+    // times, so the default ABM moves 3 dots/frame, not 2. Pin the exact value so the
+    // off-by-one cannot silently return.
+    expect(ABM_SPEED).toBe(3)
+  })
+
   it('every wave in the ramp has velocity < ABM_SPEED (the defender is always faster)', async () => {
     const { waveSchedule } = await loadWave()
     for (const w of WAVES) {

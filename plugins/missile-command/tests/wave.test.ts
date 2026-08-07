@@ -127,6 +127,34 @@ describe('mc4-1 AC2 (schedule) — the descent velocity RAMPS monotonically to a
   })
 })
 
+describe('mc4-1 AC2 — the exact REV-01 descent curve (regression guard: pins the FORMULA)', () => {
+  // Round-1 review found the relative tests above (monotonic / ramp / ceiling) could
+  // not distinguish `1/period`-capped from the correct `1/(period+1)` — both pass.
+  // These pin specific decoded values (independent literals, computed by hand from the
+  // WICSPH.WICSPL table + the UPICBM move-frame surcharge), so the formula cannot drift
+  // and the wave→row mapping cannot go off-by-one without reddening.
+  it('wave 1: period 4+208/256=4.8125 → velocity 1/(4.8125+1) ≈ 0.17204', async () => {
+    const { waveSchedule } = await loadWave()
+    expect(waveSchedule(1).velocity).toBeCloseTo(0.17204, 4)
+  })
+  it('wave 5: period 160/256=0.625 → velocity 1/(0.625+1) ≈ 0.61538 (NOT 1.0 — the flatten bug)', async () => {
+    const { waveSchedule } = await loadWave()
+    expect(waveSchedule(5).velocity).toBeCloseTo(0.61538, 4)
+  })
+  it('wave 15 (and beyond): period 0 → velocity exactly 1.0 (the true ceiling)', async () => {
+    const { waveSchedule } = await loadWave()
+    expect(waveSchedule(15).velocity).toBe(1)
+    expect(waveSchedule(1_000_000).velocity).toBe(1)
+  })
+  it('the ICBWAV count row is read at the right index (12,16,18,20 at waves 1,5,15,∞)', async () => {
+    const { waveSchedule } = await loadWave()
+    expect(waveSchedule(1).count).toBe(12)
+    expect(waveSchedule(5).count).toBe(16)
+    expect(waveSchedule(15).count).toBe(18)
+    expect(waveSchedule(1_000_000).count).toBe(20) // clamped to the last ICBWAV entry
+  })
+})
+
 describe('mc4-1 AC1 — the per-wave ICBM count is a bounded positive integer', () => {
   it('every wave in the ramp yields a positive whole ICBM count', async () => {
     const { waveSchedule } = await loadWave()
