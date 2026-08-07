@@ -1079,10 +1079,12 @@ stories:
     title: "joust climb-prep: pin the 21-wake B2UP3/SHUP3 decision-interval LENGTH behaviourally. Found by jt9-23 TEA/Reviewer: the #20+1 interval is pinned only in climb-prep-source.test.ts (ROM provenance); the behavioural suite proves the level hold but not its 21-wake period. Add a phase-pinning test (mirroring cadence-wiring's period reads) once the port models the interval as a held state."
     points: 2
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     type: refactor
+    review_verdict: approved
   - id: jt9-52
     title: harden the two voice-release mutants jt9-35 shipped without — tick-expiry release (B1) and stopChannel :222 guard-widening (B2)
     description: 'Filed 2026-08-05 out of a parallel-checkout race: a SIBLING checkout completed jt9-35 (commit 3280c9a) with only the original 15 mutation tests (M1-M4) while this checkout independently ran jt9-35 through verify+review. That adversarial review (Reviewer, APPROVE-after-rework) found TWO BLOCKER-severity survivors the shipped jt9-35 leaves live, and DELIVERED the kill-tests for them in commit fd12e9c (src/shared/tests/audio-voice-release.test.ts, ZEROFOREIGN manifest + the "B1/B2" describe block, now 17 tests). This story is the home for that already-landed work. B1 — deleting tick()s natural-expiry release at src/shared/audio.ts:326 survives the full 560-test suite: after a window counts down naturally the stale voiceChannel lets the next accepted arbitrated cue cross-steal (:266) a channel the voice no longer owns. Killed by "a window that expires naturally via tick() releases the voice — no later cross-steal" (fires the prior source onended FIRST so only the :326 release can clear the voice — otherwise stopChannel :222 masks the mutant). B2 — widening the :222 guard to `voiceChannel === channel || voiceFrames === 0` survives: a foreign-channel silencing releases a still-sounding zero-window voice, the one-voice steal never fires, two voices sound. Killed by "a foreign-channel silencing does not release a zero-length voice that is still sounding". Both independently re-verified by the Reviewer (each reddens its own test, no collateral). DELIVERED + TEA-verified + Reviewer-APPROVED at fd12e9c; this record exists so the landed tests trace to a story rather than to the completed jt9-35. See jt9-53 for the third, MINOR idle-tick survivor left open.'
