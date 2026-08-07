@@ -64,3 +64,40 @@ export function decodePaletteFromProm(prom: Uint8Array): [number, number, number
 export function decodeColourLookupFromProm(prom: Uint8Array): number[] {
   return Array.from(prom, (byte) => byte & 0x0f)
 }
+
+// ─── TILE ROM DECODE (pm3-4) ───────────────────────────────────────────────
+// MAME pacman charlayout (src/mame/pacman/pacman.cpp): 8x8, 2 planes at bit
+// offsets {0,4}; each tile is 16 bytes; xoffs/yoffs below reproduce the
+// split-nibble layout exactly. Bit 0 of an offset is the MSB of byte 0. Cited
+// here in prose per this story's "cite, don't copy" constraint — nothing
+// below is pasted from MAME.
+
+const TILE_BYTES = 16
+
+/** The two bit-plane offsets a tile's 2bpp pixel is drawn from. Shared with
+ *  pm3-5's sprite decode (16x16, same plane split), so it lives here rather
+ *  than tile-private. */
+export const TILE_PLANES = [0, 4]
+
+const TILE_X = [8 * 8 + 0, 8 * 8 + 1, 8 * 8 + 2, 8 * 8 + 3, 0, 1, 2, 3]
+const TILE_Y = [0 * 8, 1 * 8, 2 * 8, 3 * 8, 4 * 8, 5 * 8, 6 * 8, 7 * 8]
+
+/** Read a single bit out of `rom` at `byteBase + (bitPos >> 3)`, MSB-first
+ *  (bit 0 of an offset is the MSB of that byte). Shared with pm3-5's sprite
+ *  decode — the same "planar ROM, MSB-first bit addressing" shape. */
+export function bitAt(rom: Uint8Array, byteBase: number, bitPos: number): number {
+  return (rom[byteBase + (bitPos >> 3)] >> (7 - (bitPos & 7))) & 1
+}
+
+/**
+ * Decode one pixel (0..3, a 2bpp palette-group index) of tile `tileIndex`
+ * at (x,y) in an 8x8 tile, from a pacman.5e/5f-shaped tile ROM (MAME
+ * charlayout: 16 bytes/tile, planes at bit offsets {0,4}). Pure: no I/O
+ * beyond the `rom` bytes passed in.
+ */
+export function decodeTilePixel(rom: Uint8Array, tileIndex: number, x: number, y: number): number {
+  const base = tileIndex * TILE_BYTES
+  let v = 0
+  for (let p = 0; p < 2; p++) v |= bitAt(rom, base, TILE_PLANES[p] + TILE_X[x] + TILE_Y[y]) << p
+  return v
+}

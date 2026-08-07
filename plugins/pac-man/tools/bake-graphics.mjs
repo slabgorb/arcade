@@ -19,7 +19,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { decodePaletteFromProm, decodeColourLookupFromProm } from '../src/shell/gfx-rom.ts'
+import { decodePaletteFromProm, decodeColourLookupFromProm, decodeTilePixel } from '../src/shell/gfx-rom.ts'
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const graphicsDir = join(pluginRoot, 'reference', 'graphics')
@@ -65,4 +65,28 @@ function bakePalette() {
   console.log(`wrote ${join(outDir, 'palette-data.ts')} (${palette.length} colours, ${lookup.length} lookup entries)`)
 }
 
+function bakeTiles() {
+  const rom = readFileSync(join(graphicsDir, 'pacman.5e'))
+
+  const tiles = Array.from({ length: 256 }, (_, i) =>
+    Uint8Array.from({ length: 64 }, (_, k) => decodeTilePixel(rom, i, k % 8, (k / 8) | 0)),
+  )
+
+  const body =
+    HEADER +
+    '//\n' +
+    '// Source ROM: reference/graphics/pacman.5e (256 tiles x 16 bytes, 2bpp planar).\n' +
+    '// Decode: src/shell/gfx-rom.ts (decodeTilePixel, MAME charlayout).\n\n' +
+    '/** 256 tiles, each 64 palette-group indices (0..3) in row-major 8x8 order.\n' +
+    ' * Decoded from pacman.5e; the tile test re-derives this and asserts\n' +
+    ' * byte-equality. */\n' +
+    'export const TILES: readonly Uint8Array[] = [\n' +
+    tiles.map((t) => `  Uint8Array.of(${t.join(', ')}),`).join('\n') +
+    '\n]\n'
+
+  writeFileSync(join(outDir, 'tile-data.ts'), body)
+  console.log(`wrote ${join(outDir, 'tile-data.ts')} (${tiles.length} tiles)`)
+}
+
 bakePalette()
+bakeTiles()
