@@ -1,0 +1,26 @@
+[
+  {
+    "id": "GHOST-HOUSE-GLOBAL-PINKY",
+    "symbol": "GLOBAL_DOT_LIMIT_PINKY",
+    "value": 7,
+    "meaning": "The first of three sequential in-house-release gate checks (each guarded by the (#4e12) 'use global counter' flag, entered only after a life is lost mid-level) compares the running global dot counter at (#4d9f) against the literal #07 = 7 before setting the release flag at (#4da1). This is the first of the ghost house's three gate blocks in program order (2069-208b, 208c-20ae, 20af-20d6), and its threshold (7) matches the Pac-Man Dossier's documented Pinky global-counter release value exactly, which is how the block is identified as Pinky's — the bare disassembly carries no ghost-name label at this address.",
+    "addr": "2078",
+    "source": { "file": "pacman.asm", "line": 4549, "verbatim": "2078  fe07      cp      #07" }
+  },
+  {
+    "id": "GHOST-HOUSE-GLOBAL-INKY",
+    "symbol": "GLOBAL_DOT_LIMIT_INKY",
+    "value": 17,
+    "meaning": "The second gate block's threshold compare: global dot counter (#4d9f) against literal #11 (hex) = 17 decimal, gating the release flag at (#4da2). Matches the Pac-Man Dossier's documented Inky global-counter release value (17); identified by value/position match, not a ROM-side name label.",
+    "addr": "209b",
+    "source": { "file": "pacman.asm", "line": 4570, "verbatim": "209b  fe11      cp      #11" }
+  },
+  {
+    "id": "GHOST-HOUSE-GLOBAL-CLYDE",
+    "symbol": "GLOBAL_DOT_LIMIT_CLYDE",
+    "value": 32,
+    "meaning": "The third gate block's threshold compare: global dot counter (#4d9f) against literal #20 (hex) = 32 decimal, gating the release flag at (#4da3). Matches the Pac-Man Dossier's documented Clyde global-counter release value (32); identified by value/position match, not a ROM-side name label.",
+    "addr": "20be",
+    "source": { "file": "pacman.asm", "line": 4591, "verbatim": "20be  fe20      cp      #20" }
+  }
+]

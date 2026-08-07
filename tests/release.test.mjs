@@ -175,7 +175,7 @@ test('packagePathFor and appDirFor point at files that exist, for every app', ()
   // Loops over the real app list, so an eighth game is covered the day it lands
   // rather than the day someone remembers to extend a hardcoded list here.
   const ids = appIds();
-  assert.ok(ids.includes('lobby') && ids.length === 9, `expected 9 apps, got ${ids.join(',')}`);
+  assert.ok(ids.includes('lobby') && ids.length === 10, `expected 10 apps, got ${ids.join(',')}`);
   for (const id of ids) {
     assert.ok(existsSync(path(packagePathFor(id))), `${packagePathFor(id)} does not exist`);
     assert.ok(existsSync(path(appDirFor(id))), `${appDirFor(id)} does not exist`);
