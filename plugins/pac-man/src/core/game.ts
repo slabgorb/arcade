@@ -55,7 +55,7 @@ import { TILE_PX, DIR_DELTA, speedPattern, type Dir } from './actor'
 import { createPacmanState, stepPacman, type PacmanState } from './pacman'
 import { type GhostId, type Ghost, stepGhost } from './ghost'
 import { createHouseState, releaseFromHouse, type HouseState } from './house'
-import { targetTile } from './targeting'
+import { targetTile, SCATTER_CORNER } from './targeting'
 import {
   createModeState,
   stepMode,
@@ -449,6 +449,16 @@ export function stepGame(state: GameState, input: GameInput): void {
 
     if (modeStep.mode === 'frightened') {
       stepGhostFrightened(ghost, state.mode, reverseNow)
+    } else if (modeStep.mode === 'scatter') {
+      // Scatter means every ghost makes for its own home corner — NOT
+      // `targeting.ts`'s per-personality chase formula (that module only
+      // ever implements the CHASE target; glossary.md §Ghost AI "Scatter
+      // corners" documents `SCATTER_CORNER` as exactly this substitution,
+      // which this round's fix wires in — its prior absence was the root
+      // cause of the reported opening death cascade: every ghost beelined
+      // straight at Pac-Man from frame 1 regardless of the mode engine's
+      // scatter phase).
+      stepGhost(ghost, SCATTER_CORNER[id], { forceReverse: reverseNow })
     } else {
       const pacTile: Tile = { x: state.pac.actor.xPx / TILE_PX, y: state.pac.actor.yPx / TILE_PX }
       const ghostTiles = {} as Record<GhostId, Tile>

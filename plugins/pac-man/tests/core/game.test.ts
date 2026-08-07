@@ -314,3 +314,37 @@ describe('mode-change reversal is latched to each ghost\'s NEXT tile centre', ()
     expect(state.pendingReverse.blinky).toBe(false)
   })
 })
+
+// ─── the opening death cascade (controller playtest round 2) ──────────────
+//
+// Root cause: `targeting.ts`'s `targetTile` implements ONLY the CHASE-mode
+// personality formulas (glossary.md §Ghost AI is explicit that the module's
+// scope is "WHERE a ghost aims" for chase; `SCATTER_CORNER` is exported
+// specifically so a caller can substitute it during scatter). The pre-fix
+// per-ghost movement loop in `stepGame` called `targetTile(id, ...)`
+// unconditionally whenever mode was not `'frightened'` — it never checked
+// `modeStep.mode === 'scatter'` at all, so Blinky (released from the very
+// first frame) beelined straight at Pac-Man's tile through the ENTIRE
+// scatter phase, not just once chase legitimately began. A stationary
+// (no-input) Pac-Man at spawn was caught within ~160 frames (under 3
+// real-time seconds), lost all three lives in well under the 420-frame
+// (7s) level-1 scatter window, and reached `game-over` before any real play
+// could happen — exactly the controller's observed instant LIVES 3->2->0.
+// This was invisible to the earlier collision-mechanics tests above because
+// those place a ghost directly ON Pac-Man's tile by hand; none of them ran
+// a free, organic simulation from a fresh spawn.
+describe('a fresh level-1 game survives its opening scatter phase with no input', () => {
+  it('does not lose a single life in 400 frames (< the 420-frame/7s scatter window) of no-op input', () => {
+    const state = createGameState(1) // the exact seed from the controller's repro URL
+    for (let i = 0; i < 400; i++) {
+      stepGame(state, { dir: 'none' })
+      // Fail at the FIRST frame that drops a life, not just at the end —
+      // a non-vacuous, precisely-located assertion rather than a single
+      // check after the fact.
+      expect(state.lives, `lost a life at frame ${i} (mode=${state.mode.frightenedTimer > 0 ? 'frightened' : 'scatter/chase'})`).toBe(
+        DEFAULT_LIVES,
+      )
+    }
+    expect(state.phase).toBe('playing')
+  })
+})
