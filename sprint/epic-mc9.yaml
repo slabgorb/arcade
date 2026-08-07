@@ -20,7 +20,7 @@ stories:
       - 'the render source cites WRITE A STAMP (W3DSUP.MAC:587) and DRAW ALL LIVING CITIES (W3DSUP.MAC:1067); stamp geometry lives in src/shell (no src/core change) and purity.test.ts stays green.'
       - 'a dead city/base still draws as rubble and never as a live stamp; the render tests assert live-vs-dead against the existing canvas-mock harness.'
     review_findings: "5 test-quality findings, all in render-stamps.test.ts; production code (render.ts/stamps.ts) correct, faithful (verbatim ROM bitmaps), boundary intact, verified on-screen. [M] citation guards whole-src/shell scope, mutation-defeated (161-173); [M] wiring tests pass vacuously (136-153); [M] NC/NB hardcoded vs field.ts NCITY/NMISBA (114); [L] '3 stamps/city' comment false, is 4 (9); [L] recordingCtx 3rd divergent duplicate (56). No Critical/High, no production defect. Rework to TEA: tighten guards, import constants, fix comment."
-    review_verdict: rejected
+    review_verdict: approved
   - id: mc9-2
     title: 'Per-wave 8-colour palette and colour cycling (resolve open question O-5)'
     description: "Colour fidelity. Port SET UP COLORS FOR NEXT WAVE (W3DSUP.MAC:1583): the per-wave 8-colour palette applied to background, structures, missiles, and blasts, plus the colour-cycling the cabinet uses. This RESOLVES open question O-5 — the palette / 3rd-colour-bit / hardware address scramble that mc3 render explicitly did not reproduce; the resolution (how REV-01 maps palette indices to the 8 hardware colours) is documented in the dossier or the mc9 design doc and cited. Shell-only (a palette data module + render wiring). Depends on mc3; independent of mc9-1 but naturally lands after it."
