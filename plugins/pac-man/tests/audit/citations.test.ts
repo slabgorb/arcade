@@ -350,3 +350,31 @@ describe('every WSG waveform claim decodes samples = nibble - 8 of its own citat
     }
   })
 })
+
+// ───────────────────────────────────────────────────────────────────────────────
+// pm3-1 — the graphics ROM byte citation (`{file, offset, bytes}`, full 0..255 byte)
+// ───────────────────────────────────────────────────────────────────────────────
+import { checkClaims } from '../../tools/audit/check-citations.mjs'
+
+describe('pm3-1 graphics byte citations', () => {
+  const gfxRoot = join(pluginRoot, 'reference', 'graphics')
+  const base = { id: 'PALETTE', symbol: 'PALETTE', value: 'hw', meaning: 'palette PROM', addr: '0' }
+
+  it('passes when cited bytes match the PROM', () => {
+    // 82s123.7f byte 0 is the black entry (all resistor bits low) = 0x00.
+    const claims = [{ ...base, source: { file: '82s123.7f', offset: 0, bytes: [0] } }]
+    expect(checkClaims(claims, { vendoredRoot: null, gfxRoot })).toEqual([])
+  })
+
+  it('fails when a cited byte is wrong', () => {
+    const claims = [{ ...base, source: { file: '82s123.7f', offset: 0, bytes: [255] } }]
+    const errs = checkClaims(claims, { vendoredRoot: null, gfxRoot })
+    expect(errs.join('\n')).toMatch(/82s123\.7f@0 byte mismatch/)
+  })
+
+  it('rejects a byte value outside 0..255 at schema time', () => {
+    const claims = [{ ...base, source: { file: '82s123.7f', offset: 0, bytes: [256] } }]
+    const errs = checkClaims(claims, { vendoredRoot: null, gfxRoot: null })
+    expect(errs.join('\n')).toMatch(/malformed source citation/)
+  })
+})

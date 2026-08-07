@@ -69,3 +69,38 @@ is two 256-byte 82S126 PROMs, vendored here under `reference/sound/`:
 > as "the waveform PROM." MAME's `ROM_START(pacman)` is authoritative and says otherwise:
 > **`82s126.1m` holds the waveforms**; `82s126.3m` is the timing PROM, "not used." ROM
 > wins — the waveform claims in `claims/sound.json` cite **`82s126.1m`**.
+
+## Graphics ROMs (added pm3-1 — the tile/sprite/colour byte source)
+
+`pacman.asm` supplies no pixel data at all; the tile/sprite bitmaps and the two
+colour-DAC PROMs live in the machine's separate **video ROM/PROM set**, vendored here
+under `reference/graphics/`:
+
+- `reference/graphics/pacman.5e` — the **tile ROM.** 4096 bytes = 256 8×8 1bpp-planar
+  tiles (the character-generator ROM later tasks decode with MAME's `gfxlayout` for
+  `charlayout`). **SHA-1 `06ef227747a440831c9a3a613b76693d52a2f0a9`**, CRC32 `0c944964`.
+- `reference/graphics/pacman.5f` — the **sprite ROM.** 4096 bytes = 64 16×16 1bpp-planar
+  sprites (Pac-Man's mouth frames, the four ghosts' bodies and eyes, the fruit, the
+  score numerals — MAME's `spritelayout`). **SHA-1 `4a937ac02216ea8c96477d4a15522070507fb599`**,
+  CRC32 `958fedf9`.
+- `reference/graphics/82s123.7f` — the **palette PROM.** 32 bytes = 32 RGB colour
+  entries, one byte each, decoded via a resistor-ladder DAC (MAME's `pacman_palette`
+  in `PALETTE_INIT`; a byte is `-BBGGGRRR` across 3-3-2 weighted resistors). Byte 0 is
+  the black entry (all resistor bits low). **SHA-1 `8d0268dee78e47c712202b0ec4f1f51109b1f2a5`**,
+  CRC32 `2fc650bd`.
+- `reference/graphics/82s126.4a` — the **colour-lookup PROM.** 256 bytes; each byte is
+  a 4-bit index into the 32-entry palette above, indexed by (tile/sprite colour-select ×
+  4 + pixel colour-code) — MAME's `pacman_palette` colourtable build. **SHA-1
+  `19097b5f60d1030f8b82d9f1d3a241f93e5c75d6`**, CRC32 `3eb3a8e4`.
+
+- **Origin:** the MAME `pacman` parent romset (`~/roms/pacman.zip`). All four hashes
+  match MAME's `ROM_START( pacman )` `gfx1` region (`pacman.5e`, `pacman.5f`) and
+  `proms` region (`82s123.7f`, `82s126.4a`) entries exactly (`src/mame/pacman/pacman.cpp`)
+  — the same byte-verified provenance shape as the sound PROMs above.
+- **Vendored:** extracted and committed in-tree under `reference/graphics/` on
+  2026-08-07, because the citation gate byte-verifies `graphics.json` claims against
+  these four files — a CI checkout must contain them.
+- **Decoder authority:** MAME's `gfxlayout`/`spritelayout`/`PALETTE_INIT` for
+  `pacman.cpp` is cited by comment wherever a later task decodes these bytes into
+  pixels — never copied. This task vendors and byte-cites only; no pixel is decoded
+  here.
