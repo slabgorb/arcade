@@ -29,7 +29,7 @@ stories:
     description: "Plan task 4 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). The core mechanic, as two PURE functions in src/core/damage.ts. (a) killIcbmsInBlasts(icbms,explosions): {survivors,killed} — an ICBM is destroyed when its head lies within blastRadius(exp) of any live blast (point-in-circle vs mc1's explosion.ts). (b) resolveGroundImpacts(icbms,cities,bases): {cities,bases,icbms} — an ARRIVED ICBM kills the city/base at its target and is removed from the returned list. Cite MISSILE DAMAGE DETECTION & PROCESS and DESTROY A CITY OR BASE (W3MAIN). Only trivial literals — no new claim. Depends on mc3-1 (Icbm, City, Base)."
     points: 3
     priority: p1
-    status: in_review
+    status: done
     started: '2026-08-07'
     repos: arcade
     workflow: tdd
@@ -37,6 +37,7 @@ stories:
       - killIcbmsInBlasts destroys an ICBM whose head sits inside a blast's current radius, spares one outside it, counts the kills, and returns the untouched survivors; a finished (zero-radius) blast kills nothing.
       - 'resolveGroundImpacts: an arrived ICBM at a city/base target sets that structure alive=false and removes the ICBM from the returned list; other structures are untouched; an in-flight (not arrived) ICBM damages nothing and stays in the list.'
       - damage.ts is a pure module (no clock/entropy/shell import) citing MISSILE DAMAGE DETECTION and DESTROY A CITY OR BASE; damage.test.ts passes and purity.test.ts + citations.test.ts stay green (no non-trivial literal introduced).
+    completed: '2026-08-07'
     branch: feat/mc3-2-damage-detection-blast-kills-icbm-icbm-kills-city-base
     review_verdict: approved
   - id: mc3-3

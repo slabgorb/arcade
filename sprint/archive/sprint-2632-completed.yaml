@@ -777,3 +777,8 @@ completed_stories:
     title: Level table + round lifecycle
     points: 5
     completed: '2026-08-06'
+  - id: mc3-2
+    epic: mc3
+    title: 'Damage detection: a blast destroys incoming ICBMs; an arrived ICBM destroys a city/base'
+    points: 3
+    completed: '2026-08-07'
