@@ -104,3 +104,33 @@ under `reference/graphics/`:
   `pacman.cpp` is cited by comment wherever a later task decodes these bytes into
   pixels — never copied. This task vendors and byte-cites only; no pixel is decoded
   here.
+
+## Maze tilemap capture (added pm3-8 — the authentic maze layout)
+
+`pacman.asm` is the program ROM; the maze wall/dot/energizer arrangement is not a
+static table there (the `0x35b5` table only places dots). It is **video-RAM state**
+the program ROM builds at level start. Captured from MAME 0.288 running the vendored
+`pacman` romset (`~/roms/pacman.zip`), attract-mode maze fully drawn:
+
+- `reference/graphics/maze-vram.bin` — 2048 bytes. `[0..0x3ff]` = video RAM
+  `0x4000–0x43ff` (tile indices), `[0x400..0x7ff]` = colour RAM `0x4400–0x47ff`.
+  Regenerate with `node tools/dump-maze-vram.mjs`.
+  **SHA-1 `786595642e0bca87018fc5cb01e25057ccd182d7`**, CRC32 `ef92418a`.
+- **Decoder authority:** MAME `pacman_v.cpp:170` `pacman_scan_rows` (video-RAM offset
+  ↔ 36×28 tilemap) and `pacman_v.cpp:183` (colour attr `colorram & 0x1f`, banks 0 for
+  stock `pacman`). Cited, re-implemented in `src/shell/gfx-rom.ts`, not copied.
+- **Capture frame:** dumped at machine-frame 1550 (attract mode). A dot-tile scan
+  (tile `0x10`, every 10 frames across a full attract cycle) found the freshly-drawn
+  maze holds a stable 240 dot tiles from ~frame 1520–1630, then attract-mode demo
+  play starts eating dots (240 → 0 by ~frame 4800, one full demo cycle). Frame 1550
+  sits mid-plateau, safely inside that window and inside the task's 200–244
+  sanity range.
+- **API deviation:** the dumper uses `emu.register_frame_done`, not
+  `emu.add_machine_frame_notifier` as originally drafted. On this MAME 0.288 build,
+  `add_machine_frame_notifier`'s callback silently stops firing after ~200
+  invocations — no Lua error, no machine reset, and the emulated game keeps running
+  normally underneath (confirmed across `-video none`/`-sound none`/`-nothrottle`
+  on and off, and with plain defaults). `register_frame_done` is the sibling
+  per-frame callback in the same `emu` Lua table and was verified reliable past
+  6000+ frames in the same build, so it replaces the notifier call in
+  `dump-maze-vram.lua`.
