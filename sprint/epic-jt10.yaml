@@ -62,6 +62,7 @@ stories:
     repos: arcade
     workflow: tdd
     depends_on: jt10-2
+    review_verdict: approved
   - id: jt10-7
     title: 'High-score entry + JOUST CHAMPIONS table: initials entry (ENTER YOUR INITIALS / ENTER THY NAME MY LORD!) via @shared/highscore in the joust font'
     points: 5
