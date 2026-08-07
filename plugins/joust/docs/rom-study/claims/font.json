@@ -1,0 +1,74 @@
+[
+  {
+    "id": "JT101-001",
+    "claim": "FONT57 glyph L1 ('1') header: FCB $03,$07 — 3-byte-wide, 7-row glyph, decoded pixel width 6 (MESSAGE.SRC:356).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 356,
+      "verbatim": "L1\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-002",
+    "claim": "FONT57 glyph LSPC (' ', space) header: FCB $03,$07 — same 6x7 cell as every other FONT57 glyph, all pixels off (MESSAGE.SRC:444).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 444,
+      "verbatim": "LSPC\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-003",
+    "claim": "FONT57 glyph LA ('A') header: FCB $03,$07 — 3-byte-wide, 7-row glyph, decoded pixel width 6 (MESSAGE.SRC:453).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 453,
+      "verbatim": "LA\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-004",
+    "claim": "FONT35 glyph S1 ('1') header: FCB $02,$05 — 2-byte-wide, 5-row glyph, decoded pixel width 4 (MESSAGE.SRC:846).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 846,
+      "verbatim": "S1\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-005",
+    "claim": "FONT35 glyph S4 ('4') header: FCB $02,$05 — 2-byte-wide, 5-row glyph, decoded pixel width 4 (MESSAGE.SRC:867).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 867,
+      "verbatim": "S4\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-006",
+    "claim": "FONT35 glyph S5 ('5 & S' — the FDB reuse target for the 'S' code slot) header: FCB $02,$05 (MESSAGE.SRC:874).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 874,
+      "verbatim": "S5\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-007",
+    "claim": "FONT35 glyph SSPC (' ', space) header: FCB $02,$05 — same 4x5 cell as every other FONT35 glyph, all pixels off (MESSAGE.SRC:909).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 909,
+      "verbatim": "SSPC\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-008",
+    "claim": "FONT35 glyph SA ('A') header: FCB $02,$05 — 2-byte-wide, 5-row glyph, decoded pixel width 4 (MESSAGE.SRC:916).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 916,
+      "verbatim": "SA\tFCB\t$02,$05"
+    }
+  }
+]
