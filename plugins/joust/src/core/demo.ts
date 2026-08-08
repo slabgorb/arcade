@@ -1352,7 +1352,9 @@ function withBounced(p: DemoProcess, resolved: JoustEntity): DemoProcess {
  * JOUSTRV4.SRC:7270-7288). Runs every frame over every process (a frozen bird
  * still drains — the shove outlives one wake); `bumpX` absent/0 is a no-op, so
  * only a bird a bounce shoved moves. `drainBumpX` keeps the remainder for the
- * next frame, so a >3 px shove slides across several.
+ * next frame, so a >3 px shove slides across several. jt9-61 — this is the
+ * MOVEMENT-phase (WRAPX) drain, so it runs AFTER `stepFrame`'s brain has read the
+ * full pre-drain `bumpX` for facing; see the order note at that call site.
  */
 function drainProcessBumpX(p: DemoProcess): DemoProcess {
   const bump = p.bumpX ?? 0
@@ -1952,21 +1954,29 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // advance-block consumer take that decimal ordinal directly, so there is no unit to
   // change here any more — this is the identity that USED to be `decimalWaveFromBcd`.
   const waveOrdinal = demo.wave
-  // jt9-17 — WRAPX, the PBUMPX drain, runs at the top of the frame: it spends
-  // ≤3 px of the shove a bounce parked LAST frame into `posX` before this frame's
-  // flight/collision see the bird (JOUSTRV4.SRC:7270-7288, the flight loop's
-  // per-object drain is one frame after OSTLR sets PBUMPX). Draining here — not
-  // right after `collisionPass` — keeps the parked bump VISIBLE for the rest of
-  // the frame it was set, and drains it uniformly next frame whether or not the
-  // bird woke to fly.
-  const drainedProcesses = demo.sim.processes.map(drainProcessBumpX)
+  // jt9-61 — the ROM order is BRAIN-then-MOVEMENT, same frame: the enemy brain
+  // reads the FULL PBUMPX for facing in B2DIRA/SHDIRA (`JMP [DSMART,X]` :3964 →
+  // B2DIRA :4148-4150 / SHDIRA :4379-4381) and only LATER, in the MOVEMENT phase,
+  // does WRAPX (:7270-7288) drain ≤3 px of it into `posX`. So `stepFrame` (which
+  // runs the brains via `stepEnemyDetailed`, reading `ctx.bumpX = p.bumpX`) MUST
+  // see the undrained `p.bumpX` — any bump ≥1 faces the bird that wake. Draining
+  // here BEFORE the brain (as jt9-17 did) inverted that order and lost every
+  // shove of magnitude ≤3: the top-of-frame drain spent them to 0 before the
+  // brain ever read them. `bumpX` feeds ONLY the facing arm (enemy.ts), never the
+  // flight, and the ≤3 px `posX` drain is a commutative add independent of the
+  // flight delta — so moving it AFTER `stepFrame` changes the facing timing (the
+  // fix) without touching any posX outcome. WRAPX (the drain) still runs every
+  // frame over every process, so a frozen bird drains uniformly whether or not it
+  // woke to fly (the jt9-17 invariant), only now the drain sits in the movement
+  // phase where the ROM keeps it.
   const stepped = stepFrame(
-    { ...demo.sim, processes: drainedProcesses, targets: tickedTargets, cues: [] },
+    { ...demo.sim, targets: tickedTargets, cues: [] },
     inputs,
     { wave: waveOrdinal },
   )
 
-  const materialised = stepped.processes.map((p) => advanceMaterialisation(p as DemoProcess))
+  const drainedProcesses = stepped.processes.map((p) => drainProcessBumpX(p as DemoProcess))
+  const materialised = drainedProcesses.map((p) => advanceMaterialisation(p as DemoProcess))
   const collided = collisionPass(materialised)
 
   let wave = demo.wave

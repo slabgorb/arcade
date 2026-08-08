@@ -322,9 +322,11 @@ describe('jt9-48 — the DemoProcess.bumpX shove drives the enemy facing in play
   it('BARE frame.ts: a hunter carrying a rightward shove faces RIGHT after one step (the wiring is closed)', () => {
     // stepFrame is the raw scheduler (no drain, target = null): it proves
     // frame.ts hands the process's `bumpX` to the enemy step. A hunter parked
-    // facing LEFT with bumpX +16 must end facing RIGHT — the ONLY driver is the
-    // shove (no player, no cliff, parked FLYX).
-    let s: GameState = spawn(createState(SEED), shovedHunter(16, -1))
+    // facing LEFT with an ORGANIC bumpX +3 (`bounceApartX` of PVELX 6) must end
+    // facing RIGHT — the ONLY driver is the shove (no player, no cliff, parked
+    // FLYX). jt9-61 retarget: this was bumpX 16, an over-margin that never occurs
+    // in play (organic shoves are ≤5); the sign is all the arm reads.
+    let s: GameState = spawn(createState(SEED), shovedHunter(3, -1))
     s = stepFrame(s)
     expect(theEnemy(s.processes as readonly DemoProcess[])?.enemy?.facing, 'frame.ts plumbed p.bumpX to the arm').toBe(1)
   })
@@ -338,19 +340,21 @@ describe('jt9-48 — the DemoProcess.bumpX shove drives the enemy facing in play
   })
 
   it('BARE frame.ts CONTROL: a BOUNDER carrying the same shove does NOT turn (no BODIR bump arm)', () => {
-    let s: GameState = spawn(createState(SEED), shovedHunter(16, -1, 'boundr'))
+    let s: GameState = spawn(createState(SEED), shovedHunter(3, -1, 'boundr'))
     s = stepFrame(s)
     expect(theEnemy(s.processes as readonly DemoProcess[])?.enemy?.facing, 'the bounder has no PBUMPX arm').toBe(-1)
   })
 
-  it('FULL stepDemo: the shove SURVIVES the top-of-frame drain and still faces the bird', () => {
-    // The drain (`drainProcessBumpX`, top of `stepDemo`) spends ≤3 px BEFORE
-    // the brain reads the bump this frame. A shove of 16 leaves 13 remaining —
-    // same sign — so it is still readable, which is the whole point of draining
-    // at the TOP (see `stepDemo`'s WRAPX comment). Isolated processes: just the
-    // hunter, so no joust re-parks a bump under us.
+  it('FULL stepDemo: an ORGANIC ≤3 shove faces the bird through the full pipeline (reads pre-drain)', () => {
+    // jt9-61: the drain (`drainProcessBumpX`) now runs in the MOVEMENT phase,
+    // AFTER the brain — mirroring the ROM's WRAPX-after-B2DIRA order. So the brain
+    // reads the FULL pre-drain PBUMPX, and even a magnitude-3 organic shove (the
+    // common `bounceApartX` output, was over-margined at bumpX 16 precisely
+    // BECAUSE the OLD top-of-frame drain would have spent a ≤3 shove to 0 before
+    // the brain saw it) faces the bird. Isolated processes: just the hunter, so no
+    // joust re-parks a bump under us.
     const base = createWaveDemo(SEED)
-    let d: DemoState = { ...base, sim: { ...base.sim, processes: [shovedHunter(16, -1)] } }
+    let d: DemoState = { ...base, sim: { ...base.sim, processes: [shovedHunter(3, -1)] } }
     d = stepDemo(d, {})
     expect(theEnemy(d.sim.processes)?.enemy, 'the hunter survived the frame').toBeDefined()
     expect(theEnemy(d.sim.processes)?.enemy?.facing, 'the parked shove reached the facing through the full pipeline').toBe(1)
@@ -371,8 +375,9 @@ describe('jt9-48 — the DemoProcess.bumpX shove drives the enemy facing in play
 // distinguishing setup from the hunter's is that the shadow only reaches SHDIRA
 // when it is HUNTING — so a targetable player must ride the sim (`selectTarget`
 // picks it) and sit at SHORT range (SHLEP) beside the shadow. Proven end-to-end:
-// the shove survives the top-of-frame drain (16 → 13, same sign) and turns the
-// bird, exactly the hop jt9-17 left inert. Mechanism (the SIGN), not a remainder.
+// an ORGANIC ≤3 shove is read by the brain BEFORE the jt9-61 movement-phase drain
+// (WRAPX-after-SHDIRA, JOUSTRV4.SRC:4379 before :7270) and turns the bird, exactly
+// the hop jt9-17 left inert. Mechanism (the SIGN), not a remainder.
 // ─────────────────────────────────────────────────────────────────────────────
 let TGT: TargetModule
 beforeAll(async () => {
@@ -420,12 +425,13 @@ describe('jt9-60 — the DemoProcess.bumpX shove drives a HUNTING shadow’s fac
   it('FULL stepDemo: a hunting shadow carrying a rightward shove faces RIGHT after one step (SHLEP → SHDIRA)', () => {
     // A targetable player rides the sim, so the shadow HUNTS (target ≠ null) and
     // takes the SHLEP line-track into SHDIRA. The only driver is the shove: LEFT
-    // facer + 16 ⇒ RIGHT, through the drain and the whole pipeline.
+    // facer + an organic +3 ⇒ RIGHT, read pre-drain and through the whole pipeline
+    // (jt9-61 retarget: was bumpX 16, an over-margin play never produces).
     const base = createWaveDemo(SEED)
     const targets: TargetState = TGT.registerPlayer(TGT.seedTargets(), 1, 0)
     let d: DemoState = {
       ...base,
-      sim: { ...base.sim, processes: [playerBeside(), shovedShadow(16, -1)], targets },
+      sim: { ...base.sim, processes: [playerBeside(), shovedShadow(3, -1)], targets },
     }
     d = stepDemo(d, { 1: NEUTRAL })
     expect(theEnemy(d.sim.processes)?.enemy, 'the shadow survived the frame').toBeDefined()
