@@ -203,26 +203,34 @@ export const PORT_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis,
 // heights), never wider.
 export const GROUND_MODEL_SCALE = 1 / 30
 
-// The ground-object placement basis (story sw5-5). TOWER_ORIENT was IDENTITY only
-// because sw3-11 had hand-re-authored these models into the port's own frame; now
-// that they carry the ROM's data verbatim, this is what bridges the two. Applied
-// as `modelMatrix(pos, TOWER_ORIENT, GROUND_MODEL_SCALE)`, i.e. AFTER the scale:
+// The ground-object placement basis (story sw5-5; sw10-1 native-basis remap).
+// TOWER_ORIENT is the ONE per-model orient the native migration keeps: it is not a
+// leftover axis hack but the display posture the shipped game gave the tower (its
+// ROM fore/aft axis reads left/right on screen), preserved verbatim. It is left of
+// the AC #2 guarded set (SURFACE/PORT/TIE) precisely because it carries real display
+// geometry, not a basis conversion. Applied as
+// `modelMatrix(pos, TOWER_ORIENT, GROUND_MODEL_SCALE)`, i.e. AFTER the scale.
 //
-//   1. rotationX(-90°) stands the model up. The ROM's up-axis is Z (x is fore/aft,
-//      y lateral); ours is Y. This maps (x, y, z) -> (x, z, -y).
+// It is the old OpenGL orient carried onto the native axis by the camera remap P
+// (NATIVE_FROM_OPENGL): a STATIC model's native orient is `P · orient_old` (proven
+// numerically to project err 0 — NOT the conjugate `P·M·Pᵀ`, which is only right
+// for a dynamically-composed orient like the TIE). The old orient was:
+//
+//   1. rotationX(-90°) — the display posture (in the old y-up world it stood the
+//      Z-up ROM model up: (x, y, z) -> (x, z, -y)). P carries it onto native axes.
 //   2. the lift undoes GD$MDT. The ROM recentres every ground object's height so
 //      that model z = 0 is the height the PLAYER flies at (its comment: "OFFSET
-//      HITE TO MID OF PLAYERS HITE"), which leaves the base ring at z = -GD$MDT.
-//      Adding GD$MDT back — at the presentation scale — seats the base on the y=0
-//      floor, where the camera and the maze expect it.
+//      HITE TO MID OF PLAYERS HITE"), leaving the base ring at z = -GD$MDT. Adding
+//      GD$MDT back — at the presentation scale — seats the base on the floor; under
+//      P the old +Y lift lands on the native up (+Z) axis, where it belongs.
 //
 // That lift is 3840/30 = 128 world units, which is exactly SKIM_ALTITUDE: the ROM
 // has been telling us the ship's skim height all along. Derived here from the ROM
 // constant rather than from SKIM_ALTITUDE itself, so that retuning the flight
 // height (a play-balance knob) cannot silently sink the towers into the floor.
 export const TOWER_ORIENT: Mat4 = multiply(
-  translation(0, GD_HEIGHT_OFFSET * GROUND_MODEL_SCALE, 0),
-  rotationX(-Math.PI / 2),
+  CAMERA_ORIENT, // P · orient_old: carry the old display orient onto the native axes
+  multiply(translation(0, GD_HEIGHT_OFFSET * GROUND_MODEL_SCALE, 0), rotationX(-Math.PI / 2)),
 )
 
 // TIE display correction (story 8-13). The authentic model stacks its two
@@ -246,14 +254,15 @@ export const TIE_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, 
 // (TRENCH_EYE_MIN..TRENCH_EYE_MAX) and `state.trenchView` IS the eye. Nothing to add.
 const PORT_GLOW = GLOW_FOR['Exhaust Port'] // exhaust-port target amber (shared)
 
-// Where the shell seats the Death Star surface in Z (story 8-11). The relief is
-// DEEP (object Z spans ~ -3840..+6720) and SURFACE_ORIENT only ROLLS it about Z,
-// so its near end stays at +6720 in world Z. Drawn at Z=0 (the old bug) that near
-// end fell BEHIND the cockpit and was clipped by the near plane, leaving the
-// floor invisible while only a far speck survived ahead of the turrets. We shift
-// the whole relief forward so its near ring sits just inside the turret band
-// (turrets spawn at -SPAWN_DISTANCE and scroll in) and the rest recedes ahead to
-// the horizon — derived from the model so it tracks the geometry, not a literal.
+// Where the shell seats the Death Star surface, forward of the cockpit (story 8-11).
+// The relief is DEEP (object Z spans ~ -3840..+6720); seated at the origin (the old
+// bug) its near end fell BEHIND the cockpit and was clipped by the near plane. We
+// shift the whole relief forward so its near ring sits just inside the turret band
+// (turrets spawn one SPAWN_DISTANCE ahead and scroll in) and the rest recedes to the
+// horizon — derived from the model so it tracks the geometry, not a literal. The
+// magnitude is unchanged by sw10-1; `surfacePlacement` re-expresses the SEAT onto the
+// native depth (+X) axis. DEATH_STAR_SURFACE is retired from the live surface scene
+// (surfaceGrid draws it now); this seat survives only for the debug overlay.
 const SURFACE_NEAR_EXTENT = Math.max(...DEATH_STAR_SURFACE.vertices.map((v) => v[2]))
 const Z_SURFACE_PLACEMENT = SURFACE_NEAR_EXTENT + SPAWN_DISTANCE / 2
 
@@ -263,11 +272,12 @@ const Z_SURFACE_PLACEMENT = SURFACE_NEAR_EXTENT + SPAWN_DISTANCE / 2
  * straddling it at the origin (the 8-11 bug). The altitude-skim framing — the
  * floor dropping away as the ship climbs — is no longer baked here; it lives in
  * the CAMERA (`cameraView`), which lifts the eye to the ship's altitude. The floor
- * keeps its true world Y = 0 (the surface plane), so it and the turrets (also at
- * y ≈ 0) share one frame and the camera lifts them together.
+ * keeps its true native up = 0 (the surface plane), so it and the turrets (also at
+ * up ≈ 0) share one frame and the camera lifts them together. sw10-1: the seat is
+ * `toNative` of the old −Z seat, i.e. ahead on the native depth (+X) axis.
  */
 export function surfacePlacement(): { floor: Vec3 } {
-  return { floor: [0, 0, -Z_SURFACE_PLACEMENT] }
+  return { floor: toNative([0, 0, -Z_SURFACE_PLACEMENT]) }
 }
 
 // Where the shell seats the Death Star BODY during the space phase (story 11-7).
@@ -524,7 +534,7 @@ export function render(
     for (const d of state.groundDebris) {
       const glow = d.kind === 'bunker' ? FIREBALL_GLOW : CAP_GLOW // VGCRED / VGCWHT
       drawWireframe(ctx, GROUND_DEBRIS_CHUNK, multiply(view, modelMatrix(d.pos)), proj, w, h, glow)
-      const shadowAt: Vec3 = [d.pos[0], 0, d.pos[2]]
+      const shadowAt: Vec3 = [d.pos[0], d.pos[1], 0] // native floor: up (+Z) = 0
       drawWireframe(ctx, GROUND_DEBRIS_SHADOW, multiply(view, modelMatrix(shadowAt)), proj, w, h, glow)
     }
   } else if (state.phase === 'trench') {
