@@ -44,6 +44,7 @@ import {
   blastRadius,
   startExplosion,
   stepExplosion,
+  MAX_BLAST_RADIUS,
   type Explosion,
 } from '../src/core/explosion.js'
 import { launchIcbm, stepIcbm, type Icbm, type Vec } from '../src/core/icbm.js'
@@ -118,10 +119,14 @@ const stepN = (e: Explosion, n: number): Explosion => {
   return cur
 }
 
-/** A blast at (h,v) stepped to its PEAK radius (blastRadius > 0). No magic tick. */
+/** A blast at (h,v) stepped to its PEAK radius (blastRadius === MAX_BLAST_RADIUS). */
 const peakBlast = (h: number, v: number): Explosion => {
   let e = startExplosion(h, v)
-  while (blastRadius(stepExplosion(e)) > blastRadius(e)) e = stepExplosion(e)
+  // mc9-3: under the EXPFRA cadence the radius is FLAT within each 5-frame window, so
+  // the old "next tick is larger" probe stops immediately at radius 0. Walk to the
+  // exported MAX instead — cadence-robust, and still correct for the mc1-4 triangle.
+  // Bounded so a blast that never peaks fails loudly rather than looping forever.
+  for (let i = 0; blastRadius(e) < MAX_BLAST_RADIUS && i < 10000; i++) e = stepExplosion(e)
   return e
 }
 

@@ -70,5 +70,815 @@
       "line": 916,
       "verbatim": "SA\tFCB\t$02,$05"
     }
+  },
+  {
+    "id": "JT101-009",
+    "claim": "FONT57 glyph L2 ('2') header line (MESSAGE.SRC:365).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 365,
+      "verbatim": "L2\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-010",
+    "claim": "FONT57 glyph L3 ('3') header line (MESSAGE.SRC:375).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 375,
+      "verbatim": "L3\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-011",
+    "claim": "FONT57 glyph L4 ('4') header line (MESSAGE.SRC:385).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 385,
+      "verbatim": "L4\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-012",
+    "claim": "FONT57 glyph L5 ('5') header line (MESSAGE.SRC:395).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 395,
+      "verbatim": "L5\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-013",
+    "claim": "FONT57 glyph L6 ('6') header line (MESSAGE.SRC:405).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 405,
+      "verbatim": "L6\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-014",
+    "claim": "FONT57 glyph L7 ('7') header line (MESSAGE.SRC:415).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 415,
+      "verbatim": "L7\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-015",
+    "claim": "FONT57 glyph L8 ('8') header line (MESSAGE.SRC:425).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 425,
+      "verbatim": "L8\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-016",
+    "claim": "FONT57 glyph L9 ('9') header line (MESSAGE.SRC:435).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 435,
+      "verbatim": "L9\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-017",
+    "claim": "FONT57 glyph LB ('B') header line (MESSAGE.SRC:463).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 463,
+      "verbatim": "LB\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-018",
+    "claim": "FONT57 glyph LC ('C') header line (MESSAGE.SRC:473).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 473,
+      "verbatim": "LC\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-019",
+    "claim": "FONT57 glyph LD ('D') header line (MESSAGE.SRC:483).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 483,
+      "verbatim": "LD\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-020",
+    "claim": "FONT57 glyph LE ('E') header line (MESSAGE.SRC:493).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 493,
+      "verbatim": "LE\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-021",
+    "claim": "FONT57 glyph LF ('F') header line (MESSAGE.SRC:503).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 503,
+      "verbatim": "LF\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-022",
+    "claim": "FONT57 glyph LG ('G') header line (MESSAGE.SRC:513).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 513,
+      "verbatim": "LG\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-023",
+    "claim": "FONT57 glyph LH ('H') header line (MESSAGE.SRC:523).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 523,
+      "verbatim": "LH\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-024",
+    "claim": "FONT57 glyph LI ('I') header line (MESSAGE.SRC:533).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 533,
+      "verbatim": "LI\tFCB\t$02,$07"
+    }
+  },
+  {
+    "id": "JT101-025",
+    "claim": "FONT57 glyph LJ ('J') header line (MESSAGE.SRC:543).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 543,
+      "verbatim": "LJ\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-026",
+    "claim": "FONT57 glyph LK ('K') header line (MESSAGE.SRC:553).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 553,
+      "verbatim": "LK\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-027",
+    "claim": "FONT57 glyph LL ('L') header line (MESSAGE.SRC:563).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 563,
+      "verbatim": "LL\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-028",
+    "claim": "FONT57 glyph LM ('M') header line (MESSAGE.SRC:573).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 573,
+      "verbatim": "LM\tFCB\t$04,$07"
+    }
+  },
+  {
+    "id": "JT101-029",
+    "claim": "FONT57 glyph LN ('N') header line (MESSAGE.SRC:583).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 583,
+      "verbatim": "LN\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-030",
+    "claim": "FONT57 glyph LO ('O') header line (MESSAGE.SRC:593).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 593,
+      "verbatim": "LO\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-031",
+    "claim": "FONT57 glyph LP ('P') header line (MESSAGE.SRC:603).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 603,
+      "verbatim": "LP\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-032",
+    "claim": "FONT57 glyph LQ ('Q') header line (MESSAGE.SRC:613).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 613,
+      "verbatim": "LQ\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-033",
+    "claim": "FONT57 glyph LR ('R') header line (MESSAGE.SRC:623).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 623,
+      "verbatim": "LR\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-034",
+    "claim": "FONT57 glyph LS ('S') header line (MESSAGE.SRC:632).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 632,
+      "verbatim": "LS\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-035",
+    "claim": "FONT57 glyph LT ('T') header line (MESSAGE.SRC:641).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 641,
+      "verbatim": "LT\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-036",
+    "claim": "FONT57 glyph LU ('U') header line (MESSAGE.SRC:651).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 651,
+      "verbatim": "LU\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-037",
+    "claim": "FONT57 glyph LV ('V') header line (MESSAGE.SRC:661).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 661,
+      "verbatim": "LV\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-038",
+    "claim": "FONT57 glyph LW ('W') header line (MESSAGE.SRC:671).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 671,
+      "verbatim": "LW\tFCB\t$04,$07"
+    }
+  },
+  {
+    "id": "JT101-039",
+    "claim": "FONT57 glyph LX ('X') header line (MESSAGE.SRC:681).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 681,
+      "verbatim": "LX\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-040",
+    "claim": "FONT57 glyph LY ('Y') header line (MESSAGE.SRC:691).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 691,
+      "verbatim": "LY\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-041",
+    "claim": "FONT57 glyph LZ ('Z') header line (MESSAGE.SRC:700).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 700,
+      "verbatim": "LZ\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-042",
+    "claim": "FONT57 glyph LBARW ('<-') header line (MESSAGE.SRC:709).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 709,
+      "verbatim": "LBARW\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-043",
+    "claim": "FONT57 glyph LEQU ('=') header line (MESSAGE.SRC:718).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 718,
+      "verbatim": "LEQU\tFCB\t$03,$05"
+    }
+  },
+  {
+    "id": "JT101-044",
+    "claim": "FONT57 glyph LDSH ('-') header line (MESSAGE.SRC:725).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 725,
+      "verbatim": "LDSH\tFCB\t$03,$04"
+    }
+  },
+  {
+    "id": "JT101-045",
+    "claim": "FONT57 glyph LQUE ('?') header line (MESSAGE.SRC:731).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 731,
+      "verbatim": "LQUE\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-046",
+    "claim": "FONT57 glyph LEXC ('!') header line (MESSAGE.SRC:740).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 740,
+      "verbatim": "LEXC\tFCB\t$01,$07"
+    }
+  },
+  {
+    "id": "JT101-047",
+    "claim": "FONT57 glyph LBRKL ('(') header line (MESSAGE.SRC:749).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 749,
+      "verbatim": "LBRKL\tFCB\t$02,$07"
+    }
+  },
+  {
+    "id": "JT101-048",
+    "claim": "FONT57 glyph LBRKR (')') header line (MESSAGE.SRC:758).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 758,
+      "verbatim": "LBRKR\tFCB\t$02,$07"
+    }
+  },
+  {
+    "id": "JT101-049",
+    "claim": "FONT57 glyph LSQOT (''') header line (MESSAGE.SRC:767).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 767,
+      "verbatim": "LSQOT\tFCB\t$01,$02"
+    }
+  },
+  {
+    "id": "JT101-050",
+    "claim": "FONT57 glyph LCMMA (',') header line (MESSAGE.SRC:771).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 771,
+      "verbatim": "LCMMA\tFCB\t$01,$07"
+    }
+  },
+  {
+    "id": "JT101-051",
+    "claim": "FONT57 glyph LPER ('.') header line (MESSAGE.SRC:780).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 780,
+      "verbatim": "LPER\tFCB\t$01,$07"
+    }
+  },
+  {
+    "id": "JT101-052",
+    "claim": "FONT57 glyph LSLSH ('/') header line (MESSAGE.SRC:789).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 789,
+      "verbatim": "LSLSH\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-053",
+    "claim": "FONT57 glyph LAMP ('&') header line (MESSAGE.SRC:798).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 798,
+      "verbatim": "LAMP\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-054",
+    "claim": "FONT57 glyph LDQOT ('\"') header line (MESSAGE.SRC:807).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 807,
+      "verbatim": "LDQOT\tFCB\t$02,$02"
+    }
+  },
+  {
+    "id": "JT101-055",
+    "claim": "FONT57 glyph LCOLON (':') header line (MESSAGE.SRC:811).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 811,
+      "verbatim": "LCOLON\tFCB\t$02,$07"
+    }
+  },
+  {
+    "id": "JT101-056",
+    "claim": "FONT57 glyph LCUR ('_') header line (MESSAGE.SRC:820).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 820,
+      "verbatim": "LCUR\tFCB\t$03,$08"
+    }
+  },
+  {
+    "id": "JT101-057",
+    "claim": "FONT57 glyph LCNARW ('^') header line (MESSAGE.SRC:830).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 830,
+      "verbatim": "LCNARW\tFCB\t$03,$07"
+    }
+  },
+  {
+    "id": "JT101-058",
+    "claim": "FONT35 glyph S2 ('2') header line (MESSAGE.SRC:853).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 853,
+      "verbatim": "S2\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-059",
+    "claim": "FONT35 glyph S3 ('3') header line (MESSAGE.SRC:860).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 860,
+      "verbatim": "S3\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-060",
+    "claim": "FONT35 glyph S6 ('6') header line (MESSAGE.SRC:881).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 881,
+      "verbatim": "S6\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-061",
+    "claim": "FONT35 glyph S7 ('7') header line (MESSAGE.SRC:888).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 888,
+      "verbatim": "S7\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-062",
+    "claim": "FONT35 glyph S8 ('8') header line (MESSAGE.SRC:895).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 895,
+      "verbatim": "S8\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-063",
+    "claim": "FONT35 glyph S9 ('9') header line (MESSAGE.SRC:902).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 902,
+      "verbatim": "S9\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-064",
+    "claim": "FONT35 glyph SB ('B') header line (MESSAGE.SRC:923).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 923,
+      "verbatim": "SB\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-065",
+    "claim": "FONT35 glyph SC ('C') header line (MESSAGE.SRC:930).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 930,
+      "verbatim": "SC\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-066",
+    "claim": "FONT35 glyph SD ('D') header line (MESSAGE.SRC:937).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 937,
+      "verbatim": "SD\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-067",
+    "claim": "FONT35 glyph SE ('E') header line (MESSAGE.SRC:944).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 944,
+      "verbatim": "SE\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-068",
+    "claim": "FONT35 glyph SF ('F') header line (MESSAGE.SRC:951).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 951,
+      "verbatim": "SF\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-069",
+    "claim": "FONT35 glyph SG ('G') header line (MESSAGE.SRC:958).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 958,
+      "verbatim": "SG\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-070",
+    "claim": "FONT35 glyph SH ('H') header line (MESSAGE.SRC:965).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 965,
+      "verbatim": "SH\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-071",
+    "claim": "FONT35 glyph SI ('I') header line (MESSAGE.SRC:972).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 972,
+      "verbatim": "SI\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-072",
+    "claim": "FONT35 glyph SJ ('J') header line (MESSAGE.SRC:979).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 979,
+      "verbatim": "SJ\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-073",
+    "claim": "FONT35 glyph SK ('K') header line (MESSAGE.SRC:986).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 986,
+      "verbatim": "SK\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-074",
+    "claim": "FONT35 glyph SL ('L') header line (MESSAGE.SRC:993).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 993,
+      "verbatim": "SL\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-075",
+    "claim": "FONT35 glyph SM ('M') header line (MESSAGE.SRC:1000).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1000,
+      "verbatim": "SM\tFCB\t$03,$05"
+    }
+  },
+  {
+    "id": "JT101-076",
+    "claim": "FONT35 glyph SN ('N') header line (MESSAGE.SRC:1007).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1007,
+      "verbatim": "SN\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-077",
+    "claim": "FONT35 glyph SP ('P') header line (MESSAGE.SRC:1014).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1014,
+      "verbatim": "SP\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-078",
+    "claim": "FONT35 glyph SQ ('Q') header line (MESSAGE.SRC:1021).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1021,
+      "verbatim": "SQ\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-079",
+    "claim": "FONT35 glyph SR ('R') header line (MESSAGE.SRC:1028).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1028,
+      "verbatim": "SR\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-080",
+    "claim": "FONT35 glyph ST ('T') header line (MESSAGE.SRC:1036).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1036,
+      "verbatim": "ST\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-081",
+    "claim": "FONT35 glyph SU ('U') header line (MESSAGE.SRC:1043).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1043,
+      "verbatim": "SU\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-082",
+    "claim": "FONT35 glyph SV ('V') header line (MESSAGE.SRC:1050).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1050,
+      "verbatim": "SV\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-083",
+    "claim": "FONT35 glyph SW ('W') header line (MESSAGE.SRC:1064).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1064,
+      "verbatim": "SW\tFCB\t$03,$05"
+    }
+  },
+  {
+    "id": "JT101-084",
+    "claim": "FONT35 glyph SX ('X') header line (MESSAGE.SRC:1071).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1071,
+      "verbatim": "SX\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-085",
+    "claim": "FONT35 glyph SY ('Y') header line (MESSAGE.SRC:1078).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1078,
+      "verbatim": "SY\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-086",
+    "claim": "FONT35 glyph SZ ('Z') header line (MESSAGE.SRC:1085).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1085,
+      "verbatim": "SZ\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-087",
+    "claim": "FONT35 glyph SBARW ('<-') header line (MESSAGE.SRC:1092).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1092,
+      "verbatim": "SBARW\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-088",
+    "claim": "FONT35 glyph SEQU ('=') header line (MESSAGE.SRC:1099).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1099,
+      "verbatim": "SEQU\tFCB\t$02,$04"
+    }
+  },
+  {
+    "id": "JT101-089",
+    "claim": "FONT35 glyph SDSH ('-') header line (MESSAGE.SRC:1105).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1105,
+      "verbatim": "SDSH\tFCB\t$02,$03"
+    }
+  },
+  {
+    "id": "JT101-090",
+    "claim": "FONT35 glyph SQUE ('?') header line (MESSAGE.SRC:1110).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1110,
+      "verbatim": "SQUE\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-091",
+    "claim": "FONT35 glyph SEXC ('!') header line (MESSAGE.SRC:1117).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1117,
+      "verbatim": "SEXC\tFCB\t$01,$05"
+    }
+  },
+  {
+    "id": "JT101-092",
+    "claim": "FONT35 glyph SBRKL ('(') header line (MESSAGE.SRC:1124).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1124,
+      "verbatim": "SBRKL\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-093",
+    "claim": "FONT35 glyph SBRKR (')') header line (MESSAGE.SRC:1131).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1131,
+      "verbatim": "SBRKR\tFCB\t$02,$05"
+    }
+  },
+  {
+    "id": "JT101-094",
+    "claim": "FONT35 glyph SSQOT (''') header line (MESSAGE.SRC:1138).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1138,
+      "verbatim": "SSQOT\tFCB\t$01,$02"
+    }
+  },
+  {
+    "id": "JT101-095",
+    "claim": "FONT35 glyph SCMMA (',') header line (MESSAGE.SRC:1142).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1142,
+      "verbatim": "SCMMA\tFCB\t$01,$05"
+    }
+  },
+  {
+    "id": "JT101-096",
+    "claim": "FONT35 glyph SPER ('.') header line (MESSAGE.SRC:1149).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1149,
+      "verbatim": "SPER\tFCB\t$01,$05"
+    }
+  },
+  {
+    "id": "JT101-097",
+    "claim": "FONT35 glyph S000 ('000') header line (MESSAGE.SRC:1156).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1156,
+      "verbatim": "S000\tFCB\t$06,$05"
+    }
+  },
+  {
+    "id": "JT101-098",
+    "claim": "FONT35 glyph SARRW ('ARRW') header line (MESSAGE.SRC:1163).",
+    "source": {
+      "file": "MESSAGE.SRC",
+      "line": 1163,
+      "verbatim": "SARRW\tFCB\t$03,$05"
+    }
   }
 ]

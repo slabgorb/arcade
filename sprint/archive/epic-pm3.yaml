@@ -1,0 +1,64 @@
+id: pm3
+type: epic
+title: Pac-Man — authentic graphics & the working tunnel
+description: "Eleventh epic, third Pac-Man round: give the ninth cabinet its FACE and fix its one broken mechanic. pm1 shipped the AI-authentic playable core; pm2 gave it the Namco WSG voice. pm3 replaces the honest-placeholder render (`plugins/pac-man/src/shell/render.ts` — solid full-tile blue walls, disc ghosts with no eyes, a wedge Pac with no chomp, a red-square fruit, all self-declared 'not a byte-cited palette') with the cabinet's REAL tile/sprite graphics and TRUE hardware palette, and fixes the TUNNEL. GROUND TRUTH & HARDWARE: like pm2's sound, the graphics are NOT in the program ROM — they live in separate ROMs/PROMs from the SAME MAME `pacman` romset (`~/roms/pacman.zip`) the sound PROMs came from: `pacman.5e` (4KB tile ROM), `pacman.5f` (4KB sprite ROM), `82s123.7f` (32B palette PROM, resistor DAC), `82s126.4a` (256B colour-lookup PROM). So, HARNESS-FIRST (the pm1-2/pm2-1/rb4 lesson): a GRAPHICS-FIDELITY GATE lands BEFORE any decoded pixel — vendor the four assets to `reference/graphics/` with SHA-1/CRC32 in PROVENANCE.md, add `claims/graphics.json`, extend `tools/audit/check-citations.mjs`. DECODER AUTHORITY is MAME's gfxdecode (`charlayout`/`spritelayout`/resistor weights/PALETTE_INIT in pacman.cpp), CITED not copied — exactly as pm2-1 cited namco.cpp:241. GPL FIREWALL holds: shaunlebron/pacman is a read-only oracle, zero lines copied; MAME is the tiebreaker. TRAPS: planar 2bpp split-nibble tile layout (naive row-major reads garble the tiles); palette PROM is a resistor DAC not RGB bytes; colour code 0 is transparent; `82s126.4a` low-nibble is the palette index. SILENT-404 TRAP AVOIDED BY DESIGN: every decoded tile/sprite/palette is BAKED to committed JS (the pm2 waveform-bake / speech-bake precedent) — zero asset fetch, so no R2 bucket can 404 the graphics away (architect gotcha SWMUS). THE TUNNEL: `maze.tileAt()` wraps tile-KIND lookups but the actor step never wraps the actor POSITION — an actor entering the tunnel walks off-screen and never reappears; and there is no tunnel slowdown. pm3-2 fixes both: symmetric xPx position-wrap in `pacman.ts` AND `ghost.ts`, plus authentic ~40% ghost tunnel slowdown via a new `tunnelSpeedPct` in `LevelSpec` (Pac does NOT slow). CORE STAYS PURE: only pm3-2 touches core (movement + level table); all decode/render is shell-side; `events.ts` seam untouched. OVERLAYS: pm3-7 wires the pm2-deferred presentation overlays (READY!/level-clear maze flash/game-over + score popups) onto the SAME `events.ts` seam pm2's audio consumer used. SCOPE: graphics gate, tunnel fix, palette bake, authentic maze render, Pac/ghost sprites, fruit + score numerals, presentation overlays. DEFERRED to pm4: the three intermission cutscenes + the level-256 kill screen. DEFERRED to ad1: the attract self-play demo. SPEC: docs/superpowers/specs/2026-08-07-pac-man-pm3-design.md. PLAN: docs/superpowers/plans/2026-08-07-pac-man-pm3.md."
+priority: p2
+status: done
+repos: arcade
+stories:
+  - id: pm3-1
+    title: Graphics ground truth — vendor the tile/sprite ROMs + colour PROMs under a citation gate, BEFORE any decode
+    points: 5
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm3.md#task-1
+    status: done
+    repos: arcade
+    workflow: superpowers
+  - id: pm3-2
+    title: The working tunnel — actor position-wrap (Pac + ghosts) + authentic ~40% tunnel slowdown, core-only and pure
+    points: 5
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm3.md#task-2
+    status: done
+    repos: arcade
+    workflow: superpowers
+  - id: pm3-3
+    title: Palette bake — decode the 16 hardware colours (resistor DAC) + colour-lookup, baked to committed JS
+    points: 3
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm3.md#task-3
+    status: done
+    repos: arcade
+    workflow: superpowers
+  - id: pm3-4
+    title: Tiles + authentic maze — decode 8x8 tiles, render the real double-line rounded blue corridors, retiring the placeholder
+    points: 5
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm3.md#task-4
+    status: done
+    repos: arcade
+    workflow: superpowers
+  - id: pm3-5
+    title: Sprites — decode 16x16; Pac chomp cycle, ghost body + direction eyes, frightened blue/white-flash, eaten eyes-only
+    points: 5
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm3.md#task-5
+    status: done
+    repos: arcade
+    workflow: superpowers
+  - id: pm3-6
+    title: Fruit + score sprites — the 8 bonus fruits and the point-value numerals (ghost chain 200-1600, fruit values)
+    points: 3
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm3.md#task-6
+    status: done
+    repos: arcade
+    workflow: superpowers
+  - id: pm3-7
+    title: Presentation overlays on the events seam — READY!, level-clear flash, game-over, score popups
+    points: 5
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm3.md#task-7
+    status: done
+    repos: arcade
+    workflow: superpowers

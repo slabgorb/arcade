@@ -18,6 +18,7 @@ completed_epics:
   - pm1
   - pm2
   - mc3
+  - pm3
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -849,3 +850,83 @@ completed_stories:
     title: 'Game-over screen: wire GOVER_OVER/settleGameOver to a GAME OVER overlay and the transition to highscore-or-attract'
     points: 2
     completed: '2026-08-07'
+  - id: pm3-1
+    epic: pm3
+    title: 'Graphics ground truth — vendor the tile/sprite ROMs + colour PROMs under a citation gate, BEFORE any decode'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm3-2
+    epic: pm3
+    title: 'The working tunnel — actor position-wrap (Pac + ghosts) + authentic ~40% tunnel slowdown, core-only and pure'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm3-3
+    epic: pm3
+    title: 'Palette bake — decode the 16 hardware colours (resistor DAC) + colour-lookup, baked to committed JS'
+    points: 3
+    completed: '2026-08-07'
+  - id: pm3-4
+    epic: pm3
+    title: 'Tiles + authentic maze — decode 8x8 tiles, render the real double-line rounded blue corridors, retiring the placeholder'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm3-5
+    epic: pm3
+    title: 'Sprites — decode 16x16; Pac chomp cycle, ghost body + direction eyes, frightened blue/white-flash, eaten eyes-only'
+    points: 5
+    completed: '2026-08-07'
+  - id: pm3-6
+    epic: pm3
+    title: 'Fruit + score sprites — the 8 bonus fruits and the point-value numerals (ghost chain 200-1600, fruit values)'
+    points: 3
+    completed: '2026-08-07'
+  - id: pm3-7
+    epic: pm3
+    title: 'Presentation overlays on the events seam — READY!, level-clear flash, game-over, score popups'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc9-1
+    epic: mc9
+    title: 'Authentic city and base stamps (retire the fillRect blocks and triangles)'
+    points: 5
+    completed: '2026-08-07'
+  - id: jt10-8
+    epic: jt10
+    title: Extend the font source double-entry gate to ALL ~102 glyphs (font35+font57), not just the 10 jt10-1 pinned
+    points: 2
+    completed: '2026-08-07'
+  - id: mc8-1
+    epic: mc8
+    title: 'Spike: decode the W3SOUN sound-command tables and choose the driver path (runtime-synth vs baked asset)'
+    points: 3
+    completed: '2026-08-07'
+  - id: mc4-1
+    epic: mc4
+    title: 'Wave model + per-wave ICBM velocity & count ramp (retire the SPEED=1 placeholder — the speed fix)'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc8-2
+    epic: mc8
+    title: 'Audio shell: the POKEY driver and the core-event -> sound mapping'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc9-2
+    epic: mc9
+    title: 'Per-wave 8-colour palette and colour cycling (resolve open question O-5)'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc4-2
+    epic: mc4
+    title: 'End-of-wave transition: city bonus + unused-missile bonus, regenerate cities, refill ammo, advance wave'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc4-3
+    epic: mc4
+    title: 'Per-wave score multiplier: generalise the per-ICBM value by wave (capped at MAXMUL)'
+    points: 2
+    completed: '2026-08-08'
+  - id: mc9-3
+    epic: mc9
+    title: 'Exact OLDRAD blast curve + EXPFRA cadence and authentic missile trails (retire the triangle blast)'
+    points: 5
+    completed: '2026-08-08'

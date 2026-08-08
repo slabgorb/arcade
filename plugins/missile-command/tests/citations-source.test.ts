@@ -191,7 +191,31 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   // (mc3-3) is an INSTRUCTION-site claim (`ADC I,25`, no `=` RHS) whose numeric
   // value 25 IS the immediate operand — same non-EQU-but-numeric shape as STCITY;
   // its verbatim is byte-checked and its value is pinned by score.test.ts.
-  const DERIVED = new Set(['IVMAX', 'MAX_BLAST_RADIUS', 'STCITY', 'ICBPTS'])
+  // mc4-1 adds the wave-difficulty schedule: ICBWAV (per-wave ICBM count),
+  // WICSPL/WICSPH (per-wave descent-speed period bytes) are `.BYTE` tables like
+  // STCITY — non-EQU claims carrying real numeric entries; ICSPDL carries the 8.8
+  // fixed-point scale (256) derived from its one-byte FRACTION declaration. All
+  // four are numeric-but-non-EQU, so they join the DERIVED exemption and are pinned
+  // by the explicit mc4-1 consistency block below (their values are NOT free-form —
+  // each must be a real decoded entry of its cited line).
+  const DERIVED = new Set([
+    'IVMAX', 'MAX_BLAST_RADIUS', 'STCITY', 'ICBPTS',
+    'ICBWAV', 'WICSPL', 'WICSPH', 'ICSPDL',
+    // mc8-2: the W3SOUN sound sequences are `.BYTE` records (non-EQU) whose claim
+    // values are real ROM bytes, not kind tags — same shape as the wave tables
+    // above. Each is pinned to a genuine entry of its cited line by the mc8-2
+    // consistency block below.
+    'EX1', 'EX2', 'EX3', 'EX4', 'LA5', 'LA6', 'TK1', 'TK2', 'BN1', 'BN2',
+    'WP1', 'WP2', 'LO7', 'LO8', 'XX1', 'XX2', 'XX3', 'XX4', 'NS7', 'NS8',
+    // mc4-2: the end-of-wave bonus rates are INSTRUCTION-site claims (like ICBPTS'
+    // `ADC I,25`) whose numeric value is the immediate operand — CITYBON derived as
+    // operand+1 for ICMUL2's inclusive MIEND loop. Pinned in the mc4-2 block below.
+    'CITYBON', 'ABMBON',
+    // mc9-3: the EXPFRA update cadence is a STRUCTURAL derivation from the EXPFIX
+    // batch table — cadence = (EXPEND-EXPFIX-2)+1 = (byte count of EXPFIX - 2) + 1.
+    // A real numeric value (5), so it carries no kind tag; pinned in the mc9-3 block.
+    'EXPFRA_FRAMES',
+  ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
   // `=` RHS. The dossier-coverage claims mc2-6 added (routine `.SBTTL` anchors,
@@ -250,5 +274,96 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     const firstByte = Number((stcity?.source.verbatim.split('.BYTE')[1] ?? '').split(',')[0]?.trim())
     expect(stcity?.value, 'STCITY claim value is the default start count').toBe(6)
     expect(firstByte, 'STCITY[0] in the verbatim table decodes to the claimed 6').toBe(6)
+  })
+
+  // mc4-1: the DERIVED exemption above lets the wave-schedule table claims carry
+  // numeric values; this block is what keeps that from being a hole — every such
+  // value must be a genuine radix decode of an entry on its own cited `.BYTE` line
+  // (so a fabricated number cannot ride into the un-cited-literal guard's set).
+  it('mc4-1: every wave-schedule table claim value is a real entry of its cited .BYTE line', () => {
+    const TABLE = new Set(['ICBWAV', 'WICSPL', 'WICSPH'])
+    const entries = (verbatim: string): number[] =>
+      (verbatim.split('.BYTE')[1] ?? '').split(',').map((t) => decodeRadix16(t.trim()))
+    const tableClaims = loadClaims().filter((c) => TABLE.has(c.symbol))
+    expect(tableClaims.length, 'the mc4-1 wave-schedule tables must be claimed').toBeGreaterThan(0)
+    for (const c of tableClaims) {
+      expect(
+        entries(c.source.verbatim),
+        `${c.id}: claimed value ${c.value} must be a real ${c.symbol} entry of "${c.source.verbatim}"`,
+      ).toContain(Number(c.value))
+    }
+  })
+
+  // mc4-2: the two end-of-wave bonus rates are instruction-site claims. Like the
+  // wave tables above, the DERIVED exemption lets them carry numeric values; this
+  // block is what keeps that from being a hole — each value must decode from the
+  // immediate operand of its own cited instruction (CITYBON via ICMUL2's inclusive
+  // MIEND loop, so operand + 1). Radix-16 immediates (single hex digit here).
+  it('mc4-2: the bonus-rate claim values decode from their cited instruction operands', () => {
+    const by = new Map(loadClaims().map((c) => [c.symbol, c]))
+    const immediate = (verbatim: string): number => {
+      const m = verbatim.match(/\bI,([0-9A-F]+)\b/) // the `#immediate` operand
+      expect(m, `no immediate operand in "${verbatim}"`).not.toBeNull()
+      return decodeRadix16(m![1])
+    }
+    const abm = by.get('ABMBON')
+    const city = by.get('CITYBON')
+    expect(abm, 'MC-ABMBON must be committed').toBeTruthy()
+    expect(city, 'MC-CITYBON must be committed').toBeTruthy()
+    // ABMBON: 5 IS the `LDA I,5` immediate (ABMADD adds it once per SMULTI).
+    expect(immediate(abm!.source.verbatim), 'ABMBON is the LDA I,5 immediate').toBe(5)
+    expect(abm!.value, 'MC-ABMBON value').toBe(5)
+    // CITYBON: `LDX I,3` counts X down through 0 (ICMUL2's MIEND, BPL), so the
+    // per-ICBM value is added operand+1 = 4 times per city.
+    expect(immediate(city!.source.verbatim) + 1, 'CITYBON is LDX operand + 1 (inclusive loop)').toBe(4)
+    expect(city!.value, 'MC-CITYBON value').toBe(4)
+  })
+
+  it('mc8-2: every W3SOUN sound-table claim value is a real byte of its cited .BYTE line', () => {
+    // The DERIVED exemption lets the sound sequences carry numeric values; this is
+    // what keeps that from being a hole (the mc4-1 wave-table pattern). Every
+    // sound claim's value must be a genuine radix decode of an entry on its own
+    // cited `.BYTE` line, so a fabricated byte cannot ride into the un-cited-literal
+    // guard's claimedValues set.
+    const SEQ = new Set([
+      'EX1', 'EX2', 'EX3', 'EX4', 'LA5', 'LA6', 'TK1', 'TK2', 'BN1', 'BN2',
+      'WP1', 'WP2', 'LO7', 'LO8', 'XX1', 'XX2', 'XX3', 'XX4', 'NS7', 'NS8',
+    ])
+    const entries = (verbatim: string): number[] =>
+      (verbatim.split('.BYTE')[1] ?? '').split(',').map((t) => decodeRadix16(t.trim()))
+    const seqClaims = loadClaims().filter((c) => SEQ.has(c.symbol))
+    expect(seqClaims.length, 'the mc8-2 sound-table sequences must be claimed').toBeGreaterThan(0)
+    for (const c of seqClaims) {
+      expect(
+        entries(c.source.verbatim),
+        `${c.id}: claimed value ${c.value} must be a real ${c.symbol} byte of "${c.source.verbatim}"`,
+      ).toContain(Number(c.value))
+    }
+  })
+
+  // mc9-3: the EXPFRA cadence is a STRUCTURAL derivation, not a byte of its cited
+  // line (the DERIVED exemption lets it carry the numeric 5). This block is its teeth
+  // — the value must re-derive from the EXPFIX batch-table byte count, so a fabricated
+  // cadence cannot ride into the un-cited-literal guard's claimedValues set.
+  it('mc9-3: the EXPFRA cadence value derives from the EXPFIX batch-table byte count', () => {
+    const expfra = loadClaims().find((c) => c.symbol === 'EXPFRA_FRAMES')
+    expect(expfra, 'MC-EXPFRA must be committed').toBeTruthy()
+    // PREXPL resets its update timer to EXPEND-EXPFIX-2 and cycles that-many + 1 frames.
+    // EXPFIX is the cited `.BYTE` table; EXPEND is its end label, so EXPEND-EXPFIX is the
+    // byte count. cadence = (count - 2) + 1.
+    const entries = (expfra!.source.verbatim.split('.BYTE')[1] ?? '')
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+    expect(entries.length, 'EXPFIX is the 6-entry round-robin batch table').toBe(6)
+    const cadence = entries.length - 2 + 1
+    expect(cadence, 'cadence = (EXPEND-EXPFIX-2)+1').toBe(5)
+    expect(Number(expfra!.value), 'MC-EXPFRA value is the derived 5-frame cadence').toBe(5)
+  })
+
+  it('mc4-1: the ICBM update-period fixed-point scale is 256, cited to the ICSPDL fraction byte', () => {
+    const icspd = loadClaims().find((c) => c.symbol === 'ICSPDL')
+    expect(Number(icspd?.value), 'ICSPDL fraction scale = 2^8 (a one-byte fraction of a frame)').toBe(256)
+    expect(icspd?.source.verbatim, 'cited to the ICSPDL declaration that names it a FRACTION').toMatch(/ICSPDL:\s*\.BLKB.*FRACTION/)
   })
 })

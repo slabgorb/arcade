@@ -22,7 +22,24 @@ import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { NICBMS, MXICON } from '../src/core/spawn.js'
 import { type Icbm } from '../src/core/icbm.js'
-import { type Explosion } from '../src/core/explosion.js'
+import {
+  startExplosion,
+  stepExplosion,
+  blastRadius,
+  MAX_BLAST_RADIUS,
+  type Explosion,
+} from '../src/core/explosion.js'
+
+/** A blast stepped to its PEAK radius — MAX_BLAST_RADIUS on BOTH the mc1-4 triangle
+ *  and the mc9-3 OLDRAD curve, so the kill-wiring fixtures below do not depend on
+ *  which radius model is live. (A hardcoded `t` cannot: the two curves' lifetimes
+ *  differ — the triangle peaks at t=13, OLDRAD at t≈65 — so no single tick gives a
+ *  large radius on both.) */
+const peakBlast = (h: number, v: number): Explosion => {
+  let e = startExplosion(h, v)
+  for (let i = 0; blastRadius(e) < MAX_BLAST_RADIUS && i < 10000; i++) e = stepExplosion(e)
+  return e
+}
 
 /** Fold `stepGame` `n` times. */
 const run = (s: GameState, n: number): GameState => {
@@ -89,7 +106,7 @@ describe('mc3-4 AC2 — stepGame launches the wave within its caps', () => {
     // blast on top of one of them, and remaining=0 so no new spawn perturbs the count.
     const victim: Icbm = { origin: { h: 100, v: 222 }, target: { h: 100, v: 20 }, pos: { h: 100, v: 100 }, arrived: false }
     const bystander: Icbm = { origin: { h: 5, v: 222 }, target: { h: 5, v: 20 }, pos: { h: 5, v: 100 }, arrived: false }
-    const blast: Explosion = { h: 100, v: 99, t: 10 } // covers the victim's flown head; far from the bystander
+    const blast = peakBlast(100, 99) // peak radius covers the victim's flown head; far from the bystander
     const g: GameState = { ...createGame(1), remaining: 0, icbms: [victim, bystander], explosions: [blast] }
 
     const next = stepGame(g)
