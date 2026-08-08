@@ -3,7 +3,7 @@ type: epic
 title: Missile Command — render fidelity (real graphics)
 description: "Ninth Missile Command epic — retires the placeholder graphics. Today src/shell/render.ts draws functional stand-ins only: cities are fillRect blocks, bases are triangles, ICBMs are lines+dots, blasts are symmetric-triangle circles, the HUD is monospace, and there is a single hard-coded colour per object with no per-wave palette. mc3-5 shipped that deliberately ('functional colours only, per-wave palette + authentic stamps are mc9') and mc1's blast is 'a symmetric-triangle placeholder ... the exact per-tick OLDRAD curve and EXPFRA cadence are explicitly deferred to mc9'. This epic makes it LOOK like Missile Command: authentic city/base stamps, the per-wave 8-colour palette + colour cycling, authentic missile trails, the exact OLDRAD blast curve, and the cabinet's stroke-font HUD. Missile Command is a RASTER machine drawn by a framebuffer stamp layer (W3DSUP), so 'real graphics' means porting the W3DSUP draw routines/shapes, not vendoring a sprite ROM. Executes the Architect roadmap slice for mc9 in docs/superpowers/specs/2026-08-07-missile-command-full-cabinet-roadmap.md; mc9 may begin any time after mc3 and in parallel with mc4/mc8 since it layers on state the core already emits. The core/shell boundary holds (contract 2): all pixels stay in src/shell; the ONE core touch is the OLDRAD blast-radius curve, which is a cited numeric constant and moves through a claim in explosion.ts. Resolves open question O-5 (per-wave palette / 3rd colour bit / hardware address scramble). Primary anchors (subsystems.md): W3DSUP.MAC:587 WRITE A STAMP; W3DSUP.MAC:1067 DRAW ALL LIVING CITIES; W3DSUP.MAC:1221 DRAW MISSILE; W3DSUP.MAC:1583 SET UP COLORS FOR NEXT WAVE; W3DSUP.MAC:1712 CLEAR SCREEN; W3MAIN.MAC:1811 PROCESS EXPLOSIONS. OUT OF SCOPE: waves/scoring (mc4), audio (mc8), enemy roster (mc5)."
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: mc9-1
@@ -59,7 +59,7 @@ stories:
     description: "Retire the monospace HUD. Replace render.ts's `${hud}px monospace` score/ammo readouts with the cabinet's stroke-font glyphs and the authentic on-screen layout (score position, per-base ammo, wave/multiplier if mc4 has landed). Reuse @shared/font if it fits; otherwise a missile-command-only glyph module in src/shell (extract to src/shared only if a second game proves the duplication — the CLAUDE.md eligibility bar). Cite CLEAR SCREEN / the text-draw path (W3DSUP.MAC:1712 and the alphanumeric draw). The HUD-figure rule still holds: the score drawn is the core's state.score verbatim. Shell-only. Depends on mc3 (and reads mc4's wave/multiplier if present)."
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-08'
     repos: arcade
     workflow: tdd
@@ -67,3 +67,5 @@ stories:
       - 'the HUD renders in the cabinet stroke font (not monospace) at the authentic layout; the score drawn is the core state.score verbatim (HUD-figure rule), never a re-derived copy.'
       - 'the text path cites its W3DSUP source; the glyph source reuses @shared/font or is a documented missile-command-only module (no premature src/shared extraction).'
       - 'render tests assert the HUD content against the canvas-mock harness; shell-only, purity.test.ts stays green.'
+    completed: '2026-08-08'
+completed: '2026-08-08'
