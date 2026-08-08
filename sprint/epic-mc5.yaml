@@ -10,7 +10,8 @@ stories:
     title: 'MIRV split (mirv.ts): an in-flight ballistic ICBM entering height band [128,160] forks into <=3 child ICBMs, re-targeted; suppressed at >=12 live explosions. REV-01 W3MAIN.MAC:2685 MIRVER'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
   - id: mc5-2

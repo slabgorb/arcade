@@ -32,7 +32,8 @@ import { stepAbm, type Abm } from './abm.js'
 import { stepIcbm, type Icbm } from './icbm.js'
 import { startExplosion, stepExplosion, isExplosionDone, type Explosion } from './explosion.js'
 import { createCities, createBases, START_CITIES, type City, type Base } from './field.js'
-import { spawnIcbms, NICBMS, type SpawnResult } from './spawn.js'
+import { spawnIcbms, NICBMS, MXICON, type SpawnResult } from './spawn.js'
+import { mirvEligible, mirvSplit, MIRV_EXPLOSION_SUPPRESS } from './mirv.js'
 import { killIcbmsInBlasts, resolveGroundImpacts } from './damage.js'
 import { scoreKills, scoreMultiplier } from './score.js'
 import { nextPhase, nextWavePhase, resumePlay, type Phase } from './state.js'
@@ -181,6 +182,25 @@ export function stepGame(state: GameState): GameState {
   const flownIcbms = spawned.icbms.map(stepIcbm)
   const flownAbms = state.abms.map(stepAbm)
 
+  // MIRV (mc5-1): at most ONE in-band ballistic warhead MIRVs per frame — the ROM keeps a
+  // single MIRVIX slot, so only one ICBM splits per tick. We pick the last eligible in
+  // array order (a deterministic choice); we do NOT reproduce the ROM's exact slot-scan
+  // survivor: ICPOSI counts DOWN from the highest slot so ITS survivor is the lowest slot,
+  // and our array index is not the ROM slot index. The faithful, tested invariants are
+  // one-per-frame + the MXICON on-screen cap (W3COMN.MAC:193): children fill only OPEN
+  // slots (MXICON - count), so the roster can never exceed MXICON and cannot avalanche.
+  // Suppressed while >= MIRV_EXPLOSION_SUPPRESS explosions are live (EXPLCT, W3MAIN.MAC:1531),
+  // read BEFORE this frame's new blasts, so it keys off state.explosions (pre-aging count).
+  const openSlots = Math.max(0, MXICON - flownIcbms.length)
+  let mirvAt = -1
+  if (state.explosions.length < MIRV_EXPLOSION_SUPPRESS && openSlots > 0) {
+    for (let i = 0; i < flownIcbms.length; i++) if (mirvEligible(flownIcbms[i])) mirvAt = i // one per frame
+  }
+  const withMirvs =
+    mirvAt < 0
+      ? flownIcbms
+      : [...flownIcbms, ...mirvSplit(flownIcbms[mirvAt], liveTargets, state.rng).slice(0, openSlots)]
+
   // (4) each ABM that arrived this frame detonates a fresh blast at its target.
   const detonations = flownAbms
     .filter((a) => a.arrived)
@@ -192,7 +212,7 @@ export function stepGame(state: GameState): GameState {
 
   // (5) damage: blasts kill ICBMs (scored at THIS wave's multiplier); then ARRIVED
   // survivors destroy structures.
-  const { survivors, killed } = killIcbmsInBlasts(flownIcbms, explosions)
+  const { survivors, killed } = killIcbmsInBlasts(withMirvs, explosions)
   const impact = resolveGroundImpacts(survivors, state.cities, state.bases)
 
   // (7) resolve the score and the phase from the frame's outcome. (state.phase is

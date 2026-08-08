@@ -1,0 +1,46 @@
+[
+  {
+    "id": "MC-MIRV-LO",
+    "symbol": "MIRVLO",
+    "value": 128,
+    "meaning": "MIRV band vertical LOWER limit (hex 80 = 128). ICPOSI re-arms MIRVIX only while a live ICBM's height is within [MIRVLO,MIRVHI]. EQU.",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 159,
+      "verbatim": "MIRVLO\t=080\t\t\t;VERTICAL LOWER LIMIT IN WHICH TO MIRV"
+    }
+  },
+  {
+    "id": "MC-MIRV-HI",
+    "symbol": "MIRVHI",
+    "value": 160,
+    "meaning": "MIRV band vertical UPPER limit (hex A0 = 160). Upper bound of the MIRV-eligible height band, inclusive. EQU.",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 161,
+      "verbatim": "MIRVHI\t=0A0\t\t\t;VERTICAL UPPER LIMIT IN WHICH TO MIRV"
+    }
+  },
+  {
+    "id": "MC-MIRV-MAX",
+    "symbol": "POTENT",
+    "value": 3,
+    "meaning": "Max child ICBMs from one MIRV split = 3. MIRVER caps the POTENT shot budget at 2 (LDA I,2 when POTENT>=2), and the launch loop fires operand+1 = 3 shots (the STA POTENT line's own comment: 'NO MORE THAN 3 SHOTS FROM A MIRV', W3MAIN.MAC:2717). Derived as the LDA I,2 immediate + 1, mirroring CITYBON's inclusive-loop derivation.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 2713,
+      "verbatim": "\tLDA I,2"
+    }
+  },
+  {
+    "id": "MC-MIRV-EXPSUP",
+    "symbol": "EXPLCT",
+    "value": 12,
+    "meaning": "MIRV suppression threshold = 12 (decimal) live explosions. UPICBM: LDY EXPLCT / CPY I,12. / IFCS -> STA MIRVIX (-1) 'NO MIRVS IF TOO MANY EXPLOSIONS' (W3MAIN.MAC:1531-1535). Value is the decimal immediate 12. (trailing dot = decimal under .RADIX 16).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 1531,
+      "verbatim": "\tCPY I,12."
+    }
+  }
+]

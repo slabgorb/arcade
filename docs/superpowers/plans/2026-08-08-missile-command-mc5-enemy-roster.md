@@ -272,20 +272,27 @@ Run: `npx vitest run --project missile-command mirv-integration`
 
 - [ ] **Step 3: Wire the split into `game.ts`**
 
-In the play branch of `stepGame`, immediately after `const flownIcbms = spawned.icbms.map(stepIcbm)`, add the split (before damage). Live targets are the same `liveTargets` already computed for spawn:
+In the play branch of `stepGame`, immediately after `const flownIcbms = spawned.icbms.map(stepIcbm)`, add the split (before damage). Live targets are the same `liveTargets` already computed for spawn.
+
+> ⚠ **Bound the split — do NOT `flatMap` every eligible ICBM every frame.** That avalanches: children spawn IN the band `[128,160]` and stay there ~180 frames at wave-1 descent, each re-splitting every frame → exponential growth → `RangeError` in `spawnIcbms`. The ROM does at most ONE MIRV per frame (a single `MIRVIX` slot, re-armed to the LAST in-band ICBM) and hard-caps ICBMs on screen at `MXICON=7`. Implement that bound (discovered at mc5-1 GREEN; see the session Design Deviation):
 
 ```ts
-  // MIRV (mc5-1): every eligible ballistic warhead in the [128,160] band forks
-  // into <=3 children from its position, re-targeted at a live structure — unless
-  // >=12 explosions are live (the ROM's EXPLCT>=12 suppression, W3MAIN.MAC:1533).
+  // MIRV (mc5-1): at most ONE in-band ballistic warhead MIRVs per frame (single MIRVIX
+  // slot, re-armed to the LAST in-band ICBM), children filling only OPEN slots up to the
+  // MXICON on-screen cap — so the roster never exceeds MXICON and cannot avalanche.
+  // Suppressed while >=12 explosions live (EXPLCT, W3MAIN.MAC:1531), read BEFORE this
+  // frame's new blasts (so state.explosions, the pre-aging count).
+  const openSlots = Math.max(0, MXICON - flownIcbms.length)
+  let mirvAt = -1
+  if (state.explosions.length < MIRV_EXPLOSION_SUPPRESS && openSlots > 0) {
+    for (let i = 0; i < flownIcbms.length; i++) if (mirvEligible(flownIcbms[i])) mirvAt = i
+  }
   const withMirvs =
-    state.explosions.length >= MIRV_EXPLOSION_SUPPRESS
+    mirvAt < 0
       ? flownIcbms
-      : flownIcbms.flatMap((icbm) =>
-          mirvEligible(icbm) ? [icbm, ...mirvSplit(icbm, liveTargets, state.rng)] : [icbm],
-        )
+      : [...flownIcbms, ...mirvSplit(flownIcbms[mirvAt], liveTargets, state.rng).slice(0, openSlots)]
 ```
-Replace the subsequent `killIcbmsInBlasts(flownIcbms, …)` with `killIcbmsInBlasts(withMirvs, …)`, and import `mirvEligible, mirvSplit, MIRV_EXPLOSION_SUPPRESS` from `./mirv.js`. (Explosions are aged AFTER this in the current order; `state.explosions.length` is the pre-aging count, which matches the ROM reading `EXPLCT` before this frame's new blasts — record that ordering in the claim note.)
+Replace the subsequent `killIcbmsInBlasts(flownIcbms, …)` with `killIcbmsInBlasts(withMirvs, …)`, and import `mirvEligible, mirvSplit, MIRV_EXPLOSION_SUPPRESS` from `./mirv.js` and `MXICON` from `./spawn.js`.
 
 - [ ] **Step 4: Run the tests, verify PASS**
 
