@@ -74,11 +74,13 @@ stories:
     title: 'High-score entry + JOUST CHAMPIONS table: initials entry (ENTER YOUR INITIALS / ENTER THY NAME MY LORD!) via @shared/highscore in the joust font'
     points: 5
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-08T21:54:06Z'
     repos: arcade
     workflow: tdd
     depends_on: jt10-6
+    completed: '2026-08-08'
+    review_verdict: approved
   - id: jt10-8
     title: Extend the font source double-entry gate to ALL ~102 glyphs (font35+font57), not just the 10 jt10-1 pinned
     points: 2
