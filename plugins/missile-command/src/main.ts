@@ -11,7 +11,7 @@ import { createGame, stepGame, type GameState } from './core/game.js'
 import { drawFrame } from './shell/render.js'
 import { applyPointerMotion, fireFromKey } from './shell/input.js'
 import { createAudioEngine } from './shell/audio.js'
-import { playEventSounds, updateSustainedSounds } from './shell/audio-dispatch.js'
+import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')
 if (!canvas) throw new Error('index.html must host a <canvas id="game">')
@@ -52,10 +52,14 @@ window.addEventListener('keydown', (event: KeyboardEvent): void => {
 })
 
 const frame = (): void => {
+  const prev = game
   game = stepGame(game)
-  // Voice this frame's sim sound moments (detonations, kills, structure losses),
-  // then re-read the sustained drone so it goes silent at the game-over edge.
+  // Voice this frame's sim sound moments (detonations, kills, structure losses), then the
+  // state-EDGE cues (mc8-4: whoop on wave advance, end-game on the game-over edge, bonus-
+  // city on a bonus earned — none of which ride the soundEvents stream), then re-read the
+  // sustained drone so it goes silent at the game-over edge.
   playEventSounds(audio, game.soundEvents)
+  playEdgeCues(audio, prev, game)
   updateSustainedSounds(audio, game)
   game = { ...game, soundEvents: [] }
 

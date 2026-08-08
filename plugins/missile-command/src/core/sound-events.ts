@@ -25,6 +25,11 @@
 // A player ABM left a base this frame — the LAUNCH cue (LA, SABLAU).
 export interface LaunchedEvent {
   readonly type: 'launched'
+  // mc8-4: true when the firing base held exactly its LOW count at launch (NMMISB==4,
+  // W3MAIN:1385 `CMP I,4 / IFEQ`), selecting the SLOABM "LOW" launch cue (LO) instead of
+  // the normal SABLAU (LA). Pure data on the launch; the shell decides low, the dispatch
+  // voices it. Omitted/false is a normal-ammo launch.
+  readonly baseLow?: boolean
 }
 
 // An ABM reached its target and detonated a blast — the EXPLOSION cue (EX,

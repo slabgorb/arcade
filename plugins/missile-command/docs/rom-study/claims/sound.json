@@ -295,5 +295,27 @@
       "line": 208,
       "verbatim": "XX2:\t.BYTE 88,0FF,0FF,8"
     }
+  },
+  {
+    "id": "SOUND-DRONE-TOP-70",
+    "symbol": "TOP",
+    "value": 112,
+    "meaning": "cruise/Sputnik descending-drone pitch-sweep CEILING on AUDF1+6 for index 1=Sputnik — byte 0x70. PMRBIL resets the descending freq to TOP[index-1] when it reaches BOTTOM, else decrements by 2 (A35820.1C PMRBIL, mc8-4 drone.ts). Hex 70 under the inherited .RADIX 16.",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 355,
+      "verbatim": "TOP:\t.BYTE 70,30,30"
+    }
+  },
+  {
+    "id": "SOUND-DRONE-BOUND-30",
+    "symbol": "TOP",
+    "value": 48,
+    "meaning": "cruise/Sputnik descending-drone sweep bound 0x30 on AUDF1+6: the Cruise/Both CEILING (TOP[1]=TOP[2]=30) and equally the Sputnik FLOOR (BOTTOM[0]=30, A35820.1C:354). PMRBIL sweeps between per-type TOP and BOTTOM by 2 (A35820.1C PMRBIL, mc8-4 drone.ts). Hex 30 under the inherited .RADIX 16.",
+    "source": {
+      "file": "A35820.1C.bin",
+      "line": 355,
+      "verbatim": "TOP:\t.BYTE 70,30,30"
+    }
   }
 ]

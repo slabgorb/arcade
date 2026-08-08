@@ -16,6 +16,7 @@
 
 import type { SoundEvent } from '../core/sound-events.js'
 import type { GameState } from '../core/game.js'
+import { bonusCitiesEarned, bonusInterval } from '../core/wave.js'
 import type { AudioEngine } from './audio.js'
 
 // Just the slice of the engine the dispatch needs — decoupled from resume(), so
@@ -29,7 +30,9 @@ export function playEventSounds(audio: SoundSurface, events: readonly SoundEvent
   for (const event of events) {
     switch (event.type) {
       case 'launched':
-        audio.play('launch') // LA — SABLAU (W3MAIN launch)
+        // mc8-4: a launch from a base at its LOW count sounds the LOW variant (LO,
+        // SLOABM) instead of the normal launch (LA, SABLAU) — W3MAIN:1385 CMP I,4/IFEQ.
+        audio.play(event.baseLow ? 'low' : 'launch')
         break
       case 'detonated':
         audio.play('explosion') // EX — EXSNON "BANG ON"
@@ -71,5 +74,26 @@ export function playEventSounds(audio: SoundSurface, events: readonly SoundEvent
 export function updateSustainedSounds(audio: SoundSurface, state: GameState): void {
   if (state.phase === 'over') {
     audio.stopLoop('drone')
+  }
+}
+
+// mc8-4: the EDGE cues — one-shots that fire on a state TRANSITION, not on a per-frame
+// SoundEvent. whoop (new wave), end-game (game over) and bonus-city (a bonus city earned)
+// all resolve in stepGame's 'between'/'over' branches, both of which hardcode
+// soundEvents:[] — so they cannot ride the event stream. Instead the shell compares the
+// PREVIOUS render frame's state with the current one and voices the crossing exactly once.
+// Pure and side-effect-only-through-`audio`; main.ts keeps `prev` and calls this per frame.
+export function playEdgeCues(audio: SoundSurface, prev: GameState, curr: GameState): void {
+  // WHOOP — WP, SNEWAV (W3MAIN:3911): the wave counter advanced.
+  if (curr.wave > prev.wave) audio.play('whoop')
+
+  // END-GAME — XX "THE END", SENDGA (W3MAIN:4647): the play field just went terminal.
+  if (prev.phase !== 'over' && curr.phase === 'over') audio.play('end-game')
+
+  // BONUS CITY — BN, SBONUS (W3MAIN:4845): the cumulative bonus-city count (mc4-5's
+  // bonusCitiesEarned at the shipped default DIP) crossed another threshold this frame.
+  const interval = bonusInterval(0)
+  if (bonusCitiesEarned(curr.score, interval) > bonusCitiesEarned(prev.score, interval)) {
+    audio.play('bonus-city')
   }
 }
