@@ -202,9 +202,9 @@ export const SIGHTS_OCTAGON = 3
  */
 export function inPlayerView(pos: Vec3, aspect: number): boolean {
   const eye = COCKPIT
-  const depth = eye[2] - pos[2]
-  const lat = pos[0] - eye[0]
-  const vert = pos[1] - eye[1]
+  const depth = pos[0] - eye[0] // sw10-1: X = depth (forward/away)
+  const lat = pos[1] - eye[1] // Y = right
+  const vert = pos[2] - eye[2] // Z = up
   const vBound = depth * TAN_HALF_FOV
   // sw10-1: the authentic lens is aspect-INDEPENDENT — both half-angles are 45°,
   // so the horizontal bound equals the vertical (the ROM's |lat| < depth ratio).
@@ -225,8 +225,8 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
 
   // C_AS (0x04) — "ALIEN HAS PLAYER IN SITES" (WSCPU.MAC:29,604-621). Three
   // conditions, in the ROM's own order, all measured on the offset from the fighter
-  // to the cockpit resolved about its nose axis — model +Z mapped through e.orient,
-  // the same column lookRotation writes forward into (math3d.ts:171-186):
+  // to the cockpit resolved about its nose axis — model +X mapped through e.orient
+  // (native nose = first column; lookRotationNative in basis.ts; sw10-1):
   //
   //   :607-608  `LDD M.XP / BMI 140$`   ;?PLAYER IN FRONT?  — the sign of the depth
   //   :610-611  `SUBD #4000 / BGE 140$` ;IGNORE GUN IF TOO FAR AWAY
@@ -248,7 +248,7 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // missing matrix by defaulting to IDENTITY (nose = model +Z), exactly as
   // `applyManeuver` does, rather than reading off `undefined[2]`.
   const orient = e.orient ?? IDENTITY
-  const nose: Vec3 = [orient[2], orient[6], orient[10]]
+  const nose: Vec3 = [orient[0], orient[4], orient[8]]
   const toCockpitOffset = sub(COCKPIT, e.pos)
   const noseDepth = dot(nose, toCockpitOffset) // M.XP
   const offAxis = sub(toCockpitOffset, scale(nose, noseDepth)) // (M.YP, M.ZP)
@@ -274,7 +274,7 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // `spaceEye` camera instead; sw8-8 retired that eye (ST.UX is the starfield's
   // register, never a camera — see the tombstone in gameRules.ts), so the
   // pyramid, the gun and the shield hit-test now share one point. In-front is
-  // negative z, so the view depth is eye z minus alien z.
+  // +X (larger depth), so the view depth is alien x minus eye x (sw10-1).
   //
   // The pyramid keeps the ROM's ratio law as its SHAPE — per-axis, strict, the
   // edge itself out of view — and, since sw10-1 unified the render onto the

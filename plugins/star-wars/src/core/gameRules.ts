@@ -39,9 +39,9 @@ export function toCockpit(pos: Vec3): Vec3 {
 
 /**
  * Unit firing direction for a given yoke position. At rest (0,0) it points
- * straight ahead, down −Z (the camera looks down −Z, OpenGL convention). The
- * yoke deflects it left/right (+aimX = right) and up/down (+aimY = up) while it
- * stays unit length.
+ * straight ahead, along +X (the native depth axis — forward/away; sw10-1). The
+ * yoke deflects it left/right (+aimX = right = +Y) and up/down (+aimY = up = +Z)
+ * while it stays unit length.
  *
  * Crucially, the deflection is the INVERSE of the perspective projection the
  * scene is drawn under: a point down this ray projects back onto the crosshair
@@ -53,7 +53,7 @@ export function toCockpit(pos: Vec3): Vec3 {
  */
 export function aimDirection(aimX: number, aimY: number, aspect = 1): Vec3 {
   const f = 1 / Math.tan(FOV_Y / 2)
-  return normalize([aimX / f, aimY / f, -1])
+  return normalize([1, aimX / f, aimY / f])
 }
 
 /**
@@ -72,9 +72,9 @@ export function crosshairNdc(aimX: number, aimY: number): readonly [number, numb
  * (fixed) cockpit at `TRENCH_SCROLL_SPEED` — the walls, obstacles and exhaust port all
  * ride it. A shot must ride the same flow in DEPTH, or it creeps at its own ~300 u/s
  * muzzle speed while the world rushes past 50× faster and the player "outruns the
- * bullet" (it reads on screen as receding downrange). So the z-component IS the scroll
- * — the shot closes on the cockpit exactly as the walls do — and the lateral/vertical
- * components LEAD the ship: sized so the shot arrives at the ship's x/y at the same
+ * bullet" (it reads on screen as receding downrange). So the depth (X) component IS the
+ * scroll (negative — closing on the cockpit exactly as the walls do) and the right/up
+ * components LEAD the ship: sized so the shot arrives at the ship's y/z at the same
  * instant its depth reaches the cockpit plane. Aimed at the ship point (sw7-16), never
  * a detached floor origin.
  *
@@ -82,10 +82,10 @@ export function crosshairNdc(aimX: number, aimY: number): readonly [number, numb
  * lead time, so it fires straight at the ship at the scroll speed.
  */
 export function trenchGunFireVelocity(gunPos: Vec3, shipPos: Vec3): Vec3 {
-  const depth = shipPos[2] - gunPos[2] // > 0 while the gun is downrange (gunPos.z < shipPos.z)
+  const depth = gunPos[0] - shipPos[0] // > 0 while the gun is downrange (gunPos.x > shipPos.x)
   if (depth <= 0) return scale(normalize(sub(shipPos, gunPos)), TRENCH_SCROLL_SPEED)
   const t = depth / TRENCH_SCROLL_SPEED // transit time riding the scroll to the cockpit plane
-  return [(shipPos[0] - gunPos[0]) / t, (shipPos[1] - gunPos[1]) / t, TRENCH_SCROLL_SPEED]
+  return [-TRENCH_SCROLL_SPEED, (shipPos[1] - gunPos[1]) / t, (shipPos[2] - gunPos[2]) / t]
 }
 
 /**
@@ -246,12 +246,12 @@ export function siteOffset(
 ): { along: number; dx: number; dy: number } | null {
   const along = dot(sub(pos, eye), dir)
   if (along <= 0) return null // behind the gun — never under the site
-  // Where the ray crosses this object's depth plane. `dir[2]` is strictly negative for any ray
+  // Where the ray crosses this object's depth plane. `dir[0]` is strictly positive for any ray
   // `aimDirection` builds from a finite yoke, so this divides by zero only in the degenerate case
-  // the guard below rejects, and `t` is otherwise positive for an object in front.
-  const t = (eye[2] - pos[2]) / -dir[2]
-  const dx = Math.abs(pos[0] - (eye[0] + dir[0] * t))
-  const dy = Math.abs(pos[1] - (eye[1] + dir[1] * t))
+  // the guard below rejects, and `t` is otherwise positive for an object in front (sw10-1: X=depth).
+  const t = (pos[0] - eye[0]) / dir[0]
+  const dx = Math.abs(pos[1] - (eye[1] + dir[1] * t)) // screen +x = native right (+Y)
+  const dy = Math.abs(pos[2] - (eye[2] + dir[2] * t)) // screen +y = native up (+Z)
   if (!Number.isFinite(dx) || !Number.isFinite(dy)) return null // no answer, rather than a NaN one
   return { along, dx, dy }
 }
