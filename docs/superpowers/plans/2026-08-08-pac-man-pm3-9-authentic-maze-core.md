@@ -372,6 +372,55 @@ git add -A && git commit -m "chore(pm3-9): visual verification of the authentic 
 
 ---
 
+### Task 4b: Fix the maze wall-tile 90° rotation in the shell render (discovered by Task 4)
+
+**Discovery:** Task 4's Playwright visual revealed the maze walls render 90°-rotated (fragmented blue
+dashes), despite suite + oracle green. Root cause: `drawMaze` (`render.ts:267`) blits
+`mazeTileImageData(MAZE_TILES[ty][tx])` using the **un-rotated** `TILES`, but Pac-Man's cabinet is ROT90,
+so directional wall-art points the wrong way. Dots/energizers are rotation-symmetric so they looked fine.
+The identical fix already exists in the same file for digit glyphs: `rotatedDigitPixel` (`x'=y, y'=7-x`,
+90°CW). The pm3-7 comment claiming rotation is "invisible for the maze" was true under the retired
+`fillRect` autotiler but became false when pm3-8 switched the maze to tile blits.
+
+**Files:**
+- Modify: `plugins/pac-man/src/shell/render.ts` (generalize `rotatedDigitPixel` → `rotatedTilePixel`; use it in `mazeTileImageData`; fix the now-false comments at ~416-417, 426)
+- Test: `plugins/pac-man/tests/shell/` (a new orientation pin for the maze blit)
+
+**Interfaces:**
+- Consumes: `TILES` (tile-data.ts, unchanged — stays raw-oriented).
+- Produces: `rotatedTilePixel(tileIndex, x, y)` reused by both the maze blit and the digit path.
+
+- [ ] **Step 1: Write the failing orientation test.** Pin the maze-blit orientation with an asymmetric
+  wall tile. Tile **219** (raw = left-vertical band: cols 0-3 filled, all rows) fills row 3 (the maze's
+  top *horizontal* border), so after the ROT90 fix its rendered pixels must be a **top-horizontal band**
+  (rows 0-3 lit, all cols), NOT a left-vertical band. Prefer testing a pure rotation helper
+  (`rotatedTilePixel`) so no canvas is needed; if you test `mazeTileImageData` directly, follow the
+  existing render-test canvas pattern. Concretely assert, for tile 219: `rotatedTilePixel(219, x, y)` is
+  non-zero for `y in 0..3` (all x) and zero for `y in 4..7`. This FAILS on current code (no such helper /
+  un-rotated blit).
+- [ ] **Step 2: Run it — expect RED** (`npx vitest run --project pac-man <the new test>`).
+- [ ] **Step 3: Implement.** Generalize `rotatedDigitPixel(digit, x, y)` into
+  `rotatedTilePixel(tileIndex, x, y)` (same body: `rawX = y; rawY = 7 - x; return TILES[tileIndex][rawY*8 + rawX]`).
+  Keep a `rotatedDigitPixel` call-through or update the digit call site. In `mazeTileImageData`, replace
+  `const on = pixels[k] !== 0` with a read through `rotatedTilePixel(tileIndex, k % 8, (k/8)|0) !== 0`
+  (build the ImageData from the rotated pixel). Fix the stale comments at ~416-417 and ~426 that claim the
+  maze needs no rotation — state that since pm3-8 the maze blits tiles and uses this same rotation.
+- [ ] **Step 4: Run the new test — expect GREEN.**
+- [ ] **Step 5: Run the whole pac-man project** (`npx vitest run --project pac-man`) — must stay green
+  (the rotation touches only rendered pixels; oracle checks tile indices, gameplay is core-only).
+- [ ] **Step 6: Commit** (`fix(pm3-9): rotate maze wall tiles ROT90 to match the cabinet (was fragmented)`).
+
+---
+
+### Task 4c: Re-run the Playwright visual to confirm the fix
+
+Same procedure as Task 4 (serve on port 5291, Playwright headless, screenshot `/pac-man/`). Acceptance:
+the walls now render as **continuous double-line corridors** (no fragmented dashes), no stray peach bars,
+board upright and correctly coloured, ghost house + tunnel + four corner energizers present. Save the new
+screenshot to the workspace and record the verdict in the ledger. Commit `--allow-empty` if no code change.
+
+---
+
 ### Task 5: Full-suite + gates verification
 
 **Files:** none (verification only).
