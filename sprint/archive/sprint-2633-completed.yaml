@@ -7,6 +7,7 @@ sprint:
 
 completed_epics:
   - mc4
+  - mc9
 completed_stories:
   - id: mc5-1
     epic: mc5
@@ -42,4 +43,24 @@ completed_stories:
     epic: mc4
     title: 'Bonus city at a score threshold (CHEKBO/BONINL): recover the real bonus interval + claim'
     points: 3
+    completed: '2026-08-08'
+  - id: mc9-4
+    epic: mc9
+    title: 'Authentic stroke-font HUD and screen layout'
+    points: 3
+    completed: '2026-08-08'
+  - id: mc9-1
+    epic: mc9
+    title: 'Authentic city and base stamps (retire the fillRect blocks and triangles)'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc9-2
+    epic: mc9
+    title: 'Per-wave 8-colour palette and colour cycling (resolve open question O-5)'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc9-3
+    epic: mc9
+    title: 'Exact OLDRAD blast curve + EXPFRA cadence and authentic missile trails (retire the triangle blast)'
+    points: 5
     completed: '2026-08-08'
