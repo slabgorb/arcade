@@ -226,8 +226,10 @@ function renderGameOverScreen(): void {
 // capture (a human smoke test tunes them), so — as with the select/game-over
 // placeholders — the cycling row indexes the existing palette for a legible,
 // visibly-cycling title, and the wordmark is drawn from its own y coordinates.
-// This mode is not reached until jt10-4 wires the attract cycle into it; the
-// render hook is in place, exactly like the 'attract'/'highscore' placeholders.
+// The render hook is in place, but this mode is not yet reached: `toTitle` has no caller,
+// and jt10-4's attract PAGE_ORDER (demo + the two banners) carries no title page — wiring
+// title into the attract cycle is deferred with the remaining ATMST lessions (see the
+// session Delivery Findings).
 let titleFrame = 0
 const TITLE_LOGO_Y = 40
 const TITLE_COPYRIGHT_Y = 190
@@ -284,8 +286,8 @@ function paintSim(game: GameState): void {
 }
 
 // jt10-4 — the attract render: the live self-play sim on the demo page, or a warning
-// banner (FONT57) centred on a colour-cycling background index. The banner colour
-// steps with the scheduler's `colourPhase` (ATT.SRC:173, every 2.5 s).
+// banner (FONT57) centred on a STATIC background (the fixed colours[0] fill each frame).
+// The banner's TEXT colour steps with the scheduler's `colourPhase` (ATT.SRC:173, every 2.5 s).
 const ATTRACT_BANNER_Y = 108
 function renderAttract(): void {
   const page = attract.page
@@ -317,7 +319,10 @@ let cabinet: CabinetState = { mode: 'select', game: createGame(SEED) }
 
 // jt10-4 — the attract SUB-CYCLE scheduler (pure core). Stepped once per video frame
 // while the cabinet sits in 'attract'; it cycles the self-play demo and the two
-// warning banners and repeats. Reset to a fresh cycle whenever attract is (re)entered.
+// warning banners and repeats. Created ONCE at load and NOT reset on re-entry: when a
+// non-qualifying game-over routes back to attract (afterGameOver), the cycle simply
+// CONTINUES from wherever stepAttract last left it. Resetting to a fresh demo page on
+// re-entry is a deferred follow-up (see the session Delivery Findings).
 let attract: AttractState = createAttract()
 
 // The player process ids for the CURRENT game — recomputed when a game begins (a
@@ -385,9 +390,9 @@ const frame = (now: number): void => {
       if (cabinet.mode === 'gameover') {
         // Hold the banner ~88 ticks (GOVWAT), then route on through the PURE gate:
         // afterGameOver → 'highscore' iff the best score qualifies, else 'attract'
-        // (the table is empty until jt10-7 wires @shared/highscore). jt10-4 (attract)
-        // and jt10-7 (high-score entry) build those screens; until they land, both
-        // render as the coin-up door below, so the cabinet never dead-ends.
+        // (the table is empty until jt10-7 wires @shared/highscore). 'attract' now renders
+        // via renderAttract (jt10-4, below); 'highscore' has no screen yet, so until jt10-7
+        // it alone falls through to the coin-up door — the cabinet never dead-ends.
         if (++gameoverHoldFrames >= GAMEOVER_HOLD_FRAMES) {
           cabinet = afterGameOver(cabinet, [])
           gameoverHoldFrames = 0

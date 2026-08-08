@@ -277,13 +277,18 @@ describe('jt10-4 the shell wires the scheduler under attract (AC-3/AC-4, source 
   // A live canvas can't be asserted here (design-spec strategy); the source-wiring
   // idiom proves the render path is CONNECTED. RED until Julia wires main.ts's
   // 'attract' placeholder (jt10-5 left it explicitly waiting on jt10-4).
-  it('the shell imports the attract-scheduler module (it drives the attract mode)', () => {
+  it('the shell IMPORTS the attract-scheduler module (it drives the attract mode)', () => {
     const main = readFileSync(mainPath, 'utf8')
-    const shellSrcs = existsSync(shellDir)
-      ? readFileSync(join(shellDir, 'render.ts'), 'utf8')
-      : ''
-    const anyShellRefs = /attract-scheduler/.test(main) || /attract-scheduler/.test(shellSrcs)
-    expect(anyShellRefs).toBe(true)
+    // Anchor to the IMPORT STATEMENT, not a bare `attract-scheduler` token. jt10-4 review
+    // R5: the round-1 guard `/attract-scheduler/.test(main)` was mutation-proven vacuous —
+    // deleting the real import and leaving a bare comment mentioning the module name kept
+    // it green. Require the ESM `import … from '…/attract-scheduler.js'` form (the .js
+    // extension is mandatory for Node16/ESM resolution), so only a real import satisfies it.
+    const importsScheduler = /import[^;]*\bfrom\s+['"][^'"]*attract-scheduler\.js['"]/.test(main)
+    expect(
+      importsScheduler,
+      'main.ts must IMPORT core/attract-scheduler, not merely mention it in a comment',
+    ).toBe(true)
   })
 
   // AC-4 (the self-play demo actually RUNS under attract) is a runtime/canvas
@@ -293,11 +298,19 @@ describe('jt10-4 the shell wires the scheduler under attract (AC-3/AC-4, source 
   // was DELETED here as vacuous — it went green on jt10-5's attract PLACEHOLDER,
   // proving nothing about the demo running under attract. Recorded in the session.
 
-  it('a banner page lays its text out in FONT57 (AC-3) — a shell attract/banner layout exists', () => {
+  it('a banner page lays its text out in FONT57 (AC-3) — the shell layout calls layoutText(FONT57)', () => {
     // like gameOverScreen.ts / selectScreen.ts: a layout<Screen> using
-    // layoutText('FONT57', <banner text>, colour). RED until that shell module lands.
+    // layoutText('FONT57', <banner text>, colour). jt10-4 review R6: the round-1 guard only
+    // asserted the FILE existed (existsSync) and never read it — it passed for an empty file
+    // and proved nothing about FONT57. Read the module and require the actual
+    // layoutText('FONT57', …) call, so swapping the font token (or emptying the file) reddens.
     const candidates = ['attractScreen.ts', 'bannerScreen.ts', 'attract.ts']
-    const found = candidates.some((f) => existsSync(join(shellDir, f)))
-    expect(found).toBe(true)
+    const layoutFile = candidates.map((f) => join(shellDir, f)).find((p) => existsSync(p))
+    expect(layoutFile, 'a shell attract/banner layout module must exist').toBeDefined()
+    const src = readFileSync(layoutFile as string, 'utf8')
+    expect(
+      src,
+      'the attract banner layout must lay its text out in FONT57 via layoutText',
+    ).toMatch(/layoutText\(\s*['"]FONT57['"]/)
   })
 })
