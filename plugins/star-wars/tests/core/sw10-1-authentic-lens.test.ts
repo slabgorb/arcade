@@ -90,22 +90,22 @@ describe('sw10-1 — authentic cabinet projection lens (symmetric ~90° FOV, div
   describe('inverse projection (aimDirection) — the crosshair→world ray under the same lens', () => {
     it('the crosshair horizontal edge ray sits at 45° (|lateral| = |depth|)', () => {
       // NDC x = 1 is the right edge; under a symmetric 90° lens that ray is at 45°,
-      // so its lateral component equals its depth component in magnitude.
-      // RED now: |x| = 0.5 vs |z| = 0.866 (a 30° ray).
+      // so its lateral component equals its depth component in magnitude. sw10-1:
+      // native ray = [depth(X), right(Y), up(Z)], so lateral = edge[1], depth = edge[0].
       const edge = aimDirection(1, 0)
-      expect(Math.abs(edge[0])).toBeCloseTo(Math.abs(edge[2]), 5)
+      expect(Math.abs(edge[1])).toBeCloseTo(Math.abs(edge[0]), 5)
     })
 
     it('the crosshair vertical edge ray sits at 45° (|vertical| = |depth|)', () => {
-      // RED now: |y| = 0.5 vs |z| = 0.866.
+      // native: vertical = up = edge[2], depth = edge[0].
       const edge = aimDirection(0, 1)
-      expect(Math.abs(edge[1])).toBeCloseTo(Math.abs(edge[2]), 5)
+      expect(Math.abs(edge[2])).toBeCloseTo(Math.abs(edge[0]), 5)
     })
 
     it('horizontal and vertical edge rays are equally off-axis (symmetric FOV)', () => {
       const hx = aimDirection(1, 0)
       const vy = aimDirection(0, 1)
-      expect(Math.abs(hx[0])).toBeCloseTo(Math.abs(vy[1]), 5)
+      expect(Math.abs(hx[1])).toBeCloseTo(Math.abs(vy[2]), 5)
     })
 
     it('the lens is aspect-independent: the crosshair edge ray does not depend on viewport aspect', () => {
@@ -117,8 +117,8 @@ describe('sw10-1 — authentic cabinet projection lens (symmetric ~90° FOV, div
         expect(r[0]).toBeCloseTo(rays[0][0], 5)
         expect(r[1]).toBeCloseTo(rays[0][1], 5)
         expect(r[2]).toBeCloseTo(rays[0][2], 5)
-        // …and every one of them is the same 45° edge ray.
-        expect(Math.abs(r[0])).toBeCloseTo(Math.abs(r[2]), 5)
+        // …and every one of them is the same 45° edge ray (native: right=[1], depth=[0]).
+        expect(Math.abs(r[1])).toBeCloseTo(Math.abs(r[0]), 5)
       }
     })
   })

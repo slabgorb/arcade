@@ -60,12 +60,12 @@ import { trenchChannel } from '../core/trench-channel'
 import { trenchWallDetail, trenchFarEnd } from '../core/trench-detail'
 // COCKPIT: the space eye = the cockpit (sw8-8), not a literal
 import { crosshairNdc, FOV_Y, COCKPIT } from '../core/gameRules'
+import { CAMERA_ORIENT } from '../core/basis' // sw10-1: native world → eye remap (retires *_ORIENT)
 import { surfaceShip } from '../core/sim' // the ship point (sw7-16), not a copy
 import {
   perspective,
   multiply,
   rotationX,
-  rotationZ,
   translation,
   scaling,
   viewMatrix,
@@ -161,7 +161,7 @@ const ENEMY_MUZZLE_FLASH_SECONDS = 0.1
 //
 // NOTE: structural tests can't catch orientation/scale — these MUST be eyeballed
 // in the dev server once the surface phase is reachable in play.
-export const SURFACE_ORIENT: Mat4 = rotationZ(-Math.PI / 2)
+export const SURFACE_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 export const TRENCH_ORIENT: Mat4 = IDENTITY
 
 // The exhaust port's placement basis (story sw5-6).
@@ -190,7 +190,7 @@ export const TRENCH_ORIENT: Mat4 = IDENTITY
 //
 // The port is three concentric SQUARES (|x| = |y| at every point), so it is 4-fold
 // symmetric about the vertical and the rotation's horizontal-axis swap is invisible.
-export const PORT_ORIENT: Mat4 = rotationX(-Math.PI / 2)
+export const PORT_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 
 // The ROM → world presentation scale for the ground objects (story sw5-5).
 //
@@ -236,7 +236,7 @@ export const TOWER_ORIENT: Mat4 = multiply(
 // (the render guard only asserts `orient` is APPLIED) and MUST be eyeballed in
 // the dev server (port 5274) — confirm the panels read upright and the ship
 // faces the cockpit before sign-off.
-export const TIE_ORIENT: Mat4 = rotationZ(Math.PI / 2)
+export const TIE_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 
 // TRENCH_SKIM (a fixed 60-unit cockpit skim, added to the eye here) is GONE (sw5-6). It
 // was the fudge that hid a frame collision: the channel builds its floor at y=0, but the
@@ -383,14 +383,14 @@ function drawDeathStar(ctx: CanvasRenderingContext2D, seat: { pos: Vec3; scale: 
 export function cameraView(state: GameState): Mat4 {
   // The surface eye IS the core's ship point, not a copy of it (sw7-16): the camera and the gun
   // read the same function, so they cannot drift apart.
-  if (state.phase === 'surface') return viewMatrix(surfaceShip(state.altitude), IDENTITY)
+  if (state.phase === 'surface') return viewMatrix(surfaceShip(state.altitude), CAMERA_ORIENT)
   // The trench eye rides the fixed skim PLUS the pilotable viewpoint offset (story
   // sw3-2): steering pans/dives the camera so the dodge the sim computes is what the
   // player sees. `trenchView` is a collision-world offset (z unused); added onto the
   // display skim, kept separate from it.
   if (state.phase === 'trench')
     // `trenchView` IS the eye: lateral offset, height above the y=0 trench floor (sw5-6).
-    return viewMatrix(state.trenchView, IDENTITY)
+    return viewMatrix(state.trenchView, CAMERA_ORIENT)
   // space: the eye IS the cockpit at the world origin (sw8-8). sw8-1 drove this camera off
   // `ST.UX`, but `ST.UX` is the STARFIELD's register — its only CONSUMER in the 1983 tree is the
   // star generator (`WSSTAR.MAC:98`, `LDD ST.UX ;STARS RELATIVE MOVEMENT`); the WSMAIN reads are
@@ -401,7 +401,7 @@ export function cameraView(state: GameState): Mat4 {
   // homes at — the sw7-16 invariant, now satisfied by holding the view still rather than by
   // dragging the gun. The LATERAL DRIFT still happens where the ROM puts it: the starfield slides
   // under `STAR_LATERAL_SPEED` (`core/starfield.ts`), which is what makes space read as motion.
-  return viewMatrix(COCKPIT, IDENTITY)
+  return viewMatrix(COCKPIT, CAMERA_ORIENT)
 }
 
 /**
