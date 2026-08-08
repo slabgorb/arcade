@@ -945,3 +945,8 @@ completed_stories:
     title: 'Title screen (MARQUE): transcribe the JOUST vector logo + (C)1982 copyright + EXTRA-MOUNT lines in FONT57, with the ATT.SRC colour cycle'
     points: 5
     completed: '2026-08-08'
+  - id: jt9-54
+    epic: jt9
+    title: homingWake (BOLEVB) runs on BOLAVA wakes; the ROM skips it (BRA BODIR3 past :3939-3945)
+    points: 2
+    completed: '2026-08-08'
