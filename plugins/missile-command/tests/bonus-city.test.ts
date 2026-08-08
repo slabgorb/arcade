@@ -52,6 +52,7 @@
 import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { START_CITIES, NCITY } from '../src/core/field.js'
+import { type Icbm } from '../src/core/icbm.js'
 import { loadClaims, type Claim } from './helpers/claims.js'
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -294,5 +295,51 @@ describe('mc4-5 AC1/AC3 — bonus cities are awarded through the regen path', ()
     // Full board, score earns 100 bonus cities: reserve = 6 − 0 + 100, capped to NCITY.
     const out = stepGame(betweenState(0, 0, 1_000_000))
     expect(aliveCities(out), 'the board never exceeds the NCITY cap').toBe(NCITY)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// AC1/AC3 — the award observed through REAL play (round-2 rework). The tests above
+// PRESET `citiesLost`; this block drives a genuine city destruction through
+// stepGame's damage path (an inbound ICBM arriving at a city) so the counter is
+// populated by the game itself — the only tests that guard the `citiesLost`
+// INCREMENT wiring (a Reviewer mutation showed removing it left the preset tests
+// green). AC1's observable is "a bonus city is AWARDED as the running score crosses
+// a bonus interval" — this watches that happen end-to-end, not just the arithmetic.
+// ═════════════════════════════════════════════════════════════════════════════
+type BonusPlayState = GameState & { readonly citiesLost: number }
+
+/** A play state whose ONLY enemy is an ICBM already at city 0's position, with the
+ *  wave budget spent — so one stepGame frame lets the damage path destroy that city
+ *  (incrementing citiesLost) and, the screen now clear, enter the wave-end beat. */
+const aboutToLoseCity = (score: number): GameState => {
+  const base = createGame(1)
+  const cityPos = base.cities[0].pos
+  const inbound: Icbm = { origin: cityPos, target: cityPos, pos: cityPos, arrived: true, velocity: 1 }
+  return { ...base, phase: 'play', score, remaining: 0, icbms: [inbound] }
+}
+
+const citiesLostOf = (s: GameState): number | undefined => (s as Partial<BonusPlayState>).citiesLost
+
+describe('mc4-5 AC1/AC3 — the award through REAL stepGame play (round-2 rework)', () => {
+  it('a city destroyed in real play increments citiesLost and enters the wave-end beat', () => {
+    const afterImpact = stepGame(aboutToLoseCity(5_000))
+    expect(citiesLostOf(afterImpact), 'the damage path must count the destroyed city (ROM CIDOWN)').toBe(1)
+    expect(afterImpact.phase, 'budget spent + screen clear ⇒ the between beat').toBe('between')
+    expect(aliveCities(afterImpact), 'the city is visibly dead before regeneration').toBe(START_CITIES - 1)
+  })
+
+  it('a city lost in real play STAYS lost at the wave-end without a bonus', () => {
+    // score 5,000 < 10,000: reserve = 6 − 1 + 0 = 5. The lost city is NOT free-healed.
+    const resolved = stepGame(stepGame(aboutToLoseCity(5_000)))
+    expect(resolved.phase, 'the between beat resolves back to play').toBe('play')
+    expect(aliveCities(resolved), 'a genuine loss persists — no bonus to recover it').toBe(START_CITIES - 1)
+  })
+
+  it('a city lost in real play IS recovered once the score has crossed a threshold', () => {
+    // score 10,000: reserve = 6 − 1 + 1 = 6 → REGEN revives the lost city. The bonus
+    // city is awarded through the mc4-2 regen path, end-to-end from a real loss.
+    const resolved = stepGame(stepGame(aboutToLoseCity(10_000)))
+    expect(aliveCities(resolved), 'the bonus city recovers the real loss').toBe(START_CITIES)
   })
 })
