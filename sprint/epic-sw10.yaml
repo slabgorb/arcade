@@ -10,7 +10,7 @@ stories:
     title: Unify on the cabinet's authentic projection lens (symmetric ~90° FOV, divide-by-depth) and retire the per-model *_ORIENT axis hacks
     points: 8
     priority: p1
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
     type: refactor
