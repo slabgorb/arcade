@@ -28,7 +28,7 @@ stories:
     description: "The wave loop. When the wave's ICBM budget is exhausted and the screen is clear of enemies, the wave ends and resolves: tally the end-of-wave CITY BONUS (per surviving city) and the UNUSED-MISSILE BONUS (per remaining ABM in the magazines), regenerate destroyed cities up to the cabinet cap, refill each live base's ammo, then advance to the next wave and re-seed its attack from the mc4-1 schedule. (a) src/core/wave.ts / state.ts (change) — add the wave-end detection and the bonus/regen/advance reducer; extend Phase with the between-wave beat if needed (the full attract/pause machine is still mc6). (b) claims — new claims for the city-bonus and unused-missile bonus point values and the city-regeneration cap (cite CITY BONUS W3MAIN.MAC:4323 and REGENERATE CITIES W3MAIN.MAC:4765, both logical). Depends on mc4-1."
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-07'
     repos: arcade
     workflow: tdd
@@ -37,6 +37,9 @@ stories:
       - 'the end-of-wave bonus adds the cited per-surviving-city value and the cited per-unused-missile value to the score; a wave with no survivors and no unused missiles adds zero.'
       - 'destroyed cities regenerate up to the cited cap at wave end and each live base refills to full ammo; a base destroyed in play stays dead (structures resurrect only via the cited regeneration path, never spontaneously).'
       - 'all new bonus/regen constants carry byte-exact claims; citations.test.ts and purity.test.ts stay green; deterministic for a fixed seed.'
+    completed: '2026-08-07'
+    review_findings: 'APPROVED round 2. Round-1 mutants M5 (cap clause vacuous) and M6 (dead-only selection unpinned) CLOSED by two discriminating regen tests; full 10-mutant battery now 10/10 caught. Code was correct throughout; rework was test-teeth only (+24 lines, one file). tsc + byte-checker (143) + 622 tests green.'
+    review_verdict: approved
   - id: mc4-3
     title: 'Per-wave score multiplier and the bonus city at a score threshold'
     description: "Scoring fidelity. (a) src/core/score.ts (change) — the per-ICBM kill value scales by the wave multiplier, capped at the cited MAXMUL (claim MC-MAXMUL already exists); mc3 pinned only the wave-1 value 25 (claim MC-ICBPTS), this generalises it to 25 x min(wave, MAXMUL cap). Cite ADD TO PLAYER'S SCORE (W3MAIN.MAC:5549 logical). (b) a bonus city is awarded when the running score crosses the cited threshold (claim MC-SCITYM already exists) — one extra city added at each threshold crossing, subject to the mc4-2 city cap. Depends on mc4-1 (wave number) and mc4-2 (city cap + regen path)."
