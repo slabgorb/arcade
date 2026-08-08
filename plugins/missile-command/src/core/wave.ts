@@ -35,7 +35,7 @@
 // speed table (claims/wave.json), and require the REV-03 source to quantify.
 
 import { MAXMIS, NCITY, type City, type Base } from './field.js'
-import { ICBM_KILL_POINTS } from './score.js'
+import { ICBM_KILL_POINTS, scoreMultiplier } from './score.js'
 
 /** This wave's difficulty: how many ICBMs, and how fast each one descends. */
 export interface WaveParams {
@@ -115,13 +115,23 @@ export const CITY_BONUS_ICBM_UNITS = 4
 // once per SMULTI; the base rate is 5. W3MAIN.MAC:5451. Claim MC-ABMBON.
 export const MISSILE_BONUS_PTS = 5
 
+// mc4-6 — the END-OF-WAVE BONUS RAMP. The ROM accumulates BOTH halves ONCE PER SMULTI:
+// ENDWV2 ABMADD (:5443) adds `LDA I,5` (:5451) per SMULTI, and ENDWV4's city bonus
+// JSR ICMUL2 (:5411) loops the per-ICBM value per SMULTI — so the whole tally scales by
+// the same scoreMultiplier(wave) the kill loop uses (mc4-3). (Line-number cites live in
+// this `//` comment, not the JSDoc, so the citations sweep strips them — src/core JSDoc
+// interiors are NOT stripped, and a bare ROM line number would read as an un-cited literal.)
 /**
- * The end-of-wave bonus at the base multiplier: each surviving city is worth
- * `CITY_BONUS_ICBM_UNITS × ICBM_KILL_POINTS` and each unused missile `MISSILE_BONUS_PTS`.
- * Zero when nothing survived. Pure arithmetic.
+ * The end-of-wave bonus, scaled by the wave multiplier SMULTI: each surviving city is
+ * worth `CITY_BONUS_ICBM_UNITS × ICBM_KILL_POINTS` and each unused missile
+ * `MISSILE_BONUS_PTS`, and the whole tally is multiplied by `scoreMultiplier(wave)`.
+ * `wave` is 1-based and defaults to the opening wave — mirroring
+ * `scoreKills(score, killed, wave)` — so a two-arg call scores at the base rate; the
+ * live wave is threaded in by the step wiring. Zero when nothing survived. Pure arithmetic.
  */
-export function waveEndBonus(survivingCities: number, unusedMissiles: number): number {
-  return survivingCities * CITY_BONUS_ICBM_UNITS * ICBM_KILL_POINTS + unusedMissiles * MISSILE_BONUS_PTS
+export function waveEndBonus(survivingCities: number, unusedMissiles: number, wave: number = 1): number {
+  const base = survivingCities * CITY_BONUS_ICBM_UNITS * ICBM_KILL_POINTS + unusedMissiles * MISSILE_BONUS_PTS
+  return base * scoreMultiplier(wave)
 }
 
 /**
