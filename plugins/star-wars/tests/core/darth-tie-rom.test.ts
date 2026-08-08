@@ -50,7 +50,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { DARTH_TIE } from '../../src/core/models'
+import { DARTH_TIE, bakeTie } from '../../src/core/models'
 import { ROM_MODELS } from '../../src/tools/romModels.generated'
 import { diffEdges, pairModels, verdictFor } from '../../src/tools/romCompare'
 import type { Vec3 } from '@shared/math3d'
@@ -169,19 +169,21 @@ describe('sw5-2 — the ROM oracle (hand-decoded from WSOBJ.MAC `.WL RTH`)', () 
 // requires before it will diff edges at all).
 // ---------------------------------------------------------------------------
 
-describe('sw5-2 AC-4 — DARTH_TIE vertices are the ROM\'s, untouched', () => {
-  it('deep-equals ROM RTH\'s 56-point table, in ROM order', () => {
+describe('sw5-2 AC-4 — DARTH_TIE vertices are the ROM\'s, baked to native (sw10-1)', () => {
+  it('deep-equals ROM RTH\'s 56-point table baked to native, in ROM order', () => {
     // DEEP equality: edges are INDICES into this array, so a reorder would
-    // silently repoint every edge while both arrays still "look" right.
-    expect(DARTH_TIE.vertices).toEqual(romRth().vertices)
+    // silently repoint every edge while both arrays still "look" right. sw10-1
+    // bakes the TIE_ORIENT display correction into the data (bakeTie).
+    expect(DARTH_TIE.vertices).toEqual(bakeTie(romRth().vertices))
     expect(DARTH_TIE.vertices).toHaveLength(56)
   })
 
-  it('vertex 0 is [-180,-180,130] — `.P -18,-18,13` scaled by `.S=10.`', () => {
+  it('vertex 0 is `.P -18,-18,13` × `.S=10.` = [-180,-180,130] raw, baked native to [-130,180,-180]', () => {
     const S = 10
-    const v0: Vec3 = [-18 * S, -18 * S, 13 * S]
-    expect(DARTH_TIE.vertices[0]).toEqual(v0)
-    expect(v0).toEqual([-180, -180, 130])
+    const v0Raw: Vec3 = [-18 * S, -18 * S, 13 * S] // the RAW ROM point (audited source)
+    expect(v0Raw).toEqual([-180, -180, 130])
+    expect(DARTH_TIE.vertices[0]).toEqual(bakeTie([v0Raw])[0]) // sw10-1: stored in native basis
+    expect(bakeTie([v0Raw])[0]).toEqual([-130, 180, -180])
   })
 })
 

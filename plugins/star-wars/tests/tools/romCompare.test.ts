@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { edgeKey, diffEdges, pairModels, pairOne, verdictFor, inRangeEdges, ROM_TO_PORT, type ModelPair } from '../../src/tools/romCompare'
+import { edgeKey, diffEdges, pairModels, pairOne, verdictFor, inRangeEdges, ROM_TO_PORT, bakeRom, type ModelPair } from '../../src/tools/romCompare'
 import { ROM_MODELS, type RomModel } from '../../src/tools/romModels.generated'
 import { MODELS, type Model3D } from '../../src/core/models'
 
@@ -104,7 +104,9 @@ describe('pairModels', () => {
       const p = pairs.find((pair) => pair.romName === romName)!
       expect(p.rom).not.toBeNull()
       expect(p.port).not.toBeNull()
-      expect(p.rom!.vertices).toEqual(p.port!.vertices)
+      // sw10-1: baked families (TIE-family) store native vertices; compare the ROM
+      // side in the port's basis (identity for the not-yet-flipped ground objects).
+      expect(bakeRom(romName, p.rom!.vertices)).toEqual(p.port!.vertices)
       expect(p.verticesMatch).toBe(true)
     },
   )
