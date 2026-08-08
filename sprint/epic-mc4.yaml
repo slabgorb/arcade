@@ -59,7 +59,8 @@ stories:
     description: "Wire the wave model into the composition root and make it visible. (a) src/core/game.ts (change) — createGame seeds wave 1; stepGame runs the wave-end resolution in its resolve step and advances the wave; GameState gains the wave number and multiplier. (b) shell/render.ts (change) — the HUD draws the wave number and current multiplier (functional text; authentic stroke font is mc9); the score/ammo readouts are unchanged and remain the core's verbatim values (HUD-figure rule). (c) tests/mc4-playthrough.test.ts — one seeded run across at least two waves asserting the descent speed ramps between waves, the wave-end bonus is awarded, cities regenerate, ammo refills, the multiplier climbs, and identical seeds yield identical states. Depends on mc4-1/2/3."
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
