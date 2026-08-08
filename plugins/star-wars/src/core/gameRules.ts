@@ -6,7 +6,7 @@
 // single source of 3D truth.
 
 import { length, sub, add, scale, dot, normalize, type Vec3 } from '@shared/math3d'
-import { ENEMY_FIRE_INTERVAL, FIRE_MASK, FIRE_THRESHOLD } from './state'
+import { ENEMY_FIRE_INTERVAL, FIRE_MASK, FIRE_THRESHOLD, TRENCH_SCROLL_SPEED } from './state'
 
 /** Vertical field of view (radians) the renderer projects the scene with — the
  * single source of truth shared by the camera (shell/render.ts) and the aim
@@ -62,6 +62,29 @@ export function aimDirection(aimX: number, aimY: number, aspect = 1): Vec3 {
  */
 export function crosshairNdc(aimX: number, aimY: number): readonly [number, number] {
   return [clamp(aimX, -1, 1), clamp(aimY, -1, 1)]
+}
+
+/**
+ * The velocity of a trench wall-gun shot, in the trench's scrolling world frame.
+ *
+ * The pilot flies FORWARD, which the trench models as the world scrolling toward the
+ * (fixed) cockpit at `TRENCH_SCROLL_SPEED` — the walls, obstacles and exhaust port all
+ * ride it. A shot must ride the same flow in DEPTH, or it creeps at its own ~300 u/s
+ * muzzle speed while the world rushes past 50× faster and the player "outruns the
+ * bullet" (it reads on screen as receding downrange). So the z-component IS the scroll
+ * — the shot closes on the cockpit exactly as the walls do — and the lateral/vertical
+ * components LEAD the ship: sized so the shot arrives at the ship's x/y at the same
+ * instant its depth reaches the cockpit plane. Aimed at the ship point (sw7-16), never
+ * a detached floor origin.
+ *
+ * Degenerate guard: a gun already at or past the cockpit plane (`depth <= 0`) has no
+ * lead time, so it fires straight at the ship at the scroll speed.
+ */
+export function trenchGunFireVelocity(gunPos: Vec3, shipPos: Vec3): Vec3 {
+  const depth = shipPos[2] - gunPos[2] // > 0 while the gun is downrange (gunPos.z < shipPos.z)
+  if (depth <= 0) return scale(normalize(sub(shipPos, gunPos)), TRENCH_SCROLL_SPEED)
+  const t = depth / TRENCH_SCROLL_SPEED // transit time riding the scroll to the cockpit plane
+  return [(shipPos[0] - gunPos[0]) / t, (shipPos[1] - gunPos[1]) / t, TRENCH_SCROLL_SPEED]
 }
 
 /**
