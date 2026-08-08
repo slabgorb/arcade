@@ -41,10 +41,11 @@ stories:
     title: 'Attract cycle: self-play (demo.ts) + banner pages (BEWARE OF THE PTERODACTYL, HOME OF THE LAVA TROLL) + attract-page scheduler — supersedes ad1-4'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
     depends_on: jt10-2
+    started: '2026-08-08T13:08:49Z'
   - id: jt10-5
     title: '1P/2P start select: ONE PLAYER START / TWO PLAYER START ($1D/$1E) + a static CREDITS row, transitioning attract->select->playing'
     points: 3
