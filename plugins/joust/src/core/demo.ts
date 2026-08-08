@@ -363,6 +363,18 @@ export interface DemoState {
    * hunts you"; DBAIT baiter-removal is deferred (nbait settles at MAX_BAITERS).
    */
   baiterClock: BaiterClock
+  /**
+   * jt9-59 — the wave's pterodactyls AWAITING CREATION. The ROM's PTERWV creates a
+   * wave's pteros one at a time, `PCNAP 65` between each (JOUSTRV4.SRC:2618), so a
+   * not-yet-created ptero is neither drawn nor collidable — it does not exist yet.
+   * `stepDemo` ticks each countdown and splices in the real `pteroProcess` on the
+   * frame it fires (superseding jt9-45's nap-delay, where all `count` pteros stood
+   * rendered + collision-eligible at their edges from the advance frame).
+   *
+   * OPTIONAL / default-empty so hand-built `DemoState` literals in tests still
+   * type-check (tsconfig includes tests) and a non-ptero wave simply carries none.
+   */
+  pendingPteros?: readonly PendingPtero[]
 }
 
 /** The result of resolving ONE overlapping pair — the wiring over resolveJoust. */
@@ -633,6 +645,27 @@ interface PteroEntry {
   nap: number
 }
 
+/** jt9-59 — a wave ptero the PTERWV schedule has not created YET: its resolved PTERST
+ *  entry (side edge X, cliff-lane Y, FLYXP velocity rung, face) held with a `countdown`
+ *  of frames until its `SECCR PTERST` (JOUSTRV4.SRC:2618). `stepDemo` decrements the
+ *  countdown and, when it fires, builds the real `pteroProcess`. The entry data is the
+ *  same `enterPteroSides`/lane data `spawnWavePteros` computed before — determinism is
+ *  unchanged (positional `seed`, `sim.rng` untouched); only the MOMENT of creation moves. */
+interface PendingPtero {
+  id: number
+  posX: number
+  posY: number
+  velXIndex: number
+  facing: Facing
+  countdown: number
+}
+
+/** The `nap` a freshly-created wave ptero carries — 1, so it first flies on the NEXT
+ *  frame, exactly like a `baiterProcess` (nap 1) and a wave-advance arrival (spliced
+ *  after this frame's flight/collision). In the ROM `SECCR PTERST` runs PTERST → BRA
+ *  PTESTF at once; the port's one-frame settle matches every other freshly-spawned bird. */
+const PTERO_CREATE_NAP = 1
+
 /** A pterodactyl process — a PTEID secondary, NOT a scored ground enemy (no
  * enemyType, so it never carries a DVALUE type). jt3-4 spawns it; jt3-7 makes it
  * LIVE: it carries a flight `entity` (stepped gravity-exempt by frame.ts) and
@@ -899,39 +932,44 @@ const PTERO_STAGGER_FRAMES = 65
  * `pteroWaveSpawnCount`. Ptero ids sit in a separate per-wave namespace (+$80) so they
  * never collide with the ground-enemy indices.
  *
- * jt9-45 ports the full PTERST/PTERWV entry on top of jt9-44's cliff-lane spread:
+ * jt9-45 ports the full PTERST/PTERWV entry on top of jt9-44's cliff-lane spread;
+ * jt9-59 makes the TIME half a genuine deferred CREATION rather than a nap-delay:
  *   • SIDE (PTERST `JSR VRAND / BCC → ELEFT/ERIGHT`, :1421-1489): `enterPteroSides`
  *     rolls each bird's entry EDGE off `seed`. A left bird enters at `ELEFT+1` on the
  *     top FLYXP rung moving right; a right bird enters at `ERIGHT-1` with the rung and
  *     face NEGATED (`COM PFACE / NEG PVELX`) so it too flies INTO the arena.
- *   • TIME (PTERWV `PCNAP 65`, :2618): a per-bird nap of `PTERO_STAGGER_FRAMES*(i+1)`
- *     staggers arrivals ≥65 frames apart. All three are still PRESENT (napping) from the
- *     spawn frame — jt9-44's "no stacked burst" holds — but they wake, and fly, in turn.
+ *   • TIME (PTERWV `PCNAP 65`, :2618-2624): the loop naps 65 frames BEFORE each
+ *     `SECCR PTERST`, so bird i is CREATED `PTERO_STAGGER_FRAMES*(i+1)` frames after
+ *     the advance — nap-THEN-create. An un-created bird is NOT in `sim.processes`, so
+ *     (unlike jt9-45's napping-but-present model) it is neither drawn nor collidable
+ *     until its create frame. `stepDemo` owns the countdown tick.
  *   • Y (jt9-44): the three cliff-appear lanes stand, cycled by index (AC6).
  *
  * `seed` is the same positional wave-entry seed `enterViaPads` takes (the running `rng`
  * word at the advance) — used as a local mulberry seed, NOT consumed off `sim.rng`, so
- * the frame RNG stream is untouched and no downstream draw forks.
+ * the frame RNG stream is untouched and no downstream draw forks. Returns the PENDING
+ * arrivals (not live processes): `stepDemo` creates each `pteroProcess` when it fires.
  */
-function spawnWavePteros(waveNumber: number, seed: number): DemoProcess[] {
+function pendingWavePteros(waveNumber: number, seed: number): PendingPtero[] {
   const row = waveRowAt(waveNumber)
   const count = pteroWaveSpawnCount(row.status, row.pterodactyls, { p1: true, p2: true })
   const sides = enterPteroSides(count, seed)
-  const pteros: DemoProcess[] = []
+  const pending: PendingPtero[] = []
   for (let i = 0; i < count; i++) {
     const right = sides[i] === 'right'
-    pteros.push(
-      pteroProcess(0x100 * waveNumber + 0x80 + i, {
-        posX: right ? ERIGHT - 1 : ELEFT + 1,
-        posY: PTERO_APPEAR_Y[i % PTERO_APPEAR_Y.length] << 8,
-        // velXIndex 8 is the top FLYXP rung (rightward); NEG on the right branch.
-        velXIndex: right ? -8 : 8,
-        facing: right ? -1 : 1,
-        nap: PTERO_STAGGER_FRAMES * (i + 1),
-      }),
-    )
+    pending.push({
+      id: 0x100 * waveNumber + 0x80 + i,
+      posX: right ? ERIGHT - 1 : ELEFT + 1,
+      posY: PTERO_APPEAR_Y[i % PTERO_APPEAR_Y.length] << 8,
+      // velXIndex 8 is the top FLYXP rung (rightward); NEG on the right branch.
+      velXIndex: right ? -8 : 8,
+      facing: right ? -1 : 1,
+      // PTERWV naps 65 frames per bird BEFORE creating it: bird i is created 65*(i+1)
+      // frames in (the 1st a full nap after the advance, never on the advance frame).
+      countdown: PTERO_STAGGER_FRAMES * (i + 1),
+    })
   }
-  return pteros
+  return pending
 }
 
 // ─── The settled egg's hatch wait (EGGLND, JOUSTRV4.SRC:3224-3237) ────────────
@@ -1154,11 +1192,13 @@ function remountEnemyProcess(id: number, egg: EggState): DemoProcess {
 }
 
 /**
- * The processes a wave sends in, entered deterministically under `seed`: the
- * scored GROUND enemies (bounders/hunters/lords) via pads (jt2-6) — each carrying
- * its EMYTIM period, DVALUE type, and a materialisation window (collisions off
- * until it exits) — PLUS the pterodactyls from the ptero nibble (jt3-4). Ids are
- * namespaced by wave so they never collide across a wave advance. Used by
+ * The processes a wave sends in AT THE ADVANCE, entered deterministically under
+ * `seed`: the scored GROUND enemies (bounders/hunters/lords) via pads (jt2-6) — each
+ * carrying its EMYTIM period, DVALUE type, and a materialisation window (collisions
+ * off until it exits). The wave's PTERODACTYLS are NOT here (jt9-59): PTERWV creates
+ * them one at a time over the following ~195 frames, so they enter through the
+ * `pendingWavePteros` schedule `stepDemo` ticks, not as advance-frame processes. Ids
+ * are namespaced by wave so they never collide across a wave advance. Used by
  * `createWaveDemo` and the wave advance.
  *
  * jt4-4: an EGG wave enters its complement AS EGGS instead of ground enemies (WAVEGG,
@@ -1169,15 +1209,14 @@ function remountEnemyProcess(id: number, egg: EggState): DemoProcess {
 function spawnWaveEnemies(waveNumber: number, seed: number): DemoProcess[] {
   const row = waveRowAt(waveNumber)
   if (dispatchWaveType(row.status, { p1: true, p2: true }) === 'egg') {
-    return [...spawnWaveEggs(waveNumber), ...spawnWavePteros(waveNumber, seed)]
+    return spawnWaveEggs(waveNumber)
   }
   const period = emytimForWave(waveNumber)
   const types = enemyTypesForWave(row)
-  const enemies = enterViaPads(types.length, seed).map((entry) => {
+  return enterViaPads(types.length, seed).map((entry) => {
     const pad = PADS.find((p) => p.id === entry.pad) ?? PADS[0]
     return enemyProcess(0x100 * waveNumber + entry.index, pad, period, types[entry.index])
   })
-  return [...enemies, ...spawnWavePteros(waveNumber, seed)]
 }
 
 /**
@@ -1218,7 +1257,16 @@ export function createWaveDemo(seed: number): DemoState {
   // complement is assembled here rather than arriving through the wave-advance
   // path, and a sound on the frame before the first step would be a sound the
   // shell has no gesture-unlocked context for anyway.
-  return { sim, wave: 1, events, cues: [], arena, baiterClock: seedBaiterClock(1) }
+  return {
+    sim,
+    wave: 1,
+    events,
+    cues: [],
+    arena,
+    baiterClock: seedBaiterClock(1),
+    // jt9-59 — wave 1's ptero schedule (nibble 0 → empty); PTERWV creates over time.
+    pendingPteros: pendingWavePteros(1, seed),
+  }
 }
 
 // ─── The egg fall loop (STEGG/EGGLPA) with the BMI EGGBCK guard ────────────────
@@ -1970,6 +2018,10 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   const collided = collisionPass(materialised)
 
   let wave = demo.wave
+  // jt9-59 — the PTERWV pending-arrivals schedule, carried across the frame and ticked
+  // below (reset to the new wave's schedule on an advance). Default-empty for a demo
+  // that predates the field or a non-ptero wave.
+  let pendingPteros: readonly PendingPtero[] = demo.pendingPteros ?? []
   // jt5-1 — the frame's cue stream starts from the collision pass's four moments
   // and gathers the rest below. A FRESH array every frame: nothing is carried in
   // from `demo.cues`, which is the whole point of the channel.
@@ -2190,15 +2242,21 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     // a draw happens only while twelve of them are sitting there — but writing the stale
     // word here would be a latent fork in the stream waiting for that to stop being true.
     const arrivals = spawnWaveEnemies(wave, rng)
-    // SNECRE "ENEMY RE-CREATED (TRANSPORTER)" (:8103) per buzzard on the pads,
-    // and SNPTEI, the introduction scream (:8094), per pterodactyl. An EGG wave
-    // enters its complement as settled eggs instead — the machine's table has no
-    // egg-laid sound, so those arrive silently.
+    // SNECRE "ENEMY RE-CREATED (TRANSPORTER)" (:8103) per buzzard on the pads. An EGG
+    // wave enters its complement as settled eggs instead — the machine's table has no
+    // egg-laid sound, so those arrive silently. The wave's PTERODACTYLS do NOT arrive
+    // here (jt9-59): PTERWV creates them one at a time, so each `ptero-arrives`
+    // (SNPTEI, the introduction scream, :8094) fires from the schedule tick below at
+    // that bird's create frame — not a burst of them on the advance frame.
     for (const p of arrivals) {
       if (p.kind === 'enemy') cues.push({ type: 'enemy-materialise' })
-      else if (p.kind === 'ptero') cues.push({ type: 'ptero-arrives' })
     }
     processes = [...processes, ...arrivals]
+    // jt9-59 — (re)seed this wave's PTERWV creation schedule off the same positional
+    // `rng` word `spawnWaveEnemies` used (positional seed, `sim.rng` untouched — the
+    // jt9-45 determinism model). Replaces any leftover from the wave that just cleared,
+    // exactly as the baiter clock and budget re-seed here.
+    pendingPteros = pendingWavePteros(wave, rng)
     // Once the bridge has burned and the troll wave (4) is reached, the lava troll
     // rises off CLIF5 and grabs the nearest player (jt3-3 trollSpawnable; jt9-11 gives
     // it a real victim). Only ONE live troll at a time (LAVNBR): the spawn guard, plus
@@ -2225,6 +2283,39 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     }
   }
 
+  // jt9-59 — PTERWV's one-at-a-time creation (JOUSTRV4.SRC:2618-2624). Every frame,
+  // tick each pending ptero's countdown; when one reaches its create point, build the
+  // real `pteroProcess` NOW and splice it in — AFTER this frame's flight/collision
+  // (like a wave-advance arrival), so a just-created ptero first flies next frame, and
+  // its SNPTEI intro scream sounds on its OWN create frame, never stacked. An
+  // un-created ptero is absent from `sim.processes`, hence neither in `drawList` nor a
+  // `collisionPass` candidate — the fidelity fix over jt9-45's napping-but-present bird.
+  // Runs after the advance block so a wave that just (re)seeded its schedule does not
+  // create on the advance frame (its first countdown is a full 65-frame nap).
+  if (pendingPteros.length > 0) {
+    const stillPending: PendingPtero[] = []
+    const created: DemoProcess[] = []
+    for (const pp of pendingPteros) {
+      const countdown = pp.countdown - 1
+      if (countdown <= 0) {
+        created.push(
+          pteroProcess(pp.id, {
+            posX: pp.posX,
+            posY: pp.posY,
+            velXIndex: pp.velXIndex,
+            facing: pp.facing,
+            nap: PTERO_CREATE_NAP,
+          }),
+        )
+        cues.push({ type: 'ptero-arrives' })
+      } else {
+        stillPending.push({ ...pp, countdown })
+      }
+    }
+    if (created.length > 0) processes = [...processes, ...created]
+    pendingPteros = stillPending
+  }
+
   // jt8-1: reconcile the target slots against the FINAL live players — drop a slot
   // whose knight died this frame (the death-shift), and register any live player not
   // yet in a slot (STPLY: a fresh wave's knights, or a respawn re-entered by game.ts)
@@ -2242,7 +2333,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // Cap the log to its most recent entries — the append-only history would
   // otherwise grow unbounded (nothing drains it until the jt4 score display).
   const events = [...demo.events, ...collided.events, ...trollEvents].slice(-EVENT_LOG_CAP)
-  return { sim, wave, events, cues, arena, baiterClock }
+  return { sim, wave, events, cues, arena, baiterClock, pendingPteros }
 }
 
 // ─── Round 2: pure render-SELECTION seams (routing≠geometry) ──────────────────
