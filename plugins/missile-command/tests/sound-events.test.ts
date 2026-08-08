@@ -143,7 +143,9 @@ describe('mc8-2 — stepGame emits each sim sound-moment at its frame', () => {
     const g: GameState = {
       ...base,
       remaining: 0, // no spawn
-      icbms: [], // nothing arriving to destroy anything this frame
+      // One ICBM still descending — nothing ARRIVES this frame (so no new destruction),
+      // but it keeps the wave open so this is a mid-wave frame, not an end-of-wave beat.
+      icbms: [{ origin: { h: 10, v: 222 }, target: base.bases[0].pos, pos: { h: 10, v: 200 }, arrived: false }],
       abms: [],
       cities: base.cities.map((c, i) => (i === 0 ? { ...c, alive: false } : c)), // city 0 died earlier
     }

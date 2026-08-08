@@ -31,11 +31,20 @@ import { INITIAL_CURSOR, type Cursor } from './cursor.js'
 import { stepAbm, type Abm } from './abm.js'
 import { stepIcbm, type Icbm } from './icbm.js'
 import { startExplosion, stepExplosion, isExplosionDone, type Explosion } from './explosion.js'
-import { createCities, createBases, type City, type Base } from './field.js'
+import { createCities, createBases, START_CITIES, type City, type Base } from './field.js'
 import { spawnIcbms, NICBMS, type SpawnResult } from './spawn.js'
 import { killIcbmsInBlasts, resolveGroundImpacts } from './damage.js'
-import { scoreKills } from './score.js'
-import { nextPhase, type Phase } from './state.js'
+import { scoreKills, scoreMultiplier } from './score.js'
+import { nextPhase, nextWavePhase, resumePlay, type Phase } from './state.js'
+import {
+  INITIAL_WAVE,
+  waveSchedule,
+  isWaveOver,
+  waveEndBonus,
+  regenerateCities,
+  refillAmmo,
+  nextWaveBudget,
+} from './wave.js'
 import type { SoundEvent } from './sound-events.js'
 import { createRng, type Rng } from '@shared/rng'
 
@@ -61,6 +70,12 @@ export interface GameState {
   readonly phase: Phase
   /** ICBMs still to launch this wave — the NICBMS budget, drawn down by spawns. */
   readonly remaining: number
+  /** 1-based wave number (mc4-4). Seeds the mc4-1 difficulty schedule (ICBM count +
+   *  descent velocity) and the mc4-3 score multiplier; advanced at each wave-end. */
+  readonly wave: number
+  /** This wave's score multiplier — `scoreMultiplier(wave)` (mc4-3), surfaced on the
+   *  state so the HUD reads it verbatim rather than re-deriving it (the HUD-figure rule). */
+  readonly multiplier: number
   /** The seeded PRNG (mutable seed word, threaded through state — the sole entropy). */
   readonly rng: Rng
   /** The sound moments this frame produced, for the audio shell to voice (mc8-2).
@@ -72,7 +87,8 @@ export interface GameState {
 }
 
 /** A fresh game: 6 live cities, 3 live bases at full ammo, no enemies, phase 'play',
- *  score 0, the full per-wave budget, and a PRNG seeded from `seed` (default 1). */
+ *  score 0, the full per-wave budget, the opening wave and its multiplier, and a PRNG
+ *  seeded from `seed` (default 1). */
 export function createGame(seed = 1): GameState {
   return {
     frame: 0,
@@ -85,13 +101,17 @@ export function createGame(seed = 1): GameState {
     score: 0,
     phase: 'play',
     remaining: NICBMS,
+    wave: INITIAL_WAVE,
+    multiplier: scoreMultiplier(INITIAL_WAVE),
     rng: createRng(seed),
     soundEvents: [],
   }
 }
 
 /**
- * Advance exactly one video frame through the seven-step order above. When the
+ * Advance exactly one video frame through the seven-step order above, then — when
+ * this wave's ICBM budget is spent and the screen is clear — run the mc4-2 END OF
+ * WAVE resolution (bonus → regenerate → refill → advance to the next wave). When the
  * game is over, only the frame counter moves — no spawn, no flight, no damage.
  * Referentially transparent over the durable state (the seeded `Rng`'s in-place
  * cursor advance is the sanctioned exception; determinism holds per-seed).
@@ -101,12 +121,45 @@ export function stepGame(state: GameState): GameState {
   // channel goes quiet (no spawn/flight/damage happens, so nothing to voice).
   if (state.phase === 'over') return { ...state, frame: state.frame + 1, soundEvents: [] }
 
-  // (1) spawn — only ever against structures that are still alive.
+  // END OF WAVE, phase 2 (mc4-2): the previous frame entered the 'between' beat with
+  // the wave's final damage on screen. Now resolve it — tally the surviving-city +
+  // unused-missile bonus (at this wave's base rate; the ×-multiplier bonus ramp is
+  // mc4-6), regenerate destroyed cities up to the cabinet entitlement (START_CITIES
+  // until mc4-5 awards bonus cities), refill live magazines, re-seed the next wave's
+  // ICBM budget from the mc4-1 schedule, advance the wave + its multiplier, and resume
+  // play. Regeneration is a BETWEEN-wave event: a city destroyed during a wave stays
+  // dead until here (the mc3-4 "dead never resurrect" invariant holds within a wave).
+  if (state.phase === 'between') {
+    const survivingCities = state.cities.filter((c) => c.alive).length
+    const unusedMissiles = state.bases.reduce((n, b) => (b.alive ? n + b.ammo : n), 0)
+    const nextWave = state.wave + 1
+    return {
+      ...state,
+      frame: state.frame + 1,
+      cities: regenerateCities(state.cities, START_CITIES),
+      bases: refillAmmo(state.bases),
+      score: state.score + waveEndBonus(survivingCities, unusedMissiles),
+      phase: resumePlay(state.phase), // 'between' → 'play'
+      remaining: nextWaveBudget(state.wave),
+      wave: nextWave,
+      multiplier: scoreMultiplier(nextWave),
+      soundEvents: [],
+    }
+  }
+
+  // (1) spawn — only ever against structures that are still alive. Each launch
+  // descends at THIS wave's schedule velocity (mc4-1), so the swarm ramps by wave.
   const liveTargets = [
     ...state.cities.filter((c) => c.alive).map((c) => c.pos),
     ...state.bases.filter((b) => b.alive).map((b) => b.pos),
   ]
-  const spawned: SpawnResult = spawnIcbms(state.icbms, liveTargets, state.remaining, state.rng)
+  const spawned: SpawnResult = spawnIcbms(
+    state.icbms,
+    liveTargets,
+    state.remaining,
+    state.rng,
+    waveSchedule(state.wave).velocity,
+  )
 
   // (2)(3) fly the enemy warheads and the player missiles one tick each.
   const flownIcbms = spawned.icbms.map(stepIcbm)
@@ -121,12 +174,14 @@ export function stepGame(state: GameState): GameState {
     (e) => !isExplosionDone(e),
   )
 
-  // (5) damage: blasts kill ICBMs (scored); then ARRIVED survivors destroy structures.
+  // (5) damage: blasts kill ICBMs (scored at THIS wave's multiplier); then ARRIVED
+  // survivors destroy structures.
   const { survivors, killed } = killIcbmsInBlasts(flownIcbms, explosions)
   const impact = resolveGroundImpacts(survivors, state.cities, state.bases)
 
-  // (7) resolve the score and the phase from the frame's outcome.
-  const score = scoreKills(state.score, killed.length)
+  // (7) resolve the score and the phase from the frame's outcome. (state.phase is
+  // 'play' here — 'over' froze and 'between' resolved in their own branches above.)
+  const score = scoreKills(state.score, killed.length, state.wave)
   const phase = nextPhase(state.phase, impact.cities)
 
   // Voice this frame's moments, in the frame's own order: each ABM that arrived
@@ -142,6 +197,30 @@ export function stepGame(state: GameState): GameState {
     ...Array.from({ length: destroyed }, () => ({ type: 'structureDestroyed' }) as const),
   ]
 
+  // (8) END OF WAVE, phase 1 (mc4-2): the budget is spent AND the screen is now clear.
+  // Enter the between-wave beat with THIS frame's final damage still on screen — the
+  // bonus/regen/advance is resolved on the NEXT frame (the 'between' branch above), so
+  // a city destroyed by the wave's last ICBM is visibly dead before it regenerates. A
+  // wave-end with every city dead is game-over (phase === 'over') and never enters the
+  // beat — nextWavePhase returns 'over', the game ends, the wave is frozen.
+  if (phase !== 'over' && isWaveOver(spawned.remaining, impact.icbms)) {
+    return {
+      ...state,
+      frame: state.frame + 1,
+      abms: flownAbms.filter((a) => !a.arrived),
+      icbms: impact.icbms, // empty — isWaveOver guarantees the screen is clear
+      explosions,
+      cities: impact.cities, // final damage stays VISIBLE; regeneration is next frame
+      bases: impact.bases,
+      score,
+      phase: nextWavePhase(impact.cities), // 'between' — a survivor keeps play going
+      remaining: spawned.remaining, // 0; the next wave's budget is seeded on resolve
+      wave: state.wave, // not advanced yet
+      multiplier: state.multiplier,
+      soundEvents, // this frame's destruction cues still fire
+    }
+  }
+
   return {
     ...state,
     frame: state.frame + 1,
@@ -153,6 +232,8 @@ export function stepGame(state: GameState): GameState {
     score,
     phase,
     remaining: spawned.remaining,
+    wave: state.wave,
+    multiplier: state.multiplier,
     soundEvents,
   }
 }
