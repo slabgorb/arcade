@@ -42,7 +42,7 @@
 // "corrects" a bound to something the ROM never said reddens here — not a human.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -235,14 +235,17 @@ describe('AC1 — cursor.ts carries its W3MAIN / W3COMN source citations', () =>
   })
 })
 
-describe('source ground truth — the expected bounds really decode from W3COMN.MAC', () => {
-  // GREEN from day one: reads the vendored source (data), not cursor.ts (code),
-  // and anchors HMIN/HMAX/VMIN/VMAX to the ROM so neither this test nor a later
-  // "fix" can drift the clamp away from what Atari shipped. (W3COMN.MAC carries a
-  // stray non-text byte — `readFileSync(..., 'utf8')` reads it fine; a hand `grep`
-  // needs `-a`. Noted in field.test.ts's SOURCE-FILE HAZARD.)
-  const macPath = join(root, 'reference', 'source', 'W3COMN.MAC')
-  const mac = readFileSync(macPath, 'utf8')
+const macPath = join(root, 'reference', 'source', 'W3COMN.MAC')
+// Byte-gated: W3COMN.MAC is gitignored (copyright wall — NEVER committed), so
+// this suite SKIPS wherever the local quarry is absent (CI included).
+// `describe.skipIf` still runs its factory BODY at collection, so the read is
+// guarded too — otherwise it ENOENTs before any skip can apply.
+describe.skipIf(!existsSync(macPath))('source ground truth — the expected bounds really decode from W3COMN.MAC', () => {
+  // GREEN wherever the quarry is present: reads the vendored source (data), not
+  // cursor.ts (code), and anchors HMIN/HMAX/VMIN/VMAX to the ROM. (W3COMN.MAC
+  // carries a stray non-text byte — `readFileSync(..., 'utf8')` reads it fine; a
+  // hand `grep` needs `-a`. Noted in field.test.ts's SOURCE-FILE HAZARD.)
+  const mac = existsSync(macPath) ? readFileSync(macPath, 'utf8') : ''
 
   // A `SYMBOL = value` def in the `.RADIX 16` source. A trailing `.` on the value
   // forces DECIMAL (MACRO-11/6502-XASM convention); a bare value is HEX.

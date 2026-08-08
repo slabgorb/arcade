@@ -86,10 +86,10 @@ describe('mc9-2 AC2 — committed claims pin the palette source (docs/rom-study/
 describe.skipIf(!sourceAvailable)('mc9-2 palette re-derives from W3DSUP.MAC / W3COMN.MAC', () => {
   // Build symbol → code from W3COMN.MAC:491-505 (physical, double-spaced).
   const codeOf = new Map<string, number>()
-  for (let n = 491; n <= 505; n += 2) {
-    const m = lineAt(W3COMN, n).match(/^(C\w+)\s*=\s*([0-9A-Fa-f]+)/)
-    if (m) codeOf.set(m[1], decodeRadix16(m[2]))
-  }
+  // Parse each WVxCOL row (physical lines 1684..1702, double-spaced) → label + 8 codes.
+  const rowCodes = new Map<string, number[]>()
+  // Parse the dispatch table (physical lines 1655..1673) → label order.
+  const dispatch: string[] = []
 
   /** Resolve a DBLCOL arg (a symbol like CBLACK, or a bare literal like 0) to a code. */
   const argToCode = (arg: string): number => {
@@ -97,18 +97,23 @@ describe.skipIf(!sourceAvailable)('mc9-2 palette re-derives from W3DSUP.MAC / W3
     return codeOf.has(a) ? (codeOf.get(a) as number) : decodeRadix16(a)
   }
 
-  // Parse each WVxCOL row (physical lines 1684..1702, double-spaced) → label + 8 codes.
-  const rowCodes = new Map<string, number[]>()
-  for (let n = 1684; n <= 1702; n += 2) {
-    const m = lineAt(W3DSUP, n).match(/^(WV\wCOL):\s*DBLCOL\s+(.+?)\s*$/)
-    if (m) rowCodes.set(m[1], m[2].split(',').map(argToCode))
-  }
-
-  // Parse the dispatch table (physical lines 1655..1673) → label order.
-  const dispatch: string[] = []
-  for (let n = 1655; n <= 1673; n += 2) {
-    const m = lineAt(W3DSUP, n).match(/\.BYTE\s+(WV\wCOL)-WAVCOL/)
-    if (m) dispatch.push(m[1])
+  // `describe.skipIf` still runs this factory BODY at collection even when the
+  // suite is skipped, so the source reads are guarded — the it()s below are the
+  // ones skipIf skips when the quarry is absent (CI). Without this guard the
+  // `lineAt` calls ENOENT at collection and fail the whole file.
+  if (sourceAvailable) {
+    for (let n = 491; n <= 505; n += 2) {
+      const m = lineAt(W3COMN, n).match(/^(C\w+)\s*=\s*([0-9A-Fa-f]+)/)
+      if (m) codeOf.set(m[1], decodeRadix16(m[2]))
+    }
+    for (let n = 1684; n <= 1702; n += 2) {
+      const m = lineAt(W3DSUP, n).match(/^(WV\wCOL):\s*DBLCOL\s+(.+?)\s*$/)
+      if (m) rowCodes.set(m[1], m[2].split(',').map(argToCode))
+    }
+    for (let n = 1655; n <= 1673; n += 2) {
+      const m = lineAt(W3DSUP, n).match(/\.BYTE\s+(WV\wCOL)-WAVCOL/)
+      if (m) dispatch.push(m[1])
+    }
   }
 
   // The expected fixture, mirrored from palette.test.ts (dispatch order, codes).
