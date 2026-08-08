@@ -31,7 +31,8 @@ stories:
     title: 'pac-man — adopt @shared/host-helpers mount + @shared/view letterbox for the DPR/resize handling in src/shell/layout.ts; fold the player-pause path onto @shared/pause ONLY IF core/mode.ts `paused` is player-pause and not ghost scatter/chase mode-state (verify first — reuse-first, do not force a false match)'
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
   - id: SH3-5
