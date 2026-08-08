@@ -75,7 +75,8 @@ stories:
     description: 'Scoring fidelity, split out of mc4-3 (its part b). A bonus city is awarded as the running score crosses a bonus interval. The real mechanic is CHEKBO (W3MAIN.MAC:5621): it reads OPTIO2 masked by BONMSK (W3COMN.MAC:197), shifts the result to index the BONINL interval table, then divides the running score by that interval to count bonus cities. mc4-3 originally cited MC-SCITYM as the threshold, but MC-SCITYM (=3, W3COMN.MAC:195) is the OPTIO2 starting-cities mask (used only as AND I,SCITYM), never compared to score. This story must recover the BONINL table + the shipped default DIP interval from the source, CREATE a new claim for it (do NOT reuse MC-SCITYM), and award bonus cities via the mc4-2 regeneration path (respecting the city cap). Depends on mc4-2 (city cap + regen). Relates to mc4-3 (running score).'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     depends_on: mc4-2
