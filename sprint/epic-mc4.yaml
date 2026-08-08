@@ -42,16 +42,17 @@ stories:
     review_verdict: approved
   - id: mc4-3
     title: 'Per-wave score multiplier: generalise the per-ICBM value by wave (capped at MAXMUL)'
-    description: "Scoring fidelity (part b split out to mc4-5). src/core/score.ts (change): the per-ICBM kill value scales by the wave multiplier, capped at the cited MAXMUL (claim MC-MAXMUL, =6). mc3 pinned only the wave-1 value 25 (claim MC-ICBPTS); this generalises it to 25 x min(wave, MAXMUL cap). Cite ADD TO PLAYER SCORE / INCREASE POINTS FOR DOWNING ICBMS (W3MAIN.MAC). Depends on mc4-1 (wave number)."
+    description: "Scoring fidelity (part b split out to mc4-5). src/core/score.ts (change): the per-ICBM kill value scales by the wave multiplier SMULTI, capped at the cited MAXMUL (claim MC-MAXMUL, =6). mc3 pinned only the wave-1 value 25 (claim MC-ICBPTS); this generalises it to 25 x SMULTI where SMULTI = min((wave+1)>>1, 6) — the ROM steps the multiplier every TWO waves (W3MAIN.MAC:4063-4079), NOT \"25 x wave\" (ruled ROM-faithful at RED). Depends on mc4-1 (wave number)."
     points: 2
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-08'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'scoreKills scales the kill value by the current wave multiplier SMULTI = min((wave+1)>>1, MAXMUL=6), capped at MAXMUL. SMULTI steps every TWO waves (NOT 25 x wave; ruled ROM-faithful at RED, W3MAIN.MAC:4063-4079): wave 1 adds 25, waves 3-4 add 50, 5-6 add 75, ... , 11+ add 150, and the cap is never exceeded.'
       - the generalised multiplier cites its claims (MC-ICBPTS/MC-MAXMUL); citations.test.ts and purity.test.ts stay green.
+    completed: '2026-08-08'
     review_verdict: approved
   - id: mc4-4
     title: 'Compose waves into stepGame, HUD wave/multiplier readout, and a seeded multi-wave playthrough'
