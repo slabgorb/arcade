@@ -925,3 +925,8 @@ completed_stories:
     title: 'Per-wave score multiplier: generalise the per-ICBM value by wave (capped at MAXMUL)'
     points: 2
     completed: '2026-08-08'
+  - id: mc9-3
+    epic: mc9
+    title: 'Exact OLDRAD blast curve + EXPFRA cadence and authentic missile trails (retire the triangle blast)'
+    points: 5
+    completed: '2026-08-08'
