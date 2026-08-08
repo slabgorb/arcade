@@ -21,6 +21,8 @@ import { startPlaying, modeForGover, afterGameOver, type CabinetState } from './
 import { selectPlayerCount, type SelectInput } from './core/select.js'
 import { layoutSelectScreen } from './shell/selectScreen.js'
 import { layoutGameOverScreen } from './shell/gameOverScreen.js'
+import { layoutTitleScreen, type TitleScreenLayout } from './shell/titleScreen.js'
+import { titleColorRow } from './core/title.js'
 import type { LaidOutText } from './shell/fontRender.js'
 import type { PlayerInput } from './core/flight.js'
 import { pumpFrames } from './shell/timebase.js'
@@ -33,6 +35,7 @@ import {
   reshapeRagged,
   rgbaPalette,
   viewport,
+  type Rgba,
 } from './shell/render.js'
 import { mapPlayer1, mapPlayer2 } from './shell/input.js'
 import { createAudioEngine } from './shell/audio.js'
@@ -207,6 +210,54 @@ function renderGameOverScreen(): void {
   paintText(banner, Math.round((LOGICAL_WIDTH - banner.width) / 2), GAMEOVER_BANNER_Y)
 }
 
+// jt10-3 — the title screen (MARQUE). The marquee palette cycles one MARCOL row
+// every TITLE_COLOR_CADENCE frames; `titleColorRow` (pure core, fed the shell's
+// frame counter — the shell owns the clock) selects the active row. The exact
+// MARCOL->RGB decode and the letter/line screen positions await a reference
+// capture (a human smoke test tunes them), so — as with the select/game-over
+// placeholders — the cycling row indexes the existing palette for a legible,
+// visibly-cycling title, and the wordmark is drawn from its own y coordinates.
+// This mode is not reached until jt10-4 wires the attract cycle into it; the
+// render hook is in place, exactly like the 'attract'/'highscore' placeholders.
+let titleFrame = 0
+const TITLE_LOGO_Y = 40
+const TITLE_COPYRIGHT_Y = 190
+const TITLE_EXTRA_MOUNT_Y = 210
+
+/** Stroke the vector JOUST wordmark: each letter's polylines, offset by its x. */
+function strokeLogo(logo: TitleScreenLayout['logo'], originX: number, originY: number, colour: Rgba): void {
+  logicalContext.strokeStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
+  logicalContext.lineWidth = 1
+  for (const letter of logo.letters) {
+    for (const stroke of letter.strokes) {
+      if (stroke.points.length === 0) continue
+      logicalContext.beginPath()
+      const [x0, y0] = stroke.points[0]
+      logicalContext.moveTo(originX + letter.xOffset + x0, originY + y0)
+      for (let k = 1; k < stroke.points.length; k++) {
+        const [px, py] = stroke.points[k]
+        logicalContext.lineTo(originX + letter.xOffset + px, originY + py)
+      }
+      logicalContext.stroke()
+    }
+  }
+}
+
+/**
+ * The title overlay: the vector JOUST wordmark plus the (C)1982 copyright and the
+ * EXTRA MOUNT phrase line (FONT57), all in the current colour-cycle colour. Text +
+ * font + geometry come from `layoutTitleScreen`; positions are the shell's (tuned
+ * by a human smoke test / reference capture).
+ */
+function renderTitleScreen(): void {
+  const colour = colours[1 + titleColorRow(titleFrame)]
+  const screen = layoutTitleScreen(colour)
+  strokeLogo(screen.logo, Math.round((LOGICAL_WIDTH - 292) / 2), TITLE_LOGO_Y, colour)
+  paintText(screen.copyright, Math.round((LOGICAL_WIDTH - screen.copyright.width) / 2), TITLE_COPYRIGHT_Y)
+  paintText(screen.extraMount, Math.round((LOGICAL_WIDTH - screen.extraMount.width) / 2), TITLE_EXTRA_MOUNT_Y)
+  titleFrame++
+}
+
 // ─── The cabinet: booted to 'select', stepping the SESSION layer once playing ──
 //
 // jt4-5 MIGRATION (Dev/Korben): the shell drives the SESSION layer — `createGame` +
@@ -346,6 +397,11 @@ const frame = (now: number): void => {
   } else if (cabinet.mode === 'gameover') {
     // The game-over overlay: the 'THY GAME IS OVER' banner, held ~88 ticks.
     renderGameOverScreen()
+  } else if (cabinet.mode === 'title') {
+    // The title overlay: the vector JOUST wordmark + copyright/extra-mount lines,
+    // colour-cycling every TITLE_COLOR_CADENCE frames. Reached once jt10-4 wires
+    // the attract cycle into 'title'; the hook is here now.
+    renderTitleScreen()
   } else {
     // The coin-up door: the two START banners and the CREDITS row. 'select', and —
     // until jt10-4 (attract) / jt10-7 (high-score) land — 'attract'/'highscore' too.
