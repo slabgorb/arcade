@@ -63,7 +63,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 5,
     listed: true,
     showcase: true,
-    version: '1.0.2',
+    version: '1.0.3',
   },
   {
     id: 'joust',
