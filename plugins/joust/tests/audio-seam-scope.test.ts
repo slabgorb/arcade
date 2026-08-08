@@ -39,6 +39,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, relative } from 'node:path'
 import { EVENT_KINDS } from '../src/core/events'
+import { load } from './helpers/dynamic-load'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const readmePath = join(root, 'README.md')
@@ -60,14 +61,6 @@ function walk(dir: string, acc: string[] = []): string[] {
   return acc
 }
 
-const load = async <T>(parts: string[]): Promise<Partial<T>> => {
-  try {
-    return (await import(/* @vite-ignore */ parts.join('/'))) as Partial<T>
-  } catch {
-    return {}
-  }
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // AC6 — the scope fence: a seam, and not one byte of audio
 // ═════════════════════════════════════════════════════════════════════════════
@@ -83,7 +76,7 @@ describe('jt5-1 AC6 — no sample is committed', () => {
     // named `.wav` ever appears here, either the scope fence broke or the
     // hosting model did — both need a human, and both are invisible to the test
     // above once a file is added under a name it does not pattern-match.
-    return load<{ SOUNDS: Readonly<Record<string, string>> }>(['..', 'src', 'shell', 'audio']).then(
+    return load<{ SOUNDS: Readonly<Record<string, string>> }>(import.meta.url, ['..', 'src', 'shell', 'audio']).then(
       (mod) => {
         const manifest = mod.SOUNDS
         if (manifest === undefined) {

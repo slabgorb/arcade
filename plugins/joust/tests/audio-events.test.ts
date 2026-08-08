@@ -53,6 +53,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { violations } from './helpers/purity-scanner.js'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { load } from './helpers/dynamic-load'
 import type { PlayerInput } from '../src/core/flight.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -73,16 +74,12 @@ interface EventsModule {
   EVENT_KINDS: readonly string[]
 }
 
-const EVENTS_SPECIFIER = ['..', 'src', 'core', 'events'].join('/')
+const EVENTS_PARTS = ['..', 'src', 'core', 'events']
 let cached: Partial<EventsModule> | undefined
 
 async function loadEvents(): Promise<Partial<EventsModule>> {
   if (cached) return cached
-  try {
-    cached = (await import(/* @vite-ignore */ EVENTS_SPECIFIER)) as Partial<EventsModule>
-  } catch {
-    cached = {}
-  }
+  cached = await load<EventsModule>(import.meta.url, EVENTS_PARTS)
   return cached
 }
 
