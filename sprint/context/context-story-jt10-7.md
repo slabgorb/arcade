@@ -62,7 +62,7 @@ Every prompt text and table heading is byte-verifiable against the vendored refe
 ---
 
 ## Out of Scope (Filed Separately)
-- **DAILY BUZZARDS table:** A daily-reset second table + associated timer and reset logic → filed as a follow-up epic by SM.
+- **DAILY BUZZARDS table:** A daily-reset second table + associated timer and reset logic → filed as **jt10-9** (3pt, p3, depends_on jt10-7).
 
 ---
 _Acceptance Criteria derived from epic jt10 design (docs/superpowers/specs/2026-08-07-joust-cabinet-lifecycle-design.md) and user-confirmed scope rulings (2026-08-08)._

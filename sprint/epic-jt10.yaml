@@ -92,3 +92,11 @@ stories:
     type: chore
     review_verdict: approved
     review_findings: "APPROVED (Heimdall) round 1. Test+citations chore. Extended font source gate to all glyphs: all-glyph double-entry (green on arrival, faithful port) + 90 new byte-verified citation claims (font35 41, font57 49) closing the citation half of jt10-1's finding. Non-vacuity proven by mutation battery (coverage delete, real module-data drift, verbatim drift — each bites). Both axes guarded in CI via committed vendored tree. No font DATA changed. No findings."
+  - id: jt10-9
+    title: DAILY BUZZARDS daily-reset high-score table (TXHSP $0F) — second table + daily reset timer, alongside jt10-7's all-time JOUST CHAMPIONS
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-7
