@@ -29,7 +29,7 @@
 import { createState, draw, stepFrame, type ProcessClass } from './frame.js'
 import type { GameEvent } from './events.js'
 import { GRAV, flap, tickTimeUp, groundMaskAt, type EntityState, type PlayerInput } from './flight.js'
-import { groundOutcome, FLOOR, ELEFT, ERIGHT } from './arena.js'
+import { groundOutcome, FLOOR, ELEFT, ERIGHT, wrapX } from './arena.js'
 import { applyWaveDestruction, initialArenaState, type ArenaState } from './arena-state.js'
 import {
   bounceEgg,
@@ -1354,17 +1354,21 @@ function withBounced(p: DemoProcess, resolved: JoustEntity): DemoProcess {
  * only a bird a bounce shoved moves. `drainBumpX` keeps the remainder for the
  * next frame, so a >3 px shove slides across several. jt9-61 — this is the
  * MOVEMENT-phase (WRAPX) drain, so it runs AFTER `stepFrame`'s brain has read the
- * full pre-drain `bumpX` for facing; see the order note at that call site.
+ * full pre-drain `bumpX` for facing; see the order note at that call site. The
+ * ROM's WRAPX (JOUSTRV4.SRC:7290-7298) both ADDS the drained bump to position AND
+ * WRAPS the result same-frame, so the drained `posX` is `wrapX`-ed here — the same
+ * ELEFT(−10)/ERIGHT(292) wrap the flight step applies — to keep a bird that drains
+ * across the horizontal seam inside the arena this frame rather than one frame late.
  */
 function drainProcessBumpX(p: DemoProcess): DemoProcess {
   const bump = p.bumpX ?? 0
   if (bump === 0) return p
   const { applied, remaining } = drainBumpX(bump)
   if ((p.kind === 'player' || p.kind === 'ptero') && p.entity) {
-    return { ...p, bumpX: remaining, entity: { ...p.entity, posX: p.entity.posX + applied } }
+    return { ...p, bumpX: remaining, entity: { ...p.entity, posX: wrapX(p.entity.posX + applied) } }
   }
   if (p.kind === 'enemy' && p.enemy) {
-    return { ...p, bumpX: remaining, enemy: { ...p.enemy, entity: { ...p.enemy.entity, posX: p.enemy.entity.posX + applied } } }
+    return { ...p, bumpX: remaining, enemy: { ...p.enemy, entity: { ...p.enemy.entity, posX: wrapX(p.enemy.entity.posX + applied) } } }
   }
   return { ...p, bumpX: remaining }
 }
@@ -1965,10 +1969,13 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // brain ever read them. `bumpX` feeds ONLY the facing arm (enemy.ts), never the
   // flight, and the ≤3 px `posX` drain is a commutative add independent of the
   // flight delta — so moving it AFTER `stepFrame` changes the facing timing (the
-  // fix) without touching any posX outcome. WRAPX (the drain) still runs every
-  // frame over every process, so a frozen bird drains uniformly whether or not it
-  // woke to fly (the jt9-17 invariant), only now the drain sits in the movement
-  // phase where the ROM keeps it.
+  // fix) without touching any posX outcome AWAY from the horizontal seam. AT the
+  // seam the drained result is `wrapX`-ed same-frame in `drainProcessBumpX` (ROM
+  // WRAPX both adds the bump AND wraps the sum, :7290-7298), matching the ROM
+  // instead of leaving the bird 1-3 px outside ELEFT/ERIGHT for a frame. WRAPX
+  // (the drain) still runs every frame over every process, so a frozen bird drains
+  // uniformly whether or not it woke to fly (the jt9-17 invariant), only now the
+  // drain sits in the movement phase where the ROM keeps it.
   const stepped = stepFrame(
     { ...demo.sim, targets: tickedTargets, cues: [] },
     inputs,

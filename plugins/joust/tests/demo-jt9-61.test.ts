@@ -61,6 +61,23 @@ function shovedHunter(bumpX: number, facing: -1 | 1 = -1): DemoProcess {
 
 const theEnemy = (ps: readonly DemoProcess[]): DemoProcess | undefined => ps.find((p) => p.kind === 'enemy')
 
+/** A nap no window reaches: the bird is FROZEN — it takes NO flight step, so the
+ *  ONLY thing that can move its `posX` is the WRAPX bump drain (the jt9-17 FROZEN
+ *  pattern). Used to isolate the drain's same-frame wrap from any flight wrap. */
+const FROZEN = 100_000
+function frozenBirdAt(posX: number, bumpX: number): DemoProcess {
+  return {
+    id: 0x201,
+    cls: 'secondary',
+    nap: FROZEN,
+    period: FROZEN,
+    kind: 'enemy',
+    enemy: { entity: airborneAt(posX, 120, 0), facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' } as EnemyState,
+    enemyType: 'bounder',
+    bumpX,
+  }
+}
+
 /** One FULL `stepDemo` over a single shoved hunter — the assembled pipeline. */
 function oneStep(bumpX: number, facing: -1 | 1 = -1): DemoState {
   const base = createWaveDemo(SEED)
@@ -116,5 +133,20 @@ describe('jt9-61 — the enemy brain reads the FULL pre-drain PBUMPX', () => {
         Math.max(0, m - 3),
       )
     }
+  })
+
+  it('SEAM: a bump that drains a bird across ERIGHT is WRAPPED back inside [ELEFT, ERIGHT] same-frame', () => {
+    // The ROM's WRAPX both ADDS the drained bump AND wraps the sum in one pass
+    // (JOUSTRV4.SRC:7290-7298). A FROZEN bird (no flight step) at x=291 carrying
+    // +3 has the drain as its ONLY mover: 291+3 = 294, past ERIGHT (292), wrapped
+    // same-frame to 294−303 = −9 — inside the arena. Without the same-frame wrap
+    // (drain committing a raw posX after the flight already wrapped) the bird would
+    // sit at 294, 2 px outside ERIGHT for a frame.
+    const base = createWaveDemo(SEED)
+    const d = stepDemo({ ...base, sim: { ...base.sim, processes: [frozenBirdAt(291, 3)] } }, {})
+    const x = theEnemy(d.sim.processes)?.enemy?.entity.posX ?? Number.NaN
+    expect(x, 'drained-across-seam posX is inside [ELEFT, ERIGHT]').toBeGreaterThanOrEqual(-10)
+    expect(x, 'drained-across-seam posX is inside [ELEFT, ERIGHT]').toBeLessThanOrEqual(292)
+    expect(x, 'wrapX(291 + 3) = 294 − 303').toBe(-9)
   })
 })
