@@ -222,5 +222,17 @@
     "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 27 — a candidate ghost-eat score numeral anchor (\"1600\", by conventional ROM ordering). Pins the raw ROM bytes; which value each numeral sprite renders is a later task's decode.",
     "addr": "06c0",
     "source": { "file": "pacman.5f", "offset": 1728, "bytes": [0, 0, 0, 0, 0, 0, 8, 12, 15, 15, 15, 15, 15, 15, 15, 15, 0, 14, 15, 15, 15, 15, 15, 15, 0, 0, 8, 12, 14, 15, 15, 15, 12, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15] }
+  },
+  {
+    "id": "MAZE-VRAM-CAPTURE",
+    "symbol": "MAZE_TILEMAP",
+    "value": "vram",
+    "meaning": "The authentic maze tilemap: a MAME video+colour-RAM capture (reference/graphics/maze-vram.bin) of the fully-drawn attract maze. Bytes 0..0x3ff are video RAM 0x4000-0x43ff (tile indices), 0x400..0x7ff are colour RAM 0x4400-0x47ff. Unpacked via MAME's pacman_scan_rows (pacman_v.cpp:170) into the 28x36 grid baked to src/shell/maze-tilemap-data.ts. This claim pins the raw capture bytes; the unpack/decode is src/shell/gfx-rom.ts's job.",
+    "addr": "4000",
+    "source": {
+      "file": "maze-vram.bin",
+      "offset": 0,
+      "bytes": [64, 64, 64, 64]
+    }
   }
 ]
