@@ -36,3 +36,11 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: mc5-5
+    title: 'ICBM launch-count clamp (spawn.ts): port ROM ICNORM per-cycle cap (max 4, minus 2*cruise/ICBM/plane on-screen) so the normal swarm stops saturating MXICON(7) and leaves slots for sputnik/cruise. REV-01 W3MAIN.MAC:2437 ICNORM'
+    points: 3
+    priority: p2
+    status: in_progress
+    started: '2026-08-08'
+    repos: arcade
+    workflow: tdd
