@@ -347,20 +347,33 @@ describe('mc9-3 AC1 — blastRadius walks the exact OLDRAD table, not a symmetri
 // mc9-3 AC1 — the EXPFRA update cadence: the radius index advances once per 5 frames
 // ═════════════════════════════════════════════════════════════════════════════
 describe('mc9-3 AC1 — the EXPFRA cadence paces the blast (one OLDRAD step per 5 frames)', () => {
-  it('the radius changes ONLY at frame boundaries that are multiples of the cadence', async () => {
+  it('the radius changes ONLY at cadence boundaries — and it DOES change (rise + fall)', async () => {
     const mod = await loadExplosion()
     let prev = mod.blastRadius(mod.startExplosion(0, 0))
     let exp = mod.startExplosion(0, 0)
+    const changeFrames: number[] = []
     for (let t = 1; t <= LIFETIME_FRAMES; t++) {
       exp = mod.stepExplosion(exp)
       const r = mod.blastRadius(exp)
-      if (r !== prev) {
-        expect(
-          t % EXPFRA_FRAMES,
-          `radius changed at frame ${t}, which is not a multiple of the ${EXPFRA_FRAMES}-frame cadence`,
-        ).toBe(0)
-      }
+      if (r !== prev) changeFrames.push(t)
       prev = r
+    }
+    // Assert the COUNT first, so this test cannot pass vacuously: the cadence check
+    // below lives inside `if (r !== prev)`, so a frozen blastRadius (e.g. `return 0`)
+    // would produce ZERO changes and execute ZERO cadence assertions. Bracket the
+    // count — the paced OLDRAD curve changes value ~25 times over its 27 index steps;
+    // a per-frame (cadence-1) curve would change on the order of LIFETIME_FRAMES times.
+    // (Reviewer round-1 F3, lang-review #15.)
+    expect(changeFrames.length, 'a frozen/never-changing radius must fail here, not pass silently')
+      .toBeGreaterThan(20)
+    expect(changeFrames.length, 'a per-frame (uncadenced) radius changes far more than EXDONE steps')
+      .toBeLessThanOrEqual(EXDONE)
+    // Every change lands on a cadence boundary — the defining property of EXPFRA pacing.
+    for (const t of changeFrames) {
+      expect(
+        t % EXPFRA_FRAMES,
+        `radius changed at frame ${t}, which is not a multiple of the ${EXPFRA_FRAMES}-frame cadence`,
+      ).toBe(0)
     }
   })
 
@@ -381,6 +394,40 @@ describe('mc9-3 AC1 — the EXPFRA cadence paces the blast (one OLDRAD step per 
     expect(mod.blastRadius(exp), 'crossing the cadence boundary advances the OLDRAD index').toBe(3)
   })
 
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// mc9-3 (Reviewer round-1 F4) — blastRadius must CLAMP a degenerate t, never index
+// OLDRAD out of bounds. The mc1-4 triangle returned 0 for t <= 0; the OLDRAD rewrite
+// guards only the UPPER bound (idx >= EXDONE), so a negative index returns
+// OLDRAD[-1] = undefined and a NaN index returns OLDRAD[NaN] = undefined — which
+// flows into render.ts's ctx.arc(radius) as NaN and throws. `Explosion` is a bare
+// {h,v,t} interface with no constructor guard, and raw literals are constructed
+// across the suite, so the boundary must be restored. NOTE for GREEN: `idx < 0 ||
+// idx >= EXDONE` does NOT catch NaN (every NaN comparison is false); use
+// `idx >= 0 && idx < EXDONE ? OLDRAD[idx] : 0` (lang-review #21/#22).
+// ═════════════════════════════════════════════════════════════════════════════
+describe('mc9-3 F4 — blastRadius / isExplosionDone clamp a degenerate (negative / NaN) t', () => {
+  const DEGENERATE = [-1, -5, -100, Number.NaN]
+
+  it('blastRadius returns 0 (never undefined / NaN) for a negative or NaN t', async () => {
+    const { blastRadius } = await loadExplosion()
+    for (const t of DEGENERATE) {
+      const r = blastRadius({ h: 0, v: 0, t })
+      expect(r, `blastRadius at degenerate t=${t} must be exactly 0, not undefined/NaN`).toBe(0)
+      expect(Number.isFinite(r), `blastRadius at t=${t} must be a finite number`).toBe(true)
+    }
+  })
+
+  it('isExplosionDone reports a degenerate blast as done (consistent with its 0 radius)', async () => {
+    // The reviewer flagged the inconsistent pair: blastRadius→undefined while
+    // isExplosionDone→false for the same t. A degenerate/out-of-range blast has no
+    // radius, so it must read as done/inert — not a live, growing blast.
+    const { isExplosionDone } = await loadExplosion()
+    for (const t of DEGENERATE) {
+      expect(isExplosionDone({ h: 0, v: 0, t }), `a degenerate t=${t} is not a live blast`).toBe(true)
+    }
+  })
 })
 
 describe('AC1 — explosion reducers are pure (deterministic, non-mutating)', () => {
@@ -416,20 +463,27 @@ describe('AC1 — explosion.ts carries its W3MAIN / W3COMN source citations', ()
     expect(src, 'must cite the EXDONE symbol (the 27 lifetime)').toMatch(/EXDONE/)
     expect(
       src,
-      'must cite the radius source (OLDRAD table or PROCESS EXPLOSIONS)',
-    ).toMatch(/OLDRAD|PROCESS EXPLOSIONS/)
+      'must cite the radius source — the PROCESS EXPLOSIONS routine (bare /OLDRAD/ is now a code identifier, so it would match tautologically; Reviewer round-1 F2)',
+    ).toMatch(/PROCESS EXPLOSIONS/)
   })
 
-  it('mc9-3 — cites PROCESS EXPLOSIONS, the OLDRAD table and the EXPFRA cadence it now ports', () => {
+  it('mc9-3 — cites PROCESS EXPLOSIONS, the OLDRAD table line and the EXPFRA cadence line it ports', () => {
     // AC2's citation half: explosion.ts names PROCESS EXPLOSIONS (W3MAIN.MAC:1811).
-    // AC1: the authentic curve+cadence must carry their source names now that the
-    // triangle is gone — OLDRAD (the radius table) and EXPFRA (the update cadence).
+    // AC1: the authentic curve+cadence must carry their SOURCE CITATIONS now that the
+    // triangle is gone. Anchor to the physical-line cites, NOT the bare symbols
+    // `OLDRAD` / `EXPFRA_FRAMES` — those are now code identifiers (explosion.ts:53,60),
+    // so a `/OLDRAD/` match would be tautological (satisfied by the declaration even if
+    // every citation comment were stripped). Reviewer round-1 F2 (lang-review #15/#25).
     const src = explosionSrc()
     expect(src, 'must name the PROCESS EXPLOSIONS routine it ports (W3MAIN.MAC:1811)').toMatch(
       /PROCESS EXPLOSIONS/,
     )
-    expect(src, 'must cite the OLDRAD radius-vs-time table').toMatch(/OLDRAD/)
-    expect(src, 'must cite the EXPFRA update cadence (the 5-frame pacing)').toMatch(/EXPFRA/)
+    expect(src, 'must cite the OLDRAD radius-vs-time table at its physical line').toMatch(
+      /W3MAIN\.MAC:1917/,
+    )
+    expect(src, 'must cite the EXPFRA update cadence at its physical line (EXPFIX/EXPEND)').toMatch(
+      /W3MAIN\.MAC:1911/,
+    )
   })
 })
 
