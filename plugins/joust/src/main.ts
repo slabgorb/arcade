@@ -16,11 +16,20 @@
 
 import { ENTITY_RECORDS, PALETTES, COMCL5, expandComcl5 } from './core/pictures.js'
 import { drawList, type DrawOp } from './core/demo.js'
-import { createGame, stepGame, overlayReadout, type GameState } from './core/game.js'
-import { startPlaying, modeForGover, afterGameOver, type CabinetState } from './core/cabinet.js'
+import { createGame, stepGame, overlayReadout, GOVER_OVER, type GameState } from './core/game.js'
+import {
+  startPlaying,
+  modeForGover,
+  afterGameOver,
+  toSelect,
+  toAttract,
+  type CabinetState,
+} from './core/cabinet.js'
+import { createAttract, stepAttract, type AttractState } from './core/attract-scheduler.js'
 import { selectPlayerCount, type SelectInput } from './core/select.js'
 import { layoutSelectScreen } from './shell/selectScreen.js'
 import { layoutGameOverScreen } from './shell/gameOverScreen.js'
+import { layoutAttractBanner } from './shell/attractScreen.js'
 import { layoutTitleScreen, type TitleScreenLayout } from './shell/titleScreen.js'
 import { titleColorRow } from './core/title.js'
 import type { LaidOutText } from './shell/fontRender.js'
@@ -258,6 +267,37 @@ function renderTitleScreen(): void {
   titleFrame++
 }
 
+// jt10-4 — paint the core's ordered draw list for a game sim (back platforms →
+// entity sprites → foreground island). The render SELECTION lives in the pure core
+// (drawList), never by-eye in the shell. Shared by the 'playing' render and the
+// attract self-play demo; the dev-overlay is the caller's concern (attract omits it).
+function paintSim(game: GameState): void {
+  for (const op of drawList(game.sim)) {
+    // The dissolve's ASH1R is a runlength stream — not in the atlas, so blitOp would
+    // silently skip it (jt3-7 B1). Decode + paint it via expandAshFrames here, the ASH
+    // twin of the COMCL5 island path, indexed by op.frame.
+    if (op.name === 'ASH1R') paintDissolve(logicalContext, op, colours)
+    else blitOp(op)
+  }
+  // The bottom island is the front-most layer, occluding entities behind its front edge.
+  drawIsland()
+}
+
+// jt10-4 — the attract render: the live self-play sim on the demo page, or a warning
+// banner (FONT57) centred on a colour-cycling background index. The banner colour
+// steps with the scheduler's `colourPhase` (ATT.SRC:173, every 2.5 s).
+const ATTRACT_BANNER_Y = 108
+function renderAttract(): void {
+  const page = attract.page
+  if (page === 'demo') {
+    paintSim(cabinet.game)
+    return
+  }
+  const colour = colours[1 + (attract.colourPhase % (colours.length - 1))]
+  const { banner } = layoutAttractBanner(page, colour)
+  paintText(banner, Math.round((LOGICAL_WIDTH - banner.width) / 2), ATTRACT_BANNER_Y)
+}
+
 // ─── The cabinet: booted to 'select', stepping the SESSION layer once playing ──
 //
 // jt4-5 MIGRATION (Dev/Korben): the shell drives the SESSION layer — `createGame` +
@@ -267,10 +307,18 @@ function renderTitleScreen(): void {
 // per-player registers straight off the GameState it steps. jt10-5 wraps that game
 // in the cabinet tier: the cabinet boots into 'select' (the coin-up screen) over a
 // fresh `createGame(seed)`, and a start press begins a real game via `startPlaying`.
+// jt10-4 (Yoda): the 'attract' mode is now a real cycle — reached from a game-over
+// that doesn't qualify (afterGameOver → attract), rendered by renderAttract below;
+// a start press there routes on to the 'select' coin-up (toSelect).
 // A fixed shell-owned seed replays the same run each load; core mints no entropy,
 // so the seed crosses the boundary from here.
 const SEED = 0x1a2b_3c4d
 let cabinet: CabinetState = { mode: 'select', game: createGame(SEED) }
+
+// jt10-4 — the attract SUB-CYCLE scheduler (pure core). Stepped once per video frame
+// while the cabinet sits in 'attract'; it cycles the self-play demo and the two
+// warning banners and repeats. Reset to a fresh cycle whenever attract is (re)entered.
+let attract: AttractState = createAttract()
 
 // The player process ids for the CURRENT game — recomputed when a game begins (a
 // fresh createGame mints new ids), so keyboard input maps to the right processes.
@@ -346,10 +394,28 @@ const frame = (now: number): void => {
         }
         return
       }
+      if (cabinet.mode === 'attract') {
+        // jt10-4 — the attract SUB-CYCLE. Step the pure scheduler one video frame; on
+        // the demo page PUMP the self-play SESSION (empty inputs — active player AI is
+        // the deferred G-block follow-up), restarting a fresh demo when it settles to
+        // game-over so the loop never ends. A start press leaves attract for the coin-up
+        // 'select' screen (AC-6); the shared prevStartHeld gives that press edge
+        // discipline across the transition, so a held key cannot then start a game.
+        attract = stepAttract(attract)
+        const want = readSelectInput(held)
+        const startHeld = want !== null
+        if (startHeld && !prevStartHeld) cabinet = toSelect(cabinet)
+        prevStartHeld = startHeld
+        if (cabinet.mode === 'attract' && attract.page === 'demo') {
+          const game = stepGame(cabinet.game, {})
+          cabinet = game.gover === GOVER_OVER ? toAttract(cabinet, SEED) : { mode: 'attract', game }
+        }
+        return
+      }
       if (cabinet.mode !== 'playing') {
-        // The coin-up door: 'select', and — until jt10-4/jt10-7 — 'attract'/'highscore'
-        // too. Begin a game on the RISING edge of a start press only, so a held start
-        // button cannot re-seed the game each frame.
+        // The coin-up door: 'select', and — until jt10-7 — 'highscore' too. Begin a
+        // game on the RISING edge of a start press only, so a held start button cannot
+        // re-seed the game each frame.
         const want = readSelectInput(held)
         const startHeld = want !== null
         if (startHeld && !prevStartHeld) {
@@ -380,31 +446,24 @@ const frame = (now: number): void => {
   logicalContext.fillStyle = `rgb(${colours[0].r} ${colours[0].g} ${colours[0].b})`
   logicalContext.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT)
   if (cabinet.mode === 'playing') {
-    // Render BY the core's ordered draw list (back platforms → entity sprites →
-    // foreground platforms) — the render SELECTION lives in the pure core
-    // (enemyFrame/playerDrawList/drawList), never by-eye in the shell.
-    for (const op of drawList(cabinet.game.sim)) {
-      // The dissolve's ASH1R is a runlength stream — not in the atlas, so blitOp
-      // would silently skip it (jt3-7 B1). Decode + paint it via expandAshFrames
-      // here, the ASH twin of the COMCL5 island path, indexed by op.frame.
-      if (op.name === 'ASH1R') paintDissolve(logicalContext, op, colours)
-      else blitOp(op)
-    }
-    // The bottom island is the front-most layer, occluding entities behind its front edge.
-    drawIsland()
-    // The dev-overlay reads the session registers straight off the stepped GameState.
+    // The live game, plus the dev-overlay reading the session registers off the
+    // stepped GameState.
+    paintSim(cabinet.game)
     drawOverlay(cabinet.game)
+  } else if (cabinet.mode === 'attract') {
+    // jt10-4 — the attract cycle: the self-play sim on the demo page, or a warning
+    // banner. No dev overlay — attract is the public face of the cabinet.
+    renderAttract()
   } else if (cabinet.mode === 'gameover') {
     // The game-over overlay: the 'THY GAME IS OVER' banner, held ~88 ticks.
     renderGameOverScreen()
   } else if (cabinet.mode === 'title') {
     // The title overlay: the vector JOUST wordmark + copyright/extra-mount lines,
-    // colour-cycling every TITLE_COLOR_CADENCE frames. Reached once jt10-4 wires
-    // the attract cycle into 'title'; the hook is here now.
+    // colour-cycling every TITLE_COLOR_CADENCE frames. The hook is here now.
     renderTitleScreen()
   } else {
     // The coin-up door: the two START banners and the CREDITS row. 'select', and —
-    // until jt10-4 (attract) / jt10-7 (high-score) land — 'attract'/'highscore' too.
+    // until jt10-7 (high-score) lands — 'highscore' too.
     renderSelectScreen()
   }
 

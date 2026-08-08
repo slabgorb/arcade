@@ -86,9 +86,13 @@ async function advancePastPage(state: AttractState): Promise<AttractState> {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('jt10-4 attract-scheduler — RED seam', () => {
-  it('loadAttract throws a self-describing "not built yet" until Julia ships the module', async () => {
-    await expect(loadAttract()).rejects.toThrow(/attract-scheduler module not built yet/)
+describe('jt10-4 attract-scheduler — module seam', () => {
+  it('loadAttract resolves the built module with its full surface (the RED seam is closed)', async () => {
+    const mod = await loadAttract()
+    expect(typeof mod.createAttract).toBe('function')
+    expect(typeof mod.stepAttract).toBe('function')
+    expect(typeof mod.dwellFor).toBe('function')
+    expect(Array.isArray(mod.PAGE_ORDER)).toBe(true)
   })
 })
 
