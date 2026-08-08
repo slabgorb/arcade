@@ -104,10 +104,11 @@ function mazeTileImageData(
   const key = `${tileIndex}:${rgb[0]},${rgb[1]},${rgb[2]}`
   const cached = mazeTileCache.get(key)
   if (cached) return cached
-  const pixels = TILES[tileIndex]
   const img = ctx.createImageData(TILE_PX, TILE_PX)
-  for (let k = 0; k < pixels.length; k++) {
-    const on = pixels[k] !== 0
+  for (let k = 0; k < TILE_PX * TILE_PX; k++) {
+    const x = k % TILE_PX
+    const y = (k / TILE_PX) | 0
+    const on = rotatedTilePixel(tileIndex, x, y) !== 0
     img.data[k * 4] = on ? rgb[0] : 0
     img.data[k * 4 + 1] = on ? rgb[1] : 0
     img.data[k * 4 + 2] = on ? rgb[2] : 0
@@ -413,33 +414,41 @@ export function drawScoreSprite(ctx: CanvasRenderingContext2D, xPx: number, yPx:
 // SIDEWAYS): `TILES` (tile-data.ts) is baked straight off `decodeTilePixel`
 // with NO rotation (`tools/bake-graphics.mjs`'s `bakeTiles`: `TILES[i][y*8+x]
 // = decodeTilePixel(rom, i, x, y)`, the raw ROM coordinate, unlike
-// `bakeSprites`'s sprite path below). That's invisible for the maze — wall
-// line art happens to autotile fine either way — but the digit glyphs are
-// stored for Pac-Man's REAL cabinet, a portrait monitor mounted ROT90, so
-// reading them in raw ROM orientation renders each non-symmetric digit
-// rotated ~90° (confirmed by eye: unrotated "2"/"3"/"1" render as
-// "N"/"M"/a horizontal bar; only "0" looks fine, being rotation-symmetric).
-// `bakeSprites` already solves this exact problem for the sprite rom via an
-// x'=y, y'=(15-x) 90°-clockwise correction (see that function's header,
-// tools/bake-graphics.mjs) — `rotatedDigitPixel` below applies the identical
-// mapping at 8x8 scale (x'=y, y'=(7-x)) to JUST the digit-tile blit path, so
-// the maze's own (unrotated, already-correct) tile rendering is untouched.
-// Re-verified visually after the fix: TILES[0..9] rotated this way render as
-// a clean, upright "0123456789" (a throwaway PNG dump, same inspection
-// method glyph-data.ts's header describes — not committed).
+// `bakeSprites`'s sprite path below) — the digit glyphs are stored for
+// Pac-Man's REAL cabinet, a portrait monitor mounted ROT90, so reading them
+// in raw ROM orientation renders each non-symmetric digit rotated ~90°
+// (confirmed by eye: unrotated "2"/"3"/"1" render as "N"/"M"/a horizontal
+// bar; only "0" looks fine, being rotation-symmetric). `bakeSprites` already
+// solves this exact problem for the sprite rom via an x'=y, y'=(15-x)
+// 90°-clockwise correction (see that function's header, tools/bake-graphics.mjs)
+// — `rotatedTilePixel` below applies the identical mapping at 8x8 scale
+// (x'=y, y'=(7-x)) to EVERY raw-oriented `TILES` read, both this digit-tile
+// blit path and (pm3-9 Task 4b) `mazeTileImageData`'s maze wall/dot blit —
+// `TILES` itself stays unrotated at rest (the bake is untouched); only reads
+// through this helper are screen-upright. Task 4b's fix: the maze blit had
+// NOT been going through this helper, so directional wall-art tiles pointed
+// 90° the wrong way and fragmented into disconnected dashes (caught by the
+// Task 4 Playwright visual, despite the full suite and pm3-8 oracle being
+// green — the oracle pins tile INDICES, which are rotation-blind). Re-verified
+// visually after the digit fix: TILES[0..9] rotated this way render as a
+// clean, upright "0123456789" (a throwaway PNG dump, same inspection method
+// glyph-data.ts's header describes — not committed).
 const DIGIT_COLOR_CODE = SCORE_COLOR_CODE // colourLookup(15,3) = near-white — legible, same constant already anchored for the sprite-based popups above.
-const DIGIT_ROM_SIZE = 8 // TILES are 8x8 — the rotation below is this function's own axis size, not TILE_PX (a colour/scale concept).
+const TILE_ROM_SIZE = 8 // TILES are 8x8 — the rotation below is this function's own axis size, not TILE_PX (a colour/scale concept).
 
-/** Read digit tile `TILES[digit]`'s pixel at screen-upright (x,y), applying
- *  the SAME 90°-clockwise rotation `bakeSprites` bakes permanently into
- *  `SPRITES` (`tools/bake-graphics.mjs`'s `x'=y, y'=(N-1-x)`) — but computed
- *  on the fly, only for this digit-text path, since `TILES` itself must stay
- *  unrotated for the maze (see the header above). */
-function rotatedDigitPixel(digit: number, x: number, y: number): number {
-  const pixels = TILES[digit]
+/** Read tile `TILES[tileIndex]`'s pixel at screen-upright (x,y), applying the
+ *  SAME 90°-clockwise rotation `bakeSprites` bakes permanently into `SPRITES`
+ *  (`tools/bake-graphics.mjs`'s `x'=y, y'=(N-1-x)`) — but computed on the
+ *  fly, since `TILES` itself must stay unrotated at rest (the tile-ROM bake
+ *  and its citation, see the header above). Shared by BOTH the digit-glyph
+ *  path (`digitImageData`) and the maze wall/dot blit (`mazeTileImageData`,
+ *  pm3-9 Task 4b) — the cabinet's ROT90 mount applies to every tile blit,
+ *  not just digits. */
+export function rotatedTilePixel(tileIndex: number, x: number, y: number): number {
+  const pixels = TILES[tileIndex]
   const rawX = y
-  const rawY = DIGIT_ROM_SIZE - 1 - x
-  return pixels[rawY * DIGIT_ROM_SIZE + rawX]
+  const rawY = TILE_ROM_SIZE - 1 - x
+  return pixels[rawY * TILE_ROM_SIZE + rawX]
 }
 
 /** Per-digit rotated ImageData cache — same shape as `imageDataCache` above,
@@ -452,11 +461,11 @@ function digitImageData(ctx: CanvasRenderingContext2D, digit: number, colorCode:
   if (cached) return cached
 
   const img = ctx.createImageData(TILE_PX, TILE_PX)
-  for (let y = 0; y < DIGIT_ROM_SIZE; y++) {
-    for (let x = 0; x < DIGIT_ROM_SIZE; x++) {
-      const pv = rotatedDigitPixel(digit, x, y)
+  for (let y = 0; y < TILE_ROM_SIZE; y++) {
+    for (let x = 0; x < TILE_ROM_SIZE; x++) {
+      const pv = rotatedTilePixel(digit, x, y)
       const [r, g, b] = HARDWARE_PALETTE[colourLookup(colorCode, pv)]
-      const k = y * DIGIT_ROM_SIZE + x
+      const k = y * TILE_ROM_SIZE + x
       img.data[k * 4] = r
       img.data[k * 4 + 1] = g
       img.data[k * 4 + 2] = b
