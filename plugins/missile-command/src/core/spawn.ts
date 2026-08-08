@@ -30,6 +30,11 @@ export const NICBMS = 8
 export const MXICON = 7
 export const LAUHGT = 202
 
+// The ICNORM per-cycle launch cap — one launch cycle fires at most 4 ICBMs
+// ("MAX AT 4"): `CPX I,4` at `W3MAIN.MAC:2475` (claim MC-ICNORM-CAP), inside
+// ICNORM (`.SBTTL` W3MAIN.MAC:2439, body :2457-2510). mc5-5.
+export const ICNORM_CAP = 4
+
 /** Top-of-screen vertical coord — the launch band. `W3COMN.MAC:107` (`TOPSCR=222.`). */
 const TOPSCR = 222
 
@@ -38,12 +43,23 @@ export interface SpawnResult {
   readonly remaining: number
 }
 
+// mc5-5: on-screen counts the pure spawner cannot see itself. Both default to
+// "absent" so every pre-mc5-5 call site (game.ts) compiles and behaves the same
+// until mc5-3 wires the real cruise count and mc5-2 the real plane flag.
+export interface SpawnOpts {
+  /** # cruise missiles on screen (CRMONS, `W3MAIN.MAC:271`) — each costs TWO slots. Default 0. */
+  readonly cruiseOnScreen?: number
+  /** an active plane (PLCPV != 0, `W3MAIN.MAC:331`) reserves one launch slot. Default false. */
+  readonly planeActive?: boolean
+}
+
 export function spawnIcbms(
   current: readonly Icbm[],
   liveTargets: readonly Vec[],
   remaining: number,
   rng: Rng,
   velocity = 1,
+  opts?: SpawnOpts,
 ): SpawnResult {
   if (remaining <= 0 || liveTargets.length === 0) return { icbms: current, remaining }
 
@@ -53,7 +69,19 @@ export function spawnIcbms(
   const clearToLaunch = current.length === 0 || highestV < LAUHGT
   if (!clearToLaunch) return { icbms: current, remaining }
 
-  const launches = Math.max(0, Math.min(MXICON - current.length, remaining))
+  // ── mc5-5: the ICNORM per-cycle launch clamp (W3MAIN.MAC:2457-2510) ────────
+  // launches = min( MXICON − 2·CRMONS − ICBONS − (plane active ? 1 : 0),
+  //                 ICNORM_CAP,   ; "MAX AT 4"    W3MAIN.MAC:2475
+  //                 remaining )   ; "MAX AT ICBTOL" wave budget
+  // floored at 0. CRMONS is subtracted TWICE (`SBC CRMONS … SEC … SBC CRMONS`,
+  // W3MAIN.MAC:2459-2463) — a cruise missile costs two slots. An active plane
+  // reserves one slot via the initial-carry borrow ("PLANE COUNTS AS A
+  // POTENTIAL BANG", W3MAIN.MAC:2313). The ROM's POTENT global-slot term is
+  // game.ts arbitration territory (mc5-2), not ported here.
+  const cruiseOnScreen = opts?.cruiseOnScreen ?? 0
+  const planeSlot = opts?.planeActive ? 1 : 0
+  const headroom = MXICON - 2 * cruiseOnScreen - current.length - planeSlot
+  const launches = Math.max(0, Math.min(headroom, ICNORM_CAP, remaining))
   const spawned: Icbm[] = []
   for (let k = 0; k < launches; k++) {
     const origin: Vec = { h: nextInt(rng, HMAX), v: TOPSCR } // random top-edge column

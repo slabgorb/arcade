@@ -230,6 +230,10 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // the CPY I,12. decimal suppression immediate, value = 12. Both pinned in the mc5-1
     // consistency block below (their values are real numerics, not kind tags).
     'POTENT', 'EXPLCT',
+    // mc5-5: the ICNORM per-cycle launch cap is an instruction-site claim
+    // (`CPX I,4`, W3MAIN.MAC:2475, "MAX AT 4") whose value 4 IS the immediate
+    // operand — the EXPLCT shape. Pinned in the mc5-5 consistency block below.
+    'ICNORM_CAP',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -357,6 +361,20 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // EXPLCT: `CPY I,12.` is the decimal suppression threshold; 12 IS the immediate.
     expect(decimalImmediate(exp!.source.verbatim), 'MIRV_EXPSUP is the CPY I,12. decimal immediate').toBe(12)
     expect(exp!.value, 'MC-MIRV-EXPSUP value').toBe(12)
+  })
+
+  // mc5-5: the ICNORM per-cycle launch cap, same instruction-site shape as the
+  // mc5-1 MIRV constants. The DERIVED exemption lets it carry the numeric 4; this
+  // block keeps that honest — the value must decode from the immediate operand of
+  // its own cited `CPX I,4` (W3MAIN.MAC:2475, the "MAX AT 4" compare), so a
+  // fabricated cap cannot ride into the un-cited-literal guard's claimedValues set.
+  it('mc5-5: the ICNORM cap value decodes from its cited CPX immediate operand', () => {
+    const cap = loadClaims().find((c) => c.symbol === 'ICNORM_CAP')
+    expect(cap, 'MC-ICNORM-CAP must be committed').toBeTruthy()
+    const m = cap!.source.verbatim.match(/\bI,([0-9A-F]+\.?)/)
+    expect(m, `no immediate operand in "${cap!.source.verbatim}"`).not.toBeNull()
+    expect(decodeRadix16(m![1]), 'ICNORM_CAP is the CPX I,4 immediate').toBe(4)
+    expect(cap!.value, 'MC-ICNORM-CAP value').toBe(4)
   })
 
   // mc4-5: BONINL is a `.WORD` interval table read AS BCD (CHEKBO's SED divide) and
