@@ -885,6 +885,16 @@ completed_stories:
     title: 'Presentation overlays on the events seam — READY!, level-clear flash, game-over, score popups'
     points: 5
     completed: '2026-08-07'
+  - id: pm3-8
+    epic: pm3
+    title: 'Fix the malformed maze — the rendered board does not match the authentic Pac-Man maze layout'
+    points: 5
+    completed: '2026-08-08'
+  - id: pm3-9
+    epic: pm3
+    title: 'Authentic maze drives both — rebuild core/maze.ts topology from the byte-cited capture so render AND gameplay share one source'
+    points: 8
+    completed: '2026-08-08'
   - id: mc9-1
     epic: mc9
     title: 'Authentic city and base stamps (retire the fillRect blocks and triangles)'
