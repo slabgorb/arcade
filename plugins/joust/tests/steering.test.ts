@@ -530,6 +530,21 @@ describe('jt9-60 — the HUNTING shadow faces its bump on the AIM path, not whil
     expect(parked, 'the aim-vs-coast split is the whole point — the two disagree').not.toBe(moving)
   })
 
+  it('a PARKED ARMED-CLIMB (SHUP1) is an AIM path too — JMP SHDIRB → BEQ SHDIRA (:4275/:4389)', () => {
+    // jt9-60 R1 — SHUP1 ends `JMP SHDIRB`, so a PARKED climb (velX==0) falls into
+    // SHDIRA exactly like the SHDN/SHUP0 parked seeks. A parked hunting shadow in
+    // the `climb` pjoy state facing LEFT + a positive bump ⇒ RIGHT.
+    const climbing: EnemyState = { ...shadowAt(204, HI, 0), facing: -1, pjoy: { kind: 'climb' } }
+    expect(hunt(climbing, shortRangePlayer, 16)).toBe(1)
+  })
+
+  it('DISCRIMINATOR: a MOVING armed-climb still COASTS — SHDIRB dir 0, the bump is NOT spent', () => {
+    // The climb's own aim-vs-coast split: velX≠0 ⇒ coast===0 ⇒ SHDIRB dir 0 ⇒
+    // never reaches SHDIRA. The +16 shove does not turn it this wake.
+    const climbing: EnemyState = { ...shadowAt(204, HI, 8), facing: -1, pjoy: { kind: 'climb' } }
+    expect(hunt(climbing, shortRangePlayer, 16)).toBe(-1)
+  })
+
   it('PRESERVED (jt9-48): a NULL-TARGET parked shadow still spends its bump — via steerWake, unchanged', () => {
     // The hunting arm must not disturb jt9-48: with no target the shadow flies
     // SHLEV → SHDIR and `steerWake`'s bumpFace still faces it. LEFT + 16 ⇒ RIGHT.

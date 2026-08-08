@@ -926,9 +926,10 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1, b
   // where `d !== 0`: the coast returns pass `coastDir`, which is 0 exactly when
   // the seek is MOVING (SHDIRB writes dir 0 and NEVER reaches the SHDIRA tail —
   // jt9-20) and the parked `dir` otherwise, so the same `d !== 0` guard both
-  // faces the parked seek and leaves the moving coast alone. The dwell (:918),
-  // the armed climb (:924-926, SHUP1's own SHDIRB coast), the forced glide
-  // (:932), the null-target SHLEV (:934) and lava never reach it — left untouched.
+  // faces the parked seek and leaves the moving coast alone. The armed climb
+  // (SHUP1) also `JMP SHDIRB`, so its return is wrapped too (jt9-60 R1) — a
+  // PARKED climb reaches SHDIRA, a MOVING one coasts. The dwell, the forced
+  // glide, the null-target SHLEV and lava never reach SHDIRA — left untouched.
   const shdira = (d: -1 | 0 | 1): -1 | 0 | 1 => (bumpX !== 0 && d !== 0 ? (bumpX > 0 ? 1 : -1) : d)
   // uf1-9 — `SHAV`, the cliff-avoidance dwell armed by `SHDICL` for SHCLTM
   // wakes: `CLRB` (:4406) holds the wings UP for the whole dwell and the brain
@@ -939,9 +940,14 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1, b
   // faster than the SHUPVY gate (`CMPD SHUPVY / BLT SHUP0`, strict), and steers
   // through `SHDIRB` — a moving seek coasts (dir 0), a parked one aims at facing.
   // The pointer then hands `PJOY` back to `SHADOW` (cleared once consumed).
+  // jt9-60 R1 — SHUP1 ends `JMP SHDIRB` (:4275), so a PARKED climb (velX==0)
+  // falls through `SHDIRB`'s `BEQ SHDIRA` (:4389) into the SHDIRA bump-facing
+  // tail, exactly like the SHDN/SHUP0 parked seeks below — `shdira(coast)` spends
+  // the shove there. The MOVING climb is unaffected: `coast === 0`, and the
+  // `d !== 0` guard leaves it as the SHDIRB dir-0 coast.
   if (enemy.pjoy?.kind === 'climb') {
     const coast: -1 | 0 | 1 = enemy.entity.velXIndex !== 0 ? 0 : dir
-    return { dir: coast, flap: velY >= waveValue('SHUPVY', wave) }
+    return { dir: shdira(coast), flap: velY >= waveValue('SHUPVY', wave) }
   }
   // jt9-18 — the SHLEP2/SHLEV2 forced glide: the wake after a shadow level flap
   // is a glide (`SHLEP2`/`SHLEV2` point PJOY back and `CLRB`, :4300-4302/:4399-4401).
