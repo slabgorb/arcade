@@ -13,3 +13,5 @@ epics:
   - mc8
   - mc5
   - sw10
+  - SH3
+  - SH4
