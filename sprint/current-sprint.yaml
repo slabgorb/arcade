@@ -1,12 +1,12 @@
 sprint:
-  name: TO Sprint 2632
-  jira_sprint_id: 3
-  jira_sprint_name: TO Sprint 2632
-  goal: ROM fidelity
-  start_date: '2026-08-04'
-  end_date: '2026-08-18'
+  name: TO Sprint 2633
+  jira_sprint_id: 4
+  jira_sprint_name: TO Sprint 2633
+  goal: Shared modules to the shared library
+  start_date: '2026-08-08'
+  end_date: '2026-08-22'
   status: active
-  number: 2632
+  number: 2633
 epics:
   - jt10
   - mc9
