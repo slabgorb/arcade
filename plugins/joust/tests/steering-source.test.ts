@@ -93,6 +93,10 @@ const LAWS: ReadonlyArray<{ name: string; file: string; n: number; must: readonl
   { name: 'the line comparison', file: 'JOUSTRV4.SRC', n: 4293, must: ['CMPB', 'PDIST+1,U', 'ABOVE TRACKING LINE'] },
   { name: 'at/above the line ⇒ wings up', file: 'JOUSTRV4.SRC', n: 4294, must: ['BLS', 'SHLEPA'] },
   // ── the routes that do NOT look ahead (the negatives' provenance) ──────────
+  // jt9-60 — the SHLEPB throttle exits to SHDIRA on ALL THREE branches, so a
+  // HUNTING shadow's SHLEP wake always reaches the bump-facing tail (:4379-4381).
+  { name: 'SHLEPB: a velocity mismatch jumps straight to SHDIRA', file: 'JOUSTRV4.SRC', n: 4305, must: ['LBNE', 'SHDIRA'] },
+  { name: 'SHLEPB: a counted-out reverse also reaches SHDIRA', file: 'JOUSTRV4.SRC', n: 4307, must: ['LBMI', 'SHDIRA'] },
   { name: 'SHLEP exits through the throttle to SHDIRA', file: 'JOUSTRV4.SRC', n: 4310, must: ['JMP', 'SHDIRA'] },
   { name: 'SHDIRB: the long-range seeks COAST while moving', file: 'JOUSTRV4.SRC', n: 4388, must: ['SHDIRB', 'LDA', 'PVELX,U'] },
   { name: 'SHDN exits through SHDIRB', file: 'JOUSTRV4.SRC', n: 4255, must: ['JMP', 'SHDIRB'] },
@@ -148,6 +152,21 @@ describe.skipIf(!vendoredAvailable)('the steering laws are really in the 1982 so
       .filter(({ l }) => /^\s*(CLR|COM|STA|STB|STD)\s+PFACE/.test(l))
     expect(writes.map((w) => w.n)).toEqual([4353, 4372, 4381])
     expect(line('JOUSTRV4.SRC', 4379), ':4381’s write is the PBUMPX path').toContain('PBUMPX,U')
+  })
+
+  it('jt9-60 — the HUNTING shadow reaches the SHDIRA aim tail: SHLEPB’s three exits + a PARKED seek via SHDIRB', () => {
+    // The provenance for jt9-60's POSITIVE (a hunting shadow spends the bump).
+    // Resolution over the block, not a brittle single literal: SHLEP's throttle
+    // SHLEPB (:4303-4310) exits to SHDIRA on EVERY branch (LBNE :4305 / LBMI
+    // :4307 / JMP :4310), and a PARKED long-range seek falls through SHDIRB's
+    // `BEQ SHDIRA` (:4389). Both roads end at SHDIRA, whose `LDA PBUMPX,U / STA
+    // PFACE,U` (:4379-4381) is the collision-facing write jt9-60 now wires for
+    // the hunting shadow (jt9-48 did the null-target one via steerWake).
+    const shlepb = sourceLines('JOUSTRV4.SRC').slice(4302, 4310).join('\n') // :4303-4310
+    const exits = [...shlepb.matchAll(/\bSHDIRA\b/g)].length
+    expect(exits, 'every SHLEPB branch lands at SHDIRA — the hunting aim tail').toBe(3)
+    expect(line('JOUSTRV4.SRC', 4389), 'a PARKED seek (PVELX==0) falls through SHDIRB → SHDIRA').toMatch(/BEQ\s+SHDIRA/)
+    expect(line('JOUSTRV4.SRC', 4379), 'SHDIRA writes PFACE from PBUMPX').toContain('PBUMPX,U')
   })
 
   it('the SHLEPB → SHDIRA block consults NO background mask — a hunting shadow never looks ahead', () => {
@@ -220,6 +239,10 @@ const CITED_RANGES: ReadonlyArray<{ law: string; file: string; start: number; en
   { law: 'SHDIR — the shadow look-ahead', file: 'JOUSTRV4.SRC', start: 4350, end: 4372 },
   { law: 'SHDICL/SHAV — the shadow’s slow', file: 'JOUSTRV4.SRC', start: 4373, end: 4377 },
   { law: 'SHDIRB — the seeks coast (filed finding)', file: 'JOUSTRV4.SRC', start: 4388, end: 4392 },
+  // jt9-60 — the HUNTING shadow's AIM roads into SHDIRA, promoted from the
+  // negatives' provenance to cited laws (covered by JT82-015 / JT83-015).
+  { law: 'SHLEPB → SHDIRA — the hunting shadow’s aim exit', file: 'JOUSTRV4.SRC', start: 4303, end: 4310 },
+  { law: 'SHDIRB → SHDIRA — a parked seek reaches the aim', file: 'JOUSTRV4.SRC', start: 4388, end: 4389 },
   // jt9-48 — the collision bump-facing arm, promoted from de-scoped. RED until
   // Dev commits a claim pinning each range (the claimCovers gate the SM flagged).
   { law: 'B2DIRA — the hunter bump-facing arm', file: 'JOUSTRV4.SRC', start: 4148, end: 4150 },

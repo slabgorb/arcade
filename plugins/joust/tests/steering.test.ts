@@ -465,6 +465,88 @@ describe('AC-1/AC-2 — the shadow looks ahead ONLY on the no-players route (SHL
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
+// jt9-60 — THE HUNTING SHADOW SPENDS PBUMPX AT SHDIRA (:4379-4382). jt9-48 wired
+// the bump-facing for the NULL-TARGET shadow through `steerWake`, but that arm
+// bails once `target !== null` (a hunting shadow never looks ahead). In the ROM
+// the hunting shadow STILL reaches SHDIRA on its AIM wakes — SHLEP's line-track
+// (`SHLEPB → JMP SHDIRA`, :4303-4310), SHUP3, and a PARKED long-range seek that
+// falls through `SHDIRB`'s `BEQ SHDIRA` (:4388-4389) — where `STA PFACE,U` makes
+// `sign(bumpX)` the last word on facing and SHFDIR aims CURJOY at it. A MOVING
+// seek COASTS via SHDIRB (dir 0) and never reaches the tail: it must NOT spend
+// the bump. Tested through `stepEnemyDetailed` (the real per-wake step, which
+// performs SHDIRA's `STA PFACE,U`) so the persisted facing is observed, not just
+// the transient CURJOY dir. Mechanism, not a post-drain remainder (jt9-61 re-times
+// the drain): every fixture uses an already-drained sign, and pins the SIGN.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('jt9-60 — the HUNTING shadow faces its bump on the AIM path, not while coasting', () => {
+  // A shadow HIGH above the lava line ($D0/$D3) so no gate diverts the wake.
+  const HI = 60
+  /** delta 0 ⇒ SHLEP short-range line-track (always an AIM exit → SHDIRA). */
+  const shortRangePlayer = { pixelY: HI, velXIndex: 0 }
+  /** delta ≥ SHDNRG ⇒ SHDN long-range down-seek (AIM iff PARKED, else SHDIRB coast). */
+  const downSeekPlayer = { pixelY: HI + waveValue('SHDNRG', 1) + 4, velXIndex: 0 }
+
+  const hunt = (enemy: EnemyState, player: typeof shortRangePlayer, bumpX: number): -1 | 1 =>
+    E.stepEnemyDetailed(enemy, { player, bumpX }).enemy.facing
+
+  it('a PARKED hunting shadow facing LEFT + a positive parked bump ends facing RIGHT — SHLEP → SHDIRA', () => {
+    // The mirror of jt9-48's `shovedHunter`, but for a HUNTING shadow (target
+    // present). The ONLY driver is the shove: parked (no travel dir), high (no
+    // lava gate), short range (SHLEP, whose only PFACE write in the ROM is
+    // SHDIRA's bump). LEFT facer with +16 ⇒ RIGHT.
+    expect(hunt({ ...shadowAt(204, HI, 0), facing: -1 }, shortRangePlayer, 16)).toBe(1)
+  })
+
+  it('CONTROL: the same parked hunting shadow with NO bump holds its LEFT facing', () => {
+    // Green before AND after — isolates the shove as the cause. SHLEP alone
+    // never writes PFACE (`SHLEPB → SHDIRA` with PBUMPX==0 skips the STA), so a
+    // LEFT facer stays LEFT.
+    expect(hunt({ ...shadowAt(204, HI, 0), facing: -1 }, shortRangePlayer, 0)).toBe(-1)
+  })
+
+  it('and mirrors leftward: a RIGHT-facing parked hunting shadow + a negative bump ends facing LEFT', () => {
+    expect(hunt({ ...shadowAt(204, HI, 0), facing: 1 }, shortRangePlayer, -16)).toBe(-1)
+  })
+
+  it('a PARKED long-range down-seek is an AIM path too — SHDN falls through SHDIRB’s BEQ SHDIRA (:4389)', () => {
+    // Not just SHLEP: a PARKED seek (PVELX==0) reaches SHDIRA through SHDIRB's
+    // fall-through, so it spends the bump as well.
+    expect(hunt({ ...shadowAt(204, HI, 0), facing: -1 }, downSeekPlayer, 16)).toBe(1)
+  })
+
+  it('DISCRIMINATOR: a MOVING long-range down-seek does NOT adopt sign(bump) — SHDIRB coasts (dir 0), never reaching SHDIRA', () => {
+    // THE CLAIM the guard must encode: the bump is spent at SHDIRA (aim), NOT by
+    // a blanket "shadow always faces the bump". A moving seek writes CURJOY dir 0
+    // (`SHDIRB` :4390-4391) and never falls into the SHDIRA tail, so its facing is
+    // untouched this wake — the +16 shove does not turn it.
+    expect(hunt({ ...shadowAt(204, HI, 8), facing: -1 }, downSeekPlayer, 16)).toBe(-1)
+  })
+
+  it('PAIRED: same range, same +16 bump — only PARKED (aim) spends it; MOVING (coast) does not', () => {
+    const parked = hunt({ ...shadowAt(204, HI, 0), facing: -1 }, downSeekPlayer, 16)
+    const moving = hunt({ ...shadowAt(204, HI, 8), facing: -1 }, downSeekPlayer, 16)
+    expect(parked, 'PVELX==0 ⇒ SHDIRA aim ⇒ RIGHT').toBe(1)
+    expect(moving, 'PVELX≠0 ⇒ SHDIRB coast ⇒ LEFT (held)').toBe(-1)
+    expect(parked, 'the aim-vs-coast split is the whole point — the two disagree').not.toBe(moving)
+  })
+
+  it('PRESERVED (jt9-48): a NULL-TARGET parked shadow still spends its bump — via steerWake, unchanged', () => {
+    // The hunting arm must not disturb jt9-48: with no target the shadow flies
+    // SHLEV → SHDIR and `steerWake`'s bumpFace still faces it. LEFT + 16 ⇒ RIGHT.
+    expect(E.stepEnemyDetailed({ ...shadowAt(204, HI, 0), facing: -1 }, { player: null, bumpX: 16 }).enemy.facing).toBe(1)
+  })
+
+  it('unit — shadow()’s CURJOY dir: parked AIM returns sign(bump); moving COAST returns 0 (SHFDIR vs SHDIRB)', () => {
+    // The mechanism at the brain seam, below the persisted facing: shadow()
+    // itself aims dir at sign(bumpX) only on the SHDIRA-reaching wake.
+    const aim = E.shadow({ ...shadowAt(204, HI, 0), facing: -1 }, downSeekPlayer, 1, 16)
+    const coast = E.shadow({ ...shadowAt(204, HI, 8), facing: -1 }, downSeekPlayer, 1, 16)
+    expect(aim.dir, 'parked seek ⇒ SHDIRA ⇒ dir = sign(+16) = +1').toBe(1)
+    expect(coast.dir, 'moving seek ⇒ SHDIRB coast ⇒ dir 0, unbumped').toBe(0)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
 // AC-2 — THE SHADOW'S OWN LAWS (SHADOW :4230-4298): SHDN free-falls with the
 //        velX-gated $D3 escape; SHLEP tracks the player's line with a
 //        falling-gated $D3 term; the blanket pre-branch flap is retired.

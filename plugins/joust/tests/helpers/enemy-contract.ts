@@ -427,13 +427,15 @@ export interface EnemyModule {
    * :4293-4294). The lava escape below `LAVA_ESCAPE_Y` stays in every branch.
    * Pure.
    */
-  shadow(enemy: EnemyState, player: PlayerView | null, wave?: number): Decision
+  shadow(enemy: EnemyState, player: PlayerView | null, wave?: number, bumpX?: number): Decision
 
   /**
    * Dispatch by `enemy.brain`: `linet` runs the dumb lane-track (player ignored);
-   * a smart brain runs its pursuit against `player`. Pure.
+   * a smart brain runs its pursuit against `player`. Pure. jt9-60 — the 4th arg
+   * `bumpX` (PBUMPX) is forwarded to `shadow()` so a HUNTING shadow's AIM wake
+   * spends the collision shove at SHDIRA (:4379-4382).
    */
-  runBrain(enemy: EnemyState, player?: PlayerView | null, wave?: number): Decision
+  runBrain(enemy: EnemyState, player?: PlayerView | null, wave?: number, bumpX?: number): Decision
 
   /**
    * One integration step of an enemy on the flight core: advance the homing
@@ -473,7 +475,7 @@ export interface EnemyModule {
    */
   stepEnemyDetailed(
     enemy: EnemyState,
-    ctx?: { player?: PlayerView | null; wave?: number },
+    ctx?: { player?: PlayerView | null; wave?: number; bumpX?: number },
   ): { enemy: EnemyState; wingEdge: 'down' | 'up' | null }
 
   /**

@@ -47,6 +47,7 @@ import type { EntityState, PlayerInput } from '../src/core/flight.js'
 import { BCK_X_TABLE, X_TABLE_ORIGIN } from '../src/core/flight.js'
 import { BCK_Y_TABLE } from '../src/core/arena.js'
 import { loadSteering, type SteeringModule } from './helpers/steering-contract.js'
+import { loadTarget, type TargetModule, type TargetState } from './helpers/target-contract.js'
 
 const NEUTRAL: PlayerInput = { dir: 0, flap: false, flapHeld: false }
 const idle = (): Record<number, PlayerInput> => ({ 1: NEUTRAL, 2: NEUTRAL })
@@ -360,5 +361,90 @@ describe('jt9-48 — the DemoProcess.bumpX shove drives the enemy facing in play
     let d: DemoState = { ...base, sim: { ...base.sim, processes: [shovedHunter(0, -1)] } }
     d = stepDemo(d, {})
     expect(theEnemy(d.sim.processes)?.enemy?.facing, 'no shove ⇒ the pipeline changes nothing').toBe(-1)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// jt9-60 — the HUNTING shadow's bump reaches its facing THROUGH THE FULL DEMO
+// PIPELINE. jt9-48 plumbed `p.bumpX` → `stepEnemyDetailed(..., { bumpX })` for the
+// hunter; the SAME hop now carries a shove into the shadow's SHDIRA aim. The
+// distinguishing setup from the hunter's is that the shadow only reaches SHDIRA
+// when it is HUNTING — so a targetable player must ride the sim (`selectTarget`
+// picks it) and sit at SHORT range (SHLEP) beside the shadow. Proven end-to-end:
+// the shove survives the top-of-frame drain (16 → 13, same sign) and turns the
+// bird, exactly the hop jt9-17 left inert. Mechanism (the SIGN), not a remainder.
+// ─────────────────────────────────────────────────────────────────────────────
+let TGT: TargetModule
+beforeAll(async () => {
+  TGT = await loadTarget()
+})
+
+/** Player 1, airborne, targetable, a few px from the shadow in Y (SHLEP short
+ * range) and far in X so the two never joust and re-park a bump. */
+function playerBeside(): DemoProcess {
+  return {
+    id: 1,
+    cls: 'primary',
+    nap: 1,
+    period: 1,
+    kind: 'player',
+    entity: airborneAt(50, 62, 0),
+    facing: 1,
+    mount: 'ostrich',
+  }
+}
+
+/** A HUNTING shadow (brain 'shadow', pchase 1) carrying a parked shove, facing
+ * the opposite way so the flip is observable. High above the lava, parked. */
+function shovedShadow(bumpX: number, facing: -1 | 1 = -1): DemoProcess {
+  return {
+    id: 0x300,
+    cls: 'secondary',
+    nap: 1,
+    period: 1,
+    kind: 'enemy',
+    enemy: {
+      entity: airborneAt(200, 60, 0),
+      facing,
+      pchase: 1,
+      brain: 'shadow',
+      decision: 'shadow',
+    },
+    enemyType: 'shadowLord',
+    collisionEnabled: true,
+    bumpX,
+  }
+}
+
+describe('jt9-60 — the DemoProcess.bumpX shove drives a HUNTING shadow’s facing in play', () => {
+  it('FULL stepDemo: a hunting shadow carrying a rightward shove faces RIGHT after one step (SHLEP → SHDIRA)', () => {
+    // A targetable player rides the sim, so the shadow HUNTS (target ≠ null) and
+    // takes the SHLEP line-track into SHDIRA. The only driver is the shove: LEFT
+    // facer + 16 ⇒ RIGHT, through the drain and the whole pipeline.
+    const base = createWaveDemo(SEED)
+    const targets: TargetState = TGT.registerPlayer(TGT.seedTargets(), 1, 0)
+    let d: DemoState = {
+      ...base,
+      sim: { ...base.sim, processes: [playerBeside(), shovedShadow(16, -1)], targets },
+    }
+    d = stepDemo(d, { 1: NEUTRAL })
+    expect(theEnemy(d.sim.processes)?.enemy, 'the shadow survived the frame').toBeDefined()
+    expect(
+      theEnemy(d.sim.processes)?.enemy?.facing,
+      'p.bumpX plumbed through frame.ts into the hunting shadow’s SHDIRA facing',
+    ).toBe(1)
+  })
+
+  it('FULL stepDemo CONTROL: the same hunting shadow with NO shove holds its LEFT facing', () => {
+    // Green before AND after: without the shove the SHLEP wake writes no PFACE,
+    // so the LEFT facer stays LEFT — isolates `bumpX` as the sole cause.
+    const base = createWaveDemo(SEED)
+    const targets: TargetState = TGT.registerPlayer(TGT.seedTargets(), 1, 0)
+    let d: DemoState = {
+      ...base,
+      sim: { ...base.sim, processes: [playerBeside(), shovedShadow(0, -1)], targets },
+    }
+    d = stepDemo(d, { 1: NEUTRAL })
+    expect(theEnemy(d.sim.processes)?.enemy?.facing, 'no shove ⇒ the hunting shadow holds facing').toBe(-1)
   })
 })
