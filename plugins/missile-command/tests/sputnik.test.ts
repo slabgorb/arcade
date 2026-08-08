@@ -14,7 +14,7 @@
 //   First Sputnik wave  SPUTWV = 2            (W3COMN.MAC:203)
 //   Activation V band   VPLMIN = 0x64 = 100   (W3MAIN.MAC:5761)
 //   Variant pick        SOBJID = rand AND 1   (W3MAIN.MAC:5793)   → bomber|satellite
-//   Kill value          SPUTKI LDX I,3 → ×4   (W3MAIN.MAC:2071-2079)
+//   Kill value          SPUTKI LDX I,3 → ×4   (W3MAIN.MAC:2081; SPUTKI label at 2071)
 //   Fire cadence table  WSPFIR .BYTE 80,60,40,30,20,20,10  → 128,96,64,48,32,32,16
 //                                                            (W3MAIN.MAC:5725)
 //   Activation-sep tbl  WSPLAU .BYTE 0F0,0A0,080,80,60,40,20 → 240,160,128,128,96,64,32
@@ -96,7 +96,7 @@ describe('mc5-2 AC1 — sputnik constants', () => {
     const { SPUTNIK_WAVE, SPUTNIK_V_MIN, SPUTNIK_SCORE_MULT } = await loadSputnik()
     expect(SPUTNIK_WAVE).toBe(2) // SPUTWV, W3COMN.MAC:203
     expect(SPUTNIK_V_MIN).toBe(100) // VPLMIN hex 64, W3MAIN.MAC:5761
-    expect(SPUTNIK_SCORE_MULT).toBe(4) // SPUTKI LDX I,3 → ×4, W3MAIN.MAC:2071
+    expect(SPUTNIK_SCORE_MULT).toBe(4) // SPUTKI LDX I,3 → ×4, W3MAIN.MAC:2081
   })
 })
 
