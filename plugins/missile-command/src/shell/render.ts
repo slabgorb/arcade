@@ -16,9 +16,11 @@
 // mc9-2 (GREEN, Yoda): the field is now painted through the per-wave 8-colour
 // palette (SET UP COLORS FOR NEXT WAVE, W3DSUP.MAC:1583) instead of the mc3
 // functional hexes. drawFrame takes the current `wave` and draws each element from
-// its legend slot (W3DSUP.MAC:1706): sky, ground, ICBMs, city bottom/top and ABMs
-// all pull from paletteForWave(wave); explosions use the flash slot. Dead-structure
-// rubble and the crosshair/HUD stay functional (they are not palette registers).
+// its legend slot (W3DSUP.MAC:1706): sky, ICBMs, city bottom/top and ABMs all pull
+// from paletteForWave(wave); explosions use a flash slot (a rendering choice, see
+// below). The legend's GROUND slot (COL001) has no on-screen element in this clone,
+// so it is not drawn. Dead-structure rubble and the crosshair/HUD stay functional
+// (they are not palette registers).
 
 import type { GameState } from '../core/game.js'
 import { CITIES, BASES, type FieldPos } from '../core/field.js'
@@ -157,10 +159,15 @@ export function drawFrame(
   }
 
   // Blasts (mc1-4) — an expanding/collapsing circle at each explosion, its radius
-  // scaled from cabinet units into the display (same H scale as `project`). Drawn
-  // in the wave's flash colour (COL100, the explosion FLASH register — GAMEFL/
-  // W3INT.MAC:291-313), so blasts recolour per wave with the rest of the field.
-  ctx.fillStyle = hue(FLASH_SLOTS[0])
+  // scaled from cabinet units into the display (same H scale as `project`). The ROM
+  // legend (W3DSUP.MAC:1706) marks COL100/COL101 UNUSED(FLASH); this clone repurposes
+  // a flash register to colour blasts (a rendering choice, NOT a ROM-assigned use —
+  // GAMEFL/W3INT.MAC:291-313 is only the per-VBLANK INC that makes those registers
+  // flash). We pick whichever flash slot differs from the sky, so explosions stay
+  // visible even on a wave whose flash colour equals the backdrop (e.g. WVACOL, where
+  // COL100 == COL000). Blasts still recolour per wave with the rest of the field.
+  const skyCss = hue(SLOT.SKY)
+  ctx.fillStyle = hue(FLASH_SLOTS.find((s) => hue(s) !== skyCss) ?? FLASH_SLOTS[0])
   for (const exp of state.explosions) {
     const r = blastRadius(exp)
     if (r <= 0) continue

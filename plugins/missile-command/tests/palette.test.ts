@@ -110,8 +110,10 @@ const CITY_BOTTOM = 3
 const ABMS = 6
 const CITY_TOP = 7
 
-/** The authentic selection: ((wave-1) >> 1) mod 10. */
-const romIndex = (wave: number): number => (((Math.max(1, Math.floor(wave)) - 1) >> 1)) % 10
+/** The authentic selection: floor((wave-1) / 2) mod 10. NB: uses `Math.floor(/2)`,
+ *  NOT `>> 1` — `>>` int32-coerces and would wrap negative for wave ≥ 2³¹, which is
+ *  exactly the production bug this oracle must NOT share (mc9-2 review, round 1). */
+const romIndex = (wave: number): number => Math.floor((Math.max(1, Math.floor(wave)) - 1) / 2) % 10
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const coreDir = join(root, 'src', 'core')
@@ -209,10 +211,24 @@ describe('mc9-2 selection — paletteIndexForWave: ((wave-1)>>1) mod 10, period 
 
   it('always lands in [0,9] — even for degenerate/debug-seeded waves (never indexes off-table)', () => {
     const fn = req(p.paletteIndexForWave, 'paletteIndexForWave')
-    for (const w of [-5, 0, 1, 2, 20, 21, 200, 999, 4.9]) {
+    // Includes the 2³¹ / MAX_SAFE_INTEGER boundary (mc9-2 review, round 1): a `>> 1`
+    // halving int32-wraps there and JS `%` returns a NEGATIVE index → off-table throw.
+    // `floor(/2)` stays non-negative, so these must land in [0,9] like any other wave.
+    for (const w of [-5, 0, 1, 2, 20, 21, 200, 999, 4.9, 2 ** 31 + 1, 2 ** 32 + 1, Number.MAX_SAFE_INTEGER]) {
       const idx = fn(w)
       expect(Number.isInteger(idx), `index for wave ${w} is an integer`).toBe(true)
       expect(idx >= 0 && idx <= 9, `index ${idx} for wave ${w} stays on-table`).toBe(true)
+    }
+  })
+
+  it('paletteCodesForWave / paletteForWave never throw or return undefined — even past 2³¹', () => {
+    // The off-table index bug surfaced as `paletteForWave(2147483649)` throwing
+    // "Cannot read properties of undefined (reading 'map')". Pin that it cannot recur.
+    const codesFn = req(p.paletteCodesForWave, 'paletteCodesForWave')
+    const rgbFn = req(p.paletteForWave, 'paletteForWave')
+    for (const w of [2 ** 31 + 1, 2 ** 32 + 1, Number.MAX_SAFE_INTEGER]) {
+      expect(codesFn(w), `paletteCodesForWave(${w}) must be a full row`).toHaveLength(8)
+      expect(rgbFn(w), `paletteForWave(${w}) must be 8 RGBs, not a throw`).toHaveLength(8)
     }
   })
 
@@ -331,6 +347,22 @@ describe('mc9-2 colour cycling — the flash mask/slots are the GAMEFL pair COL1
     const fromMask: number[] = []
     for (let b = 0; b < 8; b++) if (mask & (1 << b)) fromMask.push(b)
     expect(slots.slice().sort((a, b) => a - b), 'FLASH_SLOTS must equal the set bits of FLASH_MASK').toEqual(fromMask)
+  })
+
+  it('on every wave at least one FLASH_SLOT differs from the sky (a visible blast colour always exists)', () => {
+    // render.ts colours blasts with a flash slot that differs from the sky so explosions
+    // never vanish (WVACOL: COL100 == sky). That fallback relies on this invariant holding
+    // for all 10 palettes — pin it here at the data layer (mc9-2 review, round 1).
+    const rgbFn = req(p.paletteForWave, 'paletteForWave')
+    const slots = Array.from(req(p.FLASH_SLOTS, 'FLASH_SLOTS'))
+    for (let w = 1; w <= 20; w++) {
+      const pal = rgbFn(w)
+      const sky = JSON.stringify(pal[SKY])
+      expect(
+        slots.some((s) => JSON.stringify(pal[s]) !== sky),
+        `wave ${w}: no flash slot differs from the sky — blasts would be invisible`,
+      ).toBe(true)
+    }
   })
 })
 

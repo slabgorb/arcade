@@ -62,9 +62,11 @@ During play `FLSHCO = GAMEFL = 0x30` (`W3COMN.MAC:489`) flags registers **4 & 5*
 hardware every frame (`W3INT.MAC:291-313`). That per-frame `INC` is the cabinet's
 colour cycling. The dominant, player-visible cycling, though, is the **whole-field
 recolour** the per-wave palette produces; the flash is a subtle effect on the two
-"unused" registers used for explosion pops. This clone reproduces the per-wave palette
-and exposes the flash mask/slots (`FLASH_MASK` / `FLASH_SLOTS`); a full per-frame flash
-animation is a later refinement.
+registers the ROM's own legend marks **UNUSED** (`W3DSUP.MAC:1706`). This clone
+reproduces the per-wave palette and exposes the flash mask/slots (`FLASH_MASK` /
+`FLASH_SLOTS`); it repurposes a flash register to colour explosion blasts (a rendering
+choice, not a ROM-assigned use), picking whichever flash slot differs from the sky so
+blasts stay visible. A full per-frame flash animation is a later refinement.
 
 ## The deliberate non-goal
 

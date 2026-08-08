@@ -76,8 +76,9 @@ export const FLASH_MASK = 0x30
  *  FLASH_MASK (the per-VBLANK INC at W3INT.MAC:291-313). */
 export const FLASH_SLOTS: readonly number[] = [4, 5]
 
-/** The colour registers, indexed by the 8 legend slots (COL000..COL111). Kept for
- *  render readability so a call site can say `SLOT.SKY` rather than a bare 0. */
+/** The 6 named colour registers among the 8 legend slots (COL000..COL111) — the two
+ *  UNUSED(FLASH) slots (4, 5) are exposed separately as FLASH_SLOTS. Kept for render
+ *  readability so a call site can say `SLOT.SKY` rather than a bare 0. */
 export const SLOT = {
   SKY: 0,
   GROUND: 1,
@@ -87,12 +88,14 @@ export const SLOT = {
   CITY_TOP: 7,
 } as const
 
-/** The palette index for a wave: ((wave-1) >> 1) mod 10 — the SETCOL selection
- *  (W3DSUP.MAC:1593-1615) in closed form. A degenerate/debug-seeded wave clamps to
- *  the first valid wave so the lookup can never index off-table. */
+/** The palette index for a wave: floor((wave-1) / 2) mod 10 — the SETCOL selection
+ *  (W3DSUP.MAC:1593-1615) in closed form (the ROM's `SBC I,1` then `LSR` = halve).
+ *  A degenerate/debug-seeded wave clamps to the first valid wave, and the halving
+ *  uses `Math.floor(/2)` rather than `>> 1` so a wave past 2³¹ cannot int32-wrap to a
+ *  negative index — the result is always in [0, PALETTE_COUNT). */
 export function paletteIndexForWave(wave: number): number {
   const w = Number.isFinite(wave) ? Math.max(1, Math.floor(wave)) : 1
-  return ((w - 1) >> 1) % PALETTE_COUNT
+  return Math.floor((w - 1) / 2) % PALETTE_COUNT
 }
 
 /** The 8 ROM colour codes for a wave, in COL000..COL111 order. */

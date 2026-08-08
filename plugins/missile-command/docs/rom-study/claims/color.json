@@ -295,5 +295,16 @@
       "line": 309,
       "verbatim": "\tSTA AX,COLORS\t\t;UPDATE HARDWARE COLOR"
     }
+  },
+  {
+    "id": "MC-COL-LEGEND",
+    "symbol": "legend",
+    "value": "cite",
+    "meaning": "Slot legend COL000..COL111 = SKY,GROUND,ICBMS,CITY(BOTTOM),(FLASH),(FLASH),ABMS,CITY(TOP)&ABMS",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 1706,
+      "verbatim": ";SKY,GROUND,ICBMS,CITY(BOTTOM),UNUSED,(FLASH),UNUSED(FLASH),ABMS,CITY(TOP)&ABMS"
+    }
   }
 ]

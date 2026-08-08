@@ -65,6 +65,7 @@ describe('mc9-2 AC2 — committed claims pin the palette source (docs/rom-study/
     { what: 'the 10-entry dispatch table', file: 'W3DSUP.MAC', start: 1655, end: 1675 },
     { what: 'the DBLCOL packing macro', file: 'W3DSUP.MAC', start: 1677, end: 1681 },
     { what: 'the ten palette rows', file: 'W3DSUP.MAC', start: 1684, end: 1702 },
+    { what: 'the slot legend (COL000..COL111 → SKY/GROUND/ICBMS/…/ABMS)', file: 'W3DSUP.MAC', start: 1706, end: 1706 },
   ]
 
   it.each(CITED)('a claim pins $what ($file:$start-$end)', ({ file, start, end }) => {

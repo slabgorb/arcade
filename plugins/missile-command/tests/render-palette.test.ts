@@ -173,6 +173,25 @@ describe('mc9-2 AC1 — incoming ICBMs pull their colour from the wave palette (
   })
 })
 
+describe('mc9-2 AC1 — explosion blasts stay visible against the sky on every wave', () => {
+  // One explosion mid-life (t in (0,26) → radius > 0), no ICBMs so the only `arc`
+  // marks are the blast. Wave 13 is WVACOL, where the naive flash slot COL100 EQUALS
+  // the sky COL000 — the collision that would render blasts invisible (review round 1).
+  const withBlast: GameState = { ...withCursor(createGame(1)), explosions: [{ h: 128, v: 99, t: 13 }] }
+
+  it.each([1, 13, 14])('at wave %i the blast colour is not the sky colour (explosions remain visible)', (wave) => {
+    const marks = paintAtWave(withBlast, wave)
+    const bg = backgroundMark(marks)
+    const blastArcs = marks.filter((m) => m.op === 'arc')
+    expect(blastArcs.length, 'a mid-life explosion must draw a blast arc').toBeGreaterThan(0)
+    for (const a of blastArcs) {
+      expect(a.fill, `wave ${wave}: the blast must differ from the sky (else it is invisible)`).not.toBe(
+        (bg as Mark).fill,
+      )
+    }
+  })
+})
+
 describe('mc9-2 AC1 — drawFrame without a wave defaults to wave 1 (existing 4-arg callers unaffected)', () => {
   it('draw(ctx, state, W, H) renders identically to draw(ctx, state, W, H, 1)', () => {
     const state = withCursor(createGame(1))
@@ -184,18 +203,25 @@ describe('mc9-2 AC1 — drawFrame without a wave defaults to wave 1 (existing 4-
 
 describe('mc9-2 AC1 — render.ts sources colours from the palette, not inline element hexes', () => {
   const renderSrc = readFileSync(join(root, 'src', 'shell', 'render.ts'), 'utf8')
+  // Strip comments first (mc9-2 review, round 1): the module-header comment mentions
+  // `./palette` and `paletteForWave(wave)` in prose, so a whole-file match could pass on
+  // the comment alone (mutation-proven). These guards must anchor to real CODE only.
+  const code = renderSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 
-  it('imports the palette module', () => {
-    expect(renderSrc, "render.ts must import from './palette'").toMatch(/from ['"]\.\/palette(?:\.js)?['"]/)
+  it('imports paletteForWave from ./palette (a real import statement, not a comment)', () => {
+    expect(code, "render.ts must import paletteForWave from './palette'").toMatch(
+      /import\s*\{[^}]*\bpaletteForWave\b[^}]*\}\s*from\s*['"]\.\/palette(?:\.js)?['"]/,
+    )
   })
 
-  it('selects a colour per wave (references paletteForWave / paletteCodesForWave)', () => {
-    expect(renderSrc, 'render.ts must look the palette up by wave').toMatch(/palette(?:Codes)?ForWave/)
+  it('actually CALLS paletteForWave(...) on the paint path (not just mentions it)', () => {
+    expect(code, 'render.ts must call paletteForWave(...) to select the wave palette').toMatch(/\bpaletteForWave\s*\(/)
   })
 
   // The mc3 functional element hexes that AC1 retires — each element now pulls from the
   // palette, so its inline literal must be gone. (Crosshair/HUD '#fff' are NOT palette
-  // slots and legitimately remain, so they are not scanned.)
+  // slots and legitimately remain, so they are not scanned.) Scanned on `code` so a hex
+  // that ever appears in a comment can't mask a live literal either.
   const RETIRED: ReadonlyArray<{ hex: string; element: string }> = [
     { hex: '#f80', element: 'ICBM (enemy) orange' },
     { hex: '#f44', element: 'ABM (player) red' },
@@ -205,6 +231,6 @@ describe('mc9-2 AC1 — render.ts sources colours from the palette, not inline e
     { hex: '#ff0', element: 'blast yellow' },
   ]
   it.each(RETIRED)('the hardcoded $element ($hex) is gone — that element draws from the palette', ({ hex }) => {
-    expect(renderSrc.includes(hex), `${hex} must no longer be a hardcoded literal in render.ts`).toBe(false)
+    expect(code.includes(hex), `${hex} must no longer be a hardcoded literal in render.ts`).toBe(false)
   })
 })
