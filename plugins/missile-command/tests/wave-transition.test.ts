@@ -10,9 +10,10 @@
 // ─── SCOPE BOUNDARY (from the mc4 epic YAML; mirrors mc4-1's stepIcbm precedent) ─
 //   • mc4-2 (HERE): the PURE reducers in wave.ts / state.ts, at the BASE score
 //     multiplier. It does NOT touch game.ts / GameState.
-//   • mc4-3: the per-wave score MULTIPLIER (scoreKills × wave, capped MAXMUL) and
-//     the bonus-city AWARD at a score threshold. So the bonus values pinned here
-//     are the wave-1 / 1× base values; the ramp is mc4-3's.
+//   • mc4-3: the per-wave score MULTIPLIER — SMULTI = min((wave+1)>>1, MAXMUL),
+//     which steps every TWO waves (NOT "× wave"; W3MAIN.MAC:4063-4079). So the
+//     bonus values pinned here are the wave-1 / 1× base values; the ramp is
+//     mc4-3's. (The bonus-city AWARD at a score threshold was split out to mc4-5.)
 //   • mc4-4: WIRES these reducers into stepGame and adds GameState.wave/multiplier
 //     + the HUD readout + the seeded multi-wave playthrough. (mc4-1 deferred the
 //     spawner wiring the same way — this file pins the units mc4-4 will compose.)
