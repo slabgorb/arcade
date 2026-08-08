@@ -41,9 +41,11 @@ import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { drawFrame } from '../src/shell/render.js'
 import { INITIAL_WAVE, waveSchedule, waveEndBonus, nextWaveBudget } from '../src/core/wave.js'
-import { scoreMultiplier } from '../src/core/score.js'
+import { scoreMultiplier, ICBM_KILL_POINTS } from '../src/core/score.js'
 import { START_CITIES, NCITY, MAXMIS } from '../src/core/field.js'
 import { MXICON } from '../src/core/spawn.js'
+import { type Icbm } from '../src/core/icbm.js'
+import { startExplosion, stepExplosion, blastRadius, MAX_BLAST_RADIUS, type Explosion } from '../src/core/explosion.js'
 
 // ─── The two fields mc4-4 adds to GameState. Read through a widened view so tsc
 //     stays green while they are still absent; each read is `undefined` until Dev
@@ -269,6 +271,65 @@ describe('mc4-4 AC3 — the multiplier tracks the wave and climbs across waves',
 
   it('the multiplier is strictly higher by wave 3 than at wave 1 (it climbs)', () => {
     expect(multOf(w3) as number, 'SMULTI steps every two waves — ×2 by wave 3').toBeGreaterThan(multOf(w1) as number)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// AC3 — the multiplier is not cosmetic: an ICBM kill is SCORED at the current
+// wave's multiplier, not the base rate. (score-multiplier.test.ts pins the
+// scoreMultiplier function and score.test.ts the scoreKills function; this pins
+// the stepGame WIRING that threads `state.wave` into scoreKills — the wiring a
+// dropped arg would neuter while the HUD still displayed the climbing ×N.)
+// Round-2 (Heimdall): mutation M2 — `scoreKills(..., state.wave)` → `scoreKills(...)`
+// — survived the whole suite; this is the guard that kills it.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('mc4-4 AC3 — an ICBM kill is scored at the wave multiplier, not the base', () => {
+  /** A blast stepped to its PEAK radius (independent of which radius model is live),
+   *  the deterministic-kill fixture from game.test.ts / sound-events.test.ts. */
+  const peakBlast = (h: number, v: number): Explosion => {
+    let e = startExplosion(h, v)
+    for (let i = 0; blastRadius(e) < MAX_BLAST_RADIUS && i < 10000; i++) e = stepExplosion(e)
+    return e
+  }
+
+  /** Score gained when a pre-existing blast kills exactly one ICBM on a frame at
+   *  `wave`. A far-off bystander ICBM keeps the screen non-clear (so the frame is
+   *  NOT a wave-end and the resolution does not interfere), and `remaining: 0`
+   *  suppresses spawns so the ONLY score change is the single kill. */
+  function scoreForOneKillAtWave(wave: number): number {
+    const victim: Icbm = { origin: { h: 100, v: 222 }, target: { h: 100, v: 20 }, pos: { h: 100, v: 100 }, arrived: false }
+    const bystander: Icbm = { origin: { h: 5, v: 222 }, target: { h: 5, v: 20 }, pos: { h: 5, v: 100 }, arrived: false }
+    const g = withFields(createGame(SEED), {
+      wave,
+      multiplier: scoreMultiplier(wave),
+      score: 0,
+      remaining: 0,
+      icbms: [victim, bystander],
+      explosions: [peakBlast(100, 99)],
+      abms: [],
+    })
+    const next = stepGame(g) as WaveState
+    // guard the staging: exactly one kill, still mid-wave on the same wave.
+    expect(next.icbms.length, 'staging: the bystander survives, the victim is killed').toBe(1)
+    expect(waveOf(next), 'staging: not a wave-end — the wave is unchanged').toBe(wave)
+    return next.score
+  }
+
+  it('at wave 1 (×1) a kill scores the base ICBM_KILL_POINTS', () => {
+    expect(scoreForOneKillAtWave(1)).toBe(ICBM_KILL_POINTS * scoreMultiplier(1))
+    expect(scoreForOneKillAtWave(1)).toBe(ICBM_KILL_POINTS) // scoreMultiplier(1) === 1
+  })
+
+  it('at wave 3 (×2) the SAME kill scores twice the base — the multiplier scales scoring', () => {
+    const scaled = scoreForOneKillAtWave(3)
+    expect(scaled, 'a kill on wave 3 must score ICBM_KILL_POINTS × scoreMultiplier(3)').toBe(
+      ICBM_KILL_POINTS * scoreMultiplier(3),
+    )
+    // The decisive tooth: it is NOT the base rate — the wave, not a constant, scales it.
+    expect(scaled, 'the multiplier must actually affect kill scoring, not just the HUD').toBeGreaterThan(
+      ICBM_KILL_POINTS,
+    )
+    expect(scaled).toBe(2 * scoreForOneKillAtWave(1)) // exactly double the ×1 kill
   })
 })
 
