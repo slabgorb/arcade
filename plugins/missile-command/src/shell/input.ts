@@ -25,6 +25,12 @@ import { moveCursor, type Cursor } from '../core/cursor.js'
 import { launchAbm, type Abm, type Vec } from '../core/abm.js'
 import type { GameState } from '../core/game.js'
 
+// mc8-4: the base-ammo count at which a launch sounds the "LOW" warning cue (LO) instead
+// of the normal launch (LA). ABMLAU: `LDA NMMISB / CMP I,4 / IFEQ` (W3MAIN.MAC:1385) — the
+// pre-decrement magazine equals 4. A shell constant: this is the fire→sound seam, and the
+// core purity/citation gate scans only src/core.
+const LOW_AMMO = 4
+
 /**
  * Map a screen-space pointer movement (a PointerEvent's movementX/movementY,
  * top-left origin) to the next crosshair position: dh = movementX, dv =
@@ -83,7 +89,18 @@ export function fireFromKey(key: string, state: GameState): GameState {
   if (!base.alive || base.ammo === 0) {
     return { ...state, soundEvents: [...state.soundEvents, { type: 'ammoEmpty' }] }
   }
+  // mc8-4: a launch taken while the base still holds exactly its LOW count sounds the
+  // "LOW" launch variant (LO, SLOABM) rather than the normal launch (LA, SABLAU). ABMLAU
+  // does `LDA NMMISB / CMP I,4 / IFEQ → SLOABM` BEFORE the DEC (W3MAIN:1385), so the test
+  // is the pre-decrement ammo == the LOW threshold — a one-shot crossing warning, not a
+  // sustained "<= LOW" state. Pure data on the launched event; audio-dispatch voices it.
   const abm = launchAbm(base.pos, state.cursor)
   const bases = state.bases.map((b, i) => (i === idx ? { ...b, ammo: b.ammo - 1 } : b))
-  return { ...state, abms: [...state.abms, abm], bases, soundEvents: [...state.soundEvents, { type: 'launched' }] }
+  const baseLow = base.ammo === LOW_AMMO
+  return {
+    ...state,
+    abms: [...state.abms, abm],
+    bases,
+    soundEvents: [...state.soundEvents, { type: 'launched', baseLow }],
+  }
 }
