@@ -73,7 +73,7 @@ stories:
     points: 3
     priority: p2
     status: backlog
-    repos: pennyfarthing
+    repos: arcade
     workflow: tdd
     depends_on: mc4-2
     acceptance_criteria:
@@ -86,7 +86,7 @@ stories:
     points: 2
     priority: p3
     status: backlog
-    repos: pennyfarthing
+    repos: arcade
     workflow: tdd
     depends_on: mc4-3
     acceptance_criteria:
