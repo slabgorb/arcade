@@ -163,7 +163,7 @@ const towerDied = (s: GameState): boolean =>
  * Every tower fixture below is seated at the PILOT'S OWN HEIGHT rather than on the floor.
  *
  * That is deliberate and it is not cosmetic: on the surface the yoke's vertical axis is also the
- * THROTTLE (`aimY * ALTITUDE_RATE * dt`, sim.ts:1034). Aiming DOWN at a floor-level
+ * THROTTLE (`aimY * ALTITUDE_RATE * dt`, sim.ts:1036). Aiming DOWN at a floor-level
  * tower therefore flies the ship while the shot is being measured, and at the floor of the band
  * it trips the terrain-crash bump. Level with the pilot, dead-on aim is purely lateral, `aimY`
  * stays 0, and the ship cannot move during the measurement — so what is measured is the gun.

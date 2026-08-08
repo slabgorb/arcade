@@ -115,6 +115,8 @@ import {
   beamHit,
   COCKPIT,
   collides,
+  sweptCollides,
+  trenchGunFireVelocity,
   siteOffset,
   SPACE_HIT_OCTAGON,
   toCockpit,
@@ -1470,16 +1472,16 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   const gameFrame = Math.floor(trenchTimer)
   const fireOpening = gameFrame > Math.floor(state.trenchTimer) && ((gameFrame + 1) & gunMask) === 0
 
-  // Incoming shots (already advanced by the prologue) that reach the cockpit spend
-  // a shield. Centred on this frame's `trenchView`, the ship the guns aim at.
+  // Incoming shots that reach the cockpit spend a shield — SWEPT over the frame step
+  // (shots ride the scroll, so a point test would tunnel). Centred on `trenchView`.
   let gunDamage = 0
   const standingShots = base.enemyShots.filter((s) => {
-    if (collides(s.pos, trenchView, COCKPIT_HIT_RADIUS)) {
+    if (sweptCollides(trenchView, sub(s.pos, scale(s.vel ?? ZERO, dt)), s.pos, COCKPIT_HIT_RADIUS)) {
       gunDamage++
       events.push({ type: 'player-death', cause: 'turret' })
       return false
     }
-    return true
+    return s.pos[2] <= 0 // keep unless it scrolled past the cockpit (despawn, like the obstacles)
   })
 
   // BSGUN: on an opening, each surviving wall gun still on the approach (within the
@@ -1493,7 +1495,7 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
       if (nextInt(rng, 256) > gunThreshold) {
         firedShots.push({
           pos: [...o.pos] as Vec3,
-          vel: scale(normalize(sub(trenchView, o.pos)), ENEMY_SHOT_SPEED),
+          vel: trenchGunFireVelocity(o.pos, trenchView), // rides the scroll + leads the ship (sw7-16); not outrun
           ttl: ENEMY_SHOT_TTL,
         })
         events.push({ type: 'enemy-fire', pos: [...o.pos] as Vec3 })

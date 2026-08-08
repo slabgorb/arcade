@@ -890,7 +890,7 @@ describe('sw8-27 R6 — coaching.ts does not deny the mode assignments sim.ts ma
     const lines = simLines()
     const sites = lines.flatMap((l, i) => (MODE_ASSIGN.test(l) ? [i + 1] : []))
     expect(sites, "sim.ts assigns mode 'gameover' — the claim under test says nothing does").toEqual([
-      762, 1266, 1534, 1707,
+      764, 1268, 1536, 1709,
     ])
     // And each sits with its `gameOver:` sibling, which refutes the other half of the claim: the
     // mode does not stay 'playing' while gameOver flips — they move together, IN ONE LITERAL.
@@ -912,7 +912,7 @@ describe('sw8-27 R6 — coaching.ts does not deny the mode assignments sim.ts ma
     }
     // And the two populations agree from the other end: every literal that pairs them is one of
     // these four, so neither derivation is finding sites the other cannot see.
-    expect(deathSites().pairing, 'the same four, derived from the gameOver: side').toEqual([761, 1265, 1533, 1706])
+    expect(deathSites().pairing, 'the same four, derived from the gameOver: side').toEqual([763, 1267, 1535, 1708])
   })
 
   it('so coaching.ts no longer claims nothing in src/ ever assigns it', () => {
@@ -986,9 +986,9 @@ describe('sw8-27 R6 — coaching.ts does not deny the mode assignments sim.ts ma
       derived.fields,
       'fixture: every `gameOver:` field line in sim.ts. Pinned as an exact list because it is ' +
         'what makes the type-position limit in `deathSites` fail closed — a new one shows up here',
-    ).toEqual([245, 260, 761, 1265, 1533, 1706])
-    expect(pairingSites, 'fixture: the death sites that set BOTH, derived from sim.ts').toEqual([761, 1265, 1533, 1706])
-    expect(branches, 'fixture: and the places sim.ts branches on the end of a run').toEqual([225, 936, 947, 1885])
+    ).toEqual([247, 262, 763, 1267, 1535, 1708])
+    expect(pairingSites, 'fixture: the death sites that set BOTH, derived from sim.ts').toEqual([763, 1267, 1535, 1708])
+    expect(branches, 'fixture: and the places sim.ts branches on the end of a run').toEqual([227, 938, 949, 1887])
     // The branch population must be bound to the run's own state, not to the mere presence of a
     // token. `sim.ts` branches on OTHER modes too, and those are not ends of a run.
     for (const n of branches) {
@@ -1005,7 +1005,7 @@ describe('sw8-27 R6 — coaching.ts does not deny the mode assignments sim.ts ma
       wordWithoutPairing,
       'fixture: these two carry the word `gameOver:` WITHOUT the pairing — they are the ' +
         "`gameOver: false` fields in the `mode: 'attract'` literals, and citing them would be false",
-    ).toEqual([245, 260])
+    ).toEqual([247, 262])
 
     const src = read('src', 'core', 'coaching.ts')
     const guard = block(src, "coachingFor's death guard", 'export function coachingFor', 'if (s.wave !== 1)')
