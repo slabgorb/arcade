@@ -229,10 +229,15 @@ describe('AC2 the initials keyboard verb (enterInitial / isEntryComplete)', () =
     expect(e.initials, 'no non-letter key enters the buffer').toBe('')
   })
 
-  it('a no-op keystroke returns an EQUAL buffer (so the shell can skip state churn)', async () => {
+  it('a no-op keystroke returns the SAME buffer OBJECT (so the shell can skip state churn)', async () => {
     const h = await loadHighscore()
-    const e = h.enterInitial(h.beginEntry(), '5') // inert
-    expect(e.initials, 'inert key → unchanged buffer value').toBe('')
+    const buf = h.beginEntry()
+    const after = h.enterInitial(buf, '5') // inert
+    // Reference identity, not just value: the doc contract is "returns the SAME buffer"
+    // so a caller can `===`-compare to skip a re-render. Dropping the early-return in
+    // enterInitial (always allocating a fresh { initials }) reddens THIS, not a value check.
+    expect(after, 'inert key → the identical object, not a fresh allocation').toBe(buf)
+    expect(after.initials, 'and still empty').toBe('')
   })
 
   it('isEntryComplete is false below three chars and true at exactly three', async () => {
@@ -279,12 +284,13 @@ describe('AC4 commitEntry — insert into the JOUST CHAMPIONS table', () => {
     expect(out[out.length - 1].score, 'the old 1000 floor was pushed off').toBe(2000)
   })
 
-  it('does not mutate the input table (pure)', async () => {
+  it('does not mutate the input table (pure) — full rows, not just scores', async () => {
     const h = await loadHighscore()
     const table = fullTable()
-    const before = table.map((r) => r.score)
+    // Deep snapshot: a mutation of any field (name/wave, not only score) must be caught.
+    const before = JSON.parse(JSON.stringify(table))
     h.commitEntry(table, 'AAA', 12345, 1)
-    expect(table.map((r) => r.score), 'the caller’s table is untouched').toEqual(before)
+    expect(table, 'the caller’s table is untouched, row for row').toEqual(before)
   })
 })
 

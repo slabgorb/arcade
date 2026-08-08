@@ -153,10 +153,15 @@ describe('AC6 the overlay reuses the core heading + the two fonts (source wiring
     expect(src, "no re-hardcoded 'JOUST CHAMPIONS' literal in the shell").not.toContain("'JOUST CHAMPIONS'")
   })
 
-  it('lays text out in FONT57 (heading) and FONT35 (rows/prompt) via layoutText', () => {
+  it('lays the heading out in FONT57 with CHAMPIONS_HEADING, and rows/prompt in FONT35 (anchored to the layoutText calls)', () => {
     const src = readHighscoreScreenSource()
-    expect(src, 'uses the jt10-1 raster renderer').toMatch(/layoutText\s*\(/)
-    expect(src, 'banner font FONT57 is named').toContain('FONT57')
-    expect(src, 'row/prompt font FONT35 is named').toContain('FONT35')
+    // #15/#25: anchor to the actual layoutText CALL SITES, not bare whole-file tokens.
+    // The heading call must pass FONT57 AND the core constant (not a literal); a
+    // font swap or a re-hardcode reddens THIS specifically.
+    expect(src, "heading = layoutText('FONT57', CHAMPIONS_HEADING, …)").toMatch(
+      /layoutText\(\s*'FONT57'\s*,\s*CHAMPIONS_HEADING\b/,
+    )
+    // The rows/prompt lines lay out in FONT35 via layoutText.
+    expect(src, "rows/prompt use layoutText('FONT35', …)").toMatch(/layoutText\(\s*'FONT35'\s*,/)
   })
 })

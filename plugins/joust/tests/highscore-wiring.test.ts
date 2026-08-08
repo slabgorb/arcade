@@ -95,6 +95,17 @@ describe('AC2/AC3 main.ts wires the entry verb, the prompt, and the overlay', ()
     }
   })
 
+  it('feeds letter keydowns to enterInitial ONLY while on the highscore screen (mode-guarded)', () => {
+    const src = readMain()
+    // Kills "every keydown feeds enterInitial regardless of mode" — the call must be
+    // guarded by cabinet.mode === 'highscore', in the SAME statement (not merely
+    // present somewhere in the file). e.key (the character) is what the verb consumes.
+    expect(
+      src,
+      "enterInitial(entry, e.key) is gated by cabinet.mode === 'highscore'",
+    ).toMatch(/cabinet\.mode === 'highscore'[^\n]*enterInitial\(\s*entry\s*,\s*e\.key\s*\)/)
+  })
+
   it('imports promptForRank (the rank-conditional prompt) from core/highscore', () => {
     expect(importsFrom(readMain(), /core\/highscore(\.js)?$/, 'promptForRank'), 'promptForRank import').toBe(true)
   })
@@ -106,12 +117,37 @@ describe('AC2/AC3 main.ts wires the entry verb, the prompt, and the overlay', ()
     ).toBe(true)
   })
 
-  it('commits on the flap RISING edge — commitEntry is gated by isEntryComplete AND the prevFlap discipline (#14)', () => {
+  it('commits on the flap RISING edge — the completeness check is ANDed with a !prevFlap guard, not a held check (#14)', () => {
     const src = readMain()
-    // Kills "commit on a HELD flap" — a level check would re-insert the row every
-    // frame the button stays down. The existing prevFlap flags are the edge source.
-    expect(src, 'commitEntry is called').toContain('commitEntry(')
-    expect(src, 'the commit is gated by a completeness check').toContain('isEntryComplete(')
-    expect(src, 'the commit rides the existing prevFlap rising-edge discipline').toMatch(/prevFlap1|prevFlap2/)
+    // Kills "commit on a HELD flap" — a level check re-inserts the row every frame the
+    // button stays down. The guard must AND isEntryComplete with the NEGATION of a
+    // per-frame flap flag (the rising edge), in the SAME condition. Anchored to the
+    // commit guard specifically (isEntryComplete appears only on the commit path), so
+    // the unrelated player-input prevFlap1/prevFlap2 cannot satisfy it. Dropping the
+    // `!prev…Flap` term (leaving `flapHeld && isEntryComplete`) reddens THIS.
+    expect(src, 'commitEntry is called on the highscore screen').toMatch(
+      /highScoreTable\s*=\s*commitEntry\(/,
+    )
+    expect(
+      src,
+      'the commit is gated by isEntryComplete AND a rising-edge (!prevFlap) term in one condition',
+    ).toMatch(
+      /!prev\w*[Ff]lap\w*\s*&&\s*isEntryComplete\(\s*entry\s*\)|isEntryComplete\(\s*entry\s*\)\s*&&\s*!prev\w*[Ff]lap\w*/,
+    )
+    // …and that rising-edge flag is advanced every frame (so the edge is real, not a
+    // constant that would make the negation always-true).
+    expect(src, 'the rising-edge flag is updated each frame from the held level').toMatch(
+      /prev\w*[Ff]lap\w*\s*=\s*flapHeld/,
+    )
+  })
+
+  it('threads (table, initials, score, wave) into commitEntry in that order', () => {
+    const src = readMain()
+    // Kills a silent entryScore/entryWave swap — both are numbers, so a swap compiles,
+    // passes commitEntry's pure unit tests (correct args in isolation), and corrupts
+    // the persisted table. Pin the exact call-site argument order.
+    expect(src, "commitEntry(highScoreTable, entry.initials, entryScore, entryWave)").toMatch(
+      /commitEntry\(\s*highScoreTable\s*,\s*entry\.initials\s*,\s*entryScore\s*,\s*entryWave\s*\)/,
+    )
   })
 })
