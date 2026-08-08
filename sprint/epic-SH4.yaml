@@ -1,0 +1,43 @@
+id: SH4
+type: epic
+title: Shared-library extraction — lift verified cross-game duplication into src/shared/
+description: "Extraction epic arising from the 2026-08-08 duplication survey (structural name-collision sweep + 3 parallel body-comparison audits over input/render/core-sim primitives across all 9 games). This is the INVERSE of SH3: where SH3 retires stragglers' re-implementations of code that ALREADY lives in shared, SH4 lifts NEW duplication OUT of the games and into the shared library. Every candidate here was verified by opening and comparing the actual bodies against the ADR-0001 bar (algorithm-identical across >=2 games — a shared name or shape is NOT enough); superficial name-collisions were rejected on inspection (starfields: different algorithms AND different core/shell layers; particle/explosion/debris: bespoke ROM-faithful ports; formatScore: same name, different formatting; single-game distance/collision helpers). Guiding rule (inherited from SH2): share the VERB (the identical mechanism), not the NUMBERS (per-cabinet constants + ROM cue maps stay in the games). SH4-1 and SH4-3 are byte/near-verbatim lifts the code itself flags for extraction; SH4-2 is the highest-VALUE lift (6 games); SH4-4 and SH4-5 are Tier-2 and each carry a DESIGN GATE that must be resolved before implementation. NOTE the cross-link to SH3: SH4-3 creates the shared RASTER integer-scale letterbox that pac-man actually needs, so it supersedes the '@shared/view letterbox' clause of SH3-4 (pac-man's letterbox is the raster fitIntegerScale, NOT @shared/view's DPR/vector letterbox) — sequence SH4-3 before SH3-4 or fold them. OUT OF SCOPE (deferred, too trivial or single-game): the euclidean mod(v,size) one-expression primitive (asteroids/pac-man/red-baron), the rgbCss+Rgb pair (centipede/missile-command, worth it only as a future @shared/color), and intra-game dedup that is NOT a shared lift (asteroids' mod/wrap in bounds.ts+saucer.ts, battlezone's angle-fold triplicated across radar.ts/enemies.ts/saucer.ts). Design spec pending (Architect handoff). Every lifted symbol must be pinned by a shared test, and each adopting game's existing suite must stay green — an extraction that changes a determinism/render output is a regression, not a refactor."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: SH4-1
+    title: 'Lift the 3-D model/sheet dev-tool helpers into a new pure @shared/model-view: cellRects (byte-identical x3 — red-baron tools/sheetLayout.ts, star-wars + tempest core/modelView.ts; the source itself calls it "the THIRD copy... a genuine candidate for extraction"), fitDistance (x2) and modelBounds (near-identical x2, take red-baron''s readonly Vec3[] signature). Pure, dev-tool-only (contact sheets / model viewers), on no game''s render path'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: SH4-2
+    title: 'Extract the held-keys input tracker (Set<string> + keydown-add/keyup-remove + any(keys) membership) duplicated across 6 games (asteroids, battlezone, centipede, joust, pac-man, red-baron) into a shell helper beside @shared/host-helpers. Parameterize the only real diffs: idOf (default e.code; games pass an e.key.toLowerCase() variant) and preventDefaultFor; ship blur-reset + dispose so the 4 leaky sites (all but centipede) stop leaking listeners'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: SH4-3
+    title: 'Extract the RASTER integer-scale letterbox fitIntegerScale (largest whole-number scale + centred integer offsets) into @shared/view as a variant distinct from its DPR/vector letterbox: centipede + pac-man shell/layout.ts are byte-identical (pac-man header: "ported from centipede"), fold joust shell/render.ts viewport (near-identical, offsets-only shape). SUPERSEDES the @shared/view-letterbox clause of SH3-4 — pac-man needs THIS, not the DPR path'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: SH4-4
+    title: 'Extract the generic clamp(v,lo,hi) into the shared pure core — duplicated across 4 games (red-baron, star-wars, missile-command, asteroids) in three spellings (Math.max/min nest, ternary, Math.min(Math.max)) that agree except on NaN. DESIGN GATE: choose ONE explicit NaN policy first (the ternary/guarded form matches red-baron enemy.ts''s Number.isNaN->lo intent). Fold ONLY the generic 3-arg form; leave clampVel/clamp01/clampIndex and inline index-clamps local'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: SH4-5
+    title: 'Retire the audio-dispatch.ts duplication across all 7 games (asteroids, battlezone, centipede, joust, missile-command, red-baron, tempest) — a duplicated PATTERN not algorithm. DESIGN GATE: decide the extractable surface (the identical SoundPlayer = Pick<AudioEngine,play|startLoop|stopLoop> narrowing type + the for/switch/exhaustive-never skeleton) vs a table-driven dispatcher (which would fight asteroids'' nested explosion.source and tempest''s loop hand-offs). Lift the TYPE at minimum; do NOT force a lossy table — each switch body is that game''s own ROM cue map'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd

@@ -1,0 +1,43 @@
+id: SH3
+type: epic
+title: Shared-module adoption — retire the straggler cabinets' per-game re-implementations of extracted shared code
+description: "Adoption epic arising from the 2026-08-08 shared-library usage survey (all 9 plugins x 13 @shared modules). SH and SH2 EXTRACTED code into the shared library (math3d/rng/highscore/loop, then font/glow/view/compositor); SH3 closes the loop by RETIRING the per-game duplication the survey found in the three newest cabinets. Survey result: the five originals + centipede are deep adopters (9-13 modules), while joust (3), pac-man (5) and missile-command (2) still hand-roll code that already lives in @shared. Guiding rule (inherited from SH2): share the VERB (the identical mechanism), not the NUMBERS (per-cabinet constants + exotic ROM timebases stay in the games). This epic targets ONLY duplication that exists TODAY and is byte/algorithm-identical to a shared module: joust's inlined mulberry32 (a self-documented byte-for-byte copy of @shared/rng behind a stale pre-collapse 'no git-URL pin yet' comment), and the raw requestAnimationFrame loops + bespoke canvas-mount/audio-unlock/DPR-letterbox lifecycles that @shared/loop, @shared/host-helpers and @shared/view already provide. Every swap of a determinism primitive (rng, loop) MUST be pinned by a test proving the observable sequence is unchanged, so demos/replays/high-score seeds do not drift. Design spec pending (Architect handoff). OUT OF SCOPE: (1) feature-gated shell furniture on missile-command and pac-man — @shared/pause, @shared/name-entry and @shared/highscore presuppose a pause/attract/high-score FEATURE that mc5's charter defers to mc6/mc7, so adopting them is 'build the future feature ON shared', not 'retire duplication', and belongs to those epics; (2) math3d/glow/synth non-use, which is correct by ADR-0001 (3-D-only, vector-only, and the deliberate synth-vs-audio fork respectively); (3) red-baron's loop/view gaps, deferred pending a determinism-risk assessment of its citation-gated core."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: SH3-1
+    title: 'joust — retire the inlined mulberry32 (core/frame.ts:200 + core/transporter.ts:255 rngNext, byte-for-byte copies behind a stale git-URL comment) and import @shared/rng; pin a test asserting the float sequence is identical for any seed so demos/replays do not drift'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: SH3-2
+    title: 'joust — route the bespoke canvas mount + audio-unlock lifecycle in src/main.ts through @shared/host-helpers (mountCanvas / installAudioUnlock), retiring the hand-rolled shell wiring; keep joust''s own ROM timebase but document why @shared/loop''s 60Hz accumulator is or is not adoptable'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: SH3-3
+    title: 'missile-command — replace the raw requestAnimationFrame loop (src/main.ts:71/74) with @shared/loop createLoop and route the canvas mount through @shared/host-helpers; the sim already uses @shared/rng, so no determinism-sequence change is expected — pin it anyway'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: SH3-4
+    title: 'pac-man — adopt @shared/host-helpers mount + @shared/view letterbox for the DPR/resize handling in src/shell/layout.ts; fold the player-pause path onto @shared/pause ONLY IF core/mode.ts `paused` is player-pause and not ghost scatter/chase mode-state (verify first — reuse-first, do not force a false match)'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: SH3-5
+    title: 'Orchestrator guard (tests/) — a topology test that fails when a plugin re-declares a shared primitive outside src/shared (the mulberry32 magic 0x6d2b79f5, and the canvas-mount/audio-unlock boilerplate host-helpers owns), so a future straggler cannot silently fork extracted code again'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
