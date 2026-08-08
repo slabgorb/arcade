@@ -1125,7 +1125,7 @@ stories:
     title: Sprint/epic YAML comment refs of the form <file>.ts:<line> go stale with no gate to catch them — decide scope and convert (descoped from jt9-30, test-comments-only)
     points: 3
     priority: p3
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
     type: chore
@@ -1133,7 +1133,7 @@ stories:
     title: Adopt the shared dynamic-load helper across the 7 remaining joust test files that still swallow every import failure (and consider tightening isModuleNotFound to a top-level-only resolution failure)
     points: 3
     priority: p2
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
     type: chore
@@ -1142,7 +1142,7 @@ stories:
     description: Filed by jt9-39's finish (2026-08-06). difficulty-wiring.test.ts:819 checks a wired row's ROW_DISPOSITION.consumer field is truthy PROSE only; jt9-39's auditDispositions() now proves a consumer literal EXISTS in core, but the prose string (e.g. 'enemy.dumbWingbeat (LINET's lava-troll looker reload, JOUSTRV4.SRC:3727)') is still unverified against its cited ROM line. Pin each consumer string's JOUSTRV4.SRC:NNNN against docs/rom-study/claims/ (the citations suite idiom), so a wrong ROM cite reddens. Non-blocking; guard-only.
     points: 2
     priority: p3
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
     type: refactor
@@ -1151,7 +1151,7 @@ stories:
     description: 'Coverage gap surfaced by the jt9-42 review mutation battery. Mutant M-C — `trollProcess`s hand entity X changed from `birdPosX(victim) ?? TROLL_CLIF5_X` to a constant `TROLL_CLIF5_X` — SURVIVED (all 7 jt9-42 tests green). The code is CORRECT (jt9-42 shipped `birdPosX` for both player and enemy victims); only the ENEMY-victim hand-track X is unpinned. jt9-11 AC-2 pins the player-victim hand-track (LT1HT, JOUSTRV4.SRC:1606-1665); add the enemy analogue: stage a rising troll bound to an enemy victim at a known X, step, assert `troll.entity.posX === enemyX + TROLL_X_OFFSET`. Low/cosmetic (rise-animation X only); reachability rides insertTroll by id, not the hand X.'
     points: 1
     priority: p3
-    status: backlog
+    status: done
     repos: arcade
     workflow: trivial
     type: chore
