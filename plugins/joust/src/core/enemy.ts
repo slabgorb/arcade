@@ -1473,13 +1473,27 @@ export function stepEnemyDetailed(
   let decision: Decision
   const lava = homed.pjoy?.kind === 'lava' ? homed.pjoy : null
   if (lava !== null && !(lava.entry === 'BOLAV1' && lavaRecheckExits(homed))) {
-    // BOLAV2 (:3958-3961) COASTS (`CLRB`) and arms BOLAV1; a BOLAV1 that did NOT
-    // exit falls into BOLAVA (:3953-3956) — FLAPS (`LDB #1`) and arms BOLAV2.
-    // Target-blind: `dir` is the BODIR facing (`homed.facing`), no player read.
-    const flap = lava.entry === 'BOLAV1'
-    const entry: 'BOLAV2' | 'BOLAV1' = lava.entry === 'BOLAV2' ? 'BOLAV1' : 'BOLAV2'
-    settled = { ...homed, pjoy: { kind: 'lava', entry } }
-    decision = { dir: homed.facing, flap }
+    if (!homed.entity.airborne) {
+      // jt9-54 — the lava episode is AIRBORNE-ONLY, and HOLDS when grounded, like
+      // the `steerWake` look-ahead it rides beside (`if (!entity.airborne) return
+      // held`). BOLAVA is entered only by the divert gate (`lavaGateFires`), which
+      // requires a falling — hence airborne — bird, so a grounded enemy is never in
+      // it. Without this a grounded enemy carrying a stale BOLAV1 lava pjoy at/below
+      // the lava line FLAPS (`LDB #1`) and launches itself off the ground. Not
+      // reachable in normal play (no platform sits at `pixelY >= $D3` and BOLAVA is
+      // absent from the demo seeds) — a defensive boundary invariant. Hold: coast
+      // (no flap), keep the facing and the episode pointer, advance nothing.
+      settled = homed
+      decision = { dir: homed.facing, flap: false }
+    } else {
+      // BOLAV2 (:3958-3961) COASTS (`CLRB`) and arms BOLAV1; a BOLAV1 that did NOT
+      // exit falls into BOLAVA (:3953-3956) — FLAPS (`LDB #1`) and arms BOLAV2.
+      // Target-blind: `dir` is the BODIR facing (`homed.facing`), no player read.
+      const flap = lava.entry === 'BOLAV1'
+      const entry: 'BOLAV2' | 'BOLAV1' = lava.entry === 'BOLAV2' ? 'BOLAV1' : 'BOLAV2'
+      settled = { ...homed, pjoy: { kind: 'lava', entry } }
+      decision = { dir: homed.facing, flap }
+    }
   } else {
     // A BOLAV1 re-check that clears the lava (`BOLAV4`) drops `PJOY,U` and falls
     // through to `[DSMART,X]` — the brains re-decide THIS wake. A non-lava wake
