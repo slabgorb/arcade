@@ -42,7 +42,7 @@ export interface Explosion {
 /** Explosion diameter / lifetime index — EXDONE, `W3COMN.MAC:225` (physical, `27.`). */
 export const EXDONE = 27
 
-/** Peak blast radius — the OLDRAD table maximum, `W3MAIN.MAC:906` (logical, phys 1917). */
+/** Peak blast radius — the OLDRAD table maximum, `W3MAIN.MAC:1917` (physical) — matching the table's own cite above and the MC-OLDRAD-PEAK claim (not logical 906, which is the PREXPL routine start at phys 1811). */
 export const MAX_BLAST_RADIUS = 13
 
 // OLDRAD — the byte-exact radius-vs-time table from PROCESS EXPLOSIONS (PREXPL),
@@ -81,10 +81,17 @@ function oldradIndex(exp: Explosion): number {
  */
 export function blastRadius(exp: Explosion): number {
   const idx = oldradIndex(exp)
-  return idx >= EXDONE ? 0 : OLDRAD[idx]
+  // A live blast is idx in [0, EXDONE). Clamp BOTH bounds: a negative or NaN t (a
+  // hand-built Explosion — the interface carries no invariant on t) would otherwise
+  // read OLDRAD[<0] / OLDRAD[NaN] = undefined and flow NaN into render's ctx.arc.
+  // `idx < 0` alone misses NaN (all NaN comparisons are false), so test the valid
+  // range positively.
+  return idx >= 0 && idx < EXDONE ? OLDRAD[idx] : 0
 }
 
-/** True once the blast's OLDRAD index has reached EXDONE (expanded then collapsed). */
+/** True once the blast is not a live, growing blast — its OLDRAD index has reached
+ *  EXDONE (expanded then collapsed) or is out of the live range for a degenerate t. */
 export function isExplosionDone(exp: Explosion): boolean {
-  return oldradIndex(exp) >= EXDONE
+  const idx = oldradIndex(exp)
+  return !(idx >= 0 && idx < EXDONE)
 }
