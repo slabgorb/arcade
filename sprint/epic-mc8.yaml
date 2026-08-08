@@ -51,7 +51,32 @@ stories:
     title: Parametric drones + full event wiring (bonusTick, whoop, end-game, bonus-city, low-ammo, cruise/Sputnik drone sweep)
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     depends_on: mc8-2
+    completed: '2026-08-08'
+    review_verdict: approved
+  - id: mc8-5
+    title: Wire the cruise/Sputnik parametric drone LIVE TRIGGER (CMSNON/STSNON gated by CRMONS) — mc8-4 built the sweeping drone voice; this starts/stops it from on-screen cruise-missile & Sputnik threats. BLOCKED until mc5 adds those enemies to core.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: mc8-6
+    title: SLAM/tilt blip (SLMSND, W3SOUN:262) — the cabinet tilt-switch sound. No tilt input exists in the browser clone (no source), so this is filed for completeness and may be won't-do; needs a tilt/slam input decision first.
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+  - id: mc8-7
+    title: "Bonus-city cue timing: sound BN/SBONUS when the bonus city is GRANTED at wave-end regen (W3MAIN:4845), not at the mid-play score-threshold crossing. mc8-4's playEdgeCues fires on bonusCitiesEarned++ (the ruled mechanism), which can sound ~a wave early when a kill crosses the threshold during play. Faithful fix keys the cue to the between-wave city grant."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor

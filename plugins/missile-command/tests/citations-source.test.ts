@@ -220,6 +220,11 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // LSCORM:LSCORH). Its claim values are real numeric intervals, so it joins the
     // exemption and is pinned by the mc4-5 BCD-consistency block below.
     'BONINL',
+    // mc8-4: TOP is the cruise/Sputnik drone pitch-sweep bound table — `.BYTE 70,30,30`
+    // (A35820.1C:355), real ROM bytes (0x70 Sputnik ceiling, 0x30 Cruise/Both) that
+    // core/drone.droneSweep uses directly. Same shape as the mc8-2 SOUND sequences above;
+    // the byte checker pins each value to line 355.
+    'TOP',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an

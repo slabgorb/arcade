@@ -19,6 +19,8 @@ completed_epics:
   - pm2
   - mc3
   - pm3
+  - ad1
+  - jt9
 completed_stories:
   - id: jt9-11
     epic: jt9
@@ -963,5 +965,185 @@ completed_stories:
   - id: mc4-4
     epic: mc4
     title: 'Compose waves into stepGame, HUD wave/multiplier readout, and a seeded multi-wave playthrough'
+    points: 3
+    completed: '2026-08-08'
+  - id: mc8-4
+    epic: mc8
+    title: Parametric drones + full event wiring (bonusTick, whoop, end-game, bonus-city, low-ammo, cruise/Sputnik drone sweep)
+    points: 5
+    completed: '2026-08-08'
+  - id: ad1-1
+    epic: ad1
+    title: star-wars self-play attract demo — fly the TIE wave unattended, then opt into the lobby carousel
+    points: 0
+    completed: '2026-08-08'
+  - id: ad1-2
+    epic: ad1
+    title: battlezone self-play attract demo — drive and duel unattended behind the attract text, then opt in
+    points: 1
+    completed: '2026-08-01'
+  - id: ad1-4
+    epic: ad1
+    title: joust attract simulation — wire GOVER_ATTRACT (0x7f), the ROM's game-SIMULATION mode, then opt in
+    points: 0
+    completed: '2026-08-08'
+  - id: ad1-5
+    epic: ad1
+    title: red-baron attract demo — then flip listed+showcase in its own manifest (both ship false today with a recorded reason)
+    points: 0
+    completed: '2026-08-08'
+  - id: ad1-6
+    epic: ad1
+    title: red-baron's tile promises Mouse and Click controls that were never implemented
+    points: 0
+    completed: '2026-08-08'
+  - id: ad1-7
+    epic: ad1
+    title: battlezone's demoInput autopilot has never been checked against the 1980 ROM's own attract choreography
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-1
+    epic: jt9
+    title: 'PJOY,U is an ENTRY ADDRESS: a glide wake skips LINET''s promotion check and its lava-troll looker'
+    points: 8
+    completed: '2026-08-02'
+  - id: jt9-2
+    epic: jt9
+    title: 'Test-hygiene sweep: move the 27 joust suites carrying a local loadClaims/claimCovers onto tests/helpers/claims.ts (the line-ref half is disposed — uf1-9 did it; remainder is jt9-30)'
+    points: 2
+    completed: '2026-08-02'
+  - id: jt9-3
+    epic: jt9
+    title: Pin the three wing-cue invariants jt5-3 shipped unguarded
+    points: 3
+    completed: '2026-08-03'
+  - id: jt9-4
+    epic: jt9
+    title: The bake's synth-spec gate is itself unguarded — only the missing-outDir throw is pinned
+    points: 2
+    completed: '2026-08-03'
+  - id: jt9-5
+    epic: jt9
+    title: 'framesFor edge cases: an odd token count is silently dropped, and an invention cue reports the wrong bake error'
+    points: 2
+    completed: '2026-08-03'
+  - id: jt9-6
+    epic: jt9
+    title: An unarbitrated cue sharing the arbitrated voice's channel silences it without releasing its window
+    points: 2
+    completed: '2026-08-03'
+  - id: jt9-7
+    epic: jt9
+    title: CHANNELS is vestigial for arbitrated cues — three stories have now fed a map that routes nothing
+    points: 2
+    completed: '2026-08-03'
+  - id: jt9-9
+    epic: jt9
+    title: 'The egg lifecycle in ONE re-baseline: an EGGWT wait, a hatching uncollected KILL egg, and EGGSCR scored to the victor on the kill'
+    points: 7
+    completed: '2026-08-03'
+  - id: jt9-10
+    epic: jt9
+    title: 'MERGED INTO jt9-9 — Egg score on the KILL — EGGSCR has two call sites and our port models only one. grep JSR EGGSCR in JOUSTRV4.SRC returns :3006 and :3021; jt8-4 wired :3021 (PLYEGG, the catch). The other is inside DEATH3: when a killed enemy transferred egg count decrements to zero (STA PEGG,Y / DEC PEGG,Y YOU CAN ONLY SQUEEZE SO MUCH BLOOD FROM AN EGG / BNE 1$, :3000-3002) the ROM does TFR Y,X / LDU ,S GET VICTORS WORKSPACE / BEQ 1$ / JSR EGGSCR SCORE EGG (:3003-3006), so an enemy LAST egg is scored to the victor immediately on the kill, bumping the DEGGS ladder with no catch required. Our port implements the decrement (spawnEgg eggsLeft minus 1, egg.ts:141) and treats eggsLeft zero as permadeath where hatchEgg returns null (egg.ts:273-275), but nothing ever scores it, so both the award and its ladder bump are silently dropped in play. Also makes JT84-003 incomplete, which states the collision IS the scoring trigger and there is no separate pickup step. Note the victor guard: BEQ skips when U is zero (a lava death has no victor). Filed by Reviewer on jt8-6 (round 2)'
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-12
+    epic: jt9
+    title: 'MERGED INTO jt9-9 (egg rows) and jt9-11 (troll rows) — joust DYTBL egg-wait and lava-troll rows — wire EGGWT/EGGWT2 and LAVTIM/LAVGRA (4 rows, blocked on the troll grip)'
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-13
+    epic: jt9
+    title: 'MERGED INTO jt9-25 — posOffset decodes a high-bit POSOFF word as +255 instead of -1 — latent until anything draws EGGB2/EGGB3'
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-19
+    epic: jt9
+    title: 'MERGED INTO jt9-18 — joust PPVELX — homingWake compares the LIVE velocity index where the ROM snapshots it at the decide'
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-21
+    epic: jt9
+    title: Vertical look-ahead — the overhead-cliff checks gating the UP-seek arms are unmodelled (:4030-4034, :4259-4262, :4418-4422)
+    points: 3
+    completed: '2026-08-08'
+  - id: jt9-25
+    epic: jt9
+    title: 'EGGTBL is the egg''s animation driver — the third table in the block jt8-7 read, plus the signed-POSOFF decoder fix it cannot ship without'
+    points: 6
+    completed: '2026-08-04'
+  - id: jt9-27
+    epic: jt9
+    title: 'MERGED INTO jt9-26 — demo.ts cites the REAL-PLAY block for EGGS1/EGGS2 from the module that IS the demo'
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-33
+    epic: jt9
+    title: 'MERGED INTO jt9-31 — audio-transporter-split''s load() swallows every import failure and returns {} — the manifest now throws at import, so a real failure arrives as undefined fields'
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-34
+    epic: jt9
+    title: 'MERGED INTO jt9-32 — audio-manifest''s two new throws are pinned only as SUBSTRINGS - vitest''s toThrowError(string) is includes(), so appended text ships green'
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-36
+    epic: jt9
+    title: 'MERGED INTO jt9-28 — Eight stale seventeen-cue counts in joust''s audio comments — the manifest has been eighteen since jt5-6'
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-37
+    epic: jt9
+    title: 'MERGED INTO jt9-28 — jt9-7''s three prose guards pass on a reworded falsehood, a decoyed wrong count and an INVERTED claim — four novel mutants survived 2548 tests'
+    points: 0
+    completed: '2026-08-08'
+  - id: jt9-38
+    epic: jt9
+    title: The egg wave deals TWELVE eggs and hatches WENEMY at a time — port the ROM's egg density (:2778-2822) and the NENEMY/WENEMY hatch gate (:3238-3242)
+    points: 5
+    completed: '2026-08-03'
+  - id: jt9-40
+    epic: jt9
+    title: The egg wave's TWO pre-mature hatchings — PWHCH shortens two of the twelve eggs' waits by a VRAND draw
+    points: 3
+    completed: '2026-08-04'
+  - id: jt9-52
+    epic: jt9
+    title: harden the two voice-release mutants jt9-35 shipped without — tick-expiry release (B1) and stopChannel :222 guard-widening (B2)
+    points: 2
+    completed: '2026-08-05'
+  - id: jt9-55
+    epic: jt9
+    title: Sprint/epic YAML comment refs of the form <file>.ts:<line> go stale with no gate to catch them — decide scope and convert (descoped from jt9-30, test-comments-only)
+    points: 3
+    completed: '2026-08-08'
+  - id: jt9-56
+    epic: jt9
+    title: Adopt the shared dynamic-load helper across the 7 remaining joust test files that still swallow every import failure (and consider tightening isModuleNotFound to a top-level-only resolution failure)
+    points: 3
+    completed: '2026-08-08'
+  - id: jt9-57
+    epic: jt9
+    title: Pin ROW_DISPOSITION consumer prose against its ROM cite
+    points: 2
+    completed: '2026-08-08'
+  - id: jt9-58
+    epic: jt9
+    title: pin the lava-troll hand-track X for an ENEMY victim (jt9-42 M-C coverage gap)
+    points: 1
+    completed: '2026-08-08'
+  - id: jt9-59
+    epic: jt9
+    title: 'Faithfully defer wave-ptero creation: spawn pteros one at a time (PTERWV SECCR) instead of nap-staggering already-present ones (jt9-45 follow-up)'
+    points: 3
+    completed: '2026-08-08'
+  - id: jt9-60
+    epic: jt9
+    title: 'Port SHDIRA for the HUNTING shadow: SHLEP/SHDIRB also spend PBUMPX'
+    points: 2
+    completed: '2026-08-08'
+  - id: jt9-61
+    epic: jt9
+    title: 'Bump-facing reads PBUMPX pre-drain: small shoves (<=3) currently lost'
     points: 3
     completed: '2026-08-08'

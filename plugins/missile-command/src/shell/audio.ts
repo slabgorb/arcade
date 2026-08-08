@@ -29,6 +29,7 @@
 
 import { SOUNDS, AUDCTL, type SoundLabel } from '../core/sound-tables.js'
 import { expandSound } from '../core/modsnd.js'
+import { droneSweep, type DroneKind } from '../core/drone.js'
 
 // The one-shot cues mc8-2 can voice, each mapped to its lifted W3SOUN table.
 export type SoundName =
@@ -42,8 +43,9 @@ export type SoundName =
   | 'low'
 
 // Sustained cues — running until stopped. `drone` is the cruise/Sputnik descending
-// drone; mc8-2 owns only its start/stop LIFECYCLE (so the edge-silence AC is
-// provable), its parametric pitch sweep lands in mc8-3.
+// drone; mc8-2 owns only its start/stop LIFECYCLE (so the edge-silence AC is provable).
+// mc8-4 adds its parametric pitch sweep (`feedDrone`, from core/drone.droneSweep); the
+// LIVE TRIGGER that starts it from on-screen cruise/Sputnik threats is mc8-5.
 export type LoopName = 'drone'
 
 export interface AudioEngine {
@@ -55,6 +57,10 @@ export interface AudioEngine {
   startLoop(name: LoopName): void
   // Stop a sustained cue. Harmless when not running or pre-gate.
   stopLoop(name: LoopName): void
+  // mc8-4: drive the running drone's parametric pitch for sweep frame `frame` of `kind`
+  // (feeds AUDF1+6 the core sweep value). A no-op when the drone is not running / pre-gate.
+  // The caller that decides WHEN the drone runs (cruise/Sputnik presence) is mc8-5.
+  feedDrone(frame: number, kind: DroneKind): void
 }
 
 // SoundName -> the lifted W3SOUN table it plays (spike event map).
@@ -158,14 +164,22 @@ export function createAudioEngine(): AudioEngine {
     },
 
     startLoop(name: LoopName): void {
-      // mc8-2 lifecycle only: track that the drone is meant to be running. Its
-      // parametric per-frame sweep (the actual sound) is mc8-3; here start/stop
-      // exist so the game-over edge can silence it (audio-dispatch.updateSustainedSounds).
+      // mc8-2 stood up the lifecycle: track that the drone is meant to be running, so the
+      // game-over edge can silence it (audio-dispatch.updateSustainedSounds). mc8-4 adds
+      // the per-frame sweep the running drone plays (feedDrone below).
       running.add(name)
     },
 
     stopLoop(name: LoopName): void {
       running.delete(name)
+    },
+
+    feedDrone(frame: number, kind: DroneKind): void {
+      // Only a running drone makes sound; before the gesture gate there is no worklet, so
+      // feed() is a silent no-op there too (the no-throw contract). AUDF1+6 is register
+      // index 6 (voice-4 pitch); the swept value is the pure core sweep (core/drone.ts).
+      if (!node || !ctx || !running.has('drone')) return
+      feed([6, droneSweep(frame, kind), ctx.currentTime])
     },
   }
 }
