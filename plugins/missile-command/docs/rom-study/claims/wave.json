@@ -229,5 +229,27 @@
       "line": 207,
       "verbatim": "ICSPDL:\t.BLKB 1\t\t\t;ICBM SPEED (FRAMES BEFORE UPDATE)(FRACTION)"
     }
+  },
+  {
+    "id": "MC-CITYBON",
+    "symbol": "CITYBON",
+    "value": 4,
+    "meaning": "End-of-wave CITY BONUS: a saved city is worth 4 ICBM-point units. ENDWV4 (TALLY CITIES) calls ICMUL2 with LDX I,3, and ICMUL2's MIEND loop runs while X>=0, so the per-ICBM value (ICBPTS) is added 4 times per surviving city. Value is the LDX immediate (3, hex) + 1 for the inclusive loop; the cited line's own comment reads \"4 ICBM POINTS/CITY\". At the base multiplier that is 4 x 25 = 100 pts/city.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 4423,
+      "verbatim": "\tLDX I,3\t\t\t;4 ICBM POINTS/CITY"
+    }
+  },
+  {
+    "id": "MC-ABMBON",
+    "symbol": "ABMBON",
+    "value": 5,
+    "meaning": "End-of-wave UNUSED-MISSILE BONUS: 5 points per ABM left in a magazine. ENDWV2 calls ABMADD per unused ABM; ABMADD adds the immediate 5 to the bonus triple once per SMULTI (skill/score multiplier), so the base rate is 5 pts/unused ABM. Value is the LDA I,5 immediate.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5451,
+      "verbatim": "\tLDA I,5"
+    }
   }
 ]

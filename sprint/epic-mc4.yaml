@@ -28,7 +28,8 @@ stories:
     description: "The wave loop. When the wave's ICBM budget is exhausted and the screen is clear of enemies, the wave ends and resolves: tally the end-of-wave CITY BONUS (per surviving city) and the UNUSED-MISSILE BONUS (per remaining ABM in the magazines), regenerate destroyed cities up to the cabinet cap, refill each live base's ammo, then advance to the next wave and re-seed its attack from the mc4-1 schedule. (a) src/core/wave.ts / state.ts (change) — add the wave-end detection and the bonus/regen/advance reducer; extend Phase with the between-wave beat if needed (the full attract/pause machine is still mc6). (b) claims — new claims for the city-bonus and unused-missile bonus point values and the city-regeneration cap (cite CITY BONUS W3MAIN.MAC:4323 and REGENERATE CITIES W3MAIN.MAC:4765, both logical). Depends on mc4-1."
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     acceptance_criteria:

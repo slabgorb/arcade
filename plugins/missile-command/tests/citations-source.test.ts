@@ -207,6 +207,10 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // consistency block below.
     'EX1', 'EX2', 'EX3', 'EX4', 'LA5', 'LA6', 'TK1', 'TK2', 'BN1', 'BN2',
     'WP1', 'WP2', 'LO7', 'LO8', 'XX1', 'XX2', 'XX3', 'XX4', 'NS7', 'NS8',
+    // mc4-2: the end-of-wave bonus rates are INSTRUCTION-site claims (like ICBPTS'
+    // `ADC I,25`) whose numeric value is the immediate operand — CITYBON derived as
+    // operand+1 for ICMUL2's inclusive MIEND loop. Pinned in the mc4-2 block below.
+    'CITYBON', 'ABMBON',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -284,6 +288,31 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
         `${c.id}: claimed value ${c.value} must be a real ${c.symbol} entry of "${c.source.verbatim}"`,
       ).toContain(Number(c.value))
     }
+  })
+
+  // mc4-2: the two end-of-wave bonus rates are instruction-site claims. Like the
+  // wave tables above, the DERIVED exemption lets them carry numeric values; this
+  // block is what keeps that from being a hole — each value must decode from the
+  // immediate operand of its own cited instruction (CITYBON via ICMUL2's inclusive
+  // MIEND loop, so operand + 1). Radix-16 immediates (single hex digit here).
+  it('mc4-2: the bonus-rate claim values decode from their cited instruction operands', () => {
+    const by = new Map(loadClaims().map((c) => [c.symbol, c]))
+    const immediate = (verbatim: string): number => {
+      const m = verbatim.match(/\bI,([0-9A-F]+)\b/) // the `#immediate` operand
+      expect(m, `no immediate operand in "${verbatim}"`).not.toBeNull()
+      return decodeRadix16(m![1])
+    }
+    const abm = by.get('ABMBON')
+    const city = by.get('CITYBON')
+    expect(abm, 'MC-ABMBON must be committed').toBeTruthy()
+    expect(city, 'MC-CITYBON must be committed').toBeTruthy()
+    // ABMBON: 5 IS the `LDA I,5` immediate (ABMADD adds it once per SMULTI).
+    expect(immediate(abm!.source.verbatim), 'ABMBON is the LDA I,5 immediate').toBe(5)
+    expect(abm!.value, 'MC-ABMBON value').toBe(5)
+    // CITYBON: `LDX I,3` counts X down through 0 (ICMUL2's MIEND, BPL), so the
+    // per-ICBM value is added operand+1 = 4 times per city.
+    expect(immediate(city!.source.verbatim) + 1, 'CITYBON is LDX operand + 1 (inclusive loop)').toBe(4)
+    expect(city!.value, 'MC-CITYBON value').toBe(4)
   })
 
   it('mc8-2: every W3SOUN sound-table claim value is a real byte of its cited .BYTE line', () => {
