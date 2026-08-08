@@ -37,6 +37,7 @@ import { dirname, join } from 'node:path'
 import { NCITY, NMISBA, CITIES, BASES } from '../src/core/field.js'
 import { HMIN, HMAX, VMIN, VMAX } from '../src/core/cursor.js'
 import { EXDONE } from '../src/core/explosion.js'
+import { ICNORM_CAP } from '../src/core/spawn.js'
 import { loadClaims } from './helpers/claims.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -375,6 +376,10 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     expect(m, `no immediate operand in "${cap!.source.verbatim}"`).not.toBeNull()
     expect(decodeRadix16(m![1]), 'ICNORM_CAP is the CPX I,4 immediate').toBe(4)
     expect(cap!.value, 'MC-ICNORM-CAP value').toBe(4)
+    // Bind the SHIPPED export to the claim (reviewer LOW): without this, a
+    // drifted spawn.ts ICNORM_CAP (e.g. 5) passes the whole citations suite and
+    // only behavior tests catch it.
+    expect(ICNORM_CAP, 'core export ICNORM_CAP must equal the claimed value').toBe(cap!.value)
   })
 
   // mc4-5: BONINL is a `.WORD` interval table read AS BCD (CHEKBO's SED divide) and

@@ -6,7 +6,7 @@
 // Sputnik/bomber's headroom clamp is always <= 0 and the plane never fires.
 //
 // ─── GROUND TRUTH (REV-01, vendored reference/source/) ───────────────────────
-// `ICNORM` (.SBTTL at W3MAIN.MAC:2439, body W3MAIN.MAC:2457-2510) computes the
+// `ICNORM` (ICNORM: label at W3MAIN.MAC:2439, body W3MAIN.MAC:2457-2510) computes the
 // normal launch count for ONE cycle:
 //
 //   launches = min( MXICON − 2·CRMONS − ICBONS − (plane active ? 1 : 0),
@@ -17,7 +17,7 @@
 //
 //   MXICON = 7    W3COMN.MAC:193  (claim MC-MXICON, already committed)
 //   CRMONS        W3MAIN.MAC:271  — cruise missiles on screen, subtracted TWICE
-//                                   (SBC CRMONS … SEC … SBC CRMONS, W3MAIN.MAC:2457-2463)
+//                                   (SBC CRMONS … SEC … SBC CRMONS, W3MAIN.MAC:2459-2463)
 //   ICBONS        W3MAIN.MAC:119  — ICBMs on screen
 //   PLCPV         W3MAIN.MAC:331  — plane presence: an active plane reserves a
 //                                   slot ("PLANE COUNTS AS A POTENTIAL BANG",
@@ -139,7 +139,7 @@ describe('mc5-5 — ICNORM caps each launch cycle at 4, not fill-to-MXICON', () 
 
   it('the wave budget still clamps below the cap (budget 3 < cap 4 ⇒ 3)', async () => {
     // Preservation pin (already true of the mc3 code): min(…, ICBTOL/remaining)
-    // survives the mc5-5 rewrite — W3MAIN.MAC:2481-2484 "MAX AT ICBTOL".
+    // survives the mc5-5 rewrite — W3MAIN.MAC:2483-2487 "MAX AT ICBTOL".
     const { spawnIcbms } = await loadSpawn()
     const r = spawnIcbms([], TARGETS, 3, createRng(1))
     expect(r.icbms.length).toBe(3)

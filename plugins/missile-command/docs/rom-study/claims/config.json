@@ -102,7 +102,7 @@
     "id": "MC-ICNORM-CAP",
     "symbol": "ICNORM_CAP",
     "value": 4,
-    "meaning": "ICNORM per-cycle launch cap = 4 ('MAX AT 4'). One normal launch cycle fires at most 4 ICBMs: CPX I,4 / IFCS ;MAX AT 4 / LDX I,4 (W3MAIN.MAC:2475-2479), inside ICNORM (.SBTTL W3MAIN.MAC:2439). Value is the CPX immediate operand 4. Instruction-site claim (non-EQU), like ICBPTS/EXPLCT.",
+    "meaning": "ICNORM per-cycle launch cap = 4 ('MAX AT 4'). One normal launch cycle fires at most 4 ICBMs: CPX I,4 / IFCS ;MAX AT 4 / LDX I,4 (W3MAIN.MAC:2475-2479), inside ICNORM (ICNORM: label at W3MAIN.MAC:2439). Value is the CPX immediate operand 4. Instruction-site claim (non-EQU), like ICBPTS/EXPLCT.",
     "source": {
       "file": "W3MAIN.MAC",
       "line": 2475,
