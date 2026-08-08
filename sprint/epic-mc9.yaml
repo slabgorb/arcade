@@ -43,7 +43,8 @@ stories:
     description: "The blast, for real. mc1's blast is a symmetric-triangle placeholder from two cited constants; this ports the exact per-tick OLDRAD radius curve and the EXPFRA growth/collapse cadence from PROCESS EXPLOSIONS (W3MAIN.MAC:1811). This is the ONE core touch in mc9: blastRadius() in src/core/explosion.ts moves from the triangle approximation to the cited OLDRAD curve, backed by a new claim (the OLDRAD table / EXPFRA cadence, byte-exact REV-01) so citations.test.ts and the AC3 guard stay green. Also render authentic missile trails (DRAW MISSILE, W3DSUP.MAC:1221) — the ABM/ICBM trail styling the cabinet uses. Depends on mc3; coordinate with mc4 only if both edit explosion.ts."
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
