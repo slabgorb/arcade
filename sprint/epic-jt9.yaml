@@ -1114,10 +1114,13 @@ stories:
     description: 'Found by Reviewer (Thought Police) during jt9-22 review. jt9-22 ported the BOLAVA lava-avoid episode as a PjoyState in stepEnemyDetailed, but stepEnemyDetailed runs homingWake(enemy, target) UNCONDITIONALLY at the top of every wake (enemy.ts, the BOLEVB model, JOUSTRV4.SRC:3939-3945: DEC PRDIR / on wrap COM PFACE). The ROM does NOT run BOLEVB on a lava wake: BOLAVA (:3953) / BOLAV2 (:3958) / BOLAV1-flap all `BRA BODIR3` (:3956/3961), and BODIR3 is :3946 (`JMP BODIR`), which is REACHED PAST the BOLEVB complement block at :3939-3945. Only the level-flight path (BOLEV1/BOFAST/BOLEVA) falls INTO BOLEVB. Confirmed against source. Effect in the port: on a lava wake the homing throttle still DECs PRDIR and can COM PFACE (spuriously reversing the facing mid-episode; the seed fixtures wrap PRDIR to 0xff on the 2nd lava wake -> a flip). Impact is LOW and second-order: it perturbs only the HORIZONTAL facing/reversal cadence during a (rare, short) BOLAVA episode, not the flap/escape that jt9-22 pins. Fix: guard homingWake (or the divert/hold path) so a lava-pjoy wake does not run BOLEVB, matching BOLAVA BRA BODIR3. Related low observation for the same story: the lava-hold branch in stepEnemyDetailed does not re-check entity.airborne (unlike steerWake) - a grounded enemy carrying a lava pjoy would oscillate flap/coast and could take off; verified not reachable in normal play (no platform sits at pixelY >= $D3, and BOLAVA does not fire in the demo seeds), but worth a cheap airborne guard while here.'
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-08'
     type: bug
+    review_verdict: approved
   - id: jt9-55
     title: Sprint/epic YAML comment refs of the form <file>.ts:<line> go stale with no gate to catch them — decide scope and convert (descoped from jt9-30, test-comments-only)
     points: 3
