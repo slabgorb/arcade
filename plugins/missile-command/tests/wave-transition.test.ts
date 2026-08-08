@@ -271,6 +271,30 @@ describe('mc4-2 AC3 — city regeneration up to the cap', () => {
     expect(aliveCount(out)).toBe(4)
   })
 
+  // Review round 1 (Heimdall), mutant M6: every fixture above kills the LOWEST
+  // indices, so "revive first-N dead" and "revive first-N regardless" are
+  // indistinguishable. This kills a dropped `!c.alive` guard by putting the dead
+  // cities at the TOP of the array — reviving first-N-regardless would flip the
+  // already-live low indices and leave the high ones dead (aliveCount 3, not 6).
+  it('revives only DEAD cities — a top-half-dead board resurrects THOSE cities, not the first N by index', async () => {
+    const { regenerateCities } = await loadWave()
+    const out = regenerateCities(killCities(cities(), 3, 4, 5), NCITY)
+    expect(aliveCount(out)).toBe(6)
+    expect(out[3].alive).toBe(true)
+    expect(out[4].alive).toBe(true)
+    expect(out[5].alive).toBe(true)
+  })
+
+  // Review round 1 (Heimdall), mutant M5: with a fixed six-city array the array
+  // length already bounds the count, so the default-cap "huge reserve" test never
+  // exercises `min(reserve, cap)` as the binding limit. An EXPLICIT cap below the
+  // dead count makes the cap bite — dropping it would revive all six.
+  it('an explicit cap below the dead count is the binding limit — cap 4 over a dead board revives exactly four', async () => {
+    const { regenerateCities } = await loadWave()
+    const out = regenerateCities(allCitiesDead(), 100, 4)
+    expect(aliveCount(out)).toBe(4)
+  })
+
   it('a zero reserve regenerates nothing — survivors are untouched, no free city', async () => {
     const { regenerateCities } = await loadWave()
     const before = killCities(cities(), 0, 1, 2) // 3 alive
