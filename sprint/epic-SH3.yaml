@@ -31,10 +31,12 @@ stories:
     title: 'pac-man — adopt @shared/host-helpers mount + @shared/view letterbox for the DPR/resize handling in src/shell/layout.ts; fold the player-pause path onto @shared/pause ONLY IF core/mode.ts `paused` is player-pause and not ghost scatter/chase mode-state (verify first — reuse-first, do not force a false match)'
     points: 3
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-08'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-08'
+    review_verdict: approved
   - id: SH3-5
     title: 'Orchestrator guard (tests/) — a topology test that fails when a plugin re-declares a shared primitive outside src/shared (the mulberry32 magic 0x6d2b79f5, and the canvas-mount/audio-unlock boilerplate host-helpers owns), so a future straggler cannot silently fork extracted code again'
     points: 2
