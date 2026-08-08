@@ -92,10 +92,12 @@ stories:
     description: 'Scoring fidelity, surfaced by mc4-3 review (TEA + Reviewer). The END-OF-WAVE bonus also scales by the wave multiplier SMULTI in the ROM: ENDWV2 ABMADD adds LDA I,5 once per SMULTI (W3MAIN.MAC:5443/5451), and ENDWV4 city bonus loops the per-ICBM value per SMULTI (ICMUL2). mc4-2 shipped waveEndBonus at the BASE (x1) multiplier and deferred "the ramp"; mc4-3 was rescoped to scoreKills only, so the end-of-wave bonus ramp is currently owned by no story. Generalise waveEndBonus (wave.ts) to scale by scoreMultiplier(wave) from mc4-3. Depends on mc4-3 (scoreMultiplier). May be folded into mc4-4 wiring at the owners discretion.'
     points: 2
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     depends_on: mc4-3
     acceptance_criteria:
       - 'waveEndBonus scales the city bonus and the unused-missile bonus by scoreMultiplier(wave): at wave 1 the values match mc4-2 (base), and a later wave multiplies both by the same SMULTI as scoreKills.'
       - the generalisation cites the ROM (ABMADD W3MAIN.MAC:5451 per SMULTI; ICMUL2 city loop); citations.test.ts and purity.test.ts stay green.
+    review_verdict: approved
