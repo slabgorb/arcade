@@ -24,6 +24,7 @@ import {
   decodeColourLookupFromProm,
   decodeTilePixel,
   decodeSpritePixel,
+  mazeCellOffset,
 } from '../src/shell/gfx-rom.ts'
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -145,6 +146,37 @@ function bakeSprites() {
   console.log(`wrote ${join(outDir, 'sprite-data.ts')} (${sprites.length} sprites)`)
 }
 
+function bakeMaze() {
+  const vram = readFileSync(join(graphicsDir, 'maze-vram.bin')) // 2048 bytes
+  if (vram.length !== 2048) throw new Error(`maze-vram.bin is ${vram.length} bytes, expected 2048`)
+  const TILE_BASE = 0x000 // 0x4000-0x43ff (colour RAM 0x400.. is intentionally unused:
+  //                          the maze is coloured monochrome by cell type — see spec REVISION)
+  const COLS = 28
+  const ROWS = 36
+  const grid = Array.from({ length: ROWS }, (_, sy) =>
+    Array.from({ length: COLS }, (_, sx) => vram[TILE_BASE + mazeCellOffset(sx, sy)]),
+  )
+
+  const body =
+    HEADER +
+    '//\n' +
+    '// Source: reference/graphics/maze-vram.bin (MAME video RAM 0x4000-0x43ff).\n' +
+    '// Unpack: src/shell/gfx-rom.ts mazeCellOffset (MAME pacman_v.cpp:170\n' +
+    '// pacman_scan_rows). Tile INDICES only — the maze is coloured monochrome by\n' +
+    '// core cell type at render time (walls blue, dots/energizers peach), so no\n' +
+    '// colour code is baked (see the pm3-8 spec REVISION).\n\n' +
+    '/** The authentic 28x36 maze tile-index grid [row sy][col sx], unpacked from\n' +
+    ' * the cabinet\'s video RAM. render.ts blits TILES[MAZE_TILES[sy][sx]] recoloured\n' +
+    ' * by cell type. The maze-tilemap test re-derives this and asserts byte-equality.\n' +
+    ' * Retires pm3-4\'s wallTileFor autotiler. */\n' +
+    'export const MAZE_TILES: readonly (readonly number[])[] = [\n' +
+    grid.map((row) => '  [' + row.join(', ') + '],').join('\n') +
+    '\n]\n'
+
+  writeFileSync(join(outDir, 'maze-tilemap-data.ts'), body)
+  console.log(`wrote ${join(outDir, 'maze-tilemap-data.ts')} (${ROWS}x${COLS} tiles)`)
+}
+
 // pm3-6 note: glyph-data.ts (FRUIT_SPRITE/SCORE_SPRITE) is deliberately NOT
 // baked by this tool and has no bake*() function here. Every other module
 // this file writes is re-derivable ROM pixel data (a decode function applied
@@ -157,3 +189,4 @@ function bakeSprites() {
 bakePalette()
 bakeTiles()
 bakeSprites()
+bakeMaze()
