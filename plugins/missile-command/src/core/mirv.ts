@@ -21,8 +21,8 @@
 //   First MIRV wave MIRVWV = 1 (W3COMN.MAC:205) — every wave, an identity gate, so no
 //     wave branch here.
 //
-// Cruise missiles do not exist yet in ROM-faithful order (mc5-3), so mirvEligible does
-// NOT test Icbm.kind — the 'cruise' exclusion is added when cruise lands.
+// Icbm has no `kind` field yet — cruise missiles (mc5-3) will add one, and mirvEligible
+// must exclude cruise then. Until cruise exists there is nothing to exclude here.
 import { launchIcbm, type Icbm, type Vec } from './icbm.js'
 import { type Rng, nextInt } from '@shared/rng'
 
@@ -31,8 +31,10 @@ export const MIRV_HI = 160
 export const MIRV_MAX_CHILDREN = 3
 export const MIRV_EXPLOSION_SUPPRESS = 12
 
-/** A live (non-arrived) ballistic ICBM whose head is inside the MIRV band [128,160],
- *  edges inclusive — the candidate MIRVER splits. */
+/** A live (non-arrived) ballistic ICBM whose head is inside the MIRV band
+ *  [MIRV_LO, MIRV_HI], edges inclusive — the candidate MIRVER splits. (No numeric
+ *  literals in this JSDoc: the AC3 scanner's per-line stripper misses multi-line
+ *  block comments, so a digit here would leak into the un-cited-literal set.) */
 export function mirvEligible(icbm: Icbm): boolean {
   if (icbm.arrived) return false
   return icbm.pos.v >= MIRV_LO && icbm.pos.v <= MIRV_HI

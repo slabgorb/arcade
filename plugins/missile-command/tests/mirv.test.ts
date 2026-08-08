@@ -100,12 +100,14 @@ describe('mc5-1 AC2 — mirvSplit: <=3 children forking from the parent position
     expect(MIRV_MAX_CHILDREN).toBe(3)
   })
 
-  it('emits at most MIRV_MAX_CHILDREN children, each a fresh ballistic warhead at the parent pos', async () => {
+  it('emits EXACTLY MIRV_MAX_CHILDREN children when targets are available, each a fresh ballistic warhead at the parent pos', async () => {
     const { mirvSplit, MIRV_MAX_CHILDREN } = await loadMirv()
     const parent = at(150)
-    const kids = mirvSplit(parent, targets, createRng(7))
-    expect(kids.length).toBeGreaterThan(0)
-    expect(kids.length).toBeLessThanOrEqual(MIRV_MAX_CHILDREN)
+    const kids = mirvSplit(parent, targets, createRng(7)) // 3 targets (>= MIRV_MAX_CHILDREN)
+    // The loop is unconditional and targets are drawn WITH replacement, so the count is
+    // deterministically MIRV_MAX_CHILDREN — pin it exactly (a <=max bound survives a
+    // 1-child mutant; the exact count does not).
+    expect(kids.length).toBe(MIRV_MAX_CHILDREN)
     for (const k of kids) {
       expect(k.origin).toEqual(parent.pos) // forks mid-air FROM the parent's current pos
       expect(k.pos).toEqual(parent.pos)
@@ -113,6 +115,14 @@ describe('mc5-1 AC2 — mirvSplit: <=3 children forking from the parent position
       expect(targets).toContainEqual(k.target) // re-targeted at a LIVE structure
       // (children are ordinary ballistic ICBMs; the `kind` discriminant arrives in mc5-3)
     }
+  })
+
+  it('still emits MIRV_MAX_CHILDREN with a SINGLE live target (drawn with replacement)', async () => {
+    const { mirvSplit, MIRV_MAX_CHILDREN } = await loadMirv()
+    const lone: readonly Vec[] = [{ h: 30, v: 16 }]
+    const kids = mirvSplit(at(150), lone, createRng(9))
+    expect(kids.length).toBe(MIRV_MAX_CHILDREN) // targets are re-drawn each child, not consumed
+    for (const k of kids) expect(k.target).toEqual(lone[0])
   })
 
   it('is deterministic per seed', async () => {

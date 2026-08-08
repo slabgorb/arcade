@@ -182,16 +182,19 @@ export function stepGame(state: GameState): GameState {
   const flownIcbms = spawned.icbms.map(stepIcbm)
   const flownAbms = state.abms.map(stepAbm)
 
-  // MIRV (mc5-1): at most ONE in-band ballistic warhead MIRVs per frame — the ROM
-  // re-arms a single MIRVIX slot to the LAST in-band ICBM found in ICPOSI (STX MIRVIX
-  // overwrites) — and its children fill only OPEN slots up to the MXICON on-screen cap
-  // (W3COMN.MAC:193), so the roster can never exceed MXICON and cannot avalanche.
+  // MIRV (mc5-1): at most ONE in-band ballistic warhead MIRVs per frame — the ROM keeps a
+  // single MIRVIX slot, so only one ICBM splits per tick. We pick the last eligible in
+  // array order (a deterministic choice); we do NOT reproduce the ROM's exact slot-scan
+  // survivor: ICPOSI counts DOWN from the highest slot so ITS survivor is the lowest slot,
+  // and our array index is not the ROM slot index. The faithful, tested invariants are
+  // one-per-frame + the MXICON on-screen cap (W3COMN.MAC:193): children fill only OPEN
+  // slots (MXICON - count), so the roster can never exceed MXICON and cannot avalanche.
   // Suppressed while >= MIRV_EXPLOSION_SUPPRESS explosions are live (EXPLCT, W3MAIN.MAC:1531),
   // read BEFORE this frame's new blasts, so it keys off state.explosions (pre-aging count).
   const openSlots = Math.max(0, MXICON - flownIcbms.length)
   let mirvAt = -1
   if (state.explosions.length < MIRV_EXPLOSION_SUPPRESS && openSlots > 0) {
-    for (let i = 0; i < flownIcbms.length; i++) if (mirvEligible(flownIcbms[i])) mirvAt = i // last in-band wins
+    for (let i = 0; i < flownIcbms.length; i++) if (mirvEligible(flownIcbms[i])) mirvAt = i // one per frame
   }
   const withMirvs =
     mirvAt < 0

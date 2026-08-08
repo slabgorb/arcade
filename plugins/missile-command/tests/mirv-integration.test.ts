@@ -19,8 +19,10 @@ import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { launchIcbm } from '../src/core/icbm.js'
 import { startExplosion, type Explosion } from '../src/core/explosion.js'
 
-// One ballistic ICBM parked mid-descent, squarely inside the MIRV band [128,160].
-const bandIcbm = () => ({ ...launchIcbm({ h: 120, v: 200 }, { h: 40, v: 16 }), pos: { h: 120, v: 150 } })
+// A ballistic ICBM parked mid-descent (V=150), squarely inside the MIRV band [128,160].
+// `h` varies so several distinct in-band ICBMs can coexist in one fixture.
+const bandIcbmAt = (h: number) => ({ ...launchIcbm({ h, v: 200 }, { h: 40, v: 16 }), pos: { h, v: 150 } })
+const bandIcbm = () => bandIcbmAt(120)
 
 // N genuine explosions, low on the field (V≈20) and to the left (H 8..) — far from
 // the band ICBM at (120,150), so damage detection never touches the MIRV chain.
@@ -32,24 +34,35 @@ function fixture(n: number): GameState {
 }
 
 describe('mc5-1 AC3 — MIRV split wired into stepGame', () => {
-  it('a band ICBM forks into extra warheads (no explosions live)', () => {
-    let s = fixture(0)
-    const before = s.icbms.length // 1
-    let maxSeen = before
-    for (let i = 0; i < 3; i++) {
-      s = stepGame(s)
-      maxSeen = Math.max(maxSeen, s.icbms.length)
-    }
-    expect(maxSeen).toBeGreaterThan(before) // children appeared within a few frames
+  it('a lone band ICBM forks into EXACTLY 3 children on the first frame (1 parent + 3)', () => {
+    // Exact, not >before: 1 band ICBM, openSlots = MXICON(7) − 1 = 6 ≥ 3, so the split
+    // emits its full MIRV_MAX_CHILDREN. A 1-child mutant would give 2 and survive a > check.
+    expect(stepGame(fixture(0)).icbms.length).toBe(4)
   })
 
-  it('splits with 11 live explosions but is SUPPRESSED at 12 (the EXPLCT boundary)', () => {
-    // 11 < 12 → the split is allowed: parent + up to 3 children.
-    const at11 = stepGame(fixture(11))
-    expect(at11.icbms.length).toBeGreaterThan(1)
+  it('splits with 11 live explosions (EXACTLY 4) but is SUPPRESSED at 12 (the EXPLCT boundary)', () => {
+    expect(stepGame(fixture(11)).icbms.length).toBe(4) // 11 < 12 → parent + 3 children
+    expect(stepGame(fixture(12)).icbms.length).toBe(1) // 12 >= 12 → suppressed, lone parent flies on
+  })
 
-    // 12 >= 12 → suppressed: the lone parent flies on, no children this frame.
-    const at12 = stepGame(fixture(12))
-    expect(at12.icbms.length).toBe(1)
+  it('never lets the roster exceed the MXICON on-screen cap, truncating the split into the open slots', () => {
+    // Six in-band ICBMs → openSlots = MXICON(7) − 6 = 1, so the ONE split this frame adds
+    // exactly one child (its other two are sliced off): the roster lands on MXICON, not 9.
+    // Removing the cap (.slice(0, openSlots)) makes this 9 — the guard the mutation proved missing.
+    const six = { ...createGame(5), icbms: Array.from({ length: 6 }, (_, i) => bandIcbmAt(20 + i * 12)), remaining: 0 }
+    let s = stepGame(six)
+    expect(s.icbms.length).toBe(7) // === MXICON
+    for (let i = 0; i < 6; i++) {
+      s = stepGame(s)
+      expect(s.icbms.length).toBeLessThanOrEqual(7) // never exceeds MXICON across frames
+    }
+  })
+
+  it('MIRVs at most ONE ICBM per frame even when several are simultaneously in-band', () => {
+    // Two in-band ICBMs, openSlots = MXICON(7) − 2 = 5. One-per-frame → exactly one splits
+    // (+3 children) → 5 total. If BOTH split it would be 2 + 6 = 8 (capped to 7) — so === 5
+    // is the one-per-frame guard the tie-break mutation proved missing.
+    const two = { ...createGame(5), icbms: [bandIcbmAt(60), bandIcbmAt(180)], remaining: 0 }
+    expect(stepGame(two).icbms.length).toBe(5)
   })
 })
