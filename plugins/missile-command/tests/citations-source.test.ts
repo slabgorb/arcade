@@ -225,6 +225,11 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // core/drone.droneSweep uses directly. Same shape as the mc8-2 SOUND sequences above;
     // the byte checker pins each value to line 355.
     'TOP',
+    // mc5-1: two instruction-site MIRV constants. POTENT (MC-MIRV-MAX) is the LDA I,2
+    // shot-budget cap, value = operand+1 = 3 (like CITYBON). EXPLCT (MC-MIRV-EXPSUP) is
+    // the CPY I,12. decimal suppression immediate, value = 12. Both pinned in the mc5-1
+    // consistency block below (their values are real numerics, not kind tags).
+    'POTENT', 'EXPLCT',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -327,6 +332,31 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // per-ICBM value is added operand+1 = 4 times per city.
     expect(immediate(city!.source.verbatim) + 1, 'CITYBON is LDX operand + 1 (inclusive loop)').toBe(4)
     expect(city!.value, 'MC-CITYBON value').toBe(4)
+  })
+
+  // mc5-1: two instruction-site MIRV constants, same shape as the mc4-2 bonus rates.
+  // POTENT is the MIRVER shot-budget cap (LDA I,2 → operand+1 = 3 shots, like CITYBON's
+  // inclusive loop); EXPLCT is the CPY I,12. DECIMAL suppression immediate (trailing dot
+  // = decimal under .RADIX 16, which the mc4-2 hex-only `immediate` helper would misread,
+  // so this block decodes the dot explicitly). This keeps the DERIVED exemption honest.
+  it('mc5-1: the MIRV claim values decode from their cited instruction operands', () => {
+    const by = new Map(loadClaims().map((c) => [c.symbol, c]))
+    const decimalImmediate = (verbatim: string): number => {
+      const m = verbatim.match(/\bI,([0-9A-F]+\.?)/) // capture a trailing '.' (decimal) too
+      expect(m, `no immediate operand in "${verbatim}"`).not.toBeNull()
+      return decodeRadix16(m![1])
+    }
+    const pot = by.get('POTENT')
+    const exp = by.get('EXPLCT')
+    expect(pot, 'MC-MIRV-MAX must be committed').toBeTruthy()
+    expect(exp, 'MC-MIRV-EXPSUP must be committed').toBeTruthy()
+    // POTENT: `LDA I,2` caps the shot budget at 2; the launch loop fires operand+1 = 3
+    // children ("NO MORE THAN 3 SHOTS FROM A MIRV").
+    expect(decimalImmediate(pot!.source.verbatim) + 1, 'MIRV_MAX is LDA I,2 operand + 1').toBe(3)
+    expect(pot!.value, 'MC-MIRV-MAX value').toBe(3)
+    // EXPLCT: `CPY I,12.` is the decimal suppression threshold; 12 IS the immediate.
+    expect(decimalImmediate(exp!.source.verbatim), 'MIRV_EXPSUP is the CPY I,12. decimal immediate').toBe(12)
+    expect(exp!.value, 'MC-MIRV-EXPSUP value').toBe(12)
   })
 
   // mc4-5: BONINL is a `.WORD` interval table read AS BCD (CHEKBO's SED divide) and
