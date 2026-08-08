@@ -185,9 +185,15 @@ export function pacmanScanRows(col: number, row: number): number {
 }
 
 /** Screen cell (sx: column 0..27, sy: row 0..35) -> RAM offset. Pac-Man's tube
- *  is ROT90, so a screen row is a tilemap column: col=sy, row=sx. (If Task 6's
- *  oracle rejects this orientation, it is one of exactly four candidates —
- *  see that task.) */
+ *  is ROT90 CLOCKWISE on real hardware (MAME `emucore.h` `ROT90 =
+ *  ORIENTATION_SWAP_XY | ORIENTATION_FLIP_X`): the native (unrotated)
+ *  36-col x 28-row tilemap maps to the screen by swapping axes and then
+ *  flipping the new X axis, i.e. native col = sy, native row = 27 - sx.
+ *  Task 6's oracle confirmed this is candidate B of the four enumerated
+ *  there (`pacmanScanRows(sy, 27 - sx)`) — NOT the naive `col=sy, row=sx`
+ *  swap this comment previously stated, which renders mirrored (the ROM's
+ *  FLIP_X half of ROT90 was missing). Derived independently from MAME's
+ *  ORIENTATION_* flag semantics in `emucore.h`, not picked by trial alone. */
 export function mazeCellOffset(sx: number, sy: number): number {
-  return pacmanScanRows(sy, sx)
+  return pacmanScanRows(sy, 27 - sx)
 }
