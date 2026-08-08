@@ -62,3 +62,19 @@ stories:
     status: done
     repos: arcade
     workflow: superpowers
+  - id: pm3-8
+    title: Fix the malformed maze — the rendered board does not match the authentic Pac-Man maze layout
+    points: 5
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-07-pac-man-pm3-8-authentic-maze-tilemap.md
+    status: done
+    repos: arcade
+    workflow: superpowers
+  - id: pm3-9
+    title: Authentic maze drives both — rebuild core/maze.ts topology from the byte-cited capture so render AND gameplay share one source
+    points: 8
+    priority: p2
+    plan_ref: plan:docs/superpowers/plans/2026-08-08-pac-man-pm3-9-authentic-maze-core.md
+    status: done
+    repos: arcade
+    workflow: superpowers
