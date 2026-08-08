@@ -28,6 +28,7 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { load } from './helpers/dynamic-load'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const audioPath = join(root, 'src', 'shell', 'audio.ts')
@@ -42,16 +43,8 @@ interface ManifestModule {
   createAudioEngine: (baseUrl?: string) => unknown
 }
 
-const load = async <T>(parts: string[]): Promise<Partial<T>> => {
-  try {
-    return (await import(/* @vite-ignore */ parts.join('/'))) as Partial<T>
-  } catch {
-    return {}
-  }
-}
-
 const loadManifest = (): Promise<Partial<ManifestModule>> =>
-  load<ManifestModule>(['..', 'src', 'shell', 'audio'])
+  load<ManifestModule>(import.meta.url, ['..', 'src', 'shell', 'audio'])
 
 async function need<K extends keyof ManifestModule>(key: K): Promise<ManifestModule[K]> {
   const value = (await loadManifest())[key]
@@ -62,7 +55,7 @@ async function need<K extends keyof ManifestModule>(key: K): Promise<ManifestMod
 }
 
 async function eventKinds(): Promise<readonly string[]> {
-  const kinds = (await load<{ EVENT_KINDS: readonly string[] }>(['..', 'src', 'core', 'events']))
+  const kinds = (await load<{ EVENT_KINDS: readonly string[] }>(import.meta.url, ['..', 'src', 'core', 'events']))
     .EVENT_KINDS
   if (kinds === undefined) {
     throw new Error('jt5-1 not implemented yet: src/core/events.ts must export `EVENT_KINDS`.')
