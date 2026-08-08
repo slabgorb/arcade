@@ -9,24 +9,33 @@
 // miss. The cause is a consistency bug between the firing aim and the perspective
 // projection the scene is drawn under:
 //
-//   * The renderer projects the world with a 60° vertical FOV (render.ts:
-//     perspective(Math.PI/3, ...)). A world point [x,y,z] therefore lands at NDC
-//     [(f/aspect)·x/-z, f·y/-z] with f = 1/tan(30°) ≈ 1.732.
+//   * The renderer projects the world with FOV_Y (gameRules.ts — render.ts imports
+//     the SAME constant, so the camera and the aim below share one lens; this file
+//     mirrors that import rather than hardcoding a duplicate). A world point
+//     [x,y,z] lands at NDC [(f/aspect)·x/-z, f·y/-z] with f = 1/tan(FOV_Y/2).
 //   * The crosshair is drawn at NDC [aimX, aimY] (gameRules.crosshairNdc), but a
-//     bolt is fired along aimDirection = [aimX, aimY, -1] — whose path projects
-//     to NDC [(f/aspect)·aimX, f·aimY]. The bolt overshoots the reticle by ~f,
-//     so a TIE sitting under the crosshair is missed.
+//     bolt was fired along aimDirection = [aimX, aimY, -1] — whose path projected
+//     to NDC [(f/aspect)·aimX, f·aimY]. Without the f (and, before sw10-1, aspect)
+//     term the bolt overshot the reticle, so a TIE sitting under the crosshair
+//     was missed.
 //
 // With shots missing, the player can never meet the space kill quota by fire —
 // the only thing that clears the sky is letting TIEs RAM the cockpit, which costs
 // a shield and must NOT advance the wave. That is the reported symptom.
+//
+// sw10-1: the cabinet's lens is now the symmetric 90° FOV (45° half-angle both
+// axes, f = 1) and aimDirection dropped the aspect term entirely — divide-by-
+// depth, aspect-INDEPENDENT. Nothing below hardcodes the old 60°/f=√3 numbers;
+// FOV_Y is imported from gameRules so this file cannot drift out of sync with a
+// future lens change again.
 //
 // These tests drive the REAL firing path (the trigger via Input), so the bolt is
 // spawned and aimed by stepGame, not hand-placed on the enemy. They assert
 // observable sim state (enemy count, score, shields, phase) so the GREEN fix is
 // free to realign aim/projection however it likes. Vertical aim only (x = 0), so
 // they are independent of the render's aspect ratio (a shell value the pure core
-// cannot read — see the Delivery Findings for the horizontal/aspect dimension).
+// cannot read — see the Delivery Findings for the horizontal/aspect dimension) —
+// doubly so since sw10-1, when aspect stopped mattering to the firing ray at all.
 //
 // Boundary intact: no DOM, no time except dt, no randomness except the seeded RNG.
 
@@ -43,16 +52,17 @@ import {
 import { SPACE_PHASE_NOT_OVER, SPACE_PHASE_CLOSING_KILL } from '../support/space-phase-end'
 import { stepGame } from '../../src/core/sim'
 import type { Input } from '../../src/core/input'
-import { aimDirection, crosshairNdc } from '../../src/core/gameRules'
+import { aimDirection, crosshairNdc, FOV_Y } from '../../src/core/gameRules'
 import { perspective, transform, IDENTITY, type Vec3 } from '@shared/math3d'
 
 const DT = 1 / 60
 
-// The projection the renderer paints the scene with (render.ts): a 60° vertical
-// FOV. near/far don't affect the x/y NDC a point maps to (only its depth), so any
-// positive pair mirrors the render. Aspect only scales X; every test below keeps
-// enemies on the vertical axis (x = 0), so the aspect choice is irrelevant.
-const FOV_Y = Math.PI / 3
+// The projection the renderer paints the scene with (render.ts), imported from
+// gameRules rather than duplicated so this test cannot describe a different lens
+// than the one the sim actually fires under. near/far don't affect the x/y NDC a
+// point maps to (only its depth), so any positive pair mirrors the render. Aspect
+// only scales X; every test below keeps enemies on the vertical axis (x = 0), so
+// the aspect choice is irrelevant.
 const proj = (aspect = 16 / 9): ReturnType<typeof perspective> => perspective(FOV_Y, aspect, 1, 5000)
 
 /** A TIE holding station at `pos` (vel 0). A real TIE flies straight at the

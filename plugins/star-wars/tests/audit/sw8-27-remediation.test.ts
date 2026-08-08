@@ -701,24 +701,47 @@ describe('sw8-27 R5 — the separation figures, re-derived from the production g
     expect(TIE_HIT_RADIUS, 'fixture anchor: the established TIE kill radius').toBe(250)
     expect(SIGHTS_OCTAGON, 'fixture anchor: the sights octagon, WSMAIN.MAC:3920-3923').toBe(3)
     expect(BAND, 'the band on the axis, which is what a pure-lateral separation is measured against').toBe(750)
-    expect(FOV_Y, 'fixture anchor: the projection the yoke inverts').toBeCloseTo(Math.PI / 3, 10)
+    expect(FOV_Y, 'fixture anchor: the projection the yoke inverts — the cabinet ±45°, sw10-1').toBeCloseTo(
+      Math.PI / 2,
+      10,
+    )
 
-    // The aim-freshness example: one frame of yoke at 0.1, both rays built at 16:9.
+    // == sw10-1 RETIRES THE VERY CONFUSION THIS TEST WAS WRITTEN AGAINST ================
+    //
+    // The round-2 review found two mechanisms 2.3× apart and a defect that swapped one
+    // figure for the other's. sw10-1 unified the lens onto the cabinet's symmetric ±45°
+    // pyramid and dropped `aspect` from `aimDirection` entirely — `normalize([aimX, aimY,
+    // -1])`, no aspect term at any position (uf1-14) — so the ASPECT-DROP mechanism, which
+    // measured the separation between the SAME yoke read against two different viewports,
+    // no longer has anything to measure: reading the same yoke against ANY two aspects now
+    // returns the identical ray. It is not smaller than before; it is exactly zero, at every
+    // yoke, and the assertions below say so directly rather than assume it.
+
+    // The aim-freshness example: one frame of yoke at 0.1, both rays built at 16:9. Its
+    // closed form is now exact rather than merely linear-in-practice: with f = 1 (tan 45° =
+    // 1) the in-plane offset of a ray is `aimX · DEPTH` with no correction factor at all, so
+    // this flick is `0.1 · 6000` on the nose.
     const flick = FRESH.at(0.1)
-    expect(flick, 'a one-frame flick of 0.1 at depth 6000 on 16:9, IN THE DEPTH PLANE').toBeCloseTo(615.8403, 3)
+    expect(flick, 'a one-frame flick of 0.1 at depth 6000 on 16:9, IN THE DEPTH PLANE').toBeCloseTo(600, 3)
 
-    // The static example: the same yoke, the aspect dropped.
+    // The static example: the same yoke, the aspect dropped — genuinely dropped now, not
+    // merely reduced. Kept under its old name because it is the same expression as before
+    // the lens changed; what changed is its value.
     const dropped = ASPECT.at(0.2)
-    expect(dropped, 'dropping the aspect at yoke 0.2, in the same plane').toBeCloseTo(538.8603, 3)
+    expect(
+      dropped,
+      'dropping the aspect no longer separates anything — aimDirection ignores its aspect argument',
+    ).toBeCloseTo(0, 9)
 
-    // THE FINDING. A fighter centred on one ray is outside the OTHER's band only once the
-    // separation exceeds the band; on the axis a pure-lateral offset gives |dx| = the
-    // separation and |dy| = 0, so the octagon bound is the flat 750.
-    expect(flick, '615.8 does not clear a 750 u band').toBeLessThan(BAND)
-    expect(dropped, 'nor does 538.9').toBeLessThan(BAND)
+    // THE FINDING, updated. A fighter centred on one ray is outside the OTHER's band only
+    // once the separation exceeds the band; on the axis a pure-lateral offset gives |dx| =
+    // the separation and |dy| = 0, so the octagon bound is the flat 750.
+    expect(flick, '600 does not clear a 750 u band').toBeLessThan(BAND)
+    expect(dropped, 'nor does a separation that is now exactly zero').toBeLessThan(BAND)
 
     // What DOES clear it, and where — PER MECHANISM. Round 3 (Z1/Z2): the whole defect is
     // that one file took the second figure below and attached it to the first mechanism.
+    // There is now only one mechanism left with a non-zero figure to attach at all.
 
     // The aim-freshness gap first, because it is the one the numbers were taken from. Its
     // separation depends on the CHANGE in yoke and not on where the yoke already is, which
@@ -728,53 +751,52 @@ describe('sw8-27 R5 — the separation figures, re-derived from the production g
       expect(
         apart(inPlane(base, WIDE), inPlane(base + 0.1, WIDE)),
         `a 0.1 flick starting from yoke ${base} — the freshness gap does not know where the yoke was`,
-      ).toBeCloseTo(615.8403, 3)
+      ).toBeCloseTo(600, 3)
     }
-    expect(FRESH.at(1), 'so a FULL-TRAVEL flick separates the two rays by this much').toBeCloseTo(6158.4029, 3)
+    expect(FRESH.at(1), 'so a FULL-TRAVEL flick separates the two rays by this much').toBeCloseTo(6000, 3)
     expect(FRESH.at(1), 'which clears the band').toBeGreaterThan(BAND)
-    expect(crossoverOf(FRESH) * 100, 'and it crosses at 12.18% of travel in one frame, not 28%').toBeCloseTo(
-      12.1785,
+    expect(crossoverOf(FRESH) * 100, 'and it crosses at exactly 12.5% of travel in one frame, not 28%').toBeCloseTo(
+      12.5,
       3,
     )
 
-    // The aspect drop second. This one genuinely does grow with absolute deflection — 539 u
-    // at yoke 0.2 (measured above), 2694 u at full — so a crossover in % of travel is the
-    // right shape for it, and 28% is the right value FOR IT.
-    expect(ASPECT.at(1), 'the aspect drop at full deflection').toBeCloseTo(2694.3013, 3)
-    expect(ASPECT.at(1), 'which does clear the band').toBeGreaterThan(BAND)
-    expect(crossoverOf(ASPECT) * 100, 'so the crossover is 27.84% of yoke travel, not zero').toBeCloseTo(27.8365, 3)
-    expect(dropped / ASPECT.at(1), 'and it is LINEAR in the yoke, so yoke 0.2 is a fifth of full').toBeCloseTo(0.2, 6)
+    // The aspect drop second — RETIRED rather than merely re-measured. Before sw10-1 this
+    // mechanism genuinely grew with absolute deflection (539 u at yoke 0.2, 2694 u at full);
+    // after it, `ASPECT.at(y)` is the distance between two calls to the SAME pure function
+    // with the SAME first two arguments, so it is zero by construction — not just at the two
+    // points the retired prose happened to quote, but at every yoke this sweeps.
+    for (const y of [0.2, 0.5, 1]) {
+      expect(ASPECT.at(y), `aspect no longer moves the ray at yoke ${y}`).toBeCloseTo(0, 9)
+    }
+    expect(ASPECT.at(1), 'so it does not clear the band either').toBeLessThan(BAND)
 
-    // THE DISCRIMINATOR. The two full-travel figures are 2.3× apart, so a sentence that
-    // quotes one while naming the other is not off by a rounding — it is off by more than
-    // the band itself, and in the direction that matters: the freshness gap bites at less
-    // than half the deflection the smaller figure implies. The ratio is exactly 16/7, and that
-    // is worth pinning as a closed form rather than as 2.286: in the depth plane the lateral
-    // offset is `DEPTH · aim · aspect / f` — the normalisation cancels — so the flick spans
-    // `WIDE` and the aspect drop spans `WIDE - 1`, and `(16/9) / (7/9)` falls out with DEPTH
-    // and FOV_Y cancelling too. A retune of either constant must NOT move this number; a
-    // change to the 16:9 assumption must.
-    expect(FRESH.at(1) / ASPECT.at(1), 'the two mechanisms are exactly WIDE / (WIDE - 1) apart').toBeCloseTo(16 / 7, 9)
-    expect(
-      crossoverOf(FRESH),
-      'and quoting the aspect crossover for the freshness gap OVERSTATES the safe travel 2.3×',
-    ).toBeLessThan(crossoverOf(ASPECT))
+    // THE DISCRIMINATOR, updated. The two mechanisms used to be 2.3× apart, which made a
+    // swapped figure merely WRONG. Now one of them is identically zero, which makes a
+    // swapped figure IMPOSSIBLE to produce from the current geometry: there is no non-zero
+    // aspect-drop figure left for a sentence to misattribute. The freshness gap is the only
+    // separation this file's mechanisms can still produce.
+    expect(FRESH.at(1), 'the one surviving mechanism still separates the rays').toBeGreaterThan(0)
+    expect(ASPECT.at(1), 'the other does not, at every yoke this file checked').toBeCloseTo(0, 9)
 
     // == THE BASIS, W4 ================================================================
     // The prose quotes 613, which is this flick measured ALONG THE RAY rather than in the
-    // depth plane. The old note here said the two were "2.4 u apart, and nothing here turns on
-    // which"; these three assertions are why that is no longer true.
-    expect(FRESH.alongRayAt(0.1), 'the same 0.1 flick as a chord between the ray tips').toBeCloseTo(613.4238, 3)
-    expect(FRESH.at(0.1) - FRESH.alongRayAt(0.1), 'the two bases differ by 2.4 u at a 0.1 flick').toBeCloseTo(2.4165, 3)
+    // depth plane. Re-derived at the new FOV: the two bases now differ by 2.2 u rather than
+    // 2.4, because the ray's own curvature (and hence the along-ray chord) moves with `f`.
+    expect(FRESH.alongRayAt(0.1), 'the same 0.1 flick as a chord between the ray tips').toBeCloseTo(597.7644, 3)
+    expect(FRESH.at(0.1) - FRESH.alongRayAt(0.1), 'the two bases differ by 2.2 u at a 0.1 flick').toBeCloseTo(
+      2.2356,
+      3,
+    )
 
     // (a) the along-ray flick is POSITION-DEPENDENT where the in-plane one is not, so the
-    //     prose's unqualified "a one-frame yoke move of 0.1 separates the two rays by 613 u"
-    //     is true at rest and false everywhere else. 315.8 at yoke 0.9 is half the figure.
+    //     prose's unqualified "a one-frame yoke move of 0.1 separates the two rays by X u"
+    //     is true at rest and false everywhere else. It is barely over half the rest figure
+    //     by yoke 0.9.
     const alongRayFromRest = FRESH.alongRayAt(0.1)
     for (const [base, want] of [
-      [0.2, 577.2152],
-      [0.4, 507.3002],
-      [0.9, 315.7873],
+      [0.2, 564.1594],
+      [0.4, 498.7037],
+      [0.9, 315.462],
     ] as const) {
       expect(alongRay(base, WIDE, base + 0.1, WIDE), `the along-ray 0.1 flick from yoke ${base}`).toBeCloseTo(want, 3)
       expect(
@@ -784,21 +806,23 @@ describe('sw8-27 R5 — the separation figures, re-derived from the production g
     }
 
     // (b) the reader's own consistency check — scale the small figure by ten — is valid in the
-    //     plane and invalid along the ray. 6134 ≈ 6158 is the coincidence that hides the error.
+    //     plane and invalid along the ray. The plane is now EXACTLY linear (f = 1 leaves no
+    //     residual curvature term at all), which makes the along-ray gap the only place left
+    //     for a scaling mismatch to hide.
     expect(FRESH.at(0.1) * 10, 'in the plane, separation is exactly linear in the yoke').toBeCloseTo(FRESH.at(1), 6)
-    expect(FRESH.alongRayAt(1), 'along the ray the full-travel chord is 4664, not 6158').toBeCloseTo(4664.3184, 3)
+    expect(FRESH.alongRayAt(1), 'along the ray the full-travel chord is 4592, not 6000').toBeCloseTo(4592.2012, 3)
     expect(
       FRESH.alongRayAt(0.1) * 10 - FRESH.at(1),
-      'and 613 × 10 lands within 24 u of 6158, which is why the mixed pair reads as consistent',
-    ).toBeCloseTo(-24.1653, 3)
+      'and 598 × 10 lands within 23 u of 6000, which is why the mixed pair reads as consistent',
+    ).toBeCloseTo(-22.3558, 3)
     expect(
       Math.abs(FRESH.alongRayAt(0.1) * 10 - FRESH.alongRayAt(1)),
-      'while the honest along-ray comparison is 1470 u out',
-    ).toBeGreaterThan(1400)
+      'while the honest along-ray comparison is 1385 u out',
+    ).toBeGreaterThan(1300)
 
     // (c) so `BAND / at(1)` — the shape every crossover in this file uses — is a crossover in
-    //     the plane and is not one along the ray: 16.08% by ratio against a true root of
-    //     12.25%. Pinned because it is the reason `crossoverOf` bisects instead of dividing.
+    //     the plane and is not one along the ray: 16.33% by ratio against a true root of
+    //     12.57%. Pinned because it is the reason `crossoverOf` bisects instead of dividing.
     const alongRayRatio = (BAND / FRESH.alongRayAt(1)) * 100
     let lo = 0
     let hi = 1
@@ -808,8 +832,8 @@ describe('sw8-27 R5 — the separation figures, re-derived from the production g
       else hi = mid
     }
     const alongRayRoot = ((lo + hi) / 2) * 100
-    expect(alongRayRatio, 'the ratio method in the along-ray basis').toBeCloseTo(16.0795, 3)
-    expect(alongRayRoot, 'the actual along-ray crossover, found by bisection').toBeCloseTo(12.2504, 3)
+    expect(alongRayRatio, 'the ratio method in the along-ray basis').toBeCloseTo(16.332, 3)
+    expect(alongRayRoot, 'the actual along-ray crossover, found by bisection').toBeCloseTo(12.5738, 3)
     expect(Math.abs(alongRayRatio - alongRayRoot), 'they disagree by 3.8 points, so the ratio is not the root').toBeGreaterThan(
       3,
     )

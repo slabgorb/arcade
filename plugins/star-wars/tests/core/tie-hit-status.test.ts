@@ -88,6 +88,7 @@ import {
 import type { Input } from '../../src/core/input'
 import { makeSpaceState, makeTie, rngSeed } from './helpers/space'
 import { perspective, transform, IDENTITY, type Vec3 } from '@shared/math3d'
+import { FOV_Y } from '../../src/core/gameRules'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const sourceDir = process.env.STARWARS_SOURCE_DIR ?? '/Users/slabgorb/Projects/star-wars-1983-source-text'
@@ -103,9 +104,18 @@ const TICK_DT = 1.05 / TICK_HZ
 
 // --- fixtures ---------------------------------------------------------------
 
-const FOV_Y = Math.PI / 3
 /** The yoke deflection that puts the crosshair ON a world point — the same
- *  inversion `combat-kill-loop.test.ts` uses, so "aim at it" is literal. */
+ *  inversion `combat-kill-loop.test.ts` uses, so "aim at it" is literal.
+ *
+ *  Re-seated for sw10-1's ±45° authentic lens: this used to hardcode its own
+ *  `FOV_Y = Math.PI / 3` (the retired 30°-half-angle lens), decoupled from
+ *  `gameRules.ts`'s real constant. It only ever mattered for an OFF-AXIS
+ *  target — every still Darth in this file sits dead ahead ([0,0,]) where the
+ *  inversion is [0,0] under any FOV — but the flying Darths (armed with a VM,
+ *  climbing their weave) drift off-axis, and inverting the crosshair under the
+ *  wrong FOV then aims the beam at the wrong angle and the shot goes wide.
+ *  Importing the real `FOV_Y` keeps this helper's inversion the one the game
+ *  actually fires under, whatever that constant is tuned to next. */
 const aimAt = (pos: Vec3): { aimX: number; aimY: number } => {
   const ndc = transform(perspective(FOV_Y, 16 / 9, 1, 5000), pos)
   return { aimX: ndc[0], aimY: ndc[1] }

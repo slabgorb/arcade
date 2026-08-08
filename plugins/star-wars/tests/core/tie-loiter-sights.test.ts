@@ -180,25 +180,37 @@ describe('uf1-12 — in play: a fighter held under the crosshair breaks into 20$
     // catches it and the yoke is what brings it in, which is the property this test is
     // actually about.
     //
-    // RE-MEASURED by uf1-15, and the lateral offset moved 6,000 → 4,000. The seat is an
-    // EMPIRICAL constant, and what it is empirical about is the loiter TRAJECTORY: TWO of
-    // TCH1DZ's gates release on C$AS — `.CUNTIL C$AS+C$AG` (:1633) in the first half and
-    // `.CUNTIL C$AS+C$AG+C$PS` (:1641) in the second — so uf1-15 changing C_AS from a 12°
-    // cone to the ROM's fixed axis radius (WSCPU.MAC:615-618) moves the frame each of them
-    // fires on, and the whole weave downstream of it. The
-    // fighter is culled at frame 391 either way, so 900 is just "until it leaves".
-    // Measured at 6,000 depth under the new law: 4,000 lateral enters 20$ at frame 99 and
-    // never enters with the yoke parked; the old 6,000 seat now enters under neither, so
-    // it had stopped discriminating rather than started failing. 4,000 at this depth is
-    // 33.7° off the nose — still outside the ±30° glass, so the parked half holds for the
-    // same reason it did before.
+    // RE-MEASURED by uf1-15, and the lateral offset moved 6,000 → 4,000: at 4,000 lateral /
+    // 6,000 deep the fighter sat 33.7° off the nose, outside the THEN-current ±30°-vertical
+    // rendered glass (uf1-14), so the parked half held on the view pyramid's own edge.
     //
-    // That sentence is also a description of sw8-19's defect, written here before anyone
-    // recognised it: a seat inside the sights band and outside the glass. Until sw8-19
-    // gated C_PS on C_PV, this very fixture spent 30 of its 391 frames sighting a fighter
-    // the player could not see. Same fact, two readings — see
-    // `tie-sights-visibility.test.ts`, which flies this seat as its in-play case.
-    const seat: Vec3 = [4000, 0, -6000]
+    // RE-SEATED AGAIN by sw10-1. The authentic ROM lens is a much WIDER ±45° pyramid
+    // (WSMAIN.MAC:3824-3846 carries no aspect term and no 30° anywhere in it), so 33.7°
+    // is now well INSIDE the glass — the uf1-15 seat stopped being off-view at all, and the
+    // parked half started passing for the wrong reason (measured: it entered 20$ at frame
+    // 191 with the yoke parked, because the fighter's own loiter weave now crosses close
+    // enough to the dead-ahead ray while still visibly in front of the cockpit). A wider
+    // glass needs a wider seat: 4,000 lateral does not clear 45° at any depth this fixture's
+    // weave reaches, since the cone itself grows exactly as fast as depth now.
+    //
+    // The new seat is EMPIRICAL about the same thing the old ones were — the loiter
+    // TRAJECTORY, not just the static bearing — because TCH1DZ's own weave carries the
+    // fighter back toward the cockpit and, at its closest approach, PAST it: measured at
+    // [9000, 0, -10000], the octagon offset from the parked ray drops to 339 u (comfortably
+    // inside the 750 u band) at frame 75, but at that instant the fighter's own depth has
+    // gone NEGATIVE — it is behind the cockpit, so C_PV is clear and C_PS cannot fire no
+    // matter how close the octagon gets. That is a stronger, more literal instance of
+    // "inside the band, outside the glass" than the uf1-15 seat ever was: this one is
+    // outside the glass because it is behind the pilot, not merely off to one side of a
+    // narrow cone. Tracking with the yoke still brings it in — the crosshair reaches ±45°
+    // at full deflection, which is the whole glass — entering 20$ at frame 367. The fighter
+    // is culled at frame 391 either way, so 900 is just "until it leaves"; verified stable
+    // out to 2,000 frames as well, so the result is not an artefact of the window.
+    //
+    // sw8-19's original point survives the re-seat even though the NUMBERS don't: a seat
+    // inside the sights band and outside the glass. See `tie-sights-visibility.test.ts` for
+    // the historical measurement this fixture motivated (the uf1-15 seat, now superseded).
+    const seat: Vec3 = [9000, 0, -10000]
 
     /** Fly the loiter script for `frames`, tracking the fighter with the yoke (or not),
      *  and report whether the VM ever entered 20$. */
@@ -232,11 +244,18 @@ describe('uf1-12 — in play: a fighter held under the crosshair breaks into 20$
 describe('uf1-12 — AC-6: the shell viewport reaches the pure core', () => {
   it('carries Input.aspect onto the state each step, defaulting to square', () => {
     // The plumbing AC-6 rests on, pinned end-to-end rather than at the seam: whatever
-    // `computeStatus` reads has to be what the shell actually sampled this frame,
-    // otherwise the sights bit and the gun diverge exactly as measured (539 u at yoke
-    // 0.2 on 16:9, against a band reaching 750 u on the axis since sw8-27 — so it now
-    // takes about 28% of yoke travel, rather than the 19% the retired 500 u disc needed,
-    // before a fighter centred on one ray falls outside the other's band).
+    // `computeStatus` reads has to be what the shell actually sampled this frame. Before
+    // sw10-1, a stale `aspect` alone could desynchronise the sights bit from the gun —
+    // measured at 539 u apart at yoke 0.2 on 16:9, against a band reaching 750 u on the
+    // axis, so about 28% of yoke travel (19% under the retired 500 u disc) was enough to
+    // put a centred fighter outside the other ray's band.
+    //
+    // (RETIRED by sw10-1: the authentic ±45° lens drops the aspect term from `aimDirection`
+    // and `inPlayerView` altogether, so aspect alone can no longer separate the two rays at
+    // any yoke position — see `tie-sights-status.test.ts`'s "measures against the SAME ray
+    // at every aspect" for that invariant directly. What survives here is the plumbing
+    // itself: `Input.aspect` still has to reach `GameState` for whatever the shell does
+    // with it, and an omitted frame still has to fall back to square rather than NaN.)
     const base: GameState = { ...initialState(1983), enemies: [], spawnTimer: 1e9, lives: 999 }
     const wide = stepGame(base, { aimX: 0.4, aimY: 0, fire: false, aspect: 16 / 9 }, TICK_DT)
     expect(wide.aspect, "the shell's viewport reaches the core").toBe(16 / 9)
@@ -249,9 +268,12 @@ describe('uf1-12 — AC-6: the shell viewport reaches the pure core', () => {
     // Regression pin for the uf1-12 review (F2). The gun fires down `input`
     // (sim.ts: `aimDirection(aimX, aimY, input.aspect)` with `aimX = input.aimX`), so a
     // sights bit read off the INCOMING state's aim is one frame stale and the two rays
-    // separate by 613 u on a one-frame flick of 0.1 — against a band that reaches 3 ×
-    // TIE_HIT_RADIUS = 750 u on the axis (sw8-27; it was a 500 u disc when this was
-    // written, and the flick used to clear it outright rather than eat 82% of it). The
+    // separate by 613 u on a one-frame flick of 0.1 (measured pre-sw10-1) — against a band
+    // that reaches 3 × TIE_HIT_RADIUS = 750 u on the axis (sw8-27; it was a 500 u disc when
+    // this was written, and the flick used to clear it outright rather than eat 82% of it).
+    // The exact separation moves with the lens (sw10-1's `f = 1` differs from the value
+    // this was measured under), but the FAILURE MODE does not: staleness is a one-frame
+    // desync in the yoke itself, orthogonal to whatever the projection does with it. The
     // cabinet cannot do that: the laser hit (1.5x TMPSIZ, WSMAIN.MAC:3906) and the sights
     // bit (3x TMPSIZ, :3922) are computed twelve lines apart from ONE TMPOCT, off one
     // LZ.CX/LZ.CY sample. So `stepGame` shadows the frame's yoke onto the state.
@@ -261,11 +283,17 @@ describe('uf1-12 — AC-6: the shell viewport reaches the pure core', () => {
     // at-rest ray. Derived from this frame's aim the VM enters 20$; from the stale aim it
     // takes the `.CIF 0` arm back into TCH1DZ.
     //
-    // The flick is DIAGONAL on purpose (round-2 review, F6). `aspect` multiplies only the X
-    // term, so an X-only flick guards the aspect but leaves the VERTICAL half of the
-    // plumbing untested — measured: dropping `aimY` from the shadow passed all 25 tests
-    // while dropping `aimX` reddened. On a diagonal, dropping EITHER component swings the
-    // ray off the band, so one fixture kills both partial mutations.
+    // The flick is DIAGONAL on purpose (round-2 review, F6). Originally because `aspect`
+    // multiplied only the X term, so an X-only flick guarded that term but left the
+    // VERTICAL half of the plumbing untested — measured: dropping `aimY` from the shadow
+    // passed all 25 tests while dropping `aimX` reddened.
+    //
+    // (RETIRED by sw10-1: the authentic lens applies the identical `f = 1/tan(45°)` to both
+    // axes and drops the aspect term altogether, so that particular asymmetry is gone — the
+    // X and Y terms are now interchangeable in `aimDirection`. The diagonal remains the
+    // right fixture regardless: a single-axis flick still leaves the OTHER axis's shadow
+    // unguarded, aspect or no.) On a diagonal, dropping EITHER component swings the ray off
+    // the band, so one fixture kills both partial mutations.
     const entry = tch1dz20()
     const flickX = 0.4
     const flickY = 0.3
@@ -285,8 +313,9 @@ describe('uf1-12 — AC-6: the shell viewport reaches the pure core', () => {
     // the disc" does NOT imply "outside the band". A future seat could satisfy the old
     // guard while being sighted with the yoke parked, which would make the premise of this
     // whole test — that the FLICK is what brings the fighter in — quietly false. Ask the
-    // shipped predicate instead. (This seat clears it either way: parked, it sits 2329 u
-    // out in `|dx| + |dy|`, more than 3× the band.)
+    // shipped predicate instead. (This seat clears it either way: parked, it sits 3757 u
+    // out in `|dx| + |dy|` under sw10-1's lens — was 2329 u under the aspect-scaled one —
+    // more than 3× the band either way.)
     const parkedSite = siteOffset(eye, aimDirection(parked.aimX, parked.aimY), pos)
     expect(
       parkedSite && parkedSite.dx + parkedSite.dy > SIGHTS_OCTAGON * TIE_HIT_RADIUS,

@@ -62,7 +62,7 @@
 import { describe, it, expect } from 'vitest'
 import { computeStatus, SIGHTS_BAND_FACTOR, SIGHTS_OCTAGON } from '../../src/core/tie-status'
 import { Status } from '../../src/core/tie-vm'
-import { aimDirection, beamHit, COCKPIT, FOV_Y, siteOffset } from '../../src/core/gameRules'
+import { aimDirection, beamHit, COCKPIT, FOV_Y } from '../../src/core/gameRules'
 import { TIE_HIT_RADIUS, type GameState } from '../../src/core/state'
 import { add, scale, type Vec3 } from '@shared/math3d'
 import { makeSpaceState, makeTie, lookAtOrigin, lookAway, rngSeed } from './helpers/space'
@@ -293,50 +293,40 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     }
   })
 
-  it('measures against the SAME ray the gun uses — viewport aspect included (AC-6)', () => {
-    // The shell supplies a real aspect every frame (src/shell/input.ts:45), and the gun
-    // inverts the projection WITH it (sim.ts:360, `aimDirection(aimX, aimY, state.aspect)`)
-    // so the bolt goes where the crosshair is drawn. A sights bit computed at the default
-    // unit aspect is therefore testing a DIFFERENT RAY, and not by a little: at 16:9 and
-    // depth 6000 the two rays are 539 u apart at yoke 0.2 and 2694 u apart at full
-    // deflection, against a band reaching 3 · TIE_HIT_RADIUS = 750 u on the axis. From
-    // about 28% of yoke travel (750 / 2694) a fighter centred on one ray is outside the
-    // other's band entirely. (sw8-27 SWEEP: this paragraph said "a band only 500 u wide"
-    // and "about a fifth of yoke travel" — both true of the retired disc, both stale since
-    // the band became the cabinet's L1 octagon. The seat below clears either bound.)
+  it('measures against the SAME ray at every aspect — the authentic lens is aspect-independent (AC-6)', () => {
+    // INVERTED by sw10-1. Before this story `aimDirection` divided by a horizontal-only
+    // `f = 1/tan(FOV_Y/2)` under a 60°-vertical FOV, so a square canvas and a 16:9 one
+    // disagreed about where the yoke pointed — this test used to MEASURE that divergence
+    // (539 u apart at yoke 0.2, 2694 u at full deflection, against a 750 u band). The
+    // authentic ROM lens (WSMAIN.MAC:3824-3846) is a symmetric 90° pyramid, ±45° on BOTH
+    // axes, with no aspect term anywhere in it: `f = 1/tan(45°) = 1`, so `aimDirection`
+    // returns the IDENTICAL ray no matter what `aspect` the caller passes. The cabinet's
+    // glass is square in angle even though its tube is not, so there is no longer an
+    // "aspect-blind ray" to distinguish from the gun's — they are the same ray, always.
     const aimX = 0.4
-    const s: GameState = { ...makeSpaceState(), aimX, aimY: 0, aspect: 16 / 9 }
     const eye = COCKPIT
-    const onGunRay = add(eye, scale(aimDirection(aimX, 0, s.aspect), 6000))
-    const onBlindRay = add(eye, scale(aimDirection(aimX, 0), 6000))
 
-    // Fixture guard, measured with the same machine the assertions use: the blind-ray
-    // point must sit genuinely OUTSIDE the sights band taken from the gun's ray, or the
-    // negative assertion below could pass on a correct implementation by luck.
-    const gunDir = aimDirection(aimX, 0, s.aspect)
-    // Measured against the band the game actually tests — the L1 octagon at 3 · TMPSIZ,
-    // written as the ROM literal rather than imported from the value under test, and that is
-    // deliberate: a fixture bound that tracked `SIGHTS_OCTAGON` would move WITH a mutation of
-    // it and score every seat against the mutated band. The `SIGHTS_OCTAGON === 3` anchor in
-    // the octagon test above is what ties this literal to the shipped constant; the two
-    // together are what R3 replaced a self-cancelling ratio with.
-    // Until sw8-27's rework this guard asked `beamHit` for a
-    // 2 · TIE_HIT_RADIUS DISC, which is strictly inside that octagon, so it could not
-    // actually establish the sentence it asserts.
-    const blindSite = siteOffset(eye, gunDir, onBlindRay)
-    expect(
-      blindSite && blindSite.dx + blindSite.dy > 3 * TIE_HIT_RADIUS,
-      'the aspect-blind ray leaves the band entirely at this yoke',
-    ).toBe(true)
+    // The claim itself: swapping the aspect argument cannot move the ray at all.
+    const wideRay = aimDirection(aimX, 0, 16 / 9)
+    const squareRay = aimDirection(aimX, 0, 1)
+    expect(wideRay, 'the authentic lens takes no aspect term — the two rays are the same').toEqual(
+      squareRay,
+    )
 
+    // And the sights bit, which reads this ray through `computeStatus`, agrees at both
+    // canvas shapes for the identical world seat — the aspect-invariance that replaces the
+    // old aspect-DEPENDENCE this test used to pin.
+    const onRay6000 = add(eye, scale(wideRay, 6000))
+    const wide: GameState = { ...makeSpaceState(), aimX, aimY: 0, aspect: 16 / 9 }
+    const square: GameState = { ...makeSpaceState(), aimX, aimY: 0, aspect: 1 }
     expect(
-      sights(makeTie({ pos: onGunRay }), s),
-      'a TIE under the crosshair the pilot is actually looking through is in the sights',
+      sights(makeTie({ pos: onRay6000 }), wide),
+      'a TIE under the crosshair is in the sights at 16:9',
     ).toBe(Status.C_PS)
     expect(
-      sights(makeTie({ pos: onBlindRay }), s),
-      'a TIE on the aspect-blind ray is NOT where the pilot is aiming',
-    ).toBe(0)
+      sights(makeTie({ pos: onRay6000 }), square),
+      'and identically in the sights on a square canvas — same yoke, same ray, same seat',
+    ).toBe(Status.C_PS)
   })
 
   it('keeps the gun and the sights agreeing under a real viewport aspect (AC-6)', () => {

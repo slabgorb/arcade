@@ -54,7 +54,12 @@
 //   The floor is at -0x1000, so `D - 0x1000` is a HEIGHT-ABOVE-FLOOR cap of exactly D: a 45°
 //   glide slope. Laterally the cone is D/16. As D → 0 both drive to zero. The torpedo cannot
 //   miss — which is why the ROM calls it a DIRECT HIT, and why the cabinet's pilot never has to
-//   make the 43.8°-down shot into his own floor that our FOV (60°, so a 30° cone) forbids.
+//   trust a hairline shot into his own floor: at the worst case (the port at the $800 window's
+//   near edge, 768 below the seat) that is 43.8° down. Under sw10-1's 90° FOV (45° half-angle)
+//   that is now — barely — inside the cone, with about a degree of yoke travel to spare; the
+//   ROM's own 60° cabinet lens (30° half-angle) forbade it outright. Either way the machine, not
+//   a razor-thin aim, is what resolves the shot; see below where this file arms it via the laser
+//   and lets the torpedo fly itself in, never asking the yoke to hold that edge.
 //
 // So the acceptance bar, and it is not negotiable:
 //   • What you put the crosshair on is what you destroy — at EVERY real station.
@@ -85,6 +90,12 @@ const ASPECT = 16 / 9
  * where the player puts the crosshair. This inverts the SAME projection the crosshair is drawn
  * under (gameRules: `aimDirection` / `crosshairNdc`), so "aim at it" means what it says.
  *
+ * sw10-1: the cabinet's authentic lens is the symmetric 90° FOV — f = 1/tan(FOV_Y/2) = 1 — and
+ * `aimDirection` is now aspect-INDEPENDENT on both axes: it no longer divides x by the viewport
+ * aspect (that was the old 60°-lens compromise). Mirror that here with a bare `f·dx/depth` — an
+ * `/ ASPECT` term would compute a DIFFERENT ray than the one `aimDirection` actually fires, and
+ * that mismatch is exactly what made these DESTROYS cases red under the new lens.
+ *
  * The yoke clamps to [-1, 1]. An |NDC| > 1 therefore means the player CANNOT point at the
  * target at all — the shot is not merely hard, it is unavailable.
  */
@@ -92,7 +103,7 @@ function crosshairOn(p: Vec3, eye: Vec3): { aimX: number; aimY: number; reachabl
   const f = 1 / Math.tan(FOV_Y / 2)
   const [dx, dy, dz] = [p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]]
   const depth = -dz
-  const aimX = (f * dx) / depth / ASPECT
+  const aimX = (f * dx) / depth
   const aimY = (f * dy) / depth
   return { aimX, aimY, reachable: Math.abs(aimX) <= 1 && Math.abs(aimY) <= 1 }
 }

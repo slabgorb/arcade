@@ -53,7 +53,12 @@ export function aimAt(
 ): { aimX: number; aimY: number; reachable: boolean } {
   const f = 1 / Math.tan(FOV_Y / 2)
   const depth = -(target[2] - eye[2])
-  const aimX = (f * (target[0] - eye[0])) / depth / aspect
+  // sw10-1: the authentic lens is aspect-INDEPENDENT — `aimDirection` no longer
+  // scales the lateral axis by viewport aspect, so neither does its inverse. The
+  // `aspect` param is retained (callers thread it into `Input.aspect`, and it still
+  // drives the C_PV/C_PS pyramid's state.aspect field) but no longer skews aimX.
+  void aspect
+  const aimX = (f * (target[0] - eye[0])) / depth
   const aimY = (f * (target[1] - eye[1])) / depth
   return { aimX, aimY, reachable: Math.abs(aimX) <= 1 && Math.abs(aimY) <= 1 }
 }
@@ -88,7 +93,7 @@ export function release(input: Input): Input {
 
 /**
  * Hold the trigger with the crosshair on the exhaust port, from the seated pilot's eye at the
- * port's spawn distance (~17.7° down — comfortably inside the 30° cone the 60° FOV allows).
+ * port's spawn distance (~17.7° down — comfortably inside the 45° half-angle the authentic 90° FOV allows).
  *
  * This is what the old centred `FIRE` was *trying* to be: "the player shoots at the target".
  */

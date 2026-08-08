@@ -118,6 +118,18 @@ const DT = 1 / 60
 const ASPECT = 16 / 9
 
 /**
+ * sw10-1: the cabinet's lens is symmetric — 90° FOV, divide-by-depth, ASPECT-INDEPENDENT
+ * (`gameRules.aimDirection` no longer scales by aspect at all; f went from √3 to 1). `ASPECT`
+ * above is still fed to `Input.aspect` below (a real 16:9 viewport is still what the cabinet has),
+ * but every `aimAt`/`fireAt` call in this file passes `1`, not `ASPECT`, as its own third
+ * argument: `aimAt` (tests/support/aim.ts) still literally divides by whatever aspect it is
+ * given, and `1` is what cancels that division into the new aspect-independent inverse
+ * (`aimX = X/depth`). Passing the viewport's real `ASPECT` there would reintroduce the OLD skew
+ * and misaim every off-axis shot — which is exactly why the off-axis tests below went red under
+ * the new lens until this file stopped doing it.
+ */
+
+/**
  * A surface run with an EMPTY, already-laid maze — `surfaceMazeLaid: true` stops `stepSurface`
  * laying `mazeForWave(wave)` over the fixture, so each test faces only the objects it asked for.
  */
@@ -223,8 +235,8 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
   //     |x| = 2,000  ->  miss ~97   INSIDE TURRET_HIT_RADIUS (200) — kills either way
   //     |x| = 6,000  ->  miss ~331  OUTSIDE — the projectile CANNOT land this shot
   //
-  // Both are reachable on the yoke at this depth (|aimX| = 0.19 and 0.58), so neither is
-  // hiding behind an un-aimable target.
+  // Both are reachable on the yoke at this depth (|aimX| = X/D = 0.2 and 0.6 under the
+  // aspect-independent sw10-1 lens), so neither is hiding behind an un-aimable target.
 
   it('DESTROYS a tower 6,000 units off-axis that a projectile physically cannot reach', () => {
     // THE POINT OF THE STORY. The bolt crosses this tower's plane 331 units inside of it —
@@ -233,7 +245,7 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
     const tower: Vec3 = [6000, EYE_HIGH, -10000]
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
-    const aim = aimAt(tower, eyeOf(s0), ASPECT)
+    const aim = aimAt(tower, eyeOf(s0), 1)
     expect(aim.reachable, `the yoke must be able to point here (${aim.aimX.toFixed(2)})`).toBe(true)
     expect(aim.aimY, 'level with the eye — the throttle stays still').toBeCloseTo(0, 10)
 
@@ -268,7 +280,7 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
     const tower: Vec3 = [2000, EYE_HIGH, -10000]
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
-    const aim = aimAt(tower, eyeOf(s0), ASPECT)
+    const aim = aimAt(tower, eyeOf(s0), 1)
     const s = stepGame(s0, trigger({ aimX: aim.aimX, aimY: aim.aimY }), DT)
 
     expect(towerDied(s)).toBe(true)
@@ -346,7 +358,7 @@ describe('sw7-17 — the beam is cast from the ship point, not the world origin'
     const tower: Vec3 = [0, 0, -800]
     const s0 = surface({ altitude: MAX_SKIM_ALTITUDE, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
-    const aim = aimAt(tower, eyeOf(s0), ASPECT)
+    const aim = aimAt(tower, eyeOf(s0), 1)
     expect(aim.reachable, 'the pilot can point at it').toBe(true)
 
     const s = stepGame(s0, trigger({ aimX: aim.aimX, aimY: aim.aimY }), DT)
@@ -474,7 +486,7 @@ describe('sw7-17 — the trench beam is clipped to 28,672 units forward (CLBLZ)'
       trenchObstacles: [{ kind: 'square', pos: [0, 0, -(TRENCH_FAR - MARGIN)] }],
     })
     // The pilot's seat and the probe share a height, so dead-on is the yoke at rest.
-    const aim = aimAt([0, 0, -(TRENCH_FAR - MARGIN)], eyeOf(s0), ASPECT)
+    const aim = aimAt([0, 0, -(TRENCH_FAR - MARGIN)], eyeOf(s0), 1)
     const s = stepGame(s0, trigger({ aimX: aim.aimX, aimY: aim.aimY }), DT)
 
     expect(obstacleDied(s), '28,272 is inside $7000 — the beam reaches it at once').toBe(true)
@@ -494,7 +506,7 @@ describe('sw7-17 — the trench beam is clipped to 28,672 units forward (CLBLZ)'
     // beam lands without the clip, which is the one way this AC can be missed.
     const startZ = -(TRENCH_FAR + MARGIN)
     const s0 = trench({ trenchObstacles: [{ kind: 'square', pos: [0, 0, startZ] }] })
-    const aim = aimAt([0, 0, startZ], eyeOf(s0), ASPECT)
+    const aim = aimAt([0, 0, startZ], eyeOf(s0), 1)
 
     // One trigger frame, then coast with the trigger RELEASED for the WHOLE life of the probe
     // in the channel — comfortably past the LZ.EDG sweep, so "it never dies TO THE BEAM" is a
@@ -528,7 +540,7 @@ describe('sw7-17 — the hitscan gun is pure and deterministic', () => {
     const tower: Vec3 = [6000, EYE_HIGH, -10000]
     const build = (): GameState =>
       surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
-    const aim = aimAt(tower, eyeOf(build()), ASPECT)
+    const aim = aimAt(tower, eyeOf(build()), 1)
     const shot = trigger({ aimX: aim.aimX, aimY: aim.aimY })
 
     const a = stepGame(build(), shot, DT)
@@ -586,7 +598,7 @@ describe('sw7-17 — obstacles and the exhaust port compete for ONE beam, by dis
   it('a FAR obstacle behind the port does not shadow it — the port is nearer, so the port arms', () => {
     const s0 = withPort([])
     const far = onTheRay(s0, 2.5) // same ray, two and a half times the distance
-    const s = stepGame(withPort([{ kind: 'square', pos: far }]), fireAt(s0, port, ASPECT), DT)
+    const s = stepGame(withPort([{ kind: 'square', pos: far }]), fireAt(s0, port, 1), DT)
 
     expect(s.portTorpedoArmed, 'the beam reaches the port first — distance decides').toBe(true)
     expect(
@@ -599,7 +611,7 @@ describe('sw7-17 — obstacles and the exhaust port compete for ONE beam, by dis
     // The other direction, and the reason the fix is a ranking rather than a re-ordering.
     const s0 = withPort([])
     const near = onTheRay(s0, 0.4) // same ray, well short of the port
-    const s = stepGame(withPort([{ kind: 'square', pos: near }]), fireAt(s0, port, ASPECT), DT)
+    const s = stepGame(withPort([{ kind: 'square', pos: near }]), fireAt(s0, port, 1), DT)
 
     expect(
       s.events.some((e) => e.type === 'trench-obstacle-destroyed'),
@@ -612,7 +624,7 @@ describe('sw7-17 — obstacles and the exhaust port compete for ONE beam, by dis
     // Without this, the near-obstacle test above could pass for the wrong reason (a shot that
     // never arms anything).
     const s0 = withPort([])
-    const s = stepGame(s0, fireAt(s0, port, ASPECT), DT)
+    const s = stepGame(s0, fireAt(s0, port, 1), DT)
     expect(s.portTorpedoArmed).toBe(true)
   })
 })
