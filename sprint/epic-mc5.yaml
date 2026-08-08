@@ -19,7 +19,8 @@ stories:
     title: 'Sputnik/bomber fly-across launcher (sputnik.ts): plane activates from wave 2 (SPUTWV), flies across firing ICBMs on WSPFIR/WSPLAU cadence, killed x4. REV-01 W3MAIN.MAC:2069/2433'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
   - id: mc5-3
