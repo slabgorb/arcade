@@ -18,6 +18,8 @@ import { createGameState, stepGame, enterInitial, confirmNameEntry, type GameSta
 import { FRIGHT_FLASHES } from './core/mode'
 import type { Dir } from './core/actor'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
+import { mountCanvas } from '@shared/host-helpers'
+import { resizeToDisplay } from '@shared/view'
 
 // pm3-5: the frightened body flashes white as it wears off — the FLASH
 // COUNT (FRIGHT_FLASHES = 5) is Dossier-cited (core/mode.ts), but the exact
@@ -40,10 +42,9 @@ function ghostRenderMode(game: GameState): GhostRenderMode {
   return 'frightened'
 }
 
-const canvas = document.querySelector<HTMLCanvasElement>('#game')
-if (!canvas) throw new Error('index.html must host a <canvas id="game">')
-const ctx = canvas.getContext('2d')
-if (!ctx) throw new Error('2d canvas context unavailable')
+// SH3-4: the checked mount replaces the hand-rolled querySelector('#game') +
+// getContext('2d') + null-throws — mountCanvas owns the lookup and the guards.
+const { canvas, ctx } = mountCanvas(document)
 
 // render draws into this fixed 224x288 logical backbuffer; the visible
 // canvas only ever receives an integer-scaled blit of it (AC-2).
@@ -53,9 +54,15 @@ logical.height = LOGICAL_H
 const logicalCtx = logical.getContext('2d')
 if (!logicalCtx) throw new Error('2d canvas context unavailable for the logical backbuffer')
 
+// SH3-4: the DPR-aware resize + CSS-box sizing is @shared/view's resizeToDisplay,
+// which folds in the Math.min(MAX_DPR, devicePixelRatio || 1) cap+guard the old
+// hand-rolled resize lacked (it set the backing store to clientWidth — always 1×).
+// The visible canvas is width:100%/height:100% of the full-viewport body, so the
+// window box IS the canvas box (the asteroids/star-wars/tempest idiom). The render
+// loop's fitIntegerScale(canvas.width, …) reads the now-device-pixel backing store,
+// so the integer letterbox stays crisp — just at up-to-2× resolution.
 const resize = (): void => {
-  canvas.width = canvas.clientWidth
-  canvas.height = canvas.clientHeight
+  resizeToDisplay(canvas, window.innerWidth, window.innerHeight, window.devicePixelRatio)
 }
 window.addEventListener('resize', resize)
 resize()
