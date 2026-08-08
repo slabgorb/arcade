@@ -139,17 +139,30 @@ describe('mc3-4 AC3 — an arrived ICBM kills its target, and the dead never res
     const base = createGame(1)
     const target = base.cities[0].pos
     const arrived: Icbm = { origin: { h: target.h, v: 222 }, target, pos: target, arrived: true }
-    const g: GameState = { ...base, remaining: 0, icbms: [arrived] }
+    // A second ICBM still high in its descent keeps the WAVE open (the screen is not
+    // clear), so this stays a mid-wave frame. mc4-4's end-of-wave REGENERATION revives
+    // destroyed cities, but only at a wave boundary — it must not fire mid-wave, which
+    // is exactly the invariant ("the dead never resurrect") this test guards.
+    const airborne: Icbm = {
+      origin: { h: 10, v: 222 },
+      target: base.bases[0].pos,
+      pos: { h: 10, v: 200 },
+      arrived: false,
+    }
+    const g: GameState = { ...base, remaining: 0, icbms: [arrived, airborne] }
 
     let next = stepGame(g)
     expect(next.cities[0].alive).toBe(false) // the struck city died
     expect(next.cities.slice(1).every((c) => c.alive)).toBe(true) // no other city touched
-    expect(next.icbms.length).toBe(0) // the arrived warhead is consumed
+    expect(next.icbms.some((i) => i.arrived)).toBe(false) // the arrived warhead is consumed
+    expect(next.phase).toBe('play') // a warhead is still descending → still mid-wave
 
-    // …and it stays dead across further frames (alive only ever goes true→false).
+    // …and it stays dead across further mid-wave frames (alive only ever goes
+    // true→false within a wave; regeneration is a between-wave event).
     for (let k = 0; k < 10; k++) {
       next = stepGame(next)
       expect(next.cities[0].alive).toBe(false)
+      expect(next.phase).toBe('play')
     }
   })
 

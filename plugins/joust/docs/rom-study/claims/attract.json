@@ -1,0 +1,47 @@
+[
+  {
+    "id": "JT104-001",
+    "claim": "COLOUR_CYCLE_FRAMES: the marquee palette rotates every 2.5s = 150 frames @ 60Hz (ATT.SRC:173).",
+    "source": {
+      "file": "ATT.SRC",
+      "line": 173,
+      "verbatim": "\tLDD\t#((((2*60+30)/16)+1)*8)+7 CHANGE COLORS EVERY 2 1/2 SECONDS"
+    }
+  },
+  {
+    "id": "JT104-002",
+    "claim": "MARQUE_DWELL_FRAMES: the MARQUE page dwells 18.5s = 1110 frames (PCNAP 10 * 111) before JMP VSIM (ATT.SRC:121).",
+    "source": {
+      "file": "ATT.SRC",
+      "line": 121,
+      "verbatim": "\tLDA\t#111\t\t111 * 10 = 1,110 = 18.5 SEC"
+    }
+  },
+  {
+    "id": "JT104-003",
+    "claim": "pteroBanner text 'PTERODACTYL BEWARE' — ATX11 EQU $1B, the RV4 revision label (JOUSTRV4.SRC:80).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 80,
+      "verbatim": "ATX11\tEQU\t$1B\t'PTERODACTYL BEWARE'"
+    }
+  },
+  {
+    "id": "JT104-004",
+    "claim": "lavaBanner first word-group 'HOME OF THE' — MSW19 EQU $F9 (MESSEQU.SRC:156), rendered by LAVLES (JOUSTRV4.SRC:516).",
+    "source": {
+      "file": "MESSEQU.SRC",
+      "line": 156,
+      "verbatim": "MSW19\tEQU\t$F9\t'HOME OF THE'"
+    }
+  },
+  {
+    "id": "JT104-005",
+    "claim": "lavaBanner second word-group 'LAVA TROLL' — MSW20 EQU $FA (MESSEQU.SRC:155), rendered by LAVLES (JOUSTRV4.SRC:519).",
+    "source": {
+      "file": "MESSEQU.SRC",
+      "line": 155,
+      "verbatim": "MSW20\tEQU\t$FA\t'LAVA TROLL'"
+    }
+  }
+]

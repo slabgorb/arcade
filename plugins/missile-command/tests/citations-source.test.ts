@@ -215,6 +215,11 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // batch table — cadence = (EXPEND-EXPFIX-2)+1 = (byte count of EXPFIX - 2) + 1.
     // A real numeric value (5), so it carries no kind tag; pinned in the mc9-3 block.
     'EXPFRA_FRAMES',
+    // mc4-5: BONINL is the bonus-city interval table — a `.WORD` (not `.BYTE`) READ AS
+    // BCD under CHEKBO's SED divide, then scaled to points by x100 (score/100 via
+    // LSCORM:LSCORH). Its claim values are real numeric intervals, so it joins the
+    // exemption and is pinned by the mc4-5 BCD-consistency block below.
+    'BONINL',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -317,6 +322,28 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // per-ICBM value is added operand+1 = 4 times per city.
     expect(immediate(city!.source.verbatim) + 1, 'CITYBON is LDX operand + 1 (inclusive loop)').toBe(4)
     expect(city!.value, 'MC-CITYBON value').toBe(4)
+  })
+
+  // mc4-5: BONINL is a `.WORD` interval table read AS BCD (CHEKBO's SED divide) and
+  // scaled to points by x100 (score/100 via LSCORM:LSCORH). The DERIVED exemption lets
+  // it carry numeric point values; this block keeps that honest — every claimed value
+  // must be a real BCD entry of its cited `.WORD` line, x100 (so a fabricated interval
+  // cannot ride into the un-cited-literal guard's claimedValues set).
+  it('mc4-5: every BONINL claim value is a BCD entry of its cited .WORD line, x100', () => {
+    // The `.WORD` tokens are hex digits read as BCD: parseInt(token, 10) IS the BCD
+    // decode (0100 -> 100, 0080 -> 80), and the point interval is that x 100.
+    const pointsFromBcd = (verbatim: string): number[] =>
+      (verbatim.split('.WORD')[1] ?? '')
+        .split(',')
+        .map((t) => parseInt(t.trim(), 10) * 100)
+    const boninl = loadClaims().filter((c) => c.symbol === 'BONINL')
+    expect(boninl.length, 'the mc4-5 BONINL interval table must be claimed').toBeGreaterThan(0)
+    for (const c of boninl) {
+      expect(
+        pointsFromBcd(c.source.verbatim),
+        `${c.id}: claimed value ${c.value} must be a real BONINL BCD entry x100 of "${c.source.verbatim}"`,
+      ).toContain(Number(c.value))
+    }
   })
 
   it('mc8-2: every W3SOUN sound-table claim value is a real byte of its cited .BYTE line', () => {

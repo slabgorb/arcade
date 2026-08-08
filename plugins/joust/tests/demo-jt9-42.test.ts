@@ -237,6 +237,56 @@ describe('jt9-42 F1-A — pickTrollVictim binds the nearest bird, enemy included
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
+// jt9-58 — the troll's CREATION hand X hand-tracks an ENEMY victim, not the
+//        TROLL_CLIF5_X fallback (jt9-42 review mutation M-C: `trollProcess`'s
+//        `entity: trollEntity(birdPosX(victim) ?? TROLL_CLIF5_X)` collapsed to the
+//        bare constant `TROLL_CLIF5_X` and every jt9-42 test stayed green). F1-A
+//        already proves the bound victim is an enemy; this pins the X the troll's
+//        `entity` is CREATED with. `stepDemo` runs `stepTrolls` BEFORE the
+//        wave-transition block that spawns the troll (`trollProcess`), so on the
+//        very frame `trollWaveFarPlayers()` lands on wave 4, the fresh troll's
+//        `entity.posX` has not yet been touched by the per-frame LT1HT rise
+//        (`stepTrolls`'s `handX` track) — it is still exactly `trollProcess`'s
+//        creation value. That is the ONLY frame the constant-vs-tracked
+//        distinction survives to observe.
+// TROLL_X_OFFSET = -2 (`ADDD #-2`, JOUSTRV4.SRC:6786) — the hand's fixed offset
+// from its victim's grab-point X, mirrored here (not part of the DemoModule
+// contract) exactly as CLIF5_X mirrors TROLL_CLIF5_X above.
+// ═════════════════════════════════════════════════════════════════════════════
+const TROLL_X_OFFSET = -2
+
+describe('jt9-58 — the spawned troll hand-tracks an ENEMY victim at creation, not TROLL_CLIF5_X', () => {
+  it("the fresh troll's entity.posX is the enemy victim's X + TROLL_X_OFFSET, never the CLIF5 constant", async () => {
+    const { d } = await trollWaveFarPlayers()
+    const troll = trollsIn(d)[0]
+    expect(troll, 'a troll spawned at wave 4').toBeDefined()
+    const victim = troll?.victimId !== undefined ? byId(d, troll.victimId) : undefined
+    // F1-A's staging invariant, restated here so this test stands on its own: with
+    // both players parked FAR, the bound victim is the enemy nearest CLIF5.
+    expect(victim?.kind, 'the bound victim is an enemy, not a parked player').toBe('enemy')
+    const victimX = victim ? posXOf(victim) : undefined
+    expect(victimX, "the enemy victim carries a grab-point X (enemy.entity.posX)").toBeDefined()
+    // Every wave-4 transporter pad (TR1..TR4: x=113/231/23/127) sits off CLIF5_X
+    // (148) by more than zero — see FAR_PLAYER_X's comment above — so this can
+    // never coincide with the constant by luck of the seed. Without this guard a
+    // seed that happened to land the enemy at 148 would make the assertion below
+    // pass under BOTH the real code and the M-C mutant — a worthless, non-killing
+    // test. Pinning the inequality is what makes the next assertion a genuine kill.
+    expect(victimX, "the enemy's X differs from TROLL_CLIF5_X (148), the mutant's fallback").not.toBe(CLIF5_X)
+    // THE KILL: under real code this is birdPosX(enemy) + TROLL_X_OFFSET (tracks the
+    // enemy). Under M-C (`birdPosX(victim) ?? TROLL_CLIF5_X` → `TROLL_CLIF5_X`) this
+    // would instead read TROLL_CLIF5_X + TROLL_X_OFFSET = 146, which — because
+    // victimX !== CLIF5_X above — is a DIFFERENT number, so M-C reddens this exact
+    // assertion with a numeric mismatch.
+    expect(
+      troll?.entity?.posX,
+      "the troll's hand X at creation is the ENEMY victim's X + TROLL_X_OFFSET — " +
+        'under M-C this would instead be the TROLL_CLIF5_X constant (146)',
+    ).toBe((victimX as number) + TROLL_X_OFFSET)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
 // F1-B — enemyAfterTroll: the troll is spliced immediately BEFORE an enemy, so an
 //        enemy has PPREV = troll and the looker is reachable (the story's probe)
 // ═════════════════════════════════════════════════════════════════════════════

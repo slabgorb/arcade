@@ -38,6 +38,7 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { load } from './helpers/dynamic-load'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const dispatchPath = join(root, 'src', 'shell', 'audio-dispatch.ts')
@@ -75,17 +76,10 @@ function recordingAudio(): SoundSurface & { calls: Effect[] } {
 
 type PlayEventSounds = (audio: SoundSurface, events: readonly { type: string }[]) => void
 
-const load = async <T>(parts: string[]): Promise<Partial<T>> => {
-  try {
-    return (await import(/* @vite-ignore */ parts.join('/'))) as Partial<T>
-  } catch {
-    return {}
-  }
-}
-
 async function dispatchFn(): Promise<PlayEventSounds> {
-  const fn = (await load<{ playEventSounds: PlayEventSounds }>(['..', 'src', 'shell', 'audio-dispatch']))
-    .playEventSounds
+  const fn = (
+    await load<{ playEventSounds: PlayEventSounds }>(import.meta.url, ['..', 'src', 'shell', 'audio-dispatch'])
+  ).playEventSounds
   if (typeof fn !== 'function') {
     throw new Error(
       'jt5-1 not implemented yet: src/shell/audio-dispatch.ts must exist and export ' +
@@ -96,7 +90,7 @@ async function dispatchFn(): Promise<PlayEventSounds> {
 }
 
 async function eventKinds(): Promise<readonly string[]> {
-  const kinds = (await load<{ EVENT_KINDS: readonly string[] }>(['..', 'src', 'core', 'events']))
+  const kinds = (await load<{ EVENT_KINDS: readonly string[] }>(import.meta.url, ['..', 'src', 'core', 'events']))
     .EVENT_KINDS
   if (kinds === undefined) {
     throw new Error('jt5-1 not implemented yet: src/core/events.ts must export `EVENT_KINDS`.')
@@ -105,8 +99,9 @@ async function eventKinds(): Promise<readonly string[]> {
 }
 
 async function sounds(): Promise<Readonly<Record<string, string>>> {
-  const s = (await load<{ SOUNDS: Readonly<Record<string, string>> }>(['..', 'src', 'shell', 'audio']))
-    .SOUNDS
+  const s = (
+    await load<{ SOUNDS: Readonly<Record<string, string>> }>(import.meta.url, ['..', 'src', 'shell', 'audio'])
+  ).SOUNDS
   if (s === undefined) {
     throw new Error('jt5-1 not implemented yet: src/shell/audio.ts must export `SOUNDS`.')
   }

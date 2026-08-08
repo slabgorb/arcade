@@ -59,7 +59,8 @@ stories:
     description: "Wire the wave model into the composition root and make it visible. (a) src/core/game.ts (change) — createGame seeds wave 1; stepGame runs the wave-end resolution in its resolve step and advances the wave; GameState gains the wave number and multiplier. (b) shell/render.ts (change) — the HUD draws the wave number and current multiplier (functional text; authentic stroke font is mc9); the score/ammo readouts are unchanged and remain the core's verbatim values (HUD-figure rule). (c) tests/mc4-playthrough.test.ts — one seeded run across at least two waves asserting the descent speed ramps between waves, the wave-end bonus is awarded, cities regenerate, ammo refills, the multiplier climbs, and identical seeds yield identical states. Depends on mc4-1/2/3."
     points: 3
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -67,12 +68,15 @@ stories:
       - 'render draws the wave number and multiplier in the HUD against the existing canvas-mock harness, and the score/ammo it draws are still the core values, not re-derived copies.'
       - 'tests/mc4-playthrough.test.ts: a seeded multi-wave run shows the ICBM descent measurably slower on wave 1 than on a later wave, the end-of-wave bonus applied, cities regenerated and ammo refilled between waves, and the multiplier increasing; identical seeds yield identical states.'
       - 'the full gate is green: npx vitest run --project missile-command, npm run lint, and npm run test:orchestrator all pass.'
+    review_findings: "M2 mutation survives: stepGame's kills-scored-at-wave-multiplier wiring (scoreKills(...,state.wave)) is unguarded — multiplier displays/climbs but no test proves kills scale by it. Add a mc4-playthrough guard (kill at multiplier>1 scores ICBM_KILL_POINTS*scoreMultiplier(wave)). Code correct; test-teeth only."
+    review_verdict: rejected
   - id: mc4-5
     title: 'Bonus city at a score threshold (CHEKBO/BONINL): recover the real bonus interval + claim'
     description: 'Scoring fidelity, split out of mc4-3 (its part b). A bonus city is awarded as the running score crosses a bonus interval. The real mechanic is CHEKBO (W3MAIN.MAC:5621): it reads OPTIO2 masked by BONMSK (W3COMN.MAC:197), shifts the result to index the BONINL interval table, then divides the running score by that interval to count bonus cities. mc4-3 originally cited MC-SCITYM as the threshold, but MC-SCITYM (=3, W3COMN.MAC:195) is the OPTIO2 starting-cities mask (used only as AND I,SCITYM), never compared to score. This story must recover the BONINL table + the shipped default DIP interval from the source, CREATE a new claim for it (do NOT reuse MC-SCITYM), and award bonus cities via the mc4-2 regeneration path (respecting the city cap). Depends on mc4-2 (city cap + regen). Relates to mc4-3 (running score).'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     depends_on: mc4-2
@@ -80,6 +84,8 @@ stories:
       - 'The bonus-city mechanic follows CHEKBO (W3MAIN.MAC:5621): the bonus interval is selected via OPTIO2 masked by BONMSK indexing the BONINL table, and one bonus city is awarded per interval the running score crosses.'
       - A new claim is created for the bonus interval (BONINL / shipped default DIP setting) derived byte-exact from the source; the incorrect MC-SCITYM citation is NOT reused.
       - Bonus cities are added via the mc4-2 regeneration path, respecting the city cap; the same threshold is not double-counted; citations.test.ts and purity.test.ts stay green.
+    completed: '2026-08-08'
+    review_verdict: approved
   - id: mc4-6
     title: 'End-of-wave bonus scales by the wave multiplier (SMULTI): ABMADD + city bonus'
     description: 'Scoring fidelity, surfaced by mc4-3 review (TEA + Reviewer). The END-OF-WAVE bonus also scales by the wave multiplier SMULTI in the ROM: ENDWV2 ABMADD adds LDA I,5 once per SMULTI (W3MAIN.MAC:5443/5451), and ENDWV4 city bonus loops the per-ICBM value per SMULTI (ICMUL2). mc4-2 shipped waveEndBonus at the BASE (x1) multiplier and deferred "the ramp"; mc4-3 was rescoped to scoreKills only, so the end-of-wave bonus ramp is currently owned by no story. Generalise waveEndBonus (wave.ts) to scale by scoreMultiplier(wave) from mc4-3. Depends on mc4-3 (scoreMultiplier). May be folded into mc4-4 wiring at the owners discretion.'

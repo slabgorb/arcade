@@ -63,7 +63,7 @@
 // from what Atari shipped reddens against the source, not against a human.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -487,13 +487,20 @@ describe('AC1 — explosion.ts carries its W3MAIN / W3COMN source citations', ()
   })
 })
 
-describe('source ground truth — EXDONE=27 and the OLDRAD peak=13 really decode from the ROM', () => {
-  // GREEN from day one: reads the vendored source (data), not explosion.ts (code),
-  // anchoring the two constants to what Atari shipped. (W3COMN.MAC/W3MAIN.MAC carry
-  // a stray non-text byte — readFileSync utf8 reads them fine; a hand `grep` needs
-  // `-a`. Noted in field.test.ts's SOURCE-FILE HAZARD.)
-  const w3comn = readFileSync(join(root, 'reference', 'source', 'W3COMN.MAC'), 'utf8')
-  const w3main = readFileSync(join(root, 'reference', 'source', 'W3MAIN.MAC'), 'utf8')
+const w3comnPath = join(root, 'reference', 'source', 'W3COMN.MAC')
+const w3mainPath = join(root, 'reference', 'source', 'W3MAIN.MAC')
+const romSourceAvailable = existsSync(w3comnPath) && existsSync(w3mainPath)
+// Byte-gated: W3COMN.MAC/W3MAIN.MAC are gitignored (copyright wall — NEVER
+// committed), so this suite SKIPS wherever the local quarry is absent (CI
+// included). `describe.skipIf` still runs its factory BODY at collection, so the
+// reads are guarded too — otherwise they ENOENT before any skip can apply.
+describe.skipIf(!romSourceAvailable)('source ground truth — EXDONE=27 and the OLDRAD peak=13 really decode from the ROM', () => {
+  // GREEN wherever the quarry is present: reads the vendored source (data), not
+  // explosion.ts (code), anchoring the two constants to what Atari shipped.
+  // (W3COMN.MAC/W3MAIN.MAC carry a stray non-text byte — readFileSync utf8 reads
+  // them fine; a hand `grep` needs `-a`. Noted in field.test.ts's SOURCE-FILE HAZARD.)
+  const w3comn = romSourceAvailable ? readFileSync(w3comnPath, 'utf8') : ''
+  const w3main = romSourceAvailable ? readFileSync(w3mainPath, 'utf8') : ''
 
   // A `SYMBOL = value` def in `.RADIX 16` source: trailing `.` = decimal, else hex.
   const valueOf = (src: string, symbol: string): number => {
