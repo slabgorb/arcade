@@ -39,7 +39,22 @@ import { fireFromKey } from '../src/shell/input.js'
 import { NICBMS } from '../src/core/spawn.js'
 import { type Icbm } from '../src/core/icbm.js'
 import { type Abm } from '../src/core/abm.js'
-import { type Explosion } from '../src/core/explosion.js'
+import {
+  startExplosion,
+  stepExplosion,
+  blastRadius,
+  MAX_BLAST_RADIUS,
+  type Explosion,
+} from '../src/core/explosion.js'
+
+/** A blast stepped to its PEAK radius — MAX_BLAST_RADIUS on BOTH the mc1-4 triangle
+ *  and the mc9-3 OLDRAD curve, so this kill fixture does not depend on which radius
+ *  model is live (their lifetimes differ, so no single hardcoded `t` works). */
+const peakBlast = (h: number, v: number): Explosion => {
+  let e = startExplosion(h, v)
+  for (let i = 0; blastRadius(e) < MAX_BLAST_RADIUS && i < 10000; i++) e = stepExplosion(e)
+  return e
+}
 
 /** Fold `stepGame` `n` times, collecting the soundEvents emitted each frame. */
 const collect = (s: GameState, n: number): SoundEvent[][] => {
@@ -99,7 +114,7 @@ describe('mc8-2 — stepGame emits each sim sound-moment at its frame', () => {
     // to the real kill, not a coincidence.
     const victim: Icbm = { origin: { h: 100, v: 222 }, target: { h: 100, v: 20 }, pos: { h: 100, v: 100 }, arrived: false }
     const bystander: Icbm = { origin: { h: 5, v: 222 }, target: { h: 5, v: 20 }, pos: { h: 5, v: 100 }, arrived: false }
-    const blast: Explosion = { h: 100, v: 99, t: 10 }
+    const blast = peakBlast(100, 99)
     const g: GameState = { ...createGame(1), remaining: 0, icbms: [victim, bystander], explosions: [blast], abms: [] }
 
     const next = stepGame(g)

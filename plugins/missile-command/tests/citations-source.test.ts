@@ -211,6 +211,10 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // `ADC I,25`) whose numeric value is the immediate operand — CITYBON derived as
     // operand+1 for ICMUL2's inclusive MIEND loop. Pinned in the mc4-2 block below.
     'CITYBON', 'ABMBON',
+    // mc9-3: the EXPFRA update cadence is a STRUCTURAL derivation from the EXPFIX
+    // batch table — cadence = (EXPEND-EXPFIX-2)+1 = (byte count of EXPFIX - 2) + 1.
+    // A real numeric value (5), so it carries no kind tag; pinned in the mc9-3 block.
+    'EXPFRA_FRAMES',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -335,6 +339,26 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
         `${c.id}: claimed value ${c.value} must be a real ${c.symbol} byte of "${c.source.verbatim}"`,
       ).toContain(Number(c.value))
     }
+  })
+
+  // mc9-3: the EXPFRA cadence is a STRUCTURAL derivation, not a byte of its cited
+  // line (the DERIVED exemption lets it carry the numeric 5). This block is its teeth
+  // — the value must re-derive from the EXPFIX batch-table byte count, so a fabricated
+  // cadence cannot ride into the un-cited-literal guard's claimedValues set.
+  it('mc9-3: the EXPFRA cadence value derives from the EXPFIX batch-table byte count', () => {
+    const expfra = loadClaims().find((c) => c.symbol === 'EXPFRA_FRAMES')
+    expect(expfra, 'MC-EXPFRA must be committed').toBeTruthy()
+    // PREXPL resets its update timer to EXPEND-EXPFIX-2 and cycles that-many + 1 frames.
+    // EXPFIX is the cited `.BYTE` table; EXPEND is its end label, so EXPEND-EXPFIX is the
+    // byte count. cadence = (count - 2) + 1.
+    const entries = (expfra!.source.verbatim.split('.BYTE')[1] ?? '')
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+    expect(entries.length, 'EXPFIX is the 6-entry round-robin batch table').toBe(6)
+    const cadence = entries.length - 2 + 1
+    expect(cadence, 'cadence = (EXPEND-EXPFIX-2)+1').toBe(5)
+    expect(Number(expfra!.value), 'MC-EXPFRA value is the derived 5-frame cadence').toBe(5)
   })
 
   it('mc4-1: the ICBM update-period fixed-point scale is 256, cited to the ICSPDL fraction byte', () => {
