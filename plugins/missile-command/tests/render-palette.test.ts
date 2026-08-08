@@ -174,8 +174,9 @@ describe('mc9-2 AC1 — incoming ICBMs pull their colour from the wave palette (
 })
 
 describe('mc9-2 AC1 — explosion blasts stay visible against the sky on every wave', () => {
-  // One explosion mid-life (t in (0,26) → radius > 0), no ICBMs so the only `arc`
-  // marks are the blast. Wave 13 is WVACOL, where the naive flash slot COL100 EQUALS
+  // One explosion early in its life (t=13 → radius > 0 under either the mc1-4 triangle
+  // or the mc9-3 OLDRAD curve: OLDRAD[floor(13/5)] = OLDRAD[2] = 2), no ICBMs so the
+  // only `arc` marks are the blast. Wave 13 is WVACOL, where the naive flash slot COL100 EQUALS
   // the sky COL000 — the collision that would render blasts invisible (review round 1).
   const withBlast: GameState = { ...withCursor(createGame(1)), explosions: [{ h: 128, v: 99, t: 13 }] }
 

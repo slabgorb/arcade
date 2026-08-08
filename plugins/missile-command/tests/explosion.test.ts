@@ -22,16 +22,40 @@
 //     the blast is finished. Diameter 27 ⇒ radius ≈ 13 == the OLDRAD peak. The
 //     skeleton pins those two source facts: MAX_BLAST_RADIUS = 13 and EXDONE = 27.
 //
-// The skeleton pins the SHAPE and the two cited constants, not the exact OLDRAD
-// per-tick curve or the EXPFRA update cadence (mc2 fidelity): radius starts 0,
-// rises monotonically to exactly MAX_BLAST_RADIUS, falls monotonically to 0, and
-// isExplosionDone flips true once it has collapsed. A blast that never shrank, or
-// grew past 13, or was done before it peaked, reddens here.
+// mc1-4's skeleton pinned only the SHAPE and the two cited constants — a symmetric
+// triangle grow 0→MAX→0 — deferring the exact OLDRAD per-tick curve and the EXPFRA
+// update cadence to mc9. The shape tests below (single peak, grows-and-shrinks,
+// never exceeds 13, finishes after collapse) still hold for the authentic curve and
+// remain the SHAPE floor.
+//
+// ─── mc9-3 (Han Solo / TEA) — RETIRE THE TRIANGLE ────────────────────────────
+// mc9-3 replaces the triangle with the byte-exact OLDRAD radius-vs-time table AND
+// the EXPFRA update cadence, both decoded from PROCESS EXPLOSIONS (PREXPL, phys
+// W3MAIN.MAC:1811). Two authentic facts the triangle got wrong:
+//   • OLDRAD is ASYMMETRIC and PLATEAUED, not a linear triangle:
+//         idx: 0 1 2 3 …            13 14 …               26 27
+//         rad: 0 0 2 3 4 5 6 7 8 9 10 11 12 13 13 12 …  2 1 0 0
+//     It holds 0 for TWO steps then JUMPS to 2 (skips 1 on the rise), HOLDS 13 for
+//     two steps at the peak, and carries a lone 1 on the collapse that the mirror
+//     rise never had. `W3MAIN.MAC:1917-1919` (physical; the table spans two `.BYTE`
+//     rows across the double-spaced blank at 1918).
+//   • EXPFRA cadence: the ROM advances an explosion's time index ONCE EVERY 5 game
+//     frames (each frame updates one of 5 round-robin batches; `EXPFIX:.BYTE
+//     -1,3,7,11,15,19` at W3MAIN.MAC:1911, timer reset EXPEND-EXPFIX-2 = 4 ⇒ a
+//     5-frame cycle). Our core steps once per video frame (game.ts:120 calls
+//     stepExplosion once per stepGame), so the faithful model samples OLDRAD at
+//     index = floor(t / 5): the blast lives EXDONE·5 = 135 frames, ~5× the
+//     triangle's 26 — the triangle ran the blast 5× too fast.
 //
 // ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
-// `src/core/explosion.ts` does not exist yet. `loadExplosion()` dynamic-imports it
-// and throws a self-describing "not built yet". Purity is guarded by the src/core
-// sweep (purity.test.ts) — not re-asserted here.
+// `src/core/explosion.ts` today is the mc1-4 triangle (`Math.min(t, LIFETIME-t)`,
+// LIFETIME = EXDONE-1). Against the authentic curve+cadence it diverges at nearly
+// every tick (radius at frame 10 is 10, not OLDRAD[2]=2; it advances every frame,
+// not every 5th; it finishes at frame 26, not 135; its peak is a spike, not a
+// two-step plateau). GREEN (Yoda) ports OLDRAD + the 5-frame cadence, backs the new
+// constants with a byte-exact claim (so citations.test.ts's AC3 no-uncited-literal
+// guard stays green), and cites PROCESS EXPLOSIONS / EXPFRA. Purity is guarded by
+// the src/core sweep (purity.test.ts) — not re-asserted here.
 //
 // The "source ground truth" describe at the bottom reads the vendored W3COMN.MAC /
 // W3MAIN.MAC directly (data, not code) and is GREEN from day one: it proves 27 and
@@ -103,8 +127,27 @@ async function loadExplosion(): Promise<ExplosionModule> {
 const EXDONE = 27
 const MAX_BLAST_RADIUS = 13
 
+// mc9-3 — the authentic OLDRAD radius-vs-time table (W3MAIN.MAC:1917-1919) and the
+// EXPFRA update cadence (W3MAIN.MAC:1911). Both are re-derived from the vendored
+// source in the "source ground truth" describe at the bottom, so a typo here cannot
+// pass by matching a typo in explosion.ts — the table below is the EXPECTED value,
+// the parse down there is the WITNESS.
+const OLDRAD: readonly number[] = [
+  0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, // rise (index 0..13): 0,0 then skips 1
+  13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0, // fall (index 14..28): holds 13, carries a lone 1
+]
+/** Game frames per OLDRAD index step — EXPEND-EXPFIX-2 = 4 ⇒ a 5-frame cycle. */
+const EXPFRA_FRAMES = 5
+/** The blast's full lifetime in game frames: EXDONE index steps × the cadence. */
+const LIFETIME_FRAMES = EXDONE * EXPFRA_FRAMES // 135
+/** The authentic radius at game-frame t: OLDRAD sampled at index = floor(t / cadence). */
+const authenticRadius = (t: number): number => {
+  const idx = Math.floor(t / EXPFRA_FRAMES)
+  return idx >= EXDONE ? 0 : OLDRAD[idx]
+}
+
 /** Walk a fresh blast to completion; return the radius at each tick from t=0. */
-const radiusCurve = (mod: ExplosionModule, cap = 3 * EXDONE): number[] => {
+const radiusCurve = (mod: ExplosionModule, cap = 2 * LIFETIME_FRAMES): number[] => {
   const radii: number[] = []
   let exp = mod.startExplosion(100, 120)
   for (let i = 0; i < cap; i++) {
@@ -190,7 +233,7 @@ describe('AC1 — isExplosionDone: the blast finishes exactly once, after it col
     const mod = await loadExplosion()
     let exp = mod.startExplosion(50, 60)
     let sawPeak = false
-    for (let i = 0; i < 3 * EXDONE && !mod.isExplosionDone(exp); i++) {
+    for (let i = 0; i < 2 * LIFETIME_FRAMES && !mod.isExplosionDone(exp); i++) {
       if (mod.blastRadius(exp) === MAX_BLAST_RADIUS) sawPeak = true
       // While not done, if we've already peaked the radius must be shrinking-or-zero,
       // never still at max forever: guards against "done" that never triggers.
@@ -201,19 +244,19 @@ describe('AC1 — isExplosionDone: the blast finishes exactly once, after it col
     expect(mod.blastRadius(exp), 'a done blast has zero radius').toBe(0)
   })
 
-  it('finishes within ~EXDONE ticks (a diameter-27 blast is short-lived)', async () => {
+  it('finishes after EXDONE index steps at the EXPFRA cadence (~135 frames, not the triangle 26)', async () => {
     const mod = await loadExplosion()
     let exp = mod.startExplosion(0, 0)
     let ticks = 0
-    while (!mod.isExplosionDone(exp) && ticks < 3 * EXDONE) {
+    while (!mod.isExplosionDone(exp) && ticks < 2 * LIFETIME_FRAMES) {
       exp = mod.stepExplosion(exp)
       ticks++
     }
     expect(mod.isExplosionDone(exp)).toBe(true)
-    // Grow 0→13 then collapse 13→0 is ~26-29 ticks; allow slack but bound it.
-    expect(ticks, 'the blast outlived a plausible EXDONE-driven lifetime').toBeLessThanOrEqual(
-      2 * EXDONE,
-    )
+    // EXDONE (27) index steps × the 5-frame EXPFRA cadence = 135 frames. The mc1-4
+    // triangle finished in EXDONE-1 = 26 frames — 5× too fast. Bound it tightly so a
+    // regression back to a per-frame index (any cadence < 5) reddens here.
+    expect(ticks, 'the blast must live its full EXPFRA-paced lifetime').toBe(LIFETIME_FRAMES)
   })
 
   it('stays done and at radius 0 once finished (stepping past the end is safe)', async () => {
@@ -226,6 +269,118 @@ describe('AC1 — isExplosionDone: the blast finishes exactly once, after it col
       expect(mod.blastRadius(exp)).toBe(0)
     }
   })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// mc9-3 AC1 — the EXACT OLDRAD per-tick curve (retire the triangle)
+// The natural, faithful core model: t = video frames, index = floor(t / cadence),
+// radius = OLDRAD[index] until the index reaches EXDONE. Sampled at the start of
+// each cadence window so the assertion reads OLDRAD[step] directly.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('mc9-3 AC1 — blastRadius walks the exact OLDRAD table, not a symmetric triangle', () => {
+  it('radius at each cadence step equals OLDRAD[step]: 0,0,2,3,…,13,13,…,2,1 then done', async () => {
+    const { startExplosion, stepExplosion, blastRadius } = await loadExplosion()
+    let exp = startExplosion(100, 120)
+    for (let step = 0; step < EXDONE; step++) {
+      expect(
+        blastRadius(exp),
+        `OLDRAD step ${step} (frame ${step * EXPFRA_FRAMES}) must be the cited table value, ` +
+          `not the triangle's Math.min(t, LIFETIME-t)`,
+      ).toBe(OLDRAD[step])
+      for (let f = 0; f < EXPFRA_FRAMES; f++) exp = stepExplosion(exp)
+    }
+    expect(blastRadius(exp), 'once the index reaches EXDONE the blast is finished (radius 0)').toBe(0)
+  })
+
+  it('the rise SKIPS 1: radius holds 0 for two steps then jumps to 2 (0,0,2 — never 0,1,2)', async () => {
+    const { startExplosion, stepExplosion, blastRadius } = await loadExplosion()
+    // Sample the first three cadence steps.
+    const at = (step: number): number => {
+      let exp = startExplosion(0, 0)
+      for (let f = 0; f < step * EXPFRA_FRAMES; f++) exp = stepExplosion(exp)
+      return blastRadius(exp)
+    }
+    expect([at(0), at(1), at(2)], 'the authentic rise is 0,0,2 — the triangle would give 0,1,2').toEqual([0, 0, 2])
+  })
+
+  it('radius 1 appears ONLY on the collapse, never on the rise (the table is asymmetric)', async () => {
+    const mod = await loadExplosion()
+    const curve = radiusCurve(mod)
+    const peakIdx = curve.indexOf(MAX_BLAST_RADIUS)
+    expect(peakIdx, 'the peak must be reached').toBeGreaterThan(0)
+    const rise = curve.slice(0, peakIdx)
+    const fall = curve.slice(peakIdx)
+    expect(rise.includes(1), 'the rise skips radius 1 (0,0,2,…) — a triangle would include it').toBe(false)
+    expect(fall.includes(1), 'the collapse carries a lone radius 1 (…,2,1,0) the rise never had').toBe(true)
+  })
+
+  it('holds the peak radius 13 for TWO index steps (a plateau, not a single-frame spike)', async () => {
+    const mod = await loadExplosion()
+    const curve = radiusCurve(mod)
+    // OLDRAD peaks at idx 13 AND 14, so at the 5-frame cadence the radius sits at 13
+    // for a full 2·EXPFRA_FRAMES = 10 consecutive frames.
+    const peakFrames = curve.filter((r) => r === MAX_BLAST_RADIUS).length
+    expect(
+      peakFrames,
+      'the OLDRAD plateau (idx 13 and 14) means 13 is held for two cadence steps = 10 frames',
+    ).toBe(2 * EXPFRA_FRAMES)
+  })
+
+  it('the last non-zero radius before finishing is 1 (OLDRAD[26]), not 0', async () => {
+    const mod = await loadExplosion()
+    const curve = radiusCurve(mod)
+    const lastNonZero = [...curve].reverse().find((r) => r > 0)
+    expect(lastNonZero, 'the blast winks out from radius 1, per OLDRAD[26]=1').toBe(1)
+  })
+
+  it('every frame of the blast matches authenticRadius(t) exactly (whole-curve pin)', async () => {
+    const mod = await loadExplosion()
+    let exp = mod.startExplosion(60, 60)
+    for (let t = 0; t <= LIFETIME_FRAMES; t++) {
+      expect(mod.blastRadius(exp), `blastRadius at frame ${t}`).toBe(authenticRadius(t))
+      exp = mod.stepExplosion(exp)
+    }
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// mc9-3 AC1 — the EXPFRA update cadence: the radius index advances once per 5 frames
+// ═════════════════════════════════════════════════════════════════════════════
+describe('mc9-3 AC1 — the EXPFRA cadence paces the blast (one OLDRAD step per 5 frames)', () => {
+  it('the radius changes ONLY at frame boundaries that are multiples of the cadence', async () => {
+    const mod = await loadExplosion()
+    let prev = mod.blastRadius(mod.startExplosion(0, 0))
+    let exp = mod.startExplosion(0, 0)
+    for (let t = 1; t <= LIFETIME_FRAMES; t++) {
+      exp = mod.stepExplosion(exp)
+      const r = mod.blastRadius(exp)
+      if (r !== prev) {
+        expect(
+          t % EXPFRA_FRAMES,
+          `radius changed at frame ${t}, which is not a multiple of the ${EXPFRA_FRAMES}-frame cadence`,
+        ).toBe(0)
+      }
+      prev = r
+    }
+  })
+
+  it('within a single cadence window the radius is flat (advancing < 5 frames does not change it)', async () => {
+    const mod = await loadExplosion()
+    // Land inside a window where the radius is a distinctive non-zero value: frames
+    // 10..14 all sit at OLDRAD[2] = 2.
+    let exp = mod.startExplosion(0, 0)
+    for (let f = 0; f < 10; f++) exp = mod.stepExplosion(exp)
+    const held = mod.blastRadius(exp)
+    expect(held, 'frame 10 sits at OLDRAD[2]').toBe(2)
+    for (let f = 1; f < EXPFRA_FRAMES; f++) {
+      exp = mod.stepExplosion(exp)
+      expect(mod.blastRadius(exp), `radius must stay ${held} for all ${EXPFRA_FRAMES} frames of the window`).toBe(held)
+    }
+    // The NEXT frame crosses the window boundary and the index advances to OLDRAD[3]=3.
+    exp = mod.stepExplosion(exp)
+    expect(mod.blastRadius(exp), 'crossing the cadence boundary advances the OLDRAD index').toBe(3)
+  })
+
 })
 
 describe('AC1 — explosion reducers are pure (deterministic, non-mutating)', () => {
@@ -263,6 +418,18 @@ describe('AC1 — explosion.ts carries its W3MAIN / W3COMN source citations', ()
       src,
       'must cite the radius source (OLDRAD table or PROCESS EXPLOSIONS)',
     ).toMatch(/OLDRAD|PROCESS EXPLOSIONS/)
+  })
+
+  it('mc9-3 — cites PROCESS EXPLOSIONS, the OLDRAD table and the EXPFRA cadence it now ports', () => {
+    // AC2's citation half: explosion.ts names PROCESS EXPLOSIONS (W3MAIN.MAC:1811).
+    // AC1: the authentic curve+cadence must carry their source names now that the
+    // triangle is gone — OLDRAD (the radius table) and EXPFRA (the update cadence).
+    const src = explosionSrc()
+    expect(src, 'must name the PROCESS EXPLOSIONS routine it ports (W3MAIN.MAC:1811)').toMatch(
+      /PROCESS EXPLOSIONS/,
+    )
+    expect(src, 'must cite the OLDRAD radius-vs-time table').toMatch(/OLDRAD/)
+    expect(src, 'must cite the EXPFRA update cadence (the 5-frame pacing)').toMatch(/EXPFRA/)
   })
 })
 
@@ -313,5 +480,30 @@ describe('source ground truth — EXDONE=27 and the OLDRAD peak=13 really decode
     const peak = table.indexOf(MAX_BLAST_RADIUS)
     for (let i = 1; i <= peak; i++) expect(table[i]).toBeGreaterThanOrEqual(table[i - 1])
     for (let i = peak + 1; i < table.length; i++) expect(table[i]).toBeLessThanOrEqual(table[i - 1])
+  })
+
+  it('mc9-3 — the OLDRAD table decodes BYTE-EXACT to the expected curve (W3MAIN.MAC:1917-1919)', () => {
+    // The witness for the `OLDRAD` constant the AC1 tests above assert against: the
+    // vendored source must decode to exactly the two `.BYTE` rows, in order, so a
+    // transcription typo in the test's OLDRAD cannot pass by matching itself.
+    expect(oldradTable(), 'OLDRAD must decode to the exact asymmetric, plateaued table').toEqual(OLDRAD)
+  })
+
+  it('mc9-3 — the EXPFRA cadence decodes to 5 frames/step from EXPFIX (W3MAIN.MAC:1911)', () => {
+    // PREXPL resets its update timer to EXPEND-EXPFIX-2 and the explosion slots are
+    // split into (that many + 1) round-robin batches, so a single explosion advances
+    // once per (reset+1) frames. EXPFIX is a 6-byte table, EXPEND is its end label ⇒
+    // reset = 6-2 = 4 ⇒ cadence = 5. Derived from the assembled byte count, not a
+    // hand-typed constant, so a change to the batch table reddens here.
+    const m = w3main.match(/EXPFIX:\s*\.BYTE\s+([^\n;]+)/)
+    expect(m, 'EXPFIX .BYTE table not found in W3MAIN').not.toBeNull()
+    const expfixBytes = (m as RegExpMatchArray)[1]
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+    expect(expfixBytes.length, 'EXPFIX must be the 6-entry round-robin batch table').toBe(6)
+    const reset = expfixBytes.length - 2 // EXPEND-EXPFIX-2
+    const cadence = reset + 1
+    expect(cadence, 'the EXPFRA cadence must be 5 frames per OLDRAD index step').toBe(EXPFRA_FRAMES)
   })
 })
