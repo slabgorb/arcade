@@ -31,7 +31,8 @@ stories:
     title: 'Title screen: transcribe the JOUST logo picture + PRESENTED-BY / EXTRA-MOUNT / (C)1982 lines in FONT57, with the ATT.SRC colour cycle'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     depends_on: jt10-2
