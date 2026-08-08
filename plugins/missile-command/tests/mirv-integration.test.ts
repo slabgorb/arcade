@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { launchIcbm } from '../src/core/icbm.js'
+import { launchAbm } from '../src/core/abm.js'
 import { startExplosion, type Explosion } from '../src/core/explosion.js'
 
 // A ballistic ICBM parked mid-descent (V=150), squarely inside the MIRV band [128,160].
@@ -64,5 +65,15 @@ describe('mc5-1 AC3 — MIRV split wired into stepGame', () => {
     // is the one-per-frame guard the tie-break mutation proved missing.
     const two = { ...createGame(5), icbms: [bandIcbmAt(60), bandIcbmAt(180)], remaining: 0 }
     expect(stepGame(two).icbms.length).toBe(5)
+  })
+
+  it('suppression reads the PRE-frame explosion count — a same-frame detonation does not flip 11→12', () => {
+    // 11 live blasts + one ABM arriving THIS frame (its detonation would be a 12th, far from
+    // everything). Suppression gates on state.explosions (11, pre-aging), NOT the post-frame
+    // array, so the band ICBM still splits → 4. Guards against a future reordering that moved
+    // the explosion-aging ahead of the MIRV gate.
+    const arriving = { ...launchAbm({ h: 210, v: 16 }, { h: 210, v: 100 }), pos: { h: 210, v: 100 } }
+    const s = { ...createGame(5), icbms: [bandIcbm()], abms: [arriving], explosions: liveBlasts(11), remaining: 0 }
+    expect(stepGame(s).icbms.length).toBe(4)
   })
 })
