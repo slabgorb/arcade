@@ -80,6 +80,7 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { load } from './helpers/dynamic-load'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -175,17 +176,9 @@ function romEntries(sources: Readonly<Record<string, CueSource>>): [string, RomC
   return Object.entries(sources).filter((e): e is [string, RomCueSource] => isRom(e[1]))
 }
 
-const load = async <T>(parts: string[]): Promise<Partial<T>> => {
-  try {
-    return (await import(/* @vite-ignore */ parts.join('/'))) as Partial<T>
-  } catch {
-    return {}
-  }
-}
-
 async function cueSources(): Promise<Readonly<Record<string, CueSource>>> {
   const value = (
-    await load<{ CUE_SOURCES: Readonly<Record<string, CueSource>> }>([
+    await load<{ CUE_SOURCES: Readonly<Record<string, CueSource>> }>(import.meta.url, [
       '..', 'src', 'shell', 'audio-manifest',
     ])
   ).CUE_SOURCES
