@@ -332,7 +332,7 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // rides, the beam leaves from THERE. Cast from the world origin while the eye flies above it,
   // the sight-line and the beam run on parallel rays and everything the crosshair lands on is
   // missed underneath by exactly that gap. In the trench the ship is `trenchView` (the pilot flies
-  // 512..3840 above the floor); on the surface it is [0, altitude, 0] (40..238 above it). Only in
+  // 512..3840 above the floor); on the surface it is [0, 0, altitude] (40..238 above it). Only in
   // space is the ship the fixed cockpit at the origin. `shipPoint` is that one point, per phase.
   //
   // It is the ship at the START of the step — the eye the pilot actually sighted down, since the
@@ -994,7 +994,7 @@ function spawnGroundDebris(pos: Vec3, kind: Turret['kind']): GroundDebris[] {
   const fan = [-GROUND_DEBRIS_SPREAD, 0, GROUND_DEBRIS_SPREAD] // left / centre / right
   return fan.map((lateral): GroundDebris => ({
     pos: [pos[0], pos[1], pos[2]],
-    vel: [lateral, launch, 0],
+    vel: [0, lateral, launch], // sw10-1 native [depth, right(=lateral), up(=launch)]
     age: 0,
     kind: debrisKind,
   }))
@@ -1014,10 +1014,10 @@ function advanceGroundDebris(debris: readonly GroundDebris[], dt: number, scroll
     if (age >= GROUND_DEBRIS_LIFE_SECONDS) continue // XP$TMR ran out — dropped
     // Integrate height with the CURRENT vertical velocity, then freeze at the floor
     // (WSXPLD.MAC :550-555: ADDD XP$MZ / IFLT / LDD #0 ;FREEZE AT GROUND LEVEL).
-    const y = Math.max(0, p.pos[1] + p.vel[1] * dt)
-    const pos: Vec3 = [p.pos[0] + p.vel[0] * dt, y, p.pos[2] + p.vel[2] * dt + scrollSpeed * dt]
+    const up = Math.max(0, p.pos[2] + p.vel[2] * dt) // sw10-1 up = +Z (index 2); scroll = −depth (−X)
+    const pos: Vec3 = [p.pos[0] + p.vel[0] * dt - scrollSpeed * dt, p.pos[1] + p.vel[1] * dt, up]
     // Then gravity cuts the vertical velocity (:559 SUBD #50.*4 = 200 u/frame²).
-    const vel: Vec3 = [p.vel[0], p.vel[1] - GROUND_DEBRIS_GRAVITY * dt, p.vel[2]]
+    const vel: Vec3 = [p.vel[0], p.vel[1], p.vel[2] - GROUND_DEBRIS_GRAVITY * dt]
     next.push({ ...p, pos, vel, age })
   }
   return next
@@ -1089,11 +1089,11 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
     surfaceMazeLaid = true
   }
   const scrolled = field.map((turret): Turret => {
-    const pos: Vec3 = [turret.pos[0], turret.pos[1], turret.pos[2] + scrollSpeed * dt]
+    const pos: Vec3 = [turret.pos[0] - scrollSpeed * dt, turret.pos[1], turret.pos[2]] // sw10-1 scroll = −depth (−X)
     // age toward fire grace; keep the kind (bunker/tower/bishop) + seq riding along
     return { ...turret, pos, age: (turret.age ?? 0) + dt }
   })
-  const turrets = scrolled.filter((turret) => turret.pos[2] < 0) // still ahead of the cockpit
+  const turrets = scrolled.filter((turret) => turret.pos[0] > 0) // still ahead of the cockpit (depth +X)
 
   // --- Ship↔object collision (sw7-5 / D-020): the maze fights back ----------
   // ROM GDVIEW: closing on a standing tower glows the shields and crashes
@@ -1107,8 +1107,8 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
   // the ROM's `M.XP - $200 - speed` time-window — the crashed object is NOT destroyed
   // (no enemy-death, no score) — it flies off behind, like the cabinet's.
   for (const passed of scrolled) {
-    if (passed.pos[2] < 0) continue // still in flight — only plane-crossers crash
-    if (Math.abs(passed.pos[0]) > OBJECT_CRASH_LATERAL) continue // off the flight line
+    if (passed.pos[0] > 0) continue // still in flight — only plane-crossers crash (depth +X ahead)
+    if (Math.abs(passed.pos[1]) > OBJECT_CRASH_LATERAL) continue // off the flight line (right +Y)
     const kind = passed.kind ?? 'tower' // absent kind == tower (sw3-11 back-compat)
     if (kind === 'bunker' && altitude >= BUNKER_CRASH_CEILING) continue // overflown
     damage++
@@ -1135,7 +1135,7 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
   if (enemyFireCooldown <= 0 && armed.length > 0 && enemyShots.length < MAX_FIREBALL_SLOTS) {
     const shooter = armed[nextInt(rng, armed.length)]
     const muzzleY = (shooter.kind ?? 'tower') === 'bunker' ? BUNKER_MUZZLE_HEIGHT : TOWER_HEIGHT
-    const muzzle: Vec3 = [shooter.pos[0], shooter.pos[1] + muzzleY, shooter.pos[2]]
+    const muzzle: Vec3 = [shooter.pos[0], shooter.pos[1], shooter.pos[2] + muzzleY] // sw10-1 up = +Z
     enemyShots.push({
       pos: muzzle,
       // At the SHIP, not at the origin (sw7-16): the pilot is flying `altitude` above the floor,
@@ -2072,7 +2072,7 @@ function clearRun(s: GameState): GameState {
  *  TOWER_FIRE_GRACE. */
 function mazeField(wave: number): Turret[] {
   return mazeForWave(wave).entries.map((e) => ({
-    pos: [e.x, 0, -(e.y + SPAWN_DISTANCE)] as Vec3,
+    pos: [e.y + SPAWN_DISTANCE, e.x, 0] as Vec3, // sw10-1 native [depth(+X fwd), right(+Y=e.x), up]
     age: 0,
     kind: e.kind,
     // Carry the awakening sequence (sw7-18 / D-018) so the fire-gate can hold this
@@ -2306,7 +2306,7 @@ export function spawnTie(_rng: Rng, spawnIndex: number, spaceWave: number): Enem
  * the same call. Shell -> core is the allowed direction; core never imports shell.
  */
 export function surfaceShip(altitude: number): Vec3 {
-  return [0, altitude, 0]
+  return [0, 0, altitude] // sw10-1 native [depth, right, up]: altitude is the up (+Z) axis
 }
 
 // sw8-8 retired the `spaceEye` re-export along with the eye itself — the space camera is the
@@ -2319,7 +2319,7 @@ export function surfaceShip(altitude: number): Vec3 {
  * and the collision world does NOT follow him:
  *
  *   space    the fixed cockpit at the origin — the only phase where eye and origin coincide
- *   surface  [0, altitude, 0] — he flies 40..238 above the floor (MIN/MAX_SKIM_ALTITUDE)
+ *   surface  [0, 0, altitude] — he flies 40..238 above the floor (MIN/MAX_SKIM_ALTITUDE)
  *   trench   `trenchView` — he flies 512..3840 above it (TRENCH_EYE_MIN/MAX), and steers
  *
  * Exhaustive over Phase — no `default`, no trailing return — so a fourth phase is a COMPILE error
