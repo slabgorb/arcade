@@ -1,6 +1,8 @@
 # Story jt10-3: Title screen — MANDATORY CORRECTION BANNER (READ FIRST)
 
-> ⚠ **QUARRY GATE — TEA MUST RESOLVE BEFORE RED.** The story title asserts phrasing NOT YET verified against the ROM. Do not write any RED test until the three items below are resolved by source inspection. Once resolved, update this banner and the session file ACs, then proceed to RED.
+> ✅ **QUARRY RESOLVED (TEA/Tyr, 2026-08-08) — RED landed.** All three items below were resolved from primary source before RED. The authoritative, resolved answers now live in the session file (`.session/jt10-3-session.md`): its **Delivery Findings** (the pinned citations), **Design Deviations** (the "PRESENTED-BY" refutation → retitle; logo=vector not bitmap; cadence 87 not 88), and the **rewritten Acceptance Criteria**. The RED tests + expected values are in `tests/title.test.ts` and `tests/helpers/title-contract.ts`. The three sections below are kept as the QUESTIONS that were asked; read the session for the ANSWERS. **Dev (Loki): build to the failing tests + the session ACs, not to the open-question prose below.**
+>
+> **TL;DR of the answers:** logo = the VECTOR `LIST` polyline table (ATT.SRC:423-531), not a bitmap; strings = `MSCOPY '(C) 1982 WILLIAMS ELECTRONICS INC.'` (MESSEQU.SRC:129), `MSW17 'EXTRA MOUNT EVERY '` (:158), `MSW18 ',000 POINTS'` (:157), all FONT57; **there is no "PRESENTED BY"** in any revision (dropped, story retitled); cadence = **87** (ATT.SRC:173); palette = MARCOL (ATT.SRC:288-294). The screen is in ATT.SRC → shared across JOUSTRV1..4, no revision ambiguity.
 
 ## 1. JOUST LOGO GEOMETRY IS UNLOCATED
 
