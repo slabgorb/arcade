@@ -59,7 +59,8 @@ stories:
     description: "Retire the monospace HUD. Replace render.ts's `${hud}px monospace` score/ammo readouts with the cabinet's stroke-font glyphs and the authentic on-screen layout (score position, per-base ammo, wave/multiplier if mc4 has landed). Reuse @shared/font if it fits; otherwise a missile-command-only glyph module in src/shell (extract to src/shared only if a second game proves the duplication — the CLAUDE.md eligibility bar). Cite CLEAR SCREEN / the text-draw path (W3DSUP.MAC:1712 and the alphanumeric draw). The HUD-figure rule still holds: the score drawn is the core's state.score verbatim. Shell-only. Depends on mc3 (and reads mc4's wave/multiplier if present)."
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
