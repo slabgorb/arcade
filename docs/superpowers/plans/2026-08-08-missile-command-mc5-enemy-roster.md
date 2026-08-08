@@ -40,7 +40,7 @@ REV-01: band `[MIRVLO=0x80=128, MIRVHI=0xA0=160]` (`W3COMN.MAC:159/161`), re-arm
 - Consumes: `Icbm`, `Vec`, `launchIcbm` from `./icbm.js`; `Rng`, `nextInt` from `@shared/rng`.
 - Produces:
   - `MIRV_LO = 128`, `MIRV_HI = 160`, `MIRV_MAX_CHILDREN = 3`, `MIRV_EXPLOSION_SUPPRESS = 12` (all `export const`).
-  - `mirvEligible(icbm: Icbm): boolean` — true iff `icbm.kind !== 'cruise'`, `!icbm.arrived`, and `MIRV_LO <= icbm.pos.v <= MIRV_HI`.
+  - `mirvEligible(icbm: Icbm): boolean` — true iff `!icbm.arrived` and `MIRV_LO <= icbm.pos.v <= MIRV_HI`. (Cruise missiles don't exist yet in ROM-faithful order — the `kind !== 'cruise'` guard is ADDED to this function in Task 6 when cruise lands.)
   - `mirvSplit(parent: Icbm, liveTargets: readonly Vec[], rng: Rng): readonly Icbm[]` — up to `MIRV_MAX_CHILDREN` child ballistic ICBMs, each `launchIcbm(parent.pos, pickedTarget, parent.velocity)` with an RNG-picked live target; empty when `liveTargets` is empty. The children's `origin` is the parent's current `pos` (they fork mid-air).
 
 - [ ] **Step 1: Write the failing test** — `tests/mirv.test.ts`
@@ -90,10 +90,10 @@ describe('mirv eligibility band [128,160]', () => {
     expect(mirvEligible(at(161))).toBe(false) // above the band
   })
 
-  it('is never eligible for a cruise missile or an arrived ICBM', async () => {
+  it('is never eligible for an arrived ICBM', async () => {
     const { mirvEligible } = await loadMirv()
-    expect(mirvEligible({ ...at(144), kind: 'cruise' })).toBe(false)
     expect(mirvEligible({ ...at(144), arrived: true })).toBe(false)
+    // (cruise-kind exclusion is added in Task 6 when cruise missiles exist)
   })
 })
 
@@ -165,9 +165,10 @@ export const MIRV_HI = 160
 export const MIRV_MAX_CHILDREN = 3
 export const MIRV_EXPLOSION_SUPPRESS = 12
 
-/** A live ballistic ICBM whose head is inside the MIRV height band [128,160]. */
+/** A live ICBM whose head is inside the MIRV height band [128,160]. (Task 6 adds
+ *  the `icbm.kind === 'cruise'` exclusion once cruise missiles exist.) */
 export function mirvEligible(icbm: Icbm): boolean {
-  if (icbm.arrived || icbm.kind === 'cruise') return false
+  if (icbm.arrived) return false
   return icbm.pos.v >= MIRV_LO && icbm.pos.v <= MIRV_HI
 }
 
@@ -566,7 +567,8 @@ Give `Icbm` a `kind: 'ballistic' | 'cruise'` discriminant and a cruise flight st
 
 **Files:**
 - Modify: `plugins/missile-command/src/core/icbm.ts`
-- Modify: `plugins/missile-command/tests/icbm.test.ts`
+- Modify: `plugins/missile-command/src/core/mirv.ts` (add the cruise-exclusion guard)
+- Modify: `plugins/missile-command/tests/icbm.test.ts`, `plugins/missile-command/tests/mirv.test.ts`
 - Create: `plugins/missile-command/docs/rom-study/claims/cruise.json`
 
 **Interfaces:**
@@ -601,7 +603,7 @@ describe('cruise missiles (mc5-3)', () => {
 > **Note to TEA — angle table:** the exact `CMANGL`→(dh,dv) mapping comes from `SLOPEH`/`SLOPEL` (searched from `ANGLE`, `W3MAIN.MAC:6421`, and the `DETERMINES CRUISE MISSILE ANGLE` section). Capture those `.BYTE` rows at RED, claim them (`MC-CMANGL-*`), and pin `stepCruise` against a specific angle's decoded (dh,dv). Until captured, model the descent direction from the angle sign as the interface above requires; do NOT ship an uncited slope literal.
 
 - [ ] **Step 2: Run, verify FAIL.** `npx vitest run --project missile-command icbm`
-- [ ] **Step 3: Capture the angle table + implement** the `kind` field, `launchCruise`, `stepCruise`, and `stepAnyIcbm`. Claims in `cruise.json` for every slope/angle literal.
+- [ ] **Step 3: Capture the angle table + implement** the `kind` field, `launchCruise`, `stepCruise`, and `stepAnyIcbm`. Claims in `cruise.json` for every slope/angle literal. **Also extend `mirv.ts`'s `mirvEligible`** now that cruise exists: add the `if (icbm.kind === 'cruise') return false` guard (a MIRV never splits a cruise missile) and a `mirv.test.ts` case asserting `mirvEligible({...band, kind:'cruise'})` is `false`.
 - [ ] **Step 4: Run, verify PASS.**
 - [ ] **Step 5: App suite + lint** — confirm the added optional `kind` broke no existing `icbm`/`game`/`damage` test.
 - [ ] **Step 6: Commit**
