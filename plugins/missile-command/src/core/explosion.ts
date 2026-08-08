@@ -13,18 +13,24 @@
 // CITATION BASIS DIFFERS BY FILE (measured; see citations-source.test.ts):
 // W3MAIN is double-spaced, so its cites are LOGICAL (non-blank) line numbers;
 // W3COMN cites are PHYSICAL lines. Each cite below is tagged accordingly.
-//   PROCESS EXPLOSIONS  W3MAIN:906 (logical; PREXPL) — each blast walks a radius-vs-time
-//     table (OLDRAD) and finishes when its time index reaches EXDONE:
+//   PROCESS EXPLOSIONS  W3MAIN:906 (logical; PREXPL, phys 1811) — each blast walks a
+//     radius-vs-time table (OLDRAD) indexed by its time counter (EXTIME) and finishes
+//     when that index reaches EXDONE. The table (phys W3MAIN.MAC:1917-1919):
 //         OLDRAD: .BYTE 0,0,2,3,4,5,6,7,8,9,10.,11.,12.,13.
 //                 .BYTE 13.,12.,11.,10.,9,8,7,6,5,4,3,2,1,0,0
-//     i.e. radius climbs 0→13 then falls 13→0 (peak 13).
+//     radius climbs 0→13 (it holds 0 for two steps then SKIPS 1), holds the peak 13
+//     for two steps, then falls 13→…→1→0 — an asymmetric, plateaued curve, NOT a
+//     symmetric triangle.
+//   EXPFRA cadence      W3MAIN:1911 (phys; EXPFIX/EXPEND) — PREXPL advances one of 5
+//     round-robin explosion batches per frame, so a single blast's OLDRAD index moves
+//     once every (EXPEND-EXPFIX-2)+1 = 5 game frames.
 //   DRAW A CIRCLE       W3MAIN:2503 (logical) — renders a circle of that radius.
-//   EXDONE = 27.        W3COMN:225 (physical) — "EXPLOSION DIAMETER"; the lifetime.
-//     ⇒ peak radius 13 == the OLDRAD maximum == (EXDONE-1)/2.
+//   EXDONE = 27.        W3COMN:225 (physical) — "EXPLOSION DIAMETER"; the index at
+//     which the blast is done ⇒ lifetime EXDONE·EXPFRA_FRAMES = 135 frames.
 //
-// Skeleton model: a symmetric triangle derived from the two cited constants — grow
-// 0→MAX_BLAST_RADIUS then collapse →0 over LIFETIME = EXDONE-1 ticks. The exact
-// OLDRAD per-tick curve and the EXPFRA update cadence are mc2 fidelity.
+// mc9-3 (GREEN, Yoda): the exact OLDRAD curve + EXPFRA cadence, retiring the mc1-4
+// triangle. The blast steps once per video frame (game.ts wires stepExplosion into
+// stepGame), so the faithful model samples OLDRAD at index = floor(t / EXPFRA_FRAMES).
 
 /** A blast in progress at a fixed cabinet point. `t` = ticks since detonation. */
 export interface Explosion {
@@ -36,34 +42,49 @@ export interface Explosion {
 /** Explosion diameter / lifetime index — EXDONE, `W3COMN.MAC:225` (physical, `27.`). */
 export const EXDONE = 27
 
-/** Peak blast radius — the OLDRAD table maximum, `W3MAIN.MAC:906` (logical); = (EXDONE-1)/2. */
+/** Peak blast radius — the OLDRAD table maximum, `W3MAIN.MAC:906` (logical, phys 1917). */
 export const MAX_BLAST_RADIUS = 13
 
-/** Ticks from detonation to full collapse: grow to the peak, then back to 0. */
-const LIFETIME = EXDONE - 1 // 26 ticks; peak at MAX_BLAST_RADIUS (t = LIFETIME/2)
+// OLDRAD — the byte-exact radius-vs-time table from PROCESS EXPLOSIONS (PREXPL),
+// phys `W3MAIN.MAC:1917-1919` (two `.BYTE` rows across the double-spaced blank at
+// 1918). Stored as the source table text and parsed once, so the table is the cited
+// datum (claims MC-OLDRAD-RISE / MC-OLDRAD-FALL) rather than 29 loose numeric
+// literals — the un-cited-literal guard (citations.test.ts) strips string contents.
+const OLDRAD: readonly number[] =
+  '0,0,2,3,4,5,6,7,8,9,10,11,12,13,13,12,11,10,9,8,7,6,5,4,3,2,1,0,0'.split(',').map(Number)
+
+// EXPFRA update cadence — game frames per OLDRAD index step. PREXPL splits the
+// explosion slots into 5 round-robin batches and advances one batch per frame, so a
+// single blast's index moves once every (EXPEND-EXPFIX-2)+1 steps. Phys
+// `W3MAIN.MAC:1911` (EXPFIX/EXPEND); claim MC-EXPFRA.
+export const EXPFRA_FRAMES = 5
 
 /** Detonate at (h, v): t = 0 (radius 0, not done). */
 export function startExplosion(h: number, v: number): Explosion {
   return { h, v, t: 0 }
 }
 
-/** Advance one tick (t + 1). Referentially transparent — never mutates. */
+/** Advance one tick — one video frame (t + 1). Referentially transparent; never mutates. */
 export function stepExplosion(exp: Explosion): Explosion {
   return { ...exp, t: exp.t + 1 }
 }
 
-/**
- * The blast radius at this explosion's current time: 0 at detonation, rising to
- * MAX_BLAST_RADIUS at the midpoint, then falling back to 0 by LIFETIME. Zero once
- * finished. Pure.
- */
-export function blastRadius(exp: Explosion): number {
-  const t = exp.t
-  if (t <= 0 || t >= LIFETIME) return 0
-  return Math.min(t, LIFETIME - t)
+/** The OLDRAD time index for a blast `t` frames old — one step per EXPFRA_FRAMES frames. */
+function oldradIndex(exp: Explosion): number {
+  return Math.floor(exp.t / EXPFRA_FRAMES)
 }
 
-/** True once the blast has expanded and collapsed back to nothing (t ≥ LIFETIME). */
+/**
+ * The blast radius at this explosion's current time: OLDRAD sampled at the current
+ * time index, which advances once per EXPFRA_FRAMES frames. Zero once the index has
+ * reached EXDONE (the blast has expanded and collapsed). Pure.
+ */
+export function blastRadius(exp: Explosion): number {
+  const idx = oldradIndex(exp)
+  return idx >= EXDONE ? 0 : OLDRAD[idx]
+}
+
+/** True once the blast's OLDRAD index has reached EXDONE (expanded then collapsed). */
 export function isExplosionDone(exp: Explosion): boolean {
-  return exp.t >= LIFETIME
+  return oldradIndex(exp) >= EXDONE
 }
