@@ -51,6 +51,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { drawFrame } from '../src/shell/render.js'
+import { glyphRows } from '../src/shell/glyphs.js'
 import { createGame, type GameState } from '../src/core/game.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -63,18 +64,20 @@ const renderSrc = (): string => readFileSync(join(shellDir, 'render.ts'), 'utf8'
 const W = 256
 const H = 231
 
-// ─── A 2D context that COUNTS every drawn primitive and records its Y + text-ness ──
-// One datum per drawing op: its name, the Y coordinate it drew at, and whether it is a
-// native-text op (fillText/strokeText). Y lets us prove WHERE the score is drawn; the
-// text flag lets us prove the browser font is gone. Ops that carry no Y record NaN
-// (excluded from the top-band filter, never counted as "in the top band").
+// ─── A 2D context that COUNTS every drawn primitive and records its X, Y + text-ness ──
+// One datum per drawing op: its name, the X/Y it drew at, and whether it is a native-text
+// op (fillText/strokeText). Y lets us prove WHERE the score is drawn; X+Y together give a
+// per-pixel POSITION set so we can prove a readout is drawn from its VALUE, not just its
+// digit count (two different digits light different pixels). The text flag proves the
+// browser font is gone. Ops that carry no coordinate record NaN.
 interface HudMark {
   op: string
+  x: number
   y: number
   isText: boolean
 }
 
-// Which positional arg carries the Y coordinate, per op. Text ops are (text, x, y);
+// Which positional args carry the X/Y coordinate, per op. Text ops are (text, x, y);
 // bitmap blits are (img, dx, dy, ...); everything else records (x, y, ...).
 const Y_ARG: Readonly<Record<string, number>> = {
   fillText: 2,
@@ -82,16 +85,27 @@ const Y_ARG: Readonly<Record<string, number>> = {
   drawImage: 2,
   putImageData: 2,
 }
+const X_ARG: Readonly<Record<string, number>> = {
+  fillText: 1,
+  strokeText: 1,
+  drawImage: 1,
+  putImageData: 1,
+}
 
 function hudCtx(): { ctx: CanvasRenderingContext2D; marks: HudMark[] } {
   const marks: HudMark[] = []
   const isTextOp = (op: string): boolean => op === 'fillText' || op === 'strokeText'
+  const coord = (args: unknown[], i: number): number =>
+    typeof args[i] === 'number' ? (args[i] as number) : NaN
   const rec =
     (op: string) =>
     (...args: unknown[]): void => {
-      const yi = Y_ARG[op] ?? 1
-      const y = typeof args[yi] === 'number' ? (args[yi] as number) : NaN
-      marks.push({ op, y, isText: isTextOp(op) })
+      marks.push({
+        op,
+        x: coord(args, X_ARG[op] ?? 0),
+        y: coord(args, Y_ARG[op] ?? 1),
+        isText: isTextOp(op),
+      })
     }
   const noop = (): void => {}
   const api: Record<string, unknown> = {
@@ -138,6 +152,15 @@ const total = (state: GameState): number => paint(state).length
 const textMarks = (state: GameState): HudMark[] => paint(state).filter((m) => m.isText)
 const topBandCount = (state: GameState, frac: number): number =>
   paint(state).filter((m) => m.y < H * frac).length
+/** The set of drawn pixel POSITIONS (op + rounded x,y). Two frames that differ only in a
+ *  HUD readout's VALUE produce different sets iff that value actually drives the glyphs —
+ *  a content-blind or hardcoded readout leaves the set identical. This is what lets a
+ *  stamp font (one stamp per glyph → equal mark COUNT for any single digit) still prove
+ *  digit IDENTITY: different digits light different pixels. */
+const drawnKeys = (state: GameState): Set<string> =>
+  new Set(paint(state).map((m) => `${m.op}:${Math.round(m.x)}:${Math.round(m.y)}`))
+const sameKeys = (a: Set<string>, b: Set<string>): boolean =>
+  a.size === b.size && [...a].every((k) => b.has(k))
 
 /** A "quiet" field: every city and base DEAD (so structures draw an ammo-independent
  *  rubble mark apiece), no enemies, default cursor. The only thing that varies between
@@ -213,6 +236,25 @@ describe('mc9-4 AC1 — the score is drawn from state.score, one glyph per digit
     expect(d2, 'each identical added digit must add the SAME number of marks (one glyph per char)').toBe(d1)
     expect(d3, 'each identical added digit must add the SAME number of marks (one glyph per char)').toBe(d1)
   })
+
+  it('the score glyphs depend on the DIGIT VALUES, not just the digit count (verbatim, not re-derived)', () => {
+    // Two 6-digit scores with the same LENGTH but different digits must light DIFFERENT
+    // pixels — count is equal (a stamp font draws one glyph per digit), so only a
+    // position-set difference proves the actual digits of state.score are drawn. This is
+    // the content half of the HUD-figure rule the mark-COUNT tests above cannot see:
+    // it reddens a mutant that draws a constant, a reversed, or a re-derived same-length
+    // number. (Which exact glyphs are correct is pinned against the ROM in block F.)
+    const a = drawnKeys(quiet({ score: 102345 }))
+    const b = drawnKeys(quiet({ score: 543210 }))
+    expect(total(quiet({ score: 102345 })), 'same digit count → equal mark totals (isolates identity)').toBe(
+      total(quiet({ score: 543210 })),
+    )
+    expect(
+      sameKeys(a, b),
+      'two same-length scores with different digits must paint different pixels — the HUD draws the ' +
+        'actual digits of state.score, not a count-only or re-derived stand-in',
+    ).toBe(false)
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -237,22 +279,29 @@ describe('mc9-4 AC1 — the score readout is drawn in the TOP band (authentic la
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// D. AC1 — every readout survives the font swap. Score (above), ammo and wave are
-//    content-driven (RED today — fillText is content-blind); the multiplier readout is
-//    guarded structurally because its value is capped at one digit (min((wave+1)>>1,6)),
-//    so a stamp font — one stamp per glyph regardless of which digit — exposes no
-//    mark-count signal to isolate it behaviourally. The reviewer eyeballs the `x4`.
+// D. AC1 — every readout survives the font swap and is drawn from its STATE value.
+//    Ammo and wave grow with their digit count; each per-base ammo is isolated (vary one
+//    base, hold the rest). The multiplier is capped at one digit (min((wave+1)>>1,6)) so
+//    a mark-COUNT test cannot see it — but a POSITION-SET test can: different multiplier
+//    digits light different pixels, which reddens a mutant that hardcodes `X4` and drops
+//    state.multiplier (a bare `/multiplier/` source scan does NOT — the word survives in
+//    comments; checklist rule #15).
 // ─────────────────────────────────────────────────────────────────────────────
-describe('mc9-4 AC1 — ammo and wave readouts are content-driven; the multiplier is present', () => {
-  it('the per-base ammo readout is content-driven (more ammo digits → more HUD marks)', () => {
-    // Bases are DEAD in `quiet`, so the mc9-1 base pyramid draws ammo-independent
-    // rubble; the only ammo-sensitive marks left are the HUD ammo readout.
-    const few = total(quiet({ ammo: [1, 1, 1] })) //  "1 1 1"    — 3 digit glyphs
-    const many = total(quiet({ ammo: [10, 10, 10] })) // "10 10 10" — 6 digit glyphs
-    expect(
-      many,
-      'the HUD ammo readout must be drawn from each base ammo — a content-blind fillText cannot grow with the digit count',
-    ).toBeGreaterThan(few)
+describe('mc9-4 AC1 — ammo, wave and multiplier readouts are each drawn from state', () => {
+  it('each per-base ammo readout is content-driven independently (not just base 0)', () => {
+    // Bases are DEAD in `quiet`, so the mc9-1 base pyramid draws ammo-independent rubble;
+    // the only ammo-sensitive marks left are the HUD ammo readout. Varying ONE base at a
+    // time (the other two fixed) reddens a mutant that reads only bases[0] and hardcodes
+    // the rest — the aggregate "[1,1,1] vs [10,10,10]" grows even for such a mutant.
+    const base = total(quiet({ ammo: [1, 1, 1] })) // "1 1 1"
+    for (let i = 0; i < 3; i++) {
+      const bumped = [1, 1, 1]
+      bumped[i] = 10 // that base alone gains a digit
+      expect(
+        total(quiet({ ammo: bumped })),
+        `the HUD must draw base ${i}'s ammo — growing only base ${i} to a 2-digit value must add marks`,
+      ).toBeGreaterThan(base)
+    }
   })
 
   it('the wave readout is content-driven and tracks state.wave', () => {
@@ -264,11 +313,19 @@ describe('mc9-4 AC1 — ammo and wave readouts are content-driven; the multiplie
     ).toBeGreaterThan(w1)
   })
 
-  it('the multiplier readout is still present in the HUD path (guarded structurally)', () => {
+  it('the multiplier readout is drawn from state.multiplier (different multipliers light different pixels)', () => {
+    // Hold score/wave/ammo fixed; toggle ONLY state.multiplier between two values whose
+    // glyphs differ. Everything else in the frame is identical, so the POSITION SET
+    // differs iff the drawn digit is state.multiplier. This reddens the mutant
+    // `drawGlyphs(\`WAVE ${state.wave}  X4\`)` (multiplier dropped), which the retired
+    // `/multiplier/` source scan let pass. (Counts also differ here — each lit pixel is
+    // its own fillRect — but the position set is the value-faithful signal.)
+    const m1 = drawnKeys(quiet({ multiplier: 1 }))
+    const m6 = drawnKeys(quiet({ multiplier: 6 }))
     expect(
-      renderSrc(),
-      'the HUD must still show the score multiplier (state.multiplier) after the font swap',
-    ).toMatch(/multiplier/)
+      sameKeys(m1, m6),
+      'the multiplier glyph must be drawn from state.multiplier — multiplier 1 and 6 must paint different pixels',
+    ).toBe(false)
   })
 })
 
@@ -311,6 +368,46 @@ describe.skipIf(!sourceAvailable)('mc9-4 AC2 — the cited ROM lines really are 
   it('W3DSUP.MAC:2202 is `.SBTTL DISPLAY 6 DIGITS` (DSPNUM — the score display)', () => {
     expect(romLine(2202)).toMatch(/\.SBTTL\s+DISPLAY 6 DIGITS/)
   })
+
+  // The glyph BYTES are the deliverable — pin the transcription against the ROM so a
+  // future off-by-one/wrong-byte edit reddens (the "citation gate checks quotes not
+  // meaning" trap: block above verifies the cited LINES, this verifies the glyph DATA).
+  // BUMP args are written top→bottom; glyphs.ts stores them in that order (see its
+  // header). NUMBER table: W3DSUP.MAC:3552, digit d at physical line 3554 + 2·d.
+  // LETTER table: W3DSUP.MAC:3574, letter n at 3574 + 2·(code−'A').
+  const bumpArgs = (lineno: number): number[] => {
+    const m = romLine(lineno).match(/BUMP\s+([0-9A-Fa-f,\s]+?)(?:;|$)/)
+    if (!m) return []
+    return m[1]
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+      .map((t) => parseInt(t, 16))
+  }
+  const digitLine = (d: number): number => 3554 + 2 * d
+  const letterLine = (ch: string): number => 3574 + 2 * (ch.charCodeAt(0) - 0x41)
+
+  it('each digit glyph in glyphs.ts is the verbatim ROM NUMBER-table BUMP row (top→bottom)', () => {
+    for (let d = 0; d < 10; d++) {
+      const rom = bumpArgs(digitLine(d))
+      expect(rom.length, `NUMBER row for '${d}' must parse 8 bytes`).toBe(8)
+      expect(
+        Array.from(glyphRows(String(d))),
+        `glyphRows('${d}') must equal the ROM NUMBER row at W3DSUP.MAC:${digitLine(d)}`,
+      ).toEqual(rom)
+    }
+  })
+
+  it('sampled letter glyphs (S, C, O, R, E, A, M, W, V, X) are verbatim ROM LETTER-table rows', () => {
+    for (const ch of 'SCOREAMWVX') {
+      const rom = bumpArgs(letterLine(ch))
+      expect(rom.length, `LETTER row for '${ch}' must parse 8 bytes`).toBe(8)
+      expect(
+        Array.from(glyphRows(ch)),
+        `glyphRows('${ch}') must equal the ROM LETTER row at W3DSUP.MAC:${letterLine(ch)}`,
+      ).toEqual(rom)
+    }
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -321,9 +418,18 @@ describe.skipIf(!sourceAvailable)('mc9-4 AC2 — the cited ROM lines really are 
 //    @shared glyph module.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('mc9-4 AC2 — no premature src/shared extraction', () => {
-  it('render.ts imports no @shared module other than the pre-existing @shared/font', () => {
-    const shared = [...renderSrc().matchAll(/from ['"](@shared\/[^'"]+)['"]/g)].map((m) => m[1].replace(/\.js$/, ''))
-    const disallowed = shared.filter((s) => s !== '@shared/font')
+  it('no src/shell module imports a @shared module other than the pre-existing @shared/font', () => {
+    // Scan the WHOLE shell dir, not just render.ts — a premature @shared glyph library
+    // could hide in glyphs.ts (the file this story adds), which a render.ts-only scan
+    // would miss. Only the existing @shared/font may be reused.
+    const disallowed: string[] = []
+    for (const f of readdirSync(shellDir).filter((f) => f.endsWith('.ts'))) {
+      const src = readFileSync(join(shellDir, f), 'utf8')
+      for (const m of src.matchAll(/from ['"](@shared\/[^'"]+)['"]/g)) {
+        const mod = m[1].replace(/\.js$/, '')
+        if (mod !== '@shared/font') disallowed.push(`${f}: ${mod}`)
+      }
+    }
     expect(
       disallowed,
       'a new missile-command glyph module belongs in src/shell, not a fresh src/shared library; only the ' +

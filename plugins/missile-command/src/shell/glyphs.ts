@@ -31,11 +31,9 @@
 // existing stamp pipeline. Verbatim ROM values; only the (documented) row order is
 // re-seated to render.ts's top-first convention.
 
-import { STAMP_W, STAMP_H } from './stamps.js'
-
-/** A glyph is the cabinet's 8-wide × 8-row stamp — same cell as every other stamp. */
-export const GLYPH_W = STAMP_W // 8
-export const GLYPH_H = STAMP_H // 8
+// A glyph is the cabinet's 8-wide × 8-row stamp — the same cell as every other stamp
+// (STAMP_W/STAMP_H in stamps.ts); stampPixels() decodes these rows and render.ts paints
+// them at the HUD scale.
 
 // Digits 0-9 — the NUMBER table (W3DSUP.MAC:3552-3572), BUMP args top→bottom.
 const DIGITS: readonly (readonly number[])[] = [
@@ -87,8 +85,11 @@ const BLANK: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0]
  * The 8-row stamp bitmap for one character, MSB = leftmost pixel, rows[0] = top —
  * ready for stampPixels() (src/shell/stamps.ts) and render.ts's stamp pipeline.
  * Uppercase A-Z and digits 0-9 resolve to their ROM glyph; every other character
- * (space included) degrades to a blank cell (advance only) — the ROM's own fallback
- * for an unmapped ASCII value (ASCSTP → IBLANK, W3DSUP.MAC:1842).
+ * degrades to a blank cell (advance only). This collapses two distinct ROM paths to
+ * the same blank OUTPUT: a SPACE (0x20) is explicitly matched by ASCSTP's SPECHA/TABCHA
+ * special-char table and routed to SPECIC's blank entry (W3DSUP.MAC:1846/1848 → :3628),
+ * while a genuinely unrecognized char (punctuation/lowercase — never emitted by this
+ * HUD) hits ASCSTP's no-match fallback IBLANK (W3DSUP.MAC:1842). Both draw nothing.
  */
 export function glyphRows(ch: string): readonly number[] {
   if (ch >= '0' && ch <= '9') return DIGITS[ch.charCodeAt(0) - 0x30]
