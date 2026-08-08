@@ -45,7 +45,7 @@ Run everything from the **monorepo root**:
 
 ```bash
 npm install                         # once, for the whole cabinet
-npx vitest run --project joust      # 165 files (derived + guarded); ~2915 tests, indicative
+npx vitest run --project joust      # 166 files (derived + guarded); ~2915 tests, indicative
 npx vitest run                      # the whole cabinet
 npm run lint                        # tsc --noEmit across the monorepo
 npm run test:orchestrator           # the root node:test suite
