@@ -1,0 +1,57 @@
+[
+  {
+    "id": "MC-VPLMIN",
+    "symbol": "VPLMIN",
+    "value": 100,
+    "meaning": "Sputnik activation vertical floor = 100 (hex 64). The plane flies at or above this cabinet height; spawnSputnik seeds pos.v = VPLMIN. EQU.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5761,
+      "verbatim": "VPLMIN\t=64"
+    }
+  },
+  {
+    "id": "MC-SPUT-SCORE",
+    "symbol": "SPUTKI",
+    "value": 4,
+    "meaning": "A killed Sputnik scores 4× the ICBM value. SPUTKI loads X=3 and jumps to the shared multiple-score routine (GEKILL), which awards X+1 = 4 units — the line's own comment reads '(4X ICBM)'. Derived as the LDX I,3 immediate + 1, mirroring MC-MIRV-MAX's inclusive-loop derivation.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 2081,
+      "verbatim": "\tLDX I,3\t\t\t;SUB. GIVE MULTIPLE SCORE (4X ICBM)"
+    }
+  },
+  {
+    "id": "MC-SPUT-FIREMAX",
+    "symbol": "SPUTFIRE_MAX",
+    "value": 4,
+    "meaning": "Per-activation Sputnik launch-count cap = 4. The launch-count clamp compares the computed headroom against 4 and saturates ('MAX AT 4'), so a plane never fires more than 4 ICBMs at once. Immediate operand of CPX/LDX I,4.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 2475,
+      "verbatim": "\tCPX I,4"
+    }
+  },
+  {
+    "id": "MC-WSPFIR",
+    "symbol": "WSPFIR",
+    "value": "128,96,64,48,32,32,16",
+    "meaning": "Sputnik ICBM fire-cadence table, frames between launches, indexed table-SPUTWV and clamped to the last row past wave 8. Hex bytes 80,60,40,30,20,20,10 decode to 128,96,64,48,32,32,16.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5725,
+      "verbatim": "WSPFIR:\t.BYTE 80,60,40,30,20,20,10"
+    }
+  },
+  {
+    "id": "MC-WSPLAU",
+    "symbol": "WSPLAU",
+    "value": "240,160,128,128,96,64,32",
+    "meaning": "Sputnik activation-separation table, frames between plane activations, indexed table-SPUTWV and clamped to the last row past wave 8. Hex bytes 0F0,0A0,080,80,60,40,20 decode to 240,160,128,128,96,64,32.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5729,
+      "verbatim": "WSPLAU:\t.BYTE 0F0,0A0,080,80,60,40,20"
+    }
+  }
+]
