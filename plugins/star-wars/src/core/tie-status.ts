@@ -225,8 +225,8 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
 
   // C_AS (0x04) — "ALIEN HAS PLAYER IN SITES" (WSCPU.MAC:29,604-621). Three
   // conditions, in the ROM's own order, all measured on the offset from the fighter
-  // to the cockpit resolved about its nose axis — model +X mapped through e.orient
-  // (native nose = first column; lookRotationNative in basis.ts; sw10-1):
+  // to the cockpit resolved about its nose axis — the native conjugate orient's nose is
+  // −col0 (basis.ts; the OpenGL nose col2 conjugated by P; sw10-1):
   //
   //   :607-608  `LDD M.XP / BMI 140$`   ;?PLAYER IN FRONT?  — the sign of the depth
   //   :610-611  `SUBD #4000 / BGE 140$` ;IGNORE GUN IF TOO FAR AWAY
@@ -248,7 +248,7 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // missing matrix by defaulting to IDENTITY (nose = model +Z), exactly as
   // `applyManeuver` does, rather than reading off `undefined[2]`.
   const orient = e.orient ?? IDENTITY
-  const nose: Vec3 = [orient[0], orient[4], orient[8]]
+  const nose: Vec3 = [-orient[0], -orient[4], -orient[8]]
   const toCockpitOffset = sub(COCKPIT, e.pos)
   const noseDepth = dot(nose, toCockpitOffset) // M.XP
   const offAxis = sub(toCockpitOffset, scale(nose, noseDepth)) // (M.YP, M.ZP)

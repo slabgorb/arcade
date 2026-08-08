@@ -105,11 +105,11 @@ import {
   rotationX,
   rotationY,
   rotationZ,
-  lookRotation,
   IDENTITY,
   type Vec3,
   type Mat4,
 } from '@shared/math3d'
+import { toNative } from './basis' // sw10-1: OpenGL→native world permutation [-z,x,y]
 import {
   aimDirection,
   beamHit,
@@ -2137,19 +2137,19 @@ function homeShots(shots: readonly Projectile[], dt: number): Projectile[] {
 function aimOrient(e: Enemy, dt: number): Mat4 {
   const orient = e.orient ?? IDENTITY
   const want = toCockpit(e.pos) // world unit direction from the TIE to the cockpit
-  // Decompose `want` into the TIE's local right/up/forward — the columns of its orientation,
-  // recovered by transforming each basis vector (a rotation, so no inverse needed).
-  const lx = dot(want, transform(orient, [1, 0, 0])) // lateral error (local +X)
-  const ly = dot(want, transform(orient, [0, 1, 0])) // vertical error (local +Y)
-  const lz = dot(want, transform(orient, [0, 0, 1])) // forward component (local +Z, the nose)
+  // Decompose `want` into the TIE's local axes (sw10-1 conjugate orient: nose −col0, right col1,
+  // up col2; basis.ts) — transform each basis vector (a rotation, no inverse) and dot with want.
+  const lx = dot(want, transform(orient, [0, 1, 0])) // lateral error (local right +Y)
+  const ly = dot(want, transform(orient, [0, 0, 1])) // vertical error (local up +Z)
+  const lz = dot(want, transform(orient, [-1, 0, 0])) // forward component (local nose −X)
   // Yaw about local up to null the lateral error, pitch about local right to null the vertical
   // error — each clamped to one frame of the ROM turn rate (`atan2(err, forward)` is the full
-  // angle to the target in that plane; clamping makes it a bounded step). rotationY(+yaw) turns
-  // the nose toward +X; pitching UP toward +Y is rotationX(−pitch) (the applyManeuver PITCH_U
-  // convention).
+  // angle to the target in that plane; clamping makes it a bounded step). sw10-1 conjugated
+  // local rotations: yaw about up = rotationZ(−yaw); pitch about right = rotationY(pitch)
+  // (the applyManeuver PITCH_U convention).
   const yaw = clampStep(Math.atan2(lx, lz), TIE_YAW_RATE * dt)
   const pitch = clampStep(Math.atan2(ly, lz), TIE_PITCH_RATE * dt)
-  return multiply(multiply(orient, rotationY(yaw)), rotationX(-pitch))
+  return multiply(multiply(orient, rotationZ(-yaw)), rotationY(pitch))
 }
 
 /** Clamp `angle` to ±`limit` — one frame of a fixed turn rate. */
@@ -2200,21 +2200,21 @@ export function applyManeuver(e: Enemy, twist: number, move: number, dt: number)
   // turn rate (sw8-2 $67 law), integrating one frame of `dt` from the CURRENT orientation.
   if (twist & (Twist.AIM_PLAYER | Twist.AIM_AHEAD)) orient = aimOrient({ ...e, orient }, dt)
 
-  // Roll about the nose (+Z), yaw about the local up (+Y), pitch about the local
-  // right (+X) — the §5.3 fixed per-frame deltas as rad/s, integrated by dt.
+  // Roll about the nose, yaw about local up, pitch about local right — §5.3 per-frame deltas
+  // as rad/s ×dt. sw10-1 conjugated local rotations (basis.ts): roll=rotationX, yaw=rotationZ(−), pitch=rotationY(−).
   // ROLL_L is negative (CCW about the nose), ROLL_R positive; likewise L/U vs R/D.
-  if (twist & Twist.ROLL_L) orient = multiply(orient, rotationZ(-TIE_ROLL_RATE * dt))
-  if (twist & Twist.ROLL_R) orient = multiply(orient, rotationZ(TIE_ROLL_RATE * dt))
-  if (twist & Twist.YAW_L) orient = multiply(orient, rotationY(-TIE_YAW_RATE * dt))
-  if (twist & Twist.YAW_R) orient = multiply(orient, rotationY(TIE_YAW_RATE * dt))
-  if (twist & Twist.PITCH_U) orient = multiply(orient, rotationX(-TIE_PITCH_RATE * dt))
-  if (twist & Twist.PITCH_D) orient = multiply(orient, rotationX(TIE_PITCH_RATE * dt))
+  if (twist & Twist.ROLL_L) orient = multiply(orient, rotationX(-TIE_ROLL_RATE * dt))
+  if (twist & Twist.ROLL_R) orient = multiply(orient, rotationX(TIE_ROLL_RATE * dt))
+  if (twist & Twist.YAW_L) orient = multiply(orient, rotationZ(TIE_YAW_RATE * dt))
+  if (twist & Twist.YAW_R) orient = multiply(orient, rotationZ(-TIE_YAW_RATE * dt))
+  if (twist & Twist.PITCH_U) orient = multiply(orient, rotationY(TIE_PITCH_RATE * dt))
+  if (twist & Twist.PITCH_D) orient = multiply(orient, rotationY(-TIE_PITCH_RATE * dt))
 
-  // Thrust along the freshly-rotated basis (§5 step 3): FWD along the nose (local
-  // +Z), UP/DOWN along the local up (+Y). The `2` bits are the fast ÷32 basis
-  // (TIE_THRUST_RATE), the plain bits the slow ÷64 (TIE_THRUST_RATE_SLOW).
-  const forward: Vec3 = [orient[2], orient[6], orient[10]]
-  const up: Vec3 = [orient[1], orient[5], orient[9]]
+  // Thrust along the freshly-rotated basis (§5 step 3): FWD along the nose (native local
+  // nose −X → −col0), UP/DOWN along the local up (+Z → col2). The `2` bits are the fast ÷32
+  // basis (TIE_THRUST_RATE), the plain bits the slow ÷64 (TIE_THRUST_RATE_SLOW).
+  const forward: Vec3 = [-orient[0], -orient[4], -orient[8]]
+  const up: Vec3 = [orient[2], orient[6], orient[10]]
   let pos = e.pos
   const fwdRate = move & Move.FWD2 ? TIE_THRUST_RATE : move & Move.FWD ? TIE_THRUST_RATE_SLOW : 0
   if (fwdRate) pos = add(pos, scale(forward, fwdRate * dt))
@@ -2268,8 +2268,8 @@ const SPAWN_LATERALS: ReadonlyArray<readonly [number, number]> = [
  * the initial facing and the choreography VM, and draws no RNG (the invented swoop
  * `bank` and the unread `Enemy.vel` were retired in sw7-23).
  *
- * sw8-6 — the spawn heading is `FACING_PLAYER` (+Z, straight toward the cockpit/camera from the
- * far −Z spawn), NOT `lookRotation(toCockpit(pos))` (aimed at the exact origin from the offset
+ * sw8-6 — the spawn heading faces straight toward the cockpit/camera down the depth axis (native
+ * nose −X from the far +X spawn), NOT `lookRotation(toCockpit(pos))` (aimed at the exact origin from the offset
  * slot). This is the ROM's own choice — WSCPU §4 "identity with Ax,By flipped → the model is
  * turned to face the player," a straight facing, not a per-slot look-at-origin. It matters because
  * flight thrusts along the nose (`applyManeuver` §5): facing straight forward CARRIES the lateral
@@ -2277,10 +2277,10 @@ const SPAWN_LATERALS: ReadonlyArray<readonly [number, number]> = [
  * field-crossing sweep of the 1983 longplay), where aiming the nose at the origin dragged x down
  * proportionally to depth (|x|/depth FLAT → the centerline-zoom beeline this story fixes). The
  * choreography's own later YAW / AIM_PLAYER maneuvers then steer x→0 through the long approach. */
-const FACING_PLAYER: Vec3 = [0, 0, 1]
+const SPAWN_ORIENT: Mat4 = IDENTITY // sw10-1: conjugate spawn facing (nose −X toward cockpit) IS identity
 export function spawnTie(_rng: Rng, spawnIndex: number, spaceWave: number): Enemy {
   const [x, y] = SPAWN_LATERALS[spawnIndex % SPAWN_LATERALS.length]
-  const pos: Vec3 = [x, y, -TIE_SPAWN_DISTANCE]
+  const pos: Vec3 = toNative([x, y, -TIE_SPAWN_DISTANCE]) // native [depth, right, up] = [TIE_SPAWN_DISTANCE, x, y]
   // The wave's TSPWAV plan (sw7-12) says which slot is Darth: the RTH shape spawns
   // kind 'darth', every other slot a plain TIE. Past the plan's end the supply does
   // NOT invent a mook (sw8-10): `supplyEntry` is total — ADASHP clamps to the set's
@@ -2293,7 +2293,7 @@ export function spawnTie(_rng: Rng, spawnIndex: number, spaceWave: number): Enem
   // ref (e.g. '1A1', '2D3'), resolved to a VM program index by `choreoPc`. Task 4
   // now DRIVES flight from it (applyManeuver).
   const vm = initVm(choreoPc(entry.choreography))
-  return { pos, kind, orient: lookRotation(FACING_PLAYER), vm, firedGun: false }
+  return { pos, kind, orient: SPAWN_ORIENT, vm, firedGun: false }
 }
 
 /**
