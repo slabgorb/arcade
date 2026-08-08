@@ -908,10 +908,28 @@ export function b2undr(enemy: EnemyState, player: PlayerView | null, wave = 1): 
  * SHUPTM decision timer (:4283-4284, uf1-9's family); re-deciding every wake
  * makes stored ≡ live, so the collapse tracks the live line. Pure.
  */
-export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {
+export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1, bumpX = 0): Decision {
   const enemyY = enemy.entity.posY >> 8
   const velY = enemy.entity.velY
   const dir = enemy.facing
+  // jt9-60 — SHDIRA (JOUSTRV4.SRC:4379-4382), the HUNTING shadow's bump-facing
+  // arm. jt9-48 spends `PBUMPX` in `steerWake`, but only for the NULL-TARGET
+  // shadow (the SHLEV→SHDIR route); `steerWake` returns held once `target !==
+  // null` (:1193), so a HUNTING shadow's parked shove was never spent. In the
+  // ROM the hunting shadow reaches SHDIRA three AIM ways — SHLEP's line-track
+  // exits `SHLEPB → JMP SHDIRA` (:4303-4310, unconditional), SHUP3 `JMP SHDIRA`
+  // (:4434/:4441), and a PARKED long-range seek falls through `SHDIRB`'s `BEQ
+  // SHDIRA` (:4388-4389) — and there `LDA PBUMPX,U / BEQ SHFDIR / STA PFACE,U`
+  // makes `sign(bumpX)` the LAST word on facing; SHFDIR (:4382) then aims CURJOY
+  // at it, so both the returned `dir` and (in `stepEnemyDetailed`) the facing
+  // become `sign(bumpX)`. `shdira` is applied ONLY at those AIM returns, and only
+  // where `d !== 0`: the coast returns pass `coastDir`, which is 0 exactly when
+  // the seek is MOVING (SHDIRB writes dir 0 and NEVER reaches the SHDIRA tail —
+  // jt9-20) and the parked `dir` otherwise, so the same `d !== 0` guard both
+  // faces the parked seek and leaves the moving coast alone. The dwell (:918),
+  // the armed climb (:924-926, SHUP1's own SHDIRB coast), the forced glide
+  // (:932), the null-target SHLEV (:934) and lava never reach it — left untouched.
+  const shdira = (d: -1 | 0 | 1): -1 | 0 | 1 => (bumpX !== 0 && d !== 0 ? (bumpX > 0 ? 1 : -1) : d)
   // uf1-9 — `SHAV`, the cliff-avoidance dwell armed by `SHDICL` for SHCLTM
   // wakes: `CLRB` (:4406) holds the wings UP for the whole dwell and the brain
   // does not re-decide until it expires.
@@ -949,7 +967,7 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
   const coastDir: -1 | 0 | 1 = enemy.entity.velXIndex !== 0 ? 0 : dir
   // SHDN — the free-fall; the escape is velX-gated and inclusive at $D3.
   if (!holding && delta >= waveValue('SHDNRG', wave))
-    return { dir: coastDir, flap: enemyY >= LAVA_ESCAPE_Y && enemy.entity.velXIndex >= 0 }
+    return { dir: shdira(coastDir), flap: enemyY >= LAVA_ESCAPE_Y && enemy.entity.velXIndex >= 0 }
   // Long-range up-seek (`SHUP1` :4269-4275): flap unless already climbing FASTER
   // than the SHUPVY gate. uf1-9 — before this the port compared against a bare 0,
   // which is the gate's wave-1 value only in sign: SHUPVY is -$0200 at wave 1 and
@@ -967,11 +985,11 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1): 
     // (:4434/:4441) — the AIMING routine (`SHFDIR` :4382, dir = facing, no PVELX
     // check) — NOT `SHDIRB`'s coast. So this AIMS at `dir`, unlike SHUP1 above which
     // coasts (`SHUP1`→`SHDIRB`, jt9-20). Reviewer R1 F1: was `coastDir`, corrected.
-    if (cliffBlocksClimb(enemy)) return { dir, flap: velY >= CLIMB_PREP_FALL_FAST }
-    return { dir: coastDir, flap: velY >= waveValue('SHUPVY', wave) }
+    if (cliffBlocksClimb(enemy)) return { dir: shdira(dir), flap: velY >= CLIMB_PREP_FALL_FAST }
+    return { dir: shdira(coastDir), flap: velY >= waveValue('SHUPVY', wave) }
   }
   // SHLEP — track the line; the lava term is falling-gated (velY, not velX).
-  return { dir, flap: enemyY > player.pixelY || (enemyY >= LAVA_ESCAPE_Y && velY >= 0) }
+  return { dir: shdira(dir), flap: enemyY > player.pixelY || (enemyY >= LAVA_ESCAPE_Y && velY >= 0) }
 }
 
 // ─── Horizontal homing (BODIR / BOLEVB) ─────────────────────────────────────
@@ -1224,7 +1242,7 @@ export function steerWake(enemy: EnemyState, target: PlayerView | null, bumpX = 
  * Dispatch by `enemy.brain`: `linet` runs the dumb lane-track (player ignored);
  * a smart brain runs its pursuit against `player`. Pure.
  */
-export function runBrain(enemy: EnemyState, player?: PlayerView | null, wave = 1): Decision {
+export function runBrain(enemy: EnemyState, player?: PlayerView | null, wave = 1, bumpX = 0): Decision {
   switch (enemy.brain) {
     case 'boundr':
       return boundr(enemy, player ?? null, wave)
@@ -1232,8 +1250,9 @@ export function runBrain(enemy: EnemyState, player?: PlayerView | null, wave = 1
       return b2undr(enemy, player ?? null, wave)
     case 'shadow':
       // uf1-8 — the shadow's SHDNRG/SHUPRG range gates are wave-scaled too;
-      // SHUPVY, its UP-flight VY gate, still waits on uf1-9.
-      return shadow(enemy, player ?? null, wave)
+      // SHUPVY, its UP-flight VY gate, still waits on uf1-9. jt9-60 — `bumpX`
+      // (PBUMPX) so the HUNTING shadow's AIM wakes spend the shove at SHDIRA.
+      return shadow(enemy, player ?? null, wave, bumpX)
     default:
       return linet(enemy)
   }
@@ -1518,7 +1537,7 @@ export function stepEnemyDetailed(
     // uf1-2: the brain reads its per-wave difficulty row from `wave`. It runs on
     // the ALREADY-HOMED enemy, so the wave-scaled seek and the flipped facing are
     // the same wake's decision, not two.
-    const decided = runBrain(cadenced, target, wave)
+    const decided = runBrain(cadenced, target, wave, bumpX)
     // jt5-8: LINET's two-state wingbeat sits AROUND the lane decision, not inside
     // it — `linet()` stays the pure decision the ROM reaches at :3733, and this is
     // the `PJOY,U` dispatch that decides whether the wake entered there at all.
@@ -1541,6 +1560,19 @@ export function stepEnemyDetailed(
       settled = looked.enemy
       decision = looked.decision
     }
+  }
+  // jt9-60 — SHDIRA's `STA PFACE,U` (:4381) for the HUNTING shadow: PERSIST the
+  // bump-driven facing. `shadow()` already aimed `decision.dir` at `sign(bumpX)`
+  // on the AIM wakes it reaches (SHLEP/SHUP3/parked-seek); SHFDIR (:4382) sets
+  // PFACE from that, so mirror it onto the enemy. On a COAST wake (SHDIRB, dir 0)
+  // `decision.dir` is 0 — the guard skips, facing held (the seek NEVER reached
+  // SHDIRA). On dwell/glide `decision.dir` is the unchanged facing, so the write
+  // is a no-op. A lava wake bypasses SHDIR entirely, so it is excluded. The
+  // NULL-TARGET shadow (and the hunter/bounder) keep `steerWake`'s jt9-48 arm,
+  // untouched — this fires only for `brain === 'shadow' && target !== null`.
+  if (enemy.brain === 'shadow' && target !== null && bumpX !== 0 && lava === null) {
+    const bumpDir = decision.dir
+    if (bumpDir !== 0) settled = { ...settled, facing: bumpDir }
   }
   // jt8-3: the turn wake FLAPS (`B2DICL`/`SHDICL` `LDB #1`, :4146/:4377) —
   // through ADDFLP that steps the FLYX index 2 toward the new facing, which is
