@@ -1,19 +1,30 @@
 // src/main.ts
 //
-// Story jt2-7 (GREEN, Julia) — the wave-1 demo, playable. main.ts is now a thin
-// SHELL over the pure core: it seeds the wave-1 demo wiring with a shell-owned
-// seed, steps it once per video frame through the shell timebase, and RENDERS the
-// resulting process list — players, buzzard-rider enemies and eggs — from the
-// transcribed ENTITY_RECORDS through the existing atlas path.
+// Story jt2-7 (GREEN, Julia) — the wave-1 demo, playable. main.ts is a thin SHELL
+// over the pure core: it seeds the game with a shell-owned seed, steps it once per
+// video frame through the shell timebase, and RENDERS the resulting process list —
+// players, buzzard-rider enemies and eggs — from the transcribed ENTITY_RECORDS
+// through the existing atlas path.
 //
-// The demo IS the sim (src/core/demo.ts): main.ts never runs its own stepping
-// loop, so "the demo loop and the sim must not diverge" (the jt2-1 carried seam)
-// is structural, not a discipline. SHELL owns the clock: wall time accumulates
-// here and the core is stepped in whole video frames — core never reads a clock.
+// jt10-5 (GREEN, Loki) — the CABINET tier now fronts the game. main.ts no longer
+// boots straight into a game: it boots the cabinet into the 1P/2P 'select' screen,
+// and a start-button press begins a real game via startPlaying. The game itself is
+// still the SESSION layer (createGame / stepGame from core/game) stepped once per
+// frame; the cabinet only adds the outer mode. SHELL owns the clock: wall time
+// accumulates here and the core is stepped in whole video frames — core never
+// reads a clock.
 
 import { ENTITY_RECORDS, PALETTES, COMCL5, expandComcl5 } from './core/pictures.js'
 import { drawList, type DrawOp } from './core/demo.js'
 import { createGame, stepGame, overlayReadout, type GameState } from './core/game.js'
+import { startPlaying, modeForGover, afterGameOver, type CabinetState } from './core/cabinet.js'
+import { selectPlayerCount, type SelectInput } from './core/select.js'
+import { layoutSelectScreen } from './shell/selectScreen.js'
+import { layoutGameOverScreen } from './shell/gameOverScreen.js'
+import { layoutTitleScreen, type TitleScreenLayout } from './shell/titleScreen.js'
+import { titleColorRow } from './core/title.js'
+import type { LaidOutText } from './shell/fontRender.js'
+import type { PlayerInput } from './core/flight.js'
 import { pumpFrames } from './shell/timebase.js'
 import {
   LOGICAL_HEIGHT,
@@ -24,6 +35,7 @@ import {
   reshapeRagged,
   rgbaPalette,
   viewport,
+  type Rgba,
 } from './shell/render.js'
 import { mapPlayer1, mapPlayer2 } from './shell/input.js'
 import { createAudioEngine } from './shell/audio.js'
@@ -141,25 +153,157 @@ function drawOverlay(state: GameState): void {
   }
 }
 
-// ─── The game: seeded, stepped and rendered from the SESSION layer ────────────
-//
-// jt4-5 MIGRATION (Dev/Korben, Design Deviation — the jt2-7 precedent where main.ts's
-// stepping seam moved and its source-text pin was widened): the shell now drives the
-// SESSION layer — `createGame` + `stepGame` from core/game — NOT the raw sim it drove
-// before (`createWaveDemo` / `stepDemo` from core/demo). The jt2-1 one-sim seam still
-// holds: `stepGame` internally WRAPS the demo's `stepDemo` over a `createWaveDemo`-built
-// sim, so there is no divergent second stepping path — and the dev-overlay reads the
-// per-player score/lives/wave registers straight off the GameState it steps (no
-// shell-side game state). A fixed shell-owned seed replays the same run each load; core
-// mints no entropy, so the seed crosses the boundary from here.
-const SEED = 0x1a2b_3c4d
-let game: GameState = createGame(SEED)
+// jt10-5 — the select-screen text colour. A transcribed COLOR1 palette index (the
+// PLYR1 rider colour, as the dev overlay uses), NOT an invented literal, so the
+// denylist scan stays clean. The exact select-screen colours await a reference
+// capture (Delivery Finding); this is a legible placeholder.
+const SELECT_COLOUR_INDEX = 5
 
-// The player process ids (stable across a life; a respawn re-enters the same id),
-// so keyboard input maps to the right processes each frame.
-const [player1Id, player2Id] = game.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
+/**
+ * Paint one laid-out line (fontRender `layoutText` ops) at a whole-pixel origin —
+ * each SET glyph pixel a 1×1 fillRect in the line's colour. This is the raster
+ * paint idiom the COMCL5 island / paintDissolve paths use, applied to text (the
+ * jt10-1 painter guidance: fontRender lays out, the painter fills).
+ */
+function paintText(laid: LaidOutText, originX: number, originY: number): void {
+  const c = laid.colour
+  logicalContext.fillStyle = `rgb(${c.r} ${c.g} ${c.b})`
+  for (const op of laid.ops) {
+    const rows = op.glyph.rows
+    for (let ry = 0; ry < rows.length; ry++) {
+      const row = rows[ry]
+      for (let rx = 0; rx < row.length; rx++) {
+        if (row[rx]) logicalContext.fillRect(originX + op.x + rx, originY + op.y + ry, 1, 1)
+      }
+    }
+  }
+}
+
+/**
+ * The 1P/2P start-select overlay: the two START banners (FONT57) and the static
+ * CREDITS row (FONT35), each centred horizontally on the backbuffer. Text + fonts
+ * come from `layoutSelectScreen`; positions are the shell's (a human smoke test /
+ * reference capture tunes them).
+ */
+function renderSelectScreen(): void {
+  const screen = layoutSelectScreen(colours[SELECT_COLOUR_INDEX])
+  const centred = (laid: LaidOutText): number => Math.round((LOGICAL_WIDTH - laid.width) / 2)
+  paintText(screen.onePlayer, centred(screen.onePlayer), 96)
+  paintText(screen.twoPlayer, centred(screen.twoPlayer), 120)
+  paintText(screen.credits, centred(screen.credits), 210)
+}
+
+// jt10-6 — the game-over banner colour (a transcribed COLOR1 index, as the select
+// screen and dev overlay use — NOT an invented literal, so the denylist scan stays
+// clean) and its Y position (a placeholder tuned by a human smoke test / reference
+// capture; the ROM puts the phrase at $3090). The exact colour awaits a capture.
+const GAMEOVER_COLOUR_INDEX = 5
+const GAMEOVER_BANNER_Y = 108
+
+/**
+ * The game-over overlay: the single 'THY GAME IS OVER' banner (FONT57), centred
+ * horizontally on the backbuffer. Text + font come from `layoutGameOverScreen`; the
+ * position is the shell's (a human smoke test / reference capture tunes it).
+ */
+function renderGameOverScreen(): void {
+  const { banner } = layoutGameOverScreen(colours[GAMEOVER_COLOUR_INDEX])
+  paintText(banner, Math.round((LOGICAL_WIDTH - banner.width) / 2), GAMEOVER_BANNER_Y)
+}
+
+// jt10-3 — the title screen (MARQUE). The marquee palette cycles one MARCOL row
+// every TITLE_COLOR_CADENCE frames; `titleColorRow` (pure core, fed the shell's
+// frame counter — the shell owns the clock) selects the active row. The exact
+// MARCOL->RGB decode and the letter/line screen positions await a reference
+// capture (a human smoke test tunes them), so — as with the select/game-over
+// placeholders — the cycling row indexes the existing palette for a legible,
+// visibly-cycling title, and the wordmark is drawn from its own y coordinates.
+// This mode is not reached until jt10-4 wires the attract cycle into it; the
+// render hook is in place, exactly like the 'attract'/'highscore' placeholders.
+let titleFrame = 0
+const TITLE_LOGO_Y = 40
+const TITLE_COPYRIGHT_Y = 190
+const TITLE_EXTRA_MOUNT_Y = 210
+
+/** Stroke the vector JOUST wordmark: each letter's polylines, offset by its x. */
+function strokeLogo(logo: TitleScreenLayout['logo'], originX: number, originY: number, colour: Rgba): void {
+  logicalContext.strokeStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
+  logicalContext.lineWidth = 1
+  for (const letter of logo.letters) {
+    for (const stroke of letter.strokes) {
+      if (stroke.points.length === 0) continue
+      logicalContext.beginPath()
+      const [x0, y0] = stroke.points[0]
+      logicalContext.moveTo(originX + letter.xOffset + x0, originY + y0)
+      for (let k = 1; k < stroke.points.length; k++) {
+        const [px, py] = stroke.points[k]
+        logicalContext.lineTo(originX + letter.xOffset + px, originY + py)
+      }
+      logicalContext.stroke()
+    }
+  }
+}
+
+/**
+ * The title overlay: the vector JOUST wordmark plus the (C)1982 copyright and the
+ * EXTRA MOUNT phrase line (FONT57), all in the current colour-cycle colour. Text +
+ * font + geometry come from `layoutTitleScreen`; positions are the shell's (tuned
+ * by a human smoke test / reference capture).
+ */
+function renderTitleScreen(): void {
+  const colour = colours[1 + titleColorRow(titleFrame)]
+  const screen = layoutTitleScreen(colour)
+  strokeLogo(screen.logo, Math.round((LOGICAL_WIDTH - 292) / 2), TITLE_LOGO_Y, colour)
+  paintText(screen.copyright, Math.round((LOGICAL_WIDTH - screen.copyright.width) / 2), TITLE_COPYRIGHT_Y)
+  paintText(screen.extraMount, Math.round((LOGICAL_WIDTH - screen.extraMount.width) / 2), TITLE_EXTRA_MOUNT_Y)
+  titleFrame++
+}
+
+// ─── The cabinet: booted to 'select', stepping the SESSION layer once playing ──
+//
+// jt4-5 MIGRATION (Dev/Korben): the shell drives the SESSION layer — `createGame` +
+// `stepGame` from core/game — NOT the raw sim. The jt2-1 one-sim seam still holds:
+// `stepGame` internally WRAPS the demo's `stepDemo` over a `createWaveDemo`-built
+// sim, so there is no divergent second stepping path, and the dev-overlay reads the
+// per-player registers straight off the GameState it steps. jt10-5 wraps that game
+// in the cabinet tier: the cabinet boots into 'select' (the coin-up screen) over a
+// fresh `createGame(seed)`, and a start press begins a real game via `startPlaying`.
+// A fixed shell-owned seed replays the same run each load; core mints no entropy,
+// so the seed crosses the boundary from here.
+const SEED = 0x1a2b_3c4d
+let cabinet: CabinetState = { mode: 'select', game: createGame(SEED) }
+
+// The player process ids for the CURRENT game — recomputed when a game begins (a
+// fresh createGame mints new ids), so keyboard input maps to the right processes.
+let playerIds: number[] = []
 let prevFlap1 = false
 let prevFlap2 = false
+// The previous frame's start-button LEVEL. `startPlaying` wraps a FRESH createGame,
+// so the press must fire on its RISING edge only — a held start must not re-seed the
+// game every frame (the prevFlap discipline, one tier up).
+let prevStartHeld = false
+
+// jt10-6 — the game-over hold. GOVWAT (JOUSTRV4.SRC:678, `#11  8*11 OR 88 TICK WAIT`)
+// shows the banner ~88 ticks before JMP GAMEND, so the shell holds the overlay this
+// many whole frames before routing on through afterGameOver — otherwise the banner
+// would flash for a single frame. Reset when a fresh game begins.
+const GAMEOVER_HOLD_FRAMES = 88
+let gameoverHoldFrames = 0
+
+/** Begin a real game for `count` players, seeded from SEED, and cache its player ids. */
+function enterPlaying(count: 1 | 2): void {
+  cabinet = startPlaying(cabinet, SEED, count)
+  playerIds = cabinet.game.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
+  prevFlap1 = false
+  prevFlap2 = false
+  gameoverHoldFrames = 0
+}
+
+/** The player's start-button intent this frame: the 1P / 2P start keys (1 / 2). */
+function readSelectInput(keys: Set<string>): SelectInput {
+  if (keys.has('Digit1')) return 'one-player'
+  if (keys.has('Digit2')) return 'two-player'
+  return null
+}
 
 // jt5-1 — the audio seam. The engine is inert until a user gesture unlocks the
 // context (browsers refuse an AudioContext before one) and inert forever where
@@ -190,12 +334,44 @@ const frame = (now: number): void => {
     const elapsed = Math.min((now - last) / 1000, MAX_CATCHUP_SECONDS)
     last = now
     accumulator = pumpFrames(accumulator, elapsed, () => {
+      if (cabinet.mode === 'gameover') {
+        // Hold the banner ~88 ticks (GOVWAT), then route on through the PURE gate:
+        // afterGameOver → 'highscore' iff the best score qualifies, else 'attract'
+        // (the table is empty until jt10-7 wires @shared/highscore). jt10-4 (attract)
+        // and jt10-7 (high-score entry) build those screens; until they land, both
+        // render as the coin-up door below, so the cabinet never dead-ends.
+        if (++gameoverHoldFrames >= GAMEOVER_HOLD_FRAMES) {
+          cabinet = afterGameOver(cabinet, [])
+          gameoverHoldFrames = 0
+        }
+        return
+      }
+      if (cabinet.mode !== 'playing') {
+        // The coin-up door: 'select', and — until jt10-4/jt10-7 — 'attract'/'highscore'
+        // too. Begin a game on the RISING edge of a start press only, so a held start
+        // button cannot re-seed the game each frame.
+        const want = readSelectInput(held)
+        const startHeld = want !== null
+        if (startHeld && !prevStartHeld) {
+          const count = selectPlayerCount(want)
+          if (count !== null) enterPlaying(count)
+        }
+        prevStartHeld = startHeld
+        return
+      }
       const in1 = mapPlayer1(held, prevFlap1)
       const in2 = mapPlayer2(held, prevFlap2)
-      game = stepGame(game, { [player1Id]: in1, [player2Id]: in2 })
+      const inputs: Record<number, PlayerInput> = {}
+      if (playerIds[0] !== undefined) inputs[playerIds[0]] = in1
+      if (playerIds[1] !== undefined) inputs[playerIds[1]] = in2
+      // Step the SESSION layer, then DERIVE the mode from the stepped game's settled
+      // GOVER (modeForGover) — so an all-players-out frame lands in 'gameover'. The
+      // literal stepGame( call is preserved (the jt4-5 demo-source seam).
+      const game = stepGame(cabinet.game, inputs)
+      cabinet = { mode: modeForGover(game.gover), game }
       // The core emitted this frame's moments as DATA; the shell turns them into
       // cues. Inside the pump, so a catch-up frame's moments are not dropped.
-      playEventSounds(audio, game.events)
+      playEventSounds(audio, cabinet.game.events)
       prevFlap1 = in1.flapHeld
       prevFlap2 = in2.flapHeld
     })
@@ -203,20 +379,34 @@ const frame = (now: number): void => {
 
   logicalContext.fillStyle = `rgb(${colours[0].r} ${colours[0].g} ${colours[0].b})`
   logicalContext.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT)
-  // Render BY the core's ordered draw list (back platforms → entity sprites →
-  // foreground platforms) — the render SELECTION lives in the pure core
-  // (enemyFrame/playerDrawList/drawList), never by-eye in the shell.
-  for (const op of drawList(game.sim)) {
-    // The dissolve's ASH1R is a runlength stream — not in the atlas, so blitOp
-    // would silently skip it (jt3-7 B1). Decode + paint it via expandAshFrames
-    // here, the ASH twin of the COMCL5 island path, indexed by op.frame.
-    if (op.name === 'ASH1R') paintDissolve(logicalContext, op, colours)
-    else blitOp(op)
+  if (cabinet.mode === 'playing') {
+    // Render BY the core's ordered draw list (back platforms → entity sprites →
+    // foreground platforms) — the render SELECTION lives in the pure core
+    // (enemyFrame/playerDrawList/drawList), never by-eye in the shell.
+    for (const op of drawList(cabinet.game.sim)) {
+      // The dissolve's ASH1R is a runlength stream — not in the atlas, so blitOp
+      // would silently skip it (jt3-7 B1). Decode + paint it via expandAshFrames
+      // here, the ASH twin of the COMCL5 island path, indexed by op.frame.
+      if (op.name === 'ASH1R') paintDissolve(logicalContext, op, colours)
+      else blitOp(op)
+    }
+    // The bottom island is the front-most layer, occluding entities behind its front edge.
+    drawIsland()
+    // The dev-overlay reads the session registers straight off the stepped GameState.
+    drawOverlay(cabinet.game)
+  } else if (cabinet.mode === 'gameover') {
+    // The game-over overlay: the 'THY GAME IS OVER' banner, held ~88 ticks.
+    renderGameOverScreen()
+  } else if (cabinet.mode === 'title') {
+    // The title overlay: the vector JOUST wordmark + copyright/extra-mount lines,
+    // colour-cycling every TITLE_COLOR_CADENCE frames. Reached once jt10-4 wires
+    // the attract cycle into 'title'; the hook is here now.
+    renderTitleScreen()
+  } else {
+    // The coin-up door: the two START banners and the CREDITS row. 'select', and —
+    // until jt10-4 (attract) / jt10-7 (high-score) land — 'attract'/'highscore' too.
+    renderSelectScreen()
   }
-  // The bottom island is the front-most layer, occluding entities behind it.
-  drawIsland()
-  // The dev-overlay reads the session registers straight off the stepped GameState.
-  drawOverlay(game)
 
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight

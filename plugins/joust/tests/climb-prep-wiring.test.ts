@@ -235,14 +235,157 @@ describe('jt9-23 review R1 — steering, fall-fast threshold, and bounder exclus
     }
   })
 
-  it('F3 — the BOUNDER is excluded from climb-prep: over a cliff it still climbs (BOUP→BOLEV, no BOUP3)', () => {
+  it('F3 — the BOUNDER never gets the climb-prep HOLD: its per-wake flap law is unchanged over a cliff (no BOUP3)', () => {
     // The bounder samples the same cliff and diverts to plain BOLEV (`BNE BOLEV`
-    // :3850) — there is no BOUP3. So the climb-prep gate must NOT touch it: over a
-    // cliff at velY=0 it behaves as it does with no cliff (its level/climb law flaps
-    // `velY >= 0`), NOT the climb-prep hold (which would glide at velY=0 < 0x40).
+    // :3850) — there is no BOUP3. So the climb-prep HOLD gate (the `velY >= 0x40`
+    // fall-fast law of B2UP3/SHUP3) must NOT touch it. This calls `boundr()` — the
+    // bare per-wake flap law (`pursue`), NOT the full step pipeline — where at velY=0
+    // the bounder flaps `velY >= 0` exactly as it does with no cliff, NOT the hold
+    // (which would glide at velY=0 < 0x40).
+    //
+    // jt9-50 note: the BOUP divert itself lives at the up-seek DECIDE (`seekWake`),
+    // which `boundr()` does not run, so it is INVISIBLE here — at velY=0 BOLEV and the
+    // climb both flap, so this pair cannot see the divert either way. The divert is
+    // observable only through the full pipeline while RISING (velY<0); that is what
+    // climb-prep-bounder.test.ts stages. So "the flap law is the same over a cliff"
+    // remains true for this bare-`pursue` call even after jt9-50 landed.
     const overCliff = e.boundr(at('boundr', cliff.x, cliff.y, 0, 0, 1), FAR_ABOVE, WAVE)
     const noCliff = e.boundr(at('boundr', clear.x, clear.y, 0, 0, 1), FAR_ABOVE, WAVE)
-    expect(overCliff.flap, 'the bounder is not held level by a cliff').toBe(true)
-    expect(overCliff.flap, 'the cliff does not change the bounder at all').toBe(noCliff.flap)
+    expect(overCliff.flap, 'the bounder is not held level (no B2UP3 hold)').toBe(true)
+    expect(overCliff.flap, 'the bare per-wake flap law is unchanged by the cliff').toBe(noCliff.flap)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story jt9-51 — climb-prep is PER-WAKE (no 21-wake latch). RED phase (Tyr
+// One-Handed / TEA).
+//
+// jt9-23 (the block at the top) pinned that the climb-prep HOLD exists: with a
+// cliff one YLEN above, the enemy holds level instead of flapping into it (0
+// flaps over a sustained cliff), and with a clear climb it flaps (the CONTROLs).
+// That covers this story's AC-1 (hunter hold), AC-2 (shadow hold) and AC-5
+// (open-air control) — see the jt9-23 block above; they are not duplicated here.
+//
+// What jt9-23 did NOT pin — and what the port DELIBERATELY differs from the ROM
+// on — is the hold's TEMPORAL shape. The ROM's B2UP3/SHUP3 arm a 21-wake `#20+1`
+// `PJOYT` countdown at entry and hold LEVEL for the whole interval, re-deciding
+// only at expiry — so a cliff cleared mid-interval keeps holding for up to 20
+// more wakes. The port instead RE-DERIVES the hold every wake from the live
+// background mask, carrying NO timer and NO stored line — a Reviewer-accepted
+// jt9-23 deviation. That per-wake re-derivation lives in `cliffBlocksClimb`, read
+// once per wake by the hunter's `b2undr` up-seek branch and the shadow's SHUP3
+// branch; the ROM's held `#20+1` timer and stored line survive only as provenance
+// in climb-prep-source.test.ts. This block pins the per-wake OBSERVABLE: a cleared
+// cliff resumes the climb well inside 21 wakes, and a re-appearing cliff
+// re-engages the hold that same wake.
+//
+// These tests pass on arrival (the port already re-derives per wake) — they are
+// GUARDS against a future drift toward the ROM's held timer, or a stateful
+// re-implementation that latches the hold. The RED evidence is a MUTATION: force
+// `cliffBlocksClimb` to a constant (sticky-true = a latch; false = no hold) and
+// every assertion below flips. See the TEA Assessment for the mutation battery.
+//
+// The cliff is toggled by MOVING the bird between the cliff site (open air, solid
+// box one YLEN above) and the clear site (open air above) — the up-seek reads the
+// mask one YLEN above the bird's LIVE position, so a position change IS a cliff
+// change to the decide. Every wake re-freezes velY=0 (below the -$0040 gate) and
+// velXIndex=0 (steerWake inert), exactly as `flapCount` above; only the position
+// per wake varies. `.` = wings up (hold/glide), `F` = wings down (a climb flap).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('jt9-51 — climb-prep is PER-WAKE, not a 21-wake latch (B2UP3 / SHUP3)', () => {
+  let e: EnemyModule
+  let cliff: { x: number; y: number }
+  let clear: { x: number; y: number }
+
+  beforeAll(async () => {
+    e = await loadEnemy()
+    const sites = findSites()
+    cliff = sites.cliff
+    clear = sites.clear
+  })
+
+  /**
+   * Drive one wake per entry in `sites`, carrying the brain's own state (seek,
+   * pjoy, facing, wing cadence) FORWARD untouched — only the position is set to
+   * that wake's site and velY/horizontal re-frozen. Returns, per wake, whether
+   * the wings were DOWN (a climb flap). This is `flapCount`'s harness with a
+   * per-wake position instead of a single frozen one, so a `cliff`→`clear`
+   * transition in the list is a cliff CLEARED between two consecutive wakes with
+   * all carried state intact — the only way a latch, if one existed, could show.
+   */
+  const traceFlaps = (brain: 'b2undr' | 'shadow', sites: { x: number; y: number }[]): boolean[] => {
+    let enemy = decideFixture(brain, sites[0].x, sites[0].y)
+    const flaps: boolean[] = []
+    for (const s of sites) {
+      enemy = { ...enemy, entity: { ...enemy.entity, posX: s.x, posY: s.y << 8, velY: 0, velXIndex: 0, velXFrac: 0 } }
+      const stepped = e.stepEnemyDetailed(enemy, { player: FAR_ABOVE, wave: WAVE }).enemy
+      flaps.push(stepped.prevFlapHeld === true)
+      enemy = stepped
+    }
+    return flaps
+  }
+
+  const rep = (s: { x: number; y: number }, n: number): { x: number; y: number }[] =>
+    Array.from({ length: n }, () => s)
+
+  // ─── AC-3: a cleared cliff resumes the climb, NOT deferred by a 21-wake timer ──
+
+  it('AC-3 shadow — a cliff cleared on wake 5 resumes the climb THE VERY NEXT WAKE (no latch)', () => {
+    // The shadow's up-seek flaps EVERY wake while climbing (velY=0), so the resume
+    // is exactly observable: hold for the 5 cliff wakes, then flap from the first
+    // clear wake onward. 5 + 15 = 20 wakes total, all inside a single 21-wake ROM
+    // interval — so a `#20+1` latch armed at cliff entry would STILL be holding at
+    // wake 20 and flaps[5] would be false. The port re-derives → flaps[5] is true.
+    const f = traceFlaps('shadow', [...rep(cliff, 5), ...rep(clear, 15)])
+    expect(f.slice(0, 5).some((x) => x), 'held level over the cliff (no climb flap)').toBe(false)
+    expect(f[5], 'the climb resumes the very next wake after the cliff clears').toBe(true)
+  })
+
+  it('AC-3 hunter — a cliff cleared mid-hold resumes the climb well inside 21 wakes (no latch)', () => {
+    // The hunter climbs on an ~8-wake cadence (HUUPWU wings-up, then a flap), so
+    // the resume is not literally the next wake — but it MUST land inside the
+    // 21-wake window a ROM latch would suppress. cliff×5 + clear×15 = 20 wakes: the
+    // port flaps within the clear window (around wake 8); a latch armed at cliff
+    // entry holds through wake 20, giving zero flaps across the whole trace.
+    const f = traceFlaps('b2undr', [...rep(cliff, 5), ...rep(clear, 15)])
+    expect(f.slice(0, 5).some((x) => x), 'held level over the cliff (no climb flap)').toBe(false)
+    const firstFlap = f.indexOf(true)
+    expect(firstFlap, 'the climb resumes — there IS a flap in the trace').toBeGreaterThanOrEqual(5)
+    expect(firstFlap, 'and it resumes inside the 21-wake window a ROM latch would suppress').toBeLessThan(21)
+  })
+
+  // ─── AC-4: a re-appearing cliff re-engages the hold that same wake ─────────────
+
+  it('AC-4 shadow — a cliff re-appearing on wake 12 re-engages the hold immediately', () => {
+    // Climb clear for 12 wakes (flapping every wake), then the cliff returns. The
+    // hold re-engages from the LIVE mask, so every wake from 12 on holds level.
+    const f = traceFlaps('shadow', [...rep(clear, 12), ...rep(cliff, 8)])
+    expect(f[11], 'the shadow is climbing (flapping) just before the cliff returns').toBe(true)
+    expect(f.slice(12).some((x) => x), 'the re-appeared cliff re-engages the hold every wake after').toBe(false)
+  })
+
+  it('AC-4 hunter — a re-appearing cliff suppresses the climb cadence (re-engaged hold)', () => {
+    // all-clear flaps at ~wake 8 and ~wake 16. Here the cliff returns at wake 12,
+    // so the wake-16 cadence flap must be SUPPRESSED: a flap in wakes 0..11 (clear)
+    // and none in wakes 12..19 (cliff). If the re-added cliff were ignored (latch
+    // expired / stateful hold), wake ~16 would flap like all-clear.
+    const f = traceFlaps('b2undr', [...rep(clear, 12), ...rep(cliff, 8)])
+    expect(f.slice(0, 12).some((x) => x), 'the hunter flaps while the climb is clear').toBe(true)
+    expect(f.slice(12).some((x) => x), 'the re-appeared cliff holds level (no cadence flap)').toBe(false)
+  })
+
+  // ─── The full toggle: hold → climb → hold, tracked wake-by-wake ───────────────
+
+  it('the hold tracks the mask each wake: cliff→clear→cliff is hold→climb→hold (both brains)', () => {
+    // A single trace exercising both transitions with all state carried across:
+    // 4 cliff wakes (hold), 8 clear wakes (climb), 8 cliff wakes (hold again).
+    // The shadow shows it crisply (`....FFFFFFFF........`); the hunter shows a
+    // climb flap only in the clear window and none in either cliff window.
+    for (const brain of ['shadow', 'b2undr'] as const) {
+      const f = traceFlaps(brain, [...rep(cliff, 4), ...rep(clear, 8), ...rep(cliff, 8)])
+      expect(f.slice(0, 4).some((x) => x), `${brain}: first cliff window holds level`).toBe(false)
+      expect(f.slice(4, 12).some((x) => x), `${brain}: the clear window climbs (at least one flap)`).toBe(true)
+      expect(f.slice(12).some((x) => x), `${brain}: the re-appeared cliff holds level again`).toBe(false)
+    }
   })
 })

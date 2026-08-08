@@ -277,3 +277,22 @@ export function enterViaPads(count: number, seed: number): PadEntry[] {
   }
   return entries
 }
+
+/**
+ * The entry EDGE each of a wave's `count` pterodactyls arrives from, deterministically
+ * under `seed`: PTERST's `JSR VRAND / BCC` (JOUSTRV4.SRC:1421-1489) — carry-clear keeps
+ * the default LEFT entry (`LDX #ELEFT+1`), carry-set flips to the RIGHT (`LDX #ERIGHT-1`).
+ * Same (count, seed) → identical sequence. Pure: threads the same mulberry32 word the pad
+ * assignment does, off a ptero-specific fork of the seed so a bird's side does not shadow
+ * pad 0's draw. `< 0.5` is the carry-clear (LEFT) half.
+ */
+export function enterPteroSides(count: number, seed: number): ('left' | 'right')[] {
+  const sides: ('left' | 'right')[] = []
+  let word = (seed ^ 0x50544552) >>> 0 // 'PTER' — decorrelate from enterViaPads' pad draws
+  for (let i = 0; i < count; i++) {
+    const drawn = rngNext(word)
+    word = drawn.next
+    sides.push(drawn.value < 0.5 ? 'left' : 'right')
+  }
+  return sides
+}

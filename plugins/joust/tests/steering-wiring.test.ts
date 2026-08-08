@@ -42,7 +42,8 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { createHash } from 'node:crypto'
 import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
-import type { PlayerInput } from '../src/core/flight.js'
+import { createState, spawn, stepFrame, type GameState } from '../src/core/frame.js'
+import type { EntityState, PlayerInput } from '../src/core/flight.js'
 import { BCK_X_TABLE, X_TABLE_ORIGIN } from '../src/core/flight.js'
 import { BCK_Y_TABLE } from '../src/core/arena.js'
 import { loadSteering, type SteeringModule } from './helpers/steering-contract.js'
@@ -260,5 +261,104 @@ describe('AC-4 — a seeded steering run is deterministic', () => {
 
   it('and a different seed produces a different trajectory — the hash has teeth', () => {
     expect(trajectoryHash(0x1234)).not.toBe(trajectoryHash(0xabc))
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// jt9-48 — the PARKED BUMP REACHES THE FACING through the real pipeline. jt9-17
+// parked `PBUMPX` on `DemoProcess.bumpX` and left it inert (a Delivery Finding,
+// not wired). This proves the shove is plumbed from the process, through
+// frame.ts's enemy step, into `steerWake`'s bump arg, and out as the new
+// facing — the exact hop jt9-17 skipped. `steerWake` unit-pins the LAW; this
+// pins that the mechanism FIRES on an assembled process (the jt9-11 lesson:
+// probe the assembled state, not a staged unit).
+// ─────────────────────────────────────────────────────────────────────────────
+const SEED = 0x1a2b_3c4d
+
+/** An airborne flight entity, parked (`velXIndex 0`) unless told otherwise,
+ * HIGH above the lava line ($D3) so no gate diverts the wake. */
+function airborneAt(posX: number, pixelY: number, velXIndex: number): EntityState {
+  return {
+    posX,
+    posY: pixelY << 8,
+    velXIndex,
+    velXFrac: 0,
+    velY: 0,
+    timeUp: 1,
+    groundState: null,
+    plantZ: 0,
+    airborne: true,
+    animPhase: 0,
+  }
+}
+
+/** A lone hunter carrying a parked shove, facing the OPPOSITE way so the flip
+ * is observable. `bumpX` rides on the DemoProcess, exactly where jt9-17 parks
+ * it. Isolated at x=200/high so nothing jousts it and re-parks a bump. */
+function shovedHunter(bumpX: number, facing: -1 | 1 = -1, brain: 'b2undr' | 'boundr' = 'b2undr'): DemoProcess {
+  return {
+    id: 0x200,
+    cls: 'secondary',
+    nap: 1,
+    period: 1,
+    kind: 'enemy',
+    enemy: {
+      entity: airborneAt(200, 120, 0),
+      facing,
+      pchase: 1,
+      brain,
+      decision: brain,
+    },
+    enemyType: brain === 'b2undr' ? 'hunter' : 'bounder',
+    collisionEnabled: true,
+    bumpX,
+  }
+}
+
+const theEnemy = (ps: readonly DemoProcess[]): DemoProcess | undefined => ps.find((p) => p.kind === 'enemy')
+
+describe('jt9-48 — the DemoProcess.bumpX shove drives the enemy facing in play', () => {
+  it('BARE frame.ts: a hunter carrying a rightward shove faces RIGHT after one step (the wiring is closed)', () => {
+    // stepFrame is the raw scheduler (no drain, target = null): it proves
+    // frame.ts hands the process's `bumpX` to the enemy step. A hunter parked
+    // facing LEFT with bumpX +16 must end facing RIGHT — the ONLY driver is the
+    // shove (no player, no cliff, parked FLYX).
+    let s: GameState = spawn(createState(SEED), shovedHunter(16, -1))
+    s = stepFrame(s)
+    expect(theEnemy(s.processes as readonly DemoProcess[])?.enemy?.facing, 'frame.ts plumbed p.bumpX to the arm').toBe(1)
+  })
+
+  it('BARE frame.ts CONTROL: the same hunter with NO shove holds its facing', () => {
+    // Green before AND after: isolates the bump as the cause. Without it, the
+    // idle hunter has nothing to turn it, so a LEFT facer stays LEFT.
+    let s: GameState = spawn(createState(SEED), shovedHunter(0, -1))
+    s = stepFrame(s)
+    expect(theEnemy(s.processes as readonly DemoProcess[])?.enemy?.facing, 'no shove ⇒ facing frozen').toBe(-1)
+  })
+
+  it('BARE frame.ts CONTROL: a BOUNDER carrying the same shove does NOT turn (no BODIR bump arm)', () => {
+    let s: GameState = spawn(createState(SEED), shovedHunter(16, -1, 'boundr'))
+    s = stepFrame(s)
+    expect(theEnemy(s.processes as readonly DemoProcess[])?.enemy?.facing, 'the bounder has no PBUMPX arm').toBe(-1)
+  })
+
+  it('FULL stepDemo: the shove SURVIVES the top-of-frame drain and still faces the bird', () => {
+    // The drain (`drainProcessBumpX`, top of `stepDemo`) spends ≤3 px BEFORE
+    // the brain reads the bump this frame. A shove of 16 leaves 13 remaining —
+    // same sign — so it is still readable, which is the whole point of draining
+    // at the TOP (see `stepDemo`'s WRAPX comment). Isolated processes: just the
+    // hunter, so no joust re-parks a bump under us.
+    const base = createWaveDemo(SEED)
+    let d: DemoState = { ...base, sim: { ...base.sim, processes: [shovedHunter(16, -1)] } }
+    d = stepDemo(d, {})
+    expect(theEnemy(d.sim.processes)?.enemy, 'the hunter survived the frame').toBeDefined()
+    expect(theEnemy(d.sim.processes)?.enemy?.facing, 'the parked shove reached the facing through the full pipeline').toBe(1)
+  })
+
+  it('FULL stepDemo CONTROL: an unshoved hunter in the same isolated demo holds its facing', () => {
+    const base = createWaveDemo(SEED)
+    let d: DemoState = { ...base, sim: { ...base.sim, processes: [shovedHunter(0, -1)] } }
+    d = stepDemo(d, {})
+    expect(theEnemy(d.sim.processes)?.enemy?.facing, 'no shove ⇒ the pipeline changes nothing').toBe(-1)
   })
 })

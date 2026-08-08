@@ -20,5 +20,38 @@
       "line": 1917,
       "verbatim": "OLDRAD:\t.BYTE 0,0,2,3,4,5,6,7,8,9,10.,11.,12.,13."
     }
+  },
+  {
+    "id": "MC-OLDRAD-RISE",
+    "symbol": "OLDRAD",
+    "value": "cite",
+    "meaning": "OLDRAD radius-vs-time table, rising half (indices 0..13): holds 0 for two steps, SKIPS 1, then climbs to the peak 13 (trailing . = decimal; bare 0-9 hex == decimal). A byte-exact citation anchor — the decoded table lives in blastRadius (explosion.ts) and is pinned by explosion.test.ts's source-ground-truth decode; value is the 'cite' kind tag so no table byte leaks into the un-cited-literal guard.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 1917,
+      "verbatim": "OLDRAD:\t.BYTE 0,0,2,3,4,5,6,7,8,9,10.,11.,12.,13."
+    }
+  },
+  {
+    "id": "MC-OLDRAD-FALL",
+    "symbol": "OLDRAD",
+    "value": "cite",
+    "meaning": "OLDRAD radius-vs-time table, falling half (indices 14..28): holds 13 one more step (the peak plateau) then collapses 13->...->1->0, carrying a lone 1 the rise never had. Second .BYTE row, after the double-spaced blank at 1918. A byte-exact citation anchor; value is the 'cite' kind tag.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 1919,
+      "verbatim": "\t.BYTE 13.,12.,11.,10.,9,8,7,6,5,4,3,2,1,0,0"
+    }
+  },
+  {
+    "id": "MC-EXPFRA",
+    "symbol": "EXPFRA_FRAMES",
+    "value": 5,
+    "meaning": "Game frames per OLDRAD index step. PREXPL splits the explosion slots into round-robin batches via EXPFIX (a 6-byte table) and advances one batch per frame, so a single blast's index moves once every (EXPEND-EXPFIX-2)+1 = 5 frames.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 1911,
+      "verbatim": "EXPFIX:\t.BYTE -1,3,7,11.,15.,19."
+    }
   }
 ]

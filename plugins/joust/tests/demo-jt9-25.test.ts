@@ -252,15 +252,15 @@ describe('jt9-25 AC-4 — a hatching egg walks EGGTBL before it becomes a buzzar
     expect(xByName.get('EGGB3'), 'EGGB3 hangs 2px left').toBe(EGG_X - 2)
   })
 
-  it('a COMMITTED-hatching egg cannot be collected — a player on it does NOT cancel the remount', async () => {
-    // The hatch commits at EGGLND's INC NENEMY; the ROM's remount WILL come. A
-    // mid-cutscene egg is still kind:'egg', so without an explicit exclusion the
-    // catch pass would collect it and cancel the committed remount. This pins the
-    // direct behaviour (added at review): a hatching egg overlapping a player is
-    // NOT caught, emits no egg-collected cue, and still reaches its buzzard.
-    // Seeding hatchRow is a real reachable state — stepDemo writes it every frame of
-    // the cutscene (the egg-contract waitFrames precedent). Mutation-proven: deleting
-    // the `hatchRow !== undefined` guard in the catch loop reddens this.
+  it('jt9-41 correction — a hatching egg IS collectible, and collecting it cancels the remount', async () => {
+    // SUPERSEDES jt9-25's original "a committed-hatching egg cannot be collected" pin.
+    // jt9-25 made a hatchRow-set egg non-collectible ONLY to hold the seed-0xface
+    // fingerprints still — a simplification the ROM contradicts. jt9-41 (user ruling
+    // 2026-08-06) restored the faithful PLYEGG/EGGSCR mechanism: a player touching the
+    // egg mid-cutscene collects it via the egg ladder AND sends the inbound remount
+    // buzzard off-screen (AUTOFF, JOUSTRV4.SRC:3078-3087). Full coverage of the
+    // interaction lives in demo-jt9-41.test.ts; this asserts the direct inversion so
+    // the jt9-25 suite stays honest about the egg's fate.
     const dmod = await loadDemo()
     const EGG_X = 100
     // A hatching egg (hatchRow set) with a player sitting ON it (same posX/feet).
@@ -269,11 +269,18 @@ describe('jt9-25 AC-4 — a hatching egg walks EGGTBL before it becomes a buzzar
       hatchingEggProc({ posX: EGG_X, posY: 40 << 8, pfeet: 0, hatchRow: 0, hatchNap: 7 }),
     ])
     let collected = false
-    for (let f = 0; f < 600 && enemiesIn(d).length === 0; f++) {
+    // Bounded (no `while enemiesIn === 0` — the remount is cancelled, so it never
+    // arrives). 150 > EGG_HATCH_ANIM_FRAMES (112): well past when a remount could fly in.
+    for (let f = 0; f < 150; f++) {
       d = dmod.stepDemo(d)
       if (d.cues.some((c) => c.type === 'egg-collected')) collected = true
     }
-    expect(collected, 'the hatching egg was collected mid-crack — the committed remount was cancelled').toBe(false)
-    expect(enemiesIn(d).length, 'the committed remount still flew in').toBe(1)
+    expect(collected, 'the hatching egg was collected mid-crack').toBe(true)
+    // The remount buzzard rides id >= 0x40_0000 (remountEnemyProcess); scoping to it
+    // ignores the wave-advance enemies that spawn once the arena clears after the collect.
+    expect(
+      d.sim.processes.some((p) => p.kind === 'enemy' && p.id >= 0x40_0000),
+      'no remount buzzard — collecting the hatching egg cancelled it',
+    ).toBe(false)
   })
 })

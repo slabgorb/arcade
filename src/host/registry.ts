@@ -98,6 +98,17 @@ export const GAMES: readonly GameMeta[] = [
     showcase: false,
     version: '0.0.1',
   },
+  {
+    id: 'pac-man',
+    title: 'PAC-MAN',
+    year: 1980,
+    color: '#ffcc00',
+    controls: ['Joystick — ←↑↓→ / WASD'],
+    order: 9,
+    listed: true,
+    showcase: false,
+    version: '0.0.1',
+  },
 ]
 
 /** The games the lobby lists — `listed: false` opts a game out deliberately. */

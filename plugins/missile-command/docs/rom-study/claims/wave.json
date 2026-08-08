@@ -1,0 +1,255 @@
+[
+  {
+    "id": "MC-ICBWAV-10",
+    "symbol": "ICBWAV",
+    "value": 10,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 10 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-ICBWAV-12",
+    "symbol": "ICBWAV",
+    "value": 12,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 12 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-ICBWAV-13",
+    "symbol": "ICBWAV",
+    "value": 13,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 13 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-ICBWAV-14",
+    "symbol": "ICBWAV",
+    "value": 14,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 14 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-ICBWAV-15",
+    "symbol": "ICBWAV",
+    "value": 15,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 15 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-ICBWAV-16",
+    "symbol": "ICBWAV",
+    "value": 16,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 16 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-ICBWAV-17",
+    "symbol": "ICBWAV",
+    "value": 17,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 17 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-ICBWAV-18",
+    "symbol": "ICBWAV",
+    "value": 18,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 18 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-ICBWAV-19",
+    "symbol": "ICBWAV",
+    "value": 19,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 19 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-ICBWAV-20",
+    "symbol": "ICBWAV",
+    "value": 20,
+    "meaning": "REV-01 per-wave ICBM budget (1ST PHASE OF NEW WAVE SETUP, ICBWAV): wave N launches this many ICBMs; 20 is one decimal entry of the table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5713,
+      "verbatim": "ICBWAV:\t.BYTE 12.,15.,18.,12.,16.,14.,17.,10.,13.,16.,19.,12.,14.,16.,18.,14.,16.,18.,20."
+    }
+  },
+  {
+    "id": "MC-WICSPL-6",
+    "symbol": "WICSPL",
+    "value": 6,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 6 is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPL-8",
+    "symbol": "WICSPL",
+    "value": 8,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 8 is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPL-32",
+    "symbol": "WICSPL",
+    "value": 32,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 32 is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPL-64",
+    "symbol": "WICSPL",
+    "value": 64,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 64 is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPL-96",
+    "symbol": "WICSPL",
+    "value": 96,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 96 is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPL-160",
+    "symbol": "WICSPL",
+    "value": 160,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 160 is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPL-192",
+    "symbol": "WICSPL",
+    "value": 192,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 192 is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPL-208",
+    "symbol": "WICSPL",
+    "value": 208,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 208 is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPL-224",
+    "symbol": "WICSPL",
+    "value": 224,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 224 is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPH-4",
+    "symbol": "WICSPH",
+    "value": 4,
+    "meaning": "REV-01 per-wave ICBM descent speed, integer byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPH). REV-01-vs-REV-03 delta (O-3): these WICSPH/WICSPL/ICBWAV difficulty tables are exactly where REV-01 (035820-01, the vendored tree) and REV-03 (035820-02, the widely-emulated \"missile\") diverge; this ships REV-01 per epic contract 3, and the exact REV-03 deltas require the REV-03 source, which is not in the vendored REV-01 tree.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5719,
+      "verbatim": "WICSPH:\t.BYTE 4,2,1,1,0,0,0,0,0,0,0,0,0,0,0"
+    }
+  },
+  {
+    "id": "MC-ICSPD-SCALE",
+    "symbol": "ICSPDL",
+    "value": 256,
+    "meaning": "8.8 fixed-point scale for the ICBM update period: ICSPDL is declared as a one-byte FRACTION of a frame, so its weight is 1/256 (period = ICSPDH + ICSPDL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 207,
+      "verbatim": "ICSPDL:\t.BLKB 1\t\t\t;ICBM SPEED (FRAMES BEFORE UPDATE)(FRACTION)"
+    }
+  },
+  {
+    "id": "MC-CITYBON",
+    "symbol": "CITYBON",
+    "value": 4,
+    "meaning": "End-of-wave CITY BONUS: a saved city is worth 4 ICBM-point units. ENDWV4 (TALLY CITIES) calls ICMUL2 with LDX I,3, and ICMUL2's MIEND loop runs while X>=0, so the per-ICBM value (ICBPTS) is added 4 times per surviving city. Value is the LDX immediate (3, hex) + 1 for the inclusive loop; the cited line's own comment reads \"4 ICBM POINTS/CITY\". At the base multiplier that is 4 x 25 = 100 pts/city.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 4423,
+      "verbatim": "\tLDX I,3\t\t\t;4 ICBM POINTS/CITY"
+    }
+  },
+  {
+    "id": "MC-ABMBON",
+    "symbol": "ABMBON",
+    "value": 5,
+    "meaning": "End-of-wave UNUSED-MISSILE BONUS: 5 points per ABM left in a magazine. ENDWV2 calls ABMADD per unused ABM; ABMADD adds the immediate 5 to the bonus triple once per SMULTI (skill/score multiplier), so the base rate is 5 pts/unused ABM. Value is the LDA I,5 immediate.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5451,
+      "verbatim": "\tLDA I,5"
+    }
+  }
+]

@@ -1,0 +1,98 @@
+[
+  {
+    "id": "FRUIT-CHERRY",
+    "symbol": "FRUIT_CHERRY_POINTS",
+    "value": 100,
+    "meaning": "The FRUIT TABLE's first entry (bonus-fruit points), immediately after the ghost-chain scoring table. BCD little-endian word x10: raw 1000 -> LE 0x0010 -> 10 -> 100. Dossier ch.5 'Fruit': level-1 fruit is the cherry, worth 100 points. src/core/level.ts's fruitForLevel(1).",
+    "addr": "2b23",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5931, "verbatim": "2b23  1000\t\t\t\t; fruit" }
+  },
+  {
+    "id": "FRUIT-STRAWBERRY",
+    "symbol": "FRUIT_STRAWBERRY_POINTS",
+    "value": 300,
+    "meaning": "Fruit table's second entry. Raw 3000 -> LE 0x0030 -> 30 -> 300. Dossier ch.5: level-2 fruit is the strawberry. src/core/level.ts's fruitForLevel(2).",
+    "addr": "2b25",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5932, "verbatim": "2b25  3000\t\t\t\t; fruit" }
+  },
+  {
+    "id": "FRUIT-ORANGE",
+    "symbol": "FRUIT_ORANGE_POINTS",
+    "value": 500,
+    "meaning": "Fruit table's third entry. Raw 5000 -> LE 0x0050 -> 50 -> 500. Dossier ch.5: levels 3-4 fruit is the orange. src/core/level.ts's fruitForLevel(3/4).",
+    "addr": "2b27",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5933, "verbatim": "2b27  5000\t\t\t\t; fruit" }
+  },
+  {
+    "id": "FRUIT-APPLE",
+    "symbol": "FRUIT_APPLE_POINTS",
+    "value": 700,
+    "meaning": "Fruit table's fourth entry. Raw 7000 -> LE 0x0070 -> 70 -> 700. Dossier ch.5: levels 5-6 fruit is the apple. src/core/level.ts's fruitForLevel(5/6).",
+    "addr": "2b29",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5934, "verbatim": "2b29  7000\t\t\t\t; fruit" }
+  },
+  {
+    "id": "FRUIT-MELON",
+    "symbol": "FRUIT_MELON_POINTS",
+    "value": 1000,
+    "meaning": "Fruit table's fifth entry. Raw 0001 -> LE 0x0100 -> 100 -> 1000. Dossier ch.5: levels 7-8 fruit is the melon. src/core/level.ts's fruitForLevel(7/8).",
+    "addr": "2b2b",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5935, "verbatim": "2b2b  0001\t\t\t\t; fruit" }
+  },
+  {
+    "id": "FRUIT-GALAXIAN",
+    "symbol": "FRUIT_GALAXIAN_POINTS",
+    "value": 2000,
+    "meaning": "Fruit table's sixth entry. Raw 0002 -> LE 0x0200 -> 200 -> 2000. Dossier ch.5: levels 9-10 fruit is the Galaxian ship. src/core/level.ts's fruitForLevel(9/10).",
+    "addr": "2b2d",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5936, "verbatim": "2b2d  0002\t\t\t\t; fruit" }
+  },
+  {
+    "id": "FRUIT-BELL",
+    "symbol": "FRUIT_BELL_POINTS",
+    "value": 3000,
+    "meaning": "Fruit table's seventh entry. Raw 0003 -> LE 0x0300 -> 300 -> 3000. Dossier ch.5: levels 11-12 fruit is the bell. src/core/level.ts's fruitForLevel(11/12).",
+    "addr": "2b2f",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5937, "verbatim": "2b2f  0003\t\t\t\t; fruit" }
+  },
+  {
+    "id": "FRUIT-KEY",
+    "symbol": "FRUIT_KEY_POINTS",
+    "value": 5000,
+    "meaning": "Fruit table's eighth and final entry. Raw 0005 -> LE 0x0500 -> 500 -> 5000. Dossier ch.5: level 13+ fruit is the key. src/core/level.ts's fruitForLevel(13+).",
+    "addr": "2b31",
+    "decode": "bcd-x10-word",
+    "source": { "file": "pacman.asm", "line": 5938, "verbatim": "2b31  0005\t\t\t\t; fruit" }
+  },
+  {
+    "id": "FRUIT-SPAWN-1",
+    "symbol": "FRUIT_SPAWN_DOTS_1",
+    "value": 70,
+    "meaning": "The first bonus-fruit spawn trigger: the running dots-eaten count at (#4e0e) is compared against the literal #46 = 70; on an exact match (jr z) the routine falls through to arm the fruit-drawn flag at (#4e0d). This is the Dossier's 'first fruit appears after 70 dots eaten' figure, transcribed from a real ROM compare, not decoded from Dossier prose alone. src/core/level.ts's FRUIT_SPAWN_DOTS[0].",
+    "addr": "0eba",
+    "source": { "file": "pacman.asm", "line": 2139, "verbatim": "0eba  fe46      cp      #46" }
+  },
+  {
+    "id": "FRUIT-SPAWN-2",
+    "symbol": "FRUIT_SPAWN_DOTS_2",
+    "value": 170,
+    "meaning": "The second bonus-fruit spawn trigger, checked immediately after FRUIT-SPAWN-1 fails to match: dots-eaten (#4e0e) compared against literal #aa = 170. A non-match here (`ret nz`) exits the routine entirely, so 70 and 170 are the ONLY two dots-eaten counts that arm a fruit spawn this level. Dossier's 'second fruit appears after 170 dots eaten'. src/core/level.ts's FRUIT_SPAWN_DOTS[1].",
+    "addr": "0ebe",
+    "source": { "file": "pacman.asm", "line": 2141, "verbatim": "0ebe  feaa      cp      #aa" }
+  },
+  {
+    "id": "EXTRA-LIFE-MESSAGE",
+    "symbol": "EXTRA_LIFE_SCORE",
+    "value": "BONUS PAC-MAN FOR   000 Pts",
+    "meaning": "The message-pointer table entry for the DIP-driven bonus-life text template \"BONUS PAC-MAN FOR   000 Pts\" — the '000' is a placeholder the ROM fills in from the DIP-selected bonus-score switch at draw time, not a stored score literal. There is no plain `cp #nnnn`/`ld a,#nnnn` in this vendored disassembly that stores the Dossier's documented 10,000-point default outright (it is DIP-switch selected, read from hardware, not baked into program ROM as a single constant) — this claim pins the MESSAGE anchor honestly, not a numeric score literal. src/core/game.ts's EXTRA_LIFE_SCORE=10_000 carries the Dossier default with honest-uncited status for the actual score figure, matching claims/lives.json's LIVES-PER-GAME treatment of another DIP-driven default.",
+    "addr": "36b9",
+    "source": { "file": "pacman.asm", "line": 7777, "verbatim": "36b9  003d\t\t\t; a  c837   BONUS PAC-MAN FOR   000 Pts" }
+  }
+]

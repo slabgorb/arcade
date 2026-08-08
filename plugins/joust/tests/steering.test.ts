@@ -230,6 +230,148 @@ describe('AC-1 — the hunter turns AWAY at a cliff 31 px ahead, and slows', () 
   })
 })
 
+// ═════════════════════════════════════════════════════════════════════════════
+// jt9-48 — B2DIRA (:4148-4150) / SHDIRA (:4379-4381): the COLLISION-DRIVEN
+// bump-facing arm. jt9-17 parked `PBUMPX` (the OSTLR shove) on the DemoProcess
+// but never wired the facing arm that spends it. `B2DIR`/`SHDIR` funnel EVERY
+// airborne path through the B2DIRA/SHDIRA tail before the aim (SHFDIR/B2FDIR):
+//
+//     B2DIRA  LDA  PBUMPX,U   FACE, BUMPED DIRECTION   :4148
+//             BEQ  B2FDIR                              :4149  ← zero ⇒ no write
+//             STA  PFACE,U                             :4150  ← else face along it
+//
+// A non-zero shove is the LAST word on facing. It is reached three ways, and
+// this suite pins all three: the PARKED branch (`BEQ B2DIRA` :4105), OPEN AIR
+// (`BEQ B2DIRA` :4121), and a CLIFF TURN — `B2DICL` (:4142-4146) installs the
+// slow episode + `LDB #1` then FALLS THROUGH into B2DIRA (:4147-4148), so a
+// bump OVERRIDES even the turn-away it just wrote. `STA PFACE`: PFACE<0 is LEFT
+// (`BMI` :4152/:4383), ≥0 is RIGHT — so `facing = sign(bumpX)`, matching the
+// port's +1=right / −1=left. The shove passes in as steerWake's 3rd arg (the
+// value jt9-17 parked on `DemoProcess.bumpX`); it is NEVER reached when the
+// lava gate diverted the wake (B2DIRL/$D0), nor for the bounder/linet/grounded,
+// which return before the tail. The wiring — bump plumbed from the process to
+// this arg — is steering-wiring.test.ts; the source is steering-source.test.ts.
+describe('jt9-48 — B2DIRA/SHDIRA spend PBUMPX: facing = sign(bump), the last word before the aim', () => {
+  let S: SteeringModule
+  beforeAll(async () => {
+    S = await loadSteering()
+  })
+
+  it('AC — a PARKED hunter given a RIGHTWARD bump faces RIGHT on its next steering decision', () => {
+    // The story's headline AC. Parked (velXIndex 0, no look-ahead) in open air,
+    // so the shove is the ONLY facing driver. Facing starts LEFT so the flip is
+    // observable (a vacuous +1→+1 would prove nothing).
+    const r = S.steerWake({ ...hunterAt(OPEN.x, OPEN.y, 0), facing: -1 }, null, 16)
+    expect(r.turned, 'no cliff — a parked FLYX index samples nothing').toBe(false)
+    expect(r.enemy.facing, 'STA PFACE — sign(+16) = FACE RIGHT').toBe(1)
+  })
+
+  it('a leftward bump faces LEFT (the mirror — sign carries the direction)', () => {
+    const r = S.steerWake({ ...hunterAt(OPEN.x, OPEN.y, 0), facing: 1 }, null, -16)
+    expect(r.enemy.facing, 'sign(−16) = FACE LEFT').toBe(-1)
+  })
+
+  it('a ZERO bump leaves facing exactly as it was (:4149 BEQ B2FDIR — no write)', () => {
+    // The guard on the BEQ: sign(0) must NOT collapse facing to 0 or force a
+    // side. An unshoved bird keeps whatever the look-ahead left.
+    const r = S.steerWake({ ...hunterAt(OPEN.x, OPEN.y, 0), facing: -1 }, null, 0)
+    expect(r.enemy.facing, 'zero shove ⇒ facing untouched').toBe(-1)
+  })
+
+  it('an OMITTED bump (undefined — an unshoved process) is a no-op too', () => {
+    // The `DemoProcess.bumpX` field is optional; frame.ts hands `undefined` for
+    // a bird that never bounced. `undefined != 0` is true in JS, so a naive
+    // `if (bumpX != 0)` would face `sign(undefined) = NaN` — this pins the
+    // `?? 0` / explicit-zero handling (typescript.md #4).
+    const r = S.steerWake({ ...hunterAt(OPEN.x, OPEN.y, 0), facing: -1 }, null)
+    expect(r.enemy.facing, 'no shove argument ⇒ facing held').toBe(-1)
+  })
+
+  it('a MOVING hunter in OPEN air bump-faces too — B2DIRA is NOT the parked branch alone (:4121 BEQ B2DIRA)', () => {
+    // The open-air `BEQ B2DIRA` reaches the same tail. An implementation that
+    // only spends the bump when velXIndex==0 leaves this one red.
+    expect(bck(OPEN.x + XLEN, OPEN.y), 'premise: nothing ahead to turn at').toBe(0)
+    const r = S.steerWake({ ...hunterAt(OPEN.x, OPEN.y, 8), facing: -1 }, null, 16)
+    expect(r.turned, 'open air — the look-ahead did not turn').toBe(false)
+    expect(r.enemy.facing, 'the shove still wins on a moving bird').toBe(1)
+  })
+
+  it('the bump OVERRIDES a cliff turn — B2DICL falls THROUGH into B2DIRA (:4142-4150)', () => {
+    // Moving RIGHT into CLIFF_R, the look-ahead turns the bird to face LEFT and
+    // installs the slow episode (turned=true). Then B2DICL falls into B2DIRA,
+    // and a RIGHTWARD shove overwrites PFACE back to RIGHT — the shove is the
+    // last word. The episode/flap (turned) survives; only facing is overridden.
+    expect(bck(CLIFF_R.x + XLEN, CLIFF_R.y), 'premise: cliff solid 31 px ahead').not.toBe(0)
+    const noBump = S.steerWake({ ...hunterAt(CLIFF_R.x, CLIFF_R.y, 8), facing: 1 }, null)
+    expect(noBump.turned, 'control: the cliff is detected').toBe(true)
+    expect(noBump.enemy.facing, 'control: without a shove the turn faces LEFT away').toBe(-1)
+    const bumped = S.steerWake({ ...hunterAt(CLIFF_R.x, CLIFF_R.y, 8), facing: 1 }, null, 16)
+    expect(bumped.turned, 'the slow episode + flap still install (B2DICL ran)').toBe(true)
+    expect(bumped.enemy.facing, 'but the rightward shove OVERRIDES the turn-away').toBe(1)
+  })
+
+  it('a LAVA-DIVERTED hunter never bump-faces — B2DIRL ($D3) fires before B2DIR (:4097-4102)', () => {
+    // At/below $D3 and falling is BOLAVA's territory; the wake never enters
+    // B2DIR, so it never reaches B2DIRA. A shove here is ignored. Green before
+    // AND after — if it flips, the bump was applied ahead of the lava gate.
+    const r = S.steerWake(hunterAt(LAVA_X, 212, 8, { velY: 0x200 }), null, -16)
+    expect(r.turned, '212 ≥ $D3 and falling ⇒ JMP BOLAVA').toBe(false)
+    expect(r.enemy.facing, 'a lava-diverted wake reaches no bump arm').toBe(1)
+  })
+
+  it('the plain BOUNDER never bump-faces — BODIR (:3876) has no PBUMPX arm', () => {
+    // The complete set of PBUMPX reads in the direction region is exactly two:
+    // B2DIRA and SHDIRA (steering-source.test.ts). BODIR is not one of them.
+    const r = S.steerWake(
+      { ...hunterAt(OPEN.x, OPEN.y, 0), brain: 'boundr', decision: 'boundr', facing: -1 },
+      null,
+      16,
+    )
+    expect(r.enemy.facing, 'a bounder returns before the tail — no shove').toBe(-1)
+  })
+
+  it('the dumb LINET never bump-faces either', () => {
+    const r = S.steerWake(
+      { ...hunterAt(OPEN.x, OPEN.y, 0), brain: 'linet', pchase: 0, facing: -1 },
+      null,
+      16,
+    )
+    expect(r.enemy.facing).toBe(-1)
+  })
+
+  it('a GROUNDED enemy does not bump-face (the arm is a flight routine)', () => {
+    const grounded = {
+      ...hunterAt(OPEN.x, OPEN.y, 0),
+      facing: -1 as const,
+      entity: { ...hunterAt(OPEN.x, OPEN.y, 0).entity, airborne: false },
+    }
+    const r = S.steerWake(grounded, null, 16)
+    expect(r.enemy.facing, 'grounded ⇒ no steering wake at all').toBe(-1)
+  })
+
+  it('steerWake stays pure with a bump — the argument is never mutated', () => {
+    const before = { ...hunterAt(OPEN.x, OPEN.y, 0), facing: -1 as const }
+    const snapshot = JSON.parse(JSON.stringify(before)) as unknown
+    S.steerWake(before, null, 16)
+    expect(before).toEqual(snapshot)
+  })
+
+  // ── the shadow's SHDIRA, on its one steerable route (no players → SHLEV) ────
+  it('a PARKED no-target shadow spends the bump too — SHDIRA (:4379-4381)', () => {
+    const r = S.steerWake({ ...shadowAt(OPEN.x, OPEN.y, 0), facing: -1 }, null, 16)
+    expect(r.turned, 'no cliff').toBe(false)
+    expect(r.enemy.facing, 'sign(+16) = FACE RIGHT').toBe(1)
+  })
+
+  it('the shadow mirrors it leftward, and a MOVING no-target shadow bump-faces in open air', () => {
+    const parkedLeft = S.steerWake({ ...shadowAt(OPEN.x, OPEN.y, 0), facing: 1 }, null, -16)
+    expect(parkedLeft.enemy.facing, 'sign(−16) = FACE LEFT').toBe(-1)
+    const movingOpen = S.steerWake({ ...shadowAt(OPEN.x, OPEN.y, 8), facing: -1 }, null, 16)
+    expect(movingOpen.turned, 'open air — no turn').toBe(false)
+    expect(movingOpen.enemy.facing, 'the shove wins on a moving shadow').toBe(1)
+  })
+})
+
 describe('AC-1 — the hunter’s lava gate is $D3 (B2DIRL :4097-4102), the shadow’s is $D0 (:4330-4334)', () => {
   let S: SteeringModule
   beforeAll(async () => {

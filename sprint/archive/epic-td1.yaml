@@ -1,0 +1,402 @@
+id: td1
+type: epic
+title: Tech debt — fleet-wide fixes and carried-open items from the joust jt1 epic
+description: 'Cross-repo tech debt surfaced by the jt1 joust foundation epic (2026-07-19/20). Three classes: (1) FLEET-WIDE holes joust found and closed locally — the sibling repos still carry them; (2) FOLD-BACK of improvements joust proved (the AST purity scanner and its case tables); (3) CARRIED-OPEN items the jt1 reviews named honestly rather than silently shipping. Each story cites the joust story/review that found it, and where joust already shipped the fix, the joust implementation is the reference — port it rather than re-deriving.'
+priority: p2
+status: done
+repos: arcade
+stories:
+  - id: td1-1
+    title: Fleet strictPort is porous — pin host 127.0.0.1 in every subrepo's vite config
+    description: "Found by the jt1-3 review (2026-07-20) and reproduced in this environment: strictPort does NOT protect a pinned port. With 127.0.0.1:5279 held, vite binds [::1]:5279 and starts normally — two dev servers, one port, NO collision error. This makes CLAUDE.md's pinned-port guarantee AND its own 'the port may belong to a different checkout' warning weaker than documented: you can serve and screenshot the WRONG CHECKOUT with no error at all, which is exactly the trap the docs warn about, minus the safety net. joust already carries the fix (host: '127.0.0.1' on server AND preview in vite.config.ts, joust#11 era) — port it verbatim to the seven siblings. Note the behavioural strictPort test in joust/tests/scaffold.test.ts occupies IPv4 only, which is why it was flaky before the host pin; siblings that copy the test should copy the fix with it. Also worth updating the orchestrator CLAUDE.md trap paragraph to say strictPort alone is insufficient."
+    points: 2
+    priority: p2
+    status: done
+    started: '2026-07-20'
+    repos: arcade
+    workflow: trivial
+    acceptance_criteria:
+      - "Every servable subrepo's vite.config.ts pins host: '127.0.0.1' on both server and preview blocks; just serve still launches the whole fleet."
+      - With a port held on IPv4, that subrepo's dev server FAILS loudly rather than binding the IPv6 twin (prove for at least one repo).
+      - The orchestrator CLAUDE.md wrong-checkout trap paragraph states that strictPort alone does not protect the pin.
+    completed: '2026-07-20'
+    type: chore
+    review_verdict: approved
+  - id: td1-2
+    title: Fold the AST purity scanner back to centipede and tempest — six false negatives each
+    description: "joust proved the shape; the siblings still run the regex comment-stripper with all six holes. Source: joust/tests/helpers/purity-scanner.ts (jt1-7 + jt1-11), built on the TypeScript compiler API (ts.createSourceFile — acorn is NOT in the Vite 8/rolldown tree and is JS-only anyway; that misprescription cost jt1-7 a finding). What ports: five intent-named ban tables (objects, member pairs, bare identifiers, calls, constructors) plus aliasing, general trivia-node unwrapping (parens/NonNull/satisfies/as-casts, proven general by composed review attacks), string-literal element access through the member table, located file:line reports, and the documented-limits header (five dataflow routes + shadowing strictness) with its mutation-checked rail. The six false negatives the siblings currently have: string-embedded /*, string-embedded //, template interpolation, Math destructuring alias, Date function-reference alias, and a string carrying BOTH markers. joust's test file is written as a portable flip/hold case table — copy it, expect to DELETE more code than you add. Watch for repo-specific ban differences (each game's core bans its own shell globals)."
+    points: 3
+    priority: p2
+    status: done
+    started: '2026-07-20'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - centipede and tempest each run the TS-compiler-API scanner; all six false negatives are caught in each repo, each proven red against the old scanner once.
+      - Each repo's existing purity expectations still pass and the full suites stay green — no false positives on their generated/data modules.
+      - Both carry the documented-limits header and its rail; the centipede '= Date' double-report (fixed in joust's copy with a lookahead) is gone.
+    completed: '2026-07-20'
+    type: chore
+    review_verdict: approved
+  - id: td1-3
+    title: Re-take the joust demo screenshot — the committed one predates the shear fix
+    description: "joust/docs/rom-study/jt1-6-demo.png was captured BEFORE the reshapeRagged hotfix (joust#12). The bottom island in it is progressively sheared — up to ~18px by its last row — because expandComcl5's ragged rows were being consumed at a fixed stride. The jt1-6 Reviewer's warning is the reason this matters: 'a monotonic skew on a rocky cliff reads as texture, not error. Human review of a render is good at is-this-a-cliff and poor at is-this-cliff-sheared.' So the artifact currently misrepresents the shipped renderer, and an eyeball cannot tell. Re-capture from THIS checkout with lsof port-ownership proof (the jt1-6 precedent: a stale server held 5279 and was proven out rather than assumed). While here, consider whether a known-good pixel comparison belongs in the suite — the Reviewer's point was that geometric fidelity needs a pixel-level or reference check, not a human glance; if that is more than 1 point, file it separately rather than growing this. ⚠️ SEQUENCING — DO td1-5 FIRST (established during the td1 run, 2026-07-20). td1-5 includes an adversarial pass over the joust RENDER INTERNALS (atlas/blit path, ragged-row reshape, integer scaling) and may FIX defects there. Capturing before td1-5 risks re-staling the artifact for exactly the reason it is stale now — a render change landing after the capture. Shoot LAST. ALSO (from td1-1, done 2026-07-20): joust's vite server now pins host 127.0.0.1 on both server and preview, but a stale sibling checkout WITHOUT the pin can still hold [::1]:5279 alongside your 127.0.0.1:5279 — so `lsof -ti tcp:5279` may return more than one server, and 'my server started fine' is NOT proof you are screenshotting your own tree. Prove the cwd of the PID actually answering. See also td1-8: `just serve` currently swallows a failed launch, so a fleet with one game silently missing still looks healthy — do not infer ownership from the serve banner."
+    points: 1
+    priority: p3
+    status: canceled
+    repos: arcade
+    workflow: trivial
+    acceptance_criteria:
+      - The committed demo screenshot is re-taken from the post-hotfix renderer with lsof (or equivalent) proof of 5279 ownership recorded in the story notes.
+      - The bottom island's vertical channel columns hold position across consecutive rows (the shear signature is absent).
+    type: chore
+  - id: td1-4
+    title: Triage the two orchestrator extract-audio reds — tempest/red-baron link-5 audits
+    description: "Two tests in the ORCHESTRATOR suite (tests/extract-audio.test.mjs, run with node --test, NOT vitest) have been red since at least 2026-07-19 and are unowned: 'audit: tempest sfx — link 5 catches the 4 sounds whose shipped bake omits the ROM terminal-zero write' and 'audit: red-baron — link 5 catches the 3 inverted envelopes (TP/BN/WP/TH synthesised, TK real)'. Confirmed still failing 2026-07-20 (19 pass / 2 fail of 21). First observed by jt1-1's TEA, who PROVED them pre-existing by moving his own new test file aside and re-running — so they are not attributable to any jt1 story (the develop-red misattribution trap; TEA's control is the right method to repeat). They depend on the gitignored vendored Atari source/audio assets, so the leading hypothesis is an ENVIRONMENT gap in this checkout rather than a code defect — but that is a hypothesis, not a finding: nobody has actually opened them. Triage first (env vs real regression), then either fix, or make the tests skip loudly when their inputs are absent (the jt1 discipline: a test that silently passes without its inputs is worse than one that skips)."
+    points: 2
+    priority: p3
+    status: done
+    started: '2026-07-20'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'Both failures are diagnosed and the diagnosis is recorded: environment gap vs real regression, with the evidence that distinguishes them.'
+      - Either the audits pass, or they SKIP self-describingly when the vendored assets are absent — never a silent pass; the orchestrator suite is green either way.
+    completed: '2026-07-20'
+    type: bug
+    review_verdict: approved
+  - id: td1-5
+    title: Close the jt1 carried-open verification gaps — render internals and the text-match vacuity sweep
+    description: "Two items the jt1 reviews explicitly declared UNVERIFIED rather than implying coverage. Both are recorded in the archived sessions; this story closes them. (1) RENDER INTERNALS: the jt1-6 review's edge-hunter was outstanding at write-up, so the atlas stream/raster discriminant, ragged-row reshape, integer scaling/smoothing, palette denylist and CSRC5L 13-of-14 rested on 'suite green + SM eyeball' — and the specialist LATER found a real defect there (reshapeRagged, fixed in joust#12). The class deserves a real check now: adversarial probing of the atlas/blit path, and consideration of a known-good pixel comparison for geometric fidelity (the Reviewer's point: a human eye reads monotonic skew as texture). (2) THE TEXT-MATCH VACUITY SWEEP: carried open since jt1-5. At least one doc/text assertion was found to be keyword-proximity rather than a content check (the arena-header case: it bites for the exact old sentence but its positive assertions accept vague prose). TEA flagged whole-file text matches passing vacuously THREE times across the epic. Sweep every text/source-scanning assertion in the joust suite and mutation-check it: does it fail on plausible wrong content, or only on the literal string someone happened to mutate?"
+    points: 2
+    priority: p3
+    status: canceled
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - Every text-matching or source-scanning assertion in the joust suite is mutation-checked; vacuous ones are re-aimed at content, and the sweep result is recorded (how many checked, how many were vacuous).
+      - The render internals get an adversarial pass beyond the existing suite; any defect found is fixed or filed, and the geometric-fidelity check question (pixel comparison vs known-good) is answered explicitly rather than left open.
+    type: chore
+  - id: td1-6
+    title: tempest bake-sfx expandSeq omits the ROM AUDC high-nibble mask on a ramp — player_fire diverges from event 3
+    description: |-
+      Surfaced by td1-4 (2026-07-20), NOT created by it — a pre-existing tempest bake-tool defect that only became visible once td1-4 un-crossed the orchestrator's cue->ROM-address map (scripts/audio/games/tempest.mjs). Before that fix, link 5 was comparing player_fire's ROM slice against a DIFFERENT cue's shipped bake, so this divergence was hidden behind the wrong comparison.
+
+      THE DEFECT: tempest/tools/pokey-bake/bake-sfx.mjs's expandSeq() never applies the ROM's AUDC high-nibble (distortion) mask on a ramp — the odd-channel XOR/AND-0xF0/XOR dance MODSND performs in ALSOUN.MAC. The orchestrator's own envelope.mjs DOES apply it (maskHighNibble: true). Consequence: player_fire's LA record ramps AUDC by -8 per step, the ROM masks the high nibble on every step, the shipped bake does not — so the two streams disagree from event 3 onward, not merely at the tail. Observed reason string: ROM=[1,170] shipped=[1,154].
+
+      This is DISTINCT from the terminal-zero-write omission affecting segment_tick/enemy_explosion/enemy_fire/spike_shot (those read ROM=[0,0] shipped=null). Two different bake-tool bugs; do not conflate them.
+
+      td1-4 deliberately surfaced this as a real MISMATCH rather than narrowing the assertion to hide it — tests/extract-audio.test.mjs:243 currently asserts player_fire MISMATCH with a distinguishing reason match. That assertion is the canary: when this story lands, that expectation must flip to ROM_VERIFIED. Fixing the bake tool without updating it will redden the orchestrator suite, which is the intended coupling.
+
+      Scope note: the fix is in the TEMPEST subrepo (tools/pokey-bake/), which is why td1-4 (scope '.') could not take it. Verified by the td1-4 Reviewer as real, with 'out of scope here' confirmed as the right call.
+    points: 2
+    priority: p3
+    status: done
+    started: '2026-07-20'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-07-20'
+    type: bug
+    review_verdict: approved
+  - id: td1-7
+    title: Scaffold suites guard the wrong invariant — assert host 127.0.0.1 pin, not just strictPort
+    description: |-
+      Found by the td1-1 Reviewer (2026-07-20). battlezone/tests/scaffold.test.ts:53, red-baron/tests/scaffold.test.ts:70 and centipede/tests/scaffold.test.ts:69 each assert 'strictPort: true' — the guarantee td1-1 just PROVED INSUFFICIENT — while NOTHING asserts host: '127.0.0.1', the guarantee that actually works.
+
+      WHY THIS MATTERS: the suites currently guard the broken invariant and leave the working one unguarded. A future edit could silently delete the host pin and regress the exact bug td1-1 fixed, with a fully green suite. That is the same failure shape td1-4 found in the audit tooling (a check that cannot fail is worse than no check) and the same shape jt1 flagged repeatedly.
+
+      THE PROOF td1-1 established, at the socket layer, both directions:
+        held 127.0.0.1:19911 -> binding vite's default host 'localhost' SUCCEEDED on ::1  (port shared, NO error)
+        held 127.0.0.1:19912 -> binding '127.0.0.1' gave EADDRINUSE                       (fails loudly)
+      So the pin is the load-bearing line; strictPort alone is not.
+
+      SCOPE: add an assertion for host: '127.0.0.1' on BOTH the server and preview blocks to the three repos that already have a scaffold.test.ts. Correctly deferred from td1-1 (a 2-point mechanical config port) rather than scope-creeping it.
+
+      WORTH CONSIDERING: lobby, tempest, star-wars and asteroids have no scaffold.test.ts at all, so they carry no guard of either kind. Decide explicitly whether to extend the pattern to them or leave them unguarded — and record the decision either way rather than leaving it implicit.
+
+      A BEHAVIOURAL test (bind 127.0.0.1, assert the dev server fails loudly) would be stronger than a regex check on the config text, but note joust's own behavioural strictPort test occupies IPv4 only and was flaky before the host pin — copy that fix if the test is ported.
+    points: 1
+    priority: p2
+    status: done
+    started: '2026-07-20'
+    repos: arcade
+    workflow: trivial
+    completed: '2026-07-20'
+    type: chore
+    review_verdict: approved
+  - id: td1-8
+    title: just serve swallows a failed launch — bare wait returns 0, fleet looks healthy with one game silently missing
+    description: |-
+      Found by the td1-1 reviewer-silent-failure-hunter (2026-07-20), empirically reproduced. PRE-EXISTING — not introduced by td1-1 — but directly undermines the guarantee td1-1 was meant to make trustworthy, which is why it belongs to this epic.
+
+      THE DEFECT (justfile:139-164, the 'serve' recipe):
+      1. Line 141's 'set -euo pipefail' does NOT catch a failure inside a backgrounded subshell (lines 156-163).
+      2. Lines 147-154 print all eight 'ready' URLs UNCONDITIONALLY, BEFORE any server has attempted to bind — the banner claims success for a repo whose npm run dev is about to EADDRINUSE.
+      3. Line 164's bare 'wait' returns 0 regardless of which jobs died. The recipe's exit code carries no health information; a caller checking $? sees success with a dead server.
+
+      REPRODUCTION (synthetic, exact shape of the recipe):
+        set -euo pipefail
+        ( sleep 0.2; exit 7 ) &
+        ( sleep 5 ) &
+        wait
+        echo reached
+      -> 'reached' prints, outer exit code 0. The failed job is invisible.
+
+      CONSEQUENCE: because the other seven dev servers are long-running, 'wait' blocks forever with 7 up and 1 dead. The operator's only signal is that repo's vite stack trace interleaved with seven repos' concurrent startup chatter. No summary line, no non-zero exit.
+
+      WHY IT MATTERS HERE: td1-1 fixed vite so a port collision fails LOUDLY at the process level — verified at the socket layer (EADDRINUSE, exit 1). This wrapper then re-attenuates that signal back toward silence. 'The fleet looks healthy with one game silently missing' is the SAME failure shape as the wrong-checkout trap CLAUDE.md warns about: you believe you are serving your own tree, and you are not. Fixing vite while leaving 'just serve' deaf gets much less than the fix is worth.
+
+      SUGGESTED FIX (from the specialist): track each backgrounded PID and wait individually (or 'wait -n' in a loop), exiting non-zero with a NAMED summary line (e.g. 'FAILED: red-baron did not start') when any job dies. Also consider moving the ready-URL banner to AFTER a successful bind, so it stops asserting readiness it has not observed.
+
+      RELATED: td1-1 also surfaced that vite.config.ts is excluded from type-checking everywhere in the fleet (every tsconfig include is [src,tests]; no ESLint; CI runs only build+test). Proven by injecting 'host: 5150' (a number where string|boolean is required) into lobby/vite.config.ts — 'npm run build' passed cleanly. Consider folding a scoped config type-check into this story or filing it separately.
+    points: 2
+    priority: p2
+    status: done
+    started: '2026-07-20'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-07-20'
+    type: bug
+    review_verdict: approved
+  - id: td1-9
+    title: Four repos carry no scaffold suite at all — lobby, tempest, star-wars, asteroids have no config guard of any kind
+    description: |-
+      Filed by the td1-7 Dev + Reviewer (2026-07-20) as the recorded answer to td1-7's mandated OPEN DECISION, and made durable here because the decision otherwise lived only in the gitignored .session/ file (caught by the td1-7 reviewer-rule-checker as its single rule violation — a decision the story required to be explicit was, in tracked terms, invisible).
+
+      THE DECISION td1-7 TOOK, and why: lobby, tempest, star-wars and asteroids all carry the correct `host: '127.0.0.1'` pin in vite.config.ts (landed by td1-1) but have NO tests/scaffold.test.ts of any kind — no port pin assertion, no base assertion, no strictPort, no host. They are not guarding the broken invariant like the td1-7 three were; they are guarding NOTHING. Authoring four scaffold suites from scratch (choosing the idiom, then port/base/strictPort/host/allowedHosts assertions per repo) is materially more than the 1 point td1-7 was sized for, so td1-7 deliberately left them unguarded and filed this instead of growing scope. That call was independently reviewed and upheld.
+
+      WHY IT STILL MATTERS: the pin in those four configs is load-bearing and completely unprotected by tests. A future edit can delete `host: '127.0.0.1'` from any of the four and every suite stays green — which is exactly the regression td1-1 fixed and td1-7 guarded against elsewhere. td1-1 proved at the socket layer that strictPort alone does NOT protect a pinned port: with 127.0.0.1 held, vite falls through to the IPv6 twin [::1] and starts with NO collision error, so you can serve and screenshot the WRONG CHECKOUT silently.
+
+      REFERENCE IMPLEMENTATION: battlezone, red-baron, centipede and joust now all carry a block-anchored host assertion (td1-7). Port that shape — and note td1-7's own lesson, learned the hard way: a bare `count(cfg, "host: '127.0.0.1'") >= 2` is NOT sufficient. The td1-7 Reviewer proved by execution that moving both pins into the server block and leaving preview bare keeps the count at 2 and the suite fully green, under a test named "on both server and preview". Anchor on block membership, not occurrence count. Mutation-check every assertion, including that specific both-in-server case.
+
+      SCOPE NOTE: these four repos differ from each other more than the td1-7 three did (the lobby has no lint script, and allowedHosts/tunnel config is not uniform across them), so expect per-repo variation rather than a verbatim four-way copy.
+    points: 3
+    priority: p3
+    status: done
+    started: '2026-07-27'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - lobby, tempest, star-wars and asteroids each gain a tests/scaffold.test.ts guarding at minimum the pinned port, base, strictPort on both blocks, and host 127.0.0.1 on both blocks.
+      - Every new assertion is mutation-checked and observed RED before being accepted, including the both-pins-in-server-preview-bare case that td1-7 proved slips past an occurrence count.
+      - All four suites and builds stay green, and each repo still passes standalone (a bare clone must not need the orchestrator).
+    completed: '2026-07-27'
+    type: chore
+    review_verdict: approved
+  - id: td1-10
+    title: just test-all and build-all mask every game's failure but the last — just ci prints CI passed with six of seven red
+    description: |-
+      Found by the td1-8 TEA (2026-07-20) while writing the RED phase for the `serve` recipe, and independently reproduced by SM before filing. PRE-EXISTING, not created by td1-8. Filed separately rather than folded in, for the same reason td1-8 filed its own config-type-check finding out: td1-8 is a 2-point story that already carries a real behavioural fix, and a masked-exit-code defect in the CI gate deserves its own RED phase rather than a footnote.
+
+      THE DEFECT (justfile:28-33, and :126-127):
+
+        test-all:
+            @for g in {{games}}; do echo "==> $g"; (cd {{root}}/$g && npm test); done
+        build-all:
+            @for g in {{games}}; do echo "==> $g"; (cd {{root}}/$g && npm run build); done
+        ci: test-orchestrator test-all build-all
+            @echo "CI passed!"
+
+      A `for` loop's exit status is the status of its LAST iteration. These recipe bodies are a single shell line with no `set -e` and no per-iteration status tracking, so every game's failure except the last is discarded.
+
+      REPRODUCED (exact shape of the recipe body, SM-verified 2026-07-20):
+        for g in a b c; do (exit 3 on a); done  -> exit 0    FIRST failure MASKED
+        for g in a b c; do (exit 3 on b); done  -> exit 0    MIDDLE failure MASKED
+        for g in a b c; do (exit 3 on c); done  -> exit 3    only the LAST propagates
+
+      `games := "tempest star-wars asteroids battlezone red-baron centipede joust"`, so ONLY joust's failure is ever visible. Six of the seven games can be fully red and `just ci` still prints "CI passed!".
+
+      WHY p1: this is strictly worse than td1-8's blast radius. td1-8 makes a dev-loop launcher look healthy; this makes a CI GATE report success. It is the same failure shape the whole td1 epic keeps circling — a check that cannot fail — sitting on the recipe most likely to be trusted as a release preflight. Note `just release` / `release-all` gate on each repo's own tests via scripts/release.mjs and do NOT route through `just ci`, so this is not believed to have shipped a broken release; confirm that during the fix rather than assuming it.
+
+      SUGGESTED FIX: track a failure flag per iteration, print a NAMED summary of which games failed, and exit non-zero if any did. Same discipline td1-8 lands for `serve` — a named summary line, not just a non-zero code. Consider whether test-all should fail fast or run all games and report the full set (the latter is more useful for a fleet sweep).
+
+      Also worth checking while here: `status`, `install-all` and any other `@for g in ...` recipe in the justfile share this shape. Sweep them all rather than fixing only the two named here.
+    points: 2
+    priority: p1
+    status: done
+    started: '2026-07-20'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - Every multi-repo for-loop recipe in the justfile propagates failure — a failing game in ANY position (first, middle, last) makes the recipe exit non-zero, proven for all three positions.
+      - A failed sweep names which games failed rather than only exiting non-zero, and just ci cannot print CI passed when any game is red.
+      - The all-green path still exits 0, so a fix that always fails cannot pass.
+    completed: '2026-07-20'
+    type: bug
+    review_verdict: approved
+  - id: td1-11
+    title: bake-sfx expandAlsoun omits the ROM terminal-zero register write — five cues truncate their tail, player_fire among them
+    description: |-
+      Surfaced by td1-6 (2026-07-20), NOT created by it — the SECOND of the two bake-tool defects the tempest link-5 audit named. td1-6's description called it out as DISTINCT and OUT OF SCOPE ("the terminal-zero-write omission affecting segment_tick/enemy_explosion/enemy_fire/spike_shot — those read ROM=[0,0] shipped=null"), and this story is where it gets fixed. td1-6 also proved it affects a FIFTH cue the original triage did not know about: player_fire.
+
+      THE DEFECT: plugins/tempest/tools/pokey-bake/bake-sfx.mjs's expandAlsoun/expandSeq path omits the ROM's terminal register write — the final [reg, 0] event the ROM emits to silence the voice at the end of a sound. The shipped bake simply runs OUT of events two short of the ROM. Signature in the audit: `register-event stream differs ... ROM=[0,0] shipped=null (ROM emits N events, shipped emits N-2)`. This is the OPPOSITE shape from td1-6's mask bug (a same-position VALUE disagreement); here the shipped side has no event at all at the divergence point.
+
+      HOW player_fire JOINED THE LIST: the audit comparison stops at the FIRST divergence. player_fire had TWO defects — the AUDC high-nibble mask omission (td1-6) at event 3, and this terminal-zero omission at event 64. The mask bug at event 3 HID the tail truncation. td1-6 fixed the mask, the event-3 divergence vanished, the comparison walked further, and revealed ROM=[0,0] shipped=null at event 64. Exactly the same pattern by which td1-4 (un-crossing the cue->ROM map) revealed td1-6. So the affected set is FIVE, not four: segment_tick, enemy_explosion, enemy_fire, spike_shot, AND player_fire.
+
+      THE CANARY COUPLING (same shape as td1-6): the orchestrator test tests/extract-audio.test.mjs asserts player_fire is MISMATCH on the terminal-zero tail (shipped=null), grouped WITH the other four (td1-6 re-aimed it there). When THIS story fixes the terminal-zero write, all five cues' baked tails gain their [reg,0] event and become ROM_VERIFIED — so this story must FLIP all five from the MISMATCH group to the ROM_VERIFIED group in extract-audio.test.mjs, in lockstep with the bake-tool fix. Verify the blast radius empirically as td1-6 did: fixing the terminal write should move exactly these five cues' bytes and no others.
+
+      SCOPE — REWRITTEN 2026-07-31 AFTER THE MONOREPO MIGRATION. The original text prescribed a two-repo sequence: "RED in tempest, GREEN fix, merge the tempest PR to develop, THEN flip the five orchestrator canary rows." There is no tempest repo and no develop branch any more. Both halves now live in ONE tree and belong in ONE commit — the bake tool at plugins/tempest/tools/pokey-bake/bake-sfx.mjs, the canary at tests/extract-audio.test.mjs — which removes the lockstep-across-repos hazard entirely and makes the coupling a single reviewable diff.
+
+      WATCH THE RUNNER, THIS IS THE NEW TRAP. tests/extract-audio.test.mjs is a node:test file and vitest never sees it (vitest.config.ts declares a project per app, none rooted at tests/). So `npx vitest run` — the habitual green light — CANNOT execute this story's canary. Verify with `npm run test:orchestrator`, or `just ci` which runs both. This is exactly the gap mg1-11 exists to close; if mg1-11 lands first, drop this paragraph.
+
+      Do NOT also re-open td1-6's mask (already fixed); this is purely the tail write.
+    points: 3
+    priority: p2
+    status: canceled
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - A failing tempest test proves expandAlsoun/expandSeq emits the ROM's terminal [reg,0] register write, red against the current tail-truncating code.
+      - All five affected cues (segment_tick, enemy_explosion, enemy_fire, spike_shot, player_fire) bake a stream whose length and tail match the ROM; the orchestrator link-5 audit stamps all five ROM_VERIFIED.
+      - The five orchestrator canary rows in tests/extract-audio.test.mjs are flipped from MISMATCH to ROM_VERIFIED in lockstep, and the blast radius is verified empirically (exactly these five cues' bytes move).
+    type: bug
+  - id: td1-12
+    title: joust wave counter is BCD but every consumer reads it as decimal — wrong wave row from the 10th wave on
+    description: "joust/src/core/demo.ts:955 advances the wave with nextWaveBcd (LDA WAVBCD / ADDA #$01 / DAA, JOUSTRV4.SRC:2001-2004), so demo.wave is a BCD-PACKED byte: 1..9 then 0x10, 0x11 … 0x19, 0x20. tests/wave.test.ts:155 already pins this — 'nextWaveBcd(0x09) BCD not binary -> 0x10'. But demo.ts:959-968 then passes that raw value to waveRowAt, applyWaveDestruction, spawnWaveEnemies, trollSpawnable and seedWaveBudget, and game.ts:347 resolveWaveType does the same — every one of which is documented as taking a 1-based DECIMAL wave (wave.ts:177-185 'The row for a 1-based wave number … Throws for a wave < 1'). BCD and decimal coincide for waves 1-9, so nothing is visibly wrong until the tenth wave; from there they diverge permanently. MEASURED at the tenth wave: waveRowAt(0x10) returns wave 16's row (bounders 0) instead of wave 10's (bounders 8), so the demo materialises the wrong enemy complement, destroys the wrong cliffs, and seeds the wrong pursuit budget — and the error grows (the twentieth wave holds 0x20 = 32). The whole late-game difficulty curve is therefore reading the wrong rows. Two honest fixes and the story should pick one deliberately: (A) keep demo.wave BCD as the ROM's WAVBCD byte is and decode ONCE at each consumer boundary, or (B) hold a decimal wave in DemoState and derive the BCD only where the ROM's byte semantics actually matter (display, the 0x99 wrap). (B) is likely simpler but changes a field every jt2/jt3/jt4 test constructs, so expect a broad re-seat — grep every 'wave:' literal in tests/. NOTE the wrap differs between the two: nextWaveBcd wraps at 100 waves, while waveRowAt loops the TABLE at 81 (WTBRST, :2535) — confirm which the ROM actually does before assuming they must agree. FOUND BY: Reviewer during uf1-2 code review, which was REJECTED for adding a NEW consumer of the same confusion (the per-wave difficulty seam). uf1-2 fixes only its own hop; this story owns the pre-existing consumers. Do this BEFORE uf1-8/uf1-9, which will add more per-wave consumers on top of the same counter. ADDED BY uf1-2 ROUND-2 REVIEW: (a) a THIRD consumer not listed above - the dev overlay. game.ts:613 overlayReadout returns game.wave (the raw BCD byte) behind a doc comment reading 'The 1-based wave', and main.ts:135 prints it, so the overlay shows 'WAVE 16' on the tenth wave. Note the fix points the OTHER way for this one: the ROM PRINTS the BCD digits (WAVEN3 does LDA WAVBCD / BITA #$F0 / BNE / ORA #$F0 / JMP OUTBCD, :2399-2403 - the ORA blank-suppresses the leading zero), so the display wants the byte FORMATTED, not decoded. (b) PRIMARY-SOURCE FINDING that sharpens the choice: WAVBCD has exactly FOUR references in the whole 1982 source - CLR at :1875, the increment at :2001-2004, and ONE read at :2399, which is the display routine. It indexes NOTHING. The wave TABLE is walked by a SEPARATE pointer (LDX PWAVE,U / LEAX WLEN,X / CMPX #WTBEND / LDX #WTBRST, :2011-2019) and the DYTBL difficulty walk by a per-row RAM countdown run from IWAVE at wave-end (:945, :2099). Both are monotone and neither resets. So demo.wave conflates TWO ROM concepts, and option (B) is really 'model PWAVE, derive WAVBCD for display' - which makes (B) the faithful choice, not merely the simpler one. (c) uf1-2 left a TRIPWIRE: stepDemo now calls decimalWaveFromBcd(demo.wave), which THROWS on a non-BCD byte. If this story makes demo.wave decimal, the game dies at the tenth wave (10 = 0x0a) until that call site is updated in the same change. Tests catch it first. (d) uf1-2 could not fix the ROLLOVER and pinned it as a known divergence: from wave 101 the counter reads 0x01 again, so the difficulty RESETS to its wave-1 value and re-climbs, once per hundred waves. A monotone counter removes this; the pinning test in tests/difficulty-wiring.test.ts is expected to fail when it does, and should be updated then."
+    points: 5
+    priority: p1
+    status: done
+    started: '2026-08-05'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-05'
+    type: bug
+  - id: td1-13
+    title: star-wars citation gate still reads the WORKING TREE — port tempest's tp1-22 audit-commit freeze and retire the re-anchor loop
+    description: |-
+      Found by Dev during uf1-12 (2026-07-29). CORRECTED AFTER FILING — the first version of this story claimed star-wars has no re-anchor tool and asked for one. It has one (tools/audit/reanchor-citations.mjs, nearest-match, skips remediated_by, dry-run then --write) and it works: run after uf1-12's hand re-anchoring it reported '96 already correct, 0 re-anchored, 0 lost', i.e. it would have produced the identical result. Dev hand-rolled a throwaway script without checking the repo first; that was the miss, not a missing tool. The REAL story is one level up. star-wars's checker re-opens each `ours` citation in the WORKING TREE (check-citations.mjs:155, readFileSync(join(repoRoot, f.ours.file)) then lineAt(f.ours.line)), so every edit to a cited file moves the pins below it and reddens tests/audit/citations.test.ts — uf1-12 inserted 5 lines in src/core/sim.ts and had to move 23 pins across 9 findings files, and sim.ts alone carries 36. tempest RETIRED that whole loop in tp1-22: its gate re-opens each quote against the AUDIT COMMIT ('git show 4232ed4:<file>', tempest/tools/audit/reanchor-citations.mjs:1-23) instead of the working tree. Because the audit record is immutable by construction, a finding that is green once is green forever no matter how the code is later refactored; ours.line becomes decorative and the quote is matched by TEXT within the frozen file. tempest's re-anchor tool is consequently demoted to a health check that only reports LOST quotes. Port that. What it buys beyond saved churn: it removes a real silent-corruption path. Under the working-tree model a duplicate verbatim can be re-pointed at the WRONG occurrence and the gate still goes green — in sim.ts `      damage++` occurs at 616, 1016 and 1101, and `    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {` at 615 and 1100 (the space and surface damage paths are near-identical), so a mis-anchored S-016 would describe the surface routine while reading green forever. The existing tool's nearest-match rule holds for insert-only edits (order is preserved, so nearest-to-old is right whenever the shift is less than half the gap to the next duplicate) but it is an ASSUMPTION stated in its own header, and a code MOVE breaks it. Freezing makes the question moot. Pick star-wars's audit commit deliberately — the commit that RECORDED the findings, verified by checking a sample of pins resolve there — and expect some pins to be LOST at that commit if any were re-anchored after it (uf1-12's 23 moves are exactly such a case: they are correct for HEAD, and the freeze wants the text as audited). That reconciliation is the bulk of the work, not the checker change. Fleet note: tempest is the reference implementation, so port rather than re-derive; scope here is star-wars only.
+
+      NEW PREREQUISITE, ADDED 2026-07-31 BY THE MONOREPO MIGRATION — DO THIS STEP FIRST OR THE STORY CANNOT BE DONE. This story's central step is 'pick star-wars's audit commit deliberately — the commit that RECORDED the findings'. That commit is no longer reachable from this repo: the 2026-07-30 collapse imported each game as ONE SQUASHED commit, so star-wars has no per-file history here. The migration's Task 2 anticipated exactly this and cut tags for the two gates it knew depended on frozen commits — `audit/tempest` and `audit/red-baron` exist on origin. THERE IS NO `audit/star-wars` TAG. The pre-migration history survives in two places only: the archived GitHub repo slabgorb/star-wars (archived, private — the durable copy) and a local .migration-backup/star-wars.git in the a-1 checkout (not present in every checkout). So step zero is: identify the audit commit in the archived repo, fetch it, and push an `audit/star-wars` tag on origin — before anything prunes it and before the freeze can be built against it. VERIFIED STILL TRUE post-migration: plugins/star-wars/tools/audit/check-citations.mjs:29 is still a bare readFileSync against the working tree, so the defect this story fixes is unchanged. FLEET NOTE, out of scope but now measurable: six games ship tools/audit/check-citations.mjs (battlezone, centipede, joust, red-baron, star-wars, tempest) and only two have a frozen audit commit.
+    points: 3
+    priority: p3
+    status: done
+    started: '2026-08-05'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "The citation gate re-opens each `ours` quote against a pinned audit COMMIT (git show <commit>:<file>), not the working tree, mirroring tempest's tp1-22 checker; editing a cited file no longer reddens the gate (prove it: insert a comment line above a pinned line and the suite stays green)."
+      - "The pinned commit is chosen and documented with evidence that the findings' quotes resolve there; every `ours` pin is either resolvable at that commit or explicitly carried by `remediated_by`, and any LOST pin is reconciled by re-baselining its quote to the audited text — not by deleting the finding."
+      - "tools/audit/reanchor-citations.mjs is demoted to the health check its tempest twin became (reports LOST, moves nothing), and its header no longer instructs stories to re-anchor after edits."
+      - "`remediated_by` findings keep their frozen historical citation under the new checker, and the existing negative tests in tests/audit/citations.test.ts (never-shipped module, node_modules `ours`, non-matching verbatim) all still hold."
+    completed: '2026-08-05'
+    type: chore
+    review_verdict: approved
+  - id: td1-14
+    title: "reanchor-citations.mjs must REFUSE to move a pin whose verbatim is non-unique in its file (sw8-8 round-3 finding; strengthens td1-13 with a measured near-miss). td1-13 already describes the silent-corruption path: the tool matches NEAREST-LINE, so a duplicated verbatim can be re-pointed at the wrong occurrence and check-citations.mjs re-opens it, finds the text it expected, and goes green forever while the finding now describes a different routine. sw8-8's merge resolution re-anchored 36 pins and TWO of the three duplicate-verbatim pins in the whole findings set moved — G-009 and S-016, the exact pair td1-13 names by hand ('      damage++' at sim.ts:625/1110 and '    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {' at :624/1109, the near-identical space and surface cockpit-damage paths). They landed on the correct SPACE occurrence, verified by the Reviewer against the enclosing section comment and the emitted event (cause 'enemy' vs cause 'turret') — but nothing in the pipeline checked. Neither of Dev's two verifications can detect it: 'the diff contains only line changes' and 'per-file remediated_by counts match' BOTH pass a mis-anchor, and so does the gate. This is the cheap interim guard, well short of td1-13's full audit-commit freeze, and worth having even if td1-13 lands: before moving any pin, count occurrences of ours.verbatim in ours.file; if > 1, do not guess — leave the pin, print the candidate line numbers, and exit non-zero so a human resolves it. Also worth reporting the checked-pin SPLIT in the tool's summary (sw8-8 had 137 pins, 96 gate-checked, 41 legitimately historical via remediated_by/NO_COUNTERPART per check-citations.mjs:150-165) so a reviewer auditing the counts is not chasing 41 phantom failures. || EXTENDED sw8-18 (2026-08-02): the identical guard clause is now needed in a SECOND tool. sw8-18 shipped plugins/star-wars/tools/audit/check-comment-citations.mjs, which re-opens citations written into ordinary source comments and, when a span is stale, RE-LOCATES it — 'it is now at <file>:<N>; re-anchor the citation to that'. That search is FIRST-OCCURRENCE, so a non-unique verbatim points at the wrong site: measured during sw8-18, state.ts cites `ADDD M$TX+M.S1` for S1MVBS and the hint named WSMAIN.MAC:2539, which is S1MVGD — a different routine containing the identical instruction; the right answer was :2656 (fixed by citing the routine span :2654-2656). The two tools differ in blast radius and BOTH matter: reanchor-citations.mjs WRITES a wrong anchor silently, check-comment-citations.mjs only PRINTS a wrong suggestion — but a human then applies it, and the printed form is more persuasive than a diff. Same fix in both places: count occurrences first; if > 1, refuse to name one and print every candidate. Do them together — the clause is four lines and splitting it across two stories invites one of them to drift."
+    description: |-
+      EXTENDED at sw8-23's finish (2026-08-02) — a SECOND defect in the SAME relocation loop of plugins/star-wars/tools/audit/check-comment-citations.mjs. Filed here rather than as its own story because whoever fixes one will be standing in the other, and splitting six lines across two stories invites one of them to drift. The full history of this story lives in its title; this description carries the addition.
+
+      THE SECOND DEFECT. The relocation loop seeds its window from the citation span — 'const width = Math.max(1, c.end - c.start + 1)' — but the INITIAL check widens a single-line citation by 'runLen', the count of '/'-joined instructions in the adjacent quote. The two disagree, so a single-line citation of a multi-instruction run is checked over N lines and then searched over 1. It can never be relocated.
+
+      MEASURED during sw8-23: tools/music-bake/gen-music-data.mjs cited SNDPM.MAC:737 for the quote 'LDA -1(X) / BNE 30$'. The tool reported 'quoted verbatim is not in the cited span (and is nowhere in the file)'. The correct anchor is :738-739 — LDA -1(X) at :738, BNE 30$ at :739 — found by reading the ROM, not by the tool. That was the ONLY citation in sw8-23 where the tool's own suggestion could not be used.
+
+      WHY IT MATTERS MORE THAN IT LOOKS. 'Nowhere in the file' reads as 'this citation is fabricated' when the anchor is one line away, so it invites the reader to DELETE a correct citation rather than move it. The first-occurrence defect above sends a reader to a wrong line; this one tells them there is no line at all. Both are the relocator lying with confidence.
+
+      FIX. Seed the relocation width with the same runLen expansion the initial check already computes. Four lines, same loop as the refuse-to-guess clause. POINTS 3 -> 5 for the second clause plus its tests.
+
+      DEPENDENCY WORTH KNOWING: sw8-24 sweeps 29 stale citations across star-wars and its plan explicitly leans on the relocator's hints being trustworthy. Landing this first makes that sweep materially safer; landing it after means re-checking every hint sw8-24 applied.
+    points: 5
+    priority: p2
+    status: canceled
+    repos: arcade
+    workflow: tdd
+    type: chore
+  - id: td1-15
+    title: pf _collect_repos iterates a comma-separated repos string character by character
+    description: "Found by TEA during mg1-4's RED phase, 2026-07-31, outside that story's file list and therefore filed rather than fixed in passing. This is an UPSTREAM pennyfarthing bug, not an arcade one: the code lives in pf/core/resolver.py, and pf is installed here as an editable install resolving to /Users/slabgorb/Projects/orc-penny/pennyfarthing/pennyfarthing-dist/src/pf. resolver.py:42 reads 'for repo in epic.get(\"repos\", [])'. The default is a list, but every epic in this repo — and in pf's own test fixtures, e.g. tests/test_156_1_story_add_shards.py 'repos: pennyfarthing' — stores repos as a comma-separated STRING. Iterating a string in Python yields characters, so _collect_repos on 'repos: joust' returns ['j','o','u','s','t'] rather than ['joust'], and on a multi-repo list it returns the deduplicated alphabet of that list. It is LATENT in arcade because the only caller is the sprints.yaml registry branch of resolve_sprint_context, which this repo does not use — it falls through to current-sprint.yaml. Fixing it means normalising the field to a list at the boundary, which is also the shape mg1-4's guard assumes when it splits on commas. Route upstream to pennyfarthing rather than patching a vendored copy."
+    points: 2
+    priority: p3
+    status: canceled
+    repos: arcade
+    workflow: tdd
+    type: bug
+    review_findings: 'MOVED UPSTREAM: filed as slabgorb/pennyfarthing#174. Canceled here — this is a pennyfarthing bug (pf/core/resolver.py), not an arcade one.'
+  - id: td1-16
+    title: 'pf validate context-epic passes on a stale context: existence is checked, freshness never is'
+    description: "Found by the Reviewer during mg1-4's review, 2026-07-31, outside that story's file list and therefore filed rather than fixed in passing. This is an UPSTREAM pennyfarthing gap, sibling to td1-15. sm-setup Step 4b creates a story context UNCONDITIONALLY (pf context create story {ID}) but creates an epic context only 'if the epic has no context document yet'. pf/context/generate.py:175 writes unconditionally when called, so the conditional is the whole problem: an epic context is generated once, at the first story setup in that epic, and is never rewritten afterwards. The sm-setup-exit gate's epic-context-validated check (pf validate context-epic N) asserts only that sprint/context/context-epic-N.md exists and is non-empty, so a context that has drifted from the sprint YAML it was rendered from passes the gate forever. mg1-4 demonstrated the consequence concretely: that sweep corrected every repos value in the live sprint YAML, yet context-epic-jt8.md still rendered joust, context-epic-sw8.md star-wars, context-epic-td1.md an eight-name list and context-epic-uf1.md a five-name list — four live epics with 30 open stories between them, each handing the next agent a retired repo name through a green gate. mg1-4 regenerates those four files, which fixes today; nothing prevents the next divergence. The fix is one of two: have sm-setup regenerate the epic context unconditionally, exactly as it already does for story contexts, or give epic-context-validated a content check that re-renders from the sprint YAML and compares. Route upstream to pennyfarthing rather than patching a vendored copy."
+    points: 2
+    priority: p3
+    status: canceled
+    repos: arcade
+    workflow: tdd
+    type: bug
+    review_findings: 'MOVED UPSTREAM: filed as slabgorb/pennyfarthing#175. Canceled here — this is a pennyfarthing gap (sm-setup epic-context conditional / pf/context/generate.py), not an arcade one.'
+  - id: td1-17
+    title: "mg1-4's guards pass on absence: the context scan and the AC-shape scan both go green when there is nothing to read"
+    description: "Found by the Reviewer during mg1-4's round-2 review, 2026-07-31, and filed rather than blocking approval: both are Medium, no live defect exists, and mg1-4's four ACs are met. They are the same CLASS of defect mg1-4 round 1 was rejected for — a guard that reports success because it found nothing to check — so they are worth closing deliberately rather than leaving as folklore. Both were proven by mutation, not inferred. FIRST, the context scan goes silently blind. contextRepoViolations anchors on a line beginning at column 0 with the literal '- **Repo:**'. Indenting that line by two spaces while ALSO changing the value to a retired repo (joust) leaves the suite 17/17 green, and deleting the Repo line from every live context file likewise leaves it 17/17 green. Nothing asserts the guard actually parsed a Repo line, so it cannot distinguish 'every context is correct' from 'no context had anything to read'. Today it reads 7 files and finds a Repo line in all 7, so the fix is a one-line assertion that the parsed count is non-zero (or matches the file count), plus a test that a template shape change reddens. SECOND, the AC-4 story-shape guard misses the flow-style empty list. Its regex requires /^ {4}acceptance_criteria:\\s*$/ — the key with nothing after the colon — so a story rewritten as 'acceptance_criteria: []' skips the check entirely. Replacing every acceptance_criteria block in a live shard with the flow-style empty form leaves the suite 17/17 green, and that is precisely the loss AC-4 exists to catch: PyYAML emits an empty list as [] on the same line, so a round-trip that dropped a story's criteria would look exactly like this. Note mg1-12 and mg1-13 legitimately carry no acceptance_criteria key at all, so the fix must distinguish 'absent' from 'present but emptied' rather than requiring the key everywhere. Both fixes are small and local to tests/helpers/sprint-repos.mjs and tests/sprint-repo-routing.test.mjs."
+    points: 2
+    priority: p2
+    status: canceled
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: td1-18
+    title: pf preflight finish reports a CRITICAL missing PR on a trunk-based repo — the check never reads branch_strategy
+    description: |-
+      Found at jt9-6's finish preflight (2026-08-03) and VERIFIED AT SOURCE before filing, not
+      inherited from the subagent that reported it.
+
+      WHAT HAPPENS. `pf.preflight finish <story> --branch main` returns `status: blocked` with a
+      CRITICAL issue "No PR found for branch" and the fix text "Create PR with: gh pr create" on
+      every story this repo finishes. arcade is trunk-based: `.pennyfarthing/repos.yaml` sets
+      `branch_strategy: trunk-based`, CLAUDE.md states there are no per-game PRs, and the session
+      files correctly carry `**PR:** none`. There is never a PR to find, so the check is
+      unconditionally critical-red on a correctly-finished story.
+
+      MEASURED, not argued. In pennyfarthing-dist `src/pf/preflight/finish.py`, the aggregator
+      maps any PR error containing "no pull requests found" straight to
+      `PreflightIssue(severity="critical", issue="No PR found for branch", ...)` (the block
+      beginning at :394). Confirming the cause rather than the symptom: `grep -n
+      "branch_strategy\|trunk" src/pf/preflight/finish.py` returns ZERO hits — the module never
+      reads the repo's branching strategy at all, so it cannot distinguish "PR is missing" from
+      "this repo does not use PRs". `check_pr_status` shells out to `gh pr view` unconditionally.
+
+      WHY IT MATTERS MORE THAN IT LOOKS. This is a false RED on the last gate before archive, and
+      a false red is trained past. Every jt9 story this sprint has had to override it by hand, so
+      the one time the check is right — an actual unmerged PR in a repo that does use them —
+      the override is already habitual. That is the same failure shape as a vacuous green, in the
+      opposite direction.
+
+      A SECOND, SMALLER QUIRK IN THE SAME RUN, worth fixing alongside but NOT the headline: the
+      script reports `acceptance_criteria: {total: 0, checked: 0}` for a story whose ACs are all
+      present and all accepted. Its regex recognises only `- [ ]` / `- [x]` checkbox syntax, and
+      this project's ACs are prose bullets (`- **AC-1** ...`). It adds no blocking issue either
+      way, so it reads as "no ACs to check" rather than "cannot parse these ACs" — a zero that
+      looks like a pass.
+
+      SCOPE. `src/pf/preflight/finish.py` in the pennyfarthing repo (~/Projects/orc-penny/
+      pennyfarthing, branch `develop` — NOT arcade's `main`; see repos.yaml before any git
+      operation). The fix is to read `branch_strategy` the way `pf/hooks/branch_protection.py`
+      already does and skip the PR check for trunk-based repos, rather than to special-case the
+      error string. Note pf compares against the literal string `trunk-based` and any other
+      spelling falls through to the gitflow path.
+
+      VERIFY BY MUTATION BOTH WAYS: a trunk-based repo must stop reporting the critical, AND a
+      gitflow repo with a genuinely missing PR must still report it. The second half is the one
+      that will be skipped; a guard nobody has watched fail is not a guard.
+    points: 2
+    priority: p3
+    status: canceled
+    repos: arcade
+    workflow: tdd
+    type: bug
+    review_findings: 'MOVED UPSTREAM: filed as slabgorb/pennyfarthing#176. Canceled here — this is a pennyfarthing bug (src/pf/preflight/finish.py never reads branch_strategy), not an arcade one.'
+  - id: td1-19
+    title: The shared audio docblock says six of seven cabinets pass no priorities map — centipede passes one, so joust is not the only arbitrated cabinet
+    description: 'Found by jt9-7''s TEA (2026-08-03) while measuring whether joust''s CHANNELS map could be deleted. src/shared/audio.ts:70-75 states: "Six of this arcade''s seven cabinets are multi-voice machines whose sounds simply mix, and they pass neither map ... The seventh, joust, is a Williams machine ...". MEASURED FALSE: plugins/centipede/src/shell/audio.ts passes priorities: PRIORITIES as well (:227 when jt9-7''s TEA measured it, :239 when jt9-7''s Reviewer re-opened it hours later — cp6-3 is moving that file in a sibling checkout, so GREP for the priorities: line, do not trust either number), built by a filter over POKEY voice 0 (:209-211), and centipede''s own docblock at :204-208 names three cues — mushroom, headBottom, waveClear — deliberately left OUTSIDE arbitration under a user ruling of 2026-08-03, where they keep plain per-channel stealing. So TWO cabinets arbitrate, and one of them ships the partial-priorities case the shared prose implies does not exist. The sentence matters beyond tidiness: it is the reason jt9-7''s filing (and its story context) treated joust as the only consumer, which is what made "delete the map" look joust-local. Fix the count and add the centipede case; jt9-7 could not, because centipede files are fenced off while cp6-3 runs in a sibling checkout. Scope: src/shared/audio.ts prose only, no behaviour. Note the file is shared by all five manifest-building cabinets, so the full suite applies.'
+    points: 1
+    priority: p2
+    status: canceled
+    repos: arcade
+    workflow: trivial
+    type: chore
+  - id: td1-20
+    title: Make the shared engine channels map optional with a designed default — the costed version of jt9-7's deletion branch
+    description: 'jt9-7 was asked to decide between deleting joust''s CHANNELS map and keeping it, and DECIDED TO KEEP IT — on measurement, not preference. This story exists so the other branch is not lost by that ruling (standing rule: a descoped option ends with a story id). What jt9-7 measured, all against main at 5cc5bc2: (1) src/shared/audio.ts:69 declares channels as Record<N, string>, REQUIRED, so deleting joust''s wiring is not type-legal — dropping the channels: line yields error TS2345 at plugins/joust/src/shell/audio.ts(168,45) — re-measured by jt9-7''s Reviewer after the GREEN commit added six prose lines above the call site; the RED phase recorded (162,45), so anchor on the createSharedAudioEngine call rather than on either line number. (2) There is NO engine default to fall back on: startSource reads manifest.channels[name] at src/shared/audio.ts:238, above and outside the try/catch at :269 that makes every other failure a silent degrade, so an absent map is a TypeError on the first cue of the first game, not a degrade. jt9-7 pins that as an executable test (there is no engine default to fall back to — an absent channels map THROWS) which will redden the day a default is added, which is the signal to pick this story up. (3) Blast radius: 6 production channels: sites across five manifest-building cabinets (asteroids, centipede, joust, star-wars x2, tempest) plus 24 manifest literals in src/shared/tests/. (4) Deleting a game''s map also spends the Readonly<Record<SoundName, string>> completeness check that today makes a cue with no channel a COMPILE error; jt9-7''s test "a cue MISSING from a present map shares one phantom channel" prices that — two holed cues key live on the same undefined and steal from each other across ROM priorities they never shared. So this story is NOT "delete a map": it is design the default (per-cue channel? one shared channel? refuse at construction?), prove the six other cabinets'' per-channel stealing is byte-identical before and after, and only then let a cabinet drop its map. CLAUDE.md''s reuse-first rule says do not start until a second consumer proves the need — jt9-7 measured the opposite, that centipede NEEDS channels precisely because it has unarbitrated cues (see td1-19). Full suite mandatory.'
+    points: 3
+    priority: p3
+    status: canceled
+    repos: arcade
+    workflow: tdd
+    type: refactor
+completed: '2026-08-06'

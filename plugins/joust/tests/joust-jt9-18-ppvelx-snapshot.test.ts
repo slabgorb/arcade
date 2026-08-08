@@ -65,7 +65,14 @@ beforeAll(async () => {
 /** An airborne entity at a whole-pixel Y, at a chosen FLYX index. */
 function airborne(pixelY: number, velXIndex: number, over: Partial<EntityState> = {}): EntityState {
   return {
-    posX: 100,
+    // posX 200 is cliff-free for the hunter's B2DIR look-ahead (jt9-49): at
+    // posX 100 the HUNTER's cliff scan turned it into a B2AV `dwell` on wake 1,
+    // and jt9-49 correctly does NOT tick the throttle during a dwell (the ROM's
+    // B2AV episode bypasses B2LE11), so AC-1's b2undr held its counter instead of
+    // ticking. 200 keeps the hunter on a clean level interval where the throttle
+    // is faithfully reached. (The bounder never steers, so it was unaffected;
+    // AC-2/AC-3 call `homingWake` directly and never read posX.)
+    posX: 200,
     posY: pixelY << 8,
     velXIndex,
     velXFrac: 0,
@@ -199,15 +206,19 @@ describe('AC-2 — homingWake gates on `homing.ppvelx`, not the live `target.vel
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC-3 — the snapshot OVERRIDES; absent, the live index still gates. In the ROM
-//        the throttle is only reached with a fresh snapshot, but this port runs it
-//        every wake, so before any level decide has frozen a PPVELX it falls back
-//        to the pre-jt9-18 live read — leaving off-level and freshly-mounted wakes
-//        (and jt8-2's whole homing suite) unchanged. The snapshot only overrides
-//        where the ROM actually has one: inside a held level interval.
-//        (Design choice, recorded in the session Design Deviations — the earlier
-//        RED draft asserted a strict HOLD; the fallback is the minimal faithful
-//        form that does not disturb the throttle off the level path.)
+// AC-3 — the snapshot OVERRIDES; absent, the live index still gates. This pins
+//        `homingWake` as a PURE FUNCTION — its two behaviours in isolation: a
+//        present `ppvelx` wins over the live target, an absent one falls back to
+//        the live read. jt9-18 introduced the override; the fallback is the
+//        pre-jt9-18 behaviour it left intact.
+//        jt9-49 UPDATE: `homingWake` itself is unchanged, but it is no longer
+//        CALLED every wake — `stepEnemyDetailed` now gates the call on a live
+//        level interval (`pjoy.kind === 'interval'`), and an armed interval always
+//        carries a fresh snapshot. So the absent-snapshot fallback below is now a
+//        pure-function contract (documenting homingWake's totality) rather than a
+//        reachable production path; the override case is the one the throttle
+//        actually exercises. (Design choice, recorded in the jt9-18 session Design
+//        Deviations — the earlier RED draft asserted a strict HOLD.)
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-3 — the snapshot overrides the live index; absent, the live read stands', () => {
   it('a PRESENT snapshot wins over a differing live target (the override)', () => {

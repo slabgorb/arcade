@@ -22,14 +22,15 @@ an open question, never a silent pick.
 
 ### 1. What shipped?
 Six 2716 program ROMs at `$5000–$7FFF` + one 82S123 video PROM. The CPU link
-(`MISSIL.DOC.txt`) is `W3DSUP` + `W3COIN` + (`A35820.1C`) + `W3MAIN` + `W3INT`, each
+(`MISSIL.DOC.txt`) is `W3DSUP` + `W3COIN` + `W3SOUN` + `W3MAIN` + `W3INT`, each
 `.INCLUDE`-ing the shared `W3COMN` (→ `COND65`) and, for `W3COIN`, `COIN65`.
 - `035826-01` "BIT/BYTE PROM" (`A35826-PROM.txt`, @L6) is the **video write-mask
   PROM** — MAME's `m_writeprom` / `"proms"` region. It is *data assembled outside the
   CPU link* (the raster trap): it appears in no link string but absolutely ships.
 - Bitmap game — **no character/picture/sprite ROM**. The playfield is a framebuffer
   in video RAM (see §Video). This is why the source is pure logic + a mask PROM.
-- `A35820.1C` is a binary object not yet decoded — **open question O-1**.
+- `A35820.1C` decodes to **`W3SOUN`** — the POKEY sound-system control ROM (ROM2 @
+  `$6000`). O-1 is now **resolved** (see below and `reference/PROVENANCE.md`).
 
 ### 2. What radix?
 `.RADIX 16` (hex) is set **once**, at `W3COMN.MAC:1`, and inherited by W3MAIN,
@@ -43,25 +44,31 @@ override, and it is used for real: `MAXMIS=10.` (decimal 10) vs `NABMS=8` (hex),
 ### 3. What timebase?
 Hardware (MAME, authoritative on the board):
 - Master clock 10 MHz; pixel clock 5 MHz; `HTOTAL 320`, `VTOTAL 256`
-  (`missile.cpp:454–462`).
+  (`missile.cpp:454-462`).
 - **VSYNC ≈ 61.0076 Hz** (PCB note, `missile.cpp:58`); nominal 60. Use the exact rate
   for any timer math; record both.
 - 6502 @ **1.25 MHz** (10 MHz/8), dropping to **half speed** (10 MHz/16) from
-  scanline 224 (`adjust_cpu_speed`, `missile.cpp:542–555`) — the CPU literally runs
+  scanline 224 (`adjust_cpu_speed`, `missile.cpp:542-555`) — the CPU literally runs
   slower during the visible lower band; relevant to per-frame work budget.
 - IRQ = `/32V` latched at SYNC, **4 IRQs per frame** (V = 0, 64, 128, 192 unflipped;
-  `schedule_next_irq`, `missile.cpp:485–497`). VBLANK true when `V < 24`
-  (`vblank_r`, `missile.cpp:528–532`).
-Game-logic tick: driven by `W3INT` (interrupt handler) + a `FRAME` counter the
-mainline reads (`W3DSUP.MAC:19` globals `FRAME`; `W3MAIN.MAC` reads `FRAME` at
-`:2039`). Derive the sim tick from W3INT against the 61.0076 Hz field — **open
-question O-2** until W3INT is read in full.
+  `schedule_next_irq`, `missile.cpp:485-497`). VBLANK true when `V < 24`
+  (`vblank_r`, `missile.cpp:528-532`).
+Game-logic tick (**O-2, resolved** — full working in [`timebase.md`](./timebase.md)):
+**one logic step per video frame.** The VBLANK interrupt sets `SYNC` (`INC SYNC`,
+`W3INT.MAC:281`) once per frame — of the 4 IRQs/frame only the blank one does — and the
+mainline blocks on it (`BEGIN ;SYNC UP WITH I/O`, `W3MAIN.MAC:497`), runs a frame, then
+`INC FRAME` (`W3MAIN.MAC:781`). `FRAME` is the per-frame counter
+(`FRAME: .BLKB 1 ;FRAME COUNTER (1-60)`, `W3MAIN.MAC:239`; sub-second use
+`UPDATE EVERY 4/60 SEC`, `W3MAIN.MAC:623`). So the sim tick = **61.0076 Hz** (nominal 60).
+(brief's earlier W3DSUP.MAC:19 / W3MAIN:2039 FRAME refs — deliberately unbackticked
+here so the citation sweep skips this historical note — were logical/approximate; the
+physical lines are the W3MAIN.MAC:239 / W3MAIN.MAC:781 cited above.)
 
 ### 4. What did the author already tell us?
 - `MISSIL.DOC.txt` — Atari's own ROM/file ledger (part numbers, link command).
 - `MISSIL.MAP.txt` — the memory map (RAM/video/POKEY/inputs/PROGRAM), matching
   MAME's decode.
-- Programmer initials **DFT** (`W3MAIN.MAC:5`). Codename **WW3 / WWIII**.
+- Programmer initials **DFT** (`W3MAIN.MAC:9`). Codename **WW3 / WWIII**.
 
 ## Subsystem map (source of record)
 
@@ -80,7 +87,7 @@ question O-2** until W3INT is read in full.
 | High-score ladder + name entry    | `W3DSUP`    | `:1862 INIT HI SCORE`, `:1890 UPDATE LADDER`, `:2032 TAKE INITIALS`, `:2145 DISPLAY HI SCORES` |
 | Language literals (EN/FR/DE/ES)   | `W3DSUP`    | `:1513–1749` FR/DE/ES/EN literal tables    |
 | Coin door                         | `W3COIN`+`COIN65` | Atari standard coin handler          |
-| Interrupt / video timebase        | `W3INT`     | (to be read — O-2)                         |
+| Interrupt / video timebase        | `W3INT`     | `:169 PROCESS INTERRUPT`, `:269 HANDLE VBLANK` (O-2 resolved → `timebase.md`) |
 
 ## Cited constants (the skeleton's oracle) — all `W3COMN.MAC`
 
@@ -105,15 +112,33 @@ Radix caution: `MAXMIS`/`TOPSCR` are decimal (trailing period); city coords are 
 
 ## Open questions
 
-- **O-1** `A35820.1C.bin` is an undecoded binary object in the CPU link. Decode /
-  identify before claiming the module inventory complete.
-- **O-2** Exact sim tick: read `W3INT.MAC` fully and reconcile the `FRAME` counter
-  against MAME's 61.0076 Hz + 4-IRQ/frame model.
+- **O-1** *(RESOLVED — see [`PROVENANCE.md`](../../reference/PROVENANCE.md))* — `A35820.1C.bin` is **`W3SOUN`**, the WW3 POKEY sound-system control ROM.
+  It is REV-01 **ROM2** (part `035822-01`, load `$6000`, `MISSIL.DOC.txt:21`). Decode method: it is
+  not a raw ROM image but **ASCII assembler source** (CRLF-lined, null-padded to
+  `0x2400`) that was mis-vendored as a `.bin` because its CR/LF + padding were never
+  LF-normalized like its `.MAC` siblings. Identity is doubly pinned — by its own
+  `.TITLE W3SOUN-(WAS T2SOUN)` header + POKEY content (`AUDCTL`/`AUDF1`), and by its
+  `.INCLUDE COND65`-yes / `W3COMN`-no fingerprint matching MISSIL.DOC's per-object
+  include ledger for `.1C` (COND65 list = `.1A,.1C,.1D,.1E`; W3COMN list =
+  `.1A,.1D,.1E`). All five link objects now resolve — `.1A`=W3DSUP, `.1B`=W3COIN,
+  `.1C`=W3SOUN, `.1D`=W3MAIN, `.1E`=W3INT — so the module inventory is provably complete.
+- **O-2** *(RESOLVED — see [`timebase.md`](./timebase.md))* Exact sim tick: **one logic
+  step per video frame**, released by the VBLANK IRQ (`W3INT.MAC:281`) and counted by
+  `FRAME` (`W3MAIN.MAC:781`). Rate **61.0076 Hz**, nominal 60.
 - **O-3** REV-01 vs MAME REV-03 default: the "missile" most players know is REV-03.
   Catalogue behavioural deltas (e.g. difficulty tuning) as they surface.
-- **O-4** `NCITY=6` (max) vs `SCITYM` "5 cities at start" comment vs MAME dip default
-  "6 cities": pin the *actual* starting-city count and where the option is read.
-- **O-5** Video RAM 3rd-colour-bit scatter (`missile.cpp:617–625 get_bit3_addr`,
-  MISSIL.MAP "3RD BIT COLOR REGION" `$0200–$05FF`): our render need not reproduce the
-  hardware address scramble, but the *palette* (8 colours, 3 bits) and per-wave colour
-  cycling (`W3DSUP:792`) must match. Confirm colour source.
+- **O-4** *(RESOLVED — see [`starting-cities.md`](./starting-cities.md))* Default start =
+  **6** cities = `STCITY[0]` when `OPTIO2 & SCITYM` = 0, read at NEW GAME SETUP
+  (`LDA AY,STCITY`, `W3MAIN.MAC:3877`; table `STCITY: .BYTE 6,4,5,7`, `W3MAIN.MAC:3895`).
+  `NCITY=6` is the *max*; `SCITYM`'s "5 cities" is the option-2 (Y=2) selection, not the
+  default. Options: `{0:6, 1:4, 2:5, 3:7}`.
+- **O-5** *(RESOLVED — see [`palette.md`](./palette.md))* Per-wave 8-colour palette.
+  A pixel's 3-bit index selects one of eight colour registers `COL000..COL111`
+  (`W3INT.MAC:93-107`); `SETCOL` (SET UP COLORS FOR NEXT WAVE, `W3DSUP.MAC:1583`) fills
+  them each wave from one of ten `DBLCOL` rows (`W3DSUP.MAC:1684-1702`), selected by
+  `((WAVENO-1)>>1) mod 10` (`W3DSUP.MAC:1593`), so the palette changes every two waves
+  and repeats every 20. Each register holds a colour code (`CWHITE..CBLACK`,
+  `W3COMN.MAC:491-505`); code→RGB is a labelled adapter (no RGB in the ROM). We
+  reproduce that palette; we still do NOT reproduce the hardware address scramble
+  (`get_bit3_addr`, `missile.cpp:617-625`, MISSIL.MAP "3RD BIT COLOR REGION"
+  `$0200–$05FF`) — a memory-layout detail invisible on canvas, a deliberate non-goal.

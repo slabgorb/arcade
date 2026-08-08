@@ -1213,10 +1213,17 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // accumulated since the last one. All THREE enemy rows are bit-identical,
     // which is the bound: a story that touches player physics may not move a
     // buzzard.
+    //
+    // jt9-50 RE-BASELINE (the bounder BOUP cliff-above divert to BOLEV): the mirror
+    // bound — a story that touches only ENEMY brains may not move a PLAYER. Both
+    // player rows are bit-identical, and of the three enemies only the BOUNDER
+    // `enemy#256` moved: diverting off a blocked climb to level flight, it sinks on a
+    // different arc here (`29844,-51` -> `30547,-40`; posX/velXIndex/timeUp unchanged).
+    // `enemy#257`/`enemy#258` are unchanged.
     expect(entityDigest(0xbeef, 160)).toEqual([
       'player#1:56,14560,-32,-4,64,2,1',
       'player#2:200,32768,0,0,0,1,0',
-      'enemy#256:131,29844,-51,8,64,81,1',
+      'enemy#256:131,30547,-40,8,64,81,1',
       'enemy#257:14,33111,-30,8,0,62,1',
       'enemy#258:131,34247,-49,8,64,81,1',
     ])

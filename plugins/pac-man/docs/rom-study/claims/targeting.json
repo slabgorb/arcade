@@ -1,0 +1,42 @@
+[
+  {
+    "id": "TARGET-BLINKY-ROUTINE",
+    "symbol": "BLINKY_TARGET",
+    "value": "Pac-Man's tile",
+    "meaning": "Blinky's per-frame targeting routine. It loads Blinky's own tile from (#4d0a) and, further down (275b), Pac-Man's tile from (#4d39) as the target passed to the shared #2966 direction chooser — so Blinky's target IS Pac-Man's current tile, with no look-ahead offset. There is no stored literal here (the target is a plain RAM read), so this is a ROUTINE-ADDRESS anchor, not a numeric literal. Dossier ch.4 'Meet The Ghosts' (Blinky / 'shadow', direct chase). src/core/targeting.ts targetTile('blinky').",
+    "addr": "2758",
+    "source": { "file": "pacman.asm", "line": 5443, "verbatim": "2758  2a0a4d    ld      hl,(#4d0a)" }
+  },
+  {
+    "id": "TARGET-PINKY-ROUTINE",
+    "symbol": "PINKY_TARGET",
+    "value": "Pac tile + 4·dir (up-overflow)",
+    "meaning": "Pinky's chase branch. DE = Pac-Man's tile (#4d39); HL = Pac-Man's direction vector (#4d1c) is then DOUBLED TWICE (`add hl,hl` at 2795 and 2796) to make ×4 before `add hl,de` — i.e. target = Pac + 4·direction, '4 tiles ahead'. The ×4 is realised by two shift-adds, NOT a stored #04 literal, so this is a routine-address anchor. The famous up-overflow (facing UP → 4 up AND 4 left) is emergent from this 8-bit shift-add on the packed direction word, a real bug reproduced (not fixed) — an emergent behaviour with no literal to cite, documented in glossary.md §Ghost AI. Dossier ch.4 (Pinky / 'speedy', ambush). src/core/targeting.ts targetTile('pinky').",
+    "addr": "278e",
+    "source": { "file": "pacman.asm", "line": 5465, "verbatim": "278e  ed5b394d  ld      de,(#4d39)" }
+  },
+  {
+    "id": "TARGET-INKY-ROUTINE",
+    "symbol": "INKY_TARGET",
+    "value": "2·intermediate − Blinky",
+    "meaning": "Inky's chase branch. BC = Blinky's tile (#4d0a); DE = Pac tile (#4d39); HL = Pac direction (#4d1c) DOUBLED ONCE (`add hl,hl` at 27d6) for the '2 tiles ahead' intermediate, then `add hl,de`. The intermediate is then doubled about Blinky per byte (27d8-27df: `add a,a ; sub c` on the low byte, `add a,a ; sub b` on the high byte) giving target = 2·intermediate − Blinky. The ×2 and the doubling are shift-adds, NOT stored literals, so this is a routine-address anchor; the 2-ahead intermediate carries the SAME up-overflow (2 up AND 2 left when facing up). Dossier ch.4 (Inky / 'bashful', the vector-doubling ghost). src/core/targeting.ts targetTile('inky').",
+    "addr": "27cb",
+    "source": { "file": "pacman.asm", "line": 5492, "verbatim": "27cb  ed4b0a4d  ld      bc,(#4d0a)" }
+  },
+  {
+    "id": "TARGET-CLYDE-ROUTINE",
+    "symbol": "CLYDE_TARGET",
+    "value": "Pac tile if far, else scatter corner",
+    "meaning": "Clyde's chase branch entry. IX = Pac-Man's tile (#4d39), IY = Clyde's tile (#4d10); it then calls the squared-distance routine #29ea and compares against the threshold literal (see TARGET-CLYDE-RADIUS at 281e). When Pac-Man is far, Clyde targets Pac's tile (like Blinky); when close, Clyde falls back to its own scatter corner (the routine jumps to the scatter branch at 2800). This is the routine-address anchor for Clyde's distance flip. Dossier ch.4 (Clyde / 'pokey'). src/core/targeting.ts targetTile('clyde').",
+    "addr": "2813",
+    "source": { "file": "pacman.asm", "line": 5527, "verbatim": "2813  dd21394d  ld      ix,#4d39" }
+  },
+  {
+    "id": "TARGET-CLYDE-RADIUS",
+    "symbol": "CLYDE_CHASE_MIN_DISTSQ",
+    "value": 64,
+    "meaning": "Clyde's chase/scatter flip distance, SQUARED, in tiles: the literal #0040 = 64 = 8² loaded into DE right before `sbc hl,#0040 ; jp c` in the chase branch (2813+). #29ea returns the squared Euclidean distance Pac↔Clyde (dx²+dy²), so 64 is exactly the '8 tiles' the Dossier documents. The `jp c` (scatter) fires ONLY on a borrow, i.e. distance² STRICTLY LESS than 64 — a distance of exactly 8 tiles (dist²==64) therefore CHASES. This is the one genuine numeric literal in the four targeting routines. Dossier ch.4 (Clyde flips at eight tiles). src/core/targeting.ts CLYDE_CHASE_MIN_DISTSQ.",
+    "addr": "281e",
+    "source": { "file": "pacman.asm", "line": 5530, "verbatim": "281e  114000    ld      de,#0040" }
+  }
+]

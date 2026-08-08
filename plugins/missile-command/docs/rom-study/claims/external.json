@@ -1,0 +1,68 @@
+[
+ {
+  "id": "MC-EXT-missile-58",
+  "symbol": "missile.cpp:58",
+  "value": "external",
+  "meaning": "MAME address map: the game reads/writes through the driver-documented map",
+  "source": {
+   "file": "missile.cpp",
+   "line": 58,
+   "verbatim": "(MAME missile driver missile.cpp:58 — external secondary source: not in the vendored REV-01 tree, schema-only, never byte-opened)"
+  }
+ },
+ {
+  "id": "MC-EXT-missile-454",
+  "symbol": "missile.cpp:454-462",
+  "value": "external",
+  "meaning": "MAME IRQ scheduling context for the 4-IRQs-per-frame derivation",
+  "source": {
+   "file": "missile.cpp",
+   "line": 454,
+   "verbatim": "(MAME missile driver missile.cpp:454-462 — external secondary source: not in the vendored REV-01 tree, schema-only, never byte-opened)"
+  }
+ },
+ {
+  "id": "MC-EXT-missile-485",
+  "symbol": "missile.cpp:485-497",
+  "value": "external",
+  "meaning": "schedule_next_irq — the per-frame IRQ cadence (O-2)",
+  "source": {
+   "file": "missile.cpp",
+   "line": 485,
+   "verbatim": "(MAME missile driver missile.cpp:485-497 — external secondary source: not in the vendored REV-01 tree, schema-only, never byte-opened)"
+  }
+ },
+ {
+  "id": "MC-EXT-missile-528",
+  "symbol": "missile.cpp:528-532",
+  "value": "external",
+  "meaning": "vblank_r — VBLANK true when V < 24 (O-2)",
+  "source": {
+   "file": "missile.cpp",
+   "line": 528,
+   "verbatim": "(MAME missile driver missile.cpp:528-532 — external secondary source: not in the vendored REV-01 tree, schema-only, never byte-opened)"
+  }
+ },
+ {
+  "id": "MC-EXT-missile-542",
+  "symbol": "missile.cpp:542-555",
+  "value": "external",
+  "meaning": "adjust_cpu_speed — CPU clock change at scanline 224 (O-2)",
+  "source": {
+   "file": "missile.cpp",
+   "line": 542,
+   "verbatim": "(MAME missile driver missile.cpp:542-555 — external secondary source: not in the vendored REV-01 tree, schema-only, never byte-opened)"
+  }
+ },
+ {
+  "id": "MC-EXT-missile-617",
+  "symbol": "missile.cpp:617-625",
+  "value": "external",
+  "meaning": "get_bit3_addr — video RAM 3rd-colour-bit address scatter (O-5)",
+  "source": {
+   "file": "missile.cpp",
+   "line": 617,
+   "verbatim": "(MAME missile driver missile.cpp:617-625 — external secondary source: not in the vendored REV-01 tree, schema-only, never byte-opened)"
+  }
+ }
+]

@@ -1,0 +1,238 @@
+[
+  {
+    "id": "PALETTE-ALL",
+    "symbol": "PALETTE",
+    "value": "hw",
+    "meaning": "The full 32-entry hardware palette PROM (82s123.7f). Each byte is a resistor-DAC-encoded RGB colour (MAME pacman_palette PALETTE_INIT: 3-3-2 weighted resistors, `-BBGGGRRR`); byte 0 is the black entry (all bits low). This claim pins the raw ROM bytes; the RGB decode is a later task's job.",
+    "addr": "0000",
+    "source": { "file": "82s123.7f", "offset": 0, "bytes": [0, 7, 102, 239, 0, 248, 234, 111, 0, 63, 0, 201, 56, 170, 175, 246, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+  },
+  {
+    "id": "CLUT-SET-0",
+    "symbol": "COLORTABLE_SET_0",
+    "value": "hw",
+    "meaning": "Colour-lookup PROM (82s126.4a) 4-byte run at set index 0 — each byte is a 4-bit index into PALETTE-ALL, one per pixel colour-code within a colour set (MAME pacman_palette colourtable build). All-zero here (background/black across all four codes); which tile/sprite colour-select maps to set 0 is a later task's decode.",
+    "addr": "0000",
+    "source": { "file": "82s126.4a", "offset": 0, "bytes": [0, 0, 0, 0] }
+  },
+  {
+    "id": "CLUT-SET-1",
+    "symbol": "COLORTABLE_SET_1",
+    "value": "hw",
+    "meaning": "Colour-lookup PROM (82s126.4a) 4-byte run at set index 1 — a candidate maze/dot colour set (non-zero entries 15,11,1). Pins the raw bytes; which glyph uses this set is a later task's decode.",
+    "addr": "0004",
+    "source": { "file": "82s126.4a", "offset": 4, "bytes": [0, 15, 11, 1] }
+  },
+  {
+    "id": "CLUT-SET-16",
+    "symbol": "COLORTABLE_SET_16",
+    "value": "hw",
+    "meaning": "Colour-lookup PROM (82s126.4a) 4-byte run at set index 16 — a candidate sprite (ghost/Pac-Man) colour set (entries 14,0,11). Pins the raw bytes; which sprite uses this set is a later task's decode.",
+    "addr": "0040",
+    "source": { "file": "82s126.4a", "offset": 64, "bytes": [0, 14, 0, 11] }
+  },
+  {
+    "id": "TILE-DOT",
+    "symbol": "TILE_DOT",
+    "value": "hw",
+    "meaning": "Tile ROM (pacman.5e) 16-byte run at tile index 16 (0x10) — a candidate dot (pellet) glyph anchor for the maze-tile decode. Pins the raw ROM bytes; the wall/dot tile-index map is a later task's job.",
+    "addr": "0100",
+    "source": { "file": "pacman.5e", "offset": 256, "bytes": [0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0] }
+  },
+  {
+    "id": "TILE-ENERGIZER",
+    "symbol": "TILE_ENERGIZER",
+    "value": "hw",
+    "meaning": "Tile ROM (pacman.5e) 16-byte run at tile index 20 (0x14) — a candidate energizer (power pellet) glyph anchor, a filled circular pattern larger than TILE-DOT. Pins the raw ROM bytes; the tile-index map is a later task's job.",
+    "addr": "0140",
+    "source": { "file": "pacman.5e", "offset": 320, "bytes": [12, 14, 15, 15, 15, 15, 14, 12, 3, 7, 15, 15, 15, 15, 7, 3] }
+  },
+  {
+    "id": "TILE-WALL-A",
+    "symbol": "TILE_WALL_A",
+    "value": "hw",
+    "meaning": "Tile ROM (pacman.5e) 16-byte run at tile index 64 (0x40) — a candidate maze wall/corner glyph anchor (all-zero, likely a blank/edge piece). Pins the raw ROM bytes; wall-orientation semantics are a later task's decode.",
+    "addr": "0400",
+    "source": { "file": "pacman.5e", "offset": 1024, "bytes": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+  },
+  {
+    "id": "TILE-WALL-B",
+    "symbol": "TILE_WALL_B",
+    "value": "hw",
+    "meaning": "Tile ROM (pacman.5e) 16-byte run at tile index 68 (0x44) — a candidate maze wall/corner glyph anchor with a diagonal-line bit pattern. Pins the raw ROM bytes; wall-orientation semantics are a later task's decode.",
+    "addr": "0440",
+    "source": { "file": "pacman.5e", "offset": 1088, "bytes": [136, 204, 102, 34, 34, 238, 238, 0, 51, 119, 204, 136, 136, 255, 255, 0] }
+  },
+  {
+    "id": "PAC-MOUTH-0",
+    "symbol": "PAC_MOUTH_CLOSED",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 0 — a candidate Pac-Man mouth-closed frame anchor. Pins the raw ROM bytes; the mouth-frame animation sequence is a later task's decode.",
+    "addr": "0000",
+    "source": { "file": "pacman.5f", "offset": 0, "bytes": [0, 0, 0, 8, 12, 12, 140, 12, 0, 0, 48, 48, 16, 16, 0, 0, 0, 0, 0, 0, 192, 32, 144, 128, 0, 0, 0, 7, 15, 15, 195, 31, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 33, 18, 3, 3, 1, 0, 0, 7, 8, 15, 47, 79, 14, 0, 0] }
+  },
+  {
+    "id": "PAC-MOUTH-1",
+    "symbol": "PAC_MOUTH_HALF",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 1 — a candidate Pac-Man mouth-half-open frame anchor. Pins the raw ROM bytes; the mouth-frame animation sequence is a later task's decode.",
+    "addr": "0040",
+    "source": { "file": "pacman.5f", "offset": 64, "bytes": [0, 0, 0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 16, 16, 16, 0, 0, 0, 7, 79, 15, 167, 135, 0, 0, 0, 8, 14, 142, 31, 15, 12, 8, 8, 0, 0, 0, 0, 0, 51, 16, 16, 16, 0, 0, 0, 0, 211, 135, 151, 15, 47, 7, 0, 0, 79, 31, 15, 79, 14, 8, 0, 0] }
+  },
+  {
+    "id": "PAC-MOUTH-2",
+    "symbol": "PAC_MOUTH_OPEN",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 2 — a candidate Pac-Man mouth-full-open frame anchor. Pins the raw ROM bytes; the mouth-frame animation sequence is a later task's decode.",
+    "addr": "0080",
+    "source": { "file": "pacman.5f", "offset": 128, "bytes": [0, 0, 0, 8, 8, 12, 12, 12, 0, 0, 0, 16, 16, 48, 48, 16, 0, 0, 1, 3, 135, 135, 135, 71, 0, 0, 14, 15, 15, 15, 15, 15, 12, 12, 12, 8, 8, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 239, 71, 7, 7, 3, 1, 0, 0, 15, 15, 15, 15, 15, 14, 0, 0] }
+  },
+  {
+    "id": "GHOST-BODY-0",
+    "symbol": "GHOST_BODY_BLINKY",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 8 — a candidate ghost-body frame anchor (ghost 0 / Blinky, by conventional ROM ordering). Pins the raw ROM bytes; which ghost/frame this is is a later task's decode.",
+    "addr": "0200",
+    "source": { "file": "pacman.5f", "offset": 512, "bytes": [0, 238, 204, 136, 140, 78, 238, 136, 0, 0, 0, 17, 51, 51, 119, 119, 0, 17, 255, 255, 143, 15, 60, 188, 0, 127, 191, 127, 175, 95, 127, 255, 136, 238, 238, 204, 136, 204, 238, 0, 119, 119, 51, 51, 17, 0, 0, 0, 255, 255, 143, 15, 60, 188, 17, 0, 255, 255, 255, 127, 127, 255, 255, 0] }
+  },
+  {
+    "id": "GHOST-BODY-1",
+    "symbol": "GHOST_BODY_PINKY",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 9 — a candidate ghost-body frame anchor (ghost 1 / Pinky, by conventional ROM ordering). Pins the raw ROM bytes; which ghost/frame this is is a later task's decode.",
+    "addr": "0240",
+    "source": { "file": "pacman.5f", "offset": 576, "bytes": [0, 204, 238, 238, 140, 8, 204, 238, 0, 0, 0, 17, 51, 51, 119, 119, 0, 17, 255, 255, 143, 15, 60, 188, 0, 127, 191, 127, 175, 95, 127, 255, 238, 204, 136, 204, 238, 238, 204, 0, 119, 119, 51, 51, 17, 0, 0, 0, 255, 255, 143, 15, 60, 188, 17, 0, 255, 255, 255, 127, 127, 255, 255, 0] }
+  },
+  {
+    "id": "GHOST-BODY-2",
+    "symbol": "GHOST_BODY_INKY",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 10 — a candidate ghost-body frame anchor (ghost 2 / Inky, by conventional ROM ordering). Pins the raw ROM bytes; which ghost/frame this is is a later task's decode.",
+    "addr": "0280",
+    "source": { "file": "pacman.5f", "offset": 640, "bytes": [0, 0, 0, 238, 238, 238, 204, 204, 0, 0, 0, 0, 0, 0, 0, 0, 0, 96, 105, 15, 113, 105, 15, 23, 0, 0, 0, 136, 238, 255, 255, 255, 204, 204, 204, 238, 238, 238, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 119, 51, 0, 0, 0] }
+  },
+  {
+    "id": "GHOST-BODY-3",
+    "symbol": "GHOST_BODY_CLYDE",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 11 — a candidate ghost-body frame anchor (ghost 3 / Clyde, by conventional ROM ordering). Pins the raw ROM bytes; which ghost/frame this is is a later task's decode.",
+    "addr": "02c0",
+    "source": { "file": "pacman.5f", "offset": 704, "bytes": [0, 238, 238, 238, 204, 204, 204, 204, 0, 0, 0, 0, 0, 0, 0, 0, 0, 96, 105, 15, 113, 105, 15, 23, 0, 0, 0, 255, 255, 255, 255, 255, 204, 204, 238, 238, 238, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 255, 119, 51, 0, 0, 0, 0, 0] }
+  },
+  {
+    "id": "GHOST-EYES",
+    "symbol": "GHOST_EYES",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 12 — a candidate shared \"eyes only\" frame anchor (used by every ghost when eaten/retreating). Pins the raw ROM bytes; the eyes-direction frame set is a later task's decode.",
+    "addr": "0300",
+    "source": { "file": "pacman.5f", "offset": 768, "bytes": [0, 0, 68, 238, 238, 238, 238, 238, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 17, 17, 0, 238, 102, 102, 238, 238, 238, 102, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+  },
+  {
+    "id": "FRUIT-0",
+    "symbol": "FRUIT_SPRITE_0",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 16 — a candidate fruit-bonus glyph anchor (fruit 0 / cherry, by conventional ROM ordering). Pins the raw ROM bytes; the 8-fruit index map is a later task's decode.",
+    "addr": "0400",
+    "source": { "file": "pacman.5f", "offset": 1024, "bytes": [0, 8, 12, 14, 15, 15, 15, 15, 15, 15, 15, 15, 7, 7, 7, 3, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 3, 1, 0, 0, 0, 0, 0, 0, 15, 15, 15, 7, 3, 1, 0, 0, 15, 15, 15, 15, 15, 15, 7, 0] }
+  },
+  {
+    "id": "FRUIT-1",
+    "symbol": "FRUIT_SPRITE_1",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 17 — a candidate fruit-bonus glyph anchor (fruit 1 / strawberry, by conventional ROM ordering). Pins the raw ROM bytes; the 8-fruit index map is a later task's decode.",
+    "addr": "0440",
+    "source": { "file": "pacman.5f", "offset": 1088, "bytes": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 7, 7, 7, 15, 15, 15, 15, 0, 8, 12, 14, 15, 15, 15, 15, 0, 0, 0, 0, 0, 8, 12, 14] }
+  },
+  {
+    "id": "FRUIT-2",
+    "symbol": "FRUIT_SPRITE_2",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 18 — a candidate fruit-bonus glyph anchor (fruit 2 / peach, by conventional ROM ordering). Pins the raw ROM bytes; the 8-fruit index map is a later task's decode.",
+    "addr": "0480",
+    "source": { "file": "pacman.5f", "offset": 1152, "bytes": [15, 15, 15, 15, 14, 14, 14, 12, 0, 1, 3, 7, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 8, 0, 0, 0, 0, 0, 0, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 0, 15, 15, 15, 14, 12, 8, 0, 0] }
+  },
+  {
+    "id": "FRUIT-3",
+    "symbol": "FRUIT_SPRITE_3",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 19 — a candidate fruit-bonus glyph anchor (fruit 3 / apple, by conventional ROM ordering). Pins the raw ROM bytes; the 8-fruit index map is a later task's decode.",
+    "addr": "04c0",
+    "source": { "file": "pacman.5f", "offset": 1216, "bytes": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 14, 14, 14, 15, 15, 15, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 7, 0, 1, 3, 7, 15, 15, 15, 15] }
+  },
+  {
+    "id": "FRUIT-4",
+    "symbol": "FRUIT_SPRITE_4",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 20 — a candidate fruit-bonus glyph anchor (fruit 4 / grapes, by conventional ROM ordering). Pins the raw ROM bytes; the 8-fruit index map is a later task's decode.",
+    "addr": "0500",
+    "source": { "file": "pacman.5f", "offset": 1280, "bytes": [14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 7, 7, 7, 3, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 3, 1, 0, 0, 0, 0, 0, 0, 15, 15, 15, 7, 3, 1, 0, 0, 15, 15, 15, 15, 15, 15, 7, 0] }
+  },
+  {
+    "id": "FRUIT-5",
+    "symbol": "FRUIT_SPRITE_5",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 21 — a candidate fruit-bonus glyph anchor (fruit 5 / galaxian, by conventional ROM ordering). Pins the raw ROM bytes; the 8-fruit index map is a later task's decode.",
+    "addr": "0540",
+    "source": { "file": "pacman.5f", "offset": 1344, "bytes": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 0, 1, 3, 7, 15, 15, 15, 0, 0, 8, 8, 12, 12, 14, 14, 0, 0, 0, 8, 8, 8, 12, 12, 3, 7, 7, 7, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15] }
+  },
+  {
+    "id": "FRUIT-6",
+    "symbol": "FRUIT_SPRITE_6",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 22 — a candidate fruit-bonus glyph anchor (fruit 6 / bell, by conventional ROM ordering). Pins the raw ROM bytes; the 8-fruit index map is a later task's decode.",
+    "addr": "0580",
+    "source": { "file": "pacman.5f", "offset": 1408, "bytes": [15, 15, 15, 15, 14, 14, 14, 12, 7, 7, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 8, 0, 0, 0, 0, 0, 0, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 0, 15, 15, 15, 14, 12, 8, 0, 0] }
+  },
+  {
+    "id": "FRUIT-7",
+    "symbol": "FRUIT_SPRITE_7",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 23 — a candidate fruit-bonus glyph anchor (fruit 7 / key, by conventional ROM ordering). Pins the raw ROM bytes; the 8-fruit index map is a later task's decode.",
+    "addr": "05c0",
+    "source": { "file": "pacman.5f", "offset": 1472, "bytes": [0, 0, 0, 0, 0, 0, 8, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 3, 3, 7, 7, 0, 0, 8, 12, 14, 15, 15, 15, 12, 14, 14, 14, 15, 15, 15, 15, 0, 0, 0, 1, 1, 1, 3, 3, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15] }
+  },
+  {
+    "id": "SCORE-200",
+    "symbol": "SCORE_NUMERAL_200",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 24 — a candidate ghost-eat score numeral anchor (\"200\", by conventional ROM ordering). Pins the raw ROM bytes; which value each numeral sprite renders is a later task's decode.",
+    "addr": "0600",
+    "source": { "file": "pacman.5f", "offset": 1536, "bytes": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 7, 7, 7, 3, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 3, 1, 0, 0, 0, 0, 0, 0, 15, 15, 15, 7, 3, 1, 0, 0, 15, 15, 15, 15, 15, 15, 7, 0] }
+  },
+  {
+    "id": "SCORE-400",
+    "symbol": "SCORE_NUMERAL_400",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 25 — a candidate ghost-eat score numeral anchor (\"400\", by conventional ROM ordering). Pins the raw ROM bytes; which value each numeral sprite renders is a later task's decode.",
+    "addr": "0640",
+    "source": { "file": "pacman.5f", "offset": 1600, "bytes": [15, 15, 15, 15, 15, 15, 15, 15, 0, 0, 0, 0, 0, 0, 1, 3, 0, 0, 1, 3, 7, 15, 15, 15, 0, 7, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 3, 7, 7, 7, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15] }
+  },
+  {
+    "id": "SCORE-800",
+    "symbol": "SCORE_NUMERAL_800",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 26 — a candidate ghost-eat score numeral anchor (\"800\", by conventional ROM ordering). Pins the raw ROM bytes; which value each numeral sprite renders is a later task's decode.",
+    "addr": "0680",
+    "source": { "file": "pacman.5f", "offset": 1664, "bytes": [15, 15, 15, 15, 14, 14, 14, 12, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 8, 0, 0, 0, 0, 0, 0, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 0, 15, 15, 15, 14, 12, 8, 0, 0] }
+  },
+  {
+    "id": "SCORE-1600",
+    "symbol": "SCORE_NUMERAL_1600",
+    "value": "hw",
+    "meaning": "Sprite ROM (pacman.5f) 64-byte run at sprite index 27 — a candidate ghost-eat score numeral anchor (\"1600\", by conventional ROM ordering). Pins the raw ROM bytes; which value each numeral sprite renders is a later task's decode.",
+    "addr": "06c0",
+    "source": { "file": "pacman.5f", "offset": 1728, "bytes": [0, 0, 0, 0, 0, 0, 8, 12, 15, 15, 15, 15, 15, 15, 15, 15, 0, 14, 15, 15, 15, 15, 15, 15, 0, 0, 8, 12, 14, 15, 15, 15, 12, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15] }
+  },
+  {
+    "id": "MAZE-VRAM-CAPTURE",
+    "symbol": "MAZE_TILEMAP",
+    "value": "vram",
+    "meaning": "The authentic maze tilemap: a MAME video+colour-RAM capture (reference/graphics/maze-vram.bin) of the fully-drawn attract maze. Bytes 0..0x3ff are video RAM 0x4000-0x43ff (tile indices), 0x400..0x7ff are colour RAM 0x4400-0x47ff. Unpacked via MAME's pacman_scan_rows (pacman_v.cpp:170) into the 28x36 grid baked to src/shell/maze-tilemap-data.ts. This claim pins the raw capture bytes; the unpack/decode is src/shell/gfx-rom.ts's job.",
+    "addr": "4000",
+    "source": {
+      "file": "maze-vram.bin",
+      "offset": 0,
+      "bytes": [64, 64, 64, 64]
+    }
+  }
+]

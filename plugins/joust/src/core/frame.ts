@@ -123,6 +123,14 @@ export interface ProcessSpec {
    * pre-jt5-3 reference pipeline. Undefined reads as `false`.
    */
   prevFlapHeld?: boolean
+  /**
+   * jt9-48 — `PBUMPX`, the collision shove a non-killing bounce (`OSTLR`) parks
+   * on a bird (jt9-17 first put it on `DemoProcess`; it is promoted here for the
+   * identical reason as `facing`/`prevFlapHeld` — a process-level field the
+   * shared, GENERATED `EntityState` cannot grow). The enemy step hands it to
+   * `B2DIR`/`SHDIR`'s bump-facing arm so the shove orients the bird. Absent → 0.
+   */
+  bumpX?: number
 }
 
 /** A scheduled process. Plain data — the behaviour is dispatched by `kind`. */
@@ -382,7 +390,7 @@ function runBehaviour(
     // jt5-3: `stepEnemyDetailed` runs the SAME brain + flight step `stepEnemy`
     // does (it IS stepEnemy's implementation) and additionally reports the wing
     // edge that wake produced, from the `input.flap`/`flapHeld` only it sees.
-    const stepped = stepEnemyDetailed(enemy, { player: target ?? null, wave, lavaBehind })
+    const stepped = stepEnemyDetailed(enemy, { player: target ?? null, wave, lavaBehind, bumpX: p.bumpX })
     return {
       process: { ...p, enemy: stepped.enemy },
       budget: next,

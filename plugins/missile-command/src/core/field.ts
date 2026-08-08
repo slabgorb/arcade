@@ -26,6 +26,15 @@ export interface FieldPos {
 /** Max cities — `W3COMN.MAC:39` (`NCITY=6`). */
 export const NCITY = 6
 
+/**
+ * Default starting cities (REV-01) — the count a new game begins with, DISTINCT
+ * from the `NCITY` max. NEW GAME SETUP reads it from `STCITY[OPTIO2 & SCITYM]`
+ * (`STCITY: .BYTE 6,4,5,7`, `W3MAIN.MAC:3895`); with the option-2 bits clear the
+ * default is entry 0 = 6. SCITYM's "5 cities" is the option-2 (Y=2) selection, not
+ * the default. See `docs/rom-study/starting-cities.md` (claim `MC-STCITY-START`).
+ */
+export const START_CITIES = 6
+
 /** Missile bases — `W3COMN.MAC:41` (`NMISBA=3`). */
 export const NMISBA = 3
 
@@ -45,3 +54,36 @@ export const BASES: readonly FieldPos[] = [
   { h: 0x7b, v: 0x16 }, // MISB2H/MISB2V :151/:153
   { h: 0xf0, v: 0x16 }, // MISB3H/MISB3V :155/:157
 ]
+
+// ─── mc3-1 (GREEN, Yoda): the STATEFUL structures the combat loop mutates ─────
+// mc1's constants above fix WHERE the nine structures sit; mc3 adds the live
+// state — a city that can die, a base that can die and holds ABM ammo — built
+// from those same cited positions (render still reads CITIES/BASES for layout,
+// so nothing above changes). Append-only.
+
+/** ABMs loaded per base at a fresh game — `W3COMN.MAC:29` (`MAXMIS=10.`, decimal
+ *  override; claim MC-MAXMIS). */
+export const MAXMIS = 10
+
+/** A city that can be destroyed (mc3). Position is the fixed cabinet coord. */
+export interface City {
+  readonly pos: FieldPos
+  readonly alive: boolean
+}
+
+/** A missile base: destroyable, and its ABM magazine. `ammo` starts at MAXMIS. */
+export interface Base {
+  readonly pos: FieldPos
+  readonly alive: boolean
+  readonly ammo: number
+}
+
+/** Six live cities at the cited CITY positions — a fresh game's defended cities. */
+export function createCities(): readonly City[] {
+  return CITIES.map((pos) => ({ pos, alive: true }))
+}
+
+/** Three live bases at the cited MISB positions, each loaded with MAXMIS ABMs. */
+export function createBases(): readonly Base[] {
+  return BASES.map((pos) => ({ pos, alive: true, ammo: MAXMIS }))
+}

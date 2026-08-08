@@ -23,6 +23,7 @@
 
 import { moveCursor, type Cursor } from '../core/cursor.js'
 import { launchAbm, type Abm, type Vec } from '../core/abm.js'
+import type { GameState } from '../core/game.js'
 
 /**
  * Map a screen-space pointer movement (a PointerEvent's movementX/movementY,
@@ -61,4 +62,28 @@ export function launchFromKey(key: string, bases: readonly Vec[], target: Vec): 
   const base = fireKeyToBase(key)
   if (base === null) return null
   return launchAbm(bases[base], target)
+}
+
+/**
+ * mc3 (mc3-5): ammo-GATED firing over the live game state. The fire `key` picks
+ * its base (via fireKeyToBase — the Z/X/C mapping is preserved); a destroyed base
+ * or one with `ammo === 0` cannot fire, so the state is returned UNCHANGED. A live
+ * base with ammo appends one ABM (from that base to the crosshair, via core/abm)
+ * and spends one round. Pure — the input state is never mutated. This is the
+ * reducer main.ts drives on each keydown, replacing the mc1-4 unconditional launch.
+ */
+export function fireFromKey(key: string, state: GameState): GameState {
+  const idx = fireKeyToBase(key)
+  if (idx === null) return state
+  const base = state.bases[idx]
+  // A destroyed or empty base cannot fire: the shot is refused and the CAN'T-FIRE
+  // klaxon sounds (NS, SNSHOT — W3MAIN:1283 "NO FIRE NOISE"). The launch/ammo
+  // moments ride the same GameState.soundEvents channel the sim emits (mc8-2);
+  // the shell drains it each frame.
+  if (!base.alive || base.ammo === 0) {
+    return { ...state, soundEvents: [...state.soundEvents, { type: 'ammoEmpty' }] }
+  }
+  const abm = launchAbm(base.pos, state.cursor)
+  const bases = state.bases.map((b, i) => (i === idx ? { ...b, ammo: b.ammo - 1 } : b))
+  return { ...state, abms: [...state.abms, abm], bases, soundEvents: [...state.soundEvents, { type: 'launched' }] }
 }

@@ -780,3 +780,42 @@ describe('jt9-35 shared audio — Reviewer B1/B2: tick-expiry and widened-guard 
     ).toBe(true)
   })
 })
+
+// ── jt9-53: the tick() IDLE path ─────────────────────────────────────────────
+// jt9-52's B1 pins that a window counting DOWN to zero via tick() releases (the
+// `:326` line must EXIST). It cannot see a DIFFERENT tick() mutant: HOISTING that
+// release out of the `if (voiceFrames > 0)` countdown block —
+//     function tick(): void {
+//       if (voiceFrames > 0) { voiceFrames -= 1 }
+//       if (voiceFrames === 0) releaseVoice()   // now fires on EVERY idle tick
+//     }
+// A voice that started with frames > 0 releases at zero either way, so B1 is blind
+// to the hoist; and the ZEROWIN Mutant-C test never ticks, so it is blind too. The
+// gap is a SOUNDING zero-window voice (voiceFrames 0, voiceChannel set) meeting an
+// idle tick: correct code's `voiceFrames > 0` guard skips the block and the voice
+// stays held; the hoisted release frees it, so the next accepted arbitrated cue
+// finds voiceChannel null, the one-voice steal at `:266` never fires, and two
+// voices sound at once. Latent today (no shipped cabinet arbitrates a cue with no
+// frameDurations entry — joust framesFor throws on frames <= 0), same shape the
+// A–D / B1–B2 battery pins at the other release sites.
+
+describe('jt9-53 shared audio — an idle tick() must not release a sounding zero-window voice', () => {
+  it('an idle tick() leaves a sounding zero-window voice held — a later arbitrated cue still cross-steals', async () => {
+    const { engine, created } = await mkLoadedEngine(ZEROWIN)
+    engine.play('zap') // priority 5, NO frameDurations -> voiceFrames 0, voiceChannel `v`
+    expect(created.sources[0].started, 'premise: the zero-window `zap` is sounding on `v`').toBe(true)
+    engine.tick() // ONE idle tick — no cue arrives; voiceFrames is already 0
+    engine.play('boom') // priority 9 on channel `w` — accepted (voiceFrames is 0 either way)
+    expect(
+      created.sources[1].started,
+      'control: `boom` really started, so the one-voice steal at :266 was evaluated',
+    ).toBe(true)
+    expect(
+      created.sources[0].stopped,
+      'the idle tick() must leave the zero-window voice HELD (voiceChannel `v`), so accepting ' +
+        '`boom` reaches across (:266) and stops `zap` — ONE voice. Hoisting the :326 release ' +
+        'out of the `voiceFrames > 0` block frees the window on that idle tick, leaving ' +
+        'voiceChannel null: the :266 steal never fires and `zap` sounds alongside `boom`.',
+    ).toBe(true)
+  })
+})

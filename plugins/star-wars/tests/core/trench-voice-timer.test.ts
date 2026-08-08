@@ -353,3 +353,126 @@ describe('trench voice cues are deterministic (AC8 — pure core)', () => {
     expect(a).toContain('youreAllClearKid')
   })
 })
+
+// ── sw8-22: the death frame gate — but only the death ABOVE the cue walk ──────
+//
+// ROM. PHEBS ('VIEW BASE TRENCH', WSMAIN.MAC) guards the phase at its TOP —
+// `LDA S.GAS / LBMI PHIB0D ;J EXIT WHEN PLAYER DIES` — and that guard sits above
+// the phase's whole PH.TIM cue walk: `JSR PMRRP` (the rebel-repeat theme) and the
+// parity-gated voice lines `JSR SPKTRU` / `SPKYAU` / `SPKLET` / `SPKSTR`. This is
+// the SAME exit sw8-13 (space, PHESP1) and sw8-21 (surface, PHEGD) already ported;
+// the block in `surface-traversal-end.test.ts` is this suite's template, and the
+// `loseShield`-is-where-damage-becomes-death invariant is the same one.
+//
+// WHAT MAKES THE TRENCH DIFFERENT — and why this is NOT a copy of sw8-21's single
+// relocation. `stepTrench` resolves TWO shield hits, and the ROM puts them on
+// OPPOSITE sides of the cue walk:
+//   • the wall-GUN hit (DOBASE 'FIRES BASES SHOTS') runs ABOVE the cue walk, under
+//     the same top guard — so a last-shield fall to a turret bolt silences this
+//     frame's voice + theme cues, exactly as sw8-21's turret bolt silenced PMREB.
+//     In OURS that hit is `gunHit` (a `loseShield`), and the cue must read ITS
+//     post-hit lives.
+//   • the exhaust-port CRASH (bashing the end wall) runs BELOW the cue walk and
+//     carries its OWN, separate guard `LDA S.GAS / LBLE PHIB0D` that gates only
+//     `JSR SPKR2N` (R2's swearing) — NOT the voice lines, which already fired
+//     above it. In OURS that hit is `portHit`, and `r2Scream` is already gated on
+//     its post-hit lives; the voice cue must stay.
+//
+// So the ruling is: the voice/theme cue is gated by the GUN death, and is NOT
+// gated by the port-crash death. A naive "gate on the frame's final lives" fix
+// would silence the cue on a port crash too — the port-crash test below is the
+// discriminator that refutes it, and it must stay green.
+//
+// The cue crossing here is TIMER-driven (`trenchTimer`, ROM word_4B0E), so a
+// death frame is staged by seating the timer one game-frame below a threshold
+// (F_AT16 - 0.1, the same seat the "rides every return path" block above uses)
+// and landing the killing hit on that same step.
+describe('sw8-22 — a voice cue on the GUN-death frame is silenced (PHEBS exits before the walk)', () => {
+  /** A trench seated one game-frame below the @16 cue on an EVEN-parity (human ODD)
+   *  wave, so the next step crosses it and "Luke, trust me" is due. Obstacles cleared
+   *  so nothing cuts the run short; `shieldHitAt: null` keeps the S-016 window closed
+   *  to a fresh hit so a seeded bolt genuinely charges a shield. */
+  function atCue16(over: Partial<GameState> = {}): GameState {
+    return {
+      ...enterPhase(initialState(1983), 'trench'),
+      mode: 'playing' as const,
+      wave: ODD_WAVE, // even parity → "Luke, trust me" @16
+      trenchTimer: F_AT16 - 0.1,
+      trenchObstacles: [],
+      shieldHitAt: null,
+      enemyShots: [],
+      ...over,
+    }
+  }
+
+  /** A wall-gun bolt parked on the pilot's eye (`trenchView` default), so the trench
+   *  gun hit-test lands it this frame: one shield, cause 'turret', nothing else. */
+  const bolt: Partial<GameState> = {
+    enemyShots: [{ pos: [0, TRENCH_EYE_SEAT, 0], vel: [0, 0, 0], ttl: 1 }],
+  }
+
+  it('the fixture really crosses the @16 cue on step one (guards every test below)', () => {
+    // If this regresses, the "silenced" assertion below is vacuous — it would pass
+    // simply because no cue crossed. Pin it against a live pilot with shields to spare.
+    const out = stepGame(atCue16({ lives: 9 }), NO_INPUT, DT)
+    expect(spokenLines(out)).toContain('lukeTrustMe')
+    expect(out.gameOver).toBe(false)
+  })
+
+  it('the last shield falling to a WALL-GUN bolt on the cue frame silences the voice cue', () => {
+    const out = stepGame(atCue16({ lives: 1, ...bolt }), NO_INPUT, DT)
+    expect(out.lives).toBe(0)
+    expect(out.gameOver).toBe(true)
+    expect(out.events).toContainEqual({ type: 'player-death', cause: 'turret' }) // the death really landed
+    // The crossing genuinely happened (the timer stepped past 16), but the gun hit
+    // above the cue walk took the last shield — so the line is LOST, not deferred.
+    expect(out.trenchTimer).toBeGreaterThanOrEqual(F_AT16)
+    expect(spokenLines(out)).not.toContain('lukeTrustMe')
+  })
+
+  it('control: the SAME cue frame with shields to spare still speaks — the gate is the DEATH, not the hit', () => {
+    // A bolt lands and charges a shield, but the pilot lives. `gunHit`'s post-hit
+    // lives are > 0, so the cue fires exactly as the cabinet would. A fix that gated
+    // on "a hit landed this frame" instead of the post-`loseShield` lives fails here.
+    const out = stepGame(atCue16({ lives: 6, ...bolt }), NO_INPUT, DT)
+    expect(out.events).toContainEqual({ type: 'player-death', cause: 'turret' })
+    expect(out.lives).toBe(5) // a shield was genuinely charged
+    expect(out.gameOver).toBe(false)
+    expect(spokenLines(out)).toContain('lukeTrustMe')
+  })
+
+  it('boundary control: the bolt that leaves ONE shield still speaks — only the LAST shield exits PHEBS', () => {
+    const out = stepGame(atCue16({ lives: 2, ...bolt }), NO_INPUT, DT)
+    expect(out.lives).toBe(1)
+    expect(out.gameOver).toBe(false)
+    expect(spokenLines(out)).toContain('lukeTrustMe')
+  })
+
+  it('THE RULING: a last shield falling to the EXHAUST-PORT crash does NOT silence the voice cue', () => {
+    // The port bash sits BELOW the cue walk in PHEBS, under its own `LBLE PHIB0D`
+    // guard that gates only `SPKR2N`. So the voice line has already fired by the time
+    // the crash resolves. Seat the port ON the cockpit plane (it scrolls to z >= 0
+    // this step) with no torpedo armed and no fire input, so the frame resolves as a
+    // crash, not a win. The pilot dies to the crash — yet "Luke, trust me" is spoken.
+    // This is the discriminator against a "gate on final lives" over-fix.
+    const out = stepGame(
+      atCue16({ lives: 1, exhaustPort: { pos: [0, 0, 0] }, portTorpedoArmed: false }),
+      NO_INPUT,
+      DT,
+    )
+    expect(out.lives).toBe(0)
+    expect(out.gameOver).toBe(true)
+    expect(out.events).toContainEqual({ type: 'exhaust-port-missed' }) // the crash really resolved
+    expect(spokenLines(out)).not.toContain('r2Scream') // R2 is silenced by the death (existing gate)
+    expect(spokenLines(out)).toContain('lukeTrustMe') // ...but the voice cue above the crash is NOT
+  })
+
+  it('a frame ENTERED dead never reaches stepTrench, so the cue never even crosses', () => {
+    // The other half of the ROM's exit: the dispatcher returns on the gameover branch
+    // before the trench phase runs, so the timer never advances and nothing is spoken.
+    const seeded = atCue16({ lives: 0, gameOver: true, mode: 'gameover' as const })
+    const out = stepGame(seeded, NO_INPUT, DT)
+    expect(out.trenchTimer).toBe(seeded.trenchTimer) // stepTrench never ran
+    expect(spokenLines(out)).toEqual([])
+  })
+})

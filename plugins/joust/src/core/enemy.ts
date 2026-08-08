@@ -1180,7 +1180,7 @@ export function lavaGateFires(enemy: EnemyState, target: PlayerView | null): boo
  * reports `turned`; open air holds everything. Pure — the argument is never
  * mutated.
  */
-export function steerWake(enemy: EnemyState, target: PlayerView | null): SteerResult {
+export function steerWake(enemy: EnemyState, target: PlayerView | null, bumpX = 0): SteerResult {
   const held: SteerResult = { enemy, turned: false }
   if (!enemy.entity.airborne) return held
   const pixelY = enemy.entity.posY >> 8
@@ -1196,14 +1196,28 @@ export function steerWake(enemy: EnemyState, target: PlayerView | null): SteerRe
   } else {
     return held
   }
+  // jt9-48 — B2DIRA (:4148-4150) / SHDIRA (:4379-4381): the collision shove is
+  // the LAST word on facing before the aim. `LDA PBUMPX,U / BEQ B2FDIR / STA
+  // PFACE,U` — EVERY B2DIR/SHDIR exit below funnels through this tail (the
+  // parked `BEQ B2DIRA` :4105, the open-air `BEQ B2DIRA` :4121, AND a cliff
+  // turn — `B2DICL` :4142-4146 falls THROUGH into B2DIRA), so a non-zero shove
+  // overrides whatever the look-ahead just wrote. PFACE<0 is LEFT (`BMI`), so
+  // facing = sign(bumpX). Zero (an unshoved bird) leaves facing untouched. It
+  // is reached ONLY past the lava-divert and brain-type gates above, which is
+  // why those return `held` before this point.
+  const bumpFace = (r: SteerResult): SteerResult => {
+    if (bumpX > 0) return { ...r, enemy: { ...r.enemy, facing: 1 } }
+    if (bumpX < 0) return { ...r, enemy: { ...r.enemy, facing: -1 } }
+    return r
+  }
   const vx = enemy.entity.velXIndex
-  if (vx === 0) return held
+  if (vx === 0) return bumpFace(held)
   const dir = vx > 0 ? 1 : -1
   const len = enemy.brain === 'shadow' ? SHXLEN : B2XLEN
   // The (PVELY×8)>>8 projection (:4108-4118): sample where the bird is going.
   const sampleY = pixelY + ((velY * 8) >> 8)
-  if (bckMaskAt(enemy.entity.posX + len * dir, sampleY) === 0) return held
-  return { enemy: { ...enemy, facing: dir > 0 ? -1 : 1 }, turned: true }
+  if (bckMaskAt(enemy.entity.posX + len * dir, sampleY) === 0) return bumpFace(held)
+  return bumpFace({ enemy: { ...enemy, facing: dir > 0 ? -1 : 1 }, turned: true })
 }
 
 /**
@@ -1367,9 +1381,21 @@ function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number):
     rows,
   )
   if (route === 'down') return { ...enemy, seek: { mode: 'down', pdist: rows.dnDi }, pjoy: undefined }
-  if (route === 'up') return { ...enemy, seek: { mode: 'up', pdist: rows.upDi }, pjoy: undefined }
+  if (route === 'up') {
+    // jt9-50 — BOUP's cliff-above divert (JOUSTRV4.SRC:3846-3850). The bounder's
+    // up-seek decide samples the background one DYLEN ($14-6) above the bird and,
+    // on a solid hit, `BNE BOLEV` (:3850): it ABANDONS the climb and flies plain
+    // LEVEL flight instead of arming BOUPDI. Unlike the hunter/shadow (B2UP3/SHUP3,
+    // handled per-wake at :786/:970) there is NO hold state — there is no `BOUP3`
+    // label — so the decide falls straight through to the BOLEV interval arm below.
+    // Bounder only. `cliffBlocksClimb` reads `BCKYTB-CLIMB_PREP_YLEN` ($14-6), and
+    // the ROM's DYLEN = B2YLEN = SHYLEN = $14-6, so one sample serves all three.
+    const cliffAbove = enemy.brain === 'boundr' && cliffBlocksClimb(enemy)
+    if (!cliffAbove) return { ...enemy, seek: { mode: 'up', pdist: rows.upDi }, pjoy: undefined }
+  }
   // A level decide arms its interval AND snapshots the target's velocity index
-  // (PPVELX, jt9-18); the brain is `boundr`/`b2undr` here.
+  // (PPVELX, jt9-18); the brain is `boundr`/`b2undr` here. A bounder diverted off
+  // a blocked climb (jt9-50, above) lands here too — the BOLEV level flight.
   const armed: PjoyState = {
     kind: 'interval',
     timer: decideInterval(enemy.brain, wave, target !== null),
@@ -1398,10 +1424,14 @@ function lavaRecheckExits(enemy: EnemyState): boolean {
  */
 export function stepEnemyDetailed(
   enemy: EnemyState,
-  ctx?: { player?: PlayerView | null; wave?: number; lavaBehind?: boolean },
+  ctx?: { player?: PlayerView | null; wave?: number; lavaBehind?: boolean; bumpX?: number },
 ): { enemy: EnemyState; wingEdge: WingEdge } {
   const target = ctx?.player ?? null
   const wave = ctx?.wave ?? 1
+  // jt9-48 — the collision shove jt9-17 parked on the process (`PBUMPX`),
+  // threaded in like `player`/`wave` because only the caller (frame.ts) holds
+  // the DemoProcess it rides. Spent by `B2DIR`/`SHDIR`'s bump-facing arm below.
+  const bumpX = ctx?.bumpX ?? 0
   // jt9-1: `PPREV` — did a lava troll execute immediately before this process
   // this frame? Only the scheduler knows its own wake order, so it is threaded
   // in exactly as `player` (jt8-1) and `wave` (uf1-2) are.
@@ -1409,12 +1439,31 @@ export function stepEnemyDetailed(
   // jt8-2: the homing wake runs BEFORE the brain. `COM PFACE,U` (:3945) falls
   // into `JMP BODIR` (:3946), whose first instruction is `LDA PFACE,U` (:3876) —
   // so a flip already steers THIS wake's horizontal impulse, not the next one.
-  const flipped = homingWake(enemy, target)
+  //
+  // jt9-49: SCOPED TO A LIVE LEVEL INTERVAL. The throttle `BOLEVB` (:3939-3946)
+  // and its twins `B2LE11`/`SHLEPB` are reached in the ROM ONLY on the level path
+  // — they sit after `BOLEV`/`B2LEV`/`SHLEP` armed the decision interval. A bird
+  // that decided down/up runs `BODN1`/`BOUP1` and never falls into the throttle.
+  // jt8-2 ran it every wake and jt9-18 left the frozen `PPVELX` snapshot intact
+  // when `seekWake` routed to a seek, so the throttle kept ticking off-level on a
+  // stale snapshot; gating on the entry interval retires both. A held level
+  // interval is `pjoy.kind === 'interval'` (uf1-9); down/up seeks carry `wing`,
+  // freshly-mounted wakes carry nothing.
+  //
+  // READ-VS-DECIDE ORDERING: because the flip must steer THIS wake (above), the
+  // call stays BEFORE the brain — so it reads the interval the enemy ENTERED with,
+  // not the one this wake's decide may arm. The ROM's level-decide wake falls
+  // through `BOLEV → BOLEVB` and ticks the same wake; here the first tick lands on
+  // the next wake instead. That one-wake offset on the decide is the minimal cost
+  // of keeping the flip before the brain — the port cannot know "this wake decides
+  // level" until after `seekWake`, which runs later. (TEA left this call to Dev.)
+  const inLevelInterval = enemy.pjoy?.kind === 'interval'
+  const flipped = inLevelInterval ? homingWake(enemy, target) : enemy
   // jt8-3: the look-ahead runs AFTER the homing flip and its write WINS — in
   // the ROM the throttle blocks (`B2LE11`/`SHLEPB`) fall INTO the direction
   // routine, so B2DIR/SHDIR read (and may overwrite) the freshly-COMplemented
   // facing on the same wake.
-  const steered = steerWake(flipped, target)
+  const steered = steerWake(flipped, target, bumpX)
   const homed = steered.enemy
   // jt9-22 — BOLAVA (:3948-3964). An enemy already in the lava episode enters at
   // its stored `PJOY,U` address, which BYPASSES the whole brain/seek/wing

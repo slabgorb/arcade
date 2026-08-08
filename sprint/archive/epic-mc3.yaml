@@ -1,0 +1,89 @@
+id: mc3
+type: epic
+title: Missile Command — core combat loop (the playable milestone)
+description: "Third Missile Command epic and the one that makes it a game. mc1 built the defensive half (crosshair, player ABM launch->blast, static field); mc2 built the ground-truth dossier + citation guardrail. mc3 adds the ATTACK and everything that resolves it: enemy ICBMs that fall toward cities/bases, the blast<->missile and missile<->structure damage detection that is the whole point of Missile Command, per-base ammunition, scoring, and a play->game-over end. When mc3 lands the cabinet is playable end to end. Executes the Architect roadmap slice for mc3 in docs/superpowers/specs/2026-08-07-missile-command-full-cabinet-roadmap.md; every story implements tasks from the committed plan docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md. GROUND TRUTH: the vendored REV-01 tree (plugins/missile-command/reference/source/) and the machine-gated dossier (docs/rom-study/); every new src/core numeric constant carries a committed claim (the AC3 no-uncited-literal guard). OUT OF SCOPE (later epics): wave-difficulty ramp + end-of-wave bonus (mc4); MIRV/cruise/bomber/satellite/smart-bomb (mc5); attract+pause states (mc6); high-score ladder (mc7); authentic W3SOUN+POKEY audio (mc8); per-wave palette, authentic stamps, exact OLDRAD blast curve (mc9). mc3 uses one endless spawn cadence (driven by the real NICBMS/MXICON/LAUHGT constants) and mc1's triangle blast placeholder. Design branch: PR #43."
+priority: p2
+status: done
+repos: arcade
+stories:
+  - id: mc3-1
+    title: 'Enemy warheads: ICBM straight-flight reducer, stateful cities/bases, and the minimal spawner'
+    description: 'Plan tasks 1-3 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). The enemy-side data model that mc3-2/3/4 all build on. (a) src/core/icbm.ts — a PURE reducer mirroring abm.ts: launchIcbm(origin,target)/stepIcbm(icbm) fly a straight line at unit speed from a top-edge origin to a ground target and snap on arrival. Cite UPDATE ICBM POSITIONS (W3MAIN); unit speed only (per-wave enemy-speed table is mc4). (b) src/core/field.ts (append, do not alter existing cited exports) — stateful City{pos,alive} and Base{pos,alive,ammo} plus createCities() (6 live) and createBases() (3 live, ammo=MAXMIS) and export const MAXMIS=10 (reuses existing claim MC-MAXMIS). (c) src/core/spawn.ts + claims/spawn.json — a MINIMAL seeded spawner (mc4 replaces it) driven by the REAL ROM mechanism: keep at most MXICON(7) on screen, launch while remaining budget NICBMS(8)>0 and the highest ICBM has fallen below LAUHGT(202/0xCA), placing each at a random top-edge column (seeded @shared/rng) aimed at a random live structure. New claims MC-NICBMS/MC-MXICON/MC-LAUHGT; replace any bare top-edge 256/210 with cited HMAX/TOPSCR-derived consts (grep them first) so the AC3 guard stays green. Depends on nothing new; blocks mc3-2/3/4.'
+    points: 5
+    priority: p1
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'src/core/icbm.ts exists as a pure reducer (launchIcbm/stepIcbm): an ICBM launches parked at origin (arrived=false), closes on its target monotonically, snaps exactly to it on arrival, is idempotent once arrived, and does not mutate its input; icbm.test.ts passes and purity.test.ts stays green.'
+      - icbm.ts cites W3MAIN and the ICBM motion routine (UPDATE ICBM POSITIONS/UPDPOS) in a source-of-truth comment.
+      - 'field.ts gains City/Base types and createCities()/createBases(): createCities() returns 6 live cities at the cited CITIES positions; createBases() returns 3 live bases at the cited BASES positions each with ammo=MAXMIS=10; the pre-existing field exports and their claims are unchanged.'
+      - 'src/core/spawn.ts exports NICBMS=8, MXICON=7, LAUHGT=202 and spawnIcbms(current,liveTargets,remaining,rng): never exceeds MXICON on screen; launches nothing when remaining=0 or no live targets; holds fire while a live ICBM is still above LAUHGT (screen non-empty); otherwise launches toward a random live target from a top-edge column and decrements the budget; deterministic for a given seed.'
+      - claims/spawn.json carries MC-NICBMS(8)/MC-MXICON(7)/MC-LAUHGT(202) with byte-exact verbatim from W3COMN.MAC, and any top-edge column/height constant is claim-backed; citations.test.ts (incl. the AC3 no-uncited-literal guard) and purity.test.ts pass for every new src/core module.
+    completed: '2026-08-07'
+    review_findings: 'APPROVED round 2. Both round-1 blocking test-tooth findings resolved and mutation-verified (citation-delete reddens the icbm guard; launch-cap-at-1 reddens the pinned spawn assertion). src/core byte-identical, fully rule-compliant. Non-blocking follow-ups: JSDoc parity, UPDPOS->ICPOSI citation precision, one round-2 comment wording nit (type identifiers -> prose).'
+    review_verdict: approved
+  - id: mc3-2
+    title: 'Damage detection: a blast destroys incoming ICBMs; an arrived ICBM destroys a city/base'
+    description: "Plan task 4 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). The core mechanic, as two PURE functions in src/core/damage.ts. (a) killIcbmsInBlasts(icbms,explosions): {survivors,killed} — an ICBM is destroyed when its head lies within blastRadius(exp) of any live blast (point-in-circle vs mc1's explosion.ts). (b) resolveGroundImpacts(icbms,cities,bases): {cities,bases,icbms} — an ARRIVED ICBM kills the city/base at its target and is removed from the returned list. Cite MISSILE DAMAGE DETECTION & PROCESS and DESTROY A CITY OR BASE (W3MAIN). Only trivial literals — no new claim. Depends on mc3-1 (Icbm, City, Base)."
+    points: 3
+    priority: p1
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - killIcbmsInBlasts destroys an ICBM whose head sits inside a blast's current radius, spares one outside it, counts the kills, and returns the untouched survivors; a finished (zero-radius) blast kills nothing.
+      - 'resolveGroundImpacts: an arrived ICBM at a city/base target sets that structure alive=false and removes the ICBM from the returned list; other structures are untouched; an in-flight (not arrived) ICBM damages nothing and stays in the list.'
+      - damage.ts is a pure module (no clock/entropy/shell import) citing MISSILE DAMAGE DETECTION and DESTROY A CITY OR BASE; damage.test.ts passes and purity.test.ts + citations.test.ts stay green (no non-trivial literal introduced).
+    completed: '2026-08-07'
+    branch: feat/mc3-2-damage-detection-blast-kills-icbm-icbm-kills-city-base
+    review_verdict: approved
+  - id: mc3-3
+    title: Scoring (25/ICBM wave-1) and the play->game-over phase
+    description: Plan tasks 5-6 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). (a) src/core/score.ts + claims/score.json — ICBM_KILL_POINTS=25 and scoreKills(score,killed)=score+killed*25. The ROM scores 25 x wave number per downed ICBM (ADC I,25 under 'INCREASE POINTS FOR DOWNING ICBMS', W3MAIN ICBPTL); mc3 pins the wave-1 value 25, the x-wave ramp is mc4. New claim MC-ICBPTS(25), byte-exact verbatim (grep 'ADC I,25' for the exact physical line). (b) src/core/state.ts — Phase='play'|'over', allCitiesDead(cities), nextPhase(phase,cities) flips to 'over' once every city is dead ('over' is terminal). The full attract/setup/pause machine is mc6. Depends on mc3-1 (City).
+    points: 3
+    priority: p1
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - score.ts exports ICBM_KILL_POINTS=25 and scoreKills(score,killed) adding 25 per kill onto the running score; claims/score.json carries MC-ICBPTS(25) with byte-exact verbatim; the literal 25 passes the AC3 guard.
+      - "state.ts exports Phase 'play'|'over', allCitiesDead(cities), and nextPhase(phase,cities): stays 'play' while any city lives, flips to 'over' when all cities are dead, and 'over' is terminal."
+      - both modules are pure; score.test.ts and state.test.ts pass; purity.test.ts and citations.test.ts stay green.
+    completed: '2026-08-07'
+    review_verdict: approved
+  - id: mc3-4
+    title: 'Compose the combat loop: grow GameState and stepGame (spawn->fly->detonate->damage->resolve)'
+    description: "Plan task 7 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). Compose the whole loop in src/core/game.ts. Grow GameState to add icbms, cities, bases, score, phase, remaining (per-wave budget), and a seeded rng (Rng from @shared/rng). createGame(seed=1) seeds 6 live cities, 3 live bases at full ammo, empty enemy list, phase 'play', remaining=NICBMS. stepGame runs the 7-step per-frame order: (1) spawn against live targets, (2) fly ICBMs, (3) fly ABMs, (4) detonate ABM arrivals into blasts, (5) damage — blasts kill ICBMs (scored) and arrived ICBMs kill structures, (6) age blasts, (7) resolve score + phase. When phase='over' the loop only advances frame. Consumes every module from mc3-1/2/3 plus mc1's abm/explosion/cursor. Depends on mc3-1, mc3-2, mc3-3."
+    points: 5
+    priority: p1
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "createGame(seed) returns a fresh game: 6 live cities, 3 live bases each with ammo 10, no ICBMs, score 0, phase 'play'."
+      - "stepGame drives the attack: over frames it spawns ICBMs from the seeded wave (respecting the MXICON on-screen cap and drawing down the NICBMS budget), and a blast covering an ICBM's head destroys it and adds 25 to the score in the same step."
+      - structures only transition alive->dead (never resurrect); once every city is dead the next step sets phase 'over' and subsequent steps only advance frame.
+      - 'the sim is deterministic: two runs from the same seed produce identical multi-hundred-frame states; the whole app suite (mc1 + mc3), purity, citations, and npm run lint pass.'
+    completed: '2026-08-07'
+    review_verdict: approved
+  - id: mc3-5
+    title: 'Shell: render ICBMs/dead structures/HUD, ammo-gated firing, and a seeded end-to-end playthrough'
+    description: Plan tasks 8-10 (docs/superpowers/plans/2026-08-07-missile-command-mc3-core-loop.md). The shell + integration that makes mc3 visibly playable. (a) shell/render.ts — draw incoming ICBM trails+heads, dead cities/bases as rubble (only live structures draw intact), and a HUD showing state.score and each base's ammo; functional colours only (per-wave palette + authentic stamps are mc9); the HUD score is the core's state.score, never a re-derived copy. (b) shell/input.ts — a destroyed or empty (ammo=0) base cannot fire (no-op); a successful shot appends the ABM and decrements that base's ammo by 1; keep the existing per-key->base mapping. (c) tests/mc3-playthrough.test.ts — one seeded end-to-end run asserting the loop is coherent (enemies appear, budget draws down, MXICON respected, structures monotonic, phase in {play,over}) and fully deterministic. Read the existing render-field.test.ts / fire.test.ts harness first and match it. Depends on mc3-4.
+    points: 5
+    priority: p1
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "render draws the new state against the existing canvas-mock harness: ICBM heads/trails appear, a dead city/base is not drawn as a live one, and the HUD draws String(state.score) and each base's ammo (the score value, not a re-derived copy)."
+      - "input.ts gates firing: firing a full base appends one ABM and drops that base's ammo by 1; firing a base at ammo 0 or a destroyed base appends no ABM and leaves ammo unchanged; the per-key->base mapping is preserved."
+      - 'tests/mc3-playthrough.test.ts: a seeded playthrough shows ICBMs launched from the budget (remaining draws down), at most MXICON on screen, cities/bases only ever alive->dead, phase in {play,over}; identical seeds yield identical states.'
+      - 'the full gate is green: npx vitest run --project missile-command, npm run lint, and npm run test:orchestrator all pass.'
+    completed: '2026-08-07'
+completed: '2026-08-07'

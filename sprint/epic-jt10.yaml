@@ -1,0 +1,89 @@
+id: jt10
+type: epic
+title: Joust cabinet lifecycle — attract/title, 1P·2P select, game over, high-score, and Joust's two fonts
+description: "The cabinet shell Joust is missing: main.ts boots straight into a seeded wave-1 game with no attract/title, no 1P/2P start select, no game-over screen, and only an 8px-monospace dev overlay. This epic adds the outer lifecycle as a new third core tier (cabinet.ts) above the existing sim (frame.ts) and session (game.ts) tiers, mirroring tempest's Mode and hinged on the GOVER tri-state game.ts already models (jt4-4). It also ports Joust's own TWO fonts from MESSAGE.SRC — FONT35 (3x5, tight: scores/CREDITS) and FONT57 (5x7, stylized: banners/title) — as pure core data plus a shell raster text renderer (NOT the shared vector font). Reuse-first: GOVER/out/lives/settleGameOver, demo.ts self-play, @shared/highscore, and the atlas/blit path already exist. Font-first ordering: jt10-1 blocks all; jt10-2 gates the screens; jt10-7 needs gameover reached. Full design, ROM citations, and open quarry items (JOUST logo geometry, title revision phrasing, attract page order/timings) in docs/superpowers/specs/2026-08-07-joust-cabinet-lifecycle-design.md. ad1-4 (joust attract simulation) is superseded by jt10-4 and canceled in ad1 with a pointer."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: jt10-1
+    title: 'Font port: transcribe FONT35 (3x5) + FONT57 (5x7) from MESSAGE.SRC into pure core data, add a shell raster text renderer'
+    points: 5
+    priority: p2
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-07'
+    review_findings: 'APPROVED (Heimdall, peloton). Independently re-decoded all ~102 glyphs from MESSAGE.SRC (0 drift) + verified both FDB pointer chains. Non-blocking: (Medium) source double-entry + citation gates guard only 10/102 glyphs — filed as jt10-8; (Low) renderer ops paint via the paintDissolve fillRect idiom, not blitOp — guidance for the jt10 painter stories; (Nit) Pixel/Glyph/Font types duplicated across font35/font57.'
+    review_verdict: approved
+  - id: jt10-2
+    title: 'Cabinet state machine: new core cabinet.ts (attract/title/select/playing/gameover/highscore) wrapping the session, hinged on GOVER'
+    points: 3
+    priority: p2
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-1
+    completed: '2026-08-07'
+  - id: jt10-3
+    title: 'Title screen (MARQUE): transcribe the JOUST vector logo + (C)1982 copyright + EXTRA-MOUNT lines in FONT57, with the ATT.SRC colour cycle'
+    points: 5
+    priority: p2
+    status: done
+    started: '2026-08-08'
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-2
+    completed: '2026-08-08'
+  - id: jt10-4
+    title: 'Attract cycle: self-play (demo.ts) + banner pages (BEWARE OF THE PTERODACTYL, HOME OF THE LAVA TROLL) + attract-page scheduler — supersedes ad1-4'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-2
+  - id: jt10-5
+    title: '1P/2P start select: ONE PLAYER START / TWO PLAYER START ($1D/$1E) + a static CREDITS row, transitioning attract->select->playing'
+    points: 3
+    priority: p2
+    status: done
+    started: '2026-08-07T17:05:34Z'
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-2
+    completed: '2026-08-07'
+  - id: jt10-6
+    title: 'Game-over screen: wire GOVER_OVER/settleGameOver to a GAME OVER overlay and the transition to highscore-or-attract'
+    points: 2
+    priority: p2
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-2
+    completed: '2026-08-07'
+    review_verdict: approved
+  - id: jt10-7
+    title: 'High-score entry + JOUST CHAMPIONS table: initials entry (ENTER YOUR INITIALS / ENTER THY NAME MY LORD!) via @shared/highscore in the joust font'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-6
+  - id: jt10-8
+    title: Extend the font source double-entry gate to ALL ~102 glyphs (font35+font57), not just the 10 jt10-1 pinned
+    points: 2
+    priority: p3
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-1
+    completed: '2026-08-07'
+    type: chore
+    review_verdict: approved
+    review_findings: "APPROVED (Heimdall) round 1. Test+citations chore. Extended font source gate to all glyphs: all-glyph double-entry (green on arrival, faithful port) + 90 new byte-verified citation claims (font35 41, font57 49) closing the citation half of jt10-1's finding. Non-vacuity proven by mutation battery (coverage delete, real module-data drift, verbatim drift — each bites). Both axes guarded in CI via committed vendored tree. No font DATA changed. No findings."

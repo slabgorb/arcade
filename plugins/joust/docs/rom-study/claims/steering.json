@@ -133,5 +133,23 @@
       "line": 4388,
       "verbatim": "SHDIRB\tLDA\tPVELX,U"
     }
+  },
+  {
+    "id": "JT948-001",
+    "claim": "B2DIRA (JOUSTRV4.SRC:4148-4150), the hunter's collision bump-facing arm and the tail EVERY B2DIR path funnels through before the aim (the parked BEQ B2DIRA :4105, the open-air BEQ B2DIRA :4121, and B2DICL's fall-through :4142-4148): LDA PBUMPX,U / BEQ B2FDIR / STA PFACE,U. A non-zero PBUMPX shove is written straight into PFACE as the LAST word on facing, overriding even a cliff turn-away it just set; a zero shove (BEQ) leaves facing untouched. PFACE<0 is LEFT (BMI B2DN1C :4152), so facing = sign(bumpX). jt9-17 parked PBUMPX; jt9-48 spends it.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4148,
+      "verbatim": "B2DIRA\tLDA\tPBUMPX,U\tFACE, BUMPED DIRECTION"
+    }
+  },
+  {
+    "id": "JT948-002",
+    "claim": "SHDIRA (JOUSTRV4.SRC:4379-4381) mirrors B2DIRA for the shadow: LDA PBUMPX,U / BEQ SHFDIR / STA PFACE,U. The bump-facing tail SHDIR reaches on its no-target SHLEV route; a non-zero shove writes PFACE = sign(bumpX) as the last word before SHFDIR aims (BMI SHDN1C :4383 => PFACE<0 = LEFT). jt9-48 wires the no-target route; the hunting-shadow reach (SHLEP/SHDIRB -> SHDIRA) is filed jt9-60.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4379,
+      "verbatim": "SHDIRA\tLDA\tPBUMPX,U\tFACE, BUMPED DIRECTION"
+    }
   }
 ]

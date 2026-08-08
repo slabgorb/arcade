@@ -1,0 +1,57 @@
+id: mc8
+type: epic
+title: Missile Command — authentic audio (W3SOUN + POKEY)
+description: "Eighth Missile Command epic — the cabinet is silent today (there is no audio module at all in plugins/missile-command/src/shell). This epic gives it the real POKEY voice. The sound-control ROM is already vendored and decoded: A35820.1C is W3SOUN, the WW3 POKEY sound-system control ROM, and it is ASCII ASSEMBLER SOURCE, not an opaque image (docs/rom-study/brief.md O-1 RESOLVED; header '.TITLE W3SOUN-(WAS T2SOUN)', POKEY content AUDCTL/AUDF1). So this is a lift-and-port, NOT a sound-board emulation — the exact pattern star-wars used for speech: read the sound-command tables from the source and drive a POKEY core in JS. Reuse before building (contract 4): @shared/audio, @shared/synth, and the already-vendored plugins/star-wars/tools/pokey-bake/vendor/pokey.js. Executes the Architect roadmap slice for mc8 in docs/superpowers/specs/2026-08-07-missile-command-full-cabinet-roadmap.md; mc8 may begin any time after mc3 since it layers on events the core already emits. May begin in parallel with mc4/mc9. The core/shell boundary holds (contract 2): sound lives in src/shell; if the core must surface game events for the shell to voice, they are pure data on GameState, never a callback or a clock read. ASSETS ARE VERIFIED LIVE, NOT ASSUMED (contract 5 + the sidecar gotcha): @shared/audio degrades SILENTLY at every failure path, so a green vitest is not proof of sound — a 404 is indistinguishable from working code. If any sound is baked to a file, it is uploaded to the R2 bucket 'arcade' (there is NO automated upload path — CI deploys each app's dist/ only) and proven with a live 200, and any 'asset follows later' finding is filed as a story BEFORE the epic finishes. Primary anchors: A35820.1C decodes to W3SOUN (brief.md, PROVENANCE.md); reuse star-wars/tools/pokey-bake. OUT OF SCOPE: the visual work of mc4/mc9."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: mc8-1
+    title: 'Spike: decode the W3SOUN sound-command tables and choose the driver path (runtime-synth vs baked asset)'
+    description: "Architecture spike, no production wiring. Read the normalized W3SOUN ASCII source (A35820.1C -> W3SOUN under plugins/missile-command/reference/source/; CR-terminated non-UTF8 -> tr / grep -a as the star-wars source needed) and the pokey-bake pattern at plugins/star-wars/tools/pokey-bake/. Extract the sound-command table(s) and the game-event -> sound mapping the ROM uses (launch, explosion, incoming ICBM, city/base destroyed, out-of-ammo klaxon, wave-bonus count-up, low-city warning). Decide the driver path: drive the vendored pokey.js from the lifted commands at RUNTIME (no assets, like a synth) vs bake sound to files uploaded to R2 (needs the contract-5 live-verify follow-through). Output: a committed design doc under docs/superpowers/specs/ with the extracted tables (each cited FILE.MAC:LINE), the event map, and the chosen path with rationale; this doc is the mc8-2/mc8-3 plan. No src/ changes."
+    points: 3
+    priority: p1
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: architecture
+    acceptance_criteria:
+      - 'a design doc is committed under docs/superpowers/specs/ containing the W3SOUN sound-command table(s) transcribed with per-entry citations (FILE.MAC:LINE, radix noted) and the game-event -> sound mapping.'
+      - 'the driver path is decided and justified (runtime-synth via pokey.js vs baked asset), including — if baked — the exact R2 bucket/key layout and the contract-5 live-verify + follow-up-story plan.'
+      - 'the reuse surface is confirmed by reading it: @shared/audio, @shared/synth, and plugins/star-wars/tools/pokey-bake/vendor/pokey.js are cited as the intended building blocks; no src/ production code is changed in this story.'
+    completed: '2026-08-07'
+  - id: mc8-2
+    title: 'Audio shell: the POKEY driver and the core-event -> sound mapping'
+    description: "Implement the spike. (a) src/shell/audio.ts (new) — port/reuse the vendored pokey.js behind @shared/audio + @shared/synth, playing the sound commands the spike lifted. (b) if the core must surface events, add a pure per-frame events list to GameState in src/core (plain data — e.g. {launched, detonated, icbmKilled, structureDestroyed, ammoEmpty, bonusTick}); the shell reads it and voices it. Keep the core/shell boundary (contract 2) and purity.test.ts green. (c) wire it into main.ts's frame loop. HEED the edge-driven-voices gotcha: sustained/looping voices (the incoming-missile drone, the klaxon) must be silenced at the pause/game-over EDGE, not left to ring through a naive stop; make that testable via a boot-shell seam. Depends on mc8-1."
+    points: 5
+    priority: p1
+    status: done
+    started: '2026-08-07'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'src/shell/audio.ts drives the POKEY core from the lifted sound commands and is reachable from main.ts; the core exposes any needed events as pure data on GameState and purity.test.ts stays green.'
+      - 'each mapped game event (launch, ABM detonation, ICBM kill, city/base destroyed, out-of-ammo, wave-bonus count-up) triggers its sound command through the shell; a test asserts the mapping via a mockable audio seam, not a real AudioContext.'
+      - 'sustained voices are silenced at the pause/game-over edge (no drone or klaxon rings through a stop); a boot-shell test proves the edge-silence.'
+      - 'purity.test.ts, citations.test.ts, and npx vitest run --project missile-command stay green.'
+    completed: '2026-08-07'
+  - id: mc8-3
+    title: 'Verify audio live and close the asset loop'
+    description: "Prove the sound actually plays — a green vitest is not proof (contract 5 + sidecar gotcha: @shared/audio degrades silently, a 404 is indistinguishable from working code). Serve the cabinet (just serve -> /missile-command/) and confirm the mapped events are audible in the running game. IF the mc8-1 path baked any sound to files: upload them to the R2 bucket 'arcade' (there is no automated upload path — do it via the deploy-assets route) and prove each with a live 200 (curl -o /dev/null -w '%{http_code}' <url>); record the manifest + results in docs/ops/hosting.md. IF the path is runtime-synth: confirm no external asset is required and that the served game is audible with the network offline. Any residual 'asset follows later' item is FILED AS A STORY here, not left as a finding. Depends on mc8-2."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'the served game (/missile-command/) is confirmed audible for the mapped events — evidence recorded, not asserted (a screenshot/console log of playback or, for baked assets, the live 200 results).'
+      - 'if any sound is baked: every asset returns a live 200 from the R2 bucket, the manifest + results are recorded in docs/ops/hosting.md; if runtime-synth: the game is audible with no external asset fetch.'
+      - 'no open Delivery Finding of the form asset-follows-later remains — any such item is filed as a tracked story before this story finishes.'
+  - id: mc8-4
+    title: Parametric drones + full event wiring (bonusTick, whoop, end-game, bonus-city, low-ammo, cruise/Sputnik drone sweep)
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    depends_on: mc8-2

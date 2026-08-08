@@ -229,5 +229,16 @@
       "line": 157,
       "verbatim": "MISB3V\t=16"
     }
+  },
+  {
+    "id": "MC-STCITY-START",
+    "symbol": "STCITY",
+    "value": 6,
+    "meaning": "REV-01 default starting-city count = STCITY[0] (OPTIO2 & SCITYM = 0), read at NEW GAME SETUP. Option table {0:6,1:4,2:5,3:7}; SCITYM's '5 cities' is the Y=2 option, NCITY=6 is the max. See starting-cities.md.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 3895,
+      "verbatim": "STCITY:\t.BYTE 6,4,5,7"
+    }
   }
 ]

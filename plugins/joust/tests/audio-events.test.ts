@@ -541,8 +541,20 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // the same 6000 frames for the same precondition (wave 1 -> 2 AND a complement
     // dealt) — 4714 (four buzzards) is now the earliest. Seed, script and every
     // assertion unchanged.
-    const before = advanceTo(0xface, 4714)
-    const after = stepGame(before, inputsAt(4714))
+    //
+    // jt9-49 RE-BASELINE: 4714 -> 4182. Scoping the horizontal-homing throttle to
+    // a live level interval (it no longer ticks off-level) reshapes this seed's
+    // buzzard trajectories and wave 1 clears SOONER; re-swept the same 6000 frames
+    // for the same precondition (wave 1 -> 2 AND a complement dealt) — 4182 (four
+    // buzzards) is now the earliest. Seed, script and every assertion unchanged.
+    //
+    // jt9-50 RE-BASELINE: 4182 -> 4047. The bounder BOUP cliff-above divert (a bounder
+    // flies plain BOLEV level instead of climbing into a ledge) reshapes this seed's
+    // buzzard trajectories and wave 1 clears SOONER again; re-swept the same 6000 frames
+    // for the same precondition (wave 1 -> 2 AND a complement dealt) — 4047 (four
+    // buzzards) is now the earliest. Seed, script and every assertion unchanged.
+    const before = advanceTo(0xface, 4047)
+    const after = stepGame(before, inputsAt(4047))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
@@ -809,13 +821,20 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // the arena now holds TWO grown buzzards rather than one buzzard and an egg, and
     // player 2 scores 500 less (1550 -> 1050) — the slower level flap-rate reshapes the
     // clear-out and the process population.
+    // jt9-50 RE-BASELINE (the bounder BOUP cliff-above divert to BOLEV): `rng` is STILL
+    // 2_006_456_271, through EIGHT consecutive re-baselines — a bounder that flies plain
+    // level instead of climbing into a ledge changes how the birds fly, not the numbers
+    // the sim draws, which is exactly this group's law. `wave` still 1. Play moved: the
+    // reshaped bounder paths change which enemy survives and the kill credit — P1 now
+    // scores 0 (was 1250) and P2 1850 (was 1050), P2 is down to 3 lives (was 4), and the
+    // process population holds enemy#256 in place of enemy#4260097.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
       wave: 1,
-      procs: 'player#1,enemy#4260098,enemy#4260097,player#2',
-      scores: [1250, 1050],
-      lives: [5, 4],
+      procs: 'player#1,enemy#256,enemy#4260098,player#2',
+      scores: [0, 1850],
+      lives: [5, 3],
     })
   })
 
