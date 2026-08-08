@@ -960,3 +960,8 @@ completed_stories:
     title: 'Bonus city at a score threshold (CHEKBO/BONINL): recover the real bonus interval + claim'
     points: 3
     completed: '2026-08-08'
+  - id: mc4-4
+    epic: mc4
+    title: 'Compose waves into stepGame, HUD wave/multiplier readout, and a seeded multi-wave playthrough'
+    points: 3
+    completed: '2026-08-08'
