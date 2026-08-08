@@ -38,12 +38,16 @@ describe('speedPattern (glossary.md §Speeds — no floats, a repeating move/ski
 
 describe('stepPacman — level-1 (80%) speed advances the cited pixel count over N frames', () => {
   it('advances exactly 4px over 5 frames on a clear straight run (tunnel row, no dots)', () => {
-    // The tunnel row (maze.ts TUNNEL_ROW) is bare path ('T   ...   T') —
-    // confirmed here, not assumed, so this test cannot silently drift onto a
-    // dot tile and pick up an unplanned eat-pause.
-    const startTx = 5
+    // The authentic tunnel row (maze.ts TUNNEL_ROW=17) is
+    // 'T.....d..#HHHHHH#...d.....T' — a dot sits at (6,17) and another at
+    // (21,17), so the longest dot-free run is 5 tiles wide (cols 1-5, or
+    // 22-26), not the 6+ the pre-pm3-9 reconstruction offered. Movement here
+    // is only 4px (< TILE_PX=8) so Pac-Man never actually leaves tile
+    // `startTx`, but the loop below still confirms the whole run this test's
+    // name promises is genuinely clear, not assumed.
+    const startTx = 1
     expect(tileAt(startTx, TUNNEL_ROW)).toBe('path')
-    for (let tx = startTx; tx <= startTx + 5; tx++) {
+    for (let tx = startTx; tx <= startTx + 4; tx++) {
       expect(tileAt(tx, TUNNEL_ROW), `(${tx},${TUNNEL_ROW}) must be clear path for this test`).toBe('path')
     }
 

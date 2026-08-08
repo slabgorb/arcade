@@ -166,3 +166,34 @@ export function decodeSpritePixel(rom: Uint8Array, spriteIndex: number, x: numbe
   for (let p = 0; p < 2; p++) v |= bitAt(rom, base, TILE_PLANES[p] + SPR_X[x] + SPR_Y[y]) << p
   return v
 }
+
+// ─── VIDEO-RAM OFFSET MAPPER (pm3-8) ───────────────────────────────────────
+// MAME `pacman_v.cpp:170` `pacman_scan_rows`: maps a (col,row) in Pac-Man's
+// 36x28 tilemap to a video/colour-RAM offset. Re-implemented from the driver
+// arithmetic, cited here in prose per this story's "cite, don't copy"
+// constraint; nothing below is pasted from MAME.
+
+/** MAME `pacman_v.cpp:170` `pacman_scan_rows`: maps a (col,row) in Pac-Man's
+ *  36x28 tilemap to a video/colour-RAM offset (0..0x3ff). Re-implemented from
+ *  the driver arithmetic (`row += 2; col -= 2; if (col & 0x20) ...`), cited not
+ *  copied. `col` 0..35, `row` 0..27. */
+export function pacmanScanRows(col: number, row: number): number {
+  const r = row + 2
+  const c = col - 2
+  if (c & 0x20) return r + ((c & 0x1f) << 5)
+  return c + (r << 5)
+}
+
+/** Screen cell (sx: column 0..27, sy: row 0..35) -> RAM offset. Pac-Man's tube
+ *  is ROT90 CLOCKWISE on real hardware (MAME `emucore.h` `ROT90 =
+ *  ORIENTATION_SWAP_XY | ORIENTATION_FLIP_X`): the native (unrotated)
+ *  36-col x 28-row tilemap maps to the screen by swapping axes and then
+ *  flipping the new X axis, i.e. native col = sy, native row = 27 - sx.
+ *  Task 6's oracle confirmed this is candidate B of the four enumerated
+ *  there (`pacmanScanRows(sy, 27 - sx)`) — NOT the naive `col=sy, row=sx`
+ *  swap this comment previously stated, which renders mirrored (the ROM's
+ *  FLIP_X half of ROT90 was missing). Derived independently from MAME's
+ *  ORIENTATION_* flag semantics in `emucore.h`, not picked by trial alone. */
+export function mazeCellOffset(sx: number, sy: number): number {
+  return pacmanScanRows(sy, 27 - sx)
+}

@@ -4,17 +4,6 @@
 // no DOM, no clock, no Math.random, no shell import (the core/shell boundary
 // the purity sweep — tests/purity.test.ts — arms the moment this file lands).
 //
-// ─── WHAT IS BYTE-CITED AND WHAT IS NOT ──────────────────────────────────────
-// `pacman.asm` (0000-3fff) is the 16 KB PROGRAM ROM disassembly. The maze's
-// WALL/DOT/ENERGIZER LAYOUT is not program-ROM data at all — it lives in the
-// tile/colour GFX ROMs (not vendored here) and in the video hardware's tile
-// RAM, written once at boot from that graphics data. There is no `pacman.asm`
-// line that IS "wall at column 3, row 7" the way `pacman.asm:2b17` IS the dot's
-// score. Per the pm1-3 task brief, the ROW TABLE below is therefore encoded
-// as a faithful-style reconstruction of the arcade's maze shape (28x36 tiles,
-// symmetric, one ghost house, one tunnel row) and its individual tiles are
-// NOT byte-cited — that is stated here, not hidden.
-//
 // The one number that DOES have a real ROM anchor is the total pellet count.
 // `pacman.asm:20e6` loads the literal `#f4` = 244 = 240 dots + 4 energizers,
 // in the fruit-bonus threshold routine (the dossier's "first fruit at 70
@@ -24,14 +13,13 @@
 // is TOTAL_PELLETS minus the energizers this table actually contains — a
 // derived value, re-checked against the table itself by
 // tests/core/maze.test.ts, never hardcoded independent of the table.
-//
-// ─── GPL FIREWALL ─────────────────────────────────────────────────────────
-// This table was authored fresh for this repo, from the well-known public
-// shape of the arcade maze (Dossier ch.3 "The Maze") — no line, table, or
-// structure was copied from shaunlebron/pacman (GPL v3; see brief.md's
-// firewall clause).
 
 import { TILE_PX } from './actor'
+// The authentic per-cell topology, baked byte-for-byte from the MAME video-RAM
+// capture by tools/bake-core-maze.mjs (pm3-9). Replaces pm1-3's non-byte-cited
+// reconstruction; re-derivation is pinned by tests/core/maze-topology.test.ts.
+// GPL firewall: source is the capture + ROM geometry, not shaunlebron/pacman.
+import { MAZE_ROWS } from './maze-topology.generated'
 
 /** The `pacman.asm:20e6` literal: 240 dots + 4 energizers. Not itself a
  *  TileKind count — see DOT_COUNT below, which is derived from this minus
@@ -61,51 +49,14 @@ export const MAZE: MazeSpec = { cols: 28, rows: 36 }
 export type Actor = 'pac-man' | 'ghost'
 
 // ─── THE ROW TABLE ────────────────────────────────────────────────────────
-// One character per tile, 28 characters per row, 36 rows.
+// One character per tile, 28 characters per row, 36 rows. MAZE_ROWS comes
+// from maze-topology.generated (pm3-9) and already carries the HUD bands
+// (rows 0-2, 33-35) as all-'#'; no HUD spread needed here.
 //   '#' wall        '.' dot          'o' energizer
 //   ' ' path (no dot, e.g. plaza/tunnel-row floor)
 //   '=' gate (ghost-house door)      'H' house interior
 //   'T' tunnel exit (the wrap tile, tunnel row only)
-//
-// Rows 0-2 and 33-35 are the scoreboard/lives HUD bands (no dots, no
-// gameplay tiles — 'wall' throughout, matching the reserved rows every other
-// game in this repo treats as non-playable). Rows 3-32 are the 30-row maze.
-const HUD_ROW = '############################'
-
-const MAZE_ROWS: readonly string[] = [
-  '############################',
-  '#............##............#',
-  '#.##########.##.##########.#',
-  '#o##########.##.##########o#',
-  '#.##########.##.##########.#',
-  '#..........................#',
-  '#.####.#####.##.#####.####.#',
-  '#.####.#####.##.#####.####.#',
-  '#......##....##....##......#',
-  '######.##### ## #####.######',
-  '######.##### ## #####.######',
-  '######.##..........##.######',
-  '######.## ###==### ##.######',
-  '######.## #HHHHHH# ##.######',
-  'T                          T',
-  '######.## #HHHHHH# ##.######',
-  '######.## ######## ##.######',
-  '######.##.        .##.######',
-  '######.## ######## ##.######',
-  '######.## ######## ##.######',
-  '#............##............#',
-  '#.####.#####.##.#####.####.#',
-  '#o..##................##..o#',
-  '###.##.##.########.##.##.###',
-  '###.##.##.########.##.##.###',
-  '#......##....##....##......#',
-  '#.##########.##.##########.#',
-  '#.##########.##.##########.#',
-  '#..........................#',
-  '############################',
-]
-
-const ROWS: readonly string[] = [HUD_ROW, HUD_ROW, HUD_ROW, ...MAZE_ROWS, HUD_ROW, HUD_ROW, HUD_ROW]
+const ROWS: readonly string[] = MAZE_ROWS
 
 if (ROWS.length !== MAZE.rows) {
   throw new Error(`maze row table has ${ROWS.length} rows, expected ${MAZE.rows}`)

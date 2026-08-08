@@ -260,3 +260,54 @@ describe('AC1 — render.ts consumes the grown state, it does not ignore it', ()
     expect(renderSrc, 'the HUD must show base ammo').toMatch(/\bammo\b/)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// mc9-3 AC2 — the in-flight ABM trail terminates in an authentic TIP marker.
+// The cabinet's MISSILE TIPS & TRAIL (W3DSUP.MAC:925) draws the trail's leading edge
+// as a FLASH-coloured tip ("TIP OF MISSILE TRAIL IS FLASH", :931). The ICBM trail
+// already draws a head dot; the ABM trail is a BARE line today — this is the RED.
+// (DRAW MISSILE, W3DSUP.MAC:1221 is the BASE ready-ammo stack, already rendered in
+// mc9-1 — a different routine; that citation stays for the ammo display.)
+// ═════════════════════════════════════════════════════════════════════════════
+describe('mc9-3 AC2 — an in-flight ABM trail draws a tip marker at its head', () => {
+  const bare = withCursor(createGame(1))
+  // One ABM mid-flight: launched from a base (low v), head risen to mid-canvas,
+  // flying toward a crosshair up high. Its head projects to (100, ~106) — a region
+  // the empty field never draws in (structures bottom, crosshair parked top-left).
+  const abm = {
+    origin: { h: 100, v: 16 },
+    target: { h: 100, v: 200 },
+    pos: { h: 100, v: 120 },
+    arrived: false,
+  }
+  const oneAbm: GameState = { ...bare, abms: [abm] }
+
+  const tipArcsAtHead = (marks: Mark[]): Mark[] => {
+    const hx = projectX(abm.pos.h)
+    const hy = projectY(abm.pos.v)
+    return marks.filter((m) => m.op === 'arc' && Math.hypot(m.x - hx, m.y - hy) <= 8)
+  }
+
+  it('draws a filled TIP marker (an arc) at the ABM head — not a bare line', () => {
+    expect(tipArcsAtHead(paint(bare)).length, 'the empty field draws no tip at the head position').toBe(0)
+    expect(
+      tipArcsAtHead(paint(oneAbm)).length,
+      'the ABM in-flight trail must terminate in a tip marker (MISSILE TIPS & TRAIL, W3DSUP.MAC:925); ' +
+        'today the ABM loop strokes a bare line with no head dot',
+    ).toBeGreaterThanOrEqual(1)
+  })
+
+  it('an ABM on screen adds draw marks the empty field did not (the trail is painted)', () => {
+    expect(paint(oneAbm).length).toBeGreaterThan(paint(bare).length)
+  })
+})
+
+describe('mc9-3 AC2 — render.ts cites the authentic trail-tip routine', () => {
+  const renderSrc = readFileSync(join(root, 'src', 'shell', 'render.ts'), 'utf8')
+  it('names MISSILE TIPS & TRAIL (W3DSUP.MAC:925) for the in-flight trail styling', () => {
+    expect(
+      renderSrc,
+      'the in-flight trail tip must cite MISSILE TIPS & TRAIL — not only DRAW MISSILE (the base ammo stack)',
+    ).toMatch(/MISSILE TIPS & TRAIL|W3DSUP\.MAC:925/)
+  })
+})

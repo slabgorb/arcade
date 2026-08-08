@@ -145,17 +145,27 @@ export function drawFrame(
     ctx.fill()
   }
 
-  // ABM trails (mc1-4) — a line from each missile's launch base to its head.
-  // The friendly-missile hue is COL110 (ABMS legend slot).
-  ctx.strokeStyle = hue(SLOT.ABMS)
+  // ABM trails (mc1-4) — a line from each missile's launch base to its head, tipped
+  // with an authentic flashing leading dot. MISSILE TIPS & TRAIL (W3DSUP.MAC:925):
+  // "TIP OF MISSILE TRAIL IS FLASH" (:931) — the trail body draws in the ABMS hue
+  // (COL110), the leading edge in a flash register. (DRAW MISSILE, W3DSUP.MAC:1221 is
+  // the base ready-ammo stack — a different routine, drawn above.) The tip picks a
+  // flash slot that differs from the sky so it stays visible, as the blast does.
+  const abmTip = hue(FLASH_SLOTS.find((s) => hue(s) !== hue(SLOT.SKY)) ?? FLASH_SLOTS[0])
+  const tipR = Math.max(1, Math.round(width / 200))
   ctx.lineWidth = 1
   for (const abm of state.abms) {
     const from = project(abm.origin, width, height)
     const to = project(abm.pos, width, height)
+    ctx.strokeStyle = hue(SLOT.ABMS)
     ctx.beginPath()
     ctx.moveTo(from.x, from.y)
     ctx.lineTo(to.x, to.y)
     ctx.stroke()
+    ctx.fillStyle = abmTip
+    ctx.beginPath()
+    ctx.arc(to.x, to.y, tipR, 0, Math.PI * 2)
+    ctx.fill()
   }
 
   // Blasts (mc1-4) — an expanding/collapsing circle at each explosion, its radius
