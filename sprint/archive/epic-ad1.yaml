@@ -3,7 +3,7 @@ type: epic
 title: Attract demos — the self-play the cabinets owe the lobby
 description: "The lobby showcase carousel (uf1-6) frames each game's LIVE attract mode, so a game with no self-play demo contributes a text screen or an idle death instead of gameplay. Day one only tempest self-plays (demoActive, story 10-3) and centipede animates its attract world; star-wars and battlezone show rotating text pages, asteroids drifts rocks with no ship, and joust boots gover=GOVER_RUNNING with nobody at the controls. Each story here gives one game a real self-play attract demo and then flips 'showcase: true' in its own plugins/<id>/plugin.ts manifest. NOTE THE MIGRATION: the 2026-07-30 collapse to a monorepo DELETED lobby/src/core/registry.ts — the file this epic used to name — and generates src/host/registry.ts from the seven manifests instead, so a tile can no longer be opted in from the lobby side at all. This work is owed to the cabinets regardless of the lobby: a machine that does not demo itself is unfaithful to every one of these ROMs."
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: ad1-1
@@ -89,3 +89,4 @@ stories:
       - demoInput in plugins/battlezone/src/core/sim.ts either cites that mechanism, or carries a recorded deliberate-substitute note explaining what the ROM does and why it was not ported
       - "No fidelity defect is assumed: if the ROM's choreography matches what demoInput already does, that is a valid outcome and the citation is the deliverable"
     type: chore
+completed: '2026-08-08'

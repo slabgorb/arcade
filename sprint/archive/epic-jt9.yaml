@@ -34,7 +34,7 @@ description: |-
 
   TWO MERGES DELIBERATELY NOT MADE, and the reasons outrank a groomer's pattern-match. jt9-14 and jt9-15 stay separate because jt9-14 anticipated exactly this pass and refused it in its own text ("adjacent enough to be merged by a groomer who reads only the titles; they should not be") — different loop, different routine, different failure. jt9-35 stays separate because it lives in src/shared/, its suite is the 11,666-test cabinet-wide run, and it names centipede as live-affected; folding it into a joust story would run a shared-library change under a joust-only project gate. Also unmerged but flagged: jt9-23 (5 pts) is filed as at-risk, but read its evidence carefully — uf1-9's zero-frames result says the up-seek path is unreached BECAUSE NO TEST'S PLAY GETS TO WAVE 4, which is a fixture gap, not a dead path. Rule on that with a measurement before scheduling it, not inside it.
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: jt9-1
@@ -1181,3 +1181,4 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+completed: '2026-08-08'
