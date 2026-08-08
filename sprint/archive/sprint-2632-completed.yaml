@@ -945,3 +945,8 @@ completed_stories:
     title: 'Title screen (MARQUE): transcribe the JOUST vector logo + (C)1982 copyright + EXTRA-MOUNT lines in FONT57, with the ATT.SRC colour cycle'
     points: 5
     completed: '2026-08-08'
+  - id: mc4-4
+    epic: mc4
+    title: 'Compose waves into stepGame, HUD wave/multiplier readout, and a seeded multi-wave playthrough'
+    points: 3
+    completed: '2026-08-08'
