@@ -39,7 +39,10 @@
 
 import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
-import { drawFrame } from '../src/shell/render.js'
+// (mc4-4's HUD render block — "the HUD draws the wave number and current multiplier",
+//  asserted via the drawn fillText string — moved to render-hud.test.ts when mc9-4
+//  retired the monospace fillText HUD. Its guarantees are re-pinned there
+//  font-agnostically, so this file is now pure core and no longer imports drawFrame.)
 import { INITIAL_WAVE, waveSchedule, waveEndBonus, nextWaveBudget } from '../src/core/wave.js'
 import { scoreMultiplier, ICBM_KILL_POINTS } from '../src/core/score.js'
 import { START_CITIES, NCITY, MAXMIS } from '../src/core/field.js'
@@ -354,116 +357,5 @@ describe('mc4-4 AC3 — the composed run is fully deterministic in the seed', ()
     for (const s of trajectory(SEED, 200)) {
       expect(s.icbms.length, `frame ${s.frame}: MXICON exceeded`).toBeLessThanOrEqual(MXICON)
     }
-  })
-})
-
-// ═════════════════════════════════════════════════════════════════════════════
-// AC2 — the HUD draws the wave number and current multiplier; the score and ammo it
-// draws remain the core's verbatim values (the HUD-figure rule). Uses the same
-// recording-canvas harness render-battle.test.ts / render-field.test.ts use.
-// ═════════════════════════════════════════════════════════════════════════════
-interface Mark {
-  op: string
-  x: number
-  y: number
-  w?: number
-  text?: string
-}
-function recordingCtx(): { ctx: CanvasRenderingContext2D; marks: Mark[] } {
-  const marks: Mark[] = []
-  const xy =
-    (op: string) =>
-    (x: number, y: number, w?: number): void => {
-      marks.push({ op, x, y, w })
-    }
-  const text =
-    (op: string) =>
-    (t: string, x: number, y: number): void => {
-      marks.push({ op, x, y, text: String(t) })
-    }
-  const noop = (): void => {}
-  const api: Record<string, unknown> = {
-    fillStyle: '#000',
-    strokeStyle: '#000',
-    lineWidth: 1,
-    globalAlpha: 1,
-    font: '',
-    fillRect: xy('fillRect'),
-    strokeRect: xy('strokeRect'),
-    rect: xy('rect'),
-    moveTo: xy('moveTo'),
-    lineTo: xy('lineTo'),
-    arc: xy('arc'),
-    ellipse: xy('ellipse'),
-    fillText: text('fillText'),
-    strokeText: text('strokeText'),
-    beginPath: noop,
-    closePath: noop,
-    fill: noop,
-    stroke: noop,
-    save: noop,
-    restore: noop,
-    translate: noop,
-    scale: noop,
-    setTransform: noop,
-    clip: noop,
-  }
-  return { ctx: api as unknown as CanvasRenderingContext2D, marks }
-}
-const W = 256
-const H = 231
-/** All HUD/text strings drawn for a state, joined. */
-function hudText(state: GameState): string {
-  const { ctx, marks } = recordingCtx()
-  drawFrame(ctx, state, W, H)
-  return marks
-    .filter((m) => m.text !== undefined)
-    .map((m) => m.text as string)
-    .join(' ')
-}
-
-describe('mc4-4 AC2 — the HUD draws the wave number and the current multiplier', () => {
-  // Wave 7 → scoreMultiplier(7) = 4. Score 90210 and ammo 9/8/5 are chosen so that
-  // neither the digit 7 (the wave) nor the digit 4 (the multiplier) appears anywhere
-  // else — so a match on '7' proves the wave is drawn and '4' proves the multiplier.
-  const HUD_WAVE = 7
-  const hudMultiplier = scoreMultiplier(HUD_WAVE) // 4
-  const AMMOS = [9, 8, 5]
-  const g = createGame(1)
-  const state = withFields(g, {
-    wave: HUD_WAVE,
-    multiplier: hudMultiplier,
-    score: 90210,
-    cursor: { h: 5, v: 210 }, // parked away from the structure columns
-    bases: g.bases.map((b, i) => ({ ...b, ammo: AMMOS[i] })),
-  })
-  const drawn = hudText(state)
-
-  it('draws the wave number', () => {
-    expect(drawn, 'the HUD must show the wave number (7)').toContain(String(HUD_WAVE))
-  })
-
-  it('draws the current multiplier value', () => {
-    expect(drawn, 'the HUD must show the current multiplier (scoreMultiplier(7) = 4)').toContain(
-      String(hudMultiplier),
-    )
-  })
-
-  it('still draws the core score VERBATIM (HUD-figure rule — not a re-derived copy)', () => {
-    // 90210 is unreachable by re-derivation from this state (0 kills), so drawing it
-    // proves the HUD reads state.score directly.
-    expect(drawn, 'the score must remain the core value 90210').toContain('90210')
-  })
-
-  it('still draws each live base ammo', () => {
-    for (const a of AMMOS) expect(drawn, `the HUD must still show base ammo ${a}`).toContain(String(a))
-  })
-
-  it('the drawn wave TRACKS state.wave (not a hardcoded literal)', () => {
-    const early = hudText(withFields(g, { wave: 1, multiplier: scoreMultiplier(1), score: 400 }))
-    const later = hudText(withFields(g, { wave: 7, multiplier: scoreMultiplier(7), score: 400 }))
-    expect(early, 'wave 1 must be shown on the wave-1 state').toContain('1')
-    expect(later, 'wave 7 must be shown on the wave-7 state').toContain('7')
-    expect(later, 'a different wave must produce different HUD text').not.toBe(early)
   })
 })
