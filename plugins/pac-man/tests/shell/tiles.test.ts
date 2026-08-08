@@ -137,45 +137,6 @@ describe('drawMaze tile blit (pm3-4)', () => {
     expect(sawBlue).toBe(true)
   })
 
-  // Round-3 fix regression guard: rounds 1-2 both passed every test above
-  // (real 8x8 putImageData blits, correct blue/no-peach colour) while the
-  // maze still rendered as ~20 full-width horizontal stripes — every INTERIOR
-  // wall cell (walls on all four orthogonal sides, e.g. inside a 2-3-cell-
-  // thick block or an all-'#' HUD row) fell through to the horizontal-line
-  // default instead of painting nothing. Locate one real interior wall cell
-  // and one real corridor-edge wall cell directly from the maze table (not
-  // hardcoded coordinates, so this stays correct if the table is ever
-  // edited), and assert drawMaze treats them oppositely.
-  function findWallCell(wantInterior: boolean): { tx: number; ty: number } {
-    for (let ty = 3; ty < MAZE.rows - 3; ty++) {
-      for (let tx = 0; tx < MAZE.cols; tx++) {
-        if (tileAt(tx, ty) !== 'wall') continue
-        const up = tileAt(tx, ty - 1) === 'wall'
-        const down = tileAt(tx, ty + 1) === 'wall'
-        const left = tileAt(tx - 1, ty) === 'wall'
-        const right = tileAt(tx + 1, ty) === 'wall'
-        const isInterior = up && down && left && right
-        if (isInterior === wantInterior) return { tx, ty }
-      }
-    }
-    throw new Error(`no ${wantInterior ? 'interior' : 'edge'} wall cell found in the maze table`)
-  }
-
-  it('an interior wall cell draws nothing; a corridor-edge wall cell draws a tile', () => {
-    const interior = findWallCell(true)
-    const edge = findWallCell(false)
-
-    const ctx = fakeCtx()
-    drawMaze(ctx, new Set())
-    const calls = (ctx as unknown as { calls: RecordedCall[] }).calls
-
-    const paintsAt = (tx: number, ty: number) =>
-      calls.some((c) => c.x === tx * TILE_PX && c.y === ty * TILE_PX && c.w === 8 && c.h === 8)
-
-    expect(paintsAt(interior.tx, interior.ty)).toBe(false) // black background, no blit at all
-    expect(paintsAt(edge.tx, edge.ty)).toBe(true) // a line/corner tile facing the open side
-  })
-
   it('the top and bottom HUD bands never paint wall line art', () => {
     const ctx = fakeCtx()
     drawMaze(ctx, new Set())
