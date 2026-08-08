@@ -8,9 +8,10 @@ repos: arcade
 stories:
   - id: ad1-1
     title: star-wars self-play attract demo — fly the TIE wave unattended, then opt into the lobby carousel
-    points: 5
+    description: "CANCELED 2026-08-08 (user ruling): the ad1 attract-demo epic is superseded by other work. This story is CANCELED, not deleted, per this repo's cancel convention (see ad1-4 and epic-jt9's canceled stories). The title above is retained UNCHANGED as ground truth for any successor; no measured body existed to retain."
+    points: 0
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
   - id: ad1-2
@@ -50,20 +51,23 @@ stories:
     workflow: tdd
   - id: ad1-5
     title: red-baron attract demo — then flip listed+showcase in its own manifest (both ship false today with a recorded reason)
-    points: 5
+    description: "CANCELED 2026-08-08 (user ruling): the ad1 attract-demo epic is superseded by other work. This story is CANCELED, not deleted, per this repo's cancel convention (see ad1-4 and epic-jt9's canceled stories). The title above is retained UNCHANGED as ground truth for any successor; no measured body existed to retain. NOTE: ad1-6 (below) is PAIRED with this story on the same twenty-line plugins/red-baron/plugin.ts — if red-baron attract work is ever revived, revisit both together."
+    points: 0
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
   - id: ad1-6
     title: red-baron's tile promises Mouse and Click controls that were never implemented
     description: |-
+      CANCELED 2026-08-08 (user ruling): epic ad1 is superseded by other work, so this story is CANCELED, not deleted — its full text is retained UNCHANGED below as ground truth, per this repo's cancel convention (see ad1-4 and epic-jt9's canceled stories). WATCH OUT: this is a REAL latent defect (red-baron's tile advertises Mouse/Click controls the game never binds), not attract-demo work — it becomes user-visible the moment red-baron ships listed:true. Re-file it against red-baron rather than treating cancellation as resolution. ORIGINAL TEXT:
+
       Same class as uf1-6 — a promise the docs make that the code never kept. Found during the monorepo migration (plan task 14, 2026-07-30) and verified against source, not inferred. plugins/red-baron/plugin.ts declares controls ['FLY — Mouse / Arrows', 'FIRE — Click / Space'], which the lobby renders verbatim on the game's tile. But plugins/red-baron/src/main.ts binds only keydown and keyup (arrows, WASD and Space); its single pointerdown listener is the audio unlock, not a control. So Mouse does not fly and Click does not fire — half of every advertised control does nothing. The text came into the manifest verbatim from the migration brief, which took it from red-baron's own docs, so the error predates the migration and was faithfully carried forward rather than introduced by it. This is latent rather than live because red-baron ships listed:false and showcase:false, so no tile is rendered today — but it becomes user-visible the moment red-baron is listed, which is a one-field change someone will make without re-reading the control strings. Decide the honest fix: either implement pointer flight and click-to-fire, or correct the manifest to describe the keyboard controls that actually exist. Correcting the text is the cheap option and is probably right, since nothing in the ROM work calls for a mouse. Check the other six manifests' control strings against their own main.ts bindings while here — this was found by accident, not by a sweep, so siblings are unaudited.
 
       PAIRED WITH ad1-5 (noted 2026-07-31): both stories edit the same twenty-line file, plugins/red-baron/plugin.ts — this one corrects the `controls` strings, ad1-5 flips `listed` and `showcase` once the attract demo exists. Do this one first and let ad1-5 be a flag flip, or do them together; two separate reviews of one manifest is waste. The 'lobby/src/core/registry.ts' this story class used to name no longer exists — the migration deleted it and generates src/host/registry.ts from the seven manifests.
-    points: 1
+    points: 0
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -74,10 +78,10 @@ stories:
     type: bug
   - id: ad1-7
     title: battlezone's demoInput autopilot has never been checked against the 1980 ROM's own attract choreography
-    description: "Raised at ad1-2 setup by SM as an open claim, left open by Dev, and confirmed as an open QUESTION by the Reviewer (2026-08-01). Read the framing carefully: NOBODY HAS MEASURED A DIVERGENCE. No fidelity defect is claimed here. What is claimed is that a gap has never been checked, and that ad1-2 raised the cost of leaving it unchecked. THE SITUATION: battlezone's attract demo is driven by `demoInput` in plugins/battlezone/src/core/sim.ts — a lazy patrol arc plus occasional pot-shots, a pure function of the demo clock (leftTread/rightTread from sin(t*0.7) and sin(t*0.9+1.3), fire when sin(t*1.7) > 0.93). It arrived with bz1-10, whose archived session (sprint/archive/bz1-10-session.md:314) describes it as a \"deterministic demo autopilot (pure function of the demo clock)\" — i.e. it was authored to BE deterministic and input-proof, which it verifiably is, and not authored as a port of anything. Those trigonometric constants cite no ROM routine. Every other number in this game was pinned to primary source by epic bz3 and the battlezone audit; this one was invented, reasonably, to fill a hole. WHY IT MATTERS MORE NOW: ad1-2 put this demo on the arcade's front page. It is no longer a screen a visitor reaches by navigating to battlezone and waiting — it is what the lobby shows for twenty seconds out of every sixty, and for many visitors it will be the only battlezone they ever watch. An invented attract choreography is a much louder claim about the cabinet than it was a day ago. THE WORK: establish whether the 1980 ROM drives its attract demo at all, and if so from what — a canned input table, a script, the live AI, or a seeded replay — then either cite demoInput to that mechanism or record, with the citation, that the ROM's approach is unportable and demoInput is a deliberate substitute. A recorded and cited \"we chose differently, here is why\" is a perfectly good outcome; an uncited invention that reads like a port is not. Consult docs/audit and the vendored battlezone ROM source (see docs/reference-sources.md); check the battlezone audit's unfiled ROM follow-ups before assuming this is untouched ground. Beware the recorded trap in this repo: the citation gate re-opens the QUOTED LINE only, so cite the MECHANISM a derived constant rests on, not just a line that happens to contain a number."
-    points: 3
+    description: "CANCELED 2026-08-08 (user ruling): epic ad1 is superseded by other work, so this story is CANCELED, not deleted — its full text is retained UNCHANGED below as ground truth, per this repo's cancel convention (see ad1-4 and epic-jt9's canceled stories). WATCH OUT: this is an OPEN fidelity QUESTION (battlezone's front-page demoInput autopilot has never been checked against the 1980 ROM's attract choreography), not attract-demo work; ad1-2 put this demo on the lobby front page, which is why leaving it unchecked is louder now, not quieter. Re-file it against battlezone rather than treating cancellation as resolution. ORIGINAL TEXT: Raised at ad1-2 setup by SM as an open claim, left open by Dev, and confirmed as an open QUESTION by the Reviewer (2026-08-01). Read the framing carefully: NOBODY HAS MEASURED A DIVERGENCE. No fidelity defect is claimed here. What is claimed is that a gap has never been checked, and that ad1-2 raised the cost of leaving it unchecked. THE SITUATION: battlezone's attract demo is driven by `demoInput` in plugins/battlezone/src/core/sim.ts — a lazy patrol arc plus occasional pot-shots, a pure function of the demo clock (leftTread/rightTread from sin(t*0.7) and sin(t*0.9+1.3), fire when sin(t*1.7) > 0.93). It arrived with bz1-10, whose archived session (sprint/archive/bz1-10-session.md:314) describes it as a \"deterministic demo autopilot (pure function of the demo clock)\" — i.e. it was authored to BE deterministic and input-proof, which it verifiably is, and not authored as a port of anything. Those trigonometric constants cite no ROM routine. Every other number in this game was pinned to primary source by epic bz3 and the battlezone audit; this one was invented, reasonably, to fill a hole. WHY IT MATTERS MORE NOW: ad1-2 put this demo on the arcade's front page. It is no longer a screen a visitor reaches by navigating to battlezone and waiting — it is what the lobby shows for twenty seconds out of every sixty, and for many visitors it will be the only battlezone they ever watch. An invented attract choreography is a much louder claim about the cabinet than it was a day ago. THE WORK: establish whether the 1980 ROM drives its attract demo at all, and if so from what — a canned input table, a script, the live AI, or a seeded replay — then either cite demoInput to that mechanism or record, with the citation, that the ROM's approach is unportable and demoInput is a deliberate substitute. A recorded and cited \"we chose differently, here is why\" is a perfectly good outcome; an uncited invention that reads like a port is not. Consult docs/audit and the vendored battlezone ROM source (see docs/reference-sources.md); check the battlezone audit's unfiled ROM follow-ups before assuming this is untouched ground. Beware the recorded trap in this repo: the citation gate re-opens the QUOTED LINE only, so cite the MECHANISM a derived constant rests on, not just a line that happens to contain a number."
+    points: 0
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
