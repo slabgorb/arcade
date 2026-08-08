@@ -8,10 +8,11 @@
 import { length, sub, add, scale, dot, normalize, type Vec3 } from '@shared/math3d'
 import { ENEMY_FIRE_INTERVAL, FIRE_MASK, FIRE_THRESHOLD, TRENCH_SCROLL_SPEED } from './state'
 
-/** Vertical field of view (radians) the renderer projects the scene with — the
- * single source of truth shared by the camera (shell/render.ts) and the aim
- * below, so a bolt flies toward exactly what the crosshair covers. */
-export const FOV_Y = Math.PI / 3
+/** Field of view (radians) the scene is projected with — the cabinet's authentic
+ * SYMMETRIC ~90° lens (45° half-angle on both axes, divide-by-depth, aspect-
+ * independent; sw10-1), one source of truth shared by the camera (render.ts) and
+ * the aim below, so a bolt flies toward exactly what the crosshair covers. */
+export const FOV_Y = Math.PI / 2
 
 /** The player's cockpit in SPACE — the world origin.
  *
@@ -43,16 +44,16 @@ export function toCockpit(pos: Vec3): Vec3 {
  * stays unit length.
  *
  * Crucially, the deflection is the INVERSE of the perspective projection the
- * scene is drawn under (FOV_Y, viewport `aspect` = width/height): a point down
- * this ray projects back onto the crosshair at NDC [aimX, aimY] (crosshairNdc),
- * so the bolt hits what the player aimed at. Without the f = 1/tan(FOV_Y/2) and
- * aspect terms the bolt overshoots the reticle by ~f and misses — the 8-16
- * kill-loop bug. `aspect` is a viewport property the shell supplies via Input; it
- * defaults to 1 (square), which is all the pure-core vertical-axis tests need.
+ * scene is drawn under: a point down this ray projects back onto the crosshair
+ * at NDC [aimX, aimY] (crosshairNdc), so the bolt hits what the player aimed at.
+ * Without the f = 1/tan(FOV_Y/2) term the bolt overshoots the reticle by ~f and
+ * misses — the 8-16 kill-loop bug. The cabinet lens is aspect-INDEPENDENT
+ * (sw10-1), so `aspect` no longer scales the ray; the param is retained — callers
+ * thread it into Input.aspect and the frozen guns citation quotes this call site.
  */
 export function aimDirection(aimX: number, aimY: number, aspect = 1): Vec3 {
   const f = 1 / Math.tan(FOV_Y / 2)
-  return normalize([(aimX * aspect) / f, aimY / f, -1])
+  return normalize([aimX / f, aimY / f, -1])
 }
 
 /**

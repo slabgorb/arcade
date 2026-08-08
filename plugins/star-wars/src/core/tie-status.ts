@@ -142,15 +142,13 @@ export const VIEW_NEAR = 0x10
 export const VIEW_FAR = 0x7f00
 
 /**
- * tan of the rendered frustum's vertical half-angle — the slope C_PV's pyramid
- * actually has on OUR glass (uf1-14). The ROM compares lateral/vertical to the
- * depth 1:1 — a ±45° pyramid — because that is the 1983 cabinet's screen shape.
- * Ours is `perspective(FOV_Y, aspect, NEAR, FAR)` (render.ts:490), whose glass
- * ends at FOV_Y/2 = 30° vertically at EVERY aspect, and at
- * atan(aspect · tan(FOV_Y/2)) horizontally. Keeping the 45° claimed a 15° band
- * of sky the player cannot see (so off-screen TIEs passed the §6 fire gate —
- * the defect sw7-24 meant to kill, surviving on the vertical axis) and
- * UNDER-claimed ultrawide flanks by 8.4°, silently starving their fire.
+ * tan of the rendered frustum's half-angle — tan(45°) = 1 under the cabinet's
+ * authentic symmetric ~90° lens (sw10-1). The ROM compares lateral/vertical to
+ * the depth 1:1 — a ±45° pyramid, the 1983 cabinet's screen shape — and now that
+ * the render projects with that same lens (aspect-independent, both half-angles
+ * 45°), C_PV is that pyramid again on BOTH axes. uf1-14 diverged to 30°/aspect
+ * only because the old `perspective(FOV_Y=60°, aspect)` glass was not ±45°; that
+ * lens is retired, so its principle ("the bit matches the glass") lands on ±45°.
  */
 const TAN_HALF_FOV = Math.tan(FOV_Y / 2)
 
@@ -208,7 +206,11 @@ export function inPlayerView(pos: Vec3, aspect: number): boolean {
   const lat = pos[0] - eye[0]
   const vert = pos[1] - eye[1]
   const vBound = depth * TAN_HALF_FOV
-  const hBound = vBound * aspect
+  // sw10-1: the authentic lens is aspect-INDEPENDENT — both half-angles are 45°,
+  // so the horizontal bound equals the vertical (the ROM's |lat| < depth ratio).
+  // `aspect` is retained on the signature (callers still pass state.aspect) but
+  // no longer widens the pyramid; the bit matches the now-±45° glass on both axes.
+  const hBound = vBound
   return depth > VIEW_NEAR && depth <= VIEW_FAR && lat * lat < hBound * hBound && vert * vert < vBound * vBound
 }
 
@@ -275,12 +277,12 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // negative z, so the view depth is eye z minus alien z.
   //
   // The pyramid keeps the ROM's ratio law as its SHAPE — per-axis, strict, the
-  // edge itself out of view — but its slope is the RENDERED frustum's, not the
-  // cabinet's ±45° (uf1-14, TAN_HALF_FOV above): the vertical bound is
-  // depth · tan(FOV_Y/2), the horizontal bound scales that by the viewport
-  // aspect the frame was actually projected with — state.aspect, the uf1-12
-  // field C_PS below already reads, so the bit and the glass cannot disagree
-  // on any canvas shape.
+  // edge itself out of view — and, since sw10-1 unified the render onto the
+  // cabinet's authentic symmetric ~90° lens, its slope IS the cabinet's ±45°
+  // again (TAN_HALF_FOV above = tan 45° = 1): both bounds are depth · tan(45°) =
+  // depth, aspect-independent. state.aspect is still threaded through (uf1-12,
+  // read by C_PS below) but no longer widens the pyramid — the bit and the glass
+  // agree on any canvas because neither depends on its shape.
   const eye = COCKPIT
   if (inPlayerView(e.pos, state.aspect)) {
     status |= Status.C_PV
