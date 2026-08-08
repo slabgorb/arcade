@@ -60,7 +60,7 @@ import { trenchChannel } from '../core/trench-channel'
 import { trenchWallDetail, trenchFarEnd } from '../core/trench-detail'
 // COCKPIT: the space eye = the cockpit (sw8-8), not a literal
 import { crosshairNdc, FOV_Y, COCKPIT } from '../core/gameRules'
-import { CAMERA_ORIENT } from '../core/basis' // sw10-1: native world → eye remap (retires *_ORIENT)
+import { CAMERA_ORIENT, toNative } from '../core/basis' // sw10-1: native world → eye remap (retires *_ORIENT)
 import { surfaceShip } from '../core/sim' // the ship point (sw7-16), not a copy
 import {
   perspective,
@@ -330,7 +330,7 @@ export function deathStarPlacement(state: GameState): { pos: Vec3; scale: number
   const z = DEATH_STAR_Z_FAR + (DEATH_STAR_Z_NEAR - DEATH_STAR_Z_FAR) * p
   const scale = DEATH_STAR_SCALE_FAR + (DEATH_STAR_SCALE_NEAR - DEATH_STAR_SCALE_FAR) * p
   const x = Math.tan(deathStarOffAxis(t)) * -z
-  return { pos: [x, 0, z], scale }
+  return { pos: toNative([x, 0, z]), scale } // sw10-1: native [depth, right, up]
 }
 
 // sw7-15 / M-010: the picture is in raw ROM units (radius 50); scale it up so the body
@@ -354,7 +354,7 @@ function deathStarSeat(state: GameState): { pos: Vec3; scale: number } {
     if (age >= 0 && age <= DEATH_STAR_BOOM_SECONDS) {
       const loomT = Math.min(1, age / DEATH_STAR_LOOM_SECONDS)
       const scale = DEATH_STAR_SCALE_NEAR + (DEATH_STAR_LOOM_MAX_SCALE - DEATH_STAR_SCALE_NEAR) * loomT
-      return { pos: [0, 0, DEATH_STAR_Z_NEAR], scale }
+      return { pos: toNative([0, 0, DEATH_STAR_Z_NEAR]), scale } // sw10-1: native [depth, right, up]
     }
   }
   return deathStarPlacement(state)

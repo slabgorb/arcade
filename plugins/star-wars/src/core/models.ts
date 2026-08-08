@@ -789,7 +789,8 @@ export const TRENCH_CATWALK: Model3D = {
 
 /** A flat (z=0) picture model from a single polyline; `close` links last→first. */
 function picture(name: string, pts2d: readonly (readonly [number, number])[], close: boolean): Model3D {
-  const vertices: Vec3[] = pts2d.map(([x, y]) => [x, y, 0])
+  // sw10-1: a flat billboard in the NATIVE screen plane — depth X=0, right Y=x, up Z=y.
+  const vertices: Vec3[] = pts2d.map(([x, y]) => [0, x, y])
   const edges: [number, number][] = []
   for (let i = 0; i + 1 < pts2d.length; i++) edges.push([i, i + 1])
   if (close && pts2d.length > 2) edges.push([pts2d.length - 1, 0])
@@ -798,7 +799,7 @@ function picture(name: string, pts2d: readonly (readonly [number, number])[], cl
 
 /** A flat (z=0) picture model from explicit disjoint segments (each [a,b] a line). */
 function pictureSegments(name: string, pts2d: readonly (readonly [number, number])[], edges: readonly [number, number][]): Model3D {
-  return { name, vertices: pts2d.map(([x, y]) => [x, y, 0]), edges: edges.map(([a, b]) => [a, b]) }
+  return { name, vertices: pts2d.map(([x, y]) => [0, x, y]), edges: edges.map(([a, b]) => [a, b]) } // sw10-1: native billboard plane
 }
 
 // BSCIR — the green base circle (WSVROM.MAC), 28 points on a radius-50 circle.
