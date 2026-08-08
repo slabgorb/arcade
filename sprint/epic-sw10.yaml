@@ -1,0 +1,24 @@
+id: sw10
+type: epic
+title: Star Wars projection & fire-frame fidelity
+description: "From the 2026-08-08 projection audit (plugins/star-wars/docs/2026-08-08-star-wars-projection-audit.md): our 3D→2D lens diverges from the cabinet (authentic symmetric ~90° FOV, divide-by-depth-X, native X-fwd/Y-right/Z-up) and enemy fire must be consistent with each phase's scroll frame. Covers the lens unification and the surface-fire scroll-carry follow-up to the shipped trench fix (PR #125)."
+priority: p1
+status: backlog
+repos: arcade
+stories:
+  - id: sw10-1
+    title: Unify on the cabinet's authentic projection lens (symmetric ~90° FOV, divide-by-depth) and retire the per-model *_ORIENT axis hacks
+    points: 8
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor
+  - id: sw10-2
+    title: Surface turret fire rides surfaceScrollZ — mirror the trench wall-gun scroll-carry fix (sim.ts:1139)
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
