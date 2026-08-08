@@ -1,7 +1,3 @@
-# Sprint TO Sprint 2633 - Completed Stories
-# Jira Sprint ID: 4
-# Archived: 2026-08-08
-
 sprint:
   name: "TO Sprint 2633"
   number: 2633
@@ -9,5 +5,10 @@ sprint:
   jira_sprint_name: "TO Sprint 2633"
   goal: Shared modules to the shared library
 
-completed:
-  # Completed stories will be appended here by pf sprint archive
+completed_epics: []
+completed_stories:
+  - id: mc5-1
+    epic: mc5
+    title: 'MIRV split (mirv.ts): an in-flight ballistic ICBM entering height band [128,160] forks into <=3 child ICBMs, re-targeted; suppressed at >=12 live explosions. REV-01 W3MAIN.MAC:2685 MIRVER'
+    points: 3
+    completed: '2026-08-08'
