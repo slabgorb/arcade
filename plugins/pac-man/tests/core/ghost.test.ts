@@ -2,9 +2,17 @@
 //
 // Story pm1-5 (RED, TEA) — ghost kinematics + house release, written BEFORE
 // src/core/ghost.ts and src/core/house.ts exist. Real maze coordinates below
-// (junction (12,8), red-zone tile (12,14)) were read off `src/core/maze.ts`'s
+// (junction (6,8), red-zone tile (12,14)) were read off `src/core/maze.ts`'s
 // actual row table via `isWalkable`, not invented — see glossary.md §Ghost
 // movement / §Ghost house for the citation status of each fixture.
+//
+// Re-baselined for pm3-9 (authentic maze; TUNNEL_ROW moved 14->17, the whole
+// topology shifted with it): (12,8) stopped being a 4-way junction (its
+// down-neighbour (12,9) is now a wall), so the junction fixture moved to
+// (6,8), which the authentic table confirms is still open on all four
+// sides. (12,14) is unchanged as a RED_ZONE_TILES entry, but its
+// down-neighbour (12,15) is now a walkable house tile (not a wall) in the
+// authentic layout — the fixture below reflects that.
 
 import { describe, it, expect } from 'vitest'
 import { isWalkable } from '../../src/core/maze'
@@ -22,16 +30,16 @@ function ghostAt(tx: number, ty: number, dir: Actor['dir']): Ghost {
 }
 
 describe('fixture sanity — the junction and red-zone tiles are real maze geometry', () => {
-  it('(12,8) is a genuine 4-way junction (all four neighbours walkable)', () => {
-    expect(isWalkable(12, 7, 'ghost')).toBe(true) // up
-    expect(isWalkable(12, 9, 'ghost')).toBe(true) // down
-    expect(isWalkable(11, 8, 'ghost')).toBe(true) // left
-    expect(isWalkable(13, 8, 'ghost')).toBe(true) // right
+  it('(6,8) is a genuine 4-way junction (all four neighbours walkable)', () => {
+    expect(isWalkable(6, 7, 'ghost')).toBe(true) // up
+    expect(isWalkable(6, 9, 'ghost')).toBe(true) // down
+    expect(isWalkable(5, 8, 'ghost')).toBe(true) // left
+    expect(isWalkable(7, 8, 'ghost')).toBe(true) // right
   })
 
   it('(12,14) genuinely has a walkable up-neighbour (the red-zone rule has real work to do)', () => {
     expect(isWalkable(12, 13, 'ghost')).toBe(true)
-    expect(isWalkable(12, 15, 'ghost')).toBe(false) // house wall below
+    expect(isWalkable(12, 15, 'ghost')).toBe(true) // house interior, not a wall — see file header
     expect(isWalkable(11, 14, 'ghost')).toBe(true)
     expect(isWalkable(13, 14, 'ghost')).toBe(true)
   })
@@ -39,16 +47,16 @@ describe('fixture sanity — the junction and red-zone tiles are real maze geome
 
 describe('stepGhost — target-seeking turn choice (glossary.md §Ghost movement)', () => {
   it('at a junction, picks the walkable direction that minimizes distance to target (no tie)', () => {
-    const g = ghostAt(12, 8, 'none')
-    stepGhost(g, { x: 12, y: 20 }, {}) // far below: 'down' is unambiguously closest
+    const g = ghostAt(6, 8, 'none')
+    stepGhost(g, { x: 6, y: 20 }, {}) // far below: 'down' is unambiguously closest
     expect(g.actor.dir).toBe('down')
   })
 
   it('ties resolve by the ROM tile-preference order up>left>down>right', () => {
     // Target is the junction tile itself: all four neighbours are equidistant
     // (squared distance 1), so only the tie-break decides.
-    const g = ghostAt(12, 8, 'none')
-    stepGhost(g, { x: 12, y: 8 }, {})
+    const g = ghostAt(6, 8, 'none')
+    stepGhost(g, { x: 6, y: 8 }, {})
     expect(g.actor.dir).toBe('up')
   })
 
@@ -56,15 +64,15 @@ describe('stepGhost — target-seeking turn choice (glossary.md §Ghost movement
     // Moving 'right'; target sits directly behind (left neighbour, distance 0)
     // — reversing is forbidden, so up/down (both distance 2) tie next and 'up'
     // wins the tie-break.
-    const g = ghostAt(12, 8, 'right')
-    stepGhost(g, { x: 11, y: 8 }, {})
+    const g = ghostAt(6, 8, 'right')
+    stepGhost(g, { x: 5, y: 8 }, {})
     expect(g.actor.dir).not.toBe('left')
     expect(g.actor.dir).toBe('up')
   })
 
   it('DOES reverse when the mode signal forces it', () => {
-    const g = ghostAt(12, 8, 'right')
-    stepGhost(g, { x: 11, y: 8 }, { forceReverse: true })
+    const g = ghostAt(6, 8, 'right')
+    stepGhost(g, { x: 5, y: 8 }, { forceReverse: true })
     expect(g.actor.dir).toBe('left')
   })
 
@@ -85,9 +93,9 @@ describe('stepGhost — target-seeking turn choice (glossary.md §Ghost movement
   })
 
   it('advances one pixel per frame once a direction is chosen', () => {
-    const g = ghostAt(12, 8, 'none')
-    stepGhost(g, { x: 12, y: 20 }, {})
-    expect(g.actor.xPx).toBe(12 * TILE_PX)
+    const g = ghostAt(6, 8, 'none')
+    stepGhost(g, { x: 6, y: 20 }, {})
+    expect(g.actor.xPx).toBe(6 * TILE_PX)
     expect(g.actor.yPx).toBe(8 * TILE_PX + 1)
   })
 })
