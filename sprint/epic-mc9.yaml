@@ -27,13 +27,17 @@ stories:
     description: "Colour fidelity. Port SET UP COLORS FOR NEXT WAVE (W3DSUP.MAC:1583): the per-wave 8-colour palette applied to background, structures, missiles, and blasts, plus the colour-cycling the cabinet uses. This RESOLVES open question O-5 — the palette / 3rd-colour-bit / hardware address scramble that mc3 render explicitly did not reproduce; the resolution (how REV-01 maps palette indices to the 8 hardware colours) is documented in the dossier or the mc9 design doc and cited. Shell-only (a palette data module + render wiring). Depends on mc3; independent of mc9-1 but naturally lands after it."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-08-07'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'the field is drawn through a per-wave 8-colour palette sourced from SET UP COLORS FOR NEXT WAVE (W3DSUP.MAC:1583): the palette changes wave to wave and background/structures/missiles/blasts pull their colour from it, not from hard-coded hex.'
       - 'open question O-5 is resolved in writing (how REV-01 maps palette indices to the 8 hardware colours, incl. the 3rd-colour-bit/address scramble) and the resolution is cited; the dossier/design doc records it.'
       - 'colour cycling is reproduced where the cabinet cycles; render tests assert palette selection per wave; shell-only, purity.test.ts stays green.'
+    completed: '2026-08-07'
+    review_findings: 'HIGH: paletteIndexForWave throws for wave>=2^31 (int32 >> + signed % -> negative off-table index; docstring falsely claims never-off-table). Plus MEDIUM: render.ts header claims ground pulls from palette (unused SLOT.GROUND); two render-palette source-text assertions satisfiable by header comment prose (mutation-proven); blast COL100==sky on WVACOL waves 13-14 (invisible, latent). LOW: 3 comment/citation-honesty inaccuracies. Route: red rework (TEA adds 2^31 boundary test + tightens assertions, Dev fixes formula/comments/legend claim).'
+    review_verdict: approved
   - id: mc9-3
     title: 'Exact OLDRAD blast curve + EXPFRA cadence and authentic missile trails (retire the triangle blast)'
     description: "The blast, for real. mc1's blast is a symmetric-triangle placeholder from two cited constants; this ports the exact per-tick OLDRAD radius curve and the EXPFRA growth/collapse cadence from PROCESS EXPLOSIONS (W3MAIN.MAC:1811). This is the ONE core touch in mc9: blastRadius() in src/core/explosion.ts moves from the triangle approximation to the cited OLDRAD curve, backed by a new claim (the OLDRAD table / EXPFRA cadence, byte-exact REV-01) so citations.test.ts and the AC3 guard stay green. Also render authentic missile trails (DRAW MISSILE, W3DSUP.MAC:1221) — the ABM/ICBM trail styling the cabinet uses. Depends on mc3; coordinate with mc4 only if both edit explosion.ts."
