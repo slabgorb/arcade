@@ -1,0 +1,90 @@
+[
+  {
+    "id": "MC-BONMSK",
+    "symbol": "BONMSK",
+    "value": 112,
+    "meaning": "OPTIO2 bonus-interval DIP-field mask: 0x70 = bits 4-6. CHEKBO (W3MAIN.MAC:5621) does AND OPTIO2,BONMSK / CMP I,BONMSK / IFNE (a fully-set field disables the bonus) then LSR x3 to turn the masked byte into the .WORD offset into BONINL. Hex 70 under the inherited .RADIX 16.",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 197,
+      "verbatim": "BONMSK\t=70\t\t\t;BONUS INTERVAL OPTION (OPTIO2) MASK"
+    }
+  },
+  {
+    "id": "MC-BONINL-10000",
+    "symbol": "BONINL",
+    "value": 10000,
+    "meaning": "Bonus-city score interval (index 0, the shipped default DIP = OPTIO2 bits clear). BONINL is a .WORD table read AS BCD under CHEKBO's SED divide; entry 0 = hex word 0100 = BCD 100. CHEKBO divides LSCORM:LSCORH (score/100), so the interval in points is 100 x 100 = 10,000 — the factory 'bonus city every 10,000' setting. DERIVED (BCD x 100); consistency-checked in citations-source.test.ts.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5703,
+      "verbatim": "BONINL:\t.WORD 0100,0120,0140,0150,0180,0200,0080"
+    }
+  },
+  {
+    "id": "MC-BONINL-12000",
+    "symbol": "BONINL",
+    "value": 12000,
+    "meaning": "Bonus-city score interval (index 1). BONINL entry 1 = hex word 0120 = BCD 120; x 100 (score/100 via LSCORM:LSCORH) = 12,000 points. DERIVED (BCD x 100); consistency-checked in citations-source.test.ts.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5703,
+      "verbatim": "BONINL:\t.WORD 0100,0120,0140,0150,0180,0200,0080"
+    }
+  },
+  {
+    "id": "MC-BONINL-14000",
+    "symbol": "BONINL",
+    "value": 14000,
+    "meaning": "Bonus-city score interval (index 2). BONINL entry 2 = hex word 0140 = BCD 140; x 100 = 14,000 points. DERIVED (BCD x 100); consistency-checked in citations-source.test.ts.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5703,
+      "verbatim": "BONINL:\t.WORD 0100,0120,0140,0150,0180,0200,0080"
+    }
+  },
+  {
+    "id": "MC-BONINL-15000",
+    "symbol": "BONINL",
+    "value": 15000,
+    "meaning": "Bonus-city score interval (index 3). BONINL entry 3 = hex word 0150 = BCD 150; x 100 = 15,000 points. DERIVED (BCD x 100); consistency-checked in citations-source.test.ts.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5703,
+      "verbatim": "BONINL:\t.WORD 0100,0120,0140,0150,0180,0200,0080"
+    }
+  },
+  {
+    "id": "MC-BONINL-18000",
+    "symbol": "BONINL",
+    "value": 18000,
+    "meaning": "Bonus-city score interval (index 4). BONINL entry 4 = hex word 0180 = BCD 180; x 100 = 18,000 points. DERIVED (BCD x 100); consistency-checked in citations-source.test.ts.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5703,
+      "verbatim": "BONINL:\t.WORD 0100,0120,0140,0150,0180,0200,0080"
+    }
+  },
+  {
+    "id": "MC-BONINL-20000",
+    "symbol": "BONINL",
+    "value": 20000,
+    "meaning": "Bonus-city score interval (index 5). BONINL entry 5 = hex word 0200 = BCD 200; x 100 = 20,000 points. DERIVED (BCD x 100); consistency-checked in citations-source.test.ts.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5703,
+      "verbatim": "BONINL:\t.WORD 0100,0120,0140,0150,0180,0200,0080"
+    }
+  },
+  {
+    "id": "MC-BONINL-8000",
+    "symbol": "BONINL",
+    "value": 8000,
+    "meaning": "Bonus-city score interval (index 6). BONINL entry 6 = hex word 0080 = BCD 80; x 100 = 8,000 points. DERIVED (BCD x 100); consistency-checked in citations-source.test.ts.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5703,
+      "verbatim": "BONINL:\t.WORD 0100,0120,0140,0150,0180,0200,0080"
+    }
+  }
+]

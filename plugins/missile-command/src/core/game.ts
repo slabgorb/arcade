@@ -44,6 +44,8 @@ import {
   regenerateCities,
   refillAmmo,
   nextWaveBudget,
+  bonusInterval,
+  bonusCitiesEarned,
 } from './wave.js'
 import type { SoundEvent } from './sound-events.js'
 import { createRng, type Rng } from '@shared/rng'
@@ -76,6 +78,10 @@ export interface GameState {
   /** This wave's score multiplier — `scoreMultiplier(wave)` (mc4-3), surfaced on the
    *  state so the HUD reads it verbatim rather than re-deriving it (the HUD-figure rule). */
   readonly multiplier: number
+  /** Cities destroyed since the game began (mc4-5) — the ROM's CIDOWN. The city
+   *  reserve fed to REGEN is `START_CITIES − citiesLost + bonus cities earned`, so a
+   *  destroyed city stays lost until a score threshold (CHEKBO/BONINL) recovers it. */
+  readonly citiesLost: number
   /** The seeded PRNG (mutable seed word, threaded through state — the sole entropy). */
   readonly rng: Rng
   /** The sound moments this frame produced, for the audio shell to voice (mc8-2).
@@ -103,6 +109,7 @@ export function createGame(seed = 1): GameState {
     remaining: NICBMS,
     wave: INITIAL_WAVE,
     multiplier: scoreMultiplier(INITIAL_WAVE),
+    citiesLost: 0,
     rng: createRng(seed),
     soundEvents: [],
   }
@@ -124,19 +131,28 @@ export function stepGame(state: GameState): GameState {
   // END OF WAVE, phase 2 (mc4-2): the previous frame entered the 'between' beat with
   // the wave's final damage on screen. Now resolve it — tally the surviving-city +
   // unused-missile bonus (at this wave's base rate; the ×-multiplier bonus ramp is
-  // mc4-6), regenerate destroyed cities up to the cabinet entitlement (START_CITIES
-  // until mc4-5 awards bonus cities), refill live magazines, re-seed the next wave's
-  // ICBM budget from the mc4-1 schedule, advance the wave + its multiplier, and resume
-  // play. Regeneration is a BETWEEN-wave event: a city destroyed during a wave stays
-  // dead until here (the mc3-4 "dead never resurrect" invariant holds within a wave).
+  // mc4-6), regenerate destroyed cities up to the cabinet entitlement, refill live
+  // magazines, re-seed the next wave's ICBM budget from the mc4-1 schedule, advance
+  // the wave + its multiplier, and resume play. Regeneration is a BETWEEN-wave event:
+  // a city destroyed during a wave stays dead until here (the mc3-4 "dead never
+  // resurrect" invariant holds within a wave).
+  //
+  // mc4-5: the reserve fed to REGEN is the ROM's PLIVES = START_CITIES − citiesLost
+  // (CIDOWN) + bonus cities earned from the running score (CHEKBO/BONINL at the shipped
+  // default DIP), capped at NCITY by regenerateCities. So a lost city stays lost until
+  // a score threshold recovers it, a bonus earned while full is banked against a later
+  // loss, and the same threshold is never double-counted (bonusCitiesEarned is
+  // cumulative). OPTIO2 is not modelled yet, so the DIP byte is the bits-clear default.
   if (state.phase === 'between') {
     const survivingCities = state.cities.filter((c) => c.alive).length
     const unusedMissiles = state.bases.reduce((n, b) => (b.alive ? n + b.ammo : n), 0)
     const nextWave = state.wave + 1
+    const bonusCities = bonusCitiesEarned(state.score, bonusInterval(0))
+    const cityReserve = START_CITIES - state.citiesLost + bonusCities
     return {
       ...state,
       frame: state.frame + 1,
-      cities: regenerateCities(state.cities, START_CITIES),
+      cities: regenerateCities(state.cities, cityReserve),
       bases: refillAmmo(state.bases),
       score: state.score + waveEndBonus(survivingCities, unusedMissiles),
       phase: resumePlay(state.phase), // 'between' → 'play'
@@ -188,9 +204,12 @@ export function stepGame(state: GameState): GameState {
   // banged (detonated), each ICBM the blasts caught died (icbmKilled — silent at
   // the shell, but real data), and each structure an arrived warhead just
   // destroyed fell (structureDestroyed). Rebuilt fresh — never carried over.
-  const destroyed =
-    impact.cities.filter((c, i) => state.cities[i].alive && !c.alive).length +
-    impact.bases.filter((b, i) => state.bases[i].alive && !b.alive).length
+  const cityDeaths = impact.cities.filter((c, i) => state.cities[i].alive && !c.alive).length
+  const baseDeaths = impact.bases.filter((b, i) => state.bases[i].alive && !b.alive).length
+  const destroyed = cityDeaths + baseDeaths
+  // mc4-5: accumulate the ROM's CIDOWN — a city lost this frame lowers the REGEN
+  // reserve until a bonus recovers it (see the 'between' branch above).
+  const citiesLost = state.citiesLost + cityDeaths
   const soundEvents: SoundEvent[] = [
     ...detonations.map(() => ({ type: 'detonated' }) as const),
     ...killed.map(() => ({ type: 'icbmKilled' }) as const),
@@ -217,6 +236,7 @@ export function stepGame(state: GameState): GameState {
       remaining: spawned.remaining, // 0; the next wave's budget is seeded on resolve
       wave: state.wave, // not advanced yet
       multiplier: state.multiplier,
+      citiesLost, // a city lost on the final frame still lowers the reserve
       soundEvents, // this frame's destruction cues still fire
     }
   }
@@ -234,6 +254,7 @@ export function stepGame(state: GameState): GameState {
     remaining: spawned.remaining,
     wave: state.wave,
     multiplier: state.multiplier,
+    citiesLost,
     soundEvents,
   }
 }
