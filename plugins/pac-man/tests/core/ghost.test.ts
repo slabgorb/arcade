@@ -80,8 +80,8 @@ describe('stepGhost — target-seeking turn choice (glossary.md §Ghost movement
     const g = ghostAt(12, 14, 'none')
     stepGhost(g, { x: 12, y: 0 }, {}) // straight up: 'up' would otherwise win easily
     expect(g.actor.dir).not.toBe('up')
-    // down is walled off here; left/right tie on distance to (12,0), and left
-    // wins the up>left>down>right preference.
+    // down leads into the ghost house (farther from (12,0)); left/right tie
+    // on distance and left wins the up>left>down>right preference.
     expect(g.actor.dir).toBe('left')
   })
 
