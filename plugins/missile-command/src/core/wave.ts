@@ -34,15 +34,20 @@
 // epic's contract 3; the REV-03 deltas are catalogued in the claim note on the
 // speed table (claims/wave.json), and require the REV-03 source to quantify.
 
+import { MAXMIS, NCITY, type City, type Base } from './field.js'
+import { ICBM_KILL_POINTS } from './score.js'
+
 /** This wave's difficulty: how many ICBMs, and how fast each one descends. */
 export interface WaveParams {
   /** ICBMs launched this wave — the per-wave budget (ICBWAV). */
   readonly count: number
-  /** Cabinet units an ICBM head advances per tick (moves/frame = 1/period, ≤ 1). */
+  /** Cabinet units an ICBM head advances per tick (moves/frame = 1/(period+1), ≤ 1). */
   readonly velocity: number
 }
 
-/** Missile Command begins on wave 1 (NEWWV1 sets WAVENO=1 at game start). */
+// NEW GAME SETUP (NEGAM/NEWGAM) starts the game on wave 1: `LDA I,1 / STA WAVENO`
+// at W3MAIN.MAC:3863 ("START WITH WAVE 1"), not NEWWV1 (the per-wave setup).
+/** Missile Command begins on wave 1. */
 export const INITIAL_WAVE = 1
 
 // ICBWAV (W3MAIN.MAC:5713) — per-wave ICBM budget, decimal. Wave N reads entry N-1;
@@ -52,7 +57,7 @@ const ICBWAV = [12, 15, 18, 12, 16, 14, 17, 10, 13, 16, 19, 12, 14, 16, 18, 14, 
 // The per-wave ICBM "FRAMES BEFORE UPDATE" period as 8.8 fixed point:
 //   period = WICSPH[wave] + WICSPL[wave]/256   (integer frames + /256 fraction)
 // WICSPL (W3MAIN.MAC:5717) is the fraction byte, WICSPH (W3MAIN.MAC:5719) the
-// integer byte — both hex. The period shrinks each wave, so 1/period ramps up.
+// integer byte — both hex. The period shrinks each wave, so 1/(period+1) ramps up.
 const WICSPL = [0xd0, 0xe0, 0xc0, 0x08, 0xa0, 0x60, 0x40, 0x20, 0x10, 0x0a, 0x06, 0x04, 0x02, 0x01, 0x00]
 const WICSPH = [0x04, 0x02, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
@@ -80,4 +85,84 @@ export function waveSchedule(wave: number): WaveParams {
   // flattened waves 5-14 to 1.0 — round-1 review finding.)
   const velocity = 1 / (period + 1)
   return { count, velocity }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// mc4-2 (GREEN, Loki) — the END OF WAVE resolution as PURE core reducers, at the
+// BASE score multiplier (the ×-multiplier ramp is mc4-3; the stepGame wiring +
+// GameState.wave is mc4-4, mirroring how mc4-1 deferred the spawner wiring).
+//
+// END OF WAVE runs as five phases off a jump table (W3MAIN.MAC:591-599):
+//   ENDWV1  clear the bonus accumulator.
+//   ENDWV2  "TALLY UP BONUS PTS FOR UNUSED ABMS" — JSR ABMADD per unused ABM;
+//           ABMADD (:5443) adds `LDA I,5` (:5451) once per SMULTI → 5 pts/ABM base.
+//   ENDWV3/4 CITY BONUS — per surviving city, `LDX I,3` (:4423 "4 ICBM POINTS/CITY")
+//           then JSR ICMUL2 (:5411); MIEND loops X down through 0 INCLUSIVE, so the
+//           per-ICBM value ICBPT (= ICBM_KILL_POINTS at base) is added FOUR times.
+//   ENDWV5  UPSCOR the bonus, JSR REGEN (regenerate cities), INC WAVENO (next wave).
+// REGEN (:4777) brings the living-city count up to min(PLIVES, NCITY) by reviving
+// dead cities — an entitlement capped at NCITY. mc4-3 feeds the entitlement (bonus
+// cities from score, CHEKBO); mc4-2 owns the PATH and the cap and takes the
+// entitlement as `reserve`. Bases are never in REGEN — a destroyed base stays dead.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// City bonus: a saved city is worth 4 ICBM-point units. ENDWV4 calls ICMUL2 with
+// `LDX I,3` and MIEND loops X≥0 inclusive, so the per-ICBM value is added 4 times.
+// W3MAIN.MAC:4423 "4 ICBM POINTS/CITY". Claim MC-CITYBON.
+export const CITY_BONUS_ICBM_UNITS = 4
+
+// Unused-missile bonus: 5 points per ABM left in a magazine. ABMADD adds `LDA I,5`
+// once per SMULTI; the base rate is 5. W3MAIN.MAC:5451. Claim MC-ABMBON.
+export const MISSILE_BONUS_PTS = 5
+
+/**
+ * The end-of-wave bonus at the base multiplier: each surviving city is worth
+ * `CITY_BONUS_ICBM_UNITS × ICBM_KILL_POINTS` and each unused missile `MISSILE_BONUS_PTS`.
+ * Zero when nothing survived. Pure arithmetic.
+ */
+export function waveEndBonus(survivingCities: number, unusedMissiles: number): number {
+  return survivingCities * CITY_BONUS_ICBM_UNITS * ICBM_KILL_POINTS + unusedMissiles * MISSILE_BONUS_PTS
+}
+
+/**
+ * True iff the wave has fully resolved: the ICBM budget is spent (`remaining === 0`)
+ * AND no enemy is left on screen. ABMs and explosions are not enemies.
+ */
+export function isWaveOver(remaining: number, icbms: readonly unknown[]): boolean {
+  return remaining === 0 && icbms.length === 0
+}
+
+/** Every LIVE base refilled to a full MAXMIS magazine; a destroyed base is left
+ *  untouched (dead ≠ rearmed — structures resurrect only via REGEN, never here). */
+export function refillAmmo(bases: readonly Base[]): readonly Base[] {
+  return bases.map((b) => (b.alive ? { ...b, ammo: MAXMIS } : b))
+}
+
+/**
+ * Regenerate destroyed cities up to the entitlement: revive dead cities (in order)
+ * until the living count reaches `min(reserve, cap)`. Never exceeds the cap, never
+ * removes a living city, and is deterministic. `reserve` is the mc4-3-fed bonus-city
+ * entitlement; `cap` defaults to the cabinet's NCITY. Faithful to REGEN's
+ * `X = min(PLIVES, NCITY) − alive`.
+ */
+export function regenerateCities(
+  cities: readonly City[],
+  reserve: number,
+  cap: number = NCITY,
+): readonly City[] {
+  const target = Math.min(reserve, cap)
+  let toRevive = Math.max(0, target - cities.filter((c) => c.alive).length)
+  return cities.map((c) => {
+    if (!c.alive && toRevive > 0) {
+      toRevive -= 1
+      return { ...c, alive: true }
+    }
+    return c
+  })
+}
+
+/** The next wave's ICBM budget, re-seeded from the mc4-1 schedule (ENDWV5's
+ *  INC WAVENO then NEWWV1's ICBWAV lookup). */
+export function nextWaveBudget(wave: number): number {
+  return waveSchedule(wave + 1).count
 }
