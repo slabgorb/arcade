@@ -44,3 +44,11 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: SH3-6
+    title: Harden SH3-4's main-host-adoption source-wiring assertions — call-anchor the fitIntegerScale/pumpFrame positives, assert the mountCanvas destructure + full resizeToDisplay signature, broaden the querySelector/clientWidth retirement guards, and fix the stale 'Today main.ts:43' comment + tp1-39 citation
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
