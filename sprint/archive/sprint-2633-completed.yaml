@@ -5,10 +5,41 @@ sprint:
   jira_sprint_name: "TO Sprint 2633"
   goal: Shared modules to the shared library
 
-completed_epics: []
+completed_epics:
+  - mc4
 completed_stories:
   - id: mc5-1
     epic: mc5
     title: 'MIRV split (mirv.ts): an in-flight ballistic ICBM entering height band [128,160] forks into <=3 child ICBMs, re-targeted; suppressed at >=12 live explosions. REV-01 W3MAIN.MAC:2685 MIRVER'
+    points: 3
+    completed: '2026-08-08'
+  - id: mc4-6
+    epic: mc4
+    title: 'End-of-wave bonus scales by the wave multiplier (SMULTI): ABMADD + city bonus'
+    points: 2
+    completed: '2026-08-08'
+  - id: mc4-1
+    epic: mc4
+    title: 'Wave model + per-wave ICBM velocity & count ramp (retire the SPEED=1 placeholder — the speed fix)'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc4-2
+    epic: mc4
+    title: 'End-of-wave transition: city bonus + unused-missile bonus, regenerate cities, refill ammo, advance wave'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc4-3
+    epic: mc4
+    title: 'Per-wave score multiplier: generalise the per-ICBM value by wave (capped at MAXMUL)'
+    points: 2
+    completed: '2026-08-08'
+  - id: mc4-4
+    epic: mc4
+    title: 'Compose waves into stepGame, HUD wave/multiplier readout, and a seeded multi-wave playthrough'
+    points: 3
+    completed: '2026-08-08'
+  - id: mc4-5
+    epic: mc4
+    title: 'Bonus city at a score threshold (CHEKBO/BONINL): recover the real bonus interval + claim'
     points: 3
     completed: '2026-08-08'

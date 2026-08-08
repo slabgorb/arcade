@@ -3,7 +3,7 @@ type: epic
 title: Missile Command — waves, scoring & bonus (the speed fix)
 description: "Fourth Missile Command epic. mc3 made the cabinet playable but with two flagged placeholders: enemy ICBMs and player ABMs both fly at a unit SPEED=1 per tick (icbm.ts/abm.ts), and the spawner runs ONE endless cadence with no wave progression. That is why the game 'feels too fast' — a warhead crosses the whole 222-tall field in ~3.6s on every wave, and ICBMs move at the same speed as the ABMs meant to outrun them. This epic retires both placeholders: a cited per-wave difficulty schedule (enemy count + descent-velocity ramp), the end-of-wave city bonus and unused-missile bonus, city regeneration, the bonus city at a score threshold, and the per-wave score multiplier. Executes the Architect roadmap slice for mc4 in docs/superpowers/specs/2026-08-07-missile-command-full-cabinet-roadmap.md (a detailed mc4 design + plan is written at epic start, per the roadmap's one-design-per-epic rule). GROUND TRUTH: the vendored REV-01 tree (plugins/missile-command/reference/source/) and the machine-gated dossier (docs/rom-study/); every new src/core numeric constant carries a committed claim gated by citations.test.ts (the AC3 no-uncited-literal guard), and purity.test.ts stays green (wave state pure, RNG seeded, no clock in core). REV-01 vs REV-03 (open question O-3) first BITES here — difficulty tuning is where the revisions diverge; each story that touches a divergence catalogues the delta in a claim note and ships REV-01 behaviour (contract 3). Primary anchors (subsystems.md): W3MAIN.MAC:3279 CALCULATE MISSILE VELOCITY & DISPLAY INCREMENT; W3MAIN.MAC:3901 1ST PHASE OF NEW WAVE SETUP; W3MAIN.MAC:4323 CITY BONUS; W3MAIN.MAC:4765 REGENERATE CITIES; W3MAIN.MAC:5549 ADD TO PLAYER'S SCORE. OUT OF SCOPE (later epics): MIRV/cruise/bomber/satellite/smart-bomb spawned BY this schedule (mc5); attract/pause + restart machine (mc6); high-score ladder (mc7); authentic audio (mc8); palette/stamps/blast curve (mc9)."
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: mc4-1
@@ -92,7 +92,7 @@ stories:
     description: 'Scoring fidelity, surfaced by mc4-3 review (TEA + Reviewer). The END-OF-WAVE bonus also scales by the wave multiplier SMULTI in the ROM: ENDWV2 ABMADD adds LDA I,5 once per SMULTI (W3MAIN.MAC:5443/5451), and ENDWV4 city bonus loops the per-ICBM value per SMULTI (ICMUL2). mc4-2 shipped waveEndBonus at the BASE (x1) multiplier and deferred "the ramp"; mc4-3 was rescoped to scoreKills only, so the end-of-wave bonus ramp is currently owned by no story. Generalise waveEndBonus (wave.ts) to scale by scoreMultiplier(wave) from mc4-3. Depends on mc4-3 (scoreMultiplier). May be folded into mc4-4 wiring at the owners discretion.'
     points: 2
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-08'
     repos: arcade
     workflow: tdd
@@ -100,4 +100,6 @@ stories:
     acceptance_criteria:
       - 'waveEndBonus scales the city bonus and the unused-missile bonus by scoreMultiplier(wave): at wave 1 the values match mc4-2 (base), and a later wave multiplies both by the same SMULTI as scoreKills.'
       - the generalisation cites the ROM (ABMADD W3MAIN.MAC:5451 per SMULTI; ICMUL2 city loop); citations.test.ts and purity.test.ts stay green.
+    completed: '2026-08-08'
     review_verdict: approved
+completed: '2026-08-08'
