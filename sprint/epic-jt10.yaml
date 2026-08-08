@@ -102,3 +102,11 @@ stories:
     repos: arcade
     workflow: tdd
     depends_on: jt10-7
+  - id: jt10-10
+    title: Retire jt9-39's stale live-sprint control in difficulty-wiring.test.ts — hardcoded jt9-39/jt9-11 (both archived) fail liveSprintStoryIds(); derive the positive control from the live set so it can't rot
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
