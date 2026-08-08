@@ -920,3 +920,8 @@ completed_stories:
     title: 'End-of-wave transition: city bonus + unused-missile bonus, regenerate cities, refill ammo, advance wave'
     points: 5
     completed: '2026-08-07'
+  - id: mc4-3
+    epic: mc4
+    title: 'Per-wave score multiplier: generalise the per-ICBM value by wave (capped at MAXMUL)'
+    points: 2
+    completed: '2026-08-08'
