@@ -31,11 +31,12 @@ stories:
     title: 'Title screen (MARQUE): transcribe the JOUST vector logo + (C)1982 copyright + EXTRA-MOUNT lines in FONT57, with the ATT.SRC colour cycle'
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-08'
     repos: arcade
     workflow: tdd
     depends_on: jt10-2
+    completed: '2026-08-08'
   - id: jt10-4
     title: 'Attract cycle: self-play (demo.ts) + banner pages (BEWARE OF THE PTERODACTYL, HOME OF THE LAVA TROLL) + attract-page scheduler — supersedes ad1-4'
     points: 5

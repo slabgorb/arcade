@@ -940,3 +940,8 @@ completed_stories:
     title: 'Exact OLDRAD blast curve + EXPFRA cadence and authentic missile trails (retire the triangle blast)'
     points: 5
     completed: '2026-08-08'
+  - id: jt10-3
+    epic: jt10
+    title: 'Title screen (MARQUE): transcribe the JOUST vector logo + (C)1982 copyright + EXTRA-MOUNT lines in FONT57, with the ATT.SRC colour cycle'
+    points: 5
+    completed: '2026-08-08'
