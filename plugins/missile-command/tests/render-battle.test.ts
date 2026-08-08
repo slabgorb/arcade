@@ -105,9 +105,9 @@ const isBackground = (m: Mark): boolean => m.op === 'fillRect' && m.x === 0 && m
 const projectX = (h: number): number => (h / 0x100) * W
 const projectY = (v: number): number => H - (v / 222) * H
 
-/** All drawn text strings, in draw order. */
-const texts = (marks: Mark[]): string[] =>
-  marks.filter((m) => m.text !== undefined).map((m) => m.text as string)
+// (The mc3-5 HUD text-content helper `texts` lived here. mc9-4 retired the monospace
+//  fillText HUD, so a node test can no longer read the drawn digits — the HUD-content
+//  assertions moved to render-hud.test.ts as font-agnostic mark-based checks.)
 
 /** A stable, order-independent signature of the coordinate marks in a column band
  *  around `cx` (excludes the background and any text). Two renders that draw the
@@ -208,41 +208,14 @@ describe('AC1 — a dead city / base is not drawn as a live one', () => {
   })
 })
 
-describe('AC1 — the HUD draws the core score and each base ammo', () => {
-  it('draws String(state.score) verbatim — the core value, not a re-derived copy', () => {
-    // 90210 is unreachable by re-derivation from this state (0 kills → any
-    // recomputed score would be 0). Drawing "90210" proves the HUD reads
-    // state.score directly. Its digits (9,0,2,1,0) share nothing with the ammo
-    // values below, so the ammo assertions can't be satisfied by the score text.
-    const state: GameState = { ...withCursor(createGame(1)), score: 90210 }
-    const joined = texts(paint(state)).join(' ')
-    expect(joined, 'the HUD must draw String(state.score) = "90210"').toContain('90210')
-  })
-
-  it('draws each live base ammo count', () => {
-    const g = withCursor(createGame(1))
-    // Distinct ammo values that are not substrings of each other or of the score.
-    const ammos = [8, 6, 3]
-    const state: GameState = {
-      ...g,
-      score: 90210,
-      bases: g.bases.map((b, i) => ({ ...b, ammo: ammos[i] })),
-    }
-    const joined = texts(paint(state)).join(' ')
-    for (const a of ammos) {
-      expect(joined, `the HUD must show base ammo ${a}`).toContain(String(a))
-    }
-  })
-
-  it('the drawn score TRACKS state.score (it is not a hardcoded literal)', () => {
-    const base = withCursor(createGame(1))
-    const a = texts(paint({ ...base, score: 111 })).join(' ')
-    const b = texts(paint({ ...base, score: 222 })).join(' ')
-    expect(a).toContain('111')
-    expect(b).toContain('222')
-    expect(a, 'a different score must produce different HUD text').not.toBe(b)
-  })
-})
+// ─── mc3-5's HUD text-content block moved to render-hud.test.ts (mc9-4) ───────────
+// This block asserted the monospace HUD via the drawn fillText STRING —
+// `texts(paint(state)).toContain('90210')`, the base-ammo digits, and score-tracks.
+// mc9-4 replaces the browser-font fillText with the cabinet's own glyphs, so no drawn
+// text string survives for a node test to read. The same guarantees — score drawn from
+// state.score VERBATIM, ammo present, score tracks state — are now enforced
+// font-agnostically (mark-count deltas) in render-hud.test.ts. The structural guard
+// below (render.ts references score/ammo) stays green across the migration.
 
 describe('AC1 — render.ts consumes the grown state, it does not ignore it', () => {
   const renderSrc = readFileSync(join(root, 'src', 'shell', 'render.ts'), 'utf8')
