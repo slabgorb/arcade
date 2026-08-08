@@ -132,7 +132,13 @@ Radix caution: `MAXMIS`/`TOPSCR` are decimal (trailing period); city coords are 
   (`LDA AY,STCITY`, `W3MAIN.MAC:3877`; table `STCITY: .BYTE 6,4,5,7`, `W3MAIN.MAC:3895`).
   `NCITY=6` is the *max*; `SCITYM`'s "5 cities" is the option-2 (Y=2) selection, not the
   default. Options: `{0:6, 1:4, 2:5, 3:7}`.
-- **O-5** Video RAM 3rd-colour-bit scatter (`get_bit3_addr`, `missile.cpp:617-625`,
-  MISSIL.MAP "3RD BIT COLOR REGION" `$0200–$05FF`): our render need not reproduce the
-  hardware address scramble, but the *palette* (8 colours, 3 bits) and per-wave colour
-  cycling (`SET UP COLORS FOR NEXT WAVE`, `W3DSUP.MAC:1583`) must match. Confirm colour source.
+- **O-5** *(RESOLVED — see [`palette.md`](./palette.md))* Per-wave 8-colour palette.
+  A pixel's 3-bit index selects one of eight colour registers `COL000..COL111`
+  (`W3INT.MAC:93-107`); `SETCOL` (SET UP COLORS FOR NEXT WAVE, `W3DSUP.MAC:1583`) fills
+  them each wave from one of ten `DBLCOL` rows (`W3DSUP.MAC:1684-1702`), selected by
+  `((WAVENO-1)>>1) mod 10` (`W3DSUP.MAC:1593`), so the palette changes every two waves
+  and repeats every 20. Each register holds a colour code (`CWHITE..CBLACK`,
+  `W3COMN.MAC:491-505`); code→RGB is a labelled adapter (no RGB in the ROM). We
+  reproduce that palette; we still do NOT reproduce the hardware address scramble
+  (`get_bit3_addr`, `missile.cpp:617-625`, MISSIL.MAP "3RD BIT COLOR REGION"
+  `$0200–$05FF`) — a memory-layout detail invisible on canvas, a deliberate non-goal.

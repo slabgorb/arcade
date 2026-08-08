@@ -12,11 +12,22 @@
 // stockpile pyramid. All shapes live in the cited src/shell/stamps.ts data module
 // and are positioned by the same project() mapping mc3 uses. Dead structures still
 // draw as grey rubble.
+//
+// mc9-2 (GREEN, Yoda): the field is now painted through the per-wave 8-colour
+// palette (SET UP COLORS FOR NEXT WAVE, W3DSUP.MAC:1583) instead of the mc3
+// functional hexes. drawFrame takes the current `wave` and draws each element from
+// its legend slot (W3DSUP.MAC:1706): sky, ICBMs, city bottom/top and ABMs all pull
+// from paletteForWave(wave); explosions use a flash slot (a rendering choice, see
+// below). The legend's GROUND slot (COL001) has no on-screen element in this clone,
+// so it is not drawn. Dead-structure rubble and the crosshair/HUD stay functional
+// (they are not palette registers).
 
 import type { GameState } from '../core/game.js'
 import { CITIES, BASES, type FieldPos } from '../core/field.js'
 import { blastRadius } from '../core/explosion.js'
+import { INITIAL_WAVE } from '../core/wave.js'
 import { CITY_STAMPS, STAMP_H, STAMP_W, stampPixels, MISSILE_STACK } from './stamps.js'
+import { paletteForWave, rgbCss, SLOT, FLASH_SLOTS } from './palette.js'
 
 // ─── The cabinet's logical coordinate space (settled here, mc1-1 deferred it) ─
 // H is an 8-bit cabinet coordinate (the structures span MISB1H=0x14..MISB3H=0xF0,
@@ -26,9 +37,10 @@ import { CITY_STAMPS, STAMP_H, STAMP_W, stampPixels, MISSILE_STACK } from './sta
 const LOGICAL_WIDTH = 0x100 // 256
 const LOGICAL_HEIGHT = 222 // TOPSCR=222. (W3COMN.MAC:107)
 
-/** Clear the whole context to the cabinet's black background. */
-export function clearField(ctx: CanvasRenderingContext2D, width: number, height: number): void {
-  ctx.fillStyle = '#000'
+/** Clear the whole context to the field background. Defaults to the cabinet's
+ *  black, or takes the wave's sky colour (COL000) from drawFrame. */
+export function clearField(ctx: CanvasRenderingContext2D, width: number, height: number, sky = '#000'): void {
+  ctx.fillStyle = sky
   ctx.fillRect(0, 0, width, height)
 }
 
@@ -41,10 +53,22 @@ function project(pos: FieldPos, width: number, height: number): { x: number; y: 
   }
 }
 
-/** Draw one frame: black field, the fixed cities and bases at their cited
- *  positions, then the trackball crosshair at the cursor (mc1-3). */
-export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width: number, height: number): void {
-  clearField(ctx, width, height)
+/** Draw one frame: the field painted through the wave's 8-colour palette, the
+ *  fixed cities and bases at their cited positions, then the trackball crosshair
+ *  at the cursor (mc1-3). `wave` selects the palette (mc9-2); it defaults to
+ *  INITIAL_WAVE so a caller with no wave source renders the wave-1 colours. */
+export function drawFrame(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  width: number,
+  height: number,
+  wave: number = INITIAL_WAVE,
+): void {
+  // The wave's 8 colours (COL000..COL111), each usable as a canvas fill/stroke.
+  const pal = paletteForWave(wave)
+  const hue = (slot: number): string => rgbCss(pal[slot])
+
+  clearField(ctx, width, height, hue(SLOT.SKY)) // sky = COL000
 
   // Cities — authentic four-stamp DACITY geometry (mc9-1). Each live city is the
   // 2x2 grid of W3DSUP quadrant stamps (DRAW ALL LIVING CITIES, W3DSUP.MAC:1067;
@@ -56,8 +80,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width
   const pw = Math.max(1, Math.ceil(uH)) // one stamp pixel, in canvas px
   const ph = Math.max(1, Math.ceil(uV))
   const cw = Math.max(4, Math.round(width / 40)) // rubble line width
-  const CITY_TOP = '#9f9'
-  const CITY_BOTTOM = '#6f6' // the cabinet's live-city green (functional; per-wave palette is mc9-2)
+  const CITY_TOP = hue(SLOT.CITY_TOP) // COL111 — CITY(TOP)&ABMS
+  const CITY_BOTTOM = hue(SLOT.CITY_BOTTOM) // COL011 — CITY(BOTTOM)
   CITIES.forEach((pos, i) => {
     if (state.cities[i]?.alive ?? true) {
       for (const stamp of CITY_STAMPS) {
@@ -88,7 +112,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width
   BASES.forEach((pos, i) => {
     const { x, y } = project(pos, width, height)
     if (state.bases[i]?.alive ?? true) {
-      ctx.fillStyle = '#4cf' // blue, the cabinet's live-base hue
+      ctx.fillStyle = hue(SLOT.ABMS) // COL110 — the ABM/base hue
       const ammo = state.bases[i]?.ammo ?? MISSILE_STACK.length
       const shown = Math.max(0, Math.min(ammo, MISSILE_STACK.length))
       for (let k = 0; k < shown; k++) {
@@ -104,9 +128,9 @@ export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width
   })
 
   // Incoming ICBMs (mc3-5) — a trail from each warhead's top-edge origin to its
-  // current head, plus a head dot. Orange, the cabinet's enemy hue (functional).
-  ctx.strokeStyle = '#f80'
-  ctx.fillStyle = '#f80'
+  // current head, plus a head dot. The enemy hue is COL010 (ICBMS legend slot).
+  ctx.strokeStyle = hue(SLOT.ICBMS)
+  ctx.fillStyle = hue(SLOT.ICBMS)
   ctx.lineWidth = 1
   const headR = Math.max(1, Math.round(width / 200))
   for (const icbm of state.icbms) {
@@ -122,7 +146,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width
   }
 
   // ABM trails (mc1-4) — a line from each missile's launch base to its head.
-  ctx.strokeStyle = '#f44'
+  // The friendly-missile hue is COL110 (ABMS legend slot).
+  ctx.strokeStyle = hue(SLOT.ABMS)
   ctx.lineWidth = 1
   for (const abm of state.abms) {
     const from = project(abm.origin, width, height)
@@ -134,8 +159,15 @@ export function drawFrame(ctx: CanvasRenderingContext2D, state: GameState, width
   }
 
   // Blasts (mc1-4) — an expanding/collapsing circle at each explosion, its radius
-  // scaled from cabinet units into the display (same H scale as `project`).
-  ctx.fillStyle = '#ff0'
+  // scaled from cabinet units into the display (same H scale as `project`). The ROM
+  // legend (W3DSUP.MAC:1706) marks COL100/COL101 UNUSED(FLASH); this clone repurposes
+  // a flash register to colour blasts (a rendering choice, NOT a ROM-assigned use —
+  // GAMEFL/W3INT.MAC:291-313 is only the per-VBLANK INC that makes those registers
+  // flash). We pick whichever flash slot differs from the sky, so explosions stay
+  // visible even on a wave whose flash colour equals the backdrop (e.g. WVACOL, where
+  // COL100 == COL000). Blasts still recolour per wave with the rest of the field.
+  const skyCss = hue(SLOT.SKY)
+  ctx.fillStyle = hue(FLASH_SLOTS.find((s) => hue(s) !== skyCss) ?? FLASH_SLOTS[0])
   for (const exp of state.explosions) {
     const r = blastRadius(exp)
     if (r <= 0) continue
