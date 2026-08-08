@@ -51,7 +51,8 @@ stories:
     title: Parametric drones + full event wiring (bonusTick, whoop, end-game, bonus-city, low-ammo, cruise/Sputnik drone sweep)
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
     depends_on: mc8-2
