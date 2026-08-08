@@ -144,18 +144,59 @@ describe('jt5-1 — cliff-destroyed is EMITTED when a wave takes a cliff out', (
 })
 
 describe('jt5-1 — ptero-arrives is EMITTED when a pterodactyl enters', () => {
-  it('a ptero wave sounds SNPTEI once per bird', () => {
-    const { at } = advanceToWave(0xbeef, 7)
-    const stepped = stepDemo(stripToPlayers(at), {})
+  // jt9-59 re-seat. SNPTEI is the introduction scream a pterodactyl sounds when it is
+  // CREATED (JOUSTRV4.SRC:8094). Before jt9-59 a wave's whole ptero complement was
+  // spliced in on the advance frame, so this test read all its SNPTEIs on that ONE
+  // frame. The ROM's PTERWV creates the pteros one at a time (`PCNAP 65` between each,
+  // :2618), so each SNPTEI now fires on its bird's OWN create frame, spread over the
+  // cadence — and a baiter (a pterodactyl too, PCHASE≠0) sounds the same scream when it
+  // spawns. The invariant that survives, and is stronger: over the whole entry window,
+  // ptero-arrives fires EXACTLY once per new bird on the frame that bird appears — never
+  // a burst, never a miss — and the wave really creates its full ptero complement.
+  const hushNonPteros = (d: DemoState): DemoState => ({
+    ...d,
+    sim: {
+      ...d.sim,
+      processes: d.sim.processes.map((p) =>
+        p.kind === 'player' || p.kind === 'ptero' ? p : { ...p, nap: 100_000 },
+      ),
+    },
+  })
 
-    expect(stepped.wave, 'precondition: the wave really advanced').toBe(8)
+  it('a ptero wave sounds SNPTEI once per bird — one per CREATE, spread over the PTERWV cadence', () => {
+    // Wave 43 (status 0xbb → WPTERO) sends THREE pteros, so "per bird" is genuinely
+    // plural. Sit on wave 42, step once to advance in, then walk the 65-frame cadence.
+    const { at } = advanceToWave(0xbeef, 42)
+    let d = stepDemo(stripToPlayers(at), {}) // frame 0: the advance into wave 43
+    expect(d.wave, 'precondition: the wave really advanced').toBe(43)
     expect(
-      dispatchWaveType(waveRowAt(8).status, { p1: true, p2: true }),
-      'precondition: wave 8 really is a ptero wave',
+      dispatchWaveType(waveRowAt(43).status, { p1: true, p2: true }),
+      'precondition: wave 43 really is a ptero wave',
     ).toBe('ptero')
-    const arrived = count(stepped, 'ptero')
-    expect(arrived, 'precondition: pteros really entered').toBeGreaterThan(0)
-    expect(simKinds(stepped).filter((k) => k === 'ptero-arrives')).toHaveLength(arrived)
+    // Deferred creation: NOTHING sounds on the advance frame (PTERWV naps 65 first).
+    expect(count(d, 'ptero'), 'no ptero is created on the advance frame').toBe(0)
+    expect(simKinds(d).filter((k) => k === 'ptero-arrives'), 'no SNPTEI on the advance frame').toHaveLength(0)
+
+    const seen = new Set<number>()
+    for (let f = 0; f < 220; f++) {
+      let newBirdsThisFrame = 0
+      for (const p of d.sim.processes) {
+        if (p.kind === 'ptero' && !seen.has(p.id)) {
+          seen.add(p.id)
+          newBirdsThisFrame++
+        }
+      }
+      const screams = simKinds(d).filter((k) => k === 'ptero-arrives').length
+      expect(
+        screams,
+        `SNPTEI must fire exactly once per new bird (frame ${f}): ${newBirdsThisFrame} new, ${screams} screams`,
+      ).toBe(newBirdsThisFrame)
+      d = stepDemo(hushNonPteros(d), {})
+    }
+    // The WAVE really created its three pterodactyls (ids in the wave namespace, below
+    // the 0x30_0000 baiter namespace) — one SNPTEI each, spread across the window.
+    const wavePteros = [...seen].filter((id) => id < 0x30_0000)
+    expect(wavePteros, 'the WPTERO wave must create its three pterodactyls, one at a time').toHaveLength(3)
   })
 })
 

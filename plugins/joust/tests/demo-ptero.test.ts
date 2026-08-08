@@ -47,6 +47,38 @@ function advanceTo(step: (d: DemoState) => DemoState, demo: DemoState, target: n
 
 const pteroCount = (d: DemoState): number => d.sim.processes.filter((p) => p.kind === 'ptero').length
 
+/** Freeze every non-player, non-ptero process so the wave stays open (its ground
+ *  enemies hold it) while the PTERWV creation schedule plays out. */
+const hushNonPteros = (d: DemoState): DemoState => ({
+  ...d,
+  sim: {
+    ...d.sim,
+    processes: d.sim.processes.map((p: DemoProcess) =>
+      p.kind === 'player' || p.kind === 'ptero' ? p : { ...p, nap: 100_000 },
+    ),
+  },
+})
+
+/**
+ * jt9-59 — a wave's pteros are CREATED one at a time over the PTERWV cadence
+ * (`PCNAP 65` between each, JOUSTRV4.SRC:2618), not spawned on the advance frame.
+ * Walk `frames` forward from a just-advanced state (holding the wave open) and return
+ * the FIRST sighting of each distinct ptero the schedule creates.
+ */
+function pterosCreatedOver(
+  step: (d: DemoState) => DemoState,
+  from: DemoState,
+  frames: number,
+): DemoProcess[] {
+  let d = from
+  const first = new Map<number, DemoProcess>()
+  for (let f = 0; f < frames; f++) {
+    for (const p of d.sim.processes) if (p.kind === 'ptero' && !first.has(p.id)) first.set(p.id, p)
+    d = step(hushNonPteros(d))
+  }
+  return [...first.values()]
+}
+
 describe('jt3-4 — the ptero wave type spawns pteros in the demo, from the nibble', () => {
   it('the committed table anchors: wave 8 is the first ptero wave (1 ptero)', async () => {
     const w = await loadWave()
@@ -70,19 +102,23 @@ describe('jt3-4 — the ptero wave type spawns pteros in the demo, from the nibb
     expect(pteroCount(d), 'wave 7 (nibble 0) spawns no ptero').toBe(0)
   })
 
-  it('AT wave 8 the demo spawns exactly ONE ptero — the placeholder is replaced', async () => {
+  it('AT wave 8 the demo creates exactly ONE ptero — deferred over the PTERWV cadence (jt9-59)', async () => {
     const demo = await loadDemo()
-    const d = advanceTo(demo.stepDemo, demo.createWaveDemo(SEED), 8)
-    expect(d.wave).toBe(8)
-    expect(pteroCount(d), "wave 8's ptero nibble (1) spawns one kind:'ptero' process").toBe(1)
+    const at8 = advanceTo(demo.stepDemo, demo.createWaveDemo(SEED), 8)
+    expect(at8.wave).toBe(8)
+    // jt9-59: the ptero is NOT on the advance frame — PTERWV naps 65 before creating it.
+    expect(pteroCount(at8), 'no ptero stands on the wave-8 advance frame (deferred creation)').toBe(0)
+    // It arrives one PCNAP-65 later; walk the cadence and count what the schedule created.
+    const created = pterosCreatedOver(demo.stepDemo, at8, 130)
+    expect(created.length, "wave 8's ptero nibble (1) creates one kind:'ptero' process").toBe(1)
   })
 
-  it('the spawned ptero is NOT a scored ground enemy (no bounder/hunter/lord DVALUE type)', async () => {
+  it('the created ptero is NOT a scored ground enemy (no bounder/hunter/lord DVALUE type)', async () => {
     // The demo.ts placeholder filled ptero slots with 'bounder'. A real ptero is a
     // PTEID process, not a scored ground enemy — so no ptero process carries an enemyType.
     const demo = await loadDemo()
-    const d = advanceTo(demo.stepDemo, demo.createWaveDemo(SEED), 8)
-    const pteros = d.sim.processes.filter((p) => p.kind === 'ptero')
+    const at8 = advanceTo(demo.stepDemo, demo.createWaveDemo(SEED), 8)
+    const pteros = pterosCreatedOver(demo.stepDemo, at8, 130)
     expect(pteros.length).toBe(1)
     for (const pt of pteros) {
       expect(pt.enemyType, 'a ptero has no bounder/hunter/lord DVALUE type').toBeUndefined()

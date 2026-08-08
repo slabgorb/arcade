@@ -35,7 +35,7 @@
 // you grep it by hand, use `grep -a`.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -182,12 +182,16 @@ describe('AC1 — every coordinate carries a W3COMN source citation', () => {
   })
 })
 
-describe('source ground truth — the expected decimals really decode from W3COMN.MAC', () => {
-  // GREEN from day one: this reads the vendored source (data), not field.ts
-  // (code). It anchors EXPECT_CITIES/EXPECT_BASES to the ROM so neither this
-  // test nor a later "fix" can drift the layout away from what Atari shipped.
-  const macPath = join(root, 'reference', 'source', 'W3COMN.MAC')
-  const mac = readFileSync(macPath, 'utf8')
+const macPath = join(root, 'reference', 'source', 'W3COMN.MAC')
+// Byte-gated: W3COMN.MAC is gitignored (copyright wall — NEVER committed), so
+// this ground-truth suite SKIPS wherever the local quarry is absent (CI
+// included). `describe.skipIf` still runs its factory BODY at collection, so the
+// read is guarded too — otherwise it ENOENTs before any skip can apply.
+describe.skipIf(!existsSync(macPath))('source ground truth — the expected decimals really decode from W3COMN.MAC', () => {
+  // GREEN wherever the quarry is present: reads the vendored source (data), not
+  // field.ts (code). It anchors EXPECT_CITIES/EXPECT_BASES to the ROM so neither
+  // this test nor a later "fix" can drift the layout away from what Atari shipped.
+  const mac = existsSync(macPath) ? readFileSync(macPath, 'utf8') : ''
 
   /** Hex value of a `SYMBOL = xx` definition in the .RADIX 16 source. */
   const hexOf = (symbol: string): number => {

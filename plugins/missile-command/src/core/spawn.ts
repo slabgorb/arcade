@@ -43,6 +43,7 @@ export function spawnIcbms(
   liveTargets: readonly Vec[],
   remaining: number,
   rng: Rng,
+  velocity = 1,
 ): SpawnResult {
   if (remaining <= 0 || liveTargets.length === 0) return { icbms: current, remaining }
 
@@ -57,7 +58,10 @@ export function spawnIcbms(
   for (let k = 0; k < launches; k++) {
     const origin: Vec = { h: nextInt(rng, HMAX), v: TOPSCR } // random top-edge column
     const target = liveTargets[nextInt(rng, liveTargets.length)]
-    spawned.push(launchIcbm(origin, target))
+    // Each ICBM descends at THIS wave's schedule velocity (mc4-1's waveSchedule,
+    // threaded through by the mc4-4 stepGame wiring); defaults to mc3's unit speed
+    // so pre-mc4 callers/tests are unchanged.
+    spawned.push(launchIcbm(origin, target, velocity))
   }
   return { icbms: [...current, ...spawned], remaining: remaining - launches }
 }

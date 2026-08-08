@@ -202,11 +202,13 @@ export function drawFrame(
 
   // HUD (mc3-5) — the running score and each base's remaining ammo, in the top
   // band. The score drawn is the core's `state.score` VERBATIM (the HUD-figure
-  // rule: never a re-derived copy). Functional white text; the authentic stroke
-  // font is mc9.
+  // rule: never a re-derived copy). mc4-4 adds the wave number and the current score
+  // multiplier, both read verbatim from state (`state.wave`, `state.multiplier`).
+  // Functional white text; the authentic stroke font is mc9.
   const hud = Math.max(8, Math.round(height / 24))
   ctx.fillStyle = '#fff'
   ctx.font = `${hud}px monospace`
   ctx.fillText(`SCORE ${String(state.score)}`, 4, hud)
   ctx.fillText(`AMMO ${state.bases.map((b) => b.ammo).join(' ')}`, 4, hud * 2 + 2)
+  ctx.fillText(`WAVE ${String(state.wave)}  x${String(state.multiplier)}`, 4, hud * 3 + 4)
 }

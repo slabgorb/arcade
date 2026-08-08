@@ -78,3 +78,47 @@ describe('jt9-31 — the named file is rewired onto the shared helper (no local 
     )
   })
 })
+
+// jt9-56 — the SIX other genuine swallowers jt9-31's Delivery Finding named
+// (`grep -rln "await import" | xargs grep -l "} catch {"`), rewired the same
+// way. `purity-scanner.test.ts` — the finding's seventh name — is NOT here: its
+// import catch is `catch (e) { throw new Error(...) }` (a legitimate re-throw,
+// not a swallow); the grep matched it only because the file separately contains
+// an unrelated bare `catch {` in a scanner-parseability test, not an import.
+// That is the whole discrepancy against the story's "7" — six genuine
+// swallowers remained, not seven.
+describe('jt9-56 — the six sibling swallowers are rewired onto the shared helper too', () => {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const rewired = [
+    'audio-decision-block-families.test.ts',
+    'audio-dispatch.test.ts',
+    'audio-manifest.test.ts',
+    'audio-rom-citations.test.ts',
+    'audio-seam-scope.test.ts',
+    'audio-events.test.ts',
+  ]
+
+  it.each(rewired)('%s imports the shared dynamic-load helper', (file) => {
+    const source = readFileSync(join(here, file), 'utf8')
+    expect(source, 'the swallow must be replaced by the shared helper, not re-copied').toMatch(
+      /helpers\/dynamic-load/,
+    )
+  })
+
+  it.each(rewired)('%s has no private swallowing `load` const left', (file) => {
+    const source = readFileSync(join(here, file), 'utf8')
+    // The exact local definition that carried the `catch { return {} }` swallow
+    // (or, for audio-events.test.ts, the caching variant's `catch { cached = {} }`).
+    expect(source, 'the local swallowing load() must be removed, not kept beside the import').not.toMatch(
+      /const\s+load\s*=\s*async\s*<T>\(\s*parts/,
+    )
+    expect(source, 'the caching swallow variant must be gone too').not.toMatch(/catch\s*\{\s*cached\s*=\s*\{\}/)
+  })
+
+  it('purity-scanner.test.ts is NOT migrated — its import catch re-throws, it never swallowed', () => {
+    const source = readFileSync(join(here, 'purity-scanner.test.ts'), 'utf8')
+    // loadScanner()'s catch (e) re-throws a descriptive Error; it is not the
+    // jt9-31 swallow idiom, so jt9-56 correctly leaves it alone.
+    expect(source).toMatch(/catch \(e\) \{\s*\n\s*throw new Error\(/)
+  })
+})

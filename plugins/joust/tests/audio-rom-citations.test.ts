@@ -44,6 +44,7 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { load } from './helpers/dynamic-load'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -96,17 +97,9 @@ type CueSource =
     }
   | { kind: 'invention'; note: string }
 
-const load = async <T>(parts: string[]): Promise<Partial<T>> => {
-  try {
-    return (await import(/* @vite-ignore */ parts.join('/'))) as Partial<T>
-  } catch {
-    return {}
-  }
-}
-
 async function cueSources(): Promise<Readonly<Record<string, CueSource>>> {
   const value = (
-    await load<{ CUE_SOURCES: Readonly<Record<string, CueSource>> }>(['..', 'src', 'shell', 'audio'])
+    await load<{ CUE_SOURCES: Readonly<Record<string, CueSource>> }>(import.meta.url, ['..', 'src', 'shell', 'audio'])
   ).CUE_SOURCES
   if (value === undefined) {
     throw new Error(
@@ -119,8 +112,9 @@ async function cueSources(): Promise<Readonly<Record<string, CueSource>>> {
 }
 
 async function sounds(): Promise<Readonly<Record<string, string>>> {
-  const value = (await load<{ SOUNDS: Readonly<Record<string, string>> }>(['..', 'src', 'shell', 'audio']))
-    .SOUNDS
+  const value = (
+    await load<{ SOUNDS: Readonly<Record<string, string>> }>(import.meta.url, ['..', 'src', 'shell', 'audio'])
+  ).SOUNDS
   if (value === undefined) {
     throw new Error('jt5-1 not implemented yet: src/shell/audio.ts must export `SOUNDS`.')
   }
