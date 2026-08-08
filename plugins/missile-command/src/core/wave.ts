@@ -101,8 +101,8 @@ export function waveSchedule(wave: number): WaveParams {
 //           per-ICBM value ICBPT (= ICBM_KILL_POINTS at base) is added FOUR times.
 //   ENDWV5  UPSCOR the bonus, JSR REGEN (regenerate cities), INC WAVENO (next wave).
 // REGEN (:4777) brings the living-city count up to min(PLIVES, NCITY) by reviving
-// dead cities — an entitlement capped at NCITY. mc4-3 feeds the entitlement (bonus
-// cities from score, CHEKBO); mc4-2 owns the PATH and the cap and takes the
+// dead cities — an entitlement capped at NCITY. mc4-5 feeds the entitlement (bonus
+// cities from score, CHEKBO — below); mc4-2 owns the PATH and the cap and takes the
 // entitlement as `reserve`. Bases are never in REGEN — a destroyed base stays dead.
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -165,4 +165,55 @@ export function regenerateCities(
  *  INC WAVENO then NEWWV1's ICBWAV lookup). */
 export function nextWaveBudget(wave: number): number {
   return waveSchedule(wave + 1).count
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// mc4-5 (GREEN, Loki) — the BONUS CITY at a score threshold: CHEKBO (W3MAIN.MAC:5621).
+// The running score, divided by an interval chosen from the BONINL table by the
+// OPTIO2 DIP, awards one bonus city per interval crossed — banked into the city
+// reserve (PLIVES) and healed by REGEN, capped at NCITY (the mc4-2 path). This is the
+// CORRECTED split-out of mc4-3 part (b): the threshold is BONINL, NOT MC-SCITYM (the
+// OPTIO2 starting-cities mask, which is only ever `AND`ed, never compared to score).
+//
+// RADIX & UNITS: W3MAIN/W3COMN are `.RADIX 16` (hex). CHEKBO's divide runs under SED
+// (BCD), and it divides the score's top BCD bytes LSCORM:LSCORH — i.e. score/100 — so
+// the hex `.WORD` entries are READ AS BCD and the interval in POINTS is (BCD) × 100.
+//   BONMSK (W3COMN.MAC:197, `=70`) — the OPTIO2 field is BITS 4-6. CHEKBO's LSR×3
+//     turns the masked byte into the `.WORD` offset, i.e. the 0..6 table index. A
+//     fully-set field (all-ones) is CMP-equal to BONMSK and DISABLES the bonus.
+//     Value 0x70 = 112; claim MC-BONMSK.
+//   BONINL (W3MAIN.MAC:5703) — `.WORD 0100,0120,0140,0150,0180,0200,0080` → BCD
+//     100,120,140,150,180,200,80 → ×100 = the point intervals below. Claims
+//     MC-BONINL-10000 … MC-BONINL-8000. Every entry is a ×100 multiple, so the
+//     dropped low BCD byte never shifts a floor: earned = floor(score / points).
+// Shipped default DIP = OPTIO2 bits clear → index 0 → 10,000 points (the factory
+// bonus), matching field.ts's `START_CITIES = STCITY[0]` bits-clear convention.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// The OPTIO2 bonus-interval field mask — W3COMN.MAC:197 (`BONMSK =70`). Claim MC-BONMSK.
+const BONMSK = 0x70
+
+// BONINL read as BCD × 100 (score/100 via LSCORM:LSCORH), one interval in POINTS per
+// DIP index 0..6 — W3MAIN.MAC:5703. Claims MC-BONINL-*.
+const BONINL_POINTS: readonly number[] = [10000, 12000, 14000, 15000, 18000, 20000, 8000]
+
+/**
+ * The bonus-city interval, in points, for an OPTIO2 DIP byte: BONINL indexed by the
+ * BONMSK field. A fully-set field disables the bonus (returns `Infinity`, so no score
+ * ever earns a city). Pure — a frozen table lookup. See the CHEKBO note above.
+ */
+export function bonusInterval(optio2: number): number {
+  const field = optio2 & BONMSK
+  if (field === BONMSK) return Infinity // all-ones DIP ⇒ bonus disabled (CHEKBO's CMP/IFNE)
+  // Shift the masked field (bits 4-6) down to a 0..6 index via BONMSK's lowest set bit.
+  return BONINL_POINTS[field / (BONMSK & -BONMSK)]
+}
+
+/**
+ * Bonus cities earned at `score` for a given interval: `floor(score / interval)`, the
+ * cumulative count CHEKBO derives (ICBTOL). Being cumulative, the same threshold is
+ * never counted twice; a disabled (`Infinity`) interval earns none. Pure.
+ */
+export function bonusCitiesEarned(score: number, intervalPoints: number): number {
+  return Math.floor(score / intervalPoints)
 }
