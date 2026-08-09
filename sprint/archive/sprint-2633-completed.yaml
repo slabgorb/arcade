@@ -7,6 +7,7 @@ sprint:
 
 completed_epics:
   - mc4
+  - mc9
 completed_stories:
   - id: mc5-1
     epic: mc5
@@ -41,5 +42,35 @@ completed_stories:
   - id: mc4-5
     epic: mc4
     title: 'Bonus city at a score threshold (CHEKBO/BONINL): recover the real bonus interval + claim'
+    points: 3
+    completed: '2026-08-08'
+  - id: mc9-4
+    epic: mc9
+    title: 'Authentic stroke-font HUD and screen layout'
+    points: 3
+    completed: '2026-08-08'
+  - id: mc9-1
+    epic: mc9
+    title: 'Authentic city and base stamps (retire the fillRect blocks and triangles)'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc9-2
+    epic: mc9
+    title: 'Per-wave 8-colour palette and colour cycling (resolve open question O-5)'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc9-3
+    epic: mc9
+    title: 'Exact OLDRAD blast curve + EXPFRA cadence and authentic missile trails (retire the triangle blast)'
+    points: 5
+    completed: '2026-08-08'
+  - id: jt10-7
+    epic: jt10
+    title: 'High-score entry + JOUST CHAMPIONS table: initials entry (ENTER YOUR INITIALS / ENTER THY NAME MY LORD!) via @shared/highscore in the joust font'
+    points: 5
+    completed: '2026-08-08'
+  - id: SH3-4
+    epic: SH3
+    title: 'pac-man — adopt @shared/host-helpers mount + @shared/view letterbox for the DPR/resize handling in src/shell/layout.ts; fold the player-pause path onto @shared/pause ONLY IF core/mode.ts `paused` is player-pause and not ghost scatter/chase mode-state (verify first — reuse-first, do not force a false match)'
     points: 3
     completed: '2026-08-08'

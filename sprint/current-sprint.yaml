@@ -9,7 +9,6 @@ sprint:
   number: 2633
 epics:
   - jt10
-  - mc9
   - mc8
   - mc5
   - sw10

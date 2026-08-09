@@ -27,6 +27,7 @@ import { CITIES, BASES, type FieldPos } from '../core/field.js'
 import { blastRadius } from '../core/explosion.js'
 import { INITIAL_WAVE } from '../core/wave.js'
 import { CITY_STAMPS, STAMP_H, STAMP_W, stampPixels, MISSILE_STACK } from './stamps.js'
+import { glyphRows } from './glyphs.js'
 import { paletteForWave, rgbCss, SLOT, FLASH_SLOTS } from './palette.js'
 
 // ─── The cabinet's logical coordinate space (settled here, mc1-1 deferred it) ─
@@ -213,15 +214,35 @@ export function drawFrame(
   ctx.lineTo(x, y + arm)
   ctx.stroke()
 
-  // HUD (mc3-5) — the running score and each base's remaining ammo, in the top
-  // band. The score drawn is the core's `state.score` VERBATIM (the HUD-figure
-  // rule: never a re-derived copy). mc4-4 adds the wave number and the current score
-  // multiplier, both read verbatim from state (`state.wave`, `state.multiplier`).
-  // Functional white text; the authentic stroke font is mc9.
-  const hud = Math.max(8, Math.round(height / 24))
+  // HUD (mc9-4) — the running score, each base's remaining ammo, and the wave + score
+  // multiplier, drawn in the cabinet's authentic ALPHANUMERIC STAMPS (its raster font),
+  // retiring the mc3-5 browser-font fillText HUD. Missile Command is a raster
+  // machine: each character is an 8x8 stamp mapped from ASCII by CONVERT AN ASCII VALUE
+  // TO ITS STAMP ADDRESS (W3DSUP.MAC:1754) and blitted by WRITE A STAMP (W3DSUP.MAC:587)
+  // — the same stamp engine the cities/bases use. Glyph data lives in the cited shell
+  // module src/shell/glyphs.ts (NUMBER/LETTER tables); no premature src/shared font.
+  //
+  // The score is DISPLAY 6 DIGITS / DSPNUM (W3DSUP.MAC:2202), leading zeros suppressed:
+  // drawn as `String(state.score)` — the core's `state.score` VERBATIM (the HUD-figure
+  // rule, never a re-derived copy). The ammo, wave and multiplier are likewise verbatim
+  // from state (`state.bases[i].ammo`, `state.wave`, `state.multiplier`). The HUD sits
+  // in the top band on the field the frame just cleared (CLEAR SCREEN, W3DSUP.MAC:1712).
+  // Functional white ink; the per-wave HUD colour is out of this story's scope.
+  const gp = Math.max(1, Math.round(height / 120)) // canvas px per glyph pixel
+  const advance = (STAMP_W + 1) * gp // per-character step (1-pixel inter-glyph gap)
+  const lineH = (STAMP_H + 2) * gp // vertical pitch between HUD rows
+  const pad = 2 * gp
   ctx.fillStyle = '#fff'
-  ctx.font = `${hud}px monospace`
-  ctx.fillText(`SCORE ${String(state.score)}`, 4, hud)
-  ctx.fillText(`AMMO ${state.bases.map((b) => b.ammo).join(' ')}`, 4, hud * 2 + 2)
-  ctx.fillText(`WAVE ${String(state.wave)}  x${String(state.multiplier)}`, 4, hud * 3 + 4)
+  const drawGlyphs = (text: string, x: number, y: number): void => {
+    let cx = x
+    for (const ch of text) {
+      for (const { col, row } of stampPixels(glyphRows(ch))) {
+        ctx.fillRect(cx + col * gp, y + row * gp, gp, gp)
+      }
+      cx += advance
+    }
+  }
+  drawGlyphs(`SCORE ${String(state.score)}`, pad, pad)
+  drawGlyphs(`AMMO ${state.bases.map((b) => b.ammo).join(' ')}`, pad, pad + lineH)
+  drawGlyphs(`WAVE ${String(state.wave)}  X${String(state.multiplier)}`, pad, pad + lineH * 2)
 }

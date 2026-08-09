@@ -37,3 +37,19 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: mc5-5
+    title: 'ICBM launch-count clamp (spawn.ts): port ROM ICNORM per-cycle cap (max 4, minus 2*cruise/ICBM/plane on-screen) so the normal swarm stops saturating MXICON(7) and leaves slots for sputnik/cruise. REV-01 W3MAIN.MAC:2437 ICNORM'
+    points: 3
+    priority: p2
+    status: in_review
+    started: '2026-08-08'
+    repos: arcade
+    workflow: tdd
+  - id: mc5-6
+    title: "ICBM on-screen ceiling: reconcile MXICON(7) vs NICBMS(8). The ROM's ICNORM/POTENT launch arithmetic (INX before caps, DEX after, STX POTENT=count-1) makes true concurrency NICBMS(8); MXICON=7 is the count-1 operand. Align mc3/mc4/mc5 spawn headroom + MC-MXICON claim prose + playthrough <=MXICON bounds. REV-01 W3MAIN.MAC:2439 ICNORM / 2669 FROMTOP"
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor

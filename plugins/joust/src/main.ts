@@ -27,7 +27,19 @@ import {
 } from './core/cabinet.js'
 import { createAttract, stepAttract, type AttractState } from './core/attract-scheduler.js'
 import { selectPlayerCount, type SelectInput } from './core/select.js'
+import {
+  beginEntry,
+  enterInitial,
+  isEntryComplete,
+  commitEntry,
+  rankForScore,
+  promptForRank,
+  PROMPT_LESSER,
+  type JoustHighScore,
+} from './core/highscore.js'
+import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { layoutSelectScreen } from './shell/selectScreen.js'
+import { layoutHighscoreScreen } from './shell/highscoreScreen.js'
 import { layoutGameOverScreen } from './shell/gameOverScreen.js'
 import { layoutAttractBanner } from './shell/attractScreen.js'
 import { layoutTitleScreen, type TitleScreenLayout } from './shell/titleScreen.js'
@@ -202,6 +214,20 @@ function renderSelectScreen(): void {
   paintText(screen.credits, centred(screen.credits), 210)
 }
 
+/**
+ * jt10-7 — the JOUST CHAMPIONS overlay: the FONT57 heading, one FONT35 row per
+ * table entry, and (while entering) the rank-conditional FONT35 prompt, each centred
+ * horizontally. Text + fonts come from `layoutHighscoreScreen`; positions are the
+ * shell's (a human smoke test / reference capture tunes them).
+ */
+function renderHighscoreScreen(): void {
+  const screen = layoutHighscoreScreen(colours[SELECT_COLOUR_INDEX], highScoreTable, entryPrompt)
+  const centred = (laid: LaidOutText): number => Math.round((LOGICAL_WIDTH - laid.width) / 2)
+  paintText(screen.heading, centred(screen.heading), 32)
+  screen.rows.forEach((row, i) => paintText(row, centred(row), 72 + i * 12))
+  if (screen.prompt) paintText(screen.prompt, centred(screen.prompt), 210)
+}
+
 // jt10-6 — the game-over banner colour (a transcribed COLOR1 index, as the select
 // screen and dev overlay use — NOT an invented literal, so the denylist scan stays
 // clean) and its Y position (a placeholder tuned by a human smoke test / reference
@@ -330,6 +356,23 @@ let attract: AttractState = createAttract()
 let playerIds: number[] = []
 let prevFlap1 = false
 let prevFlap2 = false
+
+// jt10-7 — the JOUST CHAMPIONS persistence seam. makeHighScoreStorage is the ONLY
+// localStorage touch (single-origin, keyed `joust-high-scores`), with the 'wave'
+// domain guard (joust's own domain field). Loaded once at boot; the qualify gate
+// (afterGameOver) and the initials-entry commit both read/write this table.
+const highScores = makeHighScoreStorage('joust', makeHighScoreRowGuard('wave'), 'wave')
+let highScoreTable: JoustHighScore[] = highScores.load()
+
+// jt10-7 — the in-flight initials entry (the SH2-13 shared keyboard verb). Letters
+// arrive as keydown EVENTS through enterInitial; the flap RISING edge commits once
+// the buffer is complete. entryScore/entryWave are captured when 'highscore' is
+// entered; entryPrompt is the rank-selected line (champion vs lesser).
+let entry = beginEntry()
+let entryScore = 0
+let entryWave = 1
+let entryPrompt = PROMPT_LESSER
+let prevHsFlap = false
 // The previous frame's start-button LEVEL. `startPlaying` wraps a FRESH createGame,
 // so the press must fire on its RISING edge only — a held start must not re-seed the
 // game every frame (the prevFlap discipline, one tier up).
@@ -349,6 +392,20 @@ function enterPlaying(count: 1 | 2): void {
   prevFlap1 = false
   prevFlap2 = false
   gameoverHoldFrames = 0
+}
+
+/**
+ * jt10-7 — seed the initials-entry state when the cabinet routes into 'highscore'.
+ * The final score is the best player's (afterGameOver's own gate value); the wave
+ * is the session's. The prompt is rank-conditional — the CHAMPION (rank 1) sees
+ * 'ENTER THY NAME MY LORD!', a lesser qualifier 'ENTER YOUR INITIALS'.
+ */
+function beginHighScoreEntry(game: GameState): void {
+  entryScore = game.players.reduce((max, p) => Math.max(max, p.score), 0)
+  entryWave = game.wave
+  entry = beginEntry()
+  entryPrompt = promptForRank(rankForScore(highScoreTable, entryScore))
+  prevHsFlap = false
 }
 
 /** The player's start-button intent this frame: the 1P / 2P start keys (1 / 2). */
@@ -371,6 +428,11 @@ window.addEventListener('keydown', (e) => {
   audio.resume()
   held.add(e.code)
   if (e.code === 'Space') e.preventDefault()
+  // jt10-7 — initials entry is the shared keyboard verb: a letter/Backspace keydown
+  // steps the buffer while the cabinet is on the 'highscore' screen. `e.key` (the
+  // character) is what stepNameEntry consumes; every non-letter (incl. the Space
+  // confirm) is inert here and handled by the pump's flap-confirm instead.
+  if (cabinet.mode === 'highscore') entry = enterInitial(entry, e.key)
 })
 window.addEventListener('keyup', (e) => held.delete(e.code))
 
@@ -389,14 +451,30 @@ const frame = (now: number): void => {
     accumulator = pumpFrames(accumulator, elapsed, () => {
       if (cabinet.mode === 'gameover') {
         // Hold the banner ~88 ticks (GOVWAT), then route on through the PURE gate:
-        // afterGameOver → 'highscore' iff the best score qualifies, else 'attract'
-        // (the table is empty until jt10-7 wires @shared/highscore). 'attract' now renders
-        // via renderAttract (jt10-4, below); 'highscore' has no screen yet, so until jt10-7
-        // it alone falls through to the coin-up door — the cabinet never dead-ends.
+        // afterGameOver → 'highscore' iff the best score qualifies against the
+        // persisted JOUST CHAMPIONS table (jt10-7), else 'attract' (rendered by
+        // renderAttract). On a qualifying route, seed the initials entry.
         if (++gameoverHoldFrames >= GAMEOVER_HOLD_FRAMES) {
-          cabinet = afterGameOver(cabinet, [])
+          cabinet = afterGameOver(cabinet, highScoreTable)
           gameoverHoldFrames = 0
+          if (cabinet.mode === 'highscore') beginHighScoreEntry(cabinet.game)
         }
+        return
+      }
+      if (cabinet.mode === 'highscore') {
+        // jt10-7 — the initials-entry screen. Letters arrive as keydown EVENTS
+        // (enterInitial, in the keydown handler). Here we watch only the CONFIRM:
+        // FLAP (Space) on its RISING edge, with the buffer COMPLETE, commits the row
+        // to the persisted JOUST CHAMPIONS table and returns to attract. The rising
+        // edge (prevHsFlap) keeps a held flap from re-committing every frame.
+        const flapHeld = held.has('Space')
+        if (flapHeld && !prevHsFlap && isEntryComplete(entry)) {
+          highScoreTable = commitEntry(highScoreTable, entry.initials, entryScore, entryWave)
+          highScores.save(highScoreTable)
+          entry = beginEntry()
+          cabinet = toAttract(cabinet, SEED)
+        }
+        prevHsFlap = flapHeld
         return
       }
       if (cabinet.mode === 'attract') {
@@ -418,9 +496,8 @@ const frame = (now: number): void => {
         return
       }
       if (cabinet.mode !== 'playing') {
-        // The coin-up door: 'select', and — until jt10-7 — 'highscore' too. Begin a
-        // game on the RISING edge of a start press only, so a held start button cannot
-        // re-seed the game each frame.
+        // The coin-up door: 'select' (and 'title'). Begin a game on the RISING edge of
+        // a start press only, so a held start button cannot re-seed the game each frame.
         const want = readSelectInput(held)
         const startHeld = want !== null
         if (startHeld && !prevStartHeld) {
@@ -466,9 +543,11 @@ const frame = (now: number): void => {
     // The title overlay: the vector JOUST wordmark + copyright/extra-mount lines,
     // colour-cycling every TITLE_COLOR_CADENCE frames. The hook is here now.
     renderTitleScreen()
+  } else if (cabinet.mode === 'highscore') {
+    // jt10-7 — the JOUST CHAMPIONS table + the rank-conditional initials prompt.
+    renderHighscoreScreen()
   } else {
-    // The coin-up door: the two START banners and the CREDITS row. 'select', and —
-    // until jt10-7 (high-score) lands — 'highscore' too.
+    // The coin-up door: the two START banners and the CREDITS row ('select').
     renderSelectScreen()
   }
 

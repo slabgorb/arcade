@@ -74,10 +74,13 @@ stories:
     title: 'High-score entry + JOUST CHAMPIONS table: initials entry (ENTER YOUR INITIALS / ENTER THY NAME MY LORD!) via @shared/highscore in the joust font'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-08T21:54:06Z'
     repos: arcade
     workflow: tdd
     depends_on: jt10-6
+    completed: '2026-08-08'
+    review_verdict: approved
   - id: jt10-8
     title: Extend the font source double-entry gate to ALL ~102 glyphs (font35+font57), not just the 10 jt10-1 pinned
     points: 2
@@ -91,3 +94,19 @@ stories:
     type: chore
     review_verdict: approved
     review_findings: "APPROVED (Heimdall) round 1. Test+citations chore. Extended font source gate to all glyphs: all-glyph double-entry (green on arrival, faithful port) + 90 new byte-verified citation claims (font35 41, font57 49) closing the citation half of jt10-1's finding. Non-vacuity proven by mutation battery (coverage delete, real module-data drift, verbatim drift — each bites). Both axes guarded in CI via committed vendored tree. No font DATA changed. No findings."
+  - id: jt10-9
+    title: DAILY BUZZARDS daily-reset high-score table (TXHSP $0F) — second table + daily reset timer, alongside jt10-7's all-time JOUST CHAMPIONS
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    depends_on: jt10-7
+  - id: jt10-10
+    title: Retire jt9-39's stale live-sprint control in difficulty-wiring.test.ts — hardcoded jt9-39/jt9-11 (both archived) fail liveSprintStoryIds(); derive the positive control from the live set so it can't rot
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: chore
