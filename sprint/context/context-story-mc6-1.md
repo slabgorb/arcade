@@ -40,15 +40,18 @@ Edit `plugins/missile-command/src/core/state.ts` only (pure core — no shell/re
    `INITIAL_PHASE='attract'` / `INITIAL_ATTRACT=true` (boot disposition). **Clock-free** and pure
    (no RNG needed — a sign dispatch is deterministic). The phase→phase transitions and loop closure
    are NOT in mc6-1 (mc6-2/6-3/6-6 own them).
-3. Cite each ROM section (475 MAINLINE / 539 PLAY / 561 SETUP / 615 PAUSE) as **`//` line
-   comments**, NOT `/** */` JSDoc — the mc un-cited-literal gate is line-based and JSDoc leaks
-   numbers (see memory: "mc citations scanner leaks JSDoc numbers").
+3. Cite the ROM sources this story actually touches — MAINLINE `:475`, the dispatch `:507-525`,
+   the STATE var `:131`, ATRACT `:135`, cold start `:491/:493`, and the SETUP-task writes
+   `:3601/:3663/:589/:601` — as **`//` line comments**, NOT `/** */` JSDoc (the mc un-cited-literal
+   gate is line-based and JSDoc leaks numbers; see memory "mc citations scanner leaks JSDoc numbers").
+   The PLAY/SETUP/PAUSE handler headers `:539/:561/:615` are cited when those handlers are wired
+   (mc6-2..6), not here.
 4. Leave existing fns (`nextPhase`, `nextWavePhase`, `resumePlay`, `allCitiesDead`) and their
    consumer `game.ts:324` (`nextPhase(state.phase, impact.cities)`) behaviorally unchanged.
 
 ## Scope
-- **In scope:** `Phase` union extension + a pure seeded no-clock `mainline` dispatch fn in
-  `state.ts`, with ROM line-comment citations.
+- **In scope:** `Phase` union extension + a pure, no-clock `mainline` dispatch fn in
+  `state.ts` (no RNG — a sign dispatch is deterministic), with ROM line-comment citations.
 - **Out of scope:** shell/render/input wiring of the new phases, attract-mode content, pause UI,
   and any `game.ts` step-loop integration — those are later mc6 stories.
 
@@ -61,8 +64,9 @@ Edit `plugins/missile-command/src/core/state.ts` only (pure core — no shell/re
 3. **Boot disposition:** `INITIAL_PHASE='attract'` / `INITIAL_ATTRACT=true` (cold start S.SETU +
    ATRACT). NOTE: the phase→phase edge transitions and `'over' → 'attract'` loop closure are
    **deferred to mc6-2/6-3/6-6** — mc6-1 pins the dispatch boundary, not the cycle.
-4. **ROM citations:** W3MAIN.MAC:475/:539/:561/:615 preserved as `//` line comments (not JSDoc),
-   per the mc citations rule.
+4. **ROM citations:** the sources this story cites (MAINLINE `:475`, dispatch `:507-525`, `:131`,
+   `:135`, `:491/:493`, `:3601/:3663/:589/:601`, and `W3COMN.MAC:57/59/61`) are `//` line comments,
+   not JSDoc, per the mc citations rule. (Handler headers `:539/:561/:615` belong to mc6-2..6.)
 5. **Regression safety:** `nextPhase`, `nextWavePhase`, `resumePlay`, `allCitiesDead` remain
    exported and behave identically; `game.ts` continues to compile and run unchanged.
 
