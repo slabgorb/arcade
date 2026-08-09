@@ -69,25 +69,25 @@ export function spawnIcbms(
   const clearToLaunch = current.length === 0 || highestV < LAUHGT
   if (!clearToLaunch) return { icbms: current, remaining }
 
-  // ── mc5-5: ICNORM's per-cycle launch SHAPE (W3MAIN.MAC:2457-2510), on the
-  // mc3 MXICON=7 basis ────────────────────────────────────────────────────────
-  // launches = min( MXICON − 2·CRMONS − ICBONS − (plane active ? 1 : 0),
+  // ── mc5-6: ICNORM's per-cycle launch arithmetic (W3MAIN.MAC:2457-2510), on
+  // the ROM's true NICBMS=8 ceiling ───────────────────────────────────────────
+  // launches = min( NICBMS − 2·CRMONS − ICBONS − (plane active ? 1 : 0),
   //                 ICNORM_CAP,   ; "MAX AT 4"    W3MAIN.MAC:2475
   //                 remaining )   ; "MAX AT ICBTOL" wave budget
-  // floored at 0. This ports ICNORM's SHAPE — cap 4, minus 2·cruise, minus
-  // on-screen ICBMs, minus the plane slot, floor 0 — NOT its exact count-space
-  // arithmetic: the ROM's INX (W3MAIN.MAC:2473) lifts the headroom into
-  // count-space, so its true ceiling is NICBMS(8); we deliberately keep the
-  // shipped mc3 MXICON(7) foundation, and the MXICON(7)-vs-NICBMS(8) count-1
-  // reconciliation is tracked in mc5-6. CRMONS is subtracted TWICE
-  // (`SBC CRMONS … SEC … SBC CRMONS`, W3MAIN.MAC:2459-2463) — a cruise missile
-  // costs two slots. An active plane reserves one slot via the initial-carry
-  // borrow ("PLANE COUNTS AS A POTENTIAL BANG", W3MAIN.MAC:2313). The ROM's
-  // POTENT global-slot term is game.ts arbitration territory (mc5-2), not
-  // ported here.
+  // floored at 0. RESOLUTION of the mc5-5 count-1 caveat: the ROM starts from
+  // `LDA I,MXICON` (W3MAIN.MAC:2457) but its INX (W3MAIN.MAC:2473) lifts
+  // MXICON+1 = 8 into count-space, so the TRUE on-screen ceiling is NICBMS(8) —
+  // MXICON(7) is the count−1 operand of that arithmetic, not a standalone hard
+  // cap. Net: no plane ⇒ the swarm fills to 8; planeActive ⇒ it caps at 7,
+  // reserving the 8th slot for the bomber's own shot (mc5-2). CRMONS is
+  // subtracted TWICE (`SBC CRMONS … SEC … SBC CRMONS`, W3MAIN.MAC:2459-2463) —
+  // a cruise missile costs two slots. An active plane reserves one slot via the
+  // initial-carry borrow ("PLANE COUNTS AS A POTENTIAL BANG", W3MAIN.MAC:2313).
+  // The ROM's POTENT global-slot term is game.ts arbitration territory (mc5-2),
+  // not ported here.
   const cruiseOnScreen = opts?.cruiseOnScreen ?? 0
   const planeSlot = opts?.planeActive ? 1 : 0
-  const headroom = MXICON - 2 * cruiseOnScreen - current.length - planeSlot
+  const headroom = NICBMS - 2 * cruiseOnScreen - current.length - planeSlot
   const launches = Math.max(0, Math.min(headroom, ICNORM_CAP, remaining))
   const spawned: Icbm[] = []
   for (let k = 0; k < launches; k++) {
