@@ -21,12 +21,16 @@
 //                                                            (W3MAIN.MAC:5729)
 //     Both indexed `table-SPUTWV`, clamped to the last row for waves ≥ 8
 //     (W3MAIN.MAC:4125-4137).
-//   Launch count        min(NICBMS − 2·CRMONS − ICBONS, 4, budget), ≥ 0
-//                        (W3MAIN.MAC:2455-2479; NICBMS = 8, W3COMN.MAC:35)
-//     REWORK: the ROM starts from `LDA I,MXICON` (7) but its INX lifts the
-//     arithmetic into count-space — the true ceiling is NICBMS(8), and the plane
-//     fires INTO the 8th slot the swarm reserves (spawnIcbms' planeActive caps
-//     the normal swarm at 7). No −1 self-term. See spawn.ts (mc5-6) for the cite.
+//   Salvo count         min(MXICON − 2·CRMONS − ICBONS, 3, budget), ≥ 0
+//                        (W3MAIN.MAC:2447-2479; MXICON = 7, W3COMN.MAC:193)
+//     REWORK 2 (faithful): on the SPUTFIR path the plane is aloft (PLCPV ≠ 0),
+//     so ICNORM's `SEC / LDA PLCPV / IFNE / CLC` (W3MAIN.MAC:2447-2453) borrows
+//     an extra 1 in the first SBC — the headroom is NICBMS − ICBONS − 1 =
+//     7 − ICBONS, and that −1 IS the plane's own reservation: it does NOT fire
+//     into a full-at-7 swarm (the rejected round-1 rework read the borrow as an
+//     8th-slot grant). And SPUTFIR (:2703) falls into MIRVER (:2705), whose
+//     `CMP I,2 / STA POTENT ;NO MORE THAN 3 SHOTS` (:2709-2717) caps the salvo
+//     at 3 — not ICNORM's 4.
 //   Fire-timer seed     WSPFIR = SPUTDS, "DISTANCE BETWEEN SPUTNIK FIRES"
 //                        (W3MAIN.MAC:285 decl, :4133 use) — the plane's fireTimer
 //                        seeds from the FIRE cadence, not the WSPLAU activation
@@ -60,6 +64,7 @@ interface SputnikModule {
   SPUTNIK_WAVE: number
   SPUTNIK_V_MIN: number
   SPUTNIK_SCORE_MULT: number
+  SPUTNIK_FIRE_MAX: number
   spawnSputnik: (rng: ReturnType<typeof createRng>, fireCadence: number) => Sputnik
   stepSputnik: (s: Sputnik, speed: number) => Sputnik
   offscreen: (s: Sputnik) => boolean
@@ -85,11 +90,13 @@ async function loadSputnik(): Promise<SputnikModule> {
   } catch (e) {
     throw new Error(
       'sputnik core module not built yet — GREEN (Dev) creates src/core/sputnik.ts, a PURE reducer ' +
-        'exporting SPUTNIK_WAVE(2)/SPUTNIK_V_MIN(100)/SPUTNIK_SCORE_MULT(4), spawnSputnik(rng, fireCadence) ' +
+        'exporting SPUTNIK_WAVE(2)/SPUTNIK_V_MIN(100)/SPUTNIK_SCORE_MULT(4)/SPUTNIK_FIRE_MAX(3), ' +
+        'spawnSputnik(rng, fireCadence) ' +
         '[edge/dir/variant from rand AND 1, pos.v ≥ SPUTNIK_V_MIN, fireTimer = fire cadence (WSPFIR)], ' +
         'stepSputnik(s, speed) [pos.h += dir·speed, fireTimer − 1], offscreen(s), and the wave tables ' +
         'sputnikFireCadence/sputnikActivationSep (WSPFIR/WSPLAU, clamped past wave 8), sputnikFireCount ' +
-        '[max(0, min(NICBMS−2·cruise−icbm, 4, budget))], readyToFire/reload. Seeded @shared/rng only, ' +
+        '[max(0, min(MXICON−2·cruise−icbm, 3, budget)) — the −1 vs NICBMS is the aloft plane PLCPV ' +
+        'reservation, the cap is MIRVER 3], readyToFire/reload. Seeded @shared/rng only, ' +
         'no clock, no shell import (purity.test.ts sweeps it). ' +
         `(${(e as Error).message})`,
     )
@@ -100,11 +107,14 @@ async function loadSputnik(): Promise<SputnikModule> {
 // AC1 — the cited REV-01 constants (Task 3)
 // ─────────────────────────────────────────────────────────────────────────────
 describe('mc5-2 AC1 — sputnik constants', () => {
-  it('exposes SPUTNIK_WAVE=2, SPUTNIK_V_MIN=100, SPUTNIK_SCORE_MULT=4', async () => {
-    const { SPUTNIK_WAVE, SPUTNIK_V_MIN, SPUTNIK_SCORE_MULT } = await loadSputnik()
+  it('exposes SPUTNIK_WAVE=2, SPUTNIK_V_MIN=100, SPUTNIK_SCORE_MULT=4, SPUTNIK_FIRE_MAX=3', async () => {
+    const { SPUTNIK_WAVE, SPUTNIK_V_MIN, SPUTNIK_SCORE_MULT, SPUTNIK_FIRE_MAX } = await loadSputnik()
     expect(SPUTNIK_WAVE).toBe(2) // SPUTWV, W3COMN.MAC:203
     expect(SPUTNIK_V_MIN).toBe(100) // VPLMIN hex 64, W3MAIN.MAC:5761
     expect(SPUTNIK_SCORE_MULT).toBe(4) // SPUTKI LDX I,3 → ×4, W3MAIN.MAC:2081
+    // MIRVER's `CMP I,2 / STA POTENT ;NO MORE THAN 3 SHOTS` (W3MAIN.MAC:2709-2717)
+    // caps the SPUTFIR salvo at 3 — the round-1 cap of 4 was ICNORM's, wrong path.
+    expect(SPUTNIK_FIRE_MAX).toBe(3)
   })
 })
 
@@ -187,47 +197,52 @@ describe('mc5-2 AC4 — WSPFIR / WSPLAU wave tables', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC5 — launch-count clamp: caps at 4, shrinks with pressure, never negative,
+// AC5 — salvo-count clamp: caps at 3, shrinks with pressure, never negative,
 //        clamped by budget (Task 4). Pins the degenerate (over-pressure) arm so a
 //        `max(0, …)`-less mutant reddens (lang-review #21).
-// REWORK: headroom is NICBMS(8) − 2·cruise − icbm — the ROM's INX lifts the
-// MXICON(7) count−1 arithmetic into count-space, and the plane fires INTO the
-// 8th slot the planeActive swarm cap reserves. The old −1 self-term (which,
-// with the spawner filling the screen, silenced the plane in play) is GONE.
+// REWORK 2 (faithful): headroom is MXICON(7) − 2·cruise − icbm — equivalently
+// NICBMS − icbm − 1, where the −1 IS the aloft plane's own reservation (ICNORM's
+// PLCPV borrow, `SEC / LDA PLCPV / IFNE / CLC`, W3MAIN.MAC:2447-2453) — and the
+// salvo cap is MIRVER's 3 ("NO MORE THAN 3 SHOTS", :2717), not ICNORM's 4. The
+// rejected round-1 rework's 8 − icbm read the borrow as an 8th-slot grant; the
+// plane fires only when the swarm has dipped BELOW 7, never into a full swarm.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('mc5-2 AC5 — sputnikFireCount clamp', () => {
-  it('caps at four when the field is clear', async () => {
+  it('caps at three when the field is clear (the MIRVER salvo cap)', async () => {
     const { sputnikFireCount } = await loadSputnik()
-    expect(sputnikFireCount(0, 0, 99)).toBe(4) // 8 − 0 − 0 = 8 → capped at 4
-    expect(sputnikFireCount(1, 0, 99)).toBe(4) // 8 − 2 − 0 = 6 → capped at 4
+    expect(sputnikFireCount(0, 0, 99)).toBe(3) // 7 − 0 − 0 = 7 → capped at 3
+    expect(sputnikFireCount(1, 0, 99)).toBe(3) // 7 − 2 − 0 = 5 → capped at 3
   })
 
   it('shrinks under on-screen cruise pressure (each cruise costs two)', async () => {
     const { sputnikFireCount } = await loadSputnik()
-    expect(sputnikFireCount(2, 0, 99)).toBe(4) // 8 − 4 − 0 = 4 (exactly the cap)
-    expect(sputnikFireCount(3, 0, 99)).toBe(2) // 8 − 6 − 0 = 2
-    expect(sputnikFireCount(4, 0, 99)).toBe(0) // 8 − 8 − 0 = 0 (reaches zero exactly)
+    expect(sputnikFireCount(2, 0, 99)).toBe(3) // 7 − 4 − 0 = 3 — exactly the cap:
+    // pins base-7 AND cap-3 together (base-8 gives 4; a cap-4 mutant changes (1,0))
+    expect(sputnikFireCount(3, 0, 99)).toBe(1) // 7 − 6 − 0 = 1 — a single-subtract
+    // (7 − cruise) mutant gives 4 → 3 here, so the ×2 cruise cost is pinned
+    expect(sputnikFireCount(4, 0, 99)).toBe(0) // 7 − 8 = −1 → floored
   })
 
   it('shrinks under on-screen ICBM pressure (each ICBM costs one)', async () => {
     const { sputnikFireCount } = await loadSputnik()
-    expect(sputnikFireCount(0, 1, 99)).toBe(4) // 8 − 0 − 1 = 7 → capped at 4
-    expect(sputnikFireCount(0, 5, 99)).toBe(3) // 8 − 0 − 5 = 3
+    expect(sputnikFireCount(0, 1, 99)).toBe(3) // 7 − 0 − 1 = 6 → capped at 3
+    expect(sputnikFireCount(0, 5, 99)).toBe(2) // 7 − 0 − 5 = 2
+    expect(sputnikFireCount(0, 6, 99)).toBe(1) // 7 − 0 − 6 = 1 (an 8 − icbm mutant gives 2)
   })
 
-  it('fires into the 8th slot the swarm reserves (the NICBMS-vs-MXICON discriminator)', async () => {
+  it('does NOT fire into a full-at-7 swarm (the plane-reservation anti-regression pin)', async () => {
     const { sputnikFireCount } = await loadSputnik()
-    // With the normal swarm at its planeActive cap of 7 on screen, the plane STILL
-    // fires one ICBM — into the reserved NICBMS(8) slot. The retired MXICON−1
-    // formula gave 7 − 7 − 1 = −1 → 0 here, which is exactly why the shipped plane
-    // never fired in play.
-    expect(sputnikFireCount(0, 7, 99)).toBe(1) // 8 − 0 − 7 = 1
-    expect(sputnikFireCount(0, 8, 99)).toBe(0) // the field is truly full at NICBMS
+    // The −1 IS the plane's reservation: with the swarm at MXICON(7) there is no
+    // headroom — the plane holds fire until an arrival opens a slot. The rejected
+    // round-1 formula (8 − icbm, "fire into the reserved 8th slot") gave 1 here;
+    // asserting 0 is the exact anti-regression pin against that reading.
+    expect(sputnikFireCount(0, 7, 99)).toBe(0) // 7 − 7 = 0
+    expect(sputnikFireCount(0, 8, 99)).toBe(0) // beyond full — still 0
   })
 
   it('is never negative even when the field is saturated (the max(0, …) floor)', async () => {
     const { sputnikFireCount } = await loadSputnik()
-    // 8 − 10 − 0 = −2: a launch count must clamp to 0, never spawn "negative" missiles.
+    // 7 − 10 − 0 = −3: a launch count must clamp to 0, never spawn "negative" missiles.
     expect(sputnikFireCount(5, 0, 99)).toBe(0)
   })
 

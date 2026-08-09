@@ -6,16 +6,22 @@
 // Authored RED (Leeloo/TEA); now GREEN. Keeps the sneaky Dev honest: the pure
 // reducer (sputnik.test.ts) can be perfect and still be unwired.
 //
-// FIRING REWORK (mc5-2, RED): the plane's firing was wired and unit-tested yet
-// launched ZERO ICBMs in natural play — the "feature not observed in play" finding.
-// Two measured root causes: (a) spawnSputnik seeded fireTimer from WSPLAU (the
-// ACTIVATION separation, 240/160/128) instead of WSPFIR = SPUTDS, "DISTANCE BETWEEN
-// SPUTNIK FIRES" (W3MAIN.MAC:285 decl, :4133 use), so at the cross speed the plane
-// exited before ever becoming fire-ready; (b) the fire-count clamp kept a −1
-// self-term on MXICON(7) while the spawner filled the screen, where the ROM fires
-// the plane INTO the 8th (NICBMS) slot the swarm reserves. The in-play suite below
-// pins the fix; the fixture tests in this file keep `fireTimer: 999` deliberately —
-// 999 is far from 0, so those planes never fire and kill/drop/score stay isolated.
+// FIRING REWORK (mc5-2, round 2): the plane shipped firing ZERO ICBMs in play —
+// the WSPLAU-seeded fire timer (activation separation, 240/160/128) outlasted the
+// crossing; the fix seeds fireTimer from WSPFIR = SPUTDS, "DISTANCE BETWEEN
+// SPUTNIK FIRES" (W3MAIN.MAC:285 decl, :4133 use). The round-1 rework then
+// OVER-corrected the clamp: it read ICNORM's aloft-plane borrow as an 8th-slot
+// GRANT (headroom 8 − icbm, cap 4, budget-priority fire) — rejected on review.
+// The faithful reading: with the plane aloft (PLCPV ≠ 0), ICNORM's
+// `SEC / LDA PLCPV / IFNE / CLC` (W3MAIN.MAC:2447-2453) borrows an extra 1 in
+// the first SBC, so the salvo headroom is 7 − 2·cruise − icbm — the −1 IS the
+// plane's own reservation, and the plane fires only when the swarm has dipped
+// below MXICON(7). The on-screen ceiling holds at NICBMS(8) for everyone. And
+// SPUTFIR (:2703) falls into MIRVER (:2705), whose `CMP I,2 / STA POTENT
+// ;NO MORE THAN 3 SHOTS` (:2709-2717) caps the salvo at 3, not ICNORM's 4.
+// The in-play suite below pins firing AND the restored ceiling; the fixture
+// tests in this file keep `fireTimer: 999` deliberately — 999 is far from 0, so
+// those planes never fire and kill/drop/score stay isolated.
 //
 // ─── GROUND TRUTH (REV-01) ───────────────────────────────────────────────────
 //   SPUTWV = 2 (W3COMN.MAC:203): no plane before wave 2, planes from wave 2 on.
@@ -30,6 +36,8 @@ import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { launchIcbm } from '../src/core/icbm.js'
 import { startExplosion, stepExplosion, type Explosion } from '../src/core/explosion.js'
 import { ICBM_KILL_POINTS } from '../src/core/score.js'
+import { NICBMS } from '../src/core/spawn.js'
+import { waveSchedule } from '../src/core/wave.js'
 import { SPUTNIK_V_MIN, type Sputnik } from '../src/core/sputnik.js'
 import { HMAX } from '../src/core/cursor.js'
 
@@ -116,63 +124,89 @@ describe('mc5-2 Task 5 — a killed plane scores ×4 and is removed', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // mc5-2 FIRING REWORK — the plane fires IN PLAY (the missing "observed in play"
-// proof). NATURAL play only: createGame(seed) → stepGame loop, no hand-injected
-// fixtures, no input. A plane's shot is detected by its launch altitude —
-// `origin.v === SPUTNIK_V_MIN` (100): a normal spawn launches from the top edge
-// (TOPSCR = 222, spawn.ts) and a MIRV child splits inside the v ∈ [128, 160]
-// band (mirv.ts), so v = 100 is unreachable by anything but the plane, which
-// spawns at SPUTNIK_V_MIN and holds altitude in level flight. The fire cadence
-// the fix seeds is WSPFIR = SPUTDS, "DISTANCE BETWEEN SPUTNIK FIRES"
-// (W3MAIN.MAC:285 decl, :4133 use) — NOT the WSPLAU activation separation.
-// Distinct shots are counted by `origin.h|target` because a launched ICBM
-// persists in state.icbms across many frames (dedupe undercounts a same-pos
-// same-target salvo, which only makes the threshold harder — conservative).
+// proof), and the NICBMS on-screen ceiling holds while it does. Play is a
+// createGame(seed) → stepGame loop — no hand-injected enemies, no input — with
+// ONE survivability concession: a headless run has no defending player, so the
+// wave is PINNED and a spent budget REFILLED each frame (see playCell). A
+// plane's shot is detected by its launch altitude — `origin.v ===
+// SPUTNIK_V_MIN` (100): a normal spawn launches from the top edge (TOPSCR =
+// 222, spawn.ts) and a MIRV child splits inside the v ∈ [128, 160] band
+// (mirv.ts), so v = 100 is unreachable by anything but the plane, which spawns
+// at SPUTNIK_V_MIN and holds altitude in level flight. The fire cadence the fix
+// seeds is WSPFIR = SPUTDS, "DISTANCE BETWEEN SPUTNIK FIRES" (W3MAIN.MAC:285
+// decl, :4133 use) — NOT the WSPLAU activation separation. Distinct shots are
+// counted by `origin.h|target` because a launched ICBM persists in state.icbms
+// across many frames (dedupe undercounts a same-pos same-target salvo, which
+// only makes the threshold harder — conservative).
+//
+// WAVE CHOICE: the faithful clamp fires SPARSELY at the debut wave — WSPFIR
+// ramps 128, 96, 64, 48, 32, 32, 16 across waves 2-8, and at wave 2 the
+// 128-frame cadence ≈ half the 247-tick crossing, ~1 opportunity per plane —
+// and increasingly at higher waves where the bomber is a real threat. The
+// matrix therefore covers waves [3, 4, 6, 8]; wave-2 sparseness is by design,
+// not asserted.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('mc5-2 rework — the bomber launches ICBMs in natural play', () => {
   const SEEDS = [1, 4, 7, 11, 13]
-  const WAVES = [2, 3, 4]
+  const WAVES = [3, 4, 6, 8]
   const FRAMES_PER_CELL = 4000 // bounded: each cell is a finite, deterministic run
 
-  /** Distinct plane-origin shots observed over one seeded, unattended run. */
-  function distinctPlaneShots(seed: number, startWave: number, frames: number): number {
-    let s: GameState = { ...createGame(seed), wave: startWave }
+  interface CellResult {
+    readonly shots: number // distinct plane-origin ICBMs observed
+    readonly maxConcurrent: number // peak simultaneous on-screen ICBM count
+  }
+
+  /** One seeded, unattended run at a pinned wave. The pin + budget refill model
+   *  "a defending player survives this wave": without them the headless sim's
+   *  cities fall and the wave/budget end long before the fly-across's WSPFIR
+   *  cadence can be observed. Deterministic — no entropy is added, and every
+   *  enemy is spawned by stepGame itself. */
+  function playCell(seed: number, wave: number, frames: number): CellResult {
+    let s: GameState = { ...createGame(seed), wave }
     const shots = new Set<string>()
+    let maxConcurrent = 0
     for (let i = 0; i < frames && s.phase !== 'over'; i++) {
       s = stepGame(s)
+      s = { ...s, wave, remaining: s.remaining > 0 ? s.remaining : waveSchedule(wave).count }
+      maxConcurrent = Math.max(maxConcurrent, s.icbms.length)
       for (const m of s.icbms) {
         if (m.origin.v === SPUTNIK_V_MIN) shots.add(`${m.origin.h}|${m.target.h}|${m.target.v}`)
       }
     }
-    return shots.size
+    return { shots: shots.size, maxConcurrent }
   }
 
   it('CONTROL — the v=100 discriminator never false-positives below SPUTWV (wave 1)', () => {
     // Wave 1 is below SPUTWV: no plane can exist, so any v=100 origin here would
-    // mean a normal spawn or MIRV child leaked into the detection band. Green
-    // before AND after the fix — this pins the detector, not the feature.
-    expect(distinctPlaneShots(1, 1, 2000)).toBe(0)
+    // mean a normal spawn or MIRV child leaked into the detection band. Same
+    // harness as the matrix, green before AND after the fix — this pins the
+    // detector, not the feature.
+    expect(playCell(1, 1, 2000).shots).toBe(0)
   })
 
-  it('fires across a seed × wave matrix: >= 8 of 15 cells fire, >= 12 distinct shots total', () => {
-    // RED now: the WSPLAU-seeded fire timer + the MXICON−1 clamp yield 0 shots in
-    // EVERY cell. A robust fix (WSPFIR seed, NICBMS headroom, plane-before-spawn
-    // ordering) clears both bars with margin; a fluky fix that fires only on a
-    // lucky seed does not.
+  it('fires across a seed × wave matrix (>= 12 of 20 cells, >= 25 shots) under the NICBMS ceiling', () => {
     let total = 0
     let firingCells = 0
+    let maxConcurrent = 0
     for (const seed of SEEDS) {
       for (const wave of WAVES) {
-        const n = distinctPlaneShots(seed, wave, FRAMES_PER_CELL)
-        total += n
-        if (n > 0) firingCells++
+        const r = playCell(seed, wave, FRAMES_PER_CELL)
+        total += r.shots
+        if (r.shots > 0) firingCells++
+        maxConcurrent = Math.max(maxConcurrent, r.maxConcurrent)
       }
     }
-    // Thresholds calibrated by a TEA spike of the fix shape (planes-before-spawn,
-    // planeActive reservation, WSPFIR seed, speed 1, priority fire): it measured
-    // 14/15 firing cells and 19 distinct shots, so >= 8 cells and >= 12 total pass
-    // with margin for RNG-stream drift from Dev's exact ordering, while the current
-    // code's 0/0 stays deeply RED.
-    expect(firingCells).toBeGreaterThanOrEqual(8) // a solid majority of the 15 cells
-    expect(total).toBeGreaterThanOrEqual(12) // and a clearly-nonzero aggregate
+    // Thresholds calibrated ONCE (escalating-guard rule) by a TEA spike of the
+    // faithful fix (7 − icbm clamp, cap 3, post-spawn count): it measured 17/20
+    // firing cells, 38 distinct shots, maxConcurrent 8 in every cell — so
+    // >= 12 cells and >= 25 shots pass with margin for RNG-stream drift from
+    // Dev's exact ordering, while a fluky fix that fires on a lucky seed fails.
+    expect(firingCells).toBeGreaterThanOrEqual(12) // a solid majority of the 20 cells
+    expect(total).toBeGreaterThanOrEqual(25) // and a clearly-nonzero aggregate
+    // The ceiling the faithful clamp restores: plane salvo + swarm never exceed
+    // the NICBMS(8) slot table (W3COMN.MAC:35). The rejected budget-priority
+    // pre-spawn fire could stack plane shots ON TOP of a swarm the spawner then
+    // topped up — piercing 8 — so this guard is load-bearing, not decorative.
+    expect(maxConcurrent).toBeLessThanOrEqual(NICBMS)
   })
 })
