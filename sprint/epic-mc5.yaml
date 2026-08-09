@@ -64,10 +64,11 @@ stories:
     title: "Wave-1 ICBM budget fidelity: createGame seeds remaining=NICBMS(8) but the ROM wave-1 budget is ICBWAV[0]=12 (W3MAIN.MAC:5713; loaded LDA AY,ICBWAV-1 / STA ICBTOL :3937). Seed wave 1 from waveSchedule(INITIAL_WAVE).count and re-pin game.test.ts:67; also sweep stale 'max ICBMs on screen' MXICON prose in docs/rom-study/glossary.md + brief.md. REV-01"
     points: 2
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-09'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-09'
     type: bug
   - id: mc5-8
     title: 'Sputnik fire arbitration + authentic motion (mc9-coupled): the plane fires EITHER/OR vs the normal swarm per launch cycle (ROM JMP SPUTFIR replaces ICNORM launch, W3MAIN.MAC:2543), gated by an in-bounds check (PLCPH within +/-48 of the edges, :2529-2537), and the fire timer is DISTANCE-based (HORFIR vs SPUTDS, :2523-2527) not a frame countdown. Deferred from mc5-2 review F3; couples to mc9 authentic plane velocity (functional speed=1 today). REV-01'
