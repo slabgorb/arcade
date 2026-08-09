@@ -9,7 +9,7 @@
 
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { drawFrame } from './shell/render.js'
-import { applyPointerMotion, fireFromKey } from './shell/input.js'
+import { applyPointerMotion, fireOrStart } from './shell/input.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
 
@@ -42,12 +42,14 @@ canvas.addEventListener('pointermove', (event: PointerEvent): void => {
   game = { ...game, cursor: applyPointerMotion(game.cursor, event.movementX, event.movementY) }
 })
 
-// Fire keys (mc1-4, ammo-gated in mc3-5). Z/X/C launch an ABM from the
-// left/centre/right base toward the current crosshair — but only from a live base
-// with ammo, spending one round per shot. The reducer appends `launched` (or
-// `ammoEmpty` on a refused shot) to the sound channel, which we voice at once.
+// Fire keys (mc1-4, ammo-gated in mc3-5; mc6-2 "press fire to start"). Z/X/C
+// launch an ABM from the left/centre/right base toward the current crosshair —
+// but only from a live base with ammo, spending one round per shot. When the game
+// is not running (attract or over), a fire key instead begins a fresh game
+// (fireOrStart). The reducer appends `launched` (or `ammoEmpty` on a refused shot)
+// to the sound channel, which we voice at once.
 window.addEventListener('keydown', (event: KeyboardEvent): void => {
-  game = fireFromKey(event.key, game)
+  game = fireOrStart(event.key, game)
   drain()
 })
 

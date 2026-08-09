@@ -138,6 +138,26 @@ export function createGame(seed = 1): GameState {
   }
 }
 
+// mc6-2: the SETUP -> PLAY start-of-game edge. A start action (press fire) taken
+// while the cabinet is in attract or after game over runs the SETUP task list's
+// first task, NEWGAM — SETUP1: .WORD NEWGAM-1 (W3MAIN.MAC:583) -> NEWGAM
+// (:3835) — which seeds a fresh game on wave 1. We reuse createGame, the one
+// place that field is defined, so the reseed and the boot field can never drift.
+// From any other phase (a running/paused/between/setup game) a stray start is a
+// NO-OP: it must not wipe the board. Pure — no clock, no entropy; the incoming
+// seed is threaded through so the reseed stays deterministic.
+/**
+ * Start a new game from a start action: when `state.phase` is `'attract'` or
+ * `'over'`, return a fresh, fully-defended game in `'play'` (the NEWGAM reseed —
+ * 6 live cities, 3 bases at full ammo, no enemies, score 0, wave INITIAL_WAVE,
+ * the full ICBM budget, frame 0). For every other phase return `state` unchanged.
+ */
+export function startGame(state: GameState): GameState {
+  return state.phase === 'attract' || state.phase === 'over'
+    ? createGame(state.rng.seed)
+    : state
+}
+
 /**
  * Advance exactly one video frame through the seven-step order above, then — when
  * this wave's ICBM budget is spent and the screen is clear — run the mc4-2 END OF
