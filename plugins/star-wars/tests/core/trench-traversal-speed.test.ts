@@ -84,7 +84,7 @@ describe('sw7-6 B-008 — trench scroll speed is $300 per game frame (frame-true
     const dt = 1 / TICK_HZ
     const s1 = stepGame(s0, NO_INPUT, dt)
     if (s0.exhaustPort && s1.exhaustPort) {
-      const portDelta = s1.exhaustPort.pos[2] - s0.exhaustPort.pos[2]
+      const portDelta = s1.exhaustPort.pos[0] - s0.exhaustPort.pos[0] // native DEPTH = index 0
       const scrollDelta = s1.trenchScrollZ - s0.trenchScrollZ
       expect(Math.abs(portDelta)).toBeCloseTo(scrollDelta, 3)
     }

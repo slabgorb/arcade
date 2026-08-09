@@ -131,32 +131,32 @@ function crossFrom(s: GameState, from: string, input: Input = NO_INPUT): GameSta
 
 describe('Wave 3 — the exhaust port scrolls toward the cockpit', () => {
   it('a trench run carries an exhaust port as its target', () => {
-    const s = trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]))
+    const s = trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]))
     expect(s.exhaustPort).not.toBeNull()
     expect(Array.isArray(s.exhaustPort?.pos)).toBe(true)
     expect(s.exhaustPort?.pos).toHaveLength(3)
   })
 
-  it('the port advances toward the cockpit (z rises toward 0) and holds the centreline', () => {
-    const start: Vec3 = [0, 0, -EXHAUST_PORT_DISTANCE]
+  it('the port advances toward the cockpit (depth falls toward 0) and holds the centreline', () => {
+    const start: Vec3 = [EXHAUST_PORT_DISTANCE, 0, 0]
     const s0 = trench(portAt(start))
     const s1 = stepGame(s0, NO_INPUT, 0.05)
     expect(s1.exhaustPort).not.toBeNull()
     const moved = s1.exhaustPort!.pos
-    expect(moved[2]).toBeGreaterThan(start[2]) // nearer the cockpit at z=0
-    expect(moved[2]).toBeLessThan(0) // still ahead, down -Z
-    expect(moved[0]).toBe(0) // dead ahead — the run does not drift the port sideways
+    expect(moved[0]).toBeLessThan(start[0]) // nearer the cockpit at depth=0
+    expect(moved[0]).toBeGreaterThan(0) // still ahead, down +depth
+    expect(moved[1]).toBe(0) // dead ahead — the run does not drift the port sideways
   })
 
   it('the scroll is frame-rate independent (dt-driven, not per-frame)', () => {
-    const start: Vec3 = [0, 0, -EXHAUST_PORT_DISTANCE]
+    const start: Vec3 = [EXHAUST_PORT_DISTANCE, 0, 0]
     let many = trench(portAt(start))
     for (let i = 0; i < 10; i++) many = stepGame(many, NO_INPUT, 0.02)
     const once = stepGame(trench(portAt(start)), NO_INPUT, 0.2)
     // Same elapsed sim time (0.2s) — identical advance regardless of step count.
-    expect(many.exhaustPort!.pos[2]).toBeCloseTo(once.exhaustPort!.pos[2], 5)
+    expect(many.exhaustPort!.pos[0]).toBeCloseTo(once.exhaustPort!.pos[0], 5)
     // ...and the advance is exactly the scroll rate over the elapsed time.
-    expect(once.exhaustPort!.pos[2] - start[2]).toBeCloseTo(TRENCH_SCROLL_SPEED * 0.2, 5)
+    expect(start[0] - once.exhaustPort!.pos[0]).toBeCloseTo(TRENCH_SCROLL_SPEED * 0.2, 5)
   })
 
   it('entering the trench from the cleared surface spawns the port far downrange', () => {
@@ -174,9 +174,9 @@ describe('Wave 3 — the exhaust port scrolls toward the cockpit', () => {
     expect(s1.phase).toBe('trench')
     expect(s1.exhaustPort).not.toBeNull()
     // sw7-22 (R6d): the port spawns at its real BS.PLC distance now, not the old
-    // TRENCH_FAR clamp — still centred, but the FULL channel far ahead (not −28,672).
-    expect(s1.exhaustPort!.pos[2]).toBe(-TRENCH_PORT_OFFSET) // centred, far ahead
-    expect(s1.exhaustPort!.pos[0]).toBe(0)
+    // TRENCH_FAR clamp — still centred, but the FULL channel far ahead (not 28,672).
+    expect(s1.exhaustPort!.pos[0]).toBe(TRENCH_PORT_OFFSET) // centred, far ahead
+    expect(s1.exhaustPort!.pos[1]).toBe(0)
   })
 })
 
@@ -194,7 +194,7 @@ describe('Wave 3 — destroying the exhaust port', () => {
     // object, so the pilot pulls the trigger and `projectiles` — which now carries only the proton
     // torpedo and whatever a fixture hands the sim — stays empty from muzzle to detonation. Delete
     // the hitscan gun and put a travelling shot back, and this is the line that goes red.
-    const base = trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]), { trenchShotsFired: 2 })
+    const base = trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]), { trenchShotsFired: 2 })
     const s1 = fireAndFlyOut(base)
     expect(s1.exhaustPort).toBeNull() // the port is destroyed
     expect(s1.projectiles).toHaveLength(0) // the gun spawned nothing to spend
@@ -206,7 +206,7 @@ describe('Wave 3 — destroying the exhaust port', () => {
   it('destroying the port CLEARS the run and advances to the next wave', () => {
     // trenchShotsFired: 2 — see the note above; keeps this test about the wave
     // transition, not the "Use the Force" bonus.
-    const base = trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]), {
+    const base = trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]), {
       wave: 1,
       score: 500,
       trenchShotsFired: 2,
@@ -230,10 +230,10 @@ describe('Wave 3 — destroying the exhaust port', () => {
     // is stated as a fraction of the range: half the port's distance out, an unmistakable miss that
     // the yoke can still physically make. The sphere-tight near-miss band is
     // swept-port-collision.test.ts's business.
-    const PORT_Z = -EXHAUST_PORT_DISTANCE
+    const PORT_DEPTH = EXHAUST_PORT_DISTANCE
     const WIDE = EXHAUST_PORT_DISTANCE / 2
-    const base = trench(portAt([0, 0, PORT_Z]))
-    const s1 = stepGame(base, fireAt(base, [WIDE, 0, PORT_Z]), FRAME)
+    const base = trench(portAt([PORT_DEPTH, 0, 0]))
+    const s1 = stepGame(base, fireAt(base, [PORT_DEPTH, WIDE, 0]), FRAME)
     expect(s1.portTorpedoArmed).toBe(false) // the laser never got close enuf
     expect(s1.exhaustPort).not.toBeNull() // still standing
     expect(s1.score).toBe(base.score) // a miss never scores
@@ -264,7 +264,7 @@ describe('Wave 3 — the port reaching the cockpit', () => {
 
 describe('Wave 3 — determinism, purity & the empty-trench hold', () => {
   it('advances identically for a fixed seed (deterministic, no ad-hoc randomness)', () => {
-    const mk = (): GameState => trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]), {}, 7)
+    const mk = (): GameState => trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]), {}, 7)
     let a = mk()
     let b = mk()
     for (let i = 0; i < 12; i++) {
@@ -275,7 +275,7 @@ describe('Wave 3 — determinism, purity & the empty-trench hold', () => {
   })
 
   it('a step never mutates the input state’s exhaust port (purity)', () => {
-    const s0 = trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]))
+    const s0 = trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]))
     const before: Vec3 = [...s0.exhaustPort!.pos]
     stepGame(s0, NO_INPUT, 0.05)
     expect(s0.exhaustPort!.pos).toEqual(before) // input untouched
@@ -312,18 +312,18 @@ describe('Wave 3 — render seats the port from sim state', () => {
   })
 
   it('draws the exhaust port AT the sim position (consumes state, not a constant)', () => {
-    const s = trench(portAt([0, 0, -520]))
+    const s = trench(portAt([520, 0, 0]))
     const { port } = RenderModule.trenchPlacement(s)
     expect(port).toEqual(s.exhaustPort!.pos) // render reads the sim port, verbatim
   })
 
   it('seats the port inside the trench floor channel (closes the 8-5 float)', () => {
-    const s = trench(portAt([0, 0, -520]))
+    const s = trench(portAt([520, 0, 0]))
     const { floor, port } = RenderModule.trenchPlacement(s)
-    // The port sits within the floor's z-span, not floating beyond its far edge.
-    expect(port[2]).toBeGreaterThanOrEqual(floor[2] - floorHalfDepth)
-    expect(port[2]).toBeLessThanOrEqual(floor[2] + floorHalfDepth)
+    // The port sits within the floor's depth-span, not floating beyond its far edge.
+    expect(port[0]).toBeGreaterThanOrEqual(floor[0] - floorHalfDepth)
+    expect(port[0]).toBeLessThanOrEqual(floor[0] + floorHalfDepth)
     // ...and recessed into the same skim plane, not hovering above/below it.
-    expect(port[1]).toBe(floor[1])
+    expect(port[2]).toBe(floor[2])
   })
 })

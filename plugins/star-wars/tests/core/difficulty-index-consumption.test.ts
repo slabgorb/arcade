@@ -92,12 +92,12 @@ function trench(guns: TrenchObstacle[], opts: { wave: number; gmDif: number; see
     exhaustPort: null,
     projectiles: [],
     trenchObstacles: guns.map((o) => ({ kind: o.kind, pos: [...o.pos] as Vec3 })),
-    trenchView: [0, SEAT, 0] as Vec3,
+    trenchView: [0, 0, SEAT] as Vec3,
   }
   return withGm(base as unknown as GameState, opts.gmDif)
 }
 const gunLine = (): TrenchObstacle[] =>
-  Array.from({ length: 12 }, (_, i) => ({ kind: 'turret' as const, pos: [i % 2 === 0 ? -300 : 300, SEAT, -400 - i * 2000] as Vec3 }))
+  Array.from({ length: 12 }, (_, i) => ({ kind: 'turret' as const, pos: [400 + i * 2000, i % 2 === 0 ? -300 : 300, SEAT] as Vec3 }))
 function countFires(s0: GameState, frames = 160): number {
   let s = s0
   let fires = 0

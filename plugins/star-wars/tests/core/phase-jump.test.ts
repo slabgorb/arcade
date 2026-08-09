@@ -53,7 +53,7 @@ function dirtyRun(phase: Phase, over: Partial<GameState> = {}): GameState {
     phaseKills: 4,
     enemies: phase === 'space' ? [tie([10, 20, -300]), tie([-5, 0, -400])] : [],
     turrets: phase === 'surface' ? [turretAt([0, 0, -200])] : [],
-    exhaustPort: phase === 'trench' ? { pos: [0, 0, -EXHAUST_PORT_DISTANCE] } : null,
+    exhaustPort: phase === 'trench' ? { pos: [EXHAUST_PORT_DISTANCE, 0, 0] } : null,
     enemyShots: [{ pos: [0, 0, -50], vel: [0, 0, 1], ttl: 4 }],
     ...over,
   }
@@ -84,7 +84,7 @@ describe('Dev phase-jump — the transitions progression itself can never make',
     const s = enterPhase(dirtyRun('space'), 'trench')
     expect(s.phase).toBe('trench')
     // sw7-22 (R6d): spawnPort seats the port at its real BS.PLC distance now.
-    expect(s.exhaustPort?.pos).toEqual([0, 0, -TRENCH_PORT_OFFSET])
+    expect(s.exhaustPort?.pos).toEqual([TRENCH_PORT_OFFSET, 0, 0])
   })
 
   it('jumps BACKWARD trench -> space (progression only ever moves forward)', () => {

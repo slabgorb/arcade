@@ -77,7 +77,7 @@ function trench(guns: TrenchObstacle[], view: Vec3, opts: { wave: number; seed: 
 }
 
 /** A wall gun (turret) mounted at wall-x `x`, seat height, depth `z`. */
-const gun = (x: number, z: number): TrenchObstacle => ({ kind: 'turret', pos: [x, SEAT, z] })
+const gun = (x: number, z: number): TrenchObstacle => ({ kind: 'turret', pos: [-z, x, SEAT] })
 
 /** A staggered line of wall guns marching up the channel on alternating walls, so
  *  that across a fly-through there is always a gun scrolling through the near zone
@@ -106,8 +106,8 @@ describe('sw7-20 / B-017 — the trench wall guns fire back at the player', () =
     // Both halves in one test so neither passes alone: fire must be CAUSED by the
     // guns, not spontaneous. RED today — stepTrench never populates enemyShots, so
     // even the armed channel fires nothing.
-    const armed = flyGuns(trench(gunLine(), [0, SEAT, 0], { wave: 8, seed: 7 }))
-    const empty = flyGuns(trench([], [0, SEAT, 0], { wave: 8, seed: 7 }))
+    const armed = flyGuns(trench(gunLine(), [0, 0, SEAT], { wave: 8, seed: 7 }))
+    const empty = flyGuns(trench([], [0, 0, SEAT], { wave: 8, seed: 7 }))
     expect(armed.fires, 'wall guns fire at the player').toBeGreaterThan(0)
     expect(empty.fires, 'an empty channel carries no fire').toBe(0)
   })
@@ -121,8 +121,8 @@ describe('sw7-20 / B-017 — the trench wall guns fire back at the player', () =
     let easy = 0
     let hard = 0
     for (const seed of SEEDS) {
-      easy += flyGuns(trench(gunLine(), [0, SEAT, 0], { wave: 1, seed })).fires // TGPROB diff 0
-      hard += flyGuns(trench(gunLine(), [0, SEAT, 0], { wave: 8, seed })).fires // TGPROB diff 7
+      easy += flyGuns(trench(gunLine(), [0, 0, SEAT], { wave: 1, seed })).fires // TGPROB diff 0
+      hard += flyGuns(trench(gunLine(), [0, 0, SEAT], { wave: 8, seed })).fires // TGPROB diff 7
     }
     expect(hard, 'the hardest wave fires at all').toBeGreaterThan(0)
     expect(hard, 'a hard wave fires more often than an easy one').toBeGreaterThan(easy)
@@ -136,7 +136,7 @@ describe('sw7-20 / B-017 — the trench wall guns fire back at the player', () =
     let deaths = 0
     let shields = 0
     for (const seed of SEEDS) {
-      const r = flyGuns(trench(gunLine(), [-300, SEAT, 0], { wave: 8, seed }))
+      const r = flyGuns(trench(gunLine(), [0, -300, SEAT], { wave: 8, seed }))
       deaths += r.deaths
       shields += r.shieldsLost
     }
@@ -154,8 +154,8 @@ describe('sw7-20 / B-017 — the trench wall guns fire back at the player', () =
     let centred = 0
     let offset = 0
     for (const seed of SEEDS) {
-      centred += flyGuns(trench(gunLine(), [0, SEAT, 0], { wave: 8, seed })).shieldsLost
-      offset += flyGuns(trench(gunLine(), [-300, SEAT, 0], { wave: 8, seed })).shieldsLost
+      centred += flyGuns(trench(gunLine(), [0, 0, SEAT], { wave: 8, seed })).shieldsLost
+      offset += flyGuns(trench(gunLine(), [0, -300, SEAT], { wave: 8, seed })).shieldsLost
     }
     expect(centred, 'a centred pilot is hit').toBeGreaterThan(0)
     expect(offset, 'an off-centre pilot is ALSO hit — fire tracks the ship point (sw7-16)').toBeGreaterThan(0)
@@ -166,10 +166,10 @@ describe('sw7-20 / B-017 — the trench wall guns fire back at the player', () =
     // purity rule). Two independent runs from the same seed agree exactly, and
     // stepGame must not mutate the caller's rng. The purity half holds today; the
     // fire-equality half becomes meaningful once guns fire — both must hold after.
-    const s0 = trench(gunLine(), [-300, SEAT, 0], { wave: 8, seed: 5 })
+    const s0 = trench(gunLine(), [0, -300, SEAT], { wave: 8, seed: 5 })
     const seedBefore = s0.rng.seed
     const a = flyGuns(s0)
-    const b = flyGuns(trench(gunLine(), [-300, SEAT, 0], { wave: 8, seed: 5 }))
+    const b = flyGuns(trench(gunLine(), [0, -300, SEAT], { wave: 8, seed: 5 }))
     expect(s0.rng.seed, 'stepGame did not mutate the input state rng').toBe(seedBefore)
     expect(a).toEqual(b)
   })

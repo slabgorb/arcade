@@ -46,8 +46,8 @@
 // -- REPRESENTATION CONTRACT (defined here; Dev's grid-derived spawning meets it)
 //
 // A force-field hazard is a trench obstacle whose mounted wall is the SIGN of
-// pos[0] (negative = left wall, positive = right wall; magnitude ≈ TRENCH_HALF_W).
-// The collision fires only when the pilot's lateral trenchView[0] is on that
+// pos[1] (native right: negative = left wall, positive = right wall; magnitude ≈ TRENCH_HALF_W).
+// The collision fires only when the pilot's lateral trenchView[1] is on that
 // same side, within the field's vertical band and depth window; the contact is a
 // graze ('terrain-crash', no shield). The EXACT band ($200 top offset, $400
 // height) and depth ($400) coordinates, and the grid slot→world-height mapping,
@@ -83,7 +83,7 @@ function trenchWith(obstacles: TrenchObstacle[], view: Vec3): GameState {
 }
 
 /** A wall force field: mounted on `wall` (±TRENCH_HALF_W), height slot `y`, depth `z`. */
-const forceField = (wall: number, y: number, z: number): TrenchObstacle => ({ kind: 'catwalk', pos: [wall, y, z] })
+const forceField = (wall: number, y: number, z: number): TrenchObstacle => ({ kind: 'catwalk', pos: [-z, wall, y] })
 
 const LEFT_WALL = -TRENCH_HALF_W // -1024
 const RIGHT_WALL = TRENCH_HALF_W //  1024
@@ -108,7 +108,7 @@ describe('sw7-19 / B-012 — the wall force field is a GRAZE, not a shield-costi
     // left half. RED today: the CATWALK_HIT_RADIUS sphere never reaches a wall
     // field, so no crash fires at all — `crashSeen` is false. Once side-gated it
     // grazes, and the graze must NOT spend a shield (the 14-7 contract, inverted).
-    const s0 = trenchWith([forceField(LEFT_WALL, TRENCH_EYE_SEAT, -1)], [-300, TRENCH_EYE_SEAT, 0])
+    const s0 = trenchWith([forceField(LEFT_WALL, TRENCH_EYE_SEAT, -1)], [0, -300, TRENCH_EYE_SEAT])
     const { crashSeen, shieldsLost } = flyThrough(s0)
     expect(crashSeen, 'the force field grazes the same-side pilot').toBe(true)
     expect(shieldsLost, 'a graze costs no shield (WSGLOW/S-016 scope, not this story)').toBe(0)
@@ -119,8 +119,8 @@ describe('sw7-19 / B-012 — the wall force field is a GRAZE, not a shield-costi
     // pilot's side. Both halves in one test so neither can pass alone: a coin/
     // full-width bar would hit (or miss) both sides identically.
     const field = () => [forceField(LEFT_WALL, TRENCH_EYE_SEAT, -1)]
-    const sameSide = flyThrough(trenchWith(field(), [-300, TRENCH_EYE_SEAT, 0]))
-    const oppositeSide = flyThrough(trenchWith(field(), [300, TRENCH_EYE_SEAT, 0]))
+    const sameSide = flyThrough(trenchWith(field(), [0, -300, TRENCH_EYE_SEAT]))
+    const oppositeSide = flyThrough(trenchWith(field(), [0, 300, TRENCH_EYE_SEAT]))
 
     expect(sameSide.crashSeen, 'same-side pilot grazes').toBe(true)
     expect(oppositeSide.crashSeen, 'opposite-wall pilot flies clear').toBe(false)
@@ -129,10 +129,10 @@ describe('sw7-19 / B-012 — the wall force field is a GRAZE, not a shield-costi
 
   it('a right-wall field mirrors it — grazes a right pilot, clears a left pilot', () => {
     // The complementary wall, so a hardcoded "always left" gate cannot pass this
-    // suite. sign(pos[0]) selects the wall.
+    // suite. sign(pos[1]) selects the wall.
     const field = () => [forceField(RIGHT_WALL, TRENCH_EYE_SEAT, -1)]
-    const rightPilot = flyThrough(trenchWith(field(), [300, TRENCH_EYE_SEAT, 0]))
-    const leftPilot = flyThrough(trenchWith(field(), [-300, TRENCH_EYE_SEAT, 0]))
+    const rightPilot = flyThrough(trenchWith(field(), [0, 300, TRENCH_EYE_SEAT]))
+    const leftPilot = flyThrough(trenchWith(field(), [0, -300, TRENCH_EYE_SEAT]))
 
     expect(rightPilot.crashSeen, 'same-side (right) pilot grazes').toBe(true)
     expect(leftPilot.crashSeen, 'opposite (left) pilot flies clear').toBe(false)
@@ -144,7 +144,7 @@ describe('sw7-19 / B-012 — the wall force field is a GRAZE, not a shield-costi
     // even though both are on the left. Robust to the exact band size (which Dev
     // derives from the grid slot heights): the extreme is unambiguous.
     const lowField = [forceField(LEFT_WALL, TRENCH_EYE_MIN, -1)]
-    const climbed = flyThrough(trenchWith(lowField, [-300, TRENCH_EYE_MAX, 0]))
+    const climbed = flyThrough(trenchWith(lowField, [0, -300, TRENCH_EYE_MAX]))
     expect(climbed.crashSeen, 'a pilot a full channel above a low field is clear').toBe(false)
     expect(climbed.shieldsLost).toBe(0)
   })
@@ -152,7 +152,7 @@ describe('sw7-19 / B-012 — the wall force field is a GRAZE, not a shield-costi
   it('does NOT graze while the field is still far downrange (guards an over-eager depth gate)', () => {
     // One frame with the field parked deep in the channel: no sane depth gate
     // (within the field's first $400) should register a hit this far out.
-    const s0 = trenchWith([forceField(LEFT_WALL, TRENCH_EYE_SEAT, -8000)], [-300, TRENCH_EYE_SEAT, 0])
+    const s0 = trenchWith([forceField(LEFT_WALL, TRENCH_EYE_SEAT, -8000)], [0, -300, TRENCH_EYE_SEAT])
     const s1 = stepGame(s0, NO_INPUT, DT)
     expect(s1.events.some((e) => e.type === 'terrain-crash')).toBe(false)
     expect(s1.lives).toBe(s0.lives)
@@ -163,7 +163,7 @@ describe('sw7-19 / B-012 — the wall force field is a GRAZE, not a shield-costi
     // The headline of B-012 — our old bar could only be dodged by diving; the
     // wall field is dodged by flying the OTHER wall. A pilot who holds the right
     // wall past a left-wall field never crashes and never loses a shield.
-    const s0 = trenchWith([forceField(LEFT_WALL, TRENCH_EYE_SEAT, -1)], [400, TRENCH_EYE_SEAT, 0])
+    const s0 = trenchWith([forceField(LEFT_WALL, TRENCH_EYE_SEAT, -1)], [0, 400, TRENCH_EYE_SEAT])
     const { crashSeen, shieldsLost } = flyThrough(s0)
     expect(crashSeen, 'opposite-wall run is clean').toBe(false)
     expect(shieldsLost).toBe(0)

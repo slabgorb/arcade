@@ -84,7 +84,7 @@ const trenchScene = (z: number): GameState => ({
   ...initialState(1983),
   mode: 'playing',
   phase: 'trench',
-  exhaustPort: { pos: [0, 0, z] },
+  exhaustPort: { pos: [z, 0, 0] }, // sw10-3 native: depth (index 0) forward
   trenchObstacles: [],
   projectiles: [],
 })
@@ -111,7 +111,7 @@ function frame(z: number) {
 const portEye = (f: ReturnType<typeof frame>): Vec3[] =>
   EXHAUST_PORT.vertices.map((v) => transform(f.portMV, v as Vec3))
 
-const PORT_SPAWN_Z = -2400 // EXHAUST_PORT_DISTANCE
+const PORT_SPAWN_DEPTH = 2400 // native depth (index 0) = EXHAUST_PORT_DISTANCE, at the trench mouth
 
 describe('sw5-6 — the exhaust port is a FLOOR plate, not a wall', () => {
   beforeEach(() => vi.mocked(drawWireframe).mockClear())
@@ -124,7 +124,7 @@ describe('sw5-6 — the exhaust port is a FLOOR plate, not a wall', () => {
     //
     // Under sw5-4's IDENTITY the normal stays on eye-space −z (pointing down the trench at
     // the pilot) and this fails on the very first assertion.
-    const f = frame(PORT_SPAWN_Z)
+    const f = frame(PORT_SPAWN_DEPTH)
     const at = (v: Vec3) => transform(f.portMV, v)
     const o = at([0, 0, 0])
     // the linear part of the transform applied to the model's up-axis
@@ -138,7 +138,7 @@ describe('sw5-6 — the exhaust port is a FLOOR plate, not a wall', () => {
   })
 
   it('all twelve points lie in ONE horizontal plane', () => {
-    const pts = portEye(frame(PORT_SPAWN_Z))
+    const pts = portEye(frame(PORT_SPAWN_DEPTH))
     const ys = pts.map((p) => p[1])
     expect(Math.max(...ys) - Math.min(...ys), 'the plate has NO extent in height').toBeCloseTo(0, 6)
   })
@@ -147,11 +147,11 @@ describe('sw5-6 — the exhaust port is a FLOOR plate, not a wall', () => {
     // BSVPORT: "Z HITE ON BOTTOM OF TRENCH". Compare the port's plane against the trench
     // channel's own floor vertices, in the SAME frame — so this holds whatever height the
     // pilot happens to be flying at, and can never be satisfied by a coincidence of camera.
-    const f = frame(PORT_SPAWN_Z)
+    const f = frame(PORT_SPAWN_DEPTH)
     const portY = portEye(f).map((p) => p[1])
 
     const floorEyeY = f.chanModel.vertices
-      .filter((v) => v[1] === 0) // the channel's floor rails/ribs, world y = 0
+      .filter((v) => v[2] === 0) // the channel's floor rails/ribs, native UP (index 2) = 0
       .map((v) => transform(f.view, v as Vec3)[1])
     expect(floorEyeY.length, 'the channel has a floor').toBeGreaterThan(0)
 
@@ -163,7 +163,7 @@ describe('sw5-6 — the exhaust port is a FLOOR plate, not a wall', () => {
   it('NO part of the port hangs below the trench floor — the reported defect', () => {
     // The bug as the player sees it. Today the plate spans world y = -256 … +256 while the
     // floor is y = 0, so its lower half is buried. A floor plate cannot have a lower half.
-    const f = frame(PORT_SPAWN_Z)
+    const f = frame(PORT_SPAWN_DEPTH)
     const floor = transform(f.view, [0, 0, 0] as Vec3)[1] // world y=0, in eye space
     for (const [, y] of portEye(f)) {
       expect(y, 'no vertex is below the floor').toBeGreaterThanOrEqual(floor - 1e-6)
@@ -173,7 +173,7 @@ describe('sw5-6 — the exhaust port is a FLOOR plate, not a wall', () => {
   it('spans the trench LATERALLY and DOWNRANGE — 512 × 512 of floor', () => {
     // The ROM plate is 512 across in both of its horizontal axes. Laid flat, that is 512 of
     // trench WIDTH and 512 of trench LENGTH — a patch of floor, not a billboard.
-    const pts = portEye(frame(PORT_SPAWN_Z))
+    const pts = portEye(frame(PORT_SPAWN_DEPTH))
     const spread = (i: 0 | 2) => {
       const vals = pts.map((p) => p[i])
       return Math.max(...vals) - Math.min(...vals)
@@ -205,14 +205,14 @@ describe('sw5-6 — and it is still an aimable target (sw5-4\'s intent, preserve
     // plate is 2.8px tall — a LINE, ratio 0.023. With the pilot flying the ROM's band it
     // is 24px+ and climbing. The thresholds sit in the gap between those two worlds, so
     // this fails loudly if the port is laid flat WITHOUT fixing where the pilot flies.
-    const { h, ratio } = footprint(PORT_SPAWN_Z)
+    const { h, ratio } = footprint(PORT_SPAWN_DEPTH)
     expect(h, 'the target has real height on screen').toBeGreaterThan(8)
     expect(ratio, 'not a 44:1 sliver').toBeGreaterThan(0.1)
   })
 
   it('opens up as the pilot closes on it', () => {
-    const far = footprint(PORT_SPAWN_Z)
-    const near = footprint(-600)
+    const far = footprint(PORT_SPAWN_DEPTH)
+    const near = footprint(600)
     expect(near.h, 'the target grows as it approaches').toBeGreaterThan(far.h)
     expect(near.ratio, 'and reads more squarely head-on').toBeGreaterThan(far.ratio)
   })
@@ -222,7 +222,7 @@ describe('sw5-6 — and it is still an aimable target (sw5-4\'s intent, preserve
     // the port read as a TARGET rather than a smudge is three nested rings sharing a
     // centre. Ring membership comes from the MODEL (96/160/256), so it is independent of
     // whatever the camera did.
-    const f = frame(-600)
+    const f = frame(600)
     const pts = portEye(f)
       .map((p) => project(p, f.proj, W, H))
       .filter((p): p is [number, number] => p !== null)
@@ -258,10 +258,11 @@ describe('sw5-6 AC-3 — the port does NOT move', () => {
     const s = enterPhase(initialState(1983), 'trench')
     expect(s.exhaustPort, 'entering the trench spawns the port').not.toBeNull()
 
-    expect(s.exhaustPort!.pos[0], 'BSVPORT: "Y WIDTH IN CENTER"').toBe(0)
-    expect(s.exhaustPort!.pos[1], 'BSVPORT: "Z HITE ON BOTTOM OF TRENCH" — our floor is y=0').toBe(0)
+    // sw10-3 native basis: depth=index0 (forward), right=index1, up=index2.
+    expect(s.exhaustPort!.pos[1], 'BSVPORT: "Y WIDTH IN CENTER" — native RIGHT centred').toBe(0)
+    expect(s.exhaustPort!.pos[2], 'BSVPORT: "Z HITE ON BOTTOM OF TRENCH" — our floor is up=0').toBe(0)
     // sw7-22 (R6d): the port spawns at its real BS.PLC distance (≈327,680), un-clamped.
-    expect(s.exhaustPort!.pos[2], 'seated at its BS.PLC distance downrange').toBe(-TRENCH_PORT_OFFSET)
+    expect(s.exhaustPort!.pos[0], 'seated at its BS.PLC distance downrange (native depth)').toBe(TRENCH_PORT_OFFSET)
 
     // And the point of AC-3: the ROM never asked for the port to be RAISED, so it did not move.
     // What moved is the PILOT (60 → the ROM's 512..3840 band) — pinned in render.trench-eye.test.ts.

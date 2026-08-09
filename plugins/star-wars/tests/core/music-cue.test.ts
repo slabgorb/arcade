@@ -99,7 +99,7 @@ function portKill(state: GameState): GameState {
   // out (where the port IS reachable), resolving here at the ROM's $800 gate — sw5-6's
   // ARM-early / RESOLVE-late split. See speech-cues.test.ts's twin.
   const p = state.exhaustPort!.pos
-  const port: typeof p = [p[0], p[1], -300]
+  const port: typeof p = [300, p[1], p[2]]
   return {
     ...state,
     exhaustPort: { pos: port },

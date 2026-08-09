@@ -118,10 +118,12 @@ const SQUARE_Y = (TRENCH_WALL_H * 5) / 16 // 1280
 const NEAR = 2 * TRENCH_HALF_W // 2048 — the closest a wall object may stand and still be aimable
 const GAP = 400
 
+// sw10-3 native basis: pos = [depth (index 0, +forward), right (index 1, ±W wall),
+// up (index 2, SQUARE_Y height above the floor)].
 export const TRENCH_OBSTACLE_STATIONS: readonly TrenchObstacle[] = [
-  { kind: 'square', pos: [W, SQUARE_Y, -(NEAR + GAP)] },
-  { kind: 'square', pos: [-W, SQUARE_Y, -(NEAR + 4 * GAP)] },
-  { kind: 'square', pos: [W, SQUARE_Y, -(NEAR + 5 * GAP)] },
+  { kind: 'square', pos: [NEAR + GAP, W, SQUARE_Y] },
+  { kind: 'square', pos: [NEAR + 4 * GAP, -W, SQUARE_Y] },
+  { kind: 'square', pos: [NEAR + 5 * GAP, W, SQUARE_Y] },
 ]
 
 /**
@@ -175,7 +177,8 @@ function streamPanelSlots(baseWave: number, rng: Rng, slotType: number, kind: Tr
   let z = 0
   const scan = (col: PanelColumn, wallX: number) => {
     col.forEach((slot, i) => {
-      if (slot === slotType) out.push({ kind, pos: [wallX, WALL_SLOT_Y[i], -z] })
+      // sw10-3 native basis: [depth (index 0, +forward), right (±wall), up (slot height)].
+      if (slot === slotType) out.push({ kind, pos: [z, wallX, WALL_SLOT_Y[i]] })
     })
   }
   for (const w of buildTrench(baseWave, rng) as readonly Wedge[]) {

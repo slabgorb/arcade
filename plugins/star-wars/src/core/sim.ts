@@ -1309,9 +1309,9 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   // Rides `base`, so it survives even the no-port safe-hold return below (afterObstacles
   // spreads base); the trench catwalk collision tests the catwalk against it.
   const trenchView: Vec3 = [
-    Math.max(-TRENCH_VIEW_HALF_W, Math.min(TRENCH_VIEW_HALF_W, state.trenchView[0] + aimX * TRENCH_VIEW_RATE * dt)),
-    Math.max(TRENCH_EYE_MIN, Math.min(TRENCH_EYE_MAX, state.trenchView[1] + aimY * TRENCH_VIEW_RATE * dt)),
-    0,
+    0, // sw10-3 native: depth (0) at the cockpit plane; aimX→RIGHT (1), aimY→UP (2)
+    Math.max(-TRENCH_VIEW_HALF_W, Math.min(TRENCH_VIEW_HALF_W, state.trenchView[1] + aimX * TRENCH_VIEW_RATE * dt)),
+    Math.max(TRENCH_EYE_MIN, Math.min(TRENCH_EYE_MAX, state.trenchView[2] + aimY * TRENCH_VIEW_RATE * dt)),
   ]
   // The walled channel scrolls toward the cockpit at the SAME rate the port does
   // (story 11-6), so the corridor and the target rush past together — advanced on
@@ -1385,9 +1385,9 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
     state.exhaustPort === null
       ? null
       : [
-          state.exhaustPort.pos[0],
+          state.exhaustPort.pos[0] - TRENCH_SCROLL_SPEED * dt,
           state.exhaustPort.pos[1],
-          state.exhaustPort.pos[2] + TRENCH_SCROLL_SPEED * dt,
+          state.exhaustPort.pos[2],
         ]
   const portRange =
     laserOn && portPos !== null
@@ -1423,25 +1423,25 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   const survivors: TrenchObstacle[] = []
   for (let oi = 0; oi < state.trenchObstacles.length; oi++) {
     const o = state.trenchObstacles[oi]
-    const pos: Vec3 = [o.pos[0], o.pos[1], o.pos[2] + TRENCH_SCROLL_SPEED * dt]
+    const pos: Vec3 = [o.pos[0] - TRENCH_SCROLL_SPEED * dt, o.pos[1], o.pos[2]]
     if (o.kind === 'catwalk') {
       // The catwalk is a wall FORCE FIELD (TD$WFF, WSPANL.MAC:186-215, B-012), not a
       // channel-spanning bar. The graze fires FIRST, before the despawn cutoff below,
       // so a field that leaps the cockpit plane in one scroll step (B-008) still
       // registers rather than being silently despawned. Three gates, then a GRAZE:
-      //   • SIDE  — the pilot is on the field's wall side (o.pos[0] sign vs the eye x;
-      //     `IFLE ;?ON LEFT SIDE?`). A single-wall field is dodged by flying the OTHER
-      //     wall; a divider with fields on both walls must be dodged vertically.
-      //   • BAND  — the eye is within the field's vertical hit band about its height
+      //   • SIDE  — the pilot is on the field's wall side (native RIGHT, o.pos[1] sign
+      //     vs the eye trenchView[1]; `IFLE ;?ON LEFT SIDE?`). A single-wall field is
+      //     dodged by flying the OTHER wall; both walls must be dodged vertically.
+      //   • BAND  — the eye is within the field's vertical hit band about its native UP
       //     slot (`?FORCE FIELD ABOVE PLAYER? / ?BUT NOT TOO FAR?`); dive/climb clear.
-      //   • DEPTH — the field is within its first half-depth of the cockpit.
+      //   • DEPTH — the field is within its first half-depth (native DEPTH, 0) of cockpit.
       // A hit GLOWS + sounds + rolls the ship (AUDCR → 'terrain-crash') and costs NO
       // shield — the shield accounting rides WSGLOW (score-shields scope), and the ship
       // glow/roll are the deferred A-018 visual, so the only cue modelled here is the
       // crash sound.
-      const onFieldSide = o.pos[0] < 0 ? trenchView[0] <= 0 : trenchView[0] >= 0
-      const inBand = Math.abs(trenchView[1] - o.pos[1]) <= FORCE_FIELD_BAND_HALF
-      const inDepth = pos[2] >= -FORCE_FIELD_DEPTH && pos[2] <= FORCE_FIELD_DEPTH
+      const onFieldSide = o.pos[1] < 0 ? trenchView[1] <= 0 : trenchView[1] >= 0
+      const inBand = Math.abs(trenchView[2] - o.pos[2]) <= FORCE_FIELD_BAND_HALF
+      const inDepth = pos[0] >= -FORCE_FIELD_DEPTH && pos[0] <= FORCE_FIELD_DEPTH
       if (onFieldSide && inBand && inDepth) {
         events.push({ type: 'terrain-crash' }) // AUDCR — the graze crash sound, no shield
         continue // flew through the force field — spent
@@ -1451,7 +1451,7 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
       events.push({ type: 'trench-obstacle-destroyed', kind: o.kind })
       continue
     }
-    if (pos[2] > 0) continue // scrolled past the cockpit — despawn
+    if (pos[0] < 0) continue // scrolled past the cockpit (native depth < 0) — despawn
     survivors.push({ kind: o.kind, pos })
   }
 
@@ -1481,7 +1481,7 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
       events.push({ type: 'player-death', cause: 'turret' })
       return false
     }
-    return s.pos[2] <= 0 // keep unless it scrolled past the cockpit (despawn, like the obstacles)
+    return s.pos[0] >= 0 // keep unless it scrolled past the cockpit (native depth < 0), like the obstacles
   })
 
   // BSGUN: on an opening, each surviving wall gun still on the approach (within the
@@ -1491,7 +1491,7 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
     for (const o of survivors) {
       if (standingShots.length + firedShots.length >= MAX_FIREBALL_SLOTS) break
       if (o.kind !== 'turret') continue
-      if (o.pos[2] < -TRENCH_GUN_FIRE_RANGE) continue // beyond the furthest firing bunker
+      if (o.pos[0] > TRENCH_GUN_FIRE_RANGE) continue // beyond the furthest firing bunker (native depth ahead)
       if (nextInt(rng, 256) > gunThreshold) {
         firedShots.push({
           pos: [...o.pos] as Vec3,
@@ -1540,12 +1540,12 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   // guns still fire).
   if (state.exhaustPort === null) return afterObstacles
 
-  // Scroll the port up the channel toward the cockpit (+Z, toward z=0). A fresh
-  // array keeps the step pure — the input state is never mutated.
+  // Scroll the port down the channel toward the cockpit (native DEPTH, index 0,
+  // decreasing toward 0). A fresh array keeps the step pure.
   const port: Vec3 = [
-    state.exhaustPort.pos[0],
+    state.exhaustPort.pos[0] - TRENCH_SCROLL_SPEED * dt,
     state.exhaustPort.pos[1],
-    state.exhaustPort.pos[2] + TRENCH_SCROLL_SPEED * dt,
+    state.exhaustPort.pos[2],
   ]
 
   // --- Player bolt vs the port: a hit clears the run and scores the bonus -----
@@ -1556,7 +1556,7 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   // near-cockpit approach window (sw3-15, the ROM $800 end-wall window). A bolt
   // that merely crosses the port far up the channel — the entry-shot that used
   // to win every run — is outside the window and cannot count.
-  const inApproachWindow = port[2] >= -PORT_APPROACH_WINDOW
+  const inApproachWindow = port[0] <= PORT_APPROACH_WINDOW
 
   // --- ARM: the laser earns the shot; the machine takes it (story sw5-6) ------
   //
@@ -1681,11 +1681,11 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   // far past COCKPIT_HIT_RADIUS (80), so the old symmetric-sphere test let it TUNNEL
   // clean through the nose in one step and scroll away un-missed — a hazard the old
   // 500 u/s speed hid. Detect the CROSSING instead: the port has reached the nose
-  // once it is at or past the cockpit plane (z >= 0) while still laterally within a
-  // hit-radius. dt-independent (no overshoot escape), and an off-axis port — a test
+  // once it is at or past the cockpit plane (native depth ≤ 0) while still laterally
+  // within a hit-radius. dt-independent (no overshoot escape), and an off-axis port — a test
   // construct; the ROM's port is centred — still never counts, exactly as the sphere
   // did (its 3D distance stayed ≥ its lateral offset ≫ the radius).
-  const reachedCockpit = port[2] >= 0 && Math.hypot(port[0] - COCKPIT[0], port[1] - COCKPIT[1]) <= COCKPIT_HIT_RADIUS
+  const reachedCockpit = port[0] <= 0 && Math.hypot(port[1] - COCKPIT[1], port[2] - COCKPIT[2]) <= COCKPIT_HIT_RADIUS
   if (reachedCockpit) {
     const portHit = loseShield(afterObstacles.lives, afterObstacles.shieldHitAt, 1, t) // S-016 window
     const lives = portHit.lives
@@ -2013,7 +2013,7 @@ export function enterPhase(s: GameState, phase: Phase): GameState {
     // WSMAIN.MAC's `SMVG1B` drops the pilot to as he enters ("JUST ABOVE BOTTOM OF
     // TRENCH"). So a fresh trench opens un-dived, riding low, with the overhead catwalk
     // still biting until the pilot steers clear.
-    trenchView: [0, TRENCH_EYE_SEAT, 0],
+    trenchView: [0, 0, TRENCH_EYE_SEAT],
     // Space seeds ZERO (sw8-7): the ROM's PHISP1 → IPGEN → NWNSHP constructs the
     // whole opening group before the first flight frame (WSMAIN.MAC:1376-1377,
     // :502; WSCPU.MAC:969) — a fresh wave opens deploying, not idling a countdown.
@@ -2032,7 +2032,7 @@ export function enterPhase(s: GameState, phase: Phase): GameState {
  *  threaded through a LOCAL cursor so the seed is never consumed here (core purity),
  *  matching how `enterPhase` seeds the trench obstacles. */
 function spawnPort(baseWave: number, rng: Rng): { pos: Vec3 } {
-  return { pos: [0, 0, -trenchPortDistance(baseWave, rng)] }
+  return { pos: [trenchPortDistance(baseWave, rng), 0, 0] } // sw10-3 native: depth (index 0) ahead
 }
 
 /**

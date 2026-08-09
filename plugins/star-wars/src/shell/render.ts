@@ -455,8 +455,10 @@ export function modelMatrix(pos: Vec3, orient: Mat4 = IDENTITY, s = 1): Mat4 {
  * the caller, so `port` here is the verbatim sim position.
  */
 export function trenchPlacement(state: GameState): { floor: Vec3; port: Vec3 } {
-  const port: Vec3 = state.exhaustPort?.pos ?? [0, 0, -EXHAUST_PORT_DISTANCE]
-  return { floor: [0, 0, port[2]], port }
+  // sw10-3 native basis: the port rides native DEPTH (index 0, +forward); the floor
+  // plane tracks the port at that depth. A portless channel stages the port far ahead.
+  const port: Vec3 = state.exhaustPort?.pos ?? [EXHAUST_PORT_DISTANCE, 0, 0]
+  return { floor: [port[0], 0, 0], port }
 }
 
 // HUD / framing type (SH2-5). The shared ROM stroke-vector face
@@ -1362,7 +1364,7 @@ function drawTrenchBanners(ctx: CanvasRenderingContext2D, state: GameState, w: n
   if (
     state.phase === 'trench' &&
     state.exhaustPort &&
-    -state.exhaustPort.pos[2] <= PORT_AHEAD_RANGE
+    state.exhaustPort.pos[0] <= PORT_AHEAD_RANGE // native DEPTH (index 0) ahead of the cockpit
   ) {
     glowText(ctx, 'EXHAUST PORT AHEAD', w / 2, h * 0.22, BANNER_TEXT_PX, 'center', '#dddddd', 14)
   }

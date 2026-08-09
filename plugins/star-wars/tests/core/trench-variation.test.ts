@@ -83,7 +83,7 @@ describe('trench per-run variation — the GNBASE random pie (sw3-7 contract, re
       for (const wave of [1, RANDOM_WAVE]) {
         for (const o of chainFor(s, wave)) {
           expect(['turret', 'square', 'catwalk']).toContain(o.kind)
-          expect(o.pos[2]).toBeLessThan(0)
+          expect(o.pos[0]).toBeGreaterThan(0) // native DEPTH = index 0, downrange is positive
         }
       }
     }

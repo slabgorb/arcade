@@ -53,13 +53,13 @@ function freshTrench(wave = 1, seed = 1983): GameState {
   return { ...enterPhase({ ...initialState(seed), wave }, 'trench'), mode: 'playing' }
 }
 
-/** A trench holding an explicit port at `z` (−Z downrange) and nothing else — for
- *  staging the beam-reach boundary at a controlled distance. */
-function trenchWithPortAt(z: number, seed = 1983): GameState {
+/** A trench holding an explicit port at native `depth` (+X downrange) and nothing else —
+ *  for staging the beam-reach boundary at a controlled distance. */
+function trenchWithPortAt(depth: number, seed = 1983): GameState {
   return {
     ...enterPhase({ ...initialState(seed), wave: 1 }, 'trench'),
     mode: 'playing',
-    exhaustPort: { pos: [0, 0, z] },
+    exhaustPort: { pos: [depth, 0, 0] },
     trenchObstacles: [],
   }
 }
@@ -79,12 +79,12 @@ describe('sw7-22 (R6d) — AC-1: the exhaust port is seated at its real BS.PLC d
     expect(TRENCH_PORT_OFFSET).toBeGreaterThan(TRENCH_FAR)
   })
 
-  it('the port SPAWNS at −BS.PLC, not the −TRENCH_FAR clamp (RED: currently −28,672)', () => {
+  it('the port SPAWNS at BS.PLC depth, not the TRENCH_FAR clamp (RED: currently 28,672)', () => {
     const s = freshTrench()
     expect(s.exhaustPort).not.toBeNull()
-    expect(s.exhaustPort!.pos[2]).toBe(-TRENCH_PORT_OFFSET)
+    expect(s.exhaustPort!.pos[0]).toBe(TRENCH_PORT_OFFSET)
     // The clamp is gone: the spawn sits PAST the beam-reach line, not on it.
-    expect(-s.exhaustPort!.pos[2]).toBeGreaterThan(TRENCH_FAR)
+    expect(s.exhaustPort!.pos[0]).toBeGreaterThan(TRENCH_FAR)
   })
 
   it('the spawn distance is the FULL channel across waves — Atari balanced every pie to it', () => {
@@ -92,7 +92,7 @@ describe('sw7-22 (R6d) — AC-1: the exhaust port is seated at its real BS.PLC d
     // that at every wave, never the compressed stub. RED now: −28,672 for all.
     for (const wave of [1, 2, 3, 12]) {
       const s = freshTrench(wave)
-      expect(s.exhaustPort!.pos[2], `wave ${wave} port at BS.PLC`).toBe(-TRENCH_PORT_OFFSET)
+      expect(s.exhaustPort!.pos[0], `wave ${wave} port at BS.PLC`).toBe(TRENCH_PORT_OFFSET)
     }
   })
 
@@ -100,7 +100,7 @@ describe('sw7-22 (R6d) — AC-1: the exhaust port is seated at its real BS.PLC d
     // Distance ÷ scroll speed. The full channel is ~20.8s; the old stub was ~1.8s.
     // Pin the OBSERVABLE spawn distance as flight time — robust to the exact speed.
     const s = freshTrench()
-    const flightSeconds = -s.exhaustPort!.pos[2] / TRENCH_SCROLL_SPEED
+    const flightSeconds = s.exhaustPort!.pos[0] / TRENCH_SCROLL_SPEED
     expect(flightSeconds).toBeGreaterThan(18) // RED now: ~1.8s (the stub)
     expect(flightSeconds).toBeLessThan(24)
     // And the beam-reach window really is the ~1.8s tail it was.
@@ -120,15 +120,15 @@ describe('sw7-22 (R6d) — AC-2: beam reach stays $7000; the port is shootable o
   it('the SAME shot arms once the port has scrolled within beam reach (keep-behavior)', () => {
     // A port staged inside $7000 is still shootable — un-clamping the spawn must not
     // break the win. Green under both the old and the new code (the clip is unchanged).
-    const near = trenchWithPortAt(-(TRENCH_FAR / 2))
+    const near = trenchWithPortAt(TRENCH_FAR / 2)
     expect(armsShotAt(near, near.exhaustPort!.pos)).toBe(true)
   })
 
   it('the beam-reach line is exactly $7000: just beyond misses, just within arms (both sides pinned)', () => {
     // The "test the wave after the last row" discipline — pin the boundary, not just
     // an interior point. Green under both codes; guards the gate that AC-1 relies on.
-    const beyond = trenchWithPortAt(-(TRENCH_FAR + 3000))
-    const within = trenchWithPortAt(-(TRENCH_FAR - 3000))
+    const beyond = trenchWithPortAt(TRENCH_FAR + 3000)
+    const within = trenchWithPortAt(TRENCH_FAR - 3000)
     expect(armsShotAt(beyond, beyond.exhaustPort!.pos), 'a port past $7000 is unhittable').toBe(false)
     expect(armsShotAt(within, within.exhaustPort!.pos), 'a port inside $7000 is hittable').toBe(true)
   })

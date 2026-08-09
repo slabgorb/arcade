@@ -134,8 +134,8 @@ const hit = (events: GameEvent[]): boolean => events.some((e) => e.type === 'dea
  * -300/-500 ports the bolt-era version of this file used: from the seat those are 68° down.)
  */
 function fireAtRange(range: number, dt = FRAME): GameState {
-  const s0 = trench(portAt([0, 0, -range]), { trenchShotsFired: 2 })
-  const target: Vec3 = [0, 0, -range]
+  const s0 = trench(portAt([range, 0, 0]), { trenchShotsFired: 2 })
+  const target: Vec3 = [range, 0, 0]
   expect(aimAt(target, eyeOf(s0)).reachable, `the yoke can actually point at a port ${range} out`).toBe(true)
   return stepGame(s0, fireAt(s0, target), dt)
 }
@@ -147,8 +147,8 @@ function fireAtRange(range: number, dt = FRAME): GameState {
  * essence of frame-rate independence, and the direct heir of the old `flyAcross`.
  */
 function flyTheRun(dt: number): { state: GameState; events: GameEvent[] } {
-  const s0 = trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]), { trenchShotsFired: 2 })
-  let s = stepGame(s0, fireAt(s0, [0, 0, -EXHAUST_PORT_DISTANCE]), dt)
+  const s0 = trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]), { trenchShotsFired: 2 })
+  let s = stepGame(s0, fireAt(s0, [EXHAUST_PORT_DISTANCE, 0, 0]), dt)
   const events: GameEvent[] = [...s.events]
   const budget = Math.ceil(8 / dt) // 8 sim-seconds — the port needs 3.2s to scroll to the window
   for (let i = 0; i < budget && s.phase === 'trench'; i++) {
@@ -205,10 +205,10 @@ describe('sw4-4 → sw7-17 — the beam arms the port at any range inside the cl
     // 30,672 shot sits at |aimY| ≈ 0.04 against the 26,672 shot's 0.05 — both trivially inside the
     // yoke's throw. Nothing about pointing separates them. The ONLY difference is which side of
     // the ROM's forward line the port is on.
-    const near = trench(portAt([0, 0, -INSIDE]))
-    const far = trench(portAt([0, 0, -OUTSIDE]))
-    const nearAim = aimAt([0, 0, -INSIDE], eyeOf(near))
-    const farAim = aimAt([0, 0, -OUTSIDE], eyeOf(far))
+    const near = trench(portAt([INSIDE, 0, 0]))
+    const far = trench(portAt([OUTSIDE, 0, 0]))
+    const nearAim = aimAt([INSIDE, 0, 0], eyeOf(near))
+    const farAim = aimAt([OUTSIDE, 0, 0], eyeOf(far))
     expect(nearAim.reachable).toBe(true)
     expect(farAim.reachable).toBe(true)
     expect(Math.abs(farAim.aimY), 'the clipped shot is the easier aim of the two').toBeLessThan(
@@ -290,16 +290,16 @@ describe('sw4-4 — the fix preserves the target-tight radius and the approach w
     const OFFSET = PORT_HIT_RADIUS + 25
     expect(OFFSET).toBeGreaterThan(PORT_HIT_RADIUS)
     expect(OFFSET, 'still on the plate — a near miss, not a wild shot').toBeLessThanOrEqual(BASE_HALF_WIDTH)
-    const PORT_Z = -EXHAUST_PORT_DISTANCE
-    const s0 = trench(portAt([0, 0, PORT_Z]), { trenchShotsFired: 2 })
-    const s1 = stepGame(s0, fireAt(s0, [OFFSET, 0, PORT_Z]), FRAME)
+    const PORT_DEPTH = EXHAUST_PORT_DISTANCE
+    const s0 = trench(portAt([PORT_DEPTH, 0, 0]), { trenchShotsFired: 2 })
+    const s1 = stepGame(s0, fireAt(s0, [PORT_DEPTH, OFFSET, 0]), FRAME)
     expect(s1.portTorpedoArmed, 'off the visible porthole → no arming, however clean the line').toBe(false)
     expect(hit(s1.events)).toBe(false)
     expect(s1.exhaustPort).not.toBeNull()
     // The control that makes the miss mean something: the SAME state, the SAME range, the only
     // change being that the crosshair is on the hole. Without this, an arming path that was simply
     // broken would sail through the assertion above.
-    expect(stepGame(s0, fireAt(s0, [0, 0, PORT_Z]), FRAME).portTorpedoArmed).toBe(true)
+    expect(stepGame(s0, fireAt(s0, [PORT_DEPTH, 0, 0]), FRAME).portTorpedoArmed).toBe(true)
   })
 
   it('the beam stays gated to the $800 approach window — arming far up the channel does not count', () => {
@@ -312,8 +312,8 @@ describe('sw4-4 — the fix preserves the target-tight radius and the approach w
     // beam demonstrably CONNECTED — `portTorpedoArmed` proves the laser got close enuf — and the
     // gate held the outcome anyway. That is precisely the ROM's shape: WSLAZR latches PT.LZF the
     // moment the laser is on the hole, and WSMAIN reads the flag later, at `SUBD #0800`.
-    const FAR_Z = -EXHAUST_PORT_DISTANCE // the port's own spawn distance — the trench mouth
-    expect(FAR_Z, 'well beyond the near-cockpit window').toBeLessThan(-PORT_APPROACH_WINDOW)
+    const FAR_DEPTH = EXHAUST_PORT_DISTANCE // the port's own spawn distance — the trench mouth
+    expect(FAR_DEPTH, 'well beyond the near-cockpit window').toBeGreaterThan(PORT_APPROACH_WINDOW)
     const s1 = fireAtRange(EXHAUST_PORT_DISTANCE)
     expect(s1.portTorpedoArmed, 'the shot was earned...').toBe(true)
     expect(hit(s1.events), '...but outside the window it does not resolve').toBe(false)
@@ -338,11 +338,11 @@ describe('sw4-4 — the beam collision preserves core purity & determinism', () 
   })
 
   it('resolving a beam hit never mutates the input state', () => {
-    const s0 = trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]), { trenchShotsFired: 2 })
+    const s0 = trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]), { trenchShotsFired: 2 })
     const beforePort: Vec3 | null = s0.exhaustPort ? ([...s0.exhaustPort.pos] as Vec3) : null
     const beforeEye: Vec3 = [...s0.trenchView] as Vec3
     const beforeArmed = s0.portTorpedoArmed
-    const stepped = stepGame(s0, fireAt(s0, [0, 0, -EXHAUST_PORT_DISTANCE]), FRAME)
+    const stepped = stepGame(s0, fireAt(s0, [EXHAUST_PORT_DISTANCE, 0, 0]), FRAME)
     expect(stepped.portTorpedoArmed, 'the step really did resolve something').toBe(true)
     expect(s0.exhaustPort ? s0.exhaustPort.pos : null).toEqual(beforePort) // input port untouched
     expect(s0.trenchView).toEqual(beforeEye) // ...and the ship the beam was cast from

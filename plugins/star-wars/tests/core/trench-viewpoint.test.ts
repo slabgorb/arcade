@@ -71,7 +71,8 @@ const RIGHT: Input = { aimX: 1, aimY: 0, fire: false }
  *  fixture builds the field it needs directly — exactly as trench-force-field-hazard.test.ts
  *  stages it — instead of pulling a placeholder catwalk out of the obstacle table. */
 function spawnedCatwalk(): TrenchObstacle {
-  return { kind: 'catwalk', pos: [-TRENCH_HALF_W, TRENCH_EYE_SEAT, -2000] }
+  // native basis: pos = [depth (+forward, just downrange), right (LEFT wall), up (seat height)].
+  return { kind: 'catwalk', pos: [2000, -TRENCH_HALF_W, TRENCH_EYE_SEAT] }
 }
 
 /**
@@ -106,15 +107,15 @@ describe('sw3-2 — trench pilotable viewpoint exists and responds to the yoke',
     // seat must be inside the band it is later clamped to, or the very first frame is
     // already illegal.
     const s = trenchStart()
-    expect(s.trenchView[1]).toBe(TRENCH_EYE_SEAT)
+    expect(s.trenchView[2]).toBe(TRENCH_EYE_SEAT) // native UP (height) = index 2
     expect(TRENCH_EYE_SEAT, 'the seat is inside the band').toBeGreaterThanOrEqual(TRENCH_EYE_MIN)
     expect(TRENCH_EYE_SEAT, 'the seat is inside the band').toBeLessThanOrEqual(TRENCH_EYE_MAX)
-    expect(s.trenchView[0], 'and dead centre laterally').toBe(0)
+    expect(s.trenchView[1], 'and dead centre laterally').toBe(0) // native RIGHT (lateral) = index 1
   })
 
   it('flies the eye DOWN when the yoke is pushed down', () => {
     const s = hold(trenchStart(), DOWN, 5)
-    expect(s.trenchView[1], 'dove below the seat').toBeLessThan(TRENCH_EYE_SEAT)
+    expect(s.trenchView[2], 'dove below the seat').toBeLessThan(TRENCH_EYE_SEAT) // native UP = index 2
   })
 
   it('flies the eye UP when the yoke is pulled back — the pilot can CLIMB', () => {
@@ -123,14 +124,14 @@ describe('sw3-2 — trench pilotable viewpoint exists and responds to the yoke',
     // and the pilot flies all of it. Climbing is how he sees over the trench furniture and
     // gets an angle on a target lying in the floor.
     const s = hold(trenchStart(), UP, 5)
-    expect(s.trenchView[1], 'climbed above the seat').toBeGreaterThan(TRENCH_EYE_SEAT)
+    expect(s.trenchView[2], 'climbed above the seat').toBeGreaterThan(TRENCH_EYE_SEAT) // native UP = index 2
   })
 
   it('flies the eye laterally when the yoke is pushed sideways', () => {
     const right = hold(trenchStart(), RIGHT, 5)
     const left = hold(trenchStart(), LEFT, 5)
-    expect(right.trenchView[0]).toBeGreaterThan(0)
-    expect(left.trenchView[0]).toBeLessThan(0)
+    expect(right.trenchView[1]).toBeGreaterThan(0) // native RIGHT (lateral) = index 1
+    expect(left.trenchView[1]).toBeLessThan(0)
   })
 })
 
@@ -139,26 +140,26 @@ describe('sw3-2 — the viewpoint is clamped to the band (no overshoot, no wrap)
     const entered = trenchStart()
     const a = hold(entered, DOWN, 2000) // ~200s of sim — well past any sane band depth
     const b = hold(a, DOWN, 2000) // holding longer must not push it any deeper
-    expect(b.trenchView[1]).toBe(a.trenchView[1]) // saturated: no further travel
-    expect(b.trenchView[1], 'the floor is the ROM\'s minimum ground clearance').toBe(TRENCH_EYE_MIN)
-    expect(Number.isFinite(b.trenchView[1])).toBe(true) // a real bound, not ±Infinity/NaN
-    expect(b.trenchView[1], 'and it is ABOVE the trench floor, not below it').toBeGreaterThan(0)
+    expect(b.trenchView[2]).toBe(a.trenchView[2]) // saturated: no further travel (native UP = index 2)
+    expect(b.trenchView[2], 'the floor is the ROM\'s minimum ground clearance').toBe(TRENCH_EYE_MIN)
+    expect(Number.isFinite(b.trenchView[2])).toBe(true) // a real bound, not ±Infinity/NaN
+    expect(b.trenchView[2], 'and it is ABOVE the trench floor, not below it').toBeGreaterThan(0)
   })
 
   it('a sustained climb saturates at the ROM ceiling and holds there', () => {
     const entered = trenchStart()
     const a = hold(entered, UP, 2000)
     const b = hold(a, UP, 2000)
-    expect(b.trenchView[1]).toBe(a.trenchView[1])
-    expect(b.trenchView[1], 'the ceiling is the ROM\'s up limit').toBe(TRENCH_EYE_MAX)
+    expect(b.trenchView[2]).toBe(a.trenchView[2]) // native UP = index 2
+    expect(b.trenchView[2], 'the ceiling is the ROM\'s up limit').toBe(TRENCH_EYE_MAX)
   })
 
   it('clamps a single oversized step to the floor instead of overshooting past it', () => {
     const entered = trenchStart()
-    const floor = hold(entered, DOWN, 2000).trenchView[1]
+    const floor = hold(entered, DOWN, 2000).trenchView[2] // native UP = index 2
     // One giant dt=100s step would integrate to -rate*100 with no clamp; the band
     // must cap it at the SAME floor a long hold reaches.
-    const oneBigStep = stepGame(entered, DOWN, 100).trenchView[1]
+    const oneBigStep = stepGame(entered, DOWN, 100).trenchView[2]
     expect(oneBigStep).toBe(floor)
   })
 
@@ -169,14 +170,14 @@ describe('sw3-2 — the viewpoint is clamped to the band (no overshoot, no wrap)
     let s = trenchStart()
     for (let i = 0; i < 3000; i++) {
       s = stepGame(s, DOWN, 0.1)
-      expect(s.trenchView[1]).toBeGreaterThanOrEqual(TRENCH_EYE_MIN)
-      expect(s.trenchView[1]).toBeLessThanOrEqual(TRENCH_EYE_MAX)
+      expect(s.trenchView[2]).toBeGreaterThanOrEqual(TRENCH_EYE_MIN) // native UP = index 2
+      expect(s.trenchView[2]).toBeLessThanOrEqual(TRENCH_EYE_MAX)
     }
   })
 
   it('the lateral clamp is symmetric — a full-left bound mirrors a full-right bound', () => {
-    const left = hold(trenchStart(), LEFT, 2000).trenchView[0]
-    const right = hold(trenchStart(), RIGHT, 2000).trenchView[0]
+    const left = hold(trenchStart(), LEFT, 2000).trenchView[1] // native RIGHT (lateral) = index 1
+    const right = hold(trenchStart(), RIGHT, 2000).trenchView[1]
     expect(right).toBeGreaterThan(0)
     expect(left).toBeCloseTo(-right, 5) // ROM ±511 about centre → symmetric in world units
   })

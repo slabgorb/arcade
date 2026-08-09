@@ -52,7 +52,7 @@ const ROM_EYE_MAX = 0x1000 - 0x100 // 3840
 describe('sw5-6 AC-5 — the furniture is re-anchored to the pinned trench', () => {
   it('every obstacle is inside the trench', () => {
     for (const o of TRENCH_OBSTACLE_STATIONS) {
-      const [x, y] = o.pos
+      const [, x, y] = o.pos
       expect(Math.abs(x), `${o.kind} is within the walls`).toBeLessThanOrEqual(TRENCH_HALF_W)
       expect(y, `${o.kind} is above the floor`).toBeGreaterThanOrEqual(0)
       expect(y, `${o.kind} is below the trench top`).toBeLessThanOrEqual(TRENCH_WALL_H)
@@ -63,7 +63,7 @@ describe('sw5-6 AC-5 — the furniture is re-anchored to the pinned trench', () 
     // The "you forgot to re-anchor" detector. At their 320-tuned heights (60/120/200)
     // every last obstacle sits in the bottom 5% of the new wall. If Dev pins the anchors
     // and leaves these alone, this fires.
-    const tallest = Math.max(...TRENCH_OBSTACLE_STATIONS.map((o) => o.pos[1]))
+    const tallest = Math.max(...TRENCH_OBSTACLE_STATIONS.map((o) => o.pos[2]))
     expect(tallest / TRENCH_WALL_H, 'the furniture must scale with the wall, not sit on it')
       .toBeGreaterThan(0.1)
   })
@@ -74,7 +74,7 @@ describe('sw5-6 AC-5 — the furniture is re-anchored to the pinned trench', () 
     // reason to exist is unchanged: they must sit INSIDE the band the pilot flies, or the
     // hazard is unreachable (below his floor clearance) or scenery (above his ceiling). BS.WAV
     // 1 carries force fields (PIE1 is all guns); check every distinct slot height.
-    const heights = new Set(streamForceFields(1, createRng(0)).map((f) => f.pos[1]))
+    const heights = new Set(streamForceFields(1, createRng(0)).map((f) => f.pos[2]))
     expect(heights.size, 'the trench streams force fields').toBeGreaterThan(0)
     for (const y of heights) {
       expect(y, 'a field below the pilot\'s floor clearance is not a hazard')
@@ -87,7 +87,7 @@ describe('sw5-6 AC-5 — the furniture is re-anchored to the pinned trench', () 
   it('turrets and squares are mounted ON the walls', () => {
     for (const o of TRENCH_OBSTACLE_STATIONS) {
       if (o.kind === 'catwalk') continue
-      expect(Math.abs(o.pos[0]), `${o.kind} is on a wall`).toBe(TRENCH_HALF_W)
+      expect(Math.abs(o.pos[1]), `${o.kind} is on a wall`).toBe(TRENCH_HALF_W)
     }
   })
 
@@ -96,13 +96,13 @@ describe('sw5-6 AC-5 — the furniture is re-anchored to the pinned trench', () 
     // panels starting 80 up is invisible — the trench reads as a bare cage again, which is
     // the exact defect story 11-6 was written to remove.
     const panels = trenchWallDetail(0)
-    const ys = panels.vertices.map((v) => v[1])
+    const ys = panels.vertices.map((v) => v[2])
     const top = Math.max(...ys)
     expect(top / TRENCH_WALL_H, 'the panel band must scale with the wall').toBeGreaterThan(0.25)
     expect(top, 'and stay inside the trench').toBeLessThanOrEqual(TRENCH_WALL_H)
 
     for (const v of panels.vertices) {
-      expect(Math.abs(v[0]), 'panels are ON the walls').toBe(TRENCH_HALF_W)
+      expect(Math.abs(v[1]), 'panels are ON the walls').toBe(TRENCH_HALF_W)
     }
   })
 })

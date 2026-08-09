@@ -71,6 +71,20 @@ const S = 0.5
 export const bakeTie = (vs: readonly Vec3[]): Vec3[] => vs.map(([x, y, z]) => [-z, -y, x])
 
 /**
+ * sw10-3 — the trench furniture bakes, retiring the trench `*_ORIENT` display
+ * corrections into the DATA exactly as `bakeTie` did for the TIE family (native
+ * world basis: depth=+X, right=+Y, up=+Z; `toNative(v) = [-z, x, y]`).
+ *
+ * - `bakeTrench` is `P · TRENCH_ORIENT` with the retired `TRENCH_ORIENT = IDENTITY`,
+ *   i.e. plain `toNative` — for the wall gun / square / catwalk, authored y-up.
+ * - `bakePort` is `P · PORT_ORIENT` with the retired `PORT_ORIENT = rotationX(-π/2)`
+ *   (the port is a hole in the trench FLOOR): `toNative(rotationX(-π/2)·v) = (x,y,z) → (y, x, z)`.
+ *   The RAW ROM `.WP` values stay visible in each literal below; only the basis changes.
+ */
+export const bakeTrench = (vs: readonly Vec3[]): Vec3[] => vs.map(([x, y, z]) => [-z, x, y])
+export const bakePort = (vs: readonly Vec3[]): Vec3[] => vs.map(([x, y, z]) => [y, x, z])
+
+/**
  * Unit wireframe cube — the Wave 0 skeleton's placeholder draw target
  * (consumed by src/shell/render.ts until Wave 1 wires in the authentic models).
  */
@@ -676,11 +690,13 @@ export const TRENCH: Model3D = {
 export const EXHAUST_PORT: Model3D = {
   name: 'Exhaust Port',
   // `.WP PORT`, in ROM order — the edge indices below are indices into THIS array.
-  vertices: [
+  // sw10-3: baked to the native world basis (a flat hole in the trench floor) via
+  // `bakePort` — the RAW ROM `.WP PORT` triples stay visible as the pre-bake source.
+  vertices: bakePort([
     [96, 96, 0], [96, -96, 0], [-96, 96, 0], [-96, -96, 0], //      0-3   porthole
     [160, 160, 0], [160, -160, 0], [-160, 160, 0], [-160, -160, 0], // 4-7   berm
     [256, 256, 0], [256, -256, 0], [-256, 256, 0], [-256, -256, 0], // 8-11  base
-  ],
+  ]),
   // `.WGD PORT`, hand-walked: PLOT 5 / DRAWTO 9,8,4 / BDRAWTO 6,10,11,7 (green) /
   // DRAWTO 6,2 / BDRAWTO 6,4,0 / BDRAWTO 4,5,1 / BDRAWTO 5,7,3 (turquoise) /
   // DRAWTO 2,0,1,3 (red — the porthole).
@@ -709,11 +725,12 @@ export const EXHAUST_PORT: Model3D = {
  */
 export const TRENCH_TURRET: Model3D = {
   name: 'Trench Turret',
-  vertices: [
+  // sw10-3: baked to the native world basis via `bakeTrench`; raw `.WP WGA` triples stay visible.
+  vertices: bakeTrench([
     [-256, 0, 192], [256, 0, 192], [256, 0, -192], [-256, 0, -192], // 0-3 WALL BASE
     [-96, 96, 64], [96, 32, 64], [96, 32, -64], [-96, 96, -64], [-96, 32, -64], [-96, 32, 64], // 4-9 GUN BODY
     [-96, 72, 32], [-96, 56, 32], [-96, 72, -32], [-96, 56, -32], // 10-13 GUN NOZZLE
-  ],
+  ]),
   edges: [
     [3, 2], [2, 1], [1, 0], [0, 3], [3, 8], [8, 9], [9, 0], // DRAWTO 3,2,1,4,9,10,1
     [9, 5], [5, 1], // BDRAWTO 10,6,2
@@ -737,7 +754,7 @@ export const TRENCH_TURRET: Model3D = {
  */
 export const TRENCH_SQUARE: Model3D = {
   name: 'Trench Square',
-  vertices: TRENCH.vertices, // `.WP WPN` — the same wall-panel table as TRENCH
+  vertices: bakeTrench(TRENCH.vertices), // `.WP WPN` — the same wall-panel table as TRENCH, baked native (sw10-3)
   edges: [
     // outer square — `.WGD WPN` DRAWTO 1,2,3,0
     [0, 1], [1, 2], [2, 3], [3, 0],
@@ -760,11 +777,12 @@ export const TRENCH_SQUARE: Model3D = {
  */
 export const TRENCH_CATWALK: Model3D = {
   name: 'Trench Catwalk',
-  vertices: [
+  // sw10-3: baked to the native world basis via `bakeTrench`; raw `.WP WFF` triples stay visible.
+  vertices: bakeTrench([
     [-256, 0, 0], [-256, 512, 0], // 0-1 FRONT MIDLINE
     [0, 0, -256], [0, 512, -256], // 2-3 BOTTOM MIDLINE
     [0, 0, 256], [0, 512, 256], //   4-5 TOP MIDLINE
-  ],
+  ]),
   edges: [
     [1, 0], [0, 2], [2, 3], [3, 1], [1, 5], [5, 4], [4, 0],
   ],

@@ -19,7 +19,7 @@
 // are now correctly DISJOINT. That guard is re-seated in models.test.ts to match.
 
 import { describe, it, expect } from 'vitest'
-import { TRENCH, TRENCH_SQUARE, type Model3D } from '../../src/core/models'
+import { TRENCH, TRENCH_SQUARE, bakeTrench, type Model3D } from '../../src/core/models'
 
 /** Undirected edge key so [a,b] and [b,a] compare equal. */
 const key = (e: readonly [number, number]) => (e[0] < e[1] ? `${e[0]}-${e[1]}` : `${e[1]}-${e[0]}`)
@@ -75,7 +75,8 @@ describe('sw7-6 M-013 — TRENCH_SQUARE reconciled onto WPN (not a flat 80×80 s
 
   it('carries WPN’s concentric-rectangle geometry (the same wall panel TRENCH is)', () => {
     // Reconciled onto `.WP WPN`: two concentric rectangles, ±256/±192 and ±128/±64.
-    expect(TRENCH_SQUARE.vertices).toEqual(TRENCH.vertices)
+    // sw10-3: baked to the native world basis (same bake TRENCH_SQUARE ships).
+    expect(TRENCH_SQUARE.vertices).toEqual(bakeTrench(TRENCH.vertices))
     // And strokes them WPN's way — the two rectangles, no fabricated rails.
     const edges = edgeSet(TRENCH_SQUARE)
     for (const e of [...WPN_OUTER, ...WPN_INNER]) expect(edges.has(key(e))).toBe(true)

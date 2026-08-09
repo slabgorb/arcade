@@ -1297,7 +1297,7 @@ export function initialState(seed = 1983): GameState {
     // The eye rides at the ROM's trench entry height above the floor (sw5-6) — see
     // TRENCH_EYE_SEAT. A trench state built straight from initialState() (as the render
     // suites do) is therefore already seated inside the band, not sitting on the floor.
-    trenchView: [0, TRENCH_EYE_SEAT, 0],
+    trenchView: [0, 0, TRENCH_EYE_SEAT],
     phaseKills: 0,
     // The run start IS the ROM's first-wave case (SC.FWV==0): the space clock
     // opens 39 frames ahead (sw8-11). Later phases/waves re-enter through
