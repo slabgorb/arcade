@@ -48,8 +48,16 @@ stories:
     title: "ICBM on-screen ceiling: reconcile MXICON(7) vs NICBMS(8). The ROM's ICNORM/POTENT launch arithmetic (INX before caps, DEX after, STX POTENT=count-1) makes true concurrency NICBMS(8); MXICON=7 is the count-1 operand. Align mc3/mc4/mc5 spawn headroom + MC-MXICON claim prose + playthrough <=MXICON bounds. REV-01 W3MAIN.MAC:2439 ICNORM / 2669 FROMTOP"
     points: 3
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-09'
     repos: arcade
     workflow: tdd
     type: refactor
+  - id: mc5-7
+    title: "Wave-1 ICBM budget fidelity: createGame seeds remaining=NICBMS(8) but the ROM wave-1 budget is ICBWAV[0]=12 (W3MAIN.MAC:5713; loaded LDA AY,ICBWAV-1 / STA ICBTOL :3937). Seed wave 1 from waveSchedule(INITIAL_WAVE).count and re-pin game.test.ts:67; also sweep stale 'max ICBMs on screen' MXICON prose in docs/rom-study/glossary.md + brief.md. REV-01"
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
