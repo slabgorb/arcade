@@ -40,13 +40,16 @@ stories:
     description: "Prove the sound actually plays — a green vitest is not proof (contract 5 + sidecar gotcha: @shared/audio degrades silently, a 404 is indistinguishable from working code). Serve the cabinet (just serve -> /missile-command/) and confirm the mapped events are audible in the running game. IF the mc8-1 path baked any sound to files: upload them to the R2 bucket 'arcade' (there is no automated upload path — do it via the deploy-assets route) and prove each with a live 200 (curl -o /dev/null -w '%{http_code}' <url>); record the manifest + results in docs/ops/hosting.md. IF the path is runtime-synth: confirm no external asset is required and that the served game is audible with the network offline. Any residual 'asset follows later' item is FILED AS A STORY here, not left as a finding. Depends on mc8-2."
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-09'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'the served game (/missile-command/) is confirmed audible for the mapped events — evidence recorded, not asserted (a screenshot/console log of playback or, for baked assets, the live 200 results).'
       - 'if any sound is baked: every asset returns a live 200 from the R2 bucket, the manifest + results are recorded in docs/ops/hosting.md; if runtime-synth: the game is audible with no external asset fetch.'
       - 'no open Delivery Finding of the form asset-follows-later remains — any such item is filed as a tracked story before this story finishes.'
+    review_findings: "APPROVED round 2. Round-1 REJECT (keyword-only Block-2 guards that could pass on opposite-meaning prose) fully remediated: audible guard word-anchored (cannot match 'inaudible'), closed-loop guard requires qualified phrase, Branch-A control gains not.toBeNull() precondition, rule-23 comment cites a concrete mutant. All verified RESOLVED by independent mutation (test-analyzer + rule-checker clean; preflight + comment-analyzer clean). Recorded hosting.md evidence accurate and unchanged (audio genuinely plays, peak 0.157)."
+    review_verdict: approved
   - id: mc8-4
     title: Parametric drones + full event wiring (bonusTick, whoop, end-game, bonus-city, low-ammo, cruise/Sputnik drone sweep)
     points: 5
@@ -80,3 +83,11 @@ stories:
     repos: arcade
     workflow: tdd
     type: refactor
+  - id: mc8-8
+    title: "just serve is silent: the POKEY worklet fails to load in Vite dev (@fs URL -> AbortError 'Unable to load a worklet's module'), so MC audio is inaudible under 'just serve' -> /missile-command/ even though the production BUILD is fully audible (mc8-3 verified worklet resolves same-origin + POKEY output peak 0.157). Make the dev server load the vendored worklet (e.g. Vite ?worker/?url or public/ placement) without regressing star-wars, which shares plugins/star-wars/tools/pokey-bake/vendor/pokey.js. Filed by mc8-3."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
