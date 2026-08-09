@@ -93,7 +93,7 @@ test('isReleaseTag is the exact inverse of tagFor, not the glob that finds candi
 // The command plan
 // ---------------------------------------------------------------------------
 
-test('releaseSteps: the full command order, with no develop and no merge', () => {
+test('releaseSteps: the full command order, cut from develop with no merge', () => {
   const steps = releaseSteps({
     id: 'tempest',
     version: '1.0.29',
@@ -105,17 +105,17 @@ test('releaseSteps: the full command order, with no develop and no merge', () =>
       ['git', 'add', '--', 'plugins/tempest/package.json', 'src/host/registry.ts'],
       ['git', 'commit', '-m', 'chore(release): tempest v1.0.29'],
       ['git', 'tag', '-a', 'tempest-v1.0.29', '-m', 'release tempest v1.0.29'],
-      ['git', 'push', 'origin', 'main'],
+      ['git', 'push', 'origin', 'develop'],
       ['git', 'push', 'origin', 'tempest-v1.0.29'],
     ],
   );
 });
 
-test('releaseSteps: main is pushed BEFORE the tag', () => {
+test('releaseSteps: develop is pushed BEFORE the tag', () => {
   // The tag is the deploy trigger. If it landed first and the branch push then
   // failed, CI would build and ship a commit that is on no branch.
   const flat = releaseSteps({ id: 'joust', version: '0.0.4', files: ['a'] }).map((s) => s.args.join(' '));
-  const branchPush = flat.findIndex((a) => a === 'push origin main');
+  const branchPush = flat.findIndex((a) => a === 'push origin develop');
   const tagPush = flat.findIndex((a) => a === 'push origin joust-v0.0.4');
   assert.ok(branchPush !== -1 && tagPush !== -1, 'both pushes must exist');
   assert.ok(branchPush < tagPush, 'the tag must not reach origin before the commit it points at');
@@ -136,13 +136,15 @@ test('releaseSteps: staging is explicit, never `git add -A`', () => {
   assert.ok(!add.args.includes('-A'), 'a release must never stage the whole tree');
 });
 
-test('releaseSteps: nothing in the plan mentions develop, merge or checkout', () => {
-  // The three stages the collapse deleted. Any of them reappearing means someone
-  // restored a workflow whose branches no longer exist.
+test('releaseSteps: nothing in the plan merges or checks out a second branch', () => {
+  // The stages the collapse deleted: a develop->main merge and its checkout legs.
+  // Any of them reappearing means someone restored a workflow whose branch
+  // topology no longer exists. `develop` itself is legitimate now — it is the
+  // branch the release commit is pushed to — so it is not in this list.
   const words = releaseSteps({ id: 'lobby', version: '0.0.23', files: ['lobby/package.json'] })
     .flatMap((s) => [s.desc, s.cmd, ...s.args])
     .join(' ');
-  for (const gone of ['develop', 'merge', 'checkout', '--no-ff']) {
+  for (const gone of ['merge', 'checkout', '--no-ff']) {
     assert.ok(!words.includes(gone), `the plan still mentions "${gone}"`);
   }
 });

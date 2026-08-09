@@ -2,8 +2,9 @@
 // scripts/release.mjs — cuts a release of ONE app out of the monorepo.
 //
 // Nine repos are one repo now, so a release is no longer "merge this repo's
-// develop into its main". `main` IS the trunk and carries every app's commits;
-// what identifies a release is the TAG:
+// develop into its main". Releases are cut from `develop` in place — the
+// integration branch carries every app's commits, and what identifies a release
+// is the TAG (the deploy workflow fires on the tag, not on any branch):
 //
 //     just release tempest         ->  tempest-v1.0.29
 //     just release lobby minor     ->  lobby-v0.1.0
@@ -17,7 +18,7 @@
 // WHAT WENT AWAY WITH THE SUBREPOS
 //   · the develop -> main `--no-ff` merge, and with it `checkout -B main
 //     origin/main` and the `git checkout develop` return leg. There is no
-//     develop. Releases are cut from `main`, in place.
+//     second branch to merge into. Releases are cut from `develop`, in place.
 //   · `shouldRelease`'s old definition — "origin/develop holds commits
 //     origin/main lacks" — whose two inputs no longer exist. The invariant it
 //     carried (a `release-all` run twice shipped six empty versions and six
@@ -323,9 +324,9 @@ export function gateSteps(id) {
     // transpiles through esbuild without checking types; and there is no push or
     // PR workflow — `.github/workflows/` holds only deploy.yml, on `tags: ['*-v*']`.
     // So the sequence was: `just ci` green -> `just release tempest` green ->
-    // commit, tag, push main, push tag, ALL IRREVERSIBLE -> and CI's first step, a
+    // commit, tag, push develop, push tag, ALL IRREVERSIBLE -> and CI's first step, a
     // repo-wide `tsc`, fails on a type error in some other game and blocks the
-    // deploy with the version bump already permanently on main.
+    // deploy with the version bump already permanently on develop.
     //
     // `tsc` CANNOT be scoped per app, and nobody should try: the root
     // tsconfig.json's `include` is ["src", "plugins", "lobby", "scripts"] — one
@@ -356,7 +357,7 @@ export function gateSteps(id) {
  * preflight is ever relaxed to ignore untracked files — and this repo currently
  * carries an untracked `arcade-shared/` awaiting teardown.
  *
- * `main` is pushed BEFORE the tag, in two commands rather than one. The tag is
+ * `develop` is pushed BEFORE the tag, in two commands rather than one. The tag is
  * what triggers the deploy: if it landed first and the branch push then failed,
  * CI would ship a commit that is on no branch.
  */
@@ -370,7 +371,7 @@ export function releaseSteps({ id, version, files }) {
       args: ['commit', '-m', `chore(release): ${id} v${version}`],
     },
     { desc: `tag ${tag}`, cmd: 'git', args: ['tag', '-a', tag, '-m', `release ${id} v${version}`] },
-    { desc: 'push main', cmd: 'git', args: ['push', 'origin', 'main'] },
+    { desc: 'push develop', cmd: 'git', args: ['push', 'origin', 'develop'] },
     {
       desc: `push ${tag} — this is what triggers the deploy`,
       cmd: 'git',
@@ -420,8 +421,8 @@ export function release(id, level = 'patch', { force = false } = {}) {
     throw new Error(`${id}: working tree is not clean — commit or stash first`);
   }
   const branch = out('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
-  if (branch !== 'main') {
-    throw new Error(`${id}: releases are cut from main; you are on ${branch}`);
+  if (branch !== 'develop') {
+    throw new Error(`${id}: releases are cut from develop; you are on ${branch}`);
   }
   try {
     run('git', ['fetch', 'origin', '--tags']);
@@ -430,16 +431,16 @@ export function release(id, level = 'patch', { force = false } = {}) {
     // dump where every other failure in this file names the app and the problem.
     throw new Error(`${id}: cannot reach origin to fetch branches and tags — ${err.message}`);
   }
-  let originMain;
+  let originDevelop;
   try {
-    originMain = out('git', ['rev-parse', 'origin/main']);
+    originDevelop = out('git', ['rev-parse', 'origin/develop']);
   } catch {
-    throw new Error(`${id}: there is no origin/main — push main before releasing`);
+    throw new Error(`${id}: there is no origin/develop — push develop before releasing`);
   }
-  if (out('git', ['rev-parse', 'main']) !== originMain) {
+  if (out('git', ['rev-parse', 'develop']) !== originDevelop) {
     throw new Error(
-      `${id}: main is not in sync with origin/main — push or pull first. ` +
-        `CI builds from the tag it receives, so releasing an unpushed main ships code nobody else has.`,
+      `${id}: develop is not in sync with origin/develop — push or pull first. ` +
+        `CI builds from the tag it receives, so releasing an unpushed develop ships code nobody else has.`,
     );
   }
 
@@ -523,7 +524,7 @@ export function release(id, level = 'patch', { force = false } = {}) {
         `${id}: release stopped at "${step.desc}" — ${err.message}\n` +
           `  Nothing after that step ran.\n` +
           `  Inspect: git log --oneline -1 && git tag -l ${tag}\n` +
-          `  Undo a LOCAL commit/tag: git tag -d ${tag} && git reset --hard origin/main`,
+          `  Undo a LOCAL commit/tag: git tag -d ${tag} && git reset --hard origin/develop`,
       );
     }
   }
