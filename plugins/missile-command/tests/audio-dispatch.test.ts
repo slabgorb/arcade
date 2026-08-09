@@ -40,6 +40,7 @@ import { describe, it, expect } from 'vitest'
 import { playEventSounds, updateSustainedSounds } from '../src/shell/audio-dispatch.js'
 import type { SoundEvent } from '../src/core/sound-events.js'
 import { createGame, type GameState } from '../src/core/game.js'
+import type { Icbm } from '../src/core/icbm.js'
 
 /** A recording fake of the audio surface — captures every call, in order. */
 function recorder() {
@@ -55,6 +56,12 @@ function recorder() {
       },
       stopLoop(name: string): void {
         calls.push(`stopLoop:${name}`)
+      },
+      // mc8-5: the parametric sweep feed. Records the KIND and the sweep FRAME it was
+      // driven with, so a test can prove the running drone is fed the right voice and
+      // that the sweep actually advances (droneSweep reachability).
+      feedDrone(frame: number, kind: string): void {
+        calls.push(`feedDrone:${kind}:${frame}`)
       },
     },
   }
@@ -197,13 +204,162 @@ describe('updateSustainedSounds — the drone does not ring through game over', 
     expect(r.calls).toContain('stopLoop:drone')
   })
 
-  it('during PLAY it does NOT stop the drone — the silence is EDGE-conditional, not unconditional', () => {
-    // The control the edge tests need: an unconditional stopLoop (ignoring phase)
-    // would silence the drone every frame, so when mc8-3 starts it mid-run it would
-    // never sound. A live-play frame must leave a running drone alone (mutation-caught).
+  it('during PLAY WITH A THREAT it does NOT stop the drone — the silence is EDGE-conditional, not unconditional', () => {
+    // RE-BASELINED by mc8-5. mc8-2's original used a fresh no-threat game and asserted
+    // "play never stops the drone" — but mc8-5 makes an empty play frame STOP it (no
+    // threat → silent; that case is now pinned below). The surviving invariant: an
+    // unconditional stopLoop (ignoring phase/presence) would silence the drone every
+    // frame, so a live-play frame WITH a threat present must leave a running drone
+    // alone (mutation-caught). droneRequest only reads .kind — a cruise on screen keeps
+    // the drone live.
+    const V0 = { h: 0, v: 0 }
+    const cruise: Icbm = { origin: V0, target: V0, pos: V0, arrived: false, kind: 'cruise' }
     const r = recorder()
     r.audio.startLoop('drone')
-    updateSustainedSounds(r.audio, createGame(1)) // a fresh game is phase 'play'
+    updateSustainedSounds(r.audio, { ...createGame(1), icbms: [cruise] }) // phase 'play', threat present
     expect(r.calls).not.toContain('stopLoop:drone')
+  })
+})
+
+// ─── mc8-5: the cruise/Sputnik drone LIVE TRIGGER ─────────────────────────────
+//
+// Story mc8-5 — RED (O'Brien / TEA). mc8-2 stood up the drone's start/stop lifecycle
+// and the game-over edge-silence (above); mc8-4 built the pitch SWEEP (core/drone.ts
+// droneSweep + engine.feedDrone). Both were UNREACHABLE — nothing ever STARTS the
+// drone or FEEDS the sweep. This story wires the live trigger into the same per-frame
+// seam (`updateSustainedSounds`, called from main.ts each frame): the ROM's CMSNON/
+// STSNON, gated by CRMONS — start the drone while a cruise missile and/or a Sputnik
+// is on screen during play, drive its parametric sweep each frame, and stop it the
+// moment the threat clears — WITHOUT reopening the game-over leak mc8-2 closed.
+//
+// The pure presence→kind projection is `core/drone-trigger.ts::droneRequest` and is
+// fully truth-tabled in drone-trigger.test.ts; this file proves the SHELL consumes it
+// live through the recording fake (start/stop/feed), NOT the selector's math.
+//
+// WHY RED: updateSustainedSounds today only stops the drone at 'over' — it never
+// starts it, never feeds the sweep, and never silences a paused game. The new-behavior
+// cases below (start-on-presence, stop-on-clear, sweep-feed, pause-silence) all fail
+// until GREEN wires droneRequest + feedDrone into the seam (widening its audio surface
+// to include feedDrone). The game-over case is a REGRESSION GUARD: it passes today and
+// must keep passing once the trigger lands (a naive `droneRequest ? start : stop` with
+// no phase gate would reopen the leak).
+describe('mc8-5 — the drone LIVE TRIGGER starts/stops from on-screen threats', () => {
+  const V0 = { h: 0, v: 0 }
+  // droneRequest reads only `.kind` off each ICBM and `.length` off sputniks, so these
+  // minimal shapes are all the shell seam needs (the selector's full contract lives in
+  // drone-trigger.test.ts). Cruise/ballistic are valid Icbm literals; a "plane" is any
+  // object — only its presence in the roster counts.
+  const cruise: Icbm = { origin: V0, target: V0, pos: V0, arrived: false, kind: 'cruise' }
+  const ballistic: Icbm = { origin: V0, target: V0, pos: V0, arrived: false, kind: 'ballistic' }
+  const plane = {} as GameState['sputniks'][number]
+
+  const play = (over: Partial<GameState>): GameState => ({ ...createGame(1), ...over })
+  // Net running state of the drone after a run of calls (last start/stop wins).
+  const droneRunning = (calls: readonly string[]): boolean => {
+    let on = false
+    for (const c of calls) {
+      if (c === 'startLoop:drone') on = true
+      if (c === 'stopLoop:drone') on = false
+    }
+    return on
+  }
+
+  // ── START on presence ───────────────────────────────────────────────────────
+  it('a cruise missile on screen during play STARTS the drone', () => {
+    const r = recorder()
+    updateSustainedSounds(r.audio, play({ icbms: [cruise] }))
+    expect(droneRunning(r.calls), 'a live cruise threat must sound the drone').toBe(true)
+    expect(r.calls).toContain('startLoop:drone')
+  })
+
+  it('a Sputnik aloft during play STARTS the drone', () => {
+    const r = recorder()
+    updateSustainedSounds(r.audio, play({ sputniks: [plane] }))
+    expect(droneRunning(r.calls)).toBe(true)
+  })
+
+  it('cruise AND Sputnik together STARTS the drone', () => {
+    const r = recorder()
+    updateSustainedSounds(r.audio, play({ icbms: [cruise], sputniks: [plane] }))
+    expect(droneRunning(r.calls)).toBe(true)
+  })
+
+  it('ballistic warheads alone do NOT start the drone — only cruise/Sputnik trigger it', () => {
+    // Guards a mutant that keys the trigger off icbms.length instead of the cruise kind.
+    const r = recorder()
+    updateSustainedSounds(r.audio, play({ icbms: [ballistic, ballistic] }))
+    expect(droneRunning(r.calls), 'ordinary ICBMs are silent — no drone').toBe(false)
+    expect(r.calls.some((c) => c.startsWith('feedDrone'))).toBe(false)
+  })
+
+  // ── STOP when the threat clears ──────────────────────────────────────────────
+  it('a play frame with NO threat STOPS a running drone (the threat just cleared → silence)', () => {
+    const r = recorder()
+    r.audio.startLoop('drone') // it had been sounding
+    updateSustainedSounds(r.audio, play({ icbms: [ballistic], sputniks: [] })) // no cruise, no plane
+    expect(droneRunning(r.calls), 'a cleared screen must silence the drone').toBe(false)
+    expect(r.calls).toContain('stopLoop:drone')
+  })
+
+  // ── DRIVE the parametric sweep while running (feedDrone reachability + kind) ──
+  it('while a cruise threat runs, the sweep is FED with kind "cruise"', () => {
+    const r = recorder()
+    updateSustainedSounds(r.audio, play({ icbms: [cruise] }))
+    expect(r.calls.some((c) => c.startsWith('feedDrone:cruise:'))).toBe(true)
+  })
+
+  it('a Sputnik-only threat feeds the sweep with kind "sputnik" (not a hardcoded cruise)', () => {
+    // The kind must track droneRequest — sputnik/cruise sweep DIFFERENT bounds
+    // (TOP 0x70 vs 0x30, core/drone.ts). A mutant that always feeds 'cruise' dies here.
+    const r = recorder()
+    updateSustainedSounds(r.audio, play({ sputniks: [plane] }))
+    expect(r.calls.some((c) => c.startsWith('feedDrone:sputnik:'))).toBe(true)
+    expect(r.calls.some((c) => c.startsWith('feedDrone:cruise:'))).toBe(false)
+  })
+
+  it('cruise AND Sputnik feeds the sweep with kind "both"', () => {
+    const r = recorder()
+    updateSustainedSounds(r.audio, play({ icbms: [cruise], sputniks: [plane] }))
+    expect(r.calls.some((c) => c.startsWith('feedDrone:both:'))).toBe(true)
+  })
+
+  it('the sweep ADVANCES across frames — consecutive frames feed different sweep positions', () => {
+    // Proves droneSweep is actually driven (not stuck at one value): two frames of a
+    // held cruise threat must feed two DIFFERENT sweep frames, whether the shell tracks
+    // the sim clock or an internal counter. Extract the frame arg the fake recorded.
+    const frameOf = (calls: readonly string[]): number => {
+      const hit = calls.find((c) => c.startsWith('feedDrone:cruise:'))
+      return Number(hit?.split(':')[2])
+    }
+    const r0 = recorder()
+    updateSustainedSounds(r0.audio, play({ icbms: [cruise], frame: 0 }))
+    const r1 = recorder()
+    updateSustainedSounds(r1.audio, play({ icbms: [cruise], frame: 5 }))
+    expect(frameOf(r0.calls)).not.toBe(frameOf(r1.calls))
+  })
+
+  // ── the game-over leak must NOT reopen (regression guard) ─────────────────────
+  it('game over with a cruise STILL on screen does NOT start or feed the drone — it is silenced', () => {
+    // The headline paranoia: at 'over' the rosters are FROZEN (game.ts:178), so a
+    // cruise remains on screen and droneRequest still returns 'cruise'. A trigger that
+    // ignored phase would RE-START the drone at the terminal edge — exactly the leak
+    // mc8-2 closed. Game-over must win over presence.
+    const r = recorder()
+    r.audio.startLoop('drone')
+    updateSustainedSounds(r.audio, play({ phase: 'over', icbms: [cruise] }))
+    expect(droneRunning(r.calls), 'a dead game must not drone even with a frozen threat').toBe(false)
+    expect(r.calls).toContain('stopLoop:drone')
+    expect(r.calls.some((c) => c.startsWith('feedDrone'))).toBe(false)
+  })
+
+  it('a PAUSED game with a threat on screen does NOT drone (pause extends the game-over seam)', () => {
+    // 'pause' freezes the field like 'over' (enemies remain, droneRequest non-null), so
+    // the same phase gate must silence it — a paused cabinet should not hum. Fails today
+    // (updateSustainedSounds only special-cases 'over').
+    const r = recorder()
+    r.audio.startLoop('drone')
+    updateSustainedSounds(r.audio, play({ phase: 'pause', icbms: [cruise] }))
+    expect(droneRunning(r.calls), 'a paused game must not drone').toBe(false)
+    expect(r.calls.some((c) => c.startsWith('feedDrone'))).toBe(false)
   })
 })
