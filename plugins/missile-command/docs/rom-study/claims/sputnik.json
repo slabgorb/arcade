@@ -53,5 +53,16 @@
       "line": 5729,
       "verbatim": "WSPLAU:\t.BYTE 0F0,0A0,080,80,60,40,20"
     }
+  },
+  {
+    "id": "MC-SPUTFIR-MARGIN",
+    "symbol": "SPUTFIR_MARGIN",
+    "value": 48,
+    "meaning": "Sputnik in-bounds fire-gate margin = 48 (hex 0x30). SPUTFIR fires only when PLCPH is in the interior band [0x30, 0xD0) = [48, 207]: CMP I,30 / IFCS requires PLCPH >= 0x30 (this line, W3MAIN.MAC:2531) and CMP I,-30 / IFCC (W3MAIN.MAC:2535) requires PLCPH < 0xD0 (208 = 256 - 0x30) — i.e. at least 48 dots from EACH edge of the 0..255 plane frame, symmetric about centre. The plane HOLDS fire near either edge. Instruction-site immediate, same shape as MC-ICNORM-CAP's CPX I,4.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 2531,
+      "verbatim": "\tCMP I,30"
+    }
   }
 ]

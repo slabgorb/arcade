@@ -244,6 +244,10 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // (`CPX I,4`, W3MAIN.MAC:2475, "MAX AT 4") whose value 4 IS the immediate
     // operand — the EXPLCT shape. Pinned in the mc5-5 consistency block below.
     'ICNORM_CAP',
+    // mc5-8: the SPUTFIR in-bounds fire-gate margin is an instruction-site claim
+    // (`CMP I,30`, W3MAIN.MAC:2531) whose value 48 IS the immediate operand (0x30) —
+    // the same shape as ICNORM_CAP. Pinned in the mc5-8 consistency block below.
+    'SPUTFIR_MARGIN',
     // mc5-3: the cruise-missile constants. CMKILL (MC-CRUISE-SCORE) is the ×5 kill
     // routine's LDX I,4 → operand+1 = 5 (the SPUTKI/CITYBON inclusive-loop shape);
     // CRMWAV is the per-wave budget `.BYTE` row (decimal counts); SLOPEH/SLOPEL are
@@ -439,6 +443,24 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // drifted spawn.ts ICNORM_CAP (e.g. 5) passes the whole citations suite and
     // only behavior tests catch it.
     expect(ICNORM_CAP, 'core export ICNORM_CAP must equal the claimed value').toBe(cap!.value)
+  })
+
+  // mc5-8: the SPUTFIR in-bounds fire-gate margin, same instruction-site shape as
+  // mc5-5's ICNORM cap. The DERIVED exemption lets MC-SPUTFIR-MARGIN carry the
+  // numeric 48; this block keeps that honest — the value must decode from the
+  // immediate operand of its own cited `CMP I,30` (0x30), so a fabricated margin
+  // cannot ride into the un-cited-literal guard's claimedValues set. The upper
+  // bound 208 = 0xD0 = 256 − 0x30 is the symmetric wrap of the paired `CMP I,-30`
+  // (W3MAIN.MAC:2535), asserted here as a derivation from the same margin.
+  it('mc5-8: the SPUTFIR gate margin value decodes from its cited CMP immediate operand', () => {
+    const margin = loadClaims().find((c) => c.symbol === 'SPUTFIR_MARGIN')
+    expect(margin, 'MC-SPUTFIR-MARGIN must be committed').toBeTruthy()
+    const m = margin!.source.verbatim.match(/\bI,([0-9A-F]+)\b/)
+    expect(m, `no immediate operand in "${margin!.source.verbatim}"`).not.toBeNull()
+    expect(decodeRadix16(m![1]), 'SPUTFIR_MARGIN is the CMP I,30 immediate (0x30)').toBe(48)
+    expect(margin!.value, 'MC-SPUTFIR-MARGIN value').toBe(48)
+    // The paired upper bound: 256 − 0x30 = 0xD0 = 208 (the `CMP I,-30 / IFCC` wrap).
+    expect(256 - decodeRadix16(m![1]), 'upper in-bounds bound = 256 − 0x30 = 0xD0 (208)').toBe(208)
   })
 
   // mc5-3: the cruise-missile constants — CMKILL (×5 kill, operand+1), CRMWAV (the

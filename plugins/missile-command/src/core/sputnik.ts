@@ -123,10 +123,16 @@ export function spawnSputnik(rng: Rng, fireCadence: number): Sputnik {
 }
 
 /** Advance a plane one tick: slide horizontally by `dir · speed`, altitude held,
- *  and count the fire timer down (the per-tick fire-timer decrement).
- *  Referentially transparent. */
+ *  and count the fire timer down by the DISTANCE MOVED — the ROM's HORFIR, which
+ *  increments once per plane position update (one dot moved), so the fire spacing
+ *  is a DISTANCE (SPUTDS), velocity-agnostic, not a frame count — the mc-eight
+ *  rework. Referentially transparent. */
 export function stepSputnik(s: Sputnik, speed: number): Sputnik {
-  return { ...s, pos: { h: s.pos.h + s.dir * speed, v: s.pos.v }, fireTimer: s.fireTimer - 1 }
+  // fireTimer −= the dots moved this tick (`speed`): the ROM `INC HORFIR ;INC DIST
+  // MOVED` fires once per position update = one dot (W3MAIN.MAC:5883), and the plane
+  // fires when HORFIR has reached SPUTDS (W3MAIN.MAC:2523-2527). At the functional
+  // speed=1 this equals the retired per-frame −1; the distance model diverges at speed>1.
+  return { ...s, pos: { h: s.pos.h + s.dir * speed, v: s.pos.v }, fireTimer: s.fireTimer - speed }
 }
 
 /** True once the plane has crossed either far edge of the field ([0, HMAX]). */
@@ -137,6 +143,25 @@ export function offscreen(s: Sputnik): boolean {
 /** True when the plane's fire timer has counted down — it launches this frame. */
 export function readyToFire(s: Sputnik): boolean {
   return s.fireTimer <= 0
+}
+
+// ── mc5-8: the SPUTFIR in-bounds fire gate (W3MAIN.MAC:2529-2537) ─────────────
+// The plane may fire only in the INTERIOR band, the ROM's two PLCPH compares:
+//   CMP I,30  / IFCS  → PLCPH ≥ 0x30 (48)                         (:2531)  claim MC-SPUTFIR-MARGIN
+//   CMP I,-30 / IFCC  → PLCPH < 0xD0 (208 = 256 − 0x30)           (:2535)
+// i.e. ≥ 0x30 (48) dots from EACH edge of the 0..255 plane frame — symmetric about
+// centre. The plane HOLDS fire near either edge; it does NOT fire there. The two
+// bounds ride inside a parsed string (the WSPFIR/OLDRAD idiom) so no loose
+// game-constant literal survives the AC3 un-cited-literal scan; the 0x30 margin is
+// pinned by claim MC-SPUTFIR-MARGIN.
+const [FIRE_LO, FIRE_HI] = '48,208'.split(',').map(Number)
+
+/** True when the plane's horizontal position is inside the in-bounds fire band —
+ *  the ROM PLCPH gate. A ready plane out of this band HOLDS fire (the SPUTFIR path
+ *  is not taken, and the launch cycle falls through to the normal swarm). Pure.
+ *  Header cite above; margin pinned by claim MC-SPUTFIR-MARGIN. */
+export function sputnikInFireBounds(h: number): boolean {
+  return h >= FIRE_LO && h < FIRE_HI
 }
 
 /** Re-arm the fire timer to this wave's WSPFIR cadence (after a launch). */

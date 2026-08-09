@@ -93,7 +93,7 @@ async function loadSputnik(): Promise<SputnikModule> {
         'exporting SPUTNIK_WAVE(2)/SPUTNIK_V_MIN(100)/SPUTNIK_SCORE_MULT(4)/SPUTNIK_FIRE_MAX(3), ' +
         'spawnSputnik(rng, fireCadence) ' +
         '[edge/dir/variant from rand AND 1, pos.v ≥ SPUTNIK_V_MIN, fireTimer = fire cadence (WSPFIR)], ' +
-        'stepSputnik(s, speed) [pos.h += dir·speed, fireTimer − 1], offscreen(s), and the wave tables ' +
+        'stepSputnik(s, speed) [pos.h += dir·speed, fireTimer −= speed (mc5-8 distance model)], offscreen(s), and the wave tables ' +
         'sputnikFireCadence/sputnikActivationSep (WSPFIR/WSPLAU, clamped past wave 8), sputnikFireCount ' +
         '[max(0, min(MXICON−2·cruise−icbm, 3, budget)) — the −1 vs NICBMS is the aloft plane PLCPV ' +
         'reservation, the cap is MIRVER 3], readyToFire/reload. Seeded @shared/rng only, ' +
@@ -265,9 +265,14 @@ describe('mc5-2 — fire gate: readyToFire + reload', () => {
     expect(readyToFire(plane(1))).toBe(false) // one tick still to go
   })
 
-  it('stepSputnik counts the fire timer down each tick', async () => {
+  it('stepSputnik reduces the fire timer by the DISTANCE MOVED each tick (mc5-8: HORFIR/SPUTDS, W3MAIN.MAC:2523-2527/5883)', async () => {
     const { stepSputnik } = await loadSputnik()
-    expect(stepSputnik(plane(5), 3).fireTimer).toBe(4) // Task 4: the timer decrements in flight
+    // mc5-8 retires the mc5-2 fixed −1 frame countdown: the fire timer is
+    // DISTANCE-based. The plane covers `speed` dots/tick (ROM `INC HORFIR` once per
+    // position update = one dot, W3MAIN.MAC:5883), so the countdown drops by `speed`.
+    // At the functional speed=1 this is unchanged; the discriminator is speed>1.
+    expect(stepSputnik(plane(5), 3).fireTimer).toBe(2) // 5 − 3 dots moved (was 4 under the retired −1 countdown)
+    expect(stepSputnik(plane(5), 1).fireTimer).toBe(4) // speed 1: matches the functional cross speed
   })
 
   it('reload re-arms the timer to THIS wave cadence', async () => {
