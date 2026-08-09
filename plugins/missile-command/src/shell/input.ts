@@ -23,7 +23,7 @@
 
 import { moveCursor, type Cursor } from '../core/cursor.js'
 import { launchAbm, type Abm, type Vec } from '../core/abm.js'
-import type { GameState } from '../core/game.js'
+import { startGame, type GameState } from '../core/game.js'
 
 // mc8-4: the base-ammo count at which a launch sounds the "LOW" warning cue (LO) instead
 // of the normal launch (LA). ABMLAU: `LDA NMMISB / CMP I,4 / IFEQ` (W3MAIN.MAC:1385) — the
@@ -103,4 +103,18 @@ export function fireFromKey(key: string, state: GameState): GameState {
     bases,
     soundEvents: [...state.soundEvents, { type: 'launched', baseLow }],
   }
+}
+
+/**
+ * mc6-2 "press fire to start": route a fire key to `startGame` when the game is
+ * NOT running (attract or over), otherwise delegate to `fireFromKey`. So a fire
+ * key at the title/game-over screen begins a fresh game (the NEWGAM->NEWWV1 SETUP reseed),
+ * a fire key in play still launches an ABM and never wipes the board, and a
+ * non-fire key changes nothing. Pure — the input state is never mutated. This is
+ * the reducer main.ts drives on each keydown, replacing the bare fireFromKey call.
+ */
+export function fireOrStart(key: string, state: GameState): GameState {
+  return fireKeyToBase(key) !== null && (state.phase === 'attract' || state.phase === 'over')
+    ? startGame(state)
+    : fireFromKey(key, state)
 }

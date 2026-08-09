@@ -31,5 +31,27 @@
       "line": 57,
       "verbatim": "S.SETU\t=40\t\t\t;SETUP STATS (STATE)"
     }
+  },
+  {
+    "id": "MC-STATE-INIT",
+    "symbol": "S.SETU (cold-start boot)",
+    "value": "cite",
+    "meaning": "Cold start: power-up loads S.SETU (W3MAIN.MAC:491 LDA I,S.SETU) and stores it to STATE (:493 STA STATE), so the cabinet boots into the SETUP state. It also seeds SETUPC=CPRGM1 (:487-489), and CPRGM1's SETUP task PREGM1 clears ATRACT to attract mode (:3761 STA ATRACT ;ATTRACT MODE — the ATRACT byte is the ;ATTRACT (0)/GAME (-1) FLAG, :135). So the machine comes up in SETUP/attract, not play. This is the boot state mc6-4 wires; mc6-2 files the S.SETU anchor.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 491,
+      "verbatim": "\tLDA I,S.SETU"
+    }
+  },
+  {
+    "id": "MC-SETUP-NEWGAM",
+    "symbol": "NEWGAM",
+    "value": "cite",
+    "meaning": "The first SETUP task is NEWGAM, reached through the SETUP1 task-address list — SETUP1: .WORD NEWGAM-1 (W3MAIN.MAC:583) -> NEWGAM (:3835). NEWGAM seeds a fresh game on wave 1 (LDA I,1 / STA WAVENO), the reseed mc6-2's startGame performs. The -1 is the ROM's RTS-vector convention (address minus one, pushed for an RTS dispatch).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 583,
+      "verbatim": "SETUP1:\t.WORD NEWGAM-1\t\t;NEW GAME"
+    }
   }
 ]

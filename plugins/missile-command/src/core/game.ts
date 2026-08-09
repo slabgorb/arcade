@@ -138,6 +138,31 @@ export function createGame(seed = 1): GameState {
   }
 }
 
+// mc6-2: the SETUP -> PLAY start-of-game edge. A start action (press fire) taken
+// while the cabinet is in attract or after game over runs the SETUP task chain
+// that begins at NEWGAM — SETUP1: .WORD NEWGAM-1 (W3MAIN.MAC:583) -> NEWGAM
+// (:3835), which sets the skill/lives and wave 1 then requests the next task
+// NEWWV1 (:3903); NEWWV1 refills the magazines (:4021 LDA I,MAXMIS) and seeds the
+// wave-1 ICBM schedule. So NEWGAM begins the reseed and NEWWV1 completes it. We
+// reuse createGame, the one place that whole field is defined, so the reseed and
+// the boot field can never drift. From any other phase (a running/paused/between/
+// setup game) a stray start is a NO-OP: it must not wipe the board. Pure — no
+// clock, no entropy; the incoming seed is threaded through so the reseed stays
+// deterministic.
+/**
+ * Start a new game from a start action: when `state.phase` is `'attract'` or
+ * `'over'`, return a fresh, fully-defended game in `'play'` — the reseed the
+ * NEWGAM->NEWWV1 SETUP chain performs, reusing createGame so the field matches a
+ * cold boot exactly: every city and base live, magazines full, no enemies in
+ * flight, a cleared score, the opening wave (INITIAL_WAVE) and its full ICBM
+ * budget, a zeroed frame counter. For every other phase return `state` unchanged.
+ */
+export function startGame(state: GameState): GameState {
+  return state.phase === 'attract' || state.phase === 'over'
+    ? createGame(state.rng.seed)
+    : state
+}
+
 /**
  * Advance exactly one video frame through the seven-step order above, then — when
  * this wave's ICBM budget is spent and the screen is clear — run the mc4-2 END OF
