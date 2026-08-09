@@ -19,10 +19,11 @@ stories:
     title: 'Sputnik/bomber fly-across launcher (sputnik.ts): plane activates from wave 2 (SPUTWV), flies across firing ICBMs on WSPFIR/WSPLAU cadence, killed x4. REV-01 W3MAIN.MAC:2069/2433'
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-08'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-09'
   - id: mc5-3
     title: 'Cruise missiles + droneRequest contract (UNBLOCKS mc8-5): Icbm.kind + angled flight (CRMWAV wave-6 budget, ANGLE/CMANGL), killed x5, and the cruise-count+sputnik-active -> DroneKind selector. REV-01 W3MAIN.MAC:2635'
     points: 5
@@ -41,18 +42,20 @@ stories:
     title: 'ICBM launch-count clamp (spawn.ts): port ROM ICNORM per-cycle cap (max 4, minus 2*cruise/ICBM/plane on-screen) so the normal swarm stops saturating MXICON(7) and leaves slots for sputnik/cruise. REV-01 W3MAIN.MAC:2437 ICNORM'
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-08'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-09'
   - id: mc5-6
     title: "ICBM on-screen ceiling: reconcile MXICON(7) vs NICBMS(8). The ROM's ICNORM/POTENT launch arithmetic (INX before caps, DEX after, STX POTENT=count-1) makes true concurrency NICBMS(8); MXICON=7 is the count-1 operand. Align mc3/mc4/mc5 spawn headroom + MC-MXICON claim prose + playthrough <=MXICON bounds. REV-01 W3MAIN.MAC:2439 ICNORM / 2669 FROMTOP"
     points: 3
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-09'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-09'
     type: refactor
   - id: mc5-7
     title: "Wave-1 ICBM budget fidelity: createGame seeds remaining=NICBMS(8) but the ROM wave-1 budget is ICBWAV[0]=12 (W3MAIN.MAC:5713; loaded LDA AY,ICBWAV-1 / STA ICBTOL :3937). Seed wave 1 from waveSchedule(INITIAL_WAVE).count and re-pin game.test.ts:67; also sweep stale 'max ICBMs on screen' MXICON prose in docs/rom-study/glossary.md + brief.md. REV-01"
