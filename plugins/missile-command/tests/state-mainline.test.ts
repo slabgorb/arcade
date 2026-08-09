@@ -10,7 +10,7 @@
 //
 // ─── GROUND TRUTH (REV-01) ───────────────────────────────────────────────────
 // MAINLINE dispatches on the SIGN of the one-byte STATE var (W3MAIN.MAC:131
-// ";GAME STATE (PLAY,PAUSE,OR SETUP)"), W3MAIN.MAC:507-527:
+// ";GAME STATE (PLAY,PAUSE,OR SETUP)"), W3MAIN.MAC:507-525:
 //     LDA STATE / IFEQ -> JSR PLAY   (STATE == 0        = S.PLAY)
 //                IFMI -> JSR PAUSE   (STATE  < 0, hi bit = S.PAUS)
 //                ELSE -> JSR SETUP   (STATE  > 0        = S.SETU)
@@ -24,7 +24,8 @@
 //
 // 'over' and 'between' are NOT peer states in the ROM — they are SETUP tasks
 // (end-of-wave writes S.SETU back to STATE, W3MAIN.MAC:3601/:3663; game-over is
-// the ENDGM1/ENDGM2 SETUP entries, W3MAIN.MAC:573/:570). 'attract' is likewise
+// the ENDGM1/ENDGM2 SETUP jump-table entries, .WORD ENDGM1-1/ENDGM2-1 at
+// W3MAIN.MAC:589/:601). 'attract' is likewise
 // SETUP-family: attract runs SETUP->PLAY over a live sim, gated by the orthogonal
 // ATRACT flag (W3MAIN.MAC:135 ";ATTRACT (0)/GAME (-1) FLAG"), not a fourth
 // dispatch arm. So all three dispatch to the SETUP handler.
@@ -121,7 +122,7 @@ describe('mc6-1 AC1 — Phase union extended (transitional six-way)', () => {
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC2 — MAINLINE dispatch by the STATE sign (W3MAIN.MAC:507-527). The three-way
+// AC2 — MAINLINE dispatch by the STATE sign (W3MAIN.MAC:507-525). The three-way
 //        split, and the transitions BETWEEN the arms are pinned by mc6-2/3/6.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('mc6-1 AC2 — MAINLINE dispatch (three-way sign split)', () => {
@@ -140,14 +141,22 @@ describe('mc6-1 AC2 — MAINLINE dispatch (three-way sign split)', () => {
     expect(mainline('setup')).toBe('setup')
   })
 
-  it('the dispatch equals the sign classification of the phase STATE code, for all six phases', async () => {
-    const { mainline, stateCode } = await loadMainline()
-    // The exact 6502 dispatch: IFEQ (==0) -> play, IFMI (hi bit) -> pause, ELSE -> setup.
-    const classify = (code: number): Handler =>
-      code === 0 ? 'play' : (code & 0x80) !== 0 ? 'pause' : 'setup'
-    for (const p of ALL_PHASES) {
-      expect(mainline(p), `mainline(${p}) must match its stateCode sign`).toBe(classify(stateCode(p)))
-    }
+  // The full dispatch map as an INDEPENDENT literal table — expected handlers are
+  // stated outright (from the ROM structure), NOT re-derived from mainline's own
+  // formula, so a shared dispatch bug in mainline/stateCode cannot pass by matching
+  // a copy of itself (the earlier `classify()` oracle did exactly that — Heimdall,
+  // rule #18). Covers all six phases in one place; every phase is exhaustive here.
+  const DISPATCH: ReadonlyArray<readonly [Phase, Handler]> = [
+    ['play', 'play'], // S.PLAY == 0     -> IFEQ  -> PLAY
+    ['pause', 'pause'], // S.PAUS  < 0    -> IFMI  -> PAUSE
+    ['setup', 'setup'], // S.SETU  > 0    -> ELSE  -> SETUP
+    ['attract', 'setup'], // SETUP-family (ATRACT flag is orthogonal)
+    ['between', 'setup'], // SETUP task
+    ['over', 'setup'], // SETUP task (ENDGM)
+  ]
+  it.each(DISPATCH)("mainline('%s') is the '%s' handler (independent literal table)", async (phase, handler) => {
+    const { mainline } = await loadMainline()
+    expect(mainline(phase)).toBe(handler)
   })
 })
 
@@ -157,12 +166,14 @@ describe('mc6-1 AC2 — MAINLINE dispatch (three-way sign split)', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('mc6-1 AC3 — attract/between/over collapse onto the SETUP handler', () => {
   it.each(['attract', 'between', 'over'] as const)(
-    "'%s' dispatches to SETUP (a SETUP task in the ROM, positive STATE)",
+    "'%s' dispatches to SETUP and its STATE code IS S_SETU exactly",
     async (phase) => {
-      const { mainline, stateCode } = await loadMainline()
+      const { mainline, stateCode, S_SETU } = await loadMainline()
       expect(mainline(phase)).toBe('setup')
-      expect(stateCode(phase), `${phase} is SETUP-family: positive, high bit clear`).toBeGreaterThan(0)
-      expect(stateCode(phase) & 0x80, `${phase} must not set the PAUSE high bit`).toBe(0)
+      // Pin the EXACT SETUP-family code, not just its sign — the documented
+      // "they share S_SETU" contract. (Heimdall: a stateCode returning e.g. 1 for
+      // these phases passed a mere `> 0 && !hi-bit` check; assert the value itself.)
+      expect(stateCode(phase), `${phase} must share S_SETU (0x40), not just be positive`).toBe(S_SETU)
     },
   )
 })

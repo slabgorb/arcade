@@ -16,9 +16,13 @@ Phase machine (state.ts): extend Phase from play|between|over to add attract|set
 The title IS the spec (no separate YAML description). Missile Command's `src/core/state.ts`
 today models only the combat-relevant slice of the phase machine: `Phase = 'play' | 'between' | 'over'`
 (state.ts:13). Its own header already names mc6 as the owner of "the full attract/setup/pause
-machine" (state.ts:6, :12). mc6-1 is the **pure-core** story that lands that machine: extend the
-`Phase` union with `'attract' | 'setup' | 'pause'` and add a pure, seeded, clock-free MAINLINE
-dispatch transition implementing the full cycle attract → setup → play → [pause] → over → attract.
+machine" (state.ts:6, :12). mc6-1 is the **pure-core** story that opens that machine: extend the
+`Phase` union with `'attract' | 'setup' | 'pause'` and add the ROM MAINLINE **dispatch** — the
+three-way STATE sign model that selects the per-frame handler (`phase → 'play' | 'pause' | 'setup'`).
+This is the **dispatch boundary**, resolved at RED per design O-6a as the *transitional opener*: a
+stateless classifier + the STATE codes + the boot disposition. The phase→phase **edge transitions**
+(attract→setup start, play↔pause, over→attract loop closure) and the `game.ts` wiring are **deferred
+to mc6-2..6**; mc6-1 pins the dispatch, not the cycle.
 
 Grounded against ROM (SM measured all citations before setup — they resolve EXACTLY in
 `plugins/missile-command/reference/source/W3MAIN.MAC`, a CRLF file in the a-1 reference tree):
@@ -30,10 +34,12 @@ Grounded against ROM (SM measured all citations before setup — they resolve EX
 ## Technical Approach
 Edit `plugins/missile-command/src/core/state.ts` only (pure core — no shell/render/wiring):
 1. Extend the `Phase` union to `'attract' | 'setup' | 'play' | 'pause' | 'between' | 'over'`.
-2. Add a pure `mainline(...)` transition fn implementing the cycle attract → setup → play →
-   [pause] → over → attract. It must be **seeded** (take an RNG where randomness is needed),
-   **clock-free** (no `Date`/`performance`/timers — the core purity scanner asserts this), and
-   deterministic. `'over' → 'attract'` closes the loop (attract-mode restart with no external reset).
+2. Add the pure MAINLINE **dispatch**: STATE codes `S_PLAY=0x00`/`S_PAUS=0x80`/`S_SETU=0x40`
+   (W3COMN.MAC:61/59/57), `stateCode(phase)`, and `mainline(phase): 'play'|'pause'|'setup'` that
+   classifies by the STATE byte's sign (the high bit — IFEQ→play, IFMI→pause, else→setup). Plus
+   `INITIAL_PHASE='attract'` / `INITIAL_ATTRACT=true` (boot disposition). **Clock-free** and pure
+   (no RNG needed — a sign dispatch is deterministic). The phase→phase transitions and loop closure
+   are NOT in mc6-1 (mc6-2/6-3/6-6 own them).
 3. Cite each ROM section (475 MAINLINE / 539 PLAY / 561 SETUP / 615 PAUSE) as **`//` line
    comments**, NOT `/** */` JSDoc — the mc un-cited-literal gate is line-based and JSDoc leaks
    numbers (see memory: "mc citations scanner leaks JSDoc numbers").
@@ -49,9 +55,12 @@ Edit `plugins/missile-command/src/core/state.ts` only (pure core — no shell/re
 ## Acceptance Criteria
 1. **Phase union extended:** `export type Phase` includes 'attract', 'setup', 'pause' alongside the
    existing 'play', 'between', 'over' — existing states' behavior unchanged.
-2. **Pure MAINLINE dispatch:** a pure, seeded, clock-free transition fn implements
-   attract → setup → play → [pause] → over → attract.
-3. **Loop closure:** 'over' → 'attract' restarts attract mode without an external reset.
+2. **Pure MAINLINE dispatch:** `mainline(phase): 'play'|'pause'|'setup'` selects the per-frame
+   handler by the STATE byte's sign (play=0/pause=high-bit/setup=positive); `attract`/`between`/
+   `over` are SETUP-family. STATE codes carried by `MC-STATE-*` claims.
+3. **Boot disposition:** `INITIAL_PHASE='attract'` / `INITIAL_ATTRACT=true` (cold start S.SETU +
+   ATRACT). NOTE: the phase→phase edge transitions and `'over' → 'attract'` loop closure are
+   **deferred to mc6-2/6-3/6-6** — mc6-1 pins the dispatch boundary, not the cycle.
 4. **ROM citations:** W3MAIN.MAC:475/:539/:561/:615 preserved as `//` line comments (not JSDoc),
    per the mc citations rule.
 5. **Regression safety:** `nextPhase`, `nextWavePhase`, `resumePlay`, `allCitiesDead` remain
