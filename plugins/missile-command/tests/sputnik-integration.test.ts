@@ -196,13 +196,20 @@ describe('mc5-2 rework — the bomber launches ICBMs in natural play', () => {
         maxConcurrent = Math.max(maxConcurrent, r.maxConcurrent)
       }
     }
-    // Thresholds calibrated ONCE (escalating-guard rule) by a TEA spike of the
-    // faithful fix (7 − icbm clamp, cap 3, post-spawn count): it measured 17/20
-    // firing cells, 38 distinct shots, maxConcurrent 8 in every cell — so
-    // >= 12 cells and >= 25 shots pass with margin for RNG-stream drift from
-    // Dev's exact ordering, while a fluky fix that fires on a lucky seed fails.
+    // Thresholds RE-calibrated ONCE (escalating-guard rule) against the faithful
+    // impl. mc5-2 measured 17/20 firing cells, 38 shots with NO fire gate. mc5-8
+    // then added (a) the ±0x30 PLCPH in-bounds gate — the plane holds fire in the
+    // [0,47]∪[208,255] edge bands and loses the exit-side edge fires — and (b)
+    // either/or arbitration, where skipping the normal spawner on a plane-fire
+    // frame shifts the RNG stream. Both legitimately reduce firing. Re-measured
+    // faithful (deterministic, these exact seeds): 21 distinct shots across >= 12
+    // firing cells, maxConcurrent 8. So >= 12 cells and >= 15 shots pass with margin
+    // for RNG-stream drift, while a fix that breaks firing fails (a dead gate
+    // collapses firingCells; a broken distance timer / salvo clamp drives total → 0).
+    // The GATE's own correctness is pinned by mc5-8-sputnik-fire-arbitration.test.ts
+    // (the boundary predicate + the wired h=30 / h=230 cases), not by this aggregate.
     expect(firingCells).toBeGreaterThanOrEqual(12) // a solid majority of the 20 cells
-    expect(total).toBeGreaterThanOrEqual(25) // and a clearly-nonzero aggregate
+    expect(total).toBeGreaterThanOrEqual(15) // clearly-nonzero aggregate under the mc5-8 gate (faithful: 21)
     // The ceiling the faithful clamp restores: plane salvo + swarm never exceed
     // the NICBMS(8) slot table (W3COMN.MAC:35). The rejected budget-priority
     // pre-spawn fire could stack plane shots ON TOP of a swarm the spawner then

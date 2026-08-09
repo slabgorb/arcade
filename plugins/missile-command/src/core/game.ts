@@ -42,6 +42,7 @@ import {
   stepSputnik,
   offscreen,
   readyToFire,
+  sputnikInFireBounds,
   reload,
   sputnikActivationSep,
   sputnikFireCadence,
@@ -220,21 +221,20 @@ export function stepGame(state: GameState): GameState {
     ...state.bases.filter((b) => b.alive).map((b) => b.pos),
   ]
 
-  // SPUTNIK (mc5-2 rework): from SPUTWV a plane crosses the field on the WSPLAU
-  // activation cadence, fires ICBMs downward on the WSPFIR cadence (folded into
-  // the ICBM stream), and is worth SPUTNIK_SCORE_MULT× when a blast catches it.
-  // A distinct entity with its own array — cruise/MIRV are the ICBM family, this
-  // is not. Planes step + activate BEFORE the normal spawner so `planeActive` is
-  // accurate THIS frame, and a ready plane fires FIRST — the ROM checks the
-  // SPUTFIR path ahead of the normal launch (JMP SPUTFIR, W3MAIN.MAC:2543) — but
-  // its salvo is then FOLDED INTO the roster the spawner counts, so plane salvo +
-  // normal swarm can never pierce the NICBMS(8) on-screen ceiling: the salvo
-  // occupies real slots, it is not budget-priority stacked on top of them.
-  // Functional only (pixel-authentic motion is mc9): speed 1 makes the crossing
-  // (HMAX = 247 ticks) outlast the deepest WSPFIR reload (128), so the plane
-  // BECOMES fire-ready in flight — and at speed 1 the per-tick `fireTimer − 1`
-  // decrement equals distance travelled, the ROM's SPUTDS "DISTANCE SPUTNIK
-  // MUST GO BETWEEN FIRES" (W3MAIN.MAC:285).
+  // SPUTNIK (mc5-2 + mc5-8 arbitration): from SPUTWV a plane crosses the field on
+  // the WSPLAU activation cadence, and — when its distance timer has run AND it is
+  // in the ±0x30 in-bounds band — fires ICBMs downward, worth SPUTNIK_SCORE_MULT×
+  // when a blast catches it. A distinct entity with its own array (cruise/MIRV are
+  // the ICBM family, this is not). Planes step + activate BEFORE the normal spawner
+  // so `planeActive` is accurate THIS frame. mc5-8 makes the launch cycle EITHER/OR:
+  // the ROM takes JMP SPUTFIR when the plane fires and SKIPS the normal FROMTOP
+  // launch that cycle (W3MAIN.MAC:2543) — so the plane's salvo IS this cycle's
+  // launch, not an addition the spawner tops up. The joint on-screen count stays
+  // under the NICBMS(8) ceiling because the salvo clamp is MXICON-based.
+  // Motion is FUNCTIONAL only (pixel-authentic velocity is mc9): SPUTNIK_SPEED = 1
+  // dot/tick, and the fire timer counts DISTANCE MOVED (HORFIR/SPUTDS,
+  // W3MAIN.MAC:2523-2527/:5883), so the fire spacing stays correct when mc9 raises
+  // the velocity — at speed 1 the crossing (HMAX ticks) outlasts the deepest WSPFIR.
   const SPUTNIK_SPEED = 1 // cabinet units/tick — functional cross speed (mc9 pins the ROM velocity)
   let planes = state.sputniks.map((p) => stepSputnik(p, SPUTNIK_SPEED)).filter((p) => !offscreen(p))
   if (
@@ -250,15 +250,17 @@ export function stepGame(state: GameState): GameState {
     // ready in play).
     planes = [spawnSputnik(state.rng, sputnikFireCadence(state.wave))]
   }
-  // A ready plane launches its clamped salvo (cruiseOnScreen is 0 until mc5-3)
-  // against the PRE-spawn on-screen count and reloads. The salvo headroom is
-  // MXICON-based — the −1 below NICBMS is the aloft plane's OWN reservation
-  // (ICNORM's PLCPV borrow, W3MAIN.MAC:2447-2453): it fires only when the swarm
-  // has dipped, never into a full-at-seven swarm.
+  // A ready, IN-BOUNDS plane launches its clamped salvo (cruiseOnScreen is 0 until
+  // mc5-3) against the PRE-spawn on-screen count and reloads. The fire gate is the
+  // ROM's SPUTFIR guard: HORFIR ≥ SPUTDS (readyToFire) AND PLCPH in the ±0x30 band
+  // (sputnikInFireBounds, W3MAIN.MAC:2529-2537). The salvo headroom is MXICON-based
+  // — the −1 below NICBMS is the aloft plane's OWN reservation (ICNORM's PLCPV
+  // borrow, W3MAIN.MAC:2447-2453): it fires only when the swarm has dipped, never
+  // into a full-at-seven swarm.
   let sputBudget = state.remaining
   const sputnikShots: Icbm[] = []
   planes = planes.map((p) => {
-    if (!readyToFire(p)) return p
+    if (!readyToFire(p) || !sputnikInFireBounds(p.pos.h)) return p
     const count = sputnikFireCount(0, state.icbms.length + sputnikShots.length, sputBudget)
     const shots = sputnikLaunch(p, liveTargets, count, waveSchedule(state.wave).velocity, state.rng)
     sputnikShots.push(...shots)
@@ -266,19 +268,24 @@ export function stepGame(state: GameState): GameState {
     return reload(p, state.wave)
   })
 
-  // (1) spawn — the plane's salvo rides in the roster the spawner counts (so the
-  // NICBMS ceiling holds jointly this frame), the budget is the plane-reduced
-  // one, and an aloft plane reserves one further launch slot (spawn.ts'
-  // planeActive term). Each launch descends at THIS wave's schedule velocity
-  // (mc4-1), so the swarm ramps by wave.
-  const spawned: SpawnResult = spawnIcbms(
-    [...state.icbms, ...sputnikShots],
-    liveTargets,
-    sputBudget,
-    state.rng,
-    waveSchedule(state.wave).velocity,
-    { planeActive: planes.length > 0 },
-  )
+  // (1) spawn — EITHER/OR (mc5-8): the ROM's launch arbiter takes JMP SPUTFIR when
+  // the plane fires and SKIPS the normal FROMTOP launch that cycle (W3MAIN.MAC:2543),
+  // so run the normal spawner ONLY when NO plane fired this frame. When a plane
+  // fired, its salvo IS this cycle's launch — folded into the roster, budget already
+  // reduced. When none fired, the spawner runs with the plane-reduced budget and an
+  // aloft plane reserving one launch slot (spawn.ts' planeActive term); each launch
+  // descends at THIS wave's schedule velocity (mc4-1), so the swarm ramps by wave.
+  const planeFired = sputnikShots.length > 0
+  const spawned: SpawnResult = planeFired
+    ? { icbms: [...state.icbms, ...sputnikShots], remaining: sputBudget }
+    : spawnIcbms(
+        state.icbms,
+        liveTargets,
+        sputBudget,
+        state.rng,
+        waveSchedule(state.wave).velocity,
+        { planeActive: planes.length > 0 },
+      )
 
   // CRUISE (mc5-3): from wave 6 the CRMWAV budget caps how many cruise missiles may
   // be on screen; release one (into the ICBM-family roster) whenever the field is
