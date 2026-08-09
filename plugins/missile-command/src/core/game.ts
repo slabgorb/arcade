@@ -24,7 +24,7 @@
 // Once `phase === 'over'` the loop only advances the frame counter.
 //
 // This module introduces NO new numeric game constant — every value comes from a
-// cited sub-module (NICBMS, MXICON, ICBM_KILL_POINTS, …); the citation sweep stays
+// cited sub-module (NICBMS, ICBM_KILL_POINTS, …); the citation sweep stays
 // green.
 
 import { INITIAL_CURSOR, type Cursor } from './cursor.js'
@@ -32,7 +32,7 @@ import { stepAbm, type Abm } from './abm.js'
 import { stepIcbm, type Icbm } from './icbm.js'
 import { startExplosion, stepExplosion, isExplosionDone, type Explosion } from './explosion.js'
 import { createCities, createBases, START_CITIES, type City, type Base } from './field.js'
-import { spawnIcbms, NICBMS, MXICON, type SpawnResult } from './spawn.js'
+import { spawnIcbms, NICBMS, type SpawnResult } from './spawn.js'
 import { mirvEligible, mirvSplit, MIRV_EXPLOSION_SUPPRESS } from './mirv.js'
 import {
   spawnSputnik,
@@ -206,11 +206,12 @@ export function stepGame(state: GameState): GameState {
   // array order (a deterministic choice); we do NOT reproduce the ROM's exact slot-scan
   // survivor: ICPOSI counts DOWN from the highest slot so ITS survivor is the lowest slot,
   // and our array index is not the ROM slot index. The faithful, tested invariants are
-  // one-per-frame + the MXICON on-screen cap (W3COMN.MAC:193): children fill only OPEN
-  // slots (MXICON - count), so the roster can never exceed MXICON and cannot avalanche.
+  // one-per-frame + the NICBMS(8) on-screen ceiling (W3COMN.MAC:35 — MIRVER shares the
+  // 8-slot POTENT/ICOPEN loop, W3MAIN.MAC:2705): children fill only OPEN slots
+  // (NICBMS - count), so the roster can never exceed NICBMS and cannot avalanche.
   // Suppressed while >= MIRV_EXPLOSION_SUPPRESS explosions are live (EXPLCT, W3MAIN.MAC:1531),
   // read BEFORE this frame's new blasts, so it keys off state.explosions (pre-aging count).
-  const openSlots = Math.max(0, MXICON - flownIcbms.length)
+  const openSlots = Math.max(0, NICBMS - flownIcbms.length)
   let mirvAt = -1
   if (state.explosions.length < MIRV_EXPLOSION_SUPPRESS && openSlots > 0) {
     for (let i = 0; i < flownIcbms.length; i++) if (mirvEligible(flownIcbms[i])) mirvAt = i // one per frame

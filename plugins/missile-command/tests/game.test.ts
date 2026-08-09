@@ -20,7 +20,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
-import { NICBMS, MXICON } from '../src/core/spawn.js'
+import { NICBMS } from '../src/core/spawn.js'
 import { type Icbm } from '../src/core/icbm.js'
 import {
   startExplosion,
@@ -95,7 +95,7 @@ describe('mc3-4 AC2 — stepGame launches the wave within its caps', () => {
     let prevRemaining = g.remaining
     for (let k = 0; k < 120; k++) {
       g = stepGame(g)
-      expect(g.icbms.length).toBeLessThanOrEqual(MXICON) // MXICON on-screen ceiling
+      expect(g.icbms.length).toBeLessThanOrEqual(NICBMS) // NICBMS(8) on-screen ceiling (mc5-6)
       expect(g.remaining).toBeGreaterThanOrEqual(0) // budget never goes negative
       expect(g.remaining).toBeLessThanOrEqual(prevRemaining) // monotonic drawdown
       prevRemaining = g.remaining
