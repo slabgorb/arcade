@@ -246,8 +246,9 @@ just release-all [level]                 # every app; games first, lobby last
 `scripts/release.mjs` gates on that app's own suite (`npx vitest run --project <app>`)
 and its own build (`node scripts/build-app.mjs <app>`), bumps
 `plugins/<app>/package.json` (or `lobby/package.json`), regenerates the committed
-`src/host/registry.ts` into the **same** commit, then tags **`<app>-vX.Y.Z`** and
-pushes.
+`src/host/registry.ts` into the **same** commit on `develop`, then tags
+**`<app>-vX.Y.Z`** and pushes `develop` plus the tag. It gates on being on `develop`
+with `develop` in sync with `origin/develop`.
 
 **The tag is the deploy trigger, not a branch push.** Both `develop` and `main` carry
 every app's commits, so a branch trigger could not say which app to ship — it would
@@ -284,18 +285,23 @@ production; only a release (or an explicit `just deploy`) can.
 
 **One repo, one remote, gitflow.** `origin` → [github.com/slabgorb/arcade](https://github.com/slabgorb/arcade).
 Two long-lived branches: **`develop`** is the integration branch (the default — every
-story branches from it and PRs back into it) and **`main`** is the release branch (the
-`<app>-vX.Y.Z` deploy tags are cut from it). There are no per-game remotes and no
-per-game PRs; the nine archived repos are read-only history.
+story branches from it and PRs back into it) and it is also where releases are cut:
+`just release <app>` bumps, commits and tags **on `develop`, in place**, and pushes
+`develop` (see *Releasing* above). **`main`** still exists but the release path no longer
+touches it. There are no per-game remotes and no per-game PRs; the nine archived repos
+are read-only history.
 
 **Do not commit straight to `develop`.** Cut a branch, open a PR into `develop`, merge
 it there. Branch naming: `feat/{story}-{description}`, `fix/{issue}-{description}`,
 `chore/{story}-{description}`. pf's `create_branches` cuts these from `develop`
 automatically, and the reviewer diffs against `origin/develop`.
 
-Release flow: work accumulates on `develop`; a release merges `develop` → `main` and
-`just release <app>` tags `<app>-vX.Y.Z` (see *Releasing* above). The deploy workflow
-fires on the tag, so what ships is still defined by the tag, not by either branch.
+Release flow: work accumulates on `develop`, and `just release <app>` cuts the release
+directly from it — no `develop` → `main` merge — tagging `<app>-vX.Y.Z` (see *Releasing*
+above). The deploy workflow fires on the tag, so what ships is still defined by the tag,
+not by the branch. Note the release script commits and pushes to `develop` directly:
+pf's branch-protection is a pf/session-level hook, not an installed git hook, so it does
+not block the release script's own `git push origin develop`.
 
 **`repos.yaml` is what the tooling actually enforces**, not this file. It holds a single
 entry, `arcade`, and pf's branch-protection hook reads its `branch_strategy`:

@@ -152,10 +152,10 @@ lint:
 # Full CI sweep: type check + orchestrator checks + every game
 #
 # `lint` is FIRST and it is not decoration. Before it was here, `just ci` green ->
-# `just release tempest` green -> commit, tag, push main, push tag (all
+# `just release tempest` green -> commit, tag, push develop, push tag (all
 # irreversible) -> and CI's FIRST step is a repo-wide `tsc`, which can fail on a
 # type error in a DIFFERENT game and block the deploy with the version bump already
-# permanently on main. It is also the cheapest step, so it fails fastest.
+# permanently on develop. It is also the cheapest step, so it fails fastest.
 ci: lint test-orchestrator test-all build-all
     @echo "CI passed!"
 
@@ -380,13 +380,13 @@ check-showcase-alive:
     @node {{root}}/scripts/check-showcase-alive.mjs
 
 # ============================================
-# RELEASE (tag <app>-vX.Y.Z on main → CI deploys to R2)
+# RELEASE (tag <app>-vX.Y.Z on develop → CI deploys to R2)
 # ============================================
 # Cut a semver release of ONE app out of the monorepo: gate on that app's vitest
 # project and its own build, bump plugins/<name>/package.json (or
 # lobby/package.json), regenerate src/host/registry.ts into the SAME commit, tag
-# <name>-vX.Y.Z and push. The TAG is the deploy trigger — main carries every app's
-# commits, so a push to main cannot say which app to ship.
+# <name>-vX.Y.Z and push. The TAG is the deploy trigger — develop carries every
+# app's commits, so a push to develop cannot say which app to ship.
 #
 # The argument is an APP ID now (`tempest`), not a subrepo path: there are no
 # subrepos, and scripts/release.mjs validates the id against plugins/ + lobby.
