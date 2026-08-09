@@ -144,3 +144,8 @@ completed_stories:
     title: Surface turret fire rides surfaceScrollZ — mirror the trench wall-gun scroll-carry fix (sim.ts:1139)
     points: 3
     completed: '2026-08-09'
+  - id: mc5-8
+    epic: mc5
+    title: 'Sputnik fire arbitration + authentic motion (mc9-coupled): the plane fires EITHER/OR vs the normal swarm per launch cycle (ROM JMP SPUTFIR replaces ICNORM launch, W3MAIN.MAC:2543), gated by an in-bounds check (PLCPH within +/-48 of the edges, :2529-2537), and the fire timer is DISTANCE-based (HORFIR vs SPUTDS, :2523-2527) not a frame countdown. Deferred from mc5-2 review F3; couples to mc9 authentic plane velocity (functional speed=1 today). REV-01'
+    points: 3
+    completed: '2026-08-09'
