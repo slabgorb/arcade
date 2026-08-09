@@ -141,7 +141,29 @@ function serveTheCabinet(): Plugin {
             // `hmr: { server, path: '/<id>/@hmr' }` was tried and does not route
             // either. A real fix needs a per-child HMR port or a dispatching
             // websocket layer — filed as mg1-14.
-            server: { middlewareMode: true, hmr: { server: server.httpServer ?? undefined } },
+            // fs.allow MUST live in THIS child block, not in defineAppConfig's
+            // server — the spread above replaces that server object wholesale, so an
+            // fs.allow set there would never reach the middlewareMode children.
+            //
+            // Each child is rooted at plugins/<id>/, and Vite's default fs.allow is
+            // that root. But a game legitimately references in-tree assets OUTSIDE
+            // its own directory — missile-command loads the vendored POKEY worklet at
+            // plugins/star-wars/tools/pokey-bake/vendor/pokey.js via
+            // `new URL(..., import.meta.url)` (shared with star-wars' bake tool). In
+            // dev, Vite rewrites that to an /@fs/ path, and the per-plugin allow list
+            // answers it 403 "outside of Vite serving allow list" — an HTML page, so
+            // audioWorklet.addModule() throws AbortError and the game is SILENT under
+            // `just serve` (audible in the BUILD, where the asset is bundled same-
+            // origin — mc8-3). Allowing the repo root restores the monorepo default a
+            // single-root Vite would have had, so any in-tree shared asset (this
+            // worklet, @shared, …) is serveable. Dev-only: this plugin is
+            // `apply: 'serve'` and the server is 127.0.0.1. Pinned by
+            // tests/mc8-8-dev-serve-worklet.test.mjs (filed by mc8-3, fixed by mc8-8).
+            server: {
+              middlewareMode: true,
+              hmr: { server: server.httpServer ?? undefined },
+              fs: { allow: [root] },
+            },
           }),
         )
       }
