@@ -486,6 +486,44 @@ just deploy-assets     # bake star-wars music + sfx and upload them
 > (`plugins/star-wars/src/shell/audio.ts`). A name mismatch is a 404, and a 404 is
 > silence.
 
+### Missile Command audio (mc8, runtime-synth) — verified live, requires no bucket asset
+
+**Missile Command needs nothing from the `arcade` bucket.** Unlike star-wars (which
+bakes its SFX/speech/music to files, the table above), MC audio is **runtime-synth**:
+`plugins/missile-command/src/shell/audio.ts` (:84-86, :133) drives a vendored POKEY
+`AudioWorkletProcessor` live in the browser. Its one dependency, the worklet
+`plugins/star-wars/tools/pokey-bake/vendor/pokey.js`, is referenced via
+`new URL(..., import.meta.url)`, so Vite **bundles it into the game's own build** —
+`dist/missile-command/assets/pokey-<hash>.js`, served from MC's own `/missile-command/`
+key prefix. There is **no external asset fetch and no `arcade`-bucket asset** — the game
+is self-contained and works **offline** (nothing is loaded from a third-party origin, a
+CDN, or R2).
+
+**Live verification (mc8-3, 2026-08-09).** Because `@shared/audio` degrades to *silence*
+at every failure path, a green vitest is not proof — so this was measured in a running
+browser against the production build (`node scripts/build-app.mjs missile-command`,
+served statically, driven with Playwright):
+
+- The worklet `addModule(/missile-command/assets/pokey-<hash>.js)` **resolves** from the
+  game's own same-origin bundle; `new AudioWorkletNode('POKEY')` is created and connected
+  to the context destination.
+- With the AudioContext `running`, the engine streams MODSND register-writes to the
+  worklet (`port.postMessage` bursts of 132…1173 events), and an `AnalyserNode` tapped on
+  the POKEY node captured **non-zero output — peak amplitude ≈ 0.157** over ~1050 sampled
+  frames. That is the machine-observable proof of **playback** (the POKEY emulator emitted
+  real samples), the closest automation gets to "confirmed **audible**"; a final
+  by-ear listen is the remaining human check.
+- The page issued **only same-origin requests** (its HTML + `main` bundle; the worklet
+  loads off-thread from the same origin). No external host, no audio-related console error
+  (only an unrelated `favicon.ico` miss from the bare static server).
+
+**Known gap — `just serve` (Vite dev) is silent → filed as `mc8-8`.** Under the dev
+server the worklet is requested at Vite's `@fs/...pokey.js` URL and **fails to load**
+(`AbortError: Unable to load a worklet's module`), so MC is inaudible in dev even though
+the shipped build is audible. This is a dev-only worklet-resolution gap (the built asset
+loads cleanly); it is tracked in **mc8-8**, not left as a loose finding. **No residual
+`asset-follows-later` item remains** for MC audio — the asset loop is closed.
+
 ## Secrets
 
 **One secret, on one repo:** `CLOUDFLARE_API_TOKEN` (an R2-edit token, created in the
